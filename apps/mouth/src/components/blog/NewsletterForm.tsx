@@ -167,11 +167,11 @@ function InlineForm({
                   aria-label="Email address"
                   disabled={status === "loading"}
                   className={cn(
-                    "w-full h-12 pl-11 pr-4 rounded-xl border",
+                    "w-full h-12 pl-11 pr-4 rounded-xl border focus:outline-none",
                     !isR19 &&
                       "bg-white/5 border-white/10 text-white placeholder-white/40 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50",
                     isR19 &&
-                      "placeholder:text-[color:var(--r19-muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--r19-copper)] focus:border-[color:var(--r19-copper)]",
+                      "placeholder:text-[color:var(--r19-muted)] focus:ring-2 focus:ring-[color:var(--r19-copper)] focus:border-[color:var(--r19-copper)]",
                     "disabled:opacity-50 transition-all duration-200",
                   )}
                   style={isR19 ? r19Input : undefined}
@@ -396,11 +396,11 @@ function SidebarForm({
           placeholder="Your name (optional)"
           aria-label="Your name"
           className={cn(
-            "w-full h-11 px-4 rounded-xl text-sm border",
+            "w-full h-11 px-4 rounded-xl text-sm border focus:outline-none",
             !isR19 &&
               "bg-white/5 border-white/10 text-white placeholder-white/40 focus:ring-2 focus:ring-violet-500/50",
             isR19 &&
-              "placeholder:text-[color:var(--r19-muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--r19-copper)]",
+              "placeholder:text-[color:var(--r19-muted)] focus:ring-2 focus:ring-[color:var(--r19-copper)]",
           )}
           style={isR19 ? r19Input : undefined}
         />
@@ -414,11 +414,11 @@ function SidebarForm({
           aria-label="Email address"
           required
           className={cn(
-            "w-full h-11 px-4 rounded-xl text-sm border",
+            "w-full h-11 px-4 rounded-xl text-sm border focus:outline-none",
             !isR19 &&
               "bg-white/5 border-white/10 text-white placeholder-white/40 focus:ring-2 focus:ring-violet-500/50",
             isR19 &&
-              "placeholder:text-[color:var(--r19-muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--r19-copper)]",
+              "placeholder:text-[color:var(--r19-muted)] focus:ring-2 focus:ring-[color:var(--r19-copper)]",
           )}
           style={isR19 ? r19Input : undefined}
         />

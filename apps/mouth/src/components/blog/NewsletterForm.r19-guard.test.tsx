@@ -6,12 +6,12 @@
  * against origin/main's version of this file and GREEN after the restyle
  * (see the lane report for the red tail).
  *
- * The non-R19 (`isR19 === false`, e.g. the `/property` category listing —
- * `routePolicy.ts::isR19Route` excludes it) render is a DIFFERENT case:
- * these files deliberately KEEP the pre-R19 violet/fuchsia look there, so a
- * separate assertion checks the opposite direction (the legacy skin is
- * still there, unchanged) instead of applying the same forbidden-class
- * guard to it.
+ * The non-R19 render (`isR19 === false`) is a DIFFERENT case. No live route
+ * reaches it today: both consumers (CategoryContent, ArticleClient) sit under
+ * routes where `isR19Route` is true. It still keeps the pre-R19 look
+ * verbatim, so the last two cases assert the legacy panel AND the full legacy
+ * token set of every input. A fresh gate (2026-09-28) caught
+ * `focus:outline-none` missing from that branch.
  */
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -38,6 +38,22 @@ const FORBIDDEN = [
   /(^|\s)bg-white(\/\d+)?(\s|$)/,
   /font-black/,
   /font-extrabold/,
+];
+
+// origin/main's input classes, verbatim; the non-R19 branch must keep all of them.
+const LEGACY_SIDEBAR_INPUT = [
+  "bg-white/5",
+  "border",
+  "border-white/10",
+  "text-white",
+  "placeholder-white/40",
+  "focus:outline-none",
+  "focus:ring-2",
+  "focus:ring-violet-500/50",
+];
+const LEGACY_INLINE_INPUT = [
+  ...LEGACY_SIDEBAR_INPUT,
+  "focus:border-violet-500/50",
 ];
 
 function forbiddenHitsIn(container: HTMLElement): string[] {
@@ -128,5 +144,18 @@ describe("R19 group-B surface-2/3 guard: NewsletterForm", () => {
     const panel = container.firstElementChild as HTMLElement;
     expect(panel.className).toMatch(/from-violet-500\/10 to-fuchsia-500\/10/);
     expect(panel.className).toMatch(/border-violet-500\/20/);
+    const inputs = Array.from(container.querySelectorAll("input"));
+    expect(inputs.length).toBe(2);
+    for (const input of inputs) {
+      const tokens = (input.getAttribute("class") || "").split(/\s+/);
+      expect(tokens).toEqual(expect.arrayContaining(LEGACY_SIDEBAR_INPUT));
+    }
+  });
+
+  it("non-R19 context keeps the legacy inline input token set verbatim", () => {
+    const { container } = render(<NewsletterInline />);
+    const input = container.querySelector("input") as HTMLInputElement;
+    const tokens = (input.getAttribute("class") || "").split(/\s+/);
+    expect(tokens).toEqual(expect.arrayContaining(LEGACY_INLINE_INPUT));
   });
 });
