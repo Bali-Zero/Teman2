@@ -1,0 +1,89 @@
+task_id: hotzone-list-floor
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Coordinator ruling 2026-09-27, prerequisite of codexpin PR-1 (#7420): HOTZONE_PATTERNS
+  (the tuple in scripts/evidence_pack_lint.py that floors a path at Gear 3) lives in a file
+  that itself floors at 1, and nothing compared it with the hand-duplicated case-block in
+  .github/workflows/hot-zone-pr-gate.yml. So a floor-1 PR could DROP a hot-zone pattern with
+  no gate, and every path it dropped would floor at 1 from then on — defeating any guarantee
+  built on "this path is hot-zone" (e.g. codexpin spec #7456's MUST->EQ-needs-floor-3 rule).
+
+  Narrow cure: a step in .github/workflows/harness-floor.yml (itself floor 3) that, when the
+  diff touches the linter, reads the tuple as TEXT at the merge-base and at HEAD and floors
+  the diff at 3 if HEAD drops any base pattern, failing closed (floor 3) when either side
+  cannot be read. Gear is 3 DETERMINISTICALLY by path: the diff touches `.github/workflows/*`.
+
+  Residual, and the coordinator ruling on it (2026-09-27, option B, not a council round): a
+  static list check cannot see code that narrows the list at run time (pickle, runpy, a
+  module the linter imports) or rewires what reads it. B checks the BEHAVIOUR instead, in the
+  required guard-conformance job where executing head code is normal: the HEAD linter, run
+  as harness-floor Step 3 runs it (`python3 scripts/evidence_pack_lint.py --print-floor` with
+  --numstat-file and --patch-file, its real import closure), must floor one concrete path per
+  pattern of hot-zone-pr-gate.yml's case-block at 3; the tuple and the case-block must be
+  identical (blocking, both directions); the test file joins both lists; and the job runs it
+  with `-P --import-mode=importlib -c /dev/null --noconftest`, which shuts out the four
+  measured shadows — a yaml.py at the root or in scripts/, an ini with `pythonpath`, a
+  conftest (fresh gate conditions C-2 and C-3 on 874a704e18) — but not every floor-1 file
+  that pytest imports (G1 below).
+  What B DOES: it makes a narrowing of the floor DELIBERATE rather than accidental — a
+  narrowing active whenever the linter runs with Step 3's inputs turns a required job red
+  unless something is ALSO planted to blind the check.
+  What B DOES NOT DO, stated plainly: a deliberately evasive FLOOR-1 edit to the linter or
+  its closure is still ungated — one keyed on a condition true only inside the harness-floor
+  job, or an exemption of specific real paths under a glob the synthetic path still matches
+  (measured by the gate: 49 passed, production floor 1). Those are ordinary floor-1 edits,
+  not workflow edits, so nothing floors them at 3. G1 (fresh delta gate on 010cbdcc07): code
+  that pytest itself imports before the test module — a package __init__.py on the test's
+  import path (scripts/tests/__init__.py, imported as `tests`; a new scripts/__init__.py,
+  imported as `scripts`), including an unchecked-hash .pyc under __pycache__ — runs inside
+  the pytest process under the hardened flags and can blind the check even for an
+  UNCONDITIONAL narrowing in the closure (measured: 8 failed without it, 55 passed with it,
+  production floor 1, diff floor 1). A blanket module-level skip there is not a blind (rc 5
+  under `set -euo pipefail`). Declared, not hardened: this surface already had its depth-1
+  correction, and hot-zoning the .py path alone is bypassed by the .pyc. Also outside B: the
+  interpreter and its site-packages; and the shadow test's own final assertion, which is
+  protected by the file being hot-zone, not by a further test.
+
+acceptance:
+  - text:
+      "WHEN a diff touches scripts/evidence_pack_lint.py and HEAD's HOTZONE_PATTERNS lacks
+      any pattern present at the merge-base, THE harness-floor job SHALL output floor 3,
+      whatever compute_floor() alone returned."
+    probe: "test_step_2d_end_to_end[guilt-drops] runs the real Step 2d bash + heredoc in a scratch git repo (floor3=true); test_step3_applies_the_verdict[true-3-path] runs the real Step 3 against the real linter on a linter-only diff (floor 1 -> 3, source none -> path); a commented-out pattern counts as dropped (test_guilt_commented_out_pattern_is_dropped)"
+  - text:
+      "IF either side's HOTZONE_PATTERNS is not ONE module-level binding to a tuple of string
+      literals, or the merge-base / either copy cannot be read, THE step SHALL floor the diff
+      at 3 rather than pass it."
+    probe: "18 parametrized shapes (reassign, del, global, import-as, star-import, keyword, subscript-key, concat, list, renamed, syntax, exec, setattr, getattr-dict, importlib, from-importlib, func-globals, utf7-cookie) each return None; end-to-end guilt for an unparseable head, an unparseable base, a utf-7 coding cookie, a deleted linter and an unresolvable merge-base (all floor3=true); an absent verdict ('') still floors Step 3 at 3. The computed-name denylist is a bar-raiser, not a proof (declared limit, see pack dissent)"
+  - text:
+      "WHEN a diff adds a pattern, edits unrelated lines of the linter, or does not touch the
+      linter at all, THE step SHALL leave the floor unchanged."
+    probe: "test_step_2d_end_to_end[innocence-adds / innocence-unrelated-edit / innocence-linter-not-in-diff / innocence-main-moved-on] (floor3=false); test_innocence_mentions_that_bind_nothing (a string label, re.compile, a docstring); test_step3_applies_the_verdict[false-1-none] (floor 1, source none); the real linter parses and lists this test (test_innocence_real_linter_parses)"
+  - text:
+      "WHEN HOTZONE_PATTERNS and hot-zone-pr-gate.yml's case-block differ in either
+      direction, THE required guard-conformance job SHALL fail, naming the patterns found
+      on each side only."
+    probe: "test_real_tuple_and_case_block_are_the_same_list; mutants MB3 (case-block drops a pattern) and MB4 (tuple-only addition) each turn it red; test_case_block_reader refuses a second arm, a second statement and no statement"
+  - text:
+      "WHEN the HEAD linter, run as harness-floor Step 3 runs it (--numstat-file,
+      --patch-file, its real import closure), floors any pattern of the case-block below 3 —
+      by any mechanism active when it runs — and nothing on the test's own import path (G1)
+      blinds the check, THE required guard-conformance job SHALL fail."
+    probe: "test_head_linter_really_floors_every_oracle_pattern_at_3 (all 23 oracle patterns, real linter); test_behavioural_check_on_a_copy_of_the_closure: guilt for a planted module imported after the tuple, a review_eligibility.py tail patching fnmatch, the council's pickle->exec payload, a widened pin exemption (the gate's R4) and a narrowing keyed on the numstat; innocence for an unchanged copy and an added pattern; mutants MB1, MB2, C2c (R4 on the real linter) and C2d turn the real-linter case red; C2a/C2b (the probe drops --patch-file / --numstat-file) are killed"
+  - text:
+      "The behavioural check's own test SHALL be a hot-zone path, and none of the four
+      measured floor-1 shadows (a yaml.py at the root or in scripts/, an ini with
+      `pythonpath`, a conftest) SHALL be able to neuter it inside the guard-conformance job's
+      pytest process. A package __init__.py (or its .pyc) on the test's import path is NOT
+      covered (G1, declared)."
+    probe: "--print-floor on scripts/tests/test_harness_floor_hotzone_list.py returns 3; MB6 (drop it from the tuple) turns 4 cases red; test_the_job_invocation_shuts_out_floor_1_shadows runs the job's own command line (read from guard-conformance.yml) on a copy of the tree: with all four plants '1 failed' naming fly.toml at floor 1, clean '1 passed', and a plain pytest run with the plants does not fail (the attack is real); mutants C3a-C3d each drop one flag from the job line and each is killed"
+  - text:
+      "Every guard in the step and its wiring SHALL be proven load-bearing by mutation: each
+      guard mutant turns at least one case red, and every restore is byte-identical."
+    probe: "One sweep on the merged tree, run with the job's invocation: Step 2d M1-M10 and N1-N8 (N8 is the gate's S5, the ImportFrom clause), all killed; behavioural/drift MB1-MB8, all killed (MB8 now through the shadow test's nested run); C-2 guards C2a-C2d and C-3 guards C3a-C3d, all killed. 34 mutants, cp backups, every restore byte-identical"
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2

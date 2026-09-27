@@ -492,6 +492,8 @@ HOTZONE_PATTERNS: tuple[str, ...] = (
     "scripts/review_gate_run.sh",
     "scripts/_redact_pii.py",
     "infra/workflows/second-army.js",
+    # harness-floor.yml Step 2d's own proof: weakening it must not be a floor-1 edit.
+    "scripts/tests/test_harness_floor_hotzone_list.py",
 )
 
 # ---------------------------------------------------------------------------
