@@ -7,8 +7,11 @@
 # `scripts/ci/bites_parse.py::_guard_observable_script` sets for a script
 # reachable from a pack.yml `observe:` line).
 
-Sibling of ``observe_visa_seq23_signed.py`` (E33F no-sponsor signing). Fails loud on the
-first red step:
+The seq-24 sibling of ``observe_visa_seq23_signed.py``: it observes the SIGNING of
+seq-24 (E33F — a retiree without a confirmed sponsor becomes a candidate), and it
+is the executable consumer the per-PR pack declares in its `bites:` block
+(`observe:` this script, `expect: contains:highest signed sequence=24`). Fails loud
+on the first red step:
 
 1. ``review_hold_inventory --json`` must report ``sequence == 24`` — the
    proof that ``rulepack-prod-024.signed.json`` is the HIGHEST SIGNED pack on
@@ -17,7 +20,7 @@ first red step:
    E33F engine witnesses and, in signed mode, the signed-bundle ties.
 3. ``test_interview_walk_census.py`` — reads the highest signed pack via
    ``select_highest_repository_pack``; its ``_SIGNED_SEQUENCE``-keyed pins
-   are the ones this PR moved.
+   (already keyed for 24 by the fold PR) now grade the signed bytes.
 4. ``test_review_hold_inventory.py`` — its count pins are the values step 1
    prints on the signed tree (1 / 0).
 
@@ -26,6 +29,11 @@ mandatory invocation shape). No trust-store env var is exported here.
 
 Exit 0 only if every step is green.
 """
+
+# bites-observable — this script takes NO arguments; every command it runs is a
+# literal below (one in-tree module and three in-tree pytest files), so nothing
+# an invoker types can name a program to run, a file to write or a database to
+# reach — the bar `scripts/ci/bites_parse.py::_guard_observable_script` sets.
 
 from __future__ import annotations
 

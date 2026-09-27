@@ -50,6 +50,15 @@ lanes:
       <base>:<path>`, computed this turn; `git diff --name-only` on the same six paths is empty
       (see receipt below).
 pii_scan: clean
+bites:
+  consumer: >-
+    the CI backend test shards (tests.yml, `backend-shard`), whose sweep collects
+    backend/tests/services/visa_engine — the seq-24 pack gate, the census and the review-hold inventory
+    the observer runs — and the seq-24 activation ceremony, which reads the signed pack this observer
+    proves is the highest signed one
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq24_signed.py
+  expect: "contains:highest signed sequence=24"
 decisions:
   - id: D-gear
     decision: >-
@@ -110,9 +119,16 @@ decisions:
       bundle FAILS, it never skips.
   - id: D-observer
     decision: >-
-      scripts/ci/observe_visa_seq24_signed.py is the no-arg observer, the sibling of seq-23's: it
-      asserts review_hold_inventory reports sequence 24 (proof the new file IS the highest signed
-      pack) and runs the seq-24 pack gate, the census and the inventory test. Exit 0 measured.
+      scripts/ci/observe_visa_seq24_signed.py is the pack's executable consumer, declared in the
+      top-level `bites:` block above (bites_parse.py admits only a `bites-observable` in-tree script as
+      `observe:`, and the observer is the seq-24 sibling of seq-23's). It asserts
+      review_hold_inventory reports sequence 24 (proof the new file IS the highest signed pack) and runs
+      the seq-24 pack gate, the census and the inventory test; the line
+      "highest signed sequence=24" it prints right after that check is what `expect:` matches (the
+      script's own exit code still carries a red consumer: it stops on the first failing module). A first draft of this PR left the observer named only in
+      receipts, with no machine reading it; a fresh gate rightly called that an orphan. The test-side
+      tie stays test_seq24_pack.py::TestSignedBundleTiesToSource, which the observer itself runs
+      and the CI shard runs on its own.
 receipts:
   - claim: Base commit, merge-base and branch of the working tree this evidence describes (nothing committed yet when measured).
     cmd: git rev-parse HEAD && git merge-base origin/main HEAD && git branch --show-current
@@ -213,21 +229,22 @@ receipts:
     exit: 1
     ts: "2026-09-27T01:43:15Z"
     seat: Claude Sonnet 5 (PR-B implementer)
-  - claim: "Acceptance probe 1 — the signed-bundle ties and the signature check, alone."
+  - claim: "Acceptance probe 1 — the signed-bundle ties and the signature check, alone (fresh run, the test-side tie the observer also runs)."
     cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq24_pack.py::TestSignedBundleTiesToSource -p no:cacheprovider
-    result: "8 passed in 1.17s"
+    result: "8 passed in 1.31s"
     exit: 0
-    ts: "2026-09-27T01:49:53Z"
+    ts: "2026-09-27T02:16:43Z"
     seat: Claude Sonnet 5 (PR-B implementer)
-  - claim: The no-arg observer exits 0 on the signed tree.
+  - claim: The observer the `bites:` block names exits 0 on the signed tree (fresh run after its docstring was corrected and its marker made a real comment).
     cmd: python3 scripts/ci/observe_visa_seq24_signed.py
     result: >-
       review_hold_inventory --json reports highest signed sequence=24, totals pack_review_rules 1,
       pack_unknown_escalations 0; then test_seq24_pack.py 93 passed, test_interview_walk_census.py
-      39 passed + 14 skipped, test_review_hold_inventory.py 7 passed; final line "inventory reads
+      39 passed + 14 skipped, test_review_hold_inventory.py 7 passed; it printed "observe_visa_seq24_signed:
+      highest signed sequence=24 totals=..." (the text `expect:` looks for) and ended with "inventory reads
       seq-24 and all three consumers green".
     exit: 0
-    ts: "2026-09-27T01:43:43Z"
+    ts: "2026-09-27T02:17:23Z"
     seat: Claude Sonnet 5 (PR-B implementer)
   - claim: The two remaining test files that read the packs directory, plus the gold driver file alone.
     cmd: >-
@@ -304,6 +321,24 @@ receipts:
     result: "no output, exit 0"
     exit: 0
     ts: "2026-09-27T01:50:51Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: With the council journal committed (2 non-Anthropic seats, by the owning session) and the observer declared in `bites:`, the pack lints clean and bites_parse returns the block. Supersedes the two earlier lint / contract_verify receipts, which were taken while the journal was empty.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py <scratch>/evidence/pack.yml --repo-root <scratch> --source-path
+      <this pack> --brief-source-path <this brief> --changed-files-file <changed paths> --numstat-file
+      <numstat>; python3 scripts/ci/bites_parse.py --pack <this pack>
+    result: >-
+      "evidence_pack_lint: clean", exit 0; bites_parse prints the four fields (consumer, where ci, observe
+      python3 scripts/ci/observe_visa_seq24_signed.py, expect contains:highest signed sequence=24),
+      exit 0; --print-floor 3.
+    exit: 0
+    ts: "2026-09-27T02:17:24Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: contract_verify --local is clean, including bites-pack-parses and pack-lint.
+    cmd: python3 scripts/contract_verify.py --local
+    result: "✅ [bites-pack-parses] Harness floor recompute; ✅ [pack-lint] Harness floor recompute; ✅ [retracted-claims] antidotes; exit 0"
+    exit: 0
+    ts: "2026-09-27T02:17:24Z"
     seat: Claude Sonnet 5 (PR-B implementer)
 dissent:
   - seat: claude-sonnet-5 (PR-B implementer, SELF-REVIEW — not an independent refuter)
