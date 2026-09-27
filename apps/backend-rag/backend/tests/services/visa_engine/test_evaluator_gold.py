@@ -345,16 +345,18 @@ PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
         # Re-derived 2026-09-24 (Slice A9.3): seq-23 is the highest signed
         # pack, and DRAFT-SPEC-A8-1.v2 §1 (owner-ratified, OD-6) replaced
         # this persona's human-review hold with the named dead end `hf.calling-visa-nationality`.
-        # The other four codes are the remaining products' own exclusions for
-        # a non-VOA, non-BVK, under-55 applicant without a sponsor, in engine
-        # order.
+        # The other three codes are the remaining products' own exclusions for
+        # a non-VOA, non-BVK, under-55 applicant, in engine order.
+        # Re-derived 2026-09-27 (seq-24 signing): seq-24 is now the highest
+        # signed pack and retires `hf.e33f.sponsor-required`, the only emitter
+        # of `SPONSOR_REQUIRED`, so that code no longer accompanies E33F's
+        # age exclusion (measured: gold_replay_driver offline report on seq-24).
         state=DecisionState.NO_SUPPORTED_PATH,
         no_path_codes=(
             "BVK_NATIONALITY_ONLY",
             "CALLING_VISA_NATIONALITY_NOT_ASSESSED",
             "VOA_NATIONALITY_ONLY",
             "AGE_BELOW_55",
-            "SPONSOR_REQUIRED",
         ),
         legal_citations=("Daftar Negara Calling Visa - Ditjen Imigrasi",),
         rationale="Afghan nationality is on the Calling Visa list, which this oracle does not assess.",
@@ -363,13 +365,15 @@ PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
         # Re-derived 2026-09-24 (Slice A9.3): seq-23 is the highest signed
         # pack, and DRAFT-SPEC-A8-1.v2 §1 (owner-ratified, OD-6) replaced
         # this persona's human-review hold with the named dead end `hf.active-overstay`. The other
-        # three codes are the remaining products' own exclusions, in engine order.
+        # two codes are the remaining products' own exclusions, in engine order.
+        # Re-derived 2026-09-27 (seq-24 signing): `SPONSOR_REQUIRED` left with
+        # the retired `hf.e33f.sponsor-required` (measured: gold_replay_driver
+        # offline report on the highest signed pack, seq-24).
         state=DecisionState.NO_SUPPORTED_PATH,
         no_path_codes=(
             "BVK_NATIONALITY_ONLY",
             "ACTIVE_OVERSTAY_SETTLE_FIRST",
             "AGE_BELOW_55",
-            "SPONSOR_REQUIRED",
         ),
         legal_citations=("UU 6/2011 jo. UU 63/2024 tentang Keimigrasian",),
         rationale="A disclosed active overstay must be settled before any route is recommended.",

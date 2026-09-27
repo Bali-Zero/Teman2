@@ -579,7 +579,8 @@ _STILL_UNSURE_RETIREMENT_ROW: tuple[DeadEnd, ...] = (
 #: rule reads, `secondhome.passive_monthly_income_usd`. The question that sets
 #: it (`secondhome_passive_income_usd`) exists in tree.ts but this walk's
 #: `retirement_undecided_basis` branch never routes to it — the same shape as
-#: the row above, on the fact that now decides. Measured on the seq-24 candidate.
+#: the row above, on the fact that now decides. Measured on the seq-24 candidate
+#: and reproduced on the signed seq-24 tree (2026-09-27).
 _STILL_UNSURE_RETIREMENT_ROW_SEQ24: tuple[DeadEnd, ...] = (
     DeadEnd(
         fact="secondhome.passive_monthly_income_usd",
@@ -622,8 +623,9 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
     23: {
         "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
     },
-    # seq-24 candidate: same walk, the fact that now blocks it moves from the
-    # sponsor question to the passive-income question (see the row's comment).
+    # seq-24 (signed 2026-09-27): same walk, the fact that now blocks it moves
+    # from the sponsor question to the passive-income question (see the row's
+    # comment).
     24: {
         "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW_SEQ24,
     },
@@ -1246,7 +1248,7 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
     # seq-24 (Zero's E33F ruling): the one walk that moves
     # (`offshore/retirement/property/age64/sponsor_no`) goes
     # NO_SUPPORTED_PATH -> SUPPORTED_CANDIDATES [E33F]; nothing else
-    # moves. Measured on the candidate replay.
+    # moves. Measured on the candidate replay, reproduced on the signed tree.
     24: {
         "HUMAN_REVIEW_REQUIRED": 3,
         "NEEDS_INPUT": 1,
@@ -1289,9 +1291,9 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
     22: {"family.sponsor_confirmed": 1},
     # Slice A9.3: measured on the signed seq-23 tree, identical to seq-22.
     23: {"family.sponsor_confirmed": 1},
-    # seq-24 candidate: E33F no longer reads the sponsor fact, so the one
-    # dead-end walk blocks on the passive-income fact instead. Measured on the
-    # candidate replay.
+    # seq-24: E33F no longer reads the sponsor fact, so the one dead-end walk
+    # blocks on the passive-income fact instead. Measured on the candidate
+    # replay, reproduced on the signed tree.
     24: {"secondhome.passive_monthly_income_usd": 1},
 }
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
@@ -1413,7 +1415,8 @@ STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
         }
     ),
     # seq-24 carries the Studio rule forward untouched — same two walks,
-    # measured on the candidate replay (3 HUMAN_REVIEW_REQUIRED walks in all).
+    # measured on the candidate replay and reproduced on the signed tree (3
+    # HUMAN_REVIEW_REQUIRED walks in all).
     24: frozenset(
         {
             "offshore/invest/bank_deposit/below_threshold",

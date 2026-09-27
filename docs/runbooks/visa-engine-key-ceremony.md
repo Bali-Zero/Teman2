@@ -112,6 +112,20 @@ Real-code roundtrip via `StaticTrustStore.from_env`:
 - Environment-scope probes (e.g. asking the TEST or PROD key to speak for a
   STAGING environment) **REJECTED**.
 
+## Signing note (2026-09-27, seq-24)
+
+`rulepack-prod-024.signed.json` (E33F: a retiree without a confirmed sponsor
+becomes a candidate) was signed offline on M5 with the same production key,
+`kid: prod-2026-07-1`, `signed_at` 2026-09-27T01:31:02Z, `payload_sha256`
+`5a569091f84a858f1957cdf96086ee7212f67d13a8225d64492a7212093cd272`, chained
+to the signed seq-23 (`previous_payload_sha256`
+`e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204`). It was
+checked on landing with `verify_rule_pack` against the PRODUCTION entry of the
+array above, before and after Prettier (the signature covers the JCS-canonical
+payload, so the file's formatting does not matter). **Signed, not activated.**
+The standing regression is
+`test_seq24_pack.py::TestSignedBundleTiesToSource`.
+
 ## Rotation
 
 1. Mint a new kid (e.g. `2027-01-prod-1`) with the same procedure.

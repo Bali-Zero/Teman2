@@ -3,10 +3,12 @@ sponsor becomes an E33F candidate. Zero's ruling of 2026-09-27 — one semantic
 change for one product: ``hf.e33f.sponsor-required`` (the only emitter of
 ``SPONSOR_REQUIRED``) is retired and ``el.e33f.retirement`` stops reading
 ``family.sponsor_confirmed``. No new rule, no new reason code (Option A: the
-note that a sponsor may still be needed lives in the mouth). CANDIDATE ONLY —
-this fold is never signed or activated by itself; the signed-bundle ties
-(digest of ``rulepack-prod-024.signed.json`` against this source) belong to
-the signing PR, exactly as ``test_seq23_pack.py``'s own do.
+note that a sponsor may still be needed lives in the mouth). The fold itself
+never signs or activates anything; ``rulepack-prod-024.signed.json`` (signed
+2026-09-27T01:31:02Z, kid ``prod-2026-07-1``, NOT activated) is tied to this
+source and verified against the public production key by
+``TestSignedBundleTiesToSource`` at the bottom of this file, exactly as
+``test_seq23_pack.py``'s own tie is.
 
 Ground: ``fold_pack_seq24.py``'s own docstring. The anchor is the REAL,
 production ``rulepack-prod-023.signed.json`` on disk, verified against the
@@ -73,8 +75,13 @@ from backend.scripts.visa_engine.review_hold_inventory import (
 )
 from backend.services.visa_engine import compiler, evaluate_path, evaluator
 from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
-from backend.services.visa_engine.bundle import canonicalize_json
+from backend.services.visa_engine.bundle import (
+    StaticTrustStore,
+    canonicalize_json,
+    verify_rule_pack,
+)
 from backend.services.visa_engine.compiler import DEFAULT_FACT_REGISTRY
+from backend.services.visa_engine.errors import RulePackVerificationError
 from backend.services.visa_engine.evaluator import ProductProofStatus
 from backend.services.visa_engine.models import DecisionState, FactPath, RulePackPayload
 from backend.tests.services.visa_engine.gold_replay import _decision_actual
@@ -86,6 +93,7 @@ _PACKS_DIR = (
 _SEQ23_SOURCE_PATH = _PACKS_DIR / "rulepack-prod-023.source.json"
 _SEQ23_SIGNED_PATH = _PACKS_DIR / "rulepack-prod-023.signed.json"
 _SEQ24_SOURCE_PATH = _PACKS_DIR / "rulepack-prod-024.source.json"
+_SEQ24_SIGNED_PATH = _PACKS_DIR / "rulepack-prod-024.signed.json"
 
 #: The pinned production Ed25519 PUBLIC key — the same constant
 #: `test_seq23_pack.py` verifies seq-22 with. A public key is not a secret.
@@ -117,6 +125,12 @@ EVALUATED_AT = datetime(2026, 9, 27, 12, 0, 0, tzinfo=timezone.utc)
 #: this suite graded — a moved byte moves this literal in the same PR.
 SEQ24_PAYLOAD_SHA256 = "5a569091f84a858f1957cdf96086ee7212f67d13a8225d64492a7212093cd272"
 
+#: seq-24's own `signed_at` (read off the signed envelope's protected header)
+#: and an observation instant shortly after it — fixed, never `datetime.now()`,
+#: because `verify_rule_pack` rejects a signature dated after `observed_at`.
+SEQ24_SIGNED_AT = datetime(2026, 9, 27, 1, 31, 2, 441320, tzinfo=timezone.utc)
+SEQ24_OBSERVED_AT = datetime(2026, 9, 27, 1, 45, 0, tzinfo=timezone.utc)
+
 
 def _read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
@@ -135,6 +149,16 @@ def seq23_source() -> dict[str, Any]:
 @pytest.fixture(scope="module")
 def seq23_signed() -> dict[str, Any]:
     return _read_json(_SEQ23_SIGNED_PATH)
+
+
+@pytest.fixture(scope="module")
+def seq24_signed() -> dict[str, Any]:
+    return _read_json(_SEQ24_SIGNED_PATH)
+
+
+@pytest.fixture(scope="module")
+def seq24_source_on_disk() -> dict[str, Any]:
+    return _read_json(_SEQ24_SOURCE_PATH)
 
 
 @pytest.fixture
@@ -1029,3 +1053,101 @@ def test_the_candidate_payload_validates_against_the_model(seq24_source: dict[st
 
 def test_the_candidate_pack_compiles(seq24_compiled: compiler.CompiledRulePack) -> None:
     assert seq24_compiled.sequence == 24
+
+
+# ---------------------------------------------------------------------------
+# The signed artifact IS the tracked source. The signing PR (2026-09-27) lands
+# rulepack-prod-024.signed.json; this class ties its payload to
+# rulepack-prod-024.source.json and to seq-24's own pinned digest, and verifies
+# the Ed25519 signature with the repo's own code against the PUBLIC production
+# key — never the signer's self-report. Same shape as test_seq23_pack.py's
+# TestSignedBundleTiesToSource. A missing bundle FAILS (via `_read_json`), it
+# never skips (cicatrix #2).
+# ---------------------------------------------------------------------------
+
+
+class TestSignedBundleTiesToSource:
+    def test_sha256_of_canonicalized_source_matches_h24(
+        self, seq24_source_on_disk: dict[str, Any]
+    ) -> None:
+        assert (
+            hashlib.sha256(canonicalize_json(seq24_source_on_disk)).hexdigest()
+            == SEQ24_PAYLOAD_SHA256
+        )
+
+    def test_sha256_of_canonicalized_signed_payload_matches_its_declared_field(
+        self, seq24_signed: dict[str, Any]
+    ) -> None:
+        recomputed = hashlib.sha256(canonicalize_json(seq24_signed["payload"])).hexdigest()
+        assert recomputed == seq24_signed["payload_sha256"]
+        assert recomputed == SEQ24_PAYLOAD_SHA256
+
+    def test_signed_payload_is_byte_identical_to_source_under_jcs(
+        self, seq24_signed: dict[str, Any], seq24_source_on_disk: dict[str, Any]
+    ) -> None:
+        """The artifact that was signed is the artifact in version control — a
+        divergence would mean the tracked source.json is not what the operator
+        actually signed."""
+        assert canonicalize_json(seq24_signed["payload"]) == canonicalize_json(seq24_source_on_disk)
+
+    def test_the_committed_bundle_verifies_against_the_pinned_production_key(
+        self, seq24_signed: dict[str, Any], prod_trust_store_env: None
+    ) -> None:
+        verified = verify_rule_pack(
+            seq24_signed,
+            trust_store=StaticTrustStore.from_env(),
+            observed_at=SEQ24_OBSERVED_AT,
+        )
+        assert verified.unsigned_dev is False
+        assert verified.pack.protected.kid == "prod-2026-07-1"
+        assert verified.pack.protected.environment == "PRODUCTION"
+        assert verified.pack.payload.environment == "PRODUCTION"
+        assert verified.pack.payload.sequence == 24
+        assert verified.payload_sha256.hex() == SEQ24_PAYLOAD_SHA256
+        assert len(verified.pack.payload.rules) == 113
+
+    def test_the_chain_anchor_is_the_signed_seq23_payload_digest(
+        self, seq24_signed: dict[str, Any], seq23_signed: dict[str, Any]
+    ) -> None:
+        assert seq24_signed["payload"]["previous_payload_sha256"] == SEQ23_PAYLOAD_SHA256
+        assert seq24_signed["payload"]["previous_payload_sha256"] == seq23_signed["payload_sha256"]
+        assert seq24_signed["payload"]["rollback_of_payload_sha256"] is None
+
+    def test_the_signature_postdates_the_payload_it_seals(
+        self, seq24_signed: dict[str, Any]
+    ) -> None:
+        signed_at = datetime.fromisoformat(
+            seq24_signed["protected"]["signed_at"].replace("Z", "+00:00")
+        )
+        created_at = datetime.fromisoformat(
+            seq24_signed["payload"]["created_at"].replace("Z", "+00:00")
+        )
+        assert signed_at == SEQ24_SIGNED_AT
+        assert signed_at > created_at
+
+    def test_guilt_flipping_one_byte_of_the_signed_payload_moves_the_digest_away_from_h24(
+        self, seq24_signed: dict[str, Any]
+    ) -> None:
+        """GUILT: H24 discriminates — a scratch copy of the signed payload's
+        canonical bytes with ONE byte flipped no longer hashes to H24. Never
+        mutates the fixture or any file on disk."""
+        canonical = bytearray(canonicalize_json(seq24_signed["payload"]))
+        canonical[-1] ^= 0x01
+        assert hashlib.sha256(bytes(canonical)).hexdigest() != SEQ24_PAYLOAD_SHA256
+
+    def test_guilt_a_tampered_payload_is_refused_by_the_verifier(
+        self, seq24_signed: dict[str, Any], prod_trust_store_env: None
+    ) -> None:
+        """GUILT: the innocence test above proves nothing if the verifier accepts
+        anything — retire-then-restore one rule id in a scratch copy and the
+        signature no longer verifies."""
+        tampered = copy.deepcopy(seq24_signed)
+        tampered["payload"]["rules"] = [
+            r for r in tampered["payload"]["rules"] if r["rule_id"] != E33F_AGE_RULE_ID
+        ]
+        with pytest.raises(RulePackVerificationError):
+            verify_rule_pack(
+                tampered,
+                trust_store=StaticTrustStore.from_env(),
+                observed_at=SEQ24_OBSERVED_AT,
+            )
