@@ -1,0 +1,77 @@
+gear: 3
+task_id: lkpm-oneoffs-removal-0927
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/lkpm-oneoffs-removal-0927
+gate_class: none
+l_level: L2
+objective: >-
+  Remove three dead LKPM one-off scripts from the PUBLIC apps/backend-rag/ tree that hardcode
+  real company data: apps/backend-rag/extract_company_data.py (a 79-row company roster —
+  company_id/name/Drive-folder-id — plus a Google service-account identity block: project_id,
+  client_email and a numeric client_id; the private key itself was always read from env, never
+  committed), apps/backend-rag/scripts/fix_lkpm_q1_2026_client_ids.py (DB-driven client-id
+  repair, no roster — only a single hardcoded numeric id in a `KNOWN_FAKE_FOUNDER_IDS`
+  frozenset), and apps/backend-rag/scripts/import_lkpm_q1_2026_receipts.py (a 17-entry
+  company-name-to-{company_id,email} PT_MAP, a 1-entry client-name-fix tuple, and 42 hardcoded
+  receipt rows each carrying a company name, a Drive folder id, a physical address and tax
+  identifiers). A sibling lane found these four files together; this PR owns the three above.
+  apps/backend-rag/scripts/import_lkpm_q1_2026.py is owned by PR #7484 (OSS-credentials lane,
+  a DIFFERENT incident shape — a username/password table, not a company roster) and is not
+  touched here. apps/backend-rag/process_batches_2_3.py and
+  apps/backend-rag/scripts/fix_lkpm_orphans_batch1.py are owned by a third, separate lane
+  (pii-residuals-g5) and are not touched here either.
+  Ground: `git grep -n <basename>` confirmed all three files' only references outside their
+  own docstrings/tests are the ones this PR also fixes (a stale ruff exception in
+  apps/backend-rag/pyproject.toml naming extract_company_data.py, and two literal string
+  references to the deleted test's filename in scripts/backend_stability_gate.py's roster and
+  its own parity test) — no import from apps/backend-rag/backend, no other caller. Checked for
+  a live scheduler on both machines that could still be invoking them: `ssh -o BatchMode=yes -o
+  ConnectTimeout=10 nuzantara@Nuzantara.local` (Pro, LAN — Tailscale is down for this host right
+  now) and `ssh ... nuzantara@100.93.236.6` (Mini, Tailscale) each grepped
+  `~/Library/LaunchAgents` and `crontab -l` for all three basenames — zero hits on either
+  machine. Last CONTENT-touching commit per file (lint/path-sweep commits excluded by hand —
+  ffe82c66b7/fe1e0ce246 for fix_lkpm_q1_2026_client_ids.py are the actual content commits,
+  e0878323b2 was only a repo-wide `l` rename; b005f85998 for extract_company_data.py was only
+  the repo-wide ~/Desktop path sweep, so its last real content commit is f0fa54ab42): receipts
+  script 2026-04-15, client-id-fix script 2026-04-08, extract_company_data.py 2026-04-06.
+  Quarantine: all three originals copied via `git show HEAD:<path> | ssh ... "cat >
+  ~/.agent/pii-quarantine/<basename>.orig && chmod 0600 ..."` on Pro (dir already 0700 from a
+  prior lane's use, verified with `stat -f '%Lp'`); `shasum -a 256` run on both the local
+  extraction (`git show HEAD:<path>`) and the remote copy for each file — all three sha256[:16]
+  prefixes matched (58a56e1eec0e5576 / 25646c2c07a4119a / 05a32b3ee7b6074c). Only counts and
+  hashes appear anywhere in this brief/pack — no company name, person name, Drive id or SA
+  field value is transcribed.
+  A discovery mid-task changed the shape of Task B's guard: PR #7484 (OSS-credentials lane,
+  same incident cluster, opened same day) already ships `scripts/lint_no_inline_credential_
+  tables.py` + its own test — but for the OTHER shape (username/password tuples), and its own
+  test suite is deliberately fixture-only with no whole-repo sweep. This PR's guard
+  (`scripts/tests/test_no_inline_credential_tables.py`) targets the roster/SA-identity shape
+  instead — a >=20-entry list/dict literal carrying a Drive-id-shaped string, or a bare
+  `client_email`+`project_id` dict — and, following that same-day precedent, is fixture-only
+  too: an earlier draft added a whole-repo "assert clean" test, which correctly convicted
+  apps/backend-rag/process_batches_2_3.py (a real positive, owned by the pii-residuals-g5 lane,
+  still on origin/main as of this PR) — coupling this PR's CI to an unrelated lane's merge
+  order. Dropped in favor of the fixture-only design once the precedent was found; see
+  dissent[0] in the pack for the two other false positives caught and fixed while building the
+  detector (a migration-number tag and two legitimate synthetic test mocks).
+scope:
+  - >-
+    apps/backend-rag/extract_company_data.py, apps/backend-rag/scripts/
+    fix_lkpm_q1_2026_client_ids.py, apps/backend-rag/scripts/import_lkpm_q1_2026_receipts.py,
+    apps/backend-rag/backend/tests/unit/scripts/test_fix_lkpm_q1_2026_client_ids.py — deleted.
+  - >-
+    apps/backend-rag/scripts/backend_stability_gate.py — one line removed: the roster entry
+    naming the now-deleted test file. apps/backend-rag/backend/tests/db/
+    test_backend_stability_gate.py — the matching assertion removed (its own parity test for
+    the roster above).
+  - >-
+    apps/backend-rag/pyproject.toml — one line removed: the now-stale ruff per-file exception
+    for extract_company_data.py.
+  - >-
+    scripts/tests/test_no_inline_credential_tables.py — new. Guilt+innocence fixtures (a
+    synthetic >=20-row roster carrying a shaped-but-fake Drive id; a synthetic SA identity
+    block; a sub-threshold roster; a large literal with no Drive id; a partial-SA-keys dict;
+    and a regression fixture for the migration-tag false positive found while validating this
+    guard against the real tree) for the detector described in the objective above. No
+    whole-repo sweep test, and no real company/SA data anywhere in the file.

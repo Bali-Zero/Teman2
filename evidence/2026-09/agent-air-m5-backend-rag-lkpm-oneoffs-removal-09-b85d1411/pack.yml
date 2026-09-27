@@ -1,0 +1,214 @@
+brief_ref: evidence/brief.yml
+plan_ref: "lkpm-oneoffs-removal-0927 mandate (dispatched task prompt), scoped to the 3 files not owned by the sibling OSS-credentials lane (PR #7484) or the sibling PII-residuals lane."
+lanes:
+  - lane: lkpm-oneoffs-removal
+    role: build
+    seat: claude-sonnet-5 (conducting session — grounded liveness, quarantined originals, deleted the three files, built and validated the guard, wrote this pack)
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane. Every load-bearing question here is settled by a command run against the
+  live repo/fleet (git grep, ssh to Pro/Mini, shasum, pytest) or by a deterministic linter, not
+  by an opinion — cross-family review adds nothing a second seat's judgement would contribute,
+  and this diff carries real (if now-deleted) company PII, which the mandate explicitly keeps
+  off any external/council seat.
+seat_override: >-
+  No council convened for this Gear-3 pack (R9). The diff is data-bearing — it deletes files
+  that hardcode real company records and a Google service-account identity block — and the
+  mandate's own instruction is "no council/external seat (data-bearing diff), the fresh gate is
+  the second opinion". The fresh, independent on-disk gate that reviews this PR post-hoc is the
+  adversarial check for this pack, in place of a convened council.
+diff:
+  net_lines: 8 files, +173/-1850 measured by `git diff --numstat origin/main...HEAD`.
+  behaviour_change: >-
+    Pure deletion + one new test file. Three dead one-off scripts and their one orphaned test
+    are removed; two files lose one line each (a stale lint exception, and a roster entry
+    naming the deleted test); one new pytest file adds detector coverage. No production code
+    path changes: none of the three deleted files was imported by apps/backend-rag/backend, so
+    the running service's behaviour is unchanged. Verified by import smoke and by the backend
+    test suite collecting without error post-deletion (receipts below).
+receipts:
+  - claim: >-
+      Deterministic gear floor recomputed from this PR's actual changed-file list and numstat
+      is 3 (churn-driven, not hot-zone-path-driven) — matching the declared gear
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed.txt>
+      --numstat-file <numstat.txt>; --print-floor-source for the driving term
+    result: "3 (source: size — 8 files, +173/-1850)"
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
+  - claim: >-
+      All three files' only references outside their own docstrings/tests are the two this PR
+      also fixes (backend_stability_gate.py's roster + its own parity test, and a stale ruff
+      exception in pyproject.toml) — no import from apps/backend-rag/backend
+    cmd: >-
+      git grep -n extract_company_data / fix_lkpm_q1_2026_client_ids / import_lkpm_q1_2026_receipts
+      -- . (repo root, main checkout)
+    result: >-
+      extract_company_data: 1 hit (pyproject.toml lint-ignore, now removed) + 2 unrelated hits
+      naming a DIFFERENT script (gemini_extract_company_data.sh). fix_lkpm_q1_2026_client_ids: 5
+      hits, all its own docstring/test/stability-gate roster/an unrelated change-map test string
+      (no import). import_lkpm_q1_2026_receipts: 4 hits, all its own docstring, one migration
+      SQL comment (history) and one research evidence doc (history). Zero import-chain hits in
+      any case.
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
+  - claim: No LaunchAgent or crontab on Pro invokes any of the three basenames
+    cmd: >-
+      ssh -o BatchMode=yes -o ConnectTimeout=10 nuzantara@Nuzantara.local "grep -rl
+      <basenames> ~/Library/LaunchAgents; crontab -l | grep -E <basenames>"
+    result: zero matches (empty output, exit 0)
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5, via Pro LAN — Tailscale down for this host)
+  - claim: No LaunchAgent or crontab on Mini invokes any of the three basenames
+    cmd: >-
+      ssh -o BatchMode=yes -o ConnectTimeout=10 nuzantara@100.93.236.6 "grep -rl
+      <basenames> ~/Library/LaunchAgents; crontab -l | grep -E <basenames>"
+    result: zero matches (empty output, exit 0)
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5, via Mini Tailscale)
+  - claim: >-
+      Record counts per file — company rows, Drive-id-shaped strings, SA identity fields,
+      email-shaped strings — counted, never transcribed
+    cmd: >-
+      `git show HEAD:<path>` piped through an ast-based counter for dict/list literal entries,
+      plus grep -oE/-c for shape-matched substrings, on the pre-deletion content
+    result: >-
+      extract_company_data.py: 1 SA identity block (project_id+client_email+numeric client_id)
+      + a 79-row company roster (company_id/name/drive_folder_id), 76 Drive-id-shaped strings.
+      fix_lkpm_q1_2026_client_ids.py: 0 company rows, 0 Drive ids, 0 emails — 1 hardcoded
+      numeric id in a KNOWN_FAKE_FOUNDER_IDS frozenset. import_lkpm_q1_2026_receipts.py: a
+      17-entry PT_MAP (company name -> {company_id, email}), a 1-entry client-name-fix tuple, 42
+      receipt rows (company name, Drive folder id, address, tax id per row), 43 Drive-id-shaped
+      strings, 23 email-shaped strings.
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
+  - claim: >-
+      Quarantine copies on Pro are byte-identical to the deleted originals — sha256[:16] matches
+      on both sides for all three files
+    cmd: >-
+      git show HEAD:<path> | ssh ... "cat > ~/.agent/pii-quarantine/<basename>.orig && chmod
+      0600 ..."; then `ssh ... "shasum -a 256 *.orig"` on the remote copies, compared against
+      `git show HEAD:<path> | shasum -a 256` computed locally
+    result: >-
+      extract_company_data.py.orig 58a56e1eec0e5576 == 58a56e1eec0e5576. fix_lkpm_q1_2026_client_ids.py.orig
+      25646c2c07a4119a == 25646c2c07a4119a. import_lkpm_q1_2026_receipts.py.orig 05a32b3ee7b6074c
+      == 05a32b3ee7b6074c. Quarantine dir confirmed 0700 (`stat -f '%Lp'`), all three files 0600
+      (`ls -la`).
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5, via Pro LAN)
+  - claim: The new guard's guilt+innocence fixtures behave correctly, standalone
+    cmd: python3 -m pytest scripts/tests/test_no_inline_credential_tables.py -q
+    result: "6 passed in 0.06s"
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
+  - claim: The backend stability gate's own roster and parity test are green after the edit
+    cmd: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
+      backend/tests/db/test_backend_stability_gate.py
+    result: "3 passed in 0.04s"
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
+  - claim: The FastAPI import chain is unaffected by the deletion
+    cmd: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -c "from
+      backend.app.dependencies import get_current_user; print('IMPORT_OK')"
+    result: "IMPORT_OK"
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
+  - claim: The backend test suite collects cleanly (no broken import from the deletion)
+    cmd: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
+      backend/tests/unit/scripts/ --collect-only
+    result: "1344 tests collected in 4.49s, zero collection errors"
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
+  - claim: >-
+      Zero reuse of any sensitive string from the three deleted files anywhere else in this
+      PR's diff (guard test, evidence pack, pyproject/stability-gate edits)
+    cmd: >-
+      Extracted every Drive-id-shaped string, email-shaped string and PT/CV-prefixed company
+      name literal from the three pre-deletion file bodies (`git show HEAD:<path>`, held in a
+      throwaway Python set, never written to a tracked file) and searched for each one inside
+      `git diff --cached` restricted to every path EXCEPT the four deleted files themselves.
+    result: "231 sensitive strings collected, 0 hits in the rest of the diff"
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
+  - claim: The pre-commit hook chain (secrets scan, off-limits files, import chain, lint) is clean
+    cmd: git commit (full local pre-commit hook chain, not bypassed)
+    result: >-
+      anti-reward-hacking clean, no hardcoded secrets found, ban-predicates clean, ruff/lint all
+      checks passed, off-limits file check passed, FastAPI import chain OK
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
+pii_scan: clean
+pii_scan_note: >-
+  This brief and pack transcribe ONLY counts, sha256[:16] fingerprints and file:line — no
+  company name, person name, Drive id, email or SA field value from the three deleted files
+  appears anywhere in this pack, the brief, the commit message, the guard test (synthetic
+  fixtures only) or the PR body (receipt above: 0 hits on a 231-string sweep). The deleted lines
+  THEMSELVES are company data by construction (that is the incident this PR closes) — they are
+  never quoted here, only counted.
+dissent:
+  - seat: session (self-review while building the guard)
+    objection: >-
+      The Drive-id shape regex alone (`1[A-Za-z0-9_-]{25,}`) also matched two unrelated shapes
+      found live in the real tree while validating the guard: a lowercase snake_case
+      migration-number tag in apps/backend-rag/backend/db/schema_audit.py (e.g. a
+      `108_..._import`-style string, coincidentally starting with `1` and clearing 26 chars),
+      and an all-digit 36-char fixture value in a CRM test. Both would have false-positived a
+      whole-repo sweep.
+    status: CONFIRMED
+    resolution: >-
+      Tightened `_looks_like_drive_id` to require the string mix upper+lower+digit — every real
+      Drive id sampled from the deleted rosters did, while both false positives were single-case
+      (all-lower or all-digit). Added a regression fixture
+      (test_innocence_migration_tag_style_literal_does_not_flag) using a synthetic tag in the
+      same shape, never the real one.
+  - seat: session (self-review while building the guard)
+    objection: >-
+      Two more false positives: legitimate synthetic Google-service-account mocks in
+      backend/tests/unit/app/services/portal/test_documents_mixin.py and
+      backend/tests/unit/services/ingestion/test_legal_full_ingestion_worker.py both carry a
+      `project_id`+`client_email` dict — by design, to test the code path that consumes one —
+      with values like "fake-project" / "test@fake.iam.gserviceaccount.com". Inspected both
+      (redacted view) to confirm they are synthetic, not an accidental second leak.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed synthetic on inspection, not a new incident. Rather than special-casing test
+      paths inside the detector, the guard was scoped to fixture-only guilt+innocence with no
+      whole-repo sweep at all (see the next dissent entry for why that scope change happened),
+      which sidesteps this class of false positive entirely.
+  - seat: session (self-review, mid-task course correction)
+    objection: >-
+      An early draft of the guard included a whole-repo "assert the current tree is clean"
+      pytest. Running it found a REAL positive: apps/backend-rag/process_batches_2_3.py (owned
+      by the separate pii-residuals-g5 lane, deleting it in their own PR, not yet merged) — this
+      is correct detector behaviour, but it means this PR's own CI would go red for a file this
+      PR does not touch and must not touch, purely on merge-order luck against a sibling lane.
+    status: CONFIRMED
+    resolution: >-
+      Discovered PR #7484 (opened the same day, same incident cluster) ships a companion guard
+      for a different shape and deliberately ships fixture-only tests with no whole-repo sweep,
+      for what is plausibly this exact reason. Followed that precedent: dropped the whole-repo
+      sweep test, kept only the guilt+innocence fixtures. Messaged the pii-residuals-g5 lane to
+      flag and then withdraw the coordination ask once this was resolved.
+disclosure: >-
+  Exposure window, first-commit-to-merge, per file (counts only, no identifiers):
+  extract_company_data.py 2026-03-29 -> merge; fix_lkpm_q1_2026_client_ids.py 2026-04-08 ->
+  merge; import_lkpm_q1_2026_receipts.py 2026-04-15 -> merge. All three were public on
+  Bali-Zero/Teman2 (a public repo) for the full window. The service-account identity metadata
+  in extract_company_data.py (project_id, client_email, numeric client_id — never the private
+  key, which was always read from env) was public for the same window; the owner should review
+  that service account's scope and access history now that the metadata is no longer tracked.
