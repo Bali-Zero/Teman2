@@ -1,0 +1,63 @@
+task: >-
+  R19 census 2026-09-27 (group C, legal half): every public page's footer linked
+  Privacy/Terms/Cookie to `/v2/privacy`, `/v2/terms`, `/v2/cookies` — noindex duplicates in the
+  old navy design with their own one-item NavShell — while the indexed, self-canonical
+  `/privacy` and `/terms` rendered in an old all-black design and `/cookies` did not exist
+  (soft 404). This PR moves `/privacy` and `/terms` into the `(blog)` route group (URL
+  unchanged, legal text and self-canonical metadata unchanged), creates `/cookies` from the v2
+  cookie policy, admits the three paths to `isR19Route`, 301s the three `/v2/*` URLs to them,
+  deletes the v2 files and repoints both footers. About/Careers/Press are a separate, serialized
+  PR (PR-B). Confined to `apps/mouth` (zone VERDE): no shared token, no data, no migration.
+lane: mouth/r19-legal-footer
+machine: air-m5
+date: 2026-09-27
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against the
+  merge-base with origin/main measures churn 1799 (net -319) across 14 files — the two route
+  moves count as full delete+add under --no-renames — above SIZE_GEAR2_THRESHOLD and below
+  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path. Confirmed locally with
+  `scripts/evidence_pack_lint.py --print-floor --print-floor-source`. The combined C1 work
+  (legal + company pages) measured churn ~1940 and floored at 3; it was split into this PR and
+  a serialized PR-B instead of being shipped as one Gear-3 diff made mostly of moves.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    `isR19Route` returns true for /privacy, /terms, /cookies and false for /v2/privacy,
+    /v2/terms, /v2/cookies (fail-before 3 reds on the pre-fix file, pass-after).
+    probe: >-
+      cd apps/mouth && npx vitest run src/components/r19/routePolicy.test.ts
+  A2: >-
+    Neither footer (v2/_components/Footer.tsx, components/r19/home/Footer.tsx) renders an href
+    to /v2/privacy, /v2/terms or /v2/cookies; the #6491 canonical guard and the title-template
+    guard pass against the moved files.
+    probe: >-
+      cd apps/mouth && npx vitest run src/app/v2/_components/Footer.legal-links.test.tsx
+      src/app/metadata-canonical.test.ts src/app/metadata-title-template.test.ts
+  A3: >-
+    Legal text unchanged: the visible text of (blog)/privacy and (blog)/terms equals the
+    origin/main app/privacy and app/terms word-for-word (section titles moved into a Section
+    component prop, all 10 + 8 titles present).
+    probe: >-
+      grep -c 'title="[0-9]*\. ' 'apps/mouth/src/app/(blog)/privacy/page.tsx'
+      'apps/mouth/src/app/(blog)/terms/page.tsx'
+  A4: >-
+    Live after deploy: /privacy, /terms and /cookies return 200 with
+    `data-presentation="r19"` in the HTML; /v2/privacy, /v2/terms and /v2/cookies return 308
+    to them; the footer of / and /news links /privacy, /terms and /cookies.
+    probe: >-
+      for p in privacy terms cookies; do curl -s -o /dev/null -w "%{http_code} "
+      https://balizero.com/$p; curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n"
+      https://balizero.com/v2/$p; done
+
+out_of_scope:
+  - About/Careers/Press (/v2/company/*) — PR-B, waits in local ref backup/r19-c1-full.
+  - Integrating into /privacy the clauses only /v2/privacy had (Google Analytics + 26-month
+    retention, Vercel as processor, cookies section, complaint right) and the public
+    "PSE Registration [Pending]" placeholder — separate PR, legal text needs owner approval.
+  - The 200-status soft 404 (root loading.tsx streaming) and the R19 not-found template.
