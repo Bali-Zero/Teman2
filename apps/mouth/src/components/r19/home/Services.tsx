@@ -53,7 +53,11 @@ export function Services() {
                 Explore {service.title} <span aria-hidden="true">→</span>
               </a>
               {service.href && service.action && (
-                <a className="textlink service-tool-link" href={service.href}>
+                <a
+                  className="textlink service-tool-link"
+                  data-tool={headingId}
+                  href={service.href}
+                >
                   {service.action} <span aria-hidden="true">↗</span>
                 </a>
               )}

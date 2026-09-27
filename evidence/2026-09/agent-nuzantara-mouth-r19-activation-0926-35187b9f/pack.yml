@@ -1,0 +1,361 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Pro worktree .worktrees/mouth-r19-cutover-audit-20260924, docs/plans/r19-cutover-20260924/PLAN.md,
+  the activation that follows step 2 (dormant foundation, merged as #7428); snapshot archived at Pro
+  ~/.agent/snapshots/r19-cutover-audit-20260926.tgz.
+council_run: council-journal.jsonl
+council_note: >-
+  The journal is hand-authored from the seats' own dispatch and completion times (the Kimi and Qwen runs
+  wrote their dispatch and done timestamps to files under the session scratch directory), because
+  scripts/council_journal.py stamps the clock at the moment of the call and cannot record a dispatch that
+  already happened. Two seats ran, both titolari: kimi-code/k3 (read access to the worktree) and
+  tp1-qwen3.8-max (no repo access, redacted diff plus verbatim probe output). They disagree on claim 2:
+  Kimi returned FALSIFIED on claims 2 and 5, Qwen returned HOLDS on all five. The author read both footers
+  against each other and CONFIRMED Kimi's finding on claim 2 (see dissent and the footer receipt of 18:16:11Z); Qwen
+  did not see the pre-change footer, so its HOLDS on claim 2 is superseded on that point. The disagreement
+  is left visible; the finding was then cured in b6dd8aa649 and re-checked by Kimi on claim 2 (journal line 3).
+seat_fallback_reason: >-
+  No seat was substituted. The third titolare, codex-gpt-5.6-sol, is the author of the R19 snapshot
+  (see lanes_note) and was not dispatched: a Codex review of Codex-authored code would not be independent,
+  and every Codex dispatch of 2026-09-26 ended "workspace is out of credits" (see the foundation pack of
+  #7428). Quorum rests on the two titolari that ran.
+lanes:
+  - lane: r19-snapshot-author
+    role: build
+    seat: >-
+      codex-gpt-5.6-sol (external prepare-only builder of the 24-25 September 2026 snapshot from which
+      apps/mouth/src/components/r19/** and the activated home and readers derive; attribution confirmed by
+      Zero on 2026-09-26, the session log was not located locally)
+  - lane: r19-activation-integration
+    role: build
+    seat: >-
+      claude-opus-5-5 (conducting session) with claude-sonnet-5 (implementers): the three activation
+      commits carry both Co-Authored-By trailers; the verification batteries, the review dispatches, the
+      footer cure (b6dd8aa649) and this pack were run by a claude-sonnet-5 continuation session on the
+      rebased head, the second battery through a delegated claude-sonnet-5 subagent whose logs the
+      continuation session read back before recording any number
+  - lane: kimi-red-team
+    role: review
+    seat: kimi-code/k3
+  - lane: qwen-red-team
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5-5 (fresh read-only session outside the contribution chain)
+    status: pending, signs after this pack is committed
+lanes_note: >-
+  D3 (seat diversity among build lanes) is met by the first build lane, the external prepare-only builder
+  of the snapshot, named as Codex (GPT-5.6 Sol). That attribution rests on Zero's confirmation of
+  2026-09-26 and on nothing in the repository; the lint reads only the seat string, so this note is where
+  the difference between a recorded and a remembered attribution is kept. The Claude work on this branch
+  (activation wiring, the WhatsApp restoration, two specs, verification) is the second build lane. Codex
+  authored the R19 sources, so no Codex review lane is declared.
+snapshot_provenance: >-
+  The R19 sources activated here (components/r19/**, the home sections, r19/home/Footer.tsx) landed in
+  #7428 from the read-only snapshot worktree, authored by Codex as an external prepare-only builder. This
+  diff adds: the (blog) layout mount of R19Presentation, the transplanted home in (marketing)/page.tsx,
+  R19-aware edits of seven shared v2 components, the header and hero WhatsApp actions in r19/home/Entry.tsx
+  and home.css, the footer cure in r19/home/Footer.tsx + FooterWhatsAppLink.tsx (b6dd8aa649), and the tests.
+spend:
+  wall_clock_hours: 3.8
+  adversarial_rounds: 2
+spend_note: >-
+  Wall clock from the creation of this worktree (.git file birth 2026-09-26T15:47:14Z) to the last lint run
+  (about 19:35Z). It includes the predecessor session's work on the three activation commits (author times
+  16:11Z, 16:32Z, 16:58Z), this session's first verification battery, review dispatch and pack, and the
+  footer cure with its second battery and re-check. Adversarial rounds: two. Round 1: Kimi K3 and Qwen 3.8
+  Max dispatched in parallel, no retry. Round 2: Kimi K3 on claim 2 only, on the head that carries the cure.
+  Wall clock is inside the brief's appetite of four hours; the rounds are one over its appetite of one, by
+  design: round 1 confirmed a finding, and a cure has to be re-checked.
+appetite_exceeded: >-
+  adversarial_rounds 2 against a declared 1. Round 1 (Kimi K3 and Qwen 3.8 Max) confirmed a finding, the home
+  footer's lost tracked WhatsApp link, Telegram and Location links (dissent 1); the cure needed its own re-check
+  (round 2, Kimi K3 on claim 2). Wall clock, 3.8 hours against 4, stayed inside the ceiling.
+pii_scan: clean
+pii_scan_note: >-
+  Added-line sweep of the candidate diff for e-mail, +62 numbers, passport, NPWP, NIK, KTP: only the company
+  WhatsApp number and the company support e-mail, both already public on origin/main (contact page,
+  footers), and Playwright wa.me stubs with synthetic ids. No client data. The diff sent to the TP1 seat had
+  those two company contact values replaced by placeholders (checked: zero occurrences of either left in the
+  file sent) and contained no binary.
+receipts:
+  - claim: origin/main moved during the unit; the three activation commits rebased onto it without conflict, and the diff is still 23 files
+    cmd: git fetch origin && git rebase origin/main && git diff origin/main --stat | tail -1
+    result: >-
+      origin/main d2e0a1a50b to ca168b59da (c31a9bc118 backend visa clock-chat fix, ca168b59da ledger row;
+      zero files under apps/mouth); rebase clean, head e80bf32873; "23 files changed, 1190 insertions(+),
+      239 deletions(-)"
+    exit: 0
+    ts: 2026-09-26T17:44:39Z
+    seat: claude-sonnet-5
+  - claim: nothing outside apps/mouth is in the candidate diff
+    cmd: git diff --name-only origin/main...HEAD | grep -vc '^apps/mouth/'
+    result: matches=0 (all 23 paths under apps/mouth/)
+    exit: 0
+    ts: 2026-09-26T18:16:11Z
+    seat: claude-sonnet-5
+  - claim: typecheck is clean at head e80bf32873
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: no output
+    exit: 0
+    ts: 2026-09-26T18:01:19Z
+    seat: claude-sonnet-5
+  - claim: brand API artifacts are fresh
+    cmd: python3 scripts/brand_api_gen.py --check
+    result: "brand-api OK — 32 components, artifacts fresh"
+    exit: 0
+    ts: 2026-09-26T18:01:09Z
+    seat: claude-sonnet-5
+  - claim: apps/mouth vitest suite green at head e80bf32873
+    cmd: cd apps/mouth && npx vitest --run
+    result: Test Files 553 passed (553); Tests 7281 passed, 2 skipped (7283)
+    exit: 0
+    ts: 2026-09-26T17:46:31Z
+    seat: claude-sonnet-5
+  - claim: production build (head e80bf32873) compiles and generates every static page, once plain and once with the CI Playwright env
+    cmd: >-
+      cd apps/mouth && npx next build --webpack ; then the same with NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS=1
+      NEXT_PUBLIC_HIDE_CELL_WIDGET=1 NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER set as playwright.config.ts's
+      webServer.env sets them
+    result: >-
+      plain build "Compiled successfully in 31.7s", 1740 static pages; env build "Compiled successfully in
+      60s", "Finished TypeScript in 10.2s", 1740 static pages. The env build is the one served for the
+      e2e and the probes.
+    exit: 0
+    ts: 2026-09-26T17:53:22Z
+    seat: claude-sonnet-5
+  - claim: public login bundle guard and roster chunk guard pass on that build output
+    cmd: >-
+      cd apps/mouth && node scripts/assert-public-login-bundle.mjs ; node scripts/assert-roster-not-in-public-chunks.mjs
+    result: >-
+      "PUBLIC_LOGIN_BUNDLE_OK: inspected 5 assets; no internal API route prefixes found"; "ROSTER_CHUNK_ASSERT
+      OK: scanned 509 chunks, 0 skipped by the declared time-boxed exception (none)"
+    exit: 0
+    ts: 2026-09-26T18:01:09Z
+    seat: claude-sonnet-5
+  - claim: Playwright Chromium is green on the four specs that pin the activation, against next start of the env build (head e80bf32873, before the footer cure)
+    cmd: >-
+      cd apps/mouth && PLAYWRIGHT_EXTERNAL_SERVER=1 BZ_E2E_PORT=3142 npx playwright test
+      --config=playwright.config.ts --project=chromium e2e/r19-presentation.spec.ts e2e/r19-home-contact.spec.ts
+      e2e/blog-news-light.spec.ts e2e/service-pages-light.spec.ts
+    result: >-
+      46 passed (1.1m): r19-presentation 14, r19-home-contact 22, blog-news-light 4, service-pages-light 6;
+      0 failed, 0 flaky. Chromium only; firefox, webkit and the Pixel 5 project were not run.
+    exit: 0
+    ts: 2026-09-26T17:55:02Z
+    seat: claude-sonnet-5
+  - claim: data-presentation="r19" is present exactly once on every editorial route probed and absent from every funnel route probed
+    cmd: curl -s http://localhost:3142<path> | grep -o 'data-presentation="r19"' | wc -l, for 10 editorial and 13 funnel paths
+    result: >-
+      editorial x1 each (/ /news /business /business/accounting-software-indonesia /team /services
+      /services/visa /services/compliance /services/tax /contact); funnels x0 each (/visa-oracle
+      /visa-oracle/unlock /visa/second-home /visa/second-home/studio /visa/second-home/id /visa/voa /kbli
+      /kbli-explorer /property /property/eligibility /taxes/gap /tax-calendar /v2); all HTTP 200
+    exit: 0
+    ts: 2026-09-26T17:57:03Z
+    seat: claude-sonnet-5
+  - claim: SEO head of / /news /team /services /contact equals production's
+    cmd: >-
+      per route, diff of {title, canonical, robots and googlebot meta, og:title, og:url, hreflang links}
+      between http://localhost:3142 and https://balizero.com; then a second diff of every meta tag, the
+      canonical, alternate, icon and manifest links and the JSON-LD @type set
+    result: >-
+      first diff empty on all five routes; second diff empty on /team /services /contact and, on / and /news,
+      differs only by the per-request Sentry baggage and sentry-trace meta tags (trace ids, environment).
+      Neither side carries a robots meta or an hreflang link; the googlebot meta is identical. Production was
+      serving sentry-release 2c79f65096, the tree before this change. The second diff has no saved output:
+      its result was read inline in the session and is restated here.
+    exit: 0
+    ts: 2026-09-26T17:57:03Z
+    seat: claude-sonnet-5
+  - claim: the pre-change footer and the R19 home footer differ in WhatsApp tracking and in two contact destinations
+    cmd: >-
+      grep -c on origin/main:apps/mouth/src/app/v2/_components/Footer.tsx and on
+      apps/mouth/src/components/r19/home/Footer.tsx for buildWhatsAppLink, trackFunnelEvent, t.me and the bare
+      wa.me link
+    result: >-
+      old footer: buildWhatsAppLink(footerFunnel)=1, trackFunnelEvent(FOOTER_EVENT)=1 (home maps to
+      home_whatsapp_cta, payload trigger footer), t.me=1, a maps link; new footer: bare
+      https://wa.me/628213454721 =1, buildWhatsAppLink or trackFunnelEvent=0, t.me=0, maps link replaced by
+      GOOGLE_MAPS_URL on the "Client reviews" entry. The old home imported the v2 Footer; the activated home
+      imports the R19 one. At this receipt r19/home/Footer.tsx was unchanged by this diff; b6dd8aa649 later cured it.
+    exit: 0
+    ts: 2026-09-26T18:16:11Z
+    seat: claude-sonnet-5
+  - claim: the kimi-code/k3 falsification run returned a usable verdict
+    cmd: >-
+      ~/.kimi-code/bin/kimi -p "<falsification prompt + worktree path>" -m kimi-code/k3 < /dev/null (timeout 1200)
+    result: VERDICT FALSIFIED (claims 2 and 5), 5835 bytes, dispatched 17:57:52Z, returned 18:14:06Z
+    exit: 0
+    ts: 2026-09-26T18:14:06Z
+    seat: claude-sonnet-5
+  - claim: the qwen3.8-max falsification run on the redacted diff plus verbatim probe output returned a usable verdict
+    cmd: >-
+      python3 scripts/tp1_call.py --model qwen3.8-max --effort medium --timeout 1500 --task-file
+      qwen_task.txt
+    result: VERDICT HOLDS on five claims (claim 5 with a caveat), 6135 bytes, dispatched 17:59:11Z, returned 18:03:18Z
+    exit: 0
+    ts: 2026-09-26T18:03:18Z
+    seat: claude-sonnet-5
+  - claim: the cure commit b6dd8aa649 touches four files, all under apps/mouth, and the cured footer carries the tracked WhatsApp link, Telegram and Location
+    cmd: >-
+      git diff HEAD~1 HEAD --stat ; git diff --name-only origin/main...HEAD | grep -v '^evidence/' | grep -vc '^apps/mouth/' ;
+      grep -c on FooterWhatsAppLink.tsx and Footer.tsx for buildWhatsAppLink("home"), home_whatsapp_cta, trigger "footer",
+      a bare wa.me/, destinations.telegram and destinations.officeMap
+    result: >-
+      4 files, +139/-33 (spec, Footer.tsx, FooterWhatsAppLink.tsx new, destinations.ts); outside apps/mouth=0
+      of 26 non-evidence files; FooterWhatsAppLink has buildWhatsAppLink("home")=1, home_whatsapp_cta and
+      trigger "footer" present; Footer.tsx has bare wa.me/=0 and reaches Telegram and the map only through
+      destinations (https://t.me/Balizerobot and https://maps.google.com/?q=Bali+Indonesia, the literals of the
+      v2 Footer on origin/main). Non-evidence diff of the branch is now 26 files, +1297/-240.
+    exit: 0
+    ts: 2026-09-26T19:18:52Z
+    seat: claude-sonnet-5
+  - claim: typecheck is clean at head b6dd8aa649's tree
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: no output (log 0 bytes); the pre-commit hook of the cure commit also ran the mouth typecheck and passed
+    exit: 0
+    ts: 2026-09-26T18:57:40Z
+    seat: claude-sonnet-5
+  - claim: vitest is green on the touched directory and on the full mouth suite with the cure in the tree
+    cmd: cd apps/mouth && npx vitest --run src/components/r19 ; npx vitest --run
+    result: >-
+      r19 directory: Test Files 5 passed (5), Tests 42 passed (42); full suite: Test Files 553 passed (553),
+      Tests 7281 passed, 2 skipped (7283)
+    exit: 0
+    ts: 2026-09-26T18:59:15Z
+    seat: claude-sonnet-5
+  - claim: brand API artifacts are still fresh
+    cmd: python3 scripts/brand_api_gen.py --check
+    result: "brand-api OK — 32 components, artifacts fresh"
+    exit: 0
+    ts: 2026-09-26T18:59:20Z
+    seat: claude-sonnet-5
+  - claim: production build with the CI Playwright env compiles, generates every static page, and both bundle guards pass
+    cmd: >-
+      cd apps/mouth && NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS=1 NEXT_PUBLIC_HIDE_CELL_WIDGET=1
+      NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER=628123456789 npx next build --webpack ;
+      node scripts/assert-public-login-bundle.mjs ; node scripts/assert-roster-not-in-public-chunks.mjs
+    result: >-
+      "Compiled successfully in 29.7s"; 1740 of 1740 static pages; "PUBLIC_LOGIN_BUNDLE_OK: inspected 5
+      assets; no internal API route prefixes found"; "ROSTER_CHUNK_ASSERT OK: scanned 509 chunks"
+    exit: 0
+    ts: 2026-09-26T19:01:33Z
+    seat: claude-sonnet-5
+  - claim: Playwright Chromium is green on the four specs with the cure, and r19-home-contact is stable over three repeats
+    cmd: >-
+      cd apps/mouth && PLAYWRIGHT_EXTERNAL_SERVER=1 BZ_E2E_PORT=3142 npx playwright test
+      --config=playwright.config.ts --project=chromium e2e/r19-presentation.spec.ts e2e/r19-home-contact.spec.ts
+      e2e/blog-news-light.spec.ts e2e/service-pages-light.spec.ts ; the same with --repeat-each 3 on
+      e2e/r19-home-contact.spec.ts alone
+    result: >-
+      48 passed (59.4s): r19-presentation 14, r19-home-contact 24, blog-news-light 4, service-pages-light 6;
+      then 72 passed (1.1m) at repeat-each 3; 0 failed, 0 flaky. Then, after prettier reformatted the spec (one
+      statement wrapped differently, no logic change) for the pre-commit gate, r19-home-contact once more:
+      24 passed (1.2m), 2026-09-26T19:08:58Z. Chromium only. The new spec cases were not run against the
+      pre-cure footer, so their failing-on-the-old-footer property is argued from the code, not observed.
+    exit: 0
+    ts: 2026-09-26T19:08:58Z
+    seat: claude-sonnet-5
+  - claim: the kimi-code/k3 re-check of claim 2 alone on the cure head returned a usable verdict
+    cmd: >-
+      ~/.kimi-code/bin/kimi -p "<claim-2-only prompt, read-only>" -m kimi-code/k3 < /dev/null (timeout 1200),
+      run on head b6dd8aa649 (the pack update lands in the next commit)
+    result: VERDICT HOLDS on claim 2 for the footer, 2927 bytes, dispatched 19:18:15Z, returned 19:21:29Z
+    exit: 0
+    ts: 2026-09-26T19:21:29Z
+    seat: claude-sonnet-5
+dissent:
+  - seat: kimi-code/k3
+    verdict: FALSIFIED
+    objection: >-
+      Claim 2 fails for the home footer. The activated home renders r19/home/Footer.tsx instead of the v2
+      Footer: its WhatsApp link is a bare wa.me/<company number> with no greeting text, no utm parameters and no
+      home_whatsapp_cta{trigger:"footer"} event; the old Telegram contact is gone; the old Location link to
+      maps is gone (a "Client reviews" entry now points at GOOGLE_MAPS_URL). Email and phone destinations are
+      identical. The hero and header actions the owner ruling names are intact (hero: same source, context,
+      utm and fallback as HeroCTA; header: NavWhatsAppCTA firing home_whatsapp_cta{trigger:"nav"}).
+    status: CONFIRMED
+    disposition: >-
+      RESOLVED in b6dd8aa649 ("fix(mouth): keep the R19 footer's tracked WhatsApp, Telegram and location
+      links"). Confirmed by the author against both files before the cure (the footer receipt, 18:16:11Z);
+      Zero's ruling was not needed: PLAN section 2 keeps existing contact destinations and analytics event
+      names as the contracts. The cure: FooterWhatsAppLink (buildWhatsAppLink("home"), new tab, rel
+      noopener noreferrer, home_whatsapp_cta with {trigger:"footer"} and the session id, as the v2 Footer
+      fires on "/"), and Telegram and Location restored with the v2 Footer's own literals
+      (https://t.me/Balizerobot, https://maps.google.com/?q=Bali+Indonesia) held in destinations.ts. R19
+      styling is unchanged. Re-checked by the same seat on the cure head: VERDICT HOLDS on claim 2, link by link
+      (WhatsApp, Telegram, Email, Phone, Location: href, target, rel, event name and payload identical to the
+      pre-R19 footer), and it read the e2e assertions that pin it (journal line 3, receipts of 18:57Z to
+      19:21Z). One caveat it recorded as non-falsifying: the R19 footer also carries a "Client reviews" link to
+      GOOGLE_MAPS_URL and other navigation links the old footer lacked, outside the contact block and firing no
+      events, inside the "except layout" carve-out. Note for the reader: the Location destination is the v2
+      Footer's generic maps search, as ruled by "same destinations as the current footer", not the Google
+      Business Profile URL GOOGLE_MAPS_URL that "Client reviews" uses.
+  - seat: kimi-code/k3
+    verdict: FALSIFIED
+    objection: >-
+      Claim 5 fails at file level: seven shared components under apps/mouth/src/app/v2/_components/ (Footer,
+      HeroBlueprint, MobileNav, NavWhatsAppCTA, NewsHero, PersonaDoors, ZantaraFAB) are edited and are imported
+      by funnel surfaces (/v2, and the visa, kbli, tax-calendar and property-eligibility layouts), and four
+      test files outside the perimeter changed.
+    status: CONFIRMED
+    disposition: >-
+      Accepted as worded, answered at render level, which is how A1 states it. Every edit is either behind
+      useR19() (false wherever no R19 provider is mounted, and the provider is mounted only under the (blog)
+      layout and on the home) or reads a var(--r19-*, literal) alias whose fallback is the literal it replaced;
+      the marker probe shows data-presentation absent on all 13 funnel routes; Kimi and Qwen both walked the
+      edits and found no funnel-visible change. PersonaDoors has no importer. The out-of-perimeter test files
+      are test infrastructure.
+  - seat: kimi-code/k3
+    verdict: FALSIFIED
+    objection: >-
+      Two edits reach funnel code ungated: a container colour var(--text-primary) on the MobileNav drawer
+      panel, and aria-hidden on the ZantaraFAB icon span.
+    status: CONFIRMED
+    disposition: >-
+      Both edits are real and neither changes rendering: every text element in the drawer sets its own colour
+      (Menu label, close button, links, both action buttons), so the panel colour is inherited by nothing but
+      the screen-reader-only title; the FAB span held only an img with alt="". Accepted, ships as is.
+  - seat: tp1-qwen3.8-max
+    verdict: HOLDS
+    objection: >-
+      Exact parity of every GA4 parameter with the pre-R19 hero cannot be verified from the diff, because the
+      old HeroBlueprint internals are not in it.
+    status: RETRACTED
+    disposition: >-
+      Resolved by evidence outside its material: Kimi compared Entry.tsx's hero button against
+      origin/main HeroCTA.tsx line by line (source homepage_hero, same context, whatsappContext, utm and
+      fallbackHref), and r19-home-contact.spec.ts asserts the hero handoff end to end (capture payload,
+      lead_whatsapp_cta, lead_created, funnel beacon, captured=false fallback), 22 tests green.
+  - seat: tp1-qwen3.8-max
+    verdict: HOLDS
+    objection: >-
+      No CI, infra or config file appears in the diffstat, but the seat cannot inspect the repo tree beyond it.
+    status: RETRACTED
+    disposition: >-
+      Falsified by command: git diff --name-only origin/main...HEAD lists 23 paths, all under apps/mouth/ (the
+      second receipt, zero paths outside).
+residual_risks:
+  - >-
+    The footer cure (b6dd8aa649) was re-checked by Kimi K3 on claim 2 only; claims 1, 3, 4 and 5 were judged
+    on the head before the cure by both seats, and the cure touches only Footer.tsx, a new client link, the
+    destinations file and the spec, so the SEO and marker probes of 17:57Z were not repeated. If anything
+    outside the footer changes before arming, they must be.
+  - >-
+    The new footer spec cases were not run against the pre-cure footer, so that they fail there is argued from
+    the code (bare wa.me href, no Telegram or Location link), not observed. A pre-cure build would settle it.
+  - >-
+    Playwright ran on Chromium only. Firefox, webkit and the Pixel 5 project were not run, and CI's
+    collection also covers specs that were not run here.
+  - >-
+    The probes read a local next start, not a deployment. Mouth production deployments land staged and go
+    live only on vercel promote, so A5 (390 and 1440 wide, above the fold, on the public domain) is not
+    observed and cannot be before merge and promote.
+  - >-
+    Kimi's and Qwen's material differ: Qwen judged from the diff and probe output alone and did not see the
+    pre-change footer, which is why it missed the footer regression. A third seat with repo access was not
+    dispatched.
+  - >-
+    ESLint was not run in this session; CI lints.

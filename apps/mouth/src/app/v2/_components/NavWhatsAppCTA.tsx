@@ -49,7 +49,7 @@ export function NavWhatsAppCTA({
         color: isWhatsApp
           ? hovered
             ? "#1D2C3B"
-            : "#F7F4EE"
+            : "var(--r19-ink, #F7F4EE)"
           : "var(--text-on-accent)",
         border: isWhatsApp ? "1px solid #A44B36" : undefined,
         textDecoration: "none",

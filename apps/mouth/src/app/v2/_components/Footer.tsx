@@ -254,7 +254,7 @@ function ContactLink({
       <div
         className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0
           border border-[color:var(--border-strong)] bg-transparent
-          text-[color:rgba(255,255,255,0.72)]
+          text-[color:var(--footer-icon-color,rgba(255,255,255,0.72))]
           transition-[color,border-color,background-color] duration-200 ease-out
           group-hover:border-[color:var(--accent-zantara)]
           group-hover:text-[color:var(--accent-zantara)]

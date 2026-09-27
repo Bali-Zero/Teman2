@@ -14,10 +14,12 @@ import asyncpg
 
 from backend.app.core.config import settings
 from backend.app.utils.logging_utils import get_logger
+from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.drive_folder_service import DriveFolderService
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.notifications.email_audit import (
+    _bounded_scrub,
     format_send_error,
     log_email_attempt,
     notify_email_failure_critical,
@@ -409,7 +411,7 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
                 json=payload,
             )
             response.raise_for_status()
-            logger.info("Email sent to %s via Brevo", to_email)
+            logger.info("Email sent to %s via Brevo", redact_identifier_for_log(to_email))
             await record_email_result(
                 self.db_pool,
                 row_id,
@@ -418,8 +420,17 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             )
             return
         except Exception as brevo_error:
-            logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
+            # C2 (PR #7385 gate follow-up): this used to log the raw
+            # exception object (`%s` on `brevo_error` calls `str()` on it,
+            # and a provider bounce can echo the address back) BEFORE
+            # `format_send_error` even ran. Format first, scrub, then log —
+            # same order the sibling fix in waiting_documents_service.py uses.
             brevo_err_msg = format_send_error(brevo_error)
+            logger.warning(
+                "Brevo failed for %s, trying Zoho: %s",
+                redact_identifier_for_log(to_email),
+                _bounded_scrub(brevo_err_msg, 400),
+            )
 
         # 2) Zoho fallback
         try:
@@ -428,7 +439,9 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
                 subject=subject,
                 body=body,
             )
-            logger.info("Email sent to %s via Zoho fallback", to_email)
+            logger.info(
+                "Email sent to %s via Zoho fallback", redact_identifier_for_log(to_email)
+            )
             await record_email_result(
                 self.db_pool,
                 row_id,
@@ -441,8 +454,8 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             combined_err = f"brevo: {brevo_err_msg} | zoho: {format_send_error(zoho_error)}"
             logger.error(
                 "Both Brevo and Zoho failed for %s: %s",
-                to_email,
-                combined_err,
+                redact_identifier_for_log(to_email),
+                _bounded_scrub(combined_err, 400),
             )
             await record_email_result(
                 self.db_pool,

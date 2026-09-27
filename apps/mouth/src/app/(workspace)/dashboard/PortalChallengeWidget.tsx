@@ -47,11 +47,10 @@ const R19_TYPE: React.CSSProperties = {
 };
 
 /**
- * The hero band's ink panel. `--bz-text-1` is kita's darkest body-text
- * token — reused here as a background rather than declaring a new dark
- * literal. `--bz-surface` (kita's card white) doubles as "paper" foreground.
+ * Secondary text on the hero's ink panel (ChampionArena paints it with
+ * `--bz-text-1`, kita's darkest body-text token, reused as a background;
+ * `--bz-surface` doubles as the "paper" foreground).
  */
-const INK_PANEL = "bg-[var(--bz-text-1)] text-[var(--bz-surface)]";
 const INK_SECONDARY =
   "text-[color-mix(in_srgb,var(--bz-surface)_62%,transparent)]";
 
@@ -132,7 +131,7 @@ function CountdownBlocks({
   const { days, hours, minutes } = countdownParts(target, now);
   const prefix = data.status === "upcoming" ? "Mulai dalam" : "Berakhir dalam";
   return (
-    <div className="flex flex-col items-end gap-1.5">
+    <div className="flex flex-col items-start gap-1.5 sm:items-end">
       <span
         className={cn(
           "flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.1em]",
@@ -475,8 +474,10 @@ function RankingRow({
       </span>
       <div className="min-w-0 flex items-center gap-1.5">
         <ChampionPortrait
+          face
           name={entry.display_name}
           src={entry.avatar_url}
+          sizes="96px"
           className="size-9"
         />
         <span className="text-[12px] font-semibold text-[var(--tx-pure)] truncate">
@@ -755,50 +756,11 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
       className="flex flex-col gap-2.5"
       style={R19_TYPE}
     >
-      {/* Hero band — dark ink panel so this dominates the dashboard. */}
-      <div className={cn("rounded-lg p-6", INK_PANEL)}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-col gap-3">
-            <div>
-              <div
-                aria-hidden="true"
-                className="mb-3 h-[3px] w-14 rounded-sm bg-[var(--bz-copper)]"
-              />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--bz-kita-ink-panel-copper)]">
-                {data.status === "closed"
-                  ? "Hasil akhir"
-                  : data.status === "upcoming"
-                    ? "Bersiap untuk bertanding"
-                    : "Final sprint · Setiap poin berarti"}
-              </p>
-              <h2
-                className="mt-1 text-[clamp(26px,3.2vw,36px)] leading-[1.05] tracking-[-0.02em]"
-                style={SERIF}
-              >
-                Portal Champion
-              </h2>
-            </div>
-            <div className="flex items-center gap-3">
-              <span
-                className="block font-black tabular-nums text-3xl"
-                style={{ ...SERIF, lineHeight: 0.9, marginBottom: "0.35em" }}
-              >
-                {data.team_total_activations}
-              </span>
-              <p className={cn("text-[12px]", INK_SECONDARY)}>
-                {isZeroState
-                  ? "Belum ada klien aktivasi — jadilah yang pertama!"
-                  : "klien aktivasi terkumpul dari seluruh tim"}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2.5">
-            <CountdownBlocks data={data} now={now} />
-          </div>
-        </div>
-      </div>
-
-      <ChampionArena data={data} />
+      {/* Hero — one ink panel so this dominates the dashboard. */}
+      <ChampionArena
+        data={data}
+        countdown={<CountdownBlocks data={data} now={now} />}
+      />
 
       <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[1.4fr_1fr]">
         <RankingList entries={data.entries} isZeroState={isZeroState} />

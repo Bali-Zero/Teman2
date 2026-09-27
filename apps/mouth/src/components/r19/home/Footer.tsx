@@ -1,4 +1,6 @@
 import { GOOGLE_MAPS_URL } from "@/lib/trust-figures";
+import { destinations } from "./destinations";
+import { FooterWhatsAppLink } from "./FooterWhatsAppLink";
 import styles from "./Footer.module.css";
 
 export function Footer() {
@@ -39,9 +41,23 @@ export function Footer() {
             <a href="/contact">{"Contact & office visits"}</a>
             <a href="/v2/company/careers">{"Careers"}</a>
             <a href="/v2/company/press">{"Press"}</a>
-            <a href="https://wa.me/628213454721">{"WhatsApp"}</a>
+            <FooterWhatsAppLink>{"WhatsApp"}</FooterWhatsAppLink>
+            <a
+              href={destinations.telegram.href}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {destinations.telegram.label}
+            </a>
             <a href="mailto:zantara@balizero.com">{"zantara@balizero.com"}</a>
             <a href="tel:+628213454721">{"+62 821 3454 721"}</a>
+            <a
+              href={destinations.officeMap.href}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {destinations.officeMap.label}
+            </a>
           </div>
         </div>
         <div className={styles.base}>
