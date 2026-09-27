@@ -1,6 +1,7 @@
 import { MDXRemote, MDXRemoteSerializeResult } from "next-mdx-remote";
 import Image from "next/image";
 import Link from "next/link";
+import { cloneElement, isValidElement, type ReactNode } from "react";
 
 // Import all interactive components
 import {
@@ -29,6 +30,24 @@ function HeaderWhatsAppCTA({
   funnel?: "tax" | "property" | "visa" | "kbli";
 }) {
   return <FunnelHeaderWhatsAppCTA funnel={funnel} />;
+}
+
+// The `pre` mapping clones its `code` child with this marker so the `code`
+// mapping can tell a fenced block with NO language (no className) apart from
+// real inline code in a paragraph (also no className) — see the `code`/`pre`
+// entries below (C3).
+const PRE_CODE_MARKER = "data-mdx-pre-code";
+
+function markPreChildAsBlock(children: ReactNode): ReactNode {
+  if (isValidElement(children)) {
+    return cloneElement(
+      children as React.ReactElement<Record<string, unknown>>,
+      {
+        [PRE_CODE_MARKER]: true,
+      },
+    );
+  }
+  return children;
 }
 
 // Generate a URL-friendly ID from heading text (must match TableOfContents.tsx logic)
@@ -171,7 +190,7 @@ const mdxComponents = {
   ),
   blockquote: (props: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => (
     <blockquote
-      className="border-l-2 pl-6 py-3 my-6 italic rounded-r-lg text-xl"
+      className="border-l-2 pl-6 py-3 my-6 italic rounded-r-[8px] text-xl"
       style={{
         borderLeftColor: "var(--r19-copper)",
         color: "var(--r19-muted)",
@@ -180,9 +199,14 @@ const mdxComponents = {
       {...props}
     />
   ),
-  code: (props: React.HTMLAttributes<HTMLElement>) => {
-    // Check if it's inline code or code block
-    const isInline = !props.className;
+  code: ({
+    [PRE_CODE_MARKER]: isBlockMarker,
+    ...props
+  }: React.HTMLAttributes<HTMLElement> & { [PRE_CODE_MARKER]?: boolean }) => {
+    // A fenced block with no language has no className, same as real inline
+    // code in a paragraph — the marker the `pre` mapping attaches below is
+    // what tells the two apart (C3).
+    const isInline = !props.className && !isBlockMarker;
 
     if (isInline) {
       return (
@@ -196,16 +220,18 @@ const mdxComponents = {
 
     return <code className="font-mono text-base" {...props} />;
   },
-  pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
+  pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
     <pre
-      className="rounded-lg border p-4 overflow-x-auto my-6 text-base"
+      className="rounded-[8px] border p-4 overflow-x-auto my-6 text-base"
       style={{ background: "var(--r19-wash)", borderColor: "var(--r19-line)" }}
       {...props}
-    />
+    >
+      {markPreChildAsBlock(children)}
+    </pre>
   ),
   table: (props: React.TableHTMLAttributes<HTMLTableElement>) => (
     <div
-      className="overflow-x-auto my-6 rounded-lg border"
+      className="overflow-x-auto my-6 rounded-[8px] border"
       style={{ borderColor: "var(--r19-line)" }}
     >
       <table className="w-full text-left" {...props} />
@@ -256,7 +282,7 @@ const mdxComponents = {
     return (
       <span className="block my-6">
         <img
-          className="rounded-lg w-full border"
+          className="rounded-[8px] w-full border"
           style={{ borderColor: "var(--r19-line)" }}
           loading="lazy"
           alt={props.alt || ""}
@@ -277,7 +303,7 @@ const mdxComponents = {
   Image: (props: React.ComponentProps<typeof Image>) => (
     <span className="block my-6">
       <Image
-        className="rounded-lg border"
+        className="rounded-[8px] border"
         style={{ borderColor: "var(--r19-line)" }}
         {...props}
       />
