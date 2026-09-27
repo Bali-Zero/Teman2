@@ -1953,16 +1953,22 @@ def probe_model_topology_drift(root: Path, args: dict, timeout: int) -> tuple[st
     UNPROBEABLE, never RECONCILED, where ollama is absent (M5): "no daemon here"
     and "every role resolves" are different facts, and reporting the second for the
     first is how a probe starts lying.
+
+    A role scoped to another node's `failure_domains.ollama_<node>` (and absent
+    from this node's own) is also out-of-scope here, not judged against this
+    machine's `ollama list` — see the `elsewhere_only` comment below.
     """
     topo = root / args.get("topology", "MODEL_TOPOLOGY.json")
     if not topo.exists():
         return UNPROBEABLE, 0, [f"{topo.name} absent — this checkout declares no model topology"]
     try:
-        roles = json.loads(topo.read_text()).get("roles", {})
+        topo_data = json.loads(topo.read_text())
     except Exception as e:
         return UNPROBEABLE, 0, [f"{topo.name} unreadable ({type(e).__name__})"]
+    roles = topo_data.get("roles", {})
     if not roles:
         return UNPROBEABLE, 0, [f"{topo.name} declares no roles"]
+    failure_domains = topo_data.get("failure_domains", {})
 
     # `ollama` is not on the PATH of a non-login shell, which is what launchd and
     # `ssh host cmd` both give you. Found live on pro, 2026-09-21: the probe reported
@@ -1992,6 +1998,23 @@ def probe_model_topology_drift(root: Path, args: dict, timeout: int) -> tuple[st
 
     OTHER_DOORS = ("agy/", "claude ", "codex ", "openrouter/", "google-gemini-cli/")
 
+    # A role scoped EXCLUSIVELY to a different node's `ollama_<node>` failure_domain
+    # is not this machine's job to serve, and judging it here is the model-layer
+    # shape of superscar #3 (over-match: judging an entity against the wrong
+    # scope). Found live on mini 2026-09-28: `vision`/`ocr_vision` are declared
+    # only under `failure_domains.ollama_pro`, yet were judged against mini's own
+    # `ollama list` anyway — a permanent false DIVERGED no `ollama pull` on mini
+    # could ever cure (the `-mlx` precedent above, one scope over). Silent when
+    # `failure_domains` is absent/empty, so older topologies keep the flat check.
+    here = args.get("node") or machine_label()
+    ollama_domains = {k: v for k, v in failure_domains.items() if k.startswith("ollama_")}
+    assigned_here = set(ollama_domains.get(f"ollama_{here}", []))
+    elsewhere_only: set[str] = set()
+    for key, members in ollama_domains.items():
+        if key != f"ollama_{here}":
+            elsewhere_only.update(members)
+    elsewhere_only -= assigned_here
+
     def _resolve(model: str, seen: frozenset[str] = frozenset()) -> str:
         """A role may name ANOTHER ROLE rather than a model (`swarm_fast_review ->
         agy_gemini_flash_high -> agy/Gemini 3.5 Flash (High)`). Found live on mini,
@@ -2006,6 +2029,9 @@ def probe_model_topology_drift(root: Path, args: dict, timeout: int) -> tuple[st
     missing, other = [], 0
     for role, declared in sorted(roles.items()):
         if not isinstance(declared, str):
+            continue
+        if role in elsewhere_only:
+            other += 1
             continue
         model = _resolve(declared)
         if model.startswith(OTHER_DOORS) or model.endswith("-mlx") or " " in model:
