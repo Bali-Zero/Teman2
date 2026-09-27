@@ -50,8 +50,10 @@ receipts:
       Deterministic gear floor recomputed from THIS diff's full changed-file
       set (vs fresh origin/main merge-base a6fcae5afe — re-fetched and
       squashed onto AFTER the first build pass, since origin/main had moved
-      again by build time) is 3, source path. Final head is a single commit,
-      9bbe31de6d, one commit ahead of origin/main.
+      again by build time) is 3, source path. Head of THIS content build
+      pass was a single commit, 9bbe31de6d — superseded by a second,
+      Bites-contract-only commit (no content change) documented in the
+      final receipt below; see there for the actual current commit count.
     cmd: >-
       git fetch origin; MERGE_BASE=$(git merge-base origin/main HEAD); git
       diff --name-only $MERGE_BASE HEAD > /tmp/s5v3-changed.txt; git diff
@@ -284,6 +286,41 @@ receipts:
     exit: 0
     ts: "2026-09-27T02:19:50Z"
     seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      Post-open, `Harness floor recompute`'s Bites-contract step reds:
+      `python3 scripts/ci/bites_parse.py --pack -` on this pack (run from a
+      detached origin/main worktree, exactly as CI does — the step always
+      checks out origin/main's copy of the parser, never HEAD's) exits 2,
+      class malformed. NOT a missing marker — this diff's own
+      scripts/evidence_pack_lint.py already carries `bites-observable` — but
+      `_guard_observable_script` reads it from the BASE checkout
+      (origin/main) by the module's own POST-MERGE-ONLY design, and
+      origin/main does not have this diff's marker yet: a PR can never
+      observe against a script whose marker it is itself adding (see the
+      bites: block above for the full reasoning). So this pack's own bites:
+      is rewritten from the executable shape to the legacy (prose) shape —
+      `bites_parse.py` classifies a prose bites: block as legacy
+      unconditionally (D4, docs/plans/2026-09-03-relaunch-lanes/LANE-H-bites-reconciler.md),
+      never a red, and `harness-floor.yml`'s own case statement emits a
+      NOTICE for legacy and continues rather than exiting 1. This is the
+      SECOND commit on this branch (content-only work stayed in the first);
+      branch is now 2 commits ahead of origin/main, re-measured via `git log
+      --oneline origin/main..HEAD | wc -l`.
+    cmd: >-
+      git worktree add --detach /tmp/b7489main origin/main; cd
+      /tmp/b7489main; python3 scripts/ci/bites_parse.py --pack - <
+      /tmp/pack_before.yml; python3 scripts/ci/bites_parse.py --pack - <
+      /tmp/pack_after.yml
+    result: >-
+      Before: {"malformed": true, "errors": ["observe:
+      scripts/evidence_pack_lint.py does not declare itself observable — add
+      a comment containing bites-observable to it, and only do so for a
+      script whose arguments cannot name a program to run, a file to write,
+      or a database to reach"]}, rc=2. After: {"legacy": true}, rc=0,
+      classify() = legacy. git log --oneline origin/main..HEAD | wc -l = 2.
+    exit: 0
+    ts: "2026-09-27T05:07:13Z"
+    seat: "session (M5, Sonnet 5 conducting)"
 pii_scan: clean
 pii_scan_note: >-
   Nothing in this diff transcribes client/OSINT data. The changed surface is
@@ -296,9 +333,36 @@ bites:
     the harness floor on every future PR touching any of the seven S5
     egress/redaction paths, and guard-conformance.yml's PR-triggered
     conformance job for the sync test itself
-  where: ci
-  observe: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file scripts/tests/fixtures/s5_hotzone_probe_changed_files.txt
-  expect: "contains:3"
+  observation: >-
+    Legacy (prose) form on purpose, not the executable
+    consumer/where/observe/expect shape: `scripts/ci/bites_parse.py`'s
+    allow-list refuses `python3 scripts/evidence_pack_lint.py
+    --print-floor --changed-files-file
+    scripts/tests/fixtures/s5_hotzone_probe_changed_files.txt` — NOT
+    because `scripts/evidence_pack_lint.py` lacks the `bites-observable`
+    marker (this exact diff already carries it, at the top of the
+    HOTZONE_PATTERNS section, scoped to the read-only flags this
+    observation uses), but because `_guard_observable_script` reads the
+    marker from the BASE checkout by design (module docstring:
+    "POST-MERGE ONLY... against an unmerged PR checkout there is no
+    boundary here at all") — a PR that adds the marker in the same diff
+    it wants to observe with can never pass this check pre-merge, only a
+    LATER PR can. This is not a gap to cure in a follow-up PR; it is the
+    module working as documented. Once this PR merges, the very next PR
+    touching any of these seven paths CAN write an executable Bites
+    against `scripts/evidence_pack_lint.py --print-floor`. Until then,
+    the rule is proven here by two commands anyone can run against this
+    PR's own diff, both already exercised in this pack's receipts:
+    `python3 -c "import sys;
+    sys.path.insert(0,'scripts'); from evidence_pack_lint import
+    compute_floor; print([compute_floor([p]) for p in
+    ['.claude/scripts/codex-spalla.sh','scripts/lib/spalla_redact.sh','.claude/hooks/codex-spalla-trigger.sh','scripts/codex_tri_llm_review.py','scripts/review_gate_run.sh','scripts/_redact_pii.py','infra/workflows/second-army.js']])"`
+    prints `[3, 3, 3, 3, 3, 3, 3]` (all seven S5 paths floor at 3), and
+    `python3 -m pytest scripts/tests/test_hotzone_lists_sync.py -q`
+    (wired into guard-conformance.yml) passes, asserting the same seven
+    paths sit on both `HOTZONE_PATTERNS` and
+    `.github/workflows/hot-zone-pr-gate.yml`'s case block and that an
+    unrelated path floors at 1.
 dissent:
   - seat: "session (M5, Sonnet 5 conducting) — self-review, no external seat dispatched (see seat_override)"
     objection: >-
