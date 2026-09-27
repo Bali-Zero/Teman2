@@ -56,6 +56,23 @@ what_changed: |
   as a required context, the window until then (§8 item 10), and "15
   kinds" corrected to 17. Inventory: 71 rows (67 MUST, 4 EQUIVALENT), 136
   sites, 148 mutants (143 MUST, 5 EQUIVALENT).
+  After the fresh gate's BLOCK with a re-scope (gate r4, comment
+  5852422768; owner ruling: the generator route), one new commit. S3
+  generates every member of every operator class of every site, and the
+  YAML (schema 2) only annotates the generated ids with disposition, mode
+  and killers (reason on EQUIVALENT, an informational label); `to`,
+  anchors, `covers` and OPERATOR are retired, and any other key is SCHEMA
+  (§5bis.2, §5bis.3). Ids are <line-id>:<site key>:<member>, the line-id
+  hashed from the normalised line and anchored to the nearest unique line
+  when the line repeats (§5bis.3a). One line in, one line out (LINES) and
+  SPAN close H7. Base-relative dispositions are closed by the floor: PR-1
+  adds the inventory, the wrapper test, the spec and S3 to
+  HOTZONE_PATTERNS and to hot-zone-pr-gate.yml, with floor cases in
+  test_evidence_pack_lint.py (§5ter.5). The selftest is rewritten (cases
+  a, b1-b3, c, d1-d3, e, f, g, h, i, k, m1-m3, n). The generator also ran
+  on #7340's installer at 3d04590c99 (§5ter.6). Inventory: 136 sites, 177
+  mutants (170 MUST, 7 EQUIVALENT) under 71 labels; 29 are new against
+  schema 1.
 
 proof: |
   See receipts. Every number in the spec's §5bis.8 and §9 comes from the
@@ -65,9 +82,11 @@ proof: |
 
 pii_scan: clean
 pii_scan_note: >-
-  The spec, the inventory and every council prompt (rounds 1-3) carry repo
+  The spec, the inventory and every council prompt (rounds 1-4b) carry repo
   paths, the owner codename, service account names and synthetic pin
-  fixtures only; no client data, OSINT or credential. Council dispatch ran
+  fixtures only; no client data, OSINT or credential. The one email-shaped
+  hit, in the round-4 prompt, is the repository's commit identity quoted in
+  gate r4's public comment, not client data. Council dispatch ran
   with a scrubbed env (env -i), a read-only sandbox for codex and a
   no-tools child for kimi.
 
@@ -81,10 +100,24 @@ post_council_note: >-
   the scratch prototype: both ACCEPT-WITH-NOTES, no BLOCKER, no MAJOR.
   Their MINOR notes were fixed in the same commit (dissent below); none
   changed a row, a mutant or a count, so no further round was run.
+  Gate r4 re-scoped S3 (the generator route), so its commit had a full
+  council round (round 4), one fix round and one delta round (4b), the cap
+  the coordinator set. Round 4: codex-gpt-5.6-sol REWORK (3 BLOCKER,
+  1 MAJOR), kimi-code/k3 ACCEPT-WITH-NOTES (1 MAJOR). The fix round cured
+  the masked guards in literal text (MASKED, UNSUPPORTED), the 32-bit ids
+  (now 64-bit), and receipted the queue's re-flooring. Round 4b: kimi-code/k3
+  ACCEPT-WITH-NOTES, codex-gpt-5.6-sol REWORK on one BLOCKER both seats
+  share: code that reaches an interpreter without a literal (a variable,
+  an alias, $'...') still escapes. With the cap reached, the author made
+  accuracy corrections only (the claim limited to literal text, §8 item
+  12 opened with the cure the seats named, receipts for the queue, the
+  daemon and the linter's history) and left the BLOCKER, and codex's MAJOR
+  that the hot-zone list's own floor (§8 item 11) be a PR-1 prerequisite,
+  to the gate and the owner.
 
 spend:
-  wall_clock_hours: 7.5
-  adversarial_rounds: 3
+  wall_clock_hours: 10.5
+  adversarial_rounds: 5
 appetite_exceeded: >-
   Wall clock went past the 4 h appetite. Council round 2 found two MAJOR
   gaps (the unpinned /bin/date, the base-blob derived_from). They needed a
@@ -93,6 +126,9 @@ appetite_exceeded: >-
   dateopt rows and a third full re-run. The fresh gate's REWORK-BUILD
   (gate r3) added a third council round and a fourth full re-run, 24 min
   for the feasibility suite alone under a load average between 35 and 130.
+  Gate r4's re-scope (the generator) replaced the S3 contract and the whole
+  inventory, and needed a full council round, a fix round and a delta
+  round; each proof re-run took 2 to 5 min of feasibility at load 13 to 38.
 
 diff:
   net_lines: "measured by CI from git numstat at merge-base..HEAD"
@@ -310,6 +346,196 @@ dissent:
       comparison and the 04dd6b51e4 suite; the gate r3 receipts below are
       those runs, and their verdicts equal the earlier run's.
 
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4-1 BLOCKER: masking blanks double-quoted text and never parses heredocs, so a guard
+      inside `x="$([ -f "$X" ] || exit 78)"`, or after a heredoc body with an unbalanced quote,
+      generates no id and the closure claim fails silently.
+    status: CONFIRMED
+    resolution: >-
+      5bis.3 "What masking hides is an error": S3 extracts every double-quoted $( ) body and the
+      string of eval, trap and sh -c as a file of its own, and a site of a masked kind there is
+      MASKED; a heredoc or a backquote is UNSUPPORTED. Selftest o1-o5. The PR-1 target has none;
+      #7340's installer gets MASKED on lines 56, 171, 180, 181 and 237 (§5ter.6).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4-2 BLOCKER: 8-hex (32-bit) line-ids let an edited line be varied until it keeps its old
+      id, so its old annotation silently judges a different mutant; the 10-hex blob prefix is not
+      "any other blob" either.
+    status: CONFIRMED
+    resolution: >-
+      h() is now 16 hex digits (64 bits; 5bis.3a says why); ID-COLLISION is defined on the file's
+      normal forms and selftest p3 proves the path live. Re-keying changed no mutant, order or
+      count on the four scripts (idmap receipt). §5ter.3 step 2 states the blob prefix as a
+      40-bit accident check that a searched blob cannot exploit past the ids and the floor.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4-3 BLOCKER: the base linter only gains the four patterns when PR-1 merges; a PR green
+      before that may merge after with the same head, and nothing shows the context is
+      recomputed.
+    status: CONFIRMED
+    resolution: >-
+      The carry-over half does not hold, measured: main's rules include merge_queue, and Harness
+      floor recompute re-runs on merge_group against merge_group.base_sha, the entry ahead of it
+      (run 36294018919 checked out #7506's group commit for #7511). The window before PR-1 is
+      real for the inventory and the spec: PR-1's gate now reads every commit to both files
+      between #7456's merge and PR-1's base (§5ter.5).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4-4 MAJOR: nothing shows scripts/evidence_pack_lint.py is itself protected; a PR that
+      weakens the pattern list could precede the flip.
+    status: CONFIRMED
+    resolution: >-
+      Measured: the linter floors at 1 and nothing checks it against the case-block. This holds
+      for every hot-zone path in the repo, so §8 item 11 states it as the harness's residual,
+      open, with the narrow cure (a harness-floor.yml step that floors any narrowing of
+      HOTZONE_PATTERNS at 3); PR-1's ship session files it as an escalation for the owner. §5ter.5
+      no longer says a flip cannot merge without a gate unconditionally.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4-6 MINOR: G7c's reason cites the daemon's env reads, which the evidence did not include,
+      and the extra exported names may reach child processes.
+    status: CONFIRMED
+    resolution: >-
+      The reason now cites DaemonConfig.from_env at 04dd6b51e4 (lines 164-201, the module's only
+      env reads), states that the codex --version child inherits the environment (line 289), and
+      marks "codex reads none of the six names" as a review judgement, not a measurement.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4-7 MINOR: installer.out said 303 lines against the spec's 302, and counted six masked
+      and-or occurrences against the spec's four lines.
+    status: CONFIRMED
+    resolution: >-
+      The receipt now counts newline-terminated lines (302) and lists each census category with
+      its line numbers: 4 lines (56, 171, 180, 181), no longer counting the awk program's lines.
+  - seat: kimi-code/k3
+    objection: >-
+      R4-2 MAJOR: heredoc bodies are scanned as code, an unbalanced quote there shifts the masking
+      of every later line, and PR-2's obligation list omits heredocs.
+    status: CONFIRMED
+    resolution: >-
+      Same cure as codex R4-1: a heredoc is UNSUPPORTED (selftest o2), and §5ter.6's PR-2
+      obligations now list heredocs and backquotes.
+  - seat: kimi-code/k3
+    objection: >-
+      R4-3/R4-4 MINOR: a # right after an operator starts a comment in sh; and the order of dedupe
+      and SPAN is unspecified, so a SPAN member could absorb a later one.
+    status: CONFIRMED
+    resolution: >-
+      The comment rule now covers a # after a blank or one of ; & | ( ) < > (checked in /bin/sh;
+      no count changes); rule 2 says a SPAN member writes no line and takes no part in dedupe.
+  - seat: kimi-code/k3
+    objection: >-
+      R4-5 MINOR: the floor's required-context behaviour was asserted, not receipted, and the
+      linter's own floor was never stated.
+    status: CONFIRMED
+    resolution: >-
+      Receipts added: the branch-protection contexts and the merge_queue rule (gh api), the
+      merge_group run log, and --print-floor of the linter and its neighbours; §8 item 11.
+  - seat: kimi-code/k3
+    objection: >-
+      R4-6 MINOR: the MUST->EQUIVALENT guilt case is a receipt (m4) plus the floor case (n), not a
+      selftest that fails on the flip.
+    status: PLAUSIBLE
+    resolution: >-
+      Kept as is and said so in §5ter.4: no check that reads only the head can see the flip,
+      which is why item 2 is the floor. Case n is the guilt half that runs on every S3 run.
+  - seat: kimi-code/k3
+    objection: >-
+      R4-7 MINOR: unary operator swaps, string relop flips and option-argument values are not
+      generated, and the text does not say so.
+    status: CONFIRMED
+    resolution: >-
+      Listed under "deliberately not sites" with the bounding argument, stated as unmeasured.
+  - seat: kimi-code/k3
+    objection: >-
+      R4-8 MINOR: the Totals line sits outside the parity block (and a hand tally gave FC 55,
+      DX 57).
+    status: CONFIRMED
+    resolution: >-
+      The Totals paragraph is now rendered inside the block and compared by parity (179 rows,
+      drift 0). A machine count of the YAML gives 50 FO, 54 FC, 58 DX, 8 ST, 7 EQ, as printed.
+  - seat: kimi-code/k3
+    objection: >-
+      R4-9 MINOR: no guilt case for SITE-COUNT, MUTANT-COUNT, NO-MEMBER or ID-COLLISION.
+    status: CONFIRMED
+    resolution: >-
+      Selftest p1 (both counts), p2 (NO-MEMBER on `while false`) and p3 (ID-COLLISION with h cut
+      to one hex digit).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4b-1 BLOCKER (kimi-code/k3 R4b-2, MAJOR, the same): MASKED reads literal text only. A guard
+      in a variable run by eval, sh -c or trap, an alias, $'...' quoting, sh -c behind option
+      arguments or env/command, or a default/abspath/dateopt site in a single-quoted string
+      generates no id and raises no error, so "never a silence" was false.
+    status: CONFIRMED
+    resolution: >-
+      Not cured: the council's cap (one fix round, one delta round) was reached, and the cure is a
+      change to the grammar's coverage, a fix of the round-4 fix. The claim is now limited in
+      words to literal text, and §8 item 12 states the open forms and the cure both seats named
+      (UNSUPPORTED for non-literal eval/trap/sh -c arguments, alias, source of anything but the
+      env file and $'...'; the full kind set on single-quoted bodies; plants o6-o8). Neither
+      target uses any of these forms (grep), and adding one changes the floor-3 wrapper. Left to
+      the gate.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4b-2 MAJOR: the hot-zone list's own floor (§8 item 11) must be closed before PR-1 claims
+      item 2, not only escalated.
+    status: PLAUSIBLE
+    resolution: >-
+      kimi-code/k3 R4b-5 judged it acceptable open for this docs-only PR. The residual is
+      harness-wide, and its cure changes harness-floor.yml for every lane, so whether it is a
+      prerequisite of PR-1 is the owner's decision; §8 item 11 records both positions.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4b-3 MAJOR (kimi-code/k3 R4b-4, MINOR): "every merge goes through the queue" had no
+      evidence on bypass actors or the first entry of a batch; the pre-PR-1 read is one-shot, so a
+      weakening commit queued ahead of PR-1 in its batch lands after it; workflow_dispatch.
+    status: CONFIRMED
+    resolution: >-
+      Receipted: ruleset 19779175 merge-queue-main is active with an empty bypass_actors list. The
+      first entry's base is main's tip, which holds PR-1 once PR-1 has merged. §5ter.5 now has
+      PR-1's ship session read the range again up to PR-1's merge commit. A workflow_dispatch run
+      does not enter a PR's check rollup (harness-floor.yml's own recorded observation, run
+      32489857553), so it cannot satisfy the required context for a PR.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4b-4/R4b-10 MINOR: a searched 40-bit blob prefix gains something on site-free lines, which
+      have no ids; "minutes of compute" for 2^32 had no benchmark.
+    status: CONFIRMED
+    resolution: >-
+      §5ter.3 step 2 now says a change confined to site-free lines keeps every id and raises no S3
+      error with a searched prefix, the wrapper's floor still applying; §5bis.3a keeps the 2^32
+      and 2^64 counts and drops the time claim.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4b-5 MINOR: MASKED on installer line 237 is a false positive (find's `!` read as neg).
+    status: CONFIRMED
+    resolution: >-
+      Fail-closed and disclosed in §5ter.6; PR-2 resolves it with its grammar work.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R4b-6 MINOR (kimi-code/k3 R4b-6): G7c's measured half, the daemon's env reads, has no
+      receipt in the evidence.
+    status: CONFIRMED
+    resolution: >-
+      Receipt added: at 04dd6b51e4, wa_codex_daemon.py reads os.environ only on lines 169, 172,
+      175, 181, 187, 188, 200 and 201 (DaemonConfig.from_env), and spawns one child, at line 289,
+      with no env argument.
+  - seat: kimi-code/k3
+    objection: >-
+      R4b-3 MINOR: `(( a << b ))` and a here-string `<<<` are reported as a heredoc.
+    status: CONFIRMED
+    resolution: >-
+      Stated in §5bis.3: both are reported under the same name, fail-closed.
+  - seat: kimi-code/k3
+    objection: >-
+      R4b-5 MINOR: §8 item 11's "20 commits in 30 days" and the promised escalation have no
+      receipt.
+    status: CONFIRMED
+    resolution: >-
+      Receipt added for the count (git log on origin/main). The escalation is PR-1's ship
+      session's act and is checked by PR-1's gate, not by this PR.
 receipts:
   - claim: "the inventory is closed against the wrapper at 04dd6b51e4 (without G9j/G9k; G9b and G9l anchored on the PATH-resolved mkdir and date)"
     cmd: "scratch proto_s3.py <inventory via inv_on_04dd.py> wrapper_04dd.sh test_wrapper_04dd.py --closure-only"
@@ -514,4 +740,94 @@ receipts:
     result: "codex-gpt-5.6-sol ACCEPT-WITH-NOTES (rc 0, 02:52:59Z-02:56:20Z); kimi-code/k3 ACCEPT-WITH-NOTES (rc 0, 02:53:02Z-03:04:05Z); verbatim in reviews/*-r3.md"
     exit: 0
     ts: "2026-09-27T03:04:05Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4: the generator on the PR-1 target and at 04dd6b51e4 (sites, generated ids, generation errors)"
+    cmd: "scratch gen_s3.py sites wrapper_fixed.sh; gen_s3.py sites wrapper_04dd.sh"
+    result: "136 sites, generated 177, errors 0; 134 sites, generated 175, errors 0"
+    exit: 0
+    ts: "2026-09-27T05:34:02Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4: the committed schema-2 inventory passes steps 1-4 on the PR-1 target"
+    cmd: "scratch gen_s3.py check docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml wrapper_fixed.sh"
+    result: "sites=136 generated=177 annotated=177 blob=78236b6070 errors=0"
+    exit: 0
+    ts: "2026-09-27T05:34:04Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4: the §5bis.6 block (table and Totals) equals the YAML rendering"
+    cmd: "scratch parity_v2.py <spec> <inventory>"
+    result: "spec rows=179 render rows=179 drift=0"
+    exit: 0
+    ts: "2026-09-27T05:34:04Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4 + council round 4: every static selftest case gives exactly its stated result"
+    cmd: "scratch selftest_v2.py <inventory> static"
+    result: "21 PASS, 0 FAIL: innocence, a, b1-b3, c, d1-d3, f, g, o1-o5, p1 (x2), p2, p3, k"
+    exit: 0
+    ts: "2026-09-27T05:35:02Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4: the run-based selftest cases (D10 end to end, modes, the mini `[ … ] || die`)"
+    cmd: "scratch selftest_v2.py <inventory> runs"
+    result: "8 PASS, 0 FAIL: e (both limb members SURVIVED), h, i x2, m1 (6 UNANNOTATED), m2 (2 SURVIVED), m3 (11 killed, 0 errors), m4 receipt (flip: 0 errors)"
+    exit: 0
+    ts: "2026-09-27T05:23:44Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4: the fixture contract is satisfiable under the generator (50-test feasibility suite, PR-1 target)"
+    cmd: "scratch gen_s3.py check <inventory> wrapper_fixed.sh --test feasibility_test.py --run --jobs 5"
+    result: "170/170 MUST killed with a killer hit; 7 EQUIVALENT identical over every test; 177/177 modes as declared; errors=0; 05:15:40Z-05:20:27Z"
+    exit: 0
+    ts: "2026-09-27T05:20:27Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4: what the 28-test suite at 04dd6b51e4 kills of its 175 generated mutants (§5bis.8)"
+    cmd: "scratch gen_s3.py skeleton wrapper_04dd.sh test_wrapper_04dd.py --jobs 5"
+    result: "105 killed, 70 survived (63 MUST under 38 labels + 7 EQUIVALENT), 0 EQUIVALENT killed, 6 killer-misses"
+    exit: 0
+    ts: "2026-09-27T05:22:41Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4 item 5: the generator on #7340's installer at 3d04590c99"
+    cmd: "scratch installer_receipt.py installer_3d04.sh"
+    result: "blob 666f1025e2, 302 lines; 137 sites, 189 generated; errors 15 (MASKED 5: l.56, 171, 180, 181, 237; SPAN 10); 18 `|| die`, 10 of them `[ … ] || die`, each with test:true"
+    exit: 0
+    ts: "2026-09-27T05:35:02Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4 item 2: the four S3 paths floor at 1 today and at 3 with the patterns added; the linter and its neighbours floor at 1"
+    cmd: "scratch floor_sim.py (compute_floor, HOTZONE_PATTERNS extended in-process)"
+    result: "today 1/none for each path and gate r4's §5 set; after 3/path; evidence_pack_lint.py, hotzone_changed_files.sh, harness_gate_read.py, test_evidence_pack_lint.py 1/none; harness-floor.yml, hot-zone-pr-gate.yml, guard-conformance.yml 3/path"
+    exit: 0
+    ts: "2026-09-27T05:35:02Z"
+    seat: claude-opus-5-5
+  - claim: "council round 4: re-keying ids from 8 to 16 hex digits changes no mutant, order or count"
+    cmd: "scratch idmap.py"
+    result: "wrapper 177->177, 04dd 175->175, installer 189->189, mini 11->11; same mutants in the same order, unique"
+    exit: 0
+    ts: "2026-09-27T05:35:02Z"
+    seat: claude-opus-5-5
+  - claim: "council round 4: the merge queue re-floors every entry, with no bypass"
+    cmd: "gh api repos/Bali-Zero/Teman2/rulesets/19779175; gh api .../branches/main/protection; gh run view 36294018919 --log (Checkout base ref)"
+    result: "merge-queue-main: enforcement active, bypass_actors [], rules [merge_queue]; required contexts include Harness floor recompute and Every guard proves guilt AND innocence; #7511's merge_group run checked out 62c22f61f5 (#7506's group commit)"
+    exit: 0
+    ts: "2026-09-27T05:35:21Z"
+    seat: claude-opus-5-5
+  - claim: "council round 4b: G7c's measured half and §8 item 11's linter history"
+    cmd: "git show 04dd6b51e4:apps/backend-rag/backend/services/integrations/wa_codex_daemon.py | grep -n 'os.environ|getenv|create_subprocess_exec'; git log --oneline --since=2026-08-27 origin/main -- scripts/evidence_pack_lint.py | wc -l"
+    result: "os.environ reads on lines 169, 172, 175, 181, 187, 188, 200, 201 only (DaemonConfig.from_env); one child spawn, line 289, no env=; 20 linter commits"
+    exit: 0
+    ts: "2026-09-27T05:35:15Z"
+    seat: claude-opus-5-5
+  - claim: "council rounds 4 and 4b: both titolari returned a verdict"
+    cmd: "scratch council/dispatch_r4.sh and dispatch_r4b.sh, sol and kimi (env -i; codex exec --sandbox read-only -m gpt-5.6-sol -c model_reasoning_effort=high; kimi_client.run no-tools child, empty cwd)"
+    result: "r4: codex REWORK (04:42:29Z-04:48:26Z, rc 0), kimi ACCEPT-WITH-NOTES (04:42:31Z-04:56:05Z, rc 0); r4b: codex REWORK (05:24:31Z-05:29:34Z, rc 0), kimi ACCEPT-WITH-NOTES (05:24:33Z-05:31:47Z, rc 0); verbatim in reviews/*-r4.md and *-r4b.md"
+    exit: 0
+    ts: "2026-09-27T05:31:47Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4: no PII or secret shape, no owner-name token, in the committed files, the reviews or the round-4 prompts"
+    cmd: "scratch pii_scan.py <spec> <inventory> <brief> <pack> <journal> reviews/*.md <r4 and r4b prompts>; grep -ci <owner-name tokens>"
+    result: "pii_scan hits=1 files=17 (the commit identity quoted in gate r4's public comment, round-4 prompt only); owner-name-token hits: 0"
+    exit: 0
+    ts: "2026-09-27T05:35:16Z"
+    seat: claude-opus-5-5
+  - claim: "gate r4: spec, inventory, brief and pack are prettier-clean"
+    cmd: "prettier --check <spec> <inventory> <brief> <pack>"
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-09-27T05:35:16Z"
     seat: claude-opus-5-5

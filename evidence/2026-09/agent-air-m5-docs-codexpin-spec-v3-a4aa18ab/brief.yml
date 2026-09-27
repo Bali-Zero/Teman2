@@ -31,7 +31,12 @@ constraints:
     are kept. Only what the three gates, or this PR's own council round 1,
     proved wrong is changed, and each change is listed in §10 with what
     proved it. The same holds for the fresh gate's REWORK-BUILD (gate r3,
-    comment 5850401670, R1-R6): one new commit, no amend.
+    comment 5850401670, R1-R6): one new commit, no amend. And for the
+    fresh gate's BLOCK with re-scope (gate r4, comment 5852422768), on the
+    owner's ruling for the generator route: new commits only, the PR kept
+    as a draft, and the 17-kind grammar, closure over sites, contracts N
+    and P, the D5 heartbeat fix, R2-R5 and R6's text not re-opened except
+    where the generator forces a change, which the spec's §10 names.
   - >-
     No secrets, no client PII, no private owner name. The spec names only
     service accounts, repo paths and the owner codename.
@@ -40,47 +45,75 @@ constraints:
     owns the gate and the merge.
 acceptance:
   - text: >-
-      The inventory SHALL be closed against the PR-1 target (04dd6b51e4 plus
-      the heartbeat fix) and against 04dd6b51e4 itself: every site of the
-      17-kind grammar (§5bis.3) is claimed by exactly one row, every anchor
-      resolves, and a planted guard is reported UNCLAIMED. Expected: 136/136
-      on the target, 134/134 on 04dd6b51e4, and for the normative plant of
-      §5ter.4 (a) (gate r3 R4: 27 sites, all 17 kinds) exactly its 27
-      UNCLAIMED sites plus STALE-DERIVATION.
-    probe: proof_r3b.sh steps static_target, static_04dd, selftest_static
+      S3 SHALL generate the mutants and the YAML SHALL only annotate them
+      (gate r4 re-scope item 1): every member of every operator class of
+      every site (§5bis.3), stable ids (§5bis.3a), an entry per generated
+      id with disposition, mode and killers only; a generated id with no
+      entry is UNANNOTATED, an entry with no generated id is PHANTOM, and
+      any other key, `to` included, is SCHEMA. Expected on the PR-1 target:
+      136 sites, 177 generated ids, 177 annotated, 0 errors; at
+      04dd6b51e4: 134 sites, 175 ids.
+    probe: scratch gen_s3.py check <inventory> wrapper_fixed.sh; gen_s3.py sites wrapper_04dd.sh
+  - text: >-
+      Every change to the inventory, the wrapper's test file, this spec or
+      the S3 script SHALL be a Gear-3 change (gate r4 re-scope item 2):
+      §5ter.5 specifies the four HOTZONE_PATTERNS entries PR-1 adds, and
+      why the floor and not a base-relative check inside S3. Expected with
+      the four paths added: floor 3 (source path) for each path alone and
+      for gate r4's §5 set; 1 for an unrelated doc.
+    probe: scratch floor_sim.py (compute_floor with HOTZONE_PATTERNS extended in-process)
+  - text: >-
+      Masking SHALL NOT hide a guard, and ids SHALL NOT survive an edit of
+      their line (council round 4): a site inside a double-quoted $( ) or
+      the string of eval, trap or sh -c is MASKED, a heredoc or backquote
+      UNSUPPORTED; ids use 64-bit line hashes. Expected: 0 MASKED or
+      UNSUPPORTED on the PR-1 target and at 04dd6b51e4; re-keying from 8 to
+      16 hex digits changes no mutant, order or count on the four scripts.
+    probe: scratch gen_s3.py sites <each script>; idmap.py
+  - text: >-
+      Every mutant SHALL be one line in, one line out (gate r4 H7): the
+      generator's check and the SPAN rule (§5bis.3 rule 4), with selftest
+      d proving SCHEMA on `to`, LINES on a two-line text and SPAN on a
+      continued and-or list.
+    probe: scratch selftest_v2.py <inventory> static (cases d1-d3)
+  - text: >-
+      The selftest SHALL carry a guilt case for each re-scope item (gate r4
+      item 4) plus innocence: the plant (a), id stability (b1-b3), closure
+      (c), one line (d), the D10 end-to-end (e), killers and modes (f-i),
+      stale derivation (k), the mini `[ … ] || die` (m1 six UNANNOTATED,
+      m2 two SURVIVED, m3 innocence), the floor (n), what masking hides
+      (o1-o5, council round 4) and the count, member and collision checks
+      (p1-p3). Expected: every case gives exactly its stated result.
+    probe: scratch selftest_v2.py <inventory> all; floor_sim.py
+  - text: >-
+      The fixture contract SHALL be satisfiable under the generator: a
+      suite applying §5bis.4 and §5bis.7 to the PR-1 target kills every
+      MUST mutant by a declared killer and leaves the EQUIVALENT ones
+      identical. Expected: 170/170 MUST killed with killer hit, 7
+      EQUIVALENT with identical records over every test, 177/177 modes as
+      declared, 0 errors; and on the 28-test suite at 04dd6b51e4, 105
+      killed, 70 survived (63 MUST under 38 labels, 7 EQUIVALENT).
+    probe: scratch gen_s3.py check <inventory> wrapper_fixed.sh --test feasibility_test.py --run; gen_s3.py skeleton wrapper_04dd.sh test_wrapper_04dd.py
+  - text: >-
+      The generator SHALL be shown on both targets (gate r4 re-scope item
+      5): the PR-1 wrapper, and #7340's installer at 3d04590c99, where
+      every one of the 18 `|| die` gets a fail-open member. Expected on the
+      installer: 137 sites, 189 generated ids, 10 SPAN, 5 MASKED (lines
+      56, 171, 180, 181, 237), and a `test:true` for each of the 10
+      `[ … ] || die`.
+    probe: scratch installer_receipt.py installer_3d04.sh
+  - text: >-
+      The rendered table in §5bis.6, with its Totals paragraph, SHALL equal
+      the YAML, cell by cell. Expected: 179 rows equal (header, 177, Totals).
+    probe: scratch parity_v2.py <spec> <inventory>
   - text: >-
       The inventory SHALL name every item re-gate #2 asked for: D10, D25,
       D26, D02 and S1-S5, each with a disposition and an isolating fixture.
     probe: >-
-      grep -nE 'D10|D25|D26|D02|S1|S5' docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml
-  - text: >-
-      The fixture contract SHALL be satisfiable: a suite applying §5bis.4
-      and §5bis.7 to the PR-1 target kills every MUST mutant, each by a test
-      in its killed_by list, while the EQUIVALENT mutants survive. Expected
-      (gate r3 adds 16 mutants): 143/143 MUST killed with killer hit, every
-      killed_by matching exactly one node, 5 EQUIVALENT surviving, 0 sh -n
-      failures, 0 mode mismatches.
-    probe: proof_r3b.sh steps feasibility, modes, modes_equivalent
-  - text: >-
-      The S3 contract SHALL tie every claimed site to its fixed operator
-      (gate r3 R1-R3, R5): OPERATOR reports 0 errors for the committed
-      inventory on the PR-1 target and for its projection to 04dd6b51e4,
-      and exactly the expected errors in selftest
-      cases j, k, l, m, n and o; the inventory at 0ac11b17e8 fails it (16
-      errors: 14 exit values, G9b's return, G2's -ne).
-    probe: proof_r3b.sh steps selftest_static, operator_on_0ac1
-  - text: >-
-      §5ter.5 SHALL state what blocks a later PR whose S3 run is red (gate
-      r3 R6): the W69 sentinel shape, the operator-only arming of the
-      required context, and the window until then (§8 item 10).
-    probe: grep -n 'What blocks a merge' docs/specs/2026-09-27-codexpin-v3-spec.md
-  - text: >-
-      The rendered table in §5bis.6 SHALL equal the YAML, cell by cell.
-      Expected: 72 rows equal (header plus 71).
-    probe: quick_proof.sh step parity_final
+      grep -nE 'G2a|G2b|G2c|G6a|G3a|G3e' docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml
   - text: >-
       Both files SHALL be prettier-clean, and the YAML SHALL parse.
-    probe: prettier --check <spec> <inventory> <brief>
+    probe: prettier --check <spec> <inventory> <brief> <pack>
 consumer_map:
   - >-
     The resumed PR-1 build (PR #7420): it implements
@@ -89,21 +122,46 @@ consumer_map:
     text per §5quater.
   - >-
     The CI mutation job that ships in that same build, inside
-    .github/workflows/wa-codex-pin.yml. It reads this inventory on every PR
-    that touches the wrapper, and fails on an unclaimed site, a surviving
-    MUST mutant or a table drift. Observation: that job green on the
-    resumed PR head, with its selftest proving that it goes red when the
-    D10 fixture is removed.
+    .github/workflows/wa-codex-pin.yml. It generates the mutants from the
+    wrapper on every PR in its scope, and fails on an unannotated or
+    phantom id, a surviving MUST mutant or a table drift. Observation:
+    that job green on the resumed PR head, with its selftest proving that
+    it goes red when the D10 fixture is removed and when the mini
+    `[ … ] || die` lacks its fail-open entry or its mismatch fixture.
+  - >-
+    `Harness floor recompute` (required), through the four HOTZONE_PATTERNS
+    entries PR-1 adds: observation, `evidence_pack_lint.py --print-floor`
+    printing 3 for a test-file-only change after PR-1's merge.
   - >-
     The fresh re-gate of the resumed PR-1, which runs the committed S3
     check instead of a hand-enumerated table.
 risks:
   - >-
+    Ids of repeated lines depend on their anchor (§5bis.3a point 2): a
+    unique line inserted between a repeated line and its anchor re-keys
+    it. Mitigation: the re-keyed ids come back as UNANNOTATED plus
+    PHANTOM, never silently, and selftest b3 pins exactly that behaviour.
+  - >-
+    Gear-3 cost: every edit to the four S3-surface files needs a brief, a
+    pack and a gate. Accepted: they change together with the wrapper,
+    which is floor 3 already.
+  - >-
     The site grammar is lexical, not a shell parser. A guard written in a
     construct outside the 17 kinds would escape closure. Mitigation: the
     kinds cover every control construct the wrapper uses, the selftest
-    pins the grammar with planted guilt cases, and PR-2 must extend the
-    grammar before its installer uses new constructs (§5ter).
+    pins the grammar with planted guilt cases, literal code the masking
+    blanks is MASKED or UNSUPPORTED rather than silent (council round 4),
+    and PR-2 must extend the grammar before its installer uses new
+    constructs (§5ter). Open: code reaching an interpreter without a
+    literal (a variable, an alias, a sourced file, $'...'), §8 item 12;
+    neither target uses such a form, and adding one changes the floor-3
+    wrapper.
+  - >-
+    The hot-zone list is itself floor 1 (§8 item 11): a PR that narrows
+    HOTZONE_PATTERNS needs no gate, and the four S3 paths lose their floor
+    with it. Harness-wide, not specific to S3; the cure (a harness-floor.yml
+    step flooring any narrowing at 3) is escalated to the owner by PR-1's
+    ship session and stays open until it lands.
   - >-
     The mode classification is measured with a stub daemon, so a mode can
     read milder than production when a fixture's hostile value does not
