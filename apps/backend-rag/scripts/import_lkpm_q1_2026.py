@@ -5,8 +5,16 @@ One-off import: 59 LKPM Q1 2026 rows from Lori's PDF.
 What it does:
 1. For each of the 59 PMA in LORI_59:
    - Resolves company_id (54 pre-mapped, 5 minimal auto-create).
-   - Upserts lkpm_client_config with OSS credentials (plaintext, as requested).
+   - Upserts lkpm_client_config with OSS credentials.
    - Upserts lkpm_reports with Q1 2026, status='draft', lkpm_assigned_to=NULL.
+
+SECRET HANDLING (2026-09-27, incident fix): OSS credentials used to be a
+plaintext literal in this file, on public origin/main since 2026-04-07
+(commit 38de0a686c) — burned. They must be rotated by the owner (pending);
+exposure window 2026-04-07 -> this removal. Credentials are now loaded at
+runtime from an UNTRACKED, gitignored JSON file (see
+`_load_oss_credentials()` below); this script fails closed with no fallback
+if that file is absent.
 
 2. Idempotent: safe to re-run. UNIQUE constraints on
    (client_id) for lkpm_client_config and (client_id, quarter, year) for
@@ -41,9 +49,11 @@ Non-derivable knowledge:
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 import asyncpg
 
@@ -53,72 +63,99 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 
+# Untracked, gitignored (matches `*credentials*.json` in .gitignore) local
+# file — never committed. Populate it as:
+#   {"<pdf_row>": ["<oss_username>", "<oss_password>"], ...}
+# using the ROTATED credentials (the 2026-04-07 set is burned — public repo).
+OSS_CREDENTIALS_FILE = Path(__file__).with_name(".lkpm_credentials.json")
+
+
+def _load_oss_credentials() -> dict[int, tuple[str, str]]:
+    """Load {pdf_row: (oss_username, oss_password)} from the local secret file.
+
+    Fails closed: no embedded fallback, no default credentials. Rows absent
+    from the file (or the whole file absent) get (None, None) — same
+    behavior as the 2 originally-credential-less rows (#58, #59).
+    """
+    if not OSS_CREDENTIALS_FILE.exists():
+        raise SystemExit(
+            f"OSS credential file not found: {OSS_CREDENTIALS_FILE}\n"
+            "This script no longer stores OSS credentials inline (incident "
+            "fix, 2026-09-27 — the old table was public on origin/main since "
+            "2026-04-07; it must be rotated by the owner (pending), exposure "
+            "window 2026-04-07 -> this removal). Create the file as JSON: "
+            '{"<pdf_row>": ["<oss_username>", "<oss_password>"]} with the '
+            "current rotated credentials, then re-run.",
+        )
+    raw = json.loads(OSS_CREDENTIALS_FILE.read_text())
+    return {int(k): (v[0], v[1]) for k, v in raw.items()}
+
 
 # 59 PMA from Lori's PDF (Client LKPM Report Bose Antonello 2026.pdf, 2 pages).
-# Each tuple: (pdf_row, pdf_name, company_id_or_None, oss_username, oss_password)
+# Each tuple: (pdf_row, pdf_name, company_id_or_None). OSS credentials are
+# NOT stored here — see _load_oss_credentials() below.
 # company_id_or_None is None for the 5 minimal-create cases.
-LORI_59: list[tuple[int, str, int | None, str | None, str | None]] = [
-    # ---- page 1 ----
-    (1,  "PT Meraki Creation Bali",                 3097, "meraki38111992022a",            "@Mcb2022"),
-    (2,  "PT Amberger Holistic Support",            4066, "amberger94111762023d",          "Amberger2023#"),
-    (3,  "PT Nusa Futura Wan",                      2277, "nusafuturawan01@gmail.com",     "nadayogachi@2025"),
-    (4,  "PT Paradise Beach Brothers",              2962, "paradise83041472024h",          "Paradise2024#"),
-    (5,  "PT Nayat Ibiza Beauty",                   3037, "nayat177819112024c",            "Nayat2024#"),
-    (6,  "PT Bali Accommodation Management",         16, "bali51423082025j",              "Bali2025#"),
-    (7,  "PT Atlas Property Management",            None,"atlas52541882023u",              "Atlas2023#"),
-    (8,  "PT Jungle Dream House",                   1978,"jungledreamhouse@gmail.com",     "Jungle123_"),
-    (9,  "PT BIMALA INVESTMENTS BALI",              1467,"bimala1412452024g",              "Bimala2024#"),
-    (10, "PT MINGGU DIGITAL STUDIO",                4065,"minggu62408112023y",             "Minggu2023#"),
-    (11, "PT Royal Aura Brands",                    2380,"royal55791962024v",              "Royal2024#"),
-    (12, "PT Karta Developers Paradise",            1999,"karta9333562022x",               "@Kdp2022"),
-    (13, "PT Ventura Impact Positif",               2375,"ventura27401872023t",            "Ventura2023#"),
-    (14, "PT Bali Nea Karma",                       1382,"bali8400",                       "Bali-nea1_"),
-    (15, "PT Urban Jungle Bali",                    2520,"urban21121222025u",              "TdWb&*v4u6gcYw8"),
-    (16, "PT KHALI BALI UBUD",                      2020,"khali71472672025t",              "Khali2025#"),
-    (17, "PT Future Textile Solutions",             1770,"future73562492022t",             "@Bali123456"),
-    (18, "PT Sduare Property Bali",                 2399,"sduare38032272023o",             "Lkpm@2026"),
-    (19, "PT Fashion Trading Center",               1734,"fashion83869102023a",            "Lkpm@2026"),
-    (20, "PT Karta Entertainment Found",            2000,"karta33261992022v",              "Lkpm@2026"),
-    (21, "PT Triple Peak Properties",               2359,"triple16652052023k",             "Triple2023#"),
-    (22, "PT Megah Sentosa Properti",               2170,"megah5091922024d",               "Megah2024#"),
-    (23, "PT Berkualitas Lestari Properti",         1455,"berkualitas56281922024d",        "Berkualitas2024#"),
-    (24, "PT Kinoh Real Estate",                    2024,"kinoh15392002025n",              "Kinoh2025#"),
-    (25, "PT Oceane Group Bali",                    3005,"oceanegroupbali2023@gmail.com",  "13032023ogb@"),
-    (26, "PT Paradise Street Style",                2959,"paradise63112332024b",           "Paradise2024#"),
-    (27, "PT Super Bagus Labs",                     2685,"super1481812025t",               "Lkpm@2026"),
-    (28, "PT Waves Are Life",                       2477,"waves39932342023l",              "Bali2023*"),
+LORI_59: list[tuple[int, str, int | None]] = [
+    (1, 'PT Meraki Creation Bali', 3097),
+    (2, 'PT Amberger Holistic Support', 4066),
+    (3, 'PT Nusa Futura Wan', 2277),
+    (4, 'PT Paradise Beach Brothers', 2962),
+    (5, 'PT Nayat Ibiza Beauty', 3037),
+    (6, 'PT Bali Accommodation Management', 16),
+    (7, 'PT Atlas Property Management', None),
+    (8, 'PT Jungle Dream House', 1978),
+    (9, 'PT BIMALA INVESTMENTS BALI', 1467),
+    (10, 'PT MINGGU DIGITAL STUDIO', 4065),
+    (11, 'PT Royal Aura Brands', 2380),
+    (12, 'PT Karta Developers Paradise', 1999),
+    (13, 'PT Ventura Impact Positif', 2375),
+    (14, 'PT Bali Nea Karma', 1382),
+    (15, 'PT Urban Jungle Bali', 2520),
+    (16, 'PT KHALI BALI UBUD', 2020),
+    (17, 'PT Future Textile Solutions', 1770),
+    (18, 'PT Sduare Property Bali', 2399),
+    (19, 'PT Fashion Trading Center', 1734),
+    (20, 'PT Karta Entertainment Found', 2000),
+    (21, 'PT Triple Peak Properties', 2359),
+    (22, 'PT Megah Sentosa Properti', 2170),
+    (23, 'PT Berkualitas Lestari Properti', 1455),
+    (24, 'PT Kinoh Real Estate', 2024),
+    (25, 'PT Oceane Group Bali', 3005),
+    (26, 'PT Paradise Street Style', 2959),
+    (27, 'PT Super Bagus Labs', 2685),
+    (28, 'PT Waves Are Life', 2477),
     # ---- page 2 ----
-    (29, "PT Alis Vloat Propertiis",                None,"alis72592342023c",               "Bali2023*"),
-    (30, "PT Ichnos West Sumbawa",                  1897,"ichnos546914102024c",            "Ichnos2024#"),
-    (31, "PT Sette Bello Labs",                     2768,"sette18212152024r",              "Sette2024#"),
-    (32, "PT Pijar Cerah Dunia",                    2942,"pijar690822024n",                "Pijar2024#"),
-    (33, "PT Gharsat All Barakah",                  None,"gharsatallbarakah@gmail.com",    "@Daftar123_"),
-    (34, "PT Canna Bali Dreams",                    None,"ptcannabalidreams@gmail.com",    "Bali2025@"),
-    (35, "PT Disruptives Idea Indonesia",           1638,"disruptives51821452023e",        "Disruptives2023#"),
-    (36, "PT Landscape Art Bali",                   2060,"ptlandscapartbali@gmail.com",    "Bali2023*"),
-    (37, "PT Bali Social Raket",                    2316,"bali4572022025t",                "Bali2025#"),
-    (38, "PT Nepu Global Invest",                   2345,"nepu2018112023m",                "Nepu2023#"),
-    (39, "PT Cirera and Nello Investments",         2349,"cirera77081392023v",             "Cirera2023#"),
-    (40, "PT Happy Events Bali Travel",             3135,"happy20302602023w",              "Happy2023#"),
-    (41, "PT Chloe Nature Escape",                  3203,"chloe6332032025d",               "Bali2025#"),
-    (42, "PT World Obiac Cernandes",                None,"world4951312024m",               "World2024#"),
-    (43, "PT Bayu Bali Nol",                          98,"bayu40632522025e",               "Bayu2025#"),
-    (44, "PT Rocco Leo Cecilia",                    2840,"rocco92542422025v",              "Cecilia2006@"),
-    (45, "PT Friends and Family",                   1764,"friends432117112024m",           "Friends2024#"),
-    (46, "PT Bali Bliss Travel",                    2336,"bali61063092023n",               "Bali2023#"),
-    (47, "PT ALWAYS STAY PRESENT",                  4067,"always33602752024p",             "Always2024#"),
-    (48, "PT Singa Investments Bali",               2758,"singa67121052022i",              "@Sib2022"),
-    (49, "PT The Manolia Ventures",                 2625,"the2727722024e",                 "Themanolia2024#"),
-    (50, "PT Black Pork Consulting",                1478,"black72482052024w",              "Black2024#"),
-    (51, "PT Whatsyum Tech Group",                  2467,"whatsyum3167882025p",            "Bali2025#"),
-    (52, "PT Villa Stella Belle",                   2498,"villa62062772024h",              "Villa2024#"),
-    (53, "PT Bale Glory Home",                        15,"bale60722112024t",               "Bale2024#"),
-    (54, "PT Domus Dei Amare",                      1645,"domus72641162023q",              "Domus2023#"),
-    (55, "PT Sea Vista Travel",                     2797,"sea10051462025x",                "Sea2025#"),
-    (56, "PT The Nandc Group",                      2624,"the77391172025v",                "Thenandc2025#"),
-    (57, "PT Yume Innovation Studio",               2366,"yume381720112023m",              "Yume2023#"),
-    (58, "PT The Ping Group",                       2612,  None,                             None),
-    (59, "PT Indo Mita Consulting",                 1906,  None,                             None),
+    (29, 'PT Alis Vloat Propertiis', None),
+    (30, 'PT Ichnos West Sumbawa', 1897),
+    (31, 'PT Sette Bello Labs', 2768),
+    (32, 'PT Pijar Cerah Dunia', 2942),
+    (33, 'PT Gharsat All Barakah', None),
+    (34, 'PT Canna Bali Dreams', None),
+    (35, 'PT Disruptives Idea Indonesia', 1638),
+    (36, 'PT Landscape Art Bali', 2060),
+    (37, 'PT Bali Social Raket', 2316),
+    (38, 'PT Nepu Global Invest', 2345),
+    (39, 'PT Cirera and Nello Investments', 2349),
+    (40, 'PT Happy Events Bali Travel', 3135),
+    (41, 'PT Chloe Nature Escape', 3203),
+    (42, 'PT World Obiac Cernandes', None),
+    (43, 'PT Bayu Bali Nol', 98),
+    (44, 'PT Rocco Leo Cecilia', 2840),
+    (45, 'PT Friends and Family', 1764),
+    (46, 'PT Bali Bliss Travel', 2336),
+    (47, 'PT ALWAYS STAY PRESENT', 4067),
+    (48, 'PT Singa Investments Bali', 2758),
+    (49, 'PT The Manolia Ventures', 2625),
+    (50, 'PT Black Pork Consulting', 1478),
+    (51, 'PT Whatsyum Tech Group', 2467),
+    (52, 'PT Villa Stella Belle', 2498),
+    (53, 'PT Bale Glory Home', 15),
+    (54, 'PT Domus Dei Amare', 1645),
+    (55, 'PT Sea Vista Travel', 2797),
+    (56, 'PT The Nandc Group', 2624),
+    (57, 'PT Yume Innovation Studio', 2366),
+    (58, 'PT The Ping Group', 2612),
+    (59, 'PT Indo Mita Consulting', 1906),
 ]
 
 MARKER_CREATED_BY = "lkpm_q1_2026_minimal_import"
@@ -245,9 +282,11 @@ async def upsert_lkpm_report(
 async def _process_rows(
     conn: asyncpg.Connection,
     stats: dict[str, int],
+    oss_credentials: dict[int, tuple[str, str]],
 ) -> None:
     """Core loop: process all 59 rows. Caller owns the transaction."""
-    for pdf_row, pdf_name, cid, oss_user, oss_pass in LORI_59:
+    for pdf_row, pdf_name, cid in LORI_59:
+        oss_user, oss_pass = oss_credentials.get(pdf_row, (None, None))
         try:
             # Resolve company
             if cid is None:
@@ -275,7 +314,7 @@ async def _process_rows(
 
             oss_marker = ""
             if oss_user and oss_pass:
-                oss_marker = f"  OSS={oss_user[:20]}... / pwd=***"
+                oss_marker = "  OSS=set"  # presence only — never the value (R4 cure, 2026-09-27)
             logger.info(
                 f"  {pdf_row:2d} ✓ company={cid:>5}  cfg={cfg_action}  rep={rep_action}  {pdf_name}{oss_marker}",
             )
@@ -289,6 +328,8 @@ async def main(dry_run: bool) -> int:
     if not dsn:
         logger.error("DATABASE_URL not set")
         return 2
+
+    oss_credentials = _load_oss_credentials()
 
     logger.info("=" * 70)
     logger.info(f"LKPM Q1 2026 import (dry_run={dry_run})")
@@ -310,14 +351,14 @@ async def main(dry_run: bool) -> int:
             # Run inside transaction, then force rollback.
             try:
                 async with conn.transaction():
-                    await _process_rows(conn, stats)
+                    await _process_rows(conn, stats, oss_credentials)
                     logger.info("\n⏪ DRY RUN — rolling back transaction (no changes saved)")
                     raise _DryRunRollback()
             except _DryRunRollback:
                 pass  # expected
         else:
             async with conn.transaction():
-                await _process_rows(conn, stats)
+                await _process_rows(conn, stats, oss_credentials)
 
         logger.info("\n" + "=" * 70)
         logger.info("STATS")

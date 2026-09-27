@@ -20,13 +20,13 @@
 
 ## Pilot 5 VIP results (2026-05-18, dry_run, gemini CLI free OAuth)
 
-| client_id | Name                   | linked co | files | archetype           | tier     | confidence | duration |
-| --------- | ---------------------- | --------: | ----: | ------------------- | -------- | ---------: | -------: |
-| 70        | Oleksandr Ozolin       |         1 |    37 | individual_investor | standard |        0.4 |      66s |
-| 266       | Romain Pascal Baillieu |         2 |    80 | individual_investor | VIP      |        0.6 |      83s |
-| 278       | Declan & Shannon       |         1 |   115 | pt_pma_owner        | standard |       0.75 |      76s |
-| 283       | Roman Pukhov           |         2 |   197 | pt_pma_owner        | VIP      |        0.8 |      63s |
-| 350       | Armando Puddu          |         6 |   683 | individual_investor | VIP      |       0.75 |     127s |
+| client_id | Name           | linked co | files | archetype           | tier     | confidence | duration |
+| --------- | -------------- | --------: | ----: | ------------------- | -------- | ---------: | -------: |
+| 70        | Client Alpha   |         1 |    37 | individual_investor | standard |        0.4 |      66s |
+| 266       | Client Gamma   |         2 |    80 | individual_investor | VIP      |        0.6 |      83s |
+| 278       | Client Delta   |         1 |   115 | pt_pma_owner        | standard |       0.75 |      76s |
+| 283       | Client Epsilon |         2 |   197 | pt_pma_owner        | VIP      |        0.8 |      63s |
+| 350       | Client Zeta    |         6 |   683 | individual_investor | VIP      |       0.75 |     127s |
 
 Confidence mean 0.66 (above the 0.6 manual-review threshold on 4/5).
 4/5 clients ≥0.6 → would auto-publish in non-dry-run mode.

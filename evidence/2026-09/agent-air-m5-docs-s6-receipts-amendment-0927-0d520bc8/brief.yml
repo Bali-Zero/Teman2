@@ -1,0 +1,48 @@
+task_id: s6-receipts-amendment-0927
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Amend spec S6 (docs/specs/2026-09-27-evidence-pack-fixed-point.md, landed by #7510) so the two
+  causes that suspended the PII-removal lane cannot recur, and ship the tool the new rules name.
+
+  The lane failed three consecutive fresh-gate rounds on each of two causes after S6 landed as
+  text: hand-typed counts that drifted (gate-7481 K2, gate-7491 K2, gate-7516 B1, then C2) and
+  category descriptors that isolated one residual file (gate-7481 K3, gate-7491 K3, gate-7516 B3,
+  then C1). Builder Contract §1 suspends a PR at three reds for one cause; the cure is mechanical.
+
+  R6.7: every countable claim is the verbatim block of scripts/evidence/pii_receipt.py run at the
+  final head; the gate re-runs it with --check-in and any byte of difference is red. R6.8: a
+  category descriptor ships with a measured predicate; fewer than two matching files, or a
+  predicate the described file fails, is red.
+
+  Gear 3 by PATH: the diff edits .github/workflows/guard-conformance.yml (hot zone) to execute the
+  new test corpus, since scripts-tests-sweep.yml is continue-on-error and gates nothing.
+
+acceptance:
+  - text:
+      "WHEN the generator runs twice on the same tree and the same private inputs, it SHALL emit
+      byte-identical blocks; and WHEN a pasted block has one digit edited, --check-in SHALL exit
+      1."
+    probe: "python3 scripts/evidence/pii_receipt.py --selftest"
+  - text:
+      "WHEN the pack is edited after the block was produced, the block SHALL still match at the
+      final head; WHEN any non-evidence file changes, tree_digest SHALL move."
+    probe: "--rev HEAD --check-in <this pack>"
+  - text:
+      "The generator SHALL reproduce the file count, the per-name line hits and the names-present
+      count that the PR 7516 re-gate measured for the pilot name set at edec8a21, without printing
+      a name or a matched path; this brief types none of those numbers, the pack's block does."
+    probe: "--rev edec8a21f9917a56c0724fe83a081027aba4e880"
+  - text:
+      "WHEN a descriptor predicate narrows to one file, or the described file fails it, the
+      descriptor mode SHALL exit 3; a class-only predicate that covers its category SHALL exit 0."
+    probe: "descriptor --label b"
+  - text:
+      "WHEN a PR touches the generator or its corpus, guard-conformance.yml SHALL run the corpus
+      and the selftest; otherwise it SHALL end on its existing sentinel."
+    probe: "the step body under bash -euo pipefail"
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

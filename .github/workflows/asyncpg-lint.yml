@@ -2,22 +2,28 @@ name: asyncpg-lint
 
 # W34/W64 cicatrix consumer — closes the W35 deferral ("lint exists but has NO
 # consumer — it gates nothing"). Runs scripts/lint_asyncpg_except_completeness.py
-# BLOCKING on every PR + push to main, so a W64-class sibling-fix regression
-# (commit 120078999: except tuple missing asyncpg.InterfaceError in a daemon
-# reconnect loop → silent death) gates at PR time, not at audit time days later.
+# (the job fails on a violation) on every merge (merge_group) + push to main, so a
+# W64-class sibling-fix regression (commit 120078999: except tuple missing
+# asyncpg.InterfaceError in a daemon reconnect loop → silent death) gates at merge
+# time, not at audit time days later.
 #
-# Pure-stdlib, full-repo scan in seconds → NO paths filter and NO sentinel
-# needed; safe as a required-status-check (the W69 pending-forever trap does
-# not apply because the job runs on every PR).
+# Pure-stdlib, full-repo scan in seconds → NO paths filter and NO sentinel needed:
+# the lint sweeps every .py under scripts/, apps/ and packages/, so a filter would
+# still fire on about a third of PRs (36 of the last 100 merged, measured 2026-09-27).
+# It no longer runs on every PR push (queue relief, see `on:`).
 #
-# Triggers BOTH pull_request AND push-to-main (W41/W42 cicatrix lesson:
-# pull_request-only gives false safety under L2 autonomous direct-push).
+# Triggers merge_group AND push-to-main (W41/W42 cicatrix lesson: a PR-only trigger
+# gives false safety under L2 autonomous direct-push).
 
 on:
-  pull_request:
+  # Non-required lint: runs once per merge (merge_group) and on push to main, not on every
+  # PR push. If this becomes a required context, pull_request must come back unfiltered
+  # (scripts/ci/check_required_workflow_conformance.py rules 3-4).
+  merge_group:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read

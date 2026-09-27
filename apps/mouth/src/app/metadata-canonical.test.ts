@@ -197,11 +197,16 @@ describe("public routes vs the inherited homepage canonical", () => {
   it("the two footer-linked legal pages are cured (guilt, #5887's class)", () => {
     // Measured 2026-09-14: /terms carries 2 internal hrefs and /privacy 3 —
     // the same order as /contact. Crawlable, and until this PR both served
-    // `canonical: https://balizero.com`.
-    for (const rel of ["terms/page.tsx", "privacy/page.tsx"]) {
+    // `canonical: https://balizero.com`. Moved under (blog) (spec C1 PR-A,
+    // 2026-09-27) — same URL, route group only, so the route is NOT
+    // `path.dirname(rel)` here (that would keep the literal "(blog)"
+    // segment); it is paired explicitly instead.
+    for (const [rel, route] of [
+      ["(blog)/terms/page.tsx", "/terms"],
+      ["(blog)/privacy/page.tsx", "/privacy"],
+    ] as const) {
       const expr = canonicalExpr(path.join(APP_DIR, rel));
       expect(expr).not.toBeNull();
-      const route = "/" + path.dirname(rel);
       expect(expr).toBe(`"${ORIGIN}${route}"`);
     }
   });

@@ -82,18 +82,12 @@ test.describe("blog news light page Page", () => {
   test("article detail renders ink-on-paper with R19 chrome", async ({
     page,
   }) => {
-    // Discover a real article from /news (resilient to content changes).
-    await page.goto("/news");
-    const articleLink = page
-      .locator('a[href^="/"][href*="/"]')
-      .filter({ has: page.locator("h3, h2") })
-      .first();
-
-    // Fallback: the homepage hero_main article (taxes/…) is a stable target.
-    let href = await articleLink.getAttribute("href").catch(() => null);
-    if (!href || href === "/news") {
-      href = "/taxes/indonesia-umkm-tax-reforms-pp-20-2026";
-    }
+    // Pinned local-MDX slug (same one the overflow test below uses) instead
+    // of discovering "first" from /news, whose order + content are whatever
+    // the live nuzantara-rag.fly.dev feed serves at CI run-time — that made
+    // this test non-deterministic (see PR #7544 red, e2e-r19-article-triage
+    // report, 2026-09-27).
+    const href = "/taxes/indonesia-umkm-tax-reforms-pp-20-2026";
 
     await page.goto(href);
 

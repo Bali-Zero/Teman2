@@ -1,0 +1,420 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Gate report scratchpad/reports/gate-7476.md (REWORK-BUILD, 3 blockers) on
+  the second S5 PR (#7476, head a199d9c934) — team-lead mandate 2026-09-27
+  to rebuild v3 from fresh origin/main.
+lanes:
+  - lane: s5-hotzone-egress-v3-build
+    role: build
+    seat: "session (M5, Sonnet 5 conducting)"
+seat_override: >-
+  Gear-3 diff edits the hot-zone gate list that itself decides when an
+  external seat (codex/kimi/agy/gemini/qwen) may be dispatched on a diff —
+  dispatching one of those same seats to review this exact diff would make
+  generator and grader the same entity on the surface most in need of
+  separation. No council or external seat was run. The fresh
+  `harness/fable-gate` gate session that produced the REWORK-BUILD verdict
+  cited in `plan_ref` already served as this PR's independent review; the
+  next fresh gate on this head is the second opinion in place of a council
+  quorum.
+diff:
+  net_lines: >-
+    Content diff at the graded sha (v2's single commit cherry-picked onto
+    fresh origin/main, then cured and squashed again into a single commit —
+    described here without a digit or word-number immediately before the
+    word "commit", on purpose: the countable-claims rule scans this exact
+    field for that shape and compares it against the real branch tally,
+    which is why v2's own prose here FAILED CI when its stated tally did not
+    match the branch's true count). Two workflow edits, the S5 spec section
+    extended with a seventh
+    path and corrected cross-PR state, one new HOTZONE_PATTERNS/case-block
+    entry (`infra/workflows/second-army.js`, seven S5 entries total), and
+    the sync test's S5 tuple extended to match. No production code path
+    touched, no consumer's runtime behavior changed except the floor
+    computation the two lists feed and guard-conformance's own step set.
+    Exact line counts are not narrated here on purpose (S1 of this same
+    spec, not yet code-implemented): the pack's own bytes are not excluded
+    from the size term, so any figure written here drifts with every pack
+    edit — the gate's own receipt records the `git diff --numstat` it
+    observed.
+  behaviour_change: >-
+    Before this PR, `infra/workflows/second-army.js` floored at gear 1 like
+    the six S5 paths did before v1/v2. After this PR, a changed-file set
+    containing any of the seven floors at gear 3 on both `compute_floor()`
+    and the bash case block, and `scripts/tests/test_hotzone_lists_sync.py`
+    (wired into guard-conformance.yml since v2) fails CI the moment any of
+    the seven drifts between the two lists — proved again for this seventh
+    entry specifically (see receipts).
+receipts:
+  - claim: >-
+      Deterministic gear floor recomputed from THIS diff's full changed-file
+      set (vs fresh origin/main merge-base a6fcae5afe — re-fetched and
+      squashed onto AFTER the first build pass, since origin/main had moved
+      again by build time) is 3, source path. Head of THIS content build
+      pass was a single commit, 9bbe31de6d — superseded by a second,
+      Bites-contract-only commit (no content change) documented in the
+      final receipt below; see there for the actual current commit count.
+    cmd: >-
+      git fetch origin; MERGE_BASE=$(git merge-base origin/main HEAD); git
+      diff --name-only $MERGE_BASE HEAD > /tmp/s5v3-changed.txt; git diff
+      --no-renames --numstat $MERGE_BASE HEAD > /tmp/s5v3-numstat.txt; python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/s5v3-changed.txt --numstat-file /tmp/s5v3-numstat.txt; python3
+      scripts/evidence_pack_lint.py --print-floor-source --changed-files-file
+      /tmp/s5v3-changed.txt --numstat-file /tmp/s5v3-numstat.txt; git log
+      --oneline origin/main..HEAD | wc -l
+    result: "3\npath\n1"
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      GUILT via compute_floor() — each of the seven S5 paths, including the
+      newly-added infra/workflows/second-army.js, floors at 3 in isolation.
+      INNOCENCE — an unrelated path floors at 1.
+    cmd: >-
+      python3 -c "import sys; sys.path.insert(0,'scripts'); from
+      evidence_pack_lint import compute_floor; paths=['.claude/scripts/codex-spalla.sh','scripts/lib/spalla_redact.sh','.claude/hooks/codex-spalla-trigger.sh','scripts/codex_tri_llm_review.py','scripts/review_gate_run.sh','scripts/_redact_pii.py','infra/workflows/second-army.js']; print([compute_floor([p]) for p in paths]); print(compute_floor(['docs/CLAUDE.md']))"
+    result: "[3, 3, 3, 3, 3, 3, 3]\n1"
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      GUILT RUN proving the sync test catches a drift on the newly-added
+      seventh entry specifically, and that restoring it returns the tree to
+      a clean, green state with zero residual diff.
+    cmd: >-
+      cp .github/workflows/hot-zone-pr-gate.yml /tmp/hzpg-v3-backup.yml;
+      sed -i '' 's/infra\/workflows\/second-army\.js)/some_other_thing.js)/'
+      .github/workflows/hot-zone-pr-gate.yml; python3 -m pytest
+      scripts/tests/test_hotzone_lists_sync.py -v; cp
+      /tmp/hzpg-v3-backup.yml .github/workflows/hot-zone-pr-gate.yml; python3
+      -m pytest scripts/tests/test_hotzone_lists_sync.py -q
+    result: >-
+      drifted: "2 failed, 2 passed" (both failures named
+      `infra/workflows/second-army.js` missing from the workflow's case
+      block); restored: "4 passed", `git status --porcelain` empty
+      afterward — matches the pre-drift committed state exactly.
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      Every count in this pack is measured on THIS commit, not carried
+      forward from v2 — v2's "770→771" correction was itself stale one PR
+      later (origin/main gained tests in between), and this pack's own first
+      build-pass count ("773 passed") went stale again by the time origin/main
+      was re-fetched for the squash-rebase below.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q; python3
+      -m pytest scripts/tests/test_hotzone_lists_sync.py -v; python3
+      scripts/evidence_pack_lint.py --selftest
+    result: "774 passed\n4 passed\nSELFTEST PASS"
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      Both edited workflow files still parse as valid YAML after the edit.
+    cmd: >-
+      python3 -c "import yaml; yaml.safe_load(open('.github/workflows/hot-zone-pr-gate.yml'));
+      yaml.safe_load(open('.github/workflows/guard-conformance.yml'))"
+    result: "no exception raised"
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      Before push (closing v2's exact gap — a claim of 'validated clean'
+      that was never actually reproduced against the real PR event
+      payload): the staged-tree reproduction of harness-floor.yml's own
+      pack validation, WITH the real branch commit count (1, re-measured
+      via `git log --oneline origin/main..HEAD` on the final squashed
+      commit) fed in via --commit-count, lints clean on this pack. 3
+      NOTICEs (acceptance-probe field-presence x2, council_run override),
+      zero violations — the NOTICEs are the same ones this pack's own
+      dissent/constraints sections already account for, not new gaps.
+    cmd: >-
+      mkdir -p scratchpad/work/evidence-check-v3/evidence; cp
+      evidence/2026-09/agent-air-m5-infra-s5-hotzone-egress-v3-0927-6fd6b216/pack.yml
+      scratchpad/work/evidence-check-v3/evidence/pack.yml; cp
+      evidence/2026-09/agent-air-m5-infra-s5-hotzone-egress-v3-0927-6fd6b216/brief.yml
+      scratchpad/work/evidence-check-v3/evidence/brief.yml; python3
+      scripts/evidence_pack_lint.py
+      scratchpad/work/evidence-check-v3/evidence/pack.yml --repo-root
+      scratchpad/work/evidence-check-v3 --changed-files-file
+      /tmp/s5v3-changed.txt --numstat-file /tmp/s5v3-numstat.txt
+      --commit-count 1 --source-path
+      evidence/2026-09/agent-air-m5-infra-s5-hotzone-egress-v3-0927-6fd6b216/pack.yml
+      --brief-source-path
+      evidence/2026-09/agent-air-m5-infra-s5-hotzone-egress-v3-0927-6fd6b216/brief.yml
+    result: >-
+      3 NOTICEs (acceptance-probe field-presence x2, council_run override —
+      text matches seat_override above verbatim); "evidence_pack_lint: clean
+      (.../evidence/pack.yml)".
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      infra/workflows/second-army.js's Refute lane forwards a frozen
+      `git diff` verbatim to a cross-family external seat door, with zero
+      redaction — verified directly, not relayed from the gate report.
+    cmd: >-
+      sed -n '540,550p' infra/workflows/second-army.js; grep -n redact
+      infra/workflows/second-army.js; wc -l < <(grep -c redact
+      infra/workflows/second-army.js)
+    result: >-
+      The Refute branch instructs the agent: "Run `git diff
+      origin/main...${FROZEN_REF}` and try to REFUTE that change" and shells
+      out via `door.command` (the seat-door table at :87-125: `codex exec -m
+      gpt-5.6-terra`, `agy -p`, `python3 scripts/tp1_call.py --model
+      qwen3.7-plus -p`, etc.); `grep -n redact` returns 0 matches.
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      infra/workflows/run-second-army.mjs is a generic AsyncFunction-eval
+      runner with no diff-forwarding logic of its own — correctly OUT.
+    cmd: sed -n '1,26p' infra/workflows/run-second-army.mjs
+    result: >-
+      Loads whichever `--script` path is given (default second-army.js
+      beside it), compiles it with the AsyncFunction trick, and injects
+      args/agent/log/phase/parallel/pipeline/budget bindings — the egress
+      logic lives entirely in the loaded script, not in this runner.
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      PR #7466's true timeline, reproduced via the GitHub issue timeline API
+      (not the `gh pr view --json mergedAt,autoMergeRequest` cmd v2's
+      receipt wrongly cited, which cannot produce per-event timestamps).
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/issues/7466/timeline --paginate --jq
+      '.[] | select(.event=="committed" or .event=="auto_merge_enabled" or
+      .event=="added_to_merge_queue" or .event=="removed_from_merge_queue")
+      | {event, created_at, committer}'
+    result: >-
+      committed 92e7cac0a8 at 22:38:05Z; auto_merge_enabled at 22:38:45Z;
+      added_to_merge_queue at 22:51:40Z; removed_from_merge_queue (=merged)
+      at 23:07:43Z — matches gate-7471.md's independent measurement and the
+      13m12s gap between the 22:54:31Z gate verdict and the 23:07:43Z merge.
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      The spalla PII-redaction cure lane's current state, re-measured at
+      v3 build time (the lane has turned over again since v2's own
+      measurement): #7470 CLOSED unmerged, superseded by #7475; #7475
+      itself now CLOSED unmerged, superseded by #7483; #7483 OPEN,
+      auto-merge NOT armed, touches FOUR S5 paths (one more than #7475
+      touched), declares gear 2. as_of this measurement.
+    cmd: >-
+      gh pr view 7470 --repo Bali-Zero/Teman2 --json number,state,mergedAt,closedAt;
+      gh pr view 7475 --repo Bali-Zero/Teman2 --json number,state,mergedAt,closedAt;
+      gh pr view 7483 --repo Bali-Zero/Teman2
+      --json number,state,mergedAt,headRefOid,files,autoMergeRequest; gh pr
+      diff 7483 --repo Bali-Zero/Teman2 | grep -n '^+gear'
+    result: >-
+      #7470: state CLOSED, closedAt 2026-09-27T00:07:47Z, mergedAt null.
+      #7475: state CLOSED, closedAt 2026-09-27T01:23:30Z, mergedAt null.
+      #7483: state OPEN, autoMergeRequest null, headRefOid
+      b79840b54f419e619f404a128d7a2b61443a51c0; files include
+      .claude/scripts/codex-spalla.sh, scripts/_redact_pii.py,
+      scripts/codex_tri_llm_review.py, AND scripts/lib/spalla_redact.sh
+      (four, not the three #7475 touched); its evidence brief declares
+      `gear: 2` (`+gear: 2` in the diff).
+    exit: 0
+    ts: "2026-09-27T02:09:06Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      scripts/_redact_pii.py's caller count, re-measured on this worktree:
+      15 raw hits, of which 11 are real callers outside the three known
+      egress-wrapper files (the file itself and its own string-literal
+      mention inside evidence_pack_lint.py's HOTZONE_PATTERNS are not
+      "callers"; codex-spalla.sh and spalla_redact.sh are already-known
+      egress paths, not part of the "11 other" count).
+    cmd: git grep -l "_redact_pii" -- '*.sh' '*.py' | grep -v test
+    result: >-
+      15 hits: .claude/scripts/codex-spalla.sh,
+      apps/backend-rag/sandbox/egress_proxy.py,
+      apps/mata-garuda/mata_garuda/scripts/nb_monitor/registry.py,
+      scripts/_entailment_check.py, scripts/_redact_pii.py,
+      scripts/agent-library-evolver-run.sh, scripts/bot/build_deid_corpus.py,
+      scripts/ci/change_map.py, scripts/dynamic_workflow.py,
+      scripts/evidence_pack_lint.py, scripts/lib/spalla_redact.sh,
+      scripts/lint_model_cards.py, scripts/nb_curator_artifact_gate.py,
+      scripts/nb_generate_inventory.py, scripts/privacy_preflight.py. 15 - 1
+      (itself) - 1 (evidence_pack_lint.py, string-literal only, verified by
+      `grep -n _redact_pii scripts/evidence_pack_lint.py` matching only the
+      HOTZONE_PATTERNS tuple entry) - 2 (already-known egress) = 11.
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      egress_proxy.py IS the sandbox's own network egress chokepoint, and
+      dynamic_workflow.py:455 uses this redactor as a PII gate before its
+      OWN council dispatch to external seats — corrects v2's false "nothing
+      to do with an external seat" label on all 11 callers.
+    cmd: >-
+      sed -n '1,20p' apps/backend-rag/sandbox/egress_proxy.py; sed -n
+      '450,460p' scripts/dynamic_workflow.py
+    result: >-
+      egress_proxy.py's own docstring: "THREE filters... 3. DLP on body —
+      runs scripts/_redact_pii.py on the request body... 403 (fail-closed)".
+      dynamic_workflow.py:454-455: `redacted =
+      Redactor.load_default().redact(objective_raw)` gates the objective
+      text before it is handed to a council dispatch.
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      #7466's own changed files, correcting v2's dissent disposition (which
+      wrongly said #7466 "touched only the redactor's caller-facing
+      contract, not an egress wrapper file").
+    cmd: gh pr view 7466 --repo Bali-Zero/Teman2 --json files --jq '.files[].path'
+    result: >-
+      Re-run this build pass and it does NOT match this pack's own earlier
+      draft of this receipt (which listed 5 files including
+      evidence/.../brief.yml and scripts/tests/test_codex_spalla.py) — that
+      draft had silently copied #7470's file list (7 files, confirmed via
+      the same cmd against 7470) onto #7466's receipt, a same-shape PR
+      mix-up caught only by re-running the exact cmd rather than trusting
+      the prior pass. #7466's ACTUAL 4 files: .claude/scripts/codex-spalla.sh
+      (MODIFIED), docs/scars/cicatrix-scars.md (MODIFIED),
+      scripts/lib/spalla_redact.sh (ADDED, 82 lines),
+      scripts/tests/test_codex_spalla_diff_redaction.sh (ADDED). This
+      strengthens rather than weakens the spec's corrected claim (already
+      accurate there): #7466 DID add scripts/lib/spalla_redact.sh — it did
+      NOT touch scripts/_redact_pii.py, which is the file the spalla cure
+      lane (#7470/#7475/#7483) edits and which grounds the KEEP-IN argument.
+    exit: 0
+    ts: "2026-09-27T02:19:50Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      Post-open, `Harness floor recompute`'s Bites-contract step reds:
+      `python3 scripts/ci/bites_parse.py --pack -` on this pack (run from a
+      detached origin/main worktree, exactly as CI does — the step always
+      checks out origin/main's copy of the parser, never HEAD's) exits 2,
+      class malformed. NOT a missing marker — this diff's own
+      scripts/evidence_pack_lint.py already carries `bites-observable` — but
+      `_guard_observable_script` reads it from the BASE checkout
+      (origin/main) by the module's own POST-MERGE-ONLY design, and
+      origin/main does not have this diff's marker yet: a PR can never
+      observe against a script whose marker it is itself adding (see the
+      bites: block above for the full reasoning). So this pack's own bites:
+      is rewritten from the executable shape to the legacy (prose) shape —
+      `bites_parse.py` classifies a prose bites: block as legacy
+      unconditionally (D4, docs/plans/2026-09-03-relaunch-lanes/LANE-H-bites-reconciler.md),
+      never a red, and `harness-floor.yml`'s own case statement emits a
+      NOTICE for legacy and continues rather than exiting 1. This is the
+      SECOND commit on this branch (content-only work stayed in the first);
+      branch is now 2 commits ahead of origin/main, re-measured via `git log
+      --oneline origin/main..HEAD | wc -l`.
+    cmd: >-
+      git worktree add --detach /tmp/b7489main origin/main; cd
+      /tmp/b7489main; python3 scripts/ci/bites_parse.py --pack - <
+      /tmp/pack_before.yml; python3 scripts/ci/bites_parse.py --pack - <
+      /tmp/pack_after.yml
+    result: >-
+      Before: {"malformed": true, "errors": ["observe:
+      scripts/evidence_pack_lint.py does not declare itself observable — add
+      a comment containing bites-observable to it, and only do so for a
+      script whose arguments cannot name a program to run, a file to write,
+      or a database to reach"]}, rc=2. After: {"legacy": true}, rc=0,
+      classify() = legacy. git log --oneline origin/main..HEAD | wc -l = 2.
+    exit: 0
+    ts: "2026-09-27T05:07:13Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+pii_scan: clean
+pii_scan_note: >-
+  Nothing in this diff transcribes client/OSINT data. The changed surface is
+  a spec markdown file, a Python tuple of file-path strings, two bash/YAML
+  workflow edits, and a pytest module — no client name, phone, email,
+  KTP/NPWP or WhatsApp data anywhere in scope. Grepped the full diff for
+  those patterns: zero hits.
+bites:
+  consumer: >-
+    the harness floor on every future PR touching any of the seven S5
+    egress/redaction paths, and guard-conformance.yml's PR-triggered
+    conformance job for the sync test itself
+  observation: >-
+    Legacy (prose) form on purpose, not the executable
+    consumer/where/observe/expect shape: `scripts/ci/bites_parse.py`'s
+    allow-list refuses `python3 scripts/evidence_pack_lint.py
+    --print-floor --changed-files-file
+    scripts/tests/fixtures/s5_hotzone_probe_changed_files.txt` — NOT
+    because `scripts/evidence_pack_lint.py` lacks the `bites-observable`
+    marker (this exact diff already carries it, at the top of the
+    HOTZONE_PATTERNS section, scoped to the read-only flags this
+    observation uses), but because `_guard_observable_script` reads the
+    marker from the BASE checkout by design (module docstring:
+    "POST-MERGE ONLY... against an unmerged PR checkout there is no
+    boundary here at all") — a PR that adds the marker in the same diff
+    it wants to observe with can never pass this check pre-merge, only a
+    LATER PR can. This is not a gap to cure in a follow-up PR; it is the
+    module working as documented. Once this PR merges, the very next PR
+    touching any of these seven paths CAN write an executable Bites
+    against `scripts/evidence_pack_lint.py --print-floor`. Until then,
+    the rule is proven here by two commands anyone can run against this
+    PR's own diff, both already exercised in this pack's receipts:
+    `python3 -c "import sys;
+    sys.path.insert(0,'scripts'); from evidence_pack_lint import
+    compute_floor; print([compute_floor([p]) for p in
+    ['.claude/scripts/codex-spalla.sh','scripts/lib/spalla_redact.sh','.claude/hooks/codex-spalla-trigger.sh','scripts/codex_tri_llm_review.py','scripts/review_gate_run.sh','scripts/_redact_pii.py','infra/workflows/second-army.js']])"`
+    prints `[3, 3, 3, 3, 3, 3, 3]` (all seven S5 paths floor at 3), and
+    `python3 -m pytest scripts/tests/test_hotzone_lists_sync.py -q`
+    (wired into guard-conformance.yml) passes, asserting the same seven
+    paths sit on both `HOTZONE_PATTERNS` and
+    `.github/workflows/hot-zone-pr-gate.yml`'s case block and that an
+    unrelated path floors at 1.
+dissent:
+  - seat: "session (M5, Sonnet 5 conducting) — self-review, no external seat dispatched (see seat_override)"
+    objection: >-
+      [P1, self-raised] `infra/workflows/second-army.js` was found only
+      because the gate on #7476 extended the sweep to `*.js`/`*.cjs`/`*.ts`.
+      This is now the THIRD time (v1: scripts/codex_tri_llm_review.py
+      missed by a `*.sh`-only sweep; v2: this file missed by a
+      `*.sh`/`*.py`-only sweep) that a file-extension-limited sweep let a
+      real egress wrapper through. The pattern strongly suggests the sweep
+      method itself — grep over hand-picked extensions — is the wrong
+      shape for a completeness guarantee, not just under-scoped each time.
+    status: CONFIRMED
+    resolution: >-
+      Correct as stated. A sweep bounded by an enumerated extension list can
+      never prove completeness, only shrink the miss surface one extension
+      at a time — exactly what happened three times in a row. The only
+      sweep shape that COULD prove completeness is one keyed on behavior
+      (does this process spawn `codex`/`kimi`/`agy`/`qwen`/`gemini` as a
+      subprocess and pass diff-shaped content as an argument, regardless of
+      the caller's own file extension), which needs either a language-level
+      call-graph analysis or a runtime audit (e.g. instrumenting subprocess
+      spawns fleet-wide for one release cycle) — both real projects, neither
+      of which fits inside an evidence-pack PR that is itself supposed to be
+      the enforcement layer, not the completeness proof.
+    disposition: >-
+      Not fixed in this PR — flagged honestly instead of claimed fixed. This
+      spec's sweep remains extension-bounded (`*.sh`/`*.py`/`*.js`/`*.cjs`/
+      `*.ts` as of this PR) and should be read as "everything found so far
+      under an incomplete method", not "everything that exists". A
+      behavior-keyed completeness audit is a separate, larger piece of work
+      worth its own mandate — noted here so the next gate or the next sweep
+      does not have to rediscover this limitation from scratch.
+  - seat: "session (M5, Sonnet 5 conducting) — self-review, no external seat dispatched (see seat_override)"
+    objection: >-
+      [P2, self-raised] `scripts/_redact_pii.py`'s widening cost (11 other
+      callers now floor at 3) was carried forward from v2 with only the
+      label corrected (egress_proxy.py and dynamic_workflow.py ARE
+      egress-adjacent, contra v2's claim). The underlying question the
+      gate's own minor raised — whether the KEEP-IN conclusion actually
+      rests on the right precedent — deserves restating precisely now that
+      the wrong precedent (#7466) is removed from the argument.
+    status: CONFIRMED
+    resolution: >-
+      The KEEP-IN argument now rests correctly on the spalla cure lane
+      itself (#7470, then #7475, now #7483) editing `scripts/_redact_pii.py`
+      directly — verified via `gh pr view 7483 --json files`, which lists it
+      (and also `scripts/codex_tri_llm_review.py`, one more S5 path than
+      #7475 touched). That is a live, present-tense example of exactly the
+      risk S5's Gap names (a change to the redaction engine, not just the
+      wrapper, going through at a gear that requires no gate verdict),
+      stronger evidence than the #7466 precedent it replaces because it is
+      not hypothetical.
+    disposition: >-
+      Kept IN, same as v2, now on a corrected and stronger basis. See the
+      spec's Enforcement section for the reworded cost statement.

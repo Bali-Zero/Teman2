@@ -20,7 +20,21 @@ const editorialCategories = new Set([
 
 export function isR19Route(pathname: string): boolean {
   const path = pathname.replace(/\/+$/, "") || "/";
-  if (["/", "/news", "/team", "/contact", "/services"].includes(path))
+  if (
+    [
+      "/",
+      "/news",
+      "/team",
+      "/contact",
+      "/services",
+      "/privacy",
+      "/terms",
+      "/cookies",
+      "/about",
+      "/careers",
+      "/press",
+    ].includes(path)
+  )
     return true;
   const parts = path.split("/").filter(Boolean);
   if (parts[0] === "services" && parts.length === 2) return true;

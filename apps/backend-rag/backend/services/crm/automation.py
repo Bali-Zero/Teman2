@@ -21,7 +21,15 @@ import httpx
 
 from backend.app.core.config import settings
 from backend.app.utils.logging_utils import get_logger
+from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.common.cache import cache_invalidating
+from backend.services.notifications.email_audit import (
+    _bounded_scrub,
+    format_send_error,
+    log_email_attempt,
+    notify_email_failure_critical,
+    record_email_result,
+)
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
@@ -154,12 +162,41 @@ async def _fetch_practice_with_client(
 
 
 async def _send_with_brevo_fallback(
-    zoho_email_service: Any,
+    db_pool: asyncpg.Pool,
     to_email: str,
     subject: str,
     body: str,
+    *,
+    email_type: str,
+    practice_id: int | None = None,
+    client_id: int | None = None,
 ) -> None:
-    """Send email via Brevo (primary), fall back to Zoho if Brevo fails."""
+    """Send email via Brevo. No provider fallback (2026-09-27, removed).
+
+    A Zoho fallback used to sit here but called
+    ``ZohoEmailService.send_email`` with the wrong keyword arguments
+    (``to_email``/``subject``/``body`` vs. the real
+    ``user_id``/``to``/``subject``/``content``), and — unlike the sibling
+    copies in ``completed_process_service.py``/``waiting_documents_service.py``
+    — the resulting ``TypeError`` was not even caught here, so a Brevo
+    failure escaped this function with no Telegram page and no
+    ``email_send_log`` row at all. Zoho here would only ever be a staff
+    member's own OAuth-connected mailbox, not a system identity, which
+    contradicts the house rule that CRM mail goes out as
+    ``from=zantara@balizero.com`` via Brevo. Every attempt is now audited to
+    ``email_send_log`` the same way the other two services do it; a Brevo
+    failure pages the owner immediately via
+    :func:`notify_email_failure_critical` and is re-raised so the caller's
+    ``*_notified`` flag reflects reality.
+    """
+    row_id = await log_email_attempt(
+        db_pool,
+        email_type=email_type,
+        to_email=to_email,
+        subject=subject,
+        practice_id=practice_id,
+        client_id=client_id,
+    )
     try:
         html_body = body.replace("\n", "<br>")
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -169,23 +206,31 @@ async def _send_with_brevo_fallback(
                 json={"to": to_email, "subject": subject, "body": html_body},
             )
             response.raise_for_status()
-        logger.info("Email sent to %s via Brevo", to_email)
+        logger.info("Email sent to %s via Brevo", redact_identifier_for_log(to_email))
+        await record_email_result(db_pool, row_id, status="sent", provider="brevo")
         return
-    except (httpx.HTTPError, httpx.InvalidURL) as brevo_error:
-        logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
     except Exception as brevo_error:
-        logger.warning(
-            "Brevo failed for %s (unexpected error), trying Zoho: %s",
-            to_email,
-            brevo_error,
-            exc_info=True,
+        brevo_err_msg = format_send_error(brevo_error)
+        logger.error(
+            "Brevo failed for %s, no fallback provider: %s",
+            redact_identifier_for_log(to_email),
+            _bounded_scrub(brevo_err_msg, 400),
         )
-
-    await zoho_email_service.send_email(
-        to_email=to_email,
-        subject=subject,
-        body=body,
-    )
+        await record_email_result(
+            db_pool,
+            row_id,
+            status="failed",
+            provider="brevo",
+            error_message=brevo_err_msg,
+        )
+        notify_email_failure_critical(
+            email_type=email_type,
+            to_email=to_email,
+            subject=subject,
+            practice_id=practice_id,
+            error=brevo_err_msg,
+        )
+        raise
 
 
 async def _log_activity(
@@ -222,9 +267,6 @@ class ProcessAutomationService:
 
     def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
-        from backend.services.integrations.zoho_email_service import ZohoEmailService
-
-        self.zoho_email_service = ZohoEmailService(db_pool)
 
     @cache_invalidating(
         [
@@ -286,16 +328,29 @@ class ProcessAutomationService:
                         practice_data=practice_data,
                     )
                     results["client_notified"] = True
-                    logger.info(f"Process start email sent to client {client_data['email']}")
+                    logger.info(
+                        "Process start email sent to client %s",
+                        redact_identifier_for_log(client_data["email"]),
+                    )
                 except (httpx.HTTPError, ValueError) as e:
+                    # R1 (fresh gate on this PR): this branch no longer attaches
+                    # the traceback kwarg — it rendered the exception's own
+                    # message a second time, past the already-scrubbed %s slot,
+                    # so a bounce quoting the address back would survive in
+                    # exception.message/.traceback (prod StructuredFormatter)
+                    # and the /api/debug/logs ring buffer even though the log
+                    # line's own text is clean. The exception TYPE still
+                    # survives for diagnosis.
                     logger.error(
-                        "Failed to send process start email to client: %s", e, exc_info=True
+                        "Failed to send process start email to client: %s: %s",
+                        type(e).__name__,
+                        _bounded_scrub(str(e), 400),
                     )
                 except Exception as e:
                     logger.error(
-                        "Unexpected error sending process start email to client: %s",
-                        e,
-                        exc_info=True,
+                        "Unexpected error sending process start email to client: %s: %s",
+                        type(e).__name__,
+                        _bounded_scrub(str(e), 400),
                     )
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
@@ -310,15 +365,20 @@ class ProcessAutomationService:
                     results["team_leader_notified"] = True
                     logger.info(
                         "Process start notification sent to team leader %s",
-                        team_leader_email,
+                        redact_identifier_for_log(team_leader_email),
                     )
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error("Failed to send notification to team leader: %s", e, exc_info=True)
+                    # Same R1 fix as the client branch above — no traceback kwarg.
+                    logger.error(
+                        "Failed to send notification to team leader: %s: %s",
+                        type(e).__name__,
+                        _bounded_scrub(str(e), 400),
+                    )
                 except Exception as e:
                     logger.error(
-                        "Unexpected error notifying team leader: %s",
-                        e,
-                        exc_info=True,
+                        "Unexpected error notifying team leader: %s: %s",
+                        type(e).__name__,
+                        _bounded_scrub(str(e), 400),
                     )
 
             await _log_activity(
@@ -393,7 +453,15 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 🌐 Visit us at www.balizero.com
 """
 
-        await _send_with_brevo_fallback(self.zoho_email_service, client_email, subject, body)
+        await _send_with_brevo_fallback(
+            self.db_pool,
+            client_email,
+            subject,
+            body,
+            email_type="process_start_client",
+            practice_id=practice_data.get("id"),
+            client_id=practice_data.get("client_id"),
+        )
 
     async def _send_team_leader_notification(
         self,
@@ -440,7 +508,15 @@ Zantara CRM 🤖
 P.S. The client is excited to get started—let's make it a great experience! ✨
 """
 
-        await _send_with_brevo_fallback(self.zoho_email_service, team_leader_email, subject, body)
+        await _send_with_brevo_fallback(
+            self.db_pool,
+            team_leader_email,
+            subject,
+            body,
+            email_type="process_start_team",
+            practice_id=practice_data.get("id"),
+            client_id=practice_data.get("client_id"),
+        )
 
     # Keep method aliases for backward compatibility with practice_status_listener
     async def _fetch_practice_data(self, practice_id: int) -> dict | None:
@@ -454,8 +530,20 @@ P.S. The client is excited to get started—let's make it a great experience! �
         to_email: str,
         subject: str,
         body: str,
+        *,
+        email_type: str = "process_start_client",
+        practice_id: int | None = None,
+        client_id: int | None = None,
     ) -> None:
-        await _send_with_brevo_fallback(self.zoho_email_service, to_email, subject, body)
+        await _send_with_brevo_fallback(
+            self.db_pool,
+            to_email,
+            subject,
+            body,
+            email_type=email_type,
+            practice_id=practice_id,
+            client_id=client_id,
+        )
 
     async def _log_activity(
         self,

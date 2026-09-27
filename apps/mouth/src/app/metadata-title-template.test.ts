@@ -156,7 +156,7 @@ describe("page titles vs the root title template", () => {
     const kinds = new Set(templatedTitles().map((t) => t.kind));
     expect([...kinds].sort()).toEqual(["title", "title.default"]);
     expect(
-      declaredTitle(path.join(APP_DIR, "privacy/page.tsx")),
+      declaredTitle(path.join(APP_DIR, "(blog)/privacy/page.tsx")),
     ).not.toBeNull();
   });
 

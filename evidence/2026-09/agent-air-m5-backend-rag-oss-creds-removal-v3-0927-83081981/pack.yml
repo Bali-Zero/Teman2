@@ -1,0 +1,354 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Dispatched by the team-lead session (session-internal task, no tracked
+  mandate doc), v3 of the incident fix after a fresh gate on PR 7484
+  (gate-7484.md) found two of PR 7477's four original blockers (gate-7477.md)
+  still uncured at #7484's head: the rotation-status text (R3) and the
+  per-row log line (R4). #7484 itself superseded #7477 after a fresh gate
+  found #7477's own evidence pack had re-committed one real removed OSS
+  password in cleartext (R1).
+lanes:
+  - lane: oss-creds-removal-v3-0927
+    role: build
+    seat: >-
+      claude-sonnet-5 (this session — rebuilt on a clean origin/main by
+      cherry-picking #7484's code/lint/doc commits, cured R3+R4 of
+      gate-7484.md, added the two missing guilt+innocence test pairs, and
+      authored this pack from scratch with no credential literal)
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single lane, single Anthropic seat, by explicit constraint: this diff's
+  deleted lines ARE the leaked credentials, so no external seat may see it.
+  The two fresh gates that reviewed #7477 and #7484 are this PR's second
+  opinion.
+diff:
+  net_lines: >-
+    measured by `git diff --numstat origin/main...HEAD` on the final commit
+    of this branch — see the bound receipt below for the exact figure. This
+    field is written last, after every other commit, specifically to avoid
+    the fixed-point trap PR 7477's own pack fell into (evidence/** is not
+    yet excluded from the size term the lint measures itself against).
+  behaviour_change: >-
+    Same functional change as PR 7477/#7484: apps/backend-rag/scripts/import_lkpm_q1_2026.py
+    no longer runs without a local, untracked, gitignored credential file,
+    and its docstring/error message state the rotation is PENDING rather
+    than done. NEW in v3: the per-row log line carries a presence-only
+    marker instead of the credential value. Additive otherwise: a new lint
+    script, two new test files, three new CI steps. No table is created,
+    altered or read differently by any runtime path.
+receipts:
+  - claim: >-
+      The real removed password the first fresh gate found in PR 7477's
+      pack is a 9-character value shared by exactly 3 rows of the
+      merge-base table, sha1[:8] 0470deac — confirmed against the actual
+      table, not asserted from the gate's report alone.
+    cmd: >-
+      loaded the pre-fix LORI_59 table (commit 38de0a686c) via
+      ast.literal_eval, counted password occurrences, and computed
+      sha1(pwd)[:8] for the one with count==3
+    result: "length=9, count=3, sha1[:8]=0470deac — matches the gate's report"
+    exit: 0
+    ts: "2026-09-27T01:07:14Z"
+    seat: session
+  - claim: >-
+      This branch's full staged working set — 8 files (5 changed/new code
+      and CI files, this pack and its brief, and the pre-existing guard test
+      file) — contains zero occurrences of any of the 105 removed
+      username/password values from the pre-fix table, checked by
+      exact-string containment against each file's whole content, not by
+      hash alone, so a near-match cannot slip through a truncated-hash
+      coincidence. This check explicitly covers the evidence pack itself,
+      which is where PR 7477's leak actually landed.
+    cmd: >-
+      for each of the 105 removed values (57 usernames + 48 distinct
+      passwords, held only in local process memory from the pre-fix blob,
+      never printed), searched the full text of every file in `git diff
+      --name-only origin/main --cached` for that exact substring, compiled
+      as a single regex alternation
+    result: "0 hits across 105 values x 8 files"
+    exit: 0
+    ts: "2026-09-27T02:35:00Z"
+    seat: session
+  - claim: The fixed LORI_59 table holds exactly 59 rows, all 3-element tuples.
+    cmd: >-
+      python3 -c "import ast; ... print(len(data), all(len(r)==3 for r in data))"
+      against apps/backend-rag/scripts/import_lkpm_q1_2026.py
+    result: "records=59, arity_all_3=True"
+    exit: 0
+    ts: "2026-09-27T01:10:41Z"
+    seat: session
+  - claim: >-
+      Only 2 tracked files reference this script by name, and both are
+      non-executing text — unchanged from PR 7477's own measurement.
+    cmd: 'git grep -n "import_lkpm" apps/backend-rag/backend'
+    result: >-
+      apps/backend-rag/backend/db/migrations_v2/108_lkpm_receipts.sql:22
+      (comment, different script) ·
+      apps/backend-rag/backend/tests/services/compliance/test_lkpm_portal_cascade.py:8
+      (docstring). Neither imports or executes this file.
+    exit: 0
+    ts: "2026-09-27T01:10:41Z"
+    seat: session
+  - claim: The rewritten module compiles cleanly.
+    cmd: "python3 -m py_compile apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+    result: "no output, exit 0"
+    exit: 0
+    ts: "2026-09-27T01:10:41Z"
+    seat: session
+  - claim: >-
+      The guard's docstring, the fixed script, and both test files still
+      report clean against catE-sovereignty-lint (lint_ban_prose.py).
+    cmd: "python3 scripts/lint/lint_ban_prose.py scripts/lint_no_inline_credential_tables.py scripts/tests/test_lint_no_inline_credential_tables.py scripts/tests/test_import_lkpm_q1_2026_secrets.py apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+    result: "OK: 4 file(s) scanned (0 out of scope, 0 not on disk), no prose spells a banned shape"
+    exit: 0
+    ts: "2026-09-27T02:30:00Z"
+    seat: session
+  - claim: >-
+      The guard's guilt/innocence pytest corpus still passes in full,
+      unchanged from #7484.
+    cmd: "python3 -m pytest scripts/tests/test_lint_no_inline_credential_tables.py -q"
+    result: "5 passed"
+    exit: 0
+    ts: "2026-09-27T02:20:00Z"
+    seat: session
+  - claim: >-
+      The guard still flags the pre-fix (original incident commit) file at
+      the same credential-row count, and zero on the fixed file, zero
+      elsewhere in the repo.
+    cmd: >-
+      scan_file() against `git show 38de0a686c:apps/.../import_lkpm_q1_2026.py`
+      written to a scratch temp path, against the fixed in-repo file, and a
+      full repo-wide run
+    result: "hits_original=57, hits_fixed=0, repo-wide clean (6873 tracked *.py files)"
+    exit: 0
+    ts: "2026-09-27T02:22:00Z"
+    seat: session
+  - claim: Deterministic gear floor recomputed from this PR's final changed-file list is 3, source path.
+    cmd: >-
+      git diff --name-only origin/main --cached > <scratchpad>/v3-changed-files.txt &&
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <scratchpad>/v3-changed-files.txt
+    result: "floor=3, source=path"
+    exit: 0
+    ts: "2026-09-27T02:38:00Z"
+    seat: session
+  - claim: >-
+      Running the guard's own CLI directly against the fixed file reports
+      clean.
+    cmd: "python3 scripts/lint_no_inline_credential_tables.py --files apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+    result: "clean (1 tracked *.py file(s) scanned)"
+    exit: 0
+    ts: "2026-09-27T02:23:00Z"
+    seat: session
+  - claim: >-
+      R3 cure (rotation-status text): the false phrase gate-7484.md quoted
+      ("the owner rotated them out-of-band" / "has been rotated by the
+      owner") no longer appears anywhere in the script; the corrected
+      phrase ("must be rotated by the owner (pending)") appears exactly
+      twice (docstring + SystemExit message), and both mention the exposure
+      window.
+    cmd: >-
+      grep -c for the old phrase and the new phrase in
+      apps/backend-rag/scripts/import_lkpm_q1_2026.py
+    result: "old phrase: 0 · new phrase: 2 · exposure-window mention: 2"
+    exit: 0
+    ts: "2026-09-27T02:24:00Z"
+    seat: session
+  - claim: >-
+      R3 cure is exercised by a test, not just a grep: the new loader test
+      asserts `SystemExit`'s message contains the corrected phrase and does
+      NOT contain the old one; the sibling test proves the loader still
+      loads correctly from a synthetic file.
+    cmd: "python3 -m pytest scripts/tests/test_import_lkpm_q1_2026_secrets.py::test_load_oss_credentials_missing_file_fails_closed scripts/tests/test_import_lkpm_q1_2026_secrets.py::test_load_oss_credentials_loads_from_synthetic_path -q"
+    result: "2 passed"
+    exit: 0
+    ts: "2026-09-27T02:25:00Z"
+    seat: session
+  - claim: >-
+      R4 cure (per-row log line): the old slicing pattern (`oss_user[:20]`)
+      no longer appears in the script; the new presence-only marker
+      (`OSS=set`) appears exactly once, at the one call site.
+    cmd: >-
+      grep -c for `oss_user\[:20\]` and for `OSS=set` in
+      apps/backend-rag/scripts/import_lkpm_q1_2026.py
+    result: "old pattern: 0 · new marker: 1"
+    exit: 0
+    ts: "2026-09-27T02:26:00Z"
+    seat: session
+  - claim: >-
+      R4's new guilt test empirically reproduces gate-7484.md's own finding
+      (59/59 synthetic usernames leaked) against the PRE-cure code, then
+      confirms 0/59 leak with the cure restored — the test is proven to
+      catch the exact regression it exists to catch, not just to pass by
+      construction. The innocence half confirms the presence marker still
+      fires once per row (59/59) either way.
+    cmd: >-
+      temporarily reverted the R4 line to the pre-cure form, ran
+      `python3 -m pytest scripts/tests/test_import_lkpm_q1_2026_secrets.py -q`,
+      restored the cure, reran the same command
+    result: >-
+      pre-cure: 2 failed (59 leaked; 0/59 marker under the old code path,
+      since the old line never emitted `OSS=set`), 2 passed · post-cure
+      (current head): 4 passed
+    exit: 0
+    ts: "2026-09-27T02:15:00Z"
+    seat: session
+  - claim: The new v3 secrets test file passes in full (all 4 tests).
+    cmd: "python3 -m pytest scripts/tests/test_import_lkpm_q1_2026_secrets.py -q"
+    result: "4 passed"
+    exit: 0
+    ts: "2026-09-27T02:28:00Z"
+    seat: session
+  - claim: >-
+      R4's log-value guilt and presence-marker innocence tests both pass at
+      the current head — this is acceptance criterion 4's exact probe.
+    cmd: "python3 -m pytest scripts/tests/test_import_lkpm_q1_2026_secrets.py::test_process_rows_never_logs_a_credential_value scripts/tests/test_import_lkpm_q1_2026_secrets.py::test_process_rows_logs_presence_marker_once_per_row -q"
+    result: "2 passed"
+    exit: 0
+    ts: "2026-09-27T02:41:00Z"
+    seat: session
+  - claim: >-
+      `.gitignore` is untouched by this PR — the mandate for #7477/#7484
+      both claimed a gitignore-rule commit that never existed; the rule at
+      line 177 (`*credentials*.json`) predates this incident fix entirely
+      (commit 7c1d23a686, 2025-12-19).
+    cmd: 'git diff --stat origin/main --cached -- .gitignore ; sed -n "177p" .gitignore ; git log -1 --format=%H -- .gitignore'
+    result: "empty diff · line 177 = *credentials*.json · last touched 7c1d23a686 (unrelated commit, predates this incident)"
+    exit: 0
+    ts: "2026-09-27T01:05:00Z"
+    seat: session
+  - claim: >-
+      The final diff against origin/main, measured against the merge-base
+      with this pack's own content already staged — so committing this pack
+      changes nothing further about the number it states (the fixed-point
+      trap PR 7477's pack fell into).
+    cmd: 'MB=$(git merge-base origin/main HEAD); git diff --stat "$MB" -- . ; git diff --numstat "$MB" -- .'
+    result: "8 files changed, 1145 insertions(+), 69 deletions(-)"
+    exit: 0
+    ts: "2026-09-27T02:47:00Z"
+    seat: session
+seat_override: >-
+  Gear-3 council_run quorum not met: secret-bearing diff (this PR's deleted
+  lines ARE the leaked credentials) — no external seat may see it. The two
+  fresh gates that reviewed #7477 and #7484 are this PR's second opinion in
+  its place.
+pii_scan: clean
+pii_scan_note: >-
+  This diff's `+` lines introduce zero new PII: the credential removal
+  DELETES 57 username/password pairs and REPLACES one leaked username plus
+  an example password-shaped string with `[REDACTED]` in the archived
+  training doc. The rewritten script's `+` lines retain the 59 PT-company
+  names and numeric company_id values already present in the pre-fix file
+  since 2026-04-07 (business identifiers, carried forward unchanged in
+  content, not introduced by this PR). Neither this pack, brief.yml, nor
+  the PR body quotes any company name, any credential value, or any value
+  matching the removed set's shape — verified by the hash/substring
+  receipts above, which is the discipline PR 7477's own pack failed to
+  apply to its own dissent prose.
+dissent:
+  - seat: fresh gate (gate-7477.md, R1)
+    objection: >-
+      PR 7477's evidence pack (evidence/2026-09/agent-air-m5-backend-rag-oss-creds-removal-0927-0e381f65/pack.yml,
+      a dissent entry describing a "near-miss") re-committed one REAL
+      removed OSS password in cleartext — a 9-character value shared by 3
+      rows of the merge-base table, sha1[:8] 0470deac. The pack had called
+      it "an example value, not a leaked real credential" and attributed it
+      to the archived doc; both claims were false — it was one of the 48
+      real distinct passwords, verified independently by this PR's own
+      hash-comparison receipt above.
+    status: CONFIRMED
+    resolution: >-
+      PR 7477 closed, superseded by PR 7484, superseded in turn by this PR.
+      Every rebuild since (7484, this one) was built on a FRESH origin/main
+      worktree, cherry-picking only the code/lint/doc commits (never the
+      tainted evidence directory), with the pack/brief authored from
+      scratch and the near-miss described by hash and count only (one
+      9-char token, hash 0470deac, removed) — never the value. Before
+      pushing, this PR's entire staged diff was checked for exact-substring
+      containment against all 105 removed username/password values
+      (receipt above): 0 hits.
+  - seat: catE-sovereignty-lint (CI, gate-7477.md, R2)
+    objection: >-
+      scripts/lint_no_inline_credential_tables.py:2,8 spelled the banned
+      `assigned-value` shape (a credential-named variable given `=` and a
+      value) inside its own INCIDENT docstring, while explaining what
+      detect-secrets missed.
+    status: CONFIRMED
+    resolution: >-
+      Reworded to name the shape without writing it, per lint_ban_prose.py's
+      own suggested cure, in PR 7484. Carried unchanged into this PR;
+      re-verified clean against that lint, and the guard's own
+      guilt/innocence corpus and repo-wide scan both still pass unaffected
+      (receipts above).
+  - seat: fresh gate (gate-7477.md R3, recurred uncured at gate-7484.md R3)
+    objection: >-
+      The docstring (SECRET HANDLING paragraph) and the `SystemExit`
+      message in `_load_oss_credentials()` both stated the OSS credential
+      rotation had ALREADY happened ("the owner rotated them out-of-band" /
+      "has been rotated by the owner"), when the brief and every mandate for
+      this incident say rotation is the owner's own pending action, out of
+      scope for this PR. PR 7484 did not cure this — gate-7484.md found the
+      identical false claim still present at its head, unchanged from
+      gate-7477.md's original finding — CONFIRMED twice, both #7477 and
+      #7484 shipped it.
+    status: CONFIRMED
+    resolution: >-
+      Both occurrences rewritten in this PR to "must be rotated by the
+      owner (pending); exposure window 2026-04-07 -> this removal".
+      Verified: the old phrase now has 0 occurrences, the new phrase has 2
+      (receipt above), and the new loader test asserts the exact message
+      content directly rather than relying on a grep alone.
+  - seat: fresh gate (gate-7477.md R4, recurred uncured at gate-7484.md R4)
+    objection: >-
+      `_process_rows()`'s per-row log line built `OSS={oss_user[:20]}...`
+      for every row with credentials — with 49 of 57 real usernames <=20
+      characters, most printed whole. gate-7484.md measured this
+      empirically with a synthetic 59-pair map fed through an asyncpg-stub
+      `_process_rows()` run: 59/59 synthetic usernames landed intact in the
+      log. PR 7484 rewrote `_process_rows()`'s signature and call sites but
+      left this exact line untouched, and neither #7477's nor #7484's test
+      suite ever exercised it (both only tested the unrelated
+      inline-credential-table guard) — CONFIRMED twice, both #7477 and
+      #7484 shipped it.
+    status: CONFIRMED
+    resolution: >-
+      Line rewritten to a presence-only `OSS=set` marker. A new guilt test
+      reproduces the gate's own method (asyncpg stub, fake conn, synthetic
+      59-row map) and was itself verified against a regression: run against
+      the pre-cure line it correctly fails (59/59 leaked); run against the
+      cure it passes (0/59). An innocence test confirms the marker still
+      fires once per credentialed row either way (receipts above).
+  - seat: session (self-review, this build)
+    objection: >-
+      This brief's own predecessors (the #7477 and #7484 briefs) carried
+      three inaccuracies that a fresh gate flagged as non-blocking but
+      real: `appetite.budget` said "unarmed" while the PR was actually
+      armed at open both times; the mission text claimed cherry-picking
+      "the code/gitignore/lint/doc commits" when neither predecessor PR
+      touched `.gitignore` at all (the `*credentials*.json` rule at line
+      177 predates this incident); and the "no plausible-looking synthetic
+      look-alike" constraint contradicted the guard's own guilt fixture
+      (6 well-known public passwords, deliberately look-alike by design).
+    status: CONFIRMED
+    resolution: >-
+      All three corrected directly in this PR's brief.yml rather than
+      repeated: budget states the PR is armed at open and why; the
+      cherry-pick sentence no longer names `.gitignore` (receipt above
+      confirms the file is untouched); the look-alike constraint is
+      reworded to distinguish "value from the removed set" (banned
+      absolutely) from "value matching the removed set's shape" (banned
+      outside disclosed, provenance-stated test fixtures).
+  - seat: session (self-review, mid-task on PR 7477's build)
+    objection: >-
+      Two structural verification commands while grounding PR 7477 printed
+      content that diff's own constraints forbade: a redaction-preview
+      regex that only handled double-quoted strings let 5 already-public
+      company names print in cleartext (the real table used single-quoted
+      output); reading the script's docstring for context printed 7 more
+      already-public company names.
+    status: CONFIRMED
+    resolution: >-
+      Flagged inline in the same turn on PR 7477, not repeated since. Not
+      correctable after the fact (values already in that session's
+      transcript) — carried here as a disclosed limitation of the original
+      build, not reproduced in this pack or in PR 7484's.

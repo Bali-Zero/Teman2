@@ -14,15 +14,31 @@ name: token-lint
 # workflow-injection hygiene — the PR base-ref name never gets shell-expanded
 # directly into a command string (mirrors adversarial-review-gate.yml).
 #
-# NO `paths:` filter, deliberately: this check is meant to be REQUIRED on main
-# branch protection. A path-filtered required check never reports on PRs
-# outside its paths, which leaves them stuck at "Expected — waiting for status"
-# forever (same reasoning as adversarial-review-gate.yml / actionlint.yml). The
-# scanner already handles the no-scoped-changes case (exit 0, clean) in ~5s,
-# so running on every PR blocks nothing innocent.
+# `pull_request` is path-narrowed to the scanner's scope (see `on:`). It carried NO
+# `paths:` filter while this check was meant to be REQUIRED on main branch
+# protection: a path-filtered required check never reports on PRs outside its paths,
+# which leaves them stuck at "Expected — waiting for status" forever (same reasoning
+# as adversarial-review-gate.yml / actionlint.yml). It is not required today, so the
+# filter is back for queue relief; promoting it means removing the filter again. The
+# scanner already handles the no-scoped-changes case (exit 0, clean) in ~5s.
 
 on:
+  # Non-required lint: pull_request starts a run only when the PR touches the scanner's
+  # scope (SCOPED_PREFIXES in scripts/token_lint.py), the scanner or its proof suite. No
+  # merge_group and no workflow_dispatch: the job diffs against `github.base_ref`, which
+  # only exists on pull_request events. scripts/ci/lint_trigger_symmetry.py also forbids
+  # merge_group beside pull_request.paths. A required context needs pull_request unfiltered.
   pull_request:
+    paths:
+      - "apps/mouth/src/app/(workspace)/**"
+      - "apps/mouth/src/app/portal/**"
+      - "scripts/token_lint.py"
+      - "scripts/tests/test_token_lint.py"
+      - "scripts/tests/conftest.py"
+      - ".github/workflows/token-lint.yml"
+      # pytest loads this implicitly for scripts/tests/, even under -c /dev/null
+      # (scripts/tests/conftest.py is listed above).
+      - "scripts/tests/__init__.py"
 
 permissions:
   contents: read

@@ -19,16 +19,32 @@ name: Hook innocence gate (vaccine)
 #     that breaks the matcher/command now fails this gate too)
 #   - scripts/test_guardrails_core_overmatch.py   (guardrails python-c over-match)
 #
-# SENTINEL PATTERN (W69, copied from verify-the-verifiers.yml): NO top-level
-# pull_request `paths:` filter — the workflow ALWAYS triggers on PR so it can be
-# a REQUIRED status check without the pending-forever trap (a paths-filtered
-# required check never reports on a path-miss PR and blocks merge). The
-# relevant-paths decision lives in the "Did hooks change?" step; the work is
-# gated on its output. On a path-miss PR the job ENDS success (sentinel). The
-# push trigger keeps a paths filter (push only fires when work is needed).
+# SENTINEL PATTERN (W69, copied from verify-the-verifiers.yml): the relevant-paths
+# decision lives in the "Did hooks change?" step and the work is gated on its
+# output. `pull_request` carries `paths:` equal to that step's regex (see `on:`),
+# so a PR that touches none of them starts no run at all; the step stays as the
+# defence against an over-match (a run that starts and ends success), and any
+# non-PR event (push, workflow_dispatch) runs the full vaccine. The push trigger
+# keeps its own paths filter (push only fires when work is needed). It first
+# carried no `pull_request` filter so it could be a required status check without
+# the pending-forever trap; a required context needs that unfiltered trigger back.
 
 on:
-  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (same set as the "Did hooks change?" step below). No merge_group:
+  # scripts/ci/lint_trigger_symmetry.py forbids it beside pull_request.paths. A required
+  # context needs pull_request unfiltered again (check_required_workflow_conformance.py).
+  pull_request:
+    paths:
+      # The step's regex has no end anchor (prefix match), so the file entries end in `*`.
+      - "infra/claude-hooks/**"
+      - "scripts/hooks/**"
+      - "scripts/guardrails_static_core.py*"
+      - "scripts/test_guardrails_overmatch.py*"
+      - "scripts/test_guardrails_core_overmatch.py*"
+      - "scripts/guardrails_sync_check.py*"
+      - ".claude/settings.json*"
+      - ".github/workflows/hook-innocence-gate.yml*"
   push:
     branches: [main]
     paths:
@@ -40,6 +56,7 @@ on:
       - "scripts/guardrails_sync_check.py"
       - ".claude/settings.json"
       - ".github/workflows/hook-innocence-gate.yml"
+  workflow_dispatch:
 
 concurrency:
   # Per-PR/per-ref for every author. A shared per-workflow group keyed on

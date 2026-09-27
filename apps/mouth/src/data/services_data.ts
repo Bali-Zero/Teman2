@@ -58,7 +58,9 @@ const SEPARATE_MONETARY_DETAIL =
   /(?:\bIDR\s*\d|\b\d[\d.,]*\s*IDR\b|\bRp\.?\s*\d)/i;
 
 function withoutSeparateMonetaryDetail(value: string | null): value is string {
-  return Boolean(value?.trim()) && !SEPARATE_MONETARY_DETAIL.test(value as string);
+  return (
+    Boolean(value?.trim()) && !SEPARATE_MONETARY_DETAIL.test(value as string)
+  );
 }
 
 const VISA_SERVICE_PACKAGES: ServicePackage[] = VISA_PRICING_CATEGORIES.flatMap(
@@ -66,8 +68,9 @@ const VISA_SERVICE_PACKAGES: ServicePackage[] = VISA_PRICING_CATEGORIES.flatMap(
     getExactPricingSnapshotEntries(category).map((entry) => ({
       name: entry.name,
       description:
-        [entry.description_en, entry.notes].find(withoutSeparateMonetaryDetail) ??
-        `Bali Zero service: ${entry.name}`,
+        [entry.description_en, entry.notes].find(
+          withoutSeparateMonetaryDetail,
+        ) ?? `Bali Zero service: ${entry.name}`,
       price: "Contact",
       features: [entry.duration, entry.validity, entry.notes].filter(
         withoutSeparateMonetaryDetail,
@@ -94,8 +97,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     description:
       "Navigate Indonesia's immigration system with confidence. From short-term visit visas to permanent residency, we handle all visa types with full government compliance and ongoing support.",
     icon: Globe,
-    bgColor: "bg-rose-500/10",
-    iconColor: "text-rose-400",
+    bgColor: "bg-[var(--r19-wash)]",
+    iconColor: "text-[var(--r19-copper)]",
     timeline: "Varies by visa type and sponsor readiness",
     documentsRequired: "Document set varies by pathway",
     validity: "Depends on permit class",
@@ -168,8 +171,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     description:
       "Start your Indonesian business the right way. We handle PT PMA/PMDN formation, business licensing through OSS, special permits like alcohol licenses, and ongoing compliance so you can focus on growth.",
     icon: Building2,
-    bgColor: "bg-orange-500/10",
-    iconColor: "text-orange-400",
+    bgColor: "bg-[var(--r19-wash)]",
+    iconColor: "text-[var(--r19-copper)]",
     timeline: "2-12 weeks",
     documentsRequired: "10-15 docs",
     validity: "Perpetual",
@@ -284,8 +287,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     description:
       "Indonesian tax compliance made simple. From NPWP registration to annual SPT filing, BPJS enrollment to monthly reporting — we handle it all with expert precision.",
     icon: Calculator,
-    bgColor: "bg-amber-500/10",
-    iconColor: "text-amber-400",
+    bgColor: "bg-[var(--r19-wash)]",
+    iconColor: "text-[var(--r19-copper)]",
     timeline: "Ongoing",
     documentsRequired: "Varies",
     validity: "Annual",
@@ -455,8 +458,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     description:
       "Navigate Indonesian property law with confidence. From due diligence to leasehold agreements, building permits to ownership structures — we protect your investment every step of the way.",
     icon: Home,
-    bgColor: "bg-emerald-500/10",
-    iconColor: "text-emerald-400",
+    bgColor: "bg-[var(--r19-wash)]",
+    iconColor: "text-[var(--r19-copper)]",
     timeline: "Depends on transaction type and due diligence scope",
     documentsRequired: "Varies",
     validity: "Per transaction",

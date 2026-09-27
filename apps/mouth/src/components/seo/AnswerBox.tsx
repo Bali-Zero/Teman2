@@ -21,16 +21,16 @@ export function AnswerBox({ children, className = "" }: AnswerBoxProps) {
   return (
     <div
       className={`
-        relative my-6 p-6 rounded-lg border-l-4 border-accent-sand
-        bg-gradient-to-r from-[#D4B483]/10 to-transparent
+        relative my-6 p-6 rounded-[8px] border-l-4 border-[var(--r19-copper)]
+        bg-[var(--r19-wash)]
         ${className}
       `}
       data-answer-capsule="true"
     >
-      <div className="absolute top-2 right-2 text-xs text-accent-sand/60 uppercase tracking-wider font-medium">
+      <div className="absolute top-2 right-2 text-xs text-[var(--r19-copper)] uppercase tracking-wider font-medium">
         Quick Answer
       </div>
-      <div className="text-lg leading-relaxed text-silver font-medium">
+      <div className="text-lg leading-relaxed text-[var(--r19-ink)] font-medium">
         {children}
       </div>
     </div>
@@ -59,25 +59,28 @@ export function KeyTakeaway({
   return (
     <div
       className={`
-        my-6 p-6 rounded-lg bg-[#2A3241]/30 border border-accent-sand/20
+        my-6 p-6 rounded-[8px] bg-[var(--r19-surface)] border border-[var(--r19-line)]
         ${className}
       `}
       data-key-takeaway="true"
     >
-      <h3 className="text-sm uppercase tracking-wider text-accent-sand mb-3 font-semibold">
+      <h3 className="text-sm uppercase tracking-wider text-[var(--r19-copper)] mb-3 font-semibold">
         Key Takeaways
       </h3>
       {hasPoints ? (
         <ul className="space-y-2">
           {points.map((point, index) => (
-            <li key={index} className="flex items-start gap-3 text-silver">
-              <span className="text-accent-sand mt-1">•</span>
+            <li
+              key={index}
+              className="flex items-start gap-3 text-[var(--r19-ink)]"
+            >
+              <span className="text-[var(--r19-copper)] mt-1">•</span>
               <span>{point}</span>
             </li>
           ))}
         </ul>
       ) : (
-        <div className="text-silver">{children}</div>
+        <div className="text-[var(--r19-ink)]">{children}</div>
       )}
     </div>
   );

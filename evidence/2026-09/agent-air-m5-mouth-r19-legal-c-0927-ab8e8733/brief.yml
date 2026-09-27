@@ -1,0 +1,11 @@
+task: >-
+  R19 group C legal: /privacy /terms into the (blog) R19 shell (URL, text, canonical unchanged), /cookies
+  from v2, /v2 legal 308 to them, footers repointed, ligatures off ("20(c)" never "20©").
+lane: mouth/r19-legal
+machine: air-m5
+date: 2026-09-27
+gear: 2
+gear_reason: Floor 2, source size, --no-renames churn < 1828 incl. this brief.
+acceptance:
+  A1: guards pass (routePolicy, footer links, canonical, title, ligatures); tsc exit 0.
+  A2: live /privacy|terms|cookies 200 + r19; /v2 legal 308 to them; footers clean.

@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import logging
 import os
-import subprocess
 
 from mata_garuda.config import TG_BOT_TOKEN_ENV
 from mata_garuda.registry import register_tool
+from mata_garuda.tools.tg_tools import curl_send
 
 logger = logging.getLogger("mata_garuda.tools.tg_public")
 
@@ -71,27 +71,11 @@ def send_tg_public_post(
             "logged instead of sent. Zero must create channel + set env."
         )
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-
-    try:
-        result = subprocess.run(
-            [
-                "curl", "-sL", "-X", "POST", url,
-                "-d", f"chat_id={channel}",
-                "--data-urlencode", f"text={message}",
-                "-d", "parse_mode=Markdown",
-                "-d", "disable_web_page_preview=false",
-                "--connect-timeout", "10",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-        if '"ok":true' in result.stdout:
-            logger.info("[tg-public] Sent to %s: %s", channel, message[:80])
-            return f"[SUCCESS] Posted to public channel {channel}"
-        return f"[ERROR] TG API response: {result.stdout[:200]}"
-    except subprocess.TimeoutExpired:
-        return "[ERROR] TG API timeout"
-    except Exception as e:  # noqa: BLE001
-        return f"[ERROR] TG public send failed: {e}"
+    ok, reason = curl_send(
+        token, channel, message,
+        extra_fields={"parse_mode": "Markdown", "disable_web_page_preview": "false"},
+    )
+    if ok:
+        logger.info("[tg-public] Sent to %s: %s", channel, message[:80])
+        return f"[SUCCESS] Posted to public channel {channel}"
+    return f"[ERROR] TG public send failed: {reason}"

@@ -1,0 +1,31 @@
+task_id: r19-wrapper-token-contract-0927
+gear: 2
+l_level: L2
+gate_class: opus
+lane: docs
+branch: agent/air-m5/docs/r19-wrapper-token-contract-0927
+pii: none
+objective: >-
+  Write the spec the mouth R19 funnel-wrapper lane lacks. PR #7508 took three REWORK rounds on one cause:
+  the paper wrapper re-themes a dark-default app only partially. The spec closes the token contract
+  (R1), makes main's R19 class rules reachable (R2), specifies a guard over the real rendered surface
+  with a runnable reference probe (R3), a contrast census with its own method self-test (R4), the Bites
+  shape (R5) and one wrapper implementation with a serialized rebase order (R6). Round 2 (gate-7539)
+  applies the gate's probe patch so R1.3 and R2.1 are enforced as worded, and ships the R4 census script.
+constraints:
+  - "No product code, no route, no token value changes. #7508 stays suspended and untouched."
+  - The only executable file is scripts/r19_contrast_census.mjs, a QA tool that reads public pages.
+  - No client data. Census ids in R4 are synthetic by rule. The bypass value is read from env, sent only to the candidate origin, never printed.
+  - The probe is embedded in the spec and extracted byte-identically, so the spec is its own source.
+acceptance:
+  - text: The probe extracted from the spec SHALL report 3 undefined, 1 unreached, 32 copied and exit 1 at 94b588cda1, and 37 copied at 0e1f773419.
+    probe: awk extraction from the spec
+  - text: The full cure of 94b588cda1 SHALL exit 0, and each of the five R3.2 mutations SHALL exit 1.
+    probe: probe rerun per case
+  - text: The census SHALL pass its self-test, report the planted regressions as new failures, and report 0 when candidate equals reference.
+    probe: node scripts/r19_contrast_census.mjs
+  - text: Prettier and the docs-sync gate SHALL pass.
+    probe: prettier --check; docs_sync_gate.sh check
+consumer_map:
+  - The v2 wrapper lane, which ports the probe to a vitest guard and ships the single wrapper helper.
+  - The four wave rebases (kbli, oracle, studio, voa), which run the census script and follow R4-R6.

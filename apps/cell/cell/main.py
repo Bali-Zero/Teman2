@@ -31,6 +31,7 @@ from cell.sensors.cron_sensor import CronSensor
 from cell.sensors.database_sensor import DatabaseSensor
 from cell.sensors.error_rate_sensor import ErrorRateSensor
 from cell.utils.organ_emitter import emit_organ_last_seen
+from cell.utils.telegram_redaction import install_telegram_token_redaction
 from cell.sensors.health_sensor import HealthSensor
 from cell.sensors.ollama_sensor import OllamaSensor
 from cell.sensors.qdrant_sensor import QdrantSensor
@@ -51,6 +52,10 @@ logging.basicConfig(
     format="%(asctime)s [CELL] %(levelname)s %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+# Must run AFTER basicConfig: it attaches to the root handler(s) basicConfig
+# just created. httpx logs every request's full URL at INFO, and Telegram's
+# bot token lives in that URL — see cell/utils/telegram_redaction.py.
+install_telegram_token_redaction()
 logger = logging.getLogger("cell")
 
 _shutdown = asyncio.Event()

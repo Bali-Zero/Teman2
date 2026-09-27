@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from eventbus import EventSubscriber, beat, list_all_heartbeats, start_background_beater
+from eventbus.meta_dispatcher import curl_send
 from eventbus.publisher import _client
 
 DB_PATH = Path.home() / "agents/.observatory/trajectories.db"
@@ -31,6 +32,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.FileHandler(LOG_PATH), logging.StreamHandler()],
+    force=True,
 )
 log = logging.getLogger("research-sentinel")
 
@@ -56,23 +58,12 @@ def _record_anomaly(source: str, metric: str, current: float, baseline: float,
 
 
 def _telegram(text: str) -> None:
-    import subprocess
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat = os.environ.get("TELEGRAM_OWNER_CHAT_ID")
     if not token or not chat:
         log.warning("telegram skipped: missing TELEGRAM_*")
         return
-    try:
-        subprocess.run(
-            ["curl", "-sf", "-X", "POST",
-             f"https://api.telegram.org/bot{token}/sendMessage",
-             "-d", f"chat_id={chat}",
-             "-d", f"text={text[:4000]}",
-             "-d", "disable_web_page_preview=true"],
-            capture_output=True, timeout=10,
-        )
-    except Exception as e:
-        log.warning("telegram send failed: %s", e)
+    curl_send(token, chat, text, timeout=10)
 
 
 def _baseline_volume(source: str, days: int = 7) -> tuple[float, int]:

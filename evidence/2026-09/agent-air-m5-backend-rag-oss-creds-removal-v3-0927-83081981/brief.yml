@@ -1,0 +1,165 @@
+gear: 3
+gear_reason: >-
+  Floor measured on the changed-file list (`evidence_pack_lint.py --print-floor`,
+  result 3, source `path`): `apps/backend-rag/scripts/import_lkpm_q1_2026.py` is
+  hot-zone by path regardless of diff size. Judgement agrees independently:
+  this PR removes a live credential-exposure incident from the public repo's
+  tip, on a hot-zone path where a merge is itself the Fly deploy of
+  nuzantara-rag (memory
+  discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01) — even
+  though the touched script is not imported by the runtime.
+mission: >-
+  v3 of the incident fix, superseding PR #7484 (itself superseding #7477).
+  #7477's own evidence pack (authored by this same lane) re-committed one
+  REAL removed OSS password in cleartext inside its dissent prose — caught by
+  a fresh gate, not by this lane. #7484 rebuilt cleanly on that front (0
+  credential literal in its pack) but a second fresh gate (gate-7484.md)
+  found two of #7477's original four blockers still uncured at its head: the
+  docstring and the SystemExit message both asserted the OSS credential
+  rotation had ALREADY happened, when it is still pending on the owner; and
+  the per-row log line still printed the OSS username whole (measured
+  59/59 on a synthetic map). This PR rebuilds on a clean origin/main,
+  cherry-picking only the code/lint/doc commits from #7484 (never the
+  evidence directory), cures both, and adds the two guilt+innocence tests
+  that should have covered them the first time.
+objective: >-
+  Same functional fix as #7477/#7484: (1) `LORI_59` rewritten from a
+  `list[tuple[int, str, int | None, str | None, str | None]]` of 59 rows to
+  `list[tuple[int, str, int | None]]` — pdf_row, pdf_name, company_id only.
+  (2) `_load_oss_credentials()` reads an untracked, gitignored local file at
+  runtime, fails closed (no fallback) when absent. (3) The pre-fix file
+  remains quarantined on Pro from the #7477 build (sha256-verified, mode
+  0600/0700 — not re-verified in this PR since the source file did not
+  change). (4) One leaked username and one password-shaped example string
+  in `docs/archive/2026-07-orphans/team-guides/lkpm-nlm-training-source.md:49`
+  redacted. (5) `scripts/lint_no_inline_credential_tables.py` — the guard for
+  the exact shape detect-secrets missed — with a guilt/innocence pytest
+  corpus, wired into `.github/workflows/security.yml`. (6) that guard's own
+  INCIDENT docstring reworded so it no longer spells the `assigned-value`
+  shape `scripts/lint/lint_ban_prose.py` (catE-sovereignty-lint) itself
+  forbids writing out — it names the shape instead. NEW in v3, curing
+  gate-7484.md's R3 and R4: (7) the docstring (line ~11) and the
+  `SystemExit` message in `_load_oss_credentials()` (line ~80) both rewritten
+  from "burned; the owner rotated them out-of-band" / "has been rotated by
+  the owner" to "must be rotated by the owner (pending); exposure window
+  2026-04-07 -> this removal" — the rotation has NOT happened; asserting
+  otherwise would let a pending, owner-only action be read as closed. (8)
+  `_process_rows()`'s per-row log line changed from
+  `OSS={oss_user[:20]}... / pwd=***` (username printed whole for 49/57 real
+  usernames, all <=20 chars) to a presence-only `OSS=set` marker. (9) new
+  `scripts/tests/test_import_lkpm_q1_2026_secrets.py`: a GUILT test that
+  feeds a synthetic 59-row credential map through `_process_rows()` (asyncpg
+  stub, fake conn — mirrors gate-7484.md's own empirical method) and fails
+  if any synthetic username/password reaches a log record; an INNOCENCE test
+  that the `OSS=set` marker still appears once per row; and two tests that
+  call `_load_oss_credentials()` directly (missing file -> `SystemExit` with
+  the corrected message; synthetic file present -> loads correctly) — the
+  probe gate-7477.md and gate-7484.md both flagged as missing, since the
+  existing guard suite never calls the loader.
+scope:
+  - >-
+    apps/backend-rag/scripts/import_lkpm_q1_2026.py (credential table
+    stripped to 3-tuples; `_load_oss_credentials()` added; two call sites of
+    `_process_rows` updated to thread the loaded map through; v3 changes —
+    docstring and `SystemExit` message corrected to "pending" rotation,
+    per-row log marker changed to presence-only)
+  - docs/archive/2026-07-orphans/team-guides/lkpm-nlm-training-source.md
+    (line 49 redacted)
+  - scripts/lint_no_inline_credential_tables.py (new guard; docstring
+    reworded in a follow-up commit to stop tripping catE-sovereignty-lint)
+  - scripts/tests/test_lint_no_inline_credential_tables.py (new
+    guilt/innocence corpus, 5 tests)
+  - >-
+    scripts/tests/test_import_lkpm_q1_2026_secrets.py (NEW in v3 — 4 tests,
+    loader guilt+innocence plus log-value guilt+innocence)
+  - >-
+    .github/workflows/security.yml (three steps next to the existing
+    detect-secrets steps — the two from #7477/#7484 plus the new v3 test)
+constraints:
+  - >-
+    No value from the removed set, and no value that matches the removed
+    set's shape, may appear in this PR's evidence pack, brief, or PR body —
+    only counts, file:line, and hashes. Test fixtures are the sanctioned
+    exception to the second half — `scripts/tests/test_lint_no_inline_credential_tables.py:35-40`'s
+    guilt fixture uses 6 well-known PUBLIC passwords (xkcd/famous-meme
+    strings — the kind that appear in "worst passwords of the year" lists),
+    0 of which are in the removed set; they exist to prove the guard catches
+    the SHAPE (tuple ending in two strings, next to a "password" mention),
+    not to describe a real credential. This PR's own new test file
+    (`test_import_lkpm_q1_2026_secrets.py`) uses a different, deliberately
+    non-plausible synthetic shape (`synth-user-NN` / `synth-pass-NN`) for
+    the same reason. This is the constraint PR 7477's own pack violated by
+    re-committing a real removed password in its dissent prose; this pack
+    is checked against every one of the 105 removed username/password
+    values (57 usernames + 48 distinct passwords, hash-compared, never
+    printed) before pushing.
+  - No client/company name from the incident file may be quoted in this
+    pack, brief, or PR body.
+  - No external seat (codex/kimi/gemini/qwen/agy) may see this diff — its
+    deleted lines ARE the secrets.
+  - The new guard must not false-positive on any other tracked file, and
+    must not itself trip `lint_ban_prose.py` (catE-sovereignty-lint) —
+    verified empirically, not asserted.
+  - The command `git grep -n "import_lkpm" apps/backend-rag/backend` must
+    stay at its pre-fix count (2, both non-executing text).
+  - Rotating the burned credentials on the OSS portal is the owner's
+    action, explicitly out of scope for this PR. No artefact (code,
+    docstring, message, brief, pack, PR body) may state it has already
+    happened.
+acceptance:
+  - text: >-
+      The fixed script's `LORI_59` table SHALL contain zero password-shaped
+      trailing-string tuples WHEN scanned by the new guard.
+    probe: "python3 scripts/lint_no_inline_credential_tables.py --files apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+  - text: >-
+      The guard SHALL report clean WHEN scanned by lint_ban_prose.py
+      (catE-sovereignty-lint), and SHALL still flag zero false positives
+      across every other tracked *.py file in the repo.
+    probe: "python3 scripts/lint/lint_ban_prose.py scripts/lint_no_inline_credential_tables.py scripts/tests/test_lint_no_inline_credential_tables.py scripts/tests/test_import_lkpm_q1_2026_secrets.py apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+  - text: >-
+      `_load_oss_credentials()` SHALL raise `SystemExit` WHEN the local
+      credentials file is absent, with a message that states the rotation
+      is PENDING (never "already rotated"), and SHALL return the correct
+      mapping WHEN a synthetic credentials file is present. This replaces
+      the v2/v1 probe, which pointed at the guard's own pytest suite — a
+      suite that never calls this loader (gate-7477.md and gate-7484.md
+      both flagged the mismatch).
+    probe: "python3 -m pytest scripts/tests/test_import_lkpm_q1_2026_secrets.py::test_load_oss_credentials_missing_file_fails_closed scripts/tests/test_import_lkpm_q1_2026_secrets.py::test_load_oss_credentials_loads_from_synthetic_path -q"
+  - text: >-
+      `_process_rows()`'s per-row log line SHALL NOT contain any OSS
+      credential value, WHILE still carrying a presence marker once per row
+      that has credentials. NEW in v3 — gate-7484.md measured the v2 code at
+      59/59 usernames leaked before this test existed.
+    probe: "python3 -m pytest scripts/tests/test_import_lkpm_q1_2026_secrets.py::test_process_rows_never_logs_a_credential_value scripts/tests/test_import_lkpm_q1_2026_secrets.py::test_process_rows_logs_presence_marker_once_per_row -q"
+  - text: >-
+      No file in this PR's diff SHALL contain any of the 105 removed
+      username/password values WHERE hash-compared against the merge-base
+      blob.
+    probe: "searched the full text of every file in `git diff --name-only origin/main --cached` for that exact substring"
+  - text: >-
+      The rewritten module SHALL import cleanly WHEN loaded directly.
+    probe: "python3 -m py_compile apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+consumer_map:
+  - >-
+    Every future clone/pull of origin/main: the credential table is gone
+    from the tip the moment this merges.
+  - >-
+    PR #7484 (superseded by this PR): left open for the dispatching lead to
+    close and delete its branch, per instruction — this build does not
+    touch it.
+  - >-
+    `.github/workflows/security.yml`'s existing secret-scan job: gains a
+    third step in this PR (on top of the two from #7477/#7484), runs on the
+    first push/PR after merge.
+appetite:
+  budget: >-
+    1 PR. Armed at PR-open, not "unarmed" — floor 3 = gear 3 declared, and
+    the harness's gear-3 floor requires a signed verdict before the merge
+    queue takes it regardless of arm state; #7477 and #7484 both stated
+    "unarmed" while actually armed, which this brief corrects rather than
+    repeats.
+  stop_loss: >-
+    This is the third round on the same underlying incident (v1 #7477, v2
+    #7484, this v3) — Builder Contract 1's three-reds-same-cause ceiling.
+    Every item a fresh gate found on v1 or v2 is closed in this PR with a
+    measurement in the body; there is no fourth round.

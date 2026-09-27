@@ -1,15 +1,15 @@
 """PII log hygiene for CompletedProcessService._send_with_brevo_fallback —
-C2 (PR #7385 gate follow-up, deadline 2026-10-03), sibling of
+C2 (PR #7385 gate follow-up), sibling of
 test_waiting_documents_service_pii_logs.py. See that file's module
 docstring for the full context (PR #7438's gate found this file's copy of
 the same Brevo-then-Zoho pattern still open under C4).
 
-This file's `except Exception as brevo_error:` block had an EXTRA defect
-its sibling did not: it logged the raw exception OBJECT directly (`%s` on
-`brevo_error`, i.e. `str(brevo_error)`) BEFORE `format_send_error` even
-ran, so there was no formatted/scrubbed text to log in the first place —
-covered by `test_brevo_failure_then_zoho_success_never_logs_the_address_or_exception`
-below with an exception whose `str()` itself carries the address.
+UPDATED 2026-09-27: the Zoho fallback these tests originally exercised was
+removed (it called `ZohoEmailService.send_email` with kwargs that never
+matched its real signature, so it never worked — see
+`_send_with_brevo_fallback`'s own docstring). There is now exactly one
+failure path: Brevo fails -> log (redacted) -> alert -> re-raise. The two
+former Zoho-branch guilt tests collapse into one.
 """
 
 from __future__ import annotations
@@ -28,12 +28,8 @@ _ADDR = "completed.process.probe@example.com"
 
 def _make_service() -> CompletedProcessService:
     pool = MagicMock()
-    with (
-        patch("backend.services.crm.completed_process_service.ZohoEmailService"),
-        patch("backend.services.crm.completed_process_service.DriveFolderService"),
-    ):
+    with patch("backend.services.crm.completed_process_service.DriveFolderService"):
         svc = CompletedProcessService(pool)
-    svc.zoho_email_service = AsyncMock()
     return svc
 
 
@@ -82,32 +78,15 @@ async def test_brevo_success_log_does_not_leak_the_recipient(caplog):
 
 
 @pytest.mark.asyncio
-async def test_brevo_failure_then_zoho_success_never_logs_the_address_or_exception(caplog):
-    """The raw-exception-object defect this file had (see module
-    docstring): the exception's `str()` itself carries the address, and
-    the old code logged it before any formatting/scrubbing ran."""
+async def test_brevo_failure_never_logs_the_address_or_exception(caplog):
+    """The raw-exception-object defect this file had (see the sibling
+    module's docstring): the exception's `str()` itself carries the
+    address, and the old code logged it before any formatting/scrubbing
+    ran. There is no Zoho attempt anymore — a Brevo failure re-raises
+    directly after logging + alerting."""
     svc = _make_service()
     client = AsyncMock()
     client.post = AsyncMock(side_effect=RuntimeError(f"550 mailbox {_ADDR} rejected"))
-    svc.zoho_email_service.send_email = AsyncMock(return_value=None)
-    p1, p2, p3, p4 = _patch_email_infra(client)
-    with p1, p2, p3, p4, caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
-        await svc._send_with_brevo_fallback(_ADDR, "hi", "<p>x</p>", email_type="welcome")
-    joined = " ".join(r.getMessage() for r in caplog.records)
-    assert _ADDR not in joined
-    assert "completed.process.probe" not in joined
-    assert redact_identifier_for_log(_ADDR) in joined
-    assert "Brevo" in joined and "Zoho" in joined
-
-
-@pytest.mark.asyncio
-async def test_both_providers_failing_never_logs_the_address(caplog):
-    svc = _make_service()
-    client = AsyncMock()
-    client.post = AsyncMock(side_effect=RuntimeError(f"550 mailbox {_ADDR} rejected"))
-    svc.zoho_email_service.send_email = AsyncMock(
-        side_effect=RuntimeError(f"SMTP 421 {_ADDR} greylisted")
-    )
     p1, p2, p3, p4 = _patch_email_infra(client)
     with (
         p1,
@@ -122,8 +101,8 @@ async def test_both_providers_failing_never_logs_the_address(caplog):
     assert _ADDR not in joined
     assert "completed.process.probe" not in joined
     assert redact_identifier_for_log(_ADDR) in joined
-    assert "Both Brevo and Zoho failed" in joined
-    assert "greylisted" in joined  # non-PII diagnostic text survives
+    assert "Brevo" in joined
+    assert "no fallback provider" in joined
 
 
 # --- INNOCENCE: non-PII diagnostic content survives ---
@@ -134,9 +113,80 @@ async def test_innocence_brevo_failure_keeps_the_non_pii_diagnostic_text(caplog)
     svc = _make_service()
     client = AsyncMock()
     client.post = AsyncMock(side_effect=RuntimeError("connection reset by peer"))
-    svc.zoho_email_service.send_email = AsyncMock(return_value=None)
+    p1, p2, p3, p4 = _patch_email_infra(client)
+    with (
+        p1,
+        p2,
+        p3,
+        p4,
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+        pytest.raises(RuntimeError),
+    ):
+        await svc._send_with_brevo_fallback(_ADDR, "hi", "<p>x</p>", email_type="welcome")
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert "connection reset by peer" in joined
+
+
+# --- CALLER (trigger_on_completed) GUILT + INNOCENCE ---
+
+
+_PRACTICE_NO_TEAM_LEADER = {"client_id": 1, "assigned_to": None, "created_by": None}
+
+
+def _make_caller_service(client_data: dict, practice_data: dict) -> CompletedProcessService:
+    svc = _make_service()
+    svc._fetch_practice_data = AsyncMock(return_value=practice_data)
+    svc._fetch_client_data = AsyncMock(return_value=client_data)
+    svc._log_activity = AsyncMock()
+    return svc
+
+
+@pytest.mark.asyncio
+async def test_send_completion_email_success_log_does_not_leak_the_client_address(caplog):
+    """The success log this C2 fix targets (~L296) lives INSIDE
+    _send_completion_email, not in the trigger_on_completed caller — it
+    fires right after _send_with_brevo_fallback returns, so it needs the
+    same email-infra patching as that method's own tests."""
+    svc = _make_service()
+    client = AsyncMock()
+    client.post = AsyncMock(return_value=_FakeResponse())
     p1, p2, p3, p4 = _patch_email_infra(client)
     with p1, p2, p3, p4, caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
-        await svc._send_with_brevo_fallback(_ADDR, "hi", "<p>x</p>", email_type="welcome")
+        await svc._send_completion_email(
+            client_email=_ADDR,
+            client_name="Alice",
+            practice_data={"id": 1, "client_id": 1},
+            documents=[],
+        )
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert _ADDR not in joined
+    assert "completed.process.probe" not in joined
+    assert redact_identifier_for_log(_ADDR) in joined
+    assert "Completion email sent to client" in joined
+
+
+@pytest.mark.asyncio
+async def test_caller_except_log_does_not_leak_the_address_or_raw_exception_text(caplog):
+    client_data = {"id": 1, "email": _ADDR, "full_name": "Alice"}
+    svc = _make_caller_service(client_data, _PRACTICE_NO_TEAM_LEADER)
+    svc._send_completion_email = AsyncMock(
+        side_effect=RuntimeError(f"550 mailbox {_ADDR} rejected")
+    )
+    with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+        result = await svc.trigger_on_completed(practice_id=99, triggered_by="staff@balizero.com")
+    assert result["client_notified"] is False
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert _ADDR not in joined
+    assert "completed.process.probe" not in joined
+    assert "rejected" in joined  # non-PII diagnostic text survives
+
+
+@pytest.mark.asyncio
+async def test_caller_innocence_keeps_the_non_pii_exception_text(caplog):
+    client_data = {"id": 1, "email": _ADDR, "full_name": "Alice"}
+    svc = _make_caller_service(client_data, _PRACTICE_NO_TEAM_LEADER)
+    svc._send_completion_email = AsyncMock(side_effect=RuntimeError("connection reset by peer"))
+    with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+        await svc.trigger_on_completed(practice_id=99, triggered_by="staff@balizero.com")
     joined = " ".join(r.getMessage() for r in caplog.records)
     assert "connection reset by peer" in joined

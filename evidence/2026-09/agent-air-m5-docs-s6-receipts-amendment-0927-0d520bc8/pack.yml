@@ -1,0 +1,533 @@
+brief_ref: evidence/brief.yml
+council_run: "journal.jsonl"
+plan_ref: >
+  Mandate from the team lead (SendMessage, 2026-09-27): amend S6 so the two failure modes that
+  suspended the PII-removal lane cannot recur (R6.7 receipt generation, R6.8 measured descriptor
+  non-isolation), ship the generator in the same PR, prove it now against the head of PR 7516 and
+  origin/main. Branch agent/air-m5/docs/s6-receipts-amendment-0927, created by the broker from
+  origin/main 2d1335b3f2 (the merge of PR 7510). Merged with origin/main fda25b4399 at 263c84ddbd
+  to resolve one conflict with PR 7489 in guard-conformance.yml's relevance regex.
+lanes:
+  - lane: s6-receipts-build
+    role: build
+    seat:
+      "claude-opus-5-5 (conducting session: spec text, generator, corpus, workflow step, this
+      pack; no reviewing seat has write access to this tree)"
+  - lane: s6-receipts-council-kimi
+    role: review
+    seat: "kimi-code/k3 (independent review of the content diff, see dissent)"
+  - lane: s6-receipts-council-qwen
+    role: review
+    seat: "tp1-qwen3.8-max (independent review of the content diff, see dissent)"
+
+what_changed: |
+  Spec S6 gains R6.7 and R6.8, an Evidence paragraph for them, and Enforcement/Migration lines
+  (docs/specs/2026-09-27-evidence-pack-fixed-point.md). The other files carry the consumer the
+  rules name:
+
+  - scripts/evidence/pii_receipt.py, stdlib only. `tree` counts fixed-string patterns over the
+    tracked files at a rev (optional private per-category map, optional --path restriction for the
+    R6.5 probe). `r66` prints the R6.6 line over brief, pack and body file, with hedge hits listed
+    by line and an optional id check. `descriptor` evaluates an ordered predicate over tracked
+    text files and exits 3 when it isolates or does not cover its category. `--check-in <file>`
+    re-runs and diffs against the pasted block. Output is counts and keyed hashes only. Private
+    inputs and --path values appear in argv as @hmac tokens under a 0600 lane salt, because a
+    plain hash of a path or of a one-line category map is reversed by hashing every tracked path.
+    Patterns reach git grep on stdin.
+  - The block has no commit sha. Pasting it into pack.yml moves HEAD, so a sha would make every
+    honest re-run at the final head differ. tree_digest (mode, blob and path of every tracked file
+    outside evidence/) replaces it: the `tree --rev HEAD` block below was produced before this pack was
+    committed and still matches at the final head.
+  - scripts/tests/test_pii_receipt.py (guilt and innocence per rule, fixtures assembled at
+    runtime, no name-shaped literal in the tree) plus `--selftest`.
+  - .github/workflows/guard-conformance.yml runs both on any PR that touches either file, beside
+    the evidence_pack_lint and bites_parse corpora it already executes.
+
+proof: |
+  Every PII count in this pack is a verbatim block under `receipts`. Prose names block keys only.
+
+  Bites, measured now against the lane that suspended. The private pattern file holds the pilot
+  name set, rebuilt inside one Python process from the merge-base blob of #7516's pilot script.
+  Each line was verified against the name hashes in the private gate reports, and nothing was
+  printed. The file is 0600 in the lane's 0700 quarantine dir; its HMAC token, keyed by the lane
+  salt, is in every block's argv — never a plain sha256, which a one-line file would make
+  reversible by hashing every tracked path.
+
+  - At #7516's head edec8a21 (detached worktree, and again from this worktree: byte-identical):
+    `files`, `hits` and `patterns_present` equal what gate-7516's re-gate section measured with
+    one `git grep -n -F` per name. That gate called its per-name line total "occorrenze". The
+    block's `occurrences` key is higher because a matching line can carry the same name twice.
+    `lines_any` is lower because a line can carry two different names. The three metrics are
+    now named separately in R6.7, so they cannot be confused again.
+  - At origin/main 2d1335b3f2, the branch base, the counts are higher: #7516 is unmerged, so
+    main still carries every file #7516 deletes or redacts.
+  - At origin/main fda25b4399, the merge-base after the conflict merge, the counts are lower
+    than at 2d1335b3f2: #7490 removed residual client data outside the deep-audit lane in
+    between. #7516 is still unmerged.
+  - At this PR's head the counts equal those at the merge-base fda25b4399, so this diff adds no
+    pilot name anywhere. `scope_files` and tree_digest differ because this diff adds
+    non-evidence files.
+  - R6.5 probe, the #7516 redacted-path set, run at the merge-base and at #7516's head: `files`
+    goes from non-zero to zero. The shape a no-op redaction cannot pass.
+  - R6.8 innocence on the real tree, at #7516's head: a class-only predicate (a non-test file
+    carrying identity-document tokens) matches many files and covers category (b). A real-data
+    GUILT run is deliberately not pasted, because its predicate would republish the locator
+    gate-7516 C1 blocked. The guilt arms are synthetic (selftest, pytest). The private
+    reproduction of that gate's conjunction exits 3 ISOLATING and is recorded only in the
+    private report.
+  - The first descriptor attempt used `\bpassport\b` and returned NOT-COVERING: identifiers such
+    as `passport_…` fail a word boundary. That is R6.8 working as designed, since a predicate
+    the described file fails measures nothing. The pasted block uses the corrected predicate.
+  - Council: kimi-code/k3 and tp1-qwen3.8-max both returned NO-GO on the first content commit.
+    Round 2 on the fix diff gave GO from qwen and NO-GO from kimi, whose last BLOCKER was the
+    plain sha256 still carried by the r66 line. Round 3 gave GO from kimi with six MINOR items,
+    five of them fixed. Every CONFIRMED finding is fixed in 2859645afb, 6deebd6d5b or 3c335721a2,
+    before any block was published. Every retraction or decline carries its reason in `dissent`.
+  - After the council, 954e4b4055 folds in the lead's Pyright hint: explicit raises on the
+    Optionals Pyright flags, a NamedTuple fixture, two never-read test names removed. Behaviour
+    is unchanged: the same 19 mutations turn the same number of arms red, and every block was
+    regenerated with the new script blob. Only tree_digest at HEAD moved; every count is equal.
+
+dissent:
+  - seat: kimi-code/k3
+    objection:
+      "BLOCKER: --check-in discards the mode's own exit code, so a pasted ISOLATING or
+      NOT-COVERING descriptor block passes R6.8's acceptance command with exit 0."
+    status: CONFIRMED
+    resolution:
+      "main now returns the check-in result or, when the paste matches, the mode's own code.
+      New guilt arm in the selftest and in pytest: a byte-identical paste of an ISOLATING block
+      still exits 3."
+  - seat: kimi-code/k3
+    objection:
+      "BLOCKER: --path values are echoed in clear, so an R6.5 probe scoped to one file publishes
+      that path beside its count. Fix proposed: echo @sha256 of the path."
+    status: CONFIRMED
+    resolution:
+      "Fixed more strictly than proposed. A plain sha256 of a path is reversed by hashing every
+      tracked path, and the same holds for a one-line category map. Every private input and every
+      --path value is now @hmac:<16 hex>, HMAC-SHA256 keyed by a lane salt the script creates
+      0600 beside the private files. Tests assert that the path is absent, that the plain sha256
+      is absent, and that the salt mode is 0600. Found before any block was published: the
+      blocks in this pack are the post-fix ones."
+  - seat: kimi-code/k3
+    objection:
+      "MAJOR: r66 echoes BRIEF/BODY placeholders, so a stale block survives an edit of the brief
+      or body that leaves the counts unchanged."
+    status: CONFIRMED
+    resolution:
+      "The brief and the body file are bound as @text:<16 hex>, a sha256 with CRLF and trailing
+      newlines normalised so a body read back from GitHub hashes the same. The pack stays exempt
+      because it holds the block. New test: an edit of the brief with the same counts gives
+      NO-BLOCK (exit 4), and a CRLF-only body change still matches."
+  - seat: kimi-code/k3
+    objection:
+      "MAJOR: the descriptor universe keeps binary blobs when the predicate has no text term, so
+      a path-only predicate can pass on binaries alone."
+    status: CONFIRMED
+    resolution:
+      "Every blob that passes at least one term is read. A binary one leaves the universe and is
+      counted in a new binary_skipped field. Tests cover the path-only case and the text-term
+      case."
+  - seat: kimi-code/k3
+    objection:
+      "MINOR: blob= is computed from the working-tree bytes, not the committed blob at the
+      measured rev."
+    status: RETRACTED
+    resolution:
+      "Declined by the author as intended design; the seat did not retract it itself. blob= identifies the script that RAN, not the rev it measured. A builder running
+      an uncommitted script gets a blob the gate's committed script cannot reproduce, which is a
+      red, as it should be. The docstring and R6.7 now state that a changed script invalidates
+      every earlier block."
+  - seat: kimi-code/k3
+    objection:
+      "MINOR: tree metrics count binary blobs, while git grep without -a reports them as 'Binary
+      file matches' with no line counts."
+    status: CONFIRMED
+    resolution:
+      "Binary blobs are now counted only in binary_files and never in files, hits, lines_any or
+      occurrences."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "BLOCKER: git grep would read the positional rev as a pathspec, so a non-HEAD rev greps the
+      working tree."
+    status: RETRACTED
+    resolution:
+      "Refuted by the author with a measurement; the seat did not retract it itself. Measured false. git grep resolves a trailing argument that names a tree-ish as a tree. The
+      pack's own block at edec8a21 differs from its block at origin/main. The pytest arm
+      test_redaction_probe_discriminates_a_no_op_redaction also reads files: 1 at an explicit
+      older sha and files: 0 at HEAD. Hardened anyway with an explicit `--` after the rev."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "BLOCKER: descriptor terms are silently reordered with path terms first, so the
+      progressive_files diagnostic is wrong."
+    status: RETRACTED
+    resolution:
+      "Refuted by the author with a measurement; the seat did not retract it itself. Misread. The first loop stops at the FIRST text term, and the second resumes from that
+      index in the original order. Depth is the longest satisfied prefix as written. New test
+      test_descriptor_terms_are_evaluated_in_the_order_given: --path then --text gives [2, 1],
+      and --text then --path gives [1, 1]."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "BLOCKER: --ignore-case folds with Python's ASCII lower, and git -i folds by locale, so
+      non-ASCII patterns can count differently."
+    status: CONFIRMED
+    resolution:
+      "Only as MINOR: git is a prefilter and Python does the counting, so builder and gate agree.
+      Still, --ignore-case now refuses a non-ASCII pattern (exit 2), and a test covers it."
+  - seat: tp1-qwen3.8-max
+    objection: "MAJOR: a binary blob skipped at a text term is indistinguishable from a file that fails it."
+    status: CONFIRMED
+    resolution: "binary_skipped is reported; see the kimi-code/k3 entry on binary blobs."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "MAJOR: the digest covers only the --path-scoped subset, contrary to the spec's 'every
+      tracked file outside evidence/'."
+    status: CONFIRMED
+    resolution:
+      "Renamed tree_digest and computed over the whole tree at --rev outside evidence/, whatever
+      --path scopes the count to. A new test shows a change outside the scope moves the block."
+  - seat: tp1-qwen3.8-max
+    objection: "MAJOR: --repo is not echoed, so two repos could match the same block."
+    status: RETRACTED
+    resolution:
+      "Refuted by the author with a measurement; the seat did not retract it itself. The block binds CONTENT, not location. Two checkouts with different trees differ in
+      tree_digest, and two with the same tree SHOULD produce the same block. That is what made
+      the detached-worktree run and this worktree's run byte-identical."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "MINOR (four items): git init without the -c overrides; bare-CR pattern files; the spec is
+      silent on script changes invalidating blocks; OSError text can carry an input path."
+    status: CONFIRMED
+    resolution:
+      "git init now runs with -c init.templateDir=. Pattern files were first split with splitlines, then round 2 restored grep -f semantics (see below).
+      R6.7 states that a changed script invalidates earlier blocks. An unreadable input now
+      reports only the exception type."
+  - seat: kimi-code/k3
+    objection:
+      "ROUND 2, BLOCKER: the r66 line still commits a plain sha256 prefix of the residual list, a
+      verification oracle when the list is short."
+    status: CONFIRMED
+    resolution:
+      "The r66 line now carries hmac=<12 hex> under the lane salt. R6.6's pasted form is amended
+      in the spec, and the gate verifies it through pii_receipt.py r66 --check-in. A test asserts
+      that the plain sha256 prefix is absent from the block."
+  - seat: kimi-code/k3
+    objection: "ROUND 2, MAJOR: the salt makes blocks host-dependent, and the spec does not say so."
+    status: CONFIRMED
+    resolution:
+      "R6.7 and the docstring state that the salt is lane state, restored together with the
+      private files, and that rotating it invalidates earlier blocks."
+  - seat: kimi-code/k3
+    objection: "ROUND 2, MAJOR: the descriptor block may still digest only a path-scoped subset."
+    status: RETRACTED
+    resolution:
+      "Refuted by the author with a measurement; the seat did not retract it itself.
+      cmd_descriptor builds entries = ls_tree(repo, rev), the whole tree, because its --path
+      flags are predicate terms and not a scope. New test
+      test_descriptor_digest_covers_files_outside_the_predicate edits a non-.py file under a
+      .py predicate and shows that the block moves."
+  - seat: kimi-code/k3
+    objection: "ROUND 2, MINOR: a binary blob's matched patterns were dropped from patterns_present."
+    status: CONFIRMED
+    resolution:
+      "A binary blob holding a pattern now counts toward patterns_present and binary_files,
+      and never toward the line metrics. The test places a name only in a binary blob."
+  - seat: kimi-code/k3
+    objection:
+      "ROUND 2, MINOR: splitlines splits on bytes git grep -f does not, including \\x0b, \\x0c
+      and \\x85."
+    status: CONFIRMED
+    resolution:
+      "Confirmed in part. bytes.splitlines splits only on LF, CR and CRLF; the extra separators
+      belong to str.splitlines. A bare CR is a real divergence, though, so the split is back to
+      LF with one trailing CR stripped, like grep -f on LF input (round 3 corrected the wording). The first version of the test
+      could not tell the two apart: its mutation survived. The test now uses a bare CR, and the
+      mutation is caught."
+  - seat: kimi-code/k3
+    objection: "ROUND 2, MINOR: a pre-existing salt is used without a permission check."
+    status: CONFIRMED
+    resolution: "A salt with mode & 0o077 is refused with exit 2 and a chmod hint. Test added."
+  - seat: kimi-code/k3
+    objection: "ROUND 2, MINOR: the salt is chosen per file, so two modes can key one file differently."
+    status: CONFIRMED
+    resolution:
+      "There is one salt per invocation. Every private input must sit in the same lane
+      directory, or the invocation exits 2. Test added."
+  - seat: kimi-code/k3
+    objection: "ROUND 3, MINOR: only the salt FILE mode is enforced; a readable lane directory passes."
+    status: CONFIRMED
+    resolution:
+      "The lane directory must also be private: a group/world-accessible dir exits 2 with a
+      chmod 700 hint. Test added, and the mutation is caught."
+  - seat: kimi-code/k3
+    objection:
+      "ROUND 3, MINOR: R6.6 names raw grep as the builder command, but only pii_receipt.py can
+      compute the hmac token the body must paste."
+    status: CONFIRMED
+    resolution:
+      "R6.6 now says the token is emitted by pii_receipt.py r66, and that the grep commands
+      define the counts and serve as their manual cross-check."
+  - seat: kimi-code/k3
+    objection: "ROUND 3, MINOR: no test shows that an evidence/-only edit leaves a descriptor block unchanged."
+    status: CONFIRMED
+    resolution: "Assertion added to test_descriptor_digest_covers_files_outside_the_predicate."
+  - seat: kimi-code/k3
+    objection: "ROUND 3, MINOR: a mode-only change moves neither path nor blob, so the digest misses it."
+    status: CONFIRMED
+    resolution:
+      "tree_digest now hashes (mode, blob, path) straight from ls-tree. A new test chmods a file,
+      and the mutation that drops the mode is caught."
+  - seat: kimi-code/k3
+    objection: "ROUND 3, MINOR: 'exactly as grep -f' overclaims, since GNU grep -f keeps a CR from CRLF input."
+    status: CONFIRMED
+    resolution: "Test renamed test_pattern_lines_split_on_lf_like_grep_f_on_lf_input; the dissent wording above is corrected."
+  - seat: kimi-code/k3
+    objection: "ROUND 3, MINOR: an indented continuation line inside R6.6 may render as a broken paragraph."
+    status: RETRACTED
+    resolution:
+      "Declined by the author; the seat did not retract it itself. The layout is prettier's
+      canonical output for this file (prettier --check is clean). In Markdown the line is a lazy
+      continuation of the same list item, so it renders as one paragraph."
+
+receipts:
+  - claim: "Bites 1 — the generator reproduces gate-7516's re-gate counts at #7516's head edec8a21 (see proof)."
+    cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev
+      edec8a21f9917a56c0724fe83a081027aba4e880 [--repo <detached worktree of edec8a21>]"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:b75f801013109975 --rev edec8a21f9917a56c0724fe83a081027aba4e880
+      mode: tree
+      tree_digest: 08b2b39759e9e7e2
+      scope_files: 22730
+      patterns: {hmac: b75f801013109975, lines: 7}
+      files: 9
+      hits: 28
+      lines_any: 26
+      occurrences: 29
+      patterns_present: 5
+      patterns_absent: 2
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-09-27T07:53Z"
+    seat: claude-opus-5-5
+  - claim: "Bites 2 — the same pattern file at origin/main 2d1335b3f2 (#7516 unmerged)."
+    cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev
+      2d1335b3f26530ba72e1ddf68b5dd81a3570be55"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:b75f801013109975 --rev 2d1335b3f26530ba72e1ddf68b5dd81a3570be55
+      mode: tree
+      tree_digest: 84e3ce208d62253e
+      scope_files: 22785
+      patterns: {hmac: b75f801013109975, lines: 7}
+      files: 14
+      hits: 49
+      lines_any: 45
+      occurrences: 83
+      patterns_present: 7
+      patterns_absent: 0
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-09-27T07:53Z"
+    seat: claude-opus-5-5
+  - claim: "Bites 2b — the same pattern file at origin/main fda25b4399, the merge-base after the conflict merge (#7490 landed, #7516 unmerged)."
+    cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev
+      fda25b43998bfb14526fc8c837c6fda8d25aeffd"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:b75f801013109975 --rev fda25b43998bfb14526fc8c837c6fda8d25aeffd
+      mode: tree
+      tree_digest: 9e1675af26a4b459
+      scope_files: 22794
+      patterns: {hmac: b75f801013109975, lines: 7}
+      files: 5
+      hits: 21
+      lines_any: 19
+      occurrences: 54
+      patterns_present: 7
+      patterns_absent: 0
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-09-27T07:53Z"
+    seat: claude-opus-5-5
+  - claim:
+      "Fixed point — produced at 954e4b4055, the last code commit, before this pack was updated;
+      --check-in at the final head matches, because evidence/ edits cannot move tree_digest."
+    cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev HEAD --check-in <this pack>"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:b75f801013109975 --rev HEAD
+      mode: tree
+      tree_digest: 42ecf134f80febec
+      scope_files: 22796
+      patterns: {hmac: b75f801013109975, lines: 7}
+      files: 5
+      hits: 21
+      lines_any: 19
+      occurrences: 54
+      patterns_present: 7
+      patterns_absent: 0
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-09-27T07:53Z"
+    seat: claude-opus-5-5
+  - claim: "R6.5 probe BEFORE — #7516's modified paths at its merge-base a6fcae5afe."
+    cmd:
+      "python3 scripts/evidence/pii_receipt.py tree --patterns <pilot-names-7.txt> --rev
+      a6fcae5afe… --path <each M path of git diff --name-status a6fcae5afe edec8a21>"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:b75f801013109975 --rev a6fcae5afe6d16abe9e3c4691fb988c31eb18da4 --path @hmac:256a3eacc80cc4c3 --path @hmac:2ad1d8ac742ed4e4 --path @hmac:00afd9beb12012c0 --path @hmac:32b583aea087fbf7 --path @hmac:cc4581fdc8f463c8 --path @hmac:ff392fac48d90b56 --path @hmac:ca2de3d242cd0ceb --path @hmac:6e1fbda0211e0807
+      mode: tree
+      tree_digest: b0b19f690619195f
+      scope_files: 8
+      patterns: {hmac: b75f801013109975, lines: 7}
+      files: 1
+      hits: 7
+      lines_any: 6
+      occurrences: 7
+      patterns_present: 7
+      patterns_absent: 0
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-09-27T07:53Z"
+    seat: claude-opus-5-5
+  - claim: "R6.5 probe AFTER — the same paths at #7516's head edec8a21."
+    cmd: "the same invocation with --rev edec8a21f9917a56c0724fe83a081027aba4e880"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:b75f801013109975 --rev edec8a21f9917a56c0724fe83a081027aba4e880 --path @hmac:256a3eacc80cc4c3 --path @hmac:2ad1d8ac742ed4e4 --path @hmac:00afd9beb12012c0 --path @hmac:32b583aea087fbf7 --path @hmac:cc4581fdc8f463c8 --path @hmac:ff392fac48d90b56 --path @hmac:ca2de3d242cd0ceb --path @hmac:6e1fbda0211e0807
+      mode: tree
+      tree_digest: 08b2b39759e9e7e2
+      scope_files: 8
+      patterns: {hmac: b75f801013109975, lines: 7}
+      files: 0
+      hits: 0
+      lines_any: 0
+      occurrences: 0
+      patterns_present: 0
+      patterns_absent: 7
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-09-27T07:53Z"
+    seat: claude-opus-5-5
+  - claim: "R6.8 innocence on the real tree — a class-only descriptor for category (b) at #7516's head."
+    cmd:
+      "python3 scripts/evidence/pii_receipt.py descriptor --label b --rev edec8a21… --categories
+      ~/.agent/pii-quarantine/pii-deep-audit/categories-b.txt --category b --not-path <tests>
+      --text <identity-document tokens>"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: descriptor --label b --rev edec8a21f9917a56c0724fe83a081027aba4e880 --min-files 2 --categories @hmac:165ffdf91cd9b0b0 --category b --not-path '(^|/)(tests?|fixtures)/|(^|/)test_[^/]*$' --text '(?i)passport|\bNIK\b|\bKTP\b'
+      mode: descriptor
+      label: b
+      tree_digest: 08b2b39759e9e7e2
+      terms: 2
+      binary_skipped: 1757
+      progressive_files: [16891, 1387]
+      files: 1387
+      min_files: 2
+      covers_category: 1/1
+      verdict: OK
+      # end pii_receipt
+    exit: 0
+    ts: "2026-09-27T07:53Z"
+    seat: claude-opus-5-5
+  - claim: "R6.6 over this PR's own brief, pack and body file, with the lane's residual-basename file written by the gate."
+    cmd: "python3 scripts/evidence/pii_receipt.py r66 --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/r66-residuals.txt --brief <brief.yml> --pack
+      <pack.yml> --body <body file passed to gh pr create --body-file>"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:e19ee4b296ad8859 --pack PACK --body @text:6e3d82613f166a5b
+      mode: r66
+      r66_line: "r66: hmac=e5501725d9a0 lines=22 residual_hits=0 hedge_hits=0"
+      hedge_hit_lines: []
+      # end pii_receipt
+    exit: 0
+    ts: "2026-09-27T07:54Z"
+    seat: claude-opus-5-5
+  - claim: "The corpus passes, and so does the selftest."
+    cmd: "python3 -m pytest scripts/tests/test_pii_receipt.py -q; python3 scripts/evidence/pii_receipt.py --selftest"
+    result: "29 passed; selftest: PASS (0 failing), 15 arms"
+    exit: 0
+    ts: "2026-09-27T07:54Z"
+    seat: claude-opus-5-5
+  - claim: "The corpus bites: 19 distinct single-line mutations of the final module (954e4b4055), each run against the final 29-arm suite, each turn it red."
+    cmd: "apply one mutation, python3 -m pytest scripts/tests/test_pii_receipt.py -q, restore the module from a copy, compare its sha256"
+    result:
+      "failed arms per mutation: hedge left word boundary 1; tree_digest includes evidence/ 3;
+      empty pattern lines kept 19; descriptor universe includes evidence/ 1; binary blobs kept in
+      the descriptor 1; isolation threshold 1 3; --check-in accepts any same-argv block 2;
+      --check-in swallows the mode's exit code 2; --path echoed in clear 2; unkeyed private token
+      3; brief not bound in r66 2; binary blobs counted in the tree line metrics 1; r66 line
+      unkeyed 1; salt file mode unchecked 1; mixed lane dirs accepted 1; binary matches dropped
+      from patterns_present 3; pattern split differs from grep -f 1; mode dropped from
+      tree_digest 1; lane directory mode unchecked 1. Module sha256 identical after restore.
+      During the council rounds two of these first survived (binary blobs in the line metrics,
+      splitlines vs grep -f), and the tests that now catch them were added then."
+    exit: 0
+    ts: "2026-09-27T07:52Z"
+    seat: claude-opus-5-5
+  - claim: "The workflow edit is clean, and the step starts on the two new paths and runs green under bash -e."
+    cmd:
+      "actionlint .github/workflows/guard-conformance.yml; the step's relevance regex applied to
+      each changed path; python3 infra/guard-conformance/check_guard_conformance.py; the step
+      body under bash -euo pipefail"
+    result:
+      "actionlint exit 0; pii_receipt.py -> run, test_pii_receipt.py -> run, the spec -> sentinel;
+      conformance 0 violation(s); step body exit 0"
+    exit: 0
+    ts: "2026-09-27T07:29Z"
+    seat: claude-opus-5-5
+  - claim: "Deterministic floor 3, from the hot-zone path (.github/workflows/)."
+    cmd:
+      "python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source
+      --changed-files-file <mb..HEAD> --numstat-file <no-renames numstat> --patch-file <workflow patch>"
+    result: "3 (source: path)"
+    exit: 0
+    ts: "2026-09-27T07:54Z"
+    seat: claude-opus-5-5
+
+bites:
+  consumer:
+    "the gate of the PII-removal lane's next head (#7516 or its successor), which re-runs each
+    pasted block with pii_receipt.py --check-in; and guard-conformance.yml, which executes the
+    corpus on every PR touching the generator"
+
+pii_scan: clean
+pii_scan_note:
+  "No client datum enters the diff or this pack. The generator's output is counts and sha256
+  prefixes; the private inputs stay in the lane's 0700 quarantine dir and are named in argv by
+  hash. A scan of the content diff for the three private pattern files found no line of any of
+  them; the only email-shaped strings are a pytest decorator and a synthetic example.invalid
+  address."
+
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 3
+
+appetite_exceeded: |
+  The rounds ceiling of 1 was exceeded: the council took three rounds (kimi-code/k3 three,
+  tp1-qwen3.8-max two). Round 1 found two real BLOCKERs in the generator: --check-in swallowed
+  R6.8's red, and --path was echoed in clear. Round 2 found that the r66 line still carried a
+  plain hash of the residual list. Each was a PII-safety or gate-bypass hole in the tool this PR
+  exists to ship, so stopping at the declared ceiling would have shipped them. The wall-clock
+  ceiling held.
+
+diff:
+  files: 7
+  insertions: 1678
+  deletions: 9
+  net_lines: 1669

@@ -77,8 +77,14 @@
     "codex_fix": "codex --full-auto"
   },
   "failure_domains": {
-    "ollama_pro": ["cron_primary", "vision", "cell_tier0", "cell_tier1"],
-    "ollama_mini": ["sentry"],
+    "ollama_pro": [
+      "cron_primary",
+      "vision",
+      "ocr_vision",
+      "cell_tier0",
+      "cell_tier1"
+    ],
+    "ollama_mini": ["cron_primary", "cell_tier0"],
     "gemini_cloud": ["cloud_fallback"],
     "antigravity_cli": [
       "agy_gemini_flash_high",

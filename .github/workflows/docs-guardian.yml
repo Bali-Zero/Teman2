@@ -2,7 +2,22 @@ name: Docs Guardian
 
 # Generator-correctness sentinel. It never compares a tracked global inventory.
 on:
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (same set as the "Generator-relevant paths" step below). No merge_group:
+  # scripts/ci/lint_trigger_symmetry.py forbids it beside pull_request.paths. A required
+  # context needs pull_request unfiltered again (check_required_workflow_conformance.py).
   pull_request:
+    paths:
+      - "scripts/docs_audit.py"
+      - "scripts/docs_inventory_regen.sh"
+      - "scripts/tests/test_docs_audit.py"
+      - "scripts/tests/test_docs_inventory_regen.py"
+      - "scripts/tests/test_docs_inventory_render_is_clock_free.py"
+      - ".github/workflows/docs-guardian.yml"
+      - ".github/workflows/docs-inventory-refresh.yml"
+      # pytest loads these implicitly for scripts/tests/ (its conftest and package marker).
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
 
 concurrency:
   group: docs-guardian-${{ github.ref }}
