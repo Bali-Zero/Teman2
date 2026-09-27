@@ -188,14 +188,16 @@ describe("PortalChallengeWidget", () => {
       }),
     );
     render(<PortalChallengeWidget identity="fixture" />);
+    const arena = within(screen.getByTestId("champion-arena"));
     fireEvent.click(
-      within(screen.getByTestId("champion-arena")).getByRole("button", {
-        name: "Chaser",
-      }),
+      arena.getByRole("button", { name: "Lihat peluang Chaser" }),
     );
     expect(
       screen.getByText("4 poin untuk melewati Leader."),
     ).toBeInTheDocument();
+    expect(arena.getByLabelText("Lihat peluang peserta lain")).toHaveValue(
+      "chaser",
+    );
   });
 
   it("renders nothing when there is no authenticated identity", () => {
@@ -476,5 +478,169 @@ describe("PortalChallengeWidget", () => {
     expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(
       0,
     );
+  });
+});
+
+describe("Champion hero", () => {
+  beforeEach(() => {
+    mockedHook.mockReset();
+  });
+
+  /** 20 synthetic contenders, dense-ranked: podium 46/34/33, ties, 4 on zero. */
+  function field(): PortalChallengeEntry[] {
+    const scores = [
+      46, 34, 33, 20, 18, 16, 15, 12, 11, 10, 9, 8, 8, 7, 6, 6, 0, 0, 0, 0,
+    ];
+    return scores.map((activations, index) =>
+      entry({
+        member: `contender-${index + 1}`,
+        display_name: `Contender ${index + 1}`,
+        rank: new Set(scores.filter((s) => s > activations)).size + 1,
+        activations,
+        award_tier: null,
+        avatar_url: null,
+      }),
+    );
+  }
+
+  it("merges title, one team total, countdown and the race into one panel", () => {
+    mockQuery(response({ team_total_activations: 150, entries: field() }));
+    render(<PortalChallengeWidget identity="fixture" />);
+    const arena = within(screen.getByTestId("champion-arena"));
+    expect(
+      arena.getByRole("heading", { name: "Portal Champion" }),
+    ).toBeInTheDocument();
+    expect(arena.getByText("Berakhir dalam")).toBeInTheDocument();
+    expect(screen.getAllByText("150")).toHaveLength(1);
+    expect(
+      screen.getAllByRole("heading", { name: "Portal Champion" }),
+    ).toHaveLength(1);
+  });
+
+  it("puts the target beside the podium and keeps 20 contenders in one compact picker", () => {
+    mockQuery(response({ team_total_activations: 150, entries: field() }));
+    render(<PortalChallengeWidget identity="fixture" />);
+    const arena = within(screen.getByTestId("champion-arena"));
+    // Only the three podium cards are buttons — no wall of 20 pills.
+    expect(arena.getAllByRole("button")).toHaveLength(3);
+    const picker = arena.getByRole("combobox", {
+      name: "Lihat peluang peserta lain",
+    });
+    expect(within(picker).getAllByRole("option")).toHaveLength(20);
+    expect(screen.getByTestId("champion-target")).toContainElement(picker);
+  });
+
+  it("rank 3 on 33 below rank 2 on 34 needs 2 points to overtake", () => {
+    mockQuery(response({ team_total_activations: 150, entries: field() }));
+    render(<PortalChallengeWidget identity="fixture" />);
+    const target = within(screen.getByTestId("champion-target"));
+    fireEvent.change(target.getByLabelText("Lihat peluang peserta lain"), {
+      target: { value: "contender-3" },
+    });
+    expect(
+      target.getByText("2 poin untuk melewati Contender 2."),
+    ).toBeInTheDocument();
+    expect(target.getByText("Peringkat #3 · 33 poin")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("champion-arena")).getByRole("button", {
+        name: "Lihat peluang Contender 3",
+      }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("a tie is not a rival: the tied contender chases the next higher score", () => {
+    mockQuery(response({ team_total_activations: 150, entries: field() }));
+    render(<PortalChallengeWidget identity="fixture" />);
+    const target = within(screen.getByTestId("champion-target"));
+    fireEvent.change(target.getByLabelText("Lihat peluang peserta lain"), {
+      target: { value: "contender-13" },
+    });
+    expect(
+      target.getByText("2 poin untuk melewati Contender 11."),
+    ).toBeInTheDocument();
+  });
+
+  it("gives a 0-point contender no rank and the first-point prompt", () => {
+    mockQuery(
+      response({
+        team_total_activations: 0,
+        entries: [
+          entry({
+            member: "a",
+            display_name: "Contender A",
+            activations: 0,
+            award_tier: null,
+          }),
+          entry({
+            member: "b",
+            display_name: "Contender B",
+            activations: 0,
+            award_tier: null,
+          }),
+        ],
+        recent_activations: [],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const arena = within(screen.getByTestId("champion-arena"));
+    expect(arena.queryAllByRole("button")).toHaveLength(0);
+    const target = within(screen.getByTestId("champion-target"));
+    expect(
+      target.getByText("Jadilah pencetak poin pertama."),
+    ).toBeInTheDocument();
+    expect(target.getByText("Peringkat – · 0 poin")).toBeInTheDocument();
+  });
+
+  it("frames approved staff photos on the face and keeps other sources uncropped", () => {
+    mockQuery(
+      response({
+        entries: [
+          entry({
+            member: "a",
+            display_name: "Contender A",
+            avatar_url: "/static/team/ari.jpg",
+          }),
+          entry({
+            member: "b",
+            display_name: "Contender B",
+            rank: 2,
+            activations: 20,
+            award_tier: 2,
+            avatar_url: "/static/team/unlisted.jpg",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const arena = within(screen.getByTestId("champion-arena"));
+    const [framed] = arena.getAllByRole("img", { name: "Contender A" });
+    expect(framed.style.objectPosition).toBe("50% 34%");
+    expect(framed.style.transform).toBe(
+      "translate(50%, 50%) scale(2.45) translate(-50%, -34%)",
+    );
+    const [plain] = arena.getAllByRole("img", { name: "Contender B" });
+    expect(plain.style.transform).toBe("");
+  });
+
+  it("falls back to initials when a podium photo fails to load", () => {
+    mockQuery(
+      response({
+        entries: [
+          entry({
+            member: "a",
+            display_name: "Contender A",
+            avatar_url: "/static/team/ari.jpg",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const podium = within(
+      within(screen.getByTestId("champion-arena")).getByRole("button", {
+        name: "Lihat peluang Contender A",
+      }),
+    );
+    fireEvent.error(podium.getByRole("img", { name: "Contender A" }));
+    expect(podium.getByText("CA")).toBeInTheDocument();
   });
 });
