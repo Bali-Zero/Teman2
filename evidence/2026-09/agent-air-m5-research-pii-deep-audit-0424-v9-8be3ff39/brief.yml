@@ -1,4 +1,43 @@
 task: >-
+  v10, per gate-7516.md's B1-B4 on #7516 (v9 of this lane; DISARMED by the lead for rework, evidence
+  frozen at 80382f31b0). A fresh Gear-3 gate on #7516 (report: gate-7516.md) returned REWORK-BUILD
+  on evidence and body only — the diff itself holds byte-identical to #7516's head (16/16
+  non-evidence blobs unchanged), and K3 of gate-7491 stays cured (0 basename residuals, 0
+  id-to-count keys anywhere, including `dissent`/`receipts`). Text-only cures in this pack:
+  B1 (blocking, R6.3) — the receipt's own command, `git grep -n -F <each of the 7 names> -- .`,
+  was claimed to yield 11 files and fixture occurrences 13+4+1; re-run at this exact head, that
+  command yields 9 files (category (d) = 4, not 6) and fixture occurrences 9+2. Every count in the
+  receipt and in out_of_scope below is now what this one command produces — nothing is carried
+  forward from a gate report, and the "re-measured by the fresh gate / does not re-derive" hedge
+  is removed. `gear_reason`'s "grew by 39 net lines" is corrected to 41 (measured against v8's 624
+  evidence lines). The unreproduced "273 files ... 8 fix/batch/orphan-named" figure (n6) is dropped
+  rather than backed with an invented command.
+  B2 (blocking, R6.6) — the PR body's own pasted "0 hits" was false about the body's own text: it
+  quoted the canonical hedge list, quoted two superseded locators (a cited date, an old "maps 1:1"
+  phrase), and its id-check counted 2 body hits that turned out to be script line numbers, not
+  ids, while still claiming "0 hits anywhere in the PR body". The body is rewritten so the
+  pre-check genuinely returns 0, and the real output is pasted; the retired "maps 1:1" framing is
+  dropped outright too — `git grep -c -F "maps 1:1" -- .` finds it in 8 other tracked files besides
+  this one, so it was never distinctive and never isolated anything.
+  B3 (blocking, R6.1) — out-of-scope category (b)'s "13-entry director/commissioner dataset"
+  isolates exactly one tracked file (measured: 24 files carry director+commissioner+identity-number
+  tokens together, but only 1 has a fix/batch/orphan-style basename — the residual itself).
+  Generalized to "a small officer roster"; re-measured non-isolating ("officer" and "roster" are
+  each common standalone terms in this tracked tree, and their combination is not this codebase's
+  distinguishing vocabulary for this one file the way "director/commissioner" plus a dataset size
+  was).
+  B4 (blocking, R6.5) — the redaction branch of `Bites:` (the md, the 5 wa_corpus/tests files, the
+  pilot docstring, `test_doc_title.py`) had no probe; added the R6.3 detector re-run against
+  `origin/main` post-merge, 0 hits, where the same command at the merge-base shows > 0.
+  Nits folded: n2 — the proximity claim's hedge word is dropped ("within 300 characters", not
+  an approximate version of it — the window is exact, not approximate). n3 — the deleted archived
+  spec's name-count wording now separates the two detectors explicitly (this lane's own
+  exact-string run: 30 raw/25 unique; #7472's gate, a broader pattern: 36), instead of a bare
+  "30-36 range, detector-dependent" that read as one ambiguous figure. n4 — `dissent` gains
+  entries for gate-7491's K2/K3 and this gate's B1-B4; the
+  `seat_override`'s "all fifteen ... v3-v7 commits" figure is corrected. n5 — "against the 7
+  deleted files" corrected to "8 deleted paths" (the archived doc's basename is 2 of the 16
+  consumer-map LIVE hits, not folded into the 7-file data-deletion count).
   v9, per spec S6 (docs/specs/2026-09-27-evidence-pack-fixed-point.md), supersedes #7491 (v8 of
   this lane; ARMED, frozen at 76a142eca3). A fresh Gear-3 gate on #7491 (report: gate-7491.md)
   returned REWORK-BUILD on evidence only, again — the diff itself holds byte-identical to #7491's
@@ -17,8 +56,8 @@ task: >-
   the legacy prompt templates (not the single-name claim v8 made), 3 occurrences per template
   (not "twice");
   5 of the 6 redacted client_ids (5 of the 7 names) are the ones that remain re-linkable across the
-  11 pre-existing files, not all 6/7 — the sixth id's two names have 0 matches anywhere in the
-  tracked tree.
+  9 pre-existing files the receipt's own command finds, not all 6/7 — the sixth id's two names have
+  0 matches anywhere in the tracked tree.
   K1/H2 (cured in v8, unchanged here) — the legacy-prompt "live egress" claim stays corrected: the
   extraction service's version-label default is metadata only, never used to load a file; the CLI
   worker's own current default is a later template; a symbol naming the oldest legacy template
@@ -32,11 +71,12 @@ task: >-
   Nits n5-n8 from gate-7491.md, cured here: n5 — the LaunchAgent's most recent tick is stated as
   2026-09-27T10:09:43+08:00, not the earlier "2026-09-27T10:09Z" (a timezone-label error, not a new
   measurement). n6 — the one-off data-fix script's category drops the "tracked since 2026-04-08"
-  locator (measured: the window it names is not unique — 273 files were added in it, 8 of them
-  fix/batch/orphan-named). n7 — the four residual categories now sum to 11 (2 legacy templates + 1
-  one-off data-fix script + 2 historical audit/scar documents + 6 remaining files split between 3
-  code/config/migration references and 3 test-fixture files carrying 13+4+1 occurrences), not 10.
-  n8 — the PR body carries a literal `Bites:` line, not only a `## Bites` header.
+  locator (the window it names is not unique, per gate-7516.md's own measurement; no invented
+  count of that window is given here). n7 — the four residual categories now sum to 9 (2 legacy
+  templates + 1 one-off data-fix script + 2 historical audit/scar documents + 4 remaining files
+  split between code/config references and test-fixture files carrying 9+2 occurrences), matching
+  the receipt's own command. n8 — the PR body carries a literal `Bites:` line, not only a
+  `## Bites` header.
   v8, supersedes #7481 (v7 of this lane; ARMED, frozen at 017c42cf). A fresh Gear-3 gate on #7481
   (report: gate-7481.md) returned REWORK-BUILD on evidence only — the diff itself holds
   byte-identical to #7481's head: `git diff 017c42cf HEAD -- research .gitignore docs/archive
@@ -57,7 +97,7 @@ task: >-
   previously counted (not "9+2"); and two false sentences ("no other file references these names",
   "ids alone are not client-identifying") are deleted below.
   K3/H1 (blocking, memory-18721 trap) — the pilot's ids stay re-linkable: 5 of the 6 redacted
-  client_ids sit within roughly 300 characters of the same real full name elsewhere in the tracked tree.
+  client_ids sit within 300 characters of the same real full name elsewhere in the tracked tree.
   This pack states that honestly and removes every file path for those residuals from the
   disclosure (categories and counts only, same discipline G3 already applied to the wa_corpus
   sweep) rather than naming them — naming them would itself be the re-identification hint.
@@ -237,19 +277,18 @@ out_of_scope: >-
   disclosed, closing the link entirely rather than describing it.
 
   DISCLOSED, NOT FIXED, CATEGORIES AND COUNTS ONLY, NO FILE:LINE, NO ID-TO-COUNT PAIRING (carried
-  from v6/v7/v8, cured further this pack per gate-7491.md's K2/K3 finding on #7491 — the same
+  from v6/v7/v8, cured further this pack per gate-7516.md's B1 finding on #7516 — the same
   memory-18721 discipline this brief already applies to the wa_corpus residual sweep above, now
   applied to this list too, and per S6 (docs/specs/2026-09-27-evidence-pack-fixed-point.md); severity
-  HIGH; a dedicated follow-up lane is planned but not yet a PR number at authoring time): 5 of the 6
-  client_ids redacted from the pilot docstring (5 of the 7 names) remain in clear, PROD-matched,
-  across 11 other pre-existing files this lane was not asked to touch and does NOT fix here (not 9
-  — v7's count missed a test-fixture file; re-measured by the fresh gate on this byte-identical
-  content); the sixth id's two names have 0 matches anywhere in the tracked tree. This pack does not
-  re-derive the exact per-category split itself to avoid reproducing the name tokens as search
-  terms. Naming WHICH files is deliberately omitted — a file path here, combined with the ids
-  already visible in the pilot's own docstring history, is itself a re-identification hint, and so
-  is pairing a count with a specific name or id. By risk class, not by path, and with no id or count
-  attached to any single file:
+  HIGH; a dedicated follow-up lane is planned but not yet a PR number at authoring time): the exact
+  command `git grep -n -F <each of the 7 names> -- .` (the same command the pack's own receipt
+  runs, re-run for this disclosure — no number below is carried forward from a gate report) finds
+  5 of the 6 client_ids redacted from the pilot docstring (5 of the 7 names) in clear, PROD-matched,
+  across 9 other pre-existing files this lane was not asked to touch and does NOT fix here; the
+  sixth id's two names have 0 matches anywhere in the tracked tree. Naming WHICH files is
+  deliberately omitted — a file path here, combined with the ids already visible in the pilot's own
+  docstring history, is itself a re-identification hint, and so is pairing a count with a specific
+  name or id. By risk class, not by path, and with no id or count attached to any single file:
   (a) a pair of legacy, superseded prompt templates each carry 2 of the names as a stale few-shot
   example, 3 occurrences per template. This is NOT a live cloud-LLM egress: re-measured at this
   head, the CLI worker's own current default is a later template (a symbol naming the oldest legacy
@@ -257,19 +296,25 @@ out_of_scope: >-
   cron/LaunchAgent this pack found for this pipeline runs on that same current default, not on the
   two legacy templates. The priority is PII in clear on a public repo, not active egress — changing
   a live prompt's example still needs its own validated PR, not a point-redaction bundled here.
-  (b) one one-off data-fix script hardcodes a 13-entry director/commissioner dataset with full
-  names, nationalities, emails, phones and government identity-document numbers in cleartext
-  Python source — the most severe exposure class in this whole chain, and one-off/idempotency-key
+  (b) one one-off data-fix script hardcodes a small officer roster with full names,
+  nationalities, emails, phones and government identity-document numbers in cleartext Python
+  source — the most severe exposure class in this whole chain, and one-off/idempotency-key
   in nature (verified but not touched: the names may be load-bearing lookup keys for the script's
   own logic; redacting without
   checking every call site risks silently breaking the fix).
   (c) two historical audit/scar documents record the same real names/ids as institutional memory —
   this repo's own convention treats scars as permanent record, so redacting them is a policy
   question, not a mechanical one.
-  (d) the remaining 6 files split between 3 code/config/migration references and 3 test-fixture
-  files (13+4+1 occurrences across those three) — lower severity (test-only/comment-only/config)
-  but the same real-name-in-clear class. (a)+(b)+(c)+(d) = 2+1+2+6 = 11.
-  0 of these 11 files is touched by this PR. The `SELECT id, full_name FROM clients WHERE id IN
+  (d) the remaining 4 files split between 2 code/config references and 2 test-fixture files (9+2
+  occurrences across those two) — lower severity (test-only/comment-only/config) but the same
+  real-name-in-clear class. (a)+(b)+(c)+(d) = 2+1+2+4 = 9, matching this command's own file count.
+  A migration file and a third test-fixture file, both flagged by prior gate reports as carrying
+  1+ of these names in a different string form, show 0 occurrences under this exact command and
+  are not counted in the 9 above; the migration file needs its own checksum-aware lane regardless
+  of any string-detector result (its checksum sits in the PROD ledger, per memory), and the third
+  fixture file is disclosed here by category, at 0 for this command, rather than folded into a
+  total this command cannot produce.
+  0 of these 9 files is touched by this PR. The `SELECT id, full_name FROM clients WHERE id IN
   (...)` PROD check (6/6 exact matches) verified the pilot docstring's own names before its cure;
   it was not re-run against the residual files themselves here — that belongs to the G5 lane.
 

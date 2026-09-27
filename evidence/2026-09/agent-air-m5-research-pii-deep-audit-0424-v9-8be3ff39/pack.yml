@@ -22,8 +22,12 @@ seat_override: >-
   restated: a false live cloud-LLM-egress claim; K2: five false/undercounted claims; K3/H1
   restated: file-path residual disclosures re-identifying via the same hint pattern G3 closed
   elsewhere; K4: `Bites:` regressed to a pre-merge self-consistency check), recorded below as
-  `dissent:`, all fifteen addressed across this commit and the corresponding v3-v7 commits. A
-  separate lane is fixing codex-spalla.sh itself; it is out of scope here.
+  `dissent:`. Two more rounds followed the same pattern after #7481: gate-7491.md's K2 (still
+  partly wrong in v8) and K3 (a new de-anonymisation regression in v8), and gate-7516.md's B1-B4
+  (count drift, a false pre-check paste, a locator that isolated one file, a missing
+  redaction-branch probe) — recorded below as their own dissent entries, addressed across this
+  commit and the corresponding v3-v9 commits. A separate lane is fixing codex-spalla.sh itself;
+  it is out of scope here.
 
 lanes:
   - lane: pii-deep-audit-0424-v7-build
@@ -65,7 +69,7 @@ diff:
     case-annotation comments unchanged. The script needed no untracked-local-file relocation,
     unlike query_lab.py — but the ids are NOT safely de-identifying on their own: 11 other
     pre-existing files (not previously counted correctly, see receipts/out_of_scope) still carry
-    1+ of these names in clear, and 5 of the 6 ids sit within roughly 300 characters of the same real
+    1+ of these names in clear, and 5 of the 6 ids sit within 300 characters of the same real
     full name elsewhere in the tracked tree.
 
     NEW this pack (G2/G3 cure): replaces `tests/wa_corpus/test_doc_title.py`'s sanitization-test
@@ -76,9 +80,11 @@ diff:
     [CLIENT-A..D]-to-`client_id` pairing, was itself a re-identification key) — the disclosure is
     now counts-only. DELETES the one source that made this concrete:
     `docs/archive/2026-07-orphans/superpowers/specs/2026-04-01-gemini-profil-perseroan-prompts.md`
-    (an archived spec with real client names in the 30-36 range, detector-dependent — #7472's gate counted 36,
-    a stricter detector run for this pack counts 30 raw/25 unique, same order of magnitude —
-    unrelated to wa_corpus, quarantined on Pro first —
+    (an archived spec with real client names — this lane's own exact-string detector, run against
+    the file before its deletion, counted 30 raw occurrences / 25 unique names; #7472's gate,
+    using a broader case-insensitive pattern over the same then-live file, counted 36 — a wider
+    detector scope, not a discrepancy in this lane's own count — unrelated to wa_corpus,
+    quarantined on Pro first —
     0700/0600, `git hash-object` verified against the pre-deletion blob `b94e450357...`).
   surface: >-
     research/compliance/, research/wa-copilot/, research/operations/ (redaction only),
@@ -206,7 +212,7 @@ receipts:
     seat: claude-sonnet-5
   - claim: "a whole-tree sweep for the same 7 names finds the docstring's own occurrences cured, but a large pre-existing exposure elsewhere the pack discloses and does not fix (see out_of_scope)"
     cmd: "git grep -n -F <each of the 7 names> -- ."
-    result: "scripts/crm_guardian_phase15_pilot.py: 0. 11 other pre-existing files carry 1+ of the names (not 9 — v7's count missed a test-fixture file, re-measured by the fresh gate on this byte-identical content): a pair of legacy, superseded prompt templates (NOT the PRODUCTION default — the extraction schema's version-label default is an unread metadata string, the CLI worker's own current default is a later prompt version, and a symbol naming the oldest legacy template has 1 occurrence total, its own never-read declaration), 1 one-off data-fix script with government identity-document numbers, 2 historical scar/plan docs, and 6 remaining files split between code/config/migration references and test-fixture files (13+4+1 occurrences) — none touched by this PR, none named here (memory-18721 trap, same discipline as the wa_corpus sweep above)"
+    result: "scripts/crm_guardian_phase15_pilot.py: 0. This exact command finds 9 other pre-existing files carrying 1+ of the names: a pair of legacy, superseded prompt templates (NOT the PRODUCTION default — the extraction schema's version-label default is an unread metadata string, the CLI worker's own current default is a later prompt version, and a symbol naming the oldest legacy template has 1 occurrence total, its own never-read declaration), 1 one-off data-fix script with government identity-document numbers, 2 historical scar/plan docs, and 4 remaining files split between code/config references and test-fixture files (9+2 occurrences) — none touched by this PR, none named here (memory-18721 trap, same discipline as the wa_corpus sweep above). Two further residuals disclosed by prior gate reports (a migration file and a third test-fixture file) do not match this exact-string command at all — 0 occurrences each — and are not counted in the 9; the migration file needs its own checksum-aware lane regardless (out_of_scope) and the third fixture is disclosed in out_of_scope with its own 0 figure rather than folded into this receipt's total"
     exit: 0
     ts: "2026-09-27T08:10:00Z"
     seat: claude-sonnet-5
@@ -325,7 +331,7 @@ dissent:
     objection: >-
       H1 (blocking; marked blocking in gate-7474.md but never forwarded to the builder or logged
       here in v6/v7 — surfaced only by the fresh gate on #7481, K3): the pilot's 6 client_ids/7
-      names were disclosed as PROD-verified, but 5 of the 6 ids sit within roughly 300 characters of the
+      names were disclosed as PROD-verified, but 5 of the 6 ids sit within 300 characters of the
       same real full name in other tracked files, so the ids stay re-identifiable — and the
       evidence's own file:line disclosure for that residual list repeated the exact
       memory-18721 hint pattern G3 had just closed for the wa_corpus sweep, just applied to a
@@ -349,6 +355,55 @@ dissent:
       not proof the change is in force post-merge. v5/v6 had the correct shape (post-merge `git
       ls-tree origin/main` on the deleted paths, plus pytest); v7 regressed it.
     status: CONFIRMED
+  - seat: "opus-5-5-gate (fresh session, M5, PR #7491 independent Gear-3 gate)"
+    objection: >-
+      K3 (blocking, memory-18721 trap, new regression in v8): v8's own dissent paired a per-file
+      occurrence count with each of two redacted names for the legacy prompt templates, and v8's
+      brief/pack/body named the legacy prompt templates and the CLI worker by filename while
+      disclosing that category — the same de-anonymisation mechanism G3 had already closed for a
+      different pair of names, reintroduced for this one. Cured in v9: no id, no per-file count,
+      and no filename for any residual (out-of-scope) file anywhere in brief, pack or body.
+    status: CONFIRMED
+  - seat: "opus-5-5-gate (fresh session, M5, PR #7491 independent Gear-3 gate)"
+    objection: >-
+      K2 (blocking, still only partly cured in v8): v8's single-name claim for the legacy prompt
+      templates was wrong (2 of the redacted names appear, not 1; 3 occurrences per template, not
+      2), and v8's "same 6 client_ids/7 names ... across 11 files" claim was also wrong (5 of the
+      6 ids, 5 of the 7 names, are the ones that remain re-linkable; the sixth id's two names have
+      0 matches anywhere in the tracked tree). Cured in v9: both claims corrected to the measured
+      values.
+    status: CONFIRMED
+  - seat: "opus-5-5-gate (fresh session, M5, PR #7516 independent Gear-3 gate)"
+    objection: >-
+      B1 (blocking, R6.3): v9's evidence claimed the receipt's own command
+      (`git grep -n -F <each of the 7 names> -- .`) yields 11 files and fixture occurrences
+      13+4+1; re-run at head, that exact command yields 9 files (category (d) = 4, not 6) and
+      fixture occurrences 9+2. Cured in v10: every count in the receipt and in out_of_scope is now
+      what this one command produces, with no figure carried forward from a gate report.
+    status: CONFIRMED
+  - seat: "opus-5-5-gate (fresh session, M5, PR #7516 independent Gear-3 gate)"
+    objection: >-
+      B2 (blocking, R6.6): v9's PR body pasted a false "0 hits" — it quoted the canonical hedge
+      list itself, quoted two superseded locators (a cited date and the retired "maps 1:1"
+      phrase), and its id-check counted 2 body hits (both script line numbers, not ids) while
+      still claiming 0 hits anywhere in the body. Cured in v10: the pre-check genuinely returns 0,
+      and the real output is pasted.
+    status: CONFIRMED
+  - seat: "opus-5-5-gate (fresh session, M5, PR #7516 independent Gear-3 gate)"
+    objection: >-
+      B3 (blocking, R6.1): v9's out-of-scope category (b), "13-entry director/commissioner
+      dataset", isolates exactly one tracked file (measured: 24 files carry
+      director+commissioner+identity-number tokens together, only 1 with a fix/batch/orphan-style
+      basename). Cured in v10: generalized to "a small officer roster", re-measured non-isolating.
+    status: CONFIRMED
+  - seat: "opus-5-5-gate (fresh session, M5, PR #7516 independent Gear-3 gate)"
+    objection: >-
+      B4 (blocking, R6.5): v9's `Bites:` had no redaction-branch probe for the 7 redacted files
+      (the corpus-miner md, 5 wa_corpus/tests files, the pilot script). Cured in v10: added the
+      R6.3 detector re-run against `origin/main` post-merge, expected 0 hits, where the same
+      command at the merge-base shows 6 hits across those paths (pre-merge self-check verified at
+      this head: merge-base 6, this head 0).
+    status: CONFIRMED
 
 unresolved: >-
   research/operations/2026-06-04-wa-corpus-miner-session-report.md's `client_case: false`
@@ -364,9 +419,11 @@ unresolved: >-
   client already redacted by letter in the corpus-miner md) has been quarantined on Pro
   (hash-verified) and deleted from the tree; git history on origin/main still holds it, same
   §Solo-operatore posture as every other removed blob here. NOT this pack, HIGH SEVERITY,
-  SEPARATE LANE IN FLIGHT (per the lead, not yet a PR number at authoring time): the 7 phase15
-  names remain in clear across 11 pre-existing files, not 9 (see out_of_scope for the categorical
-  breakdown, no file:line) — most urgently a pair of legacy, superseded prompt-template files
+  SEPARATE LANE IN FLIGHT (per the lead, not yet a PR number at authoring time): 5 of the 7 phase15
+  names (5 of the 6 ids) remain in clear across 9 pre-existing files by the exact command in
+  out_of_scope's own receipt (a migration file and a third fixture carry 1+ names in a different
+  string form the command does not catch — see out_of_scope for the categorical breakdown, no
+  file:line) — most urgently a pair of legacy, superseded prompt-template files
   that still carry 2 of these names in clear on this PUBLIC repo (NOT a live cloud-LLM egress:
   re-measured this pack, the live worker's default prompt is a later version and no cron/
   LaunchAgent/process on M5/Pro/Mini reads those two files — see K1/H2), and a one-off data-fix
