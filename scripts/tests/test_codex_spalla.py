@@ -112,8 +112,12 @@ def _make_fake_codex(tmp_path: Path) -> Path:
 def _make_fake_psql(tmp_path: Path, names: tuple[str, ...]) -> Path:
     """A fake `psql` that ignores its connection string and args, and echoes a
     canned name list for scripts/_redact_pii.py's `--require-dynamic-names`
-    pass4 (gate 7466 blocker 5). Every name here is invented — reused from
-    the fixture already established in scripts/test_redact_pii.py."""
+    pass4 (gate 7466 blocker 5). "Jane Placeholder" ONLY — gate 7470 blocker 1
+    found the previous fixture name paired with a real client_id in
+    scripts/crm_guardian_phase15_pilot.py on origin/main; NEVER reuse a name
+    from scripts/test_redact_pii.py's own fixture list, which has the same
+    defect. "Jane Placeholder" is the one name this repo's tests already
+    treat as load-bearing-safe (scripts/tests/test_nb_title_redaction.py)."""
     bin_dir = tmp_path / "psql-bin"
     bin_dir.mkdir(exist_ok=True)
     fake = bin_dir / "psql"
@@ -162,7 +166,8 @@ def _run_spalla(
     scenario: str,
     *args: str,
     with_psql: bool = True,
-    psql_names: tuple[str, ...] = ("Sofia Mueller",),
+    psql_names: tuple[str, ...] = ("Jane Placeholder",),
+    extra_env: dict[str, str] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     """`with_psql=True` (default) wires a fake `psql` + DATABASE_URL so
     redact_for_external's `--require-dynamic-names` (gate 7466 blocker 5) has
@@ -192,6 +197,8 @@ def _run_spalla(
             "CODEX_SEAT_DIRS": str(tmp_path / "no-seats"),
         }
     )
+    if extra_env:
+        env.update(extra_env)
     proc = subprocess.run(
         [str(SPALLA), *args],
         cwd=repo,
@@ -383,6 +390,38 @@ def test_rename_out_of_pii_path_is_still_refused(tmp_path: Path) -> None:
     _assert_codex_never_dispatched(argv_log)
 
 
+def test_unreadable_pii_fragment_source_fails_closed_before_dispatch(tmp_path: Path) -> None:
+    """Guilt (gate 7470 defect 3): scripts/lib/spalla_redact.sh's dynamic
+    PII_PATH_FRAGMENTS loader used to swallow a missing/unreadable
+    scripts/async_review_supervisor.py under `2>/dev/null || true` and treat
+    the failure as "zero fragments" — every path stayed innocent even though
+    the list it was checked against never actually loaded. It must now fail
+    CLOSED: point the wrapper at a nonexistent supervisor module and confirm
+    a completely ordinary path (nothing in the static PII_PATH_PATTERNS list)
+    still refuses the whole dispatch, exactly like a genuine PII-classed path
+    would (exit 7) — codex is never invoked. This is the ONLY place this
+    guard is exercised in CI: scripts/tests/test_codex_spalla_diff_redaction.sh
+    carries the matching lib-level unit test, but no workflow runs that file
+    (scripts-tests-sweep.yml's nightly report-only sweep is `pytest
+    scripts/tests/`, which never collects a `.sh` file) — this pytest copy is
+    the one a CI run actually executes."""
+    repo = _make_repo(tmp_path, dirty=False)
+    ordinary = repo / "docs" / "completely" / "innocent"
+    ordinary.mkdir(parents=True)
+    (ordinary / "path.md").write_text("nothing PII-classed here at all\n")
+    proc, argv_log, home = _run_spalla(
+        tmp_path,
+        repo,
+        "verdict",
+        "review",
+        extra_env={"SPALLA_SUPERVISOR_PY": str(tmp_path / "nonexistent-supervisor.py")},
+    )
+    assert proc.returncode == 7, proc.stderr
+    assert "REFUSED" in proc.stderr
+    _assert_codex_never_dispatched(argv_log)
+    assert _telemetry(home)["exit_code"] == 7
+
+
 def test_dispatch_artifacts_are_0600(tmp_path: Path) -> None:
     """Gate 7466 blocker 4/S7: transcript, assistant-only file and telemetry
     are 0600, and the log dir is 0700, on a normal successful dispatch."""
@@ -420,15 +459,15 @@ def test_crm_name_in_diff_is_redacted_before_dispatch(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path, dirty=False)
     target = repo / "file0.txt"
     target.write_text(
-        "baseline\nClient note about Sofia Mueller and the fake case, "
+        "baseline\nClient note about Jane Placeholder and the fake case, "
         "filler filler filler filler to clear the redactor's min-length gate.\n"
     )
     proc, _argv_log, home = _run_spalla(
-        tmp_path, repo, "verdict", "review", psql_names=("Sofia Mueller",)
+        tmp_path, repo, "verdict", "review", psql_names=("Jane Placeholder",)
     )
     assert proc.returncode == 0, proc.stderr
     prompt = (tmp_path / "stdin.log").read_text()
-    assert "Sofia Mueller" not in prompt
+    assert "Jane Placeholder" not in prompt
     assert "[CLIENT-NAME-REDACTED]" in prompt
     assert _telemetry(home)["exit_code"] == 0
 

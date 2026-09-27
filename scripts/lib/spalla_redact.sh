@@ -42,55 +42,123 @@ SPALLA_SUPERVISOR_PY="${SPALLA_SUPERVISOR_PY:-${SPALLA_REDACT_LIB_DIR}/async_rev
 
 # Static glob patterns for .gitignore PII path shapes that a plain substring
 # fragment can't express (wildcards, or a bare directory name too generic to
-# fragment-match safely). Cross-checked against gate 7466's "list provenance"
-# findings by scripts/tests/test_pii_path_coverage.sh, which fails when a
-# known PII path in .gitignore/the supervisor stops being covered.
+# fragment-match safely). Cross-checked against .gitignore's own PII-marked
+# entries by scripts/tests/test_codex_spalla_diff_redaction.sh's static-list
+# block (gate 7466 blocker 2) — this is still a hand-typed list, not a
+# runtime-derived one; gate 7470's "finish blocker 2" note tracks turning
+# that comparison into an automatic drift check instead of a hand-copied one.
 PII_PATH_PATTERNS=(
     "research/crm/*" "research/crm-exports/*" "research/compliance/*"
     "research/wa-copilot/*" "research/personal/wa-corpus/*" "research/hr/*"
     "research/*/clients/*" "data/hr/*" "docs/crm/*" "DOSSIER_*.md"
     "research/commercial/*-yield-opportunities.md" "*dq_clients*.csv"
     "*dq_orphan_clients*.csv"
+    # gate 7470 "finish blocker 2": .gitignore's `compliance_report_*.pdf` has
+    # no embedded "/", so git's own gitignore semantics match it at ANY
+    # depth (not just repo-root) — the leading "*" mirrors that, the same
+    # way the two dq_*.csv entries above already do. Found missing by
+    # scripts/tests/test_codex_spalla_diff_redaction.sh's gitignore-drift
+    # check, which derives its coverage assertions from .gitignore itself
+    # instead of a second hand-typed list.
+    "*compliance_report_*.pdf"
 )
 
 _SPALLA_PII_FRAGMENTS_CACHE=""
-_SPALLA_PII_FRAGMENTS_LOADED="false"
+# "" = not attempted yet, "ok" = cached and safe to reuse, "failed" = the
+# source could not be read/parsed. gate 7470 defect 3: the previous version
+# swallowed a missing file, an unreadable file AND a parse error under one
+# `2>/dev/null || true`, so a corrupted or renamed supervisor module silently
+# fell back to an EMPTY fragment list instead of failing anything — a caller
+# checking a path against zero dynamic fragments could not tell "the module
+# legitimately declares nothing" from "the load itself broke", and the wrapper
+# proceeded either way. A load failure is now cached as "failed" and every
+# subsequent pii_path_hit call fails CLOSED (treats the path as a hit) instead
+# of silently treating the unreadable list as if it were empty.
+_SPALLA_PII_FRAGMENTS_STATE=""
 
 # Live PII_PATH_FRAGMENTS from scripts/async_review_supervisor.py (substring
 # match: "/kb/", "/fixtures/", "/crm/", "research/visa/clients/", "OSINT-
 # Nexus/" as of 2026-09-27). Parsed via ast.literal_eval — the module is
 # never imported, so any top-level side effect in the supervisor never runs.
-# Cached for the life of the process: this is called once per checked path.
+# Accepts BOTH `NAME: TYPE = (...)` (AnnAssign, singular .target) and plain
+# `NAME = (...)` (Assign, plural .targets) — gate 7470 defect 3: a harmless
+# refactor of the supervisor's tuple to drop its type annotation turned every
+# fragment from HIT to MISS under the AnnAssign-only version. Cached for the
+# life of the process on success; a failure is cached too, so a broken source
+# is reported once per process, not once per checked path.
 _spalla_pii_fragments() {
-    if [[ "$_SPALLA_PII_FRAGMENTS_LOADED" != "true" ]]; then
-        if [[ -f "$SPALLA_SUPERVISOR_PY" ]]; then
-            _SPALLA_PII_FRAGMENTS_CACHE="$(python3 -c '
+    if [[ "$_SPALLA_PII_FRAGMENTS_STATE" == "failed" ]]; then
+        return 1
+    fi
+    if [[ "$_SPALLA_PII_FRAGMENTS_STATE" != "ok" ]]; then
+        if [[ ! -f "$SPALLA_SUPERVISOR_PY" ]]; then
+            echo "spalla_redact: PII fragment source missing: $SPALLA_SUPERVISOR_PY — refusing rather than treating this as zero fragments" >&2
+            _SPALLA_PII_FRAGMENTS_STATE="failed"
+            return 1
+        fi
+        local errfile rc
+        errfile="$(mktemp "${TMPDIR:-/tmp}/spalla-fragments-err.XXXXXX")"
+        _SPALLA_PII_FRAGMENTS_CACHE="$(python3 -c '
 import ast, sys
-tree = ast.parse(open(sys.argv[1], encoding="utf-8").read())
+
+try:
+    tree = ast.parse(open(sys.argv[1], encoding="utf-8").read())
+except Exception as e:
+    sys.stderr.write("parse error: %s\n" % e)
+    sys.exit(2)
+
+found = False
 for node in ast.walk(tree):
-    # PII_PATH_FRAGMENTS carries a `tuple[str, ...]` annotation, so this is
-    # an AnnAssign (singular .target), not a plain Assign (plural .targets).
-    if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", None) == "PII_PATH_FRAGMENTS":
+    target_id = None
+    if isinstance(node, ast.AnnAssign):
+        target_id = getattr(node.target, "id", None)
+    elif isinstance(node, ast.Assign):
+        for t in node.targets:
+            if getattr(t, "id", None) == "PII_PATH_FRAGMENTS":
+                target_id = "PII_PATH_FRAGMENTS"
+                break
+    if target_id == "PII_PATH_FRAGMENTS":
+        found = True
         for v in ast.literal_eval(node.value):
             print(v)
         break
-' "$SPALLA_SUPERVISOR_PY" 2>/dev/null || true)"
+
+if not found:
+    sys.stderr.write("PII_PATH_FRAGMENTS not found in module\n")
+    sys.exit(3)
+' "$SPALLA_SUPERVISOR_PY" 2>"$errfile")"
+        rc=$?
+        if [[ "$rc" -ne 0 ]]; then
+            cat "$errfile" >&2
+            rm -f "$errfile"
+            echo "spalla_redact: failed to load dynamic PII fragments from $SPALLA_SUPERVISOR_PY (rc=$rc) — refusing rather than proceeding with a partial list" >&2
+            _SPALLA_PII_FRAGMENTS_STATE="failed"
+            return 1
         fi
-        _SPALLA_PII_FRAGMENTS_LOADED="true"
+        rm -f "$errfile"
+        _SPALLA_PII_FRAGMENTS_STATE="ok"
     fi
     printf '%s\n' "$_SPALLA_PII_FRAGMENTS_CACHE"
+    return 0
 }
 
 pii_path_hit() {
-    local f="$1" pat frag
+    local f="$1" pat frag frag_output frag_rc
     for pat in "${PII_PATH_PATTERNS[@]}"; do
         # shellcheck disable=SC2053
         [[ "$f" == $pat ]] && return 0
     done
+    frag_output="$(_spalla_pii_fragments)"
+    frag_rc=$?
+    if [[ "$frag_rc" -ne 0 ]]; then
+        # Fail closed (gate 7470 defect 3): the dynamic list could not be
+        # verified, so this path cannot be proven innocent — treat it as a hit.
+        return 0
+    fi
     while IFS= read -r frag; do
         [[ -z "$frag" ]] && continue
         [[ "$f" == *"$frag"* ]] && return 0
-    done < <(_spalla_pii_fragments)
+    done <<< "$frag_output"
     return 1
 }
 
@@ -103,12 +171,26 @@ strip_data_file_deletes() {
         }
         in_header && /^--- / {
             line = $0; sub(/^--- /, "", line)
-            if (line != "/dev/null") { sub(/^a\//, "", line); cur = line }
+            if (line != "/dev/null") {
+                sub(/^a\//, "", line)
+                # git appends a trailing TAB after the path itself (not the
+                # normal newline) on this header line when the path contains
+                # a space, to keep the boundary unambiguous for its own
+                # parsers (gate 7470 defect 2) — strip it or `cur` never
+                # matches the file-extension test below and a deleted line in
+                # a space-bearing "data file.csv" is never suppressed.
+                sub(/\t$/, "", line)
+                cur = line
+            }
             print; next
         }
         in_header && /^\+\+\+ / {
             line = $0; sub(/^\+\+\+ /, "", line)
-            if (line != "/dev/null") { sub(/^b\//, "", line); cur = line }
+            if (line != "/dev/null") {
+                sub(/^b\//, "", line)
+                sub(/\t$/, "", line)
+                cur = line
+            }
             in_header = 0
             print; next
         }

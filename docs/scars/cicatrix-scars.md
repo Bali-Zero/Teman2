@@ -1785,13 +1785,15 @@ cloud) with no redaction and no path guard at all. PR #7453 — a PII-removal PR
 through this wrapper: the diff deleted 959 lines of a client `plan.jsonl` (969 `full_name`
 records), and every one of those deleted lines went to OpenAI in cleartext, a Builder Contract
 rule-4 / Symbiosis Law-2 output-boundary breach. The two contaminated M5 transcripts were
-quarantined (`~/.agent/pii-quarantine/`, 0600) on discovery. A sweep of the remaining 86
-`~/logs/codex-spalla/` + this session's council-*/out-*.txt transcripts (to codex/kimi/gemini)
-against the canonical redactor's own dynamic CRM name list (14,132 client+company names from
-PROD, filtered to a multi-word/len>=6 subset to cut the false-positive flood a raw alternation
-produces against ordinary prose) found zero further client-name hits in that set; the handful of
-raw email/phone matches were RFC 2606 test-fixture domains or `noreply@anthropic.com`
-commit-attribution boilerplate. A separate, independent gate review found `scripts/
+quarantined (`~/.agent/pii-quarantine/`, 0600) on discovery. A sweep of the remaining
+`~/logs/codex-spalla/` transcripts on M5 (55 files as of 2026-09-27 — this directory grows with
+every dispatch, so treat the count as a snapshot, not a constant) plus this session's
+council-*/out-*.txt transcripts (to codex/kimi/gemini) against the canonical redactor's own
+dynamic CRM name list (14,132 client+company names from PROD, filtered to a multi-word/len>=6
+subset to cut the false-positive flood a raw alternation produces against ordinary prose) found
+zero further client-name hits in that set; the handful of raw email/phone matches were RFC 2606
+test-fixture domains or `noreply@anthropic.com` commit-attribution boilerplate. A separate,
+independent gate review found `scripts/
 codex_tri_llm_review.py` sends full diff content to Codex+Kimi with the same defect and no
 guard at all — not wired live via any M5/Mini cron or LaunchAgent as of this writing (Pro
 unverified, ssh unreachable), so out of scope for this fix but tracked, not closed.
@@ -1799,16 +1801,28 @@ unverified, ssh unreachable), so out of scope for this fix but tracked, not clos
 **ANTIBODY:** every prompt `.claude/scripts/codex-spalla.sh` sends now passes through three
 guards in `scripts/lib/spalla_redact.sh` (shared, so a sibling wrapper CAN reuse them instead of
 re-implementing its own — `codex_tri_llm_review.py` above does not yet): `strip_data_file_deletes`
-drops every DELETED line of a `.jsonl`/`.csv`/`.xlsx` file before anything else runs — a
-suppression marker replaces it, the content never exists in the prompt string at any point;
-`redact_for_external` then pipes whatever remains through the ONE canonical
-`scripts/_redact_pii.py` with `--require-dynamic-names` (PROD CRM name coverage is REQUIRED, not
-best-effort — a missing/unreachable name list fails closed rather than silently shipping
-`full_name` in cleartext), fail-closed on any redactor error; `pii_path_hit` refuses the whole
-dispatch outright (exit 7) when the diff touches a PII-classed path (union of a static glob list
-plus the live `PII_PATH_FRAGMENTS` tuple already declared in `scripts/async_review_supervisor.py`,
-so the two lists cannot silently drift apart) on EITHER side of a rename, unless the caller
-passes `--allow-pii-paths`, itself logged to telemetry. Every artefact this wrapper writes
+tracks each hunk's current file path from the diff's own `--- `/`+++ ` header state and replaces a
+DELETED line of a `.jsonl`/`.csv`/`.xlsx` file with a suppression marker before anything else runs
+— proven against a space-bearing path (git appends a trailing TAB after such a path on those two
+header lines, stripped explicitly; an earlier version of this fix missed the tab and passed its
+own hand-typed test anyway, so the fixture is now generated from a real `git diff` instead) and a
+deleted line whose own content starts with `-- ` (SQL/Lua-comment shape, which becomes a literal
+`--- ` diff line easy to mistake for a new header). Every `git diff`/`git ls-files` call feeding
+this path or the PII-path guard runs with `-c core.quotePath=false`, so a non-ASCII path is
+compared against its real characters, not git's default octal-quoted rendering. `redact_for_external`
+then pipes whatever remains through the ONE canonical `scripts/_redact_pii.py` with
+`--require-dynamic-names` (PROD CRM name coverage is REQUIRED, not best-effort — a missing/
+unreachable name list fails closed rather than silently shipping `full_name` in cleartext),
+fail-closed on any redactor error; `pii_path_hit` refuses the whole dispatch outright (exit 7) when
+the diff touches a PII-classed path — the union of a static glob list (itself checked against
+.gitignore's own PII-marked entries by a test that derives its assertions from .gitignore at test
+time, closing a gap where `compliance_report_*.pdf` had no coverage) plus the live
+`PII_PATH_FRAGMENTS` tuple already declared in `scripts/async_review_supervisor.py`, parsed from
+either an annotated or a plain assignment so a harmless type-annotation refactor there can't
+silently drop every fragment to a MISS — on EITHER side of a rename, unless the caller passes
+`--allow-pii-paths`, itself logged to telemetry. If the supervisor's fragment list itself cannot be
+read or parsed, the guard fails CLOSED (every path is treated as a hit) instead of quietly
+proceeding as if the dynamic half of the list were simply empty. Every artefact this wrapper writes
 (transcript, `.last.md`, telemetry, the BLOCKER copy) is created under `umask 077` plus an
 explicit `chmod 0600`/`0700` after creation, going forward from this fix; the transcripts on
 disk before it are a separate manual cleanup, not claimed here.

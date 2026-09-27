@@ -178,12 +178,12 @@ else
     DIFF_ARGS=(diff HEAD)
 fi
 
-DIFF_LINES="$(git "${DIFF_ARGS[@]}" 2>/dev/null | wc -l | tr -d ' ')"
-FILES_CHANGED="$(git "${DIFF_ARGS[@]}" --stat 2>/dev/null | tail -1 | grep -oE '^[[:space:]]*[0-9]+ files? changed' | grep -oE '[0-9]+' | head -1 || echo 0)"
+DIFF_LINES="$(git -c core.quotePath=false "${DIFF_ARGS[@]}" 2>/dev/null | wc -l | tr -d ' ')"
+FILES_CHANGED="$(git -c core.quotePath=false "${DIFF_ARGS[@]}" --stat 2>/dev/null | tail -1 | grep -oE '^[[:space:]]*[0-9]+ files? changed' | grep -oE '[0-9]+' | head -1 || echo 0)"
 
 # Codex spalla BLOCKER #2 + #3: include uncommitted + untracked in the
 # "what's about to ship" tally; otherwise fresh `Write` files look empty.
-UNCOMMITTED_LINES="$(git diff HEAD 2>/dev/null | wc -l | tr -d ' ')"
+UNCOMMITTED_LINES="$(git -c core.quotePath=false diff HEAD 2>/dev/null | wc -l | tr -d ' ')"
 # W104-class bug fixed 2026-08-14 (found by spalla-review on an unrelated PR):
 # `grep -c .` ALWAYS prints a count to stdout (0 on no match) but STILL exits
 # 1 when that count is 0 — under this script's own `set -o pipefail` (line
@@ -197,8 +197,8 @@ UNCOMMITTED_LINES="$(git diff HEAD 2>/dev/null | wc -l | tr -d ' ')"
 # worth reacting to (same lesson as W104: judge the output, not the exit
 # code), so the fallback only needs to stop `set -e`/pipefail from treating
 # "zero matches" as an error, never to supply its own value.
-UNCOMMITTED_FILES="$(git diff HEAD --name-only 2>/dev/null | grep -c . 2>/dev/null || true)"
-UNTRACKED_FILES="$(git ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')"
+UNCOMMITTED_FILES="$(git -c core.quotePath=false diff HEAD --name-only 2>/dev/null | grep -c . 2>/dev/null || true)"
+UNTRACKED_FILES="$(git -c core.quotePath=false ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')"
 TOTAL_DIFF_LINES=$((DIFF_LINES + UNCOMMITTED_LINES))
 
 WARNED="false"
@@ -283,7 +283,7 @@ if [[ "$SELF_TEST" != "true" ]]; then
     # refused and its context lines still rode along embedded (harness S5).
     # With renames off, git reports old+new as a plain delete+add pair — both
     # sides land in this list and either one tripping pii_path_hit refuses.
-    done < <({ git "${DIFF_ARGS[@]}" --no-renames --name-only 2>/dev/null; git diff --no-renames HEAD --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; } | sort -u)
+    done < <({ git -c core.quotePath=false "${DIFF_ARGS[@]}" --no-renames --name-only 2>/dev/null; git -c core.quotePath=false diff --no-renames HEAD --name-only 2>/dev/null; git -c core.quotePath=false ls-files --others --exclude-standard 2>/dev/null; } | sort -u)
     if [[ "${#PII_HITS[@]}" -gt 0 ]] && [[ "$ALLOW_PII_PATHS" != "true" ]]; then
         echo "REFUSED: diff touches PII-classed path(s) — refusing to send to an external seat without --allow-pii-paths:" >&2
         printf '  %s\n' "${PII_HITS[@]}" >&2
@@ -376,16 +376,16 @@ _fail_closed_redaction() {
 }
 
 # Capture diff bodies once for embedding in the prompt.
-DIFF_BODY="$(git "${DIFF_ARGS[@]}" 2>/dev/null | head -2000 | strip_data_file_deletes || echo '<diff capture failed>')"
-UNCOMMITTED_BODY="$(git diff HEAD 2>/dev/null | head -1000 | strip_data_file_deletes || true)"
+DIFF_BODY="$(git -c core.quotePath=false "${DIFF_ARGS[@]}" 2>/dev/null | head -2000 | strip_data_file_deletes || echo '<diff capture failed>')"
+UNCOMMITTED_BODY="$(git -c core.quotePath=false diff HEAD 2>/dev/null | head -1000 | strip_data_file_deletes || true)"
 DIFF_BODY="$(redact_for_external "$DIFF_BODY")" || _fail_closed_redaction
 UNCOMMITTED_BODY="$(redact_for_external "$UNCOMMITTED_BODY")" || _fail_closed_redaction
 
 # Codex spalla self-review #1: embed full content of each untracked file
 # (with per-file line cap) so reviewers can actually inspect new files.
 # Cap: max 25 files × 200 lines/file ≈ 5000 lines budget, plus skip binary.
-UNTRACKED_FILES_FOR_DUMP="$(git ls-files --others --exclude-standard 2>/dev/null | head -25 || true)"
-UNTRACKED_LIST="$(git ls-files --others --exclude-standard 2>/dev/null | head -50 || true)"
+UNTRACKED_FILES_FOR_DUMP="$(git -c core.quotePath=false ls-files --others --exclude-standard 2>/dev/null | head -25 || true)"
+UNTRACKED_LIST="$(git -c core.quotePath=false ls-files --others --exclude-standard 2>/dev/null | head -50 || true)"
 # Same class of bug as UNCOMMITTED_FILES above (`|| echo 0` doubling grep -c's
 # own already-printed "0" under pipefail) — same fix, `|| true`.
 UNTRACKED_TOTAL_FOR_DUMP="$(printf '%s\n' "$UNTRACKED_FILES_FOR_DUMP" | grep -c . 2>/dev/null || true)"
