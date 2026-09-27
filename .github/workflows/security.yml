@@ -931,7 +931,23 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install detect-secrets
-        run: pip install detect-secrets
+        run: pip install detect-secrets pytest
+
+      - name: Guilt+innocence corpus (inline credential-table lint, 2026-09-27)
+        # Regression tripwire for scripts/lint_no_inline_credential_tables.py
+        # (the incident: apps/backend-rag/scripts/import_lkpm_q1_2026.py held
+        # 57 plaintext OSS login/password tuples detect-secrets never caught —
+        # no high-entropy token, no `KEY =` shape, just a repeated tuple
+        # ending in two strings next to a "password" comment). Guilt fixture
+        # proves the shape is caught; innocence fixture proves a same-shaped
+        # non-credential table (family #3: judge the entity, not a substring)
+        # is not.
+        run: |
+          python3 -m pytest scripts/tests/test_lint_no_inline_credential_tables.py -q
+
+      - name: Scan tracked *.py for inline credential-shaped tables
+        run: |
+          python3 scripts/lint_no_inline_credential_tables.py
 
       - name: Guilt+innocence corpus (L3 diff-scope + nightly-alert composer)
         # Self-contained regression tripwire for this job's own behavior — see
