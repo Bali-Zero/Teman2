@@ -49,8 +49,9 @@ proof: |
   Bites, measured now against the lane that suspended. The private pattern file holds the pilot
   name set, rebuilt inside one Python process from the merge-base blob of #7516's pilot script.
   Each line was verified against the name hashes in the private gate reports, and nothing was
-  printed. The file is 0600 in the lane's 0700 quarantine dir; its sha256 prefix is in every
-  block's argv.
+  printed. The file is 0600 in the lane's 0700 quarantine dir; its HMAC token, keyed by the lane
+  salt, is in every block's argv — never a plain sha256, which a one-line file would make
+  reversible by hashing every tracked path.
 
   - At #7516's head edec8a21 (detached worktree, and again from this worktree: byte-identical):
     `files`, `hits` and `patterns_present` equal what gate-7516's re-gate section measured with
@@ -295,7 +296,7 @@ receipts:
       ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev
       edec8a21f9917a56c0724fe83a081027aba4e880 [--repo <detached worktree of edec8a21>]"
     result: |
-      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=239077ed9222c03b8ec5dd21561308c9452dd564
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: tree --patterns @hmac:b75f801013109975 --rev edec8a21f9917a56c0724fe83a081027aba4e880
       mode: tree
       tree_digest: 08b2b39759e9e7e2
@@ -317,7 +318,7 @@ receipts:
       ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev
       2d1335b3f26530ba72e1ddf68b5dd81a3570be55"
     result: |
-      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=239077ed9222c03b8ec5dd21561308c9452dd564
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: tree --patterns @hmac:b75f801013109975 --rev 2d1335b3f26530ba72e1ddf68b5dd81a3570be55
       mode: tree
       tree_digest: 84e3ce208d62253e
@@ -339,7 +340,7 @@ receipts:
       ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev
       fda25b43998bfb14526fc8c837c6fda8d25aeffd"
     result: |
-      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=239077ed9222c03b8ec5dd21561308c9452dd564
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: tree --patterns @hmac:b75f801013109975 --rev fda25b43998bfb14526fc8c837c6fda8d25aeffd
       mode: tree
       tree_digest: 9e1675af26a4b459
@@ -362,10 +363,10 @@ receipts:
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
       ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev HEAD --check-in <this pack>"
     result: |
-      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=239077ed9222c03b8ec5dd21561308c9452dd564
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: tree --patterns @hmac:b75f801013109975 --rev HEAD
       mode: tree
-      tree_digest: 0257a2bc3d6ac2f7
+      tree_digest: 42ecf134f80febec
       scope_files: 22796
       patterns: {hmac: b75f801013109975, lines: 7}
       files: 5
@@ -384,7 +385,7 @@ receipts:
       "python3 scripts/evidence/pii_receipt.py tree --patterns <pilot-names-7.txt> --rev
       a6fcae5afe… --path <each M path of git diff --name-status a6fcae5afe edec8a21>"
     result: |
-      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=239077ed9222c03b8ec5dd21561308c9452dd564
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: tree --patterns @hmac:b75f801013109975 --rev a6fcae5afe6d16abe9e3c4691fb988c31eb18da4 --path @hmac:256a3eacc80cc4c3 --path @hmac:2ad1d8ac742ed4e4 --path @hmac:00afd9beb12012c0 --path @hmac:32b583aea087fbf7 --path @hmac:cc4581fdc8f463c8 --path @hmac:ff392fac48d90b56 --path @hmac:ca2de3d242cd0ceb --path @hmac:6e1fbda0211e0807
       mode: tree
       tree_digest: b0b19f690619195f
@@ -404,7 +405,7 @@ receipts:
   - claim: "R6.5 probe AFTER — the same paths at #7516's head edec8a21."
     cmd: "the same invocation with --rev edec8a21f9917a56c0724fe83a081027aba4e880"
     result: |
-      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=239077ed9222c03b8ec5dd21561308c9452dd564
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: tree --patterns @hmac:b75f801013109975 --rev edec8a21f9917a56c0724fe83a081027aba4e880 --path @hmac:256a3eacc80cc4c3 --path @hmac:2ad1d8ac742ed4e4 --path @hmac:00afd9beb12012c0 --path @hmac:32b583aea087fbf7 --path @hmac:cc4581fdc8f463c8 --path @hmac:ff392fac48d90b56 --path @hmac:ca2de3d242cd0ceb --path @hmac:6e1fbda0211e0807
       mode: tree
       tree_digest: 08b2b39759e9e7e2
@@ -427,7 +428,7 @@ receipts:
       ~/.agent/pii-quarantine/pii-deep-audit/categories-b.txt --category b --not-path <tests>
       --text <identity-document tokens>"
     result: |
-      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=239077ed9222c03b8ec5dd21561308c9452dd564
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: descriptor --label b --rev edec8a21f9917a56c0724fe83a081027aba4e880 --min-files 2 --categories @hmac:165ffdf91cd9b0b0 --category b --not-path '(^|/)(tests?|fixtures)/|(^|/)test_[^/]*$' --text '(?i)passport|\bNIK\b|\bKTP\b'
       mode: descriptor
       label: b
@@ -448,7 +449,7 @@ receipts:
       ~/.agent/pii-quarantine/pii-deep-audit/r66-residuals.txt --brief <brief.yml> --pack
       <pack.yml> --body <body file passed to gh pr create --body-file>"
     result: |
-      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=239077ed9222c03b8ec5dd21561308c9452dd564
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:e19ee4b296ad8859 --pack PACK --body @text:eb00d2f2e80faf71
       mode: r66
       r66_line: "r66: hmac=e5501725d9a0 lines=22 residual_hits=0 hedge_hits=0"
@@ -527,6 +528,6 @@ appetite_exceeded: |
 
 diff:
   files: 7
-  insertions: 1596
-  deletions: 6
-  net_lines: 1590
+  insertions: 1678
+  deletions: 9
+  net_lines: 1669

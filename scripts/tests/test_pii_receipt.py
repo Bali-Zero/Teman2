@@ -259,12 +259,47 @@ def test_guilt_a_pasted_isolating_block_still_fails_check_in(fx):
     assert rc == 3 and "MATCH" in err
 
 
-def test_descriptor_guilt_measuring_words_the_described_file_does_not_contain(fx):
+def test_descriptor_guilt_a_two_file_predicate_that_misses_its_category(fx):
     repo, private = fx.repo, fx.private
-    rc, out, _ = run("descriptor", "--repo", str(repo), "--label", "code", "--min-files", "1",
+    rc, out, _ = run("descriptor", "--repo", str(repo), "--label", "code",
                      "--categories", str(private / "cats.txt"), "--category", "code",
-                     "--text", "nothing to see")
-    assert rc == 3 and "covers_category: 0/2" in out and "NOT-COVERING" in out
+                     "--not-path", "^src/")
+    assert rc == 3 and "files: 2" in out and "covers_category: 0/2" in out
+    assert "verdict: NOT-COVERING\n" in out
+
+
+@pytest.mark.parametrize("floor", ["1", "0", "-3"])
+def test_descriptor_refuses_min_files_below_two(fx, floor):
+    repo, private = fx.repo, fx.private
+    rc, out, err = run("descriptor", "--repo", str(repo), "--label", "code", "--min-files", floor,
+                       "--categories", str(private / "cats.txt"), "--category", "code", "--path", r"\.py$")
+    assert rc == 2 and out == "" and "never below 2" in err
+
+
+def test_descriptor_innocence_min_files_above_the_floor_is_accepted(fx):
+    repo, private = fx.repo, fx.private
+    rc, out, _ = run("descriptor", "--repo", str(repo), "--label", "code", "--min-files", "2",
+                     "--categories", str(private / "cats.txt"), "--category", "code", "--path", r"\.py$")
+    assert rc == 0 and "min_files: 2" in out and "verdict: OK\n" in out
+
+
+def test_descriptor_without_categories_is_unmeasured_and_red_even_when_pasted(fx):
+    tmp, repo = fx.tmp, fx.repo
+    desc = ["descriptor", "--repo", str(repo), "--label", "code", "--path", r"\.py$"]
+    rc, out, _ = run(*desc)
+    assert rc == 3 and "files: 2" in out and "covers_category: n/a" in out
+    assert "verdict: UNMEASURED\n" in out
+    paste(out, tmp / "pack.yml")
+    rc, _out, err = run(*desc, "--check-in", str(tmp / "pack.yml"))
+    assert rc == 3 and "MATCH" in err
+
+
+def test_descriptor_category_must_be_a_label_not_free_text(fx):
+    repo, private = fx.repo, fx.private
+    rc, out, err = run("descriptor", "--repo", str(repo), "--label", "code",
+                       "--categories", str(private / "cats.txt"), "--category", "code files",
+                       "--path", r"\.py$")
+    assert rc == 2 and out == "" and "--category must match" in err
 
 
 def test_descriptor_binary_blobs_leave_the_universe_and_are_counted(fx):

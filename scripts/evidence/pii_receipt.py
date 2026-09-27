@@ -12,8 +12,11 @@ PII-SAFE BY CONSTRUCTION. Patterns, category maps and id lists come from
 PRIVATE files named on the command line (never committed; R6.6 keeps them in
 ~/.agent/pii-quarantine/<lane>/, 0600 in a 0700 dir). Patterns reach
 `git grep` on stdin, never in argv. The output carries counts and keyed
-hashes only: never a matched string, never a path (not even a --path value),
-never a private file's path. argv is echoed with every private file and every
+hashes only: never a matched string and never a private file's path; in
+`tree` and `r66` never a tracked path either (not even a --path value).
+`descriptor` echoes its --path/--not-path/--text/--not-text terms in clear,
+by design: they ARE the public descriptor R6.8 measures, so they must stay at
+class level and never name a file. argv is echoed with every private file and every
 --path replaced by `@hmac:<16 hex>`, keyed by the lane salt SALT_NAME that
 lives beside the private files (created 0600 on first use, refused if group-
 or world-readable). A PLAIN hash would not do: a one-line category map, or a
@@ -31,6 +34,17 @@ whatever --path scopes the count to. It does not change when the pack is
 edited, and it changes when anything else does. The header's `blob=` is the
 git blob of the script bytes that ran: a changed script invalidates every
 block it produced before, by design.
+
+WHAT `tree` COUNTS. files/hits/lines_any/occurrences count text blobs only;
+a binary blob is counted in binary_files, yet a pattern found only inside a
+binary still counts in patterns_present, so a name hidden in a binary shows.
+The counts include files under evidence/ (a pack that carries a name shows
+up), while scope_files and tree_digest exclude them: an evidence-only edit
+leaves a block byte-identical only while evidence/ carries no pattern.
+
+FAIL-CLOSED DESCRIPTOR (R6.8). --min-files never goes below 2 (exit 2). A run
+without --categories cannot show covers_category n/n, so its verdict is
+UNMEASURED and it exits 3 like ISOLATING and NOT-COVERING.
 
 Modes (stdlib only, read-only on the repo):
   tree        pattern hits over tracked files at --rev
@@ -313,6 +327,13 @@ def cmd_r66(a: argparse.Namespace) -> tuple[str, int]:
     return render(argv, body), 0
 
 
+def min_files_arg(value: str) -> int:
+    n = int(value)
+    if n < 2:
+        raise argparse.ArgumentTypeError("never below 2 (S6 R6.8: one matching file is isolation)")
+    return n
+
+
 class TermAction(argparse.Action):
     def __call__(self, parser, ns, value, option_string=None):
         terms = list(getattr(ns, "terms", None) or [])
@@ -381,6 +402,8 @@ def cmd_descriptor(a: argparse.Namespace) -> tuple[str, int]:
         covers = f"{ok}/{len(described)}"
         if ok < len(described):
             verdict.append("NOT-COVERING")
+    else:
+        verdict.append("UNMEASURED")
     argv = ["descriptor", "--label", a.label, "--rev", a.rev, "--min-files", str(a.min_files)]
     if a.categories:
         argv += ["--categories", private_token(lane_salt(a.categories), cat_raw), "--category", a.category]
@@ -445,7 +468,7 @@ def build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("descriptor", parents=[common], help="S6 R6.8 descriptor measurement")
     d.add_argument("--label", required=True)
     d.add_argument("--rev", default="HEAD")
-    d.add_argument("--min-files", type=int, default=2)
+    d.add_argument("--min-files", type=min_files_arg, default=2, help="at least 2 (R6.8)")
     d.add_argument("--categories", help="PRIVATE '<label>\\t<path>' file")
     d.add_argument("--category", help="the label this descriptor describes")
     for kind in ("path", "not-path", "text", "not-text"):
@@ -462,6 +485,8 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("a mode (tree | r66 | descriptor) or --selftest is required")
     if getattr(a, "label", None) is not None and not LABEL_RE.match(a.label):
         ap.error("--label must match [a-z0-9_-]{1,32}")
+    if getattr(a, "category", None) is not None and not LABEL_RE.match(a.category):
+        ap.error("--category must match [a-z0-9_-]{1,32}")
     try:
         out, rc = {"tree": cmd_tree, "r66": cmd_r66, "descriptor": cmd_descriptor}[a.mode](a)
     except UsageError as exc:
@@ -579,9 +604,15 @@ def selftest() -> int:
         pack.write_text("receipts:\n  - result: |\n" + "".join("      " + ln + "\n" for ln in out.splitlines()))
         rc, _ = _run(desc + ["--text", "and", "--check-in", str(pack)])
         expect(rc == 3, "guilt: a byte-identical paste of an ISOLATING block still exits 3 under --check-in")
-        rc, out = _run(desc[:-2] + ["--path", r"\.md$", "--min-files", "1"])
-        expect(rc == 3 and "NOT-COVERING" in out and "covers_category: 0/2" in out,
-               "guilt: a descriptor its own category's files do not match exits 3")
+        rc, out = _run(desc[:-2] + ["--not-path", "^src/"])
+        expect(rc == 3 and "files: 2" in out and "covers_category: 0/2" in out
+               and "verdict: NOT-COVERING\n" in out,
+               "guilt: a 2-file descriptor its own category's files do not match exits 3")
+        rc, out = _run(desc + ["--min-files", "1"])
+        expect(rc == 2 and out == "", "guilt: --min-files below 2 is refused (exit 2), no block printed")
+        rc, out = _run(desc[:5] + desc[-2:])
+        expect(rc == 3 and "covers_category: n/a" in out and "verdict: UNMEASURED\n" in out,
+               "guilt: a descriptor run without --categories is UNMEASURED and exits 3")
     print(f"selftest: {'PASS' if not fails else 'FAIL'} ({len(fails)} failing)")
     return 1 if fails else 0
 

@@ -242,10 +242,16 @@ hedge_hits=<b>` (amended by R6.7: the first form, `sha256=<12 hex>`, is a plain 
   with one digit edited → exit 1 (MISMATCH); a countable claim with no block for its invocation →
   exit 4 (NO-BLOCK); both are red, and a hand-typed number is red even when it is correct, since
   "re-measured by hand" is exactly what each round below claimed. **Innocence:** the same
-  invocation after edits confined to `evidence/` → exit 0, byte-identical; a prior version's wrong
-  number quoted for correction per the Innocence case. **Acceptance:** for every block,
-  `python3 scripts/evidence/pii_receipt.py <mode> <same argv, private files by path> --check-in
-<pack.yml>` → 0, and `python3 scripts/evidence/pii_receipt.py --selftest` → PASS.
+  invocation after edits confined to `evidence/` → exit 0, byte-identical for `scope_files` and
+  `tree_digest`, which exclude `evidence/`; `tree`'s own counts (`files`/`hits`/`lines_any`/
+  `occurrences`/`patterns_present`) include `evidence/`'s tracked files by design, so a block is
+  byte-identical after an `evidence/`-only edit only while that edit adds no pattern to
+  `evidence/`; a prior version's wrong number quoted for correction per the Innocence case.
+  **Acceptance:** for every block, `python3 scripts/evidence/pii_receipt.py <mode> <same argv,
+private files by path> --check-in <pack.yml>` → 0, and `python3
+scripts/evidence/pii_receipt.py --selftest` → PASS; for a `descriptor` block, R6.8's acceptance
+  form binds instead of this generic one — a same-argv `--check-in` can still pass an argv that
+  omits `--categories` or that floors `--min-files` below 2, both of which R6.8 forbids.
 - R6.8 — descriptor non-isolation is measured, not asserted. A category descriptor R6.1 allows
   ships with its predicate: the ordered conjunction of path and content terms its own words assert
   (`pii_receipt.py descriptor --path/--not-path/--text/--not-text`, evaluated over tracked text
@@ -256,11 +262,16 @@ hedge_hits=<b>` (amended by R6.7: the first form, `sha256=<12 hex>`, is a plain 
   isolates. A descriptor that names script type, file format and field set together is
   presumptively isolating and never ships without its block. A correction note that explains why
   a prior descriptor isolated is itself a descriptor: "the prior descriptor isolated one file" is
-  the whole note. **Guilt:** a predicate that narrows to one file → exit 3 (ISOLATING); a
-  predicate the category's own file fails → exit 3 (NOT-COVERING). **Innocence:** a class-only
-  predicate matching ≥ 2 files and covering its category → exit 0. **Acceptance:** `python3
+  the whole note. `--min-files` never goes below 2, and a block without `covers_category: n/n` is
+  red: running without `--categories` cannot show a category coverage fraction, so its verdict is
+  UNMEASURED rather than a silent OK. **Guilt:** a predicate that narrows to one file → exit 3
+  (ISOLATING); a predicate the category's own file fails → exit 3 (NOT-COVERING); `--min-files`
+  below 2 → exit 2, refused before any measurement runs; a run without `--categories` → exit 3
+  (UNMEASURED), same as ISOLATING or NOT-COVERING. **Innocence:** a class-only predicate matching
+  ≥ 2 files and covering its category → exit 0. **Acceptance:** `python3
 scripts/evidence/pii_receipt.py descriptor --label <l> --categories <private> --category <l>
-<terms> --check-in <pack.yml>` → 0.
+<terms> --check-in <pack.yml>` → 0; this is the form R6.7's Acceptance defers to for `descriptor`
+  blocks, since it is the only one that pins both `--categories` and the `--min-files` floor.
 
 **Evidence for R6.2's specific shape:** `gate-7491.md` K3 — pairing each of two redacted pilot
 ids with its own per-file occurrence count, next to two named prompt files — is the mechanism: the
@@ -272,8 +283,9 @@ key regardless of which id or file it names.
 **Evidence for R6.7/R6.8:** after S6 landed as text, the same lane went a third consecutive round
 on each of two causes. Counts: `gate-7481.md` K2 → `gate-7491.md` K2 → `gate-7516.md` B1, then C2
 at the next head, where the receipt's written command reproduced one file count while other places
-in the same brief and pack still carried the older one, and a corrected size figure was
-announced in the task list but left unchanged in the line itself. Descriptors: `gate-7481.md` K3 →
+in the same brief and pack still carried the older one (a separate size-figure drift in the same
+round is S2's domain — `pii_receipt.py` counts files and occurrences, not byte sizes, so R6.7
+does not reach it). Descriptors: `gate-7481.md` K3 →
 `gate-7491.md` K3 → `gate-7516.md` B3, then C1, where the rewritten category descriptor still
 isolated the residual under the gate's own conjunction, the builder's "non-isolating" measurement
 counted words the residual does not contain, and the correction note published a recipe that
@@ -307,11 +319,11 @@ not text). Both stay builder-attested per R6.6 and gate-verified by hand.
 
 **Migration.** No retroactive re-lint of packs already on `main`. Applies to any evidence pack for
 a PII-removal or PII-redaction lane authored after this ships; a pack for an unrelated lane is
-unaffected. As of this text, `#7489` (S5, hot-zone egress) is OPEN, not merged
-(`as_of: 2026-09-27T03:20Z`); this section is appended after S4. If S5 merges first, a follow-up
-rebase re-anchors this section after S5's — that re-anchoring does not happen on its own.
-R6.7/R6.8 bind the next version of any PII-lane pack authored after they merge; `#7516` is OPEN
-with auto-merge off (`as_of: 2026-09-27T06:55Z`), so its next head is the first consumer.
+unaffected. `#7489` (S5, hot-zone egress) merged 2026-09-27T07:31Z as `4a9a788306` (its own
+Bites-contract fix followed as `61249b801c`); this section is already re-anchored after S5's,
+since this PR's merge-base `fda25b4399` sits after that merge. R6.7/R6.8 bind the next version of
+any PII-lane pack authored after they merge; `#7516` is OPEN with auto-merge off (`as_of:
+2026-09-27T06:55Z`), so its next head is the first consumer.
 
 ## Ship order
 
