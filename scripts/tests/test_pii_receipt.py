@@ -1,0 +1,173 @@
+"""Guilt + innocence for scripts/evidence/pii_receipt.py (S6 R6.7/R6.8).
+
+Every fixture is a throwaway git repo built at runtime by the module's own
+_synthetic_repo(); the "names" in it are assembled from lowercase fragments,
+so no name-shaped literal exists in this file or in the module.
+
+Executed on every PR that touches either file by guard-conformance.yml
+("PII receipt generator guilt+innocence"): scripts-tests-sweep.yml is
+continue-on-error and would never turn a check red.
+"""
+from __future__ import annotations
+
+import importlib.util
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+_MODULE_PATH = Path(__file__).resolve().parents[2] / "scripts" / "evidence" / "pii_receipt.py"
+_spec = importlib.util.spec_from_file_location("pii_receipt", _MODULE_PATH)
+pr = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(pr)
+
+
+def run(*argv: str) -> tuple[int, str, str]:
+    proc = subprocess.run([sys.executable, str(_MODULE_PATH), *argv], capture_output=True, text=True)
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+@pytest.fixture()
+def fx(tmp_path: Path):
+    repo, private, names = pr._synthetic_repo(tmp_path)
+    tree = ["tree", "--repo", str(repo), "--patterns", str(private / "names.txt"),
+            "--categories", str(private / "cats.txt")]
+    return tmp_path, repo, private, names, tree
+
+
+def paste(block: str, where: Path) -> None:
+    where.write_text("receipts:\n  - result: |\n" + "".join("      " + ln + "\n" for ln in block.splitlines()))
+
+
+def test_selftest_passes():
+    assert run("--selftest")[0] == 0
+
+
+def test_innocence_rerun_is_byte_identical_and_check_in_matches(fx):
+    tmp, _repo, _priv, _names, tree = fx
+    rc, first, _ = run(*tree)
+    assert rc == 0 and run(*tree)[1] == first
+    paste(first, tmp / "pack.yml")
+    assert run(*tree, "--check-in", str(tmp / "pack.yml"))[0] == 0
+
+
+def test_guilt_hand_typed_count_is_a_mismatch_even_when_plausible(fx):
+    tmp, _repo, _priv, _names, tree = fx
+    block = run(*tree)[1]
+    paste(block.replace("files: 3", "files: 2"), tmp / "pack.yml")
+    rc, _out, err = run(*tree, "--check-in", str(tmp / "pack.yml"))
+    assert rc == 1 and "MISMATCH" in err
+
+
+def test_guilt_other_invocation_has_no_block(fx):
+    tmp, _repo, _priv, _names, tree = fx
+    paste(run(*tree)[1], tmp / "pack.yml")
+    assert run(*tree, "--ignore-case", "--check-in", str(tmp / "pack.yml"))[0] == 4
+
+
+def test_counts_are_the_documented_metrics(fx):
+    out = run(*fx[4])[1]
+    for line in ("files: 3", "hits: 5", "lines_any: 4", "occurrences: 6",
+                 "patterns_present: 2", "patterns_absent: 1", "binary_files: 0",
+                 "code: {files: 2, hits: 4, per_file: [2, 2]}",
+                 "uncategorized: {files: 1, hits: 1, per_file: [1]}"):
+        assert line in out.splitlines() or f"  {line}" in out.splitlines(), line
+
+
+def test_block_never_carries_a_pattern_a_matched_path_or_a_private_path(fx):
+    _tmp, _repo, private, names, tree = fx
+    out = run(*tree)[1]
+    for needle in names + ["src/one.py", "src/two.py", "tests/fixtures", str(private), "names.txt"]:
+        assert needle not in out
+    assert re.search(r"--patterns @sha256:[0-9a-f]{16} ", out)
+
+
+def test_empty_pattern_lines_never_match_everything(fx):
+    _tmp, repo, private, _names, _tree = fx
+    (private / "blank.txt").write_text("\n\n")
+    assert run("tree", "--repo", str(repo), "--patterns", str(private / "blank.txt"))[0] == 2
+
+
+def test_scope_digest_ignores_evidence_and_moves_on_anything_else(fx):
+    _tmp, repo, _priv, _names, tree = fx
+    before = run(*tree)[1]
+    (repo / "evidence/x/journal.jsonl").write_text("{}\n")
+    pr._commit(repo)
+    assert run(*tree)[1] == before
+    (repo / "docs/clean.md").write_text("edited\n")
+    pr._commit(repo)
+    assert run(*tree)[1] != before
+
+
+def test_redaction_probe_discriminates_a_no_op_redaction(fx):
+    _tmp, repo, private, names, _tree = fx
+    probe = ["tree", "--repo", str(repo), "--patterns", str(private / "names.txt"), "--path", "src/two.py"]
+    assert "files: 1" in run(*probe)[1]
+    mb = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    (repo / "src/two.py").write_text("y = 'CLIENT-A' + 'CLIENT-B'\n")
+    pr._commit(repo)
+    assert "files: 0" in run(*probe)[1]
+    assert "files: 1" in run(*probe[:5], "--rev", mb, "--path", "src/two.py")[1]
+
+
+def test_r66_line_shape_hedges_and_host_independent_argv(tmp_path: Path):
+    (tmp_path / "res.txt").write_text("one.py\n")
+    (tmp_path / "brief.yml").write_text("measured 3 files\n~30 to 36 by two detectors\n")
+    (tmp_path / "pack.yml").write_text("cites one.py once\nsomething unrelated\n")
+    (tmp_path / "body.md").write_text("some files\nhandsome\n")
+    rc, out, _ = run("r66", "--patterns", str(tmp_path / "res.txt"), "--brief", str(tmp_path / "brief.yml"),
+                     "--pack", str(tmp_path / "pack.yml"), "--body", str(tmp_path / "body.md"))
+    assert rc == 0
+    line = re.search(r'r66_line: "(.*)"', out).group(1)
+    assert re.fullmatch(r"r66: sha256=[0-9a-f]{12} lines=1 residual_hits=1 hedge_hits=2", line)
+    assert "hedge_hit_lines: [brief:2, body:1]" in out
+    assert str(tmp_path) not in out and "--brief BRIEF --pack PACK --body BODY_FILE" in out
+
+
+def test_r66_companion_id_check_is_word_bounded(tmp_path: Path):
+    (tmp_path / "res.txt").write_text("nothing-matches\n")
+    (tmp_path / "ids.txt").write_text("70\n")
+    (tmp_path / "brief.yml").write_text("id 70 twice: 70\n")
+    (tmp_path / "pack.yml").write_text("1970 and 703 are not ids\n")
+    (tmp_path / "body.md").write_text("\n")
+    out = run("r66", "--patterns", str(tmp_path / "res.txt"), "--ids", str(tmp_path / "ids.txt"),
+              "--brief", str(tmp_path / "brief.yml"), "--pack", str(tmp_path / "pack.yml"),
+              "--body", str(tmp_path / "body.md"))[1]
+    assert "id_lines: 1, id_occurrences: 2}" in out
+
+
+def test_descriptor_innocence_two_files_cover_their_category(fx):
+    _tmp, repo, private, _names, _tree = fx
+    rc, out, _ = run("descriptor", "--repo", str(repo), "--label", "code", "--categories",
+                     str(private / "cats.txt"), "--category", "code", "--path", r"\.py$")
+    assert rc == 0 and "files: 2" in out and "covers_category: 2/2" in out and "verdict: OK" in out
+
+
+def test_descriptor_guilt_a_conjunction_that_narrows_to_one_file(fx):
+    _tmp, repo, _priv, _names, _tree = fx
+    rc, out, _ = run("descriptor", "--repo", str(repo), "--label", "b", "--path", r"\.py$", "--text", " and ")
+    assert rc == 3 and "progressive_files: [2, 1]" in out and "verdict: ISOLATING" in out
+
+
+def test_descriptor_guilt_measuring_words_the_described_file_does_not_contain(fx):
+    _tmp, repo, private, _names, _tree = fx
+    rc, out, _ = run("descriptor", "--repo", str(repo), "--label", "code", "--min-files", "1",
+                     "--categories", str(private / "cats.txt"), "--category", "code",
+                     "--text", "nothing to see")
+    assert rc == 3 and "covers_category: 0/2" in out and "NOT-COVERING" in out
+
+
+def test_descriptor_binary_blob_fails_text_terms_but_keeps_path_depth(fx):
+    _tmp, repo, _priv, _names, _tree = fx
+    (repo / "src/blob.py").write_bytes(b"x\0 and ")
+    pr._commit(repo)
+    out = run("descriptor", "--repo", str(repo), "--label", "b", "--path", r"\.py$", "--text", " and ")[1]
+    assert "progressive_files: [3, 1]" in out
+
+
+def test_descriptor_excludes_evidence_from_its_universe(fx):
+    _tmp, repo, _priv, _names, _tree = fx
+    out = run("descriptor", "--repo", str(repo), "--label", "e", "--path", r"\.yml$")[1]
+    assert "files: 0" in out
