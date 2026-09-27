@@ -210,14 +210,68 @@ cured once for a different pair of names.
   never a residual, so this is never "39 vs 0" depending on whose list is used). The R6.3 hedge
   list is already public, so it does not belong in this file. Builder command:
   `grep -c -F -f <file> <brief> <pack> <body-file>` plus `grep -c -w -E '<R6.3 hedge list>' <same
-three files>`. The PR body pastes only `r66: sha256=<12 hex> lines=<N> residual_hits=<a>
-hedge_hits=<b>` — never the pattern file's contents; if `b > 0`, list each hedge hit by line
+three files>`. The PR body pastes only `r66: hmac=<12 hex> lines=<N> residual_hits=<a>
+hedge_hits=<b>` (amended by R6.7: the first form, `sha256=<12 hex>`, is a plain hash, and a plain
+  hash of a short residual list is a verification oracle) — never the pattern file's contents; the token is emitted by `pii_receipt.py r66`, and the grep
+  commands define the counts and serve as their manual cross-check; if `b > 0`, list each hedge hit by line
   number as a quoted citation per the Innocence case below, rather than claiming `b` must be 0. The
-  gate verifies by matching the pasted `sha256` prefix, rerunning the same command at HEAD for the
-  same counts, and cross-checking the file against its own report (`N` consistent, 0 basenames
+  gate verifies by re-running `pii_receipt.py r66 … --check-in` (R6.7) at HEAD for the same token
+  and counts, and cross-checking the file against its own report (`N` consistent, 0 basenames
   from inside the diff). A companion id check runs the same three files with `grep -w`, never
   repo-wide (a repo-wide digit search can never reach 0), and checks for an id sitting on the same
   line as a count or an R6.1 locator, not for the bare digit.
+- R6.7 — receipts are generated, never typed. Every countable claim R6.3 requires — files,
+  occurrences, the per-category split, fixture counts, the R6.6 `r66:` line, the R6.5 redaction
+  probe before and after — is the output of the committed script `scripts/evidence/pii_receipt.py`
+  run at the FINAL head, pasted into pack.yml VERBATIM as the script's own block. The block names
+  the script path, its git blob sha, and the exact invocation (argv, with each private input and
+  each `--path` replaced by `@hmac:<16 hex>`, HMAC-SHA256 keyed by the lane salt the script keeps
+  beside R6.6's file, 0600 in a 0700 dir, never committed; the token is how a gate proves it
+  re-ran on the same bytes, and it is keyed because a plain hash of a one-line category map is
+  reversed by hashing every tracked path; the salt is lane state, restored together with the
+  private files, and rotating it invalidates earlier blocks). It carries no commit sha, because pasting it moves
+  HEAD; it carries `tree_digest` instead — sha256 over (mode, blob, path) of every tracked file outside
+  `evidence/`, whatever `--path` scopes the count to — which an edit to the pack cannot move and
+  any other edit does. A changed script changes `blob=` and so invalidates every earlier block. Metrics, so no two
+  detectors disagree silently: `hits` = per pattern, the lines containing it, summed (one
+  `git grep -n -F` per pattern); `lines_any` = lines containing any pattern (`git grep -c -F -f`);
+  `occurrences`; `files`; `patterns_present`. The `r66:` line in the body is the block's
+  `r66_line` value; its argv binds the brief and the body file by `@text:` digests (CRLF and
+  trailing newlines normalised), and exempts only the pack, which holds the block. Prose restates a number only as a quoted block key ("`hits: N` per the head
+  block"). A gate re-runs each invocation with `--check-in <pack.yml>`. **Guilt:** a pasted block
+  with one digit edited → exit 1 (MISMATCH); a countable claim with no block for its invocation →
+  exit 4 (NO-BLOCK); both are red, and a hand-typed number is red even when it is correct, since
+  "re-measured by hand" is exactly what each round below claimed. **Innocence:** the same
+  invocation after edits confined to `evidence/` → exit 0, byte-identical for `scope_files` and
+  `tree_digest`, which exclude `evidence/`; `tree`'s own counts (`files`/`hits`/`lines_any`/
+  `occurrences`/`patterns_present`) include `evidence/`'s tracked files by design, so a block is
+  byte-identical after an `evidence/`-only edit only while that edit adds no pattern to
+  `evidence/`; a prior version's wrong number quoted for correction per the Innocence case.
+  **Acceptance:** for every block, `python3 scripts/evidence/pii_receipt.py <mode> <same argv,
+private files by path> --check-in <pack.yml>` → 0, and `python3
+scripts/evidence/pii_receipt.py --selftest` → PASS; for a `descriptor` block, R6.8's acceptance
+  form binds instead of this generic one — a same-argv `--check-in` can still pass an argv that
+  omits `--categories` or that floors `--min-files` below 2, both of which R6.8 forbids.
+- R6.8 — descriptor non-isolation is measured, not asserted. A category descriptor R6.1 allows
+  ships with its predicate: the ordered conjunction of path and content terms its own words assert
+  (`pii_receipt.py descriptor --path/--not-path/--text/--not-text`, evaluated over tracked text
+  files at HEAD, `evidence/` excluded), pasted per R6.7. The block must show `files` ≥ 2 and
+  `covers_category: n/n` — every file of the category, read from the lane's private categories
+  file, satisfies the predicate; a count over words the described file does not contain measures
+  nothing. `progressive_files` gives the count after each term, so a gate sees which term
+  isolates. A descriptor that names script type, file format and field set together is
+  presumptively isolating and never ships without its block. A correction note that explains why
+  a prior descriptor isolated is itself a descriptor: "the prior descriptor isolated one file" is
+  the whole note. `--min-files` never goes below 2, and a block without `covers_category: n/n` is
+  red: running without `--categories` cannot show a category coverage fraction, so its verdict is
+  UNMEASURED rather than a silent OK. **Guilt:** a predicate that narrows to one file → exit 3
+  (ISOLATING); a predicate the category's own file fails → exit 3 (NOT-COVERING); `--min-files`
+  below 2 → exit 2, refused before any measurement runs; a run without `--categories` → exit 3
+  (UNMEASURED), same as ISOLATING or NOT-COVERING. **Innocence:** a class-only predicate matching
+  ≥ 2 files and covering its category → exit 0. **Acceptance:** `python3
+scripts/evidence/pii_receipt.py descriptor --label <l> --categories <private> --category <l>
+<terms> --check-in <pack.yml>` → 0; this is the form R6.7's Acceptance defers to for `descriptor`
+  blocks, since it is the only one that pins both `--categories` and the `--min-files` floor.
 
 **Evidence for R6.2's specific shape:** `gate-7491.md` K3 — pairing each of two redacted pilot
 ids with its own per-file occurrence count, next to two named prompt files — is the mechanism: the
@@ -225,6 +279,18 @@ per-file count disambiguates which name maps to which id once the filenames are 
 exactly reproducing the re-identification `gate-7474.md` G3 already found and cured for a
 different collision. The rule generalizes past this one lane: a per-file count next to an id is a
 key regardless of which id or file it names.
+
+**Evidence for R6.7/R6.8:** after S6 landed as text, the same lane went a third consecutive round
+on each of two causes. Counts: `gate-7481.md` K2 → `gate-7491.md` K2 → `gate-7516.md` B1, then C2
+at the next head, where the receipt's written command reproduced one file count while other places
+in the same brief and pack still carried the older one (a separate size-figure drift in the same
+round is S2's domain — `pii_receipt.py` counts files and occurrences, not byte sizes, so R6.7
+does not reach it). Descriptors: `gate-7481.md` K3 →
+`gate-7491.md` K3 → `gate-7516.md` B3, then C1, where the rewritten category descriptor still
+isolated the residual under the gate's own conjunction, the builder's "non-isolating" measurement
+counted words the residual does not contain, and the correction note published a recipe that
+isolated it again. Builder Contract §1 suspends a PR at three reds for the same cause; R6.7 and
+R6.8 replace a fourth round of prose with a block a gate can diff.
 
 **Innocence case (R6.1/R6.3/R6.6, cicatrix-superscar.md #3 — guard needs guilt _and_ innocence):**
 quoting a prior version's WRONG claim, in quotes, for the purpose of correcting it (as this very
@@ -242,16 +308,22 @@ regex as a fixed denylist over the same walk, with the R6.1 innocence case imple
 quoted-span exemption. R6.5 partially checkable via the existing "Bites contract" job
 (`scripts/ci/bites_parse.py`), which already validates a structured `bites:` block's shape (not
 yet the post-merge-vs-pre-merge distinction this rule adds). **None of R6.1-R6.6 is implemented
-yet — this PR is spec only, no code.** Not mechanically checkable without a live PII detector run
+in the linter yet.** R6.7/R6.8 ship with their generator: `scripts/evidence/pii_receipt.py`
+(stdlib, PII-safe output, `--check-in` for the gate), its guilt+innocence corpus
+`scripts/tests/test_pii_receipt.py` and `--selftest`, both executed by `guard-conformance.yml`
+on every PR that touches either file; `evidence_pack_lint.py` does not yet demand a block, so the
+gate runs `--check-in` by hand. Not mechanically checkable without a live PII detector run
 inside CI (out of scope here, same boundary S3 already drew): R6.2's id-to-count pairing (requires
 knowing which tokens are ids) and R6.4's "measured consumer" claim (requires process/cron state,
 not text). Both stay builder-attested per R6.6 and gate-verified by hand.
 
 **Migration.** No retroactive re-lint of packs already on `main`. Applies to any evidence pack for
 a PII-removal or PII-redaction lane authored after this ships; a pack for an unrelated lane is
-unaffected. As of this text, `#7489` (S5, hot-zone egress) is OPEN, not merged
-(`as_of: 2026-09-27T03:20Z`); this section is appended after S4. If S5 merges first, a follow-up
-rebase re-anchors this section after S5's — that re-anchoring does not happen on its own.
+unaffected. `#7489` (S5, hot-zone egress) merged 2026-09-27T07:31Z as `4a9a788306` (its own
+Bites-contract fix followed as `61249b801c`); this section is already re-anchored after S5's,
+since this PR's merge-base `fda25b4399` sits after that merge. R6.7/R6.8 bind the next version of
+any PII-lane pack authored after they merge; `#7516` is OPEN with auto-merge off (`as_of:
+2026-09-27T06:55Z`), so its next head is the first consumer.
 
 ## Ship order
 
