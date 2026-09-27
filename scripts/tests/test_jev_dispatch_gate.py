@@ -144,9 +144,9 @@ def test_redact_then_clip_survives_masks_shrinking_the_head_by_more_than_any_mar
 def test_redact_is_linear_on_pathological_inputs():
     import time
     for txt in ("a" * 200_000, "a." * 100_000, "+62 " * 50_000, "Aaa " * 50_000, "a@" * 100_000, "token=x " * 30_000):
-        t0 = time.time()
+        t0 = time.process_time()
         G.redact(txt)
-        assert time.time() - t0 < 1.5
+        assert time.process_time() - t0 < 1.5  # CPU time: immune to machine load (gate r4 nit)
 
 
 def test_redact_masks_short_bearer_whole():
@@ -169,6 +169,22 @@ def test_family_is_anchored_not_substring():
     assert G._family("haiku-opus") == "haiku"
     assert G._family("claude-opus-5-5") == "opus" and G._family("sonnet") == "sonnet"
     assert G._family("opusish") is None and G._family("inherit") is None and G._family("fable") is None
+
+
+def test_key_self_load_reads_only_that_variable_and_never_exports(tmp_path=None):
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        f = pathlib.Path(tmp, "secrets.env")
+        f.write_text("export OTHER_SECRET='zzz'\nexport TYPESAFE_API_KEY='k-synthetic-1'\n")
+        env = {**os.environ, "NUZANTARA_SECRETS_FILE": str(f)}
+        env.pop("TYPESAFE_API_KEY", None)
+        code = ("import importlib.util,os;s=importlib.util.spec_from_file_location('g',%r);g=importlib.util.module_from_spec(s);"
+                "s.loader.exec_module(g);print(g._load_key_into_own_env(), 'OTHER_SECRET' in os.environ, os.environ.get('TYPESAFE_API_KEY')=='k-synthetic-1')" % str(HOOK))
+        p = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+        assert p.stdout.split() == ["True", "False", "True"], p.stdout + p.stderr
+        f.write_text("nothing here\n")
+        p = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+        assert p.stdout.split()[0] == "False"
 
 
 def test_pii_shaped_detection():

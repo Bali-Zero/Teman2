@@ -11,12 +11,12 @@
 Exactly one JSON object per judged dispatch, sent to the TypeSafe endpoint pinned in
 `scripts/typesafe_client.py`, with four fields and nothing else:
 
-| field             | source                     | bound                       | transform                       |
-| ----------------- | -------------------------- | --------------------------- | ------------------------------- |
-| `description`     | `tool_input.description`   | 500 chars                   | windowed redaction (§3)         |
-| `subagent_type`   | `tool_input.subagent_type` | 80 chars                    | none (caller-chosen identifier) |
-| `requested_model` | `tool_input.model`         | 80 chars                    | none                            |
-| `prompt`          | `tool_input.prompt`        | HEAD 5000 + TAIL 1500 chars | windowed redaction (§3)         |
+| field             | source                     | bound                                   | transform                       |
+| ----------------- | -------------------------- | --------------------------------------- | ------------------------------- |
+| `description`     | `tool_input.description`   | 500 chars + separator                   | redact, then cut (§3)           |
+| `subagent_type`   | `tool_input.subagent_type` | 80 chars                                | none (caller-chosen identifier) |
+| `requested_model` | `tool_input.model`         | 80 chars                                | none                            |
+| `prompt`          | `tool_input.prompt`        | HEAD 5000 + TAIL 1500 chars + separator | redact, then cut (§3)           |
 
 ## 2. What never leaves
 
