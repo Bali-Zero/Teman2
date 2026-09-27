@@ -449,13 +449,15 @@ jobs:
           python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q
           python3 scripts/evidence_pack_lint.py --selftest
 
-      # harness-floor.yml Step 2d (HOTZONE_PATTERNS may only grow below floor 3) runs its
-      # parser inline, so this corpus executes the step text itself; it also pins the
-      # tuple against hot-zone-pr-gate.yml's case-block, which is why that file is in
-      # the relevance filter above — drift from EITHER side turns this required job red.
-      - name: Hot-zone list floor + tuple/case-block drift (harness-floor.yml Step 2d)
+      # harness-floor.yml Step 2d (HOTZONE_PATTERNS may only grow below floor 3; drift vs
+      # hot-zone-pr-gate.yml flagged) keeps its parser inline, so this corpus executes the
+      # step text itself — and reads the real case-block, hence that file in the filter.
+      - name: Hot-zone list floor guilt+innocence (harness-floor.yml Step 2d)
         if: steps.relevant.outputs.run == 'true'
-        run: python3 -m pytest scripts/tests/test_harness_floor_hotzone_list.py -q
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pyyaml pytest
+          python3 -m pytest scripts/tests/test_harness_floor_hotzone_list.py -q
 
       # Same reasoning one step further out (cross-family review, codex-gpt-5.6-sol, HIGH, on the
       # PR that added it): scripts/tests/test_stage_council_journal.py is the guilt+innocence corpus
