@@ -58,7 +58,7 @@ bites:
     proves is the highest signed one
   where: ci
   observe: python3 scripts/ci/observe_visa_seq24_signed.py
-  expect: "contains:highest signed sequence=24"
+  expect: "contains:inventory reads seq-24 and all three consumers green"
 decisions:
   - id: D-gear
     decision: >-
@@ -123,12 +123,15 @@ decisions:
       top-level `bites:` block above (bites_parse.py admits only a `bites-observable` in-tree script as
       `observe:`, and the observer is the seq-24 sibling of seq-23's). It asserts
       review_hold_inventory reports sequence 24 (proof the new file IS the highest signed pack) and runs
-      the seq-24 pack gate, the census and the inventory test; the line
-      "highest signed sequence=24" it prints right after that check is what `expect:` matches (the
-      script's own exit code still carries a red consumer: it stops on the first failing module). A first draft of this PR left the observer named only in
-      receipts, with no machine reading it; a fresh gate rightly called that an orphan. The test-side
-      tie stays test_seq24_pack.py::TestSignedBundleTiesToSource, which the observer itself runs
-      and the CI shard runs on its own.
+      the seq-24 pack gate, the census and the inventory test. `expect:` matches its SUCCESS-ONLY final
+      line, "inventory reads seq-24 and all three consumers green", not the earlier "highest signed
+      sequence=24": the intermediate line is printed right after the inventory check and BEFORE the three
+      test modules run, so a red consumer would still print it — only the final line is emitted after
+      every step has passed (the script also stops with a non-zero exit on the first failing module).
+      An earlier draft of this PR left the observer named only in receipts, with no machine reading it;
+      a fresh gate rightly called that an orphan. The test-side tie stays
+      test_seq24_pack.py::TestSignedBundleTiesToSource, which the observer itself runs and the CI shard
+      runs on its own.
 receipts:
   - claim: Base commit, merge-base and branch of the working tree this evidence describes (nothing committed yet when measured).
     cmd: git rev-parse HEAD && git merge-base origin/main HEAD && git branch --show-current
@@ -241,10 +244,10 @@ receipts:
       review_hold_inventory --json reports highest signed sequence=24, totals pack_review_rules 1,
       pack_unknown_escalations 0; then test_seq24_pack.py 93 passed, test_interview_walk_census.py
       39 passed + 14 skipped, test_review_hold_inventory.py 7 passed; it printed "observe_visa_seq24_signed:
-      highest signed sequence=24 totals=..." (the text `expect:` looks for) and ended with "inventory reads
-      seq-24 and all three consumers green".
+      highest signed sequence=24 totals=..." early and ended with "inventory reads seq-24 and all three
+      consumers green" — the success-only text `expect:` looks for.
     exit: 0
-    ts: "2026-09-27T02:17:23Z"
+    ts: "2026-09-27T02:32:01Z"
     seat: Claude Sonnet 5 (PR-B implementer)
   - claim: The two remaining test files that read the packs directory, plus the gold driver file alone.
     cmd: >-
@@ -329,16 +332,16 @@ receipts:
       <numstat>; python3 scripts/ci/bites_parse.py --pack <this pack>
     result: >-
       "evidence_pack_lint: clean", exit 0; bites_parse prints the four fields (consumer, where ci, observe
-      python3 scripts/ci/observe_visa_seq24_signed.py, expect contains:highest signed sequence=24),
-      exit 0; --print-floor 3.
+      python3 scripts/ci/observe_visa_seq24_signed.py, expect contains:inventory reads seq-24 and all three
+      consumers green), exit 0; --print-floor 3.
     exit: 0
-    ts: "2026-09-27T02:17:24Z"
+    ts: "2026-09-27T02:32:02Z"
     seat: Claude Sonnet 5 (PR-B implementer)
   - claim: contract_verify --local is clean, including bites-pack-parses and pack-lint.
     cmd: python3 scripts/contract_verify.py --local
     result: "✅ [bites-pack-parses] Harness floor recompute; ✅ [pack-lint] Harness floor recompute; ✅ [retracted-claims] antidotes; exit 0"
     exit: 0
-    ts: "2026-09-27T02:17:24Z"
+    ts: "2026-09-27T02:32:03Z"
     seat: Claude Sonnet 5 (PR-B implementer)
 dissent:
   - seat: claude-sonnet-5 (PR-B implementer, SELF-REVIEW — not an independent refuter)

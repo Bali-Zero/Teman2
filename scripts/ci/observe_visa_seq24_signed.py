@@ -10,7 +10,8 @@
 The seq-24 sibling of ``observe_visa_seq23_signed.py``: it observes the SIGNING of
 seq-24 (E33F — a retiree without a confirmed sponsor becomes a candidate), and it
 is the executable consumer the per-PR pack declares in its `bites:` block
-(`observe:` this script, `expect: contains:highest signed sequence=24`). Fails loud
+(`observe:` this script, `expect: contains:` its success-only final line — the
+intermediate `highest signed sequence=24` line prints before the tests run). Fails loud
 on the first red step:
 
 1. ``review_hold_inventory --json`` must report ``sequence == 24`` — the
