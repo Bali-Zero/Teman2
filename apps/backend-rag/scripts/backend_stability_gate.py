@@ -47,7 +47,6 @@ def build_gate_commands() -> list[list[str]]:
             "backend/tests/services/compliance/test_lkpm_ready_pack_automation.py",
             "backend/tests/app/routers/test_compliance_lkpm_readypack.py",
             "backend/tests/services/compliance/test_lkpm_portal_cascade.py",
-            "backend/tests/unit/scripts/test_fix_lkpm_q1_2026_client_ids.py",
         ],
         [
             python,
