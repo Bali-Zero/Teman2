@@ -1,0 +1,104 @@
+task_id: tests-yml-timeouts-0927
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Close Pro's com.nuzantara.suite-growth-probe alert: "no timeout-minutes entry found for job
+  'backend-shard-1' (and '-2'/'-3') in tests.yml", errors=3, exit rc=1.
+
+  Team-lead's dispatch framed this as "3 CI jobs with no timeout-minutes" and asked for
+  timeout-minutes added to each, sized from measured job durations (gh Jobs API, max observed x2,
+  rounded up to 5). Grounding this turn found the premise only half true: tests.yml genuinely has
+  TWO untimed jobs (evaluator-critical-tests, packages-core-tests), not three, and the alert's
+  third name is a FALSE POSITIVE from suite_growth_probe.py's own read_job_timeouts(): backend-shard's
+  `name: Backend Shard ${{ matrix.shard }}` is a GitHub Actions expression yaml.safe_load never
+  evaluates, so the probe compared the literal unrendered template text against the Jobs API's real
+  per-instance names (`Backend Shard 1`/`2`/`3`) and could never match — even though backend-shard
+  already declares `timeout-minutes: 30` at the job level (line 910, applies to every matrix
+  instance). Stated rather than silently narrowed: this pack fixes BOTH the two real config gaps AND
+  the probe's own name-matching bug, because leaving the probe bug unfixed would mean its next run on
+  Pro still reports 3 (or at least 1) "no timeout-minutes entry found" errors regardless of what
+  tests.yml says — the Bites this PR promises (0 untimed-job findings on the probe's next run) is not
+  achievable by touching tests.yml alone.
+
+  A second correction happened mid-task: the team-lead's own "2x max observed, round up to 5" sizing
+  heuristic was superseded by scripts/lint_workflow_timeout_floor.py's own already-encoded 10-minute
+  floor for any job running actions/checkout (checkout on this repo intermittently takes ~2min on its
+  own — measured on 3 named prior incidents in that lint's own module docstring). A timeout-minutes: 5
+  on either job was measured to trip that lint (2 offenders, exit 1) before being corrected to 10
+  (clean, exit 0). The repo's own already-enforced floor overrides an ad hoc 2x-measured-runtime
+  heuristic; both jobs run actions/checkout, so both needed 10, not 5.
+constraints:
+  - "Do not add a redundant/pointless timeout-minutes to backend-shard — it already has one (30,
+    job-level, applies to all 3 matrix instances). The false-positive alert is a PROBE bug, not a
+    tests.yml gap; fixing it there would accomplish nothing and could mislead a future reader into
+    thinking a real config gap existed."
+  - "Fix scoped to the ${{ matrix.<var> }}-in-name: shape only (backend-shard, this repo's one
+    templated-name matrix job). frontend-tests' include:-matrix (name: Frontend Tests (Next.js),
+    disambiguated by GitHub's own auto-generated (mouth, true)-style suffix, never by this
+    workflow's YAML) is a DIFFERENT, unconfirmed gap — reproducing that naming heuristic from a
+    static YAML read is a separate task, not guessed at or silently folded into this one."
+  - "No `fly`, no `launchctl`, no production database connection, no external endpoint call beyond
+    `gh`/GitHub's own API (read-only: run-listing, job-listing) for duration measurement."
+  - "Read-only on the repo apart from the files this fix actually needs
+    (.github/workflows/tests.yml, scripts/suite_growth_probe.py, its test corpus, and this evidence
+    pack). No merge, no arm/disarm beyond this PR's own auto-merge."
+acceptance:
+  - text:
+      "WHEN scripts/suite_growth_probe.py's read_job_timeouts() parses a job whose `name:` templates
+      `${{ matrix.<var> }}` against a `strategy.matrix.<var>` list, its timeout-minutes SHALL be
+      reachable under a key matching each rendered per-instance API job name, not only the
+      unrendered template string."
+    probe: "read_job_timeouts(Path('.github/workflows/tests.yml'))"
+  - text:
+      "WHEN a tests.yml job runs actions/checkout, its timeout-minutes SHALL be at or above the
+      10-minute floor scripts/lint_workflow_timeout_floor.py enforces."
+    probe: "scripts/lint_workflow_timeout_floor.py"
+  - text:
+      "IF evaluator-critical-tests or packages-core-tests previously had no timeout-minutes, THEN an
+      unbounded runner hang on either SHALL now be capped rather than running to GitHub's own 6h
+      ceiling."
+    probe: "yaml.safe_load(open('.github/workflows/tests.yml'))"
+consumer_map:
+  - "com.nuzantara.suite-growth-probe (Pro launchd, nightly) — the direct dispatcher of this task;
+    its next run against this workflow should report the two real jobs' timeouts populated and
+    zero unmatched-key errors for backend-shard."
+  - "GitHub Actions `Evaluator Critical Tests` / `Shared Core Package Tests` jobs
+    (.github/workflows/tests.yml) — previously unbounded; a runaway pytest/npm process on either
+    would have run until GitHub's own 6h job ceiling, occupying a runner slot the whole time."
+  - "scripts/lint_workflow_timeout_floor.py — its own 166-job scan is the actual arbiter of the
+    chosen timeout value (10, not the team-lead's suggested 5); this pack's receipts include both
+    the pre-correction failure (value 5, 2 offenders) and the post-correction clean run."
+  - "scripts/tests/test_suite_growth_probe.py — gains 4 tests pinning the new
+    _expand_matrix_job_names()/read_job_timeouts() behavior; any future regression on the
+    templated-matrix-name shape now has a guilt+innocence pair to catch it, not just backend-shard's
+    incidental coverage."
+risks:
+  - "council_run (R9, Gear-3 quorum: >=2 distinct external-family review seats per
+    COUNCIL_REVIEW_SEATS, journal.jsonl in this pack dir) is INTENTIONALLY left undeclared by this
+    session — a solo Claude Sonnet 5 authoring session cannot honestly fabricate a 2-seat
+    cross-family council review of its own work, and COUNCIL_REVIEW_SEATS names only non-Anthropic
+    seats (Codex, Kimi, Qwen, DeepSeek, GLM, Gemini) by design. Per the dispatching team-lead's own
+    framing ('if floor >= 3 a fresh gate must sign before the queue takes it — that is expected'),
+    this is left for a separate fresh-gate/council session to satisfy, not worked around with
+    `seat_override` here — an override would silently paper over a real, load-bearing gate this
+    hot-zone path is supposed to get."
+  - "frontend-tests' include:-matrix (`(mouth, true)`/`(admin-dashboard, false)` auto-suffixed job
+    names) plausibly shares the exact same name-matching gap this pack fixes for backend-shard's
+    `${{ matrix.* }}`-in-name: shape, but this was NOT verified empirically this turn (the live
+    suite_growth_probe.py run against Pro's real 7-day window was started, then killed after
+    running slowly under machine memory distress before it produced a record — see dissent). Left
+    unaddressed deliberately (see constraints), not because it was ruled out."
+  - "Duration measurements (used to justify the eventual 10-minute value, which turned out to be
+    floor-driven rather than measurement-driven) came from `pull_request`-triggered CI runs via
+    `gh run list`/`gh run view`, not the probe's own `push`-to-main/`merge_group` gate-load filter
+    (suite_growth_probe.py's module docstring explicitly excludes PR runs as gate load). The two
+    job definitions are identical regardless of trigger event, so the relative durations should
+    still be representative, but this is a different sample than the probe's own 7-day window would
+    draw from."
+grader: |
+  Self-graded (solo session, no adversarial subagent dispatched this round — see risks above and
+  dissent in pack.yml). Every acceptance probe above was run directly against the real repo content
+  on this branch in this turn (not a synthetic fixture), and the pre-correction failure (5-minute
+  value tripping the 10-minute floor lint) was captured as a receipt alongside the post-correction
+  clean run, so the "10, not 5" correction is falsifiable from the pack's own evidence, not asserted.
