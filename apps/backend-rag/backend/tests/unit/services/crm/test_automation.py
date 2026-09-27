@@ -257,9 +257,16 @@ class TestProcessAutomationService:
         assert result["success"] is False
 
     async def test_trigger_success_with_notifications(self):
+        """C1 (PR #7451 gate follow-up): assert the email_type/practice_id/
+        client_id kwargs on BOTH awaits, not just the count — an
+        await_count==2 check alone survives a mutation that swaps the
+        client call site's email_type to process_start_team (M5) or drops
+        practice_id/client_id (M6), either of which would defeat R1's
+        non-resurrectable routing or the audit trail's practice linkage."""
         svc, _, _ = self._make_service()
         practice = {
             "id": 1,
+            "client_id": 10,
             "practice_type_name": "KITAS",
             "assigned_to": "lead@x.com",
             "created_by": "admin@x.com",
@@ -280,6 +287,14 @@ class TestProcessAutomationService:
         assert result["success"] is True
         assert result["client_notified"] is True
         assert m_send.await_count == 2
+
+        client_call, team_call = m_send.await_args_list
+        assert client_call.kwargs["email_type"] == "process_start_client"
+        assert client_call.kwargs["practice_id"] == 1
+        assert client_call.kwargs["client_id"] == 10
+        assert team_call.kwargs["email_type"] == "process_start_team"
+        assert team_call.kwargs["practice_id"] == 1
+        assert team_call.kwargs["client_id"] == 10
 
     async def test_trigger_no_client_email(self):
         svc, _, _ = self._make_service()

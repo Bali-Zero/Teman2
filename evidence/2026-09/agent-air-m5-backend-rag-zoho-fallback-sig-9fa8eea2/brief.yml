@@ -101,15 +101,18 @@ consumer_map:
     this PR a Brevo failure here produced no audit row and no alert, only a caught-and-logged
     `TypeError` two frames up in `trigger_on_process_start`."
 risks:
-  - "New `email_send_log.email_type` values `process_start_client`/`process_start_team` are
-    not in `email_audit.CRITICAL_EMAIL_TYPES`/`NON_RESURRECTABLE_EMAIL_TYPES` — deliberate:
-    this PR's alert path calls `notify_email_failure_critical` directly and unconditionally
-    (same as the other two services already did), so classification membership does not gate
-    the alert. The retry worker will treat a failed row of these new types as ordinary/
-    retryable (computes a `retry_after`), which is new behavior (automation.py had zero retry
-    capability before) and is a net improvement, not a regression — flagged for the mandate
-    owner in case a future pass wants to add these two types to `NON_RESURRECTABLE_EMAIL_TYPES`
-    for symmetry with `completion_client`/`waiting_docs_client`/`welcome`."
+  - "REWORK (R1, fresh-gate REWORK-BUILD verdict on `ea0ba34cff`, closed on this sha): the
+    original brief argued omitting `process_start_client` from
+    `CRITICAL_EMAIL_TYPES`/`NON_RESURRECTABLE_EMAIL_TYPES` was a net improvement because
+    `notify_email_failure_critical` alerts unconditionally regardless of membership — true for
+    the alert, but wrong for the retry worker: a failed `process_start_client` row got a
+    `retry_after`, and `EmailHealthMonitor._retry_single` would then have mailed the client a
+    bodiless `[RETRY]` stub with no original content, closing the row as `sent` while the
+    real content never arrived (scar family #2, green ≠ working). `process_start_client` is
+    personalized client-facing mail whose body can't be reconstructed at retry time — the same
+    category as `completion_client`/`waiting_docs_client`/`welcome` — so it is now IN both
+    sets, mirroring those three. `process_start_team` is a stateless team notification (like
+    `hr_bonus`) and stays retryable by design."
   - "Diff churn (421 raw add+del across 6 files, `evidence_pack_lint.py --print-floor` = 2,
     source = size) floors this PR at Gear 2 on size alone, not on any hot-zone path hit —
     3 near-identical call sites plus full guilt+innocence coverage for each (including a new

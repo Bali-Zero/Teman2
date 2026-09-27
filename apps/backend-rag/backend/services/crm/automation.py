@@ -21,8 +21,10 @@ import httpx
 
 from backend.app.core.config import settings
 from backend.app.utils.logging_utils import get_logger
+from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.common.cache import cache_invalidating
 from backend.services.notifications.email_audit import (
+    _bounded_scrub,
     format_send_error,
     log_email_attempt,
     notify_email_failure_critical,
@@ -204,12 +206,16 @@ async def _send_with_brevo_fallback(
                 json={"to": to_email, "subject": subject, "body": html_body},
             )
             response.raise_for_status()
-        logger.info("Email sent to %s via Brevo", to_email)
+        logger.info("Email sent to %s via Brevo", redact_identifier_for_log(to_email))
         await record_email_result(db_pool, row_id, status="sent", provider="brevo")
         return
     except Exception as brevo_error:
         brevo_err_msg = format_send_error(brevo_error)
-        logger.error("Brevo failed for %s, no fallback provider: %s", to_email, brevo_err_msg)
+        logger.error(
+            "Brevo failed for %s, no fallback provider: %s",
+            redact_identifier_for_log(to_email),
+            _bounded_scrub(brevo_err_msg, 400),
+        )
         await record_email_result(
             db_pool,
             row_id,
