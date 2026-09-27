@@ -592,3 +592,16 @@ def test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code(t
     assert runner.TRUSTED_KINDS == ("cmd",)
     with pytest.raises(SystemExit):
         runner.main(["status", "--run-dir", str(fx["run"]), "--seal", "ab"])   # a 2-char prefix would match almost anything
+
+
+def test_a_rewritten_record_verdict_breaks_the_seal(fx):
+    fr.plan(fx)
+    fr.run(fx)
+    st = fr.load_state(fx)
+    seal = st["seal"]
+    name = next(n for n, c in st["checks"].items() if c["status"] == "NOT_APPLICABLE")   # a plan-time record verdict
+    st["checks"][name].update(status="PASS", reason="forged")
+    (fx["run"] / "state" / "state.json").write_text(json.dumps(st))
+    runner.main(["status", "--run-dir", str(fx["run"]), "--seal", seal])
+    out = json.loads((fx["run"] / "status.json").read_text())
+    assert out["overall"] == "BLOCKED" and "seal mismatch" in out["freshness"]["stale_reason"]

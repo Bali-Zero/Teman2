@@ -622,16 +622,17 @@ def trusted_dir_map(td: Path, recorded: dict | None = None) -> dict:
 TRUSTED_KINDS = ("cmd",)   # the only kind whose verdict no candidate code can touch: BASE judge/classifier under -I on a sha-mapped dir.
 # `trusted_pytest` takes its TEST from BASE but exercises the CANDIDATE's implementation (the ban test exec_module()s the candidate's
 # scripts/check_ban_predicates.py) — candidate code runs inside it, so it executes AFTER the seal, like `pytest` (fresh gate #3, 2026-09-27).
+SEALED_KINDS = ("cmd", "record")   # record = plan-time policy verdicts (change_map, N/A and BLOCKED reasons): copied into state, so sealed too
 SEAL_MIN_PREFIX = 12
 
 
 def trusted_seal(run_dir: Path, plan: dict, st: dict) -> str:
-    """sha256 over plan.json + every trusted check's state entry and receipt bytes. Printed by `run` BEFORE candidate code executes; the
+    """sha256 over plan.json + every `cmd` and `record` check's state entry and receipt bytes. Printed by `run` BEFORE candidate code executes; the
     operator keeps it outside run_dir and `status --seal` re-derives it — candidate code that rewrites state/receipts after the flock is
     released cannot rewrite what the operator already read."""
     h = hashlib.sha256((run_dir / "state" / "plan.json").read_bytes())
     for name in sorted(plan["checks"]):
-        if plan["checks"][name]["kind"] not in TRUSTED_KINDS:
+        if plan["checks"][name]["kind"] not in SEALED_KINDS:
             continue
         c = st["checks"].get(name, {})
         h.update(json.dumps({"n": name, "s": c.get("status"), "r": c.get("reason"), "rc": c.get("rc")}, sort_keys=True).encode())

@@ -25,7 +25,7 @@ implementation: the ban test `exec_module()`s the candidate's `scripts/check_ban
 re-hash receipts, forge its own junit, or write into the Pysa home (a poisoned baseline or a replaced `venv/bin/pyre` persists across
 runs and PRs — the home is not sha-pinned). What the runner guarantees is narrower and stated exactly: (1) the only kind no candidate
 code can touch is `cmd` on a sha-mapped BASE dir (the Pysa judge, the classifier corpus) and those run FIRST; (2) at that boundary and
-at the end the runner prints `seal=` (sha256 over plan + the `cmd` checks' state and receipts) — the operator records it OUTSIDE the
+at the end the runner prints `seal=` (sha256 over plan + the `cmd` and plan-time `record` checks' state and receipts) — the operator records it OUTSIDE the
 run dir (terminal, journal, PR comment) — and `status --seal <≥12 chars>` re-derives it and goes BLOCKED on a mismatch, so a post-run
 rewrite of a `cmd` verdict is detectable; (3) `trusted_pytest` and `pytest` verdicts are the candidate's to influence and the seal
 does not vouch for them; the seal is meaningful for one uninterrupted `run` only (a resumed run re-enters after candidate code has
