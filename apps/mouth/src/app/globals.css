@@ -1599,7 +1599,7 @@ main,
 .rumah-putih .prose h2,
 .rumah-putih .prose h3,
 .rumah-putih .prose h4 {
-  color: var(--r19-ink, #1e3863) !important; /* navy headings */
+  color: var(--r19-ink, #1e3863) !important; /* headings: R19 ink */
 }
 .rumah-putih .mdx-content p,
 .rumah-putih .mdx-content li,
@@ -1609,7 +1609,7 @@ main,
 .rumah-putih .prose li,
 .rumah-putih .prose ul,
 .rumah-putih .prose ol {
-  color: var(--r19-ink, #1f2a44) !important; /* near-ink body */
+  color: var(--r19-ink, #1f2a44) !important; /* body: R19 ink */
 }
 .rumah-putih .mdx-content strong,
 .rumah-putih .prose strong {
@@ -1630,7 +1630,7 @@ main,
 .rumah-putih .mdx-content :not(pre) > code,
 .rumah-putih .prose :not(pre) > code {
   background: var(--r19-wash, rgba(30, 56, 99, 0.08)) !important;
-  color: var(--r19-ink, #b3261e) !important; /* legible red on light */
+  color: var(--r19-ink, #b3261e) !important; /* inline code: R19 ink */
 }
 /* Code block — keep a dark slab (code reads best dark; FT-style island) */
 .rumah-putih .mdx-content pre,
