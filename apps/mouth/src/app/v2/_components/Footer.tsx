@@ -35,7 +35,7 @@ const NEWS = [
 // anchors — all four links landed on the same view). Team has a real page
 // at /team; Careers + Press have none, so they are removed, not faked.
 const COMPANY = [
-  { label: "About", href: "/v2/company/about" },
+  { label: "About", href: "/about" },
   { label: "Team", href: "/team" },
 ];
 

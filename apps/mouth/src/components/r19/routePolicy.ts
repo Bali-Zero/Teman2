@@ -30,6 +30,9 @@ export function isR19Route(pathname: string): boolean {
       "/privacy",
       "/terms",
       "/cookies",
+      "/about",
+      "/careers",
+      "/press",
     ].includes(path)
   )
     return true;

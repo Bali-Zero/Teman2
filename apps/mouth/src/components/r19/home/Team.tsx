@@ -35,11 +35,7 @@ export function Team() {
         <Link className={styles.teamLink} href="/team" prefetch={false}>
           Meet our team <span aria-hidden="true">→</span>
         </Link>
-        <Link
-          className={styles.storyLink}
-          href="/v2/company/about"
-          prefetch={false}
-        >
+        <Link className={styles.storyLink} href="/about" prefetch={false}>
           Our story <span aria-hidden="true">→</span>
         </Link>
       </div>

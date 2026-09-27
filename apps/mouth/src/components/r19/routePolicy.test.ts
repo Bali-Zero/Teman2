@@ -18,6 +18,9 @@ describe("R19 public presentation boundary", () => {
     "/privacy",
     "/terms",
     "/cookies",
+    "/about",
+    "/careers",
+    "/press",
   ])("converts %s", (path) => {
     expect(isR19Route(path)).toBe(true);
   });
@@ -39,6 +42,9 @@ describe("R19 public presentation boundary", () => {
     "/v2/privacy",
     "/v2/terms",
     "/v2/cookies",
+    "/v2/company/about",
+    "/v2/company/careers",
+    "/v2/company/press",
   ])("preserves %s", (path) => {
     expect(isR19Route(path)).toBe(false);
   });
