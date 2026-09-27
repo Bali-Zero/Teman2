@@ -1,0 +1,110 @@
+gear: 3
+gear_reason: >-
+  Floor measured on the final commit against merge-base origin/main
+  (`evidence_pack_lint.py --print-floor` over the changed-file list, result 3,
+  source `path`): `apps/backend-rag/scripts/import_lkpm_q1_2026.py` is
+  hot-zone by path regardless of diff size. Judgement agrees independently of
+  the floor: this PR removes a live credential-exposure incident from the
+  public repo's tip, on a hot-zone path where a merge is itself the Fly
+  deploy of nuzantara-rag (memory
+  discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01) — even
+  though the touched script is not imported by the runtime.
+mission: >-
+  Incident fix, dispatched 2026-09-27: a fresh gate found
+  `apps/backend-rag/scripts/import_lkpm_q1_2026.py` (public on origin/main
+  since 2026-04-07, commit 38de0a686c) carrying 57 plaintext OSS (Online
+  Single Submission) login/password pairs in a literal table. The
+  credentials are burned; the owner rotates them on the OSS portal
+  out-of-band — not part of this PR. This PR's job is narrower: get the
+  table off the tip of main, make the script fail closed without it, and
+  install a guard so the shape does not recur silently.
+objective: >-
+  (1) Rewrite `LORI_59` from a `list[tuple[int, str, int | None, str | None,
+  str | None]]` of 59 rows to a `list[tuple[int, str, int | None]]` — pdf_row,
+  pdf_name, company_id only. (2) Add `_load_oss_credentials()`: reads
+  `.lkpm_credentials.json` (untracked, matches the existing `*credentials*.json`
+  .gitignore pattern) at runtime, `raise SystemExit` with a named remediation
+  message if the file is absent — no embedded fallback, no default
+  credentials. (3) Quarantine the pre-fix file to Pro
+  (`~/.agent/pii-quarantine/import_lkpm_q1_2026.py.orig`, mode 0600, dir
+  0700), sha256-verified equal on both sides. (4) Redact the one leaked
+  username (plus an example password-shaped string) that also surfaced in
+  `docs/archive/2026-07-orphans/team-guides/lkpm-nlm-training-source.md:49`.
+  (5) Add `scripts/lint_no_inline_credential_tables.py` — a guard for the
+  exact shape detect-secrets missed (a repeated tuple ending in two
+  plaintext strings, local to a credential-keyword block) — with a
+  guilt/innocence pytest corpus, wired into `.github/workflows/security.yml`
+  next to the existing detect-secrets steps.
+scope:
+  - apps/backend-rag/scripts/import_lkpm_q1_2026.py (credential table
+    stripped to 3-tuples; `_load_oss_credentials()` added; two call sites
+    of `_process_rows` updated to thread the loaded map through)
+  - docs/archive/2026-07-orphans/team-guides/lkpm-nlm-training-source.md
+    (line 49 redacted — one leaked username, one example password-shaped
+    string)
+  - scripts/lint_no_inline_credential_tables.py (new guard)
+  - scripts/tests/test_lint_no_inline_credential_tables.py (new
+    guilt/innocence corpus, 5 tests)
+  - .github/workflows/security.yml (two new steps — the guard's own test
+    corpus, then the repo-wide scan — both next to the existing
+    detect-secrets steps in the same job)
+constraints:
+  - No credential value (username, password, or a plausible-looking
+    synthetic look-alike) may appear anywhere in this PR's diff, this pack,
+    the brief, or the PR body — only counts, file:line, and hashes.
+  - No client/company name from the incident file may be quoted in this
+    pack, brief, or PR body (the diff itself keeps them — see pii_scan_note
+    — but this evidence trail does not reproduce them).
+  - No external seat (codex/kimi/gemini/qwen/agy) may see this diff — its
+    deleted lines ARE the secrets. See `seat_override` below.
+  - The new guard must not false-positive on any other tracked file —
+    verified empirically, not asserted (receipt below).
+  - The command git grep -n "import_lkpm" apps/backend-rag/backend must stay
+    at its pre-fix count (2, both non-executing text) — no runtime
+    dependency may be introduced or broken.
+  - Rotating the burned credentials on the OSS portal is the owner's
+    action, explicitly out of scope for this PR.
+acceptance:
+  - text: >-
+      The fixed script's `LORI_59` table SHALL contain zero password-shaped
+      trailing-string tuples WHEN scanned by the new guard.
+    probe: "python3 scripts/lint_no_inline_credential_tables.py --files apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+  - text: >-
+      The guard SHALL flag the pre-fix (quarantined) file WHILE reporting
+      zero false positives across every other tracked *.py file in the repo.
+    probe: "python3 scripts/lint_no_inline_credential_tables.py"
+  - text: >-
+      `_load_oss_credentials()` SHALL raise `SystemExit` WHEN
+      `.lkpm_credentials.json` is absent, and SHALL return the correct
+      `{pdf_row: (user, pass)}` mapping WHEN a synthetic credentials file is
+      present.
+    probe: "python3 -m pytest scripts/tests/test_lint_no_inline_credential_tables.py -q"
+  - text: >-
+      The leaked username and example password-shaped string in the
+      archived training doc SHALL no longer appear in cleartext WHERE line
+      49 is inspected.
+    probe: "sed -n '49p' docs/archive/2026-07-orphans/team-guides/lkpm-nlm-training-source.md"
+  - text: >-
+      The rewritten module SHALL import cleanly and preserve exactly 59
+      rows in `LORI_59` WHEN loaded directly.
+    probe: "python3 -m py_compile apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+consumer_map:
+  - >-
+    Every future clone/pull of origin/main: the credential table is gone
+    from the tip the moment this merges. Observation: `git show
+    origin/main:apps/backend-rag/scripts/import_lkpm_q1_2026.py` after merge
+    parses to 3-element tuples only (receipt below re-runs the same
+    ast.literal_eval count that measured 57/59 pre-fix).
+  - >-
+    `.github/workflows/security.yml`'s existing secret-scan job: gains two
+    steps in this PR (guard's own test corpus, then repo scan) — runs on
+    every future push/PR, not a future job promised for later.
+  - >-
+    The two existing non-executing references
+    (`backend/db/migrations_v2/108_lkpm_receipts.sql:22` comment,
+    `backend/tests/services/compliance/test_lkpm_portal_cascade.py:8`
+    docstring): unchanged, verified they name only the script path/line, not
+    its removed content.
+appetite:
+  budget: 1 PR, unarmed
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1

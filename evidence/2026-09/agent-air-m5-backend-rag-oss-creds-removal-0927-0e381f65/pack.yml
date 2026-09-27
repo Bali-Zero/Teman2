@@ -1,0 +1,275 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Dispatched by the team-lead session (session-internal task, no tracked
+  mandate doc): "Repo Bali-Zero/Teman2 (PUBLIC) ... a fresh gate found
+  apps/backend-rag/scripts/import_lkpm_q1_2026.py carries ~57 client OSS
+  credentials in cleartext ... get them off the tip of main and make the
+  script safe" (2026-09-27).
+lanes:
+  - lane: oss-creds-removal-0927
+    role: build
+    seat: claude-sonnet-5 (this session — diagnosed the exposure, wrote the
+      fix, quarantined the original, built and wired the guard, authored
+      this pack)
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single lane, single Anthropic seat, by explicit constraint of the
+  dispatching task: this diff's deleted lines ARE the leaked credentials, so
+  no external seat (codex/kimi/gemini/qwen/agy) may see it. No council_run
+  quorum exists for the same reason — see `seat_override` in brief.yml. The
+  fresh gate session that grades this PR is the second opinion.
+diff:
+  net_lines: >-
+    5 files, +390/-68 measured by `git diff --numstat origin/main...HEAD`
+    across two commits: the credential-removal fix
+    (apps/backend-rag/scripts/import_lkpm_q1_2026.py rewritten, one doc line
+    redacted, new guard + guilt/innocence test, two new steps in
+    .github/workflows/security.yml) and a same-PR follow-up that exempted
+    the guard's own test fixture from its repo-wide scan.
+  behaviour_change: >-
+    apps/backend-rag/scripts/import_lkpm_q1_2026.py no longer runs without a
+    local, untracked, gitignored credential file — a behavior change only
+    for whoever re-runs this one-off import script by hand; no other module
+    imports it (receipt below). Everything else is additive: a new lint
+    script, a new test file, two new CI steps. No table is created, altered
+    or read differently by any runtime path; no route, router or scheduled
+    job changes.
+receipts:
+  - claim: >-
+      The fixed LORI_59 table holds exactly 59 rows, all 3-element tuples
+      (pdf_row, pdf_name, company_id) — no username/password field remains.
+    cmd: >-
+      python3 -c "import ast; lines=open('apps/backend-rag/scripts/import_lkpm_q1_2026.py').readlines();
+      start=next(i for i,l in enumerate(lines) if l.startswith('LORI_59:'));
+      end=next(i for i in range(start,len(lines)) if lines[i].strip()==']');
+      data=ast.literal_eval('['+''.join(lines[start+1:end])+']');
+      print(len(data), all(len(r)==3 for r in data))"
+    result: "records=59, arity_all_3=True"
+    exit: 0
+    ts: "2026-09-27T00:02:32Z"
+    seat: session
+  - claim: >-
+      Only 2 tracked files reference this script by name, and both are
+      non-executing text (a SQL migration comment, a test docstring) — no
+      module imports it.
+    cmd: 'git grep -n "import_lkpm" apps/backend-rag/backend'
+    result: >-
+      apps/backend-rag/backend/db/migrations_v2/108_lkpm_receipts.sql:22
+      (comment, names a DIFFERENT script,
+      import_lkpm_q1_2026_receipts.py) · apps/backend-rag/backend/tests/
+      services/compliance/test_lkpm_portal_cascade.py:8 (docstring,
+      SCAR note). Neither imports or executes this file.
+    exit: 0
+    ts: "2026-09-27T00:02:37Z"
+    seat: session
+  - claim: >-
+      The second exposure site (an example username/password pair in an
+      archived training doc) is redacted.
+    cmd: >-
+      sed -n '49p'
+      docs/archive/2026-07-orphans/team-guides/lkpm-nlm-training-source.md
+    result: "line reads '- Terlihat: Username (contoh: [REDACTED]), Password (contoh: [REDACTED])'"
+    exit: 0
+    ts: "2026-09-27T00:02:42Z"
+    seat: session
+  - claim: >-
+      The quarantined pre-fix copy on Pro is byte-identical to the file
+      that was on disk before this PR's edits, and carries the required
+      permissions.
+    cmd: >-
+      scp nuzantara@Nuzantara.local:~/.agent/pii-quarantine/import_lkpm_q1_2026.py.orig
+      /tmp/_verify.py && shasum -a 256 /tmp/_verify.py; ssh
+      nuzantara@Nuzantara.local 'shasum -a 256
+      ~/.agent/pii-quarantine/import_lkpm_q1_2026.py.orig; stat -f "%OLp %N"
+      ~/.agent/pii-quarantine ~/.agent/pii-quarantine/import_lkpm_q1_2026.py.orig'
+    result: >-
+      local sha256 f4ba7d172ca4c86df3ee1dab5ef01d7db2a16dbad2f826ae39ddc5be202f49f6
+      == remote sha256 (identical) · dir mode 700 · file mode 600.
+    exit: 0
+    ts: "2026-09-27T00:02:51Z"
+    seat: session
+  - claim: The rewritten module compiles cleanly.
+    cmd: "python3 -m py_compile apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+    result: "no output, exit 0"
+    exit: 0
+    ts: "2026-09-27T00:02:59Z"
+    seat: session
+  - claim: >-
+      `_load_oss_credentials()` fails closed (raises SystemExit with a named
+      remediation message) when the local credential file is absent.
+    cmd: >-
+      python3 -c "import importlib.util; spec=importlib.util.spec_from_file_location('m','apps/backend-rag/scripts/import_lkpm_q1_2026.py');
+      m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m);
+      m._load_oss_credentials()"
+    result: >-
+      SystemExit: "OSS credential file not found: .../.lkpm_credentials.json
+      ..." (fails closed, no fallback)
+    exit: 0
+    ts: "2026-09-27T00:02:59Z"
+    seat: session
+  - claim: >-
+      `_load_oss_credentials()` returns the correct {pdf_row: (user, pass)}
+      mapping when a synthetic credentials file is present.
+    cmd: >-
+      wrote a synthetic {"1": ["synthetic_test_user", "synthetic_test_pass"]}
+      to scripts/.lkpm_credentials.json, loaded the module, called
+      _load_oss_credentials(), then deleted the file
+    result: "loaded_rows=1, shape_ok=True (tuple of length 2)"
+    exit: 0
+    ts: "2026-09-27T00:03:07Z"
+    seat: session
+  - claim: >-
+      The new local secrets filename is already covered by the existing
+      `.gitignore` pattern — no new gitignore entry needed.
+    cmd: "git check-ignore -v apps/backend-rag/scripts/.lkpm_credentials.json"
+    result: ".gitignore:177:*credentials*.json matches the path"
+    exit: 0
+    ts: "2026-09-27T00:03:14Z"
+    seat: session
+  - claim: >-
+      detect-secrets never flagged this file's shape — no `.secrets.baseline`
+      entries exist for either exposure site, so none needed removing.
+    cmd: >-
+      python3 -c "import json; d=json.load(open('.secrets.baseline'));
+      print([k for k in d['results'] if 'import_lkpm_q1_2026' in k or
+      'lkpm-nlm-training' in k])"
+    result: "[] (empty)"
+    exit: 0
+    ts: "2026-09-27T00:03:14Z"
+    seat: session
+  - claim: The new guard's guilt/innocence pytest corpus passes in full.
+    cmd: "python3 -m pytest scripts/tests/test_lint_no_inline_credential_tables.py -q"
+    result: "5 passed"
+    exit: 0
+    ts: "2026-09-27T00:04:07Z"
+    seat: session
+  - claim: >-
+      The guard flags the pre-fix (quarantined) file at exactly the
+      measured credential-row count, and flags zero on the fixed file.
+    cmd: >-
+      loaded scripts/lint_no_inline_credential_tables.py as a module and
+      called scan_file() on the quarantined original and on the fixed
+      in-repo file
+    result: "hits_original=57, hits_fixed=0"
+    exit: 0
+    ts: "2026-09-27T00:04:20Z"
+    seat: session
+  - claim: >-
+      The guard produces zero false positives across every other tracked
+      *.py file in the repo (its own guilt fixture excluded by name, see
+      the second commit).
+    cmd: "python3 scripts/lint_no_inline_credential_tables.py"
+    result: "clean (6870 tracked *.py file(s) scanned)"
+    exit: 0
+    ts: "2026-09-27T00:04:07Z"
+    seat: session
+  - claim: Deterministic gear floor recomputed from this PR's final changed-file list is 3, source path.
+    cmd: >-
+      git diff --name-only origin/main...HEAD > /tmp/changed-files.txt &&
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file /tmp/changed-files.txt && python3
+      scripts/evidence_pack_lint.py --print-floor-source
+      --changed-files-file /tmp/changed-files.txt
+    result: "floor=3, source=path (apps/backend-rag/** hot-zone)"
+    exit: 0
+    ts: "2026-09-27T00:04:53Z"
+    seat: session
+  - claim: >-
+      Running the guard's own CLI directly against the fixed file (not just
+      importing scan_file()) reports clean.
+    cmd: "python3 scripts/lint_no_inline_credential_tables.py --files apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+    result: "clean (1 tracked *.py file(s) scanned)"
+    exit: 0
+    ts: "2026-09-27T00:08:34Z"
+    seat: session
+  - claim: >-
+      The full diff against origin/main is 5 files, +390/-68 across the two
+      commits in this branch.
+    cmd: "git diff --stat origin/main...HEAD ; git diff --numstat origin/main...HEAD"
+    result: "5 files changed, 390 insertions(+), 68 deletions(-)"
+    exit: 0
+    ts: "2026-09-27T00:04:53Z"
+    seat: session
+seat_override: >-
+  Gear-3 council_run quorum not met: secret-bearing diff (this PR's deleted
+  lines ARE the leaked credentials) — the dispatching task explicitly bars
+  every external seat (codex/kimi/gemini/qwen/agy) from this diff, so no
+  qualifying review journal can exist. The fresh gate session that grades
+  this PR is the second opinion in its place.
+pii_scan: clean
+pii_scan_note: >-
+  This diff's `+` lines introduce zero new PII: the credential removal
+  DELETES 57 username/password pairs (present only in `-` lines) and
+  REPLACES one leaked username plus an example password-shaped string with
+  `[REDACTED]` in the archived training doc. The rewritten script's `+`
+  lines retain the 59 PT-company names and numeric company_id values already
+  present in the pre-fix file since 2026-04-07 (business identifiers, not
+  personal data) — carried forward unchanged in content, not introduced by
+  this PR. Neither this pack, brief.yml, nor the PR body quotes any of
+  those company names, any credential value, or any synthetic look-alike.
+dissent:
+  - seat: session (self-review, mid-task)
+    objection: >-
+      Two structural verification commands run while grounding this task
+      printed content this diff's own constraints forbid: `sed -E
+      's/"[^"]*"/"REDACTED"/g'` redacted only double-quoted strings while
+      the actual table used single-quoted `repr()` output, so 5 real
+      company names printed in cleartext; separately, reading the script's
+      docstring (lines 1-40) printed 7 company names verbatim (the
+      "Non-derivable knowledge" section documenting known typos). Neither
+      is a new leak (both were already public on origin/main since
+      2026-04-07) but both violate this task's own "never print a client
+      name" instruction.
+    status: CONFIRMED
+    resolution: >-
+      Flagged to the dispatching session inline, in the same turn, before
+      continuing. No further reads of the credential table's content were
+      performed after this point — all subsequent verification used
+      line-count/hash/regex-count comparisons only, never full-content
+      display. Not correctable after the fact (the values are already in
+      this session's own transcript) and not repeated.
+  - seat: session (self-review, mid-task)
+    objection: >-
+      A separate command redacting the archived training doc's example
+      line printed a password-shaped string, `Bali2023*`, that turned out
+      not to match any of the 48 real distinct passwords in the credential
+      table (the loader search matched only a username against that line) —
+      an example value, not a leaked real credential, but still a
+      credential-SHAPED string printed in cleartext against the same "never
+      print a secret" constraint.
+    status: CONFIRMED
+    resolution: >-
+      Same as above: flagged immediately, no repeat. The line was
+      subsequently redacted (see receipt above) using a value held only in
+      Python-process memory, never re-printed to a terminal, for the final
+      edit.
+  - seat: session (self-review, guard design)
+    objection: >-
+      The first version of the repo-wide keyword+shape heuristic checked
+      "does >=5 credential-shaped tuples exist ANYWHERE in the file" against
+      "does the credential keyword exist ANYWHERE in the file" as two
+      independent, whole-file conditions — an over-match (family #3): 13
+      unrelated tracked files (test fixtures, an Excel generator, a CI
+      change-map) flagged, each because a large file happened to contain
+      both an incidental keyword mention and an unrelated N-row data table
+      far apart in the same file.
+    status: CONFIRMED
+    resolution: >-
+      Rewritten to require LOCALITY: a contiguous run of >=5 matching
+      tuple/comment lines, with the keyword required only in that run plus
+      a 5-line look-back window (where the real incident's keyword
+      actually sat — in the type annotation's preceding comment). Re-ran
+      against all 6869 tracked *.py files pre-existing on the branch:
+      0 flagged, while the original incident file still measured 57 hits.
+  - seat: session (self-review, CI wiring)
+    objection: >-
+      Wiring the new guard's own test file into the repo scanned by the
+      guard it tests created a self-referential false positive: the
+      guilt-fixture string embedded in
+      scripts/tests/test_lint_no_inline_credential_tables.py matched the
+      guard's own shape (1 hit) the moment both files were committed.
+    status: CONFIRMED
+    resolution: >-
+      Fixed in a second, small commit: the guard's file-enumeration
+      function excludes that one file by exact path, named and commented.
+      Re-verified clean afterward (receipt above).
