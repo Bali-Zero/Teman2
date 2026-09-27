@@ -1343,11 +1343,14 @@ jobs:
             echo "::error::could not read ${SAFE_PACK_PATH} at ${HEAD_SHA} even though git ls-tree just named it in the tree — a lazy blob fetch failed, or the object is gone. Failing closed."
             exit 1
           fi
-          # `set -u` only above — errexit is deliberately NOT on in this job's steps, so the
-          # parser's non-zero exit is captured rather than aborting the step before the
-          # message that explains it.
-          python3 scripts/ci/bites_parse.py --pack - < /tmp/bites-pack.yml > /tmp/bites-parsed.json 2> /tmp/bites-parse.err
-          RC=$?
+          # This step has no `shell:` override, so GitHub runs it as `bash -e {0}` (its
+          # documented default). A bare command's non-zero exit would abort the step right
+          # here, before any of the taxonomy checks below ever ran — the exact silent-red
+          # this comment used to claim could not happen. `|| RC=$?` puts the command inside
+          # an OR list, which `-e` does not treat as a failure to abort on, so the parser's
+          # exit code reaches the taxonomy check that explains it instead of killing the step.
+          RC=0
+          python3 scripts/ci/bites_parse.py --pack - < /tmp/bites-pack.yml > /tmp/bites-parsed.json 2> /tmp/bites-parse.err || RC=$?
           if [[ $RC -ne 0 && $RC -ne 2 ]]; then
             [[ -s /tmp/bites-parse.err ]] && cat /tmp/bites-parse.err
             echo "::error::scripts/ci/bites_parse.py exited $RC — neither 0 (parsed) nor 2 (malformed). That is outside its own documented taxonomy; failing closed."
