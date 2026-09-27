@@ -1737,8 +1737,11 @@ main,
 .rumah-putih .text-\[\#ff6b6b\] {
   color: var(--r19-ink, #b3261e) !important;
 }
+/* Dark island on purpose: the article Share menu (ArticleEngagement.tsx,
+   `absolute … bg-[#0a1929]`) keeps white text, which the ink retint above
+   skips inside `.absolute`, so its background must stay dark. */
 .rumah-putih .bg-\[\#0a1929\] {
-  background: var(--r19-wash, #0f1f33) !important;
+  background: #0f1f33 !important;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────

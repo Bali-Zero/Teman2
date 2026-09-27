@@ -77,10 +77,21 @@ function parseRumahPutihBlock(css: string): Rule[] {
 /** The actual guard: every declaration in a rule NOT scoped to
  *  `.rp-dark-island` must carry its colour literal only inside a
  *  `var(--r19-…, …)` fallback slot, never bare. */
+// Rules that stay dark on purpose: their text is white and sits inside
+// `.absolute`, which the ink retint skips (see the comment above each rule).
+const KEPT_DARK_ISLANDS = new Set([".rumah-putih .bg-\\[\\#0a1929\\]"]);
+
+/** A rule is a dark island only when `.rp-dark-island` is part of what it
+ *  selects — `:not(.rp-dark-island …)` means the opposite. */
+function isDarkIslandRule(selector: string): boolean {
+  if (KEPT_DARK_ISLANDS.has(selector.replace(/\s+/g, " "))) return true;
+  return selector.replace(/:not\([^()]*\)/g, "").includes(".rp-dark-island");
+}
+
 function findViolations(css: string): string[] {
   const offenders: string[] = [];
   for (const { selector, declarations } of parseRumahPutihBlock(css)) {
-    if (selector.includes(".rp-dark-island")) continue;
+    if (isDarkIslandRule(selector)) continue;
     for (const decl of declarations) {
       const remainder = stripR19VarFallbacks(decl);
       if (VIOLATION_RE.test(remainder)) {
@@ -110,6 +121,19 @@ describe("Rumah Putih retint token guard (globals.css Batch 1 + Batch 2)", () =>
       }
     `;
     expect(findViolations(innocent)).toEqual([]);
+  });
+
+  it("GUILT: a rule that only EXCLUDES .rp-dark-island is still checked", () => {
+    const guilty = `
+      /* MYTHOS Stage-B Batch 1 */
+      .rumah-putih h2.text-white:not(.rp-dark-island *) {
+        color: #1e3863 !important;
+      }
+      .rumah-putih button.border-white\\/20:not(.rp-dark-island *) {
+        border-color: #cfccc2 !important;
+      }
+    `;
+    expect(findViolations(guilty)).toHaveLength(2);
   });
 
   it("INNOCENCE: rules scoped to .rp-dark-island keep their white/rgba literals", () => {
