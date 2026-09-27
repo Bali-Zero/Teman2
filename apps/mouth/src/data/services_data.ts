@@ -304,6 +304,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Digital NPWP card",
         ],
         popular: false,
+        // consultant_services:"NPWP Personal + Coretax Activation"
+        livePriceKey: "NPWP Personal + Coretax Activation",
+        livePriceCategory: "consultant_services",
       },
       {
         name: "NPWPD Corporate",
@@ -316,6 +319,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Tax office liaison",
         ],
         popular: false,
+        // consultant_services:"NPWPD Registration"
+        livePriceKey: "NPWPD Registration",
+        livePriceCategory: "consultant_services",
       },
       {
         name: "SPT Annual Personal",
@@ -328,6 +334,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "E-filing submission",
         ],
         popular: false,
+        // tax_accounting.annual_standalone:"Annual Tax Personal"
+        livePriceKey: "Annual Tax Personal",
+        livePriceCategory: "tax_accounting.annual_standalone",
       },
       {
         name: "SPT Annual Company (Zero)",
@@ -340,6 +349,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "E-filing submission",
         ],
         popular: false,
+        // tax_accounting.annual_basic_packages:"Annual Company ZERO"
+        livePriceKey: "Annual Company ZERO",
+        livePriceCategory: "tax_accounting.annual_basic_packages",
       },
       {
         name: "SPT Annual Company (Operational)",
@@ -352,6 +364,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "E-filing submission",
         ],
         popular: true,
+        // No exact SKU: catalogue has 4 tiered "Annual Basic Package A-D"
+        // plus a separate "Annual Tax Company" standalone row, and this
+        // package names neither — stays on the Contact placeholder.
       },
       {
         name: "Monthly Tax Report",
@@ -364,6 +379,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Deadline management",
         ],
         popular: false,
+        // No exact SKU: catalogue has 8 rows (basic/bundled x 4 transaction
+        // tiers) and this package names no tier or bundle — stays on the
+        // Contact placeholder.
       },
       {
         name: "BPJS Health Insurance",
@@ -376,6 +394,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Monthly administration",
         ],
         popular: false,
+        // consultant_services:"BPJS Insurance (Kesehatan)"
+        livePriceKey: "BPJS Insurance (Kesehatan)",
+        livePriceCategory: "consultant_services",
       },
       {
         name: "BPJS Employment Insurance",
@@ -388,6 +409,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Monthly administration",
         ],
         popular: false,
+        // consultant_services:"BPJS Employee (Tenaga Kerja)"
+        livePriceKey: "BPJS Employee (Tenaga Kerja)",
+        livePriceCategory: "consultant_services",
       },
       {
         name: "LKPM Report",
@@ -400,6 +424,11 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Government liaison",
         ],
         popular: false,
+        // tax_accounting.annual_standalone:"LKPM Yearly Report" — the only
+        // LKPM row in the catalogue; catalogue calls it yearly while this
+        // package's feature text says quarterly (see report).
+        livePriceKey: "LKPM Yearly Report",
+        livePriceCategory: "tax_accounting.annual_standalone",
       },
     ],
     included: [
