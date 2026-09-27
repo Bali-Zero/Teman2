@@ -1784,28 +1784,78 @@ uncommitted + untracked-file bodies) straight into the prompt sent to the Codex 
 cloud) with no redaction and no path guard at all. PR #7453 — a PII-removal PR — was reviewed
 through this wrapper: the diff deleted 959 lines of a client `plan.jsonl` (969 `full_name`
 records), and every one of those deleted lines went to OpenAI in cleartext, a Builder Contract
-rule-4 / Symbiosis Law-2 output-boundary breach. The two contaminated M5 transcripts were
-quarantined (`~/.agent/pii-quarantine/`, 0600) on discovery. A sweep of every other
-`~/logs/codex-spalla/` transcript (70+ files, plus the session's own council-*/out-*.txt dumps
-to codex/kimi/gemini) against the canonical redactor's own dynamic CRM name list (12,343 client
-+ 1,789 company names from PROD, filtered to the multi-word/len>=6 subset to cut the ~30%
-single-word/short-token false-positive flood a raw alternation match produces against ordinary
-prose) found zero additional client-name hits; the handful of raw email/phone matches were RFC
-2606 test-fixture domains (`@example.com`, `@example.test`) or the `noreply@anthropic.com`
-commit-attribution boilerplate — no further leak.
+rule-4 / Symbiosis Law-2 output-boundary breach. `~/.agent/pii-quarantine/` on M5 holds 18 files
+as of 2026-09-27 (0600, never opened by this fix beyond `ls -la`/`stat` metadata): 2 are the
+original incident pair (moved 2026-09-27T05:41:41Z, traced to the coordinating gate session's own
+`mv`), and 16 more — spanning unrelated review transcripts dated 2026-09-05 through 2026-09-26 —
+were moved as a single atomic batch at 2026-09-27T06:01:07Z whose source this fix could NOT
+independently trace: neither this session's own history nor the coordinating session's history
+contains the move command for that batch, and this fix did not open any of the 16 to guess why,
+since doing so would put the very class of content this scar exists to protect into a fresh
+session's context. A previous draft of this scar said "the pair, zero additional" — that
+undercounted the true quarantine state by 16 and is corrected here; the 16's provenance is left
+for whoever ran that batch to reconcile. Separately, a sweep of the files STILL present (i.e. not
+already quarantined by either action) in `~/logs/codex-spalla/` on M5 (55 files as of 2026-09-27
+— this directory grows with every dispatch, so treat the count as a snapshot, not a constant) plus
+this session's council-*/out-*.txt transcripts (to codex/kimi/gemini) against the canonical
+redactor's own dynamic CRM name list (14,132 client+company names from PROD, filtered to a
+multi-word/len>=6 subset to cut the false-positive flood a raw alternation produces against
+ordinary prose) found zero further client-name hits in that set; the handful of raw email/phone
+matches were RFC 2606 test-fixture domains or `noreply@anthropic.com` commit-attribution
+boilerplate. A separate, independent gate review found `scripts/codex_tri_llm_review.py` sends
+full diff content to Codex+Kimi with the same defect and no guard at all — not wired live via any
+M5/Mini cron or LaunchAgent as of this writing (Pro unverified, ssh unreachable). Porting the
+three guards there safely needs its own guilt+innocence tests, which does not fit this fix's
+scope as a same-diff patch — so instead of leaving it silently exposed, its CLI entrypoint now
+refuses outright (exit 3, matching its own existing "panel did not complete" contract) until that
+port lands.
 
-**ANTIBODY:** every prompt an external seat receives now passes through three guards, in
-`scripts/lib/spalla_redact.sh` (shared, so a sibling wrapper reuses them instead of
-re-implementing its own): `strip_data_file_deletes` drops every DELETED line of a `.jsonl`/
-`.csv`/`.xlsx` file before anything else runs — a suppression marker replaces it, the content
-never exists in the prompt string at any point; `redact_for_external` then pipes whatever
-remains through the ONE canonical `scripts/_redact_pii.py` (the same module the
-agent-library-evolver's DeepSeek/Gemini/NotebookLM egress path already trusts), fail-closed on
-a redactor error; `pii_path_hit` refuses the whole dispatch outright (exit 7) when the diff
-touches a PII-classed path (`research/crm/`, `research/crm-exports/`, `research/compliance/`,
-`research/wa-copilot/`, `research/personal/wa-corpus/`, `research/hr/`, `research/*/clients/`)
-unless the caller passes `--allow-pii-paths`, itself logged to telemetry. Transcripts of every
-external seat stay swept and 0600.
+**ANTIBODY:** every prompt `.claude/scripts/codex-spalla.sh` sends now passes through three
+guards in `scripts/lib/spalla_redact.sh` (shared, so a sibling wrapper CAN reuse them instead of
+re-implementing its own — `codex_tri_llm_review.py` above does not yet): `strip_data_file_deletes`
+tracks each hunk's current file path from the diff's own `--- `/`+++ ` header state and replaces a
+DELETED line of a `.jsonl`/`.csv`/`.xlsx` file with a suppression marker before anything else runs
+— proven against a space-bearing path (git appends a trailing TAB after such a path on those two
+header lines, stripped explicitly; an earlier version of this fix missed the tab and passed its
+own hand-typed test anyway, so the fixture is now generated from a real `git diff` instead) and a
+deleted line whose own content starts with `-- ` (SQL/Lua-comment shape, which becomes a literal
+`--- ` diff line easy to mistake for a new header). Every `git diff`/`git ls-files` call feeding
+this path or the PII-path guard runs with `-c core.quotePath=false`, so a non-ASCII path is
+compared against its real characters, not git's default octal-quoted rendering. `redact_for_external`
+then pipes whatever remains through the ONE canonical `scripts/_redact_pii.py` with
+`--require-dynamic-names` (PROD CRM name coverage is REQUIRED, not best-effort — a missing/
+unreachable name list fails closed rather than silently shipping `full_name` in cleartext),
+fail-closed on any redactor error; `pii_path_hit` refuses the whole dispatch outright (exit 7) when
+the diff touches a PII-classed path — the union of a static glob list (itself checked against
+.gitignore's own PII-marked entries by a test that derives its assertions from .gitignore at test
+time, closing a gap where `compliance_report_*.pdf` had no coverage) plus the live
+`PII_PATH_FRAGMENTS` tuple already declared in `scripts/async_review_supervisor.py`, parsed from
+either an annotated or a plain assignment so a harmless type-annotation refactor there can't
+silently drop every fragment to a MISS — on EITHER side of a rename, unless the caller passes
+`--allow-pii-paths`, itself logged to telemetry. If the supervisor's fragment list itself cannot be
+read or parsed, the guard fails CLOSED (every path is treated as a hit) instead of quietly
+proceeding as if the dynamic half of the list were simply empty. Every artefact this wrapper writes
+(transcript, `.last.md`, telemetry, the BLOCKER copy) is created under `umask 077` plus an
+explicit `chmod 0600`/`0700` after creation, going forward from this fix; the transcripts on
+disk before it are a separate manual cleanup, not claimed here. The exit-8 refusal (missing CRM
+name list) now tells the operator HOW to fix it — export `DATABASE_URL` to the PROD read-only
+Postgres and ensure the Fly tunnel is up — instead of only saying the list is unavailable.
+`scripts/tests/test_codex_spalla.py::test_lib_level_diff_redaction_corpus_passes` now runs
+`scripts/tests/test_codex_spalla_diff_redaction.sh` (the lib-level guilt+innocence corpus) as a
+subprocess and asserts on its exit code plus its own "ALL OK" trailer, so
+`scripts-tests-sweep.yml`'s existing nightly `pytest scripts/tests/` sweep is what actually
+executes that corpus — a dedicated GitHub Actions workflow was drafted first and dropped:
+`.github/workflows/*` is itself a hot-zone path (`scripts/evidence_pack_lint.py`'s
+`HOTZONE_PATTERNS`), so adding one would have forced this otherwise Gear-2 bugfix into a full
+Gear-3 Evidence Pack over a benign test-runner addition. A previous draft of this scar instead
+proposed registering the `.sh` file in `infra/guard-conformance/registry.json`, on the premise
+that `is_armed()` already returning True meant only a registry entry was missing — that premise
+was wrong twice over: `is_armed()`'s True is a textual-substring artifact (any workflow
+mentioning `scripts/tests/` anywhere satisfies it, which was already true), and the registry's
+`command_hooks` surface (the only one this file's shape could fit) validates ONLY files under
+`.claude/hooks/`/`scripts/hooks/` — `.claude/scripts/codex-spalla.sh` lives elsewhere, a category
+mismatch a registry entry would not have fixed. The one true gap — no CI run ever executed the
+`.sh` corpus — needed an actual execution, which the pytest shim now is.
 
 **GOTCHA:** a PII-REMOVAL diff is the most PII-dense diff there is — the deleted lines ARE the
 data, so a wrapper that reviews "the fix that scrubs client X's data" ships client X's data to

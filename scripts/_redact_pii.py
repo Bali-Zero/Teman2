@@ -584,15 +584,36 @@ class Redactor:
 
 
 def _cli_main() -> int:
-    """CLI entrypoint: read stdin, write redacted stdout."""
+    """CLI entrypoint: read stdin, write redacted stdout.
+
+    `--require-dynamic-names` (gate 7466 blocker 5): without it, `load_default()`
+    silently skips pass4 (CRM full_name/company_name) whenever DATABASE_URL is
+    unset — the incident's own data class then ships in cleartext for any text
+    a static pattern doesn't happen to catch. A cloud-egress caller (any
+    external-seat wrapper) MUST pass this flag so a missing/unreachable CRM
+    name list is a refusal, not a silent no-op.
+    """
     logging.basicConfig(
         level=os.environ.get("REDACT_LOG_LEVEL", "WARNING"),
         format="%(asctime)s %(levelname)s _redact_pii: %(message)s",
     )
+    require_dynamic_names = "--require-dynamic-names" in sys.argv[1:]
     raw = sys.stdin.read()
     try:
-        r = Redactor.load_default()
+        r = Redactor.load_default(require_dynamic_names=require_dynamic_names)
         out = r.redact(raw)
+    except DynamicNameLoadError as e:
+        logger.error("DynamicNameLoadError: %s", e)
+        sys.stderr.write(
+            f"PII name list unavailable — refusing to send: {e}\n"
+            "To load it: export DATABASE_URL to the PROD read-only Postgres "
+            "(host=127.0.0.1 port=15432 user=nuzantara_readonly dbname=nuzantara_rag "
+            "sslmode=disable — see scripts/pg.sh's own header for the working combo "
+            "and its Keychain/launchd-fallback password lookup, never hardcode the "
+            "password here) and make sure the com.nuzantara.fly-pg-tunnel proxy is "
+            "up, then retry.\n"
+        )
+        return 1
     except RedactionError as e:
         logger.error("RedactionError: %s", e)
         sys.stderr.write(f"FAIL-CLOSED: {e}\n")

@@ -10,7 +10,13 @@
 #   base_branch: base for diff comparison (default: main)
 #   focus_brief: optional free-text focus area passed to Codex
 #   --allow-pii-paths: overrides the PII-classed-path refusal below. Logged
-#                to telemetry (`allow_pii_paths`); does NOT skip redaction.
+#                to telemetry (`allow_pii_paths`); does NOT skip redaction —
+#                the redactor still runs, with PROD CRM names still REQUIRED
+#                (fails closed if unavailable). It does NOT confine codex's
+#                OWN filesystem reads: `codex exec --sandbox read-only` runs
+#                in $REPO_ROOT and the prompt invites it to grep the repo, so
+#                an override still lets codex read the raw file itself — this
+#                flag narrows what THIS WRAPPER embeds, not what codex can see.
 #   --self-test: liveness probe, no diff needed — dispatches a trivial prompt
 #                through the real `codex exec` path and requires a verdict line
 #                back. Exit 0 proves flags, seat and auth are all live.
@@ -18,12 +24,17 @@
 # PII (cicatrix W140, 2026-09-26): everything embedded in the prompt below
 # leaves this machine for OpenAI's cloud. Before that happens the diff/
 # uncommitted/untracked bodies are (a) refused outright if they touch a
-# PII-classed path (research/crm|crm-exports|compliance|wa-copilot|hr,
-# research/*/clients) unless --allow-pii-paths is passed, and (b) piped
-# through the canonical `scripts/_redact_pii.py` (fail-closed on error).
-# Deleted lines of .jsonl/.csv/.xlsx files are never embedded at all — a
-# PII-REMOVAL diff is the most PII-dense diff there is: the deleted lines
-# ARE the data.
+# PII-classed path (union of a static list plus the live PII_PATH_FRAGMENTS
+# tuple in scripts/async_review_supervisor.py, checked on EITHER side of a
+# rename) unless --allow-pii-paths is passed, and (b) piped through the
+# canonical `scripts/_redact_pii.py --require-dynamic-names` (fail-closed on
+# error OR an unavailable CRM name list). Deleted lines of .jsonl/.csv/.xlsx
+# files are never embedded at all — a PII-REMOVAL diff is the most PII-dense
+# diff there is: the deleted lines ARE the data. NOT covered: the operator-
+# typed FOCUS brief and the bare untracked-file PATH list (UNTRACKED_LIST)
+# are not redacted — both are lower-risk (typed by a human, or paths only,
+# not diff content) but a careless FOCUS could still paste something it
+# shouldn't; known gap, not closed here.
 #
 # Behavior contract: see docs/superpowers/specs/2026-05-03-codex-spalla-design.md §4.3.
 # Hard rules: see docs/decisions/2026-05-03-codex-spalla-architecture.md.
@@ -48,6 +59,14 @@
 #   >8 = codex non-zero exit propagated (may also collide with codex's own)
 
 set -euo pipefail
+
+# Every artefact this wrapper writes (transcripts, .last.md, telemetry) is
+# review material for an EXTERNAL diff and must never be group/world-readable
+# (S7 / cicatrix W140 follow-up: 55/55 existing files were 0644 under the
+# default 022 umask). Belt: umask here. Suspenders: explicit chmod after each
+# create, below, in case a path pre-existed under a looser mode (umask alone
+# never tightens an existing file/dir).
+umask 077
 
 # --allow-pii-paths can appear anywhere in argv; strip it before positional
 # parsing so it doesn't shift MODE/BASE/FOCUS.
@@ -105,12 +124,17 @@ cd "$REPO_ROOT"
 
 # strip_data_file_deletes / redact_for_external / pii_path_hit (Builder
 # Contract rule 4 / cicatrix W140): shared with any sibling external-seat
-# wrapper, so they live in scripts/lib/spalla_redact.sh, not here. Sourced
-# before the codex-login check below so the PII-path guard further down
-# never depends on the seat being logged in (only on `codex` existing at
-# all, checked above — no dispatch to protect against otherwise).
+# wrapper, so they live in scripts/lib/spalla_redact.sh, not here. Resolved
+# relative to THIS SCRIPT's own on-disk location (not $REPO_ROOT): a test
+# harness drives this exact file with `cwd` pointed at a synthetic fixture
+# repo that carries no copy of scripts/lib/ — $REPO_ROOT there resolves to
+# the fixture, not this checkout, and the source would 404 (scripts/tests/
+# test_codex_spalla.py, 10/11 regressed this way at head 92e7cac0a8). This
+# script's own path never moves, so BASH_SOURCE-relative is the one
+# resolution that is correct in both the fixture and the real deploy.
+_SPALLA_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-. "$REPO_ROOT/scripts/lib/spalla_redact.sh"
+. "$_SPALLA_SCRIPT_DIR/../../scripts/lib/spalla_redact.sh"
 
 # Pick a seat that is actually logged in, alternating between the two ChatGPT
 # Pro subscriptions, BEFORE asking codex whether it is logged in — the question
@@ -154,12 +178,12 @@ else
     DIFF_ARGS=(diff HEAD)
 fi
 
-DIFF_LINES="$(git "${DIFF_ARGS[@]}" 2>/dev/null | wc -l | tr -d ' ')"
-FILES_CHANGED="$(git "${DIFF_ARGS[@]}" --stat 2>/dev/null | tail -1 | grep -oE '^[[:space:]]*[0-9]+ files? changed' | grep -oE '[0-9]+' | head -1 || echo 0)"
+DIFF_LINES="$(git -c core.quotePath=false "${DIFF_ARGS[@]}" 2>/dev/null | wc -l | tr -d ' ')"
+FILES_CHANGED="$(git -c core.quotePath=false "${DIFF_ARGS[@]}" --stat 2>/dev/null | tail -1 | grep -oE '^[[:space:]]*[0-9]+ files? changed' | grep -oE '[0-9]+' | head -1 || echo 0)"
 
 # Codex spalla BLOCKER #2 + #3: include uncommitted + untracked in the
 # "what's about to ship" tally; otherwise fresh `Write` files look empty.
-UNCOMMITTED_LINES="$(git diff HEAD 2>/dev/null | wc -l | tr -d ' ')"
+UNCOMMITTED_LINES="$(git -c core.quotePath=false diff HEAD 2>/dev/null | wc -l | tr -d ' ')"
 # W104-class bug fixed 2026-08-14 (found by spalla-review on an unrelated PR):
 # `grep -c .` ALWAYS prints a count to stdout (0 on no match) but STILL exits
 # 1 when that count is 0 — under this script's own `set -o pipefail` (line
@@ -173,8 +197,8 @@ UNCOMMITTED_LINES="$(git diff HEAD 2>/dev/null | wc -l | tr -d ' ')"
 # worth reacting to (same lesson as W104: judge the output, not the exit
 # code), so the fallback only needs to stop `set -e`/pipefail from treating
 # "zero matches" as an error, never to supply its own value.
-UNCOMMITTED_FILES="$(git diff HEAD --name-only 2>/dev/null | grep -c . 2>/dev/null || true)"
-UNTRACKED_FILES="$(git ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')"
+UNCOMMITTED_FILES="$(git -c core.quotePath=false diff HEAD --name-only 2>/dev/null | grep -c . 2>/dev/null || true)"
+UNTRACKED_FILES="$(git -c core.quotePath=false ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')"
 TOTAL_DIFF_LINES=$((DIFF_LINES + UNCOMMITTED_LINES))
 
 WARNED="false"
@@ -202,6 +226,12 @@ SLUG="$(echo "${FOCUS:-uncommitted}" | tr -c '[:alnum:]-' '-' | tr -s '-' | cut 
 LOG_DIR="$HOME/logs/codex-spalla"
 TELEMETRY_FILE="$HOME/logs/codex-spalla.jsonl"
 mkdir -p "$LOG_DIR"
+# `mkdir -p`/`>>` on an ALREADY-EXISTING dir/file never changes its mode —
+# umask only governs brand-new creates. Re-tighten every run regardless of
+# history (S7): the lead is fixing the 55 pre-existing 0644 transcripts on
+# M5 by hand, this is the going-forward guarantee.
+chmod 0700 "$LOG_DIR" 2>/dev/null || true
+if [[ -e "$TELEMETRY_FILE" ]]; then chmod 0600 "$TELEMETRY_FILE" 2>/dev/null || true; fi
 
 # Codex spalla self-review #3: race-safe transcript creation. Use noclobber
 # (set -C) to refuse-write if the path already exists; on collision, append
@@ -218,6 +248,7 @@ while ! ( set -C; : > "$TRANSCRIPT" ) 2>/dev/null; do
     fi
     TRANSCRIPT="${TRANSCRIPT_BASE}-${__counter}.md"
 done
+chmod 0600 "$TRANSCRIPT" 2>/dev/null || true
 # Empty file now exclusively owned; codex output below appends via >> not >.
 
 # Assistant-only final output, written by codex itself (--output-last-message),
@@ -247,7 +278,12 @@ if [[ "$SELF_TEST" != "true" ]]; then
     while IFS= read -r _tf; do
         [[ -z "$_tf" ]] && continue
         pii_path_hit "$_tf" && PII_HITS+=("$_tf")
-    done < <({ git "${DIFF_ARGS[@]}" --name-only 2>/dev/null; git diff HEAD --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; } | sort -u)
+    # --no-renames on both: `--name-only` alone prints only the DESTINATION of
+    # a detected rename, so moving a file OUT of a PII-classed dir was never
+    # refused and its context lines still rode along embedded (harness S5).
+    # With renames off, git reports old+new as a plain delete+add pair — both
+    # sides land in this list and either one tripping pii_path_hit refuses.
+    done < <({ git -c core.quotePath=false "${DIFF_ARGS[@]}" --no-renames --name-only 2>/dev/null; git -c core.quotePath=false diff --no-renames HEAD --name-only 2>/dev/null; git -c core.quotePath=false ls-files --others --exclude-standard 2>/dev/null; } | sort -u)
     if [[ "${#PII_HITS[@]}" -gt 0 ]] && [[ "$ALLOW_PII_PATHS" != "true" ]]; then
         echo "REFUSED: diff touches PII-classed path(s) — refusing to send to an external seat without --allow-pii-paths:" >&2
         printf '  %s\n' "${PII_HITS[@]}" >&2
@@ -295,6 +331,9 @@ confirming the CLI answered."
     printf '%s' "$SELFTEST_PROMPT" | codex exec --sandbox read-only \
         -c model_reasoning_effort=xhigh --output-last-message "$LAST_MESSAGE" \
         - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+    # codex (a separate process) writes $LAST_MESSAGE itself; it inherits this
+    # shell's umask 077, but re-tighten explicitly (S7) in case that ever changes.
+    if [[ -e "$LAST_MESSAGE" ]]; then chmod 0600 "$LAST_MESSAGE" 2>/dev/null || true; fi
     if [[ "$CODEX_EXIT" -eq 0 ]] && ! verdict_present "$LAST_MESSAGE"; then
         echo "ERROR: self-test got exit 0 but no verdict line in the assistant-only output — codex never judged." >&2
         CODEX_EXIT=6
@@ -337,16 +376,16 @@ _fail_closed_redaction() {
 }
 
 # Capture diff bodies once for embedding in the prompt.
-DIFF_BODY="$(git "${DIFF_ARGS[@]}" 2>/dev/null | head -2000 | strip_data_file_deletes || echo '<diff capture failed>')"
-UNCOMMITTED_BODY="$(git diff HEAD 2>/dev/null | head -1000 | strip_data_file_deletes || true)"
+DIFF_BODY="$(git -c core.quotePath=false "${DIFF_ARGS[@]}" 2>/dev/null | head -2000 | strip_data_file_deletes || echo '<diff capture failed>')"
+UNCOMMITTED_BODY="$(git -c core.quotePath=false diff HEAD 2>/dev/null | head -1000 | strip_data_file_deletes || true)"
 DIFF_BODY="$(redact_for_external "$DIFF_BODY")" || _fail_closed_redaction
 UNCOMMITTED_BODY="$(redact_for_external "$UNCOMMITTED_BODY")" || _fail_closed_redaction
 
 # Codex spalla self-review #1: embed full content of each untracked file
 # (with per-file line cap) so reviewers can actually inspect new files.
 # Cap: max 25 files × 200 lines/file ≈ 5000 lines budget, plus skip binary.
-UNTRACKED_FILES_FOR_DUMP="$(git ls-files --others --exclude-standard 2>/dev/null | head -25 || true)"
-UNTRACKED_LIST="$(git ls-files --others --exclude-standard 2>/dev/null | head -50 || true)"
+UNTRACKED_FILES_FOR_DUMP="$(git -c core.quotePath=false ls-files --others --exclude-standard 2>/dev/null | head -25 || true)"
+UNTRACKED_LIST="$(git -c core.quotePath=false ls-files --others --exclude-standard 2>/dev/null | head -50 || true)"
 # Same class of bug as UNCOMMITTED_FILES above (`|| echo 0` doubling grep -c's
 # own already-printed "0" under pipefail) — same fix, `|| true`.
 UNTRACKED_TOTAL_FOR_DUMP="$(printf '%s\n' "$UNTRACKED_FILES_FOR_DUMP" | grep -c . 2>/dev/null || true)"
@@ -429,6 +468,7 @@ else
         -c model_reasoning_effort=xhigh --output-last-message "$LAST_MESSAGE" \
         - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
 fi
+if [[ -e "$LAST_MESSAGE" ]]; then chmod 0600 "$LAST_MESSAGE" 2>/dev/null || true; fi
 
 # The exit code, not only the transcript, must distinguish "ran and found
 # nothing" from "never ran" (ledger 2026-09-01: codex-cli 0.151.0 printed a
@@ -451,8 +491,11 @@ if head -50 "$LAST_MESSAGE" 2>/dev/null | grep -qiE '^[[:space:]]*BLOCKER\b'; th
     BLOCKER="true"
     REVIEWS_DIR="$REPO_ROOT/docs/codex-reviews"
     mkdir -p "$REVIEWS_DIR"
-    cp "$TRANSCRIPT" "$REVIEWS_DIR/${TS}-${RAND}-blocker-${SLUG}.md"
-    echo "BLOCKER detected — also copied to $REVIEWS_DIR/${TS}-${RAND}-blocker-${SLUG}.md" >&2
+    chmod 0700 "$REVIEWS_DIR" 2>/dev/null || true
+    BLOCKER_COPY="$REVIEWS_DIR/${TS}-${RAND}-blocker-${SLUG}.md"
+    cp "$TRANSCRIPT" "$BLOCKER_COPY"
+    chmod 0600 "$BLOCKER_COPY" 2>/dev/null || true
+    echo "BLOCKER detected — also copied to $BLOCKER_COPY" >&2
 fi
 
 record_telemetry "$CODEX_EXIT" "$BLOCKER"
