@@ -9,7 +9,7 @@ memory: user
 
 ## Notes (moved from description 2026-09-02)
 
-Regulation types watched: Permenkumham, PMK, PP, Perpres, UU, Peraturan BKPM, Permenaker, Permenkes. Full output path: `~/nuzantara/research/regulatory/<date>-delta.json`.
+Regulation types watched: Permenkumham, PMK, PP, Perpres, UU, Peraturan BKPM, Permenaker, Permenkes. Final output path (after the cron wrapper promotes it via its own worktree + PR): `~/nuzantara/research/regulatory/<date>-delta.json`. Your OWN write target as an agent session is the scratch path in Step 5 — see there for why.
 
 # Regulatory Watcher
 
@@ -131,7 +131,7 @@ Dedup against `seen_citations` from yesterday's file. If a citation appears in b
 
 ### Step 5 — Emit JSON
 
-Write to `~/nuzantara/research/regulatory/<today>-delta.json`:
+Write to `/tmp/<today>-delta.json` — NOT `~/nuzantara/research/regulatory/` directly. The `worktree_isolation` guard (Agent Worktree Discipline, CLAUDE.md §0.5) blocks an agent session from writing into the tracked main checkout; it is a hard guard that must never be bypassed (no `AGENT_WORKTREE_ENFORCEMENT=false`, no ad-hoc worktree of your own here). The cron wrapper (`regulatory-watcher-run.sh`) picks the file up from `/tmp` and promotes it into the checkout via its own dedicated worktree + PR. Schema:
 
 ```json
 {

@@ -34,10 +34,16 @@ def _extract_recover_delta() -> str:
     return m.group(0)
 
 
-def _run(tmp_path: Path, date: str, extra_files: dict[str, str]) -> tuple[int, str, str]:
+def _run(
+    tmp_path: Path,
+    date: str,
+    extra_files: dict[str, str],
+    scratch_content: str | None = None,
+) -> tuple[int, str, str]:
     """Set up `$HOME/nuzantara/.worktrees/*/research/regulatory/` per `extra_files`
-    (relative path -> content) and call `recover_delta` for `date`. Returns
-    (returncode, log contents, DELTA_JSON contents-or-empty).
+    (relative path -> content) and call `recover_delta` for `date`. `scratch_content`,
+    when given, is written to the tier-1 scratch path (`$DELTA_SCRATCH`) before the
+    call. Returns (returncode, log contents, DELTA_JSON contents-or-empty).
     """
     home = tmp_path / "home"
     for rel, content in extra_files.items():
@@ -46,6 +52,9 @@ def _run(tmp_path: Path, date: str, extra_files: dict[str, str]) -> tuple[int, s
         p.write_text(content, encoding="utf-8")
     log = tmp_path / "watcher.log"
     delta_json = tmp_path / f"{date}-delta.json"
+    delta_scratch = tmp_path / f"scratch-{date}-delta.json"
+    if scratch_content is not None:
+        delta_scratch.write_text(scratch_content, encoding="utf-8")
     (home / "nuzantara").mkdir(parents=True, exist_ok=True)
     subprocess.run(["git", "init", "-q"], cwd=home / "nuzantara", capture_output=True)
 
@@ -56,6 +65,7 @@ def _run(tmp_path: Path, date: str, extra_files: dict[str, str]) -> tuple[int, s
         f'DATE="{date}"\n'
         f'DELTA_BASENAME="{date}-delta.json"\n'
         f'DELTA_JSON="{delta_json}"\n'
+        f'DELTA_SCRATCH="{delta_scratch}"\n'
         f'LOG="{log}"\n'
         + _extract_recover_delta()
         + "\nrecover_delta\n"
@@ -112,6 +122,41 @@ def test_near_miss_glob_is_scoped_to_worktrees_dir(tmp_path) -> None:
     )
     assert rc == 1
     assert "W105-#68" not in log
+    assert delta == ""
+
+
+def test_scratch_file_is_recovered_and_removed(tmp_path) -> None:
+    """GUILT: tier 1 is a real Claude session and worktree_isolation.py (a hard,
+    never-bypassed guard) refuses its direct write into the tracked checkout —
+    measured live 2026-09-27, the completed non-partial delta stranded at
+    /tmp/<date>-delta.json while the tier was marked failed. The agent spec now
+    targets that scratch path on purpose; recover_delta() must promote it into
+    DELTA_JSON and clean up the scratch copy so a stale file can't be replayed
+    on a later run.
+    """
+    rc, log, delta = _run(
+        tmp_path,
+        "2026-09-27",
+        extra_files={},
+        scratch_content='{"real":true,"new_today_count":0}\n',
+    )
+    assert rc == 0
+    assert "recovered delta from tier-1 scratch file" in log
+    assert delta.strip() == '{"real":true,"new_today_count":0}'
+    assert not (tmp_path / "scratch-2026-09-27-delta.json").exists()
+    # the scratch path takes precedence — the worktree-glob paths must not also fire.
+    assert "W81-fix" not in log
+    assert "W105-#68" not in log
+
+
+def test_no_scratch_file_falls_through_unchanged(tmp_path) -> None:
+    """INNOCENCE: an ordinary run where tier 1 never touched the scratch path (any
+    other tier, or no run at all) must behave exactly as before the scratch-path
+    addition — no false "recovered" line, no crash on the now-referenced variable.
+    """
+    rc, log, delta = _run(tmp_path, "2026-09-27", extra_files={}, scratch_content=None)
+    assert rc == 1
+    assert "recovered delta from tier-1 scratch file" not in log
     assert delta == ""
 
 

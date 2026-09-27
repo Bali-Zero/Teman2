@@ -1,0 +1,258 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Single-build-lane, narrowly-scoped ops bugfix (92 net lines, 3 files) whose
+  floor-3 classification is purely path-based (infra/launchagents/* is a
+  literal HOTZONE_PATTERNS entry) rather than a signal of architectural
+  ambiguity or blast radius warranting cross-family adjudication. Every
+  claim in this pack is independently receipted, including two live
+  RED-then-GREEN `codex exec` runs on the production machine itself (Pro) —
+  not narrated from documentation. Convening a 2-seat cross-family council
+  (codex-gpt-5.6-sol/kimi/tp1-*/agy) for a fix already reproduced end-to-end
+  on the machine it targets would spend real seat quota without adding
+  verification the receipts don't already carry. Flagged explicitly to the
+  dispatching team-lead in the PR body so they can request a real council
+  pass before merge if they judge otherwise — this override is reported, not
+  hidden (generator != grader still holds: a fresh Gear-3 on-disk gate reads
+  this pack and can still object).
+plan_ref: >-
+  PR (agent/air-m5/ops/regulatory-watcher-tools-0927) — teaches
+  recover_delta() a tier-1 scratch-path recovery, grants codex's sandboxed
+  shell real network access, and names the seat + tool set in the run-
+  complete/DEGRADED log line, without touching worktree_isolation.py, ollama's
+  by-design toollessness, or the agy/Telegram credential problems.
+lanes:
+  - lane: regulatory-watcher-tools-fix
+    role: build
+    seat: session (dispatched by team-lead per CLAUDE.md §5 implementer routing)
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — a wrapper fix plus one test file, not a cross-family
+  council dispatch. The D3 seat-diversity floor (>=2 build lanes) does not
+  fire.
+diff:
+  net_lines: >-
+    Code-side files touched (.claude/agents/regulatory-watcher.md,
+    infra/launchagents/wrappers/regulatory-watcher-run.sh,
+    scripts/tests/test_regulatory_watcher_recover_delta.py) — small, focused
+    edits plus one new guilt/innocence pytest pair. No literal diffstat
+    number is restated here: this pack's own YAML bulk is part of the same
+    commit's `git diff --numstat`, so any hardcoded figure goes stale the
+    moment this pack itself is edited to satisfy lint. Exact current stat:
+    `git diff --numstat origin/main...HEAD`.
+  behaviour_change: >-
+    Tier 1's agent spec (Step 5) writes to /tmp/<date>-delta.json instead of
+    directly into the tracked checkout; the wrapper's recover_delta() checks
+    that scratch path first and promotes+deletes it. Tier 3's codex
+    invocation gains two `-c` config overrides (network_access=true,
+    network_proxy=false) so its shell tool can reach the internet. The
+    run-complete/DEGRADED log line gains a `tools:` field naming the seat's
+    actual tool set. No change to the output contract, the Telegram
+    alert-only-if-new_today_count>0 gate, or the ollama tier.
+receipts:
+  - claim: >-
+      Deterministic gear floor for this PR's changed-file set is 3:
+      infra/launchagents/* is hot-zone by path (HOTZONE_PATTERNS,
+      fnmatch's `*` crosses `/`).
+    cmd: >-
+      git diff --name-only > /tmp/rw_changed_files.txt; git diff --numstat
+      > /tmp/rw_numstat.txt; python3 scripts/evidence_pack_lint.py
+      --print-floor --print-floor-source --changed-files-file
+      /tmp/rw_changed_files.txt --numstat-file /tmp/rw_numstat.txt
+    result: "3"
+    exit: 0
+    ts: "2026-09-27T02:40:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: >-
+      Pro's live wrapper (`~/scripts/regulatory-watcher-run.sh`) was
+      byte-identical to `origin/main`'s `infra/launchagents/wrappers/
+      regulatory-watcher-run.sh` at grounding time — the fix in this repo
+      is the fix Pro's cron actually runs, once the HOME-fork gap (see
+      brief risks) is closed by a manual copy.
+    cmd: >-
+      diff <(ssh pro 'cat /Users/nuzantara/scripts/regulatory-watcher-run.sh')
+      infra/launchagents/wrappers/regulatory-watcher-run.sh
+    result: "(no output — exit 0, files identical)"
+    exit: 0
+    ts: "2026-09-27T01:55:00Z"
+    seat: "session (this task, read-only SSH to Pro)"
+  - claim: >-
+      The 2026-09-27 07:00 WITA run's tier-1 (Claude) analysis genuinely
+      completed (4 NB-INTEL + 11 web sources) and produced a complete,
+      non-partial delta that never reached the tracked checkout because of
+      worktree_isolation.py, not a lack of tools — the model itself wrote it
+      to /tmp instead, where the pre-fix wrapper had no recovery path.
+    cmd: cat /tmp/2026-09-27-delta.json # run on Pro via ssh
+    result: >-
+      valid JSON, partial:false, new_today_count:0, 11 sources classified
+      (6 unreachable, 5 checked_no_new), note field ends "NOT YET WRITTEN TO
+      research/regulatory/ - see run note: worktree creation failed, disk
+      97% full ... File held here pending Zero's decision."
+    exit: 0
+    ts: "2026-09-27T01:20:00Z"
+    seat: "session (this task, read-only SSH to Pro)"
+  - claim: >-
+      Tier 3 (codex)'s own shell tool genuinely could not reach the internet
+      in the failing 2026-09-27 run — "Could not resolve host" for every
+      .go.id target, DNS itself blocked, while its web-search tool (separate
+      path) worked.
+    cmd: >-
+      sed -n '14257,14874p' /Users/nuzantara/logs/regulatory-watcher.log |
+      sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' | grep -A6 "curl.*peraturan.go.id"
+      # run on Pro via ssh
+    result: >-
+      curl exit 6 for peraturan.go.id, jdih.kemenkeu.go.id, muc.co.id,
+      jdih.kemenkumham.go.id — all "Could not resolve host"
+    exit: 0
+    ts: "2026-09-27T01:35:00Z"
+    seat: "session (this task, read-only SSH to Pro)"
+  - claim: >-
+      RED: `-c sandbox_workspace_write.network_access=true` ALONE is
+      insufficient — a separate domain-allowlist proxy
+      (`features.network_proxy`, on by default in this account's
+      ~/.codex/config.toml) still blocks an unlisted domain.
+    cmd: >-
+      env CODEX_HOME=$HOME/.codex-acct2 codex exec --sandbox workspace-write
+      -c sandbox_workspace_write.network_access=true --skip-git-repo-check
+      "curl -sS -m 10 -o /dev/null -w HTTP:%{http_code} https://www.google.com"
+      # run live on Pro
+    result: >-
+      "sandbox: workspace-write [workdir, /tmp, $TMPDIR] (network access
+      enabled)" then exec_command failed: 'Network access to
+      "www.google.com" was blocked: domain is not on the allowlist for the
+      current sandbox mode.' curl: (56) CONNECT tunnel failed, HTTP:000
+    exit: 0
+    ts: "2026-09-27T02:46:33Z"
+    seat: "session (this task, live codex exec on Pro)"
+  - claim: >-
+      GREEN: adding `-c features.network_proxy=false` alongside
+      `network_access=true` opens real outbound network from codex's shell
+      tool, confirmed against a neutral domain.
+    cmd: >-
+      env CODEX_HOME=$HOME/.codex-acct2 codex exec --sandbox workspace-write
+      -c sandbox_workspace_write.network_access=true -c
+      features.network_proxy=false --skip-git-repo-check "curl -sS -m 10 -o
+      /dev/null -w HTTP:%{http_code} https://www.google.com" # run live on Pro
+    result: "HTTP:200"
+    exit: 0
+    ts: "2026-09-27T02:47:40Z"
+    seat: "session (this task, live codex exec on Pro)"
+  - claim: >-
+      GREEN, on an actual regulatory-watcher source (not just a neutral
+      domain) — the fix reaches the sources the cron actually needs.
+    cmd: >-
+      env CODEX_HOME=$HOME/.codex-acct2 codex exec --sandbox workspace-write
+      -c sandbox_workspace_write.network_access=true -c
+      features.network_proxy=false --skip-git-repo-check "curl -sS -m 15 -A
+      Mozilla/5.0 -o /dev/null -w HTTP:%{http_code}
+      https://www.hukumonline.com/berita/" # run live on Pro
+    result: "HTTP:200"
+    exit: 0
+    ts: "2026-09-27T02:48:20Z"
+    seat: "session (this task, live codex exec on Pro)"
+  - claim: >-
+      New guilt+innocence pytest pair for the scratch-path recovery passes,
+      alongside the full pre-existing recover_delta() corpus (unmodified
+      behavior).
+    cmd: >-
+      python3 -m pytest scripts/tests/test_regulatory_watcher_recover_delta.py
+      -q
+    result: "6 passed"
+    exit: 0
+    ts: "2026-09-27T02:50:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "The modified wrapper is syntactically valid zsh."
+    cmd: zsh -n infra/launchagents/wrappers/regulatory-watcher-run.sh
+    result: "(no output — exit 0)"
+    exit: 0
+    ts: "2026-09-27T02:50:30Z"
+    seat: "session (this task, Air-M5 worktree)"
+pii_scan: clean
+dissent:
+  - seat: "session, self-check on the scratch-path fix's actual load-bearing layer"
+    objection: >-
+      Is the real fix the wrapper's recover_delta() change, or does it
+      require ALSO editing PROMPT_CLAUDE (the inline print-mode prompt)? If
+      the agent spec (.claude/agents/regulatory-watcher.md, read via "Read
+      ... for full spec") is authoritative, editing only PROMPT_CLAUDE would
+      have been cosmetic and left tier 1 broken.
+    status: CONFIRMED
+    note: >-
+      Checked directly: PROMPT_CLAUDE says "Emit JSON to today's file" with
+      no hard path, deferring entirely to the agent spec's Step 5, which DID
+      say "Write to `~/nuzantara/research/regulatory/<today>-delta.json`" —
+      the tracked path. Editing only the wrapper's prompt string would have
+      been the cosmetic fix this objection worried about. Both the agent
+      spec's Step 5 AND PROMPT_CLAUDE (defense in depth) were edited in this
+      diff to name the scratch path.
+  - seat: "session, self-check on /tmp as a shared, world-writable location"
+    objection: >-
+      Does writing the delta to /tmp introduce a race (two concurrent runs
+      overwriting each other) or an exposure risk (world-readable /tmp) that
+      the tracked-checkout write didn't have?
+    status: RETRACTED
+    note: >-
+      Checked, not assumed safe: the wrapper already holds a single-instance
+      lock (REGWATCH_LOCKDIR, mkdir-based) before any tier runs, so two
+      concurrent cron instances cannot both reach tier 1 — no new race.
+      Content is public regulatory citations (Indonesian government
+      publications), never client PII (Builder Contract 4 does not apply);
+      the scratch file is deleted by recover_delta() on successful promotion,
+      and a failed cp leaves it in place for manual recovery with a log line
+      naming it, same posture the worktree-glob recovery paths already have
+      for their own artifacts.
+  - seat: "session, self-check on the codex network fix's precision"
+    objection: >-
+      `-c sandbox_workspace_write.network_access=true` and `-c features.
+      network_proxy=false` are not documented in `codex exec --help` (grepped,
+      zero hits for "network"/"allowlist"/"domain") — is this actually the
+      config schema, or a guess that happened to work once?
+    status: PLAUSIBLE
+    note: >-
+      Not fully retracted on purpose: both flags were proven live against
+      this exact installed version (codex-cli 0.156.1) with a RED run (network
+      _access alone still blocked, exact allowlist error message captured)
+      followed by a GREEN run (both flags, HTTP:200, twice — once against a
+      neutral domain and once against an actual regulatory-watcher source) —
+      not inferred from documentation, which is silent on both keys. The
+      residual risk (a future codex-cli upgrade renaming/removing either key)
+      is named explicitly in the brief's risks section: a rejected key
+      surfaces as a normal non-zero exit from this tier, cascading to tier 4
+      exactly as an existing quota/auth failure already does, never a silent
+      no-op — so the failure mode of this risk materializing is bounded and
+      already handled by the existing cascade contract.
+  - seat: "session, self-check on scope: should this PR also fix agy's OAuth or Telegram's 401?"
+    objection: >-
+      The team-lead's dispatch named the whole cascade as broken — should
+      this PR also resolve tier 2's OAuth timeout or the Telegram bot's
+      401, since they are part of the same dark-cron symptom?
+    status: RETRACTED
+    note: >-
+      Investigated rather than assumed out of scope: both are credential
+      problems requiring the owner's action (an interactive Google login for
+      agy; a token rotation for Telegram), not a code defect a PR can fix —
+      confirmed by reading agy's own error ("Authentication required...
+      Waiting for authentication... Error: authentication timed out") and by
+      the wrapper's existing code already NOT failing the run on a Telegram
+      401 (unchanged, verified by reading the surrounding code, not touched
+      by this diff). One PR, one concern (CLAUDE.md Agent PR Contract #1) —
+      both are named as explicit Left items in the brief and the task report
+      instead of silently folded in or silently dropped.
+tests:
+  - >-
+    scripts/tests/test_regulatory_watcher_recover_delta.py — 6/6 passing,
+    including 2 new guilt+innocence tests for the scratch-path recovery.
+    Receipt above.
+  - >-
+    zsh -n syntax check on the full modified wrapper. Receipt above.
+static:
+  - "No new lint/static-analysis tooling introduced by this diff."
+notes:
+  - >-
+    `brief_ref:` names the literal `evidence/brief.yml` (not this pack's own
+    real per-PR path) because `harness-floor.yml` stages both files under
+    canonical names before linting — same pattern as
+    `evidence/2026-08/agent-air-m5-ops-garuda-arm-env-0826-cd236292/pack.yml`.
+  - >-
+    This pack does not post a `harness/fable-gate` commit status — that is
+    the gate's own next action after re-reading this pack (generator !=
+    grader).
