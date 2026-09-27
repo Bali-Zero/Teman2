@@ -1,0 +1,158 @@
+task_id: regulatory-watcher-tools-0927
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  Fix the dark regulatory-delta cron (`com.balizero.regulatory-watcher.daily`
+  on Pro): every tier of the 4-tier LLM cascade
+  (`infra/launchagents/wrappers/regulatory-watcher-run.sh`) had failed for
+  several days, logging "regulatory-watcher ALL TIERS FAILED — manual
+  investigation needed" on 2026-09-12, -19, -23 and -27 (missing on -19..-26
+  entirely per the delta-file listing on `origin/main`), with the last tier's
+  own self-report reading "TOOL_UNAVAILABLE — Live browsing and shell
+  execution tools not enabled in this session". That message describes only
+  tier 4 (ollama qwen3.5:9b, a local text-only model with genuinely no tools —
+  by design, the documented last resort) — the dispatching task's framing
+  ("the cascade launches an LLM session without tool access") did not hold for
+  tiers 1-3, each of which failed for a DIFFERENT, tool-adjacent but distinct
+  reason, established by reading the actual 2026-09-27 07:00 WITA run's log
+  in full rather than only its tail:
+    - Tier 1 (Claude, claude-sonnet-5 subscription cascade) had FULL tool
+      access and completed real analysis (4 NB-INTEL queries + 11 web
+      sources), then hit `worktree_isolation.py` — a hard, never-bypassed
+      guard (PENDING-ARMS L1464/L2361) — when it tried to write the delta
+      JSON directly into the tracked `~/nuzantara/research/regulatory/`
+      checkout, per its agent spec's Step 5. It self-improvised a workaround
+      (wrote the complete, non-partial delta to `/tmp/2026-09-27-delta.json`)
+      and asked the operator for a decision instead of finishing — the
+      wrapper's `ensure_delta()`/`recover_delta()` had no way to find that
+      file, so a genuinely complete scan was thrown away as "hallucinated/
+      backgrounded output".
+    - Tier 2 (agy/Gemini 3.1 Pro) failed on an expired/never-headless Google
+      OAuth token requiring an interactive browser login — an ops/credential
+      problem, not a code defect; out of scope for a code PR (noted as a Left
+      item).
+    - Tier 3 (codex GPT-5.5) had both web-search AND shell tools, but its
+      `--sandbox workspace-write` invocation blocked outbound network for
+      shell-executed commands: every `curl` failed with "Could not resolve
+      host" for every .go.id/.org/.co.id target, while its own web-search
+      tool (a separate code path) worked. The agent could search but not
+      verify/fetch, so it honestly self-reported `partial:true` on an
+      otherwise-complete 0-new-regulations scan, and the wrapper's
+      `ensure_full_delta()` correctly rejected the partial result.
+    - Tier 4 (ollama qwen3.5:9b) has no tools at all, by design (documented
+      in the wrapper's own comments as the local/offline last resort) — its
+      `partial:true` + DEGRADED-accept behavior is already correct and is
+      NOT touched by this fix.
+  This PR fixes the two tool-adjacent, code-fixable defects (tiers 1 and 3)
+  without touching the hard worktree_isolation guard, ollama's by-design
+  toollessness, or the agy OAuth credential (ops action, not code).
+constraints:
+  - >-
+    Never weaken or bypass `worktree_isolation.py` — it is explicitly
+    documented as a HARD, never-bypassed guard (PENDING-ARMS L1464/L2361:
+    "that guard is HARD out-of-perimeter, bypass was not attempted"). The fix
+    works WITH it: tier 1's agent spec now targets a scratch path
+    (`/tmp/<date>-delta.json`) the guard does not cover, and the wrapper's
+    own plain-shell `recover_delta()` (not bound by the guard, same as its
+    existing worktree-glob recovery paths) promotes it from there.
+  - >-
+    Never widen codex's sandbox to `--sandbox danger-full-access` — the fix
+    grants only the sandbox's own documented network-access opt-in
+    (`-c sandbox_workspace_write.network_access=true`), staying inside
+    `workspace-write`.
+  - >-
+    Do not touch the Telegram alert step or the output contract (delta JSON
+    schema, `research/regulatory/<date>-delta.json` final path, alert-only-
+    if-new_today_count>0) — team-lead's mandate requires both unchanged. The
+    Telegram bot tokens' pre-existing 401 (owner must rotate, unrelated to
+    this fix) already does not fail the run — unchanged by this diff,
+    confirmed by reading the surrounding code, not touched.
+  - >-
+    Gear 3 by PATH, not by blast radius: this diff touches
+    `infra/launchagents/*` (a literal HOTZONE_PATTERNS entry via
+    `fnmatch.fnmatchcase("infra/launchagents/wrappers/regulatory-watcher-
+    run.sh", "infra/launchagents/*")`, `*` crosses `/` under fnmatch) — floor
+    is the deterministic one computed from the changed-file set (receipt
+    below), not this session's judgment call.
+acceptance:
+  - >-
+    `recover_delta()` recovers a tier-1 scratch file at `/tmp/<date>-delta
+    .json` into `DELTA_JSON` and deletes the scratch copy, proven by a live
+    RED/GREEN-shaped guilt+innocence pytest pair (scratch present -> recovered
+    + removed; scratch absent -> unchanged prior behavior, no crash on the
+    newly-referenced `$DELTA_SCRATCH`).
+  - >-
+    The pre-existing worktree-glob recovery paths and their guilt+innocence
+    corpus (near-miss detector, exact-match recovery) remain green, unmodified
+    in behavior.
+  - >-
+    codex's `exec` shell tool reaches the public internet under this PR's
+    exact flag set, proven by a LIVE run on Pro (the wrapper's own machine),
+    not assumed from documentation — receipts below show the flag combination
+    proven RED (network_access alone, blocked by an unrelated domain-allowlist
+    proxy) before GREEN (network_access + network_proxy=false, HTTP:200
+    against both a neutral domain and an actual regulatory-watcher source).
+  - >-
+    The run-complete/DEGRADED log line names the seat AND its tool set
+    (team-lead's explicit ask #3), verified by reading the modified log-line
+    strings and their `case` mapping.
+  - >-
+    `zsh -n` accepts the modified wrapper with no syntax errors.
+consumer_map:
+  - >-
+    Pro's `com.balizero.regulatory-watcher.daily` launchd job (07:00 WITA
+    daily) invokes `~/scripts/regulatory-watcher-run.sh`, a declared HOME-fork
+    of this PR's `infra/launchagents/wrappers/regulatory-watcher-run.sh`
+    (`infra/home-fork/declared-pairs.json`) — confirmed byte-identical to
+    `origin/main` at grounding time (`diff` exit 0). The live HOME copy is a
+    real file, NOT a symlink, so merging this PR does NOT update Pro's cron
+    automatically — see risks below.
+  - >-
+    Same HOME-fork relationship for `.claude/agents/regulatory-watcher.md`
+    (tier 1's Step 5 instructions), declared for pro+m5+mini in the same
+    `declared-pairs.json`.
+  - >-
+    `~/nuzantara/research/regulatory/<date>-delta.json` on `origin/main`,
+    produced via the wrapper's existing `promote_delta_via_pr()` worktree+PR
+    flow — unchanged by this PR, now reachable again once tier 1 or tier 3
+    can actually land a delta.
+risks:
+  - >-
+    HOME-fork gap: this PR fixes the REPO copy. Pro's live
+    `~/scripts/regulatory-watcher-run.sh` and `~/.claude/agents/regulatory-
+    watcher.md` are real files, not symlinks, and no sync job (`lint_home_
+    fork.py` only detects drift, does not fix it) copies `origin/main` onto
+    them automatically. Someone with write access on Pro must `cp` both
+    files from a fresh `origin/main` checkout after this PR merges, or the
+    07:00 WITA cron keeps running the pre-fix version. Flagged explicitly to
+    the dispatching team-lead in the PR body and the task report; this
+    session's mandate on Pro was READ-ONLY (no edits) by explicit
+    instruction, so it is not closed here.
+  - >-
+    The `sandbox_workspace_write.network_access` / `features.network_proxy`
+    config keys were verified against this exact codex-cli version (0.156.1)
+    with a live call on Pro, not merely inferred from `--help` text (which
+    does not document either key) — genuine residual risk that a future
+    codex-cli upgrade renames or removes them; the wrapper already has a
+    matching precedent (`SEAT_STATE_PRECHECK`/`codex_seat_pick` fail open on
+    a missing feature), and a config key codex-cli itself rejects surfaces as
+    a normal non-zero exit from this tier, cascading to tier 4 exactly as a
+    quota/auth failure already does — never a silent no-op.
+  - >-
+    Tier 2's agy OAuth failure and the Telegram bot's pre-existing 401 remain
+    unfixed by this PR — both require the owner's action (an interactive
+    Google login for agy; a token rotation for Telegram) and are explicitly
+    out of scope for a code PR per the task's own root-cause framing.
+grader: >-
+  Generator != grader. This session (dispatched by team-lead) authored the
+  root-cause investigation, the fix, the tests and this evidence pack; a
+  fresh Gear-3 on-disk gate grades the diff, and the dispatching team-lead
+  decides ship timing — neither is this session.
+budget: >-
+  1 build lane (this session), no council, no cross-family dispatch — a
+  4-file diff (2 wrapper edits + 1 agent-spec edit + 1 test file) whose
+  verification (pytest guilt+innocence pair, zsh syntax check, and two live
+  `codex exec` calls on Pro to prove the network fix RED then GREEN) is fully
+  reproducible without touching production data or client PII.
+pii: none
