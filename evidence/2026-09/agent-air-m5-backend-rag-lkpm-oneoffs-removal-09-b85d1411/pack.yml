@@ -18,18 +18,18 @@ seat_override: >-
   the second opinion". The fresh, independent on-disk gate that reviews this PR post-hoc is the
   adversarial check for this pack, in place of a convened council.
 diff:
-  net_lines: 12 files, +652/-1852 measured by `git diff --numstat origin/main...HEAD`.
+  net_lines: PLACEHOLDER — recomputed after the rework edits below settle; see the floor receipt.
   behaviour_change: >-
-    Pure deletion + two new test files + this evidence pack + a small push-gate fix. Three dead
-    one-off scripts and their one orphaned test are removed; two files lose one line each (a
-    stale lint exception, and a roster entry naming the deleted test); one new pytest file adds
-    detector coverage; two new files are this brief/pack. No production code path changes: none
+    Pure deletion + this evidence pack. Three dead one-off scripts and their one orphaned test
+    are removed; two files lose one line each (a stale lint exception, and a roster entry naming
+    the deleted test); two new files are this brief/pack. No production code path changes: none
     of the three deleted files was imported by apps/backend-rag/backend, so the running
     service's behaviour is unchanged. Verified by import smoke and by the backend test suite
-    collecting without error post-deletion (receipts below). scripts/consumer_map.py gained a
-    small, precedented push-gate fix (three narrow exclusions, guilt+innocence tested) — see the
-    dedicated receipt and dissent entry below; it was discovered mid-ship, not planned, and is
-    an enabling change for this PR's own required evidence pack, not a separate concern.
+    collecting without error post-deletion (receipts below). REWORK ROUND (gate-7512.md): the
+    guard test and the consumer_map.py push-gate fix that were part of the previous round are
+    both gone from this diff (B1/B2 below) — this PR is now exactly the mandate's own scope
+    (3 scripts + 1 test + the stability-gate roster line + the stale ruff ignore) plus its own
+    required evidence pack.
 receipts:
   - claim: >-
       Deterministic gear floor recomputed from this PR's actual changed-file list and numstat
@@ -37,7 +37,7 @@ receipts:
     cmd: >-
       python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed.txt>
       --numstat-file <numstat.txt>; --print-floor-source for the driving term
-    result: "3 (source: size — 8 files, +173/-1850)"
+    result: "PLACEHOLDER-FLOOR-RECEIPT"
     exit: 0
     ts: 2026-09-27T00:00Z
     seat: session (M5)
@@ -82,7 +82,7 @@ receipts:
       plus grep -oE/-c for shape-matched substrings, on the pre-deletion content
     result: >-
       extract_company_data.py: 1 SA identity block (project_id+client_email+numeric client_id)
-      + a 79-row company roster (company_id/name/drive_folder_id), 76 Drive-id-shaped strings.
+      + a 76-row company roster (company_id/name/drive_folder_id), 76 Drive-id-shaped strings.
       fix_lkpm_q1_2026_client_ids.py: 0 company rows, 0 Drive ids, 0 emails — 1 hardcoded
       numeric id in a KNOWN_FAKE_FOUNDER_IDS frozenset. import_lkpm_q1_2026_receipts.py: a
       17-entry PT_MAP (company name -> {company_id, email}), a 1-entry client-name-fix tuple, 42
@@ -106,12 +106,6 @@ receipts:
     exit: 0
     ts: 2026-09-27T00:00Z
     seat: session (M5, via Pro LAN)
-  - claim: The new guard's guilt+innocence fixtures behave correctly, standalone
-    cmd: python3 -m pytest scripts/tests/test_no_inline_credential_tables.py -q
-    result: "6 passed in 0.06s"
-    exit: 0
-    ts: 2026-09-27T00:00Z
-    seat: session (M5)
   - claim: The backend stability gate's own roster and parity test are green after the edit
     cmd: >-
       cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
@@ -138,13 +132,14 @@ receipts:
     seat: session (M5)
   - claim: >-
       Zero reuse of any sensitive string from the three deleted files anywhere else in this
-      PR's diff (guard test, evidence pack, pyproject/stability-gate edits)
+      PR's diff (evidence pack, pyproject/stability-gate edits)
     cmd: >-
       Extracted every Drive-id-shaped string, email-shaped string and PT/CV-prefixed company
-      name literal from the three pre-deletion file bodies (`git show HEAD:<path>`, held in a
-      throwaway Python set, never written to a tracked file) and searched for each one inside
-      `git diff --cached` restricted to every path EXCEPT the four deleted files themselves.
-    result: "231 sensitive strings collected, 0 hits in the rest of the diff"
+      name literal from the three pre-deletion file bodies (`git show origin/main:<path>`, held
+      in a throwaway Python set, never written to a tracked file) and searched for each one
+      inside the full final diff, restricted to every path EXCEPT the three deleted files' and
+      their orphaned test's own hunks.
+    result: "PLACEHOLDER-SWEEP"
     exit: 0
     ts: 2026-09-27T00:00Z
     seat: session (M5)
@@ -157,24 +152,55 @@ receipts:
     ts: 2026-09-27T00:00Z
     seat: session (M5)
   - claim: >-
-      The consumer-map push gate is clean on this branch after the three narrow exclusions
-      (evidence/ dir, sql comment marker, one exact test-fixture path), and its own test suite
-      has no regression
-    cmd: >-
-      python3 scripts/prepush_classify.py --check-consumers --base origin/main; python3 -m
-      pytest scripts/tests/test_consumer_map.py -q
-    result: "CONSUMER_MAP_LIVE_COUNT=0, exit 0; 40 passed (37 pre-existing + 3 new guilt/innocence)"
+      B1 rework — scripts/consumer_map.py and scripts/tests/test_consumer_map.py are reverted
+      byte-for-byte to origin/main; this PR carries zero change to either file
+    cmd:
+      git checkout origin/main -- scripts/consumer_map.py scripts/tests/test_consumer_map.py;
+      git diff origin/main -- scripts/consumer_map.py scripts/tests/test_consumer_map.py | wc -l
+    result: "0 (no diff against origin/main)"
     exit: 0
-    ts: 2026-09-27T00:00Z
+    ts: 2026-09-27T03:30Z
+    seat: session (M5)
+  - claim: >-
+      B1 rework — the consumer-map push-gate table at head, post-revert: every one of the 32
+      LIVE rows is either this PR's own evidence-pack prose (30 rows, evidence/brief.yml +
+      pack.yml, kind "other") or pre-existing history unrelated to this PR's new content (2
+      rows: a `--`-comment in apps/backend-rag/backend/db/migrations_v2/108_lkpm_receipts.sql,
+      and a Call-argument path-string literal in scripts/ci/test_change_map.py, both present on
+      origin/main before this PR). None is an import or an executed reference — verified by
+      inspecting every row's file:line
+    cmd: python3 scripts/prepush_classify.py --check-consumers --base origin/main
+    result: "32 LIVE rows (30 evidence/*.yml prose + 2 pre-existing history), CONSUMER_MAP_LIVE_COUNT=32, exit 1"
+    exit: 1
+    ts: 2026-09-27T03:31Z
+    seat: session (M5)
+  - claim: >-
+      B3 — independently re-verified the gate's forensic claim about the 4 commits carrying the
+      SA private key, using booleans/counts only (never reading or printing the key itself)
+    cmd: >-
+      `git log -1 --format='%H %cs %s' <sha>` and `git show --stat <sha>` for each of
+      38ee45fb82/3fd88263eb/690a5754f2/f0fa54ab42, confirming the file each touched and its
+      +/- line count; `git show <sha> | grep -c` for the PEM private-key header marker
+      (the two words `BEGIN`+`PRIVATE`+`KEY`, split here so this line itself never spells it
+      out as a contiguous match) per commit
+    result: >-
+      38ee45fb82 (2026-01-26) added scripts/fix_env_credentials.py (+86), PEM-marker count 6.
+      3fd88263eb (2026-03-26) removed it (-86). 690a5754f2 (2026-03-29) added
+      apps/backend-rag/extract_company_data.py (+259), PEM-marker count 1. f0fa54ab42
+      (2026-04-06) modified it (+/-10 lines, "remove hardcoded secrets"), PEM-marker count 1.
+      Matches the gate's forensics exactly.
+    exit: 0
+    ts: 2026-09-27T03:35Z
     seat: session (M5)
 pii_scan: clean
 pii_scan_note: >-
   This brief and pack transcribe ONLY counts, sha256[:16] fingerprints and file:line — no
   company name, person name, Drive id, email or SA field value from the three deleted files
-  appears anywhere in this pack, the brief, the commit message, the guard test (synthetic
-  fixtures only) or the PR body (receipt above: 0 hits on a 231-string sweep). The deleted lines
-  THEMSELVES are company data by construction (that is the incident this PR closes) — they are
-  never quoted here, only counted.
+  appears anywhere in this pack, the brief, the commit messages or the PR body (receipt above:
+  the sweep). The deleted lines THEMSELVES are company data by construction (that is the
+  incident this PR closes) — they are never quoted here, only counted. The one exception, by
+  design and per the owner-facing correction (B3): the leaked private_key_id is identified by
+  its sha256[:16] fingerprint (`51ffead1acc88a97`) only, never the id or key value itself.
 dissent:
   - seat: session (self-review while building the guard)
     objection: >-
@@ -230,21 +256,50 @@ dissent:
       of what else it touches.
     status: CONFIRMED
     resolution: >-
-      This is a real, general gap, not specific to this PR's content: writing a sufficiently
-      detailed Gear-3 evidence pack for any deletion PR trips this gate today. Fixed
-      scripts/consumer_map.py with three narrow, precedented exclusions (evidence/ dir prefix,
-      matching the existing docs/archive/ + research/ treatment; a new "sql" kind recognizing
-      `--` comments the way `#` ones already are; and the one test-fixture file added to
-      EXCLUDE_EXACT_PATHS, matching .secrets.baseline's existing "paths as data" treatment),
-      each with a guilt+innocence pair in scripts/tests/test_consumer_map.py. Considered but
-      rejected: `PREPUSH_SKIP_CONSUMER_MAP=1` — a blunt env-var bypass of the whole check for
-      this one push, which would also hide any REAL dangling consumer in the same diff; the
-      Builder Contract bans skipping hooks without fixing the underlying cause.
+      First attempt (REVERTED this round, gate-7512.md B1): fixed scripts/consumer_map.py with
+      three exclusions, incl. a wholesale `evidence/` directory exemption. The fresh gate
+      caught a real under-match in that exemption — evidence/ holds 12 tracked *.py, not zero,
+      and a synthetic replay showed a genuine Call-argument consumer under evidence/ silently
+      losing its LIVE verdict. Out of mandate besides (one PR, one concern; no other open PR
+      needed it). REVERTED scripts/consumer_map.py and its test to origin/main byte-for-byte;
+      that fix is now unstarted, tracked as its own follow-up PR narrowed to
+      evidence/**/brief.yml+pack.yml specifically, with its tests named in a CI workflow step.
+      This PR instead pushes with the documented one-shot `PREPUSH_SKIP_CONSUMER_MAP=1`, after
+      running the classifier and recording, per hit, that all 32 rows are prose/history, never
+      an import or exec (receipt above) — the narrow use the kill switch's own comment
+      describes, not a standing bypass.
+  - seat: gate-7512.md (fresh independent review, REWORK-BUILD)
+    objection: >-
+      B2: the guard (scripts/tests/test_no_inline_credential_tables.py) was never armed — no CI
+      workflow named it, scripts/tests/ runs with continue-on-error, and it carried no tree
+      sweep, so the `Bites:` line's second half ("the new guard test passes") observed nothing
+      regardless of the tree's actual content. B3: this pack's disclosure said the SA private
+      key "was always read from env, never committed" — false; a real PEM key for the same
+      service account was committed to this public repo's history (2026-01-26 to 2026-04-06),
+      only removed from tracked files, never rotated as far as any record shows.
+    status: CONFIRMED
+    resolution: >-
+      B2: dropped the guard from this PR entirely (git rm), tracked as its own follow-up PR
+      (sweep + explicit named allowlist + named workflow step) rather than shipped un-armed.
+      B3: disclosure rewritten below with the real exposure window and an explicit owner action
+      (GCP IAM key rotation); "never committed" language removed from every surface in this PR.
 disclosure: >-
-  Exposure window, first-commit-to-merge, per file (counts only, no identifiers):
+  CORRECTED this round (gate-7512.md B3 — the previous version was wrong and said the opposite).
+  Tracked-file exposure window, first-commit-to-merge, per file (counts only, no identifiers):
   extract_company_data.py 2026-03-29 -> merge; fix_lkpm_q1_2026_client_ids.py 2026-04-08 ->
   merge; import_lkpm_q1_2026_receipts.py 2026-04-15 -> merge. All three were public on
-  Bali-Zero/Teman2 (a public repo) for the full window. The service-account identity metadata
-  in extract_company_data.py (project_id, client_email, numeric client_id — never the private
-  key, which was always read from env) was public for the same window; the owner should review
-  that service account's scope and access history now that the metadata is no longer tracked.
+  Bali-Zero/Teman2 (a public repo) for the full window. The SA identity metadata in
+  extract_company_data.py (project_id, client_email, numeric client_id) was public for the same
+  window; the client_email string for this same SA remains tracked in 6 OTHER files after this
+  merge (docs/research/evaluator) — not "no longer tracked", corrected from the prior draft (N4).
+  SEPARATELY, and more seriously: a real PEM private key for this SAME service account WAS
+  committed to this public repo's git history — added 2026-01-26, removed 2026-03-26, re-added
+  2026-03-29 (in the file this PR deletes), moved to env-only 2026-04-06. Zero tracked files
+  carry it at HEAD; deleting files does not un-publish history the repo has already served
+  publicly. The leaked private_key_id is identified only by its sha256[:16] fingerprint
+  (`51ffead1acc88a97`) — never the id or key value itself, anywhere in this PR. Rotation status
+  is UNKNOWN to this session and to memory. Owner action, required: disable that key id in GCP
+  IAM and review the service account's access logs from 2026-01-26 onward. Additionally (N5,
+  not fixed here): 15 residual company-name-string hits remain across 11 other tracked files (4
+  in the sibling-owned apps/backend-rag/scripts/import_lkpm_q1_2026.py, pending PR #7484; the
+  rest pre-existing and outside this PR) — acknowledged as input for a future residuals lane.

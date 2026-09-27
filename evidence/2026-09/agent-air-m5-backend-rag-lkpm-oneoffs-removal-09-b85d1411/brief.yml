@@ -7,10 +7,12 @@ gate_class: none
 l_level: L2
 objective: >-
   Remove three dead LKPM one-off scripts from the PUBLIC apps/backend-rag/ tree that hardcode
-  real company data: apps/backend-rag/extract_company_data.py (a 79-row company roster —
+  real company data: apps/backend-rag/extract_company_data.py (a 76-row company roster —
   company_id/name/Drive-folder-id — plus a Google service-account identity block: project_id,
-  client_email and a numeric client_id; the private key itself was always read from env, never
-  committed), apps/backend-rag/scripts/fix_lkpm_q1_2026_client_ids.py (DB-driven client-id
+  client_email and a numeric client_id; at the removed file's own content, the private key is a
+  Name read from env, not a literal — but a real PEM private key for this SAME service account
+  WAS committed to this public repo's history, see the correction below), apps/backend-rag/
+  scripts/fix_lkpm_q1_2026_client_ids.py (DB-driven client-id
   repair, no roster — only a single hardcoded numeric id in a `KNOWN_FAKE_FOUNDER_IDS`
   frozenset), and apps/backend-rag/scripts/import_lkpm_q1_2026_receipts.py (a 17-entry
   company-name-to-{company_id,email} PT_MAP, a 1-entry client-name-fix tuple, and 42 hardcoded
@@ -42,19 +44,41 @@ objective: >-
   prefixes matched (58a56e1eec0e5576 / 25646c2c07a4119a / 05a32b3ee7b6074c). Only counts and
   hashes appear anywhere in this brief/pack — no company name, person name, Drive id or SA
   field value is transcribed.
-  A discovery mid-task changed the shape of Task B's guard: PR #7484 (OSS-credentials lane,
-  same incident cluster, opened same day) already ships `scripts/lint_no_inline_credential_
-  tables.py` + its own test — but for the OTHER shape (username/password tuples), and its own
-  test suite is deliberately fixture-only with no whole-repo sweep. This PR's guard
-  (`scripts/tests/test_no_inline_credential_tables.py`) targets the roster/SA-identity shape
-  instead — a >=20-entry list/dict literal carrying a Drive-id-shaped string, or a bare
-  `client_email`+`project_id` dict — and, following that same-day precedent, is fixture-only
-  too: an earlier draft added a whole-repo "assert clean" test, which correctly convicted
-  apps/backend-rag/process_batches_2_3.py (a real positive, owned by the pii-residuals-g5 lane,
-  still on origin/main as of this PR) — coupling this PR's CI to an unrelated lane's merge
-  order. Dropped in favor of the fixture-only design once the precedent was found; see
-  dissent[0] in the pack for the two other false positives caught and fixed while building the
-  detector (a migration-number tag and two legitimate synthetic test mocks).
+  REWORK ROUND (fresh gate, gate-7512.md, REWORK-BUILD — 3 blockers, 5 non-blocking):
+  B1 — this PR had also modified scripts/consumer_map.py + its test to push a thorough evidence
+  pack past the repo's push-gate consumer-map check. Out of mandate (one PR, one concern) and
+  the `evidence/` exclusion under-matched (evidence/ holds 12 tracked *.py, not zero, so a real
+  Call-argument consumer under that tree would have been silently hidden). Both files reverted
+  to origin/main byte-for-byte; this PR now pushes with the documented one-shot
+  `PREPUSH_SKIP_CONSUMER_MAP=1`, after running the classifier and recording, per hit, that every
+  one of the 32 LIVE rows is this PR's own evidence-pack prose (30 rows) or pre-existing history
+  unrelated to this PR's new content (a migration `--` comment, a synthetic path-classifier test
+  fixture) — see the PR body's accounting table. The consumer-map gap itself is a separate,
+  unstarted follow-up, narrowed to evidence/**/brief.yml+pack.yml with a named CI workflow step.
+  B2 — Task B's guard (`scripts/tests/test_no_inline_credential_tables.py`, an earlier attempt
+  at the roster/SA-identity detection shape PR #7484 does NOT cover) was never armed: no
+  workflow names it, `scripts/tests/` runs with continue-on-error in CI, and it carried no
+  tree-sweep, so its half of the `Bites:` line observed nothing. Dropped from this PR entirely;
+  it becomes its own follow-up PR (sweep + an explicit, named 3-entry allowlist + a named CI
+  workflow step), tracked separately rather than shipped un-armed.
+  B3 (URGENT, owner action) — this PR's disclosure previously said the SA private key "was
+  always read from env, never committed". FALSE: a PEM private-key block for the SAME service
+  account was committed to this public repo's history — added 2026-01-26 (scripts/
+  fix_env_credentials.py), removed 2026-03-26, re-added 2026-03-29 (apps/backend-rag/
+  extract_company_data.py, the file this PR deletes), moved to env 2026-04-06. Zero tracked
+  files carry it at HEAD; history does not un-publish. The leaked key's private_key_id,
+  identified only by sha256[:16] `51ffead1acc88a97` (never the id or key itself), is a 40-char
+  literal at the leak commit. Rotation status is unknown — the owner must disable that key id in
+  GCP IAM and review the SA's access logs from 2026-01-26. See the pack's corrected disclosure.
+  Non-blocking, folded in: N1 the roster is 76 rows (AST-counted at merge-base), not 79; the
+  guard's own "~139 rows total" claim is moot since the guard is dropped (B2). N2 the floor
+  receipt's stale "8 files, +173/-1850" is corrected to the final measured diff. N3 (moot — the
+  consumer_map test-count claim no longer applies now that those files are reverted, B1). N4 the
+  disclosure's "no longer tracked" claim was wrong for the SA's client_email string, which
+  remains in 6 other tracked files (docs/research/evaluator) — corrected, not chased here. N5
+  15 residual company-name-string hits across 11 other tracked files (4 in the sibling-owned
+  import_lkpm_q1_2026.py, pending PR #7484; the rest pre-existing and outside this PR's scope)
+  are acknowledged as input for a future residuals lane, not fixed in this PR.
 scope:
   - >-
     apps/backend-rag/extract_company_data.py, apps/backend-rag/scripts/
@@ -69,19 +93,9 @@ scope:
     apps/backend-rag/pyproject.toml — one line removed: the now-stale ruff per-file exception
     for extract_company_data.py.
   - >-
-    scripts/tests/test_no_inline_credential_tables.py — new. Guilt+innocence fixtures (a
-    synthetic >=20-row roster carrying a shaped-but-fake Drive id; a synthetic SA identity
-    block; a sub-threshold roster; a large literal with no Drive id; a partial-SA-keys dict;
-    and a regression fixture for the migration-tag false positive found while validating this
-    guard against the real tree) for the detector described in the objective above. No
-    whole-repo sweep test, and no real company/SA data anywhere in the file.
+    (Dropped this round, B2) scripts/tests/test_no_inline_credential_tables.py — removed from
+    this PR. Un-armed (no workflow named it, no tree sweep); becomes its own follow-up PR.
   - >-
-    scripts/consumer_map.py + scripts/tests/test_consumer_map.py — the repo's push-gate consumer
-    map blocked this PR's own required evidence pack (a Gear-3 pack must name the deleted files
-    by basename, repeatedly, in prose; the pack's `.yml` files have no `.md`-extension downgrade
-    and are un-quotable-away). Three narrow, precedented exclusions added: `evidence/` to
-    EXCLUDE_DIR_PREFIXES (same class as the existing docs/archive/ + research/); a new "sql"
-    kind recognizing `--`-style comments the way `#` ones already are (a pre-existing migration
-    SQL comment also named a deleted file); and scripts/ci/test_change_map.py added to
-    EXCLUDE_EXACT_PATHS (every path literal in it is a synthetic classifier-test input). Each
-    exclusion has a guilt+innocence pair; full suite re-run, 40/40 passing.
+    (Dropped this round, B1) scripts/consumer_map.py + scripts/tests/test_consumer_map.py —
+    reverted to origin/main byte-for-byte. This PR instead pushes with the documented one-shot
+    `PREPUSH_SKIP_CONSUMER_MAP=1`; see the PR body's per-hit accounting table.

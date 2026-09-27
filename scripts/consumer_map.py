@@ -363,39 +363,9 @@ DATA_CONTAINER_PARENT_KINDS: frozenset[str] = frozenset({"Tuple", "List", "Dict"
 # deliberately excluded from this set — see the module docstring.
 QUOTE_REQUIRED_KINDS: frozenset[str] = frozenset({"shell"})
 
-#: `evidence/` (2026-09-27, found by this exact PR): a Gear-3 evidence pack for
-#: a deletion PR is REQUIRED to name the deleted files by basename, repeatedly,
-#: in prose describing what was removed and why (evidence_pack_lint.py's own
-#: countable-claims/receipt discipline demands exactly this kind of detail).
-#: Every such hit is "other" kind (no `.md` extension to trigger the existing
-#: docs-mention downgrade) and un-quotable-away (QUOTE_REQUIRED_KINDS excludes
-#: "other" on purpose), so a thorough brief/pack for its own deletion PR was
-#: unpushable without this — measured live: a pack narrating a 3-file
-#: deletion produced 32 LIVE hits, all of them this PR's own honest
-#: description of the files it deletes. Same "historical record, not a live
-#: consumer" rationale as docs/archive/ and research/ above; evidence/ is
-#: pure YAML/jsonl narrative (like those two are pure prose), never code that
-#: could import or execute a deleted path.
-EXCLUDE_DIR_PREFIXES: tuple[str, ...] = ("docs/archive/", "research/", "evidence/")
-#: `scripts/ci/test_change_map.py` (2026-09-27): every path string literal in
-#: this file is a synthetic INPUT fed to `cm.classify([...])`, a pure path-
-#: string classifier that never opens the file it names — the same "paths as
-#: DATA, never as references" shape as the two entries below, just a test
-#: fixture instead of a hash/allowlist file. One case in particular
-#: (`test_innocence_relocated_script_no_longer_couples_from_repo_root`)
-#: deliberately classifies a path — `scripts/<basename>.py` at repo ROOT —
-#: that has not existed there since the script moved to
-#: `apps/backend-rag/scripts/`; the bare-basename search's Call-argument
-#: branch is conservatively LIVE by design (module docstring, "excludes
-#: Call") and cannot tell that apart from a real reference, so a deletion of
-#: the file now living under apps/backend-rag/scripts/ was blocked on a
-#: string this test intentionally keeps stale.
+EXCLUDE_DIR_PREFIXES: tuple[str, ...] = ("docs/archive/", "research/")
 EXCLUDE_EXACT_PATHS: frozenset[str] = frozenset(
-    {
-        ".secrets.baseline",
-        "infra/tcc-desktop-paths/allowlist.txt",
-        "scripts/ci/test_change_map.py",
-    }
+    {".secrets.baseline", "infra/tcc-desktop-paths/allowlist.txt"}
 )
 EXCLUDE_SUFFIXES: tuple[str, ...] = (".jsonl",)
 
@@ -440,8 +410,6 @@ def _classify_kind(path: str) -> str:
         return "python"
     if path.endswith(".md"):
         return "docs-mention"
-    if path.endswith(".sql"):
-        return "sql"
     return "other"
 
 
@@ -998,16 +966,6 @@ def find_consumers(
                 # claim, and "docs-mention" is the more specific, correct
                 # label for it.
                 if verdict == "LIVE" and kind in HASH_COMMENT_KINDS and content.lstrip().startswith("#"):
-                    verdict = "docs-mention"
-                elif verdict == "LIVE" and kind == "sql" and content.lstrip().startswith("--"):
-                    # SQL's comment marker is `--`, not `#` — a migration file
-                    # noting "X.py ran this data in by hand before the
-                    # migration manager existed" in a `--` comment is the same
-                    # historical-record shape HASH_COMMENT_KINDS already
-                    # downgrades for python/shell/etc, just a different
-                    # marker (found 2026-09-27: apps/backend-rag/backend/db/
-                    # migrations_v2/108_lkpm_receipts.sql:22 blocked a
-                    # deletion PR on exactly this).
                     verdict = "docs-mention"
                 elif verdict == "LIVE" and kind == "python":
                     tree = _get_python_tree(path)
