@@ -457,13 +457,16 @@ jobs:
       # HEAD linter must floor every pattern of hot-zone-pr-gate.yml's case-block at 3, and
       # the tuple and the case-block must be identical (hence both files, and the linter's
       # import closure under scripts/conductor/, in the filter).
-      # --noconftest / -o addopts=: a floor-1 conftest or ini cannot skip or deselect it.
+      # Every flag closes a floor-1 file that could neuter the test from inside this process
+      # (the test pins each one with a planted shadow): -P (no cwd on sys.path: a root yaml.py),
+      # --import-mode=importlib (no scripts/ basedir: a scripts/yaml.py), -c /dev/null (no ini,
+      # so no `pythonpath =` or addopts), --noconftest (no skip hook).
       - name: Hot-zone list floor guilt+innocence (harness-floor.yml Step 2d + behavioural)
         if: steps.relevant.outputs.run == 'true'
         run: |
           set -euo pipefail
           python3 -m pip install --quiet pyyaml pytest
-          python3 -m pytest --noconftest -o addopts= -p no:cacheprovider scripts/tests/test_harness_floor_hotzone_list.py -q
+          python3 -P -m pytest --import-mode=importlib --noconftest -c /dev/null --rootdir . -p no:cacheprovider scripts/tests/test_harness_floor_hotzone_list.py -q
 
       # Same reasoning one step further out (cross-family review, codex-gpt-5.6-sol, HIGH, on the
       # PR that added it): scripts/tests/test_stage_council_journal.py is the guilt+innocence corpus

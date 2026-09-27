@@ -37,15 +37,21 @@ what_changed: |
 
   Coordinator ruling 2026-09-27 (option B, not a council round) adds the BEHAVIOURAL check,
   in scripts/tests/test_harness_floor_hotzone_list.py, run by the required guard-conformance
-  job: the HEAD linter, launched exactly as CI launches it (`python3
-  scripts/evidence_pack_lint.py --print-floor`, as __main__, with its real import closure
-  incl. scripts/conductor/review_eligibility.py), must floor one concrete path per pattern of
+  job: the HEAD linter, launched as harness-floor Step 3 launches it (`python3
+  scripts/evidence_pack_lint.py --print-floor` as __main__, with --numstat-file and a
+  --patch-file holding the diff's non-pin workflow patch, and its real import closure incl.
+  scripts/conductor/review_eligibility.py), must floor one concrete path per pattern of
   hot-zone-pr-gate.yml's case-block at 3. The tuple and the case-block must be the same list,
   blocking in both directions with a message naming each side's extras; the step's old drift
   warning is removed. The test file joins BOTH lists, so weakening it is itself a floor-3
-  edit. guard-conformance.yml runs it with `--noconftest -o addopts=` so a floor-1 conftest
-  or ini cannot skip or deselect it, and its relevance filter and push paths now cover the
-  test, both workflows and the conductor modules.
+  edit. guard-conformance.yml runs it as `python3 -P -m pytest --import-mode=importlib
+  --noconftest -c /dev/null --rootdir .`, so no floor-1 yaml.py shadow, ini or conftest can
+  neuter it from inside pytest, and a test pins each of those four flags. Its relevance
+  filter and push paths now cover the test, both workflows and the conductor modules.
+
+  Fresh gate on 874a704e18 (PASS-WITH-CONDITIONS): C-1 merged origin/main (#7489's seven S5
+  egress patterns and its test_hotzone_lists_sync.py kept; both lists union-resolved to 23);
+  C-2 is the Step 3 inputs above; C-3 is the hardened invocation; C-4 is the residual below.
 
   The same test file also runs the REAL Step 2d text taken from the YAML: the heredoc's
   functions in-process, Step 2d's bash in a scratch git repo (including a main that moved on
@@ -60,45 +66,54 @@ what_changed: |
   not raise the floor for an addition.
 
 residual: |
-  What B CLOSES: any narrowing of the floor that is active whenever the linter runs, whatever
-  its mechanism — a rebinding in the linter (pickle, runpy, marshal, exec), a module planted
-  and imported by it, a floor-1 module of its import closure patching fnmatch or the name,
-  or compute_floor() itself rewritten. The two delta REWORKs are this class; three of its
-  shapes are pinned as guilt cases on a copy of the closure, and two mutants of the real
-  closure turn the real check red.
+  What B DOES: it makes a narrowing of the floor DELIBERATE rather than accidental. Any
+  narrowing active whenever the linter runs with Step 3's inputs, whatever its mechanism,
+  turns a required job red: a rebinding in the linter (pickle, runpy, marshal, exec), a
+  module planted and imported by it, a floor-1 module of its import closure patching fnmatch
+  or the name, compute_floor() rewritten, the first-party-pin exemption widened (the gate's
+  R4), or a yaml.py shadow planted in scripts/ or at the root (the gate's R3c/R3d). Each of
+  those shapes is a guilt case or a mutant of the real closure.
 
-  What B DOES NOT CLOSE, stated plainly:
-  - a narrowing gated on a condition that is true only inside the harness-floor job (a
-    CI-specific environment check), or aimed at specific real paths under a glob the
-    synthetic path (`*`/`?` -> x) still matches. Both are deliberate sabotage by a writer
-    who could equally edit a workflow, and are out of this PR's threat model;
-  - the interpreter and its environment (stdlib, third-party packages, sitecustomize);
-  - the test's own final assertion (mutant MB8 survives, as it must for any test): it is
-    protected by the file being hot-zone, not by a further test;
-  - the computed-name denylist in Step 2d remains a bar-raiser with known false positives
-    (a bare getattr, `import importlib` anywhere in the linter floors that edit at 3).
+  What B DOES NOT DO, stated plainly:
+  - a deliberately evasive FLOOR-1 edit to the linter or its closure is still ungated. The
+    gate measured two (49 passed, production floor 1): an exemption of specific real paths
+    under a glob the synthetic path (`*`/`?` -> x) still matches, and a narrowing keyed on
+    how the process was invoked (argv), which a condition true only inside the harness-floor
+    job would equally do. These are ordinary floor-1 edits, not workflow edits, so nothing
+    floors them at 3; B only means they cannot happen by accident;
+  - the interpreter and its site-packages (the runner's own environment);
+  - the shadow test's own final assertion: it is protected by the file being hot-zone, not
+    by a further test (MB8, the real check's assert, is now killed through that test);
+  - Step 2d's computed-name denylist remains a bar-raiser, and its false positives are not
+    a floor bump: one innocent `getattr`, `setattr`, `import importlib` (any DYN_* name) in
+    the linter turns the REQUIRED guard-conformance job red (test_innocence_real_linter_parses
+    and the drift test cannot read the tuple). In effect those identifiers are banned from
+    the linter until the denylist is changed in a hot-zone edit.
 
 proof: |
-  Corpus: python3 -m pytest --noconftest -o addopts= -p no:cacheprovider
-  scripts/tests/test_harness_floor_hotzone_list.py -> 49 passed (Step 2d guilt, innocence and
-  wiring; drift; the behavioural check on the real linter and on copies of its closure).
+  Corpus: python3 -P -m pytest --import-mode=importlib --noconftest -c /dev/null --rootdir .
+  -p no:cacheprovider scripts/tests/test_harness_floor_hotzone_list.py -> 55 passed (Step 2d
+  guilt, innocence and wiring; drift; the behavioural check on the real linter and on copies
+  of its closure; the job-invocation shadow test).
 
-  Mutation, on cp backups with cmp after every restore (all byte-identical). Step 2d and its
-  wiring: 17 mutants (M1-M10, N1-N7), all killed. Behavioural and drift: MB1 (compute_floor
-  skips fly.toml), MB2 (review_eligibility.py patches fnmatch), MB3 (case-block drops a
-  pattern), MB4 (tuple-only addition), MB5 (reader accepts a second arm), MB6 (test out of
-  the tuple), MB7 (shared helper tolerates floor 1): all killed. MB8 (the real check's final
-  assert made vacuous) survives: irreducible for a test, hence the file is hot-zone. MB9, a
-  planted conftest that skips every test: plain pytest '49 skipped' rc 0, the job's
-  invocation '49 passed' — the flags are load-bearing.
+  Mutation, one sweep on the merged tree with the job's invocation, cp backups, every restore
+  byte-identical: 34 mutants, all killed. Step 2d and its wiring: M1-M10, N1-N8 (N8 is the
+  gate's surviving S5, the ImportFrom clause, now pinned by a from-importlib shape).
+  Behavioural and drift: MB1-MB8 (MB8, the real check's assert made vacuous, is now killed by
+  the shadow test's nested run). C-2: C2a/C2b (the probe drops --patch-file / --numstat-file)
+  and C2c/C2d (R4 and a numstat-keyed narrowing on the REAL linter). C-3: C3a-C3d each drop
+  one of -P, --import-mode=importlib, -c /dev/null, --noconftest from the job line.
 
   Neighbours on the final tree: actionlint with shellcheck is clean on the three touched
   workflows; lint_workflow_errexit_decap, lint_workflow_script and lint_workflow_timeout_floor
   are clean; check_guard_conformance.py reports 0 violations; evidence_pack_lint --selftest
-  PASS; test_evidence_pack_lint.py, test_check_required_workflow_conformance.py,
-  test_harness_gate_read.py, test_agent_defs_model_pins.py and
-  test_hooks_fail_open_on_garbage_payload.py give 879 passed. model_routing_gate.py's regex
-  still reads the tuple (16 patterns, the new one last).
+  PASS; test_evidence_pack_lint.py, test_hotzone_lists_sync.py (main's, kept),
+  test_check_required_workflow_conformance.py, test_harness_gate_read.py,
+  test_agent_defs_model_pins.py and test_hooks_fail_open_on_garbage_payload.py give 891
+  passed. Found, NOT fixed here (another concern, pre-existing): model_routing_gate.py's
+  regex reads only 15 of the tuple's patterns on origin/main, on the merge-base and on this
+  head alike — `[^)]*` stops at the `)` inside #7489's S5 comment. That hook is fail-open
+  routing economy, not a gate; the same regex fragility is why Step 2d parses with `ast`.
   scripts/tests/test_harness_floor_bootstrap_sentinel.sh fails 1 scar-pin on this branch AND
   on origin/main's harness-floor.yml (measured with a cp swap in round 1); pre-existing, run
   by no workflow, out of scope.
@@ -109,7 +124,8 @@ proof: |
   round, the coordinator's cap. Round 1: sol NO-GO, kimi GO-WITH-NITS (plus a non-roster
   gpt-6-astra REWORK). Delta: sol REWORK, kimi REWORK, both on the same residual class.
   The coordinator then ruled option B (2026-09-27, not a council round; journal line
-  "coordinator"). This commit implements it; the fresh Gear-3 gate reviews it.
+  "coordinator"). The fresh Gear-3 gate on 874a704e18 returned PASS-WITH-CONDITIONS
+  (C-1..C-4 above, all builder work); a fresh delta gate judges the new head (C-5).
 
 dissent:
   - seat: codex-gpt-5.6-sol
@@ -206,29 +222,23 @@ dissent:
     resolution: "Declared (post-delta, no further round): the step comment names the false-positive trade-off, repeated under `residual`; an unreadable list now fails the drift test with 'a list could not be read — drift cannot be ruled out' instead of a one-sided print; floor_source keeps its exact-match vocabulary, and the job summary carries a separate Step 2d line."
 
 receipts:
-  - claim: "Corpus on the final tree, invoked as the guard-conformance job invokes it."
-    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest --noconftest -o addopts= -p no:cacheprovider scripts/tests/test_harness_floor_hotzone_list.py -q"
-    result: "49 passed"
+  - claim: "Corpus on the merged tree, invoked exactly as the hardened guard-conformance step invokes it."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -P -m pytest --import-mode=importlib --noconftest -c /dev/null --rootdir . -p no:cacheprovider scripts/tests/test_harness_floor_hotzone_list.py -q"
+    result: "55 passed"
     exit: 0
-    ts: "2026-09-27T07:24:17Z"
+    ts: "2026-09-27T16:59:18Z"
     seat: claude-opus-5-5
-  - claim: "Step 2d mutation sweep on the final tree, cp backups, cmp after every restore."
-    cmd: "python3 mut4.py (M1-M10, N1-N7 string-replace mutants on harness-floor.yml, per-mutant hardened pytest, shutil.copyfile restore, filecmp)"
-    result: "17 mutants, 17 killed; every restore byte-identical"
+  - claim: "One mutation sweep on the merged tree (Step 2d, behavioural/drift, C-2, C-3), job invocation per mutant, cp backups, cmp after every restore."
+    cmd: "python3 mut5.py (M1-M10, N1-N8 on harness-floor.yml; MB1-MB8 on the linter / review_eligibility.py / hot-zone-pr-gate.yml / the test; C2a-C2b on the test, C2c-C2d on the real linter; C3a-C3d on guard-conformance.yml)"
+    result: "34 mutants, 34 killed (M1-M10, N1-N8, MB1-MB8, C2a-C2d, C3a-C3d); ALL_RESTORED_IDENTICAL"
     exit: 0
-    ts: "2026-09-27T07:24:23Z"
-    seat: claude-opus-5-5
-  - claim: "Behavioural and drift mutation sweep on the final tree (coordinator ruling B)."
-    cmd: "python3 mutb6.py + mutc.py (MB1-MB6 on evidence_pack_lint.py / review_eligibility.py / hot-zone-pr-gate.yml / the test; MB7-MB8 on the test; MB9 a planted conftest skip-all hook; cp restore, filecmp)"
-    result: "MB1-MB7 killed; MB8 survives (vacuous final assert, irreducible); MB9 plain pytest '49 skipped' rc 0 vs hardened '49 passed'; every restore byte-identical"
-    exit: 0
-    ts: "2026-09-27T07:26:28Z"
+    ts: "2026-09-27T09:33:16Z"
     seat: claude-opus-5-5
   - claim: "The guard's own test is a hot-zone path."
     cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <scripts/tests/test_harness_floor_hotzone_list.py>"
     result: "3"
     exit: 0
-    ts: "2026-09-27T07:28:33Z"
+    ts: "2026-09-27T16:59:32Z"
     seat: claude-opus-5-5
   - claim: "Regex-vs-ast measurement behind the parser choice."
     cmd: 'python3 heredoc: HOTZONE_TUPLE_RE/HOTZONE_STRING_RE vs ast on the real linter with `    "fly.toml",` commented out'
@@ -246,13 +256,13 @@ receipts:
     cmd: "actionlint .github/workflows/harness-floor.yml .github/workflows/guard-conformance.yml .github/workflows/hot-zone-pr-gate.yml; python3 scripts/lint_workflow_errexit_decap.py; python3 scripts/lint_workflow_script.py; python3 scripts/lint_workflow_timeout_floor.py; python3 infra/guard-conformance/check_guard_conformance.py; python3 scripts/evidence_pack_lint.py --selftest"
     result: "actionlint rc=0; errexit-decap clean; lint_workflow_script no violations; timeout floor clean; guard-conformance 0 violations; SELFTEST PASS"
     exit: 0
-    ts: "2026-09-27T07:28:33Z"
+    ts: "2026-09-27T16:59:43Z"
     seat: claude-opus-5-5
   - claim: "Neighbouring harness suites."
-    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_evidence_pack_lint.py scripts/tests/test_check_required_workflow_conformance.py scripts/tests/test_harness_gate_read.py scripts/tests/test_agent_defs_model_pins.py scripts/tests/test_hooks_fail_open_on_garbage_payload.py -q"
-    result: "879 passed"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_evidence_pack_lint.py scripts/tests/test_hotzone_lists_sync.py scripts/tests/test_check_required_workflow_conformance.py scripts/tests/test_harness_gate_read.py scripts/tests/test_agent_defs_model_pins.py scripts/tests/test_hooks_fail_open_on_garbage_payload.py -q"
+    result: "891 passed"
     exit: 0
-    ts: "2026-09-27T07:28:22Z"
+    ts: "2026-09-27T16:59:44Z"
     seat: claude-opus-5-5
   - claim: "codex-gpt-5.6-sol round 1, diff only."
     cmd: 'env -i HOME="$HOME" PATH="$PATH" codex exec -m gpt-5.6-sol --sandbox read-only -c model_reasoning_effort=high --skip-git-repo-check --output-last-message <file> - < council_prompt.txt (cwd: empty dir)'
@@ -292,22 +302,26 @@ pii_scan_note:
   the ruling text and the builder's design notes — no repo dump, no identifiers, no secrets."
 
 spend:
-  wall_clock_hours: 2
+  wall_clock_hours: 5
   adversarial_rounds: 2
 
 appetite_exceeded:
-  "Net lines, not hours or rounds: the reviewable change is about 390 net lines against the
-  coordinator's ~250 target. The coordinator's option-B ruling added the behavioural check,
-  the blocking drift test and the self-inclusion to this PR and accepted the overrun in
-  advance; the rest is the round-1 council fixes, kept here rather than in a second PR."
+  "Hours and net lines, not rounds. About 5 active hours against 3 (the session also sat
+  idle for hours waiting on the gate, not counted): the coordinator's
+  option-B ruling and then the fresh gate's PASS-WITH-CONDITIONS (C-1 merge, C-2 Step 3
+  inputs, C-3 hardened invocation, C-4 residual) each added a build pass after the council's
+  two rounds. The reviewable change is about 480 net lines against the coordinator's ~250
+  target, accepted in advance for B; the gate's conditions add the shadow test and the
+  production-shaped probe, and the rest is the round-1 council fixes, kept in this PR rather
+  than a second one."
 
 diff:
   files: 8
-  insertions: 780
-  deletions: 2
+  insertions: 898
+  deletions: 3
   net_lines: |
-    Measured against the merge-base with origin/main; the three evidence files are included
-    in the integers above. The reviewable change (the Step 2d block plus its Step 3 wiring,
-    the test corpus with the behavioural and drift checks, the guard-conformance wiring and
-    the two one-line list additions) is about 390 net lines, over the coordinator's ~250
-    target; see appetite_exceeded.
+    Measured against the merge-base with origin/main after merging it (C-1); the three
+    evidence files are included in the integers above. The reviewable change (the Step 2d
+    block plus its Step 3 wiring, the test corpus with the behavioural, drift and shadow
+    checks, the guard-conformance wiring and the two one-line list additions) is about 480
+    net lines, over the coordinator's ~250 target; see appetite_exceeded.

@@ -520,16 +520,21 @@ jobs:
       # never red: no merge-base, a failed `git show`, a deleted linter, a
       # name not bound ONCE at module level to a tuple of str literals, or a
       # casual computed-name rebinding (exec, globals(), setattr, __dict__):
-      # a bar-raiser with false positives (e.g. a bare getattr), NOT a proof:
-      # import-time code (pickle, runpy, a module the linter imports) can still
+      # a bar-raiser, NOT a proof. Its false positives are not a floor bump:
+      # the test below reads the tuple with this parser, so one innocent
+      # getattr in the linter turns the required guard-conformance job red.
+      # Import-time code (pickle, runpy, a module the linter imports) can still
       # rebind the name, and rewiring what READS it needs no rebinding at all.
-      # That class is caught BEHAVIOURALLY instead (coordinator ruling
+      # That class is checked BEHAVIOURALLY instead (coordinator ruling
       # 2026-09-27, option B): scripts/tests/test_harness_floor_hotzone_list.py
       # — itself in HOTZONE_PATTERNS — runs the HEAD linter's real floor
-      # computation on one path per pattern of hot-zone-pr-gate.yml's
-      # case-block (the oracle, a workflow file) and fails unless every one is
-      # 3; it also fails on ANY tuple/case-block drift. It runs in the required
-      # guard-conformance job, where executing head code is normal.
+      # computation, with Step 3's inputs, on one path per pattern of
+      # hot-zone-pr-gate.yml's case-block (the oracle, a workflow file) and
+      # fails unless every one is 3; it also fails on ANY tuple/case-block
+      # drift. It runs in the required guard-conformance job, where executing
+      # head code is normal. It makes a narrowing deliberate, not impossible:
+      # a floor-1 edit written to dodge it (keyed on the CI job, or exempting
+      # real paths under a glob) is still ungated.
       # -----------------------------------------------------------------
       - name: Hot-zone list may only grow below floor 3
         if: steps.kill_switch.outputs.disabled != 'true'
