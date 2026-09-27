@@ -36,7 +36,7 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
       {/* Hamburger button — flex-shrink-0 prevents compression at 390px */}
       <Dialog.Trigger asChild>
         <button
-          aria-label="Open menu"
+          aria-label={open ? "Close menu" : "Open menu"}
           className={`${isR19 ? "min-[981px]:hidden w-11 h-11" : "md:hidden w-10 h-10"} inline-flex items-center justify-center flex-shrink-0 rounded-lg`}
           style={{
             color: isR19 ? "#1D2C3B" : "#ffffff",
