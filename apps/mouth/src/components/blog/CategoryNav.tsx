@@ -130,7 +130,7 @@ export function CategoryNav({
               }}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "relative flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
+                "relative flex min-h-11 items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
                 isActive ? colors.active : colors.inactive,
               )}
               whileHover={{ scale: 1.02 }}
