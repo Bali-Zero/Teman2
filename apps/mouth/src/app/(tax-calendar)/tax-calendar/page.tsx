@@ -1,10 +1,17 @@
 import { FunnelFrame } from "@balizero/core";
 import { GOOGLE_RATING, GOOGLE_REVIEW_COUNT } from "@/lib/trust-figures";
 import { TaxCalendarBody } from "@/components/funnel/TaxCalendarBody";
-import { TAX_DEADLINES, getRegencies } from "@/app/api/tax-calendar/deadlines";
+import {
+  getNextTaxDeadlines,
+  getRegencies,
+} from "@/app/api/tax-calendar/deadlines";
+
+// The deadlines are computed relative to request time, not build time: force
+// per-request rendering so a date never goes stale between deploys.
+export const dynamic = "force-dynamic";
 
 export default function TaxCalendarPage() {
-  const deadlines = TAX_DEADLINES;
+  const deadlines = getNextTaxDeadlines(new Date());
   const regencies = getRegencies();
   return (
     <FunnelFrame

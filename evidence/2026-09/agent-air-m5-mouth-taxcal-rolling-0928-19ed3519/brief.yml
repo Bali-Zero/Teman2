@@ -1,0 +1,35 @@
+task: >-
+  tax.balizero.com calendar showed 6 hardcoded ISO dates that were all already elapsed;
+  replaced them with rules that compute the next occurrence(s) relative to an injectable
+  clock, grounded in obligations_catalog.yaml where a matching rule exists.
+lane: mouth/taxcal-rolling
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: >-
+  Floor 1 (evidence_pack_lint.py --print-floor): 5 files touched, +300/-22 net lines, one
+  concern (rolling tax-calendar dates), no schema/infra/secrets touched.
+acceptance:
+  A1: >-
+    New rule/rollover tests green (Dec-to-Jan monthly, Q4-to-next-year quarterly, annual
+    year rollover, weekend Sat/Sun shift); guilt test red on origin/main's hardcoded array,
+    green on HEAD; tsc/eslint/prettier clean on changed files.
+  A2: >-
+    Live on a local dev server (port 3131): /tax-calendar renders all 7 deadlines sorted (6 plus the corporate SPT Tahunan added after review)
+    "in Nd" from today (no elapsed date); /api/tax-calendar/ical returns 53 VEVENTs, all
+    inside the 12-month window from now.
+  A3: >-
+    Each obligation cites its obligations_catalog.yaml rule id in a code comment
+    (pph25_installment, spt_masa_ppn, lkpm_quarterly, spt_tahunan_badan) or documents that
+    no catalog rule exists (PB1 x2; the individual SPT Tahunan, due 31 March under UU KUP
+    Art. 3(3)(b)); the LKPM and SPT Tahunan titles now name the period
+    the computed date actually belongs to instead of a fixed, eventually-wrong label.
+out_of_scope:
+  - Page redesign (Fase 2, per spec).
+  - >-
+    Indonesian public-holiday (libur nasional / cuti bersama) shifting — the catalog's
+    "roll: next_business_day" is only fully modeled in the Python backend's
+    data/id_holidays.py; this fix implements the weekend-only part and documents the gap.
+  - >-
+    Grounding PB1 (regional hotel/restaurant tax) and the individual annual SPT Tahunan in
+    the catalog — neither rule exists in the 21-rule catalog.
