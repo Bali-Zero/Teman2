@@ -24,7 +24,6 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
-import tempfile
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -36,7 +35,6 @@ from mata_garuda.config import (
     STREAM_DIGEST,
     STREAM_ENRICHED,
     TG_ZERO_CHAT_ID,
-    mask_tg_token,
 )
 from mata_garuda.registry import register_agent
 from mata_garuda.runtime.case_status import case_not_resolved, case_resolved
@@ -47,6 +45,7 @@ from mata_garuda.runtime.cli_runtime import (
     classify_claude_retry,
     provider_cli_env,
 )
+from mata_garuda.tg_curl import curl_send
 from mata_garuda.tools.knowledge_tools import kb_search, kb_store
 from mata_garuda.tools.stream_tools import stream_publish
 from mata_garuda.tools.tg_tools import send_tg_alert
@@ -286,15 +285,9 @@ TG_MAX_CHARS = 3800  # Telegram sendMessage hard limit 4096 — leave margin
 def _send_telegram(text: str, dry_run: bool = False) -> bool:
     """Send text to Zero's TG. Chunks if > TG_MAX_CHARS. Returns overall ok.
 
-    The token never sits in curl's argv: it goes into a private ``-K`` config
-    file (0600, deleted in ``finally``) instead of the URL literal. That is
-    what actually leaked on 2026-09-26 — a ``subprocess.TimeoutExpired``'s own
-    ``str()`` embeds the full argv it was given, so the old
-    ``["curl", ..., f"https://api.telegram.org/bot{token}/..."]`` call put the
-    token in daily-briefing.error.log the first time curl was slow, with no
-    HTTP request involved at all. Keeping it out of argv closes that path and
-    the `ps`/`/proc` exposure at once; `mask_tg_token` is a second, independent
-    net over whatever text this function still logs.
+    Delegates the actual send to `mata_garuda.tg_curl.curl_send`, which keeps
+    the token out of curl's argv (see that module's docstring for why —
+    2026-09-26 daily-briefing leak, 2026-09-27 reg-alert leak: same shape).
     """
     if dry_run:
         logger.info(f"[DRY-RUN] would send TG ({len(text)} chars)")
@@ -306,38 +299,10 @@ def _send_telegram(text: str, dry_run: bool = False) -> bool:
         return False
     ok_all = True
     for chunk in chunks:
-        cfg_fd, cfg_path = tempfile.mkstemp(prefix="tg-daily-briefing-", suffix=".curlcfg")
-        try:
-            os.chmod(cfg_path, 0o600)
-            with os.fdopen(cfg_fd, "w") as fh:
-                fh.write(f'url = "https://api.telegram.org/bot{token}/sendMessage"\n')
-            result = subprocess.run(
-                [
-                    "curl", "-s", "-K", cfg_path,
-                    "-w", "\n%{http_code}",
-                    "-d", f"chat_id={TG_ZERO_CHAT_ID}",
-                    "--data-urlencode", f"text={chunk}",
-                ],
-                capture_output=True, text=True, timeout=15,
-            )
-            body, _, code = (result.stdout or "").rpartition("\n")
-            if code in ("401", "403"):
-                # Same shape as backend-rag's CREDENTIAL_REJECTED_STATUSES: a
-                # code, never a substring of the body, so a rejection never
-                # depends on Telegram's free-text wording.
-                ok_all = False
-                logger.error(f"[daily_briefing] TG send failed: credential_rejected ({code})")
-            elif '"ok":true' not in body:
-                ok_all = False
-                logger.error(f"[daily_briefing] TG send failed: {mask_tg_token(body[:200])}")
-        except Exception as e:
-            logger.error(f"[daily_briefing] TG send exception: {mask_tg_token(str(e))}")
+        ok, reason = curl_send(token, TG_ZERO_CHAT_ID, chunk)
+        if not ok:
             ok_all = False
-        finally:
-            try:
-                os.unlink(cfg_path)
-            except OSError:
-                pass
+            logger.error(f"[daily_briefing] TG send failed: {reason}")
     return ok_all
 
 
