@@ -30,8 +30,11 @@ attack; only the source line differs.
 from __future__ import annotations
 
 import importlib.util
+import io
+import os
 import pytest
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -1169,3 +1172,170 @@ def test_load_spec_innocence_the_real_allow_list_loads_and_is_the_live_one():
     spec = bp._load_spec(bp.SPEC_PATH)
     assert tuple(spec["commands"]) == bp.ALLOWED_COMMANDS
     assert set(bp.ALLOWED_COMMANDS) <= set(bp._COMMAND_CHECKS)
+
+
+# ------------------------------------------------- HEAD-TREE MODE (`--tree <sha>`)
+#
+# The CI step judges a PR's pack with the BASE checkout's parser, and Builder Contract 2 wants
+# the observer script to ship in the SAME PR - so that script is in the head tree and not on
+# disk. These tests rebuild exactly that workspace: a checkout at BASE (no observer file)
+# whose git objects also hold HEAD (the observer, marker included).
+
+_GIT_ENV = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+_NEW_OBSERVER = "scripts/ci/observe_new.py"
+_NEW_OBSERVE = f"python3 {_NEW_OBSERVER}"
+_MARKED = f"# {bp.OBSERVABLE_MARKER}\nprint('observed')\n"
+
+
+def _git(repo: Path, *args: str) -> str:
+    done = subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+         "-c", "commit.gpgsign=false", "-c", f"core.hooksPath={os.devnull}", *args],
+        cwd=repo, env=_GIT_ENV, capture_output=True, text=True, check=True,
+    )
+    return done.stdout.strip()
+
+
+def _base_checkout_holding_head(tmp_path: Path, head_files: dict[str, str],
+                                head_symlinks: dict[str, str] | None = None) -> tuple[Path, str]:
+    """(repo checked out at BASE, HEAD sha) - HEAD adds `head_files` and `head_symlinks`."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    (repo / "README").write_text("base\n", encoding="utf-8")
+    _git(repo, "add", "README")
+    _git(repo, "commit", "-q", "-m", "base")
+    base = _git(repo, "rev-parse", "HEAD")
+    for rel, body in head_files.items():
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_text(body, encoding="utf-8")
+    for rel, link_text in (head_symlinks or {}).items():
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(link_text, repo / rel)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "head")
+    head = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-q", base)
+    return repo, head
+
+
+def test_head_tree_innocence_an_observer_only_the_head_tree_holds_parses_clean(tmp_path, monkeypatch):
+    """The whole defect: a NEW observer in the PR was reported missing from the base checkout."""
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    assert not (repo / _NEW_OBSERVER).exists(), "the checkout must really be BASE"
+    assert bp.parse_pack(_pack(_NEW_OBSERVE), tree=head) == {
+        "consumer": "CI", "where": "ci", "observe": _NEW_OBSERVE, "expect": "exit0",
+    }
+
+
+def test_head_tree_guilt_without_tree_the_same_observer_is_missing_from_the_checkout(tmp_path, monkeypatch):
+    """Pins the unchanged default: no `--tree`, the checkout is asked, and it lacks the file."""
+    repo, _head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE))
+    assert bp.classify(result) == "malformed"
+    assert any("does not exist in the checkout" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_a_script_without_the_marker_is_refused(tmp_path, monkeypatch):
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: "print('no marker')\n"})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("does not declare itself observable" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_a_script_absent_from_the_tree_is_refused(tmp_path, monkeypatch):
+    repo, head = _base_checkout_holding_head(tmp_path, {"scripts/ci/other.py": _MARKED})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("does not exist in tree" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_a_symlink_whose_text_carries_the_marker_is_refused(tmp_path, monkeypatch):
+    """A symlink is a blob holding its link text; the marker check must not read that as source."""
+    repo, head = _base_checkout_holding_head(
+        tmp_path, {}, head_symlinks={_NEW_OBSERVER: f"{bp.OBSERVABLE_MARKER}-elsewhere.py"},
+    )
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("not a regular file" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_an_unknown_tree_is_a_failed_question_not_a_missing_file(tmp_path):
+    repo, _head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    problems = bp._guard_observable_script(_NEW_OBSERVE, repo_root=repo, tree="0" * 40)
+    assert problems and "failed question" in problems[0], problems
+
+
+def test_head_tree_guilt_an_option_shaped_tree_is_refused_before_git_sees_it(tmp_path):
+    repo, _head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    problems = bp._guard_observable_script(_NEW_OBSERVE, repo_root=repo, tree="--output=leaked")
+    assert problems and "hex" in problems[0], problems
+    assert not (repo / "leaked").exists()
+
+
+def test_head_tree_guilt_a_path_that_leaves_the_checkout_is_still_refused(tmp_path):
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    for escape in ("../outside.py", "/etc/outside.py"):
+        problems = bp._guard_observable_script(f"python3 {escape}", repo_root=repo, tree=head)
+        assert problems and "outside the checkout" in problems[0], (escape, problems)
+
+
+def test_head_tree_cli_parses_the_new_observer_with_tree_and_refuses_it_without(
+        tmp_path, monkeypatch, capsys):
+    """The step's real call: pack on stdin, `--tree` the head sha, exit 0 vs the old exit 2."""
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    pack = _pack(_NEW_OBSERVE)
+
+    monkeypatch.setattr("sys.stdin", io.StringIO(pack))
+    assert bp.main(["--pack", "-", "--tree", head]) == bp.EXIT_OK
+    assert json.loads(capsys.readouterr().out)["observe"] == _NEW_OBSERVE
+
+    monkeypatch.setattr("sys.stdin", io.StringIO(pack))
+    assert bp.main(["--pack", "-"]) == bp.EXIT_MALFORMED
+    assert json.loads(capsys.readouterr().out)["malformed"] is True
+
+
+def test_head_tree_cli_refuses_an_argument_that_is_not_a_hex_id():
+    done = subprocess.run(
+        ["python3", str(_MODULE_PATH), "--pack", "-", "--tree=main"],
+        input="", capture_output=True, text=True, check=False,
+    )
+    assert done.returncode == bp.EXIT_MALFORMED
+    assert "hex" in done.stderr
+
+
+def test_head_tree_cli_real_process_reads_this_repo_own_tree():
+    """End to end, no monkeypatch: this repo's HEAD really does hold a marked observer."""
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=_REPO_ROOT, capture_output=True,
+                          text=True, check=False)
+    if head.returncode != 0:
+        pytest.skip("not a git checkout")
+    observe = "python3 scripts/ci/bites_parse.py --selftest"
+    done = subprocess.run(
+        ["python3", str(_MODULE_PATH), "--pack", "-", "--tree", head.stdout.strip()],
+        input=_pack(observe), capture_output=True, text=True, check=False, cwd=str(_REPO_ROOT),
+    )
+    assert done.returncode == bp.EXIT_OK, (done.stdout, done.stderr)
+    assert json.loads(done.stdout)["observe"] == observe
+
+
+def test_harness_floor_step_passes_the_head_tree_and_survives_the_parser_exit_code():
+    """The workflow half of the fix, pinned: the step must hand the parser HEAD and must
+    capture its exit code. A step with no `shell:` runs `bash -e`, so a bare call followed by
+    `RC=$?` never reaches `RC=$?` on the very exit 2 the step exists to explain."""
+    workflow = (_REPO_ROOT / ".github" / "workflows" / "harness-floor.yml").read_text(encoding="utf-8")
+    marker = "- name: Bites contract — parse this PR's evidence pack"
+    assert workflow.count(marker) == 1
+    step = re.split(r"\n      - name: ", workflow.split(marker, 1)[1], maxsplit=1)[0]
+    call = [ln.strip() for ln in step.splitlines() if "scripts/ci/bites_parse.py --pack -" in ln]
+    assert len(call) == 1, call
+    assert '--tree "${HEAD_SHA}"' in call[0]
+    assert call[0].endswith("|| RC=$?")
+    assert step.index("RC=0") < step.index("bites_parse.py --pack -")
+    assert not re.search(r"^\s*RC=\$\?\s*$", step, flags=re.MULTILINE)
