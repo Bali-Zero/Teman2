@@ -19,7 +19,7 @@ PYSA_READY = pc.home_ready(HOME) is None
 
 APP = '''import logging
 from typing import Annotated
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request, WebSocket
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,46 @@ def body(payload: ChatRequest):
     return {"ok": True}
 
 @router.websocket("/ws")
-async def ws(websocket):
+async def ws(websocket: WebSocket):
     pass
+
+@router.get("/named-like-the-framework")
+async def query_named(request, response="x"):
+    logger.info("q %s %s", request, response)
+    return {"ok": True}
+
+@router.route("/legacy", methods=["GET"])
+async def legacy(user_input: str):
+    logger.info("legacy %s", user_input)
+    return {"ok": True}
+
+def described(q: Annotated[str, Query(description="Depends(item) Request")], r: Annotated[str, Query(description="x")] = "d"):
+    return {"q": q, "r": r}
+
+router.add_api_route("/registered", described, methods=["GET"])
+
+class Response:
+    body: str
+
+@router.post("/own-response-class")
+def fetch(payload: Response, real: Request):
+    return {"ok": True}
+
+get = router.get
+
+@get("/aliased")
+def aliased(x: str):
+    return {"x": x}
+
+@router.trace("/traced")
+def traced(x: str):
+    return {"x": x}
+
+def make():
+    @router.get("/nested")
+    def nested(x: str):
+        return {"x": x}
+    return nested
 '''
 
 
@@ -53,10 +91,20 @@ def _fn(src: str, name: str):
     return next(n for n in ast.walk(ast.parse(src)) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == name)
 
 
+def _params(src: str, name: str) -> list[str]:
+    fw_locals, fw_roots = pc.framework_bindings(ast.parse(src))
+    return pc.handler_params(_fn(src, name), fw_locals, fw_roots)
+
+
 def test_handler_params_keep_user_input_and_drop_injected_or_framework_params():
-    assert pc.handler_params(_fn(APP, "guilt")) == ["item"]
-    assert pc.handler_params(_fn(APP, "innocent")) == []          # Request, Depends default, Annotated Depends
-    assert pc.handler_params(_fn(APP, "body")) == ["payload"]      # a Pydantic-style *Request body is NOT a framework Request
+    assert _params(APP, "guilt") == ["item"]
+    assert _params(APP, "innocent") == []          # Request, Depends default, Annotated Depends
+    assert _params(APP, "body") == ["payload"]      # a Pydantic-style *Request body is NOT a framework Request
+    assert _params(APP, "described") == ["q", "r"]  # 'Depends(' / 'Request' inside a description STRING is not an injector or a framework type
+    assert _params(APP, "query_named") == ["request", "response"]   # unannotated = query params = user input, whatever they are called
+    assert _params(APP, "fetch") == ["payload"]     # the module's OWN class Response is a body; the imported fastapi Request is the framework's
+    aliased = "import fastapi as fa\nfrom starlette import responses\ndef h(a: fa.Request, b: responses.Response, c: str): ...\n"
+    assert _params(aliased, "h") == ["c"]          # framework types reached through module aliases are still the framework's
 
 
 def test_generated_models_cover_every_handler_once(tmp_path):
@@ -66,7 +114,14 @@ def test_generated_models_cover_every_handler_once(tmp_path):
     (app / "backend" / "tests").mkdir()
     (app / "backend" / "tests" / "test_x.py").write_text(APP)   # tests are out of scope
     text, n = pc.gen_handler_models(app)
-    assert n == 4
+    assert n == 11
+    assert "def backend.app.routers.demo.fetch(payload: TaintSource[UserControlled]) -> TaintSink[ReturnedToUser]: ..." in text
+    assert "def backend.app.routers.demo.aliased(x: TaintSource[UserControlled]) -> TaintSink[ReturnedToUser]: ..." in text   # get = router.get alias
+    assert "def backend.app.routers.demo.traced(x: TaintSource[UserControlled]) -> TaintSink[ReturnedToUser]: ..." in text    # @router.trace
+    assert "def backend.app.routers.demo.make.nested(x: TaintSource[UserControlled]) -> TaintSink[ReturnedToUser]: ..." in text   # handler built inside a factory
+    assert "async def backend.app.routers.demo.query_named(request: TaintSource[UserControlled], response: TaintSource[UserControlled]) -> TaintSink[ReturnedToUser]: ..." in text
+    assert "async def backend.app.routers.demo.legacy(user_input: TaintSource[UserControlled]) -> TaintSink[ReturnedToUser]: ..." in text   # @router.route
+    assert "def backend.app.routers.demo.described(q: TaintSource[UserControlled], r: TaintSource[UserControlled]) -> TaintSink[ReturnedToUser]: ..." in text   # add_api_route
     assert "async def backend.app.routers.demo.guilt(item: TaintSource[UserControlled]) -> TaintSink[ReturnedToUser]: ..." in text
     assert "async def backend.app.routers.demo.innocent() -> TaintSink[ReturnedToUser]: ..." in text
     assert "async def backend.app.routers.demo.ws(): ..." in text   # websocket: no ReturnedToUser return
@@ -106,6 +161,77 @@ def test_diff_is_keyed_not_positional():
     cand = [{"key": "k2"}, {"key": "k3"}]
     d = pc.diff_findings(base, cand)
     assert [x["key"] for x in d["new"]] == ["k3"] and [x["key"] for x in d["fixed"]] == ["k1"] and d["unchanged"] == 1
+
+
+def _tree(tmp_path: Path, source: str) -> Path:
+    repo = tmp_path / "wt"
+    pkg = repo / "apps" / "backend-rag" / "backend" / "app" / "routers"
+    pkg.mkdir(parents=True)
+    (pkg / "demo.py").write_text(source)
+    git(repo, "init", "-q", "-b", "main")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "base")
+    return repo
+
+
+def test_scan_refuses_an_empty_taint_output(tmp_path, monkeypatch):
+    def fake_pysa(home, app_dir, results, timeout, log):
+        results.mkdir(parents=True, exist_ok=True)
+        (results / "taint-output.json").write_text("")     # rc 0, file present, nothing inside
+        return 0
+    monkeypatch.setattr(pc, "run_pysa", fake_pysa)
+    res = pc.scan(tmp_path / "home", _tree(tmp_path, APP), "HEAD", tmp_path / "out", 10, open(tmp_path / "log", "w"))
+    assert res["ok"] is False and "no model record" in res["reason"]
+    assert not (tmp_path / "out" / "findings.json").exists()
+
+
+def test_scan_refuses_a_tree_without_handlers(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "run_pysa", lambda *a, **k: pytest.fail("pysa must not run on an unmodelled tree"))
+    res = pc.scan(tmp_path / "home", _tree(tmp_path, "VALUE = 1\n"), "HEAD", tmp_path / "out", 10, open(tmp_path / "log", "w"))
+    assert res["ok"] is False and "no FastAPI route handler" in res["reason"]
+
+
+def test_scope_escape_is_a_finding_not_a_blind_spot(tmp_path):
+    app = tmp_path / "app"
+    (app / "backend" / "app").mkdir(parents=True)
+    (app / "backend" / "tests").mkdir()
+    (app / "backend" / "tests" / "leak.py").write_text(APP)
+    (app / "backend" / "app" / "main.py").write_text("from backend.tests.leak import router as r\nfrom . import x\n")
+    (app / "backend" / "app" / "clean.py").write_text("import backend.app.x\nfrom ..app import x\n")
+    (app / "backend" / "app" / "rel.py").write_text("from ..tests.leak import router\n")
+    esc = pc.scope_escapes(app)
+    assert sorted(e["source_callable"] for e in esc) == ["backend.app.main", "backend.app.rel"]
+    assert all(e["family"] == "scope_escape" and e["sink_callable"] == "<import>" for e in esc)
+    assert len({e["key"] for e in esc}) == 2
+
+
+def test_unlisted_pysa_rule_codes_are_kept_as_flows(tmp_path):
+    app = tmp_path / "app"
+    (app / "backend").mkdir(parents=True)
+    (app / "backend" / "a.py").write_text("import os\ndef h(x):\n    os.system(x)\n")
+    taint = tmp_path / "taint-output.json"
+    taint.write_text("\n".join([
+        json.dumps({"kind": "model", "data": {"callable": "backend.a.h", "filename": "backend/a.py", "sinks": []}}),
+        json.dumps({"kind": "issue", "data": {"code": 5001, "callable": "backend.a.h", "filename": "backend/a.py", "line": 3, "traces": []}}),
+    ]) + "\n")
+    findings, n_models = pc.extract_findings(taint, app)
+    assert n_models == 1 and [f["family"] for f in findings] == ["pysa_5001"]
+
+
+def test_unexpected_crash_is_a_tool_error_rc2(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(pc, "cmd_scan", lambda a: (_ for _ in ()).throw(RuntimeError("boom")))
+    rc = pc.main(["scan", "--home", str(tmp_path), "--worktree", str(tmp_path), "--out", str(tmp_path / "o")])
+    assert rc == 2 and "RuntimeError: boom" in capsys.readouterr().out
+
+
+def test_scan_accepts_models_with_zero_issues(tmp_path, monkeypatch):
+    def fake_pysa(home, app_dir, results, timeout, log):
+        results.mkdir(parents=True, exist_ok=True)
+        (results / "taint-output.json").write_text(json.dumps({"kind": "model", "data": {"callable": "backend.app.routers.demo.guilt", "filename": "backend/app/routers/demo.py", "sinks": []}}) + "\n")
+        return 0
+    monkeypatch.setattr(pc, "run_pysa", fake_pysa)
+    res = pc.scan(tmp_path / "home", _tree(tmp_path, APP), "HEAD", tmp_path / "out", 10, open(tmp_path / "log", "w"))
+    assert res["ok"] is True and res["models"] == 1 and res["findings"] == []   # a genuinely clean, analysed tree stays clean
 
 
 # --------------------------------------------------------------- runner wiring

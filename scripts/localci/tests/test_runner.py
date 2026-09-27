@@ -522,6 +522,13 @@ def test_extra_check_must_be_an_executable_spec(fx, spec):
     assert not (fx["run"] / "state" / "plan.json").exists()
 
 
+@pytest.mark.parametrize("name", ["ctx.x ", " ctx.x", "security.pysa_python ", "Security.pysa_python", "ctx", "ctx.", ".x", "ctx.a b"])
+def test_extra_check_name_twins_and_malformed_names_are_refused(fx, name):
+    with pytest.raises(SystemExit):
+        fr.plan(fx, "--extra-check", fr.cmd_check(name, fx["repo"], [PY, "-c", "pass"]))
+    assert not (fx["run"] / "state" / "plan.json").exists()
+
+
 def test_extra_check_without_equals_is_refused(fx):
     with pytest.raises(SystemExit):
         fr.plan(fx, "--extra-check", "ctx.x")

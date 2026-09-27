@@ -36,7 +36,12 @@ models that judge it — or when the Pysa home is not set up:
 
 Verdict = "no NEW flow versus BASE": each flow is keyed by family, source callable, sink callable and the sink
 statement text, so line shifts do not count; the BASE scan is cached per subtree sha under the home. rc 1 → FAIL with
-`receipts/pysa/report.md` listing the new flows; rc 2 → ERROR (declared via `error_rcs`, a tool failure is not a verdict).
+`receipts/pysa/report.md` listing the new flows; rc 2 → ERROR (declared via `error_rcs`, a tool failure is not a verdict — and so
+are a Pysa run that emits no model record and a tree with no route handler to model: both are refused, never read as clean).
+Tests are out of the analysis scope, so an in-scope module that imports from a `tests/` path is reported as a `scope_escape` flow
+(new versus BASE → FAIL) instead of quietly widening the blind spot; Pysa rule codes outside the five benchmarked families are kept
+as `pysa_<code>` flows, never dropped. `ctx.<name>` extra checks are the operator's explicit way to cover a context locally and are
+resolved as such — the operator is the runner's trusted party, the candidate never is.
 
 ## Statuses and overall
 

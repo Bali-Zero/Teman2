@@ -22,6 +22,7 @@ import json
 import os
 import platform
 import shlex
+import re
 import shutil
 import signal
 import subprocess
@@ -38,6 +39,7 @@ EXECUTABLE = ("pytest", "trusted_pytest", "cmd")
 MAPPINGS = ("executed", "not_applicable_rule", "blocked", "not_implemented")
 RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
 EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
+EXTRA_CHECK_NAME = re.compile(r"^[a-z][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)+$")  # no whitespace/case twins of a planned name ("security.pysa_python " is not a new check)
 TRUSTED_PYSA_FILES = ["scripts/localci/pysa_check.py", "scripts/localci/pysa/taint.config", "scripts/localci/pysa/fastapi_sources_sinks.pysa",
                       "scripts/localci/pysa/site_packages.txt"]  # taken from BASE: a candidate cannot weaken the taint models that judge it
 PYSA_SCOPE = "apps/backend-rag/backend/"
@@ -379,8 +381,8 @@ def cmd_plan(a):
                         "purpose": f"{rel} extracted from BASE {base[:12]} and run against the candidate tree (candidate cannot rewrite its own guard)"}
     for extra in (a.extra_check or []):
         name, eq, spec_s = extra.partition("=")
-        if not eq or not name.strip():
-            sys.exit(f"--extra-check must be NAME=JSON, got {extra!r}")
+        if not eq or not EXTRA_CHECK_NAME.match(name):
+            sys.exit(f"--extra-check must be NAME=JSON with NAME matching {EXTRA_CHECK_NAME.pattern}, got {extra!r}")
         if name.startswith(RESERVED_CHECK_PREFIXES) or name in checks:
             sys.exit(f"--extra-check {name!r} collides with a planned or reserved check name ({', '.join(RESERVED_CHECK_PREFIXES)} are reserved): "
                      "an extra check cannot overwrite a policy or forge a trusted verdict")

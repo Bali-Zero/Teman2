@@ -38,10 +38,14 @@ FAMILIES = {9001: ("log_injection", {"Logging"}), 6302: ("stack_trace_exposure",
             5011: ("path_injection", {"FileSystem_ReadWrite"}), 6060: ("path_injection", {"FileSystem_Other"}),
             5012: ("ssrf", {"HTTPClientRequest", "HTTPClientRequest_URI", "HTTPClientRequest_METADATA", "HTTPClientRequest_DATA"}),
             5018: ("redirect", {"Redirect"}), 5008: ("xss", {"XSS"})}
-ROUTE = {"get", "post", "put", "delete", "patch", "options", "head", "api_route", "websocket"}
-FRAMEWORK = re.compile(r"(^|[^\w.])(fastapi\.|starlette\.\w+\.)?(Request|Response|WebSocket|BackgroundTasks|StreamingResponse|HTMLResponse|JSONResponse)($|[^\w])")
-INJECT = re.compile(r"\b(Depends|Security)\s*\(")
-FRAMEWORK_NAMES = {"request", "req", "response", "websocket", "ws", "background_tasks"}
+ROUTE = {"get", "post", "put", "delete", "patch", "options", "head", "trace", "api_route", "route", "websocket"}
+REGISTER = {"add_api_route", "add_route", "add_websocket_route", "add_api_websocket_route"}   # imperative registration: router.add_api_route("/p", fn)
+FRAMEWORK_TYPES = {"Request", "Response", "WebSocket", "BackgroundTasks", "StreamingResponse", "HTMLResponse", "JSONResponse"}
+FRAMEWORK_MODULES = ("fastapi", "starlette")   # a type is "the framework's" only when this module imported it from there — a local class Response is a body
+INJECTORS = {"Depends", "Security"}
+EXCLUDED_PARTS = {"tests", "test", "__pycache__"}   # out of the analysis scope — so an import of them FROM in-scope code is itself a finding (scope_escape)
+# No name-based exemption: FastAPI resolves Request/WebSocket/BackgroundTasks by TYPE ANNOTATION only — an unannotated
+# parameter called `request` is a query parameter, i.e. user input (Codex refutation, 2026-09-27).
 
 
 def sh(cmd: list[str], cwd: str | None = None, env: dict | None = None, timeout: int | None = None, log=None) -> int:
@@ -53,16 +57,59 @@ def sh(cmd: list[str], cwd: str | None = None, env: dict | None = None, timeout:
 
 
 # ------------------------------------------------------------------ models (from the tree being scanned)
+def _call_name(node: ast.AST) -> str:
+    f = node.func if isinstance(node, ast.Call) else node
+    return f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+
+
+def _idents(node: ast.AST) -> set[str]:
+    """Identifiers structurally present in an annotation — string constants (descriptions, forward refs) do not count."""
+    out = set()
+    for n in ast.walk(node):
+        if isinstance(n, ast.Name):
+            out.add(n.id)
+        elif isinstance(n, ast.Attribute):
+            out.add(n.attr)
+    return out
+
+
 def is_injected(default, annotation) -> bool:
-    if isinstance(default, ast.Call):
-        f = default.func
-        name = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
-        if name in {"Depends", "Security"}:
+    if isinstance(default, ast.Call) and _call_name(default) in INJECTORS:
+        return True
+    return annotation is not None and any(isinstance(n, ast.Call) and _call_name(n) in INJECTORS for n in ast.walk(annotation))
+
+
+def framework_bindings(tree: ast.AST) -> tuple[set[str], set[str]]:
+    """(local names bound to a framework type, local aliases of a framework module) from this module's imports."""
+    locals_, roots = set(), set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.ImportFrom) and n.module and n.module.split(".")[0] in FRAMEWORK_MODULES:
+            for al in n.names:
+                if al.name in FRAMEWORK_TYPES:
+                    locals_.add(al.asname or al.name)
+                elif al.name in {"requests", "responses", "websockets", "background"}:   # from starlette import responses; responses.Response
+                    roots.add(al.asname or al.name)
+        elif isinstance(n, ast.Import):
+            for al in n.names:
+                if al.name.split(".")[0] in FRAMEWORK_MODULES:
+                    roots.add((al.asname or al.name).split(".")[0])
+    return locals_, roots
+
+
+def is_framework_type(annotation: ast.AST, fw_locals: set[str], fw_roots: set[str]) -> bool:
+    for n in ast.walk(annotation):
+        if isinstance(n, ast.Name) and n.id in fw_locals:
             return True
-    return annotation is not None and bool(INJECT.search(ast.unparse(annotation)))
+        if isinstance(n, ast.Attribute) and n.attr in FRAMEWORK_TYPES:
+            root = n.value
+            while isinstance(root, ast.Attribute):
+                root = root.value
+            if isinstance(root, ast.Name) and root.id in fw_roots:
+                return True
+    return False
 
 
-def handler_params(fn: ast.AST) -> list[str]:
+def handler_params(fn: ast.AST, fw_locals: set[str] = frozenset(), fw_roots: set[str] = frozenset()) -> list[str]:
     a = fn.args
     pos = a.posonlyargs + a.args
     defaults = [None] * (len(pos) - len(a.defaults)) + list(a.defaults)
@@ -70,9 +117,7 @@ def handler_params(fn: ast.AST) -> list[str]:
     for arg, dflt in list(zip(pos, defaults)) + list(zip(a.kwonlyargs, a.kw_defaults)):
         if arg.arg in {"self", "cls"}:
             continue
-        if arg.annotation is None and arg.arg in FRAMEWORK_NAMES:   # unannotated `request` / `websocket` are still the framework objects
-            continue
-        if arg.annotation is not None and FRAMEWORK.search(ast.unparse(arg.annotation)):
+        if arg.annotation is not None and is_framework_type(arg.annotation, fw_locals, fw_roots):
             continue
         if is_injected(dflt, arg.annotation):
             continue
@@ -83,9 +128,41 @@ def handler_params(fn: ast.AST) -> list[str]:
 def route_decorator(fn: ast.AST) -> str | None:
     for d in fn.decorator_list:
         f = d.func if isinstance(d, ast.Call) else d
-        if isinstance(f, ast.Attribute) and f.attr in ROUTE:
-            return f.attr
+        name = f.attr if isinstance(f, ast.Attribute) else (f.id if isinstance(f, ast.Name) else None)   # `get = router.get; @get(...)` counts too
+        if name in ROUTE:
+            return name
     return None
+
+
+def defs(prefix: str, body: list) -> list[tuple[str, ast.AST]]:
+    """Every function at any depth with its Pyre-style qualified name — handlers built inside factories or classes are handlers too."""
+    out = []
+    for node in body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            q = f"{prefix}.{node.name}"
+            out.append((q, node))
+            out += defs(q, node.body)
+        elif isinstance(node, ast.ClassDef):
+            out += defs(f"{prefix}.{node.name}", node.body)
+        elif hasattr(node, "body") and isinstance(getattr(node, "body"), list):   # if / try / with at module or function level
+            out += defs(prefix, node.body)
+            for extra in ("orelse", "finalbody"):
+                out += defs(prefix, getattr(node, extra, []) or [])
+            for h in getattr(node, "handlers", []) or []:
+                out += defs(prefix, h.body)
+    return out
+
+
+def registered_endpoints(tree: ast.AST) -> dict[str, str]:
+    """{function name: kind} for handlers registered imperatively — router.add_api_route("/p", fn) instead of a decorator."""
+    out: dict[str, str] = {}
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in REGISTER:
+            args = [a for a in n.args[1:2]] + [k.value for k in n.keywords if k.arg == "endpoint"]
+            for a in args:
+                if isinstance(a, ast.Name):
+                    out[a.id] = "websocket" if "websocket" in n.func.attr else n.func.attr
+    return out
 
 
 def gen_handler_models(app_dir: Path) -> tuple[str, int]:
@@ -93,30 +170,54 @@ def gen_handler_models(app_dir: Path) -> tuple[str, int]:
     lines, seen = [], set()
     for p in sorted((app_dir / PKG_REL).rglob("*.py")):
         rel = p.relative_to(app_dir)
-        if any(part in {"tests", "test", "__pycache__"} for part in rel.parts):
+        if any(part in EXCLUDED_PARTS for part in rel.parts):
             continue
         try:
             tree = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
         except SyntaxError:
             continue
         module = ".".join(rel.with_suffix("").parts)
-        scopes = [(module, tree.body)] + [(f"{module}.{c.name}", c.body) for c in tree.body if isinstance(c, ast.ClassDef)]
-        for prefix, body in scopes:
-            for fn in body:
-                if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    continue
-                deco = route_decorator(fn)
-                if deco is None:
-                    continue
-                full = f"{prefix}.{fn.name}"
-                if full in seen:
-                    continue
-                seen.add(full)
-                kw = "async def" if isinstance(fn, ast.AsyncFunctionDef) else "def"
-                sig = ", ".join(f"{x}: TaintSource[UserControlled]" for x in handler_params(fn))
-                ret = "" if deco == "websocket" else " -> TaintSink[ReturnedToUser]"
-                lines.append(f"{kw} {full}({sig}){ret}: ...")
+        registered = registered_endpoints(tree)
+        fw_locals, fw_roots = framework_bindings(tree)
+        for full, fn in defs(module, tree.body):
+            deco = route_decorator(fn) or registered.get(fn.name)
+            if deco is None or full in seen:
+                continue
+            seen.add(full)
+            kw = "async def" if isinstance(fn, ast.AsyncFunctionDef) else "def"
+            sig = ", ".join(f"{x}: TaintSource[UserControlled]" for x in handler_params(fn, fw_locals, fw_roots))
+            ret = "" if deco == "websocket" else " -> TaintSink[ReturnedToUser]"
+            lines.append(f"{kw} {full}({sig}){ret}: ...")
     return "# generated from the scanned tree — FastAPI route handlers as sources/sinks\n" + "\n".join(lines) + "\n", len(lines)
+
+
+def scope_escapes(app_dir: Path) -> list[dict]:
+    """In-scope modules importing from an excluded (tests/) path: the excluded code becomes reachable, so it is a finding, not a blind spot."""
+    out = []
+    for p in sorted((app_dir / PKG_REL).rglob("*.py")):
+        rel = p.relative_to(app_dir)
+        if any(part in EXCLUDED_PARTS for part in rel.parts):
+            continue
+        try:
+            tree = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            continue
+        module = ".".join(rel.with_suffix("").parts)
+        for n in ast.walk(tree):
+            targets = []
+            if isinstance(n, ast.ImportFrom):
+                base = ".".join(module.split(".")[:-n.level] if n.level else []) if n.level else ""
+                targets = [".".join(x for x in (base, n.module or "", al.name) if x) for al in n.names]
+            elif isinstance(n, ast.Import):
+                targets = [al.name for al in n.names]
+            for t in targets:
+                if any(part in EXCLUDED_PARTS for part in t.split(".")):
+                    text = ast.unparse(n)
+                    key = hashlib.sha1("|".join(["scope_escape", module, text]).encode()).hexdigest()[:16]
+                    out.append({"key": key, "family": "scope_escape", "code": 0, "source_callable": module, "issue": f"{rel}:{n.lineno}", "sink": f"{rel}:{n.lineno}",
+                                "sink_callable": "<import>", "sink_statement": text[:200], "sink_localised": True})
+                    break
+    return out
 
 
 # ------------------------------------------------------------------ setup
@@ -268,7 +369,8 @@ def stmt_of(app_dir: Path, rel: str, line: int) -> tuple[str, str]:
     return (fn[2] if fn else "<module>", re.sub(r"\s+", " ", best[2]) if best else f"<line {line}>")
 
 
-def extract_findings(taint_output: Path, app_dir: Path) -> list[dict]:
+def extract_findings(taint_output: Path, app_dir: Path) -> tuple[list[dict], int]:
+    """(findings, number of model records) — zero model records means Pysa analysed nothing, not that the tree is clean."""
     models, issues = {}, []
     for line in taint_output.read_text().splitlines():
         try:
@@ -281,10 +383,7 @@ def extract_findings(taint_output: Path, app_dir: Path) -> list[dict]:
             issues.append(o["data"])
     lv, out, seen = Leaves(models), [], set()
     for d in issues:
-        fam = FAMILIES.get(d["code"])
-        if not fam:
-            continue
-        family, kinds = fam
+        family, kinds = FAMILIES.get(d["code"], (f"pysa_{d['code']}", set()))   # an unlisted rule (RCE 5001, SQLi 5005, ...) is still a flow, never dropped
         leaves: set = set()
         for t in d["traces"]:
             if t["name"] != "backward":
@@ -300,7 +399,7 @@ def extract_findings(taint_output: Path, app_dir: Path) -> list[dict]:
             seen.add(key)
             out.append({"key": key, "family": family, "code": d["code"], "source_callable": d["callable"], "issue": f"{d['filename']}:{d['line']}",
                         "sink": f"{lf}:{ll}", "sink_callable": fn, "sink_statement": text[:200], "sink_localised": localised})
-    return out
+    return out, len(models)
 
 
 def scan(home: Path, wt: Path, ref: str, out: Path, timeout: int, log) -> dict:
@@ -314,6 +413,8 @@ def scan(home: Path, wt: Path, ref: str, out: Path, timeout: int, log) -> dict:
         if f.suffix in (".pysa", ".config"):
             shutil.copy(f, models_dir / f.name)
     text, n = gen_handler_models(app_dir)
+    if n == 0:   # fail closed: an unmodelled tree has no sources, so it would always look clean
+        return {"ok": False, "rc": None, "tree": tree, "reason": f"no FastAPI route handler found under {APP_REL}/{PKG_REL} — nothing to model, refusing to call an unmodelled tree clean", "duration_s": 0.0}
     (models_dir / "fastapi_handlers_generated.pysa").write_text(text)
     write_configs(app_dir, home, models_dir)
     t0 = time.monotonic()
@@ -321,8 +422,12 @@ def scan(home: Path, wt: Path, ref: str, out: Path, timeout: int, log) -> dict:
     taint = out / "results" / "taint-output.json"
     if rc != 0 or not taint.exists():
         return {"ok": False, "rc": rc, "tree": tree, "reason": f"pyre analyze rc={rc}, taint-output present={taint.exists()}", "duration_s": round(time.monotonic() - t0, 1)}
-    findings = extract_findings(taint, app_dir)
-    res = {"ok": True, "rc": 0, "ref": ref, "tree": tree, "handlers_modelled": n, "duration_s": round(time.monotonic() - t0, 1), "findings": findings,
+    findings, n_models = extract_findings(taint, app_dir)
+    findings += scope_escapes(app_dir)
+    if n_models == 0:   # fail closed: rc 0 with an empty/malformed taint-output is a tool failure, not a clean tree
+        return {"ok": False, "rc": rc, "tree": tree, "reason": "taint-output.json carries no model record — Pysa analysed nothing (empty or malformed output is not a verdict)",
+                "duration_s": round(time.monotonic() - t0, 1)}
+    res = {"ok": True, "rc": 0, "ref": ref, "tree": tree, "handlers_modelled": n, "models": n_models, "duration_s": round(time.monotonic() - t0, 1), "findings": findings,
            "by_family": {f: sum(1 for x in findings if x["family"] == f) for f in sorted({x["family"] for x in findings})}}
     (out / "findings.json").write_text(json.dumps(res, indent=1))
     shutil.rmtree(out / "tree", ignore_errors=True)
@@ -408,7 +513,11 @@ def main(argv: list[str] | None = None) -> int:
             q.add_argument("--candidate", default="HEAD")
         q.set_defaults(fn=fn)
     a = p.parse_args(argv)
-    return a.fn(a)
+    try:
+        return a.fn(a)
+    except Exception as e:  # noqa: BLE001 — an unexpected crash is a tool error (rc 2), never a FAIL (rc 1) and never a PASS
+        print(json.dumps({"verdict": "ERROR", "stage": a.cmd, "reason": f"{type(e).__name__}: {e}"[:400]}))
+        return 2
 
 
 if __name__ == "__main__":
