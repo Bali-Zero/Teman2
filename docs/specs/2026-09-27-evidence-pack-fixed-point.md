@@ -153,6 +153,8 @@ against the literal string `"clean"`; `check_countable_claims()` (`:3672`) compa
 just redacted, or names a file the mandate ordered kept out of the evidence.
 
 **Evidence.** Four fresh-gate rounds on the same PII-removal lane found this recurring class:
+`gate-7472.md` G3 (a residual-sweep collision the evidence's own disclosure linked to a specific
+file, re-identifying a client — first found here, carried forward unfixed into the next round);
 `gate-7474.md` H1 (5 of 6 redacted pilot ids — all but one — re-linkable to real names via 4
 tracked files, two of which the brief's own `out_of_scope` pointer named by path) and H2
 (brief/pack/body claimed "every PRODUCTION extraction call TODAY" uses a legacy prompt — an
@@ -161,10 +163,10 @@ unmeasured live-egress claim — plus wrong counts: "one of the names" for 2, "9
 carrying a real client's name inside the diff itself — a different, in-diff-content class S6 does
 not cover — and disclosed G5 (residual out-of-scope files), also out of S6's scope.
 `gate-7481.md` K1 (H2 carried forward unfixed), K2 (same wrong counts, "9" now for 11, still "one
-of the names"), K3 (H1 carried forward: the brief still pointed at 3 of the same residual files —
-2 by path, called "the same real names/ids", plus a third via its "PASSPORT NUMBERS in
-cleartext" content, itself a locator), K4 (`Bites:` regressed from a post-merge `ls-tree`+pytest
-probe to a pre-merge lint self-check). `gate-7491.md` K2 — the 11 files and 13+4+1 fixture
+of the names"), K3 (H1 carried forward: the brief named 3 of the same residual files by path,
+called "the same real names/ids", and the pack additionally described one of them by its
+"PASSPORT NUMBERS in cleartext" content — a locator on top of the path), K4 (`Bites:` regressed
+from a post-merge `ls-tree`+pytest probe to a pre-merge lint self-check). `gate-7491.md` K2 — the 11 files and 13+4+1 fixture
 occurrences were by then measured TRUE; what was still FALSE was "the same 6 client_ids/7 names
 ... remain in clear ... across 11 files" (measured: 5 of 6 ids, 5 of 7 names) and "the names occur
 twice" (measured: 3 occurrences per file) — and K3, a new regression, where the dissent itself
@@ -176,8 +178,10 @@ cured once for a different pair of names.
 **Rule.**
 
 - R6.1 — no filename, path, or other locator that isolates one specific residual (out-of-scope)
-  file (a unique content descriptor — e.g. "the file with PASSPORT NUMBERS", a tracked-since date
-  paired with a distinctive dataset size — counts the same as a path) appears anywhere in brief,
+  file (a content descriptor that in fact isolates one file — e.g. naming the kind of document
+  data it holds, or a tracked-since date paired with a distinctive dataset size — counts the same
+  as a path; a descriptor is only in scope here if it is actually narrowing, not merely evocative)
+  appears anywhere in brief,
   pack, or body, **including inside `dissent` and `receipts`** — that is exactly where the K3
   regression sat. Categories and counts only.
 - R6.2 — no client id, redacted placeholder, or pilot id is paired with a per-file occurrence
@@ -195,15 +199,25 @@ cured once for a different pair of names.
 - R6.5 — `Bites:` for a PII lane is a post-merge probe, never a pre-merge lint self-check: for a
   deletion, `git ls-tree origin/main <paths>` → 0; for a redaction (the file stays, only its
   content changes), the same detector command R6.3 requires, re-run against `origin/main` post-
-  merge → 0 newly-introduced hits; either way, plus a test run.
-- R6.6 — before opening, the builder runs one private, reproducible pre-check and pastes into the
-  PR body only its command's _shape_ and its result count — never the residual-basename pattern
-  itself, which R6.1 already forbids in public text: `grep -nE -f <private-pattern-file, outside
-the repo, containing the residual basenames and the R6.3 hedge list> evidence/<pack-dir>/brief.yml
-evidence/<pack-dir>/pack.yml <(gh pr view <n> --json body -q .body)` → 0 hits. A companion id
-  check is scoped the same way (evidence files + PR body only, `grep -w`, never repo-wide — a
-  repo-wide digit search can never reach 0) and checks for an id sitting on the same line as a
-  count or an R6.1 locator, not for the bare digit.
+  merge, must show 0 hits of the redacted tokens in the redacted paths — where the same command at
+  the merge-base showed > 0, so a no-op "redaction" cannot pass; either way, plus a test run.
+- R6.6 — the builder checks against the body **file** it will pass to `gh pr create
+--body-file` (not `gh pr view`, which cannot exist before the PR does). The residual-basename
+  list is private and reproducible: the lane's GATE session writes it, from its own report, to
+  `~/.agent/pii-quarantine/<lane>/r66-residuals.txt` on the lane's host (0600, inside a 0700 dir,
+  never committed) — one basename per line, defined as: a file tracked at HEAD that still carries
+  the lane's PII AND is absent from `git diff --name-only <mb>..HEAD` (a file the diff touches is
+  never a residual, so this is never "39 vs 0" depending on whose list is used). The R6.3 hedge
+  list is already public, so it does not belong in this file. Builder command:
+  `grep -c -F -f <file> <brief> <pack> <body-file>` plus `grep -c -w -E '<R6.3 hedge list>' <same
+three files>`. The PR body pastes only `r66: sha256=<12 hex> lines=<N> residual_hits=<a>
+hedge_hits=<b>` — never the pattern file's contents; if `b > 0`, list each hedge hit by line
+  number as a quoted citation per the Innocence case below, rather than claiming `b` must be 0. The
+  gate verifies by matching the pasted `sha256` prefix, rerunning the same command at HEAD for the
+  same counts, and cross-checking the file against its own report (`N` consistent, 0 basenames
+  from inside the diff). A companion id check runs the same three files with `grep -w`, never
+  repo-wide (a repo-wide digit search can never reach 0), and checks for an id sitting on the same
+  line as a count or an R6.1 locator, not for the bare digit.
 
 **Evidence for R6.2's specific shape:** `gate-7491.md` K3 — pairing each of two redacted pilot
 ids with its own per-file occurrence count, next to two named prompt files — is the mechanism: the
