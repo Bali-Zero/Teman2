@@ -748,11 +748,11 @@ const nextConfig: NextConfig = {
         destination: "/visa/second-home",
         permanent: true,
       },
-      // R19 legal footer migration (spec C1, PR-A, 2026-09-27): /privacy and
-      // /terms keep their URL (route group only), /cookies gets its real
-      // top-level URL. Permanent because the v2 page files are deleted in
-      // the same PR. Company (/about, /careers, /press) is PR-B, not yet
-      // built — those v2 pages and links are untouched here.
+      // R19 legal/company footer migration (spec C1, 2026-09-27): the v2
+      // NavShell-wrapped noindex pages move under (blog) — /privacy and
+      // /terms keep their URL (route group only), /cookies + /company/*
+      // get their real top-level URL. Permanent because the v2 page files
+      // are deleted in the same PR.
       {
         source: "/v2/privacy",
         destination: "/privacy",
@@ -766,6 +766,21 @@ const nextConfig: NextConfig = {
       {
         source: "/v2/cookies",
         destination: "/cookies",
+        permanent: true,
+      },
+      {
+        source: "/v2/company/about",
+        destination: "/about",
+        permanent: true,
+      },
+      {
+        source: "/v2/company/careers",
+        destination: "/careers",
+        permanent: true,
+      },
+      {
+        source: "/v2/company/press",
+        destination: "/press",
         permanent: true,
       },
     ];

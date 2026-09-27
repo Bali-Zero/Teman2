@@ -82,20 +82,13 @@ const PRESENCE_MARKER: Record<string, string> = {
   "/team": "Zainal Abidin",
   "/": "Zainal Abidin",
   "/v2": "Zainal Abidin",
-  "/v2/company/about": "Zainal Abidin",
+  "/about": "Zainal Abidin",
   "/book/team": "Ruslana",
   "/book": "Bali Zero",
 };
 
 test.describe("W2 — the two excluded people are on no public surface", () => {
-  for (const path of [
-    "/team",
-    "/",
-    "/v2",
-    "/v2/company/about",
-    "/book/team",
-    "/book",
-  ]) {
+  for (const path of ["/team", "/", "/v2", "/about", "/book/team", "/book"]) {
     test(`${path} publishes neither of them`, async ({ page }) => {
       const response = await page.goto(path, { waitUntil: "domcontentloaded" });
       expect(response?.status(), `${path} did not answer 200`).toBe(200);

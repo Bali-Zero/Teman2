@@ -1,0 +1,11 @@
+task: >-
+  R19 group C company: /about /careers /press onto the (blog) R19 shell (URL, canonical, noindex-on-new-page
+  precedent from PR-A's /cookies preserved), /v2/company/* 308 to them, footers + home Team/Entry hrefs repointed.
+lane: mouth/r19-legal
+machine: air-m5
+date: 2026-09-27
+gear: 2
+gear_reason: Floor 2, source size, churn < 1828 incl. this brief.
+acceptance:
+  A1: guards pass (routePolicy, metadata-canonical, metadata-title-template, about.test); tsc exit 0; eslint 0 errors.
+  A2: live /about|careers|press 200 + r19; /v2/company/* 308 to them; footers + home Team/Entry carry no /v2/company/ href.

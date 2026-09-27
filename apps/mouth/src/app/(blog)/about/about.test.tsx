@@ -28,7 +28,7 @@ beforeEach(() => {
   extraExcluded.clear();
 });
 
-describe("/v2/company/about", () => {
+describe("/about", () => {
   it("publishes neither excluded person", async () => {
     await renderAboutPage();
     expect(document.body.innerHTML).not.toMatch(/faisha|faysha|sahira/i);
