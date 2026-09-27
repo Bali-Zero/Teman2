@@ -28,6 +28,20 @@ objective: |
   on either job was measured to trip that lint (2 offenders, exit 1) before being corrected to 10
   (clean, exit 0). The repo's own already-enforced floor overrides an ad hoc 2x-measured-runtime
   heuristic; both jobs run actions/checkout, so both needed 10, not 5.
+
+  ROUND 2 (this commit): round 1's own hedge above — "or at least 1" — turned out to be exactly
+  right. A fresh gate session reviewed round 1's head (4292c295) against real Jobs-API data (43
+  merge_group runs) and returned REWORK-BUILD: (a) this pack was stale — a commit landed after it
+  was written, so its declared diff numbers no longer matched; (b) round 1's render-only
+  `_expand_matrix_job_names()` fix resolved the 3 RUN-shape errors (backend-shard-1/2/3) but broke
+  the SKIP-shape match the ORIGINAL unfixed code had gotten right by accident: a skipped matrix
+  job never reaches matrix expansion, so the Jobs API reports it under the literal, unrendered
+  `${{ matrix.shard }}` template — which round 1 stopped emitting once it started rendering.
+  Measured error count: 3 (merge-base) -> 1 (round 1 head, 'backend-shard-matrix-shard') -> 0
+  (this round). Cure: keep the raw template name as an EXTRA read_job_timeouts() entry alongside
+  the rendered ones. council_run (R9) is resolved this round via the lint's own documented
+  `seat_override` escape, per the gate's explicit instruction, rather than left unresolved as
+  round 1 did.
 constraints:
   - "Do not add a redundant/pointless timeout-minutes to backend-shard — it already has one (30,
     job-level, applies to all 3 matrix instances). The false-positive alert is a PROBE bug, not a
@@ -59,6 +73,13 @@ acceptance:
       unbounded runner hang on either SHALL now be capped rather than running to GitHub's own 6h
       ceiling."
     probe: "yaml.safe_load(open('.github/workflows/tests.yml'))"
+  - text:
+      "WHEN a matrix job is SKIPPED (never reaches matrix expansion) and the Jobs API reports it
+      under the raw, unrendered `${{ matrix.<var> }}` template name, read_job_timeouts() SHALL
+      ALSO keep that literal name reachable at the same timeout-minutes as its rendered
+      per-instance siblings — round 1's render-only fix regressed this case (measured: errors went
+      3 -> 1, not 3 -> 0, against 50 real merge_group runs)."
+    probe: "build_record"
 consumer_map:
   - "com.nuzantara.suite-growth-probe (Pro launchd, nightly) — the direct dispatcher of this task;
     its next run against this workflow should report the two real jobs' timeouts populated and
@@ -74,15 +95,23 @@ consumer_map:
     templated-matrix-name shape now has a guilt+innocence pair to catch it, not just backend-shard's
     incidental coverage."
 risks:
-  - "council_run (R9, Gear-3 quorum: >=2 distinct external-family review seats per
-    COUNCIL_REVIEW_SEATS, journal.jsonl in this pack dir) is INTENTIONALLY left undeclared by this
-    session — a solo Claude Sonnet 5 authoring session cannot honestly fabricate a 2-seat
-    cross-family council review of its own work, and COUNCIL_REVIEW_SEATS names only non-Anthropic
-    seats (Codex, Kimi, Qwen, DeepSeek, GLM, Gemini) by design. Per the dispatching team-lead's own
-    framing ('if floor >= 3 a fresh gate must sign before the queue takes it — that is expected'),
-    this is left for a separate fresh-gate/council session to satisfy, not worked around with
-    `seat_override` here — an override would silently paper over a real, load-bearing gate this
-    hot-zone path is supposed to get."
+  - "UPDATED round 2 (was: left undeclared for a fresh gate to resolve). council_run (R9, Gear-3
+    quorum: >=2 distinct external-family review seats per COUNCIL_REVIEW_SEATS, journal.jsonl in
+    this pack dir) cannot be honestly satisfied by this solo Claude Sonnet 5 session —
+    COUNCIL_REVIEW_SEATS names only non-Anthropic seats (Codex, Kimi, Qwen, DeepSeek, GLM,
+    Gemini) by design. Round 1 left it unresolved rather than use `seat_override`, reasoning that
+    an override 'would silently paper over a real, load-bearing gate'. The fresh gate that
+    reviewed round 1's head (4292c295, REWORK-BUILD) corrected this directly: R9's own documented
+    escape IS `seat_override: <reason>`, and using it honestly is the gate's designed answer, not
+    a bypass of it. Round 2 applies `seat_override` on that explicit instruction; see pack.yml's
+    top-level `seat_override:` field and the matching dissent entry for the full reasoning."
+  - "Round 2's own fix (keeping the raw, unrendered `${{ matrix.<var> }}` template name as an
+    extra read_job_timeouts() entry) is scoped to the exact shape the fresh gate measured
+    (skipped matrix job -> Jobs API reports it under the literal template string). It has NOT been
+    checked against every other possible GitHub Actions job-skip shape (e.g. a job skipped via a
+    DIFFERENT mechanism than this workflow's `!cancelled() && (...)` pattern, or a matrix built
+    from `strategy.matrix.include` rather than a plain scalar list) — only the one this repo's
+    `backend-shard` job actually uses and the fresh gate actually observed live."
   - "frontend-tests' include:-matrix (`(mouth, true)`/`(admin-dashboard, false)` auto-suffixed job
     names) plausibly shares the exact same name-matching gap this pack fixes for backend-shard's
     `${{ matrix.* }}`-in-name: shape, but this was NOT verified empirically this turn (the live
@@ -97,8 +126,17 @@ risks:
     still be representative, but this is a different sample than the probe's own 7-day window would
     draw from."
 grader: |
-  Self-graded (solo session, no adversarial subagent dispatched this round — see risks above and
-  dissent in pack.yml). Every acceptance probe above was run directly against the real repo content
-  on this branch in this turn (not a synthetic fixture), and the pre-correction failure (5-minute
-  value tripping the 10-minute floor lint) was captured as a receipt alongside the post-correction
-  clean run, so the "10, not 5" correction is falsifiable from the pack's own evidence, not asserted.
+  Round 1: self-graded (solo session, no adversarial subagent dispatched — see risks above and
+  dissent in pack.yml). Every acceptance probe was run directly against the real repo content on
+  this branch (not a synthetic fixture), and the pre-correction failure (5-minute value tripping
+  the 10-minute floor lint) was captured as a receipt alongside the post-correction clean run, so
+  the "10, not 5" correction is falsifiable from the pack's own evidence, not asserted.
+
+  Round 2: graded by an actual fresh gate session (external to this authoring session), which
+  returned REWORK-BUILD on round 1's head and found BOTH the pack staleness (a commit landed after
+  the pack was written, so the diff numbers it declared no longer matched) and the
+  backend-shard-matrix-shard regression — independently, against real Jobs-API data (43 real
+  merge_group runs on their side; this cure re-measured against 50 real merge_group runs on this
+  session's own side, reproducing the SAME 3 -> 1 -> 0 error-count sequence). This is the strongest
+  verification this pack has had: an adversarial, cross-session finding on real production data,
+  not this session's own claim.
