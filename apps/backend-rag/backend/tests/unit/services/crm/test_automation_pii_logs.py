@@ -9,6 +9,19 @@ fresh gate's REWORK-BUILD verdict found `automation.py` was the one site of
 the three that had not been redacted. Fixed by reusing the same
 `redact_identifier_for_log` / `_bounded_scrub` helpers the siblings already
 use — no new regex.
+
+C-2(b) of #7451's delta gate (PR #7488 follow-up) adds a second class of
+sites in the same module: `ProcessAutomationService.trigger_on_process_start`
+has its OWN caller-level success/except log lines around each
+`_send_with_brevo_fallback` call (one pair for the client email, one pair
+for the team-leader email) — these are separate log statements from the
+ones inside `_send_with_brevo_fallback` itself, and were still logging the
+raw `client_data["email"]` / `team_leader_email` on success and the raw
+exception object (`%s`, e) on failure. The exception case matters even with
+`exc_info=True`: a caught `ValueError`/`httpx.HTTPError`'s own message can
+echo the recipient back (e.g. a provider bounce quoting the address), and
+`exc_info=True` only attaches the traceback — it does not re-scrub the `%s`
+argument. Fixed with the same two helpers, applied to `str(e)`.
 """
 
 from __future__ import annotations
@@ -19,10 +32,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from backend.security.pii_log_identifier import redact_identifier_for_log
-from backend.services.crm.automation import _send_with_brevo_fallback
+from backend.services.crm.automation import ProcessAutomationService, _send_with_brevo_fallback
 
 _LOGGER_NAME = "backend.services.crm.automation"
 _ADDR = "automation.probe@example.com"
+_TEAM_ADDR = "leader.probe@example.com"
 
 
 class _FakeResponse:
@@ -139,3 +153,163 @@ async def test_innocence_brevo_failure_keeps_the_non_pii_diagnostic_text(caplog)
         )
     joined = " ".join(r.getMessage() for r in caplog.records)
     assert "connection reset by peer" in joined
+
+
+# --- trigger_on_process_start's OWN caller-level logs (C-2(b), #7488 follow-up) ---
+
+
+def _make_practice(team_leader_email: str | None) -> dict:
+    return {
+        "id": 1,
+        "client_id": 10,
+        "practice_type_name": "KITAS",
+        "assigned_to": team_leader_email,
+        "created_by": None,
+    }
+
+
+def _make_service() -> ProcessAutomationService:
+    return ProcessAutomationService(MagicMock())
+
+
+@pytest.mark.asyncio
+async def test_trigger_client_success_log_does_not_leak_the_client_address(caplog):
+    svc = _make_service()
+    practice = _make_practice(team_leader_email=None)
+    client = {"id": 10, "full_name": "John", "email": _ADDR}
+    with (
+        patch(
+            "backend.services.crm.automation._fetch_practice_with_client",
+            new_callable=AsyncMock,
+        ) as m_fetch,
+        patch(
+            "backend.services.crm.automation._send_with_brevo_fallback",
+            new_callable=AsyncMock,
+        ),
+        patch("backend.services.crm.automation._log_activity", new_callable=AsyncMock),
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+    ):
+        m_fetch.return_value = (practice, client)
+        result = await svc.trigger_on_process_start(1, "user@x.com")
+    assert result["client_notified"] is True
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert _ADDR not in joined
+    assert "automation.probe" not in joined
+    assert redact_identifier_for_log(_ADDR) in joined
+    assert "Process start email sent to client" in joined
+
+
+@pytest.mark.asyncio
+async def test_trigger_team_leader_success_log_does_not_leak_the_team_leader_address(caplog):
+    svc = _make_service()
+    practice = _make_practice(team_leader_email=_TEAM_ADDR)
+    client = {"id": 10, "full_name": "John", "email": None}
+    with (
+        patch(
+            "backend.services.crm.automation._fetch_practice_with_client",
+            new_callable=AsyncMock,
+        ) as m_fetch,
+        patch(
+            "backend.services.crm.automation._send_with_brevo_fallback",
+            new_callable=AsyncMock,
+        ),
+        patch("backend.services.crm.automation._log_activity", new_callable=AsyncMock),
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+    ):
+        m_fetch.return_value = (practice, client)
+        result = await svc.trigger_on_process_start(1, "user@x.com")
+    assert result["team_leader_notified"] is True
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert _TEAM_ADDR not in joined
+    assert "leader.probe" not in joined
+    assert redact_identifier_for_log(_TEAM_ADDR) in joined
+    assert "Process start notification sent to team leader" in joined
+
+
+@pytest.mark.asyncio
+async def test_trigger_client_send_failure_scrubs_a_bounce_that_echoes_the_address(caplog):
+    """GUILT: before this fix, `logger.error(..., e, exc_info=True)` put the
+    raw caught exception straight into the `%s` slot — a bounce-style
+    ValueError quoting the recipient back leaked it even though the success
+    path was already redacted."""
+    svc = _make_service()
+    practice = _make_practice(team_leader_email=None)
+    client = {"id": 10, "full_name": "John", "email": _ADDR}
+    with (
+        patch(
+            "backend.services.crm.automation._fetch_practice_with_client",
+            new_callable=AsyncMock,
+        ) as m_fetch,
+        patch(
+            "backend.services.crm.automation._send_with_brevo_fallback",
+            new_callable=AsyncMock,
+            side_effect=ValueError(f"550 mailbox {_ADDR} rejected"),
+        ),
+        patch("backend.services.crm.automation._log_activity", new_callable=AsyncMock),
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+    ):
+        m_fetch.return_value = (practice, client)
+        result = await svc.trigger_on_process_start(1, "user@x.com")
+    assert result["client_notified"] is False
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert _ADDR not in joined
+    assert "automation.probe" not in joined
+    assert "Failed to send process start email to client" in joined
+    assert "mailbox" in joined and "rejected" in joined
+
+
+@pytest.mark.asyncio
+async def test_trigger_team_leader_send_failure_scrubs_the_unexpected_error(caplog):
+    """Covers the `except Exception` (unexpected-error) branch, not just
+    the `httpx.HTTPError`/`ValueError` one — a bare RuntimeError hits it."""
+    svc = _make_service()
+    practice = _make_practice(team_leader_email=_TEAM_ADDR)
+    client = {"id": 10, "full_name": "John", "email": None}
+    with (
+        patch(
+            "backend.services.crm.automation._fetch_practice_with_client",
+            new_callable=AsyncMock,
+        ) as m_fetch,
+        patch(
+            "backend.services.crm.automation._send_with_brevo_fallback",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError(f"provider quoted {_TEAM_ADDR} as invalid"),
+        ),
+        patch("backend.services.crm.automation._log_activity", new_callable=AsyncMock),
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+    ):
+        m_fetch.return_value = (practice, client)
+        result = await svc.trigger_on_process_start(1, "user@x.com")
+    assert result["team_leader_notified"] is False
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert _TEAM_ADDR not in joined
+    assert "leader.probe" not in joined
+    assert "Unexpected error notifying team leader" in joined
+    assert "invalid" in joined
+
+
+# --- INNOCENCE: trigger_on_process_start keeps non-PII diagnostic text ---
+
+
+@pytest.mark.asyncio
+async def test_innocence_trigger_client_failure_keeps_the_non_pii_diagnostic_text(caplog):
+    svc = _make_service()
+    practice = _make_practice(team_leader_email=None)
+    client = {"id": 10, "full_name": "John", "email": _ADDR}
+    with (
+        patch(
+            "backend.services.crm.automation._fetch_practice_with_client",
+            new_callable=AsyncMock,
+        ) as m_fetch,
+        patch(
+            "backend.services.crm.automation._send_with_brevo_fallback",
+            new_callable=AsyncMock,
+            side_effect=ValueError("connection timed out"),
+        ),
+        patch("backend.services.crm.automation._log_activity", new_callable=AsyncMock),
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+    ):
+        m_fetch.return_value = (practice, client)
+        await svc.trigger_on_process_start(1, "user@x.com")
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert "connection timed out" in joined

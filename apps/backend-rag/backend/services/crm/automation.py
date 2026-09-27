@@ -328,15 +328,20 @@ class ProcessAutomationService:
                         practice_data=practice_data,
                     )
                     results["client_notified"] = True
-                    logger.info(f"Process start email sent to client {client_data['email']}")
+                    logger.info(
+                        "Process start email sent to client %s",
+                        redact_identifier_for_log(client_data["email"]),
+                    )
                 except (httpx.HTTPError, ValueError) as e:
                     logger.error(
-                        "Failed to send process start email to client: %s", e, exc_info=True
+                        "Failed to send process start email to client: %s",
+                        _bounded_scrub(str(e), 400),
+                        exc_info=True,
                     )
                 except Exception as e:
                     logger.error(
                         "Unexpected error sending process start email to client: %s",
-                        e,
+                        _bounded_scrub(str(e), 400),
                         exc_info=True,
                     )
             else:
@@ -352,14 +357,18 @@ class ProcessAutomationService:
                     results["team_leader_notified"] = True
                     logger.info(
                         "Process start notification sent to team leader %s",
-                        team_leader_email,
+                        redact_identifier_for_log(team_leader_email),
                     )
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error("Failed to send notification to team leader: %s", e, exc_info=True)
+                    logger.error(
+                        "Failed to send notification to team leader: %s",
+                        _bounded_scrub(str(e), 400),
+                        exc_info=True,
+                    )
                 except Exception as e:
                     logger.error(
                         "Unexpected error notifying team leader: %s",
-                        e,
+                        _bounded_scrub(str(e), 400),
                         exc_info=True,
                     )
 

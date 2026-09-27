@@ -12,6 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from backend.security.pii_log_identifier import redact_identifier_for_log
+
 
 @pytest.fixture
 def monitor(fake_pool):
@@ -301,8 +303,14 @@ async def test_escalate_pages_telegram_and_marks_escalated(monitor, fake_pool):
     assert mock_tg.called
     tg_text = mock_tg.call_args[0][0]
     assert "2 unrecoverable" in tg_text
-    assert "client1@example.com" in tg_text
-    assert "client2@example.com" in tg_text
+    # C-2(a) of #7451's delta gate (PR #7488 follow-up): the raw address
+    # used to go straight into this Telegram message — an OUTPUT channel
+    # (Builder Contract §4) — not just into a log. Now it's redacted, same
+    # helper as the #7449 log-line fix.
+    assert "client1@example.com" not in tg_text
+    assert "client2@example.com" not in tg_text
+    assert redact_identifier_for_log("client1@example.com") in tg_text
+    assert redact_identifier_for_log("client2@example.com") in tg_text
     assert "invoice_client" in tg_text
 
 
@@ -342,6 +350,95 @@ async def test_escalate_truncates_to_15_items_in_telegram(monitor, fake_pool):
 
     tg_text = mock_tg.call_args[0][0]
     assert "and 5 more" in tg_text
+
+
+@pytest.mark.asyncio
+async def test_escalate_scrubs_a_bounce_that_echoes_the_address_in_error_message(
+    monitor, fake_pool
+):
+    """GUILT: `error_message` is caller/provider-supplied free text and can
+    itself carry the recipient's address back (a bounce quoting it) — the
+    old `[:80]` slice truncated but never scrubbed it."""
+    addr = "bounced.client@example.com"
+    fake_pool._conn.fetch.return_value = [
+        {
+            "id": 200,
+            "email_type": "invoice_client",
+            "to_email": addr,
+            "subject": "Invoice INV-042",
+            "practice_id": 10,
+            "client_id": 1,
+            "attempt_number": 3,
+            "error_message": f"550 mailbox {addr} rejected",
+            "created_at": datetime(2026, 4, 21, 8, 0, tzinfo=timezone.utc),
+        }
+    ]
+
+    with patch("backend.services.notifications.email_health_monitor._post_telegram") as mock_tg:
+        await monitor.escalate_unrecoverable()
+
+    tg_text = mock_tg.call_args[0][0]
+    assert addr not in tg_text
+    assert "bounced.client" not in tg_text
+    assert redact_identifier_for_log(addr) in tg_text
+    assert "mailbox" in tg_text and "rejected" in tg_text
+
+
+@pytest.mark.asyncio
+async def test_escalate_scrubs_an_address_echoed_in_the_subject_line(monitor, fake_pool):
+    """GUILT: `subject` is caller-supplied free text too (e.g. a
+    personalized subject line) and was never scrubbed at all, only
+    sliced — see the module comment on `notify_email_failure_critical`
+    in email_audit.py for the same note on `subject`."""
+    addr = "subject.leak@example.com"
+    fake_pool._conn.fetch.return_value = [
+        {
+            "id": 201,
+            "email_type": "welcome",
+            "to_email": "other@example.com",
+            "subject": f"Welcome {addr}",
+            "practice_id": None,
+            "client_id": 2,
+            "attempt_number": 3,
+            "error_message": "timeout",
+            "created_at": datetime(2026, 4, 21, 8, 0, tzinfo=timezone.utc),
+        }
+    ]
+
+    with patch("backend.services.notifications.email_health_monitor._post_telegram") as mock_tg:
+        await monitor.escalate_unrecoverable()
+
+    tg_text = mock_tg.call_args[0][0]
+    assert addr not in tg_text
+    assert "subject.leak" not in tg_text
+
+
+@pytest.mark.asyncio
+async def test_innocence_escalate_keeps_the_non_pii_diagnostic_text(monitor, fake_pool):
+    """INNOCENCE: the fix must not wipe out non-PII diagnostic content —
+    email_type, subject prose and error text without an address still
+    read clearly in the Telegram message."""
+    fake_pool._conn.fetch.return_value = [
+        {
+            "id": 202,
+            "email_type": "invoice_client",
+            "to_email": "clean@example.com",
+            "subject": "Invoice INV-099 is ready",
+            "practice_id": 10,
+            "client_id": 1,
+            "attempt_number": 3,
+            "error_message": "connection timed out",
+            "created_at": datetime(2026, 4, 21, 8, 0, tzinfo=timezone.utc),
+        }
+    ]
+
+    with patch("backend.services.notifications.email_health_monitor._post_telegram") as mock_tg:
+        await monitor.escalate_unrecoverable()
+
+    tg_text = mock_tg.call_args[0][0]
+    assert "invoice_client" in tg_text
+    assert "Invoice INV-099 is ready" in tg_text
+    assert "connection timed out" in tg_text
 
 
 # ----------------------------------------------------------------------
