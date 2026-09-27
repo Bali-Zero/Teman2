@@ -1,0 +1,196 @@
+# Gear-3 evidence pack — harness fix: the Bites step resolves an in-PR observer in the PR head tree.
+# Written by the harness-fix builder (Claude Sonnet 5, a teammate of the session that owns this mandate).
+# Every receipt below is a command this writer executed in this turn (2026-09-27, 03:22Z-03:29Z); the
+# outputs are quoted from those runs, not narrated from memory. The one exception is stated as such:
+# the run log of PR 7504 was downloaded and read this turn, but the run itself is CI's, not the writer's.
+#
+# WHAT THIS PACK DOES NOT CARRY, ON PURPOSE: council-journal.jsonl content and independent dissent. The
+# review seats are the owning session's lane (generator != grader) — the builder did not dispatch,
+# simulate or narrate any council round, and no reviewer verdict is asserted here. The owning session
+# appends the reviewer lanes and journal lines before arming. The `dissent` block below is the builder's
+# OWN residual-risk notes, labelled as such (seat: self-review, not an independent refuter) so the block
+# is honest rather than empty. `council_run` names a journal file that is deliberately EMPTY at the time
+# of writing, so R9 is expected to fail on quorum until the council has run.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  SAETTA amendment 7 (docs/rules/RULINGS.md, ruled 2026-09-12): a red whose cause is the harness
+  produces no supersession, and the harness is fixed in a separate PR. Mandate from the owning session,
+  2026-09-27: cure the defect the gate diagnosed on PR 7504 (run 36289447854), in its own PR.
+mission: >-
+  The `Bites contract` step of harness-floor.yml judged an observer script that is NEW in the PR as
+  missing, and died silently on it. Cure: bites_parse.py `--tree <sha>`, the step passing the head sha,
+  and the step capturing the parser's exit code.
+lanes:
+  - lane: bites-tree-parser
+    role: build
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3 by path: `evidence_pack_lint.py --print-floor --print-floor-source` over the numstat prints
+      3 with source `path`, because .github/workflows/harness-floor.yml is a hot-zone path. The workflow
+      hunk is a handful of lines; the floor, not the size, sets the gear.
+  - id: D-tree-lookup
+    decision: >-
+      The parser asks the head tree with `git ls-tree` (path, mode) and `git cat-file blob <oid>` (bytes)
+      rather than the `git cat-file -e` / `git show <sha>:<path>` pair first suggested. ls-tree is what the
+      same step already uses for the pack question (trees are always local under `filter: blob:none`, and
+      it separates "git failed" from "not in the tree"), it reports the mode so a symlink can be refused
+      the way `resolve()` refuses a link out of the checkout, and reading by object id leaves no path
+      syntax and no textconv filter between the id and the bytes. No shell, no `shell=True`, the head
+      copy is read and never run.
+  - id: D-hex-only
+    decision: >-
+      `--tree` accepts 7-64 hex digits and nothing else, checked in `main()` and again inside the guard
+      that calls git, so a value such as `--output=x` never reaches a git argv. A ref name is a moving
+      target and the step already holds the resolved sha.
+  - id: D-default-unchanged
+    decision: >-
+      Without `--tree` every code path is the one that was there. The existing corpus still passes
+      unchanged (receipt R2), and a test pins the old behaviour: from a checkout that lacks the file the
+      same pack is still `does not exist in the checkout`.
+  - id: D-exit-capture
+    decision: >-
+      The step now runs `RC=0` then `python3 ... || RC=$?`. The comment above the old call claimed errexit
+      was off in this job's steps; the real run of PR 7504 shows `shell: /usr/bin/bash -e {0}` on this very
+      step and `Process completed with exit code 2.` with no `::error` line before it (receipt R0), so the
+      comment was corrected in the same hunk rather than left contradicting the code beside it.
+  - id: D-scope
+    decision: >-
+      Left out on purpose and named in the brief: the `CLASSIFICATION=$(python3 -c ...)` line lower in the
+      same step has the same bash -e shape, and scripts/lint_workflow_errexit_decap.py matches only the
+      `VAR=$(...)` form, not a bare call followed by `RC=$?`. Each is a separate concern for its own PR.
+receipts:
+  - claim: "R0 — ground truth of the defect. The failing run of PR 7504 ran the step under `bash -e` and ended it with exit 2 and no `::error`."
+    cmd: gh run view 36289447854 --log > <scratch>/run36289447854.log; grep of the "Bites contract" lines
+    result: >-
+      the step header prints `shell: /usr/bin/bash -e {0}` with HEAD_SHA 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7
+      and PACK_PATH evidence/2026-09/agent-nuzantara-backend-rag-seq24-sign-99f66ece/pack.yml; the last line of
+      the step is `##[error]Process completed with exit code 2.` at 03:06:45Z, 0.08 s after its script header,
+      with no `::error::` annotation of the step's own between them.
+    exit: 0
+    ts: "2026-09-27T03:29:11Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R1 — base commit, merge-base and branch of the working tree this evidence describes (the fix is the one cherry-picked commit on top).
+    cmd: git rev-parse HEAD && git merge-base origin/main HEAD && git branch --show-current
+    result: >-
+      HEAD at measurement 9666c7cc5e4d05741a41a4df6aa6a46b8482d2b5 (the cherry-pick of 5d24460cc1, before this
+      evidence was added; that commit was then amended, unpushed, to carry it, so the sha on the branch differs),
+      merge-base a6fcae5afe6d16abe9e3c4691fb988c31eb18da4, branch agent/nuzantara/ci/bites-observe-head-tree-v2
+    exit: 0
+    ts: "2026-09-27T03:28:10Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R2 — the parser's embedded guilt+innocence corpus is untouched and green.
+    cmd: python3 scripts/ci/bites_parse.py --selftest
+    result: "bites_parse selftest: 138/138 pass (guilt + innocence)"
+    exit: 0
+    ts: "2026-09-27T03:28:10Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R3 — the whole parser test file on Python 3.14.7 (the dev interpreter).
+    cmd: python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py
+    result: "139 passed in 2.99s"
+    exit: 0
+    ts: "2026-09-27T03:28:10Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R4 — the same file on Python 3.11.11 (the interpreter of the backend venv, the nearest to CI's 3.11/3.12).
+    cmd: apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py
+    result: "139 passed in 3.09s"
+    exit: 0
+    ts: "2026-09-27T03:28:13Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R5 — the twelve new tests by name, and the workflow pin alone.
+    cmd: >-
+      python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py -k head_tree;
+      the same with -k harness_floor_step
+    result: "12 passed, 127 deselected in 1.95s (11 head-tree-mode tests plus the workflow pin, whose name also matches); 1 passed, 138 deselected in 0.12s"
+    exit: 0
+    ts: "2026-09-27T03:28:17Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: "R6 — reproduction on the real pack of PR 7504 (its commit 9a1413999f). With `--tree` the four-field block; without it, from a checkout lacking the file, malformed."
+    cmd: >-
+      git show 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7:evidence/2026-09/agent-nuzantara-backend-rag-seq24-sign-99f66ece/pack.yml > pb.yml;
+      python3 scripts/ci/bites_parse.py --pack - --tree 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7 < pb.yml;
+      python3 scripts/ci/bites_parse.py --pack - < pb.yml
+    result: >-
+      with --tree: exit 0, consumer/where ci/observe `python3 scripts/ci/observe_visa_seq24_signed.py`/expect
+      `contains:inventory reads seq-24 and all three consumers green`; without: exit 2, `observe:
+      scripts/ci/observe_visa_seq24_signed.py does not exist in the checkout`.
+    exit: 0
+    ts: "2026-09-27T03:28:29Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R7 — the old step shape under `bash -e` never reaches `RC=$?`; the new shape reaches it and the step survives.
+    cmd: >-
+      bash -e -c 'python3 -c "import sys; sys.exit(2)"; RC=$?; echo REACHED_RC=$RC' versus
+      bash -e -c 'RC=0; python3 -c "import sys; sys.exit(2)" || RC=$?; echo REACHED_RC=$RC'
+    result: "old shape: nothing printed, step exit 2; new shape: REACHED_RC=2, step exit 0"
+    exit: 0
+    ts: "2026-09-27T03:28:29Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R8 — mutation check, each mutation applied to a scratch edit of the tree and reverted from a byte-identical backup; the head-tree tests go red on every one.
+    cmd: >-
+      -k head_tree run after (M1) parse_pack no longer passes `tree` to the guard, (M2) the mode/symlink
+      refusal weakened, (M3) `--tree "${HEAD_SHA}"` removed from the step, (M4) `|| RC=$?` removed from the step
+    result: "M1 5 failed / 7 passed; M2 1 failed / 11 passed; M3 1 failed / 11 passed; M4 1 failed / 11 passed; after restore `cmp` identical and 12 passed"
+    exit: 0
+    ts: "2026-09-27T03:28:40Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R9 — ruff on the two touched Python files.
+    cmd: ruff check scripts/ci/bites_parse.py scripts/tests/test_bites_parse.py
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-27T03:28:58Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R10 — actionlint on the changed workflow (no finding printed).
+    cmd: actionlint .github/workflows/harness-floor.yml
+    result: "no output"
+    exit: 0
+    ts: "2026-09-27T03:28:58Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R11 — the errexit-decapitation lint over every workflow, and its own corpus.
+    cmd: >-
+      python3 scripts/lint_workflow_errexit_decap.py; python -m pytest -p no:cacheprovider
+      scripts/tests/test_lint_workflow_errexit_decap.py
+    result: "errexit-decap lint: 124 workflow file(s), 642 run-block(s) scanned, clean; 13 passed in 0.61s"
+    exit: 0
+    ts: "2026-09-27T03:28:58Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: R12 — PII-shaped strings in the three touched code files (email or 16-digit run).
+    cmd: grep -nE an email pattern or a 16-digit run over scripts/ci/bites_parse.py, scripts/tests/test_bites_parse.py, .github/workflows/harness-floor.yml
+    result: >-
+      two hits, both reserved-domain fixtures and no person: test_bites_parse.py:817 (`a@b.test`, an
+      existing argument-shape fixture) and :1192 (`t@example.invalid`, the throwaway git identity of the
+      temporary test repository). The brief and this pack carry no address.
+    exit: 0
+    ts: "2026-09-27T03:28:59Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+dissent:
+  - seat: self-review (the builder, not an independent refuter)
+    objection: >-
+      A PR whose event payload `pull_request.base.sha` predates this merge, while its merged workflow
+      file already carries `--tree`, would run an older base parser that does not know the flag: argparse
+      exits 2 with an empty stdout and the step reports "classified this pack as '<nothing>'". Transient
+      and closed by the next synchronize of such a PR; not coded around, and not observed.
+    status: PLAUSIBLE
+  - seat: self-review (the builder, not an independent refuter)
+    objection: >-
+      The strength of the marker check did not increase. With `--tree` it judges a PR-authored script
+      carrying a PR-authored marker, exactly as strong as the review of the diff that adds the observer
+      (the parser's POST-MERGE ONLY paragraph). Nothing from the head tree is executed by this step, but
+      the lint can now green an observer that nobody but the author has read.
+    status: PLAUSIBLE
+  - seat: self-review (the builder, not an independent refuter)
+    objection: >-
+      Two neighbours of the fixed line are the same defect class and are left standing: the
+      `CLASSIFICATION=$(python3 -c ...)` capture in the same step (a failed import ends the step before its
+      own `*)` branch prints), and the lint that should have caught the original, which matches only
+      `VAR=$(...)` and not a bare call followed by `RC=$?`.
+    status: CONFIRMED
+  - seat: self-review (the builder, not an independent refuter)
+    objection: >-
+      No GitHub run of the patched step exists yet. The receipts reproduce the parser on the real pack of
+      PR 7504 and pin the workflow text, but the live observation is the re-run of PR 7504 after this
+      merges (acceptance A4 of the brief), which is why it is written down as an acceptance and not claimed.
+    status: CONFIRMED
+council_run: council-journal.jsonl

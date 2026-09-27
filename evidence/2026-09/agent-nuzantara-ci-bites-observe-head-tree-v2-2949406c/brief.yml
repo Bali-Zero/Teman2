@@ -1,0 +1,84 @@
+task: >-
+  Harness fix (SAETTA 7: a harness-caused red is fixed in its own PR). The `harness-floor.yml`
+  step "Bites contract — parse this PR's evidence pack" runs `scripts/ci/bites_parse.py` from the
+  BASE checkout, and `_guard_observable_script` asked that checkout whether the pack's `observe:`
+  script exists and carries `bites-observable`. An observer that is NEW in the PR, which is
+  exactly what Builder Contract 2 demands ("the job ships in the same PR"), was reported
+  `malformed: observe ... does not exist in the checkout` with exit 2, and because a `run:` block
+  is `bash -e`, the `RC=$?` line after the bare parser call never executed: the step died
+  silently, no `::error`. Cure: `bites_parse.py --tree <sha>` asks that git tree instead
+  (`git ls-tree` for the path and mode, `git cat-file blob` for the bytes; no shell, read only,
+  symlinks and non-regular files refused, hex ids only), the step passes `--tree "${HEAD_SHA}"`,
+  and the parser call captures its exit code with `RC=0` / `|| RC=$?` so the diagnostic branch runs.
+lane: ci
+machine: pro
+date: 2026-09-27
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source `path` (scripts/evidence_pack_lint.py --print-floor
+  --print-floor-source over the working-tree numstat against origin/main: 3 files, +300/-24):
+  .github/workflows/harness-floor.yml is a hot-zone path and the change sits on the allow-list
+  that decides which commands CI may execute. Gear 3 because the floor says so, not because the
+  size does; the workflow hunk is 11 lines and the parser change keeps every existing rule.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+acceptance:
+  A1: >-
+    A pack whose observer script exists only in the head tree parses to the four-field block
+    (exit 0) when the parser is given `--tree <head sha>`; without `--tree`, from a checkout that
+    lacks the file, it is still `malformed ... does not exist in the checkout` (default behaviour
+    unchanged). Marker missing in the tree, script absent from the tree, a symlink leaf, a
+    non-hex `--tree` and a path that leaves the checkout are each refused.
+    probe: >-
+      git show 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7:evidence/2026-09/agent-nuzantara-backend-rag-seq24-sign-99f66ece/pack.yml > /tmp/pb.yml;
+      python3 scripts/ci/bites_parse.py --pack - --tree 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7 < /tmp/pb.yml
+      -> the four-field block, exit 0; the same without --tree from this worktree -> malformed,
+      exit 2. python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py -k head_tree
+      -> 12 passed (11 head-tree-mode tests plus the workflow pin of A2, whose name also matches).
+  A2: >-
+    The harness-floor step hands the parser `--tree "${HEAD_SHA}"` and captures its exit code
+    (`RC=0` before, `|| RC=$?` on the call), so the malformed / exit-3+ branches run and print
+    their `::error` lines instead of the step ending silently under `bash -e`.
+    probe: >-
+      python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py -k harness_floor_step;
+      bash -e demonstration of the old shape (step exit 2, RC line never reached) vs the new shape
+      (RC=2 reached, step exit 0); actionlint .github/workflows/harness-floor.yml clean;
+      python3 scripts/lint_workflow_errexit_decap.py clean.
+  A3: >-
+    Nothing else moves: the embedded corpus still passes and the whole test file is green on both
+    interpreters CI uses.
+    probe: >-
+      python3 scripts/ci/bites_parse.py --selftest -> 138/138; python -m pytest -p no:cacheprovider
+      scripts/tests/test_bites_parse.py -> 139 passed on Python 3.14.7 and on 3.11.11; ruff check
+      on both touched Python files clean.
+  A4: >-
+    Live after merge: the "Harness floor recompute" check on PR #7504, re-run as a fresh
+    `pull_request` event (close / reopen), parses that PR's pack clean, with the four-field block
+    in the step log, instead of exit 2.
+    probe: >-
+      gh run view <run id> --log | grep -A6 "Bites contract" on the new #7504 run; conclusion of
+      the "Harness floor recompute" check is success.
+out_of_scope: >-
+  The `CLASSIFICATION=$(python3 -c ...)` line further down the same step is the same errexit shape
+  (a failed import would end the step before its own `*)` branch prints); `scripts/lint_workflow_errexit_decap.py`
+  matches only the `VAR=$(...)` form and does not see a bare parser call followed by `RC=$?`.
+  Both are named here and left for their own PRs. No change to the allow-list, the corpus, the
+  post-merge executor path (`scripts/contract_driver.py` keeps its detached-worktree workaround),
+  or PR #7504 itself.
+assumptions:
+  - text: >-
+      A PR whose `pull_request.base.sha` in the event payload predates this fix while its merged
+      workflow file already carries `--tree` would run an older base parser that does not know the
+      flag (argparse exit 2, empty stdout). That window closes on the next synchronize of such a
+      PR and needs no code here.
+    status: unverified
+    probe: >-
+      none scheduled; watch the first few PRs after merge for a Bites step that reports
+      "classified this pack as '<nothing>'".
+  - text: >-
+      Gear 3 needs the independent final-gate verdict on the head SHA; that verdict is posted by
+      the gate session, not by this builder.
+    status: unverified
+    probe: >-
+      gh pr checks <pr> after the gate verdict is posted.
