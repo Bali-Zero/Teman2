@@ -26,7 +26,7 @@ every earlier block, as a changed script does.
 NO COMMIT SHA IN THE BLOCK. The block is pasted into pack.yml, and that commit
 moves HEAD, so a sha in the block would make every re-run at the final head
 differ (S1's fixed-point class). The block carries `tree_digest` instead:
-sha256 over (path, blob) of every tracked file at --rev OUTSIDE evidence/,
+sha256 over (mode, blob, path) of every tracked file at --rev OUTSIDE evidence/,
 whatever --path scopes the count to. It does not change when the pack is
 edited, and it changes when anything else does. The header's `blob=` is the
 git blob of the script bytes that ran: a changed script invalidates every
@@ -90,28 +90,32 @@ def read_private(path: str) -> tuple[bytes, list[bytes]]:
     return raw, [ln for ln in lines if ln]
 
 
-def ls_tree(repo: Path, rev: str) -> dict[str, str]:
+def ls_tree_rows(repo: Path, rev: str) -> list[tuple[str, str, str]]:
     out = git(repo, "ls-tree", "-r", "-z", "--full-tree", rev)
-    entries: dict[str, str] = {}
+    rows = []
     for rec in out.split(b"\0"):
         if not rec:
             continue
         meta, _, path = rec.partition(b"\t")
-        _mode, kind, obj = meta.split(b" ")
+        mode, kind, obj = meta.split(b" ")
         if kind == b"blob":
-            entries[path.decode("utf-8", "surrogateescape")] = obj.decode()
-    return entries
+            rows.append((mode.decode(), obj.decode(), path.decode("utf-8", "surrogateescape")))
+    return rows
+
+
+def ls_tree(repo: Path, rev: str) -> dict[str, str]:
+    return {path: sha for _mode, sha, path in ls_tree_rows(repo, rev)}
 
 
 def in_scope(path: str, prefixes: list[str]) -> bool:
     return not prefixes or any(path == p or path.startswith(p.rstrip("/") + "/") for p in prefixes)
 
 
-def tree_digest(entries: dict[str, str]) -> str:
+def tree_digest(repo: Path, rev: str) -> str:
     h = hashlib.sha256()
-    for path in sorted(entries):
+    for mode, sha, path in sorted(ls_tree_rows(repo, rev), key=lambda r: r[2]):
         if not path.startswith(EVIDENCE_PREFIX):
-            h.update(path.encode("utf-8", "surrogateescape") + b"\0" + entries[path].encode() + b"\n")
+            h.update(f"{mode} {sha}".encode() + b"\0" + path.encode("utf-8", "surrogateescape") + b"\n")
     return h.hexdigest()[:16]
 
 
@@ -140,7 +144,10 @@ def lane_salt(*private_files: str | None) -> bytes:
     dirs = {Path(f).expanduser().resolve().parent for f in private_files if f}
     if len(dirs) != 1:
         raise UsageError("every private input of one invocation must sit in the same lane directory")
-    salt = dirs.pop() / SALT_NAME
+    lane = dirs.pop()
+    if lane.stat().st_mode & 0o077:
+        raise UsageError("the lane directory holding the private inputs is group/world-accessible; chmod 700 it")
+    salt = lane / SALT_NAME
     try:
         fd = os.open(salt, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError:
@@ -194,8 +201,7 @@ def cmd_tree(a: argparse.Namespace) -> tuple[str, int]:
     if a.ignore_case and not all(p.isascii() for p in pats):
         raise UsageError("--ignore-case folds ASCII only; a non-ASCII pattern would count differently from git -i")
     folded = [p.lower() for p in pats] if a.ignore_case else pats
-    tree = ls_tree(repo, a.rev)
-    entries = {p: s for p, s in tree.items() if in_scope(p, a.path)}
+    entries = {p: s for p, s in ls_tree(repo, a.rev).items() if in_scope(p, a.path)}
     grep = ["grep", "-z", "-l", "-F", "-f", "-"] + (["-i"] if a.ignore_case else []) + [a.rev, "--"]
     out = git(repo, *grep, stdin=b"\n".join(pats) + b"\n", ok=(0, 1))
     prefix = a.rev + ":"
@@ -234,7 +240,7 @@ def cmd_tree(a: argparse.Namespace) -> tuple[str, int]:
         argv.append("--ignore-case")
     for p in a.path:
         argv += ["--path", private_token(salt, p.encode("utf-8", "surrogateescape"))]
-    body = ["mode: tree", f"tree_digest: {tree_digest(tree)}",
+    body = ["mode: tree", f"tree_digest: {tree_digest(repo, a.rev)}",
             f"scope_files: {sum(1 for p in entries if not p.startswith(EVIDENCE_PREFIX))}",
             f"patterns: {{hmac: {keyed(salt, raw)}, lines: {len(pats)}}}",
             f"files: {len(per_file)}", f"hits: {totals['hits']}",
@@ -374,7 +380,7 @@ def cmd_descriptor(a: argparse.Namespace) -> tuple[str, int]:
         argv += ["--categories", private_token(lane_salt(a.categories), cat_raw), "--category", a.category]
     for kind, value in terms:
         argv += ["--" + kind, value]
-    body = ["mode: descriptor", f"label: {a.label}", f"tree_digest: {tree_digest(entries)}",
+    body = ["mode: descriptor", f"label: {a.label}", f"tree_digest: {tree_digest(repo, a.rev)}",
             f"terms: {len(compiled)}", f"binary_skipped: {binary_skipped}",
             f"progressive_files: {flow(progressive)}",
             f"files: {len(matched)}", f"min_files: {a.min_files}", f"covers_category: {covers}",

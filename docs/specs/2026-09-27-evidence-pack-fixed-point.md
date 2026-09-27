@@ -212,7 +212,8 @@ cured once for a different pair of names.
   `grep -c -F -f <file> <brief> <pack> <body-file>` plus `grep -c -w -E '<R6.3 hedge list>' <same
 three files>`. The PR body pastes only `r66: hmac=<12 hex> lines=<N> residual_hits=<a>
 hedge_hits=<b>` (amended by R6.7: the first form, `sha256=<12 hex>`, is a plain hash, and a plain
-  hash of a short residual list is a verification oracle) — never the pattern file's contents; if `b > 0`, list each hedge hit by line
+  hash of a short residual list is a verification oracle) — never the pattern file's contents; the token is emitted by `pii_receipt.py r66`, and the grep
+  commands define the counts and serve as their manual cross-check; if `b > 0`, list each hedge hit by line
   number as a quoted citation per the Innocence case below, rather than claiming `b` must be 0. The
   gate verifies by re-running `pii_receipt.py r66 … --check-in` (R6.7) at HEAD for the same token
   and counts, and cross-checking the file against its own report (`N` consistent, 0 basenames
@@ -229,7 +230,7 @@ hedge_hits=<b>` (amended by R6.7: the first form, `sha256=<12 hex>`, is a plain 
   re-ran on the same bytes, and it is keyed because a plain hash of a one-line category map is
   reversed by hashing every tracked path; the salt is lane state, restored together with the
   private files, and rotating it invalidates earlier blocks). It carries no commit sha, because pasting it moves
-  HEAD; it carries `tree_digest` instead — sha256 over (path, blob) of every tracked file outside
+  HEAD; it carries `tree_digest` instead — sha256 over (mode, blob, path) of every tracked file outside
   `evidence/`, whatever `--path` scopes the count to — which an edit to the pack cannot move and
   any other edit does. A changed script changes `blob=` and so invalidates every earlier block. Metrics, so no two
   detectors disagree silently: `hits` = per pattern, the lines containing it, summed (one

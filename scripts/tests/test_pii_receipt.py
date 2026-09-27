@@ -102,7 +102,7 @@ def test_private_inputs_of_one_invocation_share_one_lane_dir(fx):
     assert rc == 2 and "same lane directory" in err
 
 
-def test_pattern_lines_split_exactly_like_grep_f(fx):
+def test_pattern_lines_split_on_lf_like_grep_f_on_lf_input(fx):
     _tmp, repo, private, _names, _tree = fx
     (private / "ff.txt").write_bytes(b"a\rb\r\nc\n")
     out = run("tree", "--repo", str(repo), "--patterns", str(private / "ff.txt"))[1]
@@ -275,6 +275,25 @@ def test_descriptor_digest_covers_files_outside_the_predicate(fx):
     pr._commit(repo)
     after = run(*desc)[1]
     assert after != before and "files: 2" in after
+    (repo / "evidence/x/pack.yml").write_text("an evidence-only edit\n")
+    pr._commit(repo)
+    assert run(*desc)[1] == after
+
+
+def test_tree_digest_moves_on_a_mode_only_change(fx):
+    _tmp, repo, _priv, _names, tree = fx
+    before = run(*tree)[1]
+    (repo / "docs/clean.md").chmod(0o755)
+    pr._commit(repo)
+    assert run(*tree)[1] != before
+
+
+def test_lane_directory_must_be_private(fx):
+    _tmp, _repo, private, _names, tree = fx
+    private.chmod(0o755)
+    rc, _out, err = run(*tree)
+    private.chmod(0o700)
+    assert rc == 2 and "chmod 700" in err
 
 
 def test_descriptor_excludes_evidence_from_its_universe(fx):
