@@ -102,12 +102,12 @@ interface Obligation {
 // national/employer/PSE/BPJS catalog (it is a kabupaten-level levy); kept as
 // a fixed day-of-month, unshifted, per the spec's "no catalog rule → leave
 // unshifted" instruction.
-// SPT Tahunan — the catalog has no rule for an INDIVIDUAL annual return, only
-// `spt_tahunan_badan` (corporate): annual, due 4 months after fiscal year end
-// (30 April for a Dec year-end), roll: next_business_day. The pre-existing
-// hardcoded date (2026-04-30) matches that corporate rule exactly, not a
-// 3-months-after-year-end individual rule, so this obligation is re-grounded
-// as `spt_tahunan_badan` and relabeled accordingly — see report.
+// SPT Tahunan — two annual returns. Corporate: catalog id `spt_tahunan_badan`,
+// due 4 months after fiscal year end (30 April for a Dec year-end), roll:
+// next_business_day. Individual: the catalog has no rule yet; the statutory
+// basis is UU KUP Art. 3(3)(b) (3 months after the tax year ends = 31 March),
+// shifted like the catalog's SPT rules. The old hardcoded 2026-04-30 on the
+// individual entry was the corporate date.
 const OBLIGATIONS: Obligation[] = [
   {
     id: "pph25-monthly",
@@ -170,6 +170,15 @@ const OBLIGATIONS: Obligation[] = [
   },
   {
     id: "spt-individual-2026",
+    kind: "PPh",
+    rule: { months: [2], day: 31, rollWeekend: true },
+    catalogId: null,
+    title: (due) => `SPT Tahunan — Individual ${due.getUTCFullYear() - 1}`,
+    description:
+      "Annual personal income tax return, due 3 months after the tax year ends (31 March).",
+  },
+  {
+    id: "spt-badan",
     kind: "PPh",
     rule: { months: [3], day: 30, rollWeekend: true },
     catalogId: "spt_tahunan_badan",

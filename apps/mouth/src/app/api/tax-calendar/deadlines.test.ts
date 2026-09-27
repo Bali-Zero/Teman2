@@ -5,7 +5,7 @@ describe("getNextTaxDeadlines — guilt: no elapsed dates", () => {
   it("every returned date is >= the clock (2026-09-28), RED on the pre-fix hardcoded array", () => {
     const now = new Date("2026-09-28T00:00:00Z");
     const deadlines = getNextTaxDeadlines(now);
-    expect(deadlines).toHaveLength(6);
+    expect(deadlines).toHaveLength(7);
     for (const d of deadlines) {
       expect(new Date(d.date).getTime()).toBeGreaterThanOrEqual(now.getTime());
     }
@@ -54,14 +54,21 @@ describe("quarterly rule rollover (LKPM)", () => {
   });
 });
 
-describe("annual rule rollover (SPT Tahunan Badan)", () => {
-  it("year → next year: after 30 Apr passes, the next occurrence is 30 April next year", () => {
+describe("annual rule rollover (SPT Tahunan)", () => {
+  it("Badan: after 30 Apr passes, the next occurrence is 30 April next year", () => {
     const now = new Date("2026-05-01T00:00:00Z");
+    const [spt] = getNextTaxDeadlines(now).filter((d) => d.id === "spt-badan");
+    expect(spt.date.slice(0, 10)).toBe("2027-04-30");
+    expect(spt.title).toBe("SPT Tahunan — Badan 2026");
+  });
+
+  it("Individual: due 31 March (3 months after the tax year), not the corporate 30 April", () => {
+    const now = new Date("2026-09-28T00:00:00Z");
     const [spt] = getNextTaxDeadlines(now).filter(
       (d) => d.id === "spt-individual-2026",
     );
-    expect(spt.date.slice(0, 10)).toBe("2027-04-30");
-    expect(spt.title).toBe("SPT Tahunan — Badan 2026");
+    expect(spt.date.slice(0, 10)).toBe("2027-03-31");
+    expect(spt.title).toBe("SPT Tahunan — Individual 2026");
   });
 });
 
