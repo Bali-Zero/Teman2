@@ -18,14 +18,15 @@ seat_override: >-
   the second opinion". The fresh, independent on-disk gate that reviews this PR post-hoc is the
   adversarial check for this pack, in place of a convened council.
 diff:
-  net_lines: 8 files, +173/-1850 measured by `git diff --numstat origin/main...HEAD`.
+  net_lines: 10 files, +465/-1850 measured by `git diff --numstat origin/main...HEAD`.
   behaviour_change: >-
-    Pure deletion + one new test file. Three dead one-off scripts and their one orphaned test
-    are removed; two files lose one line each (a stale lint exception, and a roster entry
-    naming the deleted test); one new pytest file adds detector coverage. No production code
-    path changes: none of the three deleted files was imported by apps/backend-rag/backend, so
-    the running service's behaviour is unchanged. Verified by import smoke and by the backend
-    test suite collecting without error post-deletion (receipts below).
+    Pure deletion + one new test file + this evidence pack. Three dead one-off scripts and their
+    one orphaned test are removed; two files lose one line each (a stale lint exception, and a
+    roster entry naming the deleted test); one new pytest file adds detector coverage; two new
+    files are this brief/pack. No production code path changes: none of the three deleted files
+    was imported by apps/backend-rag/backend, so the running service's behaviour is unchanged.
+    Verified by import smoke and by the backend test suite collecting without error post-deletion
+    (receipts below).
 receipts:
   - claim: >-
       Deterministic gear floor recomputed from this PR's actual changed-file list and numstat
