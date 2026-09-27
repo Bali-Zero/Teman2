@@ -166,8 +166,59 @@ receipts:
     exit: 0
     ts: "2026-09-27T02:50:30Z"
     seat: "session (this task, Air-M5 worktree)"
+  - claim: >-
+      REWORK-BUILD fix (gate finding on head 7753eac1): recover_delta() now
+      refuses a symlink, a non-JSON file, and a schema-invalid JSON object
+      (missing `deltas`) before ever writing DELTA_JSON, and rejects
+      partial:true after schema-validated extraction — 4 new GUILT tests plus
+      the 1 existing GUILT/INNOCENCE pair now corrected to use a schema-valid
+      payload (it previously asserted the exact flaw the gate found), all
+      passing alongside the full pre-existing corpus.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_regulatory_watcher_recover_delta.py
+      -v
+    result: "11 passed (was 6 before this round)"
+    exit: 0
+    ts: "2026-09-27T05:20:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: >-
+      The wrapper remains syntactically valid zsh after the REWORK-BUILD fix.
+    cmd: zsh -n infra/launchagents/wrappers/regulatory-watcher-run.sh
+    result: "(no output — exit 0)"
+    exit: 0
+    ts: "2026-09-27T05:20:30Z"
+    seat: "session (this task, Air-M5 worktree)"
 pii_scan: clean
 dissent:
+  - seat: "independent Gear-3 on-disk gate (REWORK-BUILD, head 7753eac1)"
+    objection: >-
+      recover_delta() promoted the tier-1 scratch file with a plain `cp` —
+      no symlink check, no ownership check, no content validation — and
+      delta_is_partial() treated unparsable JSON as "not partial", so
+      ensure_full_delta() returned 0 and promote_delta_via_pr() committed/
+      pushed/auto-merged whatever was at the scratch path into the PUBLIC
+      repo. Proved live with this head's own functions: a markdown file,
+      `{"hello":"world"}`, and a symlink to a canary secrets file were all
+      promoted (rc=0, canary content copied); only partial:true was
+      rejected. The guilt test added in this PR even locked the flaw in
+      (its payload had no `deltas` key and would now be correctly
+      rejected).
+    status: CONFIRMED
+    note: >-
+      Genuine, correctly-proven finding — not disputed. Fixed on the same
+      branch, new commit (never --amend): the scratch directory moved from
+      world-writable `/tmp` to a private 0700 dir under `$HOME`; the
+      function now refuses a symlink or a file it does not own BEFORE
+      reading anything, and promotes ONLY through
+      `extract_delta_from_output()`'s schema check + re-serialization
+      (never a byte-for-byte copy); `delta_is_partial()` is now a 3-way
+      exit code (0=partial, 1=confirmed valid, 2=invalid/unparsable) so
+      "unparsable" can never again be silently treated as "not partial" —
+      every caller of `delta_is_partial` (`ensure_full_delta()` for tiers
+      1-3, and tier 4's own ollama block, which had the identical
+      collapsing-if-then bug independently) now branches on the exact rc.
+      4 new GUILT tests (non-JSON, symlink, schema-invalid, partial:true)
+      plus the corrected INNOCENCE test — receipts above.
   - seat: "session, self-check on the scratch-path fix's actual load-bearing layer"
     objection: >-
       Is the real fix the wrapper's recover_delta() change, or does it

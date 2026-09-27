@@ -71,8 +71,22 @@ DELTA_BASENAME="${DATE}-delta.json"
 # full analysis (NB-INTEL + 11 web sources) then hit the guard at Step 5 and
 # stalled asking the operator for a decision — the completed, non-partial delta
 # sat unused at /tmp/${DATE}-delta.json. Tier 1's agent spec (Step 5) now writes
-# here instead of the tracked tree; recover_delta() promotes it from there.
-DELTA_SCRATCH="/tmp/${DELTA_BASENAME}"
+# to a scratch path outside the tracked tree; recover_delta() promotes it.
+#
+# NOT /tmp (fixed post-merge, gate REWORK-BUILD on head 7753eac1): /tmp is
+# world-writable with a predictable, guessable name — the gate proved live that
+# ANY local process (including tier 3's own codex, which this same PR just gave
+# real network access) could drop a markdown file, a schema-invalid JSON, or a
+# symlink to a secrets file at that exact path and have it promoted straight
+# into the PUBLIC repo via promote_delta_via_pr(), since the old recover_delta()
+# did a blind `cp` with no validation. Cure has two independent layers: (1) this
+# directory is private (0700, this user only) instead of world-writable, and
+# (2) recover_delta() below refuses a symlink or a file it doesn't own, and
+# promotes ONLY through extract_delta_from_output()'s schema check +
+# re-serialization — never a byte-for-byte copy of untrusted content.
+DELTA_SCRATCH_DIR="$HOME/.agent/regulatory-watcher/${DATE}"
+mkdir -p "$DELTA_SCRATCH_DIR" && chmod 0700 "$DELTA_SCRATCH_DIR"
+DELTA_SCRATCH="$DELTA_SCRATCH_DIR/${DELTA_BASENAME}"
 
 # W84 fail-fast probe (TAC-2 A4): if this launchd context cannot READ ~/Desktop
 # (TCC grant lost — observed on Pro after the 2026-07-04 reboot: the zsh job got
@@ -173,7 +187,7 @@ echo "[$(date)] regulatory-watcher run starting for $DATE" >> "$LOG"
 # instance names its own parent while it is still alive in the log line.
 echo "[$(date)] launch-context: pid=$$ ppid=$PPID parent=$(ps -o comm= -p $PPID 2>/dev/null || echo dead) lang=${LANG:-unset} ssh=${SSH_CONNECTION:-none} trampolined=${REGWATCH_TRAMPOLINED:-0}" >> "$LOG"
 
-PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/nuzantara/research/regulatory/ (read-only lookup, that path is fine). Emit JSON to the SCRATCH path named in the spec's Step 5 (/tmp/${DATE}-delta.json) — NOT directly into ~/nuzantara/research/regulatory/, which the worktree_isolation guard blocks for an agent session — and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
+PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/nuzantara/research/regulatory/ (read-only lookup, that path is fine). Emit JSON to the private SCRATCH path named in the spec's Step 5 (${DELTA_SCRATCH}) — NOT directly into ~/nuzantara/research/regulatory/, which the worktree_isolation guard blocks for an agent session, and NOT /tmp — and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
 
 # Generic prompt re-usable across LLMs (no Claude-specific syntax)
 PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian business services agency). Today is $DATE WITA. Task: detect new Indonesian regulations published in last 48h that affect Bali Zero service lines (visa/immigration, tax, property, regulatory/HR, health). Sources to query (use whichever you can reach): Hukumonline, Ortax, DDTC, MUC, IKPI (news at ikpi.or.id/berita/ — NOT /news/, which 404s), JDIH Kemenkumham/Kemenkeu/Kemnaker, peraturan.go.id (with Mozilla User-Agent), pajak.go.id. Filter to reg-types: Permenkumham, PMK, PP, Perpres, UU, Permenaker, Permenkes, Peraturan BKPM. Emit JSON to ~/nuzantara/research/regulatory/${DATE}-delta.json with schema: {run_at, today, new_today_count, partial:bool, unreachable_sources:[{url,reason,note?}] (default [], reason one of http_403|http_404|timeout|ssl_error|empty_shell — genuine fetch failures ONLY), sources_checked_no_delta:[{url,reason,note?}] (default [], reason one of checked_no_new|outside_window — a source you DID read successfully and found nothing new in; never put these in unreachable_sources), nb_query_errors:[] (default [], always present even when empty), deltas:[{citation,title_id,title_en,service_line,summary,source,verbatim_excerpt}], seen_citations}. Each source you attempt goes in exactly one of unreachable_sources or sources_checked_no_delta — never free-text prose, never omitted keys. Retry a dead source at most once, then record it and move on — never loop on a source. If new_today_count>0, send Telegram via curl to api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage chat_id=\$TELEGRAM_OWNER_CHAT_ID. Cite verbatim. No paraphrasing. No emoji in JSON."
@@ -198,13 +212,49 @@ recover_delta() {
     # Tier 1 writes here now (see DELTA_SCRATCH above) instead of attempting a
     # direct write the worktree_isolation guard would refuse. Check it before
     # the worktree-glob paths below — it is the common case, not a fallback.
-    if [ -f "$DELTA_SCRATCH" ]; then
-        if cp "$DELTA_SCRATCH" "$DELTA_JSON"; then
-            echo "[$(date)] recovered delta from tier-1 scratch file $DELTA_SCRATCH -> main (worktree_isolation blocks a direct session write)" >> "$LOG"
+    #
+    # HARDENED post-merge (gate REWORK-BUILD on head 7753eac1): the previous
+    # version did a blind `cp` — no symlink check, no ownership check, no
+    # content validation. Proved live: a markdown file, `{"hello":"world"}`,
+    # and a symlink to a canary secrets file were all promoted (rc=0, canary
+    # content copied) straight toward promote_delta_via_pr()'s commit+push+
+    # auto-merge into the PUBLIC repo; only partial:true was rejected. Even
+    # with DELTA_SCRATCH now under a private 0700 dir (defense layer 1), this
+    # function never trusts what it finds there (defense layer 2) — it
+    # refuses a symlink or a file it does not own BEFORE reading anything,
+    # and promotes ONLY through extract_delta_from_output()'s schema check +
+    # re-serialization, never a byte-for-byte copy.
+    if [ -L "$DELTA_SCRATCH" ]; then
+        echo "[$(date)] REFUSED: $DELTA_SCRATCH is a symlink — not promoted (untrusted staging path; possible attack)" >> "$LOG"
+        return 1
+    fi
+    if [ -e "$DELTA_SCRATCH" ]; then
+        if [ ! -f "$DELTA_SCRATCH" ]; then
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH exists but is not a regular file — not promoted" >> "$LOG"
+            return 1
+        fi
+        if [ ! -O "$DELTA_SCRATCH" ]; then
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH is not owned by this process (uid mismatch) — not promoted" >> "$LOG"
+            return 1
+        fi
+        if ! extract_delta_from_output "$DELTA_SCRATCH"; then
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH is not parseable JSON matching the delta schema (no {..} object with new_today_count+deltas keys) — not promoted, left in place for manual inspection" >> "$LOG"
+            return 1
+        fi
+        delta_is_partial
+        local _partial_rc=$?
+        if [ "$_partial_rc" -eq 1 ]; then
+            echo "[$(date)] recovered delta from tier-1 scratch file $DELTA_SCRATCH -> main (schema-validated + re-serialized via extract_delta_from_output; worktree_isolation blocks a direct session write)" >> "$LOG"
             rm -f "$DELTA_SCRATCH"
             return 0
         fi
-        echo "[$(date)] found $DELTA_SCRATCH but cp to $DELTA_JSON failed — leaving scratch file for manual recovery" >> "$LOG"
+        rm -f "$DELTA_JSON"
+        if [ "$_partial_rc" -eq 0 ]; then
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH parsed but partial:true — recover_delta only lands COMPLETE deltas, not promoted" >> "$LOG"
+        else
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH extracted but delta_is_partial rejected it as invalid (rc=$_partial_rc) — not promoted" >> "$LOG"
+        fi
+        return 1
     fi
     setopt local_options null_glob
     local -a _hits
@@ -294,6 +344,17 @@ ensure_delta() {
 # apart from a real completed scan that genuinely found nothing — only `partial`
 # does. A false "0 new" is worse than a visible gap: a gap is honestly absent,
 # this looks like a clean day and silently is not one.
+#
+# THREE-way exit code, not two (hardened post-merge, gate REWORK-BUILD on head
+# 7753eac1): unparsable/non-dict JSON used to exit(1) — the SAME code as a
+# genuinely valid partial:false delta — so a caller checking only "0 vs
+# nonzero" (the original `if delta_is_partial; then ...` shape) could not
+# tell "confirmed clean" from "garbage, never even parsed" and silently
+# accepted garbage as clean. 0 = partial:true (reject, cascade, as before);
+# 1 = confirmed valid JSON with partial:false/absent (accept, unchanged);
+# 2 = invalid — did not parse, or parsed to something other than a JSON
+# object (MUST be treated as worse than partial by every caller: reject and
+# say why, never fall through as "not partial").
 delta_is_partial() {
     [ -f "$DELTA_JSON" ] || return 1
     "$PYBIN" -c '
@@ -301,7 +362,9 @@ import json, sys
 try:
     d = json.load(open(sys.argv[1]))
 except Exception:
-    sys.exit(1)
+    sys.exit(2)
+if not isinstance(d, dict):
+    sys.exit(2)
 sys.exit(0 if d.get("partial") else 1)
 ' "$DELTA_JSON"
 }
@@ -426,8 +489,19 @@ EOF
 ensure_full_delta() {
     local _out="$1"
     ensure_delta "$_out" || return 1
-    if delta_is_partial; then
+    # Exact rc check, not `if delta_is_partial; then` (hardened post-merge,
+    # gate REWORK-BUILD on head 7753eac1): that shape treats ANY nonzero exit
+    # as "not partial, proceed" — collapsing rc=1 (confirmed valid,
+    # partial:false) and rc=2 (invalid/unparsable JSON) into the same "accept"
+    # branch. rc=2 must reject exactly like rc=0, just for a different reason.
+    delta_is_partial
+    local _partial_rc=$?
+    if [ "$_partial_rc" -eq 0 ]; then
         echo "[$(date)] delta landed but partial=true (tier admitted incomplete/no-access scan) — rejecting, cascading to next tier" >> "$LOG"
+        rm -f "$DELTA_JSON"
+        return 1
+    elif [ "$_partial_rc" -ne 1 ]; then
+        echo "[$(date)] delta landed but failed validation (delta_is_partial rc=$_partial_rc — invalid/unparsable JSON) — rejecting, cascading to next tier" >> "$LOG"
         rm -f "$DELTA_JSON"
         return 1
     fi
@@ -602,11 +676,25 @@ if [ $SUCCESS -eq 0 ]; then
         /opt/homebrew/bin/ollama run qwen3.5:9b "$PROMPT_GENERIC" >"$TMPOUT" 2>&1
         EXIT=$?
         if [ $EXIT -eq 0 ] && ensure_delta "$TMPOUT"; then
-            SUCCESS=1
-            USED_LLM="ollama-qwen3.5:9b-local"
-            if delta_is_partial; then
+            # Exact rc check (hardened post-merge, gate REWORK-BUILD on head
+            # 7753eac1): `if delta_is_partial; then` treated rc=2
+            # (invalid/unparsable JSON) the same as rc=1 (confirmed valid,
+            # not partial) — silently accepting garbage as a clean SUCCESS
+            # with no DEGRADED flag at all, the last-resort tier's own
+            # version of the same bug fixed above for tiers 1-3.
+            delta_is_partial
+            _partial_rc=$?
+            if [ "$_partial_rc" -eq 0 ]; then
+                SUCCESS=1
+                USED_LLM="ollama-qwen3.5:9b-local"
                 DEGRADED=1
                 echo "[$(date)] tier 4 landed but partial=true — ALL 4 tiers failed to complete a real scan, accepting as DEGRADED (not a clean 0-new day)" >> "$LOG"
+            elif [ "$_partial_rc" -eq 1 ]; then
+                SUCCESS=1
+                USED_LLM="ollama-qwen3.5:9b-local"
+            else
+                rm -f "$DELTA_JSON"
+                echo "[$(date)] tier 4 landed invalid/unparsable JSON (delta_is_partial rc=$_partial_rc) — discarding, NOT accepted as success" >> "$LOG"
             fi
         fi
         cat "$TMPOUT" >> "$LOG"
