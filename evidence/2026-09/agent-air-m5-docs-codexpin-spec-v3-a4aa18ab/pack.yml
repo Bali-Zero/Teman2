@@ -73,6 +73,16 @@ what_changed: |
   on #7340's installer at 3d04590c99 (§5ter.6). Inventory: 136 sites, 177
   mutants (170 MUST, 7 EQUIVALENT) under 71 labels; 29 are new against
   schema 1.
+  After the coordinator's ruling of 2026-09-27 (not a council round), one
+  more commit: §8 item 12 closed with the cure both seats named in round
+  4b (UNSUPPORTED for a non-literal eval/trap/shell -c string, alias, a
+  source of anything but the env file and $'...'; the shell -c parse
+  behind option arguments and env/command; the full kind set on
+  single-quoted strings; selftest o6-o8 and three innocence plants), with
+  the counts unchanged on both targets; §8 item 11 decided as a merge
+  precondition of PR-1 (a separate harness PR adds the narrowing step to
+  harness-floor.yml; PR-1's ship session records three observations,
+  §5ter.5).
 
 proof: |
   See receipts. Every number in the spec's §5bis.8 and §9 comes from the
@@ -113,7 +123,11 @@ post_council_note: >-
   12 opened with the cure the seats named, receipts for the queue, the
   daemon and the linter's history) and left the BLOCKER, and codex's MAJOR
   that the hot-zone list's own floor (§8 item 11) be a PR-1 prerequisite,
-  to the gate and the owner.
+  to the gate and the owner. The coordinator then ruled (2026-09-27, not a
+  council round): close item 12 with exactly the cure both seats named,
+  counts unchanged, and make item 11's cure a merge precondition of PR-1.
+  That commit had no council round; the fresh gate reviews it. The journal
+  carries an author-note line for it.
 
 spend:
   wall_clock_hours: 10.5
@@ -470,22 +484,24 @@ dissent:
       generates no id and raises no error, so "never a silence" was false.
     status: CONFIRMED
     resolution: >-
-      Not cured: the council's cap (one fix round, one delta round) was reached, and the cure is a
-      change to the grammar's coverage, a fix of the round-4 fix. The claim is now limited in
-      words to literal text, and §8 item 12 states the open forms and the cure both seats named
-      (UNSUPPORTED for non-literal eval/trap/sh -c arguments, alias, source of anything but the
-      env file and $'...'; the full kind set on single-quoted bodies; plants o6-o8). Neither
-      target uses any of these forms (grep), and adding one changes the floor-3 wrapper. Left to
-      the gate.
+      Not cured in the council's rounds (the cap was reached); cured afterwards by the
+      coordinator's ruling of 2026-09-27 with exactly the cure both seats named: UNSUPPORTED for
+      a non-literal eval/trap/shell -c string (a $ or backquote outside single quotes), alias,
+      a source of anything but "$ENV_FILE" and $'...'; the shell -c parse behind option
+      arguments and env/command/exec; the full kind set on single-quoted strings. Selftest
+      o6a-o8b and three innocence plants. Counts unchanged: 136/177 and 137/189, the same
+      errors. No council round reviewed it; the fresh gate does.
   - seat: codex-gpt-5.6-sol
     objection: >-
       R4b-2 MAJOR: the hot-zone list's own floor (§8 item 11) must be closed before PR-1 claims
       item 2, not only escalated.
-    status: PLAUSIBLE
+    status: CONFIRMED
     resolution: >-
-      kimi-code/k3 R4b-5 judged it acceptable open for this docs-only PR. The residual is
-      harness-wide, and its cure changes harness-floor.yml for every lane, so whether it is a
-      prerequisite of PR-1 is the owner's decision; §8 item 11 records both positions.
+      Decided by the coordinator's ruling of 2026-09-27, codex's position: the narrowing step
+      ships in a separate harness PR (not #7456), and PR-1 may not be armed until it has merged.
+      §5ter.5 names three observations PR-1's ship session records (the harness PR MERGED and an
+      ancestor of PR-1's base; grep of HOTZONE_PATTERNS[^=]*= in origin/main's harness-floor.yml,
+      0 today; its guilt receipt); §7 and §8 item 11 say the same.
   - seat: codex-gpt-5.6-sol
     objection: >-
       R4b-3 MAJOR (kimi-code/k3 R4b-4, MINOR): "every merge goes through the queue" had no
@@ -830,4 +846,28 @@ receipts:
     result: "All matched files use Prettier code style!"
     exit: 0
     ts: "2026-09-27T05:35:16Z"
+    seat: claude-opus-5-5
+  - claim: "coordinator ruling: the round-4b cure changes no count on either target (fail-closed only)"
+    cmd: "scratch gen_s3.py sites wrapper_fixed.sh / wrapper_04dd.sh; installer_receipt.py installer_3d04.sh; gen_s3.py check <inventory> wrapper_fixed.sh"
+    result: "PR-1 target 136 sites, 177 generated, 0 errors (before: 136, 177, 0); 04dd6b51e4 134, 175, 0 (before: 134, 175, 0); installer 137, 189, errors 15 = MASKED 5 + SPAN 10, no UNSUPPORTED (before: 137, 189, the same 15); check_static errors=0"
+    exit: 0
+    ts: "2026-09-27T05:48:37Z"
+    seat: claude-opus-5-5
+  - claim: "coordinator ruling: selftest o6a-o8b and the innocence plants, with every earlier case"
+    cmd: "scratch selftest_v2.py <inventory> static; selftest_v2.py <inventory> runs"
+    result: "static 32 PASS, 0 FAIL (o6a, o6b, o6c UNSUPPORTED non-literal eval/trap/bash string; o6d MASKED sh string; o7a UNSUPPORTED alias; o7b UNSUPPORTED source; o8a UNSUPPORTED ANSI-C quoting; o8b MASKED trap string: abspath,dateopt; o-inn1-3 STALE-DERIVATION only); runs 8 PASS, 0 FAIL"
+    exit: 0
+    ts: "2026-09-27T05:53:23Z"
+    seat: claude-opus-5-5
+  - claim: "coordinator ruling: both suites unchanged on the ruling bytes; parity holds"
+    cmd: "scratch gen_s3.py check <inventory> wrapper_fixed.sh --test feasibility_test.py --run --jobs 5; gen_s3.py skeleton wrapper_04dd.sh test_wrapper_04dd.py; parity_v2.py <spec> <inventory>"
+    result: "feasibility 170/170 MUST killed, 7 EQUIVALENT identical, 177/177 modes, errors=0 (05:48:38Z-05:51:07Z); 04dd6b51e4 105 killed, 70 survived (63 MUST under 38 labels + 7 EQ); parity 179 rows, drift 0"
+    exit: 0
+    ts: "2026-09-27T05:52:33Z"
+    seat: claude-opus-5-5
+  - claim: "coordinator ruling: PR-1's merge precondition is not yet met on origin/main"
+    cmd: "git show origin/main:.github/workflows/harness-floor.yml | grep -cF 'HOTZONE_PATTERNS[^=]*=' (origin/main c2e8e8c05f)"
+    result: "0"
+    exit: 0
+    ts: "2026-09-27T05:53:52Z"
     seat: claude-opus-5-5

@@ -64,12 +64,16 @@ acceptance:
     probe: scratch floor_sim.py (compute_floor with HOTZONE_PATTERNS extended in-process)
   - text: >-
       Masking SHALL NOT hide a guard, and ids SHALL NOT survive an edit of
-      their line (council round 4): a site inside a double-quoted $( ) or
-      the string of eval, trap or sh -c is MASKED, a heredoc or backquote
-      UNSUPPORTED; ids use 64-bit line hashes. Expected: 0 MASKED or
-      UNSUPPORTED on the PR-1 target and at 04dd6b51e4; re-keying from 8 to
-      16 hex digits changes no mutant, order or count on the four scripts.
-    probe: scratch gen_s3.py sites <each script>; idmap.py
+      their line (council round 4, completed by the coordinator's ruling of
+      2026-09-27): a site inside a double-quoted $( ) or a literal eval,
+      trap or shell -c string is MASKED; a non-literal such string, alias,
+      a source of anything but the env file, $'...', a heredoc or a
+      backquote is UNSUPPORTED; ids use 64-bit line hashes. Expected: 0
+      MASKED or UNSUPPORTED on the PR-1 target and at 04dd6b51e4, counts
+      unchanged (136/177, 134/175; installer 137/189 with the same 15
+      errors); re-keying from 8 to 16 hex digits changes no mutant, order
+      or count on the four scripts.
+    probe: scratch gen_s3.py sites <each script>; idmap.py; selftest_v2.py static (o1-o8b, o-inn1-3)
   - text: >-
       Every mutant SHALL be one line in, one line out (gate r4 H7): the
       generator's check and the SPAN rule (§5bis.3 rule 4), with selftest
@@ -82,7 +86,8 @@ acceptance:
       (c), one line (d), the D10 end-to-end (e), killers and modes (f-i),
       stale derivation (k), the mini `[ … ] || die` (m1 six UNANNOTATED,
       m2 two SURVIVED, m3 innocence), the floor (n), what masking hides
-      (o1-o5, council round 4) and the count, member and collision checks
+      (o1-o8b and three innocence plants, council round 4 and the
+      coordinator's ruling) and the count, member and collision checks
       (p1-p3). Expected: every case gives exactly its stated result.
     probe: scratch selftest_v2.py <inventory> all; floor_sim.py
   - text: >-
@@ -152,16 +157,16 @@ risks:
     pins the grammar with planted guilt cases, literal code the masking
     blanks is MASKED or UNSUPPORTED rather than silent (council round 4),
     and PR-2 must extend the grammar before its installer uses new
-    constructs (§5ter). Open: code reaching an interpreter without a
-    literal (a variable, an alias, a sourced file, $'...'), §8 item 12;
-    neither target uses such a form, and adding one changes the floor-3
-    wrapper.
+    constructs (§5ter). Code reaching an interpreter without a literal
+    (a variable, an alias, a sourced file, $'...') is UNSUPPORTED since
+    the coordinator's ruling (§8 item 12, closed).
   - >-
     The hot-zone list is itself floor 1 (§8 item 11): a PR that narrows
     HOTZONE_PATTERNS needs no gate, and the four S3 paths lose their floor
-    with it. Harness-wide, not specific to S3; the cure (a harness-floor.yml
-    step flooring any narrowing at 3) is escalated to the owner by PR-1's
-    ship session and stays open until it lands.
+    with it. Decided by the coordinator (2026-09-27): the cure, a
+    harness-floor.yml step flooring any narrowing at 3, ships in a separate
+    harness PR, and PR-1 may not be armed until it has merged (§5ter.5,
+    three observations).
   - >-
     The mode classification is measured with a stub daemon, so a mode can
     read milder than production when a fixture's hostile value does not
