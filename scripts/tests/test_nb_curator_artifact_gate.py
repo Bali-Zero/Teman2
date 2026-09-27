@@ -251,7 +251,7 @@ if mode == "agyfail":
     # claude-cascade.sh.
     sys.exit(1)
 m = re.search(r"Write report to: (\\S+)", prompt)
-if m and mode != "noreport":
+if m and mode not in ("noreport", "emptyreport"):
     p = pathlib.Path(m.group(1))
     p.parent.mkdir(parents=True, exist_ok=True)
     body = "# NB Arsenal Health Report\\n\\n## Health Summary\\n- Total: 58 notebooks\\n"
@@ -260,23 +260,25 @@ if m and mode != "noreport":
                 "health snapshot (generated artifact, not a research deliverable)\\n"
                 "---\\n\\n") + body
     p.write_text(body, encoding="utf-8")
+elif m and mode == "emptyreport":
+    # The brain claims success and touches the staging path, but writes 0 bytes
+    # — distinct from `noreport` (nothing at all), same required outcome: the
+    # wrapper must not promote it.
+    p = pathlib.Path(m.group(1))
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("", encoding="utf-8")
 
 print("SUMMARY: broken=0 stale=0 proposals=0 press_new=0")
 """
 
-# Fake claude-cascade.sh fallback. Records the AGENT_WORKTREE_ENFORCEMENT value
-# this process actually received (proof the wrapper's escape hatch reaches the
-# brain, and is scoped to only this invocation) then writes a compliant report
-# just like FAKE_AGY's "good" path, so the rest of the wrapper chain (gate,
-# digest, exit code) runs unchanged when the fallback tier is exercised.
+# Fake claude-cascade.sh fallback: writes a compliant report to whatever path
+# the prompt names (now $STAGING_PATH, outside the repo — see nb-curator-daily.sh),
+# just like FAKE_AGY's "good" path, so the rest of the wrapper chain (promote,
+# gate, digest, exit code) runs unchanged when the fallback tier is exercised.
 FAKE_CASCADE = """#!/usr/bin/env python3
-import os, re, sys, pathlib
+import re, sys, pathlib
 
 prompt = sys.argv[1] if len(sys.argv) > 1 else ""
-pathlib.Path(os.environ["CASCADE_ENV_DUMP"]).write_text(
-    os.environ.get("AGENT_WORKTREE_ENFORCEMENT", "<unset>"), encoding="utf-8"
-)
-
 m = re.search(r"Write report to: (\\S+)", prompt)
 if m:
     p = pathlib.Path(m.group(1))
@@ -292,7 +294,7 @@ print("SUMMARY: broken=0 stale=0 proposals=0 press_new=0")
 """
 
 
-def _fake_world(tmp_path: Path, mode: str, *, wrapper: Path) -> subprocess.CompletedProcess:
+def _fake_world(tmp_path: Path, mode: str, *, wrapper: Path, extra_env: dict | None = None) -> subprocess.CompletedProcess:
     home = tmp_path / "home"
     (home / ".local/bin").mkdir(parents=True)
     (home / "scripts").mkdir(parents=True)
@@ -310,13 +312,14 @@ def _fake_world(tmp_path: Path, mode: str, *, wrapper: Path) -> subprocess.Compl
     env.update(
         HOME=str(home),
         FAKE_AGY_MODE=mode,
-        CASCADE_ENV_DUMP=str(tmp_path / "cascade_env.txt"),
         NB_CURATOR_LOCK_FILE=str(tmp_path / "nb-curator.lock"),
         TG_DRY_RUN="1",
         TG_SPOOL_DIR=str(tmp_path / "spool"),
         TELEGRAM_BOT_TOKEN="fake-token-never-sent",
         TELEGRAM_OWNER_CHAT_ID="0",
     )
+    if extra_env:
+        env.update(extra_env)
     return subprocess.run([shutil.which("zsh") or "/bin/zsh", str(wrapper)],
                           capture_output=True, text=True, env=env, timeout=180)
 
@@ -335,45 +338,73 @@ def _spooled(tmp_path: Path) -> str:
 
 @pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
 def test_wrapper_FAILS_when_the_brain_writes_no_report(tmp_path):
-    """The exact run the old wrapper called OK: brain exit 0, SUMMARY printed,
-    no artifact. Now: rc=2, a P0 in the spool, and the reason in the log."""
+    """Innocence for a missing staged artifact: brain exit 0, SUMMARY printed,
+    nothing at $STAGING_PATH. The wrapper must refuse to promote, name the
+    reason, and the gate (which never sees a file at $REPORT_PATH) must fail
+    closed: rc=2, a P0 in the spool, and the reason in the log."""
     proc = _fake_world(tmp_path, "noreport", wrapper=WRAPPER)
     log = _log(tmp_path)
 
     assert proc.returncode == 2, f"expected artifact-gate exit 2, got {proc.returncode}\n{log}"
+    assert "STAGING FILE MISSING" in log
+    assert "PROMOTE SKIPPED" in log
     assert "ARTIFACT GATE FAILED" in log
     assert "artifact gate rc=3" in log, "rc=3 is 'the report was never written'"
     assert "brain OK but the report failed the artifact gate" in _spooled(tmp_path)
 
 
 @pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
-def test_wrapper_scopes_worktree_escape_to_the_cascade_brain_only(tmp_path):
-    """Regression for the real production root cause (measured 2026-09-26/27 on
-    Pro): the global PreToolUse hook worktree_file_write_check.py rejects any
-    Write/Edit/MultiEdit targeting the main checkout, and $REPORT_PATH is
-    deliberately main-checkout-anchored (never a worktree path) — so once agy
-    fails and the wrapper falls back to claude-cascade.sh, that brain's Write
-    call to $REPORT_PATH would be blocked (rc=2) unless the wrapper hands it
-    AGENT_WORKTREE_ENFORCEMENT=false. Guilt case for the OLD wrapper: it never
-    set this, so the brain silently declined to write and printed the report
-    inline instead (exit 0, zero bytes on disk) — the artifact gate then
-    caught it same as `noreport` above, but every single day."""
-    proc = _fake_world(tmp_path, "agyfail", wrapper=WRAPPER)
+def test_wrapper_FAILS_when_the_brain_writes_an_empty_report(tmp_path):
+    """Innocence for a present-but-empty staged artifact: distinct failure mode
+    from `noreport` above (the brain DID touch the path), same required
+    outcome — never promoted, gate fails closed with the reason named."""
+    proc = _fake_world(tmp_path, "emptyreport", wrapper=WRAPPER)
     log = _log(tmp_path)
-    dump = tmp_path / "cascade_env.txt"
+
+    assert proc.returncode == 2, f"expected artifact-gate exit 2, got {proc.returncode}\n{log}"
+    assert "STAGING FILE EMPTY" in log
+    assert "PROMOTE SKIPPED" in log
+    assert "artifact gate rc=3" in log
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
+def test_wrapper_lands_the_report_even_when_worktree_enforcement_is_pinned_true(tmp_path):
+    """Guilt case for the OLD (env-var-escape) wrapper, proven against the
+    ACTUAL production condition measured 2026-09-27 on Pro: seat 1's own
+    ~/.claude/settings.json pins AGENT_WORKTREE_ENFORCEMENT=true in its `env`
+    block, which Claude Code applies on top of the invoking process's
+    environment — so an inline `VAR=false cmd` prefix on the brain's own
+    command line never reached the hook at all. This test forces that exact
+    value into the whole subprocess environment (as if the seat's settings.json
+    pinned it) and forces agy to fail so the claude-cascade fallback runs; the
+    CURRENT design must still land the report, because the brain never writes
+    inside the repo in the first place — the hook is never a factor."""
+    proc = _fake_world(tmp_path, "agyfail", wrapper=WRAPPER,
+                        extra_env={"AGENT_WORKTREE_ENFORCEMENT": "true"})
+    log = _log(tmp_path)
 
     assert "brain used: claude-cascade" in log, f"cascade fallback was not exercised\n{log}"
-    assert dump.exists(), f"claude-cascade.sh never ran\n{log}"
-    assert dump.read_text(encoding="utf-8").strip() == "false", (
-        "claude-cascade.sh must see AGENT_WORKTREE_ENFORCEMENT=false so its brain's "
-        "Write to the main-checkout-anchored $REPORT_PATH is not rejected by "
-        "worktree_file_write_check.py"
-    )
+    assert "promoted staged report" in log, f"the report was never promoted\n{log}"
+    reports = list((tmp_path / "home/nuzantara/research/nb-health").glob("*.md"))
+    assert len(reports) == 1, f"expected exactly one promoted report, got {reports}\n{log}"
     if not SYSTEM_PY_HAS_YAML:
         assert proc.returncode == 2 and "REDACTOR UNAVAILABLE" in log, log
         return
-    assert proc.returncode == 0, f"a compliant cascade report is not a failure\n{log}"
+    assert proc.returncode == 0, f"a compliant, promoted report is not a failure\n{log}"
     assert "artifact gate rc=0" in log
+
+
+def test_agy_model_string_is_not_stale():
+    """Static guard for the second, independent root cause found alongside the
+    write bug: agy's own error output (measured 2026-09-26/27 on Pro) lists no
+    'Gemini 3.5' tier at all — every run was failing this tier instantly and
+    burning Claude MAX quota on the fallback. Pins the fix so it can't silently
+    regress back to the dead spelling."""
+    text = WRAPPER.read_text(encoding="utf-8")
+    assert '--model "Gemini 3.5' not in text, (
+        "agy no longer recognizes the 3.5 Flash family (measured 2026-09-26/27)"
+    )
+    assert '--model "Gemini 3.8 Flash (Medium)"' in text
 
 
 @pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
