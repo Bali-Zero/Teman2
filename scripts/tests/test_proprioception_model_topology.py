@@ -120,10 +120,22 @@ def test_innocence_roles_naming_other_doors_are_not_judged():
 
 
 def test_unprobeable_when_ollama_is_absent():
-    """M5 has no ollama. 'No daemon here' must never be reported as 'all roles resolve'."""
-    with tempfile.TemporaryDirectory() as td:
-        root = _root(Path(td), {"fast": "qwen3.5:9b"})
-        status, n, ev = _probe(_fake_ollama(_listing()), root, which=None)
+    """M5 has no ollama. 'No daemon here' must never be reported as 'all roles resolve'.
+
+    `Path.exists` must be mocked False for the homebrew fallback paths too: on
+    any machine that actually has ollama at `/opt/homebrew/bin/ollama` (mini
+    does), leaving it real makes `shutil.which(None)` irrelevant — the fallback
+    finds the binary anyway and the probe judges roles instead of reporting
+    UNPROBEABLE, which is exactly the false-RECONCILED-shape this test exists
+    to forbid, self-inflicted by the test's own environment leakage."""
+    real_exists = Path.exists
+    Path.exists = lambda self: False
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            root = _root(Path(td), {"fast": "qwen3.5:9b"})
+            status, n, ev = _probe(_fake_ollama(_listing()), root, which=None)
+    finally:
+        Path.exists = real_exists
     assert status == pp.UNPROBEABLE, ev
     assert n == 0
 
