@@ -305,6 +305,60 @@ def compute_job_verdict(
     }
 
 
+#: Matches a `${{ matrix.<var> }}` expression inside a job's static `name:`
+#: field, e.g. `backend-shard`'s `name: Backend Shard ${{ matrix.shard }}`.
+#: `yaml.safe_load` does not evaluate GitHub Actions expressions — the raw
+#: template text is what lands in the parsed YAML — so a job whose `name:`
+#: depends on its own matrix needs this resolved by hand before it can be
+#: compared against the rendered names the Jobs API actually reports
+#: (`Backend Shard 1`, `Backend Shard 2`, `Backend Shard 3`).
+_MATRIX_VAR_RE = re.compile(r"\$\{\{\s*matrix\.([A-Za-z0-9_-]+)\s*\}\}")
+
+
+def _expand_matrix_job_names(name: str, job: dict[str, Any]) -> list[str]:
+    """Render every `${{ matrix.<var> }}` in a job's `name:` against its own
+    `strategy.matrix.<var>` list, returning one concrete name per combination.
+
+    MEASURED GAP this closes (2026-09-27): `backend-shard`'s `name:
+    Backend Shard ${{ matrix.shard }}` was read literally by
+    `read_job_timeouts` — never resolved — so its timeout-minutes (30,
+    declared once at job level, applying to every matrix instance) could
+    never be matched against the API's own per-instance job names
+    (`Backend Shard 1/2/3`). `suite_growth_probe.py`'s nightly run on Pro
+    alerted "no timeout-minutes entry found for job 'backend-shard-1'"
+    (and `-2`/`-3`) every night — a false positive from this name-matching
+    gap, not a real gap in tests.yml (which already sets timeout-minutes
+    for this job).
+
+    Scoped to the `${{ matrix.<var> }}`-in-`name:` shape only — this
+    repo's one templated-name job. A matrix built from `include:`/
+    `exclude:` entries whose static `name:` carries no such template
+    (`frontend-tests`: `name: Frontend Tests (Next.js)`, disambiguated by
+    GitHub's own auto-generated `(mouth, true)`-style suffix, not by this
+    workflow's YAML) is intentionally left alone: reproducing that
+    auto-suffix would mean re-implementing GitHub's own matrix-naming
+    heuristic from a static read, which is a different, unconfirmed gap —
+    not the one this task's 3-line alert named. Returns `[name]`
+    unchanged whenever nothing can be resolved (no template found, no
+    matching `strategy.matrix` key, or a non-list/empty value) — fail
+    towards the OLD (unmatched) behavior, never a guess.
+    """
+    var_names = list(dict.fromkeys(_MATRIX_VAR_RE.findall(name)))
+    if not var_names:
+        return [name]
+    matrix = (job.get("strategy") or {}).get("matrix")
+    if not isinstance(matrix, dict):
+        return [name]
+    names = [name]
+    for var in var_names:
+        values = matrix.get(var)
+        if not isinstance(values, list) or not values:
+            return [name]
+        pattern = re.compile(r"\$\{\{\s*matrix\." + re.escape(var) + r"\s*\}\}")
+        names = [pattern.sub(str(value), rendered) for rendered in names for value in values]
+    return names
+
+
 def read_job_timeouts(workflow_path: Path) -> tuple[dict[str, dict[str, Any]], str | None]:
     """job-id -> {"name": <API job name>, "timeout_minutes": int|None} from the
     workflow's own YAML.
@@ -316,6 +370,16 @@ def read_job_timeouts(workflow_path: Path) -> tuple[dict[str, dict[str, Any]], s
     error string — every job's timeout_minutes is then None in the record, which
     read_job_timeouts' caller must treat as "distance-from-timeout not computable
     this run", never as "no timeout configured".
+
+    A job whose `name:` templates `${{ matrix.<var> }}` is expanded into one
+    entry PER matrix combination (see `_expand_matrix_job_names`), PLUS one
+    extra entry for the raw, unrendered template string itself — a skipped
+    matrix job is reported by the Jobs API under that literal string, never
+    under a rendered per-instance name (measured 2026-09-27 against real
+    merge_group runs). Each entry is keyed `<job_id>` (first) /
+    `<job_id>[<n>]` (rest) — the key itself is never read by any caller
+    (only `.values()` is), so this is purely to keep every combination
+    present without overwriting siblings.
     """
     try:
         import yaml  # noqa: PLC0415 — deliberately lazy, see docstring
@@ -336,10 +400,34 @@ def read_job_timeouts(workflow_path: Path) -> tuple[dict[str, dict[str, Any]], s
         timeout = job.get("timeout-minutes")
         if not isinstance(timeout, int) or isinstance(timeout, bool):
             timeout = None
-        out[str(job_id)] = {
-            "name": job.get("name") or str(job_id),
-            "timeout_minutes": timeout,
-        }
+        raw_name = str(job.get("name") or job_id)
+        rendered_names = _expand_matrix_job_names(raw_name, job)
+        # MEASURED 2026-09-27 (fresh-gate finding, 43 real merge_group runs of
+        # this exact workflow): a matrix job that is SKIPPED never reaches
+        # matrix expansion at all, so the Jobs API reports it as ONE entry
+        # under the literal, UNRENDERED name — `Backend Shard ${{
+        # matrix.shard }}`, `status: completed`, `conclusion: skipped` — not
+        # under any of `Backend Shard 1/2/3`. Rendering the template (above)
+        # closes the RUN case but silently reopens the SKIP case: dropping
+        # the raw name once it resolves left the literal string unmapped
+        # again, the same "no timeout-minutes entry found" shape this
+        # function exists to fix, just for the opposite (skipped) half of
+        # the job's life. Keep the raw template name as an EXTRA entry
+        # alongside the rendered ones whenever expansion actually happened
+        # (never when it didn't — `rendered_names == [raw_name]` for every
+        # non-matrix job, and re-adding raw_name there would only ever
+        # duplicate the single entry those jobs already get).
+        names_to_emit = list(
+            dict.fromkeys(
+                ([raw_name] if rendered_names != [raw_name] else []) + rendered_names
+            )
+        )
+        for index, rendered_name in enumerate(names_to_emit):
+            key = str(job_id) if index == 0 else f"{job_id}[{index}]"
+            out[key] = {
+                "name": rendered_name,
+                "timeout_minutes": timeout,
+            }
     return out, None
 
 

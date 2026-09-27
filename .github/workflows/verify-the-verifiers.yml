@@ -6,16 +6,39 @@ name: Verify the Verifiers (meta-gate)
 # protection on the three files make the meta-verifier itself tamper-evident —
 # "quis custodiet ipsos custodes?" answered by immutability, not by intelligence.
 
-# NOTE (BUCO #1 skip→success sentinel, 2026-06-09): the top-level
-# pull_request `paths:` filter was REMOVED so this workflow ALWAYS triggers on
-# pull_request and can therefore be a required-status-check WITHOUT the
+# NOTE (BUCO #1 skip→success sentinel, 2026-06-09; superseded by the `on:` block below):
+# the top-level pull_request `paths:` filter was removed so this workflow would always
+# trigger on pull_request and could be a required-status-check WITHOUT the
 # pending-forever trap (a paths-filtered required check never reports on a
-# path-miss PR and blocks merge — W69). The relevant-paths decision now lives
-# in the "Did relevant paths change?" step below, and the expensive WORK steps
-# are gated on its output. On a path-miss PR the job ENDS success (sentinel).
-# The push trigger keeps its paths filter (push only fires when work is needed).
+# path-miss PR and blocks merge — W69). The relevant-paths decision lives in the
+# "Did relevant paths change?" step below, and the expensive WORK steps are gated on
+# its output. It is not required, so `pull_request` carries `paths:` again, equal to
+# that step's regex; the step remains the defence against an over-match (the job ENDS
+# success). The push trigger keeps its own paths filter (push only fires when work is needed).
 on:
-  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (same set as the "Did relevant paths change?" step below). No merge_group:
+  # scripts/ci/lint_trigger_symmetry.py forbids it beside pull_request.paths. A required
+  # context needs pull_request unfiltered again (check_required_workflow_conformance.py).
+  pull_request:
+    paths:
+      - "scripts/verify_the_verifiers.py"
+      - "scripts/verify_the_verifiers_gates.yaml"
+      - ".github/verify-the-verifiers.sha256"
+      - ".github/workflows/verify-the-verifiers.yml"
+      - ".github/workflows/hot-zone-pr-gate.yml"
+      - ".github/workflows/token-lint.yml"
+      - "scripts/token_lint.py"
+      - "scripts/tests/test_token_lint.py"
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/test_verify_the_verifiers.py"
+      - "scripts/tests/test_wr3_reflexion_synthesis.py"
+      - "scripts/wr3_reflexion_synthesis.py"
+      - "scripts/wr2_reflexion_synthesis.py"
+      - "scripts/test_wr2_reflexion_cabling.py"
+      - "scripts/lib/reflexion.py"
+      # pytest loads this implicitly for scripts/tests/ (scripts/tests/conftest.py is listed above).
+      - "scripts/tests/__init__.py"
   push:
     branches: [main]
     paths:
@@ -26,6 +49,7 @@ on:
       - "scripts/token_lint.py"
       - "scripts/tests/test_token_lint.py"
       - "scripts/tests/conftest.py"
+  workflow_dispatch:
 
 concurrency:
   # Per-PR/per-ref for every author. A shared per-workflow group keyed on

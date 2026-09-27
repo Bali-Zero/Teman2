@@ -17,18 +17,25 @@ name: garuda-contract-parity
 # NO paths filter, deliberately. The drift this catches lives BETWEEN two trees
 # (products/garuda-voa/contracts/ and apps/backend-rag/backend/services/
 # garuda_flow/), so a filter on either one misses the case where only the other
-# moves — which is precisely how the nineteenth code got through. It also keeps
-# the job safe as a required status check: a filtered workflow that never runs
-# leaves a required check pending forever (W69).
+# moves — which is precisely how the nineteenth code got through. The import closure
+# is wider than those two trees (it also reaches backend.data.id_holidays and
+# backend.services.visa_check), so any path list here would under-match. The job
+# therefore runs once per merge (merge_group) and on push to main, not on every PR
+# push, and it is not a required context (a required one would need an unfiltered
+# pull_request, else it sits pending forever: W69).
 #
-# Triggers pull_request AND push-to-main (W41/W42: pull_request-only is false
+# Triggers merge_group AND push-to-main (W41/W42: a PR-only trigger is false
 # safety under L2 autonomous direct-push).
 
 on:
-  pull_request:
+  # Non-required lint: runs once per merge (merge_group) and on push to main, not on every
+  # PR push. If this becomes a required context, pull_request must come back unfiltered
+  # (scripts/ci/check_required_workflow_conformance.py rules 3-4).
+  merge_group:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read

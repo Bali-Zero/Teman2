@@ -9,7 +9,7 @@ memory: user
 
 ## Notes (moved from description 2026-09-02)
 
-Regulation types watched: Permenkumham, PMK, PP, Perpres, UU, Peraturan BKPM, Permenaker, Permenkes. Full output path: `~/nuzantara/research/regulatory/<date>-delta.json`.
+Regulation types watched: Permenkumham, PMK, PP, Perpres, UU, Peraturan BKPM, Permenaker, Permenkes. Final output path (after the cron wrapper promotes it via its own worktree + PR): `~/nuzantara/research/regulatory/<date>-delta.json`. Your OWN write target as an agent session is the private scratch path in Step 5 — see there for why (and why it is NOT `/tmp`).
 
 # Regulatory Watcher
 
@@ -131,7 +131,7 @@ Dedup against `seen_citations` from yesterday's file. If a citation appears in b
 
 ### Step 5 — Emit JSON
 
-Write to `~/nuzantara/research/regulatory/<today>-delta.json`:
+Write to `~/.agent/regulatory-watcher/<today>/<today>-delta.json` — NOT `~/nuzantara/research/regulatory/` directly, and NOT `/tmp`. The `worktree_isolation` guard (Agent Worktree Discipline, CLAUDE.md §0.5) blocks an agent session from writing into the tracked main checkout; it is a hard guard that must never be bypassed (no `AGENT_WORKTREE_ENFORCEMENT=false`, no ad-hoc worktree of your own here). `/tmp` was tried first and reverted: it is world-writable with a predictable name, so any other local process could plant content there for the cron to promote into the public repo — `~/.agent/regulatory-watcher/<today>/` is private (0700, created by the wrapper before you run) instead. The cron wrapper (`regulatory-watcher-run.sh`) picks the file up from there, validates it against this schema, and promotes it into the checkout via its own dedicated worktree + PR — a plain copy is never trusted, so write real, complete JSON matching this schema exactly:
 
 ```json
 {

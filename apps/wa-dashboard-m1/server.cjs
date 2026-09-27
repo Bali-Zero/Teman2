@@ -113,10 +113,10 @@ for (const m of TEAM) {
 }
 
 // 2026-06-30: set of Bali Zero operator names (first tokens), used to strip the
-// operator-tag suffix some CRM full_names carry, e.g. "Aigerim Tugayeva (surya)".
+// operator-tag suffix some CRM full_names carry, e.g. "Client Example (surya)".
 // The CRM value stays untouched in the DB — this is DISPLAY-ONLY. We strip ONLY when
 // the parenthetical is a known operator name, so real info like "(PT jam jam)",
-// "(Makar Burba)", "(satpam)" is preserved (verified against live data 2026-06-30).
+// "(Client Sample)", "(satpam)" is preserved (verified against live data 2026-06-30).
 const OPERATOR_NAMES = new Set();
 for (const m of TEAM) {
   for (const src of [m.name, m.full_name]) {
@@ -129,7 +129,7 @@ for (const m of TEAM) {
 // strip a single trailing "(operator)" tag from a CRM display name, display-only.
 function stripOperatorSuffix(name) {
   if (!name) return name;
-  // closing ")" is OPTIONAL: some CRM names are malformed, e.g. "Satya Dewi (surya"
+  // closing ")" is OPTIONAL: some CRM names are malformed, e.g. "Client Anon (surya"
   // (paren opened, never closed) — still a stray operator tag, strip it too.
   const m = String(name).match(/^(.*?)\s*\(([^()]{1,30})\)?\s*$/);
   if (!m) return name;
@@ -503,7 +503,7 @@ async function fetchOverview() {
         ON cli_id.id = g.client_id AND cli_id.deleted_at IS NULL
       -- FIX (2026-06-30, cicatrix #9 fan-out): same phone has N duplicate rows
       -- in clients (621 phones affected, worst case 8). A plain LEFT JOIN
-      -- multiplied the single conv into N rows -> "Aigerim x3" in the list.
+      -- multiplied the single conv into N rows -> "Client X3" in the list.
       -- LATERAL ... LIMIT 1 collapses to ONE deterministic client per phone
       -- (most recently active, then highest id) so each conv_key stays 1 row.
       LEFT JOIN LATERAL (
@@ -1204,7 +1204,7 @@ async function fetchThread(memberPhone, convKey) {
     -- FIX (2026-06-30, cicatrix #9 fan-out): duplicate clients rows per phone
     -- made cli_s (sender) AND cli_c (counterpart) each match N rows; their
     -- Cartesian product duplicated every thread message N*N times (3*3=9 for
-    -- "Aigerim", up to 8*8=64 worst case). LATERAL ... LIMIT 1 collapses each
+    -- "Client X", up to 8*8=64 worst case). LATERAL ... LIMIT 1 collapses each
     -- side to ONE deterministic client so each message stays exactly 1 row.
     LEFT JOIN LATERAL (
       SELECT id, full_name, company_name
