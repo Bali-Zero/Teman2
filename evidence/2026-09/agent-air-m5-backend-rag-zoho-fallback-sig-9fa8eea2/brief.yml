@@ -60,6 +60,17 @@ constraints:
   - "No client PII in this PR's own artifacts (diff, tests, this brief) — every example
     address is a synthetic `*@x.com` shape; the DB counts above are counts only, no addresses,
     no client/practice identifiers."
+  - 'UPDATE 2026-09-27, post-#7449-merge: PR #7449 (senderpii-c5) merged to `main` at
+    `0a66a9d316` before this PR reopened. Merged `origin/main` into this branch (no rebase, no
+    force-push) and resolved the two conflicting files by keeping this PR''s removal of the
+    Zoho blocks and #7449''s `redact_identifier_for_log`/`_bounded_scrub` redaction on the one
+    surviving Brevo-failure log line in each — exactly the plan declared in the constraint
+    above, now executed. #7449 also landed two NEW test files
+    (`test_completed_process_service_pii_logs.py` / `test_waiting_documents_service_pii_logs.py`)
+    that exercised the now-removed Zoho branches (`svc.zoho_email_service.send_email` mocks,
+    assertions on "Both Brevo and Zoho failed"); rewrote both in this PR to test the single
+    surviving failure path instead of deleting them outright, preserving #7449''s PII-redaction
+    coverage rather than dropping it as collateral damage.'
 acceptance:
   - text: >-
       `CompletedProcessService`/`WaitingDocumentsService`/`ProcessAutomationService` (via
@@ -122,6 +133,11 @@ grader: |
   `backend/tests/unit/services/notifications/`; 924/924 across crm+notifications+integrations
   combined. `ruff check` on all 6 touched files: clean. Import-chain smoke
   (`backend.app.dependencies` + the 3 touched service modules): OK.
+
+  Post-merge (origin/main @ `0a66a9d316` merged in, sha `8d28e63a29`): 30/30 in the 5 targeted
+  files (the original 3 plus the 2 rewritten PII-log files); 1078/1078 across
+  crm+notifications+integrations+app/modules/notifications combined; `ruff check` on all 8
+  touched source+test files clean; import-chain smoke OK.
 budget: >-
   1 build lane (this session, investigate-then-build per team-lead mandate), no cross-family
   review lane — Gear 2 (declared; matches `scripts/evidence_pack_lint.py --print-floor` run
