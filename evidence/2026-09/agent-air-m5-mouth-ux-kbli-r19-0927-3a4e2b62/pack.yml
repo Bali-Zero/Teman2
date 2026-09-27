@@ -39,13 +39,15 @@ lanes:
   - lane: ux-kbli-rebase
     role: build
     seat: >-
-      claude-sonnet-5 (this session, in .worktrees/mouth-ux-kbli-r19-0927, which added this pack's
-      own commit plus one rework commit curing gate B1/B2 on top). The cherry-picked range
-      (foundation plus 12 follow-on changes) was authored by an earlier claude-sonnet-5
-      continuation session on M5, 2026-09-24/26, in .worktrees/mouth-ux-kbli-0926 (left untouched
-      by this unit — another process is backing it up); with this pack's two added commits the
-      branch carries 15 commits total ahead of origin/main. Both authorship sessions are the same
-      Anthropic seat, so this is recorded as one build lane, not two, per D3's build-lane count
+      claude-sonnet-5 (this session, in .worktrees/mouth-ux-kbli-r19-0927, which added the pack
+      commit, a rework commit curing gate B1/B2, and this pack-update commit on top). The
+      cherry-picked range (foundation plus 12 follow-on changes) was authored by an earlier
+      claude-sonnet-5 continuation session on M5, 2026-09-24/26, in .worktrees/mouth-ux-kbli-0926
+      (left untouched by this unit — another process is backing it up); this pack does not restate
+      the branch's live total commit count, which keeps advancing with each evidence-only commit —
+      `git rev-list --count origin/main..HEAD` is the number of record. Both authorship sessions
+      are the same Anthropic seat, so this is recorded as one build lane, not two, per D3's
+      build-lane count
   - lane: kimi-review
     role: review
     seat: kimi-code/k3
