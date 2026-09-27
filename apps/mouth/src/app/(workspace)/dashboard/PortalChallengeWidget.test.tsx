@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { rosterBySlug } from "@/data/team-roster";
 import {
   PortalChallengeWidget,
   PodiumCard,
@@ -620,6 +623,30 @@ describe("Champion hero", () => {
     );
     const [plain] = arena.getAllByRole("img", { name: "Contender B" });
     expect(plain.style.transform).toBe("");
+  });
+
+  it("face-frames Krisna's roster portrait, and the file exists under public/", () => {
+    const photo = String(rosterBySlug("krisna")?.photo);
+    expect(
+      existsSync(join(__dirname, "..", "..", "..", "..", "public", photo)),
+    ).toBe(true);
+    mockQuery(
+      response({
+        entries: [
+          entry({
+            member: "a",
+            display_name: "Contender A",
+            avatar_url: photo,
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const arena = within(screen.getByTestId("champion-arena"));
+    const [framed] = arena.getAllByRole("img", { name: "Contender A" });
+    expect(framed.style.transform).toBe(
+      "translate(50%, 50%) scale(2.45) translate(-55%, -33%)",
+    );
   });
 
   it("falls back to initials when a podium photo fails to load", () => {

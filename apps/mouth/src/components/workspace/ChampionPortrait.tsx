@@ -22,6 +22,7 @@ const FACE_FRAMING: Record<string, readonly [number, number, number]> = {
   "dea.jpg": [48, 46, 2.2],
   "dewaayu.jpg": [52, 42, 2.4],
   "krisna.jpg": [54, 40, 2.35],
+  "krisna-20260927.jpg": [55, 33, 2.45],
   "subhi.jpg": [53.5, 40, 2.25],
   "surya.jpg": [52, 40, 2],
   "veronika.jpg": [55, 43, 2.2],
