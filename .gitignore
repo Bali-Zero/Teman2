@@ -970,3 +970,13 @@ research/agent-craft/cc-meta-loop/*/inventory.json
 # The seats' raw answers embed the prompt echo (that same inventory) and, for codex, its tool
 # trace over the operator's home — the parsed proposals and verdicts are the research.
 research/agent-craft/cc-meta-loop/*/round-*/raw_answers.json
+
+# G5 residual-PII cleanup (2026-09-27): four one-off scripts/reports carried real client
+# names/phones/emails/passport numbers or a near-complete real company roster hardcoded as
+# literal data, past their operational shelf life. Pre-removal content quarantined on Pro
+# (~/.agent/pii-quarantine/g5-residuals-0927/, 0600). Ignored so a future re-export under the
+# same filename doesn't slip back onto main unreviewed.
+apps/backend-rag/scripts/fix_lkpm_orphans_batch1.py
+apps/backend-rag/process_batches_2_3.py
+docs/crm/assignment-mismatches-2026-04-20.md
+docs/crm/reports-2026-04-20/mismatches.csv
