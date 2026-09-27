@@ -1,0 +1,102 @@
+gear: 3
+gear_reason: >-
+  Floor measured on the changed-file list (`evidence_pack_lint.py --print-floor`,
+  result 3, source `path`): `apps/backend-rag/scripts/import_lkpm_q1_2026.py` is
+  hot-zone by path regardless of diff size. Judgement agrees independently:
+  this PR removes a live credential-exposure incident from the public repo's
+  tip, on a hot-zone path where a merge is itself the Fly deploy of
+  nuzantara-rag (memory
+  discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01) — even
+  though the touched script is not imported by the runtime.
+mission: >-
+  v2 of the incident fix superseding PR #7477. #7477's own evidence pack
+  (authored by this same lane) re-committed one REAL removed OSS password in
+  cleartext inside its dissent prose — caught by a fresh gate reviewing that
+  PR, not by this lane. This PR rebuilds the fix on a clean origin/main,
+  cherry-picking only the code/gitignore/lint/doc commits (never the tainted
+  evidence directory), and authors this evidence pack from scratch with no
+  credential-shaped literal anywhere — every near-miss below is described by
+  hash and count only.
+objective: >-
+  Same functional fix as #7477: (1) `LORI_59` rewritten from a
+  `list[tuple[int, str, int | None, str | None, str | None]]` of 59 rows to
+  `list[tuple[int, str, int | None]]` — pdf_row, pdf_name, company_id only.
+  (2) `_load_oss_credentials()` reads an untracked, gitignored local file at
+  runtime, fails closed (no fallback) when absent. (3) The pre-fix file
+  remains quarantined on Pro from the #7477 build (sha256-verified, mode
+  0600/0700 — not re-verified in this PR since the source file did not
+  change). (4) One leaked username and one password-shaped example string
+  in `docs/archive/2026-07-orphans/team-guides/lkpm-nlm-training-source.md:49`
+  redacted. (5) `scripts/lint_no_inline_credential_tables.py` — the guard for
+  the exact shape detect-secrets missed — with a guilt/innocence pytest
+  corpus, wired into `.github/workflows/security.yml`. NEW in v2: (6) that
+  guard's own INCIDENT docstring was rewritten so it no longer spells the
+  `assigned-value` shape `scripts/lint/lint_ban_prose.py` (catE-sovereignty-
+  lint) itself forbids writing out — it now names the shape instead.
+scope:
+  - apps/backend-rag/scripts/import_lkpm_q1_2026.py (credential table
+    stripped to 3-tuples; `_load_oss_credentials()` added; two call sites
+    of `_process_rows` updated to thread the loaded map through)
+  - docs/archive/2026-07-orphans/team-guides/lkpm-nlm-training-source.md
+    (line 49 redacted)
+  - scripts/lint_no_inline_credential_tables.py (new guard; docstring
+    reworded in a follow-up commit to stop tripping catE-sovereignty-lint)
+  - scripts/tests/test_lint_no_inline_credential_tables.py (new
+    guilt/innocence corpus, 5 tests)
+  - .github/workflows/security.yml (two new steps next to the existing
+    detect-secrets steps)
+constraints:
+  - No credential value, and no plausible-looking synthetic look-alike, may
+    appear anywhere in this PR's diff, this pack, the brief, or the PR
+    body — only counts, file:line, and hashes. This is the constraint PR
+    7477's own pack violated; this pack is checked against every one of the
+    105 removed username/password values (57 usernames + 48 distinct
+    passwords, hash-compared, never printed) before pushing.
+  - No client/company name from the incident file may be quoted in this
+    pack, brief, or PR body.
+  - No external seat (codex/kimi/gemini/qwen/agy) may see this diff — its
+    deleted lines ARE the secrets.
+  - The new guard must not false-positive on any other tracked file, and
+    must not itself trip `lint_ban_prose.py` (catE-sovereignty-lint) —
+    verified empirically, not asserted.
+  - The command `git grep -n "import_lkpm" apps/backend-rag/backend` must
+    stay at its pre-fix count (2, both non-executing text).
+  - Rotating the burned credentials on the OSS portal is the owner's
+    action, explicitly out of scope for this PR.
+acceptance:
+  - text: >-
+      The fixed script's `LORI_59` table SHALL contain zero password-shaped
+      trailing-string tuples WHEN scanned by the new guard.
+    probe: "python3 scripts/lint_no_inline_credential_tables.py --files apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+  - text: >-
+      The guard SHALL report clean WHEN scanned by lint_ban_prose.py
+      (catE-sovereignty-lint), and SHALL still flag zero false positives
+      across every other tracked *.py file in the repo.
+    probe: "python3 scripts/lint/lint_ban_prose.py scripts/lint_no_inline_credential_tables.py scripts/tests/test_lint_no_inline_credential_tables.py"
+  - text: >-
+      `_load_oss_credentials()` SHALL raise `SystemExit` WHEN
+      `.lkpm_credentials.json` is absent, and SHALL return the correct
+      mapping WHEN a synthetic credentials file is present.
+    probe: "python3 -m pytest scripts/tests/test_lint_no_inline_credential_tables.py -q"
+  - text: >-
+      No file in this PR's diff SHALL contain any of the 105 removed
+      username/password values WHERE hash-compared against the merge-base
+      blob.
+    probe: "searched the full text of every file in `git diff --name-only origin/main...HEAD` plus every untracked new file for that exact substring"
+  - text: >-
+      The rewritten module SHALL import cleanly WHEN loaded directly.
+    probe: "python3 -m py_compile apps/backend-rag/scripts/import_lkpm_q1_2026.py"
+consumer_map:
+  - >-
+    Every future clone/pull of origin/main: the credential table is gone
+    from the tip the moment this merges.
+  - >-
+    PR #7477 (superseded by this PR): closed with a comment pointing here,
+    per the dispatching session's instruction, so its tainted evidence
+    directory never lands on `main`.
+  - >-
+    `.github/workflows/security.yml`'s existing secret-scan job: gains two
+    steps in this PR, runs on the first push/PR after merge.
+appetite:
+  budget: 1 PR, unarmed
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1
