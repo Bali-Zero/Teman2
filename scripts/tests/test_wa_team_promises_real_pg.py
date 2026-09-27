@@ -321,3 +321,47 @@ async def test_c2_residual_matches_real_pg_catalog(pg_socket_dir, sql, expected,
     # The implicit relation blocks the later CREATE TABLE in PG too — the
     # static parser must land on the SAME column set.
     assert parse_declared_columns(sql) == expected
+
+
+# --- G3 (fresh gate on PR #7478, pull/7478#issuecomment-5851556996): the
+# innocence boundary's real-PG pairing — proves PG itself keeps a 63-byte
+# derived `_pkey` name BYTE-FOR-BYTE untruncated (truncation only bites at
+# 64+, per S6b's own real-PG case above), matching the static parser's
+# accept boundary in
+# test_wa_team_promises_sql_crosscheck.py::test_innocence_g3_derived_pkey_name_exactly_63_bytes_is_accepted. ---
+
+
+@pytest.mark.asyncio
+async def test_g3_derived_pkey_name_exactly_63_bytes_lands_untruncated_in_pg(pg_socket_dir):
+    table = "b" * 58
+    pkey_name = f"{table}_pkey"
+    assert len(pkey_name.encode("utf-8")) == 63
+    db = f"g3_{id(table) % 100000}"
+    admin = await asyncpg.connect(host=str(pg_socket_dir), user="postgres", database="postgres")
+    try:
+        await admin.execute(f'DROP DATABASE IF EXISTS "{db}"')
+        await admin.execute(f'CREATE DATABASE "{db}"')
+    finally:
+        await admin.close()
+    conn = await asyncpg.connect(host=str(pg_socket_dir), user="postgres", database=db)
+    try:
+        await conn.execute(f"CREATE TABLE {table} (id INT PRIMARY KEY)")
+        real_name = await conn.fetchval(
+            "SELECT c.relname FROM pg_class c JOIN pg_namespace s ON s.oid = c.relnamespace "
+            "WHERE s.nspname = 'public' AND c.relkind = 'i'"
+        )
+        # PG's own allocator, not the static parser's guess: the 63-byte
+        # derived name is not truncated (S6b's real-PG case above proves
+        # truncation only bites at 64+, one byte over this boundary).
+        assert real_name == pkey_name
+    finally:
+        await conn.close()
+        admin2 = await asyncpg.connect(host=str(pg_socket_dir), user="postgres", database="postgres")
+        try:
+            await admin2.execute(f'DROP DATABASE IF EXISTS "{db}"')
+        finally:
+            await admin2.close()
+    # The static parser (no DB at all) must accept the same input.
+    assert parse_declared_columns(
+        f"CREATE TABLE IF NOT EXISTS {table} (id INT PRIMARY KEY);"
+    ) == {table: {("id", "integer", True)}}
