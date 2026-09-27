@@ -641,14 +641,20 @@ function OracleShellRuntime({
         startViewTransition?: (callback: () => void) => unknown;
       }
     ).startViewTransition;
-    if (reducedMotion || !startViewTransition) {
+    // F3 fix (ORACLE-PROD-20260927 delta, gate finding 3): this used to
+    // gate only on the OS's own `reducedMotion` signal, so pressing the
+    // in-app Pause control (`motionPaused`) left the verdict transition
+    // running anyway. `motion` is the SAME effective flag the rest of the
+    // shell already reads (`!reducedMotion && !motionPaused`) — gating on
+    // it here keeps Pause and the OS setting equally authoritative.
+    if (!motion || !startViewTransition) {
       advance();
       return;
     }
     startViewTransition.call(document, () => {
       flushSync(() => advance());
     });
-  }, [advance, reducedMotion]);
+  }, [advance, motion]);
 
   useEffect(() => {
     if (current.kind === "verdict" && frozenToday === null) {

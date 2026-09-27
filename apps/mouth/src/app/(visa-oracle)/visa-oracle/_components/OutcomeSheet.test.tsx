@@ -1586,3 +1586,80 @@ describe("OutcomeSheet — ENDING-ROUND friendly ending surface (E4/E5/E6/E7/E8)
     }
   });
 });
+
+// F1 fix (ORACLE-PROD-20260927 delta, gate finding 1): closed
+// `.oracle-candidate__why` / `.oracle-outcome__legal` disclosures used to
+// lose their content in print/PDF because a closed `<details>` hides
+// content through the browser's own UA slot, not through each child's
+// `display`. OutcomeSheet now opens both around a REAL print
+// (beforeprint/afterprint, fired by `window.print()`) and closes only the
+// ones it opened itself.
+describe("OutcomeSheet — print reveals closed disclosures (F1)", () => {
+  function detailsIn(container: HTMLElement) {
+    return {
+      why: container.querySelector(
+        "details.oracle-candidate__why",
+      ) as HTMLDetailsElement,
+      legal: container.querySelector(
+        "details.oracle-outcome__legal",
+      ) as HTMLDetailsElement,
+    };
+  }
+
+  it("opens both closed disclosures on beforeprint and closes them again on afterprint", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    const { why, legal } = detailsIn(container);
+    expect(why.open).toBe(false);
+    expect(legal.open).toBe(false);
+
+    window.dispatchEvent(new Event("beforeprint"));
+    expect(why.open).toBe(true);
+    expect(legal.open).toBe(true);
+
+    window.dispatchEvent(new Event("afterprint"));
+    expect(why.open).toBe(false);
+    expect(legal.open).toBe(false);
+  });
+
+  it("leaves a disclosure the visitor already opened open after afterprint, closing only the one it opened itself", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    const { why, legal } = detailsIn(container);
+    // The visitor opened "Legal references" before printing.
+    legal.open = true;
+
+    window.dispatchEvent(new Event("beforeprint"));
+    expect(why.open).toBe(true);
+    expect(legal.open).toBe(true);
+
+    window.dispatchEvent(new Event("afterprint"));
+    expect(legal.open).toBe(true);
+    expect(why.open).toBe(false);
+  });
+
+  it("removes its beforeprint/afterprint listeners on unmount", () => {
+    const addSpy = vi.spyOn(window, "addEventListener");
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+    try {
+      const { unmount } = renderSheet("SUPPORTED_CANDIDATES");
+      unmount();
+
+      const added = addSpy.mock.calls
+        .filter(([type]) => type === "beforeprint" || type === "afterprint")
+        .map(([type]) => type);
+      const removed = removeSpy.mock.calls
+        .filter(([type]) => type === "beforeprint" || type === "afterprint")
+        .map(([type]) => type);
+      expect(added.sort()).toEqual(["afterprint", "beforeprint"]);
+      expect(removed.sort()).toEqual(added.sort());
+
+      // No listener left behind — a stray event after unmount is a no-op,
+      // never a throw.
+      expect(() =>
+        window.dispatchEvent(new Event("beforeprint")),
+      ).not.toThrow();
+    } finally {
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    }
+  });
+});

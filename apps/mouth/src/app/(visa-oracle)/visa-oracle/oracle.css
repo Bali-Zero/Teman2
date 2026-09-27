@@ -2709,7 +2709,16 @@ button.oracle-tree__leaf {
   backdrop-filter: blur(7px);
 }
 .oracle-atlas-route {
-  position: relative;
+  /* F2 fix (ORACLE-PROD-20260927 delta, gate finding 2, corrected depth 1):
+     this rule used to also set `position: relative`, overriding the UA
+     modal `position: fixed` this `<dialog>` gets from `showModal()` —
+     removed, so `position` is left to that UA default. Dropping `relative`
+     alone did NOT restore centring: Tailwind preflight's `* { margin: 0 }`
+     (`node_modules/tailwindcss/preflight.css`) still overrode the UA
+     modal's own `margin: auto`, pinning the fixed, `inset:0` dialog at the
+     viewport's top-left. Restating `margin: auto` here is what actually
+     centres it. */
+  margin: auto;
   padding: 2.75rem 2.5rem;
 }
 .oracle-atlas-route h2 {
@@ -3394,11 +3403,25 @@ button.oracle-tree__leaf {
   .oracle-atlas-branch-caption {
     display: none !important;
   }
-  /* E7/E4: a visitor who never opened "Legal references" / "Why this fits"
-     on screen still gets them in the PDF — the closed-`<details>` UA style
-     (`display:none` on every non-summary child) applies to print too. */
-  .oracle-root.oracle-atlas .oracle-candidate__why > *:not(summary),
-  .oracle-root.oracle-atlas .oracle-outcome__legal > *:not(summary) {
-    display: block !important;
+  /* F1 fix (ORACLE-PROD-20260927 delta, gate finding 1): a closed
+     `<details>` hides its content through the browser's own UA "details
+     content" slot, not through each child's `display` — `display:block
+     !important` on the children (the rule this replaced) never worked,
+     confirmed empirically (Chromium screenshot + PDF text still omitted
+     the content). The real fix is OutcomeSheet.tsx's beforeprint/
+     afterprint effect, which opens the `<details>` before printing and
+     closes it again after — verified against this app's own Chromium:
+     headless `page.pdf()` DOES fire `beforeprint`/`afterprint` here (not
+     an event-less path), so that effect alone already covers it. This
+     rule targets the UA `::details-content` pseudo-element itself, kept as
+     a genuine fallback for a print path with no JS trigger at all —
+     verified with `page.emulateMedia({ media: "print" })` (fires zero
+     `beforeprint`/`afterprint` events): both disclosures' content passed
+     `checkVisibility()` from this rule alone, with no print event and
+     therefore no JS effect involved (delta proof dir, case F1-diag). */
+  .oracle-root.oracle-atlas .oracle-candidate__why::details-content,
+  .oracle-root.oracle-atlas .oracle-outcome__legal::details-content {
+    content-visibility: visible;
+    display: block;
   }
 }

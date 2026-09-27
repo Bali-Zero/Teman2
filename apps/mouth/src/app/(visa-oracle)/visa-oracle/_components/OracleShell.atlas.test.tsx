@@ -318,3 +318,91 @@ describe("OracleShell atlas — badge (ENDING-ROUND scope extension)", () => {
     expect(document.body.textContent).not.toMatch(/deterministic/i);
   });
 });
+
+// F3 fix (ORACLE-PROD-20260927 delta, gate finding 3): `revealVerdict` used
+// to gate the verdict ViewTransition only on the OS's own reduced-motion
+// signal, so pressing the in-app Pause control left the transition running
+// anyway. It now gates on the same effective `motion` flag
+// (`!reducedMotion && !motionPaused`) the rest of the shell already reads.
+describe("OracleShell atlas — verdict ViewTransition respects Pause (F3)", () => {
+  const CONFIRMATION_ANSWERS = [
+    ["in_indonesia", "no"],
+    ["holds_stay_permit", "no"],
+    ["nationalities", "US"],
+    ["birth_date", "1990-01-01"],
+    ["category", "tourism"],
+    ["trip_scope", "single"],
+    ["stay_days", "30"],
+    ["entry_pattern", "SINGLE"],
+    ["review_gate", "none"],
+  ] as const;
+
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    window.localStorage.clear();
+    installResumeAt(CONFIRMATION_ANSWERS);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    Reflect.deleteProperty(document, "startViewTransition");
+  });
+
+  function stubStartViewTransition() {
+    const spy = vi.fn((callback: () => void) => {
+      callback();
+      return {
+        ready: Promise.resolve(),
+        finished: Promise.resolve(),
+        updateCallbackDone: Promise.resolve(),
+      };
+    });
+    Object.assign(document, { startViewTransition: spy });
+    return spy;
+  }
+
+  it("makes zero startViewTransition calls confirming into the verdict while Pause is active", async () => {
+    const spy = stubStartViewTransition();
+    render(<OracleShell />);
+
+    await screen.findByRole("heading", {
+      name: translate("en", "confirmation.title"),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Pause motion" }));
+    expect(root()).toHaveAttribute("data-motion", "paused");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("en", "confirmation.cta"),
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        document.querySelector(".oracle-verdict-card"),
+      ).toBeInTheDocument(),
+    );
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("makes exactly one startViewTransition call confirming into the verdict when motion is not paused", async () => {
+    const spy = stubStartViewTransition();
+    render(<OracleShell />);
+
+    await screen.findByRole("heading", {
+      name: translate("en", "confirmation.title"),
+    });
+    expect(root()).toHaveAttribute("data-motion", "on");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("en", "confirmation.cta"),
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        document.querySelector(".oracle-verdict-card"),
+      ).toBeInTheDocument(),
+    );
+    expect(spy).toHaveBeenCalledOnce();
+  });
+});

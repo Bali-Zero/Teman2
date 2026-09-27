@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   CalendarClock,
@@ -773,8 +773,53 @@ export function OutcomeSheet({
     });
   };
 
+  // F1 fix (ORACLE-PROD-20260927 delta, gate finding 1): a closed
+  // `<details>` hides its content through the browser's own UA "details
+  // content" slot, not through each child's `display` — the print CSS
+  // alone (`> *:not(summary) { display:block !important }`) can never
+  // reveal it, confirmed empirically in Chromium (both screenshot and PDF
+  // text). This listens for the REAL `window.print()` path (the "Print /
+  // save as PDF" button below fires `beforeprint`/`afterprint` like any
+  // browser print) and opens every closed disclosure inside THIS sheet
+  // right before printing, closing again afterward — but only the ones it
+  // opened itself, so a disclosure the visitor already had open stays
+  // open. React never controls `open` here (no `open` prop on either
+  // `<details>`), so mutating the DOM property directly is safe.
+  const outcomeRootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = outcomeRootRef.current;
+    if (!root) return;
+    let openedByPrint: HTMLDetailsElement[] = [];
+
+    const handleBeforePrint = () => {
+      const details = root.querySelectorAll<HTMLDetailsElement>(
+        "details.oracle-candidate__why, details.oracle-outcome__legal",
+      );
+      openedByPrint = [];
+      details.forEach((node) => {
+        if (!node.open) {
+          node.open = true;
+          openedByPrint.push(node);
+        }
+      });
+    };
+    const handleAfterPrint = () => {
+      for (const node of openedByPrint) {
+        if (node.isConnected) node.open = false;
+      }
+      openedByPrint = [];
+    };
+
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
+
   return (
-    <div className="oracle-outcome">
+    <div className="oracle-outcome" ref={outcomeRootRef}>
       {/* A HUMAN_REVIEW_REQUIRED state already gets its own honest,
           complete explanation below (outcome.human_review_body + the
           review reasons) regardless of provenance — a generic non-ENGINE
@@ -1101,7 +1146,13 @@ export function OutcomeSheet({
           (title + link + publisher + effective/observed dates + freshness
           badge on screen for every row) reads as provenance machinery.
           Closed by default; effective/observed/freshness stay only in
-          `.oracle-print-only` (still in the PDF, never off-screen). */}
+          `.oracle-print-only`. F1 fix (gate finding 1): this `<details>`
+          is opened for real printing by the beforeprint/afterprint effect
+          above — both the "Print / save as PDF" button below
+          (`window.print()`) and Chromium's headless `page.pdf()` fire
+          `beforeprint`/`afterprint` (verified empirically), so that effect
+          alone covers both paths; oracle.css's `::details-content` print
+          rule on this class is a defensive fallback only. */}
       {outcome.sources.length > 0 && (
         <details className="oracle-outcome__legal">
           <summary>
