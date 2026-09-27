@@ -16,7 +16,6 @@ Usage:
 """
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -28,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.config import NLM_NOTEBOOKS, TG_ZERO_CHAT_ID
+from mata_garuda.tools.tg_tools import curl_send
 from mata_garuda.runtime.cli_runtime import (
     _run_process_group,
     claude_token_chain,
@@ -200,24 +200,12 @@ def send_telegram(message: str) -> bool:
         print("  [TG] TELEGRAM_BOT_TOKEN not set")
         return False
 
-    try:
-        result = subprocess.run(
-            [
-                "curl", "-s",
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                "-d", f"chat_id={TG_ZERO_CHAT_ID}",
-                "--data-urlencode", f"text={message}",
-            ],
-            capture_output=True, text=True, timeout=15,
-        )
-        if '"ok":true' in result.stdout:
-            msg_id = json.loads(result.stdout).get("result", {}).get("message_id", "?")
-            print(f"  [TG] Sent (msg_id: {msg_id})")
-            return True
-        print(f"  [TG] Failed: {result.stdout[:200]}")
-    except Exception as e:
-        print(f"  [TG] Error: {e}")
-    return False
+    ok, reason = curl_send(token, TG_ZERO_CHAT_ID, message)
+    if ok:
+        print("  [TG] Sent")
+    else:
+        print(f"  [TG] Failed: {reason}")
+    return ok
 
 
 def main():
