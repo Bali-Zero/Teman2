@@ -1,0 +1,40 @@
+task: >-
+  R19 group B surface 2/3: restyle the shared newsletter sidebar/inline forms
+  (components/blog/NewsletterForm.tsx, `SidebarForm`/`NewsletterSidebar` and
+  `InlineForm`/`NewsletterInline`) from the violet/fuchsia "Stay Ahead of the
+  Curve" look to R19 (copper eyebrow, Fraunces heading, muted body,
+  paper-surface inputs, hairline borders, solid copper CTA), gated on
+  `useR19()` so a non-R19 render keeps the legacy skin verbatim (no live
+  route reaches it today). Successor of #7571 (gate BLOCK: the legacy branch
+  had lost focus:outline-none on 3 inputs).
+lane: mouth/r19-b-newsletter-b
+machine: air-m5
+date: 2026-09-28
+gear: 2
+gear_reason:
+  Floor 2 per evidence_pack_lint.py --print-floor on the final HEAD (3 files,
+  incl. this brief and the guard test).
+acceptance:
+  A1: NewsletterForm.r19-guard.test.tsx is red against origin/main's
+    NewsletterForm.tsx (5 of 6 cases fail on the emerald/violet/text-white
+    classes) and green after; tsc --noEmit exit 0; eslint 0 errors; prettier
+    --check clean.
+  A2: live-vs-local screenshots of /visas (category listing) and one article
+    page's sidebar (desktop 1440x900 + mobile 390x844) show the R19 eyebrow/
+    heading/inputs/CTA with no copy, field, or link removed, and no material
+    page-height change (measured via document.body.scrollHeight, identical
+    before/after on both pages).
+  A3: non-R19 render (no R19Home/R19Presentation provider) still carries the
+    original violet/fuchsia panel and the full legacy token set of every input
+    (incl. focus:outline-none), asserted by the guard's two non-R19 cases —
+    submit endpoint (subscribeToNewsletter), validation rules, success/error
+    copy and tracking props are byte-identical to origin/main.
+out_of_scope:
+  the dead client-side "Please enter a valid email address" branch in
+  SidebarForm — its email input is `required type="email"`, so a real click
+  on Subscribe with it empty is blocked by the browser's own constraint
+  validation before the JS handler ever runs (pre-existing on origin/main,
+  unrelated to this restyle, left as-is); NewsletterInline (the file's main
+  `variant="inline"` export) has zero importers anywhere in the app today —
+  restyled per the brief's "every variant" instruction but not exercised by
+  any live route, so no live screenshot of it was taken.

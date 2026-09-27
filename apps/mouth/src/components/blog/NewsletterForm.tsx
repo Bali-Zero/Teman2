@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Check, Loader2, Sparkles, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { subscribeToNewsletter } from "@/lib/blog/newsletter";
+import { useR19 } from "@/components/r19/R19Presentation";
 import type { ArticleCategory, NewsletterFormProps } from "@/lib/blog/types";
 
 // Category options for newsletter
@@ -27,12 +28,30 @@ const FREQUENCY_OPTIONS: {
   { value: "monthly", label: "Monthly Roundup" },
 ];
 
+// R19 tokens (from components/r19/presentation.ts): only active on R19 routes
+// (`useR19()`). Elsewhere (e.g. the /property category listing, which
+// `routePolicy.ts::isR19Route` excludes) the pre-R19 violet/fuchsia look is
+// left untouched, exactly like CategoryNav does for its own pill skin.
+const r19Panel: React.CSSProperties = {
+  background: "var(--r19-surface, var(--r19-wash))",
+  borderColor: "var(--r19-line)",
+};
+const r19Ink: React.CSSProperties = { color: "var(--r19-ink)" };
+const r19Muted: React.CSSProperties = { color: "var(--r19-muted)" };
+const r19Copper: React.CSSProperties = { color: "var(--r19-copper)" };
+const r19Input: React.CSSProperties = {
+  background: "var(--r19-surface)",
+  borderColor: "var(--r19-line)",
+  color: "var(--r19-ink)",
+};
+
 // Inline form variant (default)
 function InlineForm({
   defaultCategories = [],
   onSuccess,
   className,
 }: NewsletterFormProps) {
+  const isR19 = useR19();
   const [email, setEmail] = React.useState("");
   const [status, setStatus] = React.useState<
     "idle" | "loading" | "success" | "error"
@@ -85,16 +104,39 @@ function InlineForm({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
+            className={cn(
+              "flex items-center gap-3 p-4 rounded-xl border",
+              !isR19 && "bg-emerald-500/10 border-emerald-500/20",
+            )}
+            style={isR19 ? r19Panel : undefined}
           >
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-              <Check className="w-5 h-5 text-emerald-400" />
+            <div
+              className={cn(
+                "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center",
+                !isR19 && "bg-emerald-500/20",
+              )}
+              style={
+                isR19
+                  ? { background: "var(--r19-wash)", ...r19Copper }
+                  : undefined
+              }
+            >
+              <Check
+                className={cn("w-5 h-5", !isR19 && "text-emerald-400")}
+                style={isR19 ? r19Copper : undefined}
+              />
             </div>
             <div>
-              <p className="font-medium text-emerald-400">
+              <p
+                className={cn("font-medium", !isR19 && "text-emerald-400")}
+                style={isR19 ? r19Ink : undefined}
+              >
                 You&apos;re subscribed!
               </p>
-              <p className="text-sm text-white/60">
+              <p
+                className={cn("text-sm", !isR19 && "text-white/60")}
+                style={isR19 ? r19Muted : undefined}
+              >
                 Check your email to confirm.
               </p>
             </div>
@@ -110,7 +152,13 @@ function InlineForm({
           >
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                <Mail
+                  className={cn(
+                    "absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5",
+                    !isR19 && "text-white/40",
+                  )}
+                  style={isR19 ? r19Muted : undefined}
+                />
                 <input
                   type="email"
                   value={email}
@@ -119,25 +167,33 @@ function InlineForm({
                   aria-label="Email address"
                   disabled={status === "loading"}
                   className={cn(
-                    "w-full h-12 pl-11 pr-4 rounded-xl",
-                    "bg-white/5 border border-white/10",
-                    "text-white placeholder-white/40",
-                    "focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50",
-                    "disabled:opacity-50",
-                    "transition-all duration-200",
+                    "w-full h-12 pl-11 pr-4 rounded-xl border focus:outline-none",
+                    !isR19 &&
+                      "bg-white/5 border-white/10 text-white placeholder-white/40 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50",
+                    isR19 &&
+                      "placeholder:text-[color:var(--r19-muted)] focus:ring-2 focus:ring-[color:var(--r19-copper)] focus:border-[color:var(--r19-copper)]",
+                    "disabled:opacity-50 transition-all duration-200",
                   )}
+                  style={isR19 ? r19Input : undefined}
                 />
               </div>
               <button
                 type="submit"
                 disabled={status === "loading"}
                 className={cn(
-                  "px-6 h-12 rounded-xl font-medium transition-all",
-                  "bg-gradient-to-r from-violet-600 to-fuchsia-600",
-                  "hover:from-violet-500 hover:to-fuchsia-500",
+                  "px-6 h-12 rounded-xl font-medium transition-all flex items-center gap-2",
+                  !isR19 &&
+                    "bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "flex items-center gap-2",
                 )}
+                style={
+                  isR19
+                    ? {
+                        background: "var(--r19-copper)",
+                        color: "var(--r19-cta-ink)",
+                      }
+                    : undefined
+                }
               >
                 {status === "loading" ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -154,7 +210,8 @@ function InlineForm({
               <motion.p
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-sm text-red-400"
+                className={cn("text-sm", !isR19 && "text-red-400")}
+                style={isR19 ? r19Ink : undefined}
               >
                 {errorMessage}
               </motion.p>
@@ -172,6 +229,7 @@ function SidebarForm({
   onSuccess,
   className,
 }: NewsletterFormProps) {
+  const isR19 = useR19();
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
   const [categories, setCategories] = React.useState<ArticleCategory[]>(
@@ -240,18 +298,44 @@ function SidebarForm({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className={cn(
-          "p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20",
+          "p-6 rounded-2xl border",
+          !isR19 &&
+            "bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20",
+          isR19 && "rounded-lg",
           className,
         )}
+        style={isR19 ? r19Panel : undefined}
       >
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center">
-            <Check className="w-8 h-8 text-emerald-400" />
+          <div
+            className={cn(
+              "w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center",
+              !isR19 && "bg-emerald-500/20",
+            )}
+            style={
+              isR19
+                ? { background: "var(--r19-wash)", ...r19Copper }
+                : undefined
+            }
+          >
+            <Check
+              className={cn("w-8 h-8", !isR19 && "text-emerald-400")}
+              style={isR19 ? r19Copper : undefined}
+            />
           </div>
-          <h3 className="font-serif text-xl font-semibold text-white mb-2">
+          <h3
+            className={cn(
+              "font-serif text-xl mb-2",
+              !isR19 && "font-semibold text-white",
+            )}
+            style={isR19 ? r19Ink : undefined}
+          >
             Welcome Aboard!
           </h3>
-          <p className="text-white/60">
+          <p
+            className={cn(!isR19 && "text-white/60")}
+            style={isR19 ? r19Muted : undefined}
+          >
             Check your inbox to confirm your subscription.
           </p>
         </div>
@@ -262,20 +346,42 @@ function SidebarForm({
   return (
     <div
       className={cn(
-        "p-6 rounded-2xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20",
+        "p-6 border",
+        !isR19 &&
+          "rounded-2xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border-violet-500/20",
+        isR19 && "rounded-lg",
         className,
       )}
+      style={isR19 ? r19Panel : undefined}
     >
       {/* Header */}
       <div className="mb-6 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 text-xs font-medium mb-3">
-          <Sparkles className="w-3 h-3" />
-          Newsletter
-        </div>
-        <h3 className="font-serif text-xl font-semibold text-white mb-2">
+        {isR19 ? (
+          <div
+            className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-3"
+            style={r19Copper}
+          >
+            Newsletter
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 text-xs font-medium mb-3">
+            <Sparkles className="w-3 h-3" />
+            Newsletter
+          </div>
+        )}
+        <h3
+          className={cn(
+            "font-serif text-xl mb-2",
+            !isR19 && "font-semibold text-white",
+          )}
+          style={isR19 ? r19Ink : undefined}
+        >
           Stay Ahead of the Curve
         </h3>
-        <p className="text-sm text-white/60">
+        <p
+          className={cn("text-sm", !isR19 && "text-white/60")}
+          style={isR19 ? r19Muted : undefined}
+        >
           Get the latest insights on business, immigration, and life in Bali.
         </p>
       </div>
@@ -290,11 +396,13 @@ function SidebarForm({
           placeholder="Your name (optional)"
           aria-label="Your name"
           className={cn(
-            "w-full h-11 px-4 rounded-xl",
-            "bg-white/5 border border-white/10",
-            "text-white placeholder-white/40 text-sm",
-            "focus:outline-none focus:ring-2 focus:ring-violet-500/50",
+            "w-full h-11 px-4 rounded-xl text-sm border focus:outline-none",
+            !isR19 &&
+              "bg-white/5 border-white/10 text-white placeholder-white/40 focus:ring-2 focus:ring-violet-500/50",
+            isR19 &&
+              "placeholder:text-[color:var(--r19-muted)] focus:ring-2 focus:ring-[color:var(--r19-copper)]",
           )}
+          style={isR19 ? r19Input : undefined}
         />
 
         {/* Email */}
@@ -306,11 +414,13 @@ function SidebarForm({
           aria-label="Email address"
           required
           className={cn(
-            "w-full h-11 px-4 rounded-xl",
-            "bg-white/5 border border-white/10",
-            "text-white placeholder-white/40 text-sm",
-            "focus:outline-none focus:ring-2 focus:ring-violet-500/50",
+            "w-full h-11 px-4 rounded-xl text-sm border focus:outline-none",
+            !isR19 &&
+              "bg-white/5 border-white/10 text-white placeholder-white/40 focus:ring-2 focus:ring-violet-500/50",
+            isR19 &&
+              "placeholder:text-[color:var(--r19-muted)] focus:ring-2 focus:ring-[color:var(--r19-copper)]",
           )}
+          style={isR19 ? r19Input : undefined}
         />
 
         {/* Category selector */}
@@ -319,11 +429,11 @@ function SidebarForm({
             type="button"
             onClick={() => setShowCategories(!showCategories)}
             className={cn(
-              "w-full flex items-center justify-between px-4 py-3 rounded-xl",
-              "bg-white/5 border border-white/10",
-              "text-white text-sm",
-              "hover:bg-white/10 transition-colors",
+              "w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm border transition-colors",
+              !isR19 &&
+                "bg-white/5 border-white/10 text-white hover:bg-white/10",
             )}
+            style={isR19 ? r19Input : undefined}
           >
             <span>
               {categories.length === 0
@@ -347,33 +457,69 @@ function SidebarForm({
                 className="overflow-hidden"
               >
                 <div className="pt-2 space-y-1">
-                  {CATEGORY_OPTIONS.map((cat) => (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() => toggleCategory(cat.value)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors",
-                        categories.includes(cat.value)
-                          ? "bg-violet-500/20 text-violet-400"
-                          : "text-white/60 hover:text-white hover:bg-white/5",
-                      )}
-                    >
-                      <div
+                  {CATEGORY_OPTIONS.map((cat) => {
+                    const active = categories.includes(cat.value);
+                    return (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => toggleCategory(cat.value)}
                         className={cn(
-                          "w-4 h-4 rounded border flex items-center justify-center",
-                          categories.includes(cat.value)
-                            ? "bg-violet-500 border-violet-500"
-                            : "border-white/20",
+                          "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors",
+                          !isR19 &&
+                            (active
+                              ? "bg-violet-500/20 text-violet-400"
+                              : "text-white/60 hover:text-white hover:bg-white/5"),
                         )}
+                        style={
+                          isR19
+                            ? {
+                                color: active
+                                  ? "var(--r19-ink)"
+                                  : "var(--r19-muted)",
+                                background: active
+                                  ? "var(--r19-active-bg)"
+                                  : "transparent",
+                              }
+                            : undefined
+                        }
                       >
-                        {categories.includes(cat.value) && (
-                          <Check className="w-3 h-3 text-white" />
-                        )}
-                      </div>
-                      {cat.label}
-                    </button>
-                  ))}
+                        <div
+                          className={cn(
+                            "w-4 h-4 rounded border flex items-center justify-center",
+                            !isR19 &&
+                              (active
+                                ? "bg-violet-500 border-violet-500"
+                                : "border-white/20"),
+                          )}
+                          style={
+                            isR19
+                              ? {
+                                  background: active
+                                    ? "var(--r19-copper)"
+                                    : "transparent",
+                                  borderColor: active
+                                    ? "var(--r19-copper)"
+                                    : "var(--r19-line)",
+                                }
+                              : undefined
+                          }
+                        >
+                          {active && (
+                            <Check
+                              className={cn("w-3 h-3", !isR19 && "text-white")}
+                              style={
+                                isR19
+                                  ? { color: "var(--r19-cta-ink)" }
+                                  : undefined
+                              }
+                            />
+                          )}
+                        </div>
+                        {cat.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
@@ -382,26 +528,46 @@ function SidebarForm({
 
         {/* Frequency */}
         <div className="flex gap-2">
-          {FREQUENCY_OPTIONS.map((freq) => (
-            <button
-              key={freq.value}
-              type="button"
-              onClick={() => setFrequency(freq.value)}
-              className={cn(
-                "flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors",
-                frequency === freq.value
-                  ? "bg-violet-500/20 text-violet-400"
-                  : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10",
-              )}
-            >
-              {freq.label}
-            </button>
-          ))}
+          {FREQUENCY_OPTIONS.map((freq) => {
+            const active = frequency === freq.value;
+            return (
+              <button
+                key={freq.value}
+                type="button"
+                onClick={() => setFrequency(freq.value)}
+                className={cn(
+                  "flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors",
+                  !isR19 &&
+                    (active
+                      ? "bg-violet-500/20 text-violet-400"
+                      : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10"),
+                )}
+                style={
+                  isR19
+                    ? {
+                        color: active ? "var(--r19-ink)" : "var(--r19-muted)",
+                        background: active
+                          ? "var(--r19-active-bg)"
+                          : "var(--r19-surface)",
+                        border: `1px solid ${active ? "var(--r19-active-border)" : "var(--r19-line)"}`,
+                      }
+                    : undefined
+                }
+              >
+                {freq.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Error message */}
         {status === "error" && errorMessage && (
-          <p className="text-sm text-red-400">{errorMessage}</p>
+          <p
+            className={cn("text-sm", !isR19 && "text-red-400")}
+            style={isR19 ? r19Ink : undefined}
+          >
+            {errorMessage}
+          </p>
         )}
 
         {/* Submit button */}
@@ -409,12 +575,16 @@ function SidebarForm({
           type="submit"
           disabled={status === "loading"}
           className={cn(
-            "w-full h-11 rounded-xl font-medium transition-all",
-            "bg-gradient-to-r from-violet-600 to-fuchsia-600",
-            "hover:from-violet-500 hover:to-fuchsia-500",
+            "w-full h-11 rounded-xl font-medium transition-all flex items-center justify-center gap-2",
+            !isR19 &&
+              "bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500",
             "disabled:opacity-50 disabled:cursor-not-allowed",
-            "flex items-center justify-center gap-2",
           )}
+          style={
+            isR19
+              ? { background: "var(--r19-copper)", color: "var(--r19-cta-ink)" }
+              : undefined
+          }
         >
           {status === "loading" ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -427,7 +597,10 @@ function SidebarForm({
         </button>
 
         {/* Privacy note */}
-        <p className="text-xs text-white/40 text-center">
+        <p
+          className={cn("text-xs text-center", !isR19 && "text-white/40")}
+          style={isR19 ? r19Muted : undefined}
+        >
           We respect your privacy. Unsubscribe anytime.
         </p>
       </form>
