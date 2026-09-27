@@ -1,27 +1,63 @@
 task: >-
+  v9, per spec S6 (docs/specs/2026-09-27-evidence-pack-fixed-point.md), supersedes #7491 (v8 of
+  this lane; ARMED, frozen at 76a142eca3). A fresh Gear-3 gate on #7491 (report: gate-7491.md)
+  returned REWORK-BUILD on evidence only, again — the diff itself holds byte-identical to #7491's
+  head: `git diff 76a142eca3 HEAD -- research .gitignore docs/archive
+  scripts/crm_guardian_phase15_pilot.py` (and the other 12 non-evidence paths) = empty, re-verified
+  in this worktree. Text-only cures in this pack:
+  K3 (blocking, memory-18721 trap, NEW regression in v8) — v8's own dissent paired a per-file
+  occurrence count with each of the two redacted names for the legacy prompt templates (a
+  de-anonymization key of the same class G3 had already closed for a different pair of names), and
+  v8's brief/pack/body named the legacy prompt templates and the CLI worker by filename while
+  disclosing that category. Cured in this pack: no id, no per-file count, and no filename for any
+  residual (out-of-scope) file anywhere in brief, pack or body — the legacy prompt templates are
+  "the legacy prompt templates" and the pipeline's worker is "the CLI worker", nothing else; the
+  K1/H2 receipt is rewritten the same way.
+  K2 (blocking, still only partly cured in v8) — corrected again: 2 of the redacted names appear in
+  the legacy prompt templates (not the single-name claim v8 made), 3 occurrences per template
+  (not "twice");
+  5 of the 6 redacted client_ids (5 of the 7 names) are the ones that remain re-linkable across the
+  11 pre-existing files, not all 6/7 — the sixth id's two names have 0 matches anywhere in the
+  tracked tree.
+  K1/H2 (cured in v8, unchanged here) — the legacy-prompt "live egress" claim stays corrected: the
+  extraction service's version-label default is metadata only, never used to load a file; the CLI
+  worker's own current default is a later template; a symbol naming the oldest legacy template
+  exists in source with exactly 1 occurrence, its own declaration, never read; Pro hosts the one
+  live LaunchAgent found for this pipeline (state=running, StartInterval 300s, most recent tick
+  2026-09-27T10:09:43+08:00), and its wrapper's flags carry no override, so it also runs on the
+  current default, never the two legacy templates.
+  K4 (cured in v8, unchanged here) — `Bites:` stays a post-merge probe (`git ls-tree origin/main`
+  on the deleted/quarantined paths, plus `pytest tests/wa_corpus`), not a pre-merge
+  `evidence_pack_lint` self-consistency check.
+  Nits n5-n8 from gate-7491.md, cured here: n5 — the LaunchAgent's most recent tick is stated as
+  2026-09-27T10:09:43+08:00, not the earlier "2026-09-27T10:09Z" (a timezone-label error, not a new
+  measurement). n6 — the one-off data-fix script's category drops the "tracked since 2026-04-08"
+  locator (measured: the window it names is not unique — 273 files were added in it, 8 of them
+  fix/batch/orphan-named). n7 — the four residual categories now sum to 11 (2 legacy templates + 1
+  one-off data-fix script + 2 historical audit/scar documents + 6 remaining files split between 3
+  code/config/migration references and 3 test-fixture files carrying 13+4+1 occurrences), not 10.
+  n8 — the PR body carries a literal `Bites:` line, not only a `## Bites` header.
   v8, supersedes #7481 (v7 of this lane; ARMED, frozen at 017c42cf). A fresh Gear-3 gate on #7481
   (report: gate-7481.md) returned REWORK-BUILD on evidence only — the diff itself holds
   byte-identical to #7481's head: `git diff 017c42cf HEAD -- research .gitignore docs/archive
   scripts/crm_guardian_phase15_pilot.py` (and the other 12 non-evidence paths) = empty, re-verified
-  in this worktree. Text-only cures in this pack:
-  K1/H2 (blocking, false live-egress claim) — `L1_extraction_v3.md`/`_v4.md` were described as a
-  "live few-shot example" with `schemas.py:392` defaulting "every PRODUCTION extraction call
-  TODAY" to it, i.e. "ACTIVE cloud-LLM egress". Re-measured at this head: `schemas.py:392`'s
-  `prompt_version: str = "L1_extraction_v3"` is an unread metadata string default, no file under
-  `services/crm_guardian` reads `prompts/`, the CLI worker's `DEFAULT_PROMPT_FILE` is
-  `L1_extraction_v5.md`, and `LEGACY_V3_PROMPT_FILE` has exactly 1 occurrence in the repo — its own
-  declaration, never read. The one live cron/LaunchAgent this pack found for this pipeline — Pro's
-  `com.balizero.crm-guardian-cli-worker` (StartInterval 300s, confirmed running, most recent tick
-  2026-09-27T10:09Z) — invokes the same worker with no `--prompt-file` override, so it also runs on
-  the v5 default, never v3/v4. Rewritten below: the priority is PII in clear on a public repo, not
-  active egress.
+  in this worktree. Text-only cures in that pack, carried forward:
+  K1/H2 (blocking, false live-egress claim) — the legacy prompt templates were described as a
+  "live few-shot example", with the extraction schema's version-label default made to sound like it
+  defaulted "every PRODUCTION extraction call TODAY" to them, i.e. "ACTIVE cloud-LLM egress".
+  Re-measured at this head: that default is an unread metadata string, no file under the
+  crm_guardian service reads the prompts directory, the CLI worker's own current default is a later
+  template, and a symbol naming the oldest legacy template has exactly 1 occurrence in the repo —
+  its own declaration, never read. The one live cron/LaunchAgent this pack found for this pipeline —
+  on Pro (StartInterval 300s, confirmed running) — invokes the same worker with no override, so it
+  also runs on the current default, never the two legacy templates. The priority is PII in clear on
+  a public repo, not active egress.
   K2 (blocking, false/undercounted claims) — corrected: 11 pre-existing files carry 1+ of the 7
-  names, not 9; the docstring's names occur twice in v3/v4 (not "one of the names"); test fixtures
-  carry 13+4 occurrences plus 1 in a fixture file this pack had not previously counted (not "9+2");
-  and two false sentences ("no other file references these names", "ids alone are not
-  client-identifying") are deleted below.
+  names, not 9; test fixtures carry 13+4 occurrences plus 1 in a fixture file this pack had not
+  previously counted (not "9+2"); and two false sentences ("no other file references these names",
+  "ids alone are not client-identifying") are deleted below.
   K3/H1 (blocking, memory-18721 trap) — the pilot's ids stay re-linkable: 5 of the 6 redacted
-  client_ids sit within ~300 characters of the same real full name elsewhere in the tracked tree.
+  client_ids sit within roughly 300 characters of the same real full name elsewhere in the tracked tree.
   This pack states that honestly and removes every file path for those residuals from the
   disclosure (categories and counts only, same discipline G3 already applied to the wa_corpus
   sweep) rather than naming them — naming them would itself be the re-identification hint.
@@ -31,7 +67,7 @@ task: >-
   Nits: n1 — G4's real `GROUND_TRUTH` copy IS already in Pro quarantine (re-verified this pack:
   `~/.agent/pii-quarantine/wa_corpus_ground_truth_local.py`, `-rw-------`, sha256
   1dfc87fe9753a0bc…), not "not yet in Pro quarantine" as v7 said. n3 — the deleted doc's client-name
-  count is stated as ~30-36 (detector-dependent) rather than a single fixed 36. H1 and H2 (raised by
+  count is stated as being in the 30-36 range (detector-dependent) rather than a single fixed 36. H1 and H2 (raised by
   the fresh gate on #7472/#7474 but never logged as `dissent:` entries in v6/v7) are recorded below
   alongside G2/G3.
   v7, supersedes #7474 (v6 of this lane). Fresh gate on #7472 (findings carried into #7474 — the
@@ -66,7 +102,7 @@ task: >-
   residual inside `scripts/crm_guardian_phase15_pilot.py` after the cure, but a PRE-EXISTING
   exposure across 11 other tracked files that this pack does NOT fix (out of scope for this lane,
   see `out_of_scope`/`unresolved` below) — the highest-priority item there is a pair of legacy,
-  superseded prompt-template files that still carry one of the names in clear on this PUBLIC repo;
+  superseded prompt-template files that still carry 2 of the names in clear on this PUBLIC repo;
   it is NOT a live cloud-LLM egress (re-measured this pack: the live worker's default prompt is a
   later version, and no cron/LaunchAgent/process on M5/Pro/Mini reads those two files — see K1
   above).
@@ -125,7 +161,7 @@ task: >-
   (3) pack.yml's `seat_override` in #7453 understated net churn (1871 vs the CI-measured 1963,
   missing pack.yml's own 92 lines) — this pack's churn is computed on the FINAL commit, after every
   file (including this brief and pack) is staged, not before.
-lane: research/pii-deep-audit-0424-v8
+lane: research/pii-deep-audit-0424-v9
 machine: m5
 date: 2026-09-27
 
@@ -133,11 +169,12 @@ gear: 3
 gear_reason: >-
   Deterministic floor 3, source size, computed on the FINAL commit (all 18 changed paths, including
   this brief and pack): `evidence_pack_lint._size_term_net_lines` on the `git diff --numstat` of the
-  merge-base to this exact commit = 2840 (728 insertions + 2112 deletions across 18 files, 3 of them
+  merge-base to this exact commit = 2880 (768 insertions + 2112 deletions across 18 files, 3 of them
   binary xlsx contributing 0 line-counted churn) — above SIZE_GEAR3_THRESHOLD (1828), same order of
-  magnitude as #7481's own 2731, #7474's own 2463, #7472's own 2349, #7468's own 2126, #7462's own
-  2086 and #7453's own 1963 (all smaller evidence packs; this pack's own evidence text grew by 109
-  net lines over v7's to carry the K1-K4/H1-H2 cures). `--print-floor`/`--print-floor-source` on
+  magnitude as #7491's own 2840, #7481's own 2731, #7474's own 2463, #7472's own 2349, #7468's own
+  2126, #7462's own 2086 and #7453's own 1963 (all smaller evidence packs; this pack's own evidence
+  text grew by 39 net lines over v8's to carry the K2/K3 cures required by S6). `--print-floor`/
+  `--print-floor-source` on
   this numstat/changed-files pair independently return 3/size. No hot-zone path (research/,
   scripts/wa_corpus/, tests/wa_corpus/, scripts/crm_guardian_phase15_pilot.py,
   docs/archive/2026-07-orphans/ + .gitignore only).
@@ -148,8 +185,8 @@ appetite:
 
 acceptance:
   A1: >-
-    None of the seven files (3 jsonl + 3 xlsx + 1 wa-copilot jsonl) is tracked on origin/main after
-    merge.
+    0 of the seven files (3 jsonl + 3 xlsx + 1 wa-copilot jsonl) remains tracked on origin/main
+    after merge.
     probe: >-
       git ls-tree -r --name-only origin/main research/compliance | grep -c -E '\.xlsx$|deep_audit_2026-04-24'; git ls-tree -r --name-only origin/main research/wa-copilot | grep -c eval-set
   A2: >-
@@ -193,43 +230,45 @@ out_of_scope: >-
   company names found dictionary/stoplist noise plus a small number of unrelated coincidental
   collisions. Naming WHICH files collide is deliberately omitted here — combined with the md's own
   [CLIENT-A..D]-to-`client_id` pairing, a collision location is itself a re-identification hint
-  (memory-18721 trap), not a neutral disclosure. One of the prior collision candidates was, on
+  (memory-18721 trap), not a neutral disclosure. A single prior collision candidate was, on
   closer measurement, not a coincidence at all: it shared 2 of 3 tokens of a real client's name
   plus that client's company — that source has been REMOVED from the tree this pack (quarantined
   on Pro, 0700/0600, `git hash-object` verified against the pre-deletion blob), not merely
   disclosed, closing the link entirely rather than describing it.
 
-  DISCLOSED, NOT FIXED, CATEGORIES AND COUNTS ONLY, NO FILE:LINE (carried from v6/v7, cured this
-  pack per the fresh gate's K3/H1 finding on #7481 — the same memory-18721 discipline this brief
-  already applies to the wa_corpus residual sweep above, now applied to this list too; severity
-  HIGH; a dedicated follow-up lane is planned but not yet a PR number at authoring time): the same
-  6 client_ids/7 names redacted from the pilot docstring remain in clear, PROD-matched, across 11
-  other pre-existing files this lane was not asked to touch and does NOT fix here (not 9 — v7's
-  count missed a test-fixture file; re-measured by the fresh gate on this byte-identical content,
-  this pack does not re-derive the exact per-category split itself to avoid reproducing the name
-  tokens as search terms). Naming WHICH files is deliberately omitted — a file path here, combined
-  with the ids already visible in the pilot's own docstring history, is itself a re-identification
-  hint. By risk class, not by path:
-  (a) a pair of legacy, superseded prompt-template files carries one of the names as a stale
-  few-shot example. This is NOT a live cloud-LLM egress: re-measured at this head, the worker's
-  live default is a later prompt version (`LEGACY_V3_PROMPT_FILE` has 1 occurrence in the repo —
-  its own declaration, never read), and the one live cron/LaunchAgent this pack found for this
-  pipeline runs on that same later default, not on these two files. The priority is PII in clear
-  on a public repo, not active egress — changing a live prompt's example still needs its own
-  validated PR, not a point-redaction bundled here.
-  (b) one one-off data-fix script (tracked since 2026-04-08) hardcodes a 13-entry
-  director/commissioner dataset with full names, nationalities, emails, phones AND PASSPORT
-  NUMBERS in cleartext Python source — the most severe exposure class in this whole chain, and
-  one-off/idempotency-key in nature (verified but not touched: the names may be load-bearing lookup
-  keys for the script's own logic; redacting without checking every call site risks silently
-  breaking the fix).
+  DISCLOSED, NOT FIXED, CATEGORIES AND COUNTS ONLY, NO FILE:LINE, NO ID-TO-COUNT PAIRING (carried
+  from v6/v7/v8, cured further this pack per gate-7491.md's K2/K3 finding on #7491 — the same
+  memory-18721 discipline this brief already applies to the wa_corpus residual sweep above, now
+  applied to this list too, and per S6 (docs/specs/2026-09-27-evidence-pack-fixed-point.md); severity
+  HIGH; a dedicated follow-up lane is planned but not yet a PR number at authoring time): 5 of the 6
+  client_ids redacted from the pilot docstring (5 of the 7 names) remain in clear, PROD-matched,
+  across 11 other pre-existing files this lane was not asked to touch and does NOT fix here (not 9
+  — v7's count missed a test-fixture file; re-measured by the fresh gate on this byte-identical
+  content); the sixth id's two names have 0 matches anywhere in the tracked tree. This pack does not
+  re-derive the exact per-category split itself to avoid reproducing the name tokens as search
+  terms. Naming WHICH files is deliberately omitted — a file path here, combined with the ids
+  already visible in the pilot's own docstring history, is itself a re-identification hint, and so
+  is pairing a count with a specific name or id. By risk class, not by path, and with no id or count
+  attached to any single file:
+  (a) a pair of legacy, superseded prompt templates each carry 2 of the names as a stale few-shot
+  example, 3 occurrences per template. This is NOT a live cloud-LLM egress: re-measured at this
+  head, the CLI worker's own current default is a later template (a symbol naming the oldest legacy
+  template has exactly 1 occurrence in the repo — its own declaration, never read), and the one live
+  cron/LaunchAgent this pack found for this pipeline runs on that same current default, not on the
+  two legacy templates. The priority is PII in clear on a public repo, not active egress — changing
+  a live prompt's example still needs its own validated PR, not a point-redaction bundled here.
+  (b) one one-off data-fix script hardcodes a 13-entry director/commissioner dataset with full
+  names, nationalities, emails, phones AND PASSPORT NUMBERS in cleartext Python source — the most
+  severe exposure class in this whole chain, and one-off/idempotency-key in nature (verified but not
+  touched: the names may be load-bearing lookup keys for the script's own logic; redacting without
+  checking every call site risks silently breaking the fix).
   (c) two historical audit/scar documents record the same real names/ids as institutional memory —
   this repo's own convention treats scars as permanent record, so redacting them is a policy
   question, not a mechanical one.
-  (d) the remaining files are 2 code-comment files and at least 3 test-fixture files (13+4
-  occurrences, plus 1 more in a fixture file v7's count omitted) — lower severity (test-only/
-  comment-only) but the same real-name-in-clear class.
-  None of these 11 files is touched by this PR. The `SELECT id, full_name FROM clients WHERE id IN
+  (d) the remaining 6 files split between 3 code/config/migration references and 3 test-fixture
+  files (13+4+1 occurrences across those three) — lower severity (test-only/comment-only/config)
+  but the same real-name-in-clear class. (a)+(b)+(c)+(d) = 2+1+2+6 = 11.
+  0 of these 11 files is touched by this PR. The `SELECT id, full_name FROM clients WHERE id IN
   (...)` PROD check (6/6 exact matches) verified the pilot docstring's own names before its cure;
   it was not re-run against the residual files themselves here — that belongs to the G5 lane.
 

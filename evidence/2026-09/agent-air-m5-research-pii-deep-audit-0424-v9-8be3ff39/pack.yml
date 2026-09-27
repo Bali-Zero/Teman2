@@ -65,7 +65,7 @@ diff:
     case-annotation comments unchanged. The script needed no untracked-local-file relocation,
     unlike query_lab.py — but the ids are NOT safely de-identifying on their own: 11 other
     pre-existing files (not previously counted correctly, see receipts/out_of_scope) still carry
-    1+ of these names in clear, and 5 of the 6 ids sit within ~300 characters of the same real
+    1+ of these names in clear, and 5 of the 6 ids sit within roughly 300 characters of the same real
     full name elsewhere in the tracked tree.
 
     NEW this pack (G2/G3 cure): replaces `tests/wa_corpus/test_doc_title.py`'s sanitization-test
@@ -76,7 +76,7 @@ diff:
     [CLIENT-A..D]-to-`client_id` pairing, was itself a re-identification key) — the disclosure is
     now counts-only. DELETES the one source that made this concrete:
     `docs/archive/2026-07-orphans/superpowers/specs/2026-04-01-gemini-profil-perseroan-prompts.md`
-    (an archived spec with ~30-36 real client names, detector-dependent — #7472's gate counted 36,
+    (an archived spec with real client names in the 30-36 range, detector-dependent — #7472's gate counted 36,
     a stricter detector run for this pack counts 30 raw/25 unique, same order of magnitude —
     unrelated to wa_corpus, quarantined on Pro first —
     0700/0600, `git hash-object` verified against the pre-deletion blob `b94e450357...`).
@@ -206,13 +206,13 @@ receipts:
     seat: claude-sonnet-5
   - claim: "a whole-tree sweep for the same 7 names finds the docstring's own occurrences cured, but a large pre-existing exposure elsewhere the pack discloses and does not fix (see out_of_scope)"
     cmd: "git grep -n -F <each of the 7 names> -- ."
-    result: "scripts/crm_guardian_phase15_pilot.py: 0. 11 other pre-existing files carry 1+ of the names (not 9 — v7's count missed a test-fixture file, re-measured by the fresh gate on this byte-identical content): a pair of legacy, superseded prompt templates (NOT the PRODUCTION default — schemas.py:392 is an unread metadata string, the live worker defaults to a later prompt version, and LEGACY_V3_PROMPT_FILE has 1 occurrence total, its own never-read declaration), 1 one-off data-fix script with passport numbers, 2 historical scar/plan docs, 2 code-comment files, and at least 3 test-fixture files (13+4 occurrences plus 1 more not previously counted) — none touched by this PR, none named here (memory-18721 trap, same discipline as the wa_corpus sweep above)"
+    result: "scripts/crm_guardian_phase15_pilot.py: 0. 11 other pre-existing files carry 1+ of the names (not 9 — v7's count missed a test-fixture file, re-measured by the fresh gate on this byte-identical content): a pair of legacy, superseded prompt templates (NOT the PRODUCTION default — the extraction schema's version-label default is an unread metadata string, the CLI worker's own current default is a later prompt version, and a symbol naming the oldest legacy template has 1 occurrence total, its own never-read declaration), 1 one-off data-fix script with passport numbers, 2 historical scar/plan docs, and 6 remaining files split between code/config/migration references and test-fixture files (13+4+1 occurrences) — none touched by this PR, none named here (memory-18721 trap, same discipline as the wa_corpus sweep above)"
     exit: 0
     ts: "2026-09-27T08:10:00Z"
     seat: claude-sonnet-5
-  - claim: "K1/H2 re-measurement: the legacy L1_extraction_v3/v4 prompt files are not loaded by any live worker, cron, LaunchAgent or process on M5/Pro/Mini"
-    cmd: 'grep -rn "DEFAULT_PROMPT_FILE\|LEGACY_V3_PROMPT_FILE" --include="*.py" .; grep -n "prompt_version\|prompts/" apps/backend-rag/backend/services/crm_guardian/schemas.py; crontab -l | grep -ic "worker\|crm_guardian\|L1_extraction" (M5); ssh pro "crontab -l | grep -ic ...; ls ~/Library/LaunchAgents | grep -i worker; launchctl print gui/$(id -u)/com.balizero.crm-guardian-cli-worker; tail -3 ~/logs/crm-guardian-cli-worker.log; grep -n prompt-file /Users/nuzantara/scripts/crm-guardian-cli-worker.sh"; ssh mini "crontab -l ...; ls ~/Library/LaunchAgents | grep -i worker"'
-    result: "schemas.py:392 is a bare metadata string default, not a file load. crm_guardian_gemini_cli_worker.py: DEFAULT_PROMPT_FILE=L1_extraction_v5.md, LEGACY_V3_PROMPT_FILE has 1 occurrence total (its own declaration). M5: 0 crontab/LaunchAgent matches. Mini: 0 crontab matches, 1 LaunchAgent match (com.nuzantara.local-livekit-worker, unrelated — 0 crm_guardian/L1_extraction hits inside it). Pro: 0 crontab matches, but com.balizero.crm-guardian-cli-worker.plist EXISTS and IS loaded (launchctl print: state=running, StartInterval=300s, last tick 2026-09-27T10:09:43+08:00 'no pending clients'); its wrapper script's WORKER_FLAGS carry no --prompt-file override, so it runs on the worker's own default (v5), never v3/v4. Net: one live worker process does exist on Pro, but it never reads the legacy v3/v4 files — the K1 correction is about which prompt is live, not whether any automation is live at all."
+  - claim: "K1/H2 re-measurement: the legacy prompt templates are not loaded by the CLI worker, nor by any cron, LaunchAgent or process on M5/Pro/Mini"
+    cmd: "grep the extraction service's schema module and the CLI worker's source for their prompt-version default and any symbol naming the legacy templates; check crontab and LaunchAgents on M5, Pro and Mini for anything matching this pipeline's worker; on Pro, inspect the worker's LaunchAgent state, its most recent log tick and its wrapper's invocation flags"
+    result: "the schema's version-label default is a bare metadata string, not a file load. The CLI worker's own default template is a later version than the two legacy templates; a symbol naming the oldest legacy template has 1 occurrence total (its own declaration). M5: 0 crontab/LaunchAgent matches. Mini: 0 crontab matches, 1 LaunchAgent match for an unrelated worker (0 hits for this pipeline inside it). Pro: 0 crontab matches, but this pipeline's CLI-worker LaunchAgent EXISTS and IS loaded (state=running, StartInterval=300s, last tick 2026-09-27T10:09:43+08:00, 'no pending clients'); its wrapper's flags carry no override, so it runs on the worker's own current default, never the two legacy templates. Net: one live worker process does exist on Pro, but it never reads the two legacy templates — the K1 correction is about which prompt is live, not whether any automation is live at all."
     exit: 0
     ts: "2026-09-27T09:15:00Z"
     seat: claude-sonnet-5
@@ -311,21 +311,21 @@ dissent:
   - seat: "opus-5-5-gate (fresh session, M5, PR #7472/#7474 independent Gear-3 gate)"
     objection: >-
       H2 (blocking; marked blocking in gate-7474.md but never forwarded to the builder or logged
-      here in v6/v7 — surfaced only by the fresh gate on #7481, K1): the evidence claimed
-      `L1_extraction_v3.md` was a "live few-shot example" and that `schemas.py:392` defaulted
-      "every PRODUCTION extraction call TODAY" to it, i.e. "ACTIVE cloud-LLM egress" of a real
-      client's full name. Measured false: `schemas.py:392` is an unread metadata string default,
-      the live worker's `DEFAULT_PROMPT_FILE` is `L1_extraction_v5.md`, `LEGACY_V3_PROMPT_FILE` has
-      1 occurrence (its own declaration, never read), and the one live worker LaunchAgent found
-      (Pro, `com.balizero.crm-guardian-cli-worker`) runs on that same v5 default. Cured in this
-      pack: every "live"/"ACTIVE egress" claim rewritten — the priority is PII in clear on a public
-      repo, not active egress.
+      here in v6/v7 — surfaced only by the fresh gate on #7481, K1): the evidence claimed a single
+      legacy prompt template was a "live few-shot example" and that the extraction schema's
+      version-label default made it load on "every PRODUCTION extraction call TODAY", i.e. "ACTIVE
+      cloud-LLM egress" of a real client's full name. Measured false: that default is an unread
+      metadata string, the CLI worker's own current default is a later template, a symbol naming
+      the oldest legacy template has 1 occurrence (its own declaration, never read), and the one
+      live worker LaunchAgent found (on Pro) runs on that same current default. Cured in this pack:
+      every "live"/"ACTIVE egress" claim rewritten — the priority is PII in clear on a public repo,
+      not active egress.
     status: CONFIRMED
   - seat: "opus-5-5-gate (fresh session, M5, PR #7472/#7474 independent Gear-3 gate)"
     objection: >-
       H1 (blocking; marked blocking in gate-7474.md but never forwarded to the builder or logged
       here in v6/v7 — surfaced only by the fresh gate on #7481, K3): the pilot's 6 client_ids/7
-      names were disclosed as PROD-verified, but 5 of the 6 ids sit within ~300 characters of the
+      names were disclosed as PROD-verified, but 5 of the 6 ids sit within roughly 300 characters of the
       same real full name in other tracked files, so the ids stay re-identifiable — and the
       evidence's own file:line disclosure for that residual list repeated the exact
       memory-18721 hint pattern G3 had just closed for the wa_corpus sweep, just applied to a
@@ -336,9 +336,10 @@ dissent:
   - seat: "opus-5-5-gate (fresh session, M5, PR #7481 independent Gear-3 gate)"
     objection: >-
       K2 (blocking, check 7c): five false/undercounted claims in v7's evidence — "9 other
-      pre-existing files" (actually 11), "one of the names" in v3/v4 (actually 2: id 70 x1, id 83
-      x2), "test fixtures, 9+2 occurrences" (actually 13+4, plus 1 in a file not listed), "2 live
-      prompt templates" (actually legacy/unloaded), and two flatly false sentences ("no other file
+      pre-existing files" (actually 11), the single-name claim for the legacy prompt templates
+      (actually 2 names, 3 occurrences per template), "test fixtures, 9+2 occurrences" (actually
+      13+4, plus 1 in a file not listed), "2 live prompt templates" (actually legacy/unloaded), and
+      two flatly false sentences ("no other file
       references these names", "ids alone are not client-identifying without CRM access").
     status: CONFIRMED
   - seat: "opus-5-5-gate (fresh session, M5, PR #7481 independent Gear-3 gate)"
@@ -366,7 +367,7 @@ unresolved: >-
   SEPARATE LANE IN FLIGHT (per the lead, not yet a PR number at authoring time): the 7 phase15
   names remain in clear across 11 pre-existing files, not 9 (see out_of_scope for the categorical
   breakdown, no file:line) — most urgently a pair of legacy, superseded prompt-template files
-  that still carry one of these names in clear on this PUBLIC repo (NOT a live cloud-LLM egress:
+  that still carry 2 of these names in clear on this PUBLIC repo (NOT a live cloud-LLM egress:
   re-measured this pack, the live worker's default prompt is a later version and no cron/
   LaunchAgent/process on M5/Pro/Mini reads those two files — see K1/H2), and a one-off data-fix
   script that hardcodes full names, nationalities, emails, phones AND PASSPORT NUMBERS for a
