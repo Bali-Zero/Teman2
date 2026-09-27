@@ -52,8 +52,8 @@ def redactor_with_names() -> Redactor:
     """Redactor with simulated CRM names for pass4 test."""
     config = load_config()
     return Redactor(config=config, runtime_names={
-        "__DYNAMIC_CRM_CLIENT_NAMES__": ["Sofia Mueller", "Andrey Pozdnyakov"],
-        "__DYNAMIC_CRM_COMPANY_NAMES__": ["PT Milkup", "CV Acme"],
+        "__DYNAMIC_CRM_CLIENT_NAMES__": ["Client Beta", "Partner Two"],
+        "__DYNAMIC_CRM_COMPANY_NAMES__": ["PT Sample Retail", "CV Acme"],
     })
 
 
@@ -275,25 +275,25 @@ def test_bank_account_with_label_preserves(redactor_no_dynamic):
 
 
 def test_dynamic_client_name_redacted(redactor_with_names):
-    text = "Client Sofia Mueller signed yesterday. " + "x" * 100
+    text = "Client Client Beta signed yesterday. " + "x" * 100
     out = redactor_with_names.redact(text)
-    assert "Sofia Mueller" not in out
+    assert "Client Beta" not in out
     assert "[CLIENT-NAME-REDACTED]" in out
 
 
 def test_dynamic_company_name_redacted(redactor_with_names):
-    text = "Company PT Milkup registered with BKPM. " + "x" * 100
+    text = "Company PT Sample Retail registered with BKPM. " + "x" * 100
     out = redactor_with_names.redact(text)
-    assert "PT Milkup" not in out
+    assert "PT Sample Retail" not in out
     assert "[COMPANY-NAME-REDACTED]" in out
 
 
 def test_no_dynamic_names_no_op(redactor_no_dynamic):
     """When PG returns empty, pass4 is no-op (logs warning, doesn't fail)."""
-    text = "Random name Sofia Mueller without PG data. " + "x" * 100
+    text = "Random name Client Beta without PG data. " + "x" * 100
     out = redactor_no_dynamic.redact(text)
-    # Without dynamic names loaded, "Sofia Mueller" is NOT redacted
-    assert "Sofia Mueller" in out
+    # Without dynamic names loaded, "Client Beta" is NOT redacted
+    assert "Client Beta" in out
 
 
 # ─── Symbiosis Law 2 + internal patterns ─────────────────────────────
@@ -399,27 +399,27 @@ def test_p2_bug2_lowercase_crm_name_redacted(redactor_with_names):
     bypassed pass4 and leaked to the cloud. Fix = re.IGNORECASE on the
     dynamic alternation.
     """
-    # "Sofia Mueller" is in the fixture's CRM names — feed it lowercase.
+    # "Client Beta" is in the fixture's CRM names — feed it lowercase.
     text = (
         "Padding to keep the gate happy with enough surviving content here. "
         + "z" * 150
-        + " the client sofia mueller asked about her visa extension today please."
+        + " the client client beta asked about her visa extension today please."
     )
     out = redactor_with_names.redact(text)
-    assert "sofia mueller" not in out.lower(), (
+    assert "client beta" not in out.lower(), (
         "lowercase CRM name leaked — re.IGNORECASE regression (P2 BUG #2)"
     )
 
 
 def test_p2_bug2_mixed_case_crm_name_redacted(redactor_with_names):
-    """Mixed/odd casing ('SoFiA MuElLeR') must also be caught."""
+    """Mixed/odd casing ('CliEnT BetA') must also be caught."""
     text = (
         "Padding content to satisfy min_remaining_chars gate comfortably here. "
         + "w" * 150
-        + " note: SoFiA MuElLeR is the registered client for this matter."
+        + " note: CliEnT BetA is the registered client for this matter."
     )
     out = redactor_with_names.redact(text)
-    assert "mueller" not in out.lower(), "mixed-case CRM name leaked (P2 BUG #2)"
+    assert "beta" not in out.lower(), "mixed-case CRM name leaked (P2 BUG #2)"
 
 
 def test_p2_bug1_pg_unset_degrades_no_raise(monkeypatch):
@@ -487,9 +487,9 @@ def test_load_default_queries_companies_company_name_column(monkeypatch):
         query = cmd[-1]
         captured_queries.append(query)
         if "clients" in query:
-            stdout = "Sofia Mueller\nAndrey Pozdnyakov\n"
+            stdout = "Client Beta\nPartner Two\n"
         else:
-            stdout = "PT Milkup\nCV Acme\n"
+            stdout = "PT Sample Retail\nCV Acme\n"
         return subprocess.CompletedProcess(cmd, returncode=0, stdout=stdout, stderr="")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -504,8 +504,8 @@ def test_load_default_queries_companies_company_name_column(monkeypatch):
     assert "SELECT name FROM companies" not in company_query, (
         "regression: companies.name does not exist on PROD"
     )
-    assert redactor.runtime_names["__DYNAMIC_CRM_COMPANY_NAMES__"] == ["PT Milkup", "CV Acme"]
+    assert redactor.runtime_names["__DYNAMIC_CRM_COMPANY_NAMES__"] == ["PT Sample Retail", "CV Acme"]
     assert redactor.runtime_names["__DYNAMIC_CRM_CLIENT_NAMES__"] == [
-        "Sofia Mueller",
-        "Andrey Pozdnyakov",
+        "Client Beta",
+        "Partner Two",
     ]

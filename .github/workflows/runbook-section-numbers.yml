@@ -29,20 +29,34 @@ name: runbook section numbers are unique
 # carried by a row in .claude/skills/modus/PENDING-ARMS.md, which is what
 # scripts/pending_arms_report.py alarms on after 48h.
 #
-# WHY NO `paths:` FILTER, even though it only reads docs/runbooks/**: this
-# context is intended to become REQUIRED, and
-# scripts/ci/check_required_workflow_conformance.py already encodes the trap —
-# a required context whose workflow carries a top-level pull_request.paths:
-# filter never starts a run on an innocent PR, so GitHub shows it
-# "Expected — waiting" forever and the PR can never merge. That is exactly what
-# docs-sync.yml and migration-lint.yml shipped. The same rule is why
-# `merge_group:` is present. The job is a five-second pytest, so running it on
-# every PR is cheaper than the class of outage a paths filter would buy.
+# WHY `pull_request` CARRIES A `paths:` FILTER NOW (2026-09-27), even though this context
+# was written to become REQUIRED: the Actions queue is saturated by light lints that
+# started on every PR push, and this one only reads docs/runbooks/*.md (plus its own
+# test, the workflow and the conftest chain pytest loads). It is not required today.
+# scripts/ci/check_required_workflow_conformance.py still encodes the trap for the day
+# it is promoted — a required context whose workflow carries a top-level
+# pull_request.paths: filter never starts a run on an innocent PR, so GitHub shows it
+# "Expected — waiting" forever and the PR can never merge (exactly what docs-sync.yml
+# and migration-lint.yml shipped) — so promotion means an unfiltered `pull_request`
+# plus `merge_group:` again. `merge_group:` is absent here because
+# scripts/ci/lint_trigger_symmetry.py forbids it beside `pull_request.paths`.
 
 on:
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (the test reads docs/runbooks/*.md and nothing else). No merge_group:
+  # scripts/ci/lint_trigger_symmetry.py forbids it beside pull_request.paths. A required
+  # context needs pull_request unfiltered again (check_required_workflow_conformance.py).
   pull_request:
+    paths:
+      - "docs/runbooks/*.md"
+      - "scripts/tests/test_runbook_section_numbers_are_unique.py"
+      - ".github/workflows/runbook-section-numbers.yml"
+      # pytest loads these implicitly for scripts/tests/ (its conftest and package marker).
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: runbook-section-numbers-${{ github.ref }}

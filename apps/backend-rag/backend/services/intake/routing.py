@@ -229,9 +229,9 @@ PHONE_NAME_AGREE_BOOST = 0.05
 # Such a candidate must NOT be presented as a confident one-click LINK_CANDIDATE.
 #
 # Calibration (live proposals, 2026-06-17):
-#   * 12927 Gennaro Piraino  — phone 0.90, fuzzy name sim 0.6154, SAME client id
+#   * 12927 Client A  — phone 0.90, fuzzy name sim 0.6154, SAME client id
 #       (sender IS the subject, just OCR noise) → must stay LINK_CANDIDATE.
-#   * 12693 Yanti BS / 12682 Adi Bayu Santero / 16251 Andrea 23 Paradise —
+#   * 12693 Client B / 12682 Client C / 16251 Client D —
 #       phone 0.90 but the OCR subject name does NOT resolve to the phone client
 #       (no corroborating fuzzy candidate ≥ this floor) → flagged & downgraded.
 # The trigger is genuine name DISAGREEMENT (different person / no corroboration

@@ -45,6 +45,7 @@ from mata_garuda.runtime.cli_runtime import (
     classify_claude_retry,
     provider_cli_env,
 )
+from mata_garuda.tools.tg_tools import curl_send
 from mata_garuda.tools.knowledge_tools import kb_search, kb_store
 from mata_garuda.tools.stream_tools import stream_publish
 from mata_garuda.tools.tg_tools import send_tg_alert
@@ -282,7 +283,12 @@ TG_MAX_CHARS = 3800  # Telegram sendMessage hard limit 4096 — leave margin
 
 
 def _send_telegram(text: str, dry_run: bool = False) -> bool:
-    """Send text to Zero's TG. Chunks if > TG_MAX_CHARS. Returns overall ok."""
+    """Send text to Zero's TG. Chunks if > TG_MAX_CHARS. Returns overall ok.
+
+    Delegates the actual send to `mata_garuda.tools.tg_tools.curl_send`, which keeps
+    the token out of curl's argv (see that module's docstring for why —
+    2026-09-26 daily-briefing leak, 2026-09-27 reg-alert leak: same shape).
+    """
     if dry_run:
         logger.info(f"[DRY-RUN] would send TG ({len(text)} chars)")
         return True
@@ -293,22 +299,10 @@ def _send_telegram(text: str, dry_run: bool = False) -> bool:
         return False
     ok_all = True
     for chunk in chunks:
-        try:
-            result = subprocess.run(
-                [
-                    "curl", "-s",
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    "-d", f"chat_id={TG_ZERO_CHAT_ID}",
-                    "--data-urlencode", f"text={chunk}",
-                ],
-                capture_output=True, text=True, timeout=15,
-            )
-            if '"ok":true' not in (result.stdout or ""):
-                ok_all = False
-                logger.error(f"[daily_briefing] TG send failed: {result.stdout[:200]}")
-        except Exception as e:
-            logger.error(f"[daily_briefing] TG send exception: {e}")
+        ok, reason = curl_send(token, TG_ZERO_CHAT_ID, chunk)
+        if not ok:
             ok_all = False
+            logger.error(f"[daily_briefing] TG send failed: {reason}")
     return ok_all
 
 

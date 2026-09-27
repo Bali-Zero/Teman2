@@ -1,0 +1,109 @@
+gear: 3
+task_id: lkpm-oneoffs-removal-0927
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/lkpm-oneoffs-removal-0927
+gate_class: none
+l_level: L2
+objective: >-
+  Remove three dead LKPM one-off scripts from the PUBLIC apps/backend-rag/ tree that hardcode
+  real company data: apps/backend-rag/extract_company_data.py (a 76-row company roster —
+  company_id/name/Drive-folder-id — plus a Google service-account identity block: project_id,
+  client_email and a numeric client_id; at the removed file's own content, the private key is a
+  Name read from env, not a literal — but a real PEM private key for this SAME service account
+  WAS committed to this public repo's history, see the correction below), apps/backend-rag/
+  scripts/fix_lkpm_q1_2026_client_ids.py (DB-driven client-id
+  repair, no roster — only a single hardcoded numeric id in a `KNOWN_FAKE_FOUNDER_IDS`
+  frozenset), and apps/backend-rag/scripts/import_lkpm_q1_2026_receipts.py (a 17-entry
+  company-name-to-{company_id,email} PT_MAP, a 1-entry client-name-fix tuple, and 42 hardcoded
+  receipt rows each carrying a company name, a Drive folder id, a physical address and tax
+  identifiers). A sibling lane found these four files together; this PR owns the three above.
+  apps/backend-rag/scripts/import_lkpm_q1_2026.py is owned by PR #7484 (OSS-credentials lane,
+  a DIFFERENT incident shape — a username/password table, not a company roster) and is not
+  touched here. apps/backend-rag/process_batches_2_3.py and
+  apps/backend-rag/scripts/fix_lkpm_orphans_batch1.py are owned by a third, separate lane
+  (pii-residuals-g5) and are not touched here either.
+  Ground: `git grep -n <basename>` confirmed all three files' only references outside their
+  own docstrings/tests are the ones this PR also fixes (a stale ruff exception in
+  apps/backend-rag/pyproject.toml naming extract_company_data.py, and two literal string
+  references to the deleted test's filename in scripts/backend_stability_gate.py's roster and
+  its own parity test) — no import from apps/backend-rag/backend, no other caller. Checked for
+  a live scheduler on both machines that could still be invoking them: `ssh -o BatchMode=yes -o
+  ConnectTimeout=10 nuzantara@Nuzantara.local` (Pro, LAN — Tailscale is down for this host right
+  now) and `ssh ... nuzantara@100.93.236.6` (Mini, Tailscale) each grepped
+  `~/Library/LaunchAgents` and `crontab -l` for all three basenames — zero hits on either
+  machine. Last CONTENT-touching commit per file (lint/path-sweep commits excluded by hand —
+  ffe82c66b7/fe1e0ce246 for fix_lkpm_q1_2026_client_ids.py are the actual content commits,
+  e0878323b2 was only a repo-wide `l` rename; b005f85998 for extract_company_data.py was only
+  the repo-wide ~/Desktop path sweep, so its last real content commit is f0fa54ab42): receipts
+  script 2026-04-15, client-id-fix script 2026-04-08, extract_company_data.py 2026-04-06.
+  Quarantine: all three originals copied via `git show HEAD:<path> | ssh ... "cat >
+  ~/.agent/pii-quarantine/<basename>.orig && chmod 0600 ..."` on Pro (dir already 0700 from a
+  prior lane's use, verified with `stat -f '%Lp'`); `shasum -a 256` run on both the local
+  extraction (`git show HEAD:<path>`) and the remote copy for each file — all three sha256[:16]
+  prefixes matched (58a56e1eec0e5576 / 25646c2c07a4119a / 05a32b3ee7b6074c). Only counts and
+  hashes appear anywhere in this brief/pack — no company name, person name, Drive id or SA
+  field value is transcribed.
+  REWORK ROUND (fresh gate, gate-7512.md, REWORK-BUILD — 3 blockers, 5 non-blocking):
+  B1 — this PR had also modified scripts/consumer_map.py + its test to push a thorough evidence
+  pack past the repo's push-gate consumer-map check. Out of mandate (one PR, one concern) and
+  the `evidence/` exclusion under-matched (evidence/ holds 12 tracked *.py, not zero, so a real
+  Call-argument consumer under that tree would have been silently hidden). Both files reverted
+  to origin/main byte-for-byte; this PR now pushes with the documented one-shot
+  `PREPUSH_SKIP_CONSUMER_MAP=1`, after running the classifier and recording, per hit, that every
+  one of the 32 LIVE rows is this PR's own evidence-pack prose (30 rows) or pre-existing history
+  unrelated to this PR's new content (a migration `--` comment, a synthetic path-classifier test
+  fixture) — see the PR body's accounting table. The consumer-map gap itself is a separate,
+  unstarted follow-up, narrowed to evidence/**/brief.yml+pack.yml with a named CI workflow step.
+  B2 — Task B's guard (`scripts/tests/test_no_inline_credential_tables.py`, an earlier attempt
+  at the roster/SA-identity detection shape PR #7484 does NOT cover) was never armed: no
+  workflow names it, `scripts/tests/` runs with continue-on-error in CI, and it carried no
+  tree-sweep, so its half of the `Bites:` line observed nothing. Dropped from this PR entirely;
+  it becomes its own follow-up PR (sweep + an explicit, named 3-entry allowlist + a named CI
+  workflow step), tracked separately rather than shipped un-armed.
+  B3' (URGENT, owner action) — round 1 said the SA private key "was always read from env, never
+  committed" (false). Round 2 said one key was added, removed and re-added — also wrong, because
+  it was measured by PEM-header counts, not by key identity. Re-measured by private_key_id/
+  key-body identity across the leak commits (git show <sha>:<path>, hashed, never printed): this
+  PR's SA had TWO SEPARATE private keys public in this repo's history — key id sha256[:16]
+  `9a53ecd0e72e1e8a`, public 2026-01-26 -> 2026-03-26 (59 days, in 3 scripts/ files, none of them
+  touched by this PR), and key id sha256[:16] `51ffead1acc88a97`, public 2026-03-29 ->
+  2026-04-06 (8 days, in apps/backend-rag/extract_company_data.py, the file this PR deletes).
+  Zero tracked files carry either at HEAD; history does not un-publish. Rotation status for both
+  is unknown — the owner must disable BOTH key ids (9a53ecd0e72e1e8a and 51ffead1acc88a97) in
+  GCP IAM and review the SA's access logs from 2026-01-26 onward. Separately: this repo's
+  history also holds private keys of 3 OTHER service accounts (hashed identity
+  11c4db367d63d024/dbcaab1b8ed071e7, 53037a9b9bdade66/1d56fc0c67dbdc73,
+  7ffcf6fcc86b4951/da10f37ed7ab281b), outside this PR's scope, handed to the owner alongside the
+  two above. See the pack's corrected disclosure.
+  Non-blocking, folded in: N1 the roster is 76 rows (AST-counted at merge-base), not 79; the
+  guard's own "~139 rows total" claim is moot since the guard is dropped (B2). N2 the floor
+  receipt's stale "8 files, +173/-1850" is corrected to the final measured diff. N3 (moot — the
+  consumer_map test-count claim no longer applies now that those files are reverted, B1). N4 the
+  disclosure's "no longer tracked" claim was wrong for the SA's client_email string, which
+  remains in 6 other tracked files (docs/research/evaluator) — corrected, not chased here. N5
+  (re-measured, gate N9): 22 of the 70 distinct company-name strings from the removed rosters
+  still appear at head, as 34 (string, file) pairs across 12 files; 21 of those pairs sit in
+  sibling-owned files (import_lkpm_q1_2026.py 16, fix_lkpm_orphans_batch1.py 3,
+  process_batches_2_3.py 2), the remaining 13 pairs in 9 other files. Pre-existing and outside
+  this PR's scope, acknowledged as input for a future residuals lane, not fixed in this PR.
+scope:
+  - >-
+    apps/backend-rag/extract_company_data.py, apps/backend-rag/scripts/
+    fix_lkpm_q1_2026_client_ids.py, apps/backend-rag/scripts/import_lkpm_q1_2026_receipts.py,
+    apps/backend-rag/backend/tests/unit/scripts/test_fix_lkpm_q1_2026_client_ids.py — deleted.
+  - >-
+    apps/backend-rag/scripts/backend_stability_gate.py — one line removed: the roster entry
+    naming the now-deleted test file. apps/backend-rag/backend/tests/db/
+    test_backend_stability_gate.py — the matching assertion removed (its own parity test for
+    the roster above).
+  - >-
+    apps/backend-rag/pyproject.toml — one line removed: the now-stale ruff per-file exception
+    for extract_company_data.py.
+  - >-
+    (Dropped this round, B2) scripts/tests/test_no_inline_credential_tables.py — removed from
+    this PR. Un-armed (no workflow named it, no tree sweep); becomes its own follow-up PR.
+  - >-
+    (Dropped this round, B1) scripts/consumer_map.py + scripts/tests/test_consumer_map.py —
+    reverted to origin/main byte-for-byte. This PR instead pushes with the documented one-shot
+    `PREPUSH_SKIP_CONSUMER_MAP=1`; see the PR body's per-hit accounting table.

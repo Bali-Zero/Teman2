@@ -318,7 +318,7 @@ def _apply_dynamic_rule(
     if not escaped:
         return text
     # Sort longest-first so multi-word names match BEFORE their substrings
-    # ("Sofia Mueller" before "Sofia").
+    # ("Budi Santoso" before "Budi").
     escaped.sort(key=len, reverse=True)
     pattern = r"\b(?:" + "|".join(escaped) + r")\b"
     # P2 §7.1 BUG #2 fix: case-insensitive. CRM names arrive title-cased from

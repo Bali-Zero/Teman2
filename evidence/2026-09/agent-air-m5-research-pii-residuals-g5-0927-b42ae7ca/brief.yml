@@ -1,0 +1,86 @@
+task_id: research-pii-residuals-g5-0927
+gear: 2
+dux: claude-opus-5-5
+implementer: claude-sonnet-5
+organ: >-
+  4 tracked files deleted for real PROD client full names outside the pilot
+  cohort (2 report files with 6 unique names, 1 one-off script with 21 unique
+  names + 1 phone, 1 one-off script with 1 client name + a 70-row PROD
+  company-name roster). Separately, 10 tracked files carry the 7 pilot
+  clients' full names or fragments: 9 edited (crm_guardian prompt templates
+  v3/v4, their scar-archive entry, their activation-plan table, their worker
+  docstring, 2 redactor test/impl files, a mail_loop test, and a second
+  mail_loop test found only by a transliteration-aware sweep after the first
+  gate round) + 1 deleted (the 9th pilot file, a one-off script). Two more
+  families carry OTHER real names, not the pilot cohort: an intake-routing
+  calibration comment + its phone test (document-subject names), and one
+  wa-dashboard-m1 file (CRM-operator-tag example names in SQL comments).
+mandate: >-
+  Close the G5 residual-PII families named by gate-7472's "Residual sweep"
+  and gate-7481's H1/K3 forward: real PROD client full names on the public
+  repo OUTSIDE the deep-audit lane's scope (research/compliance,
+  research/wa-copilot, scripts/wa_corpus, scripts/crm_guardian_phase15_pilot.py,
+  one archived spec — all owned by the sibling PR). Priority is PII in clear
+  on a public repo, not live cloud egress: the two touched prompt templates
+  (L1_extraction_v3/v4) are legacy on-disk files — the worker's default
+  template is v5, nothing under services/crm_guardian reads prompts/ at
+  runtime, and 0 cron/LaunchAgent/process on M5, Pro (LAN) or Mini references
+  either file or the worker's legacy-v3 constant.
+authority: >-
+  Team-lead dispatch 2026-09-27 (re-dispatch after a context-window jump),
+  grounded in gate-7472.md's "Residual sweep" table and gate-7481.md's K1/K3
+  findings; cured to REWORK-BUILD findings E1-E4 from the fresh gate on this
+  PR's first head (gate-7490.md, scratchpad reports/), relayed by the lead.
+acceptance:
+  - "3 of 4 deleted files carried >=3 unique real PROD client names; the 4th carried 1 client name plus a 70-row PROD company-name roster: git ls-files -- <path> reports 0/4 for all 4"
+  - "each deleted file's pre-removal blob quarantined on Pro at 0600 in a 0700 dir: git hash-object <quarantine-file> equals git rev-parse origin/main:<path> for all 4"
+  - "0 crontab lines and 0 LaunchAgents on M5 and Pro (LAN) reference either deleted one-off script's basename"
+  - "exact-spelling AND transliteration-aware token sweep for every real name/surname/email-form fragment named in gate-7472, gate-7481 and gate-7490 (E4), plus everything my own full-content read turned up, is 0 hits outside the sibling lane's excluded paths and the 2 explicitly-escalated files (see out_of_scope) — the exact-spelling pass4/strict detector alone cannot see a transliterated or email-local-part name, which is how E4 (test_learn_and_style.py, umlaut-to-ASCII transliteration) survived the first round"
+  - "backend-rag test suites touched (mail_loop x3 files/163 tests, intake routing phone test, redact_pii x2) pass: 96/96 + 163/163, 0 failed"
+  - "py_compile clean on all 7 touched .py files"
+pii: >-
+  counts only, no names/phones/companies anywhere below. Deleted (quarantined,
+  not counted as redacted): 2 CSV/MD reports with 6 unique real client full
+  names + 4 real client emails; 1 one-off script with 21 unique real client
+  full names + 1 real client phone; 1 one-off script with 1 real client full
+  name + a 70-row real PROD company-name roster. Redacted in place (real
+  name/fragment -> synthetic placeholder, structure and test coverage
+  unchanged): 13 modified files, 71 removed lines (sum of diff `-` lines
+  across those 13 files, by `git diff --numstat`), carrying approximately
+  111 name-like token occurrences replaced — 102 measured by the fresh gate
+  across the original 12 files, + 9 in this round's E4 cure
+  (test_learn_and_style.py: 1 email-local-part full name = 2 tokens, 6 bare
+  first-name mentions = 6 tokens, same word-level counting).
+out_of_scope: >-
+  2 items carry residual real names but are NOT touched by this PR, both
+  flagged to the team lead rather than fixed blind: (1) a live CRM feature
+  (3 files: 1 service module consumed by 2 FastAPI routers + the frontend at
+  kita.balizero.com, its test, its companion plan doc) hardcodes real
+  client/company names as the FEATURE's own data, not incidental PII —
+  redacting it would break the live feature, deleting it would remove a
+  shipped capability; needs an owner decision (move the data behind a DB
+  lookup, or accept it as intentionally-real business content), not a
+  redaction-lane fix. (2) one already-applied migration's SQL comment names
+  one real client as written in the source documents (not a verbatim CRM
+  full_name match) plus one business partner; migrations_v2 changes are
+  gated on a PROD ledger checksum match (this repo's own operating memory),
+  so editing the comment risks a checksum mismatch against the recorded
+  ledger entry for that migration — needs a dedicated spec (already called
+  for in gate-7481.md's Left section) before anyone touches it.
+notes: >-
+  Floor 2, source size (1040 net lines per evidence_pack_lint.py's
+  _size_term_net_lines() on the final diff, re-measured after this cure and
+  after this brief's own rewrite). 19 files: 4 deletions
+  (quarantined), 1 .gitignore edit (4 new ignore patterns for the 4
+  deletions), 13 code/doc redactions, 1 new evidence file. The two large
+  deletions total 728 lines (564 + 164), not the earlier draft's 719. A
+  fresh gate on this PR's first head found one residual this session's sweep
+  had missed (E4, an email-local-part + first-name fixture reachable only by
+  a transliteration-aware sweep, cured this round) and 3 evidence
+  overclaims/undercounts in this brief's prior draft, all corrected above.
+  The prior draft's "2 open sweep hits" note named a collision class the
+  mandate's hint ban covers (a predecessor-company-name match) — removed;
+  both hits remain resolved as non-client content on manual inspection, no
+  further detail given here.
+appetite:
+  wall_clock_hours: 2.5

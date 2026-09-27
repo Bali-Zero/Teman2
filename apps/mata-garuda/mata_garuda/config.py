@@ -7,6 +7,7 @@ All values here — no .env files (OSINT blindato, local only).
 from __future__ import annotations
 
 import os
+import re
 
 # Redis Streams
 STREAM_RAW = "garuda:raw"
@@ -26,6 +27,26 @@ STREAM_MAXLEN = int(os.environ.get("GARUDA_STREAM_MAXLEN", "100000"))
 # Telegram — Zero only
 TG_BOT_TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
 TG_ZERO_CHAT_ID = "8847435604"
+
+# Matches Telegram's own token shape, `bot<digits>:<secret>` — by SHAPE, never
+# by value, so a rotated token is covered too. Same pattern as backend-rag's
+# secret_log_redaction.py; duplicated here rather than imported cross-app,
+# consistent with this package's own no-cross-app-import boundary.
+_TG_TOKEN_RE = re.compile(r"(bot\d{5,}):[A-Za-z0-9_-]{20,}")
+
+
+def mask_tg_token(text: str) -> str:
+    """Redact a Telegram bot token from arbitrary text before it is logged.
+
+    A curl subprocess failure (a raised exception, or the process's own
+    stdout/stderr) can carry the request URL verbatim, and the URL is where
+    Telegram puts the token. Call this on anything derived from such a
+    failure before it reaches `logger.error` — a log line is an OUTPUT
+    boundary the token must never cross in the clear.
+    """
+    if not text:
+        return text
+    return _TG_TOKEN_RE.sub(r"\1:<redacted>", text)
 
 # NLM Notebook IDs
 # NLM_NOTEBOOKS is a backward-compat shim. Source of truth: notebook_registry.

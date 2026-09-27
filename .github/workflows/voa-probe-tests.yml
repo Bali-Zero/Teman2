@@ -21,22 +21,27 @@ name: VOA probe organ tests
 # WHAT THIS GATES, AND WHAT IT DOES NOT. The job carries no `continue-on-error`, so a failure
 # DOES redden the run. Whether a red run also STOPS a merge is not decided in this file and
 # never can be: that lives in `main`'s branch protection, a repo-settings action, operator-gated
-# (CLAUDE.md §13). This file's only job is to be SAFE TO REQUIRE, which is a property of its
-# `on:` block and is checked continuously by `scripts/ci/check_required_workflow_conformance.py`
-# rules 2-5. An earlier version of this paragraph instead INVENTORIED the gating state
-# ("SIGNAL-ONLY UNTIL PROMOTED") and went stale the moment that state changed -- a comment that
-# inventories mutable state is a comment that will lie (cicatrix W106), so it states the
-# invariant now and leaves the fact to branch protection.
+# (CLAUDE.md §13). This file no longer tries to be SAFE TO REQUIRE: its `on:` block has no
+# `pull_request` trigger (see below), so `scripts/ci/check_required_workflow_conformance.py`
+# rule 3 would flag it the day it is put into `infra/required.d/contexts.json`. An earlier
+# version of this paragraph instead INVENTORIED the gating state ("SIGNAL-ONLY UNTIL PROMOTED")
+# and went stale the moment that state changed -- a comment that inventories mutable state is a
+# comment that will lie (cicatrix W106), so it states the invariant and leaves the fact to
+# branch protection.
 #
-# WHY THERE IS NO `pull_request` PATHS FILTER, and there deliberately must not be one. A required
-# status check is satisfied only by a run of the workflow that REPORTS it. A top-level
-# `on.pull_request.paths:` filter means a PR outside that filter never STARTS a run -- there is
-# no skipped or neutral status to satisfy the check -- so GitHub shows the context "Expected --
-# waiting for status" forever and the PR is hard-blocked with nothing red to fix (conformance
-# guard rule 4; cicatrix W69). The filter this file used to carry is therefore removed, and the
-# job runs on every pull request and on every merge-queue entry. `push:` KEEPS its filter: a
-# push to `main` happens after a PR has already merged and gates nothing, which is why the
-# guard's own declared scope excludes `on.push.paths`.
+# WHY THERE IS NO `pull_request` TRIGGER AT ALL (2026-09-27). This job is one of the light lints
+# that used to start on every push of every PR and saturate the Actions queue; it now runs once
+# per merge-queue entry (`merge_group`) and on `push` to `main`. A path-narrowed `pull_request`
+# cannot be added beside `merge_group`: `scripts/ci/lint_trigger_symmetry.py` forbids
+# `on.pull_request.paths` together with `on.merge_group` (the head-green / queue-red split). The
+# earlier reasoning still holds for a REQUIRED context: a required status check is satisfied only
+# by a run of the workflow that REPORTS it, and a top-level `on.pull_request.paths:` filter means
+# a PR outside that filter never STARTS a run -- there is no skipped or neutral status to satisfy
+# the check -- so GitHub shows the context "Expected -- waiting for status" forever and the PR is
+# hard-blocked with nothing red to fix (conformance guard rule 4; cicatrix W69). Promoting this
+# job to required therefore means putting an UNFILTERED `pull_request` back. `push:` keeps its
+# filter: a push to `main` happens after a PR has already merged and gates nothing, which is why
+# the guard's own declared scope excludes `on.push.paths`.
 #
 # WHAT THE OLD FILTER USED TO ARGUE, kept because the measurement is still true and still
 # useful: `voa_journey_probe.mjs` imports only node builtins (`node:crypto`, `node:fs`,
@@ -52,14 +57,17 @@ name: VOA probe organ tests
 # notice that the corpus it wraps is broken.
 
 on:
-  pull_request:
+  # Non-required lint: runs once per merge (merge_group) and on push to main, not on every
+  # PR push. There is no pull_request trigger, and no filtered one either:
+  # scripts/ci/lint_trigger_symmetry.py forbids pull_request.paths beside merge_group. If
+  # this becomes a required context, pull_request must come back unfiltered (see the header
+  # and scripts/ci/check_required_workflow_conformance.py rules 3-4).
   push:
     branches:
       - main
     paths:
-      # `pull_request` above carries NO filter (see the header), so this list is no longer the
-      # symmetric twin of anything -- it is the standalone answer to "which pushes to main are
-      # worth re-running this for". It keeps this file in the list: a direct push to main that
+      # This list is the standalone answer to "which pushes to main are worth re-running
+      # this for". It keeps this file in the list: a direct push to main that
       # edits only this workflow must still run it.
       - ".github/workflows/voa-probe-tests.yml"
       - "scripts/probes/voa_journey_probe.mjs"
@@ -69,12 +77,15 @@ on:
       - "infra/launchagents/com.nuzantara.voa-probe.plist"
       - "infra/launchagents/install_voa_probe.sh"
   merge_group:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
   group: voa-probe-tests-${{ github.ref }}
+  # (There is no `pull_request` trigger today, so this is always false; it is kept so that
+  # putting one back gets the right behaviour without touching this line.)
   # Reads `== 'pull_request'`, so this is TRUE on a PR and FALSE on both `push` and `merge_group`.
   # Two things follow, and both are the point. On the QUEUE: a cancelled required check ejects the
   # merge-queue entry, so a queue run must never be cancellable — `false` on `merge_group` is what

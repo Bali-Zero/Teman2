@@ -36,4 +36,7 @@ export const R19_VARS = {
   "--font-sans": '"R19 Manrope", Arial, sans-serif',
   "--font-serif": '"R19 Fraunces", Georgia, serif',
   colorScheme: "light",
+  // R19 Manrope's standard ligature draws "(c)" as "©": citations such as
+  // "Art. 26(3)(c)" must print verbatim (measured live 2026-09-27).
+  fontVariantLigatures: "no-common-ligatures",
 } as CSSProperties;

@@ -386,7 +386,7 @@ async def list_drive_files(
     structure, only file content metadata).
 
     max_depth=3 is sufficient for Bali Zero conventions:
-      depth 0: client root (Oleksandr Ozolin)
+      depth 0: client root (Client Alpha)
       depth 1: 00_Profile / 01_Immigration / ...
       depth 2: nested categories (02_Company/AKTA, 03_Tax/SPT_2024, etc.)
       depth 3: occasional deeper archive subdirs

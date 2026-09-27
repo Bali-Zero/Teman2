@@ -1,0 +1,70 @@
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+  - lane: dux-review
+    role: review
+    seat: claude-fable-5-1
+  - lane: independent-diff-review
+    role: review
+    seat: codex-gpt-6-astra
+  - lane: independent-diff-review-2
+    role: review
+    seat: kimi-code/k3
+  - lane: independent-diff-review-3
+    role: review
+    seat: agy-gemini-3.1-pro
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5-5
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+appetite_exceeded: none
+seat_fallback_reason: "none — all three refuter seats (codex-gpt-6-astra, kimi-code/k3, agy-gemini-3.1-pro) ran and are journaled ok:true"
+pii_scan: clean
+receipts:
+  - claim: "actionlint: actionlint 1.7.12 on the 15 workflow files reports nothing; yaml.safe_load parses 15/15."
+    probe: actionlint
+    cmd: actionlint .github/workflows/{asyncpg-lint,docs-guardian,docs-sync,garuda-contract-parity,hook-innocence-gate,p6-federation-parallelize,p7-lesson-harvester,p8-brand-api,p9-cost-breaker,root-guard,runbook-section-numbers,token-lint,verify-the-verifiers,voa-probe-tests,worker-plane-review-tests}.yml
+    result: "rc=0, no output"
+    exit: 0
+    ts: "2026-09-27T04:06:47Z"
+    seat: claude-sonnet-5
+  - claim: "trigger-lints: lint_trigger_symmetry.py and check_required_workflow_conformance.py both report 0 violations on the candidate tree (re-run by the Dux seat, not only by the builder)."
+    probe: trigger-lints
+    cmd: python3 scripts/ci/lint_trigger_symmetry.py && python3 scripts/ci/check_required_workflow_conformance.py
+    result: "trigger-symmetry: 124 workflow(s) checked, 0 violation(s); required-workflow-conformance: 14 required context(s) checked, 0 violation(s)"
+    exit: 0
+    ts: "2026-09-27T04:06:47Z"
+    seat: claude-fable-5-1
+  - claim: "path-superset: for each path-narrowed workflow the pull_request.paths list selects, over git ls-files, exactly the file set its in-job sentinel regex selects (7=7, 10=10, 102=102, 4=4, 6=6, 69=69, 5=5, 15=15, 12=12; runbook 68=68, token-lint 390=390), and after the refuter round also scripts/tests/conftest.py for every pytest job under scripts/tests/."
+    probe: path-superset
+    cmd: "per-workflow comparison of `git ls-files | grep -E <sentinel regex>` against the glob expansion of pull_request.paths; pytest --co --trace-config to list the conftest actually loaded"
+    result: "all sets identical; conftest added to runbook-section-numbers, docs-guardian, docs-sync, worker-plane-review-tests (already present in token-lint, verify-the-verifiers)"
+    exit: 0
+    ts: "2026-09-27T03:59:41Z"
+    seat: claude-sonnet-5
+  - claim: "refuters: three heterogeneous refuters attacked the claim read-only; Codex CONFIRMED one under-match (conftest), cured in 45be30dce0; Kimi and Gemini SURVIVES; Kimi's hygiene finding (stale trigger headers) cured in 48d9a76166."
+    probe: refuters
+    cmd: "codex exec -s read-only / kimi -p / agy -p with scratchpad/refuter_lint_mg.txt on the candidate worktree"
+    result: "codex REFUTED (1 CONFIRMED) -> cured; kimi SURVIVES; agy SURVIVES — see council-journal.jsonl"
+    exit: 0
+    ts: "2026-09-27T03:50:21Z"
+    seat: claude-fable-5-1
+dissent:
+  - seat: codex-gpt-6-astra
+    objection: "runbook-section-numbers.yml pull_request.paths omitted scripts/tests/conftest.py, which pytest loads for that test: a PR touching only the conftest could deselect the test (reproduced in-memory, exit 5) and the workflow would no longer run pre-merge."
+    status: CONFIRMED
+    disposition: "Cured in 45be30dce0 and finalised in 48d9a76166: scripts/tests/conftest.py + scripts/tests/__init__.py (the only conftest/package files pytest actually loads, measured with --trace-config) added to the paths of the four path-narrowed workflows whose pytest runs under scripts/tests/ (runbook-section-numbers, docs-guardian, docs-sync, worker-plane-review-tests; token-lint and verify-the-verifiers already listed the conftest); the speculative entries for non-existent conftests added in 45be30dce0 were removed again in 48d9a76166. Accepted limit: for docs-guardian, docs-sync and worker-plane-review-tests the in-job sentinel regex ignores conftest, so a conftest-only PR now starts the job but the sentinel closes it green — identical to main before this PR (pre-existing, not a regression); changing sentinel steps is out of this PR's scope and stops at fix depth 1. Latent, non-blocking: a PR that CREATES a root conftest.py or scripts/conftest.py would be loaded by pytest (rootdir = repo root) without starting runbook-section-numbers or token-lint pre-merge; neither file exists today."
+  - seat: kimi-code/k3
+    objection: "Header comments still described the old per-push trigger (voa-probe-tests.yml:31-39, asyncpg-lint.yml:5/11, token-lint.yml:22): misinform a human reader, remove no verification."
+    status: CONFIRMED
+    disposition: "Cured in 48d9a76166 (comments only)."
+  - seat: kimi-code/k3
+    objection: "worker-plane-review-tests, docs-guardian and docs-sync sentinels use git diff --no-renames (the latter two via hotzone_changed_files.sh) (sees the old path of a rename) while GitHub's paths filter matches both sides of a rename — not expressible in a glob."
+    status: PLAUSIBLE
+    disposition: "Accepted limit, symmetric to the pre-existing behaviour: a rename touching those paths still matches GitHub's filter on either side, so the job starts; the sentinel then decides as it did before."

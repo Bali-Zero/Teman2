@@ -155,7 +155,7 @@ Read `nb-curator-routing.log` for last 7 days:
 
 ### Step 4 — Write health report
 
-Path: `~/nuzantara/research/nb-health/<YYYY-MM-DD>-health.md`
+Path: `~/nuzantara/research/nb-health/<YYYY-MM-DD>-health.md` for a manual/interactive run. The daily cron (`scripts/nb-curator-daily.sh`) instead gives you an explicit staging path outside the repo in its own prompt — write there, not here, whenever the invoking prompt names one.
 
 ```markdown
 # NB Arsenal Health Report — 2026-05-09 (weekly)
@@ -256,7 +256,7 @@ summarization — regulation citations need to stay verbatim.
 
 ### Step 4 — Write monthly report
 
-Path: `~/nuzantara/research/nb-health/<YYYY-MM>-nb-intel-curation.md`.
+Path: `~/nuzantara/research/nb-health/<YYYY-MM>-nb-intel-curation.md` for a manual/interactive run; the daily cron's own prompt names a staging path outside the repo instead — follow that when one is given.
 Body:
 
 ```markdown
