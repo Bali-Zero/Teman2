@@ -3,7 +3,6 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { format } from "date-fns";
 import { MDXRemoteSerializeResult } from "next-mdx-remote";
 import dynamic from "next/dynamic";
 import remarkGfm from "remark-gfm";
@@ -34,6 +33,7 @@ import {
 // JSON-LD schemas are now injected in <head> by root layout for better SEO
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { cn } from "@/lib/utils";
+import { formatArticleDate } from "@/lib/blog/format-article-date";
 import type { Article, ArticleListItem } from "@/lib/blog/types";
 import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
@@ -339,10 +339,7 @@ export function ArticleClient({
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {format(
-                  new Date(article.publishedAt || article.createdAt),
-                  "MMM d, yyyy",
-                )}
+                {formatArticleDate(article.publishedAt || article.createdAt)}
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
