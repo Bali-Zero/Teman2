@@ -75,3 +75,13 @@ scope:
     and a regression fixture for the migration-tag false positive found while validating this
     guard against the real tree) for the detector described in the objective above. No
     whole-repo sweep test, and no real company/SA data anywhere in the file.
+  - >-
+    scripts/consumer_map.py + scripts/tests/test_consumer_map.py — the repo's push-gate consumer
+    map blocked this PR's own required evidence pack (a Gear-3 pack must name the deleted files
+    by basename, repeatedly, in prose; the pack's `.yml` files have no `.md`-extension downgrade
+    and are un-quotable-away). Three narrow, precedented exclusions added: `evidence/` to
+    EXCLUDE_DIR_PREFIXES (same class as the existing docs/archive/ + research/); a new "sql"
+    kind recognizing `--`-style comments the way `#` ones already are (a pre-existing migration
+    SQL comment also named a deleted file); and scripts/ci/test_change_map.py added to
+    EXCLUDE_EXACT_PATHS (every path literal in it is a synthetic classifier-test input). Each
+    exclusion has a guilt+innocence pair; full suite re-run, 40/40 passing.

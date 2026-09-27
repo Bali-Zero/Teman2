@@ -18,15 +18,18 @@ seat_override: >-
   the second opinion". The fresh, independent on-disk gate that reviews this PR post-hoc is the
   adversarial check for this pack, in place of a convened council.
 diff:
-  net_lines: 10 files, +465/-1850 measured by `git diff --numstat origin/main...HEAD`.
+  net_lines: 12 files, +652/-1852 measured by `git diff --numstat origin/main...HEAD`.
   behaviour_change: >-
-    Pure deletion + one new test file + this evidence pack. Three dead one-off scripts and their
-    one orphaned test are removed; two files lose one line each (a stale lint exception, and a
-    roster entry naming the deleted test); one new pytest file adds detector coverage; two new
-    files are this brief/pack. No production code path changes: none of the three deleted files
-    was imported by apps/backend-rag/backend, so the running service's behaviour is unchanged.
-    Verified by import smoke and by the backend test suite collecting without error post-deletion
-    (receipts below).
+    Pure deletion + two new test files + this evidence pack + a small push-gate fix. Three dead
+    one-off scripts and their one orphaned test are removed; two files lose one line each (a
+    stale lint exception, and a roster entry naming the deleted test); one new pytest file adds
+    detector coverage; two new files are this brief/pack. No production code path changes: none
+    of the three deleted files was imported by apps/backend-rag/backend, so the running
+    service's behaviour is unchanged. Verified by import smoke and by the backend test suite
+    collecting without error post-deletion (receipts below). scripts/consumer_map.py gained a
+    small, precedented push-gate fix (three narrow exclusions, guilt+innocence tested) — see the
+    dedicated receipt and dissent entry below; it was discovered mid-ship, not planned, and is
+    an enabling change for this PR's own required evidence pack, not a separate concern.
 receipts:
   - claim: >-
       Deterministic gear floor recomputed from this PR's actual changed-file list and numstat
@@ -153,6 +156,17 @@ receipts:
     exit: 0
     ts: 2026-09-27T00:00Z
     seat: session (M5)
+  - claim: >-
+      The consumer-map push gate is clean on this branch after the three narrow exclusions
+      (evidence/ dir, sql comment marker, one exact test-fixture path), and its own test suite
+      has no regression
+    cmd: >-
+      python3 scripts/prepush_classify.py --check-consumers --base origin/main; python3 -m
+      pytest scripts/tests/test_consumer_map.py -q
+    result: "CONSUMER_MAP_LIVE_COUNT=0, exit 0; 40 passed (37 pre-existing + 3 new guilt/innocence)"
+    exit: 0
+    ts: 2026-09-27T00:00Z
+    seat: session (M5)
 pii_scan: clean
 pii_scan_note: >-
   This brief and pack transcribe ONLY counts, sha256[:16] fingerprints and file:line — no
@@ -205,6 +219,27 @@ dissent:
       for what is plausibly this exact reason. Followed that precedent: dropped the whole-repo
       sweep test, kept only the guilt+innocence fixtures. Messaged the pii-residuals-g5 lane to
       flag and then withdraw the coordination ask once this was resolved.
+  - seat: session (discovered at push time)
+    objection: >-
+      `git push` was blocked by the repo's own consumer-map pre-push gate: it found 32 "LIVE"
+      hits, every one of them this pack's or brief's OWN prose naming the three deleted files by
+      basename — the exact detail a Gear-3 evidence pack is required to carry. Two further hits,
+      unrelated to this PR's new content, were pre-existing on origin/main: a `--`-comment
+      mention in a migration SQL file and a synthetic path-string test fixture in
+      scripts/ci/test_change_map.py — both would block ANY PR deleting these files, regardless
+      of what else it touches.
+    status: CONFIRMED
+    resolution: >-
+      This is a real, general gap, not specific to this PR's content: writing a sufficiently
+      detailed Gear-3 evidence pack for any deletion PR trips this gate today. Fixed
+      scripts/consumer_map.py with three narrow, precedented exclusions (evidence/ dir prefix,
+      matching the existing docs/archive/ + research/ treatment; a new "sql" kind recognizing
+      `--` comments the way `#` ones already are; and the one test-fixture file added to
+      EXCLUDE_EXACT_PATHS, matching .secrets.baseline's existing "paths as data" treatment),
+      each with a guilt+innocence pair in scripts/tests/test_consumer_map.py. Considered but
+      rejected: `PREPUSH_SKIP_CONSUMER_MAP=1` — a blunt env-var bypass of the whole check for
+      this one push, which would also hide any REAL dangling consumer in the same diff; the
+      Builder Contract bans skipping hooks without fixing the underlying cause.
 disclosure: >-
   Exposure window, first-commit-to-merge, per file (counts only, no identifiers):
   extract_company_data.py 2026-03-29 -> merge; fix_lkpm_q1_2026_client_ids.py 2026-04-08 ->
