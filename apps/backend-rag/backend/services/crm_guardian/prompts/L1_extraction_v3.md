@@ -53,8 +53,8 @@ entry: `"CRM full_name '<value>' not present in any document — possible
 mis-link or empty folder"`.
 
 This rule exists because Phase 1 (without OCR) had Gemini substitute
-`Sofia Mueller` with `Andrey Pozdnyakov` and `Oleksandr Ozolin` with
-`Snizhana Yaroshenko` — the model picked the most-frequent filename
+`Client Beta` with `Partner Two` and `Client Alpha` with
+`Partner One` — the model picked the most-frequent filename
 name as canonical. v3 explicitly forbids that.
 
 ### Article 2 — Content over filename
@@ -102,7 +102,7 @@ and add a description like "Upload date 2026-04-24; document date
 unknown". Do NOT pass upload date as event_date.
 
 This rule exists because Phase 1 produced timeline entries like
-"Pukhov 2026-04-24 EPO Molina" where 2026-04-24 was the Drive upload
+"Epsilon 2026-04-24 EPO consultant-name" where 2026-04-24 was the Drive upload
 date, not the EPO date. Misleading for compliance tracking.
 
 ### Article 4 — Confidence calibration (recalibrated for v3)
@@ -327,7 +327,7 @@ before this prompt:
 ```
 <CROSS_FOLDER_CONTEXT>
 client_id: 123
-client_full_name: Sofia Mueller       ← Article 1 MUST match this
+client_full_name: Jordan Example       ← Article 1 MUST match this
 client_root_folder: 1AbC...xyz
 linked_company_folders:
   - id: 1XyZ...abc
