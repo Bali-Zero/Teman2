@@ -1684,6 +1684,16 @@ jobs:
         needs.changes.outputs.run_evaluator_critical_tests != 'false'
       )
     runs-on: ubuntu-latest
+    # suite-growth-probe finding, 2026-09-27: no timeout-minutes on this job at
+    # all — an unbounded runner-hang would sit until GitHub's own 6h ceiling.
+    # Measured (last 40 completed tests.yml runs, gh Jobs API): real (non-skip)
+    # runs top out at ~0.7min. NOT sized to 2x that (would be 5): this job runs
+    # actions/checkout, and scripts/lint_workflow_timeout_floor.py's own
+    # 10-minute floor exists precisely because checkout on this repo
+    # intermittently takes ~2min on its own — a budget sized to the SCRIPT
+    # reports `cancelled`, not `failure`, the moment checkout is slow. 10 is
+    # the floor that lint enforces, confirmed clean at this value.
+    timeout-minutes: 10
     env:
       HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
 
@@ -2180,6 +2190,16 @@ jobs:
         needs.changes.outputs.run_packages_core_tests != 'false'
       )
     runs-on: ubuntu-latest
+    # suite-growth-probe finding, 2026-09-27: no timeout-minutes on this job at
+    # all. Measured (last 40 completed tests.yml runs, gh Jobs API): real
+    # (non-skip) runs top out at ~1.4min. NOT sized to 2x that (would be 5):
+    # this job runs actions/checkout, and scripts/lint_workflow_timeout_floor.py's
+    # own 10-minute floor exists precisely because checkout on this repo
+    # intermittently takes ~2min on its own — see the sibling comment on
+    # evaluator-critical-tests above for the measured failure mode a
+    # script-sized budget would reproduce. 10 is the floor that lint
+    # enforces, confirmed clean at this value.
+    timeout-minutes: 10
     env:
       HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
 
