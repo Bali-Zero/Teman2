@@ -1,0 +1,46 @@
+task_id: hotzone-list-floor
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Coordinator ruling 2026-09-27, prerequisite of codexpin PR-1 (#7420): HOTZONE_PATTERNS
+  (the tuple in scripts/evidence_pack_lint.py that floors a path at Gear 3) lives in a file
+  that itself floors at 1, and nothing compared it with the hand-duplicated case-block in
+  .github/workflows/hot-zone-pr-gate.yml. So a floor-1 PR could DROP a hot-zone pattern with
+  no gate, and every path it dropped would floor at 1 from then on — defeating any guarantee
+  built on "this path is hot-zone" (e.g. codexpin spec #7456's MUST->EQ-needs-floor-3 rule).
+
+  Narrow cure: a step in .github/workflows/harness-floor.yml (itself floor 3) that, when the
+  diff touches the linter, reads the tuple as TEXT at the merge-base and at HEAD and floors
+  the diff at 3 if HEAD drops any base pattern, failing closed (floor 3) when either side
+  cannot be read; plus a drift flag between the tuple and the case-block. Gear is 3
+  DETERMINISTICALLY by path: the diff touches `.github/workflows/*`.
+
+acceptance:
+  - text:
+      "WHEN a diff touches scripts/evidence_pack_lint.py and HEAD's HOTZONE_PATTERNS lacks
+      any pattern present at the merge-base, THE harness-floor job SHALL output floor 3,
+      whatever compute_floor() alone returned."
+    probe: "test_step_2d_end_to_end[guilt-drops] runs the real Step 2d bash + heredoc in a scratch git repo (floor3=true); test_step3_applies_the_verdict[true-3-path] runs the real Step 3 against the real linter on a linter-only diff (floor 1 -> 3, source none -> path); a commented-out pattern counts as dropped (test_guilt_commented_out_pattern_is_dropped)"
+  - text:
+      "IF either side's HOTZONE_PATTERNS is not ONE module-level binding to a tuple of string
+      literals, or the merge-base / either copy cannot be read, THE step SHALL floor the diff
+      at 3 rather than pass it."
+    probe: "17 parametrized shapes (reassign, del, global, import-as, star-import, keyword, subscript-key, concat, list, renamed, syntax, exec, setattr, getattr-dict, importlib, func-globals, utf7-cookie) each return None; end-to-end guilt for an unparseable head, an unparseable base, a utf-7 coding cookie, a deleted linter and an unresolvable merge-base (all floor3=true); an absent verdict ('') still floors Step 3 at 3. The computed-name denylist is a bar-raiser, not a proof (declared limit, see pack dissent)"
+  - text:
+      "WHEN a diff adds a pattern, edits unrelated lines of the linter, or does not touch the
+      linter at all, THE step SHALL leave the floor unchanged."
+    probe: "test_step_2d_end_to_end[innocence-adds-both-lists / flag-adds-tuple-only / innocence-unrelated-edit / innocence-neither-in-diff / innocence-main-moved-on] (floor3=false); test_innocence_mentions_that_bind_nothing (a string label, re.compile, a docstring); test_step3_applies_the_verdict[false-1-none] (floor 1, source none); the real linter and gate parse (test_innocence_real_linter_and_gate_parse)"
+  - text:
+      "WHEN a diff touches either list and HOTZONE_PATTERNS and hot-zone-pr-gate.yml's
+      case-block differ, Step 2d SHALL emit a warning naming both sides and SHALL NOT change
+      the floor or fail the job."
+    probe: "test_step_2d_end_to_end[flag-adds-tuple-only / flag-gate-only-drift / guilt-drops] assert the warning; test_case_block_reads_only_the_one_live_arm pins the reader (one-line arm, commented decoy ignored, unreadable shapes)"
+  - text:
+      "Every guard in the step and its wiring SHALL be proven load-bearing by mutation: each
+      guard mutant turns at least one case red, and every restore is byte-identical."
+    probe: "22 mutants on cp backups, 20 killed; the 2 survivors are not guards (continue-on-error on Step 2d, already neutralised by Step 3's != false; a duplicated case line in the real gate, which the drift flag surfaces by policy); cmp after every restore"
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2

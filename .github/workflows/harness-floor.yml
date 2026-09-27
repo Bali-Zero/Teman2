@@ -519,9 +519,14 @@ jobs:
       # so a floor-1 PR cannot neuter the parser. FAIL CLOSED to floor 3,
       # never red: no merge-base, a failed `git show`, a deleted linter, a
       # name not bound ONCE at module level to a tuple of str literals, or a
-      # computed-name rebinding primitive (exec, globals(), __dict__, ...).
-      # DECLARED LIMIT: rewiring what READS the tuple (compute_floor(),
-      # fnmatch, a module the linter imports) is floor-1 code no list check sees.
+      # casual computed-name rebinding (exec, globals(), setattr, __dict__):
+      # a bar-raiser with false positives (e.g. a bare getattr), NOT a proof.
+      # DECLARED LIMIT (council delta round, both titolari REWORK): import-time
+      # code (pickle, runpy, marshal, a module the linter imports) can still
+      # rebind the name, and rewiring what READS it (compute_floor(), fnmatch)
+      # needs no rebinding at all. One class: the floor computer's own code is
+      # floor 1. Its cure needs a ruling: floor-3 the linter's import closure,
+      # or replay BASE's compute_floor() on the protected case-block per PR.
       # DRIFT vs hot-zone-pr-gate.yml's case-block is FLAGGED (warning), never
       # floored or failed: that copy only drives a best-effort lease check and
       # a summary line, a tuple-only addition is drift too, and the harmful
@@ -598,7 +603,7 @@ jobs:
               return None
 
           def case_block(src):
-              """hot-zone-pr-gate.yml's ONE un-commented `case "$f" in` arm as a set, else None."""
+              """First arm of the ONE un-commented `case "$f" in` as a set, else None (a 2nd arm is unread)."""
               arms = re.findall(r'^[ \t]*case "\$f" in\n(.*?)\)', src, re.S | re.M)
               return set(re.findall(r"[^\s|\\]+", arms[0])) if len(arms) == 1 else None
 
