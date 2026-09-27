@@ -18,6 +18,7 @@ import {
   NewsletterSidebar,
 } from "@/components/blog";
 import type { ArticleCategory, ArticleListItem } from "@/lib/blog/types";
+import { articleHref } from "@/lib/blog/article-href";
 import { useTranslation } from "@/i18n";
 import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
@@ -191,7 +192,7 @@ export default function CategoryContent({
                   {articles.slice(0, 3).map((article) => (
                     <a
                       key={article.id}
-                      href={`/news/${article.category}/${article.slug}`}
+                      href={articleHref(article)}
                       className="block group"
                     >
                       <h4 className="text-sm text-white/80 group-hover:text-[var(--accent-funnel-text,#5c8aff)] transition-colors line-clamp-2">
