@@ -368,6 +368,13 @@ elif [ ! -e "$STAGING_PATH" ]; then
     PROMOTE_REASON="STAGING FILE MISSING: the brain reported success but wrote nothing at $STAGING_PATH"
 elif [ ! -f "$STAGING_PATH" ]; then
     PROMOTE_REASON="STAGING FILE NOT A REGULAR FILE: $STAGING_PATH exists but is not a regular file"
+elif [ -z "$(find "$STAGING_PATH" -links 1)" ]; then
+    # A hard link shares its inode with whatever else names it: `mv` renames
+    # the inode in place, so a hard-linked staging file promotes the SAME
+    # inode into the repo, and the gate's --fix then writes through it into
+    # every other path that shares it — same failure shape as a symlink, one
+    # level indirect. `-links 1` is empty exactly when the link count is > 1.
+    PROMOTE_REASON="STAGING FILE NOT A REGULAR FILE: $STAGING_PATH has extra hard links"
 elif [ ! -s "$STAGING_PATH" ]; then
     PROMOTE_REASON="STAGING FILE EMPTY: $STAGING_PATH exists but has 0 bytes"
 elif [ "$(grep -c '^## ' "$STAGING_PATH")" -lt 1 ]; then

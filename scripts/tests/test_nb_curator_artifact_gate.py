@@ -266,6 +266,19 @@ elif m and mode == "stub":
     p = pathlib.Path(m.group(1))
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("# NB Arsenal Health Report\\n", encoding="utf-8")
+elif m and mode == "hardlink":
+    # Hard link to an existing file: shares the same inode, so `mv` would
+    # promote that SAME inode into the repo and the gate would write through
+    # it into the victim too — same failure shape as a symlink, one level
+    # indirect (measured live: the gate review's own probe hard-linked
+    # .claude/agents/nb-curator.md into staging and it was promoted).
+    victim = pathlib.Path(os.environ["FAKE_SYMLINK_VICTIM"])
+    victim.parent.mkdir(parents=True, exist_ok=True)
+    victim.write_text("# NB Arsenal Health Report\\n\\n## Health Summary\\n- Total: 1 notebook\\n",
+                       encoding="utf-8")
+    p = pathlib.Path(m.group(1))
+    p.parent.mkdir(parents=True, exist_ok=True)
+    os.link(victim, p)
 elif m and mode not in ("noreport", "emptyreport"):
     p = pathlib.Path(m.group(1))
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -429,6 +442,29 @@ def test_wrapper_refuses_a_symlinked_staged_report(tmp_path):
     assert victim.read_text(encoding="utf-8") == (
         "# NB Arsenal Health Report\n\n## Health Summary\n- Total: 1 notebook\n"
     ), "the victim file the brain pointed at must be untouched — nothing may write through the link"
+    assert proc.returncode == 2, log
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
+def test_wrapper_refuses_a_hard_linked_staged_report(tmp_path):
+    """Guilt, final re-gate item: a staged HARD LINK shares its inode with the
+    victim it links — `mv` renames the inode in place, so promoting it would
+    move the SAME inode into the repo and the gate would write through it into
+    every other path that names it, one level indirect from the symlink case.
+    Measured live in gate review: hard-linking .claude/agents/nb-curator.md
+    into staging passed every prior check and was promoted."""
+    victim = tmp_path / "outside-victim-hardlink.md"
+    proc = _fake_world(tmp_path, "hardlink", wrapper=WRAPPER,
+                       extra_env={"FAKE_SYMLINK_VICTIM": str(victim)})
+    log = _log(tmp_path)
+    report_path = tmp_path / "home/nuzantara/research/nb-health" / _expected_report_filename()
+
+    assert "STAGING FILE NOT A REGULAR FILE" in log
+    assert "PROMOTE SKIPPED" in log
+    assert not report_path.exists(), "a hard-linked staged file must never be promoted"
+    assert victim.read_text(encoding="utf-8") == (
+        "# NB Arsenal Health Report\n\n## Health Summary\n- Total: 1 notebook\n"
+    ), "the victim inode must be untouched — nothing may write through the shared link"
     assert proc.returncode == 2, log
 
 
