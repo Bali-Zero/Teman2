@@ -28,6 +28,10 @@ on:
       - "agent-library/learn/proposals/**"
       - "docs/scars/cicatrix-scars.md"
       - ".github/workflows/p7-lesson-harvester.yml"
+      # pytest loads conftest files implicitly on the rootdir -> test path; none exists today.
+      - "agent-library/learn/conftest.py"
+      - "agent-library/conftest.py"
+      - "conftest.py"
   workflow_dispatch:
 
 # Suffixed by github.run_id, which is unique per run and therefore never

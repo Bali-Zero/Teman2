@@ -36,6 +36,10 @@ on:
       - "scripts/wr2_reflexion_synthesis.py"
       - "scripts/test_wr2_reflexion_cabling.py"
       - "scripts/lib/reflexion.py"
+      # pytest loads these implicitly on the rootdir -> test path (scripts/tests/conftest.py is listed above).
+      - "scripts/tests/__init__.py"
+      - "scripts/conftest.py"
+      - "conftest.py"
   push:
     branches: [main]
     paths:

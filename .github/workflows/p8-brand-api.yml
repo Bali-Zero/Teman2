@@ -26,6 +26,9 @@ on:
       - "packages/design-system/brand-api/**"
       - "docs/design/components-catalog.md"
       - ".github/workflows/p8-brand-api.yml"
+      # pytest loads conftest files implicitly on the rootdir -> test path; none exists today.
+      - "scripts/conftest.py"
+      - "conftest.py"
   workflow_dispatch:
 
 # Suffixed by github.run_id, which is unique per run and therefore never

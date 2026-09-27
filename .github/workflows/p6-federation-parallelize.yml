@@ -32,6 +32,9 @@ on:
       - "scripts/federation_orchestrator.py"
       - "scripts/test_federation_parallelize_gate.py"
       - ".github/workflows/p6-federation-parallelize.yml"
+      # pytest loads conftest files implicitly on the rootdir -> test path; none exists today.
+      - "scripts/conftest.py"
+      - "conftest.py"
   push:
     branches:
       - main

@@ -35,6 +35,11 @@ on:
       - "scripts/tests/test_token_lint.py"
       - "scripts/tests/conftest.py"
       - ".github/workflows/token-lint.yml"
+      # pytest loads these implicitly on the rootdir -> test path, even under -c /dev/null
+      # (scripts/tests/conftest.py is listed above).
+      - "scripts/tests/__init__.py"
+      - "scripts/conftest.py"
+      - "conftest.py"
 
 permissions:
   contents: read

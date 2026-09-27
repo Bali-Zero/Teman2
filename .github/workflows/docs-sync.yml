@@ -19,6 +19,11 @@ on:
       - "docs/runbooks/README.md"
       - "docs/DOCS_INVENTORY.md"
       - ".github/workflows/docs-sync.yml"
+      # pytest loads these implicitly on the rootdir -> test path (conftest chain, package marker).
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
+      - "scripts/conftest.py"
+      - "conftest.py"
   push:
     branches: [main]
 

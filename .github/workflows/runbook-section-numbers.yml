@@ -49,6 +49,11 @@ on:
       - "docs/runbooks/*.md"
       - "scripts/tests/test_runbook_section_numbers_are_unique.py"
       - ".github/workflows/runbook-section-numbers.yml"
+      # pytest loads these implicitly on the rootdir -> test path (conftest chain, package marker).
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
+      - "scripts/conftest.py"
+      - "conftest.py"
   push:
     branches: [main]
   workflow_dispatch:

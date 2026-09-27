@@ -22,6 +22,9 @@ on:
       - "scripts/test_cost_breaker.py"
       - "scripts/test_cost_breaker_deadman.sh"
       - ".github/workflows/p9-cost-breaker.yml"
+      # pytest loads conftest files implicitly on the rootdir -> test path; none exists today.
+      - "scripts/conftest.py"
+      - "conftest.py"
   push:
     branches:
       - main

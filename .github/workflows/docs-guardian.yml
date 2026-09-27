@@ -15,6 +15,11 @@ on:
       - "scripts/tests/test_docs_inventory_render_is_clock_free.py"
       - ".github/workflows/docs-guardian.yml"
       - ".github/workflows/docs-inventory-refresh.yml"
+      # pytest loads these implicitly on the rootdir -> test path (conftest chain, package marker).
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
+      - "scripts/conftest.py"
+      - "conftest.py"
 
 concurrency:
   group: docs-guardian-${{ github.ref }}

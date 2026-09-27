@@ -58,6 +58,11 @@ on:
       - "scripts/tests/test_gate_seat_conformance.py"
       - "docs/rules/RULINGS.md"
       - ".github/workflows/worker-plane-review-tests.yml"
+      # pytest loads these implicitly on the rootdir -> test path (conftest chain, package marker).
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
+      - "scripts/conftest.py"
+      - "conftest.py"
   push:
     branches: [main]
     paths:
