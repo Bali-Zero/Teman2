@@ -1,0 +1,49 @@
+brief_ref: evidence/brief.yml
+task_id: r19-wrapper-token-contract-0927
+gear: 1
+date: 2026-09-27
+machine: M5
+floor: >-
+  Expected 1: docs and evidence paths only, no hot-zone path, churn under SIZE_GEAR2_THRESHOLD.
+  Measured with --print-floor over the staged numstat, see receipts.
+lanes:
+  - lane: r19-wrapper-token-contract
+    role: build
+    seat: claude-opus-5-5 (M5 worktree)
+pii_scan: clean
+dissent: []
+receipts:
+  - claim: "The probe, extracted from the spec, reports the two B4 tokens, the latent --error and .brand-tagline at #7508's head."
+    cmd: awk extraction from the spec, then the kbli invocation with the three invariants, on a detached worktree of 94b588cda1
+    result: "undefined_colour_tokens=3 (--color-text-secondary, --surface-subtle, --error) unreached_r19_class_rules=1 (.brand-tagline) bad_invariants=0 copied_literals=22"
+    exit: 1
+    ts: "2026-09-27T05:40:00Z"
+    seat: claude-opus-5-5
+  - claim: The same probe at the round-2 head also reports --foreground, the B3 token.
+    cmd: same invocation on a detached worktree of 0e1f773419
+    result: undefined_colour_tokens=4, the extra one --foreground
+    exit: 1
+    ts: "2026-09-27T05:40:00Z"
+    seat: claude-opus-5-5
+  - claim: Innocence and guilt of the guard itself. A cured copy exits 0; deleting --nav-icon-color from it fails again.
+    cmd: scratch edits to r19Vars.ts, kbli/layout.tsx and kbli-theme.css in the detached tree, probe rerun, files restored from cp backups
+    result: cured tree all four counts 0; mutated tree reports --nav-icon-color; tree clean after restore
+    exit: 0
+    ts: "2026-09-27T05:42:00Z"
+    seat: claude-opus-5-5
+  - claim: The non-colour allowlist matches only --font-sans and --font-serif among the 33 R19_VARS keys and no colour name.
+    cmd: NON_COLOUR regex applied to presentation.ts keys and to a list of 13 colour token names
+    result: "['--font-sans', '--font-serif'] and []"
+    exit: 0
+    ts: "2026-09-27T05:44:00Z"
+    seat: claude-opus-5-5
+  - claim: The spec is Prettier-clean, passes docs-sync, and its embedded probe is byte-identical to the one that produced the receipts.
+    cmd: prettier --check <spec>; docs_sync_gate.sh check <spec>; cmp of the awk-extracted probe
+    result: Prettier clean; DOCSYNC OK; IDENTICAL
+    exit: 0
+    ts: "2026-09-27T05:46:00Z"
+    seat: claude-opus-5-5
+outcome: >-
+  docs/specs/2026-09-27-r19-wrapper-token-contract-spec.md added with rules R1-R6, D-notes and the
+  reference probe. It also records a residual no gate had named: .kbli-paper still carries 22 literal
+  copies of R19_VARS values, six of them retired pre-unification values.

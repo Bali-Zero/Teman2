@@ -1,0 +1,27 @@
+task_id: r19-wrapper-token-contract-0927
+gear: 1
+l_level: L2
+gate_class: opus
+lane: docs
+branch: agent/air-m5/docs/r19-wrapper-token-contract-0927
+pii: none
+objective: >-
+  Write the spec the mouth R19 funnel-wrapper lane lacks. PR #7508 took three REWORK rounds on one cause:
+  the paper wrapper re-themes a dark-default app only partially. The spec closes the token contract
+  (R1), makes main's R19 class rules reachable (R2), specifies a guard over the real rendered surface
+  with a runnable reference probe (R3), a contrast census with its own method self-test (R4), the Bites
+  shape (R5) and one wrapper implementation with a serialized rebase order (R6).
+constraints:
+  - "Docs only. No code, no route, no token value changes. #7508 stays suspended and untouched."
+  - No client data. Census ids in R4 are synthetic by rule.
+  - The probe is embedded in the spec and extracted byte-identically, so the spec is its own source.
+acceptance:
+  - text: The probe extracted from the spec SHALL report both B4 tokens and exit 1 at 94b588cda1.
+    probe: docs/specs/2026-09-27-r19-wrapper-token-contract-spec.md (section "Run the probe from this file")
+  - text: A cured copy of 94b588cda1 SHALL exit 0, and deleting one colour token from it SHALL fail again.
+    probe: same probe, cured scratch tree
+  - text: Prettier and the docs-sync gate SHALL pass on the spec.
+    probe: prettier --check <spec>; PYTHON=python3 bash scripts/ci/docs_sync_gate.sh check <spec>
+consumer_map:
+  - The v2 wrapper lane, which ports the probe to a vitest guard and ships the single wrapper helper.
+  - The four wave rebases (kbli, oracle, studio, voa), which follow R4-R6 for their evidence and order.
