@@ -59,6 +59,12 @@ export interface AppWizardProps {
   onAbandon?: (step: number) => void;
   /** Overrides for the chrome above; anything omitted stays English. */
   labels?: Partial<AppWizardLabels>;
+  /**
+   * The host is busy with the submit that `onComplete` started. While true the
+   * primary button is disabled and `next()` is a no-op, so a double tap on the
+   * last step cannot fire `onComplete` twice.
+   */
+  pending?: boolean;
 }
 
 const PERSIST_TTL_MS = 60 * 60 * 1000; // 1h
@@ -77,6 +83,7 @@ export const AppWizard: FC<AppWizardProps> = ({
   onStepChange,
   onAbandon,
   labels,
+  pending = false,
 }) => {
   const label: AppWizardLabels = { ...DEFAULT_LABELS, ...labels };
   const [idx, setIdx] = useState(0);
@@ -150,6 +157,7 @@ export const AppWizard: FC<AppWizardProps> = ({
     : null;
 
   const next = () => {
+    if (pending) return;
     const currentValue = values[step.id];
     const err = step.validate?.(currentValue) ?? null;
     if (err) {
@@ -323,6 +331,8 @@ export const AppWizard: FC<AppWizardProps> = ({
         <button
           type="button"
           onClick={next}
+          disabled={pending}
+          aria-busy={pending}
           style={{
             marginLeft: "auto",
             padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
@@ -331,7 +341,8 @@ export const AppWizard: FC<AppWizardProps> = ({
             background: "var(--accent-funnel)",
             color: "var(--text-on-accent, #fff)",
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: pending ? "not-allowed" : "pointer",
+            opacity: pending ? 0.6 : 1,
             minHeight: "44px",
           }}
         >

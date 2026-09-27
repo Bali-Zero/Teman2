@@ -151,7 +151,7 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
         {/* Right — image + large title. P0.2: sticky so photo stays in view
             while the story list grows below md breakpoint. overflow-hidden
             moved HERE (not on the section) so clip only affects the photo box. */}
-        <div className="order-1 md:order-2 relative h-[55vh] md:sticky md:top-14 md:self-start md:max-h-[calc(88vh-3.5rem)] md:overflow-hidden">
+        <div className="order-1 md:order-2 relative h-[55vh] md:sticky md:top-[var(--public-header-height,56px)] md:self-start md:max-h-[calc(88vh-var(--public-header-height,56px))] md:overflow-hidden">
           <div
             className="absolute overflow-hidden"
             style={{

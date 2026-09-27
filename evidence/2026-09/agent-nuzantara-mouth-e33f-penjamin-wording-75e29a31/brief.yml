@@ -1,0 +1,80 @@
+task: >-
+  Visa Oracle wizard, retirement branch (apps/mouth, `src/app/(visa-oracle)/visa-oracle/_lib`):
+  the sponsor question and copy said "family sponsor", but E33F needs a penjamin (a licensed visa
+  agency or a person) and Bali Zero can act as one. Owner ruling 2026-09-27: the wording is wrong
+  for retirement only; the retiree without a penjamin becomes an E33F candidate on rule pack
+  seq-24 (sibling PR #7459, signed and activated separately); the wizard may say Bali Zero can be
+  the penjamin. New sibling question `retirement_penjamin_confirmed` (precedent
+  `business_sponsor_confirmed`) on the same fact `family.sponsor_confirmed` via
+  `pairedBooleanFact`, asked at the six retirement sites of `flow.ts`; "not sure" maps to no for
+  this sibling only, without `AMBIGUOUS_SPONSOR`, with the assumed value stated in the receipt;
+  `sponsorConfirmedAnswer` keeps `family.sponsor_status_code` / `family.sponsor_permit_basis`
+  wire-identical; `E33F_RETIREMENT_ELIGIBLE` copy neutral; `SPONSOR_REQUIRED` copy in penjamin
+  wording; verdict note (EN/ID) only for an E33F candidate with a no / not-sure penjamin answer.
+  Walk corpus regenerated (15 retirement fixtures, the asked question id only), no-path doors
+  fingerprint regenerated, interview-space cardinality 254 -> 256; the backend census file is
+  unchanged.
+lane: mouth
+machine: pro
+date: 2026-09-27
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size` (scripts/evidence_pack_lint.py --print-floor
+  --print-floor-source over the numstat against merge-base 3b3741d1dd): 29 files, +520/-78 outside
+  the 15 one-line walk fixtures, no hot-zone path. Gear 2 for the same reason the floor says so:
+  a public-wizard wording and flow change confined to apps/mouth plus the regenerated fixtures the
+  backend census reads, no data, no migration, no shared token.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+acceptance:
+  A1: >-
+    A retiree walk (planning ahead, RETIREMENT, income >= USD 3000, age >= 55) is asked the
+    penjamin question instead of the family-sponsor one, at all six retirement sites; the
+    family / invest / other / diaspora branches still ask `family_sponsor_confirmed`.
+    probe: >-
+      cd apps/mouth && npx vitest --run "src/app/(visa-oracle)" scripts/visa-oracle -> 45 files,
+      1229 passed (engine-adapter, flow, tree, fact-mapper, activity-boundary,
+      walk-corpus-determinism), measured in the building session on 2026-09-27.
+  A2: >-
+    The wire payload is unchanged for every answer: `family.sponsor_confirmed`,
+    `family.sponsor_status_code` and `family.sponsor_permit_basis` are byte-identical to the
+    family-worded question's for yes / no / not-sure, so the backend census file does not move.
+    probe: >-
+      backend census (apps/backend-rag, venv python, PYTHONPATH=.): test_interview_walk_census.py
+      39 passed / 14 skipped with the census file UNCHANGED; with gold_coverage + seq22: 97
+      passed; no conflict with #7459 in either merge order.
+  A3: >-
+    The interview space grows by exactly the sibling question (254 -> 256 walks) and the no-path
+    doors fingerprint matches the regenerated corpus.
+    probe: >-
+      npm run visa-oracle:walk-corpus (no install) then enumerate-interview-space: 256; reverting
+      flow.ts to HEAD gives 254; replay-no-path-doors.py regenerates no-path-doors.replay.json.
+  A4: >-
+    Live after promote: on balizero.com/visa-oracle the retiree walk shows the penjamin question;
+    answering "no" on the still-active seq-23 shows the penjamin-worded SPONSOR_REQUIRED copy
+    (no "family"); after the seq-24 activation it shows the E33F candidate with the penjamin note.
+    probe: >-
+      browser walk on the promoted production deployment (desktop + iQOO), recorded in the ship
+      note on the PR.
+out_of_scope: >-
+  The rule pack itself (seq-24 fold is PR #7459; signing, PR-B and the activation ceremony
+  follow); the `retirement/undecided/still_unsure` NEEDS_INPUT follow-up on packs <= 23, which
+  still asks the family-worded question and disappears with seq-24 (kept so the census file
+  stays untouched); GARUDA VOA, Second Home Studio, KBLI: untouched.
+assumptions:
+  - text: >-
+      Merge lands STAGED on Vercel and must be promoted (Mini autopromote, fallback `vercel
+      promote`) BEFORE the seq-24 activation ceremony, otherwise a no-penjamin retiree would see
+      the E33F candidate without the penjamin note.
+    status: unverified
+    probe: >-
+      after merge: production deployment of the merge commit promoted, then the A4 walk on the
+      public domain.
+  - text: >-
+      tsc --noEmit, eslint and prettier are clean on this diff (measured in the building
+      session on 2026-09-27); CI re-runs them.
+    status: verified
+    probe: >-
+      cd apps/mouth && npx tsc --noEmit; npx eslint <changed files>; npx prettier --check
+      <changed files>.

@@ -181,19 +181,37 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Retirement, age 55 or over, with a deposit of USD 50,000 or more held in your own name at a state bank.",
     "Pensiun, usia 55 tahun ke atas, dengan deposito minimal USD 50.000 atas nama sendiri di bank BUMN.",
   ),
+  // PR-M (owner ruling 2026-09-27): neutral on purpose — no sponsor clause.
+  // Rule packs <= 23 gate E33F on `family.sponsor_confirmed`; from seq-24 a
+  // missing penjamin no longer excludes the route (the applicant stays a
+  // candidate and the verdict carries `E33F_PENJAMIN_NOTE`), so this sentence
+  // must not promise a sponsor the pack may not require.
   E33F_RETIREMENT_ELIGIBLE: text(
-    "Retirement with passive income of USD 3,000 per month or more and a confirmed sponsor.",
-    "Pensiun dengan penghasilan pasif minimal USD 3.000 per bulan dan penjamin terkonfirmasi.",
+    "Retirement with passive income of USD 3,000 per month or more.",
+    "Pensiun dengan penghasilan pasif minimal USD 3.000 per bulan.",
   ),
   // `hf.e33f.sponsor-required` (EXCLUDE, `family.sponsor_confirmed == false`)
   // — reachable via `no_path_reasons` since D3-3's retirement-basis
   // dead-end fix made a definitively-denied sponsor a decisive
   // NO_SUPPORTED_PATH outcome instead of leaving it unresolved. Previously
   // unreachable from any corpus walk, so it fell through `reasonMessage`'s
-  // raw-code fallback with no test to catch it.
+  // raw-code fallback with no test to catch it. PR-M: penjamin wording — an
+  // E33F is sponsored by a penjamin (a licensed visa agency or a person), not
+  // a family member, and Bali Zero can act as one. The code stays: rule packs
+  // <= 23 emit it (from seq-24 the same walk stays an E33F candidate), and
+  // engine-adapter.test.ts pins that the copy exists.
   SPONSOR_REQUIRED: text(
-    "The Second Home Retirement Visa (E33F) requires a confirmed family sponsor, and you told us your sponsor has not confirmed. Confirming the sponsor is what would open this route.",
-    "Visa Rumah Kedua Pensiun (E33F) mensyaratkan sponsor keluarga yang telah dikonfirmasi, dan Anda menyatakan sponsor Anda belum mengonfirmasi. Konfirmasi sponsor adalah yang akan membuka jalur ini.",
+    "The Second Home Retirement Visa (E33F) needs a penjamin — a licensed visa agency or a person in Indonesia — to sponsor the application, and you told us you do not have one confirmed yet. Appointing a penjamin is what would open this route. Bali Zero can act as your penjamin.",
+    "Visa Rumah Kedua Pensiun (E33F) memerlukan penjamin — biro visa berlisensi atau seseorang di Indonesia — untuk mensponsori pengajuan, dan Anda menyatakan belum memiliki penjamin yang dikonfirmasi. Menunjuk penjamin adalah yang akan membuka jalur ini. Bali Zero dapat bertindak sebagai penjamin Anda.",
+  ),
+  // PR-M: frontend-synthesized verdict note (no backend code, no source
+  // refs), attached in `buildValidatedOutcome` when the E33F candidate is
+  // present and the retirement penjamin answer was "no" / "not sure". It is
+  // inert on rule packs <= 23 (a denied penjamin excludes E33F there) and
+  // active from seq-24, which keeps that retiree an E33F candidate.
+  E33F_PENJAMIN_NOTE: text(
+    "A penjamin (licensed visa agency or person) must sponsor your E33F. Bali Zero can act as your penjamin.",
+    "Visa E33F Anda harus disponsori oleh penjamin (biro visa berlisensi atau perorangan). Bali Zero dapat bertindak sebagai penjamin Anda.",
   ),
   E33_DEPOSIT_BASIS_ELIGIBLE: text(
     `Second Home on the deposit basis: ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank.`,
@@ -1613,9 +1631,12 @@ function price(
  * can simply ASK the unambiguous one (`followUp: true`) instead of
  * rendering a row the user cannot act on. `family.sponsor_confirmed`
  * (`family_sponsor_confirmed` / `business_sponsor_confirmed`, D12-explorer
- * sibling, tree.ts) is the one fact path this disambiguates today: the two
- * questions' branch conditions (`category` + `business_activity`) are
- * mutually exclusive by construction, so `followUpPrerequisitesMet` — the
+ * sibling, plus `retirement_penjamin_confirmed`, the E33F-only penjamin
+ * sibling — PR-M, owner ruling 2026-09-27 — tree.ts) is the one fact path
+ * this disambiguates today: the three questions' branch conditions
+ * (`category` + `business_activity` for D12, `category === "retirement"`
+ * for E33F) are mutually exclusive by construction, so
+ * `followUpPrerequisitesMet` — the
  * same structural replay Layer 2 already trusts for the single-question
  * case — settles it without guessing. `immigration.current_status_code`,
  * `work.indonesia_source_compensation` and `investment.pt_pma_committed`
@@ -1773,6 +1794,28 @@ function buildValidatedOutcome(
       requireReviewHoldRefs(item.source_refs);
       return condition(item.code, item.source_refs, trustedIds);
     });
+
+  // PR-M (owner ruling 2026-09-27): the penjamin note rides the same
+  // disclosure channel as the backend notices — one more OutcomeReason in
+  // `conditions`, on a code the backend never emits (so the S5 de-duplication
+  // above cannot collide with it), sourceless because the frontend synthesizes
+  // it. The interview's raw fact
+  // can still carry "unsure" here (`resolveConservativeAnswers` maps it to
+  // "no" only at the wire seam), so both answers count.
+  const penjaminAnswer = options.facts?.retirement_penjamin_confirmed;
+  if (
+    response.decision.state === "SUPPORTED_CANDIDATES" &&
+    (penjaminAnswer === "no" || penjaminAnswer === "unsure") &&
+    response.display.candidates.some(
+      (candidate) => candidate.product_code === "E33F",
+    )
+  ) {
+    conditions.push({
+      code: "E33F_PENJAMIN_NOTE",
+      message: SUPPORT_REASON_COPY.E33F_PENJAMIN_NOTE,
+      sourceIds: [],
+    });
+  }
 
   const base = {
     provenance: "ENGINE" as const,

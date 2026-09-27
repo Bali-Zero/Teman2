@@ -49,6 +49,13 @@
 // what the repo actually connects to (evidence cited on each rule). Nothing in that matrix is a
 // guess: a rule with no cited consumer is not in this file.
 //
+// WHAT CHANGED 2026-09-27 (rule 6b): the Apple Vision Pro gains TCP 5900 — macOS Screen Sharing,
+// the RFB port Screens 5 dials — on m5, pro and mini. Consumer: Screens 5 (Edovia) on visionOS
+// with its Tailscale device list linked; runbook docs/runbooks/screens5-vision-pro-tailscale.md.
+// Zero's own visor to Zero's own three Macs, 5900 and nothing else; the iPhones are NOT in the
+// rule because nothing on them consumes it. Accept-tests added from the same source, plus a
+// deny-test that keeps SSH, Redis, Ollama and the gateway closed to the visor.
+//
 // WHAT THIS COSTS THE EXISTING FLEET: the flows below are the ones the repo has consumers for.
 // A flow that exists on the machines but nowhere in the repo will break, loudly, on first use —
 // that is the intended failure mode of deny-by-default, and the runbook's verification step is
@@ -261,6 +268,24 @@
       "dst":    ["pro:443"]
     },
 
+    // ---- 6b. Apple Vision Pro -> macOS Screen Sharing on the three Macs, port 5900 only. -----
+    // ADDED 2026-09-27. Consumer: Screens 5 (Edovia) on visionOS, which dials RFB/5900 over the
+    // tailnet once its Tailscale device list is linked — runbook
+    // docs/runbooks/screens5-vision-pro-tailscale.md. Proven before the rule was written: from m5,
+    // `nc` to each of the three nodes on 5900 answered `RFB 003.889` (Screen Sharing on m5,
+    // Remote Management on pro and mini). This is P3 of the vision-deck study
+    // (research/operations/2026-08-11-apple-vision-pro-tailnet-leverage.md), operator-gated there
+    // and gated here by Zero's 2026-09-27 mandate. 5900 and nothing else: the visor still has no
+    // SSH, no Redis, no Ollama, and the iPhones are not in this rule because nothing on them
+    // consumes it. Authentication is the Mac's own login (Screens 5 default), not the legacy VNC
+    // password — the runbook says which node still has one and what to do about it.
+    {
+      "action": "accept",
+      "proto":  "tcp",
+      "src":    ["apple-vision-pro"],
+      "dst":    ["m5:5900", "pro:5900", "mini:5900"]
+    },
+
     // ---- 7. A team device is a DESTINATION for support, never a source. -----------------------
     // This is the direction the 2026-05-02 decision actually asked for ("Bali Zero retains remote
     // access se serve"): we reach the laptop, the laptop reaches nothing. 22 is SSH, 5900 is
@@ -357,7 +382,11 @@
     },
     {
       "src":    "apple-vision-pro",
-      "accept": ["pro:443"]
+      "accept": ["pro:443", "m5:5900", "pro:5900", "mini:5900"]
+    },
+    {
+      "src":  "apple-vision-pro",
+      "deny": ["pro:22", "mini:22", "m5:22", "mini:6379", "mini:11434", "pro:18789"]
     },
     // ADDED 2026-08-29 (round-4 gate): the guard now requires that EVERY grant in `acls` be
     // asserted by an accept-test from that same source, because the innocence half of this block

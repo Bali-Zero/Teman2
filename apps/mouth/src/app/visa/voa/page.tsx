@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AppFrame,
   AppTrustStrip,
@@ -131,6 +131,10 @@ export default function VoaEligibilityPage() {
   const tracker = useFunnelApp("visa_voa");
   const [submitError, setSubmitError] = useState<React.ReactNode>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Synchronous twin of `submitting`: a second tap can land before React has
+  // re-rendered the disabled button, and every attempt mints its own
+  // Idempotency-Key, so a duplicate POST would create a second result row.
+  const inFlight = useRef(false);
   // AppWizard's per-step render only sees that step's own value, never the
   // whole answer set — but the "dates" step needs to know case_type (extension
   // asks two extra contract-required fields the issuance case must NOT send).
@@ -425,6 +429,8 @@ export default function VoaEligibilityPage() {
   ];
 
   const onComplete = async (values: Record<string, unknown>) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setSubmitError(null);
     setSubmitting(true);
     const trip =
@@ -490,6 +496,13 @@ export default function VoaEligibilityPage() {
       }
       throw new Error(`unexpected status ${res.status}`);
     } catch {
+      // Only a failure re-arms the button. On success the guard stays armed
+      // until navigation unmounts the page: re-arming while `router.push` is
+      // still resolving would re-open the very window this guard closes. A
+      // retry keeps minting a fresh Idempotency-Key — a replayed key does not
+      // re-issue the session cookie and would 404 the result page.
+      inFlight.current = false;
+      setSubmitting(false);
       tracker.formSubmitFailed("/api/visa/voa/eligibility-checks", status);
       setSubmitError(
         <>
@@ -505,8 +518,6 @@ export default function VoaEligibilityPage() {
           .
         </>,
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -573,6 +584,7 @@ export default function VoaEligibilityPage() {
           onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}
           onAbandon={(step) => tracker.wizardAbandoned(step)}
           onComplete={onComplete}
+          pending={submitting}
         />
         {submitting ? (
           <p style={{ color: "var(--color-text-muted)" }} role="status">

@@ -182,3 +182,46 @@ def test_bind_retry_succeeds_immediately_with_no_failures():
 
     assert isinstance(server, _FakeServer)
     assert sleeps == []
+
+
+# ---------------------------------------------------------------------------
+# main() wiring
+# ---------------------------------------------------------------------------
+#
+# Every test above calls _resolve_listen_host / _serve_with_bind_retry
+# directly — none of them exercise main() itself. A mutant that keeps both
+# helpers intact but has main() call _resolve_listen_host() only for its
+# refusal side effect and then pass a hardcoded "0.0.0.0" (or LISTEN_PORT's
+# old sibling constant) into _serve_with_bind_retry would pass every test
+# above unchanged. This one closes that gap by monkeypatching both seams and
+# asserting the value _serve_with_bind_retry actually RECEIVES is the one
+# _resolve_listen_host RETURNED, not a literal.
+
+
+def test_main_wires_resolved_host_into_bind_not_a_hardcoded_one(monkeypatch):
+    sentinel_host = "100.111.222.99"  # anything != DEFAULT_LISTEN_HOST and != "0.0.0.0"
+    calls: dict = {}
+
+    class _FakeMainServer:
+        def serve_forever(self):
+            calls["served"] = True
+
+    def fake_resolve():
+        return sentinel_host
+
+    def fake_serve_with_bind_retry(host, port, handler_cls, **kwargs):
+        calls["host"] = host
+        calls["port"] = port
+        calls["handler_cls"] = handler_cls
+        return _FakeMainServer()
+
+    monkeypatch.setattr(wrapper, "_resolve_listen_host", fake_resolve)
+    monkeypatch.setattr(wrapper, "_serve_with_bind_retry", fake_serve_with_bind_retry)
+
+    wrapper.main()
+
+    assert calls["host"] == sentinel_host
+    assert calls["host"] != "0.0.0.0"
+    assert calls["port"] == wrapper.LISTEN_PORT
+    assert calls["handler_cls"] is wrapper.CheckoutHandler
+    assert calls.get("served") is True

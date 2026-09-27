@@ -1,0 +1,79 @@
+gear: 2
+brief_ref: evidence/brief.yml
+pii_scan: clean
+# Independent review and the fresh final gate are commissioned by Root after this
+# prepare-only window freezes the candidate; their objections land here.
+dissent: []
+spend:
+  wall_clock_hours: 0.7
+  adversarial_rounds: 0
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5 xhigh (Dux, claude CLI OAuth, prepare-only window)
+    task_id: champion-refine-0927
+    worktree: .worktrees/frontend-champion-refine-0927
+    branch: agent/nuzantara/frontend/champion-refine-0927
+  - lane: pii-scan
+    role: review
+    seat: claude-sonnet-5 (read-only subagent)
+    note: >-
+      Scanned the candidate diff, the synthetic fixture, the capture script and its
+      result for client data, the owner's private name, credentials and non-synthetic
+      emails: CLEAN.
+decisions:
+  - id: D1
+    what: >-
+      ChampionArena becomes the whole hero; the widget passes its countdown in as a
+      node, because the widget owns the ticking clock and the exported countdownParts.
+    why: One panel and one total without moving time logic out of the widget.
+  - id: D2
+    what: >-
+      A labelled native select replaces the 20 contender pills; the three podium cards
+      stay as pressed-state buttons.
+    why: >-
+      Compact at every width, keyboard operable (type-ahead, OS menu) and the phone's own
+      picker on mobile, with no new component or library.
+  - id: D3
+    what: >-
+      Face framing is display-only CSS (object-position plus a centring zoom transform)
+      from a table keyed by the public file name, opt-in through a `face` prop.
+    why: >-
+      The lettering sits beside the face at a different height on each card, so one
+      global crop cannot clear it; the bitmaps and the roster mapping stay untouched,
+      and the GOAL overlay keeps its current portrait.
+receipts:
+  - claim: >-
+      85 vitest cases in 6 files pass (widget, r19 no-red, GOAL celebration, dashboard
+      page, kita contrast guard, desk no-red guard).
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run <6 files> --maxWorkers=2
+    exit: 0
+    ts: "2026-09-26T22:03:57Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      The 7 new or changed hero tests fail on the base sources (3b3741d1dd) and pass on
+      the candidate; the initials-fallback test passes on both, as a preservation test.
+    cmd: >-
+      base ChampionArena/PortalChallengeWidget/ChampionPortrait restored from git show,
+      vitest run PortalChallengeWidget.test.tsx, candidate restored by cp and cmp
+    exit: 1
+    ts: "2026-09-26T22:04:27Z"
+    seat: claude-opus-5-5
+  - claim: tsc --noEmit clean; eslint 0 problems and prettier clean on the 4 changed files.
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/tsc --noEmit -p . &&
+      ../../node_modules/.bin/eslint --no-warn-ignored <4 files> &&
+      ../../node_modules/.bin/prettier --check <4 files>
+    exit: 0
+    ts: "2026-09-26T22:03:57Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Candidate preview in headless Chrome at 1440x900, 390x844 and 360x780 plus the
+      zero state with reduced motion: 64/64 checks (portraits loaded and face-framed,
+      no overflow or overlap with guilt probes, keyboard selection, full ranking,
+      details, total once, 0 page errors, 0 requests outside 127.0.0.1).
+    cmd: node /tmp/portal-champion-refine-0927/harness/capture.cjs
+    exit: 0
+    ts: "2026-09-26T22:11:30Z"
+    seat: claude-opus-5-5

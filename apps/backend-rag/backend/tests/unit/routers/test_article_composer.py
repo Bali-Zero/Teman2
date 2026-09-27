@@ -74,25 +74,63 @@ def test_client():
     """Create FastAPI test client.
 
     Disables the slowapi rate limiter so tests that hit /compose multiple
-    times in a row don't trip the 10/minute cap meant for real clients.
+    times in a row don't trip the 10/minute cap meant for real clients, and
+    re-enables it afterwards: the limiter is module-global, so leaving it off
+    silently disabled it for every later test on the same xdist worker
+    (test_compose_article_rate_limit then saw 11x500 and never a 429). The
+    restore runs in `finally` so a setup exception between the mutation and
+    the `yield` (e.g. `FastAPI()`/`include_router`/`TestClient` raising)
+    still restores it — a bare post-yield restore does not run in that case.
     """
     from fastapi import FastAPI
 
     from backend.app.dependencies import get_current_user
     from backend.app.routers.article_composer import limiter
 
+    was_enabled = limiter.enabled
     limiter.enabled = False
-    app = FastAPI()
-    app.include_router(router)
-    # /publish pushes to the public website — admin-only (Case OS R3 gate).
-    # These tests exercise the handler body, so they authenticate as an admin;
-    # the gate itself is covered by test_caseos_r3_admin_gates.py.
-    app.dependency_overrides[get_current_user] = lambda: {
-        "id": "u-1",
-        "email": "zero@balizero.com",
-        "role": "admin",
-    }
-    return TestClient(app)
+    try:
+        app = FastAPI()
+        app.include_router(router)
+        # /publish pushes to the public website — admin-only (Case OS R3 gate).
+        # These tests exercise the handler body, so they authenticate as an admin;
+        # the gate itself is covered by test_caseos_r3_admin_gates.py.
+        app.dependency_overrides[get_current_user] = lambda: {
+            "id": "u-1",
+            "email": "zero@balizero.com",
+            "role": "admin",
+        }
+        yield TestClient(app)
+    finally:
+        limiter.enabled = was_enabled
+
+
+def test_test_client_fixture_restores_limiter_on_setup_exception():
+    """A setup exception between the mutation and the `yield` must not leave
+    the module-global `limiter.enabled = False` behind for later tests.
+
+    Regression for PR #7444's REWORK: that version restored the limiter only
+    after `yield`, so a `FastAPI()`/`include_router`/`TestClient` failure
+    during setup skipped the restore entirely and leaked the disabled
+    limiter to whatever ran next on the same xdist worker.
+    """
+    from backend.app.routers.article_composer import limiter
+
+    original_enabled = limiter.enabled
+    limiter.enabled = True  # known starting state, independent of test order
+
+    generator = test_client.__wrapped__()
+    try:
+        with patch("fastapi.FastAPI", side_effect=RuntimeError("boom during setup")):
+            with pytest.raises(RuntimeError, match="boom during setup"):
+                next(generator)
+
+        assert limiter.enabled is True, (
+            "a setup exception left limiter.enabled=False behind for later tests"
+        )
+    finally:
+        generator.close()
+        limiter.enabled = original_enabled
 
 
 @pytest.fixture

@@ -1,24 +1,16 @@
 import { test, expect, type Page } from "@playwright/test";
 
-/**
- * MYTHOS Stage-B Batch 2 — Rumah Putih LIGHT theme for the public SERVICE pages.
- *
- * Pins the route-scoped light conversion of /services, /services/[slug] and the
- * /contact channel page:
- *   - the page's top-level wrapper carries the warm-paper surface
- *     (--surface-base #f7f6f2 → rgb(247, 246, 242)) via RUMAH_VARS;
- *   - NavShell (the fixed masthead) + Footer stay their dark navy anchors
- *     (they read --nav-bg / --footer-bg, NOT --surface-base);
- *   - the /services index stays PRICE-FREE (#1263) — no rupiah/IDR figure;
- *   - the /contact page (a channel-card page, NOT a <form>) surfaces legible
- *     contact CTAs on light;
- *   - no horizontal overflow at 390px (mobile) on any page.
- *
- * Describe title contains "page Page" — required by the CI grep
- * (.github/workflows/tests.yml runs `npx playwright test --grep "page Page"`).
- */
+/** R19 public presentation. The page Page title is the CI discovery contract. */
 
-const PAPER = "rgb(247, 246, 242)"; // --surface-base #f7f6f2 under Rumah Putih
+test.beforeEach(async ({ page }) => {
+  await page.route("**/*", (route) =>
+    ["GET", "HEAD"].includes(route.request().method())
+      ? route.continue()
+      : route.fulfill({ status: 204, body: "" }),
+  );
+});
+
+const PAPER = "rgb(247, 244, 238)"; // R19 paper
 
 /** Parse "rgb(r, g, b)" / "rgba(r, g, b, a)" → {r,g,b}. */
 function parseRgb(value: string): { r: number; g: number; b: number } | null {
@@ -45,24 +37,28 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-async function assertNavAndFooterDark(page: Page) {
+async function assertR19Chrome(page: Page) {
   const nav = page.locator("nav").first();
   await expect(nav).toBeVisible();
   const navBg = await nav.evaluate(
     (el) => getComputedStyle(el).backgroundColor,
   );
-  expect(isDark(navBg)).toBe(true);
+  expect(navBg).toBe(PAPER);
 
-  const footer = page.locator("footer").first();
+  const footer = page.locator("footer").last();
   await expect(footer).toBeAttached();
   const footerBg = await footer.evaluate(
     (el) => getComputedStyle(el).backgroundColor,
   );
-  expect(isDark(footerBg)).toBe(true);
+  expect(footerBg).toBe("rgb(238, 233, 225)");
 }
 
+test.afterEach(async ({ page }) => {
+  await page.close();
+});
+
 test.describe("service pages light page Page", () => {
-  test("/services renders on warm paper with navy chrome and stays price-free", async ({
+  test("/services renders on warm paper with R19 chrome and stays price-free", async ({
     page,
   }) => {
     await page.goto("/services");
@@ -74,7 +70,7 @@ test.describe("service pages light page Page", () => {
     );
     expect(wrapperBg).toBe(PAPER);
 
-    await assertNavAndFooterDark(page);
+    await assertR19Chrome(page);
 
     // #1263: the services index must not reintroduce any price. Scope to the
     // page wrapper so unrelated chrome (e.g. a "Talk to us" CTA) can't trip it.
@@ -90,7 +86,7 @@ test.describe("service pages light page Page", () => {
     await assertNoHorizontalOverflow(page);
   });
 
-  test("/contact renders light with legible contact CTAs and navy chrome", async ({
+  test("/contact renders light with legible contact CTAs and R19 chrome", async ({
     page,
   }) => {
     await page.goto("/contact");
@@ -102,7 +98,7 @@ test.describe("service pages light page Page", () => {
     );
     expect(wrapperBg).toBe(PAPER);
 
-    await assertNavAndFooterDark(page);
+    await assertR19Chrome(page);
 
     // /contact is a channel-card page (WhatsApp / Email / Office), not a <form>.
     // Assert the contact CTAs are present and reachable on the light surface.
@@ -126,7 +122,7 @@ test.describe("service pages light page Page", () => {
     await assertNoHorizontalOverflow(page);
   });
 
-  test("service detail renders ink-on-paper with navy chrome", async ({
+  test("service detail renders ink-on-paper with R19 chrome", async ({
     page,
   }) => {
     // visa is a stable, always-present service slug (SERVICES_DATA).
@@ -147,7 +143,7 @@ test.describe("service pages light page Page", () => {
     );
     expect(isDark(headingColor)).toBe(true);
 
-    await assertNavAndFooterDark(page);
+    await assertR19Chrome(page);
   });
 
   test("service detail has no horizontal overflow at 390px", async ({

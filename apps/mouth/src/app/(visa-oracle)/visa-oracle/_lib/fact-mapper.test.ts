@@ -162,9 +162,10 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
 // the declared, one-directional branches. Every remaining unsure stays
 // visible as uncertainty and therefore preserves the human-review hold.
 // Slice A6-bis adds two more (`diaspora_documents`, `retirement_basis`),
-// nine in total.
+// nine in total; PR-M (owner ruling 2026-09-27) adds the E33F penjamin
+// sibling, `retirement_penjamin_confirmed` — ten.
 describe("resolveConservativeAnswers — the wire seam (A6-2)", () => {
-  it("resolves exactly the nine declared conservative questions and retains other unsure answers", () => {
+  it("resolves exactly the ten declared conservative questions and retains other unsure answers", () => {
     expect(
       Object.entries(QUESTIONS)
         .filter(([, q]) => q.notSure?.mode === "conservative")
@@ -173,6 +174,7 @@ describe("resolveConservativeAnswers — the wire seam (A6-2)", () => {
     ).toEqual([
       "diaspora_documents",
       "retirement_basis",
+      "retirement_penjamin_confirmed",
       "secondhome_deposit_usd",
       "secondhome_own_name",
       "secondhome_passive_income_usd",
@@ -319,9 +321,10 @@ describe("question registry -> wire coverage", () => {
     // off `secondhome.passive_monthly_income_usd`/`family.sponsor_confirmed`
     // alone, never `retirement_basis` itself. See fact-mapper.ts.
     ["retirement_basis", "family_sponsor"],
-    // Released (PR-D3, D3-3) — `property` and `undecided` now ask
-    // `family_sponsor_confirmed` too (flow.ts), so both are exactly as
-    // decidable as `family_sponsor` above, for the identical reason.
+    // Released (PR-D3, D3-3) — `property` and `undecided` now ask the
+    // sponsor question too (flow.ts; `retirement_penjamin_confirmed` since
+    // PR-M), so both are exactly as decidable as `family_sponsor` above, for
+    // the identical reason.
     ["retirement_basis", "property"],
     ["retirement_basis", "undecided"],
     // Engine-inert: no rule reads a work role (owner ruling, decision 6).
@@ -660,6 +663,72 @@ describe("family.sponsor_confirmed — merges the D12-explorer sibling (business
         business_sponsor_confirmed: "no",
       }).facts["family.sponsor_confirmed"],
     ).toEqual({ status: "UNKNOWN", reason: "CONFLICTING" });
+  });
+});
+
+describe("family.sponsor_confirmed — merges the E33F penjamin sibling (retirement_penjamin_confirmed, PR-M)", () => {
+  // Owner ruling 2026-09-27: an E33F needs a penjamin (a licensed visa agency
+  // or a person), not a family sponsor. The retirement branch asks
+  // `retirement_penjamin_confirmed`; the engine still reads the SAME
+  // `family.sponsor_confirmed` fact, merged by `pairedBooleanFact`.
+  it("innocence: the penjamin answer alone resolves family.sponsor_confirmed, same as its family sibling", () => {
+    expect(
+      mapFacts({ retirement_penjamin_confirmed: "yes" }).facts[
+        "family.sponsor_confirmed"
+      ],
+    ).toEqual({ status: "KNOWN", value: true });
+    expect(
+      mapFacts({ retirement_penjamin_confirmed: "no" }).facts[
+        "family.sponsor_confirmed"
+      ],
+    ).toEqual({ status: "KNOWN", value: false });
+  });
+
+  it("guilt: a not-sure penjamin answer is a KNOWN no (conservative), never UNVERIFIED and never AMBIGUOUS_SPONSOR", () => {
+    const result = mapFacts({ retirement_penjamin_confirmed: "unsure" });
+    expect(result.facts["family.sponsor_confirmed"]).toEqual({
+      status: "KNOWN",
+      value: false,
+    });
+    expect(result.disclosed_review_flags).not.toContain("AMBIGUOUS_SPONSOR");
+    // The family sibling keeps its human-review hold — the two are not the
+    // same question, and only the family one is ambiguous when "unsure".
+    expect(
+      mapFacts({ family_sponsor_confirmed: "unsure" }).disclosed_review_flags,
+    ).toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  it("guilt: the penjamin and family ids disagreeing is CONFLICTING, never a silently picked side", () => {
+    expect(
+      mapFacts({
+        family_sponsor_confirmed: "yes",
+        retirement_penjamin_confirmed: "no",
+      }).facts["family.sponsor_confirmed"],
+    ).toEqual({ status: "UNKNOWN", reason: "CONFLICTING" });
+  });
+
+  it("innocence: the sponsor's-permit facts follow the penjamin answer — the rename does not change the retirement wire", () => {
+    const noPenjamin = mapFacts({ retirement_penjamin_confirmed: "no" }).facts;
+    expect(noPenjamin["family.sponsor_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_APPLICABLE",
+    });
+    expect(noPenjamin["family.sponsor_permit_basis"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_APPLICABLE",
+    });
+    const yesPenjamin = mapFacts({
+      retirement_penjamin_confirmed: "yes",
+    }).facts;
+    expect(yesPenjamin["family.sponsor_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+    // The pre-PR-M answer to the family wording resolved the same way.
+    expect(mapFacts({ family_sponsor_confirmed: "no" }).facts).toMatchObject({
+      "family.sponsor_status_code": { reason: "NOT_APPLICABLE" },
+      "family.sponsor_permit_basis": { reason: "NOT_APPLICABLE" },
+    });
   });
 });
 
@@ -1544,6 +1613,9 @@ describe("mapDisclosedReviewFlags — monotone abstention metadata", () => {
     ["secondhome_own_name", "secondhome.bank_deposit_in_own_name", "no"],
     ["study_admission_confirmed", "study.admission_confirmed", "no"],
     ["study_sponsor_confirmed", "study.sponsor_confirmed", "no"],
+    // PR-M: a retiree who is "not sure" they have a penjamin is a "no", not a
+    // human-review hold — the row also pins that AMBIGUOUS_SPONSOR stays off.
+    ["retirement_penjamin_confirmed", "family.sponsor_confirmed", "no"],
   ] as const;
 
   it.each(CONSERVATIVE_ANSWERS)(
@@ -1668,9 +1740,10 @@ describe("mapDisclosedReviewFlags — monotone abstention metadata", () => {
     });
   });
 
-  // Released (PR-D3, D3-3): `property` now asks `family_sponsor_confirmed`
-  // too (flow.ts), so the bare `retirement_basis` answer alone no longer
-  // holds — see the ACTIVITY_BOUNDARY guilt/innocence table above.
+  // Released (PR-D3, D3-3): `property` now asks the sponsor question too
+  // (flow.ts; `retirement_penjamin_confirmed` since PR-M), so the bare
+  // `retirement_basis` answer alone no longer holds — see the
+  // ACTIVITY_BOUNDARY guilt/innocence table above.
   it("releases a bare retirement property context — the basis alone no longer holds", () => {
     expect(mapDisclosedReviewFlags({ retirement_basis: "property" })).toEqual(
       [],
