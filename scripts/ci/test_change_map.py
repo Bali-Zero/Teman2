@@ -1251,6 +1251,9 @@ class ChangeMapTests(unittest.TestCase):
             "apps/backend-rag/backend/tests/unit/services/ingestion/test_ingest_success_is_reported_honestly.py": {"infra/eventbus": 1},
             "apps/backend-rag/backend/tests/unit/services/sota_loop/test_m13_weekly_repo_root.py": {"infra/claude-hooks": 1},
             "apps/evaluator/nlm_deep_research/scripts/run_nb5_t4_monitor.sh": {"infra/launchagents": 1},
+            "apps/evaluator/nlm_deep_research/tests/test_db_to_nlm_sync_telegram_token_not_in_argv.py": {
+                "infra/eventbus": 1
+            },
             "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json": {"infra/workflows": 1},
             "apps/wa-mirror/README.md": {"infra/home-fork": 2},
         }
