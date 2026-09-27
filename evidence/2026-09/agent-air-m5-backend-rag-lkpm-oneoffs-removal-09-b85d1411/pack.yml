@@ -18,7 +18,7 @@ seat_override: >-
   the second opinion". The fresh, independent on-disk gate that reviews this PR post-hoc is the
   adversarial check for this pack, in place of a convened council.
 diff:
-  net_lines: PLACEHOLDER — recomputed after the rework edits below settle; see the floor receipt.
+  net_lines: -1444 (9 files, +406/-1850; origin/main...HEAD post-rebase 34be3990a0)
   behaviour_change: >-
     Pure deletion + this evidence pack. Three dead one-off scripts and their one orphaned test
     are removed; two files lose one line each (a stale lint exception, and a roster entry naming
@@ -37,7 +37,7 @@ receipts:
     cmd: >-
       python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed.txt>
       --numstat-file <numstat.txt>; --print-floor-source for the driving term
-    result: "PLACEHOLDER-FLOOR-RECEIPT"
+    result: "3 / size — path-only would be 1/none (apps/backend-rag/scripts/** is not in HOTZONE_PATTERNS); churn of 2256 lines is over the size threshold, driving floor to 3, matching the declared gear"
     exit: 0
     ts: 2026-09-27T00:00Z
     seat: session (M5)
@@ -139,7 +139,7 @@ receipts:
       in a throwaway Python set, never written to a tracked file) and searched for each one
       inside the full final diff, restricted to every path EXCEPT the three deleted files' and
       their orphaned test's own hunks.
-    result: "PLACEHOLDER-SWEEP"
+    result: "232 sensitive strings extracted (Drive-id-shaped, email-shaped, PT/CV-prefixed company names) from the 3 deleted files + 1 orphaned test at origin/main; 0 hits in the final diff outside their own hunks"
     exit: 0
     ts: 2026-09-27T00:00Z
     seat: session (M5)
