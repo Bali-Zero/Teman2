@@ -2146,6 +2146,9 @@
   }
   :where([data-r19-home]) .entry-hero .hero-caption {
     bottom: 37px;
+    /* Keep clear of the fixed bottom-right "Ask Zantara" FAB. */
+    left: 5%;
+    right: auto;
     font-size: 6px;
     padding: 4px;
   }
