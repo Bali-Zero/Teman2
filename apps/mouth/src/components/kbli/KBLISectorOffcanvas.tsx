@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KBLIPanelDetail } from "@/lib/kbli-panel-detail";
 import { R19_CLASS, R19_DIRECTION_A_VARS } from "@/lib/theme/r19Vars";
-import { r19FontClassName } from "@/lib/theme/r19Fonts";
 import { KBLIPanelCodeDetail } from "./KBLIPanelCodeDetail";
 
 /**
@@ -326,10 +325,12 @@ export function KBLISectorOffcanvas({
           onCloseAutoFocus={restoreFocus}
           onClickCapture={notePendingHop}
           // Radix portals to <body>, OUTSIDE the /kbli layout wrapper — so the
-          // panel carries the R19 var set, fonts and the kbli-paper tokens
-          // itself, or it would render in the :root dark skin.
+          // panel carries the R19 var set and the kbli-paper tokens itself,
+          // or it would render in the :root dark skin. The Fraunces/Manrope
+          // @font-face rules are registered document-wide by the layout's
+          // own styles/r19-fonts.css import — no separate font class needed.
           style={R19_DIRECTION_A_VARS}
-          className={`${R19_CLASS} ${r19FontClassName} kbli-paper kbli-panel-content fixed z-[510] flex flex-col overflow-hidden
+          className={`${R19_CLASS} kbli-paper kbli-panel-content fixed z-[510] flex flex-col overflow-hidden
                      border-[var(--kbli-border-hover)] bg-[var(--kbli-bg-base)]
                      shadow-[-12px_0_32px_#1d2c3b1f]
                      inset-x-0 bottom-0 top-16 rounded-t-[var(--kbli-radius-xl)] border-t

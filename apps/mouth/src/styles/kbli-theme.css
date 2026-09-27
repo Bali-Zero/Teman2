@@ -456,7 +456,7 @@
 .kbli-paper [data-funnel="kbli"] {
   --accent-funnel: #a44b36;
   --accent-funnel-text: #a44b36;
-  --text-on-accent: #fffcf7;
+  --text-on-accent: #ffffff; /* = main's R19_VARS text-on-accent (2026-09-27 unification, gate B2) */
 }
 .kbli-paper [data-funnel="kbli"] > [role="group"][aria-label="Next actions"] {
   position: static !important;

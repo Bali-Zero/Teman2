@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { R19_CLASS, R19_DIRECTION_A_VARS } from "./r19Vars";
+import { R19_VARS } from "@/components/r19/presentation";
 
 /**
  * R19 Direction A — contrast law and value grammar, recomputed from the exact
@@ -8,9 +9,18 @@ import { R19_CLASS, R19_DIRECTION_A_VARS } from "./r19Vars";
  * text pairs at their floor, interactive boundaries at 3:1, and the decorative
  * lines pinned BELOW 3:1 so promoting one into interactive duty has to edit
  * this file on purpose.
+ *
+ * UNIFIED 2026-09-27 (gate B2 on PR #7508): most tokens are now spread
+ * straight from `R19_VARS` (main's site-wide R19 shell) rather than
+ * restated, and several aliases are deliberate `var(--other-key)`
+ * references instead of copied literals — so this file's grammar check and
+ * `resolve()` helper below follow one level of `var()` before measuring a
+ * contrast pair, and a dedicated block asserts no shared key was quietly
+ * given a different value than `R19_VARS` carries.
  */
 
 const VARS = R19_DIRECTION_A_VARS as Record<string, string>;
+const MAIN = R19_VARS as Record<string, string>;
 
 function channel(c: number): number {
   const s = c / 255;
@@ -29,10 +39,28 @@ function contrastRatio(fg: string, bg: string): number {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
+const VAR_REF = /^var\((--[\w-]+)\)$/;
+
+/** Follows a `var(--other-key)` alias to its literal, one hop at a time, so
+ * a contrast pair can name either an inherited literal or a designated
+ * alias interchangeably — the same tolerance the browser cascade gives it. */
+function resolve(token: string, seen: Set<string> = new Set()): string {
+  if (seen.has(token)) {
+    throw new Error(`circular var() reference starting at ${token}`);
+  }
+  seen.add(token);
+  const raw = VARS[token];
+  if (raw === undefined) {
+    throw new Error(`${token} is not defined in R19_DIRECTION_A_VARS`);
+  }
+  const m = VAR_REF.exec(raw);
+  return m ? resolve(m[1], seen) : raw;
+}
+
 function hexOf(token: string): string {
-  const value = VARS[token];
-  if (!/^#[0-9A-Fa-f]{6}$/.test(value ?? "")) {
-    throw new Error(`${token} is not a 6-digit hex: ${String(value)}`);
+  const value = resolve(token);
+  if (!/^#[0-9A-Fa-f]{6}$/.test(value)) {
+    throw new Error(`${token} does not resolve to a 6-digit hex: ${value}`);
   }
   return value;
 }
@@ -69,6 +97,12 @@ const NON_TEXT_PAIRS: Row[] = [
   ["--r19-control-border", "--surface-raised", 3, "field edge on sheet"],
   ["--r19-structure", "--surface-raised", 3, "selected option edge"],
   ["--r19-copper", "--surface-base", 3, "focus ring"],
+  [
+    "--nav-icon-color",
+    "--nav-icon-bg",
+    3,
+    "mobile nav toggle icon on kbli's opaque paper nav (gate B1, PR #7508)",
+  ],
 ];
 
 const DECORATIVE_PAIRS: Row[] = [
@@ -117,6 +151,14 @@ describe("R19 Direction A — WCAG contrast", () => {
   );
 });
 
+describe("R19 Direction A — inherits main's R19 shell verbatim", () => {
+  it("restates no R19_VARS key at a different value (gate B2, PR #7508)", () => {
+    for (const key of Object.keys(MAIN)) {
+      expect(VARS[key], `${key} diverges from R19_VARS`).toBe(MAIN[key]);
+    }
+  });
+});
+
 describe("R19 Direction A — value grammar", () => {
   const FONT_ENTRIES = new Set(["--font-serif", "--font-sans"]);
   const HEX = /^#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/;
@@ -124,9 +166,52 @@ describe("R19 Direction A — value grammar", () => {
   const LENGTH = /^\d+(?:\.\d+)?px$/;
   const SHADOW = /^(?:\d+(?:px)? ){3,4}#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/;
   const FONT_STACK =
-    /^var\(--font-r19-(?:serif|sans)\), "[A-Za-z ]+", [A-Za-z ]+, (?:serif|sans-serif)$/;
+    /^"R19 (?:Fraunces|Manrope)", [A-Za-z]+, (?:serif|sans-serif)$/;
 
-  it.each(Object.entries(VARS))("%s = %s is a literal", (name, value) => {
+  // Tokens that are DELIBERATE `var(--other-key)` aliases rather than
+  // literals — the whole point of the 2026-09-27 unification (gate B2): a
+  // shared meaning is spelled once, at the key it means, and every alias
+  // just points at it, so it can never drift to a different number again.
+  const ALIAS_TARGETS: Record<string, string> = {
+    "--cta-primary-fg": "--text-on-accent",
+    "--color-text-muted": "--text-secondary",
+    "--color-border-subtle": "--border-subtle",
+    "--footer-text": "--text-secondary",
+    "--cta-bg": "--cta-primary-bg",
+    "--tx-secondary": "--text-secondary",
+    "--bz-accent": "--accent-funnel",
+    "--text-link": "--accent-funnel",
+    "--r19-ink-muted": "--text-secondary",
+    "--nav-icon-color": "--text-primary",
+    "--nav-icon-bg": "--surface-raised",
+    "--nav-icon-border": "--border-subtle",
+  };
+
+  it.each(Object.entries(ALIAS_TARGETS))(
+    "%s is a designated var(%s) alias, not a copied literal",
+    (name, target) => {
+      expect(VARS[name]).toBe(`var(${target})`);
+      expect(
+        VARS[target],
+        `alias target ${target} must itself exist`,
+      ).toBeDefined();
+    },
+  );
+
+  // A key inherited verbatim from R19_VARS (unchanged, per the block above)
+  // is main's own contract, not this file's — the literal-grammar check
+  // below scopes to this file's OWN additions: a key MAIN does not carry,
+  // or one this file deliberately re-declares (there are none of the
+  // latter left; the block above enforces that every override is an alias).
+  const NON_CUSTOM_PROPERTY_KEYS = new Set(["colorScheme"]);
+  const OWN_ADDITIONS = Object.entries(VARS).filter(
+    ([name]) =>
+      !(name in ALIAS_TARGETS) &&
+      !(name in MAIN) &&
+      !NON_CUSTOM_PROPERTY_KEYS.has(name),
+  );
+
+  it.each(OWN_ADDITIONS)("%s = %s is a literal", (name, value) => {
     expect(name.startsWith("--")).toBe(true);
     expect(value).not.toMatch(/color-mix|rgba?\(|hsla?\(|calc\(/);
     if (FONT_ENTRIES.has(name)) {
@@ -142,11 +227,11 @@ describe("R19 Direction A — value grammar", () => {
     ).toBe(true);
   });
 
-  it("restates the :root aliases the day set restates (var() resolves at the declaring element)", () => {
-    expect(VARS["--color-text-muted"]).toBe(VARS["--text-secondary"]);
-    expect(VARS["--color-border-subtle"]).toBe(VARS["--border-subtle"]);
-    expect(VARS["--cta-bg"]).toBe(VARS["--cta-primary-bg"]);
-    expect(VARS["--footer-text"]).toBe(VARS["--text-tertiary"]);
+  it("carries no other stray non-custom-property key", () => {
+    const stray = Object.keys(VARS).filter(
+      (k) => !k.startsWith("--") && !NON_CUSTOM_PROPERTY_KEYS.has(k),
+    );
+    expect(stray).toEqual([]);
   });
 
   it("exports the scope class the stylesheet hooks", () => {

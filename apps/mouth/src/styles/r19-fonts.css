@@ -1,0 +1,25 @@
+/**
+ * R19 Direction A — the two @font-face declarations, extracted 2026-09-27
+ * (gate B2 on PR #7508) from components/r19/R19Presentation.module.css so
+ * a non-editorial route (kbli, and after it oracle/studio/voa) can register
+ * the SAME faces without duplicating the font binaries: this file names the
+ * physical files main already ships at public/fonts/*-r19-latin.woff2, so
+ * there is exactly one 17 KB Fraunces subset and one 13 KB Manrope subset
+ * in the whole app, not a second next/font-bundled pair per funnel.
+ *
+ * @font-face is not selector-scoped by CSS Modules, so importing this plain
+ * (non-module) file from a CSS Module still registers the faces globally —
+ * R19Presentation.module.css does exactly that, unchanged in effect.
+ */
+@font-face {
+  font-family: "R19 Fraunces";
+  src: url("/fonts/fraunces-r19-latin.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "R19 Manrope";
+  src: url("/fonts/manrope-r19-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
