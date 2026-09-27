@@ -114,9 +114,15 @@ class WaitingDocumentsService:
                         team_member_email=team_leader_email,
                     )
                     results["client_notified"] = True
-                    logger.info(f"Document request email sent to client {client_data['email']}")
+                    logger.info(
+                        "Document request email sent to client %s",
+                        redact_identifier_for_log(client_data["email"]),
+                    )
                 except Exception as e:
-                    logger.error("Failed to send document request to client: %s", e)
+                    logger.error(
+                        "Failed to send document request to client: %s",
+                        _bounded_scrub(str(e), 400),
+                    )
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
 

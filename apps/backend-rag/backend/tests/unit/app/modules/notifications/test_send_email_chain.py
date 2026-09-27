@@ -563,6 +563,11 @@ class TestSendChainLoggingDoesNotLeakTheRecipient:
         joined = " ".join(r.getMessage() for r in caplog.records)
         assert self.ADDR not in joined
         assert "sender.pii.probe" not in joined
+        # Positive assertion: the digest stands in for the redacted subject
+        # address, so the log line surviving with it removed (rather than
+        # vanishing outright) is what the negative asserts above actually prove.
+        assert "id:" in joined
+        assert "Re: invoice for" in joined
 
     @pytest.mark.asyncio
     async def test_success_log_escapes_a_newline_in_the_subject(self, caplog):

@@ -33,6 +33,26 @@ _LOGGER_NAME = "backend.services.crm.waiting_documents_service"
 _ADDR = "waiting.docs.probe@example.com"
 
 
+# ---------------------------------------------------------------------------
+# C2 (fresh gate on #7449, follow-up mandate): the fix above covers
+# _send_with_brevo_fallback's own log lines. The CALLER,
+# trigger_on_waiting_documents(), has its own independent success/except log
+# lines that also print the raw client address today. Guilt+innocence here
+# exercise the caller directly, mocking out its DB/email dependencies.
+# ---------------------------------------------------------------------------
+
+
+def _make_caller_service(client_data: dict, practice_data: dict) -> WaitingDocumentsService:
+    svc = _make_service()
+    svc._fetch_practice_data = AsyncMock(return_value=practice_data)
+    svc._fetch_client_data = AsyncMock(return_value=client_data)
+    svc._send_team_leader_notification = AsyncMock()
+    return svc
+
+
+_PRACTICE_NO_TEAM_LEADER = {"client_id": 1, "assigned_to": None, "created_by": None}
+
+
 def _make_service() -> WaitingDocumentsService:
     pool = MagicMock()
     with patch("backend.services.crm.waiting_documents_service.ZohoEmailService"):
@@ -145,5 +165,50 @@ async def test_innocence_brevo_failure_keeps_the_non_pii_diagnostic_text(caplog)
     p1, p2, p3, p4 = _patch_email_infra(client)
     with p1, p2, p3, p4, caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
         await svc._send_with_brevo_fallback(_ADDR, "hi", "<p>x</p>", email_type="welcome")
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert "connection reset by peer" in joined
+
+
+# --- CALLER (trigger_on_waiting_documents) GUILT + INNOCENCE ---
+
+
+@pytest.mark.asyncio
+async def test_caller_success_log_does_not_leak_the_client_address(caplog):
+    client_data = {"id": 1, "email": _ADDR, "full_name": "Alice"}
+    svc = _make_caller_service(client_data, _PRACTICE_NO_TEAM_LEADER)
+    svc._send_client_documents_request = AsyncMock(return_value=None)
+    with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+        result = await svc.trigger_on_waiting_documents(practice_id=99, triggered_by="staff@balizero.com")
+    assert result["client_notified"] is True
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert _ADDR not in joined
+    assert redact_identifier_for_log(_ADDR) in joined
+
+
+@pytest.mark.asyncio
+async def test_caller_except_log_does_not_leak_the_address_or_raw_exception_text(caplog):
+    client_data = {"id": 1, "email": _ADDR, "full_name": "Alice"}
+    svc = _make_caller_service(client_data, _PRACTICE_NO_TEAM_LEADER)
+    svc._send_client_documents_request = AsyncMock(
+        side_effect=RuntimeError(f"550 mailbox {_ADDR} rejected")
+    )
+    with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+        result = await svc.trigger_on_waiting_documents(practice_id=99, triggered_by="staff@balizero.com")
+    assert result["client_notified"] is False
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert _ADDR not in joined
+    assert "waiting.docs.probe" not in joined
+    assert "rejected" in joined  # non-PII diagnostic text survives
+
+
+@pytest.mark.asyncio
+async def test_caller_innocence_keeps_the_non_pii_exception_text(caplog):
+    client_data = {"id": 1, "email": _ADDR, "full_name": "Alice"}
+    svc = _make_caller_service(client_data, _PRACTICE_NO_TEAM_LEADER)
+    svc._send_client_documents_request = AsyncMock(
+        side_effect=RuntimeError("connection reset by peer")
+    )
+    with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+        await svc.trigger_on_waiting_documents(practice_id=99, triggered_by="staff@balizero.com")
     joined = " ".join(r.getMessage() for r in caplog.records)
     assert "connection reset by peer" in joined

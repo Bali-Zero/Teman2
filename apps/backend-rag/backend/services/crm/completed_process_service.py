@@ -108,7 +108,10 @@ class CompletedProcessService:
                     )
                     client_notified = True
                 except Exception as e:
-                    logger.error("Failed to send completion email to client: %s", e)
+                    logger.error(
+                        "Failed to send completion email to client: %s",
+                        _bounded_scrub(str(e), 400),
+                    )
 
             team_notified = False
             if team_leader_email:
@@ -293,7 +296,9 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             else None,
             include_logo=True,
         )
-        logger.info("Completion email sent to client %s", client_email)
+        logger.info(
+            "Completion email sent to client %s", redact_identifier_for_log(client_email)
+        )
 
     async def _send_team_leader_completion_notification(
         self,
