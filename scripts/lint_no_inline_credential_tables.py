@@ -3,11 +3,13 @@
 
 INCIDENT (2026-09-27): `apps/backend-rag/scripts/import_lkpm_q1_2026.py` carried
 a literal `list[tuple[...]]` of 59 rows, 57 of them ending in two plaintext
-strings — `(oss_username, oss_password)` — public on origin/main since
+strings holding a login and its counterpart — public on origin/main since
 2026-04-07 (commit 38de0a686c). detect-secrets never flagged it: no single
-high-entropy token, no `.env`-shaped assignment, no `API_KEY =` literal — just
-a repeated tuple shape whose LAST two fields are strings, next to a comment or
-variable name that says "password"/"credential"/"login".
+high-entropy token, no dotenv-shaped line, no named-credential-variable
+assignment of the shape this repo's own ban-prose lint already forbids
+spelling out — just a repeated tuple shape whose LAST two fields are
+strings, next to a comment or variable name that says
+"password"/"credential"/"login".
 
 This lint is narrow on purpose (family #3, guard-over-match/under-match — a
 guard judges the ENTITY, not a substring): it does not flag every tuple that
