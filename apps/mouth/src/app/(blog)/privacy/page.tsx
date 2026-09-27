@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   // Self-canonical, not the root layout's `canonical: appUrl`. Inherited,
@@ -40,7 +41,7 @@ export default function PrivacyPolicyPage() {
           Privacy Policy
         </h1>
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-          Last updated: March 2026 · Effective: October 17, 2024
+          Last updated: September 2026 · Effective: October 17, 2024
         </p>
       </header>
 
@@ -73,6 +74,11 @@ export default function PrivacyPolicyPage() {
             <li>Address (residential and business)</li>
             <li>Passport number and expiry date</li>
             <li>Communication history (messages across all channels)</li>
+            <li>
+              Usage data (pages visited, device and browser type, traffic
+              source) collected through Google Analytics with anonymized IP,
+              only after you accept analytics cookies
+            </li>
           </ul>
 
           <h3
@@ -148,6 +154,10 @@ export default function PrivacyPolicyPage() {
               5-minute TTL)
             </li>
             <li>
+              <strong>Vercel</strong> (global) — Hosting and delivery of the
+              balizero.com website
+            </li>
+            <li>
               <strong>Local processing</strong> (Bali) — Ollama AI for document
               OCR (no cross-border transfer)
             </li>
@@ -179,6 +189,9 @@ export default function PrivacyPolicyPage() {
             <li>
               <strong>Cache data:</strong> 5 minutes (automatically deleted)
             </li>
+            <li>
+              <strong>Usage analytics:</strong> 26 months
+            </li>
           </ul>
         </Section>
 
@@ -205,6 +218,10 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <strong>Object:</strong> Object to automated decision-making
+            </li>
+            <li>
+              <strong>Complaint:</strong> Lodge a complaint with the Indonesian
+              personal data protection authority
             </li>
           </ul>
           <p className="text-sm mt-2">
@@ -241,7 +258,22 @@ export default function PrivacyPolicyPage() {
           </p>
         </Section>
 
-        <Section title="10. Contact">
+        <Section title="10. Cookies">
+          <p className="text-sm">
+            We use essential cookies for authentication and preferences.
+            Analytics cookies (Google Analytics) are opt-in. See our{" "}
+            <Link
+              href="/cookies"
+              className="underline"
+              style={{ color: "var(--r19-copper)" }}
+            >
+              Cookie Policy
+            </Link>{" "}
+            for the full list.
+          </p>
+        </Section>
+
+        <Section title="11. Contact">
           <p className="text-sm">
             <strong>Data Protection Officer:</strong>{" "}
             <a
@@ -263,7 +295,8 @@ export default function PrivacyPolicyPage() {
             </a>
           </p>
           <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-            Bali Zero · Bali, Indonesia · PSE Registration: [Pending]
+            Bali Zero · Bali, Indonesia · PSE Registration: TD-PSE
+            029817.01/DJAI.PSE/09/2026 (Komdigi, registered 14 September 2026)
           </p>
         </Section>
       </div>
