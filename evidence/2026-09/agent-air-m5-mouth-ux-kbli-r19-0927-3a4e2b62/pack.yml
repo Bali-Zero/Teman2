@@ -8,8 +8,7 @@ plan_ref: >-
 council_run: council-journal.jsonl
 council_note: >-
   Two distinct seats reviewed the diff and both returned HOLDS — quorum met, no override needed
-  for R9 (corrected in the rework round below; the fresh gate on the first head recommended exactly
-  this). Round 1 (pre-rework): kimi-code/k3 (prompt-in/prompt-out via scripts/kimi_client.py, no
+  for R9. Round 1 (pre-rework): kimi-code/k3 (prompt-in/prompt-out via scripts/kimi_client.py, no
   repo access; routePolicy.ts + the CTAHandoff.tsx diff + kbli/layout.tsx diff + full diffstat),
   VERDICT HOLDS on all three questions asked, two caveats independently re-verified and found
   non-blocking (see dissent). Round 2 (rework, gate B1/B2 cure): tp1-qwen3.8-max (prompt-in/
@@ -23,7 +22,12 @@ council_note: >-
   session ruled mid-review that the spalla egress guard on main is known-defective and the lane is
   suspended; its dispatch was left to finish unattended (bash PID 21477) and its output was never
   read into this pack. The 34 files it received are listed in the shipping report for the egress
-  gate to judge.
+  gate to judge. Round 3 (this revision, gate B3 + B2-residual cure) did not dispatch a new
+  council seat: the conducting session's round-3 instructions named four concrete asks (restore
+  --foreground, add a coverage test, convert 6 literals, re-verify) with no request for a third
+  review pass, and quorum was already met in round 2. This round's diff (2 files, +153/-7,
+  test-file grammar/coverage extensions plus the two-line r19Vars.ts fix) is materially smaller
+  and lower-risk than either prior round's.
 seat_override: >-
   R8 (ground_truth) only, per _seat_rule_verdict: apps/mouth/src/app/kbli/* is a
   GROUND_TRUTH_PATH_PATTERNS hit, but this diff changes no KBLI classification, risk level, PMA
@@ -122,6 +126,38 @@ dissent:
       #ffffff while R19_VARS writes uppercase #FFFFFF.
     status: RETRACTED
     resolution: CSS hex literals are case-insensitive; no functional or rendered difference.
+  - seat: fresh Opus 5.5 gate (sign-only, second head 0e1f773419)
+    objection: >-
+      Round 1's unification (f14500c8d1) dropped --foreground entirely (R19_VARS never defines it)
+      instead of restating it, so /kbli/<code> falls back to globals.css's dark-theme default
+      (#ececec on paper): 30 text elements measured at 1.08-1.15:1, down from 12.96:1 on the first
+      head. Also, six tokens (--surface-base-solid, --surface-sunken, --surface-deep,
+      --bz-elevated, --r19-structure, --r19-focus) still copy main's values under another name as
+      a literal instead of a var() reference — a residual form of B2.
+    status: CONFIRMED
+    resolution: >-
+      Cured in this round's commit (93187d6f2d): --foreground is restored as a LITERAL synced to
+      --text-primary at import time (R19_VARS["--text-primary"]), NOT a var() alias — kbli-theme.css's
+      own .kbli-paper block (BRIEF-v2 R-1 Section 3.4) documents this exact indirection as "the
+      r19Vars.ts alias trap": a :root-declared alias re-resolving to the dark default instead of
+      the paper override the block was written to guarantee. .kbli-paper avoids the trap by
+      restating every --kbli-* token as its own literal; this file now does the same for
+      --foreground specifically. The six residual literals are converted to var() references
+      (--surface-base-solid -> var(--surface-base), --surface-sunken -> var(--r19-wash),
+      --surface-deep -> var(--surface-sunken), --bz-elevated -> var(--surface-raised),
+      --r19-structure -> var(--r19-slate), --r19-focus -> "0 0 0 3px var(--accent-funnel)"), and
+      r19Vars.test.ts's alias-grammar guard is extended to cover all six plus a dedicated
+      composite-shadow check for --r19-focus. A new coverage test walks the real kbli surface tree
+      (apps/mouth/src/app/kbli/**, apps/mouth/src/components/kbli/**) plus MobileNav.tsx and fails
+      if any non-external var(--x) it reads is undefined in the effective R19_DIRECTION_A_VARS set
+      — the general form of this exact regression class. Live re-verification on the fresh Vercel
+      preview (mouth-git-agent-air-m5mouthux-kbli-r19-0927-nuzantara-2026.vercel.app) was NOT
+      performed: the preview sits behind Vercel's deployment-protection SSO wall
+      (vercel.com/sso-api redirect confirmed via curl) and this session does not hold the
+      automation-bypass secret the gate's own Playwright check used. Static verification (tsc,
+      the 4-new-test vitest suite, full apps/mouth suite, production build) is the substitute
+      evidence for this round; a live contrast re-check is left to whichever session next has
+      preview access.
 pii_scan: clean
 pii_scan_note: >-
   Diff touches no client data, no CRM, no WhatsApp transcripts, no research/crm-exports paths.
@@ -130,22 +166,28 @@ pii_scan_note: >-
   new r19Vars.ts, the MobileNav.tsx diff and the kbli-theme.css diff. Neither payload carries a
   company contact value or a client-identifying string — both are pure design-token/UI source.
 spend:
-  wall_clock_hours: 3.9
+  wall_clock_hours: 4.8
   adversarial_rounds: 2
 spend_note: >-
   From worktree creation (.worktrees/mouth-ux-kbli-r19-0927, ~09:56Z UTC 2026-09-27) to this pack's
-  close (~03:55Z, see the last receipt timestamp). Two adversarial rounds: round 1, kimi dispatched
-  once on the first head, returned, no retry needed. Round 2 (rework, after the fresh gate returned
-  REWORK-BUILD on B1/B2), tp1-qwen3.8-max dispatched once on the cured head, returned, no retry
-  needed. Codex was dispatched once during round 1 and abandoned mid-flight per the conducting
-  session's stop-order (see council_note) — its wall clock does not count toward this unit's spend
-  since the session did not wait on it.
+  close (~04:44Z, see the last receipt timestamp). Two council-review adversarial rounds: round 1,
+  kimi dispatched once on the first head, returned, no retry needed. Round 2 (rework, after the
+  fresh gate returned REWORK-BUILD on B1/B2), tp1-qwen3.8-max dispatched once on the cured head,
+  returned, no retry needed. Codex was dispatched once during round 1 and abandoned mid-flight per
+  the conducting session's stop-order (see council_note) — its wall clock does not count toward
+  this unit's spend since the session did not wait on it. Round 3 (this revision, gate B3 + B2
+  residual) added no new council dispatch, per council_note's reasoning — its wall clock is
+  static verification (tsc/vitest/build) plus the root-cause trace, not an adversarial round.
 appetite_exceeded: >-
-  adversarial_rounds 2 against a declared 1. Round 1 (kimi) reviewed the original head; the fresh
-  gate then returned REWORK-BUILD on two blockers a council review does not itself catch (B1 a
-  contrast measurement, B2 a cross-file token-value comparison against main). Round 2 (tp1) reviews
-  the cure. This is the gate doing its job, not scope creep — appetite is revised to 2 rounds for
-  any further round on this branch.
+  adversarial_rounds 2 against a declared 1 (unchanged from the round-2 revision): council-review
+  rounds are kimi (round 1) and tp1 (round 2); round 3's gate cycle did not add a third review
+  dispatch. Three GATE cycles total on this branch (fresh-gate REWORK-BUILD twice: B1/B2 on the
+  first head, B3 + B2-residual on the second) — the gate doing its job on a design-token
+  unification that is genuinely easy to get subtly wrong twice, not scope creep. Per the Builder
+  Contract's "three reds for the SAME cause suspends" rule: round 1 and round 3 are DIFFERENT
+  causes (a values-diverge bug, then a values-dropped bug the values-unify fix itself introduced),
+  so this is a depth-1 fix-of-a-fix on round 1's cure, not a third round on the same cause —
+  within the Contract's bound, not past it.
 receipts:
   - claim: origin/main was fetched fresh and the stale branch's full commit range (foundation plus its follow-on changes) was cherry-picked in order onto a NEW worktree, conflict-free
     cmd: "python3 scripts/agent_start.py --lane mouth --task-id ux-kbli-r19-0927 && git cherry-pick 8cb6914f80^..d8ae5e4e84"
@@ -299,4 +341,74 @@ receipts:
       as dissent entries above
     exit: 0
     ts: "2026-09-27T03:52:00Z"
+    seat: claude-sonnet-5
+
+  # ---- Rework round 3 (gate B3 + B2 residual on head 0e1f773419, REWORK-BUILD; cured in 93187d6f2d) ----
+
+  - claim: "root cause traced to source before curing: kbli-theme.css's own .kbli-paper block (BRIEF-v2 R-1 Section 3.4) documents the exact --foreground indirection failure by name, and the literal #ececec the gate measured is kbli-theme.css's own dark-theme --kbli-text-primary default"
+    cmd: "grep -n 'kbli-paper\\|kbli-text-primary' apps/mouth/src/styles/kbli-theme.css; grep -rn -i ececec apps/mouth/src packages/core --include='*.css'"
+    result: >-
+      Line 35 sets the dark default --kbli-text-primary: #ececec; the .kbli-paper block (lines
+      278-289 comment, 290-344 rule) restates every --kbli-* token as its own literal specifically
+      because "a var() inside a custom property resolves where it is declared ... the :root
+      aliases in globals.css (--foreground: var(--kbli-text-primary)) would keep the dark values
+      (the r19Vars.ts alias trap)" — named verbatim, predating this round
+    exit: 0
+    ts: "2026-09-27T04:31:00Z"
+    seat: claude-sonnet-5
+  - claim: "the 30 broken text elements the gate cited all read var(--foreground) directly (not --foreground-muted/-secondary, which the gate did not flag and which resolve through a separate, unaffected globals.css path)"
+    cmd: "grep -rn -- 'var(--foreground)' apps/mouth/src/app/kbli apps/mouth/src/components/kbli"
+    result: >-
+      13 matches across sectors/page.tsx, sectors/[id]/page.tsx, [code]/page.tsx,
+      KBLIDivergence.tsx, KBLIBreadcrumb.tsx, KBLICard.tsx, LicensingSection.tsx (x3),
+      LicensingQuickFacts.tsx, KBLICommonQuestions.tsx, KBLIProvenancePanel.tsx — matches the
+      gate's cited symptom set (licensing overview row, Perpres/PP citations, breadcrumb) exactly
+    exit: 0
+    ts: "2026-09-27T04:22:00Z"
+    seat: claude-sonnet-5
+  - claim: "r19Vars.test.ts is green with 4 new tests (50 total, up from 46): the --foreground literal-not-alias check, the --r19-focus composite-shadow-with-var() check, the coverage-test sanity floor, and the coverage test itself"
+    cmd: "cd apps/mouth && npx vitest run src/lib/theme/r19Vars.test.ts"
+    result: "Test Files 1 passed (1); Tests 50 passed (50)"
+    exit: 0
+    ts: "2026-09-27T04:29:22Z"
+    seat: claude-sonnet-5
+  - claim: "typecheck is clean on the round-3 cured head"
+    cmd: npx tsc --noEmit -p apps/mouth
+    result: "no output"
+    exit: 0
+    ts: "2026-09-27T04:26:40Z"
+    seat: claude-sonnet-5
+  - claim: "the full apps/mouth vitest suite is green: 4 net new tests over round 2's 7393 (7397/7397, same 2 pre-existing skips)"
+    cmd: "cd apps/mouth && npx vitest run"
+    result: "Test Files 558 passed (558); Tests 7397 passed | 2 skipped (7399)"
+    exit: 0
+    ts: "2026-09-27T04:32:39Z"
+    seat: claude-sonnet-5
+  - claim: "production build compiles and both post-build guards pass on the round-3 cured head; the build's llms-*.txt side effect (unrelated to this diff) was discarded before committing, same as round 1"
+    cmd: "npm run build --workspace apps/mouth; git checkout -- apps/mouth/public/llms-full.txt apps/mouth/public/llms-id.txt apps/mouth/public/llms.txt"
+    result: >-
+      exit 0; PUBLIC_LOGIN_BUNDLE_OK: inspected 5 assets, no internal API route prefixes found;
+      ROSTER_CHUNK_ASSERT OK: scanned 511 chunks, 0 skipped, Public files 1581 scanned, 0 named
+      after an excluded member; 0 occurrences of error/failed/(cross mark) in the full build log
+    exit: 0
+    ts: "2026-09-27T04:35:00Z"
+    seat: claude-sonnet-5
+  - claim: "the round-3 cure lands as a NEW commit on the same branch (never --amend), pushed as its own separate command"
+    cmd: "git commit ... apps/mouth/src/lib/theme/r19Vars.ts apps/mouth/src/lib/theme/r19Vars.test.ts && git push origin agent/air-m5/mouth/ux-kbli-r19-0927"
+    result: >-
+      commit 93187d6f2d (2 files changed, 153 insertions(+), 7 deletions(-)) on top of 0e1f773419;
+      push updated 0e1f773419..93187d6f2d on the remote branch; net diffstat vs origin/main now 36
+      files, +2722/-627 (git diff --stat origin/main...HEAD)
+    exit: 0
+    ts: "2026-09-27T04:38:00Z"
+    seat: claude-sonnet-5
+  - claim: "the fresh Vercel preview for the round-3 head exists and resolves to this exact branch, but sits behind Vercel's deployment-protection SSO wall — this session does not hold the automation-bypass secret the gate's Playwright check used, so the requested live re-verification (/kbli and /kbli/<code> at 1440px) was not performed"
+    cmd: "vercel ls --scope nuzantara-2026 mouth; vercel inspect https://mouth-rfok4uq8r-nuzantara-2026.vercel.app --scope nuzantara-2026; curl -sD - -o /dev/null https://mouth-git-agent-air-m5mouthux-kbli-r19-0927-nuzantara-2026.vercel.app/kbli"
+    result: >-
+      dpl_EVT2NfDKyWpFw9xCfXUgtffRchth, status Ready, alias
+      mouth-git-agent-air-m5mouthux-kbli-r19-0927-nuzantara-2026.vercel.app confirms it is this
+      branch's preview; curl to /kbli returned 302 to vercel.com/sso-api (deployment protection),
+      not the page
+    exit: 0
+    ts: "2026-09-27T04:44:00Z"
     seat: claude-sonnet-5

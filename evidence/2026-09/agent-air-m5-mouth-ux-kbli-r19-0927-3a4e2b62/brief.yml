@@ -5,17 +5,31 @@ task: >-
   site-wide 'R19' editorial redesign (components/r19/*, routePolicy.ts) that explicitly excludes
   every funnel including /kbli. This unit rebases the KBLI lane (agent/air-m5/mouth/ux-kbli-0926,
   the foundation change plus 12 follow-on changes) onto the post-#7448 origin/main via cherry-pick
-  into a fresh worktree, verifies it, and ships it as its own PR. REWORK ROUND (2026-09-27, same
+  into a fresh worktree, verifies it, and ships it as its own PR. REWORK ROUND 1 (2026-09-27, same
   branch, new commit f14500c8d1, never --amend): a fresh Opus 5.5 gate on the first head
   (c7b1088309) returned REWORK-BUILD on two blockers this pack's original A2 got wrong — the
   kbli-local R19 Direction A theme was NOT merely a naming collision with #7448's site-wide R19; it
   was an independently-derived DUPLICATE of the same design-token map, diverging on three values
   (B2), and a shared MobileNav.tsx component's hardcoded white icon failed WCAG contrast on kbli's
-  opaque paper nav (B1). This revision cures both: r19Vars.ts now spreads main's R19_VARS and only
-  adds what it lacks, and MobileNav reads a token triplet kbli sets for its own nav. The other three
-  waves (oracle/studio/voa) share the identical foundation commit AND the identical duplication —
-  each must apply the SAME unification (spread R19_VARS, delete the duplicate font pair, adopt the
-  nav-icon-color token triplet) before it ships, not just rebase past this PR.
+  opaque paper nav (B1). That round cured both: r19Vars.ts spread main's R19_VARS and added only
+  what it lacked, and MobileNav read a token triplet kbli sets for its own nav. REWORK ROUND 2
+  (2026-09-27, same branch, new commit on top of 0e1f773419, never --amend): a second fresh gate
+  found B1 fully cured and B2 mostly cured, but round 1's own unification introduced a regression
+  (B3) — dropping `--foreground` entirely (R19_VARS never defines it) left `/kbli/<code>` falling
+  through to globals.css's dark-theme default (#ececec on paper, 1.08-1.15:1 across 30 text
+  elements) — plus a residual form of B2: six tokens (`--surface-base-solid`, `--surface-sunken`,
+  `--surface-deep`, `--bz-elevated`, `--r19-structure`, `--r19-focus`) still copied main's values
+  under a different name as a literal instead of a `var()` reference. This round cures both: adds
+  `--foreground` back as a LITERAL synced to `--text-primary` (a `var()` alias would hit the exact
+  documented "r19Vars.ts alias trap" in kbli-theme.css's own `.kbli-paper` block, BRIEF-v2 R-1
+  §3.4 — the alias re-resolves to the dark default instead of the paper override on the browsers
+  that block was written for), converts the six residual literals to `var()` references, and adds
+  a coverage test that fails if any `var(--x)` read across the kbli surface + MobileNav is
+  undefined in the effective R19_DIRECTION_A_VARS set. The other three waves (oracle/studio/voa)
+  share the identical foundation commit AND the identical duplication — each must apply the SAME
+  unification (spread R19_VARS, restate `--foreground` as a literal not an alias, delete the
+  duplicate font pair, adopt the nav-icon-color token triplet, run the same coverage-test pattern
+  against its own surface) before it ships, not just rebase past this PR.
 lane: mouth
 machine: m5
 date: 2026-09-27
@@ -24,15 +38,15 @@ gear: 3
 gear_reason: >-
   Deterministic floor 3, by the SIZE term alone: scripts/evidence_pack_lint.py's own
   _compute_floor_with_source over this diff's real changed-files list and
-  `git diff --numstat origin/main...HEAD` reports floor=3, source=size (net_lines=3042 at the cured
-  head, up from 2866 before the rework commit; SIZE_GEAR3_THRESHOLD=1828). No HOTZONE_PATTERNS path
-  hit; the floor is churn alone (36 files, +2415/-627 at the cured head). Separately,
+  `git diff --numstat origin/main...HEAD` reports floor=3, source=size (net_lines climb again on
+  round 2: r19Vars.ts/r19Vars.test.ts add ~150 net lines on top of round 1's 3042;
+  SIZE_GEAR3_THRESHOLD=1828). No HOTZONE_PATTERNS path hit; the floor is churn alone. Separately,
   apps/mouth/src/app/kbli/* is a GROUND_TRUTH_PATH_PATTERNS hit (R8), see pack.yml's seat_override
   for why no {role: ground_truth, seat, nb, query_hash} lane is declared.
 
 appetite:
   wall_clock_hours: 2.5
-  adversarial_rounds: 2
+  adversarial_rounds: 3
 
 acceptance:
   A1: >-
@@ -91,7 +105,7 @@ acceptance:
     specifically.
     probe: council-journal.jsonl in this pack's own directory carries 2 distinct COUNCIL_REVIEW_SEATS
     entries with ok:true; pack.yml's seat_override no longer names R9, only R8.
-  A6 (NEW, the rework itself): >-
+  A6 (round 1): >-
     B1: MobileNav's mobile-menu toggle icon on /kbli and /kbli/<code> clears WCAG 1.4.11's 3:1
     non-text minimum (was 1.10:1). B2: r19Vars.ts declares no key that both exists in
     components/r19/presentation.ts's R19_VARS and differs from it; the duplicate Fraunces/Manrope
@@ -102,18 +116,35 @@ acceptance:
       13.9:1 (>=3 floor); its "restates no R19_VARS key at a different value" test iterates every
       R19_VARS key and asserts equality; `find apps/mouth/src/lib/theme/fonts` no longer exists;
       `grep -rn "next/font/local" apps/mouth/src/lib/theme/` returns nothing.
+  A7 (NEW, round 2 — B3 + B2 residual): >-
+    `--foreground` is restated as a literal (not a `var()` alias, to dodge the documented
+    "r19Vars.ts alias trap") synced to `--text-primary`, so `/kbli/<code>`'s licensing overview
+    row, breadcrumb, KBLI cards and provenance panel no longer fall through to the dark #ececec
+    default. The six B2-residual literals (`--surface-base-solid`, `--surface-sunken`,
+    `--surface-deep`, `--bz-elevated`, `--r19-structure`, `--r19-focus`) are now `var()`
+    references, and a new coverage test fails if any `var(--x)` read across the real kbli surface
+    tree (apps/mouth/src/app/kbli/**, apps/mouth/src/components/kbli/**) plus MobileNav.tsx is
+    undefined in the effective R19_DIRECTION_A_VARS set (excluding kbli's own separate `--kbli-*`
+    namespace and a short named list of globals.css base tokens the gate never flagged).
+    probe: >-
+      r19Vars.test.ts's new "--foreground is a literal synced to --text-primary, not a var() alias"
+      test; the extended ALIAS_TARGETS table plus a dedicated SHADOW_WITH_VAR check for
+      `--r19-focus`; the new "every non-external var(--x) read across the kbli surface exists in
+      R19_DIRECTION_A_VARS" test (50 tests total in the file, up from 46 — 4 new); a rendered
+      contrast check on the fresh Vercel preview once pushed (this pack's receipts record whether
+      that check was performed and what it found).
 
 out_of_scope: >-
   Fixing oracle/studio/voa's own copies of the same duplicate theme/font pair — they carry the
   identical foundation commit and MUST apply the same unification (spread R19_VARS, delete the
   duplicate font files and r19Fonts.ts, adopt the nav-icon-color/bg/border token triplet on their own
-  wrappers if their nav is also opaque) before shipping, not after; each does so in its own PR when
-  it rebases, verified the same way this pack verifies it (r19Vars.test.ts's divergence check).
-  Any visual QA of the merged result beyond the automated test/build battery (no browser screenshot
-  was taken in this unit; the PR's Vercel preview, checked post-promote, is the observation point —
-  see the revised Bites line). A full rename of "R19 Direction A" to remove the residual naming
-  overlap with #7448's "R19" is still not done here — the VALUES are unified now, the NAME collision
-  is cosmetic and remains a cheap future cleanup.
+  wrappers if their nav is also opaque, restate `--foreground` as a literal synced to
+  `--text-primary` rather than a `var()` alias, run the same var(--x)-coverage test against their
+  own surface) before shipping, not after; each does so in its own PR when it rebases, verified the
+  same way this pack verifies it (r19Vars.test.ts's divergence and coverage checks). A full rename
+  of "R19 Direction A" to remove the residual naming overlap with #7448's "R19" is still not done
+  here — the VALUES are unified now, the NAME collision is cosmetic and remains a cheap future
+  cleanup.
 
 assumptions: >-
   The evidence directory name is derived from the branch by scripts/ci/evidence_paths.py. The
