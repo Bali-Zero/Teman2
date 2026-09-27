@@ -1,0 +1,16 @@
+task: >-
+  R19 census group C, legal half: /privacy and /terms move into the (blog) R19 shell (URL, legal
+  text and self-canonical unchanged), /cookies is created from the v2 cookie policy, the three
+  /v2 legal URLs 308 to them and both footers link the new URLs. Successor of #7530.
+lane: mouth/r19-legal
+machine: air-m5
+date: 2026-09-27
+gear: 2
+gear_reason: >-
+  Floor 2, source size: --no-renames churn ~1820 incl. this brief (< 1828). #7530 floored at 3
+  only because its 63-line brief pushed churn to 1862.
+acceptance:
+  A1: routePolicy, footer-link, canonical and title guards pass (50 tests); tsc exit 0.
+  A2: >-
+    Live: /privacy /terms /cookies 200 with data-presentation="r19"; /v2/privacy|terms|cookies
+    308 to them; no /v2 legal href in the footer of / and /news.
