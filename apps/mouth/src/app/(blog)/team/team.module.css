@@ -1,6 +1,7 @@
 /* apps/mouth/src/app/(blog)/team/team.module.css
  * ─────────────────────────────────────────────────────────────────────────────
- * /team — R19 COMPOSITION AND RHYTHM ONLY (SHWEB-20260911 / W2, decision D-B).
+ * /team — R19 COMPOSITION AND RHYTHM (SHWEB-20260911 / W2, decision D-B),
+ * R19 SKIN as of R19 group B, surface 4 (2026-09-28).
  *
  * Every measure below is the one measured on the R19 reference commit
  * 6603d2913e (`apps/website/src/components/Team.module.css`): container
@@ -8,11 +9,13 @@
  * grid, the .8fr/2fr responsibility group, the 3-column directory of 3/4
  * portraits, the 44/48px interactive targets.
  *
- * Every COLOUR and every FONT is the CURRENT apps/mouth one: the Rumah Putih
- * variables this page already sets (`RUMAH_VARS`) and the editorial persona's
- * own serif for headings (globals.css `[data-theme="editorial"] :is(h1,h2,h3)`).
- * R19's Direction A palette (#F7F4EE / #233D52 / #A44B36 …) and its Fraunces +
- * Manrope faces belong to W7 and appear nowhere in this file.
+ * Colours resolve through the Rumah Putih variables this page sets
+ * (`RUMAH_VARS`) plus direct `--r19-copper`/`--r19-wash`/`--r19-cta-ink` reads
+ * where the component wants the primary accent or the no-photo tile — RUMAH's
+ * own `--rp-accent` maps to slate, not copper, so it is no longer read here.
+ * Headings use the editorial persona's serif (globals.css
+ * `[data-theme="editorial"] :is(h1,h2,h3)`), which already resolves to R19
+ * Fraunces on this route.
  * ───────────────────────────────────────────────────────────────────────────── */
 
 .page {
@@ -29,7 +32,7 @@
 
 .eyebrow {
   display: block;
-  color: var(--rp-accent, #1e3863);
+  color: var(--r19-copper, #a44b36);
   font-size: 10px;
   font-weight: 600;
   line-height: 1.6;
@@ -71,8 +74,8 @@
   gap: 8px;
   min-height: 48px;
   padding: 14px 22px;
-  background: var(--rp-accent, #1e3863);
-  color: #ffffff;
+  background: var(--r19-copper, #a44b36);
+  color: var(--r19-cta-ink, #ffffff);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
@@ -128,7 +131,7 @@
 }
 
 .stars {
-  color: var(--r19-copper, #d4a017);
+  color: var(--r19-copper, #a44b36);
 }
 
 /* ── Group navigation ───────────────────────────────────────────────────── */
@@ -147,12 +150,12 @@
   font-size: 13px;
   font-weight: 600;
   line-height: 1.4;
-  color: var(--rp-accent, #1e3863);
+  color: var(--r19-copper, #a44b36);
   border-bottom: 1px solid var(--border-default);
 }
 
 .groupNav a:hover {
-  border-color: var(--rp-accent, #1e3863);
+  border-color: var(--r19-copper, #a44b36);
 }
 
 /* ── Leadership ─────────────────────────────────────────────────────────── */
@@ -257,14 +260,15 @@
   min-width: 0;
 }
 
-/* The 3/4 portrait of the reference. The per-person gradient this page already
-   carried stays as the frame behind the photo and as the initials fallback. */
+/* The 3/4 portrait of the reference. No photo → an R19 tile: wash background,
+   ink serif initial, hairline border all around (no per-person gradient). */
 .portrait {
   position: relative;
   aspect-ratio: 3 / 4;
   max-width: 100%;
   overflow: hidden;
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--r19-wash, var(--border-subtle));
+  border: 1px solid var(--border-subtle);
 }
 
 .portraitInitials {
@@ -273,9 +277,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  color: var(--text-primary);
+  font-family: var(--font-serif);
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.02em;
 }
 
@@ -287,12 +292,12 @@
   margin-top: 2px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--rp-accent, #1e3863);
+  color: var(--r19-copper, #a44b36);
   border-bottom: 1px solid transparent;
 }
 
 .projectLink:hover {
-  border-color: var(--rp-accent, #1e3863);
+  border-color: var(--r19-copper, #a44b36);
 }
 
 /* ── Closing invitation ─────────────────────────────────────────────────── */

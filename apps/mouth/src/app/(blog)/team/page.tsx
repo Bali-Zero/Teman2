@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 // ─── Editorial layout for this page ─────────────────────────────────────────
 // NAME / ROLE / PHOTO are pulled from the roster SSOT (apps/mouth/src/data/team-roster.ts)
 // by `slug`. This page keeps only its EDITORIAL choices: which section a person appears
-// in and the per-person gradient. To change a photo/role → edit the roster, not here.
+// in. To change a photo/role → edit the roster, not here.
 // `nameOverride`/`roleOverride` exist for page-specific labels (e.g. Zero "SOTA Marketing")
 // and for people not in the public roster.
 //
@@ -33,14 +33,12 @@ interface TeamMember {
   name: string;
   initials: string;
   role: string;
-  gradient: string;
   photo?: string;
   project?: { label: string; href: string };
 }
 
 interface EditorialEntry {
   slug?: string; // → roster SSOT for name/role/photo
-  gradient: string;
   nameOverride?: string; // page-specific display name (or for non-roster people)
   roleOverride?: string; // page-specific role label
   photoOverride?: string;
@@ -56,7 +54,6 @@ function resolve(e: EditorialEntry): TeamMember {
     name,
     initials: initialsOf(name),
     role: e.roleOverride ?? r?.role ?? "",
-    gradient: e.gradient,
     photo: e.photoOverride ?? r?.photo,
     project: e.project,
   };
@@ -67,63 +64,52 @@ function compose(entries: EditorialEntry[]): TeamMember[] {
   return publicEntries(entries).map(resolve);
 }
 
-// Each section keeps its EDITORIAL composition + gradients; name/role/photo come from
-// the roster SSOT via resolve(). Role overrides preserve this page's curated labels.
+// Each section keeps its EDITORIAL composition; name/role/photo come from the roster
+// SSOT via resolve(). Role overrides preserve this page's curated labels.
 const LEADERSHIP: TeamMember[] = compose([
   {
     slug: "heru",
     roleOverride: "Komisaris · Founder (30 years)",
-    gradient: "linear-gradient(135deg, #a78bfa 0%, #6d28d9 100%)",
   },
   {
     slug: "zainal",
-    gradient: "linear-gradient(135deg, #ff2d4c 0%, #c8102e 100%)",
   },
   {
     slug: "ruslana",
     roleOverride: "Special Advisory",
-    gradient: "linear-gradient(135deg, #e85c41 0%, #d14832 100%)",
   },
   {
     slug: "veronika",
     roleOverride: "Manager",
-    gradient: "linear-gradient(135deg, #2251ff 0%, #1a41cc 100%)",
   },
 ]);
 
 const SETUP_TEAM: TeamMember[] = compose([
   {
     slug: "adit",
-    gradient: "linear-gradient(135deg, #06b6d4 0%, #2563eb 100%)",
   },
   {
     slug: "ari",
     roleOverride: "Supervisor",
-    gradient: "linear-gradient(135deg, #f43f5e 0%, #db2777 100%)",
     // The tool Ari is responsible for, on its real page.
     project: { label: "Second Home Studio", href: "/visa/second-home/studio" },
   },
   {
     slug: "krisna",
     roleOverride: "Specialist Consultant",
-    gradient: "linear-gradient(135deg, #f97316 0%, #d97706 100%)",
   },
   {
     slug: "dea",
-    gradient: "linear-gradient(135deg, #6366f1 0%, #2563eb 100%)",
   },
   {
     slug: "candra",
-    gradient: "linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)",
   },
   {
     slug: "vino",
-    gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
   },
   {
     slug: "sahira",
     roleOverride: "Executive Consultant",
-    gradient: "linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%)",
   },
 ]);
 
@@ -131,21 +117,17 @@ const TAX_TEAM: TeamMember[] = compose([
   {
     slug: "angel",
     roleOverride: "Tax Supervisor",
-    gradient: "linear-gradient(135deg, #f43f5e 0%, #dc2626 100%)",
   },
   {
     slug: "kadek",
     roleOverride: "Tax Consultant",
-    gradient: "linear-gradient(135deg, #10b981 0%, #16a34a 100%)",
   },
   {
     slug: "dewaayu",
     roleOverride: "Tax Consultant",
-    gradient: "linear-gradient(135deg, #8b5cf6 0%, #4f46e5 100%)",
   },
   {
     slug: "faisha",
-    gradient: "linear-gradient(135deg, #f59e0b 0%, #ca8a04 100%)",
   },
 ]);
 
@@ -153,11 +135,9 @@ const ACCOUNTING_TEAM: TeamMember[] = compose([
   {
     slug: "asya",
     roleOverride: "Accountant",
-    gradient: "linear-gradient(135deg, #10b981 0%, #0d9488 100%)",
   },
   {
     slug: "rina",
-    gradient: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)",
   },
 ]);
 
@@ -168,23 +148,19 @@ const MARKETING_TEAM: TeamMember[] = compose([
     nameOverride: "Zero",
     roleOverride: "SOTA Marketing",
     photoOverride: "/static/team/zero.jpg",
-    gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
   },
   {
     slug: "surya",
     roleOverride: "Marketing Specialist",
-    gradient: "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)",
     // The tool Surya is responsible for, on its real page.
     project: { label: "E-VOA", href: "/visa/voa" },
   },
   {
     slug: "damar",
     roleOverride: "Marketing Junior",
-    gradient: "linear-gradient(135deg, #14b8a6 0%, #10b981 100%)",
   },
   {
     slug: "subhi",
-    gradient: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
   },
 ]);
 
@@ -227,7 +203,7 @@ const GROUPS = [
 
 function Portrait({ member, sizes }: { member: TeamMember; sizes: string }) {
   return (
-    <div className={styles.portrait} style={{ background: member.gradient }}>
+    <div className={styles.portrait}>
       {member.photo ? (
         <Image
           src={member.photo}
