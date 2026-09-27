@@ -5,7 +5,8 @@ plan_ref: >
   suspended the PII-removal lane cannot recur (R6.7 receipt generation, R6.8 measured descriptor
   non-isolation), ship the generator in the same PR, prove it now against the head of PR 7516 and
   origin/main. Branch agent/air-m5/docs/s6-receipts-amendment-0927, created by the broker from
-  origin/main 2d1335b3f2 (the merge of PR 7510).
+  origin/main 2d1335b3f2 (the merge of PR 7510). Merged with origin/main fda25b4399 at 263c84ddbd
+  to resolve one conflict with PR 7489 in guard-conformance.yml's relevance regex.
 lanes:
   - lane: s6-receipts-build
     role: build
@@ -34,8 +35,8 @@ what_changed: |
     plain hash of a path or of a one-line category map is reversed by hashing every tracked path.
     Patterns reach git grep on stdin.
   - The block has no commit sha. Pasting it into pack.yml moves HEAD, so a sha would make every
-    honest re-run at the final head differ. tree_digest (path+blob of every tracked file outside
-    evidence/) replaces it: the `tree --rev HEAD` block below was produced before this pack was
+    honest re-run at the final head differ. tree_digest (mode, blob and path of every tracked file
+    outside evidence/) replaces it: the `tree --rev HEAD` block below was produced before this pack was
     committed and still matches at the final head.
   - scripts/tests/test_pii_receipt.py (guilt and innocence per rule, fixtures assembled at
     runtime, no name-shaped literal in the tree) plus `--selftest`.
@@ -57,10 +58,14 @@ proof: |
     block's `occurrences` key is higher because a matching line can carry the same name twice.
     `lines_any` is lower because a line can carry two different names. The three metrics are
     now named separately in R6.7, so they cannot be confused again.
-  - At origin/main 2d1335b3f2 the counts are higher: #7516 is unmerged, so main still carries
-    every file #7516 deletes or redacts.
-  - At this PR's head the counts equal main's, so this diff adds no pilot name anywhere. Its
-    tree_digest differs from main's because this diff changes non-evidence files.
+  - At origin/main 2d1335b3f2, the branch base, the counts are higher: #7516 is unmerged, so
+    main still carries every file #7516 deletes or redacts.
+  - At origin/main fda25b4399, the merge-base after the conflict merge, the counts are lower
+    than at 2d1335b3f2: #7490 removed residual client data outside the deep-audit lane in
+    between. #7516 is still unmerged.
+  - At this PR's head the counts equal those at the merge-base fda25b4399, so this diff adds no
+    pilot name anywhere. `scope_files` and tree_digest differ because this diff adds
+    non-evidence files.
   - R6.5 probe, the #7516 redacted-path set, run at the merge-base and at #7516's head: `files`
     goes from non-zero to zero. The shape a no-op redaction cannot pass.
   - R6.8 innocence on the real tree, at #7516's head: a class-only predicate (a non-test file
@@ -325,28 +330,50 @@ receipts:
     exit: 0
     ts: "2026-09-27T07:29Z"
     seat: claude-opus-5-5
+  - claim: "Bites 2b — the same pattern file at origin/main fda25b4399, the merge-base after the conflict merge (#7490 landed, #7516 unmerged)."
+    cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev
+      fda25b43998bfb14526fc8c837c6fda8d25aeffd"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=e221affa50d28a4af8baba63e6fab4e7fee2b68d
+      # argv: tree --patterns @hmac:b75f801013109975 --rev fda25b43998bfb14526fc8c837c6fda8d25aeffd
+      mode: tree
+      tree_digest: 9e1675af26a4b459
+      scope_files: 22794
+      patterns: {hmac: b75f801013109975, lines: 7}
+      files: 5
+      hits: 21
+      lines_any: 19
+      occurrences: 54
+      patterns_present: 7
+      patterns_absent: 0
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-09-27T07:43Z"
+    seat: claude-opus-5-5
   - claim:
-      "Fixed point — produced at 3c335721a2, before this pack existed; --check-in at the final
-      head matches, because evidence/ edits cannot move tree_digest."
+      "Fixed point — produced at the merge commit 263c84ddbd, before this pack was updated;
+      --check-in at the final head matches, because evidence/ edits cannot move tree_digest."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
       ~/.agent/pii-quarantine/pii-deep-audit/pilot-names-7.txt --rev HEAD --check-in <this pack>"
     result: |
       # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=e221affa50d28a4af8baba63e6fab4e7fee2b68d
       # argv: tree --patterns @hmac:b75f801013109975 --rev HEAD
       mode: tree
-      tree_digest: d2f180bd09ffc1cc
-      scope_files: 22787
+      tree_digest: 7fcb482aa6bb0a19
+      scope_files: 22796
       patterns: {hmac: b75f801013109975, lines: 7}
-      files: 14
-      hits: 49
-      lines_any: 45
-      occurrences: 83
+      files: 5
+      hits: 21
+      lines_any: 19
+      occurrences: 54
       patterns_present: 7
       patterns_absent: 0
       binary_files: 0
       # end pii_receipt
     exit: 0
-    ts: "2026-09-27T07:29Z"
+    ts: "2026-09-27T07:43Z"
     seat: claude-opus-5-5
   - claim: "R6.5 probe BEFORE — #7516's modified paths at its merge-base a6fcae5afe."
     cmd:
@@ -418,13 +445,13 @@ receipts:
       <pack.yml> --body <body file passed to gh pr create --body-file>"
     result: |
       # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=e221affa50d28a4af8baba63e6fab4e7fee2b68d
-      # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:e19ee4b296ad8859 --pack PACK --body @text:84fc96798ce726d4
+      # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:e19ee4b296ad8859 --pack PACK --body @text:eb00d2f2e80faf71
       mode: r66
       r66_line: "r66: hmac=e5501725d9a0 lines=22 residual_hits=0 hedge_hits=0"
       hedge_hit_lines: []
       # end pii_receipt
     exit: 0
-    ts: "2026-09-27T07:38Z"
+    ts: "2026-09-27T07:43Z"
     seat: claude-opus-5-5
   - claim: "The corpus passes, and so does the selftest."
     cmd: "python3 -m pytest scripts/tests/test_pii_receipt.py -q; python3 scripts/evidence/pii_receipt.py --selftest"
@@ -465,7 +492,7 @@ receipts:
       --changed-files-file <mb..HEAD> --numstat-file <no-renames numstat> --patch-file <workflow patch>"
     result: "3 (source: path)"
     exit: 0
-    ts: "2026-09-27T07:38Z"
+    ts: "2026-09-27T07:43Z"
     seat: claude-opus-5-5
 
 bites:
@@ -496,6 +523,6 @@ appetite_exceeded: |
 
 diff:
   files: 7
-  insertions: 1537
+  insertions: 1566
   deletions: 6
-  net_lines: 1531
+  net_lines: 1560
