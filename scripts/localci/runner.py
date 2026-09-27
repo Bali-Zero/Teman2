@@ -619,7 +619,10 @@ def trusted_dir_map(td: Path, recorded: dict | None = None) -> dict:
     return out
 
 
-TRUSTED_KINDS = ("cmd", "trusted_pytest")   # run first; `pytest` = CANDIDATE code, runs last, after the trusted evidence is sealed
+TRUSTED_KINDS = ("cmd",)   # the only kind whose verdict no candidate code can touch: BASE judge/classifier under -I on a sha-mapped dir.
+# `trusted_pytest` takes its TEST from BASE but exercises the CANDIDATE's implementation (the ban test exec_module()s the candidate's
+# scripts/check_ban_predicates.py) — candidate code runs inside it, so it executes AFTER the seal, like `pytest` (fresh gate #3, 2026-09-27).
+SEAL_MIN_PREFIX = 12
 
 
 def trusted_seal(run_dir: Path, plan: dict, st: dict) -> str:
@@ -661,7 +664,7 @@ def cmd_run(a):
                 names = [a.only]
             else:
                 names = [n for n, c in st["checks"].items() if c["status"] in ("QUEUED", "INTERRUPTED")]
-            names = sorted(names, key=lambda n: plan["checks"][n]["kind"] not in TRUSTED_KINDS)   # trusted first, candidate `pytest` last
+            names = sorted(names, key=lambda n: (plan["checks"][n]["kind"] not in TRUSTED_KINDS, plan["checks"][n]["kind"] != "trusted_pytest"))  # cmd → seal → trusted_pytest → pytest
             venv_py = next((s["python"] for s in plan["checks"].values() if s.get("python")), sys.executable)
             cur_env = env_fingerprint(venv_py, plan["checks"])
             cur_hash = env_hash(cur_env)
@@ -897,6 +900,8 @@ def cmd_status(a):
     out = compute_status(Path(a.run_dir))
     run_dir = Path(a.run_dir).resolve()
     out["seal"] = trusted_seal(run_dir, load_plan_verified(run_dir), Store(run_dir).load())
+    if a.seal and len(a.seal.strip()) < SEAL_MIN_PREFIX:
+        sys.exit(f"--seal needs at least {SEAL_MIN_PREFIX} hex characters (a short prefix would match almost anything)")
     if a.seal and not out["seal"].startswith(a.seal.strip()):
         out["overall"] = "BLOCKED"
         out["freshness"]["stale_reason"] = f"seal mismatch: trusted evidence changed after the seal you recorded ({a.seal.strip()[:12]}… vs {out['seal'][:12]}…)"
@@ -965,7 +970,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--run-dir", required=True)
     s.add_argument("--quiet", action="store_true")
     s.add_argument("--strict", action="store_true", help="exit 1 unless overall is PASS")
-    s.add_argument("--seal", help="the seal `run` printed (prefix ok): overall becomes BLOCKED when the trusted evidence no longer re-derives it")
+    s.add_argument("--seal", help=f"the seal `run` printed (prefix of >= {SEAL_MIN_PREFIX} chars ok): overall becomes BLOCKED when the trusted evidence no longer re-derives it")
     s.set_defaults(fn=cmd_status)
     a = ap.parse_args(argv)
     return a.fn(a) or 0

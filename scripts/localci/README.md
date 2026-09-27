@@ -19,12 +19,17 @@ Trusted checks (classifier, `cmd`, `trusted_pytest`) run `python -I` (ignores us
 `plan.json` is re-hashed against its `plan_hash` on every `run`/`review`/`status`; an edited plan aborts. A `cmd` check with a
 `trusted_pythonpath` carries the sha256 map of that directory and refuses to run when a file was rewritten, added or removed.
 
-**The boundary that a sandbox would close and this runner does not:** candidate tests (`pytest` kind) execute as the operator's own
-OS user, so a malicious candidate can, after the run, rewrite `state.json`, re-hash receipts or pre-write a Pysa baseline. The runner
-therefore (1) runs every trusted check BEFORE any candidate code, (2) prints a `seal=` (sha256 over plan + trusted state + trusted
-receipts) at that boundary and again at the end — the operator records it OUTSIDE the run dir (terminal, journal, PR comment) — and
-(3) `status --seal <value>` re-derives it and goes BLOCKED on a mismatch. Same-user forgery is thus detectable, not impossible;
-for third-party candidates the honest cure is a separate user or container (open condition in `PENDING-ARMS.md`).
+**The boundary that a sandbox would close and this runner does not:** candidate code executes as the operator's own OS user — in
+`pytest` checks (the candidate's tests) AND in `trusted_pytest` checks (the TEST comes from BASE, but it exercises the candidate's
+implementation: the ban test `exec_module()`s the candidate's `scripts/check_ban_predicates.py`). Such code can rewrite `state.json`,
+re-hash receipts, forge its own junit, or write into the Pysa home (a poisoned baseline or a replaced `venv/bin/pyre` persists across
+runs and PRs — the home is not sha-pinned). What the runner guarantees is narrower and stated exactly: (1) the only kind no candidate
+code can touch is `cmd` on a sha-mapped BASE dir (the Pysa judge, the classifier corpus) and those run FIRST; (2) at that boundary and
+at the end the runner prints `seal=` (sha256 over plan + the `cmd` checks' state and receipts) — the operator records it OUTSIDE the
+run dir (terminal, journal, PR comment) — and `status --seal <≥12 chars>` re-derives it and goes BLOCKED on a mismatch, so a post-run
+rewrite of a `cmd` verdict is detectable; (3) `trusted_pytest` and `pytest` verdicts are the candidate's to influence and the seal
+does not vouch for them; the seal is meaningful for one uninterrupted `run` only (a resumed run re-enters after candidate code has
+already executed). For third-party candidates the cure is a separate user or container — the open row in `PENDING-ARMS.md` (this PR).
 
 `--extra-check NAME=JSON` adds a check the operator wants beside the planned ones. It is refused when NAME starts with a reserved
 prefix (`policy.`, `tests.`, `review.`, `trusted.`) or is already planned, and when the spec is not an executable kind (`cmd`,

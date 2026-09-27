@@ -571,3 +571,24 @@ def test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_r
     runner.main(["status", "--run-dir", str(fx["run"]), "--seal", seal])
     out = json.loads((fx["run"] / "status.json").read_text())
     assert out["overall"] == "BLOCKED" and "seal mismatch" in out["freshness"]["stale_reason"]
+
+
+def test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code(tmp_path):
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
+    fr.plan(fx, "--extra-check", fr.cmd_check("ctx.zzz_cmd", fx["repo"], [PY, "-c", "pass"]),
+            "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]))
+    fr.run(fx)
+    st = fr.load_state(fx)
+    ends = {n: c["history"][0]["ended_at"] for n, c in st["checks"].items() if c.get("history")}
+    starts = {n: c["history"][0]["started_at"] for n, c in st["checks"].items() if c.get("history")}
+    events = [json.loads(line) for line in (fx["run"] / "state" / "journal.jsonl").read_text().splitlines()]
+    boundary = next(e["at"] for e in events if e.get("event") == "seal" and e["why"].startswith("trusted checks done"))
+    plan = json.loads((fx["run"] / "state" / "plan.json").read_text())
+    for n, spec in plan["checks"].items():
+        if spec["kind"] == "cmd":
+            assert ends[n] <= boundary, n                    # cmd verdicts are sealed
+        elif spec["kind"] in ("trusted_pytest", "pytest"):
+            assert starts[n] >= boundary, n                  # anything that runs candidate code starts after the seal
+    assert runner.TRUSTED_KINDS == ("cmd",)
+    with pytest.raises(SystemExit):
+        runner.main(["status", "--run-dir", str(fx["run"]), "--seal", "ab"])   # a 2-char prefix would match almost anything
