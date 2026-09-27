@@ -119,3 +119,65 @@ cf8eb787fee12a444c43cf609cdef37ab051a848136daf115531c96e0db841cf  apps/mouth/src
 ```
 
 </details>
+
+## FREEZE v3 (delta) — written 2026-09-27T14:55:46Z by the successor Dux; supersedes v2 as the release candidate
+
+The fresh final gate returned BLOCK on docs candidate `3710a230` (three findings, `DELTA-ROUND.md`). One Sonnet 5
+writer fixed them as one finite delta; the Dux graded it and committed it. v1/v2 above stay as history.
+
+- **Code candidate SHA `f7c9d7ee954eb0824db587ab73646c09538f8f45`** — parent `3710a230` (docs-only), base origin/main `f36e245af2`,
+  prior code `f38cbf46`. Branch `agent/air-m5/mouth/oracle-prod-0927`, not pushed.
+- Delta vs `3710a230`: 5 files, +257 / −12, per-file sha256:
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.atlas.test.tsx` `d3eb55f70f1bc14f8c7b8c8ae1b2f6f308ab785cbf076d5998f91794e8cfb296`
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx` `033e3445acbf4a67337c97264d082a22a78d470366b4ffceeffd2d7f4162cfc9`
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx` `78ec5d86cf203e6fe6227ef1e26af84120357dae2f1164657589932c9be0a982`
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx` `bf396292877cfceadb5b745173f9f76473f197a5b4b3c7397ed9f50c2d306054`
+- `apps/mouth/src/app/(visa-oracle)/visa-oracle/oracle.css` `173eb249b7dcf5f37da9afb3f696ec36ef0eee88c6b5bf26634ae31a4ef1cad1`
+- Full `apps/` diff vs base: 35 files (same 35 paths as v2), aggregate sha256
+  **`017e6f9dd4adeb63f8cc62fa934f310db4a306fc4fa281341dbf6bd976d6499c`** (same method; it reproduces
+  `af611423…` when run on `f38cbf46`).
+- Committed bytes equal the writer's final bytes on M5 and in the Mini writer mirror (sha256 prefixes checked).
+  Pre-commit hook (tsc, prettier, off-limits) passed without rewriting any file.
+- Machine-readable record: `/tmp/oracle-prod-0927-DELTA_FROZEN.json` (M5).
+
+<details><summary>v3 per-file sha256 (35 files, committed bytes of f7c9d7ee95)</summary>
+
+```
+da5d4222183e81630c9aece35862308f76694e45e035081ba85537fd1e3aa4cf  apps/mouth/public/static/visa-oracle/atlas/business.webp
+35bafa890f0a93c4568d4508d36e444d37412d8d6e53ff28f8555597c1023750  apps/mouth/public/static/visa-oracle/atlas/confluence.webp
+4fb92606133f5b2fa9cc518675a5f00d57afb40a08c31ce4ba15283bcff9b747  apps/mouth/public/static/visa-oracle/atlas/diaspora.webp
+ba57e9142c34fbb90db4162643546a073dc15587c0940f7f6bce2594e7ba9fea  apps/mouth/public/static/visa-oracle/atlas/family.webp
+271243b2b5d324e1a8c7f263c23d377b5a640f919ef14e63655ace88f30ab304  apps/mouth/public/static/visa-oracle/atlas/identity.webp
+7d9d57c72e24e65164a38fd6706f57600f8a02c3c78e5c5d370d4b6baa06ca7e  apps/mouth/public/static/visa-oracle/atlas/indonesia.webp
+58dc290fdcae0b7ba507a55c2fbbeda80cf3401bc9f658ac122199fee0a3f654  apps/mouth/public/static/visa-oracle/atlas/invest.webp
+1630c84db01e494a847659e581cbf3be502a2936bf9f26abf07cba467a823a02  apps/mouth/public/static/visa-oracle/atlas/logo.webp
+d2f873748586488ea1cc40fe414d25949b721b17baf574826ec0ec254a1452dc  apps/mouth/public/static/visa-oracle/atlas/other.webp
+7002bdb36ad6235e413fe91ad3d1c3104f78285540f47c1dddd417158b8e94fb  apps/mouth/public/static/visa-oracle/atlas/permit-depth.webp
+b6453e6b4cc8447d319ed7fb8bc08c2847363a354af086017c0f6283eaea8203  apps/mouth/public/static/visa-oracle/atlas/permit-paper.webp
+41687fa11541bc4709e6321e955be8becd17655070f6c79aab92d42c2468f5fc  apps/mouth/public/static/visa-oracle/atlas/remote.webp
+1fee5d3991ec5cc43a0833c38a100a70311dff20b619aa7bd2f5cc0aa0bb29b1  apps/mouth/public/static/visa-oracle/atlas/retirement.webp
+f0674eaf08721bd13c3ac56d48191aa240ccbb514a652cdd960b5f3d3beef8d5  apps/mouth/public/static/visa-oracle/atlas/second_home.webp
+e19bfd50ab15b618436ca81a49e3dc9f63311ec47245035d484ddae80f21ca63  apps/mouth/public/static/visa-oracle/atlas/study.webp
+244fddf4344b4c28588d5022485c52c8309e756b962bc686c106c4eb2c55da24  apps/mouth/public/static/visa-oracle/atlas/tourism.webp
+79a1bdb25ed29124a9e15ed044df787c07e88979f343842945007851ad254321  apps/mouth/public/static/visa-oracle/atlas/watershed.webp
+67fbb47317671abb4526423c3f0f9ac3b99f63a20defdd432d7873396f555790  apps/mouth/public/static/visa-oracle/atlas/work.webp
+49ab66791526526839ee35fdac1474aa9de92c4b936c7005311adfcee494b777  apps/mouth/public/static/visa-oracle/atlas/world.webp
+46e0648eadfeb30c3a2b3f6838450c13ebb2afb73ff6af55bb3aae7b15a7051b  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/AtlasRoute.test.tsx
+748d5e759676cc3075964d3d16e4d019be47f928ad5e44acad50e226e7a09e0c  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/AtlasRoute.tsx
+9c0ce6a33d401218215f3458f94788b51328ff0728e52e55482994e22f0a8409  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleScenery.test.tsx
+53a3d5b9101eba29af695559bc107412929fbdb23ecab2cab23adbdf782d0782  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleScenery.tsx
+d3eb55f70f1bc14f8c7b8c8ae1b2f6f308ab785cbf076d5998f91794e8cfb296  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.atlas.test.tsx
+033e3445acbf4a67337c97264d082a22a78d470366b4ffceeffd2d7f4162cfc9  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx
+78ec5d86cf203e6fe6227ef1e26af84120357dae2f1164657589932c9be0a982  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+bf396292877cfceadb5b745173f9f76473f197a5b4b3c7397ed9f50c2d306054  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+f5f697e40672bef2991862414caa2f288c6f60eee516d972626a699fa1aedf04  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/QuestionScreen.atlas.test.tsx
+0a650ef79c7cebede7220713bc0bc0cb1e181822c762049da8e454880956fe10  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/QuestionScreen.tsx
+b9baf62dc6b5d16daea7a575a7fb60b2bde26a758b5fa0f56bda20327c42e808  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/VerdictReveal.test.tsx
+bbd7ef48ab8f199a09fde2795fd764a0104c4eddce4fb70b4c51f8ab9c7f93f2  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/WhyWeAsk.tsx
+7c61105a053eb02c761938e80350ee89d4bf2d8cd2063204b2793678dd922023  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/atlas-scenes.test.ts
+4726cc57354a79fbb224d48c141c0659d4dcabcdfa22af775223c0fbae1f763a  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/atlas-scenes.ts
+cf8eb787fee12a444c43cf609cdef37ab051a848136daf115531c96e0db841cf  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+173eb249b7dcf5f37da9afb3f696ec36ef0eee88c6b5bf26634ae31a4ef1cad1  apps/mouth/src/app/(visa-oracle)/visa-oracle/oracle.css
+```
+
+</details>

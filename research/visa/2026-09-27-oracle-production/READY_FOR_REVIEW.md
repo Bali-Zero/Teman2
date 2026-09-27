@@ -1,6 +1,41 @@
 # READY_FOR_REVIEW — ORACLE-PROD-20260927, Phase A (Dux Claude Opus 5.5, BLUE, Gear 3)
 
-## Candidate
+## Current candidate — final-gate delta round (successor Dux Claude Opus 5.5 xhigh, 2026-09-27)
+- **Code SHA `f7c9d7ee954eb0824db587ab73646c09538f8f45`**, a child of docs commit `3710a230` (the candidate the first
+  fresh final gate BLOCKED). A docs-only commit on top carries this file, `DELTA-ROUND.md`, the updated
+  `CODE_FROZEN.md` (v3), `PROGRESS.md` and the evidence pack. It touches no byte under `apps/`. Its SHA is reported
+  in the coordinator checkpoint, because a tracked file cannot contain its own commit SHA. **Not pushed; no PR, arm,
+  merge or deploy.**
+- Whole PR vs origin/main `f36e245af2` at the docs commit: 47 files. They are the 35 `apps/` files (+5303 / −322), the
+  9 mandate docs in this directory, and the three evidence files.
+- Delta vs `3710a230`: 5 files, +257 / −12, closing final-gate findings 1-3 (`DELTA-ROUND.md`).
+- Frozen bytes: `CODE_FROZEN.md` v3. The aggregate sha256 over the 35 `apps/` files is
+  `017e6f9dd4adeb63f8cc62fa934f310db4a306fc4fa281341dbf6bd976d6499c`.
+
+| Check on exact SHA f7c9d7ee (Mini run3, CI-parity env before build) | Result |
+|---|---|
+| `npm run build` (webpack) | exit 0, Next.js 16.3.4 (webpack) |
+| `npx tsc --noEmit -p tsconfig.json` | exit 0, 0 errors |
+| `npx vitest run "src/app/(visa-oracle)"` | exit 0, 50 files / 1329 tests |
+| Delta proof `e2e/oracle-delta-proof.local.spec.ts` (PDF text, dialog geometry after scroll, Pause/VT) | exit 0, 12 passed |
+| Atlas harness `e2e/atlas-qa.local.spec.ts` | exit 0, 34 passed |
+| PR e2e gate `--grep "page Page\|@offline"` | exit 0, 134 passed, 1 skipped (existing opt-in `BZ_VISUAL_GALLERY`), 0 failed |
+| ESLint on the route | NOT a pass: the same pre-existing baseline crash as below |
+
+- Proofs for the read-only gate: `/tmp/oracle-prod-0927-final-gate-2/proofs/` on M5. It holds the run3 SUMMARY and
+  logs, 12 case JSONs plus `results.json`, the PDF texts, the F2 viewport screenshots, selected atlas screenshots, the
+  proof spec source, and the Dux F2 diagnostic JSONs.
+- Delta reviews: Kimi PASS, Qwen PASS (bound to `f7c9d7ee`). The Sol final delta review ran against the exact build on
+  Mini 3950; the coordinator relays its verdict. The fresh Opus 5.5 xhigh final gate 2 is to be commissioned by the
+  coordinator on the docs-only SHA.
+- The first final gate (BLOCK on `3710a230`) is kept verbatim at `/tmp/oracle-prod-0927-final-gate/verdict.md` and
+  summarised in `DELTA-ROUND.md`.
+
+---
+
+## History — v2 candidate `f38cbf46` / docs `3710a230` (BLOCKED by the first final gate; superseded)
+
+### Candidate (v2)
 - **Code SHA `f38cbf469d7e6de53689b1584bd287afc48ad547`** — branch `agent/air-m5/mouth/oracle-prod-0927`, parent =
   origin/main `f36e245af2` (rebased clean). **Not pushed; no PR, arm, merge or deploy.**
 - A docs-only child commit adds this directory's `*.md` and the
