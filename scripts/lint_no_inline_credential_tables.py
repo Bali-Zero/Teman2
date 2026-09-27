@@ -55,12 +55,26 @@ _CREDENTIAL_KEYWORD = re.compile(
 )
 
 
+#: This guard's own test file embeds a GUILTY_SOURCE fixture — a credential-
+#: shaped table, on purpose, as a Python string literal — to prove the scan
+#: catches the shape. That string is not executable data (never assigned to
+#: a module-level name, never imported), but this scanner works on raw text,
+#: so it matches its own fixture the same way it would match a real table.
+#: Excluding it here is the same "churn that carries no review risk"
+#: philosophy `_is_size_term_excluded()` uses elsewhere in this repo — a
+#: narrow, named, single-file exemption, not a directory-wide carve-out.
+_SELF_TEST_FIXTURE_EXEMPT = "scripts/tests/test_lint_no_inline_credential_tables.py"
+
+
 def _tracked_py_files() -> list[str]:
     out = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "ls-files", "*.py"],
         capture_output=True, text=True, check=True,
     )
-    return [f for f in out.stdout.splitlines() if f]
+    return [
+        f for f in out.stdout.splitlines()
+        if f and f != _SELF_TEST_FIXTURE_EXEMPT
+    ]
 
 
 _WINDOW_BEFORE = 5  # lines to look back from a run's start for the declaring
