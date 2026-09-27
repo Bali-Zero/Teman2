@@ -23,6 +23,14 @@ export function generateStaticParams(): { category: string }[] {
   return VALID_CATEGORIES.map((category) => ({ category }));
 }
 
+// Phase-1 experiment (2026-09-27): an unknown category was matched by this
+// route and served from a Next.js prerender cache (x-nextjs-prerender,
+// HIT) with a 200 status, because the default `dynamicParams: true` lets
+// Next statically generate and cache a shell for ANY param not returned by
+// generateStaticParams above. Locking dynamicParams to the known list forces
+// an out-of-list category through the dynamic/notFound path instead.
+export const dynamicParams = false;
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
