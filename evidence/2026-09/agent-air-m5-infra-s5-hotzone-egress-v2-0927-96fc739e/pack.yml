@@ -1,0 +1,256 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Gate report scratchpad/reports/gate-7471.md (REWORK-BUILD, 5 blockers) on
+  the first S5 PR (#7471, head 2c917020e8) — team-lead mandate 2026-09-27
+  to rebuild v2 from fresh origin/main.
+lanes:
+  - lane: s5-hotzone-egress-v2-build
+    role: build
+    seat: "session (M5, Sonnet 5 conducting)"
+seat_override: >-
+  Gear-3 diff edits the hot-zone gate list that itself decides when an
+  external seat (codex/kimi/agy/gemini/qwen) may be dispatched on a diff —
+  dispatching one of those same seats to review this exact diff would make
+  generator and grader the same entity on the surface most in need of
+  separation. No council or external seat was run. The fresh
+  `harness/fable-gate` gate session that produced the REWORK-BUILD verdict
+  cited in `plan_ref` already served as this PR's independent read; the
+  next fresh gate on this head is the second opinion in place of a council
+  quorum.
+diff:
+  net_lines: >-
+    Content diff at the graded sha (v1's 3 commits cherry-picked onto fresh
+    origin/main, then squashed with the rework into one commit): two
+    workflow edits (case-block + guard-conformance wiring), the S5 spec
+    section rewritten with full sweep disposition and a corrected timeline,
+    3 new HOTZONE_PATTERNS/case-block entries (6 total, `.codex/hooks/*`
+    dropped as dead coverage), the sync test extended with 2 compute_floor-
+    based cases, and one tracked probe fixture. No production code path
+    touched, no consumer's runtime behavior changed except the floor
+    computation the two lists feed and guard-conformance's own step set.
+    Exact line counts are not narrated here on purpose (S1 of this same
+    spec, not yet code-implemented): the pack's own bytes are not excluded
+    from the size term, so any figure written here drifts with every pack
+    edit — the gate's own receipt records the `git diff --numstat` it
+    observed.
+  behaviour_change: >-
+    Before this PR: `.claude/scripts/codex-spalla.sh`, `scripts/lib/
+    spalla_redact.sh`, `.claude/hooks/codex-spalla-trigger.sh`,
+    `scripts/codex_tri_llm_review.py`, `scripts/review_gate_run.sh` and
+    `scripts/_redact_pii.py` all floored at gear 1. After this PR, a
+    changed-file set containing any of the six floors at gear 3 on both
+    `compute_floor()` (harness-floor.yml) and the bash case block
+    (hot-zone-pr-gate.yml), and `scripts/tests/test_hotzone_lists_sync.py`
+    — now actually invoked by guard-conformance.yml whenever a PR touches
+    evidence_pack_lint.py, this test file, or hot-zone-pr-gate.yml — fails
+    CI the moment the two lists diverge (proved by a local guilt run, see
+    receipts).
+receipts:
+  - claim: >-
+      Deterministic gear floor recomputed from THIS diff's full changed-file
+      set (vs fresh origin/main merge-base) is 3, source path.
+    cmd: >-
+      MERGE_BASE=$(git merge-base origin/main HEAD); git diff --name-only
+      --cached $MERGE_BASE > /tmp/s5v2-changed.txt; git diff --no-renames
+      --cached --numstat $MERGE_BASE > /tmp/s5v2-numstat.txt; python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/s5v2-changed.txt --numstat-file /tmp/s5v2-numstat.txt; python3
+      scripts/evidence_pack_lint.py --print-floor-source --changed-files-file
+      /tmp/s5v2-changed.txt --numstat-file /tmp/s5v2-numstat.txt
+    result: "3\npath"
+    exit: 0
+    ts: "2026-09-27T00:07:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      GUILT via the REAL matcher (compute_floor, not set membership or a
+      bash simulation) — each of the six S5 paths floors at 3 in isolation.
+      INNOCENCE — an unrelated path (docs/CLAUDE.md) floors at 1.
+    cmd: >-
+      python3 -c "import sys; sys.path.insert(0,'scripts'); from
+      evidence_pack_lint import compute_floor; paths=['.claude/scripts/codex-spalla.sh','scripts/lib/spalla_redact.sh','.claude/hooks/codex-spalla-trigger.sh','scripts/codex_tri_llm_review.py','scripts/review_gate_run.sh','scripts/_redact_pii.py']; print([compute_floor([p]) for p in paths]); print(compute_floor(['docs/CLAUDE.md']))"
+    result: "[3, 3, 3, 3, 3, 3]\n1"
+    exit: 0
+    ts: "2026-09-27T00:06:40Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      GUILT RUN proving the sync test discriminates a real drift, and that
+      restoring the entry returns the tree to a clean, green state (closes
+      blocker 3 — the first PR's sync test guarded nothing on any actual
+      PR because no workflow invoked it).
+    cmd: >-
+      cp .github/workflows/hot-zone-pr-gate.yml /tmp/hzpg-backup.yml; sed -i
+      '' 's/scripts\/_redact_pii\.py)/some_other_thing_not_redact.py)/'
+      .github/workflows/hot-zone-pr-gate.yml; python3 -m pytest
+      scripts/tests/test_hotzone_lists_sync.py -v; cp /tmp/hzpg-backup.yml
+      .github/workflows/hot-zone-pr-gate.yml; python3 -m pytest
+      scripts/tests/test_hotzone_lists_sync.py -q
+    result: >-
+      drifted: "2 failed, 2 passed" (test_hotzone_lists_are_identical_sets
+      and test_s5_egress_paths_present_on_both_lists both named
+      `scripts/_redact_pii.py` as missing from the workflow's case block);
+      restored: "4 passed", git status --short on the workflow file showed
+      only the intended 6-entries-added diff, no residual corruption.
+    exit: 0
+    ts: "2026-09-27T00:03:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: "The extended sync test module passes in full (4/4)."
+    cmd: python3 -m pytest scripts/tests/test_hotzone_lists_sync.py -v
+    result: "4 passed"
+    exit: 0
+    ts: "2026-09-27T00:05:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      No regression to the existing HOTZONE_PATTERNS guilt+innocence corpus
+      or any other rule's selftest.
+    cmd: python3 scripts/evidence_pack_lint.py --selftest
+    result: "SELFTEST PASS"
+    exit: 0
+    ts: "2026-09-27T00:05:10Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      The full evidence_pack_lint pytest suite stays green at its actually
+      measured count (the first PR's pack wrongly said 770; this is the
+      real number, matching the gate's own independent measurement).
+    cmd: python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q
+    result: "771 passed"
+    exit: 0
+    ts: "2026-09-27T00:05:30Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      Both edited workflow files still parse as valid YAML after the edit.
+    cmd: >-
+      python3 -c "import yaml; yaml.safe_load(open('.github/workflows/hot-zone-pr-gate.yml'));
+      yaml.safe_load(open('.github/workflows/guard-conformance.yml'))"
+    result: "no exception raised"
+    exit: 0
+    ts: "2026-09-27T00:04:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      scripts/codex_tri_llm_review.py forwards the full diff verbatim into
+      argv for both `codex exec` and `kimi -p`, with no redaction step —
+      verified directly, not relayed from the gate report.
+    cmd: >-
+      grep -n "diff\[: args_global.max_diff_chars\]" scripts/codex_tri_llm_review.py;
+      grep -n '"codex",$' -A2 scripts/codex_tri_llm_review.py; grep -n '"-p",$'
+      -A1 scripts/codex_tri_llm_review.py
+    result: >-
+      build_prompt():231 embeds diff[:max_diff_chars] into the prompt
+      template; the codex branch spawns `asyncio.create_subprocess_exec("codex",
+      "exec", "--skip-git-repo-check", prompt, ...)`; the kimi branch spawns
+      `asyncio.create_subprocess_exec(binp, "-m", "kimi-code/k3", "-p", prompt,
+      ...)` — prompt in both cases is build_prompt()'s return value.
+    exit: 0
+    ts: "2026-09-27T00:02:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      scripts/lib/spalla_redact.sh pipes every outbound body through
+      scripts/_redact_pii.py (fail-closed on a non-zero exit).
+    cmd: sed -n '20,30p;70,78p' scripts/lib/spalla_redact.sh
+    result: >-
+      `SPALLA_REDACTOR_PY="${SPALLA_REDACT_LIB_DIR}/_redact_pii.py"`; the
+      redact function pipes `printf '%s' "$input" | python3
+      "$SPALLA_REDACTOR_PY"` and treats a non-zero exit as failure (prints
+      stderr, returns 1).
+    exit: 0
+    ts: "2026-09-27T00:02:10Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      scripts/_redact_pii.py has roughly a dozen callers beyond the egress
+      path — the widening cost stated in the spec's Enforcement section is
+      real, not a guess.
+    cmd: git grep -l "_redact_pii" -- '*.sh' '*.py' | grep -v test
+    result: >-
+      14 files: .claude/scripts/codex-spalla.sh,
+      apps/backend-rag/sandbox/egress_proxy.py,
+      apps/mata-garuda/mata_garuda/scripts/nb_monitor/registry.py,
+      scripts/_entailment_check.py, scripts/_redact_pii.py,
+      scripts/agent-library-evolver-run.sh, scripts/bot/build_deid_corpus.py,
+      scripts/ci/change_map.py, scripts/dynamic_workflow.py,
+      scripts/lib/spalla_redact.sh, scripts/lint_model_cards.py,
+      scripts/nb_curator_artifact_gate.py, scripts/nb_generate_inventory.py,
+      scripts/privacy_preflight.py.
+    exit: 0
+    ts: "2026-09-27T00:02:20Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      PR #7466's true timeline (auto-merge and merge-queue timestamps,
+      gate-verdict write time, merge time) — corrects the first S5 PR's
+      inverted claim ("caught it minutes too late"). as_of the gate report
+      that measured it.
+    cmd: gh pr view 7466 --repo Bali-Zero/Teman2 --json mergedAt,autoMergeRequest
+    result: >-
+      Per gate-7471.md's own independent measurement (head 92e7cac0a8):
+      auto_merge_enabled 22:38:45Z, added_to_merge_queue 22:51:40Z,
+      gate-7466.md verdict (REWORK-BUILD) written 22:54:31Z, merged
+      23:07:43Z — the verdict existed 13 minutes before the merge and was
+      never read because gear 1 requires no verdict.
+    exit: 0
+    ts: "2026-09-27T00:01:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      PR #7470 is OPEN (not merged, not "shipped"), declares gear 2, and
+      touches two now-hot-zone paths — the Migration section's rule applies
+      to it directly. as_of this measurement.
+    cmd: >-
+      gh pr view 7470 --repo Bali-Zero/Teman2 --json number,state,mergedAt,headRefOid,files
+    result: >-
+      state OPEN, mergedAt null, headRefOid 52684c2c7c...; files include
+      .claude/scripts/codex-spalla.sh and scripts/_redact_pii.py; its
+      brief.yml (fetched at that head) declares `gear: 2`.
+    exit: 0
+    ts: "2026-09-27T00:00:30Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: ".codex/ is fully gitignored — `.codex/hooks/*` was dead coverage."
+    cmd: grep -n "^\.codex/$" .gitignore
+    result: ".gitignore:185: .codex/"
+    exit: 0
+    ts: "2026-09-27T00:00:10Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+pii_scan: clean
+pii_scan_note: >-
+  Nothing in this diff transcribes client/OSINT data. The changed surface is
+  a spec markdown file, a Python tuple of file-path strings, two bash/YAML
+  workflow edits, and a pytest module — no client name, phone, email,
+  KTP/NPWP or WhatsApp data anywhere in scope. Grepped the full diff for
+  those patterns: zero hits.
+bites:
+  consumer: >-
+    the harness floor on every future PR touching any of the six S5
+    egress/redaction paths, and guard-conformance.yml's PR-triggered
+    conformance job for the sync test itself
+  where: ci
+  observe: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file scripts/tests/fixtures/s5_hotzone_probe_changed_files.txt
+  expect: "contains:3"
+dissent:
+  - seat: "session (M5, Sonnet 5 conducting) — self-review, no external seat dispatched (see seat_override)"
+    objection: >-
+      [P1, self-raised] scripts/_redact_pii.py now floors at 3 for ALL 14 of
+      its callers, not just the egress-adjacent ones (receipts list them).
+      Several — scripts/nb_generate_inventory.py, scripts/lint_model_cards.py,
+      scripts/bot/build_deid_corpus.py — have nothing to do with an external
+      seat. A contributor fixing an unrelated bug in one of those now needs a
+      Gear-3 pack for a one-line change, which is a real ceremony cost this
+      PR imposes on surfaces outside its own gap.
+    status: CONFIRMED
+    resolution: >-
+      Verified directly via the grep in receipts: 14 total hits, 1 is the
+      file itself, 2 (codex-spalla.sh, spalla_redact.sh) are already the
+      known egress path, leaving 11 callers with nothing to do with an
+      external seat. The cost is real and not overstated.
+      Whether it is the RIGHT tradeoff is a judgment call, not a fact this
+      session can settle unilaterally — stated explicitly in the spec's
+      Enforcement section (the paragraph beginning "Cost, stated explicitly
+      rather than left silent") rather than left for a future PR's author to
+      discover the hard way, which is exactly how #7466's gap was found in
+      the first place.
+    disposition: >-
+      Kept IN. The alternative — leaving the shared redaction engine at
+      gear 1 — reproduces the exact defect class this spec exists to close
+      (S5's own Gap: "a change that can quietly weaken the PII redaction...
+      standing between repo content and an outbound cloud call"), and
+      `scripts/_redact_pii.py` is precisely that logic, one layer down from
+      the wrapper. A narrower rule (hot-zone only when the diff touches
+      BOTH `_redact_pii.py` and an egress wrapper in the same PR) was
+      considered and rejected: it would have let #7466's blocker 5 through
+      again, since that PR touched only the redactor's caller-facing
+      contract, not an egress wrapper file.

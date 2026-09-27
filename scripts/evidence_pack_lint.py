@@ -440,6 +440,17 @@ from conductor.review_eligibility import (  # noqa: E402
     evaluate as _evaluate_reviewer_eligibility,
 )
 
+# bites-observable (S5, 2026-09-27) — an `observe:` line may point at this
+# script. --changed-files-file, --numstat-file, --patch-file, the pack_path
+# positional and --print-floor/--print-floor-source/--print-measured only
+# read a file they report on, or are a plain int/flag; the one subprocess
+# call in this file (repo_root_default()) runs the fixed literal `git
+# rev-parse --show-toplevel`, never an argument-controlled binary. EXCEPTION,
+# not covered by that claim: --selftest writes to (and cleans up) a
+# tempfile.TemporaryDirectory — never point an `observe:` line at --selftest.
+# Keep this true for whatever flags an `observe:` line actually uses, or
+# drop the marker.
+
 # ---------------------------------------------------------------------------
 # Hot-zone floor (rule 6) — DELIBERATE, DECLARED duplication of the case-block
 # in .github/workflows/hot-zone-pr-gate.yml. Keep the two lists in sync by
@@ -461,6 +472,19 @@ HOTZONE_PATTERNS: tuple[str, ...] = (
     ".github/CODEOWNERS",
     "fly.toml",
     "apps/backend-rag/fly.toml",
+    # S5 (2026-09-27, docs/specs/2026-09-27-evidence-pack-fixed-point.md):
+    # external-seat egress wrappers — a script that forwards this repo's own
+    # diff/file content to an external model (Codex/Kimi/Agy/Gemini/Qwen), or
+    # the shared engine that redacts what those wrappers send. PR #7466
+    # floored at gear 1 with a weakened refusal list and a redaction gap; the
+    # fresh gate's REWORK-BUILD verdict existed 13 minutes BEFORE the merge
+    # and was never read, because gear 1 never asks (cure: PR #7470).
+    ".claude/scripts/codex-spalla.sh",
+    "scripts/lib/spalla_redact.sh",
+    ".claude/hooks/codex-spalla-trigger.sh",
+    "scripts/codex_tri_llm_review.py",
+    "scripts/review_gate_run.sh",
+    "scripts/_redact_pii.py",
 )
 
 # ---------------------------------------------------------------------------

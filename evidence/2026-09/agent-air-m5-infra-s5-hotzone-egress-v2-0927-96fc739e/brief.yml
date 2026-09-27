@@ -1,0 +1,66 @@
+task_id: s5-hotzone-egress-v2-0927
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor computed for THIS diff (re-run 2026-09-27, merge-base = origin/main
+# at branch time). `git merge-base origin/main HEAD` then `git diff
+# --name-only $MERGE_BASE HEAD` + `git diff --no-renames --numstat
+# $MERGE_BASE HEAD`, fed to `python3 scripts/evidence_pack_lint.py
+# --print-floor --changed-files-file ... --numstat-file ...` returns 3 via
+# the PATH term (.github/workflows/* is hot-zone independent of the new S5
+# entries). Gear 3 declared to match.
+objective: >-
+  REWORK of the first S5 PR (#7471, REWORK-BUILD, gate report
+  scratchpad/reports/gate-7471.md): built fresh from origin/main per the
+  fixed-point method (a frozen, armed PR is never edited in place). Closes
+  five blockers: (1) an extended sweep over `*.sh` AND `*.py` found a real,
+  unredacted egress wrapper the first sweep missed —
+  scripts/codex_tri_llm_review.py (puts the full diff verbatim into
+  `codex exec`/`kimi -p` argv) and its trigger scripts/review_gate_run.sh,
+  now added; (2) scripts/_redact_pii.py, the shared engine
+  scripts/lib/spalla_redact.sh pipes every outbound body through, is now
+  hot-zone too — the "quietly weaken the redaction" gap named a change to
+  the wrapper, but the redactor itself was the same class of surface;
+  (3) scripts/tests/test_hotzone_lists_sync.py is now wired into
+  guard-conformance.yml (paths, sentinel regex, and the evidence_pack_lint
+  step's own pytest invocation) — the first PR's sync test asserted nothing
+  on any actual PR; (4) every false evidence claim in the first PR (an
+  inverted #7466 timeline, a "cure #7470 shipped" claim while #7470 is
+  still OPEN, a stale HOTZONE_PATTERNS line number) is corrected against
+  measured facts; (5) Migration now names in-flight PR #7470 explicitly:
+  it touches two now-hot-zone paths and declares gear 2, so it must
+  redeclare gear 3 once this PR is on main. `.codex/hooks/*` is dropped —
+  `.codex/` is fully gitignored, so the entry was dead coverage no ordinary
+  diff could ever trigger.
+constraints:
+  - "No external seat (codex/kimi/gemini/qwen) dispatched on this diff —
+    this PR itself edits the hot-zone list that gates dispatch to those
+    seats, and generator must never be grader of its own gate surface. The
+    fresh `harness/fable-gate` gate session is this PR's second opinion,
+    per Builder Contract §5."
+  - "Every claim naming another PR's state (#7466, #7470) carries an as_of
+    timestamp (S4 of this same spec) since it can go stale mid-review."
+  - "scripts/_redact_pii.py's widening cost (11 non-egress
+    callers now floor at 3 too when this one shared file changes) is stated
+    explicitly in the spec's Enforcement section, not left for a reviewer
+    to discover."
+acceptance:
+  - "scripts/tests/test_hotzone_lists_sync.py: 4 tests (identical-sets,
+    S5-paths-present-on-both-lists, an-unrelated-path-is-innocent-by-
+    compute_floor, S5-paths-floor-at-3-via-compute_floor) pass, and the
+    module is now invoked by guard-conformance.yml's evidence_pack_lint
+    step on any PR touching evidence_pack_lint.py, this test file, or
+    hot-zone-pr-gate.yml."
+  - "Guilt run: reverting one hot-zone-pr-gate.yml case-block entry to a
+    placeholder makes test_hotzone_lists_are_identical_sets and
+    test_s5_egress_paths_present_on_both_lists fail by name; restoring it
+    returns the suite to green with zero residual diff."
+  - "scripts/evidence_pack_lint.py --selftest passes in full (no regression
+    to the existing HOTZONE_PATTERNS guilt+innocence corpus)."
+  - "scripts/tests/test_evidence_pack_lint.py's full suite passes unchanged
+    (measured count, not copied from the prior PR)."
+  - "compute_floor() probed directly (not via a bash case simulation) on
+    each of the six S5 paths in isolation returns 3; on an unrelated path
+    returns 1."
+  - "YAML syntax of both edited workflow files parses clean after the
+    edit."

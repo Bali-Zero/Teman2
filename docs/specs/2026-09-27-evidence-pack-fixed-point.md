@@ -157,3 +157,97 @@ to packs authored after this ships.
    change digits only inside already-existing lines so the line count — and therefore the size
    term — does not move again. `pii_scan` is written using S3's structured shape if any
    pre-existing PII remains in scope; every cross-PR claim carries `as_of` per S4.
+
+## S5 — External-seat egress scripts are hot-zone
+
+**Gap.** `HOTZONE_PATTERNS` (`scripts/evidence_pack_lint.py`) has no entry for the wrapper scripts
+that forward this repo's own diffs or files to an external model, or for the shared engine that
+redacts what those wrappers send. A gear-1 floor lets such a script merge unsigned — no
+`harness/fable-gate` verdict is required — even though editing it is exactly the class of change
+that can quietly weaken the PII redaction or refusal logic standing between repo content and an
+outbound cloud call.
+
+**Evidence.** PR #7466 (PII redaction/refusal guard for `.claude/scripts/codex-spalla.sh`, the
+wrapper that forwards `git diff` output to the Codex CLI — OpenAI cloud) floored at gear 1
+(`.claude/scripts/**` + `scripts/lib/**` + `scripts/tests/**` carried no hot-zone entry), so no
+`harness/fable-gate` verdict was required to merge. Measured on head `92e7cac0a8`: auto-merge
+enabled 22:38:45Z, added to the merge queue 22:51:40Z, the fresh gate's REWORK-BUILD verdict (five
+blockers — a 10/11 test regression, a hand-typed refusal list, an under-matched rename, transcripts
+written 0644, a silent pass4 skip) written 22:54:31Z, PR merged 23:07:43Z. The verdict existed
+**13 minutes before** the merge; it did not stop it, because at gear 1 nothing in the merge path
+ever reads a verdict — this is the sharper version of the gap: the floor doesn't need a faster
+gate, it needs one the queue is required to wait for. The cure (PR #7470) is, as of
+`2026-09-27T00:04:16Z`, still OPEN and unmerged.
+
+**Rule.** Every path whose job is to forward repository or diff content to an external seat
+(Codex, Kimi, Agy/Gemini, Qwen), or that redacts what such a path sends, is hot-zone: floor 3, a
+gate verdict required before merge. This covers a wrapper script, its trigger hook, and the
+redaction/refusal library or engine it calls — the same shape #7466 touched.
+
+**Enforcement.** Add to `HOTZONE_PATTERNS` in `scripts/evidence_pack_lint.py` and the mirrored
+`case` block in `.github/workflows/hot-zone-pr-gate.yml` (kept in sync by hand per the existing
+comment at both sites, and now also asserted by `scripts/tests/test_hotzone_lists_sync.py`, wired
+into `guard-conformance.yml`): `.claude/scripts/codex-spalla.sh`, `scripts/lib/spalla_redact.sh`,
+`.claude/hooks/codex-spalla-trigger.sh`, `scripts/codex_tri_llm_review.py`,
+`scripts/review_gate_run.sh`, `scripts/_redact_pii.py`.
+
+A repo-wide sweep over **both** shell and Python
+(`git grep -ln "git diff" -- '*.sh' '*.py' | xargs grep -l -iE "codex|kimi|agy|gemini|qwen|glm"`,
+22 non-test hits) was classified file by file:
+
+- IN, newly added: `scripts/codex_tri_llm_review.py` puts the full diff verbatim into a prompt
+  (`build_prompt`) and passes it as argv to `codex exec` and `kimi -p`, with no redaction step at
+  all. Its trigger, `scripts/review_gate_run.sh`, runs it directly on a PR's diff; the Pro
+  LaunchAgent `com.nuzantara.review-gate` (StartInterval 600s) has it loaded — inert today
+  (matches nothing) but armed, one edit away from forwarding every agent PR's diff to OpenAI and
+  Moonshot unredacted (Esiste≠Armato; the daemon's liveness is tracked separately).
+- IN, newly added: `scripts/_redact_pii.py`, the engine `scripts/lib/spalla_redact.sh` pipes every
+  outbound body through (fail-closed). #7466's blocker 5 (a silently skipped redaction pass) lived
+  here, and its cure (#7470) edits this exact file — a PR touching only it still floored at 1,
+  which is precisely the "quietly weaken the redaction" this Gap names. Cost, stated explicitly
+  rather than left silent: this file has 11 other callers outside the egress path
+  (`apps/backend-rag/sandbox/egress_proxy.py`, `scripts/privacy_preflight.py`,
+  `scripts/bot/build_deid_corpus.py`, `scripts/dynamic_workflow.py`, `scripts/nb_curator_artifact_gate.py`
+  among them) — any PR touching the shared redactor now floors at 3 too, even when its own change
+  has nothing to do with an external seat. Accepted: the engine's correctness is exactly the
+  surface this Gap is about, and 3 is a floor a human reviews, not a ban.
+- OUT, not an egress wrapper (from the 22-hit sweep itself): `scripts/evidence_pack_lint.py`
+  (the pattern list is data it carries, not a script that invokes anything) and
+  `scripts/check_adversarial_review.py` (only lists seat/model _names_, no invocation).
+- OUT, checked separately because they never say `git diff` literally (so the sweep's own search
+  string misses them; classified on request, not overlooked): `scripts/lib/codex_seat.sh` (sourced
+  by codex-spalla.sh:134 to pick a seat name only, carries no diff/file content — optional, could
+  be added defensively but forwards nothing); `scripts/launch_worker_plane_review_panel.py` and
+  `scripts/dynamic_workflow.py` dispatch Gemini/Codex/Kimi on operator-authored plans/briefs, never
+  on a `git diff` — a materially different content shape (nothing already in the codebase that
+  this repo didn't choose to put there).
+- OUT, pre-existing exclusions (unchanged from the original sweep): `scripts/codex/codex-daily-research-actor.sh`
+  and `scripts/codex/codex-nightly-coverage-improver.sh` use `git diff --name-only`/`--shortstat`
+  only for their own PR bookkeeping and let the Codex CLI read source files itself, never piping
+  content through the wrapper; an archived one-time audit helper under
+  `docs/audits/2026-04-29-zero-crash-audit/` is not live automation.
+- OUT, false positives: the remaining 14 files (22 sweep hits minus the 2 already-known egress
+  paths, the 1 newly-added file, the 3 pre-existing exclusions, and the 2 self-reference exclusions
+  above) matched only because they mention "codex"/"kimi"/"gemini"/"glm" inside a
+  review-attribution comment (e.g. "codex RED", "kimi-code/k3, refuting this cut") while an
+  unrelated line elsewhere in the same file happens to say `git diff` — no invocation of an
+  external CLI exists in any of them: `infra/claude-hooks/worktree_isolation.py`,
+  `scripts/agent_start.py`, `scripts/arm_keep_worktrees.py`, `scripts/ci/bites_parse.py`,
+  `scripts/ci/change_map.py`, `scripts/ci/pr_collision_check.py`, `scripts/consumer_map.py`,
+  `scripts/docs_audit.py`, `scripts/docs_inventory_refresh_liveness.py`,
+  `scripts/mutation_incremental.py`, `scripts/prepush_classify.py`, `scripts/queue_unstick.py`,
+  `scripts/token_lint.py`, `scripts/worktree_gc_universal.py`.
+
+Widening hot-zone to every `codex exec`/`kimi`/`gemini`/`qwen` invocation in the repo (the council
+launchers above, or the `scripts/codex/*` autonomous actors) is a separate, larger change this spec
+does not make.
+
+**Migration.** PR #7470 (OPEN as of `2026-09-27T00:04:16Z`, head `52684c2c7c`) touches
+`.claude/scripts/codex-spalla.sh` and `scripts/_redact_pii.py` — both hot-zone under this section —
+and declares `gear: 2` against today's floor of 2 (SIZE term). Once this PR merges, #7470's own
+floor recomputes to 3 (PATH term) and its declared `gear: 2` is a downgrade below the floor, which
+`harness-floor.yml` fails closed on the next run. The rule this spec applies: **#7470 must
+redeclare `gear: 3` with a full Gear-3 Evidence Pack before it can merge once this PR is on
+`main`** — its own PII-redaction fix does not get a pass on the very floor it is proving is needed.
+No other pack on `main` declares a gear against any of the six S5 paths, so nothing else already
+merged is retroactively out of compliance.
