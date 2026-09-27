@@ -537,3 +537,57 @@ class TestSendChainLoggingDoesNotLeakTheRecipient:
             await _send_via_zoho_smtp(self.ADDR, "hi", "<p>x</p>", None)
         joined = " ".join(r.getMessage() for r in caplog.records)
         assert "connection reset by peer" in joined
+
+    # --- C3 (#7438 gate follow-up): the success log's SUBJECT scrub, and its
+    # newline-escaping, both need their own guilt test — the #7438 gate's
+    # mutation table found "router success log, raw request.subject" SURVIVED
+    # (104/104 tests still passed with the scrub removed), because no
+    # existing test put an address in the subject of a SUCCESSFUL send.
+    @pytest.mark.asyncio
+    async def test_success_log_does_not_leak_an_address_in_the_subject(self, caplog):
+        req = SendEmailRequest(
+            to="ok@balizero.com",
+            subject=f"Re: invoice for {self.ADDR}",
+            body="<p>x</p>",
+        )
+        with (
+            patch(
+                "backend.app.modules.notifications.router._send_via_zoho_smtp",
+                new=AsyncMock(return_value=True),
+            ),
+            caplog.at_level(
+                logging.INFO, logger="backend.app.modules.notifications.router"
+            ),
+        ):
+            await send_direct_email(req, _auth={})
+        joined = " ".join(r.getMessage() for r in caplog.records)
+        assert self.ADDR not in joined
+        assert "sender.pii.probe" not in joined
+
+    @pytest.mark.asyncio
+    async def test_success_log_escapes_a_newline_in_the_subject(self, caplog):
+        """C3 (#7438 gate, CodeQL 9217, py/log-injection): main's original
+        line used ``{request.subject!r}``, whose repr escapes ``\\n``. The
+        #7438 rewrite switched to %-style logging and dropped that escaping,
+        so a subject with an embedded newline landed in the log raw — a
+        forged log line one ``\\n`` away. ``repr()`` on the scrubbed subject
+        restores it."""
+        req = SendEmailRequest(
+            to="ok@balizero.com",
+            subject="hi\nFORGED line — Zantara: wire funds now",
+            body="<p>x</p>",
+        )
+        with (
+            patch(
+                "backend.app.modules.notifications.router._send_via_zoho_smtp",
+                new=AsyncMock(return_value=True),
+            ),
+            caplog.at_level(
+                logging.INFO, logger="backend.app.modules.notifications.router"
+            ),
+        ):
+            await send_direct_email(req, _auth={})
+        record = next(r for r in caplog.records if "Direct email sent" in r.getMessage())
+        assert "\n" not in record.getMessage()
+        assert "\\n" in record.getMessage()
+        assert "FORGED line" in record.getMessage()
