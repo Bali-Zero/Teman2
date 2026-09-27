@@ -74,6 +74,68 @@ def test_ownership_check_is_present_in_source() -> None:
     assert "[ ! -O \"$DELTA_SCRATCH\" ]" in m.group(0)
 
 
+def test_codex_tier_uses_an_explicit_env_allowlist_not_the_inherited_environment() -> None:
+    """Static guard for PR #7515's Blocker 2 (gate finding on head c59dad25,
+    2026-09-27): the wrapper's `set -a; source ~/.nuzantara-secrets.env` above
+    exports ~27 vars (DATABASE_URL, REDIS_PASSWORD, GOOGLE_APPLICATION_
+    CREDENTIALS, ZOHO_*, NUZANTARA_API_KEY, ...) into its OWN shell, and the
+    codex tier's untrusted-content shell tool now has real network egress
+    (this same PR) — a prompt-injection surface that could exfiltrate any of
+    them to an arbitrary host if they reached that shell's environment.
+
+    `-c shell_environment_policy.inherit=core` (the gate's first-suggested
+    cure) was tested live on Pro and found INEFFECTIVE: codex's `exec` shell
+    tool re-sources this account's `~/.zshenv` on every invocation regardless
+    of that flag's value (and regardless of `=none`, and regardless of
+    `-c allow_login_shell=false`, which additionally broke the TELEGRAM_* vars
+    this tier needs). The verified-effective mechanism is not letting the
+    secrets reach codex's own process environment at all: `env -i` plus an
+    explicit small allowlist (HOME, PATH, the seat's CODEX_HOME, and only the
+    two TELEGRAM_* vars this tier's prompt uses to alert) — confirmed live:
+    none of the `.nuzantara-secrets.env` names reach the child's `env`.
+
+    Guilt: reverting the invocation to the pre-fix `env "${CODEX_SEAT_ENV[@]}"`
+    (full inherited environment) makes this test fail, since that string would
+    no longer be paired with `env -i` and the block would still carry the
+    unrestricted call the assertions below reject.
+    """
+    text = _WRAPPER.read_text(encoding="utf-8")
+    start = text.index("# Tier 3: Codex GPT-5.5")
+    end = text.index("\nfi\n", start)
+    block = text[start:end]
+    # Code-only view (drops comment lines) for the name-allowlist checks below —
+    # this function's own docstring/inline comments legitimately NAME the leaked
+    # secrets and the old vulnerable call as prose, which must not self-fail.
+    code_block = "\n".join(
+        line for line in block.splitlines() if not line.strip().startswith("#")
+    )
+
+    assert 'env -i "${CODEX_ENV_ALLOWLIST[@]}"' in block, (
+        "codex tier must launch through `env -i` plus an explicit allowlist array "
+        "— not the wrapper's inherited environment"
+    )
+    assert 'env "${CODEX_SEAT_ENV[@]}" \\\n' not in code_block, (
+        "the pre-fix CALL SITE (`env \"${CODEX_SEAT_ENV[@]}\"` immediately preceding "
+        "the codex binary, no `-i`) hands codex this wrapper's ENTIRE environment, "
+        "including every .nuzantara-secrets.env var — must not reappear (a mention "
+        "of the old string in an explanatory comment is fine; the call site is not)"
+    )
+    for leaked_name in (
+        "DATABASE_URL",
+        "REDIS_PASSWORD",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "ZOHO_CLIENT_SECRET",
+        "NUZANTARA_API_KEY",
+        "HEALTHCHECK_PIN",
+    ):
+        assert leaked_name not in code_block, (
+            f"{leaked_name} must never be named inside the codex-tier block's CODE — "
+            "it is not on the explicit allowlist and has no reason to be"
+        )
+    for allowed_name in ("HOME=", "PATH=", "TELEGRAM_BOT_TOKEN", "TELEGRAM_OWNER_CHAT_ID"):
+        assert allowed_name in code_block, f"expected allowlist entry {allowed_name!r} missing"
+
+
 def _run(
     tmp_path: Path,
     date: str,

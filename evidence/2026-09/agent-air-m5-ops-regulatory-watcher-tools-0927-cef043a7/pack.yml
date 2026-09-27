@@ -1,9 +1,13 @@
 brief_ref: evidence/brief.yml
 seat_override: >-
-  Single-build-lane, narrowly-scoped ops bugfix (92 net lines, 3 files) whose
-  floor-3 classification is purely path-based (infra/launchagents/* is a
-  literal HOTZONE_PATTERNS entry) rather than a signal of architectural
-  ambiguity or blast radius warranting cross-family adjudication. Every
+  Single-build-lane ops bugfix, still 3 files (no literal line count restated
+  here on purpose — it grew across two REWORK-BUILD rounds fixing genuine
+  security findings, and any number pinned in this pack's own prose goes
+  stale the moment it is next edited; exact current stat: `git diff --stat
+  origin/main...HEAD`). Floor-3 classification is purely path-based
+  (infra/launchagents/* is a literal HOTZONE_PATTERNS entry) rather than a
+  signal of architectural ambiguity or blast radius warranting cross-family
+  adjudication. Every
   claim in this pack is independently receipted, including two live
   RED-then-GREEN `codex exec` runs on the production machine itself (Pro) —
   not narrated from documentation. Convening a 2-seat cross-family council
@@ -40,14 +44,22 @@ diff:
     moment this pack itself is edited to satisfy lint. Exact current stat:
     `git diff --numstat origin/main...HEAD`.
   behaviour_change: >-
-    Tier 1's agent spec (Step 5) writes to /tmp/<date>-delta.json instead of
-    directly into the tracked checkout; the wrapper's recover_delta() checks
-    that scratch path first and promotes+deletes it. Tier 3's codex
-    invocation gains two `-c` config overrides (network_access=true,
-    network_proxy=false) so its shell tool can reach the internet. The
-    run-complete/DEGRADED log line gains a `tools:` field naming the seat's
-    actual tool set. No change to the output contract, the Telegram
-    alert-only-if-new_today_count>0 gate, or the ollama tier.
+    Tier 1's agent spec (Step 5) writes to a private 0700 scratch dir under
+    $HOME instead of directly into the tracked checkout; the wrapper's
+    recover_delta() checks that scratch path first, refuses a symlink or a
+    file it does not own, promotes ONLY through schema-validated
+    re-serialization, and promotes+deletes it. Tier 3's codex invocation
+    gains two `-c` config overrides (network_access=true, network_proxy=
+    false) so its shell tool can reach the internet, and now launches via
+    `env -i` plus an explicit allowlist (HOME, PATH, the seat's CODEX_HOME,
+    TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID) instead of the wrapper's full
+    inherited environment, so the ~27 vars `.nuzantara-secrets.env` exports
+    (DATABASE_URL, REDIS_PASSWORD, GOOGLE_APPLICATION_CREDENTIALS, ZOHO_*,
+    NUZANTARA_API_KEY, ...) no longer reach that now-network-capable,
+    untrusted-content-reading shell. The run-complete/DEGRADED log line
+    gains a `tools:` field naming the seat's actual tool set and env
+    posture. No change to the output contract, the Telegram alert-only-if-
+    new_today_count>0 gate, or the ollama tier.
 receipts:
   - claim: >-
       Deterministic gear floor for this PR's changed-file set is 3:
@@ -188,6 +200,98 @@ receipts:
     exit: 0
     ts: "2026-09-27T05:20:30Z"
     seat: "session (this task, Air-M5 worktree)"
+  - claim: >-
+      RED: `-c shell_environment_policy.inherit=core` on the pre-cure
+      invocation (wrapper's full inherited env, codex's OWN default seat
+      config with no [shell_environment_policy] section) does NOT restrict
+      what codex's shell tool sees — the leaked-name set is byte-identical
+      to the unpatched default, including names containing KEY/SECRET/TOKEN
+      that the documented default-exclude behavior should itself have
+      caught. Names only, never values.
+    cmd: >-
+      set -a; source ~/.nuzantara-secrets.env; set +a; env
+      CODEX_HOME=$HOME/.codex-acct2 codex exec --sandbox workspace-write -c
+      sandbox_workspace_write.network_access=true -c
+      features.network_proxy=false -c shell_environment_policy.inherit=core
+      --skip-git-repo-check "env | cut -d= -f1 | sort" # run live on Pro
+    result: >-
+      DATABASE_URL, DATABASE_URL_LOCAL, EVENTBUS_DATABASE_URL,
+      GARUDA_REDIS_PASSWORD, GOOGLE_APPLICATION_CREDENTIALS, HEALTHCHECK_PIN,
+      NUZANTARA_API_KEY, REDIS_PASSWORD, TELEGRAM_BOT_TOKEN,
+      WA_MIRROR_DATABASE_URL, ZOHO_CLIENT_SECRET all still present
+    exit: 0
+    ts: "2026-09-27T06:05:00Z"
+    seat: "session (this task, live codex exec on Pro)"
+  - claim: >-
+      RED, confirms the `-c shell_environment_policy.inherit=` override is
+      not taking effect at all in codex-cli 0.156.1 for this call shape:
+      `=none` produces the byte-identical leaked-name set to `=core` and to
+      no override at all.
+    cmd: >-
+      same as above with -c shell_environment_policy.inherit=none # run
+      live on Pro
+    result: "identical name set to the `=core` receipt above"
+    exit: 0
+    ts: "2026-09-27T06:08:00Z"
+    seat: "session (this task, live codex exec on Pro)"
+  - claim: >-
+      RED, on the team-lead's implied fallback lever: `-c
+      allow_login_shell=false` does not stop codex's shell tool from
+      re-sourcing this account's `~/.zshenv` (GITHUB_PERSONAL_ACCESS_TOKEN,
+      STARSHIP_SESSION_KEY, NB_*_ID still present, unconditionally, even
+      under `env -i` with nothing else passed in), and it ALSO dropped this
+      wrapper's explicitly-passed TELEGRAM_BOT_TOKEN /
+      TELEGRAM_OWNER_CHAT_ID — breaking this tier's own Telegram alerting.
+      Not used in the shipped fix.
+    cmd: >-
+      env -i HOME=$HOME PATH=$PATH CODEX_HOME=$HOME/.codex-acct2
+      TELEGRAM_BOT_TOKEN=... TELEGRAM_OWNER_CHAT_ID=... codex exec --sandbox
+      workspace-write -c sandbox_workspace_write.network_access=true -c
+      features.network_proxy=false -c allow_login_shell=false
+      --skip-git-repo-check "env | cut -d= -f1 | sort" # run live on Pro
+    result: >-
+      GITHUB_PERSONAL_ACCESS_TOKEN, STARSHIP_SESSION_KEY, NB_AGENTS_ID,
+      NB_INTEL_ID, NB_OPS_ID, NB_SESSION_ID, NB_TELEMETRY_ID present;
+      TELEGRAM_BOT_TOKEN and TELEGRAM_OWNER_CHAT_ID ABSENT (regression)
+    exit: 0
+    ts: "2026-09-27T06:12:00Z"
+    seat: "session (this task, live codex exec on Pro)"
+  - claim: >-
+      GREEN, the shipped cure: `env -i` plus an explicit allowlist (HOME,
+      PATH, the seat's CODEX_HOME, TELEGRAM_BOT_TOKEN,
+      TELEGRAM_OWNER_CHAT_ID — no `shell_environment_policy` flag at all,
+      since it was proven ineffective above) keeps every
+      `.nuzantara-secrets.env` name out of codex's process env. Names only.
+      Full surviving name list (verified NOT to contain any value) is in the
+      PR body per the team-lead's explicit ask.
+    cmd: >-
+      env -i HOME=$HOME PATH=$PATH CODEX_HOME=$HOME/.codex-acct2
+      TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
+      TELEGRAM_OWNER_CHAT_ID=$TELEGRAM_OWNER_CHAT_ID codex exec --sandbox
+      workspace-write -c sandbox_workspace_write.network_access=true -c
+      features.network_proxy=false --skip-git-repo-check "env | cut -d= -f1
+      | sort" # run live on Pro
+    result: >-
+      none of DATABASE_URL/DATABASE_URL_LOCAL/EVENTBUS_DATABASE_URL/
+      WA_MIRROR_DATABASE_URL/REDIS_PASSWORD/GARUDA_REDIS_PASSWORD/
+      HEALTHCHECK_PIN/GOOGLE_APPLICATION_CREDENTIALS/ZOHO_*/
+      NUZANTARA_API_KEY* present; TELEGRAM_BOT_TOKEN and
+      TELEGRAM_OWNER_CHAT_ID present as needed; a residual Pro-host set
+      (`~/.zshenv`-sourced, independent of this wrapper) still reaches the
+      shell — disclosed as a separate finding, not silently dropped
+    exit: 0
+    ts: "2026-09-27T06:16:00Z"
+    seat: "session (this task, live codex exec on Pro)"
+  - claim: >-
+      Full test corpus (including the new static guard for the env
+      allowlist call site) passes; wrapper stays syntactically valid zsh.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_regulatory_watcher_recover_delta.py
+      -q && zsh -n infra/launchagents/wrappers/regulatory-watcher-run.sh
+    result: "12 passed; zsh -n: no output, exit 0"
+    exit: 0
+    ts: "2026-09-27T06:20:00Z"
+    seat: "session (this task, Air-M5 worktree)"
 pii_scan: clean
 dissent:
   - seat: "independent Gear-3 on-disk gate (REWORK-BUILD, head 7753eac1)"
@@ -271,6 +375,45 @@ dissent:
       exactly as an existing quota/auth failure already does, never a silent
       no-op — so the failure mode of this risk materializing is bounded and
       already handled by the existing cascade contract.
+  - seat: "independent Gear-3 on-disk gate (Blocker 2, head c59dad25)"
+    objection: >-
+      The wrapper's `set -a`-sourced ~/.nuzantara-secrets.env exports ~27
+      vars into its own shell, the codex seat has no
+      [shell_environment_policy] in its config.toml, and this same PR just
+      gave that seat's shell tool real network egress while it reads
+      untrusted external web content — a prompt-injection surface that could
+      exfiltrate DATABASE_URL/REDIS_PASSWORD/GOOGLE_APPLICATION_CREDENTIALS/
+      etc. to an arbitrary host. Suggested cure: `-c
+      shell_environment_policy.inherit=core`, or pass only the variables the
+      tier needs explicitly.
+    status: CONFIRMED
+    note: >-
+      Genuine finding, confirmed live, and the suggested first cure does
+      NOT work as stated: `-c shell_environment_policy.inherit=core` (and
+      `=none`, and `-c allow_login_shell=false`) were each tested live on
+      Pro and produced either the identical leaked-name set or a broken
+      Telegram alert path — receipts above. Root cause is deeper than an
+      unset config key: codex's `exec` shell tool re-sources this account's
+      `~/.zshenv` on every invocation independent of any `-c
+      shell_environment_policy`/`allow_login_shell` value tested. Shipped
+      the stated fallback instead — "pass only the variables it needs
+      explicitly" — via `env -i` plus an explicit allowlist (HOME, PATH,
+      the seat's CODEX_HOME, TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID),
+      verified live to keep every `.nuzantara-secrets.env` name out of
+      codex's process env. A residual, SEPARATE exposure remains and is
+      disclosed rather than hidden: `~/.zshenv` on Pro unconditionally
+      re-populates a smaller set (GITHUB_PERSONAL_ACCESS_TOKEN,
+      STARSHIP_SESSION_KEY, NB_AGENTS_ID/NB_INTEL_ID/NB_OPS_ID/
+      NB_SESSION_ID/NB_TELEMETRY_ID, TELEGRAM_BOT_USERNAME, TELEGRAM_CHAT_ID
+      and assorted shell/dev-tool vars) into EVERY zsh subprocess on Pro,
+      this cron included, regardless of what this wrapper passes in. This
+      is a Pro host-level exposure (the account's own dotfile), not
+      something a repo PR to a wrapper script can fix, and this session's
+      Pro access is read-only — named explicitly in the PR body as an open
+      follow-up requiring someone with Pro write access. Same cicatrix
+      family as Blocker 1 (.claude/rules/cicatrix-superscar.md #4 "Secret in
+      the clear"), except the exposed surface here is a live dotfile on Pro,
+      not a file permission.
   - seat: "session, self-check on scope: should this PR also fix agy's OAuth or Telegram's 401?"
     objection: >-
       The team-lead's dispatch named the whole cascade as broken — should
@@ -290,9 +433,12 @@ dissent:
       instead of silently folded in or silently dropped.
 tests:
   - >-
-    scripts/tests/test_regulatory_watcher_recover_delta.py — 6/6 passing,
-    including 2 new guilt+innocence tests for the scratch-path recovery.
-    Receipt above.
+    scripts/tests/test_regulatory_watcher_recover_delta.py — 12/12 passing:
+    the scratch-path recovery guilt+innocence pair, 4 REWORK-BUILD guilt
+    tests (symlink/non-JSON/schema-invalid/partial:true), and the new Blocker
+    2 static guard asserting the codex tier launches through `env -i` plus
+    the explicit allowlist and never re-inherits the wrapper's full
+    environment or names a leaked secret in its own code. Receipt above.
   - >-
     zsh -n syntax check on the full modified wrapper. Receipt above.
 static:

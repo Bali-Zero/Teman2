@@ -606,7 +606,37 @@ if [ $SUCCESS -eq 0 ]; then
     # the list). Disabling that proxy for THIS invocation only is what actually
     # opened it — confirmed live against hukumonline.com (HTTP:200) after this
     # exact flag pair. Neither flag widens to --sandbox danger-full-access.
-    env "${CODEX_SEAT_ENV[@]}" \
+    #
+    # Env exposure to this tier's shell (untrusted external content -> prompt
+    # injection surface, now with real egress): this wrapper's own `set -a;
+    # source .nuzantara-secrets.env` above exports ~27 vars including
+    # DATABASE_URL/REDIS_PASSWORD/GOOGLE_APPLICATION_CREDENTIALS into ITS OWN
+    # shell, and `env "${CODEX_SEAT_ENV[@]}"` used to hand codex that whole
+    # inherited environment. Measured live 2026-09-27: `-c shell_environment_
+    # policy.inherit=core` and `=none` are BOTH INEFFECTIVE — codex's `exec`
+    # shell tool re-sources this account's `~/.zshenv` on every invocation
+    # (visible as `/bin/zsh -c '...'`, no -l) regardless of that flag's value,
+    # so the leaked-name set was byte-identical across default/core/none.
+    # `-c allow_login_shell=false` does not stop that re-source either, and it
+    # ALSO dropped the TELEGRAM_* vars this tier needs to alert. What is
+    # verified effective is not letting the secrets reach codex's OWN process
+    # env in the first place: `env -i` plus an explicit allowlist (HOME, PATH,
+    # the seat's CODEX_HOME, and only the two TELEGRAM_* vars this tier's
+    # prompt uses) — confirmed live: with this invocation, none of the
+    # .nuzantara-secrets.env names (DATABASE_URL, REDIS_PASSWORD, GOOGLE_
+    # APPLICATION_CREDENTIALS, ZOHO_*, NUZANTARA_API_KEY, etc.) reach the
+    # child's `env`. `~/.zshenv` itself still unconditionally re-populates a
+    # separate, smaller set (GITHUB_PERSONAL_ACCESS_TOKEN, STARSHIP_SESSION_
+    # KEY, NB_*_ID and a few shell/dev-tool vars) regardless of what this
+    # wrapper passes in — that is a Pro host-level exposure independent of
+    # this cron and this repo PR (this session's Pro access is read-only; see
+    # PR body for the follow-up this still needs).
+    typeset -a CODEX_ENV_ALLOWLIST
+    CODEX_ENV_ALLOWLIST=(HOME="$HOME" PATH="$PATH")
+    CODEX_ENV_ALLOWLIST+=("${CODEX_SEAT_ENV[@]}")
+    [ -n "$TELEGRAM_BOT_TOKEN" ] && CODEX_ENV_ALLOWLIST+=(TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN")
+    [ -n "$TELEGRAM_OWNER_CHAT_ID" ] && CODEX_ENV_ALLOWLIST+=(TELEGRAM_OWNER_CHAT_ID="$TELEGRAM_OWNER_CHAT_ID")
+    env -i "${CODEX_ENV_ALLOWLIST[@]}" \
         /opt/homebrew/bin/codex exec --sandbox workspace-write \
         -c sandbox_workspace_write.network_access=true \
         -c features.network_proxy=false \
@@ -707,7 +737,7 @@ TOOLS_USED="unknown"
 case "$USED_LLM" in
     claude-sonnet-5-subscription-cascade) TOOLS_USED="Claude agent session: Read/Write/Bash/WebFetch (NB-INTEL + web); delta written to /tmp scratch, promoted via worktree" ;;
     gemini-3.1-pro-agy) TOOLS_USED="agy print-mode: model-native browsing only, no local shell tool" ;;
-    codex-gpt-5.5) TOOLS_USED="codex exec --sandbox workspace-write, network_access=true + network_proxy=false: shell (curl) + web-search" ;;
+    codex-gpt-5.5) TOOLS_USED="codex exec --sandbox workspace-write, network_access=true + network_proxy=false, env -i allowlist (HOME/PATH/CODEX_HOME/TELEGRAM_*): shell (curl) + web-search" ;;
     ollama-qwen3.5:9b-local) TOOLS_USED="none — local text-only model, no browsing/shell, by design (last resort)" ;;
 esac
 
