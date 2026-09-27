@@ -46,7 +46,7 @@ Ini penting karena **email reminder otomatis** akan dikirim ke consultant yang n
 
 - Klik tombol "Show" di kolom OSS pada baris perusahaan
 - Muncul baris kuning di bawahnya bertuliskan "OSS CREDENTIALS"
-- Terlihat: Username (contoh: alis72592342023c), Password (contoh: Bali2023\*)
+- Terlihat: Username (contoh: [REDACTED]), Password (contoh: [REDACTED])
 - Ada icon clipboard 📋 di samping masing-masing untuk copy langsung
 - Terlihat juga tanggal update: "Updated: 07/04/2026"
 
