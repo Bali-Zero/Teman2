@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { usePricingData } from "@/hooks/usePricingData";
+import { R19_VARS } from "@/components/r19/presentation";
 
 // ServiceData without icon (React component cannot be serialized)
 type ServiceDataWithoutIcon = Omit<
@@ -208,6 +209,12 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
         <DialogContent
           className="max-h-[90vh] overflow-y-auto p-0"
           style={{
+            // Radix portals DialogContent to document.body, outside the
+            // R19Presentation wrapper that would otherwise supply these
+            // vars (see R19_VARS's own "also applied to the Radix portal"
+            // comment) — re-declare them locally so the modal never falls
+            // back to the app's global (dark) root values.
+            ...R19_VARS,
             border: "1px solid var(--border-subtle)",
             background: "var(--r19-paper)",
             color: "var(--text-primary)",
