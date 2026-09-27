@@ -206,7 +206,7 @@ receipts:
     seat: claude-sonnet-5
   - claim: "a whole-tree sweep for the same 7 names finds the docstring's own occurrences cured, but a large pre-existing exposure elsewhere the pack discloses and does not fix (see out_of_scope)"
     cmd: "git grep -n -F <each of the 7 names> -- ."
-    result: "scripts/crm_guardian_phase15_pilot.py: 0. 11 other pre-existing files carry 1+ of the names (not 9 — v7's count missed a test-fixture file, re-measured by the fresh gate on this byte-identical content): a pair of legacy, superseded prompt templates (NOT the PRODUCTION default — the extraction schema's version-label default is an unread metadata string, the CLI worker's own current default is a later prompt version, and a symbol naming the oldest legacy template has 1 occurrence total, its own never-read declaration), 1 one-off data-fix script with passport numbers, 2 historical scar/plan docs, and 6 remaining files split between code/config/migration references and test-fixture files (13+4+1 occurrences) — none touched by this PR, none named here (memory-18721 trap, same discipline as the wa_corpus sweep above)"
+    result: "scripts/crm_guardian_phase15_pilot.py: 0. 11 other pre-existing files carry 1+ of the names (not 9 — v7's count missed a test-fixture file, re-measured by the fresh gate on this byte-identical content): a pair of legacy, superseded prompt templates (NOT the PRODUCTION default — the extraction schema's version-label default is an unread metadata string, the CLI worker's own current default is a later prompt version, and a symbol naming the oldest legacy template has 1 occurrence total, its own never-read declaration), 1 one-off data-fix script with government identity-document numbers, 2 historical scar/plan docs, and 6 remaining files split between code/config/migration references and test-fixture files (13+4+1 occurrences) — none touched by this PR, none named here (memory-18721 trap, same discipline as the wa_corpus sweep above)"
     exit: 0
     ts: "2026-09-27T08:10:00Z"
     seat: claude-sonnet-5
@@ -370,9 +370,9 @@ unresolved: >-
   that still carry 2 of these names in clear on this PUBLIC repo (NOT a live cloud-LLM egress:
   re-measured this pack, the live worker's default prompt is a later version and no cron/
   LaunchAgent/process on M5/Pro/Mini reads those two files — see K1/H2), and a one-off data-fix
-  script that hardcodes full names, nationalities, emails, phones AND PASSPORT NUMBERS for a
-  13-entry dataset in cleartext Python source. Both need their own dedicated, carefully-reviewed
-  follow-up PRs — the legacy-prompt fix still needs extraction-accuracy validation before changing
+  script that hardcodes full names, nationalities, emails, phones and government identity-document
+  numbers in cleartext Python source. Both need their own dedicated, carefully-reviewed follow-up
+  PRs — the legacy-prompt fix still needs extraction-accuracy validation before changing
   the example even though it is not live today, and the data-fix script's names may be
   load-bearing lookup keys for its own idempotency logic — not a mechanical redaction bundled
   here. G4 (the real query_lab.py GROUND_TRUTH) — re-verified THIS pack: it IS already in Pro

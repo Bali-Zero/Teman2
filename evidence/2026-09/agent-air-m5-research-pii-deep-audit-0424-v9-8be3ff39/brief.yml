@@ -169,7 +169,7 @@ gear: 3
 gear_reason: >-
   Deterministic floor 3, source size, computed on the FINAL commit (all 18 changed paths, including
   this brief and pack): `evidence_pack_lint._size_term_net_lines` on the `git diff --numstat` of the
-  merge-base to this exact commit = 2880 (768 insertions + 2112 deletions across 18 files, 3 of them
+  merge-base to this exact commit = 2881 (769 insertions + 2112 deletions across 18 files, 3 of them
   binary xlsx contributing 0 line-counted churn) — above SIZE_GEAR3_THRESHOLD (1828), same order of
   magnitude as #7491's own 2840, #7481's own 2731, #7474's own 2463, #7472's own 2349, #7468's own
   2126, #7462's own 2086 and #7453's own 1963 (all smaller evidence packs; this pack's own evidence
@@ -258,9 +258,10 @@ out_of_scope: >-
   two legacy templates. The priority is PII in clear on a public repo, not active egress — changing
   a live prompt's example still needs its own validated PR, not a point-redaction bundled here.
   (b) one one-off data-fix script hardcodes a 13-entry director/commissioner dataset with full
-  names, nationalities, emails, phones AND PASSPORT NUMBERS in cleartext Python source — the most
-  severe exposure class in this whole chain, and one-off/idempotency-key in nature (verified but not
-  touched: the names may be load-bearing lookup keys for the script's own logic; redacting without
+  names, nationalities, emails, phones and government identity-document numbers in cleartext
+  Python source — the most severe exposure class in this whole chain, and one-off/idempotency-key
+  in nature (verified but not touched: the names may be load-bearing lookup keys for the script's
+  own logic; redacting without
   checking every call site risks silently breaking the fix).
   (c) two historical audit/scar documents record the same real names/ids as institutional memory —
   this repo's own convention treats scars as permanent record, so redacting them is a policy
