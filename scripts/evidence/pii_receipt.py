@@ -11,16 +11,23 @@ any byte of difference is a red, and so is a hand-typed number.
 PII-SAFE BY CONSTRUCTION. Patterns, category maps and id lists come from
 PRIVATE files named on the command line (never committed; R6.6 keeps them in
 ~/.agent/pii-quarantine/<lane>/, 0600 in a 0700 dir). Patterns reach
-`git grep` on stdin, never in argv. The output carries counts and sha256
-prefixes only: never a matched string, never the path of a matched file,
-never a private file's path. argv is echoed with every private file replaced
-by `@sha256:<16 hex>` of its bytes, so the block does not depend on the host.
+`git grep` on stdin, never in argv. The output carries counts and keyed
+hashes only: never a matched string, never a path (not even a --path value),
+never a private file's path. argv is echoed with every private file and every
+--path replaced by `@hmac:<16 hex>`, keyed by the lane salt SALT_NAME that
+lives beside the private files (created 0600 on first use). A PLAIN hash
+would not do: a one-line category map is reversed by hashing every tracked
+path. The one plain prefix left is R6.6's `sha256=` in the r66 line, whose
+format that rule fixes and whose file is the lane's whole residual list.
 
 NO COMMIT SHA IN THE BLOCK. The block is pasted into pack.yml, and that commit
 moves HEAD, so a sha in the block would make every re-run at the final head
-differ (S1's fixed-point class). The block carries `scope_digest` instead:
-sha256 over (path, blob) of every scanned file OUTSIDE evidence/. It does not
-change when the pack is edited, and it changes when anything else does.
+differ (S1's fixed-point class). The block carries `tree_digest` instead:
+sha256 over (path, blob) of every tracked file at --rev OUTSIDE evidence/,
+whatever --path scopes the count to. It does not change when the pack is
+edited, and it changes when anything else does. The header's `blob=` is the
+git blob of the script bytes that ran: a changed script invalidates every
+block it produced before, by design.
 
 Modes (stdlib only, read-only on the repo):
   tree        pattern hits over tracked files at --rev
@@ -35,6 +42,8 @@ import argparse
 import bisect
 import difflib
 import hashlib
+import hmac
+import os
 import re
 import shlex
 import subprocess
@@ -49,6 +58,7 @@ EVIDENCE_PREFIX = "evidence/"
 BINARY_SNIFF = 8000
 HEDGE_RE = re.compile(r"(?<!\w)(?:one of|some|a few|~[0-9]+)(?!\w)")
 LABEL_RE = re.compile(r"^[a-z0-9_-]{1,32}$")
+SALT_NAME = ".pii-receipt-salt"
 
 
 class UsageError(Exception):
@@ -73,8 +83,7 @@ def git(repo: Path, *args: str, stdin: bytes | None = None, ok: tuple[int, ...] 
 
 def read_private(path: str) -> tuple[bytes, list[bytes]]:
     raw = Path(path).expanduser().read_bytes()
-    lines = [ln[:-1] if ln.endswith(b"\r") else ln for ln in raw.split(b"\n")]
-    return raw, [ln for ln in lines if ln]
+    return raw, [ln for ln in raw.splitlines() if ln]
 
 
 def ls_tree(repo: Path, rev: str) -> dict[str, str]:
@@ -94,7 +103,7 @@ def in_scope(path: str, prefixes: list[str]) -> bool:
     return not prefixes or any(path == p or path.startswith(p.rstrip("/") + "/") for p in prefixes)
 
 
-def scope_digest(entries: dict[str, str]) -> str:
+def tree_digest(entries: dict[str, str]) -> str:
     h = hashlib.sha256()
     for path in sorted(entries):
         if not path.startswith(EVIDENCE_PREFIX):
@@ -123,8 +132,23 @@ def is_binary(data: bytes) -> bool:
     return b"\0" in data[:BINARY_SNIFF]
 
 
-def private_token(raw: bytes) -> str:
-    return "@sha256:" + sha256_hex(raw)
+def lane_salt(private_file: str) -> bytes:
+    salt = Path(private_file).expanduser().resolve().parent / SALT_NAME
+    try:
+        fd = os.open(salt, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        return salt.read_bytes()
+    with os.fdopen(fd, "wb") as fh:
+        fh.write(os.urandom(32).hex().encode())
+    return salt.read_bytes()
+
+
+def keyed(salt: bytes, raw: bytes) -> str:
+    return hmac.new(salt, raw, hashlib.sha256).hexdigest()[:16]
+
+
+def private_token(salt: bytes, raw: bytes) -> str:
+    return "@hmac:" + keyed(salt, raw)
 
 
 def render(argv: list[str], body: list[str]) -> str:
@@ -158,9 +182,12 @@ def cmd_tree(a: argparse.Namespace) -> tuple[str, int]:
     raw, pats = read_private(a.patterns)
     if not pats:
         raise UsageError("pattern file has no non-empty line")
+    if a.ignore_case and not all(p.isascii() for p in pats):
+        raise UsageError("--ignore-case folds ASCII only; a non-ASCII pattern would count differently from git -i")
     folded = [p.lower() for p in pats] if a.ignore_case else pats
-    entries = {p: s for p, s in ls_tree(repo, a.rev).items() if in_scope(p, a.path)}
-    grep = ["grep", "-z", "-l", "-F", "-f", "-"] + (["-i"] if a.ignore_case else []) + [a.rev]
+    tree = ls_tree(repo, a.rev)
+    entries = {p: s for p, s in tree.items() if in_scope(p, a.path)}
+    grep = ["grep", "-z", "-l", "-F", "-f", "-"] + (["-i"] if a.ignore_case else []) + [a.rev, "--"]
     out = git(repo, *grep, stdin=b"\n".join(pats) + b"\n", ok=(0, 1))
     prefix = a.rev + ":"
     cands = sorted({r.decode("utf-8", "surrogateescape")[len(prefix):] for r in out.split(b"\0") if r})
@@ -182,29 +209,32 @@ def cmd_tree(a: argparse.Namespace) -> tuple[str, int]:
         hits, union, occ, pres = line_hits(data.lower() if a.ignore_case else data, folded)
         if hits == 0:
             continue
+        if is_binary(data):
+            totals["binary_files"] += 1
+            continue
         per_file[path] = hits
         totals["hits"] += hits
         totals["lines_any"] += union
         totals["occurrences"] += occ
-        totals["binary_files"] += int(is_binary(data))
         present |= pres
-    argv = ["tree", "--patterns", private_token(raw), "--rev", a.rev]
+    salt = lane_salt(a.patterns)
+    argv = ["tree", "--patterns", private_token(salt, raw), "--rev", a.rev]
     if a.categories:
-        argv += ["--categories", private_token(cat_raw)]
+        argv += ["--categories", private_token(salt, cat_raw)]
     if a.ignore_case:
         argv.append("--ignore-case")
     for p in a.path:
-        argv += ["--path", p]
-    body = ["mode: tree", f"scope_digest: {scope_digest(entries)}",
+        argv += ["--path", private_token(salt, p.encode("utf-8", "surrogateescape"))]
+    body = ["mode: tree", f"tree_digest: {tree_digest(tree)}",
             f"scope_files: {sum(1 for p in entries if not p.startswith(EVIDENCE_PREFIX))}",
-            f"patterns: {{sha256: {sha256_hex(raw)}, lines: {len(pats)}}}",
+            f"patterns: {{hmac: {keyed(salt, raw)}, lines: {len(pats)}}}",
             f"files: {len(per_file)}", f"hits: {totals['hits']}",
             f"lines_any: {totals['lines_any']}", f"occurrences: {totals['occurrences']}",
             f"patterns_present: {len(present)}", f"patterns_absent: {len(pats) - len(present)}",
             f"binary_files: {totals['binary_files']}"]
     if a.categories:
         labels = sorted(set(cat_map.values()))
-        body.append(f"categories: {{sha256: {sha256_hex(cat_raw)}, entries: {len(cat_map)}, "
+        body.append(f"categories: {{hmac: {keyed(salt, cat_raw)}, entries: {len(cat_map)}, "
                     f"untracked: {sum(1 for p in cat_map if p not in entries)}, "
                     f"without_hits: {sum(1 for p in cat_map if p in entries and p not in per_file)}}}")
         body.append("by_category:")
@@ -218,6 +248,13 @@ def cmd_tree(a: argparse.Namespace) -> tuple[str, int]:
 def count_lines(text: str, pred) -> tuple[int, list[int]]:
     hit_lines = [i for i, ln in enumerate(text.split("\n"), 1) if pred(ln)]
     return len(hit_lines), hit_lines
+
+
+def text_digest(path: str) -> str:
+    """sha256[:16] of a text file with CRLF and trailing newlines normalised, so a
+    PR body read back from GitHub hashes like the file it was created from."""
+    text = Path(path).read_bytes().replace(b"\r\n", b"\n").rstrip(b"\n") + b"\n"
+    return sha256_hex(text)
 
 
 def cmd_r66(a: argparse.Namespace) -> tuple[str, int]:
@@ -241,16 +278,18 @@ def cmd_r66(a: argparse.Namespace) -> tuple[str, int]:
             n, _ = count_lines(text, lambda ln: any(r.search(ln) for r in id_res))
             id_lines += n
             id_occ += sum(len(r.findall(text)) for r in id_res)
-    argv = ["r66", "--patterns", private_token(raw)]
+    salt = lane_salt(a.patterns)
+    argv = ["r66", "--patterns", private_token(salt, raw)]
     if a.ids:
-        argv += ["--ids", private_token(ids_raw)]
-    argv += ["--brief", "BRIEF", "--pack", "PACK", "--body", "BODY_FILE"]
+        argv += ["--ids", private_token(salt, ids_raw)]
+    argv += ["--brief", "@text:" + text_digest(a.brief), "--pack", "PACK",
+             "--body", "@text:" + text_digest(a.body)]
     body = ["mode: r66",
             f'r66_line: "r66: sha256={sha256_hex(raw, 12)} lines={len(pats)} '
             f'residual_hits={residual} hedge_hits={hedge}"',
             f"hedge_hit_lines: [{', '.join(hedge_at)}]"]
     if a.ids:
-        body.append(f"ids: {{sha256: {sha256_hex(ids_raw, 12)}, lines: {len(ids)}, "
+        body.append(f"ids: {{hmac: {keyed(salt, ids_raw)}, lines: {len(ids)}, "
                     f"id_lines: {id_lines}, id_occurrences: {id_occ}}}")
     return render(argv, body), 0
 
@@ -291,10 +330,14 @@ def cmd_descriptor(a: argparse.Namespace) -> tuple[str, int]:
                 break
             d += 1
         depth[path] = d
-        if d < len(compiled) and compiled[d][0].endswith("text"):
+        if d > 0 or compiled[0][0].endswith("text"):
             pending.setdefault(universe[path], []).append(path)
+    binary_skipped = 0
     for sha, data in read_blobs(repo, sorted(pending)):
         if is_binary(data):
+            for path in pending[sha]:
+                del depth[path]
+                binary_skipped += 1
             continue
         text = data.decode("utf-8", "surrogateescape")
         for path in pending[sha]:
@@ -319,11 +362,12 @@ def cmd_descriptor(a: argparse.Namespace) -> tuple[str, int]:
             verdict.append("NOT-COVERING")
     argv = ["descriptor", "--label", a.label, "--rev", a.rev, "--min-files", str(a.min_files)]
     if a.categories:
-        argv += ["--categories", private_token(cat_raw), "--category", a.category]
+        argv += ["--categories", private_token(lane_salt(a.categories), cat_raw), "--category", a.category]
     for kind, value in terms:
         argv += ["--" + kind, value]
-    body = ["mode: descriptor", f"label: {a.label}", f"scope_digest: {scope_digest(entries)}",
-            f"terms: {len(compiled)}", f"progressive_files: {flow(progressive)}",
+    body = ["mode: descriptor", f"label: {a.label}", f"tree_digest: {tree_digest(entries)}",
+            f"terms: {len(compiled)}", f"binary_skipped: {binary_skipped}",
+            f"progressive_files: {flow(progressive)}",
             f"files: {len(matched)}", f"min_files: {a.min_files}", f"covers_category: {covers}",
             f"verdict: {'+'.join(verdict) or 'OK'}"]
     return render(argv, body), (3 if verdict else 0)
@@ -399,12 +443,15 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("--label must match [a-z0-9_-]{1,32}")
     try:
         out, rc = {"tree": cmd_tree, "r66": cmd_r66, "descriptor": cmd_descriptor}[a.mode](a)
-    except (UsageError, OSError) as exc:
+    except UsageError as exc:
         print(f"pii_receipt: {exc}", file=sys.stderr)
+        return 2
+    except OSError as exc:
+        print(f"pii_receipt: cannot read an input file ({type(exc).__name__})", file=sys.stderr)
         return 2
     sys.stdout.write(out)
     if a.check_in:
-        return check_in(out, a.check_in)
+        return check_in(out, a.check_in) or rc
     return rc
 
 
@@ -439,7 +486,7 @@ def _commit(repo: Path, init: bool = False) -> None:
     base = ["git", "-C", str(repo), "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false",
             "-c", "user.name=selftest", "-c", "user.email=selftest@example.invalid"]
     if init:
-        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        subprocess.run(["git", "-c", "init.templateDir=", "init", "-q", str(repo)], check=True)
     subprocess.run(base + ["add", "-A"], check=True)
     subprocess.run(base + ["commit", "-q", "-m", "fixture"], check=True)
 
@@ -474,6 +521,12 @@ def selftest() -> int:
                "per-category split with an uncategorized remainder")
         leaked = [s for s in names + ["src/one.py", "fixtures", str(private)] if s in out1]
         expect(not leaked, "no-leak: no pattern, matched path or private path in the block")
+        rc, outp = _run(tree + ["--path", "src/two.py"])
+        expect(rc == 0 and "src/two.py" not in outp and "--path @hmac:" in outp,
+               "no-leak: a --path value is echoed as a keyed hash, never in clear")
+        plain = hashlib.sha256((private / "cats.txt").read_bytes()).hexdigest()[:16]
+        expect(plain not in out1 and (private / SALT_NAME).stat().st_mode & 0o777 == 0o600,
+               "no-leak: private files are named by HMAC under a 0600 lane salt, not a plain sha256")
         pack = root / "pack.yml"
         pack.write_text("receipts:\n  - result: |\n" + "".join("      " + ln + "\n" for ln in out1.splitlines()))
         rc, _ = _run(tree + ["--check-in", str(pack)])
@@ -486,7 +539,7 @@ def selftest() -> int:
         expect(_run(tree)[1] == out1, "innocence: editing only evidence/ leaves the block unchanged")
         (repo / "docs/clean.md").write_text("changed\n")
         _commit(repo)
-        expect(_run(tree)[1] != out1, "guilt: any non-evidence change moves scope_digest")
+        expect(_run(tree)[1] != out1, "guilt: any non-evidence change moves tree_digest")
         brief, body = root / "brief.yml", root / "body.md"
         brief.write_text("a total of 3 files\n~30 lines\n")
         body.write_text("something else\nsome files\n")
@@ -502,6 +555,9 @@ def selftest() -> int:
         expect(rc == 0 and "files: 2" in out and "verdict: OK" in out, "innocence: a descriptor matching 2 files passes")
         rc, out = _run(desc + ["--text", "and"])
         expect(rc == 3 and "ISOLATING" in out, "guilt: a descriptor that narrows to 1 file exits 3")
+        pack.write_text("receipts:\n  - result: |\n" + "".join("      " + ln + "\n" for ln in out.splitlines()))
+        rc, _ = _run(desc + ["--text", "and", "--check-in", str(pack)])
+        expect(rc == 3, "guilt: a byte-identical paste of an ISOLATING block still exits 3 under --check-in")
         rc, out = _run(desc[:-2] + ["--path", r"\.md$", "--min-files", "1"])
         expect(rc == 3 and "NOT-COVERING" in out and "covers_category: 0/2" in out,
                "guilt: a descriptor its own category's files do not match exits 3")

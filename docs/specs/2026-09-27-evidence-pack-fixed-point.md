@@ -222,16 +222,19 @@ hedge_hits=<b>` — never the pattern file's contents; if `b > 0`, list each hed
   occurrences, the per-category split, fixture counts, the R6.6 `r66:` line, the R6.5 redaction
   probe before and after — is the output of the committed script `scripts/evidence/pii_receipt.py`
   run at the FINAL head, pasted into pack.yml VERBATIM as the script's own block. The block names
-  the script path, its git blob sha, and the exact invocation (argv, with each private input
-  replaced by `@sha256:<16 hex>` of its bytes; private inputs live beside R6.6's file, 0600 in a
-  0700 dir, never committed, and the prefix is how a gate proves it re-ran on the same bytes). It
-  carries no commit sha, because pasting it moves
-  HEAD; it carries `scope_digest` instead — sha256 over (path, blob) of every tracked file outside
-  `evidence/` — which an edit to the pack cannot move and any other edit does. Metrics, so no two
+  the script path, its git blob sha, and the exact invocation (argv, with each private input and
+  each `--path` replaced by `@hmac:<16 hex>`, HMAC-SHA256 keyed by the lane salt the script keeps
+  beside R6.6's file, 0600 in a 0700 dir, never committed; the token is how a gate proves it
+  re-ran on the same bytes, and it is keyed because a plain hash of a one-line category map is
+  reversed by hashing every tracked path). It carries no commit sha, because pasting it moves
+  HEAD; it carries `tree_digest` instead — sha256 over (path, blob) of every tracked file outside
+  `evidence/`, whatever `--path` scopes the count to — which an edit to the pack cannot move and
+  any other edit does. A changed script changes `blob=` and so invalidates every earlier block. Metrics, so no two
   detectors disagree silently: `hits` = per pattern, the lines containing it, summed (one
   `git grep -n -F` per pattern); `lines_any` = lines containing any pattern (`git grep -c -F -f`);
   `occurrences`; `files`; `patterns_present`. The `r66:` line in the body is the block's
-  `r66_line` value. Prose restates a number only as a quoted block key ("`hits: N` per the head
+  `r66_line` value; its argv binds the brief and the body file by `@text:` digests (CRLF and
+  trailing newlines normalised), and exempts only the pack, which holds the block. Prose restates a number only as a quoted block key ("`hits: N` per the head
   block"). A gate re-runs each invocation with `--check-in <pack.yml>`. **Guilt:** a pasted block
   with one digit edited → exit 1 (MISMATCH); a countable claim with no block for its invocation →
   exit 4 (NO-BLOCK); both are red, and a hand-typed number is red even when it is correct, since

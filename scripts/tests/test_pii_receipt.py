@@ -76,12 +76,35 @@ def test_counts_are_the_documented_metrics(fx):
         assert line in out.splitlines() or f"  {line}" in out.splitlines(), line
 
 
+def test_binary_blobs_are_counted_apart_from_the_line_metrics(fx):
+    _tmp, repo, _priv, names, tree = fx
+    (repo / "src/image.bin").write_bytes(b"\0" + names[0].encode() + b"\n")
+    pr._commit(repo)
+    out = run(*tree)[1].splitlines()
+    assert "binary_files: 1" in out and "files: 3" in out and "hits: 5" in out
+
+
 def test_block_never_carries_a_pattern_a_matched_path_or_a_private_path(fx):
     _tmp, _repo, private, names, tree = fx
     out = run(*tree)[1]
     for needle in names + ["src/one.py", "src/two.py", "tests/fixtures", str(private), "names.txt"]:
         assert needle not in out
-    assert re.search(r"--patterns @sha256:[0-9a-f]{16} ", out)
+    assert re.search(r"--patterns @hmac:[0-9a-f]{16} ", out)
+
+
+def test_private_tokens_are_keyed_and_never_a_reversible_plain_hash(fx):
+    import hashlib
+    _tmp, repo, private, _names, tree = fx
+    out = run(*tree, "--path", "src/two.py")[1]
+    salt = private / pr.SALT_NAME
+    assert salt.exists() and (salt.stat().st_mode & 0o777) == 0o600
+    assert "src/two.py" not in out and re.search(r"--path @hmac:[0-9a-f]{16}", out)
+    plain = hashlib.sha256((private / "cats.txt").read_bytes()).hexdigest()[:16]
+    before = run(*tree)[1]
+    assert plain not in before
+    salt.write_text("another-lane-salt")
+    after = run(*tree)[1]
+    assert after != before and plain not in after
 
 
 def test_empty_pattern_lines_never_match_everything(fx):
@@ -90,7 +113,7 @@ def test_empty_pattern_lines_never_match_everything(fx):
     assert run("tree", "--repo", str(repo), "--patterns", str(private / "blank.txt"))[0] == 2
 
 
-def test_scope_digest_ignores_evidence_and_moves_on_anything_else(fx):
+def test_tree_digest_ignores_evidence_and_moves_on_anything_else(fx):
     _tmp, repo, _priv, _names, tree = fx
     before = run(*tree)[1]
     (repo / "evidence/x/journal.jsonl").write_text("{}\n")
@@ -99,6 +122,23 @@ def test_scope_digest_ignores_evidence_and_moves_on_anything_else(fx):
     (repo / "docs/clean.md").write_text("edited\n")
     pr._commit(repo)
     assert run(*tree)[1] != before
+
+
+def test_tree_digest_covers_the_whole_tree_even_under_a_path_scope(fx):
+    _tmp, repo, _priv, _names, tree = fx
+    digest = lambda out: re.search(r"^tree_digest: (\w+)$", out, re.M).group(1)
+    assert digest(run(*tree, "--path", "src/two.py")[1]) == digest(run(*tree)[1])
+    before = run(*tree, "--path", "src/two.py")[1]
+    (repo / "docs/clean.md").write_text("outside the scope\n")
+    pr._commit(repo)
+    assert run(*tree, "--path", "src/two.py")[1] != before
+
+
+def test_ignore_case_refuses_non_ascii_patterns(fx):
+    _tmp, repo, private, _names, _tree = fx
+    (private / "accent.txt").write_bytes(("caf" + chr(0xE9)).encode() + b"\n")
+    rc, _out, err = run("tree", "--repo", str(repo), "--patterns", str(private / "accent.txt"), "--ignore-case")
+    assert rc == 2 and "ASCII" in err
 
 
 def test_redaction_probe_discriminates_a_no_op_redaction(fx):
@@ -123,7 +163,23 @@ def test_r66_line_shape_hedges_and_host_independent_argv(tmp_path: Path):
     line = re.search(r'r66_line: "(.*)"', out).group(1)
     assert re.fullmatch(r"r66: sha256=[0-9a-f]{12} lines=1 residual_hits=1 hedge_hits=2", line)
     assert "hedge_hit_lines: [brief:2, body:1]" in out
-    assert str(tmp_path) not in out and "--brief BRIEF --pack PACK --body BODY_FILE" in out
+    assert str(tmp_path) not in out
+    assert re.search(r"--brief @text:[0-9a-f]{16} --pack PACK --body @text:[0-9a-f]{16}", out)
+
+
+def test_r66_guilt_a_stale_block_after_a_brief_edit_has_no_matching_block(tmp_path: Path):
+    (tmp_path / "res.txt").write_text("one.py\n")
+    for name, body in (("brief.yml", "measured\n"), ("pack.yml", "\n"), ("body.md", "text\n")):
+        (tmp_path / name).write_text(body)
+    argv = ["r66", "--patterns", str(tmp_path / "res.txt"), "--brief", str(tmp_path / "brief.yml"),
+            "--pack", str(tmp_path / "pack.yml"), "--body", str(tmp_path / "body.md")]
+    paste(run(*argv)[1], tmp_path / "pack.yml")
+    assert run(*argv, "--check-in", str(tmp_path / "pack.yml"))[0] == 0
+    (tmp_path / "brief.yml").write_text("measured again, same counts\n")
+    assert run(*argv, "--check-in", str(tmp_path / "pack.yml"))[0] == 4
+    (tmp_path / "body.md").write_bytes(b"text\r\n\n")
+    (tmp_path / "brief.yml").write_text("measured\n")
+    assert run(*argv, "--check-in", str(tmp_path / "pack.yml"))[0] == 0
 
 
 def test_r66_companion_id_check_is_word_bounded(tmp_path: Path):
@@ -151,6 +207,14 @@ def test_descriptor_guilt_a_conjunction_that_narrows_to_one_file(fx):
     assert rc == 3 and "progressive_files: [2, 1]" in out and "verdict: ISOLATING" in out
 
 
+def test_guilt_a_pasted_isolating_block_still_fails_check_in(fx):
+    tmp, repo, _priv, _names, _tree = fx
+    desc = ["descriptor", "--repo", str(repo), "--label", "b", "--path", r"\.py$", "--text", " and "]
+    paste(run(*desc)[1], tmp / "pack.yml")
+    rc, _out, err = run(*desc, "--check-in", str(tmp / "pack.yml"))
+    assert rc == 3 and "MATCH" in err
+
+
 def test_descriptor_guilt_measuring_words_the_described_file_does_not_contain(fx):
     _tmp, repo, private, _names, _tree = fx
     rc, out, _ = run("descriptor", "--repo", str(repo), "--label", "code", "--min-files", "1",
@@ -159,12 +223,21 @@ def test_descriptor_guilt_measuring_words_the_described_file_does_not_contain(fx
     assert rc == 3 and "covers_category: 0/2" in out and "NOT-COVERING" in out
 
 
-def test_descriptor_binary_blob_fails_text_terms_but_keeps_path_depth(fx):
+def test_descriptor_binary_blobs_leave_the_universe_and_are_counted(fx):
     _tmp, repo, _priv, _names, _tree = fx
     (repo / "src/blob.py").write_bytes(b"x\0 and ")
     pr._commit(repo)
     out = run("descriptor", "--repo", str(repo), "--label", "b", "--path", r"\.py$", "--text", " and ")[1]
-    assert "progressive_files: [3, 1]" in out
+    assert "progressive_files: [2, 1]" in out and "binary_skipped: 1" in out
+    out = run("descriptor", "--repo", str(repo), "--label", "b", "--path", r"\.py$")[1]
+    assert "files: 2" in out and "binary_skipped: 1" in out
+
+
+def test_descriptor_terms_are_evaluated_in_the_order_given(fx):
+    _tmp, repo, _priv, _names, _tree = fx
+    path_first = run("descriptor", "--repo", str(repo), "--label", "o", "--path", r"\.py$", "--text", " and ")[1]
+    text_first = run("descriptor", "--repo", str(repo), "--label", "o", "--text", " and ", "--path", r"\.py$")[1]
+    assert "progressive_files: [2, 1]" in path_first and "progressive_files: [1, 1]" in text_first
 
 
 def test_descriptor_excludes_evidence_from_its_universe(fx):
