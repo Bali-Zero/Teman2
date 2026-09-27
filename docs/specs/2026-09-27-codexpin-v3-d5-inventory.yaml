@@ -36,8 +36,8 @@ derived_from:
   base_commit: 04dd6b51e4
   base_blob: 4143a795d9 # 10-hex prefix of the wrapper's git blob id at base_commit
   blob: 78236b6070 # 10-hex prefix of the PR-1 target: base_blob plus the D5 heartbeat fix
-  sites: 136
-  mutants: 177
+  sites: 139
+  mutants: 199
 
 mutants:
   # set -u
@@ -174,6 +174,23 @@ mutants:
     mode: fail-open
     killed_by:
       - "[semver_alpha_planted]"
+  - id: 167483363793d9b2:alt#1:widen
+    label: G3
+    disposition: MUST
+    mode: fail-closed-other-rc
+    killed_by:
+      - test_innocence_valid_pin_overrides_env
+  - id: 167483363793d9b2:alt#1:neutralise
+    label: G3
+    disposition: MUST
+    mode: fail-open
+    killed_by:
+      - "[semver_alpha_planted]"
+      - "[semver_leading_dot_planted]"
+      - "[semver_trailing_dot_planted]"
+      - "[semver_empty_field_planted]"
+      - "[semver_four_fields_planted]"
+      - "[traversal_escape_planted]"
   - id: 167483363793d9b2:alt#2:drop
     label: G3b
     disposition: MUST
@@ -220,6 +237,12 @@ mutants:
     mode: fail-open
     killed_by:
       - "[bad_semver_planted]"
+  - id: ac6dc4f641d4266b:alt:neutralise
+    label: G3g
+    disposition: MUST
+    mode: fail-closed-other-rc
+    killed_by:
+      - test_innocence_valid_pin_overrides_env
   - id: ac6dc4f641d4266b:exit:remove
     label: G3g
     disposition: MUST
@@ -279,6 +302,12 @@ mutants:
     mode: same-rc-other-diagnosis
     killed_by:
       - test_guilt_env_file_missing_refuses
+  - id: 54cd50f09e27ecc0:hb:fail
+    label: G9c
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - test_guilt_env_file_missing_refuses
   # exit 78 # EX_CONFIG
   - id: 8526388771f87b84@54cd50f09e27ecc0:exit:remove
     label: G9c
@@ -314,6 +343,12 @@ mutants:
       - test_guilt_env_placeholders_refuse
   # heartbeat "refused" "env placeholders unfilled"
   - id: ec36a5a8c358f487:hb:remove
+    label: G9d
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - test_guilt_env_placeholders_refuse
+  - id: ec36a5a8c358f487:hb:fail
     label: G9d
     disposition: MUST
     mode: same-rc-other-diagnosis
@@ -402,6 +437,12 @@ mutants:
     mode: same-rc-other-diagnosis
     killed_by:
       - test_guilt_unsearchable_runtime_dir_refuses_not_legacy
+  - id: e7eb6aa9779abace@3dd6763e15577a2b:hb:fail
+    label: G6
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - test_guilt_unsearchable_runtime_dir_refuses_not_legacy
   # exit 78
   - id: 8526388771f87b84@3dd6763e15577a2b:exit:remove
     label: G6
@@ -452,6 +493,12 @@ mutants:
       - "[symlink_pin]"
   # heartbeat "refused" "pin invalid"
   - id: e7eb6aa9779abace@cc48e9e0b1618624:hb:remove
+    label: G4a
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - "[symlink_pin]"
+  - id: e7eb6aa9779abace@cc48e9e0b1618624:hb:fail
     label: G4a
     disposition: MUST
     mode: same-rc-other-diagnosis
@@ -520,6 +567,12 @@ mutants:
     mode: same-rc-other-diagnosis
     killed_by:
       - "[directory]"
+  - id: e7eb6aa9779abace@a496ea1ec476fd67:hb:fail
+    label: G4e
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - "[directory]"
   # exit 78
   - id: 8526388771f87b84@a496ea1ec476fd67:exit:remove
     label: G4e
@@ -564,6 +617,12 @@ mutants:
       - test_guilt_mode_000_pin_reports_unreadable_not_line_count
   # heartbeat "refused" "pin invalid"
   - id: e7eb6aa9779abace@51fb56231344763b:hb:remove
+    label: G4f
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - test_guilt_mode_000_pin_reports_unreadable_not_line_count
+  - id: e7eb6aa9779abace@51fb56231344763b:hb:fail
     label: G4f
     disposition: MUST
     mode: same-rc-other-diagnosis
@@ -630,6 +689,12 @@ mutants:
       - "[nul_same_line_planted]"
   # heartbeat "refused" "pin invalid"
   - id: e7eb6aa9779abace@d3563a941a515024:hb:remove
+    label: G1
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - "[nul_same_line_planted]"
+  - id: e7eb6aa9779abace@d3563a941a515024:hb:fail
     label: G1
     disposition: MUST
     mode: same-rc-other-diagnosis
@@ -728,6 +793,12 @@ mutants:
     mode: same-rc-other-diagnosis
     killed_by:
       - "[two_lines_diff_versions_planted]"
+  - id: e7eb6aa9779abace@04d80b64424cad2d:hb:fail
+    label: G2
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - "[two_lines_diff_versions_planted]"
   # exit 78
   - id: 8526388771f87b84@04d80b64424cad2d:exit:remove
     label: G2
@@ -748,6 +819,12 @@ mutants:
     mode: fail-open
     killed_by:
       - "[bare_version_planted]"
+  - id: c21200da23f1dc4e:alt:neutralise
+    label: G4b
+    disposition: MUST
+    mode: fail-closed-other-rc
+    killed_by:
+      - test_innocence_valid_pin_overrides_env
   # *)
   - id: 69e11195653e133e:alt:neutralise
     label: G4c
@@ -765,6 +842,12 @@ mutants:
       - "[bare_version_planted]"
   # heartbeat "refused" "pin invalid"
   - id: e7eb6aa9779abace@5d20bc7c8d9090c8:hb:remove
+    label: G4c
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - "[bare_version_planted]"
+  - id: e7eb6aa9779abace@5d20bc7c8d9090c8:hb:fail
     label: G4c
     disposition: MUST
     mode: same-rc-other-diagnosis
@@ -804,6 +887,19 @@ mutants:
     killed_by:
       - "[bad_semver_planted]"
       - test_innocence_valid_pin_overrides_env
+  - id: af5687a8e077a442:call:remove
+    label: G3
+    disposition: MUST
+    mode: fail-open
+    killed_by:
+      - "[bad_semver_planted]"
+      - "[traversal_escape_planted]"
+  - id: af5687a8e077a442:call:fail
+    label: G3
+    disposition: MUST
+    mode: fail-closed-other-rc
+    killed_by:
+      - test_innocence_valid_pin_overrides_env
   # echo "$TAG: pin version is not exact semver: $_wcbw_pin_ver" >&2
   - id: bc42b08a01b4b06e:diag:remove
     label: G3
@@ -813,6 +909,12 @@ mutants:
       - "[bad_semver_planted]"
   # heartbeat "refused" "pin invalid"
   - id: e7eb6aa9779abace@bc42b08a01b4b06e:hb:remove
+    label: G3
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - "[bad_semver_planted]"
+  - id: e7eb6aa9779abace@bc42b08a01b4b06e:hb:fail
     label: G3
     disposition: MUST
     mode: same-rc-other-diagnosis
@@ -905,6 +1007,12 @@ mutants:
       - "[bin_missing]"
   # heartbeat "refused" "pin invalid"
   - id: e7eb6aa9779abace@2e93e4cbc19c5ccb:hb:remove
+    label: G5
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - "[bin_missing]"
+  - id: e7eb6aa9779abace@2e93e4cbc19c5ccb:hb:fail
     label: G5
     disposition: MUST
     mode: same-rc-other-diagnosis
@@ -1066,6 +1174,12 @@ mutants:
     mode: same-rc-other-diagnosis
     killed_by:
       - test_kill_switch_stops_without_exec
+  - id: 3fb04a4b6a09dd60:hb:fail
+    label: G9e
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - test_kill_switch_stops_without_exec
   # exit 0
   - id: c22995adc29757a9:exit:remove
     label: G9e
@@ -1108,6 +1222,12 @@ mutants:
       - test_guilt_venv_missing_refuses
   # heartbeat "refused" "venv python missing"
   - id: a1075c3ed7b74e83:hb:remove
+    label: G9g
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - test_guilt_venv_missing_refuses
+  - id: a1075c3ed7b74e83:hb:fail
     label: G9g
     disposition: MUST
     mode: same-rc-other-diagnosis
@@ -1157,6 +1277,12 @@ mutants:
     mode: same-rc-other-diagnosis
     killed_by:
       - test_runtime_dir_absent_is_legacy_then_cd_refuses
+  - id: 818836c375d5c9cc:hb:fail
+    label: G9h
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - test_runtime_dir_absent_is_legacy_then_cd_refuses
   # export PYTHONPATH="$RUNTIME_DIR"
   - id: 422567c140a13db3:reassert:remove
     label: G8g
@@ -1172,6 +1298,12 @@ mutants:
       - test_guilt_env_cannot_clobber_pythonpath
   # heartbeat "starting" "exec daemon"
   - id: a0e431e3489db7f5:hb:remove
+    label: G9i
+    disposition: MUST
+    mode: same-rc-other-diagnosis
+    killed_by:
+      - test_guilt_env_cannot_clobber_post_source_literals
+  - id: a0e431e3489db7f5:hb:fail
     label: G9i
     disposition: MUST
     mode: same-rc-other-diagnosis
@@ -1216,18 +1348,26 @@ mutants:
     mode: fail-open
     killed_by:
       - test_innocence_valid_pin_overrides_env
-  - id: b9a04673c49fc0c4:exec:env-drop
-    label: G7f
-    disposition: MUST
-    mode: fail-open
-    killed_by:
-      - test_innocence_valid_pin_overrides_env
   - id: b9a04673c49fc0c4:abspath:strip
     label: G7f
     disposition: MUST
     mode: fail-closed-other-rc
     killed_by:
       - test_guilt_env_path_cannot_disable_the_pin[nonexistent]
+  - id: b9a04673c49fc0c4:assign#1:drop
+    label: G7f
+    disposition: MUST
+    mode: fail-open
+    killed_by:
+      - test_innocence_valid_pin_overrides_env
+      - test_guilt_daemon_env_cannot_clobber_the_resolved_pin
+  - id: b9a04673c49fc0c4:assign#2:drop
+    label: G7f
+    disposition: MUST
+    mode: fail-open
+    killed_by:
+      - test_innocence_valid_pin_overrides_env
+      - test_guilt_daemon_env_cannot_clobber_the_resolved_pin
   # exec "$VENV_PY" -m backend.services.integrations.wa_codex_daemon
   - id: b044fcf5065694b5:exec:remove
     label: G7g

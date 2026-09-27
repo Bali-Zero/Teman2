@@ -7,7 +7,8 @@ everything v2 says that is not contradicted here still holds.
 Committed 2026-09-27. Before that it existed only as a session scratch file, which a reboot
 would have deleted. This copy keeps the scratch text for D1–D9, their amendments and the 3-PR
 plan. It changes only what the three gates on PR #7420 (PR-1), council rounds 1–4 on this
-spec, or the fresh gates on this spec (gate r3, comment 5850401670; gate r4, comment 5852422768) proved wrong, and it adds:
+spec, or the fresh gates on this spec (gate r3, comment 5850401670; gate r4, comment 5852422768;
+gate r5, comment 5853682235) proved wrong, and it adds:
 
 - §5bis, the closed D5 inventory (condition S2 of the #7420 BLOCK);
 - §5ter, the mutation check CI runs against it (S3);
@@ -20,6 +21,15 @@ normative inventory is the sidecar `docs/specs/2026-09-27-codexpin-v3-d5-invento
 mutation table that an author wrote. It generates every mutant from the target, and the YAML
 only annotates the generated ids (§5bis.3, §5bis.3a, §5ter.3). Any change to the inventory,
 the wrapper's test file, this spec or the S3 script is a Gear-3 change (§5ter.5).
+
+**The last round (gate r5; owner ruling 2026-09-27).** Gate r5 confirmed the generator and found the
+operator catalogue still let a target's spelling decide which members exist. Two general rules close
+that class, not four patches: the grammar is a closed world, where every form it does not list is an
+error, and every member edits one atomic unit, with both polarities for every refusal-bearing unit
+(§5bis.3). The round's council (council round 5, codex and kimi) found one more instance, the call
+of a guard function that no kind claimed, and a loop with one polarity; the one fix pass closes both
+under the same two rules (the `call` kind and the loop rule). If the next fresh gate finds the same
+class again, the codexpin lane is parked.
 
 Dates in this spec are calendar dates in Asia/Makassar (UTC+8). The measurements marked
 2026-09-27 ran from 2026-09-26T19:00Z on, and the evidence pack gives each one's UTC
@@ -635,85 +645,146 @@ Schema 1's `was` field, which mapped builder `G*`, gate `C*`/`N*`/`R*` and re-ga
 
 ### 5bis.3 Site grammar: what "every guard" means, mechanically
 
-A site is one occurrence, on a code line of the target, of one of the 17 kinds below. Comment
+A site is one occurrence, on a code line of the target, of one of the 19 kinds below. Comment
 lines and blank lines have no sites. Before matching, the file is masked: the contents of
 `'…'` and `"…"` are blanked, so words inside messages never count, and a `#` that starts a
-word outside quotes starts a comment: at line start, or after a blank or one of `; & | ( ) <
-
-> ` (council round 4; the targets have no such comment, and no count changes). Masking runs over the whole file and carries the
-quote state across newlines, so a quote opened on one line and closed on a later one blanks
+word outside quotes starts a comment: at line start, or after a blank or one of
+`; & | ( ) < >` (council round 4; the targets have no such comment, and no count changes).
+Masking runs over the whole file and carries the quote state across newlines, so a quote opened on one line and closed on a later one blanks
 everything between (amended by gate r4's installer receipt, §5ter.6; the wrapper has no
 multi-line quote, and no count changes). Outside quotes a backslash escapes the next
 character. The kinds matched "on the raw line" read the line with its comment removed and
 only its single-quoted text blanked, so they see inside double quotes (`"${X:-true}"`,
 `"$(/bin/date …)"`) but never inside an `awk` program.
 
-**What masking hides is an error, never a silence** (council round 4; completed by the
-coordinator's ruling of 2026-09-27 with the cure both seats named in round 4b). Masking blanks
-code in three places, and S3 looks there instead of trusting the blank:
+**Closed world** (gate r5; the owner's ruling of 2026-09-27, the last round). S3 does not
+look for the forms it knows and pass over the rest. It lexes and parses the whole target with
+the grammar below, and every form the grammar does not list is `UNSUPPORTED <line>
+<construct>`, never a silence. Where a list cannot be avoided, it is an allow-list: a name or
+a form that is not on it is an error, whatever it would do. The rule adds errors only: it
+generates no member and changes no site, except that the same parse places the `assign`
+and `call` sites and tells whether a loop's body can leave it (kind table, rule 1 below).
 
-- a `$( … )` inside double quotes (`x="$([ -f "$X" ] || exit 78)"`), nested ones included;
-- the arguments of `eval`, the action of `trap` (its first argument), and the command string of
-  a shell run with `-c`: `sh`, `bash`, `dash`, `ksh` or `zsh`, by any path, with `-c` alone or
-  in a cluster (`-ec`), after any options (`-o errexit` included; the command string is the
-  first operand after them), and also when the shell follows `env` (with its options and
-  `NAME=value` words), `command` or `exec`.
+1. **Words.** Supported: unquoted text; `'…'`; `"…"`; a backslash escape; `$NAME`, `$0`–`$9`
+   and `$# $? $@ $* $$ $! $-`; `${P}` and `${P<op>word}`, where `P` is a name or one digit
+   and `<op>` is one of `:- - := = :? ? :+ + # ## % %%` (the word is lexed by these same
+   rules); `$( … )`; and `$(( … ))` holding only names, digits, `$NAME`, `${NAME}`, `#`,
+   blanks, parentheses and `+ - * / % & | ^ ~ << >>`. UNSUPPORTED: a backquote, `$'…'`,
+   `$"…"`, any other `${…}` (`${!X}`, `${X[0]}`, `${#X}`, `${X/a/b}`), a comparison, logical
+   or assignment operator inside `$(( … ))` (a decision that no site sees), and a heredoc or
+   here-string (`<<`, `<<-`, `<<<`; its body is skipped, so one heredoc is one error).
+2. **Redirections.** Supported: `<word`, which is a `redir` site, and `[N]>word`,
+   `[N]>>word` and `[N]>&N`. UNSUPPORTED: `N<word`, `<&`, `<>`, `>|`, `&>`, `&>>`, `|&`,
+   `<( … )` and `>( … )`.
+3. **Compound forms.** Supported: pipelines, a leading `!`, and-or lists, lists separated by
+   `;` or a newline, `( … )`, `{ …; }`, `if`/`elif`/`else`/`fi`, `while` and `until` with
+   `do` … `done`, a function defined as `NAME() {` on one line, and `case WORD in` ending its
+   line, with each arm's pattern first on its line, each arm ending in `;;` (the last may end
+   at `esac`) and `esac` first on its line. UNSUPPORTED: a background `&`, `for`, `select`,
+   `function`, `time`, `coproc`, `[[`, an arithmetic command `(( … ))`, `;&` and `;;&`, a
+   `case` inside a `case` arm, any other `case` layout, any other function definition, and a
+   function named after a catalogue entry (it would shadow the entry).
+4. **Commands.** A simple command is `NAME=word` prefixes, a command word, operands and
+   redirections. The command word is an unquoted literal, or exactly `$NAME`, `${NAME}`,
+   `"$NAME"` or `"${NAME}"` where NAME **resolves**: NAME is assigned only by `const` and
+   `reassert` sites (no other assignment word and no `read` names it), all with the same
+   value; that value is literal text and references to names that resolve; and the result is
+   an absolute path. A quoted literal is `quoted command word` and any other word is
+   `non-literal command word`, both UNSUPPORTED: only a resolved constant tells S3 which
+   program runs, whatever the variable is called and whatever comes before it. The word then
+   names a function the target defines, or a catalogue entry by its basename. Any other name
+   is `UNSUPPORTED <line> command <name>`. A function of the target is called only by that
+   command word: behind `exec`, `env` or `command` it is `<entry> of function <name>`,
+   UNSUPPORTED, because each of them runs a program of that name and never the function.
 
-S3 extracts each such text as a file of its own and reports `MASKED <line> <where>: <kinds>`
-when it holds a site. For a `$( … )` in double quotes, and for a double-quoted string, the kinds
-are those read on the fully masked line (all but `default`, `abspath` and `dateopt`, which the
-outer line already sees). For a string with single-quoted text in it, it is the full set of 17
-kinds, since the outer line sees none of them there.
+   | Entry                              | Named                      | Operands                                                                                                                                                                                                                                                                                                          |
+   | ---------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `:` `true` `false` `cd` `echo`     | bare                       | data                                                                                                                                                                                                                                                                                                              |
+   | `printf`                           | bare                       | data; `-v` is UNSUPPORTED                                                                                                                                                                                                                                                                                         |
+   | `exit`, `return`                   | bare                       | at most one                                                                                                                                                                                                                                                                                                       |
+   | `[`                                | bare                       | exactly `[ W ]`, `[ -X W ]` for a unary `-X` (`-b -c -d -e -f -g -h -k -L -n -O -G -p -r -s -S -t -u -w -x -z`) or `[ W OP W ]` for `OP` in `= != -eq -ne -lt -le -gt -ge -nt -ot -ef`, each optionally after `!`, every operator unquoted. Anything else (`-a`, `-o`, parentheses, a fourth word) is `test form` |
+   | `read`, `set`                      | bare                       | options unquoted and literal (for `set`, up to `--`; the operands after it are data); `read`'s names literal                                                                                                                                                                                                      |
+   | `export`                           | bare, at column 0          | `NAME=word` or `NAME`                                                                                                                                                                                                                                                                                             |
+   | `.`, `source`                      | bare, at column 0          | exactly `"$ENV_FILE"`                                                                                                                                                                                                                                                                                             |
+   | `date`                             | bare or a path             | options unquoted; an operand that is neither an option nor an option's argument starts with an unquoted `+`                                                                                                                                                                                                       |
+   | `cat` `grep` `mkdir` `rm` `sysctl` | bare, a path or a constant | data                                                                                                                                                                                                                                                                                                              |
+   | `exec`                             | bare                       | a command, checked by this rule, or nothing                                                                                                                                                                                                                                                                       |
+   | `env`                              | bare or a path             | `NAME=word` operands (`assign` sites), then a command, checked by this rule; any option is UNSUPPORTED                                                                                                                                                                                                            |
+   | `command`                          | bare                       | `-v` or `-V` and one word (a lookup), or an optional `-p` and a command, checked by this rule; any other option is UNSUPPORTED                                                                                                                                                                                    |
+   | `eval`                             | bare                       | its operands, which must be literal, are one code string                                                                                                                                                                                                                                                          |
+   | `trap`                             | bare                       | its first operand, which must be literal, is a code string (`-` resets and holds none)                                                                                                                                                                                                                            |
+   | `sh` `bash` `dash` `ksh` `zsh`     | bare, a path or a constant | `-c`, alone or in a cluster, among the options (`-o` and `+o` take an argument, `--` ends them); the first operand after them is a code string, which must be literal. Without `-c` the shell reads a file or stdin: UNSUPPORTED                                                                                  |
+   | `python3`, `python`                | bare, a path or a constant | exactly `-m`, a literal module, and data operands                                                                                                                                                                                                                                                                 |
 
-These are `UNSUPPORTED <line> <construct>`, because S3 cannot know the code they run:
+   "Data" means S3 reads no code in the operands. That is a claim about the program each name
+   runs, and it is why the list is closed: `timeout`, `sudo`, `nice`, `nohup`, `xargs`,
+   `find`, `awk`, `launchctl` and every other name are UNSUPPORTED until a reviewed change
+   adds them with a rule, whether or not they could carry code. The `Named` column keeps each
+   kind honest: a command whose sites S3 reads from its spelling (`[`, `exit`, `return`,
+   `echo`, `printf`, `read`, `set`, `exec`, `export`, `.`, `date`, `env`) is never reached
+   through a constant, so a variable cannot hide it from its kind.
 
-- an `eval`, `trap` or shell `-c` string that is not literal, that is, one holding a `$` or a
-  backquote outside single quotes (`eval "$code"`, `trap "$G" HUP`, `sh -c "$G"`);
-- an `alias`, and a `.` or `source` of anything but `"$ENV_FILE"`, the env file D5 sources
-  as data;
-- ANSI-C quoting `$'…'`, whose escapes the masking does not decode;
-- a heredoc (`<<` outside quotes and outside `$(( ))`; an arithmetic `(( a << b ))` and a
-  here-string `<<<` are reported under the same name, fail-closed), whose body is data or code
-  depending on its reader and whose unbalanced quote would shift the masking of every later
-  line;
-- a backquote substitution outside single quotes.
+5. **Code the masking blanks.** A `$( … )` inside double quotes, and the code string of
+   `eval`, `trap` or a shell's `-c`, are code that the masked line does not show. Each is
+   parsed by rules 1–5 in turn, so everything above holds inside it, and it is
+   `MASKED <line> <where>: <kinds>` when it holds a site. For a `$( … )` in double quotes,
+   and for a double-quoted string, the kinds are those read on the fully masked line (all but
+   `default`, `abspath` and `dateopt`, which the outer line already sees). For a string with
+   single-quoted text in it, it is the full set of 19 kinds. A code string that is not literal
+   (a `$` or a backquote outside single quotes) is `non-literal <where>`, UNSUPPORTED. A call
+   of one of the target's functions inside a code string is a `call` site, so
+   `trap _cleanup EXIT` is `MASKED <line> trap string: call`: the trap is what makes the
+   function run, and deleting it would otherwise be no member (council round 5).
 
-A target that needs any of them rewrites it, or extends the grammar in a reviewed change. The
-rule only adds errors: it generates no member and changes no site. On the PR-1 target it
-finds nothing (its two double-quoted substitutions are `"$(/bin/date -u …)"`, lines 74 and 269,
-which hold only `abspath` and `dateopt` sites, and its one `.` sources `"$ENV_FILE"`). On
-#7340's installer it reports five `MASKED` lines and no `UNSUPPORTED` (§5ter.6).
+On the PR-1 target the closed world finds nothing. Every command word is in the catalogue or
+is one of the target's two functions (`heartbeat`, `_is_semver`). `"$VENV_PY"`, on lines 270
+and 273, resolves through lines 52 and 233, and `RUNTIME_DIR` through lines 50 and 232, to
+`/usr/local/lib/wa-codex-broker/.venv/bin/python3`, run with `-m`. The two double-quoted
+substitutions, lines 74 and 269, hold only `abspath` and `dateopt` sites, and the one `.`
+sources `"$ENV_FILE"` at column 0. On #7340's installer it reports 38 `UNSUPPORTED` and 6
+`MASKED` errors (§5ter.6).
 
-| Kind       | Matches (on the masked line unless stated)                                                                                                                                            | Sites (PR-1 target) |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| `cond`     | each `if`, `elif`, `while` or `until` keyword in command position                                                                                                                     | 15                  |
-| `test`     | each `[` test command: a `[` preceded by line start or one of `\s ; & \| ! (` and followed by whitespace. Glob brackets such as `*[!0-9.]*` never match                               | 14                  |
-| `andor`    | each `&&` and each `\|\|`                                                                                                                                                             | 5                   |
-| `alt`      | inside `case … esac`, each `\|`-separated alternative of an arm's pattern (`pattern)` or `(pattern)` at line start)                                                                   | 8                   |
-| `readopt`  | per `read` command: the `IFS=…` prefix if present, plus each option word. An option that takes an argument (`-a -d -n -p -t -u`) is one site together with it (`-d ''`, `-n 1`)       | 5                   |
-| `default`  | on the raw line: each `${NAME:-…}`, `${NAME-…}`, `${NAME:=…}`, `${NAME=…}`, `${NAME:?…}`, `${NAME?…}`, `${NAME:+…}` or `${NAME+…}`                                                    | 1                   |
-| `exit`     | each `exit` or `return` in command position                                                                                                                                           | 18                  |
-| `hb`       | each `heartbeat` call (not its definition)                                                                                                                                            | 15                  |
-| `diag`     | each `echo` or `printf` on a line that redirects `>&2`                                                                                                                                | 15                  |
-| `exec`     | each `exec`                                                                                                                                                                           | 2                   |
-| `setopt`   | each line that is `set -…` or `set +…`, including `set --`                                                                                                                            | 4                   |
-| `reassert` | each `NAME=` word of a top-level (column 0) line that starts `NAME=` or `export NAME=`, after the `. "$ENV_FILE"` line                                                                | 7                   |
-| `const`    | the same, before the `. "$ENV_FILE"` line                                                                                                                                             | 11                  |
-| `neg`      | each `!` negation: a `!` preceded by line start or one of `\s ; & \| (` and followed by whitespace, as in `if ! …` and `[ ! -f … ]`                                                   | 8                   |
-| `redir`    | each input redirection `<`, but not `<<`, `<(`, `<&` or a numbered `N<`                                                                                                               | 2                   |
-| `abspath`  | on the raw line: each word that is an absolute path under `/bin`, `/sbin`, `/usr/bin` or `/usr/sbin`, preceded by line start, whitespace or one of `; & \| ( !` (so right after `$(`) | 4                   |
-| `dateopt`  | on the raw line: each option word of a `date` command (`date` or `/bin/date`, including right after `$(`), together with its argument for `-f -r -v -z`                               | 2                   |
-| **total**  |                                                                                                                                                                                       | **136**             |
+| Kind       | Matches (on the masked line unless stated)                                                                                                                                                                            | Sites (PR-1 target) |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `cond`     | each `if`, `elif`, `while` or `until` keyword in command position                                                                                                                                                     | 15                  |
+| `test`     | each `[` test command, from the `[` to the first `]` that stands as a word after it: a `[` preceded by line start or one of `\s ; & \| ! (` and followed by whitespace. Glob brackets such as `*[!0-9.]*` never match | 14                  |
+| `andor`    | each `&&` and each `\|\|`                                                                                                                                                                                             | 5                   |
+| `alt`      | inside `case … esac`, each `\|`-separated alternative of an arm's pattern (`pattern)` or `(pattern)` at line start)                                                                                                   | 8                   |
+| `readopt`  | per `read` command: the `IFS=…` prefix if present, plus each option word. An option that takes an argument (`-a -d -n -p -t -u`) is one site together with it (`-d ''`, `-n 1`)                                       | 5                   |
+| `default`  | on the raw line: each `${NAME:-…}`, `${NAME-…}`, `${NAME:=…}`, `${NAME=…}`, `${NAME:?…}`, `${NAME?…}`, `${NAME:+…}` or `${NAME+…}`, NAME being a name or one digit                                                    | 1                   |
+| `exit`     | each `exit` or `return` in command position                                                                                                                                                                           | 18                  |
+| `hb`       | each `heartbeat` call (not its definition)                                                                                                                                                                            | 15                  |
+| `diag`     | each `echo` or `printf` on a line that redirects `>&2`                                                                                                                                                                | 15                  |
+| `exec`     | each `exec`                                                                                                                                                                                                           | 2                   |
+| `setopt`   | each option unit of each `set` command: a letter of a `-…` or `+…` cluster (an `o` together with the word after it), a `-o NAME` or `+o NAME` pair, and `--` or `-`                                                   | 4                   |
+| `reassert` | each `NAME=` word at the start of a top-level (column 0) line when no command word follows them (then they are `assign` sites), or after `export` at column 0; after the `. "$ENV_FILE"` line                         | 7                   |
+| `const`    | the same, before the `. "$ENV_FILE"` line                                                                                                                                                                             | 11                  |
+| `neg`      | each `!` negation: a `!` preceded by line start or one of `\s ; & \| (` and followed by whitespace, as in `if ! …` and `[ ! -f … ]`                                                                                   | 8                   |
+| `redir`    | each input redirection `<`, but not `<<`, `<(`, `<&` or a numbered `N<`                                                                                                                                               | 2                   |
+| `abspath`  | on the raw line: each word that is an absolute path under `/bin`, `/sbin`, `/usr/bin` or `/usr/sbin`, preceded by line start, whitespace or one of `; & \| ( !` (so right after `$(`)                                 | 4                   |
+| `dateopt`  | on the raw line: each option word of a `date` command (`date`, or any path ending in `/date`, including right after `$(`), together with its argument for `-f -r -v -z`                                               | 2                   |
+| `assign`   | each `NAME=word` word that prefixes a command word (a prefix assignment; `IFS=` right before `read` is a `readopt` site instead), and each `NAME=word` operand of `env`. The closed-world parse places them           | 2                   |
+| `call`     | each simple command whose command word names a function the target defines, other than `heartbeat` (whose calls are `hb`). The closed-world parse places them                                                         | 1                   |
+| **total**  |                                                                                                                                                                                                                       | **139**             |
 
 The first 12 kinds are the scratch grammar. `const`, `neg` and `redir` were added after council
 round 1, which showed a fail-open deletion in each class that no site claimed. `abspath` was
 added after council round 2, which showed that nothing pinned the heartbeat's `/bin/date`
 (§10). `dateopt` was added on the coordinator's ruling that `date -u` is MUST (§8 item 9).
+`assign` was added in the last round (gate r5 I4): `exec`'s `env-drop` deleted every `NAME=` word
+after `env` at once, so a guard carried by one of them hid behind the other, and a prefix assignment
+(`LC_ALL=C "$TAR_BIN" …` in #7340's installer) belonged to no kind. `call` was added by the fix pass
+after the last round's council (codex and kimi, council round 5): a guard function called on its own
+line (`_verify_root_owned_dir "$RUNTIME_DIR" "trust root"` on line 131 of #7340's installer,
+`_verify_extracted_tree …` on lines 261 and 267) was a deletion that no kind claimed and no error
+named, because `hb` claimed calls by the name `heartbeat` only. The sites inside a function's body
+do not cover its calls: a suite can kill all of them through one call and never notice another
+call's deletion.
 Gate r3 (R4) made four cells exact without changing any count: the `(pattern)` arm, the
 arguments of `read`'s and `date`'s options, and "each `NAME=` word". The round-2 prototype
 had read them narrowly, and the normative plant of §5ter.4 (a) now catches that.
 The PR-1 target is `04dd6b51e4` plus the D5 heartbeat fix. The fix adds the two `abspath`
-sites on lines 72 and 74, so the target has 136 sites and `04dd6b51e4` has 134. The other
+sites on lines 72 and 74, so the target has 139 sites and `04dd6b51e4` has 137. The other
 kinds count the same on both blobs.
 
 The grammar may over-match: an arithmetic `<` would count as a `redir`, a column-0
@@ -754,76 +825,117 @@ These are deliberately not sites:
   them is a property of its fixtures, not a per-mutant guarantee, and that is the price of a
   finite, reviewable member set.
 
-**Closure rule.** S3 generates every member (below) of every extracted site, and the YAML
-must annotate exactly the generated ids: a generated id without an entry is `UNANNOTATED`,
-and an entry whose id is not generated is `PHANTOM` (§5ter.3 step 4). Anything new in the
-wrapper that matches a kind (a new `[ … ]`, `&&`, `!`, `<`, case alternative, read flag,
-`${…:-…}`, `exit`, heartbeat, diagnostic, constant, re-assert, absolute command path or
-`date` option) therefore brings new ids, and CI fails until the YAML judges each of them.
+**Closure rule.** S3 generates every member (below) of every extracted site, and the YAML must
+annotate exactly the generated ids: a generated id without an entry is `UNANNOTATED`, and an entry
+whose id is not generated is `PHANTOM` (§5ter.3 step 4). Anything new in the wrapper that matches a
+kind (a new `[ … ]`, `&&`, `!`, `<`, case alternative, read flag, `set` option, `${…:-…}`, `exit`,
+heartbeat, call of a target function, diagnostic, constant, re-assert, absolute command path, `date`
+option or prefix assignment) therefore brings new ids, and CI fails until the YAML judges each of
+them.
 That is what "closed" means here. It is stronger than schema 1's closure, where a row claimed
 a site and then chose which of its mutations to carry: here the site carries all of them.
 
 Measured with the scratch prototype (non-normative; the generator route, 2026-09-27):
 
-- 136 sites on the PR-1 target and 134 on `04dd6b51e4`, per kind the same as before the
-  masking amendment;
-- 177 mutants generated on the target and 175 on `04dd6b51e4`, where lines 72 and 74 have no
-  `abspath` member. All 177 are annotated, with 0 errors of any code;
-- the normative plant of §5ter.4 (a), 27 sites covering all 17 kinds, came back as
-  `STALE-DERIVATION` plus `UNANNOTATED` for exactly the 31 ids generated on 12 of its 14
-  lines (`case … in` and `esac` carry no site), whose site keys are exactly the 27. The round-2 extractor found 24 of those sites. It
-  missed `-d x` after `read`'s `-n 1`, the second assignment of
-  `wcbw_plant_b=1 wcbw_plant_c=2`, and `-R` after `date`'s `-r 0`: the overfit gate r3 R4
-  predicted, found in this spec's own prototype.
+- 139 sites on the PR-1 target and 137 on `04dd6b51e4` (the last round added the two
+  `assign` sites of line 270, and its fix pass the `call` site of line 197; every other kind
+  counts as before);
+- 199 mutants generated on the target and 197 on `04dd6b51e4`, where lines 72 and 74 have no
+  `abspath` member. All 199 are annotated, with 0 errors of any code, the closed world
+  included;
+- the normative plant of §5ter.4 (a), 29 sites covering all 19 kinds, came back as
+  `STALE-DERIVATION` plus `UNANNOTATED` for exactly the 39 ids generated on 14 of its 16 lines
+  (`case … in` and `esac` carry no site), whose site keys are exactly the 29. The round-2 extractor
+  found 24 of the 27 sites the plant had then. It missed `-d x` after `read`'s `-n 1`, the second
+  assignment of `wcbw_plant_b=1 wcbw_plant_c=2`, and `-R` after `date`'s `-r 0`: the overfit gate r3
+  R4 predicted, found in this spec's own prototype.
 
 **Generated members.** For every site, S3 generates every member its kind lists below, each
 as the target with one line replaced. No author chooses a member, and no entry can add one,
 drop one or change its text.
 
-| Kind         | Members (name: the line S3 writes)                                                                                                                                                                                                                                                                                                                                                                                                |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cond`       | `never`: the condition list becomes `false` after `if`, `elif` or `while`, and `true` after `until`. `always`, after `if` and `elif` only: `true`                                                                                                                                                                                                                                                                                 |
-| `test`       | `true` and `false`: the `[ … ]` command, brackets included, becomes the constant. Inside a `while` condition list `true` is not generated, and inside an `until` one `false` is not: either could keep the loop running, and the operand's `andor` drops cover it. `relop`, when the test holds `-eq -ne -lt -le -gt -ge`: the first of them shifts, `-ne`→`-gt`, `-eq`→`-ge`, `-lt`→`-le`, `-le`→`-lt`, `-gt`→`-ge`, `-ge`→`-gt` |
-| `andor`      | `drop-left`: the operator and the operand on its left are deleted. `drop-right`: the operator and the operand on its right                                                                                                                                                                                                                                                                                                        |
-| `alt`        | `drop` when the pattern has several alternatives: the alternative and the `\|` after it (for the last one, the `\|` before it). `widen` for a single alternative other than `*`: it becomes `*`. `neutralise` for a single `*`: it becomes `__wcbw_never_matches__`                                                                                                                                                               |
-| `readopt`    | `drop`: the `IFS=…` prefix and the blanks after it, or the option word with its argument and the blanks before it                                                                                                                                                                                                                                                                                                                 |
-| `default`    | `drop`: `${X:-v}` becomes `${X}`, for each of the eight forms                                                                                                                                                                                                                                                                                                                                                                     |
-| `neg`        | `drop`: the `!` and the blanks after it                                                                                                                                                                                                                                                                                                                                                                                           |
-| `redir`      | `drop`: the blanks before the `<`, the `<` and its word. The command then reads the wrapper's stdin, which launchd and the harness both bind to `/dev/null`                                                                                                                                                                                                                                                                       |
-| `abspath`    | `strip`: the directory (`/bin/date` → `date`), so the command resolves through the env's `PATH`                                                                                                                                                                                                                                                                                                                                   |
-| `dateopt`    | `drop`: the blanks before the option, the option and its argument (`/bin/date -u` → `/bin/date`)                                                                                                                                                                                                                                                                                                                                  |
-| `const`      | `value`: `-mutant` appended to the assignment word, inside its closing quote when the word ends in one (`TAG="wa-codex-broker-wrapper-mutant"`)                                                                                                                                                                                                                                                                                   |
-| `reassert`   | `remove`: the line becomes `:` at its indentation. `value`: as for `const`                                                                                                                                                                                                                                                                                                                                                        |
-| `setopt`     | `remove`: the line becomes `:` at its indentation                                                                                                                                                                                                                                                                                                                                                                                 |
-| `hb`, `diag` | `remove`: the simple command becomes `:`                                                                                                                                                                                                                                                                                                                                                                                          |
-| `exec`       | `remove`: the simple command becomes `:`. `env-drop`, when the word after `exec` is `env` or `/usr/bin/env` followed by `NAME=…` words: `env` and those words are deleted (G7f's plain `exec`)                                                                                                                                                                                                                                    |
-| `exit`       | `remove`: the simple command becomes `:`. `value`, when a literal integer follows: `N` → `1`, and `1` → `0`                                                                                                                                                                                                                                                                                                                       |
+| Kind         | Members (name: the line S3 writes)                                                                                                                                                                                                                                                                                                                                                      |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cond`       | `never`: the condition list becomes `false` after `if`, `elif` or `while`, and `true` after `until`. `always`: `true` after `if`, `elif` or `while`, and `false` after `until`; after a loop keyword only when the loop's body can leave it (rule 1)                                                                                                                                    |
+| `test`       | `true` and `false`: the `[ … ]` command, brackets included, becomes the constant. In the condition list of a loop whose body cannot leave it (rule 1), `true` is not generated after `while`, nor `false` after `until`. `relop`, when the test holds `-eq -ne -lt -le -gt -ge`: the first of them shifts, `-ne`→`-gt`, `-eq`→`-ge`, `-lt`→`-le`, `-le`→`-lt`, `-gt`→`-ge`, `-ge`→`-gt` |
+| `andor`      | `drop-left`: the operator and the operand on its left are deleted. `drop-right`: the operator and the operand on its right                                                                                                                                                                                                                                                              |
+| `alt`        | `drop`, per alternative, when the pattern has several: the alternative and the `\|` after it (for the last one, the `\|` before it). Per arm, on its first alternative's key, both polarities: `widen`, the whole pattern becomes `*` (a no-op, rule 3, when it is `*`), and `neutralise`, the whole pattern becomes `__wcbw_never_matches__`                                           |
+| `readopt`    | `drop`: the `IFS=…` prefix and the blanks after it, or the option word with its argument and the blanks before it                                                                                                                                                                                                                                                                       |
+| `default`    | `drop`: `${X:-v}` becomes `${X}`, for each of the eight forms                                                                                                                                                                                                                                                                                                                           |
+| `neg`        | `drop`: the `!` and the blanks after it                                                                                                                                                                                                                                                                                                                                                 |
+| `redir`      | `drop`: the blanks before the `<`, the `<` and its word. The command then reads the wrapper's stdin, which launchd and the harness both bind to `/dev/null`                                                                                                                                                                                                                             |
+| `abspath`    | `strip`: the directory (`/bin/date` → `date`), so the command resolves through the env's `PATH`                                                                                                                                                                                                                                                                                         |
+| `dateopt`    | `drop`: the blanks before the option, the option and its argument (`/bin/date -u` → `/bin/date`)                                                                                                                                                                                                                                                                                        |
+| `const`      | `value`: `-mutant` appended to the assignment word, inside its closing quote when the word ends in one (`TAG="wa-codex-broker-wrapper-mutant"`)                                                                                                                                                                                                                                         |
+| `reassert`   | `remove`: when the line holds one assignment, it becomes `:` at its indentation; otherwise the word alone is deleted, with the blanks after it (the last word: the blanks before it). `value`: as for `const`                                                                                                                                                                           |
+| `setopt`     | `remove`: when the `set` command has one unit, the simple command becomes `:`; otherwise the unit alone is deleted: its letter from the cluster, or the `-o NAME` pair, `--` or `-` with the blanks before it, and a cluster left with no letter with the blanks before it                                                                                                              |
+| `hb`, `call` | `remove`: the simple command becomes `:`. `fail`: it becomes `false`. In the condition list of a loop whose body cannot leave it, the one that keeps the loop running (`remove` after `while`, `fail` after `until`) is not generated (rule 1)                                                                                                                                          |
+| `diag`       | `remove`: the simple command becomes `:`                                                                                                                                                                                                                                                                                                                                                |
+| `exec`       | `remove`: the simple command becomes `:`                                                                                                                                                                                                                                                                                                                                                |
+| `exit`       | `remove`: the simple command becomes `:`. `value`, when a literal integer follows: `N` → `1`, and `1` → `0`                                                                                                                                                                                                                                                                             |
+| `assign`     | `drop`: the word and the blanks after it                                                                                                                                                                                                                                                                                                                                                |
 
 Terms, read on the masked line:
 
 - **Condition list:** from the first non-blank after the keyword to the first `;` or single `&`
   outside parentheses and braces, or to the end of the line.
-- **And-or list, operand:** the line splits into lists at `;`, `;;`, a single `&`, `(`, `)`,
-  a `{` or `}` that stands as a word, and after the reserved words
-  `if elif while until then do else` in command position. Inside a list, the `&&` and `||`
-  at the list's own depth separate its operands; a `|` pipe stays inside its operand, and so
-  does a leading `!` (`! A || B` has the operands `! A` and `B`). Operands are trimmed of
+- **And-or list, operand:** a list starts at line start, after `;`, `;;` or a single `&`,
+  after the `(` or `{` that opens a group, and after the reserved words
+  `if elif while until then do else` in command position. It ends at the next `;`, `;;`,
+  single `&` or line end at its own depth, or at the `)` or `}` that closes the group it is
+  in. A group (`( … )`, or a `{` … `}` that stands as a word) opens lists of its own, and from
+  outside it is part of the operand that holds it: on line 263,
+  `cd "$RUNTIME_DIR" || { heartbeat "refused" "cd failed"; exit 78; }`, the right operand of
+  `||` is the whole group (gate r5 N2). Inside a list, the `&&` and `||` at the list's own
+  depth separate its operands; a `|` pipe stays inside its operand, and so does a leading `!`
+  (`! A || B` has the operands `! A` and `B`). Operands are trimmed of
   blanks. `drop-left` deletes from the start of the left operand to the start of the right
   one, and `drop-right` from the end of the left operand to the end of the right one.
 - **Simple command** (for `remove`): from the keyword to the first `;`, `&&`, `||`, `|`, `)`,
   or `}` after a blank or `;`, or to the end of the line. Blanks before that end stay outside
   it.
 
-Four rules make the set exact:
+Five rules make the set exact:
 
-1. **Both polarities, no judgement.** Every condition gets `never`, every `if` and `elif`
-   also `always`, and every test operand of an and-or list both constants. S3 does not work
-   out which constant fails open. In `guard || refuse` it is `true`, in `refuse-if A && B` it
-   is `false`, and in `if A || B; then refuse` it is `false` for both operands, so polarity
-   depends on what consumes the list. The always-refusing member of each guard is generated
-   too, and any innocence test kills it. Schema 1's rule that a refusal guard's condition may
-   only become `false` is withdrawn: it let a row pass on the drop that refuses (gate r4 H1
-   and H2), and it never reached and-or operands.
+1. **Both polarities, no judgement.** A refusal-bearing unit is one whose outcome the control
+   flow reads as a truth value: a condition, a `[ … ]` test, an and-or operand, a `case` arm;
+   or one that can refuse by itself: a call of a function the target defines, whose body may
+   exit. Each gets both of its polarities, the one that never refuses and the one that always
+   does, whatever its shape: every condition gets `never` and `always` (a loop's `always`
+   when its body can leave it, below); every test gets both constants; every and-or operator
+   gets both drops; every arm gets `widen` and `neutralise`; every call gets `remove` (the
+   body and all its refusals never run, status 0) and `fail` (status 1, the body skipped).
+   S3 does not work out which of them fails open. In
+   `guard || refuse` it is `true`, in `refuse-if A && B` it is `false`, in
+   `if A || B; then refuse` it is `false` for both operands, and on a refusal arm it is
+   `neutralise`, so polarity depends on what consumes the unit. The always-refusing member is
+   generated too, and any innocence test kills it. Schema 1's rule that a refusal guard's
+   condition may only become `false` is withdrawn: it let a row pass on the drop that refuses
+   (gate r4 H1 and H2), and it never reached and-or operands. Gate r5 (I1) found the same
+   choice left in the `alt` table, which gave a single alternative only `widen` (only
+   `neutralise` for `*`), so an arm whose body is `false`, a flag or a non-exiting function had
+   no fail-open member, and the spelling of the arms decided whether one existed.
+
+   An operand that calls a target function has its two `call` members, and an `exit` or `return`
+   operand its `exit` members. Any other operand that is not a `[ … ]` (`grep -q …`, `read …`) is a
+   catalogue command whose one outcome is its status. It gets no constants of its own, because each
+   of its outcomes is already a member: its neutral value (`true` before `&&`, `false` before `||`)
+   is the drop of that operator, and its absorbing value (`false` before `&&`, `true` before `||`)
+   is the member that removes what it guards, the other drop or the enclosing condition's constant.
+
+   A loop's condition gets both polarities when the loop's body can leave it: when the body
+   holds, outside a `( … )` subshell, an `exit`, `return` or `exec`, or a call of a function
+   the target defines, or when the target sets errexit anywhere (`-e` in a `set` cluster, or
+   `set -o errexit`). The continuing constant (`always`, a test's `true` after `while` or
+   `false` after `until`, a call's `remove` after `while` or `fail` after `until`) then
+   reaches whatever the body leaves to, which can be a pass (council round 5, codex:
+   `while verify_next; do return 0; done; return 78` fails open under `always`). When the
+   body cannot leave, that constant is not generated: the loop never ends, nothing after it
+   runs, so the member neither refuses nor passes, and its run would time out, which is
+   `ERROR`, never a kill (§5ter.3 step 6). The PR-1 target has one loop, lines 178–181, whose
+   body only counts and copies, so its `while` has `never` alone. Selftest q6 (§5ter.4) is
+   the guilt and the innocence of a loop that can be left.
+
 2. **Duplicates.** When two members of sites on one line produce the same line, S3 keeps the
    first in canonical order (kinds in the order of the grammar table, keys in textual order,
    members in the order of the table above) and generates nothing for the other. A test that
@@ -837,11 +949,29 @@ Four rules make the set exact:
    it must delete or replace is not wholly on that line (it is empty there, it starts a line
    that continues the previous one, or it runs to the end of a line that continues through a
    final unquoted `\` or a quote still open), S3 reports `SPAN <id>` instead of generating
-   it. Every generated mutant is checked before any run: the replacement holds no `\n` or
+   it. A `[ … ]` ends at its own `]`, so a `\` after the `]` makes only the members that
+   reach past it `SPAN`, never the test's constants (selftest d3 has exactly one `SPAN`; gate
+   r5 N3). Every generated mutant is checked before any run: the replacement holds no `\n` or
    `\r`, the mutant has the target's line count, and it differs from the target at that one
    line only (`LINES`). The generator only deletes spans and writes the tokens of the table,
    so `LINES` can fire only on an implementation defect, and selftest d proves the check is
-   live. The wrapper has no `SPAN`; #7340's installer has ten (§5ter.6).
+   live. The wrapper has no `SPAN`; #7340's installer has sixteen (§5ter.6).
+5. **Atomic units** (gate r5 I3, I4). A member edits one unit: one alternative (`drop`) or
+   one arm (`widen`, `neutralise`); one option unit of `read`, `set` or `date` (a letter of a
+   cluster, an `o` or `-o` with its argument, an option with its argument); one assignment
+   word (`const`, `reassert`, `assign`); one and-or operator; one test; one condition; one
+   call of a target function; one `!`; one input redirection; one path; one expansion. No
+   member deletes two units at once, so no guard hides behind a sibling that a shared member
+   also deletes. Gate r5 found the two that did: `setopt` turned the whole `set` line into
+   `:`, so `set -eu -o pipefail` had one member and deleting `pipefail` alone was none, and
+   `env-drop` deleted every `NAME=` word after `env` together. The same audit split
+   `reassert`'s `remove`, which blanked a line of two assignments (§5ter.4 a had merged the
+   second one's). A member on a unit that holds others (a condition, a test, a simple command
+   for `remove` and `fail`) replaces that unit, and every unit of this list inside it has
+   members of its own. An output redirection is not a unit: it decides where bytes go, never
+   whether a refusal happens, and the two observations the target routes through one, the
+   heartbeat file and the tagged line, are what the `hb` and `diag` members' killers assert
+   (the list of deliberate non-sites above; kimi, council round 5).
 
 **Why exit values (gate r3 R2).** Contract N.1 pins the rc. `exit 78` → `exit 1` survives any
 test that asserts only a non-zero rc. On the kill switch, changing `exit 0` changes nothing but
@@ -858,15 +988,20 @@ no boundary to shift, and the wrapper's one string comparison, `= "false"` on li
 kill switch's condition, whose `never` member disables it.
 
 **What the generator adds over schema 1, on the PR-1 target.** The 148 schema-1 mutants map
-to 148 of the 177 generated ones: 147 by identical line, and G9h/x by effect (the `exit 78`
-inside the braces dropped). The other 29 are new:
+to 147 of the 199 generated ones: 146 by identical line, and G9h/x by effect (the `exit 78`
+inside the braces dropped). The 148th, G7f's plain `exec` (both `NAME=` words after `env`
+deleted at once), is now two atomic members (rule 5). The other 52 are new:
 
 - `always` of the 12 refusal `if`s that had only `never`;
 - nine test constants, on lines 134, 178 and 206;
 - `drop-left` of lines 72, 178 and 263; the first and the last are gate r4's H1 and H2;
-- `remove` of the four `return`s, and of line 270's `exec`.
+- `remove` of the four `return`s, and of line 270's `exec`;
+- in the last round (gate r5): `widen` and `neutralise` of the arm on line 84, `neutralise`
+  of the arms on lines 85 and 188, and the two `assign` drops of line 270;
+- in its fix pass (council round 5): `fail` of the 15 heartbeat calls, and `remove` and `fail` of
+  the `_is_semver` call on line 197.
 
-27 of them are MUST and killed by a declared killer in the suite of 5bis.8. The other 2 are
+50 of them are MUST and killed by a declared killer in the suite of 5bis.8. The other 2 are
 EQUIVALENT.
 
 ### 5bis.3a Mutant ids (gate r4 re-scope)
@@ -1080,192 +1215,214 @@ Mode codes (the exact classification rule is §5ter.3 step 8):
 One row per generated id, in S3's order: by line, then in the canonical order of 5bis.3.
 `member` is the id's `<key>:<member>`. `line` is the line on the PR-1 target; the numbers are
 the same on blob `4143a795d9`, where only lines 72 and 74 generate other ids (5bis.8). The
-table holds 177 mutants: 170 MUST and 7 EQUIVALENT, with modes FO 50, FC 54, DX 58, ST 8 and
+table holds 199 mutants: 192 MUST and 7 EQUIVALENT, with modes FO 53, FC 58, DX 73, ST 8 and
 EQ 7.
 
 <!-- d5-inventory:begin -->
 
-| id                                                  | label | line | member           | mode | disposition | killed by                                                                                              |
-| --------------------------------------------------- | ----- | ---- | ---------------- | ---- | ----------- | ------------------------------------------------------------------------------------------------------ |
-| `2d510a6eb4e36076:setopt:remove`                    | G9a   | 47   | setopt:remove    | FO   | MUST        | `test_guilt_env_undefined_name_never_execs`                                                            |
-| `82285122d3446bef@2d510a6eb4e36076:const:value`     | G0a   | 49   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                              |
-| `93cf1180a8431270@2d510a6eb4e36076:const:value`     | G0b   | 50   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                              |
-| `0ec6d675792920f3:const:value`                      | G0c   | 51   | const:value      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `0ff33cfcfcad48ee@0ec6d675792920f3:const:value`     | G0d   | 52   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                              |
-| `bf2870af16c0a446@0ec6d675792920f3:const:value`     | G0e   | 53   | const:value      | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                  |
-| `b148bfe29bbd3145@0ec6d675792920f3:const:value`     | G0f   | 54   | const:value      | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                  |
-| `7c75f442896ed2da@0ec6d675792920f3:const:value`     | G0g   | 55   | const:value      | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                  |
-| `7257ebff60419f4d:const:value`                      | G0h   | 63   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                              |
-| `3f551b6a4a9f05ed:const:value`                      | G0i   | 64   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                              |
-| `9c0148ab94570f73:andor:drop-left`                  | G9b   | 72   | andor:drop-left  | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                  |
-| `9c0148ab94570f73:andor:drop-right`                 | G9b   | 72   | andor:drop-right | EQ   | EQUIVALENT  | — (see reason)                                                                                         |
-| `9c0148ab94570f73:exit:remove`                      | G9b   | 72   | exit:remove      | EQ   | EQUIVALENT  | — (see reason)                                                                                         |
-| `9c0148ab94570f73:exit:value`                       | G9b   | 72   | exit:value       | EQ   | EQUIVALENT  | — (see reason)                                                                                         |
-| `9c0148ab94570f73:abspath:strip`                    | G9j   | 72   | abspath:strip    | DX   | MUST        | `[nonexistent]`                                                                                        |
-| `919178aeb2601828:abspath:strip`                    | G9k   | 74   | abspath:strip    | DX   | MUST        | `[nonexistent]`                                                                                        |
-| `919178aeb2601828:dateopt:drop`                     | G9l   | 74   | dateopt:drop     | DX   | MUST        | `test_stamps_are_utc_under_a_non_utc_tz`                                                               |
-| `167483363793d9b2:alt#1:drop`                       | G3a   | 84   | alt#1:drop       | FO   | MUST        | `[semver_alpha_planted]`                                                                               |
-| `167483363793d9b2:alt#2:drop`                       | G3b   | 84   | alt#2:drop       | FO   | MUST        | `[semver_leading_dot_planted]`                                                                         |
-| `167483363793d9b2:alt#3:drop`                       | G3c   | 84   | alt#3:drop       | FO   | MUST        | `[semver_trailing_dot_planted]`                                                                        |
-| `167483363793d9b2:alt#4:drop`                       | G3d   | 84   | alt#4:drop       | FO   | MUST        | `[semver_empty_field_planted]`                                                                         |
-| `167483363793d9b2:alt#5:drop`                       | G3e   | 84   | alt#5:drop       | FO   | MUST        | `[semver_four_fields_planted]`                                                                         |
-| `167483363793d9b2:exit:remove`                      | G3f   | 84   | exit:remove      | EQ   | EQUIVALENT  | — (see reason)                                                                                         |
-| `167483363793d9b2:exit:value`                       | G3f   | 84   | exit:value       | FO   | MUST        | `[traversal_escape_planted]`, `[semver_alpha_planted]`                                                 |
-| `ac6dc4f641d4266b:alt:widen`                        | G3g   | 85   | alt:widen        | FO   | MUST        | `[bad_semver_planted]`                                                                                 |
-| `ac6dc4f641d4266b:exit:remove`                      | G3g   | 85   | exit:remove      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `ac6dc4f641d4266b:exit:value`                       | G3g   | 85   | exit:value       | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `486d9affb60dbb00:exit:remove`                      | G3h   | 87   | exit:remove      | FO   | MUST        | `[bad_semver_planted]`                                                                                 |
-| `486d9affb60dbb00:exit:value`                       | G3h   | 87   | exit:value       | FO   | MUST        | `[bad_semver_planted]`                                                                                 |
-| `b877414ba0f87feb:cond:never`                       | G9c   | 91   | cond:never       | FC   | MUST        | `test_guilt_env_file_missing_refuses`                                                                  |
-| `b877414ba0f87feb:cond:always`                      | G9c   | 91   | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `b877414ba0f87feb:neg:drop`                         | G9c   | 91   | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_env_file_missing_refuses`                        |
-| `c1fade95b3813c56:diag:remove`                      | G9c   | 92   | diag:remove      | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                  |
-| `54cd50f09e27ecc0:hb:remove`                        | G9c   | 93   | hb:remove        | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                  |
-| `8526388771f87b84@54cd50f09e27ecc0:exit:remove`     | G9c   | 94   | exit:remove      | FC   | MUST        | `test_guilt_env_file_missing_refuses`                                                                  |
-| `8526388771f87b84@54cd50f09e27ecc0:exit:value`      | G9c   | 94   | exit:value       | FC   | MUST        | `test_guilt_env_file_missing_refuses`                                                                  |
-| `bcb17d0bb9f3e67c:cond:never`                       | G9d   | 96   | cond:never       | FO   | MUST        | `test_guilt_env_placeholders_refuse`                                                                   |
-| `bcb17d0bb9f3e67c:cond:always`                      | G9d   | 96   | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `020824d34a8091ee:diag:remove`                      | G9d   | 97   | diag:remove      | DX   | MUST        | `test_guilt_env_placeholders_refuse`                                                                   |
-| `ec36a5a8c358f487:hb:remove`                        | G9d   | 98   | hb:remove        | DX   | MUST        | `test_guilt_env_placeholders_refuse`                                                                   |
-| `8526388771f87b84@ec36a5a8c358f487:exit:remove`     | G9d   | 99   | exit:remove      | FO   | MUST        | `test_guilt_env_placeholders_refuse`                                                                   |
-| `8526388771f87b84@ec36a5a8c358f487:exit:value`      | G9d   | 99   | exit:value       | FC   | MUST        | `test_guilt_env_placeholders_refuse`                                                                   |
-| `a591dbf70bd50123:cond:never`                       | G6    | 134  | cond:never       | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                               |
-| `a591dbf70bd50123:cond:always`                      | G6    | 134  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `a591dbf70bd50123:test#1:true`                      | G6a   | 134  | test#1:true      | DX   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                    |
-| `a591dbf70bd50123:test#1:false`                     | G6a   | 134  | test#1:false     | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                               |
-| `a591dbf70bd50123:test#2:true`                      | G6b   | 134  | test#2:true      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `a591dbf70bd50123:test#2:false`                     | G6b   | 134  | test#2:false     | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                               |
-| `a591dbf70bd50123:andor:drop-left`                  | G6a   | 134  | andor:drop-left  | DX   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                    |
-| `a591dbf70bd50123:andor:drop-right`                 | G6b   | 134  | andor:drop-right | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `a591dbf70bd50123:neg:drop`                         | G6b   | 134  | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`     |
-| `3dd6763e15577a2b:diag:remove`                      | G6    | 135  | diag:remove      | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                               |
-| `e7eb6aa9779abace@3dd6763e15577a2b:hb:remove`       | G6    | 136  | hb:remove        | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                               |
-| `8526388771f87b84@3dd6763e15577a2b:exit:remove`     | G6    | 137  | exit:remove      | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                               |
-| `8526388771f87b84@3dd6763e15577a2b:exit:value`      | G6    | 137  | exit:value       | FC   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                               |
-| `68c85aa55e51903d:const:value`                      | G0j   | 140  | const:value      | FO   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                 |
-| `b259e08545de7d9b:const:value`                      | G0k   | 141  | const:value      | EQ   | EQUIVALENT  | — (see reason)                                                                                         |
-| `f38e1e3bd15a938d:cond:never`                       | G4a   | 142  | cond:never       | FO   | MUST        | `[symlink_pin]`                                                                                        |
-| `f38e1e3bd15a938d:cond:always`                      | G4a   | 142  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `cc48e9e0b1618624:diag:remove`                      | G4a   | 143  | diag:remove      | DX   | MUST        | `[symlink_pin]`                                                                                        |
-| `e7eb6aa9779abace@cc48e9e0b1618624:hb:remove`       | G4a   | 144  | hb:remove        | DX   | MUST        | `[symlink_pin]`                                                                                        |
-| `8526388771f87b84@cc48e9e0b1618624:exit:remove`     | G4a   | 145  | exit:remove      | FO   | MUST        | `[symlink_pin]`                                                                                        |
-| `8526388771f87b84@cc48e9e0b1618624:exit:value`      | G4a   | 145  | exit:value       | FC   | MUST        | `[symlink_pin]`                                                                                        |
-| `56256af7dea49700:cond:never`                       | G4d   | 146  | cond:never       | FO   | MUST        | `test_innocence_valid_pin_overrides_env`, `[bad_semver_planted]`                                       |
-| `56256af7dea49700:cond:always`                      | G4d   | 146  | cond:always      | FC   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                 |
-| `634103c1b53d95f7:cond:never`                       | G4e   | 147  | cond:never       | FC   | MUST        | `[directory]`, `[dev_null]`                                                                            |
-| `634103c1b53d95f7:cond:always`                      | G4e   | 147  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `634103c1b53d95f7:neg:drop`                         | G4e   | 147  | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `[directory]`, `[dev_null]`                                  |
-| `a496ea1ec476fd67:diag:remove`                      | G4e   | 148  | diag:remove      | DX   | MUST        | `[directory]`                                                                                          |
-| `e7eb6aa9779abace@a496ea1ec476fd67:hb:remove`       | G4e   | 149  | hb:remove        | DX   | MUST        | `[directory]`                                                                                          |
-| `8526388771f87b84@a496ea1ec476fd67:exit:remove`     | G4e   | 150  | exit:remove      | FC   | MUST        | `[directory]`, `[dev_null]`                                                                            |
-| `8526388771f87b84@a496ea1ec476fd67:exit:value`      | G4e   | 150  | exit:value       | FC   | MUST        | `[directory]`, `[dev_null]`                                                                            |
-| `ab69b3bd94339e85:cond:never`                       | G4f   | 152  | cond:never       | DX   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                            |
-| `ab69b3bd94339e85:cond:always`                      | G4f   | 152  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `ab69b3bd94339e85:neg:drop`                         | G4f   | 152  | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_mode_000_pin_reports_unreadable_not_line_count`  |
-| `51fb56231344763b:diag:remove`                      | G4f   | 153  | diag:remove      | DX   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                            |
-| `e7eb6aa9779abace@51fb56231344763b:hb:remove`       | G4f   | 154  | hb:remove        | DX   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                            |
-| `8526388771f87b84@51fb56231344763b:exit:remove`     | G4f   | 155  | exit:remove      | DX   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                            |
-| `8526388771f87b84@51fb56231344763b:exit:value`      | G4f   | 155  | exit:value       | FC   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                            |
-| `71a19acda9e9d654:cond:never`                       | G1    | 171  | cond:never       | FO   | MUST        | `[nul_same_line_planted]`                                                                              |
-| `71a19acda9e9d654:cond:always`                      | G1    | 171  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `71a19acda9e9d654:readopt#1:drop`                   | G1c   | 171  | readopt#1:drop   | EQ   | EQUIVALENT  | — (see reason)                                                                                         |
-| `71a19acda9e9d654:readopt#2:drop`                   | G1b   | 171  | readopt#2:drop   | DX   | MUST        | `[nul_after_backslash_planted]`                                                                        |
-| `71a19acda9e9d654:readopt#3:drop`                   | G1a   | 171  | readopt#3:drop   | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `71a19acda9e9d654:redir:drop`                       | G1d   | 171  | redir:drop       | FO   | MUST        | `[nul_same_line_planted]`, `[embedded_nul]`                                                            |
-| `d3563a941a515024:diag:remove`                      | G1    | 172  | diag:remove      | DX   | MUST        | `[nul_same_line_planted]`                                                                              |
-| `e7eb6aa9779abace@d3563a941a515024:hb:remove`       | G1    | 173  | hb:remove        | DX   | MUST        | `[nul_same_line_planted]`                                                                              |
-| `8526388771f87b84@d3563a941a515024:exit:remove`     | G1    | 174  | exit:remove      | FO   | MUST        | `[nul_same_line_planted]`                                                                              |
-| `8526388771f87b84@d3563a941a515024:exit:value`      | G1    | 174  | exit:value       | FC   | MUST        | `[nul_same_line_planted]`                                                                              |
-| `f92099df19bdd5b5:cond:never`                       | G2d   | 178  | cond:never       | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `f92099df19bdd5b5:test:false`                       | G2a   | 178  | test:false       | FO   | MUST        | `[two_lines_last_unterminated_planted]`, `test_innocence_single_line_without_trailing_newline_applies` |
-| `f92099df19bdd5b5:andor:drop-left`                  | G2a   | 178  | andor:drop-left  | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `f92099df19bdd5b5:andor:drop-right`                 | G2a   | 178  | andor:drop-right | FO   | MUST        | `[two_lines_last_unterminated_planted]`, `test_innocence_single_line_without_trailing_newline_applies` |
-| `f92099df19bdd5b5:readopt#1:drop`                   | G2b   | 178  | readopt#1:drop   | FO   | MUST        | `[trailing_space_planted]`, `[leading_tab_planted]`                                                    |
-| `f92099df19bdd5b5:readopt#2:drop`                   | G2c   | 178  | readopt#2:drop   | FO   | MUST        | `[backslash_in_version_planted]`                                                                       |
-| `a9f7da6fc4270e96:redir:drop`                       | G2e   | 181  | redir:drop       | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `db5f7e40037a4650:cond:never`                       | G2    | 182  | cond:never       | FO   | MUST        | `[two_lines_diff_versions_planted]`                                                                    |
-| `db5f7e40037a4650:cond:always`                      | G2    | 182  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `db5f7e40037a4650:test:relop`                       | G2    | 182  | test:relop       | DX   | MUST        | `[empty]`                                                                                              |
-| `04d80b64424cad2d:diag:remove`                      | G2    | 183  | diag:remove      | DX   | MUST        | `[two_lines_diff_versions_planted]`                                                                    |
-| `e7eb6aa9779abace@04d80b64424cad2d:hb:remove`       | G2    | 184  | hb:remove        | DX   | MUST        | `[two_lines_diff_versions_planted]`                                                                    |
-| `8526388771f87b84@04d80b64424cad2d:exit:remove`     | G2    | 185  | exit:remove      | FO   | MUST        | `[two_lines_diff_versions_planted]`                                                                    |
-| `8526388771f87b84@04d80b64424cad2d:exit:value`      | G2    | 185  | exit:value       | FC   | MUST        | `[two_lines_diff_versions_planted]`                                                                    |
-| `c21200da23f1dc4e:alt:widen`                        | G4b   | 188  | alt:widen        | FO   | MUST        | `[bare_version_planted]`                                                                               |
-| `69e11195653e133e:alt:neutralise`                   | G4c   | 191  | alt:neutralise   | DX   | MUST        | `[bare_version_planted]`, `[unknown_key]`                                                              |
-| `5d20bc7c8d9090c8:diag:remove`                      | G4c   | 192  | diag:remove      | DX   | MUST        | `[bare_version_planted]`                                                                               |
-| `e7eb6aa9779abace@5d20bc7c8d9090c8:hb:remove`       | G4c   | 193  | hb:remove        | DX   | MUST        | `[bare_version_planted]`                                                                               |
-| `8526388771f87b84@5d20bc7c8d9090c8:exit:remove`     | G4c   | 194  | exit:remove      | DX   | MUST        | `[bare_version_planted]`                                                                               |
-| `8526388771f87b84@5d20bc7c8d9090c8:exit:value`      | G4c   | 194  | exit:value       | FC   | MUST        | `[bare_version_planted]`                                                                               |
-| `af5687a8e077a442:cond:never`                       | G3    | 197  | cond:never       | FO   | MUST        | `[bad_semver_planted]`, `[traversal_escape_planted]`                                                   |
-| `af5687a8e077a442:cond:always`                      | G3    | 197  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `af5687a8e077a442:neg:drop`                         | G3    | 197  | neg:drop         | FO   | MUST        | `[bad_semver_planted]`, `test_innocence_valid_pin_overrides_env`                                       |
-| `bc42b08a01b4b06e:diag:remove`                      | G3    | 198  | diag:remove      | DX   | MUST        | `[bad_semver_planted]`                                                                                 |
-| `e7eb6aa9779abace@bc42b08a01b4b06e:hb:remove`       | G3    | 199  | hb:remove        | DX   | MUST        | `[bad_semver_planted]`                                                                                 |
-| `8526388771f87b84@bc42b08a01b4b06e:exit:remove`     | G3    | 200  | exit:remove      | FO   | MUST        | `[bad_semver_planted]`, `[traversal_escape_planted]`                                                   |
-| `8526388771f87b84@bc42b08a01b4b06e:exit:value`      | G3    | 200  | exit:value       | FC   | MUST        | `[bad_semver_planted]`, `[traversal_escape_planted]`                                                   |
-| `1447089bdc0e8175:cond:never`                       | G5    | 206  | cond:never       | FO   | MUST        | `[bin_missing]`                                                                                        |
-| `1447089bdc0e8175:cond:always`                      | G5    | 206  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `1447089bdc0e8175:test#1:true`                      | G5a   | 206  | test#1:true      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `1447089bdc0e8175:test#1:false`                     | G5a   | 206  | test#1:false     | FO   | MUST        | `[bin_is_directory]`                                                                                   |
-| `1447089bdc0e8175:test#2:true`                      | G5b   | 206  | test#2:true      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `1447089bdc0e8175:test#2:false`                     | G5b   | 206  | test#2:false     | FO   | MUST        | `[bin_not_executable_planted]`                                                                         |
-| `1447089bdc0e8175:andor:drop-left`                  | G5a   | 206  | andor:drop-left  | FO   | MUST        | `[bin_is_directory]`                                                                                   |
-| `1447089bdc0e8175:andor:drop-right`                 | G5b   | 206  | andor:drop-right | FO   | MUST        | `[bin_not_executable_planted]`                                                                         |
-| `1447089bdc0e8175:neg#1:drop`                       | G5a   | 206  | neg#1:drop       | FO   | MUST        | `test_innocence_valid_pin_overrides_env`, `[bin_is_directory]`                                         |
-| `1447089bdc0e8175:neg#2:drop`                       | G5b   | 206  | neg#2:drop       | FO   | MUST        | `test_innocence_valid_pin_overrides_env`, `[bin_not_executable_planted]`                               |
-| `2e93e4cbc19c5ccb:diag:remove`                      | G5    | 207  | diag:remove      | DX   | MUST        | `[bin_missing]`                                                                                        |
-| `e7eb6aa9779abace@2e93e4cbc19c5ccb:hb:remove`       | G5    | 208  | hb:remove        | DX   | MUST        | `[bin_missing]`                                                                                        |
-| `8526388771f87b84@2e93e4cbc19c5ccb:exit:remove`     | G5    | 209  | exit:remove      | FO   | MUST        | `[bin_missing]`                                                                                        |
-| `8526388771f87b84@2e93e4cbc19c5ccb:exit:value`      | G5    | 209  | exit:value       | FC   | MUST        | `[bin_missing]`                                                                                        |
-| `aa434ce1dbd99a3f:diag:remove`                      | G7h   | 212  | diag:remove      | DX   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                 |
-| `015f150fe65d6e68:setopt:remove`                    | G7a   | 218  | setopt:remove    | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `cfcc9993533dc30d:setopt:remove`                    | G7b   | 220  | setopt:remove    | FO   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                 |
-| `c34b923460d94846:setopt:remove`                    | G7c   | 222  | setopt:remove    | EQ   | EQUIVALENT  | — (see reason)                                                                                         |
-| `82285122d3446bef@c34b923460d94846:reassert:remove` | G8a   | 231  | reassert:remove  | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                   |
-| `82285122d3446bef@c34b923460d94846:reassert:value`  | G8a   | 231  | reassert:value   | ST   | MUST        | `test_wrapper_ships_production_constants`                                                              |
-| `93cf1180a8431270@c34b923460d94846:reassert:remove` | G8b   | 232  | reassert:remove  | FO   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                   |
-| `93cf1180a8431270@c34b923460d94846:reassert:value`  | G8b   | 232  | reassert:value   | ST   | MUST        | `test_wrapper_ships_production_constants`                                                              |
-| `0ff33cfcfcad48ee@c34b923460d94846:reassert:remove` | G8c   | 233  | reassert:remove  | FO   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                   |
-| `0ff33cfcfcad48ee@c34b923460d94846:reassert:value`  | G8c   | 233  | reassert:value   | ST   | MUST        | `test_wrapper_ships_production_constants`                                                              |
-| `bf2870af16c0a446@c34b923460d94846:reassert:remove` | G8d   | 234  | reassert:remove  | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                   |
-| `bf2870af16c0a446@c34b923460d94846:reassert:value`  | G8d   | 234  | reassert:value   | DX   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `b148bfe29bbd3145@c34b923460d94846:reassert:remove` | G8e   | 235  | reassert:remove  | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                   |
-| `b148bfe29bbd3145@c34b923460d94846:reassert:value`  | G8e   | 235  | reassert:value   | DX   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `7c75f442896ed2da@c34b923460d94846:reassert:remove` | G8f   | 236  | reassert:remove  | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                   |
-| `7c75f442896ed2da@c34b923460d94846:reassert:value`  | G8f   | 236  | reassert:value   | DX   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `19a916d8fe196194:cond:never`                       | G9e   | 251  | cond:never       | FO   | MUST        | `test_kill_switch_stops_without_exec`                                                                  |
-| `19a916d8fe196194:cond:always`                      | G9e   | 251  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `19a916d8fe196194:default:drop`                     | G9f   | 251  | default:drop     | FC   | MUST        | `test_innocence_env_without_kill_switch_key_applies`                                                   |
-| `9111f81d771c3ba0:diag:remove`                      | G9e   | 252  | diag:remove      | DX   | MUST        | `test_kill_switch_stops_without_exec`                                                                  |
-| `3fb04a4b6a09dd60:hb:remove`                        | G9e   | 253  | hb:remove        | DX   | MUST        | `test_kill_switch_stops_without_exec`                                                                  |
-| `c22995adc29757a9:exit:remove`                      | G9e   | 254  | exit:remove      | FO   | MUST        | `test_kill_switch_stops_without_exec`                                                                  |
-| `c22995adc29757a9:exit:value`                       | G9e   | 254  | exit:value       | FC   | MUST        | `test_kill_switch_stops_without_exec`                                                                  |
-| `c3bfad593fcd3864:cond:never`                       | G9g   | 257  | cond:never       | FC   | MUST        | `test_guilt_venv_missing_refuses`                                                                      |
-| `c3bfad593fcd3864:cond:always`                      | G9g   | 257  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `c3bfad593fcd3864:neg:drop`                         | G9g   | 257  | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_venv_missing_refuses`                            |
-| `535fcf39e411110e:diag:remove`                      | G9g   | 258  | diag:remove      | DX   | MUST        | `test_guilt_venv_missing_refuses`                                                                      |
-| `a1075c3ed7b74e83:hb:remove`                        | G9g   | 259  | hb:remove        | DX   | MUST        | `test_guilt_venv_missing_refuses`                                                                      |
-| `8526388771f87b84@a1075c3ed7b74e83:exit:remove`     | G9g   | 260  | exit:remove      | FC   | MUST        | `test_guilt_venv_missing_refuses`                                                                      |
-| `8526388771f87b84@a1075c3ed7b74e83:exit:value`      | G9g   | 260  | exit:value       | FC   | MUST        | `test_guilt_venv_missing_refuses`                                                                      |
-| `818836c375d5c9cc:andor:drop-left`                  | G9h   | 263  | andor:drop-left  | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `818836c375d5c9cc:andor:drop-right`                 | G9h   | 263  | andor:drop-right | FO   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                    |
-| `818836c375d5c9cc:exit:remove`                      | G9h   | 263  | exit:remove      | FO   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                    |
-| `818836c375d5c9cc:exit:value`                       | G9h   | 263  | exit:value       | FC   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                    |
-| `818836c375d5c9cc:hb:remove`                        | G9h   | 263  | hb:remove        | DX   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                    |
-| `422567c140a13db3:reassert:remove`                  | G8g   | 264  | reassert:remove  | FO   | MUST        | `test_guilt_env_cannot_clobber_pythonpath`                                                             |
-| `422567c140a13db3:reassert:value`                   | G8g   | 264  | reassert:value   | FO   | MUST        | `test_guilt_env_cannot_clobber_pythonpath`                                                             |
-| `a0e431e3489db7f5:hb:remove`                        | G9i   | 266  | hb:remove        | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                   |
-| `858e69f9cd802136:cond:never`                       | G7d   | 268  | cond:never       | FO   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `858e69f9cd802136:cond:always`                      | G7d   | 268  | cond:always      | FO   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                 |
-| `ad56e24af0b5d760:diag:remove`                      | G7e   | 269  | diag:remove      | DX   | MUST        | `test_pin_applied_log_line`                                                                            |
-| `ad56e24af0b5d760:abspath:strip`                    | G7e   | 269  | abspath:strip    | DX   | MUST        | `[nonexistent]`                                                                                        |
-| `ad56e24af0b5d760:dateopt:drop`                     | G7i   | 269  | dateopt:drop     | DX   | MUST        | `test_stamps_are_utc_under_a_non_utc_tz`                                                               |
-| `b9a04673c49fc0c4:exec:remove`                      | G7f   | 270  | exec:remove      | FO   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `b9a04673c49fc0c4:exec:env-drop`                    | G7f   | 270  | exec:env-drop    | FO   | MUST        | `test_innocence_valid_pin_overrides_env`                                                               |
-| `b9a04673c49fc0c4:abspath:strip`                    | G7f   | 270  | abspath:strip    | FC   | MUST        | `test_guilt_env_path_cannot_disable_the_pin[nonexistent]`                                              |
-| `b044fcf5065694b5:exec:remove`                      | G7g   | 273  | exec:remove      | FC   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                 |
+| id                                                  | label | line | member           | mode | disposition | killed by                                                                                                                                                                               |
+| --------------------------------------------------- | ----- | ---- | ---------------- | ---- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `2d510a6eb4e36076:setopt:remove`                    | G9a   | 47   | setopt:remove    | FO   | MUST        | `test_guilt_env_undefined_name_never_execs`                                                                                                                                             |
+| `82285122d3446bef@2d510a6eb4e36076:const:value`     | G0a   | 49   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                                                                                                               |
+| `93cf1180a8431270@2d510a6eb4e36076:const:value`     | G0b   | 50   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                                                                                                               |
+| `0ec6d675792920f3:const:value`                      | G0c   | 51   | const:value      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `0ff33cfcfcad48ee@0ec6d675792920f3:const:value`     | G0d   | 52   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                                                                                                               |
+| `bf2870af16c0a446@0ec6d675792920f3:const:value`     | G0e   | 53   | const:value      | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `b148bfe29bbd3145@0ec6d675792920f3:const:value`     | G0f   | 54   | const:value      | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `7c75f442896ed2da@0ec6d675792920f3:const:value`     | G0g   | 55   | const:value      | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `7257ebff60419f4d:const:value`                      | G0h   | 63   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                                                                                                               |
+| `3f551b6a4a9f05ed:const:value`                      | G0i   | 64   | const:value      | ST   | MUST        | `test_wrapper_ships_production_constants`                                                                                                                                               |
+| `9c0148ab94570f73:andor:drop-left`                  | G9b   | 72   | andor:drop-left  | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `9c0148ab94570f73:andor:drop-right`                 | G9b   | 72   | andor:drop-right | EQ   | EQUIVALENT  | — (see reason)                                                                                                                                                                          |
+| `9c0148ab94570f73:exit:remove`                      | G9b   | 72   | exit:remove      | EQ   | EQUIVALENT  | — (see reason)                                                                                                                                                                          |
+| `9c0148ab94570f73:exit:value`                       | G9b   | 72   | exit:value       | EQ   | EQUIVALENT  | — (see reason)                                                                                                                                                                          |
+| `9c0148ab94570f73:abspath:strip`                    | G9j   | 72   | abspath:strip    | DX   | MUST        | `[nonexistent]`                                                                                                                                                                         |
+| `919178aeb2601828:abspath:strip`                    | G9k   | 74   | abspath:strip    | DX   | MUST        | `[nonexistent]`                                                                                                                                                                         |
+| `919178aeb2601828:dateopt:drop`                     | G9l   | 74   | dateopt:drop     | DX   | MUST        | `test_stamps_are_utc_under_a_non_utc_tz`                                                                                                                                                |
+| `167483363793d9b2:alt#1:drop`                       | G3a   | 84   | alt#1:drop       | FO   | MUST        | `[semver_alpha_planted]`                                                                                                                                                                |
+| `167483363793d9b2:alt#1:widen`                      | G3    | 84   | alt#1:widen      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `167483363793d9b2:alt#1:neutralise`                 | G3    | 84   | alt#1:neutralise | FO   | MUST        | `[semver_alpha_planted]`, `[semver_leading_dot_planted]`, `[semver_trailing_dot_planted]`, `[semver_empty_field_planted]`, `[semver_four_fields_planted]`, `[traversal_escape_planted]` |
+| `167483363793d9b2:alt#2:drop`                       | G3b   | 84   | alt#2:drop       | FO   | MUST        | `[semver_leading_dot_planted]`                                                                                                                                                          |
+| `167483363793d9b2:alt#3:drop`                       | G3c   | 84   | alt#3:drop       | FO   | MUST        | `[semver_trailing_dot_planted]`                                                                                                                                                         |
+| `167483363793d9b2:alt#4:drop`                       | G3d   | 84   | alt#4:drop       | FO   | MUST        | `[semver_empty_field_planted]`                                                                                                                                                          |
+| `167483363793d9b2:alt#5:drop`                       | G3e   | 84   | alt#5:drop       | FO   | MUST        | `[semver_four_fields_planted]`                                                                                                                                                          |
+| `167483363793d9b2:exit:remove`                      | G3f   | 84   | exit:remove      | EQ   | EQUIVALENT  | — (see reason)                                                                                                                                                                          |
+| `167483363793d9b2:exit:value`                       | G3f   | 84   | exit:value       | FO   | MUST        | `[traversal_escape_planted]`, `[semver_alpha_planted]`                                                                                                                                  |
+| `ac6dc4f641d4266b:alt:widen`                        | G3g   | 85   | alt:widen        | FO   | MUST        | `[bad_semver_planted]`                                                                                                                                                                  |
+| `ac6dc4f641d4266b:alt:neutralise`                   | G3g   | 85   | alt:neutralise   | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `ac6dc4f641d4266b:exit:remove`                      | G3g   | 85   | exit:remove      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `ac6dc4f641d4266b:exit:value`                       | G3g   | 85   | exit:value       | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `486d9affb60dbb00:exit:remove`                      | G3h   | 87   | exit:remove      | FO   | MUST        | `[bad_semver_planted]`                                                                                                                                                                  |
+| `486d9affb60dbb00:exit:value`                       | G3h   | 87   | exit:value       | FO   | MUST        | `[bad_semver_planted]`                                                                                                                                                                  |
+| `b877414ba0f87feb:cond:never`                       | G9c   | 91   | cond:never       | FC   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `b877414ba0f87feb:cond:always`                      | G9c   | 91   | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `b877414ba0f87feb:neg:drop`                         | G9c   | 91   | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_env_file_missing_refuses`                                                                                                         |
+| `c1fade95b3813c56:diag:remove`                      | G9c   | 92   | diag:remove      | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `54cd50f09e27ecc0:hb:remove`                        | G9c   | 93   | hb:remove        | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `54cd50f09e27ecc0:hb:fail`                          | G9c   | 93   | hb:fail          | DX   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `8526388771f87b84@54cd50f09e27ecc0:exit:remove`     | G9c   | 94   | exit:remove      | FC   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `8526388771f87b84@54cd50f09e27ecc0:exit:value`      | G9c   | 94   | exit:value       | FC   | MUST        | `test_guilt_env_file_missing_refuses`                                                                                                                                                   |
+| `bcb17d0bb9f3e67c:cond:never`                       | G9d   | 96   | cond:never       | FO   | MUST        | `test_guilt_env_placeholders_refuse`                                                                                                                                                    |
+| `bcb17d0bb9f3e67c:cond:always`                      | G9d   | 96   | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `020824d34a8091ee:diag:remove`                      | G9d   | 97   | diag:remove      | DX   | MUST        | `test_guilt_env_placeholders_refuse`                                                                                                                                                    |
+| `ec36a5a8c358f487:hb:remove`                        | G9d   | 98   | hb:remove        | DX   | MUST        | `test_guilt_env_placeholders_refuse`                                                                                                                                                    |
+| `ec36a5a8c358f487:hb:fail`                          | G9d   | 98   | hb:fail          | DX   | MUST        | `test_guilt_env_placeholders_refuse`                                                                                                                                                    |
+| `8526388771f87b84@ec36a5a8c358f487:exit:remove`     | G9d   | 99   | exit:remove      | FO   | MUST        | `test_guilt_env_placeholders_refuse`                                                                                                                                                    |
+| `8526388771f87b84@ec36a5a8c358f487:exit:value`      | G9d   | 99   | exit:value       | FC   | MUST        | `test_guilt_env_placeholders_refuse`                                                                                                                                                    |
+| `a591dbf70bd50123:cond:never`                       | G6    | 134  | cond:never       | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                                                                                                |
+| `a591dbf70bd50123:cond:always`                      | G6    | 134  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `a591dbf70bd50123:test#1:true`                      | G6a   | 134  | test#1:true      | DX   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                                                     |
+| `a591dbf70bd50123:test#1:false`                     | G6a   | 134  | test#1:false     | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                                                                                                |
+| `a591dbf70bd50123:test#2:true`                      | G6b   | 134  | test#2:true      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `a591dbf70bd50123:test#2:false`                     | G6b   | 134  | test#2:false     | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                                                                                                |
+| `a591dbf70bd50123:andor:drop-left`                  | G6a   | 134  | andor:drop-left  | DX   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                                                     |
+| `a591dbf70bd50123:andor:drop-right`                 | G6b   | 134  | andor:drop-right | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `a591dbf70bd50123:neg:drop`                         | G6b   | 134  | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                                                      |
+| `3dd6763e15577a2b:diag:remove`                      | G6    | 135  | diag:remove      | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                                                                                                |
+| `e7eb6aa9779abace@3dd6763e15577a2b:hb:remove`       | G6    | 136  | hb:remove        | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                                                                                                |
+| `e7eb6aa9779abace@3dd6763e15577a2b:hb:fail`         | G6    | 136  | hb:fail          | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                                                                                                |
+| `8526388771f87b84@3dd6763e15577a2b:exit:remove`     | G6    | 137  | exit:remove      | DX   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                                                                                                |
+| `8526388771f87b84@3dd6763e15577a2b:exit:value`      | G6    | 137  | exit:value       | FC   | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                                                                                                |
+| `68c85aa55e51903d:const:value`                      | G0j   | 140  | const:value      | FO   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                                                                                                  |
+| `b259e08545de7d9b:const:value`                      | G0k   | 141  | const:value      | EQ   | EQUIVALENT  | — (see reason)                                                                                                                                                                          |
+| `f38e1e3bd15a938d:cond:never`                       | G4a   | 142  | cond:never       | FO   | MUST        | `[symlink_pin]`                                                                                                                                                                         |
+| `f38e1e3bd15a938d:cond:always`                      | G4a   | 142  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `cc48e9e0b1618624:diag:remove`                      | G4a   | 143  | diag:remove      | DX   | MUST        | `[symlink_pin]`                                                                                                                                                                         |
+| `e7eb6aa9779abace@cc48e9e0b1618624:hb:remove`       | G4a   | 144  | hb:remove        | DX   | MUST        | `[symlink_pin]`                                                                                                                                                                         |
+| `e7eb6aa9779abace@cc48e9e0b1618624:hb:fail`         | G4a   | 144  | hb:fail          | DX   | MUST        | `[symlink_pin]`                                                                                                                                                                         |
+| `8526388771f87b84@cc48e9e0b1618624:exit:remove`     | G4a   | 145  | exit:remove      | FO   | MUST        | `[symlink_pin]`                                                                                                                                                                         |
+| `8526388771f87b84@cc48e9e0b1618624:exit:value`      | G4a   | 145  | exit:value       | FC   | MUST        | `[symlink_pin]`                                                                                                                                                                         |
+| `56256af7dea49700:cond:never`                       | G4d   | 146  | cond:never       | FO   | MUST        | `test_innocence_valid_pin_overrides_env`, `[bad_semver_planted]`                                                                                                                        |
+| `56256af7dea49700:cond:always`                      | G4d   | 146  | cond:always      | FC   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                                                                                                  |
+| `634103c1b53d95f7:cond:never`                       | G4e   | 147  | cond:never       | FC   | MUST        | `[directory]`, `[dev_null]`                                                                                                                                                             |
+| `634103c1b53d95f7:cond:always`                      | G4e   | 147  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `634103c1b53d95f7:neg:drop`                         | G4e   | 147  | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `[directory]`, `[dev_null]`                                                                                                                   |
+| `a496ea1ec476fd67:diag:remove`                      | G4e   | 148  | diag:remove      | DX   | MUST        | `[directory]`                                                                                                                                                                           |
+| `e7eb6aa9779abace@a496ea1ec476fd67:hb:remove`       | G4e   | 149  | hb:remove        | DX   | MUST        | `[directory]`                                                                                                                                                                           |
+| `e7eb6aa9779abace@a496ea1ec476fd67:hb:fail`         | G4e   | 149  | hb:fail          | DX   | MUST        | `[directory]`                                                                                                                                                                           |
+| `8526388771f87b84@a496ea1ec476fd67:exit:remove`     | G4e   | 150  | exit:remove      | FC   | MUST        | `[directory]`, `[dev_null]`                                                                                                                                                             |
+| `8526388771f87b84@a496ea1ec476fd67:exit:value`      | G4e   | 150  | exit:value       | FC   | MUST        | `[directory]`, `[dev_null]`                                                                                                                                                             |
+| `ab69b3bd94339e85:cond:never`                       | G4f   | 152  | cond:never       | DX   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                                                                                                             |
+| `ab69b3bd94339e85:cond:always`                      | G4f   | 152  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `ab69b3bd94339e85:neg:drop`                         | G4f   | 152  | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                                                                   |
+| `51fb56231344763b:diag:remove`                      | G4f   | 153  | diag:remove      | DX   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                                                                                                             |
+| `e7eb6aa9779abace@51fb56231344763b:hb:remove`       | G4f   | 154  | hb:remove        | DX   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                                                                                                             |
+| `e7eb6aa9779abace@51fb56231344763b:hb:fail`         | G4f   | 154  | hb:fail          | DX   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                                                                                                             |
+| `8526388771f87b84@51fb56231344763b:exit:remove`     | G4f   | 155  | exit:remove      | DX   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                                                                                                             |
+| `8526388771f87b84@51fb56231344763b:exit:value`      | G4f   | 155  | exit:value       | FC   | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                                                                                                             |
+| `71a19acda9e9d654:cond:never`                       | G1    | 171  | cond:never       | FO   | MUST        | `[nul_same_line_planted]`                                                                                                                                                               |
+| `71a19acda9e9d654:cond:always`                      | G1    | 171  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `71a19acda9e9d654:readopt#1:drop`                   | G1c   | 171  | readopt#1:drop   | EQ   | EQUIVALENT  | — (see reason)                                                                                                                                                                          |
+| `71a19acda9e9d654:readopt#2:drop`                   | G1b   | 171  | readopt#2:drop   | DX   | MUST        | `[nul_after_backslash_planted]`                                                                                                                                                         |
+| `71a19acda9e9d654:readopt#3:drop`                   | G1a   | 171  | readopt#3:drop   | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `71a19acda9e9d654:redir:drop`                       | G1d   | 171  | redir:drop       | FO   | MUST        | `[nul_same_line_planted]`, `[embedded_nul]`                                                                                                                                             |
+| `d3563a941a515024:diag:remove`                      | G1    | 172  | diag:remove      | DX   | MUST        | `[nul_same_line_planted]`                                                                                                                                                               |
+| `e7eb6aa9779abace@d3563a941a515024:hb:remove`       | G1    | 173  | hb:remove        | DX   | MUST        | `[nul_same_line_planted]`                                                                                                                                                               |
+| `e7eb6aa9779abace@d3563a941a515024:hb:fail`         | G1    | 173  | hb:fail          | DX   | MUST        | `[nul_same_line_planted]`                                                                                                                                                               |
+| `8526388771f87b84@d3563a941a515024:exit:remove`     | G1    | 174  | exit:remove      | FO   | MUST        | `[nul_same_line_planted]`                                                                                                                                                               |
+| `8526388771f87b84@d3563a941a515024:exit:value`      | G1    | 174  | exit:value       | FC   | MUST        | `[nul_same_line_planted]`                                                                                                                                                               |
+| `f92099df19bdd5b5:cond:never`                       | G2d   | 178  | cond:never       | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `f92099df19bdd5b5:test:false`                       | G2a   | 178  | test:false       | FO   | MUST        | `[two_lines_last_unterminated_planted]`, `test_innocence_single_line_without_trailing_newline_applies`                                                                                  |
+| `f92099df19bdd5b5:andor:drop-left`                  | G2a   | 178  | andor:drop-left  | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `f92099df19bdd5b5:andor:drop-right`                 | G2a   | 178  | andor:drop-right | FO   | MUST        | `[two_lines_last_unterminated_planted]`, `test_innocence_single_line_without_trailing_newline_applies`                                                                                  |
+| `f92099df19bdd5b5:readopt#1:drop`                   | G2b   | 178  | readopt#1:drop   | FO   | MUST        | `[trailing_space_planted]`, `[leading_tab_planted]`                                                                                                                                     |
+| `f92099df19bdd5b5:readopt#2:drop`                   | G2c   | 178  | readopt#2:drop   | FO   | MUST        | `[backslash_in_version_planted]`                                                                                                                                                        |
+| `a9f7da6fc4270e96:redir:drop`                       | G2e   | 181  | redir:drop       | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `db5f7e40037a4650:cond:never`                       | G2    | 182  | cond:never       | FO   | MUST        | `[two_lines_diff_versions_planted]`                                                                                                                                                     |
+| `db5f7e40037a4650:cond:always`                      | G2    | 182  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `db5f7e40037a4650:test:relop`                       | G2    | 182  | test:relop       | DX   | MUST        | `[empty]`                                                                                                                                                                               |
+| `04d80b64424cad2d:diag:remove`                      | G2    | 183  | diag:remove      | DX   | MUST        | `[two_lines_diff_versions_planted]`                                                                                                                                                     |
+| `e7eb6aa9779abace@04d80b64424cad2d:hb:remove`       | G2    | 184  | hb:remove        | DX   | MUST        | `[two_lines_diff_versions_planted]`                                                                                                                                                     |
+| `e7eb6aa9779abace@04d80b64424cad2d:hb:fail`         | G2    | 184  | hb:fail          | DX   | MUST        | `[two_lines_diff_versions_planted]`                                                                                                                                                     |
+| `8526388771f87b84@04d80b64424cad2d:exit:remove`     | G2    | 185  | exit:remove      | FO   | MUST        | `[two_lines_diff_versions_planted]`                                                                                                                                                     |
+| `8526388771f87b84@04d80b64424cad2d:exit:value`      | G2    | 185  | exit:value       | FC   | MUST        | `[two_lines_diff_versions_planted]`                                                                                                                                                     |
+| `c21200da23f1dc4e:alt:widen`                        | G4b   | 188  | alt:widen        | FO   | MUST        | `[bare_version_planted]`                                                                                                                                                                |
+| `c21200da23f1dc4e:alt:neutralise`                   | G4b   | 188  | alt:neutralise   | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `69e11195653e133e:alt:neutralise`                   | G4c   | 191  | alt:neutralise   | DX   | MUST        | `[bare_version_planted]`, `[unknown_key]`                                                                                                                                               |
+| `5d20bc7c8d9090c8:diag:remove`                      | G4c   | 192  | diag:remove      | DX   | MUST        | `[bare_version_planted]`                                                                                                                                                                |
+| `e7eb6aa9779abace@5d20bc7c8d9090c8:hb:remove`       | G4c   | 193  | hb:remove        | DX   | MUST        | `[bare_version_planted]`                                                                                                                                                                |
+| `e7eb6aa9779abace@5d20bc7c8d9090c8:hb:fail`         | G4c   | 193  | hb:fail          | DX   | MUST        | `[bare_version_planted]`                                                                                                                                                                |
+| `8526388771f87b84@5d20bc7c8d9090c8:exit:remove`     | G4c   | 194  | exit:remove      | DX   | MUST        | `[bare_version_planted]`                                                                                                                                                                |
+| `8526388771f87b84@5d20bc7c8d9090c8:exit:value`      | G4c   | 194  | exit:value       | FC   | MUST        | `[bare_version_planted]`                                                                                                                                                                |
+| `af5687a8e077a442:cond:never`                       | G3    | 197  | cond:never       | FO   | MUST        | `[bad_semver_planted]`, `[traversal_escape_planted]`                                                                                                                                    |
+| `af5687a8e077a442:cond:always`                      | G3    | 197  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `af5687a8e077a442:neg:drop`                         | G3    | 197  | neg:drop         | FO   | MUST        | `[bad_semver_planted]`, `test_innocence_valid_pin_overrides_env`                                                                                                                        |
+| `af5687a8e077a442:call:remove`                      | G3    | 197  | call:remove      | FO   | MUST        | `[bad_semver_planted]`, `[traversal_escape_planted]`                                                                                                                                    |
+| `af5687a8e077a442:call:fail`                        | G3    | 197  | call:fail        | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `bc42b08a01b4b06e:diag:remove`                      | G3    | 198  | diag:remove      | DX   | MUST        | `[bad_semver_planted]`                                                                                                                                                                  |
+| `e7eb6aa9779abace@bc42b08a01b4b06e:hb:remove`       | G3    | 199  | hb:remove        | DX   | MUST        | `[bad_semver_planted]`                                                                                                                                                                  |
+| `e7eb6aa9779abace@bc42b08a01b4b06e:hb:fail`         | G3    | 199  | hb:fail          | DX   | MUST        | `[bad_semver_planted]`                                                                                                                                                                  |
+| `8526388771f87b84@bc42b08a01b4b06e:exit:remove`     | G3    | 200  | exit:remove      | FO   | MUST        | `[bad_semver_planted]`, `[traversal_escape_planted]`                                                                                                                                    |
+| `8526388771f87b84@bc42b08a01b4b06e:exit:value`      | G3    | 200  | exit:value       | FC   | MUST        | `[bad_semver_planted]`, `[traversal_escape_planted]`                                                                                                                                    |
+| `1447089bdc0e8175:cond:never`                       | G5    | 206  | cond:never       | FO   | MUST        | `[bin_missing]`                                                                                                                                                                         |
+| `1447089bdc0e8175:cond:always`                      | G5    | 206  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `1447089bdc0e8175:test#1:true`                      | G5a   | 206  | test#1:true      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `1447089bdc0e8175:test#1:false`                     | G5a   | 206  | test#1:false     | FO   | MUST        | `[bin_is_directory]`                                                                                                                                                                    |
+| `1447089bdc0e8175:test#2:true`                      | G5b   | 206  | test#2:true      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `1447089bdc0e8175:test#2:false`                     | G5b   | 206  | test#2:false     | FO   | MUST        | `[bin_not_executable_planted]`                                                                                                                                                          |
+| `1447089bdc0e8175:andor:drop-left`                  | G5a   | 206  | andor:drop-left  | FO   | MUST        | `[bin_is_directory]`                                                                                                                                                                    |
+| `1447089bdc0e8175:andor:drop-right`                 | G5b   | 206  | andor:drop-right | FO   | MUST        | `[bin_not_executable_planted]`                                                                                                                                                          |
+| `1447089bdc0e8175:neg#1:drop`                       | G5a   | 206  | neg#1:drop       | FO   | MUST        | `test_innocence_valid_pin_overrides_env`, `[bin_is_directory]`                                                                                                                          |
+| `1447089bdc0e8175:neg#2:drop`                       | G5b   | 206  | neg#2:drop       | FO   | MUST        | `test_innocence_valid_pin_overrides_env`, `[bin_not_executable_planted]`                                                                                                                |
+| `2e93e4cbc19c5ccb:diag:remove`                      | G5    | 207  | diag:remove      | DX   | MUST        | `[bin_missing]`                                                                                                                                                                         |
+| `e7eb6aa9779abace@2e93e4cbc19c5ccb:hb:remove`       | G5    | 208  | hb:remove        | DX   | MUST        | `[bin_missing]`                                                                                                                                                                         |
+| `e7eb6aa9779abace@2e93e4cbc19c5ccb:hb:fail`         | G5    | 208  | hb:fail          | DX   | MUST        | `[bin_missing]`                                                                                                                                                                         |
+| `8526388771f87b84@2e93e4cbc19c5ccb:exit:remove`     | G5    | 209  | exit:remove      | FO   | MUST        | `[bin_missing]`                                                                                                                                                                         |
+| `8526388771f87b84@2e93e4cbc19c5ccb:exit:value`      | G5    | 209  | exit:value       | FC   | MUST        | `[bin_missing]`                                                                                                                                                                         |
+| `aa434ce1dbd99a3f:diag:remove`                      | G7h   | 212  | diag:remove      | DX   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                                                                                                  |
+| `015f150fe65d6e68:setopt:remove`                    | G7a   | 218  | setopt:remove    | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `cfcc9993533dc30d:setopt:remove`                    | G7b   | 220  | setopt:remove    | FO   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                                                                                                  |
+| `c34b923460d94846:setopt:remove`                    | G7c   | 222  | setopt:remove    | EQ   | EQUIVALENT  | — (see reason)                                                                                                                                                                          |
+| `82285122d3446bef@c34b923460d94846:reassert:remove` | G8a   | 231  | reassert:remove  | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                                                                                                    |
+| `82285122d3446bef@c34b923460d94846:reassert:value`  | G8a   | 231  | reassert:value   | ST   | MUST        | `test_wrapper_ships_production_constants`                                                                                                                                               |
+| `93cf1180a8431270@c34b923460d94846:reassert:remove` | G8b   | 232  | reassert:remove  | FO   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                                                                                                    |
+| `93cf1180a8431270@c34b923460d94846:reassert:value`  | G8b   | 232  | reassert:value   | ST   | MUST        | `test_wrapper_ships_production_constants`                                                                                                                                               |
+| `0ff33cfcfcad48ee@c34b923460d94846:reassert:remove` | G8c   | 233  | reassert:remove  | FO   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                                                                                                    |
+| `0ff33cfcfcad48ee@c34b923460d94846:reassert:value`  | G8c   | 233  | reassert:value   | ST   | MUST        | `test_wrapper_ships_production_constants`                                                                                                                                               |
+| `bf2870af16c0a446@c34b923460d94846:reassert:remove` | G8d   | 234  | reassert:remove  | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                                                                                                    |
+| `bf2870af16c0a446@c34b923460d94846:reassert:value`  | G8d   | 234  | reassert:value   | DX   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `b148bfe29bbd3145@c34b923460d94846:reassert:remove` | G8e   | 235  | reassert:remove  | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                                                                                                    |
+| `b148bfe29bbd3145@c34b923460d94846:reassert:value`  | G8e   | 235  | reassert:value   | DX   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `7c75f442896ed2da@c34b923460d94846:reassert:remove` | G8f   | 236  | reassert:remove  | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                                                                                                    |
+| `7c75f442896ed2da@c34b923460d94846:reassert:value`  | G8f   | 236  | reassert:value   | DX   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `19a916d8fe196194:cond:never`                       | G9e   | 251  | cond:never       | FO   | MUST        | `test_kill_switch_stops_without_exec`                                                                                                                                                   |
+| `19a916d8fe196194:cond:always`                      | G9e   | 251  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `19a916d8fe196194:default:drop`                     | G9f   | 251  | default:drop     | FC   | MUST        | `test_innocence_env_without_kill_switch_key_applies`                                                                                                                                    |
+| `9111f81d771c3ba0:diag:remove`                      | G9e   | 252  | diag:remove      | DX   | MUST        | `test_kill_switch_stops_without_exec`                                                                                                                                                   |
+| `3fb04a4b6a09dd60:hb:remove`                        | G9e   | 253  | hb:remove        | DX   | MUST        | `test_kill_switch_stops_without_exec`                                                                                                                                                   |
+| `3fb04a4b6a09dd60:hb:fail`                          | G9e   | 253  | hb:fail          | DX   | MUST        | `test_kill_switch_stops_without_exec`                                                                                                                                                   |
+| `c22995adc29757a9:exit:remove`                      | G9e   | 254  | exit:remove      | FO   | MUST        | `test_kill_switch_stops_without_exec`                                                                                                                                                   |
+| `c22995adc29757a9:exit:value`                       | G9e   | 254  | exit:value       | FC   | MUST        | `test_kill_switch_stops_without_exec`                                                                                                                                                   |
+| `c3bfad593fcd3864:cond:never`                       | G9g   | 257  | cond:never       | FC   | MUST        | `test_guilt_venv_missing_refuses`                                                                                                                                                       |
+| `c3bfad593fcd3864:cond:always`                      | G9g   | 257  | cond:always      | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `c3bfad593fcd3864:neg:drop`                         | G9g   | 257  | neg:drop         | FC   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_venv_missing_refuses`                                                                                                             |
+| `535fcf39e411110e:diag:remove`                      | G9g   | 258  | diag:remove      | DX   | MUST        | `test_guilt_venv_missing_refuses`                                                                                                                                                       |
+| `a1075c3ed7b74e83:hb:remove`                        | G9g   | 259  | hb:remove        | DX   | MUST        | `test_guilt_venv_missing_refuses`                                                                                                                                                       |
+| `a1075c3ed7b74e83:hb:fail`                          | G9g   | 259  | hb:fail          | DX   | MUST        | `test_guilt_venv_missing_refuses`                                                                                                                                                       |
+| `8526388771f87b84@a1075c3ed7b74e83:exit:remove`     | G9g   | 260  | exit:remove      | FC   | MUST        | `test_guilt_venv_missing_refuses`                                                                                                                                                       |
+| `8526388771f87b84@a1075c3ed7b74e83:exit:value`      | G9g   | 260  | exit:value       | FC   | MUST        | `test_guilt_venv_missing_refuses`                                                                                                                                                       |
+| `818836c375d5c9cc:andor:drop-left`                  | G9h   | 263  | andor:drop-left  | FC   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `818836c375d5c9cc:andor:drop-right`                 | G9h   | 263  | andor:drop-right | FO   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                                                     |
+| `818836c375d5c9cc:exit:remove`                      | G9h   | 263  | exit:remove      | FO   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                                                     |
+| `818836c375d5c9cc:exit:value`                       | G9h   | 263  | exit:value       | FC   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                                                     |
+| `818836c375d5c9cc:hb:remove`                        | G9h   | 263  | hb:remove        | DX   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                                                     |
+| `818836c375d5c9cc:hb:fail`                          | G9h   | 263  | hb:fail          | DX   | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                                                     |
+| `422567c140a13db3:reassert:remove`                  | G8g   | 264  | reassert:remove  | FO   | MUST        | `test_guilt_env_cannot_clobber_pythonpath`                                                                                                                                              |
+| `422567c140a13db3:reassert:value`                   | G8g   | 264  | reassert:value   | FO   | MUST        | `test_guilt_env_cannot_clobber_pythonpath`                                                                                                                                              |
+| `a0e431e3489db7f5:hb:remove`                        | G9i   | 266  | hb:remove        | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                                                                                                    |
+| `a0e431e3489db7f5:hb:fail`                          | G9i   | 266  | hb:fail          | DX   | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                                                                                                    |
+| `858e69f9cd802136:cond:never`                       | G7d   | 268  | cond:never       | FO   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `858e69f9cd802136:cond:always`                      | G7d   | 268  | cond:always      | FO   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                                                                                                  |
+| `ad56e24af0b5d760:diag:remove`                      | G7e   | 269  | diag:remove      | DX   | MUST        | `test_pin_applied_log_line`                                                                                                                                                             |
+| `ad56e24af0b5d760:abspath:strip`                    | G7e   | 269  | abspath:strip    | DX   | MUST        | `[nonexistent]`                                                                                                                                                                         |
+| `ad56e24af0b5d760:dateopt:drop`                     | G7i   | 269  | dateopt:drop     | DX   | MUST        | `test_stamps_are_utc_under_a_non_utc_tz`                                                                                                                                                |
+| `b9a04673c49fc0c4:exec:remove`                      | G7f   | 270  | exec:remove      | FO   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                                                                                                |
+| `b9a04673c49fc0c4:abspath:strip`                    | G7f   | 270  | abspath:strip    | FC   | MUST        | `test_guilt_env_path_cannot_disable_the_pin[nonexistent]`                                                                                                                               |
+| `b9a04673c49fc0c4:assign#1:drop`                    | G7f   | 270  | assign#1:drop    | FO   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_daemon_env_cannot_clobber_the_resolved_pin`                                                                                       |
+| `b9a04673c49fc0c4:assign#2:drop`                    | G7f   | 270  | assign#2:drop    | FO   | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_daemon_env_cannot_clobber_the_resolved_pin`                                                                                       |
+| `b044fcf5065694b5:exec:remove`                      | G7g   | 273  | exec:remove      | FC   | MUST        | `test_innocence_missing_pin_is_legacy`                                                                                                                                                  |
 
-Totals: 136 sites, 177 mutants (170 MUST, 7 EQUIVALENT) under 71 labels. Declared modes: 50 FO, 54 FC, 58 DX, 8 ST, 7 EQ.
+Totals: 139 sites, 199 mutants (192 MUST, 7 EQUIVALENT) under 71 labels. Declared modes: 53 FO, 58 FC, 73 DX, 8 ST, 7 EQ.
 
 <!-- d5-inventory:end -->
 
@@ -1313,16 +1470,16 @@ Changed:
 ### 5bis.8 What the `04dd6b51e4` suite kills today (measured 2026-09-27)
 
 Setup: the scratch prototype of the generator route (non-normative), on M5 with bash 3.2.57,
-against the 28-test suite and the wrapper at `04dd6b51e4`. S3 generates 175 mutants there,
+against the 28-test suite and the wrapper at `04dd6b51e4`. S3 generates 197 mutants there,
 two fewer than on the target, because lines 72 and 74 have no `abspath` site. Their
 dispositions are the committed YAML's, carried by line, key and member (lines 72 and 74 have
 other ids at `04dd6b51e4`).
 
 Results:
 
-- 134 sites and 175 mutants, with no `SPAN` and no `SYNTAX`;
+- 137 sites and 197 mutants, with no `SPAN`, no `SYNTAX` and no closed-world error;
 - the baseline passed 28 of 28;
-- 105 killed and 70 survived: 63 MUST under 38 labels, plus the 7 EQUIVALENT. No EQUIVALENT
+- 121 killed and 76 survived: 69 MUST under 38 labels, plus the 7 EQUIVALENT. No EQUIVALENT
   mutant was killed;
 - six MUST mutants were killed only by tests other than their declared killers. At
   `04dd6b51e4` those killers either do not exist yet or do not yet assert contracts N and P:
@@ -1333,7 +1490,16 @@ killed and 66 survive (61 MUST in 38 rows, 5 EQUIVALENT), as gate r3 measured. O
 generator-only members, 25 are killed, most of them always-refusing ones that any innocence
 test catches. Four survive: G6a's `test#1:true` and G2a's `test:false` (MUST: the D02 and D10
 fixtures are not in the 28-test suite, and the second is the D10 limb deletion in its other
-form), plus the two new EQUIVALENT removals.
+form), plus the two new EQUIVALENT removals. The last round's 6 members are all killed at
+`04dd6b51e4`: the arms' `widen` on line 84 and `neutralise` on lines 85 and 188 by every
+valid-pin test (they refuse a legitimate start), line 84's `neutralise` by
+`[traversal_escape_planted]`, and the two `assign` drops of line 270 by the five tests that
+`env-drop` failed (`test_innocence_valid_pin_overrides_env` and
+`test_guilt_daemon_env_cannot_clobber_the_resolved_pin` among them). The fix pass's 17 members
+take the verdict of the member beside them: each heartbeat call's `fail` is killed exactly
+where that call's `remove` is (9 of 15; the 6 that survive are under G4f, G9c, G9d, G9e, G9g
+and G9h, whose `remove` survives too), and line 197's `call:remove` and `call:fail` are killed
+by their declared killers, like the `never` and `always` of the condition that holds the call.
 
 Surviving MUST mutants by label, named by re-gate #2:
 
@@ -1346,7 +1512,7 @@ In no earlier table (round 1):
 - G1b (the probe's `-r`);
 - the diagnostic removals of G1, G2, G3, G4a, G4e and G5 (no test asserts a reason);
 - G4c, the key case's catch-all arm (its `neutralise`, diagnostic and exit members);
-- G4f's heartbeat removal (the mode-000 test never reads the heartbeat);
+- G4f's heartbeat `remove` and `fail` (the mode-000 test never reads the heartbeat);
 - G8g (`export PYTHONPATH`), both members;
 - G9a (`set -u`);
 - G9f (the kill switch's `:-true` default; every test sets the key).
@@ -1367,19 +1533,23 @@ fixtures are not in the 28-test suite).
 (`04dd6b51e4` plus the D5 heartbeat fix), against a scratch suite of 50 tests that applies
 5bis.4 and 5bis.7:
 
-- 136 sites and 177 generated mutants, all annotated, with no `SPAN`, `LINES` or `SYNTAX`;
+- 139 sites and 199 generated mutants, all annotated, with no `SPAN`, `LINES`, `SYNTAX` or
+  closed-world error;
 - the baseline passed 50 of 50;
-- all 170 MUST mutants were killed, each by a test in its `killed_by` list, and every
+- all 192 MUST mutants were killed, each by a test in its `killed_by` list, and every
   `killed_by` entry matched exactly one collected test;
 - the 7 EQUIVALENT mutants survived, and left identical run records in all 47 tests that run
   the wrapper;
-- all 177 declared modes equal the measured ones, with 0 errors of any code;
+- all 199 declared modes equal the measured ones, with 0 errors of any code (the fix pass:
+  2026-09-27T08:36:36Z–08:41:03Z at load average 14 to 50; the last round's 182:
+  07:54:09Z–07:57:31Z at 9 to 13);
 - wall time: 2 to 5 minutes on 5 workers (2026-09-27T04:35:04Z–04:37:14Z at load average 13 to
   20; the re-run on the council's fixes, 05:15:40Z–05:20:27Z at 21 to 38, same verdicts).
   The schema-1 runs took about 5 minutes for 132 mutants at a load average near 7,
   17 minutes for 130 near 35, and 24 minutes for the 148 of gate r3 between 35 and 130.
 
-No fixture beyond 5bis.7 was needed: the 29 generator-only members die on the same 50 tests.
+No fixture beyond 5bis.7 was needed: the 52 generator-only members (29, the 6 of the last
+round and the 17 of its fix pass) die on the same 50 tests.
 
 **Modes: measured, not predicted.** After the corrections below, every declared mode equals
 the measured one. The declarations were not independent predictions, and S3 does not claim
@@ -1395,8 +1565,8 @@ The three council-round-2 mutants (G7e/path, G9j/path, G9k/path) and the two add
 coordinator's ruling (G7i/-u, G9l/-u) were declared DX before any run and measured DX.
 Gate r3's 16 carry FC for the 14 exit values, DX for G2/-gt and EQ for G9b/v, and measured
 so. With the generator, the 148 carried mutants measured exactly the modes schema 1 declared.
-The 29 new members were declared from their first run (FC 18, FO 5, DX 4, EQ 2), as the
-table shows.
+The 29 new members were declared from their first run (FC 18, FO 5, DX 4, EQ 2), and the
+last round's 6 from theirs (FC 3, FO 3), as the table shows.
 
 In every case the YAML carries the measured value. Killer choice matters too. G5a/! and G5b/!
 measured FC while their only killer was the valid-pin innocence test. With their isolating
@@ -1411,11 +1581,11 @@ resumed build writes that.
 The script is `scripts/ci/wa_codex_wrapper_mutants.py`. It ships in the resumed PR-1 together
 with its selftest and runs in `wa-codex-pin.yml`. It is generic over the inventory: the
 target file and the test files come from the YAML, and the mutants come from the target. PR-2
-therefore adds an installer inventory, not a second script. Where the installer uses syntax
-outside the 17 site kinds (`[[ … ]]`, `find` predicate terms, `awk` programs, a refusal
-through a function call such as `die`), PR-2 extends the grammar in the same PR, together
-with guilt and innocence selftests for the new kinds. §5ter.6 measures what the generator
-does on #7340's installer today.
+therefore adds an installer inventory, not a second script. Where the installer uses a form
+the closed world does not list (`[[ … ]]`, `find`, `awk`, `sudo`, `local`, a program not in
+the catalogue), PR-2 rewrites it or extends the grammar and the catalogue in the same PR,
+together with guilt and innocence selftests for each addition. §5ter.6 measures what the
+generator does on #7340's installer today.
 
 ### 5ter.1 Interface
 
@@ -1500,9 +1670,9 @@ Each step fails with a named error. Steps 1–4 run no test.
    the generated count differs from `derived_from.mutants`. Both guard the generator itself
    against drift.
 3. **Generate.** Extract the sites (5bis.3), generate every member (5bis.3), and compute the
-   ids (5bis.3a). Errors: `MASKED` and `UNSUPPORTED` (5bis.3, what masking hides: a site in
-   a double-quoted `$( … )` or a literal `eval`/`trap`/shell `-c` string; a non-literal such
-   string, `alias`, a `.`/`source` other than the env file, `$'…'`, a heredoc, a backquote);
+   ids (5bis.3a). Errors: `UNSUPPORTED` for every form the closed world does not list, and
+   `MASKED` for a site in a double-quoted `$( … )` or a literal `eval`/`trap`/shell `-c`
+   string (5bis.3, closed world);
    `SPAN` for an id; `NO-MEMBER` for a site key; `ID-COLLISION`; `LINES` for an id (the
    one-line check of 5bis.3 rule 4, on every mutant); and `SYNTAX` for an id when
    `/bin/sh -n` or `bash -n` rejects the mutant.
@@ -1575,10 +1745,10 @@ DX, <d> ST, <f> EQ.`, counted from the generation and the YAML (council round 4:
 
 ### 5ter.4 Selftest
 
-`--selftest` runs pytest only in cases e, f, g, h, i and m below, and takes under 90 s: case
-e runs two wrapper mutants, h and i one each, f and g only collect, and m runs the eleven
-mutants of a five-line script. Case ids name the committed inventory's entries by label and
-member; the ids themselves are in the 5bis.6 table.
+`--selftest` runs pytest only in cases e, f, g, h, i, m and q below, and takes under 120 s: case e
+runs two wrapper mutants, h and i one each, f and g only collect, m runs the fifteen mutants of a
+five-line script, and q the 55 members of its six minis, most of them twice. Case ids name the
+committed inventory's entries by label and member; the ids themselves are in the 5bis.6 table.
 
 Guilt cases. Each one must be detected, or the selftest fails:
 
@@ -1600,6 +1770,8 @@ Guilt cases. Each one must be detected, or the selftest fails:
   : "${_wcbw_plant:=q}" "${_wcbw_plant+y}"
   [ -O "$ENV_FILE" ] && heartbeat "planted" "planted"
   printf '%s\n' "planted" 1>&2
+  LC_ALL=C :
+  _is_semver "1.2.3"
   if false; then exec /usr/sbin/sysctl -n hw.ncpu; fi
   set -f
   : "$(date -r 0 -R)"
@@ -1610,41 +1782,45 @@ Guilt cases. Each one must be detected, or the selftest fails:
   ```
 
   The planted file passes `sh -n` and `bash -n`. S3 must report `STALE-DERIVATION` (the blob
-  changed) and `UNANNOTATED` for exactly the 31 ids generated on the planted lines, nothing
-  more and nothing less. Their site keys are exactly these 27:
+  changed) and `UNANNOTATED` for exactly the 39 ids generated on the planted lines, nothing
+  more and nothing less. Their site keys are exactly these 29:
 
-  | Planted line                                 | Site keys                              | Members generated                                     |
-  | -------------------------------------------- | -------------------------------------- | ----------------------------------------------------- |
-  | `export WCBW_PLANT_A=1`                      | const                                  | value                                                 |
-  | `wcbw_plant_b=1 wcbw_plant_c=2`              | reassert#1, reassert#2                 | #1 remove and value, #2 value (#2's remove merges)    |
-  | `until (! [ -s … ])\|\|:; do :; done`        | cond, test, andor, neg                 | never; true (no `false` in `until`); both drops; drop |
-  | `read -r -n 1 -d x … <"$ENV_FILE"`           | readopt#1, readopt#2, readopt#3, redir | drop each                                             |
-  | `: "${_wcbw_plant:=q}" "${_wcbw_plant+y}"`   | default#1, default#2                   | drop each                                             |
-  | `[ -O … ] && heartbeat …`                    | test, andor, hb                        | true, false; both drops; remove                       |
-  | `printf … 1>&2`                              | diag                                   | remove                                                |
-  | `if false; then exec /usr/sbin/sysctl …; fi` | cond, exec, abspath                    | always (never is a no-op); remove; strip              |
-  | `set -f`                                     | setopt                                 | remove                                                |
-  | `: "$(date -r 0 -R)"`                        | dateopt#1, dateopt#2                   | drop each                                             |
-  | `(a\|b) : ;;`                                | alt#1, alt#2                           | drop each                                             |
-  | `c) exit ;;`                                 | alt, exit                              | widen; remove                                         |
+  | Planted line                                 | Site keys                              | Members generated                                                                                 |
+  | -------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------- |
+  | `export WCBW_PLANT_A=1`                      | const                                  | value                                                                                             |
+  | `wcbw_plant_b=1 wcbw_plant_c=2`              | reassert#1, reassert#2                 | remove and value each (rule 5: one word each)                                                     |
+  | `until (! [ -s … ])\|\|:; do :; done`        | cond, test, andor, neg                 | never (the body `:` cannot leave, so no `always`); true (no `false` in `until`); both drops; drop |
+  | `read -r -n 1 -d x … <"$ENV_FILE"`           | readopt#1, readopt#2, readopt#3, redir | drop each                                                                                         |
+  | `: "${_wcbw_plant:=q}" "${_wcbw_plant+y}"`   | default#1, default#2                   | drop each                                                                                         |
+  | `[ -O … ] && heartbeat …`                    | test, andor, hb                        | true, false; both drops; remove and fail                                                          |
+  | `printf … 1>&2`                              | diag                                   | remove                                                                                            |
+  | `LC_ALL=C :`                                 | assign                                 | drop                                                                                              |
+  | `_is_semver "1.2.3"`                         | call                                   | remove and fail                                                                                   |
+  | `if false; then exec /usr/sbin/sysctl …; fi` | cond, exec, abspath                    | always (never is a no-op); remove; strip                                                          |
+  | `set -f`                                     | setopt                                 | remove                                                                                            |
+  | `: "$(date -r 0 -R)"`                        | dateopt#1, dateopt#2                   | drop each                                                                                         |
+  | `(a\|b) : ;;`                                | alt#1, alt#2                           | drop each; widen and neutralise on #1                                                             |
+  | `c) exit ;;`                                 | alt, exit                              | widen and neutralise; remove                                                                      |
 
-  All 17 kinds are there, each at least once in a form the target does not use: `until`; a
+  All 19 kinds are there, each at least once in a form the target does not use: `until`; a
   `!` right after `(`; a `[` at line start; an unspaced `||`; `read -n 1` followed by `-d x`;
   a `<` with no space; the `:=` and `+` defaults; a heartbeat after `&&`; a `printf` to
   `1>&2`; an `exec` after `then`; a path under `/usr/sbin`; `set -f`; a PATH-resolved `date`
   with `-r 0` before `-R`; the `(pattern)` arm; a bare `exit`; an `export` before the source;
-  two assignments on one line after it. An extractor fitted to the target's surface forms
-  misses some of them. The round-2 prototype did: it found 24 of the 27 sites (5bis.3).
+  two assignments on one line after it; a prefix assignment at column 0, which is an `assign`
+  site and not a `reassert`; a bare call of `_is_semver`, which the target calls only inside
+  `if !`. An extractor fitted to the target's surface forms misses some of them. The round-2
+  prototype did: it found 24 of the 27 sites the plant had then (5bis.3).
 
 - **b. Stable ids** (gate r4 re-scope). On copies of the target, compare the generated ids
   with the target's:
   - b1: four blocks of a blank line, a comment line, an indented comment line and a blank line
     inserted before lines 47, 60, 100 and 140, and `set -u` re-indented by two spaces: the
-    same 177 ids, each with the same mutated line up to indentation;
+    same 199 ids, each with the same mutated line up to indentation;
   - b2: an unrelated guard inserted after `_wcbw_pin_bin=""`
     (`if [ -e "$RUNTIME_DIR/.wcbw-selftest" ]; then`, a tagged `echo`, the
-    `heartbeat "refused" "pin invalid"` line, `exit 78`, `fi`): every one of the 177 ids is
-    still generated, and the 6 new ids all sit on the inserted lines;
+    `heartbeat "refused" "pin invalid"` line, `exit 78`, `fi`): every one of the 199 ids is
+    still generated, and the 7 new ids all sit on the inserted lines;
   - b3, the stated limit: `: wcbw_selftest` inserted right after `set +a` re-keys exactly the
     12 ids of the six repeated re-assert lines (12 lost, 12 gained), and nothing else.
 - **c. Annotation closure.** Delete one entry: exactly `UNANNOTATED <its id>`. Add an entry
@@ -1693,13 +1869,15 @@ Guilt cases. Each one must be detected, or the selftest fails:
   5ter.2 run-log record (tagged lines are those starting `mini: `). It has two tests:
   `test_valid_installs` (`GOT=abc WANT=abc`: rc 0, stdout `installed`, empty stderr) and
   `test_empty_digest_refuses` (`GOT= WANT=abc`: rc 78, empty stdout, stderr exactly
-  `mini: empty digest`). The generator gives 6 sites and 11 mutants.
+  `mini: empty digest`). The generator gives 8 sites and 15 mutants (each `die` call is a
+  `call` site).
   - m1: an inventory that annotates only what gate r4's miniature carried (the `die` line's
     diagnostic removal, exit removal and exit value, and the `drop-left` of both guards):
-    exactly six `UNANNOTATED`, the `test:true`, `test:false` and `andor:drop-right` of both
-    guard lines. `true || die "integrity mismatch"` is among them.
-  - m2: all 11 annotated, the integrity line's `test:true` and `andor:drop-right` as MUST
-    with killer `test_valid_installs`: exactly those two are `SURVIVED`.
+    exactly ten `UNANNOTATED`, the `test:true`, `test:false`, `andor:drop-right`, `call:remove`
+    and `call:fail` of both guard lines. `true || die "integrity mismatch"` is among them.
+  - m2: all 15 annotated, the integrity line's `test:true`, `andor:drop-right`, `call:remove`
+    and `call:fail` as MUST with killer `test_valid_installs`: exactly those four are
+    `SURVIVED`.
 
 - **n. The floor** (gate r4 re-scope, item 2). For each of the four paths §5ter.5 adds to
   the hot-zone list, alone in a changed-files list, `python3 scripts/evidence_pack_lint.py
@@ -1722,10 +1900,74 @@ Guilt cases. Each one must be detected, or the selftest fails:
   | o6b  | `trap "$WCBW_CODE" HUP`                               | `UNSUPPORTED l.265 non-literal trap string`           |
   | o6c  | `env bash -o errexit -c "$WCBW_CODE"`                 | `UNSUPPORTED l.265 non-literal bash string`           |
   | o6d  | `command sh -o errexit -c '[ -f "$X" ] \|\| exit 78'` | `MASKED l.265 sh string: andor,exit,test`             |
-  | o7a  | `alias wcbw_g='[ -f "$X" ] \|\| exit 78'`             | `UNSUPPORTED l.265 alias`                             |
+  | o7a  | `alias wcbw_g='[ -f "$X" ] \|\| exit 78'`             | `UNSUPPORTED l.265 command alias`                     |
   | o7b  | `. "$RUNTIME_DIR/wcbw.sh"`                            | `UNSUPPORTED l.265 source of "$RUNTIME_DIR/wcbw.sh"`  |
   | o8a  | `: $'[ -f x ] \|\| exit 78'`                          | `UNSUPPORTED l.265 ANSI-C quoting`                    |
   | o8b  | `trap '/bin/date -u >/dev/null' HUP`                  | `MASKED l.265 trap string: abspath,dateopt`           |
+
+- **q. The instances of gate r5's class** (the last round: q1–q4; its fix pass after
+  council round 5: q5 and q6). Each is a mini beside a test
+  file, in the shape of case m (`/bin/sh <mini>`, `PATH=/usr/bin:/bin`, stdin from
+  `/dev/null`, the 5ter.2 run-log record with every stderr line as a tagged line and the temp
+  directory replaced by `<T>`). Guilt: a suite without the fixture that isolates the guard,
+  and an inventory that annotates every generated member MUST with killers from that suite.
+  Innocence: the same with the fixture, zero errors.
+
+  | Case | Mini (after `#!/bin/sh`)                                                                                                                                                                              | Guilt suite → exactly                                                                                                                                                         | Innocence                                                                                                                                      |
+  | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+  | q1   | `die() { echo "mini: $1" >&2; exit 78; }`; `_is_hex()` holding `case $1 in` / `'') false ;;` / `*[!0-9a-f]*) false ;;` / `esac`; `if ! _is_hex "$GOT"; then die "bad digest"; fi`; `echo "installed"` | `test_valid_installs`, `test_empty_digest_refuses`: `SURVIVED` of the second arm's `alt:neutralise` (14 members)                                                              | `test_non_hex_digest_refuses` added: 14 of 14 killed; and the one-arm spelling `''\|*[!0-9a-f]*) false ;;` with the same three tests: 14 of 14 |
+  | q3   | `set -eu -o pipefail`; `: "$GOT"`; `printf '%s\n' "$GOT" \| grep -qx '[0-9a-f][0-9a-f]*' \| cat`; `echo "installed"`                                                                                  | `test_valid_installs`, `test_unset_digest_refuses`: `SURVIVED` of `setopt#1:remove` (`-e`) and `setopt#3:remove` (`pipefail`)                                                 | `test_non_hex_digest_refuses` added: 3 of 3 killed                                                                                             |
+  | q4   | `exec env DIGEST="$GOT" MODE=strict sh -c 'printf "%s %s\n" "$DIGEST" "$MODE"'`                                                                                                                       | `test_digest_passed` (stdout starts `abc `): `SURVIVED` of `assign#2:drop` (`MODE`)                                                                                           | `test_digest_and_mode_passed` (stdout exactly `abc strict`): 3 of 3 killed                                                                     |
+  | q5   | `check() { [ -f "$1" ] \|\| exit 78; }`; `check "$A"`; `check "$B"`; `echo ok`                                                                                                                        | `test_both_present`, `test_a_missing`: `SURVIVED` of line 4's `call:remove` and `call:fail` (10 members)                                                                      | `test_b_missing` added: 10 of 10 killed                                                                                                        |
+  | q6   | `verify_next() { [ -f "$1" ]; }`; `choose() {` / `while verify_next "$F"; do` / `return 0` / `done` / `return 78` / `}`; `choose`; `echo "rc=$?"`                                                     | `test_present` (stdout `rc=0`): `SURVIVED` of `cond:always`, the loop call's `remove`, `test:true`, both members of `return 78` and the `choose` call's `remove` (11 members) | `test_missing` (stdout `rc=78`) added: 11 of 11 killed                                                                                         |
+
+  q2 is static. The mini `SH_BIN=/bin/sh`, `die() { … }`,
+  `"$SH_BIN" -c '[ -n "$1" ] && [ "$1" = "$2" ]' _ "$GOT" "$WANT" || die "bad digest"`,
+  `echo "installed"` gives exactly `MASKED l.4 sh string: andor,test`: the constant resolves to
+  a shell, so its string is code. Line 4 rewritten with `timeout 5 /bin/sh`,
+  `/usr/bin/sudo -n /bin/sh`, `nohup /bin/sh` or `nice /bin/sh` in place of `"$SH_BIN"` gives
+  exactly `UNSUPPORTED l.4 command timeout` (`sudo`, `nohup`, `nice`), and
+  `SH_BIN="${SH:-/bin/sh}"` gives exactly `UNSUPPORTED l.4 non-literal command word "$SH_BIN"`.
+  Innocence: `"$SH_BIN" -c 'printf "%s\n" "$1"' _ "$GOT"` on line 4, a string with no site:
+  no error.
+
+- **r. Closed world.** Each row is a script `#!/bin/sh` followed by the lines shown. Step 3
+  must report exactly the error shown, and nothing for the innocence rows.
+
+  | Case | Lines                                               | Error                                                   |
+  | ---- | --------------------------------------------------- | ------------------------------------------------------- |
+  | r1   | `timeout 5 sh -c '[ -f "$X" ] \|\| exit 78'`        | `UNSUPPORTED l.2 command timeout`                       |
+  | r2   | `"$WCBW_SH" -c '[ -f "$X" ] \|\| exit 78'`          | `UNSUPPORTED l.2 non-literal command word "$WCBW_SH"`   |
+  | r3   | `python3 -c 'import sys; sys.exit(1)'`              | `UNSUPPORTED l.2 python3 form`                          |
+  | r4   | `sh "$ENV_FILE"`                                    | `UNSUPPORTED l.2 sh without -c`                         |
+  | r5   | `awk 'BEGIN { exit 1 }'`                            | `UNSUPPORTED l.2 command awk`                           |
+  | r6   | `find / -exec sh -c ': "$1"' _ {} \;`               | `UNSUPPORTED l.2 command find`                          |
+  | r7   | `for x in a; do :; done`                            | `UNSUPPORTED l.2 for`                                   |
+  | r8   | `[[ -f "$X" ]]`                                     | `UNSUPPORTED l.2 [[`                                    |
+  | r9   | `[ -f "$X" -a -x "$X" ] \|\| exit 78`               | `UNSUPPORTED l.2 test form`                             |
+  | r10  | `(( 1 < 2 )) \|\| exit 78`                          | `UNSUPPORTED l.2 arithmetic command`                    |
+  | r11  | `: "$(( 1 < 2 ))"`                                  | `UNSUPPORTED l.2 arithmetic form`                       |
+  | r12  | `: &`                                               | `UNSUPPORTED l.2 background &`                          |
+  | r13  | `: "${!X}"`                                         | `UNSUPPORTED l.2 parameter expansion ${!X}`             |
+  | r14  | `/bin/echo "x" >&2`                                 | `UNSUPPORTED l.2 command /bin/echo`                     |
+  | r15  | `set "-e"`                                          | `UNSUPPORTED l.2 set operand "-e"`                      |
+  | r16  | `grep() { :; }`                                     | `UNSUPPORTED l.2 function grep shadows a command`       |
+  | r17  | `read -r x 0<"$F"`                                  | `UNSUPPORTED l.2 redirection 0<`                        |
+  | r18  | `"exit" 78`                                         | `UNSUPPORTED l.2 quoted command word "exit"`            |
+  | r19  | `DATE_BIN=/bin/date`, `"$DATE_BIN" -u`              | `UNSUPPORTED l.3 command date named through a variable` |
+  | r20  | `case $1 in a) : ;;`, `esac`                        | `UNSUPPORTED l.2 case form`                             |
+  | r21  | `: $"x"`                                            | `UNSUPPORTED l.2 locale quoting`                        |
+  | r22  | `env -i sh -c ': ok'`                               | `UNSUPPORTED l.2 env option -i`                         |
+  | r23  | `if true; then`, `    export PYTHONPATH="$X"`, `fi` | `UNSUPPORTED l.3 export not at column 0`                |
+  | r24  | `if true; then`, `    . "$ENV_FILE"`, `fi`          | `UNSUPPORTED l.3 source not at column 0`                |
+  | r25  | `f() { :; }`, `exec f`                              | `UNSUPPORTED l.3 exec of function f`                    |
+  | r26  | `f() { :; }`, `env X=1 f`                           | `UNSUPPORTED l.3 env of function f`                     |
+  | r27  | `f() { :; }`, `command f`                           | `UNSUPPORTED l.3 command of function f`                 |
+  | r28  | `c() { :; }`, `trap c EXIT`                         | `MASKED l.3 trap string: call`                          |
+  | —    | `SH_BIN=/bin/sh`, `"$SH_BIN" -c 'printf "%s\n" ok'` | none                                                    |
+  | —    | `command -v true >/dev/null`                        | none                                                    |
+  | —    | `exec /usr/bin/env A=1 python3 -m x.y`              | none                                                    |
+  | —    | `trap 'rm -f "$T"' EXIT`                            | none                                                    |
 
 - **p. Counts, members, collisions** (council round 4).
   - p1: `derived_from.sites` plus one: exactly `SITE-COUNT`; `derived_from.mutants` plus one:
@@ -1738,19 +1980,19 @@ Guilt cases. Each one must be detected, or the selftest fails:
 
 Innocence:
 
-- The PR-1 target and the committed inventory pass steps 1–4 with 136 sites, 177 generated
-  ids and zero errors of any code.
+- The PR-1 target and the committed inventory pass steps 1–4 with 139 sites, 199 generated
+  ids and zero errors of any code, the closed world included.
 - m3: the mini with a third test, `test_integrity_mismatch_refuses` (`GOT=abc WANT=xyz`:
-  rc 78, empty stdout, stderr exactly `mini: integrity mismatch`), and m2's two entries
-  pointed at it: 11 of 11 killed, zero errors.
+  rc 78, empty stdout, stderr exactly `mini: integrity mismatch`), and m2's four entries
+  pointed at it: 15 of 15 killed, zero errors.
 - n: `docs/rules/operations.md` alone prints `1`.
 - o, the allowed forms, one plant at a time after `export PYTHONPATH=`: a literal trap string
   with no site (`trap 'rm -f "$SIDECAR_DIR/.wcbw"' HUP`), a `command` that runs no shell
   (`command -v true >/dev/null`) and the env file sourced again (`. "$ENV_FILE"`): each gives
   `STALE-DERIVATION` and nothing else.
 
-The scratch prototype produced exactly the expected result in every case, a to p (evidence
-pack). Measured beside the cases, not as one: on the mini, flipping m2's two entries to
+The scratch prototype produced exactly the expected result in every case, a to r (evidence
+pack). Measured beside the cases, not as one: on the mini, flipping m2's four entries to
 EQUIVALENT without the mismatch fixture gives zero errors. No observation distinguishes them
 once the fixture is gone, so no check that reads only the head can see the flip. That is why
 item 2 is answered by the floor (§5ter.5), not by S3.
@@ -1764,7 +2006,8 @@ In `wa-codex-pin.yml`, either in the same job or in a second job after the pytes
 - `python scripts/ci/wa_codex_wrapper_mutants.py --spec docs/specs/2026-09-27-codexpin-v3-spec.md --receipt-dir "$RUNNER_TEMP/wcbw-mutants"`;
 - `actions/upload-artifact` of the receipt directory, with `if: always()`;
 - the scope list below names the script, the inventory YAML and this spec;
-- `timeout-minutes: 25`. The 177 generated mutants took 2 to 5 min on 5 workers on M5; schema 1's
+- `timeout-minutes: 25`. The 199 generated mutants took 4.5 min on 5 workers on M5 at a load
+  average up to 50 (the last round's 182: 2 to 5 min); schema 1's
   148 took 5.5 min on one worker when idle and 24 min under heavy load, the FIFO hang mutant
   costs the test's 15 s timeout, and macOS runners are slower. If the job nears the limit,
   raise it or add workers; never drop mutants to fit.
@@ -1888,8 +2131,14 @@ ship session checks, before arming, and PR-1's pack records:
 
 - `gh pr view <harness PR> --json state,mergeCommit` shows `MERGED`, and its merge commit is an
   ancestor of PR-1's base;
-- `git show origin/main:.github/workflows/harness-floor.yml | grep -cF 'HOTZONE_PATTERNS[^=]*='`
-  prints at least 1 (it prints 0 on `origin/main` today, measured 2026-09-27);
+- a behavioural observation on `origin/main` itself, with the harness PR merged (gate r5 N1:
+  the text grep this bullet used to hold was a spelling proxy, which a comment satisfied and a
+  step reading the tuple through `HOTZONE_TUPLE_RE` did not). In a scratch clone of
+  `origin/main`, run the new step's command, as `harness-floor.yml` there invokes it, on a
+  working-tree diff that deletes one entry of `HOTZONE_PATTERNS` from
+  `scripts/evidence_pack_lint.py`: it floors the diff at 3. On a diff that only edits a
+  comment in the same file: it leaves the floor at 1. The pack records both outputs, the
+  commit and the command;
 - the harness PR's own guilt receipt: a diff that deletes one pattern floors at 3, and an
   unrelated edit of the linter at 1.
 
@@ -1900,13 +2149,19 @@ Without all three, PR-1's gate BLOCKs on this precondition alone.
 Non-normative: the same scratch prototype, run on `git show
 3d04590c99:scripts/install_wa_codex_pinned.sh` (blob `666f1025e2`, 302 lines, `set -euo
 pipefail`). PR-2 rebuilds this installer, so the numbers show what the generator does to the
-form gate r4 attacked, not PR-2's inventory.
+form gate r4 attacked, not PR-2's inventory. The numbers are from the last round's fix pass
+(the closed world, the atomic units and the `call` kind).
 
-- **137 sites:** abspath 1, alt 8, andor 26, cond 11, const 51, default 1, diag 3, exit 5,
-  neg 4, setopt 1, test 26.
-- **189 mutants:** `cond` never 10 and always 10; `test` true 22, false 22 and relop 3;
-  `andor` drop-left 18 and drop-right 25; `alt` widen 4 and neutralise 4; `const` value 51;
-  `exit` remove 5 and value 5; `neg` 4; `diag` 3; `default`, `setopt` and `abspath` 1 each.
+- **191 sites:** abspath 1, alt 8, andor 26, assign 1, call 51, cond 11, const 51, default 1,
+  diag 3, exit 5, neg 4, setopt 3, test 26. `set -euo pipefail` is three `setopt` sites, one
+  per option, and `LC_ALL=C` before `tar` (line 209) is an `assign` site. The 51 `call` sites
+  are every call of the installer's own functions: `die` 29, `log` 12, `_curl_https` 3,
+  `_verify_root_owned_dir` 3, `_verify_extracted_tree` 2, `_ensure_dir` 1 and `usage` 1.
+- **292 mutants:** `cond` never 10 and always 10; `test` true 22, false 22 and relop 3;
+  `andor` drop-left 18 and drop-right 25; `alt` widen 4 and neutralise 8 (each of the 4
+  refusal arms `*) die …` keeps its `neutralise`, and each of the 4 allow-arms gains one);
+  `const` value 51; `call` remove 48 and fail 48 (three calls are `SPAN`); `exit` remove 5 and
+  value 5; `neg` 4; `setopt` 3; `diag` 3; `default`, `assign` and `abspath` 1 each.
 - **The 18 `|| die`, 10 of them `[ … ] || die`.** Every one of the 10 gets its fail-open
   `test:true`. Line 197's is `84056dd2ec499d0d:test:true`, `true || die "integrity mismatch for
 ${TARBALL}"`: the guard gate r4 deleted with every check green now has its own id, which
@@ -1914,32 +2169,44 @@ ${TARBALL}"`: the guard gate r4 deleted with every check green now has its own i
   `drop-right`. Under `set -e` a failing command then aborts with its own rc and no `die`
   line, so that member measures FC or DX rather than FO. This is why the test constants and
   the drops are separate members.
-- **10 `SPAN`.** 7 are the `drop-left` of a `|| die` that starts a line continued from the
-  previous one (lines 163, 169, 178, 242, 254, 280, 298). One is the `drop-right` of line 238,
-  whose `die` message runs onto line 239. Two are `never` and `always` of line 212,
-  `if ! "$AWK_BIN" '`, whose condition holds a 16-line `awk` program.
-- **Outside the 17 kinds**, measured on the same masked text:
-  - 9 `die` calls outside an and-or list (5 bare in `if` blocks, 4 in `case` arms). They are
-    refusals with no `remove` member until a kind names them;
-  - 4 lines with `&&` or `||` inside a double-quoted `$( … )` (lines 56, 171, 180, 181). The
-    masking blanks them, and S3 now says so: `MASKED` on each of the four, and on line 237,
-    where `find`'s `!` inside `"$( … )"` reads as a `neg` site. With the 10 `SPAN`, S3 reports
-    15 errors on this installer before any annotation;
-  - the `[[ … ]]` of the argv gate (line 38); the `awk` program (lines 213–228); the `find`
-    predicate list of line 237; 4 `local` lines, 1 `$(( ))` and 1 `trap`.
+- **60 errors before any annotation.** 16 `SPAN`: 7 are the `drop-left` of a `|| die` that
+  starts a line continued from the previous one (lines 163, 169, 178, 242, 254, 280, 298);
+  three are on line 238, whose `die` message runs onto line 239: the `drop-right` and that
+  `die`'s two `call` members; two are `never` and `always` of line 212, `if ! "$AWK_BIN" '`,
+  whose condition holds a 16-line `awk` program; and four are the `call` members of lines 168
+  and 177, `_curl_https …` continued onto the next line. 6 `MASKED`: the `&&` or `||` inside a
+  double-quoted `$( … )` on lines 56, 171, 180 and 181; line 237, where `find`'s `!` inside
+  `"$( … )"` reads as a `neg` site; and line 110, `trap _cleanup EXIT`, whose string calls a
+  function of the installer (council round 5). 38 `UNSUPPORTED`, which were silences before the
+  closed world:
+  - 36 commands outside the catalogue, each reached through a constant that resolves
+    (`"$STAT_BIN"` and the like) or named bare: `awk` (3), `chmod` (4), `chown` (3), `curl`,
+    `find`, `install`, `launchctl` (2), `local` (4), `mktemp` (2), `mv` (2), `openssl`,
+    `plutil` (3), `pwd`, `sleep`, `stat` (3), `sudo`, `tar` (2) and `umask`;
+  - the `[[ … ]]` of the argv gate (line 38), and `${BASH_SOURCE[0]%/*}` (line 56).
+
+  Every `die` call is a `call` site, the 9 outside an and-or list (5 bare in `if` blocks, 4 in
+  `case` arms) included, and so are the guard calls that council round 5 found claimed by no
+  kind: line 131's `_verify_root_owned_dir "$RUNTIME_DIR" "trust root"` is
+  `f49a16fffaeb7ad1:call:remove` and `f49a16fffaeb7ad1:call:fail`, and lines 150, 261 and 267
+  have theirs.
 
 What this obliges PR-2 to do, in the same PR as its installer inventory:
 
-- keep every and-or list, condition list and `[ … ]` on one physical line, so that no
-  member is `SPAN`. Alternatively, extend materialisation to logical lines, with its own
+- keep every and-or list, condition list, `[ … ]` and function call on one physical line, so
+  that no member is `SPAN`. Alternatively, extend materialisation to logical lines, with its own
   one-line proof;
-- add a kind for refusal through a function (each call of a function whose body ends in
-  `exit`, with a `remove` member), and generate members inside double-quoted `$( … )` bodies,
-  which S3 now reports as `MASKED` until the grammar does;
-- keep heredocs, backquotes, `alias`, `$'…'`, non-literal `eval`/`trap`/`sh -c` strings and
-  sourced files out, or model them: S3 reports each as `UNSUPPORTED`;
-- extend the grammar for `[[ … ]]`, `find` predicates and `awk` programs, or keep them out of
-  guards;
+- generate members inside double-quoted `$( … )` bodies, which S3 reports as `MASKED` until
+  the grammar does;
+- replace `trap _cleanup EXIT`, which is `MASKED`, or extend rule 5 in a reviewed change so that
+  a trap whose string is one call of a target function is a `call` site of its own, with a
+  guilt and an innocence selftest;
+- for each `UNSUPPORTED` command, either rewrite the line or add the name to the catalogue in
+  a reviewed change that states its operand rule, with a guilt and an innocence selftest. A
+  name that runs a program or code from its operands (`sudo`, `find -exec`, `awk`,
+  `launchctl asuser`) needs a rule that parses what it runs, or stays out of the installer's
+  guards. Rewrite `[[ … ]]` as `[ … ]` and drop `local` and `${BASH_SOURCE[0]…}`, or extend
+  the grammar the same way;
 - add the installer, its test file and its inventory to the scope list and to the hot-zone
   paths (§5ter.5).
 
@@ -1960,11 +2227,14 @@ build fixes both in the same commit that adds S3.
    "every guard and every conjunct … 20/20 … 0 false negatives":
    - PR body lines 62 and 83;
    - the `pack.yml` R3 lane note, disposition and receipt;
-   - the acceptance paragraph of `receipts/mutant-table.md`.
+   - the acceptance paragraph of
+     `evidence/2026-09/agent-air-m5-infra-codexpin-v3-pr1-wrapper-edd4aeae/receipts/mutant-table.md`
+     (the #7420 evidence directory at `04dd6b51e4`; gate r5 N4).
 
    Replace each with the S3 CI run URL, the committed copy of its `mutants.md` receipt, and
    counts copied FROM that receipt. Nobody writes a coverage count or an "every/all" claim by
-   hand. The hand-made `receipts/mutant-table.md` is deleted, or replaced by the S3 receipt.
+   hand. The hand-made `mutant-table.md` in that directory is deleted, or replaced by the S3
+   receipt.
    Observation: `grep -nE 'every (guard|conjunct)|0 false negatives'` over the PR body and
    the evidence directory returns only lines that cite the S3 receipt.
 
@@ -2134,14 +2404,40 @@ the three observations its ship session records (coordinator's ruling 2026-09-27
     PR-1, and PR-1 may not be armed until it has merged (§5ter.5). Making the linter itself a
     hot-zone path was the alternative, at the cost of Gear 3 on every linter edit (20 commits
     in the 30 days to 2026-09-27).
-12. **Code the masking blanks without a literal** (added 2026-09-27, council round 4b;
-    **closed** by the coordinator's ruling of 2026-09-27, not a council round). A guard reaching
-    an interpreter through a variable, an `alias`, a sourced file, `$'…'`, a shell `-c` behind
-    option arguments or `env`/`command`, or a `default`, `abspath` or `dateopt` site in a
-    single-quoted string generated no id and raised no error. 5bis.3 now reports each as
-    `UNSUPPORTED` or `MASKED`, with the cure both seats named, and selftest o6–o8 pins it. The
-    counts did not move: 136 sites and 177 mutants on the PR-1 target, 137 and 189 on the
-    installer, with the same errors as before. The fresh gate reviews it; no council round did.
+12. **Code the masking blanks, and every form outside the grammar** (added 2026-09-27, council round
+    4b; the coordinator's ruling closed the literal part; **closed by the closed world**, the last
+    round). The round-4b cure recognised a shell by five names, after `env`, `command` or `exec`
+    only, and claimed to cover "a guard reaching an interpreter through a variable": it covered a
+    variable in the string, not in the interpreter's name. Gate r5 (I2) showed `"$SH_BIN" -c` and a
+    shell behind `timeout`, `sudo`, `nohup` or `nice` raising nothing, and §5ter.6 listed installer
+    constructs outside the kinds (`[[ … ]]`, `find`, `awk`, `local`) as prose, not as errors. The
+    closed world (5bis.3) replaces the spelling list with an allow-list: every command word is a
+    literal or a constant that resolves, and every name outside the catalogue, every compound form
+    and every word form outside the grammar, is `UNSUPPORTED`. On the PR-1 target it changed no site
+    and reports nothing; on the installer it reports 38 `UNSUPPORTED` and 6 `MASKED`. Selftests q2
+    and r pin it. What stays open by construction, stated here rather than claimed closed:
+    - the catalogue's "data" is a judgement per name, and a program is known by its basename:
+      a script installed as `/opt/x/grep` would pass for `grep`;
+    - code that runs outside the target is not the target's to mutate: the env file (item 2),
+      the daemon module run with `-m`, any program's own logic. Its outcome reaches the target
+      as a status that a condition, an and-or operand or `set -e` consumes, and those have
+      members;
+    - finer value mutations (5bis.3, "deliberately not sites") and the MUST→EQUIVALENT flip,
+      which S3 cannot see on the head (selftest m's receipt) and the floor puts in front of a
+      gate (§5ter.5);
+    - the kinds are a finite list. S3 proves that every generated member is judged. That every
+      guard is made of sites is a claim about the list, which the plant (a), the minis (q) and
+      the closed-world rows (r) test on finite sets, not a theorem. Council round 5 found a form the
+      list missed, the call of a guard function; it became a kind with its own guilt and
+      innocence (q5). A guard of a form no kind claims is a new instance of that class, and
+      closing it is a reviewed change of 5bis.3, never an annotation;
+    - a `call`'s members skip or fail the call. A call with a wrong operand
+      (`_verify_root_owned_dir "$OTHER"`) is a finer value mutation, as above;
+    - a loop whose body cannot leave it has one polarity by construction (5bis.3 rule 1): the
+      other only hangs, and a hang is `ERROR`, never a verdict;
+    - an output redirection is not a unit (5bis.3 rule 5). The heartbeat file and the tagged
+      line it routes are asserted by the `hb` and `diag` members' killers, not by a member of
+      its own.
 
 Adjacent, out of scope, noted: the daemon's venv python is Homebrew `python@3.14` (the `ps`
 `comm` on Pro shows `/opt/homebrew/Cellar/python@3.14/…`). A Homebrew python upgrade is the
@@ -2224,6 +2520,30 @@ Added by council round 4 (same prototype, re-run on the committed bytes):
   `scripts/ci/harness_gate_read.py` and `scripts/tests/test_evidence_pack_lint.py`, and 3 for
   `harness-floor.yml`, `hot-zone-pr-gate.yml` and `guard-conformance.yml` (§8 item 11).
 
+Added in the last round (gate r5; the owner's ruling) and its fix pass (council round 5), on M5
+with bash 3.2.57 (the scratch prototype, non-normative; receipts in the evidence pack):
+
+- **Counts.** PR-1 target: 139 sites and 199 mutants (the round before its fix pass: 138 and
+  182; before the round: 136 and 177). `04dd6b51e4`: 137 and 197 (136 and 180; 134 and 175).
+  #7340's installer: 191 sites, 292 mutants and 60 errors, of which 38 `UNSUPPORTED`,
+  6 `MASKED` and 16 `SPAN` (140, 196 and 53: 38, 5 and 10).
+- **Feasibility suite (50 tests, PR-1 target), steps 1–8.** 192 of 192 MUST killed by a
+  declared killer, the 7 EQUIVALENT surviving with identical records, 199 of 199 modes as
+  declared, 0 errors (2026-09-27T08:36:36Z–08:41:03Z).
+- **Current suite (28 tests, `04dd6b51e4`).** 197 mutants: 121 killed, 76 survived (69 MUST
+  under 38 labels, 7 EQUIVALENT), the same six `KILLER-MISS` (08:41:03Z–08:43:44Z).
+- **Selftest.** Cases a to r as §5ter.4 states them: static 71 of 71
+  (2026-09-27T08:49:05Z–08:50:31Z), runs 19 of 19 in 97 s (08:47:28Z–08:49:05Z). The plant gave its
+  39 ids on 29 keys, 14 of its 16 lines; q1–q6 their guilt and innocence; r1–r28 and the four
+  innocence rows exactly their errors.
+- **Council round 5** (codex-gpt-5.6-sol and kimi-code/k3, both REWORK). Both named the
+  installer's guard calls on lines 131, 150, 261 and 267 as deletions with no member and no
+  error. Codex also named a leavable `while` with one polarity and `trap _cleanup EXIT`; kimi
+  named rule 5's sentence on redirections and a plant count with no receipt. The one fix pass:
+  the `call` kind (the 19th) and `hb`'s `fail`, the loop rule, the target's functions seen
+  inside code strings, `exec`, `env` and `command` in front of a function `UNSUPPORTED`, rule
+  5 scoped to input redirections, and the plant's receipt in the evidence pack.
+
 Schema-1 measurements, kept as the record gates r3 and r4 judged:
 
 - **Site extractor (5bis.3).** It found 136 sites on the PR-1 target, all claimed by the 71
@@ -2270,7 +2590,8 @@ Schema-1 measurements, kept as the record gates r3 and r4 judged:
 Every change below is traceable to a gate on PR #7420, to the S2–S4 conditions of its
 BLOCK, to council rounds 1–4 on this spec (codex-gpt-5.6-sol and kimi-code/k3, journaled in the
 PR's evidence pack), or to the fresh gates on this spec (gate r3, comment 5850401670; gate r4,
-comment 5852422768, with the owner's ruling for the generator route). D1–D4, D6's proof
+comment 5852422768, with the owner's ruling for the generator route; gate r5, comment
+5853682235, with the owner's ruling for the last round). D1–D4, D6's proof
 design, D8, D9, §1, §2, §4, §6 and the installer and sentinel test tables are unchanged,
 except where listed. Gate r4 re-scoped S3 without re-opening the 17-kind grammar, closure over
 sites, fixture contracts N and P, the D5 heartbeat fix, R2–R5 or R6's text. Four of those
@@ -2279,61 +2600,62 @@ below say which: the masking became file-wide (no count changed), the plant of R
 R5's step text now names `MUTANT-COUNT` beside `SITE-COUNT`, and R6's window paragraph was
 narrowed by the floor.
 
-| §                                          | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Proved by                                                                       |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| header, §0                                 | Commit note; scratch inputs marked ephemeral                                                                                                                                                                                                                                                                                                                                                                                                                     | S2 (the spec lived only in `/private/tmp`)                                      |
-| D5                                         | Line grammar: `IFS=`/`-r` are requirements; a single line without a final LF is accepted; two lines with an unterminated last line are refused                                                                                                                                                                                                                                                                                                                   | re-gate #2 D10, D25, D26                                                        |
-| D5                                         | NUL probe rule, the bash-only `read -d`, explicit `/bin/sh` in tests                                                                                                                                                                                                                                                                                                                                                                                             | spalla review 2026-09-26; r0 C1, N2                                             |
-| D5                                         | Implemented check order; one tagged diagnostic line per refusal is contract                                                                                                                                                                                                                                                                                                                                                                                      | r0 C1 plus re-gate #1 R3 (masking), this spec §5bis.4                           |
-| D5                                         | EACCES rule made precise (`[ -d ] && [ ! -x ]` on `RUNTIME_DIR`; `-r` on the pin)                                                                                                                                                                                                                                                                                                                                                                                | r0 C3, N4                                                                       |
-| D5                                         | Semver wording: "three numeric fields", leading zeros allowed; per-alternative witnesses                                                                                                                                                                                                                                                                                                                                                                         | r0 spec-owner note; re-gate #2 S1–S5                                            |
-| D5                                         | Handoff through positional `$1`/`$2`, not the named `PIN_VER`/`PIN_BIN`                                                                                                                                                                                                                                                                                                                                                                                          | spalla review 2026-09-26 (named vars clobbered by DATA); r0 judged sound        |
-| D5                                         | Post-source re-assert of six literals plus `PYTHONPATH`                                                                                                                                                                                                                                                                                                                                                                                                          | r0 N1 (sol BLOCKER, `TAG` gap); `PYTHONPATH` by this inventory (G8g)            |
-| D5                                         | Kill-switch precedence stated                                                                                                                                                                                                                                                                                                                                                                                                                                    | r0 N3; re-gate #1                                                               |
-| D5, §8.2                                   | Scope narrowed to the named DATA                                                                                                                                                                                                                                                                                                                                                                                                                                 | r0 spec-owner note                                                              |
-| D6                                         | Watcher-coverage entry; extend `paths:` and the pytest argv; S3 steps; pinned pytest/pyyaml                                                                                                                                                                                                                                                                                                                                                                      | re-gate #1 R1; r0 N7; S3                                                        |
-| D7                                         | Sentinel uses the exact same line grammar                                                                                                                                                                                                                                                                                                                                                                                                                        | follows from the D10 decision                                                   |
-| §5                                         | `test_semver_validators_agree` asserts expected verdicts, not agreement alone                                                                                                                                                                                                                                                                                                                                                                                    | re-gate #2 §2                                                                   |
-| §5                                         | Wrapper table marked superseded by §5bis                                                                                                                                                                                                                                                                                                                                                                                                                         | r0 C1, re-gate #1 R3, re-gate #2 BLOCK                                          |
-| §5bis                                      | Closed D5 inventory, site grammar, fixture contract, dispositions, decisions                                                                                                                                                                                                                                                                                                                                                                                     | S2                                                                              |
-| §5ter                                      | S3 mutation check specified                                                                                                                                                                                                                                                                                                                                                                                                                                      | S3                                                                              |
-| §5quater                                   | S4 evidence-text fixes                                                                                                                                                                                                                                                                                                                                                                                                                                           | S4, re-gate #2 §4                                                               |
-| §7                                         | PR-1 content and measured size; resumption on #7420; PR-2 reuses S3                                                                                                                                                                                                                                                                                                                                                                                              | S2–S4                                                                           |
-| §8                                         | Items 6–8 (heartbeat PATH, ancestor EACCES, launchd env)                                                                                                                                                                                                                                                                                                                                                                                                         | re-gate #1 §2 and §5; this inventory                                            |
-| §9                                         | 2026-09-27 measurements                                                                                                                                                                                                                                                                                                                                                                                                                                          | this spec                                                                       |
-| D5, §8.6                                   | Heartbeat calls `/bin/mkdir` and `/bin/date`: the one wrapper change beyond `04dd6b51e4`, moved into PR-1                                                                                                                                                                                                                                                                                                                                                        | council r1: sol raised G9b, the author reproduced it; re-gate #1 §5             |
-| §5bis.3                                    | Kinds `const`, `neg`, `redir` (130 sites, 67 rows); value substitution on `const` and `reassert`; the not-sites list restated                                                                                                                                                                                                                                                                                                                                    | council r1: kimi findings 1–2; sol executed the `<` and `!` drops               |
-| §5bis.4                                    | Wrapper stdin is `/dev/null`; patched constants pinned statically; reasons pairwise non-containing; P.4 exemption removed                                                                                                                                                                                                                                                                                                                                        | council r1: kimi findings 1 and 6                                               |
-| §5bis.5                                    | G0k is EQUIVALENT; G9b holds only on the PR-1 target                                                                                                                                                                                                                                                                                                                                                                                                             | council r1: sol                                                                 |
-| §5bis.8                                    | Round-2 measurements; the seven mode corrections disclosed; the killer-choice rule                                                                                                                                                                                                                                                                                                                                                                               | council r1: kimi finding 3                                                      |
-| §5ter                                      | `killed_by` matches exactly one node id; severity order; `static` mode; EQUIVALENT compared over every test; selftest (e) reworded; stdin                                                                                                                                                                                                                                                                                                                        | council r1: kimi findings 4, 5 and 7                                            |
-| §7, §8                                     | PR-1 lands the heartbeat fix and re-arms `SITE-COUNT`; §8 items 6 and 8 restated                                                                                                                                                                                                                                                                                                                                                                                 | council r1                                                                      |
-| §5bis.3, D5                                | Kind `abspath` (134 sites on the target, 132 at `04dd6b51e4`); rows G9j and G9k; mutant G7e/path                                                                                                                                                                                                                                                                                                                                                                 | council r2: kimi finding 14 (nothing pinned the heartbeat's `/bin/date`)        |
-| §5bis.4                                    | N.2, P.3 and P.4 assert well-formed UTC stamps; the scratch suite's N.4 aligned to empty stdout                                                                                                                                                                                                                                                                                                                                                                  | council r2: kimi finding 14; the `grep -q` probe                                |
-| §5bis.3                                    | The not-sites rationale corrected and measured: line 177 inert, `-p` and `-q` killed, `-u` unpinned                                                                                                                                                                                                                                                                                                                                                              | council r2: sol findings 4–5, kimi finding 16                                   |
-| §5ter                                      | FO rule kept and justified (a narrower one misclassified G8c/stmt, measured); selftest cases f–i; the review-only residue of killer causality stated                                                                                                                                                                                                                                                                                                             | council r2: sol findings 1, 2 and 6, kimi finding 7                             |
-| YAML, §7                                   | `derived_from` names the PR-1 target blob, with `base_commit` and `base_blob`                                                                                                                                                                                                                                                                                                                                                                                    | council r2: kimi finding 15                                                     |
-| §8                                         | Item 9: `date -u` is pinned by no test; recommended fixture                                                                                                                                                                                                                                                                                                                                                                                                      | council r2 probe                                                                |
-| D5, §5bis, §8                              | PR-1's two wrapper lines and their reason (G9b) stated explicitly; `date -u` made MUST: kind `dateopt`, rows G7i and G9l, the TZ fixture, the skew-aware hook                                                                                                                                                                                                                                                                                                    | coordinator ruling 2026-09-27 on the two open questions                         |
-| §5bis.3, §5ter.3                           | Every kind's operator fixed, with required classes and a fixed direction for conditions (a refusal guard only `false`, a selection branch both); step 4 `OPERATOR` compares each mutant with the operator S3 computes; selftest cases j, n and o                                                                                                                                                                                                                 | gate r3 R1: G2a's mutant swapped to `while false; do` went green                |
-| §5bis.3, §5bis.4, YAML                     | Exit-value operator; 14 `/v` mutants (op `val`) and G9b/v; contract N.1 enforced by mutation                                                                                                                                                                                                                                                                                                                                                                     | gate r3 R2                                                                      |
-| §5bis.3, YAML                              | `relop` class on arithmetic comparisons; mutant G2/-gt                                                                                                                                                                                                                                                                                                                                                                                                           | gate r3 R3                                                                      |
-| §5bis.3, §5ter.4                           | Normative 27-site plant covering all 17 kinds; four grammar cells made exact; selftest (a)                                                                                                                                                                                                                                                                                                                                                                       | gate r3 R4; the round-2 prototype found 24 of the 27                            |
-| §5ter.3, §7                                | `STALE-DERIVATION`: a blob other than `derived_from.blob` is an error; selftest (k)                                                                                                                                                                                                                                                                                                                                                                              | gate r3 R5                                                                      |
-| D6, §5ter, §8                              | W69 sentinel shape from PR-1 on; `wa-codex-pin verdict` made required by an `operator[gui]` arming step after PR-1, and the window until then stated (§8 item 10); "15 site kinds" corrected to 17                                                                                                                                                                                                                                                               | gate r3 R6                                                                      |
-| header, §5bis.1                            | Re-scope note; the fourth same-cause finding; a third root cause (author choice inside the contract) and its cure                                                                                                                                                                                                                                                                                                                                                | gate r4 (5852422768); owner ruling 2026-09-27, generator route                  |
-| §5bis.2, YAML                              | Schema 2: one entry per generated id carrying disposition, mode and killers (reason on EQUIVALENT, an optional label); no `to`, anchor or `covers`; any other key is `SCHEMA`                                                                                                                                                                                                                                                                                    | gate r4 re-scope items 1 and 3 (H7)                                             |
-| §5bis.3                                    | Generated members replace fixed operators and required classes: every member of every class, both constants for test operands, `always` for every `if`/`elif`, `remove` for every `exit`/`return`; rules for duplicates, no-ops, one line in and out (`LINES`) and `SPAN`                                                                                                                                                                                        | gate r4 §1 (H1, H2, the mini `\|\| die`), re-scope items 1 and 3                |
-| §5bis.3                                    | Masking runs over the whole file; raw-line kinds skip single-quoted text; the `abspath` cell states the lexical rule the extractor always used. No wrapper count changes                                                                                                                                                                                                                                                                                         | gate r4 re-scope item 5 (installer receipt)                                     |
-| §5bis.3a                                   | Mutant ids and their stability, with the one stated limit                                                                                                                                                                                                                                                                                                                                                                                                        | gate r4 re-scope item 1                                                         |
-| §5bis.5, §5bis.6, §5bis.8                  | 177 mutants (170 MUST, 7 EQUIVALENT), two new EQUIVALENT removals, the rendered table per id, both suites re-measured                                                                                                                                                                                                                                                                                                                                            | gate r4 re-scope items 1 and 5                                                  |
-| §5ter.3                                    | Steps 2–4 rewritten: `MUTANT-COUNT`; generation with `SPAN`, `NO-MEMBER`, `ID-COLLISION`, `LINES`, `SYNTAX`; annotation closure with `UNANNOTATED`, `PHANTOM`. Anchors, `OPERATOR`, `DOUBLE-CLAIM`, `NO-STMT` and `NO-OP` retired; the parity rendering defined                                                                                                                                                                                                  | gate r4 re-scope items 1 and 3                                                  |
-| §5ter.4                                    | Plant moved after `export PYTHONPATH=`; new cases b (ids), c (closure), d (one line), m (the `[ … ] \|\| die` form), n (floor); schema-1 cases b, c, d, j, l, m, n and o retired with the mechanisms they tested (letters b, c, d, m, n and o now name new cases)                                                                                                                                                                                                | gate r4 re-scope item 4                                                         |
-| §5ter.5, §7, §8                            | The four S3-surface paths become hot-zone paths (floor 3), with floor tests; why the floor and not a base-relative S3 check; §8 item 10 narrowed                                                                                                                                                                                                                                                                                                                 | gate r4 re-scope item 2                                                         |
-| §5ter.6, §9                                | The generator on #7340's installer, and the prototype's receipts                                                                                                                                                                                                                                                                                                                                                                                                 | gate r4 re-scope item 5                                                         |
-| §5bis.3, §5ter.3, §5ter.4, §5ter.6         | What masking hides is an error: `MASKED` for a site inside a double-quoted `$( … )` or the string of `eval`, `trap` or `sh -c`; `UNSUPPORTED` for a heredoc or a backquote; the comment rule widened to a `#` after an operator; selftest o                                                                                                                                                                                                                      | council round 4 (codex-gpt-5.6-sol BLOCKER 1, kimi-code/k3 MAJOR 2 and MINOR 3) |
-| §5bis.3a, §5bis.6, YAML, §5ter.3           | Ids at 64 bits (16 hex digits), so an edited line cannot be searched into its old id; `ID-COLLISION` defined on the file's normal forms; the 40-bit blob prefix stated as an accident check                                                                                                                                                                                                                                                                      | council round 4 (codex-gpt-5.6-sol BLOCKER 2)                                   |
-| §5ter.5, §8, §9                            | The merge queue re-floors a PR against the entry ahead of it (measured); PR-1's gate reads what changed in the inventory and the spec before it; §8 item 11: the hot-zone list is itself floor 1, stated as the harness's residual with its cure                                                                                                                                                                                                                 | council round 4 (codex-gpt-5.6-sol BLOCKER 3 and MAJOR 4, kimi-code/k3 MINOR 5) |
-| §5bis.3, §5bis.5, §5ter.3, §5ter.4, YAML   | Dedupe ignores `SPAN` members; finer value mutations listed as not generated; G7c's reason split into what was measured and what is judged; the Totals paragraph rendered inside the parity block; selftest p (counts, `NO-MEMBER`, `ID-COLLISION`)                                                                                                                                                                                                              | council round 4 (kimi-code/k3 MINOR 4, 7, 8, 9; codex-gpt-5.6-sol MINOR 6, 7)   |
-| §5bis.3, §5bis.3a, §5ter.3, §5ter.5, §8    | After the delta round, accuracy only: the masking check limited in words to literal text, with §8 item 12 opened for the rest; no time claim on the hash search; the blob prefix's limit restated for site-free lines; the queue ruleset's enforcement and empty bypass list; a second read of the pre-PR-1 range at PR-1's merge; §8 item 11 records the seats' split                                                                                           | council round 4b (codex-gpt-5.6-sol 1–4, 10; kimi-code/k3 2–5)                  |
-| §5bis.3, §5ter.3, §5ter.4, §5ter.5, §7, §8 | Coordinator's ruling, not a council round: §8 item 12 closed with the cure both seats named in round 4b (`UNSUPPORTED` for non-literal `eval`/`trap`/shell `-c` strings, `alias`, other sourced files and `$'…'`; the shell `-c` parse behind options and `env`/`command`; the full kind set on single-quoted strings; selftest o6–o8 and three innocence plants), counts unchanged; §8 item 11 decided as a merge precondition of PR-1, with three observations | coordinator ruling 2026-09-27 (codex-gpt-5.6-sol and kimi-code/k3 round 4b)     |
+| §                                                         | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Proved by                                                                       |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| header, §0                                                | Commit note; scratch inputs marked ephemeral                                                                                                                                                                                                                                                                                                                                                                                                                                                        | S2 (the spec lived only in `/private/tmp`)                                      |
+| D5                                                        | Line grammar: `IFS=`/`-r` are requirements; a single line without a final LF is accepted; two lines with an unterminated last line are refused                                                                                                                                                                                                                                                                                                                                                      | re-gate #2 D10, D25, D26                                                        |
+| D5                                                        | NUL probe rule, the bash-only `read -d`, explicit `/bin/sh` in tests                                                                                                                                                                                                                                                                                                                                                                                                                                | spalla review 2026-09-26; r0 C1, N2                                             |
+| D5                                                        | Implemented check order; one tagged diagnostic line per refusal is contract                                                                                                                                                                                                                                                                                                                                                                                                                         | r0 C1 plus re-gate #1 R3 (masking), this spec §5bis.4                           |
+| D5                                                        | EACCES rule made precise (`[ -d ] && [ ! -x ]` on `RUNTIME_DIR`; `-r` on the pin)                                                                                                                                                                                                                                                                                                                                                                                                                   | r0 C3, N4                                                                       |
+| D5                                                        | Semver wording: "three numeric fields", leading zeros allowed; per-alternative witnesses                                                                                                                                                                                                                                                                                                                                                                                                            | r0 spec-owner note; re-gate #2 S1–S5                                            |
+| D5                                                        | Handoff through positional `$1`/`$2`, not the named `PIN_VER`/`PIN_BIN`                                                                                                                                                                                                                                                                                                                                                                                                                             | spalla review 2026-09-26 (named vars clobbered by DATA); r0 judged sound        |
+| D5                                                        | Post-source re-assert of six literals plus `PYTHONPATH`                                                                                                                                                                                                                                                                                                                                                                                                                                             | r0 N1 (sol BLOCKER, `TAG` gap); `PYTHONPATH` by this inventory (G8g)            |
+| D5                                                        | Kill-switch precedence stated                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | r0 N3; re-gate #1                                                               |
+| D5, §8.2                                                  | Scope narrowed to the named DATA                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | r0 spec-owner note                                                              |
+| D6                                                        | Watcher-coverage entry; extend `paths:` and the pytest argv; S3 steps; pinned pytest/pyyaml                                                                                                                                                                                                                                                                                                                                                                                                         | re-gate #1 R1; r0 N7; S3                                                        |
+| D7                                                        | Sentinel uses the exact same line grammar                                                                                                                                                                                                                                                                                                                                                                                                                                                           | follows from the D10 decision                                                   |
+| §5                                                        | `test_semver_validators_agree` asserts expected verdicts, not agreement alone                                                                                                                                                                                                                                                                                                                                                                                                                       | re-gate #2 §2                                                                   |
+| §5                                                        | Wrapper table marked superseded by §5bis                                                                                                                                                                                                                                                                                                                                                                                                                                                            | r0 C1, re-gate #1 R3, re-gate #2 BLOCK                                          |
+| §5bis                                                     | Closed D5 inventory, site grammar, fixture contract, dispositions, decisions                                                                                                                                                                                                                                                                                                                                                                                                                        | S2                                                                              |
+| §5ter                                                     | S3 mutation check specified                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | S3                                                                              |
+| §5quater                                                  | S4 evidence-text fixes                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | S4, re-gate #2 §4                                                               |
+| §7                                                        | PR-1 content and measured size; resumption on #7420; PR-2 reuses S3                                                                                                                                                                                                                                                                                                                                                                                                                                 | S2–S4                                                                           |
+| §8                                                        | Items 6–8 (heartbeat PATH, ancestor EACCES, launchd env)                                                                                                                                                                                                                                                                                                                                                                                                                                            | re-gate #1 §2 and §5; this inventory                                            |
+| §9                                                        | 2026-09-27 measurements                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | this spec                                                                       |
+| D5, §8.6                                                  | Heartbeat calls `/bin/mkdir` and `/bin/date`: the one wrapper change beyond `04dd6b51e4`, moved into PR-1                                                                                                                                                                                                                                                                                                                                                                                           | council r1: sol raised G9b, the author reproduced it; re-gate #1 §5             |
+| §5bis.3                                                   | Kinds `const`, `neg`, `redir` (130 sites, 67 rows); value substitution on `const` and `reassert`; the not-sites list restated                                                                                                                                                                                                                                                                                                                                                                       | council r1: kimi findings 1–2; sol executed the `<` and `!` drops               |
+| §5bis.4                                                   | Wrapper stdin is `/dev/null`; patched constants pinned statically; reasons pairwise non-containing; P.4 exemption removed                                                                                                                                                                                                                                                                                                                                                                           | council r1: kimi findings 1 and 6                                               |
+| §5bis.5                                                   | G0k is EQUIVALENT; G9b holds only on the PR-1 target                                                                                                                                                                                                                                                                                                                                                                                                                                                | council r1: sol                                                                 |
+| §5bis.8                                                   | Round-2 measurements; the seven mode corrections disclosed; the killer-choice rule                                                                                                                                                                                                                                                                                                                                                                                                                  | council r1: kimi finding 3                                                      |
+| §5ter                                                     | `killed_by` matches exactly one node id; severity order; `static` mode; EQUIVALENT compared over every test; selftest (e) reworded; stdin                                                                                                                                                                                                                                                                                                                                                           | council r1: kimi findings 4, 5 and 7                                            |
+| §7, §8                                                    | PR-1 lands the heartbeat fix and re-arms `SITE-COUNT`; §8 items 6 and 8 restated                                                                                                                                                                                                                                                                                                                                                                                                                    | council r1                                                                      |
+| §5bis.3, D5                                               | Kind `abspath` (134 sites on the target, 132 at `04dd6b51e4`); rows G9j and G9k; mutant G7e/path                                                                                                                                                                                                                                                                                                                                                                                                    | council r2: kimi finding 14 (nothing pinned the heartbeat's `/bin/date`)        |
+| §5bis.4                                                   | N.2, P.3 and P.4 assert well-formed UTC stamps; the scratch suite's N.4 aligned to empty stdout                                                                                                                                                                                                                                                                                                                                                                                                     | council r2: kimi finding 14; the `grep -q` probe                                |
+| §5bis.3                                                   | The not-sites rationale corrected and measured: line 177 inert, `-p` and `-q` killed, `-u` unpinned                                                                                                                                                                                                                                                                                                                                                                                                 | council r2: sol findings 4–5, kimi finding 16                                   |
+| §5ter                                                     | FO rule kept and justified (a narrower one misclassified G8c/stmt, measured); selftest cases f–i; the review-only residue of killer causality stated                                                                                                                                                                                                                                                                                                                                                | council r2: sol findings 1, 2 and 6, kimi finding 7                             |
+| YAML, §7                                                  | `derived_from` names the PR-1 target blob, with `base_commit` and `base_blob`                                                                                                                                                                                                                                                                                                                                                                                                                       | council r2: kimi finding 15                                                     |
+| §8                                                        | Item 9: `date -u` is pinned by no test; recommended fixture                                                                                                                                                                                                                                                                                                                                                                                                                                         | council r2 probe                                                                |
+| D5, §5bis, §8                                             | PR-1's two wrapper lines and their reason (G9b) stated explicitly; `date -u` made MUST: kind `dateopt`, rows G7i and G9l, the TZ fixture, the skew-aware hook                                                                                                                                                                                                                                                                                                                                       | coordinator ruling 2026-09-27 on the two open questions                         |
+| §5bis.3, §5ter.3                                          | Every kind's operator fixed, with required classes and a fixed direction for conditions (a refusal guard only `false`, a selection branch both); step 4 `OPERATOR` compares each mutant with the operator S3 computes; selftest cases j, n and o                                                                                                                                                                                                                                                    | gate r3 R1: G2a's mutant swapped to `while false; do` went green                |
+| §5bis.3, §5bis.4, YAML                                    | Exit-value operator; 14 `/v` mutants (op `val`) and G9b/v; contract N.1 enforced by mutation                                                                                                                                                                                                                                                                                                                                                                                                        | gate r3 R2                                                                      |
+| §5bis.3, YAML                                             | `relop` class on arithmetic comparisons; mutant G2/-gt                                                                                                                                                                                                                                                                                                                                                                                                                                              | gate r3 R3                                                                      |
+| §5bis.3, §5ter.4                                          | Normative 27-site plant covering all 17 kinds; four grammar cells made exact; selftest (a)                                                                                                                                                                                                                                                                                                                                                                                                          | gate r3 R4; the round-2 prototype found 24 of the 27                            |
+| §5ter.3, §7                                               | `STALE-DERIVATION`: a blob other than `derived_from.blob` is an error; selftest (k)                                                                                                                                                                                                                                                                                                                                                                                                                 | gate r3 R5                                                                      |
+| D6, §5ter, §8                                             | W69 sentinel shape from PR-1 on; `wa-codex-pin verdict` made required by an `operator[gui]` arming step after PR-1, and the window until then stated (§8 item 10); "15 site kinds" corrected to 17                                                                                                                                                                                                                                                                                                  | gate r3 R6                                                                      |
+| header, §5bis.1                                           | Re-scope note; the fourth same-cause finding; a third root cause (author choice inside the contract) and its cure                                                                                                                                                                                                                                                                                                                                                                                   | gate r4 (5852422768); owner ruling 2026-09-27, generator route                  |
+| §5bis.2, YAML                                             | Schema 2: one entry per generated id carrying disposition, mode and killers (reason on EQUIVALENT, an optional label); no `to`, anchor or `covers`; any other key is `SCHEMA`                                                                                                                                                                                                                                                                                                                       | gate r4 re-scope items 1 and 3 (H7)                                             |
+| §5bis.3                                                   | Generated members replace fixed operators and required classes: every member of every class, both constants for test operands, `always` for every `if`/`elif`, `remove` for every `exit`/`return`; rules for duplicates, no-ops, one line in and out (`LINES`) and `SPAN`                                                                                                                                                                                                                           | gate r4 §1 (H1, H2, the mini `\|\| die`), re-scope items 1 and 3                |
+| §5bis.3                                                   | Masking runs over the whole file; raw-line kinds skip single-quoted text; the `abspath` cell states the lexical rule the extractor always used. No wrapper count changes                                                                                                                                                                                                                                                                                                                            | gate r4 re-scope item 5 (installer receipt)                                     |
+| §5bis.3a                                                  | Mutant ids and their stability, with the one stated limit                                                                                                                                                                                                                                                                                                                                                                                                                                           | gate r4 re-scope item 1                                                         |
+| §5bis.5, §5bis.6, §5bis.8                                 | 177 mutants (170 MUST, 7 EQUIVALENT), two new EQUIVALENT removals, the rendered table per id, both suites re-measured                                                                                                                                                                                                                                                                                                                                                                               | gate r4 re-scope items 1 and 5                                                  |
+| §5ter.3                                                   | Steps 2–4 rewritten: `MUTANT-COUNT`; generation with `SPAN`, `NO-MEMBER`, `ID-COLLISION`, `LINES`, `SYNTAX`; annotation closure with `UNANNOTATED`, `PHANTOM`. Anchors, `OPERATOR`, `DOUBLE-CLAIM`, `NO-STMT` and `NO-OP` retired; the parity rendering defined                                                                                                                                                                                                                                     | gate r4 re-scope items 1 and 3                                                  |
+| §5ter.4                                                   | Plant moved after `export PYTHONPATH=`; new cases b (ids), c (closure), d (one line), m (the `[ … ] \|\| die` form), n (floor); schema-1 cases b, c, d, j, l, m, n and o retired with the mechanisms they tested (letters b, c, d, m, n and o now name new cases)                                                                                                                                                                                                                                   | gate r4 re-scope item 4                                                         |
+| §5ter.5, §7, §8                                           | The four S3-surface paths become hot-zone paths (floor 3), with floor tests; why the floor and not a base-relative S3 check; §8 item 10 narrowed                                                                                                                                                                                                                                                                                                                                                    | gate r4 re-scope item 2                                                         |
+| §5ter.6, §9                                               | The generator on #7340's installer, and the prototype's receipts                                                                                                                                                                                                                                                                                                                                                                                                                                    | gate r4 re-scope item 5                                                         |
+| §5bis.3, §5ter.3, §5ter.4, §5ter.6                        | What masking hides is an error: `MASKED` for a site inside a double-quoted `$( … )` or the string of `eval`, `trap` or `sh -c`; `UNSUPPORTED` for a heredoc or a backquote; the comment rule widened to a `#` after an operator; selftest o                                                                                                                                                                                                                                                         | council round 4 (codex-gpt-5.6-sol BLOCKER 1, kimi-code/k3 MAJOR 2 and MINOR 3) |
+| §5bis.3a, §5bis.6, YAML, §5ter.3                          | Ids at 64 bits (16 hex digits), so an edited line cannot be searched into its old id; `ID-COLLISION` defined on the file's normal forms; the 40-bit blob prefix stated as an accident check                                                                                                                                                                                                                                                                                                         | council round 4 (codex-gpt-5.6-sol BLOCKER 2)                                   |
+| §5ter.5, §8, §9                                           | The merge queue re-floors a PR against the entry ahead of it (measured); PR-1's gate reads what changed in the inventory and the spec before it; §8 item 11: the hot-zone list is itself floor 1, stated as the harness's residual with its cure                                                                                                                                                                                                                                                    | council round 4 (codex-gpt-5.6-sol BLOCKER 3 and MAJOR 4, kimi-code/k3 MINOR 5) |
+| §5bis.3, §5bis.5, §5ter.3, §5ter.4, YAML                  | Dedupe ignores `SPAN` members; finer value mutations listed as not generated; G7c's reason split into what was measured and what is judged; the Totals paragraph rendered inside the parity block; selftest p (counts, `NO-MEMBER`, `ID-COLLISION`)                                                                                                                                                                                                                                                 | council round 4 (kimi-code/k3 MINOR 4, 7, 8, 9; codex-gpt-5.6-sol MINOR 6, 7)   |
+| §5bis.3, §5bis.3a, §5ter.3, §5ter.5, §8                   | After the delta round, accuracy only: the masking check limited in words to literal text, with §8 item 12 opened for the rest; no time claim on the hash search; the blob prefix's limit restated for site-free lines; the queue ruleset's enforcement and empty bypass list; a second read of the pre-PR-1 range at PR-1's merge; §8 item 11 records the seats' split                                                                                                                              | council round 4b (codex-gpt-5.6-sol 1–4, 10; kimi-code/k3 2–5)                  |
+| §5bis.3, §5ter.3, §5ter.4, §5ter.5, §7, §8                | Coordinator's ruling, not a council round: §8 item 12 closed with the cure both seats named in round 4b (`UNSUPPORTED` for non-literal `eval`/`trap`/shell `-c` strings, `alias`, other sourced files and `$'…'`; the shell `-c` parse behind options and `env`/`command`; the full kind set on single-quoted strings; selftest o6–o8 and three innocence plants), counts unchanged; §8 item 11 decided as a merge precondition of PR-1, with three observations                                    | coordinator ruling 2026-09-27 (codex-gpt-5.6-sol and kimi-code/k3 round 4b)     |
+| §5bis.3, §5bis.6, §5bis.8, §5ter.4, §5ter.6, §8, §9, YAML | The last round (gate r5, the owner's ruling): the closed world (the grammar and the command catalogue, everything else `UNSUPPORTED`) and atomic units (`alt` per arm with both polarities, `setopt` per option unit, `assign` in place of `env-drop`, `reassert` per word), selftests q1–q4 and r1–r24. Its fix pass (council round 5): the `call` kind with `remove` and `fail`, `hb`'s `fail`, the loop rule, calls inside code strings, selftests q5, q6 and r25–r28; 199 mutants on the target |

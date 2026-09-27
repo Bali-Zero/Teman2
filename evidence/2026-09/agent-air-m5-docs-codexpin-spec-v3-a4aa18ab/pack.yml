@@ -83,6 +83,32 @@ what_changed: |
   precondition of PR-1 (a separate harness PR adds the narrowing step to
   harness-floor.yml; PR-1's ship session records three observations,
   §5ter.5).
+  After the fresh gate's BLOCK (gate r5, comment 5853682235; owner ruling:
+  one last round on two general rules), one new commit. Closed world: S3
+  lexes and parses the whole target with a listed grammar and a closed
+  command catalogue, and every form or name outside them is UNSUPPORTED
+  (a command word must be a literal or a constant that resolves to an
+  absolute path; code strings and double-quoted $( ) are parsed by the
+  same rules and MASKED when they hold a site). Atomic units, with both
+  polarities for every refusal-bearing unit: alt per arm (widen and
+  neutralise) plus drop per alternative (I1); setopt per option unit (I3);
+  kind assign (prefix assignments and env operands) in place of env-drop
+  (I4); reassert remove per word. I2 is closed by the catalogue. N1: the
+  merge precondition observed by behaviour; N2: and-or list terms; N3: a
+  [ ends at its ]; N4: the mutant-table path in full. Selftests q1-q4 and
+  r1-r24.
+  Its council (round 5: codex-gpt-5.6-sol and kimi-code/k3, both REWORK)
+  found the same class once more: a guard function's call on its own line
+  (#7340's installer, lines 131, 150, 261, 267) had no member and no
+  error, a leavable while had one polarity, and `trap _cleanup EXIT` was
+  silent. The one fix pass: kind call (the 19th: every call of a target
+  function, members remove and fail) and hb's fail; the loop rule (both
+  polarities when the body can leave); the target's functions seen inside
+  code strings (the trap is MASKED); exec/env/command in front of a
+  function UNSUPPORTED; rule 5 scoped to input redirections; selftests q5,
+  q6 and r25-r28. Inventory: 139 sites, 199 mutants (192 MUST,
+  7 EQUIVALENT) under 71 labels; 04dd6b51e4 137 and 197; the installer
+  191, 292 and 60 errors.
 
 proof: |
   See receipts. Every number in the spec's §5bis.8 and §9 comes from the
@@ -92,11 +118,12 @@ proof: |
 
 pii_scan: clean
 pii_scan_note: >-
-  The spec, the inventory and every council prompt (rounds 1-4b) carry repo
+  The spec, the inventory and every council prompt (rounds 1-5) carry repo
   paths, the owner codename, service account names and synthetic pin
-  fixtures only; no client data, OSINT or credential. The one email-shaped
-  hit, in the round-4 prompt, is the repository's commit identity quoted in
-  gate r4's public comment, not client data. Council dispatch ran
+  fixtures only; no client data, OSINT or credential. The two email-shaped
+  hits, one in each of the round-4 and round-5 prompts, are the repository's
+  commit identity quoted in the public comments of gates r4 and r5, not
+  client data. Council dispatch ran
   with a scrubbed env (env -i), a read-only sandbox for codex and a
   no-tools child for kimi.
 
@@ -128,10 +155,21 @@ post_council_note: >-
   counts unchanged, and make item 11's cure a merge precondition of PR-1.
   That commit had no council round; the fresh gate reviews it. The journal
   carries an author-note line for it.
+  Gate r5's last round had one council delta round (round 5) on the
+  catalogue and rules delta, both titolari, each asked whether any guard
+  in either target was deletable with no member and no error. Both
+  answered yes, with the same instance (a guard function's call), and
+  returned REWORK; codex added a leavable while with one polarity and the
+  cleanup trap, kimi rule 5's redirection sentence and the plant's missing
+  receipt. The owner's instruction allowed one fix pass and no second
+  round: the fix pass closed every finding (dissent below) and re-derived
+  every count, and the journal carries an author-note line for it. The
+  fresh gate judges it; if it finds the same class again, the codexpin
+  lane is parked.
 
 spend:
-  wall_clock_hours: 10.5
-  adversarial_rounds: 5
+  wall_clock_hours: 13.0
+  adversarial_rounds: 6
 appetite_exceeded: >-
   Wall clock went past the 4 h appetite. Council round 2 found two MAJOR
   gaps (the unpinned /bin/date, the base-blob derived_from). They needed a
@@ -143,6 +181,10 @@ appetite_exceeded: >-
   Gate r4's re-scope (the generator) replaced the S3 contract and the whole
   inventory, and needed a full council round, a fix round and a delta
   round; each proof re-run took 2 to 5 min of feasibility at load 13 to 38.
+  Gate r5's last round rebuilt the grammar as a closed world and the
+  members as atomic units, ran one council delta round (13 min for the
+  slower seat) and one fix pass with a full re-run (4.5 min of
+  feasibility at load 14 to 50).
 
 diff:
   net_lines: "measured by CI from git numstat at merge-base..HEAD"
@@ -552,6 +594,68 @@ dissent:
     resolution: >-
       Receipt added for the count (git log on origin/main). The escalation is PR-1's ship
       session's act and is checked by PR-1's gate, not by this PR.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R5-2 BLOCKER (kimi-code/k3 R5-1, the same instance): #7340's installer calls its guard
+      functions on their own lines (131 `_verify_root_owned_dir "$RUNTIME_DIR" "trust root"`,
+      150 `_ensure_dir`, 261 and 267 `_verify_extracted_tree`); deleting a call has no member
+      and no error, because hb claims only `heartbeat` and a body's sites do not cover its calls.
+    status: CONFIRMED
+    resolution: >-
+      Kind call (§5bis.3, the 19th): every simple command whose command word names a function
+      the target defines, other than heartbeat; members remove (`:`) and fail (`false`). hb
+      gained fail. Installer line 131 is f49a16fffaeb7ad1:call:remove and :call:fail; the
+      wrapper gains line 197's call (2 members) and 15 hb fail members, all killed by the
+      feasibility suite with the modes measured. Selftest q5 (kimi's reproduction) is its guilt
+      and innocence.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R5-3 BLOCKER: the loop exception gives a while or until condition one polarity; with a
+      body that can leave (`while verify_next; do return 0; done; return 78`) always fails
+      open.
+    status: CONFIRMED
+    resolution: >-
+      Loop rule (§5bis.3 rule 1): the continuing constant is generated when the body can leave
+      (exit, return, exec or a target-function call outside a subshell, or errexit anywhere);
+      only a body that cannot leave keeps one polarity, because the other only hangs (ERROR).
+      Selftest q6 is codex's example, guilt and innocence. The wrapper's one loop cannot be
+      left, so its count is unchanged.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R5-4 BLOCKER: installer line 110, `trap _cleanup EXIT`, is accepted and silent; deleting it
+      disables the cleanup.
+    status: CONFIRMED
+    resolution: >-
+      A code string is parsed with the target's functions, so the call inside it is a call site
+      and the string is MASKED (`MASKED l.110 trap string: call`; selftest r28, innocence row
+      for a site-free trap string). exec, env and command in front of a function are
+      UNSUPPORTED (r25-r27): they run a program, never the function.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R5-5 MAJOR: rule 1's "each refusal-bearing unit" and rule 5's "every unit" are not
+      supported by the evidence, which tests generated members only.
+    status: CONFIRMED
+    resolution: >-
+      Rules 1 and 5 now state exactly what is generated (calls, loops, input redirections), and
+      §8 item 12 states the limit: the kinds are a finite list, S3 proves every generated member
+      is judged, and a guard of a form no kind claims is a new instance closed by a reviewed
+      change of §5bis.3.
+  - seat: kimi-code/k3
+    objection: >-
+      R5-2 MINOR: rule 5 lists one redirection as a unit, but output redirections have no member.
+    status: CONFIRMED
+    resolution: >-
+      Rule 5 now lists one input redirection, and says why an output redirection is not a unit
+      (it routes bytes, never decides a refusal; the heartbeat file and the tagged line are the
+      hb and diag killers' assertions); §8 item 12 states it.
+  - seat: kimi-code/k3
+    objection: >-
+      R5-3 MINOR: the plant's "28 sites covering all 18 kinds ... 36 ids" has no receipt in the
+      round's evidence.
+    status: CONFIRMED
+    resolution: >-
+      Re-derived after the fix pass (29 sites, all 19 kinds, 39 ids on 14 of 16 lines) and
+      receipted below.
 receipts:
   - claim: "the inventory is closed against the wrapper at 04dd6b51e4 (without G9j/G9k; G9b and G9l anchored on the PATH-resolved mkdir and date)"
     cmd: "scratch proto_s3.py <inventory via inv_on_04dd.py> wrapper_04dd.sh test_wrapper_04dd.py --closure-only"
@@ -876,4 +980,52 @@ receipts:
     result: "fixed: scripts/harness_gate_read.py -> scripts/ci/harness_gate_read.py (§9), bare harness_gate_read.py -> scripts/ci/harness_gate_read.py (§5ter.5, twice), docs/README.md (absent on main) -> docs/rules/operations.md as the unrelated doc (§5ter.4 n, §9); model_routing_gate.py already cited as infra/claude-hooks/model_routing_gate.py (2 places); floor docs/rules/operations.md 1/none, scripts/ci/harness_gate_read.py 1/none; parity 179 rows, drift 0; static selftest 32 PASS"
     exit: 0
     ts: "2026-09-27T05:58:44Z"
+    seat: claude-opus-5-5
+  - claim: "last round (gate r5), before its council: the closed world and atomic units on both suites"
+    cmd: "scratch gen_s3.py check <inventory> wrapper_fixed.sh --test feasibility_test.py --run --jobs 5; gen_s3.py skeleton wrapper_04dd.sh test_wrapper_04dd.py; a04dd.py"
+    result: "PR-1 target 138 sites, 182 generated: 175 MUST killed by a declared killer, 7 EQUIVALENT identical, 182 of 182 modes, errors=0 (07:54:09Z-07:57:31Z); 04dd6b51e4 180 mutants: 110 killed, 70 survived (63 MUST under 38 labels, 7 EQ), the round's 6 members all killed (07:57:31Z-07:59:20Z); installer 140 sites, 196 mutants, 53 errors (38 UNSUPPORTED, 5 MASKED, 10 SPAN)"
+    exit: 0
+    ts: "2026-09-27T07:59:20Z"
+    seat: claude-opus-5-5
+  - claim: "council round 5 (the last round's delta): both titolari ran on the catalogue and rules delta, each asked whether any guard in either target is deletable with no member and no error"
+    cmd: "env -i HOME PATH codex exec --sandbox read-only -m gpt-5.6-sol -c model_reasoning_effort=high (empty cwd); kimi_client.run(model=kimi-code/k3) in a no-tools child, scrubbed env, empty cwd; prompt sha256 5bd36106ea97e0bb (167 KB, spec and YAML delta, both targets, the 182 members, cw.py, receipts)"
+    result: "codex-gpt-5.6-sol 08:07:30Z-08:12:18Z rc 0, model gpt-5.6-sol: REWORK (3 BLOCKER, 1 MAJOR; B: yes). kimi-code/k3 08:07:31Z-08:20:28Z rc 0: REWORK (1 BLOCKER, 3 MINOR; B: yes). Reviews in reviews/*-r5.md"
+    exit: 0
+    ts: "2026-09-27T08:20:28Z"
+    seat: claude-opus-5-5
+  - claim: "fix pass: counts on the three scripts"
+    cmd: "scratch gen_s3.py sites wrapper_fixed.sh / wrapper_04dd.sh / installer_3d04.sh (installer blob 666f1025e2)"
+    result: "PR-1 target 139 sites (call 1), 199 generated, 0 errors (before the fix pass: 138, 182, 0); 04dd6b51e4 137, 197, 0 (136, 180, 0); installer 191 (call 51), 292, 60 errors = UNSUPPORTED 38 + MASKED 6 (line 110 trap string: call is new) + SPAN 16 (the call members of lines 168, 177 and 238 are new) (140, 196, 53)"
+    exit: 0
+    ts: "2026-09-27T08:36:36Z"
+    seat: claude-opus-5-5
+  - claim: "fix pass: the committed inventory passes steps 1-8 on the 50-test feasibility suite"
+    cmd: "scratch gen_s3.py check <inventory sha256 009cdf0d82ad7b84> wrapper_fixed.sh --test feasibility_test.py --run --jobs 5"
+    result: "199 annotated, 192 MUST killed by a declared killer, 7 EQUIVALENT surviving with identical records, 199 of 199 modes as declared, errors=0 (08:36:36Z-08:41:03Z, load average 14 to 50); the 17 new ids (15 hb fail DX, call remove FO, call fail FC) were measured first at 08:29:50Z, all KILLED"
+    exit: 0
+    ts: "2026-09-27T08:41:03Z"
+    seat: claude-opus-5-5
+  - claim: "fix pass: the 28-test suite at 04dd6b51e4"
+    cmd: "scratch gen_s3.py skeleton wrapper_04dd.sh test_wrapper_04dd.py --jobs 5; a04dd.py <inventory>"
+    result: "197 mutants, baseline 28/28; 121 killed, 76 survived (69 MUST under 38 labels, 7 EQ); EQ killed 0; KILLER-MISS 6 (G0f, G0g, G9b, G8d-G8f, as before); the fix pass's 17: each hb fail has its hb remove's verdict (9 killed, 6 survive under G4f, G9c, G9d, G9e, G9g, G9h), line 197's call remove and fail killed"
+    exit: 0
+    ts: "2026-09-27T08:43:44Z"
+    seat: claude-opus-5-5
+  - claim: "fix pass: selftest runs (cases e, f, g, h, i, m, q) and static (every other case), with the plant's receipt"
+    cmd: "scratch selftest_v3.py <inventory> runs; selftest_v3.py <inventory> static"
+    result: "runs 19 PASS 0 FAIL in 97 s (08:47:28Z-08:49:05Z): m1 ten UNANNOTATED, m2 four SURVIVED, m3 15 of 15 killed, q1 14 members, q5 guilt SURVIVED e4d74f83d4e2f636:call:remove and :call:fail, q6 guilt six SURVIVED incl. 1be0dbca6c0b4d07:cond:always, all innocence 0 errors. static 71 PASS 0 FAIL (08:49:05Z-08:50:31Z): a plant 39 ids on 29 keys, 14 of 16 lines, all 19 kinds, STALE-DERIVATION only besides; b1 199 ids identical; b2 7 new ids on the inserted lines; r25-r28 and the site-free trap row exact"
+    exit: 0
+    ts: "2026-09-27T08:50:31Z"
+    seat: claude-opus-5-5
+  - claim: "fix pass: the spec's 5bis.6 block equals the render of the committed inventory"
+    cmd: "scratch parity_v2.py <spec> <inventory>; gen_s3.py check <inventory> wrapper_fixed.sh"
+    result: "spec rows=201 render rows=201 drift=0; check_static errors=0"
+    exit: 0
+    ts: "2026-09-27T08:52:58Z"
+    seat: claude-opus-5-5
+  - claim: "fix pass: PII shape scan over the committed files and the round-5 prompt"
+    cmd: "scratch pii_scan.py <spec> <inventory> <pack> <brief> <journal> <round-5 reviews> <round-5 prompt>; owner-name token grep"
+    result: "pii_scan hits=1 files=8 (the repository's commit identity quoted in gate r5's public comment, round-5 prompt only); owner-name-token hits: 0"
+    exit: 0
+    ts: "2026-09-27T08:54:51Z"
     seat: claude-opus-5-5
