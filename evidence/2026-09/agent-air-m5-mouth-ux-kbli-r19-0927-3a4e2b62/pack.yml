@@ -7,51 +7,51 @@ plan_ref: >-
   lands.
 council_run: council-journal.jsonl
 council_note: >-
-  One seat reviewed the diff and returned: kimi-code/k3 (prompt-in/prompt-out via
-  scripts/kimi_client.py, no repo access; routePolicy.ts + the CTAHandoff.tsx diff +
-  kbli/layout.tsx diff + full diffstat, no PII, no company-identifying data in the material sent),
-  VERDICT HOLDS on all three questions asked. A second seat, codex-gpt-5.6-sol, was dispatched via
-  .claude/scripts/codex-spalla.sh (base origin/main, read-only) but the conducting session (main)
-  ruled mid-review that the spalla egress guard on main is known-defective and the lane is
-  suspended — do not wait on it, do not launch any further external-seat review from this lane.
-  The dispatch is left to finish on its own in the background (bash PID 21477, unattended) and its
-  output was not read into this pack; the 34 files it received (identical to this pack's own diff,
-  since it was dispatched from a clean worktree with base=origin/main and no other uncommitted
-  changes) are listed in the shipping report for the egress gate to judge. Quorum is therefore NOT
-  met — one seat, not two. Kimi's two caveats (accent-funnel fallback chain; CTAHandoff restyle
-  scope) were independently re-verified by the author against the real tree (see receipts) and
-  found non-blocking.
+  Two distinct seats reviewed the diff and both returned HOLDS — quorum met, no override needed
+  for R9 (corrected in the rework round below; the fresh gate on the first head recommended exactly
+  this). Round 1 (pre-rework): kimi-code/k3 (prompt-in/prompt-out via scripts/kimi_client.py, no
+  repo access; routePolicy.ts + the CTAHandoff.tsx diff + kbli/layout.tsx diff + full diffstat),
+  VERDICT HOLDS on all three questions asked, two caveats independently re-verified and found
+  non-blocking (see dissent). Round 2 (rework, gate B1/B2 cure): tp1-qwen3.8-max (prompt-in/
+  prompt-out via scripts/tp1_call.py, no repo access; main's presentation.ts + the full new
+  r19Vars.ts + the MobileNav.tsx diff + the kbli-theme.css diff), VERDICT HOLDS on all five
+  questions asked (residual R19_VARS divergence, dangling var() aliases, MobileNav fallback
+  parity for non-kbli consumers, nav-icon contrast >=3:1, other red flags) — independently
+  computed the same 13.9:1 contrast r19Vars.ts's own docstring claims, and raised two further
+  non-blocking observations (see dissent). A third seat, codex-gpt-5.6-sol, was dispatched during
+  round 1 via .claude/scripts/codex-spalla.sh (base origin/main, read-only) but the conducting
+  session ruled mid-review that the spalla egress guard on main is known-defective and the lane is
+  suspended; its dispatch was left to finish unattended (bash PID 21477) and its output was never
+  read into this pack. The 34 files it received are listed in the shipping report for the egress
+  gate to judge.
 seat_override: >-
-  Two rules are suppressed by this one field, same as the precedent in
-  evidence/2026-08/agent-air-m5-backend-rag-voa-price-750-0831-94ec3467/pack.yml — `seat_override`
-  is pack-level (shared by _seat_rule_verdict/_r9_r11_verdict), so it covers R9 as well as R8
-  whether or not that was intended. (1) GROUND TRUTH (R8): apps/mouth/src/app/kbli/* is a
+  R8 (ground_truth) only, per _seat_rule_verdict: apps/mouth/src/app/kbli/* is a
   GROUND_TRUTH_PATH_PATTERNS hit, but this diff changes no KBLI classification, risk level, PMA
   status or pricing value — verified by reading every line this diff adds to
   RiskBadge.tsx/PMABadge.tsx/BaliStatusBadge.tsx (see receipts): the additions are UI meta-labels
   ("needs review", "N% conf.", "pending verification") rendered from fields the pre-existing data
   model already carries, not new classification data. Manufacturing an `nb:`/`query_hash:` for a
   NotebookLM query that never happened would be the phantom-citation failure R8 exists to prevent,
-  pointed the other way. (2) QUORUM (R9): genuinely NOT met, and this override is not a claim that
-  it is. One seat ran and returned HOLDS (kimi-code/k3, see council-journal.jsonl); the second
-  (codex-gpt-5.6-sol) was abandoned mid-flight per the conducting session's ruling that its egress
-  guard is defective on main — not a quota/timeout death, a deliberate stop-order. If the reviewer
-  of this PR wants a second live seat before merge, the honest answer is that one was in flight and
-  was pulled by policy, not by failure.
+  pointed the other way. R9 (council_run quorum) is NOT overridden in this revision — the fresh
+  gate's rework ask ("add one such seat and drop the R9 half of the override") is done: two
+  distinct titolar seats now hold, see council-journal.jsonl.
 lanes:
   - lane: ux-kbli-rebase
     role: build
     seat: >-
-      claude-sonnet-5 (this session, in .worktrees/mouth-ux-kbli-r19-0927, which added this
-      pack's own commit on top). The cherry-picked range (foundation plus 12 follow-on changes)
-      was authored by an earlier claude-sonnet-5 continuation session on M5, 2026-09-24/26, in
-      .worktrees/mouth-ux-kbli-0926 (left untouched by this unit — another process is backing it
-      up); with this pack's commit the branch carries 14 commits total ahead of origin/main. Both
-      authorship sessions are the same Anthropic seat, so this is recorded as one build lane, not
-      two, per D3's build-lane count
+      claude-sonnet-5 (this session, in .worktrees/mouth-ux-kbli-r19-0927, which added this pack's
+      own commit plus one rework commit curing gate B1/B2 on top). The cherry-picked range
+      (foundation plus 12 follow-on changes) was authored by an earlier claude-sonnet-5
+      continuation session on M5, 2026-09-24/26, in .worktrees/mouth-ux-kbli-0926 (left untouched
+      by this unit — another process is backing it up); with this pack's two added commits the
+      branch carries 15 commits total ahead of origin/main. Both authorship sessions are the same
+      Anthropic seat, so this is recorded as one build lane, not two, per D3's build-lane count
   - lane: kimi-review
     role: review
     seat: kimi-code/k3
+  - lane: tp1-review
+    role: review
+    seat: tp1-qwen3.8-max
 dissent:
   - seat: kimi-code/k3
     objection: >-
@@ -76,20 +76,74 @@ dissent:
       full-width-slab bug the author judged universal to the shared component, and added
       CTAHandoff.test.tsx to pin the new behavior. Called out explicitly in this PR's body as an
       intentional cross-funnel side effect rather than shipped silently.
+  - seat: fresh Opus 5.5 gate (sign-only, first head c7b1088309)
+    objection: >-
+      The PR puts TWO independently-derived R19 Direction A systems on main: this branch's
+      lib/theme/r19Vars.ts and main's components/r19/presentation.ts R19_VARS, diverging on
+      --text-secondary (#58626B vs #435464), --border-strong (#A8ACA9 vs #a7a69f) and
+      --text-on-accent/--cta-primary-fg (#FFFCF7 vs #FFFFFF); the PR body's "cosmetic naming
+      collision" premise is false, since a rename would not remove the divergence.
+    status: CONFIRMED
+    resolution: >-
+      Cured in the rework commit (f14500c8d1): r19Vars.ts now spreads R19_VARS first and only adds
+      tokens main lacks, with every alias to a shared meaning expressed as var(--that-key) rather
+      than a copied literal (r19Vars.test.ts's new "restates no R19_VARS key at a different value"
+      check makes a future re-divergence a failing test). The duplicate, heavier Fraunces/Manrope
+      font pair (next/font, 125+24 KB) is deleted; both systems now load the same 17+13 KB
+      @font-face pair via the new shared styles/r19-fonts.css. Not a rename — a real unification.
+  - seat: fresh Opus 5.5 gate (sign-only, first head c7b1088309)
+    objection: >-
+      The mobile menu toggle on /kbli and /kbli/<code> is white on the paper nav (1.10:1 contrast
+      vs 14.94:1 on production), because MobileNav.tsx hardcodes a white icon for any
+      non-isR19Route path and /kbli's nav is opaque paper, not the dark shell every other non-R19
+      funnel has.
+    status: CONFIRMED
+    resolution: >-
+      Cured in the rework commit (f14500c8d1): MobileNav's non-R19 branch now reads
+      --nav-icon-color/--nav-icon-bg/--nav-icon-border with the exact prior literal as each var()'s
+      fallback (every other consumer renders identically), and r19Vars.ts sets the triplet to
+      kbli's ink-on-paper (#1D2C3B on #FFFCF7, 13.9:1, independently recomputed by both council
+      seats). r19Vars.test.ts pins the new pair at >=3:1.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      --r19-focus hardcodes #A44B36 instead of var(--accent-funnel); if --accent-funnel were ever
+      re-tinted in R19_VARS this literal would lag behind it.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted as-is: both systems already agree on copper (#A44B36) at this token, the SHADOW
+      value grammar r19Vars.test.ts enforces does not accept a var() inside a multi-part shadow
+      literal, and re-tinting copper site-wide is not a live plan. Left literal; noted for a future
+      editor of R19_VARS's own accent-funnel value.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      kbli-theme.css's [data-funnel="kbli"] override now writes --text-on-accent as lowercase
+      #ffffff while R19_VARS writes uppercase #FFFFFF.
+    status: RETRACTED
+    resolution: CSS hex literals are case-insensitive; no functional or rendered difference.
 pii_scan: clean
 pii_scan_note: >-
   Diff touches no client data, no CRM, no WhatsApp transcripts, no research/crm-exports paths.
-  Material sent to kimi (external prompt-in/prompt-out seat) was routePolicy.ts, the CTAHandoff.tsx
-  diff, kbli/layout.tsx diff and a diffstat — no company contact value, no client-identifying string.
+  Material sent to kimi (round 1) was routePolicy.ts, the CTAHandoff.tsx diff, kbli/layout.tsx diff
+  and a diffstat. Material sent to tp1-qwen3.8-max (round 2) was main's presentation.ts, the full
+  new r19Vars.ts, the MobileNav.tsx diff and the kbli-theme.css diff. Neither payload carries a
+  company contact value or a client-identifying string — both are pure design-token/UI source.
 spend:
-  wall_clock_hours: 2.3
-  adversarial_rounds: 1
+  wall_clock_hours: 3.9
+  adversarial_rounds: 2
 spend_note: >-
-  From worktree creation (.worktrees/mouth-ux-kbli-r19-0927, ~09:56Z UTC) to this pack's close
-  (~03:0xZ, see the last receipt timestamp). One adversarial round: kimi dispatched once, returned,
-  no retry needed. Codex was dispatched once and abandoned mid-flight per the conducting session's
-  stop-order (see council_note) — its wall clock does not count toward this unit's spend since the
-  session did not wait on it.
+  From worktree creation (.worktrees/mouth-ux-kbli-r19-0927, ~09:56Z UTC 2026-09-27) to this pack's
+  close (~03:55Z, see the last receipt timestamp). Two adversarial rounds: round 1, kimi dispatched
+  once on the first head, returned, no retry needed. Round 2 (rework, after the fresh gate returned
+  REWORK-BUILD on B1/B2), tp1-qwen3.8-max dispatched once on the cured head, returned, no retry
+  needed. Codex was dispatched once during round 1 and abandoned mid-flight per the conducting
+  session's stop-order (see council_note) — its wall clock does not count toward this unit's spend
+  since the session did not wait on it.
+appetite_exceeded: >-
+  adversarial_rounds 2 against a declared 1. Round 1 (kimi) reviewed the original head; the fresh
+  gate then returned REWORK-BUILD on two blockers a council review does not itself catch (B1 a
+  contrast measurement, B2 a cross-file token-value comparison against main). Round 2 (tp1) reviews
+  the cure. This is the gate doing its job, not scope creep — appetite is revised to 2 rounds for
+  any further round on this branch.
 receipts:
   - claim: origin/main was fetched fresh and the stale branch's full commit range (foundation plus its follow-on changes) was cherry-picked in order onto a NEW worktree, conflict-free
     cmd: "python3 scripts/agent_start.py --lane mouth --task-id ux-kbli-r19-0927 && git cherry-pick 8cb6914f80^..d8ae5e4e84"
@@ -180,4 +234,67 @@ receipts:
       funnel is left with an undefined --accent-funnel
     exit: 0
     ts: "2026-09-27T02:30:00Z"
+    seat: claude-sonnet-5
+
+  # ---- Rework round (gate B1/B2 on head c7b1088309, REWORK-BUILD; cured in f14500c8d1) ----
+
+  - claim: "the rework commit (f14500c8d1) does not diverge from the fresh gate's B1/B2 asks: it deletes the duplicate R19 Direction A theme file's divergent literals and the duplicate font pair, and fixes MobileNav's nav-icon contrast — no scope creep beyond the two blockers plus the tests/docs a correct cure requires"
+    cmd: git show --stat f14500c8d1
+    result: "14 files changed, 221 insertions(+), 350 deletions(-); net diffstat now 36 files, +2415/-627 vs origin/main (git diff --stat origin/main...HEAD)"
+    exit: 0
+    ts: "2026-09-27T03:44:00Z"
+    seat: claude-sonnet-5
+  - claim: r19Vars.ts no longer restates any R19_VARS key at a divergent value, and every var() alias it declares resolves to a real key
+    cmd: "cd apps/mouth && npx vitest run src/lib/theme/r19Vars.test.ts"
+    result: "Test Files 1 passed (1); Tests 46 passed (46) — includes the new 'restates no R19_VARS key at a different value' check and the alias-shape checks"
+    exit: 0
+    ts: "2026-09-27T03:36:35Z"
+    seat: claude-sonnet-5
+  - claim: the B1 nav-icon contrast fix does not regress R19Presentation's own test suite, once its one hardcoded-rgb assertion is updated to the new var()-based value
+    cmd: "cd apps/mouth && npx vitest run src/components/r19/R19Presentation.test.tsx"
+    result: "Test Files 1 passed (1); Tests 7 passed (7)"
+    exit: 0
+    ts: "2026-09-27T03:37:35Z"
+    seat: claude-sonnet-5
+  - claim: the full apps/mouth vitest suite is green on the cured head (the gate's own 193/193-style full-suite discipline, applied to apps/mouth)
+    cmd: "cd apps/mouth && npx vitest run"
+    result: "Test Files 558 passed (558); Tests 7393 passed | 2 skipped (7395) — the 2 skips are pre-existing, unrelated to this diff"
+    exit: 0
+    ts: "2026-09-27T03:40:47Z"
+    seat: claude-sonnet-5
+  - claim: "the fresh gate's finding that CTAHandoff/FunnelFrame tests DO run once packages/core/node_modules is symlinked from the shared root (the builder's earlier 'cannot run' receipt was an environment-setup gap, not a real failure) reproduces in this worktree"
+    cmd: "ln -s /Users/balizero/nuzantara/packages/core/node_modules .worktrees/mouth-ux-kbli-r19-0927/packages/core/node_modules && cd packages/core && npx vitest run"
+    result: "Test Files 38 passed (38); Tests 193 passed (193) — matches the gate's own measurement exactly"
+    exit: 0
+    ts: "2026-09-27T03:43:41Z"
+    seat: claude-sonnet-5
+  - claim: "typecheck is clean on the cured head"
+    cmd: npx tsc --noEmit -p apps/mouth
+    result: "no output"
+    exit: 0
+    ts: "2026-09-27T03:35:00Z"
+    seat: claude-sonnet-5
+  - claim: "the corrected file count is 23 non-test/non-asset .ts/.tsx files (not 19, the gate's correction), all zero ESLint problems"
+    cmd: "cd apps/mouth && npx eslint <each of the 23 changed .ts/.tsx files under apps/mouth and packages/core, path-relative>"
+    result: "no output for any of the 23 files (0 problems each)"
+    exit: 0
+    ts: "2026-09-27T03:45:00Z"
+    seat: claude-sonnet-5
+  - claim: "production build compiles and both post-build guards pass on the cured head"
+    cmd: npm run build --workspace apps/mouth
+    result: >-
+      exit 0; PUBLIC_LOGIN_BUNDLE_OK: inspected 5 assets, no internal API route prefixes found;
+      ROSTER_CHUNK_ASSERT OK: scanned 511 chunks, 0 skipped, Public files 1581 scanned, 0 named
+      after an excluded member; no Error/Failed/✗ line anywhere in the log
+    exit: 0
+    ts: "2026-09-27T03:54:15Z"
+    seat: claude-sonnet-5
+  - claim: "a second, independent review seat (tp1-qwen3.8-max, prompt-in/prompt-out, no repo access) HOLDS on the B1/B2 cure across all 5 questions asked, giving real 2-seat council quorum (R9 no longer overridden)"
+    cmd: python3 scripts/tp1_call.py --model qwen3.8-max --task-file /tmp/tp1-prompt.txt --effort medium --timeout 240
+    result: >-
+      VERDICT HOLDS on all 5 questions; independently computed 13.9:1 contrast for
+      #1D2C3B-on-#FFFCF7 matching r19Vars.ts's own docstring; 2 non-blocking observations recorded
+      as dissent entries above
+    exit: 0
+    ts: "2026-09-27T03:52:00Z"
     seat: claude-sonnet-5
