@@ -30,7 +30,8 @@ constraints:
     Faithful to the scratch spec: D1-D9, their amendments and the 3-PR plan
     are kept. Only what the three gates, or this PR's own council round 1,
     proved wrong is changed, and each change is listed in §10 with what
-    proved it.
+    proved it. The same holds for the fresh gate's REWORK-BUILD (gate r3,
+    comment 5850401670, R1-R6): one new commit, no amend.
   - >-
     No secrets, no client PII, no private owner name. The spec names only
     service accounts, repo paths and the owner codename.
@@ -43,9 +44,10 @@ acceptance:
       the heartbeat fix) and against 04dd6b51e4 itself: every site of the
       17-kind grammar (§5bis.3) is claimed by exactly one row, every anchor
       resolves, and a planted guard is reported UNCLAIMED. Expected: 136/136
-      on the target, 134/134 on 04dd6b51e4, 18 UNCLAIMED for ten planted
-      constructs.
-    probe: quick_proof.sh step closure_target_final
+      on the target, 134/134 on 04dd6b51e4, and for the normative plant of
+      §5ter.4 (a) (gate r3 R4: 27 sites, all 17 kinds) exactly its 27
+      UNCLAIMED sites plus STALE-DERIVATION.
+    probe: proof_r3b.sh steps static_target, static_04dd, selftest_static
   - text: >-
       The inventory SHALL name every item re-gate #2 asked for: D10, D25,
       D26, D02 and S1-S5, each with a disposition and an isolating fixture.
@@ -54,10 +56,24 @@ acceptance:
   - text: >-
       The fixture contract SHALL be satisfiable: a suite applying §5bis.4
       and §5bis.7 to the PR-1 target kills every MUST mutant, each by a test
-      in its killed_by list, while the EQUIVALENT mutants survive. Expected:
-      128/128 MUST killed with killer hit, every killed_by matching exactly
-      one node, 4 EQUIVALENT surviving, 0 sh -n failures, 0 mode mismatches.
-    probe: feasibility_test.py --json feasibility.json
+      in its killed_by list, while the EQUIVALENT mutants survive. Expected
+      (gate r3 adds 16 mutants): 143/143 MUST killed with killer hit, every
+      killed_by matching exactly one node, 5 EQUIVALENT surviving, 0 sh -n
+      failures, 0 mode mismatches.
+    probe: proof_r3b.sh steps feasibility, modes, modes_equivalent
+  - text: >-
+      The S3 contract SHALL tie every claimed site to its fixed operator
+      (gate r3 R1-R3, R5): OPERATOR reports 0 errors for the committed
+      inventory on the PR-1 target and for its projection to 04dd6b51e4,
+      and exactly the expected errors in selftest
+      cases j, k, l, m, n and o; the inventory at 0ac11b17e8 fails it (16
+      errors: 14 exit values, G9b's return, G2's -ne).
+    probe: proof_r3b.sh steps selftest_static, operator_on_0ac1
+  - text: >-
+      §5ter.5 SHALL state what blocks a later PR whose S3 run is red (gate
+      r3 R6): the W69 sentinel shape, the operator-only arming of the
+      required context, and the window until then (§8 item 10).
+    probe: grep -n 'What blocks a merge' docs/specs/2026-09-27-codexpin-v3-spec.md
   - text: >-
       The rendered table in §5bis.6 SHALL equal the YAML, cell by cell.
       Expected: 72 rows equal (header plus 71).

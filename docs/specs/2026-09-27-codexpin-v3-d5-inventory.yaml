@@ -27,7 +27,13 @@
 #                 op: stmt  -> inside the anchor's block, replace the first `echo`/`heartbeat`/`exit`
 #                              line (kind: diag|hb|exit) with `:` at the same indentation. This row
 #                              also claims the site on that line.
-#               mode = the mutant's effect as S3 measures it on the killer tests (spec §5ter.4):
+#                 op: val   -> resolve the line as stmt does with kind: exit, then apply the exit-value
+#                              operator there (`exit N`: N -> 1, or -> 0 when N is 1). No `to`: S3
+#                              writes the text itself (gate r3 R2).
+#               Every mutant must be the fixed operator (spec §5bis.3) of a site its row claims, and
+#               each claimed site must be hit in every operator class it requires. S3's OPERATOR step
+#               checks both (gate r3 R1).
+#               mode = the mutant's effect as S3 measures it on the killer tests (spec §5ter.3 step 8):
 #                 fail-open | fail-closed-other-rc | same-rc-other-diagnosis | static | equivalent.
 #                 static = every killer reads the blob and never runs it (spec §5ter.3 step 8).
 #                 S3 fails when the measured mode differs from this value.
@@ -236,6 +242,11 @@ rows:
         mode: fail-open
         killed_by:
           - "[nul_same_line_planted]"
+      - id: G1/v
+        op: val
+        mode: fail-closed-other-rc
+        killed_by:
+          - "[nul_same_line_planted]"
   - id: G1a
     was: [new]
     expr: "-d ''"
@@ -331,6 +342,17 @@ rows:
         mode: fail-open
         killed_by:
           - "[two_lines_diff_versions_planted]"
+      - id: G2/v
+        op: val
+        mode: fail-closed-other-rc
+        killed_by:
+          - "[two_lines_diff_versions_planted]"
+      - id: G2/-gt
+        op: sub
+        to: '    if [ "$_pin_lines" -gt 1 ]; then'
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - "[empty]"
   - id: G2a
     was: [D10]
     expr: '|| [ -n "$_pin_row" ]'
@@ -439,6 +461,12 @@ rows:
         op: stmt
         kind: exit
         mode: fail-open
+        killed_by:
+          - "[bad_semver_planted]"
+          - "[traversal_escape_planted]"
+      - id: G3/v
+        op: val
+        mode: fail-closed-other-rc
         killed_by:
           - "[bad_semver_planted]"
           - "[traversal_escape_planted]"
@@ -606,6 +634,11 @@ rows:
         mode: fail-open
         killed_by:
           - "[symlink_pin]"
+      - id: G4a/v
+        op: val
+        mode: fail-closed-other-rc
+        killed_by:
+          - "[symlink_pin]"
   - id: G4b
     was: [builder G4b, D12]
     anchor: |2-
@@ -649,6 +682,11 @@ rows:
         op: stmt
         kind: exit
         mode: same-rc-other-diagnosis
+        killed_by:
+          - "[bare_version_planted]"
+      - id: G4c/v
+        op: val
+        mode: fail-closed-other-rc
         killed_by:
           - "[bare_version_planted]"
   - id: G4d
@@ -704,6 +742,12 @@ rows:
         killed_by:
           - "[directory]"
           - "[dev_null]"
+      - id: G4e/v
+        op: val
+        mode: fail-closed-other-rc
+        killed_by:
+          - "[directory]"
+          - "[dev_null]"
       - id: G4e/!
         op: sub
         to: |2-
@@ -742,6 +786,11 @@ rows:
         op: stmt
         kind: exit
         mode: same-rc-other-diagnosis
+        killed_by:
+          - test_guilt_mode_000_pin_reports_unreadable_not_line_count
+      - id: G4f/v
+        op: val
+        mode: fail-closed-other-rc
         killed_by:
           - test_guilt_mode_000_pin_reports_unreadable_not_line_count
       - id: G4f/!
@@ -784,6 +833,11 @@ rows:
         op: stmt
         kind: exit
         mode: fail-open
+        killed_by:
+          - "[bin_missing]"
+      - id: G5/v
+        op: val
+        mode: fail-closed-other-rc
         killed_by:
           - "[bin_missing]"
   - id: G5a
@@ -864,6 +918,11 @@ rows:
         op: stmt
         kind: exit
         mode: same-rc-other-diagnosis
+        killed_by:
+          - test_guilt_unsearchable_runtime_dir_refuses_not_legacy
+      - id: G6/v
+        op: val
+        mode: fail-closed-other-rc
         killed_by:
           - test_guilt_unsearchable_runtime_dir_refuses_not_legacy
   - id: G6a
@@ -1222,12 +1281,18 @@ rows:
       identical. The only difference is one extra shell error line (the failed redirect) when the
       sidecar directory cannot be created; no contract pins the absence of that line. Holds only
       with /bin/mkdir and /bin/date (the D5 heartbeat fix): with PATH-resolved ones, a hostile
-      PATH made the shipped wrapper skip the heartbeat while the mutant wrote one.
+      PATH made the shipped wrapper skip the heartbeat while the mutant wrote one. G9b/v flips
+      the returned value, which no caller reads.
     mutants:
       - id: G9b/limb
         op: sub
         to: |2-
               /bin/mkdir -p "$SIDECAR_DIR" 2>/dev/null
+        mode: equivalent
+      - id: G9b/v
+        op: sub
+        to: |2-
+              /bin/mkdir -p "$SIDECAR_DIR" 2>/dev/null || return 1
         mode: equivalent
   - id: G9j
     was: [council r2]
@@ -1305,6 +1370,11 @@ rows:
         mode: fail-closed-other-rc
         killed_by:
           - test_guilt_env_file_missing_refuses
+      - id: G9c/v
+        op: val
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_guilt_env_file_missing_refuses
       - id: G9c/!
         op: sub
         to: |2-
@@ -1344,6 +1414,11 @@ rows:
         mode: fail-open
         killed_by:
           - test_guilt_env_placeholders_refuse
+      - id: G9d/v
+        op: val
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_guilt_env_placeholders_refuse
   - id: G9e
     was: [P3]
     expr: "whole guard: kill switch … exit 0"
@@ -1374,6 +1449,11 @@ rows:
         op: stmt
         kind: exit
         mode: fail-open
+        killed_by:
+          - test_kill_switch_stops_without_exec
+      - id: G9e/v
+        op: val
+        mode: fail-closed-other-rc
         killed_by:
           - test_kill_switch_stops_without_exec
   - id: G9f
@@ -1422,6 +1502,11 @@ rows:
         mode: fail-closed-other-rc
         killed_by:
           - test_guilt_venv_missing_refuses
+      - id: G9g/v
+        op: val
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_guilt_venv_missing_refuses
       - id: G9g/!
         op: sub
         to: |2-
@@ -1453,6 +1538,12 @@ rows:
         op: sub
         to: 'cd "$RUNTIME_DIR" || { heartbeat "refused" "cd failed"; }'
         mode: fail-open
+        killed_by:
+          - test_runtime_dir_absent_is_legacy_then_cd_refuses
+      - id: G9h/v
+        op: sub
+        to: 'cd "$RUNTIME_DIR" || { heartbeat "refused" "cd failed"; exit 1; }'
+        mode: fail-closed-other-rc
         killed_by:
           - test_runtime_dir_absent_is_legacy_then_cd_refuses
   - id: G9i

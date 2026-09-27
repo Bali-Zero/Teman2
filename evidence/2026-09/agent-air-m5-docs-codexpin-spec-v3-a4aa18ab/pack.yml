@@ -30,7 +30,7 @@ what_changed: |
   /bin/date); §10 changelog.
   docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml: the normative
   inventory S3 reads: 71 rows (67 MUST, 4 EQUIVALENT, 0 deferred), 136
-  sites on the PR-1 target, 132 mutants.
+  sites on the PR-1 target, 132 mutants at 0ac11b17e8 (148 after gate r3).
   After council round 1: kinds const, neg and redir; the static mode; the
   heartbeat fix moved into PR-1; stdin bound to /dev/null; the killed_by
   exactly-one-node rule; EQUIVALENT compared over every test; selftest (e)
@@ -43,6 +43,19 @@ what_changed: |
   PR-1 modifies wrapper lines 72 and 74 and why (G9b's equivalence); `date
   -u` is MUST, with kind dateopt, rows G7i and G9l, the TZ fixture
   test_stamps_are_utc_under_a_non_utc_tz and a skew-aware run-log hook.
+  After the fresh gate's REWORK-BUILD (gate r3, comment 5850401670), one
+  new commit: R1, every kind gets a fixed operator with required classes
+  (op, branch, relop, removal, value) and a fixed direction for conditions,
+  and S3 step 4 adds OPERATOR, which computes each operator's line and
+  compares every mutant with it (selftest cases j, n, o); R2, the
+  exit-value operator, 14 `/v` mutants (op val) plus G9b/v (EQUIVALENT);
+  R3, the relop class and mutant G2/-gt; R4, a normative 27-site plant
+  covering all 17 kinds as selftest (a), with four grammar cells made
+  exact; R5, STALE-DERIVATION (selftest k); R6, the W69 sentinel shape
+  for wa-codex-pin.yml, the operator[gui] arming of `wa-codex-pin verdict`
+  as a required context, the window until then (§8 item 10), and "15
+  kinds" corrected to 17. Inventory: 71 rows (67 MUST, 4 EQUIVALENT), 136
+  sites, 148 mutants (143 MUST, 5 EQUIVALENT).
 
 proof: |
   See receipts. Every number in the spec's §5bis.8 and §9 comes from the
@@ -52,30 +65,34 @@ proof: |
 
 pii_scan: clean
 pii_scan_note: >-
-  The spec, the inventory and both council prompts carry repo paths, the
-  owner codename, service account names and synthetic pin fixtures only;
-  no client data, OSINT or credential. Council dispatch ran with a
-  scrubbed env (env -i), a read-only sandbox for codex and a no-tools
-  child for kimi.
+  The spec, the inventory and every council prompt (rounds 1-3) carry repo
+  paths, the owner codename, service account names and synthetic pin
+  fixtures only; no client data, OSINT or credential. Council dispatch ran
+  with a scrubbed env (env -i), a read-only sandbox for codex and a
+  no-tools child for kimi.
 
 post_council_note: >-
-  The last commit, on the coordinator's ruling, changed the reviewed spec
-  and inventory only for two points. D5 now states that PR-1 modifies
-  wrapper lines 72 and 74, and why (G9b's equivalence). `date -u` became a
-  MUST row pair (G7i, G9l) with its fixture. No council round was run on
-  it, by the coordinator's instruction, and the journal carries an
-  author-note line saying so.
+  The ruling commit (0ac11b17e8), on the coordinator's instruction, had no
+  council round: D5 states PR-1's lines 72 and 74 and why, and `date -u`
+  became a MUST row pair (G7i, G9l) with its fixture; the journal carries
+  an author-note line. The gate r3 rework commit on top of it changed
+  inventory rows (16 mutants), so it had a council delta round (round 3)
+  with both titolari on the spec+YAML diff, the 04dd6b51e4 wrapper and
+  the scratch prototype: both ACCEPT-WITH-NOTES, no BLOCKER, no MAJOR.
+  Their MINOR notes were fixed in the same commit (dissent below); none
+  changed a row, a mutant or a count, so no further round was run.
 
 spend:
-  wall_clock_hours: 4.5
-  adversarial_rounds: 2
+  wall_clock_hours: 7.5
+  adversarial_rounds: 3
 appetite_exceeded: >-
   Wall clock went past the 4 h appetite. Council round 2 found two MAJOR
   gaps (the unpinned /bin/date, the base-blob derived_from). They needed a
   new site kind and a full re-run of the mutant proof, which took 17 min
   under a load average near 35. The coordinator's ruling then added the
-  dateopt rows and a third full re-run. Adversarial rounds stayed at the
-  2 declared.
+  dateopt rows and a third full re-run. The fresh gate's REWORK-BUILD
+  (gate r3) added a third council round and a fourth full re-run, 24 min
+  for the feasibility suite alone under a load average between 35 and 130.
 
 diff:
   net_lines: "measured by CI from git numstat at merge-base..HEAD"
@@ -239,6 +256,59 @@ dissent:
       into §5ter.3 step 8: the wrapper writes nothing to stdout itself, so
       non-empty stdout means a program was exec'd; the rule can overstate a
       mode, never understate it.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R3-1 MINOR: the prototype's normalisation collapsed whitespace inside
+      quotes, while the normative rule allows only comment removal and
+      whitespace collapse; an operator plus an edit inside a message could
+      pass as the operator.
+    status: CONFIRMED
+    resolution: >-
+      §5ter.3 step 4 now collapses whitespace outside quotes only and
+      compares quoted text byte for byte; the prototype's _norm was fixed
+      the same way and the static steps re-run: 0 errors on the inventory,
+      every selftest case unchanged (receipts static_target, selftest_static).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R3-5/R3-7 MINOR: a stale blob does not always add UNCLAIMED or PHANTOM
+      sites; "0 OPERATOR errors on both blobs" really means the committed
+      inventory plus its 04dd6b51e4 projection.
+    status: CONFIRMED
+    resolution: >-
+      Both sentences reworded (§5ter.3 step 3, §9, brief acceptance).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R3-6 note: R6's window is procedural until the operator arms the
+      required context, so the PENDING-ARMS step is load-bearing.
+    status: PLAUSIBLE
+    resolution: >-
+      Already stated as §8 item 10 and in §5ter.5; the arming is operator
+      only by the repo's rules, so the spec cannot close it by itself.
+  - seat: kimi-code/k3
+    objection: >-
+      R3-2 MINOR: the "return N needs the value class only" reason covers
+      the predicate's returns, not heartbeat's return 0 on line 72.
+    status: CONFIRMED
+    resolution: >-
+      §5bis.3 now says heartbeat's return 0 is removed anyway by its line's
+      andor operator (G9b/limb).
+  - seat: kimi-code/k3
+    objection: >-
+      R3-5/R3-6 MINOR: a stale blob also silences SITE-COUNT; the r0 N7
+      bullet still said later PRs extend `paths:`.
+    status: CONFIRMED
+    resolution: >-
+      One sentence in §5ter.3 step 3; the D6 r0 N7 bullet now names the
+      scope list.
+  - seat: kimi-code/k3
+    objection: >-
+      R3-7 MINOR: the run-based numbers came from the previous author's run
+      on the same bytes; the pack should carry this session's own receipts.
+    status: CONFIRMED
+    resolution: >-
+      This session re-ran the feasibility suite, the modes, the EQUIVALENT
+      comparison and the 04dd6b51e4 suite; the gate r3 receipts below are
+      those runs, and their verdicts equal the earlier run's.
 
 receipts:
   - claim: "the inventory is closed against the wrapper at 04dd6b51e4 (without G9j/G9k; G9b and G9l anchored on the PATH-resolved mkdir and date)"
@@ -348,4 +418,100 @@ receipts:
     result: "floor=3 source=size (staged diff before this receipt was appended: 10 files, 3,575 insertions, 0 deletions)"
     exit: 0
     ts: "2026-09-26T22:02:54Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: both wrapper blobs rebuilt from git; the PR-1 target is 04dd6b51e4 plus lines 72/74 only"
+    cmd: "git show 04dd6b51e4:<wrapper>; sed lines 72,74 -> /bin/mkdir, /bin/date; git hash-object"
+    result: "4143a795d9; 78236b6070 (base, target); planted file cea0a7999d"
+    exit: 0
+    ts: "2026-09-27T02:57:42Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: closure and OPERATOR on the committed inventory, PR-1 target"
+    cmd: "scratch proto_s3.py <inventory> wrapper_fixed.sh feasibility_test.py --closure-only"
+    result: "sites extracted=136 claimed=136 rows=71 mutants=148 blob=78236b6070; static errors=0 syntax=0"
+    exit: 0
+    ts: "2026-09-27T02:57:57Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: closure and OPERATOR on the inventory adapted to 04dd6b51e4"
+    cmd: "scratch proto_s3.py <inventory via inv_on_04dd.py> wrapper_04dd.sh test_wrapper_04dd.py --closure-only"
+    result: "sites extracted=134 claimed=134 rows=69 mutants=146 blob=4143a795d9; static errors=0 syntax=0"
+    exit: 0
+    ts: "2026-09-27T02:58:21Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: selftest cases a, j, k, l, m, n, o (no pytest) give exactly their expected errors"
+    cmd: "scratch selftest_static.py <inventory>"
+    result: "innocence 0; j. operator swap 3; k. stale derivation 1; l. no value mutant 1; m. no relop mutant 1; n. wrong direction 3; o. selection branch half 2; a. normative plant 28; plant kinds 17"
+    exit: 0
+    ts: "2026-09-27T02:58:24Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3 R4: the planted file of selftest (a) is valid shell"
+    cmd: "/bin/sh -n wrapper_planted_r3.sh && /bin/bash -n wrapper_planted_r3.sh"
+    result: "sh -n ok; bash -n ok"
+    exit: 0
+    ts: "2026-09-27T02:57:42Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3 R4: the round-2 prototype, run on the same plant, misses 3 of the 27 sites"
+    cmd: "scratch proto_s3.r2.py (sha256 6fa317c97f29b86a) <inventory at 0ac11b17e8> wrapper_planted_r3.sh --closure-only"
+    result: "UNCLAIMED 24; sites extracted=160 claimed=136 rows=71 mutants=132"
+    exit: 0
+    ts: "2026-09-27T02:58:26Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: the inventory at 0ac11b17e8 fails OPERATOR"
+    cmd: "scratch proto_s3.py <inventory at 0ac11b17e8> wrapper_fixed.sh --closure-only"
+    result: "OPERATOR lines 16 (value 15, relop 1); static errors=16 syntax=0"
+    exit: 0
+    ts: "2026-09-27T02:58:38Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3 R6: a test-only deletion is floor 1, a one-line wrapper change floor 3"
+    cmd: "python3 scripts/evidence_pack_lint.py --changed-files-file <f> --numstat-file <f> --print-floor / --print-floor-source"
+    result: "case: 0 12 scripts/tests/test_wa_codex_broker_wrapper.py 1 none case: 1 1 infra/launchagents/wrappers/wa-codex-broker-wrapper.sh 3 path"
+    exit: 0
+    ts: "2026-09-27T02:52:15Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: the 50-test contract suite kills every MUST mutant of the 148 by a declared killer"
+    cmd: "scratch proto_s3.py <inventory> wrapper_fixed.sh feasibility_test.py --json feasibility.json"
+    result: "BASELINE 0 50 passed in 5.12s collected 50; KILLED MUST 143; SURVIVED MUST 0; SURVIVED EQUIVALENT 5; KILLED EQUIVALENT 0; killer=n on a killed MUST 0; SCHEMA lines 0; static errors=0 syntax=0"
+    exit: 0
+    ts: "2026-09-27T03:06:36Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: every declared mode equals the measured one on the killer tests"
+    cmd: "scratch modes.py <inventory> wrapper_fixed.sh"
+    result: "148 mutants measured; DIFF lines 0; measured equivalent 5, fail-closed-other-rc 36, fail-open 45, same-rc-other-diagnosis 54, static 8"
+    exit: 0
+    ts: "2026-09-27T03:11:31Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: the five EQUIVALENT mutants leave identical records in every test that runs the wrapper"
+    cmd: "scratch modes_eq.py <inventory> wrapper_fixed.sh"
+    result: "G0k/val measured=equivalent; G1c/IFS measured=equivalent; G7c/stmt measured=equivalent; G9b/limb measured=equivalent; G9b/v measured=equivalent; DIFF lines 0"
+    exit: 0
+    ts: "2026-09-27T03:12:16Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: what the 28-test suite at 04dd6b51e4 kills of the 146 applicable mutants (§5bis.8)"
+    cmd: "scratch proto_s3.py <inventory via inv_on_04dd.py> wrapper_04dd.sh test_wrapper_04dd.py --json suite_04dd.json"
+    result: "BASELINE 0 28 passed in 2.83s collected 28; mutants 146; killed 80; survived MUST 61; survived EQUIVALENT 5"
+    exit: 0
+    ts: "2026-09-27T03:18:55Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: the §5bis.6 table equals the YAML rendering, cell by cell"
+    cmd: "scratch parity.py <spec> <inventory>"
+    result: "rows 72 72 equal True"
+    exit: 0
+    ts: "2026-09-27T03:19:29Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: no PII or secret shape, no owner-name token, in the committed files, the reviews or the round-3 prompt"
+    cmd: "scratch pii_scan.py <spec> <inventory> <brief> <pack> <journal> reviews/*.md <round-3 prompt>; grep -ci <owner-name tokens>"
+    result: "pii_scan hits=0 files=12 owner-name-token hits: 0"
+    exit: 0
+    ts: "2026-09-27T03:19:29Z"
+    seat: claude-opus-5-5
+  - claim: "gate r3: spec, inventory, brief and pack are prettier-clean; the inventory parses"
+    cmd: "prettier --check <spec> <inventory> <brief> <pack>; python3 -c yaml.safe_load(<inventory>)"
+    result: "All matched files use Prettier code style!; yaml ok wa-codex-wrapper-inventory/1 71 148"
+    exit: 0
+    ts: "2026-09-27T03:19:30Z"
+    seat: claude-opus-5-5
+  - claim: "council round 3: both titolari returned a verdict on the gate r3 delta"
+    cmd: "scratch council/dispatch_r3.sh sol; council/dispatch_r3.sh kimi (env -i, read-only codex sandbox -m gpt-5.6-sol, no-tools kimi child)"
+    result: "codex-gpt-5.6-sol ACCEPT-WITH-NOTES (rc 0, 02:52:59Z-02:56:20Z); kimi-code/k3 ACCEPT-WITH-NOTES (rc 0, 02:53:02Z-03:04:05Z); verbatim in reviews/*-r3.md"
+    exit: 0
+    ts: "2026-09-27T03:04:05Z"
     seat: claude-opus-5-5
