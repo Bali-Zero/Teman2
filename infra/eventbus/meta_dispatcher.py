@@ -27,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eventbus import EventSubscriber, EventEnvelope, beat, start_background_beater
+from eventbus._tg_curl import curl_send
 
 # Checkout root, resolved from this file's own location (works identically for
 # the repo checkout and any HOME-fork copy) — overridable for tests/tooling.
@@ -123,19 +124,7 @@ def _send_telegram(text: str) -> bool:
     if not token or not chat_id:
         log.warning("telegram skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_OWNER_CHAT_ID not set")
         return False
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    try:
-        result = subprocess.run(
-            ["curl", "-sf", "-X", "POST", url,
-             "-d", f"chat_id={chat_id}",
-             "-d", f"text={text[:4000]}",
-             "-d", "disable_web_page_preview=true"],
-            capture_output=True, text=True, timeout=10,
-        )
-        return result.returncode == 0
-    except Exception as e:
-        log.warning("telegram send failed: %s", e)
-        return False
+    return curl_send(token, chat_id, text, timeout=10)
 
 
 def _check_redis_health() -> bool:

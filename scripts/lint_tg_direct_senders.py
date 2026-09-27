@@ -85,6 +85,17 @@ GATEWAY_ALLOWLIST = {
     # here is on prose and fixtures ABOUT the pattern, not code using it.
     "scripts/lint_telegram_tokens.py",
     "scripts/tests/test_lint_telegram_tokens.py",
+    # mata-garuda's own local gateway (2026-09-27, tg-token-log-hygiene): the
+    # ONE curl-based sender every mata-garuda agent now delegates to instead
+    # of each building its own URL. Same shape as tg_notify.py's own listing
+    # above — a new file matching PATTERN here is the CURE (senders that used
+    # to duplicate the URL literal now call this instead), not a regrowth.
+    "apps/mata-garuda/mata_garuda/tg_curl.py",
+    # infra/eventbus's own local gateway, same day and same rationale as the
+    # mata-garuda one above — meta_dispatcher.py and research_sentinel.py
+    # (both already grandfathered) now delegate to this instead of each
+    # keeping its own URL-building subprocess call.
+    "infra/eventbus/_tg_curl.py",
 }
 
 # Printed under the offender list. Kept next to GATEWAY_ALLOWLIST so the two stay

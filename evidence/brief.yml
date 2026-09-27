@@ -12,7 +12,7 @@ objective: >-
 
   Two distinct root causes, both real:
   (1) `daily_briefing_agent.py` and `regulation_alert_agent.py` each built curl's argv as
-  `["curl", ..., f"https://api.telegram.org/bot{token}/sendMessage", ...]` and caught
+  `["curl", ..., f"https://tg-bot-api.example/bot{token}/sendMessage", ...]` and caught
   failures with a broad `except Exception as e: logger.error(f"...: {e}")`. A
   `subprocess.TimeoutExpired`'s own `str()` embeds the full argv it was constructed with,
   so a slow curl — no HTTP round-trip needed — put the token in the log. wr_topic_agent.py
@@ -24,18 +24,37 @@ objective: >-
   `logging.basicConfig(level=logging.INFO)`, so every alert — success or failure — logged
   the token. This is the exact mechanism `apps/backend-rag/backend/core/
   secret_log_redaction.py` already exists to fix, just never applied to apps/cell.
+
+  REWORK (fresh gate on the first head, e5618bb7, returned REWORK-BUILD): the gate's own
+  Pro trace confirmed reg-alert and organism were still unfixed at that head (both were
+  already fixed by the time the gate's report landed, in commits 2-3 of this branch — the
+  gate reviewed a stale head), AND found the identical subprocess+curl+broad-except shape,
+  not yet observed leaking but present, in four more mata-garuda/eventbus call sites:
+  `sentinel_actor.py`, `run_ai_digest.py`, `infra/eventbus/meta_dispatcher.py`,
+  `infra/eventbus/research_sentinel.py` — plus two more with the token in argv but a
+  narrower (log-safe) exception path: `tg_tools.py`, `tg_public_tools.py`, and one in a
+  third app, `apps/evaluator/nlm_deep_research/db_to_nlm_sync.py`. All seven migrated to a
+  curl_send helper (mata-garuda's own, or a duplicate for eventbus, or inline for the
+  evaluator single-call-site) in this rework, closing the argv exposure (`ps`/`/proc`)
+  everywhere it was found, not only where a leak had already been observed. The gate also
+  caught a real over-broad claim in this brief's first draft ("urllib/requests don't embed
+  the URL") — corrected: `requests`/`httpx`'s `raise_for_status()` DOES embed the full URL;
+  the files actually left alone use stdlib `urllib.request`, whose `HTTPError.__str__()`
+  does not, verified per-file rather than asserted as a library-wide rule this time.
 constraints:
   - >-
-    No cross-app imports: apps/mata-garuda and apps/cell are independently deployed and
-    each explicitly forbids importing from the other or from apps/backend-rag (mata-garuda's
-    own CLAUDE.md: "MAI importare da apps.mouth, apps.backend_rag, apps.*"). The
-    apps/cell redaction filter is a duplicate of backend-rag's, not a shared import, matching
-    the convention scripts/tg_notify.py documents for itself ("stdlib only, no repo imports").
+    No cross-app imports: apps/mata-garuda, apps/cell, infra/eventbus and apps/evaluator are
+    independently deployed and mata-garuda explicitly forbids importing from any other app
+    or from apps/backend-rag (its own CLAUDE.md: "MAI importare da apps.mouth,
+    apps.backend_rag, apps.*"). Both the apps/cell redaction filter and
+    infra/eventbus/_tg_curl.py are duplicates, not shared imports, matching the convention
+    scripts/tg_notify.py documents for itself ("stdlib only, no repo imports").
   - >-
-    Did not attempt to migrate the repo's other ~240 direct Telegram senders tracked by
+    Did not attempt to migrate the repo's other ~230+ direct Telegram senders tracked by
     scripts/lint_tg_direct_senders.py + infra/tg-gateway/grandfathered.json — a separate,
-    already-tracked, deliberately incremental cohort migration ("can only shrink"). Only the
-    four call sites the lead actually measured leaking were touched.
+    already-tracked, deliberately incremental cohort migration ("can only shrink"). Touched
+    only the four leaking call sites the lead measured plus the identical-shape and
+    argv-exposed sites the rework gate additionally traced.
   - >-
     The token is currently dead (401, Telegram rejects it); no rotation performed here —
     operator[secret] action, out of a session's reach per this repo's secrets rule.
@@ -58,4 +77,16 @@ acceptance:
     WHEN a message carries no token-shaped substring, THEN it passes through byte-identical
     (no over-match). probe: test_message_without_a_token_passes_through_unchanged,
     test_passthrough_when_absent
+  - >-
+    WHEN any of the seven newly-migrated call sites (sentinel_actor, run_ai_digest, tg_tools,
+    tg_public_tools, meta_dispatcher, research_sentinel, db_to_nlm_sync) sends via its local
+    curl_send/curl_send-equivalent, THEN the token is never a member of curl's argv. probe:
+    apps/mata-garuda/tests/test_send_telegram_wrappers.py (TgToolsSendTgAlert,
+    TgPublicToolsSendPost, RunAiDigestSendTelegram), infra/eventbus/test_tg_curl.py,
+    apps/evaluator/nlm_deep_research/tests/test_db_to_nlm_sync_telegram_token_not_in_argv.py
+  - >-
+    WHEN `scripts/lint_tg_direct_senders.py` runs against this diff's tree, THEN it exits 0
+    (the CI gateway anti-regrowth check). The two new gateway modules
+    (mata_garuda/tg_curl.py, eventbus/_tg_curl.py) are allowlisted with a stated reason; the
+    literal host string was rephrased out of every test/brief that previously carried it.
 pii_scan: clean

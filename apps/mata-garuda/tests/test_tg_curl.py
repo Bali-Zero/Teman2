@@ -3,9 +3,11 @@ whatever it returns for a caller to log.
 
 Born 2026-09-27: Pro's `com.matagaruda.daily-briefing` and
 `com.matagaruda.reg-alert.30min` jobs each had their own copy of the same
-bug — curl's argv built as
-`["curl", ..., f"https://api.telegram.org/bot{token}/sendMessage", ...]`,
-caught by a broad `except Exception as e: logger.error(f"...: {e}")`. A
+bug — curl's argv built with the bot API host as a URL literal (the real
+host is kept out of this file per scripts/lint_tg_direct_senders.py; a
+placeholder is used below, since `mask_tg_token` matches by token SHAPE and
+never needs the host), caught by a broad
+`except Exception as e: logger.error(f"...: {e}")`. A
 `subprocess.TimeoutExpired`'s own `str()` embeds the full argv it was
 constructed with, so a slow curl — no HTTP round-trip needed — put the token
 in daily-briefing.error.log (once) and reg-alert.error.log (39x, on its
@@ -25,7 +27,7 @@ FAKE_SECRET = "AAF9zZqLmN0pQrStUvWxYz1234567890abc"
 
 class TestMaskTgToken:
     def test_masks_known_shape(self):
-        masked = mask_tg_token(f"https://api.telegram.org/{FAKE_TOKEN}/sendMessage")
+        masked = mask_tg_token(f"https://tg-bot-api.example/{FAKE_TOKEN}/sendMessage")
         assert FAKE_SECRET not in masked
         assert "<redacted>" in masked
 
@@ -46,7 +48,7 @@ class TestCurlSendGuilt:
         # str() embeds an argv that (pre-fix, at either old call site) carried
         # the token as a URL literal.
         legacy_argv_with_token = [
-            "curl", "-s", f"https://api.telegram.org/{FAKE_TOKEN}/sendMessage",
+            "curl", "-s", f"https://tg-bot-api.example/{FAKE_TOKEN}/sendMessage",
         ]
         with patch.object(
             tg_curl.subprocess, "run",

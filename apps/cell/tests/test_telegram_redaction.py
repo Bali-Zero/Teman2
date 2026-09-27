@@ -27,7 +27,7 @@ class TestInstallOnHttpxLogger:
 
         with caplog.at_level(logging.INFO):
             httpx_logger.info(
-                f'HTTP Request: POST https://api.telegram.org/{FAKE_TOKEN}/sendMessage "HTTP/1.1 200 OK"'
+                f'HTTP Request: POST https://tg-bot-api.example/{FAKE_TOKEN}/sendMessage "HTTP/1.1 200 OK"'
             )
 
         assert FAKE_SECRET not in caplog.text
@@ -54,7 +54,7 @@ class TestBackstopOnRootHandler:
         with caplog.at_level(logging.ERROR):
             alerter_logger.error(
                 f"Telegram send failed: Client error '401 Unauthorized' for url "
-                f"'https://api.telegram.org/{FAKE_TOKEN}/sendMessage'"
+                f"'https://tg-bot-api.example/{FAKE_TOKEN}/sendMessage'"
             )
 
         assert FAKE_SECRET not in caplog.text

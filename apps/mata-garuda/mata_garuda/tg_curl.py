@@ -25,8 +25,19 @@ from mata_garuda.config import mask_tg_token
 CREDENTIAL_REJECTED_STATUSES = frozenset({"401", "403"})
 
 
-def curl_send(token: str, chat_id: str, text: str, *, timeout: float = 15) -> tuple[bool, str]:
+def curl_send(
+    token: str,
+    chat_id: str,
+    text: str,
+    *,
+    timeout: float = 15,
+    extra_fields: dict[str, str] | None = None,
+) -> tuple[bool, str]:
     """POST one sendMessage via curl. Never raises.
+
+    ``extra_fields`` adds plain ``-d`` fields (e.g. ``{"parse_mode": "Markdown"}``)
+    — callers migrating an existing sender that relied on Telegram options
+    beyond chat_id/text keep that behavior instead of silently losing it.
 
     Returns ``(ok, reason)`` — ``reason`` is ``""`` on success,
     ``"credential_rejected (<code>)"`` on 401/403 (judged by status code, never
@@ -34,20 +45,17 @@ def curl_send(token: str, chat_id: str, text: str, *, timeout: float = 15) -> tu
     ``CREDENTIAL_REJECTED_STATUSES``), or a token-masked failure body/exception
     string otherwise.
     """
-    cfg_fd, cfg_path = tempfile.mkstemp(prefix="tg-send-", suffix=".curlcfg")
+    cfg_path: str | None = None
     try:
-        os.chmod(cfg_path, 0o600)
+        cfg_fd, cfg_path = tempfile.mkstemp(prefix="tg-send-", suffix=".curlcfg")
+        # mkstemp already creates the file 0600 (POSIX) — no separate chmod needed.
         with os.fdopen(cfg_fd, "w") as fh:
             fh.write(f'url = "https://api.telegram.org/bot{token}/sendMessage"\n')
-        result = subprocess.run(
-            [
-                "curl", "-s", "-K", cfg_path,
-                "-w", "\n%{http_code}",
-                "-d", f"chat_id={chat_id}",
-                "--data-urlencode", f"text={text}",
-            ],
-            capture_output=True, text=True, timeout=timeout,
-        )
+        argv = ["curl", "-s", "-K", cfg_path, "-w", "\n%{http_code}", "-d", f"chat_id={chat_id}"]
+        for key, value in (extra_fields or {}).items():
+            argv += ["-d", f"{key}={value}"]
+        argv += ["--data-urlencode", f"text={text}"]
+        result = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
         body, _, code = (result.stdout or "").rpartition("\n")
         if code in CREDENTIAL_REJECTED_STATUSES:
             return False, f"credential_rejected ({code})"
@@ -57,7 +65,8 @@ def curl_send(token: str, chat_id: str, text: str, *, timeout: float = 15) -> tu
     except Exception as e:
         return False, mask_tg_token(str(e))
     finally:
-        try:
-            os.unlink(cfg_path)
-        except OSError:
-            pass
+        if cfg_path is not None:
+            try:
+                os.unlink(cfg_path)
+            except OSError:
+                pass

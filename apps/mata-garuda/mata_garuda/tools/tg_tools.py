@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import logging
 import os
-import subprocess
 
 from mata_garuda.config import TG_BOT_TOKEN_ENV, TG_ZERO_CHAT_ID
 from mata_garuda.registry import register_tool
+from mata_garuda.tg_curl import curl_send
 
 logger = logging.getLogger("mata_garuda.tools")
 
@@ -35,27 +35,8 @@ def send_tg_alert(
     if not token:
         return f"[ERROR] {TG_BOT_TOKEN_ENV} not set in environment"
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-
-    try:
-        result = subprocess.run(
-            [
-                "curl", "-sL", "-X", "POST", url,
-                "-d", f"chat_id={TG_ZERO_CHAT_ID}",
-                "-d", f"text={message}",
-                "-d", "parse_mode=Markdown",
-                "--connect-timeout", "10",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-        if '"ok":true' in result.stdout:
-            logger.info(f"[tg] Alert sent to Zero: {message[:60]}...")
-            return "[SUCCESS] Alert sent to Zero"
-        else:
-            return f"[ERROR] TG API response: {result.stdout[:200]}"
-    except subprocess.TimeoutExpired:
-        return "[ERROR] TG API timeout"
-    except Exception as e:
-        return f"[ERROR] TG send failed: {e}"
+    ok, reason = curl_send(token, TG_ZERO_CHAT_ID, message, extra_fields={"parse_mode": "Markdown"})
+    if ok:
+        logger.info(f"[tg] Alert sent to Zero: {message[:60]}...")
+        return "[SUCCESS] Alert sent to Zero"
+    return f"[ERROR] TG send failed: {reason}"
