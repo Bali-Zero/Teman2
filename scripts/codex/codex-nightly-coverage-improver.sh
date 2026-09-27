@@ -120,7 +120,7 @@ PYTHONPATH=. timeout 600 pytest backend/tests/services/rag/ \
     --cov=backend \
     --cov-report=term-missing:skip-covered \
     --cov-report=json:${LOG_DIR}/coverage-${TODAY}.json \
-    -q --tb=no \
+    --tb=no \
     > "$COV_REPORT" 2>&1 || true
 
 if [ ! -f "${LOG_DIR}/coverage-${TODAY}.json" ]; then
