@@ -84,15 +84,21 @@ def test_codex_tier_uses_an_explicit_env_allowlist_not_the_inherited_environment
     them to an arbitrary host if they reached that shell's environment.
 
     `-c shell_environment_policy.inherit=core` (the gate's first-suggested
-    cure) was tested live on Pro and found INEFFECTIVE: codex's `exec` shell
-    tool re-sources this account's `~/.zshenv` on every invocation regardless
-    of that flag's value (and regardless of `=none`, and regardless of
-    `-c allow_login_shell=false`, which additionally broke the TELEGRAM_* vars
-    this tier needs). The verified-effective mechanism is not letting the
-    secrets reach codex's own process environment at all: `env -i` plus an
-    explicit small allowlist (HOME, PATH, the seat's CODEX_HOME, and only the
-    two TELEGRAM_* vars this tier's prompt uses to alert) — confirmed live:
-    none of the `.nuzantara-secrets.env` names reach the child's `env`.
+    cure) was tested live on Pro and found INEFFECTIVE, as were `=none` and
+    `-c allow_login_shell=false` (which additionally broke the TELEGRAM_* vars
+    this tier needs): none of them stop codex's `exec` shell tool from
+    re-applying GITHUB_PERSONAL_ACCESS_TOKEN (exported at this account's
+    `~/.zshrc:9`) and STARSHIP_SESSION_KEY (from `starship init`) through
+    codex's own interactive SHELL SNAPSHOT feature. The verified-effective
+    fix is three-layered: `env -i` plus an explicit small allowlist (HOME,
+    PATH, the seat's CODEX_HOME, and only the two TELEGRAM_* vars this
+    tier's prompt uses to alert) so none of the `.nuzantara-secrets.env`
+    names reach the child's `env`, PLUS `-c features.shell_snapshot=false`
+    so codex does not re-apply the shell-snapshot-sourced names on top —
+    which, verified live, ALSO drops the allowlist's own TELEGRAM_* vars,
+    so `-c shell_environment_policy.inherit=all` is required alongside it
+    (with the snapshot off, `inherit` is the only thing governing what of
+    codex's now-minimal own process env reaches the shell tool).
 
     Guilt: reverting the invocation to the pre-fix `env "${CODEX_SEAT_ENV[@]}"`
     (full inherited environment) makes this test fail, since that string would
@@ -113,6 +119,18 @@ def test_codex_tier_uses_an_explicit_env_allowlist_not_the_inherited_environment
     assert 'env -i "${CODEX_ENV_ALLOWLIST[@]}"' in block, (
         "codex tier must launch through `env -i` plus an explicit allowlist array "
         "— not the wrapper's inherited environment"
+    )
+    assert "-c features.shell_snapshot=false" in code_block, (
+        "codex's interactive shell-snapshot feature re-applies ~/.zshrc/starship "
+        "exports (GITHUB_PERSONAL_ACCESS_TOKEN, STARSHIP_SESSION_KEY) on top of "
+        "the env -i allowlist regardless of shell_environment_policy — must be "
+        "disabled for this call"
+    )
+    assert "-c shell_environment_policy.inherit=all" in code_block, (
+        "shell_snapshot=false ALONE also drops this allowlist's own "
+        "TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID (verified live) — with the "
+        "snapshot disabled, inherit=all is required for codex to pass its own "
+        "(env -i-minimal) process env through to the shell tool at all"
     )
     assert 'env "${CODEX_SEAT_ENV[@]}" \\\n' not in code_block, (
         "the pre-fix CALL SITE (`env \"${CODEX_SEAT_ENV[@]}\"` immediately preceding "

@@ -613,33 +613,37 @@ if [ $SUCCESS -eq 0 ]; then
     # DATABASE_URL/REDIS_PASSWORD/GOOGLE_APPLICATION_CREDENTIALS into ITS OWN
     # shell, and `env "${CODEX_SEAT_ENV[@]}"` used to hand codex that whole
     # inherited environment. Measured live 2026-09-27: `-c shell_environment_
-    # policy.inherit=core` and `=none` are BOTH INEFFECTIVE — codex's `exec`
-    # shell tool re-sources this account's `~/.zshenv` on every invocation
-    # (visible as `/bin/zsh -c '...'`, no -l) regardless of that flag's value,
-    # so the leaked-name set was byte-identical across default/core/none.
-    # `-c allow_login_shell=false` does not stop that re-source either, and it
-    # ALSO dropped the TELEGRAM_* vars this tier needs to alert. What is
-    # verified effective is not letting the secrets reach codex's OWN process
-    # env in the first place: `env -i` plus an explicit allowlist (HOME, PATH,
-    # the seat's CODEX_HOME, and only the two TELEGRAM_* vars this tier's
-    # prompt uses) — confirmed live: with this invocation, none of the
-    # .nuzantara-secrets.env names (DATABASE_URL, REDIS_PASSWORD, GOOGLE_
-    # APPLICATION_CREDENTIALS, ZOHO_*, NUZANTARA_API_KEY, etc.) reach the
-    # child's `env`. `~/.zshenv` itself still unconditionally re-populates a
-    # separate, smaller set (GITHUB_PERSONAL_ACCESS_TOKEN, STARSHIP_SESSION_
-    # KEY, NB_*_ID and a few shell/dev-tool vars) regardless of what this
-    # wrapper passes in — that is a Pro host-level exposure independent of
-    # this cron and this repo PR (this session's Pro access is read-only; see
-    # PR body for the follow-up this still needs).
+    # policy.inherit=core`/`=none`/`-c allow_login_shell=false` are ALL
+    # INEFFECTIVE — codex's `exec` shell tool re-applies GITHUB_PERSONAL_
+    # ACCESS_TOKEN (exported at this account's `~/.zshrc:9`) and
+    # STARSHIP_SESSION_KEY (from `starship init`) through its own interactive
+    # SHELL SNAPSHOT feature regardless of any of those flags, and
+    # `allow_login_shell=false` also dropped the TELEGRAM_* vars this tier
+    # needs. Verified effective, gate-measured rc 0: `env -i` plus an
+    # explicit allowlist (HOME, PATH, the seat's CODEX_HOME, only the two
+    # TELEGRAM_* vars this tier's prompt uses) so none of the
+    # .nuzantara-secrets.env names reach codex's own process env, PLUS `-c
+    # features.shell_snapshot=false` so codex does not re-apply
+    # ~/.zshrc/starship's own exports on top. `shell_snapshot=false` ALONE
+    # (verified live, own re-check) also drops this allowlist's own
+    # TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID — disabling the snapshot
+    # makes `shell_environment_policy.inherit` the ONLY thing governing what
+    # of codex's (now `env -i`-minimal) own process env reaches the shell
+    # tool, so `inherit=all` must be explicit alongside it: verified live,
+    # 39 names, GITHUB_PAT=0, STARSHIP=0, both TELEGRAM_* present. Pre-
+    # existing gap named, not fixed here: tier 1 (Claude) still inherits
+    # this wrapper's full `set -a` environment too, now with network access.
     typeset -a CODEX_ENV_ALLOWLIST
     CODEX_ENV_ALLOWLIST=(HOME="$HOME" PATH="$PATH")
     CODEX_ENV_ALLOWLIST+=("${CODEX_SEAT_ENV[@]}")
-    [ -n "$TELEGRAM_BOT_TOKEN" ] && CODEX_ENV_ALLOWLIST+=(TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN")
-    [ -n "$TELEGRAM_OWNER_CHAT_ID" ] && CODEX_ENV_ALLOWLIST+=(TELEGRAM_OWNER_CHAT_ID="$TELEGRAM_OWNER_CHAT_ID")
+    [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && CODEX_ENV_ALLOWLIST+=(TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}")
+    [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ] && CODEX_ENV_ALLOWLIST+=(TELEGRAM_OWNER_CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-}")
     env -i "${CODEX_ENV_ALLOWLIST[@]}" \
         /opt/homebrew/bin/codex exec --sandbox workspace-write \
         -c sandbox_workspace_write.network_access=true \
         -c features.network_proxy=false \
+        -c features.shell_snapshot=false \
+        -c shell_environment_policy.inherit=all \
         --skip-git-repo-check "$PROMPT_GENERIC" </dev/null >"$TMPOUT" 2>&1
     EXIT=$?
     if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
@@ -737,7 +741,7 @@ TOOLS_USED="unknown"
 case "$USED_LLM" in
     claude-sonnet-5-subscription-cascade) TOOLS_USED="Claude agent session: Read/Write/Bash/WebFetch (NB-INTEL + web); delta written to /tmp scratch, promoted via worktree" ;;
     gemini-3.1-pro-agy) TOOLS_USED="agy print-mode: model-native browsing only, no local shell tool" ;;
-    codex-gpt-5.5) TOOLS_USED="codex exec --sandbox workspace-write, network_access=true + network_proxy=false, env -i allowlist (HOME/PATH/CODEX_HOME/TELEGRAM_*): shell (curl) + web-search" ;;
+    codex-gpt-5.5) TOOLS_USED="codex exec --sandbox workspace-write, network_access=true + network_proxy=false + shell_snapshot=false + inherit=all, env -i allowlist (HOME/PATH/CODEX_HOME/TELEGRAM_*): shell (curl) + web-search" ;;
     ollama-qwen3.5:9b-local) TOOLS_USED="none — local text-only model, no browsing/shell, by design (last resort)" ;;
 esac
 
