@@ -210,11 +210,12 @@ cured once for a different pair of names.
   never a residual, so this is never "39 vs 0" depending on whose list is used). The R6.3 hedge
   list is already public, so it does not belong in this file. Builder command:
   `grep -c -F -f <file> <brief> <pack> <body-file>` plus `grep -c -w -E '<R6.3 hedge list>' <same
-three files>`. The PR body pastes only `r66: sha256=<12 hex> lines=<N> residual_hits=<a>
-hedge_hits=<b>` — never the pattern file's contents; if `b > 0`, list each hedge hit by line
+three files>`. The PR body pastes only `r66: hmac=<12 hex> lines=<N> residual_hits=<a>
+hedge_hits=<b>` (amended by R6.7: the first form, `sha256=<12 hex>`, is a plain hash, and a plain
+  hash of a short residual list is a verification oracle) — never the pattern file's contents; if `b > 0`, list each hedge hit by line
   number as a quoted citation per the Innocence case below, rather than claiming `b` must be 0. The
-  gate verifies by matching the pasted `sha256` prefix, rerunning the same command at HEAD for the
-  same counts, and cross-checking the file against its own report (`N` consistent, 0 basenames
+  gate verifies by re-running `pii_receipt.py r66 … --check-in` (R6.7) at HEAD for the same token
+  and counts, and cross-checking the file against its own report (`N` consistent, 0 basenames
   from inside the diff). A companion id check runs the same three files with `grep -w`, never
   repo-wide (a repo-wide digit search can never reach 0), and checks for an id sitting on the same
   line as a count or an R6.1 locator, not for the bare digit.
@@ -226,7 +227,8 @@ hedge_hits=<b>` — never the pattern file's contents; if `b > 0`, list each hed
   each `--path` replaced by `@hmac:<16 hex>`, HMAC-SHA256 keyed by the lane salt the script keeps
   beside R6.6's file, 0600 in a 0700 dir, never committed; the token is how a gate proves it
   re-ran on the same bytes, and it is keyed because a plain hash of a one-line category map is
-  reversed by hashing every tracked path). It carries no commit sha, because pasting it moves
+  reversed by hashing every tracked path; the salt is lane state, restored together with the
+  private files, and rotating it invalidates earlier blocks). It carries no commit sha, because pasting it moves
   HEAD; it carries `tree_digest` instead — sha256 over (path, blob) of every tracked file outside
   `evidence/`, whatever `--path` scopes the count to — which an edit to the pack cannot move and
   any other edit does. A changed script changes `blob=` and so invalidates every earlier block. Metrics, so no two

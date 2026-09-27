@@ -78,10 +78,35 @@ def test_counts_are_the_documented_metrics(fx):
 
 def test_binary_blobs_are_counted_apart_from_the_line_metrics(fx):
     _tmp, repo, _priv, names, tree = fx
-    (repo / "src/image.bin").write_bytes(b"\0" + names[0].encode() + b"\n")
+    (repo / "src/image.bin").write_bytes(b"\0" + names[2].encode() + b"\n")
     pr._commit(repo)
     out = run(*tree)[1].splitlines()
     assert "binary_files: 1" in out and "files: 3" in out and "hits: 5" in out
+    assert "patterns_present: 3" in out
+
+
+def test_salt_readable_by_others_is_refused(fx):
+    _tmp, _repo, private, _names, tree = fx
+    assert run(*tree)[0] == 0
+    (private / pr.SALT_NAME).chmod(0o644)
+    rc, _out, err = run(*tree)
+    assert rc == 2 and "chmod 600" in err
+
+
+def test_private_inputs_of_one_invocation_share_one_lane_dir(fx):
+    tmp, _repo, private, _names, tree = fx
+    other = tmp / "elsewhere"
+    other.mkdir(mode=0o700)
+    (other / "cats.txt").write_text((private / "cats.txt").read_text())
+    rc, _out, err = run(*tree[:-1], str(other / "cats.txt"))
+    assert rc == 2 and "same lane directory" in err
+
+
+def test_pattern_lines_split_exactly_like_grep_f(fx):
+    _tmp, repo, private, _names, _tree = fx
+    (private / "ff.txt").write_bytes(b"a\rb\r\nc\n")
+    out = run("tree", "--repo", str(repo), "--patterns", str(private / "ff.txt"))[1]
+    assert "lines: 2}" in out
 
 
 def test_block_never_carries_a_pattern_a_matched_path_or_a_private_path(fx):
@@ -161,7 +186,9 @@ def test_r66_line_shape_hedges_and_host_independent_argv(tmp_path: Path):
                      "--pack", str(tmp_path / "pack.yml"), "--body", str(tmp_path / "body.md"))
     assert rc == 0
     line = re.search(r'r66_line: "(.*)"', out).group(1)
-    assert re.fullmatch(r"r66: sha256=[0-9a-f]{12} lines=1 residual_hits=1 hedge_hits=2", line)
+    assert re.fullmatch(r"r66: hmac=[0-9a-f]{12} lines=1 residual_hits=1 hedge_hits=2", line)
+    import hashlib
+    assert hashlib.sha256((tmp_path / "res.txt").read_bytes()).hexdigest()[:12] not in out
     assert "hedge_hit_lines: [brief:2, body:1]" in out
     assert str(tmp_path) not in out
     assert re.search(r"--brief @text:[0-9a-f]{16} --pack PACK --body @text:[0-9a-f]{16}", out)
@@ -238,6 +265,16 @@ def test_descriptor_terms_are_evaluated_in_the_order_given(fx):
     path_first = run("descriptor", "--repo", str(repo), "--label", "o", "--path", r"\.py$", "--text", " and ")[1]
     text_first = run("descriptor", "--repo", str(repo), "--label", "o", "--text", " and ", "--path", r"\.py$")[1]
     assert "progressive_files: [2, 1]" in path_first and "progressive_files: [1, 1]" in text_first
+
+
+def test_descriptor_digest_covers_files_outside_the_predicate(fx):
+    _tmp, repo, _priv, _names, _tree = fx
+    desc = ["descriptor", "--repo", str(repo), "--label", "c", "--path", r"\.py$"]
+    before = run(*desc)[1]
+    (repo / "docs/clean.md").write_text("not a .py file\n")
+    pr._commit(repo)
+    after = run(*desc)[1]
+    assert after != before and "files: 2" in after
 
 
 def test_descriptor_excludes_evidence_from_its_universe(fx):

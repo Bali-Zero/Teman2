@@ -15,10 +15,13 @@ PRIVATE files named on the command line (never committed; R6.6 keeps them in
 hashes only: never a matched string, never a path (not even a --path value),
 never a private file's path. argv is echoed with every private file and every
 --path replaced by `@hmac:<16 hex>`, keyed by the lane salt SALT_NAME that
-lives beside the private files (created 0600 on first use). A PLAIN hash
-would not do: a one-line category map is reversed by hashing every tracked
-path. The one plain prefix left is R6.6's `sha256=` in the r66 line, whose
-format that rule fixes and whose file is the lane's whole residual list.
+lives beside the private files (created 0600 on first use, refused if group-
+or world-readable). A PLAIN hash would not do: a one-line category map, or a
+one-line residual list, is reversed by hashing every tracked path or name, so
+even the r66 line carries `hmac=` (R6.7 amends R6.6's `sha256=`). The salt is
+lane state: it travels and is restored with the private files, every private
+input of one invocation must sit in its directory, and rotating it invalidates
+every earlier block, as a changed script does.
 
 NO COMMIT SHA IN THE BLOCK. The block is pasted into pack.yml, and that commit
 moves HEAD, so a sha in the block would make every re-run at the final head
@@ -83,7 +86,8 @@ def git(repo: Path, *args: str, stdin: bytes | None = None, ok: tuple[int, ...] 
 
 def read_private(path: str) -> tuple[bytes, list[bytes]]:
     raw = Path(path).expanduser().read_bytes()
-    return raw, [ln for ln in raw.splitlines() if ln]
+    lines = [ln[:-1] if ln.endswith(b"\r") else ln for ln in raw.split(b"\n")]
+    return raw, [ln for ln in lines if ln]
 
 
 def ls_tree(repo: Path, rev: str) -> dict[str, str]:
@@ -132,11 +136,16 @@ def is_binary(data: bytes) -> bool:
     return b"\0" in data[:BINARY_SNIFF]
 
 
-def lane_salt(private_file: str) -> bytes:
-    salt = Path(private_file).expanduser().resolve().parent / SALT_NAME
+def lane_salt(*private_files: str | None) -> bytes:
+    dirs = {Path(f).expanduser().resolve().parent for f in private_files if f}
+    if len(dirs) != 1:
+        raise UsageError("every private input of one invocation must sit in the same lane directory")
+    salt = dirs.pop() / SALT_NAME
     try:
         fd = os.open(salt, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError:
+        if salt.stat().st_mode & 0o077:
+            raise UsageError(f"the lane salt {SALT_NAME} is group/world-readable; chmod 600 it")
         return salt.read_bytes()
     with os.fdopen(fd, "wb") as fh:
         fh.write(os.urandom(32).hex().encode())
@@ -209,6 +218,7 @@ def cmd_tree(a: argparse.Namespace) -> tuple[str, int]:
         hits, union, occ, pres = line_hits(data.lower() if a.ignore_case else data, folded)
         if hits == 0:
             continue
+        present |= pres
         if is_binary(data):
             totals["binary_files"] += 1
             continue
@@ -216,8 +226,7 @@ def cmd_tree(a: argparse.Namespace) -> tuple[str, int]:
         totals["hits"] += hits
         totals["lines_any"] += union
         totals["occurrences"] += occ
-        present |= pres
-    salt = lane_salt(a.patterns)
+    salt = lane_salt(a.patterns, a.categories)
     argv = ["tree", "--patterns", private_token(salt, raw), "--rev", a.rev]
     if a.categories:
         argv += ["--categories", private_token(salt, cat_raw)]
@@ -278,14 +287,14 @@ def cmd_r66(a: argparse.Namespace) -> tuple[str, int]:
             n, _ = count_lines(text, lambda ln: any(r.search(ln) for r in id_res))
             id_lines += n
             id_occ += sum(len(r.findall(text)) for r in id_res)
-    salt = lane_salt(a.patterns)
+    salt = lane_salt(a.patterns, a.ids)
     argv = ["r66", "--patterns", private_token(salt, raw)]
     if a.ids:
         argv += ["--ids", private_token(salt, ids_raw)]
     argv += ["--brief", "@text:" + text_digest(a.brief), "--pack", "PACK",
              "--body", "@text:" + text_digest(a.body)]
     body = ["mode: r66",
-            f'r66_line: "r66: sha256={sha256_hex(raw, 12)} lines={len(pats)} '
+            f'r66_line: "r66: hmac={keyed(salt, raw)[:12]} lines={len(pats)} '
             f'residual_hits={residual} hedge_hits={hedge}"',
             f"hedge_hit_lines: [{', '.join(hedge_at)}]"]
     if a.ids:
