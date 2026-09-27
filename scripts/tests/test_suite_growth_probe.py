@@ -192,6 +192,67 @@ def test_read_job_timeouts_parses_declared_timeout(tmp_path):
     assert mapping["no-timeout-job"]["timeout_minutes"] is None
 
 
+def test_expand_matrix_job_names_no_template_is_unchanged():
+    """INNOCENCE: a plain `name:` with no `${{ matrix.* }}` template passes
+    through as a single-element list — the common (non-matrix) case."""
+    assert sgp._expand_matrix_job_names(
+        "Backend Tests (Python)", {"strategy": {"matrix": {}}}
+    ) == ["Backend Tests (Python)"]
+
+
+def test_expand_matrix_job_names_renders_every_matrix_value():
+    """GUILT/regression proof: `backend-shard`'s real shape — `name: Backend
+    Shard ${{ matrix.shard }}` plus `strategy.matrix.shard: [1, 2, 3]` — must
+    render into the exact three names the Jobs API reports per matrix
+    instance. Before this function existed, `read_job_timeouts` stored the
+    UNRENDERED template string as the only name, which could never match
+    `Backend Shard 1`/`2`/`3` — the live 2026-09-27 false positive
+    (`suite_growth_probe` alerting "no timeout-minutes entry found for job
+    'backend-shard-1'" on a job that DOES declare timeout-minutes)."""
+    job = {"strategy": {"matrix": {"shard": [1, 2, 3]}}}
+    assert sgp._expand_matrix_job_names("Backend Shard ${{ matrix.shard }}", job) == [
+        "Backend Shard 1",
+        "Backend Shard 2",
+        "Backend Shard 3",
+    ]
+
+
+def test_expand_matrix_job_names_unresolvable_var_returns_template_unchanged():
+    """INNOCENCE (fail towards the OLD behavior, never a guess): a `${{
+    matrix.<var> }}` referencing a key absent from `strategy.matrix` (or not
+    a non-empty list) is left as-is rather than silently dropped or
+    fabricated."""
+    assert sgp._expand_matrix_job_names(
+        "Leg ${{ matrix.os }}", {"strategy": {"matrix": {"shard": [1, 2]}}}
+    ) == ["Leg ${{ matrix.os }}"]
+    assert sgp._expand_matrix_job_names("Leg ${{ matrix.os }}", {}) == [
+        "Leg ${{ matrix.os }}"
+    ]
+
+
+def test_read_job_timeouts_resolves_templated_matrix_name(tmp_path):
+    """End-to-end regression for the same 2026-09-27 gap, through the real
+    `read_job_timeouts` entry point: a `backend-shard`-shaped job's single
+    job-level `timeout-minutes` must be reachable under EACH rendered
+    per-instance key, matching what `build_record`'s `timeout_by_key`
+    lookup (keyed on the API's own rendered job names) will actually query."""
+    workflow = tmp_path / "tests.yml"
+    workflow.write_text(
+        "jobs:\n"
+        "  backend-shard:\n"
+        "    name: Backend Shard ${{ matrix.shard }}\n"
+        "    timeout-minutes: 30\n"
+        "    strategy:\n"
+        "      matrix:\n"
+        "        shard: [1, 2, 3]\n"
+    )
+    mapping, error = sgp.read_job_timeouts(workflow)
+    assert error is None
+    rendered_names = {meta["name"] for meta in mapping.values()}
+    assert rendered_names == {"Backend Shard 1", "Backend Shard 2", "Backend Shard 3"}
+    assert all(meta["timeout_minutes"] == 30 for meta in mapping.values())
+
+
 def test_read_job_timeouts_missing_pyyaml_degrades_to_declared_error(tmp_path, monkeypatch):
     import builtins
 
