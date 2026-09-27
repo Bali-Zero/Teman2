@@ -231,6 +231,77 @@ def test_innocence_comment_line_mention_is_not_a_finding(tmp_path: Path) -> None
     assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
 
 
+def test_innocence_sql_comment_mention_is_not_a_finding(tmp_path: Path) -> None:
+    """A hit whose line, after lstrip(), starts with SQL's '--' comment
+    marker is a comment naming the file, not a consumer — must be
+    docs-mention, exit 0. Same shape as the '#'-based HASH_COMMENT_KINDS
+    check above, for a kind ('sql') that uses a different marker."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_gone_sql.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "apps" / "backend-rag" / "backend" / "db" / "migrations_v2" / "1_x.sql",
+        "-- data backfilled by test_gone_sql.py before the migration manager existed\n"
+        "CREATE TABLE x (id int);\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "docs-mention" in result.stdout
+    assert "| LIVE" not in result.stdout
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+
+
+def test_guilt_sql_trailing_comment_on_a_ddl_line_still_counts_as_live(
+    tmp_path: Path,
+) -> None:
+    """The SQL comment filter is WHOLE-LINE only, same discipline as the
+    '#' one: a real DDL/DML line with a trailing '--' comment must NOT be
+    swallowed."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_gone_sql_trailing.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "apps" / "backend-rag" / "backend" / "db" / "migrations_v2" / "2_x.sql",
+        "SELECT 1;  -- see test_gone_sql_trailing.py\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "| LIVE" in result.stdout
+
+
+def test_innocence_excluded_exact_path_test_change_map_is_not_reported(
+    tmp_path: Path,
+) -> None:
+    """scripts/ci/test_change_map.py is excluded outright: every path
+    literal in it is a synthetic classifier-test input, never a real
+    reference (2026-09-27, found live blocking a real deletion PR)."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_gone_cm.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "scripts" / "ci" / "test_change_map.py",
+        "def test_x():\n    cm.classify(['apps/backend-rag/tests/test_gone_cm.py'])\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "test_change_map" not in result.stdout
+
+
 def test_innocence_trailing_comment_on_a_code_line_still_counts_as_live(
     tmp_path: Path,
 ) -> None:
@@ -364,6 +435,33 @@ def test_innocence_excluded_tree_research_is_not_reported_even_as_docs_mention(
     result = _run(repo, "--base", base)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "research" not in result.stdout
+
+
+def test_innocence_excluded_tree_evidence_is_not_reported_even_in_a_non_docs_extension(
+    tmp_path: Path,
+) -> None:
+    """evidence/** is excluded outright, same as research/** above — but this
+    one specifically proves the DIRECTORY exclusion (not the `.md`-extension
+    docs-mention downgrade, which never applies here): a Gear-3 pack for a
+    deletion PR is REQUIRED to name the deleted file's basename, repeatedly,
+    in a `.yml` file with no comment-marker or docs-mention shape at all
+    (2026-09-27 — found live: an evidence pack narrating its own 3-file
+    deletion could not push without this)."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_gone.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "evidence" / "2026-09" / "some-task" / "pack.yml",
+        "receipts:\n  - claim: deleted test_gone.py, confirmed dead\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "evidence" not in result.stdout
 
 
 # ---------------------------------------------------------------------------
