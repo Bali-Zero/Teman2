@@ -103,7 +103,7 @@ export const TEAM_ROSTER: RosterMember[] = [
     role: "Executive Consultant",
     dept: "setup",
     email: "krisna@balizero.com",
-    photo: "/static/team/krisna.jpg",
+    photo: "/static/team/krisna-20260927.jpg",
   },
   {
     slug: "dea",
