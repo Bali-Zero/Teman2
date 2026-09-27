@@ -304,9 +304,9 @@ def load_plan_verified(run_dir: Path) -> dict:
 
 def pysa_check_spec(wt: Path, base: str, cand: str, trusted: Path, run_dir: Path, changed: list[str], home_arg: str | None) -> dict:
     """Pysa taint judge (no NEW flow vs BASE) — N/A when the diff has no backend python, BLOCKED when it cannot be trusted or run."""
-    touched = [f for f in changed if f.startswith(PYSA_SCOPE) and f.endswith(".py") and "/tests/" not in f and "/test/" not in f]
+    touched = [f for f in changed if f.startswith(PYSA_SCOPE) and "/tests/" not in f and "/test/" not in f]   # ANY file: .gitattributes, .pyi, configs can change what Pysa sees
     if not touched:
-        return {"kind": "record", "status": "NOT_APPLICABLE", "reason": f"no non-test python file under {PYSA_SCOPE} in the diff"}
+        return {"kind": "record", "status": "NOT_APPLICABLE", "reason": f"no non-test file under {PYSA_SCOPE} in the diff"}
     tdir = trusted / "pysa"
     (tdir / "pysa").mkdir(parents=True, exist_ok=True)
     for rel in TRUSTED_PYSA_FILES:
@@ -317,7 +317,8 @@ def pysa_check_spec(wt: Path, base: str, cand: str, trusted: Path, run_dir: Path
     home = Path(home_arg) if home_arg else DEFAULT_PYSA_HOME
     if not (home / "venv" / "bin" / "pyre").exists():
         return {"kind": "record", "status": "BLOCKED", "reason": f"pysa home {home} not set up (python scripts/localci/pysa_check.py setup --home {home} --backend-venv apps/backend-rag/.venv)"}
-    return {"kind": "cmd", "cwd": str(wt), "trusted_pythonpath": str(tdir), "error_rcs": [2],
+    shas = {str(f.relative_to(tdir)): sha256_file(f) for f in sorted(tdir.rglob("*")) if f.is_file()}
+    return {"kind": "cmd", "cwd": str(wt), "trusted_pythonpath": str(tdir), "trusted_dir_sha256": shas, "error_rcs": [2],
             "cmd": [sys.executable, "-I", str(tdir / "pysa_check.py"), "judge", "--home", str(home), "--worktree", str(wt), "--base", base, "--candidate", cand,
                     "--out", str(run_dir / "receipts" / "pysa")],
             "purpose": f"Pysa taint on {len(touched)} touched backend file(s): no NEW log-injection/stack-trace/path/SSRF/redirect flow vs BASE {base[:12]}; judge logic and models from BASE"}
@@ -393,6 +394,9 @@ def cmd_plan(a):
         if not isinstance(spec, dict) or spec.get("kind") not in EXTRA_CHECK_KINDS:
             sys.exit(f"--extra-check {name!r}: kind must be one of {EXTRA_CHECK_KINDS}")
         checks[name] = spec
+    for spec in checks.values():   # every trusted dir is sha-mapped at plan time and re-verified before it runs (classifier dir included)
+        if spec.get("kind") == "cmd" and spec.get("trusted_pythonpath") and "trusted_dir_sha256" not in spec:
+            spec["trusted_dir_sha256"] = trusted_dir_map(Path(spec["trusted_pythonpath"]))
     ctxs = load_contexts(a.contexts_file)
     seats = [s.strip() for s in ([a.builder_seat] if a.builder_seat else []) + (a.builder_seats.split(",") if a.builder_seats else []) if s and s.strip()]
     created_epoch = time.time()
@@ -514,7 +518,11 @@ def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> d
         cmd = spec["cmd"]
         envx = trusted_env(envx)
         if spec.get("trusted_pythonpath"):  # a directory of BASE-ref files only (PYTHONSAFEPATH drops the script dir)
-            envx["PYTHONPATH"] = spec["trusted_pythonpath"]
+            tdir = Path(spec["trusted_pythonpath"])
+            have = trusted_dir_map(tdir, spec.get("trusted_dir_sha256") or {})
+            if have != (spec.get("trusted_dir_sha256") or {}):   # rewritten judge, added shadow module (json.py) or missing file: not the BASE evidence
+                return {"status": "ERROR", "reason": "trusted dir tampered: its files differ from the sha256 map recorded at plan time", "rc": None, "counts": None}
+            envx["PYTHONPATH"] = str(tdir)
     else:
         return {"status": "ERROR", "reason": f"unknown check kind {kind!r}", "rc": None, "counts": None}
     t0 = time.monotonic()
@@ -592,6 +600,43 @@ def _verify_receipt(run_dir: Path, name: str, c: dict, st: dict, cur_hash: str) 
     return None
 
 
+IMPORTABLE = {".py", ".pyc", ".so", ".pyd", ".dylib"}
+
+
+def trusted_dir_map(td: Path, recorded: dict | None = None) -> dict:
+    """What can decide a trusted interpreter's imports from `td`: every recorded file (any depth), plus every top-level importable
+    file and every package (dir with __init__.py). Scratch the runner itself writes there (overlay/, *.ini) is not import material."""
+    out = {rel: (sha256_file(td / rel) if (td / rel).is_file() else "<missing>") for rel in (recorded or {})}
+    if not td.is_dir():
+        return out
+    for f in sorted(td.iterdir()):
+        if f.is_file() and f.name not in out and (recorded is None or f.suffix in IMPORTABLE):
+            out[f.name] = sha256_file(f)
+        elif f.is_dir() and (f / "__init__.py").exists():
+            for g in sorted(f.rglob("*")):
+                if g.is_file() and str(g.relative_to(td)) not in out:
+                    out[str(g.relative_to(td))] = sha256_file(g)
+    return out
+
+
+TRUSTED_KINDS = ("cmd", "trusted_pytest")   # run first; `pytest` = CANDIDATE code, runs last, after the trusted evidence is sealed
+
+
+def trusted_seal(run_dir: Path, plan: dict, st: dict) -> str:
+    """sha256 over plan.json + every trusted check's state entry and receipt bytes. Printed by `run` BEFORE candidate code executes; the
+    operator keeps it outside run_dir and `status --seal` re-derives it — candidate code that rewrites state/receipts after the flock is
+    released cannot rewrite what the operator already read."""
+    h = hashlib.sha256((run_dir / "state" / "plan.json").read_bytes())
+    for name in sorted(plan["checks"]):
+        if plan["checks"][name]["kind"] not in TRUSTED_KINDS:
+            continue
+        c = st["checks"].get(name, {})
+        h.update(json.dumps({"n": name, "s": c.get("status"), "r": c.get("reason"), "rc": c.get("rc")}, sort_keys=True).encode())
+        rp = c.get("receipt")
+        h.update(Path(rp).read_bytes() if rp and Path(rp).exists() else b"<no receipt>")
+    return h.hexdigest()
+
+
 def cmd_run(a):
     run_dir = Path(a.run_dir).resolve()
     store = Store(run_dir)
@@ -616,13 +661,27 @@ def cmd_run(a):
                 names = [a.only]
             else:
                 names = [n for n, c in st["checks"].items() if c["status"] in ("QUEUED", "INTERRUPTED")]
+            names = sorted(names, key=lambda n: plan["checks"][n]["kind"] not in TRUSTED_KINDS)   # trusted first, candidate `pytest` last
             venv_py = next((s["python"] for s in plan["checks"].values() if s.get("python")), sys.executable)
             cur_env = env_fingerprint(venv_py, plan["checks"])
             cur_hash = env_hash(cur_env)
+            sealed = False
+
+            def seal_now(why: str) -> None:
+                nonlocal sealed
+                seal = trusted_seal(run_dir, plan, st)
+                st["seal"] = seal
+                store.journal({"event": "seal", "seal": seal, "why": why, "at": now()})
+                store.save(st)
+                print(f"seal={seal}  # {why}: record this outside the run dir; `status --seal {seal[:12]}…` re-derives it")
+                sealed = True
+
             for name in names:
                 spec, c = plan["checks"][name], st["checks"][name]
                 if spec["kind"] not in EXECUTABLE:
                     continue
+                if spec["kind"] not in TRUSTED_KINDS and not sealed:
+                    seal_now("trusted checks done, candidate code about to run")
                 if c["status"] == "RUNNING":
                     continue
                 if c["status"] == "INTERRUPTED":
@@ -665,6 +724,8 @@ def cmd_run(a):
                 c.pop("pid_started", None)
                 store.save(st)
                 print(f"{name}: {res['status']} — {res['reason']} ({res.get('duration_s')}s)")
+            if names:
+                seal_now("end of run")
     finally:
         for s, h in old.items():
             signal.signal(s, h)
@@ -834,10 +895,16 @@ def compute_status(run_dir: Path, write: bool = True) -> dict:
 
 def cmd_status(a):
     out = compute_status(Path(a.run_dir))
+    run_dir = Path(a.run_dir).resolve()
+    out["seal"] = trusted_seal(run_dir, load_plan_verified(run_dir), Store(run_dir).load())
+    if a.seal and not out["seal"].startswith(a.seal.strip()):
+        out["overall"] = "BLOCKED"
+        out["freshness"]["stale_reason"] = f"seal mismatch: trusted evidence changed after the seal you recorded ({a.seal.strip()[:12]}… vs {out['seal'][:12]}…)"
+        atomic_write(run_dir / "status.json", json.dumps(out, indent=2, sort_keys=True))
     if a.quiet:
         print(out["overall"])
     else:
-        print(json.dumps({"overall": out["overall"], "stale_reason": out["freshness"]["stale_reason"], "contexts": out["contexts"]["status"],
+        print(json.dumps({"overall": out["overall"], "stale_reason": out["freshness"]["stale_reason"], "seal": out["seal"], "contexts": out["contexts"]["status"],
                           "checks": {n: v["status"] for n, v in out["checks"].items()}}, indent=1))
     return 0 if (not a.strict or out["overall"] == "PASS") else 1
 
@@ -898,6 +965,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--run-dir", required=True)
     s.add_argument("--quiet", action="store_true")
     s.add_argument("--strict", action="store_true", help="exit 1 unless overall is PASS")
+    s.add_argument("--seal", help="the seal `run` printed (prefix ok): overall becomes BLOCKED when the trusted evidence no longer re-derives it")
     s.set_defaults(fn=cmd_status)
     a = ap.parse_args(argv)
     return a.fn(a) or 0

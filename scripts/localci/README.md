@@ -16,7 +16,15 @@ missing evidence. It is a **non-required, single-host** gate: it does not replac
 `plan` runs `policy.paid_anthropic_ban` by default: `scripts/tests/test_ban_predicates.py` is extracted from the
 BASE ref and executed against the candidate tree (`trusted_pytest`; no candidate `conftest`/ini is honoured).
 Trusted checks (classifier, `cmd`, `trusted_pytest`) run `python -I` (ignores user site) with `PYTHONPATH`/`PYTHONSTARTUP`/`PYTHONHOME` removed and `PYTHONSAFEPATH=1`, so a candidate `sitecustomize.py` cannot execute inside them; candidate tests (`pytest` kind) are not trusted checks.
-`plan.json` is re-hashed against its `plan_hash` on every `run`/`review`/`status`; an edited plan aborts.
+`plan.json` is re-hashed against its `plan_hash` on every `run`/`review`/`status`; an edited plan aborts. A `cmd` check with a
+`trusted_pythonpath` carries the sha256 map of that directory and refuses to run when a file was rewritten, added or removed.
+
+**The boundary that a sandbox would close and this runner does not:** candidate tests (`pytest` kind) execute as the operator's own
+OS user, so a malicious candidate can, after the run, rewrite `state.json`, re-hash receipts or pre-write a Pysa baseline. The runner
+therefore (1) runs every trusted check BEFORE any candidate code, (2) prints a `seal=` (sha256 over plan + trusted state + trusted
+receipts) at that boundary and again at the end — the operator records it OUTSIDE the run dir (terminal, journal, PR comment) — and
+(3) `status --seal <value>` re-derives it and goes BLOCKED on a mismatch. Same-user forgery is thus detectable, not impossible;
+for third-party candidates the honest cure is a separate user or container (open condition in `PENDING-ARMS.md`).
 
 `--extra-check NAME=JSON` adds a check the operator wants beside the planned ones. It is refused when NAME starts with a reserved
 prefix (`policy.`, `tests.`, `review.`, `trusted.`) or is already planned, and when the spec is not an executable kind (`cmd`,
@@ -27,15 +35,17 @@ prefix (`policy.`, `tests.`, `review.`, `trusted.`) or is already planned, and w
 CodeQL CLI cannot run on this repo (public, no OSI licence), so the python security queries are stood in for by Pysa
 (Meta, MIT), chosen on a benchmark against the CodeQL flows GitHub produced for the same commit
 (`~/.nuzantara-pilots/local-ci-followup/benchmark/REPORT_BENCHMARK.md`: 80 % flow recall on log-injection, 100 % on
-stack-trace / path / SSRF / redirect, 135 s, 1.6 GB). The check is planned whenever the diff touches a non-test
-`apps/backend-rag/backend/**/*.py`; otherwise NOT_APPLICABLE. It is BLOCKED (never silently green) when the judge or
+stack-trace / path / SSRF / redirect, 135 s, 1.6 GB). The check is planned whenever the diff touches ANY non-test file under
+`apps/backend-rag/backend/` (a `.gitattributes`, a `.pyi` or a config changes what Pysa sees); otherwise NOT_APPLICABLE. It is BLOCKED (never silently green) when the judge or
 its models are missing at the BASE ref — they are copied from BASE like the classifier, so a candidate cannot weaken the
 models that judge it — or when the Pysa home is not set up:
 
     python scripts/localci/pysa_check.py setup --home ~/.nuzantara-pilots/local-ci/pysa-home --backend-venv apps/backend-rag/.venv
 
 Verdict = "no NEW flow versus BASE": each flow is keyed by family, source callable, sink callable and the sink
-statement text, so line shifts do not count; the BASE scan is cached per subtree sha under the home. rc 1 → FAIL with
+statement text (a multiset: a second identical sink statement is a second flow), so line shifts do not count; both trees are
+materialised from the object store (never `git archive`, which honours a candidate's `export-ignore`); the BASE scan is cached per
+(subtree sha, judge+models sha) under the home. rc 1 → FAIL with
 `receipts/pysa/report.md` listing the new flows; rc 2 → ERROR (declared via `error_rcs`, a tool failure is not a verdict — and so
 are a Pysa run that emits no model record and a tree with no route handler to model: both are refused, never read as clean).
 Tests are out of the analysis scope, so an in-scope module that imports from a `tests/` path is reported as a `scope_escape` flow

@@ -128,6 +128,39 @@ def test_generated_models_cover_every_handler_once(tmp_path):
     assert "tests" not in text
 
 
+def test_export_ignores_the_candidates_gitattributes(tmp_path):
+    repo = _tree(tmp_path, APP)
+    pkg = repo / "apps" / "backend-rag" / "backend" / "app" / "routers"
+    (pkg / ".gitattributes").write_text("demo.py export-ignore\n")
+    (pkg / "link.py").symlink_to("demo.py")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "hide")
+    dest = tmp_path / "export"
+    pc.export_tree(repo, "HEAD", dest)
+    assert (dest / "apps/backend-rag/backend/app/routers/demo.py").read_text() == APP      # export-ignore did not hide it
+    assert (dest / "apps/backend-rag/backend/app/routers/.gitattributes").exists()
+    assert not (dest / "apps/backend-rag/backend/app/routers/link.py").exists()             # symlinks are neither followed nor written
+    text, n = pc.gen_handler_models(dest / "apps/backend-rag")
+    assert n == 11
+
+
+def test_identical_sink_statements_are_a_multiset_and_methods_are_qualified(tmp_path):
+    app = tmp_path / "app"
+    (app / "backend").mkdir(parents=True)
+    (app / "backend" / "a.py").write_text("import logging\nlog = logging.getLogger()\nclass A:\n    def m(self, x):\n        log.info(x)\nclass B:\n    def m(self, x):\n        log.info(x)\n")
+    assert pc.stmt_of(app, "backend/a.py", 5) == ("A.m", "log.info(x)")
+    assert pc.stmt_of(app, "backend/a.py", 8) == ("B.m", "log.info(x)")
+    issue = {"kind": "issue", "data": {"code": 9001, "callable": "backend.a.h", "filename": "backend/a.py", "line": 5, "traces": []}}
+    model = {"kind": "model", "data": {"callable": "backend.a.h", "filename": "backend/a.py", "sinks": []}}
+    one, two = tmp_path / "one.json", tmp_path / "two.json"
+    one.write_text(json.dumps(model) + "\n" + json.dumps(issue) + "\n")
+    two.write_text(json.dumps(model) + "\n" + json.dumps(issue) + "\n" + json.dumps(issue) + "\n")
+    f1, _ = pc.extract_findings(one, app)
+    f2, _ = pc.extract_findings(two, app)
+    assert len(f1) == 1 and len(f2) == 2 and f1[0]["key"] == f2[0]["key"] and f2[1]["key"] != f2[0]["key"]
+    assert pc.diff_findings(f1, f2)["new"] == [f2[1]]     # the second identical statement fed by a flow is NEW, not "unchanged"
+
+
 def test_statement_key_survives_line_shifts(tmp_path):
     app = tmp_path / "app"
     (app / "backend").mkdir(parents=True)
@@ -241,7 +274,7 @@ BACKEND_FILE = {"apps/backend-rag/backend/app/x.py": "VALUE = 1\n"}
 def test_pysa_check_is_not_applicable_without_backend_python(fx):
     fr.plan(fx)
     st = fr.load_state(fx)["checks"]["security.pysa_python"]
-    assert st["status"] == "NOT_APPLICABLE" and "no non-test python file" in st["reason"]
+    assert st["status"] == "NOT_APPLICABLE" and "no non-test file" in st["reason"]
 
 
 def test_pysa_check_blocked_when_judge_missing_at_base(tmp_path):
@@ -287,6 +320,34 @@ def test_pysa_check_runs_the_base_judge_not_the_candidate_one(tmp_path):
     assert trusted_copy.read_bytes() == (REAL_REPO / "scripts/localci/pysa_check.py").read_bytes()   # BASE blob, not the tampered candidate
     assert (Path(spec["trusted_pythonpath"]) / "pysa" / "taint.config").exists()
     assert fr.load_state(fx)["checks"]["security.pysa_python"]["status"] == "QUEUED"
+
+
+@pytest.mark.parametrize("tamper", ["rewrite", "shadow", "delete"])
+def test_trusted_pysa_dir_tampering_is_a_tool_error(tmp_path, tamper):
+    fx = _repo_with_trusted_pysa(tmp_path)
+    home = tmp_path / "home"
+    (home / "venv" / "bin").mkdir(parents=True)
+    (home / "venv" / "bin" / "pyre").write_text("")
+    fr.plan(fx, "--pysa-home", str(home))
+    tdir = Path(json.loads((fx["run"] / "state" / "plan.json").read_text())["checks"]["security.pysa_python"]["trusted_pythonpath"])
+    if tamper == "rewrite":
+        (tdir / "pysa_check.py").write_text("import sys\nsys.exit(0)\n")     # a forged judge that always passes
+    elif tamper == "shadow":
+        (tdir / "json.py").write_text("")                                     # a stdlib shadow on the trusted PYTHONPATH
+    else:
+        (tdir / "pysa" / "taint.config").unlink()
+    fr.run(fx, "--only", "security.pysa_python")
+    st = fr.load_state(fx)["checks"]["security.pysa_python"]
+    assert st["status"] == "ERROR" and "trusted dir tampered" in st["reason"]
+
+
+def test_any_non_test_file_under_the_scope_plans_the_judge(tmp_path):
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "apps/backend-rag/backend/app/routers/.gitattributes": "demo.py export-ignore\n"})
+    fr.plan(fx)
+    assert fr.load_state(fx)["checks"]["security.pysa_python"]["status"] == "BLOCKED"   # planned (judge missing at base), not NOT_APPLICABLE
+    fx2 = fr.make_repo(tmp_path / "b", {**fr.CANDIDATE_FILES, "apps/backend-rag/backend/tests/test_x.py": "VALUE = 1\n"})
+    fr.plan(fx2)
+    assert fr.load_state(fx2)["checks"]["security.pysa_python"]["status"] == "NOT_APPLICABLE"
 
 
 def test_declared_error_rcs_map_to_error_not_fail(fx):

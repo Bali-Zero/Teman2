@@ -271,11 +271,37 @@ def home_ready(home: Path) -> str | None:
 
 # ------------------------------------------------------------------ scan
 def export_tree(wt: Path, ref: str, dest: Path) -> str:
+    """Materialise <ref>:apps/backend-rag/backend from the object store — never `git archive`, which honours the candidate's
+    own `.gitattributes export-ignore` and would let a PR hide files from the judge (fresh-gate BLOCK, 2026-09-27)."""
     dest.mkdir(parents=True, exist_ok=True)
-    tree = subprocess.run(["git", "-C", str(wt), "rev-parse", f"{ref}:{APP_REL}/{PKG_REL}"], capture_output=True, text=True, check=True).stdout.strip()
-    ar = subprocess.Popen(["git", "-C", str(wt), "archive", ref, f"{APP_REL}/{PKG_REL}"], stdout=subprocess.PIPE)
-    subprocess.run(["tar", "-x", "-C", str(dest)], stdin=ar.stdout, check=True)
-    ar.wait()
+    sub = f"{APP_REL}/{PKG_REL}"
+    tree = subprocess.run(["git", "-C", str(wt), "rev-parse", f"{ref}:{sub}"], capture_output=True, text=True, check=True).stdout.strip()
+    listing = subprocess.run(["git", "-C", str(wt), "ls-tree", "-r", "-z", tree], capture_output=True, check=True).stdout.decode()
+    entries = []
+    for rec in listing.split("\0"):
+        if not rec:
+            continue
+        meta, rel = rec.split("\t", 1)
+        mode, kind, oid = meta.split(" ")
+        if kind == "blob" and mode != "120000":          # symlinks are not followed and not analysed
+            entries.append((oid, rel))
+    batch = subprocess.run(["git", "-C", str(wt), "cat-file", "--batch"], input="".join(f"{o}\n" for o, _ in entries).encode(), capture_output=True, check=True).stdout
+    pos, written = 0, 0
+    for oid, rel in entries:
+        nl = batch.index(b"\n", pos)
+        hdr = batch[pos:nl].decode().split(" ")
+        if hdr[0] != oid or hdr[1] != "blob":
+            raise RuntimeError(f"cat-file stream desync at {rel}: {hdr}")
+        size = int(hdr[2])
+        body = batch[nl + 1:nl + 1 + size]
+        pos = nl + 1 + size + 1
+        target = dest / sub / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(body)
+        written += 1
+    exported = sum(1 for _ in (dest / sub).rglob("*") if _.is_file()) if entries else 0
+    if written != len(entries) or exported != written:
+        raise RuntimeError(f"export incomplete for {ref}: {len(entries)} blobs listed, {written} written, {exported} on disk")
     return tree
 
 
@@ -355,11 +381,20 @@ def stmt_of(app_dir: Path, rel: str, line: int) -> tuple[str, str]:
         try:
             tree = ast.parse((app_dir / rel).read_text(encoding="utf-8", errors="replace"))
             src = (app_dir / rel).read_text(encoding="utf-8", errors="replace").splitlines()
-            for n in ast.walk(tree):
-                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    funcs.append((n.lineno, n.end_lineno, n.name))
-                elif isinstance(n, ast.stmt) and not isinstance(n, (ast.If, ast.For, ast.While, ast.With, ast.Try, ast.ClassDef, ast.AsyncWith, ast.AsyncFor)):
-                    idx.append((n.lineno, n.end_lineno, " ".join(x.strip() for x in src[n.lineno - 1:n.end_lineno])))
+
+            def walk(node, prefix):   # qualified names: Class.method — two same-named methods in one file are two callables
+                for n in ast.iter_child_nodes(node):
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        q = f"{prefix}{n.name}"
+                        funcs.append((n.lineno, n.end_lineno, q))
+                        walk(n, q + ".")
+                    elif isinstance(n, ast.ClassDef):
+                        walk(n, f"{prefix}{n.name}.")
+                    else:
+                        if isinstance(n, ast.stmt) and not isinstance(n, (ast.If, ast.For, ast.While, ast.With, ast.Try, ast.AsyncWith, ast.AsyncFor)):
+                            idx.append((n.lineno, n.end_lineno, " ".join(x.strip() for x in src[n.lineno - 1:n.end_lineno])))
+                        walk(n, prefix)
+            walk(tree, "")
         except (SyntaxError, FileNotFoundError):
             pass
         _stmt_cache[ck] = (idx, funcs)
@@ -381,7 +416,7 @@ def extract_findings(taint_output: Path, app_dir: Path) -> tuple[list[dict], int
             models[o["data"]["callable"]] = o["data"]
         elif o.get("kind") == "issue":
             issues.append(o["data"])
-    lv, out, seen = Leaves(models), [], set()
+    lv, out, seen = Leaves(models), [], {}
     for d in issues:
         family, kinds = FAMILIES.get(d["code"], (f"pysa_{d['code']}", set()))   # an unlisted rule (RCE 5001, SQLi 5005, ...) is still a flow, never dropped
         leaves: set = set()
@@ -391,12 +426,12 @@ def extract_findings(taint_output: Path, app_dir: Path) -> tuple[list[dict], int
             for r in t["roots"]:
                 if lv.kinds_ok(r, kinds) or "origin" in r:
                     leaves |= lv.hop(d["filename"], r, kinds, 0)
-        for lf, ll, localised in (leaves or {(d["filename"], d["line"], True)}):
+        for lf, ll, localised in sorted(leaves or {(d["filename"], d["line"], True)}):
             fn, text = stmt_of(app_dir, lf, ll)
-            key = hashlib.sha1("|".join([family, d["callable"], lf, fn, text]).encode()).hexdigest()[:16]
-            if key in seen:
-                continue
-            seen.add(key)
+            ident = "|".join([family, d["callable"], lf, fn, text])
+            n_th = seen.get(ident, 0) + 1                      # multiset: a SECOND identical sink statement fed by a new flow is a new flow
+            seen[ident] = n_th
+            key = hashlib.sha1(f"{ident}|#{n_th}".encode()).hexdigest()[:16]
             out.append({"key": key, "family": family, "code": d["code"], "source_callable": d["callable"], "issue": f"{d['filename']}:{d['line']}",
                         "sink": f"{lf}:{ll}", "sink_callable": fn, "sink_statement": text[:200], "sink_localised": localised})
     return out, len(models)
@@ -461,7 +496,8 @@ def cmd_judge(a) -> int:
     out.mkdir(parents=True, exist_ok=True)
     log = open(out / "pysa.log", "w")
     base_tree = subprocess.run(["git", "-C", str(wt), "rev-parse", f"{a.base}:{APP_REL}/{PKG_REL}"], capture_output=True, text=True, check=True).stdout.strip()
-    cache = home / "baselines" / f"{base_tree}.json"
+    judge_id = hashlib.sha256(b"".join(f.read_bytes() for f in sorted([Path(__file__)] + list(MODELS_SRC.glob("*")))) ).hexdigest()[:16]
+    cache = home / "baselines" / f"{base_tree}-{judge_id}.json"   # a baseline built by another judge/model version is never reused
     if cache.exists():
         base_res = json.loads(cache.read_text())
         base_res["cached"] = True
@@ -480,12 +516,14 @@ def cmd_judge(a) -> int:
     d = diff_findings(base_res["findings"], cand_res["findings"])
     verdict = "FAIL" if d["new"] else "PASS"
     report = {"verdict": verdict, "base": a.base, "base_tree": base_tree, "base_cached": base_res.get("cached", False), "candidate": a.candidate,
-              "candidate_tree": cand_res["tree"], "handlers_modelled": cand_res["handlers_modelled"],
+              "candidate_tree": cand_res["tree"], "handlers_modelled": cand_res["handlers_modelled"], "handlers_modelled_base": base_res["handlers_modelled"],
+              "handlers_dropped": max(0, base_res["handlers_modelled"] - cand_res["handlers_modelled"]), "judge_id": judge_id,
               "base_findings": len(base_res["findings"]), "candidate_findings": len(cand_res["findings"]), "new": d["new"], "fixed": len(d["fixed"]),
               "unchanged": d["unchanged"], "durations_s": {"base": base_res["duration_s"], "candidate": cand_res["duration_s"]}}
     (out / "report.json").write_text(json.dumps(report, indent=1))
     md = [f"# pysa judge — {verdict}", "", f"base `{a.base}` ({len(base_res['findings'])} flows, cached={report['base_cached']}) → candidate `{a.candidate}` ({len(cand_res['findings'])} flows): "
-          f"**{len(d['new'])} new**, {len(d['fixed'])} fixed, {d['unchanged']} unchanged", ""]
+          f"**{len(d['new'])} new**, {len(d['fixed'])} fixed, {d['unchanged']} unchanged — handlers modelled {base_res['handlers_modelled']} → {cand_res['handlers_modelled']}"
+          + (f" (**{report['handlers_dropped']} fewer**: a handler that lost its decorator also lost its sources — read the diff)" if report["handlers_dropped"] else ""), ""]
     for x in d["new"]:
         md.append(f"- `{x['family']}` {x['source_callable']} → `{x['sink']}` in `{x['sink_callable']}`: `{x['sink_statement'][:120]}`")
     (out / "report.md").write_text("\n".join(md) + "\n")

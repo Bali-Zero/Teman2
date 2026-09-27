@@ -6,6 +6,7 @@ import os
 import signal
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -537,3 +538,36 @@ def test_extra_check_without_equals_is_refused(fx):
 def test_extra_check_in_its_own_namespace_is_planned_and_runs(fx):
     fr.plan(fx, "--extra-check", fr.cmd_check("ctx.ok", fx["repo"], [PY, "-c", "pass"]))
     assert checks(fr.load_state(fx))["ctx.ok"] == "QUEUED"
+
+
+# --------------------------------------------------------------- candidate code runs last, behind a seal the operator keeps
+def test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_run_forgery(tmp_path, capsys):
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
+    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
+            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "raise SystemExit(1)"]))
+    fr.run(fx)
+    printed = capsys.readouterr().out
+    st = fr.load_state(fx)
+    ch = st["checks"]
+    assert ch["ctx.zzz_trusted"]["status"] == "FAIL" and ch["ctx.aaa_candidate"]["status"] == "PASS"
+    events = [json.loads(line) for line in (fx["run"] / "state" / "journal.jsonl").read_text().splitlines()]
+    seals = [e for e in events if e.get("event") == "seal"]
+    assert seals and seals[0]["why"].startswith("trusted checks done")
+    assert ch["ctx.zzz_trusted"]["history"][0]["ended_at"] <= ch["ctx.aaa_candidate"]["history"][0]["started_at"]   # trusted first, candidate last
+    seal = seals[0]["seal"]
+    assert f"seal={seal}" in printed and seal == st["seal"]
+    assert runner.main(["status", "--run-dir", str(fx["run"]), "--seal", seal[:16]]) in (0, 1)
+    assert json.loads((fx["run"] / "status.json").read_text())["overall"] != "BLOCKED"
+    # the forgery gate 1 reproduced: candidate code rewrites the trusted receipt + state to PASS after the run, re-hashing the receipt
+    rp = Path(ch["ctx.zzz_trusted"]["receipt"])
+    r = json.loads(rp.read_text())
+    r.pop("receipt_sha256")
+    r["result"]["status"], r["result"]["reason"], r["result"]["rc"] = "PASS", "rc=0", 0
+    r["receipt_sha256"] = runner.sha256_json(r)
+    rp.write_text(json.dumps(r, indent=2, sort_keys=True))
+    st["checks"]["ctx.zzz_trusted"].update(status="PASS", reason="rc=0", rc=0)
+    (fx["run"] / "state" / "state.json").write_text(json.dumps(st))
+    assert fr.status(fx)["checks"]["ctx.zzz_trusted"]["status"] == "PASS"       # without the seal the forgery is invisible (same-user boundary)
+    runner.main(["status", "--run-dir", str(fx["run"]), "--seal", seal])
+    out = json.loads((fx["run"] / "status.json").read_text())
+    assert out["overall"] == "BLOCKED" and "seal mismatch" in out["freshness"]["stale_reason"]
