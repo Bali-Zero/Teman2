@@ -15,6 +15,7 @@ export default function CookiePage() {
       style={{
         padding:
           "clamp(56px, 7vw, 96px) clamp(24px, 4vw, 40px) clamp(48px, 6vw, 80px)",
+        fontVariantLigatures: "none",
       }}
     >
       <div
