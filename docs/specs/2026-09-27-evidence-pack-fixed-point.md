@@ -140,6 +140,74 @@ NOTICE (never a violation — this is a hygiene signal, not a fact the linter ca
 **Migration.** Packs already on `main` are exempt (no `as_of` field existed to violate). Applies
 to packs authored after this ships.
 
+## S6 — evidence for PII-removal lanes carries categories and counts only
+
+**Gap.** A PII-removal diff can hold while its own evidence text keeps failing gate for the same
+cause: naming a residual (out-of-scope) file, pairing a redacted id with a per-file occurrence
+count, miscounting, or hedging a claim it should measure exactly. `check_pii_scan_clean()`
+(`scripts/evidence_pack_lint.py:1402-1408`) and `check_countable_claims()` (`:3672`) both grade
+the diff's own `+`/`-` lines; neither reads brief/pack/body prose for a path token, an
+id-to-count pairing, or an egress claim, so an author can pass `evidence_pack_lint: clean` while
+the evidence itself re-identifies what the diff just redacted or names a file the mandate ordered
+kept out of the evidence.
+
+**Evidence.** Three consecutive REWORK-BUILD rounds on the same PII-removal lane, each blocking on
+this class and not on diff content: `gate-7474.md` H1 (pilot ids 70/266/283/350 re-linkable to
+real names via three tracked files entered by path in the brief's own `out_of_scope` pointer) and
+H2 (brief/pack/body claimed "every PRODUCTION extraction call TODAY" uses a legacy prompt — an
+unmeasured live-egress claim — plus three wrong counts: "one of the names" for 2, "9 other files"
+for 12, "9+2 fixture occurrences" for 13+4); `gate-7481.md` K1 (H2 carried forward unfixed), K2
+(same three counts, now "9" for 11, still "one of the names"), K3 (H1 carried forward: the brief
+named the two files a redacted pair maps through), K4 (`Bites:` regressed from a post-merge
+`ls-tree`+pytest probe to a pre-merge lint self-check); `gate-7491.md` K2 (still "one of the
+names", still wrong file/fixture counts) and K3 — the new regression — where the dissent itself
+wrote "id 70 x1, id 83 x2" next to the two prompt-template filenames, which is a de-anonymization
+key of the same class as the F1/G3 finding this lane had already cured once for a different pair
+of client names.
+
+**Rule.**
+
+- R6.1 — no filename or path of any residual (out-of-scope) file appears in brief, pack or body.
+  Categories and counts only.
+- R6.2 — no client id, redacted placeholder or pilot id is paired with a per-file occurrence
+  count, or with a filename, in the same claim. A count stands alone as a total; an id stands
+  alone as "still re-linkable" or "no longer re-linkable".
+- R6.3 — every count is produced by a command written in the evidence (the detector invocation)
+  and re-measured at HEAD, not carried forward from a prior version's gate report.
+- R6.4 — no "live" or "active" egress/consumer claim without a measured consumer (a process, cron
+  entry or plist checked at HEAD); forbidden hedges: "one of", "some", "a few", "~N".
+- R6.5 — `Bites:` for a PII-removal lane is a post-merge probe: `git ls-tree origin/main <paths>`
+  → 0 plus a test run, never a pre-merge lint self-check.
+- R6.6 — the builder runs and pastes into the PR body one mechanical pre-check before opening:
+  `grep -nE '<residual-basenames>|one of|some of|~[0-9]' evidence/**/brief.yml pack.yml body` → 0
+  hits, plus a `git grep` of every pilot/client id used as a plain string → 0 hits outside the
+  evidence's own redacted-id table.
+
+**Evidence for R6.2's specific shape:** `gate-7491.md`'s own dissent text — "id 70 x1, id 83 x2" —
+next to two named prompt files is the mechanism: the count disambiguates which name maps to which
+id once the filenames are also visible, exactly reproducing the re-identification `gate-7474.md`
+G3 already found and cured for a different collision. The rule generalizes past this one lane: a
+per-file count next to an id is a key regardless of which id or file it names.
+
+**Enforcement.** Mechanically checkable now in `scripts/evidence_pack_lint.py`, without new
+schema: R6.1 as a whole-document path-token scan (`git diff --name-only mb..head` supplies the
+allowed set; any path-shaped token in brief/pack/body prose outside that set is REJECTED — the
+same allow/deny shape `check_countable_claims()` already uses for `dissent`/`receipts`). R6.3 as
+an extension of `check_countable_claims()`'s existing file-count/diffstat re-measurement: treat a
+PII-lane count claim the same as a diffstat claim already is, comparing prose to a supplied
+`--measured` value instead of only to numstat. R6.6's hedge words as a fixed regex denylist
+(`\bone of\b|\bsome of\b|\ba few\b|~\d`) scanned over the same whole-document walk as R6.1 —
+cheap, deterministic, no PII data needed to run it. Not mechanically checkable without a live PII
+detector run inside CI (out of scope here, same boundary S3 already drew): R6.2's id↔count
+pairing (requires knowing which tokens are ids) and R6.4's "measured consumer" claim (requires
+process/cron state, not text). Both stay builder-attested per R6.6 and gate-verified by hand, as
+`check_pii_scan_clean()` already treats the literal-vs-structured PII attestation.
+
+**Migration.** No retroactive re-lint of packs already on `main`. Applies to any evidence pack for
+a PII-removal or PII-redaction lane authored after this ships; a pack for an unrelated lane is
+unaffected. `#7489` (S5, hot-zone egress) had not merged when this section was written — S6 is
+appended after S4, not after S5, and re-sequences if S5 lands first.
+
 ## Ship order
 
 1. **PII removal lands first.** #7462 (client-PII removal from `plan.jsonl`) merges before any
