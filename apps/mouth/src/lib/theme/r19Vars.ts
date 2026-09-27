@@ -58,11 +58,26 @@ export const R19_DIRECTION_A_VARS = {
   // Every shared token comes from main's R19 shell, verbatim.
   ...R19_VARS,
 
+  // ── --foreground (gate B3, PR #7508 round 3): a LITERAL, not a var()
+  // alias, on purpose. kbli-theme.css's own `.kbli-paper` block (BRIEF-v2
+  // R-1 §3.4) already documents this exact failure mode by name — "the
+  // r19Vars.ts alias trap": globals.css's :root only ever aliases
+  // `--foreground: var(--kbli-text-primary)`, and `.kbli-paper` overrides
+  // `--kbli-text-primary` in a competing scoped rule rather than at :root,
+  // so on the affected browsers the alias chain re-resolves to the dark
+  // #ececec default instead of the paper value. `.kbli-paper` avoids the
+  // trap by RESTATING every `--kbli-*` token as its own literal rather than
+  // inheriting through an alias; this file follows the same proven pattern
+  // for `--foreground` specifically, reading main's `--text-primary` at
+  // import time so it can never silently drift from it, without going
+  // through a `var()` indirection that the same trap could catch again.
+  "--foreground": (R19_VARS as Record<string, string>)["--text-primary"],
+
   // ── Tokens R19_VARS does not carry ────────────────────────────────────────
-  "--surface-base-solid": "#F7F4EE", // = --surface-base (nav band, print)
-  "--surface-sunken": "#EAE3D8",
-  "--surface-deep": "#EAE3D8",
-  "--bz-elevated": "#FFFCF7", // = --surface-raised (portal name)
+  "--surface-base-solid": "var(--surface-base)",
+  "--surface-sunken": "var(--r19-wash)",
+  "--surface-deep": "var(--surface-sunken)",
+  "--bz-elevated": "var(--surface-raised)", // portal name for --surface-raised
   "--cta-primary-fg": "var(--text-on-accent)",
   "--color-text-muted": "var(--text-secondary)",
   "--color-border-subtle": "var(--border-subtle)",
@@ -72,13 +87,13 @@ export const R19_DIRECTION_A_VARS = {
   "--tx-secondary": "var(--text-secondary)",
   "--bz-accent": "var(--accent-funnel)",
   "--text-link": "var(--accent-funnel)",
-  "--r19-structure": "#233D52",
+  "--r19-structure": "var(--r19-slate)",
   "--r19-copper-hover": "#843719",
   "--r19-ink-muted": "var(--text-secondary)",
   "--r19-control-border": "#7B817F",
   "--r19-radius-control": "3px",
   "--r19-radius-card": "4px",
-  "--r19-focus": "0 0 0 3px #A44B36", // = --accent-funnel's literal (both systems already agree on copper)
+  "--r19-focus": "0 0 0 3px var(--accent-funnel)",
   "--r19-shadow-header": "0 12px 20px #20282412",
 
   // ── B1 cure (gate PR #7508): MobileNav's non-R19 branch assumes a dark

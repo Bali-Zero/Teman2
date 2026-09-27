@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { R19_CLASS, R19_DIRECTION_A_VARS } from "./r19Vars";
 import { R19_VARS } from "@/components/r19/presentation";
@@ -157,6 +160,17 @@ describe("R19 Direction A — inherits main's R19 shell verbatim", () => {
       expect(VARS[key], `${key} diverges from R19_VARS`).toBe(MAIN[key]);
     }
   });
+
+  // gate B3, PR #7508 round 3: R19_VARS carries no `--foreground` key at
+  // all, so this file must restate it — as a LITERAL synced to
+  // `--text-primary`, not a `var()` alias (kbli-theme.css's `.kbli-paper`
+  // block, BRIEF-v2 R-1 §3.4, names this exact indirection "the r19Vars.ts
+  // alias trap": an alias declared at :root re-resolving to the dark
+  // default instead of the paper value it should follow).
+  it("--foreground is a literal synced to --text-primary, not a var() alias (gate B3, PR #7508)", () => {
+    expect(VARS["--foreground"]).toBe(MAIN["--text-primary"]);
+    expect(VARS["--foreground"]).not.toMatch(/var\(/);
+  });
 });
 
 describe("R19 Direction A — value grammar", () => {
@@ -185,7 +199,35 @@ describe("R19 Direction A — value grammar", () => {
     "--nav-icon-color": "--text-primary",
     "--nav-icon-bg": "--surface-raised",
     "--nav-icon-border": "--border-subtle",
+    // B2 residual (gate PR #7508 round 3): these six used to copy main's
+    // values under a different name as a literal — converted to var()
+    // references so they can never drift again, same as the block above.
+    "--surface-base-solid": "--surface-base",
+    "--surface-sunken": "--r19-wash",
+    "--surface-deep": "--surface-sunken",
+    "--bz-elevated": "--surface-raised",
+    "--r19-structure": "--r19-slate",
   };
+
+  // `--r19-focus` is the seventh B2 residual, but its value is a composite
+  // shadow string with the alias embedded (`0 0 0 3px var(--accent-funnel)`),
+  // not a bare `var(--x)` — ALIAS_TARGETS' exact-string check doesn't fit it,
+  // so it gets its own grammar and target-existence assertion.
+  const SHADOW_WITH_VAR = /^(?:\d+(?:px)? ){3,4}var\((--[\w-]+)\)$/;
+
+  it("--r19-focus is a shadow with a var() alias, not a copied literal (gate B2, PR #7508)", () => {
+    const value = VARS["--r19-focus"];
+    const m = SHADOW_WITH_VAR.exec(value);
+    expect(
+      m,
+      `--r19-focus does not match the shadow-with-var() grammar: ${value}`,
+    ).not.toBeNull();
+    const target = m![1];
+    expect(
+      VARS[target],
+      `alias target ${target} must itself exist`,
+    ).toBeDefined();
+  });
 
   it.each(Object.entries(ALIAS_TARGETS))(
     "%s is a designated var(%s) alias, not a copied literal",
@@ -204,11 +246,16 @@ describe("R19 Direction A — value grammar", () => {
   // or one this file deliberately re-declares (there are none of the
   // latter left; the block above enforces that every override is an alias).
   const NON_CUSTOM_PROPERTY_KEYS = new Set(["colorScheme"]);
+  // `--r19-focus` has its own dedicated composite-shadow-with-var() test
+  // above (gate B2 residual round 3) rather than the plain-literal grammar
+  // below, which forbids any `var(` occurrence.
+  const COMPOSITE_ALIASES = new Set(["--r19-focus"]);
   const OWN_ADDITIONS = Object.entries(VARS).filter(
     ([name]) =>
       !(name in ALIAS_TARGETS) &&
       !(name in MAIN) &&
-      !NON_CUSTOM_PROPERTY_KEYS.has(name),
+      !NON_CUSTOM_PROPERTY_KEYS.has(name) &&
+      !COMPOSITE_ALIASES.has(name),
   );
 
   it.each(OWN_ADDITIONS)("%s = %s is a literal", (name, value) => {
@@ -236,5 +283,89 @@ describe("R19 Direction A — value grammar", () => {
 
   it("exports the scope class the stylesheet hooks", () => {
     expect(R19_CLASS).toBe("r19-direction-a");
+  });
+});
+
+describe("R19 Direction A — coverage of var(--x) reads on kbli routes (gate B3, PR #7508)", () => {
+  // Rebuilds the exact regression class the gate found: a kbli component
+  // reading `var(--foreground)` directly, where `--foreground` had quietly
+  // stopped being part of the set this wrapper actually supplies. Rather
+  // than freezing a snapshot of today's files, this walks the real kbli
+  // surface tree plus the shared nav it renders through, so a FUTURE
+  // component that starts reading an undefined custom property fails here
+  // instead of on a live preview.
+  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const SRC_DIR = path.resolve(HERE, "..", "..");
+
+  function collectFiles(dir: string, exts: string[]): string[] {
+    const out: string[] = [];
+    const stack = [dir];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(current, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const entry of entries) {
+        const full = path.join(current, entry.name);
+        if (entry.isDirectory()) {
+          stack.push(full);
+        } else if (exts.some((ext) => entry.name.endsWith(ext))) {
+          out.push(full);
+        }
+      }
+    }
+    return out;
+  }
+
+  const KBLI_SURFACE_FILES = [
+    ...collectFiles(path.join(SRC_DIR, "app", "kbli"), [".ts", ".tsx"]),
+    ...collectFiles(path.join(SRC_DIR, "components", "kbli"), [".ts", ".tsx"]),
+    path.join(SRC_DIR, "app", "v2", "_components", "MobileNav.tsx"),
+  ];
+
+  // Tokens legitimately read by kbli components WITHOUT being part of the
+  // R19 Direction A set: kbli's own separate `--kbli-*` theme layer
+  // (deliberately out of scope, gate rework rounds 1-2) by prefix, plus a
+  // short, named list of globals.css base tokens that are supplied
+  // app-wide regardless of the r19 wrapper and were NOT among the gate's
+  // findings (only bare `--foreground` was cited as broken, never these).
+  const KNOWN_EXTERNAL_TOKENS = new Set([
+    "--foreground-muted",
+    "--foreground-secondary",
+    "--border",
+    "--border-default",
+    "--accent-whatsapp-ink",
+    "--public-header-height",
+  ]);
+
+  function isKnownExternal(name: string): boolean {
+    return name.startsWith("--kbli-") || KNOWN_EXTERNAL_TOKENS.has(name);
+  }
+
+  it("scans a non-trivial kbli surface (sanity floor on the file walk itself)", () => {
+    expect(KBLI_SURFACE_FILES.length).toBeGreaterThan(10);
+  });
+
+  it("every non-external var(--x) read across the kbli surface exists in R19_DIRECTION_A_VARS", () => {
+    const VAR_READ = /var\((--[\w-]+)/g;
+    const missing: Array<{ name: string; file: string }> = [];
+    for (const file of KBLI_SURFACE_FILES) {
+      const content = fs.readFileSync(file, "utf8");
+      const names = new Set<string>();
+      let m: RegExpExecArray | null;
+      while ((m = VAR_READ.exec(content))) {
+        names.add(m[1]);
+      }
+      for (const name of names) {
+        if (isKnownExternal(name)) continue;
+        if (!(name in VARS)) {
+          missing.push({ name, file: path.relative(SRC_DIR, file) });
+        }
+      }
+    }
+    expect(missing).toEqual([]);
   });
 });
