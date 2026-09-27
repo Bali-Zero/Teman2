@@ -625,10 +625,11 @@ describe("Champion hero", () => {
     expect(plain.style.transform).toBe("");
   });
 
-  it("face-frames Krisna's roster portrait, and the file exists under public/", () => {
-    const photo = String(rosterBySlug("krisna")?.photo);
+  it("renders the backend's superseded Krisna avatar from the approved, face-framed file", () => {
+    const approved = String(rosterBySlug("krisna")?.photo);
+    expect(approved).toBe("/static/team/krisna-20260927.jpg");
     expect(
-      existsSync(join(__dirname, "..", "..", "..", "..", "public", photo)),
+      existsSync(join(__dirname, "..", "..", "..", "..", "public", approved)),
     ).toBe(true);
     mockQuery(
       response({
@@ -636,17 +637,65 @@ describe("Champion hero", () => {
           entry({
             member: "a",
             display_name: "Contender A",
-            avatar_url: photo,
+            // What team_members.avatar still holds in production.
+            avatar_url: "/static/team/krisna.jpg",
+          }),
+          entry({
+            member: "b",
+            display_name: "Contender B",
+            rank: 2,
+            activations: 20,
+            award_tier: 2,
+            avatar_url: approved,
           }),
         ],
       }),
     );
     render(<PortalChallengeWidget identity="fixture" />);
     const arena = within(screen.getByTestId("champion-arena"));
-    const [framed] = arena.getAllByRole("img", { name: "Contender A" });
-    expect(framed.style.transform).toBe(
-      "translate(50%, 50%) scale(2.45) translate(-55%, -33%)",
+    for (const name of ["Contender A", "Contender B"]) {
+      for (const portrait of arena.getAllByRole("img", { name })) {
+        expect(portrait.tagName).toBe("IMG");
+        expect(portrait.getAttribute("src")).toBe(approved);
+        expect(portrait.style.transform).toBe(
+          "translate(50%, 50%) scale(2.45) translate(-55%, -33%)",
+        );
+      }
+    }
+  });
+
+  it("aliases only the exact legacy path and keeps the initials fallback", () => {
+    mockQuery(
+      response({
+        entries: [
+          entry({
+            member: "a",
+            display_name: "Contender A",
+            avatar_url: "/static/team/krisna.jpg",
+          }),
+          entry({
+            member: "b",
+            display_name: "Contender B",
+            rank: 2,
+            activations: 20,
+            award_tier: 2,
+            avatar_url: "https://cdn.invalid/static/team/krisna.jpg",
+          }),
+        ],
+      }),
     );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const arena = within(screen.getByTestId("champion-arena"));
+    expect(
+      arena
+        .getAllByRole("img", { name: "Contender B" })
+        .map((node) => node.tagName),
+    ).not.toContain("IMG");
+    const podium = within(
+      arena.getByRole("button", { name: "Lihat peluang Contender A" }),
+    );
+    fireEvent.error(podium.getByRole("img", { name: "Contender A" }));
+    expect(podium.getByText("CA")).toBeInTheDocument();
   });
 
   it("falls back to initials when a podium photo fails to load", () => {

@@ -21,7 +21,6 @@ const FACE_FRAMING: Record<string, readonly [number, number, number]> = {
   "damar.jpg": [54, 29, 2.35],
   "dea.jpg": [48, 46, 2.2],
   "dewaayu.jpg": [52, 42, 2.4],
-  "krisna.jpg": [54, 40, 2.35],
   "krisna-20260927.jpg": [55, 33, 2.45],
   "subhi.jpg": [53.5, 40, 2.25],
   "surya.jpg": [52, 40, 2],
@@ -29,6 +28,15 @@ const FACE_FRAMING: Record<string, readonly [number, number, number]> = {
   "ruslana.jpg": [50, 37, 1.6],
   "zainal-ceo.jpg": [52, 33, 1.95],
 };
+
+/**
+ * The leaderboard's avatar_url comes from team_members.avatar, which still
+ * names a superseded photo; the approved one ships under a versioned name.
+ * Exact local paths only — anything else goes through the checks unchanged.
+ */
+const SUPERSEDED_SOURCES = new Map<string, string>([
+  ["/static/team/krisna.jpg", "/static/team/krisna-20260927.jpg"],
+]);
 
 /**
  * object-position pins the focal point of the covered image at the same
@@ -60,9 +68,10 @@ export function ChampionPortrait({
   sizes?: string;
 }) {
   const [failedSource, setFailedSource] = useState<string | null>(null);
+  const source = src ? (SUPERSEDED_SOURCES.get(src) ?? src) : src;
   const safeSource =
-    src && /^\/static\/team\/[a-z0-9_-]+\.(jpg|jpeg|png|webp)$/i.test(src)
-      ? src
+    source && /^\/static\/team\/[a-z0-9_-]+\.(jpg|jpeg|png|webp)$/i.test(source)
+      ? source
       : null;
   return (
     <span
