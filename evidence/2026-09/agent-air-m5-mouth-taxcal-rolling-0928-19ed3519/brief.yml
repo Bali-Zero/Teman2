@@ -15,13 +15,14 @@ acceptance:
     year rollover, weekend Sat/Sun shift); guilt test red on origin/main's hardcoded array,
     green on HEAD; tsc/eslint/prettier clean on changed files.
   A2: >-
-    Live on a local dev server (port 3131): /tax-calendar renders all 6 deadlines sorted
+    Live on a local dev server (port 3131): /tax-calendar renders all 7 deadlines sorted (6 plus the corporate SPT Tahunan added after review)
     "in Nd" from today (no elapsed date); /api/tax-calendar/ical returns 53 VEVENTs, all
     inside the 12-month window from now.
   A3: >-
     Each obligation cites its obligations_catalog.yaml rule id in a code comment
     (pph25_installment, spt_masa_ppn, lkpm_quarterly, spt_tahunan_badan) or documents that
-    no catalog rule exists (PB1 x2); the LKPM and SPT Tahunan titles now name the period
+    no catalog rule exists (PB1 x2; the individual SPT Tahunan, due 31 March under UU KUP
+    Art. 3(3)(b)); the LKPM and SPT Tahunan titles now name the period
     the computed date actually belongs to instead of a fixed, eventually-wrong label.
 out_of_scope:
   - Page redesign (Fase 2, per spec).
