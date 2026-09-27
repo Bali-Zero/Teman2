@@ -3,7 +3,7 @@ plan_ref: "lkpm-oneoffs-removal-0927 mandate (dispatched task prompt), scoped to
 lanes:
   - lane: lkpm-oneoffs-removal
     role: build
-    seat: claude-sonnet-5 (conducting session — grounded liveness, quarantined originals, deleted the three files, built and validated the guard, wrote this pack)
+    seat: claude-sonnet-5 (conducting session — grounded liveness, quarantined originals, deleted the three files, built then dropped the credential-table guard (B2), wrote this pack)
 seat_diversity: not_applicable
 seat_diversity_note: >-
   Single build lane. Every load-bearing question here is settled by a command run against the
@@ -18,7 +18,7 @@ seat_override: >-
   the second opinion". The fresh, independent on-disk gate that reviews this PR post-hoc is the
   adversarial check for this pack, in place of a convened council.
 diff:
-  net_lines: -1444 (9 files, +406/-1850; origin/main...HEAD post-rebase 34be3990a0)
+  net_lines: -1390 (9 files, +460/-1850; origin/main...HEAD post-rebase 34be3990a0)
   behaviour_change: >-
     Pure deletion + this evidence pack. Three dead one-off scripts and their one orphaned test
     are removed; two files lose one line each (a stale lint exception, and a roster entry naming
@@ -175,22 +175,32 @@ receipts:
     ts: 2026-09-27T03:31Z
     seat: session (M5)
   - claim: >-
-      B3 — independently re-verified the gate's forensic claim about the 4 commits carrying the
-      SA private key, using booleans/counts only (never reading or printing the key itself)
+      B3' — re-measured the gate's B3' forensics by KEY IDENTITY (private_key_id / key-body
+      sha256[:16], never PEM-header counts) at the exact blob content of each commit, to confirm
+      this SA had TWO distinct keys, and that scripts/fix_env_credentials.py carries a DIFFERENT
+      service account's key, not this SA's
     cmd: >-
-      `git log -1 --format='%H %cs %s' <sha>` and `git show --stat <sha>` for each of
-      38ee45fb82/3fd88263eb/690a5754f2/f0fa54ab42, confirming the file each touched and its
-      +/- line count; `git show <sha> | grep -c` for the PEM private-key header marker
-      (the two words `BEGIN`+`PRIVATE`+`KEY`, split here so this line itself never spells it
-      out as a contiguous match) per commit
+      for each of (38ee45fb82:scripts/deploy_secrets.py, 38ee45fb82:scripts/
+      update_secret_helper.py, 38ee45fb82:scripts/verify_direct.py,
+      38ee45fb82:scripts/fix_env_credentials.py, 690a5754f2:apps/backend-rag/
+      extract_company_data.py): `git show <sha>:<path>` piped to a script that regexes
+      client_email/private_key_id/private_key out of the JSON block and prints only
+      sha256(value)[:16] — the value itself never leaves the script. Absence re-checked the same
+      way at 3fd88263eb (the 3 scripts/ files, deleted) and f0fa54ab42 (extract_company_data.py,
+      key field absent)
     result: >-
-      38ee45fb82 (2026-01-26) added scripts/fix_env_credentials.py (+86), PEM-marker count 6.
-      3fd88263eb (2026-03-26) removed it (-86). 690a5754f2 (2026-03-29) added
-      apps/backend-rag/extract_company_data.py (+259), PEM-marker count 1. f0fa54ab42
-      (2026-04-06) modified it (+/-10 lines, "remove hardcoded secrets"), PEM-marker count 1.
-      Matches the gate's forensics exactly.
+      At 38ee45fb82: scripts/deploy_secrets.py, update_secret_helper.py and verify_direct.py all
+      hash to client_email 498cc45b6a27a4c9 / key id 9a53ecd0e72e1e8a (identical across the 3,
+      i.e. one shared key); scripts/fix_env_credentials.py hashes to a DIFFERENT client_email
+      11c4db367d63d024 / key id dbcaab1b8ed071e7 — confirms the gate's B3' finding that this file
+      belongs to another SA, not this PR's SA. At 690a5754f2:
+      apps/backend-rag/extract_company_data.py: client_email 498cc45b6a27a4c9 / key id
+      51ffead1acc88a97 — a SECOND, distinct key id for the SAME SA. At 3fd88263eb the 3 scripts/
+      files no longer exist (deleted, window closed). At f0fa54ab42 extract_company_data.py
+      exists but carries no private_key_id field (key removed, window closed). Two separate key
+      ids for one SA, confirmed by identity, not by counting PEM headers.
     exit: 0
-    ts: 2026-09-27T03:35Z
+    ts: 2026-09-27T04:10Z
     seat: session (M5)
 pii_scan: clean
 pii_scan_note: >-
@@ -283,23 +293,59 @@ dissent:
       (sweep + explicit named allowlist + named workflow step) rather than shipped un-armed.
       B3: disclosure rewritten below with the real exposure window and an explicit owner action
       (GCP IAM key rotation); "never committed" language removed from every surface in this PR.
+  - seat: gate-7512.md (fresh independent review, round 3, REWORK-BUILD)
+    objection: >-
+      B3': the round-2 disclosure (this pack's own B3 receipt above, at the time) was itself
+      wrong — it named scripts/fix_env_credentials.py as the origin of this SA's 2026-01-26 key,
+      and described a single key "added, removed, re-added." Both claims came from PEM-header
+      counts, not from key identity. Measured by private_key_id/key-body identity, this SA had
+      TWO SEPARATE keys in public history (9a53ecd0e72e1e8a in 3 scripts/ files, 51ffead1acc88a97
+      in the file this PR deletes); fix_env_credentials.py carries a DIFFERENT SA's key
+      (dbcaab1b8ed071e7). The prior owner action named only one of the two key ids belonging to
+      this SA, leaving the other untouched.
+    status: CONFIRMED
+    resolution: >-
+      Re-measured by key identity (receipt above): confirmed both key ids belong to this SA and
+      that fix_env_credentials.py is a different SA. Disclosure, brief and PR body rewritten to
+      name both key ids, drop the "re-added" narrative and the fix_env_credentials.py
+      attribution, and require the owner to disable BOTH key ids. Added the one sentence noting
+      3 other service accounts' keys are also in history, outside this PR's scope.
 disclosure: >-
-  CORRECTED this round (gate-7512.md B3 — the previous version was wrong and said the opposite).
-  Tracked-file exposure window, first-commit-to-merge, per file (counts only, no identifiers):
+  CORRECTED again this round (gate-7512.md B3' — the round-2 disclosure below this line's prior
+  text was itself wrong, measured by PEM-header counts instead of key identity). Tracked-file
+  exposure window, first-commit-to-merge, per file (counts only, no identifiers):
   extract_company_data.py 2026-03-29 -> merge; fix_lkpm_q1_2026_client_ids.py 2026-04-08 ->
   merge; import_lkpm_q1_2026_receipts.py 2026-04-15 -> merge. All three were public on
   Bali-Zero/Teman2 (a public repo) for the full window. The SA identity metadata in
   extract_company_data.py (project_id, client_email, numeric client_id) was public for the same
   window; the client_email string for this same SA remains tracked in 6 OTHER files after this
   merge (docs/research/evaluator) — not "no longer tracked", corrected from the prior draft (N4).
-  SEPARATELY, and more seriously: a real PEM private key for this SAME service account WAS
-  committed to this public repo's git history — added 2026-01-26, removed 2026-03-26, re-added
-  2026-03-29 (in the file this PR deletes), moved to env-only 2026-04-06. Zero tracked files
-  carry it at HEAD; deleting files does not un-publish history the repo has already served
-  publicly. The leaked private_key_id is identified only by its sha256[:16] fingerprint
-  (`51ffead1acc88a97`) — never the id or key value itself, anywhere in this PR. Rotation status
-  is UNKNOWN to this session and to memory. Owner action, required: disable that key id in GCP
-  IAM and review the service account's access logs from 2026-01-26 onward. Additionally (N5,
-  not fixed here): 15 residual company-name-string hits remain across 11 other tracked files (4
-  in the sibling-owned apps/backend-rag/scripts/import_lkpm_q1_2026.py, pending PR #7484; the
-  rest pre-existing and outside this PR) — acknowledged as input for a future residuals lane.
+  SEPARATELY, and more seriously, and measured by private_key_id/key-body IDENTITY, not by
+  header counts: this SAME service account had TWO SEPARATE private keys committed to this
+  public repo's git history. Key id sha256[:16] `9a53ecd0e72e1e8a` was public 2026-01-26 ->
+  2026-03-26 (59 days), in 3 scripts/ files (none touched by this PR). Key id sha256[:16]
+  `51ffead1acc88a97` was public 2026-03-29 -> 2026-04-06 (8 days), in
+  apps/backend-rag/extract_company_data.py, the file this PR deletes. These are two distinct
+  keys, not one key re-added. Zero tracked files carry either at HEAD; deleting files does not
+  un-publish history the repo has already served publicly. Rotation status for BOTH is UNKNOWN
+  to this session and to memory. Owner action, required: disable BOTH key ids
+  (`9a53ecd0e72e1e8a` and `51ffead1acc88a97`) in GCP IAM and review the service account's access
+  logs from 2026-01-26 onward. Separately: this repo's history also holds private keys of 3
+  OTHER service accounts — SA `11c4db367d63d024` (key id `dbcaab1b8ed071e7`), SA
+  `53037a9b9bdade66` (key id `1d56fc0c67dbdc73`), and SA `7ffcf6fcc86b4951` (key body
+  `da10f37ed7ab281b`, no adjacent key id found) — all outside this PR's scope, handed to the
+  owner alongside the two key ids above. Additionally (N9, re-measured this round, not fixed
+  here): 22 of the 70 distinct company-name strings from the removed rosters still appear at
+  head, as 34 (string, file) pairs across 12 files; 21 of those pairs sit in sibling-owned files
+  (import_lkpm_q1_2026.py 16, fix_lkpm_orphans_batch1.py 3, process_batches_2_3.py 2), the
+  remaining 13 pairs in 9 other files — pre-existing and outside this PR, acknowledged as input
+  for a future residuals lane.
+known_artefacts: >-
+  N8 (gate-7512.md, non-blocking): this PR's merge-queue squash concatenates all 7 commit
+  messages into one. Two of those messages carry sentences later retracted by a following
+  commit in the same sequence — 069a24eb7f's "…read from env, never committed" and "79-row"
+  claim, and 8886ab6468's description of the reverted consumer_map change — both retracted by
+  3241ec315f in a later commit message. This pack's own "removed from every surface in this PR"
+  language (dissent above) overclaims by one surface: every surface except the first commit's
+  message, which the squash will still concatenate verbatim. Cannot amend a pushed commit
+  (Builder Contract Rule 1) — recorded here as a known artefact of the squash queue, not fixed.

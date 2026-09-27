@@ -61,24 +61,32 @@ objective: >-
   tree-sweep, so its half of the `Bites:` line observed nothing. Dropped from this PR entirely;
   it becomes its own follow-up PR (sweep + an explicit, named 3-entry allowlist + a named CI
   workflow step), tracked separately rather than shipped un-armed.
-  B3 (URGENT, owner action) — this PR's disclosure previously said the SA private key "was
-  always read from env, never committed". FALSE: a PEM private-key block for the SAME service
-  account was committed to this public repo's history — added 2026-01-26 (scripts/
-  fix_env_credentials.py), removed 2026-03-26, re-added 2026-03-29 (apps/backend-rag/
-  extract_company_data.py, the file this PR deletes), moved to env 2026-04-06. Zero tracked
-  files carry it at HEAD; history does not un-publish. The leaked key's private_key_id,
-  identified only by sha256[:16] `51ffead1acc88a97` (never the id or key itself), is a 40-char
-  literal at the leak commit. Rotation status is unknown — the owner must disable that key id in
-  GCP IAM and review the SA's access logs from 2026-01-26. See the pack's corrected disclosure.
+  B3' (URGENT, owner action) — round 1 said the SA private key "was always read from env, never
+  committed" (false). Round 2 said one key was added, removed and re-added — also wrong, because
+  it was measured by PEM-header counts, not by key identity. Re-measured by private_key_id/
+  key-body identity across the leak commits (git show <sha>:<path>, hashed, never printed): this
+  PR's SA had TWO SEPARATE private keys public in this repo's history — key id sha256[:16]
+  `9a53ecd0e72e1e8a`, public 2026-01-26 -> 2026-03-26 (59 days, in 3 scripts/ files, none of them
+  touched by this PR), and key id sha256[:16] `51ffead1acc88a97`, public 2026-03-29 ->
+  2026-04-06 (8 days, in apps/backend-rag/extract_company_data.py, the file this PR deletes).
+  Zero tracked files carry either at HEAD; history does not un-publish. Rotation status for both
+  is unknown — the owner must disable BOTH key ids (9a53ecd0e72e1e8a and 51ffead1acc88a97) in
+  GCP IAM and review the SA's access logs from 2026-01-26 onward. Separately: this repo's
+  history also holds private keys of 3 OTHER service accounts (hashed identity
+  11c4db367d63d024/dbcaab1b8ed071e7, 53037a9b9bdade66/1d56fc0c67dbdc73,
+  7ffcf6fcc86b4951/da10f37ed7ab281b), outside this PR's scope, handed to the owner alongside the
+  two above. See the pack's corrected disclosure.
   Non-blocking, folded in: N1 the roster is 76 rows (AST-counted at merge-base), not 79; the
   guard's own "~139 rows total" claim is moot since the guard is dropped (B2). N2 the floor
   receipt's stale "8 files, +173/-1850" is corrected to the final measured diff. N3 (moot — the
   consumer_map test-count claim no longer applies now that those files are reverted, B1). N4 the
   disclosure's "no longer tracked" claim was wrong for the SA's client_email string, which
   remains in 6 other tracked files (docs/research/evaluator) — corrected, not chased here. N5
-  15 residual company-name-string hits across 11 other tracked files (4 in the sibling-owned
-  import_lkpm_q1_2026.py, pending PR #7484; the rest pre-existing and outside this PR's scope)
-  are acknowledged as input for a future residuals lane, not fixed in this PR.
+  (re-measured, gate N9): 22 of the 70 distinct company-name strings from the removed rosters
+  still appear at head, as 34 (string, file) pairs across 12 files; 21 of those pairs sit in
+  sibling-owned files (import_lkpm_q1_2026.py 16, fix_lkpm_orphans_batch1.py 3,
+  process_batches_2_3.py 2), the remaining 13 pairs in 9 other files. Pre-existing and outside
+  this PR's scope, acknowledged as input for a future residuals lane, not fixed in this PR.
 scope:
   - >-
     apps/backend-rag/extract_company_data.py, apps/backend-rag/scripts/
