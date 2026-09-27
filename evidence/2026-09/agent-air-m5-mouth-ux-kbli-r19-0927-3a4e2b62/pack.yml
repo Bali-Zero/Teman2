@@ -1,0 +1,183 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Ship order recorded by the conducting session (main): rebase each of the four dormant mouth UX
+  waves (kbli/oracle/studio/voa, all local branches on M5, builders died before pushing) onto
+  post-#7448 origin/main one at a time -> PR + fresh gate + browser QA. This pack covers the FIRST
+  lane, ux-kbli. The other three still carry the shared foundation commit and ship after this one
+  lands.
+council_run: council-journal.jsonl
+council_note: >-
+  One seat reviewed the diff and returned: kimi-code/k3 (prompt-in/prompt-out via
+  scripts/kimi_client.py, no repo access; routePolicy.ts + the CTAHandoff.tsx diff +
+  kbli/layout.tsx diff + full diffstat, no PII, no company-identifying data in the material sent),
+  VERDICT HOLDS on all three questions asked. A second seat, codex-gpt-5.6-sol, was dispatched via
+  .claude/scripts/codex-spalla.sh (base origin/main, read-only) but the conducting session (main)
+  ruled mid-review that the spalla egress guard on main is known-defective and the lane is
+  suspended — do not wait on it, do not launch any further external-seat review from this lane.
+  The dispatch is left to finish on its own in the background (bash PID 21477, unattended) and its
+  output was not read into this pack; the 34 files it received (identical to this pack's own diff,
+  since it was dispatched from a clean worktree with base=origin/main and no other uncommitted
+  changes) are listed in the shipping report for the egress gate to judge. Quorum is therefore NOT
+  met — one seat, not two. Kimi's two caveats (accent-funnel fallback chain; CTAHandoff restyle
+  scope) were independently re-verified by the author against the real tree (see receipts) and
+  found non-blocking.
+seat_override: >-
+  Two rules are suppressed by this one field, same as the precedent in
+  evidence/2026-08/agent-air-m5-backend-rag-voa-price-750-0831-94ec3467/pack.yml — `seat_override`
+  is pack-level (shared by _seat_rule_verdict/_r9_r11_verdict), so it covers R9 as well as R8
+  whether or not that was intended. (1) GROUND TRUTH (R8): apps/mouth/src/app/kbli/* is a
+  GROUND_TRUTH_PATH_PATTERNS hit, but this diff changes no KBLI classification, risk level, PMA
+  status or pricing value — verified by reading every line this diff adds to
+  RiskBadge.tsx/PMABadge.tsx/BaliStatusBadge.tsx (see receipts): the additions are UI meta-labels
+  ("needs review", "N% conf.", "pending verification") rendered from fields the pre-existing data
+  model already carries, not new classification data. Manufacturing an `nb:`/`query_hash:` for a
+  NotebookLM query that never happened would be the phantom-citation failure R8 exists to prevent,
+  pointed the other way. (2) QUORUM (R9): genuinely NOT met, and this override is not a claim that
+  it is. One seat ran and returned HOLDS (kimi-code/k3, see council-journal.jsonl); the second
+  (codex-gpt-5.6-sol) was abandoned mid-flight per the conducting session's ruling that its egress
+  guard is defective on main — not a quota/timeout death, a deliberate stop-order. If the reviewer
+  of this PR wants a second live seat before merge, the honest answer is that one was in flight and
+  was pulled by policy, not by failure.
+lanes:
+  - lane: ux-kbli-rebase
+    role: build
+    seat: >-
+      claude-sonnet-5 (this session, in .worktrees/mouth-ux-kbli-r19-0927, which added this
+      pack's own commit on top). The cherry-picked range (foundation plus 12 follow-on changes)
+      was authored by an earlier claude-sonnet-5 continuation session on M5, 2026-09-24/26, in
+      .worktrees/mouth-ux-kbli-0926 (left untouched by this unit — another process is backing it
+      up); with this pack's commit the branch carries 14 commits total ahead of origin/main. Both
+      authorship sessions are the same Anthropic seat, so this is recorded as one build lane, not
+      two, per D3's build-lane count
+  - lane: kimi-review
+    role: review
+    seat: kimi-code/k3
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      CTAHandoff's primary pill border/color depends on var(--accent-funnel) with a fallback chain
+      that only guards var(--accent-funnel-text) being undefined — if a consuming funnel defines
+      neither variable, the border declaration is invalid at computed-value time and the pill
+      silently loses its border and inherits text color.
+    status: RETRACTED
+    resolution: >-
+      packages/core/tokens/semantic.css:21 defines --accent-funnel at :root, so every current
+      consumer (kbli, tax-calendar, property/eligibility, prime/proposal) resolves a real value even
+      with no local override — verified by grep across apps/mouth/src and packages/core (see
+      receipts). No consumer is left with an undefined --accent-funnel.
+  - seat: kimi-code/k3
+    objection: >-
+      Restyling packages/core/components/CTAHandoff.tsx is an unannounced visual change to every
+      funnel that renders it (tax-calendar, property/eligibility, prime/proposal via
+      FunnelFrame.tsx), not scoped to /kbli despite the commit message framing it as a kbli fix.
+    status: CONFIRMED
+    resolution: >-
+      True and deliberate, not a defect: the original commit (55ecb0b5a0/468da08a2d) fixed a
+      full-width-slab bug the author judged universal to the shared component, and added
+      CTAHandoff.test.tsx to pin the new behavior. Called out explicitly in this PR's body as an
+      intentional cross-funnel side effect rather than shipped silently.
+pii_scan: clean
+pii_scan_note: >-
+  Diff touches no client data, no CRM, no WhatsApp transcripts, no research/crm-exports paths.
+  Material sent to kimi (external prompt-in/prompt-out seat) was routePolicy.ts, the CTAHandoff.tsx
+  diff, kbli/layout.tsx diff and a diffstat — no company contact value, no client-identifying string.
+spend:
+  wall_clock_hours: 2.3
+  adversarial_rounds: 1
+spend_note: >-
+  From worktree creation (.worktrees/mouth-ux-kbli-r19-0927, ~09:56Z UTC) to this pack's close
+  (~03:0xZ, see the last receipt timestamp). One adversarial round: kimi dispatched once, returned,
+  no retry needed. Codex was dispatched once and abandoned mid-flight per the conducting session's
+  stop-order (see council_note) — its wall clock does not count toward this unit's spend since the
+  session did not wait on it.
+receipts:
+  - claim: origin/main was fetched fresh and the stale branch's full commit range (foundation plus its follow-on changes) was cherry-picked in order onto a NEW worktree, conflict-free
+    cmd: "python3 scripts/agent_start.py --lane mouth --task-id ux-kbli-r19-0927 && git cherry-pick 8cb6914f80^..d8ae5e4e84"
+    result: >-
+      WORKTREE_READY .worktrees/mouth-ux-kbli-r19-0927; `git log --reverse --oneline
+      origin/main..agent/air-m5/mouth/ux-kbli-0926` showed the range had 13 entries (the
+      foundation 8cb6914f80 plus 12 kbli/CTAHandoff changes, not 14 as first estimated); every
+      entry in the range applied, zero conflicts, verified by the diffstat match in the next
+      receipt. This pack's own commit is a 14th, added afterward on top.
+    exit: 0
+    ts: "2026-09-27T02:11:00Z"
+    seat: claude-sonnet-5
+  - claim: the rebased branch's diff vs origin/main is byte-identical in shape to the diffstat measured on the stale branch before rebase (34 files, +2255/-611)
+    cmd: git diff --stat origin/main...HEAD
+    result: "34 files changed, 2255 insertions(+), 611 deletions(-)"
+    exit: 0
+    ts: "2026-09-27T02:12:00Z"
+    seat: claude-sonnet-5
+  - claim: "PR #7448's routePolicy.ts excludes every /kbli path from the site-wide R19 presentation, and the file lists of the two diffs have zero intersection"
+    cmd: "cat apps/mouth/src/components/r19/routePolicy.ts; gh pr view 7448 --json files -q '.files[].path'; git diff --name-only origin/main...HEAD"
+    result: >-
+      isR19Route checks pathname's first segment against a fixed editorialCategories set that does
+      not include "kbli" (or "kbli-explorer"), so every /kbli/* path returns false unconditionally;
+      manual diff of the two file lists (34 files this branch vs 30 files #7448) found 0 common paths
+    exit: 0
+    ts: "2026-09-27T02:05:00Z"
+    seat: claude-sonnet-5
+  - claim: typecheck is clean on the rebased head
+    cmd: npx tsc --noEmit -p apps/mouth
+    result: "no output"
+    exit: 0
+    ts: "2026-09-27T02:15:20Z"
+    seat: claude-sonnet-5
+  - claim: the 4 lane-specific vitest files pass when run from apps/mouth (its own vitest.config.ts resolves the @/ alias; running from repo root does not)
+    cmd: "cd apps/mouth && npx vitest run src/app/kbli/page.test.tsx src/components/kbli/kbli-paper-contrast.test.ts src/lib/kbli-light-index.test.ts src/lib/theme/r19Vars.test.ts"
+    result: "Test Files 4 passed (4); Tests 88 passed (88)"
+    exit: 0
+    ts: "2026-09-27T02:15:49Z"
+    seat: claude-sonnet-5
+  - claim: packages/core/components/CTAHandoff.test.tsx cannot run in this worktree — a pre-existing environment gap, not introduced by this diff
+    cmd: "cd packages/core && npx vitest run components/CTAHandoff.test.tsx"
+    result: >-
+      Startup Error: Cannot find module '@vitejs/plugin-react' (missing from the shared root
+      node_modules); reproduced identically in .worktrees/mouth-ux-kbli-0926 (the original,
+      un-rebased branch's own worktree, untouched by this unit) with the same command
+    exit: 1
+    ts: "2026-09-27T02:16:30Z"
+    seat: claude-sonnet-5
+  - claim: the 19 non-test, non-asset files this diff touches carry zero ESLint warnings or errors (the 233 warnings in the full apps/mouth lint run are pre-existing, on files this diff does not touch)
+    cmd: "cd apps/mouth && npx eslint <each of the 19 changed .ts/.tsx files under apps/mouth, path-relative>"
+    result: "no output for any of the 19 files (0 problems each)"
+    exit: 0
+    ts: "2026-09-27T02:20:22Z"
+    seat: claude-sonnet-5
+  - claim: production build compiles and both post-build guards pass
+    cmd: npm run build --workspace apps/mouth
+    result: >-
+      "Compiled successfully in 98s"; TypeScript finished in 24.3s; static generation completed;
+      "PUBLIC_LOGIN_BUNDLE_OK: inspected 5 assets; no internal API route prefixes found";
+      "ROSTER_CHUNK_ASSERT OK: scanned 511 chunks, 0 skipped ... Public files: 1581 scanned, 0
+      named after an excluded member"; no Error/Failed/✗ line anywhere in the log
+    exit: 0
+    ts: "2026-09-27T02:24:05Z"
+    seat: claude-sonnet-5
+  - claim: the build's regenerated apps/mouth/public/llms-*.txt artifacts (a side effect of `npm run build`'s LLMS_GENERATE_ARTICLES_ONLY step, unrelated to this diff) were discarded before dispatching review, so the material sent to both council seats reflected only this diff's real content
+    cmd: "git status --short; git checkout -- apps/mouth/public/llms-full.txt apps/mouth/public/llms-id.txt apps/mouth/public/llms.txt; git status --short"
+    result: "3 modified files listed, then clean working tree"
+    exit: 0
+    ts: "2026-09-27T02:27:00Z"
+    seat: claude-sonnet-5
+  - claim: CTAHandoff.tsx's shared consumers beyond kbli are tax-calendar and property/eligibility (via FunnelFrame.tsx) and prime/proposal/[token]/page.tsx directly — NOT visa-oracle/second-home/voa, which use their own separate CTA components
+    cmd: "grep -rln 'CTAHandoff' apps/mouth/src packages/core --include='*.tsx' --include='*.ts' | grep -v 'CTAHandoff.test\\|CTAHandoff.tsx$'; grep -rln 'FunnelFrame' apps/mouth/src --include='*.tsx' | grep -v test"
+    result: >-
+      CTAHandoff imported directly by prime/proposal/[token]/page.tsx and by
+      packages/core/components/FunnelFrame.tsx (+ its own test, + packages/core/index.ts's
+      re-export); FunnelFrame imported by (tax-calendar)/tax-calendar/page.tsx,
+      property/eligibility/page.tsx, kbli/page.tsx, kbli/[code]/page.tsx — 4 pages total
+    exit: 0
+    ts: "2026-09-27T02:29:00Z"
+    seat: claude-sonnet-5
+  - claim: every current consumer of the restyled CTAHandoff resolves --accent-funnel from a real definition (either its own funnel CSS or the packages/core root default), so no consumer loses the primary pill's border/color
+    cmd: "grep -rn -- '--accent-funnel:' apps/mouth/src packages/core"
+    result: >-
+      Root default at packages/core/tokens/semantic.css:21 (":root", var(--color-red-500)) plus
+      per-theme overrides (aubergine.css, editorial.css, semantic.css's dark/alt blocks) and two
+      funnel-local overrides (voa-r19.css, kbli-theme.css); tax-calendar and property/eligibility
+      define no local override and fall through to the packages/core root default — confirmed no
+      funnel is left with an undefined --accent-funnel
+    exit: 0
+    ts: "2026-09-27T02:30:00Z"
+    seat: claude-sonnet-5

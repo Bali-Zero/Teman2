@@ -1,0 +1,89 @@
+task: >-
+  First of four dormant mouth UX waves (kbli/oracle/studio/voa) built on M5 on 2026-09-26 on top of
+  a local 'R19 Direction A' theme foundation (branch agent/air-m5/mouth/r19-found-0926) whose
+  builders died before pushing. Meanwhile Pro shipped and merged PR #7448, a DIFFERENT, unrelated
+  site-wide 'R19' editorial redesign (components/r19/*, routePolicy.ts) that explicitly excludes
+  every funnel including /kbli. This unit rebases the KBLI lane (agent/air-m5/mouth/ux-kbli-0926,
+  the foundation change plus 12 follow-on changes, corrected from an initial 14-change estimate)
+  onto the post-#7448 origin/main via
+  cherry-pick into a fresh worktree, verifies it, and ships it as its own PR. The other three waves
+  (oracle/studio/voa) share the identical foundation commit and ship one at a time after this one
+  lands, per the recorded ship order.
+lane: mouth
+machine: m5
+date: 2026-09-27
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, by the SIZE term alone: scripts/evidence_pack_lint.py's own
+  _compute_floor_with_source over this diff's real changed-files list and
+  `git diff --numstat origin/main...HEAD` reports floor=3, source=size (net_lines=2866,
+  SIZE_GEAR3_THRESHOLD=1828). No HOTZONE_PATTERNS path hit; the floor is churn alone (34 files,
+  +2255/-611). Separately, apps/mouth/src/app/kbli/* is a GROUND_TRUTH_PATH_PATTERNS hit (R8), see
+  pack.yml's seat_override for why no {role: ground_truth, seat, nb, query_hash} lane is declared.
+
+appetite:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The cherry-pick lands the exact same content the pre-rebase branch carried: no commit dropped,
+    no file diverged beyond what conflict resolution required (there was none — the merge-tree was
+    already conflict-free before this unit started).
+    probe: >-
+      git diff --stat origin/main...HEAD on the rebased branch equals the diffstat measured against
+      the stale branch before rebase (34 files changed, +2255/-611, identical byte-for-byte stat
+      line).
+  A2: >-
+    No real technical overlap with PR #7448's site-wide R19: /kbli is outside its route policy, and
+    the kbli-local 'R19 Direction A' theme (lib/theme/r19Vars.ts, r19Fonts.ts, styles/r19-direction-a.css)
+    shares zero files with #7448's components/r19/* tree. The naming collision ('R19' used for two
+    unrelated things) is cosmetic, not a merge or runtime conflict.
+    probe: >-
+      apps/mouth/src/components/r19/routePolicy.ts's isR19Route returns false for every /kbli path
+      (kbli is not in editorialCategories); `git diff --name-only origin/main...HEAD` (this branch)
+      has zero intersection with #7448's file list (gh pr view 7448 --json files).
+  A3: >-
+    The one shared-component change in this diff — packages/core/components/CTAHandoff.tsx,
+    consumed by kbli, tax-calendar and property/eligibility via FunnelFrame.tsx (not by
+    visa-oracle/second-home/voa, which use their own CTA components) — is a deliberate,
+    non-breaking global restyle: every funnel that doesn't locally define `--accent-funnel` still
+    resolves it from packages/core/tokens/semantic.css's root default, so no consumer loses styling.
+    probe: >-
+      grep for `--accent-funnel:` definitions across apps/mouth/src and packages/core; the CTAHandoff
+      diff read line-by-line for any hardcoded (non-var) color that would ignore a funnel's own
+      theme.
+  A4: >-
+    Builds and tests green in the fresh worktree, using the shared root node_modules (no install).
+    probe: >-
+      apps/mouth: `npx tsc --noEmit -p apps/mouth` rc 0; `npx vitest run` (from apps/mouth) on the
+      4 lane-specific test files, 88/88 passed; `npm run lint --workspace apps/mouth` 0 errors (233
+      pre-existing warnings, none in the 19 non-test/non-asset files this diff touches, confirmed by
+      running eslint per-file from apps/mouth); `npm run build --workspace apps/mouth` (next build
+      --webpack + both post-build guard scripts) rc 0 in about 8 minutes.
+  A5: >-
+    At least one independent review seat finds nothing that falsifies A1-A4. A second seat was
+    attempted; the conducting session (main) pulled it mid-flight (the spalla egress guard on main
+    is known-defective, lane suspended) rather than wait on or incorporate it, so quorum is
+    genuinely not met and pack.yml's seat_override says so rather than claiming otherwise.
+    probe: council-journal.jsonl in this pack's own directory carries >=1 COUNCIL_REVIEW_SEATS
+    entry with ok:true; pack.yml's seat_override is non-empty and names the missing second seat.
+
+out_of_scope: >-
+  The other three UX waves (oracle/studio/voa) — they ship in separate PRs after this one, each
+  rebased the same way. Any visual QA of the merged result beyond the automated test/build battery
+  (no browser screenshot was taken in this unit; the PR's Vercel preview is the observation point).
+  Renaming the kbli-local 'R19 Direction A' theme to remove the naming collision with #7448's
+  site-wide R19 — flagged as a cheap future cleanup, not done here (out of the ≤400-net-line-per-
+  concern discipline for an already-large rebase PR). packages/core/components/CTAHandoff.test.tsx
+  could not be run in this worktree (pre-existing gap, not introduced by this diff — see pack.yml).
+
+assumptions: >-
+  The evidence directory name is derived from the branch by scripts/ci/evidence_paths.py. The
+  before-state for A1/A2 is the stale local branch agent/air-m5/mouth/ux-kbli-0926 (still parked,
+  untouched, in .worktrees/mouth-ux-kbli-0926 — another process is backing it up, so this unit
+  never rebased or modified it) and PR #7448 as merged on origin/main (a6fcae5afe at HEAD~N, the
+  fetch point used to create this unit's worktree). ESLint per-file invocation was used instead of
+  the full-repo `npm run lint` because the latter's exit code reflects 233 pre-existing warnings
+  across the whole apps/mouth workspace, not this diff.
