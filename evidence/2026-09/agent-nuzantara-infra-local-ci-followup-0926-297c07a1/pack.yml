@@ -1,0 +1,122 @@
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+  - lane: independent-diff-review
+    role: review
+    seat: kimi-code/k3
+  - lane: independent-diff-review-2
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: independent-diff-review-3
+    role: review
+    seat: agy-gemini-3.1-pro
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5-5
+spend:
+  wall_clock_hours: 9
+  adversarial_rounds: 3
+appetite_exceeded: none
+seat_fallback_reason: "no titolare was replaced — both codex-gpt-5.6-sol and kimi-code/k3 played and are journaled ok:true; agy-gemini-3.1-pro ran as a THIRD, additional refuter in parallel (constructive-width seat), not as a substitute for either"
+pii_scan: clean
+receipts:
+  - claim: "local-tests: the full localci suite passes under the pilot venv on the rebased head 129ba135cb, real Pysa judge test included (not skipped)."
+    probe: local-tests
+    cmd: PYTHONPATH=$PWD /Users/nuzantara/.nuzantara-pilots/local-ci/lci-20260926T152929Z-25281807/venv/bin/python -m pytest -p no:cacheprovider -q scripts/localci/tests
+    result: "161 passed in 120.26s"
+    exit: 0
+    ts: "2026-09-26T23:47:16Z"
+    seat: claude-fable-5-1
+  - claim: "guilt-innocence: runner plan+run of security.pysa_python on a synthetic guilt commit over the real backend tree (base 129ba135cb, 3312 baseline flows) is FAIL with exactly 2 new flows (log_injection, stack_trace_exposure in localci_prove_guilt); the innocent commit (constant only) is PASS with base_cached=true."
+    probe: guilt-innocence
+    cmd: "bash prove_live.sh — temp detached worktree at HEAD, throwaway commits never pushed; runner.py plan --run-dir D --worktree W --base HEAD --python <pilot venv> then run --run-dir D --only security.pysa_python, for the guilt and the innocent candidate"
+    result: "guilt: security.pysa_python FAIL rc=1 (102.2s), report.md '2 new, 0 fixed, 3312 unchanged'; innocent: PASS rc=0 (42.3s), report.json base_cached True, candidate_findings 3312, new 0"
+    exit: 0
+    ts: "2026-09-26T23:53:20Z"
+    seat: claude-fable-5-1
+  - claim: "extra-check-refusal: reserved/planned names, record/trusted_pytest/non-dict/invalid-JSON specs and a missing '=' are all refused before plan.json exists; an own-namespace cmd check is planned."
+    probe: extra-check-refusal
+    cmd: PYTHONPATH=$PWD /Users/nuzantara/.nuzantara-pilots/local-ci/lci-20260926T152929Z-25281807/venv/bin/python -m pytest -p no:cacheprovider -q scripts/localci/tests/test_runner.py -k extra_check
+    result: "11 passed, 76 deselected in 6.55s"
+    exit: 0
+    ts: "2026-09-26T23:54:35Z"
+    seat: claude-fable-5-1
+  - claim: "lint: ruff is clean on the whole scripts/localci tree."
+    probe: lint
+    cmd: ruff check scripts/localci/
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-26T23:36:00Z"
+    seat: claude-fable-5-1
+dissent:
+  - seat: kimi-code/k3
+    objection: "scan() returned ok=True on a 0-byte or model-less taint-output.json: rc 0 plus an empty file diffed as 0 findings -> PASS (fail-open)."
+    status: CONFIRMED
+    disposition: "Cured in b11a4d5106: extract_findings returns (findings, n_models); scan refuses n_models==0 and a tree with 0 route handlers (tests test_scan_refuses_an_empty_taint_output / _a_tree_without_handlers)."
+  - seat: kimi-code/k3
+    objection: "End-to-end bypass: a handler under backend/tests/ included from in-scope main.py judged PASS while the same handler under backend/app/ judged FAIL — three layers exclude tests/ paths and the exclusion is candidate-controllable."
+    status: CONFIRMED
+    disposition: "Cured in b11a4d5106: scope_escapes() reports every in-scope import of an excluded tests/ path as a scope_escape flow (new vs BASE -> FAIL); replayed against the cured judge with the real Pysa home: verdict FAIL rc=1, new = [scope_escape backend/app/main.py:8 `from backend.tests.leak import router as leak_router`] (repro_kimi.sh, 2026-09-27T00:16:18Z)."
+  - seat: kimi-code/k3
+    objection: "Model-level siblings: `get = router.get` alias decorator, @router.trace, a handler defined inside a factory function, and a local class named Response were all unmodelled or un-tainted."
+    status: CONFIRMED
+    disposition: "Cured in b11a4d5106: defs() walks every depth, Name decorators in ROUTE count, ROUTE += trace, framework types are those THIS module imported from fastapi/starlette (framework_bindings/is_framework_type); test_generated_models_cover_every_handler_once asserts all four."
+  - seat: kimi-code/k3
+    objection: "An unhandled exception inside the judge exits 1, which the runner reads as FAIL, not ERROR; FAMILIES whitelist silently drops Pysa codes outside the five benchmarked families (5001 RCE, 5005 SQLi)."
+    status: CONFIRMED
+    disposition: "Cured in b11a4d5106: main() maps any exception to rc 2 (ERROR); unlisted codes are kept as pysa_<code> flows (test_unlisted_pysa_rule_codes_are_kept_as_flows, test_unexpected_crash_is_a_tool_error_rc2)."
+  - seat: kimi-code/k3
+    objection: "--extra-check: exact overwrite refused, but 'security.pysa_python ' (trailing space) and 'POLICY.x' were planned as look-alike rows; ctx.<name> extras are resolved as coverage for an unmapped required context."
+    status: CONFIRMED
+    disposition: "Twins cured in b11a4d5106: EXTRA_CHECK_NAME pattern (lowercase, dotted, no whitespace) refuses them (8 parametrised cases). ctx.<name> is kept: it is the operator's explicit way to cover a context locally and the operator is the runner's trusted party — documented in README; overall() still ANDs every planned check."
+  - seat: agy-gemini-3.1-pro
+    objection: "@router.route(...) and router.add_api_route('/p', fn) handlers were never modelled, so their new flows judged PASS (reproduced live); 'Depends('/'Request' matched by regex inside Annotated[..., Query(description=...)] strings un-tainted real parameters."
+    status: CONFIRMED
+    disposition: "Cured in b11a4d5106: ROUTE += route, registered_endpoints() models imperative registrations, injector/framework detection is structural over the AST (string constants never count)."
+  - seat: codex-gpt-5.6-sol
+    objection: "An unannotated parameter named request/response/websocket was exempted from sources (FRAMEWORK_NAMES), but FastAPI injects framework objects by type annotation only — such a parameter is a query parameter and its flows were invisible."
+    status: CONFIRMED
+    disposition: "Cured in b11a4d5106: the name-based exemption is removed; test_handler_params asserts query_named(request, response) keeps both as sources."
+  - seat: claude-opus-5-5
+    objection: "Gate #2 BLOCK: export_tree used `git archive`, which applies the candidate's own .gitattributes — `demo.py export-ignore` beside a new log-injection handler judged PASS (reproduced with the real Pysa home; control without the attribute FAILs)."
+    status: CONFIRMED
+    disposition: "Cured in 6de341cd14: both trees are materialised from the object store (git ls-tree -r + cat-file --batch, symlinks skipped) with a completeness check against the listed blobs; test_export_ignores_the_candidates_gitattributes; replayed with the real home: verdict FAIL rc=1, new = [log_injection backend/app/routers/demo.py:13], handlers_modelled 3 (repro_gate2.sh, 2026-09-27T01:34:51Z)."
+  - seat: claude-opus-5-5
+    objection: "Gate #2 CONDITION: the baseline cache was keyed by subtree sha only (stale when the judge/models change, poisonable by same-user code); the runner planned the judge only when a *.py changed, so a .gitattributes-only PR was NOT_APPLICABLE."
+    status: CONFIRMED
+    disposition: "Cured in 6de341cd14: cache key = (subtree sha, sha256 of judge + models); any non-test file under apps/backend-rag/backend/ plans the judge (test_any_non_test_file_under_the_scope_plans_the_judge). Same-user poisoning remains the sandbox boundary below."
+  - seat: claude-opus-5-5
+    objection: "Gate #1 BLOCK: candidate tests run as the operator's OS user with write access to run_dir; a forger process started by a candidate test rewrote state.json and re-hashed a FAIL receipt to PASS after the flock was released (receipts self-hashed, unkeyed); the extracted pysa judge was not sha-verified at run time; the baselines cache is writable by candidate code."
+    status: CONFIRMED
+    disposition: "Partly cured in 6de341cd14, partly an architectural boundary: (a) every trusted dir carries a sha256 map recorded at plan time and re-verified before it runs (rewritten judge, added shadow module, deleted model → ERROR; 3 parametrised tests); (b) trusted checks now run BEFORE any candidate code and the runner prints a `seal=` (sha256 over plan + trusted state + trusted receipts) at that boundary and at the end, for the operator to keep OUTSIDE run_dir; `status --seal` re-derives it and goes BLOCKED on a mismatch — the exact forgery the gate reproduced is now caught (test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_run_forgery). Same-user forgery is thereby detectable, not impossible: a separate user/container for candidate code is recorded as an open PENDING-ARMS condition and the README no longer claims more."
+  - seat: claude-opus-5-5
+    objection: "Gate #1 SHOULD-FIX: alias/add_api_route handlers unmodelled and a drop in handlers_modelled passes silently; the flow key is a set not a multiset and bare method names collide across classes."
+    status: CONFIRMED
+    disposition: "Handlers cured in b11a4d5106 (also found by agy/Kimi); in 6de341cd14 the key is a multiset (#n suffix per identical statement), stmt_of returns Class.method qualified names, and report.json/report.md carry handlers_modelled base→candidate with a `handlers_dropped` warning (test_identical_sink_statements_are_a_multiset_and_methods_are_qualified)."
+  - seat: claude-opus-5-5
+    objection: "Gate #3 BLOCK: trusted_pytest ran before the seal although the BASE ban test exec_module()s the candidate's check_ban_predicates.py — an atexit hook rewriting the junit gave a sealed, undetectable policy.paid_anthropic_ban PASS; README overclaimed 'every trusted check runs before any candidate code'; the PENDING-ARMS row it cited did not exist; `--seal` accepted a 1-char prefix; the Pysa home is not sha-pinned."
+    status: CONFIRMED
+    disposition: "Cured in de1b76cf65: TRUSTED_KINDS = (cmd,) — order cmd → seal → trusted_pytest → pytest, the seal vouches for cmd verdicts only and the README says exactly which verdicts are the candidate's to influence; `--seal` needs >= 12 chars; the PENDING-ARMS row is opened in this PR (C1 separate user/container, C2 sha-pin/rebuild the Pysa home, C3 post-merge prove-live, C4 seal per-run); test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code pins the ordering."
+gate_verdict:
+  verdict: PASS-WITH-CONDITIONS
+  seat: claude-opus-5-5
+  graded_sha: de1b76cf65 # pragma: allowlist secret — a git sha; gate #4 graded this code head, then confirmed 56760bb2f0 (record-seal cure) + this evidence commit as the final head
+  conditions:
+    - "C1 (ledger row, architectural): candidate code (`pytest`, `trusted_pytest`) executes as the operator's OS user — forgery of a cmd/record verdict is detectable via the printed seal, forgery of a trusted_pytest/pytest verdict is not; cure = separate user or container; until then the runner is advisory for third-party candidates and its status stays non-required"
+    - "C2 (ledger row): the Pysa home (baselines, venv/bin/pyre) is not sha-pinned — rebuild it with `pysa_check.py setup` after any run on an untrusted candidate"
+    - "C3 (ledger row, due merge+1 day): repeat the guilt/innocence runner run with --base origin/main after the merge and record both verdicts on the PR"
+    - "C4 (ledger row): the seal is per uninterrupted run; a resumed run re-enters after candidate code executed"
+    - "C5 (gate #4, CURED in 56760bb2f0 before merge): plan-time record verdicts are now inside the seal"
+  reasons:
+    - "Gate #3's BLOCK is cured: TRUSTED_KINDS == ('cmd',), cmd checks end before the seal event and trusted_pytest/pytest start after it (journal timestamps, test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code); the seal no longer vouches for a verdict that candidate code can produce."
+    - "SEAL_MIN_PREFIX = 12 enforced after strip(); a non-hex 12+ value fails startswith and yields BLOCKED (fails safe)."
+    - "README states the boundary exactly (which verdicts the seal covers, which are the candidate's, Pysa home not sha-pinned, seal per uninterrupted run) and the PENDING-ARMS row it cites exists with C1–C4."
+    - "No regression: trusted_dir_map/trusted_dir_sha256 untouched, post-run forgery of a cmd verdict still caught, --extra-check refusals untouched; full suite 183 passed (139.77s)."
+    - "For a NON-required, single-host, operator-driven gate whose README states its boundary, the remaining same-user residual is acceptable as conditions, not as a block."
+pending_proofs:
+  - "gate #4 confirmation of the final head (56760bb2f0 + this evidence commit)"
+  - "post-merge prove-live with --base origin/main (PENDING-ARMS row)"
