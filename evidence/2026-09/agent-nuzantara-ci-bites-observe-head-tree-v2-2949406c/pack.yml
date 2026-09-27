@@ -237,3 +237,4 @@ dissent:
       merges (acceptance A4 of the brief), which is why it is written down as an acceptance and not claimed.
     status: CONFIRMED
 council_run: council-journal.jsonl
+seat_fallback_reason: "agy-gemini-3.1-pro (static judgement, no execution) substitutes the codex-gpt-5.6-sol titolare in the quorum: that seat was available and answered BLOCK on fc259a6b47 and e18227b79f; the imperator closed the loop by ruling on 2026-09-27 at the fix-of-a-fix depth limit (runtime fail-closed verified live by the seat; its hostile test matrix became D-hostile-matrix and is pinned), so its entry is ok:false and does not count."
