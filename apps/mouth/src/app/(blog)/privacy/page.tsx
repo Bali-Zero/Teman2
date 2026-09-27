@@ -15,30 +15,36 @@ export const metadata: Metadata = {
 export default function PrivacyPolicyPage() {
   return (
     <div
-      className="min-h-screen"
+      className="max-w-3xl mx-auto px-6 md:px-10"
       style={{
-        background: "var(--bz-base, #0c0c0e)",
-        color: "var(--bz-text-1, #f5f5f5)",
+        padding:
+          "clamp(56px, 7vw, 96px) clamp(24px, 4vw, 40px) clamp(48px, 6vw, 80px)",
       }}
     >
-      <div className="max-w-3xl mx-auto px-6 py-16 space-y-10">
-        <header>
-          <h1 className="text-3xl font-bold tracking-tight">Privacy Policy</h1>
-          <p
-            className="mt-2 text-sm"
-            style={{ color: "var(--bz-text-2, #a0a0a0)" }}
-          >
-            Last updated: March 2026 · Effective: October 17, 2024
-          </p>
-        </header>
+      <header className="mb-10">
+        <div
+          className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-4"
+          style={{ color: "var(--r19-copper)" }}
+        >
+          Legal
+        </div>
+        <h1
+          className="font-extrabold tracking-tight mb-3"
+          style={{
+            fontSize: "clamp(30px, 4.5vw, 52px)",
+            lineHeight: 1.08,
+            color: "var(--text-primary)",
+          }}
+        >
+          Privacy Policy
+        </h1>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+          Last updated: March 2026 · Effective: October 17, 2024
+        </p>
+      </header>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            1. Who We Are
-          </h2>
+      <div style={{ color: "var(--text-secondary)", maxWidth: "72ch" }}>
+        <Section title="1. Who We Are" first>
           <p>
             Bali Zero (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) provides
             immigration, business registration, tax, and property services for
@@ -51,17 +57,13 @@ export default function PrivacyPolicyPage() {
             27/2022), we act as the <strong>Personal Data Controller</strong>{" "}
             for the data we collect and process.
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
+        <Section title="2. Data We Collect">
+          <h3
+            className="font-medium mt-4"
+            style={{ color: "var(--text-primary)" }}
           >
-            2. Data We Collect
-          </h2>
-
-          <h3 className="font-medium mt-4">
             General Personal Data (Art. 4(2))
           </h3>
           <ul className="list-disc ml-6 space-y-1 text-sm">
@@ -72,7 +74,10 @@ export default function PrivacyPolicyPage() {
             <li>Communication history (messages across all channels)</li>
           </ul>
 
-          <h3 className="font-medium mt-4">
+          <h3
+            className="font-medium mt-4"
+            style={{ color: "var(--text-primary)" }}
+          >
             Specific Personal Data (Art. 4(1))
           </h3>
           <ul className="list-disc ml-6 space-y-1 text-sm">
@@ -84,15 +89,9 @@ export default function PrivacyPolicyPage() {
               applications)
             </li>
           </ul>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            3. Legal Basis for Processing
-          </h2>
+        <Section title="3. Legal Basis for Processing">
           <ul className="list-disc ml-6 space-y-2 text-sm">
             <li>
               <strong>Contract performance (Art. 20(b)):</strong> Processing
@@ -111,15 +110,9 @@ export default function PrivacyPolicyPage() {
               inquiries via WhatsApp/chat
             </li>
           </ul>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            4. How We Use Your Data
-          </h2>
+        <Section title="4. How We Use Your Data">
           <ul className="list-disc ml-6 space-y-1 text-sm">
             <li>Processing visa applications and company registrations</li>
             <li>
@@ -130,15 +123,9 @@ export default function PrivacyPolicyPage() {
             <li>Communication about your active services</li>
             <li>Improving our service quality</li>
           </ul>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            5. Data Storage and Cross-Border Transfer
-          </h2>
+        <Section title="5. Data Storage and Cross-Border Transfer">
           <p>
             Your data is stored on servers in <strong>Singapore</strong>{" "}
             (Fly.io, Qdrant Cloud) and processed by:
@@ -169,15 +156,9 @@ export default function PrivacyPolicyPage() {
             and data processing agreements with each provider, in compliance
             with Art. 56 of UU PDP.
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            6. Data Retention
-          </h2>
+        <Section title="6. Data Retention">
           <ul className="list-disc ml-6 space-y-1 text-sm">
             <li>
               <strong>Active service data:</strong> Duration of our engagement +
@@ -198,15 +179,9 @@ export default function PrivacyPolicyPage() {
               <strong>Cache data:</strong> 5 minutes (automatically deleted)
             </li>
           </ul>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            7. Your Rights (UU PDP Art. 5-12)
-          </h2>
+        <Section title="7. Your Rights (UU PDP Art. 5-12)">
           <p>You have the right to:</p>
           <ul className="list-disc ml-6 space-y-1 text-sm">
             <li>
@@ -236,20 +211,14 @@ export default function PrivacyPolicyPage() {
             <a
               href="mailto:privacy@balizero.com"
               className="underline"
-              style={{ color: "var(--bz-accent-warm, #d4845a)" }}
+              style={{ color: "var(--r19-copper)" }}
             >
               privacy@balizero.com
             </a>
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            8. Data Security
-          </h2>
+        <Section title="8. Data Security">
           <ul className="list-disc ml-6 space-y-1 text-sm">
             <li>
               Encryption at rest (database-level and column-level for sensitive
@@ -260,36 +229,24 @@ export default function PrivacyPolicyPage() {
             <li>Role-based access control (RBAC)</li>
             <li>Regular security assessments</li>
           </ul>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            9. Breach Notification
-          </h2>
+        <Section title="9. Breach Notification">
           <p className="text-sm">
             In the event of a data breach affecting your personal data, we will
             notify you and the relevant Indonesian authorities (MOCD/Lembaga
             PDP) within <strong>72 hours</strong> (3 x 24 hours) of discovery,
             as required by Art. 46 of UU PDP.
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            10. Contact
-          </h2>
+        <Section title="10. Contact">
           <p className="text-sm">
             <strong>Data Protection Officer:</strong>{" "}
             <a
               href="mailto:privacy@balizero.com"
               className="underline"
-              style={{ color: "var(--bz-accent-warm, #d4845a)" }}
+              style={{ color: "var(--r19-copper)" }}
             >
               privacy@balizero.com
             </a>
@@ -299,16 +256,45 @@ export default function PrivacyPolicyPage() {
             <a
               href="mailto:hello@balizero.com"
               className="underline"
-              style={{ color: "var(--bz-accent-warm, #d4845a)" }}
+              style={{ color: "var(--r19-copper)" }}
             >
               hello@balizero.com
             </a>
           </p>
-          <p className="text-sm" style={{ color: "var(--bz-text-2, #a0a0a0)" }}>
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
             Bali Zero · Bali, Indonesia · PSE Registration: [Pending]
           </p>
-        </section>
+        </Section>
       </div>
     </div>
+  );
+}
+
+function Section({
+  title,
+  first,
+  children,
+}: {
+  title: string;
+  first?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="space-y-4 py-8"
+      style={
+        first
+          ? { paddingTop: 0 }
+          : { borderTop: "1px solid var(--border-subtle)" }
+      }
+    >
+      <h2
+        className="text-xl font-bold tracking-tight"
+        style={{ color: "var(--text-primary)" }}
+      >
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }
