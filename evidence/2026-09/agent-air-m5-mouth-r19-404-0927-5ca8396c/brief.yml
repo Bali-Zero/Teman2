@@ -1,0 +1,33 @@
+task: >-
+  R19 404: a real 404 status for unknown single-segment categories
+  (dynamicParams=false on [category]), plus one R19-branded body
+  (eyebrow/Fraunces h1/lead/hairline/copper-links) for both `(blog)/not-found`
+  and the root `app/not-found`, replacing the two pre-R19 dark designs.
+lane: mouth/r19-404
+machine: air-m5
+date: 2026-09-27
+gear: 1
+gear_reason: >-
+  Floor 1 (evidence_pack_lint --print-floor-source reports "none") — 7 files,
+  179/-103 lines, no off-limits paths, no schema/migration/secret surface.
+acceptance:
+  A1: local prod build (next build --webpack + next start) measured matrix —
+    /this-does-not-exist-xyz and /a/b/c 404 for browser and Googlebot UA;
+    innocence set (/, /visas, /news, /contact, /services/visa, /tech redirect,
+    the six real categories) unaffected; vitest/tsc/eslint clean on every
+    changed file.
+  A2: Playwright screenshots (1440x900 and 390x844) of all three 404 URLs on
+    the final local build show the R19 body (paper background, Fraunces h1,
+    copper eyebrow/links, hairline) with R19 nav+footer, no dark colours, no
+    mobile overflow.
+  A3: R19Presentation.test.tsx covers the new `force` prop (forces
+    data-presentation=r19 on a non-R19 pathname; default behaviour
+    unchanged); app/not-found.test.tsx fails against the old component
+    (no "Page Not Found"/"Go to Chat") and passes against the new one.
+out_of_scope: >-
+  /visas/<unknown-slug> (valid category, missing article) stays 200 — a
+  Next.js 16 Partial-Prerendering interaction with the parent layout's static
+  metadata that swallows the leaf's already-correct notFound() before any
+  byte is on the wire; the safe fix (enumerate every slug statically) would
+  false-404 backend-only articles that have no local MDX. Left for a
+  follow-up; documented in the fix commit body.
