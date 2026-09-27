@@ -251,7 +251,22 @@ if mode == "agyfail":
     # claude-cascade.sh.
     sys.exit(1)
 m = re.search(r"Write report to: (\\S+)", prompt)
-if m and mode not in ("noreport", "emptyreport"):
+if m and mode == "symlinkfile":
+    # Brain-controlled symlink at the staging path: a malicious/buggy brain
+    # could stage a link to ANY file it can reach instead of a real report.
+    victim = pathlib.Path(os.environ["FAKE_SYMLINK_VICTIM"])
+    victim.parent.mkdir(parents=True, exist_ok=True)
+    victim.write_text("# NB Arsenal Health Report\\n\\n## Health Summary\\n- Total: 1 notebook\\n",
+                       encoding="utf-8")
+    p = pathlib.Path(m.group(1))
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.symlink_to(victim)
+elif m and mode == "stub":
+    # Heading-only, no section — the exact shape the gate review promoted.
+    p = pathlib.Path(m.group(1))
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# NB Arsenal Health Report\\n", encoding="utf-8")
+elif m and mode not in ("noreport", "emptyreport"):
     p = pathlib.Path(m.group(1))
     p.parent.mkdir(parents=True, exist_ok=True)
     body = "# NB Arsenal Health Report\\n\\n## Health Summary\\n- Total: 58 notebooks\\n"
@@ -294,11 +309,39 @@ print("SUMMARY: broken=0 stale=0 proposals=0 press_new=0")
 """
 
 
-def _fake_world(tmp_path: Path, mode: str, *, wrapper: Path, extra_env: dict | None = None) -> subprocess.CompletedProcess:
+def _makassar_env() -> dict:
+    return dict(os.environ, TZ="Asia/Makassar")
+
+
+def _makassar_date_str() -> str:
+    return subprocess.run(["date", "+%Y-%m-%d"], env=_makassar_env(),
+                          capture_output=True, text=True, check=True).stdout.strip()
+
+
+def _expected_report_filename() -> str:
+    """Mirrors nb-curator-daily.sh's own REPORT_PATH branch, so a symlink test
+    can pre-plant a path THE WRAPPER will actually compute today, whatever day
+    it is run on."""
+    env = _makassar_env()
+    dow = int(subprocess.run(["date", "+%u"], env=env, capture_output=True, text=True, check=True).stdout.strip())
+    day = int(subprocess.run(["date", "+%-d"], env=env, capture_output=True, text=True, check=True).stdout.strip())
+    date_str = _makassar_date_str()
+    month_str = subprocess.run(["date", "+%Y-%m"], env=env, capture_output=True, text=True, check=True).stdout.strip()
+    if dow == 1 and day <= 7:
+        return f"{month_str}-nb-intel-curation.md"
+    if dow == 1:
+        return f"{date_str}-curation.md"
+    return f"{date_str}-health.md"
+
+
+def _fake_world(tmp_path: Path, mode: str, *, wrapper: Path, extra_env: dict | None = None,
+                setup_home=None) -> subprocess.CompletedProcess:
     home = tmp_path / "home"
     (home / ".local/bin").mkdir(parents=True)
     (home / "scripts").mkdir(parents=True)
     (home / "logs").mkdir(parents=True)
+    if setup_home is not None:
+        setup_home(home)
 
     agy = home / ".local/bin/agy"
     agy.write_text(FAKE_AGY, encoding="utf-8")
@@ -365,6 +408,95 @@ def test_wrapper_FAILS_when_the_brain_writes_an_empty_report(tmp_path):
     assert "STAGING FILE EMPTY" in log
     assert "PROMOTE SKIPPED" in log
     assert "artifact gate rc=3" in log
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
+def test_wrapper_refuses_a_symlinked_staged_report(tmp_path):
+    """Guilt, re-gate blocker (a): a brain-controlled symlink at the staging
+    path must never be promoted or followed. Before this fix `[ -e ]`/`[ -s ]`/
+    `grep` all follow symlinks and `mv` would place the link itself inside the
+    repo, where the artifact gate's --fix then writes THROUGH it into whatever
+    the brain pointed at."""
+    victim = tmp_path / "outside-victim.md"
+    proc = _fake_world(tmp_path, "symlinkfile", wrapper=WRAPPER,
+                       extra_env={"FAKE_SYMLINK_VICTIM": str(victim)})
+    log = _log(tmp_path)
+    report_path = tmp_path / "home/nuzantara/research/nb-health" / _expected_report_filename()
+
+    assert "STAGING FILE NOT A REGULAR FILE" in log
+    assert "PROMOTE SKIPPED" in log
+    assert not report_path.exists(), "a symlinked staged file must never be promoted"
+    assert victim.read_text(encoding="utf-8") == (
+        "# NB Arsenal Health Report\n\n## Health Summary\n- Total: 1 notebook\n"
+    ), "the victim file the brain pointed at must be untouched — nothing may write through the link"
+    assert proc.returncode == 2, log
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
+def test_wrapper_refuses_a_preplanted_symlinked_staging_dir(tmp_path):
+    """Guilt, re-gate blocker (a): a symlink already sitting where the staging
+    dir belongs (planted by anything with write access to $HOME/.agent before
+    this run) must abort the whole run rather than be `chmod`'d — `chmod` on a
+    symlink changes the TARGET's mode, not the link's."""
+    date_str = _makassar_date_str()
+    victim_dir = tmp_path / "victim-dir"
+    victim_dir.mkdir(mode=0o755)
+
+    def plant(home: Path) -> None:
+        agent_dir = home / ".agent" / "nb-curator"
+        agent_dir.mkdir(parents=True)
+        (agent_dir / date_str).symlink_to(victim_dir)
+
+    proc = _fake_world(tmp_path, "good", wrapper=WRAPPER, setup_home=plant)
+    log = _log(tmp_path)
+
+    assert proc.returncode == 1, log
+    assert "FATAL" in log and "staging dir" in log
+    assert "brain used:" not in log, "the brain must never run against an unsafe staging dir"
+    assert oct(victim_dir.stat().st_mode)[-3:] == "755", "the symlink TARGET's mode must be untouched"
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
+def test_wrapper_refuses_a_heading_only_stub(tmp_path):
+    """Guilt, re-gate blocker (b): a one-line staged file carrying only the
+    mandated heading (no section) must not be promoted — the artifact gate's
+    own checks (non-empty, frontmatter) are not enough to reject a stub."""
+    proc = _fake_world(tmp_path, "stub", wrapper=WRAPPER)
+    log = _log(tmp_path)
+
+    assert "STAGING FILE TOO THIN" in log
+    assert "PROMOTE SKIPPED" in log
+    assert proc.returncode == 2, log
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
+def test_wrapper_clears_a_symlink_squatting_report_path_before_promoting(tmp_path):
+    """Innocence for the REPORT_PATH-side of blocker (a): a symlink already
+    sitting at the FINAL tracked path (from before this fix existed, or from
+    any other source) must be cleared before promotion, and the gate must
+    never be given a chance to write through it into whatever it pointed at."""
+    victim = tmp_path / "old-victim.md"
+    victim.write_text("ORIGINAL VICTIM CONTENT\n", encoding="utf-8")
+    filename = _expected_report_filename()
+
+    def plant(home: Path) -> None:
+        health_dir = home / "nuzantara/research/nb-health"
+        health_dir.mkdir(parents=True)
+        (health_dir / filename).symlink_to(victim)
+
+    proc = _fake_world(tmp_path, "good", wrapper=WRAPPER, setup_home=plant)
+    log = _log(tmp_path)
+    report_path = tmp_path / "home/nuzantara/research/nb-health" / filename
+
+    assert "removing symlink squatting REPORT_PATH" in log
+    assert not report_path.is_symlink(), "REPORT_PATH must be a real promoted file, not the old symlink"
+    assert victim.read_text(encoding="utf-8") == "ORIGINAL VICTIM CONTENT\n", (
+        "the gate must never write through the cleared symlink's old target"
+    )
+    if not SYSTEM_PY_HAS_YAML:
+        assert proc.returncode == 2 and "REDACTOR UNAVAILABLE" in log, log
+        return
+    assert proc.returncode == 0, log
 
 
 @pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")

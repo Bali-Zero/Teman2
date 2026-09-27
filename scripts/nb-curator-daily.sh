@@ -237,9 +237,21 @@ fi
 # itself prints does NOT work inline"). The wrapper below is a plain zsh cron
 # process — never a Claude Code tool call, so no hook ever inspects it — and
 # does the verify-then-promote itself once the brain is done.
+# Prune stale per-date staging dirs (>7 days) so an empty one never accumulates forever.
+find "$HOME/.agent/nb-curator" -maxdepth 1 -mindepth 1 -type d -mtime +7 -exec rm -rf {} + 2>/dev/null || true
 STAGING_DIR="$HOME/.agent/nb-curator/$DATE_STR"
-mkdir -p "$STAGING_DIR" && chmod 0700 "$STAGING_DIR"
 STAGING_PATH="$STAGING_DIR/$(basename "$REPORT_PATH")"
+# Create-if-absent, THEN re-check: `chmod` on a pre-planted symlink changes the
+# TARGET's mode, not the link's, so it must never run against an existing path.
+# A symlinked or not-owned dir means the brain (or anything else with write
+# access to $HOME/.agent) could redirect every future write outside the
+# staging sandbox entirely — refuse the whole run rather than trust it.
+[ -e "$STAGING_DIR" ] || mkdir -p -m 0700 "$STAGING_DIR" 2>/dev/null
+if [ -L "$STAGING_DIR" ] || [ ! -d "$STAGING_DIR" ] || [ ! -O "$STAGING_DIR" ]; then
+    log "FATAL: staging dir $STAGING_DIR is a symlink, missing, or not owned by this user — aborting run"
+    heartbeat error "staging dir unsafe: $STAGING_DIR"
+    exit 1
+fi
 rm -f "$STAGING_PATH"   # never promote a stale file left by an earlier failed run
 
 MODE_PROMPT="Run nb-curator daily pass. FIRST read your full operating spec at $SPEC_PATH (use your file-read tool) and follow it exactly. You have shell + file tools: use them to write the report file. Today is $DATE_STR.
@@ -344,11 +356,22 @@ cat "$TMPOUT" >> "$LOG"
 # carries the mandated report heading — all three, or the staged file is left
 # in place (never promoted) and $REPORT_PATH stays absent, which the artifact
 # gate below already turns into a loud, honest failure.
+# A symlinked $REPORT_PATH — however it got there — must never be trusted as a
+# promotion target (BSD `mv` onto a symlink-to-directory moves INTO it rather
+# than replacing it) or left for the artifact gate below to write through.
+[ -L "$REPORT_PATH" ] && { log "removing symlink squatting REPORT_PATH: $REPORT_PATH"; rm -f "$REPORT_PATH"; }
+
 PROMOTE_REASON=""
-if [ ! -e "$STAGING_PATH" ]; then
+if [ -L "$STAGING_PATH" ]; then
+    PROMOTE_REASON="STAGING FILE NOT A REGULAR FILE: $STAGING_PATH is a symlink — refusing to promote or follow it"
+elif [ ! -e "$STAGING_PATH" ]; then
     PROMOTE_REASON="STAGING FILE MISSING: the brain reported success but wrote nothing at $STAGING_PATH"
+elif [ ! -f "$STAGING_PATH" ]; then
+    PROMOTE_REASON="STAGING FILE NOT A REGULAR FILE: $STAGING_PATH exists but is not a regular file"
 elif [ ! -s "$STAGING_PATH" ]; then
     PROMOTE_REASON="STAGING FILE EMPTY: $STAGING_PATH exists but has 0 bytes"
+elif [ "$(grep -c '^## ' "$STAGING_PATH")" -lt 1 ]; then
+    PROMOTE_REASON="STAGING FILE TOO THIN: $STAGING_PATH has no '## ' section — refusing a heading-only stub"
 elif ! grep -q '^# NB Arsenal Health Report' "$STAGING_PATH"; then
     PROMOTE_REASON="STAGING FILE MISSING SECTIONS: $STAGING_PATH has no '# NB Arsenal Health Report' heading"
 fi
