@@ -1242,10 +1242,28 @@ class TestPropertyEligibility:
         assert "rental" in types
         assert len(result["blocked_types"]) == 0
 
-    def test_no_nationality_skips(self) -> None:
-        """Empty nationality still returns a result (WNI path)."""
+    def test_wni_marker_returns_wni_path(self) -> None:
+        """An explicit WNI marker returns the Indonesian ownership path."""
         result = calculate_property_eligibility("WNI")
         assert result["nationality_class"] == "WNI"
+
+    @pytest.mark.parametrize("nationality", ["Italian", "IT", "US", "australian ", "", None])
+    def test_non_indonesian_or_unknown_nationality_fails_closed(
+        self, nationality: str | None
+    ) -> None:
+        """Only explicit Indonesian identifiers may receive Hak Milik."""
+        result = calculate_property_eligibility(nationality)
+        types = [property_type["type"] for property_type in result["allowed_types"]]
+        assert result["nationality_class"] == "WNA"
+        assert "hak_milik" not in types
+
+    @pytest.mark.parametrize("nationality", ["WNI", "id", "Indonesia", "Indonesian"])
+    def test_explicit_indonesian_identifiers_allow_hak_milik(self, nationality: str) -> None:
+        """Supported Indonesian identifiers retain the WNI ownership path."""
+        result = calculate_property_eligibility(nationality)
+        types = [property_type["type"] for property_type in result["allowed_types"]]
+        assert result["nationality_class"] == "WNI"
+        assert "hak_milik" in types
 
     def test_restricted_zone_warning(self) -> None:
         """Restricted zone adds warning."""

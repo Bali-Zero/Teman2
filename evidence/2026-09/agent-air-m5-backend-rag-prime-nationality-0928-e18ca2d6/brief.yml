@@ -1,0 +1,24 @@
+task: >-
+  PRIME property ownership eligibility fails OPEN on nationality: any value other than
+  WNA/FOREIGNER/FOREIGN/ASING (e.g. Italian, IT, US) was classified WNI and offered Hak Milik
+  by the public POST /api/prime/v2/analyze. Make it fail closed: only explicit Indonesian
+  identifiers take the WNI path.
+lane: backend-rag/prime-nationality
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: Floor 1 — one service function and its tests, small diff.
+acceptance:
+  A1: >-
+    New parametrized tests in backend/tests/services/prime/test_prime_nexus.py are red on
+    origin/main (6 failed: Italian, IT, US, australian, empty, None) and green after (10 passed);
+    the whole backend/tests/services/prime suite passes (98); ruff check and format clean.
+  A2: >-
+    After deploy, POST https://nuzantara-rag.fly.dev/api/prime/v2/analyze with
+    investor_profile.nationality "Italian" returns property_eligibility.nationality_class "WNA"
+    and no hak_milik among allowed_types; "WNI" still returns hak_milik.
+  A3: >-
+    The only caller (prime_nexus_service.analyze) still skips eligibility when no nationality is
+    given; no other behaviour changes.
+out_of_scope:
+  - Exposing nationality/price inputs on balizero.com/property/eligibility (Property Check, next phase).
