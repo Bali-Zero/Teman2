@@ -200,6 +200,29 @@ def _check_identifier_length(
         raise UnrecognizedSqlShapeError(index, name, _stmt_text(sql, stmt_tokens))
 
 
+def _claim_implicit_relation(
+    name: str, index: int, sql: str, stmt_tokens: list[_Token],
+    occupied_relations: set[str],
+) -> None:
+    """C2 follow-up (council round on PR #7439's re-gate follow-up, both
+    codex-gpt-5.6-sol and kimi-code/k3 independently confirmed the
+    `_parse_alter_table` gap; codex additionally measured these two):
+    PG's own name allocator (`ChooseRelationName`/`ChooseIndexName`)
+    retries a taken implicit name with a numeric suffix (`t_pkey1`, ...),
+    AND always truncates the FULL derived name — base plus suffix — to
+    NAMEDATALEN-1 (63) bytes before allocating it (measured: a 60-byte
+    table name's own `_pkey`/`_id_seq` derived names land truncated to
+    exactly 63 bytes, cutting into the BASE name, not just the suffix).
+    Reproducing either algorithm here would mean re-implementing PG's own
+    catalog allocator; instead, an implicit name that is already occupied
+    or that itself exceeds 63 bytes is rejected outright — S1/S6(b)/C1's
+    fail-closed precedent — rather than silently claimed under a name PG
+    would not actually have used."""
+    if len(name.encode("utf-8")) > _MAX_IDENTIFIER_BYTES or name in occupied_relations:
+        raise UnrecognizedSqlShapeError(index, name, _stmt_text(sql, stmt_tokens))
+    occupied_relations.add(name)
+
+
 # Characters this file never uses for real syntax OUTSIDE a string literal —
 # Round-1 finding: round-0's regex-over-text let a `/* ... */` block
 # comment, a `$$...$$` dollar-quoted string, or a `"quoted identifier"` hide
@@ -514,7 +537,7 @@ def _parse_default_value(
 
 def _parse_column_def(
     tokens: list[_Token], index: int, sql: str, stmt_tokens: list[_Token]
-) -> tuple[str, str, bool]:
+) -> tuple[str, str, bool, str, bool]:
     """`ident type [(args)] [NOT NULL | NULL | DEFAULT <allowed value> |
     PRIMARY KEY | CHECK (...)]*`, clauses in ANY order (the real file mixes
     them: `resolved BOOLEAN NOT NULL DEFAULT false`, `status TEXT NOT NULL
@@ -529,7 +552,15 @@ def _parse_column_def(
     conflicting NULL/NOT NULL, more than one DEFAULT or PRIMARY KEY, a
     non-boolean bare-literal CHECK, and a typmod on a type that doesn't take
     one — each now REJECTED to match. R6/reserved-word: a column named
-    after one of PG's own fully-reserved keywords is rejected the same way."""
+    after one of PG's own fully-reserved keywords is rejected the same way.
+
+    Returns `(name, pg_type, notnull, raw_type, primary_key)` — C2 (PR
+    #7439's re-gate) needs `raw_type` (to recognize a serial-family column,
+    which gets its own implicit `<table>_<col>_seq` sequence) and
+    `primary_key` (a table with one gets an implicit `<table>_pkey` index)
+    as callers build `occupied_relations`. Both are internal to this parse;
+    the public `declared`/`_REQUIRED_COLUMNS` shape stays `(name, pg_type,
+    notnull)` triples, unchanged."""
     if not tokens or tokens[0].kind != "WORD":
         raise UnrecognizedSqlShapeError(index, "?", _stmt_text(sql, stmt_tokens))
     name = tokens[0].value.lower()
@@ -595,9 +626,24 @@ def _parse_column_def(
         raise UnrecognizedSqlShapeError(
             index, w or tokens[pos].value, _stmt_text(sql, stmt_tokens)
         )
-    pg_type = _TYPE_ALIASES.get(raw_type, raw_type.lower())
+    if raw_type not in _TYPE_ALIASES:
+        # C1 (PR #7439's re-gate, pull/7439#issuecomment-5848724154): the
+        # OLD `_TYPE_ALIASES.get(raw_type, raw_type.lower())` fallback
+        # silently passed through any type keyword this file's own alias
+        # table doesn't list — measured against PG17: INT2/FLOAT4/FLOAT8,
+        # DECIMAL/DEC, TIMESTAMP/TIME/TIMETZ, SERIAL2/SERIAL4/SERIAL8 (which
+        # ALSO lose their implicit NOT NULL, since `_IMPLICIT_NOT_NULL_TYPES`
+        # only lists the spelled-out serial names), and BPCHAR/NCHAR/VARBIT
+        # are all silently-wrong this way — none of the 14 round-trips
+        # through `raw_type.lower()` to what `format_type()` actually
+        # returns. Closing the MECHANISM, not the 14 instances: an unknown
+        # type keyword is now REJECTED outright, matching S1/S6(b)'s
+        # fail-closed precedent, rather than trusted to already be the
+        # canonical spelling.
+        raise UnrecognizedSqlShapeError(index, raw_type, _stmt_text(sql, stmt_tokens))
+    pg_type = _TYPE_ALIASES[raw_type]
     notnull = notnull_explicit or primary_key or raw_type in _IMPLICIT_NOT_NULL_TYPES
-    return name, pg_type, notnull
+    return name, pg_type, notnull, raw_type, primary_key
 
 
 def _parse_create_table(
@@ -634,16 +680,30 @@ def _parse_create_table(
     body = stmt_tokens[pos + 1: close_pos]
     already_created = table in occupied_relations
     this_body: dict[str, tuple[str, bool]] = {}
+    has_primary_key = False
+    serial_cols: list[str] = []
     for element in _split_top_level_commas_tok(body):
         if not element:
             raise UnrecognizedSqlShapeError(index, "CREATE", _stmt_text(sql, stmt_tokens))
         first_kw = _kw(element[0])
         if first_kw in _NON_COLUMN_TABLE_ELEMENTS:
             raise UnrecognizedSqlShapeError(index, first_kw, _stmt_text(sql, stmt_tokens))
-        name, pg_type, notnull = _parse_column_def(element, index, sql, stmt_tokens)
+        name, pg_type, notnull, raw_type, primary_key = _parse_column_def(
+            element, index, sql, stmt_tokens
+        )
         if name in this_body:
             raise UnrecognizedSqlShapeError(index, name, _stmt_text(sql, stmt_tokens))
         this_body[name] = (pg_type, notnull)
+        if primary_key:
+            # PG: "cannot have more than one primary key" — a hard error,
+            # not PG's own IF-NOT-EXISTS no-op semantics, so it is rejected
+            # here rather than silently accepting the second one (found by
+            # codex-gpt-5.6-sol's council review, measured against PG17).
+            if has_primary_key:
+                raise UnrecognizedSqlShapeError(index, "PRIMARY", _stmt_text(sql, stmt_tokens))
+            has_primary_key = True
+        if raw_type in _IMPLICIT_NOT_NULL_TYPES:  # serial family: id BIGSERIAL, ...
+            serial_cols.append(name)
     if already_created:
         return
     per_table = declared.setdefault(table, {})
@@ -651,12 +711,24 @@ def _parse_create_table(
         per_table[name] = spec
         create_body_cols.add((table, name))
     occupied_relations.add(table)
+    # C2 (PR #7439's re-gate): PG creates a PRIMARY KEY's backing unique
+    # index (`<table>_pkey`) and a serial column's backing sequence
+    # (`<table>_<col>_seq`) in the SAME statement as the table itself —
+    # both occupy the shared relation namespace `occupied_relations`
+    # already tracks for S6(a), so a later `CREATE TABLE IF NOT EXISTS`
+    # (or `CREATE UNIQUE INDEX IF NOT EXISTS`) reusing either name must
+    # see it as already taken, the same as an explicit CREATE would.
+    if has_primary_key:
+        _claim_implicit_relation(f"{table}_pkey", index, sql, stmt_tokens, occupied_relations)
+    for col in serial_cols:
+        _claim_implicit_relation(f"{table}_{col}_seq", index, sql, stmt_tokens, occupied_relations)
 
 
 def _parse_alter_table(
     index: int, stmt_tokens: list[_Token], sql: str,
     declared: dict[str, dict[str, tuple[str, bool]]],
     create_body_cols: set[tuple[str, str]],
+    occupied_relations: set[str],
 ) -> None:
     """Round-2 R1: `ADD COLUMN IF NOT EXISTS` on a column already present
     (from an earlier CREATE TABLE or ALTER in this same parse) is a no-op in
@@ -669,7 +741,16 @@ def _parse_alter_table(
     DIFFERENT `(type, notnull)` is not a harmless no-op to silently agree
     with — it is proof this file's own DDL disagrees with itself about what
     the column is. Rejected outright rather than silently kept at the
-    CREATE body's (correct, but coincidentally so) value."""
+    CREATE body's (correct, but coincidentally so) value. C2: a genuinely
+    NEW serial-family column added here also gets its own `<table>_<col>_
+    seq` sequence, same as one declared in the CREATE body (see
+    `_parse_create_table`'s own C2 comment); LIKEWISE a genuinely new
+    PRIMARY KEY column claims `<table>_pkey` — the council round on this
+    PR's own re-gate (codex-gpt-5.6-sol and kimi-code/k3, independently)
+    found the original diff discarded `primary_key` here entirely, leaving
+    `ALTER TABLE t ADD COLUMN IF NOT EXISTS id BIGINT PRIMARY KEY` able to
+    fabricate the exact phantom `<table>_pkey` table C2 exists to prevent
+    (measured: PG creates the same `t_pkey` index via this path too)."""
     table, pos = _read_qualified_name(stmt_tokens, 2, index, sql, stmt_tokens)
     action_tokens = stmt_tokens[pos:]
     if not action_tokens:
@@ -686,12 +767,18 @@ def _parse_alter_table(
         )
         if not ok:
             raise UnrecognizedSqlShapeError(index, "ALTER", _stmt_text(sql, stmt_tokens))
-        name, pg_type, notnull = _parse_column_def(action[5:], index, sql, stmt_tokens)
+        name, pg_type, notnull, raw_type, primary_key = _parse_column_def(
+            action[5:], index, sql, stmt_tokens
+        )
         if name in per_table:
             if (table, name) in create_body_cols and per_table[name] != (pg_type, notnull):
                 raise UnrecognizedSqlShapeError(index, name, _stmt_text(sql, stmt_tokens))
             continue
         per_table[name] = (pg_type, notnull)
+        if raw_type in _IMPLICIT_NOT_NULL_TYPES:
+            _claim_implicit_relation(f"{table}_{name}_seq", index, sql, stmt_tokens, occupied_relations)
+        if primary_key:
+            _claim_implicit_relation(f"{table}_pkey", index, sql, stmt_tokens, occupied_relations)
 
 
 def _parse_create_unique_index(
@@ -762,7 +849,7 @@ def parse_declared_columns(sql: str) -> dict[str, set[tuple[str, str, bool]]]:
         if kw(0) == "CREATE" and kw(1) == "TABLE" and kw(2) == "IF" and kw(3) == "NOT" and kw(4) == "EXISTS":
             _parse_create_table(index, stmt_tokens, sql, declared, occupied_relations, create_body_cols)
         elif kw(0) == "ALTER" and kw(1) == "TABLE":
-            _parse_alter_table(index, stmt_tokens, sql, declared, create_body_cols)
+            _parse_alter_table(index, stmt_tokens, sql, declared, create_body_cols, occupied_relations)
         elif (
             kw(0) == "CREATE" and kw(1) == "UNIQUE" and kw(2) == "INDEX"
             and kw(3) == "IF" and kw(4) == "NOT" and kw(5) == "EXISTS"
@@ -926,15 +1013,18 @@ def test_guilt_s3_repeated_create_body_reserved_word_is_rejected():
         parse_declared_columns(sql)
 
 
-def test_innocence_s3_repeated_create_body_with_only_semantic_errors_is_a_silent_noop():
-    """REWORK S3's own boundary, stated as innocence: PG applies a repeated
-    `CREATE TABLE IF NOT EXISTS` body containing only SEMANTIC errors (a
-    duplicate column name, a NULL/NOT NULL conflict) by skipping the whole
-    statement — it never reaches the point of enforcing them. A parser that
-    rejected this would be MORE strict than PG itself, not fail-closed
-    against a real risk, so the repeated body here is validated as its OWN
-    self-consistent (if PG would skip it) shape and then correctly
-    discarded, leaving the file's true (first) definition untouched."""
+def test_guilt_s3_repeated_create_body_with_null_not_null_conflict_is_rejected():
+    """Renamed (carried into the C1-C4 PR per #7413's re-gate "record
+    only" note, pull/7413#issuecomment-5847256465): the old name and
+    docstring called this a "silent noop" — the INTENT was to prove PG
+    skips a repeated body's SEMANTIC errors (a duplicate column, a
+    NULL/NOT NULL conflict) without enforcing them, so a parser that
+    rejected purely semantic errors here would be MORE strict than PG
+    itself. But `NULL NOT NULL` is ALSO a grammar-level conflict this
+    file's own column-def grammar rejects independent of S3 (Round-2 R6b),
+    so this specific body proves REJECTION, the opposite of what the old
+    name claimed — the test's own `pytest.raises` always said so; only the
+    name and docstring disagreed with the test's own body."""
     sql = _SQL_PATH.read_text() + (
         "\nCREATE TABLE IF NOT EXISTS team_promises (a TEXT NULL NOT NULL);\n"
     )
@@ -1068,6 +1158,256 @@ def test_guilt_s6c_smallserial_float_char_type_fallback_is_corrected():
             ("c", "character", False),
         }
     }
+
+
+# --- C1-C4 (PR #7439's re-gate, pull/7439#issuecomment-5848724154):
+# closing the two MECHANISMS S6 only closed instances of, plus two
+# plausible wrong fixes the gate found survived S6's own tests. ---
+
+# C1: 14 single-word type keywords the gate measured as silent-wrong
+# against PG17 — none is in `_TYPE_ALIASES`, so the OLD
+# `raw_type.lower()` fallback passed each straight through to a spelling
+# `format_type()` never returns. SERIAL2/4/8 also lost their implicit NOT
+# NULL, since `_IMPLICIT_NOT_NULL_TYPES` only lists the spelled-out serial
+# names (SERIAL/BIGSERIAL/SMALLSERIAL).
+_C1_SILENT_WRONG_TYPE_KEYWORDS = (
+    "INT2", "FLOAT4", "FLOAT8",
+    "DECIMAL", "DEC",
+    "TIMESTAMP", "TIME", "TIMETZ",
+    "SERIAL2", "SERIAL4", "SERIAL8",
+    "BPCHAR", "NCHAR", "VARBIT",
+)
+
+
+@pytest.mark.parametrize("raw_type", _C1_SILENT_WRONG_TYPE_KEYWORDS)
+def test_guilt_c1_silent_wrong_type_keyword_is_rejected(raw_type):
+    sql = f"CREATE TABLE IF NOT EXISTS t (a {raw_type});"
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_c1_unrecognized_type_keyword_generic_is_rejected():
+    """C1 closes the MECHANISM, not just the 14 measured instances: any
+    keyword `_TYPE_ALIASES` has never heard of is rejected outright,
+    matching PG17's own `UndefinedObjectError` on a genuinely made-up type
+    name (measured: `CREATE TABLE (a FOO)` errors "type \"foo\" does not
+    exist")."""
+    sql = "CREATE TABLE IF NOT EXISTS t (a FOO);"
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_innocence_c1_every_listed_alias_still_works():
+    """Boundary: the fix must not regress anything `_TYPE_ALIASES` DOES
+    list — every key still parses to its existing mapped spelling, with
+    the existing implicit-NOT-NULL rule for the spelled-out serial names
+    untouched."""
+    for raw_type, expected_pg_type in _TYPE_ALIASES.items():
+        sql = f"CREATE TABLE IF NOT EXISTS t (a {raw_type});"
+        declared = parse_declared_columns(sql)
+        expected_notnull = raw_type in _IMPLICIT_NOT_NULL_TYPES
+        assert declared == {"t": {("a", expected_pg_type, expected_notnull)}}, raw_type
+
+
+# C2: PG creates a PRIMARY KEY's backing unique index (`<table>_pkey`) and
+# a serial column's backing sequence (`<table>_<col>_seq`) in the SAME
+# statement as the table itself — both occupy the shared relation
+# namespace `occupied_relations` already tracks for S6(a).
+
+
+def test_guilt_c2_implicit_pkey_blocks_later_create_table():
+    """Measured against a throwaway PG17 cluster: `t_pkey` lands
+    `relkind='i'` the instant `CREATE TABLE t (id BIGSERIAL PRIMARY KEY,
+    ...)` runs. Before this fix, `occupied_relations` never learned the
+    implicit name, so a later `CREATE TABLE IF NOT EXISTS t_pkey (...)`
+    would invent a phantom table PG never creates (the name is already
+    taken by the index, and PG's IF NOT EXISTS skips it)."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (id BIGSERIAL PRIMARY KEY, x TEXT);\n"
+        "CREATE TABLE IF NOT EXISTS t_pkey (bogus_col TEXT NOT NULL);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("id", "bigint", True), ("x", "text", False)}}
+    assert "t_pkey" not in declared
+
+
+def test_guilt_c2_implicit_seq_blocks_later_create_table():
+    """Same mechanism, the serial column's own sequence name."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (id BIGSERIAL, x TEXT);\n"
+        "CREATE TABLE IF NOT EXISTS t_id_seq (bogus_col TEXT NOT NULL);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("id", "bigint", True), ("x", "text", False)}}
+    assert "t_id_seq" not in declared
+
+
+def test_guilt_c2_implicit_seq_from_alter_added_serial_column():
+    """The same mechanism applies to a serial column added via `ALTER
+    TABLE ... ADD COLUMN IF NOT EXISTS`, not only one declared in the
+    CREATE body."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (x TEXT);\n"
+        "ALTER TABLE t ADD COLUMN IF NOT EXISTS n BIGSERIAL;\n"
+        "CREATE TABLE IF NOT EXISTS t_n_seq (bogus_col TEXT NOT NULL);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("x", "text", False), ("n", "bigint", True)}}
+    assert "t_n_seq" not in declared
+
+
+def test_innocence_c2_table_without_pk_or_serial_claims_no_implicit_names():
+    """Boundary: a table with neither a PRIMARY KEY nor a serial column
+    claims NOTHING beyond its own name — `t_pkey`/`t_x_seq` stay ordinary,
+    independently declarable tables."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (x TEXT);\n"
+        "CREATE TABLE IF NOT EXISTS t_pkey (y TEXT NOT NULL);\n"
+        "CREATE TABLE IF NOT EXISTS t_x_seq (z TEXT NOT NULL);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {
+        "t": {("x", "text", False)},
+        "t_pkey": {("y", "text", True)},
+        "t_x_seq": {("z", "text", True)},
+    }
+
+
+def test_innocence_c2_real_file_implicit_relations_do_not_collide():
+    """The real file declares two BIGSERIAL PRIMARY KEY columns
+    (`team_promises.promise_id`, `team_promise_candidates.id`) — their
+    implicit `_pkey`/`_seq` names must not collide with each other or with
+    any other statement in the file, and the file's own columns must still
+    match `_REQUIRED_COLUMNS` exactly."""
+    declared = parse_declared_columns(_SQL_PATH.read_text())
+    assert declared.keys() == _required_as_tuples().keys()
+    for table, cols in _required_as_tuples().items():
+        assert declared[table] == cols
+
+
+# C2 follow-up (Gear-3 council round on this PR's own diff, BEFORE the
+# gate — codex-gpt-5.6-sol and kimi-code/k3, independently converging on
+# the ALTER gap; codex additionally measured the truncation/collision
+# residual). Not requested by the original gate comment; found and closed
+# in the same PR rather than left for a second round.
+
+
+def test_guilt_c2_implicit_pkey_from_alter_added_column():
+    """Both council seats independently found the SAME gap: the original
+    diff destructured `_parse_column_def`'s `primary_key` as `_primary_key`
+    in `_parse_alter_table` and never used it. Measured against PG17:
+    `ALTER TABLE t ADD COLUMN IF NOT EXISTS id BIGINT PRIMARY KEY` creates
+    `t_pkey` exactly as a CREATE-body PRIMARY KEY would."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (x TEXT);\n"
+        "ALTER TABLE t ADD COLUMN IF NOT EXISTS id BIGINT PRIMARY KEY;\n"
+        "CREATE TABLE IF NOT EXISTS t_pkey (bogus_col TEXT NOT NULL);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("x", "text", False), ("id", "bigint", True)}}
+    assert "t_pkey" not in declared
+
+
+def test_guilt_c2_derived_pkey_name_over_63_bytes_is_rejected():
+    """codex-gpt-5.6-sol's finding: PG's name allocator truncates the FULL
+    derived name (base + `_pkey`/`_id_seq`) to 63 bytes, cutting into the
+    base name itself — measured: a 60-byte table name's own `_pkey`/
+    `_id_seq` land truncated to exactly 63 bytes, not 65/67. This parser
+    cannot reproduce that truncation, so a derived name over 63 bytes is
+    rejected outright, matching S6(b)'s precedent for ordinary
+    identifiers."""
+    long_table = "b" * 60  # + "_pkey" (5) = 65 bytes, over the limit
+    sql = f"CREATE TABLE IF NOT EXISTS {long_table} (id BIGSERIAL PRIMARY KEY);"
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_c2_implicit_pkey_name_collision_is_rejected():
+    """codex-gpt-5.6-sol's finding: if the implicit name PG would derive is
+    already taken by an unrelated relation, PG does NOT reuse or error on
+    that name — it retries with a numeric suffix (measured: `t_pkey`
+    already a table -> the real PRIMARY KEY index becomes `t_pkey1`, not
+    `t_pkey`). This parser cannot reproduce that disambiguation, so the
+    collision is rejected outright rather than silently modeling the WRONG
+    (already-taken) name as the real one."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t_pkey (dummy TEXT);\n"
+        "CREATE TABLE IF NOT EXISTS t (id BIGSERIAL PRIMARY KEY, x TEXT);"
+    )
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_two_columns_each_primary_key_is_rejected():
+    """codex-gpt-5.6-sol's finding: PG allows only ONE primary key per
+    table ("cannot have more than one primary key for table", measured) —
+    a hard error, not an IF-NOT-EXISTS no-op. The existing
+    R6e-duplicate-primary-key-is-rejected case only covers `PRIMARY KEY
+    PRIMARY KEY` repeated on ONE column; this covers two DIFFERENT columns
+    each independently marked PRIMARY KEY."""
+    sql = "CREATE TABLE IF NOT EXISTS t (a INT PRIMARY KEY, b INT PRIMARY KEY);"
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_innocence_c2_idempotent_recreate_of_pk_bearing_table_does_not_false_positive():
+    """kimi-code/k3's delta-round question: `_claim_implicit_relation` is
+    NOT idempotent like the old plain `occupied_relations.add` was — does
+    a repeated `CREATE TABLE IF NOT EXISTS` of a table that ALREADY has a
+    PRIMARY KEY now false-positive on its own second body, since the
+    second body would re-derive the SAME `<table>_pkey` name? No:
+    `already_created` (checked at the very top, against the table name
+    itself) returns BEFORE the implicit-relation claims run at all, so a
+    genuine PG no-op never reaches them — confirmed here rather than left
+    to the reader to infer from the surrounding code."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (id INT PRIMARY KEY, x TEXT);\n"
+        "CREATE TABLE IF NOT EXISTS t (id INT PRIMARY KEY, x TEXT);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("id", "integer", True), ("x", "text", False)}}
+
+
+# C3: two plausible wrong fixes the gate found SURVIVED S6's own tests —
+# both already correct on this head (see `_parse_create_unique_index`'s
+# `.lower()` and `_read_qualified_name`'s length check on the POST-prefix
+# name), but neither had a test proving it, so a future regression on
+# either point would have gone silently green.
+
+
+def test_guilt_c3_uppercase_index_name_still_claims_lowercase_relation():
+    """A mutant that adds the index name to `occupied_relations` WITHOUT
+    `.lower()` first survived every existing S6a test, because they all
+    used matching case on both sides. PG unquoted identifiers always fold
+    to lowercase, so `CONFLICT_SLOT` and `conflict_slot` name the SAME
+    relation — a real, case-differing collision must still be caught."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (a TEXT);\n"
+        "CREATE UNIQUE INDEX IF NOT EXISTS CONFLICT_SLOT ON t (a);\n"
+        "CREATE TABLE IF NOT EXISTS conflict_slot (bogus_col TEXT NOT NULL);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("a", "text", False)}}
+    assert "conflict_slot" not in declared
+
+
+def test_guilt_c3_qualified_long_table_name_is_rejected_not_just_schema_part():
+    """A mutant that checks identifier length on the SCHEMA token
+    (`public`) rather than the bare name after the qualifier is stripped
+    survived every existing S6b test, because none of them used a
+    `public.`-qualified name. `public.<64 bytes>` must still be rejected."""
+    long_name = "a" * 64
+    sql = f"CREATE TABLE IF NOT EXISTS public.{long_name} (x TEXT);"
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_innocence_c3_qualified_short_table_name_is_accepted():
+    """Boundary: an ordinary `public.`-qualified name well under the limit
+    must still parse exactly as its bare equivalent would."""
+    sql = "CREATE TABLE IF NOT EXISTS public.t (x TEXT);"
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("x", "text", False)}}
 
 
 # --- C5 Round 0: 8 shapes the pre-tokenizer regex parser under-matched
