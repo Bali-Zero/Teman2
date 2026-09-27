@@ -1,12 +1,17 @@
-"""Guilt + innocence for harness-floor.yml Step 2d (HOTZONE_PATTERNS may only grow
-below floor 3, drift vs hot-zone-pr-gate.yml flagged) and its wiring into Step 3. Every
-test runs the REAL step text pulled from the workflow; only `/tmp/` is re-pointed."""
+"""Guilt + innocence for the hot-zone list's two guards. (1) harness-floor.yml Step 2d, the
+floor-3 text check on HOTZONE_PATTERNS, run from the REAL step text in the YAML (only `/tmp/`
+is re-pointed). (2) The behavioural check (coordinator ruling 2026-09-27, option B): the HEAD
+linter's real floor computation must floor one path per pattern of hot-zone-pr-gate.yml's
+case-block at 3, and the two lists must be identical. This file is itself in HOTZONE_PATTERNS."""
 
 from __future__ import annotations
 
+import fnmatch
 import os
 import re
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -21,9 +26,7 @@ BASE = 'HOTZONE_PATTERNS: tuple[str, ...] = (\n    "a/*",\n    "b.py",\n)\n\n\nd
 ADDS = BASE.replace('"b.py",', '"b.py",\n    "c/*",')
 DROPS = BASE.replace('    "b.py",\n', "")
 UTF7 = "# -*- coding: utf-7 -*-\n" + BASE + '# +AAo-HOTZONE_PATTERNS = ("a/*",)\n'
-GATE_BASE = '      case "$f" in\n        a/*|\\\n        b.py)\n          HIT=1\n          ;;\n      esac\n'
-GATE_ADDS = GATE_BASE.replace("b.py)", "b.py|\\\n        c/*)")
-DRIFT = "::warning::HOTZONE_PATTERNS and hot-zone-pr-gate.yml's case-block differ"
+CASE = '      case "$f" in\n        a/*|\\\n        b.py)\n          HIT=1\n          ;;\n      esac\n'
 
 
 def _run_block(step_id: str, tmp: Path) -> str:
@@ -32,50 +35,46 @@ def _run_block(step_id: str, tmp: Path) -> str:
 
 _ns: dict = {"__name__": "hzlist"}
 exec(re.search(r"<<'PY'\n(.*?)\nPY\n", _run_block("hzlist", Path("/tmp")), re.S).group(1), _ns)
-hotzone_patterns, case_block = _ns["hotzone_patterns"], _ns["case_block"]
+hotzone_patterns = _ns["hotzone_patterns"]
 
 
 def _env(**extra: str) -> dict:
     return {**{k: v for k, v in os.environ.items() if not k.startswith("GIT_")}, **extra}
 
 
-def _bash(script: str, cwd: Path, out: Path, **env: str) -> tuple[dict, str]:
+def _bash(script: str, cwd: Path, out: Path, **env: str) -> dict:
     out.touch()
-    r = subprocess.run(["bash", "-e", "-c", script], cwd=cwd, env=_env(GITHUB_OUTPUT=str(out), **env), check=True, capture_output=True, text=True)
-    return dict(line.split("=", 1) for line in out.read_text().splitlines() if "=" in line), r.stdout
+    subprocess.run(["bash", "-e", "-c", script], cwd=cwd, env=_env(GITHUB_OUTPUT=str(out), **env), check=True, capture_output=True)
+    return dict(line.split("=", 1) for line in out.read_text().splitlines() if "=" in line)
 
 
-def _run_hzlist(tmp, head, *, base=BASE, gate=GATE_BASE, main_after="", touched=(LINTER,), base_sha=""):
+def _run_hzlist(tmp, head, *, base=BASE, main_after="", touched=True, base_sha=""):
     repo = tmp / "repo"
-    (repo / ".github" / "workflows").mkdir(parents=True)
-    (repo / "scripts").mkdir()
+    (repo / "scripts").mkdir(parents=True)
 
     def git(*a: str) -> str:
         cfg = ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null"]
         return subprocess.run(["git", *cfg, *a], cwd=repo, env=_env(), check=True, capture_output=True, text=True).stdout.strip()
 
-    def commit(src: str | None, gate_src: str) -> str:
+    def commit(src: str | None) -> str:
         (repo / LINTER).write_text(src) if src is not None else (repo / LINTER).unlink()
-        (repo / GATE).write_text(gate_src)
         git("add", "-A")
         git("commit", "-qm", "c", "--allow-empty")
         return git("rev-parse", "HEAD")
 
     git("init", "-q")
-    fork = main = commit(base, GATE_BASE)
+    fork = main = commit(base)
     if main_after:  # main moves on after the PR forked: the step must compare against the FORK point (W102)
-        main = commit(main_after, GATE_ADDS)
+        main = commit(main_after)
         git("checkout", "-q", fork)
-    head_sha = commit(head, gate)
-    (tmp / "changed-files.txt").write_text("".join(f"{p}\n" for p in touched))
-    out, stdout = _bash(_run_block("hzlist", tmp), repo, tmp / "out", BASE_SHA=base_sha or main, HEAD_SHA=head_sha)
-    return out["floor3"], DRIFT in stdout
+    head_sha = commit(head)
+    (tmp / "changed-files.txt").write_text(f"{LINTER}\n" if touched else "docs/x.md\n")
+    return _bash(_run_block("hzlist", tmp), repo, tmp / "out", BASE_SHA=base_sha or main, HEAD_SHA=head_sha)["floor3"]
 
 
-def test_innocence_real_linter_and_gate_parse():
+def test_innocence_real_linter_parses():
     got = hotzone_patterns((REPO_ROOT / LINTER).read_bytes())
-    assert got and ".github/workflows/*" in got
-    assert len(case_block((REPO_ROOT / GATE).read_text(encoding="utf-8")) or ()) >= 10
+    assert got and ".github/workflows/*" in got and "scripts/tests/test_harness_floor_hotzone_list.py" in got
 
 
 @pytest.mark.parametrize("extra", ['LABEL = "HOTZONE_PATTERNS"\n', "import re\nX = re.compile('x')\n", 'def g():\n    """HOTZONE_PATTERNS = ()"""\n'])
@@ -115,42 +114,26 @@ def test_guilt_unprovable_shapes_fail_closed(src):
 
 
 @pytest.mark.parametrize(
-    "head,kw,expected",
+    "head,kw,floor3",
     [
-        (DROPS, {}, ("true", True)),
-        (BASE + "HOTZONE_PATTERNS = ()\n", {}, ("true", False)),
-        (None, {}, ("true", False)),
-        (ADDS, {"base_sha": "0" * 40, "gate": GATE_ADDS}, ("true", False)),
-        (ADDS, {"base": BASE + "HOTZONE_PATTERNS = ()\n", "gate": GATE_ADDS}, ("true", False)),
-        (UTF7, {}, ("true", False)),
-        (ADDS, {"gate": GATE_ADDS}, ("false", False)),
-        (ADDS, {}, ("false", True)),
-        (BASE, {"gate": GATE_ADDS, "touched": (GATE,)}, ("false", True)),
-        (BASE.replace("return HOTZONE_PATTERNS", "return tuple(HOTZONE_PATTERNS)"), {}, ("false", False)),
-        (DROPS, {"touched": ("docs/x.md",)}, ("false", False)),
-        (BASE.replace("return", "return  "), {"main_after": ADDS}, ("false", False)),
+        (DROPS, {}, "true"),
+        (BASE + "HOTZONE_PATTERNS = ()\n", {}, "true"),
+        (None, {}, "true"),
+        (ADDS, {"base_sha": "0" * 40}, "true"),
+        (ADDS, {"base": BASE + "HOTZONE_PATTERNS = ()\n"}, "true"),
+        (UTF7, {}, "true"),
+        (ADDS, {}, "false"),
+        (BASE.replace("return HOTZONE_PATTERNS", "return tuple(HOTZONE_PATTERNS)"), {}, "false"),
+        (DROPS, {"touched": False}, "false"),
+        (BASE.replace("return", "return  "), {"main_after": ADDS}, "false"),
     ],
     ids=[
         "guilt-drops", "guilt-unparseable-head", "guilt-linter-deleted", "guilt-no-merge-base", "guilt-unparseable-base", "guilt-utf7-cookie",
-        "innocence-adds-both-lists", "flag-adds-tuple-only", "flag-gate-only-drift", "innocence-unrelated-edit", "innocence-neither-in-diff", "innocence-main-moved-on",
+        "innocence-adds", "innocence-unrelated-edit", "innocence-linter-not-in-diff", "innocence-main-moved-on",
     ],
 )
-def test_step_2d_end_to_end(tmp_path, head, kw, expected):
-    assert _run_hzlist(tmp_path, head, **kw) == expected
-
-
-@pytest.mark.parametrize(
-    "gate,expected",
-    [
-        ('    case "$f" in\n      a/*|b.py) HIT=1 ;;\n', {"a/*", "b.py"}),
-        ('    # case "$f" in\n    #   z/*)\n' + GATE_BASE, {"a/*", "b.py"}),
-        (GATE_BASE + GATE_BASE, None),
-        ("no case arm here\n", None),
-    ],
-    ids=["one-line-arm", "commented-decoy-ignored", "two-arms-unreadable", "no-arm-unreadable"],
-)
-def test_case_block_reads_only_the_one_live_arm(gate, expected):
-    assert case_block(gate) == expected
+def test_step_2d_end_to_end(tmp_path, head, kw, floor3):
+    assert _run_hzlist(tmp_path, head, **kw) == floor3
 
 
 def test_step_2d_wiring():
@@ -167,5 +150,96 @@ def test_step3_applies_the_verdict(tmp_path, verdict, floor, source):
     (tmp_path / "changed-files.txt").write_text(f"{LINTER}\n")
     (tmp_path / "net-lines-numstat.txt").write_text(f"1\t0\t{LINTER}\n")  # non-empty EXTRA_ARGS: macOS bash 3.2 + set -u
     env = {"NETLINES_AVAILABLE": "true", "WFPATCH_AVAILABLE": "false", "HZLIST_FLOOR3": verdict, "GITHUB_STEP_SUMMARY": str(tmp_path / "summary")}
-    got, _ = _bash(_run_block("detfloor", tmp_path), REPO_ROOT, tmp_path / "out", **env)
+    got = _bash(_run_block("detfloor", tmp_path), REPO_ROOT, tmp_path / "out", **env)
     assert (got["floor"], got["source"]) == (floor, source)
+
+
+# --- the behavioural check: the oracle is the case-block, a workflow file (floor 3 to narrow) ---
+
+
+def case_block(text: str) -> set[str] | None:
+    """The patterns of the ONE live `case "$f" in ... esac`, else None (zero or several
+    statements, or a statement with more than one arm: a second arm must not go unread)."""
+    stmts = re.findall(r'^[ \t]*case "\$f" in\n(.*?)^[ \t]*esac\b', text, re.S | re.M)
+    if len(stmts) != 1 or stmts[0].count(";;") != 1:
+        return None
+    return set(re.findall(r"[^\s|\\]+", stmts[0].split(")", 1)[0]))
+
+
+def _narrowed(scripts: Path, patterns, tmp: Path) -> dict[str, str]:
+    """{pattern: floor} for every pattern NOT floored at 3, computed the way CI computes it:
+    `python3 <scripts>/evidence_pack_lint.py --print-floor` as __main__ with its real import
+    closure, on a diff of ONE concrete path matching the pattern."""
+    floors = {}
+    for i, pat in enumerate(sorted(patterns)):
+        assert "[" not in pat, f"no concrete-path synthesiser for {pat!r}"
+        path = pat.replace("*", "x").replace("?", "x")
+        assert fnmatch.fnmatchcase(path, pat)
+        (tmp / f"cf{i}").write_text(f"{path}\n")
+        r = subprocess.run([sys.executable, str(scripts / "evidence_pack_lint.py"), "--print-floor", "--changed-files-file", str(tmp / f"cf{i}")], cwd=scripts.parent, env=_env(), capture_output=True, text=True)
+        floors[pat] = r.stdout.strip() or f"rc={r.returncode}: {r.stderr.strip()[-200:]}"
+    return {p: f for p, f in floors.items() if f != "3"}
+
+
+def _closure_copy(tmp: Path, after_tuple: str = "", eligibility_tail: str = "", planted: str = "") -> Path:
+    scripts = tmp / "scripts"
+    shutil.copytree(REPO_ROOT / "scripts" / "conductor", scripts / "conductor", ignore=shutil.ignore_patterns("__pycache__"))
+    src = (REPO_ROOT / LINTER).read_text(encoding="utf-8")
+    end = src.index("\n)\n", src.index("HOTZONE_PATTERNS: tuple[str, ...] = (")) + 3
+    (scripts / "evidence_pack_lint.py").write_text(src[:end] + after_tuple + src[end:], encoding="utf-8")
+    elig = scripts / "conductor" / "review_eligibility.py"
+    elig.write_text(elig.read_text(encoding="utf-8") + eligibility_tail, encoding="utf-8")
+    if planted:
+        (scripts / "_hz_planted.py").write_text(planted, encoding="utf-8")
+    return scripts
+
+
+def test_real_tuple_and_case_block_are_the_same_list():
+    tup, case = hotzone_patterns((REPO_ROOT / LINTER).read_bytes()), case_block((REPO_ROOT / GATE).read_text(encoding="utf-8"))
+    assert tup is not None and case is not None, "a list could not be read — drift cannot be ruled out"
+    only_tuple, only_case = sorted(set(tup) - case), sorted(case - set(tup))
+    assert not only_tuple and not only_case, (
+        f"HOTZONE_PATTERNS and {GATE}'s case-block must list the same patterns (add to BOTH): "
+        f"only in the tuple: {only_tuple}; only in the case-block: {only_case}"
+    )
+
+
+def test_head_linter_really_floors_every_oracle_pattern_at_3(tmp_path):
+    oracle = case_block((REPO_ROOT / GATE).read_text(encoding="utf-8"))
+    assert oracle, "the oracle case-block could not be read"
+    assert _narrowed(REPO_ROOT / "scripts", oracle, tmp_path) == {}, "the HEAD linter no longer floors these hot-zone patterns at 3"
+
+
+ORACLE = {".github/workflows/*", "apps/backend-rag/backend/db/migrations_v2/*", "fly.toml"}
+DROP_WORKFLOWS = 'import sys\nm = sys.modules["__main__"]\nm.HOTZONE_PATTERNS = tuple(p for p in m.HOTZONE_PATTERNS if p != ".github/workflows/*")\n'
+
+
+@pytest.mark.parametrize(
+    "kw,narrowed",
+    [
+        ({}, set()),
+        ({"after_tuple": 'HOTZONE_PATTERNS = HOTZONE_PATTERNS + ("c/*",)\n'}, set()),
+        ({"after_tuple": "import _hz_planted  # noqa: E402,F401\n", "planted": DROP_WORKFLOWS}, {".github/workflows/*"}),
+        ({"eligibility_tail": "\nimport fnmatch as _f\n_o = _f.fnmatchcase\n_f.fnmatchcase = lambda n, p: p != 'fly.toml' and _o(n, p)\n"}, {"fly.toml"}),
+        ({"after_tuple": "import pickle\npickle.loads(b\"cbuiltins\\nexec\\n(S'import sys;m=sys.modules[\\\"__main__\\\"];m.HOTZONE_PATTERNS=m.HOTZONE_PATTERNS[1:]'\\ntR.\")\n"}, {"apps/backend-rag/backend/db/migrations_v2/*"}),
+    ],
+    ids=["innocence-unchanged", "innocence-added-pattern", "guilt-planted-module-rebinds", "guilt-closure-patches-fnmatch", "guilt-pickle-exec-rebinds"],
+)
+def test_behavioural_check_on_a_copy_of_the_closure(tmp_path, kw, narrowed):
+    assert set(_narrowed(_closure_copy(tmp_path, **kw), ORACLE, tmp_path)) == narrowed
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        (CASE, {"a/*", "b.py"}),
+        ('    case "$f" in\n      a/*|b.py) HIT=1 ;;\n    esac\n', {"a/*", "b.py"}),
+        ('    # case "$f" in\n    #   z/*) ;;\n    # esac\n' + CASE, {"a/*", "b.py"}),
+        ('    case "$f" in\n      a/*) HIT=1 ;;\n      c/*) HIT=1 ;;\n    esac\n', None),
+        (CASE + CASE, None),
+        ("no case statement here\n", None),
+    ],
+    ids=["multi-line-arm", "one-line-arm", "commented-decoy-ignored", "second-arm-refused", "two-statements-refused", "none-refused"],
+)
+def test_case_block_reader(text, expected):
+    assert case_block(text) == expected

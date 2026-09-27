@@ -25,56 +25,91 @@ lanes:
 
 what_changed: |
   .github/workflows/harness-floor.yml gains Step 2d ("Hot-zone list may only grow below floor
-  3"), placed before Step 3. When the diff touches scripts/evidence_pack_lint.py or
-  .github/workflows/hot-zone-pr-gate.yml, it `git show`s the linter at the merge-base and at
-  HEAD plus the gate at HEAD, and an inline Python heredoc parses HOTZONE_PATTERNS with
-  `ast.parse` on BYTES (head code never executed; a PEP 263 coding cookie decodes as the
-  interpreter will). HEAD dropping any merge-base pattern outputs floor3=true; so does
-  anything unprovable (no merge-base, a failed `git show`, a deleted linter, the name not
-  bound ONCE at module level to a tuple of str literals, or a casual computed-name rebinding
-  primitive such as exec, globals(), setattr or __dict__). Drift between the HEAD tuple and
-  the gate's case-block is a ::warning only. Step 3 applies the verdict
-  (`HZLIST_FLOOR3 != "false"` -> FLOOR=3; source none->path, size->both) and the job summary
-  gains a line for it.
+  3"), placed before Step 3. When the diff touches scripts/evidence_pack_lint.py, it `git
+  show`s the linter at the merge-base and at HEAD, and an inline Python heredoc parses
+  HOTZONE_PATTERNS with `ast.parse` on BYTES (head code never executed in the trusted step;
+  a PEP 263 coding cookie decodes as the interpreter will). HEAD dropping any merge-base
+  pattern outputs floor3=true; so does anything unprovable (no merge-base, a failed `git
+  show`, a deleted linter, the name not bound ONCE at module level to a tuple of str
+  literals, or a casual computed-name rebinding primitive such as exec, globals(), setattr
+  or __dict__). Step 3 applies the verdict (`HZLIST_FLOOR3 != "false"` -> FLOOR=3; source
+  none->path, size->both) and the job summary gains a line for it.
 
-  scripts/tests/test_harness_floor_hotzone_list.py runs the REAL step text taken from the
-  YAML: the heredoc's functions in-process, Step 2d's bash in a scratch git repo (including a
-  main that moved on after the fork), and Step 3 against the real linter.
-  .github/workflows/guard-conformance.yml (required context) runs it; its relevance filter
-  and push paths now include the test, harness-floor.yml and hot-zone-pr-gate.yml.
+  Coordinator ruling 2026-09-27 (option B, not a council round) adds the BEHAVIOURAL check,
+  in scripts/tests/test_harness_floor_hotzone_list.py, run by the required guard-conformance
+  job: the HEAD linter, launched exactly as CI launches it (`python3
+  scripts/evidence_pack_lint.py --print-floor`, as __main__, with its real import closure
+  incl. scripts/conductor/review_eligibility.py), must floor one concrete path per pattern of
+  hot-zone-pr-gate.yml's case-block at 3. The tuple and the case-block must be the same list,
+  blocking in both directions with a message naming each side's extras; the step's old drift
+  warning is removed. The test file joins BOTH lists, so weakening it is itself a floor-3
+  edit. guard-conformance.yml runs it with `--noconftest -o addopts=` so a floor-1 conftest
+  or ini cannot skip or deselect it, and its relevance filter and push paths now cover the
+  test, both workflows and the conductor modules.
 
-  Design choices against the coordinator's suggestions, each argued in the step comment:
-  `ast` rather than model_routing_gate.py's regex (the regex reads a commented-out
-  `# "fly.toml",` as still present, measured); an inline parser rather than a script (a
-  script under scripts/ci/ is floor 1 and neuterable); drift FLAGGED in the protected step
-  rather than pinned by a floor-1 test (round-1 council finding) and never blocking (the
-  case-block only drives a best-effort lease check and a summary line, and the harmful
-  direction is already the floor-3 case).
+  The same test file also runs the REAL Step 2d text taken from the YAML: the heredoc's
+  functions in-process, Step 2d's bash in a scratch git repo (including a main that moved on
+  after the fork), and Step 3 against the real linter.
+
+  Design choices, each argued in the step comment or the test: `ast` rather than
+  model_routing_gate.py's regex (the regex reads a commented-out `# "fly.toml",` as still
+  present, measured); an inline parser rather than a script (a script under scripts/ci/ is
+  floor 1 and neuterable); the behavioural oracle is the case-block because it lives in a
+  workflow file, which floors 3 to narrow. Consequence, stated: every change to the hot-zone
+  list now edits hot-zone-pr-gate.yml too, and so floors 3 by path; Step 2d itself still does
+  not raise the floor for an addition.
+
+residual: |
+  What B CLOSES: any narrowing of the floor that is active whenever the linter runs, whatever
+  its mechanism — a rebinding in the linter (pickle, runpy, marshal, exec), a module planted
+  and imported by it, a floor-1 module of its import closure patching fnmatch or the name,
+  or compute_floor() itself rewritten. The two delta REWORKs are this class; three of its
+  shapes are pinned as guilt cases on a copy of the closure, and two mutants of the real
+  closure turn the real check red.
+
+  What B DOES NOT CLOSE, stated plainly:
+  - a narrowing gated on a condition that is true only inside the harness-floor job (a
+    CI-specific environment check), or aimed at specific real paths under a glob the
+    synthetic path (`*`/`?` -> x) still matches. Both are deliberate sabotage by a writer
+    who could equally edit a workflow, and are out of this PR's threat model;
+  - the interpreter and its environment (stdlib, third-party packages, sitecustomize);
+  - the test's own final assertion (mutant MB8 survives, as it must for any test): it is
+    protected by the file being hot-zone, not by a further test;
+  - the computed-name denylist in Step 2d remains a bar-raiser with known false positives
+    (a bare getattr, `import importlib` anywhere in the linter floors that edit at 3).
 
 proof: |
-  Corpus: PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_harness_floor_hotzone_list.py
-  -> 42 passed (guilt, innocence, flag and wiring cases).
+  Corpus: python3 -m pytest --noconftest -o addopts= -p no:cacheprovider
+  scripts/tests/test_harness_floor_hotzone_list.py -> 49 passed (Step 2d guilt, innocence and
+  wiring; drift; the behavioural check on the real linter and on copies of its closure).
 
-  Mutation, on cp backups with cmp after every restore (all byte-identical): 22 mutants of the
-  step, its wiring and the real gate file; 20 turned at least one case red. The 2 survivors
-  are not guards: `continue-on-error: true` on Step 2d, which is already neutralised because
-  Step 3 treats an absent verdict as floor 3, and a duplicated `case "$f" in` line in the real
-  gate, which by policy the drift flag reports rather than a test failing.
+  Mutation, on cp backups with cmp after every restore (all byte-identical). Step 2d and its
+  wiring: 17 mutants (M1-M10, N1-N7), all killed. Behavioural and drift: MB1 (compute_floor
+  skips fly.toml), MB2 (review_eligibility.py patches fnmatch), MB3 (case-block drops a
+  pattern), MB4 (tuple-only addition), MB5 (reader accepts a second arm), MB6 (test out of
+  the tuple), MB7 (shared helper tolerates floor 1): all killed. MB8 (the real check's final
+  assert made vacuous) survives: irreducible for a test, hence the file is hot-zone. MB9, a
+  planted conftest that skips every test: plain pytest '49 skipped' rc 0, the job's
+  invocation '49 passed' — the flags are load-bearing.
 
-  Neighbours on the final head: actionlint with shellcheck is clean on both workflows;
-  lint_workflow_errexit_decap, lint_workflow_script and lint_workflow_timeout_floor are
-  clean; check_guard_conformance.py reports 0 violations; test_evidence_pack_lint.py,
-  test_check_required_workflow_conformance.py and test_harness_gate_read.py give 858
-  passed. scripts/tests/test_harness_floor_bootstrap_sentinel.sh fails 1 scar-pin on this
-  branch AND on origin/main's harness-floor.yml (measured with a cp swap). That failure is
-  pre-existing, is not run by any workflow, and is out of scope here.
+  Neighbours on the final tree: actionlint with shellcheck is clean on the three touched
+  workflows; lint_workflow_errexit_decap, lint_workflow_script and lint_workflow_timeout_floor
+  are clean; check_guard_conformance.py reports 0 violations; evidence_pack_lint --selftest
+  PASS; test_evidence_pack_lint.py, test_check_required_workflow_conformance.py,
+  test_harness_gate_read.py, test_agent_defs_model_pins.py and
+  test_hooks_fail_open_on_garbage_payload.py give 879 passed. model_routing_gate.py's regex
+  still reads the tuple (16 patterns, the new one last).
+  scripts/tests/test_harness_floor_bootstrap_sentinel.sh fails 1 scar-pin on this branch AND
+  on origin/main's harness-floor.yml (measured with a cp swap in round 1); pre-existing, run
+  by no workflow, out of scope.
 
   Council: codex-gpt-5.6-sol and kimi-code/k3 ran on the diff only, each isolated (codex:
   env -i HOME/PATH, read-only sandbox, empty cwd; kimi: kimi_client.run with the no-tools
   agent-file, a scrubbed env and an empty cwd). There was one fix round and one delta
   round, the coordinator's cap. Round 1: sol NO-GO, kimi GO-WITH-NITS (plus a non-roster
-  gpt-6-astra REWORK). Delta: sol REWORK, kimi REWORK. Both delta REWORKs name the same
-  residual class, which this PR declares rather than fixes (see dissent).
+  gpt-6-astra REWORK). Delta: sol REWORK, kimi REWORK, both on the same residual class.
+  The coordinator then ruled option B (2026-09-27, not a council round; journal line
+  "coordinator"). This commit implements it; the fresh Gear-3 gate reviews it.
 
 dissent:
   - seat: codex-gpt-5.6-sol
@@ -96,17 +131,14 @@ dissent:
       BASE compute_floor replay or make the linter floor 3 in this PR."
     status: CONFIRMED
     resolution:
-      "Not fixed here, and deliberately so. The coordinator capped this PR at one fix round
-      plus one delta round, and a second correction of the denylist would be a fix-of-a-fix.
-      The step comment is corrected to say the denylist is a bar-raiser, not a proof. It now
-      DECLARES the residual as one class: the floor computer's own code (the linter and the
-      modules it imports) is floor 1, so import-time code can rebind the name, and rewiring
-      what reads it needs no rebinding at all. Making the linter floor 3 contradicts the
-      ruling ('edits unrelated lines of the linter -> floor unchanged'), so it needs a
-      coordinator ruling. The spec options are handed back in the PR body: (A) floor 3 for
-      the linter's import closure; (B) on every PR, replay BASE's compute_floor() against
-      the protected case-block's patterns and floor 3 on any mismatch. (B) is loud after the
-      merge, not before it."
+      "Not by a further denylist fix (that would be a fix-of-a-fix past the round cap): the
+      step comment says the denylist is a bar-raiser, not a proof. The class was handed back
+      as a spec choice, and the coordinator ruled option B (2026-09-27, not a council round):
+      a BEHAVIOURAL check in the required guard-conformance job. The HEAD linter, run as CI
+      runs it with its real import closure, must floor one concrete path per case-block
+      pattern at 3, so the pickle payload, a planted module and a rewritten compute_floor()
+      all turn the job red whatever their mechanism (guilt cases + mutants MB1/MB2). What B
+      does not close is stated under `residual`."
   - seat: kimi-code/k3
     objection:
       "Delta HIGH: the denylist is bypassable at import time via runpy.run_path, pickle
@@ -114,10 +146,12 @@ dissent:
       allowlist for this one pinned file, or re-declare as a residual limit rather than FIXED."
     status: CONFIRMED
     resolution:
-      "Re-declared as a residual limit (the second option offered), same entry as above. An
-      allowlist was not taken: the linter imports scripts/conductor/review_eligibility.py, a
-      floor-1 module that can mutate the linter's globals at import time without touching the
-      linter, so an allowlist would be another bar-raiser, not a proof."
+      "An allowlist was not taken: the linter imports scripts/conductor/review_eligibility.py,
+      a floor-1 module that can mutate the linter's globals at import time without touching
+      the linter, so an allowlist would be another bar-raiser. The class is closed by
+      behaviour instead, per the coordinator ruling (option B, same entry as above): runpy,
+      pickle and marshal payloads all narrow what the real linter returns, which is what the
+      check observes."
   - seat: codex-gpt-5.6-sol
     objection: 'Round 1 HIGH: a harmless string constant equal to "HOTZONE_PATTERNS" floors an unrelated edit at 3; local shadowing, a parameter or an attribute store named HOTZONE_PATTERNS do too.'
     status: CONFIRMED
@@ -136,10 +170,12 @@ dissent:
       neuter it; MEDIUM: 'adding keeps the floor' is unachievable if drift blocks."
     status: CONFIRMED
     resolution:
-      "Drift moved INTO Step 2d (a hot-zone file) as a warning, never a floor or a red job.
-      Step 2d now also runs when only hot-zone-pr-gate.yml changes. A tuple-only addition keeps
-      its floor and carries the warning. Both seats judged the warning-only policy defensible
-      in the delta round."
+      "Round 1 moved drift into Step 2d as a warning. The coordinator ruling (option B)
+      replaces that: drift is now BLOCKING in the test, in both directions, and the test file
+      is itself in both hot-zone lists, so neutering it is a floor-3 edit — the floor-1
+      objection no longer applies. The MEDIUM is answered too: an addition to the tuple must
+      also be added to the case-block, which is a workflow edit that floors 3 by path; Step 2d
+      itself still does not raise the floor for an addition."
   - seat: codex-gpt-5.6-sol
     objection: "Round 1 MEDIUM (also codex-gpt-6-astra): tests injected BASE_SHA/HEAD_SHA directly, so a mutant comparing HEAD with itself survived; no unparseable-base or diverged-history case."
     status: CONFIRMED
@@ -149,9 +185,9 @@ dissent:
     status: CONFIRMED
     resolution:
       "Round 1 fixed (anchored `^[ \\t]*case \"$f\" in`, one-line arm accepted, both pinned).
-      The delta's multi-arm gap is NOT fixed (it would be a fix-of-a-fix) and is declared in
-      the reader's docstring. It is warning-only, the real gate has one arm, and adding a
-      second is a workflow edit, which floors at 3."
+      The delta's multi-arm gap is closed as part of the ruling's rewrite, since the reader
+      now feeds a blocking check: it reads the whole statement up to `esac` and refuses a
+      second arm or a second statement (test_case_block_reader; mutant MB5 killed)."
   - seat: kimi-code/k3
     objection: "Round 1 MEDIUM: if the kill switch skipped hzlist but not detfloor, the absent verdict would RAISE the floor the switch exists to bypass."
     status: RETRACTED
@@ -167,20 +203,32 @@ dissent:
   - seat: kimi-code/k3
     objection: "Delta LOW: denylist false positives on future legitimate edits (a bare getattr, import importlib); drift message prints the whole tuple as one-sided when the case-block is unreadable; floor_source loses the hzlist reason."
     status: CONFIRMED
-    resolution: "Declared, not changed (post-delta, no further round): the step comment names the false-positive trade-off; the unreadable case prints 'case-block unreadable' on its side; floor_source keeps its exact-match vocabulary, and the job summary carries a separate Step 2d line."
+    resolution: "Declared (post-delta, no further round): the step comment names the false-positive trade-off, repeated under `residual`; an unreadable list now fails the drift test with 'a list could not be read — drift cannot be ruled out' instead of a one-sided print; floor_source keeps its exact-match vocabulary, and the job summary carries a separate Step 2d line."
 
 receipts:
-  - claim: "New corpus on the final head."
-    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_harness_floor_hotzone_list.py -q -p no:cacheprovider"
-    result: "42 passed"
+  - claim: "Corpus on the final tree, invoked as the guard-conformance job invokes it."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest --noconftest -o addopts= -p no:cacheprovider scripts/tests/test_harness_floor_hotzone_list.py -q"
+    result: "49 passed"
     exit: 0
-    ts: "2026-09-27T06:20:57Z"
+    ts: "2026-09-27T07:24:17Z"
     seat: claude-opus-5-5
-  - claim: "Mutation sweep on the final step text, cp backups, cmp after every restore."
-    cmd: "python3 mut3.py (string-replace mutants on harness-floor.yml / hot-zone-pr-gate.yml, per-mutant pytest, shutil.copyfile restore, filecmp)"
-    result: "22 mutants, 20 killed, 2 non-guard survivors (explained in proof); ALL_RESTORED_IDENTICAL"
+  - claim: "Step 2d mutation sweep on the final tree, cp backups, cmp after every restore."
+    cmd: "python3 mut4.py (M1-M10, N1-N7 string-replace mutants on harness-floor.yml, per-mutant hardened pytest, shutil.copyfile restore, filecmp)"
+    result: "17 mutants, 17 killed; every restore byte-identical"
     exit: 0
-    ts: "2026-09-27T06:17:26Z"
+    ts: "2026-09-27T07:24:23Z"
+    seat: claude-opus-5-5
+  - claim: "Behavioural and drift mutation sweep on the final tree (coordinator ruling B)."
+    cmd: "python3 mutb6.py + mutc.py (MB1-MB6 on evidence_pack_lint.py / review_eligibility.py / hot-zone-pr-gate.yml / the test; MB7-MB8 on the test; MB9 a planted conftest skip-all hook; cp restore, filecmp)"
+    result: "MB1-MB7 killed; MB8 survives (vacuous final assert, irreducible); MB9 plain pytest '49 skipped' rc 0 vs hardened '49 passed'; every restore byte-identical"
+    exit: 0
+    ts: "2026-09-27T07:26:28Z"
+    seat: claude-opus-5-5
+  - claim: "The guard's own test is a hot-zone path."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <scripts/tests/test_harness_floor_hotzone_list.py>"
+    result: "3"
+    exit: 0
+    ts: "2026-09-27T07:28:33Z"
     seat: claude-opus-5-5
   - claim: "Regex-vs-ast measurement behind the parser choice."
     cmd: 'python3 heredoc: HOTZONE_TUPLE_RE/HOTZONE_STRING_RE vs ast on the real linter with `    "fly.toml",` commented out'
@@ -195,16 +243,16 @@ receipts:
     ts: "2026-09-27T06:21:00Z"
     seat: claude-opus-5-5
   - claim: "Workflow and guard lints on the final head."
-    cmd: "actionlint .github/workflows/harness-floor.yml .github/workflows/guard-conformance.yml; python3 scripts/lint_workflow_errexit_decap.py; python3 scripts/lint_workflow_script.py; python3 infra/guard-conformance/check_guard_conformance.py"
-    result: "actionlint rc=0; errexit-decap clean; lint_workflow_script no violations; guard-conformance 0 violations"
+    cmd: "actionlint .github/workflows/harness-floor.yml .github/workflows/guard-conformance.yml .github/workflows/hot-zone-pr-gate.yml; python3 scripts/lint_workflow_errexit_decap.py; python3 scripts/lint_workflow_script.py; python3 scripts/lint_workflow_timeout_floor.py; python3 infra/guard-conformance/check_guard_conformance.py; python3 scripts/evidence_pack_lint.py --selftest"
+    result: "actionlint rc=0; errexit-decap clean; lint_workflow_script no violations; timeout floor clean; guard-conformance 0 violations; SELFTEST PASS"
     exit: 0
-    ts: "2026-09-27T06:21:00Z"
+    ts: "2026-09-27T07:28:33Z"
     seat: claude-opus-5-5
   - claim: "Neighbouring harness suites."
-    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_evidence_pack_lint.py scripts/tests/test_check_required_workflow_conformance.py scripts/tests/test_harness_gate_read.py -q"
-    result: "858 passed"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_evidence_pack_lint.py scripts/tests/test_check_required_workflow_conformance.py scripts/tests/test_harness_gate_read.py scripts/tests/test_agent_defs_model_pins.py scripts/tests/test_hooks_fail_open_on_garbage_payload.py -q"
+    result: "879 passed"
     exit: 0
-    ts: "2026-09-27T06:21:35Z"
+    ts: "2026-09-27T07:28:22Z"
     seat: claude-opus-5-5
   - claim: "codex-gpt-5.6-sol round 1, diff only."
     cmd: 'env -i HOME="$HOME" PATH="$PATH" codex exec -m gpt-5.6-sol --sandbox read-only -c model_reasoning_effort=high --skip-git-repo-check --output-last-message <file> - < council_prompt.txt (cwd: empty dir)'
@@ -244,18 +292,22 @@ pii_scan_note:
   the ruling text and the builder's design notes — no repo dump, no identifiers, no secrets."
 
 spend:
-  wall_clock_hours: 1.5
+  wall_clock_hours: 2
   adversarial_rounds: 2
 
+appetite_exceeded:
+  "Net lines, not hours or rounds: the reviewable change is about 390 net lines against the
+  coordinator's ~250 target. The coordinator's option-B ruling added the behavioural check,
+  the blocking drift test and the self-inclusion to this PR and accepted the overrun in
+  advance; the rest is the round-1 council fixes, kept here rather than in a second PR."
+
 diff:
-  files: 6
-  insertions: 633
-  deletions: 1
+  files: 8
+  insertions: 780
+  deletions: 2
   net_lines: |
-    Measured against origin/main; the three evidence files are included in the integers
-    above. The reviewable change is the Step 2d block plus its Step 3 wiring, the test corpus
-    and the guard-conformance wiring, about 315 net lines, over the coordinator's ~250 target.
-    The excess is the round-1 council fixes (the computed-name denylist, bytes parsing, the
-    drift flag moved into the protected step, and the wiring, W102 and utf-7 cases), kept in
-    this PR instead of a second one, per the Contract's preference for closing a finding
-    where it is found.
+    Measured against the merge-base with origin/main; the three evidence files are included
+    in the integers above. The reviewable change (the Step 2d block plus its Step 3 wiring,
+    the test corpus with the behavioural and drift checks, the guard-conformance wiring and
+    the two one-line list additions) is about 390 net lines, over the coordinator's ~250
+    target; see appetite_exceeded.

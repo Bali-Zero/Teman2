@@ -520,17 +520,16 @@ jobs:
       # never red: no merge-base, a failed `git show`, a deleted linter, a
       # name not bound ONCE at module level to a tuple of str literals, or a
       # casual computed-name rebinding (exec, globals(), setattr, __dict__):
-      # a bar-raiser with false positives (e.g. a bare getattr), NOT a proof.
-      # DECLARED LIMIT (council delta round, both titolari REWORK): import-time
-      # code (pickle, runpy, marshal, a module the linter imports) can still
-      # rebind the name, and rewiring what READS it (compute_floor(), fnmatch)
-      # needs no rebinding at all. One class: the floor computer's own code is
-      # floor 1. Its cure needs a ruling: floor-3 the linter's import closure,
-      # or replay BASE's compute_floor() on the protected case-block per PR.
-      # DRIFT vs hot-zone-pr-gate.yml's case-block is FLAGGED (warning), never
-      # floored or failed: that copy only drives a best-effort lease check and
-      # a summary line, a tuple-only addition is drift too, and the harmful
-      # direction (the tuple losing a pattern) is already floor 3 above.
+      # a bar-raiser with false positives (e.g. a bare getattr), NOT a proof:
+      # import-time code (pickle, runpy, a module the linter imports) can still
+      # rebind the name, and rewiring what READS it needs no rebinding at all.
+      # That class is caught BEHAVIOURALLY instead (coordinator ruling
+      # 2026-09-27, option B): scripts/tests/test_harness_floor_hotzone_list.py
+      # — itself in HOTZONE_PATTERNS — runs the HEAD linter's real floor
+      # computation on one path per pattern of hot-zone-pr-gate.yml's
+      # case-block (the oracle, a workflow file) and fails unless every one is
+      # 3; it also fails on ANY tuple/case-block drift. It runs in the required
+      # guard-conformance job, where executing head code is normal.
       # -----------------------------------------------------------------
       - name: Hot-zone list may only grow below floor 3
         if: steps.kill_switch.outputs.disabled != 'true'
@@ -541,20 +540,17 @@ jobs:
         run: |
           set -u
           LINTER=scripts/evidence_pack_lint.py
-          GATE=.github/workflows/hot-zone-pr-gate.yml
-          if ! grep -qxF -e "$LINTER" -e "$GATE" /tmp/changed-files.txt; then
+          if ! grep -qxF -- "$LINTER" /tmp/changed-files.txt; then
             echo "floor3=false" >> "$GITHUB_OUTPUT"
-            echo "neither $LINTER nor $GATE is in this diff — both hot-zone lists unchanged by construction"
+            echo "$LINTER is not in this diff — HOTZONE_PATTERNS unchanged by construction"
             exit 0
           fi
           MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)"
           if [[ -n "$MERGE_BASE" ]] \
             && git show "$MERGE_BASE:$LINTER" > /tmp/hz-base.py \
             && git show "$HEAD_SHA:$LINTER" > /tmp/hz-head.py \
-            && { git show "$HEAD_SHA:$GATE" > /tmp/hz-gate.yml || : > /tmp/hz-gate.yml; } \
-            && python3 - /tmp/hz-base.py /tmp/hz-head.py /tmp/hz-gate.yml <<'PY'
+            && python3 - /tmp/hz-base.py /tmp/hz-head.py <<'PY'
           import ast
-          import re
           import sys
           NAME = "HOTZONE_PATTERNS"
           # Rebinding a global by a COMPUTED name (exec, globals(), a module __dict__)
@@ -602,21 +598,12 @@ jobs:
                           return tuple(e.value for e in elts)
               return None
 
-          def case_block(src):
-              """First arm of the ONE un-commented `case "$f" in` as a set, else None (a 2nd arm is unread)."""
-              arms = re.findall(r'^[ \t]*case "\$f" in\n(.*?)\)', src, re.S | re.M)
-              return set(re.findall(r"[^\s|\\]+", arms[0])) if len(arms) == 1 else None
-
           def main(argv):
               base, head = (hotzone_patterns(open(p, "rb").read()) for p in argv[1:3])
               if base is None or head is None:
                   side = "merge-base" if base is None else "HEAD"
                   print(f"::warning::{NAME} at {side} is not one module-level tuple of string literals — floor 3")
                   return 1
-              case = case_block(open(argv[3], encoding="utf-8", errors="replace").read())
-              if case != set(head):
-                  only_case = "case-block unreadable" if case is None else sorted(case - set(head))
-                  print(f"::warning::{NAME} and hot-zone-pr-gate.yml's case-block differ — only in the tuple: {sorted(set(head) - (case or set()))}; only in the case-block: {only_case}")
               dropped = [p for p in base if p not in head]
               for p in dropped:
                   print(f"::warning::{NAME} drops {p!r} — a shrinking hot-zone list floors this diff at 3")

@@ -461,6 +461,8 @@ HOTZONE_PATTERNS: tuple[str, ...] = (
     ".github/CODEOWNERS",
     "fly.toml",
     "apps/backend-rag/fly.toml",
+    # harness-floor.yml Step 2d's own proof: weakening it must not be a floor-1 edit.
+    "scripts/tests/test_harness_floor_hotzone_list.py",
 )
 
 # ---------------------------------------------------------------------------

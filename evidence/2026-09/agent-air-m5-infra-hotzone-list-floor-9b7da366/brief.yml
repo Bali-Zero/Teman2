@@ -13,8 +13,23 @@ objective: |
   Narrow cure: a step in .github/workflows/harness-floor.yml (itself floor 3) that, when the
   diff touches the linter, reads the tuple as TEXT at the merge-base and at HEAD and floors
   the diff at 3 if HEAD drops any base pattern, failing closed (floor 3) when either side
-  cannot be read; plus a drift flag between the tuple and the case-block. Gear is 3
-  DETERMINISTICALLY by path: the diff touches `.github/workflows/*`.
+  cannot be read. Gear is 3 DETERMINISTICALLY by path: the diff touches `.github/workflows/*`.
+
+  Residual, and the coordinator ruling on it (2026-09-27, option B, not a council round): a
+  static list check cannot see code that narrows the list at run time (pickle, runpy, a
+  module the linter imports) or rewires what reads it. B checks the BEHAVIOUR instead, in the
+  required guard-conformance job where executing head code is normal: the HEAD linter, run
+  exactly as CI runs it (`python3 scripts/evidence_pack_lint.py --print-floor`, its real
+  import closure), must floor one concrete path per pattern of hot-zone-pr-gate.yml's
+  case-block at 3; the tuple and the case-block must be identical (blocking, both
+  directions); and the test file itself joins both lists, so weakening it is a floor-3 edit.
+  B CLOSES any narrowing that is active whenever the linter runs, whatever its mechanism,
+  in the linter or in its import closure. B DOES NOT CLOSE, stated plainly: a narrowing
+  gated on a condition true only inside the harness-floor job (a CI-specific environment
+  check) or aimed at specific real paths under a glob the synthetic path still matches —
+  deliberate sabotage by a writer who could equally edit a workflow, out of this threat
+  model; and the test's own final assertion, which is protected by being hot-zone, not by
+  a further test.
 
 acceptance:
   - text:
@@ -30,16 +45,25 @@ acceptance:
   - text:
       "WHEN a diff adds a pattern, edits unrelated lines of the linter, or does not touch the
       linter at all, THE step SHALL leave the floor unchanged."
-    probe: "test_step_2d_end_to_end[innocence-adds-both-lists / flag-adds-tuple-only / innocence-unrelated-edit / innocence-neither-in-diff / innocence-main-moved-on] (floor3=false); test_innocence_mentions_that_bind_nothing (a string label, re.compile, a docstring); test_step3_applies_the_verdict[false-1-none] (floor 1, source none); the real linter and gate parse (test_innocence_real_linter_and_gate_parse)"
+    probe: "test_step_2d_end_to_end[innocence-adds / innocence-unrelated-edit / innocence-linter-not-in-diff / innocence-main-moved-on] (floor3=false); test_innocence_mentions_that_bind_nothing (a string label, re.compile, a docstring); test_step3_applies_the_verdict[false-1-none] (floor 1, source none); the real linter parses and lists this test (test_innocence_real_linter_parses)"
   - text:
-      "WHEN a diff touches either list and HOTZONE_PATTERNS and hot-zone-pr-gate.yml's
-      case-block differ, Step 2d SHALL emit a warning naming both sides and SHALL NOT change
-      the floor or fail the job."
-    probe: "test_step_2d_end_to_end[flag-adds-tuple-only / flag-gate-only-drift / guilt-drops] assert the warning; test_case_block_reads_only_the_one_live_arm pins the reader (one-line arm, commented decoy ignored, unreadable shapes)"
+      "WHEN HOTZONE_PATTERNS and hot-zone-pr-gate.yml's case-block differ in either
+      direction, THE required guard-conformance job SHALL fail, naming the patterns found
+      on each side only."
+    probe: "test_real_tuple_and_case_block_are_the_same_list; mutants MB3 (case-block drops a pattern) and MB4 (tuple-only addition) each turn it red; test_case_block_reader refuses a second arm, a second statement and no statement"
+  - text:
+      "WHEN the HEAD linter, run as CI runs it with its real import closure, floors any
+      pattern of the case-block below 3 — by any mechanism active when it runs — THE
+      required guard-conformance job SHALL fail."
+    probe: "test_head_linter_really_floors_every_oracle_pattern_at_3 (all 16 oracle patterns, real linter); test_behavioural_check_on_a_copy_of_the_closure: guilt for a planted module imported after the tuple, a review_eligibility.py tail patching fnmatch, and the council's pickle->exec payload; innocence for an unchanged copy and an added pattern; mutants MB1 (compute_floor skips fly.toml) and MB2 (closure patches fnmatch) turn the real-linter case red"
+  - text:
+      "The behavioural check's own test SHALL be a hot-zone path, and a floor-1 conftest or
+      ini SHALL NOT be able to skip or deselect it."
+    probe: "--print-floor on scripts/tests/test_harness_floor_hotzone_list.py returns 3; MB6 (drop it from the tuple) turns 3 cases red; MB9: a planted conftest that skips every test gives '49 skipped' rc 0 under plain pytest and '49 passed' under the job's --noconftest -o addopts= invocation"
   - text:
       "Every guard in the step and its wiring SHALL be proven load-bearing by mutation: each
       guard mutant turns at least one case red, and every restore is byte-identical."
-    probe: "22 mutants on cp backups, 20 killed; the 2 survivors are not guards (continue-on-error on Step 2d, already neutralised by Step 3's != false; a duplicated case line in the real gate, which the drift flag surfaces by policy); cmp after every restore"
+    probe: "Step 2d: 17 mutants (M1-M10, N1-N7), all killed. Behavioural/drift: MB1-MB7 killed, MB9 shows --noconftest load-bearing; MB8 (the real check's own final assert weakened) survives, which is irreducible for a test and is why the file is hot-zone. cp backups, cmp after every restore"
 
 appetite:
   wall_clock_hours: 3
