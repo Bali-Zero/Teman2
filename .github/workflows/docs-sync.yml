@@ -1,6 +1,7 @@
 name: Docs Sync Check
 
-# Required-safe sentinel: always starts, then judges only the merge-base delta.
+# Sentinel: judges only the merge-base delta. On a PR it starts only when the PR touches
+# the docs-sync surface (the `on:` paths below, equal to the step's regex).
 # Volatile repository counts are never compared with tracked markdown.
 on:
   # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
@@ -19,11 +20,9 @@ on:
       - "docs/runbooks/README.md"
       - "docs/DOCS_INVENTORY.md"
       - ".github/workflows/docs-sync.yml"
-      # pytest loads these implicitly on the rootdir -> test path (conftest chain, package marker).
+      # pytest loads these implicitly for scripts/tests/ (its conftest and package marker).
       - "scripts/tests/conftest.py"
       - "scripts/tests/__init__.py"
-      - "scripts/conftest.py"
-      - "conftest.py"
   push:
     branches: [main]
 

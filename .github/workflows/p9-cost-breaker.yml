@@ -6,10 +6,12 @@ name: P9 Cost Breaker (GOVERN)
 # consumer those gates would WARN ("gate without consumer", cicatrix W64); this
 # workflow runs the falsifiable test suite so they stay ARMED, not WARN.
 
-# NOTE (BUCO #1 skip→success sentinel, 2026-06-11): top-level pull_request
-# `paths:` filter REMOVED so this can become a required-status-check without
-# the pending-forever trap (W69). The relevant-paths decision lives in the
-# "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
+# NOTE (BUCO #1 skip→success sentinel, 2026-06-11; superseded by the `on:` block below):
+# the pull_request `paths:` filter was removed so this could become a
+# required-status-check without the pending-forever trap (W69), and the
+# relevant-paths decision moved into the "Did relevant paths change?" step. It is not
+# required, so `pull_request` carries `paths:` again, equal to that step's regex; the
+# step remains the defence against an over-match (the job ENDS success).
 on:
   # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
   # (same set as the "Did relevant paths change?" step below). No merge_group:
@@ -22,9 +24,6 @@ on:
       - "scripts/test_cost_breaker.py"
       - "scripts/test_cost_breaker_deadman.sh"
       - ".github/workflows/p9-cost-breaker.yml"
-      # pytest loads conftest files implicitly on the rootdir -> test path; none exists today.
-      - "scripts/conftest.py"
-      - "conftest.py"
   push:
     branches:
       - main
