@@ -1,0 +1,43 @@
+task: >-
+  R19 group B prose follow-up: close #7574's gate C1 (rounded-lg = 20px panels →
+  rounded-[8px]) and C3 (a no-language code fence rendered as a stack of inline-chip
+  lines instead of one block) in MDXContent.tsx, plus the guard-test gap that let a
+  style-attribute colour literal and the C3 bug both survive undetected.
+lane: mouth/r19-b-prose2
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: Floor 1, source size, --no-renames churn 118 lines (108 added, 10 removed) well under threshold.
+acceptance:
+  A1: >-
+    MDXContent.guard.test.tsx: the existing render check now also fails on a colour
+    literal inside a rendered style attribute unless it's a var(--r19-*, …) fallback;
+    a new case renders a no-language pre>code and asserts it does NOT carry the
+    inline-chip styling while inline code in a paragraph keeps it — guilt proven red
+    against origin/main's MDXContent.tsx, green after. Full touched-file suite (89
+    tests across 4 files) green; tsc -p . exit 0; eslint 0 errors (2 pre-existing
+    warnings on <img>/next-Image unrelated to this change); prettier clean.
+  A2: >-
+    Live (balizero.com, commit e5f0248b70 == origin/main baseline, confirmed via
+    /api/health) vs local :3118 computed styles on three real articles:
+    /visas/multiple-entry-vs-single-entry-visa-indonesia (no-language fences),
+    /visas/emergency-visa-procedures-indonesia-guide (also no-language fences — the
+    spec's "with a language" assumption did not hold live; GUARD_SOURCE's ```js fence
+    covers that path instead), /taxes/coretax-npwp16-vs-npwp15-foreigners (inline code
+    + a second no-language ASCII-diagram fence). pre/table-wrapper border-radius
+    20px → 8px on all three. Fenced code-block <code>: background wash
+    rgb(234,227,216) → transparent, padding "2px 6px" → "0px" (the per-line chip
+    styling is gone); cropped screenshots confirm visually — before is a stack of
+    individually-padded chip rows, after is one clean monospace block (the
+    coretax ASCII diagram, previously destroyed by per-line chip backgrounds, now
+    renders aligned). Genuine inline code (a li in coretax) is byte-identical
+    before/after: bg rgba(30,56,99,0.08), padding "2px 6px", radius 4px.
+  A3: page height (document.body.scrollHeight) identical before/after on all 3 articles x 2 viewports (1440/390) — no growth or shrink.
+out_of_scope:
+  - globals.css's `.rumah-putih .mdx-content …` !important rules (another lane's
+    file) still force the real <pre>'s own background to a dark navy, not
+    --r19-wash — reported (visible in the before/after crops), not fixed here.
+  - No live article was found with a genuinely language-tagged fence (checked
+    emergency-visa-procedures-indonesia-guide and a few others); the with-language
+    path is covered by the guard test's ```js fixture instead, confirmed unaffected
+    by the marker fix (className truthy either way).
