@@ -1,0 +1,36 @@
+task: >-
+  R19 group B article page, successor of #7572 (fresh gate REWORK-BUILD): restyle
+  ArticleClient.tsx's hero/meta/cover/loading/tags/author-card/WhatsApp-CTA chrome
+  and the AnswerBox/KeyTakeaway MDX callouts from the pre-R19 text-white/literal-hex
+  palette to R19 ink/muted/copper/surface tokens, and cure the gate's finding: the
+  author card and the WhatsApp box kept `mt-12 p-6 rounded-2xl`, which globals.css's
+  structural `.rumah-putih article > div.mt-12.p-6.rounded-2xl` rule forces to #fff
+  with a shadow.
+lane: mouth/r19-b-article
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: Floor 1, source none — small skin-only diff in the article lane (2 components, 2 guards, this brief).
+acceptance:
+  A1: >-
+    guard tests (ArticleClient.r19-guard.test.tsx, AnswerBox.r19-guard.test.tsx)
+    red on origin/main, green after; the article guard also catches the green
+    family and arbitrary hex/rgba colour classes (the old green-wash CTA box turns
+    it red); vitest on the article + seo + whatsapp-ink tests 79/79; tsc exit 0;
+    eslint 0 errors; prettier clean.
+  A2: >-
+    measured with Playwright on /business/pt-pma-2026-foreign-company-setup-rules,
+    live vs local, 1440 and 390: h1 rgb(30,56,99) -> rgb(29,44,59); author card
+    and WhatsApp box #fff + #e3e1da + shadow + 16px -> R19 surface rgb(255,252,247)
+    + R19 line + no shadow + 8px; page height +2px.
+  A3: >-
+    nothing outside the article-page lane touched. Declared residues, all painted
+    by globals.css `.rumah-putih` rules and owned by the globals lane
+    (agent/air-m5/mouth/r19-b-globals-0928): the tag chips (:1717, navy wash once
+    bg-white/5 is gone), the KeyTakeaway eyebrow (navy through `.prose h3 !important`).
+out_of_scope:
+  - components/blog/MDXContent.tsx + MDXContentRSC.tsx (article body renderer) — PR #7574.
+  - globals.css `.rumah-putih` rules (tag chips, KeyTakeaway eyebrow, body headings) — globals lane.
+  - the ReactMarkdown fallback inside ArticleClient.tsx (text-white/bg-white/#ff6b6b), reached only when MDX compilation fails — follow-up.
+  - the WhatsApp button's brand green #25d366 — kept on purpose, pinned by src/app/whatsapp-ink.guard.test.ts.
+  - CategoryBadge (components/blog/ArticleCard.tsx) — category lane PR #7568.
