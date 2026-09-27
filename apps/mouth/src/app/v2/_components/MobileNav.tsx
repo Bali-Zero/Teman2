@@ -96,7 +96,7 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
             <Dialog.Close asChild>
               <button
                 aria-label="Close menu"
-                className="inline-flex items-center justify-center w-9 h-9 rounded-md"
+                className="inline-flex items-center justify-center w-11 h-11 rounded-md"
                 style={{ color: "var(--text-primary)" }}
               >
                 <X size={22} strokeWidth={2} />
