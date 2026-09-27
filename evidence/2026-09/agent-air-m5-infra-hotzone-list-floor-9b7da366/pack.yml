@@ -45,8 +45,10 @@ what_changed: |
   blocking in both directions with a message naming each side's extras; the step's old drift
   warning is removed. The test file joins BOTH lists, so weakening it is itself a floor-3
   edit. guard-conformance.yml runs it as `python3 -P -m pytest --import-mode=importlib
-  --noconftest -c /dev/null --rootdir .`, so no floor-1 yaml.py shadow, ini or conftest can
-  neuter it from inside pytest, and a test pins each of those four flags. Its relevance
+  --noconftest -c /dev/null --rootdir .`, which shuts out the four measured floor-1 shadows
+  (a yaml.py at the root or in scripts/, an ini with `pythonpath`, a conftest), and a test
+  pins each of those four flags; a package __init__.py on the test's import path is not
+  shut out (G1, declared under `residual`). Its relevance
   filter and push paths now cover the test, both workflows and the conductor modules.
 
   Fresh gate on 874a704e18 (PASS-WITH-CONDITIONS): C-1 merged origin/main (#7489's seven S5
@@ -66,9 +68,10 @@ what_changed: |
   not raise the floor for an addition.
 
 residual: |
-  What B DOES: it makes a narrowing of the floor DELIBERATE rather than accidental. Any
+  What B DOES: it makes a narrowing of the floor DELIBERATE rather than accidental. A
   narrowing active whenever the linter runs with Step 3's inputs, whatever its mechanism,
-  turns a required job red: a rebinding in the linter (pickle, runpy, marshal, exec), a
+  turns a required job red unless something is ALSO planted to blind the check (G1 below):
+  a rebinding in the linter (pickle, runpy, marshal, exec), a
   module planted and imported by it, a floor-1 module of its import closure patching fnmatch
   or the name, compute_floor() rewritten, the first-party-pin exemption widened (the gate's
   R4), or a yaml.py shadow planted in scripts/ or at the root (the gate's R3c/R3d). Each of
@@ -81,6 +84,15 @@ residual: |
     how the process was invoked (argv), which a condition true only inside the harness-floor
     job would equally do. These are ordinary floor-1 edits, not workflow edits, so nothing
     floors them at 3; B only means they cannot happen by accident;
+  - G1 (fresh delta gate on 010cbdcc07): code that pytest itself imports before the test
+    module — a package __init__.py on the test's import path (scripts/tests/__init__.py,
+    imported as `tests`; a new scripts/__init__.py, imported as `scripts`), including an
+    unchecked-hash .pyc under __pycache__ — runs inside the pytest process under the
+    hardened flags and can blind the check even for an UNCONDITIONAL narrowing in the
+    closure (the gate measured 8 failed without the payload, 55 passed with it, production
+    floor(fly.toml) 1, diff floor 1). A blanket module-level skip there is not a blind (rc 5
+    under `set -euo pipefail`). Declared rather than hardened: this surface already had its
+    depth-1 correction, and hot-zoning the .py path alone is bypassed by the .pyc;
   - the interpreter and its site-packages (the runner's own environment);
   - the shadow test's own final assertion: it is protected by the file being hot-zone, not
     by a further test (MB8, the real check's assert, is now killed through that test);
@@ -125,7 +137,9 @@ proof: |
   gpt-6-astra REWORK). Delta: sol REWORK, kimi REWORK, both on the same residual class.
   The coordinator then ruled option B (2026-09-27, not a council round; journal line
   "coordinator"). The fresh Gear-3 gate on 874a704e18 returned PASS-WITH-CONDITIONS
-  (C-1..C-4 above, all builder work); a fresh delta gate judges the new head (C-5).
+  (C-1..C-4 above, all builder work). The fresh delta gate on 010cbdcc07 returned
+  PASS-WITH-CONDITIONS with one new finding, G1, cured by declaring it (text only: brief,
+  pack, PR body); a fresh delta gate judges that head.
 
 dissent:
   - seat: codex-gpt-5.6-sol
@@ -188,8 +202,9 @@ dissent:
     resolution:
       "Round 1 moved drift into Step 2d as a warning. The coordinator ruling (option B)
       replaces that: drift is now BLOCKING in the test, in both directions, and the test file
-      is itself in both hot-zone lists, so neutering it is a floor-3 edit — the floor-1
-      objection no longer applies. The MEDIUM is answered too: an addition to the tuple must
+      is itself in both hot-zone lists, so EDITING it is a floor-3 edit. The floor-1
+      objection is answered for the test file only: blinding it from a package __init__.py
+      on its import path is still a floor-1 edit (G1, declared under `residual`). The MEDIUM is answered too: an addition to the tuple must
       also be added to the case-block, which is a workflow edit that floors 3 by path; Step 2d
       itself still does not raise the floor for an addition."
   - seat: codex-gpt-5.6-sol
@@ -317,7 +332,7 @@ appetite_exceeded:
 
 diff:
   files: 8
-  insertions: 898
+  insertions: 927
   deletions: 3
   net_lines: |
     Measured against the merge-base with origin/main after merging it (C-1); the three

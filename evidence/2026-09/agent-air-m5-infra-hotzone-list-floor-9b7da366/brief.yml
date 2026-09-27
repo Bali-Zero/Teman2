@@ -23,17 +23,28 @@ objective: |
   --numstat-file and --patch-file, its real import closure), must floor one concrete path per
   pattern of hot-zone-pr-gate.yml's case-block at 3; the tuple and the case-block must be
   identical (blocking, both directions); the test file joins both lists; and the job runs it
-  with `-P --import-mode=importlib -c /dev/null --noconftest`, so no floor-1 file can neuter
-  it from inside pytest (fresh gate conditions C-2 and C-3 on 874a704e18).
-  What B DOES: it makes a narrowing of the floor DELIBERATE rather than accidental — any
-  narrowing active whenever the linter runs with Step 3's inputs turns a required job red.
+  with `-P --import-mode=importlib -c /dev/null --noconftest`, which shuts out the four
+  measured shadows — a yaml.py at the root or in scripts/, an ini with `pythonpath`, a
+  conftest (fresh gate conditions C-2 and C-3 on 874a704e18) — but not every floor-1 file
+  that pytest imports (G1 below).
+  What B DOES: it makes a narrowing of the floor DELIBERATE rather than accidental — a
+  narrowing active whenever the linter runs with Step 3's inputs turns a required job red
+  unless something is ALSO planted to blind the check.
   What B DOES NOT DO, stated plainly: a deliberately evasive FLOOR-1 edit to the linter or
   its closure is still ungated — one keyed on a condition true only inside the harness-floor
   job, or an exemption of specific real paths under a glob the synthetic path still matches
   (measured by the gate: 49 passed, production floor 1). Those are ordinary floor-1 edits,
-  not workflow edits, so nothing floors them at 3. Also outside B: the interpreter and its
-  site-packages; and the shadow test's own final assertion, which is protected by the file
-  being hot-zone, not by a further test.
+  not workflow edits, so nothing floors them at 3. G1 (fresh delta gate on 010cbdcc07): code
+  that pytest itself imports before the test module — a package __init__.py on the test's
+  import path (scripts/tests/__init__.py, imported as `tests`; a new scripts/__init__.py,
+  imported as `scripts`), including an unchecked-hash .pyc under __pycache__ — runs inside
+  the pytest process under the hardened flags and can blind the check even for an
+  UNCONDITIONAL narrowing in the closure (measured: 8 failed without it, 55 passed with it,
+  production floor 1, diff floor 1). A blanket module-level skip there is not a blind (rc 5
+  under `set -euo pipefail`). Declared, not hardened: this surface already had its depth-1
+  correction, and hot-zoning the .py path alone is bypassed by the .pyc. Also outside B: the
+  interpreter and its site-packages; and the shadow test's own final assertion, which is
+  protected by the file being hot-zone, not by a further test.
 
 acceptance:
   - text:
@@ -58,12 +69,15 @@ acceptance:
   - text:
       "WHEN the HEAD linter, run as harness-floor Step 3 runs it (--numstat-file,
       --patch-file, its real import closure), floors any pattern of the case-block below 3 —
-      by any mechanism active when it runs — THE required guard-conformance job SHALL fail."
+      by any mechanism active when it runs — and nothing on the test's own import path (G1)
+      blinds the check, THE required guard-conformance job SHALL fail."
     probe: "test_head_linter_really_floors_every_oracle_pattern_at_3 (all 23 oracle patterns, real linter); test_behavioural_check_on_a_copy_of_the_closure: guilt for a planted module imported after the tuple, a review_eligibility.py tail patching fnmatch, the council's pickle->exec payload, a widened pin exemption (the gate's R4) and a narrowing keyed on the numstat; innocence for an unchanged copy and an added pattern; mutants MB1, MB2, C2c (R4 on the real linter) and C2d turn the real-linter case red; C2a/C2b (the probe drops --patch-file / --numstat-file) are killed"
   - text:
-      "The behavioural check's own test SHALL be a hot-zone path, and no floor-1 file (a
-      yaml.py shadow at the root or in scripts/, an ini with `pythonpath`, a conftest) SHALL
-      be able to neuter it inside the guard-conformance job's pytest process."
+      "The behavioural check's own test SHALL be a hot-zone path, and none of the four
+      measured floor-1 shadows (a yaml.py at the root or in scripts/, an ini with
+      `pythonpath`, a conftest) SHALL be able to neuter it inside the guard-conformance job's
+      pytest process. A package __init__.py (or its .pyc) on the test's import path is NOT
+      covered (G1, declared)."
     probe: "--print-floor on scripts/tests/test_harness_floor_hotzone_list.py returns 3; MB6 (drop it from the tuple) turns 4 cases red; test_the_job_invocation_shuts_out_floor_1_shadows runs the job's own command line (read from guard-conformance.yml) on a copy of the tree: with all four plants '1 failed' naming fly.toml at floor 1, clean '1 passed', and a plain pytest run with the plants does not fail (the attack is real); mutants C3a-C3d each drop one flag from the job line and each is killed"
   - text:
       "Every guard in the step and its wiring SHALL be proven load-bearing by mutation: each
