@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-mission-process-record # ORACLE-PROD-20260927 process record (spec, progress, freeze or round log) for a code release, not a research deliverable; the reviewed object is the code, whose council and final-gate verdicts are in evidence/2026-09/agent-air-m5-mouth-oracle-prod-0927-d995492b/
+---
+
 # FIX-ROUND-2 — exact corrective contract (Dux, 2026-09-27T11:05Z)
 
 Round 1 (FIX-ROUND-1.md) was applied only in part. This round is written from MEASURED computed geometry

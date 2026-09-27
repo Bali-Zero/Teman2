@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-mission-process-record # ORACLE-PROD-20260927 process record (spec, progress, freeze or round log) for a code release, not a research deliverable; the reviewed object is the code, whose council and final-gate verdicts are in evidence/2026-09/agent-air-m5-mouth-oracle-prod-0927-d995492b/
+---
+
 # CODE_FROZEN — ORACLE-PROD-20260927 production bytes (Dux, 2026-09-27T13:22:12Z)
 
 Source freeze acknowledged by the single writer (Sonnet 5 implementer): last source edit 2026-09-27T13:21Z;

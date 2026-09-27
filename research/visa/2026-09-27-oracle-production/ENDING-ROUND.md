@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-mission-process-record # ORACLE-PROD-20260927 process record (spec, progress, freeze or round log) for a code release, not a research deliverable; the reviewed object is the code, whose council and final-gate verdicts are in evidence/2026-09/agent-air-m5-mouth-oracle-prod-0927-d995492b/
+---
+
 # ENDING-ROUND — friendly ending surface, same canonical meaning (Dux, 2026-09-27T11:15Z)
 
 Why: the approved prototype ending (`…/branching-atlas/prototype/src/Outcome.jsx`, read-only) reads as a

@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-mission-process-record # ORACLE-PROD-20260927 process record (spec, progress, freeze or round log) for a code release, not a research deliverable; the reviewed object is the code, whose council and final-gate verdicts are in evidence/2026-09/agent-air-m5-mouth-oracle-prod-0927-d995492b/
+---
+
 # BUILD-SPEC — Visa Oracle atlas into production (ORACLE-PROD-20260927, Phase A)
 
 Author: Dux Opus 5.5 xhigh. Consumer: one Sonnet 5 implementer, single writer in

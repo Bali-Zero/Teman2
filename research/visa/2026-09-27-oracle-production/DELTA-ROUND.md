@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-mission-process-record # ORACLE-PROD-20260927 process record (spec, progress, freeze or round log) for a code release, not a research deliverable; the reviewed object is the code, whose council and final-gate verdicts are in evidence/2026-09/agent-air-m5-mouth-oracle-prod-0927-d995492b/
+---
+
 # DELTA-ROUND — final-gate BLOCK on 3710a230 (successor Dux, Opus 5.5 xhigh)
 
 Source of the round: fresh Opus 5.5 final gate `BLOCK` on `3710a230` (code `f38cbf46`), three findings, reproduced

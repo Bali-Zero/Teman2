@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-mission-process-record # ORACLE-PROD-20260927 process record (spec, progress, freeze or round log) for a code release, not a research deliverable; the reviewed object is the code, whose council and final-gate verdicts are in evidence/2026-09/agent-air-m5-mouth-oracle-prod-0927-d995492b/
+---
+
 # PROGRESS — ORACLE-PROD-20260927 (Dux Opus 5.5 xhigh, BLUE, Gear 2)
 
 Timestamps are `date -u` readings. Rows marked `~` were written before a clock read and are ordering only
