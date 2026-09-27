@@ -1,0 +1,28 @@
+task_id: lint-merge-group-0927
+gear: 3
+objective: Stop 15 non-required, light lint workflows from running on every PR push (org plan FREE = 20 concurrent jobs, ~100 PRs/day, 472 of the last 500 Actions runs were pull_request events) without losing any real verification - path-narrow the 11 that already had an in-job sentinel to exactly the sentinel's inputs, and move the 4 repo-wide ones to merge_group (once per merge) + push main.
+constraints:
+  - No required context of branch protection on main is touched; the 14 required workflows keep pull_request unfiltered + merge_group (scripts/ci/check_required_workflow_conformance.py).
+  - merge_group and pull_request.paths never coexist in one workflow (scripts/ci/lint_trigger_symmetry.py, enforced by the required `antidotes` job).
+  - Over-match is acceptable, under-match is not - every path list must be a superset of what the job's sentinel and its scripts/tests actually read (conftest.py and pytest config included).
+  - Only the `on:` blocks change (plus explanatory comments); steps, permissions and concurrency are untouched.
+acceptance:
+  - text: WHEN actionlint and yaml.safe_load run on the 15 files, they SHALL report no error.
+    probe: actionlint
+  - text: WHEN scripts/ci/lint_trigger_symmetry.py and scripts/ci/check_required_workflow_conformance.py run on the candidate tree, both SHALL report 0 violations.
+    probe: trigger-lints
+  - text: WHEN each path-narrowed workflow's pull_request.paths is compared with its in-job sentinel regex and the files its pytest/script invocation loads (tests, conftest.py, config), the paths SHALL be a superset.
+    probe: path-superset
+  - text: WHEN three heterogeneous refuters (Codex, Kimi, Gemini) attack the claim read-only, every CONFIRMED finding SHALL be cured in a follow-up commit (depth 1) or recorded as dissent with disposition.
+    probe: refuters
+consumer_map:
+  - The GitHub Actions queue for Bali-Zero/Teman2 - the first PR opened after the merge that touches none of the 11 narrowed input sets shows zero pull_request runs of these 15 workflows on its head sha; the next merge_group run on main lists asyncpg-lint, garuda-contract-parity, root-guard, voa-probe-tests.
+  - Every session that opens a PR on this repo - fewer queued runs per push, same pre-merge feedback whenever the lint's inputs change.
+risks:
+  - A non-required check in merge_group cannot block a merge (it never could as pull_request either); the 4 merge_group-only lints become informational at merge time and blocking only via a human reading them.
+  - A path glob that under-matches its job's real inputs means NO run (not a sentinel skip) - the refuters were pointed at exactly this failure mode.
+  - M5-lane PRs lose per-push feedback for the 4 repo-wide lints until the local runner runs on M5 too.
+pii: none
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
