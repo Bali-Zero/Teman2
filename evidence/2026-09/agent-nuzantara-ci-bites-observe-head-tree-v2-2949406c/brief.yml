@@ -29,13 +29,15 @@ acceptance:
     (exit 0) when the parser is given `--tree <head sha>`; without `--tree`, from a checkout that
     lacks the file, it is still `malformed ... does not exist in the checkout` (default behaviour
     unchanged). Marker missing in the tree, script absent from the tree, a symlink leaf, a
-    non-hex `--tree` and a path that leaves the checkout are each refused.
+    id that is not a full lowercase 40/64-digit hex, a path that leaves the checkout, a gitlink, a blob that is
+    not UTF-8 and a blob over 256 KiB are each refused.
     probe: >-
       git show 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7:evidence/2026-09/agent-nuzantara-backend-rag-seq24-sign-99f66ece/pack.yml > /tmp/pb.yml;
       python3 scripts/ci/bites_parse.py --pack - --tree 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7 < /tmp/pb.yml
       -> the four-field block, exit 0; the same without --tree from this worktree -> malformed,
       exit 2. python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py -k head_tree
-      -> 12 passed (11 head-tree-mode tests plus the workflow pin of A2, whose name also matches).
+      -> 22 passed (head-tree-mode tests, the council-cure ones included, plus the workflow pin of A2, whose
+      name also matches).
   A2: >-
     The harness-floor step hands the parser `--tree "${HEAD_SHA}"` and captures its exit code
     (`RC=0` before, `|| RC=$?` on the call), so the malformed / exit-3+ branches run and print
@@ -50,7 +52,7 @@ acceptance:
     interpreters CI uses.
     probe: >-
       python3 scripts/ci/bites_parse.py --selftest -> 138/138; python -m pytest -p no:cacheprovider
-      scripts/tests/test_bites_parse.py -> 139 passed on Python 3.14.7 and on 3.11.11; ruff check
+      scripts/tests/test_bites_parse.py -> 149 passed on Python 3.14.7 and on 3.11.11; ruff check
       on both touched Python files clean.
   A4: >-
     Live after merge: the "Harness floor recompute" check on PR #7504, re-run as a fresh

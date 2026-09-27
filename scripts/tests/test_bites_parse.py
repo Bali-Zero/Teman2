@@ -1196,9 +1196,11 @@ def _git(repo: Path, *args: str) -> str:
     return done.stdout.strip()
 
 
-def _base_checkout_holding_head(tmp_path: Path, head_files: dict[str, str],
-                                head_symlinks: dict[str, str] | None = None) -> tuple[Path, str]:
-    """(repo checked out at BASE, HEAD sha) - HEAD adds `head_files` and `head_symlinks`."""
+def _base_checkout_holding_head(tmp_path: Path, head_files: dict[str, str | bytes],
+                                head_symlinks: dict[str, str] | None = None,
+                                head_gitlinks: tuple[str, ...] = ()) -> tuple[Path, str]:
+    """(repo checked out at BASE, HEAD sha) - HEAD adds files, symlinks and gitlinks (submodule
+    entries, mode 160000, pointing at the BASE commit)."""
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init", "-q")
@@ -1208,11 +1210,16 @@ def _base_checkout_holding_head(tmp_path: Path, head_files: dict[str, str],
     base = _git(repo, "rev-parse", "HEAD")
     for rel, body in head_files.items():
         (repo / rel).parent.mkdir(parents=True, exist_ok=True)
-        (repo / rel).write_text(body, encoding="utf-8")
+        if isinstance(body, bytes):
+            (repo / rel).write_bytes(body)
+        else:
+            (repo / rel).write_text(body, encoding="utf-8")
     for rel, link_text in (head_symlinks or {}).items():
         (repo / rel).parent.mkdir(parents=True, exist_ok=True)
         os.symlink(link_text, repo / rel)
     _git(repo, "add", "-A")
+    for rel in head_gitlinks:   # after `add -A`, which would drop an entry with no directory on disk
+        _git(repo, "update-index", "--add", "--cacheinfo", f"160000,{base},{rel}")
     _git(repo, "commit", "-q", "-m", "head")
     head = _git(repo, "rev-parse", "HEAD")
     _git(repo, "checkout", "-q", base)
@@ -1285,6 +1292,52 @@ def test_head_tree_guilt_a_path_that_leaves_the_checkout_is_still_refused(tmp_pa
         assert problems and "outside the checkout" in problems[0], (escape, problems)
 
 
+def test_head_tree_guilt_a_non_utf8_blob_carrying_the_marker_is_refused(tmp_path, monkeypatch):
+    """`errors="replace"` read the marker out of bytes that are not text at all."""
+    body = f"# {bp.OBSERVABLE_MARKER}\n".encode() + b"\xff\xfe\x80 not utf-8\n"
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: body})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("not valid UTF-8" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_an_oversize_blob_is_refused_unread(tmp_path, monkeypatch):
+    """The size is asked FIRST: past the cap the bytes are never pulled through git."""
+    body = f"# {bp.OBSERVABLE_MARKER}\n" + "x" * bp._TREE_BLOB_MAX_BYTES + "\n"
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: body})
+    calls: list[list[str]] = []
+    real_run = bp.subprocess.run
+
+    def spy(cmd, *args, **kwargs):
+        calls.append(list(cmd))
+        return real_run(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(bp.subprocess, "run", spy)
+    problems = bp._guard_observable_script(_NEW_OBSERVE, repo_root=repo, tree=head)
+    assert problems and "refused unread" in problems[0], problems
+    assert any(c[:3] == ["git", "cat-file", "-s"] for c in calls), calls
+    assert not any(c[:3] == ["git", "cat-file", "blob"] for c in calls), calls
+
+
+def test_head_tree_innocence_a_utf8_observer_exactly_at_the_size_cap_parses_clean(tmp_path, monkeypatch):
+    """The over-match twin: non-ASCII text is fine and the cap is inclusive."""
+    head_text = f"# {bp.OBSERVABLE_MARKER} \u2014 \u00e9\n"
+    padding = bp._TREE_BLOB_MAX_BYTES - len(head_text.encode("utf-8"))
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: head_text + "x" * padding})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    assert bp.classify(bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)) == "executable"
+
+
+def test_head_tree_guilt_a_gitlink_is_refused(tmp_path, monkeypatch):
+    """A submodule entry is neither a script nor a blob: mode 160000, kind commit."""
+    repo, head = _base_checkout_holding_head(tmp_path, {}, head_gitlinks=(_NEW_OBSERVER,))
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("not a regular file" in e and "160000" in e for e in result["errors"]), result
+
+
 def test_head_tree_cli_parses_the_new_observer_with_tree_and_refuses_it_without(
         tmp_path, monkeypatch, capsys):
     """The step's real call: pack on stdin, `--tree` the head sha, exit 0 vs the old exit 2."""
@@ -1308,6 +1361,19 @@ def test_head_tree_cli_refuses_an_argument_that_is_not_a_hex_id():
     )
     assert done.returncode == bp.EXIT_MALFORMED
     assert "hex" in done.stderr
+
+
+@pytest.mark.parametrize("tree", ["a" * 41, "a" * 63, "A" * 40, "A" * 64, "a" * 7, "a" * 39])
+def test_head_tree_cli_refuses_an_id_that_is_not_a_full_lowercase_hex_id(tree):
+    """git truncates 41-63 digits and expands abbreviations: the judged tree may not be the named one."""
+    done = subprocess.run(
+        ["python3", str(_MODULE_PATH), "--pack", "-", f"--tree={tree}"],
+        input="", capture_output=True, text=True, check=False,
+    )
+    assert done.returncode == bp.EXIT_MALFORMED
+    assert "full lowercase hex" in done.stderr
+    problems = bp._guard_observable_script(_NEW_OBSERVE, repo_root=_REPO_ROOT, tree=tree)
+    assert problems and "full lowercase hex" in problems[0], problems
 
 
 def test_head_tree_cli_real_process_reads_this_repo_own_tree():

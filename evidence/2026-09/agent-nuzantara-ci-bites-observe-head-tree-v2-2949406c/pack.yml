@@ -1,6 +1,6 @@
 # Gear-3 evidence pack — harness fix: the Bites step resolves an in-PR observer in the PR head tree.
 # Written by the harness-fix builder (Claude Sonnet 5, a teammate of the session that owns this mandate).
-# Every receipt below is a command this writer executed in this turn (2026-09-27, 03:22Z-03:29Z); the
+# Every receipt below is a command this writer executed in this turn (2026-09-27, 03:22Z-03:49Z, in two rounds: the fix and the council cure); the
 # outputs are quoted from those runs, not narrated from memory. The one exception is stated as such:
 # the run log of PR 7504 was downloaded and read this turn, but the run itself is CI's, not the writer's.
 #
@@ -43,9 +43,12 @@ decisions:
       copy is read and never run.
   - id: D-hex-only
     decision: >-
-      `--tree` accepts 7-64 hex digits and nothing else, checked in `main()` and again inside the guard
-      that calls git, so a value such as `--output=x` never reaches a git argv. A ref name is a moving
-      target and the step already holds the resolved sha.
+      `--tree` accepts a FULL lowercase hex id, exactly 40 digits (sha-1) or 64 (sha-256), checked in
+      `main()` and again inside the guard that calls git, so a value such as `--output=x` never reaches a
+      git argv. A ref name is a moving target and the step already holds the resolved sha; an abbreviated,
+      upper-case or over-long spelling is read as git pleases (41-63 digits are truncated), so the tree
+      that got judged could be another one than the one named. Tightened from 7-64 of either case in the
+      council-cure round below.
   - id: D-default-unchanged
     decision: >-
       Without `--tree` every code path is the one that was there. The existing corpus still passes
@@ -62,6 +65,22 @@ decisions:
       Left out on purpose and named in the brief: the `CLASSIFICATION=$(python3 -c ...)` line lower in the
       same step has the same bash -e shape, and scripts/lint_workflow_errexit_decap.py matches only the
       `VAR=$(...)` form, not a bare call followed by `RC=$?`. Each is a separate concern for its own PR.
+  - id: D-council-cure-1
+    decision: >-
+      Council round 1, as relayed by the owning session (this builder did not run or see the council):
+      Kimi OK, with the note that a `--tree` of 41-63 digits is truncated by git and resolves another
+      tree; Codex Sol BLOCK on the head-tree read, because `_tree_source` decoded the observer blob with
+      `errors="replace"`, so a non-UTF-8 blob carrying the marker passed, and the `cat-file` read was
+      unbounded (an 8 MiB mock passed). Cure, one fix commit on top, nothing else touched: (1) the blob
+      is decoded strictly and a UnicodeDecodeError makes the observer malformed with an explicit
+      message; (2) `git cat-file -s <oid>` is asked first and a blob over 256 KiB is refused UNREAD (a
+      test asserts `cat-file blob` is never run), and a gitlink or anything but a regular file was already
+      refused by the mode check, now pinned by its own test; (3) the id must be exactly 40 or 64 lowercase
+      hex digits (see D-hex-only). Ten tests added: non-UTF-8 blob with the marker, oversize blob, a
+      UTF-8 observer with non-ASCII text exactly at the cap (the over-match twin), a gitlink, and six id
+      shapes (41, 63, 7 and 39 digits, and two upper-case) each refused by the CLI and by the guard. The
+      checkout-mode read keeps its `errors="replace"` (unchanged, outside `--tree`). The receipts below
+      are all re-measured on the tree with the cure.
 receipts:
   - claim: "R0 — ground truth of the defect. The failing run of PR 7504 ran the step under `bash -e` and ended it with exit 2 and no `::error`."
     cmd: gh run view 36289447854 --log > <scratch>/run36289447854.log; grep of the "Bites contract" lines
@@ -73,52 +92,48 @@ receipts:
     exit: 0
     ts: "2026-09-27T03:29:11Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R1 — base commit, merge-base and branch of the working tree this evidence describes (the fix is the one cherry-picked commit on top).
-    cmd: git rev-parse HEAD && git merge-base origin/main HEAD && git branch --show-current
+  - claim: "R1 — base of this evidence round: the parent commit, the merge-base and the branch. The council-cure edits were uncommitted in the working tree when the receipts below were measured."
+    cmd: git rev-parse HEAD && git merge-base origin/main HEAD && git branch --show-current && git status --short
     result: >-
-      HEAD at measurement 9666c7cc5e4d05741a41a4df6aa6a46b8482d2b5 (the cherry-pick of 5d24460cc1, before this
-      evidence was added; that commit was then amended, unpushed, to carry it, so the sha on the branch differs),
-      merge-base a6fcae5afe6d16abe9e3c4691fb988c31eb18da4, branch agent/nuzantara/ci/bites-observe-head-tree-v2
+      HEAD fc259a6b477b99563c92989cd6eb8e77137a3ee1 (the first commit of this branch, parent of the cure commit),
+      merge-base a6fcae5afe6d16abe9e3c4691fb988c31eb18da4, branch agent/nuzantara/ci/bites-observe-head-tree-v2,
+      modified files scripts/ci/bites_parse.py and scripts/tests/test_bites_parse.py
     exit: 0
-    ts: "2026-09-27T03:28:10Z"
+    ts: "2026-09-27T03:48:18Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R2 — the parser's embedded guilt+innocence corpus is untouched and green.
+  - claim: "R2 — the parser's embedded guilt+innocence corpus is untouched and green."
     cmd: python3 scripts/ci/bites_parse.py --selftest
     result: "bites_parse selftest: 138/138 pass (guilt + innocence)"
     exit: 0
-    ts: "2026-09-27T03:28:10Z"
+    ts: "2026-09-27T03:48:18Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R3 — the whole parser test file on Python 3.14.7 (the dev interpreter).
+  - claim: "R3 — the whole parser test file on Python 3.14.7 (the dev interpreter)."
     cmd: python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py
-    result: "139 passed in 2.99s"
+    result: "149 passed in 4.32s"
     exit: 0
-    ts: "2026-09-27T03:28:10Z"
+    ts: "2026-09-27T03:48:18Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R4 — the same file on Python 3.11.11 (the interpreter of the backend venv, the nearest to CI's 3.11/3.12).
+  - claim: "R4 — the same file on Python 3.11.11 (the backend venv, the nearest to CI)."
     cmd: apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py
-    result: "139 passed in 3.09s"
+    result: "149 passed in 4.57s"
     exit: 0
-    ts: "2026-09-27T03:28:13Z"
+    ts: "2026-09-27T03:48:23Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R5 — the twelve new tests by name, and the workflow pin alone.
+  - claim: "R5 — the head-tree-mode tests, and the ones the council cure added, by name."
     cmd: >-
-      python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py -k head_tree;
-      the same with -k harness_floor_step
-    result: "12 passed, 127 deselected in 1.95s (11 head-tree-mode tests plus the workflow pin, whose name also matches); 1 passed, 138 deselected in 0.12s"
-    exit: 0
-    ts: "2026-09-27T03:28:17Z"
-    seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: "R6 — reproduction on the real pack of PR 7504 (its commit 9a1413999f). With `--tree` the four-field block; without it, from a checkout lacking the file, malformed."
-    cmd: >-
-      git show 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7:evidence/2026-09/agent-nuzantara-backend-rag-seq24-sign-99f66ece/pack.yml > pb.yml;
-      python3 scripts/ci/bites_parse.py --pack - --tree 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7 < pb.yml;
-      python3 scripts/ci/bites_parse.py --pack - < pb.yml
+      python -m pytest -p no:cacheprovider scripts/tests/test_bites_parse.py -k head_tree; the same with -k "non_utf8 or oversize or gitlink or full_lowercase or size_cap"
     result: >-
-      with --tree: exit 0, consumer/where ci/observe `python3 scripts/ci/observe_visa_seq24_signed.py`/expect
-      `contains:inventory reads seq-24 and all three consumers green`; without: exit 2, `observe:
-      scripts/ci/observe_visa_seq24_signed.py does not exist in the checkout`.
+      22 passed, 127 deselected in 3.48s (head-tree mode, the workflow pin included); 10 passed, 139 deselected in 1.51s for the cure: non_utf8, oversize, gitlink, size_cap and six parametrized id shapes
     exit: 0
-    ts: "2026-09-27T03:28:29Z"
+    ts: "2026-09-27T03:48:28Z"
+    seat: Claude Sonnet 5 (harness-fix builder teammate)
+  - claim: "R6 — reproduction on the real pack of PR 7504 (its commit 9a1413999f), re-run after the cure. With the full 40-digit `--tree` the four-field block; without it, from a checkout lacking the file, malformed; a 41-digit and an abbreviated id refused before any git call."
+    cmd: >-
+      git show 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7:evidence/2026-09/agent-nuzantara-backend-rag-seq24-sign-99f66ece/pack.yml > pb.yml; python3 scripts/ci/bites_parse.py --pack - --tree 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7 < pb.yml; the same without --tree; the same with --tree 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7X and with --tree 9a1413999f
+    result: >-
+      with --tree: exit 0, observe `python3 scripts/ci/observe_visa_seq24_signed.py`, expect `contains:inventory reads seq-24 and all three consumers green`; without: malformed, `observe: scripts/ci/observe_visa_seq24_signed.py does not exist in the checkout`, exit 2; the 41-digit and the 10-digit ids: exit 2, stderr `--tree must be a full lowercase hex commit or tree id (exactly 40 or 64 digits)`
+    exit: 0
+    ts: "2026-09-27T03:48:34Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
   - claim: R7 — the old step shape under `bash -e` never reaches `RC=$?`; the new shape reaches it and the step survives.
     cmd: >-
@@ -128,42 +143,39 @@ receipts:
     exit: 0
     ts: "2026-09-27T03:28:29Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R8 — mutation check, each mutation applied to a scratch edit of the tree and reverted from a byte-identical backup; the head-tree tests go red on every one.
+  - claim: "R8 — mutation check on the tree with the cure. Each mutation was applied to a scratch edit and reverted from a byte-identical backup, and the head-tree tests go red on every one."
     cmd: >-
-      -k head_tree run after (M1) parse_pack no longer passes `tree` to the guard, (M2) the mode/symlink
-      refusal weakened, (M3) `--tree "${HEAD_SHA}"` removed from the step, (M4) `|| RC=$?` removed from the step
-    result: "M1 5 failed / 7 passed; M2 1 failed / 11 passed; M3 1 failed / 11 passed; M4 1 failed / 11 passed; after restore `cmp` identical and 12 passed"
+      -k head_tree run after each of: (M1) parse_pack no longer passes `tree` to the guard, (M2) the mode/symlink refusal weakened, (M3) `--tree "${HEAD_SHA}"` removed from the step, (M4) `|| RC=$?` removed from the step, (M5) lenient decode, (M6) no size cap, (M7) cap made exclusive, (M8) a gitlink not refused, (M9) the id pattern loosened back to 7-64 hex of either case
+    result: >-
+      M1 8 failed / 14 passed; M2 1 failed / 21 passed; M3 1 failed / 21 passed; M4 1 failed / 21 passed (03:48:58Z); M5 1 failed (the non-UTF-8 test); M6 1 failed (the oversize test); M7 1 failed (the at-the-cap innocence test); M8 1 failed (the gitlink test); M9 6 failed (every id shape) (03:47:42Z); after each restore `cmp` identical and 22 passed
     exit: 0
-    ts: "2026-09-27T03:28:40Z"
+    ts: "2026-09-27T03:48:58Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R9 — ruff on the two touched Python files.
+  - claim: "R9 — ruff on the two touched Python files."
     cmd: ruff check scripts/ci/bites_parse.py scripts/tests/test_bites_parse.py
     result: "All checks passed!"
     exit: 0
-    ts: "2026-09-27T03:28:58Z"
+    ts: "2026-09-27T03:48:34Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R10 — actionlint on the changed workflow (no finding printed).
+  - claim: "R10 — actionlint on the changed workflow (no finding printed)."
     cmd: actionlint .github/workflows/harness-floor.yml
     result: "no output"
     exit: 0
-    ts: "2026-09-27T03:28:58Z"
+    ts: "2026-09-27T03:48:34Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R11 — the errexit-decapitation lint over every workflow, and its own corpus.
+  - claim: "R11 — the errexit-decapitation lint over every workflow, and its own corpus."
     cmd: >-
-      python3 scripts/lint_workflow_errexit_decap.py; python -m pytest -p no:cacheprovider
-      scripts/tests/test_lint_workflow_errexit_decap.py
-    result: "errexit-decap lint: 124 workflow file(s), 642 run-block(s) scanned, clean; 13 passed in 0.61s"
+      python3 scripts/lint_workflow_errexit_decap.py; python -m pytest -p no:cacheprovider scripts/tests/test_lint_workflow_errexit_decap.py
+    result: "errexit-decap lint: clean, every status-reading capture is errexit-immune; 13 passed in 0.60s"
     exit: 0
-    ts: "2026-09-27T03:28:58Z"
+    ts: "2026-09-27T03:49:17Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
-  - claim: R12 — PII-shaped strings in the three touched code files (email or 16-digit run).
+  - claim: "R12 — PII-shaped strings in the three touched code files (email or 16-digit run)."
     cmd: grep -nE an email pattern or a 16-digit run over scripts/ci/bites_parse.py, scripts/tests/test_bites_parse.py, .github/workflows/harness-floor.yml
     result: >-
-      two hits, both reserved-domain fixtures and no person: test_bites_parse.py:817 (`a@b.test`, an
-      existing argument-shape fixture) and :1192 (`t@example.invalid`, the throwaway git identity of the
-      temporary test repository). The brief and this pack carry no address.
+      two hits, both reserved-domain fixtures and no person: test_bites_parse.py:817 (`a@b.test`, an existing argument-shape fixture) and :1192 (`t@example.invalid`, the throwaway git identity of the temporary test repository). The brief and this pack carry no address.
     exit: 0
-    ts: "2026-09-27T03:28:59Z"
+    ts: "2026-09-27T03:49:17Z"
     seat: Claude Sonnet 5 (harness-fix builder teammate)
 dissent:
   - seat: self-review (the builder, not an independent refuter)

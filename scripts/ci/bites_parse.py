@@ -63,8 +63,9 @@ checkout, the only copy it may trust, yet Builder Contract 2 wants the observer 
 in the SAME PR - so the script and its marker live in the PR head tree and not in that
 checkout, and the file-based existence check reported every new observer as missing. With
 `--tree`, only the existence and marker questions move: they are asked of that git tree
-(`git ls-tree` for the path, `git cat-file blob` for the bytes, no shell, read and never run)
-and every other rule is unchanged. Without `--tree` the checkout is asked, exactly as before.
+(`git ls-tree` for the path, `git cat-file blob` for the bytes - size-capped, strict UTF-8, no
+shell, read and never run) and every other rule is unchanged. The id must be the FULL lowercase
+hex id. Without `--tree` the checkout is asked, exactly as before.
 """
 
 # bites-observable — this script is reachable from an `observe:` line. It qualifies
@@ -92,10 +93,16 @@ EXIT_MALFORMED = 2
 #: This file lives at scripts/ci/, so the checkout root is two levels up.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#: `--tree` names a commit or tree by HEX id and nothing else. A value beginning with a dash
-#: would be read by git as an option, and a ref name is a moving target - the CI step passes
-#: the head sha it already resolved.
-_TREE_ID = re.compile(r"[0-9a-fA-F]{7,64}")
+#: `--tree` names a commit or tree by its FULL lowercase hex id and nothing else: 40 digits
+#: (sha-1) or 64 (sha-256). A value beginning with a dash would be read by git as an option, a
+#: ref name is a moving target, and an abbreviated, over-long or upper-case spelling is read
+#: as git pleases (41-63 digits are truncated, so the id that gets judged may name another
+#: tree) - the CI step passes the head sha it already resolved, which is exactly this shape.
+_TREE_ID = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})")
+
+#: A `scripts/ci/*.py` observer is a few KiB; a head-tree blob past this is refused UNREAD,
+#: so a pull request cannot make the step pull megabytes through the marker check.
+_TREE_BLOB_MAX_BYTES = 256 * 1024
 
 #: Ceiling for one git question about the head tree. A lazy blob fetch can stall.
 _GIT_TIMEOUT_S = 60
@@ -470,7 +477,8 @@ def _tree_source(root: Path, tree: str, rel: str, target: str) -> tuple[str, str
     no textconv filter stands between the id and the content.
     """
     if not _TREE_ID.fullmatch(tree):
-        return "", f"observe: --tree `{tree[:40]}` is not a hex commit or tree id"
+        return "", (f"observe: --tree `{tree[:70]}` is not a full lowercase hex id "
+                    f"(exactly 40 or 64 digits)")
     short = tree[:12]
     try:
         listed = subprocess.run(
@@ -494,8 +502,21 @@ def _tree_source(root: Path, tree: str, rel: str, target: str) -> tuple[str, str
     if kind != "blob" or mode not in ("100644", "100755"):
         return "", (f"observe: `{target}` is not a regular file in tree {short} (git mode {mode}, "
                     f"{kind}) - a symlink or a directory is not a script that declares itself")
-    if not re.fullmatch(r"[0-9a-f]{40,64}", oid):
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", oid):
         return "", f"observe: git named an object id for `{target}` that is not hex"
+    try:
+        sized = subprocess.run(
+            ["git", "cat-file", "-s", oid],
+            cwd=root, capture_output=True, check=False, timeout=_GIT_TIMEOUT_S,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return "", f"observe: `{target}` could not be sized in tree {short} ({_one_line(exc)})"
+    size_text = sized.stdout.decode("ascii", errors="replace").strip()
+    if sized.returncode != 0 or not size_text.isdigit():
+        return "", f"observe: git could not size `{target}` in tree {short} - a failed question"
+    if int(size_text) > _TREE_BLOB_MAX_BYTES:
+        return "", (f"observe: `{target}` is {size_text} bytes in tree {short}, over the "
+                    f"{_TREE_BLOB_MAX_BYTES} an observer may be - refused unread")
     try:
         blob = subprocess.run(
             ["git", "cat-file", "blob", oid],
@@ -506,7 +527,13 @@ def _tree_source(root: Path, tree: str, rel: str, target: str) -> tuple[str, str
     if blob.returncode != 0:
         why = " ".join(blob.stderr.decode("utf-8", errors="replace").split())[:200]
         return "", f"observe: `{target}` could not be read from tree {short} ({why})"
-    return blob.stdout.decode("utf-8", errors="replace"), ""
+    try:
+        # STRICT, unlike the checkout read: a blob that is not UTF-8 has no honest text to
+        # search for the marker in, and `errors="replace"` would let one that carries the
+        # marker bytes read as a script that declared itself.
+        return blob.stdout.decode("utf-8"), ""
+    except UnicodeDecodeError:
+        return "", f"observe: `{target}` in tree {short} is not valid UTF-8 - not Python source"
 
 
 def _guard_observable_script(command: str, repo_root: Path | None = None,
@@ -524,8 +551,9 @@ def _guard_observable_script(command: str, repo_root: Path | None = None,
     unreadable file, or a path that escapes the checkout -> refused. Location grants
     nothing (W109), which is why the check reads the file rather than the path.
 
-    With `tree` (a hex commit or tree id) the file is read from THAT git tree instead of the
-    working checkout - see HEAD-TREE MODE in the module docstring. Same rule, other source.
+    With `tree` (a full lowercase hex commit or tree id) the file is read from THAT git tree
+    instead of the working checkout - see HEAD-TREE MODE in the module docstring. Same rule,
+    other source.
     """
     root = repo_root if repo_root is not None else REPO_ROOT
     try:
@@ -1054,8 +1082,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--pack",
                     help="path to a pack.yml, or - to read one from stdin")
     ap.add_argument("--tree", metavar="SHA",
-                    help="hex commit or tree id: look up the observe script and its "
-                         "`bites-observable` marker in that git tree instead of the checkout")
+                    help="full lowercase hex commit or tree id (40 or 64 digits): look up the "
+                         "observe script and its `bites-observable` marker in that git tree "
+                         "instead of the checkout")
     args = ap.parse_args(argv)
 
     if args.selftest:
@@ -1063,7 +1092,8 @@ def main(argv: list[str] | None = None) -> int:
     if not args.pack:
         ap.error("one of --selftest or --pack is required")
     if args.tree is not None and not _TREE_ID.fullmatch(args.tree):
-        sys.stderr.write("--tree must be a hex commit or tree id (7-64 hex digits)\n")
+        sys.stderr.write("--tree must be a full lowercase hex commit or tree id "
+                         "(exactly 40 or 64 digits)\n")
         return EXIT_MALFORMED
 
     if args.pack == "-":
