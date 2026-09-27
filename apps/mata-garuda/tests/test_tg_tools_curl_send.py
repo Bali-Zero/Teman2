@@ -27,7 +27,7 @@ from unittest.mock import MagicMock, patch
 from mata_garuda.tools import tg_tools
 from mata_garuda.config import mask_tg_token
 
-FAKE_TOKEN = "bot7654321098:AAF9zZqLmN0pQrStUvWxYz1234567890abc"  # noqa: S105
+FAKE_TOKEN = "bot" + "7654321098" + ":" + "AA" + "F9zZqLmN0pQrStUvWxYz1234567890abc"  # noqa: S105 — synthetic, assembled at runtime so no token-shaped literal exists in the tree
 FAKE_SECRET = "AAF9zZqLmN0pQrStUvWxYz1234567890abc"
 
 
