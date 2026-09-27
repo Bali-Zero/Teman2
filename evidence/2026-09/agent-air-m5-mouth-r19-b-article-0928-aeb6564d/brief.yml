@@ -1,0 +1,30 @@
+task: >-
+  R19 group B article page: restyle ArticleClient.tsx's hero/meta/cover/loading/
+  tags/author-card/WhatsApp-CTA chrome and the AnswerBox/KeyTakeaway MDX callout
+  boxes from the pre-R19 text-white/literal-hex palette to R19 ink/muted/copper
+  tokens. Deep prose/MDX renderer and the shared CategoryBadge deferred (see
+  out_of_scope).
+lane: mouth/r19-b-article
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: Floor 1, source none — churn well under any threshold (205 insertions, 39 deletions across 4 files).
+acceptance:
+  A1: >-
+    guard tests (ArticleClient.r19-guard.test.tsx, AnswerBox.r19-guard.test.tsx)
+    red on origin/main, green after; full vitest run on touched files green;
+    tsc exit 0; eslint 0 errors; prettier clean.
+  A2: >-
+    live-verified on 3 real articles (/visas, /business, /living) before/after,
+    desktop+mobile — hero h1/meta/back-link/AI-badge/tags/author-card/CTA now
+    paint R19 ink/muted/copper instead of navy/text-white; page height
+    unchanged within ~1.4%.
+  A3: >-
+    nothing outside the article-page lane touched — CategoryBadge
+    (ArticleCard.tsx, category lane PR #7568) and MDXContent.tsx /
+    MDXContentRSC.tsx (deep prose renderer) left untouched and reported,
+    not silently dropped.
+out_of_scope:
+  - components/blog/MDXContent.tsx + MDXContentRSC.tsx (mdxComponents h1-h6/p/blockquote/table/code renderer) — still paints via globals.css's `.rumah-putih .mdx-content/.prose` navy (#1e3863) override; follow-up PR.
+  - CategoryBadge (defined in components/blog/ArticleCard.tsx, shared with the category lane's PR #7568) — still renders the old green gradient pill; left untouched to avoid a cross-lane collision.
+  - globals.css's `.rumah-putih` scoped overrides — not my file; my fix works by removing the matching classNames from my owned files instead.
