@@ -931,7 +931,38 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install detect-secrets
-        run: pip install detect-secrets
+        run: pip install detect-secrets pytest
+
+      - name: Guilt+innocence corpus (inline credential-table lint, 2026-09-27)
+        # Regression tripwire for scripts/lint_no_inline_credential_tables.py
+        # (the incident: apps/backend-rag/scripts/import_lkpm_q1_2026.py held
+        # 57 plaintext OSS login/password tuples detect-secrets never caught —
+        # no high-entropy token, no `KEY =` shape, just a repeated tuple
+        # ending in two strings next to a "password" comment). Guilt fixture
+        # proves the shape is caught; innocence fixture proves a same-shaped
+        # non-credential table (family #3: judge the entity, not a substring)
+        # is not.
+        run: |
+          python3 -m pytest scripts/tests/test_lint_no_inline_credential_tables.py -q
+
+      - name: Guilt+innocence corpus (LKPM loader + no-log-value, R3/R4 cure, 2026-09-27)
+        # Regression tripwire for import_lkpm_q1_2026.py's own two secret
+        # surfaces, missed by the guard test above because it never calls
+        # this script: (1) `_load_oss_credentials()` fails closed when the
+        # local credential file is absent and loads correctly when present;
+        # (2) `_process_rows()`'s per-row log line carries a presence-only
+        # marker, never the credential value — the gate that reviewed this
+        # class of PR measured 59/59 synthetic usernames landing whole in
+        # the log before this cure. Stubs `asyncpg` when the real package
+        # isn't installed (this job doesn't carry that dependency); no real
+        # credential value anywhere in the fixtures, only synthetic ones
+        # generated inline.
+        run: |
+          python3 -m pytest scripts/tests/test_import_lkpm_q1_2026_secrets.py -q
+
+      - name: Scan tracked *.py for inline credential-shaped tables
+        run: |
+          python3 scripts/lint_no_inline_credential_tables.py
 
       - name: Guilt+innocence corpus (L3 diff-scope + nightly-alert composer)
         # Self-contained regression tripwire for this job's own behavior — see
