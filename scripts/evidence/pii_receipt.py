@@ -104,7 +104,7 @@ def ls_tree_rows(repo: Path, rev: str) -> list[tuple[str, str, str]]:
 
 
 def ls_tree(repo: Path, rev: str) -> dict[str, str]:
-    return {path: sha for _mode, sha, path in ls_tree_rows(repo, rev)}
+    return {row[2]: row[1] for row in ls_tree_rows(repo, rev)}
 
 
 def in_scope(path: str, prefixes: list[str]) -> bool:
@@ -122,17 +122,21 @@ def tree_digest(repo: Path, rev: str) -> str:
 def read_blobs(repo: Path, shas: list[str]):
     proc = subprocess.Popen(["git", "-C", str(repo), "cat-file", "--batch"],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    stdin, stdout = proc.stdin, proc.stdout
+    if stdin is None or stdout is None:
+        proc.kill()
+        raise RuntimeError("git cat-file --batch opened without pipes")
     try:
         for sha in shas:
-            proc.stdin.write(sha.encode() + b"\n")
-            proc.stdin.flush()
-            header = proc.stdout.readline().split()
+            stdin.write(sha.encode() + b"\n")
+            stdin.flush()
+            header = stdout.readline().split()
             size = int(header[2])
-            data = proc.stdout.read(size)
-            proc.stdout.read(1)
+            data = stdout.read(size)
+            stdout.read(1)
             yield sha, data
     finally:
-        proc.stdin.close()
+        stdin.close()
         proc.wait()
 
 
@@ -316,6 +320,8 @@ class TermAction(argparse.Action):
             re.compile(value)
         except re.error as exc:
             raise argparse.ArgumentError(self, f"bad regex: {exc}") from exc
+        if option_string is None:
+            raise argparse.ArgumentError(self, "a term is an option, never a positional")
         terms.append((option_string.lstrip("-"), value))
         ns.terms = terms
 
@@ -419,7 +425,7 @@ def check_in(fresh: str, where: str) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="pii_receipt.py", description=__doc__.split("\n\n")[0])
+    ap = argparse.ArgumentParser(prog="pii_receipt.py", description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("--selftest", action="store_true", help="run the synthetic guilt/innocence suite")
     sub = ap.add_subparsers(dest="mode")
     common = argparse.ArgumentParser(add_help=False)
