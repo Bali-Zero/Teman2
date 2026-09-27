@@ -507,6 +507,101 @@ jobs:
           cat /tmp/workflow-patch.txt
 
       # -----------------------------------------------------------------
+      # Step 2d — HOTZONE_PATTERNS may only GROW below floor 3 (ruling
+      # 2026-09-27, prerequisite of codexpin PR-1 #7420). The list lives in
+      # scripts/evidence_pack_lint.py, which is not itself a hot zone, so a
+      # floor-1 PR could drop a pattern and floor that path at 1 for good.
+      # When the diff touches the linter, ANY merge-base (W102) pattern
+      # missing at HEAD floors the diff at 3 (applied in Step 3); adding
+      # changes nothing. Parsed with `ast`, which executes nothing — NOT
+      # model_routing_gate.py's regex, which reads a commented-out
+      # `# "fly.toml",` as still present (fine for that fail-open hook, a
+      # hole here). Inline, so the parser sits in a hot-zone file a floor-1
+      # PR cannot neuter. FAIL CLOSED to floor 3, never to a red job: no
+      # merge-base, a failed `git show`, a deleted/renamed linter, or a name
+      # not bound ONCE at module level to a tuple of str literals. Limit: a
+      # head that stops READING the tuple is invisible to any list check.
+      # Drift vs hot-zone-pr-gate.yml's case-block is pinned in the REQUIRED
+      # guard-conformance job (scripts/tests/test_harness_floor_hotzone_list.py),
+      # not here: a tuple-only addition IS drift, and must not floor.
+      # -----------------------------------------------------------------
+      - name: Hot-zone list may only grow below floor 3
+        if: steps.kill_switch.outputs.disabled != 'true'
+        id: hzlist
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main' }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -u
+          LINTER=scripts/evidence_pack_lint.py
+          if ! grep -qxF -- "$LINTER" /tmp/changed-files.txt; then
+            echo "floor3=false" >> "$GITHUB_OUTPUT"
+            echo "$LINTER is not in this diff — HOTZONE_PATTERNS unchanged by construction"
+            exit 0
+          fi
+          MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)"
+          if [[ -n "$MERGE_BASE" ]] \
+            && git show "$MERGE_BASE:$LINTER" > /tmp/hz-base.py \
+            && git show "$HEAD_SHA:$LINTER" > /tmp/hz-head.py \
+            && python3 - /tmp/hz-base.py /tmp/hz-head.py <<'PY'
+          import ast
+          import sys
+          NAME = "HOTZONE_PATTERNS"
+
+          def hotzone_patterns(src):
+              """The tuple of str literals NAME is bound to ONCE at module level, else None."""
+              try:
+                  tree = ast.parse(src)
+              except (SyntaxError, ValueError):
+                  return None
+              stores = []
+              for node in ast.walk(tree):
+                  if isinstance(node, (ast.Name, ast.Attribute)) and isinstance(node.ctx, ast.Load):
+                      continue
+                  if isinstance(node, ast.Name) and node.id == NAME:
+                      stores.append(node)
+                  elif isinstance(node, ast.alias) and node.name == "*":
+                      return None
+                  elif any(v == NAME or (isinstance(v, list) and NAME in v) for _, v in ast.iter_fields(node)):
+                      return None
+              if len(stores) != 1:
+                  return None
+              for stmt in tree.body:
+                  if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+                      target = stmt.targets[0]
+                  elif isinstance(stmt, ast.AnnAssign):
+                      target = stmt.target
+                  else:
+                      continue
+                  if target is stores[0] and isinstance(stmt.value, ast.Tuple):
+                      elts = stmt.value.elts
+                      if all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in elts):
+                          return tuple(e.value for e in elts)
+              return None
+
+          def main(argv):
+              base, head = (hotzone_patterns(open(p, encoding="utf-8").read()) for p in argv[1:3])
+              if base is None or head is None:
+                  side = "merge-base" if base is None else "HEAD"
+                  print(f"::warning::{NAME} at {side} is not one module-level tuple of string literals — floor 3")
+                  return 1
+              dropped = [p for p in base if p not in head]
+              for p in dropped:
+                  print(f"::warning::{NAME} drops {p!r} — a shrinking hot-zone list floors this diff at 3")
+              return 1 if dropped else 0
+
+          if __name__ == "__main__":
+              sys.exit(main(sys.argv))
+          PY
+          then
+            echo "floor3=false" >> "$GITHUB_OUTPUT"
+            echo "HOTZONE_PATTERNS did not shrink (merge-base $MERGE_BASE) — no floor raised"
+          else
+            echo "floor3=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::this diff touches $LINTER and HOTZONE_PATTERNS shrank or could not be proven not to — floor 3"
+          fi
+
+      # -----------------------------------------------------------------
       # Step 3 — compute the deterministic floor UNCONDITIONALLY (brief or
       # not). Adversarial-review finding 2026-08-10: the first cut only
       # computed this INSIDE the "brief present" branch, so a hot-zone diff
@@ -531,6 +626,7 @@ jobs:
         env:
           NETLINES_AVAILABLE: ${{ steps.netlines.outputs.available }}
           WFPATCH_AVAILABLE: ${{ steps.wfpatch.outputs.available }}
+          HZLIST_FLOOR3: ${{ steps.hzlist.outputs.floor3 }}
         run: |
           set -u
           # CORRECTED 2026-08-21 (independent cross-family review, Kimi K3,
@@ -571,6 +667,11 @@ jobs:
             echo "::notice::no workflow patch for this run — no first-party-pin exemption applied (floor computed from hot-zone paths exactly as before that exemption existed)"
           fi
           FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
+          # Step 2d: a shrunk (or unprovable) HOTZONE_PATTERNS floors at 3.
+          # `!= false`, not `== true`: an absent verdict is not a clean one.
+          if [[ "$HZLIST_FLOOR3" != "false" ]]; then
+            FLOOR=3
+          fi
           echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
           echo "deterministic floor for this diff: $FLOOR"
           # SOURCE (S2, 2026-08-27, gate round 2 on PR #5049): WHY the floor
@@ -599,6 +700,9 @@ jobs:
           else
             SOURCE="unknown"
             echo "::notice::the evidence_pack_lint.py copy in use (checked out from base) does not support --print-floor-source yet — floor_source reported as 'unknown' this run (no SIZE-term grace period granted); self-consistent once this PR merges and base's copy is updated"
+          fi
+          if [[ "$HZLIST_FLOOR3" != "false" ]]; then
+            case "$SOURCE" in none) SOURCE=path ;; size) SOURCE=both ;; esac
           fi
           echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
           echo "deterministic floor source for this diff: $SOURCE"
