@@ -450,7 +450,7 @@ receipts:
       <pack.yml> --body <body file passed to gh pr create --body-file>"
     result: |
       # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
-      # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:e19ee4b296ad8859 --pack PACK --body @text:eb00d2f2e80faf71
+      # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:e19ee4b296ad8859 --pack PACK --body @text:6e3d82613f166a5b
       mode: r66
       r66_line: "r66: hmac=e5501725d9a0 lines=22 residual_hits=0 hedge_hits=0"
       hedge_hit_lines: []
