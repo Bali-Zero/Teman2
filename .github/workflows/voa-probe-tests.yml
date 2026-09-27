@@ -52,14 +52,17 @@ name: VOA probe organ tests
 # notice that the corpus it wraps is broken.
 
 on:
-  pull_request:
+  # Non-required lint: runs once per merge (merge_group) and on push to main, not on every
+  # PR push. There is no pull_request trigger, and no filtered one either:
+  # scripts/ci/lint_trigger_symmetry.py forbids pull_request.paths beside merge_group. If
+  # this becomes a required context, pull_request must come back unfiltered (see the header
+  # and scripts/ci/check_required_workflow_conformance.py rules 3-4).
   push:
     branches:
       - main
     paths:
-      # `pull_request` above carries NO filter (see the header), so this list is no longer the
-      # symmetric twin of anything -- it is the standalone answer to "which pushes to main are
-      # worth re-running this for". It keeps this file in the list: a direct push to main that
+      # This list is the standalone answer to "which pushes to main are worth re-running
+      # this for". It keeps this file in the list: a direct push to main that
       # edits only this workflow must still run it.
       - ".github/workflows/voa-probe-tests.yml"
       - "scripts/probes/voa_journey_probe.mjs"
@@ -69,6 +72,7 @@ on:
       - "infra/launchagents/com.nuzantara.voa-probe.plist"
       - "infra/launchagents/install_voa_probe.sh"
   merge_group:
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -22,7 +22,19 @@ name: token-lint
 # so running on every PR blocks nothing innocent.
 
 on:
+  # Non-required lint: pull_request starts a run only when the PR touches the scanner's
+  # scope (SCOPED_PREFIXES in scripts/token_lint.py), the scanner or its proof suite. No
+  # merge_group and no workflow_dispatch: the job diffs against `github.base_ref`, which
+  # only exists on pull_request events. scripts/ci/lint_trigger_symmetry.py also forbids
+  # merge_group beside pull_request.paths. A required context needs pull_request unfiltered.
   pull_request:
+    paths:
+      - "apps/mouth/src/app/(workspace)/**"
+      - "apps/mouth/src/app/portal/**"
+      - "scripts/token_lint.py"
+      - "scripts/tests/test_token_lint.py"
+      - "scripts/tests/conftest.py"
+      - ".github/workflows/token-lint.yml"
 
 permissions:
   contents: read

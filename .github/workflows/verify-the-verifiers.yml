@@ -15,7 +15,27 @@ name: Verify the Verifiers (meta-gate)
 # are gated on its output. On a path-miss PR the job ENDS success (sentinel).
 # The push trigger keeps its paths filter (push only fires when work is needed).
 on:
-  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (same set as the "Did relevant paths change?" step below). No merge_group:
+  # scripts/ci/lint_trigger_symmetry.py forbids it beside pull_request.paths. A required
+  # context needs pull_request unfiltered again (check_required_workflow_conformance.py).
+  pull_request:
+    paths:
+      - "scripts/verify_the_verifiers.py"
+      - "scripts/verify_the_verifiers_gates.yaml"
+      - ".github/verify-the-verifiers.sha256"
+      - ".github/workflows/verify-the-verifiers.yml"
+      - ".github/workflows/hot-zone-pr-gate.yml"
+      - ".github/workflows/token-lint.yml"
+      - "scripts/token_lint.py"
+      - "scripts/tests/test_token_lint.py"
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/test_verify_the_verifiers.py"
+      - "scripts/tests/test_wr3_reflexion_synthesis.py"
+      - "scripts/wr3_reflexion_synthesis.py"
+      - "scripts/wr2_reflexion_synthesis.py"
+      - "scripts/test_wr2_reflexion_cabling.py"
+      - "scripts/lib/reflexion.py"
   push:
     branches: [main]
     paths:
@@ -26,6 +46,7 @@ on:
       - "scripts/token_lint.py"
       - "scripts/tests/test_token_lint.py"
       - "scripts/tests/conftest.py"
+  workflow_dispatch:
 
 concurrency:
   # Per-PR/per-ref for every author. A shared per-workflow group keyed on

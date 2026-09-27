@@ -39,7 +39,25 @@ name: worker-plane review panel tests
 # workflow was verified against.
 
 on:
-  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (same set as the push filter below and the "Did worker-plane review surfaces change?"
+  # step). No merge_group: scripts/ci/lint_trigger_symmetry.py forbids it beside
+  # pull_request.paths. A required context needs pull_request unfiltered again
+  # (check_required_workflow_conformance.py).
+  pull_request:
+    paths:
+      - "scripts/check_worker_plane_review.py"
+      - "scripts/launch_worker_plane_review_panel.py"
+      - "scripts/freeze_worker_plane_review.py"
+      - "scripts/detect_secrets_auto_triage.py"
+      - "scripts/tests/test_check_worker_plane_review.py"
+      - "scripts/tests/test_launch_worker_plane_review_panel.py"
+      - "scripts/tests/test_worker_plane_review_packet.py"
+      - "scripts/tests/test_v3_final_gate_parity.py"
+      - "scripts/tests/test_detect_secrets_auto_triage.py"
+      - "scripts/tests/test_gate_seat_conformance.py"
+      - "docs/rules/RULINGS.md"
+      - ".github/workflows/worker-plane-review-tests.yml"
   push:
     branches: [main]
     paths:

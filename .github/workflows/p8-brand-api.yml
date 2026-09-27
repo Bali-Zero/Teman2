@@ -13,7 +13,19 @@ name: P8 Brand-API Gate
 # the pending-forever trap (W69). The relevant-paths decision lives in the
 # "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
 on:
-  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (same set as the "Did relevant paths change?" step below). No merge_group:
+  # scripts/ci/lint_trigger_symmetry.py forbids it beside pull_request.paths. A required
+  # context needs pull_request unfiltered again (check_required_workflow_conformance.py).
+  pull_request:
+    paths:
+      - "scripts/brand_api_gen.py"
+      - "scripts/brand_token_lint.py"
+      - "scripts/test_brand_api.py"
+      - "packages/core/components/**"
+      - "packages/design-system/brand-api/**"
+      - "docs/design/components-catalog.md"
+      - ".github/workflows/p8-brand-api.yml"
   workflow_dispatch:
 
 # Suffixed by github.run_id, which is unique per run and therefore never
