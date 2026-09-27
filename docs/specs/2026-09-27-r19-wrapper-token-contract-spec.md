@@ -1,7 +1,8 @@
 # R19 paper wrapper — token contract for the funnel waves (R1-R6)
 
-Status: PROPOSED 2026-09-27. Spec only, no code in this PR. Consumers: the v2 wrapper lane, then the four
-wave rebases (kbli, oracle, studio, voa) that share the local "R19 Direction A" foundation `8cb6914f80`.
+Status: PROPOSED 2026-09-27, revised after `gate-7539.md` (G1, n1, n2). Spec plus the R4 census script
+`scripts/r19_contrast_census.mjs`; no product code. Consumers: the v2 wrapper lane, then the four wave
+rebases (kbli, oracle, studio, voa) that share the local "R19 Direction A" foundation `8cb6914f80`.
 
 Why: PR #7508 (kbli, first wave) took three REWORK rounds on ONE cause and was suspended under Builder
 Contract §1 ("three reds for the SAME cause … write the spec"). The paper wrapper (`.r19-direction-a` +
@@ -44,23 +45,29 @@ and global classes.
 - **R1.1 Closed set.** CONTRACT(W) = READS(W) − NON_COLOUR − INVARIANTS(W), and CONTRACT(W) ⊆
   WRAPPER_DEFINED(W). NON_COLOUR is one exact name regex (`--space-*`, `--font*`, `--text-(xs|sm|base|lg|Nxl)`,
   `--leading-*`, `--tracking-*`, `--radius*`, `--r19-radius-*`, `--public-header-height`, `--z-*`,
-  `--duration-*`, `--ease-*`, `--tw-*`) and SHALL match no colour token. No prefix exemption: `--kbli-*`
-  passes because `.kbli-paper` declares it on the wrapper, not because of its name.
+  `--duration-*`, `--ease-*`, `--tw-*`) and SHALL match no theme colour token. `--tw-*` (which includes
+  `--tw-ring-color`) is exempt because Tailwind declares and reads it on the same element, so it never
+  inherits a `:root` theme value; it is not a theme token. No prefix exemption: `--kbli-*` passes because
+  `.kbli-paper` declares it on the wrapper, not because of its name.
 - **R1.2 Invariants.** A colour token MAY stay off the wrapper only if the wave's INVARIANTS list names it
   with a reason, it is declared at `:root` as a literal, and no theme, attribute or class rule re-declares
   it. kbli needs three: `--accent-whatsapp-ink` (`semantic.css`), `--color-green-50`, `--color-green-500`
   (`primitives.css`). An entry failing any condition is itself a violation.
-- **R1.3 Literal vs `var()`.** On the wrapper, a value equal to an `R19_VARS` value SHALL be
-  `var(--that-key)`. A literal is allowed only when no `R19_VARS` key carries the value (hover `#843719`,
+- **R1.3 Literal vs `var()`.** Scope: the inline map's own entries (spread sources excluded) and every
+  custom property declared by a rule whose selector starts with a wrapper class (the wave layer and R1.5
+  neutralisers). In that scope a value equal to an `R19_VARS` value SHALL be `var(--that-key)`, and a
+  retired pre-unification value (`#58626b`, `#a8aca9`) is forbidden anywhere, whole or inside a compound
+  value. Other literals are allowed only when no `R19_VARS` key carries the value (hover `#843719`,
   `--r19-control-border`, the `--kbli-*` risk and PMA hues). A `var()` declared ON the wrapper resolves
   against the wrapper's own values; the alias trap exists only for aliases declared at `:root` or on an
   ancestor, so the `r19Vars.ts` comment calling `--foreground: var(--text-primary)` a trap SHALL be
-  corrected. The rule binds the wave layer too.
-  - Guilt at `94b588cda1`: `.kbli-paper` declares 60 literals. 22 equal an `R19_VARS` value, and six keep
-    the pre-unification values B2 removed only from `r19Vars.ts`: `#58626b` ×4 (`--foreground-secondary`,
-    `--foreground-muted`, `--kbli-text-secondary`, `--kbli-text-muted`) and `#a8aca9` ×2
-    (`--border-hover`, `--kbli-border-hover`), where main has `#435464` and `#a7a69f`.
-  - Innocence: the same block with those literals written as `var(--<R19 key>)` reports 0.
+  corrected. R4 cannot backstop this rule: `#58626b` on `#F7F4EE` is 5.67:1, above AA.
+  - Guilt at `94b588cda1`: 32 flagged declarations, three disjoint sets. 22 whole-value copies of an
+    `R19_VARS` value in `.kbli-paper`; 7 retired values, 6 whole (`#58626b` ×4 in `--foreground-secondary`,
+    `--foreground-muted`, `--kbli-text-secondary`, `--kbli-text-muted`; `#a8aca9` ×2 in `--border-hover`,
+    `--kbli-border-hover`) and 1 inside `--kbli-shadow-card-hover`; 3 in the R1.5 neutraliser. At
+    `0e1f773419` the inline map adds 5 whole-value copies (gate-7508's round-2 B2 residual): 37.
+  - Innocence: the full cure (R3.3) reports 0.
 - **R1.4 Portals.** Custom properties inherit through the DOM, not the React tree. Portal content opened
   from SURFACE(W) (Radix `Dialog.Portal`, `createPortal`) SHALL carry the wrapper on its own root, as main
   does for its drawer. At `94b588cda1` the kbli sector offcanvas does. The `MobileNav` drawer opens dark,
@@ -68,8 +75,8 @@ and global classes.
 - **R1.5 Descendant re-scope.** A rule outside the wrapper that re-declares a contract token on a
   descendant SHALL be neutralised by a wrapper-scoped rule written in `var()`. `[data-funnel="kbli"]` in
   `semantic.css` sets `--accent-funnel: #eab308` and `--text-on-accent: #1a1208`. The existing neutraliser
-  `.kbli-paper [data-funnel="kbli"]` restates `#a44b36`/`#ffffff`; per R1.3 these become
-  `var(--r19-copper)` and `var(--r19-cta-ink)`.
+  `.kbli-paper [data-funnel="kbli"]` restates `#a44b36` ×2 and `#ffffff`; per R1.3 these become
+  `var(--r19-copper)` and `var(--r19-cta-ink)`, and the probe flags them until they do.
 
 ## R2 — main's R19 global class rules are reached, never copied
 
@@ -82,7 +89,8 @@ and global classes.
   own visual check. `<R19Presentation>` does NOT work: `isR19Route("/kbli")` is false. Copying the
   declarations into a funnel stylesheet is forbidden.
   - Guilt at `94b588cda1`: `.brand-tagline` (v2 `Footer`) is unreached, which is B4's tagline.
-  - Innocence: a wrapper importing `R19_CHROME_CLASS` reports 0.
+  - Innocence: a wrapper that imports `R19_CHROME_CLASS` AND applies it reports 0. A comment naming it, or
+    an import without an application, still reports the class unreached.
 - **R2.2** A component in SURFACE(W) branching on `useR19()` renders its NON-R19 branch under the wrapper.
   That branch SHALL paint only contract tokens, with a literal allowed only as a `var()` fallback (the B1
   cure's `--nav-icon-*`). `MobileNav` is the only such file in kbli's surface.
@@ -91,25 +99,33 @@ and global classes.
 
 - **R3.1** The v2 lane SHALL ship a vitest guard in `apps/mouth` computing SURFACE, READS and
   WRAPPER_DEFINED as defined above for every wave in one table. It fails on any CONTRACT member outside
-  WRAPPER_DEFINED (R1.1), any bad invariant (R1.2), any wrapper literal equal to an `R19_VARS` value
-  (R1.3), and any unreached R2.1 class. The reference probe at the end of this file is normative: when the
-  vitest and the probe disagree on a tree, the probe holds until this spec is amended.
-- **R3.2 Guilt**, measured with the probe on 2026-09-27:
-  - `94b588cda1` reports `--color-text-secondary` and `--surface-subtle`, the two B4 tokens, both first
-    read by `packages/core/components/TrustBand.tsx`. It also reports the latent `--error` (destructive
-    variant of `components/ui/button.tsx`, reached through kbli's `error.tsx` pages), `.brand-tagline` and
-    22 copied literals, and exits 1.
-  - `0e1f773419` additionally reports `--foreground`, which is B3.
-  - Deleting `--nav-icon-color` from a cured tree reports it, which is B1's token.
-- **R3.3 Innocence.** A cured copy of `94b588cda1` exits 0: it adds `--color-text-secondary`,
-  `--surface-subtle` and `--error` to the map, imports `R19_CHROME_CLASS` and rewrites the 22 literals. On
-  the head the non-colour exemptions are exactly `--font-size-2xl`, `--public-header-height` and
+  WRAPPER_DEFINED (R1.1), any bad invariant (R1.2), any R1.3 literal in its scope, and any unreached R2.1
+  class. The reference probe at the end of this file is normative. When the vitest and the probe disagree
+  on a tree, the stricter verdict holds and the weaker implementation is fixed before the wave merges.
+- **R3.2 Guilt**, measured with the probe on 2026-09-27 (counts are undefined / unreached / bad
+  invariants / copied literals):
+  - `94b588cda1`: 3 / 1 / 0 / 32, exit 1. The undefined tokens are `--color-text-secondary` and
+    `--surface-subtle`, the two B4 tokens, both first read by `packages/core/components/TrustBand.tsx`,
+    and the latent `--error` (destructive variant of `components/ui/button.tsx`, reached through kbli's
+    `error.tsx` pages). The unreached class is `.brand-tagline`.
+  - `0e1f773419`: 4 / 1 / 0 / 37, exit 1. The extra token is `--foreground`, which is B3.
+  - Five mutations of the full cure each exit 1: a comment-only `R19_CHROME_CLASS` and an import without
+    an application (unreached 1); an inline-map literal copy and one `#58626b` put back (copied 1);
+    deleting `--nav-icon-color`, which is B1's token (undefined 1).
+- **R3.3 Innocence.** The full cure of `94b588cda1` exits 0 with 0 / 0 / 0 / 0. It adds
+  `--color-text-secondary`, `--surface-subtle` and `--error` to the map, imports and applies
+  `R19_CHROME_CLASS`, rewrites the 22 copies as `var(--<R19 key>)`, the 7 retired values as
+  `var(--text-secondary)` / `var(--border-strong)`, and the 3 neutraliser literals as `var(--r19-copper)` /
+  `var(--r19-cta-ink)`. The round-1 cure of this spec, which rewrote only the 22, still reports 10. On the
+  head the non-colour exemptions are exactly `--font-size-2xl`, `--public-header-height` and
   `--space-3/4/6`. Among the `R19_VARS` keys NON_COLOUR matches only `--font-sans` and `--font-serif`, and
   it matches no `--foreground*`, `--color-*`, `--surface-*`, `--bz-*`, `--nav-*` or
   `--text-(primary|secondary|on-accent)` name; the vitest SHALL pin that.
 - **R3.4 Limits.** R3 sees token reads, not literal colours. B1's original `#ffffff` would have passed it,
-  as would Tailwind palette utilities (`text-white`) and class names built at runtime. R4 owns those. A
-  green R3 is necessary, not sufficient.
+  as would Tailwind palette utilities (`text-white`) and class names built at runtime. A token read both
+  bare and as a fallback in the same file is subtracted as fallback-only. The probe parses a wrapper that
+  applies `style={<exported map>}`; any other shape exits with `R3-NO-WRAPPER-MAP`, and a tree without
+  main's R19 exits with `R3-MISSING`. R4 owns the rest. A green R3 is necessary, not sufficient.
 
 Run the probe from this file. After R6 the `--wrapper` is the single helper for every wave:
 
@@ -130,6 +146,20 @@ python3 /tmp/r19_wrapper_probe.py --root <tree> --route apps/mouth/src/app/kbli 
 
 ## R4 — contrast census is the acceptance
 
+- **R4.0 The script.** `scripts/r19_contrast_census.mjs` (Playwright, shipped with this spec) implements
+  R4.2-R4.4 with the R4.3 self-test built in. Every wave uses it; none writes its own census:
+
+```bash
+node scripts/r19_contrast_census.mjs --candidate <preview origin> [--reference https://balizero.com] \
+  --route /kbli --route /kbli/56101 --route '/kbli|click=a[href="/kbli/sectors/I"]' \
+  --control 'button[aria-label="Open menu"]' --viewports 1440,390 --json census.json
+```
+
+Exit 0 = self-test PASS and new_failures 0; 1 = new failures, each printed; 2 = self-test FAIL or usage.
+`VERCEL_AUTOMATION_BYPASS_SECRET`, when set, is sent only to the candidate origin and never printed.
+Main's `apps/mouth/e2e/support/contrast.ts` `parseColor` reads `oklch(0.984 0.003 247.858)` as
+`[0.984, 0.003, 247.858]`, which is the rounds 1-2 bug, and SHALL NOT be used for R4.
+
 - **R4.1 Routes**, at 1440 and 390 px, on the candidate and on `https://balizero.com` as reference.
   kbli: `/kbli`, `/kbli/56101`, `/kbli/47111`, `/kbli/68111`, `/kbli/sectors`, `/kbli/sectors/I`,
   `/kbli/builder`, `/kbli/decoder`, and the sector panel opened from `/kbli`. oracle: `/visa-oracle`,
@@ -137,26 +167,35 @@ python3 /tmp/r19_wrapper_probe.py --root <tree> --route apps/mouth/src/app/kbli 
   `/visa/voa/auth/continue`, `/visa/voa/<hash>`, `/visa/voa/checkout/<resultId>`,
   `/visa/voa/upload/<resultId>`, `/visa/voa/orders/<orderId>` and its `/return`. Dynamic ids SHALL be
   synthetic (not-found/expired state or a shipped fixture), never a real client's (Builder Contract §4).
-- **R4.2 Method.** Visible text = elements with a non-empty direct text node, a non-empty client rect, and
-  no `visibility: hidden` or zero effective opacity. Every computed colour (`oklch()`, `lab()`,
-  `color-mix()` included) is normalised to sRGB by painting it on a 1×1 canvas and reading the pixel. Text
-  alpha is composited over the effective background, found by compositing ancestor `background-color`s
-  until opaque; a `background-image` on that walk moves the element to a reported, uncounted
-  "image-backed" list. Thresholds: WCAG 2.x AA 4.5:1, or 3:1 for text ≥24 px or ≥18.66 px bold; named
-  non-text controls (the menu toggle) ≥3:1 (SC 1.4.11).
-- **R4.3 Method innocence, first, every session.** Rounds 1-2 parsed `oklch(...)` backgrounds as rgb
+  Named controls: every wave passes `button[aria-label="Open menu"]` (B1's toggle) plus its own.
+- **R4.2 Method.** The page first settles: reduced motion, one scroll pass for reveals, finite animations
+  finished, infinite ones frozen at 0, fonts ready. Without that, two loads of production `/kbli`
+  differed by 10 elements (measured). Visible text = elements with a non-empty direct text node, a
+  non-empty client rect, and no `visibility: hidden` or zero effective opacity. Every computed colour
+  (`oklch()`, `lab()`, `color-mix()` included) is normalised to sRGB by painting it on a 1×1 canvas and
+  reading the pixel. Foreground alpha, times the effective opacity, is composited over the effective
+  background, found by compositing ancestor `background-color`s until opaque; a `background-image` on
+  that walk moves the element to a reported, uncounted "image-backed" list. Thresholds: WCAG 2.x AA
+  4.5:1, or 3:1 for text ≥24 px or ≥18.66 px bold.
+- **R4.3 Method innocence, first, every run.** Rounds 1-2 parsed `oklch(...)` backgrounds as rgb
   numbers, invented "PMA unverified 1.43" and filed the real B4 as "pre-existing". The census SHALL start
   with a self-test: `oklch(0.984 0.003 247.858)` → `[248,250,252]`; `rgba(255,255,255,.68)` over
   `#F7F4EE` → ≈1.07:1; a planted `<span style="color:oklch(1 0 0)">` on paper counted as a failure, then
   removed. A census whose self-test fails reports nothing.
-- **R4.4 Acceptance.** new_failures(W) = elements below AA on the candidate whose text key (tag + trimmed
-  text) is not below AA on the reference, over all routes and viewports. It SHALL be 0. Remaining
-  failures are listed as pre-existing on production, with both ratios.
+- **R4.4 Acceptance.** The population is visible text plus the named non-text controls. Text is keyed
+  by tag + trimmed text against the R4.2 thresholds; a control is keyed by tag + accessible name against
+  3:1 (SC 1.4.11). new_failures(W) = candidate failures whose key does not fail on the reference, over
+  all routes and viewports. It SHALL be 0. Remaining failures stay in the `--json` report as pre-existing
+  on production, with both ratios.
+  - Guilt: a local page with a TrustBand-like `oklch(1 0 0 / 0.68)` label, a white tagline and a white
+    toggle on paper reports new 3 (1.07, 1.10, 1.10:1), exit 1.
+  - Innocence: the same page as candidate and reference reports 0, exit 0. Production `/kbli` and
+    `/kbli/56101` as both sides, run twice at both viewports, report 0 with identical counts.
 
 ## R5 — evidence and `Bites:` for a wave PR
 
-- **R5.1** Pack and body carry, at the FINAL head: the probe's summary line with exit 0, the R4 self-test
-  result, and new_failures = 0 per route × viewport. If the head's own preview was CANCELED by the Ignored
+- **R5.1** Pack and body carry, at the FINAL head: the probe's summary line with exit 0, and the census
+  script's `selftest … PASS` lines, per-route `census` lines and `new_failures=0`. If the head's own preview was CANCELED by the Ignored
   Build Step (evidence-only commit), the census runs on the latest READY deployment whose `apps/` and
   `packages/` tree hashes equal the head's, and the pack says so.
 - **R5.2** `Bites:` consumer = visitors of W's funnel routes. The observation is post-promote, because
@@ -169,7 +208,9 @@ python3 /tmp/r19_wrapper_probe.py --root <tree> --route apps/mouth/src/app/kbli 
 ## R6 — one wrapper implementation, one rebase order
 
 - **R6.1 One implementation.** After the v2 lane, a single helper under `apps/mouth/src/lib/theme/`
-  applies the paper wrapper (classes + map) for route wrappers and portals (R1.4); besides the map's own
+  applies the paper wrapper (classes + `style={<exported map>}`, the shape the probe parses; oracle's
+  non-exported alias `ORACLE_ROOT_STYLE` would read as an empty map) for route wrappers and portals
+  (R1.4); besides the map's own
   module it is the only non-test file referencing the map. At `94b588cda1` there are two application
   sites (`kbli/layout.tsx`, `KBLISectorOffcanvas.tsx`). Studio restates a map key inline
   (`--border-strong`, `StudioApp.tsx:772`) and reads map values at import time into a
@@ -198,13 +239,13 @@ python3 /tmp/r19_wrapper_probe.py --root <tree> --route apps/mouth/src/app/kbli 
 
 ## Acceptance, by command
 
-| Rule  | Command                                                                       | Required at a wave head             |
-| ----- | ----------------------------------------------------------------------------- | ----------------------------------- |
-| R1-R3 | the probe with the wave's row                                                 | exit 0, all four counts 0           |
-| R4    | census self-test, then candidate and production census                        | self-test PASS, new_failures 0      |
-| R5    | the PR body's `Bites:` line                                                   | post-promote census, named elements |
-| R6.1  | `git grep -l <map name> -- apps/mouth/src ':!*.test.*'`                       | the map module and the helper only  |
-| R6.2  | `git ls-tree -r --name-only HEAD apps/mouth/src/lib/theme` filtered for fonts | no `r19Fonts.ts`, no `fonts/`       |
+| Rule  | Command                                                                       | Required at a wave head                |
+| ----- | ----------------------------------------------------------------------------- | -------------------------------------- |
+| R1-R3 | the probe with the wave's row                                                 | exit 0, all four counts 0              |
+| R4    | `node scripts/r19_contrast_census.mjs` with the wave's routes and controls    | exit 0: self-test PASS, new_failures 0 |
+| R5    | the PR body's `Bites:` line                                                   | post-promote census, named elements    |
+| R6.1  | `git grep -l <map name> -- apps/mouth/src ':!*.test.*'`                       | the map module and the helper only     |
+| R6.2  | `git ls-tree -r --name-only HEAD apps/mouth/src/lib/theme` filtered for fonts | no `r19Fonts.ts`, no `fonts/`          |
 
 ## Reference probe (normative for R3)
 
@@ -218,6 +259,7 @@ ap.add_argument("--wrapper-class", action="append", required=True)
 ap.add_argument("--invariant", action="append", default=[])
 a = ap.parse_args()
 R = pathlib.Path(a.root).resolve(); SRC = R / "apps/mouth/src"; CORE = R / "packages/core"
+for need in (SRC / "components/r19/presentation.ts", R / a.wrapper): need.is_file() or sys.exit(f"R3-MISSING {need}: rebase on origin/main first (R6.2) or fix --wrapper")
 NONCOLOUR = re.compile(r"^--(space|font|text-(xs|sm|base|lg|\d*xl)$|leading|tracking|radius|r19-radius|public-header-height|z-|duration|ease|tw-)")
 TW = r"(?<![\w-])(?:[\w-]+:)*(?:text|bg|border(?:-[trblxy])?|ring|fill|stroke|from|via|to|outline|decoration|divide|placeholder|caret|accent)-({})(?:/[\d.]+)?(?![\w-])"
 ROOTSEL = {":root", "html", ":host", "@theme", "@theme inline"}
@@ -267,15 +309,24 @@ def objkeys(name, frm):
     return set()
 m = re.search(r"style=\{(\w+)\}", wsrc) or sys.exit("R3-NO-WRAPPER-MAP: --wrapper applies no style={IDENT}")
 D = objkeys(m.group(1), wf)
+def ownlits(name, frm):
+    for f in [frm] + [p for s in re.findall(r"from\s+[\"']([^\"']+)", rd(frm)) if (p := res(s, frm))]:
+        if (mm := re.search(r"export const " + name + r"\s*=\s*\{([\s\S]*?)\n\}", rd(f))):
+            return re.findall(r"\"(--[\w-]+)\"\s*:\s*\"([^\"]+)\"", mm.group(1))
+    return []
 wsel = {"." + c for c in a.wrapper_class}
 tsx = "\n".join(rd(f) for f in seen if f.suffix != ".css")
 used = lambda c: re.search(r"[\"'`][^\"'`]*(?<![\w-])" + re.escape(c) + r"(?![\w-])", tsx)
 R19HEX = {v.lower() for v in re.findall(r"\"(#[0-9A-Fa-f]{6})\"", rd(SRC / "components/r19/presentation.ts"))}
+RETIRED = {"#58626b", "#a8aca9"}
+def copy(v): v = v.strip().lower(); return v in R19HEX or any(h in v for h in RETIRED)
 ROOT, LOCAL, THEMED, extra, COPIED = {}, set(), set(), [], set()
+COPIED |= {(k, v) for k, v in ownlits(m.group(1), wf) if copy(v)}
 for f in GLOBAL | {s for s in seen if s.suffix == ".css"}:
     for sels, body in rules(rd(f)):
+        if not sels & wsel and any(x.split()[0] in wsel for x in sels if x.split()): COPIED |= {(k, v.strip()) for k, v in decls(body).items() if copy(v)}
         if sels & wsel:
-            D |= set(decls(body)); COPIED |= {(k, v.strip()) for k, v in decls(body).items() if v.strip().lower() in R19HEX}
+            D |= set(decls(body)); COPIED |= {(k, v.strip()) for k, v in decls(body).items() if copy(v)}
         elif isroot(sels): ROOT.update(decls(body))
         else:
             (LOCAL if f in seen else THEMED).update(decls(body))
@@ -292,7 +343,10 @@ for f, src in [(f, rd(f)) for f in sorted(seen)] + extra:
 bad_inv = [t for t in a.invariant if t not in ROOT or "var(" in ROOT[t] or t in THEMED or t in D]
 U = {t: f for t, f in reads.items() if t not in D and not NONCOLOUR.match(t) and t not in a.invariant and not (t in LOCAL and t not in ROOT and t not in THEMED)}
 G = set(re.findall(r"\.root\s+:global\(\.([\w-]+)", rd(SRC / "components/r19/R19Presentation.module.css")))
-V2 = [] if re.search(r"R19Presentation\.module\.css|R19_CHROME_CLASS", wsrc) else sorted(c for c in G if used(c))
+wcode = re.sub(r"(?m)^\s*//.*$", "", wsrc)
+imp = re.search(r"^\s*import\s+(?:\{[^}]*\bR19_CHROME_CLASS\b[^}]*\}|(\w+))\s+from\s+[\"'][^\"']*(?:presentation|R19Presentation\.module\.css)[\"']", wcode, re.M)
+reached = bool(imp) and len(re.findall(r"\bR19_CHROME_CLASS\b" if not imp.group(1) else r"\b" + imp.group(1) + r"\.root\b", wcode)) >= (2 if not imp.group(1) else 1)
+V2 = [] if reached else sorted(c for c in G if used(c))
 print(f"surface_files={len(seen)} global_class_rules={len(extra)} wrapper_defined={len(D)} reads={len(reads)}")
 for t in sorted(U): print(f"R3-UNDEFINED {t} root_default={'yes' if t in ROOT else 'no'} first_reader={U[t]}")
 for c in V2: print(f"R2-UNREACHED .{c}")
