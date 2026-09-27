@@ -15,32 +15,37 @@ export const metadata: Metadata = {
 export default function TermsOfServicePage() {
   return (
     <div
-      className="min-h-screen"
+      className="max-w-3xl mx-auto px-6 md:px-10"
       style={{
-        background: "var(--bz-base, #0c0c0e)",
-        color: "var(--bz-text-1, #f5f5f5)",
+        padding:
+          "clamp(56px, 7vw, 96px) clamp(24px, 4vw, 40px) clamp(48px, 6vw, 80px)",
+        fontVariantLigatures: "none",
       }}
     >
-      <div className="max-w-3xl mx-auto px-6 py-16 space-y-10">
-        <header>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Terms of Service
-          </h1>
-          <p
-            className="mt-2 text-sm"
-            style={{ color: "var(--bz-text-2, #a0a0a0)" }}
-          >
-            Last updated: April 2026
-          </p>
-        </header>
+      <header className="mb-10">
+        <div
+          className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-4"
+          style={{ color: "var(--r19-copper)" }}
+        >
+          Legal
+        </div>
+        <h1
+          className="font-extrabold tracking-tight mb-3"
+          style={{
+            fontSize: "clamp(30px, 4.5vw, 52px)",
+            lineHeight: 1.08,
+            color: "var(--text-primary)",
+          }}
+        >
+          Terms of Service
+        </h1>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+          Last updated: April 2026
+        </p>
+      </header>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            1. Services
-          </h2>
+      <div style={{ color: "var(--text-secondary)", maxWidth: "72ch" }}>
+        <Section title="1. Services" first>
           <p>
             Bali Zero provides visa processing, company setup (PT PMA), tax
             compliance, and property due diligence services in Indonesia. All
@@ -48,15 +53,9 @@ export default function TermsOfServicePage() {
             assistant (Zantara) provides information and drafts; licensed staff
             review and sign all filings.
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            2. Engagement
-          </h2>
+        <Section title="2. Engagement">
           <p>
             A service engagement begins when you confirm a scope of work and
             make payment. Timelines are estimates; Indonesian government
@@ -64,15 +63,9 @@ export default function TermsOfServicePage() {
             informed at every step via your chosen channel (WhatsApp, email,
             Telegram).
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            3. Fees and Payments
-          </h2>
+        <Section title="3. Fees and Payments">
           <ul className="list-disc ml-6 space-y-2 text-sm">
             <li>
               All fees are listed on our service pages in USD. Government fees
@@ -87,15 +80,9 @@ export default function TermsOfServicePage() {
               fees paid on your behalf are non-refundable.
             </li>
           </ul>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            4. Your Responsibilities
-          </h2>
+        <Section title="4. Your Responsibilities">
           <ul className="list-disc ml-6 space-y-1 text-sm">
             <li>Provide accurate, complete documents and information.</li>
             <li>Respond to our requests within reasonable timeframes.</li>
@@ -104,15 +91,9 @@ export default function TermsOfServicePage() {
               that violate regulations.
             </li>
           </ul>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            5. AI Disclaimer
-          </h2>
+        <Section title="5. AI Disclaimer">
           <p>
             Zantara AI provides information based on Indonesian regulations and
             our knowledge base. AI-generated content is reviewed by licensed
@@ -120,50 +101,32 @@ export default function TermsOfServicePage() {
             advice. For binding legal opinions, we connect you with our licensed
             notary or tax consultant.
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            6. Limitation of Liability
-          </h2>
+        <Section title="6. Limitation of Liability">
           <p>
             Our liability is limited to the fees paid for the specific service
             in question. We are not liable for delays caused by Indonesian
             government agencies, incomplete documents from clients, or changes
             in regulation after filing.
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            7. Governing Law
-          </h2>
+        <Section title="7. Governing Law">
           <p>
             These terms are governed by the laws of the Republic of Indonesia.
             Disputes shall be resolved through the Denpasar District Court
             (Pengadilan Negeri Denpasar).
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-4">
-          <h2
-            className="text-xl font-semibold"
-            style={{ color: "var(--bz-accent-warm, #d4845a)" }}
-          >
-            8. Contact
-          </h2>
+        <Section title="8. Contact">
           <p className="text-sm">
             <strong>Questions about these terms:</strong>{" "}
             <a
               href="mailto:legal@balizero.com"
               className="underline"
-              style={{ color: "var(--bz-accent-warm, #d4845a)" }}
+              style={{ color: "var(--r19-copper)" }}
             >
               legal@balizero.com
             </a>
@@ -173,16 +136,45 @@ export default function TermsOfServicePage() {
             <a
               href="/privacy"
               className="underline"
-              style={{ color: "var(--bz-accent-warm, #d4845a)" }}
+              style={{ color: "var(--r19-copper)" }}
             >
               Privacy Policy
             </a>
           </p>
-          <p className="text-sm" style={{ color: "var(--bz-text-2, #a0a0a0)" }}>
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
             Bali Zero · Bali, Indonesia
           </p>
-        </section>
+        </Section>
       </div>
     </div>
+  );
+}
+
+function Section({
+  title,
+  first,
+  children,
+}: {
+  title: string;
+  first?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="space-y-4 py-8"
+      style={
+        first
+          ? { paddingTop: 0 }
+          : { borderTop: "1px solid var(--border-subtle)" }
+      }
+    >
+      <h2
+        className="text-xl font-bold tracking-tight"
+        style={{ color: "var(--text-primary)" }}
+      >
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }

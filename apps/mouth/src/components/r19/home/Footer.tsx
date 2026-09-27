@@ -63,9 +63,9 @@ export function Footer() {
         <div className={styles.base}>
           <span>{"© 2026 Bali Zero"}</span>
           <div>
-            <a href="/v2/privacy">{"Privacy"}</a>
-            <a href="/v2/terms">{"Terms"}</a>
-            <a href="/v2/cookies">{"Cookies"}</a>
+            <a href="/privacy">{"Privacy"}</a>
+            <a href="/terms">{"Terms"}</a>
+            <a href="/cookies">{"Cookies"}</a>
           </div>
         </div>
       </div>
