@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from eventbus import EventSubscriber, beat, list_all_heartbeats, start_background_beater
-from eventbus._tg_curl import curl_send
+from eventbus.meta_dispatcher import curl_send
 from eventbus.publisher import _client
 
 DB_PATH = Path.home() / "agents/.observatory/trajectories.db"

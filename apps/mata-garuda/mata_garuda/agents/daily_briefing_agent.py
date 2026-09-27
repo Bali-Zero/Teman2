@@ -45,7 +45,7 @@ from mata_garuda.runtime.cli_runtime import (
     classify_claude_retry,
     provider_cli_env,
 )
-from mata_garuda.tg_curl import curl_send
+from mata_garuda.tools.tg_tools import curl_send
 from mata_garuda.tools.knowledge_tools import kb_search, kb_store
 from mata_garuda.tools.stream_tools import stream_publish
 from mata_garuda.tools.tg_tools import send_tg_alert
@@ -285,7 +285,7 @@ TG_MAX_CHARS = 3800  # Telegram sendMessage hard limit 4096 — leave margin
 def _send_telegram(text: str, dry_run: bool = False) -> bool:
     """Send text to Zero's TG. Chunks if > TG_MAX_CHARS. Returns overall ok.
 
-    Delegates the actual send to `mata_garuda.tg_curl.curl_send`, which keeps
+    Delegates the actual send to `mata_garuda.tools.tg_tools.curl_send`, which keeps
     the token out of curl's argv (see that module's docstring for why —
     2026-09-26 daily-briefing leak, 2026-09-27 reg-alert leak: same shape).
     """

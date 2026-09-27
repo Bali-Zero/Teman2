@@ -1,4 +1,4 @@
-"""mata_garuda.tg_curl.curl_send never puts the bot token in argv or in
+"""mata_garuda.tools.tg_tools.curl_send never puts the bot token in argv or in
 whatever it returns for a caller to log.
 
 Born 2026-09-27: Pro's `com.matagaruda.daily-briefing` and
@@ -12,13 +12,19 @@ never needs the host), caught by a broad
 constructed with, so a slow curl — no HTTP round-trip needed — put the token
 in daily-briefing.error.log (once) and reg-alert.error.log (39x, on its
 30-minute schedule). `curl_send` is the single fix for both call sites.
+
+2026-09-27 (later same day): `curl_send` moved from the standalone
+`mata_garuda/tg_curl.py` into `mata_garuda/tools/tg_tools.py`, which was
+already grandfathered by scripts/lint_tg_direct_senders.py — every other
+mata-garuda call site now imports it from there, and this file (formerly
+`test_tg_curl.py`) moved with it.
 """
 from __future__ import annotations
 
 import subprocess
 from unittest.mock import MagicMock, patch
 
-from mata_garuda import tg_curl
+from mata_garuda.tools import tg_tools
 from mata_garuda.config import mask_tg_token
 
 FAKE_TOKEN = "bot7654321098:AAF9zZqLmN0pQrStUvWxYz1234567890abc"  # noqa: S105
@@ -51,10 +57,10 @@ class TestCurlSendGuilt:
             "curl", "-s", f"https://tg-bot-api.example/{FAKE_TOKEN}/sendMessage",
         ]
         with patch.object(
-            tg_curl.subprocess, "run",
+            tg_tools.subprocess, "run",
             side_effect=subprocess.TimeoutExpired(cmd=legacy_argv_with_token, timeout=15),
         ):
-            ok, reason = tg_curl.curl_send(FAKE_TOKEN, "8847435604", "hello")
+            ok, reason = tg_tools.curl_send(FAKE_TOKEN, "8847435604", "hello")
 
         assert ok is False
         assert FAKE_SECRET not in reason
@@ -69,8 +75,8 @@ class TestCurlSendGuilt:
             captured["argv"] = argv
             return MagicMock(stdout='{"ok":true}\n200')
 
-        with patch.object(tg_curl.subprocess, "run", side_effect=_fake_run):
-            ok, reason = tg_curl.curl_send(FAKE_TOKEN, "8847435604", "hello")
+        with patch.object(tg_tools.subprocess, "run", side_effect=_fake_run):
+            ok, reason = tg_tools.curl_send(FAKE_TOKEN, "8847435604", "hello")
 
         assert ok is True
         assert reason == ""
@@ -82,8 +88,8 @@ class TestCurlSendGuilt:
             '{"ok":false,"error_code":401,'
             f'"description":"bot {FAKE_TOKEN} unauthorized"}}\n401'
         )
-        with patch.object(tg_curl.subprocess, "run", return_value=MagicMock(stdout=body)):
-            ok, reason = tg_curl.curl_send(FAKE_TOKEN, "8847435604", "hello")
+        with patch.object(tg_tools.subprocess, "run", return_value=MagicMock(stdout=body)):
+            ok, reason = tg_tools.curl_send(FAKE_TOKEN, "8847435604", "hello")
 
         assert ok is False
         assert reason == "credential_rejected (401)"
@@ -91,8 +97,8 @@ class TestCurlSendGuilt:
 
     def test_generic_failure_body_is_masked(self):
         body = f'{{"ok":false,"description":"blocked by bot {FAKE_TOKEN}"}}\n400'
-        with patch.object(tg_curl.subprocess, "run", return_value=MagicMock(stdout=body)):
-            ok, reason = tg_curl.curl_send(FAKE_TOKEN, "8847435604", "hello")
+        with patch.object(tg_tools.subprocess, "run", return_value=MagicMock(stdout=body)):
+            ok, reason = tg_tools.curl_send(FAKE_TOKEN, "8847435604", "hello")
 
         assert ok is False
         assert FAKE_SECRET not in reason
@@ -102,10 +108,10 @@ class TestCurlSendGuilt:
 class TestCurlSendInnocence:
     def test_200_ok_returns_true_empty_reason(self):
         with patch.object(
-            tg_curl.subprocess, "run",
+            tg_tools.subprocess, "run",
             return_value=MagicMock(stdout='{"ok":true,"result":{}}\n200'),
         ):
-            ok, reason = tg_curl.curl_send(FAKE_TOKEN, "8847435604", "hello")
+            ok, reason = tg_tools.curl_send(FAKE_TOKEN, "8847435604", "hello")
         assert ok is True
         assert reason == ""
 
@@ -119,8 +125,8 @@ class TestCurlSendInnocence:
             assert os.path.exists(cfg_path)
             return MagicMock(stdout='{"ok":true}\n200')
 
-        with patch.object(tg_curl.subprocess, "run", side_effect=_fake_run):
-            tg_curl.curl_send(FAKE_TOKEN, "8847435604", "hello")
+        with patch.object(tg_tools.subprocess, "run", side_effect=_fake_run):
+            tg_tools.curl_send(FAKE_TOKEN, "8847435604", "hello")
 
         import os
         assert not os.path.exists(seen_paths[0])

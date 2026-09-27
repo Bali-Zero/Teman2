@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.config import NLM_NOTEBOOKS, TG_ZERO_CHAT_ID
-from mata_garuda.tg_curl import curl_send
+from mata_garuda.tools.tg_tools import curl_send
 from mata_garuda.runtime.cli_runtime import (
     _run_process_group,
     claude_token_chain,

@@ -19,7 +19,7 @@ from mata_garuda.config import STREAM_ALERTS, TG_ZERO_CHAT_ID
 from mata_garuda.registry import register_agent
 from mata_garuda.runtime.case_status import case_not_resolved, case_resolved
 from mata_garuda.runtime.knowledge import KnowledgeBase
-from mata_garuda.tg_curl import curl_send
+from mata_garuda.tools.tg_tools import curl_send
 from mata_garuda.tools.knowledge_tools import kb_search, kb_store
 from mata_garuda.tools.tg_tools import send_tg_alert
 from mata_garuda.types import Agent
@@ -66,7 +66,7 @@ def format_alert(data: dict[str, Any]) -> str:
 def _send_telegram(text: str, dry_run: bool = False) -> bool:
     """Send one alert to Zero's TG. Returns ok.
 
-    Delegates to `mata_garuda.tg_curl.curl_send`, which keeps the token out of
+    Delegates to `mata_garuda.tools.tg_tools.curl_send`, which keeps the token out of
     curl's argv — see that module's docstring for why (this file's own
     subprocess+curl copy leaked the token into reg-alert.error.log on its
     30-minute schedule, measured 2026-09-27).

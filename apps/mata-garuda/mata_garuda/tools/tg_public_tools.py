@@ -17,7 +17,7 @@ import os
 
 from mata_garuda.config import TG_BOT_TOKEN_ENV
 from mata_garuda.registry import register_tool
-from mata_garuda.tg_curl import curl_send
+from mata_garuda.tools.tg_tools import curl_send
 
 logger = logging.getLogger("mata_garuda.tools.tg_public")
 

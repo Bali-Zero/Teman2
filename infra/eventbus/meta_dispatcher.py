@@ -15,10 +15,12 @@ LLM-grade decisions stay in the consumers.
 """
 from __future__ import annotations
 import os
+import re
 import sys
 import json
 import logging
 import subprocess
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,7 +29,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eventbus import EventSubscriber, EventEnvelope, beat, start_background_beater
-from eventbus._tg_curl import curl_send
 
 # Checkout root, resolved from this file's own location (works identically for
 # the repo checkout and any HOME-fork copy) — overridable for tests/tooling.
@@ -115,6 +116,54 @@ ROUTING_RULES = {
 }
 
 URGENCY_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+
+_TG_TOKEN_RE = re.compile(r"(bot\d{5,}):[A-Za-z0-9_-]{20,}")
+
+
+def mask_tg_token(text: str) -> str:
+    """Redact a Telegram bot token (`bot<digits>:<secret>`) from arbitrary text."""
+    if not text:
+        return text
+    return _TG_TOKEN_RE.sub(r"\1:<redacted>", text)
+
+
+def curl_send(token: str, chat_id: str, text: str, *, timeout: float = 15) -> bool:
+    """POST one sendMessage via curl. Never raises. Returns success only —
+    eventbus's own callers are best-effort fire-and-forget and never branched
+    on the failure reason. Logs one generic warning line (no token, no body)
+    on failure instead of failing silently — this is the ONE curl-based
+    Telegram sender for eventbus; `meta_dispatcher.py` (this file, already
+    grandfathered by scripts/lint_tg_direct_senders.py) and
+    `research_sentinel.py` both import it from here rather than building
+    their own curl argv. Merged 2026-09-27 out of the standalone
+    `eventbus/_tg_curl.py`, which literally stops existing."""
+    cfg_path: str | None = None
+    try:
+        cfg_fd, cfg_path = tempfile.mkstemp(prefix="tg-send-", suffix=".curlcfg")
+        with os.fdopen(cfg_fd, "w") as fh:
+            fh.write(f'url = "https://api.telegram.org/bot{token}/sendMessage"\n')
+        result = subprocess.run(
+            [
+                "curl", "-sf", "-K", cfg_path,
+                "-d", f"chat_id={chat_id}",
+                "-d", f"text={text[:4000]}",
+                "-d", "disable_web_page_preview=true",
+            ],
+            capture_output=True, text=True, timeout=timeout,
+        )
+        if result.returncode != 0:
+            log.warning("telegram send failed (curl exit %s)", result.returncode)
+            return False
+        return True
+    except Exception:
+        log.warning("telegram send failed (exception)")
+        return False
+    finally:
+        if cfg_path is not None:
+            try:
+                os.unlink(cfg_path)
+            except OSError:
+                pass
 
 
 def _send_telegram(text: str) -> bool:

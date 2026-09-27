@@ -1,7 +1,7 @@
 """Every mata-garuda Telegram sender that migrated to
-`mata_garuda.tg_curl.curl_send` (2026-09-27 tg-token-log-hygiene fix + its
-rework) wraps it the same way. The deep guilt/innocence coverage of the send
-itself lives in test_tg_curl.py; this file only checks each wrapper's own
+`mata_garuda.tools.tg_tools.curl_send` (2026-09-27 tg-token-log-hygiene fix +
+its rework) wraps it the same way. The deep guilt/innocence coverage of the
+send itself lives in test_tg_tools_curl_send.py; this file only checks each wrapper's own
 contract: chunking (daily_briefing), dry-run/missing-token short-circuits,
 and that a failure reason from `curl_send` reaches the logger/return value
 unchanged (never re-derived from raw exception/body text at the wrapper

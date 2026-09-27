@@ -19,7 +19,7 @@ from cell_core.types import Proposal, SensorReading
 
 from mata_garuda.config import NLM_NOTEBOOKS, TG_ZERO_CHAT_ID
 from mata_garuda.runtime.knowledge import KnowledgeBase
-from mata_garuda.tg_curl import curl_send
+from mata_garuda.tools.tg_tools import curl_send
 
 logger = logging.getLogger("mata_garuda.cells")
 
