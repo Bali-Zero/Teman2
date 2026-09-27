@@ -104,6 +104,45 @@ def test_redact_masks_credentials_tokens_and_names_keeps_technical_runs():
     assert "Sari" not in s and "Dewi" not in s
 
 
+def _straddle(head_len: int, token: str, filler: str = "x") -> str:
+    """Place `token` so that the cut at head_len falls in its middle."""
+    start = head_len - len(token) // 2
+    return filler * start + token + filler * 3000
+
+
+def test_window_redact_never_splits_a_token_at_the_head_cut():
+    H, T = G.HEAD_CHARS, G.TAIL_CHARS
+    for token in ("mario.rossi@example.id", "tok_" + "A" * 33, "Giovanni Bianchi"):
+        out = G.window_redact(_straddle(H, token), H, T)
+        assert token not in out and token[: len(token) // 2] not in out.replace("[...]", "")
+        assert "rossi" not in out and "Bianchi" not in out and "AAAA" not in out
+
+
+def test_window_redact_never_splits_a_token_at_the_tail_cut():
+    H, T = G.HEAD_CHARS, G.TAIL_CHARS
+    for token in ("mario.rossi@example.id", "tok_" + "A" * 33, "Giovanni Bianchi"):
+        text = "x" * (H + 3000) + token + "x" * (T - len(token) // 2)
+        out = G.window_redact(text, H, T)
+        assert token not in out and "rossi" not in out and "Bianchi" not in out and "AAAA" not in out
+        assert len(out) <= H + T + len("\n[...]\n")
+
+
+def test_redact_masks_short_bearer_whole():
+    s = G.redact("Authorization: Bearer abc.def then curl")
+    assert "abc.def" not in s and "[SECRET]" in s and "curl" in s
+
+
+def test_deadline_is_a_base_exception_not_swallowed_by_except_exception():
+    assert issubclass(G._Deadline, BaseException) and not issubclass(G._Deadline, Exception)
+    try:
+        try:
+            G._raise_deadline()
+        except Exception:  # noqa: BLE001 — this is the swallow we prove impossible
+            raise AssertionError("swallowed")
+    except G._Deadline:
+        pass
+
+
 def test_family_is_anchored_not_substring():
     assert G._family("haiku-opus") == "haiku"
     assert G._family("claude-opus-5-5") == "opus" and G._family("sonnet") == "sonnet"

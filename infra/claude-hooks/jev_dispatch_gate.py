@@ -27,13 +27,16 @@ MODES (env JEV_DISPATCH_GATE): enforce (default) · observe (receipts, never
 mutates) · off. Deadline JEV_DISPATCH_GATE_DEADLINE_S (4 s) bounds the wait.
 RECEIPTS: ~/.agent/jev-dispatch-gate/receipts.jsonl — probabilities, decision,
 latency, prompt sha (12 hex). Never the prompt. `--report` aggregates them.
-PII: description+prompt are clipped, then pass a deterministic redactor
+PII: description+prompt pass a deterministic redactor on margin windows, then are cut
 (credential assignments, emails, opaque tokens, digit runs, phones, runs of
 capitalised words unless all are technical; plus the repo redactor when
 importable) BEFORE any byte leaves; PII-shaped dispatches skip Jev entirely;
 a redactor exception skips Jev. Known limit: lowercase or single-word personal
 names are not recognised without a name list — the PII-shaped skip and the
-repo redactor's CRM names (when DATABASE_URL is set) are the cover.
+over-redaction bias of the name rule are the cover (the repo redactor's static
+passes do not carry CRM names: load_static leaves pass4 empty by design).
+Egress contract: docs/specs/2026-09-27-jev-dispatch-gate-egress-spec.md —
+windowed redaction, every cut AFTER the mask with a 512-char margin.
 `updatedInput` must carry the whole tool_input back to Claude Code (contract),
 so the ORIGINAL prompt appears on the hook's stdout: that stdout is read by
 the process that produced the prompt, it is not egress. Test seam: JEV_DISPATCH_GATE_FAKE_ANSWERS (JSON) replaces the
@@ -56,6 +59,15 @@ SCRIPTS = HERE.parent.parent / "scripts"
 
 
 
+class _Deadline(BaseException):
+    """Raised by the process alarm; a BaseException so no broad
+    `except Exception` in the redactor/vendor paths can swallow it."""
+
+
+def _raise_deadline(*_) -> None:
+    raise _Deadline()
+
+
 def _env_float(name: str, default: float) -> float:
     try:
         return float(os.environ.get(name, default))
@@ -74,13 +86,17 @@ STATE_DIR = pathlib.Path(
 RECEIPTS = STATE_DIR / "receipts.jsonl"
 DENIED_DIR = STATE_DIR / "denied"
 DENY_TTL_S = 24 * 3600
-HEAD_CHARS, TAIL_CHARS = 5000, 1500
+HEAD_CHARS, TAIL_CHARS, MARGIN = 5000, 1500, 512
 
 PII_SHAPED = re.compile(
     r"\b(pii|ktp|nik|npwp|passport|paspor)\b|\bclient[_ -]?(id|data|record|file|case|dossier)s?\b",
     re.IGNORECASE,
 )
-SECRET = re.compile(r"(?i)\b(token|secret|password|passwd|api[_-]?key|apikey|bearer|authorization)\b\s*[:=]\s*\S+")
+SECRET = re.compile(
+    r"\b(token|secret|password|passwd|api[_-]?key|apikey|authorization)\b\s*[:=]\s*(?:bearer\s+)?\S+"
+    r"|\b(bearer)\s+\S+",
+    re.IGNORECASE,
+)
 OPAQUE = re.compile(r"\b[A-Za-z0-9_-]{32,}\b")
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 MODEL_FAMILY = re.compile(r"^(?:claude-)?(opus|sonnet|haiku)(?:$|[-\d])")
@@ -169,7 +185,7 @@ def redact(text: str, repo_layer=None) -> str:
             text = repo_layer(text)
         except Exception:
             pass
-    text = SECRET.sub(lambda m: f"{m.group(1)}=[SECRET]", text)
+    text = SECRET.sub(lambda m: f"{m.group(1) or m.group(2)}=[SECRET]", text)
     text = EMAIL.sub("[EMAIL]", text)
     text = OPAQUE.sub("[TOKEN]", text)
     text = DIGITS.sub("[NUM]", text)
@@ -182,20 +198,24 @@ def redact(text: str, repo_layer=None) -> str:
     return NAME_RUN.sub(_run, text)
 
 
-def _clip(text: str) -> str:
-    if len(text) <= HEAD_CHARS + TAIL_CHARS:
-        return text
-    return text[:HEAD_CHARS] + "\n[...]\n" + text[-TAIL_CHARS:]
+def window_redact(text: str, head: int, tail: int, repo_layer=None) -> str:
+    """docs/specs/2026-09-27-jev-dispatch-gate-egress-spec.md §3: every cut
+    happens AFTER redaction and every redacted window extends MARGIN past the
+    cut it serves, so a maskable token shorter than MARGIN can never be split
+    by a cut (r2 gate finding: clip-before-redact leaked fragments)."""
+    if len(text) <= head + tail + 2 * MARGIN:
+        return redact(text, repo_layer)
+    h = redact(text[: head + MARGIN], repo_layer)[:head]
+    t = redact(text[-(tail + MARGIN):], repo_layer)[-tail:]
+    return h + "\n[...]\n" + t
 
 
 def build_state(tool_input: dict, repo_layer=None) -> dict:
-    # Clip BEFORE redacting: the regexes run on a bounded string, so a 100k
-    # prompt cannot drag the hook past its deadline (Codex finding, 2026-09-27).
     return {
-        "description": redact(_clip(str(tool_input.get("description") or ""))[:500], repo_layer),
+        "description": window_redact(str(tool_input.get("description") or ""), 500, 0, repo_layer)[:500],
         "subagent_type": str(tool_input.get("subagent_type") or "general-purpose")[:80],
         "requested_model": str(tool_input.get("model") or "inherit")[:80],
-        "prompt": redact(_clip(str(tool_input.get("prompt") or "")), repo_layer),
+        "prompt": window_redact(str(tool_input.get("prompt") or ""), HEAD_CHARS, TAIL_CHARS, repo_layer),
     }
 
 
@@ -343,7 +363,7 @@ def gate(payload: dict) -> dict | None:
         return None
     answers, status = _ask_jev(state, DEADLINE_S)
     d = decide(tool_input, answers, False, MODE)
-    if d["action"] == "deny":
+    if d["action"] == "deny" or d.get("would") == "deny":
         first = _deny_marker(sha)
         if first is not True:
             d = decide(tool_input, answers, True, MODE)
@@ -390,7 +410,7 @@ def main(argv: list[str]) -> int:
     try:
         # Whole-process bound: import, redaction, vendor wait and filesystem
         # together, not only the vendor thread. Alarm → no decision, exit 0.
-        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError()))
+        signal.signal(signal.SIGALRM, _raise_deadline)
         signal.setitimer(signal.ITIMER_REAL, DEADLINE_S + 3)
         payload = json.load(sys.stdin)
         out = gate(payload)
