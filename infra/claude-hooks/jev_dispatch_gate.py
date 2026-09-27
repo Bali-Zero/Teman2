@@ -277,12 +277,41 @@ def decide(tool_input: dict, answers: dict | None, denied_before: bool, mode: st
     return out
 
 
+SECRETS_FILE = pathlib.Path(os.environ.get("NUZANTARA_SECRETS_FILE", os.path.expanduser("~/.nuzantara-secrets.env")))
+KEY_VAR = "TYPESAFE_API_KEY"
+
+
+def _load_key_into_own_env() -> bool:
+    """Pro and Mini keep ~/.nuzantara-secrets.env (0600) but do not source it
+    into interactive shells, so the session env has no TYPESAFE_API_KEY there
+    (ALIGN-FLEET finding, 2026-09-27). The hook loads THAT ONE variable into
+    its own process env, never prints it, never exports it to the session.
+    Returns True when the variable is present afterwards."""
+    if os.environ.get(KEY_VAR, "").strip():
+        return True
+    try:
+        for line in SECRETS_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("export "):
+                line = line[7:].strip()
+            if line.startswith(KEY_VAR + "="):
+                value = line[len(KEY_VAR) + 1:].strip().strip("'\"")
+                if value:
+                    os.environ[KEY_VAR] = value
+                    return True
+    except Exception:
+        return False
+    return False
+
+
 def _ask_jev(state: dict, deadline: float) -> tuple[dict | None, str]:
     fake = os.environ.get("JEV_DISPATCH_GATE_FAKE_ANSWERS")
     if fake:
         return json.loads(fake), "fake"
     sys.path.insert(0, str(SCRIPTS))
     import typesafe_client as tc  # noqa: PLC0415
+
+    _load_key_into_own_env()
 
     if tc.unavailable_reason() is not None:
         return None, "unavailable"
@@ -360,8 +389,10 @@ def gate(payload: dict) -> dict | None:
         _receipt({**row, "action": "skip", "skip": skip})
         return None
     t0 = time.time()
+    repo_layer = _repo_redactor()
+    row["repo_redactor"] = repo_layer is not None
     try:
-        state = build_state(tool_input, _repo_redactor())
+        state = build_state(tool_input, repo_layer)
     except Exception:
         _receipt({**row, "action": "skip", "skip": "redaction_failed"})
         return None
