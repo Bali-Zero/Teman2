@@ -333,16 +333,24 @@ class ProcessAutomationService:
                         redact_identifier_for_log(client_data["email"]),
                     )
                 except (httpx.HTTPError, ValueError) as e:
+                    # R1 (fresh gate on this PR): this branch no longer attaches
+                    # the traceback kwarg — it rendered the exception's own
+                    # message a second time, past the already-scrubbed %s slot,
+                    # so a bounce quoting the address back would survive in
+                    # exception.message/.traceback (prod StructuredFormatter)
+                    # and the /api/debug/logs ring buffer even though the log
+                    # line's own text is clean. The exception TYPE still
+                    # survives for diagnosis.
                     logger.error(
-                        "Failed to send process start email to client: %s",
+                        "Failed to send process start email to client: %s: %s",
+                        type(e).__name__,
                         _bounded_scrub(str(e), 400),
-                        exc_info=True,
                     )
                 except Exception as e:
                     logger.error(
-                        "Unexpected error sending process start email to client: %s",
+                        "Unexpected error sending process start email to client: %s: %s",
+                        type(e).__name__,
                         _bounded_scrub(str(e), 400),
-                        exc_info=True,
                     )
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
@@ -360,16 +368,17 @@ class ProcessAutomationService:
                         redact_identifier_for_log(team_leader_email),
                     )
                 except (httpx.HTTPError, ValueError) as e:
+                    # Same R1 fix as the client branch above — no traceback kwarg.
                     logger.error(
-                        "Failed to send notification to team leader: %s",
+                        "Failed to send notification to team leader: %s: %s",
+                        type(e).__name__,
                         _bounded_scrub(str(e), 400),
-                        exc_info=True,
                     )
                 except Exception as e:
                     logger.error(
-                        "Unexpected error notifying team leader: %s",
+                        "Unexpected error notifying team leader: %s: %s",
+                        type(e).__name__,
                         _bounded_scrub(str(e), 400),
-                        exc_info=True,
                     )
 
             await _log_activity(

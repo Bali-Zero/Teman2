@@ -226,12 +226,29 @@ async def test_trigger_team_leader_success_log_does_not_leak_the_team_leader_add
     assert "Process start notification sent to team leader" in joined
 
 
+def _rendered(records) -> str:
+    """Render each record the way a real handler would, INCLUDING the
+    formatted traceback when `exc_info` is set — `record.getMessage()` alone
+    only reads the `%s` slot and is blind to `exc_info=True` re-attaching the
+    raw exception via the traceback (R1, fresh gate on this PR: prod's
+    `StructuredFormatter` puts that same text in `exception.message` /
+    `exception.traceback`, and `log_ring_buffer.py` stores it too)."""
+    fmt = logging.Formatter()
+    return "\n".join(fmt.format(r) for r in records)
+
+
+def _error_records(records):
+    return [r for r in records if r.levelno >= logging.ERROR]
+
+
 @pytest.mark.asyncio
 async def test_trigger_client_send_failure_scrubs_a_bounce_that_echoes_the_address(caplog):
     """GUILT: before this fix, `logger.error(..., e, exc_info=True)` put the
-    raw caught exception straight into the `%s` slot — a bounce-style
-    ValueError quoting the recipient back leaked it even though the success
-    path was already redacted."""
+    raw caught exception straight into the `%s` slot (and, even after the
+    `%s` slot was scrubbed, `exc_info=True` re-attached the same raw text via
+    the traceback — R1) — a bounce-style ValueError quoting the recipient
+    back leaked it either way. Covers the `(httpx.HTTPError, ValueError)`
+    branch on the CLIENT call site."""
     svc = _make_service()
     practice = _make_practice(team_leader_email=None)
     client = {"id": 10, "full_name": "John", "email": _ADDR}
@@ -251,11 +268,83 @@ async def test_trigger_client_send_failure_scrubs_a_bounce_that_echoes_the_addre
         m_fetch.return_value = (practice, client)
         result = await svc.trigger_on_process_start(1, "user@x.com")
     assert result["client_notified"] is False
-    joined = " ".join(r.getMessage() for r in caplog.records)
-    assert _ADDR not in joined
-    assert "automation.probe" not in joined
-    assert "Failed to send process start email to client" in joined
-    assert "mailbox" in joined and "rejected" in joined
+    rendered = _rendered(caplog.records)
+    assert _ADDR not in rendered
+    assert "automation.probe" not in rendered
+    assert "Failed to send process start email to client" in rendered
+    assert "ValueError" in rendered  # exception TYPE still survives
+    assert "mailbox" in rendered and "rejected" in rendered
+    for rec in _error_records(caplog.records):
+        assert rec.exc_info is None
+
+
+@pytest.mark.asyncio
+async def test_trigger_client_send_failure_scrubs_the_unexpected_error(caplog):
+    """GUILT (R2, fresh gate — this was mutant O1, previously untested):
+    covers the bare `except Exception` (unexpected-error) branch on the
+    CLIENT call site, not just the `httpx.HTTPError`/`ValueError` one — a
+    RuntimeError hits it."""
+    svc = _make_service()
+    practice = _make_practice(team_leader_email=None)
+    client = {"id": 10, "full_name": "John", "email": _ADDR}
+    with (
+        patch(
+            "backend.services.crm.automation._fetch_practice_with_client",
+            new_callable=AsyncMock,
+        ) as m_fetch,
+        patch(
+            "backend.services.crm.automation._send_with_brevo_fallback",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError(f"provider quoted {_ADDR} as invalid"),
+        ),
+        patch("backend.services.crm.automation._log_activity", new_callable=AsyncMock),
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+    ):
+        m_fetch.return_value = (practice, client)
+        result = await svc.trigger_on_process_start(1, "user@x.com")
+    assert result["client_notified"] is False
+    rendered = _rendered(caplog.records)
+    assert _ADDR not in rendered
+    assert "automation.probe" not in rendered
+    assert "Unexpected error sending process start email to client" in rendered
+    assert "RuntimeError" in rendered
+    assert "invalid" in rendered
+    for rec in _error_records(caplog.records):
+        assert rec.exc_info is None
+
+
+@pytest.mark.asyncio
+async def test_trigger_team_leader_send_failure_scrubs_a_bounce_that_echoes_the_address(caplog):
+    """GUILT (R2, fresh gate — this was mutant O2, previously untested):
+    covers the `(httpx.HTTPError, ValueError)` branch on the TEAM-LEADER
+    call site — the sibling client-side branch was tested, this one wasn't."""
+    svc = _make_service()
+    practice = _make_practice(team_leader_email=_TEAM_ADDR)
+    client = {"id": 10, "full_name": "John", "email": None}
+    with (
+        patch(
+            "backend.services.crm.automation._fetch_practice_with_client",
+            new_callable=AsyncMock,
+        ) as m_fetch,
+        patch(
+            "backend.services.crm.automation._send_with_brevo_fallback",
+            new_callable=AsyncMock,
+            side_effect=ValueError(f"550 mailbox {_TEAM_ADDR} rejected"),
+        ),
+        patch("backend.services.crm.automation._log_activity", new_callable=AsyncMock),
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+    ):
+        m_fetch.return_value = (practice, client)
+        result = await svc.trigger_on_process_start(1, "user@x.com")
+    assert result["team_leader_notified"] is False
+    rendered = _rendered(caplog.records)
+    assert _TEAM_ADDR not in rendered
+    assert "leader.probe" not in rendered
+    assert "Failed to send notification to team leader" in rendered
+    assert "ValueError" in rendered
+    assert "mailbox" in rendered and "rejected" in rendered
+    for rec in _error_records(caplog.records):
+        assert rec.exc_info is None
 
 
 @pytest.mark.asyncio
@@ -281,11 +370,14 @@ async def test_trigger_team_leader_send_failure_scrubs_the_unexpected_error(capl
         m_fetch.return_value = (practice, client)
         result = await svc.trigger_on_process_start(1, "user@x.com")
     assert result["team_leader_notified"] is False
-    joined = " ".join(r.getMessage() for r in caplog.records)
-    assert _TEAM_ADDR not in joined
-    assert "leader.probe" not in joined
-    assert "Unexpected error notifying team leader" in joined
-    assert "invalid" in joined
+    rendered = _rendered(caplog.records)
+    assert _TEAM_ADDR not in rendered
+    assert "leader.probe" not in rendered
+    assert "Unexpected error notifying team leader" in rendered
+    assert "RuntimeError" in rendered
+    assert "invalid" in rendered
+    for rec in _error_records(caplog.records):
+        assert rec.exc_info is None
 
 
 # --- INNOCENCE: trigger_on_process_start keeps non-PII diagnostic text ---

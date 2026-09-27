@@ -204,6 +204,35 @@ async def test_success_log_escapes_a_newline_in_the_subject(monkeypatch, caplog)
 
 
 @pytest.mark.asyncio
+async def test_success_log_scrubs_an_address_embedded_in_the_subject(monkeypatch, caplog):
+    """GUILT (R2, fresh gate on #7488 — this was mutant O6, previously
+    untested): the newline-escaping test above only proves `repr()` runs; it
+    never puts an address IN the subject, so a mutant that drops
+    `_bounded_scrub(subject, 120)` and keeps only `repr(subject)` survived
+    every existing test. A personalized subject line (e.g. `Re: invoice for
+    <name> <addr>`) is exactly the caller-supplied-text case the module
+    comment on `notify_email_failure_critical` already warns about."""
+    monkeypatch.setenv("RESEND_API_KEY", "re_key")
+    addr = "subject.leak@example.com"
+    fake_client = MagicMock()
+    fake_client.post = AsyncMock(return_value=_mk_response(202))
+    with (
+        patch(
+            "backend.services.notifications.resend_http.get_email_client",
+            new=AsyncMock(return_value=fake_client),
+        ),
+        caplog.at_level(logging.INFO, logger="backend.services.notifications.resend_http"),
+    ):
+        await send_via_resend(
+            to_email="other@example.com", subject=f"Re: invoice for {addr}", body="b"
+        )
+    joined = "\n".join(r.getMessage() for r in caplog.records)
+    assert addr not in joined
+    assert "subject.leak" not in joined
+    assert "Re: invoice for" in joined  # non-PII prose survives
+
+
+@pytest.mark.asyncio
 async def test_error_log_does_not_leak_the_recipient_or_the_raw_response_body(
     monkeypatch, caplog
 ):
