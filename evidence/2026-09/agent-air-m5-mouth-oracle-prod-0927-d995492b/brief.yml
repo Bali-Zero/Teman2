@@ -1,0 +1,100 @@
+task_id: oracle-prod-20260927
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Ship the approved Visa Oracle branching-atlas presentation into the production Next
+  route (apps/mouth/src/app/(visa-oracle)/visa-oracle) as presentation only, preserving
+  the canonical evaluation/idempotency/SHADOW fail-closed/consent/resume/telemetry/
+  bilingual contracts. Owner codename Zero ordered production ("andiamo in prod").
+constraints:
+  - "Presentation-only transplant: reducer/tree/fact-mapper, engine-adapter.ts (and its
+    test, sibling PR 7504), evaluation/SHADOW/idempotency, consent/resume stores,
+    telemetry and API routes stay untouched; no backend/package/lockfile/API/engine-
+    adapter change anywhere in the apps/ diff."
+  - Single build lane declared (one writer across serialized rounds) so the multi-build
+    seat-diversity floor (D3) does not apply; review lanes are independent seats.
+  - "Production bundler is webpack: apps/mouth/vercel.json buildCommand runs `npm run
+    build`, which is `next build --webpack` per apps/mouth/package.json line 7; bare
+    `next build` defaults to Turbopack and panics on a mirror's symlinked node_modules
+    (reproduced on the clean baseline too) — environment-only, not a product path."
+  - The 19 approved WebPs must land byte-exact in apps/mouth/public/static/visa-oracle.
+acceptance:
+  - text: >-
+      WHEN the frozen candidate SHA is built with the canonical production command THE
+      build SHALL exit 0 on the webpack bundler Vercel actually runs.
+    probe: "next build --webpack"
+  - text: >-
+      WHEN the frozen candidate SHA is type-checked THE compiler SHALL report zero
+      errors.
+    probe: "tsc --noEmit -p tsconfig.json"
+  - text: >-
+      WHEN the visa-oracle unit suite runs on the frozen SHA THE suite SHALL pass in
+      full, at or above the pre-change baseline count of 45 files / 1229 tests.
+    probe: 'vitest run "src/app/(visa-oracle)"'
+  - text: >-
+      WHILE CI-parity env vars are exported before the build THE atlas harness SHALL
+      pass every EN/ID desktop/mobile/narrow/ending/geometry/dark/reduced-motion/print
+      case.
+    probe: "atlas-qa.local.spec.ts"
+  - text: >-
+      WHEN the PR e2e gate selection runs against the frozen SHA WITH CI-parity env
+      exported before the build THE gate SHALL report zero failures.
+    probe: "page Page|@offline"
+  - text: >-
+      WHERE a prior verification run reported gate failures THE evidence pack SHALL
+      record that run as environmental and superseded rather than silently dropping it.
+    probe: run1-env-incomplete
+  - text: >-
+      WHEN a visitor prints a default-closed outcome THE PDF SHALL carry the legal
+      references (title, publisher, effective/observed dates, freshness) and the
+      support reasons, AND the disclosures SHALL return to their prior open state
+      afterwards.
+    probe: "F1-content"
+  - text: >-
+      WHEN the route dialog opens over a scrolled page THE dialog SHALL be centred in
+      the viewport with position fixed AND the page scroll SHALL be unchanged.
+    probe: "F2-desktop-scrolled-dom-click"
+  - text: >-
+      WHILE the visitor has pressed Pause THE verdict reveal SHALL make zero
+      ViewTransition calls, the same as under OS reduced motion.
+    probe: "F3-paused"
+assumptions:
+  - text: >-
+      The ESLint crash on the route (eslint-plugin-react react/display-name:
+      contextOrFilename.getFilename is not a function, ESLint 10.11.0) is a
+      pre-existing baseline failure, not a regression introduced by this diff.
+    status: verified
+    probe:
+      "reproduced identically on the clean baseline mirror before this diff existed
+      (PROGRESS.md GROUND row, 2026-09-27)"
+  - text: >-
+      origin/main carries no visa-oracle overlap with this candidate other than the
+      open, untouched sibling PR 7504 (engine-adapter.test.ts only).
+    status: verified
+    probe: "PROGRESS.md GROUND row + CODE_FROZEN.md upstream-drift note +
+      dux-to-coordinator.md base-drift entry"
+consumer_map:
+  - "Visa Oracle visitors at /visa-oracle see the approved branching atlas, finish the
+    canonical interview, and receive the real production outcome; desktop/mobile
+    screenshots and synthetic journey receipts prove it."
+risks:
+  - "ESLint cannot run at all on this route today (baseline crash, not caused by this
+    diff) — the route ships without a working lint pass on that rule; tsc, vitest, the
+    production build, the atlas harness and the PR e2e gate are what actually cover it."
+  - "Pro became unusable mid-mandate (swap filled the shared APFS container); all heavy
+    verification moved to Mini. Recorded as a deviation, not hidden."
+  - "The first fresh claude-opus-5-5 xhigh on-disk gate returned BLOCK on docs candidate
+    3710a230 (print/PDF closed disclosures, route dialog position, Pause vs verdict
+    ViewTransition); the delta in DELTA-ROUND.md closes them. A NEW fresh gate on the
+    delta candidate is coordinator-commissioned and PENDING at pack-drafting time; this
+    pack does not authorise release."
+  - "Rollback path: the prior Vercel production deployment, or a reviewed revert of the
+    presentation commit."
+grader: >-
+  Three independent review seats (codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max) ran
+  adversarially across preliminary/provisional and final rounds; the single build lane
+  never scored its own work. A fresh, independent claude-opus-5-5 xhigh session is the
+  final on-disk gate: its first verdict (BLOCK on 3710a230) is recorded as history, and
+  the new gate on the delta candidate has not run yet as of pack-drafting time — no
+  verdict recorded here authorises release.
