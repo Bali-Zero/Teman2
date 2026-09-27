@@ -807,7 +807,7 @@ receipts:
     seat: claude-opus-5-5
   - claim: "gate r4 item 2: the four S3 paths floor at 1 today and at 3 with the patterns added; the linter and its neighbours floor at 1"
     cmd: "scratch floor_sim.py (compute_floor, HOTZONE_PATTERNS extended in-process)"
-    result: "today 1/none for each path and gate r4's §5 set; after 3/path; evidence_pack_lint.py, hotzone_changed_files.sh, harness_gate_read.py, test_evidence_pack_lint.py 1/none; harness-floor.yml, hot-zone-pr-gate.yml, guard-conformance.yml 3/path"
+    result: "today 1/none for each path and gate r4's §5 set; after 3/path; evidence_pack_lint.py, hotzone_changed_files.sh, scripts/ci/harness_gate_read.py, test_evidence_pack_lint.py 1/none; docs/rules/operations.md (an unrelated doc) 1/none; harness-floor.yml, hot-zone-pr-gate.yml, guard-conformance.yml 3/path"
     exit: 0
     ts: "2026-09-27T05:35:02Z"
     seat: claude-opus-5-5
@@ -870,4 +870,10 @@ receipts:
     result: "0"
     exit: 0
     ts: "2026-09-27T05:53:52Z"
+    seat: claude-opus-5-5
+  - claim: "coordinator addendum: every repo path the spec cites either exists on origin/main or is one this PR, PR-1 or PR-2 creates; the floor cases re-measured on the corrected paths"
+    cmd: "git cat-file -e origin/main:<path> for each backticked path in the spec (basenames resolved with git ls-tree); scratch floor_sim.py; parity_v2.py"
+    result: "fixed: scripts/harness_gate_read.py -> scripts/ci/harness_gate_read.py (§9), bare harness_gate_read.py -> scripts/ci/harness_gate_read.py (§5ter.5, twice), docs/README.md (absent on main) -> docs/rules/operations.md as the unrelated doc (§5ter.4 n, §9); model_routing_gate.py already cited as infra/claude-hooks/model_routing_gate.py (2 places); floor docs/rules/operations.md 1/none, scripts/ci/harness_gate_read.py 1/none; parity 179 rows, drift 0; static selftest 32 PASS"
+    exit: 0
+    ts: "2026-09-27T05:58:44Z"
     seat: claude-opus-5-5

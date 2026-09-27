@@ -1743,7 +1743,7 @@ Innocence:
 - m3: the mini with a third test, `test_integrity_mismatch_refuses` (`GOT=abc WANT=xyz`:
   rc 78, empty stdout, stderr exactly `mini: integrity mismatch`), and m2's two entries
   pointed at it: 11 of 11 killed, zero errors.
-- n: `docs/README.md` alone prints `1`.
+- n: `docs/rules/operations.md` alone prints `1`.
 - o, the allowed forms, one plant at a time after `export PYTHONPATH=`: a literal trap string
   with no site (`trap 'rm -f "$SIDECAR_DIR/.wcbw"' HUP`), a `command` that runs no shell
   (`command -v true >/dev/null`) and the env file sourced again (`. "$ENV_FILE"`): each gives
@@ -1836,7 +1836,7 @@ repos/Bali-Zero/Teman2/branches/main/protection` lists it). It computes the floo
    `evidence_pack_lint.py --print-floor` from the BASE checkout. A floor-3 diff with no
    `evidence/brief.yml` fails outright, a brief below the floor fails, and a brief at Gear 2
    or 3 passes only once a harness/fable-gate verdict is posted on the head (its step 7c,
-   `harness_gate_read.py`). So from the first PR after PR-1's merge, a flip cannot merge
+   `scripts/ci/harness_gate_read.py`). So from the first PR after PR-1's merge, a flip cannot merge
    without a gate reading it, and no operator step is needed; narrowing the pattern list
    first is closed by PR-1's merge precondition (below). PR-1 itself is floor 3 through the
    wrapper and the workflow.
@@ -1844,7 +1844,7 @@ repos/Bali-Zero/Teman2/branches/main/protection` lists it). It computes the floo
    required context until the operator arms it: it would bind in none of the window that gate
    r3 R6 and gate r4 §5 measured. It would also have to read a sha-bound PR comment from a
    macOS job in both `pull_request` and `merge_group` runs, a second copy of
-   `harness_gate_read.py`.
+   `scripts/ci/harness_gate_read.py`.
 3. A flip is one of several ways a later PR can weaken the inventory: a killer pointed at a
    test that still fails for another reason, a mode relabelled together with the test that
    pinned it, a fixture deleted along with its entry. S3 reads the head only, and on the head
@@ -2186,7 +2186,7 @@ Added by the gate r4 re-scope (the generator prototype; non-normative, not commi
 - **Floor (item 2).** With `HOTZONE_PATTERNS` as on this branch, `compute_floor` gives 1
   (source `none`) for each of the four scope paths alone and for gate r4's §5 set. With the
   four paths added, it gives 3 (source `path`) for each and for the set, and 1 for
-  `docs/README.md` and for `scripts/tests/test_evidence_pack_lint.py`.
+  `docs/rules/operations.md` and for `scripts/tests/test_evidence_pack_lint.py`.
 - **Feasibility suite (50 tests, PR-1 target).** Steps 1–8: 170 of 170 MUST killed by a
   declared killer, 7 EQUIVALENT with identical records over every test, 177 of 177 modes as
   declared, 0 errors (5bis.8).
@@ -2221,7 +2221,7 @@ Added by council round 4 (same prototype, re-run on the committed bytes):
   enforcement `active`, `bypass_actors` empty, one rule, `merge_queue`.
 - **The pattern list's own floor.** `compute_floor` gives 1 (source `none`) for
   `scripts/evidence_pack_lint.py`, `scripts/ci/hotzone_changed_files.sh`,
-  `scripts/harness_gate_read.py` and `scripts/tests/test_evidence_pack_lint.py`, and 3 for
+  `scripts/ci/harness_gate_read.py` and `scripts/tests/test_evidence_pack_lint.py`, and 3 for
   `harness-floor.yml`, `hot-zone-pr-gate.yml` and `guard-conformance.yml` (§8 item 11).
 
 Schema-1 measurements, kept as the record gates r3 and r4 judged:
