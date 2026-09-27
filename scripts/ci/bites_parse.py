@@ -1092,8 +1092,14 @@ def main(argv: list[str] | None = None) -> int:
     if not args.pack:
         ap.error("one of --selftest or --pack is required")
     if args.tree is not None and not _TREE_ID.fullmatch(args.tree):
-        sys.stderr.write("--tree must be a full lowercase hex commit or tree id "
-                         "(exactly 40 or 64 digits)\n")
+        # The caller (harness-floor) reads the verdict as JSON from stdout, so a refusal must
+        # be a verdict too: an empty stdout would reach its `json.load` as a crash of its own.
+        # The value is not echoed - it is text somebody typed.
+        reason = ("--tree: must be a full lowercase hex commit or tree id "
+                  "(exactly 40 or 64 digits)")
+        sys.stderr.write(reason + "\n")
+        sys.stdout.write(json.dumps({"malformed": True, "errors": [reason]},
+                                    indent=2, ensure_ascii=False) + "\n")
         return EXIT_MALFORMED
 
     if args.pack == "-":
