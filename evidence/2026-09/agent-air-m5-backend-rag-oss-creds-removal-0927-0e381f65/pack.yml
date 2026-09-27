@@ -20,8 +20,8 @@ seat_diversity_note: >-
   fresh gate session that grades this PR is the second opinion.
 diff:
   net_lines: >-
-    7 files, +775/-68 measured by `git diff --numstat origin/main...HEAD`
-    across three commits: the credential-removal fix
+    7 files, +776/-68 measured by `git diff --numstat origin/main...HEAD`
+    spanning this branch's commits: the credential-removal fix
     (apps/backend-rag/scripts/import_lkpm_q1_2026.py rewritten, one doc line
     redacted, new guard + guilt/innocence test, two new steps in
     .github/workflows/security.yml), a same-PR follow-up that exempted the
@@ -183,13 +183,13 @@ receipts:
     ts: "2026-09-27T00:08:34Z"
     seat: session
   - claim: >-
-      The full diff against origin/main is 7 files, +775/-68 across the
-      three commits in this branch (fix, self-fixture exemption, this
-      evidence pack).
+      The full diff against origin/main is 7 files, +776/-68, spanning
+      this branch's commits (fix, self-fixture exemption, this
+      evidence pack, and its own digit corrections).
     cmd: "git diff --stat origin/main...HEAD ; git diff --numstat origin/main...HEAD"
-    result: "7 files changed, 775 insertions(+), 68 deletions(-)"
+    result: "7 files changed, 776 insertions(+), 68 deletions(-)"
     exit: 0
-    ts: "2026-09-27T00:10:56Z"
+    ts: "2026-09-27T00:13:23Z"
     seat: session
 seat_override: >-
   Gear-3 council_run quorum not met: secret-bearing diff (this PR's deleted
