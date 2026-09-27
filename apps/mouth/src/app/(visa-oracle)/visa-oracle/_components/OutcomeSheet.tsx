@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   CalendarClock,
@@ -345,14 +345,12 @@ function ReviewReasonGroup({
   language,
   titleKey,
   reasons,
-  sources,
   facts,
   onEditMissingInput,
 }: {
   language: Language;
   titleKey: I18nKey;
   reasons: readonly OutcomeReason[];
-  sources: ReadonlyMap<string, OutcomeSource>;
   facts: OracleFacts;
   onEditMissingInput?: (questionId: string) => void;
 }) {
@@ -365,7 +363,6 @@ function ReviewReasonGroup({
       <ReasonList
         language={language}
         reasons={reasons}
-        sources={sources}
         causeFacts={facts}
         onEditMissingInput={onEditMissingInput}
       />
@@ -373,29 +370,58 @@ function ReviewReasonGroup({
   );
 }
 
+// ENDING-ROUND E5 regex: matches ONLY the engine-adapter.ts `reasonMessage()`
+// fallback ("Verified reason: CODE" / "Alasan terverifikasi: CODE") — never
+// a mapped SUPPORT_REASON_COPY sentence, which always reads as prose.
+const GENERIC_SUPPORT_REASON_RE =
+  /^(Verified reason|Alasan terverifikasi): [A-Z0-9_]+$/;
+
 function ReasonList({
   language,
   reasons,
-  sources,
   causeFacts,
   onEditMissingInput,
+  variant,
 }: {
   language: Language;
   reasons: readonly OutcomeReason[];
-  sources: ReadonlyMap<string, OutcomeSource>;
   /** Supplied under HUMAN_REVIEW and, since A3'-M (M4), under
    * NO_SUPPORTED_PATH too: the interview whose answers may be shown as the
    * demonstrated cause of each reason. Absent elsewhere — a candidate's
    * support reason is not something the applicant "caused". */
   causeFacts?: OracleFacts;
   onEditMissingInput?: (questionId: string) => void;
+  /** ENDING-ROUND E5 (+extension): "support" and "no_path" are the only
+   * variants whose reasons are built by `reason()`/`reasonMessage()`
+   * (engine-adapter.ts) and can therefore surface the raw fallback —
+   * review/condition reasons always have their own mapped, already-neutral
+   * copy. Collapses every such fallback into ONE generic sentence — a
+   * DIFFERENT sentence per variant, because "the assessment supports this
+   * option" would assert support inside a NO_SUPPORTED_PATH result. */
+  variant?: "support" | "no_path" | "review";
 }) {
   if (reasons.length === 0) return null;
+  const genericKey: I18nKey | undefined =
+    variant === "support"
+      ? ("outcome.reason_generic" as I18nKey)
+      : variant === "no_path"
+        ? ("outcome.reason_generic_no_path" as I18nKey)
+        : undefined;
+  let genericShown = false;
+  const rows = reasons.flatMap((reason) => {
+    const localizedText = localized(reason.message, language);
+    if (genericKey && GENERIC_SUPPORT_REASON_RE.test(localizedText)) {
+      if (genericShown) return [];
+      genericShown = true;
+      return [{ reason, text: translate(language, genericKey) }];
+    }
+    return [{ reason, text: localizedText }];
+  });
   return (
     <ul className="oracle-reason-list">
-      {reasons.map((reason) => (
+      {rows.map(({ reason, text }) => (
         <li key={reason.code}>
-          <span>{localized(reason.message, language)}</span>
+          <span>{text}</span>
           {REVIEW_REASON_ELEMENTS[reason.code] && (
             <dl className="oracle-review-elements">
               {(
@@ -417,25 +443,6 @@ function ReasonList({
                 </div>
               ))}
             </dl>
-          )}
-          {reason.sourceIds.length > 0 && (
-            <span className="oracle-reason-list__sources">
-              {reason.sourceIds.map((sourceId) => {
-                const source = sources.get(sourceId);
-                if (!source) return null;
-                return (
-                  <a
-                    key={sourceId}
-                    href={source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {source.title}
-                    <ExternalLink aria-hidden="true" size={13} />
-                  </a>
-                );
-              })}
-            </span>
           )}
           {causeFacts && (
             <ReviewCauseList
@@ -555,69 +562,76 @@ function Price({
 function CandidateCard({
   language,
   candidate,
-  sourceIndex,
+  index,
+  total,
   checkedDocs,
   onToggleDoc,
 }: {
   language: Language;
   candidate: OutcomeCandidate;
-  sourceIndex: ReadonlyMap<string, OutcomeSource>;
+  /** ENDING-ROUND E4: zero-based position among the candidates shown —
+   * renders as the "01/02…" index, replacing the removed "Rank N" chip. */
+  index: number;
+  total: number;
   checkedDocs: ReadonlySet<string>;
   onToggleDoc: (key: string) => void;
 }) {
+  const ordinal = String(index + 1).padStart(2, "0");
+  const count = String(total).padStart(2, "0");
   return (
     <article className="oracle-candidate-card">
       <header className="oracle-candidate-card__header">
-        <div>
+        <div className="oracle-candidate-card__row">
           <p className="oracle-eyebrow">{candidate.code}</p>
-          <h2 className="oracle-candidate-card__title">
-            {localized(candidate.name, language)}
-          </h2>
-          {candidate.tagline && (
-            <p className="oracle-question__hint">
-              {localized(candidate.tagline, language)}
-            </p>
-          )}
+          <span
+            className="oracle-candidate-card__index oracle-tabular-nums"
+            aria-hidden="true"
+          >
+            {ordinal}/{count}
+          </span>
         </div>
-        <span className="oracle-candidate-card__rank oracle-tabular-nums">
-          {translate(language, "outcome.rank" as I18nKey, {
-            rank: candidate.rank,
-          })}
-        </span>
+        <h2 className="oracle-candidate-card__title">
+          {localized(candidate.name, language)}
+        </h2>
+        {candidate.tagline && (
+          <p className="oracle-question__hint">
+            {localized(candidate.tagline, language)}
+          </p>
+        )}
       </header>
 
-      <div className="oracle-axis-grid">
-        <AxisBadge
-          language={language}
-          labelKey={"outcome.axis.legal" as I18nKey}
-          status={candidate.legal.status}
-        />
-        {candidate.operational.status !== "UNKNOWN" && (
+      {/* ENDING-ROUND E4: axis badges + support reasons behind ONE closed
+          disclosure — the prototype ending never showed a provenance wall
+          by default; a visitor who wants the mechanics opens it. */}
+      <details className="oracle-candidate__why">
+        <summary>{translate(language, "outcome.why_fits" as I18nKey)}</summary>
+        <div className="oracle-axis-grid">
           <AxisBadge
             language={language}
-            labelKey={"outcome.axis.operational" as I18nKey}
-            status={candidate.operational.status}
+            labelKey={"outcome.axis.legal" as I18nKey}
+            status={candidate.legal.status}
           />
-        )}
-        {candidate.service.status !== "UNKNOWN" && (
-          <AxisBadge
-            language={language}
-            labelKey={"outcome.axis.service" as I18nKey}
-            status={candidate.service.status}
-          />
-        )}
-      </div>
-
-      <section>
-        <h3 className="oracle-outcome__section-title">
-          {translate(language, "outcome.why_supported" as I18nKey)}
-        </h3>
+          {candidate.operational.status !== "UNKNOWN" && (
+            <AxisBadge
+              language={language}
+              labelKey={"outcome.axis.operational" as I18nKey}
+              status={candidate.operational.status}
+            />
+          )}
+          {candidate.service.status !== "UNKNOWN" && (
+            <AxisBadge
+              language={language}
+              labelKey={"outcome.axis.service" as I18nKey}
+              status={candidate.service.status}
+            />
+          )}
+        </div>
         <ReasonList
           language={language}
           reasons={candidate.decisionReasons}
-          sources={sourceIndex}
+          variant="support"
         />
-      </section>
+      </details>
 
       <div className="oracle-candidate-card__details">
         <section>
@@ -684,10 +698,6 @@ export function OutcomeSheet({
   onAskMissingInput,
   handoffSlot,
 }: OutcomeSheetProps) {
-  const sourceIndex = useMemo(
-    () => new Map(outcome.sources.map((source) => [source.id, source])),
-    [outcome.sources],
-  );
   const rows = answerRows(language, facts);
   // Collapse repeated fallback copy only in this view. The adapter retains
   // every missing fact code for SHADOW parity; each editable row stays distinct.
@@ -763,8 +773,53 @@ export function OutcomeSheet({
     });
   };
 
+  // F1 fix (ORACLE-PROD-20260927 delta, gate finding 1): a closed
+  // `<details>` hides its content through the browser's own UA "details
+  // content" slot, not through each child's `display` — the print CSS
+  // alone (`> *:not(summary) { display:block !important }`) can never
+  // reveal it, confirmed empirically in Chromium (both screenshot and PDF
+  // text). This listens for the REAL `window.print()` path (the "Print /
+  // save as PDF" button below fires `beforeprint`/`afterprint` like any
+  // browser print) and opens every closed disclosure inside THIS sheet
+  // right before printing, closing again afterward — but only the ones it
+  // opened itself, so a disclosure the visitor already had open stays
+  // open. React never controls `open` here (no `open` prop on either
+  // `<details>`), so mutating the DOM property directly is safe.
+  const outcomeRootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = outcomeRootRef.current;
+    if (!root) return;
+    let openedByPrint: HTMLDetailsElement[] = [];
+
+    const handleBeforePrint = () => {
+      const details = root.querySelectorAll<HTMLDetailsElement>(
+        "details.oracle-candidate__why, details.oracle-outcome__legal",
+      );
+      openedByPrint = [];
+      details.forEach((node) => {
+        if (!node.open) {
+          node.open = true;
+          openedByPrint.push(node);
+        }
+      });
+    };
+    const handleAfterPrint = () => {
+      for (const node of openedByPrint) {
+        if (node.isConnected) node.open = false;
+      }
+      openedByPrint = [];
+    };
+
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
+
   return (
-    <div className="oracle-outcome">
+    <div className="oracle-outcome" ref={outcomeRootRef}>
       {/* A HUMAN_REVIEW_REQUIRED state already gets its own honest,
           complete explanation below (outcome.human_review_body + the
           review reasons) regardless of provenance — a generic non-ENGINE
@@ -817,11 +872,7 @@ export function OutcomeSheet({
             {translate(language, "outcome.conditions.title")}
           </h2>
           <p>{translate(language, "outcome.conditions.intro")}</p>
-          <ReasonList
-            language={language}
-            reasons={outcome.conditions}
-            sources={sourceIndex}
-          />
+          <ReasonList language={language} reasons={outcome.conditions} />
         </section>
       )}
 
@@ -895,7 +946,6 @@ export function OutcomeSheet({
               <ReasonList
                 language={language}
                 reasons={caseReviewReasons}
-                sources={sourceIndex}
                 causeFacts={facts}
                 onEditMissingInput={onEditMissingInput}
               />
@@ -922,7 +972,6 @@ export function OutcomeSheet({
                 language={language}
                 titleKey={"outcome.review_group_case.title" as I18nKey}
                 reasons={caseReviewReasons}
-                sources={sourceIndex}
                 facts={facts}
                 onEditMissingInput={onEditMissingInput}
               />
@@ -930,7 +979,6 @@ export function OutcomeSheet({
                 language={language}
                 titleKey={"outcome.review_group_system.title" as I18nKey}
                 reasons={systemReviewReasons}
-                sources={sourceIndex}
                 facts={facts}
                 onEditMissingInput={onEditMissingInput}
               />
@@ -955,12 +1003,18 @@ export function OutcomeSheet({
       {outcome.state === "NO_SUPPORTED_PATH" && (
         <section>
           <p>{translate(language, "outcome.no_path_body")}</p>
+          {/* ENDING-ROUND E5 (extended): `noPathReasons` is built by the SAME
+              `reason()`/`reasonMessage()` pipeline as a candidate's support
+              reasons (engine-adapter.ts) and falls back to the identical raw
+              "Verified reason: CODE" text for an unmapped code — verified on
+              screen (a live NO_SUPPORTED_PATH render showed "Verified
+              reason: NO_SUPPORTED_PATH"). Same filter, same reason. */}
           <ReasonList
             language={language}
             reasons={outcome.noPathReasons}
-            sources={sourceIndex}
             causeFacts={facts}
             onEditMissingInput={onEditMissingInput}
+            variant="no_path"
           />
           {outcome.alternatives.length > 0 && (
             <>
@@ -1050,12 +1104,13 @@ export function OutcomeSheet({
             {translate(language, "outcome.supported_paths" as I18nKey)}
           </h2>
           <div className="oracle-candidate-list">
-            {outcome.candidates.map((candidate) => (
+            {outcome.candidates.map((candidate, index) => (
               <CandidateCard
                 key={candidate.id}
                 language={language}
                 candidate={candidate}
-                sourceIndex={sourceIndex}
+                index={index}
+                total={outcome.candidates.length}
                 checkedDocs={checkedDocs}
                 onToggleDoc={toggleDoc}
               />
@@ -1087,11 +1142,22 @@ export function OutcomeSheet({
         <div className="oracle-handoff-slot oracle-no-print">{handoffSlot}</div>
       )}
 
+      {/* ENDING-ROUND E7: the previous "Sources used for this decision" wall
+          (title + link + publisher + effective/observed dates + freshness
+          badge on screen for every row) reads as provenance machinery.
+          Closed by default; effective/observed/freshness stay only in
+          `.oracle-print-only`. F1 fix (gate finding 1): this `<details>`
+          is opened for real printing by the beforeprint/afterprint effect
+          above — both the "Print / save as PDF" button below
+          (`window.print()`) and Chromium's headless `page.pdf()` fire
+          `beforeprint`/`afterprint` (verified empirically), so that effect
+          alone covers both paths; oracle.css's `::details-content` print
+          rule on this class is a defensive fallback only. */}
       {outcome.sources.length > 0 && (
-        <section>
-          <h2 className="oracle-outcome__section-title">
-            {translate(language, "outcome.sources_title" as I18nKey)}
-          </h2>
+        <details className="oracle-outcome__legal">
+          <summary>
+            {translate(language, "outcome.legal_references" as I18nKey)}
+          </summary>
           <ol className="oracle-source-list">
             {outcome.sources.map((source) => (
               <li key={source.id}>
@@ -1100,7 +1166,7 @@ export function OutcomeSheet({
                   <ExternalLink aria-hidden="true" size={14} />
                 </a>
                 <span>{source.publisher}</span>
-                <span className="oracle-tabular-nums">
+                <span className="oracle-print-only oracle-tabular-nums">
                   {translate(language, "outcome.source_dates" as I18nKey, {
                     effective: formatAssessmentDate(
                       source.effectiveAtIso,
@@ -1113,7 +1179,7 @@ export function OutcomeSheet({
                   })}
                 </span>
                 <span
-                  className="oracle-source-freshness"
+                  className="oracle-print-only oracle-source-freshness"
                   data-freshness={source.freshness.toLowerCase()}
                 >
                   {translate(
@@ -1124,7 +1190,7 @@ export function OutcomeSheet({
               </li>
             ))}
           </ol>
-        </section>
+        </details>
       )}
 
       <section className="oracle-receipt">
@@ -1148,7 +1214,7 @@ export function OutcomeSheet({
           </ul>
         )}
         {outcome.assessment && (
-          <p className="oracle-tabular-nums">
+          <p className="oracle-print-only oracle-tabular-nums">
             {translate(language, "outcome.assessment_dates" as I18nKey, {
               effective: formatAssessmentDate(
                 outcome.assessment.effectiveAtIso,

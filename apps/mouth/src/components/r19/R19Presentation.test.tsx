@@ -69,6 +69,26 @@ describe("R19 presentation and portal", () => {
     expect(dialog.style.getPropertyValue("--nav-bg")).toBe("#F7F4EE");
     expect(dialog.style.getPropertyValue("--text-primary")).toBe("#1D2C3B");
   });
+  it("force renders data-presentation=r19 on a non-R19 pathname", () => {
+    route.pathname = "/this-does-not-exist-xyz";
+    const { container } = render(
+      <R19Presentation force>
+        <p>Fixture</p>
+      </R19Presentation>,
+    );
+    expect(container.querySelector('[data-presentation="r19"]')).not.toBeNull();
+  });
+
+  it("leaves default (non-forced) behaviour unchanged on a non-R19 pathname", () => {
+    route.pathname = "/this-does-not-exist-xyz";
+    const { container } = render(
+      <R19Presentation>
+        <p>Fixture</p>
+      </R19Presentation>,
+    );
+    expect(container.querySelector('[data-presentation="r19"]')).toBeNull();
+  });
+
   it("removes the presentation on navigation to the protected property landing", () => {
     route.pathname = "/property/example";
     const { container, rerender } = render(

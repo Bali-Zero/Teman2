@@ -172,8 +172,9 @@ const en = {
 
   "q.category": "What brings you to Indonesia?",
   "q.category.hint": "Pick the closest fit — you can refine it next.",
+  // ENDING-ROUND E10: watershed WhyWeAsk sentence — same meaning, plainer.
   "why.category":
-    "This is a soft interview branch. Only the engine can decide whether any visa path is supported.",
+    "Your direction only chooses the next questions. It doesn’t decide whether a visa path is available — your answers do.",
   "q.category.opt.tourism": "Tourism & short visit",
   "q.category.opt.business": "Business (no work)",
   "q.category.opt.work": "Work & employment",
@@ -871,13 +872,19 @@ const en = {
     "If a supported Bali Zero service has verified pricing, it will appear as one all-inclusive amount.",
   "confirmation.cta": "See my options",
 
-  "verdict.headline.SUPPORTED_CANDIDATES": "Supported paths found",
+  // ENDING-ROUND E1: friendly ending surface, same canonical meaning — the
+  // engineering-wall copy ("Supported paths found" / "The deterministic
+  // engine supports…") moved to `outcome.why_fits`/`outcome.why_supported`
+  // where it still belongs; the hero headline now reads as a person talking.
+  "verdict.headline.SUPPORTED_CANDIDATES": "A path forward.",
   "verdict.headline.HUMAN_REVIEW_REQUIRED":
     "This needs a human, not an algorithm",
   "verdict.headline.NO_SUPPORTED_PATH":
     "This exact path isn’t supported — here’s what instead",
-  "verdict.headline.TEMPORARILY_UNAVAILABLE":
-    "The verified decision service cannot complete this assessment",
+  // ENDING-ROUND E2: truthful in-page language — the previous "saved"
+  // wording overclaimed persistence; only the current page still holds the
+  // answers.
+  "verdict.headline.TEMPORARILY_UNAVAILABLE": "A pause in the journey.",
   "verdict.headline.NEEDS_INPUT": "A little more to go",
   // D23 "OPTION B-STUDIO": not a real `OutcomeState` — an override VerdictReveal
   // selects instead of `verdict.headline.HUMAN_REVIEW_REQUIRED` when the
@@ -893,13 +900,13 @@ const en = {
   "verdict.eligibility.conditional": "Conditional",
   "verdict.eligibility.likely-not": "Likely not",
   "verdict.state_description.SUPPORTED_CANDIDATES":
-    "The deterministic engine supports the paths shown below for the facts and dated sources in this assessment.",
+    "These options match the answers you gave.",
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Nothing here is guessed. A Bali Zero advisor reviews cases like yours by hand.",
   "verdict.state_description.NO_SUPPORTED_PATH":
     "We won’t force a fit that isn’t there — here is what your answers do open.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
-    "We’d rather say so plainly than fake a result.",
+    "We can’t check your options right now. Your answers are still on this page.",
   "verdict.state_description.NEEDS_INPUT":
     "Finish the interview to see your options.",
   // Must not repeat the Studio sentence that closes the reason's own copy,
@@ -976,8 +983,8 @@ const en = {
     "Timeline needs operational confirmation",
   "outcome.document_status.CONDITIONAL": "Conditional",
   "outcome.document_status.UNKNOWN": "To be confirmed",
-  "outcome.needs_input_body":
-    "The engine abstained because these facts are still missing:",
+  // ENDING-ROUND E3: "abstained" is engine jargon.
+  "outcome.needs_input_body": "A few details are still missing:",
   "outcome.answer_missing_input": "Answer this",
   "outcome.retryable": "You can safely try this evaluation again.",
   "outcome.not_retryable": "A person needs to check this before you continue.",
@@ -1000,7 +1007,9 @@ const en = {
   "outcome.provenance.PREVIEW.title": "Preview data",
   "outcome.provenance.PREVIEW.body":
     "This content exists only for testing the interface and is not a recommendation.",
-  "outcome.assumptions_receipt_title": "Assumptions & caveats, dated",
+  // ENDING-ROUND E8: "Assumptions & caveats, dated" read as a provenance
+  // stamp; the dates themselves move to `.oracle-print-only`.
+  "outcome.assumptions_receipt_title": "What we assumed",
   "outcome.assumptions_receipt_empty":
     "No assumptions were needed — every answer was given directly.",
   "outcome.freshness_stamp": "Decision ruleset evaluated {{date}}",
@@ -1027,7 +1036,8 @@ const en = {
     "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
   // Slice A2 (PLAN VISA-ORACLE-DW-20260919 §1.6): `notices[]` rendered next
   // to whatever verdict is already shown, on every state that can carry one.
-  "outcome.conditions.title": "Conditions on this result",
+  // ENDING-ROUND E9: no test pins the old title text (verified 2026-09-27).
+  "outcome.conditions.title": "Before you apply",
   // S1 (GATE-A2-REPORT-6849 MEDIUM-2): the prior wording ("do not change
   // the result above") read as a reassurance that the disclosed matter has
   // no bearing on the outcome — false for a PEP/sanctions or source-of-funds
@@ -1075,6 +1085,19 @@ const en = {
   "tree.investment_currency": "Investment currency",
   "tree.investment_amount_usd": "Investment amount",
   "tree.retirement_undecided_basis": "Long-stay route",
+
+  // ENDING-ROUND additive keys (E4/E5/E7): presentation-only friendly
+  // ending copy, same canonical meaning as the jargon they replace.
+  "outcome.why_fits": "Why this fits",
+  "outcome.reason_generic":
+    "The assessment supports this option for the answers you provided.",
+  "outcome.legal_references": "Legal references",
+  // E5 extension: found via a live NO_SUPPORTED_PATH screenshot showing
+  // "Verified reason: NO_SUPPORTED_PATH" — `noPathReasons` shares the same
+  // raw-code fallback as a candidate's support reasons, but "the assessment
+  // supports this option" would be false inside a NOT-supported result.
+  "outcome.reason_generic_no_path":
+    "This path isn't supported for the answers you provided.",
 } as const;
 
 type Keys = keyof typeof en;
@@ -1240,7 +1263,7 @@ const id: Record<Keys, string> = {
   "q.category.hint":
     "Pilih yang paling mendekati — bisa diperjelas berikutnya.",
   "why.category":
-    "Ini hanya cabang wawancara awal. Hanya mesin yang dapat memutuskan apakah suatu jalur visa didukung.",
+    "Arah yang Anda pilih hanya menentukan pertanyaan berikutnya. Arah ini tidak menentukan apakah jalur visa tersedia — jawaban Anda yang menentukan.",
   "q.category.opt.tourism": "Wisata & kunjungan singkat",
   "q.category.opt.business": "Bisnis (tanpa bekerja)",
   "q.category.opt.work": "Kerja & ketenagakerjaan",
@@ -1928,13 +1951,12 @@ const id: Record<Keys, string> = {
     "Jika layanan Bali Zero yang didukung memiliki harga terverifikasi, harganya akan tampil sebagai satu jumlah all-inclusive.",
   "confirmation.cta": "Lihat opsi saya",
 
-  "verdict.headline.SUPPORTED_CANDIDATES": "Jalur yang didukung ditemukan",
+  "verdict.headline.SUPPORTED_CANDIDATES": "Ada jalan ke depan.",
   "verdict.headline.HUMAN_REVIEW_REQUIRED":
     "Ini butuh manusia, bukan algoritma",
   "verdict.headline.NO_SUPPORTED_PATH":
     "Jalur persis ini belum didukung — ini alternatifnya",
-  "verdict.headline.TEMPORARILY_UNAVAILABLE":
-    "Layanan keputusan terverifikasi belum dapat menyelesaikan penilaian ini",
+  "verdict.headline.TEMPORARILY_UNAVAILABLE": "Jeda sejenak dalam perjalanan.",
   "verdict.headline.NEEDS_INPUT": "Sedikit lagi",
   "verdict.headline.SECOND_HOME_STUDIO":
     "Di bawah ambang batas jaminan Second Home",
@@ -1944,13 +1966,13 @@ const id: Record<Keys, string> = {
   "verdict.eligibility.conditional": "Bersyarat",
   "verdict.eligibility.likely-not": "Kemungkinan tidak",
   "verdict.state_description.SUPPORTED_CANDIDATES":
-    "Mesin deterministik mendukung jalur yang ditampilkan berdasarkan fakta dan sumber bertanggal dalam penilaian ini.",
+    "Opsi-opsi ini sesuai dengan jawaban yang Anda berikan.",
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Tidak ada yang ditebak di sini. Konsultan Bali Zero meninjau kasus seperti ini secara langsung.",
   "verdict.state_description.NO_SUPPORTED_PATH":
     "Kami tidak akan memaksakan jalur yang tidak cocok — inilah yang dibuka oleh jawaban Anda.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
-    "Kami lebih memilih berterus terang daripada memalsukan hasil.",
+    "Kami belum bisa memeriksa opsi Anda saat ini. Jawaban Anda masih ada di halaman ini.",
   "verdict.state_description.NEEDS_INPUT":
     "Selesaikan wawancara untuk melihat opsi Anda.",
   "verdict.state_description.SECOND_HOME_STUDIO":
@@ -2025,8 +2047,7 @@ const id: Record<Keys, string> = {
     "Linimasa memerlukan konfirmasi operasional",
   "outcome.document_status.CONDITIONAL": "Bersyarat",
   "outcome.document_status.UNKNOWN": "Perlu dikonfirmasi",
-  "outcome.needs_input_body":
-    "Mesin tidak mengambil keputusan karena fakta berikut masih belum tersedia:",
+  "outcome.needs_input_body": "Beberapa detail masih kurang:",
   "outcome.answer_missing_input": "Jawab ini",
   "outcome.retryable": "Anda dapat mencoba evaluasi ini kembali dengan aman.",
   "outcome.not_retryable":
@@ -2051,7 +2072,7 @@ const id: Record<Keys, string> = {
   "outcome.provenance.PREVIEW.title": "Data pratinjau",
   "outcome.provenance.PREVIEW.body":
     "Konten ini hanya untuk menguji antarmuka dan bukan rekomendasi.",
-  "outcome.assumptions_receipt_title": "Asumsi & catatan, bertanggal",
+  "outcome.assumptions_receipt_title": "Yang kami asumsikan",
   "outcome.assumptions_receipt_empty":
     "Tidak ada asumsi yang diperlukan — semua jawaban diberikan langsung.",
   "outcome.freshness_stamp": "Aturan keputusan dievaluasi {{date}}",
@@ -2075,7 +2096,7 @@ const id: Record<Keys, string> = {
     "Layanan keputusan belum dapat memverifikasi kasus ini. Tidak ada jalur cadangan yang dibuat-buat.",
   "outcome.human_review_body":
     "Kasus Anda butuh penilaian manusia — tidak ada yang ditebak atas nama Anda.",
-  "outcome.conditions.title": "Kondisi pada hasil ini",
+  "outcome.conditions.title": "Sebelum Anda mengajukan",
   "outcome.conditions.intro":
     "Hasil di atas diperoleh dengan kondisi-kondisi berikut yang menyertainya. Tim kami akan memeriksa setiap kondisi bersama Anda sebelum pengajuan.",
   "outcome.review_group_case.title":
@@ -2117,6 +2138,13 @@ const id: Record<Keys, string> = {
   "tree.investment_currency": "Mata uang investasi",
   "tree.investment_amount_usd": "Jumlah investasi",
   "tree.retirement_undecided_basis": "Jalur tinggal panjang",
+
+  "outcome.why_fits": "Mengapa ini cocok",
+  "outcome.reason_generic":
+    "Penilaian mendukung opsi ini untuk jawaban yang Anda berikan.",
+  "outcome.legal_references": "Dasar hukum",
+  "outcome.reason_generic_no_path":
+    "Jalur ini tidak didukung untuk jawaban yang Anda berikan.",
 };
 
 export const dict = { en, id };

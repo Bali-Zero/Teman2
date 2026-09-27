@@ -59,6 +59,8 @@ For each target, this tool:
 
 EXCLUSIONS (never scanned as consumers, regardless of kind)
   - `docs/archive/**`, `research/**` — historical/ad-hoc capture, not code.
+  - `evidence/**` — per-PR evidence packs (brief.yml, guilt-mutants.txt,
+    reviews): records of what a PR touched, never run against the tree.
   - `.secrets.baseline`, `infra/tcc-desktop-paths/allowlist.txt` — content
     hash/allowlist files that mention paths as DATA, never as references.
   - `*.jsonl` — append-only event/escalation logs; a basename appearing
@@ -363,7 +365,7 @@ DATA_CONTAINER_PARENT_KINDS: frozenset[str] = frozenset({"Tuple", "List", "Dict"
 # deliberately excluded from this set — see the module docstring.
 QUOTE_REQUIRED_KINDS: frozenset[str] = frozenset({"shell"})
 
-EXCLUDE_DIR_PREFIXES: tuple[str, ...] = ("docs/archive/", "research/")
+EXCLUDE_DIR_PREFIXES: tuple[str, ...] = ("docs/archive/", "research/", "evidence/")
 EXCLUDE_EXACT_PATHS: frozenset[str] = frozenset(
     {".secrets.baseline", "infra/tcc-desktop-paths/allowlist.txt"}
 )

@@ -1,0 +1,12 @@
+task: >-
+  R19 group C company: /about /careers /press into the (blog) R19 shell from v2 (own top-level
+  URL now), /v2 company 308 to them, routePolicy + footers repointed, footer guard widened to
+  company hrefs.
+lane: mouth/r19-company
+machine: air-m5
+date: 2026-09-27
+gear: 2
+gear_reason: Floor 2, source size, --no-renames churn under threshold incl. this brief.
+acceptance:
+  A1: guards pass (routePolicy, footer legal+company links, about roster); tsc exit 0.
+  A2: live /about|careers|press 200 + r19; /v2/company/* 308 to them; footers clean.

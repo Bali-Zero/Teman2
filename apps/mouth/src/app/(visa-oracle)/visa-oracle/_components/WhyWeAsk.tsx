@@ -48,19 +48,13 @@ export function WhyWeAsk({
         </button>
       )}
       {variant === "inline" ? (
+        // D11: the technical "Decision input: <fact path>" / "Human context
+        // only — not transmitted as an engine fact." line is
+        // implementation-internal metadata with no place on the public
+        // surface. `decisionMapping` stays a required prop (some future
+        // caller may want it again) but is no longer read here.
         <div className="oracle-whyweask__panel">
           <p style={{ margin: 0 }}>{translate(language, i18nKey)}</p>
-          <span className="oracle-whyweask__regulation">
-            {decisionMapping.kind === "FACT"
-              ? translate(language, "whyweask.fact_prefix", {
-                  facts: decisionMapping.factPaths.join(", "),
-                })
-              : decisionMapping.kind === "REVIEW_ONLY"
-                ? translate(language, "whyweask.review_only", {
-                    facts: decisionMapping.factPaths.join(", "),
-                  })
-                : translate(language, "whyweask.human_context")}
-          </span>
         </div>
       ) : (
         <AnimatePresence initial={false}>
@@ -79,17 +73,6 @@ export function WhyWeAsk({
               }}
             >
               <p style={{ margin: 0 }}>{translate(language, i18nKey)}</p>
-              <span className="oracle-whyweask__regulation">
-                {decisionMapping.kind === "FACT"
-                  ? translate(language, "whyweask.fact_prefix", {
-                      facts: decisionMapping.factPaths.join(", "),
-                    })
-                  : decisionMapping.kind === "REVIEW_ONLY"
-                    ? translate(language, "whyweask.review_only", {
-                        facts: decisionMapping.factPaths.join(", "),
-                      })
-                    : translate(language, "whyweask.human_context")}
-              </span>
             </motion.div>
           )}
         </AnimatePresence>

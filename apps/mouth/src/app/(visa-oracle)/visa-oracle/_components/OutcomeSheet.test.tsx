@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { vi } from "vitest";
 import type { ComponentProps } from "react";
 import fs from "fs";
@@ -236,7 +242,10 @@ describe("OutcomeSheet — honest five-state rendering", () => {
     expect(document.querySelector(".oracle-price__value")).toHaveTextContent(
       /IDR.*1,000,000/,
     );
-    expect(screen.getAllByText("Primary source fixture")).toHaveLength(2);
+    // ENDING-ROUND E6: the inline per-reason source link was removed (it
+    // duplicated the legal references and read as an application link) —
+    // the source title now appears exactly once, in Legal references.
+    expect(screen.getAllByText("Primary source fixture")).toHaveLength(1);
   });
 
   it("NEEDS_INPUT exposes the mapped edit action", () => {
@@ -1403,5 +1412,254 @@ describe("OutcomeSheet — conditions on the verdict", () => {
     expect(title).toHaveTextContent(
       translate("en", "outcome.conditions.title"),
     );
+  });
+});
+
+// ENDING-ROUND (Dux, 2026-09-27T11:15Z): the approved prototype ending reads
+// as a person talking; production showed an engineering wall ("Rank 1",
+// "Verified reason: CODE", per-reason source links, a provenance-stamped
+// sources/assumptions wall). These tests pin the friendly surface, not the
+// removed jargon.
+describe("OutcomeSheet — ENDING-ROUND friendly ending surface (E4/E5/E6/E7/E8)", () => {
+  const GENERIC_REASON_A: OutcomeReason = {
+    code: "SOME_UNMAPPED_CODE",
+    message: text(
+      "Verified reason: SOME_UNMAPPED_CODE",
+      "Alasan terverifikasi: SOME_UNMAPPED_CODE",
+    ),
+    sourceIds: [],
+  };
+  const GENERIC_REASON_B: OutcomeReason = {
+    code: "OTHER_UNMAPPED_CODE",
+    message: text(
+      "Verified reason: OTHER_UNMAPPED_CODE",
+      "Alasan terverifikasi: OTHER_UNMAPPED_CODE",
+    ),
+    sourceIds: [],
+  };
+
+  function outcomeWithGenericReasons(): OutcomeViewModel {
+    const base = outcomeFor("SUPPORTED_CANDIDATES");
+    if (base.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("test fixture state mismatch");
+    }
+    return {
+      ...base,
+      candidates: [
+        { ...CANDIDATE, decisionReasons: [GENERIC_REASON_A, GENERIC_REASON_B] },
+      ],
+    };
+  }
+
+  // A closed `<details>`'s non-summary children are hidden by the browser's
+  // own UA stylesheet, not by React unmounting them — jsdom does not apply
+  // that layout rule, so `container.textContent` still includes them. This
+  // clone-and-strip is the only way to assert "not visible on screen" here.
+  function visibleText(container: HTMLElement): string {
+    const clone = container.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll(".oracle-print-only").forEach((el) => el.remove());
+    return clone.textContent ?? "";
+  }
+
+  it("E4: drops the Rank chip for a 01/02-style index, and never shows it on screen", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    expect(screen.queryByText(/^Rank /)).toBeNull();
+    expect(
+      container.querySelector(".oracle-candidate-card__index"),
+    ).toHaveTextContent("01/01");
+  });
+
+  it("E4: collapses the axis badges and support reasons behind a closed 'Why this fits' disclosure", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    const details = container.querySelector(".oracle-candidate__why");
+    expect(details).toBeInTheDocument();
+    expect((details as HTMLDetailsElement).open).toBe(false);
+    expect(
+      within(details as HTMLElement).getByText("Legal eligibility"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Why this fits")).toBeInTheDocument();
+  });
+
+  it.each<Language>(["en", "id"])(
+    "E5: collapses every unmapped raw code into ONE generic sentence, never the code itself, in %s",
+    (language) => {
+      const { container } = render(
+        <OutcomeSheet
+          language={language}
+          outcome={outcomeWithGenericReasons()}
+          facts={FACTS}
+        />,
+      );
+      expect(screen.queryByText(/SOME_UNMAPPED_CODE/)).toBeNull();
+      expect(screen.queryByText(/OTHER_UNMAPPED_CODE/)).toBeNull();
+      expect(
+        screen.queryByText(/Verified reason:|Alasan terverifikasi:/),
+      ).toBeNull();
+      const generic = translate(language, "outcome.reason_generic" as I18nKey);
+      expect(screen.getAllByText(generic)).toHaveLength(1);
+      expect(visibleText(container)).not.toMatch(
+        /\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b/,
+      );
+    },
+  );
+
+  // Found via a live screenshot of the NO_SUPPORTED_PATH ending, which showed
+  // "Verified reason: NO_SUPPORTED_PATH" on screen: `noPathReasons` is built
+  // by the SAME `reason()`/`reasonMessage()` fallback as a candidate's
+  // support reasons (engine-adapter.ts), so it needs the SAME E5 filter.
+  // GUILT/innocence pair (second review round): the SUPPORT-flavoured
+  // generic sentence ("The assessment supports this option…") would assert
+  // support inside a result that is explicitly NOT supported — NO_SUPPORTED_
+  // PATH must use its OWN negative-safe generic sentence, never the positive
+  // one meant for a candidate.
+  it.each<Language>(["en", "id"])(
+    "E5 (extended): filters the raw-code fallback on NO_SUPPORTED_PATH with a NEGATIVE-safe sentence, never the positive support one, in %s",
+    (language) => {
+      const base = outcomeFor("NO_SUPPORTED_PATH");
+      if (base.state !== "NO_SUPPORTED_PATH") {
+        throw new Error("test fixture state mismatch");
+      }
+      const outcome: OutcomeViewModel = {
+        ...base,
+        noPathReasons: [GENERIC_REASON_A],
+      };
+      render(
+        <OutcomeSheet language={language} outcome={outcome} facts={FACTS} />,
+      );
+      expect(screen.queryByText(/SOME_UNMAPPED_CODE/)).toBeNull();
+      expect(
+        screen.queryByText(/Verified reason:|Alasan terverifikasi:/),
+      ).toBeNull();
+      expect(
+        screen.getByText(
+          translate(language, "outcome.reason_generic_no_path" as I18nKey),
+        ),
+      ).toBeInTheDocument();
+      // Innocence: the POSITIVE support sentence never appears here.
+      expect(
+        screen.queryByText(
+          translate(language, "outcome.reason_generic" as I18nKey),
+        ),
+      ).toBeNull();
+    },
+  );
+
+  it("E6/E7: shows Legal references closed by default, listing the source title, with no duplicate per-reason link", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    const details = container.querySelector(".oracle-outcome__legal");
+    expect(details).toBeInTheDocument();
+    expect((details as HTMLDetailsElement).open).toBe(false);
+    expect(
+      within(details as HTMLElement).getByText("Primary source fixture"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Legal references")).toBeInTheDocument();
+    expect(screen.getAllByText("Primary source fixture")).toHaveLength(1);
+  });
+
+  it("E7/E8: keeps effective/observed/evaluated dates and the freshness badge ONLY inside .oracle-print-only", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    const printOnlyText = Array.from(
+      container.querySelectorAll(".oracle-print-only"),
+    )
+      .map((el) => el.textContent)
+      .join(" ");
+    expect(printOnlyText).toMatch(/observed/i);
+    expect(printOnlyText).toMatch(/evaluated/i);
+    const visible = visibleText(container);
+    expect(visible).not.toMatch(/observed/i);
+    expect(visible).not.toMatch(/evaluated/i);
+  });
+
+  it("E1/E4/E5/E7/E8: never shows 'deterministic engine', 'Rank ', or a raw code on the SUPPORTED_CANDIDATES screen", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    const visible = visibleText(container);
+    expect(visible).not.toMatch(/deterministic engine/i);
+    expect(visible).not.toMatch(/Rank /);
+  });
+
+  it("keeps the Studio-only / mixed-review / consent / disclaimer surfaces intact (unchanged by the ending cleanup)", () => {
+    renderSheet("HUMAN_REVIEW_REQUIRED");
+    for (const line of DISCLAIMER_EN) {
+      expect(document.querySelector(".oracle-disclaimer")).toHaveTextContent(
+        line,
+      );
+    }
+  });
+});
+
+// F1 fix (ORACLE-PROD-20260927 delta, gate finding 1): closed
+// `.oracle-candidate__why` / `.oracle-outcome__legal` disclosures used to
+// lose their content in print/PDF because a closed `<details>` hides
+// content through the browser's own UA slot, not through each child's
+// `display`. OutcomeSheet now opens both around a REAL print
+// (beforeprint/afterprint, fired by `window.print()`) and closes only the
+// ones it opened itself.
+describe("OutcomeSheet — print reveals closed disclosures (F1)", () => {
+  function detailsIn(container: HTMLElement) {
+    return {
+      why: container.querySelector(
+        "details.oracle-candidate__why",
+      ) as HTMLDetailsElement,
+      legal: container.querySelector(
+        "details.oracle-outcome__legal",
+      ) as HTMLDetailsElement,
+    };
+  }
+
+  it("opens both closed disclosures on beforeprint and closes them again on afterprint", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    const { why, legal } = detailsIn(container);
+    expect(why.open).toBe(false);
+    expect(legal.open).toBe(false);
+
+    window.dispatchEvent(new Event("beforeprint"));
+    expect(why.open).toBe(true);
+    expect(legal.open).toBe(true);
+
+    window.dispatchEvent(new Event("afterprint"));
+    expect(why.open).toBe(false);
+    expect(legal.open).toBe(false);
+  });
+
+  it("leaves a disclosure the visitor already opened open after afterprint, closing only the one it opened itself", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    const { why, legal } = detailsIn(container);
+    // The visitor opened "Legal references" before printing.
+    legal.open = true;
+
+    window.dispatchEvent(new Event("beforeprint"));
+    expect(why.open).toBe(true);
+    expect(legal.open).toBe(true);
+
+    window.dispatchEvent(new Event("afterprint"));
+    expect(legal.open).toBe(true);
+    expect(why.open).toBe(false);
+  });
+
+  it("removes its beforeprint/afterprint listeners on unmount", () => {
+    const addSpy = vi.spyOn(window, "addEventListener");
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+    try {
+      const { unmount } = renderSheet("SUPPORTED_CANDIDATES");
+      unmount();
+
+      const added = addSpy.mock.calls
+        .filter(([type]) => type === "beforeprint" || type === "afterprint")
+        .map(([type]) => type);
+      const removed = removeSpy.mock.calls
+        .filter(([type]) => type === "beforeprint" || type === "afterprint")
+        .map(([type]) => type);
+      expect(added.sort()).toEqual(["afterprint", "beforeprint"]);
+      expect(removed.sort()).toEqual(added.sort());
+
+      // No listener left behind — a stray event after unmount is a no-op,
+      // never a throw.
+      expect(() =>
+        window.dispatchEvent(new Event("beforeprint")),
+      ).not.toThrow();
+    } finally {
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    }
   });
 });

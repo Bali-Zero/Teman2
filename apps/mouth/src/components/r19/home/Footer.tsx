@@ -31,7 +31,7 @@ export function Footer() {
           </div>
           <div className={styles.column}>
             <span className={styles.eyebrow}>{"Bali Zero"}</span>
-            <a href="/v2/company/about">{"Our story"}</a>
+            <a href="/about">{"Our story"}</a>
             <a href="/team">{"Our team"}</a>
             <a href={GOOGLE_MAPS_URL}>{"Client reviews"}</a>
             <a href="https://my.balizero.com/">{"My Bali Zero"}</a>
@@ -39,8 +39,8 @@ export function Footer() {
           <div className={styles.column}>
             <span className={styles.eyebrow}>{"Connect"}</span>
             <a href="/contact">{"Contact & office visits"}</a>
-            <a href="/v2/company/careers">{"Careers"}</a>
-            <a href="/v2/company/press">{"Press"}</a>
+            <a href="/careers">{"Careers"}</a>
+            <a href="/press">{"Press"}</a>
             <FooterWhatsAppLink>{"WhatsApp"}</FooterWhatsAppLink>
             <a
               href={destinations.telegram.href}
@@ -63,9 +63,9 @@ export function Footer() {
         <div className={styles.base}>
           <span>{"© 2026 Bali Zero"}</span>
           <div>
-            <a href="/v2/privacy">{"Privacy"}</a>
-            <a href="/v2/terms">{"Terms"}</a>
-            <a href="/v2/cookies">{"Cookies"}</a>
+            <a href="/privacy">{"Privacy"}</a>
+            <a href="/terms">{"Terms"}</a>
+            <a href="/cookies">{"Cookies"}</a>
           </div>
         </div>
       </div>

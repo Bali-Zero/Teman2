@@ -17,6 +17,7 @@ import {
 } from "../_lib/countries";
 import { WhyWeAsk } from "./WhyWeAsk";
 import { NotSure } from "./NotSure";
+import { AtlasGlyph } from "./OracleScenery";
 
 export interface QuestionScreenProps {
   language: Language;
@@ -25,6 +26,14 @@ export interface QuestionScreenProps {
   onSkip: () => void;
   onBack: () => void;
   canGoBack: boolean;
+  /** Atlas presentation for this question (BUILD-SPEC §5). "default" keeps
+   * every existing option's DOM identical to before this build — only the
+   * three named presentations swap the options markup. */
+  presentation?: "default" | "world" | "permit" | "watershed";
+  /** Watershed-only: reports the hovered/focused category so the caller can
+   * preview its landscape before an answer commits. Never called for any
+   * other presentation. */
+  onPreviewOption?: (key: string | null) => void;
   /** Lane-aware reassurance banner (e.g. expired/urgent onshore copy). */
   noticeI18nKey?: I18nKey;
   /** Optional context note that is never interpreted as an eligibility gate. */
@@ -59,6 +68,8 @@ export function QuestionScreen({
   onSkip,
   onBack,
   canGoBack,
+  presentation = "default",
+  onPreviewOption,
   noticeI18nKey,
   courtesyNoteI18nKey,
   conflictI18nKey,
@@ -111,7 +122,7 @@ export function QuestionScreen({
   const hasHint = translate(language, hintKey) !== hintKey;
 
   return (
-    <div className="oracle-question">
+    <div className="oracle-question" data-presentation={presentation}>
       {canGoBack && (
         <button
           type="button"
@@ -154,52 +165,164 @@ export function QuestionScreen({
           language={language}
           i18nKey={question.whyWeAsk.i18nKey as I18nKey}
           decisionMapping={question.decisionMapping}
-          variant="inline"
+          // D11: the two stage presentations sit over the map/paper art, so
+          // the full inline explanation (and its "Decision input:"/"Human
+          // context only" boilerplate, now removed regardless — see
+          // WhyWeAsk.tsx) is replaced by a collapsed trigger there; every
+          // other question keeps the always-visible inline panel. ENDING-
+          // ROUND scope extension: watershed's "Your direction only
+          // chooses..." sentence (E10) is process explanation, not a
+          // substantive hint — it now uses the SAME collapsed disclosure
+          // as world/permit instead of always-visible inline text. No copy
+          // removed, only its default visibility.
+          variant={
+            presentation === "world" ||
+            presentation === "permit" ||
+            presentation === "watershed"
+              ? "disclosure"
+              : "inline"
+          }
         />
       )}
 
-      {question.decisionMapping.kind === "HUMAN_CONTEXT" && (
-        <p className="oracle-decision-boundary">
-          {translate(language, "question.human_context_notice")}
-        </p>
-      )}
+      {/* D11 (owner requirement, relayed by the coordinator): no
+          internal/technical metadata on the public surface. This banner
+          only ever repeated "this answer cannot select/rank/add/remove a
+          visa path" — real, but implementation-internal — language; the
+          fact-mapping behaviour it described is unchanged, only the prose
+          is gone. */}
 
       {question.kind === "tiles" && (
         <div
           className="oracle-tiles"
           role="group"
           aria-label={translate(language, promptKey)}
+          onMouseLeave={
+            presentation === "watershed"
+              ? () => onPreviewOption?.(null)
+              : undefined
+          }
+          onBlur={
+            presentation === "watershed"
+              ? (event) => {
+                  // FIX-ROUND-2 S1: tile→tile focus keeps the preview alive
+                  // (the browser fires blur/focus as one pair when Tab moves
+                  // within the group) — only clear when focus is actually
+                  // leaving the group (relatedTarget null, e.g. Tab to the
+                  // address bar, or outside this element, e.g. to Back/Not
+                  // sure).
+                  const next = event.relatedTarget as Node | null;
+                  if (!next || !event.currentTarget.contains(next)) {
+                    onPreviewOption?.(null);
+                  }
+                }
+              : undefined
+          }
         >
-          {question.options.map((option) => (
-            <button
-              key={option.key}
-              type="button"
-              className="oracle-tile"
-              onClick={() => onAnswer(option.key)}
-            >
-              {translate(language, option.labelI18nKey as I18nKey)}
-            </button>
-          ))}
+          {question.options.map((option) =>
+            presentation === "watershed" ? (
+              <button
+                key={option.key}
+                type="button"
+                className="oracle-tile oracle-atlas-branch"
+                data-category={option.key}
+                onPointerEnter={(event) => {
+                  if (event.pointerType === "mouse")
+                    onPreviewOption?.(option.key);
+                }}
+                onFocus={() => onPreviewOption?.(option.key)}
+                onClick={() => onAnswer(option.key)}
+              >
+                <AtlasGlyph category={option.key} />
+                <span>
+                  {translate(language, option.labelI18nKey as I18nKey)}
+                </span>
+                <span className="oracle-atlas-branch__arrow" aria-hidden="true">
+                  ↗
+                </span>
+              </button>
+            ) : (
+              <button
+                key={option.key}
+                type="button"
+                className="oracle-tile"
+                onClick={() => onAnswer(option.key)}
+              >
+                {translate(language, option.labelI18nKey as I18nKey)}
+              </button>
+            ),
+          )}
         </div>
       )}
 
       {(question.kind === "branch" || question.kind === "choice") && (
         <div
-          className="oracle-options"
+          className={
+            presentation === "world"
+              ? "oracle-options oracle-atlas-choices"
+              : presentation === "permit"
+                ? "oracle-options oracle-atlas-permit-options"
+                : "oracle-options"
+          }
           role="group"
           aria-label={translate(language, promptKey)}
         >
-          {question.options.map((option) => (
-            <button
-              key={option.key}
-              type="button"
-              className="oracle-option-card"
-              onClick={() => onAnswer(option.key)}
-            >
-              <span>{translate(language, option.labelI18nKey as I18nKey)}</span>
-              <ArrowRight aria-hidden="true" size={18} />
-            </button>
-          ))}
+          {(presentation === "world"
+            ? // FIX-ROUND-2 K4: the world presentation renders "no" (left
+              // pin) before "yes" (right pin) so Tab order matches the
+              // visual layout — labels/handlers unchanged, other
+              // presentations keep the tree's own option order.
+              [...question.options].sort((a, b) => {
+                if (a.key === b.key) return 0;
+                if (a.key === "no") return -1;
+                if (b.key === "no") return 1;
+                return 0;
+              })
+            : question.options
+          ).map((option) => {
+            const label = translate(language, option.labelI18nKey as I18nKey);
+            if (presentation === "world") {
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  className="oracle-atlas-choice"
+                  data-answer={option.key}
+                  onClick={() => onAnswer(option.key)}
+                >
+                  <span className="oracle-atlas-pin" aria-hidden="true" />
+                  <span className="oracle-atlas-pill">
+                    {label}
+                    <span aria-hidden="true"> →</span>
+                  </span>
+                </button>
+              );
+            }
+            if (presentation === "permit") {
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  className="oracle-atlas-permit-answer"
+                  data-answer={option.key}
+                  onClick={() => onAnswer(option.key)}
+                >
+                  {label}
+                </button>
+              );
+            }
+            return (
+              <button
+                key={option.key}
+                type="button"
+                className="oracle-option-card"
+                onClick={() => onAnswer(option.key)}
+              >
+                <span>{label}</span>
+                <ArrowRight aria-hidden="true" size={18} />
+              </button>
+            );
+          })}
         </div>
       )}
 

@@ -19,52 +19,46 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("next/navigation", () => ({ usePathname: () => "/a/b/c" }));
+vi.mock("@balizero/core/analytics", () => ({ trackFunnelEvent: vi.fn() }));
+vi.mock("@balizero/core/auth", () => ({
+  getOrCreateSessionId: () => "test-session",
+}));
+vi.stubGlobal(
+  "matchMedia",
+  vi.fn(() => ({
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })),
+);
+
 describe("NotFound", () => {
-  it("should render not found message", () => {
+  it("renders the R19 404 body: eyebrow, heading and lead", () => {
     render(<NotFound />);
 
-    expect(screen.getByText("Page Not Found")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "The page you are looking for does not exist or has been moved.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("404")).toBeInTheDocument();
+    expect(screen.getByText("This page doesn't exist")).toBeInTheDocument();
   });
 
-  it("should render return home link", () => {
+  it("renders a Home link", () => {
     render(<NotFound />);
 
-    const homeLink = screen.getByText("Return Home");
-    expect(homeLink).toBeInTheDocument();
-    expect(homeLink.closest("a")).toHaveAttribute("href", "/");
-  });
-
-  it("should render go to chat link", () => {
-    render(<NotFound />);
-
-    const chatLink = screen.getByText("Go to Chat");
-    expect(chatLink).toBeInTheDocument();
-    expect(chatLink.closest("a")).toHaveAttribute("href", "/chat");
-  });
-
-  it("should have correct structure", () => {
-    const { container } = render(<NotFound />);
-
-    const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv).toHaveClass(
-      "flex",
-      "h-screen",
-      "w-full",
-      "flex-col",
-      "items-center",
-      "justify-center",
+    const homeLinks = screen.getAllByRole("link", { name: "Home" });
+    expect(homeLinks.some((link) => link.getAttribute("href") === "/")).toBe(
+      true,
     );
   });
 
-  it("should render file question icon", () => {
+  it("does not render the old 'Go to Chat' escape hatch", () => {
+    render(<NotFound />);
+
+    expect(screen.queryByText("Go to Chat")).not.toBeInTheDocument();
+  });
+
+  it("forces the R19 presentation regardless of the (unmatched) pathname", () => {
     const { container } = render(<NotFound />);
 
-    const icon = container.querySelector("svg");
-    expect(icon).toBeInTheDocument();
+    expect(container.querySelector('[data-presentation="r19"]')).not.toBeNull();
   });
 });
