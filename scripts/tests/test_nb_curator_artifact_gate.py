@@ -245,6 +245,11 @@ import os, re, sys, pathlib
 
 prompt = sys.argv[sys.argv.index("-p") + 1]
 mode = os.environ.get("FAKE_AGY_MODE", "good")
+if mode == "agyfail":
+    # Mirrors the real production failure (measured 2026-09-26/27): agy exits
+    # non-zero and prints no SUMMARY line, forcing the wrapper's fallback to
+    # claude-cascade.sh.
+    sys.exit(1)
 m = re.search(r"Write report to: (\\S+)", prompt)
 if m and mode != "noreport":
     p = pathlib.Path(m.group(1))
@@ -255,6 +260,33 @@ if m and mode != "noreport":
                 "health snapshot (generated artifact, not a research deliverable)\\n"
                 "---\\n\\n") + body
     p.write_text(body, encoding="utf-8")
+
+print("SUMMARY: broken=0 stale=0 proposals=0 press_new=0")
+"""
+
+# Fake claude-cascade.sh fallback. Records the AGENT_WORKTREE_ENFORCEMENT value
+# this process actually received (proof the wrapper's escape hatch reaches the
+# brain, and is scoped to only this invocation) then writes a compliant report
+# just like FAKE_AGY's "good" path, so the rest of the wrapper chain (gate,
+# digest, exit code) runs unchanged when the fallback tier is exercised.
+FAKE_CASCADE = """#!/usr/bin/env python3
+import os, re, sys, pathlib
+
+prompt = sys.argv[1] if len(sys.argv) > 1 else ""
+pathlib.Path(os.environ["CASCADE_ENV_DUMP"]).write_text(
+    os.environ.get("AGENT_WORKTREE_ENFORCEMENT", "<unset>"), encoding="utf-8"
+)
+
+m = re.search(r"Write report to: (\\S+)", prompt)
+if m:
+    p = pathlib.Path(m.group(1))
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(
+        "---\\nadversarial_review: exempt-machine-report # nb-curator daily "
+        "health snapshot (generated artifact, not a research deliverable)\\n"
+        "---\\n\\n# NB Arsenal Health Report\\n\\n## Health Summary\\n- Total: 58 notebooks\\n",
+        encoding="utf-8",
+    )
 
 print("SUMMARY: broken=0 stale=0 proposals=0 press_new=0")
 """
@@ -271,13 +303,14 @@ def _fake_world(tmp_path: Path, mode: str, *, wrapper: Path) -> subprocess.Compl
     agy.chmod(0o755)
 
     cascade = home / "scripts/claude-cascade.sh"
-    cascade.write_text("#!/bin/sh\necho 'SUMMARY: broken=0 stale=0 proposals=0 press_new=0'\n")
+    cascade.write_text(FAKE_CASCADE, encoding="utf-8")
     cascade.chmod(0o755)
 
     env = os.environ.copy()
     env.update(
         HOME=str(home),
         FAKE_AGY_MODE=mode,
+        CASCADE_ENV_DUMP=str(tmp_path / "cascade_env.txt"),
         NB_CURATOR_LOCK_FILE=str(tmp_path / "nb-curator.lock"),
         TG_DRY_RUN="1",
         TG_SPOOL_DIR=str(tmp_path / "spool"),
@@ -311,6 +344,36 @@ def test_wrapper_FAILS_when_the_brain_writes_no_report(tmp_path):
     assert "ARTIFACT GATE FAILED" in log
     assert "artifact gate rc=3" in log, "rc=3 is 'the report was never written'"
     assert "brain OK but the report failed the artifact gate" in _spooled(tmp_path)
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")
+def test_wrapper_scopes_worktree_escape_to_the_cascade_brain_only(tmp_path):
+    """Regression for the real production root cause (measured 2026-09-26/27 on
+    Pro): the global PreToolUse hook worktree_file_write_check.py rejects any
+    Write/Edit/MultiEdit targeting the main checkout, and $REPORT_PATH is
+    deliberately main-checkout-anchored (never a worktree path) — so once agy
+    fails and the wrapper falls back to claude-cascade.sh, that brain's Write
+    call to $REPORT_PATH would be blocked (rc=2) unless the wrapper hands it
+    AGENT_WORKTREE_ENFORCEMENT=false. Guilt case for the OLD wrapper: it never
+    set this, so the brain silently declined to write and printed the report
+    inline instead (exit 0, zero bytes on disk) — the artifact gate then
+    caught it same as `noreport` above, but every single day."""
+    proc = _fake_world(tmp_path, "agyfail", wrapper=WRAPPER)
+    log = _log(tmp_path)
+    dump = tmp_path / "cascade_env.txt"
+
+    assert "brain used: claude-cascade" in log, f"cascade fallback was not exercised\n{log}"
+    assert dump.exists(), f"claude-cascade.sh never ran\n{log}"
+    assert dump.read_text(encoding="utf-8").strip() == "false", (
+        "claude-cascade.sh must see AGENT_WORKTREE_ENFORCEMENT=false so its brain's "
+        "Write to the main-checkout-anchored $REPORT_PATH is not rejected by "
+        "worktree_file_write_check.py"
+    )
+    if not SYSTEM_PY_HAS_YAML:
+        assert proc.returncode == 2 and "REDACTOR UNAVAILABLE" in log, log
+        return
+    assert proc.returncode == 0, f"a compliant cascade report is not a failure\n{log}"
+    assert "artifact gate rc=0" in log
 
 
 @pytest.mark.skipif(shutil.which("zsh") is None, reason="wrapper is a zsh script")

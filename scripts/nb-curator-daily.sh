@@ -286,8 +286,13 @@ if [ "${NB_CURATOR_BRAIN:-agy}" = "agy" ] && [ -x "$AGY_BIN" ]; then
     # must be `-p`'s own argv value; --print-timeout stays a separate flag.
     # NOTE: agy v1.1.12 has no stdin path, so $MODE_PROMPT is now `ps`-visible
     # while the process runs (see PR body for the PII disclosure this forces).
+    # "Gemini 3.5 Flash (Medium)" is no longer a model agy recognizes (measured
+    # 2026-09-26/27: agy's own error lists 3.8/3.7/3.6 Flash, no 3.5) — every
+    # run has been failing this tier INSTANTLY and falling through to
+    # claude-cascade, silently spending Claude MAX quota every day instead of
+    # the free Gemini tier this cascade exists to prefer.
     "$AGY_BIN" --dangerously-skip-permissions \
-        --model "Gemini 3.5 Flash (Medium)" -p "$MODE_PROMPT" --print-timeout 20m \
+        --model "Gemini 3.8 Flash (Medium)" -p "$MODE_PROMPT" --print-timeout 20m \
         > "$TMPOUT" 2>> "$LOG"
     EXIT=$?
     if [ "$EXIT" -eq 0 ] && grep -qE 'SUMMARY:' "$TMPOUT"; then
@@ -297,7 +302,24 @@ if [ "${NB_CURATOR_BRAIN:-agy}" = "agy" ] && [ -x "$AGY_BIN" ]; then
     fi
 fi
 if [ -z "$BRAIN_USED" ]; then
-    "$HOME/scripts/claude-cascade.sh" "$MODE_PROMPT" \
+    # AGENT_WORKTREE_ENFORCEMENT=false, scoped to THIS subprocess only: the
+    # global PreToolUse hook infra/claude-hooks/worktree_file_write_check.py
+    # blocks every Write/Edit/MultiEdit whose target resolves under the MAIN
+    # checkout and not a registered worktree — and $REPORT_PATH is
+    # deliberately $HOME-anchored (see OUTPUT_DIR comment above), never a
+    # worktree path. Measured 2026-09-26/27 on Pro: the brain composes a
+    # complete report, calls Write, gets rc=2 ("WORKTREE ISOLATION VIOLATION"),
+    # correctly declines to fight it (its own hard limits forbid git/worktree
+    # workarounds), and prints the report inline instead — brain exit 0, zero
+    # bytes on disk, artifact gate fails closed (rc=3) as designed. 7th+
+    # recurrence of this exact class (memory
+    # fact_report_write_blocked_worktree_isolation_2026_09_13). The hook has
+    # no allowlist for a declared runtime-write target (unlike
+    # runtime_state_allowlist.json for the sibling git-side guard) — only this
+    # kill switch. Safe here: the prompt already forbids git/commit, the brain
+    # writes exactly one file under $OUTPUT_DIR, and flock above already rules
+    # out concurrent runs of this same script.
+    AGENT_WORKTREE_ENFORCEMENT=false "$HOME/scripts/claude-cascade.sh" "$MODE_PROMPT" \
         --model claude-sonnet-5 \
         --agent nb-curator \
         > "$TMPOUT" 2>> "$LOG"
