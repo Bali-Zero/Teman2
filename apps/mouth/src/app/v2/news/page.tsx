@@ -7,6 +7,7 @@ import { MobileNav } from "../_components/MobileNav";
 import { Calendar, Clock } from "lucide-react";
 import { Footer } from "../_components/Footer";
 import { getAllArticles } from "@/lib/blog/articles";
+import { formatArticleDate } from "@/lib/blog/format-article-date";
 import type { ArticleListItem, ArticleCategory } from "@/lib/blog/types";
 
 export const metadata: Metadata = {
@@ -148,13 +149,7 @@ export default async function NewsPage() {
 
 function ArticleCard({ article: a }: { article: ArticleListItem }) {
   const accent = TOPIC_COLORS[a.category] ?? "#a78bfa";
-  const dateStr = a.publishedAt
-    ? new Date(a.publishedAt).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "";
+  const dateStr = formatArticleDate(a.publishedAt);
 
   return (
     <Link

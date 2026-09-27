@@ -1,22 +1,27 @@
 """PII log hygiene for WaitingDocumentsService._send_with_brevo_fallback —
-C2 (PR #7385 gate follow-up, deadline 2026-10-03): the fresh gate on PR
-#7438 found this file's "Email sent to %s via Brevo"/"...via Zoho
-fallback"/"Brevo failed for %s..."/"Both Brevo and Zoho failed for %s: %s"
-lines still logged `to_email` raw, and `completed_process_service.py`'s
-sibling method logged the raw exception object directly. #7438 fixed
-`router.py` and `email_audit.py`; this file's copy of the same
-Brevo-then-Zoho pattern was named as C4's still-open third group.
+C2 (PR #7385 gate follow-up): the fresh gate on PR #7438 found this file's
+"Email sent to %s via Brevo"/"...via Zoho fallback"/"Brevo failed for
+%s..."/"Both Brevo and Zoho failed for %s: %s" lines still logged
+`to_email` raw. #7438 fixed `router.py` and `email_audit.py`; this file's
+copy of the same Brevo-then-Zoho pattern was named as C4's still-open
+third group.
 
-Guilt: every branch of `_send_with_brevo_fallback` (Brevo success, Brevo
-failure -> Zoho success, both fail) is exercised with an address-bearing
-`to_email` and a provider exception whose own text echoes an address back
-(the same "a bounce quotes the address" shape `email_audit.py`'s own
-docstring names). Both halves are asserted: the raw text must be absent
-AND its redacted stand-in must be present, so an emptied log line does not
-pass as "fixed".
+UPDATED 2026-09-27: the Zoho fallback itself was removed (it called
+`ZohoEmailService.send_email` with kwargs that never matched its real
+signature, so it never worked — see `_send_with_brevo_fallback`'s own
+docstring). There is now exactly one failure path: Brevo fails -> log
+(redacted) -> alert -> re-raise. The two former Zoho-branch guilt tests
+collapse into one.
 
-Innocence: the provider names ("Brevo"/"Zoho") and non-PII diagnostic
-words survive the scrub untouched.
+Guilt: Brevo success and Brevo failure are both exercised with an
+address-bearing `to_email` and a provider exception whose own text echoes
+an address back (the same "a bounce quotes the address" shape
+`email_audit.py`'s own docstring names). Both halves are asserted: the raw
+text must be absent AND its redacted stand-in must be present, so an
+emptied log line does not pass as "fixed".
+
+Innocence: the provider name ("Brevo") and non-PII diagnostic words
+survive the scrub untouched.
 """
 
 from __future__ import annotations
@@ -55,10 +60,7 @@ _PRACTICE_NO_TEAM_LEADER = {"client_id": 1, "assigned_to": None, "created_by": N
 
 def _make_service() -> WaitingDocumentsService:
     pool = MagicMock()
-    with patch("backend.services.crm.waiting_documents_service.ZohoEmailService"):
-        svc = WaitingDocumentsService(pool)
-    svc.zoho_email_service = AsyncMock()
-    return svc
+    return WaitingDocumentsService(pool)
 
 
 class _FakeResponse:
@@ -110,29 +112,10 @@ async def test_brevo_success_log_does_not_leak_the_recipient(caplog):
 
 
 @pytest.mark.asyncio
-async def test_brevo_failure_then_zoho_success_never_logs_the_address_or_exception(caplog):
+async def test_brevo_failure_never_logs_the_address_or_exception(caplog):
     svc = _make_service()
     client = AsyncMock()
     client.post = AsyncMock(side_effect=RuntimeError(f"550 mailbox {_ADDR} rejected"))
-    svc.zoho_email_service.send_email = AsyncMock(return_value=None)
-    p1, p2, p3, p4 = _patch_email_infra(client)
-    with p1, p2, p3, p4, caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
-        await svc._send_with_brevo_fallback(_ADDR, "hi", "<p>x</p>", email_type="welcome")
-    joined = " ".join(r.getMessage() for r in caplog.records)
-    assert _ADDR not in joined
-    assert "waiting.docs.probe" not in joined
-    assert redact_identifier_for_log(_ADDR) in joined
-    assert "Brevo" in joined and "Zoho" in joined
-
-
-@pytest.mark.asyncio
-async def test_both_providers_failing_never_logs_the_address_or_exception_text(caplog):
-    svc = _make_service()
-    client = AsyncMock()
-    client.post = AsyncMock(side_effect=RuntimeError(f"550 mailbox {_ADDR} rejected"))
-    svc.zoho_email_service.send_email = AsyncMock(
-        side_effect=RuntimeError(f"SMTP 421 {_ADDR} greylisted")
-    )
     p1, p2, p3, p4 = _patch_email_infra(client)
     with (
         p1,
@@ -147,10 +130,8 @@ async def test_both_providers_failing_never_logs_the_address_or_exception_text(c
     assert _ADDR not in joined
     assert "waiting.docs.probe" not in joined
     assert redact_identifier_for_log(_ADDR) in joined
-    assert "Both Brevo and Zoho failed" in joined
-    # Non-PII diagnostic text survives — only the address-shaped token in
-    # the exception message is redacted, not the whole string.
-    assert "greylisted" in joined
+    assert "Brevo" in joined
+    assert "no fallback provider" in joined
 
 
 # --- INNOCENCE: non-PII diagnostic content survives ---
@@ -161,9 +142,15 @@ async def test_innocence_brevo_failure_keeps_the_non_pii_diagnostic_text(caplog)
     svc = _make_service()
     client = AsyncMock()
     client.post = AsyncMock(side_effect=RuntimeError("connection reset by peer"))
-    svc.zoho_email_service.send_email = AsyncMock(return_value=None)
     p1, p2, p3, p4 = _patch_email_infra(client)
-    with p1, p2, p3, p4, caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+    with (
+        p1,
+        p2,
+        p3,
+        p4,
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+        pytest.raises(RuntimeError),
+    ):
         await svc._send_with_brevo_fallback(_ADDR, "hi", "<p>x</p>", email_type="welcome")
     joined = " ".join(r.getMessage() for r in caplog.records)
     assert "connection reset by peer" in joined

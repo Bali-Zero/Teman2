@@ -205,12 +205,12 @@ function FooterCol({
       >
         {title}
       </h4>
-      <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
+      <ul className="flex flex-col list-none p-0 m-0">
         {items.map((it) => (
           <li key={it.label}>
             <a
               href={it.href}
-              className="text-[13px] transition-colors"
+              className="inline-flex min-h-11 items-center text-[13px] transition-colors"
               style={{ color: "var(--text-secondary)" }}
             >
               {it.label}

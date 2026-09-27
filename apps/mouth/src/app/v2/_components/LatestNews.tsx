@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Calendar, Clock, ArrowUpRight, type LucideIcon } from "lucide-react";
 import type { ArticleListItem } from "@/lib/blog/types";
+import { formatArticleDate } from "@/lib/blog/format-article-date";
 import { InlineNewsCTA } from "./InlineNewsCTA";
 import { BZImage } from "@/components/ui/BZImage";
 
@@ -89,20 +90,7 @@ export function LatestNews({
           // Homepage card uses the tighter 16:10 cardImage variant; fall back to
           // the 21:9 hero coverImage for legacy articles without a card crop.
           const cover = a.cardImage || a.coverImage || "";
-          const date =
-            a.publishedAt instanceof Date
-              ? a.publishedAt.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })
-              : typeof a.publishedAt === "string"
-                ? new Date(a.publishedAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })
-                : "";
+          const date = formatArticleDate(a.publishedAt);
           return (
             <Link
               key={a.id}
