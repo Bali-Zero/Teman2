@@ -1,0 +1,36 @@
+/*
+ * Property Check R19 rebuild (spec-property-check-v2.md, 2026-09-28, gate-7596
+ * F5): packages/core's FunnelFrame renders TrustBand + CTAHandoff through
+ * bare `var(--color-text-secondary)` / `var(--surface-base)` /
+ * `var(--color-border-subtle))` tokens. Those two components are shared with
+ * every non-R19 FunnelFrame consumer (visa-oracle, kbli, tax-calendar) and
+ * must not change — so this scopes the R19 paper repaint to THIS route only,
+ * via `:global()` attribute selectors on the only stable hooks the two
+ * components expose (their `aria-label`s). Neither file imports this module,
+ * so their computed styles are unaffected.
+ */
+.scope :global([aria-label="Trust signals"]) {
+  background: var(--r19-wash, var(--surface-subtle));
+  border-top-color: var(--r19-line, var(--color-border-subtle));
+}
+.scope :global([aria-label="Trust signals"] strong) {
+  color: var(--r19-ink, inherit);
+}
+.scope :global([aria-label="Trust signals"] div) {
+  color: var(--r19-muted, inherit);
+}
+.scope :global([aria-label="Next actions"]) {
+  background: var(--r19-surface, var(--surface-base));
+  border-top-color: var(--r19-line, var(--color-border-subtle));
+}
+.scope :global([aria-label="Next actions"] .btn-primary) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  padding: 0 var(--space-4, 1rem);
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--r19-copper, var(--accent-funnel));
+  color: var(--r19-cta-ink, #fff);
+}

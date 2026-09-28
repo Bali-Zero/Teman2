@@ -36,7 +36,10 @@ export default function PropertyLayout({
           actions={<HeaderWhatsAppCTA funnel="property" />}
         />
         <SessionInit funnel="property" />
-        <div className="mx-auto max-w-6xl w-full px-4 pt-14 pb-8 sm:px-6 lg:px-8 flex-1">
+        <div
+          className="mx-auto max-w-6xl w-full px-4 pb-8 sm:px-6 lg:px-8 flex-1"
+          style={{ paddingTop: "var(--public-header-height, 56px)" }}
+        >
           {children}
         </div>
       </div>
