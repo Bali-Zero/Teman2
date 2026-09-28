@@ -11,8 +11,9 @@ describe("PublicAuthClient", () => {
     "/api/admin/system-health",
     "/api/auth/../../admin/system-health",
     "/api/auth/login?debug=/api/admin/system-health",
+    "/api/portal/admin/me",
     "/api/portal/admin/clients/search?q=x",
-    "/api/portal/admin/me?as_client=1",
+    "/api/auth/portal-superuser?as_client=1",
   ])(
     "rejects non-canonical endpoint %s before touching the network",
     async (endpoint) => {
@@ -35,11 +36,11 @@ describe("PublicAuthClient", () => {
     );
     const client = new PublicAuthClient();
 
-    await expect(client.request("/api/portal/admin/me")).resolves.toMatchObject(
-      { is_superuser: false },
-    );
+    await expect(
+      client.request("/api/auth/portal-superuser"),
+    ).resolves.toMatchObject({ is_superuser: false });
     expect(fetchSpy).toHaveBeenCalledWith(
-      "/api/portal/admin/me",
+      "/api/auth/portal-superuser",
       expect.objectContaining({ credentials: "include" }),
     );
   });

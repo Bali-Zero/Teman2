@@ -13,10 +13,13 @@ type AuthApiClient = Pick<
  */
 /**
  * Read-only probe answering whether the signed-in account is a portal
- * superuser (may impersonate a client via `?as_client=<id>`). Shared with the
- * public auth client's endpoint allowlist so the two cannot drift apart.
+ * superuser (may impersonate a client via `?as_client=<id>`). It is a mouth
+ * route handler that reaches the backend's `/api/portal/admin/me` server-side:
+ * the public login bundle may only name `/api/auth/*` routes
+ * (`scripts/assert-public-login-bundle.mjs`). Shared with the public auth
+ * client's endpoint allowlist so the two cannot drift apart.
  */
-export const PORTAL_SUPERUSER_PROBE_ENDPOINT = "/api/portal/admin/me";
+export const PORTAL_SUPERUSER_PROBE_ENDPOINT = "/api/auth/portal-superuser";
 // The probe runs on every staff sign-in BEFORE the redirect timer starts, so a
 // hanging request must not hold the "access granted" screen: past this it is
 // read as "no" and the sign-in proceeds to the backend destination.

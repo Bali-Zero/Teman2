@@ -459,7 +459,7 @@ describe("AuthApi", () => {
 
       await expect(authApi.isPortalSuperuser()).resolves.toBe(true);
       expect(mockRequest).toHaveBeenCalledWith(
-        "/api/portal/admin/me",
+        "/api/auth/portal-superuser",
         {},
         5_000,
       );
