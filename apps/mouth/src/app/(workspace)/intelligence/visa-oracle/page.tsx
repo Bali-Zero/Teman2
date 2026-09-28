@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
 import {
   Select,
@@ -453,6 +454,12 @@ export default function VisaOraclePage() {
         >
           Scanning Intelligence Feed...
         </p>
+        <Link
+          href="/intelligence/visa-oracle/testing"
+          className="underline text-sm"
+        >
+          Pengujian tim
+        </Link>
       </div>
     );
   }
@@ -500,12 +507,24 @@ export default function VisaOraclePage() {
         >
           <RefreshCw className="w-3.5 h-3.5" /> Check Again
         </button>
+        <Link
+          href="/intelligence/visa-oracle/testing"
+          className="mt-4 underline text-sm"
+        >
+          Pengujian tim
+        </Link>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <Link
+        href="/intelligence/visa-oracle/testing"
+        className="inline-block py-2 underline text-sm"
+      >
+        Pengujian tim
+      </Link>
       {/* Stats Bar */}
       <div
         className="flex items-center justify-between px-4 py-3 rounded-2xl border mb-2"

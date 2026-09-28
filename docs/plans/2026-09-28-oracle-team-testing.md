@@ -1,0 +1,24 @@
+# VISA ORACLE INTERNAL TEST CAMPAIGN
+
+Approved outcome: a simple online Kita dashboard, not a local-only form. BLUE external builder prepares; independent Claude review and release owner remain required. No Oracle rule changes or stopped product-count investigation.
+
+## INTEGRATION
+
+Route: `/intelligence/visa-oracle/testing` beneath the existing workspace/session gate. Reuse Kita R19 primitives and the same-origin API client. Existing Visa Oracle intelligence page reviews regulatory updates, not tests; add a link and preserve it. Existing feedback stores conversation ratings; existing intake review contains client documents. Neither is a suitable test record store.
+
+Use the current JWT/session dependency plus active human staff verification in `team_members`. Two focused PostgreSQL tables: six configurable tester slots and one immutable-expectation execution record per assignment. No client records are accessed. Owner configures staff identities and reviewers; no roster inferred from Portal Champions. Review cannot approve the reviewer's own test. The current global intake gate is preserved.
+
+## CAMPAIGN AND WORKFLOW
+
+28 September–2 October 2026, Asia/Makassar; six slots; five assigned cases daily; 25 per tester; 150 planned. One shared reference per day plus four controlled contrasting cases per slot is the proposed experimental allocation. This is a sample, not exhaustive legal/product coverage. Cases are synthetic and versioned; no prefilled legal gold answers.
+
+Start records the expectation, its evidence basis, browser/device and observed version before the result form is enabled. Server timestamps the start and refuses expectation replacement. Tester saves a draft then submits exact steps, actual result, sources/uncertainty, an actionable comment, severity and certainty. One optional private PNG/JPEG/WebP evidence attachment or an evidence reference; no public marketing uploader. Submitted observations are immutable; their image can be removed with an audit marker if it was attached accidentally. Reviewer-testers cannot see peers' content until all five personal expectations for that day are locked. New cases can only start on their assigned Bali day, preserving date-sensitive fixtures. Review records a disposition and reproduction evidence. All counts derive from persisted records; blocked attempts are distinct from paths reaching a result. No accuracy score, prizes or automatic external sends.
+
+## ACCEPTANCE
+
+- 150 unique assignments, five per slot/day, shared references equal, contrasting profiles controlled.
+- Anonymous, client, service-account and inactive staff rejected server-side; forged actor/slot cannot edit another tester; expectation replacement and self-review rejected.
+- Drafts survive reload; idempotent identical submissions do not duplicate; conflicting submissions fail. Slot reassignment after work is prevented.
+- Staff-only durable evidence; image type/size validated; no submitted payload in logs. Shared counters and review/export reflect server truth.
+- UI renders in Bahasa Indonesia, handles failures without fabricated success, uses existing Kita components and leaves existing intelligence/Portal Champions behavior intact.
+- Tests, independent review, migration dry-run and authorized deployment/live proof before claiming the requested online outcome delivered.
