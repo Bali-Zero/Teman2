@@ -6,7 +6,7 @@ import base64
 import binascii
 import io
 from datetime import date, timedelta
-from typing import Literal
+from typing import Literal, Self
 
 from fastapi import HTTPException
 from PIL import Image, ImageOps
@@ -270,7 +270,7 @@ class StartPayload(StrictPayload):
     synthetic_only: Literal[True]
 
     @model_validator(mode="after")
-    def require_claim_basis(self):
+    def require_claim_basis(self) -> Self:
         if self.basis in {"official", "expert"} and len(self.reference) < 8:
             raise ValueError("An official or expert expectation requires a reference")
         return self
@@ -338,7 +338,7 @@ class ReviewPayload(StrictPayload):
     reproduction_evidence: str = Field(default="", max_length=2000)
 
     @model_validator(mode="after")
-    def consistent_reproduction(self):
+    def consistent_reproduction(self) -> Self:
         if self.reproduced and self.verdict != "confirmed_issue":
             raise ValueError("Reproduction applies only to confirmed issues")
         return self

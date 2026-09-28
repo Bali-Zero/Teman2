@@ -13,7 +13,9 @@ lanes:
   - lane: independent-review
     role: review
     seat: claude-opus-5-5
-    status: Both prior Opus reviews FIX; new corrections empirically verified, fresh exact-head gate pending.
+    status:
+      Independent Opus r3 PASS on e4db99, signature conditional on CI; later narrow CI integration
+      corrections require fresh exact-head verification before signing.
   - lane: council-kimi
     role: review
     seat: kimi-code/k3
@@ -120,6 +122,37 @@ receipts:
       - id
       - name
       - role
+  - claim: openapi-pin
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+      --no-cov --tb=short
+    cwd: apps/backend-rag
+    exit: 0
+    ts: "2026-09-28T03:13:10.353352+00:00"
+    seat: codex
+  - claim: route-frontend
+    cmd:
+      node ../../node_modules/vitest/vitest.mjs run 'src/app/(workspace)/intelligence/visa-oracle/testing/page.test.tsx'
+      'src/app/(workspace)/intelligence/visa-oracle/page.test.tsx'
+    cwd: apps/mouth
+    exit: 0
+    ts: "2026-09-28T03:13:30.615892+00:00"
+    seat: codex
+  - claim: route-typescript
+    cmd: node ../../node_modules/typescript/bin/tsc --noEmit --incremental false
+    cwd: apps/mouth
+    exit: 0
+    ts: "2026-09-28T03:13:35.593300+00:00"
+    seat: codex
+  - claim: type-hint compliance, OpenAPI pin and service regressions after CI fixes
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/compliance/test_golden_rules.py::test_golden_rule_5_type_hints
+      backend/tests/unit/scripts/test_generate_openapi_schema_pin.py backend/tests/services/test_visa_oracle_testing.py
+      --no-cov --tb=short
+    cwd: apps/backend-rag
+    exit: 0
+    ts: "2026-09-28T03:14:46.760578+00:00"
+    seat: codex
 dissent:
   - seat: claude-opus-5-5
     verdict: FIX
@@ -160,6 +193,17 @@ dissent:
       dates unchanged, roster remains owner-configurable. Identical review retries preserve timestamp. Investment
       prerequisite contrast explicit; unrelated family facts removed. Images losslessly normalized to metadata-free
       PNG. New independent exact-head gate still required.
+  - seat: github-ci
+    status: CONFIRMED
+    objection:
+      Exact-head CI e4db99 found new static staff route, stale generated OpenAPI pin and three
+      missing type annotations. Campaign33 tests actually passed with0skips.
+    disposition:
+      Client component preserved byte-for-byte behind a force-dynamic server wrapper; guard/baseline
+      unchanged. Canonical OpenAPI generator, TypeScript renderer and formatter regenerate only new campaign
+      contract (513 lines), pin matches live hash. Required annotations added. Exact type-hint compliance
+      and schema-pin regressions plus8service tests passed10/10; route47tests and tsc passed. New-head CI
+      still required; earlier functional CI evidence is not presented as successor validation.
 live_state:
   Not deployed. No production submissions or roster assignment. External builder will not merge,
   arm or deploy.

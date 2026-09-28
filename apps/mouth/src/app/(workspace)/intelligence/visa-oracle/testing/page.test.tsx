@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import Page from "./page";
+import Page from "./TestingCampaign";
 
 const mocks = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("@/lib/api", () => ({ api: { request: mocks.request } }));

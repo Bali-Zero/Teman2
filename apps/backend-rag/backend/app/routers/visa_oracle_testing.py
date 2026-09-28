@@ -6,6 +6,7 @@ import base64
 import io
 import json
 from datetime import datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import asyncpg
@@ -55,7 +56,7 @@ async def review_days(conn, who: dict) -> set[str]:
     return await expectation_days(conn, who)
 
 
-def decoded(value):
+def decoded(value: Any) -> Any:
     return json.loads(value) if isinstance(value, str) else value
 
 

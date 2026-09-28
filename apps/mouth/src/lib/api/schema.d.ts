@@ -16608,6 +16608,126 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/visa-oracle/testing": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Campaign */
+    get: operations["campaign_api_visa_oracle_testing_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Export */
+    get: operations["export_api_visa_oracle_testing_export_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/slots/{slot}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Configure Slot */
+    put: operations["configure_slot_api_visa_oracle_testing_slots__slot__put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/{key}/result": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Result */
+    put: operations["result_api_visa_oracle_testing__key__result_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/{key}/review": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Review */
+    patch: operations["review_api_visa_oracle_testing__key__review_patch"];
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/{key}/screenshot": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Screenshot */
+    get: operations["screenshot_api_visa_oracle_testing__key__screenshot_get"];
+    put?: never;
+    post?: never;
+    /** Remove Screenshot */
+    delete: operations["remove_screenshot_api_visa_oracle_testing__key__screenshot_delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/{key}/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start */
+    post: operations["start_api_visa_oracle_testing__key__start_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/visa/check/start": {
     parameters: {
       query?: never;
@@ -25581,6 +25701,98 @@ export interface components {
       /** Reason */
       reason: string;
     };
+    /** ResultPayload */
+    ResultPayload: {
+      /**
+       * Actual
+       * @default
+       */
+      actual: string;
+      /**
+       * Actual State
+       * @default other
+       * @enum {string}
+       */
+      actual_state:
+        | "supported"
+        | "needs_input"
+        | "human_review"
+        | "no_path"
+        | "unavailable"
+        | "blocked"
+        | "other";
+      /**
+       * Category
+       * @default none
+       * @enum {string}
+       */
+      category:
+        | "none"
+        | "eligibility"
+        | "missing_question"
+        | "explanation"
+        | "reference"
+        | "navigation"
+        | "privacy";
+      /**
+       * Certainty
+       * @default observation
+       * @enum {string}
+       */
+      certainty: "observation" | "hypothesis" | "expert";
+      /**
+       * Comment
+       * @default
+       */
+      comment: string;
+      /**
+       * Evidence Ref
+       * @default
+       */
+      evidence_ref: string;
+      /**
+       * Reproducibility
+       * @default not_retried
+       * @enum {string}
+       */
+      reproducibility: "not_retried" | "same" | "different" | "blocked";
+      /**
+       * Screenshot Base64
+       * @default
+       */
+      screenshot_base64: string;
+      /**
+       * Severity
+       * @default none
+       * @enum {string}
+       */
+      severity: "none" | "low" | "medium" | "high";
+      /**
+       * Source Notes
+       * @default
+       */
+      source_notes: string;
+      /**
+       * Steps
+       * @default
+       */
+      steps: string;
+      /**
+       * Submit
+       * @default false
+       */
+      submit: boolean;
+      /**
+       * Synthetic Only
+       * @constant
+       */
+      synthetic_only: true;
+      /**
+       * Uncertainty
+       * @default
+       */
+      uncertainty: string;
+    };
     /** RetrainBody */
     RetrainBody: {
       /** Category */
@@ -25647,6 +25859,26 @@ export interface components {
     RevalidateBody: {
       /** Tier */
       tier?: string | null;
+    };
+    /** ReviewPayload */
+    ReviewPayload: {
+      /** Comment */
+      comment: string;
+      /**
+       * Reproduced
+       * @default false
+       */
+      reproduced: boolean;
+      /**
+       * Reproduction Evidence
+       * @default
+       */
+      reproduction_evidence: string;
+      /**
+       * Verdict
+       * @enum {string}
+       */
+      verdict: "confirmed_issue" | "not_issue" | "needs_expert_review";
     };
     /**
      * ReviewQueueStatsResponse
@@ -26262,6 +26494,16 @@ export interface components {
       /** Stream Lowest Id */
       stream_lowest_id?: string | null;
     };
+    /** SlotPayload */
+    SlotPayload: {
+      /** Member Id */
+      member_id?: string | null;
+      /**
+       * Reviewer
+       * @default false
+       */
+      reviewer: boolean;
+    };
     /** SourceApplicabilityDTO */
     SourceApplicabilityDTO: {
       /**
@@ -26529,6 +26771,35 @@ export interface components {
       | "EDUCATION"
       | "INVESTMENT"
       | "GOVERNMENT";
+    /** StartPayload */
+    StartPayload: {
+      /**
+       * Basis
+       * @enum {string}
+       */
+      basis: "hypothesis" | "official" | "expert" | "needs_review";
+      /** Browser */
+      browser: string;
+      /** Device */
+      device: string;
+      /**
+       * Displayed Version
+       * @default unknown
+       */
+      displayed_version: string;
+      /**
+       * Reference
+       * @default
+       */
+      reference: string;
+      /**
+       * Synthetic Only
+       * @constant
+       */
+      synthetic_only: true;
+      /** Text */
+      text: string;
+    };
     /**
      * StatusResponse
      * @description System status response.
@@ -53172,6 +53443,248 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["VisaOracleValidationErrorResponse"];
+        };
+      };
+    };
+  };
+  campaign_api_visa_oracle_testing_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  export_api_visa_oracle_testing_export_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  configure_slot_api_visa_oracle_testing_slots__slot__put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slot: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SlotPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  result_api_visa_oracle_testing__key__result_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResultPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  review_api_visa_oracle_testing__key__review_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReviewPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  screenshot_api_visa_oracle_testing__key__screenshot_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  remove_screenshot_api_visa_oracle_testing__key__screenshot_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  start_api_visa_oracle_testing__key__start_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StartPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
