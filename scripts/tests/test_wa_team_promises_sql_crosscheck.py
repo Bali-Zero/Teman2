@@ -724,6 +724,44 @@ def _parse_create_table(
         _claim_implicit_relation(f"{table}_{col}_seq", index, sql, stmt_tokens, occupied_relations)
 
 
+def _is_drop_constraint_if_exists(action: list[_Token]) -> bool:
+    """`DROP CONSTRAINT IF EXISTS <name>` — T3 PR-3's half of the idempotent
+    status-CHECK replacement. Exactly 5 tokens, the last a bare identifier
+    (never schema-qualified, never punctuation)."""
+    return (
+        len(action) == 5
+        and _kw(action[0]) == "DROP" and _kw(action[1]) == "CONSTRAINT"
+        and _kw(action[2]) == "IF" and _kw(action[3]) == "EXISTS"
+        and action[4].kind == "WORD"
+    )
+
+
+def _is_add_constraint_check(action: list[_Token]) -> bool:
+    """`ADD CONSTRAINT <name> CHECK (...)` — the other half. Depth-tracked
+    over the action's OWN tokens (same method as `_split_top_level_commas_
+    tok`) so the requirement is "one balanced parenthesized expression
+    filling the constraint body, nothing trailing it" rather than merely
+    "starts with `(` and ends with `)`", which a stray `) FOO (` in between
+    would satisfy."""
+    if len(action) < 6:
+        return False
+    if not (
+        _kw(action[0]) == "ADD" and _kw(action[1]) == "CONSTRAINT"
+        and action[2].kind == "WORD" and _kw(action[3]) == "CHECK"
+        and action[4].kind == "PUNCT" and action[4].value == "("
+    ):
+        return False
+    depth = 0
+    for i, tok in enumerate(action[4:], start=4):
+        if tok.kind == "PUNCT" and tok.value == "(":
+            depth += 1
+        elif tok.kind == "PUNCT" and tok.value == ")":
+            depth -= 1
+            if depth == 0:
+                return i == len(action) - 1
+    return False
+
+
 def _parse_alter_table(
     index: int, stmt_tokens: list[_Token], sql: str,
     declared: dict[str, dict[str, tuple[str, bool]]],
@@ -750,13 +788,23 @@ def _parse_alter_table(
     found the original diff discarded `primary_key` here entirely, leaving
     `ALTER TABLE t ADD COLUMN IF NOT EXISTS id BIGINT PRIMARY KEY` able to
     fabricate the exact phantom `<table>_pkey` table C2 exists to prevent
-    (measured: PG creates the same `t_pkey` index via this path too)."""
+    (measured: PG creates the same `t_pkey` index via this path too).
+
+    T3 PR-3: two more action shapes are recognized and SKIPPED (never touch
+    `per_table` — neither declares a column) — `DROP CONSTRAINT IF EXISTS
+    <name>` and `ADD CONSTRAINT <name> CHECK (...)`, the idempotent
+    status-CHECK replacement `wa_team_promises.py::verify_status_check`
+    owns on the Python side. Anything else after ADD/DROP still falls
+    through to the existing `UnrecognizedSqlShapeError` — this does not
+    widen the allowlist beyond these two exact shapes."""
     table, pos = _read_qualified_name(stmt_tokens, 2, index, sql, stmt_tokens)
     action_tokens = stmt_tokens[pos:]
     if not action_tokens:
         raise UnrecognizedSqlShapeError(index, "ALTER", _stmt_text(sql, stmt_tokens))
     per_table = declared.setdefault(table, {})
     for action in _split_top_level_commas_tok(action_tokens):
+        if _is_drop_constraint_if_exists(action) or _is_add_constraint_check(action):
+            continue
         ok = (
             len(action) >= 5
             and _kw(action[0]) == "ADD"
