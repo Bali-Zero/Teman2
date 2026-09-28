@@ -25,10 +25,26 @@ design_change: >-
   clipped the eyebrow), F7 (the R19 guard's DOM hex check was dead — jsdom serialises hex to
   rgb(); replaced with a source-text scan), F8 (section 3 read the live selects instead of the
   analysed snapshot).
+  REWORK-BUILD v3 (spec-property-check-v3.md, fresh gate on fde4b15e33): B1 the backend
+  verdict block (score/risk/GREEN-YELLOW-RED pill) still graded the purchase — removed entirely,
+  with a guard covering all 15 (buyer, use) combinations against a GREEN/LOW/90 payload. B2 F5
+  was not actually fixed — TrustBand/CTAHandoff read their tokens via INLINE styles
+  (`var(--color-text-secondary)` etc.), and an inline style always beats an external stylesheet
+  rule for the SAME CSS property, so v2's property-targeting selectors were silently defeated.
+  The route-scoped module now redefines the CUSTOM PROPERTIES those inline styles read instead
+  of the properties themselves — proved with real computed styles (Playwright), not assumption.
+  L1 "13 May 2026" (an agency date) corrected to "since May 2026" (the dataset's actual
+  granularity). L2 the WNA-individual sentence now states investment as "more than Rp 10 billion
+  ... excluding land and buildings" per the exact statute language. C1 the lede/title/meta
+  description/OG text no longer promise legal structure, tax implications or a risk score — none
+  of which this report delivers. Minor: the buyer/use selects now stack full-width on narrow
+  viewports (auto-fit/minmax grid) instead of truncating a long option label; the R19 source-hex
+  guard now scans every file this PR owns under the property/eligibility route, not just the
+  component.
 acceptance:
-  A1: routePolicy + PropertyEligibilityBody guard tests red-before/green-after; tsc/eslint/prettier clean; backend test_analytics_funnel_parity.py green.
-  A2: live analyze() against nuzantara-rag.fly.dev at 3 points x 3 buyer/use combos renders zone/verdict/opportunities + the correct static section-3 copy; no country name, kbli_code or is_pma ever sent — only lat/lng/investor_profile.nationality (WNI/WNA) and optional price/land size.
-  A3: villa rental for a PT PMA (or a WNA individual, after the PT PMA sentence) always renders the villa-closed-to-PMA caveat, citing "Perpres 10/2021 jo. 49/2021" (never "49/2021" alone); own use never renders section 3; section 3 stays on the analysed snapshot after the selects change.
+  A1: routePolicy + PropertyEligibilityBody guard tests red-before/green-after; tsc/eslint/prettier clean; backend test_analytics_funnel_parity.py green; full apps/mouth vitest green (580/580 files, 7655 passed, 2 skipped, 0 failed).
+  A2: live analyze() against nuzantara-rag.fly.dev at Seminyak/Canggu x 3 buyer/use combos renders zone/opportunities + the correct static section-3 copy, and NEVER a score/risk/verdict pill even when the backend payload grades GREEN/LOW/90; no country name, kbli_code or is_pma ever sent — only lat/lng/investor_profile.nationality (WNI/WNA) and optional price/land size.
+  A3: villa rental for a PT PMA (or a WNA individual, after the PT PMA sentence) always renders the villa-closed-to-PMA caveat, citing "Perpres 10/2021 jo. 49/2021" (never "49/2021" alone) and "since May 2026" (never "13 May 2026"); own use never renders section 3; section 3 stays on the analysed snapshot after the selects change; TrustBand/WhatsApp-bar computed styles resolve to the R19 tokens on this route and are provably unchanged on /kbli (local head matches https://balizero.com/kbli byte-for-byte on every measured property).
 out_of_scope: >-
   Ownership pathway / taxes & costs / verdict-as-its-own-section / disclaimer / non-PII WhatsApp
   summary are PR-3 (owner decision). /zoning redirect and the (blog)/property landing card are a
