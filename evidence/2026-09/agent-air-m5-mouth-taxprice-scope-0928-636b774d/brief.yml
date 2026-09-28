@@ -1,67 +1,90 @@
 task: >-
-  Fix-forward of #7582's gate findings: /services/tax package cards must
-  never show a catalogue price for a scope the SKU does not cover.
-  LKPM Report, SPT Annual Company (Zero), BPJS Kesehatan and BPJS
-  Ketenagakerjaan go back to Contact; NPWPD Corporate keeps its price and
-  now says "Per location"; Monthly Tax Report and SPT Annual Company
-  (Operational) show "from <catalogue tier-set minimum>" computed at
-  runtime, never a hardcoded literal.
+  Fix-forward of #7582's gate findings, reworked once more on #7600's gate
+  (F1/F2): /services/tax package cards must never show a catalogue price
+  for a scope the SKU does not cover. LKPM Report, SPT Annual Company
+  (Zero), SPT Annual Company (Operational), BPJS Kesehatan and BPJS
+  Ketenagakerjaan all stay on Contact; NPWPD Corporate keeps its price and
+  now says "Per location"; Monthly Tax Report is the sole "from
+  <catalogue tier-set minimum>" package, computed at runtime, never a
+  hardcoded literal.
 lane: mouth/taxprice-scope
 machine: air-m5
 date: 2026-09-28
 gear: 2
-gear_reason: Floor 2, source size — 527 insertions / 170 deletions (net 357)
-  across 9 files, driven mainly by the regenerated bali-zero-prices.json
+gear_reason: Floor 2, source size — 758 insertions / 171 deletions (net 587)
+  across 12 files, driven mainly by the regenerated bali-zero-prices.json
   (248/118) once tier_range was added to the sync path; no hot-zone path
   hit.
 acceptance:
   A1: >-
     services_data.tax-pricing.test.ts pins per-package SKU identity
-    (key/category, or tier-set for the 2 "from" packages) for every
-    /services/tax package; proven red on origin/main's services_data.ts
-    (7/12 failing — the 2 tier-floor assertions and 4/4
-    stays-on-placeholder assertions plus the NPWPD "per location" nit) and
-    green on HEAD (12/12). pricing-snapshot.test.ts, ServicePricing.test.tsx
-    and bali-zero-prices.test.ts stay green. tsc --noEmit exit 0. eslint
-    clean (0 errors). prettier --check clean after --write.
+    (key/category, or tier-set for the 1 "from" package) for every
+    /services/tax package, and re-derives the expected tier-set floor
+    INDEPENDENTLY from the generated JSON's raw rows (price ??
+    tier_range[0]) rather than through getTierSetFloorPrice() itself
+    (#7600 gate F2: the prior version used the function under test to
+    compute its own expectation, so a bug inside that function moved both
+    sides together and stayed green). ServicePricing.test.tsx renders the
+    real Monthly Tax Report package and asserts the card text is exactly
+    "from 1.800.000 IDR/month"; DynamicJsonLd.test.tsx asserts its Offer
+    carries priceSpecification.minPrice (never a plain price). All 4
+    mutants named by the gate (ignore tier_range; take tier_range[1]; drop
+    the "from " prefix; emit plain price in JSON-LD) verified red in
+    place (cp backup + cmp restore, never git checkout) before committing.
+    Guard proven red on origin/main's services_data.ts (6/13 failing) and
+    green on HEAD (13/13). pricing-snapshot.test.ts, bali-zero-prices.test.ts
+    and the full src/components/services + src/lib + src/hooks + src/data +
+    src/components/seo suites stay green (190 files / 2572 tests). tsc
+    --noEmit exit 0. eslint clean (0 errors). prettier --check clean.
   A2: >-
-    live /services/tax page (npx next dev --webpack -p 3141) renders
-    exactly: NPWP Personal + Coretax 1.000.000 IDR, NPWPD Corporate
-    2.500.000 IDR (with "Per location" feature), SPT Annual Personal
-    1.000.000 IDR, SPT Annual Company (Zero) Contact for quote, SPT Annual
-    Company (Operational) "from 6.000.000 IDR", Monthly Tax Report "from
-    1.800.000 IDR", BPJS Health Insurance / BPJS Employment Insurance /
-    LKPM Report all Contact for quote. Verified via curl+grep on the SSR
-    HTML for card text and via a headless Playwright fetch (already vendored
-    at repo-root node_modules, no install) for the hydrated JSON-LD: the 2
-    "from" packages emit priceSpecification.minPrice (6000000 / 1800000),
-    never a plain price; the 5 priced packages keep a plain price; the 4
-    Contact packages emit no Offer at all.
+    live /services/tax page renders: NPWP Personal + Coretax 1.000.000 IDR,
+    NPWPD Corporate 2.500.000 IDR (with "Per location" feature), SPT
+    Annual Personal 1.000.000 IDR, SPT Annual Company (Zero) Contact for
+    quote, SPT Annual Company (Operational) Contact for quote (reverted
+    from a "from 6.000.000 IDR" floor per #7600 gate F1 — see
+    owner_findings), Monthly Tax Report "from 1.800.000 IDR/month", BPJS
+    Health Insurance / BPJS Employment Insurance / LKPM Report all Contact
+    for quote. The Monthly floor and its JSON-LD priceSpecification are
+    now covered directly by ServicePricing.test.tsx and
+    DynamicJsonLd.test.tsx (A1) rather than only by a manual dev-server
+    curl/Playwright check; the live-server pass from the #7600 pre-gate
+    round is unchanged for the other 8 cards (not re-run this round — not
+    requested and no card text changed besides Operational, itself now
+    covered by A1's placeholder assertion).
   A3: >-
-    no hardcoded monetary figure introduced in services_data.ts. The 2
-    "from" prices resolve through a new getTierSetFloorPrice() in
+    no hardcoded monetary figure introduced in services_data.ts. The
+    "from" price resolves through getTierSetFloorPrice() in
     pricing-snapshot.ts, reached via the same read path
     (bali-zero-prices.json) visa/exact tax packages already use — never a
-    new data source. python3 scripts/sync_frontend_prices.py --check
-    passes (the JSON was regenerated, not hand-edited).
+    new data source. tier_range is typed as PricingItem["tier_range"]
+    (apps/mouth/src/types/pricing.ts) via an `unknown` cast (the JSON
+    module's inferred array type does not always narrow to the 2-tuple).
+    python3 scripts/sync_frontend_prices.py --check passes (the JSON was
+    regenerated, not hand-edited).
 owner_findings: >-
-  The owner's memory quote for Monthly Tax Report ("from 1.8M") matches the
-  catalogue exactly: tax_accounting.monthly_tax_basic's cheapest tier
+  The owner's memory quote for Monthly Tax Report ("from 1.8M") matches
+  the catalogue exactly: tax_accounting.monthly_tax_basic's cheapest tier
   (Tier 0-50, "without LKPM & Annual", matching this card's scope) carries
-  no exact `price` but a `tier_range` of ["1.800.000 IDR", "2.000.000 IDR"]
-  in the PricingTool canonical — that field existed in the canonical file
-  for all 118 rows already but the sync script never propagated it to the
-  frontend snapshot, so it was previously unreachable from
-  services_data.ts. The owner's quote for SPT Annual Company (Operational)
-  ("from 4M") does NOT match: the catalogue's Annual Basic Package A-D
-  ladder floors at Package A = 6.000.000 IDR (Annual Company ZERO's 3M is a
-  different product line — the Zero card — excluded from this tier set).
-  Used the catalogue's 6.000.000 IDR per the ruling ("if the catalogue
-  minimum differs from the owner's number, use the catalogue").
+  no exact `price` but a `tier_range` of ["1.800.000 IDR", "2.000.000
+  IDR"] in the PricingTool canonical — that field existed in the
+  canonical file for all 118 rows already but the sync script never
+  propagated it to the frontend snapshot, so it was previously
+  unreachable from services_data.ts. The owner's quote for SPT Annual
+  Company (Operational) ("from 4M") probably meant
+  tax_accounting.annual_standalone's "Annual Tax Company" = 4.000.000 IDR
+  (SPT Tahunan PPh Badan) — a DIFFERENT catalogue row from the Annual
+  Basic Package A-D ladder this card was wired to (floor 6.000.000 IDR at
+  Package A). Moot for now: #7600's gate found the card's own promise
+  ("Personal director filing included") isn't covered by ANY of Package
+  A-D (all say "Does not include Annual Personal Tax report"), so the
+  card is back on Contact regardless of which tier set or standalone row
+  the owner eventually picks.
 out_of_scope: >-
-  BPJS Kesehatan/Ketenagakerjaan scope confirmation (what the 2.5M actually
-  covers) — a business decision left to Zero, per the ruling. The guard's
-  "per-package SKU identity" pin does not yet cover the visa packages (only
-  /services/tax was in scope); pricing-snapshot.test.ts's existing full-row
-  parity check (118 rows) already covers the regenerated JSON's tier_range
-  field content, so no new drift can ship silently.
+  Which SKU (or combination) actually backs SPT Annual Company
+  (Operational) — a business decision left to Zero. BPJS
+  Kesehatan/Ketenagakerjaan scope confirmation (what the 2.5M actually
+  covers) — same. The guard's "per-package SKU identity" pin does not yet
+  cover the visa packages (only /services/tax was in scope);
+  pricing-snapshot.test.ts's existing full-row parity check (118 rows)
+  already covers the regenerated JSON's tier_range field content, so no
+  new drift can ship silently.
