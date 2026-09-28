@@ -171,20 +171,82 @@ def test_family_is_anchored_not_substring():
     assert G._family("opusish") is None and G._family("inherit") is None and G._family("fable") is None
 
 
-def test_key_self_load_reads_only_that_variable_and_never_exports(tmp_path=None):
-    import tempfile
+def test_key_self_load_reads_only_that_variable_and_never_exports():
+    def run(content: str, chmod: int = 0o600) -> list:
+        with tempfile.TemporaryDirectory() as tmp:
+            f = pathlib.Path(tmp, "secrets.env")
+            f.write_bytes(content.encode("utf-8"))
+            os.chmod(f, chmod)
+            env = {**os.environ, "NUZANTARA_SECRETS_FILE": str(f)}
+            env.pop("TYPESAFE_API_KEY", None)
+            code = ("import importlib.util,os,json;s=importlib.util.spec_from_file_location('g',%r);"
+                    "g=importlib.util.module_from_spec(s);s.loader.exec_module(g);"
+                    "print(json.dumps([g._load_key_into_own_env(),'OTHER_SECRET' in os.environ,"
+                    "os.environ.get('TYPESAFE_API_KEY')]))" % str(HOOK))
+            p = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+            assert p.returncode == 0, p.stdout + p.stderr
+            return json.loads(p.stdout)
+
+    loaded, other, value = run("export OTHER_SECRET='zzz'\nexport TYPESAFE_API_KEY='k-synthetic-1'\n")
+    assert (loaded, other, value) == (True, False, "k-synthetic-1")
+
+    assert run("nothing here\n")[0] is False
+
+    loaded, _, value = run("TYPESAFE_API_KEY='first'\nTYPESAFE_API_KEY='second'\n")
+    assert loaded is True and value == "second"
+
+    assert run("TYPESAFE_API_KEY_OLD='zzz'\n")[0] is False
+    assert run("TYPESAFE_API_KEY=\n")[0] is False
+
+    loaded, _, value = run("TYPESAFE_API_KEY='k-crlf'\r\n")
+    assert loaded is True and value == "k-crlf"
+
+    loaded, _, value = run("export\t\tTYPESAFE_API_KEY='k2'\n")
+    assert loaded is True and value == "k2"
+
+    loaded, _, value = run("TYPESAFE_API_KEY=k3 # rotated\n")
+    assert loaded is True and value == "k3"
+
+    assert run("TYPESAFE_API_KEY='k-perm'\n", chmod=0o644)[0] is False
+
+
+def test_gate_run_never_prints_or_stores_the_key():
+    secret = "k-synthetic-never-seen"
     with tempfile.TemporaryDirectory() as tmp:
-        f = pathlib.Path(tmp, "secrets.env")
-        f.write_text("export OTHER_SECRET='zzz'\nexport TYPESAFE_API_KEY='k-synthetic-1'\n")
-        env = {**os.environ, "NUZANTARA_SECRETS_FILE": str(f)}
+        secrets_file = pathlib.Path(tmp, "secrets.env")
+        secrets_file.write_text(f"TYPESAFE_API_KEY='{secret}'\n")
+        os.chmod(secrets_file, 0o600)
+        state_dir = pathlib.Path(tmp, "state")
+        env = {**os.environ, "NUZANTARA_SECRETS_FILE": str(secrets_file),
+               "JEV_DISPATCH_GATE_STATE": str(state_dir),
+               "JEV_DISPATCH_GATE_FAKE_ANSWERS": json.dumps(_ans(conf=0.7)),
+               "JEV_DISPATCH_GATE": "enforce"}
         env.pop("TYPESAFE_API_KEY", None)
-        code = ("import importlib.util,os;s=importlib.util.spec_from_file_location('g',%r);g=importlib.util.module_from_spec(s);"
-                "s.loader.exec_module(g);print(g._load_key_into_own_env(), 'OTHER_SECRET' in os.environ, os.environ.get('TYPESAFE_API_KEY')=='k-synthetic-1')" % str(HOOK))
-        p = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
-        assert p.stdout.split() == ["True", "False", "True"], p.stdout + p.stderr
-        f.write_text("nothing here\n")
-        p = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
-        assert p.stdout.split()[0] == "False"
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env, timeout=30)
+        assert p.returncode == 0
+        assert secret not in p.stdout and secret not in p.stderr
+        receipts = state_dir / "receipts.jsonl"
+        text = receipts.read_text() if receipts.exists() else ""
+        assert secret not in text
+        rows = [json.loads(x) for x in text.splitlines()]
+        assert rows and rows[-1]["action"] == "allow"
+        assert isinstance(rows[-1]["repo_redactor"], bool)
+
+
+def test_report_includes_by_repo_redactor():
+    with tempfile.TemporaryDirectory() as tmp:
+        state_dir = pathlib.Path(tmp)
+        (state_dir / "receipts.jsonl").write_text(
+            json.dumps({"action": "allow", "repo_redactor": True}) + "\n"
+            + json.dumps({"action": "skip", "repo_redactor": False}) + "\n"
+        )
+        env = {**os.environ, "JEV_DISPATCH_GATE_STATE": str(state_dir)}
+        p = subprocess.run([sys.executable, str(HOOK), "--report"], capture_output=True, text=True, env=env)
+        assert p.returncode == 0, p.stdout + p.stderr
+        out = json.loads(p.stdout)
+        assert out["by_repo_redactor"] == {"True": 1, "False": 1}
 
 
 def test_pii_shaped_detection():
