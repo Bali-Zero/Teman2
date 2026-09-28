@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/agent-nuzantara-mouth-oracle-testing-campaign-33df2c7f/brief.yml
+brief_ref: evidence/brief.yml
 pii_scan: clean
 pii_scope:
   Synthetic profiles only; no real client rows or credentials in new source. Staff IDs are server-derived.
