@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { describe, expect, it } from "vitest";
 
 import { SERVICES_DATA } from "./services_data";
@@ -7,11 +9,16 @@ import {
 } from "@/lib/pricing-snapshot";
 
 const EXACT_IDR_PRICE = /^(?:\d+|\d{1,3}(?:\.\d{3})+)\s+IDR$/i;
+const REPO_ROOT = path.resolve(__dirname, "../../../..");
+const GENERATED = path.join(REPO_ROOT, "apps/mouth/data/bali-zero-prices.json");
 
 /**
  * /services/tax packages must never show a catalogue price for a scope the
- * SKU does not cover (2026-09-28 ruling, fix-forward of #7582's gate
- * findings on LKPM / SPT Annual Company (Zero) / both BPJS cards). A package
+ * SKU does not cover (2026-09-28/29 rulings, fix-forward of #7582's gate
+ * findings on LKPM / SPT Annual Company (Zero) / both BPJS cards, and of
+ * #7600's gate finding that SPT Annual Company (Operational) promises
+ * "Personal director filing included" while every Annual Basic Package
+ * tier says "Does not include Annual Personal Tax report"). A package
  * shows a price ONLY when:
  *  - an exact SKU covers exactly what the card promises (livePriceKey), or
  *  - the card is explicitly a tiered "from" package whose floor comes from
@@ -43,12 +50,12 @@ const TAX_PACKAGES_WITH_EXACT_SKU: Record<
 // catalogue floor the card must expose, never a hardcoded literal.
 const TAX_PACKAGES_WITH_TIER_FLOOR: Record<
   string,
-  { livePriceCategory: string; livePriceFloorKeys: string[] }
+  {
+    livePriceCategory: string;
+    livePriceFloorKeys: string[];
+    livePriceFloorUnit?: string;
+  }
 > = {
-  "SPT Annual Company (Operational)": {
-    livePriceCategory: "tax_accounting.annual_basic_packages",
-    livePriceFloorKeys: ["Package A", "Package B", "Package C", "Package D"],
-  },
   "Monthly Tax Report": {
     livePriceCategory: "tax_accounting.monthly_tax_basic",
     livePriceFloorKeys: [
@@ -57,6 +64,7 @@ const TAX_PACKAGES_WITH_TIER_FLOOR: Record<
       "Tier 100-200",
       "Tier 200+",
     ],
+    livePriceFloorUnit: "month",
   },
 };
 
@@ -64,15 +72,55 @@ const TAX_PACKAGES_WITH_TIER_FLOOR: Record<
 // Contact placeholder, never guess a price. (LKPM: card says quarterly, the
 // only catalogue LKPM row is a stand-alone yearly report. SPT Annual Company
 // (Zero): card promises company & personal filing, the SKU is the yearly
-// financial report only. Both BPJS cards: card promises "Monthly
-// administration", both SKUs are registration only and the owner has not
-// confirmed what the 2.5M price covers.)
+// financial report only. SPT Annual Company (Operational): card promises
+// "Personal director filing included", every Annual Basic Package A-D tier
+// says "Does not include Annual Personal Tax report". Both BPJS cards: card
+// promises "Monthly administration", both SKUs are registration only and
+// the owner has not confirmed what the 2.5M price covers.)
 const TAX_PACKAGES_WITHOUT_A_PRICE = [
   "SPT Annual Company (Zero)",
+  "SPT Annual Company (Operational)",
   "BPJS Health Insurance",
   "BPJS Employment Insurance",
   "LKPM Report",
 ];
+
+/**
+ * Lowest IDR figure the catalogue backs for `itemKeys` in `category`,
+ * computed by reading + parsing the generated snapshot JSON directly — NOT
+ * by calling getTierSetFloorPrice(). A test that re-derives its expectation
+ * from the function under test can't catch a bug IN that function (a mutant
+ * that ignores tier_range, or reads its wrong index, moves both sides of
+ * the comparison together and stays green). This walks the same two candidate
+ * sources (`price`, else `tier_range[0]`) independently in plain JS.
+ */
+function independentTierFloor(category: string, itemKeys: string[]): number {
+  const raw = JSON.parse(fs.readFileSync(GENERATED, "utf-8")) as {
+    services_by_category: Record<
+      string,
+      Record<string, { price: string | null; tier_range: string[] | null }>
+    >;
+  };
+  const rows = raw.services_by_category[category];
+  expect(
+    rows,
+    `category ${category} missing from generated snapshot`,
+  ).toBeDefined();
+  const amounts: number[] = [];
+  for (const key of itemKeys) {
+    const row = rows[key];
+    expect(
+      row,
+      `key ${category}:${key} missing from generated snapshot`,
+    ).toBeDefined();
+    const candidate = row.price?.trim() || row.tier_range?.[0]?.trim() || null;
+    if (!candidate) continue;
+    expect(candidate).toMatch(EXACT_IDR_PRICE);
+    amounts.push(Number(candidate.replace(/\D/g, "")));
+  }
+  expect(amounts.length, `no priced tier in ${category}`).toBeGreaterThan(0);
+  return Math.min(...amounts);
+}
 
 describe("/services/tax packages resolve exact catalogue prices", () => {
   const taxPackages = SERVICES_DATA.tax.packages;
@@ -96,13 +144,21 @@ describe("/services/tax packages resolve exact catalogue prices", () => {
   );
 
   it.each(Object.entries(TAX_PACKAGES_WITH_TIER_FLOOR))(
-    '%s pins its tier set and exposes the catalogue floor as "from X"',
+    '%s pins its tier set and exposes the INDEPENDENTLY-COMPUTED catalogue floor as "from X"',
     (name, identity) => {
       const pkg = taxPackages.find((p) => p.name === name);
       expect(pkg).toBeDefined();
       expect(pkg?.livePriceKey).toBeUndefined();
       expect(pkg?.livePriceCategory).toBe(identity.livePriceCategory);
       expect(pkg?.livePriceFloorKeys).toEqual(identity.livePriceFloorKeys);
+      expect(pkg?.livePriceFloorUnit).toBe(identity.livePriceFloorUnit);
+
+      // Ground truth: parsed straight out of the JSON file, never through
+      // getTierSetFloorPrice — see independentTierFloor()'s docstring.
+      const expectedAmount = independentTierFloor(
+        identity.livePriceCategory,
+        identity.livePriceFloorKeys,
+      );
 
       const floor = getTierSetFloorPrice(
         identity.livePriceCategory,
@@ -110,20 +166,21 @@ describe("/services/tax packages resolve exact catalogue prices", () => {
       );
       expect(floor).not.toBeNull();
       expect(floor as string).toMatch(EXACT_IDR_PRICE);
-
-      // The floor must be the true minimum across the pinned tier set, not
-      // just any priced tier — computed independently here so a mutant that
-      // picks the wrong tier (or a higher one) goes red.
-      const amounts = identity.livePriceFloorKeys
-        .map((key) => getTierSetFloorPrice(identity.livePriceCategory, [key]))
-        .filter((p): p is string => p !== null)
-        .map((p) => Number(p.replace(/\D/g, "")));
-      expect(amounts.length).toBeGreaterThan(0);
-      expect(Number((floor as string).replace(/\D/g, ""))).toBe(
-        Math.min(...amounts),
-      );
+      expect(Number((floor as string).replace(/\D/g, ""))).toBe(expectedAmount);
     },
   );
+
+  it("Monthly Tax Report's floor is the catalogue's 1.800.000 IDR (Tier 0-50's tier_range low bound)", () => {
+    // Pins the specific number, not just "some minimum" — a red canary if
+    // the catalogue row this depends on ever moves without anyone noticing.
+    const floor = getTierSetFloorPrice("tax_accounting.monthly_tax_basic", [
+      "Tier 0-50",
+      "Tier 50-100",
+      "Tier 100-200",
+      "Tier 200+",
+    ]);
+    expect(floor).toBe("1.800.000 IDR");
+  });
 
   it.each(TAX_PACKAGES_WITHOUT_A_PRICE)(
     "%s has no exact SKU or tier floor and stays on the placeholder",

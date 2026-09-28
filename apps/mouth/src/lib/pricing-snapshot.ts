@@ -1,4 +1,5 @@
 import pricingSnapshot from "../../data/bali-zero-prices.json";
+import type { PricingItem } from "@/types/pricing";
 
 export interface PricingSnapshotEntry {
   category: string;
@@ -11,15 +12,20 @@ export interface PricingSnapshotEntry {
   description_en: string | null;
   icon_id: string | null;
   /** [low, high] IDR range for a tier the catalogue prices as a band rather
-   *  than a single figure (e.g. a "from" tier). Null everywhere else. */
-  tier_range: string[] | null;
+   *  than a single figure (e.g. a "from" tier). Null everywhere else. Same
+   *  shape as PricingItem["tier_range"] (apps/mouth/src/types/pricing.ts). */
+  tier_range: PricingItem["tier_range"];
 }
 
 interface PricingSnapshot {
   services_by_category: Record<string, Record<string, PricingSnapshotEntry>>;
 }
 
-const snapshot = pricingSnapshot as PricingSnapshot;
+// The raw JSON module's inferred array literal type does not always narrow
+// to the [string, string] tuple PricingSnapshotEntry declares (some
+// tier_range values are null, some are 2-element arrays) — go through
+// `unknown` rather than widen the public field back to string[].
+const snapshot = pricingSnapshot as unknown as PricingSnapshot;
 const EXACT_IDR_PRICE = /^(?:\d+|\d{1,3}(?:\.\d{3})+)\s+IDR$/i;
 
 export function getPricingSnapshotEntry(

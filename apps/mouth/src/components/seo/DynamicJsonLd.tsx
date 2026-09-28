@@ -23,6 +23,7 @@ type ServiceOffer =
         "@type": "UnitPriceSpecification";
         minPrice: number;
         priceCurrency: string;
+        unitText?: string;
       };
     });
 
@@ -91,6 +92,9 @@ export function DynamicJsonLd() {
                   "@type": "UnitPriceSpecification",
                   minPrice: Number(floorPrice.replace(/\D/g, "")),
                   priceCurrency: "IDR",
+                  ...(pkg.livePriceFloorUnit
+                    ? { unitText: pkg.livePriceFloorUnit.toUpperCase() }
+                    : {}),
                 },
                 availability: "https://schema.org/InStock",
               },

@@ -44,7 +44,9 @@ function usePackagePrice(pkg: ServicePackage): string {
     pkg.livePriceFloorKeys ?? null,
   );
   if (pkg.livePriceFloorKeys) {
-    return floorPrice ? `from ${floorPrice}` : "Contact";
+    if (!floorPrice) return "Contact";
+    const unit = pkg.livePriceFloorUnit ? `/${pkg.livePriceFloorUnit}` : "";
+    return `from ${floorPrice}${unit}`;
   }
   return livePrice ?? "Contact";
 }

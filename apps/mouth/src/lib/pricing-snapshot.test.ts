@@ -41,7 +41,7 @@ interface CanonicalRow {
   notes?: string;
   description_en?: string;
   icon_id?: string;
-  tier_range?: string[] | null;
+  tier_range?: [string, string] | null;
 }
 
 function projectedRow(category: string, key: string, row: CanonicalRow) {

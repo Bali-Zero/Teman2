@@ -19,6 +19,9 @@ export interface ServicePackage {
    *  shows "from <catalogue minimum across these keys>" instead of an exact
    *  price. Mutually exclusive with livePriceKey. */
   livePriceFloorKeys?: string[];
+  /** Optional billing-period label for a floor price (e.g. "month"). Only
+   *  meaningful alongside livePriceFloorKeys. */
+  livePriceFloorUnit?: string;
 }
 
 export interface ServiceData {
@@ -370,15 +373,11 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "E-filing submission",
         ],
         popular: true,
-        // No exact SKU: catalogue has 4 tiered "Annual Basic Package A-D"
-        // (Package A the cheapest). Shows the tier-set floor instead.
-        livePriceCategory: "tax_accounting.annual_basic_packages",
-        livePriceFloorKeys: [
-          "Package A",
-          "Package B",
-          "Package C",
-          "Package D",
-        ],
+        // Catalogue's Annual Basic Package A-D all say "Does not include
+        // Annual Personal Tax report"; this card promises "Personal
+        // director filing included", which none of the 4 tiers cover —
+        // stays on Contact, like SPT Annual Company (Zero) (2026-09-29
+        // ruling). The owner will pick the tier set later.
       },
       {
         name: "Monthly Tax Report",
@@ -395,6 +394,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         // matches this card's scope (no LKPM/Annual mentioned). Shows the
         // tier-set floor instead.
         livePriceCategory: "tax_accounting.monthly_tax_basic",
+        livePriceFloorUnit: "month",
         livePriceFloorKeys: [
           "Tier 0-50",
           "Tier 50-100",
