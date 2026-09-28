@@ -421,7 +421,7 @@ export function trackPropertyWACTA(): void {
 }
 
 /** Track buyer profile selection (WNI / WNA individual / WNA PT PMA).
- * GA4-only (like trackVisaCTA/trackPropertyCTA below): the backend funnel
+ * Sent through sendGA4Event + trackEvent, never trackFunnelEvent: the backend funnel
  * allowlist (ALLOWED_EVENTS) does not carry these two selector events, and
  * adding them there is out of scope here — see
  * test_analytics_funnel_parity.py. */

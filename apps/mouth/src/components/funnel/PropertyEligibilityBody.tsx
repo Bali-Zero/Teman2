@@ -60,7 +60,7 @@ interface UseOption {
 // KBLI lookup.
 const USE_OPTIONS: UseOption[] = [
   { value: "own_use", label: "Live-in villa (own use, no business)" },
-  { value: "villa_rental", label: "Short-term rental (villa, Airbnb-style)" },
+  { value: "villa_rental", label: "Short-term villa rental" },
   { value: "restaurant", label: "Restaurant" },
   { value: "retail", label: "Retail shop" },
   { value: "office", label: "Office / commercial building" },

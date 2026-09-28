@@ -40,7 +40,11 @@ design_change: >-
   of which this report delivers. Minor: the buyer/use selects now stack full-width on narrow
   viewports (auto-fit/minmax grid) instead of truncating a long option label; the R19 source-hex
   guard now scans every file this PR owns under the property/eligibility route, not just the
-  component.
+  component. Third gate (REWORK-BUILD on 3be7758a28): the route's openGraph override replaced
+  the root one (Next.js merges it shallowly) and dropped og:image/type/url/site_name/locale —
+  restated like (blog)/contact/layout.tsx, with a metadata test red on the previous head; the
+  villa option reads "Short-term villa rental" so it no longer truncates at 390; the no-grading
+  guard exempts only "not open to a PT PMA", not any sentence containing "not".
 acceptance:
   A1: routePolicy + PropertyEligibilityBody guard tests red-before/green-after; tsc/eslint/prettier clean; backend test_analytics_funnel_parity.py green; full apps/mouth vitest green (580/580 files, 7655 passed, 2 skipped, 0 failed).
   A2: live analyze() against nuzantara-rag.fly.dev at Seminyak/Canggu x 3 buyer/use combos renders zone/opportunities + the correct static section-3 copy, and NEVER a score/risk/verdict pill even when the backend payload grades GREEN/LOW/90; no country name, kbli_code or is_pma ever sent — only lat/lng/investor_profile.nationality (WNI/WNA) and optional price/land size.

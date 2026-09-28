@@ -84,7 +84,7 @@ function findPositivePmaOpenClaims(container: HTMLElement): string[] {
   );
   return paragraphs.filter((s) => {
     if (!/open to (?:a |an |the )?PT\s?PMA/i.test(s)) return false;
-    if (/\bnot\b/i.test(s)) return false;
+    if (/\bnot open to (?:a |an |the )?PT\s?PMA/i.test(s)) return false;
     if (/\bwhether\b/i.test(s) && /\bdepends\b/i.test(s)) return false;
     return true;
   });
