@@ -337,6 +337,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="compliance_alerts", process_groups=_API, tags=("compliance",)),
     # ── Compliance Obligations (A2: reviewer API, HITL bridge to compliance_alerts) ──
     RouterEntry(name="compliance_obligations", process_groups=_API, tags=("compliance",)),
+    RouterEntry(name="tax_calendar_public", process_groups=_API, tags=("compliance", "public")),
     # ── LKPM Compliance ──
     RouterEntry(name="lkpm", process_groups=_API, tags=("compliance",)),
     # ── LLM Cost Tracking (remote ingestion for Pro/Air cron agents) ──
