@@ -18,7 +18,27 @@ export default function PropertyPage() {
       }}
     >
       <header style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ fontSize: "2rem", fontWeight: 700, margin: 0 }}>
+        <p
+          style={{
+            fontSize: "11px",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.28em",
+            color: "var(--r19-copper, var(--accent-funnel))",
+            margin: "0 0 var(--space-2)",
+          }}
+        >
+          Property Check
+        </p>
+        <h1
+          style={{
+            fontFamily: "var(--font-serif)",
+            fontWeight: 500,
+            fontSize: "2rem",
+            letterSpacing: "-0.01em",
+            margin: 0,
+          }}
+        >
           Property Eligibility Check
         </h1>
         <p
@@ -28,9 +48,9 @@ export default function PropertyPage() {
             maxWidth: "56ch",
           }}
         >
-          Enter Bali property coordinates to receive zoning classification,
-          eligible legal structure (Hak Pakai / HGB via PMA / leasehold 30yr),
-          applicable taxes (PBB, BPHTB), and risk score.
+          Enter Bali property coordinates and your buyer profile to receive
+          zoning classification, whether your intended use is open to your buyer
+          type, eligible legal structure, and applicable taxes.
         </p>
       </header>
       <PropertyEligibilityBody />
