@@ -94,6 +94,41 @@ describe("RegisterPage (WS3 day pass)", () => {
     expect(cta.style.color).toBe("var(--bz-on-warm)");
   });
 
+  // Reported 25 Sep: a client who had already registered reopened the email
+  // link and only saw "Contact Support", so the account looked broken.
+  it("an already-used invitation offers Sign In to the portal login", async () => {
+    mockValidate.mockResolvedValue({
+      valid: false,
+      error: "already_used",
+      message: "This invitation has already been used",
+    });
+    render(<RegisterPage />);
+    await screen.findByText("Invitation Already Used");
+
+    const signIn = screen.getByRole("link", { name: "Sign In" });
+    expect(signIn.getAttribute("href")).toBe("/portal/login-upgraded");
+    expect(signIn.style.background).toBe("var(--bz-copper-text)");
+    // Support stays reachable, but no longer as the only way out.
+    expect(
+      screen.getByRole("link", { name: "Contact Support" }),
+    ).toBeInTheDocument();
+  });
+
+  it("GUILT: an expired invitation does NOT offer Sign In", async () => {
+    mockValidate.mockResolvedValue({
+      valid: false,
+      error: "expired",
+      message: "This invitation has expired",
+    });
+    render(<RegisterPage />);
+    await screen.findByText("Invalid Invitation");
+
+    expect(screen.getByText("This invitation has expired")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sign In" })).toBeNull();
+    const cta = screen.getByRole("link", { name: "Contact Support" });
+    expect(cta.style.background).toBe("var(--bz-copper-text)");
+  });
+
   it("PIN mismatch surfaces a --state-danger error box", async () => {
     mockValidate.mockResolvedValue({
       valid: true,
