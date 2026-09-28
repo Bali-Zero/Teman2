@@ -1,0 +1,166 @@
+task: >-
+  T3 PR-3 (the Pro-local Ollama judge over team_promise_candidates), spec at
+  scripts/tests/ scratchpad spec_T3_PR3_judge.md, parent spec_T3_split_v2.md
+  §PR-3. Adds `--judge` to scripts/wa_team_promises.py: reads `unjudged`
+  candidates, re-verifies each against the CURRENT whatsapp_message_context
+  body (a body that shrank/changed goes `superseded`, never Ollama-judged —
+  discharges PENDING-ARMS PWC-CONDITIONS C2 for PR #7367), asks the
+  Pro-local qwen3.5:9b whether the clause is a future commitment BY THE
+  SENDER via a no-proxy opener + a closed JSON schema, and on `true` inserts
+  the deduped row into team_promises (ON CONFLICT DO NOTHING). due_at
+  resolves from the candidate's due_at_hint, or +48h when no hint resolves
+  (owner ruling D6, 2026-09-28, closed mid-build). Every status transition
+  is guarded by `status='unjudged' AND clause_hash=$judged` so a concurrent
+  scan-tick revision loses the race cleanly (`raced`, no partial write).
+  Also hardens C3 (tick_start_wita frozen once, before the scan runs, used
+  for both the midnight-hour check and the yesterday window) and replaces
+  team_promise_candidates.status's 4-value CHECK with a 5-value one
+  (`superseded` added) idempotently, verified via pg_get_constraintdef
+  inside --init-schema's own transaction. Ships the cron wrapper
+  (scripts/wa_team_promises_judge_cron.sh, installed by the conductor after
+  merge, not by this PR) and its own lock file, separate from the scanner's.
+lane: wa-team/t3-pr3-judge-0928
+machine: M5
+date: "2026-09-28"
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source `both` (confirmed locally via
+  `scripts/evidence_pack_lint.py --changed-files-file --numstat-file
+  --print-floor[-source]` against this exact diff, merge-base origin/main):
+  (1) PATH TERM — this diff edits
+  .github/workflows/wa-team-promises-tests.yml (adding
+  scripts/wa_team_promises_judge_cron.sh to the paths: filter and bumping
+  the corpus's passed-count FLOOR from 158 to 218, per the spec's own
+  instruction), which is a HOTZONE_PATTERNS match (`.github/workflows/*`) —
+  floor 3 on that alone, no size term needed. (2) SIZE TERM — CHURN
+  (Σ added+deleted per non-excluded file, never netted) over this diff is
+  ~2060 lines, above SIZE_GEAR3_THRESHOLD (1828): scripts/wa_team_promises.py
+  561+47, the two new judge test files 669+0 and 542+0, plus the smaller
+  fixups to test_wa_team_promises.py/_scan.py/_sql_crosscheck.py and the SQL
+  file. Removing the workflow-file touch would NOT drop this below floor 3 —
+  the size term alone (~2056 without it) still exceeds 1828. The bulk is
+  test coverage the spec explicitly required (guilt+innocence per new guard,
+  unit AND real-PG halves) — cutting it to dodge the threshold would be
+  gaming the floor, not shrinking genuine review burden.
+
+  NOT closed by this brief: harness-floor.yml's own Step 7 requires a
+  Gear-3 brief to be accompanied by evidence/pack.yml IN THE SAME DIFF
+  ("a Gear-3 task needs both"). This PR's own dispatch explicitly reads
+  "Do NOT arm auto-merge, do NOT merge, do NOT request reviews. A separate
+  fresh session gates it." — constructing a genuine Gear-3 Evidence Pack
+  (council review, cross-family dissent, receipts) is exactly the GATING
+  work that instruction reserves for that fresh session, not for the
+  builder that produced the diff (generator != grader, CLAUDE.md Builder
+  Contract §5). This brief documents the floor honestly and lets
+  `harness/fable-gate`/"Harness floor recompute" surface red on the missing
+  pack until that session runs — not silently green, not gamed shut.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 0
+
+acceptance:
+  A1: >-
+    `--judge [--dry-run] [--judge-limit N]` selects `status='unjudged' AND
+    attempts<5 ORDER BY created_at, id LIMIT N` (default 20, hard cap 50),
+    re-splits the CURRENT whatsapp_message_context body with
+    `_split_clauses` and verifies `clause_hash` — a mismatch or an
+    out-of-range `clause_idx` goes `superseded` with NO Ollama call; every
+    status UPDATE (superseded/judged_false/judged_true/attempt-increment) is
+    guarded by `status='unjudged' AND clause_hash=$judged`, so a scanner
+    revision mid-tick makes the guard fail (0 rows) and counts `raced`
+    rather than silently overwriting.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_judge.py -v
+  A2: >-
+    Strict verdict validation: only a JSON object with EXACTLY
+    `{"future_commitment_by_sender": <bool>}` counts — "false", ["false"],
+    0, 1, a missing/extra key, non-JSON or empty content all count as an
+    INVALID attempt (attempts+=1, stays unjudged; the 5th -> quarantined),
+    never auto-true, never silently dropped. A prompt-injection clause
+    reaches the model ONLY inside the user message's own JSON string, never
+    the system prompt, and the request always carries `format`=the closed
+    schema. A transport failure (connection refused/timeout/non-200/
+    malformed envelope) is NOT an attempt — it raises OllamaTransportError,
+    which stops the tick (stage=ollama in the sanitized FAIL line) rather
+    than quarantining the backlog on an Ollama outage.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_judge.py -k "parse_verdict or
+      call_ollama or ollama_transport" -v
+  A3: >-
+    judged_true is ONE transaction: the guarded UPDATE, then INSERT INTO
+    team_promises (message_id, promise_text, promise_type, due_at,
+    extractor_version) ON CONFLICT (message_id, promise_type) DO NOTHING —
+    two candidates on the same message_id+promise_type land exactly ONE
+    team_promises row. due_at = candidate's due_at_hint resolved via
+    _TEMPORAL_CUES when present, else message created_at + 48h (D6). Proven
+    against REAL Postgres (guarded UPDATE actually blocking a simulated
+    concurrent scanner revision, real ON CONFLICT dedup), not a Python
+    re-implementation of the guard.
+    probe: >-
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises_judge_real_pg.py -v
+  A4: >-
+    team_promise_candidates.status's CHECK constraint upgrades from the
+    PR-1/PR-2 4-value shape (with existing rows) to the 5-value shape
+    (adds `superseded`) idempotently — DROP CONSTRAINT IF EXISTS + ADD
+    CONSTRAINT by the SAME auto-generated name, verified via
+    pg_get_constraintdef inside --init-schema's own transaction; rerunning
+    is a genuine no-op; a pre-existing row with a status value outside
+    BOTH the old and new value sets makes the ADD CONSTRAINT itself fail
+    (asyncpg.CheckViolationError), rolling back the whole init-schema
+    transaction rather than silently accepting corrupt data.
+    probe: >-
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises_judge_real_pg.py -k
+      "status_check or bad_preexisting" -v
+  A5: >-
+    No clause, message body, model output, message-id list, phone or name
+    ever reaches stdout/stderr/logs on any path (dry-run, transport
+    failure, gateway failure) — the judge's own OK line is ints only
+    (`selected/true/false/invalid/quarantined/superseded/raced/wall_ms`).
+    The full unit+real-PG corpus (218 unit passed / REAL_PG unset, 260
+    passed with WA_TEAM_PROMISES_REAL_PG=1) is green; ruff and shellcheck
+    clean on every touched file.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises*.py -q
+
+out_of_scope: >-
+  Installing the judge cron line on Pro (`7-59/15 * * * * ...
+  wa_team_promises_judge_cron.sh`) — the conductor's post-merge step, same
+  as PR-2's scanner cron. Running `--init-schema` or a non-dry `--judge` on
+  Pro — this PR only ran a read-only `--judge --dry-run --judge-limit 20`
+  against the live 359 candidates from a temp layout (never touching
+  /Users/nuzantara/nuzantara itself), counts reported in the PR body. The
+  three OTHER C3 digest residuals (no catch-up on an all-day tick failure;
+  exactly-once depends on TG_DEDUP_HOURS>=1h; a double-revision undercount)
+  are accepted-and-documented in the module docstring per the ledger's own
+  "accept-and-document" option, not cured here. The Gear-3 Evidence Pack
+  (pack.yml, council review, dissent, receipts) that harness-floor.yml
+  requires alongside this brief — reserved for the fresh gate session per
+  this PR's own dispatch instructions (generator != grader).
+
+assumptions:
+  - text: >-
+      qwen3.5:9b is present and loaded on Pro's Ollama (127.0.0.1:11434),
+      shared with the attention-classifier — verified by actually running
+      `--judge --dry-run --judge-limit 20` against it from a temp layout on
+      Pro (real Ollama calls, real reads of the live 359 unjudged
+      candidates), not merely assumed from the ground note. Result:
+      selected=20 true=9 false=11 invalid=0 quarantined=0 superseded=0
+      raced=0 wall_ms=18740 — 0 invalid outputs, so qwen3.5:9b's structured
+      `format` output was reliable across all 20 real clauses in this run.
+    status: verified
+  - text: >-
+      The deterministic floor for this diff is 3 via BOTH the path term
+      (.github/workflows/wa-team-promises-tests.yml, a HOTZONE_PATTERNS
+      match) and the size term (~2060-line churn > SIZE_GEAR3_THRESHOLD
+      1828) — not assumed from the push-time error message alone, but
+      reproduced directly with `scripts/evidence_pack_lint.py
+      --changed-files-file --numstat-file --print-floor` /
+      `--print-floor-source` against this exact merge-base diff.
+    status: verified
