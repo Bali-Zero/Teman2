@@ -73,7 +73,22 @@ function forbiddenHitsIn(container: HTMLElement): string[] {
 // inside a `var(--x, #hex)` fallback slot, so every balanced `var(...)` span
 // is stripped first (same strip used by the R19 CSS guard on globals.css),
 // and anything left containing `#[0-9a-fA-F]{3,8}` is a violation.
-const SOURCE_FILE = join(__dirname, "PropertyEligibilityBody.tsx");
+// Minor (gate-7596-report.md v2): extended to every file the PR owns under
+// apps/mouth/src/app/property/eligibility/, not just the component.
+const PROPERTY_ROUTE_DIR = join(
+  __dirname,
+  "..",
+  "..",
+  "app",
+  "property",
+  "eligibility",
+);
+const SOURCE_FILES = [
+  join(__dirname, "PropertyEligibilityBody.tsx"),
+  join(PROPERTY_ROUTE_DIR, "layout.tsx"),
+  join(PROPERTY_ROUTE_DIR, "page.tsx"),
+  join(PROPERTY_ROUTE_DIR, "r19-funnel-frame.module.css"),
+];
 
 function stripVarFallbacks(text: string): string {
   let prev: string;
@@ -141,10 +156,13 @@ describe("R19 guard: PropertyEligibilityBody", () => {
     expect(forbiddenHitsIn(container)).toEqual([]);
   });
 
-  it("source has no literal #hex color outside a var(--x, #hex) fallback", () => {
-    const source = readFileSync(SOURCE_FILE, "utf-8");
-    const stripped = stripVarFallbacks(source);
-    const hexMatches = stripped.match(/#[0-9a-fA-F]{3,8}/g) ?? [];
-    expect(hexMatches).toEqual([]);
-  });
+  it.each(SOURCE_FILES)(
+    "%s has no literal #hex color outside a var(--x, #hex) fallback",
+    (file) => {
+      const source = readFileSync(file, "utf-8");
+      const stripped = stripVarFallbacks(source);
+      const hexMatches = stripped.match(/#[0-9a-fA-F]{3,8}/g) ?? [];
+      expect(hexMatches).toEqual([]);
+    },
+  );
 });
