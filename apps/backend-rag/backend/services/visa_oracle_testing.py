@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from typing import Literal
 
 from fastapi import HTTPException
-from PIL import Image
+from PIL import Image, ImageOps
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CAMPAIGN_ID = "oracle-team-20260928"
@@ -116,7 +116,7 @@ def scenario(day: int, variant: int, tester: int) -> dict:
     elif day == 3:
         category = ("business", "work", "study", "family", "invest", "retirement")[tester]
         p = base_profile(country, category)
-        p.update(stay_days="365", sponsor_category="INDIVIDUAL", family_sponsor_confirmed="yes")
+        p.update(stay_days="365", sponsor_category="INDIVIDUAL")
         if category == "business":
             p.update(
                 business_activity=("meetings", "negotiation", "conference", "exploring")[variant],
@@ -139,6 +139,7 @@ def scenario(day: int, variant: int, tester: int) -> dict:
             )
         elif category == "family":
             p.update(
+                family_sponsor_confirmed="yes",
                 family_relation="SPOUSE",
                 marital_status="MARRIED",
                 family_sponsor_nationalities="ID",
@@ -175,6 +176,8 @@ def scenario(day: int, variant: int, tester: int) -> dict:
         if variant == 3:
             p.update(trip_scope="multiple", review_gate="activity_boundary")
         focus = "Uji satu cabang dan perubahan konteks. Syarat hukum belum dikalibrasi: tidak ada jawaban visa yang dianggap pasti."
+        if category == "invest" and variant == 2:
+            focus += " Kontras sengaja: rencana investasi melalui PT PMA, tetapi PT PMA belum ada dan modal belum disetor. Jangan mengubah jawaban no atau modal 0."
     else:
         category = ("tourism", "remote", "business", "family", "second_home", "diaspora")[tester]
         p = remote_profile(country) if category == "remote" else base_profile(country, category)
@@ -312,9 +315,20 @@ class ResultPayload(StrictPayload):
                 if im.format not in {"PNG", "JPEG", "WEBP"} or im.width * im.height > 16_000_000:
                     raise ValueError("Invalid image dimensions")
                 im.verify()
+            with Image.open(io.BytesIO(raw)) as im:
+                pixels = ImageOps.exif_transpose(im).convert(
+                    "RGBA" if "A" in im.getbands() else "RGB"
+                )
+                clean = Image.new(pixels.mode, pixels.size)
+                clean.paste(pixels)
+                buffer = io.BytesIO()
+                clean.save(buffer, format="PNG")
+                raw = buffer.getvalue()
+                if len(raw) > 600 * 1024:
+                    raise ValueError("Clean image evidence maximum 600 KiB")
         except (binascii.Error, OSError, ValueError, Image.DecompressionBombError) as exc:
             raise ValueError("Invalid PNG, JPEG or WebP evidence") from exc
-        return value
+        return base64.b64encode(raw).decode("ascii")
 
 
 class ReviewPayload(StrictPayload):

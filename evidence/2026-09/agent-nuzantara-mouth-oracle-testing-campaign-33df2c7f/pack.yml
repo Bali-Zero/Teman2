@@ -13,7 +13,7 @@ lanes:
   - lane: independent-review
     role: review
     seat: claude-opus-5-5
-    status: First review FIX; corrections made, fresh frozen-commit gate pending.
+    status: Both prior Opus reviews FIX; new corrections empirically verified, fresh exact-head gate pending.
   - lane: council-kimi
     role: review
     seat: kimi-code/k3
@@ -30,7 +30,7 @@ receipts:
       backend/tests/setup/test_router_manifest.py --no-cov --tb=short
     cwd: apps/backend-rag
     exit: 0
-    ts: "2026-09-28T02:21:28.230042+00:00"
+    ts: "2026-09-28T02:59:02.535354+00:00"
     seat: codex
     environment_keys:
       - PYTHONPATH
@@ -39,10 +39,10 @@ receipts:
   - claim: ci-postgres
     cmd:
       /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/integration/test_visa_oracle_testing_campaign.py
-      --no-cov --tb=short
+      -n 2 --dist loadfile --no-cov --tb=short
     cwd: apps/backend-rag
     exit: 0
-    ts: "2026-09-28T02:21:29.945762+00:00"
+    ts: "2026-09-28T02:59:07.833724+00:00"
     seat: codex
     environment_keys:
       - PYTHONPATH
@@ -56,14 +56,14 @@ receipts:
       src/__tests__/workspace-session-gate.test.ts
     cwd: apps/mouth
     exit: 0
-    ts: "2026-09-28T02:21:31.074134+00:00"
+    ts: "2026-09-28T02:59:12.104426+00:00"
     seat: codex
     environment_keys: []
   - claim: typescript
     cmd: node ../../node_modules/typescript/bin/tsc --noEmit --incremental false
     cwd: apps/mouth
     exit: 0
-    ts: "2026-09-28T02:21:33.515296+00:00"
+    ts: "2026-09-28T02:59:14.988097+00:00"
     seat: codex
     environment_keys: []
   - claim: ruff
@@ -72,37 +72,38 @@ receipts:
       backend/app/routers/visa_oracle_testing.py backend/tests/services/test_visa_oracle_testing.py backend/tests/integration/test_visa_oracle_testing_campaign.py
     cwd: apps/backend-rag
     exit: 0
-    ts: "2026-09-28T02:21:47.838934+00:00"
+    ts: "2026-09-28T02:59:30.636090+00:00"
     seat: codex
     environment_keys: []
   - claim: migration-numbers
     cmd: python3 scripts/lint_migration_numbers.py
     cwd: .
     exit: 0
-    ts: "2026-09-28T02:21:47.915394+00:00"
+    ts: "2026-09-28T02:59:30.674465+00:00"
     seat: codex
     environment_keys: []
   - claim: docs-sync
     cmd: python3 scripts/docs_sync.py --check --quiet
     cwd: .
     exit: 0
-    ts: "2026-09-28T02:21:47.945291+00:00"
+    ts: "2026-09-28T02:59:30.708826+00:00"
     seat: codex
     environment_keys: []
   - claim: diff-check
     cmd: git diff --check
     cwd: .
     exit: 0
-    ts: "2026-09-28T02:21:48.002651+00:00"
+    ts: "2026-09-28T02:59:30.772120+00:00"
     seat: codex
     environment_keys: []
-  - claim: Migration apply-all dry-run passed on isolated UTF8 PostgreSQL; migration323 discovered
-    cmd: PYTHONPATH=. python -m backend.db.migrate apply-all --dry-run
+  - claim: updated migration323 apply-all dry-run isolated CI database
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m backend.db.migrate apply-all
+      --dry-run
     cwd: apps/backend-rag
     exit: 0
-    ts: "2026-09-28T01:37:12Z"
+    ts: "2026-09-28T02:58:31.257642+00:00"
     seat: codex
-    evidence_note: Isolated nuzantara_test database, ephemeral settings secrets never persisted; log output/oracle-testing/migration-dry-run.log.
   - claim: Read-only production metadata confirms canonical staff columns; no client rows
     cmd:
       bash scripts/pg.sh -X -A -t -c 'SELECT current_user; SELECT column_name FROM information_schema.columns
@@ -147,6 +148,18 @@ dissent:
       "ID projection and reproduced-verdict consistency were reproduced and fixed. Roster counterexample
       RETRACTED: a slotted reviewer needs five personal starts, which already lock reassignment. Production
       RO schema probe confirmed both name columns, with no client rows."
+  - seat: claude-opus-5-5
+    status: CONFIRMED
+    verdict: FIX
+    objection:
+      Real CI xdist worker databases skipped; own results could precede all five expectations;
+      rigid SQL dates; retry review UX; fixture explanation; image metadata.
+    disposition:
+      Real two-worker run now33passed0skipped with current_database assertion and strict local-DSN
+      guard. API and UI lock all five expectations before results. SQL date/campaign literals removed; authorized
+      dates unchanged, roster remains owner-configurable. Identical review retries preserve timestamp. Investment
+      prerequisite contrast explicit; unrelated family facts removed. Images losslessly normalized to metadata-free
+      PNG. New independent exact-head gate still required.
 live_state:
   Not deployed. No production submissions or roster assignment. External builder will not merge,
   arm or deploy.
@@ -156,6 +169,8 @@ limitations:
     tests.
   - iQOO had no connected ADB device; physical mobile QA unavailable.
   - No general visa accuracy or exhaustive product coverage claimed.
+  - Campaign dates remain the user-authorized28Sep-2Oct; six staff identities await owner configuration,
+    no roster invented. If first day is missed, rescheduling requires an owner decision.
 bites:
   Kita staff page calls the registered API; browser save/reload preserved locked expectation and
   draft with private evidence; server tests reject cross-user writes and self-review.

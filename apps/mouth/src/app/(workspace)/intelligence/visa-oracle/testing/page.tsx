@@ -286,6 +286,7 @@ export default function OracleTestingPage() {
     (a) => a.slot === data.viewer.slot && a.day === day,
   );
   const current = mine.find((a) => a.id === selected);
+  const lockedExpectations = mine.filter((a) => a.record?.expected).length;
   const submitted = data.assignments.filter(
     (a) => a.record?.status === "submitted",
   );
@@ -390,6 +391,16 @@ export default function OracleTestingPage() {
         </Block>
       )}
       <Block title="Penugasan Anda">
+        <p className="text-sm">
+          Fase 1: tulis dan kunci ekspektasi untuk kelima kasus tanpa membuka
+          Oracle. Fase 2: setelah kelimanya dikunci, buka Oracle dan catat hasil
+          setiap kasus.
+        </p>
+        {data.viewer.slot && (
+          <p role="status" className="text-sm font-semibold">
+            Ekspektasi terkunci untuk hari yang dipilih: {lockedExpectations}/5.
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <StatePill tone="ink" label={data.viewer.slot || "Belum ada slot"} />
           <div className="min-w-60">
@@ -572,6 +583,7 @@ function CaseForm({
   }
   const locked = !!a.record;
   const complete = a.record?.status === "submitted";
+  const canRecordResults = locked && a.can_record_results === true;
   const canStart = locked || a.can_start !== false;
   const changeExpected = (key: keyof Expected, value: string) =>
     setExpected((previous) => ({ ...previous, [key]: value }));
@@ -593,6 +605,7 @@ function CaseForm({
   }
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (!canRecordResults || complete || busy) return;
     setValidationError("");
     if ((result.category === "none") !== (result.severity === "none")) {
       setValidationError(
@@ -725,18 +738,28 @@ function CaseForm({
               mencatat alur kerja, bukan bukti independen bahwa pengujian
               dilakukan pada waktu tersebut.
             </Notice>
-            <a
-              href="https://balizero.com/visa-oracle"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${PRIMARY} inline-flex items-center`}
-            >
-              Buka Visa Oracle
-            </a>
-            <p className="text-sm">
-              Tautan hanya membuka halaman baru. Masukkan fixture secara manual;
-              tidak ada data yang dikirim otomatis ke Oracle.
-            </p>
+            {canRecordResults ? (
+              <>
+                <a
+                  href="https://balizero.com/visa-oracle"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${PRIMARY} inline-flex items-center`}
+                >
+                  Buka Visa Oracle
+                </a>
+                <p className="text-sm">
+                  Tautan hanya membuka halaman baru. Masukkan fixture secara
+                  manual; tidak ada data yang dikirim otomatis ke Oracle.
+                </p>
+              </>
+            ) : (
+              <Notice tone="wait">
+                Lanjutkan mengunci ekspektasi kasus lainnya. Oracle dan
+                pencatatan hasil dibuka setelah server mengonfirmasi kelima
+                ekspektasi pada tanggal penugasan ini.
+              </Notice>
+            )}
           </>
         )}
       </Block>
@@ -745,7 +768,7 @@ function CaseForm({
           {validationError && <Notice role="alert">{validationError}</Notice>}
           <form onSubmit={submit} className="space-y-4">
             <fieldset
-              disabled={busy || complete || readingImage}
+              disabled={busy || complete || readingImage || !canRecordResults}
               className="space-y-4"
             >
               <Area
@@ -904,17 +927,22 @@ function CaseForm({
                 <button
                   className={BUTTON}
                   type="button"
-                  disabled={busy || !attested || readingImage}
-                  onClick={() =>
-                    void mutate(() => testingApi.result(a.id, result, false))
+                  disabled={
+                    busy || !attested || readingImage || !canRecordResults
                   }
+                  onClick={() => {
+                    if (canRecordResults && !complete && !busy)
+                      void mutate(() => testingApi.result(a.id, result, false));
+                  }}
                 >
                   Simpan draf ke server
                 </button>
                 <button
                   className={PRIMARY}
                   type="submit"
-                  disabled={busy || !attested || readingImage}
+                  disabled={
+                    busy || !attested || readingImage || !canRecordResults
+                  }
                 >
                   Kirim observasi
                 </button>
@@ -958,6 +986,7 @@ function ReviewForm({
   busy: boolean;
   mutate: Mutation;
 }) {
+  const reviewLocked = !!a.record?.review;
   const [review, setReview] = useState<Review>(
     a.record?.review || {
       verdict: "needs_expert_review",
@@ -995,6 +1024,7 @@ function ReviewForm({
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
+          if (reviewLocked || busy) return;
           void mutate(() =>
             testingApi.review(a.id, {
               verdict: review.verdict,
@@ -1005,53 +1035,63 @@ function ReviewForm({
           );
         }}
       >
-        <Choice
-          name={`verdict-${a.id}`}
-          label="Keputusan reviewer"
-          value={review.verdict}
-          options={{
-            confirmed_issue: "Isu terkonfirmasi",
-            not_issue: "Bukan isu",
-            needs_expert_review: "Perlu tinjauan ahli hukum",
-          }}
-          onChange={(v) =>
-            setReview((r) => ({
-              ...r,
-              verdict: v as Review["verdict"],
-              reproduced: false,
-            }))
-          }
-        />
-        <Area
-          name={`review-${a.id}`}
-          label="Alasan, bukti, dan referensi reviewer"
-          value={review.comment}
-          onChange={(v) => setReview((r) => ({ ...r, comment: v }))}
-        />
-        <label className="flex gap-3 text-sm">
-          <input
-            type="checkbox"
-            checked={review.reproduced}
-            disabled={review.verdict !== "confirmed_issue"}
-            onChange={(e) =>
-              setReview((r) => ({ ...r, reproduced: e.target.checked }))
+        {reviewLocked && (
+          <Notice tone="wait">
+            Tinjauan sudah tersimpan dan tidak dapat diubah.
+          </Notice>
+        )}
+        <fieldset disabled={reviewLocked || busy} className="space-y-4">
+          <Choice
+            name={`verdict-${a.id}`}
+            label="Keputusan reviewer"
+            value={review.verdict}
+            options={{
+              confirmed_issue: "Isu terkonfirmasi",
+              not_issue: "Bukan isu",
+              needs_expert_review: "Perlu tinjauan ahli hukum",
+            }}
+            onChange={(v) =>
+              setReview((r) => ({
+                ...r,
+                verdict: v as Review["verdict"],
+                reproduced: false,
+              }))
             }
           />
-          Reviewer telah mereproduksi isu yang sama
-        </label>
-        <Field
-          id={`reproduction-${a.id}`}
-          label="Referensi observasi kedua dan langkah pengulangan"
-          required={review.reproduced}
-          value={review.reproduction_evidence}
-          onChange={(e) =>
-            setReview((r) => ({ ...r, reproduction_evidence: e.target.value }))
-          }
-          maxLength={1000}
-        />
-        <button className={BUTTON} disabled={busy}>
-          Simpan tinjauan
-        </button>
+          <Area
+            name={`review-${a.id}`}
+            label="Alasan, bukti, dan referensi reviewer"
+            value={review.comment}
+            onChange={(v) => setReview((r) => ({ ...r, comment: v }))}
+          />
+          <label className="flex gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={review.reproduced}
+              disabled={review.verdict !== "confirmed_issue"}
+              onChange={(e) =>
+                setReview((r) => ({ ...r, reproduced: e.target.checked }))
+              }
+            />
+            Reviewer telah mereproduksi isu yang sama
+          </label>
+          <Field
+            id={`reproduction-${a.id}`}
+            label="Referensi observasi kedua dan langkah pengulangan"
+            required={review.reproduced}
+            value={review.reproduction_evidence}
+            onChange={(e) =>
+              setReview((r) => ({
+                ...r,
+                reproduction_evidence: e.target.value,
+              }))
+            }
+            maxLength={1000}
+          />
+          <button className={BUTTON} disabled={busy || reviewLocked}>
+            Simpan tinjauan
+          </button>
+        </fieldset>
       </form>
     </details>
   );

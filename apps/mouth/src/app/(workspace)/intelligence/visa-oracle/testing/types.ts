@@ -47,6 +47,7 @@ export type Assignment = {
   day: string;
   index: number;
   can_start?: boolean;
+  can_record_results: boolean;
   scenario: {
     id: string;
     title: string;

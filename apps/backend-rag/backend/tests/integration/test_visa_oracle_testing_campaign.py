@@ -1,9 +1,10 @@
-"""Real PostgreSQL concurrency/ownership checks; only an isolated local QA socket."""
+"""Real PostgreSQL checks against isolated QA sockets or declared local CI databases."""
 
 import asyncio
 import base64
 import io
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -29,11 +30,65 @@ def qa_connection():
     # Explicit CI service only, never a production/Fly database by accident.
     if (
         os.getenv("CI")
+        and parsed.scheme in {"postgres", "postgresql"}
         and parsed.hostname in {"localhost", "127.0.0.1", "postgres"}
-        and parsed.path == "/nuzantara_test"
+        and re.fullmatch(r"/nuzantara_test(?:_gw[0-9]+)?", parsed.path)
+        and not parsed.query
+        and not parsed.fragment
     ):
         return {"dsn": dsn}
-    pytest.skip("Requires isolated QA socket or the declared CI nuzantara_test database")
+    pytest.skip("Requires isolated QA socket or declared local CI base/worker test database")
+
+
+@pytest.mark.parametrize("host", ["localhost", "127.0.0.1", "postgres"])
+@pytest.mark.parametrize(
+    "database", ["nuzantara_test", "nuzantara_test_gw0", "nuzantara_test_gw12"]
+)
+def test_qa_connection_accepts_local_ci_base_and_worker_databases(monkeypatch, host, database):
+    monkeypatch.delenv("ORACLE_TEST_SOCKET", raising=False)
+    monkeypatch.setenv("CI", "true")
+    dsn = f"postgresql://{host}:49433/{database}"
+    monkeypatch.setenv("TEST_DATABASE_URL", dsn)
+    try:
+        connection = qa_connection()
+    except pytest.skip.Exception:
+        pytest.fail("The declared CI base/worker database must execute, never skip")
+    assert connection == {"dsn": dsn}
+
+
+@pytest.mark.parametrize(
+    "dsn",
+    [
+        "postgresql://localhost/nuzantara",
+        "postgresql://localhost/nuzantara_dev",
+        "postgresql://localhost/nuzantara_test_gw0_prod",
+        "postgresql://localhost/nuzantara_test_gw",
+        "postgresql://localhost/nuzantara_test_gw-1",
+        "postgresql://localhost/nuzantara_test_gw0_gw1",
+        "postgresql://localhost/nuzantara_test_xdist_template",
+        "postgresql://remote.example.invalid/nuzantara_test_gw0",
+        "postgresql://localhost.example.invalid/nuzantara_test",
+        "https://localhost/nuzantara_test",
+        "postgresql://localhost/nuzantara_test?host=remote.example.invalid",
+        "postgresql://localhost/nuzantara_test?dbname=production",
+        "postgresql://localhost/nuzantara_test?database=production",
+        "postgresql://localhost/nuzantara_test#production",
+    ],
+)
+def test_qa_connection_rejects_undeclared_or_overridden_ci_database(monkeypatch, dsn):
+    monkeypatch.delenv("ORACLE_TEST_SOCKET", raising=False)
+    monkeypatch.setenv("CI", "true")
+    monkeypatch.setenv("TEST_DATABASE_URL", dsn)
+    with pytest.raises(pytest.skip.Exception):
+        qa_connection()
+
+
+def test_qa_connection_requires_ci_for_tcp_database(monkeypatch):
+    monkeypatch.delenv("ORACLE_TEST_SOCKET", raising=False)
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.setenv("TEST_DATABASE_URL", "postgresql://localhost/nuzantara_test_gw0")
+    with pytest.raises(pytest.skip.Exception):
+        qa_connection()
 
 
 @pytest_asyncio.fixture
@@ -118,6 +173,60 @@ def result(**changes):
     }
 
 
+async def lock_personal_day(client, slot="T01"):
+    for index in range(5):
+        response = await client.post(
+            f"/api/visa-oracle/testing/D1-{slot}-{index}/start", json=expected()
+        )
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_connection_targets_declared_isolated_database(setup):
+    _, pool, _ = setup
+    connection = qa_connection()
+    async with pool.acquire() as conn:
+        actual_database = await conn.fetchval("SELECT current_database()")
+    if "dsn" in connection:
+        assert actual_database == urlparse(connection["dsn"]).path.lstrip("/")
+        worker = os.getenv("PYTEST_XDIST_WORKER")
+        if worker:
+            assert actual_database == f"nuzantara_test_{worker}"
+    else:
+        assert actual_database == "oracle_testing_qa"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("submit", [False, True])
+async def test_results_wait_for_all_five_personal_expectations(setup, submit):
+    _, pool, make_client = setup
+    path = "/api/visa-oracle/testing/D1-T01-0"
+    async with make_client() as c:
+        for index in range(4):
+            assert (
+                await c.post(f"/api/visa-oracle/testing/D1-T01-{index}/start", json=expected())
+            ).status_code == 200
+        before = (await c.get("/api/visa-oracle/testing")).json()
+        assert not any(a["can_record_results"] for a in before["assignments"])
+        assert (await c.put(path + "/result", json=result(submit=submit))).status_code == 409
+        async with pool.acquire() as conn:
+            assert (
+                await conn.fetchval(
+                    "SELECT count(*) FROM visa_oracle_test_runs WHERE result IS NOT NULL"
+                )
+                == 0
+            )
+        assert (
+            await c.post("/api/visa-oracle/testing/D1-T01-4/start", json=expected())
+        ).status_code == 200
+        after = (await c.get("/api/visa-oracle/testing")).json()
+        for case in after["assignments"]:
+            assert case["can_record_results"] is (
+                case["slot"] == "T01" and case["day"] == "2026-09-28"
+            )
+        assert (await c.put(path + "/result", json=result(submit=submit))).status_code == 200
+
+
 @pytest.mark.asyncio
 async def test_authentication_and_real_staff_membership(setup):
     app, pool, make_client = setup
@@ -165,7 +274,7 @@ async def test_durable_draft_submission_idempotency_and_independent_review(setup
     path = "/api/visa-oracle/testing/D1-T01-0"
     async with make_client() as c:
         assert (await c.put(path + "/result", json=result())).status_code == 409
-        assert (await c.post(path + "/start", json=expected())).status_code == 200
+        await lock_personal_day(c)
         assert (await c.put(path + "/result", json=result(submit=False))).status_code == 200
         data = (await c.get("/api/visa-oracle/testing")).json()
         assert data["assignments"][0]["record"]["result"]["actual"] == result()["actual"]
@@ -193,10 +302,7 @@ async def test_durable_draft_submission_idempotency_and_independent_review(setup
                 json={"verdict": "not_issue", "comment": "Premature peer review attempt"},
             )
         ).status_code == 409
-        for index in range(5):
-            assert (
-                await c.post(f"/api/visa-oracle/testing/D1-T02-{index}/start", json=expected())
-            ).status_code == 200
+        await lock_personal_day(c, "T02")
         bad = {
             "verdict": "confirmed_issue",
             "comment": "Independent finding checked",
@@ -209,9 +315,19 @@ async def test_durable_draft_submission_idempotency_and_independent_review(setup
         }
         assert (await c.patch(path + "/review", json=good)).status_code == 200
         data = (await c.get("/api/visa-oracle/testing/export")).json()
+        first_review = data["assignments"][0]["record"]["review"]
+        assert (await c.patch(path + "/review", json=good)).status_code == 200
+        retry = (await c.get("/api/visa-oracle/testing/export")).json()
+        assert retry["assignments"][0]["record"]["review"] == first_review
+        assert retry["counts"]["reviewed"] == 1
+        assert (
+            await c.patch(
+                path + "/review", json={**good, "comment": "Changed review after acceptance"}
+            )
+        ).status_code == 409
         assert data["counts"] == {
             "planned": 150,
-            "started": 6,
+            "started": 10,
             "submitted": 1,
             "reproduced": 1,
             "reviewed": 1,
@@ -234,8 +350,8 @@ async def test_blind_results_and_self_review(setup):
     _, pool, make_client = setup
     path = "/api/visa-oracle/testing/D1-T01-0"
     async with make_client() as c:
-        await c.post(path + "/start", json=expected())
-        await c.put(path + "/result", json=result())
+        await lock_personal_day(c)
+        assert (await c.put(path + "/result", json=result())).status_code == 200
     async with pool.acquire() as conn:
         await conn.execute("UPDATE visa_oracle_test_slots SET reviewer=false WHERE slot='T02'")
         await conn.execute("UPDATE visa_oracle_test_slots SET reviewer=true WHERE slot='T01'")
@@ -255,12 +371,14 @@ async def test_blind_results_and_self_review(setup):
 async def test_private_evidence_is_separate_removable_and_not_loaded_in_lists(setup):
     _, pool, make_client = setup
     image = io.BytesIO()
-    Image.new("RGB", (4, 4), color="white").save(image, format="JPEG")
+    metadata = Image.Exif()
+    metadata[0x010E] = "Synthetic QA image metadata must not survive"
+    Image.new("RGB", (4, 4), color="white").save(image, format="JPEG", exif=metadata)
     raw = image.getvalue()
     encoded = base64.b64encode(raw).decode()
     path = "/api/visa-oracle/testing/D1-T01-0"
     async with make_client() as c:
-        assert (await c.post(path + "/start", json=expected())).status_code == 200
+        await lock_personal_day(c)
         assert (
             await c.put(
                 path + "/result",
@@ -271,8 +389,16 @@ async def test_private_evidence_is_separate_removable_and_not_loaded_in_lists(se
             await c.put(path + "/result", json=result(reproducibility="same"))
         ).status_code == 200
         picture = await c.get(path + "/screenshot")
-        assert picture.status_code == 200 and picture.content == raw
-        assert picture.headers["content-type"] == "image/jpeg"
+        assert picture.status_code == 200
+        assert picture.headers["content-type"] == "image/png"
+        with (
+            Image.open(io.BytesIO(raw)) as original,
+            Image.open(io.BytesIO(picture.content)) as clean,
+        ):
+            assert clean.format == "PNG" and clean.size == original.size
+            assert clean.convert("RGB").tobytes() == original.convert("RGB").tobytes()
+            assert not clean.getexif()
+        assert b"Synthetic QA image metadata" not in picture.content
         assert picture.headers["cache-control"] == "no-store"
         page = await c.get("/api/visa-oracle/testing")
         assert encoded not in page.text

@@ -95,3 +95,45 @@ def test_reproduction_is_a_confirmed_issue_not_an_expert_review_placeholder():
             reproduced=True,
             reproduction_evidence="Repeated the same fixture twice",
         )
+
+
+def test_evidence_pixels_survive_but_private_image_metadata_does_not():
+    import base64
+    import io
+
+    from PIL import Image, PngImagePlugin
+
+    image = Image.new("RGB", (20, 10), (23, 45, 67))
+    exif = Image.Exif()
+    exif[270] = "synthetic-private-device-metadata"
+    jpeg = io.BytesIO()
+    image.save(jpeg, format="JPEG", exif=exif)
+    png = io.BytesIO()
+    metadata = PngImagePlugin.PngInfo()
+    metadata.add_text("Comment", "synthetic-private-device-metadata")
+    image.save(png, format="PNG", pnginfo=metadata)
+    for raw in (jpeg.getvalue(), png.getvalue()):
+        payload = ResultPayload(
+            synthetic_only=True, screenshot_base64=base64.b64encode(raw).decode()
+        )
+        clean = base64.b64decode(payload.screenshot_base64)
+        assert b"synthetic-private-device-metadata" not in clean
+        with Image.open(io.BytesIO(clean)) as decoded:
+            assert decoded.size == (20, 10)
+            assert not decoded.getexif()
+            assert "Comment" not in decoded.info
+        retry = ResultPayload(synthetic_only=True, screenshot_base64=payload.screenshot_base64)
+        assert retry.screenshot_base64 == payload.screenshot_base64
+
+
+def test_purpose_fixtures_only_include_relevant_sponsor_context():
+    cases = {case["id"]: case for case in make_assignments()}
+    investment = cases["D4-T05-3"]["scenario"]
+    assert "Kontras sengaja" in investment["focus"]
+    assert investment["inputs"]["investment_pt_pma"] == "no"
+    assert investment["inputs"]["investment_capital_idr"] == "0"
+    for case in cases.values():
+        if case["day"] == "2026-10-01":
+            profile = case["scenario"]["inputs"]
+            if profile["category"] not in {"family", "retirement"}:
+                assert "family_sponsor_confirmed" not in profile

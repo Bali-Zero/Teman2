@@ -9,11 +9,11 @@ SELECT 'T0' || n FROM generate_series(1,6) n;
 
 CREATE TABLE visa_oracle_test_runs (
     assignment_id TEXT PRIMARY KEY,
-    campaign_id TEXT NOT NULL CHECK (campaign_id = 'oracle-team-20260928'),
+    campaign_id TEXT NOT NULL,
     plan_version TEXT NOT NULL,
     slot TEXT NOT NULL REFERENCES visa_oracle_test_slots(slot),
     member_id TEXT NOT NULL,
-    assigned_day DATE NOT NULL CHECK (assigned_day BETWEEN DATE '2026-09-28' AND DATE '2026-10-02'),
+    assigned_day DATE NOT NULL,
     scenario JSONB NOT NULL,
     expected JSONB NOT NULL,
     result JSONB,

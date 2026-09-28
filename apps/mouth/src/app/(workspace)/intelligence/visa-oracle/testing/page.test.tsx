@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Page from "./page";
 
@@ -47,6 +47,8 @@ const fixture = (started = false) => ({
     slot: "T01",
     day: "2026-09-28",
     index,
+    can_start: true,
+    can_record_results: started,
     scenario: {
       id: `case-${index}`,
       title: `Kasus sintetis ${index + 1}`,
@@ -54,29 +56,28 @@ const fixture = (started = false) => ({
       inputs: { nationality: "Synthetic" },
       instructions: ["Use synthetic inputs only"],
     },
-    record:
-      started && index === 0
-        ? {
-            status: "started",
-            expected: {
-              text: "A prior expectation",
-              basis: "hypothesis",
-              reference: "",
-              browser: "Test browser",
-              device: "Test device",
-              displayed_version: "unknown",
-            },
-            started_at: "2026-09-28T01:00:00Z",
-            submitted_at: null,
-            result: null,
-            review: null,
-          }
-        : null,
+    record: started
+      ? {
+          status: "started",
+          expected: {
+            text: "A prior expectation",
+            basis: "hypothesis",
+            reference: "",
+            browser: "Test browser",
+            device: "Test device",
+            displayed_version: "unknown",
+          },
+          started_at: "2026-09-28T01:00:00Z",
+          submitted_at: null,
+          result: null,
+          review: null,
+        }
+      : null,
   })),
   progress: [],
   counts: {
     planned: 150,
-    started: started ? 1 : 0,
+    started: started ? 5 : 0,
     submitted: 0,
     reproduced: 0,
     reviewed: 0,
@@ -109,10 +110,16 @@ describe("Server-controlled test workflow", () => {
       screen.getByRole("button", { name: "Kunci ekspektasi" }),
     ).toBeDisabled();
   });
-  it("locks expectation via API then unlocks the Oracle link only after authoritative reload", async () => {
+  it("locks the fifth expectation then unlocks Oracle only after the server confirms the whole day", async () => {
     const user = userEvent.setup();
+    const beforeLast = fixture(true);
+    beforeLast.assignments = beforeLast.assignments.map((a, index) => ({
+      ...a,
+      can_record_results: false,
+      record: index === 0 ? null : a.record,
+    }));
     mocks.request
-      .mockResolvedValueOnce(fixture())
+      .mockResolvedValueOnce(beforeLast)
       .mockResolvedValueOnce({ ok: true })
       .mockResolvedValueOnce(fixture(true));
     render(<Page />);
@@ -513,4 +520,147 @@ it("removes a private attachment after submission using the delete endpoint and 
       name: "Lihat screenshot tersimpan (akses tim)",
     }),
   ).not.toBeInTheDocument();
+});
+
+it.each([1, 4])(
+  "keeps results and Oracle locked with only %i personal expectations locked while allowing the next expectation",
+  async (lockedCount) => {
+    vi.clearAllMocks();
+    const user = userEvent.setup();
+    const data = fixture(true);
+    mocks.request.mockResolvedValue({
+      ...data,
+      assignments: data.assignments.map((a, index) => ({
+        ...a,
+        record: index < lockedCount ? a.record : null,
+        can_record_results: false,
+      })),
+    });
+    render(<Page />);
+    await user.click(
+      await screen.findByRole("button", { name: /Kasus 1 · case-0/ }),
+    );
+    expect(
+      screen.getByText(
+        `Ekspektasi terkunci untuk hari yang dipilih: ${lockedCount}/5.`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Buka Visa Oracle" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Input persis dan langkah yang dilakukan"),
+    ).toBeDisabled();
+    expect(screen.getByLabelText("Status hasil aktual")).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Simpan draf ke server" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Kirim observasi" }),
+    ).toBeDisabled();
+    fireEvent.submit(
+      screen.getByRole("button", { name: "Kirim observasi" }).closest("form")!,
+    );
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    await user.click(
+      screen.getByRole("button", {
+        name: new RegExp(`Kasus ${lockedCount + 1} · case-${lockedCount}`),
+      }),
+    );
+    expect(
+      screen.getByLabelText("Hasil yang Anda harapkan dan alasannya"),
+    ).toBeEnabled();
+  },
+);
+
+it("fails closed if the result permission is missing even with five visible locked expectations", async () => {
+  vi.clearAllMocks();
+  const data = fixture(true);
+  mocks.request.mockResolvedValue({
+    ...data,
+    assignments: data.assignments.map((a) => ({
+      ...a,
+      can_record_results: undefined,
+    })),
+  });
+  render(<Page />);
+  await userEvent.click(
+    await screen.findByRole("button", { name: /Kasus 1 · case-0/ }),
+  );
+  expect(
+    screen.queryByRole("link", { name: "Buka Visa Oracle" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Status hasil aktual")).toBeDisabled();
+});
+
+it("keeps a saved peer review visible but disables every editing control and submission", async () => {
+  vi.clearAllMocks();
+  const data = fixture(true);
+  const other = {
+    ...data.assignments[0],
+    id: "reviewed-peer",
+    slot: "T02",
+    record: {
+      ...data.assignments[0].record!,
+      status: "submitted",
+      result: { actual: "Observed synthetic outcome" },
+      review: {
+        verdict: "not_issue",
+        comment: "Checked source and repeated the synthetic steps.",
+        reproduced: false,
+        reproduction_evidence: "",
+        reviewed_at: "2026-09-28T03:00:00Z",
+      },
+    },
+  };
+  mocks.request.mockResolvedValue({
+    ...data,
+    viewer: { ...data.viewer, can_review: true },
+    assignments: [...data.assignments, other],
+  });
+  render(<Page />);
+  await screen.findByText("Antrean reviewer");
+  const verdict = screen.getByLabelText("Keputusan reviewer");
+  expect(verdict).toHaveValue("not_issue");
+  expect(verdict).toBeDisabled();
+  expect(
+    screen.getByLabelText("Alasan, bukti, dan referensi reviewer"),
+  ).toHaveValue("Checked source and repeated the synthetic steps.");
+  expect(
+    screen.getByLabelText("Alasan, bukti, dan referensi reviewer"),
+  ).toBeDisabled();
+  expect(
+    screen.getByLabelText("Referensi observasi kedua dan langkah pengulangan"),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole("button", { name: "Simpan tinjauan", hidden: true }),
+  ).toBeDisabled();
+  fireEvent.submit(verdict.closest("form")!);
+  expect(mocks.request).toHaveBeenCalledTimes(1);
+});
+
+it("allows continuing an already-unlocked day when starting new expectations is no longer allowed", async () => {
+  vi.clearAllMocks();
+  const data = fixture(true);
+  mocks.request.mockResolvedValue({
+    ...data,
+    assignments: data.assignments.map((a) => ({
+      ...a,
+      can_start: false,
+      can_record_results: true,
+    })),
+  });
+  render(<Page />);
+  await userEvent.click(
+    await screen.findByRole("button", { name: /Kasus 1 · case-0/ }),
+  );
+  expect(
+    screen.getByRole("link", { name: "Buka Visa Oracle" }),
+  ).toHaveAttribute("target", "_blank");
+  expect(
+    screen.getByLabelText("Input persis dan langkah yang dilakukan"),
+  ).toBeEnabled();
+  expect(
+    screen.getByLabelText("Hasil yang Anda harapkan dan alasannya"),
+  ).toBeDisabled();
 });

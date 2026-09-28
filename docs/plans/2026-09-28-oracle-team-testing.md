@@ -22,3 +22,13 @@ Start records the expectation, its evidence basis, browser/device and observed v
 - Staff-only durable evidence; image type/size validated; no submitted payload in logs. Shared counters and review/export reflect server truth.
 - UI renders in Bahasa Indonesia, handles failures without fabricated success, uses existing Kita components and leaves existing intelligence/Portal Champions behavior intact.
 - Tests, independent review, migration dry-run and authorized deployment/live proof before claiming the requested online outcome delivered.
+
+## REVIEW CORRECTION CONTRACT
+
+The CI connection guard accepts only PostgreSQL URLs on localhost, 127.0.0.1 or postgres, with database nuzantara_test or its exact xdist worker derivative nuzantara_test_gw[0-9]+. Query/fragment overrides and all other databases/hosts are rejected. Acceptance must run the six real integration scenarios with xdist workers; a serial base-database pass does not satisfy this criterion.
+
+Every tester locks all five personal expectations for a day before recording any result or opening the Oracle link in this dashboard. The API enforces this for drafts and submissions; the UI explains the two phases. Identical reviewer retries preserve the first review timestamp; a conflicting review remains rejected.
+
+The authorized dates remain 28 September–2 October 2026. Database storage does not hard-code those dates or campaign IDs; the application enforces the assigned plan. Slots remain configurable and unassigned until the owner supplies identities. If release misses the first day, rescheduling requires the owner's decision rather than fabricated completed tests. The staff testing window must be excluded or annotated when interpreting production funnel analytics.
+
+Evidence images are decoded and re-encoded without EXIF/text metadata before storage, still bounded at 600 KiB. The purpose-prerequisite fixture declares its deliberately unmet investment condition and includes family sponsorship facts only for relevant branches.

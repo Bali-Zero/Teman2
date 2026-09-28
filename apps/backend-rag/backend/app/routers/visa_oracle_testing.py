@@ -38,17 +38,21 @@ def bali_today() -> str:
     return datetime.now(ZoneInfo("Asia/Makassar")).date().isoformat()
 
 
-async def review_days(conn, who: dict) -> set[str]:
-    if not who["can_review"]:
-        return set()
-    if who["slot"] is None:
-        return set(DAYS)
+async def expectation_days(conn, who: dict) -> set[str]:
     rows = await conn.fetch(
         "SELECT assigned_day::text AS day FROM visa_oracle_test_runs WHERE campaign_id=$1 AND member_id=$2 GROUP BY assigned_day HAVING count(*)=5",
         CAMPAIGN_ID,
         who["id"],
     )
     return {r["day"] for r in rows}
+
+
+async def review_days(conn, who: dict) -> set[str]:
+    if not who["can_review"]:
+        return set()
+    if who["slot"] is None:
+        return set(DAYS)
+    return await expectation_days(conn, who)
 
 
 def decoded(value):
@@ -103,6 +107,7 @@ async def view(conn, who: dict) -> dict:
         CAMPAIGN_ID,
     )
     allowed_days = await review_days(conn, who)
+    ready_days = await expectation_days(conn, who)
     stored = {r["assignment_id"]: r for r in rows}
     cases = []
     for case in PLAN.values():
@@ -132,6 +137,7 @@ async def view(conn, who: dict) -> dict:
             {
                 **case,
                 "can_start": case["day"] == bali_today(),
+                "can_record_results": case["slot"] == who["slot"] and case["day"] in ready_days,
                 "scenario": decoded(row["scenario"]) if row else case["scenario"],
                 "record": record,
             }
@@ -327,6 +333,10 @@ async def result(
         if not row:
             raise HTTPException(409, "Lock expectation before recording results")
         authorize_record(who["id"], row["member_id"])
+        if case["day"] not in await expectation_days(conn, who):
+            raise HTTPException(
+                409, "Lock all five personal expectations for this day before recording results"
+            )
         if body.submit:
             validate_submission(body, has_stored_image=row["screenshot"] is not None)
         prior = decoded(row["result"]) or {}
@@ -382,6 +392,11 @@ async def review(
                 409, "Lock all five personal expectations for this day before reviewing peers"
             )
         if row["review"]:
+            prior = decoded(row["review"])
+            if prior.get("reviewer_member_id") == who["id"] and all(
+                prior.get(k) == v for k, v in body.model_dump().items()
+            ):
+                return {"ok": True}
             raise HTTPException(409, "Review already recorded")
         payload = {
             **body.model_dump(),
