@@ -1,0 +1,145 @@
+name: wa practices replica tests
+
+# Executor for `scripts/tests/test_wa_practices_replica*.py` — the T5 P4
+# one-way Fly -> Pro `practices` replica corpus (UPSERT/re-key/rollback
+# semantics, the COPY-TEXT unescaper, the Pro-local connection guard).
+#
+# Same shape, same reasoning as `wa-team-promises-tests.yml`: an executor
+# that CAN go red for this corpus did not exist before this file
+# (`grep -rln 'test_wa_practices_replica' .github/` returned nothing).
+#
+# NOT a required context, matching `wa-team-promises-tests.yml` /
+# `alarm-cure-alignment.yml`: what matters is that an executor exists that
+# CAN go red; whether a red stops a merge is a repo-settings action
+# (branch protection), gated separately (CLAUDE.md §13).
+#
+# NO `merge_group:` TRIGGER, for the identical reason `wa-team-promises-tests.yml`
+# gives: `merge_group` supports no `paths:` key, so a `paths:`-filtered
+# `pull_request` trigger with no queue trigger has nothing to diverge from.
+#
+# THE PATH LIST IS THE CORPUS'S READ-SET.
+#   - `scripts/wa_practices_replica.py` is what the corpus asserts against
+#     directly. Unlike `wa_team_promises.py`, it imports NOTHING from this
+#     repo at module scope (argparse/asyncio/subprocess/sys/time/dataclasses/
+#     pathlib/asyncpg only) — so, unlike that sibling workflow, there is no
+#     neighboring-module import to chase into this list.
+#   - `scripts/wa_practices_replica_cron.sh` is listed even though the
+#     corpus never invokes it (same as `wa-team-promises-tests.yml` lists
+#     its own cron.sh for the identical reason): it is this organ's other
+#     shipped half, and the cost of an occasional unjudged run is smaller
+#     than the cost of missing one it should have judged.
+#   - `scripts/pg.sh` is DELIBERATELY NOT listed. `_fetch_fly_rows` shells
+#     out to it in production, but every test in this corpus monkeypatches
+#     `subprocess.run` before it would ever be invoked (`test_fetch_fly_rows_*`
+#     in `test_wa_practices_replica.py`) — the corpus does not import it, run
+#     it, or collect anything that depends on its contents, so a change
+#     there cannot make a passing test here lie. Same read-set principle
+#     `wa-team-promises-tests.yml` uses to justify ITS inclusions applies in
+#     reverse to justify this exclusion.
+#   - `scripts/tests/conftest.py` is listed for the same reason
+#     `wa-team-promises-tests.yml` lists it: its fixtures are `autouse=True`.
+#
+# REAL-PG STAYS OUT OF THIS FILE, same reasoning as
+# `wa-team-promises-tests.yml`'s own note: `test_wa_practices_replica_real_pg.py`
+# spins up its OWN throwaway cluster via `pg_ctl`/`initdb` found on `PATH`,
+# and skips itself when either binary is absent or
+# `WA_PRACTICES_REPLICA_REAL_PG` is unset — `ubuntu-latest` does not put
+# `pg_ctl`/`initdb` on `PATH` by default. Left for the same future follow-up
+# the sibling file names (either add the `postgresql` server package to this
+# runner, or give the real-PG suite a `DATABASE_URL` mode of its own).
+#
+# The 47/10 unit-vs-skip split below is this corpus's floor as of its first
+# PR (2026-09-28, `test_wa_practices_replica*.py`, REAL_PG unset) — grew from
+# an initial 34/5 once the FK-census ruling added practice_types replication
+# + the skipped_fk fail-closed net, same PR.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/wa_practices_replica.py"
+      - "scripts/wa_practices_replica_cron.sh"
+      - "scripts/tests/test_wa_practices_replica*.py"
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
+      - ".github/workflows/wa-practices-replica-tests.yml"
+  push:
+    branches:
+      - main
+    # Symmetric with the pull_request list above, this file included: an
+    # asymmetric filter means a direct push to main editing only this
+    # workflow runs nothing.
+    paths:
+      - "scripts/wa_practices_replica.py"
+      - "scripts/wa_practices_replica_cron.sh"
+      - "scripts/tests/test_wa_practices_replica*.py"
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
+      - ".github/workflows/wa-practices-replica-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wa-practices-replica-tests-${{ github.ref }}
+  # Superseded pushes on a PR branch may be cancelled freely; a main run may
+  # not, because the group is keyed on `github.ref` and cancelling an
+  # in-flight main run is a suppressed alarm rather than a saving.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  wa-practices-replica-tests:
+    name: wa practices replica tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      # setup-python provisions a CLEAN interpreter: pip/setuptools/wheel
+      # only. `asyncpg` ships manylinux wheels (no compiler needed).
+      # `pytest-asyncio` is ALSO required for every `@pytest.mark.asyncio`
+      # test (and the async `pro_pool` fixture the real-PG suite would use
+      # if opted in) — this repo has no root-level pytest.ini/pyproject.toml/
+      # setup.cfg to supply it implicitly. Same shape as
+      # `wa-team-promises-tests.yml`'s identical install step.
+      - name: Install test deps
+        run: pip install --quiet pytest "pytest-asyncio>=1.4.0" "asyncpg>=0.31.0"
+
+      # ONE run, and the assertion is on tests that PASSED — not on tests
+      # collected, and not on the exit code alone. Each of those three is a
+      # green that can hide an empty run:
+      #   * exit code alone: pytest exits 0 when every case is SKIPPED.
+      #   * collected count: `--collect-only` counts skipped cases too.
+      #   * a floor with no upper discipline: adding cases must never turn
+      #     this red, so the comparison is `-lt`, and the floor only
+      #     ratchets UP when someone raises it deliberately.
+      # `|| RC=$?` IS LOAD-BEARING, NOT STYLE — a `run:` block with no
+      # `shell:` key runs under GitHub's default `bash -e {0}`, and
+      # `set -uo pipefail` below does NOT clear that `-e`. A bare capture
+      # would abort the step the moment pytest exits non-zero, before the
+      # `printf`/`::error::` lines ever run, leaving a red step with an empty
+      # log (same scar `wa-team-promises-tests.yml` carries verbatim).
+      - name: The T5 P4 replica corpus still refuses to fabricate a measurement
+        run: |
+          set -uo pipefail
+          FLOOR=47   # the corpus size at its first PR (REAL_PG unset, 10 opt-in skips)
+          RC=0
+          OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_practices_replica*.py -q 2>&1)" || RC=$?
+          printf '%s\n' "$OUT"
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::the wa_practices_replica corpus did not pass (pytest exit $RC) — output above"
+            exit 1
+          fi
+          PASSED="$(printf '%s\n' "$OUT" | sed -n 's/^\([0-9][0-9]*\) passed.*/\1/p' | tail -1)"
+          if [ -z "$PASSED" ]; then
+            echo "::error::pytest exited 0 but printed no 'N passed' line — the corpus may have been skipped in its entirety, which is not a pass"
+            exit 1
+          fi
+          if [ "$PASSED" -lt "$FLOOR" ]; then
+            echo "::error::the wa_practices_replica corpus had $PASSED passing cases, below the floor of $FLOOR — cases were removed, or skipped (a skip is not a pass)"
+            exit 1
+          fi
+          echo "wa_practices_replica corpus: $PASSED passing cases (floor $FLOOR)"
