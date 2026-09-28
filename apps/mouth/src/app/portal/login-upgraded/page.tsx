@@ -24,7 +24,7 @@ async function resolveStaffRedirect(
     return backendRedirect ?? "/dashboard";
   }
   return requestedRedirect?.startsWith("/portal") &&
-    !requestedRedirect.startsWith("/portal/partner/")
+    !requestedRedirect.startsWith("/portal/partner")
     ? requestedRedirect
     : "/portal";
 }

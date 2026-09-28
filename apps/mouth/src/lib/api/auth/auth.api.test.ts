@@ -458,7 +458,11 @@ describe("AuthApi", () => {
       mockRequest.mockResolvedValueOnce({ success: true, is_superuser: true });
 
       await expect(authApi.isPortalSuperuser()).resolves.toBe(true);
-      expect(mockRequest).toHaveBeenCalledWith("/api/portal/admin/me");
+      expect(mockRequest).toHaveBeenCalledWith(
+        "/api/portal/admin/me",
+        {},
+        5_000,
+      );
     });
 
     it("reads anyone else as not a superuser", async () => {

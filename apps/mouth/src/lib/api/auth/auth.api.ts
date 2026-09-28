@@ -17,6 +17,10 @@ type AuthApiClient = Pick<
  * public auth client's endpoint allowlist so the two cannot drift apart.
  */
 export const PORTAL_SUPERUSER_PROBE_ENDPOINT = "/api/portal/admin/me";
+// The probe runs on every staff sign-in BEFORE the redirect timer starts, so a
+// hanging request must not hold the "access granted" screen: past this it is
+// read as "no" and the sign-in proceeds to the backend destination.
+export const PORTAL_SUPERUSER_PROBE_TIMEOUT_MS = 5_000;
 
 export class AuthApi {
   constructor(private client: AuthApiClient) {}
@@ -173,6 +177,8 @@ export class AuthApi {
     try {
       const me = await this.client.request<{ is_superuser?: boolean }>(
         PORTAL_SUPERUSER_PROBE_ENDPOINT,
+        {},
+        PORTAL_SUPERUSER_PROBE_TIMEOUT_MS,
       );
       return me?.is_superuser === true;
     } catch {

@@ -302,6 +302,15 @@ describe("UpgradedLoginPage (R19 concept F sign-in)", () => {
     expect(mockRouterReplace).toHaveBeenCalledWith("/portal");
   });
 
+  it("never sends a superuser to the bare partner root either", async () => {
+    await staffLogin({
+      superuser: true,
+      search: "?redirect=%2Fportal%2Fpartner",
+    });
+
+    expect(mockRouterReplace).toHaveBeenCalledWith("/portal");
+  });
+
   it("keeps the backend destination for staff who cannot use the portal", async () => {
     await staffLogin({ superuser: false, search: "?redirect=%2Fportal" });
 
