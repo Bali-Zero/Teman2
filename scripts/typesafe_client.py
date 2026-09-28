@@ -46,7 +46,6 @@ import http.client
 import json
 import math
 import os
-import re
 import time
 import urllib.error
 import urllib.request
@@ -223,15 +222,20 @@ HTTP_ERROR = "http_error"
 TRANSPORT_ERROR = "transport_error"
 MALFORMED = "malformed"
 UNAVAILABLE = "unavailable"
-
-# The vendor's `model` string, kept only if it looks like a model identifier:
-# 1-64 characters from the alphabet a version string needs. Anything else —
-# too long, empty, non-string — becomes None rather than trusted verbatim.
-_SAFE_MODEL = re.compile(r"[A-Za-z0-9._:-]{1,64}")
+UNEXPECTED_MODEL = "unexpected"
 
 
 def _safe_model(raw: object) -> str | None:
-    return raw if isinstance(raw, str) and _SAFE_MODEL.fullmatch(raw) else None
+    """Reveals only WHETHER the vendor served the calibrated pin, never the
+    vendor's own string — an allowlist, not a shape check: a regex bound on
+    length and alphabet still lets a compromised endpoint echo an arbitrary
+    short token (a key, a state marker) into CI logs via telemetry/summary
+    `models`. `None` for absent/non-string; `UNEXPECTED_MODEL` for any other
+    string, however innocuous-looking.
+    """
+    if not isinstance(raw, str):
+        return None
+    return MODEL if raw == MODEL else UNEXPECTED_MODEL
 
 
 def _safe_usage(raw: object) -> dict[str, int] | None:

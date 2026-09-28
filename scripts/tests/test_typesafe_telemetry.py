@@ -156,31 +156,47 @@ def test_usage_extraction_is_strict(monkeypatch, authorized, usage, expected):
 @pytest.mark.parametrize(
     "model,expected",
     [
-        ("with\nnewline", None),
-        ("x" * 200, None),
-        ("", None),
+        (tc.MODEL, tc.MODEL),
+        ("jev-9.9.9", tc.UNEXPECTED_MODEL),  # a plausible OTHER pinned version
+        ("KEYMARKER123", tc.UNEXPECTED_MODEL),  # short, alnum, looks harmless
+        ("x" * 64, tc.UNEXPECTED_MODEL),
         (123, None),
         (None, None),
-        ("jev-1.13.0:x", "jev-1.13.0:x"),  # a colon is in the allowed alphabet
-        ("x" * 64, "x" * 64),  # boundary: 64 chars kept
-        ("x" * 65, None),  # boundary: 65 chars rejected
     ],
-    ids=[
-        "newline",
-        "too-long",
-        "empty",
-        "not-a-string-int",
-        "not-a-string-none",
-        "colon-kept",
-        "64-chars-kept",
-        "65-chars-none",
-    ],
+    ids=["pinned", "other-version", "key-shaped", "64-char-alnum", "not-a-string-int", "not-a-string-none"],
 )
-def test_model_extraction_is_bounded_by_regex_and_length(monkeypatch, authorized, model, expected):
+def test_model_extraction_is_an_allowlist(monkeypatch, authorized, model, expected):
+    """An allowlist, not a shape check: the field exists to reveal a vendor
+    serving a version other than the calibrated pin, never to echo the
+    vendor's own string — a regex bound on length/alphabet would still let a
+    compromised endpoint smuggle a key or state marker into CI logs."""
     body = json.dumps({"model": model, "answers": {}}).encode()
     monkeypatch.setattr(tc, "_OPENER", _Opener([_Resp(body)]))
 
     assert tc.ask_detailed({}, {}).model == expected
+
+
+def test_an_unexpected_model_string_never_reaches_telemetry_repr_or_the_lint_summary(
+    monkeypatch, authorized, tmp_path, capsys
+):
+    """Proves the LEAK is closed, not just that the field says "unexpected":
+    the marker itself must not survive into `telemetry()`, `repr()`, or the
+    lint's own printed summary line."""
+    marker = "KEYMARKER123"
+    body = json.dumps({"model": marker, "answers": _all_routes_answer(0.0)}).encode()
+    monkeypatch.setattr(tc, "_OPENER", _Opener([_Resp(body)]))
+
+    judgment = tc.ask_detailed({}, {})
+    assert judgment.model == tc.UNEXPECTED_MODEL
+    assert marker not in json.dumps(judgment.telemetry())
+    assert marker not in repr(judgment)
+
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    monkeypatch.setattr(tc, "_OPENER", _Opener([_Resp(body)]))
+    target = tmp_path / "changed.py"
+    target.write_text("resp = requests.post(url, json={'x': 1})\n")
+    lint.main([str(target)])
+    assert marker not in capsys.readouterr().out
 
 
 # ─────────────────────────────────────────────────────────────── 3 — malformed
@@ -199,6 +215,9 @@ def test_non_utf8_body_is_malformed_after_full_retry(monkeypatch, authorized, sl
     assert judgment.reason == tc.MALFORMED
     assert judgment.attempts == tc.MAX_ATTEMPTS
     assert judgment.answers is None
+    assert sleeps == [tc.BACKOFF_BASE_S, tc.BACKOFF_BASE_S * 2], (
+        "exhausting retries on a broad Exception must still back off between attempts"
+    )
 
 
 def test_answers_not_a_dict_is_malformed_with_no_retry(monkeypatch, authorized, sleeps):
@@ -222,6 +241,9 @@ def test_json_list_body_is_malformed_after_full_retry(monkeypatch, authorized, s
     assert judgment.mode == "degraded"
     assert judgment.reason == tc.MALFORMED
     assert judgment.attempts == tc.MAX_ATTEMPTS
+    assert sleeps == [tc.BACKOFF_BASE_S, tc.BACKOFF_BASE_S * 2], (
+        "exhausting retries on a broad Exception must still back off between attempts"
+    )
 
 
 def test_empty_answers_dict_is_jev_not_none(monkeypatch, authorized):
@@ -306,11 +328,23 @@ _BACKOFF_2X = [tc.BACKOFF_BASE_S, tc.BACKOFF_BASE_S * 2]
 _TRANSIENT_CASES = [
     ([_http(429), None], 2, "jev", None, None, [tc.BACKOFF_BASE_S]),
     ([_http(429)] * tc.MAX_ATTEMPTS, tc.MAX_ATTEMPTS, "degraded", tc.RATE_LIMITED, 429, _BACKOFF_2X),
+    # 529 is the OTHER member of RETRY_STATUS — nothing exercised it before,
+    # so a mutant narrowing RETRY_STATUS to {429} survived.
+    ([_http(529), None], 2, "jev", None, None, [tc.BACKOFF_BASE_S]),
+    ([_http(529)] * tc.MAX_ATTEMPTS, tc.MAX_ATTEMPTS, "degraded", tc.RATE_LIMITED, 529, _BACKOFF_2X),
     ([_http(500)], 1, "degraded", tc.HTTP_ERROR, 500, []),
-    ([urllib.error.URLError("x")] * tc.MAX_ATTEMPTS, tc.MAX_ATTEMPTS, "degraded", tc.TRANSPORT_ERROR, None, None),
+    ([urllib.error.URLError("x")] * tc.MAX_ATTEMPTS, tc.MAX_ATTEMPTS, "degraded", tc.TRANSPORT_ERROR, None, _BACKOFF_2X),
     ([TimeoutError("t")] * tc.MAX_ATTEMPTS, tc.MAX_ATTEMPTS, "degraded", tc.TRANSPORT_ERROR, None, None),
 ]
-_TRANSIENT_IDS = ["429-then-success", "429-exhausts", "500-no-retry", "urlerror-exhausts", "timeout-exhausts"]
+_TRANSIENT_IDS = [
+    "429-then-success",
+    "429-exhausts",
+    "529-then-success",
+    "529-exhausts",
+    "500-no-retry",
+    "urlerror-exhausts",
+    "timeout-exhausts",
+]
 
 
 @pytest.mark.parametrize(
@@ -435,6 +469,24 @@ def test_nothing_leaks_on_a_final_http_error_with_a_body(monkeypatch, authorized
         assert marker not in repr(judgment)
 
 
+@pytest.mark.parametrize(
+    "value,should_fire",
+    [(0.80, True), (0.7999, False)],
+    ids=["at-threshold-fires", "just-below-does-not-fire"],
+)
+def test_fire_threshold_boundary_through_judge_file(monkeypatch, authorized, value, should_fire):
+    """FIRE_THRESHOLD itself is unchanged (0.80) — pins the `>=` boundary
+    through the real `judge_file` path rather than trusting it by reading."""
+    body = json.dumps(
+        {"model": tc.MODEL, "answers": {"wrapper_library": {"type": "noul", "noul": value}}}
+    ).encode()
+    monkeypatch.setattr(tc, "_OPENER", _Opener([_Resp(body)]))
+
+    result = lint.judge_file("x.py", "resp = requests.post(url, json={'x': 1})\n")
+
+    assert ("wrapper_library" in result["fired_routes"]) is should_fire
+
+
 # ───────────────────────────────────────────────── 9 — the stubbed CI path
 
 
@@ -511,13 +563,26 @@ def test_lint_main_json_mode_carries_per_file_and_summary_telemetry(
     body = json.dumps(
         {"model": tc.MODEL, "answers": _all_routes_answer(0.0), "usage": {"input_tokens": 3}}
     ).encode("utf-8")
-    monkeypatch.setattr(tc, "_OPENER", _Opener([_Resp(body)]))
 
+    # `Judgment.telemetry()`'s OWN key set, pinned so a mutant adding a field
+    # (e.g. a raw "path") goes red here rather than silently widening what
+    # ends up printed.
+    monkeypatch.setattr(tc, "_OPENER", _Opener([_Resp(body)]))
+    telemetry_keys = set(tc.ask_detailed({}, {}).telemetry().keys())
+    assert telemetry_keys == {
+        "mode", "reason", "model", "usage", "elapsed_ms", "attempts", "http_status",
+    }
+
+    monkeypatch.setattr(tc, "_OPENER", _Opener([_Resp(body)]))
     rc = lint.main(["--json", str(target)])
     payload = json.loads(capsys.readouterr().out)
 
     assert rc == 0
     assert payload["results"][0]["jev"]["mode"] == "jev"
+    assert set(payload["results"][0]["jev"].keys()) == telemetry_keys | {
+        "routes_asked",
+        "routes_answered",
+    }
     assert "jev_telemetry" in payload
 
 
