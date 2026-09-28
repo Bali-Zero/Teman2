@@ -264,3 +264,206 @@
     animation: none !important;
   }
 }
+
+/* The FunnelFrame handoff rail (sticky, z-40) is a sibling of <main>, and a
+   global rule gives <main> position:relative + z-index:1 — a stacking context
+   that traps the KBLI search dropdown (z-50) beneath the pill (measured
+   2026-09-24: elementFromPoint at the pill returned the pill over result 3 on
+   390px). While a results listbox is open, the pill steps aside. */
+[data-funnel="kbli"]:has([role="listbox"])
+  > [role="group"][aria-label="Next actions"] {
+  visibility: hidden;
+}
+
+/* =============================================================
+   KBLI PAPER — R19 Direction A re-skin of every --kbli-* token
+   (BRIEF-v2 R-1, §3.4). Scoped to the .kbli-paper wrapper that the
+   /kbli layout mounts next to R19_CLASS, never :root — the workspace
+   portal (components/portal/company/*) reads the same names.
+   Every aliased value is restated here, not inherited: a var() inside a
+   custom property resolves where it is declared, so the :root aliases in
+   globals.css (--foreground: var(--kbli-text-primary) …) would keep the
+   dark values (the r19Vars.ts alias trap). Text colours are ≥4.5:1 on
+   paper #F7F4EE and raised #FFFCF7 — pinned by
+   components/kbli/kbli-paper-contrast.test.ts.
+   ============================================================= */
+.kbli-paper {
+  --kbli-bg-base: #f7f4ee;
+  --kbli-ink: #1d2c3b;
+  --kbli-bg-elevated: #fffcf7;
+  --kbli-bg-surface: #fffcf7;
+  --kbli-bg-surface-hover: #f1ece3;
+  --kbli-bg-card: #fffcf7;
+  --kbli-bg-card-hover: #fbf8f2;
+  --kbli-bg-input: #fffcf7;
+  --kbli-bg-primary: #f7f4ee;
+  --kbli-bg-secondary: #eae3d8;
+
+  --kbli-accent: #a44b36;
+  --kbli-accent-hover: #843719;
+  --kbli-accent-glow: transparent;
+  --kbli-accent-subtle: #f3e6e0;
+  --kbli-accent-muted: #efdcd4;
+
+  --kbli-accent2: #34506b;
+  --kbli-accent2-glow: transparent;
+
+  --kbli-amber: #7a5a1e;
+  --kbli-amber-glow: transparent;
+
+  --kbli-text-primary: #1d2c3b;
+  --kbli-text-secondary: #58626b;
+  --kbli-text-muted: #58626b;
+
+  --kbli-border: #dad8d1;
+  --kbli-border-hover: #a8aca9;
+  --kbli-border-accent: #d9b7ab;
+
+  /* Council v2 (2026-09-26): the states are ink-family words on raised
+     paper, not green/amber/red slabs — a verdict's colour must not read as
+     more certain than its "medium conf." qualifier. Hues stay distinct
+     (deep green / ochre / oxblood / slate), all ≥4.5:1, no tinted fills. */
+  --kbli-pma-open: #2e5e4e;
+  --kbli-pma-open-bg: #fffcf7;
+  --kbli-pma-restricted: #7a5a1e;
+  --kbli-pma-restricted-bg: #fffcf7;
+  --kbli-pma-closed: #8e2f2a;
+  --kbli-pma-closed-bg: #fffcf7;
+
+  --kbli-risk-low: #2e5e4e;
+  --kbli-risk-medium-low: #34506b;
+  --kbli-risk-medium-high: #7a5a1e;
+  --kbli-risk-high: #8e2f2a;
+
+  --kbli-zantara: #233d52;
+  --kbli-zantara-bg: #eae3d8;
+  --kbli-zantara-glow: none;
+
+  --kbli-map-unchanged: #5b636b;
+  --kbli-map-renamed: #34506b;
+  --kbli-map-merged: #7a5a1e;
+  --kbli-map-new: #2e5e4e;
+
+  --kbli-shadow-card: 0 0 0 1px #dad8d1;
+  --kbli-shadow-card-hover: 0 0 0 1px #a8aca9, 0 6px 18px #1d2c3b0f;
+  --kbli-shadow-glow: none;
+
+  --kbli-radius-sm: 3px;
+  --kbli-radius-md: 4px;
+  --kbli-radius-lg: 6px;
+  --kbli-radius-xl: 8px;
+
+  /* globals.css :root aliases, restated at the wrapper */
+  --background: #f7f4ee;
+  --background-secondary: #fffcf7;
+  --background-elevated: #fffcf7;
+  --background-hover: #f1ece3;
+  --foreground-secondary: #58626b;
+  --foreground-muted: #58626b;
+  --border: #dad8d1;
+  --border-hover: #a8aca9;
+  --accent: #a44b36;
+  --accent-hover: #843719;
+  --accent-foreground: #fffcf7;
+}
+
+.kbli-paper .kbli-prose ul li {
+  background: var(--kbli-bg-surface);
+  border: 1px solid var(--kbli-border);
+}
+
+/* Code numbers read as figures of an instrument: Fraunces, tabular. */
+.kbli-paper .kbli-figure {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  letter-spacing: -0.01em;
+}
+
+/* Carta filigranata — guilloché micro-pattern (research/design/2026-08-11
+   -kbli-navigator-indonesian-soul.md safe motif 3). Abstract interlaced
+   sine rules, ink on paper, never above 5% opacity. */
+.kbli-guilloche {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='64'%3E%3Cg fill='none' stroke='%231D2C3B' stroke-width='.7'%3E%3Cpath d='M0 32.0 L6 37.6 L12 42.6 L18 46.6 L24 49.1 L30 50.0 L36 49.1 L42 46.6 L48 42.6 L54 37.6 L60 32.0 L66 26.4 L72 21.4 L78 17.4 L84 14.9 L90 14.0 L96 14.9 L102 17.4 L108 21.4 L114 26.4 L120 32.0 L126 37.6 L132 42.6 L138 46.6 L144 49.1 L150 50.0 L156 49.1 L162 46.6 L168 42.6 L174 37.6 L180 32.0 L186 26.4 L192 21.4 L198 17.4 L204 14.9 L210 14.0 L216 14.9 L222 17.4 L228 21.4 L234 26.4 L240 32.0'/%3E%3Cpath d='M0 45.3 L6 50.2 L12 53.4 L18 54.5 L24 53.4 L30 50.2 L36 45.3 L42 39.0 L48 32.0 L54 25.0 L60 18.7 L66 13.8 L72 10.6 L78 9.5 L84 10.6 L90 13.8 L96 18.7 L102 25.0 L108 32.0 L114 39.0 L120 45.3 L126 50.2 L132 53.4 L138 54.5 L144 53.4 L150 50.2 L156 45.3 L162 39.0 L168 32.0 L174 25.0 L180 18.7 L186 13.8 L192 10.6 L198 9.5 L204 10.6 L210 13.8 L216 18.7 L222 25.0 L228 32.0 L234 39.0 L240 45.3'/%3E%3Cpath d='M0 52.4 L6 53.4 L12 52.4 L18 49.3 L24 44.6 L30 38.6 L36 32.0 L42 25.4 L48 19.4 L54 14.7 L60 11.6 L66 10.6 L72 11.6 L78 14.7 L84 19.4 L90 25.4 L96 32.0 L102 38.6 L108 44.6 L114 49.3 L120 52.4 L126 53.4 L132 52.4 L138 49.3 L144 44.6 L150 38.6 L156 32.0 L162 25.4 L168 19.4 L174 14.7 L180 11.6 L186 10.6 L192 11.6 L198 14.7 L204 19.4 L210 25.4 L216 32.0 L222 38.6 L228 44.6 L234 49.3 L240 52.4'/%3E%3Cpath d='M0 46.5 L6 44.3 L12 41.0 L18 36.7 L24 32.0 L30 27.3 L36 23.0 L42 19.7 L48 17.5 L54 16.8 L60 17.5 L66 19.7 L72 23.0 L78 27.3 L84 32.0 L90 36.7 L96 41.0 L102 44.3 L108 46.5 L114 47.2 L120 46.5 L126 44.3 L132 41.0 L138 36.7 L144 32.0 L150 27.3 L156 23.0 L162 19.7 L168 17.5 L174 16.8 L180 17.5 L186 19.7 L192 23.0 L198 27.3 L204 32.0 L210 36.7 L216 41.0 L222 44.3 L228 46.5 L234 47.2 L240 46.5'/%3E%3Cpath d='M0 37.3 L6 34.8 L12 32.0 L18 29.2 L24 26.7 L30 24.7 L36 23.4 L42 23.0 L48 23.4 L54 24.7 L60 26.7 L66 29.2 L72 32.0 L78 34.8 L84 37.3 L90 39.3 L96 40.6 L102 41.0 L108 40.6 L114 39.3 L120 37.3 L126 34.8 L132 32.0 L138 29.2 L144 26.7 L150 24.7 L156 23.4 L162 23.0 L168 23.4 L174 24.7 L180 26.7 L186 29.2 L192 32.0 L198 34.8 L204 37.3 L210 39.3 L216 40.6 L222 41.0 L228 40.6 L234 39.3 L240 37.3'/%3E%3Cpath d='M0 32.0 L6 30.1 L12 28.4 L18 27.0 L24 26.2 L30 25.9 L36 26.2 L42 27.0 L48 28.4 L54 30.1 L60 32.0 L66 33.9 L72 35.6 L78 37.0 L84 37.8 L90 38.1 L96 37.8 L102 37.0 L108 35.6 L114 33.9 L120 32.0 L126 30.1 L132 28.4 L138 27.0 L144 26.2 L150 25.9 L156 26.2 L162 27.0 L168 28.4 L174 30.1 L180 32.0 L186 33.9 L192 35.6 L198 37.0 L204 37.8 L210 38.1 L216 37.8 L222 37.0 L228 35.6 L234 33.9 L240 32.0'/%3E%3Cpath d='M0 29.0 L6 27.9 L12 27.2 L18 27.0 L24 27.2 L30 27.9 L36 29.0 L42 30.4 L48 32.0 L54 33.6 L60 35.0 L66 36.1 L72 36.8 L78 37.0 L84 36.8 L90 36.1 L96 35.0 L102 33.6 L108 32.0 L114 30.4 L120 29.0 L126 27.9 L132 27.2 L138 27.0 L144 27.2 L150 27.9 L156 29.0 L162 30.4 L168 32.0 L174 33.6 L180 35.0 L186 36.1 L192 36.8 L198 37.0 L204 36.8 L210 36.1 L216 35.0 L222 33.6 L228 32.0 L234 30.4 L240 29.0'/%3E%3Cpath d='M0 29.8 L6 29.7 L12 29.8 L18 30.1 L24 30.7 L30 31.3 L36 32.0 L42 32.7 L48 33.3 L54 33.9 L60 34.2 L66 34.3 L72 34.2 L78 33.9 L84 33.3 L90 32.7 L96 32.0 L102 31.3 L108 30.7 L114 30.1 L120 29.8 L126 29.7 L132 29.8 L138 30.1 L144 30.7 L150 31.3 L156 32.0 L162 32.7 L168 33.3 L174 33.9 L180 34.2 L186 34.3 L192 34.2 L198 33.9 L204 33.3 L210 32.7 L216 32.0 L222 31.3 L228 30.7 L234 30.1 L240 29.8'/%3E%3Cpath d='M0 34.4 L6 34.0 L12 33.5 L18 32.8 L24 32.0 L30 31.2 L36 30.5 L42 30.0 L48 29.6 L54 29.5 L60 29.6 L66 30.0 L72 30.5 L78 31.2 L84 32.0 L90 32.8 L96 33.5 L102 34.0 L108 34.4 L114 34.5 L120 34.4 L126 34.0 L132 33.5 L138 32.8 L144 32.0 L150 31.2 L156 30.5 L162 30.0 L168 29.6 L174 29.5 L180 29.6 L186 30.0 L192 30.5 L198 31.2 L204 32.0 L210 32.8 L216 33.5 L222 34.0 L228 34.4 L234 34.5 L240 34.4'/%3E%3Cpath d='M0 35.7 L6 34.0 L12 32.0 L18 30.0 L24 28.3 L30 26.9 L36 26.0 L42 25.7 L48 26.0 L54 26.9 L60 28.3 L66 30.0 L72 32.0 L78 34.0 L84 35.7 L90 37.1 L96 38.0 L102 38.3 L108 38.0 L114 37.1 L120 35.7 L126 34.0 L132 32.0 L138 30.0 L144 28.3 L150 26.9 L156 26.0 L162 25.7 L168 26.0 L174 26.9 L180 28.3 L186 30.0 L192 32.0 L198 34.0 L204 35.7 L210 37.1 L216 38.0 L222 38.3 L228 38.0 L234 37.1 L240 35.7'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 240px 64px;
+  background-repeat: repeat;
+}
+
+/* Tumpal hairline divider (safe motif 2): a row of open triangles in ink,
+   decorative only (aria-hidden), 8px tall. */
+.kbli-tumpal {
+  display: block;
+  height: 8px;
+  border: 0;
+  margin: 0;
+  opacity: 0.38;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Cpath d='M0 7.5 L8 .75 L16 7.5' fill='none' stroke='%231D2C3B' stroke-width='.75'/%3E%3C/svg%3E");
+  background-size: 16px 8px;
+  background-repeat: repeat-x;
+}
+
+/* Specimen card (KBLISearch results): the shared Bali status pill keeps ONE
+   line inside a listbox row. On the detail page the same badge still wraps
+   freely; here a row must not grow to three lines at 390px. The ellipsis is
+   visual only — the full label stays in the DOM and in the option's name. */
+.kbli-specimen-bali {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+.kbli-specimen-bali > span {
+  display: block;
+  max-width: 100%;
+}
+.kbli-specimen-bali > span > span:first-child {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.kbli-specimen-bali > span > span:first-child > span {
+  display: inline;
+}
+.kbli-specimen-bali > span > span:first-child > span + span {
+  margin-left: 0.3em;
+}
+@media (max-width: 479px) {
+  /* the decorative island glyph (aria-hidden) gives its width to the words */
+  .kbli-specimen-bali > span > span:first-child > span:first-child {
+    display: none;
+  }
+  .kbli-specimen-bali > span > span:first-child > span:first-child + span {
+    margin-left: 0;
+  }
+}
+
+/* The FunnelFrame handoff on /kbli. Core semantic.css paints
+   [data-funnel="kbli"] gold (#eab308): a second action colour on an R19 page
+   where copper is the single action (BRIEF-v2 R-1). The frame's accent is
+   re-pointed at copper here, and the rail sits in the flow at the end of the
+   page instead of floating over it (council v2 blocker: the floating pill
+   covered the persona doors on desktop and the dial legend on mobile). The
+   header's copper "Get Started" remains the persistent action. Inline styles
+   in packages/core CTAHandoff can only be overridden with !important. */
+.kbli-paper [data-funnel="kbli"] {
+  --accent-funnel: #a44b36;
+  --accent-funnel-text: #a44b36;
+  --text-on-accent: #ffffff; /* = main's R19_VARS text-on-accent (2026-09-27 unification, gate B2) */
+}
+.kbli-paper [data-funnel="kbli"] > [role="group"][aria-label="Next actions"] {
+  position: static !important;
+}
+.kbli-paper
+  [data-funnel="kbli"]
+  > [role="group"][aria-label="Next actions"]
+  > :is(a, button) {
+  box-shadow: none !important;
+}

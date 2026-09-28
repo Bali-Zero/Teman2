@@ -1,5 +1,5 @@
 "use client";
-import type { FC, MouseEventHandler } from "react";
+import type { CSSProperties, FC, MouseEventHandler } from "react";
 import { buildWaDeeplink } from "../utils/wa-deeplink";
 
 export interface CTAHandoffProps {
@@ -24,6 +24,39 @@ const tapTarget = {
   justifyContent: "center",
 } as const;
 
+/** The same undefined classes left the bar itself as the only visible
+ *  "button": a full-width `--surface-base` slab (1,088 px on /kbli, measured
+ *  2026-09-24) sticky over the content, holding an unstyled link. The rail
+ *  now paints nothing and lets clicks through; only the actions are
+ *  painted. The primary is outlined in the funnel accent rather than filled:
+ *  it rides every viewport, so it must not out-shout the page's own primary
+ *  action. */
+const pill = {
+  ...tapTarget,
+  pointerEvents: "auto",
+  padding: "0 var(--space-6)",
+  borderRadius: 9999,
+  fontSize: "0.875rem",
+  fontWeight: 600,
+  textDecoration: "none",
+  whiteSpace: "nowrap",
+  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
+} as const satisfies CSSProperties;
+
+const primary: CSSProperties = {
+  ...pill,
+  background: "var(--surface-base)",
+  color: "var(--accent-funnel-text, var(--accent-funnel))",
+  border: "1px solid var(--accent-funnel)",
+};
+
+const secondary: CSSProperties = {
+  ...pill,
+  background: "var(--surface-base)",
+  color: "inherit",
+  border: "1px solid var(--color-border-subtle)",
+};
+
 export const CTAHandoff: FC<CTAHandoffProps> = ({
   source,
   sessionId,
@@ -39,18 +72,19 @@ export const CTAHandoff: FC<CTAHandoffProps> = ({
       aria-label="Next actions"
       style={{
         display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "flex-end",
         alignItems: "center",
         gap: "var(--space-3)",
-        padding: "var(--space-2) var(--space-4)",
+        padding: "var(--space-3) var(--space-4)",
         position: "sticky",
         zIndex: 40,
         bottom: 0,
-        background: "var(--surface-base)",
-        borderTop: "1px solid var(--color-border-subtle)",
+        pointerEvents: "none",
       }}
     >
       {pdfHref ? (
-        <a href={pdfHref} className="btn btn-tertiary" style={tapTarget}>
+        <a href={pdfHref} className="btn btn-tertiary" style={secondary}>
           Scarica report
         </a>
       ) : null}
@@ -59,7 +93,7 @@ export const CTAHandoff: FC<CTAHandoffProps> = ({
           type="button"
           onClick={onZantaraClick}
           className="btn btn-secondary"
-          style={tapTarget}
+          style={secondary}
         >
           Chat with Zantara
         </button>
@@ -70,7 +104,7 @@ export const CTAHandoff: FC<CTAHandoffProps> = ({
         className="btn btn-primary"
         target="_blank"
         rel="noreferrer"
-        style={tapTarget}
+        style={primary}
       >
         Talk on WhatsApp
       </a>

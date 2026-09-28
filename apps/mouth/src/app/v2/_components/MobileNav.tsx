@@ -39,11 +39,17 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
           aria-label={open ? "Close menu" : "Open menu"}
           className={`${isR19 ? "min-[981px]:hidden w-11 h-11" : "md:hidden w-10 h-10"} inline-flex items-center justify-center flex-shrink-0 rounded-lg`}
           style={{
-            color: isR19 ? "#1D2C3B" : "#ffffff",
-            background: isR19 ? "#FFFCF7" : "rgba(255,255,255,0.06)",
+            // A funnel whose nav is opaque paper, not the dark shell every
+            // OTHER non-R19 consumer has (gate B1, PR #7508: /kbli's toggle
+            // measured 1.10:1 white-on-paper), sets these three tokens on
+            // its own wrapper; every existing consumer keeps its literal.
+            color: isR19 ? "#1D2C3B" : "var(--nav-icon-color, #ffffff)",
+            background: isR19
+              ? "#FFFCF7"
+              : "var(--nav-icon-bg, rgba(255,255,255,0.06))",
             border: isR19
               ? "1px solid #DAD8D1"
-              : "1px solid rgba(255,255,255,0.14)",
+              : "1px solid var(--nav-icon-border, rgba(255,255,255,0.14))",
           }}
         >
           <Menu size={22} strokeWidth={2.2} />

@@ -114,31 +114,31 @@ export function ZantaraChat({
   );
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e]/60 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,132,90,0.1)] flex flex-col">
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--kbli-border)] bg-[var(--kbli-bg-surface)] backdrop-blur-2xl shadow-[0_4px_14px_#1d2c3b12] transition-all duration-500 hover:shadow-[0_4px_14px_#1d2c3b12] flex flex-col">
       {/* Subtle background glow effect inside the container */}
-      <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-accent-warm/10 blur-[80px] pointer-events-none z-0" />
+      <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-[var(--kbli-accent-subtle)] blur-[80px] pointer-events-none z-0" />
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-[#3b82f6]/10 blur-[80px] pointer-events-none z-0" />
 
       {/* Header */}
-      <div className="relative z-10 flex items-center gap-3 border-b border-white/5 bg-white/2 px-5 py-4 backdrop-blur-md">
-        <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-accent-warm/10 border border-accent-warm/30 shadow-[0_0_15px_rgba(212,132,90,0.2)]">
-          <Bot className="h-5 w-5 text-accent-warm" />
+      <div className="relative z-10 flex items-center gap-3 border-b border-[var(--kbli-border)] bg-[var(--kbli-bg-surface)] px-5 py-4 backdrop-blur-md">
+        <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-[var(--kbli-accent-subtle)] border border-[var(--kbli-border-accent)] shadow-[0_4px_14px_#1d2c3b12]">
+          <Bot className="h-5 w-5 text-[var(--kbli-accent)]" />
           <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-[#1c1c1e] rounded-full animate-pulse-glow" />
         </div>
         <div className="flex flex-col">
           <span className="font-bold text-transparent bg-clip-text bg-linear-to-r from-white to-white/70 tracking-wide">
             Zantara AI
           </span>
-          <span className="text-[10px] font-medium text-accent-warm uppercase tracking-widest opacity-80">
+          <span className="text-[10px] font-medium text-[var(--kbli-accent)] uppercase tracking-widest opacity-80">
             OSS Intelligence System
           </span>
         </div>
         {codeContext && (
           <div className="ml-auto flex flex-col items-end">
-            <span className="text-[10px] text-zinc-400 uppercase tracking-wider">
+            <span className="text-[10px] text-[var(--kbli-text-muted)] uppercase tracking-wider">
               Context
             </span>
-            <span className="text-xs font-semibold text-zinc-300 bg-white/5 px-2 py-0.5 rounded-md border border-white/10">
+            <span className="text-xs font-semibold text-[var(--kbli-text-secondary)] bg-[var(--kbli-bg-surface)] px-2 py-0.5 rounded-md border border-[var(--kbli-border)]">
               {codeContext.code}
             </span>
           </div>
@@ -152,12 +152,14 @@ export function ZantaraChat({
         tabIndex={0}
         aria-live="polite"
         aria-label="Conversation with Zantara AI"
-        className="relative z-10 max-h-96 min-h-[300px] space-y-5 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+        // The 300px floor is for a conversation; before the first message it
+        // left one opener bubble floating in an empty box.
+        className={`relative z-10 max-h-96 ${messages.length > 0 || loading ? "min-h-[300px]" : ""} space-y-5 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent`}
       >
         {opener && messages.length === 0 && (
           <div className="flex animate-fade-in-up">
-            <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white/5 border border-white/5 shadow-sm px-4 py-3">
-              <div className="text-sm leading-relaxed text-zinc-300">
+            <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-[var(--kbli-bg-surface)] border border-[var(--kbli-border)] shadow-sm px-4 py-3">
+              <div className="text-sm leading-relaxed text-[var(--kbli-text-secondary)]">
                 {opener}
               </div>
             </div>
@@ -172,8 +174,8 @@ export function ZantaraChat({
           >
             {msg.role === "assistant" && (
               <div className="shrink-0 mr-3 mt-1">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white/5 border border-white/10">
-                  <Bot className="h-3 w-3 text-zinc-400" />
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[var(--kbli-bg-surface)] border border-[var(--kbli-border)]">
+                  <Bot className="h-3 w-3 text-[var(--kbli-text-muted)]" />
                 </div>
               </div>
             )}
@@ -181,8 +183,8 @@ export function ZantaraChat({
             <div
               className={
                 msg.role === "user"
-                  ? "max-w-[80%] rounded-2xl rounded-tr-sm bg-linear-to-br from-[#d4845a]/20 to-[#d4845a]/5 border border-accent-warm/30 shadow-[0_4px_20px_rgba(212,132,90,0.1)] px-4 py-3 text-sm text-white font-medium"
-                  : "max-w-[85%] rounded-2xl rounded-tl-sm bg-white/5 border border-white/5 border-l-2 border-l-[#3b82f6]/50 shadow-sm px-4 py-3 prose prose-invert prose-sm prose-p:leading-relaxed prose-p:text-zinc-300 prose-a:text-accent-warm prose-strong:text-white"
+                  ? "max-w-[80%] rounded-2xl rounded-tr-sm bg-[var(--kbli-accent-subtle)] border border-[var(--kbli-border-accent)] shadow-[0_4px_14px_#1d2c3b12] px-4 py-3 text-sm text-[var(--kbli-text-primary)] font-medium"
+                  : "max-w-[85%] rounded-2xl rounded-tl-sm bg-[var(--kbli-bg-surface)] border border-[var(--kbli-border)] border-l-2 border-l-[var(--kbli-accent2)] shadow-sm px-4 py-3 prose prose-sm prose-p:leading-relaxed prose-p:text-[var(--kbli-text-secondary)] prose-a:text-[var(--kbli-accent)] prose-strong:text-[var(--kbli-text-primary)]"
               }
             >
               {msg.role === "assistant" ? (
@@ -202,8 +204,8 @@ export function ZantaraChat({
           >
             <span className="sr-only">Zantara is typing…</span>
             <div aria-hidden="true" className="shrink-0 mr-3 mt-1">
-              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent-warm/20 border border-accent-warm/30 shadow-[0_0_10px_rgba(212,132,90,0.2)]">
-                <Loader2 className="h-3 w-3 text-accent-warm animate-spin" />
+              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[var(--kbli-accent-subtle)] border border-[var(--kbli-border-accent)] shadow-[0_4px_14px_#1d2c3b12]">
+                <Loader2 className="h-3 w-3 text-[var(--kbli-accent)] animate-spin" />
               </div>
             </div>
             <div
@@ -212,15 +214,15 @@ export function ZantaraChat({
             >
               <div className="flex space-x-1">
                 <div
-                  className="w-1.5 h-1.5 bg-accent-warm/60 rounded-full animate-bounce"
+                  className="w-1.5 h-1.5 bg-[var(--kbli-accent)] rounded-full animate-bounce"
                   style={{ animationDelay: "0ms" }}
                 />
                 <div
-                  className="w-1.5 h-1.5 bg-accent-warm/60 rounded-full animate-bounce"
+                  className="w-1.5 h-1.5 bg-[var(--kbli-accent)] rounded-full animate-bounce"
                   style={{ animationDelay: "150ms" }}
                 />
                 <div
-                  className="w-1.5 h-1.5 bg-accent-warm/60 rounded-full animate-bounce"
+                  className="w-1.5 h-1.5 bg-[var(--kbli-accent)] rounded-full animate-bounce"
                   style={{ animationDelay: "300ms" }}
                 />
               </div>
@@ -238,8 +240,8 @@ export function ZantaraChat({
             <button
               key={s}
               onClick={() => sendMessage(s)}
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-400
-                         transition-all duration-300 hover:bg-accent-warm/10 hover:border-accent-warm/40 hover:text-accent-warm hover:shadow-[0_0_15px_rgba(212,132,90,0.2)] hover:-translate-y-0.5 animate-fade-in-up"
+              className="rounded-full border border-[var(--kbli-border)] bg-[var(--kbli-bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--kbli-text-muted)]
+                         transition-all duration-300 hover:bg-[var(--kbli-accent-subtle)] hover:border-[var(--kbli-border-accent)] hover:text-[var(--kbli-accent)] hover:shadow-[0_4px_14px_#1d2c3b12] hover:-translate-y-0.5 animate-fade-in-up"
               style={{ animationDelay: `${(idx + 1) * 100}ms` }}
             >
               {s}
@@ -249,8 +251,8 @@ export function ZantaraChat({
       )}
 
       {/* Input Area */}
-      <div className="relative z-10 p-4 border-t border-white/5 bg-black/20">
-        <div className="relative flex items-end gap-2 rounded-xl border border-white/10 bg-white/5 p-1 transition-all focus-within:border-accent-warm/40 focus-within:bg-[#1c1c1e] focus-within:shadow-[0_0_20px_rgba(212,132,90,0.15)]">
+      <div className="relative z-10 p-4 border-t border-[var(--kbli-border)] bg-[var(--kbli-bg-base)]">
+        <div className="relative flex items-end gap-2 rounded-xl border border-[var(--kbli-border)] bg-[var(--kbli-bg-surface)] p-1 transition-all focus-within:border-[var(--kbli-border-accent)] focus-within:bg-[#1c1c1e] focus-within:shadow-[0_4px_14px_#1d2c3b12]">
           <textarea
             ref={inputRef}
             value={input}
@@ -267,13 +269,13 @@ export function ZantaraChat({
                 : "Ask Zantara anything about KBLI..."
             }
             rows={1}
-            className="flex-1 max-h-32 min-h-[44px] resize-none bg-transparent px-3 py-3 text-sm text-white placeholder-zinc-500 outline-none scrollbar-thin"
+            className="flex-1 max-h-32 min-h-[44px] resize-none bg-transparent px-3 py-3 text-sm text-[var(--kbli-text-primary)] placeholder-[var(--kbli-text-muted)] outline-none scrollbar-thin"
             aria-label="Chat with Zantara AI"
           />
           <button
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || loading}
-            className="shrink-0 mb-1 mr-1 flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-[#d4845a] to-[#b36a46] text-white shadow-md transition-all disabled:opacity-30 disabled:grayscale hover:shadow-[0_0_15px_rgba(212,132,90,0.4)] hover:scale-105 active:scale-95"
+            className="shrink-0 mb-1 mr-1 flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--kbli-accent)] text-[var(--kbli-bg-surface)] shadow-md transition-all disabled:opacity-30 disabled:grayscale hover:shadow-[0_4px_14px_#1d2c3b12] hover:scale-105 active:scale-95"
             aria-label="Send message"
           >
             <Send className="h-4 w-4 ml-0.5" />

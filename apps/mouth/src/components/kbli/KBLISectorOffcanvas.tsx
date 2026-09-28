@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KBLIPanelDetail } from "@/lib/kbli-panel-detail";
+import { R19_CLASS, R19_DIRECTION_A_VARS } from "@/lib/theme/r19Vars";
 import { KBLIPanelCodeDetail } from "./KBLIPanelCodeDetail";
 
 /**
@@ -312,7 +313,7 @@ export function KBLISectorOffcanvas({
     <Dialog.Root open={open} onOpenChange={(next) => !next && close()}>
       <Dialog.Portal>
         <Dialog.Overlay
-          className="kbli-panel-overlay fixed inset-0 z-[500] bg-black/70 backdrop-blur-sm"
+          className="kbli-panel-overlay fixed inset-0 z-[500] bg-[#1d2c3b]/45"
           data-testid="kbli-sector-panel-overlay"
         />
         <Dialog.Content
@@ -323,12 +324,18 @@ export function KBLISectorOffcanvas({
           aria-modal="true"
           onCloseAutoFocus={restoreFocus}
           onClickCapture={notePendingHop}
-          className="kbli-panel-content fixed z-[510] flex flex-col overflow-hidden
-                     border-white/[0.08] bg-[#141416]/95 backdrop-blur-2xl
-                     shadow-[0_10px_60px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.04)]
-                     inset-x-0 bottom-0 top-16 rounded-t-3xl border-t
+          // Radix portals to <body>, OUTSIDE the /kbli layout wrapper — so the
+          // panel carries the R19 var set and the kbli-paper tokens itself,
+          // or it would render in the :root dark skin. The Fraunces/Manrope
+          // @font-face rules are registered document-wide by the layout's
+          // own styles/r19-fonts.css import — no separate font class needed.
+          style={R19_DIRECTION_A_VARS}
+          className={`${R19_CLASS} kbli-paper kbli-panel-content fixed z-[510] flex flex-col overflow-hidden
+                     border-[var(--kbli-border-hover)] bg-[var(--kbli-bg-base)]
+                     shadow-[-12px_0_32px_#1d2c3b1f]
+                     inset-x-0 bottom-0 top-16 rounded-t-[var(--kbli-radius-xl)] border-t
                      sm:inset-y-0 sm:left-auto sm:right-0 sm:top-0 sm:w-[600px] sm:max-w-[92vw]
-                     sm:rounded-none sm:rounded-l-3xl sm:border-l sm:border-t-0"
+                     sm:rounded-none sm:border-l sm:border-t-0`}
         >
           {/* Radix requires a Title for the accessible name; the visible header
               lives in `children` (a Server Component), so this one is
@@ -337,9 +344,9 @@ export function KBLISectorOffcanvas({
 
           <Dialog.Close
             aria-label="Close sector panel"
-            className="absolute right-4 top-4 z-10 rounded-full border border-white/[0.08]
-                       bg-white/[0.04] p-2 text-zinc-400 backdrop-blur-md transition-all
-                       hover:bg-white/[0.10] hover:text-white
+            className="absolute right-4 top-4 z-10 rounded-full border border-[var(--kbli-border)]
+                       bg-[var(--kbli-bg-surface)] p-2 text-[var(--kbli-text-muted)] backdrop-blur-md transition-all
+                       hover:bg-[var(--kbli-bg-surface-hover)] hover:text-[var(--kbli-text-primary)]
                        focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kbli-accent)]"
           >
             <X size={16} />

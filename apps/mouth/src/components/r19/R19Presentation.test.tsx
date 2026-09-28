@@ -98,8 +98,13 @@ describe("R19 presentation and portal", () => {
     route.pathname = "/property";
     rerender(<R19Presentation>{child}</R19Presentation>);
     expect(container.querySelector('[data-presentation="r19"]')).toBeNull();
+    // MobileNav's non-R19 branch reads a --nav-icon-color token with a white
+    // fallback (gate B1, PR #7508: kbli's opaque paper nav needed a real
+    // override here, which a bare literal could not provide) — the fallback
+    // preserves the pre-existing white icon for every consumer, like this
+    // one, that never sets the token.
     expect(screen.getByRole("button", { name: "Open menu" }).style.color).toBe(
-      "rgb(255, 255, 255)",
+      "var(--nav-icon-color, #ffffff)",
     );
   });
 });

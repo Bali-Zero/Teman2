@@ -24,12 +24,12 @@ export function KBLISectorStrip({
     index >= 0 && index < sections.length - 1 ? sections[index + 1] : null;
 
   const arrow =
-    "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] " +
-    "bg-white/[0.03] text-zinc-400 transition-all hover:bg-white/[0.08] hover:text-white " +
+    "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--kbli-border)] " +
+    "bg-[var(--kbli-bg-surface)] text-[var(--kbli-text-muted)] transition-all hover:bg-[var(--kbli-bg-surface-hover)] hover:text-[var(--kbli-text-primary)] " +
     "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kbli-accent)]";
 
   return (
-    <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-3">
+    <div className="flex items-center gap-2 border-b border-[var(--kbli-border)] px-5 py-3">
       {prev ? (
         <Link
           href={`/kbli/sectors/${prev.id}`}
@@ -62,7 +62,7 @@ export function KBLISectorStrip({
                           transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kbli-accent)] ${
                             active
                               ? "border border-[var(--kbli-accent)]/50 bg-[var(--kbli-accent)]/15 text-[var(--kbli-accent)]"
-                              : "border border-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-white"
+                              : "border border-transparent text-[var(--kbli-text-muted)] hover:bg-[var(--kbli-bg-surface-hover)] hover:text-[var(--kbli-text-primary)]"
                           }`}
             >
               {s.id}

@@ -1,4 +1,6 @@
-import { montserrat } from "@balizero/core/fonts/montserrat";
+import { R19_CLASS, R19_DIRECTION_A_VARS } from "@/lib/theme/r19Vars";
+import "@/styles/r19-fonts.css";
+import "@/styles/r19-direction-a.css";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
@@ -17,11 +19,16 @@ export default function KBLILayout({
   const navItems = getFunnelNavItems("kbli");
 
   return (
+    // R19 Direction A (BRIEF-v2 R-1) on this route group's own wrapper, never
+    // the root layout: the var set and its class hook sit on ONE element
+    // (r19Vars.ts scoping contract); the Fraunces/Manrope faces are the SAME
+    // ones main's editorial R19 registers (styles/r19-fonts.css, unified
+    // 2026-09-27 — no per-route font class anymore). `kbli-paper` re-points
+    // every --kbli-* token at paper (styles/kbli-theme.css), so the 1,559
+    // code pages change skin without changing structure.
     <div
-      className={`${montserrat.variable} relative`}
-      style={{
-        fontFamily: "var(--font-montserrat), system-ui, sans-serif",
-      }}
+      className={`${R19_CLASS} kbli-paper relative min-h-screen`}
+      style={R19_DIRECTION_A_VARS}
     >
       <NavShell
         logo={<BZLogo variant="full" />}

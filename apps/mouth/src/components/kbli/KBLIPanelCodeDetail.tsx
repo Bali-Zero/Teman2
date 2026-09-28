@@ -38,8 +38,8 @@ export function KBLIPanelCodeDetail({
         type="button"
         onClick={onBack}
         data-testid="kbli-panel-detail-back"
-        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-zinc-400
-                   transition-colors hover:text-white focus:outline-none
+        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-[var(--kbli-text-muted)]
+                   transition-colors hover:text-[var(--kbli-text-primary)] focus:outline-none
                    focus-visible:ring-2 focus-visible:ring-[var(--kbli-accent)]"
       >
         <ArrowLeft size={13} />
@@ -50,10 +50,12 @@ export function KBLIPanelCodeDetail({
         <span className="font-mono text-sm font-bold text-[var(--kbli-accent)]">
           {detail.code}
         </span>
-        <h3 className="mt-1 text-lg font-bold leading-snug text-white">
+        <h3 className="mt-1 text-lg font-bold leading-snug text-[var(--kbli-text-primary)]">
           {detail.titleEn}
         </h3>
-        <p className="mt-0.5 text-sm text-zinc-400">{detail.titleId}</p>
+        <p className="mt-0.5 text-sm text-[var(--kbli-text-muted)]">
+          {detail.titleId}
+        </p>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -91,7 +93,7 @@ export function KBLIPanelCodeDetail({
         <TransitionBadge transition={detail.transition} />
       </div>
 
-      <p className="mt-5 border-t border-white/[0.06] pt-4 text-sm leading-relaxed text-zinc-400">
+      <p className="mt-5 border-t border-[var(--kbli-border)] pt-4 text-sm leading-relaxed text-[var(--kbli-text-muted)]">
         Scope description, licensing by business scale, authority and processing
         time are on the code&apos;s own page — rendered there by the components
         that know how to state what is verified and what is derived.
@@ -103,8 +105,8 @@ export function KBLIPanelCodeDetail({
       <a
         href={`/kbli/${detail.code}`}
         data-testid="kbli-panel-detail-full"
-        className="mt-6 inline-flex items-center gap-2 rounded-xl border border-white/[0.10] bg-white/[0.06]
-                   px-4 py-2.5 text-sm font-bold text-white backdrop-blur-md transition-all
+        className="mt-6 inline-flex items-center gap-2 rounded-xl border border-[var(--kbli-border)] bg-[var(--kbli-bg-surface)]
+                   px-4 py-2.5 text-sm font-bold text-[var(--kbli-text-primary)] backdrop-blur-md transition-all
                    hover:border-[var(--kbli-accent)]/60 hover:bg-[var(--kbli-accent)]/20
                    focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kbli-accent)]"
       >

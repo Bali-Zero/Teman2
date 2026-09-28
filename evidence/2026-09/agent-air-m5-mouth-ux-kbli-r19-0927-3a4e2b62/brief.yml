@@ -1,0 +1,161 @@
+task: >-
+  First of four dormant mouth UX waves (kbli/oracle/studio/voa) built on M5 on 2026-09-26 on top of
+  a local 'R19 Direction A' theme foundation (branch agent/air-m5/mouth/r19-found-0926) whose
+  builders died before pushing. Meanwhile Pro shipped and merged PR #7448, a DIFFERENT, unrelated
+  site-wide 'R19' editorial redesign (components/r19/*, routePolicy.ts) that explicitly excludes
+  every funnel including /kbli. This unit rebases the KBLI lane (agent/air-m5/mouth/ux-kbli-0926,
+  the foundation change plus 12 follow-on changes) onto the post-#7448 origin/main via cherry-pick
+  into a fresh worktree, verifies it, and ships it as its own PR. REWORK ROUND 1 (2026-09-27, same
+  branch, new commit f14500c8d1, never --amend): a fresh Opus 5.5 gate on the first head
+  (c7b1088309) returned REWORK-BUILD on two blockers this pack's original A2 got wrong — the
+  kbli-local R19 Direction A theme was NOT merely a naming collision with #7448's site-wide R19; it
+  was an independently-derived DUPLICATE of the same design-token map, diverging on three values
+  (B2), and a shared MobileNav.tsx component's hardcoded white icon failed WCAG contrast on kbli's
+  opaque paper nav (B1). That round cured both: r19Vars.ts spread main's R19_VARS and added only
+  what it lacked, and MobileNav read a token triplet kbli sets for its own nav. REWORK ROUND 2
+  (2026-09-27, same branch, new commit on top of 0e1f773419, never --amend): a second fresh gate
+  found B1 fully cured and B2 mostly cured, but round 1's own unification introduced a regression
+  (B3) — dropping `--foreground` entirely (R19_VARS never defines it) left `/kbli/<code>` falling
+  through to globals.css's dark-theme default (#ececec on paper, 1.08-1.15:1 across 30 text
+  elements) — plus a residual form of B2: six tokens (`--surface-base-solid`, `--surface-sunken`,
+  `--surface-deep`, `--bz-elevated`, `--r19-structure`, `--r19-focus`) still copied main's values
+  under a different name as a literal instead of a `var()` reference. This round cures both: adds
+  `--foreground` back as a LITERAL synced to `--text-primary` (a `var()` alias would hit the exact
+  documented "r19Vars.ts alias trap" in kbli-theme.css's own `.kbli-paper` block, BRIEF-v2 R-1
+  §3.4 — the alias re-resolves to the dark default instead of the paper override on the browsers
+  that block was written for), converts the six residual literals to `var()` references, and adds
+  a coverage test that fails if any `var(--x)` read across the kbli surface + MobileNav is
+  undefined in the effective R19_DIRECTION_A_VARS set. The other three waves (oracle/studio/voa)
+  share the identical foundation commit AND the identical duplication — each must apply the SAME
+  unification (spread R19_VARS, restate `--foreground` as a literal not an alias, delete the
+  duplicate font pair, adopt the nav-icon-color token triplet, run the same coverage-test pattern
+  against its own surface) before it ships, not just rebase past this PR.
+lane: mouth
+machine: m5
+date: 2026-09-27
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, by the SIZE term alone: scripts/evidence_pack_lint.py's own
+  _compute_floor_with_source over this diff's real changed-files list and
+  `git diff --numstat origin/main...HEAD` reports floor=3, source=size (net_lines climb again on
+  round 2: r19Vars.ts/r19Vars.test.ts add ~150 net lines on top of round 1's 3042;
+  SIZE_GEAR3_THRESHOLD=1828). No HOTZONE_PATTERNS path hit; the floor is churn alone. Separately,
+  apps/mouth/src/app/kbli/* is a GROUND_TRUTH_PATH_PATTERNS hit (R8), see pack.yml's seat_override
+  for why no {role: ground_truth, seat, nb, query_hash} lane is declared.
+
+appetite:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 3
+
+acceptance:
+  A1: >-
+    The cherry-pick lands the exact same content the pre-rebase branch carried: no commit dropped,
+    no file diverged beyond what conflict resolution required (there was none — the merge-tree was
+    already conflict-free before this unit started).
+    probe: >-
+      git diff --stat origin/main...HEAD on the rebased branch equals the diffstat measured against
+      the stale branch before rebase (34 files changed, +2255/-611, identical byte-for-byte stat
+      line).
+  A2 (REVISED after REWORK-BUILD): >-
+    No FILE-level overlap with PR #7448's site-wide R19 — that much of the original A2 held: /kbli
+    is outside its route policy, and the two systems share zero files. But the original A2's
+    conclusion ("cosmetic naming collision, not a conflict") was FALSE and the gate correctly
+    rejected it: the kbli-local theme was a second, independently-derived copy of the SAME design
+    system (both trace to "R19 Direction A del 09-09" in docs/plans/mouth-final-20260911/), diverging
+    on --text-secondary, --border-strong and --text-on-accent/--cta-primary-fg, plus a duplicated,
+    heavier font pair. The DECISION, made explicit in this revision: unify on main's system
+    (components/r19/presentation.ts's R19_VARS) — r19Vars.ts spreads it and adds only what it lacks;
+    no token this file declares may restate an R19_VARS key at a different value ever again (a test
+    now enforces this).
+    probe: >-
+      apps/mouth/src/components/r19/routePolicy.ts's isR19Route returns false for every /kbli path
+      (kbli is not in editorialCategories) — file-level separation holds. r19Vars.test.ts's
+      "restates no R19_VARS key at a different value" test passes on the cured head — value-level
+      unification holds.
+  A3: >-
+    The one shared-component change in this diff — packages/core/components/CTAHandoff.tsx,
+    consumed by kbli, tax-calendar and property/eligibility via FunnelFrame.tsx (not by
+    visa-oracle/second-home/voa, which use their own CTA components) — is a deliberate,
+    non-breaking global restyle: every funnel that doesn't locally define `--accent-funnel` still
+    resolves it from packages/core/tokens/semantic.css's root default, so no consumer loses styling.
+    probe: >-
+      grep for `--accent-funnel:` definitions across apps/mouth/src and packages/core; the CTAHandoff
+      diff read line-by-line for any hardcoded (non-var) color that would ignore a funnel's own
+      theme.
+  A4 (REVISED, cured head): >-
+    Builds and tests green in the fresh worktree, using the shared root node_modules (no install;
+    packages/core/node_modules is symlinked from the repo root, per the gate's own finding that this
+    — not a real "cannot run" — is what the original pack's failing CTAHandoff.test.tsx receipt
+    needed).
+    probe: >-
+      apps/mouth: `npx tsc --noEmit -p apps/mouth` rc 0; `npx vitest run` (from apps/mouth), full
+      suite, 558 files / 7393 passed / 2 skipped (pre-existing); `npm run lint --workspace apps/mouth`
+      0 errors; the 23 non-test/non-asset .ts/.tsx files this diff touches (corrected from an initial
+      19, the gate's own recount) are individually 0-problem via `npx eslint`; `npm run build
+      --workspace apps/mouth` (next build --webpack + both post-build guard scripts) rc 0 in about
+      9 minutes. packages/core: `npx vitest run` (node_modules symlinked), 38 files / 193 tests
+      passed, matching the gate's own measurement exactly.
+  A5 (REVISED, cured head): >-
+    Two independent review seats find nothing that falsifies A1-A4 and A6 — real quorum, no R9
+    override. Round 1 (kimi-code/k3, first head) HOLDS. A third seat (codex-gpt-5.6-sol) was
+    attempted in round 1; the conducting session pulled it mid-flight (the spalla egress guard on
+    main is known-defective, lane suspended) rather than wait on or incorporate it. Round 2
+    (tp1-qwen3.8-max, cured head, per the gate's own recommendation) HOLDS on the B1/B2 cure
+    specifically.
+    probe: council-journal.jsonl in this pack's own directory carries 2 distinct COUNCIL_REVIEW_SEATS
+    entries with ok:true; pack.yml's seat_override no longer names R9, only R8.
+  A6 (round 1): >-
+    B1: MobileNav's mobile-menu toggle icon on /kbli and /kbli/<code> clears WCAG 1.4.11's 3:1
+    non-text minimum (was 1.10:1). B2: r19Vars.ts declares no key that both exists in
+    components/r19/presentation.ts's R19_VARS and differs from it; the duplicate Fraunces/Manrope
+    font pair and its next/font loader are deleted, replaced by a shared styles/r19-fonts.css both
+    systems import.
+    probe: >-
+      r19Vars.test.ts's new NON_TEXT_PAIRS entry for --nav-icon-color on --nav-icon-bg computes
+      13.9:1 (>=3 floor); its "restates no R19_VARS key at a different value" test iterates every
+      R19_VARS key and asserts equality; `find apps/mouth/src/lib/theme/fonts` no longer exists;
+      `grep -rn "next/font/local" apps/mouth/src/lib/theme/` returns nothing.
+  A7 (NEW, round 2 — B3 + B2 residual): >-
+    `--foreground` is restated as a literal (not a `var()` alias, to dodge the documented
+    "r19Vars.ts alias trap") synced to `--text-primary`, so `/kbli/<code>`'s licensing overview
+    row, breadcrumb, KBLI cards and provenance panel no longer fall through to the dark #ececec
+    default. The six B2-residual literals (`--surface-base-solid`, `--surface-sunken`,
+    `--surface-deep`, `--bz-elevated`, `--r19-structure`, `--r19-focus`) are now `var()`
+    references, and a new coverage test fails if any `var(--x)` read across the real kbli surface
+    tree (apps/mouth/src/app/kbli/**, apps/mouth/src/components/kbli/**) plus MobileNav.tsx is
+    undefined in the effective R19_DIRECTION_A_VARS set (excluding kbli's own separate `--kbli-*`
+    namespace and a short named list of globals.css base tokens the gate never flagged).
+    probe: >-
+      r19Vars.test.ts's new "--foreground is a literal synced to --text-primary, not a var() alias"
+      test; the extended ALIAS_TARGETS table plus a dedicated SHADOW_WITH_VAR check for
+      `--r19-focus`; the new "every non-external var(--x) read across the kbli surface exists in
+      R19_DIRECTION_A_VARS" test (50 tests total in the file, up from 46 — 4 new); a rendered
+      contrast check on the fresh Vercel preview once pushed (this pack's receipts record whether
+      that check was performed and what it found).
+
+out_of_scope: >-
+  Fixing oracle/studio/voa's own copies of the same duplicate theme/font pair — they carry the
+  identical foundation commit and MUST apply the same unification (spread R19_VARS, delete the
+  duplicate font files and r19Fonts.ts, adopt the nav-icon-color/bg/border token triplet on their own
+  wrappers if their nav is also opaque, restate `--foreground` as a literal synced to
+  `--text-primary` rather than a `var()` alias, run the same var(--x)-coverage test against their
+  own surface) before shipping, not after; each does so in its own PR when it rebases, verified the
+  same way this pack verifies it (r19Vars.test.ts's divergence and coverage checks). A full rename
+  of "R19 Direction A" to remove the residual naming overlap with #7448's "R19" is still not done
+  here — the VALUES are unified now, the NAME collision is cosmetic and remains a cheap future
+  cleanup.
+
+assumptions: >-
+  The evidence directory name is derived from the branch by scripts/ci/evidence_paths.py. The
+  before-state for A1/A2 is the stale local branch agent/air-m5/mouth/ux-kbli-0926 (still parked,
+  untouched, in .worktrees/mouth-ux-kbli-0926 — another process is backing it up, so this unit
+  never rebased or modified it) and PR #7448 as merged on origin/main (a6fcae5afe, the fetch point
+  used to create this unit's worktree — unchanged across the rework round; origin/main did not
+  advance). ESLint per-file invocation was used instead of the full-repo `npm run lint` because the
+  latter's exit code can reflect pre-existing warnings across the whole apps/mouth workspace, not
+  this diff. The rework round's before-state for A2/A6 is the fresh gate's report
+  (scratchpad/reports/gate-7508.md) and its screenshots (scratchpad/gate7508-shots/), read but not
+  reproduced independently in this worktree (no Vercel preview / browser access from here) — the
+  1.10:1 vs 3:1 contrast finding is trusted from the gate's own measurement and re-derived
+  analytically (relative-luminance arithmetic on the exact hex pair), not re-screenshotted.

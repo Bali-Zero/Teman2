@@ -53,7 +53,7 @@ const config = {
   unknown: {
     label: "Unknown",
     icon: "❓",
-    className: "bg-slate-50 text-slate-500 border-slate-200",
+    className: "bg-slate-50 text-[var(--kbli-text-muted)] border-slate-200",
   },
 };
 
@@ -172,7 +172,11 @@ export function PMABadge({
     >
       <span>{c.icon}</span>
       <span>{c.label}</span>
-      {suffix && <span className="opacity-70">{suffix}</span>}
+      {suffix && (
+        <span className="font-normal text-[var(--kbli-text-secondary)]">
+          {suffix}
+        </span>
+      )}
     </span>
   );
 }

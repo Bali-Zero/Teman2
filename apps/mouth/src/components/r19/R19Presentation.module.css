@@ -1,15 +1,8 @@
-@font-face {
-  font-family: "R19 Fraunces";
-  src: url("/fonts/fraunces-r19-latin.woff2") format("woff2");
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: "R19 Manrope";
-  src: url("/fonts/manrope-r19-latin.woff2") format("woff2");
-  font-weight: 400;
-  font-display: swap;
-}
+/* The two @font-face rules live in ../../styles/r19-fonts.css (2026-09-27,
+   gate B2 on PR #7508) so a non-editorial route can register the same
+   faces without duplicating the font binaries. */
+@import "../../styles/r19-fonts.css";
+
 .root,
 .drawer {
   --public-header-height: 72px;

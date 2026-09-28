@@ -6,7 +6,6 @@ import {
   getCode,
   getRelatedCodes,
   getSectionMeta,
-  getHeroStyle,
 } from "@/lib/kbli-data";
 import {
   getGoldContent,
@@ -46,7 +45,6 @@ import { KBLIEditorial } from "@/components/kbli/KBLIEditorial";
 import { KBLIYoullAlsoNeed } from "@/components/kbli/KBLIYoullAlsoNeed";
 import { KBLITransitionSources } from "@/components/kbli/KBLITransitionSources";
 import { getRelatedArticle } from "@/lib/kbli-articles";
-import { GOLD_HERO_IMAGES } from "@/lib/kbli-hero-images";
 import { MarkdownClient } from "@/components/kbli/MarkdownClient";
 import { KBLIPageTracker } from "@/components/kbli/KBLIPageTracker";
 import { KBLIConsultationCTA } from "@/components/kbli/KBLIConsultationCTA";
@@ -164,8 +162,6 @@ export default async function KBLICodePage({
   ];
 
   const isGold = !!gold;
-  const heroStyle = getHeroStyle(kbli.section);
-  const heroImage = GOLD_HERO_IMAGES[kbli.code] ?? null;
   const article = getRelatedArticle(kbli.code);
 
   return (
@@ -204,74 +200,36 @@ export default async function KBLICodePage({
           <KBLIBreadcrumb items={breadcrumbs} />
 
           {/* HERO ZONE */}
-          <div className="relative -mx-4 mb-10 mt-4 overflow-hidden rounded-2xl sm:-mx-6 lg:-mx-8">
-            {heroImage ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={heroImage.src}
-                  alt={heroImage.alt}
-                  className="absolute inset-0 h-full w-full object-cover object-center"
-                  loading="eager"
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{ background: heroImage.overlay }}
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: `linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.15) 55%, var(--kbli-bg-base) 100%)`,
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: `linear-gradient(${heroStyle.gradient})`,
-                  }}
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{ background: heroStyle.pattern }}
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: `linear-gradient(to bottom, transparent 30%, rgba(43,43,43,0.4) 60%, var(--kbli-bg-base) 100%)`,
-                  }}
-                />
-              </>
-            )}
-            {/* Noise texture */}
+          <div className="relative -mx-4 mb-10 mt-4 overflow-hidden border-y border-[var(--kbli-border)] bg-[var(--kbli-bg-surface)] sm:-mx-6 sm:rounded-[var(--kbli-radius-xl)] sm:border lg:-mx-8">
+            {/* Carta filigranata (BRIEF-v2 §3.4): the header is a paper
+                plate with a guilloché band at ≤5% opacity and a hairline in
+                the R19 structure slate (one ink family) — a token re-skin of
+                the former photo/gradient layers, same position in the page. */}
+            <div aria-hidden="true" className="kbli-guilloche" />
             <div
-              className="absolute inset-0 opacity-[0.03]"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-              }}
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-[3px]"
+              style={{ background: "var(--r19-structure, #233D52)" }}
             />
 
             {/* Hero content */}
             <div
-              className={`relative px-6 pb-8 sm:px-8 lg:px-10 ${isGold ? "pt-24 sm:pt-32" : "pt-16 sm:pt-20"}`}
+              className={`relative px-6 pb-8 sm:px-8 lg:px-10 ${isGold ? "pt-12 sm:pt-16" : "pt-10 sm:pt-12"}`}
             >
               {/* Code pill */}
               <div className="mb-4 flex items-center gap-3">
                 <span
-                  className="inline-flex items-center rounded-full px-3.5 py-1 font-mono text-sm font-bold tracking-wide"
+                  className="kbli-figure inline-flex items-center rounded-[3px] px-3 py-1 text-[15px]"
                   style={{
-                    background: "rgba(212, 132, 90, 0.15)",
-                    color: "var(--kbli-accent)",
-                    border: "1px solid rgba(212, 132, 90, 0.25)",
-                    backdropFilter: "blur(8px)",
+                    background: "var(--kbli-bg-base)",
+                    color: "var(--kbli-text-primary)",
+                    border: "1px solid var(--kbli-border-hover)",
                   }}
                 >
                   KBLI {kbli.code}
                 </span>
                 {isGold && (
-                  <span className="text-xs text-amber-400 font-medium">
+                  <span className="text-xs text-[var(--kbli-text-secondary)] font-medium">
                     ★ Gold-Tier Intel
                   </span>
                 )}
@@ -279,21 +237,18 @@ export default async function KBLICodePage({
 
               {/* Title with text-shadow for visibility */}
               <h1
-                className={`font-black tracking-tight text-white ${isGold ? "text-3xl sm:text-4xl lg:text-5xl" : "text-2xl sm:text-3xl lg:text-4xl"}`}
-                style={{ textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}
+                className={`font-[450] leading-[1.1] tracking-[-0.03em] text-[var(--kbli-text-primary)] ${isGold ? "text-3xl sm:text-4xl lg:text-5xl" : "text-2xl sm:text-3xl lg:text-4xl"}`}
+                style={{ fontFamily: "var(--font-serif)" }}
               >
                 {kbli.titleEn}
               </h1>
-              <p
-                className="mt-2 text-lg text-white/60"
-                style={{ textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}
-              >
+              <p className="mt-2 text-lg text-[var(--kbli-text-secondary)]">
                 {kbli.titleId}
               </p>
 
               {/* Section line */}
               {sectionMeta && (
-                <p className="mt-3 text-sm text-white/40">
+                <p className="mt-3 text-sm text-[var(--kbli-text-muted)]">
                   {sectionMeta.icon} Section {kbli.section} —{" "}
                   {sectionMeta.nameEn}
                 </p>
@@ -372,7 +327,7 @@ export default async function KBLICodePage({
                           unverifiedBaliClosure
                             ? "text-[var(--kbli-pma-closed)]"
                             : !pmaVerdictVerified || baliVerdictMissing
-                              ? "text-white/70"
+                              ? "text-[var(--kbli-text-secondary)]"
                               : pmaBlocked
                                 ? "text-[var(--kbli-pma-closed)]"
                                 : "text-[var(--kbli-pma-open)]",
@@ -520,17 +475,11 @@ export default async function KBLICodePage({
 
               {/* VISUAL DIVIDER */}
               <div className="flex items-center gap-4 py-2">
-                <div
-                  className="h-px flex-1"
-                  style={{ background: "var(--kbli-border)" }}
-                />
+                <div aria-hidden="true" className="kbli-tumpal flex-1" />
                 <span className="text-xs font-medium uppercase tracking-[0.15em] text-[var(--foreground-muted)]">
                   Licensing & Requirements
                 </span>
-                <div
-                  className="h-px flex-1"
-                  style={{ background: "var(--kbli-border)" }}
-                />
+                <div aria-hidden="true" className="kbli-tumpal flex-1" />
               </div>
 
               {/* WHAT YOU NEED */}
@@ -1015,6 +964,7 @@ export default async function KBLICodePage({
           {/* RELATED CODES */}
           {related.length > 0 && (
             <section className="mt-12">
+              <hr aria-hidden="true" className="kbli-tumpal mb-8" />
               <h2 className="mb-5 text-sm font-bold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
                 Related Codes
               </h2>

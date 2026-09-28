@@ -51,114 +51,53 @@ const SECTOR_ICONS: Record<string, React.ReactNode> = {
 export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
   const maxCount = Math.max(...sections.map((s) => s.codeCount));
 
-  // Size tier based on code count relative to max
-  function getSizeTier(count: number): "xl" | "lg" | "md" | "sm" {
-    const ratio = count / maxCount;
-    if (ratio >= 0.6) return "xl";
-    if (ratio >= 0.3) return "lg";
-    if (ratio >= 0.1) return "md";
-    return "sm";
-  }
-
-  const remainder = sections.length % 4;
-
+  // Specimen cards on paper (BRIEF-v2 §3.4): the section letter and the count
+  // set as figures, the bar measured against the largest section in the one
+  // structure ink the dial uses (council v2: a single-ink instrument).
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-      {sections.map((s, i) => {
-        const tier = getSizeTier(s.codeCount);
-        const isLastOrphan = remainder === 1 && i === sections.length - 1;
-
-        // Bar fill width
-        const barPct = Math.max(8, Math.round((s.codeCount / maxCount) * 100));
-
-        // Accent intensity based on tier
-        const accentOpacity =
-          tier === "xl"
-            ? "opacity-100"
-            : tier === "lg"
-              ? "opacity-80"
-              : tier === "md"
-                ? "opacity-60"
-                : "opacity-40";
-
-        // Icon size
-        const iconSize =
-          tier === "xl"
-            ? "text-3xl"
-            : tier === "lg"
-              ? "text-2xl"
-              : tier === "md"
-                ? "text-xl"
-                : "text-lg";
-
-        // Name size
-        const nameSize =
-          tier === "xl"
-            ? "text-sm font-bold"
-            : tier === "lg"
-              ? "text-sm font-semibold"
-              : "text-xs font-medium";
+    <div
+      data-kbli-sector-grid=""
+      className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--kbli-radius-lg)] border border-[var(--kbli-border)] bg-[var(--kbli-border)] sm:grid-cols-3 lg:grid-cols-4"
+    >
+      {sections.map((s) => {
+        const barPct = Math.max(4, Math.round((s.codeCount / maxCount) * 100));
 
         return (
           <Link
             key={s.id}
             href={`/kbli/sectors/${s.id}`}
-            className={`group relative rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-4.5
-                       transition-all duration-500 hover:border-accent-warm/40 hover:bg-white/[0.06]
-                       hover:shadow-[0_8px_40px_rgba(212,132,90,0.15),inset_0_1px_0_rgba(255,255,255,0.06)]
-                       hover:-translate-y-1
-                       shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]
-                       animate-fade-in-up flex flex-col
-                       ${isLastOrphan ? "col-span-2 sm:col-span-1" : ""}`}
-            style={{ animationDelay: `${i * 60}ms` }}
+            className="group relative flex min-h-[132px] flex-col bg-[var(--kbli-bg-surface)] p-4 no-underline transition-colors hover:bg-[var(--kbli-bg-card-hover)] focus-visible:z-10 focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--kbli-accent)]"
           >
-            {/* Icon & Section Code */}
-            <div className="flex items-start justify-between mb-2">
-              <div
-                className={`inline-flex items-center justify-center rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_rgba(0,0,0,0.2)] text-zinc-400 group-hover:text-accent-warm group-hover:bg-accent-warm/15 group-hover:border-accent-warm/40 group-hover:shadow-[0_0_25px_rgba(212,132,90,0.2),inset_0_1px_0_rgba(212,132,90,0.1)] transition-all duration-500 ${iconSize === "text-2xl" || iconSize === "text-3xl" ? "h-12 w-12" : "h-10 w-10"}`}
+            <div className="flex items-start justify-between">
+              <span className="kbli-figure text-[26px] leading-none text-[var(--kbli-text-primary)]">
+                {s.id}
+              </span>
+              <span
+                aria-hidden="true"
+                className="flex h-6 w-6 items-center justify-center text-[var(--kbli-text-secondary)] [&>svg]:h-5 [&>svg]:w-5"
               >
-                <div
-                  className={`drop-shadow-md group-hover:scale-110 transition-transform duration-500 flex items-center justify-center ${iconSize === "text-2xl" || iconSize === "text-3xl" ? "scale-125" : "scale-100"}`}
-                >
-                  {SECTOR_ICONS[s.id] || <HelpCircle strokeWidth={1.5} />}
-                </div>
-              </div>
-              <div className="text-[10px] font-bold tracking-wider uppercase text-accent-warm opacity-80 group-hover:opacity-100 transition-opacity">
-                Section {s.id}
-              </div>
+                {SECTOR_ICONS[s.id] || <HelpCircle strokeWidth={1.5} />}
+              </span>
             </div>
 
-            {/* Sector Name */}
-            <div className="text-sm font-bold leading-snug text-white transition-colors group-hover:text-accent-warm flex-grow drop-shadow-sm mt-1">
+            <div className="mt-3 flex-grow text-[13.5px] font-semibold leading-snug text-[var(--kbli-text-primary)] group-hover:text-[var(--kbli-accent)]">
               {s.nameEn}
             </div>
 
-            {/* Code count + visual bar */}
-            <div className="mt-5">
-              <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-[11px] font-medium text-zinc-400 group-hover:text-zinc-300 transition-colors">
-                  {s.codeCount} {s.codeCount === 1 ? "code" : "codes"}
-                </span>
-                {tier === "xl" && (
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-accent-warm animate-pulse">
-                    Large
-                  </span>
-                )}
+            <div className="mt-3">
+              <div className="kbli-figure mb-1 text-[15px] text-[var(--kbli-text-primary)]">
+                {s.codeCount} {s.codeCount === 1 ? "code" : "codes"}
               </div>
-
-              {/* Dynamic Progress Bar */}
-              <div className="relative h-1 w-full overflow-hidden rounded-full bg-white/[0.06] shadow-inner">
-                {/* Glowing Track */}
+              <div
+                aria-hidden="true"
+                className="relative h-[3px] w-full bg-[var(--kbli-bg-secondary)]"
+              >
                 <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#d4845a] via-[#a855f7] to-[#3b82f6] opacity-60 group-hover:opacity-100 transition-opacity"
+                  className="absolute inset-y-0 left-0"
                   style={{
                     width: `${barPct}%`,
-                    animation: "progress-grow 1.2s ease-out forwards",
+                    background: "var(--r19-structure, #233D52)",
                   }}
-                />
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-white opacity-0 blur-[2px] group-hover:opacity-60 transition-opacity mix-blend-overlay"
-                  style={{ width: `${barPct}%` }}
                 />
               </div>
             </div>

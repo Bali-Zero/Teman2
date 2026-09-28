@@ -56,7 +56,7 @@ export default async function SectorPanelPage({
         </div>
       }
     >
-      <header className="shrink-0 border-b border-white/[0.06] px-5 pb-4 pr-14 pt-5">
+      <header className="shrink-0 border-b border-[var(--kbli-border)] px-5 pb-4 pr-14 pt-5">
         <div className="flex items-start gap-3">
           <span className="text-3xl leading-none" aria-hidden>
             {meta.icon}
@@ -68,19 +68,21 @@ export default async function SectorPanelPage({
             >
               Section {sectionId}
             </div>
-            <h2 className="mt-0.5 truncate text-lg font-bold leading-snug text-white">
+            <h2 className="mt-0.5 truncate text-lg font-bold leading-snug text-[var(--kbli-text-primary)]">
               {meta.nameEn}
             </h2>
-            <p className="truncate text-sm text-zinc-400">{meta.nameId}</p>
+            <p className="truncate text-sm text-[var(--kbli-text-muted)]">
+              {meta.nameId}
+            </p>
           </div>
         </div>
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-[var(--kbli-text-muted)]">
           {codes.length} business {codes.length === 1 ? "code" : "codes"} ·{" "}
           {/* A plain <a>: this one deliberately leaves the panel for the real
               page rather than being intercepted back into it. */}
           <a
             href={`/kbli/sectors/${sectionId}`}
-            className="underline underline-offset-2 hover:text-zinc-300"
+            className="underline underline-offset-2 hover:text-[var(--kbli-text-secondary)]"
             data-testid="kbli-panel-fullpage-link"
           >
             open as full page

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Search, Loader2, X, ChevronRight, AlertTriangle } from "lucide-react";
+import { Search, Loader2, X, AlertTriangle } from "lucide-react";
 import {
   apiPmaStatusLabel,
   isApiPmaVerdictVerified,
@@ -12,6 +12,15 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { logger } from "@/lib/logger";
 import { trackKBLISearch } from "@/lib/analytics";
+import { searchCodes } from "@/lib/kbli-search";
+import {
+  lightPmaStatus,
+  lightRowsToSearchable,
+  loadKbliLightIndex,
+  type KBLILightRow,
+} from "@/lib/kbli-light-index";
+import { RiskBadge } from "./RiskBadge";
+import { BaliStatusBadge } from "./BaliStatusBadge";
 
 interface Props {
   navigateOnSubmit?: boolean;
@@ -28,6 +37,21 @@ interface Props {
   quickFilters?: string[];
 }
 
+/** How many instant (index) hits the first frame shows before the API answers. */
+const INSTANT_LIMIT = 8;
+
+/**
+ * One specimen row — the same shape whether it came from the instant index or
+ * from the API. `row` is the build-time index record for the code when the
+ * index is loaded; it carries the verified ownership figure, risk and Bali
+ * status. `api` is present when the API answered for this code.
+ */
+interface Specimen {
+  code: string;
+  row?: KBLILightRow;
+  api?: KBLISearchResult;
+}
+
 export function KBLISearch({
   navigateOnSubmit = true,
   autoFocus = false,
@@ -38,10 +62,14 @@ export function KBLISearch({
 }: Props) {
   const [query, setQuery] = React.useState(initialQuery);
   const [results, setResults] = React.useState<KBLISearchResult[]>([]);
+  // The query the API results above answer — a stale answer never replaces
+  // the instant list for a newer query.
+  const [answeredQuery, setAnsweredQuery] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isOpen, setIsOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
   const [searchError, setSearchError] = React.useState<string | null>(null);
+  const [indexRows, setIndexRows] = React.useState<KBLILightRow[] | null>(null);
   const router = useRouter();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -57,6 +85,52 @@ export function KBLISearch({
     if (initialQuery) setQuery(initialQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The build-time light index (lib/kbli-light-index.ts). Fetched once; a
+  // failure leaves the search API-only, exactly as it was.
+  React.useEffect(() => {
+    let alive = true;
+    loadKbliLightIndex().then((rows) => {
+      if (alive && rows) setIndexRows(rows);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const searchable = React.useMemo(
+    () => (indexRows ? lightRowsToSearchable(indexRows) : null),
+    [indexRows],
+  );
+  const rowByCode = React.useMemo(
+    () => new Map((indexRows ?? []).map((row) => [row.c, row])),
+    [indexRows],
+  );
+
+  const trimmed = query.trim();
+  const searchable2 = trimmed.length >= 2 && query.length >= 2;
+
+  // Instant first pass: the unchanged searchCodes over the light index, on
+  // every keystroke, no debounce.
+  const instant = React.useMemo<Specimen[]>(() => {
+    if (!searchable || !searchable2) return [];
+    return searchCodes(searchable, trimmed)
+      .slice(0, INSTANT_LIMIT)
+      .map((hit) => ({
+        code: hit.code.code,
+        row: rowByCode.get(hit.code.code),
+      }));
+  }, [searchable, searchable2, trimmed, rowByCode]);
+
+  const apiAnswered = answeredQuery === query && results.length > 0;
+  const specimens: Specimen[] = apiAnswered
+    ? results.map((api) => ({
+        code: api.code,
+        api,
+        row: rowByCode.get(api.code),
+      }))
+    : instant;
+  const fromIndex = !apiAnswered && instant.length > 0;
 
   // Focus after hydration instead of via the HTML autofocus attribute. The
   // attribute is present in the server-rendered markup, so the browser focuses
@@ -80,10 +154,19 @@ export function KBLISearch({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Debounced search
+  // The instant list opens the dropdown on the keystroke that produced it.
+  React.useEffect(() => {
+    if (instant.length > 0) {
+      setIsOpen(true);
+      setActiveIndex(-1);
+    }
+  }, [instant]);
+
+  // Debounced search — the API refines whatever the index showed.
   React.useEffect(() => {
     if (!query.trim() || query.length < 2) {
       setResults([]);
+      setAnsweredQuery(null);
       setSearchError(null);
       setIsOpen(false);
       return;
@@ -95,11 +178,13 @@ export function KBLISearch({
       try {
         const data = await kbliApi.search(query);
         setResults(data || []);
+        setAnsweredQuery(query);
         setIsOpen(true);
         setActiveIndex(-1);
       } catch (err) {
         logger.error("KBLI search failed:", err as Record<string, unknown>);
         setResults([]);
+        setAnsweredQuery(null);
 
         // ApiClientBase throws Error(error.detail || `HTTP ${status}`).
         // 503 from a gateway/proxy may return non-JSON → detail falls back to
@@ -133,7 +218,7 @@ export function KBLISearch({
 
   const handleSelect = (code: string) => {
     setIsOpen(false);
-    trackKBLISearch(query, results.length);
+    trackKBLISearch(query, specimens.length);
     if (navigateOnSubmit) {
       router.push(`/kbli/${code}`);
     }
@@ -153,15 +238,15 @@ export function KBLISearch({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((prev) => Math.min(prev + 1, results.length - 1));
+      setActiveIndex((prev) => Math.min(prev + 1, specimens.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((prev) => Math.max(prev - 1, 0));
     } else if (e.key === "Enter") {
-      if (activeIndex >= 0 && results[activeIndex]) {
-        handleSelect(results[activeIndex].code);
+      if (activeIndex >= 0 && specimens[activeIndex]) {
+        handleSelect(specimens[activeIndex].code);
       } else if (navigateOnSubmit && query.trim()) {
-        trackKBLISearch(query, results.length);
+        trackKBLISearch(query, specimens.length);
         router.push(`/kbli?q=${encodeURIComponent(query)}`);
       }
     } else if (e.key === "Escape") {
@@ -169,19 +254,24 @@ export function KBLISearch({
     }
   };
 
+  // With an instant list on screen, a failed API call is not an error the
+  // reader needs to act on — the list stays and the footer says where it came
+  // from. Without one, the banner shows exactly as before.
+  const showError = Boolean(searchError) && specimens.length === 0;
+
   // The dropdown shows for results OR for the error banner, and the listbox
   // node lives inside it in both cases — so aria-controls resolves whenever
   // aria-expanded is true.
-  const isDropdownOpen = isOpen && (results.length > 0 || Boolean(searchError));
+  const isDropdownOpen = isOpen && (specimens.length > 0 || showError);
 
   return (
     <div ref={containerRef} className={cn("relative w-full", className)}>
-      <div className="relative group">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-300 transition-colors">
-          {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+      <div className="relative">
+        <div className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--kbli-text-primary)]">
+          {isLoading && !fromIndex ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <Search className="w-5 h-5" />
+            <Search className="h-5 w-5" strokeWidth={1.75} />
           )}
         </div>
         <input
@@ -201,33 +291,35 @@ export function KBLISearch({
             activeIndex >= 0 ? optionId(activeIndex) : undefined
           }
           className={cn(
-            "w-full pl-12 pr-10 py-4 bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl text-white placeholder-zinc-400",
-            "shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]",
-            "focus:outline-none focus:ring-2 focus:ring-[#dc2626] focus:border-white/[0.15] transition-all text-lg",
+            "h-[60px] w-full rounded-[var(--r19-radius-control,3px)] border border-[var(--r19-control-border,#7B817F)] bg-[var(--kbli-bg-surface)] pl-12 pr-11 text-[17px] text-[var(--kbli-text-primary)] placeholder:text-[var(--kbli-text-muted)]",
+            "shadow-[inset_0_1px_0_#1d2c3b0a] transition-shadow",
+            "focus:outline-none focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-[var(--kbli-accent)] focus:outline-[3px] focus:outline-offset-[3px] focus:outline-[var(--kbli-accent)]",
           )}
         />
         {query && (
           <button
+            type="button"
+            aria-label="Clear search"
             onClick={() => {
               setQuery("");
               setResults([]);
             }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-white/[0.08] text-zinc-500"
+            className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-[var(--kbli-text-muted)] hover:bg-[var(--kbli-bg-surface-hover)] hover:text-[var(--kbli-text-primary)]"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
       <div className="sr-only" role="status" aria-live="polite">
-        {isDropdownOpen && results.length > 0
-          ? `${results.length} KBLI codes found`
+        {isDropdownOpen && specimens.length > 0
+          ? `${specimens.length} KBLI codes found`
           : ""}
       </div>
 
       {quickFilters && quickFilters.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
-          <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mr-2">
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2">
+          <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--kbli-text-muted)]">
             Quick:
           </span>
           {quickFilters.map((filter) => (
@@ -238,10 +330,10 @@ export function KBLISearch({
               aria-label={`Search ${filter}`}
               aria-pressed={query === filter}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-medium backdrop-blur-md border shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-300",
+                "min-h-[36px] rounded-full border px-3.5 text-[13px] font-medium transition-colors",
                 query === filter
-                  ? "text-white bg-white/[0.10] border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]"
-                  : "text-zinc-400 bg-white/[0.04] border-white/[0.06] hover:bg-white/[0.07] hover:text-white hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]",
+                  ? "border-[var(--kbli-text-primary)] bg-[var(--kbli-text-primary)] text-[var(--kbli-bg-surface)]"
+                  : "border-[var(--r19-control-border,#7B817F)] bg-transparent text-[var(--kbli-text-primary)] hover:bg-[var(--kbli-bg-surface-hover)]",
               )}
             >
               {filter}
@@ -252,82 +344,170 @@ export function KBLISearch({
 
       {/* Results dropdown — also shown when there is a search error */}
       {isDropdownOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-[#1c1c1f]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-[var(--kbli-radius-md)] border border-[var(--kbli-border-hover)] bg-[var(--kbli-bg-surface)] shadow-[0_18px_40px_#1d2c3b24]">
           {/* Error banner — shown above results when search fails */}
-          {searchError && (
-            <div className="flex items-start gap-2 px-4 py-3 text-sm border-b border-amber-500/20 bg-amber-500/[0.08]">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400" />
-              <span className="text-amber-300">{searchError}</span>
+          {showError && (
+            <div className="flex items-start gap-2 border-b border-[var(--kbli-border)] bg-[var(--kbli-pma-restricted-bg)] px-4 py-3 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--kbli-pma-restricted)]" />
+              <span className="text-[var(--kbli-pma-restricted)]">
+                {searchError}
+              </span>
             </div>
           )}
           <div
             id={listboxId}
             role="listbox"
             aria-label="KBLI search results"
-            className="max-h-[400px] overflow-y-auto"
+            className="max-h-[min(440px,60vh)] overflow-y-auto overscroll-contain"
           >
-            {results.map((result, index) => (
-              <button
-                key={result.code}
+            {specimens.map((s, index) => (
+              <SpecimenOption
+                key={s.code}
                 id={optionId(index)}
-                role="option"
-                aria-selected={index === activeIndex}
-                onClick={() => handleSelect(result.code)}
-                onMouseEnter={() => setActiveIndex(index)}
-                className={cn(
-                  "w-full flex items-start gap-4 px-4 py-3 text-left transition-all duration-200",
-                  index === activeIndex
-                    ? "bg-white/[0.06]"
-                    : "hover:bg-white/[0.04]",
-                )}
-              >
-                <div className="flex-shrink-0 w-12 h-12 bg-[#dc2626]/10 rounded-lg flex items-center justify-center font-bold text-[#dc2626] border border-[#dc2626]/20 text-xs">
-                  {result.code}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate text-white">
-                    {result.title}
-                  </div>
-                  <div className="text-sm text-zinc-400 line-clamp-1">
-                    {result.description}
-                  </div>
-                  <div className="flex gap-2 mt-1">
-                    <span
-                      className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                        isApiPmaVerdictVerified(result)
-                          ? "bg-emerald-500/10 text-emerald-400"
-                          : "bg-zinc-500/10 text-zinc-400",
-                      )}
-                    >
-                      {apiPmaStatusLabel(result)}
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium">
-                      {result.risk_category}
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight
-                  className={cn(
-                    "w-4 h-4 self-center text-zinc-400",
-                    index === activeIndex && "text-[#dc2626] animate-pulse",
-                  )}
-                />
-              </button>
+                specimen={s}
+                active={index === activeIndex}
+                onSelect={() => handleSelect(s.code)}
+                onHover={() => setActiveIndex(index)}
+              />
             ))}
           </div>
-          <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex justify-between items-center text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
-            <span>{results.length} KBLI codes found</span>
-            <span className="flex items-center gap-1">
-              Press{" "}
-              <kbd className="bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.1] text-zinc-400">
-                ENTER
-              </kbd>{" "}
-              to see all
+          <div className="flex items-center justify-between gap-2 whitespace-nowrap border-t border-[var(--kbli-border)] bg-[var(--kbli-bg-base)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-normal text-[var(--kbli-text-muted)] sm:gap-3 sm:text-[11px] sm:tracking-[0.12em]">
+            <span className="min-w-0 truncate tabular-nums">
+              {specimens.length} KBLI codes found
+            </span>
+            <span>
+              {fromIndex
+                ? searchError
+                  ? "Built-in index · live search offline"
+                  : "Instant index · refining"
+                : "Enter to see all"}
             </span>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The specimen card: the code set as a figure (Fraunces, tabular), the
+ * English title with the Indonesian one under it, then the measured facts.
+ * Ownership shows as a gauge ONLY for a verified verdict with a verified
+ * numeric cap (the index carries `f` under exactly that gate); otherwise the
+ * API's own label, or "PMA not verified" — never an inferred figure.
+ */
+function SpecimenOption({
+  id,
+  specimen,
+  active,
+  onSelect,
+  onHover,
+}: {
+  id: string;
+  specimen: Specimen;
+  active: boolean;
+  onSelect: () => void;
+  onHover: () => void;
+}) {
+  const { code, row, api } = specimen;
+  const titleEn = row?.e ?? api?.title ?? "";
+  const titleId = row?.i ?? api?.description ?? "";
+  const pmaLabel = api
+    ? apiPmaStatusLabel(api)
+    : row?.p
+      ? `PMA ${lightPmaStatus(row)}`
+      : "PMA not verified";
+  const pmaVerified = api ? isApiPmaVerdictVerified(api) : Boolean(row?.p);
+  const risk = row?.r ?? api?.risk_category;
+
+  return (
+    <button
+      type="button"
+      id={id}
+      role="option"
+      aria-selected={active}
+      onClick={onSelect}
+      onMouseEnter={onHover}
+      className={cn(
+        "grid w-full grid-cols-[4rem_1fr] gap-x-3 border-b border-[var(--kbli-border)] px-4 py-3 text-left last:border-b-0 sm:grid-cols-[5.5rem_1fr]",
+        active
+          ? "bg-[var(--kbli-bg-surface-hover)] shadow-[inset_3px_0_0_var(--kbli-accent)]"
+          : "hover:bg-[var(--kbli-bg-card-hover)]",
+      )}
+    >
+      <span className="kbli-figure pt-0.5 text-[22px] leading-none text-[var(--kbli-text-primary)] sm:text-[24px]">
+        {code}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[15px] font-semibold leading-snug text-[var(--kbli-text-primary)]">
+          {titleEn}
+        </span>
+        {titleId && titleId !== titleEn && (
+          <span
+            lang="id"
+            className="mt-0.5 block truncate text-[13px] text-[var(--kbli-text-secondary)]"
+          >
+            {titleId}
+          </span>
+        )}
+      </span>
+      {/* Facts span the full card width on phones (under the code too), so
+          the Bali pill has room for its one line (styles/kbli-theme.css
+          .kbli-specimen-bali). */}
+      <span className="col-span-2 mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 sm:col-span-1 sm:col-start-2">
+        {typeof row?.f === "number" ? (
+          <OwnershipGauge pct={row.f} />
+        ) : (
+          <span
+            className={cn(
+              "inline-flex items-center rounded-[3px] border px-1.5 py-0.5 text-[11px] font-medium",
+              pmaVerified
+                ? "border-[var(--kbli-border-hover)] text-[var(--kbli-text-primary)]"
+                : "border-dashed border-[var(--kbli-border-hover)] text-[var(--kbli-text-muted)]",
+            )}
+          >
+            {pmaLabel}
+          </span>
+        )}
+        {risk && (
+          <RiskBadge
+            riskCategory={risk}
+            size="sm"
+            verificationPending={row?.rp === 1}
+          />
+        )}
+        {row?.b && (
+          <span className="kbli-specimen-bali">
+            <BaliStatusBadge
+              status={row.b}
+              confidence={row.bc}
+              needsReview={row.bn === 1}
+              pmaStatus={lightPmaStatus(row) ?? "unknown"}
+              scope={row.bs}
+              size="sm"
+            />
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+/** A measured bar: the verified foreign-ownership ceiling as a share of 100. */
+function OwnershipGauge({ pct }: { pct: number }) {
+  const clamped = Math.max(0, Math.min(100, pct));
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold tabular-nums text-[var(--kbli-text-primary)]">
+      <span
+        aria-hidden="true"
+        className="relative inline-block h-[6px] w-12 overflow-hidden rounded-[1px] bg-[var(--kbli-bg-secondary)]"
+      >
+        <span
+          className="absolute inset-y-0 left-0 bg-[var(--r19-structure,#233D52)]"
+          style={{ width: `${clamped}%` }}
+        />
+      </span>
+      {clamped === 100 ? "Foreign 100%" : `Foreign ≤ ${clamped}%`}
+    </span>
   );
 }

@@ -34,4 +34,28 @@ describe("CTAHandoff", () => {
     expect(wa.style.minHeight).toBe("44px");
     expect(wa.style.display).toBe("inline-flex");
   });
+  it("paints the actions, not the rail — no full-width slab over the page", () => {
+    const { getByRole, getAllByRole } = render(
+      <CTAHandoff source="kbli" sessionId="xyz" />,
+    );
+    const rail = getByRole("group", { name: "Next actions" });
+    expect(rail.style.background).toBe("");
+    expect(rail.style.pointerEvents).toBe("none");
+    const wa = getAllByRole("link")[0];
+    expect(wa.style.pointerEvents).toBe("auto");
+    expect(wa.style.border).toBe("1px solid var(--accent-funnel)");
+  });
+
+  it("wraps its no-wrap pills instead of pushing the first ones off a 320px screen", () => {
+    const { getByRole } = render(
+      <CTAHandoff
+        source="visa-oracle"
+        sessionId="abc"
+        pdfHref="/api/report.pdf"
+        onZantaraClick={() => {}}
+      />,
+    );
+    const rail = getByRole("group", { name: "Next actions" });
+    expect(rail.style.flexWrap).toBe("wrap");
+  });
 });

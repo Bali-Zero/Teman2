@@ -106,11 +106,21 @@ export function BaliStatusBadge({
         <span aria-hidden="true">🏝️</span>
         <span aria-hidden="true">{c.icon}</span>
         <span>{c.label}</span>
-        {needsReview && <span className="opacity-70">· needs review</span>}
-        {confidence && confidence !== "HIGH" && (
-          <span className="opacity-60">· {confidence.toLowerCase()} conf.</span>
+        {needsReview && (
+          <span className="font-normal text-[var(--kbli-text-secondary)]">
+            · needs review
+          </span>
         )}
-        {scope && <span className="opacity-70">· {scope} only</span>}
+        {confidence && confidence !== "HIGH" && (
+          <span className="font-normal text-[var(--kbli-text-secondary)]">
+            · {confidence.toLowerCase()} conf.
+          </span>
+        )}
+        {scope && (
+          <span className="font-normal text-[var(--kbli-text-secondary)]">
+            · {scope} only
+          </span>
+        )}
       </span>
       {reason && (
         <span className="text-xs leading-snug text-[var(--kbli-text-muted)]">

@@ -67,7 +67,9 @@ export function RiskBadge({
       />
       {label} Risk
       {verificationPending && (
-        <span className="opacity-70">· pending verification</span>
+        <span className="font-normal text-[var(--kbli-text-secondary)]">
+          · pending verification
+        </span>
       )}
     </span>
   );
