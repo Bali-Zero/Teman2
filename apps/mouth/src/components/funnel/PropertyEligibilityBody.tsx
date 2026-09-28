@@ -647,7 +647,7 @@ export function PropertyEligibilityBody() {
                     </span>
                     {kbliLabel ? <StatePill label={kbliLabel} /> : null}
                   </div>
-                  {kbli?.reason ? (
+                  {kbli?.reason && use !== "villa_rental" ? (
                     <p style={{ color: "var(--text-secondary)", margin: 0 }}>
                       {KBLI_REASON_TEXT[kbli.reason] ?? kbli.reason}
                     </p>
