@@ -16,6 +16,7 @@ with a scripted stub — never a real key, never network.
 
 from __future__ import annotations
 
+import io
 import json
 import sys
 import urllib.error
@@ -117,6 +118,7 @@ def test_success_reports_model_usage_and_attempts(monkeypatch, authorized, sleep
     assert judgment.mode == "jev"
     assert judgment.reason is None
     assert judgment.attempts == 1
+    assert judgment.http_status is None
     assert judgment.model == tc.MODEL
     assert judgment.usage == {"input_tokens": 427, "output_tokens": 0}
     assert judgment.answers == {"route": {"type": "noul", "noul": 0.4}}
@@ -132,10 +134,11 @@ def test_success_reports_model_usage_and_attempts(monkeypatch, authorized, sleep
         ({}, None),
         ({"input_tokens": True}, None),
         ({"input_tokens": -1}, None),
+        ({"input_tokens": 10.9}, None),
         ({"weird": 3}, None),
         ({"input_tokens": 10}, {"input_tokens": 10}),
     ],
-    ids=["absent", "empty", "bool", "negative", "unknown-key", "partial"],
+    ids=["absent", "empty", "bool", "negative", "float", "unknown-key", "partial"],
 )
 def test_usage_extraction_is_strict(monkeypatch, authorized, usage, expected):
     payload = {"model": tc.MODEL, "answers": {}}
@@ -151,15 +154,33 @@ def test_usage_extraction_is_strict(monkeypatch, authorized, usage, expected):
 
 
 @pytest.mark.parametrize(
-    "model",
-    ["with\nnewline", "x" * 200, "", 123, None],
-    ids=["newline", "too-long", "empty", "not-a-string-int", "not-a-string-none"],
+    "model,expected",
+    [
+        ("with\nnewline", None),
+        ("x" * 200, None),
+        ("", None),
+        (123, None),
+        (None, None),
+        ("jev-1.13.0:x", "jev-1.13.0:x"),  # a colon is in the allowed alphabet
+        ("x" * 64, "x" * 64),  # boundary: 64 chars kept
+        ("x" * 65, None),  # boundary: 65 chars rejected
+    ],
+    ids=[
+        "newline",
+        "too-long",
+        "empty",
+        "not-a-string-int",
+        "not-a-string-none",
+        "colon-kept",
+        "64-chars-kept",
+        "65-chars-none",
+    ],
 )
-def test_unsafe_model_strings_become_none(monkeypatch, authorized, model):
+def test_model_extraction_is_bounded_by_regex_and_length(monkeypatch, authorized, model, expected):
     body = json.dumps({"model": model, "answers": {}}).encode()
     monkeypatch.setattr(tc, "_OPENER", _Opener([_Resp(body)]))
 
-    assert tc.ask_detailed({}, {}).model is None
+    assert tc.ask_detailed({}, {}).model == expected
 
 
 # ─────────────────────────────────────────────────────────────── 3 — malformed
@@ -253,6 +274,26 @@ def test_denied_never_serializes(monkeypatch, tmp_path, authorize, set_key, expe
     assert judgment.usage is None
 
 
+def test_an_unmapped_unavailable_reason_never_raises(monkeypatch):
+    """`ask()` promises it never raises. `REASON_CODES[reason_text]` would
+    break that the day `unavailable_reason()` returns a THIRD sentence
+    neither NO_KEY nor NOT_AUTHORIZED — the fallback (`UNAVAILABLE`) is what
+    keeps that promise. Found in cross-family review of the first round."""
+    monkeypatch.setattr(tc, "unavailable_reason", lambda: "a brand new silence")
+
+    def _explode(*_a, **_k):
+        raise AssertionError("must not reach the transport while unavailable")
+
+    monkeypatch.setattr(tc.json, "dumps", _explode)
+
+    judgment = tc.ask_detailed({}, {})
+
+    assert tc.ask({}, {}) is None
+    assert judgment.mode == "local"
+    assert judgment.reason == tc.UNAVAILABLE
+    assert judgment.attempts == 0
+
+
 # ───────────────────────────────────────────────────── 5 — transient/transport
 
 
@@ -302,7 +343,9 @@ def test_elapsed_ms_uses_monotonic_only(monkeypatch, tmp_path):
     monkeypatch.setattr(tc, "AUTHORIZATION", tmp_path / "does-not-exist.json")
     monkeypatch.delenv(tc.ENV_VAR, raising=False)
 
-    values = iter([100.0, 100.25])
+    # 100.0 -> 100.2506 is 250.6ms: ROUNDS to 251, a truncating `int()` alone
+    # would give 250 — the gap that distinguishes the two implementations.
+    values = iter([100.0, 100.2506])
     monkeypatch.setattr(tc.time, "monotonic", lambda: next(values))
     monkeypatch.setattr(
         tc.time, "time", lambda: (_ for _ in ()).throw(AssertionError("time.time read"))
@@ -310,7 +353,7 @@ def test_elapsed_ms_uses_monotonic_only(monkeypatch, tmp_path):
 
     judgment = tc.ask_detailed({}, {})
 
-    assert judgment.elapsed_ms == 250
+    assert judgment.elapsed_ms == 251
     assert judgment.mode == "local"
 
 
@@ -336,27 +379,58 @@ def test_ask_matches_ask_detailed_and_elapsed_is_sane(monkeypatch, authorized, s
     assert tc.ask({}, {}) == judgment.answers
 
 
-def test_nothing_sensitive_reaches_telemetry_or_repr(monkeypatch, authorized, sleeps):
+def test_nothing_sensitive_reaches_telemetry_or_repr_on_success(monkeypatch, authorized):
     state = {"content": "STATE_MARKER_never_leaks"}
     questions = {"QUESTIONS_MARKER_never_leaks": {}}
     key_marker = "KEY_MARKER_never_leaks"
     body_marker = "BODY_MARKER_never_leaks"
-    exc_marker = "EXC_MARKER_never_leaks"
     monkeypatch.setenv(tc.ENV_VAR, key_marker)
 
     body = json.dumps({"model": tc.MODEL, "answers": {}, "note": body_marker}).encode()
-    monkeypatch.setattr(tc, "_OPENER", _Opener([urllib.error.URLError(exc_marker), _Resp(body)]))
+    monkeypatch.setattr(tc, "_OPENER", _Opener([_Resp(body)]))
 
     judgment = tc.ask_detailed(state, questions)
     dumped = json.dumps(judgment.telemetry())
 
-    for marker in (
-        "STATE_MARKER_never_leaks",
-        "QUESTIONS_MARKER_never_leaks",
-        key_marker,
-        body_marker,
-        exc_marker,
-    ):
+    for marker in ("STATE_MARKER_never_leaks", "QUESTIONS_MARKER_never_leaks", key_marker, body_marker):
+        assert marker not in dumped
+        assert marker not in repr(judgment)
+
+
+def test_nothing_leaks_on_a_final_transport_failure(monkeypatch, authorized, sleeps):
+    """The marker rides EVERY attempt, so it is present on the attempt that
+    actually gives up — not just a retried one a mutant could leak from
+    while still passing a test whose marker sat on an intermediate attempt
+    that then succeeded."""
+    exc_marker = "EXC_MARKER_final_transport_failure_never_leaks"
+    monkeypatch.setattr(
+        tc, "_OPENER", _Opener([urllib.error.URLError(exc_marker)] * tc.MAX_ATTEMPTS)
+    )
+
+    judgment = tc.ask_detailed({}, {})
+    dumped = json.dumps(judgment.telemetry())
+
+    assert judgment.reason == tc.TRANSPORT_ERROR
+    assert exc_marker not in dumped
+    assert exc_marker not in repr(judgment)
+
+
+def test_nothing_leaks_on_a_final_http_error_with_a_body(monkeypatch, authorized):
+    """`HTTPError.msg` and its `fp` body both carry a marker on the FINAL
+    (non-retried) attempt — the shape a mutant storing `str(exc)` on the
+    give-up path, rather than an intermediate retry, would be caught by."""
+    msg_marker = "MSG_MARKER_final_http_error_never_leaks"
+    body_marker = "BODY_MARKER_final_http_error_never_leaks"
+    exc = urllib.error.HTTPError(
+        tc.ENDPOINT, 500, msg_marker, None, io.BytesIO(body_marker.encode())
+    )
+    monkeypatch.setattr(tc, "_OPENER", _Opener([exc]))
+
+    judgment = tc.ask_detailed({}, {})
+    dumped = json.dumps(judgment.telemetry())
+
+    assert judgment.reason == tc.HTTP_ERROR
+    for marker in (msg_marker, body_marker):
         assert marker not in dumped
         assert marker not in repr(judgment)
 
@@ -445,6 +519,43 @@ def test_lint_main_json_mode_carries_per_file_and_summary_telemetry(
     assert rc == 0
     assert payload["results"][0]["jev"]["mode"] == "jev"
     assert "jev_telemetry" in payload
+
+
+def test_lint_summary_tracks_elapsed_max_and_usage_unknown_across_files(
+    monkeypatch, authorized, tmp_path, capsys
+):
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    target_a = tmp_path / "a.py"
+    target_a.write_text("resp = requests.post(url, json={'x': 1})\n")
+    target_b = tmp_path / "b.py"
+    target_b.write_text("resp = requests.post(url, json={'y': 2})\n")
+
+    body_with_usage = json.dumps(
+        {"model": tc.MODEL, "answers": _all_routes_answer(0.0), "usage": {"input_tokens": 5}}
+    ).encode("utf-8")
+    body_without_usage = json.dumps(
+        {"model": tc.MODEL, "answers": _all_routes_answer(0.0)}
+    ).encode("utf-8")
+    monkeypatch.setattr(
+        tc, "_OPENER", _Opener([_Resp(body_with_usage), _Resp(body_without_usage)])
+    )
+
+    # File A: start=0.0, elapsed sampled at 0.010 -> 10ms. File B: start=0.010
+    # (the third scripted value), elapsed sampled at 0.035 -> 25ms. Two
+    # distinct elapsed values so `elapsed_ms_max` (25) is provably the MAX,
+    # not just the last or the sum.
+    values = iter([0.0, 0.010, 0.010, 0.035])
+    monkeypatch.setattr(tc.time, "monotonic", lambda: next(values))
+
+    rc = lint.main([str(target_a), str(target_b)])
+    out = capsys.readouterr().out
+    line = next(l for l in out.splitlines() if l.startswith("lint_paid_llm_entity: jev-telemetry "))
+    payload = json.loads(line.removeprefix("lint_paid_llm_entity: jev-telemetry "))
+
+    assert rc == 0
+    assert payload["elapsed_ms_max"] == 25
+    assert payload["usage_unknown"] == 1
+    assert payload["input_tokens"] == 5
 
 
 def test_lint_main_telemetry_service_is_no_key_when_key_absent(monkeypatch, tmp_path, capsys):

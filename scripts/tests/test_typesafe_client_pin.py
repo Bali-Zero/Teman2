@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import sys
 from pathlib import Path
 
 _CLIENT = Path(__file__).resolve().parents[1] / "typesafe_client.py"
@@ -27,10 +28,23 @@ _PINNED = re.compile(r"^jev-\d+\.\d+\.\d+$")
 
 
 def _model() -> str:
-    spec = importlib.util.spec_from_file_location("typesafe_client", _CLIENT)
+    # The documented importlib recipe (load a source file directly) registers
+    # the module in `sys.modules` BEFORE exec — `typesafe_client.Judgment` is
+    # now a `@dataclass` under `from __future__ import annotations`, and
+    # CPython's dataclasses resolves string annotations via
+    # `sys.modules.get(cls.__module__).__dict__`; unregistered, that is
+    # `None.__dict__`, an AttributeError. A UNIQUE name (never
+    # "typesafe_client") avoids clobbering the real module other test files
+    # import and monkeypatch.
+    name = "_typesafe_client_pin_probe"
+    spec = importlib.util.spec_from_file_location(name, _CLIENT)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    sys.modules[name] = mod
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.modules.pop(name, None)
     return mod.MODEL
 
 

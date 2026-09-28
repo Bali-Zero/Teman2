@@ -64,7 +64,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from redact_for_external import redact  # noqa: E402
-from typesafe_client import REASON_CODES, ask_detailed, available, noul, unavailable_reason  # noqa: E402
+from typesafe_client import (  # noqa: E402
+    REASON_CODES,
+    UNAVAILABLE,
+    ask_detailed,
+    available,
+    noul,
+    unavailable_reason,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PARDON = REPO_ROOT / "infra" / "paid-llm-entity" / "pardoned.json"
@@ -459,18 +466,23 @@ def jev_summary(results: list[dict], service: str) -> dict:
     """One compact, machine-readable rollup of what the model actually did
     across this run — never a verdict, never a path, never source text.
 
-    Reads each file's telemetry via `r.get("jev")` rather than `r["jev"]`:
-    several tests in `test_lint_paid_llm_entity.py` stub `judge_file` with
-    hand-built dicts that predate this field, and a summary that raised on
-    them would make every one of those tests carry an unrelated failure.
-    `service` names the client's OWN state (available, or which closed
-    reason it is silent for) independent of any one file's telemetry, since
-    a run with zero in-scope files still has a service state worth reporting.
+    Reads every field via `.get()`, never `[...]`: several tests in
+    `test_lint_paid_llm_entity.py` stub `judge_file` (or `jev_judgment`) with
+    hand-built dicts that predate this field, or carry only some of it — a
+    pardon test's stub already returns an empty telemetry dict — and a
+    summary that hard-indexed a missing key would raise `KeyError` out of
+    `main()` for a shape the module itself advertises tolerating. A telemetry
+    dict with no `mode` counts toward neither `answered` nor `unavailable`,
+    only toward `asked`; missing counters read as 0, missing usage as `None`.
+    `service` names the client's OWN state independent of any one file's
+    telemetry, since a run with zero in-scope files still has one.
     """
     judged = [j for r in results if (j := r.get("jev")) is not None]
-    answered = [j for j in judged if j["mode"] == "jev"]
-    unavailable = [j for j in judged if j["mode"] != "jev"]
-    partial = [j for j in answered if j["routes_answered"] < j["routes_asked"]]
+    answered = [j for j in judged if j.get("mode") == "jev"]
+    unavailable = [j for j in judged if j.get("mode") not in (None, "jev")]
+    partial = [
+        j for j in answered if j.get("routes_answered", 0) < j.get("routes_asked", 0)
+    ]
 
     reasons: dict[str, int] = {}
     for j in unavailable:
@@ -479,12 +491,16 @@ def jev_summary(results: list[dict], service: str) -> dict:
             reasons[code] = reasons.get(code, 0) + 1
 
     input_tokens = [
-        j["usage"]["input_tokens"] for j in answered if (j["usage"] or {}).get("input_tokens") is not None
+        j["usage"]["input_tokens"]
+        for j in answered
+        if (j.get("usage") or {}).get("input_tokens") is not None
     ]
     output_tokens = [
-        j["usage"]["output_tokens"] for j in answered if (j["usage"] or {}).get("output_tokens") is not None
+        j["usage"]["output_tokens"]
+        for j in answered
+        if (j.get("usage") or {}).get("output_tokens") is not None
     ]
-    elapsed = [j["elapsed_ms"] for j in judged]
+    elapsed = [j.get("elapsed_ms", 0) for j in judged]
     models = sorted({j["model"] for j in judged if j.get("model")})
 
     return {
@@ -496,12 +512,12 @@ def jev_summary(results: list[dict], service: str) -> dict:
         "unavailable": len(unavailable),
         "partial": len(partial),
         "reasons": reasons,
-        "attempts": sum(j["attempts"] for j in judged),
+        "attempts": sum(j.get("attempts", 0) for j in judged),
         "elapsed_ms": sum(elapsed),
         "elapsed_ms_max": max(elapsed) if elapsed else 0,
         "input_tokens": sum(input_tokens) if input_tokens else None,
         "output_tokens": sum(output_tokens) if output_tokens else None,
-        "usage_unknown": sum(1 for j in answered if j["usage"] is None),
+        "usage_unknown": sum(1 for j in answered if j.get("usage") is None),
         "models": models,
     }
 
@@ -632,7 +648,7 @@ def main(argv: list[str] | None = None) -> int:
     # `reason` is `unavailable_reason()`, already computed above for the
     # degrade-path diagnostic; reused here rather than called twice so this
     # summary can never disagree with what that message just said.
-    service = "available" if reason is None else REASON_CODES.get(reason, "unavailable")
+    service = "available" if reason is None else REASON_CODES.get(reason, UNAVAILABLE)
     summary = jev_summary(results, service)
 
     if args.json:

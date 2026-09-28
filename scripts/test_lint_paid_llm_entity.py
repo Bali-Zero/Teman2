@@ -567,6 +567,31 @@ def test_a_violation_exits_one_unless_advisory(monkeypatch, tmp_path, capsys):
     assert "1 violation(s)" in capsys.readouterr().out
 
 
+def test_main_tolerates_a_partial_jev_telemetry_dict(monkeypatch, tmp_path):
+    """`jev_summary` advertises tolerance for a telemetry dict missing fields
+    — the pardon test above already stubs `jev_judgment` to return `{}` — but
+    nothing exercised that through `main()` itself until this test. A hard
+    index anywhere in the summary would turn a stub gap into a crash instead
+    of a number."""
+    target = tmp_path / "changed.py"
+    target.write_text("x = 1\n")
+    verdict = {
+        "violation": False,
+        "grep": False,
+        "fired_routes": [],
+        "pardoned_routes": [],
+        "probabilities": {},
+        "asked": True,
+        "jev": {},
+    }
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    monkeypatch.setattr(
+        lint, "judge_file", lambda path, text, pardons=None: {"path": path, **verdict}
+    )
+
+    assert lint.main([str(target)]) == 0
+
+
 @pytest.mark.parametrize(
     "bad",
     [True, False, 1.5, -0.1, float("inf"), float("nan"), "0.9", None, [0.9], {"p": 0.9}],

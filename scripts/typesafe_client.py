@@ -32,16 +32,12 @@ interpreter. The defect predates PR #6989 — the base client already called
 `urlopen` with the same header and no custom opener — so this narrows a
 pre-existing window rather than fixing a regression.
 
-A FOURTH addition, unrelated to any gate: `ask()` answers a question but
-throws away everything else that happened while answering it, which leaves a
-caller that wants to report "did the model actually run, and how" with
-nowhere to look. `ask_detailed()` returns the same answers plus SAFE
-shape — answered or which of the closed silences, how many HTTP attempts it
-took, token usage or `None` when the vendor never said, and elapsed wall
-time — so a caller can report that without inventing its own plumbing.
-`ask()` becomes a thin projection of it. Neither function's result ever
-carries `state`, `questions`, the key, the response body or exception text:
-`Judgment.telemetry()` is built to be printed or logged exactly as returned.
+A FOURTH addition, unrelated to any gate: `ask()` throws away everything it
+learned while answering a question. `ask_detailed()` keeps the rest — mode,
+closed reason, model identity, usage-or-unknown, attempts, elapsed time —
+and `ask()` becomes a thin projection of it. Neither ever carries `state`,
+`questions`, the key, the response body or exception text: `Judgment.telemetry()`
+is built to be printed or logged exactly as returned.
 """
 
 from __future__ import annotations
@@ -216,19 +212,21 @@ def available() -> bool:
 
 Mode = Literal["jev", "degraded", "local"]
 
-# The four reason codes a request that actually reached the network can end
-# in. "no_key" and "not_authorized" (mode "local", attempts 0) never reach
-# here — they are `REASON_CODES` above, and are named there because they are
-# what `unavailable_reason()` already speaks for.
+# Reason codes a request that reached the network can end in — "no_key" and
+# "not_authorized" (mode "local", attempts 0) are `REASON_CODES` above,
+# already spoken for by `unavailable_reason()`. UNAVAILABLE is the fallback
+# for a reason text `REASON_CODES` has never seen: `ask()` promises it never
+# raises, and an unmapped-key lookup would break that the day
+# `unavailable_reason()` grows a third silence.
 RATE_LIMITED = "rate_limited"
 HTTP_ERROR = "http_error"
 TRANSPORT_ERROR = "transport_error"
 MALFORMED = "malformed"
+UNAVAILABLE = "unavailable"
 
-# The vendor's own `model` string, kept only if it looks like a model
-# identifier and not like an injected value: 1-64 characters, the alphabet a
-# version string needs. Anything else becomes None rather than being trusted
-# into a log line verbatim.
+# The vendor's `model` string, kept only if it looks like a model identifier:
+# 1-64 characters from the alphabet a version string needs. Anything else —
+# too long, empty, non-string — becomes None rather than trusted verbatim.
 _SAFE_MODEL = re.compile(r"[A-Za-z0-9._:-]{1,64}")
 
 
@@ -237,12 +235,10 @@ def _safe_model(raw: object) -> str | None:
 
 
 def _safe_usage(raw: object) -> dict[str, int] | None:
-    """Only the two counters, only when each is a non-negative int.
-
-    `bool` is an `int` subclass — excluded explicitly, the same reason
-    `noul()` excludes it from a probability. Absent, empty, or entirely
-    malformed usage is `None`, NEVER `0` or `{}`: a caller summing token
-    counts must be able to tell "reported zero" from "not reported".
+    """Only the two counters, only when each is a non-negative int — `bool`
+    is an `int` subclass, excluded for the same reason `noul()` excludes it.
+    Absent, empty or malformed usage is `None`, NEVER `0` or `{}`: a caller
+    summing tokens must be able to tell "reported zero" from "not reported".
     """
     if not isinstance(raw, dict):
         return None
@@ -259,9 +255,8 @@ class Judgment:
     """Everything `ask_detailed()` learned, minus anything that could leak.
 
     `answers` is exactly what `ask()` returns and is excluded from `repr()`
-    on purpose — a stack trace or a debugger must not print source content.
-    `telemetry()` drops it entirely: every OTHER field is small, closed-vocabulary
-    or numeric, and safe to print, log or fold into a JSON summary as-is.
+    — a stack trace must not print source content. `telemetry()` drops it
+    entirely: every other field is small, closed-vocabulary or numeric.
     """
 
     answers: dict | None = field(repr=False)
@@ -289,42 +284,52 @@ def ask_detailed(
     state: Any, questions: dict[str, dict], *, timeout: int = TIMEOUT_S
 ) -> Judgment:
     """Send one batched request. Returns a `Judgment`, never raises for a
-    service problem — the same promise `ask()` always made, now with the
-    shape to say WHY when the answer is silence.
+    service problem — the same promise `ask()` always made.
 
     `time.monotonic()` only, sampled once at entry and once per return: a
-    handful of scheduled sub-millisecond reads is safe where wall-clock time
-    is not, because a system clock step during a retry backoff would report
-    a negative or wildly inflated elapsed time for a request that took under
-    a second.
+    system clock step during a retry backoff would report a negative or
+    wildly inflated elapsed time for a request that took under a second.
     """
     start = time.monotonic()
+    attempts = 0
 
     def _elapsed_ms() -> int:
         return max(0, int(round((time.monotonic() - start) * 1000)))
+
+    def _judgment(
+        mode: Mode,
+        *,
+        reason: str | None = None,
+        answers: dict | None = None,
+        model: str | None = None,
+        usage: dict[str, int] | None = None,
+        http_status: int | None = None,
+    ) -> Judgment:
+        # `attempts` is read here rather than passed in: every caller wants
+        # the CURRENT count at return time, which a closure sees for free.
+        return Judgment(
+            answers=answers,
+            mode=mode,
+            reason=reason,
+            model=model,
+            usage=usage,
+            elapsed_ms=_elapsed_ms(),
+            attempts=attempts,
+            http_status=http_status,
+        )
 
     reason_text = unavailable_reason()
     if reason_text is not None:
         # Before the payload exists, not after: an unauthorized endpoint must
         # never have source text serialised for it, even into a request that
         # is then discarded.
-        return Judgment(
-            answers=None,
-            mode="local",
-            reason=REASON_CODES[reason_text],
-            model=None,
-            usage=None,
-            elapsed_ms=_elapsed_ms(),
-            attempts=0,
-            http_status=None,
-        )
+        return _judgment("local", reason=REASON_CODES.get(reason_text, UNAVAILABLE))
     key = os.environ.get(ENV_VAR, "").strip()
 
     payload = json.dumps(
         {"model": MODEL, "state": state, "questions": questions}
     ).encode("utf-8")
 
-    attempts = 0
     for attempt in range(MAX_ATTEMPTS):
         req = urllib.request.Request(
             ENDPOINT,
@@ -343,91 +348,34 @@ def ask_detailed(
             model = _safe_model(body.get("model")) if isinstance(body, dict) else None
             usage = _safe_usage(body.get("usage")) if isinstance(body, dict) else None
             if isinstance(answers, dict):
-                return Judgment(
-                    answers=answers,
-                    mode="jev",
-                    reason=None,
-                    model=model,
-                    usage=usage,
-                    elapsed_ms=_elapsed_ms(),
-                    attempts=attempts,
-                    http_status=None,
-                )
+                return _judgment("jev", answers=answers, model=model, usage=usage)
             # A body that parsed but whose `answers` is not a dict is
             # malformed, not a service failure worth retrying: the same
             # shape would come back on attempt two.
-            return Judgment(
-                answers=None,
-                mode="degraded",
-                reason=MALFORMED,
-                model=model,
-                usage=usage,
-                elapsed_ms=_elapsed_ms(),
-                attempts=attempts,
-                http_status=None,
-            )
+            return _judgment("degraded", reason=MALFORMED, model=model, usage=usage)
         except urllib.error.HTTPError as exc:
             if exc.code in RETRY_STATUS and attempt < MAX_ATTEMPTS - 1:
                 time.sleep(BACKOFF_BASE_S * (2**attempt))
                 continue
             reason = RATE_LIMITED if exc.code in RETRY_STATUS else HTTP_ERROR
-            return Judgment(
-                answers=None,
-                mode="degraded",
-                reason=reason,
-                model=None,
-                usage=None,
-                elapsed_ms=_elapsed_ms(),
-                attempts=attempts,
-                http_status=exc.code,
-            )
+            return _judgment("degraded", reason=reason, http_status=exc.code)
         except (OSError, http.client.HTTPException):
             # URLError, TimeoutError, a reset connection: the transport never
             # produced a response to judge, malformed or otherwise.
             if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(BACKOFF_BASE_S * (2**attempt))
                 continue
-            return Judgment(
-                answers=None,
-                mode="degraded",
-                reason=TRANSPORT_ERROR,
-                model=None,
-                usage=None,
-                elapsed_ms=_elapsed_ms(),
-                attempts=attempts,
-                http_status=None,
-            )
+            return _judgment("degraded", reason=TRANSPORT_ERROR)
         except Exception:
-            # Broad on purpose, same reason `ask()` always caught broadly: a
-            # non-UTF-8 body raises UnicodeDecodeError, a truncated body
-            # raises JSONDecodeError, a non-dict body raises AttributeError
-            # from `.get` — none of them a transport failure, all of them
-            # NEVER carrying exception text into the result.
+            # Broad on purpose, same reason `ask()` always caught broadly —
+            # and NEVER carrying exception text into the result.
             if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(BACKOFF_BASE_S * (2**attempt))
                 continue
-            return Judgment(
-                answers=None,
-                mode="degraded",
-                reason=MALFORMED,
-                model=None,
-                usage=None,
-                elapsed_ms=_elapsed_ms(),
-                attempts=attempts,
-                http_status=None,
-            )
+            return _judgment("degraded", reason=MALFORMED)
     # Unreachable: MAX_ATTEMPTS >= 1 and every branch above returns on the
     # final attempt. Kept as a fail-closed sentinel rather than trusting that.
-    return Judgment(
-        answers=None,
-        mode="degraded",
-        reason=MALFORMED,
-        model=None,
-        usage=None,
-        elapsed_ms=_elapsed_ms(),
-        attempts=attempts,
-        http_status=None,
-    )
+    return _judgment("degraded", reason=MALFORMED)
 
 
 def ask(
@@ -437,10 +385,8 @@ def ask(
 
     None means "no answer available" — no key, network failure, rate limit
     survived the retries, or a malformed response. It never means "no". A
-    thin projection of `ask_detailed()`, kept as its own function because
-    every existing caller wants only the answers and nothing else — the
-    shipped dispatch gate calls this inside a thread, and adding no
-    module-level mutable state here keeps that safe.
+    thin projection of `ask_detailed()`: the shipped dispatch gate calls this
+    inside a thread, and adding no module-level mutable state keeps that safe.
     """
     return ask_detailed(state, questions, timeout=timeout).answers
 
