@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import {
   trackPropertyAnalyzeCTA,
   trackPropertyWACTA,
@@ -9,8 +9,10 @@ import {
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { parseCoordinates } from "./parse-coordinates";
 
-// Semantic state tokens (APPROVED/WARNING/REJECTED, verdict GREEN/YELLOW/RED).
-// Fallback hex only — the real color comes from the CSS var when it's wired.
+// Semantic state tokens (verdict GREEN/YELLOW/RED — the overall investment
+// score pill only; section 3 no longer renders a KBLIEye verdict, see the
+// REWORK-DESIGN notes on PropertyEligibilityBody below). Fallback hex only —
+// the real color comes from the CSS var when it's wired.
 const STATE_STYLE: Record<
   string,
   { color: string; bg: string; border: string }
@@ -32,29 +34,6 @@ const STATE_STYLE: Record<
     bg: "color-mix(in srgb, var(--color-danger, #a4402f) 12%, transparent)",
     border: "color-mix(in srgb, var(--color-danger, #a4402f) 40%, transparent)",
   },
-};
-
-// KBLIEye audit states -> the traffic-light family StatePill already knows.
-const KBLI_STATE_TO_LABEL: Record<string, string> = {
-  APPROVED: "GREEN",
-  WARNING: "YELLOW",
-  REJECTED: "RED",
-  ERROR: "RED",
-};
-
-const KBLI_REASON_TEXT: Record<string, string> = {
-  STANDARD_COMPLIANCE:
-    "No foreign-ownership restriction found for this activity.",
-  PMA_NOT_VERIFIED:
-    "This code's PMA cap is a declared data gap, not a confirmed approval — verify with Bali Zero before relying on it.",
-  PERPRES_10_2021_RESERVATION:
-    "Reserved for Koperasi/UMKM (Perpres 49/2021) — a PT PMA cannot legally hold this code.",
-  PERPRES_10_2021_FOREIGN_CAP:
-    "Foreign ownership is capped below 100% for this activity, not closed outright.",
-  BALI_GOV_LETTER_9_CODES:
-    "Named in the Bali governor's 28 Jan 2026 letter as used by PMAs to obtain stay permits without real activity.",
-  BALI_INGUB_6_2025_MORATORIUM:
-    "Under the Bali modern-chain-retail moratorium (INGUB 6/2025).",
 };
 
 function StatePill({ label }: { label: string }) {
@@ -99,31 +78,29 @@ interface BuyerOption {
   value: BuyerValue;
   label: string;
   nationality: "WNI" | "WNA";
-  isPma: boolean;
 }
 
 // Nationality is always the literal "WNI"/"WNA" string the backend fails
 // closed on (never a country name) — see spec-property-check.md §3: the
-// nationality fail-closed fix (#7581) may not be live everywhere yet, and
-// this mapping is correct with or without it.
+// nationality fail-closed fix (PR 7581) may not be live everywhere yet, and
+// this mapping is correct with or without it. `value` (not `nationality`)
+// selects the section-3 copy variant — WNA splits into individual vs. PT
+// PMA even though both send nationality "WNA".
 const BUYER_OPTIONS: BuyerOption[] = [
   {
     value: "wni",
     label: "Indonesian citizen (WNI)",
     nationality: "WNI",
-    isPma: false,
   },
   {
     value: "wna_individual",
     label: "Foreign individual (WNA)",
     nationality: "WNA",
-    isPma: false,
   },
   {
     value: "wna_pma",
-    label: "Foreign-owned PT PMA",
+    label: "Foreign-owned company (PT PMA)",
     nationality: "WNA",
-    isPma: true,
   },
 ];
 
@@ -132,48 +109,24 @@ type UseValue = "own_use" | "villa_rental" | "restaurant" | "retail" | "office";
 interface UseOption {
   value: UseValue;
   label: string;
-  kbliCode: string | null;
-  kbliTitle: string | null;
 }
 
-// Curated — there is no free-text KBLI search endpoint on mouth or the prime
-// router (spec-property-check.md §3). Verified against
-// data/KBLI_2025_FINAL_CLEAN.json 2026-09-28: 55203 "Aktivitas Vila" is
-// allocated 0% foreign (Perpres 49/2021, Koperasi/UMKM reservation) — a PT
-// PMA cannot legally hold it, so it is never offered here. 68112 is the
-// registration a villa-rental PMA actually uses instead — see the caveat
-// rendered below, which states its own live KBLIEye status honestly.
+// REWORK-DESIGN v2 (spec-property-check-v2.md, 2026-09-28): no KBLI code is
+// attached to a use anymore. The v1 mapping (one KBLI code per use, KBLIEye's
+// verdict shown as "Allowed to this buyer") was legally unsafe on a public
+// page — villa rental has no PMA-eligible code at all (55203 is 0% foreign,
+// reserved Koperasi/UMKM; 68112 is a property-leasing code, and registering
+// short-term rental under it is a compliance breach — see
+// research/property/2026-07-21-kbli-villa-pma-eligibility-verification.md:116-118,162-175)
+// and the live KBLIEye/backend data disagree on several other codes for Bali.
+// Section 3 below is static reviewed copy keyed on (buyer, use), not a live
+// KBLI lookup.
 const USE_OPTIONS: UseOption[] = [
-  {
-    value: "own_use",
-    label: "Live-in villa (own use, no business)",
-    kbliCode: null,
-    kbliTitle: null,
-  },
-  {
-    value: "villa_rental",
-    label: "Short-term villa rental business",
-    kbliCode: "68112",
-    kbliTitle: "Aktivitas Penyewaan Bangunan dan Lahan Hunian (68112)",
-  },
-  {
-    value: "restaurant",
-    label: "Restaurant",
-    kbliCode: "56101",
-    kbliTitle: "Aktivitas Penyediaan Makanan di Bangunan Tetap (56101)",
-  },
-  {
-    value: "retail",
-    label: "Retail shop",
-    kbliCode: "47112",
-    kbliTitle: "Perdagangan Eceran, non-self-service (47112)",
-  },
-  {
-    value: "office",
-    label: "Office / commercial building",
-    kbliCode: "68127",
-    kbliTitle: "Pengelolaan Gedung Perkantoran (68127)",
-  },
+  { value: "own_use", label: "Live-in villa (own use, no business)" },
+  { value: "villa_rental", label: "Short-term rental (villa, Airbnb-style)" },
+  { value: "restaurant", label: "Restaurant" },
+  { value: "retail", label: "Retail shop" },
+  { value: "office", label: "Office / commercial building" },
 ];
 
 type AnalyzeVerdict = {
@@ -199,23 +152,78 @@ type AnalyzeOpportunity = {
   pma_open?: boolean;
 };
 
-type AnalyzeKbli = {
-  code?: string;
-  title?: string;
-  state?: "APPROVED" | "WARNING" | "REJECTED" | "ERROR" | string;
-  reason?: string;
-  max_foreign_ownership?: number | null;
-};
-
 type AnalyzeResponse = {
   status?: string;
   zone?: AnalyzeZone;
   verdict?: AnalyzeVerdict;
   opportunities?: AnalyzeOpportunity[];
-  kbli?: AnalyzeKbli | null;
   sea_distance_m?: number;
   [key: string]: unknown;
 };
+
+/** Section 3 copy — static, reviewed, keyed on (buyer, use). No KBLI verdict,
+ * no KBLIEye call, no "allowed"/GREEN pill: see the REWORK-DESIGN note above
+ * USE_OPTIONS. Every legal sentence here is verbatim from
+ * spec-property-check-v2.md (grammar-only fixes allowed) — do not add a new
+ * legal claim, KBLI code or regulation here without updating that spec. */
+function renderSection3(
+  buyerOption: BuyerOption,
+  useOption: UseOption,
+): ReactNode | null {
+  if (useOption.value === "own_use") return null;
+
+  if (buyerOption.value === "wni") {
+    return (
+      <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+        As an Indonesian individual or a local company (PT PMDN) you can
+        register this activity, subject to the zoning in section 1 and the local
+        permits.
+      </p>
+    );
+  }
+
+  const pmaCopy =
+    useOption.value === "villa_rental" ? (
+      <p
+        style={{
+          color: "var(--r19-copper, var(--text-primary))",
+          margin: 0,
+          fontWeight: 600,
+        }}
+      >
+        Villa rental (KBLI 55203) is reserved for Indonesian small businesses
+        and is not open to a PT PMA (Perpres 10/2021 jo. 49/2021). There is
+        currently no business code that lets a PT PMA operate a villa directly,
+        and registering short-term rental under a property-leasing code is a
+        compliance breach. There are compliant routes for foreign investors:
+        we&rsquo;ll walk you through them.
+      </p>
+    ) : (
+      <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+        Whether this activity is open to a PT PMA here depends on the exact
+        business code and the project&rsquo;s scale, and since 13 May 2026 Bali
+        has closed several codes to new PMA registrations. We check it for your
+        project before you commit.
+      </p>
+    );
+
+  if (buyerOption.value === "wna_individual") {
+    return (
+      <div style={{ display: "grid", gap: "var(--space-3)" }}>
+        <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+          A foreign individual can&rsquo;t run a business in Indonesia in their
+          own name: foreign investment has to go through a foreign-owned company
+          (PT PMA), with a minimum investment of Rp 10 billion per business
+          activity per location (UU 25/2007, Art. 5(2); BKPM Reg. 5/2025).
+        </p>
+        {pmaCopy}
+      </div>
+    );
+  }
+
+  // wna_pma
+  return pmaCopy;
+}
 
 const fieldStyle: CSSProperties = {
   padding: "var(--space-3) var(--space-4)",
@@ -234,13 +242,15 @@ export function PropertyEligibilityBody() {
   const [priceIdr, setPriceIdr] = useState("");
   const [landSizeM2, setLandSizeM2] = useState("");
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  // The (buyer, use) SNAPSHOT that produced `result` — section 3 reads this,
+  // never the live selects, so changing a select after analyzing does not
+  // change the printed copy until the next analyze (F8, gate-7596-report.md).
+  const [snapshot, setSnapshot] = useState<{
+    buyerOption: BuyerOption;
+    useOption: UseOption;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const selectedUse = useMemo(
-    () => USE_OPTIONS.find((o) => o.value === use),
-    [use],
-  );
 
   // Dedupe opportunities by title_en (backend occasionally returns repeats)
   // and keep at most 5 distinct entries for the UI.
@@ -289,11 +299,11 @@ export function PropertyEligibilityBody() {
         body: JSON.stringify({
           lat,
           lng,
-          kbli_code: useOption.kbliCode ?? undefined,
-          is_pma: buyerOption.isPma,
           land_size_m2: landSizeM2 ? Number(landSizeM2) : undefined,
           price_idr: priceIdr ? Number(priceIdr) : undefined,
-          // Literal "WNI"/"WNA" only — never a country name (spec §3).
+          // Literal "WNI"/"WNA" only — never a country name (spec §3). No
+          // kbli_code / is_pma: section 3 is static copy, not a KBLIEye call
+          // (REWORK-DESIGN v2, spec-property-check-v2.md).
           investor_profile: { nationality: buyerOption.nationality },
         }),
       });
@@ -301,18 +311,23 @@ export function PropertyEligibilityBody() {
         setError(`Error ${res.status}: zone not analyzable.`);
         return;
       }
-      setResult((await res.json()) as AnalyzeResponse);
+      const data = (await res.json()) as AnalyzeResponse;
+      // The proxy (api/prime/v2/analyze/route.ts) answers HTTP 200 with
+      // {status:"error"} on an upstream failure — `res.ok` alone misses it
+      // (F4, gate-7596-report.md). A response with no zone payload is
+      // equally unusable.
+      if (data.status === "error" || !data.zone) {
+        setError("Error: zone not analyzable.");
+        return;
+      }
+      setResult(data);
+      setSnapshot({ buyerOption, useOption });
     } catch (e) {
       setError("Network error. Please retry.");
     } finally {
       setLoading(false);
     }
   }
-
-  const kbli = result?.kbli;
-  const kbliLabel = kbli?.state
-    ? (KBLI_STATE_TO_LABEL[kbli.state.toUpperCase()] ?? "YELLOW")
-    : null;
 
   return (
     <section>
@@ -597,87 +612,40 @@ export function PropertyEligibilityBody() {
                         {o.category_en}
                       </span>
                     ) : null}
-                    {o.pma_open ? (
-                      <span
-                        style={{
-                          fontSize: "0.72em",
-                          padding: "0.12em 0.5em",
-                          borderRadius: 999,
-                          background: STATE_STYLE.GREEN.bg,
-                          border: `1px solid ${STATE_STYLE.GREEN.border}`,
-                          color: STATE_STYLE.GREEN.color,
-                          fontWeight: 600,
-                          letterSpacing: "0.04em",
-                        }}
-                      >
-                        PMA open
-                      </span>
-                    ) : null}
                   </li>
                 ))}
               </ul>
             </div>
           ) : null}
 
-          {/* Section 3 — Allowed to this buyer / PMA-open */}
-          {selectedUse ? (
-            <div style={{ margin: "var(--space-5) 0" }}>
-              <h3
-                style={{
-                  fontFamily: "var(--font-serif)",
-                  fontWeight: 500,
-                  fontSize: "1.05rem",
-                  margin: "0 0 var(--space-2)",
-                }}
-              >
-                Allowed to this buyer
-              </h3>
-              {selectedUse.kbliCode ? (
-                <div style={{ display: "grid", gap: "var(--space-2)" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "0.6em",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span style={{ color: "var(--text-primary)" }}>
-                      {kbli?.title || selectedUse.kbliTitle}
-                    </span>
-                    {kbliLabel ? <StatePill label={kbliLabel} /> : null}
-                  </div>
-                  {kbli?.reason && use !== "villa_rental" ? (
-                    <p style={{ color: "var(--text-secondary)", margin: 0 }}>
-                      {KBLI_REASON_TEXT[kbli.reason] ?? kbli.reason}
-                    </p>
-                  ) : null}
-                  {use === "villa_rental" ? (
-                    <p
+          {/* Section 3 — What you can do with it. Static reviewed copy keyed
+              on the ANALYSED (buyer, use) snapshot — never the live selects
+              (F8). No KBLI verdict, no "allowed"/GREEN pill: see
+              renderSection3 above USE_OPTIONS. */}
+          {snapshot
+            ? (() => {
+                const body = renderSection3(
+                  snapshot.buyerOption,
+                  snapshot.useOption,
+                );
+                if (!body) return null;
+                return (
+                  <div style={{ margin: "var(--space-5) 0" }}>
+                    <h3
                       style={{
-                        color: "var(--r19-copper, var(--text-primary))",
-                        margin: 0,
-                        fontWeight: 600,
+                        fontFamily: "var(--font-serif)",
+                        fontWeight: 500,
+                        fontSize: "1.05rem",
+                        margin: "0 0 var(--space-2)",
                       }}
                     >
-                      This tool never offers KBLI 55203 (&ldquo;Aktivitas
-                      Vila&rdquo;) for a PT PMA: it is allocated 0% to foreign
-                      ownership, reserved for Koperasi/UMKM (Perpres 49/2021).
-                      68112 is the code a villa-rental PMA actually registers
-                      under — but its own PMA cap is an unverified data gap, not
-                      a confirmed approval, so verify it with Bali Zero before
-                      relying on it.
-                    </p>
-                  ) : null}
-                </div>
-              ) : (
-                <p style={{ color: "var(--text-secondary)", margin: 0 }}>
-                  Own-use residential occupancy is not a KBLI business activity
-                  — no business license applies.
-                </p>
-              )}
-            </div>
-          ) : null}
+                      What you can do with it
+                    </h3>
+                    {body}
+                  </div>
+                );
+              })()
+            : null}
 
           <div
             style={{
