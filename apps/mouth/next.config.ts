@@ -234,6 +234,12 @@ const nextConfig: NextConfig = {
   // Redirect legacy /kbli-navigator to new Next.js /kbli app
   async redirects() {
     return [
+      // The former zoning pitch now points to the property eligibility tool.
+      {
+        source: "/zoning",
+        destination: "/property/eligibility",
+        permanent: true,
+      },
       // Newsroom deduplication (2026-09-06): preserve inbound links while
       // consolidating duplicate articles created with truncated slugs.
       {
