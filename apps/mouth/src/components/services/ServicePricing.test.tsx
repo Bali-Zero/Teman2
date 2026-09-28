@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import ServicePricing from "./ServicePricing";
+import { SERVICES_DATA } from "@/data/services_data";
 
 const service = {
   name: "Visa & Immigration",
@@ -55,5 +56,23 @@ describe("ServicePricing details dialog", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
+  });
+});
+
+describe("ServicePricing renders a tier-floor package's catalogue minimum", () => {
+  // The REAL Monthly Tax Report package, not a hand-typed fixture — a
+  // mutant that drops the "from " prefix (or the /month unit) in
+  // usePackagePrice() must fail THIS render, not just a data-layer
+  // assertion in services_data.tax-pricing.test.ts (2026-09-29, #7600 gate).
+  const monthlyPkg = SERVICES_DATA.tax.packages.find(
+    (p) => p.name === "Monthly Tax Report",
+  )!;
+  const taxService = { ...SERVICES_DATA.tax, packages: [monthlyPkg] };
+
+  it('shows "from 1.800.000 IDR/month", never a bare figure', () => {
+    render(<ServicePricing service={taxService} slug="tax" />);
+    const card = screen.getByTestId("public-service-price-card");
+    expect(within(card).getByText("from 1.800.000 IDR/month")).toBeVisible();
+    expect(within(card).queryByText("Contact for quote")).toBeNull();
   });
 });
