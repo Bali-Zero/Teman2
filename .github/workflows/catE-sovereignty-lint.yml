@@ -142,6 +142,7 @@ jobs:
             scripts/tests/test_lint_ban_prose.py \
             scripts/tests/test_vendor_authorization_fence.py \
             scripts/tests/test_typesafe_client_pin.py \
+            scripts/tests/test_typesafe_telemetry.py \
             scripts/tests/test_cate_trigger_parity.py
 
       # Runs BEFORE #40 so a broken budget step fails loud here rather than

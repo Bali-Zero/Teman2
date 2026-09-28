@@ -64,7 +64,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from redact_for_external import redact  # noqa: E402
-from typesafe_client import ask, available, noul, unavailable_reason  # noqa: E402
+from typesafe_client import REASON_CODES, ask_detailed, available, noul, unavailable_reason  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PARDON = REPO_ROOT / "infra" / "paid-llm-entity" / "pardoned.json"
@@ -268,11 +268,18 @@ ROUTE_QUESTIONS: dict[str, dict] = {
 FIRE_THRESHOLD = 0.80
 
 
-def jev_verdict(path: str, text: str) -> tuple[dict[str, float], list[str]]:
-    """Ask the four route questions about one file.
+def jev_judgment(path: str, text: str) -> tuple[dict[str, float], list[str], dict]:
+    """Ask the four route questions about one file, and keep what `ask_detailed`
+    measured while doing it.
 
-    Returns (probabilities, fired_routes). An unavailable service yields ({}, [])
-    — no opinion, which contributes nothing to the OR.
+    Returns (probabilities, fired_routes, telemetry). An unavailable or malformed
+    service reply yields probabilities/fired as ({}, []) — no opinion, which
+    contributes nothing to the OR — exactly as it always did, now computed from
+    `Judgment.answers` rather than the answers map directly: `noul()` already
+    treats `None` and `{}` alike, so no branch here needs to. `telemetry` is
+    always a dict — `Judgment.telemetry()` plus two counts of how many of the
+    four routes were actually asked and actually answered — and it is SAFE: no
+    `path`, no `state`, no answers, nothing from the source text under judgment.
     """
     state = {
         "file": {"path": path, "content": redact(text)},
@@ -283,18 +290,31 @@ def jev_verdict(path: str, text: str) -> tuple[dict[str, float], list[str]]:
             "auth_token=. Local models and non-Anthropic providers are not covered by this ban."
         ),
     }
-    answers = ask(state, ROUTE_QUESTIONS)
-    if answers is None:
-        return {}, []
+    judgment = ask_detailed(state, ROUTE_QUESTIONS)
     probs: dict[str, float] = {}
     fired: list[str] = []
     for route in ROUTE_QUESTIONS:
-        value = noul(answers, route)
+        value = noul(judgment.answers, route)
         if value is None:
             continue
         probs[route] = value
         if value >= FIRE_THRESHOLD:
             fired.append(route)
+    telemetry = judgment.telemetry()
+    telemetry["routes_asked"] = len(ROUTE_QUESTIONS)
+    telemetry["routes_answered"] = len(probs)
+    return probs, fired, telemetry
+
+
+def jev_verdict(path: str, text: str) -> tuple[dict[str, float], list[str]]:
+    """Ask the four route questions about one file.
+
+    Returns (probabilities, fired_routes). An unavailable service yields ({}, [])
+    — no opinion, which contributes nothing to the OR. A thin projection of
+    `jev_judgment`, kept as its own function because the live `--bench` run in
+    `test_lint_paid_llm_entity.py` calls exactly this shape.
+    """
+    probs, fired, _telemetry = jev_judgment(path, text)
     return probs, fired
 
 
@@ -435,6 +455,57 @@ def _pairs(by_path: dict[str, list[dict]]) -> set[tuple[str, str]]:
     }
 
 
+def jev_summary(results: list[dict], service: str) -> dict:
+    """One compact, machine-readable rollup of what the model actually did
+    across this run — never a verdict, never a path, never source text.
+
+    Reads each file's telemetry via `r.get("jev")` rather than `r["jev"]`:
+    several tests in `test_lint_paid_llm_entity.py` stub `judge_file` with
+    hand-built dicts that predate this field, and a summary that raised on
+    them would make every one of those tests carry an unrelated failure.
+    `service` names the client's OWN state (available, or which closed
+    reason it is silent for) independent of any one file's telemetry, since
+    a run with zero in-scope files still has a service state worth reporting.
+    """
+    judged = [j for r in results if (j := r.get("jev")) is not None]
+    answered = [j for j in judged if j["mode"] == "jev"]
+    unavailable = [j for j in judged if j["mode"] != "jev"]
+    partial = [j for j in answered if j["routes_answered"] < j["routes_asked"]]
+
+    reasons: dict[str, int] = {}
+    for j in unavailable:
+        code = j.get("reason")
+        if code is not None:
+            reasons[code] = reasons.get(code, 0) + 1
+
+    input_tokens = [
+        j["usage"]["input_tokens"] for j in answered if (j["usage"] or {}).get("input_tokens") is not None
+    ]
+    output_tokens = [
+        j["usage"]["output_tokens"] for j in answered if (j["usage"] or {}).get("output_tokens") is not None
+    ]
+    elapsed = [j["elapsed_ms"] for j in judged]
+    models = sorted({j["model"] for j in judged if j.get("model")})
+
+    return {
+        "v": 1,
+        "service": service,
+        "files": len(results),
+        "asked": len(judged),
+        "answered": len(answered),
+        "unavailable": len(unavailable),
+        "partial": len(partial),
+        "reasons": reasons,
+        "attempts": sum(j["attempts"] for j in judged),
+        "elapsed_ms": sum(elapsed),
+        "elapsed_ms_max": max(elapsed) if elapsed else 0,
+        "input_tokens": sum(input_tokens) if input_tokens else None,
+        "output_tokens": sum(output_tokens) if output_tokens else None,
+        "usage_unknown": sum(1 for j in answered if j["usage"] is None),
+        "models": models,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────── driver
 
 
@@ -449,10 +520,11 @@ def judge_file(
     by_grep = grep_verdict(text, path)
     probs: dict[str, float] = {}
     fired: list[str] = []
+    telemetry: dict | None = None
     asked = False
     if worth_asking(text) and available():
         asked = True
-        probs, fired = jev_verdict(path, text)
+        probs, fired, telemetry = jev_judgment(path, text)
     entry_by_route = _pardons_for_path(path, pardons)
     pardoned_routes = [r for r in fired if r in entry_by_route]
     live = [r for r in fired if r not in entry_by_route]
@@ -469,6 +541,10 @@ def judge_file(
         # is never in that narrowing. `fired` empty (service silent) still
         # makes `live` empty, so no-opinion is not a vote either way.
         "violation": by_grep or bool(live),
+        # None when `asked` is False — the file was never worth sending, or
+        # the service was unavailable and never reached. Never the driver
+        # of `violation`, which stays exactly the formula above.
+        "jev": telemetry,
     }
 
 
@@ -553,9 +629,14 @@ def main(argv: list[str] | None = None) -> int:
         results.append(judge_file(path, text, pardons))
 
     violations = [r for r in results if r["violation"]]
+    # `reason` is `unavailable_reason()`, already computed above for the
+    # degrade-path diagnostic; reused here rather than called twice so this
+    # summary can never disagree with what that message just said.
+    service = "available" if reason is None else REASON_CODES.get(reason, "unavailable")
+    summary = jev_summary(results, service)
 
     if args.json:
-        print(json.dumps({"results": results}, indent=2))
+        print(json.dumps({"results": results, "jev_telemetry": summary}, indent=2))
     else:
         for r in violations:
             how = []
@@ -585,6 +666,10 @@ def main(argv: list[str] | None = None) -> int:
             f"lint_paid_llm_entity: {len(results)} file(s) in scope, "
             f"{judged} judged, {len(violations)} violation(s), "
             f"{pardoned_count} pardoned."
+        )
+        print(
+            "lint_paid_llm_entity: jev-telemetry "
+            + json.dumps(summary, sort_keys=True, separators=(",", ":"))
         )
 
     if violations and not args.advisory:

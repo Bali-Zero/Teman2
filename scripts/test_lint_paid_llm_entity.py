@@ -28,6 +28,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import lint_paid_llm_entity as lint  # noqa: E402
+import typesafe_client as tc  # noqa: E402
 from redact_for_external import redact  # noqa: E402
 
 CASES = json.loads(
@@ -35,6 +36,46 @@ CASES = json.loads(
         Path(__file__).parent / "tests/fixtures/paid_llm_entity/bench_cases.json"
     ).read_text()
 )
+
+
+def _as_judgment(fn):
+    """Stand a legacy `ask(state, questions) -> answers|None` stub in for
+    `ask_detailed`, which now carries the seam `judge_file`/`jev_judgment`
+    actually call. `fn` runs with the SAME arguments `ask_detailed` receives
+    — the redaction test's `lambda state, q: ...` still gets its two
+    positionals — so every existing stub keeps asserting what it always
+    asserted. The returned answers become a `Judgment`: a dict reads as mode
+    "jev" (this repo's ROUTE_QUESTIONS answers, one HTTP attempt, no usage —
+    no stub here claims to know a token count); `None` reads as mode
+    "degraded"/"transport_error", the shape `ask_detailed` uses for an
+    unreachable service.
+    """
+
+    def _ask_detailed(state, questions, *, timeout=None):
+        answers = fn(state, questions)
+        if answers is None:
+            return tc.Judgment(
+                answers=None,
+                mode="degraded",
+                reason=tc.TRANSPORT_ERROR,
+                model=None,
+                usage=None,
+                elapsed_ms=0,
+                attempts=1,
+                http_status=None,
+            )
+        return tc.Judgment(
+            answers=answers,
+            mode="jev",
+            reason=None,
+            model=None,
+            usage=None,
+            elapsed_ms=0,
+            attempts=1,
+            http_status=None,
+        )
+
+    return _ask_detailed
 
 
 @pytest.fixture(autouse=True)
@@ -187,13 +228,13 @@ def test_service_silence_is_not_a_pass(monkeypatch, authorized_vendor):
 
     `authorized_vendor` is load-bearing, and its absence made this the SIXTH
     vacuous test in this lane: without it `available()` is False, `judge_file`
-    never calls `ask` at all, and this test passed on the grep alone — proving
+    never calls `ask_detailed` at all, and this test passed on the grep alone — proving
     nothing about the None-handling it claims to protect. `asked is True`
     below is what makes that failure mode visible again if the fixture is
     ever dropped.
     """
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
-    monkeypatch.setattr(lint, "ask", lambda *a, **k: None)
+    monkeypatch.setattr(lint, "ask_detailed", _as_judgment(lambda *a, **k: None))
     case = next(
         c for c in CASES["guilt"] if c["name"].startswith("canonical_constructor")
     )
@@ -218,10 +259,12 @@ def test_model_saying_no_cannot_clear_the_grep(monkeypatch, authorized_vendor):
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
-        "ask",
-        lambda *a, **k: {
-            r: {"type": "noul", "noul": 0.0} for r in lint.ROUTE_QUESTIONS
-        },
+        "ask_detailed",
+        _as_judgment(
+            lambda *a, **k: {
+                r: {"type": "noul", "noul": 0.0} for r in lint.ROUTE_QUESTIONS
+            }
+        ),
     )
     case = next(
         c for c in CASES["guilt"] if c["name"].startswith("canonical_constructor")
@@ -235,7 +278,7 @@ def authorized_vendor(tmp_path, monkeypatch):
 
     Added with the #6968 gate's condition-3 fence. Before it, setting the key
     was enough to reach `ask`; now a key is not permission. The tests below
-    monkeypatch `ask` to assert what the MODEL contributes, so they have to
+    monkeypatch `ask_detailed` to assert what the MODEL contributes, so they have to
     clear the fence honestly rather than route around it — without this
     fixture they would still pass, because a client that never speaks fires no
     route and asserts nothing.
@@ -269,8 +312,10 @@ def test_model_alone_can_add_a_violation(monkeypatch, authorized_vendor):
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
-        "ask",
-        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}},
+        "ask_detailed",
+        _as_judgment(
+            lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}}
+        ),
     )
     case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
     result = lint.judge_file("x.py", case["content"])
@@ -282,8 +327,10 @@ def test_probability_below_threshold_does_not_fire(monkeypatch, authorized_vendo
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
-        "ask",
-        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.5}},
+        "ask_detailed",
+        _as_judgment(
+            lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.5}}
+        ),
     )
     case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
     assert lint.judge_file("x.py", case["content"])["violation"] is False
@@ -293,7 +340,9 @@ def test_redaction_runs_before_the_payload_leaves(monkeypatch, authorized_vendor
     """A credential in the source must not be in what we send."""
     seen: dict = {}
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
-    monkeypatch.setattr(lint, "ask", lambda state, q: seen.update(state) or None)
+    monkeypatch.setattr(
+        lint, "ask_detailed", _as_judgment(lambda state, q: seen.update(state) or None)
+    )
     lint.judge_file("x.py", f'k = "{FAKE_KEY}"\nimport anthropic\n')
     assert "abcdefghijklmnop0123" not in json.dumps(seen)
 
@@ -572,8 +621,10 @@ def test_pardon_clears_a_fired_listed_route(monkeypatch, tmp_path, authorized_ve
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
-        "ask",
-        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}},
+        "ask_detailed",
+        _as_judgment(
+            lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}}
+        ),
     )
     case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
     result = lint.judge_file("x.py", case["content"])
@@ -640,8 +691,8 @@ def test_pardon_never_clears_a_grep_hit_even_when_its_own_route_fired(
     monkeypatch.setattr(lint, "available", lambda: True)
     monkeypatch.setattr(
         lint,
-        "jev_verdict",
-        lambda path, text: ({"wrapper_library": 0.97}, ["wrapper_library"]),
+        "jev_judgment",
+        lambda path, text: ({"wrapper_library": 0.97}, ["wrapper_library"], {}),
     )
     case = next(
         c for c in CASES["guilt"] if c["name"].startswith("canonical_constructor")
@@ -675,8 +726,10 @@ def test_pardon_does_not_cover_an_unlisted_route(
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
-        "ask",
-        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}},
+        "ask_detailed",
+        _as_judgment(
+            lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}}
+        ),
     )
     case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
     result = lint.judge_file("x.py", case["content"])
@@ -793,8 +846,10 @@ def test_pardon_is_exact_path_not_prefix_suffix_or_superstring(
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
-        "ask",
-        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}},
+        "ask_detailed",
+        _as_judgment(
+            lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}}
+        ),
     )
     case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
     for other_path in ("dir/x.py", "x.py.bak", "xx.py", "x.pyc", "a/x.py"):
@@ -825,8 +880,10 @@ def test_pardon_normalizes_a_leading_dot_slash(monkeypatch, tmp_path, authorized
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
-        "ask",
-        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}},
+        "ask_detailed",
+        _as_judgment(
+            lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}}
+        ),
     )
     case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
     result = lint.judge_file("./x.py", case["content"])
@@ -856,13 +913,13 @@ def test_shipped_pardon_registry_validates():
 
 def test_growth_blocks_before_any_model_call(monkeypatch, tmp_path, authorized_vendor):
     """The gate-7143 notice: the old corpus (`"x = 1\\n"`) made this assertion
-    vacuous. `worth_asking` was False for that text, so `ask` was already
+    vacuous. `worth_asking` was False for that text, so `ask_detailed` was already
     unreachable regardless of where the growth block sits in `main` — moving
     it AFTER the model call, a real regression of the safety ordering, still
     left this test green. The corpus here is a `missed_by_grep` guilt case, so
     `worth_asking` is True and the model path is genuinely reachable (the key
     is set and the endpoint is authorized via `authorized_vendor`); only the
-    growth block standing above the call keeps `ask` unfired."""
+    growth block standing above the call keeps `ask_detailed` unfired."""
     case = next(c for c in CASES["guilt"] if c["name"] == "raw_http_post")
     text = case["content"]
     assert lint.worth_asking(text), "the probe must be able to reach ask()"
@@ -872,10 +929,12 @@ def test_growth_blocks_before_any_model_call(monkeypatch, tmp_path, authorized_v
     monkeypatch.setattr(lint, "pardon_grew", lambda ref: ["new/path.py"])
     called: list[int] = []
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
-    monkeypatch.setattr(lint, "ask", lambda *a, **k: called.append(1) or None)
+    monkeypatch.setattr(
+        lint, "ask_detailed", _as_judgment(lambda *a, **k: called.append(1) or None)
+    )
     rc = lint.main(["--base-ref", "deadbeef", str(target)])
     assert rc == 3
-    assert called == [], "the stubbed ask must never be reached once growth trips"
+    assert called == [], "the stubbed ask_detailed must never be reached once growth trips"
 
 
 def test_no_growth_continues_to_judge(monkeypatch, tmp_path):
@@ -908,7 +967,9 @@ def test_unreadable_base_ref_fails_closed(monkeypatch, tmp_path):
     monkeypatch.setattr(lint, "pardon_grew", lambda ref: None)
     called: list[int] = []
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
-    monkeypatch.setattr(lint, "ask", lambda *a, **k: called.append(1) or None)
+    monkeypatch.setattr(
+        lint, "ask_detailed", _as_judgment(lambda *a, **k: called.append(1) or None)
+    )
     rc = lint.main(["--base-ref", "not-a-real-ref", str(target)])
     assert rc == 3
     assert called == []

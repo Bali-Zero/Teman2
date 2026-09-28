@@ -595,6 +595,7 @@ REQUIRED_TOOLS = frozenset(
         "scripts/tests/test_cate_trigger_parity.py",
         "scripts/tests/test_lint_ban_prose.py",
         "scripts/tests/test_typesafe_client_pin.py",
+        "scripts/tests/test_typesafe_telemetry.py",
         "scripts/tests/test_vendor_authorization_fence.py",
     }
 )
