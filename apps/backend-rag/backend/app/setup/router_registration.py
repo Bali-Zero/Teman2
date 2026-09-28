@@ -147,6 +147,7 @@ def include_routers(api: FastAPI) -> None:
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
+        visa_oracle_testing,  # Internal synthetic staff campaign; authenticated writes
         voice,
         wa_actions,
         wa_broker,  # /api/wa-broker/* codex broker transport (dedicated key, BOT-V4 S2)
@@ -508,6 +509,7 @@ def include_routers(api: FastAPI) -> None:
     # [W1] Visa Oracle v2 evaluate read-path — POST /api/visa-oracle/evaluate
     # (public exact path, own 30/min bucket; SHADOW-era mode=CURATED contract)
     api.include_router(visa_oracle_evaluate.router)
+    api.include_router(visa_oracle_testing.router)
 
 
 def include_light_routers(api: FastAPI) -> None:
@@ -626,6 +628,7 @@ def include_light_routers(api: FastAPI) -> None:
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
+        visa_oracle_testing,
         wa_actions,
         wa_broker,  # /api/wa-broker/* codex broker transport (dedicated key, BOT-V4 S2)
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
@@ -900,6 +903,7 @@ def include_light_routers(api: FastAPI) -> None:
     # [W1] Visa Oracle v2 evaluate read-path — POST /api/visa-oracle/evaluate
     # (public exact path, own 30/min bucket; SHADOW-era mode=CURATED contract)
     api.include_router(visa_oracle_evaluate.router)
+    api.include_router(visa_oracle_testing.router)
 
     # intel/intel_scraper/intel_analytics serve on rag process (need /data volume for staging files)
 
