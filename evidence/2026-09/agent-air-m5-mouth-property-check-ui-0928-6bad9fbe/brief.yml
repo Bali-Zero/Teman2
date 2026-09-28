@@ -1,17 +1,34 @@
 task: >-
   Property Check PR-2 (balizero.com): rebuild /property/eligibility on R19 tokens, add
-  buyer-profile (WNI/WNA/PT PMA, no default) + intended-use (curated KBLI) selectors mapped to
-  /api/prime/v2/analyze, and report sections 1-3 (zone, what may be built, allowed-to-this-buyer
-  with the 68112-vs-55203 caveat).
+  buyer-profile (WNI/WNA/PT PMA, no default) + intended-use selectors mapped to
+  /api/prime/v2/analyze, and report sections 1-3 (zone, what may be built, what you can do with
+  it).
 lane: mouth/property-check-ui
 machine: air-m5
 date: 2026-09-28
 gear: 2
-gear_reason: Floor 2 (evidence_pack_lint.py --print-floor), churn well under the 1828-line threshold.
+gear_reason:
+  Floor 2 (evidence_pack_lint.py --print-floor over the whole branch diff, merge-base
+  df39ad7f0d..HEAD), churn well under the 1828-line threshold.
+design_change: >-
+  REWORK-DESIGN v2 (spec-property-check-v2.md, gate-7596-report.md): the v1 section 3 mapped one
+  KBLI code per use and rendered KBLIEye's live verdict as "Allowed to this buyer" — legally
+  unsafe on a public page (villa rental has no KBLI code a PT PMA can legally hold; a foreign
+  individual was sent is_pma:false and got a GREEN verdict, implying a foreigner can run a
+  business in their own name). Section 3 ("What you can do with it") is now static reviewed copy
+  keyed on the analysed (buyer, use) snapshot — no KBLI code in the request, no KBLIEye call, no
+  GREEN/allowed pill. Section 2's opportunities list no longer renders a "PMA open" badge (it
+  contradicted section 3). Also closed: F1 (the 2 new funnel events weren't in the backend
+  allowlist — reverted, GA4-only), F4 (proxy's HTTP 200 {status:"error"} read as success), F5
+  (FunnelFrame's TrustBand/WhatsApp bar invisible/unstyled under R19 paper — route-scoped CSS
+  fix, other FunnelFrame consumers unaffected), F6 (1440 nav-height/content-padding mismatch
+  clipped the eyebrow), F7 (the R19 guard's DOM hex check was dead — jsdom serialises hex to
+  rgb(); replaced with a source-text scan), F8 (section 3 read the live selects instead of the
+  analysed snapshot).
 acceptance:
-  A1: routePolicy + PropertyEligibilityBody guard tests red-before/green-after; tsc/eslint/prettier clean.
-  A2: live analyze() against nuzantara-rag.fly.dev at 3 points x 3 buyer/use combos renders zone/verdict/kbli sections; no country name ever sent, only WNI/WNA.
-  A3: villa rental sends KBLI 68112 (never 55203) and always renders the PMA_NOT_VERIFIED caveat, verified against KBLIEye.get_decision live.
+  A1: routePolicy + PropertyEligibilityBody guard tests red-before/green-after; tsc/eslint/prettier clean; backend test_analytics_funnel_parity.py green.
+  A2: live analyze() against nuzantara-rag.fly.dev at 3 points x 3 buyer/use combos renders zone/verdict/opportunities + the correct static section-3 copy; no country name, kbli_code or is_pma ever sent — only lat/lng/investor_profile.nationality (WNI/WNA) and optional price/land size.
+  A3: villa rental for a PT PMA (or a WNA individual, after the PT PMA sentence) always renders the villa-closed-to-PMA caveat, citing "Perpres 10/2021 jo. 49/2021" (never "49/2021" alone); own use never renders section 3; section 3 stays on the analysed snapshot after the selects change.
 out_of_scope: >-
   Ownership pathway / taxes & costs / verdict-as-its-own-section / disclaimer / non-PII WhatsApp
   summary are PR-3 (owner decision). /zoning redirect and the (blog)/property landing card are a
