@@ -10,8 +10,12 @@ gear_reason: >-
   route-policy flip and its tests; no schema/infra/secrets/auth touched.
 acceptance:
   A1: >-
-    page.r19-guard.test.tsx fails 2/2 on origin/main's page.tsx and passes on HEAD; a text-white
-    mutant and a bare-hex mutant each turn it red. routePolicy/R19Presentation tests (7 files,
+    page.r19-guard.test.tsx fails 2/2 on origin/main's page.tsx and passes on HEAD. It judges
+    every class token after stripping variant prefixes and rejects literal colours, gradients
+    and backdrop filters in inline styles; 7 mutants (bg-blue-600, text-sky-500,
+    hover:bg-white/10, md:text-white/60, inline linear-gradient, inline rgba white, inline #fff)
+    each turn it red. The e2e r19-presentation spec now expects /property on the R19 paper nav
+    (it asserted the old dark nav). routePolicy/R19Presentation tests (7 files,
     59 tests) green; tsc exit 0; prettier clean.
   A2: >-
     Copy frozen: the extracted text/attribute strings of page.tsx are identical to origin/main
