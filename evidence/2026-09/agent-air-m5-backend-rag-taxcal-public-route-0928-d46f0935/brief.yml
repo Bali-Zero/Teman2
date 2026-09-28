@@ -1,0 +1,33 @@
+task: >-
+  Public, stateless POST /api/public/tax-calendar/obligations: an anonymous situation profile
+  in, the obligations_catalog rules that apply and their upcoming due dates (Asia/Makassar
+  civil date) out, every unverified or needs-review rule flagged needs_review=true.
+lane: backend-rag/taxcal-public-route
+machine: air-m5
+date: 2026-09-28
+gear: 3
+gear_reason: >-
+  Floor 3 (evidence_pack_lint.py --print-floor, source "path"): the diff touches the public
+  auth allowlist (app/auth/public_endpoints.py) and the rate limiter, i.e. a new
+  unauthenticated surface on the production API.
+acceptance:
+  A1: >-
+    backend/tests/app/routers/test_tax_calendar_public.py green: PT PMA with employees and
+    PKP gets LKPM + PPh 21 + PPN with future dates; an individual gets no company-scoped
+    rule; unknown field -> 422; horizon respected; injected clock makes dates deterministic;
+    route reachable without auth (red before the allowlist entry). backend/tests/setup/
+    green (427 passed at commit time).
+  A2: >-
+    No database access, no write, no logging of the request body; reuses
+    obligations_register (load_catalog, applies, due_dates) without duplicating logic;
+    fiscal_year_end validated as MM-DD at the edge; 30/min per-IP bucket.
+  A3: >-
+    Before any merge: its consumer (the public "My tax calendar" UI on tax.balizero.com)
+    ships in the same PR, only rules signed off by the Tax Department signer are shown,
+    and a gear-3 fresh gate signs it.
+status: >-
+  PARKED on its branch, no PR: no consumer yet (Builder Contract 2) and the per-rule Tax
+  Department sign-off decided by the owner on 2026-09-28 is pending a named signer.
+out_of_scope:
+  - Adding individual / KITAS / PB1 rules to the catalog (not in the 21-rule catalog).
+  - Email reminders and the subscribers table (later lane, double opt-in).
