@@ -1410,6 +1410,115 @@ def test_innocence_c3_qualified_short_table_name_is_accepted():
     assert declared == {"t": {("x", "text", False)}}
 
 
+# --- G1-G3 (fresh gate on PR #7478, pull/7478#issuecomment-5851556996):
+# three plausible wrong fixes SURVIVED every C2/C3 test above, even though
+# the head is already correct on every input they probe — no existing case
+# used an upper-case serial column, exercised the ALTER path's own
+# collision/second-PK rejection, or measured the exact 63/64-byte
+# derived-name boundary. G4 (independent REAL_PG run) was discharged
+# separately (pull/7478#issuecomment-5851983749); these three are
+# test-only, due before T3 PR-3 merges and no later than 2026-10-04.
+
+
+def test_guilt_g1_implicit_seq_name_folds_column_case():
+    """G1 kills W4: a mutant that derives the sequence name from the
+    column's raw token (`element[0].value`) instead of the already-
+    lowercased `name` survives every existing C2 seq test, because none of
+    them used an upper-case column identifier. PG unquoted identifiers
+    always fold to lowercase, so `ID BIGSERIAL` still derives `t_id_seq`,
+    not a case-preserved `t_ID_seq` that would leave the real name
+    unclaimed and let the phantom `t_id_seq` table through."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (ID BIGSERIAL, x TEXT);\n"
+        "CREATE TABLE IF NOT EXISTS t_id_seq (bogus_col TEXT NOT NULL);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("id", "bigint", True), ("x", "text", False)}}
+    assert "t_id_seq" not in declared
+
+
+def test_guilt_g1_implicit_pkey_name_folds_table_case():
+    """Twin of the above for the table's own PRIMARY KEY name (gate's
+    'ideally' twin): an upper-case table identifier `T` already folds to
+    `t` in `_read_qualified_name`, so its implicit index is `t_pkey`, not
+    `T_pkey` — pinned here alongside G1 even though no mutant of this
+    shape survived, for the same reason C3's two cases were pinned
+    together."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS T (id BIGSERIAL PRIMARY KEY);\n"
+        "CREATE TABLE IF NOT EXISTS t_pkey (bogus_col TEXT NOT NULL);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("id", "bigint", True)}}
+    assert "t_pkey" not in declared
+
+
+def test_guilt_g2_alter_added_second_primary_key_is_rejected():
+    """G2 kills W5: a mutant that claims the ALTER path's implicit
+    relations with a plain `occupied_relations.add` instead of
+    `_claim_implicit_relation` survives every existing C2 ALTER test,
+    because none of them re-claimed a name the CREATE body already
+    occupies. PG errors ('multiple primary keys for table ... are not
+    allowed', measured) the instant a second ALTER-added PRIMARY KEY
+    column lands on a table that already has one — the CREATE-path
+    equivalent is `test_guilt_two_columns_each_primary_key_is_rejected`;
+    this is its ALTER-path twin."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (id INT PRIMARY KEY);\n"
+        "ALTER TABLE t ADD COLUMN IF NOT EXISTS k BIGINT PRIMARY KEY;"
+    )
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_g2_alter_added_serial_seq_name_collision_is_rejected():
+    """G2 kills W5's sequence-path twin: an ALTER-added serial column's own
+    `<table>_<col>_seq` name, already taken by an unrelated relation, must
+    be rejected the same way the CREATE-body serial path already is
+    (`test_guilt_c2_implicit_pkey_name_collision_is_rejected`'s pkey
+    equivalent), not silently re-claimed via a plain
+    `occupied_relations.add`."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t_n_seq (dummy TEXT);\n"
+        "CREATE TABLE IF NOT EXISTS t (x TEXT);\n"
+        "ALTER TABLE t ADD COLUMN IF NOT EXISTS n BIGSERIAL;"
+    )
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_innocence_g3_derived_pkey_name_exactly_63_bytes_is_accepted():
+    """G3 kills W6: an off-by-one (`>= 63` instead of `> 63`) in
+    `_claim_implicit_relation`'s length check survived every existing C2
+    test, because none of them measured the EXACT boundary. A 58-byte
+    table name's own `_pkey` (58 + 5 = 63 bytes) is the longest derived
+    name PG's real NAMEDATALEN-1 limit still allows untruncated — S6b
+    already has this boundary for plain identifiers, C2's implicit names
+    never had their own."""
+    table_58 = "b" * 58
+    assert len(f"{table_58}_pkey") == 63
+    # INT, not BIGSERIAL: isolates the `_pkey` boundary from the `_id_seq`
+    # one (a serial PK's own `_id_seq` would be 58 + 7 = 65 bytes, over the
+    # limit for an unrelated reason and rejected before this case even
+    # reaches the boundary this test targets).
+    sql = f"CREATE TABLE IF NOT EXISTS {table_58} (id INT PRIMARY KEY);"
+    declared = parse_declared_columns(sql)
+    assert declared == {table_58: {("id", "integer", True)}}
+
+
+def test_guilt_g3_derived_pkey_name_64_bytes_is_rejected():
+    """One byte over the boundary above: a 59-byte table name's own
+    `_pkey` (59 + 5 = 64 bytes) exceeds NAMEDATALEN-1 and must still be
+    rejected, pinning the boundary from the other side (an `>= 63` mutant
+    would ALSO reject this one, so this case alone cannot kill W6 — it
+    only proves the boundary hasn't moved the wrong way)."""
+    table_59 = "b" * 59
+    assert len(f"{table_59}_pkey") == 64
+    sql = f"CREATE TABLE IF NOT EXISTS {table_59} (id INT PRIMARY KEY);"
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
 # --- C5 Round 0: 8 shapes the pre-tokenizer regex parser under-matched
 # (stayed silently green on), each fed as a synthetic single-statement SQL
 # string. Still exercised against the Round-1 tokenizer below — same
