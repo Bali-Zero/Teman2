@@ -41,10 +41,6 @@ export const FUNNEL_EVENTS = [
   "property_consult_click",
   "property_search_submit",
   "property_suggestion_click",
-  // Property Check R19 rebuild (spec-property-check.md, 2026-09-28): buyer
-  // profile (WNI/WNA/PT PMA) and intended-use (KBLI) selectors.
-  "property_buyer_selected",
-  "property_use_selected",
   // --- Hero Section CTAs ---
   "hero_cta_book_call",
   "hero_cta_read_dispatch",
