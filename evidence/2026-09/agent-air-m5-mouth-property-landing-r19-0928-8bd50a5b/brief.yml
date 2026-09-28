@@ -1,0 +1,26 @@
+task: >-
+  Move the static /property landing (app/(blog)/property/page.tsx) onto R19: drop it from the
+  routePolicy exclusion and reskin its body with R19 tokens, copy and structure unchanged.
+lane: mouth/property-landing-r19
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: >-
+  Floor 1 (evidence_pack_lint.py --print-floor): 5 files, skin-only restyle plus the
+  route-policy flip and its tests; no schema/infra/secrets/auth touched.
+acceptance:
+  A1: >-
+    page.r19-guard.test.tsx fails 2/2 on origin/main's page.tsx and passes on HEAD; a text-white
+    mutant and a bare-hex mutant each turn it red. routePolicy/R19Presentation tests (7 files,
+    59 tests) green; tsc exit 0; prettier clean.
+  A2: >-
+    Copy frozen: the extracted text/attribute strings of page.tsx are identical to origin/main
+    (149/149; the only textual delta is prettier's {" "}).
+  A3: >-
+    Local next dev (--webpack, :3163) vs https://balizero.com/property at 1440 and 390: one
+    data-presentation="r19" root, paper nav and footer, h1 in R19 Fraunces ink rgb(29,44,59),
+    same 5 links; height 2016 -> 2019 (1440) and 3533 -> 3599 (390).
+out_of_scope:
+  - >-
+    Copy review of the "Freehold Structuring" and "Nominee arrangement compliance" lines
+    (legal wording, an owner decision, left verbatim here).
