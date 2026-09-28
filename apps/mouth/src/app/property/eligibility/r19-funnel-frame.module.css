@@ -1,28 +1,38 @@
 /*
- * Property Check R19 rebuild (spec-property-check-v2.md, 2026-09-28, gate-7596
- * F5): packages/core's FunnelFrame renders TrustBand + CTAHandoff through
- * bare `var(--color-text-secondary)` / `var(--surface-base)` /
- * `var(--color-border-subtle))` tokens. Those two components are shared with
- * every non-R19 FunnelFrame consumer (visa-oracle, kbli, tax-calendar) and
- * must not change — so this scopes the R19 paper repaint to THIS route only,
- * via `:global()` attribute selectors on the only stable hooks the two
- * components expose (their `aria-label`s). Neither file imports this module,
- * so their computed styles are unaffected.
+ * Property Check R19 rebuild (spec-property-check-v3.md, 2026-09-28, gate-7596
+ * B2): packages/core's FunnelFrame renders TrustBand + CTAHandoff through
+ * INLINE styles that read `var(--color-text-secondary)` / `var(--surface-subtle)`
+ * / `var(--surface-base)` / `var(--color-border-subtle)`. An inline style
+ * always wins over an external stylesheet rule for the SAME CSS property on
+ * the SAME element, no matter the selector's specificity — so a v2 attempt
+ * at this file that set `color`/`background`/`border-top-color` directly
+ * here was silently defeated by TrustBand's own `style={{color: ...}}`.
+ *
+ * The cure: redefine the CUSTOM PROPERTIES those inline styles read (found
+ * in packages/core/components/TrustBand.tsx and CTAHandoff.tsx), not the
+ * resolved properties. Setting a custom property is a DIFFERENT declaration
+ * from the property the inline style sets, so there is no inline-vs-external
+ * conflict — the inline `color: var(--color-text-secondary)` simply resolves
+ * against whatever value `--color-text-secondary` computes to on that
+ * element, which this file now controls within this route only. Neither
+ * shared file imports this module, so other FunnelFrame consumers
+ * (visa/kbli/tax) are unaffected.
  */
 .scope :global([aria-label="Trust signals"]) {
-  background: var(--r19-wash, var(--surface-subtle));
-  border-top-color: var(--r19-line, var(--color-border-subtle));
-}
-.scope :global([aria-label="Trust signals"] strong) {
-  color: var(--r19-ink, inherit);
-}
-.scope :global([aria-label="Trust signals"] div) {
-  color: var(--r19-muted, inherit);
+  --surface-subtle: var(--r19-wash);
+  --color-border-subtle: var(--r19-line);
+  --color-text-secondary: var(--r19-muted);
 }
 .scope :global([aria-label="Next actions"]) {
-  background: var(--r19-surface, var(--surface-base));
-  border-top-color: var(--r19-line, var(--color-border-subtle));
+  --surface-base: var(--r19-surface);
+  --color-border-subtle: var(--r19-line);
 }
+
+/* CTAHandoff's WhatsApp anchor uses `.btn.btn-primary`, which is undefined in
+ * every stylesheet in this monorepo (see CTAHandoff.tsx's own comment) — its
+ * `style={tapTarget}` prop carries no color/background, so there is no
+ * inline value to lose a specificity fight against here; a normal property
+ * rule is correct. */
 .scope :global([aria-label="Next actions"] .btn-primary) {
   display: inline-flex;
   align-items: center;
