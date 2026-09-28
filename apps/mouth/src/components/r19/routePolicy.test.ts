@@ -13,6 +13,7 @@ describe("R19 public presentation boundary", () => {
     "/visas",
     "/visas/example",
     "/property/example",
+    "/property/eligibility",
     "/tech/example",
     "/taxes/example",
     "/privacy",
@@ -27,7 +28,6 @@ describe("R19 public presentation boundary", () => {
   it.each([
     "/property",
     "/property/",
-    "/property/eligibility",
     "/v2",
     "/v2/news",
     "/visa-oracle",

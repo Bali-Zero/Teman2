@@ -29,7 +29,7 @@ describe("R19 presentation and portal", () => {
     ["/news", 2],
     ["/property", 0],
     ["/v2", 0],
-    ["/property/eligibility", 0],
+    ["/property/eligibility", 2],
   ])(
     "discovers display fonts in server HTML only on selected route %s",
     (pathname, count) => {
