@@ -1,0 +1,151 @@
+brief_ref: evidence/brief.yml # canonical staged name — harness-floor.yml stages this PR's dated brief there before linting
+council_run: council-journal.jsonl
+pii_scan: clean
+plan_ref: >-
+  JEV-CODING-01 recovery generation 2 (BLUE, owner GO 2026-09-28), first releasable slice D1:
+  "measured Jev judgments in the EXISTING catE CI lint, with old caller compatibility" — Task 1 of
+  the 2026-09-23 rollout plan, narrowed by the recovery window: no receipt framework, cache or
+  scheduler before this measurement consumer exists. Reuses the shipped dispatch gate (PR #7587)
+  untouched.
+lanes:
+  - lane: jev-dux-recovery-0928
+    role: read
+    seat: claude-opus-5-5 (Dux session 85b0b1bc, Mini; wrote the spec and the evidence, ships; does not grade)
+  - lane: jev-dux-recovery-0928
+    role: build
+    seat: claude-sonnet-5 (single bounded builder subagent; commits 2edf7d7924, c8c6fddee5, 64cf24dfe7; never pushed)
+diff:
+  behaviour_change: |
+    scripts/typesafe_client.py gains ask_detailed() -> Judgment. ask() now returns
+    ask_detailed(...).answers and is otherwise unchanged: same endpoint, pinned model, payload,
+    authorization check before serialisation, 429/529 retry with 0.8 s / 1.6 s backoff, broad
+    exception retry, redirect refusal. One narrowing: an unavailable_reason() text the client has
+    never mapped can no longer raise KeyError out of ask() (it maps to the code "unavailable").
+    scripts/lint_paid_llm_entity.py calls ask_detailed() through jev_judgment(), adds a per-file
+    "jev" key and prints ONE extra line per run:
+    `lint_paid_llm_entity: jev-telemetry {json}` (text mode) / a `jev_telemetry` key (--json)
+    carrying service state, files, asked, answered, unavailable, partial, reason counts,
+    attempts, elapsed ms (sum and max), input/output tokens or null, usage_unknown and models, where a model is only ever the pinned id or the constant
+    "unexpected" — never a vendor-chosen string. Verdicts, exit codes, FIRE_THRESHOLD, pardons and the grep OR model composition are
+    unchanged; the no-in-scope early return is byte-identical.
+  surface: |
+    Two scripts (client + lint), one workflow line (the new suite joins the catE corpora step),
+    one REQUIRED_TOOLS entry, the pin-test harness (unique module name during exec_module), the
+    lint's own test seams (11 monkeypatches moved from ask to ask_detailed, one from jev_verdict
+    to jev_judgment, no assertion weakened), one new test module. No backend, frontend,
+    migration, credential, fence entry or hook. infra/claude-hooks/jev_dispatch_gate.py untouched.
+receipts:
+  - claim: "baseline before the change: the existing six guard suites are green without the key"
+    cmd: env -u TYPESAFE_API_KEY apps/backend-rag/.venv/bin/python -m pytest -q scripts/test_lint_paid_llm_entity.py scripts/tests/test_vendor_authorization_fence.py scripts/tests/test_typesafe_client_pin.py scripts/tests/test_cate_trigger_parity.py scripts/tests/test_jev_dispatch_gate.py scripts/tests/test_lint_ban_prose.py (on df39ad7f0d)
+    result: "344 passed"
+    exit: 0
+    ts: 2026-09-28T04:40:30Z
+    seat: claude-opus-5-5
+  - claim: "baseline consumer output: the live step reports files and a judged count only — whether a judged call answered, how many attempts, tokens and time are invisible"
+    cmd: "gh run view 36373143980 --log | grep 'lint_paid_llm_entity: '"
+    result: "lint_paid_llm_entity: 13 file(s) in scope, 7 judged, 0 violation(s), 0 pardoned."
+    exit: 0
+    ts: 2026-09-28T04:47:10Z
+    seat: claude-opus-5-5
+  - claim: "the new suite cannot pass against the base client and lint (re-run by the Dux on /tmp copies of df39ad7f0d's two scripts preloaded into sys.modules; the builder separately reported 35 failed / 1 passed on its first draft)"
+    cmd: python /tmp/jev-d1-evidence/base/run.py <base copies> scripts/tests/test_typesafe_telemetry.py
+    result: "collection error: module 'typesafe_client' has no attribute 'RATE_LIMITED' (1 error)"
+    exit: 2
+    ts: 2026-09-28T05:50:55Z
+    seat: claude-opus-5-5
+  - claim: "the pin test is order-independent after the fix: it passes run ALONE on both interpreters (it failed 2/3 alone on 2edf7d7924)"
+    cmd: env -u TYPESAFE_API_KEY <py> -m pytest -q scripts/tests/test_typesafe_client_pin.py, py in {apps/backend-rag/.venv/bin/python 3.11.15, python3 3.14.7}
+    result: "3 passed / 3 passed on c8c6fddee5 and again on 64cf24dfe7 (2edf7d7924 alone: 2 failed, 1 passed on 3.11 and 3.14)"
+    exit: 0
+    ts: 2026-09-28T06:01:59Z
+    seat: claude-opus-5-5
+  - claim: "all eight relevant suites green on the candidate head with the ambient key removed"
+    cmd: env -u TYPESAFE_API_KEY apps/backend-rag/.venv/bin/python -m pytest -q -p no:cacheprovider scripts/test_lint_paid_llm_entity.py scripts/tests/test_vendor_authorization_fence.py scripts/tests/test_typesafe_client_pin.py scripts/tests/test_typesafe_telemetry.py scripts/tests/test_cate_trigger_parity.py scripts/tests/test_jev_dispatch_gate.py scripts/tests/test_lint_ban_prose.py scripts/tests/test_ban_predicates.py
+    result: "412 passed, 2 skipped (64cf24dfe7; 409 passed on c8c6fddee5 at 05:40:23Z)"
+    exit: 0
+    ts: 2026-09-28T06:01:59Z
+    seat: claude-opus-5-5
+  - claim: "catE's other own checks stay green on the head"
+    cmd: bash scripts/tests/test_cate_paid_budget.sh; actionlint .github/workflows/catE-sovereignty-lint.yml; python3 scripts/lint/lint_ban_prose.py <7 changed files>
+    result: "budget passed 9 failed 0; actionlint rc 0; ban-prose OK 7 files"
+    exit: 0
+    ts: 2026-09-28T05:40:23Z
+    seat: claude-opus-5-5
+  - claim: "stubbed eligible CI path through the real lint main(): telemetry reports answered/unavailable, attempts, usage-or-null and elapsed while the exit code stays the verdict's"
+    cmd: python3 /tmp/jev-d1-evidence/demo/demo.py (authorized tmp listing, stub transport, lint.in_scope patched, lint.main([file]) x4)
+    result: >-
+      answered rc=0 {answered:1, attempts:1, input_tokens:612, unavailable:0};
+      429-then-answered rc=0 {answered:1, attempts:2};
+      transport-failed rc=0 {answered:0, unavailable:1, reasons:{transport_error:1}, attempts:3, input_tokens:null};
+      no-usage rc=0 {answered:1, input_tokens:null, usage_unknown:1, partial:1}
+    exit: 0
+    ts: 2026-09-28T05:40:23Z
+    seat: claude-opus-5-5
+  - claim: "a mutant that lets float token counts through _safe_usage is caught, and only by the case written for it"
+    cmd: sed mutant of scripts/typesafe_client.py under /tmp (isinstance(value, int) -> (int, float)) preloaded into sys.modules; pytest scripts/tests/test_typesafe_telemetry.py
+    result: "1 failed (test_usage_extraction_is_strict[float]), 40 passed; 41 passed against the real file"
+    exit: 1
+    ts: 2026-09-28T05:50:55Z
+    seat: claude-opus-5-5
+unresolved:
+  - "Telemetry is printed per run, not persisted or aggregated across runs; the degradation-visibility rules of EXECUTION-CONDITIONS (first outage event, escalate after three failures or five minutes) bind the later admission/rollout slices and are not implemented here."
+  - "Cache (Task 3) and the remaining capabilities (diagnostics, skill/review advice) remain explicit JEV-CODING-01 work, gated on the measurements this slice starts producing."
+  - "Council seats: codex titolare unavailable (CLI answered 'workspace is out of credits', 05:17Z); tp1-qwen3.8-max titolare NOT COUNTED — its door is direct HTTP, outside this session's CLI-only rule (Imperator correction CLI_ONLY_G2, 05:54Z); kimi-code/k3 titolare counted; agy-gemini-3.1-pro reserve counted (see seat_fallback_reason)."
+  - 'Kimi LOW finding declined: the --json no-in-scope early return still prints {"results": []} without jev_telemetry, kept byte-identical by spec; no in-repo consumer parses --json (git grep).'
+seat_fallback_reason: |
+  agy-gemini-3.1-pro is a RESERVE counted toward quorum, standing in for two titolari unavailable
+  to this session: codex-gpt-5.6-sol, whose CLI answered "Your workspace is out of credits" on a
+  live `codex exec --sandbox read-only` dispatch at 2026-09-28T05:17Z (before any review), and
+  tp1-qwen3.8-max, whose only door (scripts/tp1_call.py) is direct HTTP and was ruled outside this
+  session's CLI-only transport by the Imperator at 05:54Z (CLI_ONLY_G2). agy was PONG-probed live
+  at 05:55Z through its own CLI before being dispatched.
+dissent:
+  - seat: kimi-code/k3
+    objection: "BLOCKER on 2edf7d7924 — test_typesafe_client_pin.py exec's the client without registering it in sys.modules; the new dataclass then fails (sys.modules.get(module).__dict__ on None). It passed only when another file had imported the client first. CONFIRMED by the Dux on py3.11 and 3.14 (2 failed alone) and FIXED in c8c6fddee5: unique probe name registered for exec_module and popped in finally; passes alone on both."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "MEDIUM — surviving mutants: float usage, model alphabet/length bounds, round vs truncation of elapsed, http_status on success, elapsed_ms_max and usage_unknown in the summary never asserted. FIXED: each pinned by a case in c8c6fddee5; the float mutant verified red."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "LOW — jev_summary hard-indexed telemetry keys after advertising tolerance; a partial dict would raise KeyError out of main(). FIXED with .get() and a main()-level regression test."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "LOW — --json shape differs between the no-in-scope early return and the main path. NOT CHANGED: that return is byte-identical by spec and no in-repo consumer parses --json (see unresolved)."
+    status: PLAUSIBLE
+  - seat: tp1-qwen3.8-max (NOT COUNTED — CLI_ONLY_G2; provenance only, findings judged on their merits by the Dux)
+    objection: 'MEDIUM on c8c6fddee5 — the model field let a compromised endpoint echo any short [A-Za-z0-9._:-] string (a key, a state marker) into CI logs. FIXED: only the pinned id is ever emitted; any other string becomes the constant "unexpected".'
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max (NOT COUNTED — CLI_ONLY_G2; provenance only, findings judged on their merits by the Dux)
+    objection: "MEDIUM — RETRY_STATUS={429} and a deleted sleep in the transport or broad-exception retry branch survived: no 529 case, no sleep assertions on exhaustion. FIXED: 529 success/exhaustion cases and exact backoff assertions on every retrying family."
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max (NOT COUNTED — CLI_ONLY_G2; provenance only, findings judged on their merits by the Dux)
+    objection: "MEDIUM — redirect refusal never exercised because every new test replaces the opener. RETRACTED on evidence: test_a_redirect_never_reaches_the_second_host in scripts/tests/test_vendor_authorization_fence.py drives the real opener through a live local redirect pair and runs in the same catE step."
+    status: RETRACTED
+  - seat: tp1-qwen3.8-max (NOT COUNTED — CLI_ONLY_G2; provenance only, findings judged on their merits by the Dux)
+    objection: "LOW — jev_summary raises on a non-dict usage or a non-string model. NOT CHANGED: telemetry is only ever produced by Judgment.telemetry(), whose usage is a dict or None; hardening against a producer that does not exist is outside this slice."
+    status: PLAUSIBLE
+  - seat: tp1-qwen3.8-max (NOT COUNTED — CLI_ONLY_G2; provenance only, findings judged on their merits by the Dux)
+    objection: "LOW — a mutant adding a path key to the telemetry, or turning >= FIRE_THRESHOLD into >, survived. FIXED: exact key sets asserted; 0.80 fires and 0.7999 does not."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER on 64cf24dfe7 — the new suite would crash at import because scripts/tests/fixtures/paid_llm_entity/bench_cases.json does not exist. RETRACTED on evidence: git ls-files lists exactly that path and the suite passes alone (44 passed, 2026-09-28T06:06:00Z); the reviewer ran text-only with no tools."
+    status: RETRACTED
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW — the isinstance(body, dict) guards on model/usage are dead because body.get raises first for a non-dict body; and the 'not worth retrying' comment does not say that a non-dict BODY is retried (base parity) while a non-dict ANSWERS is not. ACCEPTED as cosmetic, not changed in this slice (no behaviour impact); recorded for the next edit of the file."
+    status: PLAUSIBLE
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW — jev_summary raises on a non-dict usage. Same as the declined tp1 finding: outside the producer contract (telemetry only comes from Judgment.telemetry())."
+    status: PLAUSIBLE
+  - seat: claude-opus-5-5 (Dux, own read — not counted toward quorum)
+    objection: "REASON_CODES[reason_text] could raise KeyError out of ask(), which promises never to raise; and the no-leak test put its exception marker on an intermediate attempt, so storing str(exc) on the final failure path would survive. FIXED in c8c6fddee5 (UNAVAILABLE fallback; markers ride the final URLError and an HTTPError msg + body)."
+    status: CONFIRMED
+bites:
+  consumer: |
+    catE step "Paid-endpoint ban judged as an entity" (.github/workflows/catE-sovereignty-lint.yml),
+    which runs scripts/lint_paid_llm_entity.py on every PR's changed files with the repository's
+    TYPESAFE_API_KEY under the RULED 2026-09-21-bis fence entry. This PR's own diff puts three
+    worth-asking files in scope (the client, the lint, the workflow), so its own catE run is the
+    first observation: the step log must carry exactly one
+    `lint_paid_llm_entity: jev-telemetry {...}` line with asked >= 1 and the step must exit 0.
+    After merge, the next PR run on main's code must carry the same line — read, not assumed.
+    Stubbed-path proof of the same line and unchanged exit codes is in receipts above.

@@ -1,0 +1,55 @@
+task_id: jev-coding-01-d1
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  JEV-CODING-01 recovery generation 2, slice D1 (BLUE, owner GO 2026-09-28). Give scripts/typesafe_client.py
+  a detailed result path, ask_detailed() -> Judgment, that keeps the answers ask() returns and adds only safe
+  metadata (mode, closed-vocabulary reason, reported model when it is a safe token, token usage or null,
+  attempts, monotonic elapsed ms); ask() delegates and is behaviourally unchanged. Wire the EXISTING catE
+  consumer, scripts/lint_paid_llm_entity.py, to the detailed path so every PR run prints one compact
+  machine-readable jev-telemetry line (answered/unavailable, reasons, attempts, usage-or-unknown, elapsed)
+  without changing any verdict, exit code, threshold, retry or permission behaviour.
+constraints:
+  - "Verdict invariance: violation = grep OR (fired minus pardoned); FIRE_THRESHOLD 0.80, MODEL jev-1.13.0, RETRY_STATUS {429,529}, MAX_ATTEMPTS 3, BACKOFF_BASE_S 0.8, TIMEOUT_S 25 and every return code stay as on base df39ad7f0d."
+  - "Silence is no opinion, never clean: no key, not authorized, transport failure, 429 after retries or a malformed body contribute nothing to the OR and are now COUNTED as unavailable with a reason code instead of being invisible."
+  - "Authorization is still checked before the payload is serialised; attempts=0 on that path. No new endpoint, credential, transport or fence entry; infra/vendor-authorizations is untouched."
+  - "Telemetry never carries state, questions, the key, the response body or exception text; usage absent is null, never 0."
+  - "The shipped dispatch gate (infra/claude-hooks/jev_dispatch_gate.py) and its key loader are not edited; it keeps calling ask() unchanged."
+  - "One test harness outside the client changes: scripts/tests/test_typesafe_client_pin.py registers its fresh probe copy under a UNIQUE module name for the duration of exec_module (the documented importlib recipe a module-level dataclass needs); it never binds the real typesafe_client name."
+  - "No receipt framework, cache, scheduler or hook in this slice: those are the remaining JEV-CODING-01 work and follow this measurement, not precede it."
+acceptance:
+  - text: ask() SHALL return exactly ask_detailed(...).answers for success, empty answers, malformed body, HTTP error, rate limit, transport failure and the two pre-serialisation silences.
+    probe: scripts/tests/test_typesafe_telemetry.py (parametrized compat case)
+  - text: WHEN usage is absent or invalid the Judgment usage SHALL be None, never 0 or {}; a reported 0 SHALL be preserved.
+    probe: scripts/tests/test_typesafe_telemetry.py (usage cases)
+  - text: WHEN the endpoint is not authorized or no key is set, ask_detailed SHALL return mode local, attempts 0, without serialising the payload.
+    probe: scripts/tests/test_typesafe_telemetry.py (json.dumps and transport patched to raise)
+  - text: Attempts and backoff SHALL match the base client (429 then 200 = 2 attempts, persistent 429 = 3 attempts with sleeps 0.8/1.6, 500 = 1 attempt), and elapsed_ms SHALL come from time.monotonic.
+    probe: scripts/tests/test_typesafe_telemetry.py (transient + monotonic cases)
+  - text: The real lint main() on a stubbed eligible path SHALL print one jev-telemetry line with answered/unavailable, attempts, usage-or-unknown and elapsed, and SHALL return the same exit code as before (0 for a clean file whether the service answered or failed, 1 for a grep-guilty file with the service failing).
+    probe: scripts/tests/test_typesafe_telemetry.py (lint main cases) + stubbed demonstration receipt in pack.yml
+  - text: The existing guard corpora SHALL stay green with TYPESAFE_API_KEY removed from the environment, and the new suite SHALL run in the catE corpora step and be pinned in REQUIRED_TOOLS.
+    probe: env -u TYPESAFE_API_KEY pytest on the eight suites listed in pack.yml; test_cate_trigger_parity.py
+  - text: scripts/tests/test_typesafe_client_pin.py SHALL pass when run ALONE (not only after another file imported the client), on Python 3.11 and 3.14.
+    probe: pytest scripts/tests/test_typesafe_client_pin.py alone with apps/backend-rag/.venv/bin/python and python3
+  - text: WHEN this PR's own catE run executes the entity step, its log SHALL show the jev-telemetry line for the in-scope files of this diff and the step SHALL exit 0.
+    probe: catE-sovereignty-lint run on this PR's head (Bites)
+assumptions:
+  - text: The vendor response carries top-level model, answers and usage{input_tokens, output_tokens}.
+    status: verified
+    probe: docs.typesafe.ai/api.md read 2026-09-28 (documentation, not a live call); code treats every field as optional
+  - text: The repository secret TYPESAFE_API_KEY exists, so a PR run will actually reach the service.
+    status: verified
+    probe: gh secret list (name only, value never read) 2026-09-28
+consumer_map:
+  - .github/workflows/catE-sovereignty-lint.yml, step "Paid-endpoint ban judged as an entity" — runs scripts/lint_paid_llm_entity.py on every PR's changed files; prints the new jev-telemetry line.
+  - .github/workflows/catE-sovereignty-lint.yml, step "the guards' own corpora" — now also runs scripts/tests/test_typesafe_telemetry.py.
+  - infra/claude-hooks/jev_dispatch_gate.py — existing caller of ask(); not edited, must stay compatible.
+risks:
+  - "A consumer parsing the lint's --json output sees one added top-level key (jev_telemetry) and one added per-result key (jev); no in-repo consumer parses it (git grep)."
+  - "Telemetry is printed per run, not persisted: aggregation across runs is left to a later slice (explicit remaining work)."
+grader: |
+  GENERATOR IS NOT GRADER. The Dux session 85b0b1bc (Opus 5.5, Mini) wrote the spec and ships; the builder
+  subagent (Sonnet 5) wrote the diff. Neither grades it. Cross-family review by a Codex seat; the final
+  Gear-3 gate is a FRESH Opus 5.5 CLI session outside this contribution chain, on the exact head SHA.
