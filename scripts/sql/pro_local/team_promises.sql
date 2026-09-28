@@ -53,8 +53,18 @@ CREATE TABLE IF NOT EXISTS team_promise_candidates (
 
 ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS cue TEXT;
 ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS due_at_hint TEXT;
-ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS status TEXT NOT NULL
-    DEFAULT 'unjudged' CHECK (status IN ('unjudged', 'judged_true', 'judged_false', 'quarantined'));
+ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'unjudged';
+
+-- T3 PR-3: the judge adds a terminal `superseded` status (body edited/gone
+-- out from under an unjudged candidate). DROP+ADD by the SAME static name
+-- every run, not a bare `ADD CONSTRAINT` — idempotent regardless of what
+-- shape (if any) was there before, the PR-1/PR-2 4-value CHECK included, and
+-- a rerun on an already-5-value table is a genuine no-op (drops it, re-adds
+-- the identical definition).
+ALTER TABLE team_promise_candidates DROP CONSTRAINT IF EXISTS team_promise_candidates_status_check;
+ALTER TABLE team_promise_candidates ADD CONSTRAINT team_promise_candidates_status_check
+    CHECK (status IN ('unjudged', 'judged_true', 'judged_false', 'quarantined', 'superseded'));
+
 ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS last_attempt_at TIMESTAMPTZ;
 ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
