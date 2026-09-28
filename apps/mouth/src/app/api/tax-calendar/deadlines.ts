@@ -10,6 +10,25 @@ export interface TaxDeadline {
 }
 
 const MS_DAY = 86_400_000;
+// Asia/Makassar, UTC+8, no DST. Obligations are calendar-day concepts (a
+// filing is "due today" all day, not "due at 00:00Z"), so both which
+// occurrences are still upcoming and the id month tag are computed against
+// this calendar date, not the raw UTC instant.
+const WITA_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+/** The Asia/Makassar calendar date of `instant`, as a UTC-midnight Date —
+ * directly comparable to due dates, which are always UTC midnight of their
+ * calendar day (see `dueDateInMonth`). */
+function witaCalendarDate(instant: Date): Date {
+  const shifted = new Date(instant.getTime() + WITA_OFFSET_MS);
+  return new Date(
+    Date.UTC(
+      shifted.getUTCFullYear(),
+      shifted.getUTCMonth(),
+      shifted.getUTCDate(),
+    ),
+  );
+}
 
 /**
  * A due date recurs on `day` (or the LAST calendar day, for "last") of every
@@ -45,30 +64,49 @@ function shiftWeekendForward(date: Date): Date {
   return date;
 }
 
-/** Every occurrence of `rule` with `now <= date < limit`, ascending. */
+interface Occurrence {
+  due: Date;
+  /** YYYY-MM of the UNROLLED due date (before `shiftWeekendForward`) — the
+   * period the obligation belongs to, used to build a stable iCal id. Using
+   * the rolled date instead would collide a month-end roll with the next
+   * month's own occurrence (gate-7583 F2). */
+  periodKey: string;
+}
+
+/** Every occurrence of `rule` with `witaCalendarDate(now) <= date < limit`,
+ * ascending. Starts scanning one month before `now`'s month (offset -1) so a
+ * weekend roll that pushed last month's due date into this month is not
+ * missed (gate-7583 F1) — that roll can only land in the immediately
+ * following month (`shiftWeekendForward` shifts by at most 2 days), so one
+ * month of lookback is always enough. */
 function occurrencesInWindow(
   now: Date,
   limit: Date,
   rule: RecurrenceRule,
-): Date[] {
-  const results: Date[] = [];
+): Occurrence[] {
+  const results: Occurrence[] = [];
+  const today = witaCalendarDate(now);
   const baseYear = now.getUTCFullYear();
   const baseMonth = now.getUTCMonth();
-  // 26 months of scan room covers any monthly/quarterly/annual rule twice over.
-  for (let offset = 0; offset < 26; offset++) {
+  // 26 months of scan room (plus the -1 lookback) covers any
+  // monthly/quarterly/annual rule twice over.
+  for (let offset = -1; offset < 26; offset++) {
     const monthIndexAbs = baseMonth + offset;
     const year = baseYear + Math.floor(monthIndexAbs / 12);
     const monthIndex = ((monthIndexAbs % 12) + 12) % 12;
     if (rule.months !== "all" && !rule.months.includes(monthIndex)) continue;
-    let due = dueDateInMonth(year, monthIndex, rule.day);
-    if (rule.rollWeekend) due = shiftWeekendForward(due);
+    const unrolled = dueDateInMonth(year, monthIndex, rule.day);
+    const due = rule.rollWeekend ? shiftWeekendForward(unrolled) : unrolled;
     if (due >= limit) break;
-    if (due >= now) results.push(due);
+    if (due >= today) {
+      const periodKey = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+      results.push({ due, periodKey });
+    }
   }
   return results;
 }
 
-function nextOccurrence(now: Date, rule: RecurrenceRule): Date {
+function nextOccurrence(now: Date, rule: RecurrenceRule): Occurrence {
   const farLimit = new Date(
     Date.UTC(now.getUTCFullYear() + 2, now.getUTCMonth(), now.getUTCDate()),
   );
@@ -199,14 +237,17 @@ function toDeadline(o: Obligation, due: Date): TaxDeadline {
   };
 }
 
-/** One deadline per obligation: its next occurrence on/after `now`, sorted. */
+/** One deadline per obligation: its next occurrence on/after `now`
+ * (Asia/Makassar calendar date, inclusive), sorted. */
 export function getNextTaxDeadlines(now: Date = new Date()): TaxDeadline[] {
   return OBLIGATIONS.map((o) =>
-    toDeadline(o, nextOccurrence(now, o.rule)),
+    toDeadline(o, nextOccurrence(now, o.rule).due),
   ).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/** Every occurrence per obligation in [now, now + monthsAhead), sorted, for iCal. */
+/** Every occurrence per obligation in [now, now + monthsAhead), sorted, for
+ * iCal. Each id carries the unrolled due period so ids stay stable across
+ * regenerations and never collide across a rolled month-end (gate-7583 F2). */
 export function getUpcomingTaxDeadlines(
   now: Date = new Date(),
   monthsAhead = 12,
@@ -220,17 +261,15 @@ export function getUpcomingTaxDeadlines(
   );
   const out: TaxDeadline[] = [];
   for (const o of OBLIGATIONS) {
-    for (const due of occurrencesInWindow(now, limit, o.rule)) {
+    for (const occ of occurrencesInWindow(now, limit, o.rule)) {
       out.push({
-        ...toDeadline(o, due),
-        id: `${o.id}-${due.toISOString().slice(0, 7)}`,
+        ...toDeadline(o, occ.due),
+        id: `${o.id}-${occ.periodKey}`,
       });
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));
 }
-
-export const TAX_DEADLINES: TaxDeadline[] = getNextTaxDeadlines();
 
 export function getRegencies(): string[] {
   return Array.from(
