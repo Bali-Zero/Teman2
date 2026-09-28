@@ -9,7 +9,6 @@ export const metadata: Metadata = {
     canonical: "https://balizero.com/about",
   },
   title: { absolute: "About Bali Zero" },
-  robots: { index: false, follow: false },
 };
 
 const STATS = [

@@ -211,6 +211,24 @@ describe("public routes vs the inherited homepage canonical", () => {
     }
   });
 
+  it("the three company pages are indexable, following /privacy and /terms (owner decision 2026-09-28)", () => {
+    // /about, /careers and /press carried `robots: { index: false, follow: false }`
+    // inherited verbatim from the old /v2/company/* pages when #7551
+    // (2026-09-27) built them on the R19 shell. That inheritance was never a
+    // decision about THESE routes — /privacy and /terms sit in the same
+    // (blog) group with no robots override and are indexed — so a page or a
+    // layout below the root reintroducing `index: false` on any of the three
+    // is a regression, not a redesign, until a future owner decision says
+    // otherwise.
+    for (const rel of [
+      "(blog)/about/page.tsx",
+      "(blog)/careers/page.tsx",
+      "(blog)/press/page.tsx",
+    ] as const) {
+      expect(isNoindex(rel)).toBe(false);
+    }
+  });
+
   it("every static canonical points at its own route, not a sibling's", () => {
     // Copy-paste between neighbouring pages is the other way a canonical goes
     // wrong, and it is invisible in review: /kbli/builder declaring

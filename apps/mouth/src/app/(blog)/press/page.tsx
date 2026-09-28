@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   title: "Press",
   description:
     "Media enquiries and press resources for Bali Zero — Indonesia's leading expat services firm.",
-  robots: { index: false, follow: false },
 };
 
 export default function PressPage() {
