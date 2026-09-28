@@ -434,7 +434,8 @@ export function trackPropertyBuyerSelected(buyerType: string): void {
 }
 
 /** Track intended-use selection (own-use / villa rental / restaurant / …).
- * GA4-only — see trackPropertyBuyerSelected above. */
+ * Sent through sendGA4Event + trackEvent, never trackFunnelEvent — see
+ * trackPropertyBuyerSelected above. */
 export function trackPropertyUseSelected(useType: string): void {
   sendGA4Event("property_use_selected", {
     event_category: "Property",

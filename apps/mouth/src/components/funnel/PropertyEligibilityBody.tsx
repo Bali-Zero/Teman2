@@ -108,7 +108,7 @@ function renderSection3(
     return (
       <p style={{ color: "var(--text-secondary)", margin: 0 }}>
         As an Indonesian individual or a local company (PT PMDN) you can
-        register this activity, subject to the zoning in section 1 and the local
+        register this activity, subject to the zoning shown above and the local
         permits.
       </p>
     );
@@ -470,7 +470,7 @@ export function PropertyEligibilityBody() {
           )}
           {/* Section 2 — What may be built here */}
           {opportunities.length ? (
-            <div style={{ margin: "var(--space-5) 0" }}>
+            <div style={{ margin: "var(--space-6) 0" }}>
               <h3
                 style={{
                   fontFamily: "var(--font-serif)",
@@ -537,7 +537,7 @@ export function PropertyEligibilityBody() {
                 );
                 if (!body) return null;
                 return (
-                  <div style={{ margin: "var(--space-5) 0" }}>
+                  <div style={{ margin: "var(--space-6) 0" }}>
                     <h3
                       style={{
                         fontFamily: "var(--font-serif)",

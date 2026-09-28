@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
+    alternateLocale: ["id_ID"],
     url: `${baseUrl}/property/eligibility`,
     title: "Property Eligibility Check — Bali Zoning & Buyer Eligibility",
     description: DESCRIPTION,
@@ -35,6 +36,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: "Bali Zero Property Check",
+        type: "image/jpeg",
       },
     ],
   },

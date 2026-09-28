@@ -70,24 +70,34 @@ function mockAnalyzeOnce(body: unknown) {
 // open to a PT PMA here depends on the exact business code" (the conditional,
 // generic-use copy) — both must stay allowed.
 //
-// Checked per <p> (not over the whole container's flattened textContent):
-// RTL/jsdom's textContent concatenates ADJACENT ELEMENTS with no separator
-// (e.g. a heading "...with it" directly followed by a paragraph "Whether...
-// depends" reads back as "...with itWhether...depends", which breaks a
-// \b-word-boundary check on "whether"/"depends" — there is no boundary
-// between two letters). Every sentence this component renders lives whole
-// inside one <p>, so scanning per-<p> sidesteps that DOM-flattening trap
-// instead of trying to out-clever it with sentence-splitting regex.
+// Checked on TEXT NODES, never on container.textContent: jsdom's textContent
+// glues neighbouring elements together ("15 MeterGREENWhat"), which hides a
+// grade word from a \b check. Grade words are matched on all text nodes
+// joined with " "; PMA claims are checked sentence by sentence inside each
+// text node, so a positive sentence appended to an allowed one is still caught
+// (spec v4, G1).
+function textNodes(container: HTMLElement): string[] {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const out: string[] = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    out.push(n.textContent ?? "");
+  }
+  return out;
+}
+
+function reportText(container: HTMLElement): string {
+  return textNodes(container).join(" ");
+}
+
 function findPositivePmaOpenClaims(container: HTMLElement): string[] {
-  const paragraphs = Array.from(container.querySelectorAll("p")).map(
-    (p) => p.textContent ?? "",
-  );
-  return paragraphs.filter((s) => {
-    if (!/open to (?:a |an |the )?PT\s?PMA/i.test(s)) return false;
-    if (/\bnot open to (?:a |an |the )?PT\s?PMA/i.test(s)) return false;
-    if (/\bwhether\b/i.test(s) && /\bdepends\b/i.test(s)) return false;
-    return true;
-  });
+  return textNodes(container)
+    .flatMap((t) => t.split(/(?<=[.!?])\s+/))
+    .filter((s) => {
+      if (!/open to (?:a |an |the )?PT\s?PMA/i.test(s)) return false;
+      if (/\bnot open to (?:a |an |the )?PT\s?PMA/i.test(s)) return false;
+      if (/^Whether\b[\s\S]*\bdepends\b/i.test(s.trim())) return false;
+      return true;
+    });
 }
 
 describe("PropertyEligibilityBody", () => {
@@ -437,7 +447,7 @@ describe("PropertyEligibilityBody", () => {
       fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
       await waitFor(() => expect(screen.getByText(/C-1/)).toBeInTheDocument());
 
-      const text = container.textContent ?? "";
+      const text = reportText(container);
       expect(text).not.toMatch(/\bGREEN\b/);
       expect(text).not.toMatch(/\bYELLOW\b/);
       expect(text).not.toMatch(/\bRED\b/);
