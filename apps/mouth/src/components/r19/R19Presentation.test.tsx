@@ -27,7 +27,7 @@ describe("R19 presentation and portal", () => {
   it.each([
     ["/", 2],
     ["/news", 2],
-    ["/property", 0],
+    ["/property", 2],
     ["/v2", 0],
     ["/property/eligibility", 2],
   ])(
@@ -89,7 +89,7 @@ describe("R19 presentation and portal", () => {
     expect(container.querySelector('[data-presentation="r19"]')).toBeNull();
   });
 
-  it("removes the presentation on navigation to the protected property landing", () => {
+  it("keeps the presentation on navigation to the property landing", () => {
     route.pathname = "/property/example";
     const { container, rerender } = render(
       <R19Presentation>{child}</R19Presentation>,
@@ -97,9 +97,9 @@ describe("R19 presentation and portal", () => {
     expect(container.querySelector('[data-presentation="r19"]')).not.toBeNull();
     route.pathname = "/property";
     rerender(<R19Presentation>{child}</R19Presentation>);
-    expect(container.querySelector('[data-presentation="r19"]')).toBeNull();
+    expect(container.querySelector('[data-presentation="r19"]')).not.toBeNull();
     expect(screen.getByRole("button", { name: "Open menu" }).style.color).toBe(
-      "rgb(255, 255, 255)",
+      "rgb(29, 44, 59)",
     );
   });
 });
