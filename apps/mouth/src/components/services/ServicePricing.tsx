@@ -13,7 +13,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { usePricingData } from "@/hooks/usePricingData";
+import {
+  usePricingData,
+  useTierFloorPricingData,
+} from "@/hooks/usePricingData";
 import { R19_VARS } from "@/components/r19/presentation";
 
 // ServiceData without icon (React component cannot be serialized)
@@ -36,6 +39,13 @@ function usePackagePrice(pkg: ServicePackage): string {
     pkg.livePriceKey ?? null,
     pkg.livePriceCategory ?? null,
   );
+  const { price: floorPrice } = useTierFloorPricingData(
+    pkg.livePriceFloorKeys ? (pkg.livePriceCategory ?? null) : null,
+    pkg.livePriceFloorKeys ?? null,
+  );
+  if (pkg.livePriceFloorKeys) {
+    return floorPrice ? `from ${floorPrice}` : "Contact";
+  }
   return livePrice ?? "Contact";
 }
 

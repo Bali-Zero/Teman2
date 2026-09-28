@@ -15,6 +15,10 @@ export interface ServicePackage {
   /** Optional exact PricingTool SSOT identity. Missing rows always abstain. */
   livePriceKey?: string;
   livePriceCategory?: string;
+  /** Optional tier-set floor: when set (with livePriceCategory), the card
+   *  shows "from <catalogue minimum across these keys>" instead of an exact
+   *  price. Mutually exclusive with livePriceKey. */
+  livePriceFloorKeys?: string[];
 }
 
 export interface ServiceData {
@@ -315,6 +319,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         features: [
           "Corporate tax ID registration",
           "Regional tax registration",
+          "Per location",
           "Company documentation",
           "Tax office liaison",
         ],
@@ -349,9 +354,10 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "E-filing submission",
         ],
         popular: false,
-        // tax_accounting.annual_basic_packages:"Annual Company ZERO"
-        livePriceKey: "Annual Company ZERO",
-        livePriceCategory: "tax_accounting.annual_basic_packages",
+        // SKU "Annual Company ZERO" = "Yearly Financial Report only"; this
+        // card also promises personal filing, which is the separate 1M
+        // "Annual Tax Personal" SKU — the combined scope has no exact SKU,
+        // so this stays on the Contact placeholder (2026-09-28 ruling).
       },
       {
         name: "SPT Annual Company (Operational)",
@@ -365,8 +371,14 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         ],
         popular: true,
         // No exact SKU: catalogue has 4 tiered "Annual Basic Package A-D"
-        // plus a separate "Annual Tax Company" standalone row, and this
-        // package names neither — stays on the Contact placeholder.
+        // (Package A the cheapest). Shows the tier-set floor instead.
+        livePriceCategory: "tax_accounting.annual_basic_packages",
+        livePriceFloorKeys: [
+          "Package A",
+          "Package B",
+          "Package C",
+          "Package D",
+        ],
       },
       {
         name: "Monthly Tax Report",
@@ -379,9 +391,16 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Deadline management",
         ],
         popular: false,
-        // No exact SKU: catalogue has 8 rows (basic/bundled x 4 transaction
-        // tiers) and this package names no tier or bundle — stays on the
-        // Contact placeholder.
+        // No exact SKU: the catalogue's "without LKPM & Annual" tier set
+        // matches this card's scope (no LKPM/Annual mentioned). Shows the
+        // tier-set floor instead.
+        livePriceCategory: "tax_accounting.monthly_tax_basic",
+        livePriceFloorKeys: [
+          "Tier 0-50",
+          "Tier 50-100",
+          "Tier 100-200",
+          "Tier 200+",
+        ],
       },
       {
         name: "BPJS Health Insurance",
@@ -394,9 +413,10 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Monthly administration",
         ],
         popular: false,
-        // consultant_services:"BPJS Insurance (Kesehatan)"
-        livePriceKey: "BPJS Insurance (Kesehatan)",
-        livePriceCategory: "consultant_services",
+        // SKU "BPJS Insurance (Kesehatan)" = registration only; this card
+        // promises "Monthly administration", which the SKU does not cover
+        // and the owner has not confirmed the scope of — stays on Contact
+        // (2026-09-28 ruling).
       },
       {
         name: "BPJS Employment Insurance",
@@ -409,9 +429,10 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Monthly administration",
         ],
         popular: false,
-        // consultant_services:"BPJS Employee (Tenaga Kerja)"
-        livePriceKey: "BPJS Employee (Tenaga Kerja)",
-        livePriceCategory: "consultant_services",
+        // SKU "BPJS Employee (Tenaga Kerja)" = registration only; this card
+        // promises "Monthly administration", which the SKU does not cover
+        // and the owner has not confirmed the scope of — stays on Contact
+        // (2026-09-28 ruling).
       },
       {
         name: "LKPM Report",
@@ -424,11 +445,10 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Government liaison",
         ],
         popular: false,
-        // tax_accounting.annual_standalone:"LKPM Yearly Report" — the only
-        // LKPM row in the catalogue; catalogue calls it yearly while this
-        // package's feature text says quarterly (see report).
-        livePriceKey: "LKPM Yearly Report",
-        livePriceCategory: "tax_accounting.annual_standalone",
+        // Catalogue's only LKPM row, "LKPM Yearly Report", is a stand-alone
+        // YEARLY report; this card promises "Quarterly LKPM submission",
+        // which that SKU does not cover — stays on Contact (2026-09-28
+        // ruling, following #7582's own gate finding).
       },
     ],
     included: [

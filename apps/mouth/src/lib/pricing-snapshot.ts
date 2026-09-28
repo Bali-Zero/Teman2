@@ -10,6 +10,9 @@ export interface PricingSnapshotEntry {
   notes: string | null;
   description_en: string | null;
   icon_id: string | null;
+  /** [low, high] IDR range for a tier the catalogue prices as a band rather
+   *  than a single figure (e.g. a "from" tier). Null everywhere else. */
+  tier_range: string[] | null;
 }
 
 interface PricingSnapshot {
@@ -42,4 +45,39 @@ export function getExactSnapshotPrice(
 ): string | null {
   const price = getPricingSnapshotEntry(category, itemKey)?.price?.trim();
   return price && EXACT_IDR_PRICE.test(price) ? price : null;
+}
+
+function parseIdrAmount(price: string): number {
+  return Number(price.replace(/[^\d]/g, ""));
+}
+
+/**
+ * Lowest IDR figure the catalogue backs for any of `itemKeys` in `category` —
+ * a tier's exact price if it has one, otherwise the low end of its
+ * `tier_range` band. Used for a package that shows "from X" because it spans
+ * several catalogue tiers rather than mapping onto one exact SKU. Returns
+ * null (never a guess) when no key resolves to a numeric floor.
+ */
+export function getTierSetFloorPrice(
+  category: string,
+  itemKeys: string[],
+): string | null {
+  let floor: { amount: number; price: string } | null = null;
+  for (const itemKey of itemKeys) {
+    const entry = getPricingSnapshotEntry(category, itemKey);
+    if (!entry) continue;
+    const rangeLow = entry.tier_range?.[0]?.trim();
+    const candidate =
+      entry.price && EXACT_IDR_PRICE.test(entry.price.trim())
+        ? entry.price.trim()
+        : rangeLow && EXACT_IDR_PRICE.test(rangeLow)
+          ? rangeLow
+          : null;
+    if (!candidate) continue;
+    const amount = parseIdrAmount(candidate);
+    if (!floor || amount < floor.amount) {
+      floor = { amount, price: candidate };
+    }
+  }
+  return floor?.price ?? null;
 }

@@ -3,8 +3,28 @@
 import { usePathname } from "next/navigation";
 import { SERVICES_DATA } from "@/data/services_data";
 import { WA_NUMBER } from "@/lib/whatsapp-utm";
-import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
+import {
+  getExactSnapshotPrice,
+  getTierSetFloorPrice,
+} from "@/lib/pricing-snapshot";
 import { useEffect, useState } from "react";
+
+interface ServiceOfferBase {
+  "@type": "Offer";
+  name: string;
+  description: string;
+  availability: string;
+}
+
+type ServiceOffer =
+  | (ServiceOfferBase & { price: string; priceCurrency: string })
+  | (ServiceOfferBase & {
+      priceSpecification: {
+        "@type": "UnitPriceSpecification";
+        minPrice: number;
+        priceCurrency: string;
+      };
+    });
 
 interface PageSchema {
   "@context": string;
@@ -50,7 +70,32 @@ export function DynamicJsonLd() {
           "@type": "Country",
           name: "Indonesia",
         },
-        offers: service.packages.flatMap((pkg) => {
+        offers: service.packages.flatMap((pkg): ServiceOffer[] => {
+          if (pkg.livePriceFloorKeys) {
+            const floorPrice = pkg.livePriceCategory
+              ? getTierSetFloorPrice(
+                  pkg.livePriceCategory,
+                  pkg.livePriceFloorKeys,
+                )
+              : null;
+            if (!floorPrice) return [];
+            // A "from" price spans several tiers — never a plain `price`
+            // that would read as exact. priceSpecification.minPrice is the
+            // schema.org-sanctioned way to publish a lower bound.
+            return [
+              {
+                "@type": "Offer",
+                name: pkg.name,
+                description: pkg.description,
+                priceSpecification: {
+                  "@type": "UnitPriceSpecification",
+                  minPrice: Number(floorPrice.replace(/\D/g, "")),
+                  priceCurrency: "IDR",
+                },
+                availability: "https://schema.org/InStock",
+              },
+            ];
+          }
           const exactPrice =
             pkg.livePriceCategory && pkg.livePriceKey
               ? getExactSnapshotPrice(pkg.livePriceCategory, pkg.livePriceKey)

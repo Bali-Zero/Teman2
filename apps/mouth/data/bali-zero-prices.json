@@ -29,7 +29,8 @@
         "validity": "Single entry, non-extendable",
         "notes": "No Bali Zero service fee — visa-free arrival under the Visit Visa Exemption Facility.",
         "description_en": "Visa-free entry under the Indonesian Visit Visa Exemption Facility for eligible nationalities, single entry, valid 30 days, not extendable. Tourism and transit only — no work, business, study or journalism.",
-        "icon_id": "visa-free"
+        "icon_id": "visa-free",
+        "tier_range": null
       },
       "B1 Visa on Arrival (VOA)": {
         "category": "single_entry_visas",
@@ -40,7 +41,8 @@
         "validity": "Single entry, extendable once (+30 days)",
         "notes": "All-inclusive price — the government fee is included; nothing further is payable on arrival.",
         "description_en": "Visa on Arrival issued on entry at eligible Indonesian ports of entry, valid 30 days, extendable once for another 30 days. For tourism, family visits, transit and short business meetings only — no work allowed.",
-        "icon_id": "visa-tourism"
+        "icon_id": "visa-tourism",
+        "tier_range": null
       },
       "B1 Visa on Arrival Extension": {
         "category": "single_entry_visas",
@@ -51,7 +53,8 @@
         "validity": "Extension only",
         "notes": "All-inclusive price — the government fee is included; nothing further is payable at the immigration office.",
         "description_en": "Onshore extension of the B1 Visa on Arrival for an additional 30 days, processed at Indonesian immigration before the initial 30-day stay expires.",
-        "icon_id": "visa-extension"
+        "icon_id": "visa-extension",
+        "tier_range": null
       },
       "C1 Tourism": {
         "category": "single_entry_visas",
@@ -62,7 +65,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Tourist visa, single entry, valid 60 days. Cannot be used for work or business activities.",
-        "icon_id": "visa-tourism"
+        "icon_id": "visa-tourism",
+        "tier_range": null
       },
       "C1 Tourism Extension": {
         "category": "single_entry_visas",
@@ -73,7 +77,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of the C1 Tourism visa for an additional 60 days, processed at Indonesian immigration.",
-        "icon_id": "visa-extension"
+        "icon_id": "visa-extension",
+        "tier_range": null
       },
       "C2 Business": {
         "category": "single_entry_visas",
@@ -84,7 +89,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Business visa, single entry, valid 60 days. Suited to business meetings, negotiations and non-employment activities.",
-        "icon_id": "visa-business"
+        "icon_id": "visa-business",
+        "tier_range": null
       },
       "C6 Social Activity": {
         "category": "single_entry_visas",
@@ -95,7 +101,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Social activity visit visa, single entry, valid 60 days. For social, cultural or humanitarian activities sponsored by an individual or organisation — no paid employment or business meetings.",
-        "icon_id": "visa-social"
+        "icon_id": "visa-social",
+        "tier_range": null
       },
       "C7A,B,C Music/Art": {
         "category": "single_entry_visas",
@@ -106,7 +113,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Single-entry visa for performing artists, musicians and cultural workers visiting Indonesia for short-term events. Categories C7A, C7B, C7C.",
-        "icon_id": "visa-art"
+        "icon_id": "visa-art",
+        "tier_range": null
       },
       "C8A,B": {
         "category": "single_entry_visas",
@@ -117,7 +125,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Single-entry visa for international sports events in Indonesia: C8A covers athletes and team members competing in government-invited or international championship events, C8B covers sports officials, referees and judges.",
-        "icon_id": "visa-sports"
+        "icon_id": "visa-sports",
+        "tier_range": null
       },
       "C10 Speaker Visa": {
         "category": "single_entry_visas",
@@ -128,7 +137,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Single-entry speaker visa for foreign nationals delivering talks, lectures or training sessions at events in Indonesia.",
-        "icon_id": "visa-art"
+        "icon_id": "visa-art",
+        "tier_range": null
       },
       "C18 Work Trial": {
         "category": "single_entry_visas",
@@ -139,7 +149,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Single-entry visa for a 90-day work trial or skill assessment with an Indonesian employer prior to a full work permit.",
-        "icon_id": "visa-worktrial"
+        "icon_id": "visa-worktrial",
+        "tier_range": null
       },
       "C22A&B Internship (60 Days)": {
         "category": "single_entry_visas",
@@ -150,7 +161,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Single-entry internship visa for foreign trainees, valid 60 days, sponsored by an Indonesian host organisation.",
-        "icon_id": "visa-internship"
+        "icon_id": "visa-internship",
+        "tier_range": null
       },
       "C22A&B Internship (180 Days)": {
         "category": "single_entry_visas",
@@ -161,7 +173,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Single-entry internship visa for foreign trainees, valid 180 days, sponsored by an Indonesian host organisation.",
-        "icon_id": "visa-internship"
+        "icon_id": "visa-internship",
+        "tier_range": null
       },
       "Bridging Visa": {
         "category": "single_entry_visas",
@@ -172,7 +185,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Bridging visa to maintain legal stay during transition between immigration permits.",
-        "icon_id": "visa-extension"
+        "icon_id": "visa-extension",
+        "tier_range": null
       }
     },
     "multiple_entry_visas": {
@@ -185,7 +199,8 @@
         "validity": "1 Year",
         "notes": "",
         "description_en": "Multiple-entry tourist visa valid 1 year, allowing repeated visits with a maximum stay per entry as set by immigration.",
-        "icon_id": "visa-multiple"
+        "icon_id": "visa-multiple",
+        "tier_range": null
       },
       "D1 Tourism (2 Years)": {
         "category": "multiple_entry_visas",
@@ -196,7 +211,8 @@
         "validity": "2 Years",
         "notes": "",
         "description_en": "Multiple-entry tourist visa valid 2 years, allowing repeated visits with a maximum stay per entry as set by immigration.",
-        "icon_id": "visa-multiple"
+        "icon_id": "visa-multiple",
+        "tier_range": null
       },
       "D1 Tourism (5 Years)": {
         "category": "multiple_entry_visas",
@@ -207,7 +223,8 @@
         "validity": "5 Years",
         "notes": "",
         "description_en": "Multiple-entry tourist visa valid 5 years, allowing repeated visits with a maximum stay per entry as set by immigration.",
-        "icon_id": "visa-multiple"
+        "icon_id": "visa-multiple",
+        "tier_range": null
       },
       "D2 Business (1 Year)": {
         "category": "multiple_entry_visas",
@@ -218,7 +235,8 @@
         "validity": "1 Year",
         "notes": "",
         "description_en": "Multiple-entry business visa valid 1 year for business meetings and non-employment activities.",
-        "icon_id": "visa-business"
+        "icon_id": "visa-business",
+        "tier_range": null
       },
       "D2 Business (2 Years)": {
         "category": "multiple_entry_visas",
@@ -229,7 +247,8 @@
         "validity": "2 Years",
         "notes": "",
         "description_en": "Multiple-entry business visa valid 2 years for business meetings and non-employment activities.",
-        "icon_id": "visa-business"
+        "icon_id": "visa-business",
+        "tier_range": null
       },
       "D12 Business Investigation (1 Year)": {
         "category": "multiple_entry_visas",
@@ -240,7 +259,8 @@
         "validity": "1 Year",
         "notes": "",
         "description_en": "Multiple-entry business investigation visa valid 1 year, for investors and business representatives exploring opportunities in Indonesia.",
-        "icon_id": "visa-investigation"
+        "icon_id": "visa-investigation",
+        "tier_range": null
       },
       "D12 Business Investigation (2 Years)": {
         "category": "multiple_entry_visas",
@@ -251,7 +271,8 @@
         "validity": "2 Years",
         "notes": "",
         "description_en": "Multiple-entry business investigation visa valid 2 years, for investors and business representatives exploring opportunities in Indonesia.",
-        "icon_id": "visa-investigation"
+        "icon_id": "visa-investigation",
+        "tier_range": null
       }
     },
     "kitas_permits": {
@@ -264,7 +285,8 @@
         "validity": "1 year",
         "notes": "",
         "description_en": "Standard work permit KITAS sponsored by an Indonesian employer. Onshore process via Altus, suited to candidates already in Indonesia.",
-        "icon_id": "kitas-working"
+        "icon_id": "kitas-working",
+        "tier_range": null
       },
       "Working KITAS (Offshore)": {
         "category": "kitas_permits",
@@ -275,7 +297,8 @@
         "validity": "1 year",
         "notes": "",
         "description_en": "Standard work permit KITAS sponsored by an Indonesian employer. Offshore process for candidates outside Indonesia at time of application.",
-        "icon_id": "kitas-working"
+        "icon_id": "kitas-working",
+        "tier_range": null
       },
       "Working KITAS (Extend)": {
         "category": "kitas_permits",
@@ -286,7 +309,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing Working KITAS sponsored by an Indonesian employer.",
-        "icon_id": "kitas-working"
+        "icon_id": "kitas-working",
+        "tier_range": null
       },
       "Investor KITAS 2 Years (Altus/Onshore)": {
         "category": "kitas_permits",
@@ -297,7 +321,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Investor KITAS valid 2 years for shareholders of a PT PMA. Onshore process via Altus.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "Investor KITAS 2 Years (Offshore)": {
         "category": "kitas_permits",
@@ -308,7 +333,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Investor KITAS valid 2 years for shareholders of a PT PMA. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "Investor KITAS 2 Years (Extend)": {
         "category": "kitas_permits",
@@ -319,7 +345,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing 2-year Investor KITAS for shareholders of a PT PMA.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "Freelance E23 (Altus/Onshore)": {
         "category": "kitas_permits",
@@ -330,7 +357,8 @@
         "validity": "6 months",
         "notes": "",
         "description_en": "Freelance E23 KITAS valid 6 months, sponsored work permit for independent professionals. Onshore process via Altus.",
-        "icon_id": "kitas-freelance"
+        "icon_id": "kitas-freelance",
+        "tier_range": null
       },
       "Freelance E23 (Offshore)": {
         "category": "kitas_permits",
@@ -341,7 +369,8 @@
         "validity": "6 months",
         "notes": "",
         "description_en": "Freelance E23 KITAS valid 6 months, sponsored work permit for independent professionals. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-freelance"
+        "icon_id": "kitas-freelance",
+        "tier_range": null
       },
       "E33G Remote Worker (Altus/Onshore)": {
         "category": "kitas_permits",
@@ -352,7 +381,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Digital nomad KITAS for remote workers employed by foreign companies. Onshore process via Altus, valid 1 year.",
-        "icon_id": "kitas-remote"
+        "icon_id": "kitas-remote",
+        "tier_range": null
       },
       "E33G Remote Worker (Offshore)": {
         "category": "kitas_permits",
@@ -363,7 +393,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Digital nomad KITAS for remote workers employed by foreign companies. Processed from outside Indonesia, valid 1 year.",
-        "icon_id": "kitas-remote"
+        "icon_id": "kitas-remote",
+        "tier_range": null
       },
       "E33G Remote Worker (Extend)": {
         "category": "kitas_permits",
@@ -374,7 +405,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing E33G Remote Worker KITAS.",
-        "icon_id": "kitas-remote"
+        "icon_id": "kitas-remote",
+        "tier_range": null
       },
       "E33 Second Home (5 Years)": {
         "category": "kitas_permits",
@@ -385,7 +417,8 @@
         "validity": "5 years",
         "notes": "All-inclusive price. Requires the client's own qualifying USD 130,000 deposit at a state-owned Indonesian bank (or USD 1,000,000 qualifying property); Bali Zero never holds client funds.",
         "description_en": "Second Home Visa / KITAS (E33) for foreigners who hold a qualifying USD 130,000 deposit in their own name at a state-owned Indonesian bank (or a USD 1,000,000 qualifying property). Valid 5 years, renewable; non-working residency. Bali Zero manages document preparation, submission, and the 90-day post-grant commitment gate; the deposit always remains in the client's own account.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E33E Second Home Senior (5 Years)": {
         "category": "kitas_permits",
@@ -396,7 +429,8 @@
         "validity": "5 years",
         "notes": "All-inclusive price. Senior 55+ route: USD 50,000 deposit at a state-owned Indonesian bank plus USD 3,000/month passive income.",
         "description_en": "Second Home Visa / KITAS senior route (E33E) for applicants 55+ holding a USD 50,000 deposit in their own name at a state-owned Indonesian bank plus proven USD 3,000/month passive income. Valid 5 years; non-working residency.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E33E Second Home Senior (Extend)": {
         "category": "kitas_permits",
@@ -407,7 +441,8 @@
         "validity": "",
         "notes": "All-inclusive price. Onshore annual extension of an existing E33E senior permit (deposit/income proof re-validated).",
         "description_en": "Onshore annual extension of an existing E33E Second Home senior permit. USD 50,000 deposit and USD 3,000/month passive income proof are re-validated at each extension.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E33F Second Home Senior (1 Year, Offshore)": {
         "category": "kitas_permits",
@@ -418,7 +453,8 @@
         "validity": "1 year",
         "notes": "All-inclusive price. Senior 55+ income-only route: proven USD 3,000/month passive income, no deposit required.",
         "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proven USD 3,000/month passive income (pension or equivalent); no deposit required. Valid 1 year, renewable; non-working residency. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E33F Second Home Senior (1 Year, Altus/Onshore)": {
         "category": "kitas_permits",
@@ -429,7 +465,8 @@
         "validity": "1 year",
         "notes": "All-inclusive price. Senior 55+ income-only route: proven USD 3,000/month passive income, no deposit required.",
         "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proven USD 3,000/month passive income (pension or equivalent); no deposit required. Valid 1 year, renewable; non-working residency. Onshore process via Altus.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E33F Second Home Senior (Extend)": {
         "category": "kitas_permits",
@@ -440,7 +477,8 @@
         "validity": "",
         "notes": "All-inclusive price. Onshore annual extension of an existing E33F senior permit (income proof re-validated).",
         "description_en": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month passive income proof is re-validated at each extension.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E30A Education Visa (1 Year)": {
         "category": "kitas_permits",
@@ -451,7 +489,8 @@
         "validity": "1 year",
         "notes": "All-inclusive price.",
         "description_en": "Education Visa / KITAS (E30A) for foreign students enrolled at an Indonesian primary or secondary school (pendidikan dasar/menengah). Valid 1 year, renewable; non-working residency tied to active enrollment.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E30A Education Visa (2 Years)": {
         "category": "kitas_permits",
@@ -462,7 +501,8 @@
         "validity": "2 years",
         "notes": "All-inclusive price.",
         "description_en": "Education Visa / KITAS (E30A) for foreign students enrolled at an Indonesian primary or secondary school (pendidikan dasar/menengah). Valid 2 years, renewable; non-working residency tied to active enrollment.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E30B Higher Education (1 Year)": {
         "category": "kitas_permits",
@@ -473,7 +513,8 @@
         "validity": "1 year",
         "notes": "All-inclusive price.",
         "description_en": "Higher Education Visa / KITAS (E30B) for foreign students enrolled at an Indonesian university or higher-education institution (pendidikan tinggi). Valid 1 year, renewable; non-working residency tied to active enrollment.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E30B Higher Education (2 Years)": {
         "category": "kitas_permits",
@@ -484,7 +525,8 @@
         "validity": "2 years",
         "notes": "All-inclusive price.",
         "description_en": "Higher Education Visa / KITAS (E30B) for foreign students enrolled at an Indonesian university or higher-education institution (pendidikan tinggi). Valid 2 years, renewable; non-working residency tied to active enrollment.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "E30B Higher Education (4 Years)": {
         "category": "kitas_permits",
@@ -495,7 +537,8 @@
         "validity": "4 years",
         "notes": "All-inclusive price.",
         "description_en": "Higher Education Visa / KITAS (E30B) for foreign students enrolled at an Indonesian university or higher-education institution (pendidikan tinggi). Valid 4 years, renewable; non-working residency tied to active enrollment.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "tier_range": null
       },
       "Spouse 1 Year (Altus/Onshore)": {
         "category": "kitas_permits",
@@ -506,7 +549,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Spouse KITAS valid 1 year for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Onshore process via Altus.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Spouse 1 Year (Offshore)": {
         "category": "kitas_permits",
@@ -517,7 +561,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Spouse KITAS valid 1 year for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Spouse 1 Year (Extend)": {
         "category": "kitas_permits",
@@ -528,7 +573,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing 1-year Spouse KITAS.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Spouse 2 Years (Altus/Onshore)": {
         "category": "kitas_permits",
@@ -539,7 +585,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Spouse KITAS valid 2 years for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Onshore process via Altus.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Spouse 2 Years (Offshore)": {
         "category": "kitas_permits",
@@ -550,7 +597,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Spouse KITAS valid 2 years for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Spouse 2 Years (Extend)": {
         "category": "kitas_permits",
@@ -561,7 +609,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing 2-year Spouse KITAS.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Dependent 1 Year (Altus/Onshore)": {
         "category": "kitas_permits",
@@ -572,7 +621,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Dependent KITAS valid 1 year for children or dependent family members of a primary KITAS/KITAP holder. Onshore process via Altus.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Dependent 1 Year (Offshore)": {
         "category": "kitas_permits",
@@ -583,7 +633,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Dependent KITAS valid 1 year for children or dependent family members of a primary KITAS/KITAP holder. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Dependent 1 Year (Extend)": {
         "category": "kitas_permits",
@@ -594,7 +645,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing 1-year Dependent KITAS.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Dependent 2 Years (Altus/Onshore)": {
         "category": "kitas_permits",
@@ -605,7 +657,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Dependent KITAS valid 2 years for children or dependent family members of a primary KITAS/KITAP holder. Onshore process via Altus.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Dependent 2 Years (Offshore)": {
         "category": "kitas_permits",
@@ -616,7 +669,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Dependent KITAS valid 2 years for children or dependent family members of a primary KITAS/KITAP holder. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Dependent 2 Years (Extend)": {
         "category": "kitas_permits",
@@ -627,7 +681,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing 2-year Dependent KITAS.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Born KITAS": {
         "category": "kitas_permits",
@@ -638,7 +693,8 @@
         "validity": "",
         "notes": "",
         "description_en": "KITAS issuance for foreign children born in Indonesia, processed alongside the birth registration.",
-        "icon_id": "kitas-spouse"
+        "icon_id": "kitas-spouse",
+        "tier_range": null
       },
       "Retirement (Altus/Onshore)": {
         "category": "kitas_permits",
@@ -649,7 +705,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Retirement KITAS for foreign nationals 60+ meeting income requirements. Onshore process via Altus.",
-        "icon_id": "kitap-permanent"
+        "icon_id": "kitap-permanent",
+        "tier_range": null
       },
       "Retirement (Offshore)": {
         "category": "kitas_permits",
@@ -660,7 +717,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Retirement KITAS for foreign nationals 60+ meeting income requirements. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitap-permanent"
+        "icon_id": "kitap-permanent",
+        "tier_range": null
       },
       "Retirement (Extend)": {
         "category": "kitas_permits",
@@ -671,7 +729,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing Retirement KITAS.",
-        "icon_id": "kitap-permanent"
+        "icon_id": "kitap-permanent",
+        "tier_range": null
       }
     },
     "kitap_permits": {
@@ -684,7 +743,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Permanent residence permit (KITAP) for investors holding shares in a PT PMA, bundled with Multiple Exit Re-entry Permit (MERP). The Multiple Exit Re-entry Permit (MERP) is automatically included in the KITAP per UU 63/2024 — no separate document or fee.",
-        "icon_id": "kitap-permanent"
+        "icon_id": "kitap-permanent",
+        "tier_range": null
       },
       "Dependent KITAP + MERP": {
         "category": "kitap_permits",
@@ -695,7 +755,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Permanent residence permit (KITAP) for dependent family members of a primary KITAP holder, bundled with Multiple Exit Re-entry Permit (MERP). The Multiple Exit Re-entry Permit (MERP) is automatically included in the KITAP per UU 63/2024 — no separate document or fee.",
-        "icon_id": "kitap-permanent"
+        "icon_id": "kitap-permanent",
+        "tier_range": null
       },
       "Retirement KITAP + MERP": {
         "category": "kitap_permits",
@@ -706,7 +767,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Permanent residence permit (KITAP) for retirees who have already held a Retirement KITAS, bundled with Multiple Exit Re-entry Permit (MERP). The Multiple Exit Re-entry Permit (MERP) is automatically included in the KITAP per UU 63/2024 — no separate document or fee.",
-        "icon_id": "kitap-permanent"
+        "icon_id": "kitap-permanent",
+        "tier_range": null
       }
     },
     "tax_accounting.monthly_tax_basic": {
@@ -719,7 +781,11 @@
         "validity": "monthly",
         "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
         "description_en": "Monthly bookkeeping and tax filing for companies with low transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
-        "icon_id": "tax-monthly"
+        "icon_id": "tax-monthly",
+        "tier_range": [
+          "1.800.000 IDR",
+          "2.000.000 IDR"
+        ]
       },
       "Tier 50-100": {
         "category": "tax_accounting.monthly_tax_basic",
@@ -730,7 +796,11 @@
         "validity": "monthly",
         "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
         "description_en": "Monthly bookkeeping and tax filing for companies with moderate transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
-        "icon_id": "tax-monthly"
+        "icon_id": "tax-monthly",
+        "tier_range": [
+          "2.500.000 IDR",
+          "3.000.000 IDR"
+        ]
       },
       "Tier 100-200": {
         "category": "tax_accounting.monthly_tax_basic",
@@ -741,7 +811,11 @@
         "validity": "monthly",
         "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
         "description_en": "Monthly bookkeeping and tax filing for companies with higher transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
-        "icon_id": "tax-monthly"
+        "icon_id": "tax-monthly",
+        "tier_range": [
+          "3.500.000 IDR",
+          "4.500.000 IDR"
+        ]
       },
       "Tier 200+": {
         "category": "tax_accounting.monthly_tax_basic",
@@ -752,7 +826,8 @@
         "validity": "monthly",
         "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
         "description_en": "Monthly bookkeeping and tax filing for companies with high transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
-        "icon_id": "tax-monthly"
+        "icon_id": "tax-monthly",
+        "tier_range": null
       }
     },
     "tax_accounting.monthly_tax_bundled": {
@@ -765,7 +840,8 @@
         "validity": "monthly",
         "notes": "Includes LKPM monthly contribution and Annual Tax report.",
         "description_en": "Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with low transaction volume.",
-        "icon_id": "tax-monthly"
+        "icon_id": "tax-monthly",
+        "tier_range": null
       },
       "Tier 50-100": {
         "category": "tax_accounting.monthly_tax_bundled",
@@ -776,7 +852,8 @@
         "validity": "monthly",
         "notes": "Includes LKPM monthly contribution and Annual Tax report.",
         "description_en": "Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with moderate transaction volume.",
-        "icon_id": "tax-monthly"
+        "icon_id": "tax-monthly",
+        "tier_range": null
       },
       "Tier 100-200": {
         "category": "tax_accounting.monthly_tax_bundled",
@@ -787,7 +864,8 @@
         "validity": "monthly",
         "notes": "Includes LKPM monthly contribution and Annual Tax report.",
         "description_en": "Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with higher transaction volume.",
-        "icon_id": "tax-monthly"
+        "icon_id": "tax-monthly",
+        "tier_range": null
       },
       "Tier 200+": {
         "category": "tax_accounting.monthly_tax_bundled",
@@ -798,7 +876,8 @@
         "validity": "monthly",
         "notes": "Includes LKPM monthly contribution and Annual Tax report. Companies with more than 200 transactions per year must use monthly bookkeeping.",
         "description_en": "Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with high transaction volume.",
-        "icon_id": "tax-monthly"
+        "icon_id": "tax-monthly",
+        "tier_range": null
       }
     },
     "tax_accounting.annual_basic_packages": {
@@ -811,7 +890,8 @@
         "validity": "yearly",
         "notes": "Does not include Annual Personal Tax report. No discount applies.",
         "description_en": "Up to 100 transactions per year. Includes Income Tax calculation only and yearly Financial Report for Annual Tax submission.",
-        "icon_id": "tax-annual"
+        "icon_id": "tax-annual",
+        "tier_range": null
       },
       "Package B": {
         "category": "tax_accounting.annual_basic_packages",
@@ -822,7 +902,8 @@
         "validity": "yearly",
         "notes": "Does not include Annual Personal Tax report. No discount applies.",
         "description_en": "100-200 transactions per year. Income Tax only + yearly Financial Report.",
-        "icon_id": "tax-annual"
+        "icon_id": "tax-annual",
+        "tier_range": null
       },
       "Package C": {
         "category": "tax_accounting.annual_basic_packages",
@@ -833,7 +914,8 @@
         "validity": "yearly",
         "notes": "Does not include Annual Personal Tax report. No discount applies.",
         "description_en": "Up to 100 transactions per year. Income Tax + PPH 21 OR PPH Sewa (choose one) + yearly Financial Report.",
-        "icon_id": "tax-annual"
+        "icon_id": "tax-annual",
+        "tier_range": null
       },
       "Package D": {
         "category": "tax_accounting.annual_basic_packages",
@@ -844,7 +926,8 @@
         "validity": "yearly",
         "notes": "Does not include Annual Personal Tax report. No discount applies.",
         "description_en": "100-200 transactions per year. Income Tax + PPH 21 OR PPH Sewa (choose one) + yearly Financial Report.",
-        "icon_id": "tax-annual"
+        "icon_id": "tax-annual",
+        "tier_range": null
       },
       "Annual Company ZERO": {
         "category": "tax_accounting.annual_basic_packages",
@@ -855,7 +938,8 @@
         "validity": "yearly",
         "notes": "No transactions in or out.",
         "description_en": "Yearly Financial Report only — for dormant companies with no transactions.",
-        "icon_id": "tax-annual"
+        "icon_id": "tax-annual",
+        "tier_range": null
       }
     },
     "tax_accounting.annual_standalone": {
@@ -868,7 +952,8 @@
         "validity": "yearly",
         "notes": "",
         "description_en": "Stand-alone yearly LKPM (investment realisation) report submitted to BKPM, required for all PT PMA companies.",
-        "icon_id": "tax-lkpm"
+        "icon_id": "tax-lkpm",
+        "tier_range": null
       },
       "Annual Tax Company": {
         "category": "tax_accounting.annual_standalone",
@@ -879,7 +964,8 @@
         "validity": "yearly",
         "notes": "",
         "description_en": "Stand-alone Annual Corporate Tax report (SPT Tahunan PPh Badan) for Indonesian companies.",
-        "icon_id": "tax-annual"
+        "icon_id": "tax-annual",
+        "tier_range": null
       },
       "Annual Tax Personal": {
         "category": "tax_accounting.annual_standalone",
@@ -890,7 +976,8 @@
         "validity": "yearly",
         "notes": "Per person.",
         "description_en": "Stand-alone Annual Personal Tax report (SPT Tahunan PPh Orang Pribadi) for individual taxpayers.",
-        "icon_id": "tax-personal"
+        "icon_id": "tax-personal",
+        "tier_range": null
       },
       "Annual Tax Personal (additional)": {
         "category": "tax_accounting.annual_standalone",
@@ -901,7 +988,8 @@
         "validity": "yearly",
         "notes": "Each additional person beyond the first.",
         "description_en": "Stand-alone Annual Personal Tax report for additional persons beyond the first taxpayer in the same engagement.",
-        "icon_id": "tax-personal"
+        "icon_id": "tax-personal",
+        "tier_range": null
       }
     },
     "company_services": {
@@ -914,7 +1002,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Full incorporation of a new Indonesian foreign-owned limited company (PT PMA), including notarial deed, BKPM/OSS registration and tax ID issuance.",
-        "icon_id": "company-pma"
+        "icon_id": "company-pma",
+        "tier_range": null
       },
       "Virtual Office": {
         "category": "company_services",
@@ -925,7 +1014,8 @@
         "validity": "",
         "notes": "Only for clients without their own commercial premises.",
         "description_en": "Virtual office address for company registration and correspondence, suited to clients without dedicated commercial premises.",
-        "icon_id": "company-virtual"
+        "icon_id": "company-virtual",
+        "tier_range": null
       },
       "Akta Perubahan (Revision Company)": {
         "category": "company_services",
@@ -936,7 +1026,8 @@
         "validity": "",
         "notes": "Required when changing company address, directors, or business activities.",
         "description_en": "Notarial amendment deed (Akta Perubahan) for an existing Indonesian company. Pricing depends on scope of changes.",
-        "icon_id": "company-akta"
+        "icon_id": "company-akta",
+        "tier_range": null
       }
     },
     "consultant_services": {
@@ -949,7 +1040,11 @@
         "validity": "",
         "notes": "",
         "description_en": "Full closure and deregistration of an Indonesian foreign-owned limited company (PT PMA), including notarial deed, BKPM and tax authority deregistration.",
-        "icon_id": "company-close"
+        "icon_id": "company-close",
+        "tier_range": [
+          "6.000.000 IDR",
+          "7.500.000 IDR"
+        ]
       },
       "NPWPD Registration": {
         "category": "consultant_services",
@@ -960,7 +1055,8 @@
         "validity": "",
         "notes": "Per location.",
         "description_en": "Local tax registration (Nomor Pokok Wajib Pajak Daerah) at the regency or city tax office, required per business location in Indonesia.",
-        "icon_id": "consultant-npwpd"
+        "icon_id": "consultant-npwpd",
+        "tier_range": null
       },
       "BPJS Employee (Tenaga Kerja)": {
         "category": "consultant_services",
@@ -971,7 +1067,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Registration with BPJS Ketenagakerjaan, the mandatory Indonesian social security scheme for employees covering accident, old-age and pension benefits.",
-        "icon_id": "consultant-bpjs-kes"
+        "icon_id": "consultant-bpjs-kes",
+        "tier_range": null
       },
       "BPJS Insurance (Kesehatan)": {
         "category": "consultant_services",
@@ -982,7 +1079,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Registration with BPJS Kesehatan, the mandatory Indonesian national health insurance scheme.",
-        "icon_id": "consultant-bpjs-kes"
+        "icon_id": "consultant-bpjs-kes",
+        "tier_range": null
       },
       "NPWP Personal + Coretax Activation": {
         "category": "consultant_services",
@@ -993,7 +1091,8 @@
         "validity": "",
         "notes": "Per person.",
         "description_en": "Personal Indonesian tax ID (NPWP) issuance with activation on the Coretax platform.",
-        "icon_id": "consultant-npwp"
+        "icon_id": "consultant-npwp",
+        "tier_range": null
       },
       "Update Data / Coretax Activation": {
         "category": "consultant_services",
@@ -1004,7 +1103,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Update of taxpayer data (email, phone number, etc.) or stand-alone Coretax activation for an existing NPWP.",
-        "icon_id": "consultant-update"
+        "icon_id": "consultant-update",
+        "tier_range": null
       },
       "EFIN Application": {
         "category": "consultant_services",
@@ -1015,7 +1115,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Application for Electronic Filing Identification Number (EFIN) required to file taxes electronically with the Indonesian tax authority.",
-        "icon_id": "consultant-update"
+        "icon_id": "consultant-update",
+        "tier_range": null
       }
     },
     "other_process": {
@@ -1028,7 +1129,8 @@
         "validity": "",
         "notes": "+ Rp 400.000 for urgent processing",
         "description_en": "Reset of immigration record on the Molina (immigration) database, often needed after data inconsistencies.",
-        "icon_id": "other-molina"
+        "icon_id": "other-molina",
+        "tier_range": null
       },
       "Created Molina Express": {
         "category": "other_process",
@@ -1039,7 +1141,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Express creation of immigration record on the Molina (immigration) database.",
-        "icon_id": "other-molina"
+        "icon_id": "other-molina",
+        "tier_range": null
       },
       "Passport 5 Years": {
         "category": "other_process",
@@ -1050,7 +1153,8 @@
         "validity": "5 years",
         "notes": "",
         "description_en": "Indonesian standard passport issuance for 5-year validity.",
-        "icon_id": "other-passport"
+        "icon_id": "other-passport",
+        "tier_range": null
       },
       "Passport 10 Years": {
         "category": "other_process",
@@ -1061,7 +1165,8 @@
         "validity": "10 years",
         "notes": "",
         "description_en": "Indonesian standard passport issuance for 10-year validity.",
-        "icon_id": "other-passport"
+        "icon_id": "other-passport",
+        "tier_range": null
       },
       "Electronic Passport 5 Years": {
         "category": "other_process",
@@ -1072,7 +1177,8 @@
         "validity": "5 years",
         "notes": "",
         "description_en": "Indonesian electronic passport (e-passport) issuance for 5-year validity.",
-        "icon_id": "other-passport"
+        "icon_id": "other-passport",
+        "tier_range": null
       },
       "Electronic Passport 10 Years": {
         "category": "other_process",
@@ -1083,7 +1189,8 @@
         "validity": "10 years",
         "notes": "",
         "description_en": "Indonesian electronic passport (e-passport) issuance for 10-year validity.",
-        "icon_id": "other-passport"
+        "icon_id": "other-passport",
+        "tier_range": null
       },
       "SKTT": {
         "category": "other_process",
@@ -1094,7 +1201,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Temporary residence certificate (Surat Keterangan Tempat Tinggal) issued by the local civil registration office, required for KITAS holders.",
-        "icon_id": "other-sktt"
+        "icon_id": "other-sktt",
+        "tier_range": null
       },
       "SKCK": {
         "category": "other_process",
@@ -1105,7 +1213,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Police clearance certificate (Surat Keterangan Catatan Kepolisian), often required for visa renewals and certain employment processes.",
-        "icon_id": "other-skck"
+        "icon_id": "other-skck",
+        "tier_range": null
       },
       "Domicilie Letter": {
         "category": "other_process",
@@ -1116,7 +1225,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Domicile letter (Surat Keterangan Domisili) issued by the local authority confirming the residential address.",
-        "icon_id": "other-domicile"
+        "icon_id": "other-domicile",
+        "tier_range": null
       },
       "Mutation Passport": {
         "category": "other_process",
@@ -1127,7 +1237,8 @@
         "validity": "",
         "notes": "+ Rp 350.000 for urgent processing",
         "description_en": "Update of passport details on existing immigration permits after a passport renewal.",
-        "icon_id": "other-mutation"
+        "icon_id": "other-mutation",
+        "tier_range": null
       },
       "Mutation Address": {
         "category": "other_process",
@@ -1138,7 +1249,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Update of registered address on existing immigration permits.",
-        "icon_id": "other-mutation"
+        "icon_id": "other-mutation",
+        "tier_range": null
       },
       "Mutation Address 2 Kanim": {
         "category": "other_process",
@@ -1149,7 +1261,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Update of registered address requiring inter-Kanim (immigration office) transfer.",
-        "icon_id": "other-mutation"
+        "icon_id": "other-mutation",
+        "tier_range": null
       },
       "Lapor Lahir (Under)": {
         "category": "other_process",
@@ -1160,7 +1273,8 @@
         "validity": "",
         "notes": "Under 60 days (Kanim NGR) / Under 90 days (Kanim DPS).",
         "description_en": "Birth report registration for foreign nationals born in Indonesia, filed within the standard window.",
-        "icon_id": "other-born"
+        "icon_id": "other-born",
+        "tier_range": null
       },
       "Lapor Lahir (Up)": {
         "category": "other_process",
@@ -1171,7 +1285,8 @@
         "validity": "",
         "notes": "Above 60 days (Kanim NGR) / Above 90 days (Kanim DPS).",
         "description_en": "Birth report registration for foreign nationals born in Indonesia, filed after the standard window.",
-        "icon_id": "other-born"
+        "icon_id": "other-born",
+        "tier_range": null
       },
       "Cancel RPTKA": {
         "category": "other_process",
@@ -1182,7 +1297,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Cancellation of an existing RPTKA (foreign worker utilisation plan) at the Ministry of Manpower.",
-        "icon_id": "other-cancel"
+        "icon_id": "other-cancel",
+        "tier_range": null
       },
       "Cancel Wajib Lapor": {
         "category": "other_process",
@@ -1193,7 +1309,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Cancellation of mandatory employer reporting (Wajib Lapor Ketenagakerjaan) at the Ministry of Manpower.",
-        "icon_id": "other-cancel"
+        "icon_id": "other-cancel",
+        "tier_range": null
       },
       "Process IMTA & RPTKA Only (12 Months)": {
         "category": "other_process",
@@ -1204,7 +1321,8 @@
         "validity": "12 months",
         "notes": "",
         "description_en": "Stand-alone processing of IMTA and RPTKA work permit documents, valid for 12 months.",
-        "icon_id": "other-cancel"
+        "icon_id": "other-cancel",
+        "tier_range": null
       },
       "Process IMTA & RPTKA Only (6 Months or Less)": {
         "category": "other_process",
@@ -1215,7 +1333,8 @@
         "validity": "6 months or less",
         "notes": "",
         "description_en": "Stand-alone processing of IMTA and RPTKA work permit documents, valid for 6 months or less.",
-        "icon_id": "other-cancel"
+        "icon_id": "other-cancel",
+        "tier_range": null
       },
       "EPO (Exit Permit Only)": {
         "category": "other_process",
@@ -1226,7 +1345,8 @@
         "validity": "",
         "notes": "+ Rp 300.000 for urgent processing",
         "description_en": "Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit (onshore — filed from within Indonesia).",
-        "icon_id": "other-epo"
+        "icon_id": "other-epo",
+        "tier_range": null
       },
       "ERP (Exit Re-entry Permit)": {
         "category": "other_process",
@@ -1237,7 +1357,8 @@
         "validity": "",
         "notes": "+ Rp 500.000 for urgent processing",
         "description_en": "Exit Permit Only (Offshore) for KITAS/KITAP holders who are already abroad and will not return to Indonesia, terminating their stay permit remotely (offshore). Distinct from EPO (onshore). Note: re-entry is now automatically included in the KITAS/KITAP per UU 63/2024 — no separate re-entry product.",
-        "icon_id": "other-erp"
+        "icon_id": "other-erp",
+        "tier_range": null
       },
       "Driving License": {
         "category": "other_process",
@@ -1248,7 +1369,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Indonesian driving license (SIM) issuance for foreign nationals.",
-        "icon_id": "other-boarding"
+        "icon_id": "other-boarding",
+        "tier_range": null
       }
     },
     "urgent_processing": {
@@ -1261,7 +1383,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Urgent processing surcharge for 1-day turnaround on eligible immigration services.",
-        "icon_id": "urgent-1day"
+        "icon_id": "urgent-1day",
+        "tier_range": null
       },
       "Urgent 2 Hari": {
         "category": "urgent_processing",
@@ -1272,7 +1395,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Urgent processing surcharge for 2-day turnaround on eligible immigration services.",
-        "icon_id": "urgent-2day"
+        "icon_id": "urgent-2day",
+        "tier_range": null
       },
       "Urgent 3 Hari": {
         "category": "urgent_processing",
@@ -1283,7 +1407,8 @@
         "validity": "",
         "notes": "",
         "description_en": "Urgent processing surcharge for 3-day turnaround on eligible immigration services.",
-        "icon_id": "urgent-3day"
+        "icon_id": "urgent-3day",
+        "tier_range": null
       }
     },
     "compliance_retainers": {
@@ -1296,7 +1421,8 @@
         "validity": "",
         "notes": "USD reference: 600. Historical clean-up is quoted separately.",
         "description_en": "One-off compliance takeover for a foreign-owned company (PT PMA): records review, obligations map, gap list and remediation quote. Per legal entity, government fees excluded.",
-        "icon_id": "consultant-update"
+        "icon_id": "consultant-update",
+        "tier_range": null
       },
       "compliance_core_retainer_monthly": {
         "category": "compliance_retainers",
@@ -1307,7 +1433,8 @@
         "validity": "monthly",
         "notes": "USD reference: 600 per month. Bookkeeping, audit, disputes and transfer pricing are not included.",
         "description_en": "Monthly compliance retainer for a PT PMA: monthly tax filings on Coretax, quarterly LKPM, obligations calendar, submission receipts and a compliance report. Per legal entity, government fees excluded.",
-        "icon_id": "tax-monthly"
+        "icon_id": "tax-monthly",
+        "tier_range": null
       },
       "compliance_employer_retainer_monthly": {
         "category": "compliance_retainers",
@@ -1318,7 +1445,8 @@
         "validity": "monthly",
         "notes": "USD reference: 1,200 per month. Payroll processing itself is not included.",
         "description_en": "Core retainer plus payroll compliance for up to 15 employees: BPJS for local and foreign staff, residency reviews, RPTKA and KITAS expiry tracking. Per legal entity, government fees excluded.",
-        "icon_id": "consultant-bpjs-tk"
+        "icon_id": "consultant-bpjs-tk",
+        "tier_range": null
       },
       "pse_registration_fixed": {
         "category": "compliance_retainers",
@@ -1329,7 +1457,8 @@
         "validity": "",
         "notes": "USD reference: 1,200. Ongoing liaison is a separate monthly service.",
         "description_en": "Electronic System Operator (PSE) registration: applicability assessment, document pack, submission and follow-up until the TD-PSE is issued. Per legal entity, government fees excluded.",
-        "icon_id": "consultant-efin"
+        "icon_id": "consultant-efin",
+        "tier_range": null
       },
       "pmse_vat_assessment": {
         "category": "compliance_retainers",
@@ -1340,7 +1469,8 @@
         "validity": "",
         "notes": "USD reference: 900. Monthly VAT reporting is not included.",
         "description_en": "Fixed-fee assessment of the foreign digital-trade (PMSE) VAT threshold, readiness pack and support during the DJP appointment. Per legal entity, government fees excluded.",
-        "icon_id": "tax-annual"
+        "icon_id": "tax-annual",
+        "tier_range": null
       }
     }
   }
