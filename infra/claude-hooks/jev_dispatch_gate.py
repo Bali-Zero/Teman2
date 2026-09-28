@@ -279,6 +279,16 @@ def decide(tool_input: dict, answers: dict | None, denied_before: bool, mode: st
 
 SECRETS_FILE = pathlib.Path(os.environ.get("NUZANTARA_SECRETS_FILE", os.path.expanduser("~/.nuzantara-secrets.env")))
 KEY_VAR = "TYPESAFE_API_KEY"
+_KEY_LINE = re.compile(r"^(?:export[ \t]+)?" + re.escape(KEY_VAR) + r"=(.*)$")
+
+
+def _clean_value(raw: str) -> str:
+    raw = raw.strip()
+    if raw[:1] in ("'", '"'):
+        end = raw.find(raw[0], 1)
+        return raw[1:end] if end != -1 else raw[1:]
+    idx = raw.find(" #")
+    return (raw[:idx] if idx != -1 else raw).strip()
 
 
 def _load_key_into_own_env() -> bool:
@@ -286,19 +296,24 @@ def _load_key_into_own_env() -> bool:
     into interactive shells, so the session env has no TYPESAFE_API_KEY there
     (ALIGN-FLEET finding, 2026-09-27). The hook loads THAT ONE variable into
     its own process env, never prints it, never exports it to the session.
-    Returns True when the variable is present afterwards."""
+    Refuses a group/world-readable file outright (scar family #4). Returns
+    True when the variable is present afterwards."""
     if os.environ.get(KEY_VAR, "").strip():
         return True
     try:
+        if os.stat(SECRETS_FILE).st_mode & 0o077:
+            return False
+        found = ""
         for line in SECRETS_FILE.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line.startswith("export "):
-                line = line[7:].strip()
-            if line.startswith(KEY_VAR + "="):
-                value = line[len(KEY_VAR) + 1:].strip().strip("'\"")
-                if value:
-                    os.environ[KEY_VAR] = value
-                    return True
+            m = _KEY_LINE.match(line.rstrip("\r\n").strip())
+            if not m:
+                continue
+            value = _clean_value(m.group(1))
+            if value:
+                found = value
+        if found:
+            os.environ[KEY_VAR] = found
+            return True
     except Exception:
         return False
     return False
@@ -432,7 +447,7 @@ def report() -> dict:
 
     lat = sorted(r["latency_ms"] for r in rows if isinstance(r.get("latency_ms"), int))
     return {"receipts": len(rows), "by_action": by("action"), "by_jev_status": by("jev_status"),
-            "by_skip": by("skip"), "downgrades": by("new_model"),
+            "by_skip": by("skip"), "downgrades": by("new_model"), "by_repo_redactor": by("repo_redactor"),
             "opus_seats_avoided": sum(1 for r in rows if r.get("action") in ("deny", "downgrade")
                                       and _family(r.get("requested_model")) == "opus"),
             "latency_ms_p50": lat[len(lat) // 2] if lat else None}
