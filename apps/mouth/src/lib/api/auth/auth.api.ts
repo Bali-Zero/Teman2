@@ -11,6 +11,13 @@ type AuthApiClient = Pick<
 /**
  * Authentication API methods
  */
+/**
+ * Read-only probe answering whether the signed-in account is a portal
+ * superuser (may impersonate a client via `?as_client=<id>`). Shared with the
+ * public auth client's endpoint allowlist so the two cannot drift apart.
+ */
+export const PORTAL_SUPERUSER_PROBE_ENDPOINT = "/api/portal/admin/me";
+
 export class AuthApi {
   constructor(private client: AuthApiClient) {}
 
@@ -154,5 +161,22 @@ export class AuthApi {
     );
     this.client.setUserProfile(profile);
     return profile;
+  }
+
+  /**
+   * Whether the signed-in account may use the client portal as a superuser.
+   * The backend answers `is_superuser=false` for everyone else and never
+   * throws on its own; a transport failure is read as "no" so a sign-in can
+   * never break on this probe.
+   */
+  async isPortalSuperuser(): Promise<boolean> {
+    try {
+      const me = await this.client.request<{ is_superuser?: boolean }>(
+        PORTAL_SUPERUSER_PROBE_ENDPOINT,
+      );
+      return me?.is_superuser === true;
+    } catch {
+      return false;
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { AuthApi } from "./auth/auth.api";
+import { AuthApi, PORTAL_SUPERUSER_PROBE_ENDPOINT } from "./auth/auth.api";
 import type { ApiRequestOptions } from "./types/api-client.types";
 import type { UserProfile } from "@/types";
 import { safeStorage } from "@/lib/utils/storage";
@@ -7,6 +7,9 @@ const PUBLIC_AUTH_ENDPOINTS = new Set([
   "/api/auth/login",
   "/api/auth/logout",
   "/api/auth/profile",
+  // Post-login destination probe for staff on the portal gate. It answers a
+  // boolean about the caller and nothing else — no client data can cross here.
+  PORTAL_SUPERUSER_PROBE_ENDPOINT,
 ]);
 const MAGIC_LINK_ENDPOINT = /^\/api\/auth\/verify-magic\/[^/?#]+$/;
 

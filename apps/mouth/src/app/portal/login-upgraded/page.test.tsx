@@ -7,13 +7,19 @@ import {
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockLogin, mockLoggerError, mockLoggerInfo, mockRouterReplace } =
-  vi.hoisted(() => ({
-    mockLogin: vi.fn(),
-    mockLoggerError: vi.fn(),
-    mockLoggerInfo: vi.fn(),
-    mockRouterReplace: vi.fn(),
-  }));
+const {
+  mockIsPortalSuperuser,
+  mockLogin,
+  mockLoggerError,
+  mockLoggerInfo,
+  mockRouterReplace,
+} = vi.hoisted(() => ({
+  mockIsPortalSuperuser: vi.fn(),
+  mockLogin: vi.fn(),
+  mockLoggerError: vi.fn(),
+  mockLoggerInfo: vi.fn(),
+  mockRouterReplace: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -25,7 +31,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/api/public-auth", () => ({
-  publicAuth: { login: mockLogin },
+  publicAuth: { login: mockLogin, isPortalSuperuser: mockIsPortalSuperuser },
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -42,6 +48,7 @@ import UpgradedLoginPage from "./page";
 describe("UpgradedLoginPage (R19 concept F sign-in)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsPortalSuperuser.mockResolvedValue(false);
     window.history.replaceState({}, "", "/portal/login-upgraded");
   });
 
@@ -232,6 +239,73 @@ describe("UpgradedLoginPage (R19 concept F sign-in)", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  const staffLogin = async (opts: { superuser: boolean; search?: string }) => {
+    window.history.replaceState(
+      {},
+      "",
+      `/portal/login-upgraded${opts.search ?? ""}`,
+    );
+    mockIsPortalSuperuser.mockResolvedValue(opts.superuser);
+    mockLogin.mockResolvedValue({
+      access_token: "synthetic-token",
+      token_type: "Bearer",
+      user: {
+        id: "staff-user-1",
+        email: "synthetic.staff@example.test",
+        name: "Synthetic Staff",
+        role: "Founder",
+      },
+      redirectTo: "/dashboard",
+    });
+    render(<UpgradedLoginPage />);
+
+    const email = screen.getByRole("textbox", { name: "Corporate Email" });
+    fireEvent.change(email, {
+      target: { value: "synthetic.staff@example.test" },
+    });
+    fireEvent.submit(email.closest("form")!);
+    const pin = await screen.findByLabelText("Access PIN");
+    fireEvent.change(pin, { target: { value: "1234" } });
+
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        fireEvent.submit(pin.closest("form")!);
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  };
+
+  it("sends a portal superuser to the portal instead of the dashboard bounce", async () => {
+    await staffLogin({ superuser: true });
+
+    expect(mockIsPortalSuperuser).toHaveBeenCalledTimes(1);
+    expect(mockRouterReplace).toHaveBeenCalledWith("/portal");
+  });
+
+  it("keeps a superuser's requested portal page", async () => {
+    await staffLogin({ superuser: true, search: "?redirect=%2Fportal%2Fvisa" });
+
+    expect(mockRouterReplace).toHaveBeenCalledWith("/portal/visa");
+  });
+
+  it("never sends a superuser to a partner page", async () => {
+    await staffLogin({
+      superuser: true,
+      search: "?redirect=%2Fportal%2Fpartner%2Fdashboard",
+    });
+
+    expect(mockRouterReplace).toHaveBeenCalledWith("/portal");
+  });
+
+  it("keeps the backend destination for staff who cannot use the portal", async () => {
+    await staffLogin({ superuser: false, search: "?redirect=%2Fportal" });
+
+    expect(mockRouterReplace).toHaveBeenCalledWith("/dashboard");
   });
 
   it("never forwards credentials, email, current URL, or raw auth errors to telemetry", async () => {
