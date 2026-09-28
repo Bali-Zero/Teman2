@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   title: "Careers",
   description:
     "Join the team building the infrastructure for foreigners to thrive in Bali.",
-  robots: { index: false, follow: false },
 };
 
 export default function CareersPage() {
