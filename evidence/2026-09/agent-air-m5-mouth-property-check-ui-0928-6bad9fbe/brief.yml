@@ -1,0 +1,18 @@
+task: >-
+  Property Check PR-2 (balizero.com): rebuild /property/eligibility on R19 tokens, add
+  buyer-profile (WNI/WNA/PT PMA, no default) + intended-use (curated KBLI) selectors mapped to
+  /api/prime/v2/analyze, and report sections 1-3 (zone, what may be built, allowed-to-this-buyer
+  with the 68112-vs-55203 caveat).
+lane: mouth/property-check-ui
+machine: air-m5
+date: 2026-09-28
+gear: 2
+gear_reason: Floor 2 (evidence_pack_lint.py --print-floor), churn well under the 1828-line threshold.
+acceptance:
+  A1: routePolicy + PropertyEligibilityBody guard tests red-before/green-after; tsc/eslint/prettier clean.
+  A2: live analyze() against nuzantara-rag.fly.dev at 3 points x 3 buyer/use combos renders zone/verdict/kbli sections; no country name ever sent, only WNI/WNA.
+  A3: villa rental sends KBLI 68112 (never 55203) and always renders the PMA_NOT_VERIFIED caveat, verified against KBLIEye.get_decision live.
+out_of_scope: >-
+  Ownership pathway / taxes & costs / verdict-as-its-own-section / disclaimer / non-PII WhatsApp
+  summary are PR-3 (owner decision). /zoning redirect and the (blog)/property landing card are a
+  separate codex lane. /property (blog landing) stays outside R19 — owned by that lane.
