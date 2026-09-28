@@ -420,6 +420,32 @@ export function trackPropertyWACTA(): void {
   });
 }
 
+/** Track buyer profile selection (WNI / WNA individual / WNA PT PMA) */
+export function trackPropertyBuyerSelected(buyerType: string): void {
+  sendGA4Event("property_buyer_selected", {
+    event_category: "Property",
+    buyer_type: buyerType,
+  });
+  trackEvent("property_buyer_selected", { buyer_type: buyerType });
+  void trackFunnelEvent("property_buyer_selected", {
+    sessionId: getOrCreateSessionId(),
+    payload: { buyer_type: buyerType },
+  });
+}
+
+/** Track intended-use selection (own-use / villa rental / restaurant / …) */
+export function trackPropertyUseSelected(useType: string): void {
+  sendGA4Event("property_use_selected", {
+    event_category: "Property",
+    use_type: useType,
+  });
+  trackEvent("property_use_selected", { use_type: useType });
+  void trackFunnelEvent("property_use_selected", {
+    sessionId: getOrCreateSessionId(),
+    payload: { use_type: useType },
+  });
+}
+
 // ============================================================
 // Funnel Home-Block CTA Helpers
 // Dispatches to GA4 + internal CRM bus + funnel store.
