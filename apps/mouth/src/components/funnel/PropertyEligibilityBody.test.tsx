@@ -26,12 +26,6 @@ const PROD_SHAPE_RESPONSE = {
     gsb: "One lane of road space and added with road verge.",
     overlays: {},
   },
-  verdict: {
-    can_invest: true,
-    risk_level: "MEDIUM",
-    score: 63,
-    label: "YELLOW",
-  },
   opportunities: [
     { title_en: "Villas", category_en: "Hospitality", pma_open: true },
     {
@@ -66,6 +60,34 @@ function mockAnalyzeOnce(body: unknown) {
     ok: true,
     json: async () => body,
   } as Response);
+}
+
+// B1 (gate-7596-report.md v2, REWORK-BUILD): the report must never grade the
+// purchase — no GREEN/YELLOW/RED, no "Risk:", no "Investment score", no
+// "Allowed", and no POSITIVE "open to ... PT PMA" claim. Two sentences
+// legitimately contain that word sequence without being a positive claim:
+// "is not open to a PT PMA" (the villa caveat) and "Whether this activity is
+// open to a PT PMA here depends on the exact business code" (the conditional,
+// generic-use copy) — both must stay allowed.
+//
+// Checked per <p> (not over the whole container's flattened textContent):
+// RTL/jsdom's textContent concatenates ADJACENT ELEMENTS with no separator
+// (e.g. a heading "...with it" directly followed by a paragraph "Whether...
+// depends" reads back as "...with itWhether...depends", which breaks a
+// \b-word-boundary check on "whether"/"depends" — there is no boundary
+// between two letters). Every sentence this component renders lives whole
+// inside one <p>, so scanning per-<p> sidesteps that DOM-flattening trap
+// instead of trying to out-clever it with sentence-splitting regex.
+function findPositivePmaOpenClaims(container: HTMLElement): string[] {
+  const paragraphs = Array.from(container.querySelectorAll("p")).map(
+    (p) => p.textContent ?? "",
+  );
+  return paragraphs.filter((s) => {
+    if (!/open to (?:a |an |the )?PT\s?PMA/i.test(s)) return false;
+    if (/\bnot\b/i.test(s)) return false;
+    if (/\bwhether\b/i.test(s) && /\bdepends\b/i.test(s)) return false;
+    return true;
+  });
 }
 
 describe("PropertyEligibilityBody", () => {
@@ -139,7 +161,7 @@ describe("PropertyEligibilityBody", () => {
     expect(body).not.toHaveProperty("is_pma");
   });
 
-  it("renders zone + verdict + opportunities from real backend shape, with no PMA-open badge (section 2 must not contradict section 3)", async () => {
+  it("renders zone + opportunities from real backend shape, with no PMA-open badge (section 2 must not contradict section 3)", async () => {
     mockAnalyzeOnce(PROD_SHAPE_RESPONSE);
 
     render(<PropertyEligibilityBody />);
@@ -154,10 +176,6 @@ describe("PropertyEligibilityBody", () => {
     expect(screen.getByText(/KDB: 60%/)).toBeInTheDocument();
     expect(screen.getByText(/KLB: 1,8/)).toBeInTheDocument();
     expect(screen.getByText(/TB: 15 Meter/)).toBeInTheDocument();
-    expect(screen.getByText(/Investment score:/)).toBeInTheDocument();
-    expect(screen.getByText(/63\/100/)).toBeInTheDocument();
-    expect(screen.getByText(/YELLOW/)).toBeInTheDocument();
-    expect(screen.getByText(/MEDIUM/)).toBeInTheDocument();
     expect(screen.getByText(/What may be built here/)).toBeInTheDocument();
     expect(screen.getByText(/Villas/)).toBeInTheDocument();
     expect(screen.getByText(/Software publishing/)).toBeInTheDocument();
@@ -266,22 +284,6 @@ describe("PropertyEligibilityBody", () => {
     expect(screen.queryByText(/PMA open/)).not.toBeInTheDocument();
   });
 
-  it("renders YELLOW verdict with colored pill (not plain gray text)", async () => {
-    mockAnalyzeOnce(PROD_SHAPE_RESPONSE);
-
-    render(<PropertyEligibilityBody />);
-    fillCoord();
-    selectBuyer("wni");
-    selectUse("own_use");
-    fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
-
-    const yellowEl = await screen.findByText(/^YELLOW$/);
-    // Pill span has explicit color style (not inherit text-secondary gray)
-    const style = yellowEl.getAttribute("style") ?? "";
-    expect(style).toMatch(/color:/);
-    expect(style).toMatch(/background/);
-  });
-
   it("accepts Google Maps DMS paste (8°39'17.4\"S 115°08'22.3\"E)", async () => {
     mockAnalyzeOnce(PROD_SHAPE_RESPONSE);
 
@@ -381,6 +383,71 @@ describe("PropertyEligibilityBody", () => {
       screen.queryByText(/reserved for Indonesian small businesses/i),
     ).not.toBeInTheDocument();
   });
+
+  // L1: the dataset's l4_bali.closure.effective says third week of May 2026;
+  // "13 May 2026" was an agency date, not the dataset's.
+  it("the generic PMA-eligibility copy cites 'since May 2026', never a specific day", async () => {
+    mockAnalyzeOnce(PROD_SHAPE_RESPONSE);
+    render(<PropertyEligibilityBody />);
+    fillCoord();
+    selectBuyer("wna_pma");
+    selectUse("office");
+    fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
+
+    expect(await screen.findByText(/since May 2026/)).toBeInTheDocument();
+    expect(screen.queryByText(/13 May 2026/)).not.toBeInTheDocument();
+  });
+
+  // B1 (gate-7596-report.md v2): even when the backend hands back a graded,
+  // GREEN/LOW/90 verdict, the report must never print any of it — across
+  // every (buyer, use) combination, own use included (which renders no
+  // section 3 body at all, but still must not leak the zone-level verdict).
+  it.each([
+    ["wni", "own_use"],
+    ["wni", "villa_rental"],
+    ["wni", "restaurant"],
+    ["wni", "retail"],
+    ["wni", "office"],
+    ["wna_individual", "own_use"],
+    ["wna_individual", "villa_rental"],
+    ["wna_individual", "restaurant"],
+    ["wna_individual", "retail"],
+    ["wna_individual", "office"],
+    ["wna_pma", "own_use"],
+    ["wna_pma", "villa_rental"],
+    ["wna_pma", "restaurant"],
+    ["wna_pma", "retail"],
+    ["wna_pma", "office"],
+  ] as const)(
+    "never grades the purchase for buyer=%s use=%s",
+    async (buyer, use) => {
+      mockAnalyzeOnce({
+        ...PROD_SHAPE_RESPONSE,
+        verdict: {
+          can_invest: true,
+          risk_level: "LOW",
+          score: 90,
+          label: "GREEN",
+        },
+      });
+      const { container, unmount } = render(<PropertyEligibilityBody />);
+      fillCoord();
+      selectBuyer(buyer);
+      selectUse(use);
+      fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
+      await waitFor(() => expect(screen.getByText(/C-1/)).toBeInTheDocument());
+
+      const text = container.textContent ?? "";
+      expect(text).not.toMatch(/\bGREEN\b/);
+      expect(text).not.toMatch(/\bYELLOW\b/);
+      expect(text).not.toMatch(/\bRED\b/);
+      expect(text).not.toMatch(/Risk:/);
+      expect(text).not.toMatch(/Investment score/i);
+      expect(text).not.toMatch(/\bAllowed\b/i);
+      expect(findPositivePmaOpenClaims(container)).toEqual([]);
+      unmount();
+    },
+  );
 
   // F8 (gate-7596-report.md): section 3 must read the analysed snapshot, not
   // the live selects.

@@ -9,69 +9,6 @@ import {
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { parseCoordinates } from "./parse-coordinates";
 
-// Semantic state tokens (verdict GREEN/YELLOW/RED — the overall investment
-// score pill only; section 3 no longer renders a KBLIEye verdict, see the
-// REWORK-DESIGN notes on PropertyEligibilityBody below). Fallback hex only —
-// the real color comes from the CSS var when it's wired.
-const STATE_STYLE: Record<
-  string,
-  { color: string; bg: string; border: string }
-> = {
-  GREEN: {
-    color: "var(--color-success, #2f7a52)",
-    bg: "color-mix(in srgb, var(--color-success, #2f7a52) 12%, transparent)",
-    border:
-      "color-mix(in srgb, var(--color-success, #2f7a52) 35%, transparent)",
-  },
-  YELLOW: {
-    color: "var(--color-warning, #a4752b)",
-    bg: "color-mix(in srgb, var(--color-warning, #a4752b) 14%, transparent)",
-    border:
-      "color-mix(in srgb, var(--color-warning, #a4752b) 40%, transparent)",
-  },
-  RED: {
-    color: "var(--color-danger, #a4402f)",
-    bg: "color-mix(in srgb, var(--color-danger, #a4402f) 12%, transparent)",
-    border: "color-mix(in srgb, var(--color-danger, #a4402f) 40%, transparent)",
-  },
-};
-
-function StatePill({ label }: { label: string }) {
-  const s = STATE_STYLE[label.toUpperCase()] ?? {
-    color: "var(--text-primary)",
-    bg: "var(--r19-wash, var(--surface-base))",
-    border: "var(--border-subtle)",
-  };
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "0.35em",
-        padding: "0.15em 0.7em",
-        borderRadius: 999,
-        fontSize: "0.85em",
-        fontWeight: 700,
-        letterSpacing: "0.04em",
-        color: s.color,
-        background: s.bg,
-        border: `1px solid ${s.border}`,
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          background: s.color,
-        }}
-      />
-      {label.toUpperCase()}
-    </span>
-  );
-}
-
 type BuyerValue = "wni" | "wna_individual" | "wna_pma";
 
 interface BuyerOption {
@@ -129,13 +66,6 @@ const USE_OPTIONS: UseOption[] = [
   { value: "office", label: "Office / commercial building" },
 ];
 
-type AnalyzeVerdict = {
-  can_invest?: boolean;
-  risk_level?: "LOW" | "MEDIUM" | "HIGH" | string;
-  score?: number;
-  label?: "GREEN" | "YELLOW" | "RED" | string;
-};
-
 type AnalyzeZone = {
   code?: string;
   name?: string;
@@ -152,10 +82,12 @@ type AnalyzeOpportunity = {
   pma_open?: boolean;
 };
 
+// B1 (gate-7596-report.md v2, REWORK-BUILD): no verdict field on this type —
+// the report never renders a score/risk/GREEN-YELLOW-RED grade of the
+// purchase. If the backend payload carries one, it is deliberately unread.
 type AnalyzeResponse = {
   status?: string;
   zone?: AnalyzeZone;
-  verdict?: AnalyzeVerdict;
   opportunities?: AnalyzeOpportunity[];
   sea_distance_m?: number;
   [key: string]: unknown;
@@ -201,8 +133,8 @@ function renderSection3(
     ) : (
       <p style={{ color: "var(--text-secondary)", margin: 0 }}>
         Whether this activity is open to a PT PMA here depends on the exact
-        business code and the project&rsquo;s scale, and since 13 May 2026 Bali
-        has closed several codes to new PMA registrations. We check it for your
+        business code and the project&rsquo;s scale, and since May 2026 Bali has
+        closed several codes to new PMA registrations. We check it for your
         project before you commit.
       </p>
     );
@@ -213,8 +145,9 @@ function renderSection3(
         <p style={{ color: "var(--text-secondary)", margin: 0 }}>
           A foreign individual can&rsquo;t run a business in Indonesia in their
           own name: foreign investment has to go through a foreign-owned company
-          (PT PMA), with a minimum investment of Rp 10 billion per business
-          activity per location (UU 25/2007, Art. 5(2); BKPM Reg. 5/2025).
+          (PT PMA), with an investment of more than Rp 10 billion per business
+          activity per location, excluding land and buildings (UU 25/2007, Art.
+          5(2); BKPM Reg. 5/2025).
         </p>
         {pmaCopy}
       </div>
@@ -342,7 +275,12 @@ export function PropertyEligibilityBody() {
           style={{
             display: "grid",
             gap: "var(--space-3)",
-            gridTemplateColumns: "1fr 1fr",
+            // Minor (gate-7596-report.md v2): auto-fit/minmax stacks these
+            // to one column once the row is too narrow for both at a
+            // readable width, instead of squeezing a long option label
+            // ("Foreign-owned company (PT PMA)") into an unreadable sliver
+            // at 390 — no media query needed.
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
           }}
         >
           <label style={{ display: "grid", gap: "0.35em" }}>
@@ -402,7 +340,7 @@ export function PropertyEligibilityBody() {
           style={{
             display: "grid",
             gap: "var(--space-3)",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
           }}
         >
           <label style={{ display: "grid", gap: "0.35em" }}>
@@ -530,37 +468,6 @@ export function PropertyEligibilityBody() {
               check.
             </p>
           )}
-          {result.verdict ? (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "var(--space-3)",
-                alignItems: "center",
-                margin: "var(--space-3) 0",
-                color: "var(--text-secondary)",
-              }}
-            >
-              <span>
-                Investment score:{" "}
-                <strong style={{ color: "var(--text-primary)" }}>
-                  {result.verdict.score ?? "—"}/100
-                </strong>
-              </span>
-              {result.verdict.label ? (
-                <StatePill label={result.verdict.label} />
-              ) : null}
-              {result.verdict.risk_level ? (
-                <span>
-                  Risk:{" "}
-                  <strong style={{ color: "var(--text-primary)" }}>
-                    {result.verdict.risk_level}
-                  </strong>
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-
           {/* Section 2 — What may be built here */}
           {opportunities.length ? (
             <div style={{ margin: "var(--space-5) 0" }}>
