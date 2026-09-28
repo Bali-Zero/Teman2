@@ -6,11 +6,21 @@ import { MobileNav } from "@/app/v2/_components/MobileNav";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 import { R19Presentation } from "@/components/r19/R19Presentation";
 
+// C1 (gate-7596-report.md v2, REWORK-BUILD): the previous description
+// promised legal structure, tax implications and a risk score — none of
+// which this report delivers (PR-3, owner decision). Scope stays zoning +
+// what may be built + what a buyer can do, same as the on-page lede.
+const DESCRIPTION =
+  "Check a Bali plot's zoning, what may be built there and what a buyer like you can do with it — then talk it through with Bali Zero.";
+
 export const metadata: Metadata = {
-  description:
-    "Check if a Bali property is eligible for foreign ownership. Get zoning analysis, legal structure (Hak Pakai / HGB via PMA), tax implications, and risk score.",
+  description: DESCRIPTION,
   alternates: {
     canonical: "https://balizero.com/property/eligibility",
+  },
+  openGraph: {
+    title: "Property Eligibility Check — Bali Zoning & Buyer Eligibility",
+    description: DESCRIPTION,
   },
 };
 

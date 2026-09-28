@@ -5,7 +5,7 @@ import { PropertyEligibilityBody } from "@/components/funnel/PropertyEligibility
 import styles from "./r19-funnel-frame.module.css";
 
 export const metadata: Metadata = {
-  title: "Property Eligibility Check — Bali Zoning & Legal Structure",
+  title: "Property Eligibility Check — Bali Zoning & Buyer Eligibility",
 };
 
 export default function PropertyPage() {
@@ -50,9 +50,8 @@ export default function PropertyPage() {
               maxWidth: "56ch",
             }}
           >
-            Enter Bali property coordinates and your buyer profile to receive
-            zoning classification, whether your intended use is open to your
-            buyer type, eligible legal structure, and applicable taxes.
+            Check a plot&rsquo;s zoning, what may be built there and what a
+            buyer like you can do with it, then talk it through with us.
           </p>
         </header>
         <PropertyEligibilityBody />
