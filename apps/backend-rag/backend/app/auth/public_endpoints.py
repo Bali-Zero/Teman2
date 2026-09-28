@@ -716,6 +716,12 @@ _VISA_ORACLE = (
         "rate-limited 30/min, no PII persisted or logged (HMAC fingerprints only)",
         match="exact",
     ),
+    PublicEndpoint(
+        "/api/public/tax-calendar/obligations",
+        Category.FUNNEL,
+        "Public tax calendar — anonymous, stateless catalog projection, rate-limited 30/min",
+        match="exact",
+    ),
     # Visa Check v1 homepage funnel (routers/visa_check.py, mounted at /api/visa).
     # Anonymous, no PII (nationality/purpose/budget only), rate-limited per-IP
     # by RateLimitMiddleware via the "/api/" bucket (120 req/min). The hash IS

@@ -135,6 +135,7 @@ def include_routers(api: FastAPI) -> None:
         session,
         sheets,
         skill,  # [SKILL] Skill Registry — canonical procedures (Sprint 5.2 W3-4)
+        tax_calendar_public,  # public stateless compliance calendar
         team,
         team_activity,
         team_analytics,
@@ -309,6 +310,7 @@ def include_routers(api: FastAPI) -> None:
     # Compliance routers
     api.include_router(compliance_alerts.router)
     api.include_router(compliance_obligations.router)  # [A2] obligations reviewer API
+    api.include_router(tax_calendar_public.router)
     api.include_router(e33_cases.router)  # [E33] Second Home internal console
     api.include_router(lkpm.router)  # LKPM Investment Activity Reports
 
@@ -614,6 +616,7 @@ def include_light_routers(api: FastAPI) -> None:
         session,
         sheets,
         skill,  # [SKILL] Skill Registry — canonical procedures (PR #55)
+        tax_calendar_public,  # public stateless compliance calendar
         team,
         team_activity,
         team_analytics,
@@ -772,6 +775,7 @@ def include_light_routers(api: FastAPI) -> None:
     # Compliance routers
     api.include_router(compliance_alerts.router)
     api.include_router(compliance_obligations.router)  # [A2] obligations reviewer API
+    api.include_router(tax_calendar_public.router)
     api.include_router(e33_cases.router)  # [E33] Second Home internal console
     api.include_router(lkpm.router)
 
