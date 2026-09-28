@@ -7,6 +7,7 @@ Composer: 4
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -18,21 +19,34 @@ if str(backend_path) not in sys.path:
 from backend.agents.agents.conversation_trainer import ConversationTrainer
 
 
+class _AcquireContext:
+    def __init__(self, conn: AsyncMock) -> None:
+        self.conn = conn
+
+    async def __aenter__(self) -> AsyncMock:
+        return self.conn
+
+    async def __aexit__(self, *args: Any) -> bool:
+        return False
+
+
+def _pool_with_rows(rows: list[dict[str, Any]]) -> MagicMock:
+    conn = AsyncMock()
+    conn.fetch = AsyncMock(return_value=rows)
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=_AcquireContext(conn))
+    pool._mock_conn = conn
+    return pool
+
+
 @pytest.fixture
 def mock_db_pool():
     """Mock database pool"""
     mock_conn = AsyncMock()
     mock_conn.fetch = AsyncMock(return_value=[])
 
-    class _AcquireContext:
-        async def __aenter__(self):
-            return mock_conn
-
-        async def __aexit__(self, *args):
-            return False
-
     pool = MagicMock()
-    pool.acquire = MagicMock(return_value=_AcquireContext())
+    pool.acquire = MagicMock(return_value=_AcquireContext(mock_conn))
     pool._mock_conn = mock_conn
     return pool
 
@@ -127,6 +141,145 @@ class TestConversationTrainer:
         result = await conversation_trainer.analyze_winning_patterns(days_back=0)
         # Should use default
         assert result is None or isinstance(result, dict)
+
+    @pytest.mark.asyncio
+    async def test_get_db_pool_from_app_state(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Fallback to app.state.db_pool when constructor pool is absent."""
+        pool = MagicMock()
+        fake_app = MagicMock()
+        fake_app.state.db_pool = pool
+        monkeypatch.setitem(sys.modules, "backend.app.main_cloud", MagicMock(app=fake_app))
+
+        trainer = ConversationTrainer(db_pool=None, zantara_client=None)
+
+        assert await trainer._get_db_pool() is pool
+
+    @pytest.mark.asyncio
+    async def test_get_db_pool_raises_when_unavailable(self) -> None:
+        """Missing constructor/app pool is a hard configuration error."""
+        trainer = ConversationTrainer(db_pool=None, zantara_client=None)
+
+        with pytest.raises(RuntimeError, match="Database pool not available"):
+            await trainer._get_db_pool()
+
+    @pytest.mark.asyncio
+    async def test_analyze_winning_patterns_extracts_ai_json_from_wrapped_text(self) -> None:
+        """AI output may include prose around the JSON object."""
+        pool = _pool_with_rows(
+            [
+                {
+                    "conversation_id": "conv-1",
+                    "messages": '[{"role": "assistant", "content": "Helpful answer"}]',
+                    "rating": 5,
+                    "client_feedback": "Excellent",
+                    "created_at": "2026-01-01T00:00:00",
+                },
+            ],
+        )
+        client = MagicMock()
+        client.generate_text = AsyncMock(
+            return_value='Here you go {"successful_patterns":["fast"],"prompt_improvements":["ask"],"common_themes":["visa"]} thanks',
+        )
+        trainer = ConversationTrainer(db_pool=pool, zantara_client=client)
+
+        result = await trainer.analyze_winning_patterns(days_back=999, timeout=0.1)
+
+        assert result == {
+            "successful_patterns": ["fast"],
+            "prompt_improvements": ["ask"],
+            "common_themes": ["visa"],
+        }
+        _query, _threshold, interval, _limit = pool._mock_conn.fetch.call_args.args
+        assert interval.days == 7
+
+    @pytest.mark.asyncio
+    async def test_analyze_winning_patterns_falls_back_for_bad_message_json_and_bad_ai(self) -> None:
+        """Malformed stored messages and malformed AI JSON still produce basic analysis."""
+        pool = _pool_with_rows(
+            [
+                {
+                    "conversation_id": "conv-1",
+                    "messages": "{not json",
+                    "rating": 4,
+                    "client_feedback": None,
+                    "created_at": "2026-01-01T00:00:00",
+                },
+            ],
+        )
+        client = MagicMock()
+        client.generate_text = AsyncMock(return_value="no json here")
+        trainer = ConversationTrainer(db_pool=pool, zantara_client=client)
+
+        result = await trainer.analyze_winning_patterns(days_back=7, timeout=0.1)
+
+        assert result == {
+            "successful_patterns": [
+                "High ratings (1 conversations analyzed)",
+                "Positive client feedback",
+            ],
+            "prompt_improvements": [],
+            "common_themes": [],
+        }
+
+    @pytest.mark.asyncio
+    async def test_generate_prompt_update_empty_and_ai_error_paths(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Empty analysis returns nothing; AI failures fall back to markdown summary."""
+        trainer = ConversationTrainer(db_pool=None, zantara_client=None)
+
+        assert await trainer.generate_prompt_update({}) == ""
+
+        client = MagicMock()
+        client.generate_text = AsyncMock(side_effect=RuntimeError("model down"))
+        trainer.zantara_client = client
+
+        with caplog.at_level(logging.ERROR):
+            prompt = await trainer.generate_prompt_update(
+                {
+                    "successful_patterns": ["clear next step"],
+                    "prompt_improvements": ["quote requirements"],
+                },
+                timeout=0.1,
+            )
+
+        assert "Error generating prompt update" in caplog.text
+        assert "- clear next step" in prompt
+        assert "- quote requirements" in prompt
+
+    @pytest.mark.asyncio
+    async def test_create_improvement_pr_branch_fallback_writes_review_artifacts(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Existing branch fallback stays local and stages only review artifacts."""
+        from backend.agents.agents import conversation_trainer as mod
+
+        monkeypatch.chdir(tmp_path)
+        checkout_new = MagicMock(side_effect=RuntimeError("exists"))
+        checkout_existing = MagicMock()
+        git_add = MagicMock()
+        git_commit = MagicMock()
+        monkeypatch.setattr(mod, "safe_git_checkout_new", checkout_new)
+        monkeypatch.setattr(mod, "safe_git_checkout", checkout_existing)
+        monkeypatch.setattr(mod, "safe_git_add", git_add)
+        monkeypatch.setattr(mod, "safe_git_commit", git_commit)
+        trainer = ConversationTrainer(db_pool=None, zantara_client=None)
+
+        branch = await trainer.create_improvement_pr(
+            "Improved prompt",
+            {"successful_patterns": ["concise"]},
+        )
+
+        assert branch.startswith("auto/prompt-improvement-")
+        assert (tmp_path / "apps/backend-rag/backend/prompts/proposed_prompt_update.md").read_text(
+            encoding="utf-8",
+        ) == "Improved prompt"
+        report_files = list((tmp_path / "reports").glob("conversation_analysis_*.md"))
+        assert len(report_files) == 1
+        assert '"concise"' in report_files[0].read_text(encoding="utf-8")
+        checkout_existing.assert_called_once_with(branch, cwd=Path())
+        git_add.assert_called_once()
+        git_commit.assert_called_once()
 
 
 class TestSlackNotifyErrorHandling:
