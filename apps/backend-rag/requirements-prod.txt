@@ -119,7 +119,7 @@ rfc3339-validator>=0.1.4  # jsonschema's FormatChecker() "date-time" check is a 
 # Force rebuild 2026-02-13_00:12:41
 python-json-logger>=2.0.0
 orjson>=3.10.0  # 3-10× faster JSON serialization (FastAPI default response, hot path: pii_scanner, audit_logger, event_bus)
-aiosmtplib>=5.1.2
+aiosmtplib>=5.1.3
 apscheduler==3.11.3
 
 # Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
