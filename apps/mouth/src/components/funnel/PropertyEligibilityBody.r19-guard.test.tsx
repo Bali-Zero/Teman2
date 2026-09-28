@@ -1,16 +1,25 @@
 /**
- * R19 guard (Property Check PR-2, spec-property-check.md, 2026-09-28):
+ * R19 guard (Property Check PR-2, spec-property-check-v2.md, 2026-09-28):
  * `/property/eligibility` moved onto R19 tokens by owner decision. This
  * component paints almost entirely through inline `style` (not Tailwind
- * classes), so the guard scans both `class` AND `style` attribute text —
- * the r19-b-common FORBIDDEN list applies regardless of which one a value
- * lives in. A literal hex value INSIDE a `var(--x, #hex)` fallback is the
- * one sanctioned exception, so `var(...)` spans are stripped before the hex
- * check runs. Must be RED against origin/main's version of this file
+ * classes), so the DOM check below scans both `class` AND `style` attribute
+ * text — the r19-b-common FORBIDDEN list applies regardless of which one a
+ * value lives in. Must be RED against origin/main's version of this file
  * (glassmorphism card: linear-gradient/radial-gradient + backdropFilter +
  * literal-hex box-shadow) and GREEN after the restyle — see the lane report
  * for the red tail.
+ *
+ * The hex check is NOT part of the DOM scan (gate-7596-report.md F7): jsdom,
+ * like every real browser, serialises an inline `color: #abc` to
+ * `rgb(...)` on the element's `style` attribute, so a DOM-based hex regex is
+ * permanently dead code — it can never see the literal that was authored.
+ * The hex check below instead scans the component's OWNED SOURCE TEXT, where
+ * the literal still reads as `#abc`. A literal hex value INSIDE a
+ * `var(--x, #hex)` fallback is the one sanctioned exception, so `var(...)`
+ * spans are stripped before that check runs.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { PropertyEligibilityBody } from "./PropertyEligibilityBody";
@@ -39,18 +48,6 @@ const FORBIDDEN_IN_STYLE = [
   /backdrop-filter/i,
 ];
 
-function stripVarFallbacks(style: string): string {
-  // Remove balanced var(...) spans so a whitelisted `var(--x, #hex)`
-  // fallback never trips the bare-hex check below.
-  let prev: string;
-  let out = style;
-  do {
-    prev = out;
-    out = out.replace(/var\([^()]*\)/g, "");
-  } while (out !== prev);
-  return out;
-}
-
 function forbiddenHitsIn(container: HTMLElement): string[] {
   const hits: string[] = [];
   container.querySelectorAll("[class],[style]").forEach((el) => {
@@ -62,15 +59,33 @@ function forbiddenHitsIn(container: HTMLElement): string[] {
     for (const re of FORBIDDEN_IN_STYLE) {
       if (re.test(style)) hits.push(`style:${el.tagName} "${style}" -> ${re}`);
     }
-    const stripped = stripVarFallbacks(style);
-    if (/#[0-9a-fA-F]{3,8}/.test(stripped)) {
-      hits.push(`style-hex:${el.tagName} "${style}"`);
-    }
   });
   return hits;
 }
 
-async function fillAndAnalyze(kbliState: string | null) {
+// F7 (gate-7596-report.md): a DOM-serialised hex check can never fire — jsdom
+// (and every real browser) serialises an inline `color: #abc` to
+// `rgb(...)` on `element.style.cssText`/`getAttribute("style")`, so the old
+// `forbiddenHitsIn` hex regex was permanently dead code (13/13 green against
+// a mutant that reintroduced literal hex). This scans the OWNED SOURCE FILE
+// text instead, following the pattern in
+// app/globals.rumah-putih.guard.test.ts: a literal `#hex` is only legal
+// inside a `var(--x, #hex)` fallback slot, so every balanced `var(...)` span
+// is stripped first (same strip used by the R19 CSS guard on globals.css),
+// and anything left containing `#[0-9a-fA-F]{3,8}` is a violation.
+const SOURCE_FILE = join(__dirname, "PropertyEligibilityBody.tsx");
+
+function stripVarFallbacks(text: string): string {
+  let prev: string;
+  let out = text;
+  do {
+    prev = out;
+    out = out.replace(/var\([^()]*\)/g, "");
+  } while (out !== prev);
+  return out;
+}
+
+async function fillAndAnalyze() {
   fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
     target: { value: "-8.65, 115.13" },
   });
@@ -82,7 +97,6 @@ async function fillAndAnalyze(kbliState: string | null) {
   });
   fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
   await waitFor(() => expect(screen.getByText(/C-1/)).toBeInTheDocument());
-  void kbliState;
 }
 
 describe("R19 guard: PropertyEligibilityBody", () => {
@@ -98,13 +112,6 @@ describe("R19 guard: PropertyEligibilityBody", () => {
           kdb: "60%",
           klb: "1,8",
           tb: "15 Meter",
-        },
-        kbli: {
-          code: "68112",
-          title: "Aktivitas Penyewaan Bangunan dan Lahan Hunian",
-          state: "WARNING",
-          reason: "PMA_NOT_VERIFIED",
-          max_foreign_ownership: null,
         },
         verdict: {
           can_invest: true,
@@ -128,9 +135,16 @@ describe("R19 guard: PropertyEligibilityBody", () => {
     expect(forbiddenHitsIn(container)).toEqual([]);
   });
 
-  it("result card (zone + verdict + kbli caveat) has no forbidden classes/styles", async () => {
+  it("result card (zone + verdict + villa PMA caveat) has no forbidden classes/styles", async () => {
     const { container } = render(<PropertyEligibilityBody />);
-    await fillAndAnalyze("WARNING");
+    await fillAndAnalyze();
     expect(forbiddenHitsIn(container)).toEqual([]);
+  });
+
+  it("source has no literal #hex color outside a var(--x, #hex) fallback", () => {
+    const source = readFileSync(SOURCE_FILE, "utf-8");
+    const stripped = stripVarFallbacks(source);
+    const hexMatches = stripped.match(/#[0-9a-fA-F]{3,8}/g) ?? [];
+    expect(hexMatches).toEqual([]);
   });
 });
