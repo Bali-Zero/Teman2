@@ -31,6 +31,22 @@ interface FastAPIValidationError {
 export const PORTAL_IMPERSONATION_STORAGE_KEY = "bz_portal_impersonation_v1";
 
 /**
+ * FastAPI `detail` is not always a string. Create Client's 409 duplicate_phone
+ * sends `{ error, message, existing_client_id, ... }` (crm_clients.py), and
+ * `new ApiError(detail)` coerced that object to the literal "[object Object]"
+ * banner staff saw on /clients/new. Prefer a string detail, then an object's
+ * `message`, then the caller's fallback. The raw body stays on `ApiError.data`.
+ */
+export function detailToMessage(detail: unknown, fallback: string): string {
+  if (typeof detail === "string" && detail) return detail;
+  if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  return fallback;
+}
+
+/**
  * Base API client with token management and request handling.
  * This is the core class that all domain-specific API modules extend or use.
  * Implements IApiClient interface for type-safe dependency injection.
@@ -538,7 +554,7 @@ export class ApiClientBase implements IApiClient {
         }
 
         throw new ApiError(
-          error.detail || `HTTP ${response.status}`,
+          detailToMessage(error.detail, `HTTP ${response.status}`),
           response.status,
           error,
         );
