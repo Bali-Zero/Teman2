@@ -11,6 +11,9 @@ describe("PublicAuthClient", () => {
     "/api/admin/system-health",
     "/api/auth/../../admin/system-health",
     "/api/auth/login?debug=/api/admin/system-health",
+    "/api/portal/admin/me",
+    "/api/portal/admin/clients/search?q=x",
+    "/api/auth/portal-superuser?as_client=1",
   ])(
     "rejects non-canonical endpoint %s before touching the network",
     async (endpoint) => {
@@ -23,6 +26,24 @@ describe("PublicAuthClient", () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     },
   );
+
+  it("lets the superuser probe through with the session cookie", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ success: true, is_superuser: false }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = new PublicAuthClient();
+
+    await expect(
+      client.request("/api/auth/portal-superuser"),
+    ).resolves.toMatchObject({ is_superuser: false });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/auth/portal-superuser",
+      expect.objectContaining({ credentials: "include" }),
+    );
+  });
 
   it("returns a status-bearing error without redirecting on invalid credentials", async () => {
     window.history.replaceState({}, "", "/portal/login-upgraded");
