@@ -1324,7 +1324,7 @@ async def audit_link_counts(pool: asyncpg.Pool) -> dict[str, int]:
 # sides, so promise and evidence are compared on the same clock.
 #
 # Evidence, strongest first, always AFTER the promise and inside
-# `_RESOLVE_WINDOW` (7 days: the longest due cue in `_TEMPORAL_CUES` — past
+# `_RESOLVE_WINDOW` (7 days, and never later than now: the longest due cue in `_TEMPORAL_CUES` — past
 # it a message in the thread is no longer evidence about THIS promise):
 #   media_sent      outbound document/image/video/audio
 #   team_confirmed  outbound text where a catalog pattern of the SAME
@@ -1346,7 +1346,10 @@ _PAST_MARKER_RE = re.compile(
     re.IGNORECASE | re.UNICODE,
 )
 
-_THREAD_PEER_SQL = "COALESCE({a}.group_jid, {a}.counterpart_lid, {a}.counterpart_phone)"
+_THREAD_PEER_SQL = (
+    "COALESCE(NULLIF({a}.group_jid, ''), NULLIF({a}.counterpart_lid, ''), "
+    "NULLIF({a}.counterpart_phone, ''))"
+)
 
 _RESOLVE_OPEN_SQL = f"""
 SELECT p.promise_id, p.promise_type, p.message_id,
@@ -1354,6 +1357,7 @@ SELECT p.promise_id, p.promise_type, p.message_id,
        w.message_date AS at
   FROM team_promises p JOIN whatsapp_message_context w ON w.id = p.message_id
  WHERE p.resolved = false AND p.resolved_at IS NULL AND p.resolution_kind IS NULL
+   AND p.resolved_by_message_id IS NULL
  ORDER BY p.promise_id
 """
 
@@ -1372,6 +1376,7 @@ _RESOLVE_UPDATE_SQL = """
 UPDATE team_promises
    SET resolved = true, resolved_at = $2, resolved_by_message_id = $3, resolution_kind = $4
  WHERE promise_id = $1 AND resolved = false AND resolved_at IS NULL AND resolution_kind IS NULL
+   AND resolved_by_message_id IS NULL
 RETURNING promise_id
 """
 
@@ -1393,7 +1398,7 @@ def _pick_evidence(promise_type: str, t0: datetime, msgs: list[dict], now: datet
     """Strongest evidence for one promise -> (kind, message_id, at) or None.
     `msgs` are thread messages as dicts (id, direction, media_type, text, at);
     earliest wins within a kind."""
-    end = t0 + _RESOLVE_WINDOW
+    end = min(t0 + _RESOLVE_WINDOW, now)
     found: dict[str, tuple[int, datetime]] = {}
     for m in sorted(msgs, key=lambda x: (x["at"], x["id"])):
         if not (t0 < m["at"] <= end):
@@ -1404,7 +1409,7 @@ def _pick_evidence(promise_type: str, t0: datetime, msgs: list[dict], now: datet
             elif m["text"] and _is_fulfilment(promise_type, m["text"]):
                 found.setdefault("team_confirmed", (m["id"], m["at"]))
         elif m["direction"] == "inbound" and m["text"] and _ACK_PATTERN.search(m["text"]):
-            if now >= end:
+            if now >= t0 + _RESOLVE_WINDOW:
                 found.setdefault("client_ack", (m["id"], m["at"]))
     for kind in ("media_sent", "team_confirmed", "client_ack"):
         if kind in found:
@@ -1440,7 +1445,7 @@ async def run_resolve(pool: asyncpg.Pool, *, dry_run: bool, now: datetime | None
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 _RESOLVE_EVIDENCE_SQL, prom["line"], prom["peer"], prom["at"],
-                prom["at"] + _RESOLVE_WINDOW, prom["message_id"],
+                min(prom["at"] + _RESOLVE_WINDOW, now), prom["message_id"],
             )
         picked = _pick_evidence(prom["promise_type"], prom["at"], [dict(r) for r in rows], now)
         if picked is None:

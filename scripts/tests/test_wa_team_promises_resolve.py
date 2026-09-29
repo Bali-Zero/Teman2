@@ -166,3 +166,16 @@ async def test_cli_resolve_prints_counts_only_and_passes_dry_run(monkeypatch, ca
     assert await wtp.cli_main(["--resolve"]) == 0
     assert seen["dry_run"] is False
     assert "resolve OK scanned=4" in capsys.readouterr().out
+
+
+def test_evidence_dated_after_now_is_ignored():
+    msgs = [_m(1, "outbound", _h(10), media="document")]
+    assert wtp._pick_evidence("send", T0, msgs, _h(9)) is None
+    assert wtp._pick_evidence("send", T0, msgs, _h(10)) == ("media_sent", 1, _h(10))
+
+
+@pytest.mark.parametrize("direction", ["received", "sent", "", None])
+def test_only_the_two_current_directions_count_as_evidence(direction):
+    msgs = [_m(1, direction, _h(1), text="ok thanks"), _m(2, direction, _h(2), media="document"),
+            _m(3, direction, _h(3), text="already sent")]
+    assert wtp._pick_evidence("send", T0, msgs, LONG_AFTER) is None

@@ -310,3 +310,45 @@ async def test_digest_line_counts_kinds_and_overdue_per_member_by_first_name(pg_
             "promises resolved: media_sent 1 team_confirmed 1 client_ack 1; overdue unresolved 4: Alpha 2, ")
         assert "42" not in line and "628" not in line and "example" not in line
         assert line.count("member-") == 2
+
+
+@pytest.mark.asyncio
+async def test_future_dated_evidence_does_not_resolve(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "res_future") as pool:
+        await _setup(pool)
+        pid = await _promise(pool, 1)
+        await _msg(pool, 2, "outbound", _h(48), media="document")
+        m = await wtp.run_resolve(pool, dry_run=False, now=_h(24))
+        assert m.media_sent == 0
+        assert await _state(pool, pid) == OPEN
+        assert (await wtp.run_resolve(pool, dry_run=False, now=_h(49))).media_sent == 1
+
+
+@pytest.mark.asyncio
+async def test_a_row_with_only_resolved_by_message_id_set_is_left_alone(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "res_lone_by") as pool:
+        await _setup(pool)
+        pid = await _promise(pool, 1)
+        await _msg(pool, 2, "outbound", _h(2), media="document")
+        async with pool.acquire() as conn:
+            await conn.execute("UPDATE team_promises SET resolved_by_message_id = 999 WHERE promise_id = $1", pid)
+        m = await wtp.run_resolve(pool, dry_run=False, now=NOW)
+        assert m.scanned == 0
+        assert await _state(pool, pid) == (False, None, 999, None)
+        async with pool.acquire() as conn:
+            assert await conn.fetchrow(wtp._RESOLVE_UPDATE_SQL, pid, _h(2), 2, "media_sent") is None
+
+
+@pytest.mark.asyncio
+async def test_blank_peer_components_fall_through_instead_of_collapsing_threads(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "res_blank") as pool:
+        await _setup(pool)
+        await _msg(pool, 1, "outbound", T0, text="I will send it tomorrow", peer="peer-1", lid="", group="")
+        pid = await _promise_on(pool, 1)
+        await _msg(pool, 2, "outbound", _h(2), media="document", peer="peer-2", lid="", group="")   # other peer
+        m = await wtp.run_resolve(pool, dry_run=False, now=NOW)
+        assert m.media_sent == 0
+        assert await _state(pool, pid) == OPEN
+        await _msg(pool, 3, "outbound", _h(3), media="document", peer="peer-1", lid="", group="")
+        await wtp.run_resolve(pool, dry_run=False, now=NOW)
+        assert (await _state(pool, pid))[2] == 3
