@@ -263,11 +263,13 @@ WHERE pm.direction = 'client_to_team'
 
 def build_required_document_reviews_sql() -> str:
     """Client-uploaded required-document rows whose `uploaded_at` falls
-    inside the R2 window. `review_at` is `updated_at` when a staff review
-    happened (`status` moved off `uploaded`/`pending`), else NULL. Naive
+    inside the R2 window (both bounds — an upload on/after ROUND2_END
+    belongs to whatever comes after Round 2, never to this round's -1
+    penalty). `review_at` is `updated_at` when a staff review happened
+    (`status` moved off `uploaded`/`pending`), else NULL. Naive
     `uploaded_at`/`updated_at` columns are stored as UTC via `NOW()` — cast
     with `AT TIME ZONE 'UTC'` to hand the caller a tz-aware value."""
-    start_ts, _ = _window_ts()
+    start_ts, end_ts = _window_ts()
     return f"""
 WITH {REAL_CLIENTS_CTE}
 SELECT prd.id, prd.practice_id, p.client_id,
@@ -282,6 +284,7 @@ JOIN real_clients c ON c.id = p.client_id
 JOIN clients cl ON cl.id = c.id
 WHERE prd.uploaded_by_client = TRUE
   AND (prd.uploaded_at AT TIME ZONE 'UTC') >= TIMESTAMP WITH TIME ZONE '{start_ts}'
+  AND (prd.uploaded_at AT TIME ZONE 'UTC') <  TIMESTAMP WITH TIME ZONE '{end_ts}'
   AND p.status <> 'cancelled';
 """.strip()
 
@@ -474,7 +477,8 @@ def _mission_bonus_keys(
     asya_request_rows: list[dict], asya_client_event_rows: list[dict]
 ) -> set[tuple[int, int]]:
     """(client_id, practice_id-or-0) keys that qualify for Asya's +3 —
-    a client event with an Asya message before it, no more than
+    a client event with an Asya message STRICTLY before it (same-timestamp
+    does not qualify — she has to have reached out first), no more than
     ASYA_REQUEST_LOOKBACK_DAYS earlier. At most one bonus per key."""
     messages_by_client: dict[int, list[datetime]] = {}
     for row in asya_request_rows:
@@ -486,7 +490,7 @@ def _mission_bonus_keys(
         client_id = row["client_id"]
         event_at = row["created_at"]
         for sent_at in messages_by_client.get(client_id, ()):
-            if sent_at <= event_at and (event_at - sent_at) <= lookback:
+            if sent_at < event_at and (event_at - sent_at) <= lookback:
                 keys.add((client_id, row.get("practice_id") or 0))
                 break
     return keys
@@ -619,7 +623,14 @@ def score_round2(
             )
 
     # ── Asya's mission bonuses ──
-    bonus_keys = _mission_bonus_keys(asya_request_rows, asya_client_event_rows)
+    # Qualifying events are EITHER kind (spec §3): a client request message
+    # (already fetched as `request_rows` — the same rows scored for the
+    # general -2 penalty) OR a client document upload (`asya_client_event_rows`).
+    # Combine both pools so a message-only client can earn the +3 too, not
+    # just an upload — this was previously silently dropped since only the
+    # document-upload rows ever reached `_mission_bonus_keys`.
+    qualifying_client_events = list(request_rows) + list(asya_client_event_rows)
+    bonus_keys = _mission_bonus_keys(asya_request_rows, qualifying_client_events)
     asya_mission.mission_bonuses = len(bonus_keys)
     asya_mission.points = (
         asya_mission.mission_bonuses * ASYA_BONUS_POINTS - asya_mission.penalty_points
@@ -628,7 +639,7 @@ def score_round2(
     if bonus_keys:
         latest_event_at = max(
             row["created_at"]
-            for row in asya_client_event_rows
+            for row in qualifying_client_events
             if (row["client_id"], row.get("practice_id") or 0) in bonus_keys
         )
         events.append(

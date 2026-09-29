@@ -110,6 +110,39 @@ class TestComputeRoundStatus:
         assert r2.compute_round_status(r2.ROUND2_END, 2) == "closed"
 
 
+# ── SQL builders: window bounds ─────────────────────────────────────────────
+
+
+class TestSqlBuilderWindowBounds:
+    """No live DB in this suite, so a builder's window is proven at the SQL
+    TEXT level — same convention as `test_challenge_leaderboard.py`'s
+    `TestSqlBuilders`. Each of these three builders must have BOTH an
+    inclusive lower bound and an EXCLUSIVE upper bound: an event landing
+    exactly on `ROUND2_END` belongs to whatever comes after this round,
+    never to Round 2 itself."""
+
+    def test_required_document_reviews_sql_has_both_window_bounds(self):
+        sql = r2.build_required_document_reviews_sql()
+        assert "2026-09-30" in sql
+        assert "2026-10-30" in sql
+        assert "<= TIMESTAMP WITH TIME ZONE" not in sql
+        assert "<  TIMESTAMP WITH TIME ZONE" in sql or "< TIMESTAMP WITH TIME ZONE" in sql
+
+    def test_client_requests_sql_has_both_window_bounds(self):
+        sql = r2.build_client_requests_sql()
+        assert "2026-09-30" in sql
+        assert "2026-10-30" in sql
+        assert "<= TIMESTAMP WITH TIME ZONE" not in sql
+        assert "<  TIMESTAMP WITH TIME ZONE" in sql or "< TIMESTAMP WITH TIME ZONE" in sql
+
+    def test_first_documents_sql_has_both_window_bounds(self):
+        sql = r2.build_first_documents_sql()
+        assert "2026-09-30" in sql
+        assert "2026-10-30" in sql
+        assert "<= TIMESTAMP WITH TIME ZONE" not in sql
+        assert "<  TIMESTAMP WITH TIME ZONE" in sql or "< TIMESTAMP WITH TIME ZONE" in sql
+
+
 # ── roster fixtures ──────────────────────────────────────────────────────────
 
 
@@ -615,6 +648,59 @@ class TestAsyaMission:
             asya_request_rows=asya_request_rows, asya_client_event_rows=asya_client_event_rows
         )
         assert snapshot.asya_mission.mission_bonuses == 0
+
+    def test_no_bonus_when_her_outreach_is_at_the_exact_same_timestamp_as_the_event(self):
+        """An outreach at the same instant as the client event must NOT
+        qualify — Asya has to have reached out strictly BEFORE it."""
+        same_ts = NOW - timedelta(days=1)
+        asya_request_rows = [{"client_id": 954, "created_at": same_ts}]
+        asya_client_event_rows = [{"client_id": 954, "practice_id": None, "created_at": same_ts}]
+        snapshot = _score(
+            asya_request_rows=asya_request_rows, asya_client_event_rows=asya_client_event_rows
+        )
+        assert snapshot.asya_mission.mission_bonuses == 0
+
+    def test_mission_bonus_qualifies_from_a_client_request_message_alone(self):
+        """A client REPLYING to Asya's outreach — not just uploading a
+        document — must earn the +3 too (spec §3: the qualifying event is a
+        client request message OR a client document upload)."""
+        asya_request_rows = [{"client_id": 970, "created_at": NOW - timedelta(days=5)}]
+        request_rows = [
+            {
+                "client_id": 970,
+                "practice_id": None,
+                "created_at": NOW - timedelta(days=1),
+                "reply_at": NOW - timedelta(days=1) + timedelta(hours=1),
+                "client_assignee": None,
+                "practice_assignee": None,
+            }
+        ]
+        snapshot = _score(asya_request_rows=asya_request_rows, request_rows=request_rows)
+        assert snapshot.asya_mission.mission_bonuses == 1
+        assert snapshot.asya_mission.points == 3
+
+    def test_mission_bonus_is_at_most_one_when_the_same_key_has_a_message_and_an_upload(self):
+        asya_request_rows = [{"client_id": 971, "created_at": NOW - timedelta(days=5)}]
+        request_rows = [
+            {
+                "client_id": 971,
+                "practice_id": None,
+                "created_at": NOW - timedelta(days=2),
+                "reply_at": NOW - timedelta(days=2) + timedelta(hours=1),
+                "client_assignee": None,
+                "practice_assignee": None,
+            }
+        ]
+        asya_client_event_rows = [
+            {"client_id": 971, "practice_id": None, "created_at": NOW - timedelta(days=1)}
+        ]
+        snapshot = _score(
+            asya_request_rows=asya_request_rows,
+            request_rows=request_rows,
+            asya_client_event_rows=asya_client_event_rows,
+        )
+        assert snapshot.asya_mission.mission_bonuses == 1
+        assert snapshot.asya_mission.points == 3
 
     def test_at_most_one_bonus_per_client_practice_key(self):
         asya_request_rows = [{"client_id": 953, "created_at": NOW - timedelta(days=5)}]
