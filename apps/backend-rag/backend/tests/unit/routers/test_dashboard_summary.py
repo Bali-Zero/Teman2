@@ -448,9 +448,7 @@ class TestGetRoleMetricsFakeConstantsGone:
         mock_conn.fetchval = AsyncMock(side_effect=[5, 2, 10000, 1, 14, 4])
         mock_pool = _make_pool(mock_conn)
 
-        result = await get_role_metrics(
-            role="tax", user_id="", _current_user={}, db_pool=mock_pool
-        )
+        result = await get_role_metrics(role="tax", user_id="", _current_user={}, db_pool=mock_pool)
 
         assert result["metrics"]["clienti_compliant"] == 14
         assert result["metrics"]["alert_pajak"] == 4
@@ -651,7 +649,12 @@ class TestPortalChallengeEndpoint:
         # test@balizero.com, which the roster merge deliberately filters as a
         # QA fixture account (see TestMergeRosterAndActivity), so it can't be
         # used to exercise the is_me=True branch here.
-        caller = {"id": "u1", "email": "caller@balizero.com", "role": "member", "full_name": "Caller"}
+        caller = {
+            "id": "u1",
+            "email": "caller@balizero.com",
+            "role": "member",
+            "full_name": "Caller",
+        }
         roster_rows = [
             {
                 "email": "caller@balizero.com",
@@ -697,8 +700,18 @@ class TestPortalChallengeEndpoint:
             },
         ]
         activity_rows = [
-            {"creator_email": "a@balizero.com", "activations": 10, "invited": 10, "last_activation_at": None},
-            {"creator_email": "b@balizero.com", "activations": 7, "invited": 7, "last_activation_at": None},
+            {
+                "creator_email": "a@balizero.com",
+                "activations": 10,
+                "invited": 10,
+                "last_activation_at": None,
+            },
+            {
+                "creator_email": "b@balizero.com",
+                "activations": 7,
+                "invited": 7,
+                "last_activation_at": None,
+            },
         ]
         mock_db_pool._mock_conn.fetch = AsyncMock(side_effect=[roster_rows, activity_rows, []])
         # sum(activations) would be 17; the real distinct-client count (one
@@ -711,3 +724,96 @@ class TestPortalChallengeEndpoint:
 
         assert resp.status_code == 200
         assert resp.json()["team_total_activations"] == 16
+
+    def test_round2_payload_shape_and_the_september_carry_rule(
+        self, mock_current_user, mock_db_pool, monkeypatch
+    ):
+        """Frozen `now` on the Round 2 side of `ROUND2_START` — the endpoint
+        must return the R2 shape (§4 of the spec): `round`, `campaign`,
+        empty `tiers`, populated `rank_prizes`/`scoring`, Asya excluded from
+        `entries` but present in `asya_mission`, and a frozen `september`
+        block. September prize winners carry 0; everyone else carries their
+        R1 activations."""
+        from datetime import datetime, timezone
+
+        import backend.app.routers.dashboard_summary as dashboard_summary
+
+        frozen_now = datetime(2026, 10, 5, 3, 0, tzinfo=timezone.utc)
+
+        class _FrozenDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return frozen_now if tz is not None else frozen_now.replace(tzinfo=None)
+
+        monkeypatch.setattr(dashboard_summary, "datetime", _FrozenDatetime)
+
+        roster_rows = [
+            {
+                "email": email,
+                "display_name": name,
+                "department": "accounting" if email == "asya@balizero.com" else "setup",
+                "role": "member",
+                "active": True,
+                "avatar": None,
+            }
+            for email, name in [
+                ("surya@balizero.com", "Surya"),
+                ("ari.firda@balizero.com", "Ari Firda"),
+                ("krisna@balizero.com", "Krisna"),
+                ("adit@balizero.com", "Adit"),
+                ("asya@balizero.com", "Asya Nadia"),
+            ]
+        ]
+        r1_activity_rows = [
+            {
+                "creator_email": email,
+                "activations": activations,
+                "invited": activations,
+                "last_activation_at": None,
+            }
+            for email, activations in [
+                ("surya@balizero.com", 25),
+                ("ari.firda@balizero.com", 22),
+                ("krisna@balizero.com", 18),
+                ("adit@balizero.com", 23),
+            ]
+        ]
+        # fetch() order in `_build_round2_payload`: roster, r1_activity,
+        # registration, recent_registration, first_document, request,
+        # review, asya_request, asya_client_event.
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            side_effect=[roster_rows, r1_activity_rows, [], [], [], [], [], [], []]
+        )
+        # fetchval() order: r1_team_total, team_total_registrations.
+        mock_db_pool._mock_conn.fetchval = AsyncMock(side_effect=[4, 0])
+
+        client = self._make_client(mock_current_user, mock_db_pool)
+        resp = client.get("/api/dashboard/portal-challenge")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["round"] == 2
+        assert body["campaign"] == "Lascia o raddoppia"
+        assert body["tiers"] == []
+        assert {p["rank"] for p in body["rank_prizes"]} == {1, 2, 3, 4, 5}
+        assert body["scoring"]["registration"] == 1
+
+        member_names = {e["member"] for e in body["entries"]}
+        assert "asya" not in member_names
+
+        by_member = {e["member"]: e for e in body["entries"]}
+        assert by_member["surya"]["carry_points"] == 0
+        assert by_member["surya"]["september_choice"] == "prize"
+        assert by_member["ari.firda"]["carry_points"] == 0
+        assert by_member["krisna"]["carry_points"] == 0
+        assert by_member["adit"]["carry_points"] == 23
+        assert by_member["adit"]["september_choice"] == "carry"
+
+        assert body["september"]["status"] == "closed"
+        # September never excluded Asya — that exclusion is an R2-only rule
+        # for the general ranking, so all 5 roster members show up here.
+        assert len(body["september"]["entries"]) == 5
+
+        assert body["asya_mission"]["target_points"] == 60
+        assert body["asya_mission"]["prize_idr"] == 1_000_000
+        assert body["asya_mission"]["is_me"] is False
