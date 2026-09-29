@@ -1182,6 +1182,17 @@
       "repo": "infra/launchagents/com.balizero.s7-yield.weekly.plist",
       "machines": ["pro"],
       "_note": "Pro-only S7 CRM yield draft job (Sunday 04:00). Installed live by copy on 2026-08-20 (s7-cutover) and never tracked; brought into canon 2026-09-26 byte-identical to the live copy. Its payload scripts/s7-yield-run.sh runs from the repo checkout (not a HOME copy), so it is tracked in the same PR and needs no pair of its own."
+    },
+    {
+      "live": "~/scripts/pro-disk-janitor.sh",
+      "repo": "infra/launchagents/wrappers/pro-disk-janitor.sh",
+      "machines": ["pro"],
+      "_note": "Born via organ_birth.py 2026-09-29 (pro.disk_janitor): daily bounded disk hygiene, payload scripts/disk_janitor.sh --apply."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.disk-janitor.plist",
+      "repo": "infra/launchagents/com.nuzantara.disk-janitor.plist",
+      "machines": ["pro"]
     }
   ],
   "allow": [
