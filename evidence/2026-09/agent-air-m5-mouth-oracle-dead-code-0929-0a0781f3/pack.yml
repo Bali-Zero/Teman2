@@ -124,22 +124,18 @@ receipts:
     ts: "2026-09-29T10:38:00Z"
     seat: "claude-sonnet-5 (evidence-pack drafting session)"
   - claim: >-
-      flow.ts's own `export { QUESTIONS };` re-export (kept in this diff on
-      the commit message's stated reasoning that engine-adapter.ts imports
-      it from "./flow") has no importer anywhere under apps/mouth —
-      engine-adapter.ts actually imports QUESTIONS from "./tree" directly
-      and only imports followUpPrerequisitesMet/walkQuestionIds from
-      "./flow"
-    cmd: 'git grep -n "QUESTIONS" HEAD -- apps/mouth/src/app/(visa-oracle)/
-      visa-oracle/_lib/engine-adapter.ts apps/mouth/src/app/(visa-oracle)/
-      visa-oracle/_lib/flow.ts; git grep -nE ''import \{[^}]*QUESTIONS[^}]*
-      \}\s*from\s*"[^"]*flow"'' HEAD -- apps'
-    result: 'engine-adapter.ts:5 imports QUESTIONS from "./tree";
-      flow.ts:1630 export { QUESTIONS } — zero matches for any import of
-      QUESTIONS from "./flow" repo-wide'
+      flow.ts's `export { QUESTIONS };` re-export is still consumed, so it
+      stays: a multi-line-aware scan of every `import {...} from "...flow"`
+      block finds one that carries QUESTIONS
+    cmd: "python3 scan over git ls-files apps packages scripts (*.ts, *.tsx,
+      *.mjs, *.js): regex import\\s*(type\\s*)?\\{([^}]*)\\}\\s*from\\s*'...flow'
+      with re.S, then QUESTIONS in the braces"
+    result: "34 flow import statements; QUESTIONS via flow:
+      apps/mouth/e2e/visa-oracle-state-colours.spec.ts; engine-adapter.ts:5
+      imports QUESTIONS from ./tree"
     exit: 0
-    ts: "2026-09-29T10:40:00Z"
-    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+    ts: "2026-09-29T11:40:00Z"
+    seat: "claude-opus-5-5 (Dux)"
   - claim: >-
       this diff changes zero files under apps/mouth/src/lib, so the whole-
       suite realtime.test.ts WebSocket-URL failure cannot be a regression
@@ -215,7 +211,7 @@ dissent:
       engine-adapter.ts actually imports QUESTIONS from "./tree" directly —
       the re-export itself has zero importers and could arguably be removed
       too
-    status: CONFIRMED
+    status: RETRACTED
   - seat: claude-sonnet-5 (evidence-pack drafting session)
     objection: >-
       a pure `git grep -w -F` deadness proof cannot by itself rule out a
@@ -236,9 +232,9 @@ unresolved:
     scan, floor computation, QUESTIONS re-export finding, and realtime.test.ts
     no-touch check were all run by this session, this turn, and their
     receipts carry exact timestamps."
-  - "The first dissent entry (flow.ts's dead `QUESTIONS` re-export) names a
-    real, pre-existing leftover this diff did not introduce and does not fix
-    — left for a follow-up mechanical-dead-code pass, not silently dropped."
+  - "The first dissent entry (flow.ts's `QUESTIONS` re-export as dead) is
+    RETRACTED by the Dux: e2e/visa-oracle-state-colours.spec.ts imports it
+    from _lib/flow in a multi-line import the drafting grep could not match."
   - "Left intentionally, not further pruned by this diff: ~42 process.* and
     4 tree.sr_status.* i18n keys are now unreferenced (keys-stay bilingual
     contract, i18n.ts is unmodified by this diff); CSS custom properties

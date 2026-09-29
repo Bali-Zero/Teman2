@@ -12,10 +12,9 @@ objective: >-
 constraints:
   - "Mechanical dead-code removal only: engine-adapter.ts and the canonical
     evaluation/idempotency/SHADOW fail-closed/consent/resume/telemetry/
-    bilingual contracts are untouched by this diff; the kept `QUESTIONS`
-    re-export chain (flow.ts imports it from ./tree, engine-adapter.ts
-    imports followUpPrerequisitesMet/walkQuestionIds from ./flow and
-    QUESTIONS from ./tree directly) is unmodified."
+    bilingual contracts are untouched by this diff; flow.ts's kept `export
+    { QUESTIONS }` re-export (consumed by
+    e2e/visa-oracle-state-colours.spec.ts) is unmodified."
   - "Deadness is proven by reachability, not asserted: `git grep -l -w -F
     <name> HEAD -- apps packages scripts .github` (excluding evidence/
     research/docs) must return 0 files for every removed module/symbol, and
@@ -90,13 +89,11 @@ consumer_map:
     it going forward: fewer unreachable files/exports to read past, no
     behaviour change for a real visitor."
 risks:
-  - "flow.ts's own `export { QUESTIONS };` re-export (kept in this diff on
-    the stated reasoning that engine-adapter.ts imports it from './flow')
-    has zero importers anywhere under apps/mouth today — engine-adapter.ts
-    actually imports QUESTIONS from './tree' directly (line 5) and only
-    imports followUpPrerequisitesMet/walkQuestionIds from './flow'. Verified
-    this turn (git grep), recorded as a pre-existing leftover OUTSIDE this
-    diff's declared scope, not silently fixed — see dissent."
+  - "flow.ts's `export { QUESTIONS };` re-export stays: engine-adapter.ts
+    imports QUESTIONS from './tree', but
+    apps/mouth/e2e/visa-oracle-state-colours.spec.ts imports it from
+    '_lib/flow' in a multi-line import block. Removing it would break that
+    spec; a single-line grep misses this consumer (see retracted dissent)."
   - "Left intentionally, not further pruned: ~42 process.* and 4
     tree.sr_status.* i18n keys are now unreferenced (keys-stay bilingual
     contract); CSS custom properties --oracle-leaf-active/--oracle-leaf-
