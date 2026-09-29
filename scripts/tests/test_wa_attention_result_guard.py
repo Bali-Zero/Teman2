@@ -1,23 +1,13 @@
 """Guard the RESULT of the attention selectors, not the spelling of their SQL.
 
-Three gate rounds (#7635, #7652, #7656) hardened tests that read the SQL text, and each left
-survivors of one family: a value reaches the output through a shape the text check does not spell
-out (a `#>>` path, the whole event under an allowed or implicit alias, a lower-case `as`). That is
-superscar #3 - the guard judges a substring, not the entity. This file changes the method
-(docs/specs/2026-09-29-wa-attention-result-guard-spec.md): seed a unique sentinel into EVERY
-name- or content-bearing place that exists (every text column of `clients`, enumerated from
-information_schema; pushName, verifiedBizName, message text/caption, vCard in the raw event; the
-message body columns), run the REAL selectors and the REAL composing functions on a throwaway local
-Postgres, and assert on what comes back: an exact key set per selector, no sentinel anywhere in a
-returned value or a rendered text, and the exact label shape.
-
-Second half: the backlog and window seam. Rows at 0/6/8/10/40 days x {open HIGH, resolved HIGH,
-group HIGH, MEDIUM} pin the roster and the backlog count exactly, so a window drift, a divergence
-between the realtime and the digest bound, or a backlog predicate that counts the wrong rows
-turns a test red.
-
-Synthetic data only. These tests need initdb/pg_ctl; the CI job fails on any skip.
-"""
+Rounds #7635/#7652/#7656 hardened tests that read the SQL text and each left survivors of one
+family (superscar #3: the guard judges a substring, not the entity). Method per
+docs/specs/2026-09-29-wa-attention-result-guard-spec.md: seed a sentinel into EVERY name- or
+content-bearing place (each text column of `clients`, enumerated from information_schema; the raw
+event's pushName/verifiedBizName/text/caption/vCard; the body columns), run the REAL selectors and
+composing functions on a throwaway Postgres, assert an exact key set, no sentinel in any value or
+rendered text, and the exact label shape. Second half: rows at 0/6/8/10/40 days pin the roster and
+backlog counts (window seam). Synthetic data only; the CI job fails on any skip."""
 
 from __future__ import annotations
 
@@ -254,17 +244,17 @@ def _assert_no_sentinel(value, where):
 
 
 class _Pool:
-    """A pool whose acquire() yields the REAL connection, so cmd_* run the real selectors."""
+    """acquire() yields the REAL connection, so cmd_* run the real selectors."""
 
     def __init__(self, conn):
         self.conn = conn
 
     def acquire(self):
-        pool = self
+        conn = self.conn
 
         class _A:
             async def __aenter__(self_):
-                return pool.conn
+                return conn
 
             async def __aexit__(self_, *_a):
                 return False
@@ -291,29 +281,18 @@ async def _capture(wa, monkeypatch, conn, which):
 
 # ---------------------------------------------------------------------------- the result guard
 
-def test_the_sentinel_fixture_is_not_vacuous(wa, pg):
-    """The guard only bites if the sentinels are really there: every text column of `clients`
-    other than the structural ones must have been enumerated and seeded."""
-    rows = _matrix(ages=(0,), kinds=("open_high",))
-
-    async def body(conn, cols):
-        stored = await conn.fetchrow("SELECT * FROM clients")
-        return cols, dict(stored)
-
-    cols, stored = _run(wa, pg, rows, body, known_phone=rows[0]["phone"])
-    assert {"full_name", "company_name", "email", "address", "notes", "display_name"} <= set(cols)
-    for c in cols:
-        assert SENTINEL in stored[c], f"clients.{c} was not seeded"
-
-
 def test_each_selector_returns_exactly_its_contract_and_no_sentinel(wa, pg):
     rows = _matrix()
     known = _open_high(rows)[0]["phone"]
 
     async def body(conn, cols):
-        return await wa.fetch_high_unresolved(conn), await wa.fetch_digest_metrics(conn)
+        stored = dict(await conn.fetchrow("SELECT * FROM clients"))
+        return await wa.fetch_high_unresolved(conn), await wa.fetch_digest_metrics(conn), cols, stored
 
-    high, digest = _run(wa, pg, rows, body, known_phone=known)
+    high, digest, cols, stored = _run(wa, pg, rows, body, known_phone=known)
+    # the guard only bites if the sentinels are really there (enumerated, not hand-listed)
+    assert {"full_name", "company_name", "email", "address", "notes", "display_name"} <= set(cols)
+    assert all(SENTINEL in stored[c] for c in cols)
     assert high, "the fixture must produce roster rows or this proves nothing"
     for row in high:
         assert set(row) == HIGH_KEYS
@@ -370,6 +349,9 @@ def test_the_window_seam_splits_open_high_rows_between_roster_and_backlog_exactl
     assert digest["high_backlog"] == len(old) == 3
     # every open HIGH 1:1 row lands in exactly one of the two surfaces
     assert len(high) + digest["high_backlog"] == len(_open_high(rows))
+    # 24h block: only the age-0 one-to-one rows (open HIGH, resolved HIGH, MEDIUM); the group row is out
+    assert (digest["inbound_24h"], digest["high_open"], digest["high_resolved"], digest["medium"],
+            digest["distinct_phones_24h"], digest["new_leads_24h"]) == (3, 1, 1, 1, 3, 0)
 
 
 def test_the_backlog_excludes_resolved_group_and_medium_rows_at_forty_days(wa, pg):
@@ -379,17 +361,6 @@ def test_the_backlog_excludes_resolved_group_and_medium_rows_at_forty_days(wa, p
         return (await wa.fetch_digest_metrics(conn))["high_backlog"]
 
     assert _run(wa, pg, rows, body) == 1  # only the open 1:1 HIGH row; 3 other kinds sit at 40 days too
-
-
-def test_the_24h_block_counts_only_recent_one_to_one_rows(wa, pg):
-    rows = _matrix()
-
-    async def body(conn, cols):
-        return await wa.fetch_digest_metrics(conn)
-
-    d = _run(wa, pg, rows, body, known_phone=None)
-    assert (d["inbound_24h"], d["high_open"], d["high_resolved"], d["medium"], d["distinct_phones_24h"]) == (3, 1, 1, 1, 3)
-    assert d["new_leads_24h"] == 0
 
 
 def test_the_digest_never_says_all_clear_over_a_backlog_end_to_end(wa, pg, monkeypatch):
