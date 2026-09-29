@@ -311,7 +311,7 @@ def test_setup_refuses_to_reuse_an_unmeasured_installation(tmp_path, capsys):
     assert (home / "venv" / "bin" / "pyre").read_text() == "venv/bin/pyre"   # nothing reinstalled over it, nothing trusted either
 
 
-def test_judge_refuses_an_unmeasured_home_and_a_tampered_baseline(tmp_path, capsys):
+def test_judge_refuses_an_unmeasured_home_and_never_trusts_a_cached_baseline(tmp_path, capsys, monkeypatch):
     home = fake_home(tmp_path)
     repo = tmp_path / "wt"
     (repo / "apps" / "backend-rag" / "backend").mkdir(parents=True)
@@ -322,9 +322,72 @@ def test_judge_refuses_an_unmeasured_home_and_a_tampered_baseline(tmp_path, caps
     argv = ["judge", "--home", str(home), "--worktree", str(repo), "--base", "HEAD", "--candidate", "HEAD", "--out", str(tmp_path / "out")]
     assert pc.main(argv) == 2 and "predates measured setup" in capsys.readouterr().out
     digest, _ = pc.write_manifest(home)
-    base_tree = fr.git(repo, "rev-parse", "HEAD:apps/backend-rag/backend")
-    judge_id = __import__("hashlib").sha256(b"".join(f.read_bytes() for f in sorted([Path(pc.__file__)] + list(pc.MODELS_SRC.glob("*"))))).hexdigest()[:16]
-    cache = home / "baselines" / f"{base_tree}-{judge_id}-{digest[:16]}.json"
-    cache.parent.mkdir()
-    cache.write_text(json.dumps({"ok": True, "findings": [], "handlers_modelled": 1, "duration_s": 0, "tree": base_tree}))   # planted, never indexed
-    assert pc.main(argv + ["--expect-home-digest", digest]) == 2 and "baseline" in capsys.readouterr().out
+    (home / "baselines").mkdir()
+    for name in ("index.json", "planted.json"):      # a forged baseline AND an index vouching for it: same-user writable, never read
+        (home / "baselines" / name).write_text(json.dumps({"ok": True, "findings": [{"key": "k", "family": "log_injection"}]}))
+    scanned = []
+
+    def fake_scan(home_, wt, ref, out, timeout, log):
+        scanned.append(out.name)
+        return {"ok": True, "tree": "t", "handlers_modelled": 1, "duration_s": 0.0, "findings": [{"key": "k", "family": "log_injection", "source_callable": "s",
+                "sink": "a.py:1", "sink_callable": "f", "sink_statement": "x"}] if out.name == "candidate" else []}
+    monkeypatch.setattr(pc, "scan", fake_scan)
+    assert pc.main(argv + ["--expect-home-digest", digest]) == 1        # the new flow is judged against a FRESH base scan
+    assert scanned == ["base", "candidate"]
+    assert json.loads((tmp_path / "out" / "report.json").read_text())["base_cached"] is False
+
+
+@pytest.mark.parametrize("where", ["venv/lib/python3.12/site-packages/sitecustomize.pyc", "venv/lib/python3.12/site-packages/evil.pth"])
+def test_startup_poison_in_the_home_venv_is_measured(tmp_path, where):
+    home = fake_home(tmp_path)
+    digest, _ = pc.write_manifest(home)
+    (home / where).parent.mkdir(parents=True, exist_ok=True)
+    (home / where).write_bytes(b"\x00poison")                     # source-less bytecode and .pth files run at interpreter start-up
+    got, why = pc.verify_home(home, digest)
+    assert got is None and where in why
+    cache = home / "venv" / "lib" / "python3.12" / "site-packages" / "__pycache__"
+    (home / where).unlink()
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / "x.cpython-312.pyc").write_bytes(b"ignored")            # __pycache__ is never consulted under PYTHONPYCACHEPREFIX
+    assert pc.verify_home(home, digest) == (digest, None)
+
+
+def test_erased_exposure_metadata_does_not_buy_an_uncontained_run_a_fresh_seal(tmp_path, capsys):
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
+    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
+            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "raise SystemExit(1)"]))
+    fr.run(fx)
+    n_seals = len(seal_events(fx))
+    st = fr.load_state(fx)                                    # what a lingering uncontained process can do to same-user state:
+    st.pop("candidate_exposure", None)                        # erase the marker, the attempts, the history and the receipt,
+    for name in ("ctx.aaa_candidate", "policy.paid_anthropic_ban", "tests.scripts_impacted"):
+        if name in st["checks"]:
+            st["checks"][name].update(status="QUEUED", attempts=0, history=[], receipt=None)
+    st["checks"]["ctx.zzz_trusted"].update(status="PASS", reason="rc=0", rc=0)   # and forge the trusted verdict
+    fr.save_state(fx, st)
+    capsys.readouterr()
+    fr.run(fx)
+    out = capsys.readouterr().out
+    assert "seal REFUSED" in out and "seal=" not in out
+    assert any("inherited" in json.dumps(e) for e in seal_events(fx, "seal_refused"))   # refused at the boundary, before candidate code
+    assert len(seal_events(fx)) == n_seals
+
+
+def test_two_run_dirs_sharing_a_basename_never_share_a_container_label(tmp_path):
+    assert runner.run_label(tmp_path / "a" / "run") != runner.run_label(tmp_path / "b" / "run")
+
+
+@needs_docker
+def test_a_contained_check_runs_in_its_mapped_cwd_and_an_outside_cwd_is_refused(tmp_path):
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_x.py": "def test_x():\n    assert False, 'root copy selected'\n",
+                                 "sub/t/test_x.py": "def test_x():\n    assert True\n"})
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    fr.plan(fx, "--isolation", "container", "--isolation-image", IMAGE,
+            "--extra-check", "ctx.sub=" + json.dumps({"kind": "pytest", "cwd": str(fx["repo"] / "sub"), "modules": ["t/test_x.py"]}),
+            "--extra-check", "ctx.out=" + json.dumps({"kind": "pytest", "cwd": str(outside), "modules": ["t/test_x.py"]}))
+    fr.run(fx, "--only", "ctx.sub")
+    fr.run(fx, "--only", "ctx.out")
+    ch = fr.load_state(fx)["checks"]
+    assert ch["ctx.sub"]["status"] == "PASS", ch["ctx.sub"]["reason"]
+    assert ch["ctx.out"]["status"] == "ERROR" and "outside the candidate worktree" in ch["ctx.out"]["reason"]

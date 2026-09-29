@@ -30,6 +30,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import threading
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -43,6 +44,7 @@ ISOLATIONS = ("container", "none")
 DEFAULT_ISOLATION_IMAGE = "localci-candidate:1"   # scripts/localci/candidate.Dockerfile
 SANDBOX_UID = 65534
 JUNIT_MAX_BYTES = 32 << 20
+COPY_TIMEOUT_S = 600
 MAPPINGS = ("executed", "not_applicable_rule", "blocked", "not_implemented")
 RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
 EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
@@ -598,9 +600,16 @@ def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], ex
     return len(entries)
 
 
+def run_label(run_dir: Path) -> str:
+    """Container label value: the resolved run dir, hashed — two run dirs sharing a basename never reap each other's containers."""
+    return sha256_bytes(str(Path(run_dir).resolve()).encode())[:24]
+
+
 def _read_junit_out(docker: str, ctr: str, junit: Path) -> str | None:
     """Copy /out/junit.xml out of the stopped container: one regular file, size-capped — a symlink or an oversized file is no junit."""
     p = subprocess.Popen([docker, "cp", f"{ctr}:/out/junit.xml", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=trusted_env())
+    watchdog = threading.Timer(COPY_TIMEOUT_S, p.kill)
+    watchdog.start()
     try:
         with tarfile.open(fileobj=p.stdout, mode="r|") as t:
             m = t.next()
@@ -610,15 +619,16 @@ def _read_junit_out(docker: str, ctr: str, junit: Path) -> str | None:
                 return f"junit.xml is {m.size} bytes (> {JUNIT_MAX_BYTES})"
             junit.write_bytes(t.extractfile(m).read())
             return None
-    except tarfile.TarError as e:
+    except (tarfile.TarError, OSError) as e:
         return f"junit copy-out failed: {e}"
     finally:
+        watchdog.cancel()
         p.kill()
         p.wait()
 
 
 def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: list[str], overrides: dict[str, bytes], extra: dict[str, bytes],
-                      env: dict, log: Path, junit: Path, timeout: int) -> tuple[int | None, str | None]:
+                      env: dict, log: Path, junit: Path, timeout: int, workdir: str = "/w") -> tuple[int | None, str | None]:
     """Run candidate code in a fresh container: no bind mount, no network, no capability, non-root, no host environment.
     The tree goes in as a tar stream and only the junit comes out; the host run dir, receipts, credentials and the Pysa
     home are not reachable from inside. Returns (rc, error)."""
@@ -626,23 +636,32 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
     docker = iso["docker"]
     ctr = re.sub(r"[^a-zA-Z0-9_.-]", "-", f"localci-{plan['run_id']}-{name}")[:100] + "-" + os.urandom(4).hex()
     denv = trusted_env()
-    create = [docker, "create", "--name", ctr, "--label", "org.nuzantara.localci=candidate", "--label", f"org.nuzantara.localci.run={plan['run_id']}",
+    create = [docker, "create", "--name", ctr, "--label", "org.nuzantara.localci=candidate", "--label", f"org.nuzantara.localci.run={run_label(run_dir)}",
               "--network", "none", "--cap-drop", "ALL",
-              "--security-opt", "no-new-privileges", "--user", iso["user"], "--pids-limit", "1024", "--memory", "4g", "--workdir", "/w",
+              "--security-opt", "no-new-privileges", "--user", iso["user"], "--pids-limit", "1024", "--memory", "4g", "--workdir", workdir,
               *[f"--env={k}={v}" for k, v in sorted(env.items())], iso["image_id"], *inner]
     try:
         r = subprocess.run(create, capture_output=True, text=True, timeout=120, env=denv)
         if r.returncode != 0:
             return None, f"container create failed (image {iso['image_id'][:19]} pinned at plan time): {r.stderr.strip()[:300]}"
-        cp = subprocess.Popen([docker, "cp", "-a", "-", f"{ctr}:/"], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=denv)
-        try:
-            n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra)
-        finally:
-            cp.stdin.close()
-            err = cp.stderr.read()
-            cp.wait(timeout=600)
+        with tempfile.TemporaryFile() as errf:   # stderr to a file (no pipe to fill) and a watchdog: a stalled copy-in cannot hang the run
+            cp = subprocess.Popen([docker, "cp", "-a", "-", f"{ctr}:/"], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=errf, env=denv)
+            watchdog = threading.Timer(COPY_TIMEOUT_S, cp.kill)
+            watchdog.start()
+            try:
+                n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra)
+                cp.stdin.close()
+                cp.wait(timeout=COPY_TIMEOUT_S)
+            except (OSError, subprocess.TimeoutExpired) as e:
+                cp.kill()
+                cp.wait()
+                return None, f"candidate tree copy-in failed or exceeded {COPY_TIMEOUT_S}s: {type(e).__name__}"
+            finally:
+                watchdog.cancel()
+            errf.seek(0)
+            err = errf.read()
         if cp.returncode != 0:
-            return None, f"candidate tree copy-in failed: {err.decode(errors='replace').strip()[:300]}"
+            return None, f"candidate tree copy-in failed (rc={cp.returncode}): {err.decode(errors='replace').strip()[:300]}"
         with open(log, "a") as fh:
             fh.write(f"# isolation=container image={iso['image_id']} network=none user={iso['user']} mounts=none tree={plan['candidate_sha']} blobs={n}\n")
             fh.flush()
@@ -663,13 +682,18 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
 def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int, log: Path, junit: Path) -> dict:
     kind = spec["kind"]
     env = {"HOME": "/tmp", "PYTHONDONTWRITEBYTECODE": "1", "LANG": "C.UTF-8"}
+    try:   # the spec's cwd, mapped into the frozen tree; a cwd outside the candidate worktree has no contained equivalent
+        rel = Path(os.path.realpath(spec.get("cwd") or plan["worktree"])).relative_to(os.path.realpath(plan["worktree"]))
+    except ValueError:
+        return {"status": "ERROR", "reason": f"cwd {spec.get('cwd')!r} is outside the candidate worktree — not runnable contained", "rc": None, "counts": None}
+    workdir = "/w" if str(rel) == "." else f"/w/{rel.as_posix()}"
     overrides: dict[str, bytes] = {}
     extra: dict[str, bytes] = {}
     if kind == "pytest":
         if not spec.get("modules"):
             return {"status": "ERROR", "reason": "zero test modules selected — missing evidence is not PASS", "rc": None, "counts": {"collected": 0, "executed": 0}}
         inner = ["python", "-m", "pytest", "-p", "no:cacheprovider", "-q", "--junitxml=/out/junit.xml", *spec["modules"]]
-        env["PYTHONPATH"] = "/w"
+        env["PYTHONPATH"] = workdir
     else:
         for rel in spec["trusted_files"]:
             bp = run_dir / "state" / "trusted" / "base_files" / rel
@@ -684,7 +708,7 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
         fh.write(f"# {now()} container cmd={' '.join(inner)}\n")
     t0 = time.monotonic()
     try:
-        rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout)
+        rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout, workdir)
     except (OSError, subprocess.SubprocessError, RuntimeError) as e:
         rc, err = None, f"container execution failed: {type(e).__name__}: {e}"
     dur = round(time.monotonic() - t0, 3)
@@ -696,19 +720,27 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
             "isolation": "container"}
 
 
-def reap_containers(plan: dict, store: Store) -> None:
-    """A coordinator killed with -9 never reached its `docker rm -f`: remove this run's leftover candidate containers before resuming."""
+def reap_containers(plan: dict, store: Store) -> str | None:
+    """A coordinator killed with -9 never reached its `docker rm -f`: remove THIS run dir's leftover candidate containers before
+    resuming. Returns why that could not be verified (the caller refuses to run candidate code next to an unknown survivor)."""
     iso = isolation_of(plan)
     if iso.get("mode") != "container" or not iso.get("docker"):
-        return
+        return None
+    flt = ["--filter", f"label=org.nuzantara.localci.run={run_label(store.run_dir)}"]
     try:
-        ids = subprocess.run([iso["docker"], "ps", "-aq", "--filter", f"label=org.nuzantara.localci.run={plan['run_id']}"], capture_output=True, text=True,
-                             timeout=60, env=trusted_env()).stdout.split()
+        ls = subprocess.run([iso["docker"], "ps", "-aq", *flt], capture_output=True, text=True, timeout=60, env=trusted_env())
+        if ls.returncode != 0:
+            return f"docker ps rc={ls.returncode}: {ls.stderr.strip()[:200]}"
+        ids = ls.stdout.split()
         if ids:
             subprocess.run([iso["docker"], "rm", "-f", *ids], capture_output=True, timeout=120, env=trusted_env())
+            left = subprocess.run([iso["docker"], "ps", "-aq", *flt], capture_output=True, text=True, timeout=60, env=trusted_env())
+            if left.returncode != 0 or left.stdout.split():
+                return f"{len(left.stdout.split())} orphan candidate container(s) survived docker rm -f"
             store.journal({"event": "orphan_containers_removed", "count": len(ids), "at": now()})
-    except (OSError, subprocess.TimeoutExpired):
-        pass
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"{type(e).__name__}: {e}"
+    return None
 
 
 def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> dict:
@@ -900,7 +932,8 @@ def cmd_run(a):
         with store.lock():
             st = store.load()
             reap_interrupted(st, store)
-            reap_containers(plan, store)
+            if (why := reap_containers(plan, store)):
+                sys.exit(f"refusing to run: cannot verify that no candidate container of this run dir survives ({why})")
             wt = Path(plan["worktree"])
             deadline_at = plan["created_epoch"] + a.deadline_s if a.deadline_s is not None else plan["deadline_at"]
             if a.deadline_s is not None:
@@ -917,18 +950,26 @@ def cmd_run(a):
             cur_env = env_fingerprint(venv_py, plan["checks"])
             cur_hash = env_hash(cur_env)
             sealed = False
+            produced: set[str] = set()   # trusted verdicts THIS invocation produced — the only ones an uncontained plan can seal
 
             def seal_now(why: str) -> None:
                 nonlocal sealed
                 seal = trusted_seal(run_dir, plan, st)
                 exp, first = candidate_exposure(plan, st), st.get("seal_first")
                 sealed = True
+                inherited = sorted(n for n, sp in plan["checks"].items() if sp.get("kind") in TRUSTED_KINDS
+                                   and st["checks"].get(n, {}).get("status") not in ("QUEUED", None) and n not in produced)
+                if exp is None and inherited and isolation_of(plan).get("mode") != "container":
+                    # uncontained/legacy: exposure markers live in same-user state and can be erased, so a trusted verdict found on disk may
+                    # be candidate work dressed as a fresh plan — seal only what this process computed itself
+                    exp = {"at": "unknown (uncontained plan, verdicts inherited from disk)", "mode": "none", "inherited": inherited}
                 if exp is None:   # no candidate code has run against this run dir: minting (or re-minting) is legitimate
                     st["seal"] = seal
                     st["seal_first"] = {"seal": seal, "at": now(), "why": why}
                     store.journal({"event": "seal", "seal": seal, "why": why, "at": now()})
                     store.save(st)
-                    print(f"seal={seal}  # {why}: record this outside the run dir; `status --seal {seal[:12]}…` re-derives it", flush=True)   # before candidate code runs: a kill -9 must not eat it in a pipe buffer
+                    note = "" if isolation_of(plan).get("mode") == "container" else " [UNCONTAINED plan: evidence only as the FIRST seal you record for this run dir]"
+                    print(f"seal={seal}  # {why}: record this outside the run dir; `status --seal {seal[:12]}…` re-derives it{note}", flush=True)   # before candidate code runs: a kill -9 must not eat it in a pipe buffer
                     return
                 if exp.get("mode") == "container" and first and first.get("seal") == seal:
                     store.journal({"event": "seal_verified", "seal": seal, "why": why, "first_at": first.get("at"), "at": now()})
@@ -992,6 +1033,8 @@ def cmd_run(a):
                     raise
                 except Exception as e:  # noqa: BLE001 — a crashing executor is ERROR, never a silent skip
                     res = {"status": "ERROR", "reason": f"executor crashed: {type(e).__name__}: {e}", "rc": None, "counts": None}
+                if spec["kind"] in TRUSTED_KINDS:
+                    produced.add(name)
                 receipt = {"check": name, "run_id": st["run_id"], "binding": {**b, "plan_hash": st["plan_hash"], "trusted_classifier_sha256": plan["trusted_classifier_sha256"]},
                            "env": cur_env, "env_hash": cur_hash, "attempt": attempt, "result": res, "finished_at": now(), "spec": spec}
                 receipt["receipt_sha256"] = sha256_json(receipt)

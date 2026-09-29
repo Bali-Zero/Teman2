@@ -236,8 +236,9 @@ def _sha(p: Path) -> str:
 
 
 def _measure_tree(root: Path, label: str, out: dict) -> None:
-    """Every regular file under root by sha256, every symlink by its target (and, for a target outside, that target's content).
-    __pycache__ is skipped: the judge runs pyre with PYTHONPYCACHEPREFIX, so no cached bytecode from the home is ever loaded."""
+    """Every regular file under root by sha256 — source-less .pyc included, Python imports those — every symlink by its target (and,
+    for a target outside, that target's content). Only __pycache__ is skipped: pyre runs with PYTHONPYCACHEPREFIX, so cached bytecode
+    there is never looked up. A linked site package is type input only (never executed): its bytecode is not measured."""
     if root.is_symlink():
         tgt = os.path.realpath(root)
         out[label] = f"link:{os.readlink(root)}"
@@ -257,7 +258,7 @@ def _measure_tree(root: Path, label: str, out: dict) -> None:
                 _measure_tree(Path(dirpath) / d, f"{label}/{os.path.relpath(os.path.join(dirpath, d), root)}", out)
         for f in sorted(filenames):
             fp = Path(dirpath) / f
-            if f.endswith(".pyc"):
+            if f.endswith(".pyc") and label.startswith("site/"):
                 continue
             if fp.is_symlink():
                 _measure_tree(fp, f"{label}/{os.path.relpath(fp, root)}", out)
@@ -283,7 +284,7 @@ def measure_home(home: Path) -> dict:
             for dirpath, dirnames, filenames in os.walk(stdlib):
                 dirnames[:] = sorted(d for d in dirnames if d not in ("__pycache__", "site-packages", "test", "idlelib", "tkinter"))
                 for f in sorted(filenames):
-                    if f.endswith((".py", ".so")):
+                    if f.endswith((".py", ".so", ".pyc", ".pth")):
                         sub[os.path.relpath(os.path.join(dirpath, f), stdlib)] = _sha(Path(dirpath) / f)
             out["interpreter-stdlib"] = hashlib.sha256(json.dumps(sub, sort_keys=True).encode()).hexdigest()
     return out
@@ -332,7 +333,7 @@ def cmd_verify_home(a) -> int:
 def cmd_setup(a) -> int:
     home = Path(a.home).resolve()
     venv = home / "venv"
-    installed = any((home / r).exists() for r in ("venv", "pyre-check", "site", "baselines"))
+    installed = any((home / r).exists() for r in ("venv", "pyre-check", "site"))
     if installed and not a.rebuild:
         digest, why = verify_home(home)
         if digest is None:   # the old setup REUSED whatever venv/stubs it found: a replaced pyre would have survived a "re-setup"
@@ -629,24 +630,10 @@ def cmd_judge(a) -> int:
     log = open(out / "pysa.log", "w")
     base_tree = subprocess.run(["git", "-C", str(wt), "rev-parse", f"{a.base}:{APP_REL}/{PKG_REL}"], capture_output=True, text=True, check=True).stdout.strip()
     judge_id = hashlib.sha256(b"".join(f.read_bytes() for f in sorted([Path(__file__)] + list(MODELS_SRC.glob("*")))) ).hexdigest()[:16]
-    # a baseline is reused only when built by this judge+models AND this measured home, and only while its bytes match the index
-    cache = home / "baselines" / f"{base_tree}-{judge_id}-{digest[:16]}.json"
-    index_p = home / "baselines" / "index.json"
-    index = json.loads(index_p.read_text()) if index_p.is_file() else {}
-    if cache.exists():
-        if index.get(cache.name) != _sha(cache):
-            print(json.dumps({"verdict": "ERROR", "stage": "baseline", "reason": f"cached baseline {cache.name} does not match the sha256 the judge recorded "
-                              "when it wrote it (tampered or foreign) — refusing to judge against it; delete it or run setup --rebuild"}))
-            return 2
-        base_res = json.loads(cache.read_text())
-        base_res["cached"] = True
-    else:
-        base_res = scan(home, wt, a.base, out / "base", a.timeout, log)
-        if base_res["ok"]:
-            cache.parent.mkdir(exist_ok=True)
-            cache.write_text(json.dumps(base_res))
-            index[cache.name] = _sha(cache)
-            index_p.write_text(json.dumps(index, indent=0, sort_keys=True))
+    # BASE is scanned on every judge run. A cross-run cache lived in the home, where an earlier uncontained (--isolation none or
+    # pre-0.3.0) candidate could rewrite a baseline AND any index vouching for it; nothing the same OS user can write authenticates
+    # it, so the ~70 s it saved is not worth a forgeable "unchanged" (independent review R3, 2026-09-29).
+    base_res = scan(home, wt, a.base, out / "base", a.timeout, log)
     if not base_res["ok"]:
         print(json.dumps({"verdict": "ERROR", "stage": "base", **{k: v for k, v in base_res.items() if k != "findings"}}))
         return 2

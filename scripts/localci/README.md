@@ -37,8 +37,12 @@ Record the seal OUTSIDE the run dir; `status --seal <≥12 chars>` re-derives it
 run in a run dir the runner never mints another seal: a resumed or repeated run re-derives it and prints it as UNCHANGED only when every
 candidate check ran contained and the value is identical, otherwise prints `seal REFUSED`; a trusted check is not re-run there
 (QUEUED/INTERRUPTED ones become BLOCKED — plan a fresh run dir). Runs where no candidate code ran keep minting as before. Exposure is
-read from the marker AND from any candidate check's attempts/history/receipt; under `--isolation none` all of that is same-user state,
-so there the only evidence is the seal the operator recorded before exposure.
+read from the marker AND from any candidate check's attempts/history/receipt. Under `--isolation none` (and legacy plans) all of that
+is same-user state a lingering candidate process can erase, so there a seal is minted only over `cmd` verdicts THIS invocation
+computed — a resumed run that finds trusted verdicts on disk refuses — and it is printed as UNCONTAINED: evidence only as the first
+seal the operator recorded. A candidate that resets the whole run dir to a fresh-plan state is indistinguishable from a fresh plan
+to any same-user process; the seal printed then covers that invocation's own verdicts and differs from the recorded one whenever
+`plan.json` was touched. Use `--isolation container` whenever the seal must mean more.
 
 `--extra-check NAME=JSON` adds a check the operator wants beside the planned ones. It is refused when NAME starts with a reserved
 prefix (`policy.`, `tests.`, `review.`, `trusted.`) or is already planned, and when the spec is not an executable kind (`cmd`,
