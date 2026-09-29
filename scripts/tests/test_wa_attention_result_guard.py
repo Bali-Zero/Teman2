@@ -6,8 +6,13 @@ docs/specs/2026-09-29-wa-attention-result-guard-spec.md: seed a sentinel into EV
 content-bearing place (each text column of `clients`, enumerated from information_schema; the raw
 event's pushName/verifiedBizName/text/caption/vCard; the body columns), run the REAL selectors and
 composing functions on a throwaway Postgres, assert an exact key set, no sentinel in any value or
-rendered text, and the exact label shape. Second half: rows at 0/6/8/10/40 days pin the roster and
-backlog counts (window seam). Synthetic data only; the CI job fails on any skip."""
+rendered text, and the exact label shape. Second half: rows at 0/6/6.5/7.5/8/10/40 days pin the roster
+and backlog counts (window seam; the 6.5 and 7.5 rows sit half a day either side of the 7-day window
+edge, so a one-day drift on either window ALONE moves a row into both surfaces or neither).
+Sentinels are matched case-insensitively, every text key is pinned to its exact value, and every
+rendered line must fullmatch a known shape (a suffix after the masked phone is a leak).
+Known intrinsic limit: a JSON path the fixture never seeds returns NULL, which cannot be told from a
+legitimate NULL. Synthetic data only; the CI job fails on any skip."""
 
 from __future__ import annotations
 
@@ -29,7 +34,7 @@ REPO = Path(__file__).resolve().parents[2]
 SRC = REPO / "scripts" / "wa-mirror-attention-telegram.py"
 
 SENTINEL = "SENTINEL"
-AGES = (0, 6, 8, 10, 40)
+AGES = (0, 6, 6.5, 7.5, 8, 10, 40)
 KINDS = ("open_high", "resolved_high", "group_high", "medium")
 
 HIGH_KEYS = {
@@ -176,7 +181,7 @@ async def _seed(conn, rows, *, known_phone: str | None, client_id: int = 41) -> 
             " counterpart_phone, attention_priority, attention_reason, attention_resolved_at, created_at,"
             " body, message_text, sender_push_name_snapshot)"
             " VALUES ('inbound', $1::jsonb, $2, $2, $3, ARRAY['deadline'],"
-            " CASE WHEN $4 THEN now() END, now() - make_interval(days => $5), $6, $7, $8)",
+            " CASE WHEN $4 THEN now() END, now() - make_interval(secs => $5::float8 * 86400), $6, $7, $8)",
             json.dumps(r["event"]), r["phone"], r["priority"], r["resolved"], r["age"],
             _s("BODY"), _s("MESSAGETEXT"), _s("SNAPSHOT"))
     cols = await conn.fetch(
@@ -239,8 +244,45 @@ def _deep_strings(value):
 
 
 def _assert_no_sentinel(value, where):
-    hits = [s for s in _deep_strings(value) if SENTINEL in s]
+    hits = [s for s in _deep_strings(value) if SENTINEL.lower() in s.lower()]
     assert not hits, f"{where} carries a sentinel: {hits[:2]}"
+
+
+_LABEL = r"(?:client #\d+ — )?\+\d{4}\*{4}\d{4}"
+_TAG = r"(?:CRM #\d+|new lead)"
+
+
+def _line_shapes(wa) -> list[re.Pattern]:
+    """Every line the digest and the realtime composer may emit; anything else (a suffix after the masked
+    phone, an extra line) fails `fullmatch`, so a leak appended to a label cannot hide behind `search`."""
+    dash = re.escape(wa.DASHBOARD_URL)
+    return [re.compile(p) for p in (
+        r"📊 WA mirror daily digest",
+        r"[A-Za-z]{3} \d{2} [A-Za-z]{3} \d{4}, \d{2}:\d{2} WITA",
+        r"",
+        r"Last 24h:",
+        r"  • \d+ inbound msgs from \d+ contacts",
+        r"  • \d+ HIGH unresolved · \d+ resolved",
+        r"  • \d+ MEDIUM",
+        r"  • \d+ new leads auto-promoted to CRM",
+        r"🚨 Needs your attention:",
+        rf"  • {_LABEL}(?: \(new lead\))? — \d+ msg · deadline",
+        r"  …and \d+ more",
+        rf"📦 \d+ older HIGH msgs unresolved \(>{wa.HIGH_WINDOW_DAYS}d, count only\)",
+        r"🟢 Everything is acknowledged\.",
+        rf"→ {dash}",
+        r"(?:🚨 HIGH attention|🔔 still unresolved)(?: — \d+ contacts)?",
+        _LABEL,
+        rf"{_TAG} · \d+ unresolved msg",
+        r"Reasons: deadline",
+        rf"• {_LABEL}",
+        rf"  {_TAG} · \d+ unresolved · deadline",
+    )]
+
+
+def _assert_every_line_has_a_known_shape(text, shapes):
+    for line in text.splitlines():
+        assert any(p.fullmatch(line) for p in shapes), f"line with no known shape: {line!r}"
 
 
 class _Pool:
@@ -300,9 +342,18 @@ def test_each_selector_returns_exactly_its_contract_and_no_sentinel(wa, pg):
     _assert_no_sentinel(high, "fetch_high_unresolved")
     _assert_no_sentinel(digest, "fetch_digest_metrics")
     by_phone = {r["phone"]: r for r in high}
+    young_phones = {r["phone"] for r in _open_high(rows, young=True)}
+    assert set(by_phone) == young_phones and len(high) == len(young_phones)
+    # exact value of every text key, not "no sentinel present": a transformed client column
+    # (lower-case, substring, whole-row JSON) is neither a sentinel nor structural
     assert by_phone[known]["crm_id"] == 41
-    assert by_phone[known]["lead_source"] == "wa"  # the one structural client value that may pass
-    assert all(r["crm_id"] is None for p, r in by_phone.items() if p != known)
+    assert by_phone[known]["crm_status"] == CLIENT_STRUCTURAL["status"]
+    assert by_phone[known]["lead_source"] == CLIENT_STRUCTURAL["lead_source"]
+    for phone, row in by_phone.items():
+        assert row["reasons"] == ["deadline"], row["reasons"]
+        assert row["n_high"] == 1
+        if phone != known:
+            assert (row["crm_id"], row["crm_status"], row["lead_source"]) == (None, None, None)
 
 
 def test_the_rendered_digest_and_realtime_texts_carry_no_sentinel_and_the_exact_label(wa, pg, monkeypatch):
@@ -322,14 +373,13 @@ def test_the_rendered_digest_and_realtime_texts_carry_no_sentinel_and_the_exact_
         for phone in (known, lead):
             assert phone not in text, "a full phone reached a message"
     label_known = f"client #41 — {wa.mask_phone(known)}"
+    shapes = _line_shapes(wa)
     for text in digest + realtime:
         assert label_known in text
         # a new lead is the masked phone alone, never prefixed by anything that could be a name
         assert wa.mask_phone(lead) in text
         assert f"client #None" not in text
-        for line in text.splitlines():
-            if "—" in line and "client #" in line:
-                assert re.search(r"client #\d+ — \+\d{4}\*{4}\d{4}", line), line
+        _assert_every_line_has_a_known_shape(text, shapes)
 
 
 # ---------------------------------------------------------------------------- backlog and window seam
@@ -343,12 +393,16 @@ def test_the_window_seam_splits_open_high_rows_between_roster_and_backlog_exactl
     high, digest = _run(wa, pg, rows, body)
     young = {r["phone"] for r in _open_high(rows, young=True)}
     old = _open_high(rows, young=False)
-    assert {r["age"] for r in _open_high(rows, young=True)} == {0, 6}  # the 6-day row is INSIDE
-    assert {r["age"] for r in old} == {8, 10, 40}  # the 8-day row is OUTSIDE
+    assert {r["age"] for r in _open_high(rows, young=True)} == {0, 6, 6.5}  # 6d and 6d12h are INSIDE
+    assert {r["age"] for r in old} == {7.5, 8, 10, 40}  # 7d12h and 8d are OUTSIDE
     assert {r["phone"] for r in high} == young, "the roster is the unresolved 1:1 HIGH rows younger than the window"
-    assert digest["high_backlog"] == len(old) == 3
-    # every open HIGH 1:1 row lands in exactly one of the two surfaces
-    assert len(high) + digest["high_backlog"] == len(_open_high(rows))
+    assert digest["high_backlog"] == len(old) == 4
+    # every open HIGH 1:1 row lands in exactly one of the two surfaces: the rows half a day either side
+    # of the edge make a +/-1 day drift on ONE window alone put a row in both surfaces or in neither
+    on_roster = {r["phone"] for r in high}
+    assert len(high) + digest["high_backlog"] == len(_open_high(rows)) == 7
+    inside, outside = (next(r for r in _open_high(rows) if r["age"] == a) for a in (6.5, 7.5))
+    assert inside["phone"] in on_roster and outside["phone"] not in on_roster
     # 24h block: only the age-0 one-to-one rows (open HIGH, resolved HIGH, MEDIUM); the group row is out
     assert (digest["inbound_24h"], digest["high_open"], digest["high_resolved"], digest["medium"],
             digest["distinct_phones_24h"], digest["new_leads_24h"]) == (3, 1, 1, 1, 3, 0)
@@ -364,7 +418,7 @@ def test_the_backlog_excludes_resolved_group_and_medium_rows_at_forty_days(wa, p
 
 
 def test_the_digest_never_says_all_clear_over_a_backlog_end_to_end(wa, pg, monkeypatch):
-    rows = [r for r in _matrix() if r["age"] >= 8]  # empty roster, backlog only
+    rows = [r for r in _matrix() if r["age"] >= 7]  # empty roster, backlog only
 
     async def body(conn, cols):
         return await _capture(wa, monkeypatch, conn, "digest")
@@ -372,5 +426,21 @@ def test_the_digest_never_says_all_clear_over_a_backlog_end_to_end(wa, pg, monke
     sent = _run(wa, pg, rows, body)
     assert len(sent) == 1
     assert "Everything is acknowledged" not in sent[0]
-    assert "3 older HIGH msgs unresolved" in sent[0]
+    assert "4 older HIGH msgs unresolved" in sent[0]
     _assert_no_sentinel(sent[0], "the backlog-only digest")
+
+
+# ---------------------------------------------------------------------------- the guard's own innocence
+
+def test_the_sentinel_matcher_and_the_line_shapes_reject_transformed_and_suffixed_leaks(wa):
+    for leak in (_s("FULL_NAME").lower(), {"crm_status": _s("EMAIL").swapcase()}, ["x", {"k": f"a {_s('TAX').lower()}"}]):
+        with pytest.raises(AssertionError):
+            _assert_no_sentinel(leak, "probe")
+    _assert_no_sentinel({"crm_status": "active", "reasons": ["deadline"]}, "probe")
+    shapes = _line_shapes(wa)
+    _assert_every_line_has_a_known_shape("  • client #41 — +6281****0041 — 1 msg · deadline", shapes)
+    _assert_every_line_has_a_known_shape("• +6281****0041\n  new lead · 2 unresolved · deadline", shapes)
+    for bad in ("  • client #41 — +6281****0041 active — 1 msg · deadline", "client #41 — +6281****0041 x",
+                "  • client #41 — +6281****0041 — 1 msg · deadline · sentinel-full_name-7f3a"):
+        with pytest.raises(AssertionError):
+            _assert_every_line_has_a_known_shape(bad, shapes)
