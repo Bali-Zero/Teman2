@@ -306,8 +306,38 @@ sentinel
 .tar.gz"; mk "$NLF"; old "$NLF" 30; mk "$ROOT/cwd/sentinel"; mk "$ROOT/cwd/.tar.gz"
 OUT=$(cd "$ROOT/cwd" && HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
 [ $RC -eq 1 ] && have "$ROOT/cwd/sentinel" && have "$ROOT/cwd/.tar.gz" && have "$NLF" && have "$QR/qdrant-20260106-0300.tar.gz" \
-  && echo "$OUT" | grep -q "qdrant: retention rc=1" && grep -q "REFUSE (outside root)" "$H/logs/qdrant-backup-retention.log" 2>/dev/null \
-  && ok "real delegate: a newline-named archive is refused, cwd sentinels survive, the run fails loudly (N1)" || no "delegate newline escape: rc=$RC sentinel=$(have "$ROOT/cwd/sentinel" && echo kept || echo GONE) tgz=$(have "$ROOT/cwd/.tar.gz" && echo kept || echo GONE)"
+  && echo "$OUT" | grep -q "qdrant: retention rc=1" && grep -q "REFUSE (newline-named entry in root" "$H/logs/qdrant-backup-retention.log" 2>/dev/null \
+  && ok "real delegate: a newline-named archive refuses both backstops, cwd sentinels survive, the run fails loudly (N1)" || no "delegate newline escape: rc=$RC sentinel=$(have "$ROOT/cwd/sentinel" && echo kept || echo GONE) tgz=$(have "$ROOT/cwd/.tar.gz" && echo kept || echo GONE)"
+build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0   # N3: the fragment collides with a REAL sibling inside the root
+while [ $i -lt 7 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
+NLF="$QR/qdrant-sentinel
+.tar.gz"; mk "$NLF"; old "$NLF" 30; mk "$QR/qdrant-sentinel"; old "$QR/qdrant-sentinel" 1
+OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+[ $RC -eq 1 ] && have "$QR/qdrant-sentinel" && have "$NLF" && have "$QR/qdrant-20260106-0300.tar.gz" \
+  && ok "real delegate: an inside-root prefix collision cannot delete the real sibling (N3)" || no "delegate inside-root collision: rc=$RC sibling=$(have "$QR/qdrant-sentinel" && echo kept || echo GONE)"
+build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0   # N4: the delegate's own log never carries a candidate's name
+while [ $i -lt 7 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
+mk "$QR/qdrant-$MARK.tar.gz"; old "$QR/qdrant-$MARK.tar.gz" 30; mk "$QR/coll-${MARK}_20250101-0300.snapshot"; old "$QR/coll-${MARK}_20250101-0300.snapshot" 30
+OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+[ $RC -eq 0 ] && ! have "$QR/qdrant-$MARK.tar.gz" && ! grep -q "$MARK" "$H/logs/qdrant-backup-retention.log" 2>/dev/null && grep -q "REMOVED \[tar.gz backstop" "$H/logs/qdrant-backup-retention.log" \
+  && ok "real delegate: the pruned candidate is logged by hash, its name never reaches the delegate log (N4)" || no "delegate log carries a name or prune missing: rc=$RC $(grep -c "$MARK" "$H/logs/qdrant-backup-retention.log" 2>/dev/null) hits"
+build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0   # kimi r3: the delegate's deletion knobs are pinned, never inherited
+while [ $i -lt 9 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
+OUT=$(QDRANT_KEEP_TARGZ=0 QDRANT_ORPHAN_KEEP_DAYS=0 QDRANT_RETENTION_LOG="$ROOT/stray.log" HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+[ $RC -eq 0 ] && have "$QR/qdrant-20260100-0300.tar.gz" && have "$QR/qdrant-20260106-0300.tar.gz" && ! have "$QR/qdrant-20260108-0300.tar.gz" && [ ! -e "$ROOT/stray.log" ] && [ -s "$H/logs/qdrant-backup-retention.log" ] \
+  && ok "inherited QDRANT_KEEP_TARGZ=0 is ignored: keep-7 pinned, 7 newest survive; delegate log pinned under HOME (kimi r3)" || no "delegate knobs inherited: rc=$RC kept=$(ls "$QR" 2>/dev/null | wc -l | tr -d ' ') stray=$( [ -e "$ROOT/stray.log" ] && echo yes || echo no)"
+build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0
+while [ $i -lt 9 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
+OUT=$(QDRANT_RETENTION_ENABLED=false HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+[ $RC -eq 0 ] && ! have "$QR/qdrant-20260108-0300.tar.gz" && have "$QR/qdrant-20260106-0300.tar.gz" \
+  && ok "inherited QDRANT_RETENTION_ENABLED=false cannot silently disable the delegated step (kimi r3)" || no "delegate silently disabled by inherited env: rc=$RC"
+GNUBIN="$ROOT/gnubin"; mkdir -p "$GNUBIN"   # N5: a GNU-shaped stat (`-f` = filesystem text, `-c '%s'` = size) must not break the delegate's arithmetic
+printf '#!/bin/sh\ncase "$1" in -f) echo "  File: \"$3\"\n    ID: 100000000000000 Namelen: 255     Type: ext2/ext3"; exit 0 ;; -c) shift 2; wc -c < "$1" | tr -d " "; exit 0 ;; esac\nexit 1\n' > "$GNUBIN/stat"; chmod +x "$GNUBIN/stat"
+build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0
+while [ $i -lt 9 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
+OUT=$(PATH="$GNUBIN:$PATH" HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+[ $RC -eq 0 ] && ! have "$QR/qdrant-20260108-0300.tar.gz" && have "$QR/qdrant-20260106-0300.tar.gz" && grep -q "REMOVED \[tar.gz backstop keep-7\] [0-9a-f]\{12\} (2B)" "$H/logs/qdrant-backup-retention.log" \
+  && ok "real delegate under a GNU-shaped stat: sizes stay numeric, keep-7 prune succeeds (N5)" || no "delegate broke under GNU stat: rc=$RC $(grep 'REMOVED\|WARN\|error' "$H/logs/qdrant-backup-retention.log" 2>/dev/null | head -2)"
 build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0
 while [ $i -lt 9 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
 OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?

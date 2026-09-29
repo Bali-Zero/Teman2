@@ -217,15 +217,24 @@ fi
 
 # ── qdrant backup retention: delegated to its own tested script, same mode ─────
 # The delegate's root is pinned here (never inherited from the environment) and passed through
-# the same gate as every other target before the delegate runs (codex R1).
+# the same gate as every other target before the delegate runs (codex R1). Every other knob that
+# decides WHAT the delegate deletes or whether it deletes at all is pinned to the delegate's own
+# defaults too — an inherited QDRANT_KEEP_TARGZ=0 would prune every archive and an inherited
+# QDRANT_RETENTION_ENABLED=false would no-op silently under rc=0 (kimi round 3); only the
+# producer-liveness pattern stays inheritable, since steering it can only make the delegate
+# skip, never delete more. Its audit log is pinned under the same HOME as ours.
 QDRANT_RC=skipped
+qdrant_run() { # $@ delegate args
+  QDRANT_BACKUP_ROOT="$QROOT" QDRANT_RETENTION_ENABLED=true QDRANT_KEEP_TARGZ=7 QDRANT_KEEP_SNAP=4 \
+  QDRANT_ORPHAN_KEEP_DAYS=14 QDRANT_RETENTION_LOG="$JH/logs/qdrant-backup-retention.log" \
+  bash "$QDRANT_RETENTION" "$@" >/dev/null 2>&1
+}
 if [ -n "$QDRANT_RETENTION" ] && [ -f "$QDRANT_RETENTION" ]; then
   QROOT="$JH/backups/qdrant-snapshots"
   if is_protected "$QROOT" || has_protected_descendant "$QROOT"; then
     ERRORS=$((ERRORS + 1)); QDRANT_RC=refused; log "qdrant: REFUSE $(tag "$QROOT") (protected tree or descendant) — delegation skipped"
   else
-    if $APPLY; then QDRANT_BACKUP_ROOT="$QROOT" bash "$QDRANT_RETENTION" --apply >/dev/null 2>&1
-    else QDRANT_BACKUP_ROOT="$QROOT" bash "$QDRANT_RETENTION" >/dev/null 2>&1; fi
+    if $APPLY; then qdrant_run --apply; else qdrant_run; fi
     QDRANT_RC=$?; [ "$QDRANT_RC" -eq 0 ] || ERRORS=$((ERRORS + 1))
     log "qdrant: retention rc=$QDRANT_RC"
   fi
