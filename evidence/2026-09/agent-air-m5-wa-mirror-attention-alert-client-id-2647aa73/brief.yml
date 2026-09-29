@@ -1,0 +1,116 @@
+task: >-
+  PR #7635: scripts/wa-mirror-attention-telegram.py's contact_label() was rendering
+  clients.full_name in cleartext next to the masked phone on the realtime HIGH alert, the
+  roster message and the daily digest — client PII sent to Telegram (cloud), a breach of
+  Builder Contract §4. Removed the SELECT column that produced it, made contact_label()
+  render `client #<crm_id>` (or the masked phone alone for a new lead) instead.
+  scripts/wa-mirror-attention-classifier.py was censused and found clean (no name field
+  fetched, no Telegram/tg_notify emitter). A follow-up gate review (PASS-WITH-CONDITIONS,
+  https://github.com/Bali-Zero/Teman2/pull/7635#issuecomment-5885487709) found a second,
+  independent defect this brief also covers: a REAL client phone number had been used as a
+  test/docstring fixture since #3683, present in this file, in
+  scripts/tests/test_wa_attention_pii_envelope.py, and in
+  apps/wa-mirror/tests/lid-resolver.test.ts — scrubbed to a synthetic number everywhere,
+  including its masked form, and confirmed absent from HEAD by a repo-wide grep for the full
+  number and its last-8-digit tail. The same review also hardened the guilt/innocence corpus
+  against four specific mutants (M1b/M1d/M6/M7) and required a `pull_request` CI job that
+  actually runs the two test files instead of relying on the nightly report-only
+  `scripts/tests/ sweep` — that job is `.github/workflows/check-wa-attention-pii.yml`, added
+  in this diff and registered in `main-push-failure-watch.yml`'s `workflows:` list per
+  `scripts/check_watcher_coverage.py`.
+lane: wa-mirror/attention-alert-client-id
+machine: M5
+date: 2026-09-29
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source `hotzone`: `git diff --no-renames --numstat origin/main...HEAD`
+  shows 5 files changed (317 lines churn — below SIZE_GEAR2_THRESHOLD (400), so size alone
+  would floor at 1), but two of those files are `.github/workflows/check-wa-attention-pii.yml`
+  (new file) and `.github/workflows/main-push-failure-watch.yml` — both HOTZONE_PATTERNS
+  matches (`.github/workflows/*` in scripts/evidence_pack_lint.py). Neither is exempted by the
+  first-party action-pin carve-out (that exemption requires every changed line to be a
+  `uses: <owner>/<repo>@<ref>` bump with an unchanged action-identity multiset; this diff adds
+  a whole new job and a new list entry, not a version pin). Confirmed locally:
+  `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <files>
+  --numstat-file <numstat>` over this branch's diff against origin/main returns `3`, matching
+  what CI's `Harness floor recompute` check computes on the same predicate
+  (scripts/ci/contract_checks.yml's `floor-needs-brief` row). This brief is written
+  retroactively, in the same session and before arming — it was absent when the branch was
+  first pushed, which is what floored the local preflight red on the follow-up commit.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    contact_label() never renders a client name under any of the field names the code could
+    plausibly read it from (crm_name, full_name, name, display_name), for the single-contact
+    realtime alert, the roster realtime alert, AND the digest — three independent rendering
+    sites, each checked end-to-end through the real composer/cmd_digest(), not just at the
+    contact_label() unit level.
+    probe: >-
+      python3 -m pytest scripts/tests/test_wa_attention_pii_envelope.py -q -k
+      "client_name or contact_label or osint_safe or select_never_fetches"
+  A2: >-
+    A known contact is still identifiable by an opaque `client #<crm_id>` tag (not silenced
+    into an anonymous stub), a new lead with no crm_id renders the masked phone alone with no
+    stray tag, and no run of 5+ consecutive raw phone digits reaches a new-lead digest message
+    — a partial-leak check independent of the "no full number" guilt tests.
+    probe: >-
+      python3 -m pytest scripts/tests/test_wa_attention_pii_envelope.py -q -k
+      "still_identified or masked_phone_only or masked_tail or 5plus_digit_run"
+  A3: >-
+    The four review-flagged mutants each turn the relevant test(s) red when manually
+    reintroduced, and the corpus returns to green after each revert: (M1b) re-adding
+    `c.full_name AS crm_name` to the fetch_high_unresolved SELECT; (M1d) contact_label()
+    reading `display_name` instead of `crm_id`; (M6) widening mask_phone()'s reveal from
+    suffix(4) to suffix(6); (M7) reverting the OSINT-safe docstring's allowed-fields list to
+    "contact display_name + phone". All four were exercised by hand in this session (not
+    committed as separate mutant files) and are reproducible by re-applying the same edits
+    described in this PR's review thread.
+    probe: >-
+      python3 -m pytest scripts/tests/test_wa_attention_pii_envelope.py
+      scripts/tests/test_wa_attention_episode_tier.py -q
+  A4: >-
+    The real client phone number flagged in review is absent from HEAD across the whole repo
+    (not just the three files it was found in), both as the full 13-digit number and as its
+    last-8-digit tail (a narrower substring than the full number, to catch a partial
+    reproduction the first grep might miss).
+    probe: >-
+      git grep -l "<the real 13-digit number, redacted per Builder Contract §4 — see PR
+      review thread, never written in cleartext in this repo>" -- . ':!.git' ;
+      echo "exit=$? (1 = clean, no match)"
+  A5: >-
+    The new `check-wa-attention-pii.yml` CI job is correctly registered so
+    `scripts/check_watcher_coverage.py`'s self-conformance passes (no drift between the live
+    workflow census and `main-push-failure-watch.yml`'s `workflows:` list), and the workflow
+    file itself is YAML-valid and actionlint-clean.
+    probe: >-
+      python3 scripts/check_watcher_coverage.py ; echo "exit=$?" &&
+      actionlint .github/workflows/check-wa-attention-pii.yml
+      .github/workflows/main-push-failure-watch.yml
+
+out_of_scope: >-
+  The broader `tg_notify`/Telegram-emitter surface outside the wa-mirror-attention family
+  (other sentinels, watchdogs, reconcilers that also call tg_notify.py) — not censused, per
+  the original spec's explicit scope boundary ("stay inside the attention family"). Whether to
+  rewrite git history to remove the leaked real phone number from past commits — flagged to
+  the owner in the PR body per the review's instruction; squashing does not unpublish it and a
+  phone cannot be rotated like a credential. Promoting `check-wa-attention-pii.yml` to a
+  required branch-protection check (same posture as its sibling `check-wal-continuity-probe`)
+  is a separate, later operator action.
+
+assumptions:
+  - text: >-
+      The real client phone number's identity (that it matches existing CRM clients and
+      hundreds of mirror rows on Pro) was established by the reviewing session via a read-only
+      check on Pro, reported to this session as a finding rather than independently
+      re-verified against the CRM by the session that wrote this brief and made the fix.
+    status: unverified
+    probe: >-
+      An operator or a session with Pro DB read access can re-run the same count-only lookup
+      the review described (matching against `clients.phone_normalized` / mirror rows) against
+      the ORIGINAL number preserved in this PR's review thread, never against a value written
+      in this repo.

@@ -1,0 +1,61 @@
+# The wa-mirror attention alerter's PII output-boundary guard must keep being
+# able to go RED.
+#
+# `scripts/tests/` is swept in CI with continue-on-error, so a test file
+# there does NOT gate a PR unless a workflow runs it explicitly. This is that
+# workflow, for the two test files that pin scripts/wa-mirror-attention-
+# telegram.py's OSINT envelope (Builder Contract §4): a mutant that
+# reintroduces a client name — under `crm_name`, `full_name`, `name` or
+# `display_name` — into a realtime/roster/digest Telegram message, or that
+# widens `mask_phone()`'s reveal past prefix(4)+suffix(4), or that lets
+# `c.full_name` back into the SELECT, must fail a PR, not just a nightly
+# report nobody reads (superscar #2, esiste != armato).
+#
+# Both test files import scripts/wa-mirror-attention-telegram.py by path at
+# collection time, which does real work at import (reads ~/.wa-mirror.env,
+# mkdirs ~/.cache) and requires `asyncpg` to be importable or the whole
+# module skips (see each file's `wa` fixture docstring) — asyncpg is
+# installed explicitly below so the run actually exercises the assertions
+# instead of silently skipping green.
+#
+# Path-scoped: runs only when the alerter, its two test files, or this
+# workflow change.
+name: check-wa-attention-pii
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "scripts/wa-mirror-attention-telegram.py"
+      - "scripts/tests/test_wa_attention_pii_envelope.py"
+      - "scripts/tests/test_wa_attention_episode_tier.py"
+      - ".github/workflows/check-wa-attention-pii.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-wa-attention-pii-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-wa-attention-pii:
+    name: check-wa-attention-pii
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest + asyncpg (pinned to the repo's lockfile version)
+        run: python -m pip install --quiet pytest asyncpg==0.31.0
+
+      - name: The PII envelope and episode-tier corpus can go RED (guilt AND innocence)
+        run: |
+          set -euo pipefail
+          python -m pytest scripts/tests/test_wa_attention_pii_envelope.py \
+                            scripts/tests/test_wa_attention_episode_tier.py -q

@@ -8,12 +8,16 @@ Two modes:
   Dedup per phone within 4h.
 
 OSINT-safe: Telegram message contains only:
-- contact display_name + phone (last 4 digits masked)
+- `client #<crm_id>` (opaque CRM id, never a name) or the masked phone alone
+  for a lead the CRM does not know yet — phone always last-4-digits masked
 - reason codes (no free text)
 - N unresolved
 - link to local dashboard (http://localhost:8767)
 
-Raw body NEVER sent to Telegram cloud.
+Raw body NEVER sent to Telegram cloud. Client full_name NEVER sent either
+(Builder Contract §4 output boundary, 2026-09-29 — see contact_label()):
+a cleartext client name in a cloud alert is PII in the clear, full stop, not
+a judgement call left to this file.
 
 State: ~/.cache/wa-mirror-attention-state.json
 """
@@ -116,7 +120,7 @@ def contact_label(item: dict) -> str:
     exactly the case this alerter exists to surface — that rendered the FULL
     number and its masked form side by side:
 
-        +6281312415572 — +6281****5572
+        +6280000000001 — +6280****0001
 
     The masking was not bypassed; it was made pointless by the fallback
     standing next to it. This file's own docstring already promised "phone
@@ -125,10 +129,18 @@ def contact_label(item: dict) -> str:
 
     Two writers of one field means the rule lives in ONE function, so a third
     call site cannot reintroduce the leak by copying the old inline form.
+
+    TIGHTENED 2026-09-29 (Builder Contract §4, output boundary): the mask-vs-
+    fallback defect above was fixed by still naming the client, in the clear,
+    next to the masked phone. That is itself banned — "no ... alert ... may
+    carry client PII in cleartext — use a client_id, a hash, a placeholder or
+    a redaction" is not a judgement call either. `crm_name` is no longer read
+    here (the SELECT that produced it was dropped entirely, so it is never
+    even fetched); a known contact is named by the opaque CRM id instead.
     """
     masked = mask_phone(item.get("phone") or "")
-    name = item.get("crm_name")
-    return f"{name} — {masked}" if name else masked
+    crm_id = item.get("crm_id")
+    return f"client #{crm_id} — {masked}" if crm_id else masked
 
 
 def send_telegram(text: str, tier: str = "p0", dedup_key: str = "") -> bool:
@@ -193,7 +205,7 @@ async def fetch_high_unresolved(conn: asyncpg.Connection) -> list[dict]:
         GROUP BY 1
       )
       SELECT h.*,
-             c.id AS crm_id, c.full_name AS crm_name, c.status AS crm_status, c.lead_source
+             c.id AS crm_id, c.status AS crm_status, c.lead_source
       FROM highs h
       LEFT JOIN clients c ON c.phone_normalized = h.phone AND c.deleted_at IS NULL
       ORDER BY h.last_high_at DESC
@@ -371,8 +383,11 @@ async def cmd_realtime(force: bool = False):
 def _compose_realtime_alert(due: list, tier: str = "p0") -> str:
     """One contact keeps the full detail; several become a compact roster.
 
-    Same OSINT envelope as before either way: display name, masked phone,
-    reason codes, unresolved count, dashboard link. No free text ever.
+    Same OSINT envelope as before either way: opaque `client #<crm_id>` (never
+    a name), masked phone, reason codes, unresolved count, dashboard link. No
+    free text ever. (Docstring corrected 2026-09-29 — it still said "display
+    name" here after contact_label() stopped rendering one; a stale contract
+    is worse than none, because the next reader trusts it.)
 
     `tier` only changes the HEADLINE, never the envelope. A digest batch is a
     reminder about something already reported, and it has to SAY so — a
@@ -433,14 +448,14 @@ async def cmd_digest():
             # (`display` / `phone`); this one says `name` / `it['phone']`.
             # A pattern written from the instance you found catches the
             # instance you found.
-            name = contact_label(it)
+            label = contact_label(it)
             crm_marker = "" if it["crm_id"] else " (new lead)"
             crit = [r for r in (it["reasons"] or []) if r in CRITICAL_REASONS]
             unanswered = "unanswered_thread_3plus" in (it["reasons"] or [])
             tags = crit[:3]
             if unanswered:
                 tags.append("⏰thread")
-            lines.append(f"  • {name}{crm_marker} — {it['n_high']} msg · {' '.join(tags)}")
+            lines.append(f"  • {label}{crm_marker} — {it['n_high']} msg · {' '.join(tags)}")
         if len(items) > 8:
             lines.append(f"  …and {len(items)-8} more")
     else:
