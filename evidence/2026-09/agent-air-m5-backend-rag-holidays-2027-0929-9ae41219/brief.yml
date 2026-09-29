@@ -1,0 +1,26 @@
+task: >-
+  Load the decreed 2027 Indonesian national holidays (18) and cuti bersama (8) into
+  apps/backend-rag/backend/data/id_holidays.py so statutory deadlines in 2027 roll over decreed
+  holidays, not weekends only.
+lane: backend-rag/holidays-2027
+machine: air-m5
+date: 2026-09-29
+gear: 1
+gear_reason: >-
+  Floor 1 (evidence_pack_lint.py --print-floor over origin/main...HEAD): data table + docstrings +
+  tests in apps/backend-rag, 4 files, under 400 net lines; no schema/infra/secrets/auth touched.
+acceptance:
+  A1: >-
+    The 26 loaded 2027 entries equal, date for date and kind for kind, the SKB lists read on
+    2026-09-29 from two primary sources that agree: kemenkopmk.go.id release and
+    setneg.go.id/baca/index/inilah_skb_3_menteri_libur_nasional_dan_cuti_bersama_2027.
+  A2: >-
+    holiday_years_loaded() == {2026, 2027}; next_business_day(2027-01-01) == 2027-01-04; the
+    Idulfitri block moves 2027-03-08 to 2027-03-16; the "not loaded" cases now use 2028; counts
+    pinned 17+8 (2026) and 18+8 (2027). test_business_days, test_obligations_register,
+    test_operating_calendar, garuda leak/intake tests and backend/tests/setup/: 662 passed.
+  A3: >-
+    GARUDA operating_calendar coverage stays at 2026-12-31 (behaviour unchanged; docstring only).
+out_of_scope:
+  - Widening the GARUDA VOA operating-calendar coverage into 2027 (separate decision).
+  - Election days (not part of the SKB).
