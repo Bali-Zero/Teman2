@@ -1,0 +1,40 @@
+task: >-
+  R19 colour guard v2, entity level. A colour or depth effect decided by a LITERAL, in a position
+  that carries colour, instead of an R19 CSS custom property. Test-only: a pure module in
+  `apps/mouth/src/test/` plus the colour tests of the two tax-calendar per-page guards. The
+  product files are judged, never edited.
+lane: mouth/r19-guard-v2
+machine: air-m5
+date: 2026-09-30
+gear: 1
+gear_reason: >-
+  Test-only diff under apps/mouth (one new module, its table test, two per-page guard tests);
+  no product, schema, infra, secrets or auth file touched.
+acceptance:
+  A1: >-
+    The G/I tables in `r19-colour-guard.test.ts` hold v1's rows, all of gate-7648c's probe rows
+    (one reclassified: the comment-then-`color: "white"` source row is guilt) and the position-rule
+    rows: class 113 (66 guilt, 47 innocent), style 43 (26+17), source 48 (26+22), plus 18 direct
+    value rows. `vitest run src/test/r19-colour-guard.test.ts`: 224 tests passed. The palette test
+    asserts mauve/mist/olive/taupe/slate/white/black and at least 26 names (read: 28).
+    probe: cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts
+  A2: >-
+    Both per-page guards are green on HEAD (no product file holds a literal): 6 tests passed in
+    TaxCalendarBody.r19-guard.test.tsx and MyTaxCalendar.r19-guard.test.tsx.
+    probe: cd apps/mouth && npx vitest run src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx
+  A3: >-
+    Mutant receipts, each applied to TaxCalendarBody.tsx / page.tsx (cp backup, cp restore) and run
+    against TaxCalendarBody.r19-guard.test.tsx: all 7 red. backdrop-blur-md RED (2 failed);
+    bg-slate-900/[0.8] RED (2); border-t-slate-200 RED (2); ring-white/10 RED (2); inline
+    color whitesmoke RED (2); inline boxShadow rgba RED (2); rgba in the page.tsx h1 RED (1).
+    Working tree clean of product changes afterwards.
+    probe: apply one listed edit to the named product file, run `npx vitest run src/components/funnel/TaxCalendarBody.r19-guard.test.tsx` from apps/mouth, expect red, restore with cp
+  A4: >-
+    Scoped suite `src/components/funnel "src/app/(tax-calendar)" src/components/r19
+    src/app/api/tax-calendar src/test`: 18 files / 396 tests passed; `tsc --noEmit` exit 0;
+    prettier --check clean; eslint clean on the four files (run with --no-ignore, the project
+    config ignores test files).
+    probe: cd apps/mouth && npx vitest run src/components/funnel "src/app/(tax-calendar)" src/components/r19 src/app/api/tax-calendar src/test && npx tsc --noEmit
+out_of_scope:
+  - >-
+    The seven other per-page `*.r19-guard.test.tsx` files: a later PR migrates them to this module.

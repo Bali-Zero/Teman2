@@ -1,6 +1,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  forbiddenClassToken,
+  forbiddenInlineStyle,
+  forbiddenSourceColour,
+} from "@/test/r19-colour-guard";
+import { TaxCalendarBody } from "./TaxCalendarBody";
 
 // The override lets the verification command run this same test against a
 // temporary, restored copy without mutating the working tree.
@@ -11,7 +18,53 @@ const sourceFiles = [
   "src/app/(tax-calendar)/tax-calendar/page.tsx",
 ];
 
-describe("TaxCalendarBody R19 anchor", () => {
+describe("TaxCalendarBody R19 guard", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("uses only R19-safe rendered classes and inline styles", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-29T00:00:00.000Z"));
+    const { container } = render(
+      <TaxCalendarBody
+        deadlines={[
+          {
+            date: "2026-10-15T00:00:00.000Z",
+            description: "Monthly tax payment.",
+            id: "pph-25",
+            kind: "PPh",
+            title: "PPh 25 monthly",
+          },
+        ]}
+        regencies={["Badung"]}
+      />,
+    );
+
+    for (const element of container.querySelectorAll("*")) {
+      const classes = (element.getAttribute("class") ?? "").split(/\s+/);
+      for (const token of classes.filter(Boolean)) {
+        expect(forbiddenClassToken(token), `forbidden class: ${token}`).toBe(
+          false,
+        );
+      }
+
+      const style = element.getAttribute("style") ?? "";
+      expect(
+        forbiddenInlineStyle(style),
+        `forbidden inline style: ${style}`,
+      ).toBeNull();
+    }
+  });
+
+  it("keeps colour and depth effects out of the source files", () => {
+    for (const file of sourceFiles) {
+      const source = readFileSync(resolve(root, file), "utf8");
+      expect(
+        forbiddenSourceColour(source),
+        `literal colour or backdrop effect in ${file}`,
+      ).toBeNull();
+    }
+  });
+
   it("anchors the calendar to the R19 presentation contract", () => {
     const body = readFileSync(resolve(root, sourceFiles[0]), "utf8");
     const layout = readFileSync(resolve(root, sourceFiles[1]), "utf8");
