@@ -214,8 +214,8 @@ DISK_JANITOR_SESSIONS_DIR="$H/nope" wrap
 sidecar | grep -q '"status":"error"' && ok "own node: payload errors surface as sidecar status=error" || no "payload error not visible in sidecar"
 build; fake_host nuzantara; echo $$ > "$PIDF"   # a live lock held by this very test process
 wrap; RC=$?
-have "$OLD_SCRATCH" && sidecar | grep -q 'skipped: previous run alive' && [ "$(cat "$PIDF")" = "$$" ] \
-  && ok "own node: an existing live lock makes the run skip and is left untouched (R7)" || no "live lock not respected"
+have "$OLD_SCRATCH" && sidecar | grep -q '"status":"warn","note":"skipped: previous run alive"' && [ "$(cat "$PIDF")" = "$$" ] \
+  && ok "own node: a live lock makes the run skip with sidecar status=warn (never ok), lock untouched (R7, kimi O-9)" || no "live lock not respected or reported as ok: $(sidecar)"
 rm -f "$PIDF"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"

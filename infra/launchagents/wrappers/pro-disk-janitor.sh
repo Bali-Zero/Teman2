@@ -41,7 +41,9 @@ fi
 # G10_single_instance — pidfile + liveness probe + trap cleanup
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
     log "previous run still alive (pid $(cat "$PIDFILE")) — skipping"
-    heartbeat "ok" "skipped: previous run alive"
+    # A daily payload still running a day later is an anomaly, not health: "warn", never "ok",
+    # or a hung payload would read healthy forever through the sidecar (council kimi O-9).
+    heartbeat "warn" "skipped: previous run alive"
     exit 0
 fi
 echo $$ > "$PIDFILE"
