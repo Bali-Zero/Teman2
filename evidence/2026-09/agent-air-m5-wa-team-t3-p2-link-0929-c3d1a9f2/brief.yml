@@ -36,4 +36,4 @@ assumptions:
   - text: >-
       Pro's whatsapp_message_context has client_id and team_member_email (measured by the lead: counts
       only, 198/202 with client_id, 202/202 with a roster email).
-    status: verified-by-lead
+    status: unverified
