@@ -2074,3 +2074,41 @@ def test_cli_operator_secret_digest_has_no_send_side_effect(
     )
     assert code == 0
     assert called == []
+
+
+def _firebreak_row(owner_text: str) -> "par.Entry":
+    raw = f"- opened 2026-06-01 | fb artifact | step | me (sessione M5) | {owner_text} proof"
+    return par.parse_entry(raw, par._parse_now(NOW))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Tech debt, not a firebreak.",
+        "second-line check, not a firebreak",
+        "is not a FIREBREAK",
+        "it isn't a firebreak",
+        "non-firebreak by design",
+        "there is no firebreak here",
+    ],
+)
+def test_negated_firebreak_mention_is_not_a_firebreak(text):
+    assert _firebreak_row(text).cls != par.CLASS_FIREBREAK
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "DECLARED FIREBREAK, not tech debt",
+        "This is a FIREBREAK (Legge 5 / business)",
+        "DELIBERATE FIREBREAK, not tech debt",
+        "the firebreak still stands for them",
+    ],
+)
+def test_declared_firebreak_mention_is_a_firebreak(text):
+    assert _firebreak_row(text).cls == par.CLASS_FIREBREAK
+
+
+def test_one_genuine_mention_beats_a_negated_one():
+    text = "Tech debt, not a firebreak. Elsewhere: DELIBERATE FIREBREAK."
+    assert _firebreak_row(text).cls == par.CLASS_FIREBREAK
