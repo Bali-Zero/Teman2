@@ -294,22 +294,49 @@ async def test_digest_line_counts_kinds_and_overdue_per_member_by_first_name(pg_
         async with pool.acquire() as conn:
             await conn.execute("INSERT INTO team_members (email, name) VALUES "
                                "('member-1@example.invalid', 'Alpha Tester'), "
-                               "('member-2@example.invalid', '4242 +628000000000')")
+                               "('member-2@example.invalid', '4242 +00-INVALID')")
         await _promise_on(pool, 1, resolved=True, resolved_at=_h(1), kind="media_sent")
         await _promise_on(pool, 2, resolved=True, resolved_at=_h(1), kind="team_confirmed")
-        await _promise_on(pool, 3, resolved=True, resolved_at=_h(1), kind="client_ack")
         past = datetime(2020, 1, 1, tzinfo=timezone.utc)
         future = datetime(2099, 1, 1, tzinfo=timezone.utc)
+        # an acked but overdue promise is still overdue, and still reported as acked
+        await _promise_on(pool, 3, due=past, email="member-1@example.invalid",
+                          resolved=True, resolved_at=_h(1), kind="client_ack")
         await _promise_on(pool, 4, due=past, email="Member-1@example.invalid")
-        await _promise_on(pool, 5, due=past, email="member-1@example.invalid")
-        await _promise_on(pool, 6, due=past, email="member-2@example.invalid")
-        await _promise_on(pool, 7, due=past, email="unknown@example.invalid")
-        await _promise_on(pool, 8, due=future, email="member-1@example.invalid")   # not overdue
+        await _promise_on(pool, 5, due=past, email="member-2@example.invalid")
+        await _promise_on(pool, 6, due=past, email="unknown@example.invalid")
+        await _promise_on(pool, 7, due=future, email="member-1@example.invalid")   # not overdue
         line = await wtp._fetch_resolution_digest(pool)
         assert line.startswith(
-            "promises resolved: media_sent 1 team_confirmed 1 client_ack 1; overdue unresolved 4: Alpha 2, ")
-        assert "42" not in line and "628" not in line and "example" not in line
+            "promises resolved: media_sent 1 team_confirmed 1; acked (not confirmed) 1; overdue 4: Alpha 2, ")
+        assert "4242" not in line and "INVALID" not in line and "example" not in line
         assert line.count("member-") == 2
+
+
+@pytest.mark.asyncio
+async def test_a_check_promise_followed_by_media_stays_unresolved_but_a_send_one_resolves(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "res_media_types") as pool:
+        await _setup(pool)
+        chk = await _promise(pool, 1, ptype="check")
+        snd = await _promise(pool, 2, ptype="send")
+        await _msg(pool, 3, "outbound", _h(2), media="document")
+        m = await wtp.run_resolve(pool, dry_run=False, now=NOW)
+        assert (m.media_sent, m.no_evidence) == (1, 1)
+        assert await _state(pool, chk) == OPEN
+        assert (await _state(pool, snd))[3] == "media_sent"
+
+
+@pytest.mark.asyncio
+async def test_a_client_ack_never_removes_a_promise_from_the_overdue_count(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "res_ack_overdue") as pool:
+        await _setup(pool)
+        await _promise(pool, 1, due=datetime(2020, 1, 1, tzinfo=timezone.utc))
+        await _msg(pool, 2, "inbound", _h(1), text="ok thanks")
+        before = await wtp._fetch_resolution_digest(pool)
+        await wtp.run_resolve(pool, dry_run=False, now=NOW)
+        after = await wtp._fetch_resolution_digest(pool)
+        assert "acked (not confirmed) 0; overdue 1" in before
+        assert "acked (not confirmed) 1; overdue 1" in after
 
 
 @pytest.mark.asyncio

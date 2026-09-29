@@ -28,11 +28,15 @@ what_changed: |
      resolved_by_kind totals and overdue-unresolved counts per member (first name from team_members,
      else a hash label). The existing int-only _digest_line and its callers are unchanged.
   4. scripts/wa_team_promises_resolve_cron.sh (hourly, installed by the conductor).
-  5. Tests: 39 unit + 14 real-PG. Floors 258 -> 297 and 68 -> 82; the workflow path filter gains
+  5. Gate rework R1-R4 (gate comment on head 1c4572266a): media_sent resolves send/submit only;
+     a client_ack never lowers an overdue count (overdue = unresolved OR client_ack, in the digest
+     total and per member; the line reads "acked (not confirmed) N"); tests kill M22 (scan tick calls
+     the resolution digest), M05 (literal 7 days) and M25 (once-a-day gate); guilt tests for R1 and R2.
+  6. Tests: 53 unit + 16 real-PG new in this PR. Floors 258 -> 311 and 68 -> 84; the workflow path filter gains
      the cron wrapper.
 
 proof: |
-  Unit corpus 297 passed, 82 skipped. Real-PG 82 passed, 0 skipped. Mutants on the fixes made after
+  Unit corpus 311 passed, 84 skipped. Real-PG 84 passed, 0 skipped. Mutants on the fixes made after
   the council (NULLIF peer, now-cap, lone resolved_by in both guards, legacy directions): each red.
   Pro dry-run (read-only, counts): scanned=202 unthreadable=0 media_sent=108 team_confirmed=3
   client_ack=44 no_evidence=47. Availability, ignoring precedence: media 108, team-confirmed 4,
@@ -45,8 +49,8 @@ dissent:
     resolution: "OPEN, accepted: both kinds count for the KPI; the weakest kind (client_ack) is the one deferred for exactly this reason. Upgrade would break the fill-only contract."
   - seat: codex-gpt-5.6-sol
     objection: "HIGH: any outbound media resolves any promise type, and one media can resolve several promises."
-    status: PLAUSIBLE
-    resolution: "OPEN, accepted: the spec orders media as evidence for every type. This is the top precision risk (media_sent is 108 of the 202 on Pro); PR-C's local-LLM audit measures precision per kind and type before the KPI is trusted."
+    status: CONFIRMED
+    resolution: "Ruled by the gate (R1): media_sent now resolves send/submit only; check/update/process resolve through team_confirmed until PR-C measures media precision per type. Pro dry-run after R1: media_sent=74 team_confirmed=3 client_ack=69 no_evidence=56."
   - seat: codex-gpt-5.6-sol
     objection: "MEDIUM: COALESCE does not treat empty strings as missing; a blank group_jid/counterpart_lid could collapse threads."
     status: CONFIRMED
@@ -75,13 +79,13 @@ dissent:
 receipts:
   - claim: "Unit corpus."
     cmd: "PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wa_team_promises*.py -q"
-    result: "297 passed, 82 skipped"
+    result: "311 passed, 84 skipped"
     exit: 0
     ts: "2026-09-29T18:10:00Z"
     seat: claude-sonnet-5-5
   - claim: "Real-PG corpus."
     cmd: "WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wa_team_promises*real_pg.py -q"
-    result: "82 passed"
+    result: "84 passed"
     exit: 0
     ts: "2026-09-29T18:10:00Z"
     seat: claude-sonnet-5-5

@@ -121,14 +121,14 @@ def test_resolve_metrics_every_field_is_a_bare_int():
 def test_resolution_digest_line_is_counts_and_stable_labels_only():
     line = wtp._resolution_digest_line(3, 2, 1, 5, [("Ari", 3), ("member-0a1b2c", 2)])
     assert line == (
-        "promises resolved: media_sent 3 team_confirmed 2 client_ack 1; "
-        "overdue unresolved 5: Ari 3, member-0a1b2c 2"
+        "promises resolved: media_sent 3 team_confirmed 2; "
+        "acked (not confirmed) 1; overdue 5: Ari 3, member-0a1b2c 2"
     )
 
 
 def test_resolution_digest_line_replaces_an_unsafe_label_and_rejects_non_ints():
-    line = wtp._resolution_digest_line(0, 0, 0, 1, [("client 42 +628123456789", 1)])
-    assert "42" not in line and "628" not in line and "member-" in line
+    line = wtp._resolution_digest_line(0, 0, 0, 1, [("client 42 +00-INVALID", 1)])
+    assert "42" not in line and "INVALID" not in line and "member-" in line
     with pytest.raises(TypeError):
         wtp._resolution_digest_line("3 (client 42)", 0, 0, 0, [])  # type: ignore[arg-type]
     with pytest.raises(TypeError):
@@ -179,3 +179,99 @@ def test_only_the_two_current_directions_count_as_evidence(direction):
     msgs = [_m(1, direction, _h(1), text="ok thanks"), _m(2, direction, _h(2), media="document"),
             _m(3, direction, _h(3), text="already sent")]
     assert wtp._pick_evidence("send", T0, msgs, LONG_AFTER) is None
+
+
+# R1 — a file is the fulfilment of send/submit only.
+
+@pytest.mark.parametrize("ptype,expected", [
+    ("send", "media_sent"), ("submit", "media_sent"),
+    ("check", None), ("update", None), ("process", None),
+])
+def test_media_resolves_only_send_and_submit_promises(ptype, expected):
+    picked = wtp._pick_evidence(ptype, T0, [_m(1, "outbound", _h(1), media="document")], LONG_AFTER)
+    assert (picked[0] if picked else None) == expected
+
+
+def test_a_check_promise_still_resolves_through_team_confirmed_after_media():
+    msgs = [_m(1, "outbound", _h(1), media="document"), _m(2, "outbound", _h(2), text="gia controllato")]
+    assert wtp._pick_evidence("check", T0, msgs, LONG_AFTER) == ("team_confirmed", 2, _h(2))
+
+
+# The window is a literal seven days, not "whatever the constant says".
+
+def test_the_resolve_window_is_literally_seven_days():
+    assert wtp._RESOLVE_WINDOW == timedelta(days=7)
+    inside = [_m(1, "outbound", T0 + timedelta(days=7), media="document")]
+    outside = [_m(1, "outbound", T0 + timedelta(days=7, hours=1), media="document")]
+    assert wtp._pick_evidence("send", T0, inside, LONG_AFTER) is not None
+    assert wtp._pick_evidence("send", T0, outside, LONG_AFTER) is None
+
+
+# The consumer: the scan tick sends the resolution line, once a day, best effort.
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("dry_run,expected_calls", [(False, 1), (True, 0)])
+async def test_the_scan_tick_calls_the_resolution_digest_only_when_not_dry_run(
+    monkeypatch, dry_run, expected_calls
+):
+    async def _fake_create_pool(**_kwargs):
+        return _NullPool()
+
+    async def _run_scan(_pool, *, batch_size, dry_run):
+        return wtp.ScanMetrics()
+
+    calls = []
+
+    async def _spy(_pool, _tick):
+        calls.append(1)
+
+    monkeypatch.setattr(wtp.asyncpg, "create_pool", _fake_create_pool)
+    monkeypatch.setattr(wtp, "run_scan", _run_scan)
+    monkeypatch.setattr(wtp, "_save_scan_metrics", lambda _m: None)
+    monkeypatch.setattr(wtp, "_acquire_scan_lock_or_none", lambda: 99)
+    monkeypatch.setattr(wtp, "_release_scan_lock", lambda _fd: None)
+
+    async def _no_digest(_pool, _tick):
+        return None
+
+    monkeypatch.setattr(wtp, "_maybe_send_digest", _no_digest)
+    monkeypatch.setattr(wtp, "_maybe_send_resolution_digest", _spy)
+    args = ["--scan"] + (["--dry-run"] if dry_run else [])
+    assert await wtp.cli_main(args) == 0
+    assert len(calls) == expected_calls
+
+
+def _wita(hour, minute=10):
+    return datetime(2026, 9, 27, hour, minute, tzinfo=wtp._WITA)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hour,sent", [(0, 1), (3, 0), (12, 0), (23, 0)])
+async def test_the_resolution_digest_goes_out_only_in_the_first_opportunity_of_the_day(
+    monkeypatch, hour, sent
+):
+    fetched, out = [], []
+
+    async def _fetch(_pool):
+        fetched.append(1)
+        return "promises resolved: media_sent 0 team_confirmed 0; acked (not confirmed) 0; overdue 0"
+
+    monkeypatch.setattr(wtp, "_fetch_resolution_digest", _fetch)
+    monkeypatch.setattr(wtp, "_send_resolution_digest", lambda text, *, yesterday_label: out.append(yesterday_label))
+    await wtp._maybe_send_resolution_digest(None, _wita(hour))
+    assert len(out) == sent and len(fetched) == sent
+    if sent:
+        assert out == ["2026-09-26"]
+
+
+@pytest.mark.asyncio
+async def test_a_failing_resolution_digest_never_raises_or_sends(monkeypatch):
+    out = []
+
+    async def _boom(_pool):
+        raise RuntimeError("table missing")
+
+    monkeypatch.setattr(wtp, "_fetch_resolution_digest", _boom)
+    monkeypatch.setattr(wtp, "_send_resolution_digest", lambda text, *, yesterday_label: out.append(1))
+    await wtp._maybe_send_resolution_digest(None, _wita(0))
+    assert out == []

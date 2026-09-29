@@ -1326,7 +1326,7 @@ async def audit_link_counts(pool: asyncpg.Pool) -> dict[str, int]:
 # Evidence, strongest first, always AFTER the promise and inside
 # `_RESOLVE_WINDOW` (7 days, and never later than now: the longest due cue in `_TEMPORAL_CUES` — past
 # it a message in the thread is no longer evidence about THIS promise):
-#   media_sent      outbound document/image/video/audio
+#   media_sent      outbound document/image/video/audio (send/submit promises only)
 #   team_confirmed  outbound text where a catalog pattern of the SAME
 #                   promise_type matches in its past-tense form
 #   client_ack      inbound text matching the catalog's ack words; the
@@ -1336,6 +1336,10 @@ async def audit_link_counts(pool: asyncpg.Pool) -> dict[str, int]:
 #                   lock the weaker kind in).
 _RESOLVE_WINDOW = timedelta(days=7)
 _RESOLVE_MEDIA_TYPES = frozenset({"document", "image", "video", "audio"})
+# A file is the fulfilment of a `send`/`submit` promise only. For check /
+# update / process it says nothing until a precision audit (PR-C) measures it,
+# so those types resolve through `team_confirmed` alone.
+_RESOLVE_MEDIA_PROMISE_TYPES = frozenset({"send", "submit"})
 
 # The extractor has no fulfilment catalog of its own: `_PROMISE_PATTERNS_RE`
 # carries past-tense alternatives inside each type ("sudah kirim", "already
@@ -1405,7 +1409,8 @@ def _pick_evidence(promise_type: str, t0: datetime, msgs: list[dict], now: datet
             continue
         if m["direction"] == "outbound":
             if m["media_type"] in _RESOLVE_MEDIA_TYPES:
-                found.setdefault("media_sent", (m["id"], m["at"]))
+                if promise_type in _RESOLVE_MEDIA_PROMISE_TYPES:
+                    found.setdefault("media_sent", (m["id"], m["at"]))
             elif m["text"] and _is_fulfilment(promise_type, m["text"]):
                 found.setdefault("team_confirmed", (m["id"], m["at"]))
         elif m["direction"] == "inbound" and m["text"] and _ACK_PATTERN.search(m["text"]):
@@ -1475,10 +1480,17 @@ SELECT count(*) FILTER (WHERE resolution_kind = 'media_sent') AS media_sent,
 _OVERDUE_BY_MEMBER_SQL = """
 SELECT lower(p.team_member_email) AS email, min(t.name) AS name, count(*) AS n
   FROM team_promises p LEFT JOIN team_members t ON lower(t.email) = lower(p.team_member_email)
- WHERE p.resolved = false AND p.due_at < now()
+ WHERE (p.resolved = false OR p.resolution_kind = 'client_ack') AND p.due_at < now()
  GROUP BY lower(p.team_member_email)
  ORDER BY n DESC, email
  LIMIT 12
+"""
+
+# A client_ack is the client answering the promise itself, not evidence that it
+# was kept (spec 2.4b): it never lowers an overdue count.
+_OVERDUE_TOTAL_SQL = """
+SELECT count(*) FROM team_promises
+ WHERE (resolved = false OR resolution_kind = 'client_ack') AND due_at < now()
 """
 
 _MEMBER_LABEL_RE = re.compile(r"^[A-Za-z][A-Za-z'-]{0,30}$")
@@ -1502,8 +1514,8 @@ def _resolution_digest_line(media_sent: int, team_confirmed: int, client_ack: in
              else _member_label(None, label), n) for label, n in per_member]
     members = ", ".join(f"{label} {n}" for label, n in safe)
     return (
-        f"promises resolved: media_sent {media_sent} team_confirmed {team_confirmed} "
-        f"client_ack {client_ack}; overdue unresolved {overdue_total}"
+        f"promises resolved: media_sent {media_sent} team_confirmed {team_confirmed}; "
+        f"acked (not confirmed) {client_ack}; overdue {overdue_total}"
         + (f": {members}" if members else "")
     )
 
@@ -1513,7 +1525,7 @@ async def _fetch_resolution_digest(pool: asyncpg.Pool) -> str:
         kinds = await conn.fetchrow(_RESOLUTION_DIGEST_SQL)
         members = await conn.fetch(_OVERDUE_BY_MEMBER_SQL)
         overdue_total = await conn.fetchval(
-            "SELECT count(*) FROM team_promises WHERE resolved = false AND due_at < now()"
+            _OVERDUE_TOTAL_SQL
         )
     per_member = [(_member_label(r["name"], r["email"]), int(r["n"])) for r in members]
     return _resolution_digest_line(int(kinds["media_sent"]), int(kinds["team_confirmed"]),
