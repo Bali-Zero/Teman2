@@ -1,0 +1,70 @@
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+  - lane: independent-diff-review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: independent-diff-review-2
+    role: review
+    seat: kimi-code/k3
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5-5
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 3
+appetite_exceeded: none
+pii_scan: clean
+receipts:
+  - claim: "local-tests: the full localci suite passes on Pro with the measured Pysa home and the pinned candidate image."
+    probe: local-tests
+    cmd: LOCALCI_PYSA_HOME=~/.nuzantara-pilots/local-ci/isolation-0929/pysa-home PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/localci/tests -q -p no:cacheprovider
+    result: "248 passed, 1 skipped (hypothesis not installed) at 0c769c79f4"
+    exit: 0
+    ts: "2026-09-29T15:20:00Z"
+    seat: claude-opus-5-5
+  - claim: "prove2.log guilt/innocent: contained guilt candidate FAIL with exactly 2 new flows; innocent PASS; seal printed before candidate code and UNCHANGED at end."
+    probe: prove2.log guilt/innocent
+    cmd: bash ~/.nuzantara-pilots/local-ci/isolation-0929/prove2.sh (runner at 9d5cb89769, image sha256:5388c413dbf3)
+    result: "guilt security.pysa_python FAIL rc=1, report '2 new'; innocent PASS rc=0, 0 new"
+    exit: 0
+    ts: "2026-09-29T14:46:00Z"
+    seat: claude-opus-5-5
+  - claim: "prove2.log C2-T1..T5: replaced/re-measured home or legacy unmeasured home is BLOCKED or ERROR; poisoned baseline is not PASS."
+    probe: prove2.log C2-T1..T5
+    cmd: bash ~/.nuzantara-pilots/local-ci/isolation-0929/prove2.sh
+    result: "T1 BLOCKED (tampered), T2/T3 ERROR rc=2, T4 FAIL, T5 BLOCKED (no manifest) and setup refused rc=2"
+    exit: 0
+    ts: "2026-09-29T14:48:30Z"
+    seat: claude-opus-5-5
+  - claim: "prove2.log C4 + runs2/c4 journal: kill -9 mid contained check, resume reaps the orphan container and mints nothing new."
+    probe: prove2.log C4 + runs2/c4 journal
+    cmd: bash ~/.nuzantara-pilots/local-ci/isolation-0929/prove2.sh
+    result: "journal: 1 seal, 4 seal_verified, 1 orphan_containers_removed, 1 trusted_rerun_refused"
+    exit: 0
+    ts: "2026-09-29T14:51:11Z"
+    seat: claude-opus-5-5
+  - claim: "prove2.log SPEC-8 + prove3.log: forged reset of an uncontained run dir and a container plan with an extra cmd both print no seal= and status --seal is BLOCKED."
+    probe: prove2.log SPEC-8 + prove3.log
+    cmd: bash prove2.sh (SPEC-8 step) and the prove3 extra-cmd run at 45bd3b867b
+    result: "seal= lines 0, journal seal events 0, overall BLOCKED (both)"
+    exit: 0
+    ts: "2026-09-29T15:10:44Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 3: an --extra-check cmd runs on the host yet was sealed as trusted; SIGTERM during copy-in left the copy group running; a Pysa home can be poisoned by an earlier uncontained run."
+    status: CONFIRMED
+    disposition: "Cured in 45bd3b867b (extra flag, is_trusted_check/runs_candidate_code/seal_unsupported, finally-kill; mutation-checked); poisoning recorded as accepted limit spec §9 R3-2 with a plan-time WARNING."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 4: an extra could name the interpreter the coordinator executes before the seal; watchdogs started outside try; a re-hashed plan.json can mint a seal."
+    status: CONFIRMED
+    disposition: "Cured in 6eee51a49e (coordinator_python, RUNNER_OWNED_KEYS refusal, watchdog inside try; mutation-checked); plan re-hash by uncontained same-user code recorded as accepted limit spec §10 R4-1."
+  - seat: kimi-code/k3
+    objection: "PASS-WITH-CONDITIONS: the judge test failed instead of skipping on an unmeasured legacy home; README still described a removed baseline cache; git tree-entry paths (`..`, absolute) were not validated before writing (not reachable through the runner today)."
+    status: CONFIRMED
+    disposition: "Cured in 0c769c79f4: PYSA_READY requires a verified home, README states BASE is rescanned every run, safe_tree_path in runner and pysa_check with pure and crafted-tree end-to-end tests."
