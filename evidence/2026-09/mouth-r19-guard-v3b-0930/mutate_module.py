@@ -10,6 +10,11 @@ GUARD = "src/test/r19-colour-guard.ts"
 SOURCE = "src/test/r19-colour-source.ts"
 TABLE = "src/test/r19-colour-guard.test.ts"
 
+# Survivors argued equivalent: every resolution cycle crosses an identifier or a
+# call, each of which costs a hop, so the depth limit alone ends every cycle and
+# the visited set only prunes work; no table row can tell the two apart.
+EQUIVALENT = {"§4 P5 the visited set is ignored (cycle guard)"}
+
 MUTANTS = [
     ("s1 quoted strings are not removed", GUARD, "(whole, url) => (url ? whole : \"\")", "(whole) => whole"),
     ("s2 data URIs are not decoded", GUARD, "if (/^data:/i.test(argument)) {", "if (false) {"),
@@ -72,8 +77,9 @@ MUTANTS = [
     ("§4 a hop limit of 4", SOURCE, "const MAX_HOPS = 3;", "const MAX_HOPS = 4;"),
     ("§4 identifiers are not resolved", SOURCE, "if (ts.isIdentifier(n)) return follow(n);", "if (ts.isIdentifier(n)) return;"),
     ("§4 member access is not resolved", SOURCE, "if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)) return follow(n);", "if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)) return;"),
-    ("§4 in-file calls are not resolved", SOURCE, "if (ts.isIdentifier(n.expression)) follow(n);", ""),
-    ("§4 a member of a local alias is not resolved", SOURCE, "if (depth < MAX_HOPS) values.push( ...this.memberValues(this.resolve(object, depth),", "if (false) values.push( ...this.memberValues(this.resolve(object, depth),"),
+    ("§4 in-file calls are not resolved", SOURCE, "if (ts.isIdentifier(n.expression)) follow(n);", "if (false) follow(n);"),
+    ("§4 a member read is not followed (alias of a map member)", SOURCE, "ts.isIdentifier(node) || ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node) || ts.isCallExpression(node)", "ts.isIdentifier(node) || ts.isCallExpression(node)"),
+    ("§4 a spread inside a resolved object is not followed", SOURCE, "values.push(...this.memberValues([property.expression], name, b));", ""),
     ("§4 comparison operands are judged", SOURCE, "if (COMPARISONS.has(op)) return;", ""),
     ("§4 the condition of a ternary is judged", SOURCE, "walk(n.whenTrue);\n        return walk(n.whenFalse);", "walk(n.condition);\n        walk(n.whenTrue);\n        return walk(n.whenFalse);"),
     ("§4 the left of && is judged", SOURCE, "if (op === ts.SyntaxKind.AmpersandAmpersandToken) return walk(n.right);", ""),
@@ -87,6 +93,20 @@ MUTANTS = [
     ("§4 types are walked", SOURCE, "if (ts.isTypeNode(n)) return;", ""),
     ("§5 css module comments are judged", GUARD, "const clean = css.replace(/\\/\\*[\\s\\S]*?", "const clean = css.replace(/\\/\\*NOPE[\\s\\S]*?"),
     ("§5 css module at-rule statements are declarations", GUARD, 'if (colon <= 0 || trimmed.startsWith("@")) return;', "if (colon <= 0) return;"),
+    ("§4 P5 bindings are not indexed", SOURCE, "} else if (ts.isBindingElement(node) && ts.isIdentifier(node.name)) {", "} else if (false) {"),
+    ("§4 P5 parameter defaults are not indexed", SOURCE, "ts.isParameter(node) &&", "false &&"),
+    ("§4 P5 a binding's own default is ignored", SOURCE, "const out: ts.Node[] = element.initializer ? [element.initializer] : [];", "const out: ts.Node[] = [];"),
+    ("§4 P5 a binding does not resolve to a member", SOURCE, "out.push(...this.memberValues(sources, key, b));", ""),
+    ("§4 P5 a nested pattern has no source", SOURCE, "sources = this.bindingValues(owner, b);", "sources = [];"),
+    ("§4 P5 a renamed binding reads its own name", SOURCE, "element.propertyName ?? element.name", "element.name"),
+    ("§4 P5 a binding never resolves in resolve()", SOURCE, "(this.bindings.get(node.text) ?? [])", "[]"),
+    ("§4 P5 reach ignores ternaries", SOURCE, "out.push(...this.reach([node.whenTrue, node.whenFalse], b));", ""),
+    ("§4 P5 reach ignores the right of ?? and ||", SOURCE, "out.push(...this.reach([node.left, node.right], b));", "out.push(...this.reach([node.left], b));"),
+    ("§4 P5 reach ignores the left of ?? and ||", SOURCE, "out.push(...this.reach([node.left, node.right], b));", "out.push(...this.reach([node.right], b));"),
+    ("§4 P5 the visited set is ignored (cycle guard)", SOURCE, "if (b.visited.has(node)) continue;", ""),
+    ("§4 P5 an identifier hop costs nothing", SOURCE, "hop ? { depth: b.depth + 1, visited: b.visited } : b", "b"),
+    ("§4 P5 the identifier depth limit is off", SOURCE, "if (b.depth >= MAX_HOPS) return []; const declared = (this.variables.get(node.text)", "const declared = (this.variables.get(node.text)"),
+    ("§4 P5 the call depth limit is off", SOURCE, "if (b.depth >= MAX_HOPS) return []; const callee", "const callee"),
 ]
 
 def main() -> int:
@@ -95,28 +115,35 @@ def main() -> int:
     for rel in {GUARD, SOURCE}:
         backups[rel] = tmp / pathlib.Path(rel).name
         shutil.copy(APP / rel, backups[rel])
-    survivors = 0
+    tally = {"KILLED": 0, "BROKEN": 0, "SURVIVED": 0, "EQUIVALENT": 0}
     try:
         for name, rel, old, new in MUTANTS:
             text = backups[rel].read_text()
             pattern = re.compile(r"\s*".join(re.escape(t) for t in old.split()))
             found = pattern.findall(text)
             if len(found) != 1:
-                print(f"BROKEN MUTANT ({len(found)} matches): {name}")
-                survivors += 1
+                print(f"BROKEN   pattern matched {len(found)} times: {name}")
+                tally["BROKEN"] += 1
                 continue
             (APP / rel).write_text(pattern.sub(lambda _: new, text, count=1))
             run = subprocess.run(["npx", "vitest", "run", TABLE], cwd=APP, capture_output=True, text=True)
             failed = re.search(r"Tests\s+(\d+) failed", run.stdout + run.stderr)
-            killed = run.returncode != 0
-            survivors += not killed
-            print(f"{'KILLED' if killed else 'SURVIVED':8} {failed.group(1) + ' rows' if failed else 'suite error':12} {name}")
+            if failed:
+                verdict = "KILLED"
+            elif run.returncode != 0:
+                verdict = "BROKEN"  # the suite failed to load or parse: proves nothing
+            elif name in EQUIVALENT:
+                verdict = "EQUIVALENT"
+            else:
+                verdict = "SURVIVED"
+            tally[verdict] += 1
+            print(f"{verdict:8} {failed.group(1) + ' rows' if failed else 'no table run':12} {name}")
             shutil.copy(backups[rel], APP / rel)
     finally:
         for rel, backup in backups.items():
             shutil.copy(backup, APP / rel)
-    print(f"{len(MUTANTS)} mutants, {survivors} survived")
-    return 1 if survivors else 0
+    print(f"{len(MUTANTS)} mutants: {tally['KILLED']} killed, {tally['BROKEN']} broken, {tally['SURVIVED']} survived, {tally['EQUIVALENT']} equivalent")
+    return 1 if tally["BROKEN"] or tally["SURVIVED"] else 0
 
 if __name__ == "__main__":
     sys.exit(main())

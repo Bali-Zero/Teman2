@@ -25,6 +25,8 @@ const COLOUR_ATTRIBUTES = new Set([
   "bgcolor",
 ]);
 const MAX_HOPS = 3;
+
+type Budget = { depth: number; visited: Set<ts.Node> };
 const TOKEN_DEFINITIONS = "/src/components/r19/presentation.ts";
 
 const COMPARISONS = new Set<ts.SyntaxKind>([
@@ -131,11 +133,24 @@ class Scanner {
   private seen = new Set<string>();
   private variables = new Map<string, ts.Expression[]>();
   private functions = new Map<string, ts.FunctionLikeDeclaration[]>();
+  private bindings = new Map<string, ts.BindingElement[]>();
 
   constructor(private sf: ts.SourceFile) {
     const index = (node: ts.Node) => {
       if (
         ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.initializer
+      ) {
+        const list = this.variables.get(node.name.text) ?? [];
+        list.push(node.initializer);
+        this.variables.set(node.name.text, list);
+      } else if (ts.isBindingElement(node) && ts.isIdentifier(node.name)) {
+        const list = this.bindings.get(node.name.text) ?? [];
+        list.push(node);
+        this.bindings.set(node.name.text, list);
+      } else if (
+        ts.isParameter(node) &&
         ts.isIdentifier(node.name) &&
         node.initializer
       ) {
@@ -288,7 +303,7 @@ class Scanner {
       for (const argument of node.arguments)
         this.styleRoot(argument, hops, visited);
     } else if (hops < MAX_HOPS) {
-      for (const resolved of this.resolve(node, hops))
+      for (const resolved of this.resolve(node, this.budget(hops)))
         this.styleRoot(resolved, hops + 1, visited);
     }
   }
@@ -359,25 +374,63 @@ class Scanner {
     return returns;
   }
 
+  private budget(depth: number): Budget {
+    return { depth, visited: new Set() };
+  }
+
+  // The object and array literals an expression can stand for, through `?:`,
+  // `??`, `||`, in-file identifiers, calls and member reads. One budget: an
+  // identifier or call costs a hop, a node already on the path ends as "not
+  // resolved".
+  private reach(nodes: ts.Node[], b: Budget): ts.Node[] {
+    const out: ts.Node[] = [];
+    for (const raw of nodes) {
+      const node = unwrap(raw);
+      if (
+        ts.isObjectLiteralExpression(node) ||
+        ts.isArrayLiteralExpression(node)
+      ) {
+        out.push(node);
+      } else if (ts.isConditionalExpression(node)) {
+        out.push(...this.reach([node.whenTrue, node.whenFalse], b));
+      } else if (ts.isBinaryExpression(node)) {
+        const op = node.operatorToken.kind;
+        if (op === ts.SyntaxKind.AmpersandAmpersandToken) {
+          out.push(...this.reach([node.right], b));
+        } else if (
+          op === ts.SyntaxKind.BarBarToken ||
+          op === ts.SyntaxKind.QuestionQuestionToken
+        ) {
+          out.push(...this.reach([node.left, node.right], b));
+        }
+      } else if (
+        ts.isIdentifier(node) ||
+        ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node) ||
+        ts.isCallExpression(node)
+      ) {
+        if (b.visited.has(node)) continue;
+        b.visited.add(node);
+        const hop = ts.isIdentifier(node) || ts.isCallExpression(node);
+        out.push(
+          ...this.reach(
+            this.resolve(node, b),
+            hop ? { depth: b.depth + 1, visited: b.visited } : b,
+          ),
+        );
+      }
+    }
+    return out;
+  }
+
   private memberValues(
     objects: ts.Node[],
     name: string | undefined,
-    depth = 0,
+    b: Budget,
   ): ts.Node[] {
     const values: ts.Node[] = [];
-    for (const object of objects.map(unwrap)) {
-      if (
-        ts.isIdentifier(object) ||
-        ts.isPropertyAccessExpression(object) ||
-        ts.isElementAccessExpression(object) ||
-        ts.isCallExpression(object)
-      ) {
-        // `const colors = categoryColors[category]; colors.gradient`
-        if (depth < MAX_HOPS)
-          values.push(
-            ...this.memberValues(this.resolve(object, depth), name, depth + 1),
-          );
-      } else if (ts.isArrayLiteralExpression(object)) {
+    for (const object of this.reach(objects, b)) {
+      if (ts.isArrayLiteralExpression(object)) {
         values.push(...object.elements);
       } else if (ts.isObjectLiteralExpression(object)) {
         for (const property of object.properties) {
@@ -389,14 +442,8 @@ class Scanner {
           } else if (ts.isShorthandPropertyAssignment(property)) {
             if (name === undefined || property.name.text === name)
               values.push(property.name);
-          } else if (ts.isSpreadAssignment(property) && depth < MAX_HOPS) {
-            values.push(
-              ...this.memberValues(
-                this.resolve(property.expression, depth),
-                name,
-                depth + 1,
-              ),
-            );
+          } else if (ts.isSpreadAssignment(property)) {
+            values.push(...this.memberValues([property.expression], name, b));
           }
         }
       }
@@ -404,27 +451,53 @@ class Scanner {
     return values;
   }
 
-  // The in-file nodes an expression stands for: a variable's initializer, a
-  // function call's return expressions, a member of a resolved object.
-  private resolve(expression: ts.Node, hops: number): ts.Node[] {
+  // What a destructured binding stands for: the matching member of what its
+  // pattern destructures, and its own default initializer.
+  private bindingValues(element: ts.BindingElement, b: Budget): ts.Node[] {
+    const out: ts.Node[] = element.initializer ? [element.initializer] : [];
+    const pattern = element.parent;
+    const owner = pattern.parent;
+    let sources: ts.Node[] = [];
+    if (ts.isVariableDeclaration(owner)) {
+      sources = owner.initializer ? [owner.initializer] : [];
+    } else if (ts.isBindingElement(owner)) {
+      sources = this.bindingValues(owner, b);
+    }
+    let key: string | undefined;
+    if (ts.isObjectBindingPattern(pattern) && !element.dotDotDotToken) {
+      const named = element.propertyName ?? element.name;
+      if (ts.isIdentifier(named) || ts.isStringLiteralLike(named))
+        key = named.text;
+    }
+    out.push(...this.memberValues(sources, key, b));
+    return out;
+  }
+
+  // The in-file nodes an expression stands for: a variable's or binding's
+  // initializer, a function call's return expressions, a member of a resolved
+  // object.
+  private resolve(expression: ts.Node, b: Budget): ts.Node[] {
     const node = unwrap(expression);
     if (ts.isIdentifier(node)) {
-      return (this.variables.get(node.text) ?? []).filter(
+      if (b.depth >= MAX_HOPS) return [];
+      const declared = (this.variables.get(node.text) ?? []).filter(
         (init) => !isFunctionLike(unwrap(init)),
       );
+      const bound = (this.bindings.get(node.text) ?? []).flatMap((element) =>
+        this.bindingValues(element, b),
+      );
+      return [...declared, ...bound];
     }
     if (ts.isPropertyAccessExpression(node)) {
-      return this.memberValues(
-        this.resolve(node.expression, hops),
-        node.name.text,
-      );
+      return this.memberValues([node.expression], node.name.text, b);
     }
     if (ts.isElementAccessExpression(node)) {
       const argument = unwrap(node.argumentExpression);
       const name = ts.isStringLiteralLike(argument) ? argument.text : undefined;
-      return this.memberValues(this.resolve(node.expression, hops), name);
+      return this.memberValues([node.expression], name, b);
     }
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      if (b.depth >= MAX_HOPS) return [];
       const callee = node.expression.text;
       const declared = this.functions.get(callee) ?? [];
       const initialisers = (this.variables.get(callee) ?? [])
@@ -448,7 +521,7 @@ class Scanner {
   ) {
     const follow = (expression: ts.Node) => {
       if (hops >= MAX_HOPS) return;
-      for (const resolved of this.resolve(expression, hops)) {
+      for (const resolved of this.resolve(expression, this.budget(hops))) {
         if (visited.has(resolved)) continue;
         visited.add(resolved);
         this.strings(resolved, mode, hops + 1, visited, emit);
