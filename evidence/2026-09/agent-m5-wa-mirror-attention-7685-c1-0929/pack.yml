@@ -5,19 +5,21 @@ mission_colour: BLUE
 gate_class: opus
 brief_ref: evidence/brief.yml
 base_sha: "b8e604386b73f19ff14da325c344b0863506e14b" # pragma: allowlist secret - merge-base with origin/main
-head_sha: "acf2cb677cb80c31d004941a0330258376cc8a00" # pragma: allowlist secret - final code SHA
+head_sha: "b04afe0fb29b214c4dc2912b56b92215cd6fb70e" # pragma: allowlist secret - final code SHA
 pii_scan: clean
+
+supersedes: "The kimi-code/k3 R1 resolution in the #7685 pack (evidence/2026-09/agent-m5-wa-mirror-attention-7665-c1-0929/pack.yml) that says the assignment-target and load refusals hold at 'module or class scope'. They hold in walked scope only: the module top level plus the bodies of Test*-named classes without __init__. Gate C1 of #7685."
+
 outcome: >-
-  Comment and docstring only. The workflow comment and scripts/wa_attention_presence.py now say
-  exactly where each refusal applies: WALKED SCOPE is the module top level (control-flow blocks
-  included) plus the bodies of Test*-named classes without __init__ reached from it; the
-  hook_problems scan is separate (WHOLE-FILE for introspection attributes, .register, .pluginmanager
-  and .obj/.runtest assignment; module top level for hook names). Named residuals, each run GREEN:
-  other class bodies (X1, X5, X2), function bodies outside control-flow blocks (X3), and reaching
-  __code__ without spelling the attribute (X4b, and getattr with a string literal). The principle
-  stays: anything not enumerated is not defended. One characterization test pins X1/X5 as a
-  declared gap. scripts/wa_attention_presence.py is AST-equal to origin/main with docstrings
-  stripped; no refusal was added.
+  Comment, docstring and tests only. The refused set is no longer enumerated in prose. The single
+  source of truth is the executable GUILT and HOOK_GUILT tables in
+  scripts/tests/test_wa_attention_presence_walk.py, and every refusal in the helper is now pinned
+  by at least one case there (mutation matrix in receipts/mutation-matrix.txt: removing any one
+  refusal turns at least one case red). The workflow comment says so in one paragraph, defines
+  walked scope, and is the ONLY place that lists the named residuals X1-X7; the module docstring
+  points to it and enumerates nothing. scripts/wa_attention_presence.py is AST-equal to origin/main
+  with docstrings stripped, no refusal was added. One characterization test pins the declared
+  gap (X1/X5) and carries an assertion message.
 
 compute_floor: 3
 compute_floor_source: path
@@ -40,22 +42,27 @@ council_run: council-journal.jsonl
 
 dissent:
   - seat: codex-gpt-5.6-sol
-    objection: "R1 REWORK (wording): 'any statement that LOADS' excludes definitions; unqualified list entries; control flow descends deeper than claimed; hook_problems still applies in unwalked bodies; literal getattr is an undeclared residual; 'a green run must mean every definition executed' overclaims."
+    objection: "R1 REWORK (wording) on the first version of the narrowed prose: several sentences named the wrong scope or noun."
     status: CONFIRMED
-    resolution: "Applied: 'non-definition statement'; every entry is walked-scope unless marked WHOLE-FILE; control-flow depth described as conservative, not promised; WHOLE-FILE scans stated to apply in unwalked bodies; getattr/setattr with a string literal added to the residuals; the docstring now says the list is the extent of what is caught, not a proof of execution."
+    resolution: "The first version listed the refused shapes in three places and the copies drifted. The structural cure applied after the fresh Opus gate: the refused set is not enumerated in prose at all; the GUILT/HOOK_GUILT tables are the single source and the residuals live in the workflow comment only."
   - seat: kimi-code/k3
-    objection: "R1 ACCEPT-WITH-NOTES: 'collected' is the wrong noun for the classes the walk enters; nested-class wording conflicts with the residual; .__code__ sentence un-narrowed; docstring and yml lists inconsistent."
+    objection: "R1 ACCEPT-WITH-NOTES on the first version: 'collected' was the wrong noun; docstring and yml lists inconsistent."
     status: CONFIRMED
-    resolution: "Applied: 'Test*-named classes without __init__ reached from the module'; a Test* class inside an unwalked class is named as unwalked; the introspection scan is marked WHOLE-FILE; docstring and yml enumerate the same items."
+    resolution: "Same cure: 'Test*-named classes without __init__'; the docstring no longer carries a list, so the two cannot disagree."
+  - seat: gate (fresh Opus, comment 5895375974)
+    objection: "REWORK-BUILD: 'CLOSED, each with a guilt case' was false: removing M1, M1b, M2, M3 or M6 names left the walk suite green."
+    status: CONFIRMED
+    resolution: "Guilt cases added for each (test def under if/try, Test class under with, duplicate def and class, fixture rebinding, one call statement per REFLECTION name, incl. setattr and register that a first draft still left unpinned). Mutation matrix: every mutant now kills at least one case."
 
 limitations:
-  - "Neither seat was re-asked on the final wording (fix-of-a-fix depth 1); the change is comment/docstring only and behavior is proven unchanged by AST equality, not by the council."
-  - "X1, X2, X3, X4b, X5 remain GREEN by design and are declared, not closed. Closing them is an allowlist spec of statement forms in walked scope, not another blacklist PR."
+  - "The council was not re-run on the final structural version; the gate is the re-review. Behavior is proven unchanged by AST equality of the helper and by the mutation matrix, not by the council."
+  - "X1-X7 remain GREEN by design and are declared in the workflow comment, not closed. Closing them is an allowlist spec of statement forms in walked scope, not another blacklist PR."
+  - "The helper's runtime messages still say 'module/class-scope'; changing a string literal is a behavior change and is out of this PR."
   - "The check is not a required context: making it required and regenerating contexts.json is the owner's branch-protection action."
 
 release_requirements:
   - "Fresh independent Opus 5.5 gate on the exact committed SHA before merge."
-  - "The merge_group run must print skipped=0 missing=0 problems=0 absent_suites=0 with defined=52 (51 plus the characterization test), or the count on main at queue time plus one."
+  - "The merge_group run must print skipped=0 missing=0 problems=0 absent_suites=0 with defined=52 (GUILT entries add parametrized cases, not test functions)."
 
 cloud_ok: >-
   Builder Contract section 4: code-only lane. Council seats received only the comment/docstring
@@ -67,13 +74,20 @@ receipts:
     cmd: "ast.dump(strip_docstrings(parse(git show origin/main:scripts/wa_attention_presence.py))) == ast.dump(strip_docstrings(parse(head)))"
     result: "AST-equal (docstrings stripped): True | raw bytes equal: False"
     exit: 0
-    ts: "2026-09-30T00:35:00Z"
+    ts: "2026-09-30T01:10:00Z"
     seat: claude-sonnet-5
     artifact: receipts/ast-equal-and-ci-line.txt
   - claim: "Innocence: real corpus with the CI flags and the unchanged walk"
     cmd: "pytest scripts/tests/test_wa_attention_*.py <CI flags> --junitxml; python scripts/wa_attention_presence.py junit.xml"
-    result: "98 passed; testcases=98 defined=52 skipped=0 missing=0 problems=0 absent_suites=0"
+    result: "111 passed; testcases=111 defined=52 skipped=0 missing=0 problems=0 absent_suites=0"
     exit: 0
-    ts: "2026-09-30T00:35:00Z"
+    ts: "2026-09-30T01:10:00Z"
     seat: claude-sonnet-5
     artifact: receipts/ast-equal-and-ci-line.txt
+  - claim: "Mutation matrix: each refusal removed from the helper, one at a time (M1, M1b, M2, M3, M6 per name, M7 control) kills at least one walk-suite case"
+    cmd: "scratch copy of the helper with one refusal disabled + the walk suite, real-corpus test deselected"
+    result: "13 mutants, 0 survivors"
+    exit: 0
+    ts: "2026-09-30T01:10:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/mutation-matrix.txt
