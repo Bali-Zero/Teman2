@@ -10,6 +10,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -33,6 +34,13 @@ def _ans(needs=0.9, tier="implementer", conf=0.95, verdict=0.02):
     return {"needs_agent": {"type": "noul", "noul": needs},
             "tier": {"type": "choice", "choice": tier, "confidence": conf},
             "is_verdict": {"type": "noul", "noul": verdict}}
+
+
+def _seam_env(**overrides) -> dict:
+    """CI/unit runners have no apps/backend-rag/.venv; the interpreter seam
+    (JEV_DISPATCH_GATE_INTERPRETER_SEAM) lets these tests keep exercising
+    the full gate() decision logic in-process under PATH python."""
+    return {**os.environ, "JEV_DISPATCH_GATE_INTERPRETER_SEAM": "1", **overrides}
 
 
 def test_deny_single_lookup_guilt():
@@ -217,10 +225,9 @@ def test_gate_run_never_prints_or_stores_the_key():
         secrets_file.write_text(f"TYPESAFE_API_KEY='{secret}'\n")
         os.chmod(secrets_file, 0o600)
         state_dir = pathlib.Path(tmp, "state")
-        env = {**os.environ, "NUZANTARA_SECRETS_FILE": str(secrets_file),
-               "JEV_DISPATCH_GATE_STATE": str(state_dir),
-               "JEV_DISPATCH_GATE_FAKE_ANSWERS": json.dumps(_ans(conf=0.7)),
-               "JEV_DISPATCH_GATE": "enforce"}
+        env = _seam_env(NUZANTARA_SECRETS_FILE=str(secrets_file), JEV_DISPATCH_GATE_STATE=str(state_dir),
+                        JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans(conf=0.7)),
+                        JEV_DISPATCH_GATE="enforce")
         env.pop("TYPESAFE_API_KEY", None)
         payload = {"tool_name": "Agent", "tool_input": OPUS}
         p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
@@ -235,18 +242,22 @@ def test_gate_run_never_prints_or_stores_the_key():
         assert isinstance(rows[-1]["repo_redactor"], bool)
 
 
-def test_report_includes_by_repo_redactor():
+def test_report_includes_by_repo_redactor_interpreter_and_redactor_yaml():
     with tempfile.TemporaryDirectory() as tmp:
         state_dir = pathlib.Path(tmp)
         (state_dir / "receipts.jsonl").write_text(
-            json.dumps({"action": "allow", "repo_redactor": True}) + "\n"
-            + json.dumps({"action": "skip", "repo_redactor": False}) + "\n"
+            json.dumps({"action": "allow", "repo_redactor": True, "interpreter": "venv",
+                       "redactor_yaml": "6.0.3"}) + "\n"
+            + json.dumps({"action": "allow", "repo_redactor": False, "interpreter": "seam"}) + "\n"
+            + json.dumps({"action": "skip", "skip": "no_pinned_interpreter"}) + "\n"
         )
         env = {**os.environ, "JEV_DISPATCH_GATE_STATE": str(state_dir)}
         p = subprocess.run([sys.executable, str(HOOK), "--report"], capture_output=True, text=True, env=env)
         assert p.returncode == 0, p.stdout + p.stderr
         out = json.loads(p.stdout)
-        assert out["by_repo_redactor"] == {"True": 1, "False": 1}
+        assert out["by_repo_redactor"] == {"True": 1, "False": 1, "None": 1}
+        assert out["by_interpreter"] == {"venv": 1, "seam": 1, "None": 1}
+        assert out["by_redactor_yaml"] == {"6.0.3": 1, "None": 2}
 
 
 def test_pii_shaped_detection():
@@ -257,7 +268,7 @@ def test_pii_shaped_detection():
 
 def _run(payload: dict, env: dict) -> tuple[str, list[dict]]:
     with tempfile.TemporaryDirectory() as tmp:
-        e = {**os.environ, "JEV_DISPATCH_GATE_STATE": tmp, **env}
+        e = {**_seam_env(), "JEV_DISPATCH_GATE_STATE": tmp, **env}
         p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), capture_output=True,
                            text=True, env=e, timeout=30)
         assert p.returncode == 0, p.stderr
@@ -271,8 +282,8 @@ def test_hook_subprocess_deny_then_pass_and_receipt_has_no_prompt():
     payload = {"tool_name": "Agent", "session_id": "s1", "tool_use_id": "t1",
                "tool_input": {**OPUS, "prompt": "Count the files under infra/claude-hooks."}}
     with tempfile.TemporaryDirectory() as tmp:
-        env = {**os.environ, "JEV_DISPATCH_GATE_STATE": tmp, "JEV_DISPATCH_GATE_FAKE_ANSWERS": fake,
-               "JEV_DISPATCH_GATE": "enforce"}
+        env = _seam_env(JEV_DISPATCH_GATE_STATE=tmp, JEV_DISPATCH_GATE_FAKE_ANSWERS=fake,
+                        JEV_DISPATCH_GATE="enforce")
         first = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), capture_output=True, text=True, env=env)
         second = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), capture_output=True, text=True, env=env)
         assert json.loads(first.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
@@ -309,8 +320,9 @@ def test_hook_subprocess_unwritable_state_never_denies():
     with tempfile.TemporaryDirectory() as tmp:
         blocker = pathlib.Path(tmp, "file")
         blocker.write_text("x")
-        env = {**os.environ, "JEV_DISPATCH_GATE_STATE": str(blocker / "state"),
-               "JEV_DISPATCH_GATE_FAKE_ANSWERS": json.dumps(_ans(needs=0.02, tier="grunt")), "JEV_DISPATCH_GATE": "enforce"}
+        env = _seam_env(JEV_DISPATCH_GATE_STATE=str(blocker / "state"),
+                        JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans(needs=0.02, tier="grunt")),
+                        JEV_DISPATCH_GATE="enforce")
         for _ in range(3):
             p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps({"tool_name": "Agent", "tool_input": OPUS}),
                                capture_output=True, text=True, env=env)
@@ -322,7 +334,8 @@ def test_hook_subprocess_parallel_distinct_dispatches_each_denied_exactly_once()
     from concurrent.futures import ThreadPoolExecutor
     fake = json.dumps(_ans(needs=0.02, tier="grunt"))
     with tempfile.TemporaryDirectory() as tmp:
-        env = {**os.environ, "JEV_DISPATCH_GATE_STATE": tmp, "JEV_DISPATCH_GATE_FAKE_ANSWERS": fake, "JEV_DISPATCH_GATE": "enforce"}
+        env = _seam_env(JEV_DISPATCH_GATE_STATE=tmp, JEV_DISPATCH_GATE_FAKE_ANSWERS=fake,
+                        JEV_DISPATCH_GATE="enforce")
         payloads = [json.dumps({"tool_name": "Agent", "tool_input": {**OPUS, "prompt": f"lookup {i}"}}) for i in range(12)]
 
         def run(p):
@@ -350,7 +363,7 @@ def test_hook_subprocess_huge_prompt_is_bounded():
 
 def test_hook_subprocess_malformed_stdin_is_silent():
     p = subprocess.run([sys.executable, str(HOOK)], input="not json", capture_output=True, text=True,
-                       env={**os.environ, "JEV_DISPATCH_GATE_STATE": tempfile.mkdtemp()})
+                       env=_seam_env(JEV_DISPATCH_GATE_STATE=tempfile.mkdtemp()))
     assert p.returncode == 0 and p.stdout.strip() == ""
 
 
@@ -365,55 +378,151 @@ def _fake_venv_script(tmp: pathlib.Path) -> pathlib.Path:
     return script
 
 
-def test_reexec_guilt_execs_under_fake_venv_with_hook_path_as_arg1():
+_KNOBS = ("JEV_DISPATCH_GATE_VENV_PYTHON", "JEV_DISPATCH_GATE_REEXEC", "JEV_DISPATCH_GATE_INTERPRETER_SEAM")
+
+
+def _no_override_env(**overrides) -> dict:
+    """A fresh env with none of the interpreter-selection knobs pre-set,
+    UNLESS the caller passes one explicitly as an override."""
+    e = {k: v for k, v in os.environ.items() if k not in _KNOBS}
+    e.update(overrides)
+    return e
+
+
+def test_reexec_guilt_execs_under_override_with_hook_path_as_arg1():
     with tempfile.TemporaryDirectory() as tmp:
         script = _fake_venv_script(pathlib.Path(tmp))
-        env = {**os.environ, "JEV_DISPATCH_GATE_FORCE_REEXEC_TEST": "1",
-               "JEV_DISPATCH_GATE_VENV_PYTHON": str(script)}
+        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(script))
         p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
         assert p.returncode == 0
         assert "REEXEC_MARKER reexec_env=SET" in p.stdout
         assert "arg1=jev_dispatch_gate.py" in p.stdout
 
 
-def test_reexec_innocence_nonexistent_venv_python_fails_open():
-    env = {**os.environ, "JEV_DISPATCH_GATE_FORCE_REEXEC_TEST": "1",
-           "JEV_DISPATCH_GATE_VENV_PYTHON": "/nonexistent/python"}
+def test_reexec_innocence_nonexistent_venv_override_fails_open():
+    env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON="/nonexistent/python")
     p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
     assert p.returncode == 0 and p.stdout == "" and p.stderr == ""
 
 
-def test_reexec_innocence_already_reexeced_never_loops():
+def test_reexec_a_git_repo_pinned_venv_happy_path_stdin_survives_exec():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        subprocess.run(["git", "init", "-q"], cwd=str(root), check=True)
+        hook_dir = root / "infra" / "claude-hooks"
+        hook_dir.mkdir(parents=True)
+        hook_copy = hook_dir / "jev_dispatch_gate.py"
+        shutil.copy(HOOK, hook_copy)
+        venv_bin = root / "apps" / "backend-rag" / ".venv" / "bin"
+        venv_bin.mkdir(parents=True)
+        venv_python = venv_bin / "python"
+        venv_python.write_text("#!/bin/sh\necho REEXEC_MARKER\ncat\n")
+        venv_python.chmod(0o755)
+        env = _no_override_env()
+        payload = json.dumps({"tool_name": "Agent", "tool_input": {"prompt": "p"}})
+        p = subprocess.run([sys.executable, str(hook_copy)], input=payload,
+                           capture_output=True, text=True, env=env)
+        assert p.returncode == 0
+        assert "REEXEC_MARKER" in p.stdout
+        assert payload in p.stdout
+
+
+def test_reexec_b_no_pinned_interpreter_anywhere_skips_jev_zero_vendor_calls():
+    with tempfile.TemporaryDirectory() as tmp:
+        trap = pathlib.Path(tmp)  # deliberately NOT a git repo
+        hook_dir = trap / "infra" / "claude-hooks"
+        hook_dir.mkdir(parents=True)
+        hook_copy = hook_dir / "jev_dispatch_gate.py"
+        shutil.copy(HOOK, hook_copy)
+        venv_bin = trap / ".venv" / "bin"  # decoy at the OLD/wrong location, never used
+        venv_bin.mkdir(parents=True)
+        marker = venv_bin / "python"
+        marker.write_text("#!/bin/sh\necho REEXEC_MARKER\n")
+        marker.chmod(0o755)
+        state_dir = trap / "state"
+        env = _no_override_env(GIT_CEILING_DIRECTORIES=str(trap.parent),
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(hook_copy)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env, cwd=str(trap))
+        assert p.returncode == 0 and p.stdout == "" and p.stderr == ""
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert len(rows) == 1
+        assert rows[0]["action"] == "skip" and rows[0]["skip"] == "no_pinned_interpreter"
+        assert "interpreter" not in rows[0]
+
+
+def test_reexec_c_exec_failure_after_checks_yields_no_pinned_interpreter_skip():
+    with tempfile.TemporaryDirectory() as tmp:
+        garbage = pathlib.Path(tmp, "garbage_python")
+        garbage.write_bytes(bytes(range(256)) * 4)  # no shebang/magic -> execve raises ENOEXEC
+        garbage.chmod(0o755)
+        state_dir = pathlib.Path(tmp, "state")
+        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(garbage),
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env)
+        assert p.returncode == 0 and p.stdout == ""
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert rows[-1]["action"] == "skip" and rows[-1]["skip"] == "no_pinned_interpreter"
+        assert "interpreter" not in rows[-1]
+
+
+def test_reexec_d_writable_candidate_refused_yields_no_pinned_interpreter_skip():
     with tempfile.TemporaryDirectory() as tmp:
         script = _fake_venv_script(pathlib.Path(tmp))
-        env = {**os.environ, "JEV_DISPATCH_GATE_REEXEC": "1", "JEV_DISPATCH_GATE_FORCE_REEXEC_TEST": "1",
-               "JEV_DISPATCH_GATE_VENV_PYTHON": str(script)}
-        p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
-        assert p.returncode == 0 and "REEXEC_MARKER" not in p.stdout
+        script.chmod(0o777)
+        state_dir = pathlib.Path(tmp, "state")
+        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(script),
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env)
+        assert p.returncode == 0 and p.stdout == ""
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert rows[-1]["action"] == "skip" and rows[-1]["skip"] == "no_pinned_interpreter"
 
 
-def test_reexec_innocence_importable_redactor_skips_reexec():
+def test_reexec_d2_group_writable_candidate_accepted_reexec_happens():
     with tempfile.TemporaryDirectory() as tmp:
         script = _fake_venv_script(pathlib.Path(tmp))
-        env = {**os.environ, "JEV_DISPATCH_GATE_VENV_PYTHON": str(script)}
-        env.pop("JEV_DISPATCH_GATE_FORCE_REEXEC_TEST", None)
+        script.chmod(0o775)  # group-writable, NOT world-writable -> accepted (mise-normal mode)
+        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(script))
         p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
-        assert p.returncode == 0 and "REEXEC_MARKER" not in p.stdout
+        assert p.returncode == 0
+        assert "REEXEC_MARKER reexec_env=SET" in p.stdout
 
 
-def test_receipt_and_report_include_interpreter_path():
+def test_reexec_e_already_reexeced_never_loops_gate_runs_interpreter_venv():
     with tempfile.TemporaryDirectory() as tmp:
-        env = {**os.environ, "JEV_DISPATCH_GATE_STATE": tmp,
-               "JEV_DISPATCH_GATE_FAKE_ANSWERS": json.dumps(_ans()), "JEV_DISPATCH_GATE": "enforce"}
+        script = _fake_venv_script(pathlib.Path(tmp))
+        state_dir = pathlib.Path(tmp, "state")
+        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(script),
+                               JEV_DISPATCH_GATE_REEXEC="1",
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env)
+        assert p.returncode == 0 and "REEXEC_MARKER" not in p.stdout
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert rows[-1]["interpreter"] == "venv"
+
+
+def test_reexec_f_seam_runs_gate_in_process_receipt_interpreter_seam():
+    with tempfile.TemporaryDirectory() as tmp:
+        env = _seam_env(JEV_DISPATCH_GATE_STATE=tmp, JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                        JEV_DISPATCH_GATE="enforce")
         payload = {"tool_name": "Agent", "tool_input": OPUS}
         p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
                            capture_output=True, text=True, env=env)
         assert p.returncode == 0
         rows = [json.loads(x) for x in pathlib.Path(tmp, "receipts.jsonl").read_text().splitlines()]
-        assert rows[-1]["interpreter"] == "path"
-        rp = subprocess.run([sys.executable, str(HOOK), "--report"], capture_output=True, text=True, env=env)
-        assert rp.returncode == 0, rp.stdout + rp.stderr
-        assert json.loads(rp.stdout)["by_interpreter"] == {"path": 1}
+        assert rows[-1]["interpreter"] == "seam" and rows[-1]["action"] == "downgrade"
 
 
 if __name__ == "__main__":
