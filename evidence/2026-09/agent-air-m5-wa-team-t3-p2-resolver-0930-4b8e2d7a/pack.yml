@@ -1,0 +1,128 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+plan_ref: >-
+  PR (agent/air-m5/wa-team/t3-p2-resolver-0930, base main) - section 4 of
+  docs/specs/2026-09-25-t3-t7-pro-local-spec.md (#7693): the T3 resolver.
+lanes:
+  - lane: wa-team-t3-p2-resolver-build
+    role: build
+    seat: "claude-sonnet-5-5 (measured on Pro read-only, wrote tests first, ran the council, applied findings by hand)"
+  - lane: wa-team-t3-p2-resolver-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1 REWORK on 2 HIGH + 2 MEDIUM)"
+  - lane: wa-team-t3-p2-resolver-council-kimi
+    role: review
+    seat: "kimi-code/k3 (round 1 REWORK on 1 HIGH + 2 MEDIUM + 1 LOW)"
+
+what_changed: |
+  1. `--resolve [--dry-run]`: thread = team line + peer (group_jid, else counterpart_lid, else
+     counterpart_phone, blanks treated as missing). Evidence must be after the promise, within 7
+     days and never later than now, from the right direction: outbound document/image/video/audio
+     = media_sent; outbound past-tense text of the same promise_type (the catalog's own past
+     alternatives) = team_confirmed; inbound ack words (the catalog's _ACK_PATTERN) = client_ack,
+     written only after the 7-day window closes. Strongest kind wins, earliest within it.
+  2. Guarded write: resolved=false, resolved_at, resolution_kind and resolved_by_message_id all
+     unset. Sets resolved, resolved_at (= evidence message_date), resolved_by_message_id,
+     resolution_kind.
+  3. Consumer: a second daily digest line (same midnight-WITA opportunity, own dedup key) with
+     resolved_by_kind totals and overdue-unresolved counts per member (first name from team_members,
+     else a hash label). The existing int-only _digest_line and its callers are unchanged.
+  4. scripts/wa_team_promises_resolve_cron.sh (hourly, installed by the conductor).
+  5. Gate rework R1-R4 (gate comment on head 1c4572266a): media_sent resolves send/submit only;
+     a client_ack never lowers an overdue count (overdue = unresolved OR client_ack, in the digest
+     total and per member; the line reads "acked (not confirmed) N"); tests kill M22 (scan tick calls
+     the resolution digest), M05 (literal 7 days) and M25 (once-a-day gate); guilt tests for R1 and R2.
+  6. Tests: 53 unit + 16 real-PG new in this PR. Floors 258 -> 311 and 68 -> 84; the workflow path filter gains
+     the cron wrapper.
+
+proof: |
+  Unit corpus 311 passed, 84 skipped. Real-PG 84 passed, 0 skipped. Mutants on the fixes made after
+  the council (NULLIF peer, now-cap, lone resolved_by in both guards, legacy directions): each red.
+  Pro dry-run (read-only, counts): scanned=202 unthreadable=0 media_sent=108 team_confirmed=3
+  client_ack=44 no_evidence=47. Availability, ignoring precedence: media 108, team-confirmed 4,
+  ack 158, none 29; the 47 no_evidence are 29 with nothing and 18 ack-only rows whose window is still open.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "HIGH: a team_confirmed write cannot be upgraded when media arrives later (fill-only)."
+    status: PLAUSIBLE
+    resolution: "OPEN, accepted: both kinds count for the KPI; the weakest kind (client_ack) is the one deferred for exactly this reason. Upgrade would break the fill-only contract."
+  - seat: codex-gpt-5.6-sol
+    objection: "HIGH: any outbound media resolves any promise type, and one media can resolve several promises."
+    status: CONFIRMED
+    resolution: "Ruled by the gate (R1): media_sent now resolves send/submit only; check/update/process resolve through team_confirmed until PR-C measures media precision per type. Pro dry-run after R1: media_sent=74 team_confirmed=3 client_ack=69 no_evidence=56."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: COALESCE does not treat empty strings as missing; a blank group_jid/counterpart_lid could collapse threads."
+    status: CONFIRMED
+    resolution: "NULLIF on each component; a real-PG test with blank components."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: evidence is not bounded by now; a future-dated row can resolve early."
+    status: CONFIRMED
+    resolution: "The window ends at min(promise + 7d, now) in SQL and in the picker; unit and real-PG tests."
+  - seat: kimi-code/k3
+    objection: "HIGH: same future-evidence point."
+    status: CONFIRMED
+    resolution: "Same fix."
+  - seat: kimi-code/k3
+    objection: "MEDIUM: the guard does not cover resolved_by_message_id, which the UPDATE overwrites."
+    status: CONFIRMED
+    resolution: "Added to both the open-row read and the UPDATE guard; a real-PG test."
+  - seat: kimi-code/k3
+    objection: "MEDIUM: the 'daily' digest reports cumulative per-kind totals, not that day's resolutions."
+    status: PLAUSIBLE
+    resolution: "OPEN, accepted: the mandate asked for resolved_by_kind counts; cumulative totals are what the KPI reads, and the overdue counts are a snapshot by nature."
+  - seat: kimi-code/k3
+    objection: "LOW: the peer key treats blanks as valid."
+    status: CONFIRMED
+    resolution: "Same fix as codex MEDIUM."
+
+receipts:
+  - claim: "Unit corpus."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wa_team_promises*.py -q"
+    result: "311 passed, 84 skipped"
+    exit: 0
+    ts: "2026-09-29T18:10:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Real-PG corpus."
+    cmd: "WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wa_team_promises*real_pg.py -q"
+    result: "84 passed"
+    exit: 0
+    ts: "2026-09-29T18:10:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Pro dry-run, read-only, source fed on stdin (nothing written on Pro)."
+    cmd: "ssh pro 'cd /Users/nuzantara/nuzantara && PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/python -' < driver running cli_main(['--resolve','--dry-run'])"
+    result: "scanned=202 unthreadable=0 no_evidence=47 media_sent=108 team_confirmed=3 client_ack=44 raced=0"
+    exit: 0
+    ts: "2026-09-29T18:12:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "codex round 1, env-scrubbed, read-only sandbox, high effort, diff only."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" codex exec --skip-git-repo-check -s read-only -m gpt-5.6-sol -c model_reasoning_effort=high - < prompt3.txt'
+    result: "VERDICT: REWORK (2 HIGH, 2 MEDIUM)"
+    exit: 0
+    ts: "2026-09-29T17:28:40Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi round 1 through scripts/kimi_client.py (no-tools agent file, env -i)."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" python3 scripts/kimi_client.py "$(cat prompt3.txt)"'
+    result: "VERDICT: REWORK (1 HIGH, 2 MEDIUM, 2 LOW)"
+    exit: 0
+    ts: "2026-09-29T17:29:53Z"
+    seat: kimi-code/k3
+
+pii_scan: clean
+pii_scan_note:
+  "The prompts carried prose and the git diff of a script, tests, a cron wrapper and a workflow.
+  Fixtures are numeric ids, line-N / peer-N placeholders and example.invalid addresses. Pro output
+  used here is counts only. Both seats ran with a scrubbed environment."
+
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+appetite_exceeded: |
+  Both ceilings held. The fixes after the council were not re-reviewed by the seats (single round).
+
+diff:
+  files: 8
+  net_lines: |
+    Script, cron wrapper, two test files, workflow and three evidence files. Line totals are
+    deliberately not declared: the pack is part of the diff it would count.
