@@ -145,11 +145,9 @@ what_changed: |
   `has_active_practice` enters the Ollama prompt for rule-ambiguous rows, `USE_OLLAMA` defaults
   to true, and HIGH from that path means a realtime owner Telegram alert -- DISCLOSED, not
   ruled on: the coordinator's re-confirmation of ruling (a) with this disclosed is C1, owned by
-  the coordinator, not decided here). Pro `practices` triggers (`trg_practice_changed`,
-  `trg_practice_status_log`) confirmed present in the FLY schema migrations
-  (`migrations_v2/146_eventbus_triggers_use_outbox.sql`, `310_practice_status_log.sql`) --
-  whether they also exist on Pro's snapshot is unconfirmed and is C2, owned by the conductor,
-  before the first non-dry `--sync`.
+  the coordinator, not decided here). Pro `practices` triggers were listed at R5-time as
+  UNCONFIRMED (C2, owned by the conductor) -- see R7 immediately below for what that census
+  actually found once run.
 
   R6: CI floor raised to the new passed count (64 -> 80 unit, 15 -> 17 real-PG).
 
@@ -159,25 +157,63 @@ what_changed: |
   rows exist in real Fly data today, so this round's guards were unexercised by production data
   but are proven against a real cluster via the R2/R3 test additions above.
 
+  R7 (2026-09-29, found closing C2 -- same round, not a new gate cycle): the coordinator measured
+  Pro's `practices`/`practice_types` triggers directly (DDL, not a migration-file inference) and
+  found the ONLY non-internal ones are `update_practices_updated_at` /
+  `update_practice_types_updated_at`, both `BEFORE UPDATE` -> `update_updated_at_column()`
+  (`NEW.updated_at = NOW()`) -- `trg_practice_changed`/`trg_practice_status_log` are Fly-only
+  (Pro's migration ledger stops at 246, those never ran there). That measurement surfaced a real
+  bug this pack's own build lane had shipped: `updated_at` sat inside `_DATA_COLUMNS` /
+  `_PRACTICE_TYPES_DATA_COLUMNS`, so it was part of both `_build_upsert_sql`'s `SET` clause and
+  its `WHERE (...) IS DISTINCT FROM (...)` comparison on BOTH tables. Because Pro's trigger
+  overwrites `NEW.updated_at` unconditionally on every real `UPDATE` -- independent of whatever
+  the `SET` clause assigns -- the FIRST genuine data change on any row makes Pro's `updated_at`
+  diverge permanently from Fly's stable value; every run after that would see the row as
+  "distinct" purely on that divergence, re-fire the `UPDATE`, and the trigger would re-stamp
+  `NOW()` again -- idempotency broken from a row's second real change onward, forever, silently
+  (`updated` would never settle at 0 for a touched row).
+
+  Fixed: `_build_upsert_sql` gained a `trigger_maintained` parameter: those columns stay in the
+  `INSERT` (a first-time row still keeps Fly's original timestamp -- `INSERT` never fires a
+  `BEFORE UPDATE` trigger) but are dropped from both the `SET` clause and the comparison. Both
+  UPSERT builders now pass `trigger_maintained=("updated_at",)`. MUTATION-VERIFIED before
+  accepting the fix as real, same discipline as the delta round's int4-range fix: reverted the
+  `trigger_maintained` call-site arguments (via a `cp` backup, `ast.parse` confirmed the revert's
+  own syntax, then restored byte-identical afterward), added the EXACT Pro trigger DDL to the
+  real-PG fixture's schema (previously absent -- every prior run of this suite passed
+  idempotency with no way to ever have caught this), ran the two new R7 tests against the
+  reverted code and watched them fail exactly as predicted
+  (`test_real_pg_updated_at_trigger_does_not_reopen_idempotency_on_practices`: run 3
+  `(inserted, updated, unchanged) == (0, 1, 0)`, expected `(0, 0, 1)`;
+  `..._on_practice_types`: run 3 `(types_inserted, types_updated) == (0, 1)`, expected `(0, 0)`),
+  then restored the fix and re-ran clean. Re-ran the real Fly+Pro dry-run after this fix too
+  (staged temp layout, deleted after use): identical counts to every prior run -- this is Pro's
+  FIRST real sync (no prior committed run for the bug to have bitten yet), so R7 is preventive
+  for the hourly cron's second-and-later runs, not a correction of a number already observed.
+
 proof: |
   Full corpus, clean interpreter (Python 3.11, `asyncpg>=0.31.0`, `pytest-asyncio>=1.4.0`):
-    REAL_PG unset  -> 80 passed, 17 skipped
-    WA_PRACTICES_REPLICA_REAL_PG=1 (throwaway PG cluster, pg_ctl/initdb on PATH) -> 97 passed
+    REAL_PG unset  -> 80 passed, 19 skipped
+    WA_PRACTICES_REPLICA_REAL_PG=1 (throwaway PG cluster, pg_ctl/initdb on PATH) -> 99 passed
 
   The floor, from the real tool (hot-zone path, `.github/workflows/*` + `scripts/*.py`):
     evidence_pack_lint.py --print-floor --changed-files-file <changed>   -> 3 (brief.yml's gear)
-    wa-practices-replica-tests.yml's own FLOOR (unit-only, REAL_PG unset)  -> 80
+    wa-practices-replica-tests.yml's own FLOOR (unit-only, REAL_PG unset)  -> 80 (unchanged --
+      R7 only added real-PG cases, the unit corpus stayed at 80)
 
-  Real Fly+Pro dry-run, run FOUR times across this PR's build+council+gate lifecycle (staged
-  temp layout on Pro each time -- never the runtime checkout, deleted after use), all four
+  Real Fly+Pro dry-run, run FIVE times across this PR's build+council+gate+R7 lifecycle (staged
+  temp layout on Pro each time -- never the runtime checkout, deleted after use), all five
   clean and mutually consistent modulo live production drift between runs:
     pre-council:      fly=1097 inserted=691 updated=133 pro_only_kept=8 types_inserted=66 types_updated=54
     post-fix-1:        fly=1099 inserted=691 updated=133 pro_only_kept=8 types_inserted=66 types_updated=54 skipped_invalid=0 skipped_fk=0
     post-fix-2:        fly=1099 inserted=691 updated=133 pro_only_kept=8 types_inserted=66 types_updated=54 skipped_invalid=0 skipped_fk=0
     post-gate-R1-R4-R6: fly=1099 inserted=691 updated=133 pro_only_kept=8 types_inserted=66 types_updated=54 skipped_invalid=0 skipped_fk=0
+    post-R7:            fly=1099 inserted=691 updated=133 pro_only_kept=8 types_inserted=66 types_updated=54 skipped_invalid=0 skipped_fk=0
     (fly/skipped_no_client drift 1097->1099/273->275 between the pre-council and later runs is
     live Fly data changing over real wall-clock time, not a code effect -- inserted/updated/
-    pro_only_kept/types_inserted/types_updated are byte-identical across all four runs)
+    pro_only_kept/types_inserted/types_updated are byte-identical across all five runs; R7's
+    dry-run being identical to the prior one is EXPECTED, not a gap in coverage -- see the R7
+    paragraph above for why a dry-run against Pro's first-ever real sync cannot exercise the bug)
 
   MUTATION VERIFICATION (the delta-round finding, confirmed real before the fix was accepted):
     reverted `_coerce_param`'s int4-range check on a live throwaway Postgres cluster (isolated
@@ -425,6 +461,27 @@ dissent:
       an accurate observation about how PostgreSQL sequences work under any UPSERT. The
       DateStyle/encoding hardening is a legitimate follow-up on scripts/pg.sh (out of this
       diff's scope -- pg.sh is a shared sibling script, not owned by this PR)."
+  - seat: coordinator
+    objection:
+      "R7 (NOT one of the gate's own F-findings -- a separate finding from the C2 condition's
+      own closure, 2026-09-29): measured Pro's practices/practice_types trigger DDL directly.
+      The ONLY non-internal triggers are BEFORE UPDATE -> update_updated_at_column() on both
+      tables, stamping NEW.updated_at = NOW() unconditionally. Because updated_at was part of
+      this UPSERT's SET clause and its IS DISTINCT FROM comparison, the first real UPDATE on
+      any row would make Pro's updated_at diverge from Fly's permanently, and the hourly cron
+      would re-fire an UPDATE on that row on every subsequent run forever, re-stamping NOW()
+      each time -- idempotency broken from a row's second real change onward, silently."
+    status: CONFIRMED
+    resolution:
+      "Fixed: _build_upsert_sql gained a trigger_maintained parameter: updated_at stays in the
+      INSERT column list (a first-time row still keeps Fly's original timestamp) but is
+      excluded from both the SET clause and the IS DISTINCT FROM comparison on BOTH
+      practices and practice_types. Mutation-verified before accepting the fix as real: reverted
+      the trigger_maintained call-site arguments, installed the EXACT Pro trigger DDL in the
+      real-PG fixture's schema (previously absent from that fixture entirely -- every prior run
+      of this suite passed idempotency with no way to ever have caught this), ran the two new
+      R7 real-PG tests against the reverted code and watched both fail exactly as predicted,
+      then restored the fix (byte-identical cp) and re-ran clean. See receipts below."
 
 receipts:
   - claim: "Full unit corpus, clean interpreter, REAL_PG unset."
@@ -559,6 +616,30 @@ receipts:
     exit: 0
     ts: "2026-09-29T06:48:00Z"
     seat: claude-sonnet-5
+  - claim: "R7 repro: with updated_at still in the SET+comparison and Pro's real trigger DDL installed in the real-PG fixture, both new R7 tests fail exactly as the finding predicts."
+    cmd: "cp scripts/wa_practices_replica.py /tmp/wpr_backup_r7.py; python3 -e revert trigger_maintained=(...) call-site args to the pre-fix _build_upsert_sql() calls; WA_PRACTICES_REPLICA_REAL_PG=1 pytest scripts/tests/test_wa_practices_replica_real_pg.py -k trigger -q"
+    result: "2 failed -- practices: (m3.inserted, m3.updated, m3.unchanged) == (0, 1, 0), expected (0, 0, 1); practice_types: (m3.types_inserted, m3.types_updated) == (0, 1), expected (0, 0) -- both the exact spurious-re-update failure the finding predicts"
+    exit: 1
+    ts: "2026-09-29T07:05:00Z"
+    seat: claude-sonnet-5
+  - claim: "R7 fix restored (cp from the pre-revert backup, byte-identical), full real-PG suite clean."
+    cmd: "cp /tmp/wpr_backup_r7.py scripts/wa_practices_replica.py; python3 -c ast.parse(...); WA_PRACTICES_REPLICA_REAL_PG=1 pytest scripts/tests/test_wa_practices_replica_real_pg.py -q"
+    result: "19 passed (17 prior + 2 new R7 guilt cases)"
+    exit: 0
+    ts: "2026-09-29T07:06:00Z"
+    seat: claude-sonnet-5
+  - claim: "Full corpus after R7, both suites, ruff clean on every touched file."
+    cmd: "pytest scripts/tests/test_wa_practices_replica.py -q; WA_PRACTICES_REPLICA_REAL_PG=1 pytest scripts/tests/test_wa_practices_replica*.py -q; ruff check scripts/wa_practices_replica.py scripts/tests/test_wa_practices_replica.py scripts/tests/test_wa_practices_replica_real_pg.py"
+    result: "80 passed (unit); 99 passed (combined, REAL_PG=1); All checks passed! (ruff)"
+    exit: 0
+    ts: "2026-09-29T07:08:00Z"
+    seat: claude-sonnet-5
+  - claim: "Real Fly+Pro dry-run after the R7 fix, staged temp layout on Pro, deleted after use."
+    cmd: "ssh pro mktemp -d; scp scripts/wa_practices_replica.py scripts/pg.sh <staging>; ssh pro <venv-python3.11> wa_practices_replica.py --sync --dry-run; ssh pro find <staging> -mindepth 1 -delete && rmdir <staging>"
+    result: "fly=1099 inserted=691 updated=133 unchanged=0 skipped_no_client=275 skipped_fk=0 skipped_invalid=0 pro_only_kept=8 types_inserted=66 types_updated=54 wall_ms=570 -- identical to the pre-R7 dry-run (expected: Pro's first-ever real sync, the bug cannot manifest on a dry-run against an all-first-insert workload)"
+    exit: 0
+    ts: "2026-09-29T07:11:00Z"
+    seat: claude-sonnet-5
 
 pii_scan: clean
 pii_scan_note:
@@ -594,21 +675,27 @@ appetite_exceeded: |
   2026-09-29): this is counted as a THIRD adversarial round (the gate's own 32-mutant mutation
   round + codex-cli second opinion), but per the same fix-of-a-fix discipline it was closed in
   ONE build pass rather than re-dispatching a fresh council on top of an already-adversarial
-  gate verdict -- the gate's report already carried file:line citations and reproduced repro
-  steps for its own findings (F2, F7), which this build lane independently re-verified against
-  a real cluster (R3) rather than taking on faith, the same evidentiary bar as the council
-  rounds above.
+  gate verdict -- the gate's report already carried file:line citations and a reproduced repro
+  for its own F2 finding, which this build lane independently re-verified against a real
+  cluster (R3) rather than taking on faith, the same evidentiary bar as the council rounds
+  above. (F7, the sequence-burn finding, was accepted as PLAUSIBLE/documented-not-required on
+  the gate's own report -- not independently re-reproduced, since no REWORK-BUILD condition
+  required it.)
+
+  A further ~15 minutes closed R7 (coordinator's own C2 trigger census, same 2026-09-29 round,
+  not a new gate cycle): a real bug the census surfaced (updated_at breaking idempotency),
+  mutation-verified the same way as R3/the delta round's int4-range fix before being accepted.
 
 diff:
   files: 9
-  insertions: 3336
+  insertions: 3526
   deletions: 0
   net_lines: |
-    9 files, +3336/-0 against origin/main (clean merge -- origin/main was merged in, not
+    9 files, +3526/-0 against origin/main (clean merge -- origin/main was merged in, not
     rebased, per the gate's own instruction; no conflicts) -- computed from `git diff --numstat
     origin/main...HEAD` at pack-write time. Four of those nine files are the test corpora
     (which the Builder Contract's ~400-net-line guideline is not meant to gate -- the
-    reviewable code change is `scripts/wa_practices_replica.py`, 677 lines including the R1-R4
+    reviewable code change is `scripts/wa_practices_replica.py`, 708 lines including the R1-R7
     gate-round fixes, plus its 52-line cron wrapper and a 1-line addition to a shared
     unrelated-scope CI file for R1) and three are this evidence pack itself (brief.yml, this
     file, council-journal.jsonl). The organ file alone is over the ~400-line guideline --
