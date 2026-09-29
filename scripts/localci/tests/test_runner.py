@@ -413,7 +413,7 @@ def test_real_env_fingerprint_carries_the_required_evidence(fx, monkeypatch):
     env = runner.env_fingerprint(PY, spec)
     for k in ("python", "pytest", "platform", "hostname", "runner_sha256", "git_version", "deps_lock_sha256", "deps_lock_source", "uv_version", "runner_version"):
         assert k in env
-    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.2.2"
+    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.3.0"
     assert len(env["deps_lock_sha256"]) == 64 and env["deps_lock_source"] in ("pip", "uv")
     assert env["tools"]["c.tool"]["sha256"] not in ("not-a-file", None) and os.path.isabs(env["tools"]["c.tool"]["path"])
     assert env["tools"]["c.gone"] == {"path": None, "sha256": "not-a-file"}
@@ -541,33 +541,37 @@ def test_extra_check_in_its_own_namespace_is_planned_and_runs(fx):
 
 
 # --------------------------------------------------------------- candidate code runs last, behind a seal the operator keeps
+needs_docker = pytest.mark.skipif(not fr.docker_image_ready(), reason="the trusted seal is supported only for contained plans; docker image absent here")
+
+
+@needs_docker
 def test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_run_forgery(tmp_path, capsys):
     fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
-    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
-            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "raise SystemExit(1)"]))
+    fr.plan(fx, "--isolation", "container", "--isolation-image", fr.ISOLATION_IMAGE, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]))
     fr.run(fx)
     printed = capsys.readouterr().out
     st = fr.load_state(fx)
     ch = st["checks"]
-    assert ch["ctx.zzz_trusted"]["status"] == "FAIL" and ch["ctx.aaa_candidate"]["status"] == "PASS"
+    trusted = "policy.trusted_classifier_corpus"      # runner-planned cmd: an --extra-check cmd is the operator's host command, never a trusted check
+    assert ch[trusted]["status"] == "PASS" and ch["ctx.aaa_candidate"]["status"] == "PASS"
     events = [json.loads(line) for line in (fx["run"] / "state" / "journal.jsonl").read_text().splitlines()]
     seals = [e for e in events if e.get("event") == "seal"]
     assert seals and seals[0]["why"].startswith("trusted checks done")
-    assert ch["ctx.zzz_trusted"]["history"][0]["ended_at"] <= ch["ctx.aaa_candidate"]["history"][0]["started_at"]   # trusted first, candidate last
+    assert ch[trusted]["history"][0]["ended_at"] <= ch["ctx.aaa_candidate"]["history"][0]["started_at"]   # trusted first, candidate last
     seal = seals[0]["seal"]
     assert f"seal={seal}" in printed and seal == st["seal"]
     assert runner.main(["status", "--run-dir", str(fx["run"]), "--seal", seal[:16]]) in (0, 1)
     assert json.loads((fx["run"] / "status.json").read_text())["overall"] != "BLOCKED"
-    # the forgery gate 1 reproduced: candidate code rewrites the trusted receipt + state to PASS after the run, re-hashing the receipt
-    rp = Path(ch["ctx.zzz_trusted"]["receipt"])
+    # the forgery gate 1 reproduced: candidate code rewrites the trusted receipt + state after the run, re-hashing the receipt
+    rp = Path(ch[trusted]["receipt"])
     r = json.loads(rp.read_text())
     r.pop("receipt_sha256")
-    r["result"]["status"], r["result"]["reason"], r["result"]["rc"] = "PASS", "rc=0", 0
+    r["result"]["status"], r["result"]["reason"], r["result"]["rc"] = "PASS", "rc=0 forged", 0
     r["receipt_sha256"] = runner.sha256_json(r)
     rp.write_text(json.dumps(r, indent=2, sort_keys=True))
-    st["checks"]["ctx.zzz_trusted"].update(status="PASS", reason="rc=0", rc=0)
+    st["checks"][trusted].update(status="PASS", reason="rc=0 forged", rc=0)
     (fx["run"] / "state" / "state.json").write_text(json.dumps(st))
-    assert fr.status(fx)["checks"]["ctx.zzz_trusted"]["status"] == "PASS"       # without the seal the forgery is invisible (same-user boundary)
+    assert fr.status(fx)["checks"][trusted]["reason"] == "rc=0 forged"       # without the seal the forgery is invisible (same-user boundary)
     runner.main(["status", "--run-dir", str(fx["run"]), "--seal", seal])
     out = json.loads((fx["run"] / "status.json").read_text())
     assert out["overall"] == "BLOCKED" and "seal mismatch" in out["freshness"]["stale_reason"]
@@ -582,11 +586,13 @@ def test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code(t
     ends = {n: c["history"][0]["ended_at"] for n, c in st["checks"].items() if c.get("history")}
     starts = {n: c["history"][0]["started_at"] for n, c in st["checks"].items() if c.get("history")}
     events = [json.loads(line) for line in (fx["run"] / "state" / "journal.jsonl").read_text().splitlines()]
-    boundary = next(e["at"] for e in events if e.get("event") == "seal" and e["why"].startswith("trusted checks done"))
+    boundary = next(e["at"] for e in events if e.get("event") in ("seal", "seal_withheld") and e["why"].startswith("trusted checks done"))
     plan = json.loads((fx["run"] / "state" / "plan.json").read_text())
     for n, spec in plan["checks"].items():
-        if spec["kind"] == "cmd":
-            assert ends[n] <= boundary, n                    # cmd verdicts are sealed
+        if spec["kind"] == "cmd" and spec.get("extra"):
+            assert starts[n] >= boundary, n                  # an --extra-check cmd is the operator's host command: after the seal, never sealed
+        elif spec["kind"] == "cmd":
+            assert ends[n] <= boundary, n                    # runner-planned cmd verdicts are sealed
         elif spec["kind"] in ("trusted_pytest", "pytest"):
             assert starts[n] >= boundary, n                  # anything that runs candidate code starts after the seal
     assert runner.TRUSTED_KINDS == ("cmd",)
@@ -594,8 +600,9 @@ def test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code(t
         runner.main(["status", "--run-dir", str(fx["run"]), "--seal", "ab"])   # a 2-char prefix would match almost anything
 
 
+@needs_docker
 def test_a_rewritten_record_verdict_breaks_the_seal(fx):
-    fr.plan(fx)
+    fr.plan(fx, "--isolation", "container", "--isolation-image", fr.ISOLATION_IMAGE)
     fr.run(fx)
     st = fr.load_state(fx)
     seal = st["seal"]
