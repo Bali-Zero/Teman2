@@ -124,7 +124,7 @@ function CountdownBlocks({
 }) {
   if (data.status === "closed") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-kita-ink-panel-copper)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-kita-ink-panel-copper)]">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-kita-ink-panel-copper)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-kita-ink-panel-copper)]">
         Selesai
       </span>
     );
@@ -137,7 +137,7 @@ function CountdownBlocks({
     <div className="flex flex-col items-start gap-1.5 sm:items-end">
       <span
         className={cn(
-          "flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.1em]",
+          "flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]",
           INK_SECONDARY,
         )}
       >
@@ -221,7 +221,7 @@ export function PodiumCard({
       >
         {formatIDR(prizeIdr)}
       </p>
-      <p className="text-[10px] text-[var(--tx-secondary)]">
+      <p className="text-[11px] text-[var(--tx-secondary)]">
         minimal {threshold} aktivasi
       </p>
       <div className={cn(HAIRLINE, "rounded-md px-2.5 py-2 mt-1")}>
@@ -244,7 +244,7 @@ export function PodiumCard({
               Belum ada
             </span>
             {missing > 0 && (
-              <span className="text-[10px] font-semibold text-[var(--bz-copper-text)] whitespace-nowrap">
+              <span className="text-[11px] font-semibold text-[var(--bz-copper-text)] whitespace-nowrap">
                 butuh {missing} lagi
               </span>
             )}
@@ -444,7 +444,7 @@ function MyPositionCard({
         {nextLine}
       </p>
       {me.is_tax && (
-        <p className="text-[10px] text-[var(--tx-secondary)]">
+        <p className="text-[11px] text-[var(--tx-secondary)]">
           Sebagai Tim Tax, naik podium juga mengaktifkan SUPER BONUS{" "}
           {formatIDR(taxSuperBonusIdr)}.
         </p>
@@ -455,7 +455,7 @@ function MyPositionCard({
           "rounded-md px-3 py-2 mt-1 flex items-center justify-between",
         )}
       >
-        <span className="text-[10px] text-[var(--tx-secondary)]">
+        <span className="text-[11px] text-[var(--tx-secondary)]">
           Hadiah sementara
         </span>
         <span className="text-[13px] font-bold text-[var(--bz-copper-text)]">
