@@ -1140,6 +1140,12 @@ async def _build_round2_payload(db_pool: asyncpg.Pool, now: datetime) -> dict[st
         now,
     )
 
+    # Six-player ruling (2026-09-29): the live feed never shows a non-participant.
+    recent_registration_records = [
+        r
+        for r in recent_registration_records
+        if r["creator_email"].strip().lower() in r2.ROUND2_PARTICIPANTS
+    ]
     recent_registration_events = [
         {
             "kind": "registration",

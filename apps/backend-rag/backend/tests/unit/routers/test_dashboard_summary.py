@@ -773,6 +773,9 @@ class TestPortalChallengeEndpoint:
                 ("ari.firda@balizero.com", "Ari Firda"),
                 ("krisna@balizero.com", "Krisna"),
                 ("adit@balizero.com", "Adit"),
+                ("vino@balizero.com", "Vino"),
+                ("damar@balizero.com", "Damar"),
+                ("outsider@balizero.com", "Outsider"),
                 ("asya@balizero.com", "Asya Nadia"),
             ]
         ]
@@ -790,11 +793,25 @@ class TestPortalChallengeEndpoint:
                 ("adit@balizero.com", 23),
             ]
         ]
+        recent_registration_rows = [
+            {"creator_email": "adit@balizero.com", "used_at": frozen_now},
+            {"creator_email": "outsider@balizero.com", "used_at": frozen_now},
+        ]
         # fetch() order in `_build_round2_payload`: roster, r1_activity,
         # registration, recent_registration, first_document, request,
         # review, asya_request, asya_client_event.
         mock_db_pool._mock_conn.fetch = AsyncMock(
-            side_effect=[roster_rows, r1_activity_rows, [], [], [], [], [], [], []]
+            side_effect=[
+                roster_rows,
+                r1_activity_rows,
+                [],
+                recent_registration_rows,
+                [],
+                [],
+                [],
+                [],
+                [],
+            ]
         )
         # fetchval() order: r1_team_total, team_total_registrations.
         mock_db_pool._mock_conn.fetchval = AsyncMock(side_effect=[4, 0])
@@ -821,10 +838,16 @@ class TestPortalChallengeEndpoint:
         assert by_member["adit"]["carry_points"] == 23
         assert by_member["adit"]["september_choice"] == "carry"
 
+        # Zero's 2026-09-29 ruling: only the six September players are ranked.
+        assert member_names == {"surya", "ari.firda", "krisna", "adit", "vino", "damar"}
+        # The live feed never shows a non-participant, in either feed field.
+        assert [ev["display_name"] for ev in body["recent_events"]] == ["Adit"]
+        assert [ev["display_name"] for ev in body["recent_activations"]] == ["Adit"]
+
         assert body["september"]["status"] == "closed"
         # September never excluded Asya — that exclusion is an R2-only rule
-        # for the general ranking, so all 5 roster members show up here.
-        assert len(body["september"]["entries"]) == 5
+        # for the general ranking, so all 8 roster members show up here.
+        assert len(body["september"]["entries"]) == 8
 
         assert body["asya_mission"]["target_points"] == 60
         assert body["asya_mission"]["prize_idr"] == 1_000_000
