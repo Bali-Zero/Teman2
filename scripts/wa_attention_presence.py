@@ -22,8 +22,10 @@ KNOWN_SUITES = {
     "test_wa_attention_sender_phone",
 }
 # Hooks that can change whether/what a test body executes or how its outcome is reported.
-# pytest_collection_modifyitems is deliberately absent: a dropped item is already RED (missing).
+# pytest_collection_modifyitems is here too: dropping an item is RED (missing), but it can also
+# swap an item's body (`item.obj = ...`) and keep the identity, so it is refused outright.
 FORBIDDEN_HOOKS = {
+    "pytest_collection_modifyitems",
     "pytest_plugins",
     "pytest_pycollect_makeitem",
     "pytest_pyfunc_call",
@@ -33,13 +35,16 @@ FORBIDDEN_HOOKS = {
 }
 FLOW = (ast.If, ast.Try, ast.With, ast.AsyncWith, ast.For, ast.AsyncFor, ast.While, ast.Match)
 FUNCS = (ast.FunctionDef, ast.AsyncFunctionDef)
+BODY_SWAPS = {"obj", "_obj", "runtest", "function"}
 
 
-def is_fixture(node):
+def is_fixture(node, fixture_ok=frozenset()):
+    """Only the real `pytest.fixture` counts; a look-alike decorator is not trusted (fail closed)."""
     for d in node.decorator_list:
         target = d.func if isinstance(d, ast.Call) else d
-        name = target.attr if isinstance(target, ast.Attribute) else getattr(target, "id", "")
-        if name == "fixture":
+        if isinstance(target, ast.Attribute) and target.attr == "fixture" and getattr(target.value, "id", "") == "pytest":
+            return True
+        if isinstance(target, ast.Name) and target.id == "fixture" and "fixture" in fixture_ok:
             return True
     return False
 
@@ -49,13 +54,46 @@ def is_testcase_base(base):
     return name.endswith("TestCase")
 
 
-def bound_names(node):
-    if isinstance(node, ast.Import):
-        return [(a.asname or a.name.split(".")[0]) for a in node.names]
-    return [(a.asname or a.name) for a in node.names]
+def is_test_name(nm):
+    return nm.startswith("test") or nm.startswith("Test") or nm == "__test__"
 
 
-def walk(module, body, scope, expected, problems):
+def target_names(targets):
+    return [n.id for t in targets for n in ast.walk(t) if isinstance(n, ast.Name)]
+
+
+def binds(node):
+    """Names a non-def statement binds, plus refusal reasons for imports that hide a name."""
+    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        return [(nm, "rebinding") for nm in target_names(targets)]
+    if isinstance(node, (ast.Import, ast.ImportFrom)):
+        out = []
+        for a in node.names:
+            bound = a.asname or (a.name if isinstance(node, ast.ImportFrom) else a.name.split(".")[0])
+            leaf = a.name.split(".")[-1]
+            if bound in ("*", "object") or is_test_name(bound):
+                out.append((bound, "import"))
+            elif leaf.endswith("TestCase") or (leaf == "fixture" and a.asname):
+                out.append((bound, "import"))
+        return out
+    return []
+
+
+def flow_problems(module, node):
+    found = []
+    for sub in ast.walk(node):
+        if isinstance(sub, FUNCS) and sub.name.startswith("test"):
+            found.append(f"{module}::{sub.name} defined under control flow (unsupported)")
+        if isinstance(sub, ast.ClassDef) and sub.name.startswith("Test"):
+            found.append(f"{module}::{sub.name} defined under control flow (unsupported)")
+        for nm, kind in binds(sub):
+            if kind == "import" or is_test_name(nm):
+                found.append(f"{module}::{nm} is bound under control flow by a {kind} (unsupported)")
+    return found
+
+
+def walk(module, body, scope, expected, problems, fixture_ok=frozenset()):
     seen = set()
     for node in body:
         here = f"{module}::{'.'.join(scope + [getattr(node, 'name', '')])}"
@@ -64,7 +102,7 @@ def walk(module, body, scope, expected, problems):
                 problems.append(f"{here} defined twice in one scope")
             seen.add(node.name)
         if isinstance(node, FUNCS) and node.name.startswith("test"):
-            if not is_fixture(node):
+            if not is_fixture(node, fixture_ok):
                 expected.add((module, ".".join(scope + [node.name])))
         elif isinstance(node, ast.ClassDef):
             if any(is_testcase_base(b) for b in node.bases):
@@ -75,40 +113,59 @@ def walk(module, body, scope, expected, problems):
                     problems.append(f"{here} has a base class or metaclass other than object (inherited tests are invisible to the AST; unsupported)")
                 if any(isinstance(n, FUNCS) and n.name == "__init__" for n in node.body):
                     continue
-                walk(module, node.body, scope + [node.name], expected, problems)
+                walk(module, node.body, scope + [node.name], expected, problems, fixture_ok)
             else:
-                stray = [n.name for n in node.body if isinstance(n, FUNCS) and n.name.startswith("test") and not is_fixture(n)]
+                stray = [n.name for n in ast.walk(node) if isinstance(n, FUNCS) and n.name.startswith("test") and not is_fixture(n, fixture_ok)]
                 if stray:
                     problems.append(f"{here} is not named Test* but defines test methods {stray} (unsupported)")
-        elif isinstance(node, (ast.Import, ast.ImportFrom)):
-            for nm in bound_names(node):
-                if nm == "*" or nm.startswith("test") or nm.startswith("Test"):
-                    problems.append(f"{module}: import binds `{nm}`, a name pytest would collect but the AST does not see (unsupported)")
         elif isinstance(node, FLOW):
-            for sub in ast.walk(node):
-                if isinstance(sub, FUNCS) and sub.name.startswith("test") and not is_fixture(sub):
-                    problems.append(f"{module}::{sub.name} defined under control flow (unsupported)")
-                if isinstance(sub, ast.ClassDef) and sub.name.startswith("Test"):
-                    problems.append(f"{module}::{sub.name} defined under control flow (unsupported)")
-        elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            for t in targets:
-                nm = getattr(t, "id", "")
-                if nm.startswith("test") or nm.startswith("Test") or nm == "__test__":
+            problems.extend(flow_problems(module, node))
+        else:
+            for nm, kind in binds(node):
+                if kind == "import":
+                    problems.append(f"{module}: import binds `{nm}`, which hides or injects a collectable name, a base, a fixture or `object` (unsupported)")
+                elif is_test_name(nm):
                     problems.append(f"{module}::{nm} is a rebinding of a test name (unsupported)")
+
+
+def module_level(body):
+    """Statements pytest sees as module attributes: the top level and control flow, not def/class bodies."""
+    for node in body:
+        yield node
+        if isinstance(node, FLOW):
+            for field in ("body", "orelse", "finalbody"):
+                yield from module_level(getattr(node, field, []))
+            for sub in [*getattr(node, "handlers", []), *getattr(node, "cases", [])]:
+                yield from module_level(sub.body)
 
 
 def hook_problems(label, tree):
     found = []
-    for n in ast.walk(tree):
+    for n in module_level(tree.body):
         names = []
         if isinstance(n, FUNCS):
             names = [n.name]
+            for d in n.decorator_list:
+                if isinstance(d, ast.Call) and any(k.arg == "specname" for k in d.keywords):
+                    found.append(f"{label}: `{n.name}` renames itself into a hook via specname (unsupported)")
         elif isinstance(n, (ast.Assign, ast.AnnAssign)):
             targets = n.targets if isinstance(n, ast.Assign) else [n.target]
-            names = [getattr(t, "id", "") for t in targets]
-        found += [f"{label}: defines `{nm}`, which can stop test bodies executing or rewrite outcomes (unsupported)" for nm in names if nm in FORBIDDEN_HOOKS]
+            names = target_names(targets)
+        elif isinstance(n, (ast.Import, ast.ImportFrom)):
+            names = [a.asname or a.name.split(".")[-1] for a in n.names]
+        found += [f"{label}: defines or binds `{nm}`, which can stop test bodies executing or rewrite outcomes (unsupported)" for nm in names if nm in FORBIDDEN_HOOKS]
+    for n in ast.walk(tree):
+        targets = n.targets if isinstance(n, ast.Assign) else [n.target] if isinstance(n, (ast.AnnAssign, ast.AugAssign)) else []
+        for t in targets:
+            if isinstance(t, ast.Attribute) and t.attr in BODY_SWAPS:
+                found.append(f"{label}: assigns `.{t.attr}`, which can swap a collected test's body (unsupported)")
     return found
+
+
+def fixture_imports(tree):
+    return frozenset(
+        a.name for n in tree.body if isinstance(n, ast.ImportFrom) and n.module == "pytest" for a in n.names if a.name == "fixture" and not a.asname
+    )
 
 
 def collect(root="."):
@@ -117,7 +174,7 @@ def collect(root="."):
         module = os.path.basename(path)[: -len(".py")]
         modules.add(module)
         tree = ast.parse(open(path, encoding="utf-8").read(), filename=path)
-        walk(module, tree.body, [], expected, problems)
+        walk(module, tree.body, [], expected, problems, fixture_imports(tree))
         problems += hook_problems(module, tree)
     for rel in CONFTESTS:
         path = os.path.join(root, rel)

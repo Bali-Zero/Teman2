@@ -18,7 +18,8 @@ _spec.loader.exec_module(presence)
 
 def run_walk(src):
     expected, problems = set(), []
-    presence.walk("m", ast.parse(textwrap.dedent(src)).body, [], expected, problems)
+    tree = ast.parse(textwrap.dedent(src))
+    presence.walk("m", tree.body, [], expected, problems, presence.fixture_imports(tree))
     return expected, problems
 
 
@@ -32,6 +33,45 @@ GUILT = {
     "import_unaliased_test_name": "from helpers import test_helper\n",
     "import_star": "from helpers import *\n",
     "import_class_alias": "from helpers import Base as TestBase\n",
+    "import_under_if_shadows": """
+        def test_guard():
+            assert False
+        if True:
+            from uuid import uuid4 as test_guard
+    """,
+    "tuple_target_rebinding": """
+        def test_guard():
+            assert False
+        test_guard, = (len,)
+    """,
+    "assign_under_if_rebinding": """
+        def test_guard():
+            assert False
+        if True:
+            test_guard = len
+    """,
+    "testcase_alias_import": """
+        from unittest import TestCase as C
+        class Checks(C):
+            pass
+    """,
+    "object_alias_base": """
+        from helpers import Base as object
+        class TestC(object):
+            pass
+    """,
+    "test_method_under_if_in_plain_class": """
+        class Checks:
+            if True:
+                def test_x(self):
+                    pass
+    """,
+    "fixture_alias_import": """
+        from pytest import fixture as fx
+        @fx
+        def test_helper():
+            return 1
+    """,
     "inherited_test_base": """
         class _Base:
             def test_inh(self):
@@ -90,6 +130,10 @@ HOOK_GUILT = {
     "makeitem_def": "def pytest_pycollect_makeitem(collector, name, obj):\n    return None\n",
     "hook_assigned": "pytest_pyfunc_call = lambda pyfuncitem: True\n",
     "plugins_list": "pytest_plugins = ['some.plugin']\n",
+    "modifyitems_def": "def pytest_collection_modifyitems(items):\n    for i in items:\n        i.obj = len\n",
+    "hook_imported_under_own_name": "from helpers import stop as pytest_pyfunc_call\n",
+    "hook_via_specname": "import pytest\n@pytest.hookimpl(specname='pytest_pyfunc_call')\ndef pytest_stop(pyfuncitem):\n    return True\n",
+    "body_swap_obj": "def helper(item):\n    item.obj = len\n",
     "hook_nested_in_if": "if True:\n    def pytest_pyfunc_call(pyfuncitem):\n        return True\n",
 }
 
@@ -99,21 +143,39 @@ def test_forbidden_hook_is_refused(name):
     assert presence.hook_problems("conftest.py", ast.parse(HOOK_GUILT[name]))
 
 
-def test_pytest_configure_and_modifyitems_are_not_forbidden_hooks():
-    src = "def pytest_configure(config):\n    pass\ndef pytest_collection_modifyitems(items):\n    pass\n"
+def test_pytest_configure_and_local_names_are_not_forbidden():
+    src = "def pytest_configure(config):\n    pass\ndef test_x():\n    pytest_plugins = []\n    return pytest_plugins\n"
     assert presence.hook_problems("conftest.py", ast.parse(src)) == []
+
+
+def test_lookalike_fixture_decorator_is_still_expected_so_a_missing_run_is_red():
+    expected, _ = run_walk(
+        """
+        def fixture(f):
+            return f
+        @fixture
+        def test_real():
+            assert False
+        """
+    )
+    assert ("m", "test_real") in expected
 
 
 def test_innocent_shapes_are_counted_without_problems():
     expected, problems = run_walk(
         """
         import pytest
+        from pytest import fixture
         from x import helper
         import os
 
         @pytest.fixture
         def test_helper():
             return 1
+
+        @fixture(scope="module")
+        def test_helper_two():
+            return 2
 
         class TestFixtureHost:
             def __init__(self):

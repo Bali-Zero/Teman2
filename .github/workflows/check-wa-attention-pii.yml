@@ -129,9 +129,11 @@ jobs:
           # or `*`) that binds a test*/Test* name; a class or function defined twice in one scope; a
           # Test* class with any base other than `object` or a metaclass; a class not named Test*
           # that defines test methods; any unittest.TestCase subclass; and a definition or assignment
-          # of pytest_pyfunc_call, pytest_runtest_call, pytest_runtest_protocol,
-          # pytest_runtest_makereport, pytest_pycollect_makeitem or pytest_plugins in a suite or in
-          # conftest.py at the root, scripts/ or scripts/tests/. Fixtures named test* and Test*
+          # of (or import binding) pytest_pyfunc_call, pytest_runtest_call, pytest_runtest_protocol,
+          # pytest_runtest_makereport, pytest_pycollect_makeitem, pytest_collection_modifyitems or
+          # pytest_plugins, a hookimpl(specname=...), or an `.obj`/`.runtest` assignment, in a suite
+          # or in conftest.py at the root, scripts/ or scripts/tests/. Only the real pytest.fixture
+          # decorator marks a test* def as a fixture; an aliased import of it is refused. Fixtures named test* and Test*
           # classes with __init__ are not tests and are skipped, as pytest does. Deleting a test def
           # or file is a visible diff in a relevance-triggering path (the known suites are pinned so
           # a deleted file cannot shrink the set). NOT covered, declared: a test generated at import
