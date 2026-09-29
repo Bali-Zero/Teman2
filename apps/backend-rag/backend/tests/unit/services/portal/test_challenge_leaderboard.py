@@ -248,18 +248,18 @@ class TestSqlBuilders:
     def test_aggregates_sql_interpolates_window_bounds(self):
         sql = build_aggregates_sql()
         assert "2026-09-14" in sql
-        assert "2026-09-30" in sql
+        assert "2026-09-29" in sql
         assert "{start_ts}" not in sql and "{end_ts}" not in sql
 
     def test_recent_activations_sql_interpolates_window_bounds(self):
         sql = build_recent_activations_sql()
         assert "2026-09-14" in sql
-        assert "2026-09-30" in sql
+        assert "2026-09-29" in sql
 
     def test_team_total_sql_counts_distinct_client_id_not_a_per_creator_sum(self):
         sql = build_team_total_activations_sql()
         assert "2026-09-14" in sql
-        assert "2026-09-30" in sql
+        assert "2026-09-29" in sql
         assert "COUNT(DISTINCT client_id)" in sql
         assert "FROM window_activations" in sql
         # Must NOT group by creator — a per-creator GROUP BY here would just

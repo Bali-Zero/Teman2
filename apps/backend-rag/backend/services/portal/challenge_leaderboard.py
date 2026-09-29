@@ -5,9 +5,11 @@ Shared by `GET /api/dashboard/portal-challenge` (live widget, staff-only) and
 by Zero on 2026-09-14 replace the earlier invited/activated/first_action points
 scheme with a pure activation count + tiered prize award.
 
-Window: 2026-09-14 00:00 WITA (Asia/Makassar) inclusive → 2026-09-30 00:00 WITA
-exclusive. Fixed for this challenge — no CLI/query override, so the live
-endpoint and the offline report can never disagree about "when".
+Window: 2026-09-14 00:00 WITA (Asia/Makassar) inclusive → 2026-09-29 00:00 WITA
+exclusive — closed one day early on Zero's 2026-09-29 call, the instant Round 2
+opens (`challenge_round2.ROUND2_START`). Fixed for this challenge — no
+CLI/query override, so the live endpoint and the offline report can never
+disagree about "when".
 
 Counted unit = ACTIVATION: a `client_invitations` row with `used_at` inside
 the window, credited to that row's `created_by` (a @balizero.com staff
@@ -30,7 +32,7 @@ from zoneinfo import ZoneInfo
 WITA = ZoneInfo("Asia/Makassar")
 
 WINDOW_START = datetime(2026, 9, 14, 0, 0, tzinfo=WITA)
-WINDOW_END = datetime(2026, 9, 30, 0, 0, tzinfo=WITA)  # exclusive
+WINDOW_END = datetime(2026, 9, 29, 0, 0, tzinfo=WITA)  # exclusive
 
 
 @dataclass(frozen=True)

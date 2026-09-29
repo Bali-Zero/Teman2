@@ -80,6 +80,20 @@ class TestWorkingDeadline:
 # ── active_round / compute_round_status ─────────────────────────────────────
 
 
+class TestRoundBoundary:
+    """Zero, 2026-09-29: Round 2 starts 2026-09-29 00:00 WITA, and Round 1
+    closes at that same instant — a registration can land in the September
+    carry or in October's points, never in both and never in neither."""
+
+    def test_round2_starts_2026_09_29_midnight_wita(self):
+        assert r2.ROUND2_START == datetime(2026, 9, 29, 0, 0, tzinfo=WITA)
+
+    def test_round1_ends_exactly_where_round2_starts(self):
+        from backend.services.portal.challenge_leaderboard import WINDOW_END
+
+        assert WINDOW_END == r2.ROUND2_START
+
+
 class TestActiveRound:
     def test_before_round2_start_is_round_1(self):
         now = r2.ROUND2_START - timedelta(seconds=1)
@@ -123,21 +137,21 @@ class TestSqlBuilderWindowBounds:
 
     def test_required_document_reviews_sql_has_both_window_bounds(self):
         sql = r2.build_required_document_reviews_sql()
-        assert "2026-09-30" in sql
+        assert "2026-09-29" in sql
         assert "2026-10-30" in sql
         assert "<= TIMESTAMP WITH TIME ZONE" not in sql
         assert "<  TIMESTAMP WITH TIME ZONE" in sql or "< TIMESTAMP WITH TIME ZONE" in sql
 
     def test_client_requests_sql_has_both_window_bounds(self):
         sql = r2.build_client_requests_sql()
-        assert "2026-09-30" in sql
+        assert "2026-09-29" in sql
         assert "2026-10-30" in sql
         assert "<= TIMESTAMP WITH TIME ZONE" not in sql
         assert "<  TIMESTAMP WITH TIME ZONE" in sql or "< TIMESTAMP WITH TIME ZONE" in sql
 
     def test_first_documents_sql_has_both_window_bounds(self):
         sql = r2.build_first_documents_sql()
-        assert "2026-09-30" in sql
+        assert "2026-09-29" in sql
         assert "2026-10-30" in sql
         assert "<= TIMESTAMP WITH TIME ZONE" not in sql
         assert "<  TIMESTAMP WITH TIME ZONE" in sql or "< TIMESTAMP WITH TIME ZONE" in sql

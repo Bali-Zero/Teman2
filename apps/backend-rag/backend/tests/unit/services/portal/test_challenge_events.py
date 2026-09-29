@@ -10,7 +10,7 @@ from backend.services.portal import challenge_events as events
 
 #  Pinned inside Round 1's own window so the internal `r2.active_round(now)`
 # branch in `_publish_registration_goal` picks the R1 lookup path regardless
-# of the real calendar date the suite happens to run on (after 2026-09-30
+# of the real calendar date the suite happens to run on (after 2026-09-29
 # WITA, "today" would otherwise silently flip these fixtures onto the R2
 # path). `events.compute_status` is a SEPARATE seam — pinned "live" below —
 # gating whether a goal is attempted at all.

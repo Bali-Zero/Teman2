@@ -1,13 +1,15 @@
 """Portal Champion challenge — Round 2 "Lascia o raddoppia" (October window).
 
 Round 1 (`challenge_leaderboard.py`) is FROZEN — its window, tiers and scoring
-never change again after 2026-09-30 00:00 WITA. This module is the Round 2
+never change again after 2026-09-29 00:00 WITA. This module is the Round 2
 engine: a client-count carried from September plus a general-competition
 scoring system (registrations, first-document bonuses, response/review-time
 penalties) and a separate personal mission for Asya.
 
-Window: 2026-09-30 00:00 WITA (Asia/Makassar) inclusive → 2026-10-30 00:00
-WITA exclusive. Fixed for this round — no CLI/query override, same reasoning
+Window: 2026-09-29 00:00 WITA (Asia/Makassar) inclusive → 2026-10-30 00:00
+WITA exclusive — the start moved from 09-30 to 09-29 on Zero's 2026-09-29
+call; Round 1 closes at that same instant, so no registration is counted in
+both the September carry and October's points. Fixed for this round — no CLI/query override, same reasoning
 as R1 (the live endpoint and the offline report can never disagree about
 "when").
 
@@ -36,7 +38,7 @@ from backend.services.portal.challenge_leaderboard import (
 from backend.services.portal.challenge_leaderboard import WINDOW_END as R1_WINDOW_END
 from backend.services.portal.challenge_leaderboard import WINDOW_START as R1_WINDOW_START
 
-ROUND2_START = datetime(2026, 9, 30, 0, 0, tzinfo=WITA)
+ROUND2_START = datetime(2026, 9, 29, 0, 0, tzinfo=WITA)
 ROUND2_END = datetime(2026, 10, 30, 0, 0, tzinfo=WITA)  # exclusive
 
 # Zero's ruling, 2026-09-29: these three took the September prize ("Ambil
