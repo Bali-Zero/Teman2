@@ -399,7 +399,7 @@ function MyPositionCard({
             "rounded-md px-3 py-2 mt-1 flex items-center justify-between",
           )}
         >
-          <span className="text-[10px] text-[var(--tx-secondary)]">
+          <span className="text-[11px] text-[var(--tx-secondary)]">
             Hadiah sementara
           </span>
           <span className="text-[13px] font-bold text-[var(--bz-copper-text)]">
@@ -498,13 +498,13 @@ function RankPrizeRow({
           {rank}
         </span>
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--tx-secondary)]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--tx-secondary)]">
             {RANK_ORDINAL[rank] ?? `Peringkat ${rank}`}
           </p>
           <p className="truncate text-[12px] font-semibold text-[var(--tx-pure)]">
             {holders.length > 0
               ? holders.map((h) => h.display_name).join(", ")
-              : "Belum ditempati"}
+              : "Belum ada"}
           </p>
         </div>
       </div>
@@ -516,7 +516,7 @@ function RankPrizeRow({
           {formatIDR(prizeIdr)}
         </p>
         {holders.length > 0 && (
-          <p className="text-[10px] tabular-nums text-[var(--tx-secondary)]">
+          <p className="text-[11px] tabular-nums text-[var(--tx-secondary)]">
             {holders[0].points ?? 0} poin
           </p>
         )}
@@ -541,7 +541,12 @@ function RankPrizeList({
           key={rp.rank}
           rank={rp.rank}
           prizeIdr={rp.prize_idr}
-          holders={entries.filter((e) => e.rank === rp.rank)}
+          // A 0-point (or negative) entry never wins a rank prize — the
+          // backend already ships prize_idr: 0 for it; this list must not
+          // show it as the holder just because it shares the rank number.
+          holders={entries.filter(
+            (e) => e.rank === rp.rank && (e.points ?? 0) > 0,
+          )}
         />
       ))}
     </div>
@@ -594,6 +599,7 @@ function AsyaMissionCard({ mission }: { mission: PortalChallengeAsyaMission }) {
       </div>
       <div
         role="progressbar"
+        aria-label={`Progres misi ${mission.display_name}`}
         aria-valuenow={Math.round(pct)}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -777,7 +783,7 @@ function RankingRow({
       </div>
       <span className="text-[11px] tabular-nums text-[var(--tx-secondary)] whitespace-nowrap">
         {round2
-          ? `+${entry.registrations ?? 0} reg · +${entry.document_bonuses ?? 0} dok · −${entry.penalty_points ?? 0}`
+          ? `+${entry.registrations ?? 0} reg · +${3 * (entry.document_bonuses ?? 0)} dok · −${entry.penalty_points ?? 0}`
           : `${entry.invited} diundang`}
       </span>
       <span className="text-[13px] font-bold tabular-nums text-[var(--tx-pure)] whitespace-nowrap">
@@ -1172,8 +1178,12 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
 
   const round2 = data.round === 2;
   const me = data.entries.find((e) => e.is_me);
+  // A round-2 team total of 0 does NOT mean "no ranking yet" — positives and
+  // penalties can cancel to 0 while ranks still differ (carry points, tie
+  // order). The alphabetical zero-state fallback (RankingList) only applies
+  // when every entry genuinely has no R2 event at all.
   const isZeroState = round2
-    ? (data.team_total_points ?? 0) === 0
+    ? data.entries.every((e) => (e.points ?? 0) === 0 && !e.last_event_at)
     : data.team_total_activations === 0;
 
   return (
