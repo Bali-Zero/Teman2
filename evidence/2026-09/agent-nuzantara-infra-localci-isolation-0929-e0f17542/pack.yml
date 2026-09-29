@@ -5,15 +5,15 @@ lanes:
   - lane: build
     role: build
     seat: claude-opus-5-5
+  - lane: build-tests
+    role: build
+    seat: claude-sonnet-5
   - lane: independent-diff-review
     role: review
     seat: codex-gpt-5.6-sol
   - lane: independent-diff-review-2
     role: review
     seat: kimi-code/k3
-  - lane: final-gate
-    role: review
-    seat: claude-opus-5-5
 spend:
   wall_clock_hours: 3
   adversarial_rounds: 3
