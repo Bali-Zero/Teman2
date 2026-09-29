@@ -525,6 +525,45 @@ class TestRankingAndPrizes:
         assert by_rank[6].prize_idr == 0
         assert by_rank[5].prize_idr == r2.RANK_PRIZES_IDR[5]
 
+    def test_a_zero_point_tie_at_rank_five_earns_no_prize(self):
+        """A rank prize requires points > 0 — landing on a prize-bearing
+        rank by tying everyone else at zero is not "winning" it."""
+        roster_rows = [_roster_row(f"m{i}@balizero.com", f"M{i}") for i in range(6)]
+        # m0-m3 get distinct positive points (ranks 1-4); m4/m5 register
+        # nothing and tie at 0 points, landing together on rank 5.
+        registration_rows = [
+            {
+                "creator_email": f"m{i}@balizero.com",
+                "activations": 4 - i,
+                "invited": 4 - i,
+                "last_activation_at": NOW,
+            }
+            for i in range(4)
+        ]
+        snapshot = _score(roster_rows=roster_rows, registration_rows=registration_rows)
+        rank_five = [e for e in snapshot.entries if e.rank == 5]
+        assert len(rank_five) == 2
+        assert all(e.points == 0 for e in rank_five)
+        assert all(e.prize_idr == 0 for e in rank_five)
+        assert all(e.total_prize_idr == 0 for e in rank_five)
+
+    def test_a_one_point_member_at_rank_five_still_earns_the_prize(self):
+        roster_rows = [_roster_row(f"m{i}@balizero.com", f"M{i}") for i in range(5)]
+        registration_rows = [
+            {
+                "creator_email": f"m{i}@balizero.com",
+                "activations": 5 - i,
+                "invited": 5 - i,
+                "last_activation_at": NOW,
+            }
+            for i in range(5)
+        ]
+        snapshot = _score(roster_rows=roster_rows, registration_rows=registration_rows)
+        by_rank = {e.rank: e for e in snapshot.entries}
+        assert by_rank[5].points == 1
+        assert by_rank[5].prize_idr == r2.RANK_PRIZES_IDR[5]
+        assert by_rank[5].total_prize_idr == r2.RANK_PRIZES_IDR[5]
+
 
 # ── Asya mission ─────────────────────────────────────────────────────────────
 
