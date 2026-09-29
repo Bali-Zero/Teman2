@@ -269,7 +269,13 @@ async def test_competing_expectations_cannot_replace_each_other(setup):
 
 
 @pytest.mark.asyncio
-async def test_durable_draft_submission_idempotency_and_independent_review(setup):
+async def test_durable_draft_submission_idempotency_and_self_review(setup):
+    """Owner decision 2026-09-30: the tester who ran a case also reviews it.
+
+    Cross-member review is not wanted, so `b` reviewing `a`'s test is now a guilt
+    case (403) instead of the old peer-review flow, and `a` self-reviewing their
+    own submitted test is the innocence case (200).
+    """
     _, pool, make_client = setup
     path = "/api/visa-oracle/testing/D1-T01-0"
     async with make_client() as c:
@@ -290,22 +296,11 @@ async def test_durable_draft_submission_idempotency_and_independent_review(setup
         assert (
             await c.put(path + "/result", json=result(actual="Conflicting later result"))
         ).status_code == 409
-        assert (await c.get("/api/visa-oracle/testing/export")).status_code == 403
-    async with make_client("b") as c:
-        assert (await c.put(path + "/result", json=result())).status_code == 403
-        blind = (await c.get("/api/visa-oracle/testing")).json()
-        assert "expected" not in blind["assignments"][0]["record"]
-        assert (await c.get(path + "/screenshot")).status_code == 404
-        assert (
-            await c.patch(
-                path + "/review",
-                json={"verdict": "not_issue", "comment": "Premature peer review attempt"},
-            )
-        ).status_code == 409
-        await lock_personal_day(c, "T02")
+        # Innocence: `a` holds a slot, so self-review is available (export requires it).
+        assert (await c.get("/api/visa-oracle/testing/export")).status_code == 200
         bad = {
             "verdict": "confirmed_issue",
-            "comment": "Independent finding checked",
+            "comment": "Self-reviewed finding checked",
             "reproduced": True,
         }
         assert (await c.patch(path + "/review", json=bad)).status_code == 422
@@ -327,7 +322,7 @@ async def test_durable_draft_submission_idempotency_and_independent_review(setup
         ).status_code == 409
         assert data["counts"] == {
             "planned": 150,
-            "started": 10,
+            "started": 5,
             "submitted": 1,
             "reproduced": 1,
             "reviewed": 1,
@@ -336,6 +331,24 @@ async def test_durable_draft_submission_idempotency_and_independent_review(setup
         }
         assert "staff_candidates" not in data
         assert "reviewer_member_id" not in data["assignments"][0]["record"]["review"]
+    async with make_client("b") as c:
+        # Guilt: `b` cannot write `a`'s record, nor review it — cross-member review
+        # is rejected even though `b` also holds a slot and can review their OWN.
+        assert (await c.put(path + "/result", json=result())).status_code == 403
+        assert (
+            await c.patch(
+                path + "/review",
+                json={"verdict": "not_issue", "comment": "Cross-member review attempt"},
+            )
+        ).status_code == 403
+        blind = (await c.get("/api/visa-oracle/testing")).json()
+        assert "expected" not in blind["assignments"][0]["record"]
+        assert (await c.get(path + "/screenshot")).status_code == 404
+        # `b` can still reach export (their own slot grants can_review), but the
+        # peer record stays blind: no leaked review/expected content for `a`.
+        blind_export = (await c.get("/api/visa-oracle/testing/export")).json()
+        assert "expected" not in blind_export["assignments"][0]["record"]
+        assert "review" not in blind_export["assignments"][0]["record"]
     async with make_client("o", "admin") as c:
         assert (
             await c.put("/api/visa-oracle/testing/slots/T01", json={"member_id": "b"})
@@ -346,25 +359,38 @@ async def test_durable_draft_submission_idempotency_and_independent_review(setup
 
 
 @pytest.mark.asyncio
-async def test_blind_results_and_self_review(setup):
+async def test_self_review_ignores_the_reviewer_slot_flag(setup):
+    """The `reviewer` slot column is vestigial under self-review (owner decision
+    2026-09-30, ignored rather than repurposed — see visa_oracle_testing.py's
+    `actor()`). Set it to TRUE on both the owner's and the outsider's slot and
+    confirm authorization still tracks record ownership only, never this column.
+    """
     _, pool, make_client = setup
     path = "/api/visa-oracle/testing/D1-T01-0"
     async with make_client() as c:
         await lock_personal_day(c)
         assert (await c.put(path + "/result", json=result())).status_code == 200
     async with pool.acquire() as conn:
-        await conn.execute("UPDATE visa_oracle_test_slots SET reviewer=false WHERE slot='T02'")
-        await conn.execute("UPDATE visa_oracle_test_slots SET reviewer=true WHERE slot='T01'")
+        await conn.execute(
+            "UPDATE visa_oracle_test_slots SET reviewer=true WHERE slot IN ('T01','T02')"
+        )
     async with make_client("b") as c:
-        data = (await c.get("/api/visa-oracle/testing")).json()
-        assert "expected" not in data["assignments"][0]["record"]
-        assert (await c.get(path + "/screenshot")).status_code == 404
+        # Guilt: reviewer=true on `b`'s own slot still does not grant cross-member
+        # review of `a`'s test — the flag was never what gated this.
+        assert (
+            await c.patch(
+                path + "/review",
+                json={"verdict": "not_issue", "comment": "Cross-member review attempt"},
+            )
+        ).status_code == 403
     async with make_client() as c:
+        # Innocence: reviewer=true on `a`'s own slot is not required either —
+        # self-review works the same regardless of this column's value.
         response = await c.patch(
             path + "/review",
-            json={"verdict": "not_issue", "comment": "Trying to approve my own test"},
+            json={"verdict": "not_issue", "comment": "Reviewing my own submitted test"},
         )
-        assert response.status_code == 403
+        assert response.status_code == 200
 
 
 @pytest.mark.asyncio
