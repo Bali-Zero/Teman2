@@ -30,6 +30,7 @@ class TestGetAllowedOrigins:
 
             assert len(origins) > 0
             assert "https://kita.balizero.com" in origins
+            assert "https://tax.balizero.com" in origins
             assert "http://localhost:3000" in origins
 
     def test_get_allowed_origins_from_settings(self):

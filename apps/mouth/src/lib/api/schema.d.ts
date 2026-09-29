@@ -14512,6 +14512,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/public/tax-calendar/obligations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Public Tax Calendar Obligations */
+    post: operations["publicTaxCalendarObligations"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/research/control/playbook": {
     parameters: {
       query?: never;
@@ -27098,6 +27115,98 @@ export interface components {
       /** Who */
       who?: string | null;
     };
+    /** TaxCalendarObligation */
+    TaxCalendarObligation: {
+      /** Authority */
+      authority: string;
+      /** Frequency */
+      frequency: string;
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /**
+       * Reviewed On
+       * Format: date
+       */
+      reviewed_on: string;
+      /** Upcoming Due Dates */
+      upcoming_due_dates: components["schemas"]["UpcomingDueDate"][];
+    };
+    /** TaxCalendarRequest */
+    TaxCalendarRequest: {
+      /** Company Type */
+      company_type?:
+        | (
+            | "PT_PMA"
+            | "PT_PMDN"
+            | "CV"
+            | "KP3A"
+            | "KPPA"
+            | "FOREIGN_PLATFORM"
+            | "OTHER"
+          )
+        | null;
+      /**
+       * Employee Count
+       * @default 0
+       */
+      employee_count: number;
+      /**
+       * Fiscal Year End
+       * @default 12-31
+       */
+      fiscal_year_end: string;
+      /**
+       * Has Employees
+       * @default false
+       */
+      has_employees: boolean;
+      /**
+       * Has Foreign Employees
+       * @default false
+       */
+      has_foreign_employees: boolean;
+      /**
+       * Horizon Days
+       * @default 365
+       */
+      horizon_days: number;
+      /** Investment Stage */
+      investment_stage?: ("construction" | "commercial") | null;
+      /**
+       * Pkp
+       * @default false
+       */
+      pkp: boolean;
+      /**
+       * Pmse Vat Appointed
+       * @default false
+       */
+      pmse_vat_appointed: boolean;
+      /**
+       * Pse Registered
+       * @default false
+       */
+      pse_registered: boolean;
+      /**
+       * Serves Indonesian Users Online
+       * @default false
+       */
+      serves_indonesian_users_online: boolean;
+      /**
+       * Taxpayer Type
+       * @enum {string}
+       */
+      taxpayer_type: "individual" | "company";
+    };
+    /** TaxCalendarResponse */
+    TaxCalendarResponse: {
+      /** Obligations */
+      obligations: components["schemas"]["TaxCalendarObligation"][];
+      /** Withheld Count */
+      withheld_count: number;
+    };
     /** TaxCompanyPilotDocument */
     TaxCompanyPilotDocument: {
       /**
@@ -27670,6 +27779,18 @@ export interface components {
       subscriberId?: string | null;
       /** Token */
       token?: string | null;
+    };
+    /** UpcomingDueDate */
+    UpcomingDueDate: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Period Key */
+      period_key: string;
+      /** Provisional */
+      provisional: boolean;
     };
     /**
      * UpdatePermissionRequest
@@ -50431,6 +50552,39 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  publicTaxCalendarObligations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaxCalendarRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaxCalendarResponse"];
         };
       };
       /** @description Validation Error */

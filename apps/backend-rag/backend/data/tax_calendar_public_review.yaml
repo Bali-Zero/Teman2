@@ -1,0 +1,45 @@
+# Each entry clears ONE catalog rule for the public tax calendar. It is written only after the Tax
+# Department signer named by the owner has reviewed that rule's public copy. rule_fingerprint binds
+# the clearance to the exact catalog entry: editing the rule re-withholds it until re-reviewed.
+# Entry: {rule_id, reviewer, reviewed_on: YYYY-MM-DD, rule_fingerprint: 64 hex}. Get the fingerprint with
+#   python -m backend.services.compliance.tax_calendar_public_review fingerprint <rule_id>
+# End each rule_fingerprint line with `# pragma: allowlist secret`: detect-secrets reads the hex as entropy.
+# Ongoing signer: the Tax Department person named by the owner; first batch signed by the owner.
+version: 1
+reviews:
+  - rule_id: pph21_payment
+    reviewer: "Zero (owner)"
+    reviewed_on: "2026-09-29"
+    rule_fingerprint: "1ee9ecaec2186f7cdb3ac0ab0a778876bf5ddb4ca6b4597febf9ae6ad70dc65e" # pragma: allowlist secret
+  - rule_id: spt_masa_pph21
+    reviewer: "Zero (owner)"
+    reviewed_on: "2026-09-29"
+    rule_fingerprint: "f9324eff7b7a485f9b1c2b14688633b198470cf65c0ca92e93a288bd344cfbac" # pragma: allowlist secret
+  - rule_id: spt_masa_ppn
+    reviewer: "Zero (owner)"
+    reviewed_on: "2026-09-29"
+    rule_fingerprint: "5a8061eb1dfead17211b43808f2c0d069187e25187ca5f2948d385838112ce75" # pragma: allowlist secret
+  - rule_id: spt_tahunan_badan
+    reviewer: "Zero (owner)"
+    reviewed_on: "2026-09-29"
+    rule_fingerprint: "ac56d0888823b2bfd5eac5f6b2ef88db98a82e2f4b73192cae6811802468a0b7" # pragma: allowlist secret
+  - rule_id: rups_annual
+    reviewer: "Zero (owner)"
+    reviewed_on: "2026-09-29"
+    rule_fingerprint: "a3c1a2398141e422748af04e0d00fb36cc8761df43aa9420600a81f879cda40f" # pragma: allowlist secret
+  - rule_id: bpjs_kesehatan_monthly
+    reviewer: "Zero (owner)"
+    reviewed_on: "2026-09-29"
+    rule_fingerprint: "c752eed414f1d3f36d7a04c1c5a5e9f5873cc956153b5c25cb6db2996f218481" # pragma: allowlist secret
+  - rule_id: pse_registration
+    reviewer: "Zero (owner)"
+    reviewed_on: "2026-09-29"
+    rule_fingerprint: "a0f0d87dee4fe3619690b6d7822b75fe12b75fd8b19feeb0d391178dffe64010" # pragma: allowlist secret
+  - rule_id: wajib_lapor_ketenagakerjaan
+    reviewer: "Zero (owner)"
+    reviewed_on: "2026-09-29"
+    rule_fingerprint: "17d3b8cd6b263bd8f6619b2fb687641093ac3147c1fa8b0b030313b17b9de525" # pragma: allowlist secret
+  - rule_id: rptka_imta_expat
+    reviewer: "Zero (owner)"
+    reviewed_on: "2026-09-29"
+    rule_fingerprint: "7075fa2fa9f38c5a619af2bf0074b3edc7db6b8c52ce36709239156348a2dcc8" # pragma: allowlist secret
