@@ -48,6 +48,11 @@ container's absence is verified after each attempt, and a run whose cleanup cann
 `--extra-check NAME=JSON` adds a check the operator wants beside the planned ones. It is refused when NAME starts with a reserved
 prefix (`policy.`, `tests.`, `review.`, `trusted.`) or is already planned, and when the spec is not an executable kind (`cmd`,
 `pytest`): an extra check can add evidence, never replace a policy verdict or record a PASS nobody ran (v0.2.2).
+An extra `cmd` runs on the host and may execute candidate code, so it is never a trusted check (v0.3.0): it runs after the
+runner's own trusted checks, counts as uncontained candidate exposure, and a plan that carries one mints no seal (`seal WITHHELD`,
+`status --seal` BLOCKED) exactly like an `--isolation none` plan. Such plans print a WARNING at `plan`: candidate code on the host
+can rewrite any Pysa home together with its manifest and baseline index — nothing kept in this user's files can tell, so run
+`pysa_check.py setup --home <home> --rebuild` before a contained plan relies on that home again (accepted limit, not a check).
 
 ## Security: Pysa taint judge (`security.pysa_python`)
 

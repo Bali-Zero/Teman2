@@ -181,8 +181,7 @@ def seal_events(fx, kind="seal") -> list[dict]:
 
 def test_an_uncontained_plan_mints_no_seal_and_status_seal_fails_closed(tmp_path, capsys):
     fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
-    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
-            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
+    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]))
     fr.run(fx)
     out = capsys.readouterr().out
     assert "seal WITHHELD" in out and "seal=" not in out and not seal_events(fx) and seal_events(fx, "seal_withheld")
@@ -195,13 +194,12 @@ def test_an_uncontained_plan_mints_no_seal_and_status_seal_fails_closed(tmp_path
 
 def test_a_trusted_check_is_not_rerun_after_candidate_exposure(tmp_path, capsys):
     fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
-    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
-            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
+    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]))
     fr.run(fx)
-    before = fr.load_state(fx)["checks"]["ctx.zzz_trusted"]
+    before = fr.load_state(fx)["checks"]["policy.trusted_classifier_corpus"]
     n_seals = len(seal_events(fx))
-    fr.run(fx, "--only", "ctx.zzz_trusted")
-    after = fr.load_state(fx)["checks"]["ctx.zzz_trusted"]
+    fr.run(fx, "--only", "policy.trusted_classifier_corpus")
+    after = fr.load_state(fx)["checks"]["policy.trusted_classifier_corpus"]
     assert after["status"] == before["status"] == "PASS" and after["attempts"] == before["attempts"]
     assert "REFUSED" in capsys.readouterr().out and seal_events(fx, "trusted_rerun_refused")
     fr.run(fx)                                                                  # a repeated run with nothing queued mints nothing either
@@ -210,20 +208,19 @@ def test_a_trusted_check_is_not_rerun_after_candidate_exposure(tmp_path, capsys)
 
 def test_a_candidate_first_only_run_blocks_the_trusted_checks_it_skipped(tmp_path):
     fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
-    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
-            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
+    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]))
     fr.run(fx, "--only", "ctx.aaa_candidate")
     fr.run(fx)
-    c = fr.load_state(fx)["checks"]["ctx.zzz_trusted"]
+    c = fr.load_state(fx)["checks"]["policy.trusted_classifier_corpus"]
     assert c["status"] == "BLOCKED" and "candidate code already executed" in c["reason"]
-    assert fr.status(fx)["checks"]["ctx.zzz_trusted"]["status"] == "BLOCKED"   # never PASS: the run dir cannot vouch for it any more
+    assert fr.status(fx)["checks"]["policy.trusted_classifier_corpus"]["status"] == "BLOCKED"   # never PASS: the run dir cannot vouch for it any more
 
 
 @needs_docker
 def test_trusted_only_runs_keep_minting_their_seal(fx, capsys):
-    fr.plan(fx, "--isolation", "container", "--isolation-image", IMAGE, "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
-    fr.run(fx, "--only", "ctx.zzz_trusted")
-    fr.run(fx, "--only", "ctx.zzz_trusted")
+    fr.plan(fx, "--isolation", "container", "--isolation-image", IMAGE)
+    fr.run(fx, "--only", "policy.trusted_classifier_corpus")
+    fr.run(fx, "--only", "policy.trusted_classifier_corpus")
     assert len(seal_events(fx)) == 2 and not seal_events(fx, "seal_refused")    # no candidate code ran: re-minting is legitimate
     assert runner.candidate_exposure(json.loads((fx["run"] / "state" / "plan.json").read_text()), fr.load_state(fx)) is None
 
@@ -231,8 +228,7 @@ def test_trusted_only_runs_keep_minting_their_seal(fx, capsys):
 @needs_docker
 def test_a_resumed_contained_run_verifies_the_seal_instead_of_minting_one(tmp_path, capsys):
     fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
-    fr.plan(fx, "--isolation", "container", "--isolation-image", IMAGE, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
-            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
+    fr.plan(fx, "--isolation", "container", "--isolation-image", IMAGE, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]))
     fr.run(fx)
     first = fr.load_state(fx)["seal"]
     fr.make_running(fx, "ctx.aaa_candidate")
@@ -241,7 +237,7 @@ def test_a_resumed_contained_run_verifies_the_seal_instead_of_minting_one(tmp_pa
     out = capsys.readouterr().out
     assert f"seal={first}" in out and "UNCHANGED" in out and len(seal_events(fx)) == 1 and seal_events(fx, "seal_verified")
     st = fr.load_state(fx)
-    st["checks"]["ctx.zzz_trusted"]["reason"] = "operator edit after exposure"
+    st["checks"]["policy.trusted_classifier_corpus"]["reason"] = "operator edit after exposure"
     fr.save_state(fx, st)
     fr.make_running(fx, "ctx.aaa_candidate")
     capsys.readouterr()
@@ -343,8 +339,7 @@ def test_startup_poison_in_the_home_venv_is_measured(tmp_path, where):
 def test_full_metadata_reset_with_a_forged_record_gets_no_seal_on_an_uncontained_plan(tmp_path, capsys):
     """The exact round-2 negative case (docs/specs/localci-completion-2026-09-29.md §8)."""
     fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
-    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
-            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
+    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]))
     fr.run(fx)
     plan_bytes = (fx["run"] / "state" / "plan.json").read_bytes()
     plan = json.loads(plan_bytes)
@@ -451,3 +446,73 @@ def test_an_unverified_container_removal_aborts_the_run_before_the_next_check(tm
     assert ch["policy.paid_anthropic_ban"]["status"] == "ERROR" and "aborted" in ch["policy.paid_anthropic_ban"]["reason"]
     assert ch["ctx.zzz_candidate"]["status"] == "QUEUED"          # never started next to a possibly surviving container
     assert seal_events(fx, "cleanup_unverified_abort")
+
+
+# ------------------------------------------------------------------------------- an extra `cmd` is the operator's host command, never a trusted check
+def test_trust_and_candidate_classification_of_a_check_spec():
+    assert runner.is_trusted_check({"kind": "cmd"}) is True
+    assert runner.is_trusted_check({"kind": "cmd", "extra": True}) is False
+    assert runner.is_trusted_check({"kind": "pytest"}) is False and runner.is_trusted_check({"kind": "record"}) is False
+    for spec in ({"kind": "pytest"}, {"kind": "trusted_pytest"}, {"kind": "cmd", "extra": True}):
+        assert runner.runs_candidate_code(spec) is True, spec
+    for spec in ({"kind": "cmd"}, {"kind": "record"}):
+        assert runner.runs_candidate_code(spec) is False, spec
+
+
+def test_seal_unsupported_names_an_extra_host_command_and_is_none_for_a_clean_container_plan():
+    clean = {"isolation": {"mode": "container"}, "checks": {"policy.x": {"kind": "cmd"}, "ctx.t": {"kind": "pytest"}, "policy.r": {"kind": "record"}}}
+    assert runner.seal_unsupported(clean) is None
+    with_extra = {"isolation": {"mode": "container"}, "checks": {**clean["checks"], "ctx.zzz_host": {"kind": "cmd", "extra": True}}}
+    reason = runner.seal_unsupported(with_extra)
+    assert reason and "ctx.zzz_host" in reason and "uncontained" in reason
+    assert "isolation=none" in runner.seal_unsupported({"isolation": {"mode": "none"}, "checks": clean["checks"]})
+
+
+def test_a_container_plan_with_an_extra_host_cmd_mints_no_seal_and_status_seal_is_blocked(tmp_path, monkeypatch, capsys):
+    fake_docker(tmp_path, monkeypatch, "ok")
+    fx = fr.make_repo(tmp_path / "r")
+    fr.plan(fx, "--isolation", "container", "--isolation-image", "fake:1", "--extra-check", fr.cmd_check("ctx.zzz_host", fx["repo"], [PY, "-c", "pass"]))
+    plan = json.loads((fx["run"] / "state" / "plan.json").read_text())
+    assert plan["checks"]["ctx.zzz_host"]["extra"] is True and "ctx.zzz_host" in runner.seal_unsupported(plan)
+    capsys.readouterr()
+    fr.run(fx)
+    out = capsys.readouterr().out
+    assert "seal WITHHELD" in out and "ctx.zzz_host" in out and "seal=" not in out
+    assert not seal_events(fx) and seal_events(fx, "seal_withheld") and "seal" not in fr.load_state(fx)
+    exp = runner.candidate_exposure(plan, fr.load_state(fx))
+    assert exp is not None and exp["mode"] == "none"              # the extra ran on the host: that is exposure, and uncontained
+    runner.main(["status", "--run-dir", str(fx["run"]), "--seal", "0" * 64])
+    st = json.loads((fx["run"] / "status.json").read_text())
+    assert st["overall"] == "BLOCKED" and st["freshness"]["stale_reason"].startswith("seal evidence unsupported for an uncontained plan")
+    assert st["seal"] is None and "ctx.zzz_host" in st["freshness"]["stale_reason"]
+
+
+def test_a_keyboard_interrupt_during_copy_in_leaves_no_copy_process_running(tmp_path, monkeypatch):
+    fake_docker(tmp_path, monkeypatch, "stall")                   # the fake `docker cp -a -` becomes a real 30s sleep
+    fx = fr.make_repo(tmp_path / "r")
+    fr.plan(fx, "--isolation", "container", "--isolation-image", "fake:1")
+    cps: list[subprocess.Popen] = []
+    real_popen = subprocess.Popen
+
+    def recording_popen(args, *a, **kw):
+        p = real_popen(args, *a, **kw)
+        if isinstance(args, list) and args[1:3] == ["cp", "-a"]:
+            cps.append(p)
+        return p
+
+    def interrupted(*a, **kw):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(subprocess, "Popen", recording_popen)
+    monkeypatch.setattr(runner, "stream_tree_tar", interrupted)
+    monkeypatch.setattr(runner, "_remove_verified", lambda *a, **kw: None)   # the outer finally would talk to docker; the copy group is what is under test
+    try:
+        with pytest.raises(KeyboardInterrupt):
+            fr.run(fx, "--only", "policy.paid_anthropic_ban")
+        assert len(cps) == 1
+        assert cps[0].poll() is not None                          # killed and reaped by the copy-in finally, not left sleeping
+    finally:
+        for p in cps:
+            if p.poll() is None:
+                p.kill()
+                p.wait()

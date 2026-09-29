@@ -413,8 +413,12 @@ def cmd_plan(a):
             sys.exit(f"--extra-check {name!r}: invalid JSON spec: {e}")
         if not isinstance(spec, dict) or spec.get("kind") not in EXTRA_CHECK_KINDS:
             sys.exit(f"--extra-check {name!r}: kind must be one of {EXTRA_CHECK_KINDS}")
-        checks[name] = spec
+        checks[name] = {**spec, "extra": True}   # operator-chosen: a `cmd` extra runs on the host and may execute candidate code
     iso = isolation_spec(a.isolation, a.isolation_image)
+    if iso.get("mode") != "container" or any(s.get("kind") == "cmd" and s.get("extra") for s in checks.values()):
+        print("WARNING: this plan runs candidate code on the host as your user: it can rewrite any Pysa home together with its manifest "
+              "and baseline index, so treat every home this user can write as untrusted afterwards — "
+              "`pysa_check.py setup --home <home> --rebuild` before the next contained plan relies on it", file=sys.stderr)
     for name, spec in list(checks.items()):   # candidate code never runs uncontained unless the operator said --isolation none
         if spec.get("kind") not in CANDIDATE_KINDS:
             continue
@@ -677,6 +681,10 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
                 return None, f"candidate tree copy-in failed{' (budget ' + str(COPY_TIMEOUT_S) + 's expired)' if expired.is_set() else ''}: {type(e).__name__}"
             finally:
                 watchdog.cancel()
+                for proc in group:   # a signal (KeyboardInterrupt) skips the except above: never leave the copy group running
+                    if proc.poll() is None:
+                        proc.kill()
+                        proc.wait()
             if expired.is_set():
                 return None, f"candidate tree copy-in exceeded its {COPY_TIMEOUT_S}s budget"
             errf.seek(0)
@@ -938,20 +946,41 @@ def trusted_seal(run_dir: Path, plan: dict, st: dict) -> str:
     return h.hexdigest()
 
 
+def is_trusted_check(spec: dict) -> bool:
+    """A runner-planned `cmd` (BASE judge/classifier). An `--extra-check` cmd is the operator's and may run candidate code on the host."""
+    return spec.get("kind") in TRUSTED_KINDS and not spec.get("extra")
+
+
+def runs_candidate_code(spec: dict) -> bool:
+    return spec.get("kind") in CANDIDATE_KINDS or (spec.get("kind") == "cmd" and bool(spec.get("extra")))
+
+
+def seal_unsupported(plan: dict) -> str | None:
+    """Why no seal can vouch for this plan (None = it can). Uncontained candidate code — an --isolation none/legacy plan, or an
+    extra `cmd` run on the host — can reset the run dir to a state no marker distinguishes from a fresh one (spec §8)."""
+    mode = isolation_of(plan).get("mode")
+    if mode != "container":
+        return f"uncontained plan (isolation={mode})"
+    extras = sorted(n for n, s in plan["checks"].items() if s.get("kind") == "cmd" and s.get("extra"))
+    if extras:
+        return f"extra host command(s) {', '.join(extras)} run uncontained"
+    return None
+
+
 def candidate_exposure(plan: dict, st: dict) -> dict | None:
     """Has candidate code executed against this run dir? The state marker is written BEFORE the first candidate check starts; any
     candidate check with an attempt, history or receipt counts too (an uncontained candidate could have erased the marker, not all
     of them). `mode` is the weakest isolation any candidate check ran under: one uncontained check makes the whole run dir uncontained."""
     exp = dict(st["candidate_exposure"]) if isinstance(st.get("candidate_exposure"), dict) else None
     for name, spec in plan["checks"].items():
-        if spec.get("kind") not in CANDIDATE_KINDS:
+        if not runs_candidate_code(spec):
             continue
         c = st["checks"].get(name, {})
         if c.get("attempts") or c.get("history") or c.get("receipt"):
             exp = exp or {"at": c.get("at"), "check": name, "mode": "none", "inferred": True}
             if (spec.get("isolation") or {}).get("mode") != "container":
                 exp["mode"] = "none"
-    if exp and isolation_of(plan).get("mode") != "container":
+    if exp and seal_unsupported(plan):
         exp["mode"] = "none"
     return exp
 
@@ -982,7 +1011,7 @@ def cmd_run(a):
                 names = [a.only]
             else:
                 names = [n for n, c in st["checks"].items() if c["status"] in ("QUEUED", "INTERRUPTED")]
-            names = sorted(names, key=lambda n: (plan["checks"][n]["kind"] not in TRUSTED_KINDS, plan["checks"][n]["kind"] != "trusted_pytest"))  # cmd → seal → trusted_pytest → pytest
+            names = sorted(names, key=lambda n: (not is_trusted_check(plan["checks"][n]), plan["checks"][n]["kind"] != "trusted_pytest"))  # cmd → seal → trusted_pytest → pytest
             venv_py = next((s["python"] for s in plan["checks"].values() if s.get("python")), sys.executable)
             cur_env = env_fingerprint(venv_py, plan["checks"])
             cur_hash = env_hash(cur_env)
@@ -991,11 +1020,11 @@ def cmd_run(a):
             def seal_now(why: str) -> None:
                 nonlocal sealed
                 sealed = True
-                if isolation_of(plan).get("mode") != "container":
+                if (unsup := seal_unsupported(plan)):
                     # uncontained/legacy: a lingering same-user process can reset this run dir to a state no marker distinguishes from a
                     # fresh plan (review round 2), so no seal minted here could vouch for it — none is (docs/specs/localci-completion §8)
                     store.journal({"event": "seal_withheld", "why": why, "at": now()})
-                    print(f"seal WITHHELD  # {why}: uncontained plan (isolation={isolation_of(plan).get('mode')}) — no trusted seal is minted; "
+                    print(f"seal WITHHELD  # {why}: {unsup} — no trusted seal is minted; "
                           "plan with --isolation container for one", flush=True)
                     return
                 seal = trusted_seal(run_dir, plan, st)
@@ -1022,7 +1051,7 @@ def cmd_run(a):
                 spec, c = plan["checks"][name], st["checks"][name]
                 if spec["kind"] not in EXECUTABLE:
                     continue
-                if spec["kind"] in TRUSTED_KINDS and (exp := candidate_exposure(plan, st)) is not None:
+                if is_trusted_check(spec) and (exp := candidate_exposure(plan, st)) is not None:
                     # a trusted verdict produced after candidate code ran would be covered by no seal: never mint one, never re-run one
                     why_not = f"trusted check not run: candidate code already executed in this run dir ({exp.get('mode')}, {exp.get('at')}) — plan a fresh run dir"
                     if c["status"] in ("QUEUED", "INTERRUPTED"):
@@ -1031,9 +1060,9 @@ def cmd_run(a):
                     store.journal({"event": "trusted_rerun_refused", "check": name, "at": now()})
                     print(f"{name}: REFUSED — {why_not}")
                     continue
-                if spec["kind"] not in TRUSTED_KINDS and not sealed:
+                if not is_trusted_check(spec) and not sealed:
                     seal_now("trusted checks done, candidate code about to run")
-                if spec["kind"] in CANDIDATE_KINDS and candidate_exposure(plan, st) is None:
+                if runs_candidate_code(spec) and candidate_exposure(plan, st) is None:
                     st["candidate_exposure"] = {"at": now(), "check": name, "mode": ((spec.get("isolation") or {}).get("mode") or "none")}
                     store.journal({"event": "candidate_exposure", **st["candidate_exposure"]})
                     store.save(st)
@@ -1260,20 +1289,21 @@ def cmd_status(a):
     run_dir = Path(a.run_dir).resolve()
     plan, st = load_plan_verified(run_dir), Store(run_dir).load()
     recomputed = trusted_seal(run_dir, plan, st)
-    supported = isolation_of(plan).get("mode") == "container"
+    unsup = seal_unsupported(plan)
+    supported = unsup is None
     exp = candidate_exposure(plan, st)
     out["seal"] = recomputed if supported else None
     out["seal_diagnostic"] = None if supported else recomputed
     out["isolation"] = {k: isolation_of(plan).get(k) for k in ("mode", "image", "image_id", "reason")}
     out["candidate_exposure"] = exp
     out["seal_note"] = ("recomputed now; compare it with the seal `run` printed" if supported else
-                        "uncontained plan: seal evidence is unsupported (docs/specs/localci-completion §8); the value is diagnostic only")
+                        f"{unsup}: seal evidence is unsupported (docs/specs/localci-completion §8); the value is diagnostic only")
     atomic_write(run_dir / "status.json", json.dumps(out, indent=2, sort_keys=True))
     if a.seal and len(a.seal.strip()) < SEAL_MIN_PREFIX:
         sys.exit(f"--seal needs at least {SEAL_MIN_PREFIX} hex characters (a short prefix would match almost anything)")
     if a.seal and not supported:   # a seal-dependent verdict on an uncontained plan fails closed, match or not
         out["overall"] = "BLOCKED"
-        out["freshness"]["stale_reason"] = (f"seal evidence unsupported for an uncontained plan (isolation={isolation_of(plan).get('mode')}); "
+        out["freshness"]["stale_reason"] = (f"seal evidence unsupported for an uncontained plan ({unsup}); "
                                             f"diagnostic: recomputed {'matches' if recomputed.startswith(a.seal.strip()) else 'differs from'} the value given")
         atomic_write(run_dir / "status.json", json.dumps(out, indent=2, sort_keys=True))
     elif a.seal and not recomputed.startswith(a.seal.strip()):

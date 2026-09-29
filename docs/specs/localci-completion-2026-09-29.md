@@ -140,3 +140,19 @@ stored seal unchanged, and `status --seal <any>` is BLOCKED.
 Bounded execution: one budget covers the whole archive producer and copy group (`git ls-tree`, `git cat-file`,
 `docker cp`); on expiry every member is killed. After each contained attempt the container's absence is
 verified; if removal cannot be verified the run aborts before the next check.
+
+## 9. Adversarial review round 3 (Codex, 2026-09-29) and the release session's cure
+
+- **R3-1 (BLOCKER, cured):** an operator `--extra-check` of kind `cmd` ran on the host, was treated as a trusted
+  check and was covered by the seal, yet it may execute candidate code. Extras now carry `"extra": true`; an extra
+  `cmd` is never trusted, runs after the runner's trusted checks, counts as uncontained exposure, and a plan with one
+  is treated exactly like the `--isolation none` row of the §8 table (`seal WITHHELD`, `status --seal` BLOCKED).
+- **R3-2 (accepted limit, documented):** candidate code that ran uncontained as the operator's user (an
+  `--isolation none` plan or an extra `cmd`) can rewrite a Pysa home together with its manifest and baseline index,
+  and a later plan would pin that digest. No marker in this user's files can detect it; `plan` now prints a WARNING
+  for every uncontained plan and the README states the rule: `pysa_check.py setup --home <home> --rebuild` before a
+  contained plan relies on that home again.
+- **R3-3 (MAJOR, cured):** a signal during the tar copy-in raised `KeyboardInterrupt`, which skipped the copy
+  group's kill; the `finally` now kills and reaps every still-running member of the group.
+
+Both cures have tests that fail when the cure is removed (mutation-checked on Pro).
