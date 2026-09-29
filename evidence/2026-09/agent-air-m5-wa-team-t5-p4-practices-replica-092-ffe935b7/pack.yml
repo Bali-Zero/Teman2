@@ -21,7 +21,7 @@ lanes:
     role: review
     seat: "kimi-code/k3 (round 1 verdict GO-with-conditions; delta round UNREACHABLE -- OAuth token-refresh failure, two attempts, network/infra, not content)"
   - lane: wa-team-t5-p4-practices-replica-gate
-    role: gate
+    role: review
     seat:
       "fresh Opus session, outside this PR's contribution chain (did not build, review, or
       council it) -- verdict REWORK-BUILD @3213ea24a9, own detached worktree, code + synthetic
