@@ -197,15 +197,19 @@ def _named_item(**extra) -> dict:
     """A contact carrying the SAME fixture name under every key contact_label()
     (or a mutant of it) could plausibly read.
 
-    2026-09-29 gate condition C1 (M1d): a guilt test that only sets `crm_name`
-    only catches a mutant that reads `crm_name`. A mutant that reads
-    `full_name`/`name`/`display_name` instead would sail through unnoticed —
-    the fixture below leaks under any of those field names equally, so the
-    assertion catches the ENTITY (a name reaching the alert) rather than one
-    spelling of it.
+    2026-09-29 gate condition C1(a) (kills M1d), verbatim from the gate's own
+    list (pull/7635#issuecomment-5885487709): "Carry the synthetic name under
+    crm_name, full_name, name, display_name and push_name". A guilt test that
+    only sets `crm_name` only catches a mutant that reads `crm_name` — the
+    fixture below leaks under any of those five field names equally
+    (`push_name` being the WhatsApp-side profile name a mutant could plausibly
+    reach for, alongside the four CRM-side spellings), so the assertion
+    catches the ENTITY (a name reaching the alert) rather than one spelling
+    of it.
     """
     base = {"crm_name": "Fixture Person", "full_name": "Fixture Person",
-            "name": "Fixture Person", "display_name": "Fixture Person"}
+            "name": "Fixture Person", "display_name": "Fixture Person",
+            "push_name": "Fixture Person"}
     base.update(extra)
     return base
 
