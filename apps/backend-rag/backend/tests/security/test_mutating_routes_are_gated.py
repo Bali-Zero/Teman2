@@ -454,6 +454,17 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "synthetic traffic_source classes rejected unless the server-side "
         "allowlist env arms them.",
     ),
+    # ── Public tax calendar (routers/tax_calendar_public.py): anonymous by
+    #    design (tax.balizero.com wizard, pre-account). ──
+    IntentionalPublicMutation(
+        "POST",
+        "/api/public/tax-calendar/obligations",
+        "Public tax calendar projection — stateless compute over the obligations "
+        "catalog, no writes and no persistence, request body carries no PII "
+        "(company type, headcount flags, fiscal year end). Controls: dedicated "
+        "rate-limit bucket, extra=forbid body, and only rules a Tax Department "
+        "reviewer cleared at their current fingerprint are returned.",
+    ),
     # ── Marketing: explicit registry rows, standard opt-in/opt-out shape ──
     IntentionalPublicMutation(
         "POST",

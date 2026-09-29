@@ -64,7 +64,7 @@ export default function TaxCalendarPage() {
             style={{
               color: "var(--r19-muted)",
               fontFamily: "var(--font-sans)",
-              margin: "var(--space-2) 0 var(--space-5)",
+              margin: "var(--space-2) 0 var(--space-6)",
             }}
           >
             Answer a few questions to see the deadlines that apply to you.

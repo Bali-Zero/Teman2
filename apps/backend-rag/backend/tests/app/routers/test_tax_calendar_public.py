@@ -1,6 +1,7 @@
 import dataclasses
 from datetime import date
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -122,6 +123,40 @@ def test_individual_gets_no_company_scoped_rules() -> None:
 
     assert response.status_code == 200
     assert response.json()["obligations"] == []
+
+
+def test_individual_gets_no_company_scoped_rule_even_when_every_rule_is_cleared(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    relaxed = tuple(
+        dataclasses.replace(r, verified=True, needs_review_reason=None) for r in load_catalog()
+    )
+    reviews = {
+        r.id: PublicReview(r.id, "Test Signer", REVIEWED_ON, rule_fingerprint(r)) for r in relaxed
+    }
+    monkeypatch.setattr(tax_calendar_public, "_catalog", lambda: relaxed)
+    company_scoped = {r.id for r in relaxed if any(p.attr == "company_type" for p in r.applies_if)}
+    assert "halal_certification" in company_scoped
+
+    company = _client(reviews=reviews).post(URL, json=_company_payload(has_employees=False))
+    individual = _client(reviews=reviews).post(URL, json={"taxpayer_type": "individual"})
+
+    assert "halal_certification" in {o["id"] for o in company.json()["obligations"]}
+    assert individual.json() == {"obligations": [], "withheld_count": 0}
+
+
+@pytest.mark.parametrize("value", ["02-30", "04-31", "06-31", "09-31", "11-31", "02-31"])
+def test_fiscal_year_end_must_be_a_real_calendar_day(value: str) -> None:
+    response = _client().post(URL, json=_company_payload(fiscal_year_end=value))
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("value", ["12-31", "02-29", "02-28", "04-30", "01-01"])
+def test_real_fiscal_year_ends_are_accepted(value: str) -> None:
+    response = _client().post(URL, json=_company_payload(fiscal_year_end=value))
+
+    assert response.status_code == 200
 
 
 def test_taxpayer_type_is_the_only_required_field() -> None:

@@ -94,7 +94,7 @@ describe("MyTaxCalendar", () => {
   });
 
   it("renders reviewed obligations and days on the Makassar civil date", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-09-29T00:00:00.000Z"));
     vi.stubGlobal(
       "fetch",
@@ -103,9 +103,8 @@ describe("MyTaxCalendar", () => {
     render(<MyTaxCalendar />);
 
     fireEvent.click(screen.getByLabelText("Individual"));
-    await vi.runAllTimersAsync();
 
-    expect(screen.getByText("Monthly filing")).toBeInTheDocument();
+    expect(await screen.findByText("Monthly filing")).toBeInTheDocument();
     expect(screen.getByText("2026-10-01 · in 2d")).toBeInTheDocument();
     expect(screen.getByText("2026-11-01 — October 2026")).toBeInTheDocument();
     expect(
@@ -153,6 +152,82 @@ describe("MyTaxCalendar", () => {
         "None of the obligations in our register apply to this profile.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("never claims nothing applies while rules are only withheld", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ obligations: [], withheld_count: 4 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MyTaxCalendar />);
+
+    await chooseCompanyProfile();
+
+    expect(
+      await screen.findByText(/4 more obligations may apply/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/None of the obligations in our register apply/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("sends the employee count as a non-negative integer", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ obligations: [], withheld_count: 0 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MyTaxCalendar />);
+    fireEvent.click(screen.getByLabelText("Company"));
+    fireEvent.click(screen.getByLabelText("PT PMA"));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(
+      screen.getByLabelText("Yes", { selector: 'input[name="employees"]' }),
+    );
+    fireEvent.click(
+      screen.getByLabelText("No", {
+        selector: 'input[name="foreign-employees"]',
+      }),
+    );
+    const input = screen.getByLabelText("How many employees?");
+    const next = screen.getByRole("button", { name: "Continue" });
+
+    fireEvent.change(input, { target: { value: "" } });
+    expect(next).toBeDisabled();
+    fireEvent.change(input, { target: { value: "-3" } });
+    expect(input).toHaveValue(0);
+    fireEvent.change(input, { target: { value: "2.7" } });
+    expect(input).toHaveValue(2);
+    fireEvent.click(next);
+    fireEvent.click(
+      screen.getByLabelText("No", { selector: 'input[name="pkp"]' }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(
+      screen.getByLabelText("No", { selector: 'input[name="online"]' }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByLabelText("Construction or pre-operational"));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.employee_count).toBe(2);
+    expect(Number.isInteger(body.employee_count)).toBe(true);
+  });
+
+  it("keeps the WhatsApp link at the 44px touch-target minimum", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse(sampleResponse)),
+    );
+    render(<MyTaxCalendar />);
+    fireEvent.click(screen.getByLabelText("Individual"));
+
+    const link = await screen.findByRole("link", {
+      name: "Ask our tax team on WhatsApp",
+    });
+
+    expect(link.style.minHeight).toBe("44px");
   });
 
   it("handles rate limits and generic errors with retry", async () => {

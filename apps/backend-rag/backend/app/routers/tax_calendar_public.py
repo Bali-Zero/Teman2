@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.services.compliance.obligations_register import (
     ClientProfile,
@@ -47,6 +47,16 @@ class TaxCalendarRequest(BaseModel):
     investment_stage: Literal["construction", "commercial"] | None = None
     fiscal_year_end: str = Field("12-31", pattern=r"^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")
     horizon_days: int = Field(365, ge=1, le=400)
+
+    @field_validator("fiscal_year_end")
+    @classmethod
+    def _fiscal_year_end_is_a_calendar_day(cls, value: str) -> str:
+        month, day = (int(part) for part in value.split("-"))
+        try:
+            date(2024, month, day)  # leap year: 02-29 is a real fiscal year end
+        except ValueError as exc:
+            raise ValueError("fiscal_year_end must be a real calendar day (MM-DD)") from exc
+        return value
 
 
 class UpcomingDueDate(BaseModel):

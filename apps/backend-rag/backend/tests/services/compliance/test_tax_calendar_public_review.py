@@ -1,15 +1,19 @@
+import dataclasses
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 import pytest
 import yaml
 
 from backend.app.setup.cors_config import get_allowed_origins
-from backend.services.compliance.obligations_register import load_catalog
+from backend.services.compliance.obligations_register import ObligationRule, load_catalog
 from backend.services.compliance.tax_calendar_public_review import (
     DEFAULT_REVIEW_PATH,
+    PublicReview,
+    is_publicly_cleared,
     load_public_reviews,
     rule_fingerprint,
 )
@@ -71,6 +75,56 @@ def test_fingerprint_is_stable_and_hex() -> None:
     assert first is not reloaded
     assert rule_fingerprint(reloaded) == rule_fingerprint(first)
     assert re.fullmatch(r"[0-9a-f]{64}", rule_fingerprint(first))
+
+
+def _pph21() -> ObligationRule:
+    return next(r for r in load_catalog() if r.id == "pph21_payment")
+
+
+def _cleared_at_own_fingerprint(rule: ObligationRule) -> dict[str, PublicReview]:
+    review = PublicReview(rule.id, "Test Signer", date(2026, 9, 30), rule_fingerprint(rule))
+    return {rule.id: review}
+
+
+def _different_value(rule: ObligationRule, name: str) -> object:
+    alternatives = {
+        "id": "pph21_payment_edited",
+        "name": rule.name + " (edited)",
+        "authority": rule.authority + " (edited)",
+        "legal_source": rule.legal_source + " (edited)",
+        "verified": not rule.verified,
+        "applies_if": rule.applies_if[:-1],
+        "due": dataclasses.replace(rule.due, day=(rule.due.day or 1) + 1),
+        "needs_review_reason": "edited after review",
+        "trigger": "edited after review",
+        "notes": "edited after review",
+    }
+    assert set(alternatives) == {f.name for f in dataclasses.fields(ObligationRule)}, (
+        "ObligationRule gained or lost a field: give it a replacement value here"
+    )
+    return alternatives[name]
+
+
+@pytest.mark.parametrize("field", [f.name for f in dataclasses.fields(ObligationRule)])
+def test_fingerprint_changes_when_any_rule_field_changes(field: str) -> None:
+    rule = _pph21()
+    edited = dataclasses.replace(rule, **{field: _different_value(rule, field)})
+
+    assert getattr(edited, field) != getattr(rule, field)
+    assert rule_fingerprint(edited) != rule_fingerprint(rule)
+
+
+def test_unverified_rule_is_withheld_even_at_its_own_fingerprint() -> None:
+    rule = dataclasses.replace(_pph21(), verified=False, needs_review_reason=None)
+
+    assert not is_publicly_cleared(rule, _cleared_at_own_fingerprint(rule))
+
+
+def test_verified_review_free_rule_is_cleared_at_its_own_fingerprint() -> None:
+    rule = _pph21()
+
+    assert rule.verified and rule.needs_review_reason is None
+    assert is_publicly_cleared(rule, _cleared_at_own_fingerprint(rule))
 
 
 def test_cli_prints_the_fingerprint() -> None:

@@ -41,7 +41,7 @@ const cardStyle: CSSProperties = {
   background: "var(--r19-surface)",
   border: "1px solid var(--r19-line)",
   borderRadius: "8px",
-  padding: "var(--space-5)",
+  padding: "var(--space-6)",
 };
 
 const controlStyle: CSSProperties = {
@@ -60,6 +60,13 @@ function civilDateInMakassar(date: Date) {
   const value = (type: string) =>
     parts.find((part) => part.type === type)?.value;
   return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+function parseEmployeeCount(raw: string) {
+  const parsed = Math.trunc(Number(raw));
+  return raw.trim() === "" || Number.isNaN(parsed)
+    ? undefined
+    : Math.max(0, parsed);
 }
 
 function daysUntil(dueDate: string) {
@@ -328,9 +335,10 @@ export function MyTaxCalendar() {
                   onChange={(event) =>
                     updateProfile(
                       "employeeCount",
-                      Math.max(0, Number(event.target.value)),
+                      parseEmployeeCount(event.target.value),
                     )
                   }
+                  step="1"
                   style={inputStyle}
                   type="number"
                   value={profile.employeeCount ?? ""}
@@ -418,11 +426,17 @@ function CalendarResult({
   if (result.obligations.length === 0) {
     return (
       <div style={cardStyle}>
-        <p style={questionStyle}>
-          {profile.taxpayerType === "individual"
-            ? "Personal tax deadlines are not in this calendar yet."
-            : "None of the obligations in our register apply to this profile."}
-        </p>
+        {profile.taxpayerType === "individual" ? (
+          <p style={questionStyle}>
+            Personal tax deadlines are not in this calendar yet.
+          </p>
+        ) : (
+          result.withheld_count === 0 && (
+            <p style={questionStyle}>
+              None of the obligations in our register apply to this profile.
+            </p>
+          )
+        )}
         {profile.taxpayerType === "individual" && <WhatsAppLink />}
         {result.withheld_count > 0 && (
           <WithheldNote count={result.withheld_count} />
@@ -497,8 +511,11 @@ function WhatsAppLink() {
       href={whatsappHref}
       style={{
         color: "var(--r19-copper)",
+        alignItems: "center",
+        display: "inline-flex",
         fontFamily: "var(--font-sans)",
         fontWeight: 600,
+        minHeight: "44px",
       }}
     >
       Ask our tax team on WhatsApp
@@ -519,7 +536,7 @@ function WizardButtons({
       style={{
         display: "flex",
         gap: "var(--space-3)",
-        marginTop: "var(--space-5)",
+        marginTop: "var(--space-6)",
       }}
     >
       <button onClick={back} style={secondaryButtonStyle} type="button">
@@ -782,5 +799,5 @@ const badgeStyle: CSSProperties = {
 const listStyle: CSSProperties = {
   color: "var(--r19-muted)",
   margin: "var(--space-4) 0",
-  paddingLeft: "var(--space-5)",
+  paddingLeft: "var(--space-6)",
 };
