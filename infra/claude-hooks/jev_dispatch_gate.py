@@ -41,6 +41,11 @@ redact the whole text with linear-time masks, then cut; never cut first.
 so the ORIGINAL prompt appears on the hook's stdout: that stdout is read by
 the process that produced the prompt, it is not egress. Test seam: JEV_DISPATCH_GATE_FAKE_ANSWERS (JSON) replaces the
 network call — tests only, documented like NZ_JUMP_DRY.
+INTERPRETER: PATH python3 is the default; when the repo redactor is not
+importable the hook re-execs once under the repo .venv (resolved via git
+common dir); if that .venv is absent the hook keeps running with the
+in-hook masks and the receipt says repo_redactor: false, interpreter: path
+— degradation, not the pinned runtime.
 """
 from __future__ import annotations
 
@@ -50,6 +55,7 @@ import os
 import pathlib
 import re
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -181,6 +187,48 @@ def _repo_redactor():
         return _redact_pii.Redactor.load_static().redact_fragment
     except Exception:
         return None
+
+
+def _repo_venv_python() -> pathlib.Path | None:
+    """Locate the MAIN checkout's `.venv/bin/python` from any worktree, via
+    git's common dir (worktrees have no `.venv` of their own)."""
+    env_override = os.environ.get("JEV_DISPATCH_GATE_VENV_PYTHON")
+    if env_override:
+        return pathlib.Path(env_override)
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(HERE), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True, text=True, timeout=2,
+        )
+        common_dir = pathlib.Path(out.stdout.strip())
+        candidate = common_dir.parent / ".venv" / "bin" / "python"
+        return candidate if os.access(candidate, os.X_OK) else None
+    except Exception:
+        return None
+
+
+def _reexec_under_repo_venv(argv: list[str]) -> None:
+    """Re-exec once under the repo `.venv` when PATH python3 lacks the repo
+    redactor. Called before the alarm and before stdin is read, so a failed
+    re-exec attempt never consumes the payload. Fail-open on any error."""
+    try:
+        if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1":
+            return
+        if os.environ.get("JEV_DISPATCH_GATE_FORCE_REEXEC_TEST") != "1":
+            try:
+                sys.path.insert(0, str(SCRIPTS))
+                import _redact_pii  # noqa: F401, PLC0415
+
+                return
+            except Exception:
+                pass
+        p = _repo_venv_python()
+        if p is None:
+            return
+        os.environ["JEV_DISPATCH_GATE_REEXEC"] = "1"
+        os.execv(str(p), [str(p), str(pathlib.Path(__file__).resolve()), *argv])
+    except Exception:
+        return
 
 
 def redact(text: str, repo_layer=None) -> str:
@@ -390,7 +438,8 @@ def gate(payload: dict) -> dict | None:
     sha = hashlib.sha256((desc + "\n" + prompt).encode("utf-8")).hexdigest()[:12]
     row = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "session_id": payload.get("session_id"),
            "tool_use_id": payload.get("tool_use_id"), "subagent_type": tool_input.get("subagent_type"),
-           "requested_model": tool_input.get("model"), "prompt_sha12": sha, "mode": MODE}
+           "requested_model": tool_input.get("model"), "prompt_sha12": sha, "mode": MODE,
+           "interpreter": "venv" if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1" else "path"}
     skip = None
     if MODE == "off":
         skip = "off"
@@ -448,6 +497,7 @@ def report() -> dict:
     lat = sorted(r["latency_ms"] for r in rows if isinstance(r.get("latency_ms"), int))
     return {"receipts": len(rows), "by_action": by("action"), "by_jev_status": by("jev_status"),
             "by_skip": by("skip"), "downgrades": by("new_model"), "by_repo_redactor": by("repo_redactor"),
+            "by_interpreter": by("interpreter"),
             "opus_seats_avoided": sum(1 for r in rows if r.get("action") in ("deny", "downgrade")
                                       and _family(r.get("requested_model")) == "opus"),
             "latency_ms_p50": lat[len(lat) // 2] if lat else None}
@@ -457,6 +507,7 @@ def main(argv: list[str]) -> int:
     if "--report" in argv:
         print(json.dumps(report(), indent=2))
         return 0
+    _reexec_under_repo_venv(argv)
     try:
         # Whole-process bound: import, redaction, vendor wait and filesystem
         # together, not only the vendor thread. Alarm → no decision, exit 0.
