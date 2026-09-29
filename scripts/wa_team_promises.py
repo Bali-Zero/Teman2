@@ -1258,17 +1258,23 @@ SELECT count(*) AS total,
        count(*) FILTER (WHERE p.client_id IS NULL AND w.client_id IS NOT NULL) AS linkable_client,
        count(*) FILTER (WHERE p.team_member_email IS NULL AND {_LINK_EMAIL_SQL} IS NOT NULL)
            AS linkable_member,
-       count(*) FILTER (WHERE p.client_id IS NULL AND w.client_id IS NOT NULL
-                          AND NOT EXISTS (SELECT 1 FROM clients c WHERE c.id = w.client_id))
+       count(*) FILTER (WHERE coalesce(p.client_id, w.client_id) IS NOT NULL
+                          AND NOT EXISTS (SELECT 1 FROM clients c
+                                           WHERE c.id = coalesce(p.client_id, w.client_id)))
            AS client_not_in_clients,
-       count(*) FILTER (WHERE p.team_member_email IS NULL AND {_LINK_EMAIL_SQL} IS NOT NULL
+       count(*) FILTER (WHERE coalesce(NULLIF(lower(btrim(p.team_member_email)), ''), {_LINK_EMAIL_SQL})
+                                IS NOT NULL
                           AND NOT EXISTS (SELECT 1 FROM team_members t
-                                           WHERE lower(t.email) = {_LINK_EMAIL_SQL}))
+                                           WHERE lower(btrim(t.email)) = coalesce(
+                                               NULLIF(lower(btrim(p.team_member_email)), ''),
+                                               {_LINK_EMAIL_SQL})))
            AS member_not_in_roster,
        count(*) FILTER (WHERE (p.client_id IS NOT NULL AND w.client_id IS NOT NULL
                                  AND p.client_id <> w.client_id)
-                           OR (p.team_member_email IS NOT NULL AND {_LINK_EMAIL_SQL} IS NOT NULL
-                                 AND p.team_member_email <> {_LINK_EMAIL_SQL})) AS conflicts
+                           OR (NULLIF(lower(btrim(p.team_member_email)), '') IS NOT NULL
+                                 AND {_LINK_EMAIL_SQL} IS NOT NULL
+                                 AND lower(btrim(p.team_member_email)) <> {_LINK_EMAIL_SQL}))
+           AS conflicts
   FROM team_promises p LEFT JOIN whatsapp_message_context w ON w.id = p.message_id
 """
 

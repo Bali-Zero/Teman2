@@ -68,6 +68,7 @@ async def test_audit_returns_ints_only():
 async def test_cli_link_is_mutually_exclusive_with_other_modes():
     assert await wtp.cli_main(["--link", "--scan"]) == 2
     assert await wtp.cli_main(["--link", "--judge"]) == 2
+    assert await wtp.cli_main(["--link", "--init-schema"]) == 2
 
 
 class _NullPool:

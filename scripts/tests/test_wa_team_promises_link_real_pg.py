@@ -225,12 +225,14 @@ async def test_link_audit_counts_only_and_flags_conflicts(pg_socket_dir):
         await _wmc(pool, 1, client_id=11, email="member-1@example.invalid")   # fully known
         await _wmc(pool, 2, client_id=77, email="stranger@example.invalid")   # client + member unknown
         await _wmc(pool, 3, client_id=22, email="member-1@example.invalid")   # promise disagrees
+        await _wmc(pool, 4, client_id=11, email="member-1@example.invalid")   # same address, other case
         await _promise(pool, 1)
         await _promise(pool, 2)
         await _promise(pool, 3, client_id=11)
+        await _promise(pool, 4, client_id=11, email=" MEMBER-1@example.invalid ")
         audit = await wtp.audit_link_counts(pool)
         assert audit == {
-            "total": 3, "client_null": 2, "member_null": 3,
+            "total": 4, "client_null": 2, "member_null": 3,
             "linkable_client": 2, "linkable_member": 3,
             "client_not_in_clients": 1, "member_not_in_roster": 1,
             "conflicts": 1,
