@@ -41,15 +41,26 @@ redact the whole text with linear-time masks, then cut; never cut first.
 so the ORIGINAL prompt appears on the hook's stdout: that stdout is read by
 the process that produced the prompt, it is not egress. Test seam: JEV_DISPATCH_GATE_FAKE_ANSWERS (JSON) replaces the
 network call — tests only, documented like NZ_JUMP_DRY.
+INTERPRETER: the pinned interpreter is apps/backend-rag/.venv/bin/python
+(its requirements lock pins pyyaml with hashes; scripts/agent_start.py
+symlinks that venv into every worktree). The hook ALWAYS re-execs into it
+before doing anything else — no test-import-first probe. No usable pinned
+interpreter, or a failed exec, → Jev is skipped entirely
+(skip: no_pinned_interpreter), the dispatch is allowed, zero vendor calls.
+PATH python3 is never itself labelled compliant. Receipt `interpreter`:
+"venv" (re-exec'd), "seam" (JEV_DISPATCH_GATE_INTERPRETER_SEAM test seam
+for CI/unit runs with no backend venv), or absent on a skip row.
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import os
 import pathlib
 import re
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -181,6 +192,127 @@ def _repo_redactor():
         return _redact_pii.Redactor.load_static().redact_fragment
     except Exception:
         return None
+
+
+def _usable_python(path: pathlib.Path) -> bool:
+    """A candidate interpreter is usable only if absolute, owned by us,
+    not WORLD-writable, and executable. Group-writable is accepted: mise
+    installs with the standard umask 002 are 0775/group staff on these
+    Macs, and a same-uid attacker who could plant a hostile binary there
+    is not stopped by the group bit anyway — the uid check is the actual
+    boundary. Applied identically to the git-resolved venv and to
+    JEV_DISPATCH_GATE_VENV_PYTHON (a test seam)."""
+    try:
+        if not path.is_absolute():
+            return False
+        st = os.stat(path)  # follows symlinks to the real target
+        return (st.st_uid == os.getuid() and not (st.st_mode & 0o002)
+                and os.access(path, os.X_OK))
+    except Exception:
+        return False
+
+
+@functools.lru_cache(maxsize=1)
+def _repo_venv_python() -> pathlib.Path | None:
+    """Locate the PINNED interpreter: apps/backend-rag/.venv/bin/python (its
+    requirements lock files pin pyyaml with hashes; scripts/agent_start.py
+    symlinks that venv into every worktree). Falls back to the main
+    checkout's copy, resolved via git's common dir, only when the direct
+    path is unusable. The root .venv has no manifest and is never a
+    candidate. Cached: env vars driving this resolution do not change
+    within one process, so the (possibly subprocess-backed) fallback runs
+    at most once — both the exec path and the identity recheck share it."""
+    env_override = os.environ.get("JEV_DISPATCH_GATE_VENV_PYTHON")  # test seam only
+    if env_override:
+        p = pathlib.Path(env_override)
+        return p if _usable_python(p) else None
+    direct = HERE.parent.parent / "apps" / "backend-rag" / ".venv" / "bin" / "python"
+    if _usable_python(direct):
+        return direct
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(HERE), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True, text=True, timeout=1.5,
+        )
+        if out.returncode != 0 or not out.stdout.strip():
+            return None
+        common_dir = pathlib.Path(out.stdout.strip())
+        fallback = common_dir.parent / "apps" / "backend-rag" / ".venv" / "bin" / "python"
+        return fallback if _usable_python(fallback) else None
+    except Exception:
+        return None
+
+
+def _seam_active() -> bool:
+    """The CI/unit seam only counts when JEV_DISPATCH_GATE_FAKE_ANSWERS is
+    ALSO set: a stray JEV_DISPATCH_GATE_INTERPRETER_SEAM export alone must
+    never route a real vendor call under an unpinned interpreter."""
+    return (os.environ.get("JEV_DISPATCH_GATE_INTERPRETER_SEAM") == "1"
+            and bool(os.environ.get("JEV_DISPATCH_GATE_FAKE_ANSWERS")))
+
+
+def _pinned_venv_dir() -> pathlib.Path | None:
+    """The pinned venv's root (parent of bin/), from the FULLY resolved
+    candidate — direct path, JEV_DISPATCH_GATE_VENV_PYTHON override, or
+    git common-dir fallback, i.e. exactly what _reexec_under_repo_venv
+    would exec into (_repo_venv_python is cached, so this costs nothing
+    extra). On M5 apps/backend-rag/.venv/bin/python is itself a symlink to
+    the mise BASE python, so its realpath is identical to bare `python3`'s;
+    sys.prefix (which reads the venv's own pyvenv.cfg) is the only
+    reliable identity, the binary path never is."""
+    p = _repo_venv_python()
+    return p.parent.parent if p else None
+
+
+def _running_under_pinned_venv() -> bool:
+    try:
+        venv_dir = _pinned_venv_dir()
+        return venv_dir is not None and os.path.realpath(sys.prefix) == os.path.realpath(str(venv_dir))
+    except Exception:
+        return False
+
+
+def _interpreter_label() -> str | None:
+    """"venv" only when REEXEC=1 AND sys.prefix observably matches the
+    pinned venv dir — the flag alone is a loop guard, never identity, so a
+    stale/spoofed REEXEC=1 with a prefix mismatch labels None (gate() then
+    applies no_pinned_interpreter). "seam" under the CI/unit test seam
+    (only with fake answers set)."""
+    if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1" and _running_under_pinned_venv():
+        return "venv"
+    if _seam_active():
+        return "seam"
+    return None
+
+
+def _reexec_under_repo_venv(argv: list[str]) -> None:
+    """ALWAYS re-execs into the pinned interpreter unless already running
+    under it (env flag as the LOOP GUARD only, plus sys.prefix — never the
+    binary path/realpath — for identity) — no test-import-first probe. No
+    usable pinned interpreter, or a failed exec, → return here; gate()
+    then skips Jev rather than call the vendor under an unpinned
+    interpreter. Called before the alarm and before stdin is read, so a
+    failed attempt never consumes the payload."""
+    try:
+        if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1":
+            return
+        if _seam_active():
+            return
+        p = _repo_venv_python()
+        if p is None:
+            return
+        if _running_under_pinned_venv():
+            os.environ["JEV_DISPATCH_GATE_REEXEC"] = "1"  # already running under the pinned venv
+            return
+        hook_path = str(pathlib.Path(__file__).resolve())
+        env = {**os.environ, "JEV_DISPATCH_GATE_REEXEC": "1"}
+        try:
+            signal.setitimer(signal.ITIMER_REAL, 0)  # no pending alarm carries into the exec'd child
+            os.execve(str(p), [str(p), hook_path, *argv], env)
+        except OSError:
+            return
+    except Exception:
+        return
 
 
 def redact(text: str, repo_layer=None) -> str:
@@ -323,8 +455,11 @@ def _ask_jev(state: dict, deadline: float) -> tuple[dict | None, str]:
     fake = os.environ.get("JEV_DISPATCH_GATE_FAKE_ANSWERS")
     if fake:
         return json.loads(fake), "fake"
-    sys.path.insert(0, str(SCRIPTS))
-    import typesafe_client as tc  # noqa: PLC0415
+    try:
+        sys.path.insert(0, str(SCRIPTS))
+        import typesafe_client as tc  # noqa: PLC0415
+    except Exception:
+        return None, "vendor_import_failed"
 
     _load_key_into_own_env()
 
@@ -391,6 +526,9 @@ def gate(payload: dict) -> dict | None:
     row = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "session_id": payload.get("session_id"),
            "tool_use_id": payload.get("tool_use_id"), "subagent_type": tool_input.get("subagent_type"),
            "requested_model": tool_input.get("model"), "prompt_sha12": sha, "mode": MODE}
+    interp = _interpreter_label()
+    if interp:
+        row["interpreter"] = interp
     skip = None
     if MODE == "off":
         skip = "off"
@@ -403,9 +541,19 @@ def gate(payload: dict) -> dict | None:
     if skip:
         _receipt({**row, "action": "skip", "skip": skip})
         return None
+    if interp is None:
+        _receipt({**row, "action": "skip", "skip": "no_pinned_interpreter"})
+        return None
     t0 = time.time()
     repo_layer = _repo_redactor()
     row["repo_redactor"] = repo_layer is not None
+    if repo_layer is not None:
+        try:
+            import yaml  # noqa: PLC0415
+
+            row["redactor_yaml"] = getattr(yaml, "__version__", None)
+        except Exception:
+            pass
     try:
         state = build_state(tool_input, repo_layer)
     except Exception:
@@ -448,6 +596,7 @@ def report() -> dict:
     lat = sorted(r["latency_ms"] for r in rows if isinstance(r.get("latency_ms"), int))
     return {"receipts": len(rows), "by_action": by("action"), "by_jev_status": by("jev_status"),
             "by_skip": by("skip"), "downgrades": by("new_model"), "by_repo_redactor": by("repo_redactor"),
+            "by_interpreter": by("interpreter"), "by_redactor_yaml": by("redactor_yaml"),
             "opus_seats_avoided": sum(1 for r in rows if r.get("action") in ("deny", "downgrade")
                                       and _family(r.get("requested_model")) == "opus"),
             "latency_ms_p50": lat[len(lat) // 2] if lat else None}
@@ -457,6 +606,16 @@ def main(argv: list[str]) -> int:
     if "--report" in argv:
         print(json.dumps(report(), indent=2))
         return 0
+    try:
+        # Bound the re-exec itself: a hung git/stat call must not block the
+        # hook past this alarm. On timeout, proceed under the current
+        # interpreter — gate() then applies its own no_pinned_interpreter skip.
+        signal.signal(signal.SIGALRM, _raise_deadline)
+        signal.setitimer(signal.ITIMER_REAL, 3)
+        _reexec_under_repo_venv(argv)
+        signal.setitimer(signal.ITIMER_REAL, 0)
+    except _Deadline:
+        signal.setitimer(signal.ITIMER_REAL, 0)
     try:
         # Whole-process bound: import, redaction, vendor wait and filesystem
         # together, not only the vendor thread. Alarm → no decision, exit 0.
