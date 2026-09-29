@@ -15,6 +15,11 @@ from backend.services.compliance.obligations_register import (
     due_dates,
     load_catalog,
 )
+from backend.services.compliance.tax_calendar_public_review import (
+    PublicReview,
+    is_publicly_cleared,
+    load_public_reviews,
+)
 
 router = APIRouter(prefix="/api/public/tax-calendar", tags=["tax-calendar"])
 WITA = ZoneInfo("Asia/Makassar")
@@ -54,19 +59,29 @@ class TaxCalendarObligation(BaseModel):
     name: str
     authority: str
     legal_source: str
-    verified: bool
-    needs_review: bool
     frequency: str
+    reviewed_on: date
     upcoming_due_dates: list[UpcomingDueDate]
 
 
 class TaxCalendarResponse(BaseModel):
     obligations: list[TaxCalendarObligation]
+    withheld_count: int
 
 
 @lru_cache(maxsize=1)
 def _catalog() -> tuple[ObligationRule, ...]:
     return tuple(load_catalog())
+
+
+@lru_cache(maxsize=1)
+def _public_reviews() -> dict[str, PublicReview]:
+    return load_public_reviews()
+
+
+def get_public_reviews() -> dict[str, PublicReview]:
+    """Reviewer clearances; override this dependency in tests."""
+    return _public_reviews()
 
 
 def _profile(body: TaxCalendarRequest) -> ClientProfile:
@@ -101,11 +116,16 @@ def _applicable(rule: ObligationRule, profile: ClientProfile, taxpayer_type: str
 async def public_tax_calendar_obligations(
     body: TaxCalendarRequest,
     today: Annotated[date, Depends(get_tax_calendar_today)],
+    reviews: Annotated[dict[str, PublicReview], Depends(get_public_reviews)],
 ) -> TaxCalendarResponse:
     profile = _profile(body)
     obligations: list[TaxCalendarObligation] = []
+    withheld = 0
     for rule in _catalog():
         if not _applicable(rule, profile, body.taxpayer_type):
+            continue
+        if not is_publicly_cleared(rule, reviews):
+            withheld += 1
             continue
         upcoming = [
             UpcomingDueDate(period_key=key, due_date=due)
@@ -117,10 +137,9 @@ async def public_tax_calendar_obligations(
                 name=rule.name,
                 authority=rule.authority,
                 legal_source=rule.legal_source,
-                verified=rule.verified,
-                needs_review=not rule.verified or rule.needs_review_reason is not None,
                 frequency=rule.due.frequency,
+                reviewed_on=reviews[rule.id].reviewed_on,
                 upcoming_due_dates=upcoming,
             )
         )
-    return TaxCalendarResponse(obligations=obligations)
+    return TaxCalendarResponse(obligations=obligations, withheld_count=withheld)

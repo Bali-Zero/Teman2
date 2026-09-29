@@ -1,0 +1,7 @@
+# Each entry clears ONE catalog rule for the public tax calendar. It is written only after the Tax
+# Department signer named by the owner has reviewed that rule's public copy. rule_fingerprint binds
+# the clearance to the exact catalog entry: editing the rule re-withholds it until re-reviewed.
+# Entry: {rule_id, reviewer, reviewed_on: YYYY-MM-DD, rule_fingerprint: 64 hex}. Get the fingerprint with
+#   python -m backend.services.compliance.tax_calendar_public_review fingerprint <rule_id>
+version: 1
+reviews: []
