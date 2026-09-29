@@ -3,7 +3,7 @@ task_id: wa-mirror-attention-7665-c1
 gear: 3
 mission_colour: BLUE
 gate_class: opus
-brief_ref: evidence/2026-09/agent-m5-wa-mirror-attention-7665-c1-0929/brief.yml
+brief_ref: evidence/brief.yml
 base_sha: "def1f0dfee207d84a5b187e87ddc9185302d5168" # pragma: allowlist secret - merge-base with origin/main
 head_sha: "27a87295de13da7d0811f23dcfe35f92a8797e7e" # pragma: allowlist secret - code head after council round 1
 pii_scan: clean
