@@ -23,6 +23,7 @@ describe("fetchPortalSuperuser", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/portal/admin/me", {
       credentials: "include",
       headers: { Authorization: "Bearer token" },
+      signal: expect.any(AbortSignal),
     });
   });
 
@@ -41,6 +42,7 @@ describe("fetchPortalSuperuser", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/portal/admin/me", {
       credentials: "include",
       headers: undefined,
+      signal: expect.any(AbortSignal),
     });
   });
 

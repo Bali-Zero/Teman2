@@ -244,6 +244,28 @@ describe("PortalLayout", () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
+  it("never asks the superuser probe on the partner cookie path", async () => {
+    mockUsePathname.mockReturnValue("/portal/partner/dashboard");
+    mockGetToken.mockReturnValue(null);
+    mockGetProfile.mockRejectedValue(new Error("401 Unauthorized"));
+    mockFetchPortalSuperuser.mockResolvedValue({
+      isSuperuser: true,
+      email: "founder@example.test",
+    });
+
+    render(
+      <PortalLayout>
+        <div>Partner Content</div>
+      </PortalLayout>,
+    );
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalled();
+    });
+    expect(mockFetchPortalSuperuser).not.toHaveBeenCalled();
+    expect(screen.queryByText("Partner Content")).not.toBeInTheDocument();
+  });
+
   it("should load user profile from stored profile", async () => {
     mockGetUserProfile.mockReturnValue({
       name: "Stored User",
