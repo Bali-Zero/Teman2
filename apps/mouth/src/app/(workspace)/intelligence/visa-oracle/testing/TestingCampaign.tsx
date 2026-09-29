@@ -287,6 +287,7 @@ export default function OracleTestingPage() {
       </p>
     );
   const days = [...new Set(data.assignments.map((a) => a.day))].sort();
+  const perTester = days.length * 5;
   const mine = data.assignments.filter(
     (a) => a.slot === data.viewer.slot && a.day === day,
   );
@@ -358,7 +359,7 @@ export default function OracleTestingPage() {
                       {d.slice(5)}
                     </th>
                   ))}
-                  <th className="p-2">Total / 25</th>
+                  <th className="p-2">Total / {perTester}</th>
                   <th className="p-2">Ditinjau</th>
                 </tr>
               </thead>
@@ -381,7 +382,7 @@ export default function OracleTestingPage() {
                       {data.progress
                         .filter((p) => p.slot === slot.slot)
                         .reduce((n, p) => n + p.submitted, 0)}
-                      /25
+                      /{perTester}
                     </td>
                     <td className="p-2 text-center">
                       {data.progress

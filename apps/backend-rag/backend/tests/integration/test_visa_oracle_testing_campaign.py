@@ -455,3 +455,8 @@ async def test_date_sensitive_cases_cannot_be_started_on_a_different_day(setup, 
         ).status_code == 409
         data = (await c.get("/api/visa-oracle/testing")).json()
         assert not any(a["can_start"] for a in data["assignments"] if a["day"] == "2026-10-02")
+        # Innocence: the same day's own cases stay startable.
+        assert all(a["can_start"] for a in data["assignments"] if a["day"] == "2026-10-01")
+        assert (
+            await c.post("/api/visa-oracle/testing/D2-T01-1/start", json=expected())
+        ).status_code == 200
