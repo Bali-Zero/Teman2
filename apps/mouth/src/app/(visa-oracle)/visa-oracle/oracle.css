@@ -259,10 +259,6 @@ html[data-oracle-theme-bootstrap="dark"]
     align-items: start;
     gap: var(--space-8);
   }
-  .oracle-main__tree {
-    position: sticky;
-    top: var(--space-6);
-  }
 }
 .oracle-main__content {
   max-width: var(--oracle-max-width);
@@ -475,16 +471,6 @@ html[data-oracle-theme-bootstrap="dark"]
   background: var(--oracle-state-likely-not-bg);
   font-weight: 600;
 }
-.oracle-decision-boundary {
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--oracle-accent-gold);
-  background: var(--oracle-state-conditional-bg);
-  color: var(--oracle-ink-muted);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-}
-
 .oracle-options {
   display: flex;
   flex-direction: column;
@@ -630,14 +616,6 @@ html[data-oracle-theme-bootstrap="dark"]
 .oracle-option-card:disabled:hover {
   border-color: var(--oracle-border);
 }
-.oracle-option-card__hint {
-  display: block;
-  font-size: var(--text-sm);
-  font-weight: 400;
-  color: var(--oracle-ink-muted);
-  margin-top: 0.15rem;
-}
-
 .oracle-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
@@ -695,13 +673,6 @@ html[data-oracle-theme-bootstrap="dark"]
   padding-left: var(--space-3);
   max-width: 46ch;
 }
-.oracle-whyweask__regulation {
-  display: block;
-  margin-top: var(--space-1);
-  font-size: var(--text-xs);
-  color: var(--oracle-ink-faint);
-}
-
 /* ─── Not sure ──────────────────────────────────────────────────────────── */
 .oracle-notsure {
   display: inline-flex;
@@ -910,15 +881,6 @@ html[data-oracle-theme-bootstrap="dark"]
   font-size: clamp(1.25rem, 3vw, 1.6rem);
   line-height: 1.2;
 }
-.oracle-candidate-card__rank {
-  flex: 0 0 auto;
-  padding: 0.35rem 0.65rem;
-  border: 1px solid var(--oracle-border);
-  border-radius: var(--oracle-radius-chip);
-  color: var(--oracle-ink-muted);
-  font-size: var(--text-xs);
-  font-weight: 700;
-}
 .oracle-candidate-card__details {
   display: grid;
   gap: var(--space-5);
@@ -984,13 +946,6 @@ html[data-oracle-theme-bootstrap="dark"]
 .oracle-source-list li + li {
   margin-top: var(--space-3);
 }
-.oracle-reason-list__sources {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-}
-.oracle-reason-list__sources a,
 .oracle-source-list a {
   display: inline-flex;
   align-items: center;
@@ -1055,35 +1010,6 @@ html[data-oracle-theme-bootstrap="dark"]
   border-radius: var(--oracle-radius-card);
   background: var(--oracle-bg-elevated);
 }
-.oracle-table-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--oracle-border);
-  border-radius: var(--oracle-radius-card);
-}
-.oracle-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 32rem;
-  font-size: var(--text-sm);
-}
-.oracle-table th,
-.oracle-table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--oracle-border);
-  white-space: nowrap;
-}
-.oracle-table th {
-  color: var(--oracle-ink-faint);
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: var(--text-xs);
-  letter-spacing: 0.06em;
-}
-.oracle-table tr:last-child td {
-  border-bottom: none;
-}
-
 .oracle-price {
   display: flex;
   flex-direction: column;
@@ -1114,17 +1040,6 @@ html[data-oracle-theme-bootstrap="dark"]
   font-size: var(--text-sm);
   color: var(--oracle-ink-muted);
 }
-/* Finding #15: NO_SUPPORTED_PATH alternatives render as full-width
-   `.oracle-option-card` buttons inside this list — reset the plain-text
-   list-item gap/color so the button owns its own spacing. */
-.oracle-checklist-doc--actionable li {
-  display: block;
-  color: inherit;
-}
-.oracle-checklist-doc--actionable .oracle-option-card {
-  width: 100%;
-}
-
 .oracle-next-steps {
   margin: 0;
   padding: 0;
@@ -1253,20 +1168,6 @@ html[data-oracle-theme-bootstrap="dark"]
   border-color: var(--oracle-canopy);
   color: var(--oracle-canopy);
 }
-.oracle-copy-cta[data-copy-state="copied"] {
-  color: var(--oracle-state-eligible);
-  border-color: var(--oracle-state-eligible);
-}
-/* P1 minor (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18): the
-   clipboard write can genuinely reject (insecure context, denied
-   permission) — a visible failure state, not just a silently-swallowed
-   catch, color+icon+text never color-alone (never-color-alone spec
-   hard-constraint 4). */
-.oracle-copy-cta[data-copy-state="failed"] {
-  color: var(--oracle-state-likely-not);
-  border-color: var(--oracle-state-likely-not);
-}
-
 /* Print-only content — hidden on screen, revealed only inside @media print
    below (the facts recap "answers" section print's anatomy needs but the
    verdict screen never otherwise renders — see OutcomeSheet.tsx). */
@@ -1388,8 +1289,6 @@ html[data-oracle-theme-bootstrap="dark"]
    outcome-page anatomy "share/print/PDF") ───────────────────────────────── */
 @media print {
   .oracle-topbar,
-  .oracle-main__tree,
-  .oracle-tree-minimap-trigger,
   .oracle-footer,
   .oracle-no-print {
     display: none !important;
@@ -1416,7 +1315,6 @@ html[data-oracle-theme-bootstrap="dark"]
       .oracle-verdict-card,
       .oracle-confirmation__group,
       .oracle-receipt,
-      .oracle-table-scroll,
       .oracle-checklist__item,
       .oracle-verdict-chip
     ) {
