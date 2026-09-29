@@ -224,10 +224,11 @@ first_doc AS (
 )
 SELECT fd.practice_id, fd.first_doc_at, p.client_id,
        lower(p.assigned_to) AS practice_assignee,
-       lower(c.assigned_to) AS client_assignee
+       lower(cl.assigned_to) AS client_assignee
 FROM first_doc fd
 JOIN practices p ON p.id = fd.practice_id
 JOIN real_clients c ON c.id = p.client_id
+JOIN clients cl ON cl.id = c.id
 WHERE fd.first_doc_at >= TIMESTAMP WITH TIME ZONE '{start_ts}'
   AND fd.first_doc_at <  TIMESTAMP WITH TIME ZONE '{end_ts}';
 """.strip()
@@ -246,10 +247,11 @@ SELECT pm.client_id, pm.practice_id, pm.created_at,
           AND reply.direction = 'team_to_client'
           AND reply.is_system_generated = FALSE
           AND (reply.created_at, reply.id) > (pm.created_at, pm.id)) AS reply_at,
-       lower(c.assigned_to) AS client_assignee,
+       lower(cl.assigned_to) AS client_assignee,
        lower(p.assigned_to) AS practice_assignee
 FROM portal_messages pm
 JOIN real_clients c ON c.id = pm.client_id
+JOIN clients cl ON cl.id = c.id
 LEFT JOIN practices p ON p.id = pm.practice_id
 WHERE pm.direction = 'client_to_team'
   AND pm.is_system_generated = FALSE
@@ -273,10 +275,11 @@ SELECT prd.id, prd.practice_id, p.client_id,
        CASE WHEN prd.status NOT IN ('uploaded', 'pending')
             THEN (prd.updated_at AT TIME ZONE 'UTC') END AS review_at,
        lower(p.assigned_to) AS practice_assignee,
-       lower(c.assigned_to) AS client_assignee
+       lower(cl.assigned_to) AS client_assignee
 FROM practice_required_documents prd
 JOIN practices p ON p.id = prd.practice_id
 JOIN real_clients c ON c.id = p.client_id
+JOIN clients cl ON cl.id = c.id
 WHERE prd.uploaded_by_client = TRUE
   AND (prd.uploaded_at AT TIME ZONE 'UTC') >= TIMESTAMP WITH TIME ZONE '{start_ts}'
   AND p.status <> 'cancelled';
