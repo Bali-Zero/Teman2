@@ -249,7 +249,7 @@ jobs:
       - name: The T3 promise real-PG corpus executes and does not skip
         run: |
           set -uo pipefail
-          FLOOR=65   # real-PG mode, scripts/tests/test_wa_team_promises*real_pg.py only: passed count, zero skips allowed
+          FLOOR=68   # real-PG mode, scripts/tests/test_wa_team_promises*real_pg.py only: passed count, zero skips allowed
           RC=0
           OUT="$(WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*real_pg.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"
