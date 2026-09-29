@@ -8,6 +8,14 @@ import pytest
 
 from backend.services.portal import challenge_events as events
 
+#  Pinned inside Round 1's own window so the internal `r2.active_round(now)`
+# branch in `_publish_registration_goal` picks the R1 lookup path regardless
+# of the real calendar date the suite happens to run on (after 2026-09-30
+# WITA, "today" would otherwise silently flip these fixtures onto the R2
+# path). `events.compute_status` is a SEPARATE seam — pinned "live" below —
+# gating whether a goal is attempted at all.
+FROZEN_ROUND1_NOW = datetime(2026, 9, 20, 4, 0, tzinfo=timezone.utc)
+
 
 @pytest.fixture
 def transport(monkeypatch):
@@ -16,6 +24,7 @@ def transport(monkeypatch):
     manager.get_async_client.return_value = redis
     monkeypatch.setattr(events.RedisManager, "get_instance", lambda: manager)
     monkeypatch.setattr(events, "compute_status", lambda now: "live")
+    monkeypatch.setattr(events, "_now", lambda: FROZEN_ROUND1_NOW)
     connection = AsyncMock()
     pool = MagicMock()
     pool.acquire.return_value.__aenter__.return_value = connection
@@ -65,6 +74,66 @@ async def test_closed_window_and_transport_failure_never_fail_registration(trans
     monkeypatch.setattr(events, "compute_status", lambda now: "live")
     redis.eval.side_effect = ConnectionError("offline")
     await events.publish_registration_goal(pool, 999999)
+
+
+def test_compute_status_wrapper_delegates_to_the_active_round(monkeypatch):
+    from backend.services.portal import challenge_round2 as r2
+
+    monkeypatch.setattr(r2, "active_round", lambda now: 2)
+    monkeypatch.setattr(
+        r2,
+        "compute_round_status",
+        lambda now, round_number: "live" if round_number == 2 else "boom",
+    )
+    assert events.compute_status(datetime.now(timezone.utc)) == "live"
+
+
+@pytest.mark.asyncio
+async def test_round2_goal_uses_the_scorers_points_not_the_lookup_row(transport, monkeypatch):
+    """In Round 2 the goal's `activations` field must be the full R2
+    `points` from `score_round2`, never the raw lookup row's own
+    `activations` column (which is an R1-style registration count)."""
+    from backend.services.portal import challenge_round2 as r2
+
+    redis, connection, pool = transport
+    monkeypatch.setattr(r2, "active_round", lambda now: 2)
+    monkeypatch.setattr(r2, "build_goal_lookup_sql", lambda: "SELECT 1")
+    connection.fetchrow.return_value = {
+        "creator_email": "contender@balizero.com",
+        "role": "team",
+        "display_name": "Contender",
+        "avatar": "/static/team/sample.jpg",
+        "activations": 999,  # must be IGNORED in round 2
+        "at": datetime.now(timezone.utc),
+    }
+    connection.fetch.return_value = []
+    stub_entry = type("StubEntry", (), {"email": "contender@balizero.com", "points": 42})()
+    stub_snapshot = type("StubSnapshot", (), {"entries": [stub_entry]})()
+    monkeypatch.setattr(r2, "score_round2", lambda *args, **kwargs: stub_snapshot)
+
+    await events.publish_registration_goal(pool, 999999)
+
+    redis.eval.assert_awaited_once()
+    goal = json.loads(redis.eval.await_args.args[-1])
+    assert goal["activations"] == 42
+
+
+@pytest.mark.asyncio
+async def test_round2_skips_the_goal_when_the_creator_has_no_scored_entry(transport, monkeypatch):
+    """E.g. Asya: excluded from the general ranking, so `score_round2`
+    never returns an entry for her — no goal, rather than a bogus 0."""
+    from backend.services.portal import challenge_round2 as r2
+
+    redis, connection, pool = transport
+    monkeypatch.setattr(r2, "active_round", lambda now: 2)
+    monkeypatch.setattr(r2, "build_goal_lookup_sql", lambda: "SELECT 1")
+    connection.fetch.return_value = []
+    stub_snapshot = type("StubSnapshot", (), {"entries": []})()
+    monkeypatch.setattr(r2, "score_round2", lambda *args, **kwargs: stub_snapshot)
+
+    await events.publish_registration_goal(pool, 999999)
+
+    redis.eval.assert_not_awaited()
 
 
 class FakeStream:
