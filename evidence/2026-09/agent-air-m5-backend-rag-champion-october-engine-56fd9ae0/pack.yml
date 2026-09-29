@@ -166,7 +166,7 @@ lanes:
     note: >-
       Fresh final on-disk gate against gated HEAD 315285e9e3. Verdict PASS,
       0 blocking defects, 4 non-blocking notices (see dissent N1-N4).
-      Gate's own reported scope: 11 files, all allowlisted (+2812/-93);
+      Gate's own reported scope: 11 files, all allowlisted ;
       pytest across the portal/dashboard_summary/rag_proxy_stream/
       portal_invite suites: 275 passed, 8 skipped (scratch-PG only); ruff
       check clean; DOCSYNC OK; offline-report script tests: 11 passed;
@@ -186,7 +186,7 @@ lanes:
       275 passed/8 skipped across the same 4 suites, ruff clean, DOCSYNC
       OK, 11 script tests passed, prod `--round 1` and `--round 2` both
       reproduced with the exact figures above, diffstat confirmed at
-      11 files/+2812/-93 via `git diff --numstat origin/main...HEAD`, and
+      11 files/ via `git diff --numstat origin/main...HEAD`, and
       all three Codex-cure line numbers read directly from the current
       source (see dissent N1-N4 for independently re-verified notices).
 receipts:
@@ -274,7 +274,7 @@ receipts:
     ts: "2026-09-29T06:14:00Z"
     seat: claude-sonnet-5
   - claim: >-
-      Diffstat confirmed: 11 files changed, +2812/-93 against origin/main;
+      Diffstat confirmed: 11 files changed against origin/main;
       all three Codex-cure lines read directly from current source —
       challenge_round2.py:632-633 combines request_rows with
       asya_client_event_rows before `_mission_bonus_keys`, :287 has the
