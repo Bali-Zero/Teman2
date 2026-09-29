@@ -312,6 +312,7 @@ def test_pysa_check_runs_the_base_judge_not_the_candidate_one(tmp_path):
     home = tmp_path / "home"
     (home / "venv" / "bin").mkdir(parents=True)
     (home / "venv" / "bin" / "pyre").write_text("")
+    pc.write_manifest(home)
     fr.plan(fx, "--pysa-home", str(home))
     plan = json.loads((fx["run"] / "state" / "plan.json").read_text())
     spec = plan["checks"]["security.pysa_python"]
@@ -328,6 +329,7 @@ def test_trusted_pysa_dir_tampering_is_a_tool_error(tmp_path, tamper):
     home = tmp_path / "home"
     (home / "venv" / "bin").mkdir(parents=True)
     (home / "venv" / "bin" / "pyre").write_text("")
+    pc.write_manifest(home)
     fr.plan(fx, "--pysa-home", str(home))
     tdir = Path(json.loads((fx["run"] / "state" / "plan.json").read_text())["checks"]["security.pysa_python"]["trusted_pythonpath"])
     if tamper == "rewrite":

@@ -18,6 +18,7 @@ import argparse
 import fcntl
 import hashlib
 import html
+import io
 import json
 import os
 import platform
@@ -27,15 +28,21 @@ import shutil
 import signal
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-RUNNER_VERSION = "0.2.2"
+RUNNER_VERSION = "0.3.0"
 STATUSES = ("QUEUED", "RUNNING", "PASS", "FAIL", "ERROR", "BLOCKED", "STALE", "INTERRUPTED", "NOT_APPLICABLE")
 BLOCKING = {"ERROR", "BLOCKED", "STALE", "RUNNING", "QUEUED", "INTERRUPTED"}
 EXECUTABLE = ("pytest", "trusted_pytest", "cmd")
+CANDIDATE_KINDS = ("pytest", "trusted_pytest")   # kinds in which CANDIDATE code executes (trusted_pytest: BASE test, candidate implementation)
+ISOLATIONS = ("container", "none")
+DEFAULT_ISOLATION_IMAGE = "localci-candidate:1"   # scripts/localci/candidate.Dockerfile
+SANDBOX_UID = 65534
+JUNIT_MAX_BYTES = 32 << 20
 MAPPINGS = ("executed", "not_applicable_rule", "blocked", "not_implemented")
 RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
 EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
@@ -205,7 +212,10 @@ def env_fingerprint(venv_py: str, checks: dict | None = None) -> dict:
     tools = {}
     for name, spec in sorted((checks or {}).items()):
         kind = spec.get("kind")
-        if kind == "cmd" and spec.get("cmd"):
+        iso = spec.get("isolation") or {}
+        if kind in CANDIDATE_KINDS and iso.get("mode") == "container":
+            tools[name] = {"image_id": iso.get("image_id"), "docker": tool_identity(iso.get("docker") or "docker")}
+        elif kind == "cmd" and spec.get("cmd"):
             tools[name] = tool_identity(spec["cmd"][0], spec.get("cwd"))
         elif kind in ("pytest", "trusted_pytest"):
             tools[name] = tool_identity(spec.get("python") or venv_py, spec.get("cwd"))
@@ -317,10 +327,18 @@ def pysa_check_spec(wt: Path, base: str, cand: str, trusted: Path, run_dir: Path
     home = Path(home_arg) if home_arg else DEFAULT_PYSA_HOME
     if not (home / "venv" / "bin" / "pyre").exists():
         return {"kind": "record", "status": "BLOCKED", "reason": f"pysa home {home} not set up (python scripts/localci/pysa_check.py setup --home {home} --backend-venv apps/backend-rag/.venv)"}
+    try:   # measured by the BASE judge: a home that no longer matches its setup manifest is refused before anything runs
+        r = subprocess.run([sys.executable, "-I", str(tdir / "pysa_check.py"), "verify-home", "--home", str(home)], capture_output=True, text=True, timeout=600, env=trusted_env())
+        vh = json.loads(r.stdout.strip().splitlines()[-1]) if r.returncode == 0 and r.stdout.strip() else {}
+    except (OSError, subprocess.TimeoutExpired, ValueError, IndexError) as e:
+        r, vh = None, {"reason": f"{type(e).__name__}: {e}"}
+    if not vh.get("digest"):
+        why = vh.get("reason") or (r.stdout.strip() or r.stderr.strip())[-300:] if r is not None else vh.get("reason")
+        return {"kind": "record", "status": "BLOCKED", "reason": f"pysa home {home} is not a measured trusted identity: {why}"}
     shas = {str(f.relative_to(tdir)): sha256_file(f) for f in sorted(tdir.rglob("*")) if f.is_file()}
-    return {"kind": "cmd", "cwd": str(wt), "trusted_pythonpath": str(tdir), "trusted_dir_sha256": shas, "error_rcs": [2],
+    return {"kind": "cmd", "cwd": str(wt), "trusted_pythonpath": str(tdir), "trusted_dir_sha256": shas, "error_rcs": [2], "pysa_home_digest": vh["digest"],
             "cmd": [sys.executable, "-I", str(tdir / "pysa_check.py"), "judge", "--home", str(home), "--worktree", str(wt), "--base", base, "--candidate", cand,
-                    "--out", str(run_dir / "receipts" / "pysa")],
+                    "--out", str(run_dir / "receipts" / "pysa"), "--expect-home-digest", vh["digest"]],
             "purpose": f"Pysa taint on {len(touched)} touched backend file(s): no NEW log-injection/stack-trace/path/SSRF/redirect flow vs BASE {base[:12]}; judge logic and models from BASE"}
 
 
@@ -394,6 +412,17 @@ def cmd_plan(a):
         if not isinstance(spec, dict) or spec.get("kind") not in EXTRA_CHECK_KINDS:
             sys.exit(f"--extra-check {name!r}: kind must be one of {EXTRA_CHECK_KINDS}")
         checks[name] = spec
+    iso = isolation_spec(a.isolation, a.isolation_image)
+    for name, spec in list(checks.items()):   # candidate code never runs uncontained unless the operator said --isolation none
+        if spec.get("kind") not in CANDIDATE_KINDS:
+            continue
+        if iso.get("error"):
+            checks[name] = {"kind": "record", "status": "BLOCKED", "reason": f"isolation=container unavailable at plan time: {iso['error']} — candidate code is not "
+                            "run uncontained unless the plan says --isolation none"}
+        else:
+            spec["isolation"] = iso
+            if iso["mode"] == "container":
+                spec.pop("python", None)   # the interpreter is the pinned image's, not a host venv
     for spec in checks.values():   # every trusted dir is sha-mapped at plan time and re-verified before it runs (classifier dir included)
         if spec.get("kind") == "cmd" and spec.get("trusted_pythonpath") and "trusted_dir_sha256" not in spec:
             spec["trusted_dir_sha256"] = trusted_dir_map(Path(spec["trusted_pythonpath"]))
@@ -406,7 +435,8 @@ def cmd_plan(a):
             "builder_seat": a.builder_seat or None, "builder_seats": sorted(set(seats)),
             "max_attempts": a.max_attempts, "deadline_s": a.deadline_s, "deadline_at": created_epoch + a.deadline_s,
             "contexts_file": a.contexts_file, "contexts_status": ctxs["status"], "contexts_reason": ctxs["reason"],
-            "contexts_sha256": ctxs.get("sha256"), "required_contexts": ctxs["required"], "contexts_map": ctxs["map"], "checks": checks}
+            "contexts_sha256": ctxs.get("sha256"), "required_contexts": ctxs["required"], "contexts_map": ctxs["map"], "checks": checks,
+            "isolation": iso, "runner_version": RUNNER_VERSION}
     plan["plan_hash"] = plan_hash_of(plan)
     atomic_write(run_dir / "state" / "plan.json", json.dumps(plan, indent=2, sort_keys=True))
     env = env_fingerprint(venv_py, checks)
@@ -423,7 +453,8 @@ def cmd_plan(a):
             c.update(status="BLOCKED", reason="worktree dirty at plan time: " + ",".join(ident["dirty_paths"]))
     store.save(st)
     print(json.dumps({"run_id": run_dir.name, "candidate": ident["candidate_sha"], "base": base, "plan_hash": plan["plan_hash"],
-                      "contexts": ctxs["status"], "checks": {k: v["status"] for k, v in st["checks"].items()}}, indent=1))
+                      "contexts": ctxs["status"], "isolation": {k: iso.get(k) for k in ("mode", "image", "image_id", "error")},
+                      "checks": {k: v["status"] for k, v in st["checks"].items()}}, indent=1))
 
 
 # -------------------------------------------------------------------------- run
@@ -486,10 +517,190 @@ def build_overlay(wt: Path, overlay: Path, overrides: dict[str, bytes], prefix: 
         (overlay / f).write_bytes(overrides[prefix + f])
 
 
+def isolation_spec(mode: str, image: str) -> dict:
+    """Plan-time measurement of the candidate sandbox: the image is pinned by ID (a retag cannot substitute it)."""
+    if mode == "none":
+        return {"mode": "none", "reason": "operator chose --isolation none: candidate code runs as the operator's OS user (advisory only)"}
+    docker = shutil.which("docker")
+    if not docker:
+        return {"mode": "container", "image": image, "error": "docker CLI not found"}
+    try:
+        r = subprocess.run([docker, "image", "inspect", "--format", "{{.Id}}", image], capture_output=True, text=True, timeout=60, env=trusted_env())
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return {"mode": "container", "image": image, "error": f"docker unreachable: {e}"}
+    if r.returncode != 0 or not r.stdout.strip().startswith("sha256:"):
+        return {"mode": "container", "image": image, "error": f"image {image!r} not inspectable (rc={r.returncode}): {r.stderr.strip()[:200]}"}
+    return {"mode": "container", "image": image, "image_id": r.stdout.strip(), "docker": os.path.realpath(docker), "network": "none",
+            "mounts": [], "user": f"{SANDBOX_UID}:{SANDBOX_UID}"}
+
+
+def isolation_of(plan: dict) -> dict:
+    """A plan frozen before v0.3.0 carries no isolation evidence: it is uncontained, never silently upgraded."""
+    return plan.get("isolation") or {"mode": "none", "reason": "plan predates isolation evidence (runner < 0.3.0)"}
+
+
+def _tar_add(tf: tarfile.TarFile, name: str, data: bytes | None = None, mode: int = 0o644, link: str | None = None) -> None:
+    ti = tarfile.TarInfo(name)
+    ti.uid = ti.gid = SANDBOX_UID
+    ti.mtime = 0
+    if data is None and link is None:
+        ti.type, ti.mode = tarfile.DIRTYPE, 0o755
+        tf.addfile(ti)
+    elif link is not None:
+        ti.type, ti.linkname, ti.mode = tarfile.SYMTYPE, link, 0o777
+        tf.addfile(ti)
+    else:
+        ti.size, ti.mode = len(data), mode
+        tf.addfile(ti, io.BytesIO(data))
+
+
+def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], extra: dict[str, bytes]) -> int:
+    """Tar `commit`'s tree from the OBJECT STORE into `sink` under w/ — never the checkout (ignored files such as .env or a venv stay
+    out) and never `git archive` (it honours the candidate's export-ignore). `overrides` replace blobs (BASE test files); `extra` lands
+    outside w/. Owned by the sandbox uid so candidate tests can write where they could in a checkout."""
+    listing = subprocess.run(["git", "-C", str(wt), "ls-tree", "-r", "-z", "--full-tree", commit], capture_output=True, check=True).stdout.decode()
+    entries = []
+    for rec in listing.split("\0"):
+        if rec:
+            meta, rel = rec.split("\t", 1)
+            mode, kind, oid = meta.split(" ")
+            if kind == "blob":
+                entries.append((mode, oid, rel))
+    parents = lambda paths, top: {f"{top}{q}" for n in paths for q in Path(n).parents if str(q) != "."}   # noqa: E731
+    dirs = sorted({"w", "out"} | parents({rel for _, _, rel in entries} | set(overrides), "w/") | parents(extra, ""))
+    tf = tarfile.open(fileobj=sink, mode="w|")
+    for d in dirs:
+        _tar_add(tf, d)
+    for x in sorted(extra):
+        _tar_add(tf, x, extra[x])
+    cat = subprocess.Popen(["git", "-C", str(wt), "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    try:
+        for mode, oid, rel in entries:
+            cat.stdin.write(f"{oid}\n".encode())
+            cat.stdin.flush()
+            hdr = cat.stdout.readline().decode().split()
+            if len(hdr) != 3 or hdr[0] != oid or hdr[1] != "blob":
+                raise RuntimeError(f"cat-file stream desync at {rel}: {hdr}")
+            body = cat.stdout.read(int(hdr[2]))
+            cat.stdout.read(1)
+            if rel in overrides:
+                continue
+            if mode == "120000":
+                _tar_add(tf, f"w/{rel}", link=body.decode("utf-8", "surrogateescape"))
+            else:
+                _tar_add(tf, f"w/{rel}", body, 0o755 if mode == "100755" else 0o644)
+    finally:
+        cat.stdin.close()
+        cat.wait()
+    for rel, blob in sorted(overrides.items()):
+        _tar_add(tf, f"w/{rel}", blob)
+    tf.close()
+    return len(entries)
+
+
+def _read_junit_out(docker: str, ctr: str, junit: Path) -> str | None:
+    """Copy /out/junit.xml out of the stopped container: one regular file, size-capped — a symlink or an oversized file is no junit."""
+    p = subprocess.Popen([docker, "cp", f"{ctr}:/out/junit.xml", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=trusted_env())
+    try:
+        with tarfile.open(fileobj=p.stdout, mode="r|") as t:
+            m = t.next()
+            if m is None or m.name != "junit.xml" or not m.isfile():
+                return "no regular /out/junit.xml in the container"
+            if m.size > JUNIT_MAX_BYTES:
+                return f"junit.xml is {m.size} bytes (> {JUNIT_MAX_BYTES})"
+            junit.write_bytes(t.extractfile(m).read())
+            return None
+    except tarfile.TarError as e:
+        return f"junit copy-out failed: {e}"
+    finally:
+        p.kill()
+        p.wait()
+
+
+def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: list[str], overrides: dict[str, bytes], extra: dict[str, bytes],
+                      env: dict, log: Path, junit: Path, timeout: int) -> tuple[int | None, str | None]:
+    """Run candidate code in a fresh container: no bind mount, no network, no capability, non-root, no host environment.
+    The tree goes in as a tar stream and only the junit comes out; the host run dir, receipts, credentials and the Pysa
+    home are not reachable from inside. Returns (rc, error)."""
+    iso = spec["isolation"]
+    docker = iso["docker"]
+    ctr = re.sub(r"[^a-zA-Z0-9_.-]", "-", f"localci-{plan['run_id']}-{name}")[:100] + "-" + os.urandom(4).hex()
+    denv = trusted_env()
+    create = [docker, "create", "--name", ctr, "--label", "org.nuzantara.localci=candidate", "--network", "none", "--cap-drop", "ALL",
+              "--security-opt", "no-new-privileges", "--user", iso["user"], "--pids-limit", "1024", "--memory", "4g", "--workdir", "/w",
+              *[f"--env={k}={v}" for k, v in sorted(env.items())], iso["image_id"], *inner]
+    try:
+        r = subprocess.run(create, capture_output=True, text=True, timeout=120, env=denv)
+        if r.returncode != 0:
+            return None, f"container create failed (image {iso['image_id'][:19]} pinned at plan time): {r.stderr.strip()[:300]}"
+        cp = subprocess.Popen([docker, "cp", "-a", "-", f"{ctr}:/"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=denv)
+        try:
+            n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra)
+        finally:
+            cp.stdin.close()
+        _, err = cp.communicate(timeout=600)
+        if cp.returncode != 0:
+            return None, f"candidate tree copy-in failed: {err.decode(errors='replace').strip()[:300]}"
+        with open(log, "a") as fh:
+            fh.write(f"# isolation=container image={iso['image_id']} network=none user={iso['user']} mounts=none tree={plan['candidate_sha']} blobs={n}\n")
+            fh.flush()
+            try:
+                rc = subprocess.run([docker, "start", "-a", ctr], stdout=fh, stderr=subprocess.STDOUT, timeout=timeout, env=denv).returncode
+            except subprocess.TimeoutExpired:
+                subprocess.run([docker, "kill", ctr], capture_output=True, timeout=60, env=denv)
+                return None, f"timeout after {timeout}s (container killed)"
+        why = _read_junit_out(docker, ctr, junit)
+        if why:
+            with open(log, "a") as fh:
+                fh.write(f"# junit: {why}\n")
+        return rc, None
+    finally:
+        subprocess.run([docker, "rm", "-f", ctr], capture_output=True, timeout=120, env=denv)
+
+
+def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int, log: Path, junit: Path) -> dict:
+    kind = spec["kind"]
+    env = {"HOME": "/tmp", "PYTHONDONTWRITEBYTECODE": "1", "LANG": "C.UTF-8"}
+    overrides: dict[str, bytes] = {}
+    extra: dict[str, bytes] = {}
+    if kind == "pytest":
+        if not spec.get("modules"):
+            return {"status": "ERROR", "reason": "zero test modules selected — missing evidence is not PASS", "rc": None, "counts": {"collected": 0, "executed": 0}}
+        inner = ["python", "-m", "pytest", "-p", "no:cacheprovider", "-q", "--junitxml=/out/junit.xml", *spec["modules"]]
+        env["PYTHONPATH"] = "/w"
+    else:
+        for rel in spec["trusted_files"]:
+            bp = run_dir / "state" / "trusted" / "base_files" / rel
+            blob = bp.read_bytes() if bp.exists() else b""
+            if not blob or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):
+                return {"status": "ERROR", "reason": f"trusted blob {rel} missing or differs from the plan's sha256", "rc": None, "counts": None}
+            overrides[rel] = blob
+        extra["cfg/pytest-trusted.ini"] = b"[pytest]\npythonpath = /w\n"
+        inner = ["python", "-I", "-m", "pytest", "-p", "no:cacheprovider", "--noconftest", "-c", "/cfg/pytest-trusted.ini", "--rootdir", "/w", "-q",
+                 "--junitxml=/out/junit.xml", *[f"/w/{r}" for r in overrides]]
+    with open(log, "w") as fh:
+        fh.write(f"# {now()} container cmd={' '.join(inner)}\n")
+    t0 = time.monotonic()
+    try:
+        rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout)
+    except (OSError, subprocess.SubprocessError, RuntimeError) as e:
+        rc, err = None, f"container execution failed: {type(e).__name__}: {e}"
+    dur = round(time.monotonic() - t0, 3)
+    if err:
+        return {"status": "ERROR", "reason": err, "rc": None, "duration_s": dur, "counts": None, "log": str(log), "isolation": "container"}
+    counts = parse_junit(junit)
+    status, reason = classify_pytest(rc, counts)
+    return {"status": status, "reason": reason + " [contained: candidate-produced junit]", "rc": rc, "duration_s": dur, "counts": counts, "log": str(log),
+            "isolation": "container"}
+
+
 def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> dict:
     log = run_dir / "logs" / f"{name}.log"
     junit = run_dir / "receipts" / f"{name}.junit.xml"
+    junit.unlink(missing_ok=True)   # a junit left by an earlier attempt is never this attempt's evidence
     kind = spec["kind"]
+    if kind in CANDIDATE_KINDS and (spec.get("isolation") or {}).get("mode") == "container":
+        return _execute_candidate_contained(name, spec, run_dir, plan, timeout, log, junit)
     envx = {k: v for k, v in os.environ.items() if not is_secret_env(k)}
     envx["PYTHONDONTWRITEBYTECODE"] = "1"  # kind "pytest" runs CANDIDATE tests (PYTHONPATH=cwd on purpose): they are not a trusted check
     cwd = spec.get("cwd") or plan["worktree"]
@@ -641,6 +852,24 @@ def trusted_seal(run_dir: Path, plan: dict, st: dict) -> str:
     return h.hexdigest()
 
 
+def candidate_exposure(plan: dict, st: dict) -> dict | None:
+    """Has candidate code executed against this run dir? The state marker is written BEFORE the first candidate check starts; any
+    candidate check with an attempt, history or receipt counts too (an uncontained candidate could have erased the marker, not all
+    of them). `mode` is the weakest isolation any candidate check ran under: one uncontained check makes the whole run dir uncontained."""
+    exp = dict(st["candidate_exposure"]) if isinstance(st.get("candidate_exposure"), dict) else None
+    for name, spec in plan["checks"].items():
+        if spec.get("kind") not in CANDIDATE_KINDS:
+            continue
+        c = st["checks"].get(name, {})
+        if c.get("attempts") or c.get("history") or c.get("receipt"):
+            exp = exp or {"at": c.get("at"), "check": name, "mode": "none", "inferred": True}
+            if (spec.get("isolation") or {}).get("mode") != "container":
+                exp["mode"] = "none"
+    if exp and isolation_of(plan).get("mode") != "container":
+        exp["mode"] = "none"
+    return exp
+
+
 def cmd_run(a):
     run_dir = Path(a.run_dir).resolve()
     store = Store(run_dir)
@@ -674,18 +903,46 @@ def cmd_run(a):
             def seal_now(why: str) -> None:
                 nonlocal sealed
                 seal = trusted_seal(run_dir, plan, st)
-                st["seal"] = seal
-                store.journal({"event": "seal", "seal": seal, "why": why, "at": now()})
-                store.save(st)
-                print(f"seal={seal}  # {why}: record this outside the run dir; `status --seal {seal[:12]}…` re-derives it")
+                exp, first = candidate_exposure(plan, st), st.get("seal_first")
                 sealed = True
+                if exp is None:   # no candidate code has run against this run dir: minting (or re-minting) is legitimate
+                    st["seal"] = seal
+                    st["seal_first"] = {"seal": seal, "at": now(), "why": why}
+                    store.journal({"event": "seal", "seal": seal, "why": why, "at": now()})
+                    store.save(st)
+                    print(f"seal={seal}  # {why}: record this outside the run dir; `status --seal {seal[:12]}…` re-derives it")
+                    return
+                if exp.get("mode") == "container" and first and first.get("seal") == seal:
+                    store.journal({"event": "seal_verified", "seal": seal, "why": why, "first_at": first.get("at"), "at": now()})
+                    print(f"seal={seal}  # {why}: UNCHANGED since {first.get('at')} — candidate code ran only in containers, nothing new minted")
+                    return
+                why_not = ("candidate code ran UNCONTAINED in this run dir, so state/receipts may be its work" if exp.get("mode") != "container"
+                           else "the trusted evidence no longer re-derives the seal minted before candidate code ran")
+                st["seal_refused"] = {"at": now(), "why": why, "reason": why_not}
+                store.journal({"event": "seal_refused", "why": why, "reason": why_not, "exposure": exp, "at": now()})
+                store.save(st)
+                print(f"seal REFUSED  # {why}: {why_not} (exposed {exp.get('at')}); the only valid seal is the one printed before that — "
+                      "check it with `status --seal <it>`, or plan a fresh run dir")
 
             for name in names:
                 spec, c = plan["checks"][name], st["checks"][name]
                 if spec["kind"] not in EXECUTABLE:
                     continue
+                if spec["kind"] in TRUSTED_KINDS and (exp := candidate_exposure(plan, st)) is not None:
+                    # a trusted verdict produced after candidate code ran would be covered by no seal: never mint one, never re-run one
+                    why_not = f"trusted check not run: candidate code already executed in this run dir ({exp.get('mode')}, {exp.get('at')}) — plan a fresh run dir"
+                    if c["status"] in ("QUEUED", "INTERRUPTED"):
+                        c.update(status="BLOCKED", reason=why_not, at=now())
+                        store.save(st)
+                    store.journal({"event": "trusted_rerun_refused", "check": name, "at": now()})
+                    print(f"{name}: REFUSED — {why_not}")
+                    continue
                 if spec["kind"] not in TRUSTED_KINDS and not sealed:
                     seal_now("trusted checks done, candidate code about to run")
+                if spec["kind"] in CANDIDATE_KINDS and candidate_exposure(plan, st) is None:
+                    st["candidate_exposure"] = {"at": now(), "check": name, "mode": ((spec.get("isolation") or {}).get("mode") or "none")}
+                    store.journal({"event": "candidate_exposure", **st["candidate_exposure"]})
+                    store.save(st)
                 if c["status"] == "RUNNING":
                     continue
                 if c["status"] == "INTERRUPTED":
@@ -900,7 +1157,14 @@ def compute_status(run_dir: Path, write: bool = True) -> dict:
 def cmd_status(a):
     out = compute_status(Path(a.run_dir))
     run_dir = Path(a.run_dir).resolve()
-    out["seal"] = trusted_seal(run_dir, load_plan_verified(run_dir), Store(run_dir).load())
+    plan, st = load_plan_verified(run_dir), Store(run_dir).load()
+    out["seal"] = trusted_seal(run_dir, plan, st)
+    exp = candidate_exposure(plan, st)
+    out["isolation"] = {k: isolation_of(plan).get(k) for k in ("mode", "image", "image_id", "reason")}
+    out["candidate_exposure"] = exp
+    out["seal_note"] = ("recomputed now; candidate code ran UNCONTAINED here, so only a seal you recorded before that is evidence" if exp and exp.get("mode") != "container"
+                        else "recomputed now; compare it with the seal `run` printed")
+    atomic_write(run_dir / "status.json", json.dumps(out, indent=2, sort_keys=True))
     if a.seal and len(a.seal.strip()) < SEAL_MIN_PREFIX:
         sys.exit(f"--seal needs at least {SEAL_MIN_PREFIX} hex characters (a short prefix would match almost anything)")
     if a.seal and not out["seal"].startswith(a.seal.strip()):
@@ -910,7 +1174,8 @@ def cmd_status(a):
     if a.quiet:
         print(out["overall"])
     else:
-        print(json.dumps({"overall": out["overall"], "stale_reason": out["freshness"]["stale_reason"], "seal": out["seal"], "contexts": out["contexts"]["status"],
+        print(json.dumps({"overall": out["overall"], "stale_reason": out["freshness"]["stale_reason"], "seal": out["seal"], "seal_note": out["seal_note"],
+                          "isolation": out["isolation"]["mode"], "candidate_exposure": exp, "contexts": out["contexts"]["status"],
                           "checks": {n: v["status"] for n, v in out["checks"].items()}}, indent=1))
     return 0 if (not a.strict or out["overall"] == "PASS") else 1
 
@@ -956,6 +1221,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--trusted-pytest", action="append", help="extra base-ref test file to run against the candidate tree")
     p.add_argument("--extra-check", action="append")
     p.add_argument("--pysa-home", help=f"Pysa home built by pysa_check.py setup (default {DEFAULT_PYSA_HOME})")
+    p.add_argument("--isolation", choices=ISOLATIONS, default="container",
+                   help="where candidate code (pytest, trusted_pytest) runs: a mount-less, network-less container (default) or, explicitly, as the operator")
+    p.add_argument("--isolation-image", default=DEFAULT_ISOLATION_IMAGE, help="docker image for --isolation container; pinned by ID at plan time")
     p.set_defaults(fn=cmd_plan)
     r = sub.add_parser("run")
     r.add_argument("--run-dir", required=True)

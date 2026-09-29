@@ -67,7 +67,8 @@ def pytest_check(name: str, repo: Path, modules: list[str]) -> str:
 
 
 def plan(fx: dict, *extra: str, seat: str = "builder-a") -> None:
-    runner.main(["plan", "--run-dir", str(fx["run"]), "--worktree", str(fx["repo"]), "--base", fx["base"], "--python", PY, "--builder-seat", seat, *extra])
+    iso = [] if "--isolation" in extra else ["--isolation", "none"]   # host-portable unit tests; the contained path is test_isolation.py's
+    runner.main(["plan", "--run-dir", str(fx["run"]), "--worktree", str(fx["repo"]), "--base", fx["base"], "--python", PY, "--builder-seat", seat, *iso, *extra])
 
 
 def run(fx: dict, *args: str) -> None:
