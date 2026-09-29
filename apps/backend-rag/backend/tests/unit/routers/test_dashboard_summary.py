@@ -528,6 +528,22 @@ class TestPortalChallengeEndpoint:
             mock_cache.set = AsyncMock()
             yield mock_cache
 
+    @pytest.fixture(autouse=True)
+    def _pin_round1_now(self, monkeypatch):
+        """Pins the router's own clock seam (`_portal_challenge_now`) to a
+        moment inside Round 1 by default — NOT the stdlib `datetime` class —
+        so every test below stays on the R1 branch deterministically,
+        regardless of the real calendar date the suite happens to run on
+        (after 2026-09-30 00:00 WITA, "today" would otherwise silently flip
+        these onto the R2 branch). The one Round 2 test overrides this seam
+        explicitly with its own later `monkeypatch.setattr` call."""
+        from datetime import datetime, timezone
+
+        import backend.app.routers.dashboard_summary as dashboard_summary
+
+        frozen_now = datetime(2026, 9, 20, 4, 0, tzinfo=timezone.utc)
+        monkeypatch.setattr(dashboard_summary, "_portal_challenge_now", lambda: frozen_now)
+
     def _make_client(self, current_user: dict, mock_pool):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
@@ -738,14 +754,10 @@ class TestPortalChallengeEndpoint:
 
         import backend.app.routers.dashboard_summary as dashboard_summary
 
+        # Overrides this class's `_pin_round1_now` autouse fixture — same
+        # seam (`_portal_challenge_now`), a Round 2 instant instead.
         frozen_now = datetime(2026, 10, 5, 3, 0, tzinfo=timezone.utc)
-
-        class _FrozenDatetime(datetime):
-            @classmethod
-            def now(cls, tz=None):
-                return frozen_now if tz is not None else frozen_now.replace(tzinfo=None)
-
-        monkeypatch.setattr(dashboard_summary, "datetime", _FrozenDatetime)
+        monkeypatch.setattr(dashboard_summary, "_portal_challenge_now", lambda: frozen_now)
 
         roster_rows = [
             {

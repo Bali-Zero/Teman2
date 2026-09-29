@@ -837,6 +837,16 @@ PORTAL_CHALLENGE_CACHE_KEY = "dashboard:portal_challenge:v3"
 PORTAL_CHALLENGE_CACHE_TTL = 30
 
 
+def _portal_challenge_now() -> datetime:
+    """The one clock seam every Portal Champion code path reads through —
+    payload building, the SSE close check, and `generated_at`. Tests pin
+    the round deterministically by monkeypatching this NAME rather than the
+    stdlib `datetime` class itself, so a test doesn't have to also survive
+    subclassing/patching every other unrelated `datetime.now()` call in
+    this file (e.g. the `/summary` endpoint's own `today = ...` at L438)."""
+    return datetime.now(timezone.utc)
+
+
 class PortalChallengeTier(BaseModel):
     tier: int
     threshold: int
@@ -1007,7 +1017,7 @@ async def _build_round1_payload(db_pool: asyncpg.Pool) -> dict[str, Any]:
     avatar_by_email = {row["email"]: portrait_url(row.get("avatar")) for row in roster_records}
 
     return {
-        "status": compute_status(datetime.now(timezone.utc)),
+        "status": compute_status(_portal_challenge_now()),
         "round": 1,
         "campaign": None,
         "window_start": WINDOW_START.isoformat(),
@@ -1280,7 +1290,7 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
     """
     from backend.services.portal import challenge_round2 as r2
 
-    now = datetime.now(timezone.utc)
+    now = _portal_challenge_now()
     if r2.active_round(now) == 1:
         return await _build_round1_payload(db_pool)
     return await _build_round2_payload(db_pool, now)
@@ -1343,7 +1353,7 @@ async def get_portal_challenge(
         window_start=payload["window_start"],
         window_end=payload["window_end"],
         timezone=payload["timezone"],
-        generated_at=datetime.now(timezone.utc),
+        generated_at=_portal_challenge_now(),
         tiers=[PortalChallengeTier(**t) for t in payload["tiers"]],
         tax_rules=PortalChallengeTaxRules(**payload["tax_rules"]),
         rank_prizes=[PortalChallengeRankPrize(**p) for p in payload.get("rank_prizes", [])],
@@ -1381,7 +1391,7 @@ async def portal_challenge_events(
     from backend.services.portal import challenge_round2 as r2
     from backend.services.portal.challenge_events import goal_fanout
 
-    now = datetime.now(timezone.utc)
+    now = _portal_challenge_now()
     if r2.compute_round_status(now, r2.active_round(now)) == "closed":
         return StreamingResponse(
             iter(["event: closed\ndata: {}\n\n"]), media_type="text/event-stream"
