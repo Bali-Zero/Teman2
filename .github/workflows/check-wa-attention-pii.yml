@@ -124,7 +124,7 @@ jobs:
           # parametrized test is covered per definition (one surviving variant satisfies it), not per
           # parameter set. The collection patterns are FORCED below to the ones the AST assumes, so a
           # config override cannot desynchronise them. Constructs the AST cannot follow are refused
-          # CLOSED, each with a guilt case in test_wa_attention_presence_walk.py (RED, never guessed):
+          # (RED), not guessed. CLOSED, each with a guilt case in test_wa_attention_presence_walk.py:
           # a test def under if/try/with/for/while; any assignment at module or class scope whose
           # target is a subscript or attribute (globals()[..]=, vars()[..]=, locals()[..]=,
           # sys.modules[__name__].x=); any module/class-scope statement that LOADS the name of a test
