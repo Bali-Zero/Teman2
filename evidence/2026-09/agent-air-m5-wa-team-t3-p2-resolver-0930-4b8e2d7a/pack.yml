@@ -118,7 +118,7 @@ appetite_exceeded: |
   Both ceilings held. The fixes after the council were not re-reviewed by the seats (single round).
 
 diff:
-  files: 9
+  files: 8
   net_lines: |
     Script, cron wrapper, two test files, workflow and three evidence files. Line totals are
     deliberately not declared: the pack is part of the diff it would count.
