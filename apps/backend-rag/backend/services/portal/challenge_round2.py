@@ -649,7 +649,11 @@ def score_round2(
     rank_of = {value: idx + 1 for idx, value in enumerate(distinct_points_desc)}
     for entry in ordered:
         entry.rank = rank_of[entry.points]
-        entry.prize_idr = RANK_PRIZES_IDR.get(entry.rank, 0)
+        # A rank prize requires points > 0 — a zero-or-negative member never
+        # earns one even when they land on a prize-bearing rank (e.g. every
+        # untouched member ties for the lowest rank at 0 points; nobody at
+        # that rank has "won" anything). Rank itself stays dense as-is.
+        entry.prize_idr = RANK_PRIZES_IDR.get(entry.rank, 0) if entry.points > 0 else 0
         entry.total_prize_idr = entry.prize_idr
 
     team_total_points = sum(e.points for e in ordered)
