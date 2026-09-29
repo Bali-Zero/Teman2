@@ -5,6 +5,10 @@
 # Live:  ~/scripts/pro-disk-janitor.sh (declared pair, node=pro)
 
 set -u   # G9_fail_visible: unset vars crash, they do not expand empty
+# launchd hands a job /usr/bin:/bin:/usr/sbin:/sbin — uv, docker and brew live in /opt/homebrew/bin
+# and /usr/local/bin, so without this the payload's tools step is dead forever (kimi R-2). Fleet
+# convention (wa-mirror-runner.sh); PREPENDED so a test can still inject its own dirs behind it.
+PATH="/opt/homebrew/bin:/usr/local/bin:${PATH:-/usr/bin:/bin:/usr/sbin:/sbin}"; export PATH
 
 ORGAN_ID="pro.disk_janitor"
 LOG_DIR="$HOME/logs/pro-disk_janitor"

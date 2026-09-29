@@ -295,6 +295,7 @@ jobs:
               scripts/disk_janitor.sh|\
               scripts/test_disk_janitor.sh|\
               scripts/qdrant_backup_retention.sh|\
+              scripts/test_qdrant_backup_retention.sh|\
               infra/launchagents/wrappers/pro-disk-janitor.sh|\
               infra/launchagents/com.nuzantara.disk-janitor.plist|\
               scripts/fly-pg-backup.sh|\
@@ -889,6 +890,8 @@ jobs:
           # worktrees): a janitor whose innocence is not exercised is one bad glob away from
           # being the incident it was born to prevent.
           bash scripts/test_disk_janitor.sh
+          # The janitor delegates qdrant retention to its own tested script: that corpus rides along.
+          bash scripts/test_qdrant_backup_retention.sh
 
       - name: login-healthcheck alarm-channel corpus (dead channel must be loud, not routine)
         if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'

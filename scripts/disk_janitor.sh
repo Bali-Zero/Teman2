@@ -38,6 +38,8 @@
 set -uo pipefail
 
 JH="${DISK_JANITOR_HOME:-$HOME}"
+while [ "${JH%/}" != "$JH" ]; do JH="${JH%/}"; done   # a trailing slash would defeat the literal compare (kimi R-6)
+[ -n "$JH" ] || { echo "disk-janitor: REFUSE: DISK_JANITOR_HOME resolves to / — exit 2" >&2; exit 2; }
 TMP_ROOT="${DISK_JANITOR_TMP_ROOT:-/private/tmp/claude-501}"
 SESSIONS_DIR="${DISK_JANITOR_SESSIONS_DIR:-$JH/.claude/sessions}"
 LOG_FILE="${DISK_JANITOR_LOG:-$JH/logs/disk-janitor.log}"
@@ -75,6 +77,7 @@ is_protected() { # 0 = protected (under a root, above a root, or carrying the PI
                  # AND the physical form of both sides, so a symlinked protected root is also
                  # protected at its physical location
   local p c r rp comp
+  [ "$1" = "/" ] && return 0   # the root of everything is above every protected root (kimi R-6)
   p=$(lc "$1"); c=$(lc "$(physical "$1")"); comp=$(lc "$PROTECTED_COMPONENT")
   case "$p" in *"$comp"*) return 0 ;; esac
   case "$c" in *"$comp"*) return 0 ;; esac
@@ -241,12 +244,14 @@ if [ -n "$QDRANT_RETENTION" ] && [ -f "$QDRANT_RETENTION" ]; then
 fi
 
 # ── tool caches: only real tools, only their own safe prune verbs ───────────────
-TOOLS_DONE=""
+TOOLS_DONE=""; TOOLS_SEEN=""
 if [ "$TOOLS" = "true" ] && $APPLY; then
   if command -v uv >/dev/null 2>&1; then
+    TOOLS_SEEN="$TOOLS_SEEN uv"
     if pgrep -x uv >/dev/null 2>&1; then log "tools: uv cache prune skipped (a uv process holds the cache lock)"
     else uv cache prune >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE uv" || ERRORS=$((ERRORS + 1)); fi
-  fi
+  else log "tools: uv not on PATH — skipped"; fi
+  command -v docker >/dev/null 2>&1 && TOOLS_SEEN="$TOOLS_SEEN docker"
   if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     docker image prune -f >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-image" || ERRORS=$((ERRORS + 1))
     docker volume prune -f >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-volume" || ERRORS=$((ERRORS + 1))
@@ -255,8 +260,12 @@ if [ "$TOOLS" = "true" ] && $APPLY; then
     log "tools: docker not reachable — skipped"
   fi
   if command -v brew >/dev/null 2>&1; then
+    TOOLS_SEEN="$TOOLS_SEEN brew"
     brew cleanup --prune=30 -s >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE brew" || ERRORS=$((ERRORS + 1))
-  fi
+  else log "tools: brew not on PATH — skipped"; fi
+  # No tool at all on PATH is not "nothing to do": it is the launchd-minimal-PATH failure mode
+  # (kimi R-2) and the step would be dead forever under rc=0 — so it is an ERROR.
+  if [ -z "$TOOLS_SEEN" ]; then ERRORS=$((ERRORS + 1)); log "tools: NO tool reachable on PATH — step dead, check the wrapper's PATH export"; fi
   log "tools: done:${TOOLS_DONE:- none}"
 elif [ "$TOOLS" = "true" ]; then
   log "tools: would run uv cache prune · docker image/volume/builder prune · brew cleanup --prune=30"

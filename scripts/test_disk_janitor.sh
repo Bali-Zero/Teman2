@@ -284,6 +284,7 @@ if [ "$(id -u)" -eq 0 ]; then echo "  ⏭  running as root: unlistable-root and 
   OUT=$(DISK_JANITOR_ENABLED=false DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=false DISK_JANITOR_QDRANT_RETENTION="" DISK_JANITOR_LOG="$ROOT/ro/j.log" DISK_JANITOR_JOURNAL="$ROOT/ro/j.jsonl" bash "$SCRIPT" --apply 2>&1); RC=$?; chmod 755 "$ROOT/ro"
   [ $RC -eq 0 ] && have "$OLD_SCRATCH" && echo "$OUT" | grep -q "DISABLED via DISK_JANITOR_ENABLED" && ok "kill switch is read before the audit-trail probe: DISABLED exit 0 even with an unwritable log (K4)" || no "kill switch on unwritable log rc=$RC"
 fi
+NOPROD="__no_such_producer_$$__"   # per-run unique: `pgrep -f` would match ANY concurrent argv carrying a fixed marker (kimi R-5)
 wrapx(){ # wrapper with explicit extra env (VAR=value args), stdout+stderr discarded → rc only
   HOME="$H" PATH="$FAKEBIN:$PATH" PRO_DISK_JANITOR_PIDFILE="$PIDF" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=false DISK_JANITOR_QDRANT_RETENTION="" env "$@" bash "$WRAP" >/dev/null 2>&1
 }
@@ -304,7 +305,7 @@ while [ $i -lt 7 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-
 NLF="$QR/qdrant-
 sentinel
 .tar.gz"; mk "$NLF"; old "$NLF" 30; mk "$ROOT/cwd/sentinel"; mk "$ROOT/cwd/.tar.gz"
-OUT=$(cd "$ROOT/cwd" && HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+OUT=$(cd "$ROOT/cwd" && HOME="$H" QDRANT_PRODUCER_PROC_RE="$NOPROD" DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
 [ $RC -eq 1 ] && have "$ROOT/cwd/sentinel" && have "$ROOT/cwd/.tar.gz" && have "$NLF" && have "$QR/qdrant-20260106-0300.tar.gz" \
   && echo "$OUT" | grep -q "qdrant: retention rc=1" && grep -q "REFUSE (newline-named entry in root" "$H/logs/qdrant-backup-retention.log" 2>/dev/null \
   && ok "real delegate: a newline-named archive refuses both backstops, cwd sentinels survive, the run fails loudly (N1)" || no "delegate newline escape: rc=$RC sentinel=$(have "$ROOT/cwd/sentinel" && echo kept || echo GONE) tgz=$(have "$ROOT/cwd/.tar.gz" && echo kept || echo GONE)"
@@ -312,37 +313,51 @@ build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0   # N3: the fragmen
 while [ $i -lt 7 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
 NLF="$QR/qdrant-sentinel
 .tar.gz"; mk "$NLF"; old "$NLF" 30; mk "$QR/qdrant-sentinel"; old "$QR/qdrant-sentinel" 1
-OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE="$NOPROD" DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
 [ $RC -eq 1 ] && have "$QR/qdrant-sentinel" && have "$NLF" && have "$QR/qdrant-20260106-0300.tar.gz" \
   && ok "real delegate: an inside-root prefix collision cannot delete the real sibling (N3)" || no "delegate inside-root collision: rc=$RC sibling=$(have "$QR/qdrant-sentinel" && echo kept || echo GONE)"
 build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0   # N4: the delegate's own log never carries a candidate's name
 while [ $i -lt 7 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
 mk "$QR/qdrant-$MARK.tar.gz"; old "$QR/qdrant-$MARK.tar.gz" 30; mk "$QR/coll-${MARK}_20250101-0300.snapshot"; old "$QR/coll-${MARK}_20250101-0300.snapshot" 30
-OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE="$NOPROD" DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
 [ $RC -eq 0 ] && ! have "$QR/qdrant-$MARK.tar.gz" && ! grep -q "$MARK" "$H/logs/qdrant-backup-retention.log" 2>/dev/null && grep -q "REMOVED \[tar.gz backstop" "$H/logs/qdrant-backup-retention.log" \
   && ok "real delegate: the pruned candidate is logged by hash, its name never reaches the delegate log (N4)" || no "delegate log carries a name or prune missing: rc=$RC $(grep -c "$MARK" "$H/logs/qdrant-backup-retention.log" 2>/dev/null) hits"
 build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0   # kimi r3: the delegate's deletion knobs are pinned, never inherited
 while [ $i -lt 9 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
-OUT=$(QDRANT_KEEP_TARGZ=0 QDRANT_ORPHAN_KEEP_DAYS=0 QDRANT_RETENTION_LOG="$ROOT/stray.log" HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+OUT=$(QDRANT_KEEP_TARGZ=0 QDRANT_ORPHAN_KEEP_DAYS=0 QDRANT_RETENTION_LOG="$ROOT/stray.log" HOME="$H" QDRANT_PRODUCER_PROC_RE="$NOPROD" DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
 [ $RC -eq 0 ] && have "$QR/qdrant-20260100-0300.tar.gz" && have "$QR/qdrant-20260106-0300.tar.gz" && ! have "$QR/qdrant-20260108-0300.tar.gz" && [ ! -e "$ROOT/stray.log" ] && [ -s "$H/logs/qdrant-backup-retention.log" ] \
   && ok "inherited QDRANT_KEEP_TARGZ=0 is ignored: keep-7 pinned, 7 newest survive; delegate log pinned under HOME (kimi r3)" || no "delegate knobs inherited: rc=$RC kept=$(ls "$QR" 2>/dev/null | wc -l | tr -d ' ') stray=$( [ -e "$ROOT/stray.log" ] && echo yes || echo no)"
 build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0
 while [ $i -lt 9 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
-OUT=$(QDRANT_RETENTION_ENABLED=false HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+OUT=$(QDRANT_RETENTION_ENABLED=false HOME="$H" QDRANT_PRODUCER_PROC_RE="$NOPROD" DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
 [ $RC -eq 0 ] && ! have "$QR/qdrant-20260108-0300.tar.gz" && have "$QR/qdrant-20260106-0300.tar.gz" \
   && ok "inherited QDRANT_RETENTION_ENABLED=false cannot silently disable the delegated step (kimi r3)" || no "delegate silently disabled by inherited env: rc=$RC"
 GNUBIN="$ROOT/gnubin"; mkdir -p "$GNUBIN"   # N5: a GNU-shaped stat (`-f` = filesystem text, `-c '%s'` = size) must not break the delegate's arithmetic
 printf '#!/bin/sh\ncase "$1" in -f) echo "  File: \"$3\"\n    ID: 100000000000000 Namelen: 255     Type: ext2/ext3"; exit 0 ;; -c) shift 2; wc -c < "$1" | tr -d " "; exit 0 ;; esac\nexit 1\n' > "$GNUBIN/stat"; chmod +x "$GNUBIN/stat"
 build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0
 while [ $i -lt 9 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
-OUT=$(PATH="$GNUBIN:$PATH" HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+OUT=$(PATH="$GNUBIN:$PATH" HOME="$H" QDRANT_PRODUCER_PROC_RE="$NOPROD" DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
 [ $RC -eq 0 ] && ! have "$QR/qdrant-20260108-0300.tar.gz" && have "$QR/qdrant-20260106-0300.tar.gz" && grep -q "REMOVED \[tar.gz backstop keep-7\] [0-9a-f]\{12\} (2B)" "$H/logs/qdrant-backup-retention.log" \
   && ok "real delegate under a GNU-shaped stat: sizes stay numeric, keep-7 prune succeeds (N5)" || no "delegate broke under GNU stat: rc=$RC $(grep 'REMOVED\|WARN\|error' "$H/logs/qdrant-backup-retention.log" 2>/dev/null | head -2)"
 build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0
 while [ $i -lt 9 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
-OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE="$NOPROD" DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
 [ $RC -eq 0 ] && ! have "$QR/qdrant-20260108-0300.tar.gz" && ! have "$QR/qdrant-20260107-0300.tar.gz" && have "$QR/qdrant-20260106-0300.tar.gz" \
   && ok "real delegate: well-formed archives beyond keep-7 are still pruned (N1 control)" || no "delegate control: rc=$RC"
+
+echo "═══ TEST 9: kimi round 3 — launchd PATH (R-2), degenerate protection shapes (R-6) ═══"
+build; fake_host nuzantara; printf '#!/bin/sh\nprintf "%%s" "$PATH" > "%s/path.out"\nexit 0\n' "$ROOT" > "$FAKEBIN/payload-path.sh"; chmod +x "$FAKEBIN/payload-path.sh"
+HOME="$H" PATH="$FAKEBIN:/usr/bin:/bin:/usr/sbin:/sbin" PRO_DISK_JANITOR_PAYLOAD="$FAKEBIN/payload-path.sh" PRO_DISK_JANITOR_PIDFILE="$PIDF" bash "$WRAP" >/dev/null 2>&1; RC=$?
+[ $RC -eq 0 ] && grep -q "^/opt/homebrew/bin:/usr/local/bin:$FAKEBIN:/usr/bin:/bin" "$ROOT/path.out" 2>/dev/null && ok "wrapper prepends the fleet tool dirs to a launchd-shaped PATH before the payload runs (R-2)" || no "wrapper PATH: rc=$RC path=$(cat "$ROOT/path.out" 2>/dev/null)"
+build; COREBIN="$ROOT/corebin"; mkdir -p "$COREBIN"   # every utility the payload needs, and NOT uv/docker/brew: a launchd-shaped PATH on any host
+for u in bash date tee find du awk head tail tr cut shasum sha256sum grep rm rmdir mkdir dirname basename df pgrep sort lsof cat wc ls id stat env sed uname hostname; do
+  b=$(command -v "$u" 2>/dev/null) && [ -n "$b" ] && ln -sf "$b" "$COREBIN/$u"; done
+OUT=$(DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=true DISK_JANITOR_QDRANT_RETENTION="" DISK_JANITOR_LOG="$ROOT/j.log" DISK_JANITOR_JOURNAL="$ROOT/j.jsonl" PATH="$COREBIN" bash "$SCRIPT" --apply 2>&1); RC=$?
+[ $RC -eq 1 ] && echo "$OUT" | grep -q "tools: NO tool reachable on PATH — step dead" && ok "tools step with no tool on PATH is an ERROR, never a silent 'done: none' (R-2)" || no "dead tools step silent rc=$RC"
+build; bash "$SCRIPT" --check-path / >/dev/null 2>&1; RC=$?
+[ $RC -eq 3 ] && ok "--check-path / is REFUSED (R-6)" || no "/ not refused rc=$RC"
+build; rm -rf "$H/.ollama"; DISK_JANITOR_HOME="$H/" bash "$SCRIPT" --check-path "$H/.ollama/models/m" >/dev/null 2>&1; RC=$?
+[ $RC -eq 3 ] && ok "trailing-slash HOME still protects a not-yet-existing protected root (R-6)" || no "trailing-slash HOME defeated protection rc=$RC"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]
