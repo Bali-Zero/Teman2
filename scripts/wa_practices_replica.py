@@ -137,6 +137,24 @@ once the array contains one NULL, so `count(*)` would silently report 0
 regardless of any real Pro-only row (reproduced against a real cluster
 before this guard existed).
 
+`updated_at` is excluded from both the UPSERT's `SET` clause and its
+`IS DISTINCT FROM` comparison on BOTH tables (R7, coordinator Pro-trigger
+census 2026-09-29): Pro carries `BEFORE UPDATE` triggers
+(`update_practices_updated_at`, `update_practice_types_updated_at`, both ->
+`update_updated_at_column()`, `NEW.updated_at = NOW()`) that stamp the
+column unconditionally on every real UPDATE, regardless of what this
+UPSERT's SET clause assigns. If `updated_at` stayed in the comparison, the
+first genuine data change on a row would make Pro's `updated_at` diverge
+from Fly's stable value permanently — every subsequent run, even against
+UNCHANGED Fly data, would see the row as "distinct" (Pro: trigger-stamped
+NOW(); Fly: the original timestamp), re-fire the UPDATE, and the trigger
+would re-stamp `NOW()` again, forever. `updated_at` still flows through the
+initial `INSERT` (a first-time row keeps Fly's original timestamp; no
+`BEFORE UPDATE` trigger fires on `INSERT`), it is simply never part of what
+decides "did this row change" or what the `UPDATE` branch writes.
+Confirmed no other column on either table is trigger-maintained (Pro DDL
+census, coordinator, 2026-09-29) — `updated_at` is the only exclusion.
+
 Output: exactly one counts line on success —
 `wa_practices_replica: sync OK fly=<n> inserted=<n> updated=<n>
 unchanged=<n> skipped_no_client=<n> skipped_fk=<n> skipped_invalid=<n>
@@ -294,19 +312,30 @@ def _value_expr(index: int, pgtype: str) -> str:
 def _build_upsert_sql(
     table: str, key_column: str, key_cast: str, constraint: str,
     data_columns: tuple[tuple[str, str], ...],
+    *, trigger_maintained: tuple[str, ...] = (),
 ) -> str:
     """Shared UPSERT-by-natural-key builder for both `practices` (key=uuid)
     and `practice_types` (key=code) — same `ON CONFLICT ... DO UPDATE ...
     WHERE (...) IS DISTINCT FROM (...) RETURNING (xmax = 0) AS inserted`
     idiom as `wa_team_promises._CANDIDATE_UPSERT_SQL`, generalized so the two
-    tables' near-identical SQL isn't hand-duplicated."""
+    tables' near-identical SQL isn't hand-duplicated.
+
+    `trigger_maintained` columns (R7 — see the module
+    docstring's `updated_at` paragraph) are still part of the INSERT's
+    column/VALUES list (a first-time row still gets Fly's value), but are
+    dropped from BOTH the `SET` clause and the `IS DISTINCT FROM`
+    comparison: a Pro-side `BEFORE UPDATE` trigger overwrites them
+    unconditionally on every real UPDATE, so writing them is pointless and
+    comparing them is actively wrong (Pro's trigger-stamped value can never
+    stay equal to Fly's stable one once any real UPDATE has ever fired)."""
     all_columns = (key_column,) + tuple(c for c, _ in data_columns)
     casts = (key_cast,) + tuple(t for _, t in data_columns)
     non_key = [c for c in all_columns if c != key_column]
+    settable = [c for c in non_key if c not in trigger_maintained]
     values_sql = ", ".join(_value_expr(i + 1, cast) for i, cast in enumerate(casts))
-    set_sql = ", ".join(f"{c} = EXCLUDED.{c}" for c in non_key)
-    row_a = ", ".join(f"{table}.{c}" for c in non_key)
-    row_b = ", ".join(f"EXCLUDED.{c}" for c in non_key)
+    set_sql = ", ".join(f"{c} = EXCLUDED.{c}" for c in settable)
+    row_a = ", ".join(f"{table}.{c}" for c in settable)
+    row_b = ", ".join(f"EXCLUDED.{c}" for c in settable)
     return (
         f"INSERT INTO {table} ({', '.join(all_columns)})\n"
         f"VALUES ({values_sql})\n"
@@ -330,9 +359,11 @@ _PRACTICES_INSERT_COLUMNS: tuple[tuple[str, str], ...] = (
 
 _PRACTICES_UPSERT_SQL = _build_upsert_sql(
     "practices", "uuid", "uuid", "practices_uuid_key", _PRACTICES_INSERT_COLUMNS,
+    trigger_maintained=("updated_at",),
 )
 _PRACTICE_TYPES_UPSERT_SQL = _build_upsert_sql(
     "practice_types", "code", "text", "practice_types_code_key", _PRACTICE_TYPES_DATA_COLUMNS,
+    trigger_maintained=("updated_at",),
 )
 
 _PRO_CLIENTS_UUID_MAP_SQL = "SELECT id, uuid::text AS uuid FROM clients"

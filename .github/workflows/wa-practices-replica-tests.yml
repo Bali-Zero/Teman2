@@ -64,7 +64,11 @@ name: wa practices replica tests
 # oracle tests closing surviving mutants (R2), a NULL-uuid/NULL-code
 # fail-closed guard + guilt/innocence cases (R3, gate finding F2), and a
 # distinct non-zero exit code for skipped_fk>0/skipped_invalid>0 plus its
-# own cli_main guilt/innocence cases (R4, gate finding F3).
+# own cli_main guilt/innocence cases (R4, gate finding F3), then to 80/19
+# (unit floor unchanged, real-PG opt-in +2) after coordinator's Pro-trigger
+# census found `updated_at`'s UPSERT comparison broke idempotency the first
+# time a row was ever really updated (R7, a fresh C2-census finding -- NOT the gate's own F7) — two real-PG
+# guilt cases with the actual `BEFORE UPDATE` trigger installed.
 
 on:
   pull_request:
@@ -138,7 +142,7 @@ jobs:
       - name: The T5 P4 replica corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=80   # the corpus size after the fresh gate's REWORK-BUILD round (REAL_PG unset, 17 opt-in skips)
+          FLOOR=80   # the corpus size after the fresh gate's REWORK-BUILD round (REAL_PG unset, 19 opt-in skips)
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_practices_replica*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"

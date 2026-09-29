@@ -58,7 +58,22 @@ _SCHEMA_SQL = (
         + ",\n"
         for col, pgtype in _DATA_COLUMNS
     ).rstrip(",\n")
-    + "\n);"
+    + "\n);\n"
+    # Pro's actual `BEFORE UPDATE` triggers (R7, coordinator
+    # Pro-trigger census 2026-09-29, DDL text as measured) — WITHOUT these,
+    # this fixture cannot reproduce the updated_at-comparison bug at all:
+    # every prior run of this suite passed idempotency with no trigger
+    # present, which is exactly the false confidence that let the bug ship.
+    "CREATE FUNCTION update_updated_at_column() RETURNS TRIGGER AS $$\n"
+    "BEGIN\n"
+    "  NEW.updated_at = NOW();\n"
+    "  RETURN NEW;\n"
+    "END;\n"
+    "$$ LANGUAGE plpgsql;\n"
+    "CREATE TRIGGER update_practices_updated_at BEFORE UPDATE ON practices\n"
+    "  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();\n"
+    "CREATE TRIGGER update_practice_types_updated_at BEFORE UPDATE ON practice_types\n"
+    "  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();"
 ) if _PG_CTL and _INITDB else ""
 
 
@@ -587,3 +602,56 @@ async def test_real_pg_null_practice_type_code_is_skipped_not_a_crash(pro_pool):
         )
     assert null_count == 0
     assert ok_count == 1
+
+
+# --- R7 (coordinator's Pro trigger census, 2026-09-29): Pro carries a
+# `BEFORE UPDATE` trigger on BOTH tables that stamps
+# `updated_at = NOW()` unconditionally on every real UPDATE, independent of
+# what this UPSERT's SET clause assigns. `_SCHEMA_SQL` above installs the
+# SAME trigger DDL Pro carries -- without it, every earlier run of this
+# suite passed idempotency with no way to ever catch the bug this closes.
+
+
+@pytest.mark.asyncio
+async def test_real_pg_updated_at_trigger_does_not_reopen_idempotency_on_practices(pro_pool):
+    client_uuid = "29292929-2929-2929-2929-292929292929"
+    prac_uuid = "30303030-3030-3030-3030-303030303030"
+    async with pro_pool.acquire() as conn:
+        await conn.execute("INSERT INTO clients (uuid) VALUES ($1::uuid)", client_uuid)
+
+    row_v1 = _fly_row(prac_uuid, client_uuid, title="r7-v1")
+    m1 = await run_sync(pro_pool, [row_v1], [], dry_run=False)
+    assert (m1.inserted, m1.updated) == (1, 0)  # INSERT never fires a BEFORE UPDATE trigger
+
+    row_v2 = _fly_row(prac_uuid, client_uuid, title="r7-v2")  # a genuine Fly-side change
+    m2 = await run_sync(pro_pool, [row_v2], [], dry_run=False)
+    assert (m2.inserted, m2.updated) == (0, 1)  # the real UPDATE fires the trigger
+
+    # Fly data is UNCHANGED between run 2 and run 3, but Pro's own
+    # updated_at was just stamped to NOW() by the trigger inside run 2's
+    # UPDATE, diverging from Fly's stable value. Without excluding
+    # updated_at from the comparison, that divergence alone would look like
+    # a real change here -- and firing the UPDATE would re-stamp NOW() all
+    # over again, so this would never stop across any number of runs.
+    m3 = await run_sync(pro_pool, [row_v2], [], dry_run=False)
+    assert (m3.inserted, m3.updated, m3.unchanged) == (0, 0, 1)
+
+    async with pro_pool.acquire() as conn:
+        title = await conn.fetchval("SELECT title FROM practices WHERE uuid = $1::uuid", prac_uuid)
+    assert title == "r7-v2"
+
+
+@pytest.mark.asyncio
+async def test_real_pg_updated_at_trigger_does_not_reopen_idempotency_on_practice_types(pro_pool):
+    m1 = await run_sync(pro_pool, [], [_pt_row("r7_type", name="r7-v1")], dry_run=False)
+    assert (m1.types_inserted, m1.types_updated) == (1, 0)
+
+    m2 = await run_sync(pro_pool, [], [_pt_row("r7_type", name="r7-v2")], dry_run=False)
+    assert (m2.types_inserted, m2.types_updated) == (0, 1)  # the real UPDATE fires the trigger
+
+    m3 = await run_sync(pro_pool, [], [_pt_row("r7_type", name="r7-v2")], dry_run=False)
+    assert (m3.types_inserted, m3.types_updated) == (0, 0)  # unchanged, despite the trigger stamp
+
+    async with pro_pool.acquire() as conn:
+        name = await conn.fetchval("SELECT name FROM practice_types WHERE code = 'r7_type'")
+    assert name == "r7-v2"
