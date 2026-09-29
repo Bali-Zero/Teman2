@@ -59,7 +59,12 @@ name: wa practices replica tests
 # incomplete (an out-of-range int4 value raised asyncpg.DataError, not
 # ValueError, past both per-row except clauses) and its ValueError catch too
 # broadly scoped (wrapping fetchrow itself, risking misclassifying a genuine
-# driver/UPSERT error as "invalid Fly data").
+# driver/UPSERT error as "invalid Fly data"), then to 80/17 after the fresh
+# on-disk gate's own mutation round (REWORK-BUILD, 2026-09-29): 8 literal-
+# oracle tests closing surviving mutants (R2), a NULL-uuid/NULL-code
+# fail-closed guard + guilt/innocence cases (R3, gate finding F2), and a
+# distinct non-zero exit code for skipped_fk>0/skipped_invalid>0 plus its
+# own cli_main guilt/innocence cases (R4, gate finding F3).
 
 on:
   pull_request:
@@ -133,7 +138,7 @@ jobs:
       - name: The T5 P4 replica corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=64   # the corpus size after the Gear-3 council's delta round (REAL_PG unset, 15 opt-in skips)
+          FLOOR=80   # the corpus size after the fresh gate's REWORK-BUILD round (REAL_PG unset, 17 opt-in skips)
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_practices_replica*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"

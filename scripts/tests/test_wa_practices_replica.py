@@ -95,7 +95,8 @@ class _FakeTxn:
 
 class _FakeConn:
     def __init__(self, log, clients, practices, practice_types=None, *,
-                 fail_on_uuid=None, fk_violation_on_uuid=None):
+                 fail_on_uuid=None, fk_violation_on_uuid=None,
+                 db_level_error_on_uuid=None):
         self._log = log
         self._clients = clients  # list[{"id": int, "uuid": str}]
         self._practices = practices  # dict[uuid] -> {"client_id": int, "practice_type_id": int|None, "data": list}
@@ -104,6 +105,10 @@ class _FakeConn:
         self._next_practice_type_id = 1
         self._fail_on_uuid = fail_on_uuid
         self._fk_violation_on_uuid = fk_violation_on_uuid
+        # (uuid, exception_instance): raised FROM fetchrow itself — simulates
+        # a genuine DB-level error (not a _coerce_param conversion failure)
+        # for the scope-narrowing discriminating test (gate R2/h).
+        self._db_level_error_on_uuid = db_level_error_on_uuid
 
     def transaction(self):
         return _FakeTxn(self._log)
@@ -133,6 +138,8 @@ class _FakeConn:
             raise RuntimeError("synthetic column-set mismatch")
         if self._fk_violation_on_uuid is not None and uuid_ == self._fk_violation_on_uuid:
             raise wpr.asyncpg.exceptions.ForeignKeyViolationError("synthetic FK violation")
+        if self._db_level_error_on_uuid is not None and uuid_ == self._db_level_error_on_uuid[0]:
+            raise self._db_level_error_on_uuid[1]
         existing = self._practices.get(uuid_)
         if existing is None:
             self._practices[uuid_] = {
@@ -503,6 +510,139 @@ async def test_run_sync_pro_only_row_kept_never_deleted():
     assert "pro-only-uuid" in practices  # untouched, never deleted
 
 
+# --- A3 — NULL uuid / NULL code: gate finding F2. A Fly practice with a
+#          NULL uuid (or a Fly practice_type with a NULL code) must be
+#          skipped+counted BEFORE it ever reaches fly_uuids/the UPSERT —
+#          reproduced against a real cluster (both a NOT-NULL and a
+#          hypothetically-nullable uuid column) before this guard existed:
+#          NOT-NULL schema -> an uncaught NotNullViolationError aborted the
+#          whole transaction; a nullable column -> a fresh duplicate row
+#          landed every run AND appending the NULL to fly_uuids poisoned
+#          pro_only_kept's `uuid <> ALL($1::uuid[])` to 0 regardless of any
+#          real Pro-only row (SQL's own NULL-comparison semantics).
+
+
+@pytest.mark.asyncio
+async def test_run_sync_null_uuid_is_skipped_and_never_reaches_pro_only_count():
+    log: list = []
+    clients = [{"id": 1, "uuid": "client-uuid-a"}]
+    practices = {"pro-only-uuid": {"client_id": 1, "practice_type_id": None, "data": ["x"] * _N_DATA_COLS}}
+    conn = _FakeConn(log, clients, practices)
+    pool = _FakePool(conn)
+    m = await run_sync(
+        pool,
+        [_fly_row(None, "client-uuid-a"), _fly_row("prac-uuid-good", "client-uuid-a")],
+        [],
+        dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    assert m.inserted == 1  # the OTHER row still lands — the run did not abort
+    assert None not in conn._practices  # never sent to the UPSERT at all
+    # A genuine pre-existing Pro-only row is still correctly counted — NOT
+    # poisoned to 0 the way a None inside fly_uuids would poison it.
+    assert m.pro_only_kept == 1
+
+
+@pytest.mark.asyncio
+async def test_run_sync_null_practice_type_code_is_skipped_not_a_crash():
+    log: list = []
+    conn = _FakeConn(log, [], {})
+    pool = _FakePool(conn)
+    m = await run_sync(
+        pool, [],
+        [_pt_row(None), _pt_row("visa_ok")],
+        dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    assert m.types_inserted == 1  # the OTHER practice_type still lands
+
+
+def test_run_sync_innocence_no_null_key_present_skipped_invalid_unaffected():
+    import asyncio
+
+    log: list = []
+    clients = [{"id": 1, "uuid": "client-uuid-a"}]
+    conn = _FakeConn(log, clients, {})
+    pool = _FakePool(conn)
+    m = asyncio.run(
+        run_sync(pool, [_fly_row("prac-uuid-1", "client-uuid-a")], [_pt_row("visa_ok")], dry_run=False)
+    )
+    assert m.skipped_invalid == 0
+
+
+# --- A4 — exit code: gate finding F3. skipped_fk>0 or skipped_invalid>0
+#          after a real commit must not read as rc=0 to a cron-runner
+#          receipt — see cli_main's rc mapping (0/1/2/3, documented in the
+#          module docstring and the cron wrapper's header).
+
+
+@pytest.mark.asyncio
+async def test_cli_main_exits_3_when_skipped_fk_nonzero_but_still_commits(monkeypatch):
+    monkeypatch.setattr(wpr, "_fetch_fly_rows", lambda: [])
+    monkeypatch.setattr(wpr, "_fetch_fly_practice_types_rows", lambda: [])
+
+    class _FakePool2:
+        async def close(self):
+            pass
+
+    async def _fake_create_pool(**kwargs):
+        return _FakePool2()
+
+    monkeypatch.setattr(wpr.asyncpg, "create_pool", _fake_create_pool)
+
+    async def _fake_run_sync(*args, **kwargs):
+        return SyncMetrics(fly=2, inserted=1, skipped_fk=1)
+
+    monkeypatch.setattr(wpr, "run_sync", _fake_run_sync)
+    rc = await cli_main(["--sync"])
+    assert rc == 3
+
+
+@pytest.mark.asyncio
+async def test_cli_main_exits_3_when_skipped_invalid_nonzero_but_still_commits(monkeypatch):
+    monkeypatch.setattr(wpr, "_fetch_fly_rows", lambda: [])
+    monkeypatch.setattr(wpr, "_fetch_fly_practice_types_rows", lambda: [])
+
+    class _FakePool2:
+        async def close(self):
+            pass
+
+    async def _fake_create_pool(**kwargs):
+        return _FakePool2()
+
+    monkeypatch.setattr(wpr.asyncpg, "create_pool", _fake_create_pool)
+
+    async def _fake_run_sync(*args, **kwargs):
+        return SyncMetrics(fly=2, inserted=1, skipped_invalid=1)
+
+    monkeypatch.setattr(wpr, "run_sync", _fake_run_sync)
+    rc = await cli_main(["--sync"])
+    assert rc == 3
+
+
+def test_cli_main_innocence_exits_0_when_skipped_fk_and_skipped_invalid_both_zero(monkeypatch):
+    import asyncio
+
+    monkeypatch.setattr(wpr, "_fetch_fly_rows", lambda: [])
+    monkeypatch.setattr(wpr, "_fetch_fly_practice_types_rows", lambda: [])
+
+    class _FakePool2:
+        async def close(self):
+            pass
+
+    async def _fake_create_pool(**kwargs):
+        return _FakePool2()
+
+    monkeypatch.setattr(wpr.asyncpg, "create_pool", _fake_create_pool)
+
+    async def _fake_run_sync(*args, **kwargs):
+        return SyncMetrics(fly=2, inserted=2, skipped_fk=0, skipped_invalid=0)
+
+    monkeypatch.setattr(wpr, "run_sync", _fake_run_sync)
+    rc = asyncio.run(cli_main(["--sync"]))
+    assert rc == 0
+
+
 @pytest.mark.asyncio
 async def test_run_sync_dry_run_rolls_back_but_reports_real_counts():
     log: list = []
@@ -533,6 +673,125 @@ async def test_run_sync_column_set_mismatch_rolls_back_not_partial_commit():
     with pytest.raises(RuntimeError):
         await run_sync(pool, [_fly_row("prac-uuid-bad", "client-uuid-a")], [], dry_run=False)
     assert log[-1] == "ROLLBACK"
+
+
+# --- A5 — Gate R2: literal-oracle tests killing the 8 mutants that survived
+#          the fresh gate's own mutation round (neither the unit nor the
+#          opt-in real-PG suite killed them). Each asserts against a LITERAL
+#          value, never the module's own constant compared to itself — a
+#          test that reads `assert x == wpr.SOME_CONSTANT` cannot catch a
+#          mutation OF `SOME_CONSTANT`.
+
+
+@pytest.mark.asyncio
+async def test_fetch_fly_rows_uses_a_read_only_transaction_literal(monkeypatch):
+    captured: dict = {}
+
+    def _fake_run(args, **kwargs):
+        captured["args"] = args
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(wpr.subprocess, "run", _fake_run)
+    wpr._fetch_fly_rows()
+    sql_arg = captured["args"][captured["args"].index("-c") + 1]
+    assert "BEGIN TRANSACTION READ ONLY" in sql_arg
+    assert "COMMIT" in sql_arg
+
+
+def test_fetch_fly_rows_sets_pg_target_prod_literal(monkeypatch):
+    captured: dict = {}
+
+    def _fake_run(*args, **kwargs):
+        captured["env"] = kwargs.get("env")
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(wpr.subprocess, "run", _fake_run)
+    wpr._fetch_fly_rows()
+    assert captured["env"] is not None
+    assert captured["env"]["PG_TARGET"] == "prod"
+
+
+def test_guard_guilt_rejects_a_non_fly_app_name_fly_star_var(monkeypatch):
+    """The existing guilt test only ever exercised FLY_APP_NAME — a guard
+    keyed to that ONE name (instead of the `FLY_` prefix) would still pass
+    it while missing every other FLY_* var Fly actually injects."""
+    for k in list(os.environ):
+        if k.startswith("FLY_"):
+            monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("FLY_REGION", "sin")
+    with pytest.raises(EnvGuardError):
+        _guard_pro_local_env()
+
+
+def test_pg_env_vars_to_clear_is_exactly_the_documented_literal_set():
+    assert wpr._PG_ENV_VARS_TO_CLEAR == ("PGHOST", "PGHOSTADDR", "PGPORT", "PGDATABASE", "PGSERVICE")
+
+
+def test_clear_pg_env_removes_a_real_pghost_value(monkeypatch):
+    monkeypatch.setenv("PGHOST", "evil.example.invalid")
+    wpr._clear_pg_env()
+    assert "PGHOST" not in os.environ
+
+
+def test_pro_local_connect_kwargs_is_exactly_the_documented_literal():
+    assert wpr.PRO_LOCAL_CONNECT_KWARGS == {
+        "host": "127.0.0.1", "port": 5432, "database": "nuzantara_dev", "user": "nuzantara",
+    }
+
+
+def test_fly_select_sql_projects_client_uuid_from_the_join_not_client_id():
+    assert "c.uuid::text AS client_uuid" in wpr._FLY_SELECT_SQL
+    assert "p.client_id::text AS client_uuid" not in wpr._FLY_SELECT_SQL
+    assert "LEFT JOIN clients c ON c.id = p.client_id" in wpr._FLY_SELECT_SQL
+
+
+def test_user_profile_id_is_absent_from_fly_select_and_upsert_literal():
+    assert "user_profile_id" not in wpr._FLY_SELECT_SQL
+    assert "user_profile_id" not in wpr._PRACTICES_UPSERT_SQL
+    assert all(col != "user_profile_id" for col, _ in wpr._DATA_COLUMNS)
+
+
+@pytest.mark.asyncio
+async def test_run_sync_valuerror_from_fetchrow_itself_is_never_misclassified_as_skipped_invalid():
+    """Discriminating test for the delta round's scope-narrowing fix
+    (codex-gpt-5.6-sol): a ValueError raised BY fetchrow itself (simulating
+    a genuine DB-level error, never a _coerce_param conversion failure) must
+    propagate and abort — never silently counted as skipped_invalid. The
+    prior test using a RuntimeError could not discriminate this (RuntimeError
+    was never going to be caught by either the buggy or the fixed code); this
+    one is RED on commit adc96ce34d (verified empirically before writing
+    this docstring's claim) because that commit's `except ValueError:` still
+    wrapped the `fetchrow` call."""
+    log: list = []
+    clients = [{"id": 1, "uuid": "client-uuid-a"}]
+    conn = _FakeConn(
+        log, clients, {},
+        db_level_error_on_uuid=("prac-uuid-bad", ValueError("synthetic db-level error")),
+    )
+    pool = _FakePool(conn)
+    with pytest.raises(ValueError):
+        await run_sync(pool, [_fly_row("prac-uuid-bad", "client-uuid-a")], [], dry_run=False)
+
+
+@pytest.mark.asyncio
+async def test_run_sync_asyncpg_dataerror_from_fetchrow_is_never_misclassified_as_skipped_invalid():
+    """Completeness, not discrimination: `asyncpg.exceptions.DataError` (the
+    actual exception type an int4-overflow raises against a real cluster —
+    see test_real_pg_integer_out_of_int4_range_is_skipped_not_a_crash) does
+    NOT inherit from ValueError (verified via its MRO), so this one already
+    propagated uncaught even on commit adc96ce34d's broader `except
+    ValueError:` — it stays green on both. Kept as an explicit, permanent
+    guarantee for the specific error class a real int4 overflow raises,
+    rather than relying on that being true only by MRO accident."""
+    log: list = []
+    clients = [{"id": 1, "uuid": "client-uuid-a"}]
+    conn = _FakeConn(
+        log, clients, {},
+        db_level_error_on_uuid=("prac-uuid-bad", wpr.asyncpg.exceptions.DataError("synthetic db-level error")),
+    )
+    pool = _FakePool(conn)
+    with pytest.raises(wpr.asyncpg.exceptions.DataError):
+        await run_sync(pool, [_fly_row("prac-uuid-bad", "client-uuid-a")], [], dry_run=False)
 
 
 # --- B — Pro-local connection guard (identical posture to

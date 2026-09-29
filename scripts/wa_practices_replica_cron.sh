@@ -15,10 +15,19 @@
 #     /Users/nuzantara/nuzantara/scripts/wa_practices_replica_cron.sh \
 #     >> /Users/nuzantara/logs/cron-tmp/wa-practices-replica.log 2>&1
 #
-# Exit-code mapping: whatever `wa_practices_replica.py --sync` returns (0 =
-# ran, including "0 inserted/0 updated"; 1 = FAIL line on stderr; 2 =
-# guard/argparse refusal) propagates as-is — cron-runner's receipt must see a
-# real failure as a real failure, never a silent green (superscar #2).
+# Exit-code mapping: whatever `wa_practices_replica.py --sync` returns
+# propagates as-is — cron-runner's receipt must see a real failure as a real
+# failure, never a silent green (superscar #2):
+#   0 = ran clean, including "0 inserted/0 updated", skipped_fk=0 and
+#       skipped_invalid=0
+#   1 = an exception aborted the run (FAIL line on stderr names the stage)
+#   2 = the env guard or argparse refused before any I/O
+#   3 = the sync COMPLETED and COMMITTED (every good row landed — not a
+#       failure of the run itself) but skipped_fk>0 or skipped_invalid>0:
+#       something in Fly's data could not be placed this run (added by the
+#       gate's F3 finding, 2026-09-29 — a cron receipt that read rc=0
+#       whatever the skip counts are is the exact silent-green this repo's
+#       cron-runner discipline exists to prevent)
 
 set -uo pipefail
 

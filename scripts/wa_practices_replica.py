@@ -126,6 +126,17 @@ IS DISTINCT FROM (...)` guard (same idiom as
 unchanged Fly data updates nothing — `RETURNING` yields no row for those,
 counted as `unchanged`.
 
+A Fly row with a NULL `uuid` (or a Fly `practice_types` row with a NULL
+`code`) is skipped+counted (`skipped_invalid`) BEFORE it ever reaches
+`fly_uuids`/the UPSERT — gate finding F2: naively UPSERTing a NULL key would
+insert a fresh duplicate row every single run (NULL never equals NULL in a
+uniqueness check), and appending a NULL to `fly_uuids` would poison
+`pro_only_kept`'s `uuid <> ALL($1::uuid[])` query — SQL's NULL-comparison
+semantics make that expression evaluate to NULL, not true, for every row
+once the array contains one NULL, so `count(*)` would silently report 0
+regardless of any real Pro-only row (reproduced against a real cluster
+before this guard existed).
+
 Output: exactly one counts line on success —
 `wa_practices_replica: sync OK fly=<n> inserted=<n> updated=<n>
 unchanged=<n> skipped_no_client=<n> skipped_fk=<n> skipped_invalid=<n>
@@ -134,6 +145,16 @@ field an int.
 Every other path prints ONLY `wa_practices_replica: FAIL <Type>
 sqlstate=<code|-> stage=<name> counts=n/a` — never the exception message,
 DETAIL, a value, a name or a uuid.
+
+Exit codes (gate finding F3 — a cron-runner receipt that reads rc=0
+whatever the skip counts are is a silent green, superscar #2): `0` — ran
+clean, `skipped_fk == 0 and skipped_invalid == 0`. `1` — an exception
+aborted the run (the `FAIL` line's stage names where). `2` — the env guard
+or argument parsing refused before any I/O. `3` — the sync COMPLETED and
+COMMITTED (every good row landed — this is not a failure of the run itself)
+but `skipped_fk > 0` or `skipped_invalid > 0`: something in Fly's data
+could not be placed, and a human should look at the counts line before the
+next cron tick.
 """
 
 from __future__ import annotations
@@ -485,6 +506,12 @@ async def run_sync(
         await tx.start()
         try:
             for pt_row in fly_practice_types_rows:
+                if pt_row["code"] is None:
+                    # NULL code: can't natural-key an UPSERT on it, and it
+                    # can never satisfy a practices.practice_type_code FK
+                    # either — skip+count, never send it to the DB at all.
+                    metrics.skipped_invalid += 1
+                    continue
                 try:
                     pt_params = [pt_row["code"]] + [
                         _coerce_param(pt_row[c], t) for c, t in _PRACTICE_TYPES_DATA_COLUMNS
@@ -506,6 +533,19 @@ async def run_sync(
             practice_type_code_to_id = {r["code"]: r["id"] for r in practice_type_rows}
             fly_uuids: list[str] = []
             for row in fly_rows:
+                if row["uuid"] is None:
+                    # NULL uuid: can't natural-key an UPSERT on it (a second
+                    # NULL-uuid row would insert again every run instead of
+                    # ever matching the first), and appending it to
+                    # fly_uuids would poison `pro_only_kept`'s `uuid <> ALL
+                    # ($1::uuid[])` — SQL's NULL-comparison semantics make
+                    # `x <> ALL(ARRAY[..., NULL])` evaluate to NULL (not
+                    # true) for every row, so count(*) silently returns 0
+                    # regardless of any real Pro-only row (gate finding F2,
+                    # reproduced against real PG). Skip+count before
+                    # touching fly_uuids at all.
+                    metrics.skipped_invalid += 1
+                    continue
                 fly_uuids.append(row["uuid"])
                 client_uuid = row["client_uuid"]
                 pro_client_id = client_uuid_to_id.get(client_uuid) if client_uuid else None
@@ -621,6 +661,15 @@ async def cli_main(argv: list[str] | None = None) -> int:
         return 1
 
     sys.stdout.write(_success_line(metrics))
+    if metrics.skipped_fk > 0 or metrics.skipped_invalid > 0:
+        # The commit already happened — every good row landed — but a
+        # cron-runner receipt that reads rc=0 whatever the skip counts is a
+        # silent green (gate finding F3, superscar #2): a Fly type-drift
+        # that turned 100% of rows into skipped_invalid would otherwise exit
+        # clean. rc=3 is distinct from 1 (an exception aborted the run) and
+        # 2 (guard/argparse refusal) — see the cron wrapper's header for the
+        # full exit-code mapping cron-runner's receipt must see.
+        return 3
     return 0
 
 

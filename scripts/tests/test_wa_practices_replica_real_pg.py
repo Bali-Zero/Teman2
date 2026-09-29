@@ -526,3 +526,64 @@ async def test_real_pg_integer_out_of_int4_range_is_skipped_not_a_crash(pro_pool
     async with pro_pool.acquire() as conn:
         count = await conn.fetchval("SELECT count(*) FROM practice_types")
     assert count == 1
+
+
+# --- Gate finding F2: a NULL Fly uuid, reproduced then fixed against a REAL
+#     cluster (mirroring the gate's own repro methodology — 3 runs of the
+#     same batch). On this schema (practices.uuid NOT NULL, matching the
+#     real Fly/Pro shape), the ORIGINAL design's uncaught
+#     asyncpg.exceptions.NotNullViolationError aborted the WHOLE
+#     transaction on the very first run. A second, separately-reproduced
+#     variant (an ALTER TABLE relaxing uuid to nullable) demonstrated the
+#     gate's literally-described symptom instead: a fresh duplicate row
+#     landing every run, and pro_only_kept poisoned to 0 regardless of a
+#     genuine Pro-only row, via SQL's own NULL-comparison semantics on
+#     `uuid <> ALL($1::uuid[])`. The fix (skip+count before the row ever
+#     reaches fly_uuids or the UPSERT) closes BOTH variants identically.
+
+
+@pytest.mark.asyncio
+async def test_real_pg_null_uuid_is_skipped_and_never_lands_across_repeated_runs(pro_pool):
+    client_uuid = "26262626-2626-2626-2626-262626262626"
+    good_uuid = "28282828-2828-2828-2828-282828282828"
+    async with pro_pool.acquire() as conn:
+        client_id = await conn.fetchval(
+            "INSERT INTO clients (uuid) VALUES ($1::uuid) RETURNING id", client_uuid
+        )
+        await conn.execute(
+            "INSERT INTO practices (uuid, client_id) VALUES ($1::uuid, $2)",
+            "27272727-2727-2727-2727-272727272727", client_id,
+        )  # a genuine pre-existing Pro-only row
+
+    rows = [_fly_row(None, client_uuid), _fly_row(good_uuid, client_uuid)]
+    for _ in range(3):  # mirrors the gate's own 3-run reproduction
+        m = await run_sync(pro_pool, rows, [], dry_run=False)
+        assert m.skipped_invalid == 1
+        # The pre-existing Pro-only row is correctly counted every run —
+        # never poisoned to 0 by a None inside fly_uuids.
+        assert m.pro_only_kept == 1
+    async with pro_pool.acquire() as conn:
+        null_count = await conn.fetchval("SELECT count(*) FROM practices WHERE uuid IS NULL")
+        good_count = await conn.fetchval(
+            "SELECT count(*) FROM practices WHERE uuid = $1::uuid", good_uuid
+        )
+    assert null_count == 0  # never landed, not once across 3 runs
+    assert good_count == 1  # the sibling row landed exactly once (idempotent)
+
+
+@pytest.mark.asyncio
+async def test_real_pg_null_practice_type_code_is_skipped_not_a_crash(pro_pool):
+    m = await run_sync(
+        pro_pool, [],
+        [_pt_row(None), _pt_row("visa_ok")],
+        dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    assert m.types_inserted == 1  # the OTHER practice_type still lands
+    async with pro_pool.acquire() as conn:
+        null_count = await conn.fetchval("SELECT count(*) FROM practice_types WHERE code IS NULL")
+        ok_count = await conn.fetchval(
+            "SELECT count(*) FROM practice_types WHERE code = 'visa_ok'"
+        )
+    assert null_count == 0
+    assert ok_count == 1
