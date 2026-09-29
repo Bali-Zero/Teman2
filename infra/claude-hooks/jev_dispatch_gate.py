@@ -53,6 +53,7 @@ for CI/unit runs with no backend venv), or absent on a skip row.
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import os
@@ -211,13 +212,16 @@ def _usable_python(path: pathlib.Path) -> bool:
         return False
 
 
+@functools.lru_cache(maxsize=1)
 def _repo_venv_python() -> pathlib.Path | None:
     """Locate the PINNED interpreter: apps/backend-rag/.venv/bin/python (its
     requirements lock files pin pyyaml with hashes; scripts/agent_start.py
     symlinks that venv into every worktree). Falls back to the main
     checkout's copy, resolved via git's common dir, only when the direct
     path is unusable. The root .venv has no manifest and is never a
-    candidate."""
+    candidate. Cached: env vars driving this resolution do not change
+    within one process, so the (possibly subprocess-backed) fallback runs
+    at most once — both the exec path and the identity recheck share it."""
     env_override = os.environ.get("JEV_DISPATCH_GATE_VENV_PYTHON")  # test seam only
     if env_override:
         p = pathlib.Path(env_override)
@@ -247,12 +251,34 @@ def _seam_active() -> bool:
             and bool(os.environ.get("JEV_DISPATCH_GATE_FAKE_ANSWERS")))
 
 
+def _pinned_venv_dir() -> pathlib.Path | None:
+    """The pinned venv's root (parent of bin/), from the FULLY resolved
+    candidate — direct path, JEV_DISPATCH_GATE_VENV_PYTHON override, or
+    git common-dir fallback, i.e. exactly what _reexec_under_repo_venv
+    would exec into (_repo_venv_python is cached, so this costs nothing
+    extra). On M5 apps/backend-rag/.venv/bin/python is itself a symlink to
+    the mise BASE python, so its realpath is identical to bare `python3`'s;
+    sys.prefix (which reads the venv's own pyvenv.cfg) is the only
+    reliable identity, the binary path never is."""
+    p = _repo_venv_python()
+    return p.parent.parent if p else None
+
+
+def _running_under_pinned_venv() -> bool:
+    try:
+        venv_dir = _pinned_venv_dir()
+        return venv_dir is not None and os.path.realpath(sys.prefix) == os.path.realpath(str(venv_dir))
+    except Exception:
+        return False
+
+
 def _interpreter_label() -> str | None:
-    """"venv" once re-exec'd (or already running the pinned interpreter),
-    "seam" under the CI/unit test seam (only with fake answers set), else
-    None (no pinned interpreter resolved — gate() skips Jev, see
-    no_pinned_interpreter)."""
-    if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1":
+    """"venv" only when REEXEC=1 AND sys.prefix observably matches the
+    pinned venv dir — the flag alone is a loop guard, never identity, so a
+    stale/spoofed REEXEC=1 with a prefix mismatch labels None (gate() then
+    applies no_pinned_interpreter). "seam" under the CI/unit test seam
+    (only with fake answers set)."""
+    if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1" and _running_under_pinned_venv():
         return "venv"
     if _seam_active():
         return "seam"
@@ -261,11 +287,12 @@ def _interpreter_label() -> str | None:
 
 def _reexec_under_repo_venv(argv: list[str]) -> None:
     """ALWAYS re-execs into the pinned interpreter unless already running
-    under it (env flag, or sys.executable already resolves to it) — no
-    test-import-first probe. No usable pinned interpreter, or a failed
-    exec, → return here; gate() then skips Jev rather than call the vendor
-    under an unpinned interpreter. Called before the alarm and before
-    stdin is read, so a failed attempt never consumes the payload."""
+    under it (env flag as the LOOP GUARD only, plus sys.prefix — never the
+    binary path/realpath — for identity) — no test-import-first probe. No
+    usable pinned interpreter, or a failed exec, → return here; gate()
+    then skips Jev rather than call the vendor under an unpinned
+    interpreter. Called before the alarm and before stdin is read, so a
+    failed attempt never consumes the payload."""
     try:
         if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1":
             return
@@ -274,8 +301,8 @@ def _reexec_under_repo_venv(argv: list[str]) -> None:
         p = _repo_venv_python()
         if p is None:
             return
-        if os.path.realpath(sys.executable) == os.path.realpath(str(p)):
-            os.environ["JEV_DISPATCH_GATE_REEXEC"] = "1"  # already the pinned interpreter
+        if _running_under_pinned_venv():
+            os.environ["JEV_DISPATCH_GATE_REEXEC"] = "1"  # already running under the pinned venv
             return
         hook_path = str(pathlib.Path(__file__).resolve())
         env = {**os.environ, "JEV_DISPATCH_GATE_REEXEC": "1"}

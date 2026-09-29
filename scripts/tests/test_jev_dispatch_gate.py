@@ -389,6 +389,46 @@ def _no_override_env(**overrides) -> dict:
     return e
 
 
+def _build_symlink_venv(venv_root: pathlib.Path) -> pathlib.Path:
+    """A --symlinks venv whose bin/python resolves to the SAME base binary
+    as sys.executable — the exact M5 shape where realpath cannot tell the
+    venv apart from bare python3, only sys.prefix (via the venv's own
+    pyvenv.cfg) can."""
+    subprocess.run([sys.executable, "-m", "venv", "--symlinks", "--without-pip", str(venv_root)],
+                   check=True, capture_output=True, text=True, timeout=60)
+    return venv_root / "bin" / "python"
+
+
+def _drop_marker_sitecustomize(venv_python: pathlib.Path) -> None:
+    """A sitecustomize.py that appends a line to JEV_TEST_MARKER_FILE on
+    interpreter startup — proves the venv interpreter genuinely ran, not
+    just that the receipt claims it did."""
+    site_dirs = list((venv_python.parent.parent).glob("lib/python3.*/site-packages"))
+    assert site_dirs, "venv has no site-packages dir"
+    (site_dirs[0] / "sitecustomize.py").write_text(
+        "import os\n"
+        "p = os.environ.get('JEV_TEST_MARKER_FILE')\n"
+        "if p:\n"
+        "    with open(p, 'a', encoding='utf-8') as f:\n"
+        "        f.write('MARKER\\n')\n"
+    )
+
+
+def _venv_test_repo(tmp: str) -> tuple[pathlib.Path, pathlib.Path, pathlib.Path]:
+    """A temp git repo with the hook copied under infra/claude-hooks/ and a
+    REAL --symlinks venv at apps/backend-rag/.venv, marker-instrumented.
+    Returns (root, hook_copy, venv_python)."""
+    root = pathlib.Path(tmp)
+    subprocess.run(["git", "init", "-q"], cwd=str(root), check=True)
+    hook_dir = root / "infra" / "claude-hooks"
+    hook_dir.mkdir(parents=True)
+    hook_copy = hook_dir / "jev_dispatch_gate.py"
+    shutil.copy(HOOK, hook_copy)
+    venv_python = _build_symlink_venv(root / "apps" / "backend-rag" / ".venv")
+    _drop_marker_sitecustomize(venv_python)
+    return root, hook_copy, venv_python
+
+
 def test_reexec_guilt_execs_under_override_with_hook_path_as_arg1():
     with tempfile.TemporaryDirectory() as tmp:
         script = _fake_venv_script(pathlib.Path(tmp))
@@ -527,18 +567,114 @@ def test_reexec_d2_group_writable_candidate_accepted_reexec_happens():
         assert "REEXEC_MARKER reexec_env=SET" in p.stdout
 
 
-def test_reexec_e_already_reexeced_never_loops_gate_runs_interpreter_venv():
+def test_reexec_e_guilt_real_symlink_venv_actually_execs_marker_written():
     with tempfile.TemporaryDirectory() as tmp:
-        script = _fake_venv_script(pathlib.Path(tmp))
-        state_dir = pathlib.Path(tmp, "state")
-        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(script),
-                               JEV_DISPATCH_GATE_REEXEC="1",
+        root, hook_copy, _venv_python = _venv_test_repo(tmp)
+        marker_file = root / "marker.txt"
+        state_dir = root / "state"
+        env = _no_override_env(JEV_TEST_MARKER_FILE=str(marker_file),
                                JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
                                JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
         payload = {"tool_name": "Agent", "tool_input": OPUS}
-        p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
-                           capture_output=True, text=True, env=env)
-        assert p.returncode == 0 and "REEXEC_MARKER" not in p.stdout
+        p = subprocess.run([sys.executable, str(hook_copy)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env, timeout=30)
+        assert p.returncode == 0
+        assert marker_file.exists() and "MARKER" in marker_file.read_text()
+        if p.stdout.strip():
+            json.loads(p.stdout)  # must be a valid hook decision JSON, not garbage
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert rows[-1]["interpreter"] == "venv"
+
+
+def test_reexec_e2_innocence_reexec_flag_alone_under_wrong_prefix_skips_truthfully():
+    with tempfile.TemporaryDirectory() as tmp:
+        root, hook_copy, _venv_python = _venv_test_repo(tmp)
+        marker_file = root / "marker.txt"
+        state_dir = root / "state"
+        # REEXEC=1 preset but we run under sys.executable directly (NOT the
+        # venv python) -> sys.prefix mismatches the venv dir on purpose.
+        env = _no_override_env(JEV_DISPATCH_GATE_REEXEC="1", JEV_TEST_MARKER_FILE=str(marker_file),
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(hook_copy)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env, timeout=30)
+        assert p.returncode == 0 and p.stdout == ""
+        assert not marker_file.exists()  # no exec at all: the flag is a loop guard, not identity
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert len(rows) == 1
+        assert rows[0]["action"] == "skip" and rows[0]["skip"] == "no_pinned_interpreter"
+        assert "interpreter" not in rows[0]
+
+
+def test_reexec_e3_innocence_dash_s_never_mislabels_venv_without_marker():
+    with tempfile.TemporaryDirectory() as tmp:
+        root, hook_copy, _venv_python = _venv_test_repo(tmp)
+        marker_file = root / "marker.txt"
+        state_dir = root / "state"
+        env = _no_override_env(JEV_TEST_MARKER_FILE=str(marker_file),
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        p = subprocess.run([sys.executable, "-S", str(hook_copy)],
+                           input=json.dumps({"tool_name": "Agent", "tool_input": OPUS}),
+                           capture_output=True, text=True, env=env, timeout=30)
+        assert p.returncode == 0
+        rec = state_dir / "receipts.jsonl"
+        rows = [json.loads(x) for x in rec.read_text().splitlines()] if rec.exists() else []
+        if rows and rows[-1].get("interpreter") == "venv":
+            assert marker_file.exists() and "MARKER" in marker_file.read_text()
+        else:
+            assert rows and rows[-1]["action"] == "skip" and rows[-1]["skip"] == "no_pinned_interpreter"
+
+
+def test_reexec_e4_loop_guard_under_real_pinned_venv_skips_exec_still_labels_venv():
+    with tempfile.TemporaryDirectory() as tmp:
+        root, hook_copy, venv_python = _venv_test_repo(tmp)
+        marker_file = root / "marker.txt"
+        state_dir = root / "state"
+        # REEXEC=1 preset AND we invoke the venv python directly: the loop
+        # guard must skip any exec attempt, yet the label must still come
+        # from the OBSERVED (genuinely matching) sys.prefix, not the flag.
+        env = _no_override_env(JEV_DISPATCH_GATE_REEXEC="1", JEV_TEST_MARKER_FILE=str(marker_file),
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([str(venv_python), str(hook_copy)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env, timeout=30)
+        assert p.returncode == 0
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert rows[-1]["interpreter"] == "venv"
+
+
+def test_reexec_e5_fallback_resolution_labels_venv_with_marker():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        subprocess.run(["git", "init", "-q"], cwd=str(root), check=True)
+        (root / "README").write_text("x")
+        subprocess.run(["git", "add", "README"], cwd=str(root), check=True)
+        subprocess.run(["git", "-c", "user.email=t@t.t", "-c", "user.name=t", "commit", "-q", "-m", "init"],
+                       cwd=str(root), check=True)
+        wt = root / ".worktrees" / "wt"
+        subprocess.run(["git", "worktree", "add", "-q", "-b", "wtbranch2", str(wt)],
+                       cwd=str(root), check=True)
+        # HERE.parent.parent (the worktree root) has NO local apps/backend-rag/.venv
+        hook_dir = wt / "infra" / "claude-hooks"
+        hook_dir.mkdir(parents=True)
+        hook_copy = hook_dir / "jev_dispatch_gate.py"
+        shutil.copy(HOOK, hook_copy)
+        # only the MAIN checkout (root) has the pinned venv, real symlink layout
+        venv_python = _build_symlink_venv(root / "apps" / "backend-rag" / ".venv")
+        _drop_marker_sitecustomize(venv_python)
+        marker_file = root / "marker.txt"
+        state_dir = root / "state"
+        env = _no_override_env(JEV_TEST_MARKER_FILE=str(marker_file),
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(hook_copy)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env, timeout=30)
+        assert p.returncode == 0
+        assert marker_file.exists() and "MARKER" in marker_file.read_text()
         rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
         assert rows[-1]["interpreter"] == "venv"
 
@@ -573,23 +709,23 @@ def test_seam_without_fake_answers_is_ignored_yields_no_pinned_interpreter_skip(
 
 def test_ask_jev_vendor_import_failure_yields_allow_with_receipt_status():
     with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        hook_dir = root / "infra" / "claude-hooks"
-        hook_dir.mkdir(parents=True)
-        hook_copy = hook_dir / "jev_dispatch_gate.py"
-        shutil.copy(HOOK, hook_copy)
         # deliberately NO scripts/ dir at all: no typesafe_client.py, no _redact_pii.py
+        root, hook_copy, venv_python = _venv_test_repo(tmp)
         state_dir = root / "state"
+        # invoke the REAL venv python directly so sys.prefix genuinely
+        # matches the pinned venv dir (REEXEC=1 as the loop guard, since
+        # we are already the right interpreter — no exec needed).
         env = _no_override_env(JEV_DISPATCH_GATE_REEXEC="1", JEV_DISPATCH_GATE_STATE=str(state_dir),
                                JEV_DISPATCH_GATE="enforce")
         env.pop("JEV_DISPATCH_GATE_FAKE_ANSWERS", None)
         env.pop("PYTHONPATH", None)
         payload = {"tool_name": "Agent", "tool_input": OPUS}
-        p = subprocess.run([sys.executable, str(hook_copy)], input=json.dumps(payload),
+        p = subprocess.run([str(venv_python), str(hook_copy)], input=json.dumps(payload),
                            capture_output=True, text=True, env=env, timeout=30)
         assert p.returncode == 0 and p.stdout == ""
         rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
         assert rows[-1]["jev_status"] == "vendor_import_failed" and rows[-1]["action"] == "allow"
+        assert rows[-1]["interpreter"] == "venv"
 
 
 if __name__ == "__main__":
