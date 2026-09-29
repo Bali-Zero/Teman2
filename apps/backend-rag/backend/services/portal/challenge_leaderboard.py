@@ -68,13 +68,24 @@ def compute_status(now: datetime) -> str:
 # style already in `scripts/portal_challenge_leaderboard.py` and lets the
 # script run the identical text through `pg.sh` (no asyncpg placeholders).
 
-_SHARED_CTES = """
-WITH real_clients AS (
+# Exposed on its own (not just inlined below) so the Round 2 engine
+# (`challenge_round2.py`) can compose its own `WITH real_clients AS (...), ...`
+# queries — first-document / client-request / review SQL that has nothing to
+# do with invitations — without duplicating the exclusion rule.
+REAL_CLIENTS_CTE = """
+real_clients AS (
     SELECT c.id
     FROM clients c
     WHERE c.deleted_at IS NULL
       AND NOT (COALESCE(c.tags, ARRAY[]::text[]) && ARRAY['test', 'portal-pilot']::text[])
-),
+)
+""".strip()
+
+_SHARED_CTES = (
+    "WITH "
+    + REAL_CLIENTS_CTE
+    + ",\n"
+    + """
 eligible_invites AS (
     SELECT ci.client_id, ci.created_by, ci.created_at, ci.used_at
     FROM client_invitations ci
@@ -111,6 +122,7 @@ window_activations AS (
       AND client_id NOT IN (SELECT client_id FROM already_active_before_window)
 )
 """.strip()
+)
 
 _AGGREGATES_SELECT = """
 , activation_agg AS (
@@ -165,22 +177,45 @@ def _window_ts() -> tuple[str, str]:
     return WINDOW_START.isoformat(), WINDOW_END.isoformat()
 
 
-def build_aggregates_sql() -> str:
+# Window-parameterised variants — the R1 window is baked in by the
+# no-argument `build_*_sql()` wrappers below (unchanged callers, unchanged
+# behaviour); `challenge_round2.py` calls these directly with the October
+# window so the two rounds share one CTE shape without a copy-paste drift.
+def build_aggregates_sql_for_window(start_ts: str, end_ts: str) -> str:
     """Per-creator activations/invited/last_activation_at, one row per creator."""
-    start_ts, end_ts = _window_ts()
     return (_SHARED_CTES + _AGGREGATES_SELECT).format(start_ts=start_ts, end_ts=end_ts)
 
 
-def build_recent_activations_sql() -> str:
+def build_recent_activations_sql_for_window(start_ts: str, end_ts: str) -> str:
     """Last 10 activation events in the window, most recent first. No client data."""
-    start_ts, end_ts = _window_ts()
     return (_SHARED_CTES + "\n" + _RECENT_ACTIVATIONS_SELECT).format(
         start_ts=start_ts, end_ts=end_ts
     )
 
 
-def build_goal_sql() -> str:
+def build_team_total_activations_sql_for_window(start_ts: str, end_ts: str) -> str:
+    """DISTINCT client_id across the whole window — see `build_team_total_activations_sql`
+    docstring below for why this must never be a sum of per-creator counts."""
+    return (_SHARED_CTES + "\n" + _TEAM_TOTAL_SELECT).format(start_ts=start_ts, end_ts=end_ts)
+
+
+def build_aggregates_sql() -> str:
+    """Per-creator activations/invited/last_activation_at, one row per creator."""
     start_ts, end_ts = _window_ts()
+    return build_aggregates_sql_for_window(start_ts, end_ts)
+
+
+def build_recent_activations_sql() -> str:
+    """Last 10 activation events in the window, most recent first. No client data."""
+    start_ts, end_ts = _window_ts()
+    return build_recent_activations_sql_for_window(start_ts, end_ts)
+
+
+def build_goal_sql_for_window(start_ts: str, end_ts: str) -> str:
+    """Identify the just-registered client's creator (fresh within 90s) for
+    an arbitrary window — the R1 wrapper below bakes in the R1 window; the
+    Round 2 engine calls this directly with its own window so both rounds'
+    live "goal" celebration share one lookup shape."""
     return (
         _SHARED_CTES
         + """
@@ -205,6 +240,11 @@ LIMIT 1
     ).format(start_ts=start_ts, end_ts=end_ts)
 
 
+def build_goal_sql() -> str:
+    start_ts, end_ts = _window_ts()
+    return build_goal_sql_for_window(start_ts, end_ts)
+
+
 def build_team_total_activations_sql() -> str:
     """DISTINCT client_id across the WHOLE window, not a sum of per-creator
     counts. A client whose two different invitation rows both got used_at
@@ -213,7 +253,7 @@ def build_team_total_activations_sql() -> str:
     per-creator GROUP BY) but must add only 1 to the team total — summing
     `activations` across creators would double-count that client."""
     start_ts, end_ts = _window_ts()
-    return (_SHARED_CTES + "\n" + _TEAM_TOTAL_SELECT).format(start_ts=start_ts, end_ts=end_ts)
+    return build_team_total_activations_sql_for_window(start_ts, end_ts)
 
 
 # ── Pure scoring ─────────────────────────────────────────────────────────
