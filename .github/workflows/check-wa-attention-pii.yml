@@ -73,7 +73,7 @@ jobs:
           # file reports its OLD path too; -z + quotepath=off so odd filenames are not mangled.
           git -c core.quotepath=off diff --name-only --no-renames -z "$base"...HEAD > changed.z
           if grep -zqE \
-            '^(scripts/wa-mirror-attention-telegram\.py|scripts/tests/test_wa_attention_[^/]*\.py|scripts/tests/conftest\.py|conftest\.py|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini|\.github/workflows/check-wa-attention-pii\.yml)$' changed.z; then
+            '^(scripts/wa-mirror-attention-telegram\.py|scripts/tests/test_wa_attention_[^/]*\.py|(scripts/(tests/)?)?(conftest\.py|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini)|\.github/workflows/check-wa-attention-pii\.yml)$' changed.z; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -115,7 +115,13 @@ jobs:
           root = ET.parse("junit.xml").getroot()
           cases = list(root.iter("testcase"))
           skipped = [c.get("name") for c in cases if c.find("skipped") is not None]
-          names = {c.get("name") for c in cases}
+          # (suite, test) identity, parametrization suffix stripped: a same-named test elsewhere
+          # must not satisfy the requirement.
+          names = {
+              c.get("name").split("[")[0]
+              for c in cases
+              if (c.get("classname") or "").endswith("test_wa_attention_sender_phone")
+          }
           # The real-Postgres tests must be present AND executed: a deselect would not show as skipped.
           must_run = {
               "test_digest_counts_post_lid_rows",
