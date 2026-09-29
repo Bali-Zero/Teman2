@@ -1,0 +1,44 @@
+task: >-
+  Move the tax calendar tool (/tax-calendar, served on tax.balizero.com) onto the site's R19
+  design, exactly like the Property Check tool was moved (PR #7596). Skin only: copy, dates,
+  links, iCal link, obligations, order and behaviour are frozen.
+lane: mouth/taxcal-r19
+machine: air-m5
+date: 2026-09-29
+gear: 1
+gear_reason: >-
+  Recomputed after the guard module left the diff (net under 400 lines).
+  Floor 1 (evidence_pack_lint.py --print-floor over `git diff --name-only`/`--numstat`
+  origin/main...HEAD): 5 files, skin-only restyle of layout.tsx/page.tsx/TaxCalendarBody.tsx
+  plus a route-scoped CSS module and an anchor test; no schema/infra/secrets/auth touched.
+acceptance:
+  A1: >-
+    TaxCalendarBody.r19-guard.test.tsx is the R19 ANCHOR test only (R19Presentation force, paper
+    nav variant, copper and wash tokens, 8px radius, route-scoped frame class): red on origin/main's
+    three files (cp in, run, cp back, cmp) and green on HEAD. The literal-colour guard was dropped by
+    the owner's decision after three fresh gates found spellings it missed while the product passed
+    each time; it moves to its own PR with an amended entity spec. Scoped suite (funnel/,
+    (tax-calendar)/, r19/, api/tax-calendar/) 15 files / 152 tests green; tsc --noEmit exit 0;
+    prettier clean; no e2e spec references tax-calendar.
+  A2: >-
+    Copy frozen: extracted JSX text and string literals (title/description/h1/body copy/tab
+    labels/CTA text/footnote, excluding className/style) are identical between origin/main and
+    HEAD for layout.tsx, page.tsx and TaxCalendarBody.tsx. Metadata (title/description) is
+    unchanged; the R19 layout adds no openGraph override, so the "keep every root key" rule
+    does not apply here.
+  A3: >-
+    Local next dev (--webpack, :3164) vs https://tax.balizero.com/ at 1440x900 and 390x844: one
+    [data-presentation="r19"] root on HEAD (0 on origin/main, pre-R19 dark theme), nav
+    background rgb(247,244,238) (light paper, was rgba(14,26,48,.94)), h1 in "R19 Fraunces"
+    weight 500 at rgb(29,44,59) ink (was Cormorant at rgb(236,236,236)), TrustBand labels
+    rgb(67,84,100) and values rgb(29,44,59) (not rgba(255,255,255,.68)), h1 top offset 112px desktop / 96px mobile (clear
+    of the 88px paper nav), scrollHeight 1423->1469 (1440) and 3019->2999 (390), iCal href
+    unchanged at /api/tax-calendar/ical on both.
+  A4: >-
+    No horizontal overflow at 390x844 after the rework: the badge wrapper's padding goes to 0,
+    so documentElement.scrollWidth is 390 locally with no element past the viewport (the first
+    gate measured 6.3px of overflow at 5874231966; production is 391 today).
+out_of_scope:
+  - >-
+    The wizard/public tax-calendar route is a separate PR, blocked on the Tax Department
+    signer's review of the flow — not touched here.

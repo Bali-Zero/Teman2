@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, type CSSProperties } from "react";
 import { DeadlineBadge } from "@balizero/core";
 import type { TaxDeadline } from "@/app/api/tax-calendar/deadlines";
 import { trackTaxDashboardViewed } from "@/lib/analytics";
@@ -28,7 +28,7 @@ export function TaxCalendarBody({
   }, [deadlines, kind, regency]);
 
   return (
-    <section>
+    <section style={{ fontFamily: "var(--font-sans)" }}>
       <header
         style={{
           display: "flex",
@@ -46,12 +46,12 @@ export function TaxCalendarBody({
             style={{
               padding: "var(--space-2) var(--space-4)",
               borderRadius: "999px",
-              border: "1px solid var(--color-border-subtle)",
+              border: "1px solid var(--r19-line)",
               background:
-                k === kind ? "var(--accent-funnel)" : "var(--surface-raised)",
-              color:
-                k === kind ? "var(--text-on-accent)" : "var(--text-primary)",
+                k === kind ? "var(--r19-copper)" : "var(--r19-surface)",
+              color: k === kind ? "var(--r19-cta-ink)" : "var(--r19-ink)",
               cursor: "pointer",
+              fontFamily: "var(--font-sans)",
             }}
           >
             {k}
@@ -62,9 +62,11 @@ export function TaxCalendarBody({
           onChange={(e) => setRegency(e.target.value)}
           style={{
             padding: "var(--space-2) var(--space-3)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border-subtle)",
-            background: "var(--surface-raised)",
+            borderRadius: "8px",
+            border: "1px solid var(--r19-line)",
+            background: "var(--r19-surface)",
+            color: "var(--r19-ink)",
+            fontFamily: "var(--font-sans)",
           }}
         >
           <option value="">All regencies</option>
@@ -83,10 +85,11 @@ export function TaxCalendarBody({
             alignItems: "center",
             minHeight: "44px",
             padding: "var(--space-2) var(--space-4)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border-subtle)",
-            background: "var(--surface-raised)",
-            color: "var(--text-primary)",
+            borderRadius: "8px",
+            border: "1px solid var(--r19-line)",
+            background: "var(--r19-surface)",
+            color: "var(--r19-ink)",
+            fontFamily: "var(--font-sans)",
             textDecoration: "none",
           }}
         >
@@ -110,19 +113,43 @@ export function TaxCalendarBody({
               gridTemplateColumns: "auto 1fr auto",
               gap: "var(--space-4)",
               padding: "var(--space-4)",
-              background: "var(--surface-raised)",
-              borderRadius: "var(--radius-lg)",
+              background: "var(--r19-surface)",
+              border: "1px solid var(--r19-line)",
+              borderRadius: "8px",
               alignItems: "center",
             }}
           >
-            <DeadlineBadge date={new Date(d.date)} />
+            <div
+              style={
+                {
+                  "--color-border-subtle": "var(--r19-line)",
+                  "--state-danger": "var(--r19-copper)",
+                  "--state-success": "var(--r19-copper)",
+                  "--state-warning": "var(--r19-copper)",
+                  background: "var(--r19-wash)",
+                  borderRadius: "8px",
+                  padding: 0,
+                } as CSSProperties
+              }
+            >
+              <DeadlineBadge date={new Date(d.date)} />
+            </div>
             <div>
-              <strong style={{ display: "block", fontSize: "1.0625rem" }}>
+              <strong
+                style={{
+                  color: "var(--r19-ink)",
+                  display: "block",
+                  fontFamily: "var(--font-serif)",
+                  fontSize: "1.0625rem",
+                  fontWeight: 500,
+                }}
+              >
                 {d.title}
               </strong>
               <div
                 style={{
-                  color: "var(--text-secondary)",
+                  color: "var(--r19-muted)",
+                  fontFamily: "var(--font-sans)",
                   fontSize: "0.875rem",
                   margin: "var(--space-1) 0",
                 }}
@@ -130,7 +157,13 @@ export function TaxCalendarBody({
                 {d.kind}
                 {d.regency ? ` · ${d.regency}` : ""}
               </div>
-              <p style={{ margin: 0, color: "var(--text-secondary)" }}>
+              <p
+                style={{
+                  color: "var(--r19-muted)",
+                  fontFamily: "var(--font-sans)",
+                  margin: 0,
+                }}
+              >
                 {d.description}
               </p>
             </div>
@@ -144,9 +177,10 @@ export function TaxCalendarBody({
                 alignItems: "center",
                 minHeight: "44px",
                 padding: "var(--space-2) var(--space-4)",
-                borderRadius: "var(--radius-md)",
-                background: "var(--accent-funnel)",
-                color: "var(--text-on-accent)",
+                borderRadius: "8px",
+                background: "var(--r19-copper)",
+                color: "var(--r19-cta-ink)",
+                fontFamily: "var(--font-sans)",
                 textDecoration: "none",
                 fontWeight: 600,
                 whiteSpace: "nowrap",
@@ -160,7 +194,8 @@ export function TaxCalendarBody({
       <p
         style={{
           marginTop: "var(--space-6)",
-          color: "var(--text-secondary)",
+          color: "var(--r19-muted)",
+          fontFamily: "var(--font-sans)",
           fontSize: "0.8125rem",
         }}
       >
