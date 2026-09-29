@@ -278,3 +278,13 @@ def test_junit_missing_definition_is_reported(tmp_path):
     assert len(cases) == 2
     assert skipped == ["m::test_b"]
     assert ran == {("m", "test_a")}
+
+
+def test_declared_gap_unwalked_class_bodies_are_not_refused():
+    """Characterization of a DECLARED residual, not a guarantee: the walk enters collected Test*
+    classes without __init__ only. If this test fails because the gap was closed, update the
+    NOT DEFENDED paragraph of check-wa-attention-pii.yml and the module docstring in the same PR."""
+    non_test_class = 'def test_guard():\n    assert False\nclass Helper:\n    globals()["test_guard"] = lambda: None\n    x = test_guard\n'
+    test_class_with_init = 'class TestC:\n    def __init__(self):\n        pass\n    def test_guard(self):\n        assert False\n    globals()["test_guard"] = lambda self: None\n'
+    for src in (non_test_class, test_class_with_init):
+        assert presence.scan_source("m", src)[1] == []
