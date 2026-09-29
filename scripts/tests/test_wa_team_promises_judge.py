@@ -74,6 +74,27 @@ def test_resolve_due_at_d6_default_is_48h_without_a_resolvable_hint():
     assert wtp._resolve_due_at(created_at, "") == created_at + timedelta(hours=48)
 
 
+# Round-1 council finding #10 (kimi-code/k3): the scanner matches
+# _TEMPORAL_CUES against the FULL clause and stores the matched SUBSTRING
+# itself as due_at_hint (scripts/wa_team_promises.py's _match_clause); the
+# judge then re-searches the SAME catalog, but only over that already-
+# isolated substring. Kimi's concern: if the four cue groups ever shared a
+# lexical overlap, a re-search over just the substring could match an
+# earlier-in-catalog-order pattern than the one that actually produced it,
+# silently resolving the wrong number of hours. This feeds every canonical
+# example word/phrase from _TEMPORAL_CUES back through
+# _hours_for_due_at_hint and pins that each resolves to its OWN group's
+# hours — a future edit that introduces such an overlap turns this red.
+@pytest.mark.parametrize("cue_text,expected_hours", [
+    ("next week", 168), ("prossima settimana", 168), ("minggu depan", 168),
+    ("tomorrow", 24), ("domani", 24), ("besok", 24),
+    ("asap", 12), ("segera", 12),
+    ("today", 8), ("oggi", 8), ("hari ini", 8), ("nanti", 8),
+])
+def test_hours_for_due_at_hint_no_cross_group_overlap_in_the_catalog(cue_text, expected_hours):
+    assert wtp._hours_for_due_at_hint(cue_text) == expected_hours
+
+
 # C — _judge_opener: ProxyHandler({}) unconditionally, regardless of a
 # poisoned proxy environment; the URL itself is a hardcoded literal, never
 # built from an env var.
@@ -113,8 +134,10 @@ class _FakeHTTPResponse:
         self.status = status
         self._body = body
 
-    def read(self) -> bytes:
-        return self._body
+    def read(self, size: int = -1) -> bytes:
+        # T3 PR-3 round-1 council finding #5b: _call_ollama now calls
+        # resp.read(N) with a size cap, matching http.client's own signature.
+        return self._body if size is None or size < 0 else self._body[:size]
 
     def getcode(self) -> int:
         return self.status
@@ -194,6 +217,50 @@ def test_call_ollama_invalid_model_output_returns_none_not_transport_error():
     error — an Ollama outage must never be confused with a bad answer."""
     opener = _FakeOpener(response=_FakeHTTPResponse(200, _envelope("not json")))
     assert wtp._call_ollama(opener, "clause") is None
+
+
+# Round-1 council findings #3 (codex-gpt-5.6-sol) / #1 (kimi-code/k3),
+# independently: a well-formed HTTP 200 carrying a MALFORMED envelope (not
+# the model's judgment failing, the ENVELOPE'S OWN SHAPE) used to either
+# silently count as an invalid model output (burning one of the 5 attempts
+# toward quarantine on every tick a proxy/Ollama upgrade returns one of
+# these) or crash with a raw AttributeError outside this function's own
+# try/except (reported with the wrong `stage`). Both are now the SAME
+# OllamaTransportError, raised BEFORE _parse_verdict ever sees the content —
+# never an attempt, never a bare crash.
+@pytest.mark.parametrize("body", [
+    b"[]",                                    # top-level not an object
+    b"42",                                    # top-level not an object
+    b'{"message": null}',                     # message present but not an object
+    b'{"message": "oops"}',                   # message present but not an object
+    b'{"message": {}}',                       # message is an object, no content key
+    b'{"model": "qwen3.5:9b"}',               # no message key at all
+], ids=["array", "scalar", "message-null", "message-string", "message-no-content", "no-message-key"])
+def test_call_ollama_malformed_envelope_shapes_raise_transport_error_not_invalid(body):
+    opener = _FakeOpener(response=_FakeHTTPResponse(200, body))
+    with pytest.raises(wtp.OllamaTransportError):
+        wtp._call_ollama(opener, "clause")
+
+
+def test_call_ollama_oversized_response_raises_transport_error():
+    """Round-1 council finding #5b/#3 (codex + kimi, size-cap half): a
+    response larger than _OLLAMA_MAX_RESPONSE_BYTES is treated as a
+    transport failure, never read in full."""
+    oversized = _envelope(json.dumps({"future_commitment_by_sender": True}))
+    oversized += b" " * (wtp._OLLAMA_MAX_RESPONSE_BYTES + 1)
+    opener = _FakeOpener(response=_FakeHTTPResponse(200, oversized))
+    with pytest.raises(wtp.OllamaTransportError):
+        wtp._call_ollama(opener, "clause")
+
+
+def test_call_ollama_response_well_under_the_cap_is_not_oversized():
+    """Innocence pairing for the size cap above: an ordinary small envelope
+    (the only kind Ollama's own closed schema ever actually produces) is
+    read and parsed normally, nowhere near the cap."""
+    opener = _FakeOpener(response=_FakeHTTPResponse(
+        200, _envelope(json.dumps({"future_commitment_by_sender": True}))
+    ))
+    assert wtp._call_ollama(opener, "clause") is True
 
 
 # E — _judge_one: decision wiring, proven by monkeypatching the collaborator
@@ -305,28 +372,37 @@ async def test_judge_one_hash_mismatch_body_edited_marks_superseded(monkeypatch)
     assert metrics.superseded == 1
 
 
+# Round-1 council finding #2 moved `promise_text`/`due_at` resolution OUT of
+# _judge_one and INTO _apply_true itself (a second, FOR-SHARE-locked read —
+# see _JUDGE_MESSAGE_FOR_SHARE_SQL's docstring), so _judge_one only ever
+# forwards IDENTIFYING fields (clause_idx, promise_type, due_at_hint) to it
+# now, never the clause text or a resolved due_at. The D6/TOCTOU proof for
+# _apply_true's own resolution logic lives in
+# test_wa_team_promises_judge_real_pg.py, the right tier for a function that
+# does real guarded SQL — this test only proves _judge_one's wiring: which
+# kwargs it forwards, and how it maps _apply_true's three string outcomes to
+# metrics.
 @pytest.mark.asyncio
-@pytest.mark.parametrize("due_at_hint,expected_hours", [
-    ("tomorrow", 24),
-    (None, 48),  # D6 default
-    ("not-a-real-cue", 48),  # D6 default: unresolvable hint falls back too
+@pytest.mark.parametrize("outcome,expected_field", [
+    ("true", "true"),
+    ("superseded", "superseded"),
+    ("raced", "raced"),
 ])
-async def test_judge_one_true_verdict_calls_apply_true_with_resolved_due_at(
-    monkeypatch, due_at_hint, expected_hours,
+async def test_judge_one_true_verdict_forwards_identifying_fields_and_maps_outcome(
+    monkeypatch, outcome, expected_field,
 ):
     body = "I will send it tomorrow"
     clauses = wtp._split_clauses(body)
     good_hash = wtp._hash_clause(clauses[0])
-    created_at = datetime(2026, 9, 20, 8, 0, tzinfo=timezone.utc)
-    pool = _MessagePool(message_row={"created_at": created_at, "body": body})
+    pool = _MessagePool(message_row={"created_at": datetime.now(timezone.utc), "body": body})
 
     captured = {}
 
-    async def _fake_true(_pool, cid, jh, *, message_id, promise_text, promise_type, due_at, dry_run):
+    async def _fake_true(_pool, cid, jh, *, message_id, clause_idx, promise_type, due_at_hint, dry_run):
         captured.update(candidate_id=cid, judged_hash=jh, message_id=message_id,
-                         promise_text=promise_text, promise_type=promise_type,
-                         due_at=due_at, dry_run=dry_run)
-        return True
+                         clause_idx=clause_idx, promise_type=promise_type,
+                         due_at_hint=due_at_hint, dry_run=dry_run)
+        return outcome
 
     monkeypatch.setattr(wtp, "_apply_true", _fake_true)
     monkeypatch.setattr(wtp, "_call_ollama", lambda _opener, _clause: True)
@@ -334,17 +410,21 @@ async def test_judge_one_true_verdict_calls_apply_true_with_resolved_due_at(
     metrics = wtp.JudgeMetrics()
     await wtp._judge_one(
         pool, None,
-        _candidate(clause_idx=0, clause_hash=good_hash, due_at_hint=due_at_hint,
+        _candidate(clause_idx=0, clause_hash=good_hash, due_at_hint="tomorrow",
                    promise_type="send", message_id=42, id=7),
         dry_run=False, metrics=metrics,
     )
 
-    assert metrics.true == 1
+    assert getattr(metrics, expected_field) == 1
     assert captured["candidate_id"] == 7
     assert captured["message_id"] == 42
+    assert captured["clause_idx"] == 0
     assert captured["promise_type"] == "send"
-    assert captured["promise_text"] == clauses[0]
-    assert captured["due_at"] == created_at + timedelta(hours=expected_hours)
+    assert captured["due_at_hint"] == "tomorrow"
+    # NEVER the clause text or a resolved timestamp — _apply_true derives
+    # both itself, from its own second read, per the finding #2 fix.
+    assert "promise_text" not in captured
+    assert "due_at" not in captured
 
 
 @pytest.mark.asyncio
@@ -414,7 +494,7 @@ async def test_judge_one_raced_when_the_guarded_write_touches_0_rows(monkeypatch
     if path == "false":
         monkeypatch.setattr(wtp, "_apply_guarded", lambda *_a, **_kw: _false_coro())
     else:
-        monkeypatch.setattr(wtp, "_apply_true", lambda *_a, **_kw: _false_coro())
+        monkeypatch.setattr(wtp, "_apply_true", lambda *_a, **_kw: _raced_coro())
 
     metrics = wtp.JudgeMetrics()
     await wtp._judge_one(
@@ -429,6 +509,10 @@ async def test_judge_one_raced_when_the_guarded_write_touches_0_rows(monkeypatch
 
 async def _false_coro():
     return False
+
+
+async def _raced_coro():
+    return "raced"
 
 
 @pytest.mark.asyncio
@@ -551,6 +635,42 @@ async def test_cli_main_judge_limit_out_of_range_rejected_before_any_connect(lim
     monkeypatch.setattr(wtp.asyncpg, "create_pool", _must_not_connect)
     rc = await wtp.cli_main(["--judge", "--judge-limit", str(limit)])
     assert rc == 2
+
+
+# Round-1 council finding #4 (codex-gpt-5.6-sol) — a test-coverage gap, not
+# a live defect: `_SanitizingArgumentParser.error()` already existed on this
+# diff's very first commit (it raises `_ArgSyntaxError("argparse_error")`,
+# discarding argparse's own `message` unconditionally), which already closes
+# the scenario codex described — `--judge-limit "+628123456789 Jane Doe"`
+# would otherwise reach `ArgumentParser.error()` with that raw literal
+# embedded in its message and print it to stderr. But nothing PROVED it: a
+# mutant reverting `_SanitizingArgumentParser` to plain
+# `argparse.ArgumentParser` passed the full suite. These two tests are that
+# mutation guard, on both routes into `error()` (a `type=int` conversion
+# failure, and an unrecognized argument).
+@pytest.mark.asyncio
+async def test_cli_main_argparse_never_echoes_a_poisoned_invalid_int_value(capsys):
+    leak = "+628123456789-Jane-Doe"
+    rc = await wtp.cli_main(["--judge", "--judge-limit", f"not-an-int-{leak}"])
+    captured = capsys.readouterr()
+
+    assert rc == 2
+    assert leak not in captured.err
+    assert leak not in captured.out
+    assert "FAIL _ArgSyntaxError" in captured.err
+    assert "stage=argparse" in captured.err
+
+
+@pytest.mark.asyncio
+async def test_cli_main_argparse_never_echoes_a_poisoned_unknown_argument(capsys):
+    leak = "+628123456789-Jane-Doe"
+    rc = await wtp.cli_main(["--judge", "--frobnicate", leak])
+    captured = capsys.readouterr()
+
+    assert rc == 2
+    assert leak not in captured.err
+    assert leak not in captured.out
+    assert "FAIL _ArgSyntaxError" in captured.err
 
 
 @pytest.mark.asyncio

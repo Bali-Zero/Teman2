@@ -376,17 +376,251 @@ async def test_race_scanner_revision_mid_tick_guard_fails_no_promises_row(pg_soc
         # _apply_true is called with the STALE hash the judge "read" before
         # the revision above — proving the guard, not run_judge's own
         # selection (which would legitimately re-read the new row and just
-        # supersede it for a real out-of-band hash change).
-        ok = await _apply_true(
-            pool, cid, original_hash, message_id=908, promise_text="I will send it tomorrow",
-            promise_type="send", due_at=created_at + timedelta(hours=24), dry_run=False,
+        # supersede it for a real out-of-band hash change). The message body
+        # is UNCHANGED here (only the candidate row was revised), so
+        # _apply_true's own second read matches judged_hash and it reaches
+        # the candidate-side guard, which is what this test is about.
+        outcome = await _apply_true(
+            pool, cid, original_hash, message_id=908, clause_idx=0,
+            promise_type="send", due_at_hint=None, dry_run=False,
         )
 
-        assert ok is False
+        assert outcome == "raced"
         assert await _promises(pool) == []
         row = await _candidate_row(pool, cid)
         assert row["status"] == "unjudged"  # untouched — the scanner's own revision stands
         assert row["clause_hash"] == new_hash
+
+
+# === round-1 council finding #2: the TOCTOU window between the judge's ===
+# === FIRST read (pre-Ollama-call) and the write is closed by a SECOND,   ===
+# === FOR-SHARE-locked read inside _apply_true itself.                    ===
+
+
+@pytest.mark.asyncio
+async def test_toctou_message_edited_after_first_read_before_apply_true_marks_superseded(
+    pg_socket_dir,
+):
+    async with _fresh_database(pg_socket_dir, "judge_toctou") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+        original_body = "I will send it tomorrow"
+        _clause_text, original_hash = _seed_candidate_for_body(original_body)
+        await _insert_wmc(pool, msg_id=909, body=original_body, created_at=created_at)
+        cid = await _insert_candidate(pool, message_id=909, clause_idx=0, clause_hash=original_hash,
+                                       promise_type="send", due_at_hint="tomorrow")
+
+        # Simulates the message being edited WHILE an Ollama call for the
+        # ORIGINAL clause is in flight: the candidate row's own clause_hash
+        # is untouched (the scanner has not ticked yet), but the body under
+        # it has already changed by the time _apply_true runs.
+        await _update_wmc_body(pool, msg_id=909, body="I will send it NEXT WEEK instead")
+
+        # judged_hash is the hash of the ORIGINAL clause — exactly what the
+        # judge would still be holding after a slow Ollama call returned a
+        # verdict for text that is no longer current.
+        outcome = await _apply_true(
+            pool, cid, original_hash, message_id=909, clause_idx=0,
+            promise_type="send", due_at_hint="tomorrow", dry_run=False,
+        )
+
+        # A mutant that reverts to the pre-fix _apply_true (writing the
+        # caller's OWN promise_text/due_at with no second read) would return
+        # "true" here and insert the STALE "I will send it tomorrow" text —
+        # this asserts the fix's actual, structural guarantee instead.
+        assert outcome == "superseded"
+        assert await _promises(pool) == []
+        row = await _candidate_row(pool, cid)
+        assert row["status"] == "superseded"
+        assert row["clause_hash"] == original_hash  # untouched — only status flipped
+
+
+@pytest.mark.asyncio
+async def test_toctou_message_unchanged_apply_true_inserts_from_its_own_fresh_read(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "judge_toctou_ok") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+        body = "I will send it tomorrow"
+        clause_text, clause_hash = _seed_candidate_for_body(body)
+        await _insert_wmc(pool, msg_id=910, body=body, created_at=created_at)
+        cid = await _insert_candidate(pool, message_id=910, clause_idx=0, clause_hash=clause_hash,
+                                       promise_type="send", due_at_hint="tomorrow")
+
+        outcome = await _apply_true(
+            pool, cid, clause_hash, message_id=910, clause_idx=0,
+            promise_type="send", due_at_hint="tomorrow", dry_run=False,
+        )
+
+        assert outcome == "true"
+        row = await _candidate_row(pool, cid)
+        assert row["status"] == "judged_true"
+        promises = await _promises(pool)
+        assert len(promises) == 1
+        assert promises[0]["promise_text"] == clause_text
+        assert promises[0]["due_at"] == created_at + timedelta(hours=24)
+
+
+# === round-1 council finding #4/#6 (codex + kimi-code/k3, independently): ===
+# === the false/superseded guarded UPDATEs were only proven for _apply_true ===
+# === against real PG; a dropped `AND clause_hash=$2` on either would pass  ===
+# === the whole suite otherwise.                                            ===
+
+
+@pytest.mark.asyncio
+async def test_race_judged_false_guard_fails_on_stale_hash_no_status_change(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "judge_race_false") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+        body = "I will send it tomorrow"
+        _clause_text, original_hash = _seed_candidate_for_body(body)
+        await _insert_wmc(pool, msg_id=911, body=body, created_at=created_at)
+        cid = await _insert_candidate(pool, message_id=911, clause_idx=0, clause_hash=original_hash)
+
+        new_hash = "b" * 64
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE team_promise_candidates SET clause_hash = $1, attempts = 0 WHERE id = $2",
+                new_hash, cid,
+            )
+
+        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, cid, original_hash, False)
+
+        assert held is False
+        row = await _candidate_row(pool, cid)
+        assert row["status"] == "unjudged"
+        assert row["clause_hash"] == new_hash
+
+
+@pytest.mark.asyncio
+async def test_race_superseded_guard_fails_on_stale_hash_no_status_change(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "judge_race_superseded") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+        body = "I will send it tomorrow"
+        _clause_text, original_hash = _seed_candidate_for_body(body)
+        await _insert_wmc(pool, msg_id=912, body=body, created_at=created_at)
+        cid = await _insert_candidate(pool, message_id=912, clause_idx=0, clause_hash=original_hash)
+
+        new_hash = "c" * 64
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE team_promise_candidates SET clause_hash = $1, attempts = 0 WHERE id = $2",
+                new_hash, cid,
+            )
+
+        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_SUPERSEDED_SQL, cid, original_hash, False)
+
+        assert held is False
+        row = await _candidate_row(pool, cid)
+        assert row["status"] == "unjudged"
+        assert row["clause_hash"] == new_hash
+
+
+# === round-1 council finding #6 (kimi-code/k3): the attempt-increment ===
+# === guard now also pins `attempts`, so a racing SECOND increment against ===
+# === the value the judge itself read at selection time loses this guard  ===
+# === exactly like every other path already loses its own.                ===
+
+
+@pytest.mark.asyncio
+async def test_race_attempt_guard_pins_selection_time_attempts_double_judge_loses(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "judge_race_attempt") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+        body = "I will send it tomorrow"
+        _clause_text, clause_hash = _seed_candidate_for_body(body)
+        await _insert_wmc(pool, msg_id=913, body=body, created_at=created_at)
+        cid = await _insert_candidate(pool, message_id=913, clause_idx=0, clause_hash=clause_hash,
+                                       attempts=2)
+
+        # First "judge" instance applies an attempt increment for the
+        # attempts=2 value it read at selection time.
+        outcome1 = await wtp._apply_attempt(pool, cid, clause_hash, 2, False)
+        assert outcome1 == "unjudged"
+
+        # A second, RACING instance that ALSO read attempts=2 at selection
+        # time (before the first one committed) tries the SAME increment —
+        # without AND attempts=$3 this would double-count; with it, the
+        # guard now fails because attempts is 3, not 2.
+        outcome2 = await wtp._apply_attempt(pool, cid, clause_hash, 2, False)
+        assert outcome2 is None  # raced
+
+        row = await _candidate_row(pool, cid)
+        assert row["attempts"] == 3  # incremented exactly ONCE, not twice
+
+
+@pytest.mark.asyncio
+async def test_attempt_fourth_failure_quarantines_on_real_pg(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "judge_quarantine") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+        body = "I will send it tomorrow"
+        _clause_text, clause_hash = _seed_candidate_for_body(body)
+        await _insert_wmc(pool, msg_id=914, body=body, created_at=created_at)
+        cid = await _insert_candidate(pool, message_id=914, clause_idx=0, clause_hash=clause_hash,
+                                       attempts=4)
+
+        # The 5th failed attempt (attempts 4 -> 5 == _JUDGE_MAX_ATTEMPTS)
+        # quarantines in the SAME guarded UPDATE.
+        outcome = await wtp._apply_attempt(pool, cid, clause_hash, 4, False)
+
+        assert outcome == "quarantined"
+        row = await _candidate_row(pool, cid)
+        assert row["status"] == "quarantined"
+        assert row["attempts"] == 5
+
+        # And a quarantined row is no longer selected at all (attempts <
+        # _JUDGE_MAX_ATTEMPTS in _JUDGE_SELECT_SQL, kimi finding #5).
+        async with pool.acquire() as conn:
+            selected = await conn.fetch(wtp._JUDGE_SELECT_SQL, 20)
+        assert cid not in [r["id"] for r in selected]
+
+
+# === round-1 council finding #1 (codex) — RETRACTED with evidence: the      ===
+# === judge's body/message_text COALESCE is the SAME expression the         ===
+# === scanner's own selection query uses (scripts/wa_team_promises.py:315,  ===
+# === on origin/main before this PR), so a raw `body=''` with a non-empty   ===
+# === `message_text` is NOT "the current body is empty" from this module's  ===
+# === own, pre-existing, shared definition of "body" — it is exactly the    ===
+# === same message the scanner itself would still treat as having content. ===
+# === This is not a new inconsistency PR-3 introduces; it is parity with a  ===
+# === query already on main.                                                ===
+
+
+@pytest.mark.asyncio
+async def test_message_text_fallback_is_not_a_c2_bypass_matches_scanner_selection(
+    pg_socket_dir, monkeypatch,
+):
+    async with _fresh_database(pg_socket_dir, "judge_message_text_fallback") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+        body = "I will send it tomorrow"
+        clause_text, clause_hash = _seed_candidate_for_body(body)
+        # body='' (falsy), message_text carries the SAME content the
+        # candidate was created from — COALESCE(NULLIF(body,''), ...) makes
+        # this indistinguishable, on purpose, from a normal non-empty body.
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO whatsapp_message_context (id, direction, body, message_text, created_at) "
+                "VALUES ($1, 'outbound', '', $2, $3)",
+                915, body, created_at,
+            )
+        cid = await _insert_candidate(pool, message_id=915, clause_idx=0, clause_hash=clause_hash,
+                                       promise_type="send")
+
+        monkeypatch.setattr(wtp, "_call_ollama", lambda *_a, **_kw: True)
+        metrics = await run_judge(pool, limit=20, dry_run=False)
+
+        # NOT superseded — the effective body (per the shared COALESCE) is
+        # unchanged, so the judge proceeds exactly as it would for a message
+        # whose `body` column was never empty in the first place.
+        assert metrics.superseded == 0
+        assert metrics.true == 1
+        row = await _candidate_row(pool, cid)
+        assert row["status"] == "judged_true"
+        promises = await _promises(pool)
+        assert len(promises) == 1
+        assert promises[0]["promise_text"] == clause_text
 
 
 # === schema upgrade: the PR-1/PR-2 4-value shape, WITH ROWS, to 5-value ===

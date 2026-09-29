@@ -743,6 +743,12 @@ _OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 _OLLAMA_MODEL = "qwen3.5:9b"
 _OLLAMA_TIMEOUT_SECONDS = 60
 
+# Round-1 council finding #5b: the expected reply is one JSON object holding
+# a single boolean — a local, trusted (127.0.0.1-only) counterpart, but a
+# bounded read still costs nothing and turns a wedged/oversized response into
+# a clean OllamaTransportError instead of an unbounded read tying up the tick.
+_OLLAMA_MAX_RESPONSE_BYTES = 65536
+
 _EXTRACTOR_VERSION = "t3-judge-v1/qwen3.5:9b"
 
 # Closed schema: `additionalProperties: false` + a single required boolean
@@ -813,10 +819,22 @@ def _parse_verdict(content: object) -> bool | None:
 
 def _call_ollama(opener: urllib.request.OpenerDirector, clause: str) -> bool | None:
     """One judge call. Raises OllamaTransportError for anything below the
-    model's own answer (connection, timeout, non-200, a malformed envelope);
-    returns True/False/None (invalid) for the model's actual verdict, via
+    model's own answer (connection, timeout, non-200, an oversized reply, or
+    an envelope shaped so unlike the documented Ollama response that it is
+    not a judgment at all — round-1 council finding #3); returns
+    True/False/None (invalid) for the model's actual verdict, via
     _parse_verdict — never raises for an invalid MODEL output, only for a
-    transport-level failure."""
+    transport-level failure.
+
+    Finding #3, concretely: HTTP 200 with a body of `{}`, `[]`,
+    `{"message": null}` or `{"message": {}}` used to either fall through to
+    `_parse_verdict(None)` (silently counted as an INVALID model output —
+    consuming one of the 5 attempts before quarantine, contrary to the
+    transport/judgement split) or raise a bare AttributeError outside this
+    function's try block (an unsanitized crash class the docstring above
+    already claimed could not happen). Both are now the SAME sanitized
+    OllamaTransportError, raised from inside the try block below, before
+    _parse_verdict ever sees the envelope."""
     request_body = json.dumps({
         "model": _OLLAMA_MODEL,
         "stream": False,
@@ -836,12 +854,20 @@ def _call_ollama(opener: urllib.request.OpenerDirector, clause: str) -> bool | N
             status = getattr(resp, "status", None) or resp.getcode()
             if status != 200:
                 raise OllamaTransportError(f"http_{status}")
-            envelope = json.loads(resp.read().decode("utf-8"))
+            raw = resp.read(_OLLAMA_MAX_RESPONSE_BYTES + 1)
+            if len(raw) > _OLLAMA_MAX_RESPONSE_BYTES:
+                raise OllamaTransportError("response_too_large")
+            envelope = json.loads(raw.decode("utf-8"))
+            if not isinstance(envelope, dict):
+                raise OllamaTransportError("envelope_not_an_object")
+            message = envelope.get("message")
+            if not isinstance(message, dict) or "content" not in message:
+                raise OllamaTransportError("envelope_missing_message_content")
+            content = message["content"]
     except OllamaTransportError:
         raise
     except Exception as exc:
         raise OllamaTransportError(type(exc).__name__) from exc
-    content = envelope.get("message", {}).get("content") if isinstance(envelope, dict) else None
     return _parse_verdict(content)
 
 
@@ -889,10 +915,18 @@ class JudgeMetrics:
     wall_ms: int = 0
 
 
-_JUDGE_SELECT_SQL = """
+# Round-1 council finding #5 (kimi-code/k3): the threshold used to be a
+# literal `5` here while _JUDGE_MARK_ATTEMPT_SQL below interpolated
+# _JUDGE_MAX_ATTEMPTS from the same constant — a comment on that statement
+# claimed "can never drift apart", which was true for the UPDATE alone and
+# false for this SELECT. Both now read the SAME constant, so a candidate
+# already quarantined by _JUDGE_MARK_ATTEMPT_SQL's CASE (attempts >=
+# _JUDGE_MAX_ATTEMPTS) is also the exact point this SELECT stops re-fetching
+# it — no unselectable-but-not-yet-quarantined zombie band between the two.
+_JUDGE_SELECT_SQL = f"""
 SELECT id, message_id, clause_idx, clause_hash, promise_type, due_at_hint, attempts
   FROM team_promise_candidates
- WHERE status = 'unjudged' AND attempts < 5
+ WHERE status = 'unjudged' AND attempts < {_JUDGE_MAX_ATTEMPTS}
  ORDER BY created_at, id
  LIMIT $1
 """
@@ -901,6 +935,23 @@ _JUDGE_MESSAGE_SQL = """
 SELECT created_at, COALESCE(NULLIF(body, ''), NULLIF(message_text, '')) AS body
   FROM whatsapp_message_context
  WHERE id = $1
+"""
+
+# Round-1 council finding #2: the read above (used to decide whether to call
+# Ollama at all, and to build the clause text sent to it) is NOT the read
+# _apply_true re-verifies against. An Ollama call can block for up to
+# _OLLAMA_TIMEOUT_SECONDS (60s) — long enough for the message to be edited
+# without the scanner having yet revised the candidate's own clause_hash
+# column, so the candidate-side guard alone (status='unjudged' AND
+# clause_hash=$judged) would still match and let a verdict computed against a
+# body that is no longer current get written. `FOR SHARE` takes a row lock
+# that is held until the SAME transaction commits, so nothing can edit this
+# message between this second read and the write below.
+_JUDGE_MESSAGE_FOR_SHARE_SQL = """
+SELECT created_at, COALESCE(NULLIF(body, ''), NULLIF(message_text, '')) AS body
+  FROM whatsapp_message_context
+ WHERE id = $1
+ FOR SHARE
 """
 
 # Every guarded UPDATE below shares the SAME WHERE shape (C2, PENDING-ARMS
@@ -937,12 +988,24 @@ RETURNING id
 # threshold is interpolated from the Python constant (an f-string, not a
 # bind param — SQL has no placeholder for a literal in a CASE expression)
 # so the two can never drift apart.
+# Round-1 council finding #6 (kimi-code/k3): the guard used to be
+# `status='unjudged' AND clause_hash=$2` only — the SAME shape as every
+# other guarded UPDATE in this module, but this is the one write whose own
+# selection-time value (`attempts`) also needs pinning: the terminal
+# statuses (true/false/superseded) flip `status` away from 'unjudged' on
+# their very first success, so a second write always loses that guard on
+# its own — but two racing invalid-verdict writes (double-judge, i.e. the
+# lock somehow bypassed) BOTH keep `status='unjudged'` and the SAME
+# `clause_hash`, so without `AND attempts=$3` both increments would apply,
+# double-counting toward quarantine. Binding the attempts value the judge
+# itself read at selection time makes a second, racing increment lose this
+# guard exactly like every other path already loses its own.
 _JUDGE_MARK_ATTEMPT_SQL = f"""
 UPDATE team_promise_candidates
    SET attempts = attempts + 1,
        last_attempt_at = now(),
        status = CASE WHEN attempts + 1 >= {_JUDGE_MAX_ATTEMPTS} THEN 'quarantined' ELSE status END
- WHERE id = $1 AND status = 'unjudged' AND clause_hash = $2
+ WHERE id = $1 AND status = 'unjudged' AND clause_hash = $2 AND attempts = $3
 RETURNING status
 """
 
@@ -951,13 +1014,6 @@ INSERT INTO team_promises (message_id, promise_text, promise_type, due_at, extra
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (message_id, promise_type) DO NOTHING
 """
-
-
-class _CandidateRaced(Exception):
-    """Internal sentinel: forces the judged_true transaction to ROLL BACK
-    (PR-3 spec item 6) when the guarded UPDATE affects 0 rows, so the
-    INSERT into team_promises is never reached — never propagates past
-    _apply_true."""
 
 
 async def _apply_guarded(pool: asyncpg.Pool, sql: str, candidate_id: int, judged_hash: str,
@@ -981,32 +1037,51 @@ async def _apply_attempt(pool: asyncpg.Pool, candidate_id: int, judged_hash: str
     if dry_run:
         return "quarantined" if attempts + 1 >= _JUDGE_MAX_ATTEMPTS else "unjudged"
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(_JUDGE_MARK_ATTEMPT_SQL, candidate_id, judged_hash)
+        row = await conn.fetchrow(_JUDGE_MARK_ATTEMPT_SQL, candidate_id, judged_hash, attempts)
     return None if row is None else row["status"]
 
 
 async def _apply_true(pool: asyncpg.Pool, candidate_id: int, judged_hash: str, *, message_id: int,
-                       promise_text: str, promise_type: str, due_at: datetime | None,
-                       dry_run: bool) -> bool:
-    """ONE transaction: the guarded status UPDATE, then the deduped INSERT
-    (PR-3 spec item 6). If the guard fails, `_CandidateRaced` forces a real
-    ROLLBACK — the INSERT never runs, no team_promises row, and the
-    candidate itself is left exactly as the scanner's own revision left it."""
+                       clause_idx: int, promise_type: str, due_at_hint: str | None,
+                       dry_run: bool) -> str:
+    """ONE transaction: re-verify the clause against the CURRENT message row
+    a SECOND time under a `FOR SHARE` lock held through commit (round-1
+    council finding #2 — see _JUDGE_MESSAGE_FOR_SHARE_SQL above for why the
+    first, pre-Ollama-call read in _judge_one is not enough on its own),
+    THEN the guarded status UPDATE (PR-3 spec item 6), THEN the deduped
+    INSERT. `promise_text` and `due_at` are derived HERE, from this second
+    read, never carried in from the caller's earlier read — so a stale
+    verdict structurally cannot reach team_promises even if the guard on the
+    candidate row itself would still have let it through.
+
+    Returns "true" (verdict applied, row inserted), "superseded" (the
+    message changed under us between the two reads — same terminal status
+    the pre-Ollama-call check in _judge_one already uses for this), or
+    "raced" (the scanner revised the CANDIDATE row itself mid-tick; the
+    guarded UPDATE affected 0 rows, no team_promises row, candidate left
+    exactly as the scanner's own revision left it)."""
     if dry_run:
-        return True
+        return "true"
     async with pool.acquire() as conn:
-        try:
-            async with conn.transaction():
-                row = await conn.fetchrow(_JUDGE_MARK_TRUE_SQL, candidate_id, judged_hash)
-                if row is None:
-                    raise _CandidateRaced()
-                await conn.execute(
-                    _JUDGE_INSERT_PROMISE_SQL, message_id, promise_text, promise_type, due_at,
-                    _EXTRACTOR_VERSION,
-                )
-        except _CandidateRaced:
-            return False
-    return True
+        async with conn.transaction():
+            msg_row = await conn.fetchrow(_JUDGE_MESSAGE_FOR_SHARE_SQL, message_id)
+            if msg_row is None or not msg_row["body"]:
+                row = await conn.fetchrow(_JUDGE_MARK_SUPERSEDED_SQL, candidate_id, judged_hash)
+                return "superseded" if row is not None else "raced"
+            clauses = _split_clauses(msg_row["body"])
+            if not (0 <= clause_idx < len(clauses)) or _hash_clause(clauses[clause_idx]) != judged_hash:
+                row = await conn.fetchrow(_JUDGE_MARK_SUPERSEDED_SQL, candidate_id, judged_hash)
+                return "superseded" if row is not None else "raced"
+            promise_text = clauses[clause_idx]
+            due_at = _resolve_due_at(msg_row["created_at"], due_at_hint)
+            row = await conn.fetchrow(_JUDGE_MARK_TRUE_SQL, candidate_id, judged_hash)
+            if row is None:
+                return "raced"
+            await conn.execute(
+                _JUDGE_INSERT_PROMISE_SQL, message_id, promise_text, promise_type, due_at,
+                _EXTRACTOR_VERSION,
+            )
+            return "true"
 
 
 async def _judge_one(pool: asyncpg.Pool, opener: urllib.request.OpenerDirector, candidate,
@@ -1061,13 +1136,14 @@ async def _judge_one(pool: asyncpg.Pool, opener: urllib.request.OpenerDirector, 
             metrics.raced += 1
         return
 
-    due_at = _resolve_due_at(msg_row["created_at"], due_at_hint)
-    ok = await _apply_true(
-        pool, candidate_id, judged_hash, message_id=message_id, promise_text=clause_text,
-        promise_type=promise_type, due_at=due_at, dry_run=dry_run,
+    outcome = await _apply_true(
+        pool, candidate_id, judged_hash, message_id=message_id, clause_idx=clause_idx,
+        promise_type=promise_type, due_at_hint=due_at_hint, dry_run=dry_run,
     )
-    if ok:
+    if outcome == "true":
         metrics.true += 1
+    elif outcome == "superseded":
+        metrics.superseded += 1
     else:
         metrics.raced += 1
 
