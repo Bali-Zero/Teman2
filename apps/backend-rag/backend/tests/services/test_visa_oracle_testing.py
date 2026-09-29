@@ -32,13 +32,20 @@ def test_campaign_has_five_per_day_and_shared_reference():
         assert len({str(c["scenario"]["inputs"]) for c in contrast}) == 24
 
 
-def test_cross_tester_write_and_self_review_are_rejected():
+def test_cross_tester_writes_are_rejected_and_self_review_is_allowed():
+    # Guilt: writing another tester's record is rejected, for both plain writes
+    # and review (owner decision 2026-09-30: cross-member review is not wanted).
     with pytest.raises(HTTPException) as e:
         authorize_record("member-a", "member-b")
     assert e.value.status_code == 403
-    with pytest.raises(HTTPException):
-        authorize_record("member-a", "member-a", review=True)
+    with pytest.raises(HTTPException) as e:
+        authorize_record("member-a", "member-b", review=True)
+    assert e.value.status_code == 403
+    # Innocence: a tester may write and review their OWN record (self-review).
     authorize_record("member-a", "member-a")
+    authorize_record("member-a", "member-a", review=True)
+    # The site admin's override bypasses ownership entirely, for auditing.
+    authorize_record("member-a", "member-b", review=True, override=True)
 
 
 def test_attestation_and_unknown_fields_fail_closed():

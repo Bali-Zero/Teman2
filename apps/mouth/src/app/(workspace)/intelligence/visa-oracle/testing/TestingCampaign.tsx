@@ -203,6 +203,11 @@ function dayLabel(day: string) {
     timeZone: "UTC",
   }).format(new Date(`${day}T12:00:00Z`));
 }
+// Self-review (2026-09-30): a tester only reviews their OWN submitted runs. The
+// admin (no assigned slot) keeps the full cross-slot queue for auditing.
+function ownReview(a: Assignment, viewerSlot: string | null) {
+  return !!a.record?.result && (viewerSlot === null || a.slot === viewerSlot);
+}
 
 export default function OracleTestingPage() {
   const [data, setData] = useState<CampaignData | null>(null);
@@ -462,10 +467,9 @@ export default function OracleTestingPage() {
       {data.viewer.can_review && (
         <Block title="Antrean reviewer">
           <p className="text-sm">
-            Kunci kelima ekspektasi hari ini sebelum meninjau hasil rekan.
-            Tinjau observasi, bukan identitas tester. Anda tidak dapat meninjau
-            pengujian sendiri. Isu terkonfirmasi dan isu yang berhasil
-            direproduksi dicatat terpisah.
+            Kunci kelima ekspektasi hari ini sebelum meninjau. Setiap tester
+            meninjau hasil pengujiannya sendiri — bukan milik rekan lain. Isu
+            terkonfirmasi dan isu yang berhasil direproduksi dicatat terpisah.
           </p>
           <button
             type="button"
@@ -476,7 +480,7 @@ export default function OracleTestingPage() {
             Ekspor data JSON
           </button>
           {submitted
-            .filter((a) => a.slot !== data.viewer.slot && a.record?.result)
+            .filter((a) => ownReview(a, data.viewer.slot))
             .map((a) => (
               <ReviewForm
                 key={`${a.id}-${a.record?.review?.reviewed_at || "pending"}`}
@@ -485,9 +489,8 @@ export default function OracleTestingPage() {
                 mutate={mutate}
               />
             ))}
-          {submitted.filter(
-            (a) => a.slot !== data.viewer.slot && a.record?.result,
-          ).length === 0 && <p>Belum ada observasi untuk ditinjau.</p>}
+          {submitted.filter((a) => ownReview(a, data.viewer.slot)).length ===
+            0 && <p>Belum ada observasi untuk ditinjau.</p>}
         </Block>
       )}
       {data.viewer.can_configure && (
