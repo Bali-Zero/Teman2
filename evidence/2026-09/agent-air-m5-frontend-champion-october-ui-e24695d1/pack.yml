@@ -1,0 +1,184 @@
+brief_ref: evidence/2026-09/agent-air-m5-frontend-champion-october-ui-e24695d1/brief.yml
+pii_scan: clean
+gear_override: >-
+  Declared gear (3) exceeds the deterministic floor (2, size-sourced, net
+  +964/-67 across 4 files) — release-critical-path plus the hard
+  2026-09-30 00:00 WITA Round 2 deadline, matching the sibling backend PR's
+  Gear 3 (evidence/2026-09/agent-air-m5-backend-rag-champion-october-engine-56fd9ae0/pack.yml)
+  so the pair ships as one reviewed unit; see brief.yml gear_reason for the
+  full argument.
+seat_override: >-
+  This mission provisions one independent external reviewer (Codex,
+  dispatched as codex-fe-review) per PR plus the mission's fresh Opus 5.5
+  final gate, not a multi-seat COUNCIL_REVIEW_SEATS quorum. Gear 3 here
+  matches the sibling backend PR's Gear 3 (release-critical-path + hard
+  2026-09-30 00:00 WITA deadline, see brief.yml gear_reason/gear_override),
+  not a design decision that needs adversarial council debate — the payload
+  shape and copy are spec-given, so no COUNCIL_REVIEW_SEATS quorum was
+  convened.
+dissent:
+  - seat: codex-fe-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      major · PortalChallengeWidget.tsx · a Round 2 team total of 0 (points
+      cancelling between positive and negative entries) triggered the
+      alphabetical zero-state fallback in RankingList, hiding real rank
+      differences. CURED in fd8ff31a47: `isZeroState` now requires EVERY
+      entry to have 0 points AND no `last_event_at`, not just an aggregate
+      team_total_points of 0 — verified this session by reading
+      PortalChallengeWidget.tsx's isZeroState computation directly.
+  - seat: codex-fe-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      major · ChampionArena.tsx · an untouched member (0 points, no events)
+      could occupy the top-3 podium slice and render a numeric "#N" rank it
+      had not earned; `isRanked` existed but was not applied to the podium's
+      `leaders` array. CURED in 42b6be7196: `leaders` is now
+      `entries.filter((entry) => isRanked(entry, round2)).slice(0, 3)` —
+      verified this session by reading ChampionArena.tsx directly.
+  - seat: codex-fe-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      major · PortalChallengeWidget.tsx (3 new labels) · new Round 2 text
+      used 10px, below the R19 11px minimum this file's own sibling PRs
+      (#7624/#7625) guard. CURED in fd8ff31a47 (labelled "Three new 10px
+      labels raised to the 11px minimum"): `grep -c "text-\[10px\]"` inside
+      this branch's own diff for PortalChallengeWidget.tsx returns 0 this
+      session; every new label in the diff is text-[11px].
+  - seat: codex-fe-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      minor · PortalChallengeWidget.tsx:780 · the ranking row's document-
+      bonus chip showed the raw bonus COUNT ("+2 dok") instead of its point
+      contribution (3 per bonus = 6), inconsistent with the registration/
+      penalty chips which were already points. CURED in fd8ff31a47: the
+      chip now renders `3 * (entry.document_bonuses ?? 0)` — verified this
+      session by reading the current line directly.
+  - seat: codex-fe-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      minor · PortalChallengeWidget.tsx:596 · Misi Asya's progressbar had
+      no accessible name. CURED in fd8ff31a47:
+      `aria-label={`Progres misi ${mission.display_name}`}` is present on
+      the role="progressbar" element — verified this session by reading
+      the current line directly.
+  - seat: codex-fe-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      minor · PortalChallengeWidget.test.tsx · the empty-tiers test only
+      asserted the render did not throw, which cannot detect a stray
+      zero-argument Math.max call (it returns -Infinity without throwing).
+      CURED in 8ea81055b5: a dedicated
+      "PositionScale guards Math.max on an empty tiers array with a sane
+      0-width bar" test now asserts aria-valuenow="0" and a 0% bar width —
+      verified this session by reading the current test body.
+  - seat: codex-fe-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      minor · PortalChallengeWidget.test.tsx · the rank-prize test checked
+      only rows 1 and 5 and one holder, missing intermediate rows/amounts
+      and tie handling. CURED in 8ea81055b5: the rewritten
+      "renders all five prizes in order, holder points, a tie, and never a
+      0-point winner" test now asserts all five prize amounts, the rank-1
+      holder's points, a tied rank-2 pair sharing one prize, empty ranks
+      3/4, and a 0-point rank-5 candidate showing "Belum ada" — verified
+      this session by reading the current test body.
+  - seat: codex-fe-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      minor · PortalChallengeWidget.test.tsx:1015 · OPEN, not cured. The
+      "shows the Asya mission card with progress and breakdown" test
+      asserts the display name, "13/60", the target-points sentence, and
+      the +15/-2 breakdown chips, but still does not assert the prize
+      amount (Rp 1.000.000), the `reached` boundary state, or a clamped
+      progress value below 0 / above target — exactly the gap the review
+      named. Not touched by 8ea81055b5 (its diff only rewrites the
+      rank-prize and Math.max tests). Verified this session by reading the
+      current test body; no fix commit exists on this branch for it.
+  - seat: codex-fe-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      minor · PortalChallengeWidget.test.tsx:1026 · OPEN, not cured. The
+      "shows the frozen September results with the choice label" test only
+      checks the rendered (collapsed section's) textContent for a name and
+      the "Ambil hadiah" string; it never toggles the `<details>`
+      disclosure open, and never asserts full ranking order, prize amounts,
+      or the "Bawa poin ke Oktober" (carry) choice label. Not touched by
+      8ea81055b5. Verified this session by reading the current test body;
+      no fix commit exists on this branch for it.
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      Implementer (fe-round2): ChampionArena.tsx / PortalChallengeWidget.tsx
+      Round 2 rendering, the dashboard.api.ts type additions, the new/
+      updated vitest coverage, and the three fix commits that cured 7 of
+      the 9 codex-fe-review findings (42b6be7196, fd8ff31a47, 8ea81055b5) —
+      all landed on this branch during this pack's own authoring session.
+  - lane: review
+    role: review
+    seat: codex
+    note: >-
+      Independent adversarial review of the Round 2 rendering logic,
+      dispatched as codex-fe-review; verdict FIX-FIRST with 3 major + 6
+      minor findings. 7 of 9 cured on this branch (see dissent); 2 minor
+      test-coverage gaps remain OPEN.
+receipts:
+  - claim: >-
+      Dashboard vitest suite: 7 test files, 101 tests pass (Round 1
+      rendering byte-for-byte unchanged plus the Round 2 cases, including
+      the two new/rewritten review-fix tests).
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      "src/app/(workspace)/dashboard"
+    exit: 0
+    ts: "2026-09-29T05:40:25Z"
+    seat: claude-sonnet-5
+  - claim: tsc --noEmit reports zero errors on the worktree.
+    cmd: cd apps/mouth && ../../node_modules/.bin/tsc --noEmit -p .
+    exit: 0
+    ts: "2026-09-29T05:40:40Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      eslint reports zero errors and zero warnings on the three changed
+      non-test files.
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/eslint
+      "src/app/(workspace)/dashboard/ChampionArena.tsx"
+      "src/app/(workspace)/dashboard/PortalChallengeWidget.tsx"
+      "src/lib/api/dashboard/dashboard.api.ts"
+    exit: 0
+    ts: "2026-09-29T05:40:55Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The celebration overlay's own suite (unchanged by this PR) stays
+      green: 10/10 pass.
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/components/workspace/PortalChampionCelebration.test.tsx
+    exit: 0
+    ts: "2026-09-29T05:32:17Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      No 10px text class remains among this branch's own diff additions to
+      PortalChallengeWidget.tsx (the 3 review-flagged labels are now 11px).
+    cmd: >-
+      git diff origin/main...HEAD --
+      "apps/mouth/src/app/(workspace)/dashboard/PortalChallengeWidget.tsx"
+      | grep -c 'text-\[10px\]'
+    exit: 0
+    ts: "2026-09-29T05:41:10Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The one test-tightening commit on this branch (8ea81055b5) touches
+      only the rank-prize and Math.max/tier-scale tests — it does not touch
+      the Asya-mission or September-results tests, confirming those two
+      minor findings are still open.
+    cmd: >-
+      git diff fd8ff31a47 8ea81055b5 --
+      "apps/mouth/src/app/(workspace)/dashboard/PortalChallengeWidget.test.tsx"
+      | grep 'it('
+    exit: 0
+    ts: "2026-09-29T05:42:00Z"
+    seat: claude-sonnet-5
