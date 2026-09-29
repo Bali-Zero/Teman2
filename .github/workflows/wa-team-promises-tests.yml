@@ -87,9 +87,8 @@ name: wa team promises tests
 #
 # The unit-vs-skip split is not written here: a count in a comment is never
 # re-measured. The FLOOR line in the last step below is the one number, and
-# the step re-measures it on every run; the skips are exactly the real-PG
-# opt-in cases (`WA_TEAM_PROMISES_REAL_PG` unset), which this file does not
-# enable.
+# the step re-measures it on every run. The skips are the real-PG opt-in
+# cases (`WA_TEAM_PROMISES_REAL_PG` unset), which this file does not enable.
 
 on:
   pull_request:

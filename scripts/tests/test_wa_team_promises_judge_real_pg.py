@@ -1089,7 +1089,7 @@ LEAD_INVALID = "ZQINV-7741"
 LEAD_SUPERSEDED = "ZQSUP-8852"
 
 
-# G7 (mutants M40/M41b/c and the truncating M40t/M41t) — no clause/body text reaches ANY log record (not
+# G7 (mutants M40/M41b/c and the truncating M40t/M41t/M40x) — no clause/body text reaches ANY logging record (not
 # just stdout/stderr) on the invalid-verdict and superseded (hash-mismatch)
 # paths — the two paths a candidate reaches WITHOUT necessarily going
 # through the top-level cli_main output line this file's other tests pin.
@@ -1105,6 +1105,7 @@ async def test_g7_no_clause_text_in_log_records_on_invalid_and_superseded_paths(
         await _insert_candidate(pool, message_id=8, clause_idx=0, clause_hash=hash_invalid)
 
         body_superseded = f"{LEAD_SUPERSEDED} I will call {POISON} tomorrow"
+        clause_superseded, _ = _seed_candidate_for_body(body_superseded)
         await _insert_wmc(pool, msg_id=9, body=body_superseded, created_at=created_at)
         # A stale hash the current body no longer matches -> superseded,
         # never reaches _call_ollama at all.
@@ -1116,7 +1117,15 @@ async def test_g7_no_clause_text_in_log_records_on_invalid_and_superseded_paths(
             metrics = await run_judge(pool, limit=10, dry_run=False)
 
         assert (metrics.invalid, metrics.superseded) == (1, 1)
-        log_text = "\n".join(record.getMessage() for record in caplog.records)
+        # getMessage() alone misses structured fields (`extra={...}`,
+        # exc_text, stack_info), so every non-standard attribute of each
+        # record is folded into the searched text too.
+        standard = set(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"message", "asctime"}
+        log_text = "\n".join(
+            record.getMessage() + " " + repr({k: v for k, v in record.__dict__.items() if k not in standard})
+            + " " + str(record.exc_text) + " " + str(record.stack_info)
+            for record in caplog.records
+        )
         assert POISON not in log_text
         assert clause_invalid not in log_text
         # A truncated leak (e.g. `clause_text[:20]`) passes the full-string
@@ -1125,8 +1134,13 @@ async def test_g7_no_clause_text_in_log_records_on_invalid_and_superseded_paths(
         # non-PII marker sits in the first 20 characters of each body.
         assert LEAD_INVALID not in log_text
         assert LEAD_SUPERSEDED not in log_text
+        # ...and any shorter prefix cut (`[:8]`, `[:5]`) of the markers.
+        assert LEAD_INVALID[:5] not in log_text
+        assert LEAD_SUPERSEDED[:5] not in log_text
         assert clause_invalid[:20] not in log_text
         assert body_superseded[:20] not in log_text
+        assert clause_superseded not in log_text
+        assert clause_superseded[:20] not in log_text
 
 
 # G-LOW-2 (mutant M58, gate table, LOW) — _apply_true's OWN "message gone"

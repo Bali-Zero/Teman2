@@ -998,23 +998,56 @@ def test_g_low1_ollama_url_is_a_bare_literal_not_an_environment_read():
     assert wtp._OLLAMA_URL == "http://127.0.0.1:11434/api/chat"
 
 
-# G-LOW-1 variant (mutant M26c, gate #7646 comment) — the static source scan
-# above cannot see a name built at runtime (`globals()["_OLLAMA" + "_URL"] =
-# ...`). This one runs the real thing: import the module in a fresh
-# interpreter whose environment carries a poisoned value under every
-# plausible variable name, and require the constant to come out as the
-# literal. A subprocess, because the constant is computed once at import and
-# reloading in-process would leave other tests holding stale objects.
+# G-LOW-1 variant (mutant M26c, gate #7646 comment; hardened after council
+# round 1) — the static source scan above cannot see a name built at runtime
+# (`globals()["_OLLAMA" + "_URL"] = ...`), and a poisoned-env test that
+# enumerates variable names only catches the names it thought of. This one
+# is name-agnostic: a fresh interpreter replaces `os.environ` BEFORE the
+# import with a recorder that notes any access (get / [] / in / iteration /
+# copy) whose first non-`os` caller frame is `scripts.wa_team_promises` itself
+# (stdlib lookups made during its imports are not its own reads), and a
+# handful of plausible names are ALSO poisoned so a read that slips the
+# recorder still shows up in the value. Import-time environment reads by this
+# module are expected to be none; a subprocess, because the constant is
+# computed once at import and reloading in-process would leave other tests
+# holding stale objects.
+_G_LOW1_PROBE = """
+import os, sys, json
+hits = []
+def _from_module():
+    f = sys._getframe(2)
+    while f is not None and f.f_globals.get("__name__") in ("os", "_collections_abc"):
+        f = f.f_back
+    return f is not None and f.f_globals.get("__name__") == "scripts.wa_team_promises"
+class Rec(dict):
+    pass
+def _wrap(name):
+    base = getattr(dict, name)
+    def method(self, *a, **kw):
+        if _from_module():
+            hits.append((name, a[0] if a and isinstance(a[0], str) else ""))
+        return base(self, *a, **kw)
+    return method
+for _n in ("get", "__getitem__", "__contains__", "__iter__", "keys", "values", "items", "copy", "pop", "__len__"):
+    setattr(Rec, _n, _wrap(_n))
+os.environ = Rec(os.environ)
+import scripts.wa_team_promises as m
+print(json.dumps({"url": m._OLLAMA_URL, "hits": hits}))
+"""
+
+
 def test_g_low1_subprocess_import_ignores_a_poisoned_environment():
     root = Path(__file__).resolve().parents[2]
     poison = "http://poison.invalid:1/api/chat"
     env = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(root), "PYTHONDONTWRITEBYTECODE": "1"}
     for name in ("OLLAMA_URL", "OLLAMA_HOST", "OLLAMA_BASE_URL", "OLLAMA_API_URL", "OLLAMA_ENDPOINT",
-                 "WA_TEAM_PROMISES_OLLAMA_URL", "WA_TEAM_OLLAMA_URL"):
+                 "WA_TEAM_PROMISES_OLLAMA_URL", "WA_TEAM_OLLAMA_URL", "NUZANTARA_OLLAMA_URL"):
         env[name] = poison
     res = subprocess.run(
-        [sys.executable, "-c", "import scripts.wa_team_promises as m; print(m._OLLAMA_URL)"],
+        [sys.executable, "-c", _G_LOW1_PROBE],
         cwd=root, env=env, capture_output=True, text=True, timeout=60, check=False,
     )
     assert res.returncode == 0, res.stderr[-400:]
-    assert res.stdout.strip() == "http://127.0.0.1:11434/api/chat"
+    out = json.loads(res.stdout.strip().splitlines()[-1])
+    assert out["hits"] == [], f"scripts.wa_team_promises read the environment at import: {out['hits']!r}"
+    assert out["url"] == "http://127.0.0.1:11434/api/chat"
