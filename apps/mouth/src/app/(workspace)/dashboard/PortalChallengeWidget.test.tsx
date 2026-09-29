@@ -942,7 +942,7 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     expect(card.textContent).toContain("dokumen belum ditinjau");
   });
 
-  it("ranking rows show points and a compact registrations/documents/penalty breakdown", () => {
+  it("ranking rows itemise every scoring component so the row adds up to the total", () => {
     mockQuery(
       round2Response({
         entries: [
@@ -950,21 +950,82 @@ describe("Round 2 «Lascia o raddoppia»", () => {
             member: "a",
             display_name: "A",
             rank: 1,
-            points: 30,
+            points: 23 + 4 + 6 - 5,
+            carry_points: 23,
+            september_choice: "carry",
             registrations: 4,
             document_bonuses: 2,
-            penalty_points: 1,
+            unanswered_requests: 2,
+            unreviewed_documents: 1,
+            penalty_points: 5,
             last_event_at: "2026-10-01T00:00:00Z",
           }),
         ],
       }),
     );
     render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const row = screen.getByTestId("champion-breakdown-a");
+    const t = row.textContent ?? "";
+    // order: carry, reg, dok (3 per bonus), requests (2 each), docs (1 each)
+    const order = ["+23", "+4 reg", "+6 dok", "−4", "−1"].map((x) =>
+      t.indexOf(x),
+    );
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((x, y) => x - y)).toEqual(order);
+    expect(t).toContain("Sep");
+    expect(t).toContain("permintaan");
+    expect(t).toContain("dokumen");
     const ranking = screen.getByTestId("champion-ranking");
-    expect(within(ranking).getByText("30")).toBeInTheDocument();
-    // document_bonuses is a COUNT (2); the chip shows its POINT
-    // contribution (3 per bonus = 6), not the raw count.
-    expect(ranking.textContent).toContain("+4 reg · +6 dok · −1");
+    expect(within(ranking).getByText("28")).toBeInTheDocument();
+  });
+
+  it("a September prize-taker row shows 0 carry with the prize marker", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "s",
+            display_name: "Surya",
+            rank: 2,
+            points: 3,
+            carry_points: 0,
+            september_choice: "prize",
+            registrations: 0,
+            document_bonuses: 1,
+            unanswered_requests: 0,
+            unreviewed_documents: 0,
+            penalty_points: 0,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const t = screen.getByTestId("champion-breakdown-s").textContent ?? "";
+    expect(t).toContain("Sep 0");
+    expect(t).toContain("hadiah diambil");
+    expect(t).toContain("+3 dok");
+  });
+
+  it("round 2 lists every entry with no top-5 collapse", () => {
+    mockQuery(
+      round2Response({
+        entries: Array.from({ length: 6 }, (_, i) =>
+          entry({
+            member: `m${i}`,
+            display_name: `Member${i}`,
+            rank: i + 1,
+            points: 10 - i,
+            september_choice: "carry",
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ),
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const ranking = within(screen.getByTestId("champion-ranking"));
+    expect(ranking.getByText("Member5")).toBeInTheDocument();
+    expect(ranking.queryByText("Lihat semua")).toBeNull();
   });
 
   it("shows a '–' rank in the ranking list for a member with no R2 event", () => {
