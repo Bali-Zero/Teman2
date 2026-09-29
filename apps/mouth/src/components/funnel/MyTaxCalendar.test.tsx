@@ -8,12 +8,11 @@ const sampleResponse = {
       authority: "Directorate General of Taxes",
       frequency: "Monthly",
       id: "monthly-pph",
-      legal_source: "Cleared tax-register source",
       name: "Monthly filing",
       reviewed_on: "2026-09-20",
       upcoming_due_dates: [
-        { due_date: "2026-10-01", period_key: "September 2026" },
-        { due_date: "2026-11-01", period_key: "October 2026" },
+        { due_date: "2026-10-01", period_key: "2026-09" },
+        { due_date: "2026-11-01", period_key: "2026-10" },
       ],
     },
   ],
@@ -106,7 +105,7 @@ describe("MyTaxCalendar", () => {
 
     expect(await screen.findByText("Monthly filing")).toBeInTheDocument();
     expect(screen.getByText("2026-10-01 · in 2d")).toBeInTheDocument();
-    expect(screen.getByText("2026-11-01 — October 2026")).toBeInTheDocument();
+    expect(screen.getByText("2026-11-01 — 2026-10")).toBeInTheDocument();
     expect(screen.getByText("Reviewed on 2026-09-20")).toBeInTheDocument();
   });
 
@@ -234,20 +233,47 @@ describe("MyTaxCalendar", () => {
         {
           ...sampleResponse.obligations[0],
           upcoming_due_dates: [
-            { due_date: "2026-10-01", period_key: "Sep", provisional: false },
-            { due_date: "2027-01-04", period_key: "Dec", provisional: true },
+            {
+              due_date: "2026-11-16",
+              period_key: "2026-10",
+              provisional: false,
+            },
+            {
+              due_date: "2026-12-15",
+              period_key: "2026-11",
+              provisional: false,
+            },
+            {
+              due_date: "2027-01-04",
+              period_key: "2026-12",
+              provisional: true,
+            },
+            { due_date: "2027-04-30", period_key: "FY2026", provisional: true },
+            {
+              due_date: "2027-06-30",
+              period_key: "2026-Q4",
+              provisional: true,
+            },
           ],
         },
       ],
       withheld_count: 0,
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(response)));
-    render(<MyTaxCalendar />);
+    const { container } = render(<MyTaxCalendar />);
     fireEvent.click(screen.getByLabelText("Individual"));
 
     await screen.findByText("Monthly filing");
 
-    expect(screen.getAllByText("provisional")).toHaveLength(1);
+    expect(screen.getAllByText("provisional")).toHaveLength(3);
+    const row = screen.getByText("2027-01-04 — 2026-12").closest("li");
+    expect(row?.textContent).toContain("2026-12 provisional");
+    expect(row?.textContent).not.toContain("2026-12provisional");
+    expect(screen.getByText("2027-01-04 — 2026-12").style.whiteSpace).toBe(
+      "nowrap",
+    );
+    expect(container.textContent).toContain("2027-04-30 — FY2026 provisional");
+    expect(container.textContent).toContain("2027-06-30 — 2026-Q4 provisional");
     expect(
       screen.getAllByText(/Provisional dates may move to the next working day/),
     ).toHaveLength(1);
@@ -293,24 +319,23 @@ describe("MyTaxCalendar", () => {
     expect(container.textContent).not.toMatch(/NaN|Invalid Date|in \d+d/);
   });
 
-  it("wraps long legal-source URLs so the card cannot overflow", async () => {
+  it("never renders legal_source, even if a payload still carries it", async () => {
     const response = {
       obligations: [
         {
           ...sampleResponse.obligations[0],
-          legal_source:
-            "UU KUP art. 3 https://www.pajak.go.id/en/node/" + "a".repeat(120),
+          legal_source: "INTERNAL-VERIFICATION-NOTE the PMK PDF is a scan",
         },
       ],
       withheld_count: 0,
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(response)));
-    render(<MyTaxCalendar />);
+    const { container } = render(<MyTaxCalendar />);
     fireEvent.click(screen.getByLabelText("Individual"));
 
-    const source = await screen.findByText(/UU KUP art\. 3/);
+    await screen.findByText("Monthly filing");
 
-    expect(source.style.overflowWrap).toBe("anywhere");
+    expect(container.textContent).not.toContain("INTERNAL-VERIFICATION-NOTE");
   });
 
   it("shows human frequency labels and falls back to the raw value", async () => {

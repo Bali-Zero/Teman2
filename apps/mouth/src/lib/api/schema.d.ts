@@ -27123,8 +27123,6 @@ export interface components {
       frequency: string;
       /** Id */
       id: string;
-      /** Legal Source */
-      legal_source: string;
       /** Name */
       name: string;
       /**

@@ -149,11 +149,12 @@ def test_payload_has_no_verification_flags_and_no_withheld_rule() -> None:
         "id",
         "name",
         "authority",
-        "legal_source",
         "frequency",
         "reviewed_on",
         "upcoming_due_dates",
     }
+    assert "legal_source" not in response.text
+    assert _rule("pph21_payment").legal_source not in response.text
     assert "lkpm_quarterly" not in response.text
     assert "Test Signer" not in response.text
 

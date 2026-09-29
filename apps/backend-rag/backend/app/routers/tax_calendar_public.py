@@ -70,7 +70,6 @@ class TaxCalendarObligation(BaseModel):
     id: str
     name: str
     authority: str
-    legal_source: str
     frequency: str
     reviewed_on: date
     upcoming_due_dates: list[UpcomingDueDate]
@@ -158,7 +157,6 @@ async def public_tax_calendar_obligations(
                 id=rule.id,
                 name=rule.name,
                 authority=rule.authority,
-                legal_source=rule.legal_source,
                 frequency=rule.due.frequency,
                 reviewed_on=reviews[rule.id].reviewed_on,
                 upcoming_due_dates=upcoming,

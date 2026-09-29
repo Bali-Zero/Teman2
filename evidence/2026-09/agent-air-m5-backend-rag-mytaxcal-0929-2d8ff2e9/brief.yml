@@ -31,8 +31,9 @@ acceptance:
     month-end regression: spt_tahunan_badan with fiscal_year_end 12-31 and today 2026-09-29 returns
     2027-04-30 only, and every returned due_date parses as a real ISO date.
   A7: >-
-    result copy: long legal_source URLs wrap (company result at 390px keeps scrollWidth 390); the review
-    line reads "Reviewed on <date>"; frequency shows a human label (Monthly, Annual, One-time, When an
+    result copy: legal_source is not published (absent from the payload and the card); each date and
+    its period key stay on one line at 390 with "provisional" after a real space (company result keeps
+    scrollWidth 390); the review line reads "Reviewed on <date>"; frequency shows a human label (Monthly, Annual, One-time, When an
     event happens); the withheld note is singular for 1.
   A6: >-
     event cards: pse_registration, wajib_lapor_ketenagakerjaan and rptka_imta_expat return

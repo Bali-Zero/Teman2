@@ -13,60 +13,88 @@ what_changed: |
   Public route returning only cleared obligation rules plus a withheld_count; the shipped review
   file clears 9 rules (owner review, 2026-09-29) and withholds the rest (9 of the applicable ones for
   the full company profile). Wizard on /tax-calendar consumes it. CORS default origins gain tax.balizero.com.
-  Rework after the gate's REWORK-BUILD: this pack; the route added to the public-mutation registry
-  of the gating test; OpenAPI pin and schema.d.ts regenerated; fiscal_year_end validated as a real
-  calendar day; the empty-state copy no longer claims nothing applies while rules are withheld;
-  --space-5 (undefined token) replaced by --space-6; employee count parsed to a non-negative
-  integer; WhatsApp link 44px; a flaky date test made deterministic; tests that kill four mutants.
-  Round 3: long legal-source URLs wrap, "Reviewed on" replaces "Reviewed by our tax team on", frequency
-  gets human labels, the withheld note is pluralised correctly.
-  Round 2: the owner's decision of 2026-09-29 is recorded (9 rules cleared, reviewer "Zero (owner)",
-  12 withheld); due dates gain a provisional flag when the holiday table for their year is not loaded;
-  a month-end regression test; cards for one-time and event rules show "No fixed date".
+  Rework 1 (after the first gate): this pack; the route added to the public-mutation registry of the
+  gating test; OpenAPI pin and schema.d.ts regenerated; fiscal_year_end validated as a real calendar
+  day; the empty-state copy no longer claims nothing applies while rules are withheld; --space-5
+  (undefined token) replaced by --space-6; employee count parsed to a non-negative integer; WhatsApp
+  link 44px; a flaky date test made deterministic; tests that kill four mutants.
+  Round 2: the owner's decision of 2026-09-29 is recorded (9 rules cleared, reviewer "Zero (owner)");
+  due dates gain a provisional flag when the holiday table for their year is not loaded (the loaded
+  years are an injectable dependency); a month-end regression test; cards for one-time and event rules
+  show "No fixed date".
+  Round 3: "Reviewed on" replaces "Reviewed by our tax team on", frequency gets human labels, the
+  withheld note is pluralised correctly.
+  Round 4: legal_source is no longer published (removed from the response model and the card; the
+  clearance still binds to the whole rule, fingerprints unchanged); a real space and a nowrap span
+  keep each date and its period key on one line, with the "provisional" label after a real space.
 
 proof: |
-  Backend: 500 passed in the targeted run (route, clearance, setup, CORS, mutating-routes gate,
-  OpenAPI pin). Mutants against the new tests: M2 (verified check dropped), M9 (legal_source out of
-  the fingerprint), M10 (due out of the fingerprint), M11 (individual scoping dropped) and M13
-  (no calendar-day validator) each turn the suite red (1, 1, 1, 1 and 6 failures) and the file is
-  restored byte-identical. Mouth: 168 tests in 17 files green twice in a row after round 3; the date test
-  was green five runs alone in round 1. Round 3 also walked the company result at 390x844 in a real
-  browser with the real payload: scrollWidth 390. The observation that matters is the required CI on the rework push.
+  All numbers below were produced by the receipt commands re-run after the last code change
+  (2026-09-29, 15:24-15:26 UTC). Backend targeted set: 500 passed, 127 skipped. Mouth: 17 files, 168
+  tests, run twice, both green. Mutants against the tests: M2 (verified check dropped) 1 failed, M9
+  (legal_source out of the fingerprint) 5 failed, M10 (due out of the fingerprint) 5 failed, M11
+  (individual scoping dropped) 1 failed, M13 (no calendar-day validator) 6 failed; each file restored
+  byte-identical. A mutant that publishes legal_source again turns the route test red (1 failed).
+  Real browser, next dev on port 3177, the real company payload with legal_source removed served by
+  page.route: at 390x844 and at 1440x900 scrollWidth equals the viewport, 9 result cards, 50 date spans
+  each on a single line (one distinct line top per span), no digit glued to "provisional", 36
+  provisional labels, no legal-source text on the page; screenshots round4-390-vp1..vp7.png and
+  round4-1440.png. The observation that matters is the required CI on the rework push.
 
 dissent:
   - seat: claude-opus-5.5
-    objection: "Gate: the copy 'None of the obligations apply' is false while rules are only withheld."
+    objection: "Gate 1: the copy 'None of the obligations apply' is false while rules are only withheld."
     status: CONFIRMED
     resolution: "Shown only when withheld_count is 0; a test covers both cases."
   - seat: claude-opus-5.5
-    objection: "Gate: four mutants survived the first test set (M2, M9, M10, M11)."
+    objection: "Gate 1: four mutants survived the first test set (M2, M9, M10, M11)."
     status: CONFIRMED
     resolution: "New tests kill all four; verified red against each mutant."
+  - seat: claude-opus-5.5
+    objection: "Gate 3: the date and its period key split across lines at 390 ('2026-12provisional')."
+    status: CONFIRMED
+    resolution: "Real space before the label, nowrap on the date text, real period_key shapes in the fixtures."
+  - seat: claude-opus-5.5
+    objection: "Gate 3: legal_source is raw catalog prose with internal verification notes; the owner approved a summary, not that text."
+    status: CONFIRMED
+    resolution: "Removed from the public model and the card; test asserts it is absent."
 
 receipts:
-  - claim: "Targeted backend suite green with the new tests."
+  - claim: "Targeted backend suite green."
     cmd: "SKIP_SENTRY_INIT=1 PYTHONPATH=. python -m pytest backend/tests/app/routers/test_tax_calendar_public.py backend/tests/services/compliance/test_tax_calendar_public_review.py backend/tests/setup/ backend/tests/unit/app/setup/test_cors_config_comprehensive.py backend/tests/security/test_mutating_routes_are_gated.py backend/tests/unit/scripts/test_generate_openapi_schema_pin.py"
     result: "500 passed, 127 skipped"
     exit: 0
-    ts: "2026-09-29T13:50:00Z"
+    ts: "2026-09-29T15:24:52Z"
     seat: claude-sonnet-5.5
-  - claim: "OpenAPI pin matches the regenerated contract."
-    cmd: "npm run contract:visa-oracle (apps/mouth) then prettier --write src/lib/api/schema.d.ts, then the pin test"
-    result: "1 passed"
+  - claim: "OpenAPI pin matches the regenerated contract (legal_source gone from the schema)."
+    cmd: "npm run contract:visa-oracle (apps/mouth), prettier --write src/lib/api/schema.d.ts, then the pin test"
+    result: "1 passed; regeneration is deterministic (schema.d.ts byte-identical on re-run); diff vs main drops legal_source"
     exit: 0
-    ts: "2026-09-29T13:46:00Z"
-    seat: claude-sonnet-5.5
-  - claim: "Mouth suites green five runs in a row."
+    ts: "2026-09-29T15:27:20Z"
+    seat: claude-opus-5-5
+  - claim: "Mouth suites green, run twice."
     cmd: "npx vitest run src/components/funnel 'src/app/(tax-calendar)' src/components/r19 src/app/api/tax-calendar"
     result: "17 files, 168 tests passed (x2)"
     exit: 0
-    ts: "2026-09-29T13:55:00Z"
+    ts: "2026-09-29T15:25:11Z"
     seat: claude-sonnet-5.5
   - claim: "Type check clean."
     cmd: "npx tsc --noEmit -p . (apps/mouth)"
     result: "no output"
     exit: 0
-    ts: "2026-09-29T13:56:00Z"
+    ts: "2026-09-29T15:25:30Z"
+    seat: claude-sonnet-5.5
+  - claim: "Mutants against the new tests are killed and files restored."
+    cmd: "scratchpad mut7664.py (M2, M9, M10, M11, M13; cp backup, run, cp restore, cmp)"
+    result: "1, 5, 5, 1, 6 failed; restored True each"
+    exit: 1
+    ts: "2026-09-29T15:25:44Z"
+    seat: claude-sonnet-5.5
+  - claim: "Real-payload browser walk at 390x844 and 1440x900."
+    cmd: "node round4.mjs against next dev -p 3177 with page.route serving company_full.json minus legal_source"
+    result: "scrollWidth == viewport at both; 50 date spans on one line each; no glued label"
+    exit: 0
+    ts: "2026-09-29T15:24:39Z"
     seat: claude-sonnet-5.5
 
 pii_scan: clean

@@ -10,7 +10,6 @@ type Obligation = {
   id: string;
   name: string;
   authority: string;
-  legal_source: string;
   frequency: string;
   reviewed_on: string;
   upcoming_due_dates: Array<{
@@ -483,8 +482,15 @@ function CalendarResult({
               </div>
               {next && (
                 <span style={badgeStyle}>
-                  {next.due_date} · in {daysUntil(next.due_date)}d
-                  {next.provisional && <ProvisionalLabel />}
+                  <span style={noWrapStyle}>
+                    {next.due_date} · in {daysUntil(next.due_date)}d
+                  </span>
+                  {next.provisional && (
+                    <>
+                      {" "}
+                      <ProvisionalLabel />
+                    </>
+                  )}
                 </span>
               )}
             </div>
@@ -497,13 +503,19 @@ function CalendarResult({
               <ul style={listStyle}>
                 {obligation.upcoming_due_dates.slice(1).map((date) => (
                   <li key={`${date.due_date}-${date.period_key}`}>
-                    {date.due_date} — {date.period_key}
-                    {date.provisional && <ProvisionalLabel />}
+                    <span style={noWrapStyle}>
+                      {date.due_date} — {date.period_key}
+                    </span>
+                    {date.provisional && (
+                      <>
+                        {" "}
+                        <ProvisionalLabel />
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
-            <p style={legalSourceStyle}>{obligation.legal_source}</p>
             <p style={mutedStyle}>Reviewed on {obligation.reviewed_on}</p>
           </article>
         );
@@ -524,9 +536,7 @@ function CalendarResult({
 }
 
 function ProvisionalLabel() {
-  return (
-    <em style={{ fontStyle: "normal", marginLeft: "0.5ch" }}>provisional</em>
-  );
+  return <em style={{ fontStyle: "normal" }}>provisional</em>;
 }
 
 function WithheldNote({ count }: { count: number }) {
@@ -831,11 +841,7 @@ const badgeStyle: CSSProperties = {
   fontWeight: 600,
   padding: "var(--space-2) var(--space-3)",
 };
-const legalSourceStyle: CSSProperties = {
-  ...mutedStyle,
-  overflowWrap: "anywhere",
-  wordBreak: "break-word",
-};
+const noWrapStyle: CSSProperties = { whiteSpace: "nowrap" };
 const listStyle: CSSProperties = {
   color: "var(--r19-muted)",
   margin: "var(--space-4) 0",
