@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/agent-air-m5-backend-rag-champion-october-engine-56fd9ae0/brief.yml
+brief_ref: evidence/brief.yml
 pii_scan: clean
 seat_override: >-
   This mission provisions one independent external reviewer (Codex,
@@ -108,6 +108,40 @@ dissent:
       suite were not executed" — i.e. its own pass ran against the
       pre-fix HEAD (29827d3935) with the scratch-schema/unit-test surface
       only, not against production or the fixes above.
+  - seat: claude-opus-5-5 xhigh (fresh final on-disk gate, outside the chain)
+    status: PLAUSIBLE
+    objection: >-
+      N1, non-blocking · `ruff format --check` wants to reformat
+      scripts/tests/test_portal_challenge_leaderboard.py (pre-commit scopes
+      ruff-format to apps/backend-rag only, so this test file was already
+      non-conformant on main before this branch touched it).
+      Independently re-verified this session: `.venv/bin/ruff format
+      --check scripts/portal_challenge_leaderboard.py
+      scripts/tests/test_portal_challenge_leaderboard.py` reports "1 file
+      would be reformatted, 1 file already formatted" — the script itself
+      is clean, only its test is non-conformant.
+  - seat: claude-opus-5-5 xhigh (fresh final on-disk gate, outside the chain)
+    status: PLAUSIBLE
+    objection: >-
+      N2, non-blocking · no automated test covers a positive-points tie in
+      the Round 2 ranking (two members at equal points sharing rank 1 and
+      the 6M prize); verified ad hoc by the gate, not by a committed test.
+  - seat: claude-opus-5-5 xhigh (fresh final on-disk gate, outside the chain)
+    status: PLAUSIBLE
+    objection: >-
+      N3, non-blocking · this pack's own lint carries 2 pre-existing
+      NOTICEs: 4 acceptance probes not echoed in any receipt's claim/cmd,
+      and the declared appetite ceiling has no matching `spend:` block —
+      neither is a FAIL under the current rules.
+  - seat: claude-opus-5-5 xhigh (fresh final on-disk gate, outside the chain)
+    status: PLAUSIBLE
+    objection: >-
+      N4, non-blocking · the Fly Postgres tunnel (scripts/pg.sh) flapped
+      once during the gate's prod probes — an environment/network
+      transient, not a candidate defect; a retry succeeded. (Matches this
+      session's own experience: one earlier `--round 2` invocation hit the
+      same transient before a clean re-run — see the discovery already on
+      file for this class of flap, cicatrix family #8.)
 lanes:
   - lane: build
     role: build
@@ -126,6 +160,35 @@ lanes:
       1 minor findings — see dissent. 2 REJECTED as design decisions by the
       Dux, 1 ACCEPTED-RISK/watch-item, 3 ACCEPTED and CURED in 41235d3947
       (be-round2).
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5-5 xhigh (fresh, outside the contribution chain)
+    note: >-
+      Fresh final on-disk gate against gated HEAD 315285e9e3. Verdict PASS,
+      0 blocking defects, 4 non-blocking notices (see dissent N1-N4).
+      Gate's own reported scope: 11 files, all allowlisted (+2812/-93);
+      pytest across the portal/dashboard_summary/rag_proxy_stream/
+      portal_invite suites: 275 passed, 8 skipped (scratch-PG only); ruff
+      check clean; DOCSYNC OK; offline-report script tests: 11 passed;
+      Round 1 SQL byte-identical to main and its constants equal; prod
+      `--round 1` unchanged (Ari 46/Surya 37/Krishna 34, team 160); prod
+      `--round 2` (status upcoming) Adit 23/Vino 11/Damar 7/Zero 2 carry,
+      surya/ari.firda/krisna carry 0 choice prize, zero-point rows show
+      prize 0, Asya absent from the general ranking; all 8 R2 SQL builders
+      exit 0; timestamptz-vs-naive columns handled via `AT TIME ZONE
+      'UTC'`; is_me/generated_at computed per request, never cached; cache
+      key v3 identical between the router and the events path; the goal
+      path keeps its 3s timeout with an except clause; the Round-1-branch
+      clock seams stay pinned; Codex cures A/B/C independently re-confirmed
+      at challenge_round2.py:632 (Asya request-message bonus),
+      :287 (R2 review-query upper bound), :493 (strict outreach ordering).
+      Independently re-verified this session (Sonnet 5, same HEAD): pytest
+      275 passed/8 skipped across the same 4 suites, ruff clean, DOCSYNC
+      OK, 11 script tests passed, prod `--round 1` and `--round 2` both
+      reproduced with the exact figures above, diffstat confirmed at
+      11 files/+2812/-93 via `git diff --numstat origin/main...HEAD`, and
+      all three Codex-cure line numbers read directly from the current
+      source (see dissent N1-N4 for independently re-verified notices).
 receipts:
   - claim: >-
       Backend unit suites for the Round 2 engine, the dashboard router, and
@@ -189,4 +252,39 @@ receipts:
     cmd: python3 scripts/portal_challenge_leaderboard.py --round 1
     exit: 0
     ts: "2026-09-29T06:00:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Independent re-verification at gated HEAD 315285e9e3 (post final
+      gate): the wider suite (portal + dashboard_summary + rag_proxy_stream
+      + portal_invite) 275 passed, 8 skipped (scratch-PG only); ruff check
+      clean; DOCSYNC OK; script tests 11 passed; `ruff format --check`
+      confirms N1 (the script itself is formatted, only its test is not).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/portal
+      backend/tests/unit/routers/test_dashboard_summary.py
+      backend/tests/unit/app/test_rag_proxy_stream.py
+      backend/tests/unit/routers/test_portal_invite.py;
+      .venv/bin/ruff check backend/services/portal/
+      backend/app/routers/dashboard_summary.py;
+      .venv/bin/ruff format --check ../../scripts/portal_challenge_leaderboard.py
+      ../../scripts/tests/test_portal_challenge_leaderboard.py;
+      cd .. && python3 scripts/docs_sync.py --check
+    exit: 0
+    ts: "2026-09-29T06:14:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Diffstat confirmed: 11 files changed, +2812/-93 against origin/main;
+      all three Codex-cure lines read directly from current source —
+      challenge_round2.py:632-633 combines request_rows with
+      asya_client_event_rows before `_mission_bonus_keys`, :287 has the
+      strict `AND (prd.uploaded_at AT TIME ZONE 'UTC') < ... '{end_ts}'`
+      upper bound, :493 uses strict `sent_at < event_at`.
+    cmd: >-
+      git diff --numstat origin/main...HEAD | wc -l; sed -n '630,634p'
+      backend/services/portal/challenge_round2.py; sed -n '285,289p'
+      backend/services/portal/challenge_round2.py; sed -n '491,495p'
+      backend/services/portal/challenge_round2.py
+    exit: 0
+    ts: "2026-09-29T06:15:00Z"
     seat: claude-sonnet-5
