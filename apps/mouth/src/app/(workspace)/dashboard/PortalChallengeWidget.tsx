@@ -476,13 +476,24 @@ const RANK_ORDINAL: Record<number, string> = {
   5: "Kelima",
 };
 
+// Ruled minimums (Zero, 2026-09-30) — fallback for payloads without min_points.
+const RANK_MIN_POINTS: Record<number, number> = {
+  1: 100,
+  2: 80,
+  3: 60,
+  4: 30,
+  5: 20,
+};
+
 function RankPrizeRow({
   rank,
   prizeIdr,
+  minPoints,
   holders,
 }: {
   rank: number;
   prizeIdr: number;
+  minPoints?: number;
   holders: PortalChallengeEntry[];
 }) {
   return (
@@ -515,6 +526,11 @@ function RankPrizeRow({
         >
           {formatIDR(prizeIdr)}
         </p>
+        {(minPoints ?? RANK_MIN_POINTS[rank]) != null && (
+          <p className="text-[11px] tabular-nums text-[var(--tx-secondary)]">
+            {`min ${minPoints ?? RANK_MIN_POINTS[rank]} poin`}
+          </p>
+        )}
         {holders.length > 0 && (
           <p className="text-[11px] tabular-nums text-[var(--tx-secondary)]">
             {holders[0].points ?? 0} poin
@@ -541,6 +557,7 @@ function RankPrizeList({
           key={rp.rank}
           rank={rp.rank}
           prizeIdr={rp.prize_idr}
+          minPoints={rp.min_points}
           // A 0-point (or negative) entry never wins a rank prize — the
           // backend already ships prize_idr: 0 for it; this list must not
           // show it as the holder just because it shares the rank number.
@@ -770,6 +787,28 @@ function Round2Breakdown({ entry }: { entry: PortalChallengeEntry }) {
   );
 }
 
+// Round-2 prize notes: slide-down slot, and a September prize-taker whose
+// October rank is not yet at least their September rank (ineligible).
+function Round2PrizeNote({ entry }: { entry: PortalChallengeEntry }) {
+  const slot = entry.prize_slot;
+  const sepRank = entry.september_rank;
+  const notes: string[] = [];
+  if (slot != null && slot !== entry.rank) notes.push(`hadiah posisi ${slot}`);
+  if (sepRank != null && entry.rank > sepRank)
+    notes.push(`perlu posisi ≤ ${sepRank}`);
+  if (notes.length === 0) return null;
+  return (
+    <div
+      data-testid={`champion-prize-note-${entry.member}`}
+      className="col-span-3 flex flex-wrap gap-x-2 pl-7 text-[11px] font-semibold text-[var(--bz-copper-text)]"
+    >
+      {notes.map((n) => (
+        <span key={n}>{n}</span>
+      ))}
+    </div>
+  );
+}
+
 function RankingRow({
   entry,
   isZeroState,
@@ -816,6 +855,7 @@ function RankingRow({
         {round2 ? (entry.points ?? 0) : entry.activations}
       </span>
       {round2 && <Round2Breakdown entry={entry} />}
+      {round2 && <Round2PrizeNote entry={entry} />}
     </div>
   );
 }
@@ -1116,8 +1156,26 @@ function RulesDrawer({ data }: { data: PortalChallengeResponse }) {
                     Hadiah mengikuti{" "}
                     <span className="text-[var(--tx-pure)] font-semibold">
                       peringkat akhir
+                    </span>
+                    , dengan skor{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      minimal 100 poin
                     </span>{" "}
-                    (5 posisi).
+                    untuk posisi 1, 80 untuk posisi 2, 60 untuk posisi 3, 30
+                    untuk posisi 4, dan 20 untuk posisi 5.
+                  </li>
+                  <li>
+                    Jika skormu di bawah batas posisimu, kamu tidak dapat hadiah
+                    posisi itu, tetapi{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      turun ke posisi hadiah yang bisa dicapai
+                    </span>{" "}
+                    (posisi kosong terbaik yang batasnya kamu penuhi).
+                  </li>
+                  <li>
+                    Pemenang hadiah September (Surya, Ari, Krisna) hanya bisa
+                    menang hadiah Oktober jika peringkat Oktobernya minimal sama
+                    dengan peringkat Septembernya.
                   </li>
                   <li>Tidak ada bonus Tax baru di ronde ini.</li>
                   <li>
