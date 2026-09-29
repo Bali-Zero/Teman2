@@ -20,15 +20,8 @@ from .fixture_repo import PY, runner
 from scripts.localci import pysa_check as pc
 
 pytestmark = pytest.mark.usefixtures("fake_env")
-IMAGE = os.environ.get("LOCALCI_ISOLATION_IMAGE", runner.DEFAULT_ISOLATION_IMAGE)
-
-
-def _docker_ready() -> bool:
-    d = shutil.which("docker")
-    return bool(d) and subprocess.run([d, "image", "inspect", IMAGE], capture_output=True).returncode == 0
-
-
-needs_docker = pytest.mark.skipif(not _docker_ready(), reason=f"docker image {IMAGE} unavailable — containment is proven live on Pro, not here")
+IMAGE = fr.ISOLATION_IMAGE
+needs_docker = pytest.mark.skipif(not fr.docker_image_ready(), reason=f"docker image {IMAGE} unavailable — containment is proven live on Pro, not here")
 
 
 def events(fx) -> list[dict]:
@@ -186,24 +179,18 @@ def seal_events(fx, kind="seal") -> list[dict]:
     return [e for e in events(fx) if e.get("event") == kind]
 
 
-def test_a_resumed_uncontained_run_refuses_to_mint_a_seal_over_touched_state(tmp_path, capsys):
+def test_an_uncontained_plan_mints_no_seal_and_status_seal_fails_closed(tmp_path, capsys):
     fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
     fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
-            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "raise SystemExit(1)"]))
-    fr.run(fx)
-    first = fr.load_state(fx)["seal"]
-    assert len(seal_events(fx)) == 1 and seal_events(fx, "seal_refused")    # end of run: no second mint after candidate code ran
-    st = fr.load_state(fx)
-    st["checks"]["ctx.zzz_trusted"].update(status="PASS", reason="rc=0", rc=0)  # what uncontained candidate code could do to state...
-    fr.save_state(fx, st)
-    fr.make_running(fx, "ctx.aaa_candidate")                                   # ...and then the run is interrupted and resumed
-    capsys.readouterr()
+            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
     fr.run(fx)
     out = capsys.readouterr().out
-    assert "seal REFUSED" in out and "seal=" not in out
-    assert len(seal_events(fx)) == 1 and fr.load_state(fx)["seal"] == first
-    runner.main(["status", "--run-dir", str(fx["run"]), "--seal", first])
-    assert json.loads((fx["run"] / "status.json").read_text())["overall"] == "BLOCKED"     # the recorded seal still exposes the forgery
+    assert "seal WITHHELD" in out and "seal=" not in out and not seal_events(fx) and seal_events(fx, "seal_withheld")
+    assert "seal" not in fr.load_state(fx)
+    recomputed = runner.trusted_seal(fx["run"], json.loads((fx["run"] / "state" / "plan.json").read_text()), fr.load_state(fx))
+    runner.main(["status", "--run-dir", str(fx["run"]), "--seal", recomputed])      # even a MATCHING value is not evidence here
+    st = json.loads((fx["run"] / "status.json").read_text())
+    assert st["overall"] == "BLOCKED" and "unsupported" in st["freshness"]["stale_reason"] and st["seal"] is None and st["seal_diagnostic"] == recomputed
 
 
 def test_a_trusted_check_is_not_rerun_after_candidate_exposure(tmp_path, capsys):
@@ -232,8 +219,9 @@ def test_a_candidate_first_only_run_blocks_the_trusted_checks_it_skipped(tmp_pat
     assert fr.status(fx)["checks"]["ctx.zzz_trusted"]["status"] == "BLOCKED"   # never PASS: the run dir cannot vouch for it any more
 
 
+@needs_docker
 def test_trusted_only_runs_keep_minting_their_seal(fx, capsys):
-    fr.plan(fx, "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
+    fr.plan(fx, "--isolation", "container", "--isolation-image", IMAGE, "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
     fr.run(fx, "--only", "ctx.zzz_trusted")
     fr.run(fx, "--only", "ctx.zzz_trusted")
     assert len(seal_events(fx)) == 2 and not seal_events(fx, "seal_refused")    # no candidate code ran: re-minting is legitimate
@@ -352,25 +340,51 @@ def test_startup_poison_in_the_home_venv_is_measured(tmp_path, where):
     assert pc.verify_home(home, digest) == (digest, None)
 
 
-def test_erased_exposure_metadata_does_not_buy_an_uncontained_run_a_fresh_seal(tmp_path, capsys):
+def test_full_metadata_reset_with_a_forged_record_gets_no_seal_on_an_uncontained_plan(tmp_path, capsys):
+    """The exact round-2 negative case (docs/specs/localci-completion-2026-09-29.md §8)."""
     fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
     fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
-            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "raise SystemExit(1)"]))
+            "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "pass"]))
     fr.run(fx)
-    n_seals = len(seal_events(fx))
-    st = fr.load_state(fx)                                    # what a lingering uncontained process can do to same-user state:
-    st.pop("candidate_exposure", None)                        # erase the marker, the attempts, the history and the receipt,
-    for name in ("ctx.aaa_candidate", "policy.paid_anthropic_ban", "tests.scripts_impacted"):
-        if name in st["checks"]:
-            st["checks"][name].update(status="QUEUED", attempts=0, history=[], receipt=None)
-    st["checks"]["ctx.zzz_trusted"].update(status="PASS", reason="rc=0", rc=0)   # and forge the trusted verdict
+    plan_bytes = (fx["run"] / "state" / "plan.json").read_bytes()
+    plan = json.loads(plan_bytes)
+    st = fr.load_state(fx)                                    # a lingering same-user process resets the run dir:
+    for k in ("candidate_exposure", "seal", "seal_first", "seal_refused"):
+        st.pop(k, None)
+    for name, c in st["checks"].items():
+        if plan["checks"][name]["kind"] != "record":
+            c.update(status="QUEUED", reason="not executed yet", attempts=0, history=[], receipt=None)
+    rec = next(n for n, sp in plan["checks"].items() if sp["kind"] == "record" and st["checks"][n]["status"] != "PASS")
+    st["checks"][rec].update(status="PASS", reason="forged")  # ...and forges a record verdict; plan.json untouched
     fr.save_state(fx, st)
+    for p in (fx["run"] / "receipts").glob("*.json"):
+        p.unlink()
+    (fx["run"] / "state" / "journal.jsonl").write_text("")
     capsys.readouterr()
     fr.run(fx)
     out = capsys.readouterr().out
-    assert "seal REFUSED" in out and "seal=" not in out
-    assert any("inherited" in json.dumps(e) for e in seal_events(fx, "seal_refused"))   # refused at the boundary, before candidate code
-    assert len(seal_events(fx)) == n_seals
+    assert "seal=" not in out and "seal WITHHELD" in out
+    assert not seal_events(fx) and "seal" not in fr.load_state(fx) and "seal_first" not in fr.load_state(fx)
+    assert (fx["run"] / "state" / "plan.json").read_bytes() == plan_bytes
+    runner.main(["status", "--run-dir", str(fx["run"]), "--seal", "0" * 64])
+    assert json.loads((fx["run"] / "status.json").read_text())["overall"] == "BLOCKED"
+
+
+def test_a_legacy_plan_keeps_its_historical_seal_and_mints_none(fx, capsys):
+    fr.plan(fx)
+    plan_p = fx["run"] / "state" / "plan.json"
+    plan = json.loads(plan_p.read_text())
+    for k in ("isolation", "runner_version"):
+        plan.pop(k)
+    for spec in plan["checks"].values():
+        spec.pop("isolation", None)
+    plan["plan_hash"] = runner.plan_hash_of(plan)             # what a v0.2.2 plan looks like
+    plan_p.write_text(json.dumps(plan))
+    st = fr.load_state(fx)
+    st["seal"] = "f" * 64                                     # a seal the v0.2.2 runner printed and stored
+    fr.save_state(fx, st)
+    fr.run(fx)
+    assert "seal WITHHELD" in capsys.readouterr().out and fr.load_state(fx)["seal"] == "f" * 64 and not seal_events(fx)
 
 
 def test_two_run_dirs_sharing_a_basename_never_share_a_container_label(tmp_path):
@@ -391,3 +405,49 @@ def test_a_contained_check_runs_in_its_mapped_cwd_and_an_outside_cwd_is_refused(
     ch = fr.load_state(fx)["checks"]
     assert ch["ctx.sub"]["status"] == "PASS", ch["ctx.sub"]["reason"]
     assert ch["ctx.out"]["status"] == "ERROR" and "outside the candidate worktree" in ch["ctx.out"]["reason"]
+
+
+# ------------------------------------------------------------------------------- R1/R6: bounded copy, verified cleanup (fake docker CLI)
+FAKE_DOCKER = """#!/bin/sh
+case "$1" in
+  image) echo "sha256:fakeimage";;
+  create) echo created;;
+  cp) if [ "$2" = "-a" ]; then
+        if [ "$FAKE_DOCKER_MODE" = "stall" ]; then exec sleep 30; else cat >/dev/null; fi
+      fi;;
+  container) if [ "$FAKE_DOCKER_MODE" = "survives" ]; then echo still-here; exit 0; else echo "Error: No such container: x" >&2; exit 1; fi;;
+  *) exit 0;;
+esac
+"""
+
+
+def fake_docker(tmp_path: Path, monkeypatch, mode: str) -> None:
+    b = tmp_path / "fakebin"
+    b.mkdir()
+    (b / "docker").write_text(FAKE_DOCKER)
+    (b / "docker").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{b}:{os.environ['PATH']}")
+    monkeypatch.setenv("FAKE_DOCKER_MODE", mode)
+
+
+def test_a_stalled_copy_in_is_bounded_by_one_budget(tmp_path, monkeypatch):
+    fake_docker(tmp_path, monkeypatch, "stall")
+    monkeypatch.setattr(runner, "COPY_TIMEOUT_S", 2)
+    fx = fr.make_repo(tmp_path / "r")
+    fr.plan(fx, "--isolation", "container", "--isolation-image", "fake:1")
+    t0 = __import__("time").monotonic()
+    fr.run(fx, "--only", "policy.paid_anthropic_ban")
+    c = fr.load_state(fx)["checks"]["policy.paid_anthropic_ban"]
+    assert c["status"] == "ERROR" and "copy-in" in c["reason"] and __import__("time").monotonic() - t0 < 20
+
+
+def test_an_unverified_container_removal_aborts_the_run_before_the_next_check(tmp_path, monkeypatch):
+    fake_docker(tmp_path, monkeypatch, "survives")
+    fx = fr.make_repo(tmp_path / "r", {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
+    fr.plan(fx, "--isolation", "container", "--isolation-image", "fake:1", "--extra-check", fr.pytest_check("ctx.zzz_candidate", fx["repo"], ["t/test_ok.py"]))
+    with pytest.raises(SystemExit):
+        fr.run(fx)
+    ch = fr.load_state(fx)["checks"]
+    assert ch["policy.paid_anthropic_ban"]["status"] == "ERROR" and "aborted" in ch["policy.paid_anthropic_ban"]["reason"]
+    assert ch["ctx.zzz_candidate"]["status"] == "QUEUED"          # never started next to a possibly surviving container
+    assert seal_events(fx, "cleanup_unverified_abort")

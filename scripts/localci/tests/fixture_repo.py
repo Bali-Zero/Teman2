@@ -13,6 +13,13 @@ sys.path.insert(0, str(REAL_REPO))
 from scripts.localci import release_stub, runner  # noqa: E402
 
 PY = sys.executable
+ISOLATION_IMAGE = os.environ.get("LOCALCI_ISOLATION_IMAGE", runner.DEFAULT_ISOLATION_IMAGE)
+
+
+def docker_image_ready() -> bool:
+    import shutil
+    d = shutil.which("docker")
+    return bool(d) and subprocess.run([d, "image", "inspect", ISOLATION_IMAGE], capture_output=True).returncode == 0
 GIT_ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
 BASE_FILES = {
     "scripts/check_ban_predicates.py": "GUARDED = True\n",

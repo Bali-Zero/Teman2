@@ -541,9 +541,13 @@ def test_extra_check_in_its_own_namespace_is_planned_and_runs(fx):
 
 
 # --------------------------------------------------------------- candidate code runs last, behind a seal the operator keeps
+needs_docker = pytest.mark.skipif(not fr.docker_image_ready(), reason="the trusted seal is supported only for contained plans; docker image absent here")
+
+
+@needs_docker
 def test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_run_forgery(tmp_path, capsys):
     fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "t/test_ok.py": "def test_ok():\n    assert True\n"})
-    fr.plan(fx, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
+    fr.plan(fx, "--isolation", "container", "--isolation-image", fr.ISOLATION_IMAGE, "--extra-check", fr.pytest_check("ctx.aaa_candidate", fx["repo"], ["t/test_ok.py"]),
             "--extra-check", fr.cmd_check("ctx.zzz_trusted", fx["repo"], [PY, "-c", "raise SystemExit(1)"]))
     fr.run(fx)
     printed = capsys.readouterr().out
@@ -582,7 +586,7 @@ def test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code(t
     ends = {n: c["history"][0]["ended_at"] for n, c in st["checks"].items() if c.get("history")}
     starts = {n: c["history"][0]["started_at"] for n, c in st["checks"].items() if c.get("history")}
     events = [json.loads(line) for line in (fx["run"] / "state" / "journal.jsonl").read_text().splitlines()]
-    boundary = next(e["at"] for e in events if e.get("event") == "seal" and e["why"].startswith("trusted checks done"))
+    boundary = next(e["at"] for e in events if e.get("event") in ("seal", "seal_withheld") and e["why"].startswith("trusted checks done"))
     plan = json.loads((fx["run"] / "state" / "plan.json").read_text())
     for n, spec in plan["checks"].items():
         if spec["kind"] == "cmd":
@@ -594,8 +598,9 @@ def test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code(t
         runner.main(["status", "--run-dir", str(fx["run"]), "--seal", "ab"])   # a 2-char prefix would match almost anything
 
 
+@needs_docker
 def test_a_rewritten_record_verdict_breaks_the_seal(fx):
-    fr.plan(fx)
+    fr.plan(fx, "--isolation", "container", "--isolation-image", fr.ISOLATION_IMAGE)
     fr.run(fx)
     st = fr.load_state(fx)
     seal = st["seal"]

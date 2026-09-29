@@ -556,11 +556,12 @@ def _tar_add(tf: tarfile.TarFile, name: str, data: bytes | None = None, mode: in
         tf.addfile(ti, io.BytesIO(data))
 
 
-def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], extra: dict[str, bytes]) -> int:
+def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], extra: dict[str, bytes], group: list | None = None,
+                    timeout: float | None = None) -> int:
     """Tar `commit`'s tree from the OBJECT STORE into `sink` under w/ — never the checkout (ignored files such as .env or a venv stay
     out) and never `git archive` (it honours the candidate's export-ignore). `overrides` replace blobs (BASE test files); `extra` lands
     outside w/. Owned by the sandbox uid so candidate tests can write where they could in a checkout."""
-    listing = subprocess.run(["git", "-C", str(wt), "ls-tree", "-r", "-z", "--full-tree", commit], capture_output=True, check=True).stdout.decode()
+    listing = subprocess.run(["git", "-C", str(wt), "ls-tree", "-r", "-z", "--full-tree", commit], capture_output=True, check=True, timeout=timeout).stdout.decode()
     entries = []
     for rec in listing.split("\0"):
         if rec:
@@ -576,6 +577,8 @@ def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], ex
     for x in sorted(extra):
         _tar_add(tf, x, extra[x])
     cat = subprocess.Popen(["git", "-C", str(wt), "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    if group is not None:
+        group.append(cat)   # the caller's watchdog kills it with the copy process: a blocked read ends at EOF
     try:
         for mode, oid, rel in entries:
             cat.stdin.write(f"{oid}\n".encode())
@@ -592,8 +595,15 @@ def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], ex
             else:
                 _tar_add(tf, f"w/{rel}", body, 0o755 if mode == "100755" else 0o644)
     finally:
-        cat.stdin.close()
-        cat.wait()
+        try:
+            cat.stdin.close()
+        except OSError:
+            pass
+        try:
+            cat.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            cat.kill()
+            cat.wait()
     for rel, blob in sorted(overrides.items()):
         _tar_add(tf, f"w/{rel}", blob)
     tf.close()
@@ -646,18 +656,29 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
             return None, f"container create failed (image {iso['image_id'][:19]} pinned at plan time): {r.stderr.strip()[:300]}"
         with tempfile.TemporaryFile() as errf:   # stderr to a file (no pipe to fill) and a watchdog: a stalled copy-in cannot hang the run
             cp = subprocess.Popen([docker, "cp", "-a", "-", f"{ctr}:/"], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=errf, env=denv)
-            watchdog = threading.Timer(COPY_TIMEOUT_S, cp.kill)
+            group = [cp]   # ONE budget for the producer (git ls-tree / cat-file) and the consumer (docker cp)
+            expired = threading.Event()
+
+            def _expire():
+                expired.set()
+                for proc in list(group):
+                    proc.kill()
+            watchdog = threading.Timer(COPY_TIMEOUT_S, _expire)
             watchdog.start()
+            t_end = time.monotonic() + COPY_TIMEOUT_S
             try:
-                n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra)
+                n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra, group, COPY_TIMEOUT_S)
                 cp.stdin.close()
-                cp.wait(timeout=COPY_TIMEOUT_S)
-            except (OSError, subprocess.TimeoutExpired) as e:
-                cp.kill()
-                cp.wait()
-                return None, f"candidate tree copy-in failed or exceeded {COPY_TIMEOUT_S}s: {type(e).__name__}"
+                cp.wait(timeout=max(1.0, t_end - time.monotonic()))
+            except (OSError, subprocess.SubprocessError, RuntimeError, ValueError) as e:
+                for proc in group:
+                    proc.kill()
+                    proc.wait()
+                return None, f"candidate tree copy-in failed{' (budget ' + str(COPY_TIMEOUT_S) + 's expired)' if expired.is_set() else ''}: {type(e).__name__}"
             finally:
                 watchdog.cancel()
+            if expired.is_set():
+                return None, f"candidate tree copy-in exceeded its {COPY_TIMEOUT_S}s budget"
             errf.seek(0)
             err = errf.read()
         if cp.returncode != 0:
@@ -669,14 +690,28 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
                 rc = subprocess.run([docker, "start", "-a", ctr], stdout=fh, stderr=subprocess.STDOUT, timeout=timeout, env=denv).returncode
             except subprocess.TimeoutExpired:
                 subprocess.run([docker, "kill", ctr], capture_output=True, timeout=60, env=denv)
-                return None, f"timeout after {timeout}s (container killed)"
+                return None, f"timeout after {timeout}s (container killed; removal verified below or the run aborts)"
         why = _read_junit_out(docker, ctr, junit)
         if why:
             with open(log, "a") as fh:
                 fh.write(f"# junit: {why}\n")
         return rc, None
     finally:
+        _remove_verified(docker, ctr, denv)
+
+
+class ContainerCleanupError(RuntimeError):
+    """A candidate container may still exist: the run must not start another check next to it."""
+
+
+def _remove_verified(docker: str, ctr: str, denv: dict) -> None:
+    try:
         subprocess.run([docker, "rm", "-f", ctr], capture_output=True, timeout=120, env=denv)
+        gone = subprocess.run([docker, "container", "inspect", "--format", "{{.Id}}", ctr], capture_output=True, text=True, timeout=60, env=denv)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise ContainerCleanupError(f"removal of candidate container {ctr} not verifiable: {type(e).__name__}") from e
+    if gone.returncode == 0 or "no such" not in (gone.stderr or "").lower():
+        raise ContainerCleanupError(f"candidate container {ctr} still present or its absence unverifiable after docker rm -f (inspect rc={gone.returncode})")
 
 
 def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int, log: Path, junit: Path) -> dict:
@@ -709,6 +744,8 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
     t0 = time.monotonic()
     try:
         rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout, workdir)
+    except ContainerCleanupError:
+        raise
     except (OSError, subprocess.SubprocessError, RuntimeError) as e:
         rc, err = None, f"container execution failed: {type(e).__name__}: {e}"
     dur = round(time.monotonic() - t0, 3)
@@ -950,33 +987,31 @@ def cmd_run(a):
             cur_env = env_fingerprint(venv_py, plan["checks"])
             cur_hash = env_hash(cur_env)
             sealed = False
-            produced: set[str] = set()   # trusted verdicts THIS invocation produced — the only ones an uncontained plan can seal
 
             def seal_now(why: str) -> None:
                 nonlocal sealed
+                sealed = True
+                if isolation_of(plan).get("mode") != "container":
+                    # uncontained/legacy: a lingering same-user process can reset this run dir to a state no marker distinguishes from a
+                    # fresh plan (review round 2), so no seal minted here could vouch for it — none is (docs/specs/localci-completion §8)
+                    store.journal({"event": "seal_withheld", "why": why, "at": now()})
+                    print(f"seal WITHHELD  # {why}: uncontained plan (isolation={isolation_of(plan).get('mode')}) — no trusted seal is minted; "
+                          "plan with --isolation container for one", flush=True)
+                    return
                 seal = trusted_seal(run_dir, plan, st)
                 exp, first = candidate_exposure(plan, st), st.get("seal_first")
-                sealed = True
-                inherited = sorted(n for n, sp in plan["checks"].items() if sp.get("kind") in TRUSTED_KINDS
-                                   and st["checks"].get(n, {}).get("status") not in ("QUEUED", None) and n not in produced)
-                if exp is None and inherited and isolation_of(plan).get("mode") != "container":
-                    # uncontained/legacy: exposure markers live in same-user state and can be erased, so a trusted verdict found on disk may
-                    # be candidate work dressed as a fresh plan — seal only what this process computed itself
-                    exp = {"at": "unknown (uncontained plan, verdicts inherited from disk)", "mode": "none", "inherited": inherited}
                 if exp is None:   # no candidate code has run against this run dir: minting (or re-minting) is legitimate
                     st["seal"] = seal
                     st["seal_first"] = {"seal": seal, "at": now(), "why": why}
                     store.journal({"event": "seal", "seal": seal, "why": why, "at": now()})
                     store.save(st)
-                    note = "" if isolation_of(plan).get("mode") == "container" else " [UNCONTAINED plan: evidence only as the FIRST seal you record for this run dir]"
-                    print(f"seal={seal}  # {why}: record this outside the run dir; `status --seal {seal[:12]}…` re-derives it{note}", flush=True)   # before candidate code runs: a kill -9 must not eat it in a pipe buffer
+                    print(f"seal={seal}  # {why}: record this outside the run dir; `status --seal {seal[:12]}…` re-derives it", flush=True)   # before candidate code runs: a kill -9 must not eat it in a pipe buffer
                     return
                 if exp.get("mode") == "container" and first and first.get("seal") == seal:
                     store.journal({"event": "seal_verified", "seal": seal, "why": why, "first_at": first.get("at"), "at": now()})
                     print(f"seal={seal}  # {why}: UNCHANGED since {first.get('at')} — candidate code ran only in containers, nothing new minted", flush=True)
                     return
-                why_not = ("candidate code ran UNCONTAINED in this run dir, so state/receipts may be its work" if exp.get("mode") != "container"
-                           else "the trusted evidence no longer re-derives the seal minted before candidate code ran")
+                why_not = "the trusted evidence no longer re-derives the seal minted before candidate code ran"
                 st["seal_refused"] = {"at": now(), "why": why, "reason": why_not}
                 store.journal({"event": "seal_refused", "why": why, "reason": why_not, "exposure": exp, "at": now()})
                 store.save(st)
@@ -1031,10 +1066,15 @@ def cmd_run(a):
                     store.journal({"event": "interrupted_by_signal", "check": name, "at": now()})
                     store.save(st)
                     raise
+                except ContainerCleanupError as e:
+                    c.update(status="ERROR", reason=f"{e} — run aborted before any further check", at=now())
+                    c.pop("pid", None)
+                    c.pop("pid_started", None)
+                    store.journal({"event": "cleanup_unverified_abort", "check": name, "at": now()})
+                    store.save(st)
+                    sys.exit(f"{name}: ERROR — {e}; aborting the run (no further check starts next to a possibly surviving container)")
                 except Exception as e:  # noqa: BLE001 — a crashing executor is ERROR, never a silent skip
                     res = {"status": "ERROR", "reason": f"executor crashed: {type(e).__name__}: {e}", "rc": None, "counts": None}
-                if spec["kind"] in TRUSTED_KINDS:
-                    produced.add(name)
                 receipt = {"check": name, "run_id": st["run_id"], "binding": {**b, "plan_hash": st["plan_hash"], "trusted_classifier_sha256": plan["trusted_classifier_sha256"]},
                            "env": cur_env, "env_hash": cur_hash, "attempt": attempt, "result": res, "finished_at": now(), "spec": spec}
                 receipt["receipt_sha256"] = sha256_json(receipt)
@@ -1219,23 +1259,32 @@ def cmd_status(a):
     out = compute_status(Path(a.run_dir))
     run_dir = Path(a.run_dir).resolve()
     plan, st = load_plan_verified(run_dir), Store(run_dir).load()
-    out["seal"] = trusted_seal(run_dir, plan, st)
+    recomputed = trusted_seal(run_dir, plan, st)
+    supported = isolation_of(plan).get("mode") == "container"
     exp = candidate_exposure(plan, st)
+    out["seal"] = recomputed if supported else None
+    out["seal_diagnostic"] = None if supported else recomputed
     out["isolation"] = {k: isolation_of(plan).get(k) for k in ("mode", "image", "image_id", "reason")}
     out["candidate_exposure"] = exp
-    out["seal_note"] = ("recomputed now; candidate code ran UNCONTAINED here, so only a seal you recorded before that is evidence" if exp and exp.get("mode") != "container"
-                        else "recomputed now; compare it with the seal `run` printed")
+    out["seal_note"] = ("recomputed now; compare it with the seal `run` printed" if supported else
+                        "uncontained plan: seal evidence is unsupported (docs/specs/localci-completion §8); the value is diagnostic only")
     atomic_write(run_dir / "status.json", json.dumps(out, indent=2, sort_keys=True))
     if a.seal and len(a.seal.strip()) < SEAL_MIN_PREFIX:
         sys.exit(f"--seal needs at least {SEAL_MIN_PREFIX} hex characters (a short prefix would match almost anything)")
-    if a.seal and not out["seal"].startswith(a.seal.strip()):
+    if a.seal and not supported:   # a seal-dependent verdict on an uncontained plan fails closed, match or not
+        out["overall"] = "BLOCKED"
+        out["freshness"]["stale_reason"] = (f"seal evidence unsupported for an uncontained plan (isolation={isolation_of(plan).get('mode')}); "
+                                            f"diagnostic: recomputed {'matches' if recomputed.startswith(a.seal.strip()) else 'differs from'} the value given")
+        atomic_write(run_dir / "status.json", json.dumps(out, indent=2, sort_keys=True))
+    elif a.seal and not recomputed.startswith(a.seal.strip()):
         out["overall"] = "BLOCKED"
         out["freshness"]["stale_reason"] = f"seal mismatch: trusted evidence changed after the seal you recorded ({a.seal.strip()[:12]}… vs {out['seal'][:12]}…)"
         atomic_write(run_dir / "status.json", json.dumps(out, indent=2, sort_keys=True))
     if a.quiet:
         print(out["overall"])
     else:
-        print(json.dumps({"overall": out["overall"], "stale_reason": out["freshness"]["stale_reason"], "seal": out["seal"], "seal_note": out["seal_note"],
+        print(json.dumps({"overall": out["overall"], "stale_reason": out["freshness"]["stale_reason"], "seal": out["seal"], "seal_diagnostic": out["seal_diagnostic"],
+                          "seal_note": out["seal_note"],
                           "isolation": out["isolation"]["mode"], "candidate_exposure": exp, "contexts": out["contexts"]["status"],
                           "checks": {n: v["status"] for n, v in out["checks"].items()}}, indent=1))
     return 0 if (not a.strict or out["overall"] == "PASS") else 1

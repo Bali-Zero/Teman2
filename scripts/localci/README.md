@@ -31,18 +31,19 @@ process, so a `pytest`/`trusted_pytest` verdict remains the candidate's to influ
 or the image is missing, candidate checks plan as BLOCKED — never silently uncontained. `--isolation none` is the explicit, recorded
 old behaviour (operator's own OS user, advisory only); a plan frozen before v0.3.0 carries no isolation field and reads as `none`.
 
-**The seal (C4).** Trusted `cmd` checks (BASE judge/classifier on a sha-mapped dir) run first; before the first candidate check the
-runner prints `seal=` (sha256 over plan + the `cmd` and plan-time `record` checks' state and receipts) and writes the exposure marker.
-Record the seal OUTSIDE the run dir; `status --seal <≥12 chars>` re-derives it and goes BLOCKED on a mismatch. After candidate code has
-run in a run dir the runner never mints another seal: a resumed or repeated run re-derives it and prints it as UNCHANGED only when every
-candidate check ran contained and the value is identical, otherwise prints `seal REFUSED`; a trusted check is not re-run there
-(QUEUED/INTERRUPTED ones become BLOCKED — plan a fresh run dir). Runs where no candidate code ran keep minting as before. Exposure is
-read from the marker AND from any candidate check's attempts/history/receipt. Under `--isolation none` (and legacy plans) all of that
-is same-user state a lingering candidate process can erase, so there a seal is minted only over `cmd` verdicts THIS invocation
-computed — a resumed run that finds trusted verdicts on disk refuses — and it is printed as UNCONTAINED: evidence only as the first
-seal the operator recorded. A candidate that resets the whole run dir to a fresh-plan state is indistinguishable from a fresh plan
-to any same-user process; the seal printed then covers that invocation's own verdicts and differs from the recorded one whenever
-`plan.json` was touched. Use `--isolation container` whenever the seal must mean more.
+**The seal (C4) — supported for `--isolation container` plans only.** Trusted `cmd` checks (BASE judge/classifier on a sha-mapped
+dir) run first; before the first candidate check the runner prints `seal=` (sha256 over plan + the `cmd` and plan-time `record` checks'
+state and receipts, flushed) and writes the exposure marker. Record it OUTSIDE the run dir; `status --seal <≥12 chars>` re-derives it
+and goes BLOCKED on a mismatch. After candidate code has run the runner never mints again: a resumed or repeated run prints the seal as
+UNCHANGED when it re-derives identically, otherwise `seal REFUSED`; a trusted check is not re-run there (QUEUED/INTERRUPTED become
+BLOCKED — plan a fresh run dir); runs where no candidate code ran keep minting. For `--isolation none` and legacy (< 0.3.0) plans the
+runner mints NOTHING (`seal WITHHELD`): a lingering same-user process can reset such a run dir to a state no marker distinguishes from
+a fresh plan, so no seal could vouch for it. A historical seal already stored is preserved, and `status --seal` on those plans fails
+closed (BLOCKED, "unsupported"), showing the recomputed value only as `seal_diagnostic`. Design table and the exact negative case:
+`docs/specs/localci-completion-2026-09-29.md` §8.
+
+Every contained attempt runs its archive producer (`git ls-tree`/`cat-file`) and `docker cp` under one budget (`COPY_TIMEOUT_S`); the
+container's absence is verified after each attempt, and a run whose cleanup cannot be verified aborts before the next check.
 
 `--extra-check NAME=JSON` adds a check the operator wants beside the planned ones. It is refused when NAME starts with a reserved
 prefix (`policy.`, `tests.`, `review.`, `trusted.`) or is already planned, and when the spec is not an executable kind (`cmd`,
