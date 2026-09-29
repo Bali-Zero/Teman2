@@ -1,0 +1,6 @@
+## relevance step, scratch repo (same git/grep argv as the workflow)
+unrelated change:            run=false
+alerter renamed away:        run=true
+attention test edited:       run=true
+scripts/tests/pytest.ini:    run=true
+scripts/conftest.py added:   run=true
