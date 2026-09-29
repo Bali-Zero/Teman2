@@ -91,6 +91,8 @@ export interface PortalChallengeTaxRules {
 export interface PortalChallengeRankPrize {
   rank: number;
   prize_idr: number;
+  /** Minimum score for this slot; absent on payloads older than the 2026-09-30 ruling. */
+  min_points?: number;
 }
 
 export interface PortalChallengeScoringRules {
@@ -131,6 +133,10 @@ export interface PortalChallengeEntry {
   penalty_points?: number;
   september_choice?: PortalChallengeSeptemberChoice | null;
   last_event_at?: string | null;
+  /** Prize slot actually won after slide-down; null = no prize. */
+  prize_slot?: number | null;
+  /** September rank of a prize-taker; null for everyone else. */
+  september_rank?: number | null;
 }
 
 export interface PortalChallengeRecentActivation {

@@ -906,6 +906,161 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     expect(screen.queryByTestId("podium-tier-1")).not.toBeInTheDocument();
   });
 
+  it("shows each prize slot's minimum score, from the payload when present", () => {
+    mockQuery(
+      round2Response({
+        rank_prizes: [
+          { rank: 1, prize_idr: 6_000_000, min_points: 111 },
+          { rank: 2, prize_idr: 3_500_000, min_points: 80 },
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    expect(screen.getByTestId("rank-prize-1").textContent).toContain(
+      "min 111 poin",
+    );
+    expect(screen.getByTestId("rank-prize-2").textContent).toContain(
+      "min 80 poin",
+    );
+  });
+
+  it("falls back to the ruled minimums when min_points is absent", () => {
+    mockQuery(round2Response());
+    render(<PortalChallengeWidget identity="fixture" />);
+    const mins = [100, 80, 60, 30, 20];
+    mins.forEach((m, i) => {
+      expect(screen.getByTestId(`rank-prize-${i + 1}`).textContent).toContain(
+        `min ${m} poin`,
+      );
+    });
+  });
+
+  it("assigns prize-list holders by prize_slot when the payload carries it", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "adit",
+            display_name: "Adit",
+            rank: 1,
+            points: 23,
+            prize_slot: 5,
+            prize_idr: 700_000,
+            total_prize_idr: 700_000,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "z",
+            display_name: "Zed",
+            rank: 2,
+            points: 10,
+            prize_slot: null,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const first = screen.getByTestId("rank-prize-1");
+    expect(first.textContent).toContain("Belum ada");
+    expect(first.textContent).not.toContain("Adit");
+    const fifth = screen.getByTestId("rank-prize-5");
+    expect(fifth.textContent).toContain("Adit");
+    expect(fifth.textContent).not.toContain("Zed");
+    expect(screen.getByTestId("rank-prize-2").textContent).not.toContain("Zed");
+  });
+
+  it("falls back to rank matching when no entry carries prize_slot", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "adit",
+            display_name: "Adit",
+            rank: 1,
+            points: 23,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    expect(screen.getByTestId("rank-prize-1").textContent).toContain("Adit");
+  });
+
+  it("notes the prize slot when it differs from the rank", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "a",
+            display_name: "Anna",
+            rank: 1,
+            points: 85,
+            prize_slot: 2,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "b",
+            display_name: "Budi",
+            rank: 2,
+            points: 70,
+            prize_slot: 2,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const ranking = screen.getByTestId("champion-ranking");
+    expect(ranking.textContent).toContain("hadiah posisi 2");
+    expect(ranking.textContent?.match(/hadiah posisi/g)).toHaveLength(1);
+  });
+
+  it("tells an ineligible September prize-taker which rank they need", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "s",
+            display_name: "Surya",
+            rank: 3,
+            points: 65,
+            september_rank: 1,
+            prize_slot: null,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "k",
+            display_name: "Krisna",
+            rank: 1,
+            points: 120,
+            september_rank: 2,
+            prize_slot: 1,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const ranking = screen.getByTestId("champion-ranking");
+    expect(ranking.textContent).toContain("perlu posisi ≤ 1");
+    expect(ranking.textContent).not.toContain("perlu posisi ≤ 2");
+  });
+
+  it("explains thresholds, slide-down and the prize-taker rule in the rules drawer", () => {
+    mockQuery(round2Response());
+    render(<PortalChallengeWidget identity="fixture" />);
+    fireEvent.click(screen.getByRole("button", { name: /aturan/i }));
+    const dialog = screen.getByRole("dialog");
+    const t = (dialog.textContent ?? "").replace(/\s+/g, " ");
+    expect(t).toContain("minimal 100 poin");
+    expect(t).toContain("80");
+    expect(t).toContain("turun ke posisi hadiah yang bisa dicapai");
+    expect(t).toMatch(/pemenang hadiah September/i);
+    expect(t).not.toContain("(5 posisi)");
+  });
+
   it("shows the round 2 breakdown chips and the September-prize note", () => {
     mockQuery(
       round2Response({
