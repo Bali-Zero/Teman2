@@ -1,0 +1,34 @@
+task: >-
+  "My tax calendar" on tax.balizero.com: a public, stateless POST /api/public/tax-calendar/obligations
+  over the obligations catalog that returns ONLY rules a Tax Department reviewer has cleared (plus a
+  withheld_count), and the R19 wizard on /tax-calendar that consumes it.
+lane: backend-rag/mytaxcal
+machine: air-m5
+date: 2026-09-29
+gear: 3
+gear_reason: >-
+  Floor 3: the diff touches the public auth allowlist (app/auth/public_endpoints.py), the rate limiter
+  and the CORS default origins, i.e. a new unauthenticated surface on the production API.
+acceptance:
+  A1: >-
+    backend: route + clearance tests green with backend/tests/setup/ and the CORS suite; the shipped
+    tax_calendar_public_review.yaml is EMPTY and with it a PT PMA + employees + PKP profile gets
+    obligations == [] and withheld_count > 0 (red on the parked route, green now); a clearance at the
+    right fingerprint releases a verified, review-free rule; a wrong fingerprint, a needs_review rule or
+    an unverified rule stays withheld; the payload never carries verified/needs_review or a withheld id.
+  A2: >-
+    mouth: MyTaxCalendar posts exactly {taxpayer_type:"individual"} or the full company body, renders only
+    what the API returns (no prices, no hard-coded deadlines, no PB1/regency), states withheld rules
+    honestly with a WhatsApp link, handles 429/errors; its R19 guard uses the shared entity-level helper
+    and kills 5/5 mutants (whitesmoke, rgba, WebkitBackdropFilter, hsl boxShadow, hex).
+  A3: >-
+    CORS: https://tax.balizero.com in the default origins (live preflight answers 400 today).
+status: >-
+  DRAFT, stacked on #7648, NOT to merge: the owner's 2026-09-28 ruling requires a per-rule public-copy
+  review by a Tax Department person the owner will name. Until then every live call would return an
+  empty calendar. Merge only after the named signer's clearances are recorded in
+  tax_calendar_public_review.yaml and a fresh gear-3 gate signs.
+out_of_scope:
+  - Individual / KITAS / PB1 / BPJS rules (not in the 21-rule catalog; owner decisions).
+  - iCal per-profile subscription and email reminders (later lanes).
+  - Penalty summaries per rule (curation by the Tax Department).
