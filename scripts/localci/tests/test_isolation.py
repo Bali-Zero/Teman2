@@ -229,7 +229,7 @@ def test_a_candidate_first_only_run_blocks_the_trusted_checks_it_skipped(tmp_pat
     fr.run(fx)
     c = fr.load_state(fx)["checks"]["ctx.zzz_trusted"]
     assert c["status"] == "BLOCKED" and "candidate code already executed" in c["reason"]
-    assert fr.status(fx)["overall"] == "BLOCKED"
+    assert fr.status(fx)["checks"]["ctx.zzz_trusted"]["status"] == "BLOCKED"   # never PASS: the run dir cannot vouch for it any more
 
 
 def test_trusted_only_runs_keep_minting_their_seal(fx, capsys):

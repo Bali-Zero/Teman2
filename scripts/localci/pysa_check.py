@@ -331,8 +331,6 @@ def cmd_verify_home(a) -> int:
 # ------------------------------------------------------------------ setup
 def cmd_setup(a) -> int:
     home = Path(a.home).resolve()
-    home.mkdir(parents=True, exist_ok=True)
-    log = open(home / "setup.log", "a")
     venv = home / "venv"
     installed = any((home / r).exists() for r in ("venv", "pyre-check", "site", "baselines"))
     if installed and not a.rebuild:
@@ -340,6 +338,8 @@ def cmd_setup(a) -> int:
         if digest is None:   # the old setup REUSED whatever venv/stubs it found: a replaced pyre would have survived a "re-setup"
             print(f"setup: refusing to reuse an existing installation: {why}")
             return 2
+    home.mkdir(parents=True, exist_ok=True)
+    log = open(home / "setup.log", "a")
     if a.rebuild:
         for r in ("venv", "pyre-check", "site", "baselines", MANIFEST):
             t = home / r

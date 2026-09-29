@@ -626,19 +626,21 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
     docker = iso["docker"]
     ctr = re.sub(r"[^a-zA-Z0-9_.-]", "-", f"localci-{plan['run_id']}-{name}")[:100] + "-" + os.urandom(4).hex()
     denv = trusted_env()
-    create = [docker, "create", "--name", ctr, "--label", "org.nuzantara.localci=candidate", "--network", "none", "--cap-drop", "ALL",
+    create = [docker, "create", "--name", ctr, "--label", "org.nuzantara.localci=candidate", "--label", f"org.nuzantara.localci.run={plan['run_id']}",
+              "--network", "none", "--cap-drop", "ALL",
               "--security-opt", "no-new-privileges", "--user", iso["user"], "--pids-limit", "1024", "--memory", "4g", "--workdir", "/w",
               *[f"--env={k}={v}" for k, v in sorted(env.items())], iso["image_id"], *inner]
     try:
         r = subprocess.run(create, capture_output=True, text=True, timeout=120, env=denv)
         if r.returncode != 0:
             return None, f"container create failed (image {iso['image_id'][:19]} pinned at plan time): {r.stderr.strip()[:300]}"
-        cp = subprocess.Popen([docker, "cp", "-a", "-", f"{ctr}:/"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=denv)
+        cp = subprocess.Popen([docker, "cp", "-a", "-", f"{ctr}:/"], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=denv)
         try:
             n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra)
         finally:
             cp.stdin.close()
-        _, err = cp.communicate(timeout=600)
+            err = cp.stderr.read()
+            cp.wait(timeout=600)
         if cp.returncode != 0:
             return None, f"candidate tree copy-in failed: {err.decode(errors='replace').strip()[:300]}"
         with open(log, "a") as fh:
@@ -692,6 +694,21 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
     status, reason = classify_pytest(rc, counts)
     return {"status": status, "reason": reason + " [contained: candidate-produced junit]", "rc": rc, "duration_s": dur, "counts": counts, "log": str(log),
             "isolation": "container"}
+
+
+def reap_containers(plan: dict, store: Store) -> None:
+    """A coordinator killed with -9 never reached its `docker rm -f`: remove this run's leftover candidate containers before resuming."""
+    iso = isolation_of(plan)
+    if iso.get("mode") != "container" or not iso.get("docker"):
+        return
+    try:
+        ids = subprocess.run([iso["docker"], "ps", "-aq", "--filter", f"label=org.nuzantara.localci.run={plan['run_id']}"], capture_output=True, text=True,
+                             timeout=60, env=trusted_env()).stdout.split()
+        if ids:
+            subprocess.run([iso["docker"], "rm", "-f", *ids], capture_output=True, timeout=120, env=trusted_env())
+            store.journal({"event": "orphan_containers_removed", "count": len(ids), "at": now()})
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
 def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> dict:
@@ -883,6 +900,7 @@ def cmd_run(a):
         with store.lock():
             st = store.load()
             reap_interrupted(st, store)
+            reap_containers(plan, store)
             wt = Path(plan["worktree"])
             deadline_at = plan["created_epoch"] + a.deadline_s if a.deadline_s is not None else plan["deadline_at"]
             if a.deadline_s is not None:
