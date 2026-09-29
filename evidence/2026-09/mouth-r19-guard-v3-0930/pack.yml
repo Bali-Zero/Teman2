@@ -1,0 +1,56 @@
+brief_ref: evidence/2026-09/mouth-r19-guard-v3-0930/brief.yml
+plan_ref: >-
+  Branch agent/air-m5/mouth/r19-guard-v3-0930 (base main): the R19 colour guard v3. The spec (v3.2) was
+  reviewed twice by a fresh adversarial reader before any build, after gate-7691 returned REWORK-DESIGN on v2.
+lanes:
+  - lane: r19-guard-spec-critic
+    role: review
+    seat: "claude-opus-5.5 (fresh spec critic: 11 findings on v3, 3 new on v3.1, all folded into v3.2 before build)"
+  - lane: r19-guard-v3-build
+    role: build
+    seat: "claude-sonnet-5.5 (modules, tables, per-page wiring, mutation scripts)"
+what_changed: |
+  apps/mouth/src/test/r19-colour-guard.ts: values, declarations, class tokens. A class token is compiled with
+  the app's real design system (globals.css through Tailwind's loader) and the emitted declarations are judged.
+  apps/mouth/src/test/r19-colour-source.ts: the source scan walks the TypeScript syntax tree; only class
+  positions, style objects, colour attributes and theme-color metadata are judged, with in-file resolution.
+  apps/mouth/src/test/r19-colour-guard.test.ts: the tables (667 tests) and the loader tripwires.
+  TaxCalendarBody / MyTaxCalendar per-page guards: colour tests back, delegating to the modules.
+proof: |
+  Tables, guards, mutants and the innocence run are in the brief's acceptance with their probes. The
+  orchestrator re-ran the table and both guards at 2026-09-29T18:25:02Z: 3 files, 674 tests passed, 1.63 s.
+dissent:
+  - seat: claude-opus-5.5
+    objection: "gate-7691 on v2: positions decided by key spellings (imageAlt flagged), values judged only as bare strings (ternaries escape), *ClassName props and class maps unseen, color-mix of a var flagged."
+    status: CONFIRMED
+    resolution: "v3 judges the syntax tree (positions, ternaries, templates, maps via in-file resolution); owner ruling allows color-mix of vars."
+  - seat: claude-opus-5.5
+    objection: "spec critic on v3: arbitrary shadow colours hide in var(--tw-shadow-color, X) fallbacks; --color-* aliases of packages/core are not the palette; globals.css imports the project theme; #0000 is transparent."
+    status: CONFIRMED
+    resolution: "Folded into spec v3.2 before build; each has table rows."
+  - seat: claude-opus-5.5
+    objection: "spec critic on v3.1: the tripwire could not inject a fake module; light-dark had no ruling; relative colour syntax over-matched."
+    status: CONFIRMED
+    resolution: "Injectable tw argument; light-dark stays a colour function; fn(from X ...) judges only X."
+receipts:
+  - claim: "Table and both per-page guards green on HEAD."
+    cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx"
+    result: "3 files, 674 tests passed"
+    exit: 0
+    ts: "2026-09-29T18:25:02Z"
+    seat: claude-opus-5.5
+  - claim: "Scoped suite, types, lint and format clean."
+    cmd: 'cd apps/mouth && npx vitest run src/components/funnel "src/app/(tax-calendar)" src/components/r19 src/app/api/tax-calendar src/test && npx tsc --noEmit && npx eslint --no-ignore <5 changed files> && npx prettier --check <5 changed files>'
+    result: "18 files / 840 tests passed; tsc exit 0; eslint exit 0; prettier clean"
+    exit: 0
+    ts: "2026-09-29T18:25:49Z"
+    seat: claude-opus-5.5
+pii_scan: clean
+pii_scan_note: "No client data; the tables hold synthetic CSS and TSX snippets."
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 3
+appetite_exceeded: "Exceeded on size (floor 3): 1247 of 2659 added lines are the tables the spec requires; the concern is one and is not split to dodge the floor."
+seat_override: "No cross-family review seat ran; the reviews are two fresh Claude spec reads and the fresh Claude gate that follows. Recorded, not hidden."
+diff:
+  net_lines: "Not declared: the pack is part of the diff it would count."
