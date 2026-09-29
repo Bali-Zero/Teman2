@@ -1,0 +1,117 @@
+task_id: mouth-r19-guard-v3-0930
+gear: 3
+l_level: L2
+gate_class: opus
+objective: Replace the R19 colour guard v2, which decided position and colour by spelling and failed four fresh gates, with v3 that judges positions from the TypeScript syntax tree and class tokens from Tailwind-compiled CSS, and wire it into the two tax-calendar per-page guards.
+constraints:
+  - The guard judges the entity — a literal colour, gradient or backdrop effect decided on an R19 surface — never a spelling; a Tailwind class is compiled with the app's real globals.css design system, never pattern-matched.
+  - color-mix() and relative colour syntax are allowed when every colour inside is a var(--*), transparent or currentColor; light-dark() stays a colour function; var(--color-X) is guilty only when X is a default Tailwind palette name.
+  - Product files are judged, never edited; the other seven per-page r19-guard tests stay out of scope.
+  - No new dependency and no npm install; typescript and tailwindcss come from the shared root node_modules.
+acceptance:
+  - text: WHEN a token, value, style or source snippet of the v2 rows, the 158 gate-7691 probe rows, the 6 witnesses or the spec's expected consequences is judged the verdict SHALL equal the table's, except the eight rows in row_changes.
+    probe: apps/mouth/src/test/r19-colour-guard.test.ts (667 tests; value 102, class 74+170, style 33+55, source 190)
+  - text: WHEN the product mutants T1-T5 and Y1-Y5 are applied to the real files the relevant per-page guard SHALL go red, the two unrendered ternary literals (T5, Y5) included.
+    probe: evidence/2026-09/mouth-r19-guard-v3-0930/mutate_product.py (10 of 10 RED)
+  - text: WHEN one rule of the value, declaration, class or source modules is mutated the table SHALL go red.
+    probe: evidence/2026-09/mouth-r19-guard-v3-0930/mutate_module.py (76 mutants, all killed)
+  - text: WHEN Tailwind stops exporting its design-system loader, bg-white stops compiling to --color-white, or bg-surface-base (a packages/core alias) stops compiling, loadR19ColourGuard SHALL throw; forbiddenClassToken SHALL throw before the load.
+    probe: r19-colour-guard.test.ts, describe "r19 colour guard loader tripwires"
+  - text: WHEN the guards run on HEAD the TaxCalendarBody and MyTaxCalendar per-page files SHALL be green and each finish in under 15 s.
+    probe: TaxCalendarBody.r19-guard.test.tsx 1.85 s wall (4 tests), MyTaxCalendar.r19-guard.test.tsx 1.62 s wall (3 tests)
+  - text: WHEN forbiddenSourceColour scans the product files directly imported by the nine *.r19-guard.test.tsx on the base every finding SHALL be classified R, L or O and O SHALL be zero.
+    probe: innocence_classification below
+assumptions:
+  - text: Tailwind 4.3.3 keeps exposing __unstable__loadDesignSystem with candidatesToCss and parseCandidate.
+    status: verified 2026-09-30 on 4.3.3; the loader tripwires turn the guard red when an upgrade removes it
+    probe: r19-colour-guard.test.ts loader tripwires
+  - text: A default-palette var(--color-<name>...) is a literal colour and a packages/core alias (--color-surface-base, --color-text-primary...) is not.
+    status: verified — no packages/core alias name starts with a default palette name
+    probe: grep of --color- in packages/core/tailwind/theme.css
+consumer_map:
+  - apps/mouth/src/components/funnel/TaxCalendarBody.r19-guard.test.tsx and MyTaxCalendar.r19-guard.test.tsx — call loadR19ColourGuard, forbiddenRenderedColour, forbiddenSourceColour and forbiddenCssModule on every CI run of apps/mouth vitest.
+  - apps/mouth/src/test/r19-colour-guard.test.ts — the tables run in the same vitest suite; a later PR migrates the other seven per-page guards onto the two modules.
+route_files_of_MyTaxCalendar:
+  - apps/mouth/src/components/funnel/MyTaxCalendar.tsx
+  - apps/mouth/src/app/(tax-calendar)/tax-calendar/page.tsx (the only file that renders it; layout.tsx only wraps the route and is scanned by the TaxCalendarBody guard)
+row_changes:
+  - row: "v2 style `color: hsl(from var(--r19-ink) h s 40%)`"
+    old: G
+    new: I
+    reason: spec §1.6 and N3 — relative colour syntax judges only its origin, and the origin is a var(--*). A guilty twin with a literal origin (`hsl(from rgb(0 0 0) h s 40%)`) is in the table.
+  - row: "v2 class `bg-[hsl(from_var(--r19-ink)_h_s_40%)]`"
+    old: G
+    new: I
+    reason: same rule (§1.6, N3). NOT named in the spec's acceptance exceptions, so it is listed here for the gate; guilty twin `bg-[hsl(from_red_h_s_40%)]` is in the table.
+  - row: "v2 class `-from-white`"
+    old: G
+    new: I
+    reason: Tailwind 4.3.3 emits no CSS for it (spec §3 expected consequences).
+  - row: 'v2 source `// see var(--r19-ink` newline `export const x = { color: "white" };`'
+    old: G
+    new: I
+    reason: position — the object is reached from no P1-P5 position. The same object typed `CSSProperties` is guilty and is in the table.
+  - row: "v2 source `{ borderColor: 'navy' }`"
+    old: G
+    new: I
+    reason: "position — not reached from a position. `const s: CSSProperties = { borderColor: 'navy' }` is guilty and in the table."
+  - row: 'gate-7691 source `const TONE = { overdue: "bg-red-500 text-white" } as const;`'
+    old: G
+    new: I
+    reason: position. The same map read by `className={TONE[k]}` is guilty and in the table.
+  - row: 'gate-7691 source `const chart = { stroke: "#0A2540", strokeWidth: 2 };`'
+    old: G
+    new: I
+    reason: position. The same object read by `<path stroke={chart.stroke} />` is guilty and in the table.
+  - row: 'gate-7691 class `bg-[url("data:image/svg+xml,%3Csvg_fill=''%23fff''%3E")]`'
+    old: G
+    new: G
+    reason: rewritten with %20 instead of `_` inside url() as the spec orders (Tailwind's `_` handling makes the SVG malformed); verdict kept.
+  - unchanged_by_spec_exception: 'v2 `other: { "theme-color": "navy" }` stays guilty (P4). No row changed for the color-mix ruling: every v2 and probe color-mix row keeps its verdict.'
+choices_where_the_spec_is_silent:
+  - "`beforeAll(loadR19ColourGuard)` cannot be written: vitest parses the argument list of a hook and rejects a default parameter (FixtureParseError). The tests wrap it: `beforeAll(async () => { await loadR19ColourGuard(); })`."
+  - 'Conditions decide a value, they are never one: the condition of a ternary, the left of `&&` and the operands of comparison operators (`===`, `<`, `in`...) are not judged. The spec says to descend through `&&`; the entity is a colour that is APPLIED, and `tone === "white"` applies nothing. Rows pin it both ways.'
+  - "In a style value a template literal is judged as ONE string (head and spans joined by a space) so `var(--a, ${x})` stays balanced; in a class position each piece is judged alone. Nested string nodes inside `${}` are judged separately in both."
+  - "P5 follows a member of a local alias (`const colors = categoryColors[category]; colors.gradient`); without it the categoryColors map of CategoryNav (49 findings) is invisible. Bare identifiers that name a function are not followed; only calls are."
+  - "Also style roots: `Object.assign(...)` arguments and the TypeScript-only `<CSSProperties>{...}` assertion."
+  - "A computed style key that is not a string literal is judged with the property undefined, so colour words are judged (the strict reading)."
+  - "`var(--color-<X>...)` is read literally: any `--color-<default palette name>` followed by anything is a palette colour (no packages/core alias starts with a palette name today)."
+  - "A raw value such as `#000_0_1px_2px` is not hex (spec step 8 forbids a following `_`); the class path is unaffected because Tailwind turns `_` into a space before the value is judged (witness W1 pins it)."
+  - "An unquoted data-URI argument that itself contains quote characters is invalid CSS; step 1 removes the quoted part first, so the rows use %22."
+  - "The R19 root exemption is a DOM helper (`forbiddenRenderedColour`, in r19-colour-guard.ts) so the two per-page guards do not each re-implement it; it has its own table rows."
+  - "Order of work: the modules were drafted while reading the spec and the tables were written before the first green run, but the red run against missing modules was not made separately."
+innocence_classification:
+  method: forbiddenSourceColour over the product files directly imported by the nine *.r19-guard.test.tsx on the base (ArticleClient, property/page, team/page, NewsletterForm, CategoryNav, ArticleGrid, CategoryContent, R19Presentation, presentation.ts [exempt], MyTaxCalendar, PropertyEligibilityBody plus its property route layout, page and css module, TaxCalendarBody, AnswerBox, team.module.css), run through a temporary vitest file that was removed after the run.
+  findings_total: 146
+  R: 2
+  L: 144
+  O: 0
+  zero_findings: property/page, team/page, ArticleGrid, CategoryContent, R19Presentation, presentation.ts (exempt), MyTaxCalendar, PropertyEligibilityBody + property route (layout, page, css module), TaxCalendarBody, AnswerBox, tax-calendar page and layout, team.module.css
+  R_detail:
+    - "ArticleClient.tsx:589 style backgroundColor #25d366 (WhatsApp brand green, not gated by any R19 branch)"
+    - "ArticleClient.tsx:613 class scrollbar-thumb-white/10 (sidebar, not gated)"
+  L_detail:
+    - "ArticleClient.tsx:393-504, 20 findings, the ReactMarkdown components fallback (text-white, bg-white/5, backdrop-blur-md, rgba borders); the file has no isR19 branch at all"
+    - 'NewsletterForm.tsx, 71 findings, all under `!isR19 && ...` or an isR19 false branch (62 by ancestor walk, 9 `cn("...", !isR19 && "...")` confirmed by reading the lines)'
+    - "CategoryNav.tsx, 53 findings: 49 from the categoryColors map reached through `const colors = categoryColors[category]` and 4 under `!isR19` (bg-gradient-to-r, bg-gradient-to-l, from-black, to-transparent)"
+  follow_up: R and L on pages other than the tax calendar are the migration follow-up for the other seven per-page guards, not a blocker of this PR.
+product_mutants_T1_T5_Y1_Y5:
+  script: evidence/2026-09/mouth-r19-guard-v3-0930/mutate_product.py (cp backup, edit, run the per-page guard, cp restore; git status showed no product change afterwards)
+  results:
+    - "T1 class literal in a ternary branch | RED | 2 failed | 2 passed (4)"
+    - "T2 border rgb() in the pill style | RED | 2 failed | 2 passed (4)"
+    - "T3 color oklch() on the strong | RED | 2 failed | 2 passed (4)"
+    - "T4 outlineColor Highlight on the section | RED | 2 failed | 2 passed (4)"
+    - "T5 unrendered ternary literal | RED | 1 failed | 3 passed (4)  (caught by the source scan only)"
+    - "Y1 border hex in the label style | RED | 2 failed | 1 passed (3)"
+    - "Y2 boxShadow rgba in const cardStyle | RED | 2 failed | 1 passed (3)"
+    - "Y3 aside background whitesmoke | RED | 2 failed | 1 passed (3)"
+    - "Y4 className palette on the p | RED | 2 failed | 1 passed (3)"
+    - "Y5 unrendered ternary literal | RED | 1 failed | 2 passed (3)  (caught by the source scan only)"
+module_mutants:
+  script: evidence/2026-09/mouth-r19-guard-v3-0930/mutate_module.py
+  total: 76
+  killed: 76
+  history: "first full run 77 patterns, 23 survived and 12 were broken by reformatting; each survivor was a missing row (theme( with no var, ';' inside unquoted url(), non-utility bracket token, template head/tail in class position, false ternary branch, computed string key, comparison operand, ternary condition, left of &&, type nodes, at-rule statement, object keys per mode, template join, css comment inside a block) and each got a row, never a weakened one; the loader-export survivor was a test that matched too loosely (now /no longer exports/)."
+  equivalent_mutant_removed: "custom-property key kebab-casing (`--x` is kept by the `--` prefix either way; the judged property is identical), so no table row can tell them apart."
+grader: Not asserted by the author — a fresh gate re-runs the tables, the mutants and the innocence scan. Generator is not grader.
