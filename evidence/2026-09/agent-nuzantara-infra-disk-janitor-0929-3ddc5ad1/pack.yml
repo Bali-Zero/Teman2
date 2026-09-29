@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/agent-nuzantara-infra-disk-janitor-0929-3ddc5ad1/brief.yml
+brief_ref: evidence/brief.yml # canonical staged name — harness-floor.yml stages this PR's dated brief there before linting
 pii_scan: clean
 council: true
 council_run: council-journal.jsonl
