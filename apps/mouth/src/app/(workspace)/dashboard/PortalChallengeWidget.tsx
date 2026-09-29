@@ -746,6 +746,30 @@ function TaxStrip({ data }: { data: PortalChallengeResponse }) {
 
 // ── Ranking list ────────────────────────────────────────────
 
+// Every scoring component of a round-2 row, in the order that adds up to the
+// total: carry + registrations + 3×documents − 2×requests − 1×documents.
+// Per-type penalties are shown as points (count × weight); the backend counts
+// them AFTER the same-incident dedupe, so they sum to `penalty_points`.
+function Round2Breakdown({ entry }: { entry: PortalChallengeEntry }) {
+  const prize = entry.september_choice === "prize";
+  const requests = 2 * (entry.unanswered_requests ?? 0);
+  const docs = entry.unreviewed_documents ?? 0;
+  return (
+    <div
+      data-testid={`champion-breakdown-${entry.member}`}
+      className="col-span-3 flex flex-wrap gap-x-2 gap-y-0.5 pl-7 text-[11px] tabular-nums text-[var(--tx-secondary)]"
+    >
+      <span>
+        {prize ? "Sep 0 · hadiah diambil" : `Sep +${entry.carry_points ?? 0}`}
+      </span>
+      <span>{`+${entry.registrations ?? 0} reg`}</span>
+      <span>{`+${3 * (entry.document_bonuses ?? 0)} dok`}</span>
+      <span>{`−${requests} permintaan`}</span>
+      <span>{`−${docs} dokumen`}</span>
+    </div>
+  );
+}
+
 function RankingRow({
   entry,
   isZeroState,
@@ -762,7 +786,9 @@ function RankingRow({
         "grid items-center gap-2 px-3 py-2 rounded-lg",
         entry.is_me && "bg-[var(--bz-card-hover)]",
       )}
-      style={{ gridTemplateColumns: "auto 1fr auto auto" }}
+      style={{
+        gridTemplateColumns: round2 ? "auto 1fr auto" : "auto 1fr auto auto",
+      }}
     >
       <span className="text-[11px] font-bold tabular-nums text-[var(--tx-secondary)] w-5">
         {ranked ? entry.rank : "–"}
@@ -781,14 +807,15 @@ function RankingRow({
         {entry.is_me && <StatePill tone="you" label="Kamu" />}
         {entry.is_tax && <StatePill tone="ink" label="Tax" />}
       </div>
-      <span className="text-[11px] tabular-nums text-[var(--tx-secondary)] whitespace-nowrap">
-        {round2
-          ? `+${entry.registrations ?? 0} reg · +${3 * (entry.document_bonuses ?? 0)} dok · −${entry.penalty_points ?? 0}`
-          : `${entry.invited} diundang`}
-      </span>
+      {!round2 && (
+        <span className="text-[11px] tabular-nums text-[var(--tx-secondary)] whitespace-nowrap">
+          {`${entry.invited} diundang`}
+        </span>
+      )}
       <span className="text-[13px] font-bold tabular-nums text-[var(--tx-pure)] whitespace-nowrap">
         {round2 ? (entry.points ?? 0) : entry.activations}
       </span>
+      {round2 && <Round2Breakdown entry={entry} />}
     </div>
   );
 }
@@ -806,7 +833,8 @@ function RankingList({
   const sorted = isZeroState
     ? [...entries].sort((a, b) => a.display_name.localeCompare(b.display_name))
     : [...entries].sort((a, b) => a.rank - b.rank);
-  const visible = expanded ? sorted : sorted.slice(0, 5);
+  const collapsible = !round2 && sorted.length > 5;
+  const visible = expanded || !collapsible ? sorted : sorted.slice(0, 5);
 
   return (
     <div data-testid="champion-ranking" className={cn(CARD, "flex flex-col")}>
@@ -829,7 +857,7 @@ function RankingList({
           ))
         )}
       </div>
-      {sorted.length > 5 && (
+      {collapsible && (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
