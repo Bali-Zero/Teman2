@@ -427,6 +427,36 @@ def test_reexec_a_git_repo_pinned_venv_happy_path_stdin_survives_exec():
         assert payload in p.stdout
 
 
+def test_reexec_a2_git_common_dir_fallback_resolves_main_checkout_venv():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        subprocess.run(["git", "init", "-q"], cwd=str(root), check=True)
+        (root / "README").write_text("x")
+        subprocess.run(["git", "add", "README"], cwd=str(root), check=True)
+        subprocess.run(["git", "-c", "user.email=t@t.t", "-c", "user.name=t", "commit", "-q", "-m", "init"],
+                       cwd=str(root), check=True)
+        wt = root / ".worktrees" / "wt"
+        subprocess.run(["git", "worktree", "add", "-q", "-b", "wtbranch", str(wt)], cwd=str(root), check=True)
+        # HERE.parent.parent (the worktree root) has NO apps/backend-rag/.venv of its own
+        hook_dir = wt / "infra" / "claude-hooks"
+        hook_dir.mkdir(parents=True)
+        hook_copy = hook_dir / "jev_dispatch_gate.py"
+        shutil.copy(HOOK, hook_copy)
+        # only the MAIN checkout (root) has the pinned venv
+        venv_bin = root / "apps" / "backend-rag" / ".venv" / "bin"
+        venv_bin.mkdir(parents=True)
+        venv_python = venv_bin / "python"
+        venv_python.write_text("#!/bin/sh\necho REEXEC_MARKER\ncat\n")
+        venv_python.chmod(0o755)
+        env = _no_override_env()
+        payload = json.dumps({"tool_name": "Agent", "tool_input": {"prompt": "p"}})
+        p = subprocess.run([sys.executable, str(hook_copy)], input=payload,
+                           capture_output=True, text=True, env=env)
+        assert p.returncode == 0
+        assert "REEXEC_MARKER" in p.stdout
+        assert payload in p.stdout
+
+
 def test_reexec_b_no_pinned_interpreter_anywhere_skips_jev_zero_vendor_calls():
     with tempfile.TemporaryDirectory() as tmp:
         trap = pathlib.Path(tmp)  # deliberately NOT a git repo
@@ -523,6 +553,43 @@ def test_reexec_f_seam_runs_gate_in_process_receipt_interpreter_seam():
         assert p.returncode == 0
         rows = [json.loads(x) for x in pathlib.Path(tmp, "receipts.jsonl").read_text().splitlines()]
         assert rows[-1]["interpreter"] == "seam" and rows[-1]["action"] == "downgrade"
+
+
+def test_seam_without_fake_answers_is_ignored_yields_no_pinned_interpreter_skip():
+    with tempfile.TemporaryDirectory() as tmp:
+        state_dir = pathlib.Path(tmp, "state")
+        env = _no_override_env(JEV_DISPATCH_GATE_INTERPRETER_SEAM="1",
+                               JEV_DISPATCH_GATE_VENV_PYTHON="/nonexistent/python",
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        env.pop("JEV_DISPATCH_GATE_FAKE_ANSWERS", None)
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env)
+        assert p.returncode == 0 and p.stdout == ""
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert rows[-1]["action"] == "skip" and rows[-1]["skip"] == "no_pinned_interpreter"
+        assert "interpreter" not in rows[-1]
+
+
+def test_ask_jev_vendor_import_failure_yields_allow_with_receipt_status():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        hook_dir = root / "infra" / "claude-hooks"
+        hook_dir.mkdir(parents=True)
+        hook_copy = hook_dir / "jev_dispatch_gate.py"
+        shutil.copy(HOOK, hook_copy)
+        # deliberately NO scripts/ dir at all: no typesafe_client.py, no _redact_pii.py
+        state_dir = root / "state"
+        env = _no_override_env(JEV_DISPATCH_GATE_REEXEC="1", JEV_DISPATCH_GATE_STATE=str(state_dir),
+                               JEV_DISPATCH_GATE="enforce")
+        env.pop("JEV_DISPATCH_GATE_FAKE_ANSWERS", None)
+        env.pop("PYTHONPATH", None)
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(hook_copy)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env, timeout=30)
+        assert p.returncode == 0 and p.stdout == ""
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert rows[-1]["jev_status"] == "vendor_import_failed" and rows[-1]["action"] == "allow"
 
 
 if __name__ == "__main__":

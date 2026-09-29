@@ -228,7 +228,7 @@ def _repo_venv_python() -> pathlib.Path | None:
     try:
         out = subprocess.run(
             ["git", "-C", str(HERE), "rev-parse", "--path-format=absolute", "--git-common-dir"],
-            capture_output=True, text=True, timeout=2,
+            capture_output=True, text=True, timeout=1.5,
         )
         if out.returncode != 0 or not out.stdout.strip():
             return None
@@ -239,13 +239,22 @@ def _repo_venv_python() -> pathlib.Path | None:
         return None
 
 
+def _seam_active() -> bool:
+    """The CI/unit seam only counts when JEV_DISPATCH_GATE_FAKE_ANSWERS is
+    ALSO set: a stray JEV_DISPATCH_GATE_INTERPRETER_SEAM export alone must
+    never route a real vendor call under an unpinned interpreter."""
+    return (os.environ.get("JEV_DISPATCH_GATE_INTERPRETER_SEAM") == "1"
+            and bool(os.environ.get("JEV_DISPATCH_GATE_FAKE_ANSWERS")))
+
+
 def _interpreter_label() -> str | None:
     """"venv" once re-exec'd (or already running the pinned interpreter),
-    "seam" under the CI/unit test seam, else None (no pinned interpreter
-    resolved yet — gate() skips Jev in that case, see no_pinned_interpreter)."""
+    "seam" under the CI/unit test seam (only with fake answers set), else
+    None (no pinned interpreter resolved — gate() skips Jev, see
+    no_pinned_interpreter)."""
     if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1":
         return "venv"
-    if os.environ.get("JEV_DISPATCH_GATE_INTERPRETER_SEAM") == "1":
+    if _seam_active():
         return "seam"
     return None
 
@@ -260,7 +269,7 @@ def _reexec_under_repo_venv(argv: list[str]) -> None:
     try:
         if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1":
             return
-        if os.environ.get("JEV_DISPATCH_GATE_INTERPRETER_SEAM") == "1":
+        if _seam_active():
             return
         p = _repo_venv_python()
         if p is None:
@@ -271,6 +280,7 @@ def _reexec_under_repo_venv(argv: list[str]) -> None:
         hook_path = str(pathlib.Path(__file__).resolve())
         env = {**os.environ, "JEV_DISPATCH_GATE_REEXEC": "1"}
         try:
+            signal.setitimer(signal.ITIMER_REAL, 0)  # no pending alarm carries into the exec'd child
             os.execve(str(p), [str(p), hook_path, *argv], env)
         except OSError:
             return
@@ -418,8 +428,11 @@ def _ask_jev(state: dict, deadline: float) -> tuple[dict | None, str]:
     fake = os.environ.get("JEV_DISPATCH_GATE_FAKE_ANSWERS")
     if fake:
         return json.loads(fake), "fake"
-    sys.path.insert(0, str(SCRIPTS))
-    import typesafe_client as tc  # noqa: PLC0415
+    try:
+        sys.path.insert(0, str(SCRIPTS))
+        import typesafe_client as tc  # noqa: PLC0415
+    except Exception:
+        return None, "vendor_import_failed"
 
     _load_key_into_own_env()
 
@@ -566,7 +579,16 @@ def main(argv: list[str]) -> int:
     if "--report" in argv:
         print(json.dumps(report(), indent=2))
         return 0
-    _reexec_under_repo_venv(argv)
+    try:
+        # Bound the re-exec itself: a hung git/stat call must not block the
+        # hook past this alarm. On timeout, proceed under the current
+        # interpreter — gate() then applies its own no_pinned_interpreter skip.
+        signal.signal(signal.SIGALRM, _raise_deadline)
+        signal.setitimer(signal.ITIMER_REAL, 3)
+        _reexec_under_repo_venv(argv)
+        signal.setitimer(signal.ITIMER_REAL, 0)
+    except _Deadline:
+        signal.setitimer(signal.ITIMER_REAL, 0)
     try:
         # Whole-process bound: import, redaction, vendor wait and filesystem
         # together, not only the vendor thread. Alarm → no decision, exit 0.
