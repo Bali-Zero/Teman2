@@ -1,0 +1,45 @@
+task: >-
+  Ledger item (c) of #7646 / Finding 3 of its gate: the real-PG suites of the T3 promise corpus
+  (G1-G4, G7, G-LOW-2 and the rest, 56 tests) skip in CI, so they protect nothing. Add a CI job
+  that runs them for real (PostgreSQL server binaries on PATH, WA_TEAM_PROMISES_REAL_PG=1) with a
+  passed-count floor and a zero-skip rule. Also fix the comment-only Findings 1-2 of the #7654
+  gate (G-LOW-1 deferred-read sentence, G7 header). No production change.
+lane: wa-team/t3-realpg-ci-0929
+machine: M5
+date: "2026-09-29"
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 on the path term: the diff adds a job to
+  `.github/workflows/wa-team-promises-tests.yml` (HOTZONE_PATTERNS `.github/workflows/*`, and not a
+  `uses:` pin change). A real two-round cross-family council (codex-gpt-5.6-sol + kimi-code/k3,
+  env-scrubbed, diff-only) ran on this diff before the PR, per the lane precedent.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    The CI log of the new job shows the real-PG tests executing (passed count, zero skipped).
+    probe: "the job's final line 'wa_team_promises real-PG corpus: 56 passing cases (floor 56)' on this push"
+  A2: >-
+    The step's floor bites and its skip rule bites.
+    probe: "verbatim step locally: FLOOR=56 rc 0, FLOOR=57 rc 1, REAL_PG unset rc 1"
+  A3: >-
+    Zero production change and the unit job is untouched.
+    probe: "git diff --quiet origin/main -- scripts/wa_team_promises.py; unit job still 249/56"
+  A4: >-
+    Two council rounds with every objection recorded, including a failed seat attempt.
+    probe: "pack.yml dissent cross-checked against council-journal.jsonl"
+
+out_of_scope: >-
+  scripts/localci/ (recorded as "not enabled"), check-wa-attention-pii.yml (another lane edits it),
+  any change to the real-PG tests themselves.
+
+assumptions:
+  - text: >-
+      ubuntu-latest ships PostgreSQL server binaries under /usr/lib/postgresql/<major>/bin. This
+      cannot be verified from M5; the job fails loudly if wrong, and the first CI run on this
+      push is the observation.
+    status: verified-by-ci-run

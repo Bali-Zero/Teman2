@@ -1011,8 +1011,10 @@ def test_g_low1_ollama_url_is_a_bare_literal_not_an_environment_read():
 # (stdlib lookups made while its imports run are not its own reads). Eight
 # plausible names are ALSO poisoned so a read that slips the recorder still
 # shows up in the constant's value. Scope, stated plainly: this exercises
-# IMPORT time only; a read deferred into a function body is caught by the
-# static scan above, not here. Any import-time environment read by this
+# IMPORT time only. A read deferred into a function body is caught by the
+# static scan above only when the reading line itself names `_OLLAMA_URL`; a
+# two-line shape (read the environment on one line, fall back to
+# `_OLLAMA_URL` on the next) is covered by NEITHER test. Any import-time environment read by this
 # module beyond the allow-listed HOME read (Path.home()) fails the test on
 # purpose: the constant must never be derived from the environment. A
 # subprocess, because the constant is computed once at import and reloading

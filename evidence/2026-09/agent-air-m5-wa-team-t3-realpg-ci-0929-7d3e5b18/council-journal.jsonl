@@ -1,0 +1,5 @@
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-29T11:35:01Z", "round": "r1", "verdict": "REWORK"}
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-09-29T11:37:12Z", "round": "r1", "verdict": "REWORK"}
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-29T11:39:23Z", "round": "delta", "verdict": "GO-WITH-NITS"}
+{"seat": "kimi-code/k3", "role": "review", "ok": false, "ts": "2026-09-29T11:43:44Z", "round": "delta", "verdict": "none", "note": "kimi_client timed out after 300s, no judgement; retried once"}
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-09-29T11:46:31Z", "round": "delta", "verdict": "GO-WITH-NITS"}
