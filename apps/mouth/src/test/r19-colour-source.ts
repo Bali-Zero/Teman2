@@ -1,0 +1,510 @@
+// Where colour lives in a source file is decided by the TypeScript syntax
+// tree, never by a regex over text: a position is a JSX attribute, a call
+// argument or an object literal in a style position. Comments and JSX prose do
+// not exist for this scanner. What a class token or a value IS is decided by
+// r19-colour-guard.ts.
+
+import ts from "typescript";
+import {
+  colourLiteralIn,
+  forbiddenClassToken,
+  forbiddenDeclaration,
+  type Finding,
+} from "./r19-colour-guard";
+
+export type { Finding };
+
+const CLASS_HELPERS = new Set(["cn", "clsx", "cva", "twMerge", "twJoin"]);
+const COLOUR_ATTRIBUTES = new Set([
+  "fill",
+  "stroke",
+  "color",
+  "stopColor",
+  "floodColor",
+  "lightingColor",
+  "bgcolor",
+]);
+const MAX_HOPS = 3;
+const TOKEN_DEFINITIONS = "/src/components/r19/presentation.ts";
+
+const COMPARISONS = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.EqualsEqualsToken,
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+  ts.SyntaxKind.LessThanToken,
+  ts.SyntaxKind.LessThanEqualsToken,
+  ts.SyntaxKind.GreaterThanToken,
+  ts.SyntaxKind.GreaterThanEqualsToken,
+  ts.SyntaxKind.InKeyword,
+  ts.SyntaxKind.InstanceOfKeyword,
+]);
+
+function scriptKind(path: string): ts.ScriptKind {
+  if (path.endsWith(".tsx")) return ts.ScriptKind.TSX;
+  if (path.endsWith(".jsx")) return ts.ScriptKind.JSX;
+  if (path.endsWith(".js")) return ts.ScriptKind.JS;
+  return ts.ScriptKind.TS;
+}
+
+function unwrap(node: ts.Node): ts.Node {
+  let n = node;
+  while (
+    ts.isParenthesizedExpression(n) ||
+    ts.isAsExpression(n) ||
+    ts.isSatisfiesExpression(n) ||
+    ts.isNonNullExpression(n) ||
+    ts.isTypeAssertionExpression(n)
+  ) {
+    n = n.expression;
+  }
+  return n;
+}
+
+function isFunctionLike(node: ts.Node): node is ts.FunctionLikeDeclaration {
+  return (
+    ts.isFunctionDeclaration(node) ||
+    ts.isFunctionExpression(node) ||
+    ts.isArrowFunction(node) ||
+    ts.isMethodDeclaration(node)
+  );
+}
+
+function isCssProperties(type: ts.TypeNode | undefined): boolean {
+  if (!type || !ts.isTypeReferenceNode(type)) return false;
+  const name = type.typeName;
+  return ts.isIdentifier(name)
+    ? name.text === "CSSProperties"
+    : name.right.text === "CSSProperties";
+}
+
+function isCssPropertiesRecord(type: ts.TypeNode | undefined): boolean {
+  if (!type || !ts.isTypeReferenceNode(type)) return false;
+  return (
+    ts.isIdentifier(type.typeName) &&
+    type.typeName.text === "Record" &&
+    isCssProperties(type.typeArguments?.[1])
+  );
+}
+
+function attributeName(attribute: ts.JsxAttribute): string {
+  return ts.isIdentifier(attribute.name)
+    ? attribute.name.text
+    : attribute.name.getText();
+}
+
+function keyText(name: ts.PropertyName): string | undefined {
+  if (
+    ts.isIdentifier(name) ||
+    ts.isStringLiteralLike(name) ||
+    ts.isNumericLiteral(name)
+  ) {
+    return name.text;
+  }
+  if (ts.isComputedPropertyName(name)) {
+    const inner = unwrap(name.expression);
+    if (ts.isStringLiteralLike(inner)) return inner.text;
+  }
+  return undefined;
+}
+
+function cssProperty(key: string): string {
+  return key.startsWith("--")
+    ? key
+    : key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+}
+
+export function forbiddenSourceColour(path: string, source: string): Finding[] {
+  if (`/${path.replaceAll("\\", "/")}`.endsWith(TOKEN_DEFINITIONS)) return [];
+  const sf = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKind(path),
+  );
+  return new Scanner(sf).run();
+}
+
+class Scanner {
+  private findings: Finding[] = [];
+  private seen = new Set<string>();
+  private variables = new Map<string, ts.Expression[]>();
+  private functions = new Map<string, ts.FunctionLikeDeclaration[]>();
+
+  constructor(private sf: ts.SourceFile) {
+    const index = (node: ts.Node) => {
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.initializer
+      ) {
+        const list = this.variables.get(node.name.text) ?? [];
+        list.push(node.initializer);
+        this.variables.set(node.name.text, list);
+      } else if (ts.isFunctionDeclaration(node) && node.name) {
+        const list = this.functions.get(node.name.text) ?? [];
+        list.push(node);
+        this.functions.set(node.name.text, list);
+      }
+      ts.forEachChild(node, index);
+    };
+    index(sf);
+  }
+
+  run(): Finding[] {
+    this.visit(this.sf);
+    return this.findings;
+  }
+
+  private report(node: ts.Node, position: string, text: string) {
+    const line =
+      this.sf.getLineAndCharacterOfPosition(node.getStart(this.sf)).line + 1;
+    const key = `${line}|${position}|${text}`;
+    if (this.seen.has(key)) return;
+    this.seen.add(key);
+    this.findings.push({ line, position, text });
+  }
+
+  // ---- roots: the positions the entity names ------------------------------
+
+  private visit(node: ts.Node) {
+    if (ts.isJsxAttribute(node)) this.jsxAttribute(node);
+    else if (ts.isCallExpression(node)) this.classHelperCall(node);
+    else if (ts.isVariableDeclaration(node) && node.initializer) {
+      if (isCssProperties(node.type))
+        this.styleRoot(node.initializer, 0, new Set());
+      else if (isCssPropertiesRecord(node.type))
+        this.styleMap(node.initializer, 0, new Set());
+    } else if (
+      (ts.isAsExpression(node) ||
+        ts.isSatisfiesExpression(node) ||
+        ts.isTypeAssertionExpression(node)) &&
+      isCssProperties(node.type)
+    ) {
+      this.styleRoot(node.expression, 0, new Set());
+    } else if (isFunctionLike(node) && isCssProperties(node.type)) {
+      for (const expression of this.returnsOf(node))
+        this.styleRoot(expression, 0, new Set());
+    } else if (ts.isPropertyAssignment(node)) {
+      const key = keyText(node.name);
+      if (key === "themeColor" || key === "theme-color")
+        this.colourValue(node.initializer, "theme-color");
+    } else if (
+      ts.isJsxSelfClosingElement(node) ||
+      ts.isJsxOpeningElement(node)
+    ) {
+      this.metaThemeColor(node);
+    }
+    ts.forEachChild(node, (child) => this.visit(child));
+  }
+
+  private jsxAttribute(attribute: ts.JsxAttribute) {
+    const name = attributeName(attribute);
+    const value = attribute.initializer;
+    if (!value) return;
+    if (
+      name === "className" ||
+      name === "class" ||
+      name.endsWith("ClassName")
+    ) {
+      this.classPosition(value);
+    } else if (name === "style") {
+      if (ts.isJsxExpression(value) && value.expression) {
+        this.styleRoot(value.expression, 0, new Set());
+      }
+    } else if (COLOUR_ATTRIBUTES.has(name) || name.endsWith("Color")) {
+      this.colourValue(value, name);
+    }
+  }
+
+  private classHelperCall(call: ts.CallExpression) {
+    const callee = call.expression;
+    const name = ts.isIdentifier(callee)
+      ? callee.text
+      : ts.isPropertyAccessExpression(callee)
+        ? callee.name.text
+        : "";
+    if (!CLASS_HELPERS.has(name)) return;
+    for (const argument of call.arguments) this.classPosition(argument);
+  }
+
+  private metaThemeColor(
+    element: ts.JsxSelfClosingElement | ts.JsxOpeningElement,
+  ) {
+    if (element.tagName.getText() !== "meta") return;
+    const attributes = element.attributes.properties.filter(ts.isJsxAttribute);
+    const named = attributes.find((a) => attributeName(a) === "name");
+    const nameText =
+      named?.initializer && ts.isStringLiteral(named.initializer)
+        ? named.initializer.text
+        : "";
+    if (nameText !== "theme-color") return;
+    const content = attributes.find((a) => attributeName(a) === "content");
+    if (content?.initializer)
+      this.colourValue(content.initializer, "theme-color");
+  }
+
+  // ---- judging -------------------------------------------------------------
+
+  private classPosition(node: ts.Node) {
+    this.strings(node, "class", 0, new Set(), (at, text) => {
+      for (const token of text.split(/\s+/).filter(Boolean)) {
+        if (forbiddenClassToken(token)) this.report(at, "class", token);
+      }
+    });
+  }
+
+  private colourValue(node: ts.Node, attribute: string) {
+    this.strings(node, "value", 0, new Set(), (at, text) => {
+      if (colourLiteralIn(text, "color"))
+        this.report(at, "colour attribute", `${attribute}: ${text}`);
+    });
+  }
+
+  // ---- style positions -----------------------------------------------------
+
+  private styleRoot(expression: ts.Node, hops: number, visited: Set<ts.Node>) {
+    const node = unwrap(expression);
+    if (visited.has(node)) return;
+    visited.add(node);
+    if (ts.isConditionalExpression(node)) {
+      this.styleRoot(node.whenTrue, hops, visited);
+      this.styleRoot(node.whenFalse, hops, visited);
+    } else if (ts.isBinaryExpression(node)) {
+      const op = node.operatorToken.kind;
+      if (op === ts.SyntaxKind.AmpersandAmpersandToken)
+        this.styleRoot(node.right, hops, visited);
+      else if (
+        op === ts.SyntaxKind.BarBarToken ||
+        op === ts.SyntaxKind.QuestionQuestionToken
+      ) {
+        this.styleRoot(node.left, hops, visited);
+        this.styleRoot(node.right, hops, visited);
+      }
+    } else if (ts.isObjectLiteralExpression(node)) {
+      this.styleObject(node, hops, visited);
+    } else if (ts.isCallExpression(node) && this.isObjectAssign(node)) {
+      for (const argument of node.arguments)
+        this.styleRoot(argument, hops, visited);
+    } else if (hops < MAX_HOPS) {
+      for (const resolved of this.resolve(node, hops))
+        this.styleRoot(resolved, hops + 1, visited);
+    }
+  }
+
+  private styleMap(expression: ts.Node, hops: number, visited: Set<ts.Node>) {
+    const node = unwrap(expression);
+    if (!ts.isObjectLiteralExpression(node)) return;
+    for (const property of node.properties) {
+      if (ts.isPropertyAssignment(property))
+        this.styleRoot(property.initializer, hops, visited);
+    }
+  }
+
+  private isObjectAssign(call: ts.CallExpression): boolean {
+    const callee = call.expression;
+    return (
+      ts.isPropertyAccessExpression(callee) &&
+      ts.isIdentifier(callee.expression) &&
+      callee.expression.text === "Object" &&
+      callee.name.text === "assign"
+    );
+  }
+
+  private styleObject(
+    object: ts.ObjectLiteralExpression,
+    hops: number,
+    visited: Set<ts.Node>,
+  ) {
+    for (const property of object.properties) {
+      if (ts.isSpreadAssignment(property)) {
+        this.styleRoot(property.expression, hops, visited);
+      } else if (
+        ts.isPropertyAssignment(property) ||
+        ts.isShorthandPropertyAssignment(property)
+      ) {
+        const key = ts.isPropertyAssignment(property)
+          ? keyText(property.name)
+          : property.name.text;
+        const prop = key === undefined ? undefined : cssProperty(key);
+        if (prop?.includes("backdrop")) this.report(property, "style", prop);
+        const value = ts.isPropertyAssignment(property)
+          ? property.initializer
+          : property.name;
+        this.strings(value, "value", hops, new Set(), (at, text) => {
+          const hit =
+            prop === undefined
+              ? colourLiteralIn(text)
+              : forbiddenDeclaration(prop, text);
+          if (hit) this.report(at, "style", `${prop ?? "?"}: ${text}`);
+        });
+      }
+    }
+  }
+
+  // ---- in-file resolution (P5) ---------------------------------------------
+
+  private returnsOf(fn: ts.FunctionLikeDeclaration): ts.Expression[] {
+    if (!fn.body) return [];
+    if (!ts.isBlock(fn.body)) return [fn.body];
+    const returns: ts.Expression[] = [];
+    const find = (node: ts.Node) => {
+      if (isFunctionLike(node)) return;
+      if (ts.isReturnStatement(node) && node.expression)
+        returns.push(node.expression);
+      ts.forEachChild(node, find);
+    };
+    find(fn.body);
+    return returns;
+  }
+
+  private memberValues(
+    objects: ts.Node[],
+    name: string | undefined,
+    depth = 0,
+  ): ts.Node[] {
+    const values: ts.Node[] = [];
+    for (const object of objects.map(unwrap)) {
+      if (
+        ts.isIdentifier(object) ||
+        ts.isPropertyAccessExpression(object) ||
+        ts.isElementAccessExpression(object) ||
+        ts.isCallExpression(object)
+      ) {
+        // `const colors = categoryColors[category]; colors.gradient`
+        if (depth < MAX_HOPS)
+          values.push(
+            ...this.memberValues(this.resolve(object, depth), name, depth + 1),
+          );
+      } else if (ts.isArrayLiteralExpression(object)) {
+        values.push(...object.elements);
+      } else if (ts.isObjectLiteralExpression(object)) {
+        for (const property of object.properties) {
+          if (ts.isPropertyAssignment(property)) {
+            const key = keyText(property.name);
+            if (name === undefined || key === undefined || key === name) {
+              values.push(property.initializer);
+            }
+          } else if (ts.isShorthandPropertyAssignment(property)) {
+            if (name === undefined || property.name.text === name)
+              values.push(property.name);
+          } else if (ts.isSpreadAssignment(property) && depth < MAX_HOPS) {
+            values.push(
+              ...this.memberValues(
+                this.resolve(property.expression, depth),
+                name,
+                depth + 1,
+              ),
+            );
+          }
+        }
+      }
+    }
+    return values;
+  }
+
+  // The in-file nodes an expression stands for: a variable's initializer, a
+  // function call's return expressions, a member of a resolved object.
+  private resolve(expression: ts.Node, hops: number): ts.Node[] {
+    const node = unwrap(expression);
+    if (ts.isIdentifier(node)) {
+      return (this.variables.get(node.text) ?? []).filter(
+        (init) => !isFunctionLike(unwrap(init)),
+      );
+    }
+    if (ts.isPropertyAccessExpression(node)) {
+      return this.memberValues(
+        this.resolve(node.expression, hops),
+        node.name.text,
+      );
+    }
+    if (ts.isElementAccessExpression(node)) {
+      const argument = unwrap(node.argumentExpression);
+      const name = ts.isStringLiteralLike(argument) ? argument.text : undefined;
+      return this.memberValues(this.resolve(node.expression, hops), name);
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      const callee = node.expression.text;
+      const declared = this.functions.get(callee) ?? [];
+      const initialisers = (this.variables.get(callee) ?? [])
+        .map(unwrap)
+        .filter(isFunctionLike);
+      return [...declared, ...initialisers].flatMap((fn) => this.returnsOf(fn));
+    }
+    return [];
+  }
+
+  // Every string-like node of `node`, resolving in-file identifiers (at most
+  // MAX_HOPS hops, each declaration once). Conditions and comparison operands
+  // decide a value, they are never one; object keys are class tokens only when
+  // the position is a class position.
+  private strings(
+    node: ts.Node,
+    mode: "class" | "value",
+    hops: number,
+    visited: Set<ts.Node>,
+    emit: (at: ts.Node, text: string) => void,
+  ) {
+    const follow = (expression: ts.Node) => {
+      if (hops >= MAX_HOPS) return;
+      for (const resolved of this.resolve(expression, hops)) {
+        if (visited.has(resolved)) continue;
+        visited.add(resolved);
+        this.strings(resolved, mode, hops + 1, visited, emit);
+      }
+    };
+    const walk = (n: ts.Node): void => {
+      if (ts.isStringLiteralLike(n)) return emit(n, n.text);
+      if (ts.isTemplateExpression(n)) {
+        if (mode === "class") {
+          emit(n.head, n.head.text);
+          for (const span of n.templateSpans) {
+            walk(span.expression);
+            emit(span.literal, span.literal.text);
+          }
+        } else {
+          emit(
+            n,
+            [n.head.text, ...n.templateSpans.map((s) => s.literal.text)].join(
+              " ",
+            ),
+          );
+          for (const span of n.templateSpans) walk(span.expression);
+        }
+        return;
+      }
+      if (ts.isTypeNode(n)) return;
+      if (ts.isConditionalExpression(n)) {
+        walk(n.whenTrue);
+        return walk(n.whenFalse);
+      }
+      if (ts.isBinaryExpression(n)) {
+        const op = n.operatorToken.kind;
+        if (COMPARISONS.has(op)) return;
+        if (op === ts.SyntaxKind.AmpersandAmpersandToken) return walk(n.right);
+      }
+      if (ts.isPropertyAssignment(n)) {
+        if (mode === "class" && ts.isStringLiteralLike(n.name))
+          emit(n.name, n.name.text);
+        return walk(n.initializer);
+      }
+      if (ts.isShorthandPropertyAssignment(n)) return follow(n.name);
+      if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n))
+        return follow(n);
+      if (ts.isIdentifier(n)) return follow(n);
+      if (ts.isCallExpression(n)) {
+        if (ts.isIdentifier(n.expression)) follow(n);
+        else walk(n.expression);
+        for (const argument of n.arguments) walk(argument);
+        return;
+      }
+      if (isFunctionLike(n)) {
+        if (n.body) walk(n.body);
+        return;
+      }
+      ts.forEachChild(n, walk);
+    };
+    walk(node);
+  }
+}
