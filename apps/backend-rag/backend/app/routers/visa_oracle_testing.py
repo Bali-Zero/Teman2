@@ -49,6 +49,11 @@ async def expectation_days(conn, who: dict) -> set[str]:
 
 
 async def review_days(conn, who: dict) -> set[str]:
+    """Days this actor may review — the admin any day, a tester only a day they have
+    fully locked (self-review still waits for all five personal expectations first).
+    Gates the /review day-lock check ONLY; it does not grant peer visibility — see
+    `authorize_record(..., review=True)` for who may review WHICH record.
+    """
     if not who["can_review"]:
         return set()
     if who["slot"] is None:
@@ -75,7 +80,11 @@ async def actor(conn, user: dict) -> dict:
         "id": row["id"],
         "slot": slot["slot"] if slot else None,
         "can_configure": owner,
-        "can_review": owner or bool(slot and slot["reviewer"]),
+        # Self-review (2026-09-30): any assigned tester may review their OWN submitted
+        # runs, so `can_review` no longer gates on the (now vestigial) slot `reviewer`
+        # flag — it is true for the admin and for anyone holding a slot. What is still
+        # gated is WHICH record: see `authorize_record(..., review=True)`.
+        "can_review": owner or slot is not None,
     }
 
 
@@ -107,7 +116,6 @@ async def view(conn, who: dict) -> dict:
         "FROM visa_oracle_test_runs WHERE campaign_id=$1",
         CAMPAIGN_ID,
     )
-    allowed_days = await review_days(conn, who)
     ready_days = await expectation_days(conn, who)
     stored = {r["assignment_id"]: r for r in rows}
     cases = []
@@ -120,8 +128,10 @@ async def view(conn, who: dict) -> dict:
                 "started_at": row["started_at"].isoformat(),
                 "submitted_at": row["submitted_at"].isoformat() if row["submitted_at"] else None,
             }
-            # Shared status, but blind test content: another tester cannot copy answers.
-            if case["day"] in allowed_days or row["member_id"] == who["id"]:
+            # Shared status, but blind test content: under self-review only the admin
+            # (auditing) and the tester's OWN record carry full content — another
+            # tester never sees a peer's answers, since they never review them.
+            if who["can_configure"] or row["member_id"] == who["id"]:
                 result = decoded(row["result"])
                 if result:
                     result = {
@@ -181,7 +191,7 @@ async def view(conn, who: dict) -> dict:
             "start_date": DAYS[0],
             "end_date": DAYS[-1],
             "timezone": "Asia/Makassar",
-            "planned": 150,
+            "planned": len(PLAN),
             "per_day": 5,
             "plan_version": PLAN_VERSION,
         },
@@ -191,7 +201,7 @@ async def view(conn, who: dict) -> dict:
         "assignments": cases,
         "progress": progress,
         "counts": {
-            "planned": 150,
+            "planned": len(PLAN),
             "started": len(rows),
             "submitted": sum(r["status"] == "submitted" for r in rows),
             "reproduced": sum(
@@ -387,7 +397,7 @@ async def review(
         )
         if not row or row["status"] != "submitted":
             raise HTTPException(409, "Only submitted tests can be reviewed")
-        authorize_record(who["id"], row["member_id"], review=True)
+        authorize_record(who["id"], row["member_id"], review=True, override=who["can_configure"])
         if str(row["assigned_day"]) not in await review_days(conn, who):
             raise HTTPException(
                 409, "Lock all five personal expectations for this day before reviewing peers"
@@ -425,9 +435,8 @@ async def screenshot(
         row = await conn.fetchrow(
             "SELECT member_id,screenshot FROM visa_oracle_test_runs WHERE assignment_id=$1", key
         )
-        if not row or not (
-            assignment(key)["day"] in await review_days(conn, who) or who["id"] == row["member_id"]
-        ):
+        # Self-review: only the admin (auditing) or the tester's own evidence.
+        if not row or not (who["can_configure"] or who["id"] == row["member_id"]):
             raise HTTPException(404, "Evidence unavailable")
         value = row["screenshot"]
         if not value:

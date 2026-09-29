@@ -3,9 +3,11 @@
 
 Self-contained (stdlib only) so the runner can execute it from a BASE-ref copy with `python -I`.
 
-  setup --home DIR [--backend-venv DIR]      one-off: venv + pyre-check, taint stubs (pinned), curated site-packages view
+  setup --home DIR [--backend-venv DIR] [--rebuild]   one-off: venv + pyre-check, taint stubs (pinned), curated site-packages view,
+                                                       then a sha256 manifest of everything the judge executes or reads from the home
+  verify-home --home DIR [--expect-digest D]    rc 0 + digest when the home still matches its manifest, rc 2 otherwise
   scan  --home DIR --worktree WT --ref REF --out DIR
-  judge --home DIR --worktree WT --base REF --candidate REF --out DIR   -> rc 0 no new flow, 1 new flows, 2 tool error
+  judge --home DIR --worktree WT --base REF --candidate REF --out DIR [--expect-home-digest D]   -> rc 0 no new flow, 1 new flows, 2 tool error
 
 Why a baseline: this backend already carries ~900 CodeQL log-injection flows; a blocking check can only demand
 "no NEW flow versus the base ref". A flow is keyed by (family, source callable, sink callable, sink statement text),
@@ -220,12 +222,129 @@ def scope_escapes(app_dir: Path) -> list[dict]:
     return out
 
 
+# ------------------------------------------------------------------ measured home
+MANIFEST = "manifest.json"
+MEASURED = ("venv", "pyre-check/stubs/taint", "site")   # what `pyre analyze` executes or reads from the home (typeshed lives in venv/)
+
+
+def _sha(p: Path) -> str:
+    h = hashlib.sha256()
+    with open(p, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _measure_tree(root: Path, label: str, out: dict) -> None:
+    """Every regular file under root by sha256 — source-less .pyc included, Python imports those — every symlink by its target (and,
+    for a target outside, that target's content). Only __pycache__ is skipped: pyre runs with PYTHONPYCACHEPREFIX, so cached bytecode
+    there is never looked up. A linked site package is type input only (never executed): its bytecode is not measured."""
+    if root.is_symlink():
+        tgt = os.path.realpath(root)
+        out[label] = f"link:{os.readlink(root)}"
+        if os.path.isdir(tgt):
+            _measure_tree(Path(tgt), f"{label}=>", out)
+        elif os.path.isfile(tgt):
+            out[f"{label}=>"] = _sha(Path(tgt))
+        return
+    if root.is_file():
+        out[label] = _sha(root)
+        return
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        dirnames[:] = sorted(d for d in dirnames if d != "__pycache__")
+        for d in list(dirnames):
+            if os.path.islink(os.path.join(dirpath, d)):
+                dirnames.remove(d)
+                _measure_tree(Path(dirpath) / d, f"{label}/{os.path.relpath(os.path.join(dirpath, d), root)}", out)
+        for f in sorted(filenames):
+            fp = Path(dirpath) / f
+            if f.endswith(".pyc") and label.startswith("site/"):
+                continue
+            if fp.is_symlink():
+                _measure_tree(fp, f"{label}/{os.path.relpath(fp, root)}", out)
+            else:
+                out[f"{label}/{os.path.relpath(fp, root)}"] = _sha(fp)
+
+
+def measure_home(home: Path) -> dict:
+    out: dict = {}
+    for rel in MEASURED:
+        if (home / rel).exists() or (home / rel).is_symlink():
+            _measure_tree(home / rel, rel, out)
+    py = home / "venv" / "bin" / "python"   # the venv interpreter is a link to a base install outside the home: its binary and stdlib count too
+    if py.exists():
+        base = Path(os.path.realpath(py))
+        out["interpreter"] = str(base)
+        out["interpreter=>"] = _sha(base)
+        stdlib = base.parent.parent / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        for cand in sorted((base.parent.parent / "lib").glob("python3.*")):
+            stdlib = cand
+        if stdlib.is_dir():
+            sub: dict = {}
+            for dirpath, dirnames, filenames in os.walk(stdlib):
+                dirnames[:] = sorted(d for d in dirnames if d not in ("__pycache__", "site-packages", "test", "idlelib", "tkinter"))
+                for f in sorted(filenames):
+                    if f.endswith((".py", ".so", ".pyc", ".pth")):
+                        sub[os.path.relpath(os.path.join(dirpath, f), stdlib)] = _sha(Path(dirpath) / f)
+            out["interpreter-stdlib"] = hashlib.sha256(json.dumps(sub, sort_keys=True).encode()).hexdigest()
+    return out
+
+
+def home_digest(files: dict) -> str:
+    return hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
+
+
+def verify_home(home: Path, expect: str | None = None) -> tuple[str | None, str | None]:
+    """(digest, None) when the home matches the manifest setup wrote (and `expect`, when given); (None, why) otherwise."""
+    mp = home / MANIFEST
+    if not mp.is_file():
+        return None, f"pysa home {home} carries no {MANIFEST}: it predates measured setup and may hold anything — run `pysa_check.py setup --home {home} --rebuild`"
+    try:
+        man = json.loads(mp.read_text())
+        files, recorded = man["files"], man["digest"]
+    except (ValueError, KeyError, TypeError) as e:
+        return None, f"{MANIFEST} unreadable: {e}"
+    if home_digest(files) != recorded:
+        return None, f"{MANIFEST} is internally inconsistent (its file map does not hash to its digest)"
+    if expect and recorded != expect:
+        return None, f"pysa home digest {recorded[:16]} != {expect[:16]} measured when this run was planned: the home was replaced"
+    now_files = measure_home(home)
+    if now_files != files:
+        diff = sorted(k for k in set(files) | set(now_files) if files.get(k) != now_files.get(k))
+        return None, f"pysa home tampered: {len(diff)} measured entr{'y' if len(diff) == 1 else 'ies'} changed since setup (first: {diff[:3]}) — run setup --rebuild"
+    return recorded, None
+
+
+def write_manifest(home: Path) -> tuple[str, dict]:
+    files = measure_home(home)
+    digest = home_digest(files)
+    (home / MANIFEST).write_text(json.dumps({"digest": digest, "pyre_check": PYRE_CHECK_VERSION, "stubs_commit": STUBS_COMMIT, "files": files,
+                                             "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, indent=0, sort_keys=True))
+    return digest, files
+
+
+def cmd_verify_home(a) -> int:
+    digest, why = verify_home(Path(a.home).resolve(), a.expect_digest)
+    print(json.dumps({"ok": digest is not None, "digest": digest, "reason": why}))
+    return 0 if digest else 2
+
+
 # ------------------------------------------------------------------ setup
 def cmd_setup(a) -> int:
     home = Path(a.home).resolve()
+    venv = home / "venv"
+    installed = any((home / r).exists() for r in ("venv", "pyre-check", "site"))
+    if installed and not a.rebuild:
+        digest, why = verify_home(home)
+        if digest is None:   # the old setup REUSED whatever venv/stubs it found: a replaced pyre would have survived a "re-setup"
+            print(f"setup: refusing to reuse an existing installation: {why}")
+            return 2
     home.mkdir(parents=True, exist_ok=True)
     log = open(home / "setup.log", "a")
-    venv = home / "venv"
+    if a.rebuild:
+        for r in ("venv", "pyre-check", "site", "baselines", MANIFEST):
+            t = home / r
+            t.unlink() if t.is_file() or t.is_symlink() else shutil.rmtree(t, ignore_errors=True)
     if not (venv / "bin" / "pyre").exists():
         if sh(["uv", "venv", "-q", "-p", "3.12", str(venv)], log=log) or sh(["uv", "pip", "install", "-q", "--python", str(venv / "bin" / "python"), f"pyre-check=={PYRE_CHECK_VERSION}"], log=log):
             print("setup: pyre-check install failed (see setup.log)")
@@ -256,9 +375,18 @@ def cmd_setup(a) -> int:
             dst.unlink()
         os.symlink(src, dst)
         linked += 1
+    frozen = subprocess.run(["uv", "pip", "freeze", "--python", str(venv / "bin" / "python")], capture_output=True, text=True).stdout
+    head = subprocess.run(["git", "-C", str(stubs), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    dirty = subprocess.run(["git", "-C", str(stubs), "status", "--porcelain"], capture_output=True, text=True).stdout.strip()
+    if f"pyre-check=={PYRE_CHECK_VERSION}" not in frozen.split() or head != STUBS_COMMIT or dirty:
+        print(f"setup: installed identity is not the pinned one (pyre-check=={PYRE_CHECK_VERSION} in venv: {f'pyre-check=={PYRE_CHECK_VERSION}' in frozen.split()}, "
+              f"stubs HEAD {head[:12]} vs {STUBS_COMMIT[:12]}, stubs dirty: {bool(dirty)}) — refusing to measure it; rerun with --rebuild")
+        return 2
+    digest, files = write_manifest(home)
     (home / "setup.json").write_text(json.dumps({"pyre_check": PYRE_CHECK_VERSION, "stubs_commit": STUBS_COMMIT, "backend_site_packages": str(sp),
-                                                 "linked": linked, "missing": missing, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, indent=1))
-    print(json.dumps({"home": str(home), "linked": linked, "missing": missing}))
+                                                 "linked": linked, "missing": missing, "home_digest": digest, "measured_entries": len(files),
+                                                 "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, indent=1))
+    print(json.dumps({"home": str(home), "linked": linked, "missing": missing, "home_digest": digest, "measured_entries": len(files)}))
     return 0
 
 
@@ -270,6 +398,14 @@ def home_ready(home: Path) -> str | None:
 
 
 # ------------------------------------------------------------------ scan
+def safe_tree_path(rel: str) -> str:
+    """A tree entry path from `git ls-tree`: a crafted tree object can carry `..` or an absolute name — never written outside the root."""
+    parts = rel.split("/")
+    if not rel or rel.startswith("/") or any(p in ("", ".", "..") for p in parts):
+        raise RuntimeError(f"unsafe tree entry path {rel!r}")
+    return rel
+
+
 def export_tree(wt: Path, ref: str, dest: Path) -> str:
     """Materialise <ref>:apps/backend-rag/backend from the object store — never `git archive`, which honours the candidate's
     own `.gitattributes export-ignore` and would let a PR hide files from the judge (fresh-gate BLOCK, 2026-09-27)."""
@@ -284,7 +420,7 @@ def export_tree(wt: Path, ref: str, dest: Path) -> str:
         meta, rel = rec.split("\t", 1)
         mode, kind, oid = meta.split(" ")
         if kind == "blob" and mode != "120000":          # symlinks are not followed and not analysed
-            entries.append((oid, rel))
+            entries.append((oid, safe_tree_path(rel)))
     batch = subprocess.run(["git", "-C", str(wt), "cat-file", "--batch"], input="".join(f"{o}\n" for o, _ in entries).encode(), capture_output=True, check=True).stdout
     pos, written = 0, 0
     for oid, rel in entries:
@@ -317,6 +453,7 @@ def write_configs(app_dir: Path, home: Path, models_dir: Path) -> None:
 def run_pysa(home: Path, app_dir: Path, results: Path, timeout: int, log) -> int:
     env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONSAFEPATH")}
     env["PATH"] = f"{home / 'venv' / 'bin'}:{env.get('PATH', '')}"
+    env["PYTHONPYCACHEPREFIX"] = str(results.parent / "pycache")   # never load bytecode cached inside the (measured) home
     shutil.rmtree(app_dir / ".pyre", ignore_errors=True)
     return sh([str(home / "venv" / "bin" / "pyre"), "--noninteractive", "analyze", "--no-verify", "--save-results-to", str(results)],
               cwd=str(app_dir), env=env, timeout=timeout, log=log)
@@ -493,19 +630,18 @@ def cmd_judge(a) -> int:
     if (why := home_ready(home)):
         print(why)
         return 2
+    digest, why = verify_home(home, a.expect_home_digest)
+    if digest is None:   # a replaced pyre, stub, typeshed or site package is not the judge that was measured: no verdict
+        print(json.dumps({"verdict": "ERROR", "stage": "home", "reason": why}))
+        return 2
     out.mkdir(parents=True, exist_ok=True)
     log = open(out / "pysa.log", "w")
     base_tree = subprocess.run(["git", "-C", str(wt), "rev-parse", f"{a.base}:{APP_REL}/{PKG_REL}"], capture_output=True, text=True, check=True).stdout.strip()
     judge_id = hashlib.sha256(b"".join(f.read_bytes() for f in sorted([Path(__file__)] + list(MODELS_SRC.glob("*")))) ).hexdigest()[:16]
-    cache = home / "baselines" / f"{base_tree}-{judge_id}.json"   # a baseline built by another judge/model version is never reused
-    if cache.exists():
-        base_res = json.loads(cache.read_text())
-        base_res["cached"] = True
-    else:
-        base_res = scan(home, wt, a.base, out / "base", a.timeout, log)
-        if base_res["ok"]:
-            cache.parent.mkdir(exist_ok=True)
-            cache.write_text(json.dumps(base_res))
+    # BASE is scanned on every judge run. A cross-run cache lived in the home, where an earlier uncontained (--isolation none or
+    # pre-0.3.0) candidate could rewrite a baseline AND any index vouching for it; nothing the same OS user can write authenticates
+    # it, so the ~70 s it saved is not worth a forgeable "unchanged" (independent review R3, 2026-09-29).
+    base_res = scan(home, wt, a.base, out / "base", a.timeout, log)
     if not base_res["ok"]:
         print(json.dumps({"verdict": "ERROR", "stage": "base", **{k: v for k, v in base_res.items() if k != "findings"}}))
         return 2
@@ -519,7 +655,7 @@ def cmd_judge(a) -> int:
               "candidate_tree": cand_res["tree"], "handlers_modelled": cand_res["handlers_modelled"], "handlers_modelled_base": base_res["handlers_modelled"],
               "handlers_dropped": max(0, base_res["handlers_modelled"] - cand_res["handlers_modelled"]), "judge_id": judge_id,
               "base_findings": len(base_res["findings"]), "candidate_findings": len(cand_res["findings"]), "new": d["new"], "fixed": len(d["fixed"]),
-              "unchanged": d["unchanged"], "durations_s": {"base": base_res["duration_s"], "candidate": cand_res["duration_s"]}}
+              "unchanged": d["unchanged"], "durations_s": {"base": base_res["duration_s"], "candidate": cand_res["duration_s"]}, "home_digest": digest}
     (out / "report.json").write_text(json.dumps(report, indent=1))
     md = [f"# pysa judge — {verdict}", "", f"base `{a.base}` ({len(base_res['findings'])} flows, cached={report['base_cached']}) → candidate `{a.candidate}` ({len(cand_res['findings'])} flows): "
           f"**{len(d['new'])} new**, {len(d['fixed'])} fixed, {d['unchanged']} unchanged — handlers modelled {base_res['handlers_modelled']} → {cand_res['handlers_modelled']}"
@@ -537,7 +673,12 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("setup")
     s.add_argument("--home", required=True)
     s.add_argument("--backend-venv", default=str(Path.cwd() / APP_REL / ".venv"))
+    s.add_argument("--rebuild", action="store_true", help="wipe venv, stubs, site view and baselines, reinstall the pinned versions, re-measure")
     s.set_defaults(fn=cmd_setup)
+    v = sub.add_parser("verify-home")
+    v.add_argument("--home", required=True)
+    v.add_argument("--expect-digest")
+    v.set_defaults(fn=cmd_verify_home)
     for name, fn in (("scan", cmd_scan), ("judge", cmd_judge)):
         q = sub.add_parser(name)
         q.add_argument("--home", required=True)
@@ -549,6 +690,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             q.add_argument("--base", required=True)
             q.add_argument("--candidate", default="HEAD")
+            q.add_argument("--expect-home-digest", help="the home digest measured at plan time: a different home is refused")
         q.set_defaults(fn=fn)
     a = p.parse_args(argv)
     try:

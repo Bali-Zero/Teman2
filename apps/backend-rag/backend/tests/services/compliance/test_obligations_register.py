@@ -371,34 +371,42 @@ def test_a_year_without_a_holiday_table_rolls_weekends_only_and_says_so(catalog)
 
 def test_the_holiday_gap_is_flagged_per_proposal_not_per_run(catalog):
     # One horizon straddles the decreed year and the undecreed one, so the flag cannot be a
-    # property of the run: 2026-11 is due inside 2026 and says nothing, 2026-12 lands in 2027.
+    # property of the run: 2027-11 is due inside 2027 and says nothing, 2027-12 lands in 2028.
     reasons = {
         (p.period_key, p.due_date): p.needs_review_reason
-        for p in propose([catalog["spt_masa_ppn"]], PMA, date(2026, 12, 1), 75)
+        for p in propose([catalog["spt_masa_ppn"]], PMA, date(2027, 12, 1), 75)
     }
     assert reasons == {
-        ("2026-11", date(2026, 12, 31)): None,
-        ("2026-12", date(2027, 2, 1)): "holiday calendar for 2027 not loaded",
+        ("2027-11", date(2027, 12, 31)): None,
+        ("2027-12", date(2028, 1, 31)): "holiday calendar for 2028 not loaded",
     }
 
 
 def test_the_holiday_gap_reason_appends_to_the_rules_own_reason(catalog):
     rule = catalog["pph25_installment"]
     assert rule.needs_review_reason  # the rule already has one; the gap must not replace it
-    [proposed] = propose([rule], PMA, date(2027, 1, 10), 10)
+    [proposed] = propose([rule], PMA, date(2028, 1, 10), 10)
     assert proposed.needs_review_reason == (
-        f"{rule.needs_review_reason}; holiday calendar for 2027 not loaded"
+        f"{rule.needs_review_reason}; holiday calendar for 2028 not loaded"
     )
 
 
 def test_a_next_business_day_rule_is_flagged_for_an_undecreed_year(catalog):
     # bpjs_kesehatan_monthly is roll: next_business_day (#6336, M4 source sweep: Perpres 82/2018
-    # art. 39(4)). Sun 2027-01-10 rolls on the weekend alone to Mon 11 Jan, since 2027 has no
+    # art. 39(4)). Sun 2028-09-10 rolls on the weekend alone to Mon 11 Sep, since 2028 has no
     # decreed holiday table yet, and the proposal says so instead of presenting it as settled.
+    rule = catalog["bpjs_kesehatan_monthly"]
+    [proposed] = propose([rule], PMA, date(2028, 9, 1), 15)
+    assert proposed.due_date == date(2028, 9, 11)
+    assert proposed.needs_review_reason == "holiday calendar for 2028 not loaded"
+
+
+def test_a_next_business_day_rule_in_a_decreed_2027_carries_no_gap_flag(catalog):
+    # Sun 2027-01-10 rolls to Mon 11 Jan on the weekend; 2027 is decreed, so nothing is flagged.
     rule = catalog["bpjs_kesehatan_monthly"]
     [proposed] = propose([rule], PMA, date(2027, 1, 1), 15)
     assert proposed.due_date == date(2027, 1, 11)
-    assert proposed.needs_review_reason == "holiday calendar for 2027 not loaded"
+    assert proposed.needs_review_reason is None
 
 
 # -- one_time triggers and the optional fixed statutory date (PR M2) -------------------------

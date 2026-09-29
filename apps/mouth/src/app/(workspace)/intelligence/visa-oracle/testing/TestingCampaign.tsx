@@ -203,6 +203,11 @@ function dayLabel(day: string) {
     timeZone: "UTC",
   }).format(new Date(`${day}T12:00:00Z`));
 }
+// Self-review (2026-09-30): a tester only reviews their OWN submitted runs. The
+// admin (no assigned slot) keeps the full cross-slot queue for auditing.
+function ownReview(a: Assignment, viewerSlot: string | null) {
+  return !!a.record?.result && (viewerSlot === null || a.slot === viewerSlot);
+}
 
 export default function OracleTestingPage() {
   const [data, setData] = useState<CampaignData | null>(null);
@@ -282,6 +287,7 @@ export default function OracleTestingPage() {
       </p>
     );
   const days = [...new Set(data.assignments.map((a) => a.day))].sort();
+  const perTester = days.length * 5;
   const mine = data.assignments.filter(
     (a) => a.slot === data.viewer.slot && a.day === day,
   );
@@ -296,7 +302,7 @@ export default function OracleTestingPage() {
       <Masthead
         eyebrow="Riset internal · Visa Oracle"
         title="Pengujian tim"
-        sub="28 September–2 Oktober 2026 · Lima kasus per hari, 25 per orang. Catat apa yang benar-benar terjadi; hasil terhalang tetap berguna."
+        sub="30 September–2 Oktober 2026 · Lima kasus per hari, 15 per orang. Catat apa yang benar-benar terjadi; hasil terhalang tetap berguna."
         actions={
           <Link className={BUTTON} href="/intelligence/visa-oracle">
             Kembali
@@ -353,7 +359,7 @@ export default function OracleTestingPage() {
                       {d.slice(5)}
                     </th>
                   ))}
-                  <th className="p-2">Total / 25</th>
+                  <th className="p-2">Total / {perTester}</th>
                   <th className="p-2">Ditinjau</th>
                 </tr>
               </thead>
@@ -376,7 +382,7 @@ export default function OracleTestingPage() {
                       {data.progress
                         .filter((p) => p.slot === slot.slot)
                         .reduce((n, p) => n + p.submitted, 0)}
-                      /25
+                      /{perTester}
                     </td>
                     <td className="p-2 text-center">
                       {data.progress
@@ -462,10 +468,9 @@ export default function OracleTestingPage() {
       {data.viewer.can_review && (
         <Block title="Antrean reviewer">
           <p className="text-sm">
-            Kunci kelima ekspektasi hari ini sebelum meninjau hasil rekan.
-            Tinjau observasi, bukan identitas tester. Anda tidak dapat meninjau
-            pengujian sendiri. Isu terkonfirmasi dan isu yang berhasil
-            direproduksi dicatat terpisah.
+            Kunci kelima ekspektasi hari ini sebelum meninjau. Setiap tester
+            meninjau hasil pengujiannya sendiri — bukan milik rekan lain. Isu
+            terkonfirmasi dan isu yang berhasil direproduksi dicatat terpisah.
           </p>
           <button
             type="button"
@@ -476,7 +481,7 @@ export default function OracleTestingPage() {
             Ekspor data JSON
           </button>
           {submitted
-            .filter((a) => a.slot !== data.viewer.slot && a.record?.result)
+            .filter((a) => ownReview(a, data.viewer.slot))
             .map((a) => (
               <ReviewForm
                 key={`${a.id}-${a.record?.review?.reviewed_at || "pending"}`}
@@ -485,9 +490,8 @@ export default function OracleTestingPage() {
                 mutate={mutate}
               />
             ))}
-          {submitted.filter(
-            (a) => a.slot !== data.viewer.slot && a.record?.result,
-          ).length === 0 && <p>Belum ada observasi untuk ditinjau.</p>}
+          {submitted.filter((a) => ownReview(a, data.viewer.slot)).length ===
+            0 && <p>Belum ada observasi untuk ditinjau.</p>}
         </Block>
       )}
       {data.viewer.can_configure && (

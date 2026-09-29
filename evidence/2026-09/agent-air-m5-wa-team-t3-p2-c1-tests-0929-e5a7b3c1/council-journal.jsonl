@@ -1,0 +1,2 @@
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-29T16:16:27Z", "round": "r1", "verdict": "REWORK"}
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-09-29T16:14:39Z", "round": "r1", "verdict": "GO-WITH-NITS"}

@@ -261,7 +261,7 @@ it("submits a blocked observation with explicit attestation and without a client
   expect(payload).not.toHaveProperty("screenshot_available");
 });
 
-it("keeps review tools separate and excludes the reviewer's own observations", async () => {
+it("keeps review tools scoped to the tester's own observations, excluding a peer's", async () => {
   vi.clearAllMocks();
   const data = fixture(true);
   const own = {
@@ -288,6 +288,7 @@ it("keeps review tools separate and excludes the reviewer's own observations", a
   expect(
     screen.getByRole("button", { name: "Ekspor data JSON" }),
   ).toBeInTheDocument();
+  // Self-review: `own` (viewer's slot T01) is reviewable, `other` (T02) is not.
   expect(screen.getAllByLabelText("Keputusan reviewer")).toHaveLength(1);
   expect(screen.queryByText("Konfigurasi enam slot")).not.toBeInTheDocument();
 });
@@ -593,13 +594,13 @@ it("fails closed if the result permission is missing even with five visible lock
   expect(screen.getByLabelText("Status hasil aktual")).toBeDisabled();
 });
 
-it("keeps a saved peer review visible but disables every editing control and submission", async () => {
+it("keeps a saved self-review visible but disables every editing control and submission", async () => {
   vi.clearAllMocks();
   const data = fixture(true);
   const other = {
     ...data.assignments[0],
-    id: "reviewed-peer",
-    slot: "T02",
+    id: "reviewed-own",
+    slot: "T01",
     record: {
       ...data.assignments[0].record!,
       status: "submitted",

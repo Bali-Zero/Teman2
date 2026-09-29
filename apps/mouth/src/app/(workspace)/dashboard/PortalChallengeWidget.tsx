@@ -476,13 +476,24 @@ const RANK_ORDINAL: Record<number, string> = {
   5: "Kelima",
 };
 
+// Ruled minimums (Zero, 2026-09-30) — fallback for payloads without min_points.
+const RANK_MIN_POINTS: Record<number, number> = {
+  1: 100,
+  2: 80,
+  3: 60,
+  4: 30,
+  5: 20,
+};
+
 function RankPrizeRow({
   rank,
   prizeIdr,
+  minPoints,
   holders,
 }: {
   rank: number;
   prizeIdr: number;
+  minPoints?: number;
   holders: PortalChallengeEntry[];
 }) {
   return (
@@ -515,6 +526,11 @@ function RankPrizeRow({
         >
           {formatIDR(prizeIdr)}
         </p>
+        {(minPoints ?? RANK_MIN_POINTS[rank]) != null && (
+          <p className="text-[11px] tabular-nums text-[var(--tx-secondary)]">
+            {`min ${minPoints ?? RANK_MIN_POINTS[rank]} poin`}
+          </p>
+        )}
         {holders.length > 0 && (
           <p className="text-[11px] tabular-nums text-[var(--tx-secondary)]">
             {holders[0].points ?? 0} poin
@@ -533,6 +549,10 @@ function RankPrizeList({
   entries: PortalChallengeEntry[];
 }) {
   if (rankPrizes.length === 0) return null;
+  // Once the backend ships prize_slot (key present, even null), a slot's
+  // holders are the entries that actually WON it — a member can win a lower
+  // slot than his rank. Older payloads fall back to rank matching.
+  const hasSlots = entries.some((e) => e.prize_slot !== undefined);
   return (
     <div data-testid="rank-prize-list" className="flex flex-col gap-2">
       <span className={EYEBROW}>Peringkat & Hadiah</span>
@@ -541,11 +561,13 @@ function RankPrizeList({
           key={rp.rank}
           rank={rp.rank}
           prizeIdr={rp.prize_idr}
-          // A 0-point (or negative) entry never wins a rank prize — the
-          // backend already ships prize_idr: 0 for it; this list must not
-          // show it as the holder just because it shares the rank number.
-          holders={entries.filter(
-            (e) => e.rank === rp.rank && (e.points ?? 0) > 0,
+          minPoints={rp.min_points}
+          // Fallback (no prize_slot in payload): a 0-point (or negative)
+          // entry never wins a rank prize, so it is never shown as holder.
+          holders={entries.filter((e) =>
+            hasSlots
+              ? e.prize_slot === rp.rank
+              : e.rank === rp.rank && (e.points ?? 0) > 0,
           )}
         />
       ))}
@@ -746,6 +768,52 @@ function TaxStrip({ data }: { data: PortalChallengeResponse }) {
 
 // ── Ranking list ────────────────────────────────────────────
 
+// Every scoring component of a round-2 row, in the order that adds up to the
+// total: carry + registrations + 3×documents − 2×requests − 1×documents.
+// Per-type penalties are shown as points (count × weight); the backend counts
+// them AFTER the same-incident dedupe, so they sum to `penalty_points`.
+function Round2Breakdown({ entry }: { entry: PortalChallengeEntry }) {
+  const prize = entry.september_choice === "prize";
+  const requests = 2 * (entry.unanswered_requests ?? 0);
+  const docs = entry.unreviewed_documents ?? 0;
+  return (
+    <div
+      data-testid={`champion-breakdown-${entry.member}`}
+      className="col-span-3 flex flex-wrap gap-x-2 gap-y-0.5 pl-7 text-[11px] tabular-nums text-[var(--tx-secondary)]"
+    >
+      <span>
+        {prize ? "Sep 0 · hadiah diambil" : `Sep +${entry.carry_points ?? 0}`}
+      </span>
+      <span>{`+${entry.registrations ?? 0} reg`}</span>
+      <span>{`+${3 * (entry.document_bonuses ?? 0)} dok`}</span>
+      <span>{`−${requests} permintaan`}</span>
+      <span>{`−${docs} dokumen`}</span>
+    </div>
+  );
+}
+
+// Round-2 prize notes: slide-down slot, and a September prize-taker whose
+// October rank is not yet at least their September rank (ineligible).
+function Round2PrizeNote({ entry }: { entry: PortalChallengeEntry }) {
+  const slot = entry.prize_slot;
+  const sepRank = entry.september_rank;
+  const notes: string[] = [];
+  if (slot != null && slot !== entry.rank) notes.push(`hadiah posisi ${slot}`);
+  if (sepRank != null && entry.rank > sepRank)
+    notes.push(`perlu posisi ≤ ${sepRank}`);
+  if (notes.length === 0) return null;
+  return (
+    <div
+      data-testid={`champion-prize-note-${entry.member}`}
+      className="col-span-3 flex flex-wrap gap-x-2 pl-7 text-[11px] font-semibold text-[var(--bz-copper-text)]"
+    >
+      {notes.map((n) => (
+        <span key={n}>{n}</span>
+      ))}
+    </div>
+  );
+}
+
 function RankingRow({
   entry,
   isZeroState,
@@ -762,7 +830,9 @@ function RankingRow({
         "grid items-center gap-2 px-3 py-2 rounded-lg",
         entry.is_me && "bg-[var(--bz-card-hover)]",
       )}
-      style={{ gridTemplateColumns: "auto 1fr auto auto" }}
+      style={{
+        gridTemplateColumns: round2 ? "auto 1fr auto" : "auto 1fr auto auto",
+      }}
     >
       <span className="text-[11px] font-bold tabular-nums text-[var(--tx-secondary)] w-5">
         {ranked ? entry.rank : "–"}
@@ -781,14 +851,16 @@ function RankingRow({
         {entry.is_me && <StatePill tone="you" label="Kamu" />}
         {entry.is_tax && <StatePill tone="ink" label="Tax" />}
       </div>
-      <span className="text-[11px] tabular-nums text-[var(--tx-secondary)] whitespace-nowrap">
-        {round2
-          ? `+${entry.registrations ?? 0} reg · +${3 * (entry.document_bonuses ?? 0)} dok · −${entry.penalty_points ?? 0}`
-          : `${entry.invited} diundang`}
-      </span>
+      {!round2 && (
+        <span className="text-[11px] tabular-nums text-[var(--tx-secondary)] whitespace-nowrap">
+          {`${entry.invited} diundang`}
+        </span>
+      )}
       <span className="text-[13px] font-bold tabular-nums text-[var(--tx-pure)] whitespace-nowrap">
         {round2 ? (entry.points ?? 0) : entry.activations}
       </span>
+      {round2 && <Round2Breakdown entry={entry} />}
+      {round2 && <Round2PrizeNote entry={entry} />}
     </div>
   );
 }
@@ -806,7 +878,8 @@ function RankingList({
   const sorted = isZeroState
     ? [...entries].sort((a, b) => a.display_name.localeCompare(b.display_name))
     : [...entries].sort((a, b) => a.rank - b.rank);
-  const visible = expanded ? sorted : sorted.slice(0, 5);
+  const collapsible = !round2 && sorted.length > 5;
+  const visible = expanded || !collapsible ? sorted : sorted.slice(0, 5);
 
   return (
     <div data-testid="champion-ranking" className={cn(CARD, "flex flex-col")}>
@@ -829,7 +902,7 @@ function RankingList({
           ))
         )}
       </div>
-      {sorted.length > 5 && (
+      {collapsible && (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -1088,8 +1161,26 @@ function RulesDrawer({ data }: { data: PortalChallengeResponse }) {
                     Hadiah mengikuti{" "}
                     <span className="text-[var(--tx-pure)] font-semibold">
                       peringkat akhir
+                    </span>
+                    , dengan skor{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      minimal 100 poin
                     </span>{" "}
-                    (5 posisi).
+                    untuk posisi 1, 80 untuk posisi 2, 60 untuk posisi 3, 30
+                    untuk posisi 4, dan 20 untuk posisi 5.
+                  </li>
+                  <li>
+                    Jika skormu di bawah batas posisimu, kamu tidak dapat hadiah
+                    posisi itu, tetapi{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      turun ke posisi hadiah yang bisa dicapai
+                    </span>{" "}
+                    (posisi kosong terbaik yang batasnya kamu penuhi).
+                  </li>
+                  <li>
+                    Pemenang hadiah September (Surya, Ari, Krisna) hanya bisa
+                    menang hadiah Oktober jika peringkat Oktobernya minimal sama
+                    dengan peringkat Septembernya.
                   </li>
                   <li>Tidak ada bonus Tax baru di ronde ini.</li>
                   <li>

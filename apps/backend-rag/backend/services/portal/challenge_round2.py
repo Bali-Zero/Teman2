@@ -48,6 +48,20 @@ SEPTEMBER_PRIZE_TAKEN: frozenset[str] = frozenset(
     {"surya@balizero.com", "ari.firda@balizero.com", "krisna@balizero.com"}
 )
 
+# Zero's ruling, 2026-09-29: Round 2 is ranked and prized among the six
+# September players ONLY. Anyone else's events are counted-not-credited,
+# exactly like unattributed ones.
+ROUND2_PARTICIPANTS: frozenset[str] = frozenset(
+    {
+        "ari.firda@balizero.com",
+        "surya@balizero.com",
+        "krisna@balizero.com",
+        "adit@balizero.com",
+        "vino@balizero.com",
+        "damar@balizero.com",
+    }
+)
+
 REGISTRATION_POINTS = 1
 FIRST_DOCUMENT_POINTS = 3
 UNANSWERED_REQUEST_PENALTY = 2
@@ -522,6 +536,8 @@ def score_round2(
             continue
         if email == ASYA_EMAIL:
             continue  # excluded from the general ranking — appears only in asya_mission
+        if email not in ROUND2_PARTICIPANTS:
+            continue  # not one of the six September players — never ranked or prized
         department = row.get("department")
         is_tax = bool(department and department.strip().lower() == "tax")
         is_winner = email in SEPTEMBER_PRIZE_TAKEN

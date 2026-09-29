@@ -1,6 +1,20 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const motion = vi.hoisted(() => ({ reduced: false }));
+vi.mock("framer-motion", async () => {
+  const actual =
+    await vi.importActual<typeof import("framer-motion")>("framer-motion");
+  // Exit fades are framer's job; unmount at once so tests see dismissal.
+  return {
+    ...actual,
+    useReducedMotion: () => motion.reduced,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => (
+      <>{children}</>
+    ),
+  };
+});
 import {
   parseChampionGoal,
   PortalChampionCelebration,
@@ -48,6 +62,7 @@ function mount(identity = "staff") {
 }
 
 beforeEach(() => {
+  motion.reduced = false;
   FakeSource.instances = [];
   vi.stubGlobal("EventSource", FakeSource);
 });
@@ -241,5 +256,149 @@ describe("workspace-wide celebrations", () => {
       );
     });
     expect(screen.getByRole("status")).toHaveTextContent("GOAL oleh Contender");
+  });
+});
+
+describe("kinds of takeover", () => {
+  const send = (id: string, data: object) =>
+    act(() => FakeSource.instances[0].goal(id, data));
+
+  it("parses kinds: missing kind is a goal, unknown kinds are ignored", () => {
+    expect(parseChampionGoal(JSON.stringify(goal()))?.kind).toBe("goal");
+    expect(
+      parseChampionGoal(JSON.stringify(goal({ kind: "bomb", points: 3 })))
+        ?.kind,
+    ).toBe("bomb");
+    expect(
+      parseChampionGoal(JSON.stringify(goal({ kind: "jackpot" }))),
+    ).toBeNull();
+    expect(parseChampionGoal(JSON.stringify(goal({ kind: 7 })))).toBeNull();
+  });
+
+  it("keeps penalties at zero or negative totals but still drops stale ones", () => {
+    for (const activations of [0, -3])
+      expect(
+        parseChampionGoal(
+          JSON.stringify(
+            goal({
+              kind: "penalty",
+              points: -2,
+              activations,
+              reason: "unanswered_request",
+            }),
+          ),
+        )?.activations,
+      ).toBe(activations);
+    expect(
+      parseChampionGoal(
+        JSON.stringify(
+          goal({
+            kind: "penalty",
+            points: -1,
+            activations: 0,
+            at: new Date(Date.now() - 100_000).toISOString(),
+          }),
+        ),
+      ),
+    ).toBeNull();
+    expect(
+      parseChampionGoal(JSON.stringify(goal({ kind: "bomb", activations: 0 }))),
+    ).toBeNull();
+  });
+
+  it("never renders an unknown kind and does not consume its event", () => {
+    mount();
+    send("1-0", goal({ kind: "jackpot" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("goal takeover is intense: confetti, shake, +1 headline, 9 s", () => {
+    vi.useFakeTimers();
+    mount();
+    send("1-0", goal());
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("data-takeover", "goal");
+    expect(dialog).toHaveTextContent("GOAL");
+    expect(dialog).toHaveTextContent("+1 poin");
+    expect(screen.getAllByTestId("champion-confetti").length).toBeGreaterThan(
+      20,
+    );
+    expect(screen.getByTestId("champion-shake")).toBeInTheDocument();
+    act(() => void vi.advanceTimersByTime(8500));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    act(() => void vi.advanceTimersByTime(1000));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("bomb takeover: BOM +3, no client identity, shockwave, 9 s", () => {
+    vi.useFakeTimers();
+    mount();
+    send("1-0", goal({ kind: "bomb", points: 3, activations: 15 }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("data-takeover", "bomb");
+    expect(dialog).toHaveTextContent("BOM!");
+    expect(dialog).toHaveTextContent("+3 poin");
+    expect(dialog).toHaveTextContent("Dokumen pertama klien untuk Contender");
+    expect(screen.getByRole("status")).toHaveTextContent("BOM!");
+    expect(screen.getAllByTestId("champion-shockwave").length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryByTestId("champion-confetti")).not.toBeInTheDocument();
+    act(() => void vi.advanceTimersByTime(8500));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    act(() => void vi.advanceTimersByTime(1000));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["unanswered_request", -2, "Permintaan klien belum dijawab > 3 jam kerja"],
+    ["unreviewed_document", -1, "Dokumen belum ditinjau > 1 hari kerja"],
+  ])("penalty %s: disappointment, reason line, 6 s", (reason, points, line) => {
+    vi.useFakeTimers();
+    mount();
+    send("1-0", goal({ kind: "penalty", points, reason, activations: 0 }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("data-takeover", "penalty");
+    expect(dialog).toHaveTextContent("Aduh");
+    expect(dialog).toHaveTextContent(`\u2212${Math.abs(points)} poin`);
+    expect(dialog).toHaveTextContent("Contender");
+    expect(dialog).toHaveTextContent(line);
+    expect(screen.queryByTestId("champion-confetti")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Aduh");
+    act(() => void vi.advanceTimersByTime(5500));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    act(() => void vi.advanceTimersByTime(1000));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("penalty dismisses with Escape and keeps a focusable close button", () => {
+    mount();
+    send(
+      "1-0",
+      goal({
+        kind: "penalty",
+        points: -2,
+        reason: "unanswered_request",
+        activations: -1,
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Tutup selebrasi" }),
+    ).toHaveFocus();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("reduced motion: text emphasis only, no confetti/shake/shockwave", () => {
+    motion.reduced = true;
+    mount();
+    send("1-0", goal());
+    expect(screen.getByRole("dialog")).toHaveTextContent("GOAL");
+    expect(screen.queryByTestId("champion-confetti")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("champion-shake")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tutup selebrasi" }));
+    send("2-0", goal({ kind: "bomb", points: 3 }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("BOM!");
+    expect(screen.queryByTestId("champion-shockwave")).not.toBeInTheDocument();
   });
 });

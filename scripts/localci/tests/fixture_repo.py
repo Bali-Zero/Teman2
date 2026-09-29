@@ -13,6 +13,13 @@ sys.path.insert(0, str(REAL_REPO))
 from scripts.localci import release_stub, runner  # noqa: E402
 
 PY = sys.executable
+ISOLATION_IMAGE = os.environ.get("LOCALCI_ISOLATION_IMAGE", runner.DEFAULT_ISOLATION_IMAGE)
+
+
+def docker_image_ready() -> bool:
+    import shutil
+    d = shutil.which("docker")
+    return bool(d) and subprocess.run([d, "image", "inspect", ISOLATION_IMAGE], capture_output=True).returncode == 0
 GIT_ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
 BASE_FILES = {
     "scripts/check_ban_predicates.py": "GUARDED = True\n",
@@ -67,7 +74,8 @@ def pytest_check(name: str, repo: Path, modules: list[str]) -> str:
 
 
 def plan(fx: dict, *extra: str, seat: str = "builder-a") -> None:
-    runner.main(["plan", "--run-dir", str(fx["run"]), "--worktree", str(fx["repo"]), "--base", fx["base"], "--python", PY, "--builder-seat", seat, *extra])
+    iso = [] if "--isolation" in extra else ["--isolation", "none"]   # host-portable unit tests; the contained path is test_isolation.py's
+    runner.main(["plan", "--run-dir", str(fx["run"]), "--worktree", str(fx["repo"]), "--base", fx["base"], "--python", PY, "--builder-seat", seat, *iso, *extra])
 
 
 def run(fx: dict, *args: str) -> None:
@@ -144,3 +152,15 @@ class FakeEnv:
 
 def stub_propose(fx: dict, request: str, digest: str | None = None) -> dict:
     return release_stub.propose(fx["run"], request, fx["candidate"], digest)
+
+
+def crafted_commit(repo: Path, entry_name: str = "..", under: str = "") -> str:
+    """A commit whose tree carries a blob entry named `entry_name` (git itself refuses to build one with add/mktree), optionally under
+    a directory path — what a hostile object store could hand `git ls-tree`."""
+    def run(args: list[str], data: bytes | None = None) -> str:
+        return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, input=data, env=GIT_ENV).stdout.decode().strip()
+    blob = run(["hash-object", "-w", "--stdin"], b"escaped\n")
+    tree = run(["hash-object", "-t", "tree", "-w", "--literally", "--stdin"], b"100644 " + entry_name.encode() + b"\0" + bytes.fromhex(blob))
+    for part in reversed([p for p in under.split("/") if p]):
+        tree = run(["mktree"], f"040000 tree {tree}\t{part}\n".encode())
+    return run(["commit-tree", tree, "-m", "crafted"])

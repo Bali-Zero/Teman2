@@ -906,6 +906,161 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     expect(screen.queryByTestId("podium-tier-1")).not.toBeInTheDocument();
   });
 
+  it("shows each prize slot's minimum score, from the payload when present", () => {
+    mockQuery(
+      round2Response({
+        rank_prizes: [
+          { rank: 1, prize_idr: 6_000_000, min_points: 111 },
+          { rank: 2, prize_idr: 3_500_000, min_points: 80 },
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    expect(screen.getByTestId("rank-prize-1").textContent).toContain(
+      "min 111 poin",
+    );
+    expect(screen.getByTestId("rank-prize-2").textContent).toContain(
+      "min 80 poin",
+    );
+  });
+
+  it("falls back to the ruled minimums when min_points is absent", () => {
+    mockQuery(round2Response());
+    render(<PortalChallengeWidget identity="fixture" />);
+    const mins = [100, 80, 60, 30, 20];
+    mins.forEach((m, i) => {
+      expect(screen.getByTestId(`rank-prize-${i + 1}`).textContent).toContain(
+        `min ${m} poin`,
+      );
+    });
+  });
+
+  it("assigns prize-list holders by prize_slot when the payload carries it", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "adit",
+            display_name: "Adit",
+            rank: 1,
+            points: 23,
+            prize_slot: 5,
+            prize_idr: 700_000,
+            total_prize_idr: 700_000,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "z",
+            display_name: "Zed",
+            rank: 2,
+            points: 10,
+            prize_slot: null,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const first = screen.getByTestId("rank-prize-1");
+    expect(first.textContent).toContain("Belum ada");
+    expect(first.textContent).not.toContain("Adit");
+    const fifth = screen.getByTestId("rank-prize-5");
+    expect(fifth.textContent).toContain("Adit");
+    expect(fifth.textContent).not.toContain("Zed");
+    expect(screen.getByTestId("rank-prize-2").textContent).not.toContain("Zed");
+  });
+
+  it("falls back to rank matching when no entry carries prize_slot", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "adit",
+            display_name: "Adit",
+            rank: 1,
+            points: 23,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    expect(screen.getByTestId("rank-prize-1").textContent).toContain("Adit");
+  });
+
+  it("notes the prize slot when it differs from the rank", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "a",
+            display_name: "Anna",
+            rank: 1,
+            points: 85,
+            prize_slot: 2,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "b",
+            display_name: "Budi",
+            rank: 2,
+            points: 70,
+            prize_slot: 2,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const ranking = screen.getByTestId("champion-ranking");
+    expect(ranking.textContent).toContain("hadiah posisi 2");
+    expect(ranking.textContent?.match(/hadiah posisi/g)).toHaveLength(1);
+  });
+
+  it("tells an ineligible September prize-taker which rank they need", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "s",
+            display_name: "Surya",
+            rank: 3,
+            points: 65,
+            september_rank: 1,
+            prize_slot: null,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "k",
+            display_name: "Krisna",
+            rank: 1,
+            points: 120,
+            september_rank: 2,
+            prize_slot: 1,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const ranking = screen.getByTestId("champion-ranking");
+    expect(ranking.textContent).toContain("perlu posisi ≤ 1");
+    expect(ranking.textContent).not.toContain("perlu posisi ≤ 2");
+  });
+
+  it("explains thresholds, slide-down and the prize-taker rule in the rules drawer", () => {
+    mockQuery(round2Response());
+    render(<PortalChallengeWidget identity="fixture" />);
+    fireEvent.click(screen.getByRole("button", { name: /aturan/i }));
+    const dialog = screen.getByRole("dialog");
+    const t = (dialog.textContent ?? "").replace(/\s+/g, " ");
+    expect(t).toContain("minimal 100 poin");
+    expect(t).toContain("80");
+    expect(t).toContain("turun ke posisi hadiah yang bisa dicapai");
+    expect(t).toMatch(/pemenang hadiah September/i);
+    expect(t).not.toContain("(5 posisi)");
+  });
+
   it("shows the round 2 breakdown chips and the September-prize note", () => {
     mockQuery(
       round2Response({
@@ -942,7 +1097,7 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     expect(card.textContent).toContain("dokumen belum ditinjau");
   });
 
-  it("ranking rows show points and a compact registrations/documents/penalty breakdown", () => {
+  it("ranking rows itemise every scoring component so the row adds up to the total", () => {
     mockQuery(
       round2Response({
         entries: [
@@ -950,21 +1105,82 @@ describe("Round 2 «Lascia o raddoppia»", () => {
             member: "a",
             display_name: "A",
             rank: 1,
-            points: 30,
+            points: 23 + 4 + 6 - 5,
+            carry_points: 23,
+            september_choice: "carry",
             registrations: 4,
             document_bonuses: 2,
-            penalty_points: 1,
+            unanswered_requests: 2,
+            unreviewed_documents: 1,
+            penalty_points: 5,
             last_event_at: "2026-10-01T00:00:00Z",
           }),
         ],
       }),
     );
     render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const row = screen.getByTestId("champion-breakdown-a");
+    const t = row.textContent ?? "";
+    // order: carry, reg, dok (3 per bonus), requests (2 each), docs (1 each)
+    const order = ["+23", "+4 reg", "+6 dok", "−4", "−1"].map((x) =>
+      t.indexOf(x),
+    );
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((x, y) => x - y)).toEqual(order);
+    expect(t).toContain("Sep");
+    expect(t).toContain("permintaan");
+    expect(t).toContain("dokumen");
     const ranking = screen.getByTestId("champion-ranking");
-    expect(within(ranking).getByText("30")).toBeInTheDocument();
-    // document_bonuses is a COUNT (2); the chip shows its POINT
-    // contribution (3 per bonus = 6), not the raw count.
-    expect(ranking.textContent).toContain("+4 reg · +6 dok · −1");
+    expect(within(ranking).getByText("28")).toBeInTheDocument();
+  });
+
+  it("a September prize-taker row shows 0 carry with the prize marker", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "s",
+            display_name: "Surya",
+            rank: 2,
+            points: 3,
+            carry_points: 0,
+            september_choice: "prize",
+            registrations: 0,
+            document_bonuses: 1,
+            unanswered_requests: 0,
+            unreviewed_documents: 0,
+            penalty_points: 0,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const t = screen.getByTestId("champion-breakdown-s").textContent ?? "";
+    expect(t).toContain("Sep 0");
+    expect(t).toContain("hadiah diambil");
+    expect(t).toContain("+3 dok");
+  });
+
+  it("round 2 lists every entry with no top-5 collapse", () => {
+    mockQuery(
+      round2Response({
+        entries: Array.from({ length: 6 }, (_, i) =>
+          entry({
+            member: `m${i}`,
+            display_name: `Member${i}`,
+            rank: i + 1,
+            points: 10 - i,
+            september_choice: "carry",
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ),
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const ranking = within(screen.getByTestId("champion-ranking"));
+    expect(ranking.getByText("Member5")).toBeInTheDocument();
+    expect(ranking.queryByText("Lihat semua")).toBeNull();
   });
 
   it("shows a '–' rank in the ranking list for a member with no R2 event", () => {

@@ -15,7 +15,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 CAMPAIGN_ID = "oracle-team-20260928"
 PLAN_VERSION = "1"
 SLOTS = tuple(f"T{i:02d}" for i in range(1, 7))
-DAYS = tuple((date(2026, 9, 28) + timedelta(days=i)).isoformat() for i in range(5))
+# Owner reschedule 2026-09-30: three mornings from 30 September, themes of days 1–3.
+DAYS = tuple((date(2026, 9, 30) + timedelta(days=i)).isoformat() for i in range(3))
 COUNTRIES = ("IT", "AU", "US", "GB", "DE", "FR")
 
 
@@ -349,10 +350,24 @@ class SlotPayload(StrictPayload):
     reviewer: bool = False
 
 
-def authorize_record(actor: str, owner: str, *, review: bool = False) -> None:
-    if (actor == owner) if review else (actor != owner):
+def authorize_record(
+    actor: str, owner: str, *, review: bool = False, override: bool = False
+) -> None:
+    """Writes and self-review both require the actor to own the record.
+
+    Self-review is intentional: the tester who ran the case is also the one who reviews
+    it (owner decision, 2026-09-30) — cross-member review is not wanted. ``override``
+    lets the site admin (``can_configure``) review any record regardless of ownership,
+    unchanged from before.
+    """
+    if override:
+        return
+    if actor != owner:
         raise HTTPException(
-            403, "Cannot review own test" if review else "Assignment belongs to another tester"
+            403,
+            "Only the tester who ran this test may review it"
+            if review
+            else "Assignment belongs to another tester",
         )
 
 

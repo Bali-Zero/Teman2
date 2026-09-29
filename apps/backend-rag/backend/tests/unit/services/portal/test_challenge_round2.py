@@ -171,11 +171,19 @@ def _roster_row(email: str, display_name: str, department: str = "setup") -> dic
     }
 
 
+def _synthetic_participants(n: int) -> frozenset[str]:
+    """Widen the six-player set for tests that need more than six ranked rows."""
+    return frozenset(f"m{i}@balizero.com" for i in range(n))
+
+
 ROSTER_ROWS = [
     _roster_row("surya@balizero.com", "Surya"),
     _roster_row("ari.firda@balizero.com", "Ari Firda"),
     _roster_row("krisna@balizero.com", "Krisna"),
     _roster_row("adit@balizero.com", "Adit"),
+    _roster_row("vino@balizero.com", "Vino"),
+    _roster_row("damar@balizero.com", "Damar"),
+    _roster_row("outsider@balizero.com", "Outsider"),
     _roster_row("asya@balizero.com", "Asya Nadia", department="accounting"),
 ]
 
@@ -556,8 +564,9 @@ class TestRankingAndPrizes:
         assert by_member["ari.firda"].rank == by_member["krisna"].rank
         assert by_member["ari.firda"].prize_idr == by_member["krisna"].prize_idr
 
-    def test_zero_prize_beyond_the_fifth_rank_row(self):
+    def test_zero_prize_beyond_the_fifth_rank_row(self, monkeypatch):
         roster_rows = [_roster_row(f"m{i}@balizero.com", f"M{i}") for i in range(7)]
+        monkeypatch.setattr(r2, "ROUND2_PARTICIPANTS", _synthetic_participants(7))
         registration_rows = [
             {
                 "creator_email": f"m{i}@balizero.com",
@@ -572,10 +581,11 @@ class TestRankingAndPrizes:
         assert by_rank[6].prize_idr == 0
         assert by_rank[5].prize_idr == r2.RANK_PRIZES_IDR[5]
 
-    def test_a_zero_point_tie_at_rank_five_earns_no_prize(self):
+    def test_a_zero_point_tie_at_rank_five_earns_no_prize(self, monkeypatch):
         """A rank prize requires points > 0 — landing on a prize-bearing
         rank by tying everyone else at zero is not "winning" it."""
         roster_rows = [_roster_row(f"m{i}@balizero.com", f"M{i}") for i in range(6)]
+        monkeypatch.setattr(r2, "ROUND2_PARTICIPANTS", _synthetic_participants(6))
         # m0-m3 get distinct positive points (ranks 1-4); m4/m5 register
         # nothing and tie at 0 points, landing together on rank 5.
         registration_rows = [
@@ -594,8 +604,9 @@ class TestRankingAndPrizes:
         assert all(e.prize_idr == 0 for e in rank_five)
         assert all(e.total_prize_idr == 0 for e in rank_five)
 
-    def test_a_one_point_member_at_rank_five_still_earns_the_prize(self):
+    def test_a_one_point_member_at_rank_five_still_earns_the_prize(self, monkeypatch):
         roster_rows = [_roster_row(f"m{i}@balizero.com", f"M{i}") for i in range(5)]
+        monkeypatch.setattr(r2, "ROUND2_PARTICIPANTS", _synthetic_participants(5))
         registration_rows = [
             {
                 "creator_email": f"m{i}@balizero.com",
@@ -611,6 +622,66 @@ class TestRankingAndPrizes:
         assert by_rank[5].prize_idr == r2.RANK_PRIZES_IDR[5]
         assert by_rank[5].total_prize_idr == r2.RANK_PRIZES_IDR[5]
 
+
+# ── six-player ruling (2026-09-29) ───────────────────────────────────────────
+
+SIX = {
+    "ari.firda@balizero.com",
+    "surya@balizero.com",
+    "krisna@balizero.com",
+    "adit@balizero.com",
+    "vino@balizero.com",
+    "damar@balizero.com",
+}
+
+
+class TestSixParticipantsOnly:
+    def test_participant_set_is_exactly_the_six(self):
+        assert r2.ROUND2_PARTICIPANTS == SIX
+
+    def test_non_participant_is_absent_even_with_registrations_and_bonuses(self):
+        snapshot = _score(
+            r1_awarded=[_r1_entry("outsider@balizero.com", 40)],
+            registration_rows=[
+                {
+                    "creator_email": "outsider@balizero.com",
+                    "activations": 9,
+                    "invited": 9,
+                    "last_activation_at": NOW,
+                }
+            ],
+            first_document_rows=[
+                {
+                    "practice_id": 1,
+                    "client_id": 1,
+                    "first_doc_at": NOW,
+                    "practice_assignee": "outsider@balizero.com",
+                    "client_assignee": None,
+                }
+            ],
+        )
+        assert "outsider" not in {e.member for e in snapshot.entries}
+        assert {e.email for e in snapshot.entries} == SIX
+        assert snapshot.team_total_points == 0
+        assert snapshot.recent_events == []
+
+    def test_ranks_prizes_and_team_total_are_among_the_six_only(self):
+        snapshot = _score(
+            registration_rows=[
+                {"creator_email": "outsider@balizero.com", "activations": 50,
+                 "invited": 50, "last_activation_at": NOW},
+                {"creator_email": "adit@balizero.com", "activations": 3,
+                 "invited": 3, "last_activation_at": NOW},
+                {"creator_email": "vino@balizero.com", "activations": 2,
+                 "invited": 2, "last_activation_at": NOW},
+            ],
+        )
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["adit"].rank == 1
+        assert by_member["adit"].prize_idr == r2.RANK_PRIZES_IDR[1]
+        assert by_member["vino"].rank == 2
+        assert by_member["damar"].points == 0  # a zero-point participant still appears
+        assert snapshot.team_total_points == 5
 
 # ── Asya mission ─────────────────────────────────────────────────────────────
 

@@ -94,7 +94,9 @@ CREATE TABLE whatsapp_message_context (
     direction    TEXT,
     body         TEXT,
     message_text TEXT,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    client_id    BIGINT,
+    team_member_email TEXT
 )
 """
 
