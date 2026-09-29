@@ -110,6 +110,19 @@ GUILT = {
     'N12_alias_then_code_swap': 'def test_guard():\n    assert False\n_f = test_guard\n_f.__code__ = (lambda: None).__code__\n',
     'N18_module_dict_update': 'import sys as _sys\ndef test_guard():\n    assert False\n_sys.modules[__name__].__dict__.update(test_guard=lambda: None)\n',
     'N14_helper_code_swap': 'def _neuter(f):\n    f.__code__ = (lambda: None).__code__\ndef test_guard():\n    assert False\n_neuter(test_guard)\n',
+    'M1_test_def_under_if': 'if True:\n    def test_x():\n        pass\n',
+    'M1_test_def_under_try': 'try:\n    def test_x():\n        pass\nexcept Exception:\n    pass\n',
+    'M1b_test_class_under_with': "with open('f') as fh:\n    class TestC:\n        pass\n",
+    'M2_duplicate_def': 'def helper():\n    pass\ndef helper():\n    pass\n',
+    'M2_duplicate_class': 'class Helper:\n    pass\nclass Helper:\n    pass\n',
+    'M3_fixture_rebound': 'fixture = len\n',
+    'M6_setattr_statement': "setattr(object, 'a', 1)\n",
+    'M6_locals_update_statement': 'locals().update(a=1)\n',
+    'M6_vars_update_statement': 'vars().update(a=1)\n',
+    'M6_exec_statement': "exec('a = 1')\n",
+    'M6_eval_statement': "eval('1')\n",
+    'M6_dunder_import_statement': "__import__('os')\n",
+    'M6_register_statement': 'register(len)\n',
     "inherited_test_base": """
         class _Base:
             def test_inh(self):
@@ -287,4 +300,7 @@ def test_declared_gap_unwalked_class_bodies_are_not_refused():
     non_test_class = 'def test_guard():\n    assert False\nclass Helper:\n    globals()["test_guard"] = lambda: None\n    x = test_guard\n'
     test_class_with_init = 'class TestC:\n    def __init__(self):\n        pass\n    def test_guard(self):\n        assert False\n    globals()["test_guard"] = lambda self: None\n'
     for src in (non_test_class, test_class_with_init):
-        assert presence.scan_source("m", src)[1] == []
+        assert presence.scan_source("m", src)[1] == [], (
+            "declared gap closed? update NOT DEFENDED in check-wa-attention-pii.yml and the docstring of "
+            "scripts/wa_attention_presence.py, then delete this test"
+        )

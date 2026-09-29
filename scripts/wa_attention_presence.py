@@ -2,19 +2,13 @@
 """Presence check for the wa-mirror attention PII corpus (check-wa-attention-pii.yml).
 
 Every test DEFINED in scripts/tests/test_wa_attention_*.py, found by AST, must appear in the
-pytest junit report as run and unskipped. The constructs enumerated in the workflow comment are
-refused (RED), not guessed. That list is the extent of what is caught, not a proof that every
-definition executed.
+pytest junit report as run and unskipped.
 
-Scope: the walk (`walk`, `flow_problems`) enters the module top level, including control-flow
-blocks, and the bodies of Test*-named classes without __init__ reached from it. The
-assignment-target, load-of-a-test-name, import-binding, rebinding, duplicate-definition,
-base-class, decorator and reflection-call refusals apply in that walked scope. `hook_problems`
-is a separate scan: introspection attributes, `.register`, `.pluginmanager` and `.obj`/`.runtest`
-assignment at any depth of a file, hook names at its module top level. Not walked, hence not
-defended: other class bodies, function bodies outside control-flow blocks, and reaching
-`__code__` without spelling the attribute. Anything not enumerated is not defended; deliberate
-reflection is outside this tripwire's threat model.
+What this module refuses is exactly the cases in the GUILT and HOOK_GUILT tables of
+scripts/tests/test_wa_attention_presence_walk.py, each RED-tested. It is deliberately not
+re-enumerated here. What is NOT defended (the named residuals, X1 onwards) is listed in one place
+only: the comment in .github/workflows/check-wa-attention-pii.yml. Anything not in those tables
+is not defended; deliberate reflection is outside this tripwire's threat model.
 """
 from __future__ import annotations
 
