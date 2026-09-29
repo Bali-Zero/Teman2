@@ -354,6 +354,68 @@ def test_hook_subprocess_malformed_stdin_is_silent():
     assert p.returncode == 0 and p.stdout.strip() == ""
 
 
+def _fake_venv_script(tmp: pathlib.Path) -> pathlib.Path:
+    script = tmp / "fake_venv_python"
+    script.write_text(
+        "#!/bin/sh\n"
+        'echo "REEXEC_MARKER reexec_env=${JEV_DISPATCH_GATE_REEXEC:+SET} argc=$# arg1=$(basename "$1")"\n'
+        "exit 0\n"
+    )
+    script.chmod(0o755)
+    return script
+
+
+def test_reexec_guilt_execs_under_fake_venv_with_hook_path_as_arg1():
+    with tempfile.TemporaryDirectory() as tmp:
+        script = _fake_venv_script(pathlib.Path(tmp))
+        env = {**os.environ, "JEV_DISPATCH_GATE_FORCE_REEXEC_TEST": "1",
+               "JEV_DISPATCH_GATE_VENV_PYTHON": str(script)}
+        p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
+        assert p.returncode == 0
+        assert "REEXEC_MARKER reexec_env=SET" in p.stdout
+        assert "arg1=jev_dispatch_gate.py" in p.stdout
+
+
+def test_reexec_innocence_nonexistent_venv_python_fails_open():
+    env = {**os.environ, "JEV_DISPATCH_GATE_FORCE_REEXEC_TEST": "1",
+           "JEV_DISPATCH_GATE_VENV_PYTHON": "/nonexistent/python"}
+    p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
+    assert p.returncode == 0 and p.stdout == "" and p.stderr == ""
+
+
+def test_reexec_innocence_already_reexeced_never_loops():
+    with tempfile.TemporaryDirectory() as tmp:
+        script = _fake_venv_script(pathlib.Path(tmp))
+        env = {**os.environ, "JEV_DISPATCH_GATE_REEXEC": "1", "JEV_DISPATCH_GATE_FORCE_REEXEC_TEST": "1",
+               "JEV_DISPATCH_GATE_VENV_PYTHON": str(script)}
+        p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
+        assert p.returncode == 0 and "REEXEC_MARKER" not in p.stdout
+
+
+def test_reexec_innocence_importable_redactor_skips_reexec():
+    with tempfile.TemporaryDirectory() as tmp:
+        script = _fake_venv_script(pathlib.Path(tmp))
+        env = {**os.environ, "JEV_DISPATCH_GATE_VENV_PYTHON": str(script)}
+        env.pop("JEV_DISPATCH_GATE_FORCE_REEXEC_TEST", None)
+        p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
+        assert p.returncode == 0 and "REEXEC_MARKER" not in p.stdout
+
+
+def test_receipt_and_report_include_interpreter_path():
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {**os.environ, "JEV_DISPATCH_GATE_STATE": tmp,
+               "JEV_DISPATCH_GATE_FAKE_ANSWERS": json.dumps(_ans()), "JEV_DISPATCH_GATE": "enforce"}
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env)
+        assert p.returncode == 0
+        rows = [json.loads(x) for x in pathlib.Path(tmp, "receipts.jsonl").read_text().splitlines()]
+        assert rows[-1]["interpreter"] == "path"
+        rp = subprocess.run([sys.executable, str(HOOK), "--report"], capture_output=True, text=True, env=env)
+        assert rp.returncode == 0, rp.stdout + rp.stderr
+        assert json.loads(rp.stdout)["by_interpreter"] == {"path": 1}
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):
