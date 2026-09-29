@@ -86,26 +86,32 @@ dissent:
   - seat: codex-fe-review (independent adversarial reviewer)
     status: CONFIRMED
     objection: >-
-      minor · PortalChallengeWidget.test.tsx:1015 · OPEN, not cured. The
-      "shows the Asya mission card with progress and breakdown" test
-      asserts the display name, "13/60", the target-points sentence, and
-      the +15/-2 breakdown chips, but still does not assert the prize
-      amount (Rp 1.000.000), the `reached` boundary state, or a clamped
-      progress value below 0 / above target — exactly the gap the review
-      named. Not touched by 8ea81055b5 (its diff only rewrites the
-      rank-prize and Math.max tests). Verified this session by reading the
-      current test body; no fix commit exists on this branch for it.
+      minor · PortalChallengeWidget.test.tsx:1015 · the "shows the Asya
+      mission card with progress and breakdown" test did not assert the
+      prize amount, the `reached` boundary state, or a clamped progress
+      value below 0 / above target. CURED in 87f6133335 ("test(kita): close
+      the Misi Asya and Hasil September evidence gaps"): the renamed test
+      now asserts the prize line ("Target 60 poin — hadiah Rp 1.000.000"),
+      plus three new dedicated cases — "Misi Asya is not reached at 59/60",
+      "is reached at 60/60, progress bar at exactly 100%", and "progress
+      bar stays capped at 100% when points exceed the target" — verified
+      this session by reading the current test bodies and by the full
+      vitest run (104 passed).
   - seat: codex-fe-review (independent adversarial reviewer)
     status: CONFIRMED
     objection: >-
-      minor · PortalChallengeWidget.test.tsx:1026 · OPEN, not cured. The
-      "shows the frozen September results with the choice label" test only
-      checks the rendered (collapsed section's) textContent for a name and
-      the "Ambil hadiah" string; it never toggles the `<details>`
-      disclosure open, and never asserts full ranking order, prize amounts,
-      or the "Bawa poin ke Oktober" (carry) choice label. Not touched by
-      8ea81055b5. Verified this session by reading the current test body;
-      no fix commit exists on this branch for it.
+      minor · PortalChallengeWidget.test.tsx:1026 · the "shows the frozen
+      September results with the choice label" test only checked the
+      collapsed section's textContent for a name and "Ambil hadiah",
+      never toggling the disclosure or asserting ranking order, prize
+      amounts, or the "Bawa poin ke Oktober" (carry) label. CURED in
+      87f6133335: the renamed test "Hasil September discloses the frozen
+      ranking, prize per row, and both choice labels" now clicks the
+      `<details>` summary and asserts `details.open` flips true, the
+      #1/#2/#3 name order, all three prize amounts, and both choice labels
+      appearing (2× "Ambil hadiah", 1× "Bawa poin ke Oktober") — verified
+      this session by reading the current test body and by the full
+      vitest run (104 passed).
 lanes:
   - lane: build
     role: build
@@ -113,32 +119,48 @@ lanes:
     note: >-
       Implementer (fe-round2): ChampionArena.tsx / PortalChallengeWidget.tsx
       Round 2 rendering, the dashboard.api.ts type additions, the new/
-      updated vitest coverage, and the three fix commits that cured 7 of
-      the 9 codex-fe-review findings (42b6be7196, fd8ff31a47, 8ea81055b5) —
-      all landed on this branch during this pack's own authoring session.
+      updated vitest coverage, and the four fix commits that cured all 9
+      codex-fe-review findings (42b6be7196, fd8ff31a47, 8ea81055b5,
+      87f6133335) — all landed on this branch during this pack's own
+      authoring session.
   - lane: review
     role: review
     seat: codex
     note: >-
       Independent adversarial review of the Round 2 rendering logic,
       dispatched as codex-fe-review; verdict FIX-FIRST with 3 major + 6
-      minor findings. 7 of 9 cured on this branch (see dissent); 2 minor
-      test-coverage gaps remain OPEN.
+      minor findings. All 9 cured on this branch (see dissent).
 receipts:
   - claim: >-
-      Dashboard vitest suite: 7 test files, 101 tests pass (Round 1
-      rendering byte-for-byte unchanged plus the Round 2 cases, including
-      the two new/rewritten review-fix tests).
+      Dashboard vitest suite: 7 test files, 104 tests pass (Round 1
+      rendering byte-for-byte unchanged plus the full Round 2 case set,
+      including the Misi Asya prize/reached/clamp cases and the Hasil
+      September disclosure-toggle case added in 87f6133335).
     cmd: >-
       cd apps/mouth && ../../node_modules/.bin/vitest run
       "src/app/(workspace)/dashboard"
     exit: 0
-    ts: "2026-09-29T05:40:25Z"
+    ts: "2026-09-29T05:47:07Z"
     seat: claude-sonnet-5
-  - claim: tsc --noEmit reports zero errors on the worktree.
+  - claim: tsc --noEmit reports zero errors on the worktree after 87f6133335.
     cmd: cd apps/mouth && ../../node_modules/.bin/tsc --noEmit -p .
     exit: 0
-    ts: "2026-09-29T05:40:40Z"
+    ts: "2026-09-29T05:47:20Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The renamed Asya test asserts the prize line, and three new tests
+      cover the 59/60 not-reached case, the 60/60 reached-at-exactly-100%
+      case, and the above-target clamp; the renamed September test clicks
+      the `<details>` summary, asserts it opens, and asserts the #1/#2/#3
+      name order, all three prize amounts, and both choice labels — closing
+      the two minor findings left open in this pack's prior commit
+      (d77e9aafdd).
+    cmd: >-
+      sed -n '/shows the Asya mission card/,/^  });/p;
+      /Hasil September discloses/,/^  });/p'
+      "apps/mouth/src/app/(workspace)/dashboard/PortalChallengeWidget.test.tsx"
+    exit: 0
+    ts: "2026-09-29T05:46:00Z"
     seat: claude-sonnet-5
   - claim: >-
       eslint reports zero errors and zero warnings on the three changed
