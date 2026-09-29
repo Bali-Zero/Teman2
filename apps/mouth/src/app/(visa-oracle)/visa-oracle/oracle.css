@@ -416,162 +416,6 @@ html[data-oracle-theme-bootstrap="dark"]
   border-radius: var(--radius-sm);
 }
 
-/* ─── Living tree ───────────────────────────────────────────────────────── */
-.oracle-tree {
-  border: 1px solid var(--oracle-border);
-  border-radius: var(--oracle-radius-card);
-  background: var(--oracle-bg-elevated);
-  padding: var(--space-4);
-}
-.oracle-tree__trunk {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.oracle-tree__step {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--oracle-ink-faint);
-  border-left: 2px solid var(--oracle-leaf-pending);
-  padding-left: var(--space-3);
-  transition:
-    color var(--motion-duration-standard) var(--motion-ease-standard),
-    border-color var(--motion-duration-standard) var(--motion-ease-standard);
-}
-.oracle-tree__step[data-status="done"] {
-  color: var(--oracle-ink-muted);
-  border-left-color: var(--oracle-canopy);
-}
-.oracle-tree__step[data-status="current"] {
-  color: var(--oracle-ink);
-  font-weight: 600;
-  border-left-color: var(--oracle-leaf-active);
-}
-.oracle-tree__dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
-}
-.oracle-tree__step[data-status="current"] .oracle-tree__dot {
-  animation: oracle-breathe 3.2s var(--motion-ease-standard) infinite;
-}
-
-/* Tap-to-edit (design doc §3 interaction #6) — completed trunk steps only,
-   rendered as real `<button>`s (LivingTree.tsx `isEditableTreeStep`). Reset
-   button chrome, keep the same status-driven colors as the decorative
-   `<div>` variant above (selectors match by class+attribute, not tag), add
-   an explicit hover/pressed affordance and a touch-sized target. Visible
-   focus comes for free from the global `:focus-visible` rule below. */
-button.oracle-tree__step--editable {
-  appearance: none;
-  background: none;
-  border: none;
-  border-left: 2px solid var(--oracle-leaf-pending);
-  padding-left: var(--space-3);
-  font: inherit;
-  text-align: left;
-  width: 100%;
-  min-height: 44px;
-  cursor: pointer;
-}
-button.oracle-tree__step--editable:hover {
-  color: var(--oracle-ink);
-  background: color-mix(in srgb, var(--oracle-canopy) 8%, transparent);
-}
-
-.oracle-tree__leaves {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px dashed var(--oracle-border);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.oracle-tree__leaf {
-  font-size: var(--text-xs);
-  padding: 0.3rem 0.6rem;
-  border-radius: var(--oracle-radius-chip);
-  border: 1px solid var(--oracle-border);
-  color: var(--oracle-ink-faint);
-  background: transparent;
-}
-.oracle-tree__leaf[data-status="done"] {
-  color: var(--oracle-bg-elevated);
-  background: var(--oracle-leaf-active);
-  border-color: var(--oracle-leaf-active);
-  font-weight: 600;
-}
-.oracle-tree__leaf[data-status="pending"] {
-  color: var(--oracle-ink-faint);
-}
-
-/* Minimap trigger — mobile only (collapsible top minimap, spec item 33). */
-.oracle-tree-minimap-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--oracle-border);
-  background: var(--oracle-bg-elevated);
-  color: var(--oracle-ink-muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  width: 100%;
-  justify-content: space-between;
-  cursor: pointer;
-}
-/*
- * Finding #10 (adversarial review 2026-07-17): the base `.oracle-tree--desktop
- * { display: none; }` rule previously sat AFTER the `@media (min-width:
- * 1024px)` block below — equal specificity, later source order always
- * wins regardless of which one is inside a media query, so the desktop
- * tree stayed hidden on every viewport, including desktop. Moving the
- * base rule BEFORE the media query (source order now: base → override)
- * restores the intended cascade: hidden by default, shown once the
- * `min-width: 1024px` query's `display: block` is the LAST matching rule.
- * The redundant `@media (max-width: 1023.98px)` block that used to follow
- * this is deleted — the base rule above already covers every viewport
- * narrower than the desktop breakpoint; a second rule saying the same
- * thing with `!important` was never load-bearing, it just looked like it
- * was doing the job the base rule's position was failing to do.
- */
-.oracle-tree--desktop {
-  display: none;
-}
-@media (min-width: 1024px) {
-  .oracle-tree-minimap-trigger {
-    display: none;
-  }
-  .oracle-tree--desktop {
-    display: block;
-  }
-}
-
-@keyframes oracle-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.6);
-    opacity: 0.6;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .oracle-tree__step[data-status="current"] .oracle-tree__dot {
-    animation: none;
-  }
-}
-
 /* Screen-reader-only path description — non-visual tree equivalent. */
 .oracle-sr-only {
   position: absolute;
@@ -583,67 +427,6 @@ button.oracle-tree__step--editable:hover {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-/* Visible branch breadcrumb — compact on mobile, editable where the reducer
-   can safely prune descendants. This is interview progress, never a list of
-   engine-supported visa paths. */
-.oracle-breadcrumb {
-  margin-bottom: var(--space-3);
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-.oracle-breadcrumb ol {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: max-content;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--oracle-ink-faint);
-  font-size: var(--text-xs);
-}
-.oracle-breadcrumb li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.oracle-breadcrumb li:not(:last-child)::after {
-  content: "/";
-  color: var(--oracle-border-strong);
-}
-.oracle-breadcrumb button {
-  min-height: 44px;
-  padding: 0 var(--space-1);
-  border: 0;
-  background: transparent;
-  color: var(--oracle-ink-muted);
-  font: inherit;
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
-  cursor: pointer;
-}
-.oracle-breadcrumb [aria-current="step"] {
-  color: var(--oracle-ink);
-  font-weight: 700;
-}
-.oracle-breadcrumb__ellipsis {
-  min-height: 44px;
-}
-
-/* ─── Paths counter ─────────────────────────────────────────────────────── */
-.oracle-paths-counter {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--oracle-ink-muted);
-}
-.oracle-paths-counter strong {
-  font-size: var(--text-lg);
-  color: var(--oracle-ink);
 }
 
 /* ─── Question screen ───────────────────────────────────────────────────── */
@@ -1641,33 +1424,6 @@ button.oracle-tree__step--editable:hover {
   }
 }
 
-/* C2-1 branch previews stay subordinate to their route chip. */
-.oracle-process-branch {
-  min-width: 0;
-}
-.oracle-process-branch > ul {
-  margin: var(--space-1) 0 0;
-  padding-left: var(--space-3);
-  color: var(--oracle-ink-faint);
-  font-size: var(--text-xs);
-  line-height: 1.35;
-}
-button.oracle-tree__leaf {
-  cursor: pointer;
-  font: inherit;
-  /* PR #7081 E2E red 2: `.oracle-tree__leaf`'s base `background: transparent`
-     let axe's color-contrast check read `--oracle-ink-faint` (#5b6a60)
-     against `--oracle-canopy`/`--oracle-leaf-active` (#1f4d3d, 1.68:1) —
-     the adjacent "done" chip's opaque background, visible through this
-     button's own transparency while a Framer-Motion `layout` reflow was
-     still settling as the verdict view replaced the question view. An
-     opaque own background makes the pair's contrast independent of
-     whatever paints behind it in any animation frame: `--oracle-ink-faint`
-     on `--oracle-bg-elevated` is the AA pairing already measured at
-     :51/:85 (~5.7:1 light, ~5.68:1 dark) — no new token declared. */
-  background: var(--oracle-bg-elevated);
-}
-
 .oracle-whyweask--inline {
   width: 100%;
 }
@@ -1695,11 +1451,12 @@ button.oracle-tree__leaf {
 .oracle-root.oracle-atlas[data-oracle-theme="light"] {
   --oracle-bg: #f7f4ee;
   /* NOT the "bg elevated" custom property (BUILD-SPEC §7 asks for #fffaf4
-     here): an existing anti-regression fence (ProcessRail.test.tsx's
-     `themeBlocks`, PR #7081 E2E red 2) anchors on how many times that
-     custom property is declared in this file and pins the count at exactly
-     4 — invariant §0.3 (never edit/break an existing test) outranks this
-     one repaint. The default theme's near-white/near-black value (#ffffff
+     here): an anti-regression fence (`oracle-state-tokens.test.ts`'s
+     pinned theme-block anchors, PR #7081 E2E red 2) anchors on how many
+     times that custom property is declared in this file and pins the count
+     at exactly 4 — invariant §0.3 (never edit/break an existing test)
+     outranks this one repaint. The default theme's near-white/near-black
+     value (#ffffff
      light, #131c17 dark) is close enough to the atlas paper tone that every
      consumer of that token (option cards, form controls, the badge, tiles,
      the verdict card…) still reads correctly against it. */

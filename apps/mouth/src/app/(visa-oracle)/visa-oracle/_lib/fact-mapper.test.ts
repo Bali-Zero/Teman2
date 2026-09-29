@@ -1969,7 +1969,7 @@ describe("mapOracleFactsToApplicantFacts — envelope shape (acceptance test 4)"
     expect(SCHEMA_VERSION).toBe("1.0.0");
   });
 
-  it("assessment_id round-trips whatever the caller (shadow-client.ts) generated", () => {
+  it("assessment_id round-trips whatever the caller (evaluation-identity-store.ts) generated", () => {
     const id = "9c858901-8a57-4791-81fe-4c455b099bc9";
     const result = mapOracleFactsToApplicantFacts(
       {},
