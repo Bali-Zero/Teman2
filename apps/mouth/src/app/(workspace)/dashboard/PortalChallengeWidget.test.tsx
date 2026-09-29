@@ -834,15 +834,74 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     expect(arena.getByText("poin tim")).toBeInTheDocument();
   });
 
-  it("renders the 5-row rank prize list instead of the tier podium", () => {
-    mockQuery(round2Response());
+  it("renders all five prizes in order, holder points, a tie, and never a 0-point winner", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "a",
+            display_name: "Adit",
+            rank: 1,
+            points: 30,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "b",
+            display_name: "Budi",
+            rank: 2,
+            points: 20,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "c",
+            display_name: "Citra",
+            rank: 2,
+            points: 20,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          // Shares rank 5 by dense-rank tie-break, but 0 points — the
+          // backend already ships prize_idr: 0 for it; it must never show
+          // as the rank-5 winner.
+          entry({
+            member: "d",
+            display_name: "Dedi",
+            rank: 5,
+            points: 0,
+            last_event_at: null,
+          }),
+        ],
+      }),
+    );
     render(<PortalChallengeWidget identity="fixture" />);
     expect(screen.getByTestId("rank-prize-list")).toBeInTheDocument();
-    expect(screen.getByTestId("rank-prize-1")).toBeInTheDocument();
-    expect(screen.getByTestId("rank-prize-5")).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId("rank-prize-1")).getByText("Adit"),
-    ).toBeInTheDocument();
+    // formatIDR's "Rp" separator is a non-breaking space — normalize before
+    // substring-matching raw textContent (unlike getByText, .textContent
+    // isn't whitespace-normalized).
+    const norm = (s: string | null) => (s ?? "").replace(/\s+/g, " ");
+    const rows = [1, 2, 3, 4, 5].map((rank) =>
+      screen.getByTestId(`rank-prize-${rank}`),
+    );
+    expect(norm(rows[0].textContent)).toContain("Rp 6.000.000");
+    expect(norm(rows[1].textContent)).toContain("Rp 3.500.000");
+    expect(norm(rows[2].textContent)).toContain("Rp 2.000.000");
+    expect(norm(rows[3].textContent)).toContain("Rp 1.000.000");
+    expect(norm(rows[4].textContent)).toContain("Rp 700.000");
+
+    expect(within(rows[0]).getByText("Adit")).toBeInTheDocument();
+    expect(rows[0].textContent).toContain("30 poin");
+
+    // Tied rank 2: both holders listed, shared prize, shared points.
+    expect(rows[1].textContent).toContain("Budi, Citra");
+    expect(rows[1].textContent).toContain("20 poin");
+
+    // Ranks 3/4 have no candidate at all.
+    expect(rows[2].textContent).toContain("Belum ada");
+    expect(rows[3].textContent).toContain("Belum ada");
+
+    // Rank 5's only candidate has 0 points — shown as vacant, not as Dedi.
+    expect(rows[4].textContent).toContain("Belum ada");
+    expect(rows[4].textContent).not.toContain("Dedi");
+
     expect(screen.queryByTestId("podium-tier-1")).not.toBeInTheDocument();
   });
 
@@ -902,7 +961,9 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     render(<PortalChallengeWidget identity="ari@balizero.com" />);
     const ranking = screen.getByTestId("champion-ranking");
     expect(within(ranking).getByText("30")).toBeInTheDocument();
-    expect(ranking.textContent).toContain("+4 reg · +2 dok · −1");
+    // document_bonuses is a COUNT (2); the chip shows its POINT
+    // contribution (3 per bonus = 6), not the raw count.
+    expect(ranking.textContent).toContain("+4 reg · +6 dok · −1");
   });
 
   it("shows a '–' rank in the ranking list for a member with no R2 event", () => {
@@ -980,10 +1041,21 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     expect(screen.queryByTestId("tax-strip")).not.toBeInTheDocument();
   });
 
-  it("never calls Math.max on an empty tiers array", () => {
+  it("round 2 with tiers: [] never renders the (round-1-only) tier scale", () => {
     mockQuery(round2Response({ tiers: [] }));
     expect(() =>
       render(<PortalChallengeWidget identity="ari@balizero.com" />),
     ).not.toThrow();
+  });
+
+  it("PositionScale guards Math.max on an empty tiers array with a sane 0-width bar (round 1)", () => {
+    // Round 1 is the path that actually calls PositionScale — an empty
+    // tiers array here used to feed Math.max(...[]) === -Infinity.
+    mockQuery(response({ tiers: [], entries: [entry({ is_me: true })] }));
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const card = within(screen.getByTestId("my-position-card"));
+    const bar = card.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "0");
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe("0%");
   });
 });
