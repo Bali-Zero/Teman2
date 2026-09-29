@@ -15,7 +15,7 @@ exists to surface. Both realtime compose paths did:
 For a contact the CRM does not know — a NEW LEAD — `display` fell back to the
 FULL number, and the masked form was printed right beside it:
 
-    +6281312415572 — +6281****5572
+    +6280000000001 — +6280****0001
 
 The masking was never bypassed. It was made pointless by a fallback standing
 next to it. The digest path had the same defect and worse: no `mask_phone()`
@@ -56,7 +56,9 @@ call site cannot reintroduce it by copying the old field name back in.
 from __future__ import annotations
 
 import ast
+import asyncio
 import importlib.util
+import inspect
 import os
 import sys
 from pathlib import Path
@@ -65,6 +67,24 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 SRC = REPO / "scripts" / "wa-mirror-attention-telegram.py"
+
+
+class _FakeAcquire:
+    """Shared by every test that drives `cmd_digest()` end-to-end."""
+
+    async def __aenter__(self):
+        return object()
+
+    async def __aexit__(self, *_a):
+        return False
+
+
+class _FakePool:
+    def acquire(self):
+        return _FakeAcquire()
+
+    async def close(self):
+        return None
 
 
 @pytest.fixture(scope="module")
@@ -108,8 +128,8 @@ def wa(tmp_path_factory):
 def test_a_contact_the_crm_does_not_know_is_never_rendered_in_the_clear(wa):
     """THE defect, verbatim: a new lead has no crm_name, and that is exactly
     the contact this alerter is for."""
-    label = wa.contact_label({"phone": "6281312415572", "crm_name": None, "crm_id": None})
-    assert "6281312415572" not in label, f"the full number reached the alert: {label}"
+    label = wa.contact_label({"phone": "6280000000001", "crm_name": None, "crm_id": None})
+    assert "6280000000001" not in label, f"the full number reached the alert: {label}"
     assert "****" in label, f"nothing was masked: {label}"
 
 
@@ -124,7 +144,7 @@ def test_a_short_number_is_masked_more_not_less(wa):
 def test_the_realtime_alert_never_carries_a_full_number(wa):
     """End-to-end through the real composer, single-contact AND roster: the
     two branches are separate code paths and the leak lived in both."""
-    lead = {"phone": "6281312415572", "crm_name": None, "crm_id": None,
+    lead = {"phone": "6280000000001", "crm_name": None, "crm_id": None,
             "n_high": 2, "reasons": ["refund"]}
     known = {"phone": "6289988776655", "crm_name": "Test Client", "crm_id": 11580,
              "n_high": 1, "reasons": ["deadline"]}
@@ -132,7 +152,7 @@ def test_the_realtime_alert_never_carries_a_full_number(wa):
     roster = wa._compose_realtime_alert(
         [("k1", lead, ["refund"]), ("k2", known, ["deadline"])])
     for name, msg in (("single", single), ("roster", roster)):
-        assert "6281312415572" not in msg, f"{name} branch leaked the full number:\n{msg}"
+        assert "6280000000001" not in msg, f"{name} branch leaked the full number:\n{msg}"
         assert "6289988776655" not in msg, f"{name} branch leaked the full number:\n{msg}"
 
 
@@ -173,12 +193,28 @@ def test_every_fstring_that_renders_a_phone_goes_through_a_masker(wa):
         f"declare it in the source and in this docstring first: {local_state}")
 
 
+def _named_item(**extra) -> dict:
+    """A contact carrying the SAME fixture name under every key contact_label()
+    (or a mutant of it) could plausibly read.
+
+    2026-09-29 gate condition C1 (M1d): a guilt test that only sets `crm_name`
+    only catches a mutant that reads `crm_name`. A mutant that reads
+    `full_name`/`name`/`display_name` instead would sail through unnoticed —
+    the fixture below leaks under any of those field names equally, so the
+    assertion catches the ENTITY (a name reaching the alert) rather than one
+    spelling of it.
+    """
+    base = {"crm_name": "Fixture Person", "full_name": "Fixture Person",
+            "name": "Fixture Person", "display_name": "Fixture Person"}
+    base.update(extra)
+    return base
+
+
 def test_a_client_name_never_reaches_the_label(wa):
     """GUILT (2026-09-29, Builder Contract §4): a synthetic, obviously-fake
-    name carried on the item must never surface in the rendered label, even
-    though `crm_name` used to be exactly what got printed here."""
-    label = wa.contact_label({"phone": "6289988776655", "crm_name": "Fixture Person",
-                              "crm_id": 11580})
+    name carried on the item — under every key the code could plausibly read
+    it from — must never surface in the rendered label."""
+    label = wa.contact_label(_named_item(phone="6289988776655", crm_id=11580))
     assert "Fixture Person" not in label, f"a client name reached the alert: {label}"
 
 
@@ -186,10 +222,9 @@ def test_the_realtime_alert_never_carries_a_client_name(wa):
     """GUILT, end-to-end through the real composer: single-contact AND roster
     are separate code paths, so both must be checked independently, exactly
     like the full-number sibling test above."""
-    lead = {"phone": "6281312415572", "crm_name": None, "crm_id": None,
+    lead = {"phone": "6280000000001", "crm_name": None, "crm_id": None,
             "n_high": 2, "reasons": ["refund"]}
-    known = {"phone": "6289988776655", "crm_name": "Fixture Person", "crm_id": 11580,
-             "n_high": 1, "reasons": ["deadline"]}
+    known = _named_item(phone="6289988776655", crm_id=11580, n_high=1, reasons=["deadline"])
     single = wa._compose_realtime_alert([("k1", known, ["deadline"])])
     roster = wa._compose_realtime_alert(
         [("k1", lead, ["refund"]), ("k2", known, ["deadline"])])
@@ -201,29 +236,12 @@ def test_the_digest_never_carries_a_client_name(wa, monkeypatch):
     """GUILT: the digest path is a THIRD rendering site (its own cron mode,
     'always sends', twice a day) and was the worst of the three historically —
     it must be checked independently, not inferred from the realtime tests."""
-    import asyncio
-
-    known = {"phone": "6289988776655", "crm_name": "Fixture Person", "crm_id": 11580,
-             "crm_status": "active", "lead_source": "wa", "n_high": 1,
-             "reasons": ["deadline"], "first_high_id": 1, "last_high_id": 1,
-             "first_high_at": None, "last_high_at": None}
+    known = _named_item(phone="6289988776655", crm_id=11580, crm_status="active",
+                         lead_source="wa", n_high=1, reasons=["deadline"],
+                         first_high_id=1, last_high_id=1, first_high_at=None, last_high_at=None)
     metrics = {"inbound_24h": 1, "distinct_phones_24h": 1, "high_open": 1,
                "high_resolved": 0, "medium": 0, "new_leads_24h": 0}
     sent: list[str] = []
-
-    class _FakeAcquire:
-        async def __aenter__(self):
-            return object()
-
-        async def __aexit__(self, *_a):
-            return False
-
-    class _FakePool:
-        def acquire(self):
-            return _FakeAcquire()
-
-        async def close(self):
-            return None
 
     async def fake_create_pool(*_a, **_k):
         return _FakePool()
@@ -248,14 +266,66 @@ def test_the_digest_never_carries_a_client_name(wa, monkeypatch):
     assert "client #11580" in sent[0], f"the digest stopped identifying the client:\n{sent[0]}"
 
 
+def test_the_select_never_fetches_full_name(wa):
+    """M1b: pins the SELECT text itself, not just contact_label()'s runtime
+    behaviour. contact_label() not READING full_name is necessary but not
+    sufficient for data minimization — a mutant that quietly re-adds
+    `c.full_name AS crm_name` to the query re-fetches the column from
+    Postgres even if nothing renders it (yet). Reads the live function's own
+    source via `inspect`, not the whole file, so it cannot collide with the
+    module docstring's prose mention of `full_name`."""
+    sql_src = inspect.getsource(wa.fetch_high_unresolved)
+    assert "full_name" not in sql_src, (
+        f"the SELECT re-fetches full_name:\n{sql_src}")
+
+
+def test_the_digest_never_leaks_a_5plus_digit_run_of_the_phone(wa, monkeypatch):
+    """M6: a defect need not print the WHOLE phone to leak it — any run of 5+
+    consecutive digits from the raw number is already enough to re-identify
+    the contact against another channel (CRM export, another mirror row).
+    Checks a NEW LEAD (no crm_id) specifically, because that is the branch
+    that had no mask_phone() at all before this file's first fix."""
+    phone = "6280000000099"
+    lead = {"phone": phone, "crm_name": None, "crm_id": None,
+            "crm_status": None, "lead_source": None, "n_high": 1,
+            "reasons": ["deadline"], "first_high_id": 1, "last_high_id": 1,
+            "first_high_at": None, "last_high_at": None}
+    metrics = {"inbound_24h": 1, "distinct_phones_24h": 1, "high_open": 1,
+               "high_resolved": 0, "medium": 0, "new_leads_24h": 1}
+    sent: list[str] = []
+
+    async def fake_create_pool(*_a, **_k):
+        return _FakePool()
+
+    async def fake_metrics(_conn):
+        return metrics
+
+    async def fake_fetch(_conn):
+        return [lead]
+
+    def fake_send(text, tier="digest", dedup_key=""):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(wa.asyncpg, "create_pool", fake_create_pool)
+    monkeypatch.setattr(wa, "fetch_digest_metrics", fake_metrics)
+    monkeypatch.setattr(wa, "fetch_high_unresolved", fake_fetch)
+    monkeypatch.setattr(wa, "send_telegram", fake_send)
+    asyncio.run(wa.cmd_digest())
+    assert len(sent) == 1
+    text = sent[0]
+    for i in range(len(phone) - 4):
+        window = phone[i:i + 5]
+        assert window not in text, f"a 5-digit run of the phone leaked ({window}):\n{text}"
+
+
 # ----------------------------------------------------------------- innocence
 def test_a_known_client_is_still_identified_by_crm_id(wa):
     """INNOCENCE, and it is the point of the whole organ: an alert that cannot
     say WHO needs attention is not an alert. Masking the phone — and now
     dropping the name too — must not turn the roster into a list of
     anonymous stubs; the opaque CRM id is the operator's handle instead."""
-    label = wa.contact_label({"phone": "6289988776655", "crm_name": "Fixture Person",
-                              "crm_id": 11580})
+    label = wa.contact_label(_named_item(phone="6289988776655", crm_id=11580))
     assert label.startswith("client #11580"), f"the client stopped being identified: {label}"
     assert "6655" in label, "the last-4 tail is the operator's handle — keep it"
 
@@ -263,16 +333,16 @@ def test_a_known_client_is_still_identified_by_crm_id(wa):
 def test_a_new_lead_shows_masked_phone_only(wa):
     """INNOCENCE: no crm_id (a genuinely new lead, unknown to the CRM) must
     render as the masked phone alone — no `client #None`, no stray marker."""
-    label = wa.contact_label({"phone": "6281312415572", "crm_name": None, "crm_id": None})
+    label = wa.contact_label({"phone": "6280000000001", "crm_name": None, "crm_id": None})
     assert "client #" not in label, f"a lead with no CRM id got a client tag: {label}"
-    assert label == wa.mask_phone("6281312415572")
+    assert label == wa.mask_phone("6280000000001")
 
 
 def test_the_masked_tail_still_identifies_the_contact(wa):
     """INNOCENCE: two different numbers must still LOOK different after
     masking, or the operator cannot tell two unnamed leads apart and the fix
     has traded a privacy defect for a usability one."""
-    a = wa.contact_label({"phone": "6281312415572", "crm_name": None})
+    a = wa.contact_label({"phone": "6280000000001", "crm_name": None})
     b = wa.contact_label({"phone": "6281399990000", "crm_name": None})
     assert a != b, "two distinct leads collapsed into one indistinguishable label"
 
@@ -282,3 +352,20 @@ def test_the_header_promise_matches_the_code(wa):
     not drift back into describing behaviour the code no longer has."""
     head = SRC.read_text().split('"""')[1]
     assert "masked" in head, "the file stopped promising masking"
+
+
+def test_the_osint_safe_list_never_claims_a_name_is_allowed(wa):
+    """M7: guards the ALLOWED-fields bullet list specifically, not the whole
+    docstring — this exact list used to say 'contact display_name' was one
+    of the fields a Telegram message may contain, and the SAME docstring
+    correctly says elsewhere ("full_name NEVER sent") that a name is NOT
+    allowed, so a blanket 'full_name not in head' would false-positive on
+    the very sentence that fixes this. Scoped to the bullet block between
+    the promise line and the next blank line."""
+    head = SRC.read_text().split('"""')[1]
+    marker = "OSINT-safe: Telegram message contains only:"
+    assert marker in head, "the OSINT-safe contract line itself is gone"
+    bullet_block = head.split(marker, 1)[1].split("\n\n", 1)[0]
+    for banned in ("display_name", "full_name", "crm_name", "display name"):
+        assert banned not in bullet_block, (
+            f"the allowed-fields list claims {banned!r} is sendable:\n{bullet_block}")

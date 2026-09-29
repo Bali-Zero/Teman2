@@ -120,7 +120,7 @@ def contact_label(item: dict) -> str:
     exactly the case this alerter exists to surface — that rendered the FULL
     number and its masked form side by side:
 
-        +6281312415572 — +6281****5572
+        +6280000000001 — +6280****0001
 
     The masking was not bypassed; it was made pointless by the fallback
     standing next to it. This file's own docstring already promised "phone
@@ -383,8 +383,11 @@ async def cmd_realtime(force: bool = False):
 def _compose_realtime_alert(due: list, tier: str = "p0") -> str:
     """One contact keeps the full detail; several become a compact roster.
 
-    Same OSINT envelope as before either way: display name, masked phone,
-    reason codes, unresolved count, dashboard link. No free text ever.
+    Same OSINT envelope as before either way: opaque `client #<crm_id>` (never
+    a name), masked phone, reason codes, unresolved count, dashboard link. No
+    free text ever. (Docstring corrected 2026-09-29 — it still said "display
+    name" here after contact_label() stopped rendering one; a stale contract
+    is worse than none, because the next reader trusts it.)
 
     `tier` only changes the HEADLINE, never the envelope. A digest batch is a
     reminder about something already reported, and it has to SAY so — a

@@ -124,6 +124,7 @@ on:
       # all-or-nothing: leaving it blocks every subsequent PR too.
       - check-skills-canonical
       - check-tailnet-acl
+      - check-wa-attention-pii
       - check-wal-continuity-probe
       - CI image mirror (GHCR)
       - cron - codex autofix reaper (autonomous reap every 48h)

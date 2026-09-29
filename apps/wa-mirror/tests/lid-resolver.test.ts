@@ -38,7 +38,7 @@ describe("FIX 3 (2026-05-26): LID→phone resolver", () => {
     const store = new InMemoryMessageContextStore();
     const message = makeDirectLidMessage();
     const resolveLidToPhone = vi.fn(async (lid: string) => {
-      if (lid === "138654580269171") return "+6281312415572";
+      if (lid === "138654580269171") return "+6280000000001";
       return null;
     });
     const resolveClientId = vi.fn(async () => 42);
@@ -52,10 +52,10 @@ describe("FIX 3 (2026-05-26): LID→phone resolver", () => {
     });
 
     expect(resolveLidToPhone).toHaveBeenCalledWith("138654580269171");
-    expect(resolveClientId).toHaveBeenCalledWith("+6281312415572");
+    expect(resolveClientId).toHaveBeenCalledWith("+6280000000001");
     expect(store.rows).toHaveLength(1);
     expect(store.rows[0]).toMatchObject({
-      counterpartPhone: "+6281312415572",
+      counterpartPhone: "+6280000000001",
       counterpartLid: "138654580269171",
       clientId: 42,
       practiceId: 99,
