@@ -270,17 +270,76 @@ def test_the_digest_never_carries_a_client_name(wa, monkeypatch):
     assert "client #11580" in sent[0], f"the digest stopped identifying the client:\n{sent[0]}"
 
 
-def test_the_select_never_fetches_full_name(wa):
-    """M1b: pins the SELECT text itself, not just contact_label()'s runtime
-    behaviour. contact_label() not READING full_name is necessary but not
-    sufficient for data minimization — a mutant that quietly re-adds
-    `c.full_name AS crm_name` to the query re-fetches the column from
-    Postgres even if nothing renders it (yet). Reads the live function's own
-    source via `inspect`, not the whole file, so it cannot collide with the
-    module docstring's prose mention of `full_name`."""
-    sql_src = inspect.getsource(wa.fetch_high_unresolved)
-    assert "full_name" not in sql_src, (
-        f"the SELECT re-fetches full_name:\n{sql_src}")
+class _SqlRecorder:
+    """Captures the SQL each selector actually SENDS (helper output included)."""
+
+    def __init__(self):
+        self.sql: list[str] = []
+
+    async def fetch(self, q, *a):
+        self.sql.append(q)
+        return []
+
+    async def fetchrow(self, q, *a):
+        self.sql.append(q)
+        return {}
+
+    async def fetchval(self, q, *a):
+        self.sql.append(q)
+        return 0
+
+
+def _rendered_selectors(wa) -> dict[str, list[str]]:
+    out = {}
+    for fn in (wa.fetch_high_unresolved, wa.fetch_digest_metrics):
+        rec = _SqlRecorder()
+        asyncio.run(fn(rec))
+        out[fn.__name__] = rec.sql
+    return out
+
+
+ALLOWED_CLIENT_COLUMNS = {"id", "status", "lead_source", "phone_normalized", "deleted_at",
+                          "created_by", "created_at"}
+ALLOWED_EVENT_KEYS = {"key", "senderPn", "remoteJid", "remoteJidAlt"}
+ALLOWED_HIGHS_OUTPUT = {"phone", "first_high_id", "last_high_id", "first_high_at",
+                        "last_high_at", "n_high", "reasons", "crm_id", "crm_status",
+                        "lead_source", "sender_digits", "high_open", "high_resolved",
+                        "medium", "distinct_phones_24h", "inbound_24h"}
+
+
+def test_the_rendered_sql_of_every_selector_selects_no_name(wa):
+    """M1b/X1-X3, on the entity not the spelling. The SQL the selectors SEND is
+    what leaves Postgres, and part of it is built by `sender_digits_sql` — so
+    `inspect.getsource` of one function cannot see it (a `/* full_name */`
+    injected in the helper survived the old pin). Three independent layers, all
+    on the RENDERED text: (1) no `name` substring anywhere (full_name,
+    company_name, pushName, push_name ...); (2) every `c.<col>` is on a column
+    allow-list; (3) the raw event is only ever read at allow-listed JSON keys and
+    every output alias is allow-listed."""
+    import re
+
+    for fn, queries in _rendered_selectors(wa).items():
+        assert queries, fn
+        for q in queries:
+            assert not re.search(r"name", q, re.I), f"{fn}: a name-ish token in the SQL:\n{q}"
+            for col in re.findall(r"\bc2?\.(\w+)", q):
+                assert col in ALLOWED_CLIENT_COLUMNS, f"{fn}: clients.{col} is not allow-listed"
+            for key in re.findall(r"->>?\s*'(\w+)'", q):
+                assert key in ALLOWED_EVENT_KEYS, f"{fn}: event key {key!r} is not allow-listed"
+            for alias in re.findall(r"\bAS\s+(\w+)", q):
+                assert alias in ALLOWED_HIGHS_OUTPUT | {"unnest", "reason", "window_msgs", "highs"}, \
+                    f"{fn}: output alias {alias!r} is not allow-listed"
+
+
+def test_the_label_is_exactly_client_id_and_masked_phone(wa):
+    """X2: even if a name column were fetched, the label must not render it.
+    The fixture carries every name-shaped field a mutant might read."""
+    row = {"phone": "6280000000001", "crm_id": 42, "company_name": "Fixture Co",
+           "full_name": "Fixture Person", "crm_name": "Fixture Person",
+           "display_name": "Fixture Person", "push_name": "Fixture Person"}
+    assert wa.contact_label(row) == f"client #42 \u2014 {wa.mask_phone('6280000000001')}"
+    lead = dict(row, crm_id=None)
+    assert wa.contact_label(lead) == wa.mask_phone("6280000000001")
 
 
 def test_the_digest_never_leaks_a_5plus_digit_run_of_the_phone(wa, monkeypatch):
