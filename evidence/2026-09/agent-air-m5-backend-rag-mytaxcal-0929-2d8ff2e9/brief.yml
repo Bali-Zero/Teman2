@@ -19,12 +19,13 @@ acceptance:
   A2: >-
     mouth: MyTaxCalendar posts exactly {taxpayer_type:"individual"} or the full company body, renders only
     what the API returns (no prices, no hard-coded deadlines, no PB1/regency), states withheld rules
-    honestly with a WhatsApp link, handles 429/errors; its R19 guard uses the shared entity-level helper
-    and kills 5/5 mutants (whitesmoke, rgba, WebkitBackdropFilter, hsl boxShadow, hex).
+    honestly with a WhatsApp link, handles 429/errors; an R19 anchor test (copper/wash tokens, 8px
+    radius, mounted on the page) as for #7648 — the literal-colour guard is a separate PR by the
+    owner's 2026-09-29 decision.
   A3: >-
     CORS: https://tax.balizero.com in the default origins (live preflight answers 400 today).
 status: >-
-  DRAFT, stacked on #7648, NOT to merge: the owner's 2026-09-28 ruling requires a per-rule public-copy
+  DRAFT, on main after #7648 (b797867046), NOT to merge: the owner's 2026-09-28 ruling requires a per-rule public-copy
   review by a Tax Department person the owner will name. Until then every live call would return an
   empty calendar. Merge only after the named signer's clearances are recorded in
   tax_calendar_public_review.yaml and a fresh gear-3 gate signs.
