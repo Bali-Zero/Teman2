@@ -1089,10 +1089,12 @@ LEAD_INVALID = "ZQINV-7741"
 LEAD_SUPERSEDED = "ZQSUP-8852"
 
 
-# G7 (mutants M40/M41b/c and the truncating M40t/M41t/M40x) — no clause/body text reaches ANY logging record (not
-# just stdout/stderr) on the invalid-verdict and superseded (hash-mismatch)
-# paths — the two paths a candidate reaches WITHOUT necessarily going
-# through the top-level cli_main output line this file's other tests pin.
+# G7 (mutants M40/M41b/c and the truncating M40t/M41t/M40x) — no clause/body
+# text reaches any record captured by caplog (propagating loggers, DEBUG and
+# up; not just stdout/stderr) on the invalid-verdict and superseded
+# (hash-mismatch) paths — the two paths a candidate reaches WITHOUT
+# necessarily going through the top-level cli_main output line this file's
+# other tests pin.
 @pytest.mark.asyncio
 async def test_g7_no_clause_text_in_log_records_on_invalid_and_superseded_paths(pg_socket_dir, monkeypatch, caplog):
     async with _fresh_database(pg_socket_dir, "g7") as pool:

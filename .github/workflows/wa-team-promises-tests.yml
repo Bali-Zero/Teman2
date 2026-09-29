@@ -69,24 +69,20 @@ name: wa team promises tests
 #     this corpus's read-set; the cost is a workflow that sometimes runs on
 #     an edit it cannot judge, not a workflow that misses one it should.
 #
-# REAL-PG STAYS OUT OF THIS FILE. `test_wa_team_promises_real_pg.py` and its
-# three siblings do not read `DATABASE_URL` — each spins up its OWN
-# throwaway cluster via `pg_ctl`/`initdb` found on `PATH`
-# (`shutil.which("pg_ctl")`), and skips itself when either binary is absent
-# or `WA_TEAM_PROMISES_REAL_PG` is unset. That is a different shape from this
-# repo's existing service-container pattern (`scripts-tests-sweep.yml`'s
-# `ghcr.io/bali-zero/ci-mirror/postgres:15`, reachable over
-# `localhost:5432`) — a service container answers on a socket, it does not
-# put `pg_ctl`/`initdb` binaries on `PATH` for a `pg_ctl -w start` subprocess
-# to invoke. No existing workflow in this repo runs the local-cluster shape
-# (`git grep -n 'pg_ctl\|initdb' .github/workflows/` returns nothing). Wiring
-# either shape in here would be inventing a new PG setup, which the
-# coordinator's spec says not to do. Left for a follow-up that either adds
-# `postgresql-16` (server package, puts `pg_ctl`/`initdb` on `PATH`) to this
-# runner, or gives the real-PG suites a `DATABASE_URL` mode of their own.
+# REAL-PG RUNS IN ITS OWN JOB BELOW. `test_wa_team_promises_real_pg.py` and its
+# siblings do not read `DATABASE_URL` — each spins up its OWN throwaway
+# cluster via `pg_ctl`/`initdb` found on `PATH` (`shutil.which("pg_ctl")`),
+# and skips itself when either binary is absent or `WA_TEAM_PROMISES_REAL_PG`
+# is unset. A service container (`scripts-tests-sweep.yml`) answers on a
+# socket and puts no such binaries on `PATH`, so the second job instead uses
+# the PostgreSQL server binaries the `ubuntu-latest` image already ships under
+# `/usr/lib/postgresql/<major>/bin` (installing the distro package only if
+# they are missing) and appends that directory to `PATH`. Until that job
+# existed, G1-G4, G7, G-LOW-2 and the rest of the real-PG suites skipped in CI
+# and protected nothing (#7646 gate Finding 3).
 #
 # The unit-vs-skip split is not written here: a count in a comment is never
-# re-measured. The FLOOR line in the last step below is the one number; that
+# re-measured. The FLOOR line in the last step of the unit job is the one number; that
 # step re-runs the corpus and compares the passed count against it. The
 # skips are the real-PG opt-in cases (`WA_TEAM_PROMISES_REAL_PG` unset),
 # which this file does not enable.
@@ -204,3 +200,67 @@ jobs:
             exit 1
           fi
           echo "wa_team_promises corpus: $PASSED passing cases (floor $FLOOR)"
+
+  # The real-PG suites, actually executing. Two failure shapes this job exists
+  # to make loud: (1) `pg_ctl`/`initdb` missing, so every real-PG test skips and
+  # the run still exits 0; (2) tests deleted. The step therefore fails on any
+  # skip and on a passed count below the floor, the same `-lt` ratchet as the
+  # unit job (raise the floor deliberately, never let it fall).
+  wa-team-promises-real-pg-tests:
+    name: wa team promises real-pg tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install test deps
+        run: pip install --quiet pytest "pytest-asyncio>=1.4.0" "asyncpg>=0.31.0"
+
+      # `initdb` refuses to run as root; the runner user is not root. The
+      # server binaries live outside `PATH` on the image, so this step finds
+      # the newest installed major and exports it for the following steps.
+      - name: Put PostgreSQL server binaries on PATH
+        run: |
+          set -euo pipefail
+          PGBIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$PGBIN" ] || [ ! -x "$PGBIN/initdb" ] || [ ! -x "$PGBIN/pg_ctl" ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends postgresql
+            PGBIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)"
+          fi
+          echo "$PGBIN" >> "$GITHUB_PATH"
+          "$PGBIN/initdb" --version
+          "$PGBIN/pg_ctl" --version
+
+      - name: The T3 promise real-PG corpus executes and does not skip
+        run: |
+          set -uo pipefail
+          FLOOR=305   # real-PG mode: passed count, WA_TEAM_PROMISES_REAL_PG=1, zero skips allowed
+          RC=0
+          OUT="$(WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q 2>&1)" || RC=$?
+          printf '%s\n' "$OUT"
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::the real-PG wa_team_promises corpus did not pass (pytest exit $RC) — output above"
+            exit 1
+          fi
+          SUMMARY="$(printf '%s\n' "$OUT" | tail -1)"
+          PASSED="$(printf '%s\n' "$SUMMARY" | sed -n 's/^\([0-9][0-9]*\) passed.*/\1/p')"
+          if [ -z "$PASSED" ]; then
+            echo "::error::pytest exited 0 but printed no 'N passed' summary line"
+            exit 1
+          fi
+          case "$SUMMARY" in
+            *skipped*)
+              echo "::error::real-PG mode skipped tests ($SUMMARY) — pg_ctl/initdb not found, or an opt-in gate did not open"
+              exit 1
+              ;;
+          esac
+          if [ "$PASSED" -lt "$FLOOR" ]; then
+            echo "::error::the real-PG corpus had $PASSED passing cases, below the floor of $FLOOR — cases were removed"
+            exit 1
+          fi
+          echo "wa_team_promises real-PG corpus: $PASSED passing cases (floor $FLOOR)"
