@@ -601,10 +601,10 @@ appetite_exceeded: |
 
 diff:
   files: 9
-  insertions: 3200
+  insertions: 3336
   deletions: 0
   net_lines: |
-    9 files, +3200/-0 against origin/main (clean merge -- origin/main was merged in, not
+    9 files, +3336/-0 against origin/main (clean merge -- origin/main was merged in, not
     rebased, per the gate's own instruction; no conflicts) -- computed from `git diff --numstat
     origin/main...HEAD` at pack-write time. Four of those nine files are the test corpora
     (which the Builder Contract's ~400-net-line guideline is not meant to gate -- the
