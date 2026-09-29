@@ -51,7 +51,7 @@ build(){
 }
 OLD_SCRATCH="$T/-Users-x-clients-$MARK/$U_DEAD"; OLD_CODEX="$H/.codex/sessions/2026/old-$MARK.jsonl"; OLD_GZ="$H/logs/archive/old-$MARK.log.gz"
 run(){ # $@ extra args → stdout+stderr
-  DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="${DISK_JANITOR_TMP_ROOT:-$T}" DISK_JANITOR_TOOLS=false DISK_JANITOR_QDRANT_RETENTION="" \
+  DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="${DISK_JANITOR_TMP_ROOT:-$T}" DISK_JANITOR_TOOLS=false DISK_JANITOR_QDRANT_RETENTION="${DISK_JANITOR_QDRANT_RETENTION-}" \
   DISK_JANITOR_SESSIONS_DIR="${DISK_JANITOR_SESSIONS_DIR:-$H/.claude/sessions}" DISK_JANITOR_LSOF="${DISK_JANITOR_LSOF:-lsof}" \
   DISK_JANITOR_LOG="$ROOT/j.log" DISK_JANITOR_JOURNAL="$ROOT/j.jsonl" bash "$SCRIPT" "$@" 2>&1
 }
@@ -213,6 +213,20 @@ if [ "$(id -u)" -eq 0 ]; then echo "  ⏭  running as root: unwritable-journal c
   [ $RC -eq 2 ] && have "$OLD_SCRATCH" && echo "$OUT" | grep -q "REFUSE: log or receipts journal not writable" && ok "unwritable journal: run refused before any deletion (R4)" || no "unwritable journal not refused rc=$RC"
 fi
 chmod 755 "$ROOT/ro"
+build
+NLU="$T/-proj/$U_DEAD
+"; mkdir -p "$NLU"; old "$NLU" 30   # uuid + trailing newline: $(basename) would strip it (codex R2 round 3)
+OUT=$(run --apply); RC=$?
+have "$NLU" && echo "$OUT" | grep -q "scratch: keep [0-9a-f]\{12\} (not a session uuid)" && ok "uuid with a trailing newline is not a uuid: kept (R2)" || no "trailing-newline uuid dir removed or not reported"
+FAKEQ="$FAKEBIN/fake-qdrant-retention.sh"   # build() wipes $ROOT, so the fake delegate is re-planted after every build
+fakeq(){ mkdir -p "$FAKEBIN"; printf '#!/bin/sh\necho "root=$QDRANT_BACKUP_ROOT" > "%s/qcall"\nexit 0\n' "$ROOT" > "$FAKEQ"; chmod +x "$FAKEQ"; }
+build; fakeq; mk "$H/backups/qdrant-snapshots/20250101-0300/Nuzantara-PII-Quarantine/x"; old "$H/backups/qdrant-snapshots/20250101-0300" 400
+OUT=$(QDRANT_BACKUP_ROOT="$H/.nuzantara-pilots/backups/qdrant-snapshots" DISK_JANITOR_QDRANT_RETENTION="$FAKEQ" run --apply); RC=$?
+[ $RC -eq 1 ] && [ ! -e "$ROOT/qcall" ] && echo "$OUT" | grep -q "qdrant: REFUSE .* (protected tree or descendant) — delegation skipped" \
+  && ok "qdrant delegation refused when the backup root carries a PII descendant; inherited QDRANT_BACKUP_ROOT ignored (R1)" || no "qdrant delegation not gated rc=$RC called=$( [ -e "$ROOT/qcall" ] && cat "$ROOT/qcall")"
+build; fakeq; mkdir -p "$H/backups/qdrant-snapshots"
+OUT=$(QDRANT_BACKUP_ROOT="$H/.nuzantara-pilots/backups/qdrant-snapshots" DISK_JANITOR_QDRANT_RETENTION="$FAKEQ" run --apply); RC=$?
+[ $RC -eq 0 ] && grep -q "root=$H/backups/qdrant-snapshots" "$ROOT/qcall" 2>/dev/null && ok "qdrant delegate always receives the pinned root, never the inherited one (R1)" || no "delegate root not pinned: $(cat "$ROOT/qcall" 2>/dev/null) rc=$RC"
 
 echo "═══ TEST 6b: an old codex transcript held open by a process is kept (real lsof) ═══"
 if command -v lsof >/dev/null 2>&1; then
@@ -252,6 +266,9 @@ printf '#!/bin/sh\nkill -TERM $PPID\nsleep 2\n' > "$FAKEBIN/payload-killer.sh"; 
 HOME="$H" PATH="$FAKEBIN:$PATH" PRO_DISK_JANITOR_PAYLOAD="$FAKEBIN/payload-killer.sh" PRO_DISK_JANITOR_PIDFILE="$PIDF" bash "$WRAP" >/dev/null 2>&1; RC=$?
 sidecar | grep -q '"status":"error","note":"abnormal exit rc=143"' && [ ! -e "$PIDF" ] \
   && ok "own node: a SIGTERM mid-run still writes sidecar status=error (abnormal exit) and clears its own lock (R5)" || no "abnormal termination left no heartbeat: rc=$RC sidecar=$(sidecar)"
+build; fake_host nuzantara; mkdir -p "$H/.organism"; : > "$H/.organism/last_seen"   # sidecar dir is a FILE: heartbeat cannot be written (R3 round 3)
+ERR=$(HOME="$H" PATH="$FAKEBIN:$PATH" PRO_DISK_JANITOR_PAYLOAD="$SCRIPT" PRO_DISK_JANITOR_PIDFILE="$PIDF" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=false DISK_JANITOR_QDRANT_RETENTION="" bash "$WRAP" 2>&1 >/dev/null); RC=$?
+[ $RC -eq 1 ] && echo "$ERR" | grep -q "heartbeat write FAILED" && ok "own node: an unwritable sidecar is the one case that exits non-zero, with the reason on stderr (R3)" || no "unwritable sidecar silent: rc=$RC err=$ERR"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]

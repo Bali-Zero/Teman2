@@ -17,12 +17,17 @@ ts() { date '+%Y-%m-%d %H:%M:%S'; }
 log() { echo "[$(ts)] $*" >> "$LOG"; }
 
 # G2_heartbeat — sidecar EVERY exit path (Esiste≠Armato: prove life, every run)
-HB_DONE=0
-heartbeat() { # $1 status, $2 note
-    mkdir -p "$SIDECAR_DIR"
-    printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
-    HB_DONE=1
+HB_DONE=0; HB_FAIL=0
+heartbeat() { # $1 status, $2 note — HB_DONE only after the sidecar is really on disk (codex R3)
+    mkdir -p "$SIDECAR_DIR" 2>/dev/null
+    if printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json" 2>/dev/null; then
+        HB_DONE=1
+    else
+        HB_FAIL=1
+        echo "$ORGAN_ID: heartbeat write FAILED ($SIDECAR_DIR/$ORGAN_ID.json) status=$1 note=$2" >&2
+        log "heartbeat write FAILED status=$1 note=$2"
+    fi
 }
 # "Every exit path" includes the ones nobody wrote: a signal or an unset-var crash under set -u
 # reaches the EXIT trap, which writes an error heartbeat when no branch did (council codex R5).
@@ -82,4 +87,8 @@ else
     heartbeat "error" "rc=$RC"   # G9: failure is VISIBLE in the sidecar too
 fi
 log "run done rc=$RC"
+# exit 0 by design (a failed payload is already visible in the sidecar; a non-zero exit from an
+# unattended cron only feeds launchd's failed-jobs noise) — EXCEPT when the sidecar itself could
+# not be written: then the exit status is the only signal left, so it is non-zero (codex R3).
+[ "$HB_FAIL" = 0 ] || exit 1
 exit 0

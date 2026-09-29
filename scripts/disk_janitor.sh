@@ -160,7 +160,7 @@ elif [ ! -d "$SESSIONS_DIR" ] || [ -z "$(find "$SESSIONS_DIR" -maxdepth 1 -name 
   ERRORS=$((ERRORS + 1)); log "scratch: session registry absent or empty — step skipped (cannot tell live from dead)"
 else
   while IFS= read -r -d '' d; do
-    u=$(basename -- "$d"); p=$(basename -- "$(dirname -- "$d")")
+    u=${d##*/}; pp=${d%/*}; p=${pp##*/}   # parameter expansion, not $(basename): a trailing newline must survive into the regex (codex R2)
     case "$p" in -*) : ;; *) log "scratch: keep $(tag "$d") (not a project dir)"; continue ;; esac
     [[ "$u" =~ $UUID_RE ]] || { log "scratch: keep $(tag "$d") (not a session uuid)"; continue; }
     session_live "$u"; lrc=$?
@@ -202,11 +202,19 @@ if [ -d "$JH/logs/archive" ]; then
 fi
 
 # ── qdrant backup retention: delegated to its own tested script, same mode ─────
+# The delegate's root is pinned here (never inherited from the environment) and passed through
+# the same gate as every other target before the delegate runs (codex R1).
 QDRANT_RC=skipped
 if [ -n "$QDRANT_RETENTION" ] && [ -f "$QDRANT_RETENTION" ]; then
-  if $APPLY; then bash "$QDRANT_RETENTION" --apply >/dev/null 2>&1; else bash "$QDRANT_RETENTION" >/dev/null 2>&1; fi
-  QDRANT_RC=$?; [ "$QDRANT_RC" -eq 0 ] || ERRORS=$((ERRORS + 1))
-  log "qdrant: retention rc=$QDRANT_RC"
+  QROOT="$JH/backups/qdrant-snapshots"
+  if is_protected "$QROOT" || has_protected_descendant "$QROOT"; then
+    ERRORS=$((ERRORS + 1)); QDRANT_RC=refused; log "qdrant: REFUSE $(tag "$QROOT") (protected tree or descendant) — delegation skipped"
+  else
+    if $APPLY; then QDRANT_BACKUP_ROOT="$QROOT" bash "$QDRANT_RETENTION" --apply >/dev/null 2>&1
+    else QDRANT_BACKUP_ROOT="$QROOT" bash "$QDRANT_RETENTION" >/dev/null 2>&1; fi
+    QDRANT_RC=$?; [ "$QDRANT_RC" -eq 0 ] || ERRORS=$((ERRORS + 1))
+    log "qdrant: retention rc=$QDRANT_RC"
+  fi
 fi
 
 # ── tool caches: only real tools, only their own safe prune verbs ───────────────
