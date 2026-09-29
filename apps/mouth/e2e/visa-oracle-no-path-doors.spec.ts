@@ -41,7 +41,9 @@ interface Step {
 /** The answers `generate-walk-corpus.ts` gives on these three walks (first
  * option everywhere, its fixed synthetic identity for typed questions). D19
  * (2026-09-16): `overstay_days` dropped from all three — offshore never
- * asks it any more. */
+ * asks it any more. 2026-09-29: `sponsor_government_collaboration` added to
+ * the third walk — `employmentSponsorQualificationIds` (flow.ts) now asks it
+ * right after `sponsor_category: "NONE"`, before `work_payer`. */
 const WALKS: { label: string; steps: Step[] }[] = [
   {
     label: "offshore/business",
@@ -91,6 +93,7 @@ const WALKS: { label: string; steps: Step[] }[] = [
       { id: "other_purpose", value: "transit" },
       { id: "other_paid_activity", value: "yes" },
       { id: "sponsor_category", value: "NONE" },
+      { id: "sponsor_government_collaboration", value: "no" },
       { id: "work_payer", value: "no" },
       { id: "work_sponsor_confirmed", value: "yes" },
       { id: "stay_days", value: "121" },

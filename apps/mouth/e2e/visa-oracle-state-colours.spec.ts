@@ -301,8 +301,8 @@ async function blockHydrationBundle(page: Page): Promise<void> {
   await page.route("**/_next/static/chunks/**", (route) => route.abort());
 }
 
-// ─── V9's weld: reach the verdict surface exactly as
-// e2e/visa-oracle-process.spec.ts:25,102 does — COPIED, never imported
+// ─── V9's weld: reach the verdict surface the way the retired pre-atlas
+// rail spec did (removed 2026-09-29) — COPIED, never imported
 // (Playwright re-registers an imported spec file's tests) — trimmed to
 // only what is needed to render one verdict. ───────────────────────────
 const RESUME_KEY = "visa-oracle:v2:resume:v1";
