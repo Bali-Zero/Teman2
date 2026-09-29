@@ -1,0 +1,27 @@
+## real corpus, unmodified step
+37 passed in 0.79s
+testcases=37 defined=37 skipped=0 missing=0 problems=0 absent_suites=0
+## innocence: fixture named test_helper and a Test* class with __init__ (neither is a test)
+41 passed, 1 warning in 0.71s
+testcases=41 defined=41 skipped=0 missing=0 problems=0 absent_suites=0
+## guilt: test def under an if block (control flow)
+testcases=42 defined=41 skipped=0 missing=0 problems=1 absent_suites=0
+::error::defined=41 skipped=[] missing=[] problems=['test_wa_attention_synth::test_cond defined under control flow (unsupported)'] absent_suites=[] - a skipped, absent, shadowed or deselected guard proves nothing (superscar #2)
+## guilt: class TestA defined twice (second shadows first)
+testcases=41 defined=41 skipped=0 missing=0 problems=1 absent_suites=0
+::error::defined=41 skipped=[] missing=[] problems=['test_wa_attention_synth::TestA defined twice in one scope'] absent_suites=[] - a skipped, absent, shadowed or deselected guard proves nothing (superscar #2)
+## guilt: callable rebinding test_alias = test_top
+testcases=42 defined=41 skipped=0 missing=0 problems=1 absent_suites=0
+::error::defined=41 skipped=[] missing=[] problems=['test_wa_attention_synth::test_alias is a rebinding of a test name (unsupported)'] absent_suites=[] - a skipped, absent, shadowed or deselected guard proves nothing (superscar #2)
+## guilt: __test__ = False
+testcases=37 defined=41 skipped=0 missing=4 problems=1 absent_suites=0
+::error::defined=41 skipped=[] missing=['test_wa_attention_synth::TestA.test_guard', 'test_wa_attention_synth::TestB.TestInner.test_deep', 'test_wa_attention_synth::TestB.test_guard', 'test_wa_attention_synth::test_top'] problems=['test_wa_attention_synth::__test__ is a rebinding of a test name (uns
+## real corpus: --deselect of an envelope test (v3)
+testcases=36 defined=37 skipped=0 missing=1 problems=0 absent_suites=0
+::error::defined=37 skipped=[] missing=['test_wa_attention_pii_envelope::test_a_short_number_is_masked_more_not_less'] problems=[] absent_suites=[] - a skipped, absent, shadowed or deselected guard proves nothing (superscar #2)
+## real corpus: -k excludes the envelope suite (v3)
+testcases=20 defined=37 skipped=0 missing=17 problems=0 absent_suites=0
+::error::defined=37 skipped=[] missing=['test_wa_attention_episode_tier::test_the_reminder_keeps_the_pii_envelope', 'test_wa_attention_pii_envelope::test_a_client_name_never_reaches_the_label', 'test_
+## real corpus: conftest modifyitems drops one envelope test (v3, cp backup/restore)
+testcases=36 defined=37 skipped=0 missing=1 problems=0 absent_suites=0
+::error::defined=37 skipped=[] missing=['test_wa_attention_pii_envelope::test_a_short_number_is_masked_more_not_less'] problems=[] absent_suites=[] - a skipped, absent, shadowed or deselected guard proves nothing (superscar #2)

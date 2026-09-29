@@ -1,0 +1,131 @@
+# Gear-3 Evidence Pack - check-wa-attention-pii: presence set by AST (gate C1 of #7661).
+# Written by the Claude session that built this PR (Sonnet 5, lane wa-mirror). Council: two
+# rounds, codex-gpt-5.6-sol and kimi-code/k3, static diff-only, env-scrubbed (see journal).
+task_id: wa-mirror-attention-pii-ci-presence
+gear: 3
+mission_colour: BLUE
+gate_class: opus
+brief_ref: evidence/brief.yml
+base_sha: "b797867046fdd492c413468ec511907ecac77f66" # pragma: allowlist secret - origin/main at council time
+head_sha: "7af0e95748fc461dc968eeefa15bab7f92527a53" # pragma: allowlist secret - workflow head after council round 2
+pii_scan: clean
+outcome: >-
+  One workflow file changes. The corpus step now derives, by AST from every
+  scripts/tests/test_wa_attention_*.py, the set of tests DEFINED (identity: module, dotted class
+  path, function) and requires each to appear in the junit report as run and unskipped. So -k,
+  --deselect or a conftest modifyitems hook that drops ANY of the 37 tests turns the step RED,
+  not just the four real-Postgres ones (the previous hand-kept list). Constructs the AST cannot
+  follow are refused rather than guessed (test def under control flow, name rebinding, duplicate
+  defs/classes in a scope); fixtures named test* and Test* classes with __init__ are skipped as
+  pytest does; the three known suites are pinned so a deleted file cannot shrink the set;
+  pytest's collection patterns are forced to the assumed ones. The relevance step fails closed on
+  an empty base sha and on any grep exit status other than 0/1. The header comment that
+  overclaimed deselect protection is replaced by one that states exactly what is and is not
+  covered. No runtime effect on Pro or the alerter.
+
+compute_floor: 3
+compute_floor_source: path
+compute_floor_note: "evidence_pack_lint.py --print-floor on the workflow-only diff with its numstat: 3 / path (.github/workflows/ hot zone). Net diff ~110 lines."
+
+lanes:
+  - lane: attention-pii-ci-presence-build
+    role: build
+    seat: claude-sonnet-5
+  - lane: attention-pii-ci-presence-council-sol
+    role: review
+    seat: codex-gpt-5.6-sol
+    artifact: reviews/codex-gpt-5.6-sol-r2.md
+  - lane: attention-pii-ci-presence-council-kimi
+    role: review
+    seat: kimi-code/k3
+    artifact: reviews/kimi-code-k3-r2.md
+
+council_run: council-journal.jsonl
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 HIGH (kimi HIGH too): class identity was dropped from the key, so TestA.test_guard and TestB.test_guard (or a top-level twin) collapse to one entry and a deselect of one stays green."
+    status: CONFIRMED
+    resolution: "Key is (module, dotted class path + function), recovered from the junit classname segments after the module. Synthetic proof: --deselect TestA::test_guard while TestB::test_guard runs is RED (receipts/presence-gate-v3.txt). RESOLVED per both seats."
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 HIGH: nested Test* classes were not walked, so a nested test could be dropped green."
+    status: CONFIRMED
+    resolution: "walk() recurses into Test* classes; synthetic --deselect of TestB::TestInner::test_deep is RED. kimi round 1 believed pytest does not collect nested classes; the local run collected and executed it (41 testcases), so that premise was wrong and the recursion stays."
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 MED (kimi MED): a test defined twice in a scope is deduplicated by the set, and the later def shadows the earlier one green."
+    status: CONFIRMED
+    resolution: "Duplicate function or class names within one scope are recorded as problems and fail the step; synthetic proof RED."
+  - seat: kimi-code/k3
+    objection: "R1 MED: deleting a whole suite file shrinks the expected set."
+    status: CONFIRMED
+    resolution: "KNOWN_SUITES pins the three suites; a deleted file gives absent_suites and RED. Deleting an individual test def remains a visible diff in a relevance-triggering path (documented, not closed)."
+  - seat: codex-gpt-5.6-sol
+    objection: "R2 HIGH: test defs under module/class-level if/try/with/for/while are invisible to the AST yet collectable by pytest."
+    status: CONFIRMED
+    resolution: "Such defs are refused (problems, RED); synthetic proof."
+  - seat: codex-gpt-5.6-sol
+    objection: "R2 MED: repeated class scopes and callable rebinding (test_x = other) shadow; fixtures named test* and Test* classes with __init__ are counted although pytest ignores them; R2 LOW: module boundary picked by name prefix; doc overclaims."
+    status: CONFIRMED
+    resolution: "Repeated class scope and rebinding of test*/Test*/__test__ names are refused; fixtures and __init__ classes are excluded; module matched against the discovered modules; collection patterns forced (-o python_functions=test -o python_classes=Test); comment reworded. Synthetic proofs in receipts/presence-gate-v3.txt."
+  - seat: kimi-code/k3
+    objection: "R2 residual false-RED sources: a Test* class inheriting __init__ from a base, an aliased fixture decorator, class-level __test__ = False, a test* def nested in a helper under control flow. Also: deleting a single test def still passes."
+    status: PLAUSIBLE
+    resolution: "Accepted as documented: every one fails closed (RED, never green) and none exists in the current corpus; each is a convention the three suites already follow. The single-def deletion is the same reviewable diff already stated in limitations."
+  - seat: kimi-code/k3
+    objection: "R2 first attempt: no verdict."
+    status: RETRACTED
+    resolution: "The seat timed out after 300s, recorded as non-judgement in the journal (does not count toward quorum), and was retried once on the fixed diff, which returned ACCEPT-WITH-NOTES."
+
+limitations:
+  - "Both seats reviewed the diff statically (no tools, no execution); the workflow has not yet run on a GitHub runner at the time of this pack. The PR's own check-wa-attention-pii run is the first execution and must print defined=37 skipped=0 missing=0 problems=0 absent_suites=0."
+  - "Round 2 findings from codex were applied and verified by the builder and by kimi's retry; codex was not re-asked on the final delta (fix-of-a-fix depth 1). Kimi's retry is the second-round verdict on the final diff."
+  - "Coverage is per test definition, not per parameter set: one surviving variant of a parametrized test satisfies it. A test generated at import time (exec, setattr) is invisible to the AST."
+  - "Deleting an individual test def from a suite is a visible diff in a relevance-triggering file and is not machine-detected (only deletion of a whole known suite is)."
+  - "The check is not a required context: making it required and regenerating contexts.json is the owner's branch-protection action, out of this lane."
+
+release_requirements:
+  - "Fresh independent Opus 5.5 gate on the exact committed SHA before merge (Builder Contract section 5)."
+  - "Read this PR's own check-wa-attention-pii run log: the corpus step must print defined=37 skipped=0 missing=0 problems=0 absent_suites=0 (Bites observation)."
+
+cloud_ok: >-
+  Builder Contract section 4 / SYMBIOSIS Law 2: code-only lane. Both council seats received only
+  the workflow diff and a static question set; no client rows, names, phone numbers or
+  credentials. Seats ran with a scrubbed environment (codex: env -i, read-only sandbox, empty
+  cwd; kimi: scripts/kimi_client.py no-tools child).
+
+receipts:
+  - claim: "Real corpus with the CI flags and the AST presence set: 37 defined, 37 run, 0 skipped, 0 missing"
+    cmd: "bash <workflow corpus step extracted from the YAML>"
+    result: "37 passed; testcases=37 defined=37 skipped=0 missing=0 problems=0 absent_suites=0"
+    exit: 0
+    ts: "2026-09-29T12:30:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/presence-gate-v3.txt
+  - claim: "Guilt: RED for --deselect of an envelope test, -k excluding the envelope suite, and a conftest pytest_collection_modifyitems drop (all three were GREEN under the 4-name list)"
+    cmd: "same step with --deselect / -k 'not pii_envelope' / hook appended to scripts/tests/conftest.py (cp backup, restored)"
+    result: "missing=1; missing=17; missing=1 - each prints ::error:: and exits 1"
+    exit: 1
+    ts: "2026-09-29T12:31:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/presence-gate-v3.txt
+  - claim: "Synthetic suite: innocence for a fixture named test_helper and a Test* class with __init__; RED for same-named methods in two classes, nested class, duplicate def or class, control-flow def, name rebinding, __test__, and a deleted known suite"
+    cmd: "extracted step run in a scratch copy of scripts/tests plus a synthetic test_wa_attention_synth.py"
+    result: "green for the two innocence cases; RED with the named problem for each guilt case"
+    exit: 1
+    ts: "2026-09-29T12:32:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/presence-gate-v3.txt
+  - claim: "Relevance step: empty base sha exits 1 without writing run=; grep rc=2 exits 1 without writing run=; real base with an unrelated change still gives run=false"
+    cmd: "extracted step in a scratch git repo, base substituted, grep replaced by an rc=2 PATH shim for the error case"
+    result: "exit=1 out=[] / exit=1 out=[] / exit=0 out=[run=false]"
+    exit: 1
+    ts: "2026-09-29T12:20:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/relevance-guards.txt
+  - claim: "Deterministic Gear-3 floor, path-sourced (.github/workflows/ hot zone)"
+    cmd: "python3 scripts/evidence_pack_lint.py --changed-files-file <f> --numstat-file <f> --print-floor / --print-floor-source"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-09-29T12:40:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/floor.txt

@@ -1,0 +1,9 @@
+## empty base
+::error::pull_request.base.sha is empty - cannot decide relevance, refusing to sentinel-pass
+exit=1 GITHUB_OUTPUT=[]
+## real base, unrelated change (control)
+::notice::alerter, its tests and pytest config untouched - sentinel success
+exit=0 GITHUB_OUTPUT=[run=false]
+## grep errors with rc=2 (PATH shim)
+::error::grep failed (rc=2) - refusing to sentinel-pass
+exit=1 GITHUB_OUTPUT=[]
