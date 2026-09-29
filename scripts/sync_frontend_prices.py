@@ -95,6 +95,7 @@ def build_payload() -> dict[str, Any]:
             "notes": svc.get("notes"),
             "description_en": svc.get("description_en"),
             "icon_id": svc.get("icon_id"),
+            "tier_range": svc.get("tier_range"),
         }
     return out
 

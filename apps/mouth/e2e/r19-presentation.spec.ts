@@ -351,7 +351,7 @@ test.describe("R19 integration page Page", () => {
     }
   }
 
-  for (const route of ["/v2", "/property"]) {
+  for (const route of ["/v2"]) {
     test(`${route} retains the existing dark navigation`, async ({ page }) => {
       await page.goto(route);
       await expect(page.locator('[data-presentation="r19"]')).toHaveCount(0);
@@ -368,4 +368,20 @@ test.describe("R19 integration page Page", () => {
       );
     });
   }
+
+  test("/property uses the R19 paper navigation", async ({ page }) => {
+    await page.goto("/property");
+    await expect(page.locator('[data-presentation="r19"]')).toHaveCount(1);
+    const color = await page
+      .locator("nav")
+      .first()
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    const rgb = color
+      .match(/[\d.]+/g)!
+      .slice(0, 3)
+      .map(Number);
+    expect(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]).toBeGreaterThan(
+      200,
+    );
+  });
 });

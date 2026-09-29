@@ -1,0 +1,72 @@
+{
+  "run_at": "2026-09-29T07:06:46+08:00",
+  "today": "2026-09-29",
+  "yesterday_seen_count": 1,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed after 1 retry"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, confirmed after 1 retry"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "301 -> /articles, HTTP 200 but no extractable dated articles/CSS-only body, path changed again since 2026-09-07 fix"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed after 1 retry"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "curl exit, confirmed after 1 mechanical retry"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "59 article links parsed, no unseen reg-type citation"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "newest articles ref PMK 55/2026 (already seen) and POJK 16/2026 (out of watched reg-type scope)"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "outside_window",
+      "note": "20 result rows parsed, results not filtered to PMK (mixed UU/PP), newest 'mulai berlaku' date 1 Aug 2026"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest date found 18 Sep 2026"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry KEP-185/PJ/2026 dated 2026-09-02, unchanged from yesterday's run"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "listing sorted by hierarchy not date; newest visible UU 2/2026 (30 Apr 2026)"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK 55/2026"
+  ],
+  "note": "All 4 NB-INTEL returned 'nessuna novita'. Tax NB appended an unrelated follow-up prompt about PPN DTP airline reporting deadline (PMK 43/2026, already existing act, deadline 30 Sep 2026) - not a new-act citation, dropped per hard rule 2. Web primary sources: hukumonline and ddtc checked with static content parsed, no new watched-type citation beyond already-seen PMK 55/2026; ddtc also surfaced POJK 16/2026 (OJK commodity-exchange NPWP requirement) which falls outside the watched regulation-type list and outside core Bali Zero service lines - not added as delta. Web backup sources: bpk.go.id search returned unfiltered mixed results (newest Aug 2026), imigrasi/pajak/kemnaker JDIH all outside 48h window. Zero new deltas today."
+}

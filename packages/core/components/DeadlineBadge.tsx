@@ -6,13 +6,28 @@ export interface DeadlineBadgeProps {
   windowDays?: number;
 }
 
+const MS_DAY = 86_400_000;
+// Asia/Makassar, UTC+8, no DST. Deadlines are calendar-day concepts, so
+// "days left" is a WITA calendar-day count, not a raw millisecond diff — a
+// badge checked before 08:00 WITA must not read one day earlier than after.
+const WITA_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+function witaCalendarDate(instant: Date): number {
+  const shifted = new Date(instant.getTime() + WITA_OFFSET_MS);
+  return Date.UTC(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    shifted.getUTCDate(),
+  );
+}
+
 export const DeadlineBadge: FC<DeadlineBadgeProps> = ({
   date,
   windowDays = 30,
 }) => {
-  const now = Date.now();
-  const diffMs = date.getTime() - now;
-  const daysLeft = Math.ceil(diffMs / 86400_000);
+  const daysLeft = Math.round(
+    (witaCalendarDate(date) - witaCalendarDate(new Date())) / MS_DAY,
+  );
 
   let status: "ok" | "warn" | "danger";
   let label: string;

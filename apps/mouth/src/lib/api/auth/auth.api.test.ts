@@ -452,4 +452,29 @@ describe("AuthApi", () => {
       expect(mockClient.setToken).not.toHaveBeenCalled();
     });
   });
+
+  describe("isPortalSuperuser", () => {
+    it("asks the read-only probe and reports a superuser", async () => {
+      mockRequest.mockResolvedValueOnce({ success: true, is_superuser: true });
+
+      await expect(authApi.isPortalSuperuser()).resolves.toBe(true);
+      expect(mockRequest).toHaveBeenCalledWith(
+        "/api/auth/portal-superuser",
+        {},
+        5_000,
+      );
+    });
+
+    it("reads anyone else as not a superuser", async () => {
+      mockRequest.mockResolvedValueOnce({ success: true, is_superuser: false });
+
+      await expect(authApi.isPortalSuperuser()).resolves.toBe(false);
+    });
+
+    it("never throws: a transport failure is 'no', so sign-in cannot break", async () => {
+      mockRequest.mockRejectedValueOnce(new Error("network down"));
+
+      await expect(authApi.isPortalSuperuser()).resolves.toBe(false);
+    });
+  });
 });

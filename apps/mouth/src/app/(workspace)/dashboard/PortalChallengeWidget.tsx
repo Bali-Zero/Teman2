@@ -32,11 +32,14 @@ import { cn } from "@/lib/utils";
 import "../../portal/r19-fonts.css";
 import { CARD, EYEBROW, FOCUS, HAIRLINE, SERIF, StatePill } from "./r19";
 import { usePortalChallenge } from "./_lib/usePortalChallenge";
-import { ChampionArena } from "./ChampionArena";
+import { ChampionArena, formatWindowRange, isRanked } from "./ChampionArena";
 import { ChampionPortrait } from "@/components/workspace/ChampionPortrait";
 import type {
+  PortalChallengeAsyaMission,
   PortalChallengeEntry,
+  PortalChallengeRankPrize,
   PortalChallengeResponse,
+  PortalChallengeSeptemberSummary,
   PortalChallengeTier,
 } from "@/lib/api/dashboard/dashboard.api";
 
@@ -262,7 +265,8 @@ function PositionScale({
   activations: number;
   tiers: PortalChallengeTier[];
 }) {
-  const scaleMax = Math.max(...tiers.map((t) => t.threshold));
+  const scaleMax =
+    tiers.length > 0 ? Math.max(...tiers.map((t) => t.threshold)) : 0;
   const pct = scaleMax > 0 ? Math.min(100, (activations / scaleMax) * 100) : 0;
   return (
     <div className="relative pt-1 pb-4">
@@ -307,14 +311,28 @@ function PositionScale({
   );
 }
 
+/** One breakdown chip: a signed contribution and the rule that earned it. */
+function BreakdownChip({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--bz-card-hover)] px-2.5 py-1 text-[11px] font-semibold tabular-nums text-[var(--tx-pure)]">
+      <span className="text-[var(--bz-copper-text)]">
+        {value > 0 ? `+${value}` : value}
+      </span>
+      {label}
+    </span>
+  );
+}
+
 function MyPositionCard({
   me,
   tiers,
   taxSuperBonusIdr,
+  round2,
 }: {
   me: PortalChallengeEntry | undefined;
   tiers: PortalChallengeTier[];
   taxSuperBonusIdr: number;
+  round2: boolean;
 }) {
   if (!me) {
     return (
@@ -326,6 +344,72 @@ function MyPositionCard({
       </div>
     );
   }
+
+  if (round2) {
+    const ranked = isRanked(me, true);
+    const points = me.points ?? 0;
+    return (
+      <div
+        data-testid="my-position-card"
+        className={cn(CARD, "p-4 flex flex-col gap-2")}
+      >
+        <div className="flex items-center justify-between">
+          <span className={EYEBROW}>Posisi Saya</span>
+          <StatePill
+            tone="you"
+            label={ranked ? `Rank #${me.rank}` : "Rank –"}
+          />
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span
+            className="font-black tabular-nums leading-none text-[clamp(36px,5vw,52px)] text-[var(--tx-pure)]"
+            style={SERIF}
+          >
+            {points}
+          </span>
+          <span className="text-[11px] text-[var(--tx-secondary)]">poin</span>
+        </div>
+        {me.september_choice === "prize" && (
+          <p className="text-[11px] font-semibold text-[var(--bz-copper-text)]">
+            Mulai dari 0 — hadiah September diambil
+          </p>
+        )}
+        <div className="flex flex-wrap gap-1.5">
+          <BreakdownChip
+            label="Bawa dari September"
+            value={me.carry_points ?? 0}
+          />
+          <BreakdownChip label="registrasi" value={me.registrations ?? 0} />
+          <BreakdownChip
+            label="dokumen pertama"
+            value={3 * (me.document_bonuses ?? 0)}
+          />
+          <BreakdownChip
+            label="permintaan tak terjawab"
+            value={-2 * (me.unanswered_requests ?? 0)}
+          />
+          <BreakdownChip
+            label="dokumen belum ditinjau"
+            value={-1 * (me.unreviewed_documents ?? 0)}
+          />
+        </div>
+        <div
+          className={cn(
+            HAIRLINE,
+            "rounded-md px-3 py-2 mt-1 flex items-center justify-between",
+          )}
+        >
+          <span className="text-[11px] text-[var(--tx-secondary)]">
+            Hadiah sementara
+          </span>
+          <span className="text-[13px] font-bold text-[var(--bz-copper-text)]">
+            {formatIDR(me.total_prize_idr)}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   const nextTier = tiers.find((t) => t.threshold === me.next_tier_threshold);
   const nextLine =
     me.next_tier_threshold != null && me.to_next_tier != null && nextTier
@@ -378,6 +462,214 @@ function MyPositionCard({
           {formatIDR(me.total_prize_idr)}
         </span>
       </div>
+    </div>
+  );
+}
+
+// ── Rank prize list (round 2) ───────────────────────────────
+
+const RANK_ORDINAL: Record<number, string> = {
+  1: "Pertama",
+  2: "Kedua",
+  3: "Ketiga",
+  4: "Keempat",
+  5: "Kelima",
+};
+
+function RankPrizeRow({
+  rank,
+  prizeIdr,
+  holders,
+}: {
+  rank: number;
+  prizeIdr: number;
+  holders: PortalChallengeEntry[];
+}) {
+  return (
+    <div
+      data-testid={`rank-prize-${rank}`}
+      className={cn(
+        HAIRLINE,
+        "flex items-center justify-between gap-3 rounded-lg px-3 py-2.5",
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span className="flex size-7 flex-shrink-0 items-center justify-center rounded-full bg-[var(--bz-card-hover)] text-[11px] font-black tabular-nums text-[var(--bz-copper-text)]">
+          {rank}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--tx-secondary)]">
+            {RANK_ORDINAL[rank] ?? `Peringkat ${rank}`}
+          </p>
+          <p className="truncate text-[12px] font-semibold text-[var(--tx-pure)]">
+            {holders.length > 0
+              ? holders.map((h) => h.display_name).join(", ")
+              : "Belum ada"}
+          </p>
+        </div>
+      </div>
+      <div className="flex-shrink-0 text-right">
+        <p
+          className="text-[13px] font-black tabular-nums text-[var(--tx-pure)]"
+          style={SERIF}
+        >
+          {formatIDR(prizeIdr)}
+        </p>
+        {holders.length > 0 && (
+          <p className="text-[11px] tabular-nums text-[var(--tx-secondary)]">
+            {holders[0].points ?? 0} poin
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RankPrizeList({
+  rankPrizes,
+  entries,
+}: {
+  rankPrizes: PortalChallengeRankPrize[];
+  entries: PortalChallengeEntry[];
+}) {
+  if (rankPrizes.length === 0) return null;
+  return (
+    <div data-testid="rank-prize-list" className="flex flex-col gap-2">
+      <span className={EYEBROW}>Peringkat & Hadiah</span>
+      {rankPrizes.map((rp) => (
+        <RankPrizeRow
+          key={rp.rank}
+          rank={rp.rank}
+          prizeIdr={rp.prize_idr}
+          // A 0-point (or negative) entry never wins a rank prize — the
+          // backend already ships prize_idr: 0 for it; this list must not
+          // show it as the holder just because it shares the rank number.
+          holders={entries.filter(
+            (e) => e.rank === rp.rank && (e.points ?? 0) > 0,
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Misi Asya (round 2) ─────────────────────────────────────
+
+function AsyaMissionCard({ mission }: { mission: PortalChallengeAsyaMission }) {
+  const pct =
+    mission.target_points > 0
+      ? Math.min(
+          100,
+          Math.max(0, (mission.points / mission.target_points) * 100),
+        )
+      : 0;
+  return (
+    <div
+      data-testid="asya-mission-card"
+      className={cn(CARD, "p-4 flex flex-col gap-2.5")}
+    >
+      <div className="flex items-center justify-between">
+        <span className={EYEBROW}>Misi Asya</span>
+        <StatePill
+          tone={mission.reached ? "ok" : "wait"}
+          label={
+            mission.reached
+              ? "Tercapai"
+              : `${mission.points}/${mission.target_points}`
+          }
+        />
+      </div>
+      <div className="flex items-center gap-2.5">
+        <ChampionPortrait
+          face
+          name={mission.display_name}
+          src={mission.avatar_url}
+          sizes="80px"
+          className="size-10"
+        />
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-bold text-[var(--tx-pure)]">
+            {mission.display_name}
+          </p>
+          <p className="text-[11px] text-[var(--tx-secondary)]">
+            Target {mission.target_points} poin — hadiah{" "}
+            {formatIDR(mission.prize_idr)}
+          </p>
+        </div>
+      </div>
+      <div
+        role="progressbar"
+        aria-label={`Progres misi ${mission.display_name}`}
+        aria-valuenow={Math.round(pct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="relative h-2 w-full overflow-hidden rounded-full bg-[var(--bz-border)]"
+      >
+        <div
+          className="h-full rounded-full bg-[var(--bz-copper)] transition-[width] duration-700 ease-out motion-reduce:transition-none"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <BreakdownChip
+          label="bonus misi"
+          value={mission.bonus_points * mission.mission_bonuses}
+        />
+        <BreakdownChip label="penalti" value={-mission.penalty_points} />
+      </div>
+    </div>
+  );
+}
+
+// ── Hasil September (frozen round 1, shown inside round 2) ──
+
+const SEPTEMBER_CHOICE_LABEL: Record<string, string> = {
+  prize: "Ambil hadiah",
+  carry: "Bawa poin ke Oktober",
+};
+
+function SeptemberSection({
+  september,
+}: {
+  september: PortalChallengeSeptemberSummary;
+}) {
+  const sorted = [...september.entries].sort((a, b) => a.rank - b.rank);
+  return (
+    <div data-testid="september-results" className="mt-4 flex flex-col gap-2">
+      <p className="text-[11px] text-[var(--tx-secondary)]">
+        {formatWindowRange(september.window_start, september.window_end)} · WITA
+        · {september.team_total_activations} klien aktivasi
+      </p>
+      <ul className="flex flex-col divide-y divide-[var(--bz-border)]">
+        {sorted.map((e) => (
+          <li
+            key={e.member}
+            className="flex items-center justify-between gap-2 py-1.5"
+          >
+            <div className="flex min-w-0 items-center gap-1.5">
+              <ChampionPortrait
+                face
+                name={e.display_name}
+                src={e.avatar_url}
+                sizes="72px"
+                className="size-7"
+              />
+              <span className="truncate text-[12px] font-semibold text-[var(--tx-pure)]">
+                #{e.rank} {e.display_name}
+              </span>
+              {e.september_choice && (
+                <StatePill
+                  tone={e.september_choice === "prize" ? "ok" : "wait"}
+                  label={SEPTEMBER_CHOICE_LABEL[e.september_choice]}
+                />
+              )}
+            </div>
+            <span className="text-[12px] font-bold tabular-nums text-[var(--tx-pure)] whitespace-nowrap">
+              {formatIDR(e.total_prize_idr)}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -457,10 +749,13 @@ function TaxStrip({ data }: { data: PortalChallengeResponse }) {
 function RankingRow({
   entry,
   isZeroState,
+  round2,
 }: {
   entry: PortalChallengeEntry;
   isZeroState: boolean;
+  round2: boolean;
 }) {
+  const ranked = round2 ? isRanked(entry, true) : !isZeroState;
   return (
     <div
       className={cn(
@@ -470,7 +765,7 @@ function RankingRow({
       style={{ gridTemplateColumns: "auto 1fr auto auto" }}
     >
       <span className="text-[11px] font-bold tabular-nums text-[var(--tx-secondary)] w-5">
-        {isZeroState ? "–" : entry.rank}
+        {ranked ? entry.rank : "–"}
       </span>
       <div className="min-w-0 flex items-center gap-1.5">
         <ChampionPortrait
@@ -487,10 +782,12 @@ function RankingRow({
         {entry.is_tax && <StatePill tone="ink" label="Tax" />}
       </div>
       <span className="text-[11px] tabular-nums text-[var(--tx-secondary)] whitespace-nowrap">
-        {entry.invited} diundang
+        {round2
+          ? `+${entry.registrations ?? 0} reg · +${3 * (entry.document_bonuses ?? 0)} dok · −${entry.penalty_points ?? 0}`
+          : `${entry.invited} diundang`}
       </span>
       <span className="text-[13px] font-bold tabular-nums text-[var(--tx-pure)] whitespace-nowrap">
-        {entry.activations}
+        {round2 ? (entry.points ?? 0) : entry.activations}
       </span>
     </div>
   );
@@ -499,9 +796,11 @@ function RankingRow({
 function RankingList({
   entries,
   isZeroState,
+  round2,
 }: {
   entries: PortalChallengeEntry[];
   isZeroState: boolean;
+  round2: boolean;
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const sorted = isZeroState
@@ -525,6 +824,7 @@ function RankingList({
               key={entry.member}
               entry={entry}
               isZeroState={isZeroState}
+              round2={round2}
             />
           ))
         )}
@@ -555,13 +855,70 @@ function RankingList({
 
 // ── Live feed ───────────────────────────────────────────────
 
+const EVENT_LABEL: Record<string, string> = {
+  registration: "Registrasi selesai",
+  first_document: "Dokumen pertama",
+  unanswered_request: "Permintaan tak terjawab",
+  unreviewed_document: "Dokumen belum ditinjau",
+  asya_bonus: "Bonus misi Asya",
+};
+
 function LiveFeed({
   activations,
+  events,
   now,
 }: {
   activations: PortalChallengeResponse["recent_activations"];
+  events?: PortalChallengeResponse["recent_events"];
   now: number;
 }) {
+  if (events) {
+    return (
+      <div
+        data-testid="live-feed"
+        className={cn(CARD, "p-3 flex flex-col gap-1.5")}
+      >
+        <span className={cn(EYEBROW, "px-1")}>Aktivitas Terbaru</span>
+        {events.length === 0 ? (
+          <p className="px-1 py-2 text-[11px] text-[var(--tx-secondary)]">
+            Belum ada aktivitas — kejadian pertama akan muncul di sini.
+          </p>
+        ) : (
+          <ul className="flex flex-col">
+            {events.slice(0, 10).map((e, i) => {
+              const diffMs = Math.max(0, now - new Date(e.at).getTime());
+              const isRecent = diffMs < 60 * 60 * 1000;
+              return (
+                <li
+                  key={`${e.display_name}-${e.at}-${i}`}
+                  className="flex items-center gap-2 px-1 py-1 text-[11px]"
+                >
+                  {isRecent && (
+                    <span
+                      aria-hidden="true"
+                      className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--bz-copper)]"
+                    />
+                  )}
+                  <span className="font-semibold text-[var(--tx-pure)] truncate">
+                    {e.display_name}
+                  </span>
+                  <span className="flex-1 truncate text-[var(--tx-secondary)]">
+                    {EVENT_LABEL[e.kind] ?? e.kind}
+                  </span>
+                  <span className="font-bold tabular-nums text-[var(--bz-copper-text)] whitespace-nowrap">
+                    {e.points > 0 ? `+${e.points}` : e.points}
+                  </span>
+                  <span className="text-[var(--tx-secondary)] whitespace-nowrap">
+                    {relativeMinutes(e.at, now)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    );
+  }
   return (
     <div
       data-testid="live-feed"
@@ -606,6 +963,8 @@ function LiveFeed({
 // ── Rules drawer ────────────────────────────────────────────
 
 function RulesDrawer({ data }: { data: PortalChallengeResponse }) {
+  const round2 = data.round === 2;
+  const scoring = data.scoring;
   const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -676,29 +1035,99 @@ function RulesDrawer({ data }: { data: PortalChallengeResponse }) {
                 </span>{" "}
                 yang dihitung sebagai klien aktivasi.
               </li>
-              {data.tiers.map((t) => (
-                <li key={t.tier}>
-                  <span className="text-[var(--tx-pure)] font-semibold">
-                    {TIER_LABEL[t.tier] ?? `Tier ${t.tier}`}
-                  </span>{" "}
-                  ≥ {t.threshold} aktivasi → {formatIDR(t.prize_idr)}.
-                </li>
-              ))}
-              <li>
-                Peringkat menentukan tingkat hadiah: jika peraih peringkat 1
-                belum mencapai ambang Juara 1, ia menerima hadiah tingkat di
-                bawahnya sesuai ambang yang sudah tercapai.
-              </li>
-              <li>
-                <span className="text-[var(--tx-pure)] font-semibold">
-                  Tim Tax
-                </span>
-                : jika ada anggota Tim Tax naik podium, dapat hadiah podium +
-                SUPER BONUS {formatIDR(data.tax_rules.podium_super_bonus_idr)}.
-                Jika tidak, anggota Tim Tax terbaik dengan minimal{" "}
-                {data.tax_rules.best_tax_fallback_threshold} aktivasi dapat{" "}
-                {formatIDR(data.tax_rules.best_tax_fallback_idr)}.
-              </li>
+              {round2 ? (
+                <>
+                  <li>
+                    +{scoring?.registration ?? 1} poin untuk setiap{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      registrasi selesai
+                    </span>
+                    .
+                  </li>
+                  <li>
+                    +{scoring?.first_document ?? 3} poin untuk{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      dokumen pertama
+                    </span>{" "}
+                    per proses nyata (sekali per proses, bukan per berkas).
+                  </li>
+                  <li>
+                    {scoring?.unanswered_request ?? -2} poin jika{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      permintaan klien tak terjawab
+                    </span>{" "}
+                    lebih dari {scoring?.response_working_hours ?? 3} jam kerja.
+                  </li>
+                  <li>
+                    {scoring?.unreviewed_document ?? -1} poin jika{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      dokumen belum ditinjau
+                    </span>{" "}
+                    lebih dari 1 hari kerja (
+                    {scoring?.review_working_hours ?? 9.5} jam kerja).
+                  </li>
+                  <li>
+                    Satu kejadian yang sama hanya kena{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      penalti terbesar
+                    </span>{" "}
+                    saja.
+                  </li>
+                  <li>
+                    Jam layanan:{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      {scoring?.service_hours ?? "Senin–Jumat 09.00–18.30 WITA"}
+                    </span>
+                    .
+                  </li>
+                  <li>
+                    Tidak menambah poin: duplikat, unggahan ulang, login, pesan,
+                    checklist.
+                  </li>
+                  <li>
+                    Hadiah mengikuti{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      peringkat akhir
+                    </span>{" "}
+                    (5 posisi).
+                  </li>
+                  <li>Tidak ada bonus Tax baru di ronde ini.</li>
+                  <li>
+                    «Lascia o raddoppia» adalah{" "}
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      nama kampanye
+                    </span>
+                    , bukan janji hadiah dua kali lipat.
+                  </li>
+                </>
+              ) : (
+                <>
+                  {data.tiers.map((t) => (
+                    <li key={t.tier}>
+                      <span className="text-[var(--tx-pure)] font-semibold">
+                        {TIER_LABEL[t.tier] ?? `Tier ${t.tier}`}
+                      </span>{" "}
+                      ≥ {t.threshold} aktivasi → {formatIDR(t.prize_idr)}.
+                    </li>
+                  ))}
+                  <li>
+                    Peringkat menentukan tingkat hadiah: jika peraih peringkat 1
+                    belum mencapai ambang Juara 1, ia menerima hadiah tingkat di
+                    bawahnya sesuai ambang yang sudah tercapai.
+                  </li>
+                  <li>
+                    <span className="text-[var(--tx-pure)] font-semibold">
+                      Tim Tax
+                    </span>
+                    : jika ada anggota Tim Tax naik podium, dapat hadiah podium
+                    + SUPER BONUS{" "}
+                    {formatIDR(data.tax_rules.podium_super_bonus_idr)}. Jika
+                    tidak, anggota Tim Tax terbaik dengan minimal{" "}
+                    {data.tax_rules.best_tax_fallback_threshold} aktivasi dapat{" "}
+                    {formatIDR(data.tax_rules.best_tax_fallback_idr)}.
+                  </li>
+                </>
+              )}
             </ul>
           </div>
         </div>
@@ -747,8 +1176,15 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
   if (isLoading) return <WidgetSkeleton />;
   if (!data) return <QuietPlaceholder />;
 
+  const round2 = data.round === 2;
   const me = data.entries.find((e) => e.is_me);
-  const isZeroState = data.team_total_activations === 0;
+  // A round-2 team total of 0 does NOT mean "no ranking yet" — positives and
+  // penalties can cancel to 0 while ranks still differ (carry points, tie
+  // order). The alphabetical zero-state fallback (RankingList) only applies
+  // when every entry genuinely has no R2 event at all.
+  const isZeroState = round2
+    ? data.entries.every((e) => (e.points ?? 0) === 0 && !e.last_event_at)
+    : data.team_total_activations === 0;
 
   return (
     <section
@@ -763,9 +1199,21 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
       />
 
       <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[1.4fr_1fr]">
-        <RankingList entries={data.entries} isZeroState={isZeroState} />
-        <LiveFeed activations={data.recent_activations} now={now} />
+        <RankingList
+          entries={data.entries}
+          isZeroState={isZeroState}
+          round2={round2}
+        />
+        <LiveFeed
+          activations={data.recent_activations}
+          events={round2 ? (data.recent_events ?? []) : undefined}
+          now={now}
+        />
       </div>
+
+      {round2 && data.asya_mission && (
+        <AsyaMissionCard mission={data.asya_mission} />
+      )}
 
       <details className={cn(CARD, "p-4")}>
         <summary
@@ -777,31 +1225,64 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
           Hadiah, posisi saya & aturan
         </summary>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--bz-text-1)] p-4 text-[var(--bz-surface)]">
-          <span className="text-xs">14–29 September 2026 · WITA</span>
+          <span className="text-xs">
+            {round2
+              ? `${formatWindowRange(data.window_start, data.window_end)} · WITA`
+              : "14–29 September 2026 · WITA"}
+          </span>
           <RulesDrawer data={data} />
         </div>
-        <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-          {data.tiers.map((t) => (
-            <PodiumCard
-              key={t.tier}
-              tier={t.tier}
-              threshold={t.threshold}
-              prizeIdr={t.prize_idr}
+        {round2 ? (
+          <div className="mt-5">
+            <RankPrizeList
+              rankPrizes={data.rank_prizes ?? []}
               entries={data.entries}
-              isZeroState={isZeroState}
             />
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {data.tiers.map((t) => (
+              <PodiumCard
+                key={t.tier}
+                tier={t.tier}
+                threshold={t.threshold}
+                prizeIdr={t.prize_idr}
+                entries={data.entries}
+                isZeroState={isZeroState}
+              />
+            ))}
+          </div>
+        )}
 
-        <div className="mt-3 grid grid-cols-1 gap-2.5 xl:grid-cols-[1fr_1fr]">
+        <div
+          className={cn(
+            "mt-3 grid grid-cols-1 gap-2.5",
+            !round2 && "xl:grid-cols-[1fr_1fr]",
+          )}
+        >
           <MyPositionCard
             me={me}
             tiers={data.tiers}
             taxSuperBonusIdr={data.tax_rules.podium_super_bonus_idr}
+            round2={round2}
           />
-          <TaxStrip data={data} />
+          {!round2 && <TaxStrip data={data} />}
         </div>
       </details>
+
+      {round2 && data.september && (
+        <details data-testid="september-details" className={cn(CARD, "p-4")}>
+          <summary
+            className={cn(
+              FOCUS,
+              "cursor-pointer text-sm font-semibold text-[var(--tx-pure)]",
+            )}
+          >
+            Hasil September
+          </summary>
+          <SeptemberSection september={data.september} />
+        </details>
+      )}
     </section>
   );
 }

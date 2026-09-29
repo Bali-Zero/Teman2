@@ -13,6 +13,9 @@ describe("R19 public presentation boundary", () => {
     "/visas",
     "/visas/example",
     "/property/example",
+    "/property/eligibility",
+    "/property",
+    "/property/",
     "/tech/example",
     "/taxes/example",
     "/privacy",
@@ -25,9 +28,6 @@ describe("R19 public presentation boundary", () => {
     expect(isR19Route(path)).toBe(true);
   });
   it.each([
-    "/property",
-    "/property/",
-    "/property/eligibility",
     "/v2",
     "/v2/news",
     "/visa-oracle",

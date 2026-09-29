@@ -1,0 +1,109 @@
+task: >-
+  PORTAL-CHAMPION-ROUND2-20260929 (BLUE, Dux the owner-opened Claude Fable 5.1
+  imperator window acting as release owner). Owner intent (Zero, 2026-09-29):
+  Portal Champion is extended into Round 2, "Lascia o raddoppia" (30 Sep -> 29
+  Oct 2026 WITA), with new scoring rules from the team guide PDF. Surya, Ari
+  (ari.firda) and Krisna took the September prize ("Ambil hadiah") and restart
+  October at 0 points; everyone else carries their September activations into
+  October. This PR is the frontend half: kita.balizero.com/dashboard renders
+  the Round 2 hero, the 5-row rank-prize list, the breakdown chips, Misi Asya,
+  the collapsible Hasil September block, and hides the Tax strip in Round 2 —
+  while Round 1 rendering stays byte-for-byte in behaviour. Consumes the
+  payload contract served by the sibling backend PR (worktree
+  backend-rag-champion-october-engine, evidence at
+  evidence/2026-09/agent-air-m5-backend-rag-champion-october-engine-56fd9ae0/pack.yml,
+  which is this PR's contract source of truth for the §4 payload shape).
+  Scoring rules, prize amounts and campaign dates are backend-owned and
+  unchanged by this PR; no client identity is ever rendered.
+lane: frontend/champion-october-ui
+machine: Air-M5
+date: "2026-09-29"
+
+gear: 3
+gear_reason: >-
+  The deterministic floor is 2, source "size" (net +964/-67 across 4 files
+  against merge-base origin/main at HEAD 8ea81055b5, measured this session
+  with `git diff --numstat origin/main...HEAD` and
+  `scripts/evidence_pack_lint.py --print-floor --print-floor-source`; no
+  hot-zone path term contributes).
+  gear_override raises the declared gear to 3 above that floor: this widget
+  is the visible half of new prod scoring rules on the release critical
+  path (the backend-rag payload it renders deploys on merge to main, no
+  buffer step), the round boundary is a hard deadline — the widget must be
+  correct and live shortly after 2026-09-30 00:00 WITA when the payload
+  starts returning round:2 — and a rendering defect here (wrong sort order,
+  a phantom podium rank, sub-11px text) is as user-visible and as hard to
+  quietly roll back as a backend scoring defect, given kita is a live
+  internal-staff surface with no separate promote/staging gate once mouth
+  auto-deploys on push to main. No design-choice council fires (the payload
+  shape and copy are spec-given); the review lane is one independent
+  adversarial seat (codex-fe-review) plus the mission's fresh final gate.
+  Declared gear (3) exceeds the deterministic floor (2, size-sourced); the
+  machine-checkable `gear_override:` for this lives in pack.yml (the field
+  the linter actually reads), not here.
+
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2
+
+acceptance:
+  - text: >-
+      Round 1 rendering SHALL be byte-for-byte unchanged in behaviour
+      (existing vitest suite for the dashboard folder stays green) WHILE
+      the Round 2 payload additions are all optional/nullable in the TS
+      contract.
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      "src/app/(workspace)/dashboard"
+  - text: >-
+      tsc and eslint SHALL report zero errors on the four changed files
+      WHEN run from the worktree against the shared root node_modules.
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/tsc --noEmit -p .; ../../node_modules/.bin/eslint
+      <4 changed files>
+  - text: >-
+      The celebration overlay's existing suite SHALL remain green (it
+      already says "poin" and is unchanged by this PR) WHILE Round 2 ships
+      alongside it on the same dashboard.
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/components/workspace/PortalChampionCelebration.test.tsx
+  - text: >-
+      An independent adversarial review of the Round 2 rendering logic
+      SHALL be recorded, and every finding it raises SHALL be tracked to
+      either a cure (with the curing commit) or an explicit OPEN condition
+      — never silently dropped.
+    probe: >-
+      codex-fe-review output (see dissent below); each of its 9 findings
+      re-verified this session by direct inspection of
+      PortalChallengeWidget.tsx / ChampionArena.tsx against the branch's
+      HEAD at the moment of authoring this pack (8ea81055b5) — the branch
+      moved twice (42b6be7196, fd8ff31a47, 8ea81055b5) WHILE this pack was
+      being authored, curing 7 of the 9 findings; re-verification was
+      repeated against the moved HEAD rather than trusting the earlier read.
+
+out_of_scope: >-
+  The backend Round 2 scoring engine and payload contract (sibling PR,
+  worktree backend-rag-champion-october-engine), prize wiring/payout,
+  client communications, lockfiles, hooks/guards, and `npm install` from
+  this worktree (shared node_modules — see the repo's own lesson on file
+  about worktree npm installs corrupting it).
+
+assumptions:
+  - text: >-
+      Two minor findings from the codex-fe-review adversarial pass — the
+      Asya-mission test not asserting the prize amount/reached-state/
+      progress-boundary, and the September test not toggling the
+      disclosure or asserting prize/order/both choice labels — are still
+      open at HEAD 8ea81055b5: the one test-tightening commit on this
+      branch (8ea81055b5) only rewrote the rank-prize and Math.max tests,
+      not these two.
+    status: verified
+    probe: >-
+      this session: `git diff fd8ff31a47 8ea81055b5 --
+      PortalChallengeWidget.test.tsx` touches only the
+      "renders all five prizes..." and the two Math.max/tier-scale tests;
+      direct read of the current "shows the Asya mission card..." (line
+      1015) and "shows the frozen September results..." (line 1026) test
+      bodies confirms neither asserts prize_idr, `reached`, a progress
+      boundary, disclosure toggling, or the "Bawa poin ke Oktober" label.

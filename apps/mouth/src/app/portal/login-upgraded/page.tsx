@@ -12,6 +12,23 @@ import { sanitizeRedirect } from "@/lib/auth/sanitizeRedirect";
 import { logger } from "@/lib/logger";
 import { I18nProvider, useTranslation } from "@/i18n";
 
+// A staff account signing in on the PORTAL gate wants the portal, and only a
+// superuser can use it (every /api/portal call answers 422 to anyone else).
+// The backend's own destination (/dashboard) stays right for the rest: on this
+// domain it bounces to kita, which is where a non-superuser belongs.
+async function resolveStaffRedirect(
+  requestedRedirect: string | null,
+  backendRedirect: string | null,
+): Promise<string> {
+  if (!(await publicAuth.isPortalSuperuser())) {
+    return backendRedirect ?? "/dashboard";
+  }
+  return requestedRedirect?.startsWith("/portal") &&
+    !requestedRedirect.startsWith("/portal/partner")
+    ? requestedRedirect
+    : "/portal";
+}
+
 // Configuration
 const REDIRECT_DELAY_MS = 1500;
 const ERROR_RESET_DELAY_MS = 2000;
@@ -233,7 +250,7 @@ function UpgradedLoginPageInner() {
             ? requestedRedirect?.startsWith("/portal/partner/")
               ? "/portal"
               : (requestedRedirect ?? "/portal")
-            : (backendRedirect ?? "/dashboard");
+            : await resolveStaffRedirect(requestedRedirect, backendRedirect);
 
       setTimeout(() => {
         router.replace(redirectTo);

@@ -1,0 +1,61 @@
+task: >-
+  Property Check PR-2 (balizero.com): rebuild /property/eligibility on R19 tokens, add
+  buyer-profile (WNI/WNA/PT PMA, no default) + intended-use selectors mapped to
+  /api/prime/v2/analyze, and report sections 1-3 (zone, what may be built, what you can do with
+  it).
+lane: mouth/property-check-ui
+machine: air-m5
+date: 2026-09-28
+gear: 2
+gear_reason:
+  Floor 2 (evidence_pack_lint.py --print-floor over the whole branch diff, merge-base
+  df39ad7f0d..HEAD), churn well under the 1828-line threshold.
+design_change: >-
+  REWORK-DESIGN v2 (spec-property-check-v2.md, gate-7596-report.md): the v1 section 3 mapped one
+  KBLI code per use and rendered KBLIEye's live verdict as "Allowed to this buyer" — legally
+  unsafe on a public page (villa rental has no KBLI code a PT PMA can legally hold; a foreign
+  individual was sent is_pma:false and got a GREEN verdict, implying a foreigner can run a
+  business in their own name). Section 3 ("What you can do with it") is now static reviewed copy
+  keyed on the analysed (buyer, use) snapshot — no KBLI code in the request, no KBLIEye call, no
+  GREEN/allowed pill. Section 2's opportunities list no longer renders a "PMA open" badge (it
+  contradicted section 3). Also closed: F1 (the 2 new funnel events weren't in the backend
+  allowlist — reverted, GA4-only), F4 (proxy's HTTP 200 {status:"error"} read as success), F5
+  (FunnelFrame's TrustBand/WhatsApp bar invisible/unstyled under R19 paper — route-scoped CSS
+  fix, other FunnelFrame consumers unaffected), F6 (1440 nav-height/content-padding mismatch
+  clipped the eyebrow), F7 (the R19 guard's DOM hex check was dead — jsdom serialises hex to
+  rgb(); replaced with a source-text scan), F8 (section 3 read the live selects instead of the
+  analysed snapshot).
+  REWORK-BUILD v3 (spec-property-check-v3.md, fresh gate on fde4b15e33): B1 the backend
+  verdict block (score/risk/GREEN-YELLOW-RED pill) still graded the purchase — removed entirely,
+  with a guard covering all 15 (buyer, use) combinations against a GREEN/LOW/90 payload. B2 F5
+  was not actually fixed — TrustBand/CTAHandoff read their tokens via INLINE styles
+  (`var(--color-text-secondary)` etc.), and an inline style always beats an external stylesheet
+  rule for the SAME CSS property, so v2's property-targeting selectors were silently defeated.
+  The route-scoped module now redefines the CUSTOM PROPERTIES those inline styles read instead
+  of the properties themselves — proved with real computed styles (Playwright), not assumption.
+  L1 "13 May 2026" (an agency date) corrected to "since May 2026" (the dataset's actual
+  granularity). L2 the WNA-individual sentence now states investment as "more than Rp 10 billion
+  ... excluding land and buildings" per the exact statute language. C1 the lede/title/meta
+  description/OG text no longer promise legal structure, tax implications or a risk score — none
+  of which this report delivers. Minor: the buyer/use selects now stack full-width on narrow
+  viewports (auto-fit/minmax grid) instead of truncating a long option label; the R19 source-hex
+  guard now scans every file this PR owns under the property/eligibility route, not just the
+  component. Third gate (REWORK-BUILD on 3be7758a28): the route's openGraph override replaced
+  the root one (Next.js merges it shallowly) and dropped og:image/type/url/site_name/locale —
+  restated like (blog)/contact/layout.tsx, with a metadata test red on the previous head; the
+  villa option reads "Short-term villa rental" so it no longer truncates at 390; the no-grading
+  guard exempts only "not open to a PT PMA", not any sentence containing "not". Fourth gate
+  (REWORK-BUILD on bf47b1255c), cured by spec v4 to the line: the route's openGraph restates every
+  key the root layout sets (alternateLocale, image type), tested against key sets derived from the
+  root layout source; the no-grading guard reads text nodes (grade words joined with " ", PMA
+  claims sentence by sentence), killing a bare GREEN pill between blocks and positive sentences
+  appended to allowed paragraphs; undefined --space-5 margins use --space-6; "the zoning shown
+  above" replaces "section 1".
+acceptance:
+  A1: routePolicy + PropertyEligibilityBody guard tests red-before/green-after; tsc/eslint/prettier clean; backend test_analytics_funnel_parity.py green; full apps/mouth vitest green (580/580 files, 7655 passed, 2 skipped, 0 failed).
+  A2: live analyze() against nuzantara-rag.fly.dev at Seminyak/Canggu x 3 buyer/use combos renders zone/opportunities + the correct static section-3 copy, and NEVER a score/risk/verdict pill even when the backend payload grades GREEN/LOW/90; no country name, kbli_code or is_pma ever sent — only lat/lng/investor_profile.nationality (WNI/WNA) and optional price/land size.
+  A3: villa rental for a PT PMA (or a WNA individual, after the PT PMA sentence) always renders the villa-closed-to-PMA caveat, citing "Perpres 10/2021 jo. 49/2021" (never "49/2021" alone) and "since May 2026" (never "13 May 2026"); own use never renders section 3; section 3 stays on the analysed snapshot after the selects change; TrustBand/WhatsApp-bar computed styles resolve to the R19 tokens on this route and are provably unchanged on /kbli (local head matches https://balizero.com/kbli byte-for-byte on every measured property).
+out_of_scope: >-
+  Ownership pathway / taxes & costs / verdict-as-its-own-section / disclaimer / non-PII WhatsApp
+  summary are PR-3 (owner decision). /zoning redirect and the (blog)/property landing card are a
+  separate codex lane. /property (blog landing) stays outside R19 — owned by that lane.
