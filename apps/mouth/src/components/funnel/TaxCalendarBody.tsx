@@ -128,7 +128,7 @@ export function TaxCalendarBody({
                   "--state-warning": "var(--r19-copper)",
                   background: "var(--r19-wash)",
                   borderRadius: "8px",
-                  padding: "var(--space-1)",
+                  padding: 0,
                 } as CSSProperties
               }
             >

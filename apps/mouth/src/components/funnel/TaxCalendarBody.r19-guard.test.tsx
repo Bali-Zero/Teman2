@@ -14,10 +14,10 @@ const sourceFiles = [
 ];
 
 const forbiddenClass = (token: string) => {
-  const base = token.slice(token.lastIndexOf(":") + 1);
+  const base = token.slice(token.lastIndexOf(":") + 1).replace(/^!|!$/g, "");
   return (
     /^(bg-gradient|bg-linear)-/.test(base) ||
-    /^(bg|text|border|from|via|to|ring|fill|stroke)-(slate|gray|zinc|neutral|stone|sky|blue|cyan|teal|emerald|green|lime|yellow|amber|orange|red|rose|pink|fuchsia|purple|violet|indigo)-\d+$/.test(
+    /^(bg|text|border|from|via|to|ring|fill|stroke)-(slate|gray|zinc|neutral|stone|sky|blue|cyan|teal|emerald|green|lime|yellow|amber|orange|red|rose|pink|fuchsia|purple|violet|indigo)-\d+(\/\d+)?$/.test(
       base,
     ) ||
     /^(text|bg|border)-white/.test(base) ||
@@ -61,7 +61,7 @@ describe("TaxCalendarBody R19 guard", () => {
         "",
       );
       expect(style, `forbidden inline style: ${style}`).not.toMatch(
-        /gradient|backdrop-filter|rgb\(|rgba\(|#[0-9a-f]{3,8}\b|:\s*(white|black)(?:;|$)/i,
+        /gradient|backdrop-filter|rgb\(|rgba\(|#[0-9a-f]{3,8}\b|(?<![\w-])(white|black)(?![\w-])/i,
       );
     }
   });
@@ -74,6 +74,10 @@ describe("TaxCalendarBody R19 guard", () => {
       );
       expect(source, `literal colour in ${file}`).not.toMatch(
         /#[0-9a-f]{3,8}\b/i,
+      );
+      // jsdom drops the -webkit- prefixed property, so the render scan cannot see it.
+      expect(source, `backdrop filter in ${file}`).not.toMatch(
+        /backdrop-?filter/i,
       );
     }
   });
