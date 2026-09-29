@@ -7,7 +7,7 @@ constraints:
   - Uncontained plans (--isolation none, legacy, or an operator extra cmd) mint no seal and status --seal is BLOCKED.
   - No paid per-token endpoint; no candidate code on the host in container mode.
 acceptance:
-  - text: WHEN the localci suite runs on Pro with the measured home and docker, every test SHALL pass (220 passed, 1 skipped for missing hypothesis).
+  - text: WHEN the localci suite runs on Pro with the measured home and docker, every test SHALL pass (248 passed, 1 skipped for missing hypothesis, at the final code head).
     probe: local-tests
   - text: WHEN the guilt candidate runs contained against the real backend tree, security.pysa_python SHALL be FAIL with exactly 2 new flows; the innocent candidate SHALL be PASS; the seal SHALL be printed before candidate code and UNCHANGED at the end.
     probe: prove2.log guilt/innocent
