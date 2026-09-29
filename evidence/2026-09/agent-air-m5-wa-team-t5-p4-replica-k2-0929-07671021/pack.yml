@@ -1,0 +1,394 @@
+brief_ref: evidence/brief.yml
+
+lanes:
+  - lane: t5-p4-replica-k2-0929-build
+    role: build
+    seat:
+      "claude-sonnet-5 (conducting session -- built the 6 unit literal-oracle
+      tests/assertions, mutation-verified every one against its own named mutant before
+      accepting it, wrote this pack; no reviewing seat has write access to this tree)"
+  - lane: t5-p4-replica-k2-0929-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (verdict PASS on all 6 named mutants, no material defects)"
+  - lane: t5-p4-replica-k2-0929-council-kimi
+    role: review
+    seat:
+      "kimi-code/k3 (verdict PASS on all 6 named mutants, no material defects,
+      independently re-derived the SQL occurrence-count arithmetic by hand)"
+  - lane: t5-p4-replica-k2-0929-gate
+    role: review
+    seat:
+      "fresh Opus session, outside this PR's contribution chain -- verdict REWORK-BUILD on
+      #7647 @95fc4b3ebb (https://github.com/Bali-Zero/Teman2/pull/7647#issuecomment-5886626259):
+      confirmed N01-N03, N07, N15, floor mechanics, CI wiring and the F4 carry are all CLOSED
+      and NOT to be touched; found the corpus's actual N05 test targeted a Python-param-level
+      mutant already redundant with a pre-existing test, not the gate's own named N05 (a
+      SQL-text-level COALESCE(NOW(), ...) wrap inside _build_upsert_sql) -- R1/R2 below close
+      the gap and correct the wording. Two conditions, both closed in this round."
+
+council_run: council-journal.jsonl
+
+what_changed: |
+  ONE commit, tests + CI floor only, on top of a fresh `origin/main` (which already carries
+  #7598, squash-merged as `9ae496a420`). Closes condition K2 of #7598's delta re-gate (fresh
+  Opus, PASS-WITH-CONDITIONS @`13cd517b77`) -- see the full report:
+  https://github.com/Bali-Zero/Teman2/pull/7598#issuecomment-5885738310
+
+  The delta gate's own 47-mutant round (32 prior + 15 new) found 6 mutants surviving in the
+  UNIT suite for `scripts/wa_practices_replica.py` -- killed only by the opt-in real-PG suite
+  (which CI does not run by default), or not killed anywhere:
+
+  N01/N02 (R7's `trigger_maintained=("updated_at",)` reverted on the practices/practice_types
+  UPSERT call sites) and N03 (the exclusion reverted from the `IS DISTINCT FROM` comparison
+  specifically): two new tests assert `updated_at` appears EXACTLY ONCE in each UPSERT SQL
+  constant -- in the INSERT column list -- and nowhere in the `SET`/comparison clauses that
+  follow.
+
+  N05 (the INSERT binds `datetime.now()` instead of Fly's own `updated_at`): one new test pins
+  the actual bound parameter value, captured via the existing fake connection's `fetchrow`
+  storage, to a literal Fly timestamp (`2020-01-01`) far from wall-clock time -- a mutant
+  substituting "now" cannot pass by coincidence.
+
+  N15 (`cli_main` returns `rc=3` before the counts line is ever written to stdout -- the same
+  silent-green class gate finding F3 exists to close): the two existing rc=3 tests now also
+  assert `capsys.readouterr().out == wpr._success_line(metrics)`, not just the return code.
+
+  N07 (a NULL Fly `uuid` reaches the `pro_only_kept` query's `fly_uuids` parameter before the
+  skip-check, poisoning it on real Postgres -- gate finding F2's own failure mode): the fake
+  connection's `fetchval` now records the raw `fly_uuids` param, and the existing NULL-uuid
+  test asserts `None` is never in it. This was the one genuinely subtle case: the PRE-EXISTING
+  `m.pro_only_kept == 1` assertion on that same test does NOT catch this mutant, because the
+  fake's plain Python `in` check does not reproduce real Postgres's `uuid <> ALL(ARRAY[...,
+  NULL])` NULL-poisoning semantics -- confirmed empirically during mutation-verification (see
+  receipts).
+
+  Every one of the six was mutation-verified before being accepted: the corresponding
+  production code was temporarily reverted to the EXACT mutant shape (via `cp` backup,
+  `ast.parse` syntax check), the relevant test(s) run in isolation and observed failing with
+  the predicted symptom, then the code restored byte-identical (`diff` against the backup
+  confirmed) and the full suite re-run clean. See receipts below for each mutant's repro.
+
+  NO PRODUCTION CODE CHANGED. `scripts/wa_practices_replica.py` is untouched by this diff --
+  confirmed via `diff` against a pre-change backup taken before any mutation-verification work
+  began. Per the coordinator's explicit instruction for this round, if a new test had exposed a
+  real production bug instead of a unit-suite gap, this build lane was to stop and report
+  rather than fix it here; none did.
+
+  pack.yml's F4 (stale "Four commits ... 544 lines" / "80/17/80" text inside #7598's OWN
+  merged evidence pack) is deliberately NOT touched by this PR -- editing that pack as part of
+  THIS diff would put it in THIS diff, and its `diff:` block correctly describes #7598's own
+  frozen historical numstat at merge; editing the text now would break
+  `evidence_pack_lint.py`'s countable-claims rule against THIS branch's own numstat. Verified
+  empirically before deciding not to touch it: running the lint with this branch's numstat
+  against that pack produced 5 countable-claims violations (9 vs 2 files measured, 3526 vs 139
+  insertions, etc.) -- exactly the scenario the delta gate's own K2 condition anticipated
+  ("if the merged evidence dir can't be edited in this PR's scope, put the corrections in the
+  PR body"). The F4 corrections are carried in this PR's body instead, for the coordinator to
+  fold into the ledger.
+
+  RE-GATE (2026-09-29, verdict REWORK-BUILD @95fc4b3ebb): a fresh Opus session gated this PR
+  itself and confirmed N01-N03/N07/N15, floor mechanics, CI wiring and the F4 carry are all
+  correctly closed -- explicitly instructed NOT to touch any of that. It found the ORIGINAL
+  N05 test (`test_run_sync_insert_stores_flys_updated_at_verbatim_not_now`) mutation-verified
+  against a Python-param-level mutant (special-casing `updated_at` to `datetime.now()` inside
+  `run_sync`'s param-construction loop) that is ALREADY killed by a pre-existing test,
+  `test_run_sync_insert_then_idempotent_second_run_is_all_unchanged` -- confirmed empirically
+  by this build lane before making any change: the SAME mutant makes that existing test's
+  second-run `unchanged` assertion fail too (two `run_sync` calls a moment apart each mint a
+  DIFFERENT `datetime.now()`, so the fake's row-equality check never matches). So "EXACT
+  mutant shape" was a true-but-misleading claim: the test was real and RED on ITS mutant, but
+  that mutant was not the gate's actual named N05. The gate's real N05 lives one layer down,
+  inside `_build_upsert_sql`'s SQL-TEXT construction: a mutant wraps a trigger-maintained
+  column's VALUES expression in `COALESCE(NOW(), ...)` -- since `NOW()` is never NULL, this
+  silently discards ANY bound Fly parameter at the SQL level, invisible to any run_sync-level
+  test (the fake never interprets SQL text, only the Python params handed to it).
+
+  R1 (the real N05 closure): two new unit tests locate `updated_at`'s exact position in the
+  VALUES list (from the same column lists `_build_upsert_sql` itself consumes) and assert the
+  expression there is BYTE-FOR-BYTE `$<i+1>::timestamptz` -- not merely that the substring
+  appears (a `COALESCE(NOW(), $20::timestamptz)` mutant would still CONTAIN the literal
+  substring `$20::timestamptz`, so a plain containment check could not discriminate it; exact
+  positional equality via a depth-aware VALUES-list splitter is required). A second, fully
+  independent net asserts `NOW(` is absent from the whole SQL, case-insensitively. Both tests
+  verified RED on the gate's exact mutant (`COALESCE(NOW(), ...)` wrap) AND on a simpler bare
+  `NOW()` substitution, then restored and re-verified GREEN.
+
+  R2: the original N05 test's docstring corrected to state plainly that it is a real, useful,
+  INDEPENDENT regression guard on the Python-param layer -- but NOT what closes the gate's own
+  named N05 finding -- and to point at the two new tests that do. The workflow's growth-history
+  comment and this pack corrected identically; the PR body's mutant table row updated to name
+  R1 as N05's real closure.
+
+proof: |
+  Full unit corpus, clean interpreter (Python 3.11):
+    pytest scripts/tests/test_wa_practices_replica.py -q  -> 80 -> 83 (K2) -> 85 (re-gate R1)
+    passed (5 new test functions total: 2 SQL literal oracles for N01-N03 + 1 INSERT-value
+    oracle (K2) + 2 SQL literal oracles for the real N05 (re-gate R1); 2 existing tests gained
+    an additional assertion each, N07/N15, no new function so no count change from those two)
+
+  Combined with the opt-in real-PG suite (unchanged by this PR):
+    WA_PRACTICES_REPLICA_REAL_PG=1 pytest scripts/tests/test_wa_practices_replica*.py -q
+    -> 104 passed (85 unit + 19 real-PG)
+
+  CI floor (`.github/workflows/wa-practices-replica-tests.yml`): 80 -> 83 (K2) -> 85 (re-gate
+  R1), matching the new unit-only passing count exactly (REAL_PG unset in that workflow).
+
+  ruff check scripts/tests/test_wa_practices_replica.py -> All checks passed!
+  actionlint .github/workflows/wa-practices-replica-tests.yml -> clean (no output)
+
+  Production code unchanged: `diff /tmp/wpr_backup_k2.py scripts/wa_practices_replica.py`
+  (K2 round) and `diff /tmp/wpr_backup_r1n05.py scripts/wa_practices_replica.py` (re-gate R1
+  round) -> no output either time (byte-identical), confirmed AFTER every
+  mutation-verification round completed and the backup restored each time.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "Dispatched to independently verify each of the 6 named mutants actually fails its
+      matching new/modified test, not just that the test exists. Asked to flag any false
+      closure (a test that passes regardless of the mutant) or any other material defect."
+    status: CONFIRMED
+    resolution:
+      "PASS on N01, N02, N03, N05, N07, N15 -- each verdict reasoned individually (SQL
+      occurrence-count arithmetic for N01-N03, literal-value pinning for N05, stdout capture
+      for N15, raw-param capture for N07). No material defects found. Floor 83 confirmed
+      consistent with 80+3 new test functions. Full transcript: codex exec output, this
+      session, 2026-09-29T08:1x-08:2xZ."
+  - seat: kimi-code/k3
+    objection:
+      "Same dispatch, independently, no shared context with codex's run. Asked the identical
+      question."
+    status: CONFIRMED
+    resolution:
+      "PASS on all 6, with the most detailed per-mutant reasoning of the two seats -- explicitly
+      re-derived the SQL string occurrence counts by hand for N01/N02/N03 (e.g. 'count = 1 +
+      2 + 1 + 1 = 5' for a full revert), and explicitly checked and confirmed sound the N07
+      docstring's claim that the pre-existing `pro_only_kept == 1` assertion alone cannot catch
+      that mutant. Flagged two non-blocking observations, both explicitly NOT findings: (1) the
+      N05 test's reliance on `_FakeConn.fetchrow`'s storage shape and `_fly_row`'s
+      `updated_at=` kwarg isn't visible in the diff alone (pre-existing file, not part of this
+      diff) -- noted that ANY wrong assumption there would make the test ERROR/FAIL on clean
+      code, dropping below FLOOR=83 and turning CI red, never passing vacuously, so this cannot
+      make CI lie in the green direction; (2) the N15 stdout assertion can't detect a format
+      drift inside `_success_line` itself, but that's not one of the 6 named mutants and the
+      module is unchanged in this PR. Full transcript: kimi CLI output, this session,
+      2026-09-29T08:1x-08:2xZ, resumable via `kimi -r session_c1147500-d9b8-408e-880e-ad61f8da66cd`."
+  - seat: fresh-gate-opus
+    objection:
+      "R1: the original N05 test does not close the gate's own named N05 (a SQL-text-level
+      COALESCE(NOW(), ...) wrap inside _build_upsert_sql's VALUES-clause construction,
+      invisible to any run_sync-level/bound-param test). Required: a unit literal oracle on
+      BOTH UPSERT SQLs asserting the VALUES expression at updated_at's INSERT-column index
+      equals `$<i+1>::timestamptz` exactly and the SQL contains no `NOW(` anywhere; RED on the
+      gate's own N05 mutant and on a bare `NOW()`, GREEN on head; floor re-bumped, count
+      stated. R2: the N05 test's docstring, the PR body and pack.yml all claimed 'EXACT mutant
+      shape' for a mutant that a PRE-EXISTING test (test_run_sync_insert_then_idempotent_
+      second_run_is_all_unchanged) already kills on origin/main -- that claim is false and
+      must be corrected everywhere."
+    status: CONFIRMED
+    resolution:
+      "R1: two new tests (`test_practices_upsert_sql_updated_at_value_is_a_bare_placeholder_
+      no_now`, the practice_types twin) added, mutation-verified RED on the gate's exact
+      COALESCE(NOW(), ...) mutant AND on a bare NOW() substitution, GREEN restored. Floor
+      re-bumped 83 -> 85. R2: verified the gate's claim empirically BEFORE editing anything
+      (applied the exact param-level mutant, confirmed
+      test_run_sync_insert_then_idempotent_second_run_is_all_unchanged fails: (0,1,0) instead
+      of (0,0,1), same failure mode the original N05 test also caught) -- the docstring, this
+      pack, the workflow's growth-history comment, and the PR body's mutant table all
+      corrected to state the original N05 test is a real, independent, but NON-closing
+      regression guard, and to name R1's two new tests as what actually closes the gate's N05."
+
+receipts:
+  - claim:
+      "N01 mutant (revert trigger_maintained on the practices UPSERT call site) reproduced
+      and observed RED on exactly the practices literal-oracle test; the practice_types test
+      stayed green (correct discrimination)."
+    cmd:
+      'cp scripts/wa_practices_replica.py /tmp/wpr_backup_k2.py; python3 -e revert
+      trigger_maintained=("updated_at",) on the _PRACTICES_UPSERT_SQL call site only; pytest
+      -k ''practices_upsert_sql_excludes or practice_types_upsert_sql_excludes'' -q'
+    result:
+      "1 failed, 1 passed -- test_practices_upsert_sql_excludes_... failed with
+      sql.count('updated_at') == 5, not 1; test_practice_types_upsert_sql_excludes_... passed"
+    exit: 1
+    ts: "2026-09-29T08:12:00Z"
+    seat: claude-sonnet-5
+  - claim:
+      "N02 mutant (revert trigger_maintained on the practice_types call site) reproduced,
+      restored from backup first, observed RED on exactly the practice_types test."
+    cmd:
+      "cp /tmp/wpr_backup_k2.py scripts/wa_practices_replica.py; revert trigger_maintained
+      on _PRACTICE_TYPES_UPSERT_SQL only; pytest -k 'practices_upsert_sql_excludes or
+      practice_types_upsert_sql_excludes' -q"
+    result:
+      "1 failed, 1 passed -- test_practice_types_upsert_sql_excludes_... failed with
+      sql.count('updated_at') == 5, not 1; the practices test passed"
+    exit: 1
+    ts: "2026-09-29T08:13:00Z"
+    seat: claude-sonnet-5
+  - claim:
+      "N05 mutant (INSERT binds datetime.now() for updated_at) reproduced and observed
+      RED on the new INSERT-value test."
+    cmd:
+      "cp /tmp/wpr_backup_k2.py scripts/wa_practices_replica.py; special-case updated_at to
+      datetime.now() in run_sync's practices param-construction loop; pytest -k
+      insert_stores_flys_updated_at -q"
+    result: "1 failed -- AssertionError: datetime.datetime(2026, 9, 29, ...) ==
+      datetime.datetime(2020, 1, 1, 0, 0, tzinfo=timezone.utc)"
+    exit: 1
+    ts: "2026-09-29T08:15:00Z"
+    seat: claude-sonnet-5
+  - claim:
+      "N07 mutant (fly_uuids.append moved before the NULL skip-check) reproduced and
+      observed RED on the NEW assertion specifically, while the PRE-EXISTING
+      m.pro_only_kept == 1 assertion on the SAME test still passed -- confirming the docstring's
+      claim that only the new assertion discriminates this mutant."
+    cmd: 'cp /tmp/wpr_backup_k2.py scripts/wa_practices_replica.py; move
+      fly_uuids.append(row[''uuid'']) to before the ''if row["uuid"] is None'' check; pytest -k
+      null_uuid_is_skipped_and_never_reaches_pro_only -q'
+    result:
+      "1 failed at the new assertion (assert None not in conn.last_fly_uuids ->
+      AssertionError: assert None not in [None, 'prac-uuid-good']); every assertion ABOVE it
+      in the same test body, including m.pro_only_kept == 1, passed"
+    exit: 1
+    ts: "2026-09-29T08:16:30Z"
+    seat: claude-sonnet-5
+  - claim:
+      "N15 mutant (rc=3 returned before the counts line is written) reproduced and observed
+      RED on both rc=3 tests' new stdout assertion, rc itself still correct at 3."
+    cmd:
+      "cp /tmp/wpr_backup_k2.py scripts/wa_practices_replica.py; move the early-return branch
+      above sys.stdout.write(_success_line(metrics)), write it only on the rc==0 tail instead;
+      pytest -k test_cli_main_exits_3 -q"
+    result: "2 failed -- both AssertionError: assert '' == 'wa_practices_replica: sync OK ...'"
+    exit: 1
+    ts: "2026-09-29T08:17:30Z"
+    seat: claude-sonnet-5
+  - claim:
+      "Organ restored byte-identical after every mutation round; full unit suite green;
+      combined suite green; ruff clean."
+    cmd:
+      "cp /tmp/wpr_backup_k2.py scripts/wa_practices_replica.py; diff /tmp/wpr_backup_k2.py
+      scripts/wa_practices_replica.py; pytest scripts/tests/test_wa_practices_replica.py -q;
+      WA_PRACTICES_REPLICA_REAL_PG=1 pytest scripts/tests/test_wa_practices_replica*.py -q;
+      ruff check scripts/tests/test_wa_practices_replica.py"
+    result: "diff: no output (byte-identical); 83 passed; 102 passed; All checks passed!"
+    exit: 0
+    ts: "2026-09-29T08:18:30Z"
+    seat: claude-sonnet-5
+  - claim: "Editing #7598's own merged pack.yml as part of THIS diff breaks
+      evidence_pack_lint.py's countable-claims rule against THIS branch's numstat -- verified
+      empirically before deciding to carry the F4 correction in the PR body instead."
+    cmd: "git diff --numstat $(git merge-base origin/main HEAD) > numstat.txt;
+      python3 scripts/evidence_pack_lint.py
+      evidence/2026-09/agent-air-m5-wa-team-t5-p4-practices-replica-092-ffe935b7/pack.yml
+      --numstat-file numstat.txt"
+    result:
+      "FAIL -- 5 countable-claims violations (diff.files declares 9, measures 2 (later
+      3 once .github workflow floor bump counted); diff.insertions declares 3526, measures
+      139; etc.) -- confirmed the pack must NOT be edited in this diff"
+    exit: 1
+    ts: "2026-09-29T08:07:00Z"
+    seat: claude-sonnet-5
+  - claim:
+      "R2 verified empirically BEFORE editing any wording: the gate's claim that a
+      PRE-EXISTING test already kills the exact param-level mutant the original N05 test used."
+    cmd:
+      "cp scripts/wa_practices_replica.py /tmp/wpr_backup_r2check.py; apply the param-level
+      datetime.now() mutant to run_sync's practices param-construction loop; pytest -k
+      test_run_sync_insert_then_idempotent_second_run_is_all_unchanged -q; cp
+      /tmp/wpr_backup_r2check.py scripts/wa_practices_replica.py; diff
+      /tmp/wpr_backup_r2check.py scripts/wa_practices_replica.py"
+    result:
+      "1 failed -- (m2.inserted, m2.updated, m2.unchanged) == (0, 1, 0), expected (0, 0, 1) --
+      confirmed the gate's claim true before touching any docstring/PR-body/pack wording;
+      diff after restore: no output (byte-identical)"
+    exit: 1
+    ts: "2026-09-29T08:40:00Z"
+    seat: claude-sonnet-5
+  - claim:
+      "R1: the gate's exact N05 mutant (COALESCE(NOW(), ...) wrap on trigger-maintained VALUES
+      expressions inside _build_upsert_sql) reproduced and observed RED on both new tests, with
+      the predicted index and expression (`$20::timestamptz` for practices, `$10::timestamptz`
+      for practice_types)."
+    cmd:
+      "cp scripts/wa_practices_replica.py /tmp/wpr_backup_r1n05.py; replace values_sql's
+      construction in _build_upsert_sql with the gate's own COALESCE(NOW(), ...) wrap
+      (conditioned on trigger_maintained); pytest -k bare_placeholder_no_now -q"
+    result:
+      "2 failed -- AssertionError: assert 'COALESCE(NOW(), $20::timestamptz)' ==
+      '$20::timestamptz' (practices); assert 'COALESCE(NOW(), $10::timestamptz)' ==
+      '$10::timestamptz' (practice_types)"
+    exit: 1
+    ts: "2026-09-29T08:43:00Z"
+    seat: claude-sonnet-5
+  - claim:
+      "R1: a second, simpler mutant (a bare NOW() substitution, no COALESCE wrap) also
+      reproduced and observed RED on both tests -- confirms the oracle isn't accidentally
+      tied to the COALESCE shape specifically."
+    cmd:
+      'cp /tmp/wpr_backup_r1n05.py scripts/wa_practices_replica.py; replace values_sql''s
+      trigger-maintained expressions with a bare "NOW()" string; pytest -k
+      bare_placeholder_no_now -q'
+    result:
+      "2 failed -- AssertionError: assert 'NOW()' == '$20::timestamptz' (practices); assert
+      'NOW()' == '$10::timestamptz' (practice_types)"
+    exit: 1
+    ts: "2026-09-29T08:44:30Z"
+    seat: claude-sonnet-5
+  - claim:
+      "R1: organ restored byte-identical after both mutant rounds; full unit suite green
+      (85 passed); combined suite green (104 passed); ruff clean; actionlint clean."
+    cmd: "cp /tmp/wpr_backup_r1n05.py scripts/wa_practices_replica.py; diff
+      /tmp/wpr_backup_r1n05.py scripts/wa_practices_replica.py; pytest
+      scripts/tests/test_wa_practices_replica.py -q; WA_PRACTICES_REPLICA_REAL_PG=1 pytest
+      scripts/tests/test_wa_practices_replica*.py -q; ruff check
+      scripts/tests/test_wa_practices_replica.py; actionlint
+      .github/workflows/wa-practices-replica-tests.yml"
+    result:
+      "diff: no output (byte-identical); 85 passed; 104 passed; All checks passed!; actionlint:
+      no output (clean)"
+    exit: 0
+    ts: "2026-09-29T08:47:00Z"
+    seat: claude-sonnet-5
+
+pii_scan: clean
+pii_scan_note:
+  "No client data of any kind touched this round. The diff is test code and one CI workflow
+  comment/floor-number edit; every value in it is a synthetic fixture (a fixed UUID literal, a
+  literal 2020-01-01 timestamp, an int floor). The council prompts sent to codex/kimi carried
+  only the diff, the target production module (code, no data), and a review question -- no
+  client data, no session environment, no repo dump, no secrets."
+
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+
+appetite_exceeded: |
+  Ran to budget, not over it: a small, mechanically-scoped tests-only diff with every claim
+  mutation-verified by the build lane itself before the council was ever dispatched, so both
+  review seats' job was verification of an already-strong claim rather than open-ended defect
+  hunting -- both returned within one round, no delta round needed, no finding required a fix.
+
+  A second round: this PR's own fresh gate (REWORK-BUILD @95fc4b3ebb) found the original N05
+  test closed a redundant, non-target mutant rather than the gate's own named one -- a real,
+  if narrow, gap in a claim this build lane made, not a defect in production code. Closed in
+  ONE build pass (R1 fixes the gap, R2 corrects the wording) rather than re-dispatching a
+  fresh council on top of an already-adversarial gate verdict, per the same fix-of-a-fix
+  discipline used on #7598's own R1-R7 round: the gate's report already carried an exact
+  mutant patch and file:line citation, independently re-verified against the real interpreter
+  (both the correction claim and the new tests' mutants) rather than taken on faith.
+
+diff:
+  files: 5
+  insertions: 682
+  deletions: 7
+  net_lines: |
+    5 files, +682/-7 against a fresh origin/main (which already carries #7598, merged as
+    9ae496a420) -- computed from `git diff --numstat` at pack-write time, across two rounds
+    (K2, then this PR's own re-gate R1/R2). Two of the five files are the actual code change
+    (`scripts/tests/test_wa_practices_replica.py`, 180 lines added and 4 removed across both
+    rounds; the CI workflow's floor bump plus growth-history comment, 17 lines added and 3
+    removed); the other three are this evidence
+    pack itself (brief.yml, council-journal.jsonl, this file). No production code touched, in
+    either round.
