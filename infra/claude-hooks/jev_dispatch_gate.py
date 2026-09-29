@@ -41,11 +41,15 @@ redact the whole text with linear-time masks, then cut; never cut first.
 so the ORIGINAL prompt appears on the hook's stdout: that stdout is read by
 the process that produced the prompt, it is not egress. Test seam: JEV_DISPATCH_GATE_FAKE_ANSWERS (JSON) replaces the
 network call — tests only, documented like NZ_JUMP_DRY.
-INTERPRETER: PATH python3 is the default; when the repo redactor is not
-importable the hook re-execs once under the repo .venv (resolved via git
-common dir); if that .venv is absent the hook keeps running with the
-in-hook masks and the receipt says repo_redactor: false, interpreter: path
-— degradation, not the pinned runtime.
+INTERPRETER: the pinned interpreter is apps/backend-rag/.venv/bin/python
+(its requirements lock pins pyyaml with hashes; scripts/agent_start.py
+symlinks that venv into every worktree). The hook ALWAYS re-execs into it
+before doing anything else — no test-import-first probe. No usable pinned
+interpreter, or a failed exec, → Jev is skipped entirely
+(skip: no_pinned_interpreter), the dispatch is allowed, zero vendor calls.
+PATH python3 is never itself labelled compliant. Receipt `interpreter`:
+"venv" (re-exec'd), "seam" (JEV_DISPATCH_GATE_INTERPRETER_SEAM test seam
+for CI/unit runs with no backend venv), or absent on a skip row.
 """
 from __future__ import annotations
 
@@ -189,44 +193,87 @@ def _repo_redactor():
         return None
 
 
+def _usable_python(path: pathlib.Path) -> bool:
+    """A candidate interpreter is usable only if absolute, owned by us,
+    not WORLD-writable, and executable. Group-writable is accepted: mise
+    installs with the standard umask 002 are 0775/group staff on these
+    Macs, and a same-uid attacker who could plant a hostile binary there
+    is not stopped by the group bit anyway — the uid check is the actual
+    boundary. Applied identically to the git-resolved venv and to
+    JEV_DISPATCH_GATE_VENV_PYTHON (a test seam)."""
+    try:
+        if not path.is_absolute():
+            return False
+        st = os.stat(path)  # follows symlinks to the real target
+        return (st.st_uid == os.getuid() and not (st.st_mode & 0o002)
+                and os.access(path, os.X_OK))
+    except Exception:
+        return False
+
+
 def _repo_venv_python() -> pathlib.Path | None:
-    """Locate the MAIN checkout's `.venv/bin/python` from any worktree, via
-    git's common dir (worktrees have no `.venv` of their own)."""
-    env_override = os.environ.get("JEV_DISPATCH_GATE_VENV_PYTHON")
+    """Locate the PINNED interpreter: apps/backend-rag/.venv/bin/python (its
+    requirements lock files pin pyyaml with hashes; scripts/agent_start.py
+    symlinks that venv into every worktree). Falls back to the main
+    checkout's copy, resolved via git's common dir, only when the direct
+    path is unusable. The root .venv has no manifest and is never a
+    candidate."""
+    env_override = os.environ.get("JEV_DISPATCH_GATE_VENV_PYTHON")  # test seam only
     if env_override:
-        return pathlib.Path(env_override)
+        p = pathlib.Path(env_override)
+        return p if _usable_python(p) else None
+    direct = HERE.parent.parent / "apps" / "backend-rag" / ".venv" / "bin" / "python"
+    if _usable_python(direct):
+        return direct
     try:
         out = subprocess.run(
             ["git", "-C", str(HERE), "rev-parse", "--path-format=absolute", "--git-common-dir"],
             capture_output=True, text=True, timeout=2,
         )
+        if out.returncode != 0 or not out.stdout.strip():
+            return None
         common_dir = pathlib.Path(out.stdout.strip())
-        candidate = common_dir.parent / ".venv" / "bin" / "python"
-        return candidate if os.access(candidate, os.X_OK) else None
+        fallback = common_dir.parent / "apps" / "backend-rag" / ".venv" / "bin" / "python"
+        return fallback if _usable_python(fallback) else None
     except Exception:
         return None
 
 
+def _interpreter_label() -> str | None:
+    """"venv" once re-exec'd (or already running the pinned interpreter),
+    "seam" under the CI/unit test seam, else None (no pinned interpreter
+    resolved yet — gate() skips Jev in that case, see no_pinned_interpreter)."""
+    if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1":
+        return "venv"
+    if os.environ.get("JEV_DISPATCH_GATE_INTERPRETER_SEAM") == "1":
+        return "seam"
+    return None
+
+
 def _reexec_under_repo_venv(argv: list[str]) -> None:
-    """Re-exec once under the repo `.venv` when PATH python3 lacks the repo
-    redactor. Called before the alarm and before stdin is read, so a failed
-    re-exec attempt never consumes the payload. Fail-open on any error."""
+    """ALWAYS re-execs into the pinned interpreter unless already running
+    under it (env flag, or sys.executable already resolves to it) — no
+    test-import-first probe. No usable pinned interpreter, or a failed
+    exec, → return here; gate() then skips Jev rather than call the vendor
+    under an unpinned interpreter. Called before the alarm and before
+    stdin is read, so a failed attempt never consumes the payload."""
     try:
         if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1":
             return
-        if os.environ.get("JEV_DISPATCH_GATE_FORCE_REEXEC_TEST") != "1":
-            try:
-                sys.path.insert(0, str(SCRIPTS))
-                import _redact_pii  # noqa: F401, PLC0415
-
-                return
-            except Exception:
-                pass
+        if os.environ.get("JEV_DISPATCH_GATE_INTERPRETER_SEAM") == "1":
+            return
         p = _repo_venv_python()
         if p is None:
             return
-        os.environ["JEV_DISPATCH_GATE_REEXEC"] = "1"
-        os.execv(str(p), [str(p), str(pathlib.Path(__file__).resolve()), *argv])
+        if os.path.realpath(sys.executable) == os.path.realpath(str(p)):
+            os.environ["JEV_DISPATCH_GATE_REEXEC"] = "1"  # already the pinned interpreter
+            return
+        hook_path = str(pathlib.Path(__file__).resolve())
+        env = {**os.environ, "JEV_DISPATCH_GATE_REEXEC": "1"}
+        try:
+            os.execve(str(p), [str(p), hook_path, *argv], env)
+        except OSError:
+            return
     except Exception:
         return
 
@@ -438,8 +485,10 @@ def gate(payload: dict) -> dict | None:
     sha = hashlib.sha256((desc + "\n" + prompt).encode("utf-8")).hexdigest()[:12]
     row = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "session_id": payload.get("session_id"),
            "tool_use_id": payload.get("tool_use_id"), "subagent_type": tool_input.get("subagent_type"),
-           "requested_model": tool_input.get("model"), "prompt_sha12": sha, "mode": MODE,
-           "interpreter": "venv" if os.environ.get("JEV_DISPATCH_GATE_REEXEC") == "1" else "path"}
+           "requested_model": tool_input.get("model"), "prompt_sha12": sha, "mode": MODE}
+    interp = _interpreter_label()
+    if interp:
+        row["interpreter"] = interp
     skip = None
     if MODE == "off":
         skip = "off"
@@ -452,9 +501,19 @@ def gate(payload: dict) -> dict | None:
     if skip:
         _receipt({**row, "action": "skip", "skip": skip})
         return None
+    if interp is None:
+        _receipt({**row, "action": "skip", "skip": "no_pinned_interpreter"})
+        return None
     t0 = time.time()
     repo_layer = _repo_redactor()
     row["repo_redactor"] = repo_layer is not None
+    if repo_layer is not None:
+        try:
+            import yaml  # noqa: PLC0415
+
+            row["redactor_yaml"] = getattr(yaml, "__version__", None)
+        except Exception:
+            pass
     try:
         state = build_state(tool_input, repo_layer)
     except Exception:
@@ -497,7 +556,7 @@ def report() -> dict:
     lat = sorted(r["latency_ms"] for r in rows if isinstance(r.get("latency_ms"), int))
     return {"receipts": len(rows), "by_action": by("action"), "by_jev_status": by("jev_status"),
             "by_skip": by("skip"), "downgrades": by("new_model"), "by_repo_redactor": by("repo_redactor"),
-            "by_interpreter": by("interpreter"),
+            "by_interpreter": by("interpreter"), "by_redactor_yaml": by("redactor_yaml"),
             "opus_seats_avoided": sum(1 for r in rows if r.get("action") in ("deny", "downgrade")
                                       and _family(r.get("requested_model")) == "opus"),
             "latency_ms_p50": lat[len(lat) // 2] if lat else None}
