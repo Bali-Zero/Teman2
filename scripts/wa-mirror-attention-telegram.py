@@ -185,11 +185,33 @@ def save_state(state: dict):
     STATE_PATH.write_text(json.dumps(state, indent=2, default=str))
 
 
+def sender_digits_sql(alias: str = "") -> str:
+    """SQL expression for the sender's bare-digit phone, from what is actually stored.
+
+    `key.senderPn` was dropped by WhatsApp's LID migration; it is absent from every
+    inbound row since ~2026-07-20, so selectors keyed on it went blind (digest said
+    0 inbound, realtime HIGH never fired). The identity now lives in the structured
+    `sender_phone` column (LID-resolved upstream; the classifier reads the same one)
+    and in `key.remoteJidAlt`. `senderPn` stays first for older rows. Fallbacks apply
+    to 1:1 chats only (`remoteJid` not `@g.us`): the alert's intent is a client
+    writing to the team, not group traffic.
+    """
+    p = f"{alias}." if alias else ""
+    key = f"{p}raw_baileys_event->'key'"
+    return f"""NULLIF(COALESCE(
+            NULLIF(REGEXP_REPLACE({key}->>'senderPn', '@.*', ''), ''),
+            CASE WHEN COALESCE({key}->>'remoteJid', '') NOT LIKE '%@g.us' THEN
+              COALESCE(NULLIF(REGEXP_REPLACE({p}sender_phone, '\\D', '', 'g'), ''),
+                       NULLIF(REGEXP_REPLACE({key}->>'remoteJidAlt', '@.*', ''), ''))
+            END
+          ), '')"""
+
+
 async def fetch_high_unresolved(conn: asyncpg.Connection) -> list[dict]:
-    rows = await conn.fetch("""
+    rows = await conn.fetch(f"""
       WITH highs AS (
         SELECT
-          REGEXP_REPLACE(m.raw_baileys_event->'key'->>'senderPn', '@.*', '') AS phone,
+          {sender_digits_sql('m')} AS phone,
           MIN(m.id) AS first_high_id,
           MAX(m.id) AS last_high_id,
           MIN(m.created_at) AS first_high_at,
@@ -201,7 +223,10 @@ async def fetch_high_unresolved(conn: asyncpg.Connection) -> list[dict]:
         WHERE m.attention_priority = 'HIGH'
           AND m.attention_resolved_at IS NULL
           AND m.direction = 'inbound'
-          AND m.raw_baileys_event->'key'->>'senderPn' ~ '^[0-9]+@'
+          -- "realtime" means recent: the alerter was blind for ~70 days, and the unresolved
+          -- HIGH backlog older than a week is history, not news (would be one giant first-scan roster)
+          AND m.created_at >= NOW() - INTERVAL '7 days'
+          AND {sender_digits_sql('m')} ~ '^[0-9]+$'
         GROUP BY 1
       )
       SELECT h.*,
@@ -215,18 +240,18 @@ async def fetch_high_unresolved(conn: asyncpg.Connection) -> list[dict]:
 
 async def fetch_digest_metrics(conn: asyncpg.Connection) -> dict:
     """Aggregate metrics for end-of-day digest (last 24h window)."""
-    row = await conn.fetchrow("""
+    row = await conn.fetchrow(f"""
       WITH window_msgs AS (
-        SELECT * FROM whatsapp_message_context
+        SELECT *, {sender_digits_sql()} AS sender_digits FROM whatsapp_message_context
         WHERE direction='inbound'
           AND created_at >= NOW() - INTERVAL '24 hours'
-          AND raw_baileys_event->'key'->>'senderPn' ~ '^[0-9]+@'
+          AND {sender_digits_sql()} ~ '^[0-9]+$'
       )
       SELECT
         COUNT(*) FILTER (WHERE attention_priority='HIGH' AND attention_resolved_at IS NULL) AS high_open,
         COUNT(*) FILTER (WHERE attention_priority='HIGH' AND attention_resolved_at IS NOT NULL) AS high_resolved,
         COUNT(*) FILTER (WHERE attention_priority='MEDIUM') AS medium,
-        COUNT(DISTINCT REGEXP_REPLACE(raw_baileys_event->'key'->>'senderPn','@.*','')) AS distinct_phones_24h,
+        COUNT(DISTINCT sender_digits) AS distinct_phones_24h,
         COUNT(*) AS inbound_24h
       FROM window_msgs
     """)
