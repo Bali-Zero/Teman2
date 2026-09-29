@@ -16,6 +16,7 @@ guard and schema behavior around it.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
 import subprocess
@@ -458,6 +459,60 @@ async def test_toctou_message_unchanged_apply_true_inserts_from_its_own_fresh_re
         assert len(promises) == 1
         assert promises[0]["promise_text"] == clause_text
         assert promises[0]["due_at"] == created_at + timedelta(hours=24)
+
+
+# Delta-round finding (codex-gpt-5.6-sol): the two TOCTOU tests above prove
+# the OUTCOME of the second read (a mismatch supersedes, a match inserts),
+# but neither one PROVES a lock is actually held — a mutant that dropped
+# `FOR SHARE` from _JUDGE_MESSAGE_FOR_SHARE_SQL entirely would still pass
+# both, since this test file never runs two connections against the same
+# row at once. This test opens two REAL, independent connections (bypassing
+# the pool's own max_size=1 — a second `pool.acquire()` would just wait for
+# the first to free up, which would hide the very lock this test exists to
+# prove) and shows a concurrent UPDATE on the message row genuinely blocks
+# until the FOR-SHARE-holding transaction commits.
+@pytest.mark.asyncio
+async def test_for_share_lock_genuinely_blocks_a_concurrent_message_update(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "judge_for_share_lock") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+        body = "I will send it tomorrow"
+        await _insert_wmc(pool, msg_id=916, body=body, created_at=created_at)
+
+        conn_reader = await asyncpg.connect(host=pg_socket_dir, user="postgres",
+                                             database="judge_for_share_lock")
+        conn_writer = await asyncpg.connect(host=pg_socket_dir, user="postgres",
+                                             database="judge_for_share_lock")
+        try:
+            reader_tx = conn_reader.transaction()
+            await reader_tx.start()
+            row = await conn_reader.fetchrow(wtp._JUDGE_MESSAGE_FOR_SHARE_SQL, 916)
+            assert row["body"] == body  # the lock IS held from this point
+
+            update_task = asyncio.create_task(
+                conn_writer.execute(
+                    "UPDATE whatsapp_message_context SET body = $1 WHERE id = $2",
+                    "edited while locked", 916,
+                )
+            )
+            await asyncio.sleep(0.3)
+            # The concurrent UPDATE must NOT have completed yet — FOR SHARE
+            # conflicts with the ROW EXCLUSIVE lock an UPDATE needs.
+            assert not update_task.done(), (
+                "a concurrent UPDATE completed while FOR SHARE was held — "
+                "the lock is not actually blocking (finding not closed)"
+            )
+
+            await reader_tx.commit()
+            await asyncio.wait_for(update_task, timeout=5.0)  # now unblocks
+
+            post = await conn_reader.fetchrow(
+                "SELECT body FROM whatsapp_message_context WHERE id = $1", 916,
+            )
+            assert post["body"] == "edited while locked"
+        finally:
+            await conn_reader.close()
+            await conn_writer.close()
 
 
 # === round-1 council finding #4/#6 (codex + kimi-code/k3, independently): ===

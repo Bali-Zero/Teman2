@@ -834,7 +834,19 @@ def _call_ollama(opener: urllib.request.OpenerDirector, clause: str) -> bool | N
     function's try block (an unsanitized crash class the docstring above
     already claimed could not happen). Both are now the SAME sanitized
     OllamaTransportError, raised from inside the try block below, before
-    _parse_verdict ever sees the envelope."""
+    _parse_verdict ever sees the envelope.
+
+    Delta-round finding (codex-gpt-5.6-sol + kimi-code/k3, independently, on
+    the finding-#3 fix itself): a `content` key that is PRESENT but not a
+    string (`null`/an int/a list — Ollama's own documented schema has
+    `content` as a string, full stop) used to slip past the structural check
+    above into `_parse_verdict`, which is a MODEL-judgment validator, not an
+    envelope one — it would return None (invalid) and burn an attempt for an
+    envelope-shape problem, the exact impact class this finding exists to
+    prevent. `content` is now type-checked here too, before _parse_verdict
+    ever runs (an empty STRING is left to _parse_verdict — a real model can
+    legitimately emit `""`, and that is a judgment failure, not a shape
+    one)."""
     request_body = json.dumps({
         "model": _OLLAMA_MODEL,
         "stream": False,
@@ -864,6 +876,8 @@ def _call_ollama(opener: urllib.request.OpenerDirector, clause: str) -> bool | N
             if not isinstance(message, dict) or "content" not in message:
                 raise OllamaTransportError("envelope_missing_message_content")
             content = message["content"]
+            if not isinstance(content, str):
+                raise OllamaTransportError("envelope_content_not_a_string")
     except OllamaTransportError:
         raise
     except Exception as exc:
@@ -931,6 +945,21 @@ SELECT id, message_id, clause_idx, clause_hash, promise_type, due_at_hint, attem
  LIMIT $1
 """
 
+# This COALESCE is the SAME expression the scanner's own selection query
+# uses (_SCAN_SELECT_SQL above, on origin/main before this PR) — "the
+# current body" is, by this module's own pre-existing, shared definition,
+# whichever of the two columns is non-empty, never `body` alone. Round-1
+# council dissent (codex-gpt-5.6-sol, delta round): a message whose `body`
+# is later cleared/redacted while `message_text` is left stale would still
+# read as "unchanged" here, which could defeat a FUTURE redaction feature.
+# ACCEPTED, not fixed here: verified (`git grep` across scripts/ and
+# apps/backend-rag/) that nothing in this repo clears `body` independently
+# of `message_text` today — this is a pre-existing assumption inherited
+# from PR-1/PR-2's own candidate-creation query, not a new bypass this PR
+# introduces, and redefining "current body" for a redaction feature that
+# does not exist yet is a schema/product decision outside the judge's
+# scope. Revisit this comment (and the identical COALESCE in
+# _SCAN_SELECT_SQL) if such a feature is ever added.
 _JUDGE_MESSAGE_SQL = """
 SELECT created_at, COALESCE(NULLIF(body, ''), NULLIF(message_text, '')) AS body
   FROM whatsapp_message_context

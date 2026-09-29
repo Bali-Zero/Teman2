@@ -235,11 +235,27 @@ def test_call_ollama_invalid_model_output_returns_none_not_transport_error():
     b'{"message": "oops"}',                   # message present but not an object
     b'{"message": {}}',                       # message is an object, no content key
     b'{"model": "qwen3.5:9b"}',               # no message key at all
-], ids=["array", "scalar", "message-null", "message-string", "message-no-content", "no-message-key"])
+    # Delta-round finding (codex + kimi, independently): `content` PRESENT
+    # but not a string is an envelope-shape problem too, not a model-
+    # judgment one — Ollama's own documented schema has content as a string.
+    b'{"message": {"content": null}}',
+    b'{"message": {"content": 42}}',
+    b'{"message": {"content": []}}',
+], ids=["array", "scalar", "message-null", "message-string", "message-no-content", "no-message-key",
+        "content-null", "content-int", "content-list"])
 def test_call_ollama_malformed_envelope_shapes_raise_transport_error_not_invalid(body):
     opener = _FakeOpener(response=_FakeHTTPResponse(200, body))
     with pytest.raises(wtp.OllamaTransportError):
         wtp._call_ollama(opener, "clause")
+
+
+def test_call_ollama_empty_string_content_is_a_model_judgment_failure_not_transport():
+    """Innocence pairing for the content-type check above: an EMPTY string is
+    still a string — a real model can legitimately emit "" — so this is
+    `_parse_verdict`'s job (returns None, an invalid attempt), never a
+    transport error."""
+    opener = _FakeOpener(response=_FakeHTTPResponse(200, _envelope("")))
+    assert wtp._call_ollama(opener, "clause") is None
 
 
 def test_call_ollama_oversized_response_raises_transport_error():
@@ -534,6 +550,19 @@ async def test_judge_one_ollama_transport_error_propagates_untouched(monkeypatch
             dry_run=False, metrics=metrics,
         )
     assert metrics.true == metrics.false == metrics.invalid == metrics.superseded == 0
+
+
+# Delta-round finding (codex + kimi, independently): the fix that made
+# _JUDGE_SELECT_SQL interpolate _JUDGE_MAX_ATTEMPTS (instead of a hardcoded
+# `5`) has no mutation guard of its own — since _JUDGE_MAX_ATTEMPTS is
+# currently 5, a REVERT of that interpolation back to a literal `5` would
+# still pass every other test in this file (the value is identical either
+# way). This pins the SQL text ITSELF to the constant, so a revert-mutant
+# (or a future bump of _JUDGE_MAX_ATTEMPTS with only ONE of the two
+# statements updated) turns this red.
+def test_judge_select_sql_and_mark_attempt_sql_share_the_same_max_attempts_constant():
+    assert f"attempts < {wtp._JUDGE_MAX_ATTEMPTS}" in wtp._JUDGE_SELECT_SQL
+    assert f">= {wtp._JUDGE_MAX_ATTEMPTS}" in wtp._JUDGE_MARK_ATTEMPT_SQL
 
 
 # F — run_judge: selects up to `limit` ONCE; the wall budget stops taking
