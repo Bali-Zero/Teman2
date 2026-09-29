@@ -11,7 +11,7 @@ LOG_DIR="$HOME/logs/pro-disk_janitor"
 LOG="$LOG_DIR/run.log"
 mkdir -p "$LOG_DIR"
 SIDECAR_DIR="$HOME/.organism/last_seen"
-PIDFILE="/tmp/nuzantara-pro-disk_janitor.pid"
+PIDFILE="${PRO_DISK_JANITOR_PIDFILE:-/tmp/nuzantara-pro-disk_janitor.pid}"   # injectable so the test never touches the live lock (council R7)
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
 log() { echo "[$(ts)] $*" >> "$LOG"; }

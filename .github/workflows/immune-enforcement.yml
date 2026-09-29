@@ -294,6 +294,8 @@ jobs:
               scripts/test_offsite_verify.sh|\
               scripts/disk_janitor.sh|\
               scripts/test_disk_janitor.sh|\
+              infra/launchagents/wrappers/pro-disk-janitor.sh|\
+              infra/launchagents/com.nuzantara.disk-janitor.plist|\
               scripts/fly-pg-backup.sh|\
               scripts/lib/heartbeat.sh|\
               scripts/wr2-cron-wrapper.sh|\

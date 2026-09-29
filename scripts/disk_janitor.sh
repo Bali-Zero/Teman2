@@ -6,19 +6,21 @@
 # exists but nothing scheduled it. The accumulators that grow without an owner are all
 # machine-generated and reproducible, so this janitor prunes them on a schedule and
 # journals every run. It NEVER touches data that a human produced or that carries PII:
-#   ~/Desktop/OSINT-Nexus, ~/wa-mirror-media, ~/backups/fly-postgres, any *PII-Quarantine* dir,
-#   ~/.nuzantara-pilots (evidence), ~/nuzantara/.worktrees (broker-owned), ~/.ollama,
-#   ~/.colima (VM disk), ~/.cache/huggingface (model weights), ~/.claude/backups (memory DB),
-#   ~/.claude/projects (transcripts + memory).
-# Those are not "skipped": they are never a target, and refuse_path() (exact roots, never a
-# substring — council finding O1) makes any computed target under one an ERROR that skips
-# the item and lets the rest of the run proceed; the receipt carries errors>0.
+#   ~/Desktop/OSINT-Nexus, ~/wa-mirror-media, ~/backups/fly-postgres, any path with a
+#   *PII-Quarantine* component, ~/.nuzantara-pilots (evidence), ~/nuzantara/.worktrees
+#   (broker-owned), ~/.ollama, ~/.colima (VM disk), ~/.cache/huggingface (model weights),
+#   ~/.claude/backups (memory DB), ~/.claude/projects (transcripts + memory).
+# Those are not "skipped": they are never a target, and is_protected() (exact roots — literal
+# and physical — plus the PII component, no temp files, no I/O; council O1/R1) makes any
+# computed target under one, or ABOVE one, an ERROR that skips the item and lets the rest of
+# the run proceed; the receipt carries errors>0 and the run exits 1.
 #
 # Targets (each step has its own env knob; ages in days; `-mtime +N` = strictly older than N+1 d):
 #   scratch   $DISK_JANITOR_TMP_ROOT/-<project>/<session-uuid>  parent starts with "-", child is a
 #             uuid (council O2), older than 7 d, uuid not registered in ~/.claude/sessions; the step
 #             is skipped (ERROR) when that registry is absent or empty (council O4, fail-closed)
-#   codex     ~/.codex/{sessions,archived_sessions}/**/*.jsonl  >14 d and not open (lsof)
+#   codex     ~/.codex/{sessions,archived_sessions}/**/*.jsonl  >14 d and not open; the step is
+#             skipped (ERROR) when the open-file probe (lsof) is unavailable or fails (council R5)
 #   logarch   ~/logs/archive/*.gz                                >60 d (log-rotate-run.sh gzips, nothing pruned)
 #   qdrant    scripts/qdrant_backup_retention.sh                  delegated, same --apply mode
 #   tools     uv cache prune (skipped while a uv process holds the lock) · docker image/volume prune
@@ -26,10 +28,11 @@
 #             · docker builder prune --filter until=168h · brew cleanup --prune=30
 #
 # DRY-RUN by default: reports candidates, removes nothing. `--apply` acts.
-# `--check-path P` prints OK|REFUSE for P against the protected roots and exits (used by the test).
+# `--check-path P` prints OK|REFUSE for P against the protected set and exits (used by the test).
 # Kill switch: DISK_JANITOR_ENABLED=false. Targets /bin/bash 3.2 (fleet default).
-# Log lines carry uuids, archive names and a short hash of codex basenames — never a full
-# transcript name (council O7, output boundary). Test: scripts/test_disk_janitor.sh.
+# Output boundary (council O7/R4): log lines never carry a candidate's name — scratch is logged
+# by its session uuid, everything else by a 12-hex sha256 of the path relative to $HOME.
+# Test: scripts/test_disk_janitor.sh.
 set -uo pipefail
 
 JH="${DISK_JANITOR_HOME:-$HOME}"
@@ -41,42 +44,52 @@ SCRATCH_DAYS="${DISK_JANITOR_SCRATCH_DAYS:-7}"
 CODEX_DAYS="${DISK_JANITOR_CODEX_DAYS:-14}"
 LOG_ARCHIVE_DAYS="${DISK_JANITOR_LOG_ARCHIVE_DAYS:-60}"
 TOOLS="${DISK_JANITOR_TOOLS:-true}"
+LSOF="${DISK_JANITOR_LSOF:-lsof}"
 QDRANT_RETENTION="${DISK_JANITOR_QDRANT_RETENTION-$(cd "$(dirname "$0")" && pwd)/qdrant_backup_retention.sh}"
 
-# Protected roots (exact path or anything below it) + one name-based component.
-PROTECTED_ROOTS="$JH/Desktop/OSINT-Nexus
-$JH/wa-mirror-media
-$JH/backups/fly-postgres
-$JH/.nuzantara-pilots
-$JH/nuzantara/.worktrees
-$JH/.ollama
-$JH/.colima
-$JH/.cache/huggingface
-$JH/.claude/backups
-$JH/.claude/projects"
-PROTECTED_COMPONENT="Nuzantara-PII-Quarantine"
+# Protected roots (exact path or anything below it) + one name-based component. Arrays, not a
+# here-document: a here-document needs a temp file and bash falls through when it cannot make
+# one (council R1), which would have read as "not protected".
+PROTECTED_ROOTS=(
+  "$JH/Desktop/OSINT-Nexus" "$JH/wa-mirror-media" "$JH/backups/fly-postgres"
+  "$JH/.nuzantara-pilots" "$JH/nuzantara/.worktrees" "$JH/.ollama" "$JH/.colima"
+  "$JH/.cache/huggingface" "$JH/.claude/backups" "$JH/.claude/projects"
+)
+PROTECTED_COMPONENT="PII-Quarantine"
 
-canon() { # physical path when resolvable (symlinked parents), else the literal
-  if [ -d "$1" ]; then (cd "$1" 2>/dev/null && pwd -P) || printf '%s' "$1"
-  else d=$(dirname "$1"); b=$(basename "$1"); (cd "$d" 2>/dev/null && printf '%s/%s' "$(pwd -P)" "$b") || printf '%s' "$1"; fi
+physical() { # physical path of an existing dir / of a file's parent; empty when unresolvable
+  local d b
+  if [ -d "$1" ]; then (cd -- "$1" 2>/dev/null && pwd -P)
+  else d=$(dirname -- "$1"); b=$(basename -- "$1"); (cd -- "$d" 2>/dev/null && printf '%s/%s' "$(pwd -P)" "$b"); fi
 }
-is_protected() { # 0 = protected
-  local p c r
-  p="$1"; c=$(canon "$1")
-  case "/$p/" in */"$PROTECTED_COMPONENT"/*) return 0 ;; esac
-  case "/$c/" in */"$PROTECTED_COMPONENT"/*) return 0 ;; esac
-  while IFS= read -r r; do
-    [ -n "$r" ] || continue
-    case "$p" in "$r"|"$r"/*) return 0 ;; esac
-    case "$c" in "$r"|"$r"/*) return 0 ;; esac
-  done <<EOF
-$PROTECTED_ROOTS
-EOF
+under_or_above() { # $1 path, $2 root → 0 when path is the root, below it, or an ancestor of it
+  case "$1" in "$2"|"$2"/*) return 0 ;; esac
+  case "$2" in "$1"/*) return 0 ;; esac
+  return 1
+}
+is_protected() { # 0 = protected (under a root, above a root, or carrying the PII component);
+                 # every comparison is made on the literal AND the physical form of both sides,
+                 # so a symlinked protected root is also protected at its physical location
+  local p c r rp
+  p="$1"; c=$(physical "$1")
+  case "$p" in *"$PROTECTED_COMPONENT"*) return 0 ;; esac
+  case "$c" in *"$PROTECTED_COMPONENT"*) return 0 ;; esac
+  for r in "${PROTECTED_ROOTS[@]}"; do
+    under_or_above "$p" "$r" && return 0
+    [ -n "$c" ] && under_or_above "$c" "$r" && return 0
+    if [ -d "$r" ]; then
+      rp=$(physical "$r")
+      if [ -n "$rp" ] && [ "$rp" != "$r" ]; then
+        under_or_above "$p" "$rp" && return 0
+        [ -n "$c" ] && under_or_above "$c" "$rp" && return 0
+      fi
+    fi
+  done
   return 1
 }
 if [ "${1:-}" = "--check-path" ]; then
   [ -n "${2:-}" ] || { echo "usage: --check-path P" >&2; exit 64; }
-  if is_protected "$2"; then echo "REFUSE $2"; exit 3; else echo "OK $2"; exit 0; fi
+  if is_protected "$2"; then echo "REFUSE"; exit 3; else echo "OK"; exit 0; fi
 fi
 
 APPLY=false
@@ -85,27 +98,31 @@ MODE=DRY-RUN; $APPLY && MODE=APPLY
 
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$JOURNAL")" 2>/dev/null || true
 ts()  { date +%Y-%m-%dT%H:%M:%S%z; }
-safe() { printf '%s' "$1" | tr '\n\r' '??'; }
 log() { echo "[$(ts)] disk-janitor[$MODE] $*" | tee -a "$LOG_FILE" >&2; }
+tag() { printf '%s' "${1#"$JH"/}" | shasum -a 256 | cut -c1-12; }   # relative path → 12-hex, never the name
 
 case "$(printf '%s' "${DISK_JANITOR_ENABLED:-true}" | tr 'A-Z' 'a-z')" in
   0|false|no|off) log "DISABLED via DISK_JANITOR_ENABLED — exit 0"; exit 0 ;;
 esac
 
-# The scratch root is the one target that can be pointed elsewhere by env/plist (council O3):
-# it must be an absolute, non-symlinked path whose basename is claude-<uid>.
-case "$TMP_ROOT" in
-  /*/claude-[0-9]*) : ;;
-  *) log "REFUSE: DISK_JANITOR_TMP_ROOT '$(safe "$TMP_ROOT")' must be an absolute path ending in claude-<uid> — exit 2"; exit 2 ;;
-esac
-if [ -L "$TMP_ROOT" ]; then log "REFUSE: DISK_JANITOR_TMP_ROOT is a symlink — exit 2"; exit 2; fi
+# The scratch root is the one target that can be pointed elsewhere by env/plist (council O3/R2):
+# absolute, basename exactly claude-<digits>, no "." or ".." components, and — when it exists —
+# its physical path must equal the literal (no symlink anywhere in the chain).
+tmp_root_ok() {
+  case "$1" in /*) : ;; *) return 1 ;; esac
+  case "$1/" in */./*|*/../*|*//*) return 1 ;; esac
+  [[ "$(basename -- "$1")" =~ ^claude-[0-9]+$ ]] || return 1
+  if [ -e "$1" ]; then [ ! -L "$1" ] || return 1; [ "$(physical "$1")" = "$1" ] || return 1; fi
+  return 0
+}
+if ! tmp_root_ok "$TMP_ROOT"; then log "REFUSE: DISK_JANITOR_TMP_ROOT must be an absolute, canonical path whose basename is claude-<uid> — exit 2"; exit 2; fi
 
 FREED=0; ERRORS=0
 N_SCRATCH=0; N_CODEX=0; N_LOGARCH=0
-bytes_of() { du -sk "$1" 2>/dev/null | head -1 | awk '{print $1*1024}' | tr -d '\n'; }
+bytes_of() { du -sk -- "$1" 2>/dev/null | head -1 | awk '{print $1*1024}' | tr -d '\n'; }
 remove() { # $1 path  $2 step  $3 label for the log
   local b
-  if [ -z "$1" ] || [ "$1" = "/" ] || [ "$1" = "$JH" ]; then log "$2: REFUSE unsafe target '$(safe "$1")' — abort rc=2"; exit 2; fi
+  if [ -z "$1" ] || [ "$1" = "/" ] || [ "$1" = "$JH" ]; then log "$2: REFUSE unsafe target — abort rc=2"; exit 2; fi
   if is_protected "$1"; then ERRORS=$((ERRORS + 1)); log "$2: REFUSE $3 (protected tree) — skipped"; return 1; fi
   b=$(bytes_of "$1"); b=${b:-0}
   if $APPLY; then
@@ -124,33 +141,40 @@ session_live() { grep -rlq -- "$1" "$SESSIONS_DIR" 2>/dev/null; }
 if [ ! -d "$TMP_ROOT" ]; then
   log "scratch: root absent — nothing to do"
 elif [ ! -d "$SESSIONS_DIR" ] || [ -z "$(find "$SESSIONS_DIR" -maxdepth 1 -name '*.json' -print -quit 2>/dev/null)" ]; then
-  ERRORS=$((ERRORS + 1)); log "scratch: session registry $SESSIONS_DIR absent or empty — step skipped (cannot tell live from dead)"
+  ERRORS=$((ERRORS + 1)); log "scratch: session registry absent or empty — step skipped (cannot tell live from dead)"
 else
   while IFS= read -r -d '' d; do
-    u=$(basename "$d"); p=$(basename "$(dirname "$d")")
-    case "$p" in -*) : ;; *) log "scratch: keep $(safe "$p")/$(safe "$u") (not a project dir)"; continue ;; esac
-    [[ "$u" =~ $UUID_RE ]] || { log "scratch: keep $(safe "$p")/$(safe "$u") (not a session uuid)"; continue; }
-    session_live "$u" && { log "scratch: keep $p/$u (session live)"; continue; }
-    remove "$d" scratch "$p/$u" && N_SCRATCH=$((N_SCRATCH + 1))
+    u=$(basename -- "$d"); p=$(basename -- "$(dirname -- "$d")")
+    case "$p" in -*) : ;; *) log "scratch: keep $(tag "$d") (not a project dir)"; continue ;; esac
+    [[ "$u" =~ $UUID_RE ]] || { log "scratch: keep $(tag "$d") (not a session uuid)"; continue; }
+    session_live "$u" && { log "scratch: keep $u (session live)"; continue; }
+    remove "$d" scratch "$u" && N_SCRATCH=$((N_SCRATCH + 1))
   done < <(find "$TMP_ROOT" -mindepth 2 -maxdepth 2 -type d -mtime +"$SCRATCH_DAYS" -print0 2>/dev/null)
 fi
 
 # ── codex sessions: transcripts older than CODEX_DAYS, never an open file ───────
-HAVE_LSOF=true; command -v lsof >/dev/null 2>&1 || { HAVE_LSOF=false; log "codex: lsof absent — open-file check unavailable"; }
-for root in "$JH/.codex/sessions" "$JH/.codex/archived_sessions"; do
-  [ -d "$root" ] || continue
-  while IFS= read -r -d '' f; do
-    label="${f#"$JH"/}"; label="$(dirname "$label")/$(printf '%s' "$(basename "$f")" | shasum -a 256 | cut -c1-12).jsonl"
-    if $HAVE_LSOF && lsof -- "$f" >/dev/null 2>&1; then log "codex: keep $label (open)"; continue; fi
-    remove "$f" codex "$label" && N_CODEX=$((N_CODEX + 1))
-  done < <(find "$root" -type f -name '*.jsonl' -mtime +"$CODEX_DAYS" -print0 2>/dev/null)
-  $APPLY && find "$root" -mindepth 1 -type d -empty -mtime +1 -delete 2>/dev/null
-done
+# lsof: rc 0 = open (keep), rc 1 = not open (candidate), anything else or no lsof = cannot tell
+# → the whole step is skipped as an ERROR (fail-closed, council R5).
+if ! command -v "$LSOF" >/dev/null 2>&1; then
+  ERRORS=$((ERRORS + 1)); log "codex: open-file probe '$LSOF' unavailable — step skipped"
+else
+  for root in "$JH/.codex/sessions" "$JH/.codex/archived_sessions"; do
+    [ -d "$root" ] || continue
+    if is_protected "$root"; then ERRORS=$((ERRORS + 1)); log "codex: root $(tag "$root") is protected — skipped"; continue; fi
+    while IFS= read -r -d '' f; do
+      "$LSOF" -- "$f" >/dev/null 2>&1; lrc=$?
+      if [ "$lrc" -eq 0 ]; then log "codex: keep $(tag "$f") (open)"; continue; fi
+      if [ "$lrc" -ne 1 ]; then ERRORS=$((ERRORS + 1)); log "codex: probe failed rc=$lrc on $(tag "$f") — kept"; continue; fi
+      remove "$f" codex "$(tag "$f")" && N_CODEX=$((N_CODEX + 1))
+    done < <(find "$root" -type f -name '*.jsonl' -mtime +"$CODEX_DAYS" -print0 2>/dev/null)
+    $APPLY && find "$root" -mindepth 1 -type d -empty -mtime +1 -delete 2>/dev/null
+  done
+fi
 
 # ── log archive: gzipped rotations older than LOG_ARCHIVE_DAYS ─────────────────
 if [ -d "$JH/logs/archive" ]; then
   while IFS= read -r -d '' f; do
-    remove "$f" logarch "$(safe "${f#"$JH"/}")" && N_LOGARCH=$((N_LOGARCH + 1))
+    remove "$f" logarch "$(tag "$f")" && N_LOGARCH=$((N_LOGARCH + 1))
   done < <(find "$JH/logs/archive" -type f -name '*.gz' -mtime +"$LOG_ARCHIVE_DAYS" -print0 2>/dev/null)
 fi
 
