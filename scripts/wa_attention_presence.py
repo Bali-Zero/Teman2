@@ -18,6 +18,7 @@ CONFTESTS = ("conftest.py", "scripts/conftest.py", "scripts/tests/conftest.py")
 KNOWN_SUITES = {
     "test_wa_attention_episode_tier",
     "test_wa_attention_pii_envelope",
+    "test_wa_attention_result_guard",
     "test_wa_attention_presence_walk",
     "test_wa_attention_sender_phone",
 }
@@ -39,6 +40,7 @@ FORBIDDEN_HOOKS = {
 }
 REFLECTION = {"setattr", "globals", "locals", "vars", "exec", "eval", "__import__", "register"}
 TRUSTED_NAMES = {"pytest", "fixture"}
+INTROSPECTION = {"__code__", "__dict__", "__globals__"}
 FLOW = (ast.If, ast.Try, ast.With, ast.AsyncWith, ast.For, ast.AsyncFor, ast.While, ast.Match)
 FUNCS = (ast.FunctionDef, ast.AsyncFunctionDef)
 BODY_SWAPS = {"obj", "_obj", "runtest", "function"}
@@ -84,7 +86,11 @@ def binds(node):
     """Names a non-def statement binds, plus refusal reasons for imports that hide a name."""
     if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-        return [(nm, "rebinding") for nm in target_names(targets)]
+        flat = []
+        for t in targets:
+            flat += list(t.elts) if isinstance(t, (ast.Tuple, ast.List)) else [t]
+        odd = [("<non-name target>", "nonname")] if any(not isinstance(t, ast.Name) for t in flat) else []
+        return [(nm, "rebinding") for nm in target_names(targets)] + odd
     if isinstance(node, ast.Expr):
         names = []
         for c in ast.walk(node.value):
@@ -104,6 +110,10 @@ def binds(node):
     return []
 
 
+def loads_of(node, names):
+    return sorted({n.id for n in ast.walk(node) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) and n.id in names})
+
+
 def flow_problems(module, node):
     found = []
     for sub in ast.walk(node):
@@ -112,14 +122,19 @@ def flow_problems(module, node):
         if isinstance(sub, ast.ClassDef) and sub.name.startswith("Test"):
             found.append(f"{module}::{sub.name} defined under control flow (unsupported)")
         for nm, kind in binds(sub):
-            if kind in ("import", "reflection") or is_test_name(nm) or nm in TRUSTED_NAMES:
+            if kind in ("import", "reflection", "nonname") or is_test_name(nm) or nm in TRUSTED_NAMES:
                 found.append(f"{module}::{nm} is bound under control flow by a {kind} (unsupported)")
     return found
 
 
-def walk(module, body, scope, expected, problems, fixture_ok=frozenset()):
+def walk(module, body, scope, expected, problems, fixture_ok=frozenset(), outer=frozenset()):
     seen = set()
+    test_names = set(outer) | {n.name for n in body if isinstance(n, FUNCS) and n.name.startswith("test") and not is_fixture(n, fixture_ok)}
     for node in body:
+        if not isinstance(node, (*FUNCS, ast.ClassDef)):
+            hit = loads_of(node, test_names)
+            if hit:
+                problems.append(f"{module}: a module/class-scope statement loads the test def(s) {hit}, so it can alias or mutate them (unsupported)")
         here = f"{module}::{'.'.join(scope + [getattr(node, 'name', '')])}"
         if isinstance(node, (*FUNCS, ast.ClassDef)):
             if node.name in seen:
@@ -140,7 +155,7 @@ def walk(module, body, scope, expected, problems, fixture_ok=frozenset()):
                     problems.append(f"{here} has a base class or metaclass other than object (inherited tests are invisible to the AST; unsupported)")
                 if any(isinstance(n, FUNCS) and n.name == "__init__" for n in node.body):
                     continue
-                walk(module, node.body, scope + [node.name], expected, problems, fixture_ok)
+                walk(module, node.body, scope + [node.name], expected, problems, fixture_ok, frozenset(test_names))
             else:
                 stray = [n.name for n in ast.walk(node) if isinstance(n, FUNCS) and n.name.startswith("test") and not is_fixture(n, fixture_ok)]
                 if stray:
@@ -151,6 +166,8 @@ def walk(module, body, scope, expected, problems, fixture_ok=frozenset()):
             for nm, kind in binds(node):
                 if kind == "import":
                     problems.append(f"{module}: import binds `{nm}`, which hides or injects a collectable name, a base, a fixture or `object` (unsupported)")
+                elif kind == "nonname":
+                    problems.append(f"{module}: assignment to a subscript/attribute target at module or class scope can rebind a collected test (unsupported)")
                 elif kind == "reflection":
                     problems.append(f"{module}: module-level call to `{nm}` can rebind a collected test (unsupported)")
                 elif is_test_name(nm) or nm in TRUSTED_NAMES:
@@ -186,6 +203,8 @@ def hook_problems(label, tree):
                 found.append(f"{label}: star import may inject a hook (unsupported)")
         found += [f"{label}: defines or binds `{nm}`, which can stop test bodies executing or rewrite outcomes (unsupported)" for nm in names if nm in FORBIDDEN_HOOKS]
     for n in ast.walk(tree):
+        if isinstance(n, ast.Attribute) and n.attr in INTROSPECTION:
+            found.append(f"{label}: touches `.{n.attr}`, which can swap a test's code or namespace (unsupported)")
         if (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "register") or (isinstance(n, ast.Attribute) and n.attr == "pluginmanager"):
             found.append(f"{label}: touches the plugin manager, which can register a hook at runtime (unsupported)")
         targets = n.targets if isinstance(n, ast.Assign) else [n.target] if isinstance(n, (ast.AnnAssign, ast.AugAssign)) else []
@@ -199,6 +218,13 @@ def fixture_imports(tree):
     return frozenset(
         a.name for n in tree.body if isinstance(n, ast.ImportFrom) and n.module == "pytest" for a in n.names if a.name == "fixture" and not a.asname
     )
+
+
+def scan_source(label, source):
+    tree = ast.parse(source)
+    expected, problems = set(), []
+    walk(label, tree.body, [], expected, problems, fixture_imports(tree))
+    return expected, problems + hook_problems(label, tree)
 
 
 def collect(root="."):

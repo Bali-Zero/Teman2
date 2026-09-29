@@ -103,6 +103,13 @@ GUILT = {
         def test_helper():
             return 1
     """,
+    'N11_globals_subscript_assign': 'def test_guard():\n    assert False\nglobals()["test_guard"] = lambda: None\n',
+    'N17_vars_subscript_assign': 'def test_guard():\n    assert False\nvars()["test_guard"] = lambda: None\n',
+    'N19_class_locals_subscript_assign': 'class TestC:\n    def test_guard(self):\n        assert False\n    locals()["test_guard"] = lambda self: None\n',
+    'N13_sys_modules_attribute_assign': 'import sys as _sys\ndef test_guard():\n    assert False\n_sys.modules[__name__].test_guard = lambda: None\n',
+    'N12_alias_then_code_swap': 'def test_guard():\n    assert False\n_f = test_guard\n_f.__code__ = (lambda: None).__code__\n',
+    'N18_module_dict_update': 'import sys as _sys\ndef test_guard():\n    assert False\n_sys.modules[__name__].__dict__.update(test_guard=lambda: None)\n',
+    'N14_helper_code_swap': 'def _neuter(f):\n    f.__code__ = (lambda: None).__code__\ndef test_guard():\n    assert False\n_neuter(test_guard)\n',
     "inherited_test_base": """
         class _Base:
             def test_inh(self):
@@ -149,7 +156,7 @@ GUILT = {
 
 @pytest.mark.parametrize("name", sorted(GUILT))
 def test_guilt_shape_is_refused(name):
-    _, problems = run_walk(GUILT[name])
+    _, problems = presence.scan_source("m", textwrap.dedent(GUILT[name]))
     assert problems, f"{name}: the walk accepted a shape it cannot follow"
 
 
@@ -165,6 +172,7 @@ HOOK_GUILT = {
     "hook_imported_under_own_name": "from helpers import stop as pytest_pyfunc_call\n",
     "hook_via_specname": "import pytest\n@pytest.hookimpl(specname='pytest_pyfunc_call')\ndef pytest_stop(pyfuncitem):\n    return True\n",
     "body_swap_obj": "def helper(item):\n    item.obj = len\n",
+    "C15_conftest_autouse_code_swap": 'import pytest\n@pytest.fixture(autouse=True)\ndef _neuter(request):\n    request.function.__code__ = (lambda: None).__code__\n',
     "logreport_def": "def pytest_runtest_logreport(report):\n    report.outcome = 'passed'\n",
     "sessionfinish_def": "def pytest_sessionfinish(session):\n    pass\n",
     "star_import_in_conftest": "from helper import *\n",
@@ -181,6 +189,12 @@ def test_forbidden_hook_is_refused(name):
 def test_pytest_configure_and_local_names_are_not_forbidden():
     src = "def pytest_configure(config):\n    pass\ndef test_x():\n    pytest_plugins = []\n    return pytest_plugins\n"
     assert presence.hook_problems("conftest.py", ast.parse(src)) == []
+
+
+def test_n00_control_a_lone_failing_guard_is_expected_so_a_missing_run_is_red():
+    expected, problems = presence.scan_source("m", "def test_guard():\n    assert False\n")
+    assert problems == []
+    assert expected == {("m", "test_guard")}
 
 
 def test_lookalike_fixture_decorator_is_still_expected_so_a_missing_run_is_red():

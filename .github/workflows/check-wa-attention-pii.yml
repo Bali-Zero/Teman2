@@ -124,28 +124,27 @@ jobs:
           # parametrized test is covered per definition (one surviving variant satisfies it), not per
           # parameter set. The collection patterns are FORCED below to the ones the AST assumes, so a
           # config override cannot desynchronise them. Constructs the AST cannot follow are refused
-          # (RED), not guessed: a test def under if/try/with/for/while; an Assign/AnnAssign/AugAssign
-          # rebinding of a test name (`test_x = other`, `__test__ = ...`); an import (aliased or not,
-          # or `*`) that binds a test*/Test* name; a class or function defined twice in one scope; a
-          # Test* class with any base other than `object` or a metaclass; a class not named Test*
-          # that defines test methods; any unittest.TestCase subclass; and a definition or assignment
-          # of (or import binding) pytest_pyfunc_call, pytest_runtest_call, pytest_runtest_protocol,
-          # pytest_runtest_makereport, pytest_pycollect_makeitem, pytest_collection_modifyitems or
-          # pytest_plugins, a hookimpl(specname=...), or an `.obj`/`.runtest` assignment, in a suite
-          # or in conftest.py at the root, scripts/ or scripts/tests/ (also pytest_runtest_logreport,
-          # pytest_report_teststatus, pytest_sessionfinish, pytest_unconfigure, a star import in them,
-          # and any pluginmanager/.register use). A test def or Test* class carrying a decorator other
-          # than pytest.fixture / pytest.mark.* is refused (it may replace the body), and so is a
-          # module-level setattr/globals/locals/vars/exec/eval/__import__/register call or a
-          # rebinding of `pytest`/`fixture`. Only the real pytest.fixture
-          # decorator marks a test* def as a fixture; an aliased import of it is refused. Fixtures named test* and Test*
-          # classes with __init__ are not tests and are skipped, as pytest does. Deleting a test def
-          # or file is a visible diff in a relevance-triggering path (the known suites are pinned so
-          # a deleted file cannot shrink the set). NOT covered, declared: a test generated at import
-          # time inside a function body is invisible to the AST, and so is a hook registered by an
-          # installed third-party plugin, by -p, or by a conftest outside the three paths above;
-          # a test that rewrites this checker, the suite sources or junit.xml on disk while it runs
-          # is not defended against (the same checkout is writable by the tests; a deliberate diff to
-          # those files is a reviewed change, not an accident this tripwire catches).
+          # CLOSED, each with a guilt case in test_wa_attention_presence_walk.py (RED, never guessed):
+          # a test def under if/try/with/for/while; any assignment at module or class scope whose
+          # target is a subscript or attribute (globals()[..]=, vars()[..]=, locals()[..]=,
+          # sys.modules[__name__].x=); any module/class-scope statement that LOADS the name of a test
+          # def (aliasing it or passing it to a helper); a rebinding of a test name, `pytest` or
+          # `fixture`; an import that binds a test*/Test* name, `*`, `object`, any *TestCase name or an
+          # aliased fixture; a class or function defined twice in one scope; a Test* class with any
+          # base other than object or a metaclass; a class not named Test* that defines test methods;
+          # any TestCase subclass; a decorator other than pytest.fixture / pytest.mark.* on a test or
+          # Test* class; a module-level setattr/globals/locals/vars/exec/eval/__import__/register
+          # call statement; any .__code__/.__dict__/.__globals__ access in a suite or in conftest.py
+          # at the root, scripts/ or scripts/tests/; and in those files a definition, assignment or
+          # import of pytest_pyfunc_call, pytest_runtest_call/protocol/makereport/logreport,
+          # pytest_report_teststatus, pytest_pycollect_makeitem, pytest_collection_modifyitems,
+          # pytest_plugins, pytest_sessionfinish/unconfigure, hookimpl(specname=...), .obj/.runtest
+          # assignment, pluginmanager/.register use or a star import. Fixtures named test* and Test*
+          # classes with __init__ are not tests and are skipped, as pytest does. The known suites are
+          # pinned so a deleted file cannot shrink the set.
+          # NOT DEFENDED, as a principle: anything not enumerated above is not defended; deliberate
+          # reflection is outside this tripwire's threat model. It catches accidents and lazy
+          # shadowing, it is not a sandbox. A next step, if one is wanted, is an allowlist of the
+          # statement forms permitted at module and class scope, not a longer blacklist.
           python -m pytest scripts/tests/test_wa_attention_*.py -q -o addopts="" -o python_functions="test" -o python_classes="Test" -o xfail_strict=true --strict-markers --junitxml=junit.xml
           python scripts/wa_attention_presence.py junit.xml
