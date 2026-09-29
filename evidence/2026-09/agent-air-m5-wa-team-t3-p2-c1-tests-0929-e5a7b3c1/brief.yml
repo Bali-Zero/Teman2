@@ -1,0 +1,35 @@
+task: >-
+  Condition C1 of the #7671 gate: four surviving mutants of the T3 P2 linker (M14/M15 audit
+  *_not_in_* over the effective value, M22 judge INSERT binds its own message, M18 dry-run count
+  keeps its IS NULL target guard). Tests only; real-PG floor 65 -> 68; codex LOW into the dissent.
+lane: wa-team/t3-p2-c1-tests-0929
+machine: M5
+date: "2026-09-30"
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 (harness floor recompute): the diff edits
+  `.github/workflows/wa-team-promises-tests.yml` (one floor number). One cross-family council round
+  (codex-gpt-5.6-sol + kimi-code/k3, env-scrubbed, diff-only) ran before the PR.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Each of the four mutants is green on the current suite and red with the new tests.
+    probe: "mutant applied to a copy of scripts/wa_team_promises.py, real-PG suite without / with the 3 new tests"
+  A2: >-
+    Production is byte-identical to origin/main.
+    probe: "git diff --quiet origin/main -- scripts/wa_team_promises.py"
+  A3: >-
+    The real-PG job reports 68 passed (floor 68), zero skipped.
+    probe: "job final line 'wa_team_promises real-PG corpus: 68 passing cases (floor 68)'"
+
+out_of_scope: >-
+  Any production change; the conflict/no-op insert path (pre-existing, accepted at the #7671 gate).
+
+assumptions:
+  - text: "Postgres evaluates CHECK constraints on every proposed row before ON CONFLICT DO NOTHING arbitration."
+    status: verified

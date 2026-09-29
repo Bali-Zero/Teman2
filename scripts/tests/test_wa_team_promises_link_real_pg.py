@@ -302,6 +302,12 @@ async def test_judge_insert_binds_its_own_message_when_several_messages_exist(pg
         await _wmc(pool, 2, client_id=22, email="member-2@example.invalid", body=body)
         await _wmc(pool, 3, client_id=33, email="member-3@example.invalid", body=body)
         async with pool.acquire() as conn:
+            # Any row the statement proposes for another message violates this,
+            # whatever order Postgres scans them in and whatever ON CONFLICT hides.
+            await conn.execute(
+                "ALTER TABLE team_promises ADD CONSTRAINT only_message_3 "
+                "CHECK (client_id IS NULL OR client_id = 33)"
+            )
             cid = await conn.fetchval(
                 "INSERT INTO team_promise_candidates (message_id, clause_idx, clause_hash, promise_type) "
                 "VALUES (3, 0, $1, 'send') RETURNING id", _hash_clause(clause),
