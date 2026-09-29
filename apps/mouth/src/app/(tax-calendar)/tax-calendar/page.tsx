@@ -1,6 +1,7 @@
 import { FunnelFrame } from "@balizero/core";
 import { GOOGLE_RATING, GOOGLE_REVIEW_COUNT } from "@/lib/trust-figures";
 import { TaxCalendarBody } from "@/components/funnel/TaxCalendarBody";
+import { MyTaxCalendar } from "@/components/funnel/MyTaxCalendar";
 import {
   getNextTaxDeadlines,
   getRegencies,
@@ -47,6 +48,29 @@ export default function TaxCalendarPage() {
           </p>
         </header>
         <TaxCalendarBody deadlines={deadlines} regencies={regencies} />
+        <section style={{ marginTop: "var(--space-8)" }}>
+          <h2
+            style={{
+              color: "var(--r19-ink)",
+              fontFamily: "var(--font-serif)",
+              fontSize: "1.65rem",
+              fontWeight: 500,
+              margin: 0,
+            }}
+          >
+            My tax calendar
+          </h2>
+          <p
+            style={{
+              color: "var(--r19-muted)",
+              fontFamily: "var(--font-sans)",
+              margin: "var(--space-2) 0 var(--space-5)",
+            }}
+          >
+            Answer a few questions to see the deadlines that apply to you.
+          </p>
+          <MyTaxCalendar />
+        </section>
       </FunnelFrame>
     </div>
   );
