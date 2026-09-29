@@ -94,7 +94,7 @@ def test_qa_connection_requires_ci_for_tcp_database(monkeypatch):
 @pytest_asyncio.fixture
 async def setup(monkeypatch):
     connection = qa_connection()
-    monkeypatch.setattr(campaign_router, "bali_today", lambda: "2026-09-28")
+    monkeypatch.setattr(campaign_router, "bali_today", lambda: "2026-09-30")
     schema = "oracle_qa_" + uuid4().hex
     admin = await asyncpg.connect(**connection)
     await admin.execute(f'CREATE SCHEMA "{schema}"')
@@ -222,7 +222,7 @@ async def test_results_wait_for_all_five_personal_expectations(setup, submit):
         after = (await c.get("/api/visa-oracle/testing")).json()
         for case in after["assignments"]:
             assert case["can_record_results"] is (
-                case["slot"] == "T01" and case["day"] == "2026-09-28"
+                case["slot"] == "T01" and case["day"] == "2026-09-30"
             )
         assert (await c.put(path + "/result", json=result(submit=submit))).status_code == 200
 
@@ -321,7 +321,7 @@ async def test_durable_draft_submission_idempotency_and_self_review(setup):
             )
         ).status_code == 409
         assert data["counts"] == {
-            "planned": 150,
+            "planned": 90,
             "started": 5,
             "submitted": 1,
             "reproduced": 1,
@@ -448,10 +448,10 @@ async def test_private_evidence_is_separate_removable_and_not_loaded_in_lists(se
 @pytest.mark.asyncio
 async def test_date_sensitive_cases_cannot_be_started_on_a_different_day(setup, monkeypatch):
     _, _, make_client = setup
-    monkeypatch.setattr(campaign_router, "bali_today", lambda: "2026-10-02")
+    monkeypatch.setattr(campaign_router, "bali_today", lambda: "2026-10-01")
     async with make_client() as c:
         assert (
             await c.post("/api/visa-oracle/testing/D3-T01-1/start", json=expected())
         ).status_code == 409
         data = (await c.get("/api/visa-oracle/testing")).json()
-        assert not any(a["can_start"] for a in data["assignments"] if a["day"] == "2026-09-30")
+        assert not any(a["can_start"] for a in data["assignments"] if a["day"] == "2026-10-02")
