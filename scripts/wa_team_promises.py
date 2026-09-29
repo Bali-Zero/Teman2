@@ -38,6 +38,7 @@ CLI:
   apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --init-schema
   apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --scan [--dry-run]
   apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --judge [--dry-run] [--judge-limit N]
+  apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --link [--dry-run]
 
 Applies scripts/sql/pro_local/team_promises.sql in ONE transaction, verifies
 both unique indexes against pg_catalog INSIDE it, ROLLBACK on any mismatch.
@@ -913,6 +914,13 @@ def _resolve_due_at(created_at: datetime, due_at_hint: str | None) -> datetime:
     return created_at + timedelta(hours=hours)
 
 
+# P2 — the ONE normalisation of the mirror's `team_member_email`: trimmed,
+# lower-cased, blank -> NULL (never ''). Used by the judge's insert and by
+# the linker/audit below so the two can never disagree about what "the same
+# address" means.
+_LINK_EMAIL_SQL = "NULLIF(lower(btrim(w.team_member_email)), '')"
+
+
 @dataclass(slots=True)
 class JudgeMetrics:
     """Every field is a bare int — same structural guarantee as ScanMetrics:
@@ -1038,9 +1046,21 @@ UPDATE team_promise_candidates
 RETURNING status
 """
 
-_JUDGE_INSERT_PROMISE_SQL = """
-INSERT INTO team_promises (message_id, promise_text, promise_type, due_at, extractor_version)
-VALUES ($1, $2, $3, $4, $5)
+# P2: the promise is linked to its client and to the team member who made it
+# IN THE SAME STATEMENT, from the very message row the judge just re-verified
+# under FOR SHARE (`whatsapp_message_context` carries both values on the
+# mirror table). The SELECT form, not VALUES, so there is no separate
+# write that could be skipped; `_LINK_EMAIL_SQL` is the one normalisation.
+# Zero-row safety: `_apply_true` runs this in the same transaction that just
+# read the message row FOR SHARE, which blocks a concurrent DELETE/UPDATE of
+# it, so the SELECT cannot come back empty there ("true" is never counted for
+# an uninserted promise); a missing row is answered "superseded" before this.
+_JUDGE_INSERT_PROMISE_SQL = f"""
+INSERT INTO team_promises (message_id, promise_text, promise_type, due_at, extractor_version,
+                           client_id, team_member_email)
+SELECT $1::bigint, $2, $3, $4, $5, w.client_id, {_LINK_EMAIL_SQL}
+  FROM whatsapp_message_context w
+ WHERE w.id = $1
 ON CONFLICT (message_id, promise_type) DO NOTHING
 """
 
@@ -1198,6 +1218,102 @@ async def run_judge(pool: asyncpg.Pool, *, limit: int, dry_run: bool) -> JudgeMe
     return metrics
 
 
+# P2 — linking existing promises to their client and team member
+
+# Two separate guarded UPDATEs (one per column), each of which can only fill
+# a NULL: `WHERE p.<col> IS NULL AND <source> IS NOT NULL`. A value that is
+# already set is never rewritten, a second run matches nothing, and a promise
+# whose message is gone or carries no value is left alone. Source is the
+# mirror row itself (`whatsapp_message_context.client_id` /
+# `.team_member_email`), which is where the extractor's message already lives
+# — no second roster is consulted for the write; the audit below counts how
+# many linked values also exist in `clients` / `team_members`.
+_LINK_CLIENT_SQL = """
+UPDATE team_promises p SET client_id = w.client_id
+  FROM whatsapp_message_context w
+ WHERE w.id = p.message_id AND p.client_id IS NULL AND w.client_id IS NOT NULL
+"""
+
+_LINK_MEMBER_SQL = f"""
+UPDATE team_promises p SET team_member_email = {_LINK_EMAIL_SQL}
+  FROM whatsapp_message_context w
+ WHERE w.id = p.message_id AND p.team_member_email IS NULL AND {_LINK_EMAIL_SQL} IS NOT NULL
+"""
+
+_LINK_CLIENT_COUNT_SQL = """
+SELECT count(*) FROM team_promises p JOIN whatsapp_message_context w ON w.id = p.message_id
+ WHERE p.client_id IS NULL AND w.client_id IS NOT NULL
+"""
+
+_LINK_MEMBER_COUNT_SQL = f"""
+SELECT count(*) FROM team_promises p JOIN whatsapp_message_context w ON w.id = p.message_id
+ WHERE p.team_member_email IS NULL AND {_LINK_EMAIL_SQL} IS NOT NULL
+"""
+
+# Counts only — no ids, no addresses, nothing that could carry PII.
+_LINK_AUDIT_SQL = f"""
+SELECT count(*) AS total,
+       count(*) FILTER (WHERE p.client_id IS NULL) AS client_null,
+       count(*) FILTER (WHERE p.team_member_email IS NULL) AS member_null,
+       count(*) FILTER (WHERE p.client_id IS NULL AND w.client_id IS NOT NULL) AS linkable_client,
+       count(*) FILTER (WHERE p.team_member_email IS NULL AND {_LINK_EMAIL_SQL} IS NOT NULL)
+           AS linkable_member,
+       count(*) FILTER (WHERE coalesce(p.client_id, w.client_id) IS NOT NULL
+                          AND NOT EXISTS (SELECT 1 FROM clients c
+                                           WHERE c.id = coalesce(p.client_id, w.client_id)))
+           AS client_not_in_clients,
+       count(*) FILTER (WHERE coalesce(NULLIF(lower(btrim(p.team_member_email)), ''), {_LINK_EMAIL_SQL})
+                                IS NOT NULL
+                          AND NOT EXISTS (SELECT 1 FROM team_members t
+                                           WHERE lower(btrim(t.email)) = coalesce(
+                                               NULLIF(lower(btrim(p.team_member_email)), ''),
+                                               {_LINK_EMAIL_SQL})))
+           AS member_not_in_roster,
+       count(*) FILTER (WHERE (p.client_id IS NOT NULL AND w.client_id IS NOT NULL
+                                 AND p.client_id <> w.client_id)
+                           OR (NULLIF(lower(btrim(p.team_member_email)), '') IS NOT NULL
+                                 AND {_LINK_EMAIL_SQL} IS NOT NULL
+                                 AND lower(btrim(p.team_member_email)) <> {_LINK_EMAIL_SQL}))
+           AS conflicts
+  FROM team_promises p LEFT JOIN whatsapp_message_context w ON w.id = p.message_id
+"""
+
+
+@dataclass(slots=True)
+class LinkMetrics:
+    """Bare ints only, like ScanMetrics/JudgeMetrics."""
+
+    client_linked: int = 0
+    member_linked: int = 0
+
+
+def _affected(status: str) -> int:
+    """Row count from an asyncpg command tag such as 'UPDATE 3'."""
+    return int(status.rsplit(" ", 1)[-1])
+
+
+async def run_link(pool: asyncpg.Pool, *, dry_run: bool) -> LinkMetrics:
+    """Fills `client_id` / `team_member_email` on promises that lack them.
+    `dry_run` counts what WOULD be filled and writes nothing."""
+    metrics = LinkMetrics()
+    async with pool.acquire() as conn:
+        if dry_run:
+            metrics.client_linked = await conn.fetchval(_LINK_CLIENT_COUNT_SQL)
+            metrics.member_linked = await conn.fetchval(_LINK_MEMBER_COUNT_SQL)
+            return metrics
+        async with conn.transaction():
+            metrics.client_linked = _affected(await conn.execute(_LINK_CLIENT_SQL))
+            metrics.member_linked = _affected(await conn.execute(_LINK_MEMBER_SQL))
+    return metrics
+
+
+async def audit_link_counts(pool: asyncpg.Pool) -> dict[str, int]:
+    """Read-only precision counts for the linker (see _LINK_AUDIT_SQL)."""
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(_LINK_AUDIT_SQL)
+    return {key: int(row[key]) for key in row.keys()}
+
+
 # C — errors never carry data, and neither does argument/log-level parsing
 
 def _fail_line(exc: BaseException, stage: str, counts: dict[str, int] | None = None) -> str:
@@ -1233,10 +1349,14 @@ async def cli_main(argv: list[str] | None = None) -> int:
     parser.add_argument("--judge", action="store_true",
                          help="Judge unjudged team_promise_candidates rows against a local "
                               "Ollama model; on a true verdict, insert into team_promises.")
+    parser.add_argument("--link", action="store_true",
+                         help="Fill client_id / team_member_email on team_promises rows that "
+                              "lack them, from the mirror message row (fill-NULL-only, "
+                              "idempotent). With --dry-run: print the audit counts, write nothing.")
     parser.add_argument("--dry-run", action="store_true",
                          help="With --scan: compute counts only — no candidate insert/revise, "
                               "no digest. With --judge: same read path and Ollama calls, "
-                              "zero writes.")
+                              "zero writes. With --link: audit counts only.")
     parser.add_argument("--batch-size", type=int, default=_SCAN_BATCH_SIZE_DEFAULT)
     parser.add_argument("--judge-limit", type=int, default=_JUDGE_LIMIT_DEFAULT)
     parser.add_argument("--log-level", default="INFO")
@@ -1248,7 +1368,7 @@ async def cli_main(argv: list[str] | None = None) -> int:
     log_level = args.log_level if args.log_level in _LOG_LEVELS else "INFO"
     logging.basicConfig(level=log_level, format="%(asctime)s %(levelname)s %(name)s | %(message)s")
 
-    modes_selected = sum([args.init_schema, args.scan, args.judge])
+    modes_selected = sum([args.init_schema, args.scan, args.judge, args.link])
     if modes_selected > 1:
         sys.stderr.write(_fail_line(_ArgSyntaxError("multiple_modes"), "argparse") + "\n")
         return 2
@@ -1307,6 +1427,19 @@ async def cli_main(argv: list[str] | None = None) -> int:
                     f"clauses={metrics.clauses} candidates_new={metrics.candidates_new} "
                     f"candidates_revised={metrics.candidates_revised}\n"
                 )
+            elif args.link:
+                stage = "link"
+                if args.dry_run:
+                    audit = await audit_link_counts(pool)
+                    sys.stdout.write(
+                        "wa_team_promises: link DRY-RUN " + " ".join(f"{k}={v}" for k, v in audit.items()) + "\n"
+                    )
+                else:
+                    link_metrics = await run_link(pool, dry_run=False)
+                    sys.stdout.write(
+                        f"wa_team_promises: link OK client_linked={link_metrics.client_linked} "
+                        f"member_linked={link_metrics.member_linked}\n"
+                    )
             else:
                 stage = "judge"
                 lock_fd = None if args.dry_run else _acquire_judge_lock_or_none()
