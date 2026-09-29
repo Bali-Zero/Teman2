@@ -39,13 +39,20 @@ export function parseChampionGoal(
       !goal.display_name.trim() ||
       goal.display_name.length > 120 ||
       !Number.isSafeInteger(goal.activations) ||
-      (kind !== "penalty" && goal.activations < 1) ||
       typeof goal.at !== "string"
     )
       return null;
     const age = now - Date.parse(goal.at);
     if (!Number.isFinite(age) || age < -5_000 || age > 90_000) return null;
-    return { ...goal, kind };
+    // `activations` is the member's Round 2 total: a goal or bomb still counts
+    // when penalties hold that total at zero or below. An unknown penalty
+    // reason is dropped so it falls back to the generic line.
+    const reason =
+      goal.reason === "unanswered_request" ||
+      goal.reason === "unreviewed_document"
+        ? goal.reason
+        : undefined;
+    return { ...goal, kind, reason };
   } catch {
     return null;
   }
@@ -169,12 +176,16 @@ function penaltyPoints(goal: ChampionGoal) {
   return `\u2212${Math.abs(goal.points ?? (goal.reason === "unreviewed_document" ? 1 : 2))} poin`;
 }
 
+function signedPoints(total: number) {
+  return total < 0 ? `\u2212${-total}` : `${total}`;
+}
+
 function announcement(goal: ChampionGoal) {
   if (goal.kind === "bomb")
     return `BOM! +${goal.points ?? 3} poin untuk ${goal.display_name}. Dokumen pertama klien.`;
   if (goal.kind === "penalty")
     return `Aduh. ${penaltyPoints(goal)} untuk ${goal.display_name}. ${goal.reason ? PENALTY_REASON[goal.reason] : ""}`;
-  return `GOAL oleh ${goal.display_name}. ${goal.activations} poin.`;
+  return `GOAL oleh ${goal.display_name}. ${signedPoints(goal.activations)} poin.`;
 }
 
 export function PortalChampionCelebration({ identity }: { identity: string }) {
@@ -477,7 +488,7 @@ export function PortalChampionCelebration({ identity }: { identity: string }) {
                       <>
                         Satu aktivasi lagi.{" "}
                         <strong className={COPPER}>
-                          {current.activations} poin
+                          {signedPoints(current.activations)} poin
                         </strong>{" "}
                         terkumpul.
                       </>

@@ -72,11 +72,11 @@ afterEach(() => {
 });
 
 describe("goal validation", () => {
-  it("refuses old, future, malformed and non-positive points", () => {
+  it("refuses old, future and malformed goals", () => {
     for (const value of [
       "broken",
       "{}",
-      JSON.stringify(goal({ activations: 0 })),
+      JSON.stringify(goal({ activations: 1.5 })),
       JSON.stringify(
         goal({ at: new Date(Date.now() - 100_000).toISOString() }),
       ),
@@ -301,9 +301,15 @@ describe("kinds of takeover", () => {
         ),
       ),
     ).toBeNull();
-    expect(
-      parseChampionGoal(JSON.stringify(goal({ kind: "bomb", activations: 0 }))),
-    ).toBeNull();
+  });
+
+  it("keeps goals and bombs of members whose total is zero or negative", () => {
+    for (const kind of ["goal", "bomb"])
+      for (const activations of [0, -1])
+        expect(
+          parseChampionGoal(JSON.stringify(goal({ kind, activations })))
+            ?.activations,
+        ).toBe(activations);
   });
 
   it("never renders an unknown kind and does not consume its event", () => {
@@ -369,6 +375,32 @@ describe("kinds of takeover", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     act(() => void vi.advanceTimersByTime(1000));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("goal at a negative total shows the signed total", () => {
+    mount();
+    send("1-0", goal({ activations: -1 }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("data-takeover", "goal");
+    expect(dialog).toHaveTextContent("\u22121 poin");
+    expect(screen.getByRole("status")).toHaveTextContent("\u22121 poin");
+  });
+
+  it("penalty with an unknown reason never reads or shows undefined", () => {
+    mount();
+    send(
+      "1-0",
+      goal({
+        kind: "penalty",
+        points: -2,
+        reason: "late_invoice",
+        activations: 0,
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Poin dikurangi.");
+    expect(dialog).not.toHaveTextContent("undefined");
+    expect(screen.getByRole("status")).not.toHaveTextContent("undefined");
   });
 
   it("penalty dismisses with Escape and keeps a focusable close button", () => {
