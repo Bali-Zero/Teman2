@@ -255,6 +255,32 @@ def _all_operator_mentions_negated(owner: str) -> bool:
         for start, end in mentions
     )
 
+# FIREBREAK is a DECLARATION ("DECLARED FIREBREAK, not tech debt"), not a
+# substring: a row saying "Tech debt, not a firebreak." names the word to DENY
+# it, and reading it as a firebreak exempted it from every staleness alarm --
+# the opposite of its meaning (superscar #3, guard OVER-match). Same shape as
+# `_all_operator_mentions_negated`, mirrored: the row is a firebreak iff at
+# least ONE mention is not preceded, within a closed vocabulary, by a negator.
+FIREBREAK_WORD_RE = re.compile(r"firebreak", re.IGNORECASE)
+NEGATED_FIREBREAK_PREFIX_RE = re.compile(
+    r"(?:\bnot|\bno|\bnon|\b(?:is|are|was|were)n['\u2019]t|\bisnt)[\s-]+"
+    r"(?:(?:a|an|the|bare|just|merely|purely|simply|really|genuinely"
+    r"|truly|literally|plain|mere|real)\s+){0,3}$",
+    re.IGNORECASE,
+)
+
+
+def _declares_firebreak(raw: str) -> bool:
+    """True iff at least one "firebreak" mention in `raw` is NOT negated by
+    "not a / not the / no / non / isn't" immediately before it. A row with both
+    a negated and a genuine mention stays a firebreak (the genuine one
+    declares it); a row whose only mentions are negated is not."""
+    for m in FIREBREAK_WORD_RE.finditer(raw):
+        if not NEGATED_FIREBREAK_PREFIX_RE.search(raw[max(0, m.start() - 40) : m.start()]):
+            return True
+    return False
+
+
 # NATURAL-WAIT: the owner declares a PASSIVE wait on a dated natural trigger
 # (`me (passivo — verifica 07-12)`) — the arming is done, only the proof needs the
 # calendar. NOT overdue debt: strict must not fail on it, and the healer's ledger
@@ -706,7 +732,7 @@ def parse_entry(raw: str, now: date) -> Entry:
     # re-labeled as proof (an anchor collision, not a phrasing choice), or an
     # exact bare status word lifted from elsewhere in the entry.
     #
-    # Exempted for FIREBREAK-classified entries (`"firebreak" in raw.lower()`,
+    # Exempted for FIREBREAK-classified entries (`_declares_firebreak(raw)`,
     # checked the same way `cls` itself is decided below): a FIREBREAK is
     # informational-only by design (never alarmed, never blocks a merge) — the
     # entire point of this backstop is to stop an owner-shape defect from
@@ -719,7 +745,7 @@ def parse_entry(raw: str, now: date) -> Entry:
     # without the exemption would have gone CI-red on the real, UNCHANGED
     # ledger. The fix is for the READER, not a mandate to also correct every
     # row's prose in the same PR (see this fix's own PR description).
-    if date_match and len(all_parts) >= 3 and owner and "firebreak" not in raw.lower():
+    if date_match and len(all_parts) >= 3 and owner and not _declares_firebreak(raw):
         if _LABEL_PATTERNS["proof-of-armed"].match(owner) or _LABEL_PATTERNS["proof"].match(owner):
             reasons.append("owner field holds text labeled proof:/proof-of-armed: — anchor collision")
         elif owner.strip().rstrip(".").lower() in {"closed", "tech-debt"}:
@@ -734,7 +760,7 @@ def parse_entry(raw: str, now: date) -> Entry:
     malformed = bool(reasons)
     if malformed:
         cls = CLASS_MALFORMED
-    elif "firebreak" in raw.lower():
+    elif _declares_firebreak(raw):
         cls = CLASS_FIREBREAK
     elif NATURAL_WAIT_RE.search(owner):
         # owner-field only: "passivo" in the free-text body (e.g. quoting a log)
