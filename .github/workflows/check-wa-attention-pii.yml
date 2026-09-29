@@ -119,10 +119,13 @@ jobs:
           # Structured report, not terminal text: a skip or an xfail (junit records both as <skipped>)
           # cannot hide behind a summary line's spelling, and every test DEFINED in these files
           # (found by AST, not by a hand-kept list) must appear in the report as run and unskipped -
-          # so `-k`, `--deselect` or a conftest modifyitems hook that drops any of them turns this RED.
-          # Deleting a test def is a visible diff in a relevance-triggering file, and a test generated
-          # at import time (exec, parametrize over a runtime list) is invisible to the AST; both are
-          # reviewable, neither is silent drift.
+          # so `-k`, `--deselect` or a conftest modifyitems hook that drops any definition turns this
+          # RED. Identity is (module, class path, function); a parametrized test is covered per
+          # definition (one surviving variant satisfies it), not per parameter set. Deleting a test def
+          # or file is a visible diff in a relevance-triggering path (the three known suites are pinned
+          # below so a deleted file cannot shrink the set); a test generated at import time (exec,
+          # a runtime parametrize list) is invisible to the AST. pytest's default python_classes /
+          # python_functions are assumed: an override desynchronises this and goes RED, never green.
           python -m pytest scripts/tests/test_wa_attention_*.py -q -o addopts="" -o xfail_strict=true --strict-markers --junitxml=junit.xml
           python - <<'PY'
           import ast
@@ -131,30 +134,43 @@ jobs:
           import sys
           import xml.etree.ElementTree as ET
 
-          expected = set()
+          KNOWN_SUITES = {"test_wa_attention_episode_tier", "test_wa_attention_pii_envelope", "test_wa_attention_sender_phone"}
+          expected, duplicates, modules = set(), [], set()
+
+
+          def walk(module, body, scope):
+              seen = set()
+              for node in body:
+                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test"):
+                      key = (module, ".".join(scope + [node.name]))
+                      if key in seen:
+                          duplicates.append(f"{key[0]}::{key[1]}")  # the later def shadows the earlier
+                      seen.add(key)
+                      expected.add(key)
+                  elif isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
+                      walk(module, node.body, scope + [node.name])
+
+
           for path in sorted(glob.glob("scripts/tests/test_wa_attention_*.py")):
               module = os.path.basename(path)[: -len(".py")]
-              tree = ast.parse(open(path, encoding="utf-8").read(), filename=path)
-              for node in tree.body:
-                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test"):
-                      expected.add((module, node.name))
-                  elif isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
-                      for sub in node.body:
-                          if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef)) and sub.name.startswith("test"):
-                              expected.add((module, sub.name))
+              modules.add(module)
+              walk(module, ast.parse(open(path, encoding="utf-8").read(), filename=path).body, [])
 
           cases = list(ET.parse("junit.xml").getroot().iter("testcase"))
           skipped, ran = [], set()
           for c in cases:
-              module = next((p for p in (c.get("classname") or "").split(".") if p.startswith("test_wa_attention_")), "")
-              name = (c.get("name") or "").split("[")[0]
+              parts = (c.get("classname") or "").split(".")
+              idx = next((i for i, p in enumerate(parts) if p.startswith("test_wa_attention_")), None)
+              module = parts[idx] if idx is not None else ""
+              qual = ".".join(parts[idx + 1 :] + [(c.get("name") or "").split("[")[0]]) if idx is not None else ""
               if c.find("skipped") is not None:
-                  skipped.append(f"{module}::{name}")
+                  skipped.append(f"{module}::{qual}")
               else:
-                  ran.add((module, name))
-          missing = sorted(f"{m}::{n}" for m, n in expected - ran)
-          print(f"testcases={len(cases)} defined={len(expected)} skipped={len(skipped)} missing={len(missing)}")
-          if not expected or skipped or missing:
-              print(f"::error::defined={len(expected)} skipped={skipped} missing={missing} - a skipped, absent or deselected guard proves nothing (superscar #2)")
+                  ran.add((module, qual))
+          missing = sorted(f"{m}::{q}" for m, q in expected - ran)
+          absent_suites = sorted(KNOWN_SUITES - modules)
+          print(f"testcases={len(cases)} defined={len(expected)} skipped={len(skipped)} missing={len(missing)} duplicates={len(duplicates)} absent_suites={len(absent_suites)}")
+          if not expected or skipped or missing or duplicates or absent_suites:
+              print(f"::error::defined={len(expected)} skipped={skipped} missing={missing} duplicates={duplicates} absent_suites={absent_suites} - a skipped, absent, shadowed or deselected guard proves nothing (superscar #2)")
               sys.exit(1)
           PY
