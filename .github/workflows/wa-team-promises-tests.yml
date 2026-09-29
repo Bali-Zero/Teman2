@@ -85,11 +85,11 @@ name: wa team promises tests
 # `postgresql-16` (server package, puts `pg_ctl`/`initdb` on `PATH`) to this
 # runner, or gives the real-PG suites a `DATABASE_URL` mode of their own.
 #
-# The 122/21 unit-vs-skip split below is this corpus's floor after #7413
-# merged to main (2026-09-27, `test_wa_team_promises*.py`, REAL_PG unset):
-# the 21 skips are exactly the real-PG opt-in cases this file does not
-# enable. (Superseded the original 94/16 count from before #7413 merged —
-# found stale by the same fresh gate that found the missing plugin above.)
+# The unit-vs-skip split is not written here: a count in a comment is never
+# re-measured. The FLOOR line in the last step below is the one number; that
+# step re-runs the corpus and compares the passed count against it. The
+# skips are the real-PG opt-in cases (`WA_TEAM_PROMISES_REAL_PG` unset),
+# which this file does not enable.
 
 on:
   pull_request:
@@ -186,7 +186,7 @@ jobs:
       - name: The T3 promise gate corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=248   # T3 PR-3 gate condition C1 (G1-G7 mutation-guard tests): unit-run passed count, REAL_PG unset
+          FLOOR=249   # T3 PR-3 gate conditions C1+C2 (G1-G7 + G-LOW-1 subprocess variant): unit-run passed count, REAL_PG unset
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"

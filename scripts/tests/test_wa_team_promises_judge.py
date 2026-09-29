@@ -19,9 +19,11 @@ import json
 import logging
 import os
 import re
+import subprocess
 import sys
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -994,3 +996,79 @@ def test_g_low1_ollama_url_is_a_bare_literal_not_an_environment_read():
             f"_OLLAMA_URL must never be re-derived from the environment: {line!r}"
         )
     assert wtp._OLLAMA_URL == "http://127.0.0.1:11434/api/chat"
+
+
+# G-LOW-1 variant (mutant M26c, gate #7646 comment; hardened after council
+# rounds 1-2) — the static source scan above cannot see a name built at
+# runtime (`globals()["_OLLAMA" + "_URL"] = ...`), and a poisoned-env test
+# that enumerates variable names only catches the names it thought of. This
+# one is name-agnostic: a fresh interpreter replaces `os.environ` and
+# `os.environb` BEFORE the import with a MutableMapping recorder (not a dict
+# subclass, so `dict(os.environ)` / `{**os.environ}` / `.get` / `.items` /
+# `.setdefault` / `in` all funnel through the recorded `__getitem__` /
+# `__iter__`), noting any access whose first caller frame outside the
+# os / posixpath / pathlib plumbing is `scripts.wa_team_promises` itself
+# (stdlib lookups made while its imports run are not its own reads). Eight
+# plausible names are ALSO poisoned so a read that slips the recorder still
+# shows up in the constant's value. Scope, stated plainly: this exercises
+# IMPORT time only; a read deferred into a function body is caught by the
+# static scan above, not here. Any import-time environment read by this
+# module beyond the allow-listed HOME read (Path.home()) fails the test on
+# purpose: the constant must never be derived from the environment. A
+# subprocess, because the constant is computed once at import and reloading
+# in-process would leave other tests holding stale objects.
+_G_LOW1_PROBE = """
+import os, sys, json
+from collections.abc import MutableMapping
+hits = []
+_SKIP = ("os", "collections.abc", "_collections_abc", "posixpath", "genericpath", "pathlib")
+def _from_module():
+    f = sys._getframe(2)
+    while f is not None and f.f_globals.get("__name__") in _SKIP:
+        f = f.f_back
+    return f is not None and f.f_globals.get("__name__") == "scripts.wa_team_promises"
+class Rec(MutableMapping):
+    def __init__(self, data):
+        self._d = dict(data)
+    def __getitem__(self, k):
+        if _from_module():
+            hits.append(k if isinstance(k, str) else repr(k))
+        return self._d[k]
+    def __setitem__(self, k, v):
+        self._d[k] = v
+    def __delitem__(self, k):
+        del self._d[k]
+    def __iter__(self):
+        if _from_module():
+            hits.append("<iter>")
+        return iter(list(self._d))
+    def __len__(self):
+        return len(self._d)
+os.environ = Rec(os.environ)
+os.environb = Rec(os.environb)
+import scripts.wa_team_promises as m
+print(json.dumps({"url": m._OLLAMA_URL, "hits": hits}))
+"""
+
+
+# STATE_DIR = Path.home() / ... is the module's one import-time environment
+# read (HOME, via pathlib); anything else at import time is a finding.
+_G_LOW1_ALLOWED_READS = ("HOME",)
+
+
+def test_g_low1_subprocess_import_ignores_a_poisoned_environment():
+    root = Path(__file__).resolve().parents[2]
+    poison = "http://poison.invalid:1/api/chat"
+    env = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(root), "PYTHONDONTWRITEBYTECODE": "1"}
+    for name in ("OLLAMA_URL", "OLLAMA_HOST", "OLLAMA_BASE_URL", "OLLAMA_API_URL", "OLLAMA_ENDPOINT",
+                 "WA_TEAM_PROMISES_OLLAMA_URL", "WA_TEAM_OLLAMA_URL", "NUZANTARA_OLLAMA_URL"):
+        env[name] = poison
+    res = subprocess.run(
+        [sys.executable, "-c", _G_LOW1_PROBE],
+        cwd=root, env=env, capture_output=True, text=True, timeout=60, check=False,
+    )
+    assert res.returncode == 0, res.stderr[-400:]
+    out = json.loads(res.stdout.strip().splitlines()[-1])
+    unexpected = [h for h in out["hits"] if h not in _G_LOW1_ALLOWED_READS]
+    assert unexpected == [], f"scripts.wa_team_promises read the environment at import: {unexpected!r}"
+    assert out["url"] == "http://127.0.0.1:11434/api/chat"
