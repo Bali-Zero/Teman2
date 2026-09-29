@@ -273,3 +273,61 @@ async def test_judge_insert_leaves_client_null_and_blank_email_null(pg_socket_di
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT client_id, team_member_email FROM team_promises WHERE message_id = 1")
         assert (row["client_id"], row["team_member_email"]) == (None, None)
+
+
+@pytest.mark.asyncio
+async def test_audit_counts_unknown_values_on_already_linked_promises(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "link_audit_linked") as pool:
+        await _setup(pool)
+        async with pool.acquire() as conn:
+            await conn.execute("INSERT INTO clients (id) VALUES (11)")
+            await conn.execute("INSERT INTO team_members (email) VALUES ('member-1@example.invalid')")
+        await _wmc(pool, 1, client_id=11, email="member-1@example.invalid")
+        await _wmc(pool, 2, client_id=None, email=None)
+        await _promise(pool, 1, client_id=11, email="member-1@example.invalid")   # both known
+        await _promise(pool, 2, client_id=77, email="stranger@example.invalid")   # linked, both unknown
+        audit = await wtp.audit_link_counts(pool)
+        assert audit["client_null"] == 0 and audit["member_null"] == 0
+        assert audit["client_not_in_clients"] == 1
+        assert audit["member_not_in_roster"] == 1
+
+
+@pytest.mark.asyncio
+async def test_judge_insert_binds_its_own_message_when_several_messages_exist(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "link_insert_many") as pool:
+        await _setup(pool)
+        body = "I will send it tomorrow"
+        clause = _split_clauses(body)[0]
+        await _wmc(pool, 1, client_id=11, email="member-1@example.invalid", body=body)
+        await _wmc(pool, 2, client_id=22, email="member-2@example.invalid", body=body)
+        await _wmc(pool, 3, client_id=33, email="member-3@example.invalid", body=body)
+        async with pool.acquire() as conn:
+            # Any row the statement proposes for another message violates this,
+            # whatever order Postgres scans them in and whatever ON CONFLICT hides.
+            await conn.execute(
+                "ALTER TABLE team_promises ADD CONSTRAINT only_message_3 "
+                "CHECK (client_id IS NULL OR client_id = 33)"
+            )
+            cid = await conn.fetchval(
+                "INSERT INTO team_promise_candidates (message_id, clause_idx, clause_hash, promise_type) "
+                "VALUES (3, 0, $1, 'send') RETURNING id", _hash_clause(clause),
+            )
+        assert await _apply_true(pool, cid, _hash_clause(clause), message_id=3, clause_idx=0,
+                                  promise_type="send", due_at_hint=None, dry_run=False) == "true"
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("SELECT message_id, client_id, team_member_email FROM team_promises")
+        assert [(r["message_id"], r["client_id"], r["team_member_email"]) for r in rows] == [
+            (3, 33, "member-3@example.invalid")
+        ]
+
+
+@pytest.mark.asyncio
+async def test_link_dry_run_ignores_a_target_that_is_already_set(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "link_dry_set") as pool:
+        await _setup(pool)
+        await _wmc(pool, 1, client_id=11, email="member-1@example.invalid")
+        await _wmc(pool, 2, client_id=22, email="member-2@example.invalid")
+        await _promise(pool, 1, client_id=999, email="kept-1@example.invalid")
+        await _promise(pool, 2, client_id=998)
+        metrics = await wtp.run_link(pool, dry_run=True)
+        assert (metrics.client_linked, metrics.member_linked) == (0, 1)
