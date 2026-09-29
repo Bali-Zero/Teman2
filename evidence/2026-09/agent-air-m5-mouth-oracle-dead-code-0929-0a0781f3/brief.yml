@@ -1,0 +1,108 @@
+task_id: oracle-dead-code-20260929
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  Remove the pre-atlas Visa Oracle rail components (LivingTree/ProcessRail/
+  PathsCounter and their _lib support) that PR #7561's atlas redesign stopped
+  mounting but left on disk. Owner codename Zero ordered it 2026-09-29:
+  "elimina tutte le parti che ancora sono nel codice useless". Undeclared
+  (BLUE) mission; Dux claude-opus-5-5 xhigh, implementer claude-sonnet-5
+  subagent, independent review codex-gpt-6-astra (codex CLI) verdict PASS.
+constraints:
+  - "Mechanical dead-code removal only: engine-adapter.ts and the canonical
+    evaluation/idempotency/SHADOW fail-closed/consent/resume/telemetry/
+    bilingual contracts are untouched by this diff; flow.ts's kept `export
+    { QUESTIONS }` re-export (consumed by
+    e2e/visa-oracle-state-colours.spec.ts) is unmodified."
+  - "Deadness is proven by reachability, not asserted: `git grep -l -w -F
+    <name> HEAD -- apps packages scripts .github` (excluding evidence/
+    research/docs) must return 0 files for every removed module/symbol, and
+    the probe itself must be shown live (a positive control that still
+    returns >0 for a name that IS still referenced)."
+  - Gear 3 by the deterministic SIZE floor (churn 4566 >= SIZE_GEAR3_THRESHOLD
+    1828) alone; the diff does not touch a HOTZONE_PATTERNS path. No council
+    convened — anti-sperpero (modus SKILL.md STAGE 0) — a mechanical,
+    grep-provable deletion has no divergent-prior question for a second/third
+    reasoning seat to adjudicate differently; `seat_override` on the pack
+    states this for the R8 ground-truth-lane and R9 council-quorum rules.
+acceptance:
+  - text: >-
+      WHEN `git grep -l -w -F <name> HEAD -- apps packages scripts .github`
+      (excluding evidence/research/docs) runs for every removed module/symbol
+      THE probe SHALL return 0 files for each one.
+    probe: "git grep -l -w -F <name> HEAD"
+  - text: >-
+      WHEN the same probe runs against a name that IS still referenced
+      (OracleShell) or against a removed name at the PRE-deletion commit
+      THE probe SHALL return a positive count, proving it is not vacuous.
+    probe: "getTreeSteps@HEAD~1"
+  - text: >-
+      WHEN the frozen candidate is type-checked THE compiler SHALL report
+      zero errors.
+    probe: "tsc --noEmit -p tsconfig.json"
+  - text: >-
+      WHEN the whole apps/mouth vitest suite runs on the candidate THE suite
+      SHALL pass in full except any failure shown to be environmental and
+      outside this diff's changed paths.
+    probe: "npx vitest run (whole apps/mouth)"
+  - text: >-
+      WHEN `npm run build` runs on the candidate THE build SHALL exit 0.
+    probe: "npm run build"
+  - text: >-
+      WHEN the CI PR-gate e2e selection runs on the candidate THE gate SHALL
+      report zero failures.
+    probe: '--grep "page Page|@offline"'
+  - text: >-
+      WHEN the visa-oracle e2e specs run on the candidate THE suite SHALL
+      pass with zero failures.
+    probe: "e2e/visa-oracle/*.spec.ts"
+  - text: >-
+      WHERE the independent review seat evaluates the candidate THE reviewer
+      SHALL return a PASS verdict.
+    probe: "independent review"
+  - text: >-
+      WHERE a fresh on-disk gate session has not yet run on this candidate
+      THE evidence pack SHALL record it as PENDING, never as a result this
+      pack authorises.
+    probe: "final gate PENDING"
+assumptions:
+  - text: >-
+      The whole-mouth vitest run's single failure (src/lib/realtime.test.ts
+      "should use correct WebSocket URL") is environmental (verification env
+      missing NEXT_PUBLIC_API_URL before the build) and not caused by this
+      diff, because this diff changes nothing under apps/mouth/src/lib.
+    status: verified
+    probe: "git diff --name-only origin/main...HEAD | grep src/lib/realtime
+      -> 0 matches (this turn)"
+  - text: >-
+      No dynamic `import()`/`require()` under apps/mouth/src/app/(visa-oracle)
+      can reach a removed module through a computed specifier — the only
+      matches in that tree are `importOriginal<typeof import("../_lib/
+      telemetry")>()` and `importOriginal<typeof import("framer-motion")>()`
+      inside two vi.mock() calls, neither naming a removed module.
+    status: verified
+    probe: 'git grep -n "import(\\|require(" HEAD -- apps/mouth/src/app/
+      (visa-oracle) (this turn)'
+consumer_map:
+  - "The mouth production bundle serving /visa-oracle, and anyone maintaining
+    it going forward: fewer unreachable files/exports to read past, no
+    behaviour change for a real visitor."
+risks:
+  - "flow.ts's `export { QUESTIONS };` re-export stays: engine-adapter.ts
+    imports QUESTIONS from './tree', but
+    apps/mouth/e2e/visa-oracle-state-colours.spec.ts imports it from
+    '_lib/flow' in a multi-line import block. Removing it would break that
+    spec; a single-line grep misses this consumer (see retracted dissent)."
+  - "Left intentionally, not further pruned: ~42 process.* and 4
+    tree.sr_status.* i18n keys are now unreferenced (keys-stay bilingual
+    contract); CSS custom properties --oracle-leaf-active/--oracle-leaf-
+    pending stay (line-anchored contrast test); exported *Props interfaces
+    stay (used internally by their own component)."
+  - "Rollback path: revert commit 82cb49b798dd52587762e044937c2e3fefa334f0
+    (pure deletion, no schema/data/migration surface)."
+grader: >-
+  Independent review: codex-gpt-6-astra (codex CLI), verdict PASS. A fresh,
+  independent claude-opus-5-5 xhigh session is the final on-disk gate;
+  coordinator-commissioned AFTER push and not yet run as of pack-drafting
+  time — no verdict recorded here authorises release.
