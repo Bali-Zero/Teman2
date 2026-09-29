@@ -1,5 +1,5 @@
 #!/bin/bash
-# pro.disk_janitor — Daily bounded disk janitor on Pro: prunes session scratch, codex sessions, uv/docker dangling, brew leftovers, Trash >30d and applies qdrant backup retention; never touches PII, pilots, worktrees, models
+# pro.disk_janitor — Daily bounded disk janitor on Pro: prunes session scratch, codex transcripts, old log archives, uv/docker dangling, brew leftovers and applies qdrant backup retention; never touches PII, pilots, worktrees, models
 # Born via scripts/organ_birth.py (DNA/GENOME 2026-07-06): genes imprinted at birth.
 # Canon: infra/launchagents/wrappers/pro-disk-janitor.sh
 # Live:  ~/scripts/pro-disk-janitor.sh (declared pair, node=pro)
@@ -50,15 +50,17 @@ trap 'rm -f "$PIDFILE"' EXIT
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 log "run start"
 # Payload lives in the canonical main checkout (never a worktree, whose path dies with it).
-# DRY-RUN is the payload's default; the cron is the one caller that applies. Its own log
-# and receipts journal are under ~/logs/ (disk-janitor.log, disk-janitor.receipts.jsonl).
+# DRY-RUN is the payload's default; the cron is the one caller that applies. The payload's
+# log() already tees every line into DISK_JANITOR_LOG, so its stdout/stderr are dropped
+# here — appending them too would write every line twice (council finding R6-1). The
+# receipts journal stays at ~/logs/disk-janitor.receipts.jsonl (payload default).
 PAYLOAD="${PRO_DISK_JANITOR_PAYLOAD:-$HOME/nuzantara/scripts/disk_janitor.sh}"
 if [ ! -f "$PAYLOAD" ]; then
     log "payload missing: $PAYLOAD"
     heartbeat "error" "payload missing"
     exit 0
 fi
-DISK_JANITOR_LOG="$LOG" bash "$PAYLOAD" --apply >> "$LOG" 2>&1
+DISK_JANITOR_LOG="$LOG" bash "$PAYLOAD" --apply >/dev/null 2>&1
 RC=$?
 
 if [ $RC -eq 0 ]; then
