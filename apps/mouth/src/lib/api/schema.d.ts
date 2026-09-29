@@ -24691,6 +24691,35 @@ export interface components {
         [key: string]: unknown;
       };
     };
+    /** PortalChallengeAsyaMission */
+    PortalChallengeAsyaMission: {
+      /** Avatar Url */
+      avatar_url?: string | null;
+      /** Bonus Points */
+      bonus_points: number;
+      /** Display Name */
+      display_name: string;
+      /** Is Me */
+      is_me: boolean;
+      /** Member */
+      member: string;
+      /** Mission Bonuses */
+      mission_bonuses: number;
+      /** Penalty Points */
+      penalty_points: number;
+      /** Points */
+      points: number;
+      /** Prize Idr */
+      prize_idr: number;
+      /** Reached */
+      reached: boolean;
+      /** Target Points */
+      target_points: number;
+      /** Unanswered Requests */
+      unanswered_requests: number;
+      /** Unreviewed Documents */
+      unreviewed_documents: number;
+    };
     /** PortalChallengeEntry */
     PortalChallengeEntry: {
       /** Activations */
@@ -24699,10 +24728,20 @@ export interface components {
       avatar_url?: string | null;
       /** Award Tier */
       award_tier: number | null;
+      /**
+       * Carry Points
+       * @default 0
+       */
+      carry_points: number;
       /** Department */
       department: string | null;
       /** Display Name */
       display_name: string;
+      /**
+       * Document Bonuses
+       * @default 0
+       */
+      document_bonuses: number;
       /** Invited */
       invited: number;
       /** Is Me */
@@ -24711,20 +24750,56 @@ export interface components {
       is_tax: boolean;
       /** Last Activation At */
       last_activation_at: string | null;
+      /** Last Event At */
+      last_event_at?: string | null;
       /** Member */
       member: string;
       /** Next Tier Threshold */
       next_tier_threshold: number | null;
+      /**
+       * Penalty Points
+       * @default 0
+       */
+      penalty_points: number;
+      /**
+       * Points
+       * @default 0
+       */
+      points: number;
       /** Prize Idr */
       prize_idr: number;
       /** Rank */
       rank: number;
+      /**
+       * Registrations
+       * @default 0
+       */
+      registrations: number;
+      /** September Choice */
+      september_choice?: string | null;
       /** Tax Bonus Idr */
       tax_bonus_idr: number;
       /** To Next Tier */
       to_next_tier: number | null;
       /** Total Prize Idr */
       total_prize_idr: number;
+      /**
+       * Unanswered Requests
+       * @default 0
+       */
+      unanswered_requests: number;
+      /**
+       * Unreviewed Documents
+       * @default 0
+       */
+      unreviewed_documents: number;
+    };
+    /** PortalChallengeRankPrize */
+    PortalChallengeRankPrize: {
+      /** Prize Idr */
+      prize_idr: number;
+      /** Rank */
+      rank: number;
     };
     /** PortalChallengeRecentActivation */
     PortalChallengeRecentActivation: {
@@ -24736,8 +24811,25 @@ export interface components {
       /** Display Name */
       display_name: string;
     };
+    /** PortalChallengeRecentEvent */
+    PortalChallengeRecentEvent: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /** Display Name */
+      display_name: string;
+      /** Kind */
+      kind: string;
+      /** Points */
+      points: number;
+    };
     /** PortalChallengeResponse */
     PortalChallengeResponse: {
+      asya_mission?: components["schemas"]["PortalChallengeAsyaMission"] | null;
+      /** Campaign */
+      campaign?: string | null;
       /** Entries */
       entries: components["schemas"]["PortalChallengeEntry"][];
       /**
@@ -24745,13 +24837,35 @@ export interface components {
        * Format: date-time
        */
       generated_at: string;
+      /**
+       * Rank Prizes
+       * @default []
+       */
+      rank_prizes: components["schemas"]["PortalChallengeRankPrize"][];
       /** Recent Activations */
       recent_activations: components["schemas"]["PortalChallengeRecentActivation"][];
+      /**
+       * Recent Events
+       * @default []
+       */
+      recent_events: components["schemas"]["PortalChallengeRecentEvent"][];
+      /**
+       * Round
+       * @default 1
+       */
+      round: number;
+      scoring?: components["schemas"]["PortalChallengeScoringRules"] | null;
+      september?: components["schemas"]["PortalChallengeSeptember"] | null;
       /** Status */
       status: string;
       tax_rules: components["schemas"]["PortalChallengeTaxRules"];
       /** Team Total Activations */
       team_total_activations: number;
+      /**
+       * Team Total Points
+       * @default 0
+       */
+      team_total_points: number;
       /** Tiers */
       tiers: components["schemas"]["PortalChallengeTier"][];
       /** Timezone */
@@ -24766,6 +24880,69 @@ export interface components {
        * Format: date-time
        */
       window_start: string;
+    };
+    /** PortalChallengeScoringRules */
+    PortalChallengeScoringRules: {
+      /** First Document */
+      first_document: number;
+      /** Registration */
+      registration: number;
+      /** Response Working Hours */
+      response_working_hours: number;
+      /** Review Working Hours */
+      review_working_hours: number;
+      /** Service Hours */
+      service_hours: string;
+      /** Unanswered Request */
+      unanswered_request: number;
+      /** Unreviewed Document */
+      unreviewed_document: number;
+    };
+    /** PortalChallengeSeptember */
+    PortalChallengeSeptember: {
+      /** Entries */
+      entries: components["schemas"]["PortalChallengeSeptemberEntry"][];
+      /** Status */
+      status: string;
+      /** Team Total Activations */
+      team_total_activations: number;
+      /**
+       * Window End
+       * Format: date-time
+       */
+      window_end: string;
+      /**
+       * Window Start
+       * Format: date-time
+       */
+      window_start: string;
+    };
+    /** PortalChallengeSeptemberEntry */
+    PortalChallengeSeptemberEntry: {
+      /** Activations */
+      activations: number;
+      /** Avatar Url */
+      avatar_url?: string | null;
+      /** Award Tier */
+      award_tier: number | null;
+      /** Display Name */
+      display_name: string;
+      /** Invited */
+      invited: number;
+      /** Is Tax */
+      is_tax: boolean;
+      /** Member */
+      member: string;
+      /** Prize Idr */
+      prize_idr: number;
+      /** Rank */
+      rank: number;
+      /** September Choice */
+      september_choice?: string | null;
+      /** Tax Bonus Idr */
+      tax_bonus_idr: number;
+      /** Total Prize Idr */
+      total_prize_idr: number;
     };
     /** PortalChallengeTaxRules */
     PortalChallengeTaxRules: {
