@@ -4,7 +4,7 @@ import { describe, it, expect } from "vitest";
 
 /**
  * kita dashboard — the Portal Champion widget has no arbitrary text size
- * below 11px, the floor the kita readability work settled on (#7601).
+ * below 11px, the floor the kita readability work settled on (PR 7601).
  *
  * WHAT THIS GUARD PROVES. Every `text-[Npx]` class in
  * `PortalChallengeWidget.tsx` is >= 11px, except the ONE occurrence named in
@@ -19,9 +19,9 @@ import { describe, it, expect } from "vitest";
  *   - It does not render. Computed size under a parent override is not seen.
  *
  * PENDING — the RulesDrawer ("Aturan") trigger is still 10px on purpose. Its
- * class line is being changed by #7624 (border contrast); editing the same
+ * class line is being changed by PR 7624 (border contrast); editing the same
  * line here would force a merge conflict on whichever lands second. The
- * follow-up that raises it to 11px after #7624 merges must delete the PENDING
+ * follow-up that raises it to 11px after PR 7624 merges must delete the PENDING
  * entry — the exact-count assertion makes that impossible to forget: once
  * the trigger reads 11px, the "still pending" test fails until PENDING is
  * emptied.
