@@ -47,6 +47,7 @@ async def test_publish_invalidates_then_emits_only_staff_projection(transport):
     redis.eval.assert_awaited_once()
     arguments = redis.eval.await_args.args
     goal = json.loads(arguments[-1])
+    assert goal["kind"] == "goal"
     assert goal["activations"] == 12
     assert goal["display_name"] == "Contender"
     assert "999999" not in arguments[-2]
@@ -155,13 +156,23 @@ async def test_round2_skips_the_goal_for_a_non_participant_creator(transport, mo
         "at": datetime.now(timezone.utc),
     }
     roster = [
-        {"email": e, "display_name": e.split("@")[0], "department": "setup",
-         "role": "member", "active": True, "avatar": None}
+        {
+            "email": e,
+            "display_name": e.split("@")[0],
+            "department": "setup",
+            "role": "member",
+            "active": True,
+            "avatar": None,
+        }
         for e in ("outsider@balizero.com", "adit@balizero.com")
     ]
     registrations = [
-        {"creator_email": "outsider@balizero.com", "activations": 5, "invited": 5,
-         "last_activation_at": datetime.now(timezone.utc)}
+        {
+            "creator_email": "outsider@balizero.com",
+            "activations": 5,
+            "invited": 5,
+            "last_activation_at": datetime.now(timezone.utc),
+        }
     ]
 
     calls = {"n": 0}
