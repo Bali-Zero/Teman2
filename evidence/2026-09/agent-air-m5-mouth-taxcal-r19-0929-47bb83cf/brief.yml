@@ -7,22 +7,19 @@ machine: air-m5
 date: 2026-09-29
 gear: 1
 gear_reason: >-
+  Recomputed after the guard module left the diff (net under 400 lines).
   Floor 1 (evidence_pack_lint.py --print-floor over `git diff --name-only`/`--numstat`
   origin/main...HEAD): 5 files, skin-only restyle of layout.tsx/page.tsx/TaxCalendarBody.tsx
-  plus a route-scoped CSS module and a guard test; no schema/infra/secrets/auth touched.
+  plus a route-scoped CSS module and an anchor test; no schema/infra/secrets/auth touched.
 acceptance:
   A1: >-
-    TaxCalendarBody.r19-guard.test.tsx fails 1/3 on a temporary origin/main copy of all three
-    source files (proved with cp, restored with cp, verified with cmp) and passes 3/3 on HEAD.
-    20 mutants (the 15 of the first gate, which left 4 alive — WebkitBackdropFilter,
-    bg-slate-900/80, !text-white, "1px solid white" — plus text-white!, bg-blue-600, inline
-    "#fff", text-[#2E6FD4] and inline "black") each turn the guard red when introduced into
-    HEAD's TaxCalendarBody.tsx or layout.tsx, then are reverted and confirmed clean via cmp;
-    0 survivors after the rework. Full scoped suite
-    (funnel/, (tax-calendar)/, r19/, api/tax-calendar/) is 15 files / 154 tests green; tsc
-    --noEmit exit 0; eslint 0 errors on changed files (2 benign "file ignored" warnings for the
-    .css and .test.tsx, which fall outside the eslint glob); prettier --check clean;
-    `grep -rn "tax-calendar" apps/mouth/e2e` returns no hits, so no e2e spec needed updating.
+    TaxCalendarBody.r19-guard.test.tsx is the R19 ANCHOR test only (R19Presentation force, paper
+    nav variant, copper and wash tokens, 8px radius, route-scoped frame class): red on origin/main's
+    three files (cp in, run, cp back, cmp) and green on HEAD. The literal-colour guard was dropped by
+    the owner's decision after three fresh gates found spellings it missed while the product passed
+    each time; it moves to its own PR with an amended entity spec. Scoped suite (funnel/,
+    (tax-calendar)/, r19/, api/tax-calendar/) 15 files / 152 tests green; tsc --noEmit exit 0;
+    prettier clean; no e2e spec references tax-calendar.
   A2: >-
     Copy frozen: extracted JSX text and string literals (title/description/h1/body copy/tab
     labels/CTA text/footnote, excluding className/style) are identical between origin/main and
