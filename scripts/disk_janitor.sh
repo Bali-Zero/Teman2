@@ -15,13 +15,15 @@
 # computed target under one, or ABOVE one, an ERROR that skips the item and lets the rest of
 # the run proceed; the receipt carries errors>0 and the run exits 1.
 #
-# Targets (each step has its own env knob; ages in days; `-mtime +N` = strictly older than N+1 d):
+# Targets (each step has its own env knob; ages in days via `find -mtime +N`: "more than N days"
+# with platform rounding — BSD find rounds the age up, GNU truncates — so the exact boundary
+# differs by up to a day; fixtures sit well inside (N-1 vs N+3) and never on it — codex R6):
 #   scratch   $DISK_JANITOR_TMP_ROOT/-<project>/<session-uuid>  parent starts with "-", child is a
 #             uuid (council O2), older than 7 d, uuid not registered in ~/.claude/sessions; the step
 #             is skipped (ERROR) when that registry is absent or empty (council O4, fail-closed)
 #   codex     ~/.codex/{sessions,archived_sessions}/**/*.jsonl  >14 d and not open; the step is
 #             skipped (ERROR) when the open-file probe (lsof) is unavailable or fails (council R5)
-#   logarch   ~/logs/archive/*.gz                                >60 d (log-rotate-run.sh gzips, nothing pruned)
+#   logarch   ~/logs/archive/*.gz  (direct children only)       >60 d (log-rotate-run.sh gzips, nothing pruned)
 #   qdrant    scripts/qdrant_backup_retention.sh                  delegated, same --apply mode
 #   tools     uv cache prune (skipped while a uv process holds the lock) · docker image/volume prune
 #             (dangling / anonymous only, NEVER -a: localci-candidate:1 is pinned by image ID in its plans)
@@ -97,10 +99,15 @@ APPLY=false
 [ "${1:-}" = "--apply" ] && APPLY=true
 MODE=DRY-RUN; $APPLY && MODE=APPLY
 
-mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$JOURNAL")" 2>/dev/null || true
 ts()  { date +%Y-%m-%dT%H:%M:%S%z; }
 log() { echo "[$(ts)] disk-janitor[$MODE] $*" | tee -a "$LOG_FILE" >&2; }
 tag() { printf '%s' "${1#"$JH"/}" | shasum -a 256 | cut -c1-12; }   # relative path → 12-hex, never the name
+# The audit trail is the organ's promise: an unwritable log or journal ends the run before any
+# deletion (codex R4), and a failed receipt append at the end makes the run fail visibly.
+mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$JOURNAL")" 2>/dev/null
+if ! { : >> "$LOG_FILE"; } 2>/dev/null || ! { : >> "$JOURNAL"; } 2>/dev/null; then
+  echo "[$(ts)] disk-janitor[$MODE] REFUSE: log or receipts journal not writable — exit 2" >&2; exit 2
+fi
 
 case "$(printf '%s' "${DISK_JANITOR_ENABLED:-true}" | tr 'A-Z' 'a-z')" in
   0|false|no|off) log "DISABLED via DISK_JANITOR_ENABLED — exit 0"; exit 0 ;;
@@ -121,10 +128,15 @@ if ! tmp_root_ok "$TMP_ROOT"; then log "REFUSE: DISK_JANITOR_TMP_ROOT must be an
 FREED=0; ERRORS=0
 N_SCRATCH=0; N_CODEX=0; N_LOGARCH=0
 bytes_of() { du -sk -- "$1" 2>/dev/null | head -1 | awk '{print $1*1024}' | tr -d '\n'; }
+has_protected_descendant() { # a directory target must not carry the PII component anywhere below it (codex R1)
+  [ -d "$1" ] || return 1
+  [ -n "$(find "$1" -iname "*${PROTECTED_COMPONENT}*" -print -quit 2>/dev/null)" ]
+}
 remove() { # $1 path  $2 step  $3 label for the log
   local b
   if [ -z "$1" ] || [ "$1" = "/" ] || [ "$1" = "$JH" ]; then log "$2: REFUSE unsafe target — abort rc=2"; exit 2; fi
   if is_protected "$1"; then ERRORS=$((ERRORS + 1)); log "$2: REFUSE $3 (protected tree) — skipped"; return 1; fi
+  if has_protected_descendant "$1"; then ERRORS=$((ERRORS + 1)); log "$2: REFUSE $3 (protected descendant) — skipped"; return 1; fi
   b=$(bytes_of "$1"); b=${b:-0}
   if $APPLY; then
     if rm -rf -- "$1" 2>/dev/null; then FREED=$((FREED + b)); log "$2: removed $3 ($b B)"
@@ -136,7 +148,10 @@ remove() { # $1 path  $2 step  $3 label for the log
 }
 
 UUID_RE='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-session_live() { grep -rlq -- "$1" "$SESSIONS_DIR" 2>/dev/null; }
+session_live() { # 0 = registered (live), 1 = not registered, 2 = registry unreadable (codex R2: never "dead")
+  grep -rlq -- "$1" "$SESSIONS_DIR" 2>/dev/null; local rc=$?
+  [ "$rc" -le 1 ] && return "$rc"; return 2
+}
 
 # ── scratch: $TMP_ROOT/-<project>/<session-uuid> ───────────────────────────────
 if [ ! -d "$TMP_ROOT" ]; then
@@ -148,7 +163,9 @@ else
     u=$(basename -- "$d"); p=$(basename -- "$(dirname -- "$d")")
     case "$p" in -*) : ;; *) log "scratch: keep $(tag "$d") (not a project dir)"; continue ;; esac
     [[ "$u" =~ $UUID_RE ]] || { log "scratch: keep $(tag "$d") (not a session uuid)"; continue; }
-    session_live "$u" && { log "scratch: keep $u (session live)"; continue; }
+    session_live "$u"; lrc=$?
+    [ "$lrc" -eq 0 ] && { log "scratch: keep $u (session live)"; continue; }
+    [ "$lrc" -ne 1 ] && { ERRORS=$((ERRORS + 1)); log "scratch: keep $u (registry unreadable rc=$lrc)"; continue; }
     remove "$d" scratch "$u" && N_SCRATCH=$((N_SCRATCH + 1))
   done < <(find "$TMP_ROOT" -mindepth 2 -maxdepth 2 -type d -mtime +"$SCRATCH_DAYS" -print0 2>/dev/null)
 fi
@@ -168,7 +185,12 @@ else
       if [ "$lrc" -ne 1 ]; then ERRORS=$((ERRORS + 1)); log "codex: probe failed rc=$lrc on $(tag "$f") — kept"; continue; fi
       remove "$f" codex "$(tag "$f")" && N_CODEX=$((N_CODEX + 1))
     done < <(find "$root" -type f -name '*.jsonl' -mtime +"$CODEX_DAYS" -print0 2>/dev/null)
-    $APPLY && find "$root" -mindepth 1 -type d -empty -mtime +1 -delete 2>/dev/null
+    if $APPLY; then   # empty-dir sweep goes through the same gate as every deletion (codex R1)
+      while IFS= read -r -d '' e; do
+        if is_protected "$e"; then ERRORS=$((ERRORS + 1)); log "codex: REFUSE empty dir $(tag "$e") (protected tree) — skipped"; continue; fi
+        rmdir -- "$e" 2>/dev/null || true
+      done < <(find "$root" -mindepth 1 -depth -type d -empty -mtime +1 -print0 2>/dev/null)
+    fi
   done
 fi
 
@@ -176,7 +198,7 @@ fi
 if [ -d "$JH/logs/archive" ]; then
   while IFS= read -r -d '' f; do
     remove "$f" logarch "$(tag "$f")" && N_LOGARCH=$((N_LOGARCH + 1))
-  done < <(find "$JH/logs/archive" -type f -name '*.gz' -mtime +"$LOG_ARCHIVE_DAYS" -print0 2>/dev/null)
+  done < <(find "$JH/logs/archive" -mindepth 1 -maxdepth 1 -type f -name '*.gz' -mtime +"$LOG_ARCHIVE_DAYS" -print0 2>/dev/null)
 fi
 
 # ── qdrant backup retention: delegated to its own tested script, same mode ─────
@@ -213,6 +235,7 @@ DF_AVAIL=$(df -k /System/Volumes/Data 2>/dev/null | awk 'NR==2{print $4*1024}')
 DF_PCT=$(df -k /System/Volumes/Data 2>/dev/null | awk 'NR==2{print $5}' | tr -d '%')
 printf '{"ts":"%s","mode":"%s","host":"%s","freed_bytes":%s,"scratch":%s,"codex":%s,"logarch":%s,"qdrant_rc":"%s","tools":"%s","errors":%s,"data_avail_bytes":%s,"data_used_pct":%s}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$MODE" "$(hostname -s)" "$FREED" "$N_SCRATCH" "$N_CODEX" "$N_LOGARCH" \
-  "$QDRANT_RC" "${TOOLS_DONE# }" "$ERRORS" "${DF_AVAIL:-0}" "${DF_PCT:-0}" >> "$JOURNAL"
+  "$QDRANT_RC" "${TOOLS_DONE# }" "$ERRORS" "${DF_AVAIL:-0}" "${DF_PCT:-0}" >> "$JOURNAL" \
+  || { ERRORS=$((ERRORS + 1)); log "receipt append FAILED"; }
 log "done freed=${FREED}B scratch=$N_SCRATCH codex=$N_CODEX logarch=$N_LOGARCH errors=$ERRORS data_used=${DF_PCT:-?}%"
 [ "$ERRORS" -eq 0 ]

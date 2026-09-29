@@ -187,6 +187,33 @@ OUT=$(run --apply); RC=$?
 mk "$H/logs/archive/we ird [x].log.gz"; old "$H/logs/archive/we ird [x].log.gz" 90
 OUT=$(run --apply); ! have "$H/logs/archive/we ird [x].log.gz" && [ "$(echo "$OUT" | grep -c 'logarch: removed')" -eq 1 ] && ok "spaces/brackets in a name: removed and logged once" || no "odd archive name mishandled"
 
+echo "═══ TEST 6c: codex round-2 findings — protected descendant, gated sweep, unreadable registry, nested archive, unwritable journal ═══"
+build
+mk "$T/-proj/$U_DEAD/Nuzantara-PII-Quarantine/keep"; old "$T/-proj/$U_DEAD" 30   # a scratch dir carrying a PII child (R1)
+OUT=$(run --apply); RC=$?
+[ $RC -eq 1 ] && have "$T/-proj/$U_DEAD/Nuzantara-PII-Quarantine/keep" && echo "$OUT" | grep -q "scratch: REFUSE $U_DEAD (protected descendant) — skipped" \
+  && ok "scratch dir with a PII-Quarantine descendant refused, kept, rc=1 (R1)" || no "protected descendant deleted or not reported rc=$RC"
+build
+mkdir -p "$H/.codex/sessions/2025/PII-Quarantine"; old "$H/.codex/sessions/2025/PII-Quarantine" 5; old "$H/.codex/sessions/2025" 5   # old EMPTY protected-named dir (R1 sweep)
+OUT=$(run --apply); RC=$?
+have "$H/.codex/sessions/2025/PII-Quarantine" && echo "$OUT" | grep -q "codex: REFUSE empty dir .* (protected tree) — skipped" \
+  && ok "empty-dir sweep goes through the gate: protected-named empty dir kept, ERROR counted (R1)" || no "empty-dir sweep bypassed the gate rc=$RC"
+build; chmod 000 "$H/.claude/sessions/1.json"   # registry present but unreadable → grep rc 2 (R2)
+OUT=$(run --apply); RC=$?; chmod 644 "$H/.claude/sessions/1.json"
+if [ "$(id -u)" -eq 0 ]; then echo "  ⏭  running as root: unreadable-registry case not exercisable"; else
+  [ $RC -eq 1 ] && have "$OLD_SCRATCH" && echo "$OUT" | grep -q "scratch: keep $U_DEAD (registry unreadable rc=2)" \
+    && ok "unreadable registry: candidate kept, ERROR counted, never 'dead' (R2)" || no "unreadable registry treated as dead rc=$RC"
+fi
+build; mk "$H/logs/archive/nested/ancient.log.gz"; old "$H/logs/archive/nested/ancient.log.gz" 400   # nested archive (R3)
+OUT=$(run --apply); RC=$?
+[ $RC -eq 0 ] && have "$H/logs/archive/nested/ancient.log.gz" && ! have "$OLD_GZ" && ok "logarch prunes direct children only: nested ancient .gz survives (R3)" || no "nested archive pruned or run failed rc=$RC"
+build; mkdir -p "$ROOT/ro"; chmod 555 "$ROOT/ro"
+if [ "$(id -u)" -eq 0 ]; then echo "  ⏭  running as root: unwritable-journal case not exercisable"; else
+  OUT=$(DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=false DISK_JANITOR_QDRANT_RETENTION="" DISK_JANITOR_LOG="$ROOT/j.log" DISK_JANITOR_JOURNAL="$ROOT/ro/j.jsonl" bash "$SCRIPT" --apply 2>&1); RC=$?
+  [ $RC -eq 2 ] && have "$OLD_SCRATCH" && echo "$OUT" | grep -q "REFUSE: log or receipts journal not writable" && ok "unwritable journal: run refused before any deletion (R4)" || no "unwritable journal not refused rc=$RC"
+fi
+chmod 755 "$ROOT/ro"
+
 echo "═══ TEST 6b: an old codex transcript held open by a process is kept (real lsof) ═══"
 if command -v lsof >/dev/null 2>&1; then
   build
@@ -220,6 +247,11 @@ wrap; RC=$?
 have "$OLD_SCRATCH" && sidecar | grep -q '"status":"warn","note":"skipped: previous run alive"' && [ "$(cat "$PIDF")" = "$$" ] \
   && ok "own node: a live lock makes the run skip with sidecar status=warn (never ok), lock untouched (R7, kimi O-9)" || no "live lock not respected or reported as ok: $(sidecar)"
 rm -f "$PIDF"
+build; fake_host nuzantara
+printf '#!/bin/sh\nkill -TERM $PPID\nsleep 2\n' > "$FAKEBIN/payload-killer.sh"; chmod +x "$FAKEBIN/payload-killer.sh"   # payload terminates the wrapper (R5)
+HOME="$H" PATH="$FAKEBIN:$PATH" PRO_DISK_JANITOR_PAYLOAD="$FAKEBIN/payload-killer.sh" PRO_DISK_JANITOR_PIDFILE="$PIDF" bash "$WRAP" >/dev/null 2>&1; RC=$?
+sidecar | grep -q '"status":"error","note":"abnormal exit rc=143"' && [ ! -e "$PIDF" ] \
+  && ok "own node: a SIGTERM mid-run still writes sidecar status=error (abnormal exit) and clears its own lock (R5)" || no "abnormal termination left no heartbeat: rc=$RC sidecar=$(sidecar)"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]

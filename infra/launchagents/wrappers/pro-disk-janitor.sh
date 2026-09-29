@@ -17,11 +17,23 @@ ts() { date '+%Y-%m-%d %H:%M:%S'; }
 log() { echo "[$(ts)] $*" >> "$LOG"; }
 
 # G2_heartbeat — sidecar EVERY exit path (Esiste≠Armato: prove life, every run)
+HB_DONE=0
 heartbeat() { # $1 status, $2 note
     mkdir -p "$SIDECAR_DIR"
     printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+    HB_DONE=1
 }
+# "Every exit path" includes the ones nobody wrote: a signal or an unset-var crash under set -u
+# reaches the EXIT trap, which writes an error heartbeat when no branch did (council codex R5).
+on_exit() {
+    local rc=$?
+    [ "$HB_DONE" = 1 ] || heartbeat "error" "abnormal exit rc=$rc"
+    [ "$(cat "$PIDFILE" 2>/dev/null)" = "$$" ] && rm -f "$PIDFILE"   # only our own lock, never a live sibling's
+    return 0
+}
+trap 'exit 143' TERM; trap 'exit 130' INT; trap 'exit 129' HUP
+trap on_exit EXIT
 
 # G4_node_guard — wrong node exits VISIBLY (heartbeat), never silently (#10)
 if [ "$(hostname -s | tr '[:upper:]' '[:lower:]')" != "nuzantara" ]; then
@@ -47,7 +59,6 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; the
     exit 0
 fi
 echo $$ > "$PIDFILE"
-trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 log "run start"
