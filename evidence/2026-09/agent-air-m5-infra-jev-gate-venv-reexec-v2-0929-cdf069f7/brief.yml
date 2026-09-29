@@ -1,0 +1,26 @@
+mandate: >-
+  Jev dispatch gate, PENDING-ARMS item (c): the hook must run its PII layer on a
+  PINNED interpreter. The pinned one is apps/backend-rag/.venv/bin/python (its
+  requirements lock pins pyyaml==6.0.3 with hashes; scripts/agent_start.py
+  symlinks that venv into every worktree). The hook always re-execs into it once;
+  no usable pinned interpreter or a failed exec -> Jev is skipped with a truthful
+  receipt (skip: no_pinned_interpreter), dispatch allowed, zero vendor calls.
+  PATH python3 is never labelled compliant. Successor of PR #7632 (frozen at arm).
+gear: 2
+colour: BLUE
+dux: fable-5-1 (owner-opened window, Zero 2026-09-28 "go" on the #7546 review spec; 2026-09-29 "go")
+implementer: sonnet-5 (subagent jev-venv-reexec, generator != grader)
+organ: infra/claude-hooks/jev_dispatch_gate.py (PreToolUse Agent, .claude/settings.json)
+authority: >-
+  Zero 2026-09-27 verbatim "hai carta bianca per implementare Jev, testarlo e
+  renderlo produttivo subit[o]" -> RULED 2026-09-27 in docs/rules/RULINGS.md;
+  PENDING-ARMS row 2026-09-27 item (c) owned by this lane.
+acceptance:
+  - from a worktree, a real dispatch re-execs into apps/backend-rag/.venv and the receipt reads interpreter=venv, repo_redactor=true, redactor_yaml=6.0.3
+  - no usable pinned interpreter, ENOEXEC after checks, or a 0777 candidate -> single receipt skip=no_pinned_interpreter, exit 0, no stdout, no vendor call
+  - the git common-dir fallback resolves the main checkout venv from a worktree that has no symlink, with stdin surviving the exec
+  - JEV_DISPATCH_GATE_REEXEC=1 never re-execs twice; the CI seam counts only with JEV_DISPATCH_GATE_FAKE_ANSWERS set
+  - a hung git or exec attempt is bounded by a 3 s alarm cancelled before execve; vendor-import failure yields jev_status=vendor_import_failed with no vendor call
+  - after merge and fleet ff, M5/Pro/Mini synthetic dispatches read interpreter=venv, repo_redactor=true, redactor_yaml=6.0.3, jev_status=ok
+appetite:
+  wall_clock_hours: 4
