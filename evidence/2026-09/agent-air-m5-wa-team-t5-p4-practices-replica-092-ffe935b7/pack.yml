@@ -367,17 +367,19 @@ appetite_exceeded: |
   the round count further.
 
 diff:
-  files: 6
-  insertions: 2325
+  files: 8
+  insertions: 2716
   deletions: 0
   net_lines: |
-    6 files, +2325/-0 against origin/main (clean rebase, no conflicts). Three of those six files
-    are the test corpora (which the Builder Contract's ~400-net-line guideline is not meant to
-    gate -- the reviewable code change is `scripts/wa_practices_replica.py`, 544 lines, plus its
-    43-line cron wrapper) and one is this evidence pack itself (brief.yml + pack.yml +
-    council-journal.jsonl). The organ file alone is over the ~400-line guideline -- accepted
-    rather than split, because a one-way cross-database replica with a discovered FK dependency
-    (practice_types) and its own fail-closed nets cannot be usefully halved without leaving one
-    half unable to run standalone; the FK-census ruling itself required replicating the
-    dependency in the SAME transaction as the dependent table, which is a single-file, one
-    concern change even though it is not a small one.
+    8 files, +2716/-0 against origin/main (clean rebase, no conflicts) -- computed from
+    `git diff --numstat origin/main...HEAD` at pack-write time. Three of those eight files are
+    the test corpora (which the Builder Contract's ~400-net-line guideline is not meant to
+    gate -- the reviewable code change is `scripts/wa_practices_replica.py`, 628 lines including
+    the two council fix commits' docstring/logic updates, plus its 43-line cron wrapper) and
+    three are this evidence pack itself (brief.yml, this file, council-journal.jsonl). The organ
+    file alone is over the ~400-line guideline -- accepted rather than split, because a one-way
+    cross-database replica with a discovered FK dependency (practice_types) and its own
+    fail-closed nets cannot be usefully halved without leaving one half unable to run
+    standalone; the FK-census ruling itself required replicating the dependency in the SAME
+    transaction as the dependent table, which is a single-file, one concern change even though
+    it is not a small one.
