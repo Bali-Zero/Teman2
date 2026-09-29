@@ -1,0 +1,87 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, it, expect } from "vitest";
+
+/**
+ * kita dashboard — the Portal Champion widget has no arbitrary text size
+ * below 11px, the floor the kita readability work settled on (#7601).
+ *
+ * WHAT THIS GUARD PROVES. Every `text-[Npx]` class in
+ * `PortalChallengeWidget.tsx` is >= 11px, except the ONE occurrence named in
+ * PENDING below. It reads the source the widget ships, so a new 9px or 10px
+ * label fails here.
+ *
+ * WHAT IT DOES NOT PROVE:
+ *   - It only sees arbitrary `text-[Npx]` classes. Named Tailwind sizes
+ *     (`text-xs` = 12px) and inline `fontSize` are not read; at the time of
+ *     writing the widget has zero inline `fontSize`, and the positive control
+ *     below proves the probe does see `text-[Npx]` classes.
+ *   - It does not render. Computed size under a parent override is not seen.
+ *
+ * PENDING — the RulesDrawer ("Aturan") trigger is still 10px on purpose. Its
+ * class line is being changed by #7624 (border contrast); editing the same
+ * line here would force a merge conflict on whichever lands second. The
+ * follow-up that raises it to 11px after #7624 merges must delete the PENDING
+ * entry — the exact-count assertion makes that impossible to forget: once
+ * the trigger reads 11px, the "still pending" test fails until PENDING is
+ * emptied.
+ */
+
+const FLOOR_PX = 11;
+
+const src = readFileSync(join(__dirname, "PortalChallengeWidget.tsx"), "utf-8");
+
+/** The one line allowed below the floor, identified by content, not number. */
+const PENDING = [
+  /rounded-full border border-\[var\(--bz-kita-ink-panel-copper\)\].*py-1\.5 text-\[10px\]/,
+];
+
+type Hit = { line: number; px: number; text: string };
+
+function sizes(source: string): Hit[] {
+  const hits: Hit[] = [];
+  source.split("\n").forEach((text, i) => {
+    for (const m of text.matchAll(/(?<![\w-])text-\[(\d+(?:\.\d+)?)px\]/g)) {
+      hits.push({ line: i + 1, px: Number(m[1]), text });
+    }
+  });
+  return hits;
+}
+
+const all = sizes(src);
+const below = all.filter((h) => h.px < FLOOR_PX);
+const isPending = (h: Hit) => PENDING.some((re) => re.test(h.text));
+
+describe("probe positive controls", () => {
+  it("reads arbitrary px sizes from the widget", () => {
+    // A probe that matched nothing would make every assertion below pass.
+    expect(all.length).toBeGreaterThan(20);
+    expect(all.some((h) => h.px === 11)).toBe(true);
+  });
+
+  it("GUILT: a 10px label is caught by the same probe", () => {
+    const planted = sizes('<p className="text-[10px] text-x">a</p>');
+    expect(planted.filter((h) => h.px < FLOOR_PX)).toHaveLength(1);
+  });
+
+  it("does not mistake a variant or other utility for a size", () => {
+    // `max-text-[9px]`-style prefixes are not the text-size utility.
+    expect(sizes('<p className="foo-text-[9px]">a</p>')).toHaveLength(0);
+  });
+});
+
+describe("Portal Champion widget — text floor", () => {
+  it(`no text below ${FLOOR_PX}px outside PENDING`, () => {
+    const offenders = below.filter((h) => !isPending(h));
+    expect(
+      offenders.map((h) => `:${h.line} ${h.px}px`),
+      "labels below the floor",
+    ).toEqual([]);
+  });
+
+  it("PENDING still describes exactly one live occurrence", () => {
+    // When the follow-up raises the Aturan label, this fails until PENDING
+    // is emptied — so the exception cannot outlive its reason.
+    expect(below.filter(isPending)).toHaveLength(PENDING.length);
+  });
+});
