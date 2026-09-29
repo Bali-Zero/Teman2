@@ -321,6 +321,15 @@ def test_the_digest_never_leaks_a_5plus_digit_run_of_the_phone(wa, monkeypatch):
     for i in range(len(phone) - 4):
         window = phone[i:i + 5]
         assert window not in text, f"a 5-digit run of the phone leaked ({window}):\n{text}"
+    # Codex council finding (2026-09-29, delta review of PR #7635's C1 round): the
+    # gate asked for "renders masked only" — this test previously only checked for
+    # the ABSENCE of a leak, so a mutant that silently dropped the contact line
+    # from the digest entirely (an availability defect, not a privacy one, but
+    # still not what "masked only" means) would have passed unnoticed. Assert the
+    # masked form is actually present, exactly once.
+    masked = wa.mask_phone(phone)
+    assert text.count(masked) == 1, (
+        f"the new lead's masked phone should appear exactly once, got {text.count(masked)}:\n{text}")
 
 
 # ----------------------------------------------------------------- innocence
