@@ -1,0 +1,25 @@
+task_id: localci-isolation-0929
+gear: 3
+objective: Ship local-CI runner v0.3.0 on Pro — candidate code (pytest and trusted_pytest checks) runs in a network-less, mount-less container; the Pysa home is a measured identity pinned into the plan; a seal is minted only for contained plans and never over state candidate code could have touched (spec docs/specs/localci-completion-2026-09-29.md, closes C1/C2/C4 of the Sept-27 runner row).
+constraints:
+  - Non-required, single-host, advisory gate — no required status context, no deployment service.
+  - Fail-closed — docker or image missing, tampered home, poisoned baseline or unverifiable container cleanup yields BLOCKED/ERROR, never PASS.
+  - Uncontained plans (--isolation none, legacy, or an operator extra cmd) mint no seal and status --seal is BLOCKED.
+  - No paid per-token endpoint; no candidate code on the host in container mode.
+acceptance:
+  - text: WHEN the localci suite runs on Pro with the measured home and docker, every test SHALL pass (220 passed, 1 skipped for missing hypothesis).
+    probe: local-tests
+  - text: WHEN the guilt candidate runs contained against the real backend tree, security.pysa_python SHALL be FAIL with exactly 2 new flows; the innocent candidate SHALL be PASS; the seal SHALL be printed before candidate code and UNCHANGED at the end.
+    probe: prove2.log guilt/innocent
+  - text: WHEN the Pysa home is replaced at plan or run time, or re-measured, the check SHALL be BLOCKED or ERROR, never PASS.
+    probe: prove2.log C2-T1..T5
+  - text: WHEN the coordinator is killed with -9 mid contained check and resumed, the orphan container SHALL be reaped and no new seal minted.
+    probe: prove2.log C4 + runs2/c4 journal
+  - text: WHEN an uncontained run dir is reset and a record verdict forged (spec §8), the resumed run SHALL print no seal= and status --seal SHALL be BLOCKED; the same for a container plan carrying an extra cmd.
+    probe: prove2.log SPEC-8 + prove3.log
+consumer_map:
+  - The Pro operator session running `python -m scripts.localci.runner plan/run` against a candidate worktree before arming a PR (default --isolation container, image localci-candidate:1, measured default Pysa home).
+risks:
+  - Code already running uncontained as the operator can rewrite the Pysa home with its manifest, or plan.json with its hash (spec §9 R3-2, §10 R4-1) — accepted limit; the seal's guarantee is scoped to contained plans.
+  - The junit of a contained check is still candidate-produced; containment is not trust of the pytest verdict.
+pii: none
