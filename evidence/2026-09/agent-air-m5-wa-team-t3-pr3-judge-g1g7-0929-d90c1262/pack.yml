@@ -1,0 +1,346 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+plan_ref: >-
+  PR (agent/air-m5/wa-team/t3-pr3-judge-g1g7-0929, base main) — gate condition C1 on the
+  merged PR #7597: land the fresh-Opus gate's G1-G7 mutation-guard probes (plus two optional
+  LOW ones, G-LOW-1/G-LOW-2) as PERMANENT tests, no production code change. Per this lane's own
+  precedent on #7597 (team-lead: "Next step is YOURS ... generator != grader is kept because
+  the fresh Opus gate comes after, separately"), the same builder session that wrote the tests
+  convened a REAL Gear-3 council on this PR's own diff before opening it — the council reviews
+  the ARTIFACT the builder produced, which is a materially different activity from the builder
+  re-grading its own claim of correctness.
+lanes:
+  - lane: wa-team-t3-pr3-judge-g1g7-build
+    role: build
+    seat:
+      claude-sonnet-5 (conducting session — wrote the 9 permanent tests, ran the Gear-3
+      council on the full diff before opening the PR, applied every CONFIRMED finding across
+      two rounds by hand, wrote this pack; no reviewing seat has write access to this tree)
+  - lane: wa-team-t3-pr3-judge-g1g7-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1 verdict REWORK on 1 HIGH + 4 MEDIUM/LOW findings; delta round verdict REWORK on 1 MEDIUM + 3 LOW findings — see dissent)"
+  - lane: wa-team-t3-pr3-judge-g1g7-council-kimi
+    role: review
+    seat: "kimi-code/k3 (round 1 verdict GO-WITH-NITS on 8 findings, none blocking; delta round verdict REWORK on 1 HIGH + 4 LOW findings — see dissent)"
+
+what_changed: |
+  Two review rounds on this PR's OWN diff (env-scrubbed, diff-only, no session-env leakage to
+  either seat), both seats dispatched independently each round.
+
+  ROUND 1 (full G1-G7 test diff as first authored): codex returned REWORK (1 HIGH + 4
+  MEDIUM/LOW); kimi returned GO-WITH-NITS (8 findings, all LOW/MEDIUM, none blocking) — both
+  seats converged strongly on the same 5 real gaps despite different verdict labels. Fixed in
+  the same commit (b54ba8cccc):
+  - G6 (HIGH both): the lock-file test monkeypatched BOTH _SCAN_LOCK_FILE/_JUDGE_LOCK_FILE to
+    distinct paths unconditionally, silently repairing a mutant that rebinds one constant to
+    the other's value at MODULE level (the monkeypatch overwrites both regardless of the
+    mutant). Added an inequality assertion on the UNPATCHED module attributes before any
+    monkeypatch runs.
+  - G4 (HIGH/MEDIUM both): the only invalid-verdict dry-run candidate had attempts=4 (the
+    quarantine boundary), so the ordinary non-quarantining invalid path was never exercised — a
+    mutant narrowing the dry-run guard to only the quarantine branch would still pass. Added a
+    fifth candidate at attempts=0 and pinned metrics.invalid in the asserted tuple.
+  - G3 (MEDIUM both): a fixed `asyncio.sleep(0.3)` guessed when _apply_true's stalled query
+    would become active before launching the competing writer — a loaded CI runner could make
+    this a false RED on correct code. Replaced with a poll of pg_stat_activity for the stall
+    marker (this fix itself turned out to be broken — see delta round below).
+  - G-LOW-1 (MEDIUM both, independently, near-identical): the source-inspection regex only
+    matched the FIRST assignment line, missing a mutant that keeps that line and appends a
+    second `_OLLAMA_URL = os.environ.get("OLLAMA_URL", _OLLAMA_URL)` statement (reduces to the
+    same literal whenever the env var is unset). Now counts ALL matching assignment lines,
+    requires exactly one, and separately bans environ/getenv tokens from any other line
+    mentioning the name.
+  - G1 (LOW codex): only 2 of the CHECK constraint's 4 non-unjudged terminal statuses
+    (judged_false, judged_true) were tested against the guard — a mutant relaxing
+    `status = 'unjudged'` to `status IN ('unjudged', 'superseded')` would still pass. Added a
+    third sub-case (status='superseded').
+  Findings NOT fixed, with reasoning (both seats agreed or the finding described future-code
+  risk, not a gap in code that exists today):
+  - G7 (LOW kimi): caplog only inspects record.getMessage(), not record.exc_text, and doesn't
+    verify logger propagation. Verified by reading _judge_one: neither the invalid-verdict nor
+    superseded path calls ANY logger method today, and the module logger never sets
+    propagate=False. Accepted as a residual for future logging additions, not a current gap.
+  - Kimi's LOW #8 (G3's SQL-text surgery couples to the exact literal "RETURNING id"; a
+    cosmetic SQL reflow would make the .replace() a no-op): kimi's own assessment was
+    "safe-by-loudness" — the existing `assert slow_mark_true != wtp._JUDGE_MARK_TRUE_SQL`
+    already turns a no-op replace into a loud failure, not a silent pass. No further guard
+    added.
+  - Kimi's LOW brittleness note on G5 (an unrelated future datetime.now() call earlier in the
+    --scan branch would shift the clock-read count): a fragility note about hypothetical future
+    code, not a current gap. Not fixed.
+  - Header bookkeeping (kimi LOW): the "59 vs 57 mutant count" self-contradiction and the
+    M26/M41-vs-M41b staleness in the corpus header comment (the header claimed mutants this
+    same diff actually ships tests for). Fixed by rewriting the header to describe the claim
+    generically rather than repeating specific counts that had drifted.
+
+  DELTA ROUND (the fix diff from round 1, both seats told what round 1 found and what the delta
+  claims to fix, asked to verify and re-break): codex returned REWORK again (1 MEDIUM + 3 LOW);
+  kimi returned REWORK (1 HIGH + 4 LOW) — both seats independently found the SAME critical bug
+  in the round-1 G3 fix itself. Fixed in the same commit (b54ba8cccc):
+  - G3 self-matching poll (HIGH kimi / MEDIUM codex, independently, essentially identical): the
+    pg_stat_activity poll query's OWN text contained the literal substring "_stall" (inside its
+    own `query ILIKE '%_stall%'` pattern), so the poll matched ITSELF on the very first
+    iteration regardless of whether _apply_true's stalled query was actually active —
+    reintroducing the exact false-RED race the fix existed to remove, now on a FAST runner
+    instead of a slow one. Kimi additionally caught that `_` is itself a single-character ILIKE
+    wildcard, so the pattern would also match any query merely containing "install". Fixed:
+    added `pid <> pg_backend_pid()` and replaced the ILIKE wildcard pattern with
+    `position('_stall' in query) > 0`. Re-verified: this test now correctly turns RED when FOR
+    SHARE is genuinely removed from production code (see receipts), which round-1's broken poll
+    would NOT have caught (it exited the wait loop immediately regardless).
+  - G1 fourth status (LOW both): a fourth terminal status (quarantined) was still untested
+    against the guard. Added a fourth sub-case.
+  - G-LOW-1 indented reassignment (LOW both, near-identical): the regex anchored at column 0
+    (`^_OLLAMA_URL`), missing an INDENTED reassignment inside a conditional block (e.g. inside
+    `if os.environ.get("OLLAMA_URL"): _OLLAMA_URL = ...`). Now allows leading whitespace in the
+    regex and strips before comparing, so any reassignment shape is counted regardless of
+    indentation.
+  - G3 task cleanup (LOW codex): the `finally` block only cancelled+awaited tasks still
+    `.done() is False`, so a task that already finished EXCEPTIONALLY before the block ran could
+    be left uncollected. Switched to cancel-then-`asyncio.gather(*tasks,
+    return_exceptions=True)`.
+  - get_running_loop() (LOW kimi): `asyncio.get_event_loop()` inside a coroutine works today but
+    is the wrong API; switched to `asyncio.get_running_loop()`.
+  No dissent remained unresolved after the delta round: every finding either seat raised was
+  independently found or endorsed by the other, and every CONFIRMED finding was fixed and
+  re-verified.
+
+proof: |
+  Full corpus, clean venv (Python 3.11, CI's exact install line), measured after the fix commit:
+    REAL_PG unset -> 248 passed, 56 skipped
+    WA_TEAM_PROMISES_REAL_PG=1 (throwaway PG17 cluster, pg_ctl/initdb on PATH) -> 304 passed
+
+  FLOOR discipline, measured against this exact commit:
+    FLOOR=248 -> pass (248 passing >= 248)
+    FLOOR=249 -> below-floor error (248 passing < 249)
+
+  MUTATION VERIFICATION, each isolated on a `cp` backup and restored byte-identical afterward
+  (`diff -q` confirmed after every restore; the production file
+  scripts/wa_team_promises.py is untouched by this PR — every mutation below was applied,
+  tested, then reverted):
+    1. M43 (G6): _JUDGE_LOCK_FILE rebound to _SCAN_LOCK_FILE's value at module level ->
+       test_g6_judge_and_scan_locks_are_independent_files turns RED on the new unpatched-
+       constant assertion (it passed silently before the round-1 fix).
+    2. M23/M46/M47 (G4): _apply_attempt's dry-run guard narrowed from unconditional
+       `if dry_run: return ...` to `if dry_run and attempts + 1 >= _JUDGE_MAX_ATTEMPTS: return
+       ...` -> test_g4_dry_run_writes_nothing_on_any_path turns RED on the DB-snapshot equality
+       check (it passed silently before the round-1 fix, since only the quarantine-boundary
+       candidate was seeded).
+    3. FOR SHARE removed from _JUDGE_MESSAGE_FOR_SHARE_SQL ->
+       test_g3_apply_true_holds_the_message_lock_through_its_own_commit turns RED (the
+       "assert not update_task.done()" check correctly fires) — verified with the DELTA-ROUND
+       fix in place; round-1's broken self-matching poll would NOT have caught this (it always
+       exited its wait loop on iteration 1 regardless of the mutation).
+    4. Round-1 G-LOW-1 mutant (append a second `_OLLAMA_URL = os.environ.get(...)` line) ->
+       test_g_low1_ollama_url_is_a_bare_literal_not_an_environment_read turns RED.
+    5. Round-1 G1 mutant (_JUDGE_MARK_FALSE_SQL relaxed to `status IN ('unjudged',
+       'superseded')`) -> test_g1_guarded_writes_also_require_status_unjudged_not_just_the_hash
+       turns RED on the new superseded sub-case.
+    6. Delta-round G1 mutant (`status IN ('unjudged', 'quarantined')`) -> same test turns RED
+       on the new quarantined sub-case.
+    7. Delta-round G-LOW-1 mutant (indented `_OLLAMA_URL = _env` inside an `if` block) -> the
+       same G-LOW-1 test turns RED on the whitespace-tolerant assignment count.
+
+  ruff clean on both touched test files; scripts/ci/scripts_coupling_census.py --check up to
+  date.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "Round 1: the G6 lock-independence test monkeypatches both _SCAN_LOCK_FILE and
+      _JUDGE_LOCK_FILE to distinct paths unconditionally before acquiring either lock — a
+      mutant that rebinds _JUDGE_LOCK_FILE to _SCAN_LOCK_FILE's value at module level is
+      silently repaired by that monkeypatch, since both patched values remain distinct on the
+      mutant too."
+    status: CONFIRMED
+    resolution:
+      "Added an inequality assertion on the UNPATCHED module attributes, executed BEFORE any
+      monkeypatch.setattr call. Mutation-verified: M43 (the exact rebinding) now turns this
+      test red."
+  - seat: kimi-code/k3
+    objection: "Round 1: same G6 finding as codex, independently, with an explicit reproducer and fix (assert the unpatched constants differ first, keep the functional probe for acquire/release-body mutants)."
+    status: CONFIRMED
+    resolution: "Same fix as codex's finding above — both seats converged on the identical root cause and the identical fix shape without seeing each other's answer."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1: G4's only invalid-verdict candidate is seeded at attempts=4 (the quarantine boundary), so the ordinary non-quarantining invalid dry-run path is never exercised — a mutant that only suppressed the dry-run write on the quarantine branch would still pass."
+    status: CONFIRMED
+    resolution: "Added a fifth candidate at attempts=0 (ordinary invalid, not quarantine) and pinned metrics.invalid in the asserted tuple. Mutation-verified: narrowing _apply_attempt's dry-run guard to the quarantine-only condition now turns this test red on the DB-snapshot check."
+  - seat: kimi-code/k3
+    objection: "Round 1: same G4 finding as codex, independently, with the exact mutant reproducer (`if not dry_run and not invalid:`)."
+    status: CONFIRMED
+    resolution: "Same fix as codex's finding above."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1: G3's fixed asyncio.sleep(0.3) assumes _apply_true reaches its FOR SHARE read within 300ms; a loaded runner could make this a false RED on correct code (the writer's UPDATE completes immediately, and the negative assertion fails)."
+    status: CONFIRMED
+    resolution:
+      "Replaced the fixed sleep with a poll of pg_stat_activity for the stall marker.
+      SUPERSEDED by the delta round: this specific poll implementation had its own bug (see
+      the delta-round G3 finding below), fixed in the same commit as this round-1 fix."
+  - seat: kimi-code/k3
+    objection: "Round 1: same G3 timing-flake finding as codex, independently, with an identical fix proposal (poll pg_locks/pg_stat_activity instead of a fixed sleep)."
+    status: CONFIRMED
+    resolution: "Same fix as codex's finding above, and superseded by the same delta-round correction."
+  - seat: codex-gpt-5.6-sol
+    objection: 'Round 1: G-LOW-1''s regex matches only the FIRST assignment line; a mutant that keeps that line and appends `_OLLAMA_URL = os.environ.get("OLLAMA_URL", _OLLAMA_URL)` reduces to the same literal whenever the env var is unset (the common CI case), so both the source-regex check and the final value-equality assertion stay green.'
+    status: CONFIRMED
+    resolution: "The check now collects ALL lines matching the assignment pattern, requires exactly one, and separately bans environ/getenv tokens from any OTHER line mentioning the name. Mutation-verified: the exact append-a-second-line mutant now turns this test red."
+  - seat: kimi-code/k3
+    objection: "Round 1: same G-LOW-1 finding as codex, independently, essentially the identical reproducer and fix."
+    status: CONFIRMED
+    resolution: "Same fix as codex's finding above."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1: G1 only tests 2 of the CHECK constraint's 4 non-unjudged terminal statuses (judged_false, judged_true) — a mutant relaxing the guard to `status IN ('unjudged', 'superseded')` would still pass both existing cases."
+    status: CONFIRMED
+    resolution: "Added a third sub-case (status='superseded'). Mutation-verified: the exact described mutant now turns this test red on the new sub-case."
+  - seat: kimi-code/k3
+    objection: "Round 1: caplog's G7 check only inspects record.getMessage(), missing record.exc_text, and does not verify the module logger propagates to caplog's root handler."
+    status: PLAUSIBLE
+    resolution:
+      "Verified by reading _judge_one directly: neither the invalid-verdict path nor the
+      superseded (hash-mismatch) path calls ANY logger method today (no logger.exception, no
+      exc_info=True anywhere in that function), and the module's logger
+      (logging.getLogger('wa_team_promises')) never sets propagate=False anywhere in the file.
+      A real blind spot for FUTURE code that might add such logging, not a gap in code that
+      exists today. Accepted as a documented residual, not fixed in this tests-only PR."
+  - seat: kimi-code/k3
+    objection: "Round 1: G3's SQL-text surgery (string-replacing 'RETURNING id') is coupled to the exact literal text; a cosmetic SQL reflow would make the .replace() silently a no-op."
+    status: PLAUSIBLE
+    resolution: "Kimi's own assessment: safe-by-loudness. The existing `assert slow_mark_true != wtp._JUDGE_MARK_TRUE_SQL` already turns a no-op replace into a loud test failure, not a silent pass. No additional guard added."
+  - seat: kimi-code/k3
+    objection: "Round 1: G5 implicitly assumes tick_start capture is the FIRST clock read in the --scan branch; an unrelated future datetime.now() call earlier in that branch would shift the read count and could turn the test red on unmodified main."
+    status: PLAUSIBLE
+    resolution: "A fragility note about hypothetical future code, not a gap in code that exists today. Not fixed; no reachable trigger in the current implementation."
+  - seat: kimi-code/k3
+    objection: "Round 1: the corpus header comment claims a '59-mutant run (43/57 non-equivalent killed)' and lists M26/M41 as 'not required', while this same diff ships tests targeting M26 (G-LOW-1) and M41b (G7) — internally contradictory bookkeeping."
+    status: CONFIRMED
+    resolution: "Header rewritten to describe the claim generically (what this diff actually ships tests for) rather than repeating specific counts that had drifted from the shipped test set."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "Delta round: the round-1 G3 fix's pg_stat_activity poll query's OWN text contains the
+      literal substring '_stall' (inside its own ILIKE pattern), so the poll matches ITSELF on
+      the first iteration regardless of whether _apply_true's stalled query is actually active
+      — reintroducing the exact false-RED race the fix exists to remove, now on a fast runner."
+    status: CONFIRMED
+    resolution:
+      "Added `pid <> pg_backend_pid()` to exclude the polling backend's own row, and replaced
+      the ILIKE wildcard pattern with `position('_stall' in query) > 0`. Mutation-verified:
+      removing FOR SHARE from production code now correctly turns this test red — round-1's
+      broken poll would NOT have caught this, since it always exited the wait loop on the first
+      iteration regardless of the mutation."
+  - seat: kimi-code/k3
+    objection: "Delta round: same self-matching-poll finding as codex, independently, PLUS the additional observation that `_` is itself a single-character ILIKE wildcard, so the pattern would also match any query merely containing 'install'."
+    status: CONFIRMED
+    resolution: "Same fix as codex's finding above; the position()-based literal-substring check also closes kimi's additional wildcard observation, since position() does no pattern matching at all."
+  - seat: codex-gpt-5.6-sol
+    objection: "Delta round: G1 still omits a fourth terminal status (quarantined) from the CHECK constraint; a mutant allowing `status IN ('unjudged', 'quarantined')` survives the three cases tested after round 1."
+    status: CONFIRMED
+    resolution: "Added a fourth sub-case (status='quarantined'). Mutation-verified: the exact described mutant now turns this test red on the new sub-case."
+  - seat: kimi-code/k3
+    objection: "Delta round: same G1 fourth-status finding as codex, independently, flagged as contingent on the CHECK constraint actually containing a fourth value (kimi could not see the schema from the delta diff alone)."
+    status: CONFIRMED
+    resolution: "Confirmed the CHECK constraint's status column allows exactly unjudged/judged_true/judged_false/quarantined/superseded (5 values) by reading scripts/wa_team_promises.py directly; same fix as codex's finding above."
+  - seat: codex-gpt-5.6-sol
+    objection: "Delta round: G-LOW-1's regex still anchors at column 0, missing an indented reassignment such as `_OLLAMA_URL = candidate` inside an `if` block reading os.environ."
+    status: CONFIRMED
+    resolution: "The regex now allows leading whitespace and strips each match before comparing, so ANY reassignment of the name is counted regardless of indentation. Mutation-verified: the exact indented-reassignment mutant now turns this test red."
+  - seat: kimi-code/k3
+    objection: "Delta round: same G-LOW-1 indented-reassignment finding as codex, independently, with an essentially identical reproducer and fix."
+    status: CONFIRMED
+    resolution: "Same fix as codex's finding above."
+  - seat: codex-gpt-5.6-sol
+    objection: "Delta round: G3's finally block only cancels+awaits tasks still pending; a task that already finished EXCEPTIONALLY before the block runs (e.g. an assertion firing mid-flight) could be left with an uncollected exception."
+    status: CONFIRMED
+    resolution: "Switched to cancel-then-asyncio.gather(*tasks, return_exceptions=True), which collects every created task regardless of whether it was still pending or already finished when the finally block runs."
+  - seat: kimi-code/k3
+    objection: "Delta round: asyncio.get_event_loop() inside a coroutine works today but is the deprecated-leaning API; asyncio.get_running_loop() is correct inside async code."
+    status: CONFIRMED
+    resolution: "Both occurrences in the G3 test switched to asyncio.get_running_loop()."
+  - seat: kimi-code/k3
+    objection: "Delta round: cannot verify from the diff alone that the G4 attempts=0 candidate's metrics.invalid==1 (not 2, if it somehow also counted toward the attempts=4 candidate) — flagged as a visibility gap in review, not a confirmed defect."
+    status: RETRACTED
+    resolution: "Resolved by running the actual test against the real corpus: the full suite passes with the exact asserted tuple (true=1, false=1, invalid=1, quarantined=1, superseded=1, raced=0), confirming the two invalid candidates' distinct clause text produces two distinct dict keys with no collision."
+
+receipts:
+  - claim: "Full corpus, clean venv matching CI's install line, REAL_PG unset, measured after the fix commit."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q"
+    result: "248 passed, 56 skipped"
+    exit: 0
+    ts: "2026-09-29T08:17:05Z"
+    seat: claude-sonnet-5
+  - claim: "Full corpus, WA_TEAM_PROMISES_REAL_PG=1, throwaway PG17 cluster, measured after the fix commit."
+    cmd: "WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q"
+    result: "304 passed"
+    exit: 0
+    ts: "2026-09-29T08:17:05Z"
+    seat: claude-sonnet-5
+  - claim: "FLOOR discipline: the verbatim CI step logic, clean venv on PATH."
+    cmd: "measured PASSED=248 against FLOOR=248 then FLOOR=249"
+    result: "FLOOR=248 -> pass; FLOOR=249 -> below-floor error"
+    exit: 0
+    ts: "2026-09-29T08:17:05Z"
+    seat: claude-sonnet-5
+  - claim: "Mutation verification: FOR SHARE removed from _JUDGE_MESSAGE_FOR_SHARE_SQL turns the delta-round-fixed G3 test red (round-1's broken poll would not have caught this)."
+    cmd: "cp scripts/wa_team_promises.py <backup>; python3 string-replace FOR SHARE out; WA_TEAM_PROMISES_REAL_PG=1 pytest -k g3; diff -q restore"
+    result: "test_g3_apply_true_holds_the_message_lock_through_its_own_commit FAILED (the message UPDATE completed while _apply_true's own transaction was still mid-flight); restore confirmed byte-identical"
+    exit: 1
+    ts: "2026-09-29T08:14:00Z"
+    seat: claude-sonnet-5
+  - claim: "codex-gpt-5.6-sol round-1 council dispatch on this PR's own G1-G7 test diff, env-scrubbed (env -i HOME/PATH-only), --sandbox read-only, model_reasoning_effort=high, diff only."
+    cmd: 'env -i HOME="$HOME" PATH="$PATH" codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check -c model_reasoning_effort=high - < council_prompt_r1.txt'
+    result: "VERDICT: REWORK -- 1 HIGH + 4 MEDIUM/LOW findings (see dissent)"
+    exit: 0
+    ts: "2026-09-29T07:58:13Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi-code/k3 round-1 council dispatch, no-tools agent-file + credential-scrubbed env, empty cwd, diff only."
+    cmd: "kimi_client.run(council_prompt_r1, model='kimi-code/k3', cwd=<empty tmp dir>, timeout=420.0)"
+    result: "VERDICT: GO-WITH-NITS -- 8 findings, none blocking, 5 converging with codex (see dissent)"
+    exit: 0
+    ts: "2026-09-29T08:03:20Z"
+    seat: kimi-code/k3
+  - claim: "codex-gpt-5.6-sol delta-round council dispatch, same isolation, fix diff only."
+    cmd: 'env -i HOME="$HOME" PATH="$PATH" codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check -c model_reasoning_effort=high - < council_prompt_delta.txt'
+    result: "VERDICT: REWORK -- 1 MEDIUM (G3 self-matching poll) + 3 LOW findings (see dissent)"
+    exit: 0
+    ts: "2026-09-29T08:10:52Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi-code/k3 delta-round council dispatch, same isolation, fix diff only."
+    cmd: "kimi_client.run(council_prompt_delta, model='kimi-code/k3', cwd=<empty tmp dir>, timeout=420.0)"
+    result: "VERDICT: REWORK -- 1 HIGH (G3 self-matching poll, independently) + 4 LOW findings (see dissent)"
+    exit: 0
+    ts: "2026-09-29T08:13:43Z"
+    seat: kimi-code/k3
+
+pii_scan: clean
+pii_scan_note:
+  "The council prompts sent to codex/kimi carried only: a description of the gate condition and
+  the 9 tests' claimed mutant-closing contracts (prose written by this session, no client
+  content), and the git diff of the two test files themselves (synthetic test fixtures only —
+  'I will send it tomorrow' style clauses, a SYNTHETIC-POISON-marked fake phone number and
+  name, numeric candidate/message ids from a throwaway test database, never a real WhatsApp
+  message body). No repo dump, no client PII, no phone numbers, no real names, no real message
+  content. Both seats ran with a scrubbed/no-tools environment (codex: env -i HOME/PATH-only,
+  --sandbox read-only; kimi: kimi_client.py's pinned no-tools agent file + credential-scrubbed
+  env) and neither had filesystem or network access beyond the model call itself."
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 2
+
+appetite_exceeded: |
+  Both ceilings held: ~1 wall-clock hour across both rounds (no timeouts on either seat this
+  time), 2 adversarial rounds (one full-diff council round, one delta round after applying
+  every CONFIRMED finding from round 1).
+
+diff:
+  files: 6
+  insertions: 958
+  deletions: 1
+  net_lines: |
+    6 files, +958/-1 against origin/main. Two are the test files themselves (both the
+    round-1-authored G1-G7 tests and the council's own follow-up fixes, since no push happened
+    between the two — nothing was shared until every CONFIRMED finding from both rounds was
+    already applied), one is the CI workflow's FLOOR line (245 -> 248), and three are this
+    evidence pack (brief.yml, council-journal.jsonl, pack.yml itself). No production code
+    (scripts/wa_team_promises.py) appears in this diff at all — confirmed byte-identical to a
+    pre-session backup throughout, per gate condition C1's own "no production code change"
+    requirement.

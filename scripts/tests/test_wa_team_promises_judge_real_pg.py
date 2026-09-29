@@ -17,6 +17,7 @@ guard and schema behavior around it.
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import shutil
 import subprocess
@@ -829,3 +830,323 @@ async def test_bad_preexisting_status_row_blocks_the_new_check_and_rolls_back(pg
         assert exists == 0
         rows = await _candidates_status_only(pool)
         assert rows == {(1, "totally_bogus_status")}
+
+
+# === Gate condition C1 (fresh-Opus Gear-3 gate on PR #7597, pull/7597#issuecomment-5885208473) ===
+# === G1-G7: permanent guilt tests for mutation-testing gaps the gate found in its own mutation    ===
+# === run against the merged head (57 non-equivalent mutants; the shipped corpus at merge killed   ===
+# === 43, leaving 14 survivors). These 9 tests (G1-G7 plus the two LOW-priority ones the gate       ===
+# === flagged as optional, G-LOW-1/G-LOW-2) close 12 of the 14 survivors named in the gate's own    ===
+# === comment. Each was verified RED against its named mutant and GREEN on main before this PR —   ===
+# === see the mutant table in the PR body. No production code changed in this PR: every mutant     ===
+# === here was already fixed on main; these tests only make sure a REGRESSION turns red in future.  ===
+
+POISON = "SYNTHETIC-POISON +6280000000000 Jane Roe"
+
+
+# G1 (mutants M07/M08) — C2's guard has TWO halves: clause_hash AND status.
+# Every existing race test in this file pins the clause_hash half (a hash
+# change from the scanner); none pinned the STATUS half on its own — a
+# mutant that dropped `status='unjudged'` from _JUDGE_MARK_TRUE_SQL /
+# _JUDGE_MARK_FALSE_SQL (leaving only the clause_hash check) would still
+# pass every existing test, since none of them exercise an ALREADY-JUDGED
+# row whose clause_hash happens to still match.
+@pytest.mark.asyncio
+async def test_g1_guarded_writes_also_require_status_unjudged_not_just_the_hash(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "g1") as pool:
+        await _setup(pool)
+        body = "I will send it tomorrow"
+        _clause, h = _seed_candidate_for_body(body)
+
+        await _insert_wmc(pool, msg_id=1, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
+        c_already_false = await _insert_candidate(pool, message_id=1, clause_idx=0, clause_hash=h,
+                                                    status="judged_false")
+        outcome = await _apply_true(pool, c_already_false, h, message_id=1, clause_idx=0,
+                                     promise_type="send", due_at_hint=None, dry_run=False)
+        assert outcome == "raced"
+        assert (await _candidate_row(pool, c_already_false))["status"] == "judged_false"
+        assert await _promises(pool) == []
+
+        await _insert_wmc(pool, msg_id=2, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
+        c_already_true = await _insert_candidate(pool, message_id=2, clause_idx=0, clause_hash=h,
+                                                   status="judged_true")
+        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, c_already_true, h, False)
+        assert held is False
+        assert (await _candidate_row(pool, c_already_true))["status"] == "judged_true"
+
+        # A third terminal status, not just the two judged ones — a mutant
+        # that relaxed the guard to `status IN ('unjudged', 'superseded')`
+        # (rather than exact equality to 'unjudged') would still pass both
+        # cases above, since neither leaves the row 'superseded'.
+        await _insert_wmc(pool, msg_id=10, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
+        c_already_superseded = await _insert_candidate(pool, message_id=10, clause_idx=0, clause_hash=h,
+                                                         status="superseded")
+        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, c_already_superseded, h, False)
+        assert held is False
+        assert (await _candidate_row(pool, c_already_superseded))["status"] == "superseded"
+
+        # The FOURTH and last terminal status in the CHECK constraint
+        # (unjudged/judged_true/judged_false/quarantined/superseded) — a
+        # mutant that relaxed the guard to `status IN ('unjudged',
+        # 'quarantined')` would still pass all three cases above, since
+        # none of them leave the row 'quarantined' (delta-round finding,
+        # both seats).
+        await _insert_wmc(pool, msg_id=11, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
+        c_already_quarantined = await _insert_candidate(pool, message_id=11, clause_idx=0, clause_hash=h,
+                                                          status="quarantined")
+        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, c_already_quarantined, h, False)
+        assert held is False
+        assert (await _candidate_row(pool, c_already_quarantined))["status"] == "quarantined"
+
+
+# G2 (mutant M10) — the attempt-increment guard's `AND attempts=$3` pin
+# (round-1 council finding) only catches a race whose attempts value
+# actually MOVED. A scanner revision resets attempts to 0 (same value the
+# judge already read), so it is the CLAUSE_HASH half of this SAME guard that
+# must still catch it — a mutant that dropped clause_hash from
+# _JUDGE_MARK_ATTEMPT_SQL (leaving only the attempts pin) would pass every
+# existing attempt-guard test, since none of them revise clause_hash while
+# leaving attempts unchanged.
+@pytest.mark.asyncio
+async def test_g2_attempt_guard_clause_hash_half_catches_a_same_attempts_revision(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "g2") as pool:
+        await _setup(pool)
+        body = "I will send it tomorrow"
+        _clause, old_hash = _seed_candidate_for_body(body)
+        await _insert_wmc(pool, msg_id=3, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
+        cid = await _insert_candidate(pool, message_id=3, clause_idx=0, clause_hash=old_hash)
+
+        # Scanner revises this SAME unjudged row mid-tick: new clause_hash,
+        # attempts explicitly reset to 0 — the SAME value the judge already
+        # read at selection time, so the attempts pin alone cannot catch it.
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE team_promise_candidates SET clause_hash = 'revised-by-scanner', attempts = 0 "
+                "WHERE id = $1", cid,
+            )
+
+        outcome = await wtp._apply_attempt(pool, cid, old_hash, 0, False)
+        assert outcome is None  # raced — the guard must still fail
+        row = await _candidate_row(pool, cid)
+        assert row["attempts"] == 0
+        assert row["status"] == "unjudged"
+        assert row["clause_hash"] == "revised-by-scanner"
+
+
+# G3 (mutants M12/M13) — the earlier FOR SHARE lock test
+# (test_for_share_lock_genuinely_blocks_a_concurrent_message_update) proves
+# the SQL primitive works, called directly against a raw connection. It does
+# NOT prove _apply_true's OWN transaction actually holds that lock through
+# ITS OWN commit — a mutant that reads under FOR SHARE but in a SEPARATE,
+# already-committed transaction (or drops the transaction wrapper entirely)
+# would still pass that test. This slows _apply_true's own guarded UPDATE
+# down with pg_sleep so a concurrent UPDATE has a real window to race it.
+@pytest.mark.asyncio
+async def test_g3_apply_true_holds_the_message_lock_through_its_own_commit(pg_socket_dir, monkeypatch):
+    async with _fresh_database(pg_socket_dir, "g3") as pool:
+        await _setup(pool)
+        body = "I will send it tomorrow"
+        clause, h = _seed_candidate_for_body(body)
+        await _insert_wmc(pool, msg_id=4, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
+        cid = await _insert_candidate(pool, message_id=4, clause_idx=0, clause_hash=h)
+
+        # Stalls _apply_true's own guarded UPDATE for 1.2s, AFTER its FOR
+        # SHARE read but BEFORE its commit — the window a competing writer
+        # needs to prove the lock is (or is not) still held.
+        slow_mark_true = wtp._JUDGE_MARK_TRUE_SQL.replace(
+            "RETURNING id",
+            "AND (SELECT count(*) FROM (SELECT pg_sleep(1.2)) AS _stall) = 1\nRETURNING id",
+        )
+        assert slow_mark_true != wtp._JUDGE_MARK_TRUE_SQL
+        monkeypatch.setattr(wtp, "_JUDGE_MARK_TRUE_SQL", slow_mark_true)
+
+        writer = await asyncpg.connect(host=pg_socket_dir, user="postgres", database="g3")
+        judge_task = None
+        update_task = None
+        try:
+            judge_task = asyncio.create_task(_apply_true(
+                pool, cid, h, message_id=4, clause_idx=0, promise_type="send",
+                due_at_hint=None, dry_run=False,
+            ))
+            # Deterministic wait, not a fixed guess: poll pg_stat_activity
+            # (over the writer's own connection — the pool itself is
+            # max_size=1 and already held by judge_task's transaction)
+            # until _apply_true's stalled query is actually ACTIVE. A
+            # loaded runner can make _apply_true slower to reach its FOR
+            # SHARE read than any fixed sleep would assume, which used to
+            # turn "the UPDATE is still blocked" into a false RED on
+            # otherwise-correct code (round-1 council finding).
+            #
+            # `pid <> pg_backend_pid()` is LOAD-BEARING, not defensive
+            # styling: without it the poll's own query text (which itself
+            # contains the literal substring "_stall", inside its own
+            # `'%_stall%'` pattern / this comment's literal) matches on the
+            # very first iteration, so the loop breaks immediately and
+            # waits for nothing — reintroducing the exact false-RED race
+            # this fix exists to remove (delta-round finding, both seats,
+            # independently). `position('_stall' in query) > 0` replaces
+            # ILIKE's wildcard pattern for the same reason `_` is itself a
+            # single-character ILIKE wildcard (kimi's delta-round finding),
+            # so a query merely containing "install" would also match.
+            deadline = asyncio.get_running_loop().time() + 5.0
+            while True:
+                row = await writer.fetchrow(
+                    "SELECT 1 FROM pg_stat_activity "
+                    "WHERE state = 'active' AND datname = current_database() "
+                    "AND pid <> pg_backend_pid() "
+                    "AND position('_stall' in query) > 0"
+                )
+                if row is not None:
+                    break
+                if asyncio.get_running_loop().time() > deadline:
+                    raise TimeoutError("_apply_true's stalled query never went active within 5s")
+                await asyncio.sleep(0.02)
+
+            update_task = asyncio.create_task(
+                writer.execute("UPDATE whatsapp_message_context SET body = 'edited' WHERE id = 4")
+            )
+            await asyncio.sleep(0.5)
+            assert not update_task.done(), (
+                "the message UPDATE completed while _apply_true's own transaction was "
+                "still mid-flight — the lock is not held through _apply_true's own commit"
+            )
+            assert await judge_task == "true"
+            await asyncio.wait_for(update_task, timeout=5.0)
+        finally:
+            # `gather(..., return_exceptions=True)` (not a `.done()`-gated
+            # cancel+await) so a task that already finished EXCEPTIONALLY
+            # before this block runs — e.g. judge_task raising before the
+            # poll's timeout, or an assertion above firing mid-flight — is
+            # still collected instead of left as an uncollected exception
+            # (delta-round finding, codex).
+            tasks = [t for t in (judge_task, update_task) if t is not None]
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            await writer.close()
+
+        promises = await _promises(pool)
+        assert [p["promise_text"] for p in promises] == [clause]
+
+
+# G4 (mutants M23/M46/M47) — --dry-run must write NOTHING, on every terminal
+# path (true/false/invalid/quarantine/superseded), proven end-to-end through
+# run_judge against a real database snapshot taken before and after.
+@pytest.mark.asyncio
+async def test_g4_dry_run_writes_nothing_on_any_path(pg_socket_dir, monkeypatch):
+    async with _fresh_database(pg_socket_dir, "g4") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+        body_true = "I will send it tomorrow"
+        body_false = "I will call you tomorrow"
+        body_invalid = "I will pay it tomorrow"
+        body_invalid_ordinary = "I will fix it tomorrow"
+        clause_true, hash_true = _seed_candidate_for_body(body_true)
+        clause_false, hash_false = _seed_candidate_for_body(body_false)
+        clause_invalid, hash_invalid = _seed_candidate_for_body(body_invalid)
+        clause_invalid_ordinary, hash_invalid_ordinary = _seed_candidate_for_body(body_invalid_ordinary)
+
+        await _insert_wmc(pool, msg_id=5, body=body_true, created_at=created_at)
+        await _insert_wmc(pool, msg_id=6, body=body_false, created_at=created_at)
+        await _insert_wmc(pool, msg_id=7, body=body_invalid, created_at=created_at)
+        await _insert_wmc(pool, msg_id=11, body=body_invalid_ordinary, created_at=created_at)
+        await _insert_candidate(pool, message_id=5, clause_idx=0, clause_hash=hash_true)
+        await _insert_candidate(pool, message_id=6, clause_idx=0, clause_hash=hash_false)
+        # attempts=4: one more invalid verdict would quarantine on a REAL run.
+        await _insert_candidate(pool, message_id=7, clause_idx=0, clause_hash=hash_invalid, attempts=4)
+        # attempts=0: an ORDINARY invalid verdict, not the quarantine
+        # boundary — a mutant that only suppressed the dry-run write on the
+        # quarantine branch (e.g. narrowing `_apply_attempt`'s unconditional
+        # `if dry_run: return ...` to `if dry_run and attempts + 1 >=
+        # _JUDGE_MAX_ATTEMPTS: return ...`) would still pass the attempts=4
+        # case above while silently writing the attempts-increment here
+        # (round-1 council finding — the attempts=4 case alone never
+        # exercises this branch).
+        await _insert_candidate(pool, message_id=11, clause_idx=0, clause_hash=hash_invalid_ordinary)
+        # message_id 999 never inserted — a superseded candidate too.
+        await _insert_candidate(pool, message_id=999, clause_idx=0, clause_hash="gone")
+
+        verdicts = {
+            clause_true: True, clause_false: False,
+            clause_invalid: None, clause_invalid_ordinary: None,
+        }
+        monkeypatch.setattr(wtp, "_call_ollama", lambda _opener, clause: verdicts[clause])
+
+        async def _snapshot():
+            async with pool.acquire() as conn:
+                candidates = await conn.fetch("SELECT * FROM team_promise_candidates ORDER BY id")
+                promises = await conn.fetch("SELECT * FROM team_promises")
+            return [dict(r) for r in candidates], [dict(r) for r in promises]
+
+        before = await _snapshot()
+        metrics = await run_judge(pool, limit=10, dry_run=True)
+
+        # Every terminal path is exercised — this is the point of the test,
+        # not incidental: a dry-run that skipped a branch would prove
+        # nothing about that branch's own write-suppression.
+        assert (
+            metrics.true, metrics.false, metrics.invalid, metrics.quarantined,
+            metrics.superseded, metrics.raced,
+        ) == (1, 1, 1, 1, 1, 0)
+        assert await _snapshot() == before
+
+
+# G7 (mutants M40/M41b) — no clause/body text reaches ANY log record (not
+# just stdout/stderr) on the invalid-verdict and superseded (hash-mismatch)
+# paths — the two paths a candidate reaches WITHOUT necessarily going
+# through the top-level cli_main output line this file's other tests pin.
+@pytest.mark.asyncio
+async def test_g7_no_clause_text_in_log_records_on_invalid_and_superseded_paths(pg_socket_dir, monkeypatch, caplog):
+    async with _fresh_database(pg_socket_dir, "g7") as pool:
+        await _setup(pool)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
+
+        body_invalid = f"I will send it to {POISON} tomorrow"
+        clause_invalid, hash_invalid = _seed_candidate_for_body(body_invalid)
+        await _insert_wmc(pool, msg_id=8, body=body_invalid, created_at=created_at)
+        await _insert_candidate(pool, message_id=8, clause_idx=0, clause_hash=hash_invalid)
+
+        body_superseded = f"I will call {POISON} tomorrow"
+        await _insert_wmc(pool, msg_id=9, body=body_superseded, created_at=created_at)
+        # A stale hash the current body no longer matches -> superseded,
+        # never reaches _call_ollama at all.
+        await _insert_candidate(pool, message_id=9, clause_idx=0, clause_hash="stale-hash-not-in-body")
+
+        monkeypatch.setattr(wtp, "_call_ollama", lambda _opener, _clause: None)
+
+        with caplog.at_level(logging.DEBUG):
+            metrics = await run_judge(pool, limit=10, dry_run=False)
+
+        assert (metrics.invalid, metrics.superseded) == (1, 1)
+        log_text = "\n".join(record.getMessage() for record in caplog.records)
+        assert POISON not in log_text
+        assert clause_invalid not in log_text
+
+
+# G-LOW-2 (mutant M58, gate table, LOW) — _apply_true's OWN "message gone"
+# branch (its second, FOR-SHARE read — reachable when the message existed
+# at _judge_one's first read but is deleted before _apply_true's own
+# transaction) must route through _JUDGE_MARK_SUPERSEDED_SQL and return
+# "superseded", never "true" without writing anything. Called directly
+# (bypassing _judge_one's own pre-check, which never even reaches this
+# code path) against a message_id that was never inserted at all.
+@pytest.mark.asyncio
+async def test_g_low2_apply_true_second_read_message_gone_is_superseded_not_true(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "g_low2") as pool:
+        await _setup(pool)
+        body = "I will send it tomorrow"
+        _clause, h = _seed_candidate_for_body(body)
+        # message_id 10 is NEVER inserted into whatsapp_message_context —
+        # simulates the message having been deleted between _judge_one's
+        # first read and _apply_true's own second one.
+        cid = await _insert_candidate(pool, message_id=10, clause_idx=0, clause_hash=h)
+
+        outcome = await _apply_true(pool, cid, h, message_id=10, clause_idx=0,
+                                     promise_type="send", due_at_hint=None, dry_run=False)
+
+        assert outcome == "superseded"
+        assert await _promises(pool) == []
+        row = await _candidate_row(pool, cid)
+        assert row["status"] == "superseded"

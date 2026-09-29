@@ -1,0 +1,108 @@
+task: >-
+  Gate condition C1 on the merged PR #7597 (T3 PR-3, the Pro-local Ollama
+  judge over team_promise_candidates): a FRESH, independent Gear-3 gate
+  re-ran its own mutation corpus against the merged head, found 57
+  non-equivalent mutants of which the shipped test suite killed 43 (14
+  survived), wrote 7 probe tests (G1-G7, reference implementation in the
+  gate's own comment) closing 12 of the 14 survivors, and required this
+  builder to land them as PERMANENT tests in a tests-only follow-up PR from
+  fresh origin/main — plus two optional LOW-priority ones (G-LOW-1/G-LOW-2)
+  if cheap. No production code change: `scripts/wa_team_promises.py` is not
+  part of this diff, confirmed byte-identical to a pre-mutation-testing
+  backup throughout. Each of the 9 tests was individually verified RED
+  against its named mutant (applied to a `cp` backup, restored byte-for-byte
+  afterward, `diff -q` confirmed) and GREEN on unmodified main.
+lane: wa-team/t3-pr3-judge-g1g7-0929
+machine: M5
+date: "2026-09-29"
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source `path` (confirmed locally via
+  `scripts/evidence_pack_lint.py --changed-files-file --numstat-file
+  --print-floor[-source]` against this exact diff, merge-base origin/main):
+  this diff edits `.github/workflows/wa-team-promises-tests.yml` (bumping
+  the corpus's FLOOR from 245 to 248, per gate condition C1's own
+  instruction), which is a HOTZONE_PATTERNS match (`.github/workflows/*`) —
+  floor 3 on the path term alone, independent of size (measured churn here
+  is ~359 lines, well under SIZE_GEAR3_THRESHOLD). The first-party
+  action-version-pin exemption does not apply: the changed line is a
+  hardcoded integer literal inside a `run:` step body, not a `uses:` pin.
+
+  Per Builder Contract §5 (generator != grader) and this lane's own
+  precedent on PR #7597 (the team-lead's explicit instruction there: "Next
+  step is YOURS ... generator != grader is kept because the fresh Opus
+  gate comes after, separately"), this brief is accompanied by a REAL
+  pack.yml in the SAME diff — a genuine two-round, cross-family Gear-3
+  council (codex-gpt-5.6-sol + kimi-code/k3, env-scrubbed, diff-only, no
+  session-env leakage) run by this same builder session BEFORE opening the
+  PR, not fabricated and not deferred to a later gating session (there is
+  no separate "gate" mandate for this specific follow-up PR the way there
+  was for #7597 itself — this PR's own tests ARE the artifact a fresh gate
+  would re-check against; the council here is this PR's own review, not a
+  substitute for one).
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    Every mutant named in the gate's own survivor list that this PR claims
+    to close (M07/M08, M10, M12/M13, M23/M46/M47, M35, M40/M41b, M43, plus
+    optional M26/M58) is proven closed by a dedicated permanent test,
+    individually mutation-verified RED against that exact mutant and GREEN
+    on unmodified main — not merely asserted in prose.
+    probe: >-
+      mutant->test verification table in the PR body; each row backed by a
+      `cp` backup / targeted mutation / `pytest -k` / restore cycle run
+      during this session (see receipts below for a representative sample).
+  A2: >-
+    Zero production-code change: `scripts/wa_team_promises.py` is
+    byte-identical before and after this PR's test-authoring work.
+    probe: "diff -q against a pre-mutation-testing backup taken before any edit in this session"
+  A3: >-
+    CI floor bumped to match the new unit-run passed count, and floor
+    discipline (a floor set one above the true count reds; the true floor
+    passes) is empirically re-verified, not just edited by inspection.
+    probe: >-
+      FLOOR=248 -> pass; FLOOR=249 -> below-floor error, against
+      `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest
+      scripts/tests/test_wa_team_promises*.py -q`
+  A4: >-
+    A genuine Gear-3 council (2 rounds: full-diff review, then a delta round
+    on the fix diff after applying every CONFIRMED round-1 finding) ran on
+    THIS diff, with every objection recorded honestly by status
+    (CONFIRMED/PLAUSIBLE/RETRACTED) — including findings that required real
+    rework (the delta round's own G3 self-matching-poll bug), not just
+    findings that happened to already be closed.
+    probe: "pack.yml's dissent: section, cross-checked against council-journal.jsonl"
+
+out_of_scope: >-
+  The pack.yml mislabel the gate itself found on PR #7597's own evidence
+  pack (the codex wall-budget finding marked RETRACTED instead of
+  STILL-OPEN/accepted; LOW-4 half-closed) — that file lives in the ALREADY
+  MERGED evidence directory from #7597 and touching it here would be out of
+  scope for a tests-only follow-up touching unrelated files; left to the
+  conductor's own PENDING-ARMS ledger row per this task's own dispatch
+  instruction. Installing/running anything on Pro — this PR only adds
+  tests that run against a throwaway local/CI Postgres cluster.
+
+assumptions:
+  - text: >-
+      The deterministic floor for this diff is 3 via the PATH term alone
+      (`.github/workflows/wa-team-promises-tests.yml` is a HOTZONE_PATTERNS
+      match) — not assumed from the push-time refusal message alone, but
+      reproduced directly with `scripts/evidence_pack_lint.py
+      --changed-files-file --numstat-file --print-floor` /
+      `--print-floor-source` against this exact merge-base diff.
+    status: verified
+  - text: >-
+      Every one of the 9 permanent tests this PR adds was independently
+      verified RED against its own named mutant during this session (not
+      merely inherited as "the gate already proved this" — the gate proved
+      ITS OWN reference implementation red/green; this PR's tests differ in
+      several places, per the mutant->test table in the PR body, and were
+      re-verified against the SHIPPED test bodies, not the gate's
+      reference).
+    status: verified
