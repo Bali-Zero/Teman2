@@ -1,0 +1,24 @@
+/* FunnelFrame resolves these values inside inline styles. The route owns the
+ * variables rather than competing with those inline declarations. */
+.scope :global([aria-label="Trust signals"]) {
+  --surface-subtle: var(--r19-wash);
+  --color-border-subtle: var(--r19-line);
+  --color-text-secondary: var(--r19-muted);
+}
+
+.scope :global([aria-label="Next actions"]) {
+  --surface-base: var(--r19-surface);
+  --color-border-subtle: var(--r19-line);
+}
+
+.scope :global([aria-label="Next actions"] .btn-primary) {
+  align-items: center;
+  background: var(--r19-copper);
+  border-radius: 8px;
+  color: var(--r19-cta-ink);
+  display: inline-flex;
+  font-weight: 600;
+  justify-content: center;
+  padding: 0 var(--space-4, 1rem);
+  text-decoration: none;
+}
