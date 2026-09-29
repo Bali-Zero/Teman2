@@ -29,13 +29,11 @@ no hand-copied date.
     pilot's coverage is a separate decision with its own evidence; it is
     not a side effect of giving the dates a home.
 
-⚠️ COVERAGE_END = 2026-12-31. The 2027 SKB does not exist yet — this decree
-class is issued around September of the PRECEDING year (this one was
-19 September 2025 for 2026), so the 2027 decree is expected ~September
-2026. Any "2027 Indonesian holiday calendar" circulating online ahead of
-that is a third-party estimate, NOT a decreed fact — this module carries
-ZERO 2027 (or later) dates and never will until a real decree is sourced
-and this docstring updated to cite it. `test_no_calendar_date_beyond_coverage_end`
+⚠️ COVERAGE_END = 2026-12-31. The 2027 SKB now exists (No. 1205/2026, 3/2026,
+2/2026, 15 September 2026) and is loaded in the shared table for the tax-deadline
+reader, but this gate's coverage is NOT widened by it: widening the VOA pilot's
+window is a separate decision with its own evidence. This module therefore still
+carries ZERO 2027 (or later) dates, and `OPERATING_CALENDAR` clips them away. `test_no_calendar_date_beyond_coverage_end`
 in the test suite pins this so nobody can quietly paste one in later.
 
 PURE functions only — no I/O, no ``date.today()`` anywhere in this module.
@@ -94,9 +92,9 @@ _MAX_LOOKBACK_DAYS: int = 60
 
 # How many days of runway before `COVERAGE_END` must remain before
 # `coverage_end_horizon_warning` starts naming the gap (L1326). The 2027
-# SKB is expected around September 2026 (module docstring); 45 days gives
-# a real lead window to source and ship it before ISSUANCE fails closed
-# for lack of a decreed calendar, without paging months in advance.
+# SKB is decreed and loaded in `backend.data.id_holidays`, but coverage stays
+# at 2026-12-31 until the pilot's window is widened on its own evidence; 45
+# days gives a real lead window to do that before ISSUANCE fails closed.
 COVERAGE_END_HORIZON_WARNING_DAYS: int = 45
 
 

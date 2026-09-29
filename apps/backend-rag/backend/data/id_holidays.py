@@ -14,12 +14,15 @@ a day the office chooses to close does not move a statutory deadline, and puttin
 table would move it. 24-25 December 2026 are in the table because the decree puts them there,
 not because anyone is on holiday.
 
-Provenance — every date below comes from one decree, whose number this module does not invent:
+Provenance — every date below comes from a decree whose number this module does not invent.
+One decree per year; each block below names its own.
+
+2026:
 
     KEPUTUSAN BERSAMA MENTERI AGAMA / MENTERI KETENAGAKERJAAN / MENTERI PANRB RI —
     NOMOR 1497 TAHUN 2025, NOMOR 2 TAHUN 2025, NOMOR 5 TAHUN 2025, tentang Hari Libur
     Nasional dan Cuti Bersama Tahun 2026. Ditetapkan di Jakarta, 19 September 2025.
-    Full year 2026 = 17 hari libur nasional + 8 cuti bersama (``test_id_holidays`` pins
+    Full year 2026 = 17 hari libur nasional + 8 cuti bersama (``test_business_days`` pins
     both counts, so a hand-edit that drops or invents a day fails loudly).
 
     Retrieved 2026-09-12 from Sekretariat Negara RI, which publishes the decree's own tables:
@@ -29,11 +32,25 @@ Provenance — every date below comes from one decree, whose number this module 
     The four dates from 2026-07-28 onward were independently sourced in the 2026-07-27
     GARUDA session (decree + press route, zero divergence) and agree with this table.
 
+2027:
+
+    SURAT KEPUTUSAN BERSAMA MENTERI AGAMA NOMOR 1205 TAHUN 2026 / MENTERI KETENAGAKERJAAN
+    NOMOR 3 TAHUN 2026 / MENTERI PANRB NOMOR 2 TAHUN 2026, tentang Hari Libur Nasional dan
+    Cuti Bersama Tahun 2027. Ditetapkan 15 September 2026.
+    Full year 2027 = 18 hari libur nasional + 8 cuti bersama (pinned by ``test_business_days``).
+
+    Retrieved 2026-09-29 from two sources that agree on every date and name (names follow
+    Sekretariat Negara, which publishes the decree's own lists):
+    https://setneg.go.id/baca/index/inilah_skb_3_menteri_libur_nasional_dan_cuti_bersama_2027
+    https://www.kemenkopmk.go.id/pemerintah-tetapkan-18-hari-libur-nasional-dan-8-cuti-bersama-tahun-2027
+    The decree states that 1 Ramadan 1448 H, Hari Raya Idulfitri 1448 H and Hari Raya Iduladha
+    1448 H are set by a separate Keputusan Menteri Agama; the dates below are the SKB's.
+
 ``DECREED_YEARS`` is the honest coverage statement and the reason this module is not just a
 tuple: a year is listed ONLY when the whole calendar year is materialized from a real decree.
-This decree class is issued around September of the PRECEDING year, so the 2027 SKB does not
-exist yet (expected ~September 2026). Any "2027 Indonesian holiday calendar" circulating before
-that is a third-party estimate, not a decreed fact. Callers that cannot silently under-answer
+This decree class is issued around September of the PRECEDING year, so the 2028 SKB does not
+exist yet, which is why 2028 is absent until its SKB (expected ~September 2027) is sourced. Any
+holiday calendar for a year not listed here is a third-party estimate, not a decreed fact. Callers that cannot silently under-answer
 for an undecreed year read ``DECREED_YEARS`` and say so — see
 ``business_days.holiday_years_loaded`` and the ``needs_review_reason`` the obligations register
 attaches. NOTHING here may carry a date outside ``DECREED_YEARS``.
@@ -74,7 +91,7 @@ class Holiday:
 _LN = HolidayKind.LIBUR_NASIONAL
 _CB = HolidayKind.CUTI_BERSAMA
 
-# SKB 3 Menteri 2026 — in decree order within each kind, merged chronologically.
+# SKB 3 Menteri 2026 and 2027 — merged chronologically, each year from its own decree.
 HOLIDAYS: tuple[Holiday, ...] = (
     Holiday(date(2026, 1, 1), _LN, "Tahun Baru 2026 Masehi"),
     Holiday(date(2026, 1, 16), _LN, "Isra Mikraj Nabi Muhammad S.A.W."),
@@ -101,10 +118,36 @@ HOLIDAYS: tuple[Holiday, ...] = (
     Holiday(date(2026, 8, 25), _LN, "Maulid Nabi Muhammad S.A.W."),
     Holiday(date(2026, 12, 24), _CB, "Cuti Bersama Kelahiran Yesus Kristus"),
     Holiday(date(2026, 12, 25), _LN, "Kelahiran Yesus Kristus (Hari Raya Natal)"),
+    Holiday(date(2027, 1, 1), _LN, "Tahun Baru 2027 Masehi"),
+    Holiday(date(2027, 1, 5), _LN, "Isra Mikraj Nabi Muhammad saw."),
+    Holiday(date(2027, 2, 5), _CB, "Cuti Bersama Tahun Baru Imlek 2578 Kongzili"),
+    Holiday(date(2027, 2, 6), _LN, "Tahun Baru Imlek 2578 Kongzili"),
+    Holiday(date(2027, 3, 8), _LN, "Hari Suci Nyepi (Tahun Baru Saka 1949)"),
+    Holiday(date(2027, 3, 9), _CB, "Cuti Bersama Hari Raya Idulfitri 1448 Hijriah"),
+    Holiday(date(2027, 3, 10), _LN, "Idulfitri 1448 Hijriah"),
+    Holiday(date(2027, 3, 11), _LN, "Idulfitri 1448 Hijriah"),
+    Holiday(date(2027, 3, 12), _CB, "Cuti Bersama Hari Raya Idulfitri 1448 Hijriah"),
+    Holiday(date(2027, 3, 15), _CB, "Cuti Bersama Hari Raya Idulfitri 1448 Hijriah"),
+    Holiday(date(2027, 3, 25), _CB, "Cuti Bersama Wafat Yesus Kristus"),
+    Holiday(date(2027, 3, 26), _LN, "Wafat Yesus Kristus"),
+    Holiday(date(2027, 3, 28), _LN, "Hari Kebangkitan Yesus Kristus (Paskah)"),
+    Holiday(date(2027, 5, 1), _LN, "Hari Buruh Internasional"),
+    Holiday(date(2027, 5, 6), _LN, "Kenaikan Yesus Kristus"),
+    Holiday(date(2027, 5, 17), _LN, "Iduladha 1448 Hijriah"),
+    Holiday(date(2027, 5, 18), _CB, "Cuti Bersama Iduladha 1448 Hijriah"),
+    Holiday(date(2027, 5, 19), _CB, "Cuti Bersama Waisak 2571 BE"),
+    Holiday(date(2027, 5, 20), _LN, "Hari Raya Waisak 2571 BE"),
+    Holiday(date(2027, 6, 1), _LN, "Hari Lahir Pancasila"),
+    Holiday(date(2027, 6, 6), _LN, "1 Muharam Tahun Baru Islam 1449 Hijriah"),
+    Holiday(date(2027, 8, 15), _LN, "Maulid Nabi Muhammad SAW"),
+    Holiday(date(2027, 8, 17), _LN, "Proklamasi Kemerdekaan"),
+    Holiday(date(2027, 12, 24), _CB, "Cuti Bersama Kelahiran Yesus Kristus (Natal)"),
+    Holiday(date(2027, 12, 25), _LN, "Kelahiran Yesus Kristus (Natal)"),
+    Holiday(date(2027, 12, 26), _LN, "Isra Mikraj Nabi Muhammad saw."),
 )
 
 # Years materialized IN FULL from a decree. Not "years that appear in HOLIDAYS" — a partially
 # typed year must never be advertised as covered, which is why this is written, not derived.
-DECREED_YEARS: frozenset[int] = frozenset({2026})
+DECREED_YEARS: frozenset[int] = frozenset({2026, 2027})
 
 HOLIDAY_DATES: frozenset[date] = frozenset(h.at for h in HOLIDAYS)
