@@ -191,7 +191,7 @@ async def view(conn, who: dict) -> dict:
             "start_date": DAYS[0],
             "end_date": DAYS[-1],
             "timezone": "Asia/Makassar",
-            "planned": 150,
+            "planned": len(PLAN),
             "per_day": 5,
             "plan_version": PLAN_VERSION,
         },
@@ -201,7 +201,7 @@ async def view(conn, who: dict) -> dict:
         "assignments": cases,
         "progress": progress,
         "counts": {
-            "planned": 150,
+            "planned": len(PLAN),
             "started": len(rows),
             "submitted": sum(r["status"] == "submitted" for r in rows),
             "reproduced": sum(
