@@ -1117,15 +1117,21 @@ async def test_g7_no_clause_text_in_log_records_on_invalid_and_superseded_paths(
             metrics = await run_judge(pool, limit=10, dry_run=False)
 
         assert (metrics.invalid, metrics.superseded) == (1, 1)
-        # getMessage() alone misses structured fields (`extra={...}`,
-        # exc_text, stack_info), so every non-standard attribute of each
-        # record is folded into the searched text too.
+        # getMessage() alone misses structured fields (`extra={...}`),
+        # attached exceptions and stack info, and can itself raise on a
+        # malformed msg/args pair, so every record is rendered defensively
+        # and every non-standard attribute is folded into the searched text.
         standard = set(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"message", "asctime"}
-        log_text = "\n".join(
-            record.getMessage() + " " + repr({k: v for k, v in record.__dict__.items() if k not in standard})
-            + " " + str(record.exc_text) + " " + str(record.stack_info)
-            for record in caplog.records
-        )
+
+        def _render(record):
+            try:
+                message = record.getMessage()
+            except (TypeError, ValueError):
+                message = f"{record.msg!r} {record.args!r}"
+            extras = {k: v for k, v in record.__dict__.items() if k not in standard}
+            return f"{message} {extras!r} {record.exc_info!r} {record.exc_text} {record.stack_info}"
+
+        log_text = "\n".join(_render(record) for record in caplog.records)
         assert POISON not in log_text
         assert clause_invalid not in log_text
         # A truncated leak (e.g. `clause_text[:20]`) passes the full-string
@@ -1134,7 +1140,8 @@ async def test_g7_no_clause_text_in_log_records_on_invalid_and_superseded_paths(
         # non-PII marker sits in the first 20 characters of each body.
         assert LEAD_INVALID not in log_text
         assert LEAD_SUPERSEDED not in log_text
-        # ...and any shorter prefix cut (`[:8]`, `[:5]`) of the markers.
+        # ...and a 5-character prefix cut of each marker (leaks that cut
+        # shorter than 5 characters carry no unique signal to assert on).
         assert LEAD_INVALID[:5] not in log_text
         assert LEAD_SUPERSEDED[:5] not in log_text
         assert clause_invalid[:20] not in log_text

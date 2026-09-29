@@ -86,9 +86,10 @@ name: wa team promises tests
 # runner, or gives the real-PG suites a `DATABASE_URL` mode of their own.
 #
 # The unit-vs-skip split is not written here: a count in a comment is never
-# re-measured. The FLOOR line in the last step below is the one number, and
-# the step re-measures it on every run. The skips are the real-PG opt-in
-# cases (`WA_TEAM_PROMISES_REAL_PG` unset), which this file does not enable.
+# re-measured. The FLOOR line in the last step below is the one number; that
+# step re-runs the corpus and compares the passed count against it. The
+# skips are the real-PG opt-in cases (`WA_TEAM_PROMISES_REAL_PG` unset),
+# which this file does not enable.
 
 on:
   pull_request:
