@@ -96,6 +96,7 @@ on:
     paths:
       - "scripts/wa_team_promises.py"
       - "scripts/wa_team_promises_scan_cron.sh"
+      - "scripts/wa_team_promises_judge_cron.sh"
       - "scripts/sql/pro_local/team_promises*.sql"
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
@@ -116,6 +117,7 @@ on:
     paths:
       - "scripts/wa_team_promises.py"
       - "scripts/wa_team_promises_scan_cron.sh"
+      - "scripts/wa_team_promises_judge_cron.sh"
       - "scripts/sql/pro_local/team_promises*.sql"
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
@@ -184,7 +186,7 @@ jobs:
       - name: The T3 promise gate corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=158   # the corpus size after C1-C4 + the council-round follow-up fixes (REAL_PG unset)
+          FLOOR=245   # T3 PR-3 + round-1/delta Gear-3 council fixes: unit-run passed count, REAL_PG unset
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"

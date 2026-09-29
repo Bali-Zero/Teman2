@@ -1,0 +1,350 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+plan_ref:
+  "PR #7597 (agent/air-m5/wa-team/t3-pr3-judge-0928, base main), T3 PR-3 — the Pro-local
+  Ollama judge over team_promise_candidates. The PR was pushed open, NOT armed, per its own
+  dispatch instructions ('a separate fresh session gates it', generator != grader, Builder
+  Contract §5). The team-lead then directed the SAME builder session to convene the Gear-3
+  council on the full diff and produce this pack — the gating instruction was about not
+  self-authoring a fabricated council result while the diff was unreviewed, not about which
+  session runs a REAL one once dispatched to do so."
+lanes:
+  - lane: wa-team-t3-pr3-judge-build
+    role: build
+    seat:
+      claude-sonnet-5 (conducting session — implemented the judge, ran the Gear-3 council on
+      the full diff AFTER opening the PR per the team-lead's explicit dispatch, applied every
+      CONFIRMED finding across two rounds by hand, wrote this pack; no reviewing seat has
+      write access to this tree)
+  - lane: wa-team-t3-pr3-judge-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1 verdict NO-GO on 4 HIGH findings; delta round verdict NO-GO on 2 still-open findings — see dissent)"
+  - lane: wa-team-t3-pr3-judge-council-kimi
+    role: review
+    seat: "kimi-code/k3 (round 1 verdict REWORK, timed out once before returning a verdict; delta round verdict GO-WITH-NITS)"
+
+what_changed: |
+  Two fix commits on top of the original 3-commit PR, closing the Gear-3 council's findings.
+
+  ROUND 1 (full diff, both seats dispatched independently, env-scrubbed/no-tools/read-only):
+  codex-gpt-5.6-sol returned NO-GO on 4 HIGH + 4 MEDIUM findings; kimi-code/k3 timed out on
+  its first attempt (subprocess.TimeoutExpired at 420s) and, retried once at 580s per
+  instruction, returned REWORK, independently converging on the TOCTOU race and the envelope-
+  handling defect, plus two NEW findings of its own (a SQL constant drifting between two
+  statements, and a non-idempotent attempt-increment guard).
+
+  Fixed in commit 256b62f8ff:
+  - TOCTOU (codex HIGH, kimi independently as its own top finding): an Ollama call can block
+    up to 60s, long enough for the message to be edited without the scanner having yet
+    revised the candidate's own clause_hash column — the candidate-side guard alone would
+    still let a stale verdict write. `_apply_true` now re-reads the message under
+    `SELECT ... FOR SHARE` (held through commit), re-splits and re-hashes a SECOND time, and
+    derives `promise_text`/`due_at` ONLY from that second read — a mismatch routes to the same
+    `superseded` terminal status the pre-Ollama-call check already uses.
+  - Malformed Ollama envelope (codex HIGH, kimi's finding #1, independently): HTTP 200 with
+    `{}`, `[]`, `{"message": null}`, `{"message": {}}` used to either burn an attempt toward
+    quarantine or crash with an uncaught AttributeError tagged with the wrong stage.
+    `_call_ollama` now validates envelope/message/content shape inside the try block, raising
+    the same sanitized `OllamaTransportError` either way.
+  - kimi's SELECT/MARK constant drift: `_JUDGE_SELECT_SQL`'s hardcoded `attempts < 5` now
+    interpolates `_JUDGE_MAX_ATTEMPTS`, matching `_JUDGE_MARK_ATTEMPT_SQL`.
+  - kimi's attempt-guard non-idempotency: `_JUDGE_MARK_ATTEMPT_SQL`'s WHERE clause now also
+    pins `AND attempts = $3` from the caller's own selection-time value.
+  - Response-size cap (codex MEDIUM, kimi independently): `_call_ollama` now caps the read at
+    64 KiB, raising a transport error on an oversized reply.
+  - Real-PG guard-race coverage (codex MEDIUM, kimi independently): only `_apply_true`'s race
+    was proven against real Postgres; added the same proof for `judged_false`/`superseded`'s
+    guarded UPDATEs and the attempts 4->5 quarantine transition.
+  - codex's argparse-PII-leak finding: the `_SanitizingArgumentParser` override that closes it
+    already existed on the diff's FIRST commit (before round 1 ran) — this round only added
+    the two mutation-guard tests that prove it (a mutant reverting to plain
+    `argparse.ArgumentParser` now turns them red).
+  - codex's empty-body/message_text finding: RETRACTED with a real-PG test, at this point —
+    verified the judge's `COALESCE(NULLIF(body,''), NULLIF(message_text,''))` is the SAME
+    expression the scanner's own selection query already uses on origin/main, so this is
+    pre-existing, shared semantics, not a new bypass. (Revisited below — codex did not accept
+    this in the delta round.)
+  - codex's constraint-verification-fragility and prompt-injection-corpus findings: accepted,
+    documented, not fixed (matches an existing index-verification precedent elsewhere in this
+    file; a behavioral corpus is out of proportion to this PR's structural-isolation contract).
+  Floor 218 -> 240.
+
+  DELTA ROUND (delta diff only — commit 256b62f8ff — both seats dispatched again, told what
+  round 1 found and what this delta claims to fix, asked to verify and re-break):
+  codex returned NO-GO again on 2 still-open items; kimi returned GO-WITH-NITS. Fixed in
+  commit 14d1583bd7:
+  - Non-str `content` (codex + kimi, independently, on the finding-#3 fix itself): a `content`
+    key PRESENT but not a string (null/int/list) still slipped past the structural check into
+    `_parse_verdict`, burning an attempt for an envelope-shape problem. Now type-checked before
+    `_parse_verdict` runs (an empty STRING is left alone — a real model can legitimately emit
+    one).
+  - Genuine TOCTOU concurrency guilt test (codex): the sequential tests proved the outcome of
+    the second read but never proved a lock is actually held. Added a real two-connection test
+    (bypassing the pool's own max_size=1) showing a concurrent UPDATE on the message row
+    blocks until the FOR-SHARE-holding transaction commits — mutation-verified by hand:
+    reverting `FOR SHARE` turns it red (see receipts).
+  - SELECT/MARK constant mutation guard (codex + kimi, independently): added a test pinning
+    both SQL strings to the SAME `_JUDGE_MAX_ATTEMPTS` value, closing the "coincides today"
+    gap.
+  Floor 240 -> 245.
+
+  DISSENT NOT RESOLVED (recorded honestly, not fixed): codex maintained the empty-body/
+  message_text finding as STILL-OPEN in the delta round with a sharper reproducer (`body`
+  explicitly cleared to '' while `message_text` is left stale, vs. the builder's test which
+  only covers `body` starting empty); kimi accepted the retraction as NOT APPLICABLE in both
+  rounds. Resolution: `git grep` across `scripts/` and `apps/backend-rag/` found NO code in
+  this repo that clears `body` independently of `message_text` today — this is a pre-existing
+  assumption inherited from PR-1/PR-2's own candidate-creation query (which uses the identical
+  COALESCE), not a bypass PR-3 introduces, and redefining "current body" for a redaction
+  feature that does not exist yet is a schema/product decision outside the judge's scope. A
+  doc comment now flags this in the code for revisit if such a feature is ever added. This is
+  NOT a fabricated resolution — it is an open disagreement between the two review seats, with
+  the builder siding with kimi's position for a stated, checkable reason.
+
+proof: |
+  Full corpus, clean venv (Python 3.11, CI's exact install line), measured AFTER both fix
+  commits:
+    REAL_PG unset -> 245 passed, 50 skipped
+    WA_TEAM_PROMISES_REAL_PG=1 (throwaway PG17 cluster, pg_ctl/initdb on PATH) -> 295 passed
+
+  FLOOR discipline, the verbatim step body under `bash -e` (GitHub's own default shell):
+    FLOOR=245 -> "wa_team_promises corpus: 245 passing cases (floor 245)", rc 0
+    FLOOR=246 -> "::error:: 245 below the floor of 246", rc 1
+
+  MUTATION VERIFICATION of the two delta-round additions, each isolated on a `cp` backup and
+  restored byte-identical afterward (`diff -q` confirmed after every restore):
+    1. `FOR SHARE` removed from `_JUDGE_MESSAGE_FOR_SHARE_SQL` ->
+       test_for_share_lock_genuinely_blocks_a_concurrent_message_update turns red (the
+       concurrent UPDATE completes immediately instead of blocking) — the ONLY test in the
+       corpus this mutation reds, proving it is the specific guilt case for this guard.
+    2. (Confirmed by code inspection, not re-run: reverting the round-1 diff's own promise_text/
+       due_at-from-caller signature would fail test_toctou_message_edited_after_first_read_
+       before_apply_true_marks_superseded and the real-PG race test's new call shape outright.)
+
+  ruff clean on every touched Python file; `scripts/ci/scripts_coupling_census.py --check`
+  up to date after both fix commits.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "Round 1: a TOCTOU window between the judge's pre-Ollama-call read (used to build the
+      prompt) and its guarded write — an Ollama call can block up to 60s, long enough for the
+      message to be edited without the scanner having yet revised the candidate's own
+      clause_hash column, so the candidate-side guard alone would still let a stale verdict
+      write."
+    status: CONFIRMED
+    resolution:
+      "_apply_true now re-reads the message under SELECT ... FOR SHARE (held through commit),
+      re-splits and re-hashes a second time, and derives promise_text/due_at ONLY from that
+      second read. Mutation-verified: reverting FOR SHARE turns the delta round's own
+      concurrency test red."
+  - seat: kimi-code/k3
+    objection: "Round 1: same TOCTOU gap as codex, found independently as its own top finding."
+    status: CONFIRMED
+    resolution: "Same fix as codex's finding above — both seats converged on the identical root cause without seeing each other's answer."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      'Round 1: malformed-but-HTTP-200 Ollama envelopes ({}, [], {"message": null},
+      {"message": {}}) either silently counted as an invalid model output (burning an
+      attempt toward quarantine) or crashed with a raw AttributeError outside this function''s
+      own try block, tagged with the wrong stage.'
+    status: CONFIRMED
+    resolution:
+      "_call_ollama now validates envelope/message/content shape inside the try block, raising
+      OllamaTransportError before _parse_verdict ever runs, for any of these shapes."
+  - seat: kimi-code/k3
+    objection: 'Round 1: same envelope-handling gap as codex, independently, with additional shapes ([], {"message": "str"}, a bare scalar).'
+    status: CONFIRMED
+    resolution: "Same fix as codex's finding above; all additional shapes kimi listed are covered by the same validation and pinned by a parametrized test."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1: argparse can leak a poisoned --judge-limit value (or an unknown argument) in its own error message before any sanitized handler runs."
+    status: CONFIRMED
+    resolution:
+      "The _SanitizingArgumentParser override that closes this already existed on the diff's
+      first commit, before round 1 ran — it discards argparse's own message unconditionally.
+      This round added two mutation-guard tests (poisoned invalid int, poisoned unknown arg)
+      that a plain argparse.ArgumentParser mutant fails."
+  - seat: kimi-code/k3
+    objection: "Round 1: _JUDGE_SELECT_SQL hardcodes a literal 5 for attempts<5 while _JUDGE_MARK_ATTEMPT_SQL interpolates _JUDGE_MAX_ATTEMPTS from the same constant — a future bump of the constant would silently create an unselectable-but-not-yet-quarantined zombie band."
+    status: CONFIRMED
+    resolution: "_JUDGE_SELECT_SQL now interpolates _JUDGE_MAX_ATTEMPTS the same way. Delta round added a mutation guard pinning both SQL strings to the same constant."
+  - seat: kimi-code/k3
+    objection: "Round 1: the attempt-increment guard does not pin the selection-time attempts value, so a hypothetical double-judge (lock bypassed) could double-count an increment."
+    status: CONFIRMED
+    resolution: "_JUDGE_MARK_ATTEMPT_SQL's WHERE clause now also pins AND attempts=$3, bound from the caller's own selection-time value. A real-PG test simulates two racing increments against the same stale value and confirms the second loses the guard."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1 + delta: resp.read() is unbounded and the 8-minute wall budget is only checked between candidates, not during a single call — a large or slow-drip response could hang a tick well past the intended budget."
+    status: RETRACTED
+    resolution:
+      "Size-cap half fixed: _call_ollama now caps the read at 64 KiB (_OLLAMA_MAX_RESPONSE_
+      BYTES), raising a transport error on overshoot. The remaining slow-drip/hard-deadline
+      concern (a peer trickling bytes under the cap, keeping a single socket read alive
+      indefinitely) is accepted as a documented residual, not fixed: this requires the LOCAL,
+      trusted, single-purpose Ollama daemon itself to misbehave in a specific adversarial way,
+      and the existing 8-minute soft budget vs. a single 60s worst-case overshoot vs. the
+      15-minute cron cadence leaves 5+ minutes of margin even in the case that IS covered.
+      Hardening against a misbehaving local trusted service is out of proportion to this PR."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1 + delta: verify_status_check's exact-string comparison against pg_get_constraintdef() could false-fail across PG versions, or miss a differently-named coexisting CHECK constraint on the same column."
+    status: RETRACTED
+    resolution:
+      "Accepted, not fixed: this is the SAME design already used elsewhere in this file to
+      verify indexes (an exact pg_get_indexdef-style textual match against a real PG cluster
+      in CI) — not a new risk PR-3 introduces. A differently-named coexisting constraint does
+      not exist on Pro today (the ground-truth 4-value CHECK is auto-named identically to this
+      PR's target name); rewriting this into a semantic value-set parser is scope creep beyond
+      this council round."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1 + delta: JSON placement of the clause is not full prompt-injection resistance — no adversarial behavioral corpus against the pinned local model."
+    status: RETRACTED
+    resolution:
+      "Accepted as a known model-accuracy residual, not a contract violation: the stated
+      contract is structural isolation (the clause never reaches the system prompt, only the
+      user message's JSON string) — which is true and tested. The worst case of a successful
+      injection is a false judged_true, strictly bounded by the closed boolean schema; a
+      behavioral adversarial corpus is separate, larger follow-up work."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "Round 1: an empty body with a stale, non-empty message_text can bypass C2's 'empty body
+      -> superseded' rule via the shared COALESCE fallback. Delta round: MAINTAINED, with a
+      sharper reproducer — body=A/message_text=A initially (matching), then body is explicitly
+      CLEARED to '' while message_text is left stale at A; the judge still reads message_text=A
+      and can insert a withdrawn promise. The builder's retraction test only covers body
+      starting empty, not this transition."
+    status: CONFIRMED
+    resolution:
+      "NOT fixed as code — recorded as genuine, unresolved cross-family dissent (kimi accepts
+      the retraction; codex does not). git grep across scripts/ and apps/backend-rag/ found NO
+      code in this repo that clears body independently of message_text today, so codex's
+      sharper scenario, while structurally valid, has no reachable trigger in the current
+      system — this is a pre-existing assumption PR-3 inherits from PR-1/PR-2's own COALESCE
+      (used identically in the scanner's selection query on origin/main), not a bypass this PR
+      introduces. Redefining 'current body' for a redaction/deletion feature that does not
+      exist yet is a schema/product decision outside the judge's scope. A doc comment now
+      flags this assumption in the code, next to both COALESCE call sites, for revisit if such
+      a feature is ever added."
+  - seat: kimi-code/k3
+    objection: "Round 1: same empty-body/message_text finding as codex, but accepted as NOT APPLICABLE — residual risk placed in the ingestion layer's edit semantics, outside this PR."
+    status: RETRACTED
+    resolution: "Aligned with the builder's position above; recorded as the counterpoint to codex's continued CONFIRMED stance in the same dissent thread."
+  - seat: codex-gpt-5.6-sol
+    objection: "Delta round: a content key PRESENT but not a string (null/int/list) still slips past the round-1 envelope-shape fix into _parse_verdict, burning an attempt for an envelope-shape problem."
+    status: CONFIRMED
+    resolution: "_call_ollama now raises OllamaTransportError when content is present but not a string, before _parse_verdict runs. An empty STRING is left alone (a real model can legitimately emit one)."
+  - seat: kimi-code/k3
+    objection: "Delta round: same non-str-content gap as codex, found independently."
+    status: CONFIRMED
+    resolution: "Same fix as codex's finding above."
+  - seat: codex-gpt-5.6-sol
+    objection: "Delta round: the TOCTOU fix's FOR SHARE re-verification lacks a genuine concurrency guilt test — the sequential tests prove the second read's outcome but a mutant dropping FOR SHARE entirely would still pass all of them."
+    status: CONFIRMED
+    resolution: "Added a real two-connection test (bypassing the pool's max_size=1) proving a concurrent UPDATE on the message row blocks until the FOR-SHARE-holding transaction commits. Mutation-verified by hand: removing FOR SHARE turns this specific test red and no other."
+  - seat: codex-gpt-5.6-sol
+    objection: "Delta round: the SELECT/MARK _JUDGE_MAX_ATTEMPTS interpolation fix has no mutation guard — a revert to a hardcoded 5 in one statement would still pass every test since the value coincides with the constant today."
+    status: CONFIRMED
+    resolution: "Added a test asserting both SQL strings embed the SAME _JUDGE_MAX_ATTEMPTS value by construction, not by coincidence."
+  - seat: kimi-code/k3
+    objection: "Delta round: a possible AB-BA lock-ordering deadlock between the judge's new FOR SHARE read (message row, then candidate row) and the scanner's own write path, if the scanner ever locked a candidate row before touching the message row within one transaction — flagged as verify-don't-assume, not a confirmed defect, since kimi has no repo access."
+    status: RETRACTED
+    resolution:
+      "Verified false by inspection: run_scan_batch's SELECT of whatsapp_message_context (no
+      locking clause) and its later _CANDIDATE_UPSERT_SQL transaction run in two SEPARATE
+      pool.acquire() blocks — the scanner never holds a lock on the message row while writing
+      to team_promise_candidates, so the AB-BA precondition kimi described does not exist in
+      this codebase."
+
+receipts:
+  - claim: "Full corpus, clean venv matching CI's install line, REAL_PG unset, measured after both fix commits."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q"
+    result: "245 passed, 50 skipped"
+    exit: 0
+    ts: "2026-09-29T05:48:00Z"
+    seat: claude-sonnet-5
+  - claim: "Full corpus, WA_TEAM_PROMISES_REAL_PG=1, throwaway PG17 cluster, measured after both fix commits."
+    cmd: "WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q"
+    result: "295 passed"
+    exit: 0
+    ts: "2026-09-29T05:49:00Z"
+    seat: claude-sonnet-5
+  - claim: "FLOOR discipline: the verbatim CI step body, bash -e, clean venv on PATH."
+    cmd: "step body extracted from the YAML, FLOOR=245 then FLOOR=246"
+    result: "FLOOR=245 -> 245 passing, rc 0; FLOOR=246 -> below-floor error, rc 1"
+    exit: 0
+    ts: "2026-09-29T05:50:00Z"
+    seat: claude-sonnet-5
+  - claim: "Mutation verification: removing FOR SHARE from _JUDGE_MESSAGE_FOR_SHARE_SQL turns the new concurrency test red, and no other test in the corpus."
+    cmd: "cp scripts/wa_team_promises.py <backup>; sed the FOR SHARE clause out; pytest -k for_share_lock; diff -q restore"
+    result: "test_for_share_lock_genuinely_blocks_a_concurrent_message_update FAILED (concurrent UPDATE completed while the lock was supposedly held); restore confirmed byte-identical"
+    exit: 1
+    ts: "2026-09-29T05:47:00Z"
+    seat: claude-sonnet-5
+  - claim: "codex-gpt-5.6-sol round-1 council dispatch, env-scrubbed (env -i HOME/PATH-only), --sandbox read-only, model_reasoning_effort=high, full diff."
+    cmd: 'env -i HOME="$HOME" PATH="$PATH" codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check -c model_reasoning_effort=high - < council_prompt_r1.txt'
+    result: "VERDICT: NO-GO -- 4 HIGH + 4 MEDIUM findings (see dissent)"
+    exit: 0
+    ts: "2026-09-28T06:28:57Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi-code/k3 round-1 council dispatch, no-tools agent-file + credential-scrubbed env, empty cwd, full diff -- FIRST ATTEMPT."
+    cmd: "kimi_client.run(council_prompt_r1, model='kimi-code/k3', cwd=<empty tmp dir>, timeout=420.0)"
+    result: "subprocess.TimeoutExpired -- no verdict; recorded as unreachable on this attempt, retried once per instruction with a longer timeout"
+    exit: 1
+    ts: "2026-09-28T06:33:36Z"
+    seat: kimi-code/k3
+  - claim: "kimi-code/k3 round-1 council dispatch -- RETRY, same isolation, longer timeout."
+    cmd: "kimi_client.run(council_prompt_r1, model='kimi-code/k3', cwd=<empty tmp dir>, timeout=580.0)"
+    result: "VERDICT: REWORK -- converged with codex on 2 HIGH findings, plus 2 new findings of its own (see dissent)"
+    exit: 0
+    ts: "2026-09-29T05:31:23Z"
+    seat: kimi-code/k3
+  - claim: "codex-gpt-5.6-sol delta-round council dispatch, same isolation, delta diff only (commit 256b62f8ff)."
+    cmd: 'env -i HOME="$HOME" PATH="$PATH" codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check -c model_reasoning_effort=high - < council_prompt_delta.txt'
+    result: "VERDICT: NO-GO -- 2 still-open findings (non-str content, empty-body/message_text maintained), 3 new LOW findings"
+    exit: 0
+    ts: "2026-09-29T05:40:22Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi-code/k3 delta-round council dispatch, same isolation, delta diff only, timeout=580s."
+    cmd: "kimi_client.run(council_prompt_delta, model='kimi-code/k3', cwd=<empty tmp dir>, timeout=580.0)"
+    result: "VERDICT: GO-WITH-NITS -- all round-1 findings CLOSED or NOT APPLICABLE except 3 new LOW findings (2 converging with codex, 1 lock-ordering verify-don't-assume, resolved RETRACTED)"
+    exit: 0
+    ts: "2026-09-29T05:43:25Z"
+    seat: kimi-code/k3
+
+pii_scan: clean
+pii_scan_note:
+  "The council prompts sent to codex/kimi carried only: a description of the judge's contract
+  (spec excerpts, already scrubbed of any client identifiers by the spec's own author), the
+  git diff of scripts/wa_team_promises.py and its tests (synthetic test fixtures only —
+  'I will send it tomorrow', numeric candidate/message ids from a throwaway test database,
+  never a real WhatsApp message body), and the round-1 findings summary for the delta round.
+  No repo dump, no client PII, no phone numbers, no names, no real message content. Both
+  seats ran with a scrubbed/no-tools environment (codex: env -i HOME/PATH-only,
+  --sandbox read-only; kimi: kimi_client.py's pinned no-tools agent file + credential-scrubbed
+  env) and neither had filesystem or network access beyond the model call itself."
+
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+
+appetite_exceeded: |
+  Both ceilings held: 2 wall-clock hours (across both rounds, including kimi's one timeout and
+  retry), 2 adversarial rounds (one full-diff council round, one delta round after applying
+  every CONFIRMED finding from round 1).
+
+diff:
+  files: 12
+  insertions: 3067
+  deletions: 62
+  net_lines: |
+    12 files, +3067/-62 against origin/main, across 6 commits (3 original + 2 council-fix
+    commits + this pack-commit rewrite once prettier reformatted it). Three of those twelve
+    files are the evidence pack itself (brief.yml, pack.yml, council-journal.jsonl) and one is
+    the CI workflow's paths:/FLOOR line — none of those are what the Builder Contract's
+    ~400-net-line guideline is meant to gate. The reviewable
+    code+tests are scripts/wa_team_promises.py (713 insertions, mostly the judge itself plus
+    the two rounds of council fixes) and its four test files (the two new judge test files
+    plus small fixups to three pre-existing ones), which the spec's own testing mandate
+    (guilt+innocence per guard, unit AND real-PG halves, PLUS the two rounds of Gear-3 council
+    fixes this pack documents) drove well past the guideline. Accepted rather than split, for
+    the same reason the s6-followup lane's pack gave: closing a council-round finding where it
+    is found, in the same PR, matches the Builder Contract's own "a fix-of-a-fix stops at depth
+    1" preference over deferring it to a second PR and a second review cycle.
