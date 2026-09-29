@@ -1,0 +1,103 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+plan_ref: >-
+  PR (agent/air-m5/wa-team/t3-p2-link-0929, base main) - T3 P2 linker: fill client_id and
+  team_member_email on team_promises from the mirror message row, fill-NULL-only.
+lanes:
+  - lane: wa-team-t3-p2-link-build
+    role: build
+    seat: "claude-sonnet-5-5 (continued a dead builder's uncommitted diff, reviewed it, ran the council, applied findings by hand)"
+  - lane: wa-team-t3-p2-link-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1 REWORK on 3 MEDIUM + 1 LOW)"
+  - lane: wa-team-t3-p2-link-council-kimi
+    role: review
+    seat: "kimi-code/k3 (round 1 GO-WITH-NITS, no HIGH)"
+
+what_changed: |
+  1. `--link` mode: two guarded UPDATEs (client_id, team_member_email), each `target IS NULL AND
+     source IS NOT NULL`; the email is normalised by one shared expression (trim, lower, blank -> NULL).
+  2. `--link --dry-run` prints a counts-only audit (total, *_null, linkable_*, *_not_in_*, conflicts).
+  3. The judge INSERT is INSERT ... SELECT from whatsapp_message_context so new promises are linked
+     at insert. `_apply_true` re-reads the message FOR SHARE in the same transaction, so the SELECT
+     cannot be empty there; a missing row is answered "superseded" first.
+  4. Tests: 9 unit + 9 real-PG (synthetic ids and example.invalid addresses). Floors 249 -> 258 and
+     56 -> 65.
+  Round-1 changes: the audit now normalises the promise's own email in `conflicts` and the roster
+  lookup, and counts *_not_in_* over the effective value (own if set, else the one the linker would
+  write); a `--link --init-schema` exclusivity case and a case/whitespace-equivalent audit fixture.
+
+proof: |
+  Unit corpus: 258 passed, 65 skipped. Real-PG mode (pg_ctl/initdb on PATH): 65 passed, 0 skipped.
+  The observation that matters is the Pro `--link --dry-run` before and after `--link`.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: ON CONFLICT DO NOTHING can yield INSERT 0 0 with no rowcount check, so the judge may report true without inserting."
+    status: PLAUSIBLE
+    resolution: "OPEN, accepted: the conflict path is pre-existing behaviour (the VALUES form had the same clause) and means the promise already exists; the missing-row path is closed by the FOR SHARE pre-check and pinned by a test. Not changed here."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: audit email normalisation asymmetric (raw promise email vs normalised source; roster trimmed on one side only)."
+    status: CONFIRMED
+    resolution: "Both sides normalised with the same expression; a case/whitespace fixture added."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: *_not_in_* only inspect NULL-target rows, undercounting invalid links already present."
+    status: CONFIRMED
+    resolution: "Counted over the effective value."
+  - seat: kimi-code/k3
+    objection: "MEDIUM: a legacy '' in team_promises.team_member_email is never repaired and counted non-null."
+    status: PLAUSIBLE
+    resolution: "OPEN, accepted: fill-NULL-only is the mandate; documented in the SQL comment. Measured on Pro: no blank values were reported by the lead."
+  - seat: kimi-code/k3
+    objection: "LOW: run_link(dry_run=True) is unreachable from the CLI (which prints the audit instead)."
+    status: CONFIRMED
+    resolution: "Kept: it is the count-what-would-be-filled API exercised by a real-PG test; the CLI dry-run prints the richer audit."
+  - seat: kimi-code/k3
+    objection: "LOW: --link --init-schema exclusivity untested."
+    status: CONFIRMED
+    resolution: "Added to the mutual-exclusion test."
+
+receipts:
+  - claim: "Unit corpus."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wa_team_promises*.py -q"
+    result: "258 passed, 65 skipped"
+    exit: 0
+    ts: "2026-09-29T14:14:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Real-PG corpus."
+    cmd: "WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wa_team_promises*real_pg.py -q"
+    result: "65 passed"
+    exit: 0
+    ts: "2026-09-29T14:14:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "codex round 1, env-scrubbed, read-only sandbox, high effort, diff only."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" codex exec --skip-git-repo-check -s read-only -m gpt-5.6-sol -c model_reasoning_effort=high - < prompt1.txt'
+    result: "VERDICT: REWORK (3 MEDIUM, 1 LOW)"
+    exit: 0
+    ts: "2026-09-29T14:11:06Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi round 1 through scripts/kimi_client.py (no-tools agent file, env -i)."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" python3 scripts/kimi_client.py "$(cat prompt1.txt)"'
+    result: "VERDICT: GO-WITH-NITS (no HIGH)"
+    exit: 0
+    ts: "2026-09-29T14:12:20Z"
+    seat: kimi-code/k3
+
+pii_scan: clean
+pii_scan_note:
+  "The prompts carried prose written by this session and the git diff of a script, its tests and a
+  workflow. Fixtures are numeric ids and example.invalid addresses. No client data. Both seats ran
+  with a scrubbed environment (env -i, HOME and PATH only)."
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+appetite_exceeded: |
+  Both ceilings held. The round-1 fixes were not re-reviewed by the seats (single round).
+
+diff:
+  files: 9
+  net_lines: |
+    Script, three test files, workflow floors and three evidence files. Line totals are deliberately
+    not declared: the pack is part of the diff it would count.

@@ -1,0 +1,39 @@
+task: >-
+  T3 P2 (linker): team_promises rows carry client_id and team_member_email NULL on all rows. Add a
+  guarded, idempotent, fill-NULL-only `--link` mode, a counts-only `--link --dry-run` precision
+  audit, and make the judge INSERT copy both values from the mirror message row at insert time.
+  Ratchet the unit floor 249 -> 258 and the real-PG floor 56 -> 65.
+lane: wa-team/t3-p2-link-0929
+machine: M5
+date: "2026-09-29"
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 (harness floor recompute): the diff edits
+  `.github/workflows/wa-team-promises-tests.yml` (floor bumps only). One cross-family council round
+  (codex-gpt-5.6-sol + kimi-code/k3, env-scrubbed, diff-only) ran before the PR; findings applied.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Fill-NULL-only, idempotent, blank -> NULL, dry-run writes nothing.
+    probe: "scripts/tests/test_wa_team_promises_link_real_pg.py, real-PG mode: 65 passed, 0 skipped"
+  A2: >-
+    New promises are linked at insert; a missing message row inserts nothing and is not counted true.
+    probe: "test_judge_insert_copies_client_and_member_from_the_message and the missing-row test"
+  A3: >-
+    On Pro, after activation, `--link --dry-run` shows client_null=4 member_null=0.
+    probe: "run `wa_team_promises.py --link --dry-run` on Pro after `--link`; expected client_linked=198 member_linked=202"
+
+out_of_scope: >-
+  The resolver and precision judge of the original P2 spec (media_sent / team_confirmed / client_ack,
+  qwen sample judge): this PR is the linker only, per the mandate. No write on Pro from this PR.
+
+assumptions:
+  - text: >-
+      Pro's whatsapp_message_context has client_id and team_member_email (measured by the lead: counts
+      only, 198/202 with client_id, 202/202 with a roster email).
+    status: verified-by-lead
