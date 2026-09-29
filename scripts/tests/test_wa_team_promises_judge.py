@@ -13,10 +13,12 @@ cases that only real Postgres can settle.
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import io
 import json
 import logging
 import os
+import re
 import sys
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -816,3 +818,126 @@ async def test_cli_main_judge_dry_run_never_leaks_clause_body_or_phone(monkeypat
     assert clauses[0] not in combined
     assert body not in combined
     assert "judge OK selected=1 true=1" in out.out
+
+
+# === Gate condition C1 (fresh-Opus Gear-3 gate on PR #7597, pull/7597#issuecomment-5885208473) ===
+# === G5-G6: permanent guilt tests for mutation-testing gaps in cli_main's own wiring — the C3   ===
+# === capture SITE (not just the helper it feeds) and the judge/scan lock SEPARATION.            ===
+# === Both verified RED against their named mutant and GREEN on main before this PR.             ===
+
+
+# G5 (mutant M35) — the existing C3 tests in test_wa_team_promises_scan.py
+# prove `_maybe_send_digest`/`_wita_yesterday_window` are correct GIVEN a
+# `tick_start_wita` argument; none of them prove `cli_main`'s `--scan`
+# branch actually captures that argument BEFORE `run_scan` runs rather than
+# after. A mutant that moved `tick_start_wita = datetime.now(_WITA)` to
+# AFTER `run_scan` (the pre-fix behaviour) would pass every one of those
+# helper-level tests untouched — this one exercises cli_main itself, with a
+# clock double that returns a DIFFERENT time on each `datetime.now()` call,
+# so "captured before" vs. "captured after" run_scan produce different
+# digest windows.
+@pytest.mark.asyncio
+async def test_g5_cli_main_scan_captures_tick_start_before_run_scan_not_after(monkeypatch):
+    for key in list(os.environ):
+        if key.startswith("FLY_"):
+            monkeypatch.delenv(key, raising=False)
+
+    clock_reads: list[int] = []
+
+    class _Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            clock_reads.append(1)
+            # First read (if captured before run_scan) is 00:45 WITA — still
+            # the first digest opportunity of the day. A second/later read
+            # (the pre-fix "after run_scan" behaviour) is 01:02 WITA — past
+            # the 00:xx window, so _is_first_digest_opportunity_of_the_day
+            # would see a DIFFERENT hour and the yesterday window would
+            # anchor to a different moment.
+            t = (datetime(2026, 9, 27, 0, 45, tzinfo=wtp._WITA) if len(clock_reads) == 1
+                 else datetime(2026, 9, 27, 1, 2, tzinfo=wtp._WITA))
+            return t.astimezone(tz) if tz is not None else t
+
+    class _NullPool:
+        async def close(self):
+            pass
+
+    async def _fake_create_pool(**_kwargs):
+        return _NullPool()
+
+    async def _fake_run_scan(_pool, **_kwargs):
+        # Simulates real wall-clock time elapsing DURING the scan batch —
+        # without this, "captured before run_scan" and "captured after
+        # run_scan" would consume the SAME clock read (call #1) whenever
+        # run_scan itself never touches the clock, and the two capture
+        # sites would be indistinguishable to this test.
+        wtp.datetime.now(wtp._WITA)
+        return wtp.ScanMetrics()
+
+    async def _fake_fetch_digest_counts(_pool, _start, _end):
+        return (0, 0, 0, 0, 0, 0, 0)
+
+    sent = {}
+
+    def _fake_send_scan_digest(*_args, **kwargs):
+        sent.update(kwargs)
+
+    monkeypatch.setattr(wtp, "datetime", _Clock)
+    monkeypatch.setattr(wtp.asyncpg, "create_pool", _fake_create_pool)
+    monkeypatch.setattr(wtp, "run_scan", _fake_run_scan)
+    monkeypatch.setattr(wtp, "_acquire_scan_lock_or_none", lambda: 99)
+    monkeypatch.setattr(wtp, "_release_scan_lock", lambda _fd: None)
+    monkeypatch.setattr(wtp, "_save_scan_metrics", lambda _metrics: None)
+    monkeypatch.setattr(wtp, "_fetch_digest_counts", _fake_fetch_digest_counts)
+    monkeypatch.setattr(wtp, "_send_scan_digest", _fake_send_scan_digest)
+
+    rc = await wtp.cli_main(["--scan"])
+
+    assert rc == 0
+    # A mutant capturing tick_start_wita AFTER run_scan sees the SECOND
+    # clock read (01:02 WITA) — past the 00:xx window, so no digest is sent
+    # at all and `sent` stays empty. The correct, BEFORE-run_scan capture
+    # sees 00:45 and sends, anchored to yesterday (2026-09-26).
+    assert sent.get("yesterday_label") == "2026-09-26"
+
+
+# G6 (mutant M43) — the judge and scan locks must be genuinely SEPARATE
+# files: a mutant that pointed _JUDGE_LOCK_FILE at the same path as
+# _SCAN_LOCK_FILE (or vice versa) would make a held scan lock also block
+# the judge, and no existing test acquires both locks at once to notice.
+def test_g6_judge_and_scan_locks_are_independent_files(monkeypatch, tmp_path):
+    monkeypatch.setattr(wtp, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(wtp, "_SCAN_LOCK_FILE", tmp_path / "scan.lock")
+    monkeypatch.setattr(wtp, "_JUDGE_LOCK_FILE", tmp_path / "judge.lock")
+
+    scan_fd = wtp._acquire_scan_lock_or_none()
+    assert scan_fd is not None
+    try:
+        judge_fd = wtp._acquire_judge_lock_or_none()
+        assert judge_fd is not None, "the judge lock was blocked by the held scan lock"
+        wtp._release_judge_lock(judge_fd)
+    finally:
+        wtp._release_scan_lock(scan_fd)
+
+
+# G-LOW-1 (mutant M26, gate table, LOW) — spec item 4 mandates the Ollama
+# URL is a LITERAL, no env override ("this file only ever talks to the
+# Ollama instance colocated on Pro"). A mutant reading `_OLLAMA_URL` from an
+# environment variable (with the literal only as a fallback default) would
+# still pass every existing request-shape test, since none of them poison
+# the environment before calling _call_ollama. `_OLLAMA_URL` is a
+# MODULE-LEVEL constant computed once at import time, so a dynamic test
+# that pokes os.environ from inside a test function cannot reach an
+# env-reading mutant at all (the module already imported with whatever the
+# environment was at collection time) without reloading the module — which
+# risks leaving OTHER already-imported names (`from scripts.wa_team_promises
+# import _apply_true`, etc., in test_wa_team_promises_judge_real_pg.py)
+# pointing at stale objects for the rest of the session. A static check of
+# the actual SOURCE LINE avoids that risk entirely and is exactly as
+# effective against the described mutant.
+def test_g_low1_ollama_url_is_a_bare_literal_not_an_environment_read():
+    source = inspect.getsource(wtp)
+    assert re.search(
+        r'^_OLLAMA_URL = "http://127\.0\.0\.1:11434/api/chat"\s*$', source, re.MULTILINE,
+    ), "_OLLAMA_URL must be a bare literal — no os.environ.get()/os.getenv() fallback pattern"
+    assert wtp._OLLAMA_URL == "http://127.0.0.1:11434/api/chat"
