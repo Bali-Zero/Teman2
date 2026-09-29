@@ -1714,9 +1714,10 @@ describe("seq-21 qualification questions — asked only where their rule can mat
   const asked = (facts: OracleFacts) =>
     TEN.filter((id) => getCategoryQuestionIds(facts).includes(id));
 
-  it("gives each of the ten a process-rail label in both languages", () => {
-    // Found in the browser, not by a test: the rail rendered the raw key
-    // `tree.investment_establishes_company` until these labels existed.
+  it("gives each of the ten tree.*/q.*/why.* i18n labels in both languages", () => {
+    // Found in the browser, not by a test: before these labels existed, the
+    // (since-removed) process rail rendered the raw key
+    // `tree.investment_establishes_company`.
     for (const id of TEN) {
       for (const lang of ["en", "id"] as const) {
         expect(translate(lang, `tree.${id}` as I18nKey)).not.toBe(`tree.${id}`);

@@ -478,9 +478,6 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         const viewportWidth = window.innerWidth;
         return Array.from(root.querySelectorAll<HTMLElement>("*"))
           .filter((element) => {
-            if (element.closest(".oracle-breadcrumb, .oracle-table-scroll")) {
-              return false;
-            }
             const rect = element.getBoundingClientRect();
             return (
               rect.width > 0 &&
