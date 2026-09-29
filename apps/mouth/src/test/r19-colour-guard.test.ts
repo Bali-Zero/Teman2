@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   NAMED_COLOUR_COUNT,
@@ -931,6 +933,120 @@ const sourceRows: Row[] = [
     "I",
     'import { TONE } from "./tone";\nexport const C = () => <i className={TONE.a} style={{ color: TONE.b }} />;',
   ],
+  // binding elements are declarations too (v3.3, gate-7702 D1, F1)
+  [
+    "G",
+    'const config = { draft: { label: "D", style: { background: "#0A2540", color: "white" } }, ok: { label: "O", style: { color: "var(--r19-ink)" } } };\nexport const C = ({ s }: { s: "draft" | "ok" }) => {\n  const { label, style } = config[s] ?? config.draft;\n  return <span style={style}>{label}</span>;\n};',
+  ],
+  [
+    "I",
+    'const config = { draft: { label: "D", style: { background: "var(--r19-wash)", color: "var(--r19-ink)" } }, ok: { label: "O", style: { color: "var(--r19-ink)" } } };\nexport const C = ({ s }: { s: "draft" | "ok" }) => {\n  const { label, style } = config[s] ?? config.draft;\n  return <span style={style}>{label}</span>;\n};',
+  ],
+  [
+    "G",
+    'const config: Record<string, { color: string; label: string }> = { hot: { color: "text-red-400 bg-red-400/10", label: "H" } };\nconst defaultConf = { color: "text-(--r19-ink)", label: "x" };\nexport const C = ({ e }: { e: string }) => {\n  const { color, label } = config[e] || defaultConf;\n  return <div className={`inline-flex ${color} mb-2`}>{label}</div>;\n};',
+  ],
+  [
+    "I",
+    'const config: Record<string, { color: string; label: string }> = { hot: { color: "text-(--r19-ink) bg-(--r19-wash)", label: "H" } };\nconst defaultConf = { color: "text-(--r19-ink)", label: "x" };\nexport const C = ({ e }: { e: string }) => {\n  const { color, label } = config[e] || defaultConf;\n  return <div className={`inline-flex ${color} mb-2`}>{label}</div>;\n};',
+  ],
+  [
+    "G",
+    'const defaultConf = { color: "text-blue-400", label: "x" };\nexport const C = ({ e }: { e: string }) => {\n  const { color } = MAP[e] || defaultConf;\n  return <div className={color} />;\n};\nconst MAP: Record<string, { color: string }> = {};',
+  ],
+  [
+    "G",
+    'const T = { a: { style: { color: "red" } } };\nexport const C = () => {\n  const { style: st } = T.a;\n  return <i style={st} />;\n};',
+  ],
+  [
+    "G",
+    'const T = { a: { inner: { style: { color: "red" } } } };\nexport const C = () => {\n  const { inner: { style } } = T.a;\n  return <i style={style} />;\n};',
+  ],
+  [
+    "G",
+    'const T = [{ color: "white" }, { color: "var(--r19-ink)" }];\nexport const C = () => {\n  const [first] = T;\n  return <i style={first} />;\n};',
+  ],
+  [
+    "I",
+    'const T = [{ color: "var(--r19-ink)" }, { color: "var(--r19-copper)" }];\nexport const C = () => {\n  const [first] = T;\n  return <i style={first} />;\n};',
+  ],
+  [
+    "G",
+    'export const C = (props: P) => {\n  const { color = "#0A2540" } = props;\n  return <i style={{ color }} />;\n};',
+  ],
+  [
+    "I",
+    'export const C = (props: P) => {\n  const { color = "var(--r19-ink)" } = props;\n  return <i style={{ color }} />;\n};',
+  ],
+  [
+    "G",
+    'export const C = ({ bg = "#0A2540" }: P) => <div style={{ background: bg }} />;',
+  ],
+  [
+    "I",
+    'export const C = ({ bg = "var(--r19-wash)" }: P) => <div style={{ background: bg }} />;',
+  ],
+  [
+    "G",
+    'export function C({ tone = "text-red-500" }: P) {\n  return <i className={tone} />;\n}',
+  ],
+  [
+    "I",
+    'export function C({ tone = "text-(--r19-ink)" }: P) {\n  return <i className={tone} />;\n}',
+  ],
+  [
+    "G",
+    'export const C = (bg = "#fff") => <div style={{ background: bg }} />;',
+  ],
+  [
+    "I",
+    'export const C = (bg = "var(--r19-wash)") => <div style={{ background: bg }} />;',
+  ],
+  [
+    "I",
+    "export const C = ({ label }: P) => { const { style } = label; return <i style={style} />; };",
+  ],
+  [
+    "G",
+    'const A = { style: { color: "white" } };\nconst B = { ...A };\nexport const C = () => <i style={B.style} />;',
+  ],
+  [
+    "G",
+    'const ONE = { style: { color: "var(--r19-ink)" } };\nconst TWO = { style: { color: "white" } };\nexport const C = ({ ok }: P) => {\n  const { style } = ok ? ONE : TWO;\n  return <i style={style} />;\n};',
+  ],
+  [
+    "G",
+    'const M = { style: { color: "white" } };\nconst b = M;\nconst c = b;\nexport const C = () => {\n  const { style } = c;\n  return <i style={style} />;\n};',
+  ],
+  [
+    "I",
+    'const M = { style: { color: "white" } };\nconst a = M;\nconst b = a;\nconst c = b;\nexport const C = () => {\n  const { style } = c;\n  return <i style={style} />;\n};',
+  ],
+  [
+    "G",
+    'const M = { style: { color: "white" } };\nconst f1 = () => f2();\nconst f2 = () => M;\nexport const C = () => {\n  const { style } = f1();\n  return <i style={style} />;\n};',
+  ],
+  [
+    "I",
+    'const M = { style: { color: "white" } };\nconst f1 = () => f2();\nconst f2 = () => f3();\nconst f3 = () => M;\nexport const C = () => {\n  const { style } = f1();\n  return <i style={style} />;\n};',
+  ],
+  [
+    "G",
+    'const f1 = () => f2();\nconst f2 = () => f3();\nconst f3 = () => ({ style: { color: "white" } });\nexport const C = () => {\n  const { style } = f1();\n  return <i style={style} />;\n};',
+  ],
+  [
+    "I",
+    'const f1 = () => f2();\nconst f2 = () => f3();\nconst f3 = () => f4();\nconst f4 = () => ({ style: { color: "white" } });\nexport const C = () => {\n  const { style } = f1();\n  return <i style={style} />;\n};',
+  ],
+  // resolution depth and visited are one budget (gate-7702 D2): cycles end as "not resolved"
+  [
+    "I",
+    "function A() {\n  const style = base.style;\n  return <div style={style} />;\n}\nfunction B() {\n  const base = style.base;\n  return <i />;\n}",
+  ],
+  [
+    "G",
+    'const base = { style: { color: "white" } };\nfunction A() {\n  const style = base.style;\n  return <div style={style} />;\n}\nfunction B() {\n  const base2 = style.base;\n  const style = base2.style;\n  return <i />;\n}',
+  ],
   // never judged
   ["I", el("<p style={{ margin: 0 }}>white red #fff rgba(0,0,0)</p>")],
   [
@@ -1134,6 +1250,27 @@ describe("r19 colour guard rendered DOM (§6)", () => {
         mount('<p class="text-sm" style="color: var(--r19-ink)"></p>'),
       ),
     ).toEqual([]);
+  });
+});
+
+describe("r19 colour guard source: resolution budget and real files", () => {
+  it("never overflows the stack on cross-referencing member reads", () => {
+    const source =
+      "function A() {\n  const style = base.style;\n  return <div style={style} />;\n}\nfunction B() {\n  const base = style.base;\n  return <i />;\n}";
+    expect(() => findings(source)).not.toThrow();
+    expect(findings(source)).toEqual([]);
+  });
+
+  it("resolves the destructured config of the real MessageBubble.tsx", () => {
+    const file = "src/components/chat/MessageBubble.tsx";
+    const seen = findings(
+      readFileSync(resolve(process.cwd(), file), "utf8"),
+      file,
+    );
+    const lines = new Set(
+      seen.filter((f) => f.position === "class").map((f) => f.line),
+    );
+    for (const line of [138, 143, 148, 153, 160]) expect(lines).toContain(line);
   });
 });
 
