@@ -158,6 +158,16 @@ class _FakeConn:
     async def fetchval(self, sql, *params):
         assert sql == _PRO_ONLY_COUNT_SQL
         (fly_uuids,) = params
+        # Captured for K2/N07 (delta re-gate): a real Postgres `uuid <> ALL
+        # ($1::uuid[])` evaluates to NULL (not true) for every row once the
+        # array contains a NULL, poisoning pro_only_kept to 0 -- but THIS
+        # fake's plain Python `in` check does not reproduce that semantics
+        # (`x not in [None, ...]` is a normal bool), so an assertion on
+        # `m.pro_only_kept` alone cannot tell a poisoned fly_uuids apart from
+        # a clean one here. Recording the raw param lets a test assert
+        # directly on what was ABOUT to be sent, independent of this fake's
+        # fidelity to real NULL-array semantics.
+        self.last_fly_uuids = fly_uuids
         return sum(1 for u in self._practices if u not in fly_uuids)
 
 
@@ -541,6 +551,14 @@ async def test_run_sync_null_uuid_is_skipped_and_never_reaches_pro_only_count():
     # A genuine pre-existing Pro-only row is still correctly counted — NOT
     # poisoned to 0 the way a None inside fly_uuids would poison it.
     assert m.pro_only_kept == 1
+    # K2/N07 (delta re-gate): assert directly on the param ABOUT to reach
+    # the real pro_only_kept query, not just on this fake's Python-`in`
+    # approximation of it — a mutant that appends the NULL uuid to
+    # fly_uuids BEFORE the skip-check (poisoning pro_only_kept on real PG,
+    # gate finding F2/N07) would survive m.pro_only_kept == 1 above (this
+    # fake's `in` check doesn't reproduce SQL's NULL-array semantics) but
+    # is caught here.
+    assert None not in conn.last_fly_uuids
 
 
 @pytest.mark.asyncio
@@ -577,7 +595,7 @@ def test_run_sync_innocence_no_null_key_present_skipped_invalid_unaffected():
 
 
 @pytest.mark.asyncio
-async def test_cli_main_exits_3_when_skipped_fk_nonzero_but_still_commits(monkeypatch):
+async def test_cli_main_exits_3_when_skipped_fk_nonzero_but_still_commits(monkeypatch, capsys):
     monkeypatch.setattr(wpr, "_fetch_fly_rows", lambda: [])
     monkeypatch.setattr(wpr, "_fetch_fly_practice_types_rows", lambda: [])
 
@@ -590,16 +608,25 @@ async def test_cli_main_exits_3_when_skipped_fk_nonzero_but_still_commits(monkey
 
     monkeypatch.setattr(wpr.asyncpg, "create_pool", _fake_create_pool)
 
+    metrics = SyncMetrics(fly=2, inserted=1, skipped_fk=1)
+
     async def _fake_run_sync(*args, **kwargs):
-        return SyncMetrics(fly=2, inserted=1, skipped_fk=1)
+        return metrics
 
     monkeypatch.setattr(wpr, "run_sync", _fake_run_sync)
     rc = await cli_main(["--sync"])
     assert rc == 3
+    # K2/N15 (delta re-gate): rc == 3 alone cannot tell "the counts line
+    # printed, THEN rc=3 was returned" apart from a mutant that returns 3
+    # before ever writing it — a cron-runner receipt that reads a bare exit
+    # code with no counts line is exactly the silent-green class gate
+    # finding F3 exists to close. Literal-compare stdout to the real
+    # wire-format builder, not a substring.
+    assert capsys.readouterr().out == wpr._success_line(metrics)
 
 
 @pytest.mark.asyncio
-async def test_cli_main_exits_3_when_skipped_invalid_nonzero_but_still_commits(monkeypatch):
+async def test_cli_main_exits_3_when_skipped_invalid_nonzero_but_still_commits(monkeypatch, capsys):
     monkeypatch.setattr(wpr, "_fetch_fly_rows", lambda: [])
     monkeypatch.setattr(wpr, "_fetch_fly_practice_types_rows", lambda: [])
 
@@ -612,12 +639,15 @@ async def test_cli_main_exits_3_when_skipped_invalid_nonzero_but_still_commits(m
 
     monkeypatch.setattr(wpr.asyncpg, "create_pool", _fake_create_pool)
 
+    metrics = SyncMetrics(fly=2, inserted=1, skipped_invalid=1)
+
     async def _fake_run_sync(*args, **kwargs):
-        return SyncMetrics(fly=2, inserted=1, skipped_invalid=1)
+        return metrics
 
     monkeypatch.setattr(wpr, "run_sync", _fake_run_sync)
     rc = await cli_main(["--sync"])
     assert rc == 3
+    assert capsys.readouterr().out == wpr._success_line(metrics)
 
 
 def test_cli_main_innocence_exits_0_when_skipped_fk_and_skipped_invalid_both_zero(monkeypatch):
@@ -1061,3 +1091,71 @@ def test_fetch_fly_rows_nonzero_exit_raises_fly_read_error_never_leaks_stderr(mo
     with pytest.raises(FlyReadError) as exc_info:
         wpr._fetch_fly_rows()
     assert "SECRET_TOKEN" not in str(exc_info.value)
+
+
+# --- A6 — K2 (delta re-gate, PASS-WITH-CONDITIONS @13cd517b77): unit-level
+#          literal oracles for mutants the gate found surviving in the unit
+#          suite (only killed by the opt-in real-PG suite, or not at all —
+#          CI itself was blind to them). N01/N02/N03 (R7's updated_at
+#          exclusion reverted, either table, either clause) and N05 (INSERT
+#          binds NOW() instead of Fly's own updated_at) and N15 (rc=3
+#          returned before the counts line is written, closed above in A4)
+#          and N07 (NULL uuid reaches fly_uuids before the skip, closed
+#          above in A3). No production code changed in this PR — every
+#          mutant here was already dead on the code, only unit-blind.
+
+
+def test_practices_upsert_sql_excludes_updated_at_from_set_and_comparison():
+    """K2/N01,N03: `updated_at` must appear EXACTLY once in
+    `_PRACTICES_UPSERT_SQL` -- in the INSERT column list (line 0) -- and
+    nowhere in the `SET`/`IS DISTINCT FROM` clauses that follow. Pro's
+    `BEFORE UPDATE` trigger stamps it to NOW() unconditionally on every real
+    UPDATE (R7); writing or comparing it here would re-open the idempotency
+    bug R7 closed. Mutation-verified: reverting the `trigger_maintained`
+    argument on the practices call site makes this assertion fail (see the
+    K2 PR body for the repro)."""
+    sql = wpr._PRACTICES_UPSERT_SQL
+    assert sql.count("updated_at") == 1
+    lines = sql.splitlines()
+    assert "updated_at" in lines[0]  # the INSERT INTO practices (...) column list
+    assert "updated_at" not in "\n".join(lines[1:])  # VALUES / SET / WHERE
+
+
+def test_practice_types_upsert_sql_excludes_updated_at_from_set_and_comparison():
+    """K2/N02,N03: same literal oracle as above, for
+    `_PRACTICE_TYPES_UPSERT_SQL`."""
+    sql = wpr._PRACTICE_TYPES_UPSERT_SQL
+    assert sql.count("updated_at") == 1
+    lines = sql.splitlines()
+    assert "updated_at" in lines[0]
+    assert "updated_at" not in "\n".join(lines[1:])
+
+
+@pytest.mark.asyncio
+async def test_run_sync_insert_stores_flys_updated_at_verbatim_not_now():
+    """K2/N05: the R7 fix only excludes `updated_at` from the UPSERT's SET
+    clause and comparison -- it must still flow through on INSERT via
+    `EXCLUDED.updated_at`, i.e. the value actually BOUND to the query is
+    Fly's own `updated_at`, never `datetime.now()`. A mutant that special-
+    cased `updated_at` to wall-clock time at INSERT would still look
+    idempotent to every other unit test here (this fake's fetchrow doesn't
+    care what a value equals, only that something consistent was stored) --
+    this pins the actual bound value to a literal far from wall-clock time,
+    so it can never pass by coincidence. Mutation-verified: temporarily
+    special-casing `updated_at` to `datetime.now()` in
+    run_sync's param-construction loop makes this assertion fail (see the
+    K2 PR body for the repro)."""
+    idx = [c for c, _ in _DATA_COLUMNS].index("updated_at")
+    log: list = []
+    clients = [{"id": 501, "uuid": "client-uuid-a"}]
+    practices: dict = {}
+    conn = _FakeConn(log, clients, practices)
+    pool = _FakePool(conn)
+    fixed_updated_at = "2020-01-01 00:00:00+00"  # nowhere near "now"
+    row = _fly_row("prac-uuid-1", "client-uuid-a", updated_at=fixed_updated_at)
+
+    await run_sync(pool, [row], [], dry_run=False)
+
+    bound = practices["prac-uuid-1"]["data"][idx]
+    assert bound == _coerce_param(fixed_updated_at, "timestamptz")
+    assert bound.year == 2020

@@ -67,8 +67,15 @@ name: wa practices replica tests
 # own cli_main guilt/innocence cases (R4, gate finding F3), then to 80/19
 # (unit floor unchanged, real-PG opt-in +2) after coordinator's Pro-trigger
 # census found `updated_at`'s UPSERT comparison broke idempotency the first
-# time a row was ever really updated (R7, a fresh C2-census finding -- NOT the gate's own F7) — two real-PG
-# guilt cases with the actual `BEFORE UPDATE` trigger installed.
+# time a row was ever really updated (R7, a fresh C2-census finding -- NOT
+# the gate's own F7) — two real-PG guilt cases with the actual `BEFORE
+# UPDATE` trigger installed, then to 83/19 after the delta re-gate
+# (PASS-WITH-CONDITIONS @13cd517b77, K2, 2026-09-29): 3 new unit tests
+# (2 SQL literal oracles + 1 INSERT-value oracle) plus 2 new assertions on
+# existing tests (rc=3 stdout, fly_uuids NULL-freedom) closing N01/N02/N03/
+# N05/N07/N15 — mutants the gate's own delta round found surviving in the
+# unit suite (only killed by the opt-in real-PG suite, or not at all). No
+# production code changed in this round.
 
 on:
   pull_request:
@@ -142,7 +149,7 @@ jobs:
       - name: The T5 P4 replica corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=80   # the corpus size after the fresh gate's REWORK-BUILD round (REAL_PG unset, 19 opt-in skips)
+          FLOOR=83   # the corpus size after the delta re-gate's K2 round (REAL_PG unset, 19 opt-in skips)
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_practices_replica*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"
