@@ -382,3 +382,17 @@ def test_the_osint_safe_list_never_claims_a_name_is_allowed(wa):
     for banned in ("display_name", "full_name", "crm_name", "display name"):
         assert banned not in bullet_block, (
             f"the allowed-fields list claims {banned!r} is sendable:\n{bullet_block}")
+
+
+def test_compose_realtime_alert_docstring_never_promises_a_name(wa):
+    """Self-discovered while mutation-testing C1(d) at PR #7635's delta review:
+    the module HEADER docstring (guarded above) is not the ONLY stale-docstring
+    site the gate flagged — `_compose_realtime_alert`'s OWN docstring (line
+    ~386 at gate time) also said "display name" and was fixed in the same
+    commit, but nothing pinned THAT fix specifically. Reverting just this
+    function's docstring wording left every other test green (confirmed by
+    hand: 14/14 passed with the old "display name" wording restored), which
+    means this exact regression was previously invisible to the corpus."""
+    doc = inspect.getdoc(wa._compose_realtime_alert) or ""
+    assert "display name" not in doc, f"the composer's own docstring promises a name again:\n{doc}"
+    assert "client #<crm_id>" in doc, f"the composer's docstring stopped describing the opaque id:\n{doc}"
