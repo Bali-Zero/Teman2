@@ -160,6 +160,12 @@ lanes:
       1 minor findings — see dissent. 2 REJECTED as design decisions by the
       Dux, 1 ACCEPTED-RISK/watch-item, 3 ACCEPTED and CURED in 41235d3947
       (be-round2).
+  - lane: carry
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      carry from frozen PR #7634 (head 320ca4c52b, red on the OpenAPI pin
+      test); code cherry-picked byte-identical; contract regenerated.
   - lane: final-gate
     role: review
     seat: claude-opus-5-5 xhigh (fresh, outside the contribution chain)
