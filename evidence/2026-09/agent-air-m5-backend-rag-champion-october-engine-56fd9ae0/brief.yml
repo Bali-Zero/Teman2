@@ -1,0 +1,113 @@
+task: >-
+  PORTAL-CHAMPION-ROUND2-20260929 (BLUE, Dux the owner-opened Claude Fable 5.1
+  imperator window acting as release owner). Owner intent (Zero, 2026-09-29):
+  Portal Champion is extended into Round 2, "Lascia o raddoppia" (30 Sep -> 29
+  Oct 2026 WITA), with new scoring rules from the team guide PDF. Surya, Ari
+  (ari.firda) and Krisna took the September prize ("Ambil hadiah") and restart
+  October at 0 points; everyone else carries their September activations into
+  October. This PR is the backend half: the Round 2 scoring engine
+  (challenge_round2.py), the dashboard_summary/challenge_events wiring that
+  serves it on the active round, and the offline leaderboard report used to
+  cross-check prod. Scoring rules, prize amounts, campaign dates, and the R1
+  engine's frozen behaviour for the active September window are unchanged;
+  events and the offline report carry staff presentation fields only, never
+  client identity.
+lane: backend-rag/champion-october-engine
+machine: Air-M5
+date: "2026-09-29"
+
+gear: 3
+gear_reason: >-
+  Declared by the mandate and equal to the deterministic floor: 3, source
+  "size" (net +2317/-93 across 9 files against merge-base origin/main,
+  measured this session with `git diff --numstat origin/main...HEAD` and
+  `scripts/evidence_pack_lint.py --print-floor --print-floor-source`; no
+  hot-zone path term contributes — the floor is size-only). The mandate
+  independently justifies Gear 3 on its own terms: new prod scoring rules
+  (carry/registration/document-bonus/penalty math, working-hours arithmetic,
+  Asya's personal mission) land on the release critical path, the payload
+  this router serves is consumed live by the frontend widget the moment
+  either side merges, backend-rag deploys on Fly on merge to main (no
+  promote step to buffer a bad deploy), and the round boundary is a hard
+  deadline: the engine must be correct and live before 2026-09-30 00:00 WITA
+  when Round 1 closes and Round 2's window opens. No design-choice council
+  fires (the scoring rules are specified, not designed here); the review
+  lane is one independent adversarial seat (codex-be-review) plus the
+  mission's fresh final gate.
+
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2
+
+acceptance:
+  - text: >-
+      Backend unit tests for the Round 2 engine, the dashboard router and the
+      challenge-events SSE path all pass, and the offline leaderboard report
+      SHALL reproduce the carry rule for the three September prize-takers
+      (surya/ari.firda/krisna carry_points == 0, choice "prize") and for a
+      September-non-winner (adit carry_points == 23, choice "carry") WHEN run
+      read-only against the current production database.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/portal/test_challenge_round2.py
+      backend/tests/unit/routers/test_dashboard_summary.py
+      backend/tests/unit/services/portal/test_challenge_events.py; and
+      python3 scripts/portal_challenge_leaderboard.py --round 2 (via
+      scripts/pg.sh, read-only prod)
+  - text: >-
+      The Round 1 (September) engine and its frozen report SHALL be
+      byte-for-byte unchanged in result: Ari 46 / Surya 37 / Krishna 34,
+      team_total_activations 160.
+    probe: python3 scripts/portal_challenge_leaderboard.py --round 1
+  - text: >-
+      Every new Round 2 SQL builder SHALL execute without error WHEN run
+      read-only against the production ledger (schema drift, not just a
+      syntax check, is what a scratch DB cannot show per the migration-gate
+      lesson already on file for this repo).
+    probe: >-
+      scripts/portal_challenge_leaderboard.py --round 2 via scripts/pg.sh
+      (exit 0, no SQL error) — a first version failed here on 3 builders
+      joining `c.assigned_to` without a `real_clients` join; fixed in
+      209fbf0a5f.
+  - text: >-
+      ruff and docs_sync SHALL report clean on the changed backend-rag
+      surface WHEN run from the worktree.
+    probe: >-
+      .venv/bin/ruff check <changed files>; python3 scripts/docs_sync.py
+      --check
+  - text: >-
+      No client identifier (name, email, id) SHALL appear in the Round 2
+      payload, `recent_events`, or the offline report's stdout.
+    probe: >-
+      manual review of challenge_round2.py's dataclasses and
+      dashboard_summary.py's payload builder — only member/display_name
+      (staff) and points/counts cross the boundary; verified in
+      pii_scan below.
+
+out_of_scope: >-
+  The frontend rendering of the Round 2 payload (sibling PR, worktree
+  frontend-champion-october-ui), scoring-rule changes beyond this spec,
+  prize wiring/payout, client communications, lockfiles, hooks/guards,
+  fly.toml/.env, and the pre-existing R1 engine's own historical behaviour
+  for dates before 2026-09-30.
+
+assumptions:
+  - text: >-
+      practice_required_documents.updated_at (naive, stored as UTC via
+      NOW()) is a faithful proxy for "staff first reviewed this document" —
+      the product has no explicit verify action.
+    status: verified
+    probe: >-
+      spec ground facts §0 (this session, read-only prod schema
+      inspection by the mission's implementer); no `verified_at` column is
+      ever non-null on `documents` in prod.
+  - text: >-
+      The three September prize-takers (surya, ari.firda, krisna) are exactly
+      and only the members named in Zero's 2026-09-29 ruling — no other
+      member's September choice changes.
+    status: verified
+    probe: >-
+      scripts/portal_challenge_leaderboard.py --round 2 output this session:
+      exactly those three members show choice "prize" with carry_points 0;
+      every other member (adit, vino, damar, zero, and the roster's
+      zero-activity members) shows choice "carry".
