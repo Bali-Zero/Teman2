@@ -36,10 +36,21 @@ UU PDP Art. 67-68 / SYMBIOSIS Law 2. The severity here does not rest on a
 reading of the law: the file's own docstring already promised masking, so this
 is a breach of a declared contract, not a judgement call.
 
-NOT changed, and deliberately so: the client's CRM `full_name` still appears.
-That is the alerter's whole purpose — an alert that cannot say WHO needs
-attention is not an alert — and narrowing it is a business call (Legge 5), not
-a defect to fix unilaterally.
+NOT changed, and deliberately so, AT THE TIME: the client's CRM `full_name`
+still appeared, on the reasoning that an alert which cannot say WHO needs
+attention is not an alert, and narrowing it was called a business call
+(Legge 5) rather than a defect.
+
+SUPERSEDED 2026-09-29 (spec_attention_alert_pii, Builder Contract §4): that
+reasoning does not survive contact with the boundary it was weighed against.
+§4 is explicit — "no ... alert ... may carry client PII in cleartext — use a
+client_id, a hash, a placeholder or a redaction" — and a full name next to a
+masked phone in a message bound for Telegram (cloud) is exactly the shape it
+forbids. "The alerter needs to say WHO" is still true, and it is answered by
+`client #<crm_id>`, not by the name: an opaque id says who to the operator
+holding the CRM open, without saying who to Telegram's cloud. `crm_name` is
+no longer even fetched (the SELECT that produced it was dropped), so a third
+call site cannot reintroduce it by copying the old field name back in.
 """
 
 from __future__ import annotations
@@ -162,15 +173,99 @@ def test_every_fstring_that_renders_a_phone_goes_through_a_masker(wa):
         f"declare it in the source and in this docstring first: {local_state}")
 
 
-# ----------------------------------------------------------------- innocence
-def test_a_known_client_is_still_named(wa):
-    """INNOCENCE, and it is the point of the whole organ: an alert that cannot
-    say WHO needs attention is not an alert. Masking the phone must not turn
-    the roster into a list of anonymous stubs."""
-    label = wa.contact_label({"phone": "6289988776655", "crm_name": "Test Client",
+def test_a_client_name_never_reaches_the_label(wa):
+    """GUILT (2026-09-29, Builder Contract §4): a synthetic, obviously-fake
+    name carried on the item must never surface in the rendered label, even
+    though `crm_name` used to be exactly what got printed here."""
+    label = wa.contact_label({"phone": "6289988776655", "crm_name": "Fixture Person",
                               "crm_id": 11580})
-    assert label.startswith("Test Client"), f"the client stopped being named: {label}"
+    assert "Fixture Person" not in label, f"a client name reached the alert: {label}"
+
+
+def test_the_realtime_alert_never_carries_a_client_name(wa):
+    """GUILT, end-to-end through the real composer: single-contact AND roster
+    are separate code paths, so both must be checked independently, exactly
+    like the full-number sibling test above."""
+    lead = {"phone": "6281312415572", "crm_name": None, "crm_id": None,
+            "n_high": 2, "reasons": ["refund"]}
+    known = {"phone": "6289988776655", "crm_name": "Fixture Person", "crm_id": 11580,
+             "n_high": 1, "reasons": ["deadline"]}
+    single = wa._compose_realtime_alert([("k1", known, ["deadline"])])
+    roster = wa._compose_realtime_alert(
+        [("k1", lead, ["refund"]), ("k2", known, ["deadline"])])
+    for label, msg in (("single", single), ("roster", roster)):
+        assert "Fixture Person" not in msg, f"{label} branch leaked the client name:\n{msg}"
+
+
+def test_the_digest_never_carries_a_client_name(wa, monkeypatch):
+    """GUILT: the digest path is a THIRD rendering site (its own cron mode,
+    'always sends', twice a day) and was the worst of the three historically —
+    it must be checked independently, not inferred from the realtime tests."""
+    import asyncio
+
+    known = {"phone": "6289988776655", "crm_name": "Fixture Person", "crm_id": 11580,
+             "crm_status": "active", "lead_source": "wa", "n_high": 1,
+             "reasons": ["deadline"], "first_high_id": 1, "last_high_id": 1,
+             "first_high_at": None, "last_high_at": None}
+    metrics = {"inbound_24h": 1, "distinct_phones_24h": 1, "high_open": 1,
+               "high_resolved": 0, "medium": 0, "new_leads_24h": 0}
+    sent: list[str] = []
+
+    class _FakeAcquire:
+        async def __aenter__(self):
+            return object()
+
+        async def __aexit__(self, *_a):
+            return False
+
+    class _FakePool:
+        def acquire(self):
+            return _FakeAcquire()
+
+        async def close(self):
+            return None
+
+    async def fake_create_pool(*_a, **_k):
+        return _FakePool()
+
+    async def fake_metrics(_conn):
+        return metrics
+
+    async def fake_fetch(_conn):
+        return [known]
+
+    def fake_send(text, tier="digest", dedup_key=""):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(wa.asyncpg, "create_pool", fake_create_pool)
+    monkeypatch.setattr(wa, "fetch_digest_metrics", fake_metrics)
+    monkeypatch.setattr(wa, "fetch_high_unresolved", fake_fetch)
+    monkeypatch.setattr(wa, "send_telegram", fake_send)
+    asyncio.run(wa.cmd_digest())
+    assert len(sent) == 1
+    assert "Fixture Person" not in sent[0], f"the digest leaked the client name:\n{sent[0]}"
+    assert "client #11580" in sent[0], f"the digest stopped identifying the client:\n{sent[0]}"
+
+
+# ----------------------------------------------------------------- innocence
+def test_a_known_client_is_still_identified_by_crm_id(wa):
+    """INNOCENCE, and it is the point of the whole organ: an alert that cannot
+    say WHO needs attention is not an alert. Masking the phone — and now
+    dropping the name too — must not turn the roster into a list of
+    anonymous stubs; the opaque CRM id is the operator's handle instead."""
+    label = wa.contact_label({"phone": "6289988776655", "crm_name": "Fixture Person",
+                              "crm_id": 11580})
+    assert label.startswith("client #11580"), f"the client stopped being identified: {label}"
     assert "6655" in label, "the last-4 tail is the operator's handle — keep it"
+
+
+def test_a_new_lead_shows_masked_phone_only(wa):
+    """INNOCENCE: no crm_id (a genuinely new lead, unknown to the CRM) must
+    render as the masked phone alone — no `client #None`, no stray marker."""
+    label = wa.contact_label({"phone": "6281312415572", "crm_name": None, "crm_id": None})
+    assert "client #" not in label, f"a lead with no CRM id got a client tag: {label}"
+    assert label == wa.mask_phone("6281312415572")
 
 
 def test_the_masked_tail_still_identifies_the_contact(wa):
