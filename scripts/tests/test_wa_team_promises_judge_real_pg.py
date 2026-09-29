@@ -833,12 +833,13 @@ async def test_bad_preexisting_status_row_blocks_the_new_check_and_rolls_back(pg
 
 
 # === Gate condition C1 (fresh-Opus Gear-3 gate on PR #7597, pull/7597#issuecomment-5885208473) ===
-# === G1-G7: permanent guilt tests for mutation-testing gaps the gate found in its own 59-mutant ===
-# === run (43/57 non-equivalent killed by the shipped corpus at merge; these 7 probes close 12 of ===
-# === the 14 survivors — M26/M38/M41 are the LOW/equivalent ones the gate itself did not require). ===
-# === Each was verified RED against its named mutant and GREEN on main before this PR — see the   ===
-# === mutant table in the PR body. No production code changed in this PR: every mutant here was    ===
-# === already fixed on main; these tests only make sure a REGRESSION turns red in the future.      ===
+# === G1-G7: permanent guilt tests for mutation-testing gaps the gate found in its own mutation    ===
+# === run against the merged head (57 non-equivalent mutants; the shipped corpus at merge killed   ===
+# === 43, leaving 14 survivors). These 9 tests (G1-G7 plus the two LOW-priority ones the gate       ===
+# === flagged as optional, G-LOW-1/G-LOW-2) close 12 of the 14 survivors named in the gate's own    ===
+# === comment. Each was verified RED against its named mutant and GREEN on main before this PR —   ===
+# === see the mutant table in the PR body. No production code changed in this PR: every mutant     ===
+# === here was already fixed on main; these tests only make sure a REGRESSION turns red in future.  ===
 
 POISON = "SYNTHETIC-POISON +6280000000000 Jane Roe"
 
@@ -872,6 +873,30 @@ async def test_g1_guarded_writes_also_require_status_unjudged_not_just_the_hash(
         held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, c_already_true, h, False)
         assert held is False
         assert (await _candidate_row(pool, c_already_true))["status"] == "judged_true"
+
+        # A third terminal status, not just the two judged ones — a mutant
+        # that relaxed the guard to `status IN ('unjudged', 'superseded')`
+        # (rather than exact equality to 'unjudged') would still pass both
+        # cases above, since neither leaves the row 'superseded'.
+        await _insert_wmc(pool, msg_id=10, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
+        c_already_superseded = await _insert_candidate(pool, message_id=10, clause_idx=0, clause_hash=h,
+                                                         status="superseded")
+        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, c_already_superseded, h, False)
+        assert held is False
+        assert (await _candidate_row(pool, c_already_superseded))["status"] == "superseded"
+
+        # The FOURTH and last terminal status in the CHECK constraint
+        # (unjudged/judged_true/judged_false/quarantined/superseded) — a
+        # mutant that relaxed the guard to `status IN ('unjudged',
+        # 'quarantined')` would still pass all three cases above, since
+        # none of them leave the row 'quarantined' (delta-round finding,
+        # both seats).
+        await _insert_wmc(pool, msg_id=11, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
+        c_already_quarantined = await _insert_candidate(pool, message_id=11, clause_idx=0, clause_hash=h,
+                                                          status="quarantined")
+        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, c_already_quarantined, h, False)
+        assert held is False
+        assert (await _candidate_row(pool, c_already_quarantined))["status"] == "quarantined"
 
 
 # G2 (mutant M10) — the attempt-increment guard's `AND attempts=$3` pin
@@ -936,12 +961,47 @@ async def test_g3_apply_true_holds_the_message_lock_through_its_own_commit(pg_so
         monkeypatch.setattr(wtp, "_JUDGE_MARK_TRUE_SQL", slow_mark_true)
 
         writer = await asyncpg.connect(host=pg_socket_dir, user="postgres", database="g3")
+        judge_task = None
+        update_task = None
         try:
             judge_task = asyncio.create_task(_apply_true(
                 pool, cid, h, message_id=4, clause_idx=0, promise_type="send",
                 due_at_hint=None, dry_run=False,
             ))
-            await asyncio.sleep(0.3)  # let _apply_true reach its FOR SHARE read
+            # Deterministic wait, not a fixed guess: poll pg_stat_activity
+            # (over the writer's own connection — the pool itself is
+            # max_size=1 and already held by judge_task's transaction)
+            # until _apply_true's stalled query is actually ACTIVE. A
+            # loaded runner can make _apply_true slower to reach its FOR
+            # SHARE read than any fixed sleep would assume, which used to
+            # turn "the UPDATE is still blocked" into a false RED on
+            # otherwise-correct code (round-1 council finding).
+            #
+            # `pid <> pg_backend_pid()` is LOAD-BEARING, not defensive
+            # styling: without it the poll's own query text (which itself
+            # contains the literal substring "_stall", inside its own
+            # `'%_stall%'` pattern / this comment's literal) matches on the
+            # very first iteration, so the loop breaks immediately and
+            # waits for nothing — reintroducing the exact false-RED race
+            # this fix exists to remove (delta-round finding, both seats,
+            # independently). `position('_stall' in query) > 0` replaces
+            # ILIKE's wildcard pattern for the same reason `_` is itself a
+            # single-character ILIKE wildcard (kimi's delta-round finding),
+            # so a query merely containing "install" would also match.
+            deadline = asyncio.get_running_loop().time() + 5.0
+            while True:
+                row = await writer.fetchrow(
+                    "SELECT 1 FROM pg_stat_activity "
+                    "WHERE state = 'active' AND datname = current_database() "
+                    "AND pid <> pg_backend_pid() "
+                    "AND position('_stall' in query) > 0"
+                )
+                if row is not None:
+                    break
+                if asyncio.get_running_loop().time() > deadline:
+                    raise TimeoutError("_apply_true's stalled query never went active within 5s")
+                await asyncio.sleep(0.02)
+
             update_task = asyncio.create_task(
                 writer.execute("UPDATE whatsapp_message_context SET body = 'edited' WHERE id = 4")
             )
@@ -953,6 +1013,18 @@ async def test_g3_apply_true_holds_the_message_lock_through_its_own_commit(pg_so
             assert await judge_task == "true"
             await asyncio.wait_for(update_task, timeout=5.0)
         finally:
+            # `gather(..., return_exceptions=True)` (not a `.done()`-gated
+            # cancel+await) so a task that already finished EXCEPTIONALLY
+            # before this block runs — e.g. judge_task raising before the
+            # poll's timeout, or an assertion above firing mid-flight — is
+            # still collected instead of left as an uncollected exception
+            # (delta-round finding, codex).
+            tasks = [t for t in (judge_task, update_task) if t is not None]
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
             await writer.close()
 
         promises = await _promises(pool)
@@ -970,21 +1042,36 @@ async def test_g4_dry_run_writes_nothing_on_any_path(pg_socket_dir, monkeypatch)
         body_true = "I will send it tomorrow"
         body_false = "I will call you tomorrow"
         body_invalid = "I will pay it tomorrow"
+        body_invalid_ordinary = "I will fix it tomorrow"
         clause_true, hash_true = _seed_candidate_for_body(body_true)
         clause_false, hash_false = _seed_candidate_for_body(body_false)
         clause_invalid, hash_invalid = _seed_candidate_for_body(body_invalid)
+        clause_invalid_ordinary, hash_invalid_ordinary = _seed_candidate_for_body(body_invalid_ordinary)
 
         await _insert_wmc(pool, msg_id=5, body=body_true, created_at=created_at)
         await _insert_wmc(pool, msg_id=6, body=body_false, created_at=created_at)
         await _insert_wmc(pool, msg_id=7, body=body_invalid, created_at=created_at)
+        await _insert_wmc(pool, msg_id=11, body=body_invalid_ordinary, created_at=created_at)
         await _insert_candidate(pool, message_id=5, clause_idx=0, clause_hash=hash_true)
         await _insert_candidate(pool, message_id=6, clause_idx=0, clause_hash=hash_false)
         # attempts=4: one more invalid verdict would quarantine on a REAL run.
         await _insert_candidate(pool, message_id=7, clause_idx=0, clause_hash=hash_invalid, attempts=4)
+        # attempts=0: an ORDINARY invalid verdict, not the quarantine
+        # boundary — a mutant that only suppressed the dry-run write on the
+        # quarantine branch (e.g. narrowing `_apply_attempt`'s unconditional
+        # `if dry_run: return ...` to `if dry_run and attempts + 1 >=
+        # _JUDGE_MAX_ATTEMPTS: return ...`) would still pass the attempts=4
+        # case above while silently writing the attempts-increment here
+        # (round-1 council finding — the attempts=4 case alone never
+        # exercises this branch).
+        await _insert_candidate(pool, message_id=11, clause_idx=0, clause_hash=hash_invalid_ordinary)
         # message_id 999 never inserted — a superseded candidate too.
         await _insert_candidate(pool, message_id=999, clause_idx=0, clause_hash="gone")
 
-        verdicts = {clause_true: True, clause_false: False, clause_invalid: None}
+        verdicts = {
+            clause_true: True, clause_false: False,
+            clause_invalid: None, clause_invalid_ordinary: None,
+        }
         monkeypatch.setattr(wtp, "_call_ollama", lambda _opener, clause: verdicts[clause])
 
         async def _snapshot():
@@ -999,9 +1086,10 @@ async def test_g4_dry_run_writes_nothing_on_any_path(pg_socket_dir, monkeypatch)
         # Every terminal path is exercised — this is the point of the test,
         # not incidental: a dry-run that skipped a branch would prove
         # nothing about that branch's own write-suppression.
-        assert (metrics.true, metrics.false, metrics.quarantined, metrics.superseded, metrics.raced) == (
-            1, 1, 1, 1, 0,
-        )
+        assert (
+            metrics.true, metrics.false, metrics.invalid, metrics.quarantined,
+            metrics.superseded, metrics.raced,
+        ) == (1, 1, 1, 1, 1, 0)
         assert await _snapshot() == before
 
 

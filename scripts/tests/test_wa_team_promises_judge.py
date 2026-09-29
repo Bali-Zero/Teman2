@@ -905,7 +905,22 @@ async def test_g5_cli_main_scan_captures_tick_start_before_run_scan_not_after(mo
 # files: a mutant that pointed _JUDGE_LOCK_FILE at the same path as
 # _SCAN_LOCK_FILE (or vice versa) would make a held scan lock also block
 # the judge, and no existing test acquires both locks at once to notice.
+#
+# The constant-rebinding mutant lives at MODULE level (M43 IS the two
+# constants sharing a value), so it must be caught on the UNPATCHED module
+# attributes, before this test's own monkeypatch runs — round-1 council
+# finding: patching both constants to two different `tmp_path` names
+# unconditionally would silently REPAIR that exact mutant (both patched
+# values are distinct on the mutant too), leaving the functional
+# acquire/acquire probe below to catch only a narrower class of bug (one
+# inside the acquire/release function bodies themselves).
 def test_g6_judge_and_scan_locks_are_independent_files(monkeypatch, tmp_path):
+    assert wtp._SCAN_LOCK_FILE != wtp._JUDGE_LOCK_FILE, (
+        "_SCAN_LOCK_FILE and _JUDGE_LOCK_FILE must be distinct paths on the "
+        "UNPATCHED module — a mutant that rebound one to the other's value "
+        "would fail here, before any monkeypatch could paper over it"
+    )
+
     monkeypatch.setattr(wtp, "STATE_DIR", tmp_path)
     monkeypatch.setattr(wtp, "_SCAN_LOCK_FILE", tmp_path / "scan.lock")
     monkeypatch.setattr(wtp, "_JUDGE_LOCK_FILE", tmp_path / "judge.lock")
@@ -937,7 +952,45 @@ def test_g6_judge_and_scan_locks_are_independent_files(monkeypatch, tmp_path):
 # effective against the described mutant.
 def test_g_low1_ollama_url_is_a_bare_literal_not_an_environment_read():
     source = inspect.getsource(wtp)
-    assert re.search(
-        r'^_OLLAMA_URL = "http://127\.0\.0\.1:11434/api/chat"\s*$', source, re.MULTILINE,
-    ), "_OLLAMA_URL must be a bare literal — no os.environ.get()/os.getenv() fallback pattern"
+    expected_line = '_OLLAMA_URL = "http://127.0.0.1:11434/api/chat"'
+    # Round-1 council finding: matching the FIRST assignment line alone
+    # passes on a mutant that keeps that exact line and ADDS a second
+    # statement immediately after it —
+    #   _OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
+    #   _OLLAMA_URL = os.environ.get("OLLAMA_URL", _OLLAMA_URL)
+    # — which reduces to the same literal whenever the env var is unset
+    # (the common case in CI), so both the regex-on-source and the
+    # value-equality checks below would stay green on that mutant.
+    #
+    # Delta-round finding (both seats, independently): anchoring the regex
+    # at column 0 (`^_OLLAMA_URL`) misses an INDENTED reassignment inside a
+    # conditional —
+    #   _OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
+    #   _env = os.environ.get("OLLAMA_URL")
+    #   if _env:
+    #       _OLLAMA_URL = _env
+    # — the indented line never matches `^_OLLAMA_URL`, so the count stays
+    # 1, and the OTHER assignment line (`_env = os.environ.get(...)`) never
+    # mentions the name `_OLLAMA_URL` at all, so the environ/getenv scan
+    # below sees nothing either. Allowing leading whitespace in the
+    # assignment regex (`^\s*_OLLAMA_URL\s*=`) and stripping before
+    # comparing closes this: ANY reassignment of the name, indented or not,
+    # is counted, regardless of what the RHS reads from.
+    assignments = [
+        line.strip() for line in re.findall(r"^\s*_OLLAMA_URL\s*=.*$", source, re.MULTILINE)
+    ]
+    assert assignments == [expected_line], (
+        f"_OLLAMA_URL must be assigned exactly once, as a bare literal; found {assignments!r}"
+    )
+    # Defense-in-depth (not load-bearing on its own, now that the
+    # assignment-count check above catches any reassignment shape): no
+    # OTHER line mentioning _OLLAMA_URL may read from the environment.
+    referencing_lines = [
+        line for line in source.splitlines()
+        if "_OLLAMA_URL" in line and line.strip() != expected_line
+    ]
+    for line in referencing_lines:
+        assert "environ" not in line and "getenv" not in line, (
+            f"_OLLAMA_URL must never be re-derived from the environment: {line!r}"
+        )
     assert wtp._OLLAMA_URL == "http://127.0.0.1:11434/api/chat"
