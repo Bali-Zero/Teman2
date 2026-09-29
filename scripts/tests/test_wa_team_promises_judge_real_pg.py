@@ -1090,8 +1090,9 @@ LEAD_SUPERSEDED = "ZQSUP-8852"
 
 
 # G7 (mutants M40/M41b/c and the truncating M40t/M41t/M40x) — no clause/body
-# text reaches any record captured by caplog (propagating loggers, DEBUG and
-# up; not just stdout/stderr) on the invalid-verdict and superseded
+# text reaches any record captured by caplog (the test sets
+# `caplog.at_level(logging.DEBUG)`; propagating loggers only; not just
+# stdout/stderr) on the invalid-verdict and superseded
 # (hash-mismatch) paths — the two paths a candidate reaches WITHOUT
 # necessarily going through the top-level cli_main output line this file's
 # other tests pin.

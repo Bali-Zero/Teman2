@@ -76,8 +76,8 @@ name: wa team promises tests
 # is unset. A service container (`scripts-tests-sweep.yml`) answers on a
 # socket and puts no such binaries on `PATH`, so the second job instead uses
 # the PostgreSQL server binaries the `ubuntu-latest` image already ships under
-# `/usr/lib/postgresql/<major>/bin` (installing the distro package only if
-# they are missing) and appends that directory to `PATH`. Until that job
+# `/usr/lib/postgresql/<major>/bin` and appends that directory to `PATH`
+# (failing loudly if the image stops shipping them). Until that job
 # existed, G1-G4, G7, G-LOW-2 and the rest of the real-PG suites skipped in CI
 # and protected nothing (#7646 gate Finding 3).
 #
@@ -206,10 +206,12 @@ jobs:
   # to make loud: (1) `pg_ctl`/`initdb` missing, so every real-PG test skips and
   # the run still exits 0; (2) real-PG tests deleted. So the job runs ONLY the
   # `*real_pg.py` files (a whole-corpus glob would let unit tests prop the count
-  # up after a real-PG deletion), fails on any skip/deselect/xfail, and fails on
+  # up after a real-PG deletion), fails on any skip/deselect/xfail/xpass, and fails on
   # a passed count below the floor (the same `-lt` ratchet as the unit job:
   # raise it deliberately, never let it fall). The floor is the number of
-  # real-PG tests measured on this commit, and equals the unit job's skip count.
+  # real-PG tests measured on this commit. Residual gap, stated plainly: a test
+  # that still passes but no longer reaches the cluster (a stubbed fixture)
+  # counts toward the floor; only review can catch that shape.
   wa-team-promises-real-pg-tests:
     name: wa team promises real-pg tests
     runs-on: ubuntu-latest
@@ -226,14 +228,17 @@ jobs:
 
       # `initdb` refuses to run as root; the runner user is not root. The
       # server binaries live outside `PATH` on the image: this step finds the
-      # newest installed major and exports it for the following steps. If the
+      # newest installed major that has both binaries and exports it for the following steps. If the
       # image ever stops shipping them it fails loudly here rather than
       # installing a distro package that would also start a cluster on :5432.
       - name: Put PostgreSQL server binaries on PATH
         run: |
           set -euo pipefail
-          PGBIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1 || true)"
-          if [ -z "$PGBIN" ] || [ ! -x "$PGBIN/initdb" ] || [ ! -x "$PGBIN/pg_ctl" ]; then
+          PGBIN=""
+          for d in $(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -rV || true); do
+            if [ -x "$d/initdb" ] && [ -x "$d/pg_ctl" ]; then PGBIN="$d"; break; fi
+          done
+          if [ -z "$PGBIN" ]; then
             echo "::error::no PostgreSQL server binaries (initdb, pg_ctl) under /usr/lib/postgresql/*/bin on this runner image"
             exit 1
           fi
