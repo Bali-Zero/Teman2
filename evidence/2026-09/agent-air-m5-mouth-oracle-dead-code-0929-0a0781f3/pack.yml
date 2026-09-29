@@ -1,0 +1,251 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+bites: >-
+  consumer: the mouth production bundle for /visa-oracle and anyone
+  maintaining it; observation: after deploy, kita.balizero.com/api/health
+  serves a commit containing this merge, AND
+  https://kita.balizero.com/visa-oracle returns 200 and completes a
+  mocked-evaluation verdict journey unchanged.
+plan_ref: >-
+  Commit 82cb49b798dd52587762e044937c2e3fefa334f0's own message states the
+  removal methodology (BFS reachability from every Next.js entry point under
+  apps/mouth/src/app/** plus the known external consumers of the
+  visa-oracle _lib: api/visa-oracle-unlock/route.ts, scripts/visa-oracle/
+  *.ts, apps/backend-rag scripts, apps/mouth/e2e specs); no separate design
+  doc exists for a mechanical dead-code removal.
+seat_override: >-
+  R8 ground-truth-lane escape: apps/mouth/src/app/(visa-oracle)/* is a
+  GROUND_TRUTH_PATH_PATTERNS hit by glob, but this diff is pure dead-code
+  deletion — it touches no visa/KBLI/tax rule, outcome-content mapping, or
+  claim text; the reducer/tree/fact-mapper/engine-adapter.ts that actually
+  consume ground-truth content are untouched by design (brief.yml
+  constraints), so no NotebookLM grounding query applies and no
+  ground_truth lane is declared. R9 council-quorum escape (anti-sperpero,
+  modus SKILL.md STAGE 0): no council was convened for a mechanical,
+  grep-provable deletion with zero divergent-prior question — a second or
+  third reasoning seat has nothing to disagree about on "does this symbol
+  have zero importers". The independent review (codex-gpt-6-astra, verdict
+  PASS) plus this pack's own adversarial re-verification (receipts +
+  dissent below) substitute for a multi-seat council at this gear-3-by-
+  size-alone floor.
+lanes:
+  - lane: oracle-dead-code-build
+    role: build
+    seat: "claude-sonnet-5 (implementer subagent, dispatched and conducted
+      by the Dux claude-opus-5-5 xhigh)"
+  - lane: oracle-dead-code-review
+    role: review
+    seat: "codex-gpt-6-astra (independent review via codex CLI, verdict
+      PASS)"
+diff:
+  behaviour_change: >-
+    Deletes the pre-atlas Visa Oracle rail UI (LivingTree/ProcessRail/
+    PathsCounter) and its _lib support (e4-tier-fence, mock-engine,
+    parity-lane-tiers, shadow-client, the flow.ts living-tree/process
+    projections, tree.ts's BEHAVIORAL_CATEGORIES) that PR #7561's atlas
+    redesign stopped mounting from OracleShell.tsx but left on disk. No
+    behaviour change for a real visitor — OracleShell.tsx already mounted
+    none of these files before this diff; the kept `QUESTIONS` re-export
+    chain and the evaluation/idempotency/SHADOW fail-closed/consent/
+    resume/telemetry contracts are all untouched.
+  surface: >-
+    Confined to apps/mouth/src/app/(visa-oracle)/visa-oracle, a large,
+    deletion-heavy churn (exact file/line counts are in this pack's own
+    receipts above, recomputed from `git diff --numstat`, never narrated by
+    hand here — see the countable-claims rule): components LivingTree plus
+    its test, ProcessRail plus its test, and PathsCounter fully deleted;
+    the _lib module/test pairs e4-tier-fence, mock-engine,
+    parity-lane-tiers, shadow-client fully deleted; flow.ts, flow.test.ts,
+    tree.ts, oracle.css, fact-mapper.test.ts each edited in place to drop
+    only the named dead sections while leaving every other export/test
+    untouched.
+receipts:
+  - claim: >-
+      diff between origin/main (52aa933940) and candidate 82cb49b798 measures
+      18 files changed, +8/-4558 lines, churn 4566 — matching the commit
+      message and this brief's own SIZE-floor claim
+    cmd: 'git diff --numstat origin/main...HEAD | awk ''{a+=$1;d+=$2;n++}
+      END {print n" files, +"a" -"d}'''
+    result: "18 files, +8 -4558"
+    exit: 0
+    ts: "2026-09-29T10:33:00Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim: >-
+      deterministic gear floor for this diff is 3, sourced from the SIZE
+      term (churn 4566 >= SIZE_GEAR3_THRESHOLD 1828), not a hot-zone path
+      hit — apps/mouth visa-oracle paths are not in HOTZONE_PATTERNS
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <18-file list> --numstat-file <numstat>; same
+      args with --print-floor-source"
+    result: "floor=3; floor_source=size"
+    exit: 0
+    ts: "2026-09-29T10:34:00Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim: >-
+      pii_scan clean — the visa-oracle diff carries no email/phone/
+      passport-like match outside git blob index hashes, source line-number
+      refs, a ruling code, and one synthetic test UUID fixture
+      (11111111-1111-4111-8111-111111111111)
+    cmd: "git diff origin/main...HEAD -- apps/mouth/src/app/(visa-oracle),
+      scanned with email/phone-like regex probes"
+    result: "0 email matches; 17 raw phone-like-regex hits, all confirmed
+      false positives on manual read"
+    exit: 0
+    ts: "2026-09-29T10:35:00Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim: >-
+      deadness proof, coordinator-run: for every removed module/symbol (26
+      names) `git grep -l -w -F <name> HEAD -- apps packages scripts
+      .github` (excluding evidence/research/docs) returns 0 files; positive
+      controls OracleShell@HEAD=18, getTreeSteps@HEAD~1=6,
+      shadow-client@HEAD~1=2 confirm the probe is not vacuous
+    cmd: "git grep -l -w -F <name> HEAD -- apps packages scripts .github,
+      looped over the 26 removed names, plus the 3 positive-control names"
+    result: "0/26 found a reference; 3/3 positive controls positive"
+    exit: 0
+    ts: "2026-09-29T09:20:00Z (reported time approximate)"
+    seat: "claude-opus-5-5 (Dux/coordinator)"
+  - claim: >-
+      independent re-verification of the same deadness claim for the 18
+      exported symbols + 4 lib-module basenames this pack can enumerate
+      directly from the commit diff: 0/22 found any reference under apps/
+      packages/scripts/.github, and the same 3 positive controls reproduced
+      identically
+    cmd: 'for name in LivingTree ProcessRail PathsCounter getTreeSteps
+      isEditableTreeStep getProcessModel behavioralSteps TreeStep
+      TreeStepStatus TreeCategoryLeaf PROCESS_PHASES ProcessPhaseKey
+      ProcessPhaseStatus ProcessPhase ProcessDecision ProcessCategory
+      ProcessModel BEHAVIORAL_CATEGORIES e4-tier-fence mock-engine
+      parity-lane-tiers shadow-client; do git grep -l -w -F "$name" HEAD
+      -- apps packages scripts .github; done'
+    result: "0/22 found a reference; OracleShell@HEAD=18,
+      getTreeSteps@HEAD~1=6, shadow-client@HEAD~1=2 reproduced"
+    exit: 0
+    ts: "2026-09-29T10:38:00Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim: >-
+      flow.ts's own `export { QUESTIONS };` re-export (kept in this diff on
+      the commit message's stated reasoning that engine-adapter.ts imports
+      it from "./flow") has no importer anywhere under apps/mouth —
+      engine-adapter.ts actually imports QUESTIONS from "./tree" directly
+      and only imports followUpPrerequisitesMet/walkQuestionIds from
+      "./flow"
+    cmd: 'git grep -n "QUESTIONS" HEAD -- apps/mouth/src/app/(visa-oracle)/
+      visa-oracle/_lib/engine-adapter.ts apps/mouth/src/app/(visa-oracle)/
+      visa-oracle/_lib/flow.ts; git grep -nE ''import \{[^}]*QUESTIONS[^}]*
+      \}\s*from\s*"[^"]*flow"'' HEAD -- apps'
+    result: 'engine-adapter.ts:5 imports QUESTIONS from "./tree";
+      flow.ts:1630 export { QUESTIONS } — zero matches for any import of
+      QUESTIONS from "./flow" repo-wide'
+    exit: 0
+    ts: "2026-09-29T10:40:00Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim: >-
+      this diff changes zero files under apps/mouth/src/lib, so the whole-
+      suite realtime.test.ts WebSocket-URL failure cannot be a regression
+      introduced by it
+    cmd: "git diff --name-only origin/main...HEAD | grep -c src/lib/realtime"
+    result: "0"
+    exit: 0
+    ts: "2026-09-29T10:41:00Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim: >-
+      apps/mouth/src/app/(visa-oracle) carries exactly 3 import()/require()
+      occurrences, all `vi.mock` importOriginal calls against
+      "../_lib/telemetry" and "framer-motion" — none names a removed module,
+      so no dynamically-computed specifier can reach one
+    cmd: 'git grep -n "import(\|require(" HEAD -- apps/mouth/src/app/
+      (visa-oracle)'
+    result: "3 matches: ConsentHandoff.test.tsx, OracleShell.atlas.test.tsx,
+      OracleShell.test.tsx — telemetry/framer-motion only"
+    exit: 0
+    ts: "2026-09-29T10:42:00Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim:
+      "exact-candidate typecheck on 82cb49b798dd52587762e044937c2e3fefa334f0,
+      host Mini, CI-parity env"
+    cmd: "npx tsc --noEmit -p tsconfig.json"
+    result: "0 errors"
+    exit: 0
+    ts: "2026-09-29T09:05:00Z (reported time approximate)"
+    seat: "claude-sonnet-5 (implementer, host Mini)"
+  - claim: "whole apps/mouth vitest suite on the candidate, host Mini,
+      CI-parity env"
+    cmd: "npx vitest run (whole apps/mouth)"
+    result: "578/579 files passed, 7577/7580 tests passed, 2 skipped, 1
+      failed (src/lib/realtime.test.ts › should use correct WebSocket URL —
+      environmental, see assumptions/dissent)"
+    exit: 1
+    ts: "2026-09-29T09:12:00Z (reported time approximate)"
+    seat: "claude-sonnet-5 (implementer, host Mini)"
+  - claim: "canonical production build on the candidate, host Mini,
+      CI-parity env (webpack + both assert scripts)"
+    cmd: "npm run build"
+    result: "exit 0"
+    exit: 0
+    ts: "2026-09-29T09:20:00Z (reported time approximate)"
+    seat: "claude-sonnet-5 (implementer, host Mini)"
+  - claim: "CI PR-gate e2e selection on the candidate, host Mini, CI-parity
+      env exported before the build"
+    cmd: 'npx playwright test --project=chromium --ignore-snapshots
+      --reporter=list --grep "page Page|@offline"'
+    result: "134 passed, 1 skipped, 0 failed"
+    exit: 0
+    ts: "2026-09-29T09:35:00Z (reported time approximate)"
+    seat: "claude-sonnet-5 (implementer, host Mini)"
+  - claim: "visa-oracle e2e suite (5 specs) on the candidate, host Mini"
+    cmd: "npx playwright test --project=chromium e2e/visa-oracle/*.spec.ts"
+    result: "57 passed, 2 skipped, 0 failed"
+    exit: 0
+    ts: "2026-09-29T09:45:00Z (reported time approximate)"
+    seat: "claude-sonnet-5 (implementer, host Mini)"
+  - claim:
+      "independent review of candidate 82cb49b798dd52587762e044937c2e3fefa334f0
+      by codex-gpt-6-astra via codex CLI"
+    cmd: "codex exec ... (independent review of the dead-code removal diff)"
+    result: "verdict PASS"
+    exit: 0
+    ts: "2026-09-29T09:55:00Z (reported time approximate)"
+    seat: "codex-gpt-6-astra"
+dissent:
+  - seat: claude-sonnet-5 (evidence-pack drafting session)
+    objection: >-
+      flow.ts's `export { QUESTIONS };` re-export was kept on the stated
+      reasoning that engine-adapter.ts imports it from "./flow", but
+      engine-adapter.ts actually imports QUESTIONS from "./tree" directly —
+      the re-export itself has zero importers and could arguably be removed
+      too
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (evidence-pack drafting session)
+    objection: >-
+      a pure `git grep -w -F` deadness proof cannot by itself rule out a
+      removed symbol being reached through a dynamically computed import
+      specifier rather than a static one
+    status: RETRACTED
+  - seat: claude-sonnet-5 (evidence-pack drafting session)
+    objection: >-
+      the whole-mouth vitest run reported 1 failure
+      (src/lib/realtime.test.ts), which on its face could be read as a
+      regression introduced by this diff
+    status: RETRACTED
+unresolved:
+  - "The tsc/vitest/build/e2e/Codex-review receipts above were reported to
+    this pack-drafting session by the coordinator earlier in the same
+    mission (2026-09-29) and are relayed here with approximate times, not
+    re-executed by this drafting session — the deadness re-verification, PII
+    scan, floor computation, QUESTIONS re-export finding, and realtime.test.ts
+    no-touch check were all run by this session, this turn, and their
+    receipts carry exact timestamps."
+  - "The first dissent entry (flow.ts's dead `QUESTIONS` re-export) names a
+    real, pre-existing leftover this diff did not introduce and does not fix
+    — left for a follow-up mechanical-dead-code pass, not silently dropped."
+  - "Left intentionally, not further pruned by this diff: ~42 process.* and
+    4 tree.sr_status.* i18n keys are now unreferenced (keys-stay bilingual
+    contract, i18n.ts is unmodified by this diff); CSS custom properties
+    --oracle-leaf-active/--oracle-leaf-pending stay (line-anchored contrast
+    test elsewhere); exported *Props interfaces on the surviving components
+    stay (used internally by their own component)."
+  - "Final on-disk gate: a fresh, independent claude-opus-5-5 xhigh session
+    is coordinator-commissioned AFTER this pack's diff is pushed, and has
+    not run as of pack-drafting time. This pack records that as PENDING and
+    authorises no release verdict."
