@@ -1,0 +1,50 @@
+task: >-
+  Gate condition C2 on the merged PR #7646 (T3 PR-3 G1-G7 mutation guards), fresh-Opus
+  gate comment 5886754003: a tests-only follow-up from fresh origin/main. (a) G1 becomes a
+  matrix {TRUE, FALSE, SUPERSEDED, ATTEMPT} x {judged_true, judged_false, superseded,
+  quarantined} killing the status-half survivors MSUP, MATT, M07b/c/d, M08b; (b) G7 asserts
+  the absence of a unique non-PII LEADING fragment of each body and clause, killing M40t and
+  M41t; (c) optional LOW: a G-LOW-1 variant importing the module in a subprocess with a
+  poisoned env, killing M26c; (d) stale counts refreshed. No production change:
+  `scripts/wa_team_promises.py` is byte-identical to origin/main.
+lane: wa-team/t3-pr3-judge-c2-matrix-0929
+machine: M5
+date: "2026-09-29"
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 on the path term: the diff edits
+  `.github/workflows/wa-team-promises-tests.yml` (a HOTZONE_PATTERNS match, `.github/workflows/*`;
+  the changed lines are the FLOOR integer and a header comment, not a `uses:` pin, so the
+  first-party action-pin exemption does not apply). Following the lane precedent of #7597 and
+  #7646, a real two-round cross-family council (codex-gpt-5.6-sol + kimi-code/k3, env-scrubbed,
+  diff-only) was run on this diff before opening the PR.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    Every mutant named by C2 (MSUP, MATT, M07b, M07c, M07d, M08b, M40t, M41t, M26c) is RED
+    against the new tests and the tests are GREEN on unmodified main.
+    probe: "mutant -> failing test table in the PR body, from a cp-backup / mutate / pytest / restore cycle per mutant"
+  A2: >-
+    Zero production change.
+    probe: "git diff --quiet origin/main -- scripts/wa_team_promises.py"
+  A3: >-
+    The CI floor equals the new unit passed count and is shown to bite.
+    probe: "the verbatim CI step at FLOOR=249 exits 0 and at FLOOR=250 exits 1"
+  A4: >-
+    Two council rounds, every objection recorded by status, including the ones left open.
+    probe: "pack.yml dissent cross-checked against council-journal.jsonl"
+
+out_of_scope: >-
+  A runner or DATABASE_URL mode that makes the real-PG suites run in CI (gate Finding 3,
+  tracked by the conductor's ledger row). Editing the merged #7597/#7646 evidence packs.
+
+assumptions:
+  - text: >-
+      The 56 real-PG tests skip in CI; G1, G7 and the other real-PG guards are proven only by
+      the local WA_TEAM_PROMISES_REAL_PG=1 run, not by the CI job.
+    status: verified
