@@ -516,3 +516,19 @@ def test_a_keyboard_interrupt_during_copy_in_leaves_no_copy_process_running(tmp_
             if p.poll() is None:
                 p.kill()
                 p.wait()
+
+
+@pytest.mark.parametrize("key", sorted(runner.RUNNER_OWNED_KEYS))
+def test_an_extra_check_cannot_claim_a_runner_owned_key(fx, key):
+    spec = {"kind": "cmd", "cwd": str(fx["repo"]), "cmd": [PY, "-c", "pass"], key: {"mode": "container"} if key == "isolation" else True}
+    with pytest.raises(SystemExit, match="set by the runner"):
+        fr.plan(fx, "--extra-check", "ctx.claim=" + json.dumps(spec))
+    assert not (fx["run"] / "state" / "plan.json").exists()
+
+
+def test_the_coordinator_never_executes_an_interpreter_named_by_an_extra():
+    plan = {"checks": {"ctx.x": {"kind": "cmd", "cmd": ["true"], "python": "/candidate/probe", "extra": True},
+                       "policy.p": {"kind": "trusted_pytest", "python": "/trusted/venv/python"}}}
+    assert runner.coordinator_python(plan) == "/trusted/venv/python"
+    del plan["checks"]["policy.p"]
+    assert runner.coordinator_python(plan) == runner.sys.executable

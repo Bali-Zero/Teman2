@@ -47,6 +47,7 @@ JUNIT_MAX_BYTES = 32 << 20
 COPY_TIMEOUT_S = 600
 MAPPINGS = ("executed", "not_applicable_rule", "blocked", "not_implemented")
 RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
+RUNNER_OWNED_KEYS = frozenset({"extra", "isolation", "trusted_pythonpath", "trusted_dir_sha256", "trusted_files"})
 EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
 EXTRA_CHECK_NAME = re.compile(r"^[a-z][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)+$")  # no whitespace/case twins of a planned name ("security.pysa_python " is not a new check)
 TRUSTED_PYSA_FILES = ["scripts/localci/pysa_check.py", "scripts/localci/pysa/taint.config", "scripts/localci/pysa/fastapi_sources_sinks.pysa",
@@ -413,6 +414,8 @@ def cmd_plan(a):
             sys.exit(f"--extra-check {name!r}: invalid JSON spec: {e}")
         if not isinstance(spec, dict) or spec.get("kind") not in EXTRA_CHECK_KINDS:
             sys.exit(f"--extra-check {name!r}: kind must be one of {EXTRA_CHECK_KINDS}")
+        if (bad := sorted(set(spec) & RUNNER_OWNED_KEYS)):
+            sys.exit(f"--extra-check {name!r}: {bad} are set by the runner, never by an extra (trust, isolation and pinning are not the operator's to claim)")
         checks[name] = {**spec, "extra": True}   # operator-chosen: a `cmd` extra runs on the host and may execute candidate code
     iso = isolation_spec(a.isolation, a.isolation_image)
     if iso.get("mode") != "container" or any(s.get("kind") == "cmd" and s.get("extra") for s in checks.values()):
@@ -623,8 +626,8 @@ def _read_junit_out(docker: str, ctr: str, junit: Path) -> str | None:
     """Copy /out/junit.xml out of the stopped container: one regular file, size-capped — a symlink or an oversized file is no junit."""
     p = subprocess.Popen([docker, "cp", f"{ctr}:/out/junit.xml", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=trusted_env())
     watchdog = threading.Timer(COPY_TIMEOUT_S, p.kill)
-    watchdog.start()
     try:
+        watchdog.start()
         with tarfile.open(fileobj=p.stdout, mode="r|") as t:
             m = t.next()
             if m is None or m.name != "junit.xml" or not m.isfile():
@@ -668,9 +671,9 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
                 for proc in list(group):
                     proc.kill()
             watchdog = threading.Timer(COPY_TIMEOUT_S, _expire)
-            watchdog.start()
             t_end = time.monotonic() + COPY_TIMEOUT_S
             try:
+                watchdog.start()
                 n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra, group, COPY_TIMEOUT_S)
                 cp.stdin.close()
                 cp.wait(timeout=max(1.0, t_end - time.monotonic()))
@@ -946,6 +949,11 @@ def trusted_seal(run_dir: Path, plan: dict, st: dict) -> str:
     return h.hexdigest()
 
 
+def coordinator_python(plan: dict) -> str:
+    """The interpreter the coordinator itself executes (env fingerprint, pip freeze): from a runner-planned check, never an extra."""
+    return next((s["python"] for s in plan["checks"].values() if s.get("python") and not s.get("extra")), sys.executable)
+
+
 def is_trusted_check(spec: dict) -> bool:
     """A runner-planned `cmd` (BASE judge/classifier). An `--extra-check` cmd is the operator's and may run candidate code on the host."""
     return spec.get("kind") in TRUSTED_KINDS and not spec.get("extra")
@@ -1012,7 +1020,7 @@ def cmd_run(a):
             else:
                 names = [n for n, c in st["checks"].items() if c["status"] in ("QUEUED", "INTERRUPTED")]
             names = sorted(names, key=lambda n: (not is_trusted_check(plan["checks"][n]), plan["checks"][n]["kind"] != "trusted_pytest"))  # cmd → seal → trusted_pytest → pytest
-            venv_py = next((s["python"] for s in plan["checks"].values() if s.get("python")), sys.executable)
+            venv_py = coordinator_python(plan)
             cur_env = env_fingerprint(venv_py, plan["checks"])
             cur_hash = env_hash(cur_env)
             sealed = False
@@ -1269,7 +1277,7 @@ def compute_status(run_dir: Path, write: bool = True) -> dict:
     finally:
         if lk:
             lk.close()
-    venv_py = next((s["python"] for s in plan["checks"].values() if s.get("python")), sys.executable)
+    venv_py = coordinator_python(plan)
     cur_env = env_fingerprint(venv_py, plan["checks"])
     cur_hash = env_hash(cur_env)
     view, fr = freshness(st, plan, run_dir, cur_hash)

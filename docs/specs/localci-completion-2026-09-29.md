@@ -156,3 +156,19 @@ verified; if removal cannot be verified the run aborts before the next check.
   group's kill; the `finally` now kills and reaps every still-running member of the group.
 
 Both cures have tests that fail when the cure is removed (mutation-checked on Pro).
+
+## 10. Adversarial review round 4 (Codex, 2026-09-29) — last repair round
+
+- **R4-2 (MAJOR, cured):** an extra could name a `python` the coordinator then executed for its env fingerprint and
+  `pip freeze` before the seal boundary. The coordinator interpreter now comes only from runner-planned checks
+  (`coordinator_python`), and an extra carrying a runner-owned key (`extra`, `isolation`, `trusted_*`) is refused at plan.
+- **R4-3 (MAJOR, cured):** the copy watchdogs started outside their `try`; both now start inside it, so a signal at
+  any point after the copy process exists reaches the kill in `finally`.
+- **R4-1 (accepted limit, same family as R3-2):** code already running uncontained as the operator's user can rewrite
+  `plan.json` and recompute its self-contained `plan_hash` (or rewrite the runner itself) and obtain a fresh seal on a
+  run dir that was never contained. Nothing kept in this user's files can authenticate a plan against that user; the
+  seal's guarantee is scoped to contained plans whose candidate code never ran on the host. An operator who needs more
+  records `plan_hash` and the first `seal=` outside the host at plan time.
+
+Per the PR contract (fix-of-a-fix stops at depth 1) any further finding in these families goes to a new spec, not a
+fifth round on this branch.
