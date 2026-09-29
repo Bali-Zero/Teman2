@@ -185,9 +185,7 @@ async def _get_total_clients(db_pool: asyncpg.Pool) -> int:
     """
     try:
         async with db_pool.acquire() as conn:
-            return (
-                await conn.fetchval("SELECT COUNT(*) FROM clients WHERE deleted_at IS NULL") or 0
-            )
+            return await conn.fetchval("SELECT COUNT(*) FROM clients WHERE deleted_at IS NULL") or 0
     except Exception as e:
         logger.warning("Failed to get total clients: %s", e)
         return 0
@@ -243,9 +241,7 @@ async def _get_active_team_members_count(db_pool: asyncpg.Pool) -> int:
     """
     try:
         async with db_pool.acquire() as conn:
-            return (
-                await conn.fetchval("SELECT COUNT(*) FROM team_members WHERE active = TRUE") or 0
-            )
+            return await conn.fetchval("SELECT COUNT(*) FROM team_members WHERE active = TRUE") or 0
     except Exception as e:
         logger.warning("Failed to get active team members count: %s", e)
         return 0
@@ -837,7 +833,7 @@ async def get_role_metrics(
 # report `scripts/portal_challenge_leaderboard.py` so the two can never
 # disagree about who is winning.
 
-PORTAL_CHALLENGE_CACHE_KEY = "dashboard:portal_challenge:v2"
+PORTAL_CHALLENGE_CACHE_KEY = "dashboard:portal_challenge:v3"
 PORTAL_CHALLENGE_CACHE_TTL = 30
 
 
@@ -851,6 +847,21 @@ class PortalChallengeTaxRules(BaseModel):
     podium_super_bonus_idr: int
     best_tax_fallback_idr: int
     best_tax_fallback_threshold: int
+
+
+class PortalChallengeRankPrize(BaseModel):
+    rank: int
+    prize_idr: int
+
+
+class PortalChallengeScoringRules(BaseModel):
+    registration: int
+    first_document: int
+    unanswered_request: int
+    unreviewed_document: int
+    response_working_hours: float
+    review_working_hours: float
+    service_hours: str
 
 
 class PortalChallengeEntry(BaseModel):
@@ -870,6 +881,16 @@ class PortalChallengeEntry(BaseModel):
     total_prize_idr: int
     next_tier_threshold: int | None
     to_next_tier: int | None
+    # Round 2 additions — 0/None in round 1.
+    points: int = 0
+    carry_points: int = 0
+    registrations: int = 0
+    document_bonuses: int = 0
+    unanswered_requests: int = 0
+    unreviewed_documents: int = 0
+    penalty_points: int = 0
+    september_choice: str | None = None
+    last_event_at: datetime | None = None
 
 
 class PortalChallengeRecentActivation(BaseModel):
@@ -877,24 +898,78 @@ class PortalChallengeRecentActivation(BaseModel):
     at: datetime
 
 
+class PortalChallengeRecentEvent(BaseModel):
+    kind: str
+    display_name: str
+    points: int
+    at: datetime
+
+
+class PortalChallengeSeptemberEntry(BaseModel):
+    member: str
+    display_name: str
+    avatar_url: AvatarUrl = None
+    is_tax: bool
+    rank: int
+    activations: int
+    invited: int
+    award_tier: int | None
+    prize_idr: int
+    tax_bonus_idr: int
+    total_prize_idr: int
+    september_choice: str | None = None
+
+
+class PortalChallengeSeptember(BaseModel):
+    status: str
+    window_start: datetime
+    window_end: datetime
+    team_total_activations: int
+    entries: list[PortalChallengeSeptemberEntry]
+
+
+class PortalChallengeAsyaMission(BaseModel):
+    member: str
+    display_name: str
+    avatar_url: AvatarUrl = None
+    target_points: int
+    prize_idr: int
+    bonus_points: int
+    mission_bonuses: int
+    unanswered_requests: int
+    unreviewed_documents: int
+    penalty_points: int
+    points: int
+    reached: bool
+    is_me: bool
+
+
 class PortalChallengeResponse(BaseModel):
     status: str
+    round: int = 1
+    campaign: str | None = None
     window_start: datetime
     window_end: datetime
     timezone: str
     generated_at: datetime
     tiers: list[PortalChallengeTier]
     tax_rules: PortalChallengeTaxRules
+    rank_prizes: list[PortalChallengeRankPrize] = []
+    scoring: PortalChallengeScoringRules | None = None
     team_total_activations: int
+    team_total_points: int = 0
     entries: list[PortalChallengeEntry]
     recent_activations: list[PortalChallengeRecentActivation]
+    recent_events: list[PortalChallengeRecentEvent] = []
+    september: PortalChallengeSeptember | None = None
+    asya_mission: PortalChallengeAsyaMission | None = None
 
 
-async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, Any]:
-    """Compute the JSON-safe (str timestamps, no `email`-bearing PII risk
-    beyond staff addresses already visible in `team_members`) leaderboard
-    payload. Cached whole — `is_me`/`generated_at` are added per-request by
-    the caller, never cached (they depend on who is asking / when)."""
+async def _build_round1_payload(db_pool: asyncpg.Pool) -> dict[str, Any]:
+    """Round 1 (September, frozen) payload — unchanged shape/behaviour, plus
+    `round`/`campaign`/new-fields-as-zero-or-null so both rounds validate
+    against the same `PortalChallengeResponse` model through the transition.
+    """
     from backend.services.portal.challenge_leaderboard import (
         ROSTER_SQL,
         TAX_FALLBACK_BONUS_IDR,
@@ -933,6 +1008,8 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
 
     return {
         "status": compute_status(datetime.now(timezone.utc)),
+        "round": 1,
+        "campaign": None,
         "window_start": WINDOW_START.isoformat(),
         "window_end": WINDOW_END.isoformat(),
         "timezone": "Asia/Makassar",
@@ -944,11 +1021,14 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
             "best_tax_fallback_idr": TAX_FALLBACK_BONUS_IDR,
             "best_tax_fallback_threshold": TAX_FALLBACK_THRESHOLD,
         },
+        "rank_prizes": [],
+        "scoring": None,
         # DISTINCT client_id across the whole window, not sum(e.activations) —
         # a client activated via two rows credited to two different creators
         # would otherwise be double-counted here (each creator legitimately
         # counts it once for their own tally).
         "team_total_activations": int(team_total_activations),
+        "team_total_points": 0,
         "entries": [
             {
                 "email": e.email,
@@ -969,6 +1049,15 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
                 "total_prize_idr": e.total_prize_idr,
                 "next_tier_threshold": e.next_tier_threshold,
                 "to_next_tier": e.to_next_tier,
+                "points": 0,
+                "carry_points": 0,
+                "registrations": 0,
+                "document_bonuses": 0,
+                "unanswered_requests": 0,
+                "unreviewed_documents": 0,
+                "penalty_points": 0,
+                "september_choice": None,
+                "last_event_at": None,
             }
             for e in awarded
         ],
@@ -981,7 +1070,220 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
             }
             for r in recent_records
         ],
+        "recent_events": [],
+        "september": None,
+        "asya_mission": None,
     }
+
+
+async def _build_round2_payload(db_pool: asyncpg.Pool, now: datetime) -> dict[str, Any]:
+    """Round 2 (October, "Lascia o raddoppia") payload: reruns the R1 SQL
+    for the frozen `september` block (same query text, same result the
+    widget showed before the window closed) alongside the R2 engine's own
+    queries, then scores via `challenge_round2.score_round2`."""
+    from backend.services.portal import challenge_round2 as r2
+    from backend.services.portal.challenge_events import portrait_url
+    from backend.services.portal.challenge_leaderboard import (
+        ROSTER_SQL,
+        TAX_FALLBACK_BONUS_IDR,
+        TAX_FALLBACK_THRESHOLD,
+        TAX_PODIUM_BONUS_IDR,
+        WINDOW_END,
+        WINDOW_START,
+        build_aggregates_sql,
+        build_team_total_activations_sql,
+        compute_awards,
+        member_key_from_email,
+        merge_roster_and_activity,
+    )
+
+    async with db_pool.acquire() as conn:
+        # Sequential on ONE connection (asyncpg forbids concurrent use of
+        # one connection) — 9 small/indexed queries behind the 30s cache.
+        roster_records = await conn.fetch(ROSTER_SQL)
+        r1_activity_records = await conn.fetch(build_aggregates_sql())
+        r1_team_total = await conn.fetchval(build_team_total_activations_sql()) or 0
+        registration_records = await conn.fetch(r2.build_registration_aggregates_sql())
+        recent_registration_records = await conn.fetch(r2.build_recent_registrations_sql())
+        team_total_registrations = await conn.fetchval(r2.build_team_total_registrations_sql()) or 0
+        first_document_records = await conn.fetch(r2.build_first_documents_sql())
+        request_records = await conn.fetch(r2.build_client_requests_sql())
+        review_records = await conn.fetch(r2.build_required_document_reviews_sql())
+        asya_request_records = await conn.fetch(r2.build_asya_requests_sql())
+        asya_client_event_records = await conn.fetch(r2.build_asya_client_events_sql())
+
+    roster_dicts = [dict(r) for r in roster_records]
+    r1_members = merge_roster_and_activity(roster_dicts, [dict(r) for r in r1_activity_records])
+    r1_awarded = compute_awards(r1_members)
+    display_by_email = {m.email: m.display_name for m in r1_members}
+    avatar_by_email = {row["email"]: portrait_url(row.get("avatar")) for row in roster_records}
+
+    snapshot = r2.score_round2(
+        roster_dicts,
+        r1_awarded,
+        [dict(r) for r in registration_records],
+        [dict(r) for r in first_document_records],
+        [dict(r) for r in request_records],
+        [dict(r) for r in review_records],
+        [dict(r) for r in asya_request_records],
+        [dict(r) for r in asya_client_event_records],
+        now,
+    )
+
+    recent_registration_events = [
+        {
+            "kind": "registration",
+            "display_name": display_by_email.get(
+                r["creator_email"], member_key_from_email(r["creator_email"])
+            ),
+            "points": r2.REGISTRATION_POINTS,
+            "at": r["used_at"],
+        }
+        for r in recent_registration_records
+    ]
+    merged_events = sorted(
+        recent_registration_events
+        + [
+            {"kind": ev.kind, "display_name": ev.display_name, "points": ev.points, "at": ev.at}
+            for ev in snapshot.recent_events
+        ],
+        key=lambda ev: ev["at"],
+        reverse=True,
+    )[:10]
+
+    asya_display_name = snapshot.asya_mission.display_name
+    asya_avatar_url = None
+    for row in roster_records:
+        if row["email"].strip().lower() == r2.ASYA_EMAIL:
+            asya_display_name = row.get("display_name") or asya_display_name
+            asya_avatar_url = portrait_url(row.get("avatar"))
+            break
+
+    return {
+        "status": r2.compute_round_status(now, 2),
+        "round": 2,
+        "campaign": "Lascia o raddoppia",
+        "window_start": r2.ROUND2_START.isoformat(),
+        "window_end": r2.ROUND2_END.isoformat(),
+        "timezone": "Asia/Makassar",
+        "tiers": [],
+        "tax_rules": {
+            "podium_super_bonus_idr": TAX_PODIUM_BONUS_IDR,
+            "best_tax_fallback_idr": TAX_FALLBACK_BONUS_IDR,
+            "best_tax_fallback_threshold": TAX_FALLBACK_THRESHOLD,
+        },
+        "rank_prizes": [
+            {"rank": rank, "prize_idr": prize} for rank, prize in sorted(r2.RANK_PRIZES_IDR.items())
+        ],
+        "scoring": {
+            "registration": r2.REGISTRATION_POINTS,
+            "first_document": r2.FIRST_DOCUMENT_POINTS,
+            "unanswered_request": -r2.UNANSWERED_REQUEST_PENALTY,
+            "unreviewed_document": -r2.UNREVIEWED_DOCUMENT_PENALTY,
+            "response_working_hours": r2.RESPONSE_WORKING_HOURS_LIMIT,
+            "review_working_hours": r2.REVIEW_WORKING_HOURS_LIMIT,
+            "service_hours": "Senin–Jumat 09.00–18.30 WITA",
+        },
+        "team_total_activations": int(team_total_registrations),
+        "team_total_points": snapshot.team_total_points,
+        "entries": [
+            {
+                "email": e.email,
+                "member": e.member,
+                "display_name": e.display_name,
+                "avatar_url": avatar_by_email.get(e.email),
+                "department": e.department,
+                "is_tax": e.is_tax,
+                "rank": e.rank,
+                "activations": e.activations,
+                "invited": e.invited,
+                "last_activation_at": e.last_activation_at.isoformat()
+                if e.last_activation_at
+                else None,
+                "award_tier": e.award_tier,
+                "prize_idr": e.prize_idr,
+                "tax_bonus_idr": e.tax_bonus_idr,
+                "total_prize_idr": e.total_prize_idr,
+                "next_tier_threshold": e.next_tier_threshold,
+                "to_next_tier": e.to_next_tier,
+                "points": e.points,
+                "carry_points": e.carry_points,
+                "registrations": e.registrations,
+                "document_bonuses": e.document_bonuses,
+                "unanswered_requests": e.unanswered_requests,
+                "unreviewed_documents": e.unreviewed_documents,
+                "penalty_points": e.penalty_points,
+                "september_choice": e.september_choice,
+                "last_event_at": e.last_event_at.isoformat() if e.last_event_at else None,
+            }
+            for e in snapshot.entries
+        ],
+        "recent_activations": [
+            {
+                "display_name": display_by_email.get(
+                    r["creator_email"], member_key_from_email(r["creator_email"])
+                ),
+                "at": r["used_at"].isoformat(),
+            }
+            for r in recent_registration_records
+        ],
+        "recent_events": [{**ev, "at": ev["at"].isoformat()} for ev in merged_events],
+        "september": {
+            "status": "closed",
+            "window_start": WINDOW_START.isoformat(),
+            "window_end": WINDOW_END.isoformat(),
+            "team_total_activations": int(r1_team_total),
+            "entries": [
+                {
+                    "member": e.member,
+                    "display_name": e.display_name,
+                    "avatar_url": avatar_by_email.get(e.email),
+                    "is_tax": e.is_tax,
+                    "rank": e.rank,
+                    "activations": e.activations,
+                    "invited": e.invited,
+                    "award_tier": e.award_tier,
+                    "prize_idr": e.prize_idr,
+                    "tax_bonus_idr": e.tax_bonus_idr,
+                    "total_prize_idr": e.total_prize_idr,
+                    "september_choice": "prize" if e.email in r2.SEPTEMBER_PRIZE_TAKEN else "carry",
+                }
+                for e in r1_awarded
+            ],
+        },
+        "asya_mission": {
+            "member": snapshot.asya_mission.member,
+            "display_name": asya_display_name,
+            "avatar_url": asya_avatar_url,
+            "target_points": snapshot.asya_mission.target_points,
+            "prize_idr": snapshot.asya_mission.prize_idr,
+            "bonus_points": snapshot.asya_mission.bonus_points,
+            "mission_bonuses": snapshot.asya_mission.mission_bonuses,
+            "unanswered_requests": snapshot.asya_mission.unanswered_requests,
+            "unreviewed_documents": snapshot.asya_mission.unreviewed_documents,
+            "penalty_points": snapshot.asya_mission.penalty_points,
+            "points": snapshot.asya_mission.points,
+            "reached": snapshot.asya_mission.reached,
+        },
+    }
+
+
+async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, Any]:
+    """Compute the JSON-safe (str timestamps, no `email`-bearing PII risk
+    beyond staff addresses already visible in `team_members`) leaderboard
+    payload. Cached whole — `is_me`/`generated_at` are added per-request by
+    the caller, never cached (they depend on who is asking / when).
+
+    Dispatches on the active round: `now` is read once here so a request
+    that straddles the exact ROUND2_START instant is scored consistently
+    within itself even though the module-level constant is a fixed instant.
+    """
+    from backend.services.portal import challenge_round2 as r2
+
+    now = datetime.now(timezone.utc)
+    if r2.active_round(now) == 1:
+        return await _build_round1_payload(db_pool)
+    return await _build_round2_payload(db_pool, now)
 
 
 @router.get("/portal-challenge", response_model=PortalChallengeResponse)
@@ -993,6 +1295,8 @@ async def get_portal_challenge(
     """Portal Champion challenge leaderboard — staff-only (`require_team_member`
     rejects a client token with 403), powers the kita home page live widget.
     """
+    from backend.services.portal.challenge_round2 import ASYA_EMAIL
+
     payload = None if fresh else await _cache.get(PORTAL_CHALLENGE_CACHE_KEY)
     if payload is None:
         payload = await _build_portal_challenge_payload(db_pool)
@@ -1018,22 +1322,53 @@ async def get_portal_challenge(
             total_prize_idr=e["total_prize_idr"],
             next_tier_threshold=e["next_tier_threshold"],
             to_next_tier=e["to_next_tier"],
+            points=e.get("points", 0),
+            carry_points=e.get("carry_points", 0),
+            registrations=e.get("registrations", 0),
+            document_bonuses=e.get("document_bonuses", 0),
+            unanswered_requests=e.get("unanswered_requests", 0),
+            unreviewed_documents=e.get("unreviewed_documents", 0),
+            penalty_points=e.get("penalty_points", 0),
+            september_choice=e.get("september_choice"),
+            last_event_at=e.get("last_event_at"),
         )
         for e in payload["entries"]
     ]
+    september = payload.get("september")
+    asya_mission = payload.get("asya_mission")
     return PortalChallengeResponse(
         status=payload["status"],
+        round=payload.get("round", 1),
+        campaign=payload.get("campaign"),
         window_start=payload["window_start"],
         window_end=payload["window_end"],
         timezone=payload["timezone"],
         generated_at=datetime.now(timezone.utc),
         tiers=[PortalChallengeTier(**t) for t in payload["tiers"]],
         tax_rules=PortalChallengeTaxRules(**payload["tax_rules"]),
+        rank_prizes=[PortalChallengeRankPrize(**p) for p in payload.get("rank_prizes", [])],
+        scoring=PortalChallengeScoringRules(**payload["scoring"])
+        if payload.get("scoring")
+        else None,
         team_total_activations=payload["team_total_activations"],
+        team_total_points=payload.get("team_total_points", 0),
         entries=entries,
         recent_activations=[
             PortalChallengeRecentActivation(**r) for r in payload["recent_activations"]
         ],
+        recent_events=[PortalChallengeRecentEvent(**ev) for ev in payload.get("recent_events", [])],
+        september=PortalChallengeSeptember(
+            status=september["status"],
+            window_start=september["window_start"],
+            window_end=september["window_end"],
+            team_total_activations=september["team_total_activations"],
+            entries=[PortalChallengeSeptemberEntry(**e) for e in september["entries"]],
+        )
+        if september
+        else None,
+        asya_mission=PortalChallengeAsyaMission(**asya_mission, is_me=current_email == ASYA_EMAIL)
+        if asya_mission
+        else None,
     )
 
 
@@ -1043,10 +1378,11 @@ async def portal_challenge_events(
     current_user: dict = Depends(require_team_member),
 ) -> StreamingResponse:
     from backend.core.redis_manager import RedisManager
+    from backend.services.portal import challenge_round2 as r2
     from backend.services.portal.challenge_events import goal_fanout
-    from backend.services.portal.challenge_leaderboard import compute_status
 
-    if compute_status(datetime.now(timezone.utc)) == "closed":
+    now = datetime.now(timezone.utc)
+    if r2.compute_round_status(now, r2.active_round(now)) == "closed":
         return StreamingResponse(
             iter(["event: closed\ndata: {}\n\n"]), media_type="text/event-stream"
         )
