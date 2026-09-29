@@ -2112,3 +2112,19 @@ def test_declared_firebreak_mention_is_a_firebreak(text):
 def test_one_genuine_mention_beats_a_negated_one():
     text = "Tech debt, not a firebreak. Elsewhere: DELIBERATE FIREBREAK."
     assert _firebreak_row(text).cls == par.CLASS_FIREBREAK
+
+
+def test_uppercase_negator_is_not_a_firebreak():
+    assert _firebreak_row("NOT tech debt, NOT a firebreak: a genuine credential gate").cls != par.CLASS_FIREBREAK
+
+
+def test_negated_firebreak_row_with_bare_status_owner_is_malformed():
+    raw = "- opened 2026-06-01 | fb artifact | step, tech debt not a firebreak | closed | proof"
+    entry = par.parse_entry(raw, par._parse_now(NOW))
+    assert entry.cls == par.CLASS_MALFORMED
+    assert any("bare status word" in r for r in entry.malformed_reasons)
+
+
+def test_declared_firebreak_row_with_bare_status_owner_stays_exempt():
+    raw = "- opened 2026-06-01 | fb artifact | step, DELIBERATE FIREBREAK | closed | proof"
+    assert par.parse_entry(raw, par._parse_now(NOW)).cls == par.CLASS_FIREBREAK
