@@ -132,12 +132,20 @@ jobs:
           # of (or import binding) pytest_pyfunc_call, pytest_runtest_call, pytest_runtest_protocol,
           # pytest_runtest_makereport, pytest_pycollect_makeitem, pytest_collection_modifyitems or
           # pytest_plugins, a hookimpl(specname=...), or an `.obj`/`.runtest` assignment, in a suite
-          # or in conftest.py at the root, scripts/ or scripts/tests/. Only the real pytest.fixture
+          # or in conftest.py at the root, scripts/ or scripts/tests/ (also pytest_runtest_logreport,
+          # pytest_report_teststatus, pytest_sessionfinish, pytest_unconfigure, a star import in them,
+          # and any pluginmanager/.register use). A test def or Test* class carrying a decorator other
+          # than pytest.fixture / pytest.mark.* is refused (it may replace the body), and so is a
+          # module-level setattr/globals/locals/vars/exec/eval/__import__/register call or a
+          # rebinding of `pytest`/`fixture`. Only the real pytest.fixture
           # decorator marks a test* def as a fixture; an aliased import of it is refused. Fixtures named test* and Test*
           # classes with __init__ are not tests and are skipped, as pytest does. Deleting a test def
           # or file is a visible diff in a relevance-triggering path (the known suites are pinned so
           # a deleted file cannot shrink the set). NOT covered, declared: a test generated at import
-          # time (exec, setattr) is invisible to the AST, and so is a hook registered by an
-          # installed third-party plugin or a conftest outside the three paths above.
+          # time inside a function body is invisible to the AST, and so is a hook registered by an
+          # installed third-party plugin, by -p, or by a conftest outside the three paths above;
+          # a test that rewrites this checker, the suite sources or junit.xml on disk while it runs
+          # is not defended against (the same checkout is writable by the tests; a deliberate diff to
+          # those files is a reviewed change, not an accident this tripwire catches).
           python -m pytest scripts/tests/test_wa_attention_*.py -q -o addopts="" -o python_functions="test" -o python_classes="Test" -o xfail_strict=true --strict-markers --junitxml=junit.xml
           python scripts/wa_attention_presence.py junit.xml

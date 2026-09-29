@@ -66,6 +66,37 @@ GUILT = {
                 def test_x(self):
                     pass
     """,
+    "wrapping_decorator_on_test": """
+        from functools import wraps
+        def swallow(f):
+            @wraps(f)
+            def inner():
+                return None
+            return inner
+        @swallow
+        def test_guard():
+            assert False
+    """,
+    "decorator_on_test_class": """
+        @something
+        class TestC:
+            def test_a(self):
+                pass
+    """,
+    "module_level_setattr": """
+        def test_guard():
+            assert False
+        setattr(__import__("sys").modules[__name__], "test_guard", len)
+    """,
+    "module_level_globals_write": """
+        def test_guard():
+            assert False
+        globals().update(test_guard=len)
+    """,
+    "pytest_name_rebound": """
+        import pytest
+        pytest = object()
+    """,
     "fixture_alias_import": """
         from pytest import fixture as fx
         @fx
@@ -134,6 +165,10 @@ HOOK_GUILT = {
     "hook_imported_under_own_name": "from helpers import stop as pytest_pyfunc_call\n",
     "hook_via_specname": "import pytest\n@pytest.hookimpl(specname='pytest_pyfunc_call')\ndef pytest_stop(pyfuncitem):\n    return True\n",
     "body_swap_obj": "def helper(item):\n    item.obj = len\n",
+    "logreport_def": "def pytest_runtest_logreport(report):\n    report.outcome = 'passed'\n",
+    "sessionfinish_def": "def pytest_sessionfinish(session):\n    pass\n",
+    "star_import_in_conftest": "from helper import *\n",
+    "plugin_registered_at_runtime": "def pytest_configure(config):\n    config.pluginmanager.register(object())\n",
     "hook_nested_in_if": "if True:\n    def pytest_pyfunc_call(pyfuncitem):\n        return True\n",
 }
 
@@ -194,6 +229,10 @@ def test_innocent_shapes_are_counted_without_problems():
                 def test_n(self):
                     pass
 
+        @pytest.mark.parametrize("x", [1, 2])
+        def test_param(x):
+            pass
+
         async def test_async():
             pass
 
@@ -202,7 +241,7 @@ def test_innocent_shapes_are_counted_without_problems():
         """
     )
     assert problems == []
-    assert expected == {("m", "TestOk.test_a"), ("m", "TestOk.TestNested.test_n"), ("m", "test_async"), ("m", "test_plain")}
+    assert expected == {("m", "TestOk.test_a"), ("m", "TestOk.TestNested.test_n"), ("m", "test_async"), ("m", "test_param"), ("m", "test_plain")}
 
 
 def test_real_corpus_has_no_problems_and_pins_every_known_suite():
