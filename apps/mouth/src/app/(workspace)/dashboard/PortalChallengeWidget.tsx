@@ -626,7 +626,7 @@ function RulesDrawer({ data }: { data: PortalChallengeResponse }) {
         aria-haspopup="dialog"
         className={cn(
           FOCUS,
-          "inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-kita-ink-panel-copper)]/50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--bz-kita-ink-panel-copper)] hover:border-[var(--bz-kita-ink-panel-copper)] transition-colors",
+          "inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-kita-ink-panel-copper)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--bz-kita-ink-panel-copper)] hover:bg-[var(--bz-kita-ink-panel-copper)]/10 transition-colors",
         )}
       >
         <Info size={12} aria-hidden="true" />
