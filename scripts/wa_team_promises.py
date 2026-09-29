@@ -39,6 +39,7 @@ CLI:
   apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --scan [--dry-run]
   apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --judge [--dry-run] [--judge-limit N]
   apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --link [--dry-run]
+  apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --resolve [--dry-run]
 
 Applies scripts/sql/pro_local/team_promises.sql in ONE transaction, verifies
 both unique indexes against pg_catalog INSIDE it, ROLLBACK on any mismatch.
@@ -80,6 +81,7 @@ _SQL_PATH = Path(__file__).resolve().parent / "sql" / "pro_local" / "team_promis
 # regardless of the caller's PYTHONPATH, not just the documented CLI form).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
 from backend.services.wa_copilot.team_promises import (  # noqa: E402
+    _ACK_PATTERN,
     _PROMISE_PATTERNS_RE,
     _TEMPORAL_CUES,
 )
@@ -1314,6 +1316,240 @@ async def audit_link_counts(pool: asyncpg.Pool) -> dict[str, int]:
     return {key: int(row[key]) for key in row.keys()}
 
 
+# P2 — the resolver: marks an open promise kept when later evidence shows up
+# in the SAME thread. Thread = the team line (`team_member_phone`) plus the
+# peer: `group_jid` for a group, else `counterpart_lid`, else
+# `counterpart_phone` (`chat_jid` is NULL on every recent mirror row, so the
+# spec's `chat_jid` key cannot be used). Times are `message_date` on both
+# sides, so promise and evidence are compared on the same clock.
+#
+# Evidence, strongest first, always AFTER the promise and inside
+# `_RESOLVE_WINDOW` (7 days: the longest due cue in `_TEMPORAL_CUES` — past
+# it a message in the thread is no longer evidence about THIS promise):
+#   media_sent      outbound document/image/video/audio
+#   team_confirmed  outbound text where a catalog pattern of the SAME
+#                   promise_type matches in its past-tense form
+#   client_ack      inbound text matching the catalog's ack words; the
+#                   weakest, kept apart so the KPI can exclude it, and only
+#                   written once the window has closed (until then stronger
+#                   evidence can still arrive and a fill-only write would
+#                   lock the weaker kind in).
+_RESOLVE_WINDOW = timedelta(days=7)
+_RESOLVE_MEDIA_TYPES = frozenset({"document", "image", "video", "audio"})
+
+# The extractor has no fulfilment catalog of its own: `_PROMISE_PATTERNS_RE`
+# carries past-tense alternatives inside each type ("sudah kirim", "already
+# sent", "gia inviato", "i have submitted"). This marker picks exactly those
+# out of a catalog match — nothing new is added to the vocabulary.
+_PAST_MARKER_RE = re.compile(
+    r"\b(sudah|gi[aà]|already\s+(?:sent|submitted)|i\s+have\s+(?:sent|submitted|processed))\b",
+    re.IGNORECASE | re.UNICODE,
+)
+
+_THREAD_PEER_SQL = "COALESCE({a}.group_jid, {a}.counterpart_lid, {a}.counterpart_phone)"
+
+_RESOLVE_OPEN_SQL = f"""
+SELECT p.promise_id, p.promise_type, p.message_id,
+       w.team_member_phone AS line, {_THREAD_PEER_SQL.format(a="w")} AS peer,
+       w.message_date AS at
+  FROM team_promises p JOIN whatsapp_message_context w ON w.id = p.message_id
+ WHERE p.resolved = false AND p.resolved_at IS NULL AND p.resolution_kind IS NULL
+ ORDER BY p.promise_id
+"""
+
+_RESOLVE_EVIDENCE_SQL = f"""
+SELECT e.id, e.direction, e.media_type, e.message_date AS at,
+       COALESCE(NULLIF(e.body, ''), NULLIF(e.message_text, '')) AS text
+  FROM whatsapp_message_context e
+ WHERE e.team_member_phone = $1 AND {_THREAD_PEER_SQL.format(a="e")} = $2
+   AND e.message_date > $3 AND e.message_date <= $4 AND e.id <> $5
+ ORDER BY e.message_date, e.id
+"""
+
+# Fill-only: the guard is the whole contract. A row that is already resolved,
+# or carries any resolution value, is never touched.
+_RESOLVE_UPDATE_SQL = """
+UPDATE team_promises
+   SET resolved = true, resolved_at = $2, resolved_by_message_id = $3, resolution_kind = $4
+ WHERE promise_id = $1 AND resolved = false AND resolved_at IS NULL AND resolution_kind IS NULL
+RETURNING promise_id
+"""
+
+
+def _is_fulfilment(promise_type: str, text: str) -> bool:
+    """True when a clause of `text` matches a catalog pattern of `promise_type`
+    in its past-tense form."""
+    for clause in _split_clauses(text):
+        for ptype, pattern in _PROMISE_PATTERNS_RE:
+            if ptype != promise_type:
+                continue
+            m = pattern.search(clause)
+            if m and _PAST_MARKER_RE.search(m.group(0)):
+                return True
+    return False
+
+
+def _pick_evidence(promise_type: str, t0: datetime, msgs: list[dict], now: datetime):
+    """Strongest evidence for one promise -> (kind, message_id, at) or None.
+    `msgs` are thread messages as dicts (id, direction, media_type, text, at);
+    earliest wins within a kind."""
+    end = t0 + _RESOLVE_WINDOW
+    found: dict[str, tuple[int, datetime]] = {}
+    for m in sorted(msgs, key=lambda x: (x["at"], x["id"])):
+        if not (t0 < m["at"] <= end):
+            continue
+        if m["direction"] == "outbound":
+            if m["media_type"] in _RESOLVE_MEDIA_TYPES:
+                found.setdefault("media_sent", (m["id"], m["at"]))
+            elif m["text"] and _is_fulfilment(promise_type, m["text"]):
+                found.setdefault("team_confirmed", (m["id"], m["at"]))
+        elif m["direction"] == "inbound" and m["text"] and _ACK_PATTERN.search(m["text"]):
+            if now >= end:
+                found.setdefault("client_ack", (m["id"], m["at"]))
+    for kind in ("media_sent", "team_confirmed", "client_ack"):
+        if kind in found:
+            return (kind, found[kind][0], found[kind][1])
+    return None
+
+
+@dataclass(slots=True)
+class ResolveMetrics:
+    """Bare ints only, like ScanMetrics/JudgeMetrics."""
+
+    scanned: int = 0
+    unthreadable: int = 0
+    media_sent: int = 0
+    team_confirmed: int = 0
+    client_ack: int = 0
+    no_evidence: int = 0
+    raced: int = 0
+
+
+async def run_resolve(pool: asyncpg.Pool, *, dry_run: bool, now: datetime | None = None) -> ResolveMetrics:
+    """Resolves every open promise that has evidence. `dry_run` runs the same
+    reads and counts what WOULD be resolved, by kind, and writes nothing."""
+    now = now or datetime.now(timezone.utc)
+    metrics = ResolveMetrics()
+    async with pool.acquire() as conn:
+        promises = await conn.fetch(_RESOLVE_OPEN_SQL)
+    metrics.scanned = len(promises)
+    for prom in promises:
+        if prom["line"] is None or prom["peer"] is None or prom["at"] is None:
+            metrics.unthreadable += 1
+            continue
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                _RESOLVE_EVIDENCE_SQL, prom["line"], prom["peer"], prom["at"],
+                prom["at"] + _RESOLVE_WINDOW, prom["message_id"],
+            )
+        picked = _pick_evidence(prom["promise_type"], prom["at"], [dict(r) for r in rows], now)
+        if picked is None:
+            metrics.no_evidence += 1
+            continue
+        kind, evidence_id, evidence_at = picked
+        if not dry_run:
+            async with pool.acquire() as conn:
+                done = await conn.fetchrow(_RESOLVE_UPDATE_SQL, prom["promise_id"], evidence_at,
+                                            evidence_id, kind)
+            if done is None:
+                metrics.raced += 1
+                continue
+        setattr(metrics, kind, getattr(metrics, kind) + 1)
+    return metrics
+
+
+# P2 — the digest consumer: resolved_by_kind totals and, per D2, overdue
+# unresolved promises per team member. Ints and stable labels only.
+_RESOLUTION_DIGEST_SQL = """
+SELECT count(*) FILTER (WHERE resolution_kind = 'media_sent') AS media_sent,
+       count(*) FILTER (WHERE resolution_kind = 'team_confirmed') AS team_confirmed,
+       count(*) FILTER (WHERE resolution_kind = 'client_ack') AS client_ack
+  FROM team_promises WHERE resolved
+"""
+
+_OVERDUE_BY_MEMBER_SQL = """
+SELECT lower(p.team_member_email) AS email, min(t.name) AS name, count(*) AS n
+  FROM team_promises p LEFT JOIN team_members t ON lower(t.email) = lower(p.team_member_email)
+ WHERE p.resolved = false AND p.due_at < now()
+ GROUP BY lower(p.team_member_email)
+ ORDER BY n DESC, email
+ LIMIT 12
+"""
+
+_MEMBER_LABEL_RE = re.compile(r"^[A-Za-z][A-Za-z'-]{0,30}$")
+
+
+def _member_label(name: str | None, email: str | None) -> str:
+    """First name of a team member, else a stable hash label — never anything
+    else, so a client name cannot reach the digest through this path."""
+    first = (name or "").split(" ")[0] if name else ""
+    if _MEMBER_LABEL_RE.match(first):
+        return first
+    return "member-" + hashlib.sha256((email or "").encode("utf-8")).hexdigest()[:6]
+
+
+def _resolution_digest_line(media_sent: int, team_confirmed: int, client_ack: int,
+                            overdue_total: int, per_member: list[tuple[str, int]]) -> str:
+    counts = (media_sent, team_confirmed, client_ack, overdue_total, *(n for _l, n in per_member))
+    if not all(isinstance(x, int) and not isinstance(x, bool) for x in counts):
+        raise TypeError("wa_team_promises: _resolution_digest_line accepts int counts only")
+    safe = [(label if (_MEMBER_LABEL_RE.match(label) or re.fullmatch(r"member-[0-9a-f]{6}", label))
+             else _member_label(None, label), n) for label, n in per_member]
+    members = ", ".join(f"{label} {n}" for label, n in safe)
+    return (
+        f"promises resolved: media_sent {media_sent} team_confirmed {team_confirmed} "
+        f"client_ack {client_ack}; overdue unresolved {overdue_total}"
+        + (f": {members}" if members else "")
+    )
+
+
+async def _fetch_resolution_digest(pool: asyncpg.Pool) -> str:
+    async with pool.acquire() as conn:
+        kinds = await conn.fetchrow(_RESOLUTION_DIGEST_SQL)
+        members = await conn.fetch(_OVERDUE_BY_MEMBER_SQL)
+        overdue_total = await conn.fetchval(
+            "SELECT count(*) FROM team_promises WHERE resolved = false AND due_at < now()"
+        )
+    per_member = [(_member_label(r["name"], r["email"]), int(r["n"])) for r in members]
+    return _resolution_digest_line(int(kinds["media_sent"]), int(kinds["team_confirmed"]),
+                                    int(kinds["client_ack"]), int(overdue_total), per_member)
+
+
+def _send_resolution_digest(text: str, *, yesterday_label: str) -> None:
+    """Best-effort, never raises; same gateway contract as _send_scan_digest,
+    own dedup key so the two lines each go out once a day."""
+    try:
+        gateway = Path(__file__).resolve().parent / "tg_notify.py"
+        if not gateway.is_file():
+            logger.warning("wa_team_promises: tg_notify.py missing at %s", gateway)
+            return
+        res = subprocess.run(
+            [_resolve_py3(), str(gateway), "--tier", "digest",
+             "--source", "wa-team-promises-resolve",
+             "--dedup-key", f"wa-team-promises-resolution:{yesterday_label}",
+             "--", text],
+            capture_output=True, text=True, timeout=30,
+        )
+        verdict = extract_gateway_verdict(res.stderr)
+        logger.info("wa_team_promises: tg_notify verdict=%s rc=%s", verdict, res.returncode)
+    except Exception as exc:  # never raises
+        logger.warning(_fail_line(exc, "digest"))
+
+
+async def _maybe_send_resolution_digest(pool: asyncpg.Pool, tick_start_wita: datetime) -> None:
+    """Same once-a-day opportunity as `_maybe_send_digest`; a failure here
+    (missing table, gateway) must never fail the scan tick."""
+    if not _is_first_digest_opportunity_of_the_day(tick_start_wita):
+        return
+    try:
+        _s, _e, yesterday_label = _wita_yesterday_window(tick_start_wita)
+        text = await _fetch_resolution_digest(pool)
+    except Exception as exc:
+        logger.warning(_fail_line(exc, "digest"))
+        return
+    _send_resolution_digest(text, yesterday_label=yesterday_label)
+
+
 # C — errors never carry data, and neither does argument/log-level parsing
 
 def _fail_line(exc: BaseException, stage: str, counts: dict[str, int] | None = None) -> str:
@@ -1353,10 +1589,14 @@ async def cli_main(argv: list[str] | None = None) -> int:
                          help="Fill client_id / team_member_email on team_promises rows that "
                               "lack them, from the mirror message row (fill-NULL-only, "
                               "idempotent). With --dry-run: print the audit counts, write nothing.")
+    parser.add_argument("--resolve", action="store_true",
+                         help="Mark open team_promises resolved from later evidence in the same "
+                              "thread (media_sent > team_confirmed > client_ack); fill-only, "
+                              "idempotent. With --dry-run: count what would resolve, write nothing.")
     parser.add_argument("--dry-run", action="store_true",
                          help="With --scan: compute counts only — no candidate insert/revise, "
                               "no digest. With --judge: same read path and Ollama calls, "
-                              "zero writes. With --link: audit counts only.")
+                              "zero writes. With --link: audit counts only. With --resolve: counts only.")
     parser.add_argument("--batch-size", type=int, default=_SCAN_BATCH_SIZE_DEFAULT)
     parser.add_argument("--judge-limit", type=int, default=_JUDGE_LIMIT_DEFAULT)
     parser.add_argument("--log-level", default="INFO")
@@ -1368,7 +1608,7 @@ async def cli_main(argv: list[str] | None = None) -> int:
     log_level = args.log_level if args.log_level in _LOG_LEVELS else "INFO"
     logging.basicConfig(level=log_level, format="%(asctime)s %(levelname)s %(name)s | %(message)s")
 
-    modes_selected = sum([args.init_schema, args.scan, args.judge, args.link])
+    modes_selected = sum([args.init_schema, args.scan, args.judge, args.link, args.resolve])
     if modes_selected > 1:
         sys.stderr.write(_fail_line(_ArgSyntaxError("multiple_modes"), "argparse") + "\n")
         return 2
@@ -1419,6 +1659,7 @@ async def cli_main(argv: list[str] | None = None) -> int:
                         stage = "digest"
                         _save_scan_metrics(metrics)
                         await _maybe_send_digest(pool, tick_start_wita)
+                        await _maybe_send_resolution_digest(pool, tick_start_wita)
                 finally:
                     if lock_fd is not None:
                         _release_scan_lock(lock_fd)
@@ -1426,6 +1667,15 @@ async def cli_main(argv: list[str] | None = None) -> int:
                     f"wa_team_promises: scan OK scanned={metrics.scanned} "
                     f"clauses={metrics.clauses} candidates_new={metrics.candidates_new} "
                     f"candidates_revised={metrics.candidates_revised}\n"
+                )
+            elif args.resolve:
+                stage = "resolve"
+                r = await run_resolve(pool, dry_run=args.dry_run)
+                sys.stdout.write(
+                    f"wa_team_promises: resolve {'DRY-RUN' if args.dry_run else 'OK'} "
+                    f"scanned={r.scanned} unthreadable={r.unthreadable} no_evidence={r.no_evidence} "
+                    f"media_sent={r.media_sent} team_confirmed={r.team_confirmed} "
+                    f"client_ack={r.client_ack} raced={r.raced}\n"
                 )
             elif args.link:
                 stage = "link"
