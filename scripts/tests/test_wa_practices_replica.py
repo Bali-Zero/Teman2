@@ -1133,18 +1133,28 @@ def test_practice_types_upsert_sql_excludes_updated_at_from_set_and_comparison()
 
 @pytest.mark.asyncio
 async def test_run_sync_insert_stores_flys_updated_at_verbatim_not_now():
-    """K2/N05: the R7 fix only excludes `updated_at` from the UPSERT's SET
+    """R7 regression guard (NOT the gate's own N05 -- corrected wording, K2
+    re-gate R2): the R7 fix only excludes `updated_at` from the UPSERT's SET
     clause and comparison -- it must still flow through on INSERT via
     `EXCLUDED.updated_at`, i.e. the value actually BOUND to the query is
-    Fly's own `updated_at`, never `datetime.now()`. A mutant that special-
-    cased `updated_at` to wall-clock time at INSERT would still look
-    idempotent to every other unit test here (this fake's fetchrow doesn't
-    care what a value equals, only that something consistent was stored) --
-    this pins the actual bound value to a literal far from wall-clock time,
-    so it can never pass by coincidence. Mutation-verified: temporarily
-    special-casing `updated_at` to `datetime.now()` in
-    run_sync's param-construction loop makes this assertion fail (see the
-    K2 PR body for the repro)."""
+    Fly's own `updated_at`, never `datetime.now()`. Mutation-verified: a
+    Python-level `run_sync` param-construction mutant (special-casing
+    `updated_at` to `datetime.now()`) makes this assertion fail. That EXACT
+    mutant is ALSO already killed by
+    `test_run_sync_insert_then_idempotent_second_run_is_all_unchanged`
+    (confirmed empirically: the mutant makes its second-run `unchanged`
+    assertion fail too, since two `run_sync` calls a moment apart each mint
+    a DIFFERENT `datetime.now()`, so the fake's row-equality check never
+    matches) -- this test is a useful, independent, narrower pin on the
+    bound value, but it is NOT what closes the gate's actual named N05
+    finding. The gate's N05 mutant lives one layer down, inside
+    `_build_upsert_sql`'s SQL-TEXT construction itself (wrapping a
+    trigger-maintained column's VALUES expression in
+    `COALESCE(NOW(), ...)`, which silently discards ANY bound parameter at
+    the SQL level, before `_coerce_param`/`run_sync` are ever involved) --
+    see `test_practices_upsert_sql_updated_at_value_is_a_bare_placeholder_
+    no_now` / the practice_types twin below, which are what actually close
+    it."""
     idx = [c for c, _ in _DATA_COLUMNS].index("updated_at")
     log: list = []
     clients = [{"id": 501, "uuid": "client-uuid-a"}]
@@ -1159,3 +1169,71 @@ async def test_run_sync_insert_stores_flys_updated_at_verbatim_not_now():
     bound = practices["prac-uuid-1"]["data"][idx]
     assert bound == _coerce_param(fixed_updated_at, "timestamptz")
     assert bound.year == 2020
+
+
+# --- K2 re-gate R1 (REWORK-BUILD on #7647): the gate's own mutation round
+#     named a SQL-text-level N05 that the tests above never exercised --
+#     `_build_upsert_sql` wrapping a trigger-maintained column's VALUES
+#     expression in `COALESCE(NOW(), ...)`. Since `NOW()` is never NULL,
+#     this silently discards whatever value `run_sync` bound to that
+#     parameter, entirely below the layer any run_sync-level test (fake
+#     conn, bound-param inspection) can see -- the fake never interprets
+#     the SQL text, only the Python params handed to it. These two tests
+#     inspect the generated SQL constants directly.
+
+
+def _split_values_list(values_line: str) -> list[str]:
+    """Depth-aware split of a `VALUES (...)` clause's comma-separated
+    expression list. A naive `.split(', ')` breaks the moment any single
+    expression contains its own comma (this module's `text[]` bridge does,
+    via a nested `ARRAY(SELECT ...)` call) -- silently misaligning every
+    index after it, which would make an index-based assertion check the
+    WRONG column without ever failing outright. Used only to locate one
+    expression by position; this file trusts the module under test to
+    emit syntactically valid SQL, same as every other test here."""
+    assert values_line.startswith("VALUES (") and values_line.endswith(")")
+    body = values_line[len("VALUES ("):-1]
+    exprs: list[str] = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(body):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            exprs.append(body[start:i].strip())
+            start = i + 1
+    exprs.append(body[start:].strip())
+    return exprs
+
+
+def test_practices_upsert_sql_updated_at_value_is_a_bare_placeholder_no_now():
+    """K2/gate-R1/N05 (the real one): locate updated_at's exact position in
+    the VALUES list from the SAME column lists `_build_upsert_sql` itself
+    consumes (not a re-declaration of the contract, just where to look),
+    then assert the expression AT THAT POSITION is byte-for-byte
+    `$<i+1>::timestamptz` -- not merely that the substring appears
+    somewhere (a `COALESCE(NOW(), $20::timestamptz)` mutant would still
+    contain the literal substring `$20::timestamptz`, so a plain
+    containment check would NOT catch it -- exact positional equality is
+    required). `NOW(` is also asserted absent from the whole SQL, case-
+    insensitively, as a second independent net."""
+    all_columns = ("uuid",) + tuple(c for c, _ in wpr._PRACTICES_INSERT_COLUMNS)
+    idx = all_columns.index("updated_at")
+    sql = wpr._PRACTICES_UPSERT_SQL
+    values_line = sql.splitlines()[1]
+    exprs = _split_values_list(values_line)
+    assert exprs[idx] == f"${idx + 1}::timestamptz"
+    assert "now(" not in sql.lower()
+
+
+def test_practice_types_upsert_sql_updated_at_value_is_a_bare_placeholder_no_now():
+    """Same oracle as above, for `_PRACTICE_TYPES_UPSERT_SQL`."""
+    all_columns = ("code",) + tuple(c for c, _ in _PRACTICE_TYPES_DATA_COLUMNS)
+    idx = all_columns.index("updated_at")
+    sql = wpr._PRACTICE_TYPES_UPSERT_SQL
+    values_line = sql.splitlines()[1]
+    exprs = _split_values_list(values_line)
+    assert exprs[idx] == f"${idx + 1}::timestamptz"
+    assert "now(" not in sql.lower()

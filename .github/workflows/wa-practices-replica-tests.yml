@@ -73,9 +73,16 @@ name: wa practices replica tests
 # (PASS-WITH-CONDITIONS @13cd517b77, K2, 2026-09-29): 3 new unit tests
 # (2 SQL literal oracles + 1 INSERT-value oracle) plus 2 new assertions on
 # existing tests (rc=3 stdout, fly_uuids NULL-freedom) closing N01/N02/N03/
-# N05/N07/N15 — mutants the gate's own delta round found surviving in the
-# unit suite (only killed by the opt-in real-PG suite, or not at all). No
-# production code changed in this round.
+# N07/N15 — mutants the gate's own delta round found surviving in the
+# unit suite (only killed by the opt-in real-PG suite, or not at all) —
+# then to 85/19 after #7647's OWN re-gate (REWORK-BUILD, 2026-09-29):
+# the K2 round's "1 INSERT-value oracle" above closed a Python-param-level
+# mutant already redundant with an existing test, NOT the gate's actual
+# named N05 (a SQL-TEXT-level mutant inside _build_upsert_sql wrapping a
+# trigger-maintained column's VALUES expression in `COALESCE(NOW(), ...)`,
+# invisible to any run_sync-level/bound-param test) — 2 new SQL literal-
+# oracle tests inspect the generated VALUES clause directly and close it.
+# No production code changed in this round, or the K2 round before it.
 
 on:
   pull_request:
@@ -149,7 +156,7 @@ jobs:
       - name: The T5 P4 replica corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=83   # the corpus size after the delta re-gate's K2 round (REAL_PG unset, 19 opt-in skips)
+          FLOOR=85   # the corpus size after #7647's own re-gate (REWORK-BUILD, R1/R2), REAL_PG unset, 19 opt-in skips
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_practices_replica*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"
