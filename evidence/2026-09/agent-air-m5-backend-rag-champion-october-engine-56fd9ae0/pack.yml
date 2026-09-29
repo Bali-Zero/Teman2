@@ -41,9 +41,13 @@ dissent:
       major · challenge_round2.py:622 · "Asya's request bonuses are
       missing" · callers supply only document uploads, so a qualifying
       client REQUEST yields 0 instead of +3 · suggested fix: combine
-      requests and uploads before bonus dedup/event generation. ACCEPTED →
-      CURING (be-round2 fixing at pack-authoring time); cure commit SHA
-      pending from the Dux, to be added to this entry before the pack ships.
+      requests and uploads before bonus dedup/event generation. CURED in
+      41235d3947: `score_round2` now combines `request_rows` and
+      `asya_client_event_rows` before computing `_mission_bonus_keys` and
+      before locating the latest qualifying event's timestamp. Verified
+      this session: `test_challenge_round2.py` 52 passed (up from before
+      the fix, new cases cover the request-only path), the 3-suite backend
+      set 114 passed, ruff clean, DOCSYNC OK.
   - seat: codex-be-review (independent adversarial reviewer)
     status: CONFIRMED
     objection: >-
@@ -60,9 +64,18 @@ dissent:
       major · challenge_round2.py:284 · "Review query lacks the window's
       upper bound" · a post-window document upload can penalize an October
       score · suggested fix: require UTC-normalized `uploaded_at <
-      ROUND2_END`. ACCEPTED → CURING (be-round2 fixing, plus an audit of
-      the other R2 builders' upper bounds per the same class-audit
-      convention); cure commit SHA pending from the Dux.
+      ROUND2_END`. CURED in 41235d3947:
+      `build_required_document_reviews_sql` gained the strict `< end_ts`
+      upper bound; the sibling-builder audit this class of fix requires
+      confirmed the other two R2 builders (`build_first_documents_sql`,
+      `build_client_requests_sql`) already carried it, and added
+      regression tests for all three:
+      `test_required_document_reviews_sql_has_both_window_bounds`,
+      `test_client_requests_sql_has_both_window_bounds`,
+      `test_first_documents_sql_has_both_window_bounds`. Verified this
+      session: same 114-pass run, and every R2 SQL builder still exits 0
+      read-only against production (`--round 2` unchanged: adit 23/vino
+      11/damar 7/zero 2 carry; surya/ari.firda/krisna 0 prize).
   - seat: codex-be-review (independent adversarial reviewer)
     status: CONFIRMED
     objection: >-
@@ -82,8 +95,11 @@ dissent:
       qualify as prior outreach" · `<=` awards Asya's +3 mission bonus even
       when the staff message and the client event share the exact same
       timestamp, with no message actually preceding the event · suggested
-      fix: use `<` and add an equality test. ACCEPTED → CURING (be-round2
-      fixing); cure commit SHA pending from the Dux.
+      fix: use `<` and add an equality test. CURED in 41235d3947: the
+      comparison is now strict `<`, with a new regression test
+      `test_no_bonus_when_her_outreach_is_at_the_exact_same_timestamp_as_the_event`
+      asserting 0 bonuses at exact-timestamp equality. Verified this
+      session by reading the current comparison and the passing test.
       ---
       Overall verdict from codex-be-review: FIX-FIRST. Its own receipt:
       "High confidence at 29827d3935: 71 selected tests and 343 inverse
@@ -108,63 +124,69 @@ lanes:
       Independent adversarial review of the backend diff, dispatched as
       codex-be-review against HEAD 29827d3935; verdict FIX-FIRST, 5 major +
       1 minor findings — see dissent. 2 REJECTED as design decisions by the
-      Dux, 1 ACCEPTED-RISK/watch-item, 3 ACCEPTED and CURING (cure SHAs
-      pending, to be added once be-round2's fixes land).
+      Dux, 1 ACCEPTED-RISK/watch-item, 3 ACCEPTED and CURED in 41235d3947
+      (be-round2).
 receipts:
   - claim: >-
       Backend unit suites for the Round 2 engine, the dashboard router, and
-      the challenge-events SSE path: 108 passed, 0 failed.
+      the challenge-events SSE path, re-run after 41235d3947: 114 passed,
+      0 failed (up from 108 before the cure; test_challenge_round2.py
+      alone is 52 passed, including the 6 new tests the cure added).
     cmd: >-
       cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
       backend/tests/unit/services/portal/test_challenge_round2.py
       backend/tests/unit/routers/test_dashboard_summary.py
       backend/tests/unit/services/portal/test_challenge_events.py
     exit: 0
-    ts: "2026-09-29T05:26:00Z"
+    ts: "2026-09-29T05:55:00Z"
     seat: claude-sonnet-5
   - claim: >-
       Rewritten offline-report test suite (scripts/tests/test_portal_challenge_leaderboard.py),
       which now tests the code that exists (was previously stale, testing a
-      removed score()/_window_bounds shape): 11 passed.
+      removed score()/_window_bounds shape): 11 passed, re-run after
+      41235d3947.
     cmd: >-
       cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
       ../../scripts/tests/test_portal_challenge_leaderboard.py
     exit: 0
-    ts: "2026-09-29T05:27:00Z"
+    ts: "2026-09-29T05:56:00Z"
     seat: claude-sonnet-5
-  - claim: ruff reports zero issues on the three changed backend-rag Python modules.
+  - claim: >-
+      ruff reports zero issues on the three changed backend-rag Python
+      modules, re-run after 41235d3947.
     cmd: >-
       cd apps/backend-rag && .venv/bin/ruff check
       backend/services/portal/challenge_round2.py
       backend/app/routers/dashboard_summary.py
       backend/services/portal/challenge_events.py
     exit: 0
-    ts: "2026-09-29T05:28:00Z"
+    ts: "2026-09-29T05:57:00Z"
     seat: claude-sonnet-5
   - claim: >-
-      docs_sync reports the generator valid with no protected hand-edits
-      after this branch's router/service/test changes.
+      docs_sync reports the generator valid with no protected hand-edits,
+      re-run after 41235d3947.
     cmd: python3 scripts/docs_sync.py --check
     exit: 0
-    ts: "2026-09-29T05:29:00Z"
+    ts: "2026-09-29T05:58:00Z"
     seat: claude-sonnet-5
   - claim: >-
       The Round 2 offline report, run read-only against production via
-      scripts/pg.sh, reproduces the carry rule exactly: adit carry_points 23
-      (choice carry), vino 11, damar 7, zero 2, and surya/ari.firda/krisna
-      carry_points 0 with choice "prize" — every other roster member 0 with
-      choice "carry". team_total_points 43. No SQL error from any of the
-      Round 2 builders (the previously-cured c.assigned_to join bug).
+      scripts/pg.sh AFTER 41235d3947, still reproduces the carry rule
+      exactly: adit carry_points 23 (choice carry), vino 11, damar 7,
+      zero 2, and surya/ari.firda/krisna carry_points 0 with choice
+      "prize" — every other roster member 0 with choice "carry".
+      team_total_points 43, Asya mission 0/60. No SQL error from any
+      Round 2 builder (the cured window-upper-bound and join fixes).
     cmd: python3 scripts/portal_challenge_leaderboard.py --round 2
     exit: 0
-    ts: "2026-09-29T05:31:00Z"
+    ts: "2026-09-29T05:59:00Z"
     seat: claude-sonnet-5
   - claim: >-
       The Round 1 (September) offline report is unchanged: Ari 46, Surya 37,
       Krishna 34, team_total_activations 160 (distinct clients) — the
       frozen R1 engine's prod result matches the pre-existing September
-      standing.
+      standing, re-checked after 41235d3947.
     cmd: python3 scripts/portal_challenge_leaderboard.py --round 1
     exit: 0
-    ts: "2026-09-29T05:32:00Z"
+    ts: "2026-09-29T06:00:00Z"
     seat: claude-sonnet-5
