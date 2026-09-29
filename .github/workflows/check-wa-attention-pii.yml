@@ -80,7 +80,7 @@ jobs:
           # grep: 0 = relevant, 1 = irrelevant, anything else (2 = error) must not read as "irrelevant".
           rc=0
           grep -zqE \
-            '^(scripts/wa-mirror-attention-telegram\.py|scripts/tests/test_wa_attention_[^/]*\.py|(scripts/(tests/)?)?(conftest\.py|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini)|\.github/workflows/check-wa-attention-pii\.yml)$' changed.z || rc=$?
+            '^(scripts/wa-mirror-attention-telegram\.py|scripts/wa_attention_presence\.py|scripts/tests/test_wa_attention_[^/]*\.py|(scripts/(tests/)?)?(conftest\.py|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini)|\.github/workflows/check-wa-attention-pii\.yml)$' changed.z || rc=$?
           if [[ "$rc" -eq 0 ]]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           elif [[ "$rc" -eq 1 ]]; then
@@ -118,88 +118,24 @@ jobs:
           set -euo pipefail
           # Structured report, not terminal text: a skip or an xfail (junit records both as <skipped>)
           # cannot hide behind a summary line's spelling, and every test DEFINED in these files
-          # (found by AST, not by a hand-kept list) must appear in the report as run and unskipped -
-          # so `-k`, `--deselect` or a conftest modifyitems hook that drops any definition turns this
-          # RED. Identity is (module, class path, function); a parametrized test is covered per
-          # definition (one surviving variant satisfies it), not per parameter set. The collection
-          # patterns are FORCED below to the ones the AST assumes, so a config override cannot
-          # desynchronise them. Constructs the AST cannot follow are refused (RED), not guessed: a
-          # test def under if/try/with/for/while, a name rebinding (`test_x = other`, `__test__ = ...`),
-          # a class or function defined twice in one scope. Fixtures named test* and Test* classes with
-          # __init__ are not tests and are skipped, as pytest does. Deleting a test def or file is a
-          # visible diff in a relevance-triggering path (the three known suites are pinned so a deleted
-          # file cannot shrink the set); a test generated at import time (exec, setattr) is invisible
-          # to the AST.
+          # (found by AST in scripts/wa_attention_presence.py, not by a hand-kept list) must appear in
+          # the report as run and unskipped - so `-k`, `--deselect` or a conftest modifyitems hook that
+          # drops any definition turns this RED. Identity is (module, class path, function); a
+          # parametrized test is covered per definition (one surviving variant satisfies it), not per
+          # parameter set. The collection patterns are FORCED below to the ones the AST assumes, so a
+          # config override cannot desynchronise them. Constructs the AST cannot follow are refused
+          # (RED), not guessed: a test def under if/try/with/for/while; an Assign/AnnAssign/AugAssign
+          # rebinding of a test name (`test_x = other`, `__test__ = ...`); an import (aliased or not,
+          # or `*`) that binds a test*/Test* name; a class or function defined twice in one scope; a
+          # Test* class with any base other than `object` or a metaclass; a class not named Test*
+          # that defines test methods; any unittest.TestCase subclass; and a definition or assignment
+          # of pytest_pyfunc_call, pytest_runtest_call, pytest_runtest_protocol,
+          # pytest_runtest_makereport, pytest_pycollect_makeitem or pytest_plugins in a suite or in
+          # conftest.py at the root, scripts/ or scripts/tests/. Fixtures named test* and Test*
+          # classes with __init__ are not tests and are skipped, as pytest does. Deleting a test def
+          # or file is a visible diff in a relevance-triggering path (the known suites are pinned so
+          # a deleted file cannot shrink the set). NOT covered, declared: a test generated at import
+          # time (exec, setattr) is invisible to the AST, and so is a hook registered by an
+          # installed third-party plugin or a conftest outside the three paths above.
           python -m pytest scripts/tests/test_wa_attention_*.py -q -o addopts="" -o python_functions="test" -o python_classes="Test" -o xfail_strict=true --strict-markers --junitxml=junit.xml
-          python - <<'PY'
-          import ast
-          import glob
-          import os
-          import sys
-          import xml.etree.ElementTree as ET
-
-          KNOWN_SUITES = {"test_wa_attention_episode_tier", "test_wa_attention_pii_envelope", "test_wa_attention_sender_phone"}
-          FLOW = (ast.If, ast.Try, ast.With, ast.AsyncWith, ast.For, ast.AsyncFor, ast.While, ast.Match)
-          expected, problems, modules = set(), [], set()
-
-
-          def is_fixture(node):
-              for d in node.decorator_list:
-                  target = d.func if isinstance(d, ast.Call) else d
-                  name = target.attr if isinstance(target, ast.Attribute) else getattr(target, "id", "")
-                  if name == "fixture":
-                      return True
-              return False
-
-
-          def walk(module, body, scope):
-              seen = set()
-              for node in body:
-                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                      if node.name in seen:
-                          problems.append(f"{module}::{'.'.join(scope + [node.name])} defined twice in one scope")
-                      seen.add(node.name)
-                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test"):
-                      if not is_fixture(node):
-                          expected.add((module, ".".join(scope + [node.name])))
-                  elif isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
-                      has_init = any(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "__init__" for n in node.body)
-                      if not has_init:
-                          walk(module, node.body, scope + [node.name])
-                  elif isinstance(node, FLOW):
-                      for sub in ast.walk(node):
-                          if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef)) and sub.name.startswith("test") and not is_fixture(sub):
-                              problems.append(f"{module}::{sub.name} defined under control flow (unsupported)")
-                          if isinstance(sub, ast.ClassDef) and sub.name.startswith("Test"):
-                              problems.append(f"{module}::{sub.name} defined under control flow (unsupported)")
-                  elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-                      targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-                      for t in targets:
-                          nm = getattr(t, "id", "")
-                          if nm.startswith("test") or nm.startswith("Test") or nm == "__test__":
-                              problems.append(f"{module}::{nm} is a rebinding of a test name (unsupported)")
-
-
-          for path in sorted(glob.glob("scripts/tests/test_wa_attention_*.py")):
-              module = os.path.basename(path)[: -len(".py")]
-              modules.add(module)
-              walk(module, ast.parse(open(path, encoding="utf-8").read(), filename=path).body, [])
-
-          cases = list(ET.parse("junit.xml").getroot().iter("testcase"))
-          skipped, ran = [], set()
-          for c in cases:
-              parts = (c.get("classname") or "").split(".")
-              idx = next((i for i, p in enumerate(parts) if p in modules), None)
-              module = parts[idx] if idx is not None else ""
-              qual = ".".join(parts[idx + 1 :] + [(c.get("name") or "").split("[")[0]]) if idx is not None else ""
-              if c.find("skipped") is not None:
-                  skipped.append(f"{module}::{qual}")
-              else:
-                  ran.add((module, qual))
-          missing = sorted(f"{m}::{q}" for m, q in expected - ran)
-          absent_suites = sorted(KNOWN_SUITES - modules)
-          print(f"testcases={len(cases)} defined={len(expected)} skipped={len(skipped)} missing={len(missing)} problems={len(problems)} absent_suites={len(absent_suites)}")
-          if not expected or skipped or missing or problems or absent_suites:
-              print(f"::error::defined={len(expected)} skipped={skipped} missing={missing} problems={problems} absent_suites={absent_suites} - a skipped, absent, shadowed or deselected guard proves nothing (superscar #2)")
-              sys.exit(1)
-          PY
+          python scripts/wa_attention_presence.py junit.xml
