@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  forbiddenClassToken,
+  forbiddenInlineStyle,
+  forbiddenSourceColour,
+} from "@/test/r19-colour-guard";
 import { TaxCalendarBody } from "./TaxCalendarBody";
 
 // The override lets the verification command run this same guard against a
@@ -12,22 +17,6 @@ const sourceFiles = [
   "src/app/(tax-calendar)/tax-calendar/layout.tsx",
   "src/app/(tax-calendar)/tax-calendar/page.tsx",
 ];
-
-const forbiddenClass = (token: string) => {
-  const base = token.slice(token.lastIndexOf(":") + 1).replace(/^!|!$/g, "");
-  return (
-    /^(bg-gradient|bg-linear)-/.test(base) ||
-    /^(bg|text|border|from|via|to|ring|fill|stroke)-(slate|gray|zinc|neutral|stone|sky|blue|cyan|teal|emerald|green|lime|yellow|amber|orange|red|rose|pink|fuchsia|purple|violet|indigo)-\d+(\/\d+)?$/.test(
-      base,
-    ) ||
-    /^(text|bg|border)-white/.test(base) ||
-    /^bg-black/.test(base) ||
-    /^(font-black|font-extrabold)$/.test(base) ||
-    /\[[^\]]*(#|rgb\(|rgba\(|hsl\(|hsla\(|gradient|white|black)[^\]]*\]/i.test(
-      base,
-    )
-  );
-};
 
 describe("TaxCalendarBody R19 guard", () => {
   afterEach(() => vi.useRealTimers());
@@ -53,32 +42,26 @@ describe("TaxCalendarBody R19 guard", () => {
     for (const element of container.querySelectorAll("*")) {
       const classes = (element.getAttribute("class") ?? "").split(/\s+/);
       for (const token of classes.filter(Boolean)) {
-        expect(forbiddenClass(token), `forbidden class: ${token}`).toBe(false);
+        expect(forbiddenClassToken(token), `forbidden class: ${token}`).toBe(
+          false,
+        );
       }
 
-      const style = (element.getAttribute("style") ?? "").replace(
-        /var\([^)]*\)/g,
-        "",
-      );
-      expect(style, `forbidden inline style: ${style}`).not.toMatch(
-        /gradient|backdrop-filter|rgb\(|rgba\(|#[0-9a-f]{3,8}\b|(?<![\w-])(white|black)(?![\w-])/i,
-      );
+      const style = element.getAttribute("style") ?? "";
+      expect(
+        forbiddenInlineStyle(style),
+        `forbidden inline style: ${style}`,
+      ).toBeNull();
     }
   });
 
-  it("keeps literal colours inside CSS variable fallbacks only", () => {
+  it("keeps colour and depth effects out of the source files", () => {
     for (const file of sourceFiles) {
-      const source = readFileSync(resolve(root, file), "utf8").replace(
-        /var\([^)]*\)/g,
-        "",
-      );
-      expect(source, `literal colour in ${file}`).not.toMatch(
-        /#[0-9a-f]{3,8}\b/i,
-      );
-      // jsdom drops the -webkit- prefixed property, so the render scan cannot see it.
-      expect(source, `backdrop filter in ${file}`).not.toMatch(
-        /backdrop-?filter/i,
-      );
+      const source = readFileSync(resolve(root, file), "utf8");
+      expect(
+        forbiddenSourceColour(source),
+        `literal colour or backdrop effect in ${file}`,
+      ).toBeNull();
     }
   });
 
