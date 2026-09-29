@@ -1,0 +1,240 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+plan_ref:
+  "PR #7635 (agent/air-m5/wa-mirror/attention-alert-client-id-0929, base main): follow-up
+  round closing the fresh gate's PASS-WITH-CONDITIONS review
+  (pull/7635#issuecomment-5885487709), dispatched by the coordinator (team-lead), plus the
+  delta gate's requirement for a real Gear-3 pack (this file) with non-empty receipts and
+  non-empty cross-family dissent."
+lanes:
+  - lane: wa-mirror-attention-alert-client-id-build
+    role: build
+    seat:
+      claude-sonnet-5 (conducting session — implemented the original §4 fix (SELECT
+      minimization + contact_label rewrite), closed C1(a-d)/C2 from the fresh gate's review,
+      scrubbed the real client phone fixture (F2), dispatched both cross-family review seats
+      on the delta, applied every confirmed finding by hand, wrote this pack; no reviewing
+      seat has write access to this tree)
+  - lane: wa-mirror-attention-alert-client-id-gate-7635
+    role: review
+    seat:
+      "claude-opus (fresh gate, PASS-WITH-CONDITIONS @ 0904a9b1e4, did not write or review the
+      original PR — pull/7635#issuecomment-5885487709). Found M1d/M1b/M6/M7 surviving as
+      mutants, the CI gap (C2), and two follow-ups (F1 local-log phone, F2 real-phone fixture)."
+  - lane: wa-mirror-attention-alert-client-id-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (delta round, verdict REWORK on M6 — see dissent below)"
+  - lane: wa-mirror-attention-alert-client-id-council-kimi
+    role: review
+    seat:
+      "kimi-code/k3 (delta round, verdict GO — reviewed a delta snapshot taken BEFORE the
+      M6 hardening commit; see dissent below for the honest caveat on sequencing)"
+
+what_changed: |
+  This round is entirely a response to the fresh gate's PASS-WITH-CONDITIONS review of the
+  original §4 fix (SELECT minimization + contact_label() rewrite, already merged into this
+  branch's earlier commit 0904a9b1e4). Five commits on top of that head:
+
+  1. Scrubbed a REAL client phone number (used as a test/docstring fixture since #3683,
+     identified by the fresh gate via a read-only count-only check on Pro) from
+     scripts/wa-mirror-attention-telegram.py's docstring, scripts/tests/
+     test_wa_attention_pii_envelope.py (9 occurrences) and apps/wa-mirror/tests/
+     lid-resolver.test.ts (3 occurrences) — replaced with a synthetic 13-digit number
+     (6280000000001) everywhere, including its masked form. Repo-wide grep for the full
+     number and its last-8-digit tail confirms 0 matches at HEAD.
+
+  2. C1(a) (kills M1d): guilt fixtures now carry the fixture name under crm_name, full_name,
+     name, display_name AND push_name (helper `_named_item()`), matching the gate's exact
+     five-key list. Split into two commits — the first covered four keys, a re-read of the
+     gate's own condition text caught the missing push_name and added it in a follow-up
+     commit.
+
+  3. C1(b) (kills M1b): new test pins fetch_high_unresolved()'s SQL text directly via
+     inspect.getsource, independent of contact_label()'s runtime behavior.
+
+  4. C1(c) (kills M6): new digest test for a new-lead item asserts no 5+ consecutive raw
+     phone digits reach the message. The cross-family codex review (below) found this test
+     checked ABSENCE of a leak but never PRESENCE of the masked form, so a mutant that
+     silently dropped the whole contact line would have passed unnoticed — fixed in a
+     follow-up commit with an exact-count assertion on wa.mask_phone(phone).
+
+  5. C1(d) (kills M7): fixed the module header's OSINT-safe allowed-fields list (already
+     covered by an existing test) AND a SECOND, independently-stale "display name" docstring
+     in _compose_realtime_alert() that the gate also named (:386) but that had no dedicated
+     test. Found via this pack's own final mutation-verification pass: reverting that
+     specific docstring left the corpus green. Added a direct guard on
+     inspect.getdoc(wa._compose_realtime_alert) in a follow-up commit.
+
+  6. C2: added .github/workflows/check-wa-attention-pii.yml (pull_request, installs
+     asyncpg==0.31.0 so the tests actually run instead of import-skipping), registered in
+     main-push-failure-watch.yml per scripts/check_watcher_coverage.py.
+
+  F1 (classifier.py's local-log raw phone) is correctly OUT OF SCOPE for this delta — an
+  open follow-up needing an owner ruling, not fixed here, per the coordinator's explicit
+  instruction.
+
+proof: |
+  Full corpus, clean venv (asyncpg 0.31.0, matching the CI job's pin):
+    python3 -m pytest scripts/tests/test_wa_attention_pii_envelope.py
+      scripts/tests/test_wa_attention_episode_tier.py -q
+    -> 28 passed (was 27 before the self-discovered docstring-guard commit)
+
+  ruff check scripts/wa-mirror-attention-telegram.py
+    scripts/tests/test_wa_attention_pii_envelope.py -> All checks passed!
+
+  watcher-coverage self-conformance:
+    python3 scripts/check_watcher_coverage.py -> exit 0, "all 125 live workflow(s) covered"
+    (one pre-existing unrelated warning about a stale "AI PR review (advisory)" entry,
+    predates this PR)
+
+  Repo-wide grep for the scrubbed real phone number (full number, then its last-8-digit
+  tail, `git grep -c ... ; exit 1 == no matches`):
+    both return exit 1 — 0 matches at HEAD.
+
+  MUTATION VERIFICATION, 7 rounds at the FINAL head (c9a2cff8af), each isolated on a `cp`
+  backup and restored byte-identical (`diff -q` confirmed after every restore):
+    1. M1b: SELECT re-adds `c.full_name AS crm_name` -> 1 guilt test red
+    2. M1d: contact_label() reads `display_name` instead of `crm_id` -> 4 tests red
+    3. M1d-push_name: contact_label() reads `push_name` -> 3 tests red
+    4. M6: mask_phone() widened from suffix(4) to suffix(6) -> 1 guilt test red
+    5. M6b (codex's finding): digest silently drops the label for a new lead -> 1 test red
+       (only AFTER the presence-assertion fix; before that fix this mutant survived, which
+       is exactly what the codex council round caught)
+    6. M7: module header's allowed-fields list reverts to "contact display_name + phone" ->
+       1 guilt test red
+    7. M7b (self-discovered): `_compose_realtime_alert`'s OWN docstring reverts to "display
+       name, masked phone" -> 0 tests red BEFORE the follow-up guard commit (a genuine gap
+       this pack's own verification pass found), 1 test red AFTER it
+
+  Cross-family council, both dispatched on the delta diff (0904a9b1e4..HEAD, the fresh
+  gate's own review text, and the original spec — no repo dump, no PII; the delta diff was
+  redacted of the real phone number's digits before leaving the machine, since that range
+  includes the scrub commit and the raw diff would otherwise show it on removed lines):
+    codex-gpt-5.6-sol -> REWORK (M6 gap, confirmed and fixed — see dissent)
+    kimi-code/k3      -> GO (see dissent for the honest sequencing caveat)
+
+dissent:
+  - seat: claude-opus (gate-7635)
+    objection: "M1d survives: contact_label() reads item.get('full_name') after the id; guilt fixtures only set crm_name."
+    status: CONFIRMED
+    resolution: "_named_item() helper now carries the fixture name under crm_name, full_name, name, display_name AND push_name (the gate's own five-key list, confirmed complete only after a second read-through of the condition text — the first commit covered four of five). Mutation-verified: a mutant reading display_name OR push_name each turns 3-4 tests red."
+  - seat: claude-opus (gate-7635)
+    objection: "M1b survives: the SELECT alone re-adding c.full_name is undetected (data minimization not enforced independently of contact_label's runtime behavior)."
+    status: CONFIRMED
+    resolution: "New test_the_select_never_fetches_full_name pins fetch_high_unresolved()'s SQL text via inspect.getsource, scoped to that function so it cannot collide with the module docstring's own prose mention of full_name. Mutation-verified: re-adding the column turns exactly this test red."
+  - seat: claude-opus (gate-7635)
+    objection: "M6 survives: the digest renders a raw phone for a new lead via a bare string-concat path the guilt tests did not exercise."
+    status: CONFIRMED
+    resolution: "New end-to-end digest test for a new-lead item, checking every 5-digit window of the raw phone against the composed message (stronger than the literal condition — catches partial leaks too, not just the full number). Mutation-verified against the original defect shape AND against widening mask_phone()'s reveal."
+  - seat: claude-opus (gate-7635)
+    objection: "M7 survives: the module docstring's allowed-fields list can revert to naming display_name, and a second stale docstring (_compose_realtime_alert, line ~386) still says 'display name' after the fix."
+    status: CONFIRMED
+    resolution: "Fixed both docstring sites. The module header's allowed-fields list is guarded by a scoped bullet-block test (avoids false-positive on the correct 'full_name NEVER sent' sentence elsewhere). The SECOND site had no dedicated guard even after being fixed — self-discovered during this pack's own mutation pass, closed with a direct inspect.getdoc() assertion in a follow-up commit."
+  - seat: claude-opus (gate-7635)
+    objection: "No CI job runs test_wa_attention_*.py on pull_request — the whole guard exists but nothing arms it (the nightly scripts/tests/ sweep is continue-on-error and schedule-only)."
+    status: CONFIRMED
+    resolution: ".github/workflows/check-wa-attention-pii.yml added, pull_request-triggered, path-scoped, installs pytest+asyncpg==0.31.0 (the tests skip rather than fail without asyncpg, so installing it is necessary for the job to mean anything), runs both test files. Registered in main-push-failure-watch.yml's workflows: list; scripts/check_watcher_coverage.py passes (exit 0)."
+  - seat: claude-opus (gate-7635)
+    objection: "F1 (follow-up, not a condition): scripts/wa-mirror-attention-classifier.py writes the raw phone to a local log file (~/logs/wa-mirror-attention.jsonl). §4 lists 'log' among covered outputs; the original PR's census put this under 'no change needed' without a ruling on local-sovereign logs specifically."
+    status: PLAUSIBLE
+    resolution: "Correctly NOT addressed by this delta, per the coordinator's explicit instruction (F1 is an open follow-up requiring an owner ruling on the local-sovereignty question, not a condition of this round). The objection is credible but deliberately left unresolved — neither fixed (CONFIRMED-and-closed) nor found to be a non-issue (RETRACTED); no action taken here, flagged so it is not silently dropped from the record."
+  - seat: claude-opus (gate-7635)
+    objection: "F2 (follow-up turned into a hard requirement by the coordinator): the 13-digit phone number used by test/docstring fixtures since #3683 needs confirmation it is synthetic or company-owned; if it belongs to a real client, replace it."
+    status: CONFIRMED
+    resolution: "Confirmed real (matches existing CRM clients and mirror rows on Pro, per the coordinator's read-only count-only check). Scrubbed from all three files it appeared in — scripts/wa-mirror-attention-telegram.py's docstring, scripts/tests/test_wa_attention_pii_envelope.py (9 occurrences), apps/wa-mirror/tests/lid-resolver.test.ts (3 occurrences) — including its masked form, replaced with a synthetic 6280000000001. Repo-wide grep for the full number and its last-8-digit tail: 0 matches at HEAD. The number remains in git history; owner decision on history rewrite is explicitly out of scope for this PR."
+  - seat: codex-gpt-5.6-sol
+    objection: "M6 — PARTIAL. test_the_digest_never_leaks_a_5plus_digit_run_of_the_phone only asserts the ABSENCE of a raw-phone fragment; it never asserts wa.mask_phone(phone) is actually PRESENT, so a mutant that silently drops the whole contact line from a new-lead digest entry would still pass — which is not what the gate's 'renders masked only' condition asked for."
+    status: CONFIRMED
+    resolution: "Added an exact-count assertion (text.count(masked) == 1) to the same test. Mutation-verified: a mutant that blanks the label for a crm_id-less digest item now turns the test red where it previously did not."
+  - seat: kimi-code/k3
+    objection: "M6 — CLOSED (no gap found)."
+    status: RETRACTED
+    resolution: "Kimi's delta round used the SAME prompt file as codex's, which was NOT regenerated after the codex-confirmed M6 fix landed — an honest sequencing gap in this session's process, not a defect in kimi's reasoning on the snapshot it actually saw. Kimi reviewed the delta BEFORE the presence-assertion commit and, on that snapshot, missed the same absence-only gap codex caught. The team-lead's instruction was to try kimi ONCE; a second kimi round against the corrected delta was not run, and the finding is retracted here rather than re-dispatched, since the fix itself was independently mutation-verified by the build lane (round 5 above: the digest-drops-label mutant turns the test red on the FINAL head)."
+
+receipts:
+  - claim: "Full corpus, clean venv, final head."
+    cmd: "python3 -m pytest scripts/tests/test_wa_attention_pii_envelope.py scripts/tests/test_wa_attention_episode_tier.py -q"
+    result: "28 passed"
+    exit: 0
+    ts: "2026-09-29T07:31:30Z"
+    seat: claude-sonnet-5
+  - claim: "ruff clean on both touched Python files."
+    cmd: "ruff check scripts/wa-mirror-attention-telegram.py scripts/tests/test_wa_attention_pii_envelope.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-29T07:31:45Z"
+    seat: claude-sonnet-5
+  - claim: "watcher-coverage self-conformance for the new check-wa-attention-pii.yml registration."
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "all 125 live workflow(s) covered by main-push-failure-watch.yml (one pre-existing, unrelated stale-entry warning)"
+    exit: 0
+    ts: "2026-09-29T07:16:00Z"
+    seat: claude-sonnet-5
+  - claim: "Repo-wide grep for the scrubbed real phone number and its last-8-digit tail — 0 matches at HEAD."
+    cmd: "git grep -c '<redacted-full-number>' -- . ':!.git'  &&  git grep -c '<redacted-last8>' -- . ':!.git'"
+    result: "both exit 1 (no matches found)"
+    exit: 1
+    ts: "2026-09-29T07:31:55Z"
+    seat: claude-sonnet-5
+  - claim: "7 mutation rounds at the final head, each isolated on a cp backup and restored byte-identical."
+    cmd: "python3 -c '...' string-replace mutations on a copy, per-round targeted pytest, then cp restore + diff -q"
+    result: "rounds 1-4 and 6: red as expected on the first pass. Round 5 (codex's finding) and round 7 (self-discovered) each red ONLY after their respective follow-up commit — both confirmed to have been genuine gaps, not false negatives in the mutation harness."
+    exit: 0
+    ts: "2026-09-29T07:31:00Z"
+    seat: claude-sonnet-5
+  - claim: "codex-gpt-5.6-sol delta council dispatch, env-scrubbed (env -i HOME/PATH-only), --sandbox read-only, model_reasoning_effort=high, real phone number redacted from the diff before dispatch."
+    cmd: 'env -i HOME="$HOME" PATH="$PATH" codex exec -m gpt-5.6-sol --sandbox read-only -c model_reasoning_effort=high --output-last-message <file> - < council_prompt.txt'
+    result: "M1d/M1b/M7/C2/F2 CLOSED, M6 PARTIAL (masked-phone presence not asserted). VERDICT: REWORK. No new production defect found; F1 correctly noted as out of scope."
+    exit: 0
+    ts: "2026-09-29T07:26:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi-code/k3 liveness probe before the full dispatch."
+    cmd: "kimi_client.probe(timeout=60)"
+    result: "True (PONG)"
+    exit: 0
+    ts: "2026-09-29T07:29:00Z"
+    seat: claude-sonnet-5
+  - claim: "kimi-code/k3 delta council dispatch, no-tools agent-file + credential-scrubbed env, empty cwd, same redacted prompt as codex's (pre-M6-fix snapshot — see dissent)."
+    cmd: 'kimi_client.run(prompt, model="kimi-code/k3", cwd="<empty tmp dir>")'
+    result: "M1d/M1b/M6/M7/C2/F2 all CLOSED. VERDICT: GO. (M6 finding retracted above — snapshot sequencing, not re-dispatched per the try-once instruction.)"
+    exit: 0
+    ts: "2026-09-29T07:29:30Z"
+    seat: kimi-code/k3
+
+pii_scan: clean
+pii_scan_note:
+  "The diff touches no client data at runtime — it removes a client-data field from a SQL
+  SELECT and hardens tests around that removal. The one PII item in this whole round was the
+  real phone number found embedded in test/docstring FIXTURES (not live client data), which
+  this delta scrubs. The council prompts sent to codex and kimi carried the spec, the gate's
+  own prose findings, and the delta diff — with that real number's digits (and its masked
+  form) replaced by literal placeholder tokens BEFORE the prompt left the machine, since the
+  reviewed range (0904a9b1e4..HEAD) includes the scrub commit itself and its raw diff would
+  otherwise show the real digits on removed lines. No repo dump, no client identifiers, no
+  secrets, no PII reached either external seat."
+
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 2
+
+appetite_exceeded: |
+  Both ceilings held: 1.5 wall-clock hours, 2 adversarial rounds (one codex delta round, one
+  kimi delta round, run in the same session rather than sequential full re-reviews).
+
+diff:
+  files: 8
+  insertions: 675
+  deletions: 29
+  net_lines: |
+    8 files, +675/-29 against the merge-base with main (the whole PR diff). Three of those
+    eight files are this evidence pack itself (brief.yml, pack.yml, council-journal.jsonl),
+    which the Builder Contract's ~400-net-line guideline is not meant to gate. Of the other
+    five: the PII-scrub touches are mechanical (a real number replaced by a synthetic one,
+    repeated across fixtures); the CI workflow is new but small, plus a one-line watch-list
+    registration; the real reviewable content is the hardening of
+    scripts/tests/test_wa_attention_pii_envelope.py (closing C1(a-d), the codex M6 finding,
+    and the self-discovered second-docstring gap) plus the label change and the two
+    docstring fixes in the alerter itself. Accepted as one PR rather than split further because every
+    piece is the SAME concern (harden the guard the fresh gate reviewed) and splitting it
+    would recreate exactly the review-round compounding the Builder Contract's "a fix-of-a-fix
+    stops at depth 1" preference exists to avoid.
