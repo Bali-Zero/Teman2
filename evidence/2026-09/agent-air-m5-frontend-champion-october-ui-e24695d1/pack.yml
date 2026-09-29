@@ -112,6 +112,34 @@ dissent:
       appearing (2× "Ambil hadiah", 1× "Bawa poin ke Oktober") — verified
       this session by reading the current test body and by the full
       vitest run (104 passed).
+  - seat: claude-opus-5-5 xhigh (fresh final on-disk gate, outside the chain)
+    status: PLAUSIBLE
+    objection: >-
+      N1, non-blocking · the PositionScale empty-tiers test cannot actually
+      fail: `Math.max(...[])` already yields `-Infinity` on unpatched code,
+      and the component's own clamping already turns that into a 0-width
+      bar on main — the test asserts a true fact but cannot distinguish the
+      guarded code from the unguarded one.
+  - seat: claude-opus-5-5 xhigh (fresh final on-disk gate, outside the chain)
+    status: PLAUSIBLE
+    objection: >-
+      N2, non-blocking · Misi Asya's progress-below-zero case is clamped in
+      code (Math.min(100, Math.max(0, ...))) but has no dedicated test at
+      the lower bound (only the upper-bound 100%-cap case is tested); the
+      progressbar's aria-label is present in the markup but no test asserts
+      it.
+  - seat: claude-opus-5-5 xhigh (fresh final on-disk gate, outside the chain)
+    status: PLAUSIBLE
+    objection: >-
+      N3, non-blocking · MyPositionCard/RankingRow hardcode the document-
+      bonus (3), unanswered-request (-2) and unreviewed-document (-1)
+      point multipliers as literals, while RulesDrawer reads the same
+      values from `data.scoring.*` with fallback defaults — a future
+      scoring-constant change server-side would silently desync the two
+      surfaces. Verified this session: `3 * (me.document_bonuses ?? 0)` /
+      `3 * (entry.document_bonuses ?? 0)` are literal at
+      PortalChallengeWidget.tsx:385/786, vs. `scoring?.first_document ?? 3`
+      etc. at lines 1041-1079.
 lanes:
   - lane: build
     role: build
@@ -130,6 +158,29 @@ lanes:
       Independent adversarial review of the Round 2 rendering logic,
       dispatched as codex-fe-review; verdict FIX-FIRST with 3 major + 6
       minor findings. All 9 cured on this branch (see dissent).
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5-5 xhigh (fresh, outside the contribution chain)
+    note: >-
+      Fresh final on-disk gate against gated HEAD 4842c7ffe0. Verdict PASS,
+      0 blocking defects, 3 non-blocking notices (see dissent N1-N3). Gate's
+      own reported scope: 6 files OK; vitest dashboard suite (7 test files,
+      104 tests) passed, celebration suite (1 test file, 10 tests) passed,
+      tsc exit 0, eslint 0 errors; usePortalChallenge.ts
+      diff 0 lines; Codex 9/9 cures confirmed by grep; hygiene 0 new hex
+      colors/0 sub-11px classes/0 red, r19 no-red law green; test fixture
+      identities staff-only (no client PII); pack lint clean;
+      page.tsx:561 renders the widget; window copy computed from the
+      payload (formatWindowRange); blob-compare confirms HEAD differs from
+      main on the 3 changed sources. Independently re-verified this
+      session (Sonnet 5, same HEAD): vitest 7/104 and celebration 10/10
+      pass, tsc exit 0, eslint exit 0 with 0 errors, usePortalChallenge.ts
+      0-line diff confirmed, 0 new hex/0 sub-11px confirmed via grep on the
+      branch's own diff, r19.test.tsx present in the passing suite,
+      fixture identities are `ari@balizero.com`/`fixture` only,
+      page.tsx:561 renders `<PortalChallengeWidget identity={authIdentity} />`,
+      and the N3 hardcoded-multiplier-vs-scoring.* contrast confirmed by
+      direct read (see dissent N3).
 receipts:
   - claim: >-
       Dashboard vitest suite: 7 test files, 104 tests pass (Round 1
@@ -203,4 +254,41 @@ receipts:
       | grep 'it('
     exit: 0
     ts: "2026-09-29T05:42:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Independent re-verification at gated HEAD 4842c7ffe0 (post final
+      gate): vitest dashboard suite 7 files/104 passed, celebration suite
+      10/10 passed, tsc --noEmit exit 0, eslint exit 0 with 0
+      errors/warnings on the 3 changed non-test files.
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      "src/app/(workspace)/dashboard"; ../../node_modules/.bin/vitest run
+      src/components/workspace/PortalChampionCelebration.test.tsx;
+      ../../node_modules/.bin/tsc --noEmit -p .; ../../node_modules/.bin/eslint
+      "src/app/(workspace)/dashboard/ChampionArena.tsx"
+      "src/app/(workspace)/dashboard/PortalChallengeWidget.tsx"
+      "src/lib/api/dashboard/dashboard.api.ts"
+    exit: 0
+    ts: "2026-09-29T06:07:43Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      usePortalChallenge.ts carries a 0-line diff against origin/main (not
+      touched by this branch); 0 new hex-color literals and 0 sub-11px text
+      classes were added by this branch's diff to ChampionArena.tsx/
+      PortalChallengeWidget.tsx; r19.test.tsx exists alongside the widget
+      and is part of the passing 7-file dashboard suite; test-fixture
+      identities are staff-only (`ari@balizero.com`, literal `"fixture"`),
+      no client PII; page.tsx:561 renders
+      `<PortalChallengeWidget identity={authIdentity} />`.
+    cmd: >-
+      git diff --stat origin/main...HEAD --
+      "apps/mouth/src/app/(workspace)/dashboard/_lib/usePortalChallenge.ts";
+      grep '^+' <diff of ChampionArena.tsx+PortalChallengeWidget.tsx> | grep
+      -c '#[0-9a-fA-F]\{3,6\}'; grep '^+' <same diff> | grep -cE
+      'text-\[(6|7|8|9|10)px\]'; ls
+      "apps/mouth/src/app/(workspace)/dashboard/" | grep r19; grep -n
+      'identity="' PortalChallengeWidget.test.tsx; sed -n '558,562p'
+      page.tsx
+    exit: 0
+    ts: "2026-09-29T06:08:30Z"
     seat: claude-sonnet-5
