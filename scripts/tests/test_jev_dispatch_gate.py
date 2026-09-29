@@ -432,7 +432,9 @@ def _venv_test_repo(tmp: str) -> tuple[pathlib.Path, pathlib.Path, pathlib.Path]
 def test_reexec_guilt_execs_under_override_with_hook_path_as_arg1():
     with tempfile.TemporaryDirectory() as tmp:
         script = _fake_venv_script(pathlib.Path(tmp))
-        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(script))
+        # C1: the override is a test seam and only counts with FAKE_ANSWERS also set.
+        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(script),
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()))
         p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
         assert p.returncode == 0
         assert "REEXEC_MARKER reexec_env=SET" in p.stdout
@@ -443,6 +445,61 @@ def test_reexec_innocence_nonexistent_venv_override_fails_open():
     env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON="/nonexistent/python")
     p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
     assert p.returncode == 0 and p.stdout == "" and p.stderr == ""
+
+
+def test_reexec_c1_guilt_venv_override_without_fake_answers_is_ignored():
+    """PWC-7638 C1: JEV_DISPATCH_GATE_VENV_PYTHON pointed at the CURRENT
+    interpreter (the mise base python — same shape the finding names: its
+    sys.prefix equals override.parent.parent, so an honoured override would
+    make _running_under_pinned_venv() true for a bare, unpinned python) must
+    NOT be honoured when JEV_DISPATCH_GATE_FAKE_ANSWERS is unset — a real
+    Agent dispatch must fall to no_pinned_interpreter, zero vendor calls,
+    rather than mislabel the receipt "venv" with no pinning ever verified."""
+    with tempfile.TemporaryDirectory() as tmp:
+        trap = pathlib.Path(tmp)  # deliberately NOT a git repo
+        hook_dir = trap / "infra" / "claude-hooks"
+        hook_dir.mkdir(parents=True)
+        hook_copy = hook_dir / "jev_dispatch_gate.py"
+        shutil.copy(HOOK, hook_copy)
+        state_dir = trap / "state"
+        env = _no_override_env(GIT_CEILING_DIRECTORIES=str(trap.parent),
+                               JEV_DISPATCH_GATE_VENV_PYTHON=sys.executable,
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        env.pop("JEV_DISPATCH_GATE_FAKE_ANSWERS", None)
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(hook_copy)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env, cwd=str(trap))
+        assert p.returncode == 0 and p.stdout == "" and p.stderr == ""
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert len(rows) == 1
+        assert rows[0]["action"] == "skip" and rows[0]["skip"] == "no_pinned_interpreter"
+        assert "interpreter" not in rows[0]
+
+
+def test_reexec_c1_innocence_venv_override_with_fake_answers_still_honoured():
+    """Same shape as the C1 guilt test above, WITH JEV_DISPATCH_GATE_FAKE_ANSWERS
+    set: the override still works as before (see also
+    test_reexec_guilt_execs_under_override_with_hook_path_as_arg1, which
+    proves the exec itself still happens under the same double-gate)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        trap = pathlib.Path(tmp)  # deliberately NOT a git repo
+        hook_dir = trap / "infra" / "claude-hooks"
+        hook_dir.mkdir(parents=True)
+        hook_copy = hook_dir / "jev_dispatch_gate.py"
+        shutil.copy(HOOK, hook_copy)
+        state_dir = trap / "state"
+        env = _no_override_env(GIT_CEILING_DIRECTORIES=str(trap.parent),
+                               JEV_DISPATCH_GATE_VENV_PYTHON=sys.executable,
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()),
+                               JEV_DISPATCH_GATE_STATE=str(state_dir), JEV_DISPATCH_GATE="enforce")
+        payload = {"tool_name": "Agent", "tool_input": OPUS}
+        p = subprocess.run([sys.executable, str(hook_copy)], input=json.dumps(payload),
+                           capture_output=True, text=True, env=env, cwd=str(trap))
+        assert p.returncode == 0
+        rows = [json.loads(x) for x in (state_dir / "receipts.jsonl").read_text().splitlines()]
+        assert len(rows) == 1
+        assert rows[0]["interpreter"] == "venv"
+        assert rows[0]["jev_status"] == "fake"  # no live vendor call
 
 
 def test_reexec_a_git_repo_pinned_venv_happy_path_stdin_survives_exec():
@@ -561,7 +618,9 @@ def test_reexec_d2_group_writable_candidate_accepted_reexec_happens():
     with tempfile.TemporaryDirectory() as tmp:
         script = _fake_venv_script(pathlib.Path(tmp))
         script.chmod(0o775)  # group-writable, NOT world-writable -> accepted (mise-normal mode)
-        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(script))
+        # C1: the override is a test seam and only counts with FAKE_ANSWERS also set.
+        env = _no_override_env(JEV_DISPATCH_GATE_VENV_PYTHON=str(script),
+                               JEV_DISPATCH_GATE_FAKE_ANSWERS=json.dumps(_ans()))
         p = subprocess.run([sys.executable, str(HOOK)], input="{}", capture_output=True, text=True, env=env)
         assert p.returncode == 0
         assert "REEXEC_MARKER reexec_env=SET" in p.stdout
