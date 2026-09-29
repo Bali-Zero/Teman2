@@ -928,11 +928,11 @@ def cmd_run(a):
                     st["seal_first"] = {"seal": seal, "at": now(), "why": why}
                     store.journal({"event": "seal", "seal": seal, "why": why, "at": now()})
                     store.save(st)
-                    print(f"seal={seal}  # {why}: record this outside the run dir; `status --seal {seal[:12]}…` re-derives it")
+                    print(f"seal={seal}  # {why}: record this outside the run dir; `status --seal {seal[:12]}…` re-derives it", flush=True)   # before candidate code runs: a kill -9 must not eat it in a pipe buffer
                     return
                 if exp.get("mode") == "container" and first and first.get("seal") == seal:
                     store.journal({"event": "seal_verified", "seal": seal, "why": why, "first_at": first.get("at"), "at": now()})
-                    print(f"seal={seal}  # {why}: UNCHANGED since {first.get('at')} — candidate code ran only in containers, nothing new minted")
+                    print(f"seal={seal}  # {why}: UNCHANGED since {first.get('at')} — candidate code ran only in containers, nothing new minted", flush=True)
                     return
                 why_not = ("candidate code ran UNCONTAINED in this run dir, so state/receipts may be its work" if exp.get("mode") != "container"
                            else "the trusted evidence no longer re-derives the seal minted before candidate code ran")
@@ -940,7 +940,7 @@ def cmd_run(a):
                 store.journal({"event": "seal_refused", "why": why, "reason": why_not, "exposure": exp, "at": now()})
                 store.save(st)
                 print(f"seal REFUSED  # {why}: {why_not} (exposed {exp.get('at')}); the only valid seal is the one printed before that — "
-                      "check it with `status --seal <it>`, or plan a fresh run dir")
+                      "check it with `status --seal <it>`, or plan a fresh run dir", flush=True)
 
             for name in names:
                 spec, c = plan["checks"][name], st["checks"][name]

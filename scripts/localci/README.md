@@ -1,4 +1,4 @@
-# localci — local CI runner and inert release stub (v0.2.2)
+# localci — local CI runner and inert release stub (v0.3.0)
 
 A durable coordinator that runs checks against a frozen candidate and refuses to call anything green on
 missing evidence. It is a **non-required, single-host** gate: it does not replace GitHub branch protection.
@@ -7,7 +7,7 @@ missing evidence. It is a **non-required, single-host** gate: it does not replac
 
 | command | what it does |
 |---|---|
-| `plan --run-dir D --worktree W --base B [--builder-seat S] [--builder-seats a,b] [--contexts-file Y] [--max-attempts 2] [--deadline-s 3600] [--python P]` | freezes candidate/tree/base, extracts the trusted classifier from BASE, builds the check list, records the env hash |
+| `plan --run-dir D --worktree W --base B [--builder-seat S] [--builder-seats a,b] [--contexts-file Y] [--max-attempts 2] [--deadline-s 3600] [--python P] [--isolation container\|none] [--isolation-image I]` | freezes candidate/tree/base, extracts the trusted classifier from BASE, builds the check list, records the env hash |
 | `run --run-dir D [--only NAME] [--timeout S] [--deadline-s S]` | executes QUEUED checks; re-queues INTERRUPTED ones inside the retry budget |
 | `review --run-dir D --file review.json` | imports an independent review (sha/tree/base + `reviewer_seat` != builder, `verdict` exactly `PASS`) |
 | `status --run-dir D [--quiet] [--strict]` | recomputes freshness + overall, writes `status.json/html` |
@@ -19,17 +19,26 @@ Trusted checks (classifier, `cmd`, `trusted_pytest`) run `python -I` (ignores us
 `plan.json` is re-hashed against its `plan_hash` on every `run`/`review`/`status`; an edited plan aborts. A `cmd` check with a
 `trusted_pythonpath` carries the sha256 map of that directory and refuses to run when a file was rewritten, added or removed.
 
-**The boundary that a sandbox would close and this runner does not:** candidate code executes as the operator's own OS user — in
-`pytest` checks (the candidate's tests) AND in `trusted_pytest` checks (the TEST comes from BASE, but it exercises the candidate's
-implementation: the ban test `exec_module()`s the candidate's `scripts/check_ban_predicates.py`). Such code can rewrite `state.json`,
-re-hash receipts, forge its own junit, or write into the Pysa home (a poisoned baseline or a replaced `venv/bin/pyre` persists across
-runs and PRs — the home is not sha-pinned). What the runner guarantees is narrower and stated exactly: (1) the only kind no candidate
-code can touch is `cmd` on a sha-mapped BASE dir (the Pysa judge, the classifier corpus) and those run FIRST; (2) at that boundary and
-at the end the runner prints `seal=` (sha256 over plan + the `cmd` and plan-time `record` checks' state and receipts) — the operator records it OUTSIDE the
-run dir (terminal, journal, PR comment) — and `status --seal <≥12 chars>` re-derives it and goes BLOCKED on a mismatch, so a post-run
-rewrite of a `cmd` verdict is detectable; (3) `trusted_pytest` and `pytest` verdicts are the candidate's to influence and the seal
-does not vouch for them; the seal is meaningful for one uninterrupted `run` only (a resumed run re-enters after candidate code has
-already executed). For third-party candidates the cure is a separate user or container — the open row in `PENDING-ARMS.md` (this PR).
+**Where candidate code runs (v0.3.0).** Candidate code executes in `pytest` checks (the candidate's tests) AND in `trusted_pytest`
+checks (the TEST comes from BASE, but it exercises the candidate's implementation: the ban test `exec_module()`s the candidate's
+`scripts/check_ban_predicates.py`). With `--isolation container` (the default) both run in a fresh container of the image pinned
+by ID at plan time (`scripts/localci/candidate.Dockerfile`, built once: `docker build -t localci-candidate:1 - < scripts/localci/candidate.Dockerfile`):
+no bind mount, `--network none`, `--cap-drop ALL`, `no-new-privileges`, uid 65534, no host environment. The candidate tree goes in as
+a tar stream built from the OBJECT STORE (never the checkout, so ignored files such as `.env` or a venv stay out; never `git archive`,
+which honours the candidate's `export-ignore`); only `/out/junit.xml` comes out (one regular file, size-capped). The host run dir,
+receipts, credentials and the Pysa home do not exist inside. Containment is not trust: the junit is still written by a candidate
+process, so a `pytest`/`trusted_pytest` verdict remains the candidate's to influence and the seal does not vouch for it. When docker
+or the image is missing, candidate checks plan as BLOCKED — never silently uncontained. `--isolation none` is the explicit, recorded
+old behaviour (operator's own OS user, advisory only); a plan frozen before v0.3.0 carries no isolation field and reads as `none`.
+
+**The seal (C4).** Trusted `cmd` checks (BASE judge/classifier on a sha-mapped dir) run first; before the first candidate check the
+runner prints `seal=` (sha256 over plan + the `cmd` and plan-time `record` checks' state and receipts) and writes the exposure marker.
+Record the seal OUTSIDE the run dir; `status --seal <≥12 chars>` re-derives it and goes BLOCKED on a mismatch. After candidate code has
+run in a run dir the runner never mints another seal: a resumed or repeated run re-derives it and prints it as UNCHANGED only when every
+candidate check ran contained and the value is identical, otherwise prints `seal REFUSED`; a trusted check is not re-run there
+(QUEUED/INTERRUPTED ones become BLOCKED — plan a fresh run dir). Runs where no candidate code ran keep minting as before. Exposure is
+read from the marker AND from any candidate check's attempts/history/receipt; under `--isolation none` all of that is same-user state,
+so there the only evidence is the seal the operator recorded before exposure.
 
 `--extra-check NAME=JSON` adds a check the operator wants beside the planned ones. It is refused when NAME starts with a reserved
 prefix (`policy.`, `tests.`, `review.`, `trusted.`) or is already planned, and when the spec is not an executable kind (`cmd`,
@@ -43,9 +52,21 @@ CodeQL CLI cannot run on this repo (public, no OSI licence), so the python secur
 stack-trace / path / SSRF / redirect, 135 s, 1.6 GB). The check is planned whenever the diff touches ANY non-test file under
 `apps/backend-rag/backend/` (a `.gitattributes`, a `.pyi` or a config changes what Pysa sees); otherwise NOT_APPLICABLE. It is BLOCKED (never silently green) when the judge or
 its models are missing at the BASE ref — they are copied from BASE like the classifier, so a candidate cannot weaken the
-models that judge it — or when the Pysa home is not set up:
+models that judge it — or when the Pysa home is not a measured identity:
 
-    python scripts/localci/pysa_check.py setup --home ~/.nuzantara-pilots/local-ci/pysa-home --backend-venv apps/backend-rag/.venv
+    python scripts/localci/pysa_check.py setup --home ~/.nuzantara-pilots/local-ci/pysa-home --backend-venv apps/backend-rag/.venv [--rebuild]
+
+**Measured home (C2).** `setup` installs the pinned pyre-check and stubs, checks the installed identity (`uv pip freeze`, stubs HEAD and
+clean tree), then writes `manifest.json`: sha256 of every file under `venv/` (pyre, pyrefly, typeshed), `pyre-check/stubs/taint/` and
+every linked `site/` package, plus the venv's base interpreter and its stdlib. It refuses to reuse an existing home that has no manifest
+or no longer matches it (the old setup silently reused whatever venv/stubs it found); `--rebuild` wipes venv, stubs, site view and
+baselines and reinstalls. `plan` runs the BASE judge's `verify-home` and pins the digest into the plan; `judge --expect-home-digest`
+re-measures before any scan — a replaced binary, stub, typeshed file or site package, an added file, or a consistently re-measured
+different home is rc 2 (ERROR), never a verdict. Pyre runs with `PYTHONPYCACHEPREFIX` in the run's scratch, so no bytecode cached in
+the home is loaded. A BASE baseline is reused only when its name carries this judge+models id AND this home digest and its bytes match
+the sha256 the judge recorded in `baselines/index.json` when it wrote it; a planted or edited baseline is rc 2. The anchor is that
+no candidate code executes on the host any more (C1): the manifest and index detect legacy poisoning, replacement and in-run tamper,
+not a same-user attacker who rewrites both a file and its record between runs.
 
 Verdict = "no NEW flow versus BASE": each flow is keyed by family, source callable, sink callable and the sink
 statement text (a multiset: a second identical sink statement is a second flow), so line shifts do not count; both trees are
