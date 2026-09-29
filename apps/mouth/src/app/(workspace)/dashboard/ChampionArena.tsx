@@ -15,9 +15,52 @@ import { FOCUS, SERIF } from "./r19";
 const HAIRLINE_ON_INK =
   "border-[color-mix(in_srgb,var(--bz-surface)_15%,transparent)]";
 
-/** A 0-point entry has no honest rank yet — the ranking shows "–" too. */
-function rankLabel(entry: PortalChallengeEntry): string {
-  return entry.activations > 0 ? `#${entry.rank}` : "–";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The score this widget races on: R2 races on `points`, R1 on `activations`. */
+export function scoreOf(entry: PortalChallengeEntry, round2: boolean): number {
+  return round2 ? (entry.points ?? 0) : entry.activations;
+}
+
+/**
+ * A 0-activation entry has no honest rank in R1 — the ranking shows "–" too.
+ * R2 generalises the rule: a 0-point entry with at least one R2 event (e.g.
+ * +3 then -3) still ranks, since it competed; only a truly untouched member
+ * shows "–".
+ */
+export function isRanked(
+  entry: PortalChallengeEntry,
+  round2: boolean,
+): boolean {
+  return round2
+    ? scoreOf(entry, round2) !== 0 || Boolean(entry.last_event_at)
+    : entry.activations > 0;
+}
+
+function rankLabel(entry: PortalChallengeEntry, round2: boolean): string {
+  return isRanked(entry, round2) ? `#${entry.rank}` : "–";
+}
+
+/**
+ * Round 2's date range, e.g. "30 Sep – 29 Okt 2026". `window_end` is
+ * EXCLUSIVE (the contract's midnight-open convention), so the displayed end
+ * date is one day before it.
+ */
+export function formatWindowRange(startIso: string, endIso: string): string {
+  const start = new Date(startIso);
+  const end = new Date(new Date(endIso).getTime() - DAY_MS);
+  const day = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Asia/Makassar",
+  });
+  const dayYear = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Makassar",
+  });
+  return `${day.format(start)} – ${dayYear.format(end)}`;
 }
 
 /**
@@ -35,6 +78,7 @@ export function ChampionArena({
   const [selected, setSelected] = useState<string | null>(null);
   const pickerId = useId();
   const reduceMotion = useReducedMotion();
+  const round2 = data.round === 2;
   const entries = [...data.entries].sort(
     (first, second) => first.rank - second.rank,
   );
@@ -46,9 +90,13 @@ export function ChampionArena({
     contender &&
     [...entries]
       .reverse()
-      .find((entry) => entry.activations > contender.activations);
-  const leaders = entries.filter((entry) => entry.activations > 0).slice(0, 3);
-  const isZeroState = data.team_total_activations === 0;
+      .find((entry) => scoreOf(entry, round2) > scoreOf(contender, round2));
+  const leaders = round2
+    ? entries.filter((entry) => isRanked(entry, round2)).slice(0, 3)
+    : entries.filter((entry) => entry.activations > 0).slice(0, 3);
+  const isZeroState = round2
+    ? (data.team_total_points ?? 0) === 0
+    : data.team_total_activations === 0;
 
   return (
     <div
@@ -66,11 +114,13 @@ export function ChampionArena({
             className="mb-3 h-[3px] w-14 rounded-sm bg-[var(--bz-copper)]"
           />
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--bz-kita-ink-panel-copper)]">
-            {data.status === "closed"
-              ? "Hasil akhir"
-              : data.status === "upcoming"
-                ? "Bersiap untuk bertanding"
-                : "Final sprint · Perebutan juara"}
+            {round2
+              ? `${data.campaign ?? "Lascia o raddoppia"} · ${formatWindowRange(data.window_start, data.window_end)} · WITA`
+              : data.status === "closed"
+                ? "Hasil akhir"
+                : data.status === "upcoming"
+                  ? "Bersiap untuk bertanding"
+                  : "Final sprint · Perebutan juara"}
           </p>
           <h2
             className="mt-1.5 text-[clamp(30px,3.6vw,44px)] leading-[1.02] tracking-[-0.02em]"
@@ -93,12 +143,16 @@ export function ChampionArena({
               className="font-black tabular-nums leading-[0.85] text-[clamp(36px,4vw,48px)]"
               style={SERIF}
             >
-              {data.team_total_activations}
+              {round2
+                ? (data.team_total_points ?? 0)
+                : data.team_total_activations}
             </span>
             <span className="max-w-[11rem] pb-0.5 text-[12px] leading-snug opacity-70">
-              {isZeroState
-                ? "Belum ada klien aktivasi — jadilah yang pertama!"
-                : "klien aktivasi dari seluruh tim"}
+              {round2
+                ? "poin tim"
+                : isZeroState
+                  ? "Belum ada klien aktivasi — jadilah yang pertama!"
+                  : "klien aktivasi dari seluruh tim"}
             </span>
           </div>
           {countdown}
@@ -162,13 +216,13 @@ export function ChampionArena({
                     {entry.display_name}
                   </span>
                   <motion.span
-                    key={entry.activations}
+                    key={scoreOf(entry, round2)}
                     initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mt-1.5 text-3xl font-black tabular-nums leading-none sm:text-5xl"
                     style={SERIF}
                   >
-                    {entry.activations}
+                    {scoreOf(entry, round2)}
                   </motion.span>
                   <span className="mt-1 text-[10px] uppercase tracking-[0.2em] opacity-60">
                     poin
@@ -206,8 +260,8 @@ export function ChampionArena({
                       {contender.is_me ? " · Kamu" : ""}
                     </p>
                     <p className="text-xs tabular-nums opacity-70">
-                      Peringkat {rankLabel(contender)} · {contender.activations}{" "}
-                      poin
+                      Peringkat {rankLabel(contender, round2)} ·{" "}
+                      {scoreOf(contender, round2)} poin
                     </p>
                   </div>
                 </div>
@@ -216,10 +270,10 @@ export function ChampionArena({
                   style={SERIF}
                 >
                   {data.status === "closed"
-                    ? `${contender.activations} aktivasi tercatat.`
+                    ? `${scoreOf(contender, round2)} ${round2 ? "poin" : "aktivasi"} tercatat.`
                     : rival
-                      ? `${rival.activations - contender.activations + 1} poin untuk melewati ${rival.display_name}.`
-                      : contender.activations > 0
+                      ? `${scoreOf(rival, round2) - scoreOf(contender, round2) + 1} poin untuk melewati ${rival.display_name}.`
+                      : scoreOf(contender, round2) > 0
                         ? "Di puncak. Pertahankan posisimu!"
                         : "Jadilah pencetak poin pertama."}
                 </p>
@@ -256,7 +310,7 @@ export function ChampionArena({
                   >
                     {entries.map((entry) => (
                       <option key={entry.member} value={entry.member}>
-                        {`${rankLabel(entry)} · ${entry.display_name}${entry.is_me ? " (Kamu)" : ""} — ${entry.activations} poin`}
+                        {`${rankLabel(entry, round2)} · ${entry.display_name}${entry.is_me ? " (Kamu)" : ""} — ${scoreOf(entry, round2)} poin`}
                       </option>
                     ))}
                   </select>

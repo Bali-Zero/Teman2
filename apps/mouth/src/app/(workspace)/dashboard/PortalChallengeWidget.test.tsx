@@ -11,6 +11,7 @@ import {
 } from "./PortalChallengeWidget";
 import { usePortalChallenge } from "./_lib/usePortalChallenge";
 import type {
+  PortalChallengeAsyaMission,
   PortalChallengeEntry,
   PortalChallengeResponse,
 } from "@/lib/api/dashboard/dashboard.api";
@@ -718,5 +719,486 @@ describe("Champion hero", () => {
     );
     fireEvent.error(podium.getByRole("img", { name: "Contender A" }));
     expect(podium.getByText("CA")).toBeInTheDocument();
+  });
+});
+
+describe("Round 2 «Lascia o raddoppia»", () => {
+  beforeEach(() => {
+    mockedHook.mockReset();
+  });
+
+  /** A round-2 payload — tiers empty, rank prizes/scoring/september/asya_mission present. */
+  function round2Response(
+    over: Partial<PortalChallengeResponse> = {},
+  ): PortalChallengeResponse {
+    return response({
+      round: 2,
+      campaign: "Lascia o raddoppia",
+      window_start: "2026-09-30T00:00:00+08:00",
+      window_end: "2026-10-30T00:00:00+08:00",
+      tiers: [],
+      rank_prizes: [
+        { rank: 1, prize_idr: 6_000_000 },
+        { rank: 2, prize_idr: 3_500_000 },
+        { rank: 3, prize_idr: 2_000_000 },
+        { rank: 4, prize_idr: 1_000_000 },
+        { rank: 5, prize_idr: 700_000 },
+      ],
+      scoring: {
+        registration: 1,
+        first_document: 3,
+        unanswered_request: -2,
+        unreviewed_document: -1,
+        response_working_hours: 3,
+        review_working_hours: 9.5,
+        service_hours: "Senin–Jumat 09.00–18.30 WITA",
+      },
+      team_total_points: 63,
+      entries: [
+        entry({
+          member: "adit@balizero.com",
+          display_name: "Adit",
+          is_me: true,
+          rank: 1,
+          activations: 2,
+          points: 23,
+          carry_points: 23,
+          registrations: 0,
+          document_bonuses: 0,
+          unanswered_requests: 0,
+          unreviewed_documents: 0,
+          penalty_points: 0,
+          september_choice: "carry",
+          last_event_at: "2026-09-20T00:00:00Z",
+          award_tier: null,
+          prize_idr: 6_000_000,
+          total_prize_idr: 6_000_000,
+        }),
+      ],
+      recent_activations: [],
+      recent_events: [
+        {
+          kind: "registration",
+          display_name: "Adit",
+          points: 1,
+          at: "2026-09-30T01:00:00Z",
+        },
+      ],
+      september: {
+        status: "closed",
+        window_start: "2026-09-14T00:00:00+08:00",
+        window_end: "2026-09-30T00:00:00+08:00",
+        team_total_activations: 160,
+        entries: [
+          {
+            member: "ari.firda",
+            display_name: "Ari Firda",
+            avatar_url: null,
+            is_tax: false,
+            rank: 1,
+            activations: 25,
+            invited: 30,
+            award_tier: 1,
+            prize_idr: 3_000_000,
+            tax_bonus_idr: 0,
+            total_prize_idr: 3_000_000,
+            september_choice: "prize",
+          },
+        ],
+      },
+      asya_mission: {
+        member: "asya",
+        display_name: "Asya Nadia",
+        avatar_url: null,
+        target_points: 60,
+        prize_idr: 1_000_000,
+        bonus_points: 3,
+        mission_bonuses: 5,
+        unanswered_requests: 1,
+        unreviewed_documents: 0,
+        penalty_points: 2,
+        points: 13,
+        reached: false,
+        is_me: false,
+      },
+      ...over,
+    });
+  }
+
+  it("shows the campaign eyebrow and races on team points instead of activations", () => {
+    mockQuery(round2Response());
+    render(<PortalChallengeWidget identity="fixture" />);
+    const arena = within(screen.getByTestId("champion-arena"));
+    expect(arena.getByText(/lascia o raddoppia/i)).toBeInTheDocument();
+    expect(arena.getByText(/30 sep.*29 okt 2026.*wita/i)).toBeInTheDocument();
+    expect(screen.getAllByText("63")).toHaveLength(1);
+    expect(arena.getByText("poin tim")).toBeInTheDocument();
+  });
+
+  it("renders all five prizes in order, holder points, a tie, and never a 0-point winner", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "a",
+            display_name: "Adit",
+            rank: 1,
+            points: 30,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "b",
+            display_name: "Budi",
+            rank: 2,
+            points: 20,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "c",
+            display_name: "Citra",
+            rank: 2,
+            points: 20,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          // Shares rank 5 by dense-rank tie-break, but 0 points — the
+          // backend already ships prize_idr: 0 for it; it must never show
+          // as the rank-5 winner.
+          entry({
+            member: "d",
+            display_name: "Dedi",
+            rank: 5,
+            points: 0,
+            last_event_at: null,
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    expect(screen.getByTestId("rank-prize-list")).toBeInTheDocument();
+    // formatIDR's "Rp" separator is a non-breaking space — normalize before
+    // substring-matching raw textContent (unlike getByText, .textContent
+    // isn't whitespace-normalized).
+    const norm = (s: string | null) => (s ?? "").replace(/\s+/g, " ");
+    const rows = [1, 2, 3, 4, 5].map((rank) =>
+      screen.getByTestId(`rank-prize-${rank}`),
+    );
+    expect(norm(rows[0].textContent)).toContain("Rp 6.000.000");
+    expect(norm(rows[1].textContent)).toContain("Rp 3.500.000");
+    expect(norm(rows[2].textContent)).toContain("Rp 2.000.000");
+    expect(norm(rows[3].textContent)).toContain("Rp 1.000.000");
+    expect(norm(rows[4].textContent)).toContain("Rp 700.000");
+
+    expect(within(rows[0]).getByText("Adit")).toBeInTheDocument();
+    expect(rows[0].textContent).toContain("30 poin");
+
+    // Tied rank 2: both holders listed, shared prize, shared points.
+    expect(rows[1].textContent).toContain("Budi, Citra");
+    expect(rows[1].textContent).toContain("20 poin");
+
+    // Ranks 3/4 have no candidate at all.
+    expect(rows[2].textContent).toContain("Belum ada");
+    expect(rows[3].textContent).toContain("Belum ada");
+
+    // Rank 5's only candidate has 0 points — shown as vacant, not as Dedi.
+    expect(rows[4].textContent).toContain("Belum ada");
+    expect(rows[4].textContent).not.toContain("Dedi");
+
+    expect(screen.queryByTestId("podium-tier-1")).not.toBeInTheDocument();
+  });
+
+  it("shows the round 2 breakdown chips and the September-prize note", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            is_me: true,
+            rank: 2,
+            points: 5,
+            carry_points: 0,
+            registrations: 2,
+            document_bonuses: 1,
+            unanswered_requests: 1,
+            unreviewed_documents: 3,
+            penalty_points: 5,
+            september_choice: "prize",
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const card = screen.getByTestId("my-position-card");
+    expect(within(card).getByText("Rank #2")).toBeInTheDocument();
+    expect(within(card).getByText("5")).toBeInTheDocument();
+    expect(card.textContent).toMatch(/hadiah september diambil/i);
+    expect(card.textContent).toContain("Bawa dari September");
+    expect(card.textContent).toContain("+2");
+    expect(card.textContent).toContain("registrasi");
+    expect(card.textContent).toContain("+3");
+    expect(card.textContent).toContain("dokumen pertama");
+    expect(card.textContent).toContain("-2");
+    expect(card.textContent).toContain("permintaan tak terjawab");
+    expect(card.textContent).toContain("-3");
+    expect(card.textContent).toContain("dokumen belum ditinjau");
+  });
+
+  it("ranking rows show points and a compact registrations/documents/penalty breakdown", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "a",
+            display_name: "A",
+            rank: 1,
+            points: 30,
+            registrations: 4,
+            document_bonuses: 2,
+            penalty_points: 1,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const ranking = screen.getByTestId("champion-ranking");
+    expect(within(ranking).getByText("30")).toBeInTheDocument();
+    // document_bonuses is a COUNT (2); the chip shows its POINT
+    // contribution (3 per bonus = 6), not the raw count.
+    expect(ranking.textContent).toContain("+4 reg · +6 dok · −1");
+  });
+
+  it("shows a '–' rank in the ranking list for a member with no R2 event", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "untouched",
+            display_name: "Untouched",
+            rank: 9,
+            points: 0,
+            last_event_at: null,
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const ranking = within(screen.getByTestId("champion-ranking"));
+    expect(ranking.getByText("–")).toBeInTheDocument();
+  });
+
+  it("live feed renders recent_events with Indonesian labels and signed points", () => {
+    mockQuery(
+      round2Response({
+        recent_events: [
+          {
+            kind: "registration",
+            display_name: "Adit",
+            points: 1,
+            at: "2026-09-30T01:00:00Z",
+          },
+          {
+            kind: "unanswered_request",
+            display_name: "Rina",
+            points: -2,
+            at: "2026-09-30T00:30:00Z",
+          },
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const feed = within(screen.getByTestId("live-feed"));
+    expect(feed.getByText("Registrasi selesai")).toBeInTheDocument();
+    expect(feed.getByText("Permintaan tak terjawab")).toBeInTheDocument();
+    expect(feed.getByText("+1")).toBeInTheDocument();
+    expect(feed.getByText("-2")).toBeInTheDocument();
+  });
+
+  it("shows the Asya mission card with the prize, target, and breakdown", () => {
+    mockQuery(round2Response());
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const mission = screen.getByTestId("asya-mission-card");
+    const norm = (s: string | null) => (s ?? "").replace(/\s+/g, " ");
+    expect(within(mission).getByText("Asya Nadia")).toBeInTheDocument();
+    expect(within(mission).getByText("13/60")).toBeInTheDocument();
+    expect(norm(mission.textContent)).toMatch(
+      /target 60 poin — hadiah rp 1\.000\.000/i,
+    );
+    expect(mission.textContent).toContain("+15");
+    expect(mission.textContent).toContain("-2");
+  });
+
+  function asyaMission(
+    over: Partial<PortalChallengeAsyaMission> = {},
+  ): PortalChallengeAsyaMission {
+    return {
+      member: "asya",
+      display_name: "Asya Nadia",
+      avatar_url: null,
+      target_points: 60,
+      prize_idr: 1_000_000,
+      bonus_points: 3,
+      mission_bonuses: 5,
+      unanswered_requests: 0,
+      unreviewed_documents: 0,
+      penalty_points: 0,
+      points: 0,
+      reached: false,
+      is_me: false,
+      ...over,
+    };
+  }
+
+  it("Misi Asya is not reached at 59/60", () => {
+    mockQuery(
+      round2Response({
+        asya_mission: asyaMission({ points: 59, reached: false }),
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const mission = within(screen.getByTestId("asya-mission-card"));
+    expect(mission.getByText("59/60")).toBeInTheDocument();
+    expect(mission.queryByText("Tercapai")).not.toBeInTheDocument();
+    expect(mission.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "98",
+    );
+  });
+
+  it("Misi Asya is reached at 60/60, progress bar at exactly 100%", () => {
+    mockQuery(
+      round2Response({
+        asya_mission: asyaMission({ points: 60, reached: true }),
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const mission = within(screen.getByTestId("asya-mission-card"));
+    expect(mission.getByText("Tercapai")).toBeInTheDocument();
+    const bar = mission.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "100");
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe("100%");
+  });
+
+  it("Misi Asya's progress bar stays capped at 100% when points exceed the target", () => {
+    mockQuery(
+      round2Response({
+        asya_mission: asyaMission({ points: 90, reached: true }),
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const mission = within(screen.getByTestId("asya-mission-card"));
+    const bar = mission.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "100");
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe("100%");
+  });
+
+  it("Hasil September discloses the frozen ranking, prize per row, and both choice labels", () => {
+    mockQuery(
+      round2Response({
+        september: {
+          status: "closed",
+          window_start: "2026-09-14T00:00:00+08:00",
+          window_end: "2026-09-30T00:00:00+08:00",
+          team_total_activations: 160,
+          entries: [
+            {
+              member: "ari.firda",
+              display_name: "Ari Firda",
+              avatar_url: null,
+              is_tax: false,
+              rank: 1,
+              activations: 25,
+              invited: 30,
+              award_tier: 1,
+              prize_idr: 3_000_000,
+              tax_bonus_idr: 0,
+              total_prize_idr: 3_000_000,
+              september_choice: "prize",
+            },
+            {
+              member: "surya",
+              display_name: "Surya",
+              avatar_url: null,
+              is_tax: false,
+              rank: 2,
+              activations: 20,
+              invited: 25,
+              award_tier: 2,
+              prize_idr: 1_500_000,
+              tax_bonus_idr: 0,
+              total_prize_idr: 1_500_000,
+              september_choice: "prize",
+            },
+            {
+              member: "krisna",
+              display_name: "Krisna",
+              avatar_url: null,
+              is_tax: false,
+              rank: 3,
+              activations: 15,
+              invited: 20,
+              award_tier: 3,
+              prize_idr: 700_000,
+              tax_bonus_idr: 0,
+              total_prize_idr: 700_000,
+              september_choice: "carry",
+            },
+          ],
+        },
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const norm = (s: string | null) => (s ?? "").replace(/\s+/g, " ");
+
+    // Disclosure starts closed, same idiom as "Hadiah, posisi saya & aturan".
+    const details = screen.getByText("Hasil September").closest("details")!;
+    expect(details.open).toBe(false);
+    fireEvent.click(screen.getByText("Hasil September"));
+    expect(details.open).toBe(true);
+
+    const region = screen.getByTestId("september-results");
+    const section = within(region);
+
+    // Frozen order — ari.firda, surya, krisna (rank order, unchanged by R2).
+    const names = section
+      .getAllByText(/^#\d+ (Ari Firda|Surya|Krisna)$/)
+      .map((el) => el.textContent);
+    expect(names).toEqual(["#1 Ari Firda", "#2 Surya", "#3 Krisna"]);
+
+    const rows = region.querySelectorAll("li");
+    expect(norm(rows[0]!.textContent)).toContain("Rp 3.000.000");
+    expect(norm(rows[1]!.textContent)).toContain("Rp 1.500.000");
+    expect(norm(rows[2]!.textContent)).toContain("Rp 700.000");
+
+    // Both choice labels appear (Ari Firda + Surya "prize", Krisna "carry").
+    expect(section.getAllByText("Ambil hadiah")).toHaveLength(2);
+    expect(section.getByText("Bawa poin ke Oktober")).toBeInTheDocument();
+  });
+
+  it("hides the Tim Tax strip in round 2", () => {
+    mockQuery(
+      round2Response({
+        entries: [entry({ is_tax: true, is_me: true, points: 10 })],
+      }),
+    );
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    expect(screen.queryByTestId("tax-strip")).not.toBeInTheDocument();
+  });
+
+  it("round 2 with tiers: [] never renders the (round-1-only) tier scale", () => {
+    mockQuery(round2Response({ tiers: [] }));
+    expect(() =>
+      render(<PortalChallengeWidget identity="ari@balizero.com" />),
+    ).not.toThrow();
+  });
+
+  it("PositionScale guards Math.max on an empty tiers array with a sane 0-width bar (round 1)", () => {
+    // Round 1 is the path that actually calls PositionScale — an empty
+    // tiers array here used to feed Math.max(...[]) === -Infinity.
+    mockQuery(response({ tiers: [], entries: [entry({ is_me: true })] }));
+    render(<PortalChallengeWidget identity="ari@balizero.com" />);
+    const card = within(screen.getByTestId("my-position-card"));
+    const bar = card.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "0");
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe("0%");
   });
 });
