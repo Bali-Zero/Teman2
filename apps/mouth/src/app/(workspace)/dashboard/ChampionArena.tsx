@@ -92,7 +92,7 @@ export function ChampionArena({
       .reverse()
       .find((entry) => scoreOf(entry, round2) > scoreOf(contender, round2));
   const leaders = round2
-    ? entries.slice(0, 3)
+    ? entries.filter((entry) => isRanked(entry, round2)).slice(0, 3)
     : entries.filter((entry) => entry.activations > 0).slice(0, 3);
   const isZeroState = round2
     ? (data.team_total_points ?? 0) === 0
