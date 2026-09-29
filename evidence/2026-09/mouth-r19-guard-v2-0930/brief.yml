@@ -6,10 +6,13 @@ task: >-
 lane: mouth/r19-guard-v2
 machine: air-m5
 date: 2026-09-30
-gear: 1
+gear: 2
 gear_reason: >-
-  Test-only diff under apps/mouth (one new module, its table test, two per-page guard tests);
-  no product, schema, infra, secrets or auth file touched.
+  Floor 2 from evidence_pack_lint.py --print-floor over `git diff --name-only`/`--numstat`
+  origin/main...HEAD; --print-floor-source says `size` (844 added / 3 deleted, 5 files). The
+  size is the spec's own acceptance: 317 lines are the G/I tables (every row of v1, of
+  gate-7648c's 103-row probe and of the position rule), 394 the module. Test-only diff under
+  apps/mouth; no product, schema, infra, secrets or auth file touched.
 acceptance:
   A1: >-
     The G/I tables in `r19-colour-guard.test.ts` hold v1's rows, all of gate-7648c's probe rows
