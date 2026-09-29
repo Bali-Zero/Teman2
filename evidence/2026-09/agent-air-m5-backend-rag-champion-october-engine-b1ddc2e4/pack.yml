@@ -150,7 +150,10 @@ lanes:
       Implementer (be-round2): challenge_round2.py engine, dashboard_summary
       router + challenge_events SSE wiring for the active round, the
       --round flag on the offline report, and the pytest suites listed in
-      receipts below.
+      receipts below. Carried from frozen PR #7634 (head 320ca4c52b, red on
+      the OpenAPI pin test) onto this successor branch: code cherry-picked
+      byte-identical, then the OpenAPI contract regenerated in 7a7fcb95da
+      to clear the pin test.
   - lane: review
     role: review
     seat: codex
@@ -160,19 +163,15 @@ lanes:
       1 minor findings — see dissent. 2 REJECTED as design decisions by the
       Dux, 1 ACCEPTED-RISK/watch-item, 3 ACCEPTED and CURED in 41235d3947
       (be-round2).
-  - lane: carry
-    role: build
-    seat: claude-sonnet-5
-    note: >-
-      carry from frozen PR #7634 (head 320ca4c52b, red on the OpenAPI pin
-      test); code cherry-picked byte-identical; contract regenerated.
   - lane: final-gate
     role: review
     seat: claude-opus-5-5 xhigh (fresh, outside the contribution chain)
     note: >-
-      Fresh final on-disk gate against gated HEAD 315285e9e3. Verdict PASS,
-      0 blocking defects, 4 non-blocking notices (see dissent N1-N4).
-      Gate's own reported scope: 11 files, all allowlisted ;
+      Fresh final on-disk gate against gated HEAD 315285e9e3 (pre-carry;
+      the carry onto this successor branch and the OpenAPI regen are the
+      build lane's own changes above, outside this gate's original scope).
+      Verdict PASS, 0 blocking defects, 4 non-blocking notices (see dissent
+      N1-N4). Gate's own reported scope: every changed path allowlisted;
       pytest across the portal/dashboard_summary/rag_proxy_stream/
       portal_invite suites: 275 passed, 8 skipped (scratch-PG only); ruff
       check clean; DOCSYNC OK; offline-report script tests: 11 passed;
@@ -191,10 +190,12 @@ lanes:
       Independently re-verified this session (Sonnet 5, same HEAD): pytest
       275 passed/8 skipped across the same 4 suites, ruff clean, DOCSYNC
       OK, 11 script tests passed, prod `--round 1` and `--round 2` both
-      reproduced with the exact figures above, diffstat confirmed at
-      11 files/ via `git diff --numstat origin/main...HEAD`, and
-      all three Codex-cure line numbers read directly from the current
-      source (see dissent N1-N4 for independently re-verified notices).
+      reproduced with the exact figures above, and all three Codex-cure
+      line numbers read directly from the current source (see dissent
+      N1-N4 for independently re-verified notices). The subsequent carry
+      onto this successor branch (2 mouth OpenAPI-contract files added in
+      7a7fcb95da) was NOT part of this gate's own scope — see the build
+      lane's note above and this pack's receipts for its own verification.
 receipts:
   - claim: >-
       Backend unit suites for the Round 2 engine, the dashboard router, and
@@ -280,17 +281,30 @@ receipts:
     ts: "2026-09-29T06:14:00Z"
     seat: claude-sonnet-5
   - claim: >-
-      Diffstat confirmed: 11 files changed against origin/main;
-      all three Codex-cure lines read directly from current source —
-      challenge_round2.py:632-633 combines request_rows with
-      asya_client_event_rows before `_mission_bonus_keys`, :287 has the
-      strict `AND (prd.uploaded_at AT TIME ZONE 'UTC') < ... '{end_ts}'`
-      upper bound, :493 uses strict `sent_at < event_at`.
+      All three Codex-cure lines read directly from current source on this
+      successor branch, unchanged by the carry — challenge_round2.py:632-633
+      combines request_rows with asya_client_event_rows before
+      `_mission_bonus_keys`, :287 has the strict `AND (prd.uploaded_at AT
+      TIME ZONE 'UTC') < ... '{end_ts}'` upper bound, :493 uses strict
+      `sent_at < event_at`.
     cmd: >-
-      git diff --numstat origin/main...HEAD | wc -l; sed -n '630,634p'
-      backend/services/portal/challenge_round2.py; sed -n '285,289p'
-      backend/services/portal/challenge_round2.py; sed -n '491,495p'
-      backend/services/portal/challenge_round2.py
+      sed -n '630,634p' backend/services/portal/challenge_round2.py;
+      sed -n '285,289p' backend/services/portal/challenge_round2.py;
+      sed -n '491,495p' backend/services/portal/challenge_round2.py
     exit: 0
     ts: "2026-09-29T06:15:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      This successor branch's carry from frozen PR #7634 (head 320ca4c52b)
+      is code-identical to the prior gated candidate; the OpenAPI
+      schema-pin test (red on #7634, the pin lagging the Round 2
+      dashboard-summary response model) passes after the contract regen in
+      7a7fcb95da. Diff against origin/main is now 13 files (the 11
+      backend-rag files plus schema.d.ts and its .openapi-sha256 pin).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/scripts/test_generate_openapi_schema_pin.py;
+      cd .. && git diff --name-only origin/main...HEAD | wc -l
+    exit: 0
+    ts: "2026-09-29T06:32:00Z"
     seat: claude-sonnet-5
