@@ -15,6 +15,7 @@ const {
   mockGetUserProfile,
   mockGetProfile,
   mockLogout,
+  mockFetchPortalSuperuser,
   mockUsePathname,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -23,6 +24,7 @@ const {
   mockGetUserProfile: vi.fn(),
   mockGetProfile: vi.fn(),
   mockLogout: vi.fn(),
+  mockFetchPortalSuperuser: vi.fn(),
   mockUsePathname: vi.fn(() => "/portal"),
 }));
 
@@ -152,6 +154,10 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+vi.mock("@/lib/portal/superuser", () => ({
+  fetchPortalSuperuser: mockFetchPortalSuperuser,
+}));
+
 vi.mock("@/types/navigation", () => ({
   portalNavigation: [
     {
@@ -184,13 +190,17 @@ describe("PortalLayout", () => {
       email: "test@example.com",
       avatar: null,
     });
+    mockFetchPortalSuperuser.mockResolvedValue({
+      isSuperuser: false,
+      email: null,
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("replaces an anonymous protected deep link with the upgraded login", async () => {
+  it("replaces a cookie-only non-superuser deep link with the upgraded login", async () => {
     mockGetToken.mockReturnValue(null);
     window.history.replaceState({}, "", "/portal?view=active");
     // Cookie-based SSO fallback also fails (no valid session)
@@ -210,6 +220,28 @@ describe("PortalLayout", () => {
     expect(screen.getByText("Loading...")).toBeInTheDocument();
     expect(screen.queryByText("Test Content")).not.toBeInTheDocument();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("renders a cookie-only superuser instead of redirecting to login", async () => {
+    mockGetToken.mockReturnValue(null);
+    mockGetProfile.mockRejectedValue(
+      new Error("422 client selection required"),
+    );
+    mockFetchPortalSuperuser.mockResolvedValue({
+      isSuperuser: true,
+      email: "founder@example.test",
+    });
+
+    render(
+      <PortalLayout>
+        <div>Superuser Content</div>
+      </PortalLayout>,
+    );
+
+    expect(await screen.findByText("Superuser Content")).toBeInTheDocument();
+    expect(screen.getByText("User: founder")).toBeInTheDocument();
+    expect(mockFetchPortalSuperuser).toHaveBeenCalledWith(null);
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it("should load user profile from stored profile", async () => {

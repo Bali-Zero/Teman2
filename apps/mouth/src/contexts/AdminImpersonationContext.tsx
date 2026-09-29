@@ -21,6 +21,7 @@ import React, {
 } from "react";
 import { api } from "@/lib/api";
 import { PORTAL_IMPERSONATION_STORAGE_KEY } from "@/lib/api/client";
+import { fetchPortalSuperuser } from "@/lib/portal/superuser";
 
 type ImpersonationTarget = {
   id: number;
@@ -78,24 +79,10 @@ export function AdminImpersonationProvider({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const res = await fetch("/api/portal/admin/me", {
-          credentials: "include",
-          headers: api.getToken()
-            ? { Authorization: `Bearer ${api.getToken()}` }
-            : undefined,
-        });
-        if (!res.ok) {
-          if (!cancelled) setLoading(false);
-          return;
-        }
-        const json = (await res.json()) as { is_superuser?: boolean };
-        if (!cancelled) {
-          setIsSuperuser(Boolean(json.is_superuser));
-          setLoading(false);
-        }
-      } catch {
-        if (!cancelled) setLoading(false);
+      const { isSuperuser } = await fetchPortalSuperuser(api.getToken());
+      if (!cancelled) {
+        setIsSuperuser(isSuperuser);
+        setLoading(false);
       }
     })();
     return () => {
