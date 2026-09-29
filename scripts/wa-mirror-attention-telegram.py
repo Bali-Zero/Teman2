@@ -94,6 +94,9 @@ STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 CRITICAL_REASONS = {"refund", "complaint", "deadline", "payment_dispute", "lawyer", "audit"}
 DEDUP_WINDOW = timedelta(hours=4)
+# Unresolved HIGH older than this is backlog, not news: the realtime roster ignores it and
+# the digest only COUNTS it (so "all clear" can never be printed over an unanswered backlog).
+HIGH_WINDOW_DAYS = 7
 
 
 def mask_phone(phone: str) -> str:
@@ -188,11 +191,12 @@ def save_state(state: dict):
 def sender_digits_sql(alias: str = "") -> str:
     """SQL expression for the sender's bare-digit phone, from what is actually stored.
 
-    `key.senderPn` was dropped by WhatsApp's LID migration; it is absent from every
-    inbound row since ~2026-07-20, so selectors keyed on it went blind (digest said
+    `key.senderPn` was dropped by WhatsApp's LID migration; the last inbound
+    row carrying it is dated 2026-05-25, so selectors keyed on it went blind (digest said
     0 inbound, realtime HIGH never fired). The identity now lives in the structured
     `sender_phone` column (LID-resolved upstream; the classifier reads the same one)
-    and in `key.remoteJidAlt`. `senderPn` stays first for older rows. Fallbacks apply
+    and in `key.remoteJidAlt`. Order is pinned by test: `senderPn` (older rows), then
+    `sender_phone` (the classifier's Zero/team skip keys on it), then `remoteJidAlt`. Fallbacks apply
     to 1:1 chats only (`remoteJid` not `@g.us`): the alert's intent is a client
     writing to the team, not group traffic.
     """
@@ -223,9 +227,9 @@ async def fetch_high_unresolved(conn: asyncpg.Connection) -> list[dict]:
         WHERE m.attention_priority = 'HIGH'
           AND m.attention_resolved_at IS NULL
           AND m.direction = 'inbound'
-          -- "realtime" means recent: the alerter was blind for ~70 days, and the unresolved
-          -- HIGH backlog older than a week is history, not news (would be one giant first-scan roster)
-          AND m.created_at >= NOW() - INTERVAL '7 days'
+          -- "realtime" means recent: the alerter was blind for ~4 months (since 2026-05-25), and the
+          -- unresolved HIGH backlog older than the window is history, not news (would be one giant first-scan roster)
+          AND m.created_at >= NOW() - INTERVAL '{HIGH_WINDOW_DAYS} days'
           AND {sender_digits_sql('m')} ~ '^[0-9]+$'
         GROUP BY 1
       )
@@ -260,7 +264,15 @@ async def fetch_digest_metrics(conn: asyncpg.Connection) -> dict:
       WHERE created_by='wa-mirror-auto-promote'
         AND created_at >= NOW() - INTERVAL '24 hours'
     """)
-    return {**dict(row), "new_leads_24h": new_leads}
+    high_backlog = await conn.fetchval(f"""
+      SELECT COUNT(*) FROM whatsapp_message_context m
+      WHERE m.attention_priority = 'HIGH'
+        AND m.attention_resolved_at IS NULL
+        AND m.direction = 'inbound'
+        AND m.created_at < NOW() - INTERVAL '{HIGH_WINDOW_DAYS} days'
+        AND {sender_digits_sql('m')} ~ '^[0-9]+$'
+    """)
+    return {**dict(row), "new_leads_24h": new_leads, "high_backlog": high_backlog}
 
 
 def _load_episodes(state: dict) -> dict:
@@ -483,7 +495,11 @@ async def cmd_digest():
             lines.append(f"  • {label}{crm_marker} — {it['n_high']} msg · {' '.join(tags)}")
         if len(items) > 8:
             lines.append(f"  …and {len(items)-8} more")
-    else:
+    backlog = metrics.get("high_backlog") or 0
+    if backlog:
+        lines.append("")
+        lines.append(f"📦 {backlog} older HIGH msgs unresolved (>{HIGH_WINDOW_DAYS}d, count only)")
+    if not items and not backlog:
         lines.append("")
         lines.append("🟢 Everything is acknowledged.")
 

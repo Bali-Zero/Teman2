@@ -1,7 +1,7 @@
 """The alerter went blind when WhatsApp dropped `key.senderPn`.
 
-Measured on Pro 2026-09-29: `senderPn` is absent from 100% of inbound rows since
-~2026-07-20, so the selectors gated on `senderPn ~ '^[0-9]+@'` saw nothing: the digest
+Measured on Pro 2026-09-29: `senderPn` is absent from 100% of recent inbound rows (the
+last row passing the old filter is dated 2026-05-25), so the selectors gated on `senderPn ~ '^[0-9]+@'` saw nothing: the digest
 said 0 inbound / 0 HIGH and the realtime HIGH alert never fired. The identity now
 lives in the `sender_phone` column and in `key.remoteJidAlt` (1:1) / `participantAlt`
 (groups). These tests run the real selectors, against rows in the REAL post-LID shape
@@ -141,7 +141,7 @@ ROWS = [
 ]
 
 
-def _seed_and_run(wa, sock, fn):
+def _seed_and_run(wa, sock, fn, rows=None):
     import asyncpg
 
     async def go():
@@ -155,7 +155,7 @@ def _seed_and_run(wa, sock, fn):
               CREATE TEMP TABLE clients (id int, status text, lead_source text,
                 phone_normalized text, deleted_at timestamptz, created_by text,
                 created_at timestamptz DEFAULT now());""")
-            for ev, sp, prio, res, age in ROWS:
+            for ev, sp, prio, res, age in (ROWS if rows is None else rows):
                 await c.execute(
                     "INSERT INTO whatsapp_message_context (direction, raw_baileys_event, sender_phone,"
                     " attention_priority, attention_reason, attention_resolved_at, created_at)"
@@ -182,3 +182,66 @@ def test_high_unresolved_finds_post_lid_rows(wa, pg):
     rows = _seed_and_run(wa, pg, wa.fetch_high_unresolved)
     assert sorted(r["phone"] for r in rows) == ["6280000000001", "6280000000003"]
     assert all(r["phone"].isdigit() for r in rows)
+
+
+def test_digest_counts_the_backlog_older_than_the_window(wa, pg):
+    m = _seed_and_run(wa, pg, wa.fetch_digest_metrics)
+    assert m["high_backlog"] == 1  # the 40-day-old open HIGH; group/resolved/recent excluded
+
+
+def test_sender_phone_is_tried_before_remotejidalt_when_they_disagree(wa, pg):
+    rows = [_row(remote="116@lid", alt="6280000000008@s.whatsapp.net",
+                 sender_phone="6280000000007", prio="HIGH")]
+    got = _seed_and_run(wa, pg, wa.fetch_high_unresolved, rows=rows)
+    assert [r["phone"] for r in got] == ["6280000000007"]
+
+
+def test_fallback_order_is_pinned_in_the_rendered_sql(wa):
+    sql = wa.sender_digits_sql("m")
+    assert sql.index("senderPn") < sql.index("sender_phone") < sql.index("remoteJidAlt")
+
+
+def _digest_text(wa, monkeypatch, *, items, backlog):
+    sent = []
+
+    class _Pool:
+        def acquire(self):
+            class _A:
+                async def __aenter__(self_):
+                    return object()
+
+                async def __aexit__(self_, *_a):
+                    return False
+            return _A()
+
+        async def close(self):
+            return None
+
+    async def create_pool(*_a, **_k):
+        return _Pool()
+
+    async def metrics(_c):
+        return {"inbound_24h": 1, "distinct_phones_24h": 1, "high_open": len(items),
+                "high_resolved": 0, "medium": 0, "new_leads_24h": 0, "high_backlog": backlog}
+
+    async def fetch(_c):
+        return items
+
+    monkeypatch.setattr(wa.asyncpg, "create_pool", create_pool)
+    monkeypatch.setattr(wa, "fetch_digest_metrics", metrics)
+    monkeypatch.setattr(wa, "fetch_high_unresolved", fetch)
+    monkeypatch.setattr(wa, "send_telegram", lambda t, **_k: sent.append(t) or True)
+    asyncio.run(wa.cmd_digest())
+    return sent[0]
+
+
+def test_digest_never_says_all_clear_over_a_backlog(wa, monkeypatch):
+    text = _digest_text(wa, monkeypatch, items=[], backlog=3)
+    assert "Everything is acknowledged" not in text
+    assert "3 older HIGH" in text
+
+
+def test_digest_says_all_clear_only_when_there_is_no_backlog(wa, monkeypatch):
+    text = _digest_text(wa, monkeypatch, items=[], backlog=0)
+    assert "Everything is acknowledged" in text
+    assert "older HIGH" not in text
