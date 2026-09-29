@@ -3,10 +3,10 @@
 
 Round 1 (September, FROZEN): activation-count scheme decided by Zero on
 2026-09-14. Window: 2026-09-14 00:00 WITA (Asia/Makassar) inclusive →
-2026-09-30 00:00 WITA exclusive — fixed, no CLI override.
+2026-09-29 00:00 WITA exclusive — fixed, no CLI override.
 
 Round 2 (October, "Lascia o raddoppia"): carry + registration + document
-bonus - penalty scheme decided by Zero on 2026-09-29. Window: 2026-09-30
+bonus - penalty scheme decided by Zero on 2026-09-29. Window: 2026-09-29
 00:00 WITA inclusive → 2026-10-30 00:00 WITA exclusive.
 
 `--round {1,2}` forces a round; the default is whichever round is active
