@@ -25,15 +25,73 @@ dissent:
       session (`python3 scripts/portal_challenge_leaderboard.py --round 2`)
       exits 0 against prod with no SQL error.
   - seat: codex-be-review (independent adversarial reviewer)
-    status: PLAUSIBLE
+    status: CONFIRMED
     objection: >-
-      PLACEHOLDER — the backend adversarial review is dispatched to an
-      independent Codex seat and was still running at pack-authoring time
-      (2026-09-29). No findings have returned yet. This entry exists so
-      Gear 3's non-empty-dissent rule is honestly satisfied by a declared,
-      in-flight review rather than an invented finding; it must be replaced
-      with the seat's actual findings (or a RETRACTED/CONFIRMED verdict) as
-      soon as they arrive, before this pack ships.
+      major · challenge_round2.py:656 · "Unauthorized prize threshold" ·
+      `points > 0` denies a rank prize despite the spec's rank-only rule ·
+      suggested fix: remove the threshold and correct its tests. REJECTED
+      as a code fix — a DESIGN decision by the Dux: the guide pays prizes
+      "by final ranking"; a member with 0 points is not ranked (the UI
+      already shows "–" for them), and paying rank 5 to every one of the
+      15 zero-point roster members is not the owner's intent. The owner can
+      still overrule this; noted for the mission's close row either way.
+  - seat: codex-be-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      major · challenge_round2.py:622 · "Asya's request bonuses are
+      missing" · callers supply only document uploads, so a qualifying
+      client REQUEST yields 0 instead of +3 · suggested fix: combine
+      requests and uploads before bonus dedup/event generation. ACCEPTED →
+      CURING (be-round2 fixing at pack-authoring time); cure commit SHA
+      pending from the Dux, to be added to this entry before the pack ships.
+  - seat: codex-be-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      major · challenge_round2.py:554 · "Unattributed document bonuses
+      vanish" · skipped/unattributed rows never reach team_total_points,
+      reproduced 0 instead of +3 · suggested fix: track unattributed points
+      separately. REJECTED as a code fix — spec §4 defines
+      team_total_points as the sum over RANKED entries; an unattributed
+      event is counted (in the roster's aggregate documents/requests) but
+      credited to nobody by design, since nobody is responsible for it.
+  - seat: codex-be-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      major · challenge_round2.py:284 · "Review query lacks the window's
+      upper bound" · a post-window document upload can penalize an October
+      score · suggested fix: require UTC-normalized `uploaded_at <
+      ROUND2_END`. ACCEPTED → CURING (be-round2 fixing, plus an audit of
+      the other R2 builders' upper bounds per the same class-audit
+      convention); cure commit SHA pending from the Dux.
+  - seat: codex-be-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      major · challenge_events.py:118 · "Registration triggers full
+      leaderboard recomputation" · eight additional global queries and
+      synchronous scoring inside the goal-publish path jeopardize the
+      3-second deadline · suggested fix: fetch creator-specific inputs and
+      verify latency. ACCEPTED-RISK, not cured now: the underlying tables
+      are small and window-bounded, and the 3 s deadline already guards the
+      registration path with its own timeout. Recorded as a watch item for
+      the mission's close row — measure p95 latency in Fly logs during
+      Round 2's first week and revisit if it approaches the deadline.
+  - seat: codex-be-review (independent adversarial reviewer)
+    status: CONFIRMED
+    objection: >-
+      minor · challenge_round2.py:489 · "Equal timestamps incorrectly
+      qualify as prior outreach" · `<=` awards Asya's +3 mission bonus even
+      when the staff message and the client event share the exact same
+      timestamp, with no message actually preceding the event · suggested
+      fix: use `<` and add an equality test. ACCEPTED → CURING (be-round2
+      fixing); cure commit SHA pending from the Dux.
+      ---
+      Overall verdict from codex-be-review: FIX-FIRST. Its own receipt:
+      "High confidence at 29827d3935: 71 selected tests and 343 inverse
+      checks passed; verification receipt is current/reusable. Uncommitted
+      changes excluded; live PostgreSQL, load testing and the full router
+      suite were not executed" — i.e. its own pass ran against the
+      pre-fix HEAD (29827d3935) with the scratch-schema/unit-test surface
+      only, not against production or the fixes above.
 lanes:
   - lane: build
     role: build
@@ -48,8 +106,10 @@ lanes:
     seat: codex
     note: >-
       Independent adversarial review of the backend diff, dispatched as
-      codex-be-review; result pending — see the placeholder dissent entry
-      above.
+      codex-be-review against HEAD 29827d3935; verdict FIX-FIRST, 5 major +
+      1 minor findings — see dissent. 2 REJECTED as design decisions by the
+      Dux, 1 ACCEPTED-RISK/watch-item, 3 ACCEPTED and CURING (cure SHAs
+      pending, to be added once be-round2's fixes land).
 receipts:
   - claim: >-
       Backend unit suites for the Round 2 engine, the dashboard router, and
