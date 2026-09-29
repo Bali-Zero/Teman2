@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 // with a partial vi.mock, which would make ApiError undefined under test.
 import { ApiError } from "@/lib/api/error-handler";
 import { logger } from "@/lib/logger";
+import { fetchPortalSuperuser } from "@/lib/portal/superuser";
 import { partnerPortalNavigation, portalNavigation } from "@/types/navigation";
 import { AdminImpersonationProvider } from "@/contexts/AdminImpersonationContext";
 
@@ -190,7 +191,23 @@ export default function PortalLayout({
           return;
         }
       } catch {
-        // Cookie auth also failed — redirect to login
+        if (!isPartnerPortal) {
+          const { isSuperuser, email } = await fetchPortalSuperuser(
+            api.getToken(),
+          );
+          if (isSuperuser) {
+            // Cookie-only superusers from kita have no client tenant; their
+            // expected 422 is resolved by the impersonation bar's client picker.
+            setUser({
+              name: email?.split("@")[0] || "Superuser",
+              email: email ?? "",
+              avatar: undefined,
+              role: "superuser",
+            });
+            setIsLoading(false);
+            return;
+          }
+        }
       }
 
       router.replace(portalLoginHref(currentPortalLocation(pathname)));
