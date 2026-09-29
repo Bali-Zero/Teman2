@@ -134,10 +134,13 @@ done
 for a in Desktop backups .cache .claude nuzantara; do   # ancestors of a protected root (R3)
   run --check-path "$H/$a" >/dev/null 2>&1; [ $? -eq 3 ] && n_ok=$((n_ok+1)) || { n_bad=$((n_bad+1)); echo "    ancestor not refused: $a"; }
 done
-for c in "any/where/Nuzantara-PII-Quarantine/x" "clients/PII-Quarantine-2025/y" "x/PII-Quarantine"; do
+for c in "any/where/Nuzantara-PII-Quarantine/x" "clients/PII-Quarantine-2025/y" "x/PII-Quarantine" "x/pii-quarantine/y"; do
   run --check-path "$H/$c" >/dev/null 2>&1; [ $? -eq 3 ] && n_ok=$((n_ok+1)) || { n_bad=$((n_bad+1)); echo "    PII component not refused: $c"; }
 done
-[ $n_bad -eq 0 ] && ok "$n_ok protected paths refused (10 roots x2, 5 ancestors, 3 PII-component shapes)" || no "$n_bad protected paths NOT refused"
+for k in "desktop/osint-nexus/x" ".OLLAMA/models" ".Claude/Backups/m.db"; do   # case-folded (APFS is case-insensitive)
+  run --check-path "$H/$k" >/dev/null 2>&1; [ $? -eq 3 ] && n_ok=$((n_ok+1)) || { n_bad=$((n_bad+1)); echo "    case variant not refused: $k"; }
+done
+[ $n_bad -eq 0 ] && ok "$n_ok protected paths refused (10 roots x2, 5 ancestors, 4 PII-component shapes, 3 case variants)" || no "$n_bad protected paths NOT refused"
 n_bad=0
 for r in Desktop/OSINT-Nexus-2 wa-mirror-media-old backups/fly-postgres-x .cache/uv logs/archive .codex/sessions .claude/sessions; do
   run --check-path "$H/$r/x" >/dev/null 2>&1; [ $? -eq 0 ] || { n_bad=$((n_bad+1)); echo "    wrongly refused: $r"; }

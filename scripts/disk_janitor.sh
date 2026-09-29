@@ -67,22 +67,23 @@ under_or_above() { # $1 path, $2 root → 0 when path is the root, below it, or 
   case "$2" in "$1"/*) return 0 ;; esac
   return 1
 }
+lc() { printf '%s' "$1" | tr 'A-Z' 'a-z'; }
 is_protected() { # 0 = protected (under a root, above a root, or carrying the PII component);
-                 # every comparison is made on the literal AND the physical form of both sides,
-                 # so a symlinked protected root is also protected at its physical location
-  local p c r rp
-  p="$1"; c=$(physical "$1")
-  case "$p" in *"$PROTECTED_COMPONENT"*) return 0 ;; esac
-  case "$c" in *"$PROTECTED_COMPONENT"*) return 0 ;; esac
+                 # every comparison is made case-folded (APFS is case-insensitive) on the literal
+                 # AND the physical form of both sides, so a symlinked protected root is also
+                 # protected at its physical location
+  local p c r rp comp
+  p=$(lc "$1"); c=$(lc "$(physical "$1")"); comp=$(lc "$PROTECTED_COMPONENT")
+  case "$p" in *"$comp"*) return 0 ;; esac
+  case "$c" in *"$comp"*) return 0 ;; esac
   for r in "${PROTECTED_ROOTS[@]}"; do
+    rp=""; [ -d "$r" ] && rp=$(physical "$r")
+    r=$(lc "$r"); rp=$(lc "$rp")
     under_or_above "$p" "$r" && return 0
     [ -n "$c" ] && under_or_above "$c" "$r" && return 0
-    if [ -d "$r" ]; then
-      rp=$(physical "$r")
-      if [ -n "$rp" ] && [ "$rp" != "$r" ]; then
-        under_or_above "$p" "$rp" && return 0
-        [ -n "$c" ] && under_or_above "$c" "$rp" && return 0
-      fi
+    if [ -n "$rp" ] && [ "$rp" != "$r" ]; then
+      under_or_above "$p" "$rp" && return 0
+      [ -n "$c" ] && under_or_above "$c" "$rp" && return 0
     fi
   done
   return 1
