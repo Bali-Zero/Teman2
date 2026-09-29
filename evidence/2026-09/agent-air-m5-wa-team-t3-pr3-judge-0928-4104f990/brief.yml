@@ -122,9 +122,14 @@ acceptance:
     ever reaches stdout/stderr/logs on any path (dry-run, transport
     failure, gateway failure) — the judge's own OK line is ints only
     (`selected/true/false/invalid/quarantined/superseded/raced/wall_ms`).
-    The full unit+real-PG corpus (218 unit passed / REAL_PG unset, 260
-    passed with WA_TEAM_PROMISES_REAL_PG=1) is green; ruff and shellcheck
-    clean on every touched file.
+    The full unit+real-PG corpus was 218 unit passed / REAL_PG unset, 260
+    passed with WA_TEAM_PROMISES_REAL_PG=1 at the time this brief was
+    written (before the Gear-3 council ran); the council's two fix rounds
+    added more guilt/innocence coverage, so the CURRENT, authoritative
+    count is in pack.yml's own `proof:` section (245 / 295) — this brief is
+    left as the historical record of what was true before the council, not
+    silently rewritten to match it. ruff and shellcheck clean on every
+    touched file, then and now.
     probe: >-
       apps/backend-rag/.venv/bin/python -m pytest
       scripts/tests/test_wa_team_promises*.py -q
