@@ -133,8 +133,11 @@ export const AtlasRoute = forwardRef<AtlasRouteHandle, AtlasRouteProps>(
           const skipRestore = skipRestoreRef.current;
           skipRestoreRef.current = false;
           if (skipRestore) return;
+          // The opener sits in the header, which has scrolled off-screen on a
+          // long verdict — scrolling it back into view would jump the page
+          // to the top under the reader.
           const opener = openerRef.current;
-          if (opener?.isConnected) opener.focus();
+          if (opener?.isConnected) opener.focus({ preventScroll: true });
         }}
         onCancel={(event) => {
           // FIX-ROUND-2 K5: the native `<dialog>` already fires `cancel` on
