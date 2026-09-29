@@ -35,6 +35,7 @@ on_exit() {
     local rc=$?
     [ "$HB_DONE" = 1 ] || heartbeat "error" "abnormal exit rc=$rc"
     [ "$(cat "$PIDFILE" 2>/dev/null)" = "$$" ] && rm -f "$PIDFILE"   # only our own lock, never a live sibling's
+    [ "$HB_FAIL" = 0 ] || exit 1   # the ONE non-zero exit, on every path incl. early exits (codex R3/N2, kimi K5)
     return 0
 }
 trap 'exit 143' TERM; trap 'exit 130' INT; trap 'exit 129' HUP
@@ -89,6 +90,6 @@ fi
 log "run done rc=$RC"
 # exit 0 by design (a failed payload is already visible in the sidecar; a non-zero exit from an
 # unattended cron only feeds launchd's failed-jobs noise) — EXCEPT when the sidecar itself could
-# not be written: then the exit status is the only signal left, so it is non-zero (codex R3).
-[ "$HB_FAIL" = 0 ] || exit 1
+# not be written: then the exit status is the only signal left, and on_exit turns it non-zero
+# on every path, early exits included (codex R3/N2, kimi K5).
 exit 0

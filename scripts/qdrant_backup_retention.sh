@@ -95,6 +95,21 @@ fi
 removed_count=0
 freed_bytes=0
 traversed=0
+refused=0
+NL='
+'
+# Every deletion target is re-validated HERE, whatever enumerated it: the line-based `ls -t`
+# readers below split a name carrying a newline into fragments that resolve against the
+# CALLER's cwd (janitor council, codex N1). A refused target is kept, counted and fails the run.
+target_ok() { # $1 path  $2 f|d
+  case "$1" in *"$NL"*) log "  REFUSE (newline in name) $(printf '%s' "$1" | tr '\n' '?')"; refused=$((refused+1)); return 1 ;; esac
+  case "$1" in "$BACKUP_ROOT"/*) : ;; *) log "  REFUSE (outside root) $1"; refused=$((refused+1)); return 1 ;; esac
+  case "${1#"$BACKUP_ROOT"/}" in ''|.|..|*/*) log "  REFUSE (not a direct child) $1"; refused=$((refused+1)); return 1 ;; esac
+  if [ -L "$1" ]; then log "  REFUSE (symlink) $1"; refused=$((refused+1)); return 1; fi
+  if [ "$2" = f ] && [ ! -f "$1" ]; then log "  REFUSE (not a regular file) $1"; refused=$((refused+1)); return 1; fi
+  if [ "$2" = d ] && [ ! -d "$1" ]; then log "  REFUSE (not a directory) $1"; refused=$((refused+1)); return 1; fi
+  return 0
+}
 
 fsize()     { stat -f '%z' "$1" 2>/dev/null || stat -c '%s' "$1" 2>/dev/null || echo 0; }
 # `|| true` neutralises a find/stat TOCTOU (a file vanishing mid-scan makes find
@@ -102,7 +117,7 @@ fsize()     { stat -f '%z' "$1" 2>/dev/null || stat -c '%s' "$1" 2>/dev/null || 
 dir_bytes() { { find "$1" -type f -exec stat -f '%z' {} + 2>/dev/null || true; } | awk '{s+=$1} END{print s+0}'; }
 
 remove_file() {
-  f="$1"; why="$2"; b=$(fsize "$f")
+  f="$1"; why="$2"; target_ok "$f" f || return 0; b=$(fsize "$f")
   if $APPLY; then
     if rm -f "$f"; then
       log "  REMOVED [$why] $(basename "$f") (${b}B)"; removed_count=$((removed_count+1)); freed_bytes=$((freed_bytes+b))
@@ -115,7 +130,7 @@ remove_file() {
 }
 
 remove_dir() {
-  d="$1"; why="$2"; b=$(dir_bytes "$d")
+  d="$1"; why="$2"; target_ok "$d" d || return 0; b=$(dir_bytes "$d")
   if $APPLY; then
     # scope-safe recursive clear (never `rm -rf ~`): empty contents then rmdir
     find "$d" -mindepth 1 -delete 2>/dev/null || true
@@ -183,4 +198,5 @@ fi
 freed_gb=$(awk -v b="$freed_bytes" 'BEGIN{printf "%.2f", b/1073741824}')
 verb="would-free"; $APPLY && verb="freed"
 log "=== COMPLETE ($MODE): $removed_count candidate(s), $verb ${freed_gb}G — footprint now ${total_gb}G${cap_hit} ==="
+[ "$refused" -eq 0 ] || { log "=== $refused target(s) REFUSED by the root guard — exit 1 ==="; exit 1; }
 exit 0

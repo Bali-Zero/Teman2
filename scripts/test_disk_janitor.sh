@@ -270,5 +270,49 @@ build; fake_host nuzantara; mkdir -p "$H/.organism"; : > "$H/.organism/last_seen
 ERR=$(HOME="$H" PATH="$FAKEBIN:$PATH" PRO_DISK_JANITOR_PAYLOAD="$SCRIPT" PRO_DISK_JANITOR_PIDFILE="$PIDF" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=false DISK_JANITOR_QDRANT_RETENTION="" bash "$WRAP" 2>&1 >/dev/null); RC=$?
 [ $RC -eq 1 ] && echo "$ERR" | grep -q "heartbeat write FAILED" && ok "own node: an unwritable sidecar is the one case that exits non-zero, with the reason on stderr (R3)" || no "unwritable sidecar silent: rc=$RC err=$ERR"
 
+echo "═══ TEST 8: council rounds 4-5 — loud inaction (K3), kill-switch order (K4), early exits (N2/K5), delegate root guard (N1) ═══"
+build; OUT=$(DISK_JANITOR_SCRATCH_DAYS=abc run --apply); RC=$?
+[ $RC -eq 2 ] && have "$OLD_SCRATCH" && have "$OLD_CODEX" && echo "$OUT" | grep -q "REFUSE: DISK_JANITOR_SCRATCH_DAYS must be a non-negative integer" && ok "malformed age knob: run refused rc=2 before any deletion (K3)" || no "malformed age knob not refused rc=$RC"
+build; OUT=$(DISK_JANITOR_LOG_ARCHIVE_DAYS=-1 run --apply); RC=$?
+[ $RC -eq 2 ] && have "$OLD_GZ" && ok "negative age knob: run refused rc=2 (K3)" || no "negative age knob not refused rc=$RC"
+if [ "$(id -u)" -eq 0 ]; then echo "  ⏭  running as root: unlistable-root and unwritable-log cases not exercisable"; else
+  build; chmod 000 "$H/.codex/sessions"; OUT=$(run --apply); RC=$?; chmod 755 "$H/.codex/sessions"
+  [ $RC -eq 1 ] && have "$OLD_CODEX" && echo "$OUT" | grep -q "codex: root [0-9a-f]\{12\} not listable — skipped" && echo "$OUT" | grep -q "errors=[1-9]" && ok "unlistable codex root: ERROR counted, step skipped loudly, old transcript kept (K3)" || no "unlistable codex root silent rc=$RC"
+  build; chmod 000 "$H/logs/archive"; OUT=$(run --apply); RC=$?; chmod 755 "$H/logs/archive"
+  [ $RC -eq 1 ] && have "$OLD_GZ" && echo "$OUT" | grep -q "logarch: root not listable — step skipped" && ok "unlistable log archive: ERROR counted, step skipped loudly (K3)" || no "unlistable logarch silent rc=$RC"
+  build; mkdir -p "$ROOT/ro"; chmod 555 "$ROOT/ro"
+  OUT=$(DISK_JANITOR_ENABLED=false DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=false DISK_JANITOR_QDRANT_RETENTION="" DISK_JANITOR_LOG="$ROOT/ro/j.log" DISK_JANITOR_JOURNAL="$ROOT/ro/j.jsonl" bash "$SCRIPT" --apply 2>&1); RC=$?; chmod 755 "$ROOT/ro"
+  [ $RC -eq 0 ] && have "$OLD_SCRATCH" && echo "$OUT" | grep -q "DISABLED via DISK_JANITOR_ENABLED" && ok "kill switch is read before the audit-trail probe: DISABLED exit 0 even with an unwritable log (K4)" || no "kill switch on unwritable log rc=$RC"
+fi
+wrapx(){ # wrapper with explicit extra env (VAR=value args), stdout+stderr discarded → rc only
+  HOME="$H" PATH="$FAKEBIN:$PATH" PRO_DISK_JANITOR_PIDFILE="$PIDF" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=false DISK_JANITOR_QDRANT_RETENTION="" env "$@" bash "$WRAP" >/dev/null 2>&1
+}
+nosidecar(){ mkdir -p "$H/.organism"; rm -rf "$H/.organism/last_seen"; : > "$H/.organism/last_seen"; }   # sidecar dir is a FILE: no heartbeat can be written
+build; fake_host othernode; nosidecar; wrapx PRO_DISK_JANITOR_PAYLOAD="$SCRIPT"; RC=$?
+[ $RC -eq 1 ] && ok "wrong-node early exit with an unwritable sidecar exits 1 (N2/K5)" || no "wrong-node early exit ignored a failed heartbeat rc=$RC"
+build; fake_host nuzantara; nosidecar; wrapx PRO_DISK_JANITOR_PAYLOAD="$SCRIPT" PRO_DISK_JANITOR_ENABLED=false; RC=$?
+[ $RC -eq 1 ] && ok "kill-switch early exit with an unwritable sidecar exits 1 (N2/K5)" || no "kill-switch early exit ignored a failed heartbeat rc=$RC"
+build; fake_host nuzantara; nosidecar; echo $$ > "$PIDF"; wrapx PRO_DISK_JANITOR_PAYLOAD="$SCRIPT"; RC=$?; rm -f "$PIDF"
+[ $RC -eq 1 ] && ok "live-lock early exit with an unwritable sidecar exits 1 (N2/K5)" || no "live-lock early exit ignored a failed heartbeat rc=$RC"
+build; fake_host nuzantara; nosidecar; wrapx PRO_DISK_JANITOR_PAYLOAD="$ROOT/no-such-payload.sh"; RC=$?
+[ $RC -eq 1 ] && ok "missing-payload early exit with an unwritable sidecar exits 1 (N2/K5)" || no "missing-payload early exit ignored a failed heartbeat rc=$RC"
+build; fake_host othernode; wrapx PRO_DISK_JANITOR_PAYLOAD="$SCRIPT"; RC=$?
+[ $RC -eq 0 ] && sidecar | grep -q '"status":"disabled","note":"wrong-node othernode"' && ok "wrong node with a writable sidecar still exits 0 (N2 control)" || no "wrong-node control rc=$RC sidecar=$(sidecar)"
+# N1: the REAL delegate, a newline-carrying archive name, and same-named sentinels in the caller's cwd
+build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR" "$ROOT/cwd"; i=0
+while [ $i -lt 7 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
+NLF="$QR/qdrant-
+sentinel
+.tar.gz"; mk "$NLF"; old "$NLF" 30; mk "$ROOT/cwd/sentinel"; mk "$ROOT/cwd/.tar.gz"
+OUT=$(cd "$ROOT/cwd" && HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+[ $RC -eq 1 ] && have "$ROOT/cwd/sentinel" && have "$ROOT/cwd/.tar.gz" && have "$NLF" && have "$QR/qdrant-20260106-0300.tar.gz" \
+  && echo "$OUT" | grep -q "qdrant: retention rc=1" && grep -q "REFUSE (outside root)" "$H/logs/qdrant-backup-retention.log" 2>/dev/null \
+  && ok "real delegate: a newline-named archive is refused, cwd sentinels survive, the run fails loudly (N1)" || no "delegate newline escape: rc=$RC sentinel=$(have "$ROOT/cwd/sentinel" && echo kept || echo GONE) tgz=$(have "$ROOT/cwd/.tar.gz" && echo kept || echo GONE)"
+build; QR="$H/backups/qdrant-snapshots"; mkdir -p "$QR"; i=0
+while [ $i -lt 9 ]; do mk "$QR/qdrant-2026010${i}-0300.tar.gz"; old "$QR/qdrant-2026010${i}-0300.tar.gz" $((i+1)); i=$((i+1)); done
+OUT=$(HOME="$H" QDRANT_PRODUCER_PROC_RE='__no_such_producer_zz__' DISK_JANITOR_QDRANT_RETENTION="$HERE/qdrant_backup_retention.sh" run --apply); RC=$?
+[ $RC -eq 0 ] && ! have "$QR/qdrant-20260108-0300.tar.gz" && ! have "$QR/qdrant-20260107-0300.tar.gz" && have "$QR/qdrant-20260106-0300.tar.gz" \
+  && ok "real delegate: well-formed archives beyond keep-7 are still pruned (N1 control)" || no "delegate control: rc=$RC"
+
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]

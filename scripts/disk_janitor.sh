@@ -105,13 +105,21 @@ tag() { printf '%s' "${1#"$JH"/}" | shasum -a 256 | cut -c1-12; }   # relative p
 # The audit trail is the organ's promise: an unwritable log or journal ends the run before any
 # deletion (codex R4), and a failed receipt append at the end makes the run fail visibly.
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$JOURNAL")" 2>/dev/null
-if ! { : >> "$LOG_FILE"; } 2>/dev/null || ! { : >> "$JOURNAL"; } 2>/dev/null; then
-  echo "[$(ts)] disk-janitor[$MODE] REFUSE: log or receipts journal not writable — exit 2" >&2; exit 2
-fi
-
+# The kill switch is read BEFORE the audit-trail probe: a disabled run deletes nothing, so the
+# documented "DISABLED — exit 0" holds even on a host whose log is unwritable (kimi K4).
 case "$(printf '%s' "${DISK_JANITOR_ENABLED:-true}" | tr 'A-Z' 'a-z')" in
   0|false|no|off) log "DISABLED via DISK_JANITOR_ENABLED — exit 0"; exit 0 ;;
 esac
+if ! { : >> "$LOG_FILE"; } 2>/dev/null || ! { : >> "$JOURNAL"; } 2>/dev/null; then
+  echo "[$(ts)] disk-janitor[$MODE] REFUSE: log or receipts journal not writable — exit 2" >&2; exit 2
+fi
+# Age knobs are integers or the run refuses: `find -mtime +abc` lists nothing, and the step
+# would no-op silently with errors=0 in the receipt (kimi K3).
+for knob in SCRATCH_DAYS CODEX_DAYS LOG_ARCHIVE_DAYS; do
+  case "${!knob}" in
+    ''|*[!0-9]*) log "REFUSE: DISK_JANITOR_$knob must be a non-negative integer — exit 2"; exit 2 ;;
+  esac
+done
 
 # The scratch root is the one target that can be pointed elsewhere by env/plist (council O3/R2):
 # absolute, basename exactly claude-<digits>, no "." or ".." components, and — when it exists —
@@ -128,6 +136,7 @@ if ! tmp_root_ok "$TMP_ROOT"; then log "REFUSE: DISK_JANITOR_TMP_ROOT must be an
 FREED=0; ERRORS=0
 N_SCRATCH=0; N_CODEX=0; N_LOGARCH=0
 bytes_of() { du -sk -- "$1" 2>/dev/null | head -1 | awk '{print $1*1024}' | tr -d '\n'; }
+listable() { [ -d "$1" ] && [ -r "$1" ] && [ -x "$1" ]; }   # a root find cannot list would make its step no-op silently (kimi K3)
 has_protected_descendant() { # a directory target must not carry the PII component anywhere below it (codex R1)
   [ -d "$1" ] || return 1
   [ -n "$(find "$1" -iname "*${PROTECTED_COMPONENT}*" -print -quit 2>/dev/null)" ]
@@ -156,6 +165,8 @@ session_live() { # 0 = registered (live), 1 = not registered, 2 = registry unrea
 # ── scratch: $TMP_ROOT/-<project>/<session-uuid> ───────────────────────────────
 if [ ! -d "$TMP_ROOT" ]; then
   log "scratch: root absent — nothing to do"
+elif ! listable "$TMP_ROOT"; then
+  ERRORS=$((ERRORS + 1)); log "scratch: root not listable — step skipped"
 elif [ ! -d "$SESSIONS_DIR" ] || [ -z "$(find "$SESSIONS_DIR" -maxdepth 1 -name '*.json' -print -quit 2>/dev/null)" ]; then
   ERRORS=$((ERRORS + 1)); log "scratch: session registry absent or empty — step skipped (cannot tell live from dead)"
 else
@@ -178,6 +189,7 @@ if ! command -v "$LSOF" >/dev/null 2>&1; then
 else
   for root in "$JH/.codex/sessions" "$JH/.codex/archived_sessions"; do
     [ -d "$root" ] || continue
+    if ! listable "$root"; then ERRORS=$((ERRORS + 1)); log "codex: root $(tag "$root") not listable — skipped"; continue; fi
     if is_protected "$root"; then ERRORS=$((ERRORS + 1)); log "codex: root $(tag "$root") is protected — skipped"; continue; fi
     while IFS= read -r -d '' f; do
       "$LSOF" -- "$f" >/dev/null 2>&1; lrc=$?
@@ -195,7 +207,9 @@ else
 fi
 
 # ── log archive: gzipped rotations older than LOG_ARCHIVE_DAYS ─────────────────
-if [ -d "$JH/logs/archive" ]; then
+if [ -d "$JH/logs/archive" ] && ! listable "$JH/logs/archive"; then
+  ERRORS=$((ERRORS + 1)); log "logarch: root not listable — step skipped"
+elif [ -d "$JH/logs/archive" ]; then
   while IFS= read -r -d '' f; do
     remove "$f" logarch "$(tag "$f")" && N_LOGARCH=$((N_LOGARCH + 1))
   done < <(find "$JH/logs/archive" -mindepth 1 -maxdepth 1 -type f -name '*.gz' -mtime +"$LOG_ARCHIVE_DAYS" -print0 2>/dev/null)
