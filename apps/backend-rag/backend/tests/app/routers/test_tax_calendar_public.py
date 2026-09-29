@@ -9,7 +9,13 @@ from backend.app.auth.public_endpoints import find_entry
 from backend.app.routers import tax_calendar_public
 from backend.app.routers.tax_calendar_public import get_tax_calendar_today, router
 from backend.middleware.rate_limiter import RateLimitMiddleware
-from backend.services.compliance.obligations_register import ObligationRule, load_catalog
+from backend.services.compliance.business_days import holiday_years_loaded
+from backend.services.compliance.obligations_register import (
+    ClientProfile,
+    ObligationRule,
+    applies,
+    load_catalog,
+)
 from backend.services.compliance.tax_calendar_public_review import (
     PublicReview,
     rule_fingerprint,
@@ -33,13 +39,19 @@ def _clear(*rule_ids: str, fingerprint: str | None = None) -> dict[str, PublicRe
 
 
 def _client(
-    today: date = date(2026, 1, 1), reviews: dict[str, PublicReview] | None = None
+    today: date = date(2026, 1, 1),
+    reviews: dict[str, PublicReview] | None = None,
+    loaded_years: frozenset[int] | None = None,
 ) -> TestClient:
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_tax_calendar_today] = lambda: today
     if reviews is not None:
         app.dependency_overrides[tax_calendar_public.get_public_reviews] = lambda: reviews
+    if loaded_years is not None:
+        app.dependency_overrides[tax_calendar_public.get_loaded_holiday_years] = lambda: (
+            loaded_years
+        )
     return TestClient(app)
 
 
@@ -54,11 +66,41 @@ def _company_payload(**overrides: object) -> dict[str, object]:
     }
 
 
-def test_shipped_review_file_clears_nothing_so_nothing_is_public() -> None:
-    body = _client().post(URL, json=_company_payload()).json()
+OWNER_CLEARED = {
+    "pph21_payment",
+    "spt_masa_pph21",
+    "spt_masa_ppn",
+    "spt_tahunan_badan",
+    "rups_annual",
+    "bpjs_kesehatan_monthly",
+    "pse_registration",
+    "wajib_lapor_ketenagakerjaan",
+    "rptka_imta_expat",
+}
 
-    assert body["obligations"] == []
+
+def test_shipped_review_file_clears_exactly_the_owner_batch() -> None:
+    assert set(tax_calendar_public.get_public_reviews()) == OWNER_CLEARED
+
+
+def test_shipped_clearances_release_only_cleared_rules_and_withhold_the_rest() -> None:
+    body = _client().post(URL, json=_company_payload()).json()
+    profile = ClientProfile(company_type="PT_PMA", has_employees=True, employee_count=3, pkp=True)
+    applicable = {r.id for r in load_catalog() if applies(r, profile)}
+
+    assert {o["id"] for o in body["obligations"]} == applicable & OWNER_CLEARED
+    assert body["obligations"]
+    assert body["withheld_count"] == len(applicable - OWNER_CLEARED)
     assert body["withheld_count"] > 0
+    for rule in load_catalog():
+        if not rule.verified or rule.needs_review_reason is not None:
+            assert rule.id not in {o["id"] for o in body["obligations"]}
+
+
+def test_every_owner_cleared_rule_is_verified_and_review_free() -> None:
+    for rule_id in OWNER_CLEARED:
+        rule = _rule(rule_id)
+        assert rule.verified and rule.needs_review_reason is None
 
 
 def test_cleared_rule_is_returned_with_future_dates_and_reviewed_on() -> None:
@@ -195,3 +237,69 @@ def test_route_is_public_and_has_a_dedicated_rate_limit() -> None:
     assert entry is not None
     assert entry.requires_route_auth is False
     assert RateLimitMiddleware.RATE_LIMITS["/api/public/tax-calendar/obligations"] == (30, 60)
+
+
+def test_provisional_marks_only_dates_beyond_the_loaded_holiday_years() -> None:
+    client = _client(date(2026, 9, 29), _clear("pph21_payment"), frozenset({2026}))
+    body = client.post(URL, json=_company_payload()).json()
+    by_id = {o["id"]: o["upcoming_due_dates"] for o in body["obligations"]}
+
+    assert _rule("pph21_payment").due.roll == "next_business_day"
+    dates_2026 = [d for d in by_id["pph21_payment"] if d["due_date"].startswith("2026")]
+    dates_2027 = [d for d in by_id["pph21_payment"] if d["due_date"].startswith("2027")]
+    assert dates_2026 and dates_2027
+    assert all(d["provisional"] is False for d in dates_2026)
+    assert all(d["provisional"] is True for d in dates_2027)
+
+
+def test_a_year_that_becomes_loaded_is_no_longer_provisional() -> None:
+    client = _client(date(2026, 9, 29), _clear("pph21_payment"), frozenset({2026, 2027}))
+    body = client.post(URL, json=_company_payload()).json()
+    dates = body["obligations"][0]["upcoming_due_dates"]
+
+    assert any(d["due_date"].startswith("2027") for d in dates)
+    assert all(d["provisional"] is False for d in dates)
+
+
+def test_production_resolves_loaded_years_through_the_real_function() -> None:
+    assert tax_calendar_public.get_loaded_holiday_years() == holiday_years_loaded()
+    assert tax_calendar_public.holiday_years_loaded is holiday_years_loaded
+
+
+def test_roll_none_rules_are_never_provisional(monkeypatch: pytest.MonkeyPatch) -> None:
+    rule = dataclasses.replace(
+        _rule("pph21_payment"), due=dataclasses.replace(_rule("pph21_payment").due, roll="none")
+    )
+    monkeypatch.setattr(tax_calendar_public, "_catalog", lambda: (rule,))
+    reviews = {rule.id: PublicReview(rule.id, "Test Signer", REVIEWED_ON, rule_fingerprint(rule))}
+    client = _client(date(2026, 9, 29), reviews, frozenset({2026}))
+    body = client.post(URL, json=_company_payload()).json()
+    dates = body["obligations"][0]["upcoming_due_dates"]
+
+    assert any(d["due_date"].startswith("2027") for d in dates)
+    assert all(d["provisional"] is False for d in dates)
+
+
+def test_annual_return_clamps_day_31_to_april_30() -> None:
+    body = _client(date(2026, 9, 29)).post(URL, json=_company_payload()).json()
+    annual = next(o for o in body["obligations"] if o["id"] == "spt_tahunan_badan")
+
+    assert [d["due_date"] for d in annual["upcoming_due_dates"]] == ["2027-04-30"]
+
+
+def test_every_returned_due_date_is_a_real_iso_date() -> None:
+    payload = _company_payload(has_foreign_employees=True, serves_indonesian_users_online=True)
+    body = _client(date(2026, 9, 29)).post(URL, json=payload).json()
+
+    for obligation in body["obligations"]:
+        for due in obligation["upcoming_due_dates"]:
+            assert date.fromisoformat(due["due_date"]).isoformat() == due["due_date"]
+
+
+def test_one_time_and_event_rules_come_back_without_dates() -> None:
+    payload = _company_payload(has_foreign_employees=True, serves_indonesian_users_online=True)
+    body = _client(date(2026, 9, 29)).post(URL, json=payload).json()
+    by_id = {o["id"]: o for o in body["obligations"]}
+
+    for rule_id in ("pse_registration", "wajib_lapor_ketenagakerjaan", "rptka_imta_expat"):
+        assert by_id[rule_id]["upcoming_due_dates"] == []

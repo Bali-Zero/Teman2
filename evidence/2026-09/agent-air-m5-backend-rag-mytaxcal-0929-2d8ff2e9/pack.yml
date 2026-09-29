@@ -18,6 +18,9 @@ what_changed: |
   calendar day; the empty-state copy no longer claims nothing applies while rules are withheld;
   --space-5 (undefined token) replaced by --space-6; employee count parsed to a non-negative
   integer; WhatsApp link 44px; a flaky date test made deterministic; tests that kill four mutants.
+  Round 2: the owner's decision of 2026-09-29 is recorded (9 rules cleared, reviewer "Zero (owner)",
+  12 withheld); due dates gain a provisional flag when the holiday table for their year is not loaded;
+  a month-end regression test; cards for one-time and event rules show "No fixed date".
 
 proof: |
   Backend: 491 passed in the targeted run (route, clearance, setup, CORS, mutating-routes gate,

@@ -13,7 +13,11 @@ type Obligation = {
   legal_source: string;
   frequency: string;
   reviewed_on: string;
-  upcoming_due_dates: Array<{ due_date: string; period_key: string }>;
+  upcoming_due_dates: Array<{
+    due_date: string;
+    period_key: string;
+    provisional?: boolean;
+  }>;
 };
 
 type CalendarResponse = { obligations: Obligation[]; withheld_count: number };
@@ -468,14 +472,21 @@ function CalendarResult({
               {next && (
                 <span style={badgeStyle}>
                   {next.due_date} · in {daysUntil(next.due_date)}d
+                  {next.provisional && <ProvisionalLabel />}
                 </span>
               )}
             </div>
+            {!next && (
+              <p style={mutedStyle}>
+                No fixed date — due when the triggering event happens.
+              </p>
+            )}
             {obligation.upcoming_due_dates.length > 1 && (
               <ul style={listStyle}>
                 {obligation.upcoming_due_dates.slice(1).map((date) => (
                   <li key={`${date.due_date}-${date.period_key}`}>
                     {date.due_date} — {date.period_key}
+                    {date.provisional && <ProvisionalLabel />}
                   </li>
                 ))}
               </ul>
@@ -487,10 +498,24 @@ function CalendarResult({
           </article>
         );
       })}
+      {result.obligations.some((obligation) =>
+        obligation.upcoming_due_dates.some((date) => date.provisional),
+      ) && (
+        <p style={mutedStyle}>
+          Provisional dates may move to the next working day once that
+          year&apos;s public holidays are loaded in our calendar.
+        </p>
+      )}
       {result.withheld_count > 0 && (
         <WithheldNote count={result.withheld_count} />
       )}
     </div>
+  );
+}
+
+function ProvisionalLabel() {
+  return (
+    <em style={{ fontStyle: "normal", marginLeft: "0.5ch" }}>provisional</em>
   );
 }
 

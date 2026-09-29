@@ -27791,6 +27791,8 @@ export interface components {
       due_date: string;
       /** Period Key */
       period_key: string;
+      /** Provisional */
+      provisional: boolean;
     };
     /**
      * UpdatePermissionRequest

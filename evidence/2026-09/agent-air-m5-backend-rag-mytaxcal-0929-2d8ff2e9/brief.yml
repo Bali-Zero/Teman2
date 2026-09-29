@@ -22,13 +22,25 @@ acceptance:
     honestly with a WhatsApp link, handles 429/errors; an R19 anchor test (copper/wash tokens, 8px
     radius, mounted on the page) as for #7648 — the literal-colour guard is a separate PR by the
     owner's 2026-09-29 decision.
+  A4: >-
+    provisional dates: each upcoming date carries provisional = (roll == next_business_day and its year
+    is not in holiday_years_loaded()); today 2026-09-29 gives False for 2026 dates and True for 2027
+    dates, never True for roll none; the wizard labels such a date "provisional" and shows one note.
+  A5: >-
+    month-end regression: spt_tahunan_badan with fiscal_year_end 12-31 and today 2026-09-29 returns
+    2027-04-30 only, and every returned due_date parses as a real ISO date.
+  A6: >-
+    event cards: pse_registration, wajib_lapor_ketenagakerjaan and rptka_imta_expat return
+    upcoming_due_dates = []; the wizard renders "No fixed date - due when the triggering event happens."
+    with no badge, no NaN and no Invalid Date.
   A3: >-
     CORS: https://tax.balizero.com in the default origins (live preflight answers 400 today).
 status: >-
-  DRAFT, on main after #7648 (b797867046), NOT to merge: the owner's 2026-09-28 ruling requires a per-rule public-copy
-  review by a Tax Department person the owner will name. Until then every live call would return an
-  empty calendar. Merge only after the named signer's clearances are recorded in
-  tax_calendar_public_review.yaml and a fresh gear-3 gate signs.
+  DRAFT. On 2026-09-29 the owner ("Zero") reviewed and approved 9 rules for public display, recorded in
+  tax_calendar_public_review.yaml (reviewer "Zero (owner)"): pph21_payment, spt_masa_pph21, spt_masa_ppn,
+  spt_tahunan_badan, rups_annual, bpjs_kesehatan_monthly, pse_registration, wajib_lapor_ketenagakerjaan,
+  rptka_imta_expat. The other 12 rules stay withheld. Ongoing signer: the Tax Department person named by
+  the owner. Merge only after a fresh gear-3 gate signs.
 out_of_scope:
   - Individual / KITAS / PB1 / BPJS rules (not in the 21-rule catalog; owner decisions).
   - iCal per-profile subscription and email reminders (later lanes).

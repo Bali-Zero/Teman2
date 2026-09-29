@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from backend.services.compliance.business_days import holiday_years_loaded
 from backend.services.compliance.obligations_register import (
     ClientProfile,
     ObligationRule,
@@ -62,6 +63,7 @@ class TaxCalendarRequest(BaseModel):
 class UpcomingDueDate(BaseModel):
     due_date: date
     period_key: str
+    provisional: bool
 
 
 class TaxCalendarObligation(BaseModel):
@@ -87,6 +89,11 @@ def _catalog() -> tuple[ObligationRule, ...]:
 @lru_cache(maxsize=1)
 def _public_reviews() -> dict[str, PublicReview]:
     return load_public_reviews()
+
+
+def get_loaded_holiday_years() -> frozenset[int]:
+    """Years whose holiday table is fully loaded; override this dependency in tests."""
+    return holiday_years_loaded()
 
 
 def get_public_reviews() -> dict[str, PublicReview]:
@@ -127,6 +134,7 @@ async def public_tax_calendar_obligations(
     body: TaxCalendarRequest,
     today: Annotated[date, Depends(get_tax_calendar_today)],
     reviews: Annotated[dict[str, PublicReview], Depends(get_public_reviews)],
+    loaded_years: Annotated[frozenset[int], Depends(get_loaded_holiday_years)],
 ) -> TaxCalendarResponse:
     profile = _profile(body)
     obligations: list[TaxCalendarObligation] = []
@@ -138,7 +146,11 @@ async def public_tax_calendar_obligations(
             withheld += 1
             continue
         upcoming = [
-            UpcomingDueDate(period_key=key, due_date=due)
+            UpcomingDueDate(
+                period_key=key,
+                due_date=due,
+                provisional=rule.due.roll == "next_business_day" and due.year not in loaded_years,
+            )
             for key, due in due_dates(rule, profile, today, body.horizon_days)
         ]
         obligations.append(

@@ -32,8 +32,15 @@ def _write(tmp_path: Path, reviews: list[dict]) -> Path:
     return path
 
 
-def test_shipped_file_loads_and_is_empty() -> None:
-    assert load_public_reviews(DEFAULT_REVIEW_PATH) == {}
+def test_shipped_file_loads_and_every_clearance_matches_the_current_rule() -> None:
+    reviews = load_public_reviews(DEFAULT_REVIEW_PATH)
+    catalog = {r.id: r for r in load_catalog()}
+
+    assert len(reviews) == 9
+    for rule_id, review in reviews.items():
+        assert review.reviewer == "Zero (owner)"
+        assert review.reviewed_on == date(2026, 9, 29)
+        assert is_publicly_cleared(catalog[rule_id], reviews)
 
 
 def test_valid_entry_loads(tmp_path: Path) -> None:

@@ -230,6 +230,71 @@ describe("MyTaxCalendar", () => {
     expect(link.style.minHeight).toBe("44px");
   });
 
+  it("labels provisional dates and explains them once", async () => {
+    const response = {
+      obligations: [
+        {
+          ...sampleResponse.obligations[0],
+          upcoming_due_dates: [
+            { due_date: "2026-10-01", period_key: "Sep", provisional: false },
+            { due_date: "2027-01-04", period_key: "Dec", provisional: true },
+          ],
+        },
+      ],
+      withheld_count: 0,
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(response)));
+    render(<MyTaxCalendar />);
+    fireEvent.click(screen.getByLabelText("Individual"));
+
+    await screen.findByText("Monthly filing");
+
+    expect(screen.getAllByText("provisional")).toHaveLength(1);
+    expect(
+      screen.getAllByText(/Provisional dates may move to the next working day/),
+    ).toHaveLength(1);
+  });
+
+  it("shows neither label nor note when no date is provisional", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse(sampleResponse)),
+    );
+    render(<MyTaxCalendar />);
+    fireEvent.click(screen.getByLabelText("Individual"));
+
+    await screen.findByText("Monthly filing");
+
+    expect(screen.queryByText("provisional")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Provisional dates may move/)).toBeNull();
+  });
+
+  it("renders a card without dates as event-driven, with no badge", async () => {
+    const response = {
+      obligations: [
+        {
+          ...sampleResponse.obligations[0],
+          frequency: "event",
+          name: "Event filing",
+          upcoming_due_dates: [],
+        },
+      ],
+      withheld_count: 0,
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(response)));
+    const { container } = render(<MyTaxCalendar />);
+    fireEvent.click(screen.getByLabelText("Individual"));
+
+    await screen.findByText("Event filing");
+
+    expect(
+      screen.getByText(
+        "No fixed date — due when the triggering event happens.",
+      ),
+    ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/NaN|Invalid Date|in \d+d/);
+  });
+
   it("handles rate limits and generic errors with retry", async () => {
     const fetchMock = vi
       .fn()
