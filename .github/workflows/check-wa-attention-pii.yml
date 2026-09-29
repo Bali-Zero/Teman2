@@ -123,36 +123,41 @@ jobs:
           # drops any definition turns this RED. Identity is (module, class path, function); a
           # parametrized test is covered per definition (one surviving variant satisfies it), not per
           # parameter set. The collection patterns are FORCED below to the ones the AST assumes, so a
-          # config override cannot desynchronise them. Constructs the AST cannot follow are refused
-          # (RED), not guessed. WALKED SCOPE = the module top level (including if/try/with/for/while
-          # blocks) plus the bodies of collected Test* classes that have no __init__ (nested ones
-          # too); every "in walked scope" below means exactly that and nothing wider. CLOSED, each
-          # with a guilt case in test_wa_attention_presence_walk.py: a test def under
-          # if/try/with/for/while; any assignment in walked scope whose
-          # target is a subscript or attribute (globals()[..]=, vars()[..]=, locals()[..]=,
-          # sys.modules[__name__].x=); any statement in walked scope that LOADS the name of a test
-          # def (aliasing it or passing it to a helper); a rebinding of a test name, `pytest` or
-          # `fixture`; an import that binds a test*/Test* name, `*`, `object`, any *TestCase name or an
-          # aliased fixture; a class or function defined twice in one scope; a Test* class with any
-          # base other than object or a metaclass; a class not named Test* that defines test methods;
-          # any TestCase subclass; a decorator other than pytest.fixture / pytest.mark.* on a test or
-          # Test* class; a setattr/globals/locals/vars/exec/eval/__import__/register
-          # call statement in walked scope; any .__code__/.__dict__/.__globals__ access in a suite or in conftest.py
-          # at the root, scripts/ or scripts/tests/; and in those files a definition, assignment or
-          # import of pytest_pyfunc_call, pytest_runtest_call/protocol/makereport/logreport,
+          # config override cannot desynchronise them. The constructs enumerated below are refused
+          # (RED), not guessed; this is a list of what is caught, not a proof that every definition
+          # executed. WALKED SCOPE = the module top level (including if/try/with/for/while blocks)
+          # plus the bodies of Test*-named classes without __init__ reached from it (nested ones
+          # too). Unless marked WHOLE-FILE, a refusal below applies in walked scope only; under a
+          # control-flow block the check happens to look at everything beneath it, function bodies
+          # included, which is conservative and not a promised depth. CLOSED, each with a guilt case
+          # in test_wa_attention_presence_walk.py: a test def under if/try/with/for/while; an
+          # assignment whose target is a subscript or attribute (globals()[..]=, vars()[..]=,
+          # locals()[..]=, sys.modules[__name__].x=); a non-definition statement that LOADS the name
+          # of a test def (aliasing it or passing it to a helper); a rebinding of a test name,
+          # `pytest` or `fixture`; an import that binds a test*/Test* name, `*`, `object`, any
+          # *TestCase name or an aliased fixture; a class or function defined twice in one scope; a
+          # Test* class with any base other than object or a metaclass; a class not named Test* that
+          # defines test methods; any TestCase subclass; a decorator other than pytest.fixture /
+          # pytest.mark.* on a test or Test* class; a setattr/globals/locals/vars/exec/eval/
+          # __import__/register call statement. In a suite or in conftest.py at the root, scripts/
+          # or scripts/tests/: WHOLE-FILE, at any depth, any .__code__/.__dict__/.__globals__
+          # attribute, .register() call, .pluginmanager access and .obj/.runtest assignment; at the
+          # module top level (blocks included), a definition, assignment or import of
+          # pytest_pyfunc_call, pytest_runtest_call/protocol/makereport/logreport,
           # pytest_report_teststatus, pytest_pycollect_makeitem, pytest_collection_modifyitems,
-          # pytest_plugins, pytest_sessionfinish/unconfigure, hookimpl(specname=...), .obj/.runtest
-          # assignment, pluginmanager/.register use or a star import. Fixtures named test* and Test*
-          # classes with __init__ are not tests and are skipped, as pytest does. The known suites are
-          # pinned so a deleted file cannot shrink the set.
+          # pytest_plugins, pytest_sessionfinish/unconfigure, hookimpl(specname=...) or a star
+          # import. Fixtures named test* and Test* classes with __init__ are not tests and are
+          # skipped, as pytest does. The known suites are pinned so a deleted file cannot shrink
+          # the set.
           # NOT DEFENDED, as a principle: anything not enumerated above is not defended; deliberate
           # reflection is outside this tripwire's threat model. Named residuals, each run GREEN:
-          # the body of a class that is not walked (a non-Test class, or a Test* class with
-          # __init__) - so a subscript/attribute assignment or a load of a test def there is not
-          # seen; the body of any function (globals()[..]= inside a def called at module level);
-          # and an attribute name built from pieces, so the source never spells .__code__. It
-          # catches accidents and lazy shadowing, it is not a sandbox. A next step, if one is
-          # wanted, is an allowlist of the statement forms permitted in walked scope, not a longer
-          # blacklist.
+          # in a class that is not walked (a non-Test class, a Test* class with __init__, a Test*
+          # class inside such a class) a subscript/attribute assignment or a load of a test def;
+          # the same inside any function body that is not under a control-flow block (globals()[..]=
+          # in a def called at module level); and reaching __code__ without spelling the attribute
+          # (a name built from pieces, or getattr/setattr with a string literal). The WHOLE-FILE
+          # scans still apply inside unwalked bodies. It catches accidents and lazy shadowing, it is
+          # not a sandbox. A next step, if one is wanted, is an allowlist of the statement forms
+          # permitted in walked scope, not a longer blacklist.
           python -m pytest scripts/tests/test_wa_attention_*.py -q -o addopts="" -o python_functions="test" -o python_classes="Test" -o xfail_strict=true --strict-markers --junitxml=junit.xml
           python scripts/wa_attention_presence.py junit.xml

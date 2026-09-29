@@ -281,7 +281,7 @@ def test_junit_missing_definition_is_reported(tmp_path):
 
 
 def test_declared_gap_unwalked_class_bodies_are_not_refused():
-    """Characterization of a DECLARED residual, not a guarantee: the walk enters collected Test*
+    """Characterization of a DECLARED residual, not a guarantee: the walk enters Test*-named
     classes without __init__ only. If this test fails because the gap was closed, update the
     NOT DEFENDED paragraph of check-wa-attention-pii.yml and the module docstring in the same PR."""
     non_test_class = 'def test_guard():\n    assert False\nclass Helper:\n    globals()["test_guard"] = lambda: None\n    x = test_guard\n'

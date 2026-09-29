@@ -2,15 +2,19 @@
 """Presence check for the wa-mirror attention PII corpus (check-wa-attention-pii.yml).
 
 Every test DEFINED in scripts/tests/test_wa_attention_*.py, found by AST, must appear in the
-pytest junit report as run and unskipped. Constructs the AST cannot follow are refused (RED),
-never guessed: a green run must mean every definition executed.
+pytest junit report as run and unskipped. The constructs enumerated in the workflow comment are
+refused (RED), not guessed. That list is the extent of what is caught, not a proof that every
+definition executed.
 
-Scope of the refusals: the walk (`walk`, `flow_problems`) enters the module top level, including
-control-flow blocks, and the bodies of collected Test* classes that have no __init__. The
-assignment-target, load-of-a-test-name, decorator and reflection-call refusals apply in that
-walked scope only. Not walked, hence not defended: other class bodies, function bodies, and
-attribute names built at runtime. Anything not enumerated is not defended; deliberate reflection
-is outside this tripwire's threat model.
+Scope: the walk (`walk`, `flow_problems`) enters the module top level, including control-flow
+blocks, and the bodies of Test*-named classes without __init__ reached from it. The
+assignment-target, load-of-a-test-name, import-binding, rebinding, duplicate-definition,
+base-class, decorator and reflection-call refusals apply in that walked scope. `hook_problems`
+is a separate scan: introspection attributes, `.register`, `.pluginmanager` and `.obj`/`.runtest`
+assignment at any depth of a file, hook names at its module top level. Not walked, hence not
+defended: other class bodies, function bodies outside control-flow blocks, and reaching
+`__code__` without spelling the attribute. Anything not enumerated is not defended; deliberate
+reflection is outside this tripwire's threat model.
 """
 from __future__ import annotations
 
