@@ -102,7 +102,9 @@ describe("AtlasRoute ledger", () => {
 });
 
 describe("AtlasRoute focus management", () => {
-  it("a plain close (×) restores focus to the opener", () => {
+  // The opener lives in the header, which scrolls away on a long verdict: a
+  // focus return that scrolls it into view jumps the page back to the top.
+  it("a plain close (×) restores focus to the opener without scrolling the page", () => {
     const ref = createRef<AtlasRouteHandle>();
     const { container } = render(
       <>
@@ -128,6 +130,7 @@ describe("AtlasRoute focus management", () => {
     );
 
     expect(focusSpy).toHaveBeenCalledTimes(1);
+    expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true });
   });
 
   it("Escape (the native `cancel` event) closes once and returns focus to the opener (FIX-ROUND-2 K5)", () => {
@@ -162,6 +165,7 @@ describe("AtlasRoute focus management", () => {
     );
 
     expect(focusSpy).toHaveBeenCalledTimes(1);
+    expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true });
     expect(dialog).not.toHaveAttribute("open");
   });
 
