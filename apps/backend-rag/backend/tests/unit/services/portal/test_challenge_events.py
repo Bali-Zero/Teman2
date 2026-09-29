@@ -136,6 +136,48 @@ async def test_round2_skips_the_goal_when_the_creator_has_no_scored_entry(transp
     redis.eval.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_round2_skips_the_goal_for_a_non_participant_creator(transport, monkeypatch):
+    """Zero's 2026-09-29 ruling: only the six September players are ranked.
+    A registration by any other staff member runs through the REAL scorer,
+    which yields no entry for them, so no goal is published."""
+    from backend.services.portal import challenge_round2 as r2
+
+    redis, connection, pool = transport
+    monkeypatch.setattr(r2, "active_round", lambda now: 2)
+    monkeypatch.setattr(r2, "build_goal_lookup_sql", lambda: "SELECT 1")
+    connection.fetchrow.return_value = {
+        "creator_email": "outsider@balizero.com",
+        "role": "member",
+        "display_name": "Outsider",
+        "avatar": None,
+        "activations": 1,
+        "at": datetime.now(timezone.utc),
+    }
+    roster = [
+        {"email": e, "display_name": e.split("@")[0], "department": "setup",
+         "role": "member", "active": True, "avatar": None}
+        for e in ("outsider@balizero.com", "adit@balizero.com")
+    ]
+    registrations = [
+        {"creator_email": "outsider@balizero.com", "activations": 5, "invited": 5,
+         "last_activation_at": datetime.now(timezone.utc)}
+    ]
+
+    calls = {"n": 0}
+
+    async def ordered_fetch(*args, **kwargs):
+        calls["n"] += 1
+        # fetch order in `_round2_points_for_creator`: roster, r1_activity, registration, ...
+        return {1: roster, 3: registrations}.get(calls["n"], [])
+
+    connection.fetch = ordered_fetch
+
+    await events.publish_registration_goal(pool, 999999)
+
+    redis.eval.assert_not_awaited()
+
+
 class FakeStream:
     def __init__(self):
         self.incoming = asyncio.Queue()
