@@ -935,6 +935,59 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     });
   });
 
+  it("assigns prize-list holders by prize_slot when the payload carries it", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "adit",
+            display_name: "Adit",
+            rank: 1,
+            points: 23,
+            prize_slot: 5,
+            prize_idr: 700_000,
+            total_prize_idr: 700_000,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "z",
+            display_name: "Zed",
+            rank: 2,
+            points: 10,
+            prize_slot: null,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const first = screen.getByTestId("rank-prize-1");
+    expect(first.textContent).toContain("Belum ada");
+    expect(first.textContent).not.toContain("Adit");
+    const fifth = screen.getByTestId("rank-prize-5");
+    expect(fifth.textContent).toContain("Adit");
+    expect(fifth.textContent).not.toContain("Zed");
+    expect(screen.getByTestId("rank-prize-2").textContent).not.toContain("Zed");
+  });
+
+  it("falls back to rank matching when no entry carries prize_slot", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "adit",
+            display_name: "Adit",
+            rank: 1,
+            points: 23,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    expect(screen.getByTestId("rank-prize-1").textContent).toContain("Adit");
+  });
+
   it("notes the prize slot when it differs from the rank", () => {
     mockQuery(
       round2Response({

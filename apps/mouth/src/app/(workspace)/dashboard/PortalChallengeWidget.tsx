@@ -549,6 +549,10 @@ function RankPrizeList({
   entries: PortalChallengeEntry[];
 }) {
   if (rankPrizes.length === 0) return null;
+  // Once the backend ships prize_slot (key present, even null), a slot's
+  // holders are the entries that actually WON it — a member can win a lower
+  // slot than his rank. Older payloads fall back to rank matching.
+  const hasSlots = entries.some((e) => e.prize_slot !== undefined);
   return (
     <div data-testid="rank-prize-list" className="flex flex-col gap-2">
       <span className={EYEBROW}>Peringkat & Hadiah</span>
@@ -558,11 +562,12 @@ function RankPrizeList({
           rank={rp.rank}
           prizeIdr={rp.prize_idr}
           minPoints={rp.min_points}
-          // A 0-point (or negative) entry never wins a rank prize — the
-          // backend already ships prize_idr: 0 for it; this list must not
-          // show it as the holder just because it shares the rank number.
-          holders={entries.filter(
-            (e) => e.rank === rp.rank && (e.points ?? 0) > 0,
+          // Fallback (no prize_slot in payload): a 0-point (or negative)
+          // entry never wins a rank prize, so it is never shown as holder.
+          holders={entries.filter((e) =>
+            hasSlots
+              ? e.prize_slot === rp.rank
+              : e.rank === rp.rank && (e.points ?? 0) > 0,
           )}
         />
       ))}
