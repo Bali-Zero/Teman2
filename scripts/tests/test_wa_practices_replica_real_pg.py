@@ -504,3 +504,25 @@ async def test_real_pg_practice_types_invalid_value_is_skipped_not_a_crash(pro_p
     async with pro_pool.acquire() as conn:
         count = await conn.fetchval("SELECT count(*) FROM practice_types")
     assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_real_pg_integer_out_of_int4_range_is_skipped_not_a_crash(pro_pool):
+    """Delta-round finding (codex-gpt-5.6-sol): before the fix, this exact
+    value made it past _coerce_param and raised a REAL asyncpg.DataError
+    inside fetchrow, uncaught by either per-row except clause — proving the
+    original 'fix' was incomplete against an ACTUAL int4 column, not a mock."""
+    m = await run_sync(
+        pro_pool,
+        [],
+        [
+            _pt_row("visa_overflow", typical_duration_days="2147483648"),
+            _pt_row("visa_ok"),
+        ],
+        dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    assert m.types_inserted == 1
+    async with pro_pool.acquire() as conn:
+        count = await conn.fetchval("SELECT count(*) FROM practice_types")
+    assert count == 1

@@ -48,14 +48,18 @@ name: wa practices replica tests
 # the sibling file names (either add the `postgresql` server package to this
 # runner, or give the real-PG suite a `DATABASE_URL` mode of its own).
 #
-# The 57/14 unit-vs-skip split below is this corpus's floor as of its first
-# PR (2026-09-28, `test_wa_practices_replica*.py`, REAL_PG unset) — grew from
-# an initial 34/5 once the FK-census ruling added practice_types replication
-# + the skipped_fk fail-closed net, then to 47/10 in the same PR, then to
-# 57/14 after the Gear-3 council's round-1 findings (codex-gpt-5.6-sol:
-# practice_type_id re-keying; kimi-code/k3: skipped_invalid's per-row
-# fail-closed net for a malformed Fly value) were fixed and pinned with
-# unit + real-PG guilt/innocence cases each.
+# The 64/15 unit-vs-skip split below is this corpus's floor as of its first
+# PR (2026-09-28/29, `test_wa_practices_replica*.py`, REAL_PG unset) — grew
+# from an initial 34/5 once the FK-census ruling added practice_types
+# replication + the skipped_fk fail-closed net, then to 47/10 in the same
+# PR, then to 57/14 after the Gear-3 council's round-1 findings
+# (codex-gpt-5.6-sol: practice_type_id re-keying; kimi-code/k3:
+# skipped_invalid's per-row fail-closed net for a malformed Fly value), then
+# to 64/15 after the SAME council's delta round found round-1's fix for B
+# incomplete (an out-of-range int4 value raised asyncpg.DataError, not
+# ValueError, past both per-row except clauses) and its ValueError catch too
+# broadly scoped (wrapping fetchrow itself, risking misclassifying a genuine
+# driver/UPSERT error as "invalid Fly data").
 
 on:
   pull_request:
@@ -129,7 +133,7 @@ jobs:
       - name: The T5 P4 replica corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=57   # the corpus size after the Gear-3 council round (REAL_PG unset, 14 opt-in skips)
+          FLOOR=64   # the corpus size after the Gear-3 council's delta round (REAL_PG unset, 15 opt-in skips)
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_practices_replica*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"

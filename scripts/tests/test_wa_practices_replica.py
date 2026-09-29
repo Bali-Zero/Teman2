@@ -95,8 +95,7 @@ class _FakeTxn:
 
 class _FakeConn:
     def __init__(self, log, clients, practices, practice_types=None, *,
-                 fail_on_uuid=None, fk_violation_on_uuid=None,
-                 invalid_value_on_uuid=None, invalid_value_on_pt_code=None):
+                 fail_on_uuid=None, fk_violation_on_uuid=None):
         self._log = log
         self._clients = clients  # list[{"id": int, "uuid": str}]
         self._practices = practices  # dict[uuid] -> {"client_id": int, "practice_type_id": int|None, "data": list}
@@ -105,8 +104,6 @@ class _FakeConn:
         self._next_practice_type_id = 1
         self._fail_on_uuid = fail_on_uuid
         self._fk_violation_on_uuid = fk_violation_on_uuid
-        self._invalid_value_on_uuid = invalid_value_on_uuid
-        self._invalid_value_on_pt_code = invalid_value_on_pt_code
 
     def transaction(self):
         return _FakeTxn(self._log)
@@ -120,8 +117,6 @@ class _FakeConn:
     async def fetchrow(self, sql, *params):
         if sql == _PRACTICE_TYPES_UPSERT_SQL:
             code, *data = params
-            if self._invalid_value_on_pt_code is not None and code == self._invalid_value_on_pt_code:
-                raise ValueError("synthetic malformed value")
             existing = self._practice_types.get(code)
             if existing is None:
                 self._practice_types[code] = list(data)
@@ -138,8 +133,6 @@ class _FakeConn:
             raise RuntimeError("synthetic column-set mismatch")
         if self._fk_violation_on_uuid is not None and uuid_ == self._fk_violation_on_uuid:
             raise wpr.asyncpg.exceptions.ForeignKeyViolationError("synthetic FK violation")
-        if self._invalid_value_on_uuid is not None and uuid_ == self._invalid_value_on_uuid:
-            raise ValueError("synthetic malformed value")
         existing = self._practices.get(uuid_)
         if existing is None:
             self._practices[uuid_] = {
@@ -366,14 +359,17 @@ async def test_run_sync_practice_type_id_updates_when_code_changes_on_an_existin
 
 @pytest.mark.asyncio
 async def test_run_sync_invalid_practice_value_is_skipped_not_a_crash():
+    """A GENUINELY malformed value (not a fake-injected hook) — run_sync
+    calls the REAL _coerce_param even against this fake pool, so a bad date
+    string raises the real ValueError the fix exists to catch."""
     log: list = []
     clients = [{"id": 1, "uuid": "client-uuid-a"}]
-    conn = _FakeConn(log, clients, {}, invalid_value_on_uuid="prac-uuid-bad")
+    conn = _FakeConn(log, clients, {})
     pool = _FakePool(conn)
     m = await run_sync(
         pool,
         [
-            _fly_row("prac-uuid-bad", "client-uuid-a"),
+            _fly_row("prac-uuid-bad", "client-uuid-a", start_date="not-a-real-date"),
             _fly_row("prac-uuid-good", "client-uuid-a"),
         ],
         [],
@@ -382,6 +378,10 @@ async def test_run_sync_invalid_practice_value_is_skipped_not_a_crash():
     assert m.skipped_invalid == 1
     assert m.inserted == 1  # the OTHER row still lands — the run did not abort
     assert log[-1] == "COMMIT"  # the outer transaction still commits
+    # Delta-round fix: param construction is its OWN try/except, strictly
+    # BEFORE the nested transaction opens — a row rejected there never even
+    # opens a savepoint, unlike the FK-violation and good-row cases.
+    assert log == ["BEGIN", "BEGIN", "COMMIT", "COMMIT"]
 
 
 @pytest.mark.asyncio
@@ -389,14 +389,56 @@ async def test_run_sync_invalid_practice_type_value_is_skipped_not_a_crash():
     """Same net, the practice_types loop — kimi's finding named it
     explicitly as unmitigated by any savepoint on the original design."""
     log: list = []
-    conn = _FakeConn(log, [], {}, invalid_value_on_pt_code="visa_broken")
+    conn = _FakeConn(log, [], {})
     pool = _FakePool(conn)
     m = await run_sync(
-        pool, [], [_pt_row("visa_broken"), _pt_row("visa_ok")], dry_run=False,
+        pool, [],
+        [
+            _pt_row("visa_broken", typical_duration_days="not-a-number"),
+            _pt_row("visa_ok"),
+        ],
+        dry_run=False,
     )
     assert m.skipped_invalid == 1
     assert m.types_inserted == 1  # the OTHER practice_type still lands
     assert log[-1] == "COMMIT"
+
+
+@pytest.mark.asyncio
+async def test_run_sync_integer_out_of_int4_range_is_skipped_not_a_crash():
+    """Delta-round finding (codex-gpt-5.6-sol): Python's int() has no int4
+    ceiling — an out-of-range value used to sail past _coerce_param and
+    raise asyncpg.DataError (not ValueError) uncaught, inside fetchrow.
+    _coerce_param now rejects it itself, before any DB call."""
+    log: list = []
+    conn = _FakeConn(log, [], {})
+    pool = _FakePool(conn)
+    m = await run_sync(
+        pool, [],
+        [
+            _pt_row("visa_overflow", typical_duration_days="2147483648"),
+            _pt_row("visa_ok"),
+        ],
+        dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    assert m.types_inserted == 1
+
+
+@pytest.mark.asyncio
+async def test_run_sync_datalevel_error_from_fetchrow_is_never_misclassified_as_skipped_invalid():
+    """The delta round's scope-narrowing ask: a non-ValueError,
+    non-ForeignKeyViolationError exception raised BY fetchrow itself (a
+    stand-in for a real asyncpg.DataError or a genuine bug) must propagate
+    and abort — never get silently folded into skipped_invalid, which only
+    _coerce_param may populate."""
+    log: list = []
+    clients = [{"id": 1, "uuid": "client-uuid-a"}]
+    conn = _FakeConn(log, clients, {}, fail_on_uuid="prac-uuid-bad")
+    pool = _FakePool(conn)
+    with pytest.raises(RuntimeError):
+        await run_sync(pool, [_fly_row("prac-uuid-bad", "client-uuid-a")], [], dry_run=False)
+    assert log[-1] == "ROLLBACK"  # the outer transaction, NOT a per-row skip
 
 
 def test_run_sync_innocence_no_invalid_value_configured_skipped_invalid_stays_zero():
@@ -662,6 +704,22 @@ def test_coerce_param_integer_guilt_and_innocence():
     cluster: `'42'::integer` bind param -> DataError)."""
     assert _coerce_param("42", "integer") == 42
     assert isinstance(_coerce_param("42", "integer"), int)
+
+
+@pytest.mark.parametrize("value", ["2147483648", "-2147483649", "99999999999"],
+                         ids=["one-over-max", "one-under-min", "way-over"])
+def test_coerce_param_integer_rejects_out_of_int4_range(value):
+    """Delta-round finding (codex-gpt-5.6-sol): Python's int() has no int4
+    ceiling, so this used to return cleanly and let asyncpg.DataError —
+    uncaught by either per-row except clause — take the whole run down."""
+    with pytest.raises(ValueError):
+        _coerce_param(value, "integer")
+
+
+@pytest.mark.parametrize("value,expected", [("2147483647", 2147483647), ("-2147483648", -2147483648)],
+                         ids=["int4-max", "int4-min"])
+def test_coerce_param_integer_accepts_int4_boundary_values(value, expected):
+    assert _coerce_param(value, "integer") == expected
 
 
 # --- D — COPY TEXT unescape + _fetch_fly_rows parsing (never a live pg.sh)

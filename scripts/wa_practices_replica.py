@@ -89,22 +89,36 @@ FK-census ruling asked for) is caught per row via a nested
 the run.
 
 Council round 1 (kimi-code/k3) found that `_coerce_param`'s own conversions
-(`date.fromisoformat`/`datetime.fromisoformat`/`int(...)`) ran OUTSIDE that
-per-row savepoint on the original design — one malformed Fly value (a bad
-date, an out-of-range int) raised `ValueError` straight through the row
-loop, aborting the WHOLE transaction and, on an unattended hourly cron,
-repeating that same total failure forever since the source data does not
-change on its own. Fixed by moving parameter construction for BOTH loops
-(`practice_types` and `practices`) inside their own per-row nested
-transaction and catching `ValueError` there too, counted as a new
-`skipped_invalid` metric — a genuine FK violation and a malformed value are
-different failure classes and get different counters, but neither one ever
-takes the rest of the run down with it now. `_coerce_param`'s boolean branch
-was also hardened to raise on anything other than the two strings a
-`boolean::text` cast can ever produce, converting what used to be a silent
-`'t'`/`'TRUE'` -> `False` miscoercion (unreachable today, since the Fly SELECT
+(`date.fromisoformat`/`datetime.fromisoformat`/`int(...)`) ran OUTSIDE any
+per-row net on the original design — one malformed Fly value (a bad date, an
+out-of-range int) raised `ValueError` straight through the row loop,
+aborting the WHOLE transaction and, on an unattended hourly cron, repeating
+that same total failure forever since the source data does not change on
+its own. Fixed by giving parameter construction for BOTH loops
+(`practice_types` and `practices`) its OWN try/except, BEFORE the nested
+transaction even opens, counted as a new `skipped_invalid` metric — a
+genuine FK violation and a malformed value are different failure classes
+and get different counters, but neither one ever takes the rest of the run
+down with it now. `_coerce_param`'s boolean branch was also hardened to
+raise on anything other than the two strings a `boolean::text` cast can
+ever produce, converting what used to be a silent `'t'`/`'TRUE'` -> `False`
+miscoercion (unreachable today, since the Fly SELECT
 always casts server-side, but not defensible) into a loud, per-row-skippable
 failure instead.
+
+Delta round (same seat) found the fix incomplete: `int("2147483648")`
+returns cleanly in Python (no ceiling), so an out-of-range `integer` value
+sailed past `_coerce_param` untouched, only to raise `asyncpg.DataError` —
+NOT a `ValueError` — inside `fetchrow`, uncaught by either per-row except
+clause, reopening the exact failure mode this fix exists to close.
+`_coerce_param`'s "integer" branch now validates PostgreSQL's own `int4`
+range explicitly and raises `ValueError` itself before any DB call ever
+sees the value. The delta round also flagged that the original fix's
+`except ValueError` wrapped the `fetchrow` call too, which could silently
+fold a `ValueError` genuinely raised BY the driver or the UPSERT itself into
+"invalid Fly data" — parameter construction now runs in its own try/except,
+strictly BEFORE the nested transaction opens, so `skipped_invalid` can only
+ever come from `_coerce_param` itself.
 
 Idempotent by construction: the `ON CONFLICT ... DO UPDATE ... WHERE (...)
 IS DISTINCT FROM (...)` guard (same idiom as
@@ -396,7 +410,20 @@ def _coerce_param(value: str | None, pgtype: str) -> str | bool | int | date | d
     if pgtype == "timestamptz":
         return datetime.fromisoformat(value)
     if pgtype == "integer":
-        return int(value)
+        parsed = int(value)
+        # Postgres `integer` is int4 (-2147483648..2147483647); Python's
+        # int() has no such ceiling, so an out-of-range value would sail
+        # past this function only to raise asyncpg.DataError — NOT a
+        # ValueError — inside the DB call instead (delta-round finding,
+        # codex-gpt-5.6-sol: `_coerce_param("2147483648", "integer")` used
+        # to return cleanly, and the resulting DataError was uncaught by
+        # either per-row except clause, taking the whole run down exactly
+        # the way this fix exists to prevent). Rejecting it here, before any
+        # DB call, keeps the failure inside the one exception type the
+        # per-row net actually catches.
+        if not (-2147483648 <= parsed <= 2147483647):
+            raise ValueError("integer_out_of_int4_range")
+        return parsed
     return value
 
 
@@ -438,13 +465,19 @@ async def run_sync(
     RESIDUAL foreign-key violation regardless: each `practices` row's UPSERT
     runs inside its own nested `asyncpg` transaction (a real SAVEPOINT once
     already inside the outer one), so a violation there rolls back only that
-    row and never aborts the rest of the run. Parameter construction for
-    BOTH loops runs INSIDE that same per-row savepoint, so a `ValueError`
-    from `_coerce_param` (a malformed Fly value — a bad date, an
-    out-of-range int, an unrecognized boolean string) is caught the same
-    way, counted as `skipped_invalid` — a different failure class than a
-    genuine foreign-key violation, so it gets its own counter, but neither
-    one can take the rest of the run down with it."""
+    row and never aborts the rest of the run.
+
+    Parameter construction for BOTH loops runs in its OWN try/except, before
+    the nested transaction even opens — never inside it. A `ValueError` from
+    `_coerce_param` (a malformed Fly value — a bad date, an out-of-range
+    int4, an unrecognized boolean string) is counted as `skipped_invalid`
+    and the row is skipped WITHOUT ever touching the database (no savepoint
+    needed: nothing was sent yet). This is deliberately a narrower catch
+    than wrapping the `fetchrow` call too (delta-round finding, codex-
+    gpt-5.6-sol): a `ValueError` genuinely raised BY the database driver or
+    the UPSERT itself must never be silently folded into "invalid Fly data"
+    — only `ForeignKeyViolationError` gets that treatment, from the
+    fetchrow-scoped except clause below."""
     t0 = time.monotonic()
     metrics = SyncMetrics(fly=len(fly_rows))
     async with pro_pool.acquire() as conn:
@@ -453,14 +486,14 @@ async def run_sync(
         try:
             for pt_row in fly_practice_types_rows:
                 try:
-                    async with conn.transaction():  # nested -> real SAVEPOINT
-                        pt_params = [pt_row["code"]] + [
-                            _coerce_param(pt_row[c], t) for c, t in _PRACTICE_TYPES_DATA_COLUMNS
-                        ]
-                        pt_result = await conn.fetchrow(_PRACTICE_TYPES_UPSERT_SQL, *pt_params)
+                    pt_params = [pt_row["code"]] + [
+                        _coerce_param(pt_row[c], t) for c, t in _PRACTICE_TYPES_DATA_COLUMNS
+                    ]
                 except ValueError:
                     metrics.skipped_invalid += 1
                     continue
+                async with conn.transaction():  # nested -> real SAVEPOINT
+                    pt_result = await conn.fetchrow(_PRACTICE_TYPES_UPSERT_SQL, *pt_params)
                 if pt_result is not None:
                     if pt_result["inserted"]:
                         metrics.types_inserted += 1
@@ -481,16 +514,17 @@ async def run_sync(
                     continue
                 pro_practice_type_id = practice_type_code_to_id.get(row["practice_type_code"])
                 try:
+                    params = [row["uuid"], pro_client_id, pro_practice_type_id] + [
+                        _coerce_param(row[c], t) for c, t in _DATA_COLUMNS
+                    ]
+                except ValueError:
+                    metrics.skipped_invalid += 1
+                    continue
+                try:
                     async with conn.transaction():  # nested -> real SAVEPOINT
-                        params = [row["uuid"], pro_client_id, pro_practice_type_id] + [
-                            _coerce_param(row[c], t) for c, t in _DATA_COLUMNS
-                        ]
                         result = await conn.fetchrow(_PRACTICES_UPSERT_SQL, *params)
                 except asyncpg.exceptions.ForeignKeyViolationError:
                     metrics.skipped_fk += 1
-                    continue
-                except ValueError:
-                    metrics.skipped_invalid += 1
                     continue
                 if result is None:
                     metrics.unchanged += 1
