@@ -1,0 +1,18 @@
+gear: 3
+task_id: wa-mirror-attention-pii-ci
+lane: wa-mirror
+host: air-m5 (M5)
+branch: agent/air-m5/wa-mirror/attention-pii-ci-0929
+gate_class: opus
+l_level: L2
+objective: >-
+  Discharge #7635 gate C5 and #7652 gate C3: make check-wa-attention-pii a gate that can be
+  trusted and later made REQUIRED. (a) run every scripts/tests/test_wa_attention_*.py with the
+  real-Postgres tests actually executing on the ubuntu runner (PG binaries put on PATH) and
+  prove 0 skipped from a structured junit report; (b) replace the top-level paths: filter with
+  the repo's sentinel pattern (W69, copied from guard-conformance.yml) so the workflow always
+  starts. Floor is 3 on the path term alone (.github/workflows/ hot zone); the diff is one
+  workflow file. Registering the check as REQUIRED is a branch-protection admin action and is
+  NOT done here; the guard-conformance registry route was assessed and does not fit (see pack).
+scope:
+  - ".github/workflows/check-wa-attention-pii.yml - sentinel trigger (pull_request + merge_group, no paths), fail-closed relevance step, PG binaries on PATH, structured junit skip gate with named real-PG testcases."

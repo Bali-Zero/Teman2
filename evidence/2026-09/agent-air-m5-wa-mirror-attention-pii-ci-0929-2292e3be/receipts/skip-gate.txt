@@ -1,0 +1,17 @@
+## corpus with the CI flags, real PG present (local M5)
+.....................................                                    [100%]
+37 passed in 1.28s
+testcases=37 skipped=0 missing_real_pg=0
+
+## gate mutant 1: a real-PG test deselected
+testcases=36 skipped=0 missing_real_pg=1
+::error::skipped=[] missing=['test_digest_counts_post_lid_rows'] - a skipped or absent guard proves nothing (superscar #2)
+
+## gate mutant 2: whole suite excluded with -k
+testcases=29 skipped=0 missing_real_pg=4
+::error::skipped=[] missing=['test_digest_counts_post_lid_rows', 'test_digest_counts_the_backlog_older_than_the_window', 'test_high_unresolved_finds_post_lid_rows', 'test_sender_phone_is_tried_before_remotejidalt_when_they_disagree'] - a skipped or absent guard proves nothing (superscar #2)
+
+## gate mutant 3: real-PG fixture forced to skip (cp backup, restored)
+33 passed, 4 skipped in 0.28s
+testcases=37 skipped=4 missing_real_pg=0
+::error::skipped=['test_digest_counts_post_lid_rows', 'test_high_unresolved_finds_post_lid_rows', 'test_digest_counts_the_backlog_older_than_the_window', 'test_sender_phone_is_tried_before_remotejidalt_when_they_disagree'] missing=[] - a skipped or absent guard proves nothing (superscar #2)
