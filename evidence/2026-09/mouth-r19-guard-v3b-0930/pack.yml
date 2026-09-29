@@ -1,6 +1,6 @@
 brief_ref: evidence/brief.yml
 plan_ref: >-
-  Branch agent/air-m5/mouth/r19-guard-v3-0930 (base main): the R19 colour guard v3. The spec (v3.2) was
+  Branch agent/air-m5/mouth/r19-guard-v3b-0930 (base main): the R19 colour guard v3. The spec (v3.3) was
   reviewed twice by a fresh adversarial reader before any build, after gate-7691 returned REWORK-DESIGN on v2.
 lanes:
   - lane: r19-guard-spec-critic
@@ -14,11 +14,11 @@ what_changed: |
   the app's real design system (globals.css through Tailwind's loader) and the emitted declarations are judged.
   apps/mouth/src/test/r19-colour-source.ts: the source scan walks the TypeScript syntax tree; only class
   positions, style objects, colour attributes and theme-color metadata are judged, with in-file resolution.
-  apps/mouth/src/test/r19-colour-guard.test.ts: the tables (667 tests) and the loader tripwires.
+  apps/mouth/src/test/r19-colour-guard.test.ts: the tables (697 tests) and the loader tripwires.
   TaxCalendarBody / MyTaxCalendar per-page guards: colour tests back, delegating to the modules.
 proof: |
   Tables, guards, mutants and the innocence run are in the brief's acceptance with their probes. The
-  orchestrator re-ran the table and both guards at 2026-09-29T18:25:02Z: 3 files, 674 tests passed, 1.63 s.
+  builder re-ran the table and both guards at 2026-09-29T18:58:43Z after the gate-7702 rework: 3 files, 704 tests passed, 1.53 s.
 dissent:
   - seat: claude-opus-5.5
     objection: "gate-7691 on v2: positions decided by key spellings (imageAlt flagged), values judged only as bare strings (ternaries escape), *ClassName props and class maps unseen, color-mix of a var flagged."
@@ -32,6 +32,10 @@ dissent:
     objection: "spec critic on v3.1: the tripwire could not inject a fake module; light-dark had no ruling; relative colour syntax over-matched."
     status: CONFIRMED
     resolution: "Injectable tw argument; light-dark stays a colour function; fn(from X ...) judges only X."
+  - seat: claude-opus-5.5
+    objection: "gate-7702 on v3: D1 identifiers bound by destructuring were never resolved (const { label, style } = config[s] ?? config.draft hid every literal of the map; MessageBubble config lines judged 0 times); D2 member reads restarted the depth budget so cross-referencing reads overflowed the stack; F1 parameter defaults were unjudged."
+    status: CONFIRMED
+    resolution: "Binding elements resolve to the matching member of what their pattern destructures and to their own default (spec v3.3); one depth/visited budget is threaded through every recursive step; parameter defaults are indexed. Rows model the LkpmBatchClient, portal lkpm and MessageBubble shapes with innocent twins, the D2 snippet is a no-throw row, and a row scans the real MessageBubble.tsx. The mutation script now counts a suite error as BROKEN and 15 mutants cover the new code (91 total: 90 killed, 0 broken, 0 survived, 1 argued equivalent)."
 receipts:
   - claim: "Table and both per-page guards green on HEAD."
     cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx"
@@ -44,6 +48,30 @@ receipts:
     result: "18 files / 840 tests passed; tsc exit 0; eslint exit 0; prettier clean"
     exit: 0
     ts: "2026-09-29T18:25:49Z"
+    seat: claude-opus-5.5
+  - claim: "Rework round 1: table and both guards green."
+    cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx"
+    result: "3 files, 704 tests passed"
+    exit: 0
+    ts: "2026-09-29T18:58:43Z"
+    seat: claude-opus-5.5
+  - claim: "Rework round 1: scoped suite and types."
+    cmd: 'cd apps/mouth && npx vitest run src/components/funnel "src/app/(tax-calendar)" src/components/r19 src/app/api/tax-calendar src/test && npx tsc --noEmit'
+    result: "18 files / 870 tests passed; tsc exit 0"
+    exit: 0
+    ts: "2026-09-29T18:57:50Z"
+    seat: claude-opus-5.5
+  - claim: "Rework round 1: module mutants, no broken and no survivor except one argued equivalent."
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v3b-0930/mutate_module.py"
+    result: "91 mutants: 90 killed, 0 broken, 0 survived, 1 equivalent"
+    exit: 0
+    ts: "2026-09-29T18:56:30Z"
+    seat: claude-opus-5.5
+  - claim: "Rework round 1: product mutants T1-T5 and Y1-Y5 all red."
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v3b-0930/mutate_product.py"
+    result: "10 of 10 RED"
+    exit: 0
+    ts: "2026-09-29T18:56:49Z"
     seat: claude-opus-5.5
 pii_scan: clean
 pii_scan_note: "No client data; the tables hold synthetic CSS and TSX snippets."
