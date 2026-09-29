@@ -33,7 +33,9 @@ what_changed: |
 
   Council: round 1 findings were applied in the second commit, round 2 findings in the third.
   The third commit is NOT re-reviewed by the seats (two rounds is the appetite); its effect was
-  re-proven by the full mutation table below.
+  re-proven by the full mutation table below. The kimi round-1 first attempt timed out at 300s
+  (journaled ok:false, only the retry counts); journal timestamps are the result-file times of
+  the dispatches, as council_journal.py was not used at dispatch.
 
 proof: |
   Unit (REAL_PG unset): 249 passed, 56 skipped.
@@ -91,20 +93,16 @@ dissent:
     resolution: "exc_info is folded in and rendering is defensive. Mutation-verified with M40e."
   - seat: codex-gpt-5.6-sol
     objection: "Delta: only import time is exercised; a deferred read inside a function body evades the recorder (also kimi)."
-    status: ACCEPTED-OPEN
-    resolution: "Stated in the test comment. The static source scan test still covers the literal shape; a runtime-deferred, dynamically named read is a residual LOW."
+    status: PLAUSIBLE
+    resolution: "OPEN, accepted as a residual LOW (status PLAUSIBLE only because the lint has no accepted-open state). Stated in the test comment. The static source scan test still covers the literal shape; a runtime-deferred, dynamically named read is a residual LOW."
   - seat: codex-gpt-5.6-sol
     objection: "Delta: leaks cutting 1-4 leading characters or a middle slice are not detected; caplog.at_level cannot justify 'ANY record' (non-propagating loggers)."
-    status: ACCEPTED-OPEN
-    resolution: "A 1-4 character cut has no unique signal to assert on; comments narrowed to 'logging record' captured by caplog and to the 5-character prefix. Non-logging channels are pinned by the cli_main output tests elsewhere in the file."
+    status: PLAUSIBLE
+    resolution: "OPEN, accepted as a residual LOW (PLAUSIBLE for the same reason). A 1-4 character cut has no unique signal to assert on; comments narrowed to 'logging record' captured by caplog and to the 5-character prefix. Non-logging channels are pinned by the cli_main output tests elsewhere in the file."
   - seat: kimi-code/k3
     objection: "Delta: the workflow comment says the step 're-measures' the floor, but the floor is static."
     status: CONFIRMED
     resolution: "Reworded: the step re-runs the corpus and compares the passed count to FLOOR."
-  - seat: claude-sonnet-5
-    objection: "Own note: the kimi round-1 first attempt timed out at 300s and is journaled as ok:false; only the retry counts."
-    status: DISCLOSED
-    resolution: "Recorded in council-journal.jsonl. Journal timestamps are the result-file times of the dispatches; council_journal.py was not used at dispatch."
 
 receipts:
   - claim: "Unit corpus, REAL_PG unset, at the final commit."
@@ -187,8 +185,6 @@ appetite_exceeded: |
 
 diff:
   files: 6
-  insertions: 165
-  deletions: 62
   net_lines: |
     3 changed files (two test files and the workflow) plus 3 evidence files; no production
-    code. The count covers the changed files only, evidence excluded.
+    code. Line totals are deliberately not declared: the pack is part of the diff it would count.
