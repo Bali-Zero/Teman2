@@ -212,6 +212,21 @@ def _usable_python(path: pathlib.Path) -> bool:
         return False
 
 
+def _override_python(env_override: str) -> pathlib.Path | None:
+    """JEV_DISPATCH_GATE_VENV_PYTHON is a test seam and ONLY counts when
+    JEV_DISPATCH_GATE_FAKE_ANSWERS is ALSO set — the same rule as
+    _seam_active(): a stray override alone must never route a real vendor
+    call under an interpreter the caller chose, since _running_under_pinned_venv
+    would then label it "venv" with zero exec having actually happened. Once
+    the var is SET, its verdict (honoured or refused) always short-circuits
+    the resolution — it never falls through to the direct/git-fallback
+    path, matching the pre-existing all-or-nothing shape of this override."""
+    if not os.environ.get("JEV_DISPATCH_GATE_FAKE_ANSWERS"):
+        return None
+    p = pathlib.Path(env_override)
+    return p if _usable_python(p) else None
+
+
 @functools.lru_cache(maxsize=1)
 def _repo_venv_python() -> pathlib.Path | None:
     """Locate the PINNED interpreter: apps/backend-rag/.venv/bin/python (its
@@ -224,8 +239,7 @@ def _repo_venv_python() -> pathlib.Path | None:
     at most once — both the exec path and the identity recheck share it."""
     env_override = os.environ.get("JEV_DISPATCH_GATE_VENV_PYTHON")  # test seam only
     if env_override:
-        p = pathlib.Path(env_override)
-        return p if _usable_python(p) else None
+        return _override_python(env_override)
     direct = HERE.parent.parent / "apps" / "backend-rag" / ".venv" / "bin" / "python"
     if _usable_python(direct):
         return direct
