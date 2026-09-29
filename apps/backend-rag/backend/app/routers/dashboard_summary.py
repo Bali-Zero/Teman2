@@ -862,6 +862,7 @@ class PortalChallengeTaxRules(BaseModel):
 class PortalChallengeRankPrize(BaseModel):
     rank: int
     prize_idr: int
+    min_points: int | None = None  # Round 2: minimum score for this slot
 
 
 class PortalChallengeScoringRules(BaseModel):
@@ -901,6 +902,8 @@ class PortalChallengeEntry(BaseModel):
     penalty_points: int = 0
     september_choice: str | None = None
     last_event_at: datetime | None = None
+    prize_slot: int | None = None
+    september_rank: int | None = None
 
 
 class PortalChallengeRecentActivation(BaseModel):
@@ -1189,7 +1192,12 @@ async def _build_round2_payload(db_pool: asyncpg.Pool, now: datetime) -> dict[st
             "best_tax_fallback_threshold": TAX_FALLBACK_THRESHOLD,
         },
         "rank_prizes": [
-            {"rank": rank, "prize_idr": prize} for rank, prize in sorted(r2.RANK_PRIZES_IDR.items())
+            {
+                "rank": rank,
+                "prize_idr": prize,
+                "min_points": r2.RANK_PRIZE_MIN_POINTS[rank],
+            }
+            for rank, prize in sorted(r2.RANK_PRIZES_IDR.items())
         ],
         "scoring": {
             "registration": r2.REGISTRATION_POINTS,
@@ -1231,6 +1239,8 @@ async def _build_round2_payload(db_pool: asyncpg.Pool, now: datetime) -> dict[st
                 "penalty_points": e.penalty_points,
                 "september_choice": e.september_choice,
                 "last_event_at": e.last_event_at.isoformat() if e.last_event_at else None,
+                "prize_slot": e.prize_slot,
+                "september_rank": e.september_rank,
             }
             for e in snapshot.entries
         ],
@@ -1347,6 +1357,8 @@ async def get_portal_challenge(
             penalty_points=e.get("penalty_points", 0),
             september_choice=e.get("september_choice"),
             last_event_at=e.get("last_event_at"),
+            prize_slot=e.get("prize_slot"),
+            september_rank=e.get("september_rank"),
         )
         for e in payload["entries"]
     ]
