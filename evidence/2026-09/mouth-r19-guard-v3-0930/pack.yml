@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/mouth-r19-guard-v3-0930/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
   Branch agent/air-m5/mouth/r19-guard-v3-0930 (base main): the R19 colour guard v3. The spec (v3.2) was
   reviewed twice by a fresh adversarial reader before any build, after gate-7691 returned REWORK-DESIGN on v2.
