@@ -19,9 +19,11 @@ import json
 import logging
 import os
 import re
+import subprocess
 import sys
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -994,3 +996,25 @@ def test_g_low1_ollama_url_is_a_bare_literal_not_an_environment_read():
             f"_OLLAMA_URL must never be re-derived from the environment: {line!r}"
         )
     assert wtp._OLLAMA_URL == "http://127.0.0.1:11434/api/chat"
+
+
+# G-LOW-1 variant (mutant M26c, gate #7646 comment) — the static source scan
+# above cannot see a name built at runtime (`globals()["_OLLAMA" + "_URL"] =
+# ...`). This one runs the real thing: import the module in a fresh
+# interpreter whose environment carries a poisoned value under every
+# plausible variable name, and require the constant to come out as the
+# literal. A subprocess, because the constant is computed once at import and
+# reloading in-process would leave other tests holding stale objects.
+def test_g_low1_subprocess_import_ignores_a_poisoned_environment():
+    root = Path(__file__).resolve().parents[2]
+    poison = "http://poison.invalid:1/api/chat"
+    env = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(root), "PYTHONDONTWRITEBYTECODE": "1"}
+    for name in ("OLLAMA_URL", "OLLAMA_HOST", "OLLAMA_BASE_URL", "OLLAMA_API_URL", "OLLAMA_ENDPOINT",
+                 "WA_TEAM_PROMISES_OLLAMA_URL", "WA_TEAM_OLLAMA_URL"):
+        env[name] = poison
+    res = subprocess.run(
+        [sys.executable, "-c", "import scripts.wa_team_promises as m; print(m._OLLAMA_URL)"],
+        cwd=root, env=env, capture_output=True, text=True, timeout=60, check=False,
+    )
+    assert res.returncode == 0, res.stderr[-400:]
+    assert res.stdout.strip() == "http://127.0.0.1:11434/api/chat"

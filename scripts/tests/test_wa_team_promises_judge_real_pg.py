@@ -833,70 +833,62 @@ async def test_bad_preexisting_status_row_blocks_the_new_check_and_rolls_back(pg
 
 
 # === Gate condition C1 (fresh-Opus Gear-3 gate on PR #7597, pull/7597#issuecomment-5885208473) ===
-# === G1-G7: permanent guilt tests for mutation-testing gaps the gate found in its own mutation    ===
-# === run against the merged head (57 non-equivalent mutants; the shipped corpus at merge killed   ===
-# === 43, leaving 14 survivors). These 9 tests (G1-G7 plus the two LOW-priority ones the gate       ===
-# === flagged as optional, G-LOW-1/G-LOW-2) close 12 of the 14 survivors named in the gate's own    ===
-# === comment. Each was verified RED against its named mutant and GREEN on main before this PR —   ===
-# === see the mutant table in the PR body. No production code changed in this PR: every mutant     ===
-# === here was already fixed on main; these tests only make sure a REGRESSION turns red in future.  ===
+# === G1-G7 (+ G-LOW-1/G-LOW-2): permanent guilt tests for mutants that survived the corpus, found  ===
+# === by two fresh-Opus gates (#7597, #7646 comments). Counts are deliberately NOT written here:    ===
+# === nothing re-measures a number in a comment, and the CI floor step in                           ===
+# === wa-team-promises-tests.yml is the one place a count lives. Each test names its mutants in its ===
+# === own comment. No production code changed: every mutant was already fixed on main; these tests ===
+# === only make sure a REGRESSION turns red in future.                                              ===
 
 POISON = "SYNTHETIC-POISON +6280000000000 Jane Roe"
 
 
-# G1 (mutants M07/M08) — C2's guard has TWO halves: clause_hash AND status.
-# Every existing race test in this file pins the clause_hash half (a hash
-# change from the scanner); none pinned the STATUS half on its own — a
-# mutant that dropped `status='unjudged'` from _JUDGE_MARK_TRUE_SQL /
-# _JUDGE_MARK_FALSE_SQL (leaving only the clause_hash check) would still
-# pass every existing test, since none of them exercise an ALREADY-JUDGED
-# row whose clause_hash happens to still match.
+# G1 (mutants M07/M08 and the gate-#7646 status-half survivors M07b/c/d,
+# M08b, MSUP, MATT) — C2's guard has TWO halves: clause_hash AND status.
+# Every existing race test pins the clause_hash half; this pins the STATUS
+# half as a full matrix: each of the four guarded writes (MARK_TRUE via
+# _apply_true, MARK_FALSE and MARK_SUPERSEDED via _apply_guarded, MARK_ATTEMPT
+# via _apply_attempt) is aimed, with a MATCHING clause_hash (and matching
+# attempts for the attempt write), at a row that is ALREADY in each terminal
+# status (judged_true / judged_false / superseded / quarantined). Every one of
+# those 16 cells must lose the guard and leave the row untouched. A guard
+# relaxed to any status set other than exactly `= 'unjudged'` (dropped,
+# IN (...), <>) turns at least one cell red, because each relaxation admits
+# at least one of the four terminal statuses tested against the write it
+# relaxes.
+_G1_TERMINAL_STATUSES = ("judged_true", "judged_false", "superseded", "quarantined")
+
+
 @pytest.mark.asyncio
 async def test_g1_guarded_writes_also_require_status_unjudged_not_just_the_hash(pg_socket_dir):
     async with _fresh_database(pg_socket_dir, "g1") as pool:
         await _setup(pool)
         body = "I will send it tomorrow"
         _clause, h = _seed_candidate_for_body(body)
+        created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
 
-        await _insert_wmc(pool, msg_id=1, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
-        c_already_false = await _insert_candidate(pool, message_id=1, clause_idx=0, clause_hash=h,
-                                                    status="judged_false")
-        outcome = await _apply_true(pool, c_already_false, h, message_id=1, clause_idx=0,
-                                     promise_type="send", due_at_hint=None, dry_run=False)
-        assert outcome == "raced"
-        assert (await _candidate_row(pool, c_already_false))["status"] == "judged_false"
+        msg_id = 100
+        for write in ("TRUE", "FALSE", "SUPERSEDED", "ATTEMPT"):
+            for status in _G1_TERMINAL_STATUSES:
+                msg_id += 1
+                cell = f"{write} x {status}"
+                await _insert_wmc(pool, msg_id=msg_id, body=body, created_at=created_at)
+                cid = await _insert_candidate(pool, message_id=msg_id, clause_idx=0, clause_hash=h,
+                                               status=status, attempts=0)
+                if write == "TRUE":
+                    outcome = await _apply_true(pool, cid, h, message_id=msg_id, clause_idx=0,
+                                                 promise_type="send", due_at_hint=None, dry_run=False)
+                    assert outcome == "raced", cell
+                elif write == "FALSE":
+                    assert await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, cid, h, False) is False, cell
+                elif write == "SUPERSEDED":
+                    assert await wtp._apply_guarded(pool, wtp._JUDGE_MARK_SUPERSEDED_SQL, cid, h, False) is False, cell
+                else:
+                    assert await wtp._apply_attempt(pool, cid, h, 0, False) is None, cell
+                row = await _candidate_row(pool, cid)
+                assert row["status"] == status, cell
+                assert row["attempts"] == 0, cell
         assert await _promises(pool) == []
-
-        await _insert_wmc(pool, msg_id=2, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
-        c_already_true = await _insert_candidate(pool, message_id=2, clause_idx=0, clause_hash=h,
-                                                   status="judged_true")
-        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, c_already_true, h, False)
-        assert held is False
-        assert (await _candidate_row(pool, c_already_true))["status"] == "judged_true"
-
-        # A third terminal status, not just the two judged ones — a mutant
-        # that relaxed the guard to `status IN ('unjudged', 'superseded')`
-        # (rather than exact equality to 'unjudged') would still pass both
-        # cases above, since neither leaves the row 'superseded'.
-        await _insert_wmc(pool, msg_id=10, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
-        c_already_superseded = await _insert_candidate(pool, message_id=10, clause_idx=0, clause_hash=h,
-                                                         status="superseded")
-        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, c_already_superseded, h, False)
-        assert held is False
-        assert (await _candidate_row(pool, c_already_superseded))["status"] == "superseded"
-
-        # The FOURTH and last terminal status in the CHECK constraint
-        # (unjudged/judged_true/judged_false/quarantined/superseded) — a
-        # mutant that relaxed the guard to `status IN ('unjudged',
-        # 'quarantined')` would still pass all three cases above, since
-        # none of them leave the row 'quarantined' (delta-round finding,
-        # both seats).
-        await _insert_wmc(pool, msg_id=11, body=body, created_at=datetime(2026, 9, 20, 8, tzinfo=timezone.utc))
-        c_already_quarantined = await _insert_candidate(pool, message_id=11, clause_idx=0, clause_hash=h,
-                                                          status="quarantined")
-        held = await wtp._apply_guarded(pool, wtp._JUDGE_MARK_FALSE_SQL, c_already_quarantined, h, False)
-        assert held is False
-        assert (await _candidate_row(pool, c_already_quarantined))["status"] == "quarantined"
 
 
 # G2 (mutant M10) — the attempt-increment guard's `AND attempts=$3` pin
@@ -1093,7 +1085,11 @@ async def test_g4_dry_run_writes_nothing_on_any_path(pg_socket_dir, monkeypatch)
         assert await _snapshot() == before
 
 
-# G7 (mutants M40/M41b) — no clause/body text reaches ANY log record (not
+LEAD_INVALID = "ZQINV-7741"
+LEAD_SUPERSEDED = "ZQSUP-8852"
+
+
+# G7 (mutants M40/M41b/c and the truncating M40t/M41t) — no clause/body text reaches ANY log record (not
 # just stdout/stderr) on the invalid-verdict and superseded (hash-mismatch)
 # paths — the two paths a candidate reaches WITHOUT necessarily going
 # through the top-level cli_main output line this file's other tests pin.
@@ -1103,12 +1099,12 @@ async def test_g7_no_clause_text_in_log_records_on_invalid_and_superseded_paths(
         await _setup(pool)
         created_at = datetime(2026, 9, 20, 8, tzinfo=timezone.utc)
 
-        body_invalid = f"I will send it to {POISON} tomorrow"
+        body_invalid = f"{LEAD_INVALID} I will send it to {POISON} tomorrow"
         clause_invalid, hash_invalid = _seed_candidate_for_body(body_invalid)
         await _insert_wmc(pool, msg_id=8, body=body_invalid, created_at=created_at)
         await _insert_candidate(pool, message_id=8, clause_idx=0, clause_hash=hash_invalid)
 
-        body_superseded = f"I will call {POISON} tomorrow"
+        body_superseded = f"{LEAD_SUPERSEDED} I will call {POISON} tomorrow"
         await _insert_wmc(pool, msg_id=9, body=body_superseded, created_at=created_at)
         # A stale hash the current body no longer matches -> superseded,
         # never reaches _call_ollama at all.
@@ -1123,6 +1119,14 @@ async def test_g7_no_clause_text_in_log_records_on_invalid_and_superseded_paths(
         log_text = "\n".join(record.getMessage() for record in caplog.records)
         assert POISON not in log_text
         assert clause_invalid not in log_text
+        # A truncated leak (e.g. `clause_text[:20]`) passes the full-string
+        # checks above and never reaches the PII tail, so the LEADING
+        # fragment of each body/clause is asserted absent too: a unique,
+        # non-PII marker sits in the first 20 characters of each body.
+        assert LEAD_INVALID not in log_text
+        assert LEAD_SUPERSEDED not in log_text
+        assert clause_invalid[:20] not in log_text
+        assert body_superseded[:20] not in log_text
 
 
 # G-LOW-2 (mutant M58, gate table, LOW) — _apply_true's OWN "message gone"
