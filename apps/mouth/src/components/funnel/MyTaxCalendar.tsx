@@ -66,6 +66,17 @@ function civilDateInMakassar(date: Date) {
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
+const frequencyLabels: Record<string, string> = {
+  annual: "Annual",
+  event: "When an event happens",
+  monthly: "Monthly",
+  one_time: "One-time",
+};
+
+function frequencyLabel(frequency: string) {
+  return frequencyLabels[frequency] ?? frequency;
+}
+
 function parseEmployeeCount(raw: string) {
   const parsed = Math.trunc(Number(raw));
   return raw.trim() === "" || Number.isNaN(parsed)
@@ -466,7 +477,8 @@ function CalendarResult({
               <div>
                 <h3 style={headingStyle}>{obligation.name}</h3>
                 <p style={mutedStyle}>
-                  {obligation.authority} · {obligation.frequency}
+                  {obligation.authority} ·{" "}
+                  {frequencyLabel(obligation.frequency)}
                 </p>
               </div>
               {next && (
@@ -491,10 +503,8 @@ function CalendarResult({
                 ))}
               </ul>
             )}
-            <p style={mutedStyle}>{obligation.legal_source}</p>
-            <p style={mutedStyle}>
-              Reviewed by our tax team on {obligation.reviewed_on}
-            </p>
+            <p style={legalSourceStyle}>{obligation.legal_source}</p>
+            <p style={mutedStyle}>Reviewed on {obligation.reviewed_on}</p>
           </article>
         );
       })}
@@ -523,8 +533,8 @@ function WithheldNote({ count }: { count: number }) {
   return (
     <aside style={{ ...cardStyle, background: "var(--r19-wash)" }}>
       <p style={mutedStyle}>
-        {count} more obligations may apply to you. Our tax team is reviewing
-        them before we publish them here.
+        {count} more {count === 1 ? "obligation may" : "obligations may"} apply
+        to you. Our tax team is reviewing them before we publish them here.
       </p>
       <WhatsAppLink />
     </aside>
@@ -820,6 +830,11 @@ const badgeStyle: CSSProperties = {
   fontFamily: "var(--font-sans)",
   fontWeight: 600,
   padding: "var(--space-2) var(--space-3)",
+};
+const legalSourceStyle: CSSProperties = {
+  ...mutedStyle,
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
 };
 const listStyle: CSSProperties = {
   color: "var(--r19-muted)",

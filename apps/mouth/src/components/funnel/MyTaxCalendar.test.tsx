@@ -107,9 +107,7 @@ describe("MyTaxCalendar", () => {
     expect(await screen.findByText("Monthly filing")).toBeInTheDocument();
     expect(screen.getByText("2026-10-01 · in 2d")).toBeInTheDocument();
     expect(screen.getByText("2026-11-01 — October 2026")).toBeInTheDocument();
-    expect(
-      screen.getByText("Reviewed by our tax team on 2026-09-20"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Reviewed on 2026-09-20")).toBeInTheDocument();
   });
 
   it("shows withheld and both honest empty states", async () => {
@@ -293,6 +291,82 @@ describe("MyTaxCalendar", () => {
       ),
     ).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/NaN|Invalid Date|in \d+d/);
+  });
+
+  it("wraps long legal-source URLs so the card cannot overflow", async () => {
+    const response = {
+      obligations: [
+        {
+          ...sampleResponse.obligations[0],
+          legal_source:
+            "UU KUP art. 3 https://www.pajak.go.id/en/node/" + "a".repeat(120),
+        },
+      ],
+      withheld_count: 0,
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(response)));
+    render(<MyTaxCalendar />);
+    fireEvent.click(screen.getByLabelText("Individual"));
+
+    const source = await screen.findByText(/UU KUP art\. 3/);
+
+    expect(source.style.overflowWrap).toBe("anywhere");
+  });
+
+  it("shows human frequency labels and falls back to the raw value", async () => {
+    const base = sampleResponse.obligations[0];
+    const response = {
+      obligations: [
+        ["monthly", "a"],
+        ["annual", "b"],
+        ["one_time", "c"],
+        ["event", "d"],
+        ["fortnightly", "e"],
+      ].map(([frequency, id]) => ({
+        ...base,
+        frequency,
+        id,
+        name: `Rule ${id}`,
+      })),
+      withheld_count: 0,
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(response)));
+    const { container } = render(<MyTaxCalendar />);
+    fireEvent.click(screen.getByLabelText("Individual"));
+
+    await screen.findByText("Rule a");
+    const text = container.textContent ?? "";
+
+    expect(text).toContain("Directorate General of Taxes · Monthly");
+    expect(text).toContain("· Annual");
+    expect(text).toContain("· One-time");
+    expect(text).toContain("· When an event happens");
+    expect(text).toContain("· fortnightly");
+    expect(text).not.toMatch(/one_time|· event/);
+  });
+
+  it("pluralises the withheld note", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ obligations: [], withheld_count: 1 }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ obligations: [], withheld_count: 2 }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const { unmount } = render(<MyTaxCalendar />);
+    fireEvent.click(screen.getByLabelText("Individual"));
+    expect(
+      await screen.findByText(/^1 more obligation may apply to you\./),
+    ).toBeInTheDocument();
+    unmount();
+
+    render(<MyTaxCalendar />);
+    fireEvent.click(screen.getByLabelText("Individual"));
+    expect(
+      await screen.findByText(/^2 more obligations may apply to you\./),
+    ).toBeInTheDocument();
   });
 
   it("handles rate limits and generic errors with retry", async () => {

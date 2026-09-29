@@ -10,25 +10,28 @@ lanes:
     role: review
     seat: "claude-opus-5.5 (fresh gear-3 gate, verdict REWORK-BUILD on CI, mutants, copy and UI notes)"
 what_changed: |
-  Public route returning only Tax-Department-cleared obligation rules plus a withheld_count; the
-  shipped review file is empty, so live calls return an empty calendar until a named reviewer clears
-  rules. Wizard on /tax-calendar consumes it. CORS default origins gain tax.balizero.com.
+  Public route returning only cleared obligation rules plus a withheld_count; the shipped review
+  file clears 9 rules (owner review, 2026-09-29) and withholds the rest (9 of the applicable ones for
+  the full company profile). Wizard on /tax-calendar consumes it. CORS default origins gain tax.balizero.com.
   Rework after the gate's REWORK-BUILD: this pack; the route added to the public-mutation registry
   of the gating test; OpenAPI pin and schema.d.ts regenerated; fiscal_year_end validated as a real
   calendar day; the empty-state copy no longer claims nothing applies while rules are withheld;
   --space-5 (undefined token) replaced by --space-6; employee count parsed to a non-negative
   integer; WhatsApp link 44px; a flaky date test made deterministic; tests that kill four mutants.
+  Round 3: long legal-source URLs wrap, "Reviewed on" replaces "Reviewed by our tax team on", frequency
+  gets human labels, the withheld note is pluralised correctly.
   Round 2: the owner's decision of 2026-09-29 is recorded (9 rules cleared, reviewer "Zero (owner)",
   12 withheld); due dates gain a provisional flag when the holiday table for their year is not loaded;
   a month-end regression test; cards for one-time and event rules show "No fixed date".
 
 proof: |
-  Backend: 491 passed in the targeted run (route, clearance, setup, CORS, mutating-routes gate,
+  Backend: 500 passed in the targeted run (route, clearance, setup, CORS, mutating-routes gate,
   OpenAPI pin). Mutants against the new tests: M2 (verified check dropped), M9 (legal_source out of
   the fingerprint), M10 (due out of the fingerprint), M11 (individual scoping dropped) and M13
   (no calendar-day validator) each turn the suite red (1, 1, 1, 1 and 6 failures) and the file is
-  restored byte-identical. Mouth: 162 tests in 17 files green five runs in a row; the date test
-  green five runs alone. The observation that matters is the required CI on the rework push.
+  restored byte-identical. Mouth: 168 tests in 17 files green twice in a row after round 3; the date test
+  was green five runs alone in round 1. Round 3 also walked the company result at 390x844 in a real
+  browser with the real payload: scrollWidth 390. The observation that matters is the required CI on the rework push.
 
 dissent:
   - seat: claude-opus-5.5
@@ -43,7 +46,7 @@ dissent:
 receipts:
   - claim: "Targeted backend suite green with the new tests."
     cmd: "SKIP_SENTRY_INIT=1 PYTHONPATH=. python -m pytest backend/tests/app/routers/test_tax_calendar_public.py backend/tests/services/compliance/test_tax_calendar_public_review.py backend/tests/setup/ backend/tests/unit/app/setup/test_cors_config_comprehensive.py backend/tests/security/test_mutating_routes_are_gated.py backend/tests/unit/scripts/test_generate_openapi_schema_pin.py"
-    result: "491 passed, 127 skipped"
+    result: "500 passed, 127 skipped"
     exit: 0
     ts: "2026-09-29T13:50:00Z"
     seat: claude-sonnet-5.5
@@ -55,7 +58,7 @@ receipts:
     seat: claude-sonnet-5.5
   - claim: "Mouth suites green five runs in a row."
     cmd: "npx vitest run src/components/funnel 'src/app/(tax-calendar)' src/components/r19 src/app/api/tax-calendar"
-    result: "17 files, 162 tests passed (x5)"
+    result: "17 files, 168 tests passed (x2)"
     exit: 0
     ts: "2026-09-29T13:55:00Z"
     seat: claude-sonnet-5.5
