@@ -21,6 +21,7 @@ from scripts.wa_practices_replica import (
     _PRACTICES_UPSERT_SQL,
     _PRO_CLIENTS_UUID_MAP_SQL,
     _PRO_ONLY_COUNT_SQL,
+    _PRO_PRACTICE_TYPES_ID_MAP_SQL,
     EnvGuardError,
     FlyReadError,
     SyncMetrics,
@@ -94,45 +95,64 @@ class _FakeTxn:
 
 class _FakeConn:
     def __init__(self, log, clients, practices, practice_types=None, *,
-                 fail_on_uuid=None, fk_violation_on_uuid=None):
+                 fail_on_uuid=None, fk_violation_on_uuid=None,
+                 invalid_value_on_uuid=None, invalid_value_on_pt_code=None):
         self._log = log
         self._clients = clients  # list[{"id": int, "uuid": str}]
-        self._practices = practices  # dict[uuid] -> {"client_id": int, "data": list}
+        self._practices = practices  # dict[uuid] -> {"client_id": int, "practice_type_id": int|None, "data": list}
         self._practice_types = {} if practice_types is None else practice_types  # dict[code] -> data list
+        self._practice_type_ids: dict[str, int] = {}  # dict[code] -> id, Pro's own serial (never Fly's)
+        self._next_practice_type_id = 1
         self._fail_on_uuid = fail_on_uuid
         self._fk_violation_on_uuid = fk_violation_on_uuid
+        self._invalid_value_on_uuid = invalid_value_on_uuid
+        self._invalid_value_on_pt_code = invalid_value_on_pt_code
 
     def transaction(self):
         return _FakeTxn(self._log)
 
     async def fetch(self, sql, *params):
-        assert sql == _PRO_CLIENTS_UUID_MAP_SQL
-        return [dict(r) for r in self._clients]
+        if sql == _PRO_CLIENTS_UUID_MAP_SQL:
+            return [dict(r) for r in self._clients]
+        assert sql == _PRO_PRACTICE_TYPES_ID_MAP_SQL
+        return [{"code": c, "id": i} for c, i in self._practice_type_ids.items()]
 
     async def fetchrow(self, sql, *params):
         if sql == _PRACTICE_TYPES_UPSERT_SQL:
             code, *data = params
+            if self._invalid_value_on_pt_code is not None and code == self._invalid_value_on_pt_code:
+                raise ValueError("synthetic malformed value")
             existing = self._practice_types.get(code)
             if existing is None:
                 self._practice_types[code] = list(data)
+                self._practice_type_ids[code] = self._next_practice_type_id
+                self._next_practice_type_id += 1
                 return {"inserted": True}
             if existing == list(data):
                 return None
             self._practice_types[code] = list(data)
             return {"inserted": False}
         assert sql == _PRACTICES_UPSERT_SQL
-        uuid_, client_id, *data = params
+        uuid_, client_id, practice_type_id, *data = params
         if self._fail_on_uuid is not None and uuid_ == self._fail_on_uuid:
             raise RuntimeError("synthetic column-set mismatch")
         if self._fk_violation_on_uuid is not None and uuid_ == self._fk_violation_on_uuid:
             raise wpr.asyncpg.exceptions.ForeignKeyViolationError("synthetic FK violation")
+        if self._invalid_value_on_uuid is not None and uuid_ == self._invalid_value_on_uuid:
+            raise ValueError("synthetic malformed value")
         existing = self._practices.get(uuid_)
         if existing is None:
-            self._practices[uuid_] = {"client_id": client_id, "data": list(data)}
+            self._practices[uuid_] = {
+                "client_id": client_id, "practice_type_id": practice_type_id, "data": list(data),
+            }
             return {"inserted": True}
-        if existing["client_id"] == client_id and existing["data"] == list(data):
+        if (existing["client_id"] == client_id
+                and existing.get("practice_type_id") == practice_type_id
+                and existing["data"] == list(data)):
             return None
-        self._practices[uuid_] = {"client_id": client_id, "data": list(data)}
+        self._practices[uuid_] = {
+            "client_id": client_id, "practice_type_id": practice_type_id, "data": list(data),
+        }
         return {"inserted": False}
 
     async def fetchval(self, sql, *params):
@@ -280,6 +300,116 @@ async def test_run_sync_residual_fk_violation_is_skipped_and_counted_not_a_crash
     assert m.skipped_fk == 1
     assert m.inserted == 1  # the OTHER row still lands — the run did not abort
     assert log[-1] == "COMMIT"  # the outer transaction still commits
+
+
+# --- A1 — practice_type_id: re-keyed through Pro's own code->id map, never
+#          copied verbatim from Fly (same shape as client_id's re-key).
+#          Council round 1 (codex-gpt-5.6-sol) found the ORIGINAL design left
+#          this column out entirely, so it landed NULL on insert and stale on
+#          an update that changed practice_type_code.
+
+
+@pytest.mark.asyncio
+async def test_run_sync_practice_type_id_is_rekeyed_to_pros_own_id_not_flys():
+    log: list = []
+    clients = [{"id": 1, "uuid": "client-uuid-a"}]
+    conn = _FakeConn(log, clients, {})
+    pool = _FakePool(conn)
+    await run_sync(
+        pool,
+        [_fly_row("prac-uuid-1", "client-uuid-a", practice_type_code="visa_c1_tourism")],
+        [_pt_row("visa_c1_tourism")],
+        dry_run=False,
+    )
+    # Pro's own serial id for the freshly-inserted practice_type — the fake
+    # never sees, and the practices row never carries, any Fly-side numeric
+    # practice_type id at all (_FLY_SELECT_SQL doesn't even project one).
+    assert conn._practice_type_ids["visa_c1_tourism"] == 1
+    assert conn._practices["prac-uuid-1"]["practice_type_id"] == 1
+
+
+@pytest.mark.asyncio
+async def test_run_sync_practice_type_id_updates_when_code_changes_on_an_existing_row():
+    """Guilt case for the exact defect codex found: on the original design
+    (practice_type_id excluded entirely), an existing row's practice_type_id
+    stayed pinned to whatever it was first synced with even after this same
+    row's practice_type_code changed to a different catalog entry."""
+    log: list = []
+    clients = [{"id": 1, "uuid": "client-uuid-a"}]
+    conn = _FakeConn(log, clients, {})
+    pool = _FakePool(conn)
+    await run_sync(
+        pool,
+        [_fly_row("prac-uuid-1", "client-uuid-a", practice_type_code="visa_c1_tourism")],
+        [_pt_row("visa_c1_tourism"), _pt_row("visa_c2_business")],
+        dry_run=False,
+    )
+    first_id = conn._practices["prac-uuid-1"]["practice_type_id"]
+    m2 = await run_sync(
+        pool,
+        [_fly_row("prac-uuid-1", "client-uuid-a", practice_type_code="visa_c2_business")],
+        [_pt_row("visa_c1_tourism"), _pt_row("visa_c2_business")],
+        dry_run=False,
+    )
+    second_id = conn._practices["prac-uuid-1"]["practice_type_id"]
+    assert first_id != second_id
+    assert second_id == conn._practice_type_ids["visa_c2_business"]
+    assert m2.updated == 1  # the id change alone must count as a real update
+
+
+# --- A2 — skipped_invalid: a malformed Fly value (would raise ValueError out
+#          of _coerce_param) must be skipped per-row, never abort the whole
+#          run. Council round 1 (kimi-code/k3) found the ORIGINAL design
+#          built params OUTSIDE the per-row savepoint, so this exact failure
+#          took the whole transaction down.
+
+
+@pytest.mark.asyncio
+async def test_run_sync_invalid_practice_value_is_skipped_not_a_crash():
+    log: list = []
+    clients = [{"id": 1, "uuid": "client-uuid-a"}]
+    conn = _FakeConn(log, clients, {}, invalid_value_on_uuid="prac-uuid-bad")
+    pool = _FakePool(conn)
+    m = await run_sync(
+        pool,
+        [
+            _fly_row("prac-uuid-bad", "client-uuid-a"),
+            _fly_row("prac-uuid-good", "client-uuid-a"),
+        ],
+        [],
+        dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    assert m.inserted == 1  # the OTHER row still lands — the run did not abort
+    assert log[-1] == "COMMIT"  # the outer transaction still commits
+
+
+@pytest.mark.asyncio
+async def test_run_sync_invalid_practice_type_value_is_skipped_not_a_crash():
+    """Same net, the practice_types loop — kimi's finding named it
+    explicitly as unmitigated by any savepoint on the original design."""
+    log: list = []
+    conn = _FakeConn(log, [], {}, invalid_value_on_pt_code="visa_broken")
+    pool = _FakePool(conn)
+    m = await run_sync(
+        pool, [], [_pt_row("visa_broken"), _pt_row("visa_ok")], dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    assert m.types_inserted == 1  # the OTHER practice_type still lands
+    assert log[-1] == "COMMIT"
+
+
+def test_run_sync_innocence_no_invalid_value_configured_skipped_invalid_stays_zero():
+    import asyncio
+
+    log: list = []
+    clients = [{"id": 1, "uuid": "client-uuid-a"}]
+    conn = _FakeConn(log, clients, {})
+    pool = _FakePool(conn)
+    m = asyncio.run(
+        run_sync(pool, [_fly_row("prac-uuid-1", "client-uuid-a")], [], dry_run=False)
+    )
+    assert m.skipped_invalid == 0
 
 
 def test_run_sync_innocence_no_fk_violation_configured_skipped_fk_stays_zero():
@@ -447,14 +577,14 @@ def test_fail_line_never_leaks_client_id_from_message_or_detail():
 
 _SUCCESS_LINE_RE = re.compile(
     r"^wa_practices_replica: sync OK fly=\d+ inserted=\d+ updated=\d+ unchanged=\d+ "
-    r"skipped_no_client=\d+ skipped_fk=\d+ pro_only_kept=\d+ types_inserted=\d+ "
-    r"types_updated=\d+ wall_ms=\d+\n$"
+    r"skipped_no_client=\d+ skipped_fk=\d+ skipped_invalid=\d+ pro_only_kept=\d+ "
+    r"types_inserted=\d+ types_updated=\d+ wall_ms=\d+\n$"
 )
 
 
 def test_success_line_is_ints_only():
     metrics = SyncMetrics(fly=1097, inserted=950, updated=3, unchanged=140,
-                           skipped_no_client=4, skipped_fk=0, pro_only_kept=8,
+                           skipped_no_client=4, skipped_fk=0, skipped_invalid=2, pro_only_kept=8,
                            types_inserted=66, types_updated=2, wall_ms=1234)
     line = _success_line(metrics)
     assert _SUCCESS_LINE_RE.match(line)
@@ -488,6 +618,17 @@ async def test_cli_main_never_echoes_a_private_token(argv, token, capsys):
 ], ids=["true", "false", "none"])
 def test_coerce_param_boolean_guilt_and_innocence(value, expected):
     assert _coerce_param(value, "boolean") is expected
+
+
+@pytest.mark.parametrize("value", ["t", "TRUE", "1", "yes", ""],
+                         ids=["t", "TRUE", "1", "yes", "empty"])
+def test_coerce_param_boolean_rejects_anything_a_boolean_text_cast_cannot_produce(value):
+    """Council round 1 (kimi-code/k3) hardening: a `boolean::text` cast can
+    only ever produce 'true'/'false' — anything else raises loudly (and is
+    caught per-row as skipped_invalid by run_sync) instead of silently
+    becoming False."""
+    with pytest.raises(ValueError):
+        _coerce_param(value, "boolean")
 
 
 def test_coerce_param_date_parses_pg_default_text_output():

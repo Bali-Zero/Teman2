@@ -51,6 +51,7 @@ _SCHEMA_SQL = (
     "  id SERIAL PRIMARY KEY,\n"
     "  uuid UUID NOT NULL UNIQUE,\n"
     "  client_id INTEGER REFERENCES clients(id),\n"
+    "  practice_type_id INTEGER REFERENCES practice_types(id),\n"
     + "".join(
         f"  {col} {_PG_COLUMN_TYPE[pgtype]}"
         + (" REFERENCES practice_types(code)" if col == "practice_type_code" else "")
@@ -384,3 +385,122 @@ async def test_real_pg_practice_types_required_documents_array_round_trips(pro_p
     assert null_docs is None
     assert empty_docs == []
     assert real_docs == ["passport", "photo, 4x6", 'KTP"copy']
+
+
+# --- Council round 1 fixes, re-verified against a real cluster (not just the
+#     in-memory fake) — codex-gpt-5.6-sol's practice_type_id finding and
+#     kimi-code/k3's skipped_invalid finding.
+
+
+@pytest.mark.asyncio
+async def test_real_pg_practice_type_id_is_rekeyed_and_updates_when_code_changes(pro_pool):
+    """codex-gpt-5.6-sol's round-1 finding: the ORIGINAL design left
+    practice_type_id NULL on insert and stale on an update that changed
+    practice_type_code — this proves the re-key (via Pro's own code->id map,
+    never Fly's numeric id) against a real FK, not the fake."""
+    client_uuid = "19191919-1919-1919-1919-191919191919"
+    prac_uuid = "20202020-2020-2020-2020-202020202020"
+    async with pro_pool.acquire() as conn:
+        await conn.execute("INSERT INTO clients (uuid) VALUES ($1::uuid)", client_uuid)
+
+    await run_sync(
+        pro_pool,
+        [_fly_row(prac_uuid, client_uuid, practice_type_code="visa_c1_tourism")],
+        [_pt_row("visa_c1_tourism"), _pt_row("visa_c2_business")],
+        dry_run=False,
+    )
+    async with pro_pool.acquire() as conn:
+        first_id, first_code_id = await conn.fetchrow(
+            "SELECT p.practice_type_id, t.id FROM practices p "
+            "JOIN practice_types t ON t.code = 'visa_c1_tourism' "
+            "WHERE p.uuid = $1::uuid",
+            prac_uuid,
+        )
+    assert first_id is not None
+    assert first_id == first_code_id  # Pro's own id, never a Fly-side one
+
+    m2 = await run_sync(
+        pro_pool,
+        [_fly_row(prac_uuid, client_uuid, practice_type_code="visa_c2_business")],
+        [_pt_row("visa_c1_tourism"), _pt_row("visa_c2_business")],
+        dry_run=False,
+    )
+    assert m2.updated == 1  # the id change alone must count as a real update
+    async with pro_pool.acquire() as conn:
+        second_id, second_code_id = await conn.fetchrow(
+            "SELECT p.practice_type_id, t.id FROM practices p "
+            "JOIN practice_types t ON t.code = 'visa_c2_business' "
+            "WHERE p.uuid = $1::uuid",
+            prac_uuid,
+        )
+    assert second_id == second_code_id
+    assert second_id != first_id  # NOT stale — moved with the code
+
+
+@pytest.mark.asyncio
+async def test_real_pg_invalid_date_value_is_skipped_not_a_crash(pro_pool):
+    """kimi-code/k3's round-1 finding: the ORIGINAL design built
+    _coerce_param's params OUTSIDE the per-row savepoint, so one malformed
+    Fly value aborted the WHOLE transaction — this is a REAL
+    `date.fromisoformat` ValueError, not a synthetic one."""
+    client_uuid = "21212121-2121-2121-2121-212121212121"
+    bad_uuid = "22222222-2222-2222-2222-222222222299"
+    good_uuid = "23232323-2323-2323-2323-232323232399"
+    async with pro_pool.acquire() as conn:
+        await conn.execute("INSERT INTO clients (uuid) VALUES ($1::uuid)", client_uuid)
+
+    m = await run_sync(
+        pro_pool,
+        [
+            _fly_row(bad_uuid, client_uuid, expiry_date="not-a-real-date"),
+            _fly_row(good_uuid, client_uuid),
+        ],
+        [],
+        dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    assert m.inserted == 1  # the sibling row still lands — the run did not abort
+    async with pro_pool.acquire() as conn:
+        count = await conn.fetchval("SELECT count(*) FROM practices")
+    assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_real_pg_invalid_boolean_text_is_skipped_not_silently_coerced_to_false(pro_pool):
+    """The hardened boolean branch: anything other than the two strings a
+    real `boolean::text` cast can produce now raises (caught as
+    skipped_invalid) instead of silently landing as False."""
+    client_uuid = "24242424-2424-2424-2424-242424242424"
+    prac_uuid = "25252525-2525-2525-2525-252525252599"
+    async with pro_pool.acquire() as conn:
+        await conn.execute("INSERT INTO clients (uuid) VALUES ($1::uuid)", client_uuid)
+
+    m = await run_sync(
+        pro_pool, [_fly_row(prac_uuid, client_uuid, client_visible="1")], [], dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    async with pro_pool.acquire() as conn:
+        count = await conn.fetchval(
+            "SELECT count(*) FROM practices WHERE uuid = $1::uuid", prac_uuid
+        )
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_real_pg_practice_types_invalid_value_is_skipped_not_a_crash(pro_pool):
+    """Same net, the practice_types loop — kimi's finding named it
+    explicitly as unmitigated by any savepoint on the original design."""
+    m = await run_sync(
+        pro_pool,
+        [],
+        [
+            _pt_row("visa_broken", typical_duration_days="not-a-number"),
+            _pt_row("visa_ok"),
+        ],
+        dry_run=False,
+    )
+    assert m.skipped_invalid == 1
+    assert m.types_inserted == 1  # the OTHER practice_type still lands
+    async with pro_pool.acquire() as conn:
+        count = await conn.fetchval("SELECT count(*) FROM practice_types")
+    assert count == 1

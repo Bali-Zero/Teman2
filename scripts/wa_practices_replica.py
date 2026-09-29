@@ -45,13 +45,16 @@ foreign key `practices` carries, and how each is satisfied here:
     `_PRACTICE_TYPES_UPSERT_SQL`). `practice_types` has no foreign keys of its
     own (`pg_constraint` on it returns zero rows on both Fly and Pro,
     2026-09-28) — nothing further to chase.
-  - `practice_type_id` -> `practice_types(id)`. Left OUT of the copied columns
-    (unchanged from the original design) even though 1095/1097 Fly rows carry
-    it (measured 2026-09-28) — it is a redundant numeric shadow of
-    `practice_type_code`, which is now always resolvable after the step
-    above; no consumer found that reads the numeric id instead of the code
-    (P5's scorer falls back to code/keyword matching). Re-keying it too
-    through a code->id map is a cheap follow-up if a consumer ever needs it.
+  - `practice_type_id` -> `practice_types(id)`. Re-keyed through a Pro
+    `code -> id` map built right after the `practice_types` upsert above
+    (same shape as `client_id`'s re-key through `clients.uuid` — Fly's and
+    Pro's serial ids for `practice_types` are two different numeric spaces,
+    so copying Fly's `practice_type_id` verbatim would either point at the
+    wrong Pro row or NULL). Council round 1 (codex-gpt-5.6-sol) found the
+    ORIGINAL design — leaving this column out entirely — left it NULL on
+    insert and stale on update whenever a row's `practice_type_code`
+    changed, contradicting the "intersecting columns" contract; fixed by
+    copying it, re-keyed, same as every other cross-database FK here.
   - `user_profile_id` -> `user_profiles(id)`. `user_profiles` holds people
     data (email, full_name, phone — a client-portal login table), so per the
     FK-census ruling this is reported rather than silently handled: left OUT
@@ -85,6 +88,24 @@ FK-census ruling asked for) is caught per row via a nested
 `asyncpg`-savepoint, counted as `skipped_fk`, and never aborts the rest of
 the run.
 
+Council round 1 (kimi-code/k3) found that `_coerce_param`'s own conversions
+(`date.fromisoformat`/`datetime.fromisoformat`/`int(...)`) ran OUTSIDE that
+per-row savepoint on the original design — one malformed Fly value (a bad
+date, an out-of-range int) raised `ValueError` straight through the row
+loop, aborting the WHOLE transaction and, on an unattended hourly cron,
+repeating that same total failure forever since the source data does not
+change on its own. Fixed by moving parameter construction for BOTH loops
+(`practice_types` and `practices`) inside their own per-row nested
+transaction and catching `ValueError` there too, counted as a new
+`skipped_invalid` metric — a genuine FK violation and a malformed value are
+different failure classes and get different counters, but neither one ever
+takes the rest of the run down with it now. `_coerce_param`'s boolean branch
+was also hardened to raise on anything other than the two strings a
+`boolean::text` cast can ever produce, converting what used to be a silent
+`'t'`/`'TRUE'` -> `False` miscoercion (unreachable today, since the Fly SELECT
+always casts server-side, but not defensible) into a loud, per-row-skippable
+failure instead.
+
 Idempotent by construction: the `ON CONFLICT ... DO UPDATE ... WHERE (...)
 IS DISTINCT FROM (...)` guard (same idiom as
 `wa_team_promises._CANDIDATE_UPSERT_SQL`) means a second run against
@@ -93,8 +114,9 @@ counted as `unchanged`.
 
 Output: exactly one counts line on success —
 `wa_practices_replica: sync OK fly=<n> inserted=<n> updated=<n>
-unchanged=<n> skipped_no_client=<n> skipped_fk=<n> pro_only_kept=<n>
-types_inserted=<n> types_updated=<n> wall_ms=<n>` — every field an int.
+unchanged=<n> skipped_no_client=<n> skipped_fk=<n> skipped_invalid=<n>
+pro_only_kept=<n> types_inserted=<n> types_updated=<n> wall_ms=<n>` — every
+field an int.
 Every other path prints ONLY `wa_practices_replica: FAIL <Type>
 sqlstate=<code|-> stage=<name> counts=n/a` — never the exception message,
 DETAIL, a value, a name or a uuid.
@@ -163,10 +185,11 @@ class FlyReadError(RuntimeError):
 # see the module docstring's FK CENSUS for `client_id`/`practice_type_id`/
 # `user_profile_id`'s reasoning specifically:
 #   - `id`                                  Fly's serial; `uuid` is the real key.
-#   - `client_id`                           re-keyed, not copied verbatim.
+#   - `client_id`, `practice_type_id`       re-keyed, not copied verbatim (see
+#                                            `_PRACTICES_INSERT_COLUMNS`).
 #   - `family_member_id`, `source_idempotency_key`
 #                                            Fly-only; Pro's schema lacks them.
-#   - `user_profile_id`, `practice_type_id` per-database FKs — see FK CENSUS.
+#   - `user_profile_id`                     points at a PII table — see FK CENSUS.
 _DATA_COLUMNS: tuple[tuple[str, str], ...] = (
     ("practice_type_code", "text"), ("title", "text"), ("description", "text"),
     ("status", "text"), ("priority", "text"),
@@ -260,10 +283,15 @@ def _build_upsert_sql(
     )
 
 
-# client_id is a re-keyed column, not a member of _DATA_COLUMNS (which
-# mirrors the Fly SELECT projection) — but it IS one of the columns this
-# UPSERT writes, so it belongs in the INSERT column list alongside them.
-_PRACTICES_INSERT_COLUMNS: tuple[tuple[str, str], ...] = (("client_id", "integer"),) + _DATA_COLUMNS
+# client_id and practice_type_id are re-keyed columns, not members of
+# _DATA_COLUMNS (which mirrors the Fly SELECT projection) — but they ARE
+# columns this UPSERT writes, so they belong in the INSERT column list
+# alongside them. Both are resolved via a Pro-side map built at runtime
+# (`_PRO_CLIENTS_UUID_MAP_SQL` / `_PRO_PRACTICE_TYPES_ID_MAP_SQL`), never
+# copied verbatim from Fly's own numeric ids.
+_PRACTICES_INSERT_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("client_id", "integer"), ("practice_type_id", "integer"),
+) + _DATA_COLUMNS
 
 _PRACTICES_UPSERT_SQL = _build_upsert_sql(
     "practices", "uuid", "uuid", "practices_uuid_key", _PRACTICES_INSERT_COLUMNS,
@@ -273,6 +301,7 @@ _PRACTICE_TYPES_UPSERT_SQL = _build_upsert_sql(
 )
 
 _PRO_CLIENTS_UUID_MAP_SQL = "SELECT id, uuid::text AS uuid FROM clients"
+_PRO_PRACTICE_TYPES_ID_MAP_SQL = "SELECT code, id FROM practice_types"
 _PRO_ONLY_COUNT_SQL = "SELECT count(*) FROM practices WHERE uuid <> ALL($1::uuid[])"
 
 _PG_SH = Path(__file__).resolve().parent / "pg.sh"
@@ -359,6 +388,8 @@ def _coerce_param(value: str | None, pgtype: str) -> str | bool | int | date | d
     if value is None:
         return None
     if pgtype == "boolean":
+        if value not in ("true", "false"):
+            raise ValueError("unrecognized_boolean_text")
         return value == "true"
     if pgtype == "date":
         return date.fromisoformat(value)
@@ -380,6 +411,7 @@ class SyncMetrics:
     unchanged: int = 0
     skipped_no_client: int = 0
     skipped_fk: int = 0
+    skipped_invalid: int = 0
     pro_only_kept: int = 0
     types_inserted: int = 0
     types_updated: int = 0
@@ -406,7 +438,13 @@ async def run_sync(
     RESIDUAL foreign-key violation regardless: each `practices` row's UPSERT
     runs inside its own nested `asyncpg` transaction (a real SAVEPOINT once
     already inside the outer one), so a violation there rolls back only that
-    row and never aborts the rest of the run."""
+    row and never aborts the rest of the run. Parameter construction for
+    BOTH loops runs INSIDE that same per-row savepoint, so a `ValueError`
+    from `_coerce_param` (a malformed Fly value — a bad date, an
+    out-of-range int, an unrecognized boolean string) is caught the same
+    way, counted as `skipped_invalid` — a different failure class than a
+    genuine foreign-key violation, so it gets its own counter, but neither
+    one can take the rest of the run down with it."""
     t0 = time.monotonic()
     metrics = SyncMetrics(fly=len(fly_rows))
     async with pro_pool.acquire() as conn:
@@ -414,10 +452,15 @@ async def run_sync(
         await tx.start()
         try:
             for pt_row in fly_practice_types_rows:
-                pt_params = [pt_row["code"]] + [
-                    _coerce_param(pt_row[c], t) for c, t in _PRACTICE_TYPES_DATA_COLUMNS
-                ]
-                pt_result = await conn.fetchrow(_PRACTICE_TYPES_UPSERT_SQL, *pt_params)
+                try:
+                    async with conn.transaction():  # nested -> real SAVEPOINT
+                        pt_params = [pt_row["code"]] + [
+                            _coerce_param(pt_row[c], t) for c, t in _PRACTICE_TYPES_DATA_COLUMNS
+                        ]
+                        pt_result = await conn.fetchrow(_PRACTICE_TYPES_UPSERT_SQL, *pt_params)
+                except ValueError:
+                    metrics.skipped_invalid += 1
+                    continue
                 if pt_result is not None:
                     if pt_result["inserted"]:
                         metrics.types_inserted += 1
@@ -426,6 +469,8 @@ async def run_sync(
 
             client_rows = await conn.fetch(_PRO_CLIENTS_UUID_MAP_SQL)
             client_uuid_to_id = {r["uuid"]: r["id"] for r in client_rows}
+            practice_type_rows = await conn.fetch(_PRO_PRACTICE_TYPES_ID_MAP_SQL)
+            practice_type_code_to_id = {r["code"]: r["id"] for r in practice_type_rows}
             fly_uuids: list[str] = []
             for row in fly_rows:
                 fly_uuids.append(row["uuid"])
@@ -434,14 +479,18 @@ async def run_sync(
                 if pro_client_id is None:
                     metrics.skipped_no_client += 1
                     continue
-                params = [row["uuid"], pro_client_id] + [
-                    _coerce_param(row[c], t) for c, t in _DATA_COLUMNS
-                ]
+                pro_practice_type_id = practice_type_code_to_id.get(row["practice_type_code"])
                 try:
                     async with conn.transaction():  # nested -> real SAVEPOINT
+                        params = [row["uuid"], pro_client_id, pro_practice_type_id] + [
+                            _coerce_param(row[c], t) for c, t in _DATA_COLUMNS
+                        ]
                         result = await conn.fetchrow(_PRACTICES_UPSERT_SQL, *params)
                 except asyncpg.exceptions.ForeignKeyViolationError:
                     metrics.skipped_fk += 1
+                    continue
+                except ValueError:
+                    metrics.skipped_invalid += 1
                     continue
                 if result is None:
                     metrics.unchanged += 1
@@ -485,8 +534,9 @@ def _success_line(metrics: SyncMetrics) -> str:
         f"wa_practices_replica: sync OK fly={metrics.fly} inserted={metrics.inserted} "
         f"updated={metrics.updated} unchanged={metrics.unchanged} "
         f"skipped_no_client={metrics.skipped_no_client} skipped_fk={metrics.skipped_fk} "
-        f"pro_only_kept={metrics.pro_only_kept} types_inserted={metrics.types_inserted} "
-        f"types_updated={metrics.types_updated} wall_ms={metrics.wall_ms}\n"
+        f"skipped_invalid={metrics.skipped_invalid} pro_only_kept={metrics.pro_only_kept} "
+        f"types_inserted={metrics.types_inserted} types_updated={metrics.types_updated} "
+        f"wall_ms={metrics.wall_ms}\n"
     )
 
 
