@@ -368,10 +368,10 @@ appetite_exceeded: |
 
 diff:
   files: 8
-  insertions: 2716
+  insertions: 2718
   deletions: 0
   net_lines: |
-    8 files, +2716/-0 against origin/main (clean rebase, no conflicts) -- computed from
+    8 files, +2718/-0 against origin/main (clean rebase, no conflicts) -- computed from
     `git diff --numstat origin/main...HEAD` at pack-write time. Three of those eight files are
     the test corpora (which the Builder Contract's ~400-net-line guideline is not meant to
     gate -- the reviewable code change is `scripts/wa_practices_replica.py`, 628 lines including
