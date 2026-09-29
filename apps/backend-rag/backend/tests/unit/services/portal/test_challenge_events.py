@@ -8,6 +8,14 @@ import pytest
 
 from backend.services.portal import challenge_events as events
 
+#  Pinned inside Round 1's own window so the internal `r2.active_round(now)`
+# branch in `_publish_registration_goal` picks the R1 lookup path regardless
+# of the real calendar date the suite happens to run on (after 2026-09-30
+# WITA, "today" would otherwise silently flip these fixtures onto the R2
+# path). `events.compute_status` is a SEPARATE seam — pinned "live" below —
+# gating whether a goal is attempted at all.
+FROZEN_ROUND1_NOW = datetime(2026, 9, 20, 4, 0, tzinfo=timezone.utc)
+
 
 @pytest.fixture
 def transport(monkeypatch):
@@ -16,6 +24,7 @@ def transport(monkeypatch):
     manager.get_async_client.return_value = redis
     monkeypatch.setattr(events.RedisManager, "get_instance", lambda: manager)
     monkeypatch.setattr(events, "compute_status", lambda now: "live")
+    monkeypatch.setattr(events, "_now", lambda: FROZEN_ROUND1_NOW)
     connection = AsyncMock()
     pool = MagicMock()
     pool.acquire.return_value.__aenter__.return_value = connection

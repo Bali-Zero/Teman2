@@ -40,6 +40,13 @@ def portrait_url(value: Any) -> str | None:
     return None
 
 
+def _now() -> datetime:
+    """The one clock seam this module reads through — tests pin the active
+    round deterministically by monkeypatching this NAME rather than the
+    stdlib `datetime` class itself."""
+    return datetime.now(timezone.utc)
+
+
 def compute_status(now: datetime) -> str:
     """upcoming | live | closed for whichever round is active at `now` — a
     thin wrapper kept as a module-level name (rather than inlined) so tests
@@ -51,7 +58,7 @@ def compute_status(now: datetime) -> str:
 
 
 async def publish_registration_goal(pool: Any, client_id: int) -> None:
-    if compute_status(datetime.now(timezone.utc)) != "live":
+    if compute_status(_now()) != "live":
         return
     try:
         async with asyncio.timeout(3):
@@ -67,7 +74,7 @@ async def _publish_registration_goal(pool: Any, client_id: int) -> None:
     if redis is None:
         logger.warning("Portal Champion goal transport unavailable")
         return
-    now = datetime.now(timezone.utc)
+    now = _now()
     round_number = r2.active_round(now)
     lookup_sql = build_goal_sql() if round_number == 1 else r2.build_goal_lookup_sql()
     async with pool.acquire() as connection:
