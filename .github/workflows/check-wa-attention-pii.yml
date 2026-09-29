@@ -37,7 +37,7 @@ name: check-wa-attention-pii
 
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review, edited] # edited = base retarget
   merge_group:
 
 permissions:
@@ -68,12 +68,16 @@ jobs:
             exit 0
           fi
           base="${{ github.event.pull_request.base.sha }}"
-          if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(scripts/wa-mirror-attention-telegram\.py|scripts/tests/test_wa_attention_[^/]+\.py|\.github/workflows/check-wa-attention-pii\.yml)$'; then
+          # Captured in its own checked command, NOT piped into `grep -q`: with pipefail an early
+          # grep exit SIGPIPEs git and would select run=false (fail-open); --no-renames so a moved
+          # file reports its OLD path too; -z + quotepath=off so odd filenames are not mangled.
+          git -c core.quotepath=off diff --name-only --no-renames -z "$base"...HEAD > changed.z
+          if grep -zqE \
+            '^(scripts/wa-mirror-attention-telegram\.py|scripts/tests/test_wa_attention_[^/]*\.py|scripts/tests/conftest\.py|conftest\.py|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini|\.github/workflows/check-wa-attention-pii\.yml)$' changed.z; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::alerter and its tests untouched — sentinel success"
+            echo "::notice::alerter, its tests and pytest config untouched — sentinel success"
           fi
 
       - name: Set up Python
@@ -97,10 +101,31 @@ jobs:
 
       - name: The attention corpus can go RED (guilt AND innocence), with 0 skipped
         if: steps.relevant.outputs.run == 'true'
+        env:
+          PYTEST_ADDOPTS: "" # nothing from the environment may change what runs
         run: |
           set -euo pipefail
-          python -m pytest scripts/tests/test_wa_attention_*.py -q -rs 2>&1 | tee pytest.out
-          if grep -Eq '[0-9]+ skipped' pytest.out; then
-            echo "::error::a test was skipped — a skipped guard proves nothing (superscar #2)"
-            exit 1
-          fi
+          # Structured report, not terminal text: a skip, an xfail (junit records it as <skipped>)
+          # or a deselect must not be able to hide behind a summary line's spelling.
+          python -m pytest scripts/tests/test_wa_attention_*.py -q -o addopts="" -o xfail_strict=true --strict-markers --junitxml=junit.xml
+          python - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("junit.xml").getroot()
+          cases = list(root.iter("testcase"))
+          skipped = [c.get("name") for c in cases if c.find("skipped") is not None]
+          names = {c.get("name") for c in cases}
+          # The real-Postgres tests must be present AND executed: a deselect would not show as skipped.
+          must_run = {
+              "test_digest_counts_post_lid_rows",
+              "test_high_unresolved_finds_post_lid_rows",
+              "test_sender_phone_is_tried_before_remotejidalt_when_they_disagree",
+              "test_digest_counts_the_backlog_older_than_the_window",
+          }
+          missing = sorted(must_run - names)
+          print(f"testcases={len(cases)} skipped={len(skipped)} missing_real_pg={len(missing)}")
+          if skipped or missing:
+              print(f"::error::skipped={skipped} missing={missing} - a skipped or absent guard proves nothing (superscar #2)")
+              sys.exit(1)
+          PY
