@@ -534,7 +534,7 @@ class TestPortalChallengeEndpoint:
         moment inside Round 1 by default — NOT the stdlib `datetime` class —
         so every test below stays on the R1 branch deterministically,
         regardless of the real calendar date the suite happens to run on
-        (after 2026-09-30 00:00 WITA, "today" would otherwise silently flip
+        (after 2026-09-29 00:00 WITA, "today" would otherwise silently flip
         these onto the R2 branch). The one Round 2 test overrides this seam
         explicitly with its own later `monkeypatch.setattr` call."""
         from datetime import datetime, timezone
