@@ -532,3 +532,27 @@ def test_the_coordinator_never_executes_an_interpreter_named_by_an_extra():
     assert runner.coordinator_python(plan) == "/trusted/venv/python"
     del plan["checks"]["policy.p"]
     assert runner.coordinator_python(plan) == runner.sys.executable
+
+
+# ------------------------------------------------------------------------------- a crafted tree entry never lands outside the root
+@pytest.mark.parametrize("rel", ["a/b.py", "x", "a/b/c.txt", ".github/w.yml", "a/..b", "a/.b"])
+def test_safe_tree_path_accepts_ordinary_paths(rel):
+    assert runner.safe_tree_path(rel) == rel
+
+
+@pytest.mark.parametrize("rel", ["..", "a/../b", "/etc/x", "", "a//b", "./a", "a/.", "a/", "../x"])
+def test_safe_tree_path_rejects_unsafe_paths(rel):
+    with pytest.raises(RuntimeError, match="unsafe tree entry path"):
+        runner.safe_tree_path(rel)
+
+
+def test_a_crafted_tree_with_a_dotdot_entry_is_refused_and_writes_nothing(tmp_path):
+    fx = fr.make_repo(tmp_path)
+    evil = fr.crafted_commit(fx["repo"], "..")
+    sink = io.BytesIO()
+    with pytest.raises(RuntimeError, match="unsafe tree entry path"):
+        runner.stream_tree_tar(fx["repo"], evil, sink, {}, {})
+    assert sink.getvalue() == b""                                 # refused while listing, before a single tar header
+    ok = io.BytesIO()
+    runner.stream_tree_tar(fx["repo"], fx["candidate"], ok, {}, {})   # an honest tree still streams
+    assert ok.getvalue()

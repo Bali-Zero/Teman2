@@ -15,7 +15,7 @@ from scripts.localci import pysa_check as pc
 
 pytestmark = pytest.mark.usefixtures("fake_env")
 HOME = Path(os.environ.get("LOCALCI_PYSA_HOME") or runner.DEFAULT_PYSA_HOME)
-PYSA_READY = pc.home_ready(HOME) is None
+PYSA_READY = pc.home_ready(HOME) is None and pc.verify_home(HOME)[0] is not None   # an unmeasured legacy home is not ready
 
 APP = '''import logging
 from typing import Annotated
@@ -395,3 +395,25 @@ async def trace(x: str):
     assert "log_injection" in fams and "stack_trace_exposure" in fams, report
     assert all("innocent" not in x["source_callable"] for x in report["new"]), report
     assert all(x["source_callable"].endswith(("guilt", "trace")) for x in report["new"]), report
+
+
+# ------------------------------------------------------------------ a crafted tree entry never lands outside the export root
+@pytest.mark.parametrize("rel", ["a/b.py", "x", "a/..b"])
+def test_pysa_safe_tree_path_accepts_ordinary_paths(rel):
+    assert pc.safe_tree_path(rel) == rel
+
+
+@pytest.mark.parametrize("rel", ["..", "a/../b", "/etc/x", "", "a//b", "./a", "a/.", "../x"])
+def test_pysa_safe_tree_path_rejects_unsafe_paths(rel):
+    with pytest.raises(RuntimeError, match="unsafe tree entry path"):
+        pc.safe_tree_path(rel)
+
+
+def test_export_tree_refuses_a_dotdot_entry_and_writes_nothing_outside_dest(tmp_path):
+    fx = fr.make_repo(tmp_path)
+    evil = fr.crafted_commit(fx["repo"], "..", under=f"{pc.APP_REL}/{pc.PKG_REL}")
+    dest = tmp_path / "dest"
+    with pytest.raises(RuntimeError, match="unsafe tree entry path"):
+        pc.export_tree(fx["repo"], evil, dest)
+    assert not any(p.is_file() for p in dest.rglob("*")) and not any(p.is_file() for p in tmp_path.glob("*") if p.name not in ("wt", "dest", "run"))
+    assert not (dest / pc.APP_REL / "escaped").exists()

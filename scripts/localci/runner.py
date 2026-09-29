@@ -563,6 +563,14 @@ def _tar_add(tf: tarfile.TarFile, name: str, data: bytes | None = None, mode: in
         tf.addfile(ti, io.BytesIO(data))
 
 
+def safe_tree_path(rel: str) -> str:
+    """A tree entry path from `git ls-tree`: a crafted tree object can carry `..` or an absolute name — never written outside the root."""
+    parts = rel.split("/")
+    if not rel or rel.startswith("/") or any(p in ("", ".", "..") for p in parts):
+        raise RuntimeError(f"unsafe tree entry path {rel!r}")
+    return rel
+
+
 def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], extra: dict[str, bytes], group: list | None = None,
                     timeout: float | None = None) -> int:
     """Tar `commit`'s tree from the OBJECT STORE into `sink` under w/ — never the checkout (ignored files such as .env or a venv stay
@@ -575,7 +583,7 @@ def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], ex
             meta, rel = rec.split("\t", 1)
             mode, kind, oid = meta.split(" ")
             if kind == "blob":
-                entries.append((mode, oid, rel))
+                entries.append((mode, oid, safe_tree_path(rel)))
     parents = lambda paths, top: {f"{top}{q}" for n in paths for q in Path(n).parents if str(q) != "."}   # noqa: E731
     dirs = sorted({"w", "out"} | parents({rel for _, _, rel in entries} | set(overrides), "w/") | parents(extra, ""))
     tf = tarfile.open(fileobj=sink, mode="w|")

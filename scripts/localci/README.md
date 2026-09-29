@@ -73,9 +73,8 @@ or no longer matches it (the old setup silently reused whatever venv/stubs it fo
 baselines and reinstalls. `plan` runs the BASE judge's `verify-home` and pins the digest into the plan; `judge --expect-home-digest`
 re-measures before any scan — a replaced binary, stub, typeshed file or site package, an added file, or a consistently re-measured
 different home is rc 2 (ERROR), never a verdict. Pyre runs with `PYTHONPYCACHEPREFIX` in the run's scratch, so no bytecode cached in
-the home is loaded. A BASE baseline is reused only when its name carries this judge+models id AND this home digest and its bytes match
-the sha256 the judge recorded in `baselines/index.json` when it wrote it; a planted or edited baseline is rc 2. The anchor is that
-no candidate code executes on the host any more (C1): the manifest and index detect legacy poisoning, replacement and in-run tamper,
+the home is loaded. BASE is scanned on every judge run — no baseline cache is trusted, so a planted baseline has nothing to act on (`base_cached` in the report is always false). The anchor is that
+no candidate code executes on the host any more (C1): the manifest detects legacy poisoning, replacement and in-run tamper,
 not a same-user attacker who rewrites both a file and its record between runs.
 
 Verdict = "no NEW flow versus BASE": each flow is keyed by family, source callable, sink callable and the sink

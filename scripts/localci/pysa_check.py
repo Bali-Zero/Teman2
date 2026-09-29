@@ -398,6 +398,14 @@ def home_ready(home: Path) -> str | None:
 
 
 # ------------------------------------------------------------------ scan
+def safe_tree_path(rel: str) -> str:
+    """A tree entry path from `git ls-tree`: a crafted tree object can carry `..` or an absolute name — never written outside the root."""
+    parts = rel.split("/")
+    if not rel or rel.startswith("/") or any(p in ("", ".", "..") for p in parts):
+        raise RuntimeError(f"unsafe tree entry path {rel!r}")
+    return rel
+
+
 def export_tree(wt: Path, ref: str, dest: Path) -> str:
     """Materialise <ref>:apps/backend-rag/backend from the object store — never `git archive`, which honours the candidate's
     own `.gitattributes export-ignore` and would let a PR hide files from the judge (fresh-gate BLOCK, 2026-09-27)."""
@@ -412,7 +420,7 @@ def export_tree(wt: Path, ref: str, dest: Path) -> str:
         meta, rel = rec.split("\t", 1)
         mode, kind, oid = meta.split(" ")
         if kind == "blob" and mode != "120000":          # symlinks are not followed and not analysed
-            entries.append((oid, rel))
+            entries.append((oid, safe_tree_path(rel)))
     batch = subprocess.run(["git", "-C", str(wt), "cat-file", "--batch"], input="".join(f"{o}\n" for o, _ in entries).encode(), capture_output=True, check=True).stdout
     pos, written = 0, 0
     for oid, rel in entries:
