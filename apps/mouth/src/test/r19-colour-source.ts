@@ -1,8 +1,7 @@
 // Where colour lives in a source file is decided by the TypeScript syntax
-// tree, never by a regex over text: a position is a JSX attribute, a call
-// argument or an object literal in a style position. Comments and JSX prose do
-// not exist for this scanner. What a class token or a value IS is decided by
-// r19-colour-guard.ts.
+// tree, never by a regex over text. The resolver below is a single-file
+// abstract evaluator: it uses the TypeScript checker for lexical bindings and
+// memoizes every (operation, node, member-name) result.
 
 import ts from "typescript";
 import {
@@ -24,13 +23,6 @@ const COLOUR_ATTRIBUTES = new Set([
   "lightingColor",
   "bgcolor",
 ]);
-const MAX_HOPS = 3;
-
-// One budget per resolution: `hops` counts identifier and call steps, `visited`
-// is the path of nodes being resolved. Every helper receives this same object.
-type Budget = { hops: number; visited: Set<ts.Node> };
-const TOKEN_DEFINITIONS = "/src/components/r19/presentation.ts";
-
 const COMPARISONS = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.EqualsEqualsToken,
   ts.SyntaxKind.EqualsEqualsEqualsToken,
@@ -43,6 +35,50 @@ const COMPARISONS = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.InKeyword,
   ts.SyntaxKind.InstanceOfKeyword,
 ]);
+const ELEMENT_OF = new Set(["find", "findLast", "at", "pop", "shift"]);
+const SAME_CONTAINER = new Set([
+  "filter",
+  "slice",
+  "sort",
+  "toSorted",
+  "reverse",
+  "toReversed",
+  "flat",
+]);
+const STRING_TRANSFORMS = new Set([
+  "join",
+  "trim",
+  "toString",
+  "toLowerCase",
+  "toUpperCase",
+]);
+const CALLBACK_METHODS = new Set([
+  "map",
+  "forEach",
+  "filter",
+  "find",
+  "findLast",
+  "some",
+  "every",
+  "flatMap",
+]);
+const TOKEN_DEFINITIONS = "/src/components/r19/presentation.ts";
+const MAX_EVALUATION_DEPTH = 256;
+
+type SyntheticContainer = {
+  synthetic: "container";
+  owner: ts.Node;
+  values: SourceSet;
+};
+type ContextualString = {
+  synthetic: "contextual-string";
+  node: ts.Node;
+  text: string;
+};
+type Source = ts.Node | SyntheticContainer | ContextualString;
+type SourceSet = Set<Source>;
+type OperationMemo = Map<string, SourceSet>;
+type Memo = Map<ts.Node, OperationMemo>;
 
 function scriptKind(path: string): ts.ScriptKind {
   if (path.endsWith(".tsx")) return ts.ScriptKind.TSX;
@@ -51,18 +87,60 @@ function scriptKind(path: string): ts.ScriptKind {
   return ts.ScriptKind.TS;
 }
 
+function programFor(
+  path: string,
+  source: string,
+): { checker: ts.TypeChecker; sourceFile: ts.SourceFile } {
+  const options: ts.CompilerOptions = {
+    noLib: true,
+    noResolve: true,
+    types: [],
+    jsx: ts.JsxEmit.Preserve,
+    allowJs: true,
+    target: ts.ScriptTarget.Latest,
+    noEmit: true,
+  };
+  let sourceFile: ts.SourceFile | undefined;
+  const host: ts.CompilerHost = {
+    getSourceFile(fileName) {
+      if (fileName !== path) return undefined;
+      sourceFile ??= ts.createSourceFile(
+        path,
+        source,
+        ts.ScriptTarget.Latest,
+        true,
+        scriptKind(path),
+      );
+      return sourceFile;
+    },
+    getDefaultLibFileName: () => "/__nolib.d.ts",
+    writeFile: () => undefined,
+    getCurrentDirectory: () => "/",
+    getDirectories: () => [],
+    fileExists: (fileName) => fileName === path,
+    readFile: (fileName) => (fileName === path ? source : undefined),
+    getCanonicalFileName: (fileName) => fileName,
+    useCaseSensitiveFileNames: () => true,
+    getNewLine: () => "\n",
+  };
+  const program = ts.createProgram({ rootNames: [path], options, host });
+  const sf = program.getSourceFile(path);
+  if (!sf) throw new Error(`r19 colour guard: TypeScript did not load ${path}`);
+  return { checker: program.getTypeChecker(), sourceFile: sf };
+}
+
 function unwrap(node: ts.Node): ts.Node {
-  let n = node;
+  let current = node;
   while (
-    ts.isParenthesizedExpression(n) ||
-    ts.isAsExpression(n) ||
-    ts.isSatisfiesExpression(n) ||
-    ts.isNonNullExpression(n) ||
-    ts.isTypeAssertionExpression(n)
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current) ||
+    ts.isTypeAssertionExpression(current)
   ) {
-    n = n.expression;
+    current = current.expression;
   }
-  return n;
+  return current;
 }
 
 function isFunctionLike(node: ts.Node): node is ts.FunctionLikeDeclaration {
@@ -74,17 +152,27 @@ function isFunctionLike(node: ts.Node): node is ts.FunctionLikeDeclaration {
   );
 }
 
+function isCallableFunction(
+  node: ts.Node,
+): node is ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction {
+  return (
+    ts.isFunctionDeclaration(node) ||
+    ts.isFunctionExpression(node) ||
+    ts.isArrowFunction(node)
+  );
+}
+
 function isCssProperties(type: ts.TypeNode | undefined): boolean {
   if (!type || !ts.isTypeReferenceNode(type)) return false;
-  const name = type.typeName;
-  return ts.isIdentifier(name)
-    ? name.text === "CSSProperties"
-    : name.right.text === "CSSProperties";
+  return ts.isIdentifier(type.typeName)
+    ? type.typeName.text === "CSSProperties"
+    : type.typeName.right.text === "CSSProperties";
 }
 
 function isCssPropertiesRecord(type: ts.TypeNode | undefined): boolean {
-  if (!type || !ts.isTypeReferenceNode(type)) return false;
   return (
+    !!type &&
+    ts.isTypeReferenceNode(type) &&
     ts.isIdentifier(type.typeName) &&
     type.typeName.text === "Record" &&
     isCssProperties(type.typeArguments?.[1])
@@ -115,94 +203,682 @@ function keyText(name: ts.PropertyName): string | undefined {
 function cssProperty(key: string): string {
   return key.startsWith("--")
     ? key
-    : key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+    : key.replace(/[A-Z]/g, (character) => `-${character.toLowerCase()}`);
 }
 
-export function forbiddenSourceColour(path: string, source: string): Finding[] {
-  if (`/${path.replaceAll("\\", "/")}`.endsWith(TOKEN_DEFINITIONS)) return [];
-  const sf = ts.createSourceFile(
-    path,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    scriptKind(path),
+function returnsOf(fn: ts.FunctionLikeDeclaration): ts.Expression[] {
+  if (!fn.body) return [];
+  if (!ts.isBlock(fn.body)) return [fn.body];
+  const returns: ts.Expression[] = [];
+  const visit = (node: ts.Node) => {
+    if (isFunctionLike(node)) return;
+    if (ts.isReturnStatement(node) && node.expression)
+      returns.push(node.expression);
+    ts.forEachChild(node, visit);
+  };
+  visit(fn.body);
+  return returns;
+}
+
+function isSyntheticContainer(source: Source): source is SyntheticContainer {
+  return !("getSourceFile" in source) && source.synthetic === "container";
+}
+
+function isContextualString(source: Source): source is ContextualString {
+  return (
+    !("getSourceFile" in source) && source.synthetic === "contextual-string"
   );
-  return new Scanner(sf).run();
+}
+
+function isAstNode(source: Source): source is ts.Node {
+  return "getSourceFile" in source;
+}
+
+function isStringNode(
+  source: Source,
+): source is
+  | ts.StringLiteral
+  | ts.NoSubstitutionTemplateLiteral
+  | ts.TemplateExpression
+  | ContextualString {
+  return (
+    isContextualString(source) ||
+    (isAstNode(source) &&
+      (ts.isStringLiteral(source) ||
+        ts.isNoSubstitutionTemplateLiteral(source) ||
+        ts.isTemplateExpression(source)))
+  );
+}
+
+class Evaluator {
+  readonly memo: Memo = new Map();
+  readonly inProgress = new Map<ts.Node, Set<string>>();
+  readonly synthetic = new Map<ts.Node, SyntheticContainer>();
+  cutTaken = false;
+  private depth = 0;
+
+  constructor(
+    private checker: ts.TypeChecker,
+    private sourceFile: ts.SourceFile,
+    private previous: Memo | undefined,
+    private onDepthExceeded: () => void,
+  ) {}
+
+  grewFromPrevious(): boolean {
+    for (const [node, operations] of this.memo) {
+      for (const [key, value] of operations) {
+        const before = this.previous?.get(node)?.get(key);
+        if (value.size > (before?.size ?? 0)) return true;
+      }
+    }
+    return false;
+  }
+
+  private run(
+    operation: string,
+    node: ts.Node,
+    name: string | undefined,
+    compute: () => SourceSet,
+  ): SourceSet {
+    const key = name === undefined ? operation : `${operation}\\u0000${name}`;
+    let operations = this.memo.get(node);
+    if (!operations) {
+      operations = new Map();
+      this.memo.set(node, operations);
+    }
+    const cached = operations.get(key);
+    if (cached) return cached;
+
+    let active = this.inProgress.get(node);
+    if (!active) {
+      active = new Set();
+      this.inProgress.set(node, active);
+    }
+    if (active.has(key)) {
+      this.cutTaken = true;
+      return this.previous?.get(node)?.get(key) ?? new Set();
+    }
+    if (this.depth >= MAX_EVALUATION_DEPTH) {
+      this.onDepthExceeded();
+      return new Set();
+    }
+
+    active.add(key);
+    this.depth++;
+    try {
+      const value = compute();
+      operations.set(key, value);
+      return value;
+    } finally {
+      this.depth--;
+      active.delete(key);
+    }
+  }
+
+  private declarations(identifier: ts.Identifier): ts.Declaration[] {
+    const parent = identifier.parent;
+    const symbol =
+      ts.isShorthandPropertyAssignment(parent) && parent.name === identifier
+        ? this.checker.getShorthandAssignmentValueSymbol(parent)
+        : this.checker.getSymbolAtLocation(identifier);
+    return (symbol?.declarations ?? []).filter(
+      (declaration) =>
+        declaration.getSourceFile() === this.sourceFile &&
+        (ts.isVariableDeclaration(declaration) ||
+          ts.isBindingElement(declaration) ||
+          ts.isParameter(declaration) ||
+          ts.isFunctionDeclaration(declaration) ||
+          ts.isFunctionExpression(declaration) ||
+          ts.isArrowFunction(declaration)),
+    );
+  }
+
+  sources(expression: ts.Node): SourceSet {
+    return this.run("sources", expression, undefined, () => {
+      const node = expression;
+      const out: SourceSet = new Set();
+      const add = (values: SourceSet) => {
+        for (const value of values) out.add(value);
+      };
+
+      if (
+        ts.isStringLiteral(node) ||
+        ts.isNoSubstitutionTemplateLiteral(node)
+      ) {
+        out.add(node);
+      } else if (ts.isTemplateExpression(node)) {
+        out.add(node);
+        node.templateSpans.forEach((span, index) => {
+          for (const source of this.stringSources(
+            this.sources(span.expression),
+          )) {
+            out.add({
+              synthetic: "contextual-string",
+              node: this.sourceNode(source),
+              text: this.renderTemplate(node, index, this.stringText(source)),
+            });
+          }
+        });
+      } else if (
+        ts.isObjectLiteralExpression(node) ||
+        ts.isArrayLiteralExpression(node)
+      ) {
+        out.add(node);
+      } else if (
+        ts.isParenthesizedExpression(node) ||
+        ts.isAsExpression(node) ||
+        ts.isSatisfiesExpression(node) ||
+        ts.isNonNullExpression(node) ||
+        ts.isTypeAssertionExpression(node)
+      ) {
+        add(this.sources(node.expression));
+      } else if (ts.isConditionalExpression(node)) {
+        add(this.sources(node.whenTrue));
+        add(this.sources(node.whenFalse));
+      } else if (ts.isBinaryExpression(node)) {
+        const operator = node.operatorToken.kind;
+        if (operator === ts.SyntaxKind.AmpersandAmpersandToken) {
+          add(this.sources(node.right));
+        } else if (
+          operator === ts.SyntaxKind.BarBarToken ||
+          operator === ts.SyntaxKind.QuestionQuestionToken
+        ) {
+          add(this.sources(node.left));
+          add(this.sources(node.right));
+        } else if (operator === ts.SyntaxKind.PlusToken) {
+          add(this.stringSources(this.sources(node.left)));
+          add(this.stringSources(this.sources(node.right)));
+        }
+      } else if (ts.isIdentifier(node)) {
+        for (const declaration of this.declarations(node))
+          add(this.declarationValue(declaration));
+      } else if (ts.isPropertyAccessExpression(node)) {
+        add(this.member(this.sources(node.expression), node.name.text));
+      } else if (ts.isElementAccessExpression(node)) {
+        const argument = unwrap(node.argumentExpression);
+        const receivers = this.sources(node.expression);
+        if (ts.isStringLiteralLike(argument)) {
+          add(this.member(receivers, argument.text));
+        } else {
+          add(this.allMembers(receivers));
+          add(this.elements(receivers));
+        }
+      } else if (ts.isCallExpression(node)) {
+        add(this.callValue(node));
+      }
+      return out;
+    });
+  }
+
+  private declarationValue(declaration: ts.Declaration): SourceSet {
+    return this.run("declaration", declaration, undefined, () => {
+      if (ts.isVariableDeclaration(declaration)) {
+        const container = declaration.parent;
+        const statement = ts.isVariableDeclarationList(container)
+          ? container.parent
+          : container;
+        if (statement && ts.isForOfStatement(statement))
+          return this.elements(this.sources(statement.expression));
+        if (
+          statement &&
+          ts.isCatchClause(statement) &&
+          statement.variableDeclaration === declaration
+        ) {
+          return new Set();
+        }
+        if (ts.isIdentifier(declaration.name) && declaration.initializer) {
+          return this.sources(declaration.initializer);
+        }
+        return new Set();
+      }
+      if (ts.isBindingElement(declaration))
+        return this.bindingValue(declaration);
+      if (ts.isParameter(declaration)) return this.parameterValue(declaration);
+      return new Set();
+    });
+  }
+
+  private bindingValue(binding: ts.BindingElement): SourceSet {
+    const out: SourceSet = new Set();
+    const add = (values: SourceSet) => {
+      for (const value of values) out.add(value);
+    };
+    if (binding.initializer) add(this.sources(binding.initializer));
+    const pattern = binding.parent;
+    const whole = this.patternValue(pattern);
+    if (binding.dotDotDotToken) {
+      add(whole);
+    } else if (ts.isArrayBindingPattern(pattern)) {
+      add(this.elements(whole));
+    } else {
+      const named = binding.propertyName ?? binding.name;
+      const key =
+        ts.isIdentifier(named) || ts.isStringLiteralLike(named)
+          ? named.text
+          : ts.isComputedPropertyName(named)
+            ? keyText(named)
+            : undefined;
+      if (key !== undefined) add(this.member(whole, key));
+    }
+    return out;
+  }
+
+  private patternValue(pattern: ts.BindingPattern): SourceSet {
+    const owner = pattern.parent;
+    if (ts.isVariableDeclaration(owner)) {
+      const statement = owner.parent?.parent;
+      if (statement && ts.isForOfStatement(statement))
+        return this.elements(this.sources(statement.expression));
+      return owner.initializer ? this.sources(owner.initializer) : new Set();
+    }
+    if (ts.isParameter(owner)) return this.parameterValue(owner);
+    if (ts.isBindingElement(owner)) return this.declarationValue(owner);
+    return new Set();
+  }
+
+  private parameterValue(parameter: ts.ParameterDeclaration): SourceSet {
+    return this.run("parameter", parameter, undefined, () => {
+      const out: SourceSet = new Set();
+      const add = (values: SourceSet) => {
+        for (const value of values) out.add(value);
+      };
+      const fn = parameter.parent;
+      const call = fn.parent;
+      if (
+        (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) &&
+        fn.parameters[0] === parameter &&
+        call &&
+        ts.isCallExpression(call) &&
+        call.arguments[0] === fn
+      ) {
+        const callee = unwrap(call.expression);
+        if (
+          ts.isPropertyAccessExpression(callee) &&
+          CALLBACK_METHODS.has(callee.name.text)
+        ) {
+          add(this.elements(this.sources(callee.expression)));
+        }
+      }
+      if (parameter.initializer) add(this.sources(parameter.initializer));
+      return out;
+    });
+  }
+
+  private functionsOf(identifier: ts.Identifier): ts.FunctionLikeDeclaration[] {
+    const functions: ts.FunctionLikeDeclaration[] = [];
+    for (const declaration of this.declarations(identifier)) {
+      if (isCallableFunction(declaration)) {
+        functions.push(declaration);
+      } else if (
+        ts.isVariableDeclaration(declaration) &&
+        declaration.initializer
+      ) {
+        const initializer = unwrap(declaration.initializer);
+        if (isCallableFunction(initializer)) {
+          functions.push(initializer);
+        } else if (ts.isCallExpression(initializer)) {
+          const callee = unwrap(initializer.expression);
+          const callback = initializer.arguments[0]
+            ? unwrap(initializer.arguments[0])
+            : undefined;
+          if (
+            ts.isIdentifier(callee) &&
+            callee.text === "useCallback" &&
+            callback &&
+            isCallableFunction(callback)
+          ) {
+            functions.push(callback);
+          }
+        }
+      }
+    }
+    return functions;
+  }
+
+  private callbackFunctions(
+    expression: ts.Expression | undefined,
+  ): ts.FunctionLikeDeclaration[] {
+    if (!expression) return [];
+    const node = unwrap(expression);
+    if (isCallableFunction(node)) return [node];
+    if (ts.isIdentifier(node)) return this.functionsOf(node);
+    return [];
+  }
+
+  private callValue(call: ts.CallExpression): SourceSet {
+    const out: SourceSet = new Set();
+    const add = (values: SourceSet) => {
+      for (const value of values) out.add(value);
+    };
+    const callee = unwrap(call.expression);
+
+    if (ts.isIdentifier(callee)) {
+      const callback = call.arguments[0]
+        ? unwrap(call.arguments[0])
+        : undefined;
+      if (
+        callee.text === "useMemo" &&
+        callback &&
+        isCallableFunction(callback)
+      ) {
+        for (const returned of returnsOf(callback)) add(this.sources(returned));
+        return out;
+      }
+      if (callee.text === "useCallback") return out;
+      if (callee.text === "String" && call.arguments[0])
+        return this.stringSources(this.sources(call.arguments[0]));
+      for (const fn of this.functionsOf(callee))
+        for (const returned of returnsOf(fn)) add(this.sources(returned));
+      return out;
+    }
+
+    if (!ts.isPropertyAccessExpression(callee)) return out;
+    const method = callee.name.text;
+    const receiver = callee.expression;
+    if (
+      ts.isIdentifier(receiver) &&
+      receiver.text === "Object" &&
+      method === "values" &&
+      call.arguments[0]
+    ) {
+      return new Set([
+        this.container(call, this.allMembers(this.sources(call.arguments[0]))),
+      ]);
+    }
+    if (
+      ts.isIdentifier(receiver) &&
+      receiver.text === "Object" &&
+      method === "assign"
+    ) {
+      for (const argument of call.arguments) add(this.sources(argument));
+      return out;
+    }
+    if (ELEMENT_OF.has(method)) return this.elements(this.sources(receiver));
+    if (SAME_CONTAINER.has(method)) return this.sources(receiver);
+    if (method === "concat") {
+      add(this.sources(receiver));
+      for (const argument of call.arguments) add(this.sources(argument));
+      return out;
+    }
+    if (method === "map" || method === "flatMap") {
+      const values: SourceSet = new Set();
+      for (const fn of this.callbackFunctions(call.arguments[0])) {
+        for (const returned of returnsOf(fn)) {
+          const sources = this.sources(returned);
+          if (method === "flatMap") {
+            for (const value of sources) {
+              if (isAstNode(value) && ts.isArrayLiteralExpression(value)) {
+                for (const item of this.elements(new Set([value])))
+                  values.add(item);
+              } else {
+                values.add(value);
+              }
+            }
+          } else {
+            for (const value of sources) values.add(value);
+          }
+        }
+      }
+      return new Set([this.container(call, values)]);
+    }
+    if (STRING_TRANSFORMS.has(method)) {
+      const strings = this.stringSources(this.sources(receiver));
+      if (method === "join") {
+        for (const source of this.stringSources(
+          this.elements(this.sources(receiver)),
+        )) {
+          strings.add(source);
+        }
+      }
+      return strings;
+    }
+    return out;
+  }
+
+  private container(owner: ts.Node, values: SourceSet): SyntheticContainer {
+    let container = this.synthetic.get(owner);
+    if (!container) {
+      container = { synthetic: "container", owner, values };
+      this.synthetic.set(owner, container);
+    }
+    return container;
+  }
+
+  member(sources: SourceSet, name: string): SourceSet {
+    const out: SourceSet = new Set();
+    for (const source of sources) {
+      for (const value of this.memberOf(source, name)) out.add(value);
+    }
+    return out;
+  }
+
+  private memberOf(source: Source, name: string): SourceSet {
+    if (!isAstNode(source) || !ts.isObjectLiteralExpression(source)) {
+      return new Set();
+    }
+    return this.run("member", source, name, () => {
+      const out: SourceSet = new Set();
+      const add = (values: SourceSet) => {
+        for (const value of values) out.add(value);
+      };
+      for (const property of source.properties) {
+        if (
+          ts.isPropertyAssignment(property) &&
+          keyText(property.name) === name
+        ) {
+          add(this.sources(property.initializer));
+        } else if (
+          ts.isShorthandPropertyAssignment(property) &&
+          property.name.text === name
+        ) {
+          add(this.sources(property.name));
+        } else if (ts.isSpreadAssignment(property)) {
+          add(this.member(this.sources(property.expression), name));
+        }
+      }
+      return out;
+    });
+  }
+
+  allMembers(sources: SourceSet): SourceSet {
+    const out: SourceSet = new Set();
+    const add = (values: SourceSet) => {
+      for (const value of values) out.add(value);
+    };
+    for (const source of sources) {
+      if (isSyntheticContainer(source)) {
+        add(source.values);
+      } else if (isAstNode(source) && ts.isObjectLiteralExpression(source)) {
+        add(
+          this.run("all-members", source, undefined, () => {
+            const values: SourceSet = new Set();
+            const addValue = (items: SourceSet) => {
+              for (const item of items) values.add(item);
+            };
+            for (const property of source.properties) {
+              if (ts.isPropertyAssignment(property))
+                addValue(this.sources(property.initializer));
+              else if (ts.isShorthandPropertyAssignment(property))
+                addValue(this.sources(property.name));
+              else if (ts.isSpreadAssignment(property))
+                addValue(this.allMembers(this.sources(property.expression)));
+            }
+            return values;
+          }),
+        );
+      }
+    }
+    return out;
+  }
+
+  elements(sources: SourceSet): SourceSet {
+    const out: SourceSet = new Set();
+    const add = (values: SourceSet) => {
+      for (const value of values) out.add(value);
+    };
+    for (const source of sources) {
+      if (isSyntheticContainer(source)) {
+        add(source.values);
+      } else if (isAstNode(source) && ts.isArrayLiteralExpression(source)) {
+        add(
+          this.run("elements", source, undefined, () => {
+            const values: SourceSet = new Set();
+            const addValue = (items: SourceSet) => {
+              for (const item of items) values.add(item);
+            };
+            for (const element of source.elements) {
+              if (ts.isSpreadElement(element))
+                addValue(this.elements(this.sources(element.expression)));
+              else addValue(this.sources(element));
+            }
+            return values;
+          }),
+        );
+      }
+    }
+    return out;
+  }
+
+  stringSources(sources: SourceSet): SourceSet {
+    const strings: SourceSet = new Set();
+    for (const source of sources) if (isStringNode(source)) strings.add(source);
+    return strings;
+  }
+
+  sourceNode(source: Source): ts.Node {
+    if (isContextualString(source)) return source.node;
+    if (isSyntheticContainer(source)) return source.owner;
+    return source;
+  }
+
+  stringText(source: Source): string {
+    if (isContextualString(source)) return source.text;
+    if (
+      isAstNode(source) &&
+      (ts.isStringLiteral(source) || ts.isNoSubstitutionTemplateLiteral(source))
+    ) {
+      return source.text;
+    }
+    if (isAstNode(source) && ts.isTemplateExpression(source))
+      return this.renderTemplate(source);
+    return "";
+  }
+
+  private renderTemplate(
+    template: ts.TemplateExpression,
+    replacementIndex?: number,
+    replacement = "",
+  ): string {
+    let text = template.head.text;
+    template.templateSpans.forEach((span, index) => {
+      text += index === replacementIndex ? replacement : "var(--r19-x)";
+      text += span.literal.text;
+    });
+    return text;
+  }
 }
 
 class Scanner {
   private findings: Finding[] = [];
   private seen = new Set<string>();
-  private variables = new Map<string, ts.Expression[]>();
-  private functions = new Map<string, ts.FunctionLikeDeclaration[]>();
-  private bindings = new Map<string, ts.BindingElement[]>();
+  private evaluator!: Evaluator;
+  private activeUse: ts.Node | undefined;
 
-  constructor(private sf: ts.SourceFile) {
-    const index = (node: ts.Node) => {
-      if (
-        ts.isVariableDeclaration(node) &&
-        ts.isIdentifier(node.name) &&
-        node.initializer
-      ) {
-        const list = this.variables.get(node.name.text) ?? [];
-        list.push(node.initializer);
-        this.variables.set(node.name.text, list);
-      } else if (ts.isBindingElement(node) && ts.isIdentifier(node.name)) {
-        const list = this.bindings.get(node.name.text) ?? [];
-        list.push(node);
-        this.bindings.set(node.name.text, list);
-      } else if (
-        ts.isParameter(node) &&
-        ts.isIdentifier(node.name) &&
-        node.initializer
-      ) {
-        const list = this.variables.get(node.name.text) ?? [];
-        list.push(node.initializer);
-        this.variables.set(node.name.text, list);
-      } else if (ts.isFunctionDeclaration(node) && node.name) {
-        const list = this.functions.get(node.name.text) ?? [];
-        list.push(node);
-        this.functions.set(node.name.text, list);
-      }
-      ts.forEachChild(node, index);
-    };
-    index(sf);
-  }
+  constructor(
+    private sourceFile: ts.SourceFile,
+    private checker: ts.TypeChecker,
+  ) {}
 
   run(): Finding[] {
-    this.visit(this.sf);
-    return this.findings;
+    let previous: Memo | undefined;
+    for (;;) {
+      this.findings = [];
+      this.seen = new Set();
+      this.evaluator = new Evaluator(
+        this.checker,
+        this.sourceFile,
+        previous,
+        () => this.reportUnresolved(),
+      );
+      this.visit(this.sourceFile);
+      if (!this.evaluator.cutTaken || !this.evaluator.grewFromPrevious()) {
+        return this.findings;
+      }
+      previous = this.evaluator.memo;
+    }
   }
 
-  private report(node: ts.Node, position: string, text: string) {
+  private report(
+    source: ts.Node,
+    position: string,
+    text: string,
+    use?: ts.Node,
+  ) {
     const line =
-      this.sf.getLineAndCharacterOfPosition(node.getStart(this.sf)).line + 1;
+      this.sourceFile.getLineAndCharacterOfPosition(
+        source.getStart(this.sourceFile),
+      ).line + 1;
     const key = `${line}|${position}|${text}`;
     if (this.seen.has(key)) return;
     this.seen.add(key);
-    this.findings.push({ line, position, text });
+    const useLine = use
+      ? this.sourceFile.getLineAndCharacterOfPosition(
+          use.getStart(this.sourceFile),
+        ).line + 1
+      : undefined;
+    this.findings.push({
+      line,
+      ...(useLine !== undefined && useLine !== line ? { use: useLine } : {}),
+      position,
+      text,
+    });
   }
 
-  // ---- roots: the positions the entity names ------------------------------
+  private reportUnresolved() {
+    if (!this.activeUse) return;
+    const line =
+      this.sourceFile.getLineAndCharacterOfPosition(
+        this.activeUse.getStart(this.sourceFile),
+      ).line + 1;
+    const text = "resolution deeper than 256";
+    const key = `${line}|unresolved|${text}`;
+    if (this.seen.has(key)) return;
+    this.seen.add(key);
+    this.findings.push({ line, position: "unresolved", text });
+  }
+
+  private withUse<T>(use: ts.Node, evaluate: () => T): T {
+    const before = this.activeUse;
+    this.activeUse = use;
+    try {
+      return evaluate();
+    } finally {
+      this.activeUse = before;
+    }
+  }
+
+  private sources(expression: ts.Node, use: ts.Node): SourceSet {
+    return this.withUse(use, () => this.evaluator.sources(expression));
+  }
 
   private visit(node: ts.Node) {
-    if (ts.isJsxAttribute(node)) this.jsxAttribute(node);
-    else if (ts.isCallExpression(node)) this.classHelperCall(node);
-    else if (ts.isVariableDeclaration(node) && node.initializer) {
-      if (isCssProperties(node.type))
-        this.styleRoot(node.initializer, this.budget());
+    if (ts.isJsxAttribute(node)) {
+      this.jsxAttribute(node);
+    } else if (ts.isCallExpression(node)) {
+      this.classHelperCall(node);
+    } else if (ts.isVariableDeclaration(node) && node.initializer) {
+      if (isCssProperties(node.type)) this.styleRoot(node.initializer);
       else if (isCssPropertiesRecord(node.type))
-        this.styleMap(node.initializer, this.budget());
+        this.styleMap(node.initializer);
     } else if (
       (ts.isAsExpression(node) ||
         ts.isSatisfiesExpression(node) ||
         ts.isTypeAssertionExpression(node)) &&
       isCssProperties(node.type)
     ) {
-      this.styleRoot(node.expression, this.budget());
+      this.styleRoot(node.expression);
     } else if (isFunctionLike(node) && isCssProperties(node.type)) {
-      for (const expression of this.returnsOf(node))
-        this.styleRoot(expression, this.budget());
+      for (const expression of returnsOf(node)) this.styleRoot(expression);
     } else if (ts.isPropertyAssignment(node)) {
       const key = keyText(node.name);
       if (key === "themeColor" || key === "theme-color")
@@ -226,10 +902,12 @@ class Scanner {
       name.endsWith("ClassName")
     ) {
       this.classPosition(value);
-    } else if (name === "style") {
-      if (ts.isJsxExpression(value) && value.expression) {
-        this.styleRoot(value.expression, this.budget());
-      }
+    } else if (
+      name === "style" &&
+      ts.isJsxExpression(value) &&
+      value.expression
+    ) {
+      this.styleRoot(value.expression);
     } else if (COLOUR_ATTRIBUTES.has(name) || name.endsWith("Color")) {
       this.colourValue(value, name);
     }
@@ -251,335 +929,199 @@ class Scanner {
   ) {
     if (element.tagName.getText() !== "meta") return;
     const attributes = element.attributes.properties.filter(ts.isJsxAttribute);
-    const named = attributes.find((a) => attributeName(a) === "name");
-    const nameText =
-      named?.initializer && ts.isStringLiteral(named.initializer)
-        ? named.initializer.text
-        : "";
-    if (nameText !== "theme-color") return;
-    const content = attributes.find((a) => attributeName(a) === "content");
+    const named = attributes.find(
+      (attribute) => attributeName(attribute) === "name",
+    );
+    if (
+      !named?.initializer ||
+      !ts.isStringLiteral(named.initializer) ||
+      named.initializer.text !== "theme-color"
+    ) {
+      return;
+    }
+    const content = attributes.find(
+      (attribute) => attributeName(attribute) === "content",
+    );
     if (content?.initializer)
       this.colourValue(content.initializer, "theme-color");
   }
 
-  // ---- judging -------------------------------------------------------------
-
   private classPosition(node: ts.Node) {
-    this.strings(node, "class", this.budget(), (at, text) => {
+    this.strings(node, "class", node, (source, text, use) => {
       for (const token of text.split(/\s+/).filter(Boolean)) {
-        if (forbiddenClassToken(token)) this.report(at, "class", token);
+        if (forbiddenClassToken(token))
+          this.report(source, "class", token, use);
       }
     });
   }
 
   private colourValue(node: ts.Node, attribute: string) {
-    this.strings(node, "value", this.budget(), (at, text) => {
+    this.strings(node, "value", node, (source, text, use) => {
       if (colourLiteralIn(text, "color"))
-        this.report(at, "colour attribute", `${attribute}: ${text}`);
+        this.report(source, "colour attribute", `${attribute}: ${text}`, use);
     });
   }
 
-  // ---- style positions -----------------------------------------------------
-
-  private styleRoot(expression: ts.Node, b: Budget) {
-    const node = unwrap(expression);
-    if (b.visited.has(node)) return;
-    b.visited.add(node);
-    if (ts.isConditionalExpression(node)) {
-      this.styleRoot(node.whenTrue, b);
-      this.styleRoot(node.whenFalse, b);
-    } else if (ts.isBinaryExpression(node)) {
-      const op = node.operatorToken.kind;
-      if (op === ts.SyntaxKind.AmpersandAmpersandToken)
-        this.styleRoot(node.right, b);
-      else if (
-        op === ts.SyntaxKind.BarBarToken ||
-        op === ts.SyntaxKind.QuestionQuestionToken
-      ) {
-        this.styleRoot(node.left, b);
-        this.styleRoot(node.right, b);
-      }
-    } else if (ts.isObjectLiteralExpression(node)) {
-      this.styleObject(node, b);
-    } else if (ts.isCallExpression(node) && this.isObjectAssign(node)) {
-      for (const argument of node.arguments) this.styleRoot(argument, b);
-    } else if (b.hops < MAX_HOPS) {
-      for (const resolved of this.resolve(node, b)) {
-        b.hops++;
-        this.styleRoot(resolved, b);
-        b.hops--;
-      }
+  private styleRoot(expression: ts.Node) {
+    const visited = new Set<ts.ObjectLiteralExpression>();
+    for (const source of this.sources(expression, expression)) {
+      if (isAstNode(source) && ts.isObjectLiteralExpression(source))
+        this.styleObject(source, visited, expression);
     }
-    b.visited.delete(node);
   }
 
-  private styleMap(expression: ts.Node, b: Budget) {
+  private styleMap(expression: ts.Node) {
     const node = unwrap(expression);
     if (!ts.isObjectLiteralExpression(node)) return;
     for (const property of node.properties) {
       if (ts.isPropertyAssignment(property))
-        this.styleRoot(property.initializer, b);
+        this.styleRoot(property.initializer);
     }
   }
 
-  private isObjectAssign(call: ts.CallExpression): boolean {
-    const callee = call.expression;
-    return (
-      ts.isPropertyAccessExpression(callee) &&
-      ts.isIdentifier(callee.expression) &&
-      callee.expression.text === "Object" &&
-      callee.name.text === "assign"
-    );
-  }
-
-  private styleObject(object: ts.ObjectLiteralExpression, b: Budget) {
+  private styleObject(
+    object: ts.ObjectLiteralExpression,
+    visited: Set<ts.ObjectLiteralExpression>,
+    use: ts.Node,
+  ) {
+    if (visited.has(object)) return;
+    visited.add(object);
     for (const property of object.properties) {
       if (ts.isSpreadAssignment(property)) {
-        this.styleRoot(property.expression, b);
-      } else if (
-        ts.isPropertyAssignment(property) ||
-        ts.isShorthandPropertyAssignment(property)
-      ) {
-        const key = ts.isPropertyAssignment(property)
-          ? keyText(property.name)
-          : property.name.text;
-        const prop = key === undefined ? undefined : cssProperty(key);
-        if (prop?.includes("backdrop")) this.report(property, "style", prop);
-        const value = ts.isPropertyAssignment(property)
-          ? property.initializer
-          : property.name;
-        this.strings(value, "value", b, (at, text) => {
-          const hit =
-            prop === undefined
-              ? colourLiteralIn(text)
-              : forbiddenDeclaration(prop, text);
-          if (hit) this.report(at, "style", `${prop ?? "?"}: ${text}`);
-        });
+        for (const source of this.sources(property.expression, use)) {
+          if (isAstNode(source) && ts.isObjectLiteralExpression(source))
+            this.styleObject(source, visited, use);
+        }
+        continue;
       }
-    }
-  }
-
-  // ---- in-file resolution (P5) ---------------------------------------------
-
-  private returnsOf(fn: ts.FunctionLikeDeclaration): ts.Expression[] {
-    if (!fn.body) return [];
-    if (!ts.isBlock(fn.body)) return [fn.body];
-    const returns: ts.Expression[] = [];
-    const find = (node: ts.Node) => {
-      if (isFunctionLike(node)) return;
-      if (ts.isReturnStatement(node) && node.expression)
-        returns.push(node.expression);
-      ts.forEachChild(node, find);
-    };
-    find(fn.body);
-    return returns;
-  }
-
-  private budget(): Budget {
-    return { hops: 0, visited: new Set() };
-  }
-
-  // The object and array literals an expression can stand for, through `?:`,
-  // `??`, `||`, in-file identifiers, calls and member reads, handed to `emit`
-  // while the hop that reached them is still counted. An identifier or call
-  // costs a hop; a node already on the path ends as "not resolved".
-  private reach(nodes: ts.Node[], b: Budget, emit: (o: ts.Node) => void) {
-    for (const raw of nodes) {
-      const node = unwrap(raw);
       if (
-        ts.isObjectLiteralExpression(node) ||
-        ts.isArrayLiteralExpression(node)
+        !ts.isPropertyAssignment(property) &&
+        !ts.isShorthandPropertyAssignment(property)
       ) {
-        emit(node);
-      } else if (ts.isConditionalExpression(node)) {
-        this.reach([node.whenTrue, node.whenFalse], b, emit);
-      } else if (ts.isBinaryExpression(node)) {
-        const op = node.operatorToken.kind;
-        if (op === ts.SyntaxKind.AmpersandAmpersandToken) {
-          this.reach([node.right], b, emit);
-        } else if (
-          op === ts.SyntaxKind.BarBarToken ||
-          op === ts.SyntaxKind.QuestionQuestionToken
-        ) {
-          this.reach([node.left, node.right], b, emit);
-        }
-      } else if (
-        ts.isIdentifier(node) ||
-        ts.isPropertyAccessExpression(node) ||
-        ts.isElementAccessExpression(node) ||
-        ts.isCallExpression(node)
-      ) {
-        if (b.visited.has(node)) continue;
-        b.visited.add(node);
-        const resolved = this.resolve(node, b);
-        const hop = ts.isIdentifier(node) || ts.isCallExpression(node);
-        if (hop) b.hops++;
-        this.reach(resolved, b, emit);
-        if (hop) b.hops--;
-        b.visited.delete(node);
+        continue;
       }
+      const key = ts.isPropertyAssignment(property)
+        ? keyText(property.name)
+        : property.name.text;
+      const css = key === undefined ? undefined : cssProperty(key);
+      if (css?.includes("backdrop")) this.report(property, "style", css, use);
+      const value = ts.isPropertyAssignment(property)
+        ? property.initializer
+        : property.name;
+      this.strings(value, "value", use, (source, text, useSite) => {
+        const hit =
+          css === undefined
+            ? colourLiteralIn(text)
+            : forbiddenDeclaration(css, text);
+        if (hit)
+          this.report(source, "style", `${css ?? "?"}: ${text}`, useSite);
+      });
     }
   }
 
-  private memberValues(
-    objects: ts.Node[],
-    name: string | undefined,
-    b: Budget,
-  ): ts.Node[] {
-    const values: ts.Node[] = [];
-    this.reach(objects, b, (object) => {
-      if (ts.isArrayLiteralExpression(object)) {
-        values.push(...object.elements);
-      } else if (ts.isObjectLiteralExpression(object)) {
-        for (const property of object.properties) {
-          if (ts.isPropertyAssignment(property)) {
-            const key = keyText(property.name);
-            if (name === undefined || key === undefined || key === name) {
-              values.push(property.initializer);
-            }
-          } else if (ts.isShorthandPropertyAssignment(property)) {
-            if (name === undefined || property.name.text === name)
-              values.push(property.name);
-          } else if (ts.isSpreadAssignment(property)) {
-            values.push(...this.memberValues([property.expression], name, b));
-          }
-        }
-      }
-    });
-    return values;
-  }
-
-  // What a destructured binding stands for: the matching member of what its
-  // pattern destructures, and its own default initializer.
-  private bindingValues(element: ts.BindingElement, b: Budget): ts.Node[] {
-    const out: ts.Node[] = element.initializer ? [element.initializer] : [];
-    const pattern = element.parent;
-    const owner = pattern.parent;
-    let sources: ts.Node[] = [];
-    if (ts.isVariableDeclaration(owner)) {
-      sources = owner.initializer ? [owner.initializer] : [];
-    } else if (ts.isBindingElement(owner)) {
-      sources = this.bindingValues(owner, b);
-    }
-    let key: string | undefined;
-    if (ts.isObjectBindingPattern(pattern) && !element.dotDotDotToken) {
-      const named = element.propertyName ?? element.name;
-      if (ts.isIdentifier(named) || ts.isStringLiteralLike(named))
-        key = named.text;
-    }
-    out.push(...this.memberValues(sources, key, b));
-    return out;
-  }
-
-  // The in-file nodes an expression stands for: a variable's or binding's
-  // initializer, a function call's return expressions, a member of a resolved
-  // object.
-  private resolve(expression: ts.Node, b: Budget): ts.Node[] {
-    const node = unwrap(expression);
-    if (ts.isIdentifier(node)) {
-      if (b.hops >= MAX_HOPS) return [];
-      const declared = (this.variables.get(node.text) ?? []).filter(
-        (init) => !isFunctionLike(unwrap(init)),
-      );
-      const bound = (this.bindings.get(node.text) ?? []).flatMap((element) =>
-        this.bindingValues(element, b),
-      );
-      return [...declared, ...bound];
-    }
-    if (ts.isPropertyAccessExpression(node)) {
-      return this.memberValues([node.expression], node.name.text, b);
-    }
-    if (ts.isElementAccessExpression(node)) {
-      const argument = unwrap(node.argumentExpression);
-      const name = ts.isStringLiteralLike(argument) ? argument.text : undefined;
-      return this.memberValues([node.expression], name, b);
-    }
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-      if (b.hops >= MAX_HOPS) return [];
-      const callee = node.expression.text;
-      const declared = this.functions.get(callee) ?? [];
-      const initialisers = (this.variables.get(callee) ?? [])
-        .map(unwrap)
-        .filter(isFunctionLike);
-      return [...declared, ...initialisers].flatMap((fn) => this.returnsOf(fn));
-    }
-    return [];
-  }
-
-  // Every string-like node of `node`, resolving in-file identifiers (at most
-  // MAX_HOPS hops, each declaration once). Conditions and comparison operands
-  // decide a value, they are never one; object keys are class tokens only when
-  // the position is a class position.
   private strings(
     node: ts.Node,
     mode: "class" | "value",
-    b: Budget,
-    emit: (at: ts.Node, text: string) => void,
+    use: ts.Node,
+    emit: (source: ts.Node, text: string, use?: ts.Node) => void,
   ) {
-    const follow = (expression: ts.Node) => {
-      if (b.hops >= MAX_HOPS) return;
-      for (const resolved of this.resolve(expression, b)) {
-        if (b.visited.has(resolved)) continue;
-        b.visited.add(resolved);
-        b.hops++;
-        this.strings(resolved, mode, b, emit);
-        b.hops--;
-        b.visited.delete(resolved);
+    const emitSource = (source: Source, resolvedUse: ts.Node) => {
+      if (isStringNode(source)) {
+        emit(
+          this.evaluator.sourceNode(source),
+          this.evaluator.stringText(source),
+          resolvedUse,
+        );
+        return;
+      }
+      if (mode !== "class" || !isAstNode(source)) return;
+      if (ts.isObjectLiteralExpression(source)) {
+        for (const property of source.properties) {
+          if (
+            (ts.isPropertyAssignment(property) ||
+              ts.isMethodDeclaration(property)) &&
+            ts.isStringLiteralLike(property.name)
+          ) {
+            emit(property.name, property.name.text, resolvedUse);
+          }
+        }
+      } else if (ts.isArrayLiteralExpression(source)) {
+        const elements = this.withUse(resolvedUse, () =>
+          this.evaluator.elements(new Set([source])),
+        );
+        for (const element of elements) emitSource(element, resolvedUse);
       }
     };
-    const walk = (n: ts.Node): void => {
-      if (ts.isStringLiteralLike(n)) return emit(n, n.text);
-      if (ts.isTemplateExpression(n)) {
-        if (mode === "class") {
-          emit(n.head, n.head.text);
-          for (const span of n.templateSpans) {
-            walk(span.expression);
-            emit(span.literal, span.literal.text);
-          }
-        } else {
-          emit(
-            n,
-            [n.head.text, ...n.templateSpans.map((s) => s.literal.text)].join(
-              " ",
-            ),
-          );
-          for (const span of n.templateSpans) walk(span.expression);
+
+    const emitResolved = (expression: ts.Node) => {
+      for (const source of this.sources(expression, use))
+        emitSource(source, use);
+    };
+
+    const walk = (current: ts.Node): void => {
+      if (
+        ts.isStringLiteral(current) ||
+        ts.isNoSubstitutionTemplateLiteral(current)
+      ) {
+        emit(current, current.text);
+        return;
+      }
+      if (ts.isTemplateExpression(current)) {
+        emitResolved(current);
+        return;
+      }
+      if (ts.isTypeNode(current)) return;
+      if (ts.isConditionalExpression(current)) {
+        walk(current.whenTrue);
+        walk(current.whenFalse);
+        return;
+      }
+      if (ts.isBinaryExpression(current)) {
+        const operator = current.operatorToken.kind;
+        if (COMPARISONS.has(operator)) return;
+        if (operator === ts.SyntaxKind.AmpersandAmpersandToken) {
+          walk(current.right);
+          return;
         }
+      }
+      if (ts.isPropertyAssignment(current)) {
+        if (mode === "class" && ts.isStringLiteralLike(current.name))
+          emit(current.name, current.name.text);
+        walk(current.initializer);
         return;
       }
-      if (ts.isTypeNode(n)) return;
-      if (ts.isConditionalExpression(n)) {
-        walk(n.whenTrue);
-        return walk(n.whenFalse);
-      }
-      if (ts.isBinaryExpression(n)) {
-        const op = n.operatorToken.kind;
-        if (COMPARISONS.has(op)) return;
-        if (op === ts.SyntaxKind.AmpersandAmpersandToken) return walk(n.right);
-      }
-      if (ts.isPropertyAssignment(n)) {
-        if (mode === "class" && ts.isStringLiteralLike(n.name))
-          emit(n.name, n.name.text);
-        return walk(n.initializer);
-      }
-      if (ts.isShorthandPropertyAssignment(n)) return follow(n.name);
-      if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n))
-        return follow(n);
-      if (ts.isIdentifier(n)) return follow(n);
-      if (ts.isCallExpression(n)) {
-        const callee = unwrap(n.expression);
-        if (ts.isIdentifier(callee)) follow(n);
-        else if (ts.isPropertyAccessExpression(callee)) walk(callee.expression);
-        else walk(callee);
-        for (const argument of n.arguments) walk(argument);
+      if (ts.isShorthandPropertyAssignment(current)) {
+        emitResolved(current.name);
         return;
       }
-      if (isFunctionLike(n)) {
-        if (n.body) walk(n.body);
+      if (
+        ts.isPropertyAccessExpression(current) ||
+        ts.isElementAccessExpression(current) ||
+        ts.isIdentifier(current)
+      ) {
+        emitResolved(current);
         return;
       }
-      ts.forEachChild(n, walk);
+      if (ts.isCallExpression(current)) {
+        emitResolved(current);
+        const callee = unwrap(current.expression);
+        if (ts.isPropertyAccessExpression(callee)) walk(callee.expression);
+        else if (!ts.isIdentifier(callee)) walk(callee);
+        for (const argument of current.arguments) walk(argument);
+        return;
+      }
+      if (isFunctionLike(current)) {
+        if (current.body) walk(current.body);
+        return;
+      }
+      ts.forEachChild(current, walk);
     };
     walk(node);
   }
+}
+
+export function forbiddenSourceColour(path: string, source: string): Finding[] {
+  if (`/${path.replaceAll("\\\\", "/")}`.endsWith(TOKEN_DEFINITIONS)) return [];
+  const { checker, sourceFile } = programFor(path, source);
+  return new Scanner(sourceFile, checker).run();
 }

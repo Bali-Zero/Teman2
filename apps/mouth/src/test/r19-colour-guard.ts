@@ -10,7 +10,12 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export type Finding = { line: number; position: string; text: string };
+export type Finding = {
+  line: number;
+  use?: number;
+  position: string;
+  text: string;
+};
 
 const NAMED_COLOURS =
   `aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue

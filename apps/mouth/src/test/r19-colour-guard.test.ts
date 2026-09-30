@@ -799,7 +799,7 @@ const sourceRows: Row[] = [
     'const a = { color: "white" };\nconst b = a;\nconst c = b;\nexport const C = () => <i style={c} />;',
   ],
   [
-    "I",
+    "G",
     'const a = { color: "white" };\nconst b = a;\nconst c = b;\nconst d = c;\nexport const C = () => <i style={d} />;',
   ],
   [
@@ -1019,7 +1019,7 @@ const sourceRows: Row[] = [
     'const M = { style: { color: "white" } };\nconst b = M;\nconst c = b;\nexport const C = () => {\n  const { style } = c;\n  return <i style={style} />;\n};',
   ],
   [
-    "I",
+    "G",
     'const M = { style: { color: "white" } };\nconst a = M;\nconst b = a;\nconst c = b;\nexport const C = () => {\n  const { style } = c;\n  return <i style={style} />;\n};',
   ],
   [
@@ -1027,7 +1027,7 @@ const sourceRows: Row[] = [
     'const M = { style: { color: "white" } };\nconst f1 = () => f2();\nconst f2 = () => M;\nexport const C = () => {\n  const { style } = f1();\n  return <i style={style} />;\n};',
   ],
   [
-    "I",
+    "G",
     'const M = { style: { color: "white" } };\nconst f1 = () => f2();\nconst f2 = () => f3();\nconst f3 = () => M;\nexport const C = () => {\n  const { style } = f1();\n  return <i style={style} />;\n};',
   ],
   [
@@ -1035,7 +1035,7 @@ const sourceRows: Row[] = [
     'const f1 = () => f2();\nconst f2 = () => f3();\nconst f3 = () => ({ style: { color: "white" } });\nexport const C = () => {\n  const { style } = f1();\n  return <i style={style} />;\n};',
   ],
   [
-    "I",
+    "G",
     'const f1 = () => f2();\nconst f2 = () => f3();\nconst f3 = () => f4();\nconst f4 = () => ({ style: { color: "white" } });\nexport const C = () => {\n  const { style } = f1();\n  return <i style={style} />;\n};',
   ],
   // resolution depth and visited are one budget (gate-7702 D2): cycles end as "not resolved"
@@ -1070,7 +1070,7 @@ const sourceRows: Row[] = [
     "const A = { ...B, pad: 1 };\nconst B = { ...A, gap: 2 };\nexport const C = () => <p style={{ color: A.color }} />;",
   ],
   [
-    "I",
+    "G",
     'const A = { ...B };\nconst B = { ...C };\nconst C = { ...D };\nconst D = { color: "white" };\nexport const X = () => <p style={{ color: A.color }} />;',
   ],
   [
@@ -1087,7 +1087,7 @@ const sourceRows: Row[] = [
   ],
   // class-position alias chains follow the same 3-hop budget
   [
-    "I",
+    "G",
     'const a = b;\nconst b = c;\nconst c = d;\nconst d = "bg-white";\nexport const C = () => <div className={a} />;',
   ],
   [
@@ -1116,6 +1116,166 @@ const sourceRows: Row[] = [
   ],
   ["I", "export type T = { color: 'white' | 'red' };"],
   ["I", "export const x = { color: 'white' };"],
+];
+
+type NamedSourceRow = [id: string, expected: "G" | "I", input: string];
+
+const v4SourceRows: NamedSourceRow[] = [
+  [
+    "function cycle, f declared before g",
+    "G",
+    'function f(c) { return c ? g(!c) : "#fff"; }\nfunction g(c) { return c ? f(!c) : "var(--r19-ink)"; }\nfunction A() { return <i className={f(true)} />; }\nfunction B() { return <p style={{ color: g(true) }} />; }',
+  ],
+  [
+    "function cycle, declarations reversed",
+    "G",
+    'function g(c) { return c ? f(!c) : "var(--r19-ink)"; }\nfunction f(c) { return c ? g(!c) : "#fff"; }\nfunction A() { return <i className={f(true)} />; }\nfunction B() { return <p style={{ color: g(true) }} />; }',
+  ],
+  [
+    "member cycle",
+    "G",
+    'const A = { x: c ? B.x : "#fff" };\nconst B = { x: c ? A.x : "var(--r19-ink)" };\nfunction P() { return <i className={A.x} />; }\nfunction Q() { return <p style={{ color: B.x }} />; }',
+  ],
+  [
+    "P2 call/spread cycle once per root",
+    "G",
+    'const X0 = { c: "#fff" };\nfunction f() { return { ...g(), pad: 1 }; }\nfunction g() { return { ...f(), color: X0.c }; }\nfunction X() { return <p style={f()} />; }',
+  ],
+  [
+    "join resolves array elements",
+    "G",
+    'const cls = ["p-2", "bg-white"];\nfunction X() { return <i className={cls.join(" ")} />; }',
+  ],
+  [
+    "P1 walks an unknown call receiver",
+    "G",
+    'function X() { return <i className={"bg-white".unknownTransform()} />; }',
+  ],
+  [
+    "P1 walks unknown call arguments",
+    "G",
+    'function X() { return <i className={unknownClassHelper("p-2", "bg-white")} />; }',
+  ],
+  [
+    "dynamic array member contributes elements",
+    "G",
+    'const LIST = ["bg-white"];\nfunction X({ i }) { return <i className={LIST[i]} />; }',
+  ],
+  [
+    "Object.values returns all object members",
+    "G",
+    'const TONE = { a: "bg-white", b: "p-2" };\nfunction X() { return <i className={Object.values(TONE).join(" ")} />; }',
+  ],
+  [
+    "same-container filter keeps its receiver",
+    "G",
+    'const LIST = ["bg-white"];\nfunction X() { return <i className={LIST.filter(Boolean).join(" ")} />; }',
+  ],
+  [
+    "same-container filter feeds a colour attribute",
+    "G",
+    'const LIST = ["#fff"];\nfunction X() { return <path fill={LIST.filter(Boolean)[0]} />; }',
+  ],
+  [
+    "concat includes receiver and arguments",
+    "G",
+    'const LIST = ["p-2"];\nfunction X() { return <i className={LIST.concat("bg-white").join(" ")} />; }',
+  ],
+  [
+    "concat object arguments can become a style root",
+    "G",
+    'const BASE = [];\nfunction X() { return <p style={BASE.concat({ color: "#fff" })} />; }',
+  ],
+  [
+    "dynamic object members include spread members",
+    "G",
+    'const BASE = { bad: "bg-white" };\nconst MAP = { ...BASE };\nfunction X({ k }) { return <i className={MAP[k]} />; }',
+  ],
+  [
+    "dynamic array members include spread elements",
+    "G",
+    'const BASE = ["bg-white"];\nconst LIST = [...BASE];\nfunction X({ i }) { return <i className={LIST[i]} />; }',
+  ],
+  [
+    "Object.assign returns all argument sources",
+    "G",
+    'const BASE = { pad: 1 };\nfunction X() { return <p style={Object.assign({}, BASE, { color: "#fff" })} />; }',
+  ],
+  [
+    "resolved template span stays inside var fallback",
+    "I",
+    'const T = { accent: "#a78bfa" };\nfunction X() { return <p style={{ background: `var(--rp-card-bg, ${T.accent})` }} />; }',
+  ],
+  [
+    "binary plus resolves both string operands",
+    "G",
+    'const arrow = "p-2 " + "bg-white";\nfunction X() { return <i className={arrow} />; }',
+  ],
+  [
+    "P1 object source contributes string property names",
+    "G",
+    'const classes = { "bg-white": true };\nfunction X() { return <i className={classes} />; }',
+  ],
+  [
+    "P1 array source contributes string elements",
+    "G",
+    'const classes = ["p-2", "bg-white"];\nfunction X() { return <i className={classes} />; }',
+  ],
+  [
+    "map returns a synthetic element container",
+    "G",
+    'const ITEMS = [{ c: "bg-white" }];\nfunction X() { const cls = ITEMS.map((item) => item.c); return <i className={cls.join(" ")} />; }',
+  ],
+  [
+    "flatMap returns a synthetic element container",
+    "G",
+    'const ITEMS = [{ c: "bg-white" }];\nfunction X() { const cls = ITEMS.flatMap((item) => [item.c]); return <i className={cls.join(" ")} />; }',
+  ],
+  [
+    "useCallback value is resolved when the callback is called",
+    "G",
+    'function X() { const get = useCallback(() => "bg-white", []); return <i className={get()} />; }',
+  ],
+  [
+    "rest binding keeps the destructured source",
+    "G",
+    'const CFG = { a: 1, bg: "bg-white" };\nfunction X() { const { a, ...rest } = CFG; return <i className={rest.bg} />; }',
+  ],
+  [
+    "for-of binding resolves array elements",
+    "G",
+    'const ITEMS = [{ cls: "bg-white" }];\nfunction X() { const out = []; for (const item of ITEMS) out.push(<i className={item.cls} />); return out; }',
+  ],
+  [
+    "map destructured parameter resolves receiver elements",
+    "G",
+    'const ITEMS = [{ cls: "bg-white" }];\nfunction X() { return ITEMS.map(({ cls }) => <i className={cls} />); }',
+  ],
+  [
+    "checker keeps same-name bindings lexically scoped",
+    "I",
+    'function A() { const color = "red"; return color; }\nfunction B({ color }) { return <p style={{ color }} />; }',
+  ],
+  [
+    "find optional member resolves an element member",
+    "G",
+    'const ITEMS = [{ id: "a", cls: "bg-white" }];\nfunction X({ id }) { return <i className={ITEMS.find((item) => item.id === id)?.cls} />; }',
+  ],
+  [
+    "useMemo returns its callback value",
+    "G",
+    'function X() { const cls = useMemo(() => "bg-white", []); return <i className={cls} />; }',
+  ],
+  [
+    "catch binding shadows an outer literal without an initializer",
+    "I",
+    'const error = "bg-white";\nfunction X() { try { return null; } catch (error) { return <i className={error} />; } }',
+  ],
+  [
+    "undefined and arguments have no declarations",
+    "I",
+    "function X() { return <i className={undefined ?? arguments[0]} />; }",
+  ],
 ];
 
 function findings(source: string, path = "src/components/Sample.tsx") {
@@ -1201,6 +1361,98 @@ describe("gate-7691 probe rows, class and style", () => {
 describe("r19 colour guard source (§4)", () => {
   it.each(sourceRows)("%s source %s", (expected, source) => {
     expect(findings(source).length > 0 ? "G" : "I").toBe(expected);
+  });
+});
+
+describe("r19 colour guard source: v4.1 evaluator", () => {
+  it.each(v4SourceRows)("%s -> %s", (_id, expected, source) => {
+    expect(findings(source).length > 0 ? "G" : "I").toBe(expected);
+  });
+
+  it("reports the literal line and the resolved use line", () => {
+    const source = [
+      "",
+      'const tone = "bg-white";',
+      "function X() {",
+      "  return <i className={tone} />;",
+      "}",
+    ].join("\n");
+    expect(findings(source)).toEqual([
+      { line: 2, use: 4, position: "class", text: "bg-white" },
+    ]);
+  });
+
+  it("fails closed instead of throwing beyond 256 evaluator frames", () => {
+    const chain = ['const a0 = "bg-white";'];
+    for (let i = 1; i <= 3000; i++) chain.push(`const a${i} = a${i - 1};`);
+    chain.push("function X() { return <i className={a3000} />; }");
+    expect(() => findings(chain.join("\n"))).not.toThrow();
+    expect(findings(chain.join("\n"))).toContainEqual({
+      line: 3002,
+      position: "unresolved",
+      text: "resolution deeper than 256",
+    });
+  });
+
+  it("reaches 26 P2 spread objects without duplicate descent", () => {
+    const objects = ['const D0 = { color: "#fff" };'];
+    for (let i = 1; i <= 25; i++) {
+      objects.push(
+        `const D${i} = { ...D${i - 1}, ...D${i - 1}, color: "#fff" };`,
+      );
+    }
+    objects.push("function X() { return <p style={D25} />; }");
+    expect(
+      findings(objects.join("\n")).filter((f) => f.position === "style"),
+    ).toHaveLength(26);
+  });
+});
+
+describe("r19 colour guard source: v4.1 time bounds", () => {
+  function scanMs(source: string): number {
+    const start = performance.now();
+    forbiddenSourceColour("src/components/Timed.tsx", source);
+    return performance.now() - start;
+  }
+
+  it("resolves a member diamond at depth 30 in under 1 second", () => {
+    const lines = ['const D0 = { a: "var(--r19-ink)", b: "var(--r19-ink)" };'];
+    for (let i = 1; i <= 30; i++) {
+      lines.push(
+        `const D${i} = { a: c ? D${i - 1}.a : D${i - 1}.b, b: D${i - 1}.a };`,
+      );
+    }
+    lines.push("function X() { return <p style={{ color: D30.a }} />; }");
+    expect(scanMs(lines.join("\n"))).toBeLessThan(1000);
+  });
+
+  it("resolves 400 cross-spread maps in under 1 second", () => {
+    const source =
+      Array.from(
+        { length: 400 },
+        (_, i) =>
+          `const M${i} = { ...M${(i + 1) % 400}, ...M${(i + 7) % 400}, a${i}: "bg-(--r19-wash)", s${i}: { color: M${(i + 3) % 400}.x } };`,
+      ).join("\n") +
+      "\nfunction X({ k }) { const { s5, a9 } = M0; return <div className={cn(a9, M1[k])} style={{ ...M2, color: s5.color }} />; }";
+    expect(scanMs(source)).toBeLessThan(1000);
+  });
+
+  it("resolves six Card/Panel pairs in under 1 second", () => {
+    const source = Array.from(
+      { length: 6 },
+      (_, i) =>
+        `function Card${i}({ config, fallback }: any) { const { theme } = config ?? fallback; return <div style={{ color: theme.fg }} className={theme.cls} />; }\nfunction Panel${i}({ theme, base }: any) { const { config } = theme ?? base; return <div style={config.style} />; }`,
+    ).join("\n");
+    expect(scanMs(source)).toBeLessThan(1000);
+  });
+
+  it("resolves 800 components with repeated binding names in under 2 seconds", () => {
+    const source = Array.from(
+      { length: 800 },
+      (_, i) =>
+        `const CFG${i} = { a: { color: "var(--r19-ink)", cls: "p-2" } };\nfunction C${i}({ kind, theme }: any) { const { color, cls } = CFG${i}[kind] ?? theme; const { fg = color } = theme ?? {}; return <i className={cn(cls)} style={{ color: fg }} />; }`,
+    ).join("\n");
+    expect(scanMs(source)).toBeLessThan(2000);
   });
 });
 
