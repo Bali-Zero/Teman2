@@ -826,6 +826,13 @@ class TestPortalChallengeEndpoint:
         assert body["tiers"] == []
         assert {p["rank"] for p in body["rank_prizes"]} == {1, 2, 3, 4, 5}
         assert body["scoring"]["registration"] == 1
+        assert {p["rank"]: p["min_points"] for p in body["rank_prizes"]} == {
+            1: 100,
+            2: 80,
+            3: 60,
+            4: 30,
+            5: 20,
+        }
 
         member_names = {e["member"] for e in body["entries"]}
         assert "asya" not in member_names
@@ -837,6 +844,13 @@ class TestPortalChallengeEndpoint:
         assert by_member["krisna"]["carry_points"] == 0
         assert by_member["adit"]["carry_points"] == 23
         assert by_member["adit"]["september_choice"] == "carry"
+        # Zero's 2026-09-30 slot rule: adit's 23 carried points clear only
+        # slot 5 (min 20), so he slides there; prize-takers start at 0.
+        assert by_member["adit"]["prize_slot"] == 5
+        assert by_member["adit"]["prize_idr"] == 700_000
+        assert by_member["surya"]["prize_slot"] is None
+        assert by_member["surya"]["september_rank"] == 1
+        assert by_member["adit"]["september_rank"] is None
 
         # Zero's 2026-09-29 ruling: only the six September players are ranked.
         assert member_names == {"surya", "ari.firda", "krisna", "adit", "vino", "damar"}
