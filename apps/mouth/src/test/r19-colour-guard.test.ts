@@ -1456,6 +1456,196 @@ describe("r19 colour guard source: v4.1 time bounds", () => {
   });
 });
 
+describe("r19 colour guard source: v4.2 termination", () => {
+  function scan(source: string) {
+    const start = performance.now();
+    const result = forbiddenSourceColour("src/components/Timed.tsx", source);
+    return { result, ms: performance.now() - start };
+  }
+
+  const recursionRows: NamedSourceRow[] = [
+    [
+      "FP16 a template reached through a member cycle",
+      "G",
+      'const c = 1;\nconst A = { v: c ? `1px solid ${B.v}` : "none" };\nconst B = { v: c ? A.v : "#fff" };\nfunction X() { return <p style={{ border: A.v }} />; }',
+    ],
+    [
+      "REC1 recursive calc padding",
+      "I",
+      'function pad(d) { return d ? `calc(${pad(d - 1)} + 1rem)` : "0"; }\nfunction X({ depth }) { return <p style={{ paddingLeft: pad(depth) }} />; }',
+    ],
+    [
+      "REC2 recursive class template",
+      "I",
+      'function cls(d) { return d > 0 ? `pl-4 ${cls(d - 1)}` : ""; }\nfunction X({ depth }) { return <li className={cls(depth)} />; }',
+    ],
+    [
+      "REC2 twin with a guilty literal",
+      "G",
+      'function cls(d) { return d > 0 ? `bg-white ${cls(d - 1)}` : ""; }\nfunction X({ depth }) { return <li className={cls(depth)} />; }',
+    ],
+    [
+      "REC3 recursive string concatenation",
+      "I",
+      'function cls(d) { return d > 0 ? "pl-4 " + cls(d - 1) : ""; }\nfunction X({ depth }) { return <li className={cls(depth)} />; }',
+    ],
+    [
+      "REC4 self-referencing member template",
+      "I",
+      'const c = 1;\nconst T = { a: c ? `x ${T.a}` : "p-2" };\nfunction X() { return <i className={T.a} />; }',
+    ],
+    [
+      "REC4 twin with a guilty literal",
+      "G",
+      'const c = 1;\nconst T = { a: c ? `x ${T.a}` : "bg-white" };\nfunction X() { return <i className={T.a} />; }',
+    ],
+    [
+      "mutually recursive templates, f first, innocent",
+      "I",
+      'function f(d) { return d ? `a ${g(d - 1)}` : "p-2"; }\nfunction g(d) { return d ? `b ${f(d - 1)}` : "p-2"; }\nfunction X() { return <i className={f(3)} />; }',
+    ],
+    [
+      "mutually recursive templates, g first, innocent",
+      "I",
+      'function g(d) { return d ? `b ${f(d - 1)}` : "p-2"; }\nfunction f(d) { return d ? `a ${g(d - 1)}` : "p-2"; }\nfunction X() { return <i className={f(3)} />; }',
+    ],
+    [
+      "mutually recursive templates, f first, guilty",
+      "G",
+      'function f(d) { return d ? `a ${g(d - 1)}` : "p-2"; }\nfunction g(d) { return d ? `b ${f(d - 1)}` : "bg-white"; }\nfunction X() { return <i className={f(3)} />; }',
+    ],
+    [
+      "mutually recursive templates, g first, guilty",
+      "G",
+      'function g(d) { return d ? `b ${f(d - 1)}` : "bg-white"; }\nfunction f(d) { return d ? `a ${g(d - 1)}` : "p-2"; }\nfunction X() { return <i className={f(3)} />; }',
+    ],
+  ];
+
+  it.each(recursionRows)(
+    "%s -> %s in under 1 second",
+    (_id, expected, source) => {
+      const { result, ms } = scan(source);
+      expect(result.length > 0 ? "G" : "I").toBe(expected);
+      expect(result.filter((f) => f.position === "unresolved")).toEqual([]);
+      expect(ms).toBeLessThan(1000);
+    },
+  );
+
+  const memberCycle =
+    'const A = { x: c ? B.x : "#fff" };\nconst B = { x: c ? A.x : "var(--r19-ink)" };\nfunction P() { return <i className={A.x} />; }\nfunction Q() { return <p style={{ color: B.x }} />; }';
+
+  it("reports an unresolved finding when the pass cap is reached", () => {
+    const capped = forbiddenSourceColour(
+      "src/components/Timed.tsx",
+      memberCycle,
+      {
+        maxPasses: 1,
+      },
+    );
+    expect(capped).toContainEqual({
+      line: 3,
+      position: "unresolved",
+      text: "fixed point not reached in 1 passes",
+    });
+  });
+
+  it("reaches the member cycle's fixed point under the default cap", () => {
+    const { result } = scan(memberCycle);
+    expect(result.filter((f) => f.position === "unresolved")).toEqual([]);
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  const texts = (source: string) => findings(source).map((f) => f.text);
+
+  it("wraps a literal through its own template once, not once per pass", () => {
+    expect(
+      texts(
+        'const c = 1;\nconst T = { a: c ? `bg-[${T.a}]` : "#fff" };\nfunction X() { return <i className={T.a} />; }',
+      ),
+    ).toEqual(["bg-[#fff]"]);
+  });
+
+  it("keeps each span of one template apart", () => {
+    expect(
+      texts(
+        'const c = "#fff";\nfunction X() { return <i className={`bg-[${c}] border-[${c}]`} />; }',
+      ),
+    ).toEqual(["bg-[#fff]", "border-[#fff]"]);
+  });
+
+  it("keeps two templates over the same literal apart", () => {
+    expect(
+      texts(
+        'const c = "#fff";\nconst A = `bg-[${c}]`;\nconst B = `border-[${c}]`;\nfunction X() { return <i className={cn(A, B)} />; }',
+      ),
+    ).toEqual(["bg-[#fff]", "border-[#fff]"]);
+  });
+
+  it("keeps two literals through one span apart", () => {
+    expect(
+      texts(
+        'const c = 1;\nconst v = c ? "#fff" : "#000";\nfunction X() { return <i className={`bg-[${v}]`} />; }',
+      ),
+    ).toEqual(["bg-[#fff]", "bg-[#000]"]);
+  });
+
+  it("stops a literal after four templates in a chain", () => {
+    const templates = ['const T0 = "#fff";'];
+    for (let i = 1; i <= 6; i++)
+      templates.push(`const T${i} = \`bg-[\${T${i - 1}}]\`;`);
+    const uses = [1, 2, 3, 4, 5, 6].map((i) => `<i className={T${i}} />`);
+    templates.push(`function X() { return <>${uses.join("")}</>; }`);
+    expect(texts(templates.join("\n"))).toEqual([
+      "bg-[#fff]",
+      "bg-[bg-[#fff]]",
+      "bg-[bg-[bg-[#fff]]]",
+      "bg-[bg-[bg-[bg-[#fff]]]]",
+    ]);
+  });
+
+  const namedCallbackRows: NamedSourceRow[] = [
+    [
+      "SR14 map with a named callback",
+      "G",
+      'const items = [{ cls: "bg-white" }];\nconst toCls = (i) => i.cls;\nfunction X() { return <i className={items.map(toCls).join(" ")} />; }',
+    ],
+    [
+      "SR14 twin with an innocent literal",
+      "I",
+      'const items = [{ cls: "p-2" }];\nconst toCls = (i) => i.cls;\nfunction X() { return <i className={items.map(toCls).join(" ")} />; }',
+    ],
+    [
+      "a named callback shared by two receivers binds both",
+      "G",
+      'const a = [{ cls: "p-2" }];\nconst b = [{ cls: "bg-white" }];\nconst toCls = (i) => i.cls;\nfunction X() { return <i className={a.map(toCls).concat(b.map(toCls)).join(" ")} />; }',
+    ],
+    [
+      "a named callback binds its first parameter only",
+      "I",
+      'const items = [{ cls: "bg-white" }];\nconst toCls = (k, i) => i.cls;\nfunction X() { return <i className={items.map(toCls).join(" ")} />; }',
+    ],
+    [
+      "a named callback of reduce is not followed",
+      "I",
+      'const items = [{ cls: "bg-white" }];\nconst show = (i) => <b className={i.cls} />;\nfunction X() { return items.reduce(show, 0); }',
+    ],
+    [
+      "filter with a named predicate",
+      "G",
+      'const items = [{ cls: "bg-white" }];\nfunction isOn(i) { return <b className={i.cls} />; }\nfunction X() { return items.filter(isOn); }',
+    ],
+    [
+      "filter with a named predicate, innocent twin",
+      "I",
+      'const items = [{ cls: "p-2" }];\nfunction isOn(i) { return <b className={i.cls} />; }\nfunction X() { return items.filter(isOn); }',
+    ],
+  ];
+
+  it.each(namedCallbackRows)("%s -> %s", (_id, expected, source) => {
+    expect(findings(source).length > 0 ? "G" : "I").toBe(expected);
+  });
+});
+
 describe("r19 colour guard source: findings and paths", () => {
   it("reports line, position and text of every finding", () => {
     const source = [
@@ -1492,6 +1682,12 @@ describe("r19 colour guard source: findings and paths", () => {
     ).toEqual([]);
     expect(
       findings(definitions, "/x/apps/mouth/src/components/r19/presentation.ts"),
+    ).toEqual([]);
+    expect(
+      findings(
+        definitions,
+        "apps\\mouth\\src\\components\\r19\\presentation.ts",
+      ),
     ).toEqual([]);
     expect(
       findings(definitions, "apps/mouth/src/components/r19/other.ts"),

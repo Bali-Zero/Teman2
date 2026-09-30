@@ -64,6 +64,8 @@ const CALLBACK_METHODS = new Set([
 ]);
 const TOKEN_DEFINITIONS = "/src/components/r19/presentation.ts";
 const MAX_EVALUATION_DEPTH = 256;
+const MAX_FIXED_POINT_PASSES = 128;
+const CONTEXT_CHAIN_MAX = 4;
 
 type SyntheticContainer = {
   synthetic: "container";
@@ -74,11 +76,22 @@ type ContextualString = {
   synthetic: "contextual-string";
   node: ts.Node;
   text: string;
+  template: ts.TemplateExpression;
+  index: number;
+  chain: readonly ts.TemplateExpression[];
 };
 type Source = ts.Node | SyntheticContainer | ContextualString;
 type SourceSet = Set<Source>;
 type OperationMemo = Map<string, SourceSet>;
 type Memo = Map<ts.Node, OperationMemo>;
+type Interned = Map<
+  ts.TemplateExpression,
+  Map<number, Map<Source, ContextualString>>
+>;
+type Shared = {
+  interned: Interned;
+  namedCallbackSites?: Map<ts.Node, ts.Expression[]>;
+};
 
 function scriptKind(path: string): ts.ScriptKind {
   if (path.endsWith(".tsx")) return ts.ScriptKind.TSX;
@@ -261,7 +274,9 @@ class Evaluator {
     private checker: ts.TypeChecker,
     private sourceFile: ts.SourceFile,
     private previous: Memo | undefined,
+    private shared: Shared,
     private onDepthExceeded: () => void,
+    private onCut: () => void,
   ) {}
 
   grewFromPrevious(): boolean {
@@ -280,7 +295,7 @@ class Evaluator {
     name: string | undefined,
     compute: () => SourceSet,
   ): SourceSet {
-    const key = name === undefined ? operation : `${operation}\\u0000${name}`;
+    const key = name === undefined ? operation : `${operation}\u0000${name}`;
     let operations = this.memo.get(node);
     if (!operations) {
       operations = new Map();
@@ -296,6 +311,7 @@ class Evaluator {
     }
     if (active.has(key)) {
       this.cutTaken = true;
+      this.onCut();
       return this.previous?.get(node)?.get(key) ?? new Set();
     }
     if (this.depth >= MAX_EVALUATION_DEPTH) {
@@ -352,11 +368,10 @@ class Evaluator {
           for (const source of this.stringSources(
             this.sources(span.expression),
           )) {
-            out.add({
-              synthetic: "contextual-string",
-              node: this.sourceNode(source),
-              text: this.renderTemplate(node, index, this.stringText(source)),
-            });
+            const chain = isContextualString(source) ? source.chain : [];
+            if (chain.includes(node) || chain.length >= CONTEXT_CHAIN_MAX)
+              continue;
+            out.add(this.contextual(node, index, source, chain));
           }
         });
       } else if (
@@ -408,6 +423,64 @@ class Evaluator {
       }
       return out;
     });
+  }
+
+  private contextual(
+    template: ts.TemplateExpression,
+    index: number,
+    source: Source,
+    chain: readonly ts.TemplateExpression[],
+  ): ContextualString {
+    let byIndex = this.shared.interned.get(template);
+    if (!byIndex) {
+      byIndex = new Map();
+      this.shared.interned.set(template, byIndex);
+    }
+    let bySource = byIndex.get(index);
+    if (!bySource) {
+      bySource = new Map();
+      byIndex.set(index, bySource);
+    }
+    let interned = bySource.get(source);
+    if (!interned) {
+      interned = {
+        synthetic: "contextual-string",
+        node: this.sourceNode(source),
+        text: this.renderTemplate(template, index, this.stringText(source)),
+        template,
+        index,
+        chain: [...chain, template],
+      };
+      bySource.set(source, interned);
+    }
+    return interned;
+  }
+
+  private namedCallbackReceivers(fn: ts.Node): ts.Expression[] {
+    if (!this.shared.namedCallbackSites) {
+      const sites = new Map<ts.Node, ts.Expression[]>();
+      const visit = (node: ts.Node) => {
+        if (ts.isCallExpression(node) && node.arguments[0]) {
+          const callee = unwrap(node.expression);
+          const callback = unwrap(node.arguments[0]);
+          if (
+            ts.isPropertyAccessExpression(callee) &&
+            CALLBACK_METHODS.has(callee.name.text) &&
+            ts.isIdentifier(callback)
+          ) {
+            for (const target of this.functionsOf(callback)) {
+              const receivers = sites.get(target) ?? [];
+              receivers.push(callee.expression);
+              sites.set(target, receivers);
+            }
+          }
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(this.sourceFile);
+      this.shared.namedCallbackSites = sites;
+    }
+    return this.shared.namedCallbackSites.get(fn) ?? [];
   }
 
   private declarationValue(declaration: ts.Declaration): SourceSet {
@@ -498,6 +571,10 @@ class Evaluator {
         ) {
           add(this.elements(this.sources(callee.expression)));
         }
+      }
+      if (isCallableFunction(fn) && fn.parameters[0] === parameter) {
+        for (const receiver of this.namedCallbackReceivers(fn))
+          add(this.elements(this.sources(receiver)));
       }
       if (parameter.initializer) add(this.sources(parameter.initializer));
       return out;
@@ -783,29 +860,54 @@ class Scanner {
   private seen = new Set<string>();
   private evaluator!: Evaluator;
   private activeUse: ts.Node | undefined;
+  private firstCutUse: ts.Node | undefined;
+  private shared: Shared = { interned: new Map() };
 
   constructor(
     private sourceFile: ts.SourceFile,
     private checker: ts.TypeChecker,
   ) {}
 
-  run(): Finding[] {
+  run(maxPasses: number): Finding[] {
     let previous: Memo | undefined;
-    for (;;) {
+    for (let pass = 1; ; pass++) {
       this.findings = [];
       this.seen = new Set();
+      this.firstCutUse = undefined;
       this.evaluator = new Evaluator(
         this.checker,
         this.sourceFile,
         previous,
+        this.shared,
         () => this.reportUnresolved(),
+        () => {
+          this.firstCutUse ??= this.activeUse;
+        },
       );
       this.visit(this.sourceFile);
       if (!this.evaluator.cutTaken || !this.evaluator.grewFromPrevious()) {
         return this.findings;
       }
+      if (pass >= maxPasses) {
+        const cutUse = this.cutUse();
+        const line = cutUse
+          ? this.sourceFile.getLineAndCharacterOfPosition(
+              cutUse.getStart(this.sourceFile),
+            ).line + 1
+          : 1;
+        this.findings.push({
+          line,
+          position: "unresolved",
+          text: `fixed point not reached in ${maxPasses} passes`,
+        });
+        return this.findings;
+      }
       previous = this.evaluator.memo;
     }
+  }
+
+  private cutUse(): ts.Node | undefined {
+    return this.firstCutUse;
   }
 
   private report(
@@ -1120,8 +1222,14 @@ class Scanner {
   }
 }
 
-export function forbiddenSourceColour(path: string, source: string): Finding[] {
-  if (`/${path.replaceAll("\\\\", "/")}`.endsWith(TOKEN_DEFINITIONS)) return [];
+export function forbiddenSourceColour(
+  path: string,
+  source: string,
+  options?: { maxPasses?: number },
+): Finding[] {
+  if (`/${path.replaceAll("\\", "/")}`.endsWith(TOKEN_DEFINITIONS)) return [];
   const { checker, sourceFile } = programFor(path, source);
-  return new Scanner(sourceFile, checker).run();
+  return new Scanner(sourceFile, checker).run(
+    options?.maxPasses ?? MAX_FIXED_POINT_PASSES,
+  );
 }
