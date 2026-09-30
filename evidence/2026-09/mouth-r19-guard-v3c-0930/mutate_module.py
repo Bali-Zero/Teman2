@@ -10,10 +10,14 @@ GUARD = "src/test/r19-colour-guard.ts"
 SOURCE = "src/test/r19-colour-source.ts"
 TABLE = "src/test/r19-colour-guard.test.ts"
 
-# Survivors argued equivalent: every resolution cycle crosses an identifier or a
-# call, each of which costs a hop, so the depth limit alone ends every cycle and
-# the visited set only prunes work; no table row can tell the two apart.
-EQUIVALENT = {"§4 P5 the visited set is ignored (cycle guard)"}
+# Survivors argued equivalent.
+# Argued in brief.yml (module_mutants.equivalent_argument): every cycle crosses an
+# identifier or a call, each costs a hop, so the limit alone ends it; a copied
+# budget is indistinguishable because every helper restores hops and visited on exit.
+EQUIVALENT = {
+    "§4 P5 the visited set is ignored (cycle guard)",
+    "§4 P5 a spread is resolved with a copied budget",
+}
 
 MUTANTS = [
     ("s1 quoted strings are not removed", GUARD, "(whole, url) => (url ? whole : \"\")", "(whole) => whole"),
@@ -56,14 +60,14 @@ MUTANTS = [
     ("§4 twJoin is not a class helper", SOURCE, '"twMerge", "twJoin"', '"twMerge"'),
     ("§4 template text is not judged in class positions", SOURCE, "emit(n.head, n.head.text);", ""),
     ("§4 style attribute is not a root", SOURCE, 'name === "style"', 'name === "style-x"'),
-    ("§4 CSSProperties variables are not roots", SOURCE, "if (isCssProperties(node.type)) this.styleRoot(node.initializer, 0, new Set());", "if (false) this.styleRoot(node.initializer, 0, new Set());"),
-    ("§4 Record<_, CSSProperties> is not a root", SOURCE, "else if (isCssPropertiesRecord(node.type)) this.styleMap(node.initializer, 0, new Set());", "else if (false) this.styleMap(node.initializer, 0, new Set());"),
+    ("§4 CSSProperties variables are not roots", SOURCE, "if (isCssProperties(node.type)) this.styleRoot(node.initializer, this.budget());", "if (false) this.styleRoot(node.initializer, this.budget());"),
+    ("§4 Record<_, CSSProperties> is not a root", SOURCE, "else if (isCssPropertiesRecord(node.type)) this.styleMap(node.initializer, this.budget());", "else if (false) this.styleMap(node.initializer, this.budget());"),
     ("§4 as/satisfies CSSProperties are not roots", SOURCE, "(ts.isAsExpression(node) ||\n        ts.isSatisfiesExpression(node) ||", "(ts.isAsExpression(node) && false ||\n        ts.isSatisfiesExpression(node) && false ||"),
     ("§4 CSSProperties function returns are not roots", SOURCE, "} else if (isFunctionLike(node) && isCssProperties(node.type)) {", "} else if (false) {"),
-    ("§4 the false branch of a ternary is not a style", SOURCE, "this.styleRoot(node.whenFalse, hops, visited);", ""),
-    ("§4 the true branch of a ternary is not a style", SOURCE, "this.styleRoot(node.whenTrue, hops, visited);", ""),
-    ("§4 spread elements are not followed", SOURCE, "this.styleRoot(property.expression, hops, visited);", ""),
-    ("§4 the right side of || is not a style", SOURCE, "this.styleRoot(node.left, hops, visited);\n        this.styleRoot(node.right, hops, visited);", "this.styleRoot(node.left, hops, visited);"),
+    ("§4 the false branch of a ternary is not a style", SOURCE, "this.styleRoot(node.whenFalse, b);", ""),
+    ("§4 the true branch of a ternary is not a style", SOURCE, "this.styleRoot(node.whenTrue, b);", ""),
+    ("§4 spread elements are not followed", SOURCE, "this.styleRoot(property.expression, b);", ""),
+    ("§4 the right side of || is not a style", SOURCE, "this.styleRoot(node.left, b);\n        this.styleRoot(node.right, b);", "this.styleRoot(node.left, b);"),
     ("§4 Object.assign arguments are not styles", SOURCE, "else if (ts.isCallExpression(node) && this.isObjectAssign(node)) {", "else if (false) {"),
     ("§4 a backdrop key is not judged", SOURCE, 'if (prop?.includes("backdrop")) this.report(property, "style", prop);', ""),
         ("§4 a computed string key is not read", SOURCE, "if (ts.isStringLiteralLike(inner)) return inner.text;", ""),
@@ -77,7 +81,7 @@ MUTANTS = [
     ("§4 a hop limit of 4", SOURCE, "const MAX_HOPS = 3;", "const MAX_HOPS = 4;"),
     ("§4 identifiers are not resolved", SOURCE, "if (ts.isIdentifier(n)) return follow(n);", "if (ts.isIdentifier(n)) return;"),
     ("§4 member access is not resolved", SOURCE, "if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)) return follow(n);", "if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)) return;"),
-    ("§4 in-file calls are not resolved", SOURCE, "if (ts.isIdentifier(n.expression)) follow(n);", "if (false) follow(n);"),
+    ("§4 in-file calls are not resolved", SOURCE, "if (ts.isIdentifier(callee)) follow(n);", "if (false) follow(n);"),
     ("§4 a member read is not followed (alias of a map member)", SOURCE, "ts.isIdentifier(node) || ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node) || ts.isCallExpression(node)", "ts.isIdentifier(node) || ts.isCallExpression(node)"),
     ("§4 a spread inside a resolved object is not followed", SOURCE, "values.push(...this.memberValues([property.expression], name, b));", ""),
     ("§4 comparison operands are judged", SOURCE, "if (COMPARISONS.has(op)) return;", ""),
@@ -100,13 +104,23 @@ MUTANTS = [
     ("§4 P5 a nested pattern has no source", SOURCE, "sources = this.bindingValues(owner, b);", "sources = [];"),
     ("§4 P5 a renamed binding reads its own name", SOURCE, "element.propertyName ?? element.name", "element.name"),
     ("§4 P5 a binding never resolves in resolve()", SOURCE, "(this.bindings.get(node.text) ?? [])", "[]"),
-    ("§4 P5 reach ignores ternaries", SOURCE, "out.push(...this.reach([node.whenTrue, node.whenFalse], b));", ""),
-    ("§4 P5 reach ignores the right of ?? and ||", SOURCE, "out.push(...this.reach([node.left, node.right], b));", "out.push(...this.reach([node.left], b));"),
-    ("§4 P5 reach ignores the left of ?? and ||", SOURCE, "out.push(...this.reach([node.left, node.right], b));", "out.push(...this.reach([node.right], b));"),
+    ("§4 P5 reach ignores ternaries", SOURCE, "this.reach([node.whenTrue, node.whenFalse], b, emit);", ""),
+    ("§4 P5 reach ignores the right of ?? and ||", SOURCE, "this.reach([node.left, node.right], b, emit);", "this.reach([node.left], b, emit);"),
+    ("§4 P5 reach ignores the left of ?? and ||", SOURCE, "this.reach([node.left, node.right], b, emit);", "this.reach([node.right], b, emit);"),
     ("§4 P5 the visited set is ignored (cycle guard)", SOURCE, "if (b.visited.has(node)) continue;", ""),
-    ("§4 P5 an identifier hop costs nothing", SOURCE, "hop ? { depth: b.depth + 1, visited: b.visited } : b", "b"),
-    ("§4 P5 the identifier depth limit is off", SOURCE, "if (b.depth >= MAX_HOPS) return []; const declared = (this.variables.get(node.text)", "const declared = (this.variables.get(node.text)"),
-    ("§4 P5 the call depth limit is off", SOURCE, "if (b.depth >= MAX_HOPS) return []; const callee", "const callee"),
+    ("§4 P5 an identifier hop costs nothing", SOURCE, "if (hop) b.hops++;", ""),
+    ("§4 P5 the identifier depth limit is off", SOURCE, "if (b.hops >= MAX_HOPS) return []; const declared = (this.variables.get(node.text)", "const declared = (this.variables.get(node.text)"),
+    ("§4 P5 the call depth limit is off", SOURCE, "if (b.hops >= MAX_HOPS) return []; const callee", "const callee"),
+    ("§4 P1 a call receiver is not walked", SOURCE, "else if (ts.isPropertyAccessExpression(callee)) walk(callee.expression);", "else if (ts.isPropertyAccessExpression(callee)) return;"),
+    ("§4 P1 a call receiver is followed as a member", SOURCE, "else if (ts.isPropertyAccessExpression(callee)) walk(callee.expression);", "else if (ts.isPropertyAccessExpression(callee)) walk(callee);"),
+    ("§4 P1 call arguments are not walked", SOURCE, "for (const argument of n.arguments) walk(argument);", ""),
+    ("§4 P5 a spread is resolved with a fresh budget", SOURCE, "values.push(...this.memberValues([property.expression], name, b));", "values.push(...this.memberValues([property.expression], name, this.budget()));"),
+    ("§4 P5 a spread is resolved with a copied budget", SOURCE, "values.push(...this.memberValues([property.expression], name, b));", "values.push(...this.memberValues([property.expression], name, { hops: b.hops, visited: new Set(b.visited) }));"),
+    ("§4 P5 a hop is never given back after reach", SOURCE, "if (hop) b.hops--;", ""),
+    ("§4 P5 styleRoot hop costs nothing", SOURCE, "b.hops++; this.styleRoot(resolved, b); b.hops--;", "this.styleRoot(resolved, b);"),
+    ("§4 P5 strings hop costs nothing", SOURCE, "b.hops++; this.strings(resolved, mode, b, emit); b.hops--;", "this.strings(resolved, mode, b, emit);"),
+    ("§4 P5 styleRoot visited is never released", SOURCE, "b.visited.delete(node); } private styleMap", "} private styleMap"),
+    ("§4 P5 reach visited is never released", SOURCE, "b.visited.delete(node); } } }", "} } }"),
 ]
 
 def main() -> int:
