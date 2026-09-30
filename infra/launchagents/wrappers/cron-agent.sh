@@ -386,7 +386,14 @@ run_agent() {
 
 Do ALL the work inline in this turn — never spawn a background task or background agent
 for this; this is a one-shot print-mode run and backgrounded work is terminated at exit,
-leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
+leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05).
+
+Never run \`git add\`/\`git commit\`/\`git push\` or any other git mutation in this repo, even
+if a step in this prompt fails (e.g. a Telegram send returning non-200) — write the result
+to disk and stop. The main checkout is agent-read-only (Agent Worktree Discipline); a direct
+commit here strands unpushed content and jams the 5-min sync cron on every machine that pulls
+this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in indexing-daily,
+2026-09-30)."
 
     log "START tier=agent prompt_file=$prompt_file prompt_len=${#prompt}"
     local start_ts=$(date +%s)
