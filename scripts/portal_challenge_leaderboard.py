@@ -103,6 +103,7 @@ _FIRST_DOCUMENT_COLUMNS = [
     "client_assignee",
 ]
 _REQUEST_COLUMNS = [
+    "id",
     "client_id",
     "practice_id",
     "created_at",
