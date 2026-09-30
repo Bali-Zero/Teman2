@@ -215,6 +215,30 @@ receipts:
     exit: 0
     ts: "2026-09-30T09:53:02Z"
     seat: claude-sonnet-5.5
+  - claim: "Orchestrator: REC2, its bg-white twin and a three-template recursive ring terminate under 1 s with the right verdict and no unresolved finding (temporary file, removed after)."
+    cmd: "cd apps/mouth && npx vitest run src/test/zz-orch-rec2.test.ts (own process group, 90 s bound)"
+    result: "3 passed"
+    exit: 0
+    ts: "before 2026-09-30T10:09:20Z (start of the scoped run below)"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "Orchestrator: scoped suite and types on the v4b head."
+    cmd: 'cd apps/mouth && npx vitest run src/components/funnel "src/app/(tax-calendar)" src/components/r19 src/app/api/tax-calendar src/test && npx tsc --noEmit'
+    result: "18 files / 948 tests passed; tsc exit 0"
+    exit: 0
+    ts: "2026-09-30T10:09:20Z"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "Orchestrator: product mutants T1-T5 and Y1-Y5 all red."
+    cmd: "python3 -u evidence/2026-09/mouth-r19-guard-v4b-0930/mutate_product.py"
+    result: "10 of 10 RED; git status clean afterward"
+    exit: 0
+    ts: "2026-09-30T10:09:25Z"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "Orchestrator: full module mutant run on the final script."
+    cmd: "python3 -u evidence/2026-09/mouth-r19-guard-v4b-0930/mutate_module.py"
+    result: "124 mutants: 122 killed, 0 broken, 0 survived, 2 equivalent (argued, not run); time-bound kills only memo is removed and P2 per-root visited guard is removed; 0 vitest processes left"
+    exit: 0
+    ts: "2026-09-30T10:13:05Z"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
 pii_scan: clean
 pii_scan_note: "No client data; the tables hold synthetic CSS and TSX snippets."
 spend:
@@ -227,8 +251,8 @@ diff:
   resolver_commit_sha: f57763ddf1
   scope: "the whole PR against origin/main, measured on the staged tree before this diff block was rewritten"
   logical_files: 9
-  insertions: 4587
+  insertions: 4612
   deletions: 2
-  net_lines: 4585
-  builder_delta: "The v4b rework changed 6 files over the 28c4321d49 tip it inherited: 451 insertions, 34 deletions (code and table 2 files, 315 insertions and 11 deletions; the rest is brief, pack and the mutation script)."
+  net_lines: 4610
+  builder_delta: "Over the 28c4321d49 tip it inherited, the v4b rework touched the resolver, the table, the brief, the pack and the module mutation script (315 insertions and 11 deletions in the resolver and table)."
   rename_note: "The evidence directory was renamed with git mv from mouth-r19-guard-v4-0930 to mouth-r19-guard-v4b-0930; historical receipts keep the v3c-0930 or v4-0930 path they actually ran on."
