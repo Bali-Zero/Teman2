@@ -147,3 +147,70 @@ describe("NewClientPage — avatar never travels as a data: URI", () => {
     expect(createPayload()).not.toHaveProperty("avatar_url");
   });
 });
+
+/**
+ * Reported 24 Sep and 30 Sep 2026: Create Client showed "[object Object]" and
+ * staff had to ask who already held the client. The 409 body names and ids
+ * the existing record; the form now shows and links it.
+ */
+describe("NewClientPage — duplicate phone names the existing client", () => {
+  const duplicateBody = {
+    detail: {
+      error: "duplicate_phone",
+      message: "A client with this phone already exists.",
+      existing_client_id: 4012,
+      existing_full_name: "Existing Person",
+      existing_assigned_to: "ari.firda@balizero.com",
+    },
+  };
+
+  /** The shape client.ts throws today: an Error whose data is the body. */
+  function apiError(message: string, statusCode: number, data: unknown) {
+    return Object.assign(new Error(message), {
+      name: "ApiError",
+      statusCode,
+      data,
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getProfile.mockResolvedValue({ email: "surya@balizero.com" });
+  });
+
+  it("GUILT: a 409 duplicate_phone links to the existing client, even when the message is [object Object]", async () => {
+    createClient.mockRejectedValue(
+      apiError("[object Object]", 409, duplicateBody),
+    );
+    await openManualForm();
+    await fillNameAndSubmit();
+
+    const link = await screen.findByRole("link", {
+      name: /open existing client #4012 · existing person/i,
+    });
+    expect(link.getAttribute("href")).toBe("/clients/4012");
+    expect(
+      screen.getByText(/A client with this phone already exists\./),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/assigned to ari\.firda@balizero\.com/),
+    ).toBeTruthy();
+    expect(screen.queryByText("[object Object]")).toBeNull();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("INNOCENCE: another error shows its message and no existing-client link", async () => {
+    createClient.mockRejectedValue(
+      apiError("Internal server error", 500, {
+        detail: "Internal server error",
+      }),
+    );
+    await openManualForm();
+    await fillNameAndSubmit();
+
+    expect(await screen.findByText("Internal server error")).toBeTruthy();
+    expect(
+      screen.queryByRole("link", { name: /open existing client/i }),
+    ).toBeNull();
+  });
+});
