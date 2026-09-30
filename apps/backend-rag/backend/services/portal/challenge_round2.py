@@ -156,6 +156,22 @@ def working_deadline(start: datetime, hours: float) -> datetime:
         cursor = datetime.combine(cursor_date + timedelta(days=1), time(0, 0), tzinfo=WITA)
 
 
+def penalty_start(origin: datetime, hours: float) -> datetime:
+    """The first instant a limit-`hours` penalty measured from `origin`
+    actually counts (`working_hours_between` must EXCEED the limit). Usually
+    the working deadline itself; when the deadline lands exactly on the end
+    of a working day no further working time has accrued, so the penalty
+    only begins when the next working day opens."""
+    deadline = working_deadline(origin, hours)
+    local = _to_wita(deadline)
+    if local.time() != WORKDAY_END:
+        return deadline
+    cursor = local.date() + timedelta(days=1)
+    while not _is_workday(cursor):
+        cursor += timedelta(days=1)
+    return datetime.combine(cursor, WORKDAY_START, tzinfo=WITA)
+
+
 # ── Round selection ──────────────────────────────────────────────────────
 
 
@@ -262,7 +278,7 @@ def build_client_requests_sql() -> str:
     start_ts, end_ts = _window_ts()
     return f"""
 WITH {REAL_CLIENTS_CTE}
-SELECT pm.client_id, pm.practice_id, pm.created_at,
+SELECT pm.id, pm.client_id, pm.practice_id, pm.created_at,
        (SELECT MIN(reply.created_at) FROM portal_messages reply
         WHERE reply.client_id = pm.client_id
           AND reply.direction = 'team_to_client'
@@ -414,11 +430,28 @@ class ScoringEvent:
 
 
 @dataclass
+class ProducerEvent:
+    """INTERNAL input of the live takeover producer (`challenge_events`):
+    one bomb (+3 first document) or penalty that actually counted for a
+    ranked participant. `key` is the stable row identity used only to dedupe
+    in Redis — it never reaches a payload. Not part of `ScoringEvent`'s
+    public shape and never serialised by the dashboard."""
+
+    kind: str  # bomb | penalty
+    email: str
+    points: int
+    at: datetime  # bomb: first_doc_at; penalty: the instant the penalty started
+    key: str
+    reason: str | None = None  # penalty: unanswered_request | unreviewed_document
+
+
+@dataclass
 class Round2Snapshot:
     entries: list[Round2Entry]
     team_total_points: int
     asya_mission: AsyaMission
     recent_events: list[ScoringEvent] = field(default_factory=list)
+    producer_events: list[ProducerEvent] = field(default_factory=list)
 
 
 _NEVER = datetime.max.replace(tzinfo=timezone.utc)
@@ -450,6 +483,7 @@ def _request_penalties(request_rows: list[dict], now: datetime) -> list[dict]:
         if working_hours_between(created_at, reply_at) > RESPONSE_WORKING_HOURS_LIMIT:
             penalties.append(
                 {
+                    "id": row.get("id"),
                     "client_id": row["client_id"],
                     "created_at": created_at,
                     "responsible": _responsible(
@@ -468,6 +502,7 @@ def _review_penalties(review_rows: list[dict], now: datetime) -> list[dict]:
         if working_hours_between(uploaded_at, review_at) > REVIEW_WORKING_HOURS_LIMIT:
             penalties.append(
                 {
+                    "id": row.get("id"),
                     "client_id": row["client_id"],
                     "uploaded_at": uploaded_at,
                     "responsible": _responsible(
@@ -605,6 +640,7 @@ def score_round2(
         )
 
     events: list[ScoringEvent] = []
+    producer_events: list[ProducerEvent] = []
 
     # ── registrations ──
     for row in registration_rows:
@@ -634,6 +670,15 @@ def score_round2(
                 display_name=entry.display_name,
                 points=FIRST_DOCUMENT_POINTS,
                 at=row["first_doc_at"],
+            )
+        )
+        producer_events.append(
+            ProducerEvent(
+                kind="bomb",
+                email=entry.email,
+                points=FIRST_DOCUMENT_POINTS,
+                at=row["first_doc_at"],
+                key=f"first_document:{row.get('practice_id')}",
             )
         )
 
@@ -667,6 +712,16 @@ def score_round2(
                     at=at,
                 )
             )
+            producer_events.append(
+                ProducerEvent(
+                    kind="penalty",
+                    email=entry.email,
+                    points=-UNANSWERED_REQUEST_PENALTY,
+                    at=penalty_start(at, RESPONSE_WORKING_HOURS_LIMIT),
+                    key=f"unanswered_request:{rp.get('id')}",
+                    reason="unanswered_request",
+                )
+            )
 
     for rp in review_penalties:
         responsible = rp["responsible"]
@@ -688,6 +743,16 @@ def score_round2(
                     display_name=entry.display_name,
                     points=-UNREVIEWED_DOCUMENT_PENALTY,
                     at=at,
+                )
+            )
+            producer_events.append(
+                ProducerEvent(
+                    kind="penalty",
+                    email=entry.email,
+                    points=-UNREVIEWED_DOCUMENT_PENALTY,
+                    at=penalty_start(at, REVIEW_WORKING_HOURS_LIMIT),
+                    key=f"unreviewed_document:{rp.get('id')}",
+                    reason="unreviewed_document",
                 )
             )
 
@@ -739,4 +804,5 @@ def score_round2(
         team_total_points=team_total_points,
         asya_mission=asya_mission,
         recent_events=events[:10],
+        producer_events=producer_events,
     )
