@@ -1,20 +1,20 @@
-task_id: mouth-r19-guard-v4-0930
+task_id: mouth-r19-guard-v4b-0930
 gear: 3
 l_level: L2
 gate_class: opus
-objective: Replace the path-walking, hop-limited v3.4 in-file resolver with the v4.1 checker-backed, memoized fixed-point evaluator while preserving the value, class, position, CSS-module and per-page guard rules.
+objective: Replace the path-walking, hop-limited v3.4 in-file resolver with the v4.2 checker-backed, memoized fixed-point evaluator whose value domain is finite and whose pass loop is bounded, while preserving the value, class, position, CSS-module and per-page guard rules.
 constraints:
   - The guard judges the entity — a literal colour, gradient or backdrop effect decided on an R19 surface — never a spelling; a Tailwind class is compiled with the app's real globals.css design system, never pattern-matched.
   - color-mix() and relative colour syntax are allowed when every colour inside is a var(--*), transparent or currentColor; light-dark() stays a colour function; var(--color-X) is guilty only when X is a default Tailwind palette name.
   - Product files are judged, never edited; the other seven per-page r19-guard tests stay out of scope.
   - No new dependency and no npm install; typescript and tailwindcss come from the shared root node_modules.
 acceptance:
-  - text: WHEN a token, value, style or source snippet is judged, the verdict SHALL equal the table, including every v4.1 cycle, source-rule, fail-closed and time-bound row and the nine no-hop-limit changes.
-    probe: apps/mouth/src/test/r19-colour-guard.test.ts (750 tests)
+  - text: WHEN a token, value, style or source snippet is judged, the verdict SHALL equal the table, including every v4.1 cycle, source-rule, fail-closed and time-bound row, the nine no-hop-limit changes and the v4.2 termination rows (recursive templates, pass cap, named callbacks).
+    probe: apps/mouth/src/test/r19-colour-guard.test.ts (775 tests)
   - text: WHEN the product mutants T1-T5 and Y1-Y5 are applied to the real files the relevant per-page guard SHALL go red, the two unrendered ternary literals (T5, Y5) included.
-    probe: evidence/2026-09/mouth-r19-guard-v4-0930/mutate_product.py (10 of 10 RED)
+    probe: evidence/2026-09/mouth-r19-guard-v4b-0930/mutate_product.py (10 of 10 RED)
   - text: WHEN one rule of the value, declaration, class or source modules is mutated the table SHALL go red.
-    probe: "evidence/2026-09/mouth-r19-guard-v4-0930/mutate_module.py (106 mutants; final full rerun in module_mutants.orchestrator_rerun)"
+    probe: "evidence/2026-09/mouth-r19-guard-v4b-0930/mutate_module.py (124 mutants: 122 killed, 2 argued equivalent; final run in module_mutants.v4b_final_run)"
   - text: WHEN Tailwind stops exporting its design-system loader, bg-white stops compiling to --color-white, or bg-surface-base (a packages/core alias) stops compiling, loadR19ColourGuard SHALL throw; forbiddenClassToken SHALL throw before the load.
     probe: r19-colour-guard.test.ts, describe "r19 colour guard loader tripwires"
   - text: WHEN the guards run on HEAD the TaxCalendarBody and MyTaxCalendar per-page files SHALL be green and each finish in under 15 s.
@@ -110,10 +110,16 @@ resolver_v4:
   - One in-memory TypeScript Program and checker is built per scanned file with noLib, noResolve and no external declarations.
   - Every sources/member/allMembers/elements key is memoized; cycle re-entry reads the previous global pass and the file is re-evaluated until a cut pass has no growth.
   - There is no hop limit. Nested evaluation beyond 256 frames reports an unresolved finding at the use line and never throws.
+  - 'Termination is: a finite interned value domain (spec 11-12) plus a pass cap (13). The v4.1 claim that a cycle only adds references and never literals was false once a template span was judged in its context: every pass built new contextual strings whose text nested the previous pass''s text, so a template reached through a cycle (`function cls(d) { return d > 0 ? `pl-4 ${cls(d - 1)}` : ""; }`) grew forever (gate-7720 FP16 and REC1-REC4).'
+  - "Contextual strings carry {template, index, chain} and are created only through an intern table owned by the Scanner (it lives across passes), keyed (template, span index, source identity). A span source whose chain already holds the current template, or already has CONTEXT_CHAIN_MAX = 4 templates, is not wrapped again. So the domain is bounded by templates x spans x literal nodes x chains of at most 4 distinct templates."
+  - "The pass loop is capped at MAX_FIXED_POINT_PASSES = 128 (forbiddenSourceColour(path, source, { maxPasses }) lowers it for tests only; the per-page guards keep the two-argument call). At the cap the last pass's findings are returned with ONE unresolved finding `fixed point not reached in N passes` at the first use that took a cut in the last pass (line 1 if none): red, never a hang, never a throw. Later uses of the same memoized truncated value are not re-reported; the file is red either way."
+  - "A function passed by name as argument 0 of map/forEach/filter/find/findLast/some/every/flatMap binds its first parameter to the elements of the receiver exactly as an inline callback does; call sites are indexed once per file."
+  - "The 1-pass row: the member cycle with { maxPasses: 1 } yields the unresolved finding; with the default cap it converges (measured 2 passes) and reports none. All 1754 mouth files converge in 1 pass; the recursive shapes in the table need 4-7."
   - P2 ObjectLiteral descent owns a visited set per style root, so an object is judged once per root even through cyclic or repeated spreads.
   - Resolved template spans are judged in their full template context; other spans are replaced by var(--r19-x).
   - Finding.line is the literal line; Finding.use is present only when the resolved use is on another line.
   - The initial v4 evaluator test run was red (11 failed, 13 passed); production code was then replaced and the final table is green.
+  - "v4b (this rework): the new rows were written first; run under a 90 s group-killed bound the termination rows hung (TIMEOUT, process group killed), then production code was changed and all 775 tests pass in 1.8 s."
 named_follow_ups:
   - imports
   - this.x from a constructor (gate-7705b F05)
@@ -121,7 +127,8 @@ named_follow_ups:
   - let reassignment
   - enum members
   - "Object.entries(M).map(([k, v]) => ...) positional callback binding (18 current mouth sites)"
-  - other calls
+  - 'other calls, including an argument that does not reach a parameter when the call''s result is stored in a variable (gate-7720 MK09 `const v = id("#fff")` and MK10 `const s = shadow("#000")`)'
+  - "gate-7720 RI06 Object.entries(M).map(([k, v]) => ...) stays the positional follow-up above; gate-7720 FP07 expected G but the guard's I is right (the literal never reaches the position), so the probe's expectation was wrong, not the guard"
 innocence_classification:
   method: forbiddenSourceColour over the product files directly imported by the nine *.r19-guard.test.tsx on the base (ArticleClient, property/page, team/page, NewsletterForm, CategoryNav, ArticleGrid, CategoryContent, R19Presentation, presentation.ts [exempt], MyTaxCalendar, PropertyEligibilityBody plus its property route layout, page and css module, TaxCalendarBody, AnswerBox, team.module.css), run through a temporary vitest file that was removed after the run.
   findings_total: 146
@@ -129,7 +136,8 @@ innocence_classification:
   L: 124
   O: 0
   old_vs_v4_semantic_differences: 0
-  mouth_wide_scan: "1165 files, 0 throws, 7421 ms total; worst src/app/(assessment)/interview_natalie/page.tsx at 153.8 ms (final six-probe concurrent run)"
+  mouth_wide_scan: "1165 files (the .ts/.tsx without tests and .d.ts) in the innocence probe: 0 throws, 2939 ms. All 1754 .ts/.tsx under apps/mouth/src, tests and .d.ts included, on the v4b resolver: 4320 ms total, worst src/lib/api/schema.d.ts at 280 ms, 0 throws, 0 unresolved, max passes 1 (every file converged in the first pass). gate-7720 had measured 1754 files in 9.5 s, worst schema.d.ts 666 ms, 0 throws, on the v4 resolver."
+  v4b_vs_v4: "per-file findings of the nine per-page guards' direct imports are identical to the gate-7720 run of the v4 resolver (146 findings in the same files and lines): ArticleClient 22, NewsletterForm 71, CategoryNav 53, all other files 0"
   zero_findings: property/page, team/page, ArticleGrid, CategoryContent, R19Presentation, presentation.ts (exempt), MyTaxCalendar, PropertyEligibilityBody + property route (layout, page, css module), TaxCalendarBody, AnswerBox, tax-calendar page and layout, team.module.css
   R_detail:
     - "ArticleClient.tsx:393-504, 20 findings, the ReactMarkdown components fallback (text-white, bg-white/5, backdrop-blur-md, rgba borders). The file has no isR19 gate at all (grep -c isR19 = 0), so nothing about these findings is conditional on an R19 surface: they are R (reclassified from L in round 3, gate-7705b)"
@@ -140,7 +148,7 @@ innocence_classification:
     - "CategoryNav.tsx, 53 findings: 49 from the categoryColors map reached through `const colors = categoryColors[category]` and 4 under `!isR19` (bg-gradient-to-r, bg-gradient-to-l, from-black, to-transparent)"
   follow_up: R and L on pages other than the tax calendar are the migration follow-up for the other seven per-page guards, not a blocker of this PR.
 product_mutants_T1_T5_Y1_Y5:
-  script: evidence/2026-09/mouth-r19-guard-v4-0930/mutate_product.py (cp backup, edit, run the per-page guard, cp restore; git status showed no product change afterwards)
+  script: "evidence/2026-09/mouth-r19-guard-v4b-0930/mutate_product.py (cp backup, edit, run the per-page guard, cp restore; git status showed no product change afterwards; rerun on v4b, 10 of 10 RED, apps/mouth product files unmodified after)"
   results:
     - "T1 class literal in a ternary branch | RED | 2 failed | 2 passed (4)"
     - "T2 border rgb() in the pill style | RED | 2 failed | 2 passed (4)"
@@ -153,14 +161,33 @@ product_mutants_T1_T5_Y1_Y5:
     - "Y4 className palette on the p | RED | 2 failed | 1 passed (3)"
     - "Y5 unrendered ternary literal | RED | 1 failed | 2 passed (3)  (caught by the source scan only)"
 module_mutants:
-  script: evidence/2026-09/mouth-r19-guard-v4-0930/mutate_module.py
-  total: 106
-  killed: 106
+  script: evidence/2026-09/mouth-r19-guard-v4b-0930/mutate_module.py
+  total: 124
+  killed: 122
   broken: 0
   survived: 0
-  equivalent: 0
-  v4_scope: "Memo/time, in-progress and previous-pass cycles, global re-pass, checker scoping, shorthand symbols, depth fail-closed, declarations, every v4 source rule, contextual templates, use-line reporting and P2 once-per-root."
-  history: "First v4 run: 97 killed, 3 broken and 7 survived. Three mutations were made syntactically valid; ten focused table rows were added for uncovered receiver/argument, dynamic array, Object.values, same-container, concat and object/array-spread paths. Focused rerun of the final four survivors: 4 killed, 0 broken, 0 survived."
-  orchestrator_rerun: "2026-09-30T04:14:22Z, full run on the final script: 106 killed, 0 broken, 0 survived; the two time-bound kills (memo is removed, P2 per-root visited guard is removed) were rerun alone with a 180 s bound and both were still running when stopped, so they are real blow-ups and not load artifacts."
-  script_fix: "The script runs vitest in its own process group and kills the group on the 12 s bound. Before, the bound killed only npx and left the vitest child spinning under every later mutant (four orphans found and stopped on this machine)."
+  equivalent: 2
+  v4b_scope: "18 mutants added for v4.2 (17 run, 1 equivalent below): intern key ignores the template, the span index or the source identity; a template re-contextualizes its own chain; the context chain has no length cap or does not accumulate; the pass cap is ignored, its option is ignored, the default cap is one, its finding names a fixed number; a cut does not record its use; Windows paths are not normalised; named callbacks are not bound, bind only the first call site, bind any parameter, accept any method. Every one is killed by a table row (verdicts or exact findings), none by the time bound."
+  equivalent_argued: "contextual strings are not interned (spec 14 named it a must-kill; it cannot be killed by a verdict or a time row and is argued equivalent instead, see the script's EQUIVALENT list). A ContextualString is created only inside sources(template), which the memo evaluates once per pass, and each wrap lengthens `chain` (capped, never repeating a template), so the number of wrap generations is bounded by the chain cap with or without object identity. Measured with the intern lookup removed: identical verdicts and identical pass counts on every table row and on 10 cyclic shapes (fp16 4 passes, three- and four-template mutual recursion 5-6, 5/6/7/9/11 fully cross-recursive templates 6-7), time 1.07x at 5 templates, 1.26x at 7, 1.36x at 11 (11 templates cost ~1.2 s per scan with the intern, polynomial). The intern still earns its place as the stable identity the spec's key is defined on; it is not what terminates the loop."
+  time_bound_kills: "The two time-bound kills, memo is removed and P2 per-root visited guard is removed, were rerun alone against the v4b code with a 130 s bound, each in its own process group: both TIMEOUT at 130 s (2026-09-30T09:54:28Z to 09:58:48Z), the unmutated table runs in 1.8 s. No new v4b mutant is killed by the time bound."
+  equivalent_separator: "the memo key separator is the text backslash-u0000 (spec 16 asks for the real NUL): the key only has to keep operation and name apart, neither contains either separator, so the partition is identical; argued equivalent in the script."
+  v4b_final_run: "2026-09-30T10:02:37Z to 10:05:55Z, full run on the final script: 124 mutants, 122 killed, 0 broken, 0 survived, 2 equivalent (argued, not run). An earlier full run (09:58:53Z to 10:01:58Z, before the Windows-path mutant existed) gave 121 killed, 0 broken, 0 survived, 1 equivalent."
+  history: "First v4b run: 122 mutants, 120 killed, 2 survived (contextual strings are not interned; named callbacks accept any method). The second was a weak row (the reduce row never put a position inside the callback); the row now uses a JSX position inside the callback and the mutant is killed. The first is the equivalent above. The v4 history stands: first v4 run 97 killed, 3 broken, 7 survived, fixed before the 106-killed run."
+  v4_run: "2026-09-30T04:14:22Z, full run on the v4 script: 106 killed, 0 broken, 0 survived; the two time-bound kills were rerun alone with a 180 s bound and both were still running when stopped."
+  script_fix: "The script runs vitest in its own process group and kills the group on the 12 s bound. Before, the bound killed only npx and left the vitest child spinning under every later mutant."
+v4b_rows:
+  - "FP16 a template reached through a member cycle -> G, in under 1000 ms"
+  - "REC1 recursive calc padding -> I; REC2 recursive class template -> I and its bg-white twin -> G; REC3 recursive string concatenation -> I; REC4 self-referencing member template -> I and its bg-white twin -> G"
+  - "two mutually recursive templates in two functions, f first and g first, innocent and guilty: same verdict in both declaration orders"
+  - "every row above asserts no unresolved finding and a scan under 1000 ms"
+  - "the member cycle with { maxPasses: 1 } contains `fixed point not reached in 1 passes` at the first cut use (line 3); with the default cap it has findings and no unresolved one"
+  - "exact findings: a literal wrapped through its own template once (`bg-[#fff]` only), the two spans of one template kept apart, two templates over the same literal kept apart, two literals through one span kept apart, and a literal stopped after four templates in a six-template chain"
+  - "spec 16: a Windows-style path to the R19 token definitions is still exempt (one-backslash normalisation)"
+  - "SR14 named callback -> G and its p-2 twin -> I; a named filter predicate with a JSX position inside -> G and its twin -> I; a callback shared by two receivers binds both; only the first parameter binds; a named reduce callback is not followed"
+probe_reruns_v4b:
+  method: "gate-7720, gate-7705b and gate-7714 probes copied into apps/mouth/src/test, output redirected to ~/.claude/state/r19-guard/build-v4b/out/, run, removed"
+  gate_7720_probe: "98 rows, 4 wrong, all named: MK09 and MK10 (argument stored through a variable, follow-up), RI06 (Object.entries, follow-up), FP07 (the probe's own wrong expectation: the guard's I is right). SR14 is now right; FP16 and REC1-REC4 give G, I, I, I, I."
+  gate_7705b_probe: "179 rows, 1 wrong: F05 (this.x from a constructor, follow-up)"
+  gate_7714_probe: "136 rows, 3 wrong: B01, B03, B08, the intended no-hop-limit flips already listed in row_changes"
+  gate_7714_time: "swap and theme/config shapes n = 1..9 all under 25 ms"
 grader: Not asserted by the author — a fresh gate re-runs the tables, the mutants and the innocence scan. Generator is not grader.

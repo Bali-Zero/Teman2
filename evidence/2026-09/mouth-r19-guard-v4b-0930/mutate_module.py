@@ -134,7 +134,40 @@ MUTANTS = [
     ("P1 array source elements are ignored", SOURCE, "} else if (ts.isArrayLiteralExpression(source)) {", "} else if (false) {"),
     ("P2 per-root visited guard is removed", SOURCE, "if (visited.has(object)) return;", "if (false) return;"),
     ("P2 spread object descent is removed", SOURCE, "this.styleObject(source, visited, use);", "void source;"),
+    # v4.2 termination: finite interned domain, bounded chains, pass cap, named callbacks.
+    ("intern key ignores the template", SOURCE, "let byIndex = this.shared.interned.get(template);", "let byIndex = this.shared.interned.values().next().value;"),
+    ("intern key ignores the span index", SOURCE, "let bySource = byIndex.get(index);", "let bySource = byIndex.values().next().value;"),
+    ("intern key ignores the source identity", SOURCE, "let interned = bySource.get(source);", "let interned = bySource.values().next().value;"),
+    ("a template re-contextualizes its own chain", SOURCE, "if (chain.includes(node) || chain.length >= CONTEXT_CHAIN_MAX)", "if (chain.length >= CONTEXT_CHAIN_MAX)"),
+    ("the context chain has no length cap", SOURCE, "if (chain.includes(node) || chain.length >= CONTEXT_CHAIN_MAX)", "if (chain.includes(node))"),
+    ("the context chain does not accumulate", SOURCE, "chain: [...chain, template],", "chain: [template],"),
+    ("the pass cap is ignored", SOURCE, "if (pass >= maxPasses) {", "if (false) {"),
+    ("the pass cap option is ignored", SOURCE, "options?.maxPasses ?? MAX_FIXED_POINT_PASSES,", "MAX_FIXED_POINT_PASSES,"),
+    ("the default pass cap is one", SOURCE, "options?.maxPasses ?? MAX_FIXED_POINT_PASSES,", "options?.maxPasses ?? 1,"),
+    ("the pass cap finding names a fixed number", SOURCE, "`fixed point not reached in ${maxPasses} passes`", '"fixed point not reached in 128 passes"'),
+    ("a cut does not record its use", SOURCE, "this.firstCutUse ??= this.activeUse;", ""),
+    ("named callbacks are not bound", SOURCE, "for (const receiver of this.namedCallbackReceivers(fn))", "for (const receiver of [] as ts.Expression[])"),
+    ("named callbacks bind only the first call site", SOURCE, "this.namedCallbackReceivers(fn))\n          add(", "this.namedCallbackReceivers(fn).slice(0, 1))\n          add("),
+    ("named callbacks bind any parameter", SOURCE, "isCallableFunction(fn) && fn.parameters[0] === parameter", "isCallableFunction(fn)"),
+    ("named callbacks accept any method", SOURCE, "CALLBACK_METHODS.has(callee.name.text) &&\n            ts.isIdentifier(callback)", "ts.isIdentifier(callback)"),
+    ("windows paths are not normalised", SOURCE, 'path.replaceAll("\\\\", "/")', 'path.replaceAll("\\\\\\\\", "/")'),
     ("resolved use line is not reported", SOURCE, "...(useLine !== undefined && useLine !== line ? { use: useLine } : {}),", ""),
+]
+
+# Argued equivalent, not run. Removing the intern lookup makes every wrap a fresh
+# object, but a ContextualString is only created inside sources(template), which
+# the memo evaluates once per pass, and every wrap lengthens `chain` (capped at
+# CONTEXT_CHAIN_MAX, never repeating a template), so the number of wrap
+# generations is bounded by the chain cap with or without identity. Verdicts,
+# findings and the number of passes are identical on every table row and on
+# 10 measured cyclic shapes; only the duplicate-object count and the time differ,
+# by a constant factor (1.07x at 5 templates, 1.26x at 7, 1.36x at 11).
+EQUIVALENT = [
+    ("contextual strings are not interned", SOURCE, "let interned = bySource.get(source);", "let interned: ContextualString | undefined;"),
+    # Memo keys only need to keep operation and name apart; the separator is a
+    # NUL or the six characters \\u0000, neither occurs in an operation name or in
+    # a property name the guard reads, so the key partition is identical.
+    ("the memo key separator is the text backslash-u0000", SOURCE, "`${operation}\\u0000${name}`", "`${operation}\\\\u0000${name}`"),
 ]
 
 
@@ -196,8 +229,9 @@ def main() -> int:
             shutil.copy(backup, APP / rel)
 
     print(
-        f"{len(selected)} mutants: {tally['KILLED']} killed, "
-        f"{tally['BROKEN']} broken, {tally['SURVIVED']} survived, 0 equivalent"
+        f"{len(selected) + len(EQUIVALENT)} mutants: {tally['KILLED']} killed, "
+        f"{tally['BROKEN']} broken, {tally['SURVIVED']} survived, "
+        f"{len(EQUIVALENT)} equivalent (argued, not run)"
     )
     return 1 if tally["BROKEN"] or tally["SURVIVED"] else 0
 
