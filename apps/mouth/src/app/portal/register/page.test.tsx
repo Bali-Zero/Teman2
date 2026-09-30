@@ -157,3 +157,74 @@ describe("RegisterPage (WS3 day pass)", () => {
     expect(html).not.toContain("border-white/5");
   });
 });
+
+/**
+ * Reported 24 Sep (client 12531): "Create Your PIN" ended in the generic
+ * "Registration failed" line. The backend's 400 reasons were thrown away.
+ */
+describe("RegisterPage — submit errors", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParams.current = new URLSearchParams("token=tok-1");
+    mockValidate.mockResolvedValue({
+      valid: true,
+      clientName: "Made Example",
+      email: "made@example.com",
+    });
+  });
+
+  function apiError(message: string, statusCode: number) {
+    return Object.assign(new Error(message), { name: "ApiError", statusCode });
+  }
+
+  async function submitPin() {
+    render(<RegisterPage />);
+    await screen.findByText("Create Your PIN");
+    fireEvent.change(screen.getByPlaceholderText("Enter PIN"), {
+      target: { value: "1234" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Confirm PIN"), {
+      target: { value: "1234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Activate My Portal" }));
+  }
+
+  it("GUILT: a 400 shows the backend reason, not the generic line", async () => {
+    mockComplete.mockRejectedValue(
+      apiError("Another account already uses this email address", 400),
+    );
+    await submitPin();
+
+    expect(
+      await screen.findByText(
+        "Another account already uses this email address",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Registration failed/)).toBeNull();
+  });
+
+  it("INNOCENCE: a 500 keeps the generic line (no server text leaks)", async () => {
+    mockComplete.mockRejectedValue(
+      apiError("Internal server error: asyncpg ...", 500),
+    );
+    await submitPin();
+
+    expect(
+      await screen.findByText(
+        "Registration failed. Please try again or contact support.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/asyncpg/)).toBeNull();
+  });
+
+  it("INNOCENCE: a plain network Error keeps the generic line", async () => {
+    mockComplete.mockRejectedValue(new TypeError("Failed to fetch"));
+    await submitPin();
+
+    expect(
+      await screen.findByText(
+        "Registration failed. Please try again or contact support.",
+      ),
+    ).toBeTruthy();
+  });
+});

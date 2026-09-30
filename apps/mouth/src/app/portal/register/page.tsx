@@ -34,6 +34,27 @@ const CTA_STYLE = {
   color: "var(--bz-on-warm)",
 } as const;
 
+const REGISTRATION_FAILED =
+  "Registration failed. Please try again or contact support.";
+
+/**
+ * POST /api/portal/invite/complete answers a refusal the client can act on
+ * with 400 and a sentence written for them ("Invitation expired",
+ * "This client already has an active portal account", "Another account
+ * already uses this email address" — portal_invite.py, invite_service.py).
+ * The page used to discard it and show the same generic line it shows for a
+ * 500, so neither the client nor staff could tell the cases apart.
+ * Only a 400 is passed through; 5xx, 422 and network errors keep the
+ * generic line.
+ */
+function registrationErrorMessage(err: unknown): string {
+  const status = (err as { statusCode?: unknown } | null)?.statusCode;
+  if (status === 400 && err instanceof Error && err.message) {
+    return err.message;
+  }
+  return REGISTRATION_FAILED;
+}
+
 const INPUT_CLASS =
   "w-full px-4 py-3 bg-[var(--bz-base)] border border-[var(--bz-border)] rounded-lg text-[var(--tx-primary)] placeholder:text-[var(--tx-tertiary)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--bz-copper)_25%,transparent)] focus:border-[var(--bz-copper)]";
 
@@ -132,7 +153,7 @@ function RegisterContent() {
         {},
         err instanceof Error ? err : new Error(String(err)),
       );
-      setError("Registration failed. Please try again or contact support.");
+      setError(registrationErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
