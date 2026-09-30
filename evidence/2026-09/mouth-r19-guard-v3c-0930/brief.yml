@@ -1,4 +1,4 @@
-task_id: mouth-r19-guard-v3b-0930
+task_id: mouth-r19-guard-v3c-0930
 gear: 3
 l_level: L2
 gate_class: opus
@@ -10,11 +10,11 @@ constraints:
   - No new dependency and no npm install; typescript and tailwindcss come from the shared root node_modules.
 acceptance:
   - text: WHEN a token, value, style or source snippet of the v2 rows, the 158 gate-7691 probe rows, the 6 witnesses or the spec's expected consequences is judged the verdict SHALL equal the table's, except the eight rows in row_changes.
-    probe: apps/mouth/src/test/r19-colour-guard.test.ts (697 tests; value 102, class 74+170, style 33+55, source 220 incl. binding, parameter-default, budget and real-MessageBubble rows)
+    probe: apps/mouth/src/test/r19-colour-guard.test.ts (712 tests; value 102, class 74+170, style 33+55, source 233 incl. binding, parameter-default, budget, call-receiver, spread-chain and real-MessageBubble rows)
   - text: WHEN the product mutants T1-T5 and Y1-Y5 are applied to the real files the relevant per-page guard SHALL go red, the two unrendered ternary literals (T5, Y5) included.
-    probe: evidence/2026-09/mouth-r19-guard-v3b-0930/mutate_product.py (10 of 10 RED)
+    probe: evidence/2026-09/mouth-r19-guard-v3c-0930/mutate_product.py (10 of 10 RED)
   - text: WHEN one rule of the value, declaration, class or source modules is mutated the table SHALL go red.
-    probe: "evidence/2026-09/mouth-r19-guard-v3b-0930/mutate_module.py (91 mutants: 90 killed, 0 broken, 0 survived, 1 argued equivalent)"
+    probe: "evidence/2026-09/mouth-r19-guard-v3c-0930/mutate_module.py (101 mutants: 99 killed, 0 broken, 0 survived, 2 argued equivalent)"
   - text: WHEN Tailwind stops exporting its design-system loader, bg-white stops compiling to --color-white, or bg-surface-base (a packages/core alias) stops compiling, loadR19ColourGuard SHALL throw; forbiddenClassToken SHALL throw before the load.
     probe: r19-colour-guard.test.ts, describe "r19 colour guard loader tripwires"
   - text: WHEN the guards run on HEAD the TaxCalendarBody and MyTaxCalendar per-page files SHALL be green and each finish in under 15 s.
@@ -69,7 +69,7 @@ row_changes:
     reason: rewritten with %20 instead of `_` inside url() as the spec orders (Tailwind's `_` handling makes the SVG malformed); verdict kept.
   - unchanged_by_spec_exception: 'v2 `other: { "theme-color": "navy" }` stays guilty (P4). No row changed for the color-mix ruling: every v2 and probe color-mix row keeps its verdict.'
 choices_where_the_spec_is_silent:
-  - "v3.3 binding elements: an identifier bound by a pattern resolves to the same-named member of every object literal its initializer reaches (through ?:, ??, ||, in-file maps, calls) plus its own default; an array pattern takes every element; a rest element takes every member. Depth counts identifier and call hops only, member reads and ternaries are free, one visited set per resolution."
+  - "v3.3 binding elements: an identifier bound by a pattern resolves to the same-named member of every object literal its initializer reaches (through ?:, ??, ||, in-file maps, calls) plus its own default; an array pattern takes every element; a rest element takes every member. Depth counts identifier and call hops only; member reads, spreads and ternaries are free and pass the SAME budget object {hops, visited} on (spec v3.4): a hop is counted while its results are consumed and given back afterwards, visited is the path of nodes being resolved."
   - "`beforeAll(loadR19ColourGuard)` cannot be written: vitest parses the argument list of a hook and rejects a default parameter (FixtureParseError). The tests wrap it: `beforeAll(async () => { await loadR19ColourGuard(); })`."
   - 'Conditions decide a value, they are never one: the condition of a ternary, the left of `&&` and the operands of comparison operators (`===`, `<`, `in`...) are not judged. The spec says to descend through `&&`; the entity is a colour that is APPLIED, and `tone === "white"` applies nothing. Rows pin it both ways.'
   - "In a style value a template literal is judged as ONE string (head and spans joined by a space) so `var(--a, ${x})` stays balanced; in a class position each piece is judged alone. Nested string nodes inside `${}` are judged separately in both."
@@ -84,20 +84,20 @@ choices_where_the_spec_is_silent:
 innocence_classification:
   method: forbiddenSourceColour over the product files directly imported by the nine *.r19-guard.test.tsx on the base (ArticleClient, property/page, team/page, NewsletterForm, CategoryNav, ArticleGrid, CategoryContent, R19Presentation, presentation.ts [exempt], MyTaxCalendar, PropertyEligibilityBody plus its property route layout, page and css module, TaxCalendarBody, AnswerBox, team.module.css), run through a temporary vitest file that was removed after the run.
   findings_total: 146
-  R: 2
-  L: 144
+  R: 22
+  L: 124
   O: 0
   zero_findings: property/page, team/page, ArticleGrid, CategoryContent, R19Presentation, presentation.ts (exempt), MyTaxCalendar, PropertyEligibilityBody + property route (layout, page, css module), TaxCalendarBody, AnswerBox, tax-calendar page and layout, team.module.css
   R_detail:
+    - "ArticleClient.tsx:393-504, 20 findings, the ReactMarkdown components fallback (text-white, bg-white/5, backdrop-blur-md, rgba borders). The file has no isR19 gate at all (grep -c isR19 = 0), so nothing about these findings is conditional on an R19 surface: they are R (reclassified from L in round 3, gate-7705b)"
     - "ArticleClient.tsx:589 style backgroundColor #25d366 (WhatsApp brand green, not gated by any R19 branch)"
     - "ArticleClient.tsx:613 class scrollbar-thumb-white/10 (sidebar, not gated)"
   L_detail:
-    - "ArticleClient.tsx:393-504, 20 findings, the ReactMarkdown components fallback (text-white, bg-white/5, backdrop-blur-md, rgba borders); the file has no isR19 branch at all"
     - 'NewsletterForm.tsx, 71 findings, all under `!isR19 && ...` or an isR19 false branch (62 by ancestor walk, 9 `cn("...", !isR19 && "...")` confirmed by reading the lines)'
     - "CategoryNav.tsx, 53 findings: 49 from the categoryColors map reached through `const colors = categoryColors[category]` and 4 under `!isR19` (bg-gradient-to-r, bg-gradient-to-l, from-black, to-transparent)"
   follow_up: R and L on pages other than the tax calendar are the migration follow-up for the other seven per-page guards, not a blocker of this PR.
 product_mutants_T1_T5_Y1_Y5:
-  script: evidence/2026-09/mouth-r19-guard-v3b-0930/mutate_product.py (cp backup, edit, run the per-page guard, cp restore; git status showed no product change afterwards)
+  script: evidence/2026-09/mouth-r19-guard-v3c-0930/mutate_product.py (cp backup, edit, run the per-page guard, cp restore; git status showed no product change afterwards)
   results:
     - "T1 class literal in a ternary branch | RED | 2 failed | 2 passed (4)"
     - "T2 border rgb() in the pill style | RED | 2 failed | 2 passed (4)"
@@ -110,13 +110,17 @@ product_mutants_T1_T5_Y1_Y5:
     - "Y4 className palette on the p | RED | 2 failed | 1 passed (3)"
     - "Y5 unrendered ternary literal | RED | 1 failed | 2 passed (3)  (caught by the source scan only)"
 module_mutants:
-  script: evidence/2026-09/mouth-r19-guard-v3b-0930/mutate_module.py
-  total: 91
-  killed: 90
+  script: evidence/2026-09/mouth-r19-guard-v3c-0930/mutate_module.py
+  total: 101
+  killed: 99
   broken: 0
   survived: 0
-  equivalent: 1
+  equivalent: 2
   history: "first full run 77 patterns, 23 survived and 12 were broken by reformatting; each survivor was a missing row (theme( with no var, ';' inside unquoted url(), non-utility bracket token, template head/tail in class position, false ternary branch, computed string key, comparison operand, ternary condition, left of &&, type nodes, at-rule statement, object keys per mode, template join, css comment inside a block) and each got a row, never a weakened one; the loader-export survivor was a test that matched too loosely (now /no longer exports/)."
   round_2: "gate-7702 REWORK-BUILD (D1 destructured bindings unresolved, D2 depth reset in member reads, F1 parameter defaults): 15 mutants added for the new code; the script now counts a suite error as BROKEN. The one equivalent survivor is 'the visited set is ignored': every resolution cycle crosses an identifier or a call, each costs a hop, so the depth limit alone ends every cycle."
+  round_3: "gate-7705b REWORK-BUILD (R1 a call whose callee is a property access followed the member instead of walking the receiver, so `[...].filter(Boolean).join(' ')` and `` `..`.trim() `` hid every class; R2 memberValues recursed into spreads with the pre-hop budget): 10 mutants added (receiver not walked, receiver followed as a member, call arguments not walked, spread with a fresh budget, spread with a copied budget, hop never given back, styleRoot/strings hop free, styleRoot/reach visited never released); the old EQUIVALENT claim for the visited mutant is withdrawn and re-argued below. Two rows for it: the spread cycle (no throw, innocent) and, in the table, the alias-chain rows. Result: 101 mutants, 99 killed, 0 broken, 0 survived, 2 equivalent."
+  equivalent_argument:
+    - "'the visited set is ignored' (reach): under the round-3 budget the mutant is genuinely equivalent. Every resolution cycle must pass through a name (a variable, a binding or a called function) to get from one node back to itself; an identifier or call costs one hop and the limit is 3, so a cycle ends after at most 3 hops with or without the visited check, and the values a repeated visit adds are duplicates that report() de-duplicates by line, position and text. Member reads, spreads and ternaries cost nothing but cannot form a cycle without a name. The row `const A = { ...B, pad: 1 }; const B = { ...A, gap: 2 }` (no throw, innocent) exercises the cycle and stays green under the mutant, which is the point: the hop limit alone ends it."
+    - "'a spread is resolved with a copied budget' ({ hops, visited: new Set(visited) }): equivalent in observable behaviour because every helper restores hops and visited on exit (a hop is counted only while its results are consumed, visited is released after each node), so a copy taken at the spread and the shared object are indistinguishable to everything downstream. The spec forbids the copy anyway; the fresh-budget mutant next to it IS killed."
   equivalent_mutant_removed: "custom-property key kebab-casing (`--x` is kept by the `--` prefix either way; the judged property is identical), so no table row can tell them apart."
 grader: Not asserted by the author — a fresh gate re-runs the tables, the mutants and the innocence scan. Generator is not grader.
