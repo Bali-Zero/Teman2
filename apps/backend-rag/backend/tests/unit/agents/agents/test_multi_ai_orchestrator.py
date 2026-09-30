@@ -199,6 +199,102 @@ async def test_main_returns_early_when_required_args_missing(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("task", "extra_args", "expected_call", "logged_text"),
+    [
+        (
+            "test",
+            ["--file", "src/example.py", "--code", "code"],
+            ("generate_test", ("src/example.py", "code")),
+            "test output",
+        ),
+        (
+            "analyze",
+            ["--file", "src/example.py", "--code", "code"],
+            ("analyze_code", ("src/example.py", "code")),
+            "analysis output",
+        ),
+        (
+            "architecture",
+            ["--code", "requirements"],
+            ("design_architecture", ("Component", "requirements")),
+            "architecture output",
+        ),
+        (
+            "refactor",
+            ["--file", "src/example.py", "--code", "code"],
+            ("refactor_code", ("src/example.py", "code", "improve quality")),
+            "refactor output",
+        ),
+        (
+            "docs",
+            ["--file", "src/example.py", "--code", "code"],
+            ("generate_documentation", ("src/example.py", "code")),
+            "docs output",
+        ),
+        (
+            "review",
+            ["--file", "src/example.py", "--code", "code"],
+            ("review_code", ("src/example.py", "code")),
+            "review output",
+        ),
+    ],
+)
+async def test_main_dispatches_successful_tasks_and_logs_result(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    task: str,
+    extra_args: list[str],
+    expected_call: tuple[str, tuple[str, ...]],
+    logged_text: str,
+) -> None:
+    class SuccessfulOrchestrator(StubCLIOrchestrator):
+        async def generate_test(self, file_path: str, code: str) -> str:
+            self.calls.append(("generate_test", (file_path, code)))
+            return "test output"
+
+        async def analyze_code(self, file_path: str, code: str) -> dict[str, str]:
+            self.calls.append(("analyze_code", (file_path, code)))
+            return {"analysis": "analysis output"}
+
+        async def design_architecture(
+            self,
+            component_name: str,
+            requirements: str,
+        ) -> dict[str, str]:
+            self.calls.append(("design_architecture", (component_name, requirements)))
+            return {"architecture": "architecture output"}
+
+        async def refactor_code(self, file_path: str, code: str, goal: str) -> str:
+            self.calls.append(("refactor_code", (file_path, code, goal)))
+            return "refactor output"
+
+        async def generate_documentation(self, file_path: str, code: str) -> str:
+            self.calls.append(("generate_documentation", (file_path, code)))
+            return "docs output"
+
+        async def review_code(self, file_path: str, code: str) -> dict[str, str]:
+            self.calls.append(("review_code", (file_path, code)))
+            return {"review": "review output"}
+
+    StubCLIOrchestrator.instances.clear()
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["prog", "--task", task, "--project-root", "/tmp/custom", *extra_args],
+    )
+    monkeypatch.setattr(module, "MultiAIOrchestrator", SuccessfulOrchestrator)
+
+    with caplog.at_level("INFO"):
+        await module.main()
+
+    instance = StubCLIOrchestrator.instances[0]
+    assert instance.project_root == Path("/tmp/custom")
+    assert instance.calls == [expected_call]
+    assert logged_text in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_main_catches_and_logs_orchestrator_errors(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
