@@ -26,7 +26,9 @@ const COLOUR_ATTRIBUTES = new Set([
 ]);
 const MAX_HOPS = 3;
 
-type Budget = { depth: number; visited: Set<ts.Node> };
+// One budget per resolution: `hops` counts identifier and call steps, `visited`
+// is the path of nodes being resolved. Every helper receives this same object.
+type Budget = { hops: number; visited: Set<ts.Node> };
 const TOKEN_DEFINITIONS = "/src/components/r19/presentation.ts";
 
 const COMPARISONS = new Set<ts.SyntaxKind>([
@@ -188,19 +190,19 @@ class Scanner {
     else if (ts.isCallExpression(node)) this.classHelperCall(node);
     else if (ts.isVariableDeclaration(node) && node.initializer) {
       if (isCssProperties(node.type))
-        this.styleRoot(node.initializer, 0, new Set());
+        this.styleRoot(node.initializer, this.budget());
       else if (isCssPropertiesRecord(node.type))
-        this.styleMap(node.initializer, 0, new Set());
+        this.styleMap(node.initializer, this.budget());
     } else if (
       (ts.isAsExpression(node) ||
         ts.isSatisfiesExpression(node) ||
         ts.isTypeAssertionExpression(node)) &&
       isCssProperties(node.type)
     ) {
-      this.styleRoot(node.expression, 0, new Set());
+      this.styleRoot(node.expression, this.budget());
     } else if (isFunctionLike(node) && isCssProperties(node.type)) {
       for (const expression of this.returnsOf(node))
-        this.styleRoot(expression, 0, new Set());
+        this.styleRoot(expression, this.budget());
     } else if (ts.isPropertyAssignment(node)) {
       const key = keyText(node.name);
       if (key === "themeColor" || key === "theme-color")
@@ -226,7 +228,7 @@ class Scanner {
       this.classPosition(value);
     } else if (name === "style") {
       if (ts.isJsxExpression(value) && value.expression) {
-        this.styleRoot(value.expression, 0, new Set());
+        this.styleRoot(value.expression, this.budget());
       }
     } else if (COLOUR_ATTRIBUTES.has(name) || name.endsWith("Color")) {
       this.colourValue(value, name);
@@ -263,7 +265,7 @@ class Scanner {
   // ---- judging -------------------------------------------------------------
 
   private classPosition(node: ts.Node) {
-    this.strings(node, "class", 0, new Set(), (at, text) => {
+    this.strings(node, "class", this.budget(), (at, text) => {
       for (const token of text.split(/\s+/).filter(Boolean)) {
         if (forbiddenClassToken(token)) this.report(at, "class", token);
       }
@@ -271,7 +273,7 @@ class Scanner {
   }
 
   private colourValue(node: ts.Node, attribute: string) {
-    this.strings(node, "value", 0, new Set(), (at, text) => {
+    this.strings(node, "value", this.budget(), (at, text) => {
       if (colourLiteralIn(text, "color"))
         this.report(at, "colour attribute", `${attribute}: ${text}`);
     });
@@ -279,41 +281,44 @@ class Scanner {
 
   // ---- style positions -----------------------------------------------------
 
-  private styleRoot(expression: ts.Node, hops: number, visited: Set<ts.Node>) {
+  private styleRoot(expression: ts.Node, b: Budget) {
     const node = unwrap(expression);
-    if (visited.has(node)) return;
-    visited.add(node);
+    if (b.visited.has(node)) return;
+    b.visited.add(node);
     if (ts.isConditionalExpression(node)) {
-      this.styleRoot(node.whenTrue, hops, visited);
-      this.styleRoot(node.whenFalse, hops, visited);
+      this.styleRoot(node.whenTrue, b);
+      this.styleRoot(node.whenFalse, b);
     } else if (ts.isBinaryExpression(node)) {
       const op = node.operatorToken.kind;
       if (op === ts.SyntaxKind.AmpersandAmpersandToken)
-        this.styleRoot(node.right, hops, visited);
+        this.styleRoot(node.right, b);
       else if (
         op === ts.SyntaxKind.BarBarToken ||
         op === ts.SyntaxKind.QuestionQuestionToken
       ) {
-        this.styleRoot(node.left, hops, visited);
-        this.styleRoot(node.right, hops, visited);
+        this.styleRoot(node.left, b);
+        this.styleRoot(node.right, b);
       }
     } else if (ts.isObjectLiteralExpression(node)) {
-      this.styleObject(node, hops, visited);
+      this.styleObject(node, b);
     } else if (ts.isCallExpression(node) && this.isObjectAssign(node)) {
-      for (const argument of node.arguments)
-        this.styleRoot(argument, hops, visited);
-    } else if (hops < MAX_HOPS) {
-      for (const resolved of this.resolve(node, this.budget(hops)))
-        this.styleRoot(resolved, hops + 1, visited);
+      for (const argument of node.arguments) this.styleRoot(argument, b);
+    } else if (b.hops < MAX_HOPS) {
+      for (const resolved of this.resolve(node, b)) {
+        b.hops++;
+        this.styleRoot(resolved, b);
+        b.hops--;
+      }
     }
+    b.visited.delete(node);
   }
 
-  private styleMap(expression: ts.Node, hops: number, visited: Set<ts.Node>) {
+  private styleMap(expression: ts.Node, b: Budget) {
     const node = unwrap(expression);
     if (!ts.isObjectLiteralExpression(node)) return;
     for (const property of node.properties) {
       if (ts.isPropertyAssignment(property))
-        this.styleRoot(property.initializer, hops, visited);
+        this.styleRoot(property.initializer, b);
     }
   }
 
@@ -327,14 +332,10 @@ class Scanner {
     );
   }
 
-  private styleObject(
-    object: ts.ObjectLiteralExpression,
-    hops: number,
-    visited: Set<ts.Node>,
-  ) {
+  private styleObject(object: ts.ObjectLiteralExpression, b: Budget) {
     for (const property of object.properties) {
       if (ts.isSpreadAssignment(property)) {
-        this.styleRoot(property.expression, hops, visited);
+        this.styleRoot(property.expression, b);
       } else if (
         ts.isPropertyAssignment(property) ||
         ts.isShorthandPropertyAssignment(property)
@@ -347,7 +348,7 @@ class Scanner {
         const value = ts.isPropertyAssignment(property)
           ? property.initializer
           : property.name;
-        this.strings(value, "value", hops, new Set(), (at, text) => {
+        this.strings(value, "value", b, (at, text) => {
           const hit =
             prop === undefined
               ? colourLiteralIn(text)
@@ -374,34 +375,33 @@ class Scanner {
     return returns;
   }
 
-  private budget(depth: number): Budget {
-    return { depth, visited: new Set() };
+  private budget(): Budget {
+    return { hops: 0, visited: new Set() };
   }
 
   // The object and array literals an expression can stand for, through `?:`,
-  // `??`, `||`, in-file identifiers, calls and member reads. One budget: an
-  // identifier or call costs a hop, a node already on the path ends as "not
-  // resolved".
-  private reach(nodes: ts.Node[], b: Budget): ts.Node[] {
-    const out: ts.Node[] = [];
+  // `??`, `||`, in-file identifiers, calls and member reads, handed to `emit`
+  // while the hop that reached them is still counted. An identifier or call
+  // costs a hop; a node already on the path ends as "not resolved".
+  private reach(nodes: ts.Node[], b: Budget, emit: (o: ts.Node) => void) {
     for (const raw of nodes) {
       const node = unwrap(raw);
       if (
         ts.isObjectLiteralExpression(node) ||
         ts.isArrayLiteralExpression(node)
       ) {
-        out.push(node);
+        emit(node);
       } else if (ts.isConditionalExpression(node)) {
-        out.push(...this.reach([node.whenTrue, node.whenFalse], b));
+        this.reach([node.whenTrue, node.whenFalse], b, emit);
       } else if (ts.isBinaryExpression(node)) {
         const op = node.operatorToken.kind;
         if (op === ts.SyntaxKind.AmpersandAmpersandToken) {
-          out.push(...this.reach([node.right], b));
+          this.reach([node.right], b, emit);
         } else if (
           op === ts.SyntaxKind.BarBarToken ||
           op === ts.SyntaxKind.QuestionQuestionToken
         ) {
-          out.push(...this.reach([node.left, node.right], b));
+          this.reach([node.left, node.right], b, emit);
         }
       } else if (
         ts.isIdentifier(node) ||
@@ -411,16 +411,14 @@ class Scanner {
       ) {
         if (b.visited.has(node)) continue;
         b.visited.add(node);
+        const resolved = this.resolve(node, b);
         const hop = ts.isIdentifier(node) || ts.isCallExpression(node);
-        out.push(
-          ...this.reach(
-            this.resolve(node, b),
-            hop ? { depth: b.depth + 1, visited: b.visited } : b,
-          ),
-        );
+        if (hop) b.hops++;
+        this.reach(resolved, b, emit);
+        if (hop) b.hops--;
+        b.visited.delete(node);
       }
     }
-    return out;
   }
 
   private memberValues(
@@ -429,7 +427,7 @@ class Scanner {
     b: Budget,
   ): ts.Node[] {
     const values: ts.Node[] = [];
-    for (const object of this.reach(objects, b)) {
+    this.reach(objects, b, (object) => {
       if (ts.isArrayLiteralExpression(object)) {
         values.push(...object.elements);
       } else if (ts.isObjectLiteralExpression(object)) {
@@ -447,7 +445,7 @@ class Scanner {
           }
         }
       }
-    }
+    });
     return values;
   }
 
@@ -479,7 +477,7 @@ class Scanner {
   private resolve(expression: ts.Node, b: Budget): ts.Node[] {
     const node = unwrap(expression);
     if (ts.isIdentifier(node)) {
-      if (b.depth >= MAX_HOPS) return [];
+      if (b.hops >= MAX_HOPS) return [];
       const declared = (this.variables.get(node.text) ?? []).filter(
         (init) => !isFunctionLike(unwrap(init)),
       );
@@ -497,7 +495,7 @@ class Scanner {
       return this.memberValues([node.expression], name, b);
     }
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-      if (b.depth >= MAX_HOPS) return [];
+      if (b.hops >= MAX_HOPS) return [];
       const callee = node.expression.text;
       const declared = this.functions.get(callee) ?? [];
       const initialisers = (this.variables.get(callee) ?? [])
@@ -515,16 +513,18 @@ class Scanner {
   private strings(
     node: ts.Node,
     mode: "class" | "value",
-    hops: number,
-    visited: Set<ts.Node>,
+    b: Budget,
     emit: (at: ts.Node, text: string) => void,
   ) {
     const follow = (expression: ts.Node) => {
-      if (hops >= MAX_HOPS) return;
-      for (const resolved of this.resolve(expression, this.budget(hops))) {
-        if (visited.has(resolved)) continue;
-        visited.add(resolved);
-        this.strings(resolved, mode, hops + 1, visited, emit);
+      if (b.hops >= MAX_HOPS) return;
+      for (const resolved of this.resolve(expression, b)) {
+        if (b.visited.has(resolved)) continue;
+        b.visited.add(resolved);
+        b.hops++;
+        this.strings(resolved, mode, b, emit);
+        b.hops--;
+        b.visited.delete(resolved);
       }
     };
     const walk = (n: ts.Node): void => {
@@ -567,8 +567,10 @@ class Scanner {
         return follow(n);
       if (ts.isIdentifier(n)) return follow(n);
       if (ts.isCallExpression(n)) {
-        if (ts.isIdentifier(n.expression)) follow(n);
-        else walk(n.expression);
+        const callee = unwrap(n.expression);
+        if (ts.isIdentifier(callee)) follow(n);
+        else if (ts.isPropertyAccessExpression(callee)) walk(callee.expression);
+        else walk(callee);
         for (const argument of n.arguments) walk(argument);
         return;
       }
