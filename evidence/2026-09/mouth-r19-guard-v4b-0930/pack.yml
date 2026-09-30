@@ -1,7 +1,8 @@
 brief_ref: evidence/brief.yml
 plan_ref: >-
-  Branch agent/air-m5/mouth/r19-guard-v4-0930: replace only the v3.4 in-file resolver with the v4.1
-  checker-backed fixed-point evaluator. The seven #7714 commits remain the base of this prepare-only lane.
+  Branch agent/air-m5/mouth/r19-guard-v4b-0930 (fresh origin/main plus the nine #7720 commits): replace only the
+  v3.4 in-file resolver with the v4.2 checker-backed fixed-point evaluator with a finite interned domain and a
+  bounded pass loop. The seven #7714 commits remain the base of this prepare-only lane.
 lanes:
   - lane: r19-guard-spec-critic
     role: review
@@ -15,12 +16,17 @@ lanes:
   - lane: r19-guard-v4-build
     role: build
     seat: "Codex external build seat (resolver, v4.1 rows, probe reruns, mutation scripts and evidence; prepare-only)"
+  - lane: r19-guard-v4b-build
+    role: build
+    seat: "claude-sonnet-5.5 (spec v4.2: interned contextual strings, chain cap, pass cap, named callbacks; 25 table rows, 18 mutants, probe reruns; local commits only, no push)"
 what_changed: |
   apps/mouth/src/test/r19-colour-guard.ts: values, declarations, class tokens. A class token is compiled with
   the app's real design system (globals.css through Tailwind's loader) and the emitted declarations are judged.
   apps/mouth/src/test/r19-colour-source.ts: one in-memory Program/checker per file, exact lexical declarations,
-  memoized abstract sources, global fixed-point cycle passes, per-root P2 descent and fail-closed depth 256.
-  apps/mouth/src/test/r19-colour-guard.test.ts: 750 table tests including every v4.1 rule and time bound.
+  memoized abstract sources, global fixed-point cycle passes over an interned finite value domain (chain of at most 4
+  templates) with a 128-pass cap that fails closed, named callbacks bound like inline ones, per-root P2 descent and
+  fail-closed depth 256.
+  apps/mouth/src/test/r19-colour-guard.test.ts: 775 table tests including every v4.1 rule and time bound and the v4.2 termination rows.
   TaxCalendarBody / MyTaxCalendar per-page guards: colour tests back, delegating to the modules.
 proof: |
   Tables, guards, probes, mutants and the innocence run are in the brief's acceptance. Fresh v4 receipts below
@@ -54,6 +60,10 @@ dissent:
     objection: "spec-critic-v4: an empty per-call cycle cut was declaration-order dependent; P2 re-descended objects; deep aliases could throw; join, Object.assign, template spans, plus, map/flatMap, useCallback and resolved-template context were incomplete."
     status: CONFIRMED
     resolution: "Spec v4.1 adopted every finding: previous-pass fixed point, per-root P2 visited set, fail-closed depth, the missing source rules, contextual span evaluation, literal-line plus optional use-line reporting, and dedicated time/mutation rows."
+  - seat: claude-opus-5.5
+    objection: 'gate-7720 on v4.1: FP16 and REC1-REC4 hang. A template reached through a cycle (`function cls(d) { return d > 0 ? `pl-4 ${cls(d - 1)}` : ""; }`) makes every pass build new contextual strings whose text nests the previous pass''s text, the value sets grow forever and Scanner.run never returns; the v4.1 claim that a cycle only adds references was false once resolved spans were judged in context. Also SR14 (a callback passed by name), the Windows-path replaceAll with two backslashes and the literal backslash-u0000 key separator.'
+    status: CONFIRMED
+    resolution: "Spec v4.2. ContextualString carries template, index and chain and is created only through a Scanner-owned intern table keyed (template, span index, source identity); a span source whose chain holds the template or has 4 entries is not wrapped again; the pass loop stops at 128 passes (injectable for tests) with one unresolved finding at the first cut use; named callbacks bind their first parameter like inline ones; the two trivial fixes. FP16, REC1-REC4 and two mutually recursive templates are rows, each under 1000 ms. One named must-kill mutant (contextual strings are not interned) cannot be killed by a verdict or a time row and is argued equivalent in the brief; the finding is reported to the orchestrator."
 receipts:
   - claim: "Table and both per-page guards green on HEAD."
     cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx"
@@ -163,6 +173,48 @@ receipts:
     exit: 0
     ts: "before 2026-09-30T04:05:34Z (start of the full rerun above; exact time not recorded)"
     seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "v4b TDD: the new termination rows hang before the code change (run under a 90 s process-group kill)."
+    cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts -t 'v4.2 termination' (group-killed at 90 s)"
+    result: "TIMEOUT after 90 s, group killed; after the change the same 17 rows pass in 1.09 s"
+    exit: 0
+    ts: "2026-09-30T09:41Z (approximate: read from vitest's local Start at 17:42:47 at UTC+8)"
+    seat: claude-sonnet-5.5
+  - claim: "v4b table and both per-page guards green on the final code."
+    cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx"
+    result: "3 files, 782 tests passed (table 775 tests 1.05 s; TaxCalendarBody 4 tests 1.34 s; MyTaxCalendar 3 tests 1.08 s, from the separate runs at 09:5x)"
+    exit: 0
+    ts: "2026-09-30T10:06:16Z"
+    seat: claude-sonnet-5.5
+  - claim: "v4b scoped suite, types, lint and format."
+    cmd: 'cd apps/mouth && npx vitest run src/components/funnel "src/app/(tax-calendar)" src/components/r19 src/app/api/tax-calendar src/test && npx tsc --noEmit && npx eslint --no-ignore src/test/r19-colour-source.ts src/test/r19-colour-guard.test.ts && npx prettier --check <the two ts files and both evidence yml>'
+    result: "18 files / 948 tests passed; tsc exit 0; eslint exit 0; prettier clean on the two ts files and both yml (checked at 10:08Z after the pack was fixed)"
+    exit: 0
+    ts: "2026-09-30T10:06:17Z"
+    seat: claude-sonnet-5.5
+  - claim: "v4b module mutants, full run on the final script."
+    cmd: "python3 -u evidence/2026-09/mouth-r19-guard-v4b-0930/mutate_module.py"
+    result: "124 mutants: 122 killed, 0 broken, 0 survived, 2 equivalent (argued, not run: contextual strings are not interned; the memo key separator text)"
+    exit: 0
+    ts: "2026-09-30T10:05:55Z"
+    seat: claude-sonnet-5.5
+  - claim: "v4b product mutants T1-T5 and Y1-Y5 all red, product files clean after."
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v4b-0930/mutate_product.py"
+    result: "10 of 10 RED; git status shows only the two intended test files and the evidence directory"
+    exit: 0
+    ts: "2026-09-30T10:06:36Z"
+    seat: claude-sonnet-5.5
+  - claim: "The two time-bound kills are real blow-ups on the v4b code."
+    cmd: "each of 'memo is removed' and 'P2 per-root visited guard is removed' applied alone, npx vitest run src/test/r19-colour-guard.test.ts in its own process group with a 130 s bound, file restored with cp"
+    result: "both TIMEOUT at 130 s (the unmutated table runs in about 1.8 s); no vitest process left"
+    exit: 0
+    ts: "2026-09-30T09:54:28Z to 09:58:48Z"
+    seat: claude-sonnet-5.5
+  - claim: "gate-7720, gate-7705b and gate-7714 probes rerun on v4b, plus the innocence run and the mouth-wide scan."
+    cmd: "temporary zz-*.test.ts copies of the gate probes (output to ~/.claude/state/r19-guard/build-v4b/out/) run with npx vitest run, then removed"
+    result: "7720 probe 98 rows, wrong: MK09, MK10, RI06, FP07 (named follow-ups and the probe's own wrong expectation); FP16 G, REC1-REC4 I; 7705b 179 rows, wrong: F05; 7714 136 rows, wrong: B01/B03/B08 (intended flips); innocence 146 findings, per-file identical to the v4 run (R22 L124 O0); mouth-wide 1754 files 4320 ms, worst schema.d.ts 280 ms, 0 throws, max passes 1"
+    exit: 0
+    ts: "2026-09-30T09:53:02Z"
+    seat: claude-sonnet-5.5
 pii_scan: clean
 pii_scan_note: "No client data; the tables hold synthetic CSS and TSX snippets."
 spend:
@@ -171,12 +223,12 @@ spend:
 appetite_exceeded: "Exceeded on size: the resolver is a structural replacement, and the required v4.1 table, mutation coverage and retained audit history keep the concern indivisible."
 seat_override: "External Codex build seat is prepare-only. A fresh Claude gate must independently rerun the evidence and ship; generator is not grader."
 diff:
-  base_merge_sha: 3bd9554551
-  resolver_commit_sha: 4d654c591c
-  scope: "the whole PR against main, measured on the staged tree before the evidence commit"
+  base_merge_sha: 92a666dda2
+  resolver_commit_sha: f57763ddf1
+  scope: "the whole PR against origin/main, measured on the staged tree before this diff block was rewritten"
   logical_files: 9
-  insertions: 4170
+  insertions: 4587
   deletions: 2
-  net_lines: 4168
-  builder_delta: "The v4 build seat changed 7 logical files over the v3.4 base it inherited: 1455 insertions, 540 deletions."
-  rename_note: "The sandbox denied the builder the shared gitdir index.lock, so it moved the evidence directory in the filesystem; the orchestrator staged it and Git records the renames."
+  net_lines: 4585
+  builder_delta: "The v4b rework changed 6 files over the 28c4321d49 tip it inherited: 451 insertions, 34 deletions (code and table 2 files, 315 insertions and 11 deletions; the rest is brief, pack and the mutation script)."
+  rename_note: "The evidence directory was renamed with git mv from mouth-r19-guard-v4-0930 to mouth-r19-guard-v4b-0930; historical receipts keep the v3c-0930 or v4-0930 path they actually ran on."
