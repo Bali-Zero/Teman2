@@ -1,24 +1,30 @@
 brief_ref: evidence/brief.yml
 plan_ref: >-
-  Branch agent/air-m5/mouth/r19-guard-v3c-0930 (base main): the R19 colour guard v3. The spec (v3.3) was
-  reviewed twice by a fresh adversarial reader before any build, after gate-7691 returned REWORK-DESIGN on v2.
+  Branch agent/air-m5/mouth/r19-guard-v4-0930: replace only the v3.4 in-file resolver with the v4.1
+  checker-backed fixed-point evaluator. The seven #7714 commits remain the base of this prepare-only lane.
 lanes:
   - lane: r19-guard-spec-critic
     role: review
     seat: "claude-opus-5.5 (fresh spec critic: 11 findings on v3, 3 new on v3.1, all folded into v3.2 before build)"
   - lane: r19-guard-v3-build
     role: build
-    seat: "claude-sonnet-5.5 (modules, tables, per-page wiring, mutation scripts)"
+    seat: "claude-sonnet-5.5 (modules, tables, per-page wiring, mutation scripts; v3.0-v3.4)"
+  - lane: r19-guard-spec-critic-v4
+    role: review
+    seat: "claude-opus-5.5 (fresh spec critic on v4: SPEC-AMEND, 10 findings, all folded into v4.1 before build)"
+  - lane: r19-guard-v4-build
+    role: build
+    seat: "Codex external build seat (resolver, v4.1 rows, probe reruns, mutation scripts and evidence; prepare-only)"
 what_changed: |
   apps/mouth/src/test/r19-colour-guard.ts: values, declarations, class tokens. A class token is compiled with
   the app's real design system (globals.css through Tailwind's loader) and the emitted declarations are judged.
-  apps/mouth/src/test/r19-colour-source.ts: the source scan walks the TypeScript syntax tree; only class
-  positions, style objects, colour attributes and theme-color metadata are judged, with in-file resolution.
-  apps/mouth/src/test/r19-colour-guard.test.ts: the tables (712 tests) and the loader tripwires.
+  apps/mouth/src/test/r19-colour-source.ts: one in-memory Program/checker per file, exact lexical declarations,
+  memoized abstract sources, global fixed-point cycle passes, per-root P2 descent and fail-closed depth 256.
+  apps/mouth/src/test/r19-colour-guard.test.ts: 750 table tests including every v4.1 rule and time bound.
   TaxCalendarBody / MyTaxCalendar per-page guards: colour tests back, delegating to the modules.
 proof: |
-  Tables, guards, mutants and the innocence run are in the brief's acceptance with their probes. The
-  builder re-ran the table and both guards at 2026-09-29T18:58:43Z after the gate-7702 rework: 3 files, 704 tests passed, 1.53 s.
+  Tables, guards, probes, mutants and the innocence run are in the brief's acceptance. Fresh v4 receipts below
+  supersede the historical v3 receipts but preserve them as the audit trail.
 dissent:
   - seat: claude-opus-5.5
     objection: "gate-7691 on v2: positions decided by key spellings (imageAlt flagged), values judged only as bare strings (ternaries escape), *ClassName props and class maps unseen, color-mix of a var flagged."
@@ -40,6 +46,14 @@ dissent:
     objection: 'gate-7705b on v3.3: R1 (silent green, P1) walk() followed a member callee (`X.join`) instead of walking the receiver, so `className={["p-2", on && "bg-white"].filter(Boolean).join(" ")}` and `` className={`p-2 ${on ? "bg-white" : ""}`.trim()} `` were judged innocent; R2 (budget) memberValues recursed into spreads with the pre-hop budget, so a spread chain was not bounded like an alias chain; ArticleClient''s ReactMarkdown-fallback findings were classified L though the file has no isR19 gate.'
     status: CONFIRMED
     resolution: "Spec v3.4. walk() walks the receiver and the arguments of a property-access call; ONE budget object {hops, visited} flows through identifier, call, binding, member read, spread and ternary (a hop is counted while its results are consumed and given back after). Rows: two guilty and two innocent receiver shapes, the spread cycle, 4-step spread chain unresolved and 3-step guilty, class-position alias chains (4 unresolved, 3 guilty), converging-path budget rows. 10 mutants added; the visited-check EQUIVALENT claim is withdrawn and re-argued in the brief. ArticleClient reclassified R (R=22 L=124 O=0)."
+  - seat: claude-opus-5.5
+    objection: "gate-7714: resolution escaped the hop budget along bindings, the visited mutant was non-equivalent, and the path walker took 29 seconds on five Card/Panel pairs."
+    status: CONFIRMED
+    resolution: "Owner-ruled redesign. v4 removes the hop budget and path walk; a checker-backed abstract evaluator memoizes operation/node/name keys, cycles converge by global previous-pass re-evaluation, and depth over 256 fails closed. Nine old hop-limit expectations flip to guilty."
+  - seat: claude-opus-5.5
+    objection: "spec-critic-v4: an empty per-call cycle cut was declaration-order dependent; P2 re-descended objects; deep aliases could throw; join, Object.assign, template spans, plus, map/flatMap, useCallback and resolved-template context were incomplete."
+    status: CONFIRMED
+    resolution: "Spec v4.1 adopted every finding: previous-pass fixed point, per-root P2 visited set, fail-closed depth, the missing source rules, contextual span evaluation, literal-line plus optional use-line reporting, and dedicated time/mutation rows."
 receipts:
   - claim: "Table and both per-page guards green on HEAD."
     cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx"
@@ -101,12 +115,68 @@ receipts:
     exit: 0
     ts: "2026-09-30T02:00:36Z"
     seat: claude-opus-5.5
+  - claim: "v4.1 table and both per-page guards green after the final mutation restore."
+    cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx"
+    result: "3 files, 757 tests passed; combined duration 2.18 s. Separate runs: table 750 tests 1.78 s; TaxCalendarBody 4 tests 1.49 s; MyTaxCalendar 3 tests 1.18 s."
+    exit: 0
+    ts: "2026-09-30T03:35:20Z"
+    seat: Codex external build seat
+  - claim: "gate-7705b and gate-7714 probes rerun, including innocence and mouth-wide timing."
+    cmd: "cd apps/mouth && npx vitest run src/test/zz-v4-probe-1.test.ts src/test/zz-v4-probe-2.test.ts src/test/zz-v4-probe-3.test.ts src/test/zz-v4-probe-4.test.ts src/test/zz-v4-probe-5.test.ts src/test/zz-v4-probe-6.test.ts"
+    result: "6 temporary files / 8 tests passed, then removed; gate-7705b 178 rows with only F05 wrong; gate-7714 136 rows with only intentional no-hop flips B01/B03/B08; innocence R22/L124/O0; 1165 files, 0 throws, 7421 ms total, worst 153.8 ms in the concurrent six-probe run."
+    exit: 0
+    ts: "2026-09-30T03:42:33Z"
+    seat: Codex external build seat
+  - claim: "v4 resolver module mutants all killed with no broken, survivor or equivalent."
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v4-0930/mutate_module.py"
+    result: "106 mutants: 106 killed, 0 broken, 0 survived, 0 equivalent"
+    exit: 0
+    ts: "2026-09-30T03:35:01Z"
+    seat: Codex external build seat
+  - claim: "Product mutants T1-T5 and Y1-Y5 all red and product files restored."
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v4-0930/mutate_product.py"
+    result: "10 of 10 RED; git status showed no TaxCalendarBody.tsx or MyTaxCalendar.tsx change afterward"
+    exit: 0
+    ts: "2026-09-30T03:18:48Z"
+    seat: Codex external build seat
+  - claim: "v4 scoped suite and static checks green on the final resolver."
+    cmd: 'cd apps/mouth && npx vitest run src/components/funnel "src/app/(tax-calendar)" src/components/r19 src/app/api/tax-calendar src/test && npx tsc --noEmit && npx eslint --no-ignore src/test/r19-colour-source.ts src/test/r19-colour-guard.ts src/test/r19-colour-guard.test.ts'
+    result: "18 files / 923 tests passed; tsc exit 0; eslint exit 0; prettier clean on the three changed TS files and both evidence yml files"
+    exit: 0
+    ts: "2026-09-30T03:35:31Z"
+    seat: Codex external build seat
+  - claim: "Orchestrator rerun of the product mutants on the committed resolver: T1-T5 and Y1-Y5 all red, product files restored."
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v4-0930/mutate_product.py"
+    result: "10 of 10 RED (T5 and Y5 by the source scan only); git status clean on apps/ afterward"
+    exit: 0
+    ts: "2026-09-30T03:48:25Z"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "Orchestrator full rerun of the module mutants on the final script (process-group kill on the 12 s bound)."
+    cmd: "python3 -u evidence/2026-09/mouth-r19-guard-v4-0930/mutate_module.py"
+    result: "106 mutants: 106 killed, 0 broken, 0 survived, 0 equivalent; 2 killed by the time bound; 0 vitest processes left after the run"
+    exit: 0
+    ts: "2026-09-30T04:14:22Z"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "The two time-bound kills are real blow-ups, not load artifacts."
+    cmd: "each of 'memo is removed' and 'P2 per-root visited guard is removed' applied alone, then npx vitest run src/test/r19-colour-guard.test.ts with a 180 s bound, file restored with cp"
+    result: "both still running at 180 s (the unmutated table runs in about 2 s)"
+    exit: 0
+    ts: "before 2026-09-30T04:05:34Z (start of the full rerun above; exact time not recorded)"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
 pii_scan: clean
 pii_scan_note: "No client data; the tables hold synthetic CSS and TSX snippets."
 spend:
-  wall_clock_hours: 2
-  adversarial_rounds: 3
-appetite_exceeded: "Exceeded on size (floor 3): 1247 of 2659 added lines are the tables the spec requires; the concern is one and is not split to dodge the floor."
-seat_override: "No cross-family review seat ran; the reviews are two fresh Claude spec reads and the fresh Claude gate that follows. Recorded, not hidden."
+  wall_clock_hours: 3
+  adversarial_rounds: 5
+appetite_exceeded: "Exceeded on size: the resolver is a structural replacement, and the required v4.1 table, mutation coverage and retained audit history keep the concern indivisible."
+seat_override: "External Codex build seat is prepare-only. A fresh Claude gate must independently rerun the evidence and ship; generator is not grader."
 diff:
-  net_lines: "Not declared: the pack is part of the diff it would count."
+  base_merge_sha: 3bd9554551
+  resolver_commit_sha: 4d654c591c
+  scope: "the whole PR against main, measured on the staged tree before the evidence commit"
+  logical_files: 9
+  insertions: 4170
+  deletions: 2
+  net_lines: 4168
+  builder_delta: "The v4 build seat changed 7 logical files over the v3.4 base it inherited: 1455 insertions, 540 deletions."
+  rename_note: "The sandbox denied the builder the shared gitdir index.lock, so it moved the evidence directory in the filesystem; the orchestrator staged it and Git records the renames."
