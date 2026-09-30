@@ -1,6 +1,6 @@
 brief_ref: evidence/brief.yml
 plan_ref: >-
-  Branch agent/air-m5/mouth/r19-guard-v3b-0930 (base main): the R19 colour guard v3. The spec (v3.3) was
+  Branch agent/air-m5/mouth/r19-guard-v3c-0930 (base main): the R19 colour guard v3. The spec (v3.3) was
   reviewed twice by a fresh adversarial reader before any build, after gate-7691 returned REWORK-DESIGN on v2.
 lanes:
   - lane: r19-guard-spec-critic
@@ -14,7 +14,7 @@ what_changed: |
   the app's real design system (globals.css through Tailwind's loader) and the emitted declarations are judged.
   apps/mouth/src/test/r19-colour-source.ts: the source scan walks the TypeScript syntax tree; only class
   positions, style objects, colour attributes and theme-color metadata are judged, with in-file resolution.
-  apps/mouth/src/test/r19-colour-guard.test.ts: the tables (697 tests) and the loader tripwires.
+  apps/mouth/src/test/r19-colour-guard.test.ts: the tables (712 tests) and the loader tripwires.
   TaxCalendarBody / MyTaxCalendar per-page guards: colour tests back, delegating to the modules.
 proof: |
   Tables, guards, mutants and the innocence run are in the brief's acceptance with their probes. The
@@ -36,6 +36,10 @@ dissent:
     objection: "gate-7702 on v3: D1 identifiers bound by destructuring were never resolved (const { label, style } = config[s] ?? config.draft hid every literal of the map; MessageBubble config lines judged 0 times); D2 member reads restarted the depth budget so cross-referencing reads overflowed the stack; F1 parameter defaults were unjudged."
     status: CONFIRMED
     resolution: "Binding elements resolve to the matching member of what their pattern destructures and to their own default (spec v3.3); one depth/visited budget is threaded through every recursive step; parameter defaults are indexed. Rows model the LkpmBatchClient, portal lkpm and MessageBubble shapes with innocent twins, the D2 snippet is a no-throw row, and a row scans the real MessageBubble.tsx. The mutation script now counts a suite error as BROKEN and 15 mutants cover the new code (91 total: 90 killed, 0 broken, 0 survived, 1 argued equivalent)."
+  - seat: claude-opus-5.5
+    objection: 'gate-7705b on v3.3: R1 (silent green, P1) walk() followed a member callee (`X.join`) instead of walking the receiver, so `className={["p-2", on && "bg-white"].filter(Boolean).join(" ")}` and `` className={`p-2 ${on ? "bg-white" : ""}`.trim()} `` were judged innocent; R2 (budget) memberValues recursed into spreads with the pre-hop budget, so a spread chain was not bounded like an alias chain; ArticleClient''s ReactMarkdown-fallback findings were classified L though the file has no isR19 gate.'
+    status: CONFIRMED
+    resolution: "Spec v3.4. walk() walks the receiver and the arguments of a property-access call; ONE budget object {hops, visited} flows through identifier, call, binding, member read, spread and ternary (a hop is counted while its results are consumed and given back after). Rows: two guilty and two innocent receiver shapes, the spread cycle, 4-step spread chain unresolved and 3-step guilty, class-position alias chains (4 unresolved, 3 guilty), converging-path budget rows. 10 mutants added; the visited-check EQUIVALENT claim is withdrawn and re-argued in the brief. ArticleClient reclassified R (R=22 L=124 O=0)."
 receipts:
   - claim: "Table and both per-page guards green on HEAD."
     cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx"
@@ -62,16 +66,40 @@ receipts:
     ts: "2026-09-29T18:57:50Z"
     seat: claude-opus-5.5
   - claim: "Rework round 1: module mutants, no broken and no survivor except one argued equivalent."
-    cmd: "python3 evidence/2026-09/mouth-r19-guard-v3b-0930/mutate_module.py"
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v3c-0930/mutate_module.py"
     result: "91 mutants: 90 killed, 0 broken, 0 survived, 1 equivalent"
     exit: 0
     ts: "2026-09-29T18:56:30Z"
     seat: claude-opus-5.5
   - claim: "Rework round 1: product mutants T1-T5 and Y1-Y5 all red."
-    cmd: "python3 evidence/2026-09/mouth-r19-guard-v3b-0930/mutate_product.py"
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v3c-0930/mutate_product.py"
     result: "10 of 10 RED"
     exit: 0
     ts: "2026-09-29T18:56:49Z"
+    seat: claude-opus-5.5
+  - claim: "Rework round 2: table and both per-page guards green (after prettier)."
+    cmd: "cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx"
+    result: "table 712 tests 1.70 s; TaxCalendarBody 4 tests 2.03 s; MyTaxCalendar 3 tests 1.64 s"
+    exit: 0
+    ts: "2026-09-30T01:55:45Z"
+    seat: claude-opus-5.5
+  - claim: "Rework round 2: scoped suite, types, lint and format."
+    cmd: 'cd apps/mouth && npx vitest run src/components/funnel "src/app/(tax-calendar)" src/components/r19 src/app/api/tax-calendar src/test && npx tsc --noEmit && npx eslint --no-ignore <3 changed files> && npx prettier --check <3 changed files and both yml>'
+    result: "18 files / 885 tests passed; tsc exit 0; eslint exit 0; prettier clean (after --write on the table file)"
+    exit: 0
+    ts: "2026-09-30T01:55:32Z"
+    seat: claude-opus-5.5
+  - claim: "Rework round 2: module mutants, none broken, none survived, two argued equivalent."
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v3c-0930/mutate_module.py"
+    result: "101 mutants: 99 killed, 0 broken, 0 survived, 2 equivalent"
+    exit: 0
+    ts: "2026-09-30T02:00:18Z"
+    seat: claude-opus-5.5
+  - claim: "Rework round 2: product mutants T1-T5 and Y1-Y5 all red, files clean after."
+    cmd: "python3 evidence/2026-09/mouth-r19-guard-v3c-0930/mutate_product.py"
+    result: "10 of 10 RED; git status shows only the two intended product-test edits"
+    exit: 0
+    ts: "2026-09-30T02:00:36Z"
     seat: claude-opus-5.5
 pii_scan: clean
 pii_scan_note: "No client data; the tables hold synthetic CSS and TSX snippets."
