@@ -1047,6 +1047,67 @@ const sourceRows: Row[] = [
     "G",
     'const base = { style: { color: "white" } };\nfunction A() {\n  const style = base.style;\n  return <div style={style} />;\n}\nfunction B() {\n  const base2 = style.base;\n  const style = base2.style;\n  return <i />;\n}',
   ],
+  // call receivers are walked, never followed as a member (gate-7705b R1)
+  [
+    "G",
+    'export const C = ({ on }: { on: boolean }) => <div className={["p-2", on && "bg-white"].filter(Boolean).join(" ")} />;',
+  ],
+  [
+    "G",
+    'export const C = ({ on }: { on: boolean }) => <div className={`p-2 ${on ? "bg-white" : ""}`.trim()} />;',
+  ],
+  [
+    "I",
+    'export const C = ({ on }: { on: boolean }) => <div className={["p-2", on && "bg-(--r19-wash)"].filter(Boolean).join(" ")} />;',
+  ],
+  [
+    "I",
+    'export const C = ({ on }: { on: boolean }) => <div className={`p-2 ${on ? "bg-(--r19-wash)" : ""}`.trim()} />;',
+  ],
+  // one budget through spreads too (gate-7705b R2)
+  [
+    "I",
+    "const A = { ...B, pad: 1 };\nconst B = { ...A, gap: 2 };\nexport const C = () => <p style={{ color: A.color }} />;",
+  ],
+  [
+    "I",
+    'const A = { ...B };\nconst B = { ...C };\nconst C = { ...D };\nconst D = { color: "white" };\nexport const X = () => <p style={{ color: A.color }} />;',
+  ],
+  [
+    "G",
+    'const A = { ...B };\nconst B = { ...C };\nconst C = { color: "white" };\nexport const X = () => <p style={{ color: A.color }} />;',
+  ],
+  [
+    "G",
+    'export const C = ({ on }: { on: boolean }) => <div className={["p-2"].concat(on ? "bg-white" : "").join(" ")} />;',
+  ],
+  [
+    "I",
+    'export const C = ({ on }: { on: boolean }) => <div className={["p-2"].concat(on ? "bg-(--r19-wash)" : "").join(" ")} />;',
+  ],
+  // class-position alias chains follow the same 3-hop budget
+  [
+    "I",
+    'const a = b;\nconst b = c;\nconst c = d;\nconst d = "bg-white";\nexport const C = () => <div className={a} />;',
+  ],
+  [
+    "G",
+    'const a = b;\nconst b = c;\nconst c = "bg-white";\nexport const C = () => <div className={a} />;',
+  ],
+  // a hop is given back once a branch is done: the second branch has the whole budget
+  [
+    "G",
+    'const T = { color: "white" };\nconst B = { color: "white" };\nconst A1 = A2;\nconst A2 = { color: "var(--r19-ink)" };\nconst X = on ? A1 : B;\nexport const C = () => <p style={{ color: X.color }} />;',
+  ],
+  // a node reached first at the budget's edge is resolved again from a shallower path
+  [
+    "G",
+    'const T = { color: "white" };\nconst A2 = { ...T };\nconst A1 = A2;\nconst X = on ? A1 : A2;\nexport const C = () => <p style={{ color: X.color }} />;',
+  ],
+  [
+    "G",
+    'const T = { color: "white" };\nconst A2 = { ...T };\nconst A1 = A2;\nconst X = on ? A1 : A2;\nexport const C = () => <p style={X} />;',
+  ],
   // never judged
   ["I", el("<p style={{ margin: 0 }}>white red #fff rgba(0,0,0)</p>")],
   [
@@ -1257,6 +1318,13 @@ describe("r19 colour guard source: resolution budget and real files", () => {
   it("never overflows the stack on cross-referencing member reads", () => {
     const source =
       "function A() {\n  const style = base.style;\n  return <div style={style} />;\n}\nfunction B() {\n  const base = style.base;\n  return <i />;\n}";
+    expect(() => findings(source)).not.toThrow();
+    expect(findings(source)).toEqual([]);
+  });
+
+  it("never overflows the stack on a spread cycle", () => {
+    const source =
+      "const A = { ...B, pad: 1 };\nconst B = { ...A, gap: 2 };\nexport const C = () => <p style={{ color: A.color }} />;";
     expect(() => findings(source)).not.toThrow();
     expect(findings(source)).toEqual([]);
   });
