@@ -158,7 +158,7 @@ describe("NewClientPage — duplicate phone names the existing client", () => {
     detail: {
       error: "duplicate_phone",
       message: "A client with this phone already exists.",
-      existing_client_id: 4012,
+      existing_client_id: 40123,
       existing_full_name: "Existing Person",
       existing_assigned_to: "ari.firda@balizero.com",
     },
@@ -186,9 +186,9 @@ describe("NewClientPage — duplicate phone names the existing client", () => {
     await fillNameAndSubmit();
 
     const link = await screen.findByRole("link", {
-      name: /open existing client #4012 · existing person/i,
+      name: /open existing client #40123 · existing person/i,
     });
-    expect(link.getAttribute("href")).toBe("/clients/4012");
+    expect(link.getAttribute("href")).toBe("/clients/40123");
     expect(
       screen.getByText(/A client with this phone already exists\./),
     ).toBeTruthy();
