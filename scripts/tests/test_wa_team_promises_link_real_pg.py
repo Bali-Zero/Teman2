@@ -283,7 +283,7 @@ async def test_audit_counts_unknown_values_on_already_linked_promises(pg_socket_
             await conn.execute("INSERT INTO clients (id) VALUES (11)")
             await conn.execute("INSERT INTO team_members (email) VALUES ('member-1@example.invalid')")
         await _wmc(pool, 1, client_id=11, email="member-1@example.invalid")
-        await _wmc(pool, 2, client_id=None, email=None)
+        await _wmc(pool, 2, client_id=11, email="member-1@example.invalid")   # known source: the promise's own value must win
         await _promise(pool, 1, client_id=11, email="member-1@example.invalid")   # both known
         await _promise(pool, 2, client_id=77, email="stranger@example.invalid")   # linked, both unknown
         audit = await wtp.audit_link_counts(pool)
@@ -306,18 +306,18 @@ async def test_judge_insert_binds_its_own_message_when_several_messages_exist(pg
             # whatever order Postgres scans them in and whatever ON CONFLICT hides.
             await conn.execute(
                 "ALTER TABLE team_promises ADD CONSTRAINT only_message_3 "
-                "CHECK (client_id IS NULL OR client_id = 33)"
+                "CHECK (client_id IS NULL OR client_id = 22)"
             )
             cid = await conn.fetchval(
                 "INSERT INTO team_promise_candidates (message_id, clause_idx, clause_hash, promise_type) "
-                "VALUES (3, 0, $1, 'send') RETURNING id", _hash_clause(clause),
+                "VALUES (2, 0, $1, 'send') RETURNING id", _hash_clause(clause),
             )
-        assert await _apply_true(pool, cid, _hash_clause(clause), message_id=3, clause_idx=0,
+        assert await _apply_true(pool, cid, _hash_clause(clause), message_id=2, clause_idx=0,
                                   promise_type="send", due_at_hint=None, dry_run=False) == "true"
         async with pool.acquire() as conn:
             rows = await conn.fetch("SELECT message_id, client_id, team_member_email FROM team_promises")
         assert [(r["message_id"], r["client_id"], r["team_member_email"]) for r in rows] == [
-            (3, 33, "member-3@example.invalid")
+            (2, 22, "member-2@example.invalid")
         ]
 
 
