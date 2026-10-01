@@ -137,6 +137,8 @@ export interface PortalChallengeEntry {
   prize_slot?: number | null;
   /** September rank of a prize-taker; null for everyone else. */
   september_rank?: number | null;
+  /** Tied on a prize slot: no prize until the play-off decides it. */
+  playoff_pending?: boolean;
 }
 
 export interface PortalChallengeRecentActivation {

@@ -326,7 +326,7 @@ def render_round2_table(entries: list[r2.Round2Entry], markdown: bool) -> str:
             "unrev": e.unreviewed_documents,
             "penalty": e.penalty_points,
             "slot": e.prize_slot if e.prize_slot is not None else "-",
-            "prize_idr": e.prize_idr,
+            "prize_idr": "playoff" if e.playoff_pending else e.prize_idr,
             "choice": e.september_choice or "-",
         }
         for e in entries
