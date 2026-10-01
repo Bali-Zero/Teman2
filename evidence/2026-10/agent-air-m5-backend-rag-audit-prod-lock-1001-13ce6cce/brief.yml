@@ -17,9 +17,9 @@ constraints:
   - "Do not arm or merge; merge of apps/backend-rag/** is a Fly deploy, run by the conductor."
 acceptance:
   - text: "WHEN the pip-audit step runs on main's locks after this change, THEN both audits print 'No known vulnerabilities found' and the step exits 0."
-    probe: "step run: block extracted from tests.yml, executed in a throwaway venv"
+    probe: "bash -e tmp/step.sh"
   - text: "WHEN requirements-prod.lock.txt carries pyjwt 2.13.0, THEN the step exits non-zero naming pyjwt."
-    probe: "same step with the prod lock pyjwt reverted on a scratch copy"
+    probe: "requirements-prod.lock.txt && bash -e tmp/step.sh"
 consumer_map:
   - "Backend Static (Python) job, pip-audit step, on the next backend PR's merge_group run: prints one audit per lock."
   - "Fly image built from requirements-prod.lock.txt: ships urllib3 2.8.0 after the deploy this merge triggers."

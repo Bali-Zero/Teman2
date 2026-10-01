@@ -21,9 +21,9 @@ seat_override:
   Opus on-disk gate is requested before arming."
 diff:
   files: 5
-  insertions: 130
+  insertions: 129
   deletions: 31
-  net_lines: 99
+  net_lines: 98
   behaviour_change:
     "tests.yml pip-audit step: loops over requirements.lock.txt and requirements-prod.lock.txt with
     a single IGNORES array (same normalisation, same ignores). requirements.lock.txt: urllib3
