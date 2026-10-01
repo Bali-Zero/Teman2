@@ -20,6 +20,7 @@ APP = ROOT / "apps/mouth"
 GUARD = "src/test/r19-colour-guard.ts"
 SOURCE = "src/test/r19-colour-source.ts"
 TABLE = "src/test/r19-colour-guard.test.ts"
+TIMEOUT = int(os.environ.get("R19_MUTANT_TIMEOUT", "12"))
 
 MUTANTS = [
     # Value/declaration/class/DOM rules retained from v3.4.
@@ -86,9 +87,6 @@ MUTANTS = [
     # v4 evaluator, fixed point, checker, and fail-closed depth.
     ("memo is removed", SOURCE, "if (cached) return cached;", "if (false && cached) return cached;"),
     ("in-progress guard is removed", SOURCE, "if (active.has(key)) {", "if (false) {"),
-    ("cycle re-entry ignores previous pass", SOURCE, "return this.previous?.get(node)?.get(key) ?? new Set();", "return new Set();"),
-    ("growth is never detected", SOURCE, "if (value.size > (before?.size ?? 0)) return true;", "if (false) return true;"),
-    ("global re-pass is skipped", SOURCE, "previous = this.evaluator.memo;", "return this.findings;"),
     ("depth cap is removed", SOURCE, "if (this.depth >= MAX_EVALUATION_DEPTH) {", "if (false) {"),
     ("depth cap does not report unresolved", SOURCE, "this.onDepthExceeded();", ""),
     ("checker is replaced by file-scope name lookup", SOURCE, ": this.checker.getSymbolAtLocation(identifier);", ': this.checker.getSymbolsInScope(this.sourceFile, ts.SymbolFlags.Variable | ts.SymbolFlags.Function).find((candidate) => candidate.name === identifier.text);'),
@@ -134,36 +132,33 @@ MUTANTS = [
     ("P1 array source elements are ignored", SOURCE, "} else if (ts.isArrayLiteralExpression(source)) {", "} else if (false) {"),
     ("P2 per-root visited guard is removed", SOURCE, "if (visited.has(object)) return;", "if (false) return;"),
     ("P2 spread object descent is removed", SOURCE, "this.styleObject(source, visited, use);", "void source;"),
-    # v4.2 termination: finite interned domain, bounded chains, pass cap, named callbacks.
-    ("intern key ignores the template", SOURCE, "let byIndex = this.shared.interned.get(template);", "let byIndex = this.shared.interned.values().next().value;"),
-    ("intern key ignores the span index", SOURCE, "let bySource = byIndex.get(index);", "let bySource = byIndex.values().next().value;"),
-    ("intern key ignores the source identity", SOURCE, "let interned = bySource.get(source);", "let interned = bySource.values().next().value;"),
-    ("a template re-contextualizes its own chain", SOURCE, "if (chain.includes(node) || chain.length >= CONTEXT_CHAIN_MAX)", "if (chain.length >= CONTEXT_CHAIN_MAX)"),
-    ("the context chain has no length cap", SOURCE, "if (chain.includes(node) || chain.length >= CONTEXT_CHAIN_MAX)", "if (chain.includes(node))"),
-    ("the context chain does not accumulate", SOURCE, "chain: [...chain, template],", "chain: [template],"),
-    ("the pass cap is ignored", SOURCE, "if (pass >= maxPasses) {", "if (false) {"),
-    ("the pass cap option is ignored", SOURCE, "options?.maxPasses ?? MAX_FIXED_POINT_PASSES,", "MAX_FIXED_POINT_PASSES,"),
-    ("the default pass cap is one", SOURCE, "options?.maxPasses ?? MAX_FIXED_POINT_PASSES,", "options?.maxPasses ?? 1,"),
-    ("the pass cap finding names a fixed number", SOURCE, "`fixed point not reached in ${maxPasses} passes`", '"fixed point not reached in 128 passes"'),
-    ("a cut does not record its use", SOURCE, "this.firstCutUse ??= this.activeUse;", ""),
+    # v5 one pass: a cut is red, P1 descends once per use, work is bounded.
     ("named callbacks are not bound", SOURCE, "for (const receiver of this.namedCallbackReceivers(fn))", "for (const receiver of [] as ts.Expression[])"),
     ("named callbacks bind only the first call site", SOURCE, "this.namedCallbackReceivers(fn))\n          add(", "this.namedCallbackReceivers(fn).slice(0, 1))\n          add("),
     ("named callbacks bind any parameter", SOURCE, "isCallableFunction(fn) && fn.parameters[0] === parameter", "isCallableFunction(fn)"),
     ("named callbacks accept any method", SOURCE, "CALLBACK_METHODS.has(callee.name.text) &&\n            ts.isIdentifier(callback)", "ts.isIdentifier(callback)"),
+    ("a cut reports nothing", SOURCE, "if (this.firstCut) {", "if (false) {"),
+    ("the cycle finding is reported at line 1", SOURCE, "line: this.lineOf(this.firstCut.use),", "line: 1,"),
+    ("the cut line is not reported", SOURCE, "`cycle: a value depends on itself (cut at line ${this.lineOf(this.firstCut.node)})`", '"cycle: a value depends on itself"'),
+    ("the cut line is the use line", SOURCE, "(cut at line ${this.lineOf(this.firstCut.node)})", "(cut at line ${this.lineOf(this.firstCut.use)})"),
+    ("the cycle finding is added only when there is no other finding", SOURCE, "if (this.firstCut) {", "if (this.firstCut && this.findings.length === 0) {"),
+    ("the last cut is reported instead of the first", SOURCE, "this.firstCut ??= { use: this.activeUse, node };", "this.firstCut = { use: this.activeUse, node };"),
+    ("the P1 per-use visited check is removed", SOURCE, "if (descended.has(source)) return;", ""),
+    ("the P1 per-use visited set is never filled", SOURCE, "descended.add(source);", ""),
+    ("the work bound is ignored", SOURCE, "if (this.work >= MAX_GUARD_WORK) {", "if (false) {"),
+    ("the bound is reached but no finding is added", SOURCE, "if (!this.workExceeded) this.onWorkExceeded();", ""),
+    ("the work finding is added once per use", SOURCE, "if (!this.workExceeded) this.onWorkExceeded();", "this.onWorkExceeded();"),
+    ("the bound fires at 0", SOURCE, "const MAX_GUARD_WORK = 20000;", "const MAX_GUARD_WORK = 0;"),
+    ("judged sources are not charged", SOURCE, "if (!this.withUse(resolvedUse, () => this.evaluator.charge())) return;", ""),
+    ("contextual strings are not charged", SOURCE, "if (!this.charge()) break;", ""),
+    ("the judged-source charge runs outside the use", SOURCE, "this.withUse(resolvedUse, () => this.evaluator.charge())", "this.evaluator.charge()"),
+    ("unresolved findings are reported at line 1", SOURCE, "const line = this.lineOf(this.activeUse);\n    const key", "const line = 1;\n    const key"),
     ("windows paths are not normalised", SOURCE, 'path.replaceAll("\\\\", "/")', 'path.replaceAll("\\\\\\\\", "/")'),
     ("resolved use line is not reported", SOURCE, "...(useLine !== undefined && useLine !== line ? { use: useLine } : {}),", ""),
 ]
 
-# Argued equivalent, not run. Removing the intern lookup makes every wrap a fresh
-# object, but a ContextualString is only created inside sources(template), which
-# the memo evaluates once per pass, and every wrap lengthens `chain` (capped at
-# CONTEXT_CHAIN_MAX, never repeating a template), so the number of wrap
-# generations is bounded by the chain cap with or without identity. Verdicts,
-# findings and the number of passes are identical on every table row and on
-# 10 measured cyclic shapes; only the duplicate-object count and the time differ,
-# by a constant factor (1.07x at 5 templates, 1.26x at 7, 1.36x at 11).
+# Argued equivalent, not run: only the memo key separator.
 EQUIVALENT = [
-    ("contextual strings are not interned", SOURCE, "let interned = bySource.get(source);", "let interned: ContextualString | undefined;"),
     # Memo keys only need to keep operation and name apart; the separator is a
     # NUL or the six characters \\u0000, neither occurs in an operation name or in
     # a property name the guard reads, so the key partition is identical.
@@ -172,7 +167,7 @@ EQUIVALENT = [
 
 
 def main() -> int:
-    tmp = pathlib.Path(tempfile.mkdtemp(prefix="r19-v4-mutants-"))
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="r19-v5-mutants-"))
     backups = {}
     for rel in {GUARD, SOURCE}:
         backup = tmp / pathlib.Path(rel).name
@@ -204,7 +199,7 @@ def main() -> int:
                 start_new_session=True,
             )
             try:
-                stdout, stderr = run.communicate(timeout=12)
+                stdout, stderr = run.communicate(timeout=TIMEOUT)
                 output = stdout + stderr
                 failed = re.search(r"Tests\s+(\d+) failed", output)
                 if failed:
