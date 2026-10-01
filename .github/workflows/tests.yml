@@ -770,13 +770,22 @@ jobs:
             --ignore-vuln PYSEC-2026-1325
             --ignore-vuln PYSEC-2026-2290
           )
+          # The `if` suspends `bash -e` only for that pipeline, so the second lock is
+          # still audited when the first fails; any failure turns the step red via RC.
+          RC=0
           for lock in requirements.lock.txt requirements-prod.lock.txt; do
             echo "::group::pip-audit $lock"
-            grep -v '^-e \.\./\.\./packages/cell-core' "$lock" > /tmp/requirements-audit-raw.txt
-            sed -e '/^[[:space:]]*--hash=sha256:/d' -e 's/[[:space:]]\\$//' /tmp/requirements-audit-raw.txt > /tmp/requirements-audit.txt
-            pip-audit --strict --requirement /tmp/requirements-audit.txt "${IGNORES[@]}"
+            if grep -v '^-e \.\./\.\./packages/cell-core' "$lock" > /tmp/requirements-audit-raw.txt \
+              && sed -e '/^[[:space:]]*--hash=sha256:/d' -e 's/[[:space:]]\\$//' /tmp/requirements-audit-raw.txt > /tmp/requirements-audit.txt \
+              && pip-audit --strict --requirement /tmp/requirements-audit.txt "${IGNORES[@]}"; then
+              echo "pip-audit $lock: clean"
+            else
+              echo "::error::pip-audit failed on $lock"
+              RC=1
+            fi
             echo "::endgroup::"
           done
+          exit "$RC"
 
       - name: Mypy type check (core + models)
         run: |

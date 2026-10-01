@@ -13,7 +13,7 @@ objective: |
   audit reds on arrival.
 constraints:
   - "Same grep/sed normalisation and the same --ignore-vuln set for both locks (IGNORES array); no ignore added or removed."
-  - "Lock regeneration uses each lock's own header command plus --upgrade-package for exactly urllib3 (both) and virtualenv (CI lock); every other pin unchanged, except python-discovery 1.5.2 -> 1.6.1 which uv moves as virtualenv's dependency."
+  - "The urllib3/virtualenv/python-discovery lock bumps this brief originally carried landed via #7733 and are no longer in this diff; the diff is the pip-audit step plus this evidence."
   - "Do not arm or merge; merge of apps/backend-rag/** is a Fly deploy, run by the conductor."
 acceptance:
   - text: "WHEN the pip-audit step runs on main's locks after this change, THEN both audits print 'No known vulnerabilities found' and the step exits 0."
@@ -22,11 +22,11 @@ acceptance:
     probe: "requirements-prod.lock.txt && bash -e tmp/step.sh"
 consumer_map:
   - "Backend Static (Python) job, pip-audit step, on the next backend PR's merge_group run: prints one audit per lock."
-  - "Fly image built from requirements-prod.lock.txt: ships urllib3 2.8.0 after the deploy this merge triggers."
+  - "Fly image built from requirements-prod.lock.txt: its lock is now audited on every backend PR (the urllib3 2.8.0 bump shipped separately via #7733)."
 risks:
-  - "urllib3 2.7.0 -> 2.8.0 is a minor bump on the HTTP client used by requests/boto-style libs in prod; import smoke only (urllib3 + requests + virtualenv), the CI shards are the test of record."
+  - "A failing first audit must not hide the second: the step audits both locks, then fails via an accumulated RC (council MEDIUM, fixed and stub-proved)."
   - "CVE-2026-103001 (pyjwt, no fix version) appears only on pyjwt 2.13.0; pyjwt 2.15.1 is clean."
-  - "No real cross-family council convened (see pack seat_override)."
+  - "Council r1 (codex-gpt-5.6-sol, kimi-code/k3) ran on the workflow diff; the two PLAUSIBLE LOW findings stay OPEN, accepted (see pack dissent)."
 grader: |
-  Self-graded by the authoring session with executed receipts (green and red runs of the extracted
+  Council r1 (codex + kimi) plus executed receipts (green, red and stub runs of the extracted
   step); a fresh Opus gate session is requested before arming.
