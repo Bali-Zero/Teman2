@@ -15,6 +15,7 @@ import { CellWidget } from "@/components/cell/CellWidget";
 import { ZantaraWidget } from "@/components/workspace/ZantaraWidget";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
 import { PortalChampionCelebration } from "@/components/workspace/PortalChampionCelebration";
+import { VisaOracleTestingGuideOverlay } from "./dashboard/VisaOracleTestingGuideOverlay";
 import { I18nProvider } from "@/i18n";
 import { routeTitles } from "@/types/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -533,6 +534,9 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         />
         <KitaCommandPalette />
         <PortalChampionCelebration key={user.email} identity={user.email} />
+        <VisaOracleTestingGuideOverlay
+          identity={api.getUserProfile()?.email?.trim().toLowerCase() ?? ""}
+        />
       </ToastProvider>
     </I18nProvider>
   );
