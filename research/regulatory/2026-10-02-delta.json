@@ -1,0 +1,87 @@
+{
+  "run_at": "2026-10-02T07:07:42+08:00",
+  "today": "2026-10-02",
+  "yesterday_seen_count": 4,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "301->/articles, 200 OK, 'Menampilkan 0 berita', 'Memuat artikel perpajakan...' placeholder persists since 2026-09-07"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "connection timeout on both initial fetch and the one mechanical retry"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "latest items (1 Okt 2026) are Kapolri appointment, MK Gibran case, halal deadline news -- no Permenkumham/PMK/PP/Perpres/UU/Permenaker/Permenkes/BKPM citation in window"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; visible sidebar/related entries are old UU (Kepolisian 2002, Cipta Kerja 2022, PRT 2026-04), no PMK 2026 entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest press release 18 Sep 2026, unchanged from prior runs"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry KEP-185/PJ/2026 dated 2026-09-02, unchanged from prior runs"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible UU 2/2026 Pelindungan Pekerja Rumah Tangga, enacted 30 Apr 2026, unchanged from prior runs"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PMK 37/2025",
+      "title_id": "Peraturan Menteri Keuangan Nomor 37/2025 -- dasar hukum penunjukan penyelenggara marketplace sebagai pemungut PPh Pasal 22 atas penghasilan pedagang (seller) dalam negeri",
+      "title_en": "Minister of Finance Regulation PMK 37/2025 -- legal basis for appointing marketplace platforms as PPh Article 22 withholding agents on domestic online sellers' income",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "medium",
+      "confidence": "medium",
+      "impact_note": "DJP accelerated the marketplace PPh Pasal 22 withholding start date from the previously announced 1 Nov 2026 (PENG-46/PJ.09/2026) to today, 1 Oct 2026. Four marketplaces (Blibli, Shopee, Tokopedia, Lazada) now automatically withhold PPh 22 on seller payouts. DJP states this is not a new tax and requires no seller registration action, but Bali Zero clients selling via these platforms will see reduced net marketplace settlements starting today -- flag for bookkeeping/reconciliation, not for compliance action.",
+      "summary": "Pemerintah resmi menerapkan pemungutan PPh Pasal 22 oleh 4 marketplace (Blibli, Shopee, Tokopedia, Lazada) mulai 1 Oktober 2026, dipercepat dari rencana semula 1 November 2026. Dirjen Pajak Bimo Wijayanto menegaskan ini bukan jenis pajak baru, hanya perubahan mekanisme pemungutan PPh yang sudah menjadi kewajiban pedagang.",
+      "source": "DDTC https://news.ddtc.co.id/berita/nasional/1822926/sah-pemungutan-pph-22-marketplace-ternyata-sudah-berlaku-hari-ini",
+      "verbatim_excerpt": "Pemerintah resmi menerapkan kebijakan pemungutan PPh Pasal 22 oleh penyedia marketplace mulai hari ini, 1 Oktober 2026. [...] \"Kita sudah nunjuk 24 September kemarin, jadi pemungutan sudah mulai dilaksanakan hari ini. Ada 4 marketplace yang ditunjuk, Blibli, Shopee, Tokopedia, dan Lazada,\" ujarnya dalam Media Gathering Kementerian Keuangan, Kamis (1/10/2026). [...] Bimo menambahkan penerapan pemungutan pajak oleh marketplace sebagaimana diatur dalam PMK 37/2025 juga merupakan bagian dari upaya pemerintah merespons perkembangan ekonomi digital.",
+      "first_seen_at": "2026-10-02T07:07:42+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025"
+  ],
+  "note": "4/4 NB-INTEL returned nessuna novita (NB-INTEL-Tax re-surfaced PER-12/PJ/2026 as prior-session context, already in seen_citations from yesterday, not counted as new). Primary web sources: hukumonline checked_no_new; ortax/muc/ikpi unreachable (recurring pattern). DDTC surfaced PMK 37/2025 marketplace PPh 22 withholding start (accelerated from planned 1 Nov 2026 to today) -- single-outlet confidence medium, not cross-validated by a second independent source. Backup govt sources fetched per Step 3 rule (<3 primary deltas): bpk/imigrasi/pajak/kemnaker all outside_window/checked_no_new unchanged from prior runs; kemenkeu JDIH timed out on both attempts (1 mechanical retry used)."
+}
