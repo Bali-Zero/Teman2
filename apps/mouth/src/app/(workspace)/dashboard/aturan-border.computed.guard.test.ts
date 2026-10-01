@@ -22,7 +22,7 @@ import { describe, it, expect } from "vitest";
  *   - It checks the hover tint only for TEXT contrast (4.5:1), because the
  *     tint replaces the old hover affordance. Focus styling is `FOCUS` and is
  *     out of scope.
- *   - It says nothing about the 10px label size.
+ *   - It says nothing about the label size; portal-challenge-min-11px owns that.
  */
 
 const LIGHT = '[data-theme="operative-light"][data-product="kita"]';
