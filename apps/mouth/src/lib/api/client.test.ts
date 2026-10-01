@@ -422,6 +422,61 @@ describe("ApiClientBase", () => {
       );
     });
 
+    // Reported 24 Sep from /clients/new: every Create Client retry showed the
+    // literal banner "[object Object]". The backend's 409 duplicate_phone
+    // detail is an OBJECT (crm_clients.py), and it was passed to ApiError as
+    // the message. Payload below mirrors that route's shape.
+    it("uses detail.message when a non-422 detail is an object (409 duplicate_phone)", async () => {
+      const body = {
+        detail: {
+          error: "duplicate_phone",
+          message: "A client with this phone already exists.",
+          existing_client_id: 1,
+        },
+      };
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => body,
+      });
+
+      const err = await (client as any)
+        .request("/api/crm/clients/")
+        .catch((e: unknown) => e);
+      expect(err.message).toBe("A client with this phone already exists.");
+      expect(err.message).not.toContain("[object Object]");
+      expect(err.statusCode).toBe(409);
+      // The structured body stays reachable for a future "open existing" action.
+      expect(err.data).toEqual(body);
+    });
+
+    it("falls back to HTTP <status> when detail is an object without a message", async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ detail: { error: "conflict" } }),
+      });
+
+      await expect((client as any).request("/test")).rejects.toThrow(
+        /^HTTP 409$/,
+      );
+    });
+
+    it("falls back to HTTP <status> when a non-422 detail is an array", async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ detail: [{ msg: "bad" }] }),
+      });
+
+      await expect((client as any).request("/test")).rejects.toThrow(
+        /^HTTP 400$/,
+      );
+    });
+
     it("should handle empty responses (204)", async () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,

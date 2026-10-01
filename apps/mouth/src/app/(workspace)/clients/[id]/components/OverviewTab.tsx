@@ -450,11 +450,14 @@ export function OverviewTab({
               <div className="grid grid-cols-2 gap-3 mt-4">
                 {/* Family tile dropped — the Family tab label already shows
                     `Family (${stats.family_count})`, same source value. */}
-                <div className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1">
+                <div
+                  className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1"
+                  title="Uploaded client documents. Company documents are counted separately."
+                >
                   <div className="flex items-center gap-1.5 mb-1">
                     <FileText className="w-3.5 h-3.5 text-purple-500" />
                     <span className="text-[10px] text-[var(--bz-text-2)]">
-                      Docs
+                      Client docs
                     </span>
                   </div>
                   <p className="text-lg font-bold">{stats.documents_count}</p>
