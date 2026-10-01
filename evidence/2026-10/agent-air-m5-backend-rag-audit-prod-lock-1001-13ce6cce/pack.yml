@@ -1,0 +1,53 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "team-lead dispatch (2026-10-01): CI pip-audit must also audit requirements-prod.lock.txt with a
+  shared ignore list; show RED on a prod-lock copy with pyjwt 2.13.0 and GREEN on main's prod lock.
+  task-id audit-prod-lock-1001, lane backend-rag."
+lanes:
+  - lane: audit-prod-lock-1001
+    role: build
+    seat:
+      "claude-sonnet-5-5 (this session): edited the pip-audit step into a two-lock loop with one
+      IGNORES array, ran it green and red locally, found and bumped the two newly flagged
+      packages, authored this pack."
+seat_diversity: not_applicable
+seat_diversity_note: "One build lane (fewer than 2); no review lane declared. council_run is handled by seat_override."
+pii_scan: clean
+seat_override:
+  "council_run (R9): no journal.jsonl with >=2 distinct COUNCIL_REVIEW_SEATS entries. This is a solo
+  Claude Sonnet 5.5 session; COUNCIL_REVIEW_SEATS names only non-Anthropic seats and this builder
+  does not dispatch external seats, so a journal would have to be fabricated, which is worse than
+  the documented seat_override escape. The honest state is: no council reviewed this diff; a fresh
+  Opus on-disk gate is requested before arming."
+diff:
+  files: 5
+  insertions: 130
+  deletions: 31
+  net_lines: 99
+  behaviour_change:
+    "tests.yml pip-audit step: loops over requirements.lock.txt and requirements-prod.lock.txt with
+    a single IGNORES array (same normalisation, same ignores). requirements.lock.txt: urllib3
+    2.7.0->2.8.0, virtualenv 21.7.4->21.14.1, python-discovery 1.5.2->1.6.1. requirements-prod.lock.txt:
+    urllib3 2.7.0->2.8.0. Plus this brief and pack."
+receipts:
+  - claim: "GREEN: the extracted step, run on the final locks, audits both and exits 0."
+    cmd: "PATH=apps/backend-rag/tmp/venv/bin:$PATH bash -e tmp/step.sh"
+    exit: 0
+    ts: "2026-10-01T09:10Z"
+    seat: claude-sonnet-5-5
+  - claim: "RED: with the prod lock's pyjwt reverted to 2.13.0 on a scratch edit, the same step exits non-zero listing pyjwt advisories (13)."
+    cmd: "sed -i '' 's/^pyjwt==2.15.1/pyjwt==2.13.0/' requirements-prod.lock.txt && bash -e tmp/step.sh"
+    exit: 1
+    ts: "2026-10-01T09:12Z"
+    seat: claude-sonnet-5-5
+  - claim: "BEFORE the urllib3 bump, main's prod lock alone failed the audit: urllib3 2.7.0 CVE-2026-97687/97688/97689."
+    cmd: "LOCKS=requirements-prod.lock.txt bash -e tmp/step2.sh"
+    exit: 1
+    ts: "2026-10-01T09:08Z"
+    seat: claude-sonnet-5-5
+dissent:
+  - seat: claude-sonnet-5-5
+    objection:
+      "council_run (R9) not satisfied by a real journal; seat_override used, no external seat reviewed
+      this diff. Recorded so a reader sees both the escape and the underlying fact."
+    status: CONFIRMED

@@ -1,0 +1,32 @@
+task_id: audit-prod-lock-1001
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  CI's pip-audit step (Backend Static, .github/workflows/tests.yml) audited only
+  apps/backend-rag/requirements.lock.txt, while the Fly image installs
+  requirements-prod.lock.txt (Dockerfile). #7708 fixed the CI lock; production kept pyjwt 2.13.0
+  until #7709. Make the step audit BOTH locks with ONE shared ignore list so the two audits cannot
+  drift. Landing it exposed that main was already red today on new advisories (urllib3 2.7.0:
+  CVE-2026-97687/97688/97689, fix 2.8.0, present in BOTH locks and live in prod; virtualenv 21.7.4:
+  four PYSEC ids, CI lock only), so the same PR bumps those two packages; without them the new
+  audit reds on arrival.
+constraints:
+  - "Same grep/sed normalisation and the same --ignore-vuln set for both locks (IGNORES array); no ignore added or removed."
+  - "Lock regeneration uses each lock's own header command plus --upgrade-package for exactly urllib3 (both) and virtualenv (CI lock); every other pin unchanged, except python-discovery 1.5.2 -> 1.6.1 which uv moves as virtualenv's dependency."
+  - "Do not arm or merge; merge of apps/backend-rag/** is a Fly deploy, run by the conductor."
+acceptance:
+  - text: "WHEN the pip-audit step runs on main's locks after this change, THEN both audits print 'No known vulnerabilities found' and the step exits 0."
+    probe: "step run: block extracted from tests.yml, executed in a throwaway venv"
+  - text: "WHEN requirements-prod.lock.txt carries pyjwt 2.13.0, THEN the step exits non-zero naming pyjwt."
+    probe: "same step with the prod lock pyjwt reverted on a scratch copy"
+consumer_map:
+  - "Backend Static (Python) job, pip-audit step, on the next backend PR's merge_group run: prints one audit per lock."
+  - "Fly image built from requirements-prod.lock.txt: ships urllib3 2.8.0 after the deploy this merge triggers."
+risks:
+  - "urllib3 2.7.0 -> 2.8.0 is a minor bump on the HTTP client used by requests/boto-style libs in prod; import smoke only (urllib3 + requests + virtualenv), the CI shards are the test of record."
+  - "CVE-2026-103001 (pyjwt, no fix version) appears only on pyjwt 2.13.0; pyjwt 2.15.1 is clean."
+  - "No real cross-family council convened (see pack seat_override)."
+grader: |
+  Self-graded by the authoring session with executed receipts (green and red runs of the extracted
+  step); a fresh Opus gate session is requested before arming.
