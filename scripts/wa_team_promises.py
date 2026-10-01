@@ -57,10 +57,12 @@ import argparse
 import asyncio
 import fcntl
 import hashlib
+import ipaddress
 import json
 import logging
 import os
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -792,12 +794,30 @@ class OllamaTransportError(RuntimeError):
     tick stops here so an Ollama outage can never quarantine the backlog."""
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A 3xx from the local endpoint surfaces as an HTTPError (a transport
+    failure) instead of being followed — the request body never goes to a
+    host the locality guard did not check."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def _judge_opener() -> urllib.request.OpenerDirector:
     """`ProxyHandler({})` unconditionally overrides HTTP_PROXY/http_proxy/
     ALL_PROXY — the opener never consults the environment, so this call
     always reaches 127.0.0.1:11434 directly regardless of what a proxy-aware
-    caller (cron, a wrapped shell) has set."""
-    return urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    caller (cron, a wrapped shell) has set. Redirects are never followed."""
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+
+
+def _no_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    out: dict = {}
+    for k, v in pairs:
+        if k in out:
+            raise ValueError("duplicate_key")
+        out[k] = v
+    return out
 
 
 def _parse_verdict(content: object, key: str = "future_commitment_by_sender") -> bool | None:
@@ -812,7 +832,7 @@ def _parse_verdict(content: object, key: str = "future_commitment_by_sender") ->
     if not isinstance(content, str):
         return None
     try:
-        parsed = json.loads(content)
+        parsed = json.loads(content, object_pairs_hook=_no_duplicate_keys)
     except (ValueError, TypeError):
         return None
     if not isinstance(parsed, dict) or set(parsed.keys()) != {key}:
@@ -1604,6 +1624,8 @@ _AUDIT_STATE_FILE = STATE_DIR / "wa_team_promises_audit.json"
 # A digest never quotes a precision older than three weekly runs.
 _AUDIT_MAX_AGE_SECONDS = 21 * 24 * 3600
 _LOCAL_OLLAMA_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+# A state stamped slightly ahead of this clock is tolerated; further ahead is not trusted.
+_AUDIT_CLOCK_SKEW_SECONDS = 300
 
 _AUDIT_SCHEMA: dict = {
     "type": "object",
@@ -1650,6 +1672,14 @@ def _guard_ollama_local(url: str | None = None) -> None:
         raise EnvGuardError("ollama_not_local") from None
     if scheme != "http" or parts.username or parts.password or host not in _LOCAL_OLLAMA_HOSTS:
         raise EnvGuardError("ollama_not_local")
+    if host == "localhost":
+        try:
+            addrs = {ai[4][0] for ai in socket.getaddrinfo(host, None)}
+            loopback = bool(addrs) and all(ipaddress.ip_address(a.split("%")[0]).is_loopback for a in addrs)
+        except (OSError, ValueError):
+            loopback = False
+        if not loopback:
+            raise EnvGuardError("ollama_not_local")
 
 
 def _parse_audit_verdict(content: object) -> bool | None:
@@ -1746,7 +1776,8 @@ def _load_audit_state(now: float | None = None) -> dict[str, AuditCounts] | None
         ts, kinds = raw["ts"], raw["kinds"]
         if set(raw) != {"ts", "kinds"} or not _is_count(ts) or not isinstance(kinds, dict):
             return None
-        if (time.time() if now is None else now) - ts > _AUDIT_MAX_AGE_SECONDS or set(kinds) != set(_AUDIT_KINDS):
+        age = (time.time() if now is None else now) - ts
+        if not -_AUDIT_CLOCK_SKEW_SECONDS <= age <= _AUDIT_MAX_AGE_SECONDS or set(kinds) != set(_AUDIT_KINDS):
             return None
         out: dict[str, AuditCounts] = {}
         for kind, v in kinds.items():

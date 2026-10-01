@@ -382,3 +382,105 @@ def test_cron_wrapper_exists_runs_the_audit_and_documents_its_crontab_line():
     assert "wa_team_promises_audit_cron.sh" in text.split("Crontab wiring", 1)[1]
     assert "--dry-run" not in text.split("set -uo pipefail", 1)[1]
     assert subprocess.run(["bash", "-n", str(CRON)], capture_output=True).returncode == 0
+
+
+# H — council round: duplicate keys, redirects, localhost resolution, future-dated state.
+
+@pytest.mark.parametrize("key,fn", [
+    ("evidence_fulfils_promise", wtp._parse_audit_verdict),
+    ("future_commitment_by_sender", wtp._parse_verdict),
+])
+def test_a_duplicate_key_in_the_verdict_is_invalid_never_plausible(key, fn):
+    assert fn(f'{{"{key}": false, "{key}": true}}') is None
+    assert fn(f'{{"{key}": true, "{key}": true}}') is None
+
+
+def _redirecting_do_open(monkeypatch, status):
+    import email.message
+    import io
+    import urllib.request as ur
+    import urllib.response
+
+    calls = []
+
+    def fake_do_open(self, http_class, req, **kw):
+        calls.append(req.full_url)
+        headers = email.message.Message()
+        headers["Location"] = "http://off-host.example.invalid/api/chat"
+        resp = urllib.response.addinfourl(io.BytesIO(b""), headers, req.full_url, status)
+        resp.msg = "Redirect"
+        return resp
+
+    monkeypatch.setattr(ur.HTTPHandler, "do_open", fake_do_open)
+    return calls
+
+
+@pytest.mark.parametrize("status", [301, 302, 307, 308])
+def test_the_opener_never_follows_a_redirect_off_the_machine(monkeypatch, status):
+    calls = _redirecting_do_open(monkeypatch, status)
+    with pytest.raises(wtp.OllamaTransportError):
+        wtp._ollama_chat(wtp._judge_opener(), "s", "u", wtp._AUDIT_SCHEMA)
+    assert calls == ["http://127.0.0.1:11434/api/chat"]
+
+
+def test_a_redirecting_endpoint_is_never_counted_plausible(monkeypatch):
+    calls = _redirecting_do_open(monkeypatch, 307)
+    with pytest.raises(wtp.OllamaTransportError):
+        wtp._call_ollama_audit(wtp._judge_opener(), "send", "x", {"kind": "text", "text": "y"})
+    assert len(calls) == 1
+
+
+def _resolver(*addrs):
+    import socket
+    return lambda host, port, *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0)) for ip in addrs]
+
+
+def test_localhost_resolving_off_loopback_is_refused(monkeypatch):
+    import socket
+    monkeypatch.setattr(socket, "getaddrinfo", _resolver("10.0.0.5"))
+    with pytest.raises(wtp.EnvGuardError):
+        wtp._guard_ollama_local("http://localhost:11434/api/chat")
+    monkeypatch.setattr(socket, "getaddrinfo", _resolver("127.0.0.1", "10.0.0.5"))
+    with pytest.raises(wtp.EnvGuardError):
+        wtp._guard_ollama_local("http://localhost:11434/api/chat")
+
+
+def test_localhost_resolving_only_to_loopback_passes(monkeypatch):
+    import socket
+    monkeypatch.setattr(socket, "getaddrinfo", _resolver("127.0.0.1", "127.0.0.2"))
+    assert wtp._guard_ollama_local("http://localhost:11434/api/chat") is None
+
+
+def test_localhost_that_does_not_resolve_is_refused(monkeypatch):
+    import socket
+
+    def boom(*a, **k):
+        raise socket.gaierror("nope")
+    monkeypatch.setattr(socket, "getaddrinfo", boom)
+    with pytest.raises(wtp.EnvGuardError):
+        wtp._guard_ollama_local("http://localhost:11434/api/chat")
+
+
+@pytest.mark.asyncio
+async def test_cli_refuses_localhost_resolving_off_loopback_before_connecting(cli, monkeypatch, state_file):
+    import socket
+    monkeypatch.setattr(socket, "getaddrinfo", _resolver("10.0.0.5"))
+    monkeypatch.setattr(wtp, "_OLLAMA_URL", "http://localhost:11434/api/chat")
+    assert await wtp.cli_main(["--audit-resolution"]) == 2
+    assert cli["pool"] == 0 and cli["audit"] == []
+
+
+def test_a_future_dated_state_is_ignored(state_file):
+    wtp._save_audit_state(_results())
+    d = json.loads(state_file.read_text())
+    d["ts"] = int(time.time()) + 24 * 3600
+    state_file.write_text(json.dumps(d))
+    assert wtp._load_audit_state() is None
+
+
+def test_a_small_clock_skew_is_tolerated(state_file):
+    wtp._save_audit_state(_results())
+    d = json.loads(state_file.read_text())
+    d["ts"] = int(time.time()) + wtp._AUDIT_CLOCK_SKEW_SECONDS - 5
+    state_file.write_text(json.dumps(d))
+    assert wtp._load_audit_state() is not None

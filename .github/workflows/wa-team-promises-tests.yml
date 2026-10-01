@@ -187,7 +187,7 @@ jobs:
       - name: The T3 promise gate corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=393   # T3 PR-3 gate conditions C1+C2 (G1-G7 + G-LOW-1 subprocess variant) + P2 PR-C audit (80): unit-run passed count, REAL_PG unset
+          FLOOR=406   # T3 PR-3 gate conditions C1+C2 (G1-G7 + G-LOW-1 subprocess variant) + P2 PR-C audit (+82, then +13 council-round cases = +95 over the 311 base): unit-run passed count, REAL_PG unset
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"
