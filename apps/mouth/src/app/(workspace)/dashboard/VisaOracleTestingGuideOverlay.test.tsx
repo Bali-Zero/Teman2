@@ -1,5 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   VisaOracleTestingGuideOverlay,
@@ -60,11 +66,13 @@ function mount(now: () => Date = () => T0) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  const tree = () => (
     <QueryClientProvider client={client}>
       <VisaOracleTestingGuideOverlay identity="tester@example.test" now={now} />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+  const view = render(tree());
+  return { ...view, rerenderSame: () => view.rerender(tree()) };
 }
 
 describe("VisaOracleTestingGuideOverlay", () => {
@@ -72,6 +80,10 @@ describe("VisaOracleTestingGuideOverlay", () => {
     mocks.load.mockReset();
     mocks.pathname = "/dashboard";
     window.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("shows for a slot holder with pending cases and links to the testing page", async () => {
@@ -84,8 +96,32 @@ describe("VisaOracleTestingGuideOverlay", () => {
     const link = screen.getByRole("link", { name: /Mulai uji sekarang/ });
     expect(link.getAttribute("href")).toBe("/intelligence/visa-oracle/testing");
     await waitFor(() => expect(document.activeElement).toBe(link));
-    fireEvent.click(link);
+  });
+
+  it("comes back after the link was clicked once the tester leaves the testing page", async () => {
+    mocks.load.mockResolvedValue(fixture());
+    const view = mount();
+    fireEvent.click(await screen.findByRole("link", { name: /Mulai uji/ }));
+    mocks.pathname = "/intelligence/visa-oracle/testing";
+    view.rerenderSame();
     expect(screen.queryByRole("dialog")).toBeNull();
+    mocks.pathname = "/clients";
+    view.rerenderSame();
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
+
+  it("reappears 30 minutes after Nanti without remounting", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    mocks.load.mockResolvedValue(fixture());
+    let t = T0.getTime();
+    mount(() => new Date(t));
+    fireEvent.click(await screen.findByRole("button", { name: "Nanti" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    t += 31 * 60_000;
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
   it("is hidden on the testing page", async () => {

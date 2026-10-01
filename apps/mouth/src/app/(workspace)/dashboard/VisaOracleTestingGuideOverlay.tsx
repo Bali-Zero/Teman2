@@ -56,7 +56,6 @@ export function VisaOracleTestingGuideOverlay({
   now?: () => Date;
 }) {
   const pathname = usePathname();
-  const [closed, setClosed] = useState(false);
   const [, rerender] = useState(0);
   const primaryRef = useRef<HTMLAnchorElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -75,10 +74,7 @@ export function VisaOracleTestingGuideOverlay({
   const submitted = isError ? null : bannerProgress(data, today);
   const onTestingPage = Boolean(pathname?.startsWith(HREF));
   const visible =
-    submitted !== null &&
-    !onTestingPage &&
-    !closed &&
-    !snoozed(today, current.getTime());
+    submitted !== null && !onTestingPage && !snoozed(today, current.getTime());
 
   const dismiss = () => {
     try {
@@ -89,9 +85,17 @@ export function VisaOracleTestingGuideOverlay({
     } catch {
       /* storage unavailable: dismiss for this mount only */
     }
-    setClosed(true);
     rerender((n) => n + 1);
   };
+
+  // While hidden by the snooze, tick so it reappears once the 30 minutes pass
+  // even if no query data changes (the layout stays mounted across navigation).
+  const hiddenBySnooze = submitted !== null && !onTestingPage && !visible;
+  useEffect(() => {
+    if (!hiddenBySnooze) return;
+    const id = setInterval(() => rerender((n) => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, [hiddenBySnooze]);
 
   const dismissRef = useRef(dismiss);
   dismissRef.current = dismiss;
@@ -164,7 +168,6 @@ export function VisaOracleTestingGuideOverlay({
             <Link
               ref={primaryRef}
               href={HREF}
-              onClick={() => setClosed(true)}
               className={`inline-flex min-h-14 items-center justify-center bg-[var(--bz-copper)] px-8 text-lg font-extrabold text-[var(--bz-on-warm)] hover:opacity-90 ${FOCUS}`}
             >
               Mulai uji sekarang →
