@@ -297,6 +297,36 @@ receipts:
     exit: 0
     ts: "2026-10-01T07:55Z"
     seat: claude-opus-5.5
+  - claim: "Orchestrator: C06 walk-up is one cycle finding with its cut line, the P1 recursive array builder does not throw and its bg-white twin is found, REC2 is a cycle, a non-recursive helper used twice stays [] (temporary file, removed after)."
+    cmd: "cd apps/mouth && npx vitest run src/test/zz-orch-v5.test.ts (own process group, 120 s bound)"
+    result: "5 passed"
+    exit: 0
+    ts: "before 2026-10-01T08:11:29Z (start of the table run below)"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "Orchestrator: table and both per-page guards, scoped suite and types on the v5 head."
+    cmd: 'cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts src/components/funnel/TaxCalendarBody.r19-guard.test.tsx src/components/funnel/MyTaxCalendar.r19-guard.test.tsx && npx vitest run src/components/funnel "src/app/(tax-calendar)" src/components/r19 src/app/api/tax-calendar src/test && npx tsc --noEmit'
+    result: "807 passed in 2.39 s; scoped 18 files / 973 passed; tsc exit 0"
+    exit: 0
+    ts: "2026-10-01T08:11:29Z"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "Orchestrator: product mutants T1-T5 and Y1-Y5 all red."
+    cmd: "python3 -u evidence/2026-10/mouth-r19-guard-v5-1001/mutate_product.py"
+    result: "10 of 10 RED; git status clean afterward"
+    exit: 0
+    ts: "2026-10-01T08:11:43Z"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "Orchestrator: full module mutant run on the final script."
+    cmd: "python3 -u evidence/2026-10/mouth-r19-guard-v5-1001/mutate_module.py"
+    result: "125 mutants: 124 killed, 0 broken, 0 survived, 1 equivalent (NUL separator, argued, not run); 12 s time-bound kills: memo, P2 visited, work bound ignored, judged sources not charged; 0 vitest processes left"
+    exit: 0
+    ts: "2026-10-01T08:18:28Z"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
+  - claim: "Orchestrator: the two work mutants that hit the 12 s bound die by assertion when run alone with 130 s."
+    cmd: "R19_MUTANT_TIMEOUT=130 R19_MUTANT_FILTER='^(the work bound is ignored|judged sources are not charged)$' python3 -u evidence/2026-10/mouth-r19-guard-v5-1001/mutate_module.py"
+    result: "the work bound is ignored: KILLED 5 rows; judged sources are not charged: KILLED 3 rows"
+    exit: 0
+    ts: "after 2026-10-01T08:18:28Z (after the full run above; exact time not recorded)"
+    seat: claude-opus-5.5 (orchestrator, not the builder)
 pii_scan: clean
 pii_scan_note: "No client data; the tables hold synthetic CSS and TSX snippets."
 spend:
@@ -308,7 +338,7 @@ diff:
   base_merge_sha: d8f1d44e57
   resolver_commit_sha: aefebf867c
   scope: "the whole PR against its merge-base with origin/main"
-  insertions: 4893
+  insertions: 4923
   deletions: 2
   builder_delta: "Over the b929ed28ce tip it inherited, the v5 build touched the resolver, the table, the brief, the pack and the module mutation script, and moved the evidence directory with git mv."
   rename_note: "The evidence directory was renamed with git mv from mouth-r19-guard-v4b-0930 (2026-09) to mouth-r19-guard-v5-1001 (2026-10); historical receipts keep the v3c-0930, v4-0930 or v4b-0930 path they actually ran on."
