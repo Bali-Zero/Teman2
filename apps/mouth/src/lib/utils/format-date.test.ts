@@ -4,6 +4,7 @@ import {
   formatDateShort,
   formatDateLong,
   formatTimeAgo,
+  formatLongSpan,
 } from "./format-date";
 
 describe("formatDate", () => {
@@ -109,5 +110,34 @@ describe("formatTimeAgo", () => {
     // Should be a formatted date, not "Xd ago"
     expect(result).not.toMatch(/d ago/);
     expect(result).toMatch(/\d{4}/); // Contains year
+  });
+});
+
+// Reported 13 Aug from the clients workspace: a passport valid ~9 more years
+// rendered "111mo" because every expiry chip stopped at months.
+describe("formatLongSpan", () => {
+  it("renders the reported ~9-year passport in years, never as 111mo", () => {
+    // 3345 days = the span that rendered "111mo" (Math.floor(3345 / 30)).
+    expect(formatLongSpan(3345)).toBe("9y 2mo");
+    expect(formatLongSpan(3345)).not.toMatch(/\d{3}mo/);
+  });
+
+  it("rolls over exactly at a year", () => {
+    expect(formatLongSpan(364)).toBe("12mo");
+    expect(formatLongSpan(365)).toBe("1y");
+    expect(formatLongSpan(366)).toBe("1y");
+  });
+
+  it("keeps a month remainder and never shows 12mo next to a year", () => {
+    expect(formatLongSpan(469)).toBe("1y 3mo");
+    expect(formatLongSpan(729)).toBe("1y 11mo");
+    expect(formatLongSpan(730)).toBe("2y");
+    expect(formatLongSpan(3650)).toBe("10y");
+  });
+
+  it("stays months-only below a year and clamps nonsense input", () => {
+    expect(formatLongSpan(45)).toBe("1mo");
+    expect(formatLongSpan(0)).toBe("0mo");
+    expect(formatLongSpan(-10)).toBe("0mo");
   });
 });

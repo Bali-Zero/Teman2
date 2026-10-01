@@ -63,6 +63,29 @@ describe("TeamActivityPanel", () => {
     expect(screen.getByText("Rp 45M")).toBeInTheDocument();
   });
 
+  // Filed 15 Sep: "· Current Period" rendered at 9px and the member role at
+  // 8px, below the 11px floor the rest of the panel already uses. The kita
+  // contrast guard (#7175) checks colour only, never size, so this pins size.
+  it("GUILT: renders no text below 11px (header, online count, member role)", () => {
+    const { container } = render(
+      <TeamActivityPanel
+        members={[member()]}
+        overview={{ active_today: 2 }}
+        isLoading={false}
+      />,
+    );
+    const sizes = [
+      ...container.innerHTML.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g),
+    ].map((m) => Number(m[1]));
+    // Positive control: the panel does use explicit px sizes, so an empty
+    // list would mean the probe read nothing, not that the panel is clean.
+    expect(sizes.length).toBeGreaterThan(0);
+    expect(sizes.filter((px) => px < 11)).toEqual([]);
+    expect(screen.getByText("· Current Period").className).toContain(
+      "text-[11px]",
+    );
+  });
+
   it("shows the empty state when there are no members", () => {
     render(
       <TeamActivityPanel members={[]} overview={null} isLoading={false} />,
