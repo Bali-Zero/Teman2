@@ -348,3 +348,83 @@ describe("CompanyTab — r19 kv-grid ledger", () => {
     expect(screen.getByText("Rekening Koran")).toBeInTheDocument();
   });
 });
+
+describe("CompanyTab — more than one linked company", () => {
+  it("GUILT: the primary link is shown even when the API returns it second", async () => {
+    mockGetClientCompanies.mockResolvedValueOnce([
+      link({
+        link_id: 11,
+        company_id: 91,
+        company_name: "PT Synthetic Pool",
+        is_primary: false,
+      }),
+      link({
+        link_id: 12,
+        company_id: 92,
+        company_name: "PT Synthetic Own",
+        is_primary: true,
+      }),
+    ]);
+    renderTab();
+    expect(await screen.findByText("PT Synthetic Own")).toBeInTheDocument();
+    await waitFor(() => expect(mockGetCompany).toHaveBeenCalledWith(92));
+    expect(mockGetCompany).not.toHaveBeenCalledWith(91);
+  });
+
+  it("GUILT: the other links are listed, so a second PT is not silently hidden", async () => {
+    mockGetClientCompanies.mockResolvedValueOnce([
+      link({
+        link_id: 11,
+        company_id: 91,
+        company_name: "PT Synthetic Pool",
+        role: "shareholder",
+        is_primary: false,
+      }),
+      link({
+        link_id: 12,
+        company_id: 92,
+        company_name: "PT Synthetic Own",
+        is_primary: true,
+      }),
+    ]);
+    renderTab();
+    const list = await screen.findByRole("list", {
+      name: "Other linked companies",
+    });
+    expect(list).toHaveTextContent("PT Synthetic Pool");
+    expect(list).toHaveTextContent("shareholder");
+    expect(list).not.toHaveTextContent("PT Synthetic Own");
+  });
+
+  it("boundary: with no link flagged primary, the first link is kept (old behaviour) and the rest are listed", async () => {
+    mockGetClientCompanies.mockResolvedValueOnce([
+      link({
+        link_id: 21,
+        company_id: 93,
+        company_name: "PT Synthetic First",
+        is_primary: false,
+      }),
+      link({
+        link_id: 22,
+        company_id: 94,
+        company_name: "PT Synthetic Second",
+        is_primary: false,
+      }),
+    ]);
+    renderTab();
+    expect(await screen.findByText("PT Synthetic First")).toBeInTheDocument();
+    const list = await screen.findByRole("list", {
+      name: "Other linked companies",
+    });
+    expect(list).toHaveTextContent("PT Synthetic Second");
+  });
+
+  it("INNOCENCE: a single link renders no 'other linked companies' list", async () => {
+    mockGetClientCompanies.mockResolvedValueOnce([link()]);
+    renderTab();
+    await screen.findByText("PT Synthetic Studio");
+    expect(
+      screen.queryByRole("list", { name: "Other linked companies" }),
+    ).not.toBeInTheDocument();
+  });
+});
