@@ -64,8 +64,7 @@ const CALLBACK_METHODS = new Set([
 ]);
 const TOKEN_DEFINITIONS = "/src/components/r19/presentation.ts";
 const MAX_EVALUATION_DEPTH = 256;
-const MAX_FIXED_POINT_PASSES = 128;
-const CONTEXT_CHAIN_MAX = 4;
+const MAX_GUARD_WORK = 20000;
 
 type SyntheticContainer = {
   synthetic: "container";
@@ -76,20 +75,12 @@ type ContextualString = {
   synthetic: "contextual-string";
   node: ts.Node;
   text: string;
-  template: ts.TemplateExpression;
-  index: number;
-  chain: readonly ts.TemplateExpression[];
 };
 type Source = ts.Node | SyntheticContainer | ContextualString;
 type SourceSet = Set<Source>;
 type OperationMemo = Map<string, SourceSet>;
 type Memo = Map<ts.Node, OperationMemo>;
-type Interned = Map<
-  ts.TemplateExpression,
-  Map<number, Map<Source, ContextualString>>
->;
 type Shared = {
-  interned: Interned;
   namedCallbackSites?: Map<ts.Node, ts.Expression[]>;
 };
 
@@ -264,29 +255,30 @@ function isStringNode(
 }
 
 class Evaluator {
-  readonly memo: Memo = new Map();
-  readonly inProgress = new Map<ts.Node, Set<string>>();
+  private readonly memo: Memo = new Map();
+  private readonly inProgress = new Map<ts.Node, Set<string>>();
   readonly synthetic = new Map<ts.Node, SyntheticContainer>();
-  cutTaken = false;
+  private work = 0;
+  private workExceeded = false;
   private depth = 0;
 
   constructor(
     private checker: ts.TypeChecker,
     private sourceFile: ts.SourceFile,
-    private previous: Memo | undefined,
     private shared: Shared,
     private onDepthExceeded: () => void,
-    private onCut: () => void,
+    private onCut: (node: ts.Node) => void,
+    private onWorkExceeded: () => void,
   ) {}
 
-  grewFromPrevious(): boolean {
-    for (const [node, operations] of this.memo) {
-      for (const [key, value] of operations) {
-        const before = this.previous?.get(node)?.get(key);
-        if (value.size > (before?.size ?? 0)) return true;
-      }
+  charge(): boolean {
+    if (this.work >= MAX_GUARD_WORK) {
+      if (!this.workExceeded) this.onWorkExceeded();
+      this.workExceeded = true;
+      return false;
     }
-    return false;
+    this.work++;
+    return true;
   }
 
   private run(
@@ -310,9 +302,8 @@ class Evaluator {
       this.inProgress.set(node, active);
     }
     if (active.has(key)) {
-      this.cutTaken = true;
-      this.onCut();
-      return this.previous?.get(node)?.get(key) ?? new Set();
+      this.onCut(node);
+      return new Set();
     }
     if (this.depth >= MAX_EVALUATION_DEPTH) {
       this.onDepthExceeded();
@@ -368,10 +359,8 @@ class Evaluator {
           for (const source of this.stringSources(
             this.sources(span.expression),
           )) {
-            const chain = isContextualString(source) ? source.chain : [];
-            if (chain.includes(node) || chain.length >= CONTEXT_CHAIN_MAX)
-              continue;
-            out.add(this.contextual(node, index, source, chain));
+            if (!this.charge()) break;
+            out.add(this.contextual(node, index, source));
           }
         });
       } else if (
@@ -429,31 +418,12 @@ class Evaluator {
     template: ts.TemplateExpression,
     index: number,
     source: Source,
-    chain: readonly ts.TemplateExpression[],
   ): ContextualString {
-    let byIndex = this.shared.interned.get(template);
-    if (!byIndex) {
-      byIndex = new Map();
-      this.shared.interned.set(template, byIndex);
-    }
-    let bySource = byIndex.get(index);
-    if (!bySource) {
-      bySource = new Map();
-      byIndex.set(index, bySource);
-    }
-    let interned = bySource.get(source);
-    if (!interned) {
-      interned = {
-        synthetic: "contextual-string",
-        node: this.sourceNode(source),
-        text: this.renderTemplate(template, index, this.stringText(source)),
-        template,
-        index,
-        chain: [...chain, template],
-      };
-      bySource.set(source, interned);
-    }
-    return interned;
+    return {
+      synthetic: "contextual-string",
+      node: this.sourceNode(source),
+      text: this.renderTemplate(template, index, this.stringText(source)),
+    };
   }
 
   private namedCallbackReceivers(fn: ts.Node): ts.Expression[] {
@@ -858,56 +828,46 @@ class Evaluator {
 class Scanner {
   private findings: Finding[] = [];
   private seen = new Set<string>();
-  private evaluator!: Evaluator;
-  private activeUse: ts.Node | undefined;
-  private firstCutUse: ts.Node | undefined;
-  private shared: Shared = { interned: new Map() };
+  private evaluator: Evaluator;
+  private activeUse: ts.Node;
+  private firstCut: { use: ts.Node; node: ts.Node } | undefined;
 
   constructor(
     private sourceFile: ts.SourceFile,
-    private checker: ts.TypeChecker,
-  ) {}
-
-  run(maxPasses: number): Finding[] {
-    let previous: Memo | undefined;
-    for (let pass = 1; ; pass++) {
-      this.findings = [];
-      this.seen = new Set();
-      this.firstCutUse = undefined;
-      this.evaluator = new Evaluator(
-        this.checker,
-        this.sourceFile,
-        previous,
-        this.shared,
-        () => this.reportUnresolved(),
-        () => {
-          this.firstCutUse ??= this.activeUse;
-        },
-      );
-      this.visit(this.sourceFile);
-      if (!this.evaluator.cutTaken || !this.evaluator.grewFromPrevious()) {
-        return this.findings;
-      }
-      if (pass >= maxPasses) {
-        const cutUse = this.cutUse();
-        const line = cutUse
-          ? this.sourceFile.getLineAndCharacterOfPosition(
-              cutUse.getStart(this.sourceFile),
-            ).line + 1
-          : 1;
-        this.findings.push({
-          line,
-          position: "unresolved",
-          text: `fixed point not reached in ${maxPasses} passes`,
-        });
-        return this.findings;
-      }
-      previous = this.evaluator.memo;
-    }
+    checker: ts.TypeChecker,
+  ) {
+    this.activeUse = sourceFile;
+    this.evaluator = new Evaluator(
+      checker,
+      sourceFile,
+      {},
+      () => this.reportUnresolved("resolution deeper than 256"),
+      (node) => {
+        this.firstCut ??= { use: this.activeUse, node };
+      },
+      () =>
+        this.reportUnresolved(`too much work to judge (>${MAX_GUARD_WORK})`),
+    );
   }
 
-  private cutUse(): ts.Node | undefined {
-    return this.firstCutUse;
+  run(): Finding[] {
+    this.visit(this.sourceFile);
+    if (this.firstCut) {
+      this.findings.push({
+        line: this.lineOf(this.firstCut.use),
+        position: "unresolved",
+        text: `cycle: a value depends on itself (cut at line ${this.lineOf(this.firstCut.node)})`,
+      });
+    }
+    return this.findings;
+  }
+
+  private lineOf(node: ts.Node): number {
+    return (
+      this.sourceFile.getLineAndCharacterOfPosition(
+        node.getStart(this.sourceFile),
+      ).line + 1
+    );
   }
 
   private report(
@@ -936,13 +896,8 @@ class Scanner {
     });
   }
 
-  private reportUnresolved() {
-    if (!this.activeUse) return;
-    const line =
-      this.sourceFile.getLineAndCharacterOfPosition(
-        this.activeUse.getStart(this.sourceFile),
-      ).line + 1;
-    const text = "resolution deeper than 256";
+  private reportUnresolved(text: string) {
+    const line = this.lineOf(this.activeUse);
     const key = `${line}|unresolved|${text}`;
     if (this.seen.has(key)) return;
     this.seen.add(key);
@@ -1127,7 +1082,9 @@ class Scanner {
     use: ts.Node,
     emit: (source: ts.Node, text: string, use?: ts.Node) => void,
   ) {
+    const descended = new Set<ts.Node>();
     const emitSource = (source: Source, resolvedUse: ts.Node) => {
+      if (!this.withUse(resolvedUse, () => this.evaluator.charge())) return;
       if (isStringNode(source)) {
         emit(
           this.evaluator.sourceNode(source),
@@ -1148,6 +1105,8 @@ class Scanner {
           }
         }
       } else if (ts.isArrayLiteralExpression(source)) {
+        if (descended.has(source)) return;
+        descended.add(source);
         const elements = this.withUse(resolvedUse, () =>
           this.evaluator.elements(new Set([source])),
         );
@@ -1222,14 +1181,8 @@ class Scanner {
   }
 }
 
-export function forbiddenSourceColour(
-  path: string,
-  source: string,
-  options?: { maxPasses?: number },
-): Finding[] {
+export function forbiddenSourceColour(path: string, source: string): Finding[] {
   if (`/${path.replaceAll("\\", "/")}`.endsWith(TOKEN_DEFINITIONS)) return [];
   const { checker, sourceFile } = programFor(path, source);
-  return new Scanner(sourceFile, checker).run(
-    options?.maxPasses ?? MAX_FIXED_POINT_PASSES,
-  );
+  return new Scanner(sourceFile, checker).run();
 }

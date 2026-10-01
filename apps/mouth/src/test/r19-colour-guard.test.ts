@@ -13,6 +13,7 @@ import {
   forbiddenRenderedColour,
   loadR19ColourGuard,
 } from "./r19-colour-guard";
+import type { Finding } from "./r19-colour-guard";
 import { forbiddenSourceColour } from "./r19-colour-source";
 
 type Row = [expected: "G" | "I", input: string];
@@ -1064,11 +1065,6 @@ const sourceRows: Row[] = [
     "I",
     'export const C = ({ on }: { on: boolean }) => <div className={`p-2 ${on ? "bg-(--r19-wash)" : ""}`.trim()} />;',
   ],
-  // one budget through spreads too (gate-7705b R2)
-  [
-    "I",
-    "const A = { ...B, pad: 1 };\nconst B = { ...A, gap: 2 };\nexport const C = () => <p style={{ color: A.color }} />;",
-  ],
   [
     "G",
     'const A = { ...B };\nconst B = { ...C };\nconst C = { ...D };\nconst D = { color: "white" };\nexport const X = () => <p style={{ color: A.color }} />;',
@@ -1121,21 +1117,6 @@ const sourceRows: Row[] = [
 type NamedSourceRow = [id: string, expected: "G" | "I", input: string];
 
 const v4SourceRows: NamedSourceRow[] = [
-  [
-    "function cycle, f declared before g",
-    "G",
-    'function f(c) { return c ? g(!c) : "#fff"; }\nfunction g(c) { return c ? f(!c) : "var(--r19-ink)"; }\nfunction A() { return <i className={f(true)} />; }\nfunction B() { return <p style={{ color: g(true) }} />; }',
-  ],
-  [
-    "function cycle, declarations reversed",
-    "G",
-    'function g(c) { return c ? f(!c) : "var(--r19-ink)"; }\nfunction f(c) { return c ? g(!c) : "#fff"; }\nfunction A() { return <i className={f(true)} />; }\nfunction B() { return <p style={{ color: g(true) }} />; }',
-  ],
-  [
-    "member cycle",
-    "G",
-    'const A = { x: c ? B.x : "#fff" };\nconst B = { x: c ? A.x : "var(--r19-ink)" };\nfunction P() { return <i className={A.x} />; }\nfunction Q() { return <p style={{ color: B.x }} />; }',
-  ],
   [
     "P2 call/spread cycle once per root",
     "G",
@@ -1456,114 +1437,332 @@ describe("r19 colour guard source: v4.1 time bounds", () => {
   });
 });
 
-describe("r19 colour guard source: v4.2 termination", () => {
+describe("r19 colour guard source: v5 one pass", () => {
   function scan(source: string) {
     const start = performance.now();
     const result = forbiddenSourceColour("src/components/Timed.tsx", source);
     return { result, ms: performance.now() - start };
   }
 
-  const recursionRows: NamedSourceRow[] = [
+  const cycle = (line: number, at: number): Finding => ({
+    line,
+    position: "unresolved",
+    text: `cycle: a value depends on itself (cut at line ${at})`,
+  });
+
+  type CycleRow = [id: string, source: string, expected: Finding[]];
+  const cycleRows: CycleRow[] = [
     [
-      "FP16 a template reached through a member cycle",
-      "G",
+      "spread cycle A/B",
+      "const A = { ...B, pad: 1 };\nconst B = { ...A, gap: 2 };\nexport const C = () => <p style={{ color: A.color }} />;",
+      [cycle(3, 1)],
+    ],
+    [
+      "function cycle, f declared before g",
+      'function f(c) { return c ? g(!c) : "#fff"; }\nfunction g(c) { return c ? f(!c) : "var(--r19-ink)"; }\nfunction A() { return <i className={f(true)} />; }\nfunction B() { return <p style={{ color: g(true) }} />; }',
+      [cycle(3, 1)],
+    ],
+    [
+      "function cycle, declarations reversed",
+      'function g(c) { return c ? f(!c) : "var(--r19-ink)"; }\nfunction f(c) { return c ? g(!c) : "#fff"; }\nfunction A() { return <i className={f(true)} />; }\nfunction B() { return <p style={{ color: g(true) }} />; }',
+      [cycle(3, 2)],
+    ],
+    [
+      "member cycle",
+      'const A = { x: c ? B.x : "#fff" };\nconst B = { x: c ? A.x : "var(--r19-ink)" };\nfunction P() { return <i className={A.x} />; }\nfunction Q() { return <p style={{ color: B.x }} />; }',
+      [cycle(3, 1)],
+    ],
+    [
+      "FP16 a template reached through a member cycle keeps its literal",
       'const c = 1;\nconst A = { v: c ? `1px solid ${B.v}` : "none" };\nconst B = { v: c ? A.v : "#fff" };\nfunction X() { return <p style={{ border: A.v }} />; }',
+      [
+        { line: 3, use: 4, position: "style", text: "border: 1px solid #fff" },
+        cycle(4, 2),
+      ],
     ],
     [
       "REC1 recursive calc padding",
-      "I",
       'function pad(d) { return d ? `calc(${pad(d - 1)} + 1rem)` : "0"; }\nfunction X({ depth }) { return <p style={{ paddingLeft: pad(depth) }} />; }',
+      [cycle(2, 1)],
     ],
     [
       "REC2 recursive class template",
-      "I",
       'function cls(d) { return d > 0 ? `pl-4 ${cls(d - 1)}` : ""; }\nfunction X({ depth }) { return <li className={cls(depth)} />; }',
+      [cycle(2, 1)],
     ],
     [
-      "REC2 twin with a guilty literal",
-      "G",
+      "REC2 twin keeps its guilty literal next to the cycle",
       'function cls(d) { return d > 0 ? `bg-white ${cls(d - 1)}` : ""; }\nfunction X({ depth }) { return <li className={cls(depth)} />; }',
+      [{ line: 1, use: 2, position: "class", text: "bg-white" }, cycle(2, 1)],
     ],
     [
       "REC3 recursive string concatenation",
-      "I",
       'function cls(d) { return d > 0 ? "pl-4 " + cls(d - 1) : ""; }\nfunction X({ depth }) { return <li className={cls(depth)} />; }',
+      [cycle(2, 1)],
     ],
     [
       "REC4 self-referencing member template",
-      "I",
       'const c = 1;\nconst T = { a: c ? `x ${T.a}` : "p-2" };\nfunction X() { return <i className={T.a} />; }',
+      [cycle(3, 2)],
     ],
     [
-      "REC4 twin with a guilty literal",
-      "G",
+      "REC4 twin keeps its guilty literal next to the cycle",
       'const c = 1;\nconst T = { a: c ? `x ${T.a}` : "bg-white" };\nfunction X() { return <i className={T.a} />; }',
+      [{ line: 2, use: 3, position: "class", text: "bg-white" }, cycle(3, 2)],
     ],
     [
       "mutually recursive templates, f first, innocent",
-      "I",
       'function f(d) { return d ? `a ${g(d - 1)}` : "p-2"; }\nfunction g(d) { return d ? `b ${f(d - 1)}` : "p-2"; }\nfunction X() { return <i className={f(3)} />; }',
+      [cycle(3, 1)],
     ],
     [
       "mutually recursive templates, g first, innocent",
-      "I",
       'function g(d) { return d ? `b ${f(d - 1)}` : "p-2"; }\nfunction f(d) { return d ? `a ${g(d - 1)}` : "p-2"; }\nfunction X() { return <i className={f(3)} />; }',
+      [cycle(3, 2)],
     ],
     [
       "mutually recursive templates, f first, guilty",
-      "G",
       'function f(d) { return d ? `a ${g(d - 1)}` : "p-2"; }\nfunction g(d) { return d ? `b ${f(d - 1)}` : "bg-white"; }\nfunction X() { return <i className={f(3)} />; }',
+      [{ line: 2, use: 3, position: "class", text: "bg-white" }, cycle(3, 1)],
     ],
     [
       "mutually recursive templates, g first, guilty",
-      "G",
       'function g(d) { return d ? `b ${f(d - 1)}` : "bg-white"; }\nfunction f(d) { return d ? `a ${g(d - 1)}` : "p-2"; }\nfunction X() { return <i className={f(3)} />; }',
+      [{ line: 1, use: 3, position: "class", text: "bg-white" }, cycle(3, 2)],
+    ],
+    [
+      "a self-wrapping member template is a cycle, not a literal",
+      'const c = 1;\nconst T = { a: c ? `bg-[${T.a}]` : "#fff" };\nfunction X() { return <i className={T.a} />; }',
+      [cycle(3, 2)],
+    ],
+    [
+      "two independent cycles report the first one only",
+      'const A = { x: c ? B.x : "p-2" };\nconst B = { x: c ? A.x : "p-4" };\nconst C = { x: c ? D.x : "p-2" };\nconst D = { x: c ? C.x : "p-4" };\nfunction P() { return <i className={A.x} />; }\nfunction Q() { return <i className={C.x} />; }',
+      [cycle(5, 1)],
+    ],
+    [
+      "a named callback applied to its own output (E1)",
+      'const rows = [{ cls: "p-2" }];\nconst toRow = (r) => ({ cls: r.cls });\nconst once = rows.map(toRow);\nconst twice = once.map(toRow);\nfunction X() { return <i className={twice[0].cls} />; }',
+      [cycle(5, 2)],
+    ],
+    [
+      "a named callback over a filtered copy of its own output (E2)",
+      'const items = ["p-2"];\nconst norm = (s) => s.trim();\nconst a = items.map(norm);\nconst b = a.filter(Boolean).map(norm);\nfunction X() { return <i className={b[0]} />; }',
+      [cycle(5, 2)],
     ],
   ];
 
-  it.each(recursionRows)(
-    "%s -> %s in under 1 second",
-    (_id, expected, source) => {
+  it.each(cycleRows)(
+    "%s -> its exact findings in under 1 second",
+    (_id, source, expected) => {
       const { result, ms } = scan(source);
-      expect(result.length > 0 ? "G" : "I").toBe(expected);
-      expect(result.filter((f) => f.position === "unresolved")).toEqual([]);
+      expect(result).toEqual(expected);
       expect(ms).toBeLessThan(1000);
     },
   );
 
-  const memberCycle =
-    'const A = { x: c ? B.x : "#fff" };\nconst B = { x: c ? A.x : "var(--r19-ink)" };\nfunction P() { return <i className={A.x} />; }\nfunction Q() { return <p style={{ color: B.x }} />; }';
-
-  it("reports an unresolved finding when the pass cap is reached", () => {
-    const capped = forbiddenSourceColour(
-      "src/components/Timed.tsx",
-      memberCycle,
-      {
-        maxPasses: 1,
-      },
+  it("reports the cycle at the first use in tree order, with the cut line", () => {
+    const { result } = scan(
+      'const A = { x: c ? B.x : "#fff" };\nconst B = { x: c ? A.x : "#000" };\nfunction P() { return <i className="p-2" />; }\nfunction Q() { return <p style={{ color: B.x }} />; }\nfunction R() { return <p style={{ color: A.x }} />; }',
     );
-    expect(capped).toContainEqual({
-      line: 3,
-      position: "unresolved",
-      text: "fixed point not reached in 1 passes",
-    });
+    expect(result).toEqual([
+      { line: 1, use: 4, position: "style", text: "color: #fff" },
+      { line: 2, use: 4, position: "style", text: "color: #000" },
+      cycle(4, 2),
+    ]);
   });
 
-  it("reaches the member cycle's fixed point under the default cap", () => {
-    const { result } = scan(memberCycle);
-    expect(result.filter((f) => f.position === "unresolved")).toEqual([]);
-    expect(result.length).toBeGreaterThan(0);
+  const nonCycles: [id: string, source: string][] = [
+    [
+      "a non-recursive helper called from two positions",
+      "function pad(x) { return `p-${x}`; }\nfunction X() { return <><i className={pad(1)} /><b className={pad(2)} /></>; }",
+    ],
+    [
+      "the same function called twice with different arguments",
+      'function pick(c) { return c ? "p-2" : "p-4"; }\nfunction X() { return <><i className={pick(1)} /><b className={pick(0)} /></>; }',
+    ],
+    [
+      "members by name: A.x does not cut through B",
+      'const A = { x: "p-2", y: B.x };\nconst B = { x: A.y2, y2: "p-4" };\nfunction X() { return <i className={A.x} />; }',
+    ],
+    [
+      "a recursive function never reached from a position",
+      'function rec(d) { return d ? rec(d - 1) : "p-2"; }\nfunction X() { return <i className="p-2" />; }',
+    ],
+    [
+      "an innocent ternary over two members",
+      'const A = { x: "p-2" };\nconst B = { x: "p-4" };\nfunction X({ k }) { return <i className={k ? A.x : B.x} />; }',
+    ],
+  ];
+
+  it.each(nonCycles)("%s stays green with no cycle finding", (_id, source) => {
+    const { result, ms } = scan(source);
+    expect(result).toEqual([]);
+    expect(ms).toBeLessThan(1000);
+  });
+
+  it("stays red and bounded for the f()/g() spread pair that P2 already visits once", () => {
+    const { result, ms } = scan(
+      'const X0 = { c: "#fff" };\nfunction f() { return { ...g(), pad: 1 }; }\nfunction g() { return { ...f(), color: X0.c }; }\nfunction X() { return <p style={f()} />; }',
+    );
+    expect(result).toEqual([
+      { line: 1, use: 4, position: "style", text: "color: #fff" },
+    ]);
+    expect(ms).toBeLessThan(1000);
+  });
+
+  const nestedItems = (guilty: boolean) =>
+    `function items(n) { return ["${guilty ? "bg-white" : "p-2"}", n.next && items(n.next)]; }\nconst n = { next: null };\nfunction X() { return <i className={cn(items(n))} />; }`;
+  const pairedItems = (guilty: boolean) =>
+    `function a() { return ["p-2", b()]; }\nfunction b() { return ["${guilty ? "bg-white" : "p-4"}", a()]; }\nfunction X() { return <i className={cn(a())} />; }`;
+
+  it.each([
+    ["self-nesting array, innocent", nestedItems(false), []],
+    [
+      "self-nesting array, guilty twin",
+      nestedItems(true),
+      [{ line: 1, use: 3, position: "class", text: "bg-white" }],
+    ],
+    ["mutually nesting arrays, innocent", pairedItems(false), []],
+    [
+      "mutually nesting arrays, guilty twin",
+      pairedItems(true),
+      [{ line: 2, use: 3, position: "class", text: "bg-white" }],
+    ],
+  ] as [string, string, Finding[]][])(
+    "P1 descends each container once per use: %s",
+    (_id, source, expected) => {
+      let result: Finding[] = [];
+      expect(() => {
+        result = scan(source).result;
+      }).not.toThrow();
+      expect(result).toEqual(expected);
+      expect(scan(source).ms).toBeLessThan(1000);
+    },
+  );
+
+  const nested = (
+    depth: number,
+    base: string,
+    outerHead: string,
+    use: string,
+  ) => {
+    const lines = [base];
+    for (let i = 1; i <= depth; i++) {
+      const head = i === depth ? outerHead : "";
+      const tail = i === depth ? "" : ` p-${i}`;
+      lines.push(`const t${i} = \`${head}\${t${i - 1}}${tail}\`;`);
+    }
+    lines.push(use.replace("$N", String(depth)));
+    return lines.join("\n");
+  };
+  const classUse = "function X() { return <i className={t$N} />; }";
+
+  it.each([
+    [
+      "V06 5 nested templates over a const, bg- at the 5th",
+      nested(5, 'const t0 = "white";', "bg-", classUse),
+      [{ line: 1, use: 7, position: "class", text: "bg-white" }],
+    ],
+    [
+      "V08 class const wrapped by 5 templates",
+      nested(5, 'const t0 = "bg-white rounded";', "", classUse),
+      [{ line: 1, use: 7, position: "class", text: "bg-white" }],
+    ],
+    [
+      "V09 class const wrapped by 7 templates",
+      nested(7, 'const t0 = "bg-white rounded";', "", classUse),
+      [{ line: 1, use: 9, position: "class", text: "bg-white" }],
+    ],
+    [
+      "V10 guilty inline in the innermost template, 5 wraps",
+      nested(5, "const t0 = `bg-white ${Math.random()}`;", "", classUse),
+      [{ line: 1, use: 7, position: "class", text: "bg-white" }],
+    ],
+    [
+      "V11 guilty inline in the innermost template, 6 wraps",
+      nested(6, "const t0 = `bg-white ${Math.random()}`;", "", classUse),
+      [{ line: 1, use: 8, position: "class", text: "bg-white" }],
+    ],
+    [
+      "V13 style: 5 nested templates, colour in the const",
+      nested(
+        5,
+        'const t0 = "#fff";',
+        "",
+        "function X() { return <p style={{ border: t$N }} />; }",
+      ),
+      [
+        {
+          line: 1,
+          use: 7,
+          position: "style",
+          text: "border: #fff p-1 p-2 p-3 p-4",
+        },
+      ],
+    ],
+    [
+      "V12 5 nested templates, innocent twin",
+      nested(5, 'const t0 = "rounded";', "", classUse),
+      [],
+    ],
+  ] as [string, string, Finding[]][])(
+    "no chain cap: %s",
+    (_id, source, expected) => {
+      const { result, ms } = scan(source);
+      expect(result).toEqual(expected);
+      expect(ms).toBeLessThan(1000);
+    },
+  );
+
+  const workFinding = (line: number): Finding => ({
+    line,
+    position: "unresolved",
+    text: "too much work to judge (>20000)",
+  });
+  const twoSpanNest = (
+    depth: number,
+    uses: number,
+    kind: "class" | "style",
+  ) => {
+    const lines = ['const a = 1 ? "p-1" : "p-2";', "const t0 = `${a} ${a}`;"];
+    for (let i = 1; i <= depth; i++)
+      lines.push(`const t${i} = \`x \${t${i - 1}} y \${t${i - 1}}\`;`);
+    const used = Array.from({ length: uses }, (_, i) =>
+      kind === "class"
+        ? `<i key="${i}" className={t${depth}} />`
+        : `<i key="${i}" style={{ border: t${depth} }} />`,
+    ).join("\n");
+    lines.push(`function X() { return <>${used}</>; }`);
+    return lines.join("\n");
+  };
+
+  it.each([
+    ["2-span templates nested 16 deep", twoSpanNest(16, 1, "class"), 19],
+    ["2-span templates nested 20 deep", twoSpanNest(20, 1, "class"), 23],
+    ["2-span depth 10 with 500 class uses", twoSpanNest(10, 500, "class"), 14],
+    [
+      "2-span depth 10 with 2000 class uses",
+      twoSpanNest(10, 2000, "class"),
+      14,
+    ],
+    ["2-span depth 10 with 500 style uses", twoSpanNest(10, 500, "style"), 14],
+  ] as [string, string, number][])(
+    "bounds the work of a file: %s",
+    (_id, source, line) => {
+      const { result, ms } = scan(source);
+      expect(result).toEqual([workFinding(line)]);
+      expect(ms).toBeLessThan(1000);
+    },
+  );
+
+  it("judges the same nest below the bound without a finding", () => {
+    const { result, ms } = scan(twoSpanNest(10, 1, "class"));
+    expect(result).toEqual([]);
+    expect(ms).toBeLessThan(1000);
   });
 
   const texts = (source: string) => findings(source).map((f) => f.text);
-
-  it("wraps a literal through its own template once, not once per pass", () => {
-    expect(
-      texts(
-        'const c = 1;\nconst T = { a: c ? `bg-[${T.a}]` : "#fff" };\nfunction X() { return <i className={T.a} />; }',
-      ),
-    ).toEqual(["bg-[#fff]"]);
-  });
 
   it("keeps each span of one template apart", () => {
     expect(
@@ -1589,7 +1788,7 @@ describe("r19 colour guard source: v4.2 termination", () => {
     ).toEqual(["bg-[#fff]", "bg-[#000]"]);
   });
 
-  it("stops a literal after four templates in a chain", () => {
+  it("wraps a literal through six templates with no chain cap", () => {
     const templates = ['const T0 = "#fff";'];
     for (let i = 1; i <= 6; i++)
       templates.push(`const T${i} = \`bg-[\${T${i - 1}}]\`;`);
@@ -1600,6 +1799,8 @@ describe("r19 colour guard source: v4.2 termination", () => {
       "bg-[bg-[#fff]]",
       "bg-[bg-[bg-[#fff]]]",
       "bg-[bg-[bg-[bg-[#fff]]]]",
+      "bg-[bg-[bg-[bg-[bg-[#fff]]]]]",
+      "bg-[bg-[bg-[bg-[bg-[bg-[#fff]]]]]]",
     ]);
   });
 
@@ -1774,7 +1975,13 @@ describe("r19 colour guard source: resolution budget and real files", () => {
     const source =
       "const A = { ...B, pad: 1 };\nconst B = { ...A, gap: 2 };\nexport const C = () => <p style={{ color: A.color }} />;";
     expect(() => findings(source)).not.toThrow();
-    expect(findings(source)).toEqual([]);
+    expect(findings(source)).toEqual([
+      {
+        line: 3,
+        position: "unresolved",
+        text: "cycle: a value depends on itself (cut at line 1)",
+      },
+    ]);
   });
 
   it("resolves the destructured config of the real MessageBubble.tsx", () => {
