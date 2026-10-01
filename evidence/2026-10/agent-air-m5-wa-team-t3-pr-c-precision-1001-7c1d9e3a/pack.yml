@@ -1,0 +1,112 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+plan_ref: >-
+  PR #7732 (agent/air-m5/wa-team/t3-pr-c-precision-1001, base main) - P2 PR-C of
+  docs/specs/2026-09-25-t3-t7-pro-local-spec.md: measure how often the resolver's evidence really
+  fulfils the promise, on the local model, counts only.
+lanes:
+  - lane: wa-team-t3-pr-c-precision-build
+    role: build
+    seat: "claude-sonnet-5-5 (initial build, gate rework R1-R4, council rework 4f043d4fb2)"
+  - lane: wa-team-t3-pr-c-precision-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1 REWORK: 1 HIGH, 1 MEDIUM, 1 LOW)"
+  - lane: wa-team-t3-pr-c-precision-council-kimi
+    role: review
+    seat: "kimi-code/k3 (round 1 REWORK: 1 HIGH, 1 LOW)"
+
+what_changed: |
+  1. `--audit-resolution [--sample N]` (N 1-100, per kind): a random sample of resolved promises per
+     resolution kind, judged by the local Ollama model; read-only transaction on team_promises;
+     counts only (judged/plausible/implausible/invalid/precision) on stdout.
+  2. A non-local Ollama host is refused (rc 2) before any DB connection or model call. After the
+     council: the hostname localhost passes only if it resolves exclusively to loopback, and the
+     opener never follows a 3xx (a redirect is a transport failure, never a verdict).
+  3. Verdict parsing is strict: one boolean key, and after the council a duplicate key is invalid.
+     The judge shares the parser, so a duplicate-key judge answer is now invalid too.
+  4. The last counts are stored int-only on Pro and quoted by the resolution digest as
+     `precision media_sent X/N`; stale, malformed or (after the council) future-dated state beyond
+     a 300 s skew is ignored.
+  5. scripts/wa_team_promises_audit_cron.sh (weekly, Sunday 04:41, installed by the conductor).
+  6. The #7688 C3 fixture edits (mutants M23/M24 killed).
+  7. Floors: unit 311 -> 406, real-PG 84 -> 105; the audit cron joins both path filters.
+
+proof: |
+  Unit corpus 406 passed, 105 skipped. Real-PG corpus 105 passed. The 9 council-round tests run
+  against the module before 4f043d4fb2 fail (9 failed, 86 passed in the audit file) and pass after.
+  Gate history: REWORK-BUILD @ 682de46f68 (grader restated the resolver's media rule), then delta
+  PASS-WITH-CONDITIONS @ e9e6dfb47f (Pro qwen3.5:9b, synthetic non-PII cases: mismatches 1/10,
+  true positives 7/8; 39 of 42 mutants killed). The council ran after that delta gate.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "HIGH: duplicate JSON keys collapse in json.loads, so a false-then-true verdict counts plausible."
+    status: CONFIRMED
+    resolution: "object_pairs_hook rejects a repeated key; the answer counts invalid. Guilt test parametrized over the audit and judge keys."
+  - seat: kimi-code/k3
+    objection: "HIGH: the guard checks only the configured URL; urllib's default redirect handling can take the request off-host."
+    status: CONFIRMED
+    resolution: "The opener carries a no-redirect handler; a 3xx raises a transport error and is never counted. Note: stock urllib re-issues 301/302/303 as a GET without the body and refuses 307/308 on POST, so the measured risk was an off-host REPLY read as a verdict rather than the body leaving; closed either way."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: redirects not revalidated, and localhost accepted without resolving it."
+    status: CONFIRMED
+    resolution: "Same no-redirect fix; localhost must resolve only to loopback, else rc 2 before any connection (unit and CLI tests)."
+  - seat: codex-gpt-5.6-sol
+    objection: "LOW: a future-dated state timestamp stays trusted indefinitely."
+    status: CONFIRMED
+    resolution: "Age must lie in [-300 s, 21 days]; guilt test with a state one day ahead."
+  - seat: kimi-code/k3
+    objection: "LOW: the unit floor comment says audit (80) but the floor moved by 82."
+    status: CONFIRMED
+    resolution: "Floor re-measured to 406 and the comment states +82 then +13."
+
+receipts:
+  - claim: "Unit corpus on 4f043d4fb2."
+    cmd: "env -u WA_TEAM_PROMISES_REAL_PG PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wa_team_promises*.py -q -p no:cacheprovider"
+    result: "406 passed, 105 skipped"
+    exit: 0
+    ts: "2026-10-01T04:39:00Z"
+    seat: claude-opus-5-5
+  - claim: "Real-PG corpus on 4f043d4fb2 (throwaway initdb cluster)."
+    cmd: "WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wa_team_promises*real_pg.py -q -p no:cacheprovider"
+    result: "105 passed"
+    exit: 0
+    ts: "2026-10-01T04:40:00Z"
+    seat: claude-opus-5-5
+  - claim: "Guilt: the council-round tests against the pre-fix module (git show HEAD~1:scripts/wa_team_promises.py), then restored."
+    cmd: "git show HEAD~1:scripts/wa_team_promises.py > scripts/wa_team_promises.py && pytest scripts/tests/test_wa_team_promises_audit.py -q; git checkout -- scripts/wa_team_promises.py"
+    result: "9 failed, 86 passed"
+    exit: 1
+    ts: "2026-10-01T04:39:30Z"
+    seat: claude-opus-5-5
+  - claim: "codex round 1, env-scrubbed, read-only sandbox, high effort, diff only (stderr confirms model gpt-5.6-sol)."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" codex exec --skip-git-repo-check -s read-only -m gpt-5.6-sol -c model_reasoning_effort=high - < prompt.txt'
+    result: "VERDICT: REWORK (1 HIGH, 1 MEDIUM, 1 LOW)"
+    exit: 0
+    ts: "2026-10-01T02:45:12Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi round 1 through scripts/kimi_client.py (no-tools agent, env -i)."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" python3 scripts/kimi_client.py "$(cat prompt.txt)"'
+    result: "VERDICT: REWORK (1 HIGH, 1 LOW)"
+    exit: 0
+    ts: "2026-10-01T02:45:21Z"
+    seat: kimi-code/k3
+
+pii_scan: clean
+pii_scan_note:
+  "The council prompt carried prose and the git diff of a script, tests, a cron wrapper and a
+  workflow. Fixtures are numeric ids, placeholder peers and example.invalid addresses; the only
+  name is a staff first name in a digest fixture. Both seats ran with a scrubbed environment. The
+  gate's Pro measurement used synthetic, non-PII cases and reports counts only."
+
+spend:
+  wall_clock_hours: 4
+  adversarial_rounds: 1
+
+appetite_exceeded: "Wall clock 4h vs 2h: a gate REWORK round, then the council round and its fixes. The fixes were not re-reviewed by the seats (single round); the final gate covers them."
+
+diff:
+  files: 10
+  net_lines: |
+    Script, cron wrapper, four test files, workflow and three evidence files. Line totals are
+    deliberately not declared: the pack is part of the diff it would count.
