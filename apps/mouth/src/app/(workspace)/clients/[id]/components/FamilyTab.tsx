@@ -28,6 +28,7 @@ import { api } from "@/lib/api";
 import type { ClientDocument, FamilyMember } from "@/lib/api/crm/crm.types";
 import { fileToBase64 } from "@/lib/utils";
 import { extractDriveFileId } from "./utils";
+import { formatLongSpan } from "@/lib/utils/format-date";
 
 type DocumentKind = "passport" | "visa";
 
@@ -195,7 +196,7 @@ function visaPill(alert: FamilyMember["visa_alert"], hasType: boolean) {
 /**
  * Shared relative-date wording ladder (OLD:365-370 passport / 520-527 visa,
  * identical wording both fields): `Expired Nd ago` / `Expires today` /
- * `⏰ Nd left` (<= 365) / `Nmo left` (> 365). Pure date math, no threshold —
+ * `⏰ Nd left` (<= 365) / `Ny Nmo left` (> 365). Pure date math, no threshold —
  * whether that wording is URGENT is a decision each caller makes on its own
  * (passport falls back to a day-count, visa never does — see `visaUrgency`).
  */
@@ -206,7 +207,7 @@ function relativeDateLabel(expiry: string): string {
   if (daysLeft < 0) return `Expired ${Math.abs(daysLeft)}d ago`;
   if (daysLeft === 0) return "Expires today";
   if (daysLeft <= 365) return `⏰ ${daysLeft}d left`;
-  return `${Math.floor(daysLeft / 30)}mo left`;
+  return `${formatLongSpan(daysLeft)} left`;
 }
 
 /**
