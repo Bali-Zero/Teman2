@@ -61,6 +61,7 @@ import {
   type KpiTone,
 } from "./desk";
 import { PortalChallengeWidget } from "./PortalChallengeWidget";
+import { VisaOracleTestingBanner } from "./VisaOracleTestingBanner";
 import { RefreshCw } from "lucide-react";
 
 // ── Intel categories ───────────────────────────────────────
@@ -554,6 +555,10 @@ export default function DashboardPage() {
             </Link>
           }
         />
+
+        {/* Visa Oracle testing campaign (T01-T06) — silent unless the viewer
+            is an assigned tester with cases still open today. */}
+        <VisaOracleTestingBanner identity={authIdentity} />
 
         {/* Portal Champion challenge — where PR #6483 shipped it. concept §7
             forbids reordering the dashboard's sections. */}
