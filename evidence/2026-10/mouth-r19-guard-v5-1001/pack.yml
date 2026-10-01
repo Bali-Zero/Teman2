@@ -261,17 +261,23 @@ receipts:
     exit: 0
     ts: "2026-10-01T07:50Z"
     seat: claude-opus-5.5
-  - claim: "v5 module mutants, foreground full run on the final script."
+  - claim: "v5 module mutants, foreground full run on the final script (second revision of the work rows)."
     cmd: "python3 -u evidence/2026-10/mouth-r19-guard-v5-1001/mutate_module.py"
-    result: "125 mutants: 124 killed, 0 broken, 0 survived, 1 equivalent (argued, not run: the memo key separator text); five kills by the 12 s time bound (memo is removed, P2 per-root visited, the work bound is ignored, judged sources are not charged, contextual strings are not charged)"
+    result: "125 mutants: 124 killed, 0 broken, 0 survived, 1 equivalent (argued, not run); four kills by the 12 s time bound (memo is removed, P2 per-root visited, the work bound is ignored, judged sources are not charged)"
     exit: 0
-    ts: "2026-10-01T07:42:41Z"
+    ts: "2026-10-01T08:08:44Z"
     seat: claude-opus-5.5
-  - claim: "v5 time-bound kills rerun alone with a 130 s bound, own process group."
+  - claim: "v5 time-bound kills memo and P2 per-root visited rerun alone with a 130 s bound, own process group."
     cmd: "R19_MUTANT_TIMEOUT=130 R19_MUTANT_FILTER='^(memo is removed|P2 per-root visited)' python3 -u evidence/2026-10/mouth-r19-guard-v5-1001/mutate_module.py"
-    result: "memo is removed and P2 per-root visited guard is removed: both KILLED by the time bound; no vitest process left"
+    result: "both KILLED by the time bound; no vitest process left"
     exit: 0
     ts: "2026-10-01T07:47:08Z"
+    seat: claude-opus-5.5
+  - claim: "v5 work-bound mutants rerun alone with a 130 s bound, own process group, final script and rows: each dies by a failed assertion."
+    cmd: "R19_MUTANT_TIMEOUT=130 R19_MUTANT_FILTER='^(the work bound is ignored|judged sources are not charged|contextual strings are not charged|the bound is reached but no finding is added|the bound fires at 0)$' python3 -u evidence/2026-10/mouth-r19-guard-v5-1001/mutate_module.py"
+    result: "work bound ignored 5 rows, bound reached but no finding 5 rows, bound fires at 0 62 rows, judged sources not charged 3 rows, contextual strings not charged 2 rows; 5 killed, 0 broken, 0 survived"
+    exit: 0
+    ts: "2026-10-01T08:09:49Z"
     seat: claude-opus-5.5
   - claim: "v5 product mutants T1-T5 and Y1-Y5 all red, product files clean after."
     cmd: "python3 -u evidence/2026-10/mouth-r19-guard-v5-1001/mutate_product.py"
@@ -302,7 +308,7 @@ diff:
   base_merge_sha: d8f1d44e57
   resolver_commit_sha: aefebf867c
   scope: "the whole PR against its merge-base with origin/main"
-  insertions: 4874
+  insertions: 4893
   deletions: 2
   builder_delta: "Over the b929ed28ce tip it inherited, the v5 build touched the resolver, the table, the brief, the pack and the module mutation script, and moved the evidence directory with git mv."
   rename_note: "The evidence directory was renamed with git mv from mouth-r19-guard-v4b-0930 (2026-09) to mouth-r19-guard-v5-1001 (2026-10); historical receipts keep the v3c-0930, v4-0930 or v4b-0930 path they actually ran on."
