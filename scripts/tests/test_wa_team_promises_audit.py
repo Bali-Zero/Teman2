@@ -133,10 +133,32 @@ def test_audit_call_request_shape_and_data_isolation():
     assert (body["stream"], body["think"], body["options"]) == (False, False, {"temperature": 0})
     assert body["format"] == wtp._AUDIT_SCHEMA
     system_msg, user_msg = body["messages"]
+    assert system_msg["role"] == "system"
+    assert system_msg["content"] == wtp._AUDIT_SYSTEM_PROMPT
+    assert system_msg["content"] != wtp._JUDGE_SYSTEM_PROMPT
     assert promise not in system_msg["content"] and "already sent" not in system_msg["content"]
     assert json.loads(user_msg["content"]) == {
         "promise_type": "send", "promise": promise, "evidence": {"kind": "text", "text": "already sent"},
     }
+
+
+def test_the_audit_prompt_does_not_restate_the_resolvers_media_rule():
+    # the grader must not be told the generator's rule: it would agree with it by construction
+    prompt = wtp._AUDIT_SYSTEM_PROMPT.lower()
+    assert "document, image, video or audio" not in prompt
+    assert "plausibly fulfils it" not in prompt
+    assert "send or submit" not in prompt
+    assert "caption" in prompt
+
+
+def test_a_media_evidence_caption_reaches_the_model_capped():
+    opener = _Opener(response=_Resp(200, _env(json.dumps({"evidence_fulfils_promise": True}))))
+    ev = {"kind": "media", "media_type": "document", "text": "c" * 5000}
+    wtp._call_ollama_audit(opener, "send", "x", ev)
+    payload = json.loads(json.loads(opener.last_request.data.decode())["messages"][1]["content"])
+    assert payload["evidence"]["kind"] == "media" and payload["evidence"]["media_type"] == "document"
+    assert payload["evidence"]["text"] == "c" * wtp._AUDIT_TEXT_CAP
+    assert ev["text"] == "c" * 5000  # the caller's dict is not mutated
 
 
 def test_audit_call_truncates_long_text():

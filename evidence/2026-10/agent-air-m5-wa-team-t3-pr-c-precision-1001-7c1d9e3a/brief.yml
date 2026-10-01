@@ -24,7 +24,7 @@ acceptance:
     A non-local Ollama host is refused (rc 2, before any DB connection or model call); a sample
     outside 1-100 is refused; sampling runs in a read-only transaction and team_promises is
     byte-identical after a run; invalid model output is counted invalid, never plausible.
-    probe: "scripts/tests/test_wa_team_promises_audit*.py (unit 80 passed; real-PG 13 passed)"
+    probe: "scripts/tests/test_wa_team_promises_audit*.py (unit 82 passed; real-PG 21 passed)"
   A2: >-
     The stored counts are int-only, ignored when stale or malformed, and the digest line carries
     `precision media_sent X/N` only when a valid media verdict exists.

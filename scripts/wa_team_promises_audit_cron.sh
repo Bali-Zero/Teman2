@@ -6,15 +6,15 @@
 # Same thin-wrapper pattern as wa_team_promises_resolve_cron.sh: picks the venv
 # interpreter (asyncpg lives in apps/backend-rag/.venv), sets PYTHONPATH, lives
 # IN THE REPO (never a ~/scripts copy — superscar #1 HOME-fork). WEEKLY, Sunday
-# 04:37, an hour no other wa_team_promises tick uses, because the audit makes up to
-# 300 local-model calls and must not queue behind the judge. Read-only on
+# 04:41, a minute no other entry in Pro's crontab uses (the judge ticks at
+# :07/:22/:37/:52), because the audit makes up to 300 local-model calls. Read-only on
 # team_promises; it writes only the int-only counts file the resolution digest
 # quotes. The model endpoint is guarded to be local: the audit refuses (rc 2)
 # on any other host.
 #
 # ── Crontab wiring (installed by the conductor after PROVE-LIVE, NOT here) ──
 #
-#   37 4 * * 0 /bin/bash /Users/nuzantara/nuzantara/scripts/cron-runner.sh \
+#   41 4 * * 0 /bin/bash /Users/nuzantara/nuzantara/scripts/cron-runner.sh \
 #     /Users/nuzantara/nuzantara/scripts/wa_team_promises_audit_cron.sh \
 #     >> /Users/nuzantara/logs/cron-tmp/wa-team-promises-audit.log 2>&1
 #

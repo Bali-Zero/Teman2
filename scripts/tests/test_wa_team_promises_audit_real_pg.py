@@ -9,6 +9,8 @@ Synthetic fixtures only.
 """
 from __future__ import annotations
 
+import json
+import logging
 import os
 import shutil
 import subprocess
@@ -265,6 +267,125 @@ async def test_media_evidence_is_described_by_type_and_text_evidence_is_passed(p
         await wtp.run_audit_resolution(pool, sample=100, call=model)
         assert ("send", "I will send the file", {"kind": "media", "media_type": "document"}) in model.calls
         assert ("check", "I will check it", {"kind": "text", "text": "gia controllato"}) in model.calls
+
+
+@pytest.mark.asyncio
+async def test_a_media_caption_is_passed_with_the_media_type(pg_socket_dir):
+    async with _fresh_database(pg_socket_dir, "aud_caption") as pool:
+        await _setup(pool)
+        await _resolved(pool, 1, "media_sent", evid_media="document", evid_text="here is the file",
+                        text="I will send the file")
+        model = _Model()
+        await wtp.run_audit_resolution(pool, sample=100, call=model)
+        assert model.calls == [("send", "I will send the file",
+                                {"kind": "media", "media_type": "document", "text": "here is the file"})]
+
+
+# PII canary on the REAL audit path (the model's HTTP edge is the only fake): promise and
+# evidence text carry a sentinel that must reach nothing but the request to the local model.
+CANARY = "canary-7f3a-4242-+00-INVALID"
+
+
+class _NoClose:
+    def __init__(self, pool):
+        self._pool = pool
+
+    def acquire(self):
+        return self._pool.acquire()
+
+    async def close(self):
+        return None
+
+
+class _Resp:
+    def __init__(self, status, body):
+        self.status, self._body = status, body
+
+    def read(self, size=-1):
+        return self._body
+
+    def getcode(self):
+        return self.status
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_a):
+        return False
+
+
+class _CanaryOpener:
+    """Answers from `reply`; records the request bodies so the test can prove the
+    canary DID go to the model (else the leak assertions would be vacuous)."""
+
+    def __init__(self, reply=None, exc=None):
+        self._reply, self._exc, self.bodies = reply, exc, []
+
+    def open(self, req, timeout=None):
+        self.bodies.append(req.data.decode())
+        if self._exc is not None:
+            raise self._exc
+        return _Resp(200, json.dumps({"message": {"content": self._reply}}).encode())
+
+
+async def _seed_canary(pool):
+    await _resolved(pool, 1, "media_sent", evid_media="document", evid_text=f"caption {CANARY}",
+                    text=f"I will send {CANARY}")
+    await _resolved(pool, 2, "team_confirmed", evid_text=f"already sent {CANARY}", text=f"I will send {CANARY}")
+    await _resolved(pool, 3, "client_ack", evid_text=f"ok thanks {CANARY}", evid_dir="inbound",
+                    text=f"I will send {CANARY}")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reply", [
+    json.dumps({"evidence_fulfils_promise": True}),
+    json.dumps({"evidence_fulfils_promise": False}),
+    f"echo {CANARY}",                                   # the model parrots the data back, invalid
+    json.dumps({"evidence_fulfils_promise": CANARY}),   # invalid value carrying the sentinel
+])
+async def test_the_sentinel_never_leaves_the_audit_except_to_the_local_model(
+    pg_socket_dir, monkeypatch, caplog, capsys, reply
+):
+    async with _fresh_database(pg_socket_dir, "aud_canary") as pool:
+        await _setup(pool)
+        await _seed_canary(pool)
+        opener = _CanaryOpener(reply=reply)
+        monkeypatch.setattr(wtp, "_judge_opener", lambda: opener)
+
+        async def _pool(**_kw):
+            return _NoClose(pool)
+
+        monkeypatch.setattr(wtp.asyncpg, "create_pool", _pool)
+        caplog.set_level(logging.DEBUG)
+        assert await wtp.cli_main(["--audit-resolution", "--log-level", "DEBUG"]) == 0
+        digest = await wtp._fetch_resolution_digest(pool)
+        out, err = capsys.readouterr()
+        assert any(CANARY in b for b in opener.bodies)  # it did reach the model, so the checks bite
+        assert CANARY not in out and CANARY not in err
+        assert CANARY not in caplog.text and CANARY not in digest
+        assert CANARY not in wtp._AUDIT_STATE_FILE.read_text()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exc", [TimeoutError(CANARY), RuntimeError(f"boom {CANARY}"), OSError(CANARY)])
+async def test_a_failing_model_call_leaks_nothing_through_the_error_path(
+    pg_socket_dir, monkeypatch, caplog, capsys, exc
+):
+    async with _fresh_database(pg_socket_dir, "aud_canary_fail") as pool:
+        await _setup(pool)
+        await _seed_canary(pool)
+        monkeypatch.setattr(wtp, "_judge_opener", lambda: _CanaryOpener(exc=exc))
+
+        async def _pool(**_kw):
+            return _NoClose(pool)
+
+        monkeypatch.setattr(wtp.asyncpg, "create_pool", _pool)
+        caplog.set_level(logging.DEBUG)
+        assert await wtp.cli_main(["--audit-resolution", "--log-level", "DEBUG"]) == 1
+        out, err = capsys.readouterr()
+        assert "stage=ollama" in err
+        assert CANARY not in out and CANARY not in err and CANARY not in caplog.text
+        assert not wtp._AUDIT_STATE_FILE.exists()
 
 
 @pytest.mark.asyncio
