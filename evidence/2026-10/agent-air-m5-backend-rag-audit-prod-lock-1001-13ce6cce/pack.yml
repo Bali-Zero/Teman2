@@ -63,11 +63,12 @@ receipts:
     exit: 0
     ts: "2026-10-01T02:12:18Z"
     seat: kimi-code/k3
-  - claim: "Stub proof, no network, extracted step under bash -e with stub pip/pip-audit. OLD step: no failure rc0/2 audits; fail on first lock rc1/1 audit (guilt: prod lock never audited, group left open); fail on second rc1/2 audits; prod lock missing rc2. NEW step: no failure rc0/2 audits; fail on first rc1/2 audits; fail on second rc1/2 audits; prod lock missing rc1; ::group:: count equals ::endgroup:: count in every NEW case."
-    cmd: "bash run_case.sh <old|new>_step.sh <failLock|none> <missingProd:0|1> (stubs on PATH, scratch dir)"
+  - claim: "Stub proof, no network: the step's run block extracted with yaml.safe_load, run under bash -e with stub pip/pip-audit on PATH. OLD step (458e20fd2c): fail on first lock rc1, 1 audit, groups 1/0 (guilt: prod lock never audited). NEW step (a483701792): no failure rc0/2 audits; fail on first rc1/2 audits; fail on second rc1/2; prod lock missing rc1; groups balanced in every case."
+    cmd: "bash -e step.sh in <scratch>/wd with PATH=<scratch>/bin:$PATH, FAIL_ON=<lock|none> (stub pip-audit fails for the named lock)"
+    result: "OLD first-lock fail: 1 audit; NEW: 2 audits, rc 1"
     exit: 0
-    ts: "2026-10-01T03:00:00Z"
-    seat: claude-sonnet-5-5
+    ts: "2026-10-01T04:48:42Z"
+    seat: claude-opus-5-5
 
 dissent:
   - seat: codex-gpt-5.6-sol
