@@ -58,6 +58,7 @@ Credential values are never printed, logged, or reported (scrub layer; scar #4).
 | glm MODEL_ERR                      | config drift — launch from repo cwd or pin `--model glm-5.2` (fable-5[1m] leak)                                                                                                                                                                                                                                                        |
 | deepseek BALANCE_DEAD              | top-up at platform.deepseek.com                                                                                                                                                                                                                                                                                                        |
 | agy AUTH_DEAD (GUI ctx)            | interactive `agy` login in a live session                                                                                                                                                                                                                                                                                              |
+| agy CONTEXT_AUTH (tool permission) | non-interactive invocation hit agy's own tool-permission prompt with no TTY to approve it — pre-approve the probe's command in `permissions.allow`, or just re-probe interactively; was misclassified `UNKNOWN_ERR` before 2026-10-01                                                                                                  |
 | nlm AUTH_DEAD                      | `nlm login` on Pro (recurs ~monthly)                                                                                                                                                                                                                                                                                                   |
 | kimi AUTH_DEAD                     | `kimi login` on that machine (device-code flow — authorize the printed URL/code from a kimi.com-logged browser; Allegro subscription, seat added 2026-07-19)                                                                                                                                                                           |
 | kimi BALANCE_DEAD                  | verify/renew the Allegro membership at kimi.com — distinct from AUTH_DEAD: the device-code login itself succeeds, but the API replies "unable to verify your membership benefits ... ensure your membership is active" (a subscription-status check, not a token check, so `kimi login` alone will not clear it)                       |
@@ -106,6 +107,19 @@ matched locally in `probe_claude()` to `CONTEXT_AUTH` (mirroring the existing `a
 than a new status. Operator-gated by design: flipping `hasTrustDialogAccepted` is a trust/consent
 decision, never one a probe or healer session sets programmatically. Guilt+innocence pair in
 `scripts/tests/test_arsenal_probe.py`.
+
+Note (2026-10-01, healer tick, Mini): same disease again, `agy` this time, a different shape than
+its existing GUI-keychain `AUTH_DEAD`/`CONTEXT_AUTH` split. Evidence (`~/.organism/arsenal/last.json`):
+`"to-denied. Add an allow-rule under permissions.allow in settings.json (e.g.
+command(<target>)). Alternatively, re-run with <REDACTED> to auto-approve all tools."` — agy's own
+non-interactive tool-permission prompt, denied because nothing can answer it headlessly. No
+401/oauth-token/quota marker, so it fell through `classify_generic()` to a bare `UNKNOWN_ERR`,
+which `proprioception.py`'s `arsenal_seats` probe then surfaced as a false P1 DIVERGED. Matched
+locally in `probe_agy()` to `CONTEXT_AUTH` (same bucket as its keychain split above): the seat may
+be LIVE when run interactively, this is a context limitation, not a credential death. No cure
+needed beyond the reclassification — the probe's own "Reply with exactly: PONG" prompt needs no
+tool access, so a future interactive/approved run is expected to come back `LIVE`. Guilt+innocence
+pair in `scripts/tests/test_arsenal_probe.py`.
 
 ## Selftest / CI
 

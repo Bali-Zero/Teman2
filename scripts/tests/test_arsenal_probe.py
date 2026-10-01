@@ -1672,6 +1672,43 @@ def test_probe_agy_missing_binary_not_installed(monkeypatch):
     assert status == ap.NOT_INSTALLED
 
 
+def test_probe_agy_permission_denied_classifies_context_auth(monkeypatch):
+    # guilt: real exemplar captured in ~/.organism/arsenal/last.json on Mini
+    # (2026-10-01, Mini-HEALER tick) — a non-interactive probe invocation hit
+    # agy's own tool-permission prompt and was denied with no TTY to approve
+    # it. No 401/oauth-token/quota marker, so this previously fell through
+    # classify_generic() to a bare UNKNOWN_ERR. The seat may be LIVE when run
+    # interactively, so it belongs with agy's own CONTEXT_AUTH keychain split
+    # above, not a credential death.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/agy", True))
+    monkeypatch.setattr(
+        ap,
+        "run_probe_cmd",
+        lambda *a, **k: ap.ProbeResult(
+            1,
+            "",
+            "Permission to-denied. Add an allow-rule under permissions.allow in settings.json "
+            "(e.g. command(<target>)). Alternatively, re-run with --dangerously-skip-permissions "
+            "to auto-approve all tools.",
+        ),
+    )
+    status, ev, latency = ap.probe_agy(timeout=5)
+    assert status == ap.CONTEXT_AUTH
+
+
+def test_probe_agy_pong_mentioning_permissions_stays_live(monkeypatch):
+    # innocence: a LIVE answer that happens to mention "permissions.allow" in
+    # prose must never be reclassified as a context limitation.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/agy", True))
+    monkeypatch.setattr(
+        ap,
+        "run_probe_cmd",
+        lambda *a, **k: ap.ProbeResult(0, "PONG (settings.json permissions.allow already configured)\n", ""),
+    )
+    status, ev, latency = ap.probe_agy(timeout=5)
+    assert status == ap.LIVE
+
+
 def test_probe_kimi_pong_is_live(monkeypatch):
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/Users/x/.kimi-code/bin/kimi", True))
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "• PONG\n", ""))
