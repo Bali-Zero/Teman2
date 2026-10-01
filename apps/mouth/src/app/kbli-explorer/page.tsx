@@ -346,7 +346,7 @@ const WelcomeOnboarding = ({
             onClick={onOpenBlackBook}
             className="flex items-center gap-2 text-accent-sand text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors group"
           >
-            <span>Get the 2025 Black Book</span>
+            <span>Ask about your codes</span>
             <ArrowRight
               size={12}
               className="group-hover:translate-x-1 transition-transform"
@@ -1186,12 +1186,11 @@ export default function KBLIExplorerPage() {
                   <FileText size={14} />
                 </div>
                 <span className="text-xs font-bold text-white tracking-wide">
-                  KBLI 2025 BLACK BOOK
+                  ASK ABOUT YOUR CODES
                 </span>
               </div>
               <p className="text-[10px] text-[#888] leading-tight group-hover:text-[#CCC] transition-colors">
-                Download the dossier on revoked codes and the 2025 compliance
-                moats.
+                Ask our team which KBLI 2025 code replaces yours.
               </p>
             </button>
           </section>

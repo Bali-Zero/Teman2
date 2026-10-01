@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, ShieldAlert, ArrowRight, Download } from "lucide-react";
+import { AlertTriangle, ShieldAlert, ArrowRight, Send } from "lucide-react";
 import { KBLI_CONCORDANCE_2025, ConcordanceEntry } from "../concordance";
 
 interface LegacyAlertProps {
@@ -58,8 +58,8 @@ export default function LegacyAlert({
               onClick={onOpenBlackBook}
               className="group flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent-sand text-[#050507] text-sm font-bold hover:bg-[#C4A473] transition-all"
             >
-              <Download size={16} />
-              <span>UNLOCK 2025 BLACK BOOK</span>
+              <Send size={16} />
+              <span>ASK WHICH CODE REPLACES IT</span>
               <ArrowRight
                 size={14}
                 className="group-hover:translate-x-1 transition-transform"
