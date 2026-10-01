@@ -34,6 +34,7 @@ import {
 } from "@/lib/api/kbli.api";
 import { toast } from "sonner";
 import { useSessionStorage } from "@/lib/hooks/optimized/useLocalStorage";
+import { trackKBLISearch } from "@/lib/analytics";
 import {
   describeObligation,
   TRUNCATION_HINT,
@@ -1059,6 +1060,10 @@ export default function KBLIExplorerPage() {
 
       try {
         const response = await kbliApi.chat(text);
+        // The explorer sent no analytics event of any kind until now. Reuse
+        // the existing kbli_search event (query length and result count only,
+        // never the query text) so the funnel can see this route at all.
+        trackKBLISearch(text, response.results ? response.results.length : 0);
         setMessages((prev) => [
           ...prev,
           {
