@@ -95,6 +95,7 @@ on:
       - "scripts/wa_team_promises_scan_cron.sh"
       - "scripts/wa_team_promises_judge_cron.sh"
       - "scripts/wa_team_promises_resolve_cron.sh"
+      - "scripts/wa_team_promises_audit_cron.sh"
       - "scripts/sql/pro_local/team_promises*.sql"
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
@@ -117,6 +118,7 @@ on:
       - "scripts/wa_team_promises_scan_cron.sh"
       - "scripts/wa_team_promises_judge_cron.sh"
       - "scripts/wa_team_promises_resolve_cron.sh"
+      - "scripts/wa_team_promises_audit_cron.sh"
       - "scripts/sql/pro_local/team_promises*.sql"
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
@@ -185,7 +187,7 @@ jobs:
       - name: The T3 promise gate corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=311   # T3 PR-3 gate conditions C1+C2 (G1-G7 + G-LOW-1 subprocess variant): unit-run passed count, REAL_PG unset
+          FLOOR=406   # T3 PR-3 gate conditions C1+C2 (G1-G7 + G-LOW-1 subprocess variant) + P2 PR-C audit (+82, then +13 council-round cases = +95 over the 311 base): unit-run passed count, REAL_PG unset
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"
@@ -251,7 +253,7 @@ jobs:
       - name: The T3 promise real-PG corpus executes and does not skip
         run: |
           set -uo pipefail
-          FLOOR=84   # real-PG mode, scripts/tests/test_wa_team_promises*real_pg.py only: passed count, zero skips allowed
+          FLOOR=105  # real-PG mode, scripts/tests/test_wa_team_promises*real_pg.py only: passed count, zero skips allowed
           RC=0
           OUT="$(WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*real_pg.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"
