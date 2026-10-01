@@ -24,17 +24,16 @@ pii_scan_note:
   advisory ids). Both seats ran prompt-only, read-only, with a scrubbed environment."
 
 diff:
-  files: 3
   net_lines: |
     One workflow step plus the brief, pack and council journal. Line totals are deliberately not
     declared: the pack is part of the diff it would count.
-  behaviour_change:
-    "tests.yml pip-audit step: loops over requirements.lock.txt and requirements-prod.lock.txt with
+  behaviour_change: >-
+    tests.yml pip-audit step: loops over requirements.lock.txt and requirements-prod.lock.txt with
     a single IGNORES array (same normalisation, same ignores). After the council: each lock's
     grep|sed|pip-audit runs under an `if`, ::endgroup:: always prints, and the step exits non-zero
-    after BOTH locks were audited if either failed. The lock bumps (urllib3 2.7.0->2.8.0,
-    virtualenv, python-discovery) originally authored here landed via #7733 and are no longer in
-    this diff."
+    after BOTH locks were audited if either failed. The lock bumps (urllib3 2.7.0 to 2.8.0,
+    virtualenv, python-discovery) originally authored here landed via PR 7733 and are no longer in
+    this diff.
 
 receipts:
   - claim: "GREEN (pre-council loop, locks now identical to main's after #7733): the extracted step audits both locks and exits 0."
