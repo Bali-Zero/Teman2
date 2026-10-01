@@ -636,13 +636,43 @@ class TestRankingAndPrizes:
             0,
         ]
 
-    def test_a_tied_group_shares_one_slot_and_consumes_it_once(self):
+    def test_a_tie_on_a_prize_slot_is_a_playoff_and_awards_nothing(self):
+        """Zero 2026-09-30: tied players do not share; the slot is pending."""
         snapshot = _score(registration_rows=_regs(adit=50, vino=50, damar=30))
-        assert _slots(snapshot)["adit"] == _slots(snapshot)["vino"] == 4
-        assert _prizes(snapshot)["adit"] == _prizes(snapshot)["vino"] == 1_000_000
-        # next group is dense rank 2 but next free slot is 5
-        assert _slots(snapshot)["damar"] == 5
-        assert _prizes(snapshot)["damar"] == 700_000
+        by_member = {e.member: e for e in snapshot.entries}
+        for member in ("adit", "vino"):
+            assert by_member[member].prize_slot == 4
+            assert by_member[member].prize_idr == 0
+            assert by_member[member].total_prize_idr == 0
+            assert by_member[member].playoff_pending is True
+        # the tied slot is still consumed: the next group slides from slot 5
+        assert by_member["damar"].prize_slot == 5
+        assert by_member["damar"].prize_idr == 700_000
+        assert by_member["damar"].playoff_pending is False
+
+    def test_a_single_player_on_a_slot_gets_the_full_prize_without_flag(self):
+        snapshot = _score(registration_rows=_regs(adit=50, vino=30))
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["adit"].prize_slot == 4
+        assert by_member["adit"].prize_idr == 1_000_000
+        assert by_member["adit"].playoff_pending is False
+
+    def test_a_tie_below_every_reachable_minimum_has_no_flag_and_no_prize(self):
+        snapshot = _score(registration_rows=_regs(adit=10, vino=10))
+        for e in snapshot.entries:
+            assert e.playoff_pending is False
+            assert e.prize_slot is None
+            assert e.prize_idr == 0
+
+    def test_a_tie_with_one_eligible_member_is_not_a_playoff(self):
+        r1 = [_r1_entry("surya@balizero.com", 5, rank=1)]
+        snapshot = _score(r1_awarded=r1, registration_rows=_regs(adit=90, surya=70, vino=70))
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["surya"].playoff_pending is False
+        assert by_member["surya"].prize_idr == 0  # ineligible by rank
+        assert by_member["vino"].prize_slot == 3
+        assert by_member["vino"].prize_idr == 2_000_000
+        assert by_member["vino"].playoff_pending is False
 
     def test_a_group_that_qualifies_for_no_slot_consumes_nothing(self):
         snapshot = _score(registration_rows=_regs(adit=90, vino=10, damar=1))
@@ -728,6 +758,7 @@ class TestSeptemberPrizeTakerEligibility:
         assert by_member["surya"].prize_idr == 0
         assert by_member["krisna"].prize_slot == 3
         assert by_member["krisna"].prize_idr == 2_000_000
+        assert by_member["krisna"].playoff_pending is False
 
     def test_september_rank_is_none_for_members_who_did_not_take_the_prize(self):
         r1 = [_r1_entry("adit@balizero.com", 5, rank=2)]

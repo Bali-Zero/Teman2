@@ -397,6 +397,9 @@ class Round2Entry:
     last_event_at: datetime | None = None
     prize_slot: int | None = None  # the prize slot whose amount this member wins
     september_rank: int | None = None  # prize-takers only: their R1 rank
+    # Tied with another eligible member on a prize slot: no prize is awarded
+    # until the (not yet announced) play-off decides it.
+    playoff_pending: bool = False
 
 
 @dataclass
@@ -557,9 +560,11 @@ def _mission_bonus_keys(
 def _assign_rank_prizes(ordered: list[Round2Entry], r1_rank_by_email: dict[str, int]) -> None:
     """Zero's ruling, 2026-09-30. Walk the dense-rank groups in order; a group
     at rank r takes the smallest slot s >= max(r, next_free_slot) whose minimum
-    the group's points reach, and every ELIGIBLE member of it wins that slot's
-    prize. Then next_free_slot = s + 1. A group with no reachable slot (or with
-    no eligible member) consumes nothing. A September prize-taker is eligible
+    the group's points reach. A single ELIGIBLE member wins that slot's prize;
+    2+ eligible members tied on it win NOTHING (Zero's ruling, 2026-09-30:
+    ties play a play-off, rules announced later) and are flagged
+    playoff_pending with prize 0. Either way next_free_slot = s + 1. A group
+    with no reachable slot (or with no eligible member) consumes nothing. A September prize-taker is eligible
     only if their October dense rank <= their September rank (computed from
     the R1 awards; no R1 rank -> not eligible)."""
     for entry in ordered:
@@ -591,9 +596,11 @@ def _assign_rank_prizes(ordered: list[Round2Entry], r1_rank_by_email: dict[str, 
         )
         if slot is None:
             continue
+        playoff = len(members) >= 2
         for member in members:
             member.prize_slot = slot
-            member.prize_idr = RANK_PRIZES_IDR[slot]
+            member.playoff_pending = playoff
+            member.prize_idr = 0 if playoff else RANK_PRIZES_IDR[slot]
             member.total_prize_idr = member.prize_idr
         next_free = slot + 1
 

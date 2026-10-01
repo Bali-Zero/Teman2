@@ -970,6 +970,57 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     expect(screen.getByTestId("rank-prize-2").textContent).not.toContain("Zed");
   });
 
+  it("shows Play-off instead of the amount for a tied slot, the amount otherwise", () => {
+    mockQuery(
+      round2Response({
+        entries: [
+          entry({
+            member: "adit",
+            display_name: "Adit",
+            rank: 1,
+            points: 50,
+            prize_slot: 4,
+            prize_idr: 0,
+            total_prize_idr: 0,
+            playoff_pending: true,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "vino",
+            display_name: "Vino",
+            rank: 1,
+            points: 50,
+            prize_slot: 4,
+            prize_idr: 0,
+            total_prize_idr: 0,
+            playoff_pending: true,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+          entry({
+            member: "damar",
+            display_name: "Damar",
+            rank: 2,
+            points: 20,
+            prize_slot: 5,
+            prize_idr: 700_000,
+            total_prize_idr: 700_000,
+            playoff_pending: false,
+            last_event_at: "2026-10-01T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const tied = screen.getByTestId("rank-prize-4");
+    expect(tied.textContent).toContain("Play-off");
+    expect(tied.textContent).not.toMatch(/1\.000\.000/);
+    const single = screen.getByTestId("rank-prize-5");
+    expect(single.textContent).not.toContain("Play-off");
+    expect(single.textContent).toMatch(/700\.000/);
+    fireEvent.click(screen.getByRole("button", { name: /aturan/i }));
+    expect(screen.getByText(/Aturan play-off diumumkan kemudian/)).toBeTruthy();
+  });
+
   it("falls back to rank matching when no entry carries prize_slot", () => {
     mockQuery(
       round2Response({

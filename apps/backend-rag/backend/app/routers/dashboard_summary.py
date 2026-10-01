@@ -904,6 +904,7 @@ class PortalChallengeEntry(BaseModel):
     last_event_at: datetime | None = None
     prize_slot: int | None = None
     september_rank: int | None = None
+    playoff_pending: bool = False
 
 
 class PortalChallengeRecentActivation(BaseModel):
@@ -1241,6 +1242,7 @@ async def _build_round2_payload(db_pool: asyncpg.Pool, now: datetime) -> dict[st
                 "last_event_at": e.last_event_at.isoformat() if e.last_event_at else None,
                 "prize_slot": e.prize_slot,
                 "september_rank": e.september_rank,
+                "playoff_pending": e.playoff_pending,
             }
             for e in snapshot.entries
         ],
@@ -1359,6 +1361,7 @@ async def get_portal_challenge(
             last_event_at=e.get("last_event_at"),
             prize_slot=e.get("prize_slot"),
             september_rank=e.get("september_rank"),
+            playoff_pending=e.get("playoff_pending", False),
         )
         for e in payload["entries"]
     ]

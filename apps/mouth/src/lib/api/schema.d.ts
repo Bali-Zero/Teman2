@@ -24779,6 +24779,11 @@ export interface components {
        */
       penalty_points: number;
       /**
+       * Playoff Pending
+       * @default false
+       */
+      playoff_pending: boolean;
+      /**
        * Points
        * @default 0
        */
