@@ -1082,7 +1082,7 @@ class Scanner {
     use: ts.Node,
     emit: (source: ts.Node, text: string, use?: ts.Node) => void,
   ) {
-    const descended = new Set<ts.Node>();
+    const descended = new Set<Source>();
     const emitSource = (source: Source, resolvedUse: ts.Node) => {
       if (!this.withUse(resolvedUse, () => this.evaluator.charge())) return;
       if (isStringNode(source)) {
@@ -1093,8 +1093,8 @@ class Scanner {
         );
         return;
       }
-      if (mode !== "class" || !isAstNode(source)) return;
-      if (ts.isObjectLiteralExpression(source)) {
+      if (mode !== "class") return;
+      if (isAstNode(source) && ts.isObjectLiteralExpression(source)) {
         for (const property of source.properties) {
           if (
             (ts.isPropertyAssignment(property) ||
@@ -1104,7 +1104,10 @@ class Scanner {
             emit(property.name, property.name.text, resolvedUse);
           }
         }
-      } else if (ts.isArrayLiteralExpression(source)) {
+      } else if (
+        isSyntheticContainer(source) ||
+        (isAstNode(source) && ts.isArrayLiteralExpression(source))
+      ) {
         if (descended.has(source)) return;
         descended.add(source);
         const elements = this.withUse(resolvedUse, () =>

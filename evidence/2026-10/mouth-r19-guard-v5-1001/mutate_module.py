@@ -128,8 +128,8 @@ MUTANTS = [
     ("array spreads are ignored", SOURCE, "addValue(this.elements(this.sources(element.expression)));", "addValue(new Set());"),
     ("resolved template spans are ignored", SOURCE, "node.templateSpans.forEach((span, index) => {", "node.templateSpans.slice(0, 0).forEach((span, index) => {"),
     ("resolved template span loses context", SOURCE, 'text += index === replacementIndex ? replacement : "var(--r19-x)";', 'text += "var(--r19-x)";'),
-    ("P1 object source names are ignored", SOURCE, "if (ts.isObjectLiteralExpression(source)) {\n        for (const property of source.properties) {", "if (false) {\n        for (const property of source.properties) {"),
-    ("P1 array source elements are ignored", SOURCE, "} else if (ts.isArrayLiteralExpression(source)) {", "} else if (false) {"),
+    ("P1 object source names are ignored", SOURCE, "if (isAstNode(source) && ts.isObjectLiteralExpression(source)) {\n        for (const property of source.properties) {", "if (false) {\n        for (const property of source.properties) {"),
+    ("P1 array source elements are ignored", SOURCE, "isSyntheticContainer(source) ||\n        (isAstNode(source) && ts.isArrayLiteralExpression(source))", "isSyntheticContainer(source) ||\n        false"),
     ("P2 per-root visited guard is removed", SOURCE, "if (visited.has(object)) return;", "if (false) return;"),
     ("P2 spread object descent is removed", SOURCE, "this.styleObject(source, visited, use);", "void source;"),
     # v5 one pass: a cut is red, P1 descends once per use, work is bounded.
@@ -145,6 +145,7 @@ MUTANTS = [
     ("the last cut is reported instead of the first", SOURCE, "this.firstCut ??= { use: this.activeUse, node };", "this.firstCut = { use: this.activeUse, node };"),
     ("the P1 per-use visited check is removed", SOURCE, "if (descended.has(source)) return;", ""),
     ("the P1 per-use visited set is never filled", SOURCE, "descended.add(source);", ""),
+    ("P1 synthetic containers are not descended", SOURCE, "isSyntheticContainer(source) ||\n        (isAstNode(source)", "false ||\n        (isAstNode(source)"),
     ("the work bound is ignored", SOURCE, "if (this.work >= MAX_GUARD_WORK) {", "if (false) {"),
     ("the bound is reached but no finding is added", SOURCE, "if (!this.workExceeded) this.onWorkExceeded();", ""),
     ("the work finding is added once per use", SOURCE, "if (!this.workExceeded) this.onWorkExceeded();", "this.onWorkExceeded();"),
