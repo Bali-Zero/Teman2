@@ -495,6 +495,12 @@ async def test_cases_started_before_a_reschedule_still_count_toward_their_plan_d
         assert all(
             a["can_record_results"] for a in page["assignments"] if a["id"].startswith("D2-T01-")
         )
+        # Guilt: a locked day 2 does not unlock T01's other plan days.
+        assert not any(
+            a["can_record_results"]
+            for a in page["assignments"]
+            if a["slot"] == "T01" and not a["id"].startswith("D2-")
+        )
         assert (await c.put(path + "/result", json=result())).status_code == 200
         review = {"verdict": "not_issue", "comment": "Self-reviewed after the reschedule"}
         assert (await c.patch(path + "/review", json=review)).status_code == 200
