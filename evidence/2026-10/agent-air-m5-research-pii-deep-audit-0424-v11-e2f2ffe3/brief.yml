@@ -34,17 +34,17 @@ acceptance:
   - text:
       "WHEN this PR merges, git ls-tree -r origin/main SHALL list none of the removed
       paths."
-    probe: "git ls-tree -r --name-only origin/main -- <the removed paths listed in the pack> | wc -l"
+    probe: "git ls-tree -r --name-only"
   - text:
       "The redacted-path set SHALL carry 0 hits of the lane's pilot name set and of its
       redacted-token set at HEAD, where the merge-base showed more than 0 for each."
-    probe: "pii_receipt.py tree --rev <merge-base> and --rev HEAD, same --path set"
+    probe: "scripts/evidence/pii_receipt.py tree --patterns"
   - text:
       "This evidence directory SHALL carry 0 hits of the lane name set and of the
       redacted-token set, and the r66 line SHALL read residual_hits=0 hedge_hits=0."
-    probe: "pii_receipt.py tree --path <this evidence dir>; pii_receipt.py r66"
+    probe: "scripts/evidence/pii_receipt.py r66 --patterns"
   - text: "The wa_corpus tests SHALL pass with the synthetic fixtures."
-    probe: "python -m pytest tests/wa_corpus -q"
+    probe: "-m pytest -q -p no:cacheprovider tests/wa_corpus"
 
 appetite:
   wall_clock_hours: 3

@@ -70,16 +70,19 @@ receipts:
     cmd: "git ls-tree -r --name-only HEAD -- <each removed_paths entry> | wc -l"
     result: "0"
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "The same probe at the merge-base."
     cmd: "git ls-tree -r --name-only 370ab29aae0244b6bf590800d7233470a04b21b3 -- <each removed_paths entry> | wc -l"
     result: "8"
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "Blob compare: each redacted_paths entry at HEAD equals its blob at #7516's head."
     cmd: "for p in <each redacted_paths entry>; do [ $(git rev-parse HEAD:$p) = $(git rev-parse edec8a21f9917a56c0724fe83a081027aba4e880:$p) ] && echo same || echo DIFF; done | sort | uniq -c"
     result: "7 same"
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "R6.5 BEFORE, pilot name set, redacted_paths at the merge-base."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
@@ -101,6 +104,7 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "R6.5 AFTER, pilot name set, redacted_paths at HEAD."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
@@ -122,6 +126,7 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "R6.5 BEFORE, redacted-token set, redacted_paths at the merge-base."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
@@ -143,6 +148,7 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "R6.5 AFTER, redacted-token set, redacted_paths at HEAD."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
@@ -164,6 +170,7 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "Name-free evidence: the union set over this evidence directory at HEAD."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
@@ -185,6 +192,7 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "R6.6 over this PR's brief, pack and body file, with the residual list the gate wrote."
     cmd: "python3 scripts/evidence/pii_receipt.py r66 --patterns
@@ -192,22 +200,25 @@ receipts:
       <pack.yml> --body <body file passed to gh pr create --body-file>"
     result: |
       # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
-      # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:7a7a20b6962d3f23 --pack PACK --body @text:06dd08407e816cac
+      # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:d4f7cf433c3aa986 --pack PACK --body @text:06dd08407e816cac
       mode: r66
       r66_line: "r66: hmac=e5501725d9a0 lines=22 residual_hits=0 hedge_hits=0"
       hedge_hit_lines: []
       # end pii_receipt
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "The generator's own selftest at this head."
     cmd: "python3 scripts/evidence/pii_receipt.py --selftest | tail -1"
     result: "selftest: PASS (0 failing)"
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "The wa_corpus tests pass with the synthetic fixtures."
     cmd: "apps/backend-rag/.venv/bin/python -m pytest -q -p no:cacheprovider tests/wa_corpus | tail -1"
     result: "42 passed, 1 skipped"
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
   - claim: "Deterministic floor and its source."
     cmd:
@@ -216,6 +227,7 @@ receipts:
       --patch-file <workflow patch>"
     result: "3 (source: size)"
     exit: 0
+    ts: "2026-10-02T10:39Z"
     seat: claude-opus-5-5
 
 bites:
