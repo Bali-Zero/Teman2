@@ -1,0 +1,101 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+plan_ref:
+  "team-lead dispatch (2026-10-01): CI pip-audit must also audit requirements-prod.lock.txt with a
+  shared ignore list; show RED on a prod-lock copy with pyjwt 2.13.0 and GREEN on main's prod lock.
+  task-id audit-prod-lock-1001, lane backend-rag."
+lanes:
+  - lane: audit-prod-lock-1001
+    role: build
+    seat:
+      "claude-sonnet-5-5 (edited the pip-audit step into a two-lock loop with one IGNORES array, ran
+      it green and red locally, authored this pack, then applied the council's fail-fast finding and
+      proved it with a no-network stub)"
+  - lane: audit-prod-lock-1001-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1, not-ok: 1 MEDIUM + 1 LOW, both CONFIRMED)"
+  - lane: audit-prod-lock-1001-council-kimi
+    role: review
+    seat: "kimi-code/k3 (round 1, ok: 3 LOW CONFIRMED + 2 LOW PLAUSIBLE)"
+
+pii_scan: clean
+pii_scan_note:
+  "The council prompts carried only the diff of a CI workflow step (package lock file names and
+  advisory ids). Both seats ran prompt-only, read-only, with a scrubbed environment."
+
+diff:
+  net_lines: |
+    One workflow step plus the brief, pack and council journal. Line totals are deliberately not
+    declared: the pack is part of the diff it would count.
+  behaviour_change: >-
+    tests.yml pip-audit step: loops over requirements.lock.txt and requirements-prod.lock.txt with
+    a single IGNORES array (same normalisation, same ignores). After the council: each lock's
+    grep|sed|pip-audit runs under an `if`, ::endgroup:: always prints, and the step exits non-zero
+    after BOTH locks were audited if either failed. The lock bumps (urllib3 2.7.0 to 2.8.0,
+    virtualenv, python-discovery) originally authored here landed via PR 7733 and are no longer in
+    this diff.
+
+receipts:
+  - claim: "GREEN (pre-council loop, locks now identical to main's after #7733): the extracted step audits both locks and exits 0."
+    cmd: "PATH=apps/backend-rag/tmp/venv/bin:$PATH bash -e tmp/step.sh"
+    exit: 0
+    ts: "2026-10-01T09:10Z"
+    seat: claude-sonnet-5-5
+  - claim: "RED (pre-council loop): with the prod lock's pyjwt reverted to 2.13.0 on a scratch edit, the same step exits non-zero listing pyjwt advisories (13)."
+    cmd: "sed -i '' 's/^pyjwt==2.15.1/pyjwt==2.13.0/' requirements-prod.lock.txt && bash -e tmp/step.sh"
+    exit: 1
+    ts: "2026-10-01T09:12Z"
+    seat: claude-sonnet-5-5
+  - claim: "BEFORE the urllib3 bump (now landed via #7733), main's prod lock alone failed the audit: urllib3 2.7.0 CVE-2026-97687/97688/97689."
+    cmd: "LOCKS=requirements-prod.lock.txt bash -e tmp/step2.sh"
+    exit: 1
+    ts: "2026-10-01T09:08Z"
+    seat: claude-sonnet-5-5
+  - claim: "codex round 1, env-scrubbed, read-only sandbox, high effort, workflow diff only."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" codex exec --skip-git-repo-check -s read-only -m gpt-5.6-sol -c model_reasoning_effort=high - < prompt.txt'
+    result: "SEAT-VERDICT: not-ok (1 MEDIUM, 1 LOW, both CONFIRMED)"
+    exit: 0
+    ts: "2026-10-01T02:43:07Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi round 1 through scripts/kimi_client.py, env -i."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" python3 scripts/kimi_client.py "$(cat prompt.txt)"'
+    result: "SEAT-VERDICT: ok (3 LOW CONFIRMED, 2 LOW PLAUSIBLE)"
+    exit: 0
+    ts: "2026-10-01T02:12:18Z"
+    seat: kimi-code/k3
+  - claim: "Stub proof, no network: the step's run block extracted with yaml.safe_load, run under bash -e with stub pip/pip-audit on PATH. OLD step (458e20fd2c): fail on first lock rc1, 1 audit, groups 1/0 (guilt: prod lock never audited). NEW step (a483701792): no failure rc0/2 audits; fail on first rc1/2 audits; fail on second rc1/2; prod lock missing rc1; groups balanced in every case."
+    cmd: "bash -e step.sh in <scratch>/wd with PATH=<scratch>/bin:$PATH, FAIL_ON=<lock|none> (stub pip-audit fails for the named lock)"
+    result: "OLD first-lock fail: 1 audit; NEW: 2 audits, rc 1"
+    exit: 0
+    ts: "2026-10-01T04:48:42Z"
+    seat: claude-opus-5-5
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: under bash -e a non-zero first pip-audit exits the script, so the prod lock is not audited when the CI lock fails (job stays red, results incomplete)."
+    status: CONFIRMED
+    resolution: "Fixed in this change: per-lock `if grep && sed && pip-audit`, RC accumulated, `exit $RC` after both. Stub receipt: fail on first lock now audits both (old step: 1 audit)."
+  - seat: codex-gpt-5.6-sol
+    objection: "LOW: a grep/sed/pip-audit failure skips ::endgroup::."
+    status: CONFIRMED
+    resolution: "Fixed by the same change: ::endgroup:: prints outside the `if`; stub shows group == endgroup count in every case."
+  - seat: kimi-code/k3
+    objection: "LOW: same fail-fast point as the codex MEDIUM."
+    status: CONFIRMED
+    resolution: "Same fix."
+  - seat: kimi-code/k3
+    objection: "LOW: unclosed ::group:: on failure (cosmetic)."
+    status: CONFIRMED
+    resolution: "Same fix."
+  - seat: kimi-code/k3
+    objection: "LOW: the ignore list is drift-free (17 pairs, including the pre-existing duplicate PYSEC-2025-217)."
+    status: CONFIRMED
+    resolution: "No defect: the IGNORES array is byte-identical to before; the duplicate is pre-existing and harmless."
+  - seat: kimi-code/k3
+    objection: "LOW: the shared ignore list couples the two locks by design; per-lock ignores are no longer expressible."
+    status: PLAUSIBLE
+    resolution: "OPEN, accepted: one list is the point of the change (the audits cannot drift); a per-lock exception can be added as a separate array if a real case appears."
+  - seat: kimi-code/k3
+    objection: "LOW: the prod lock may carry packages the CI lock lacks, a residual risk."
+    status: PLAUSIBLE
+    resolution: "OPEN, accepted: residual risk, not a code defect; auditing the prod lock is exactly what surfaces it."

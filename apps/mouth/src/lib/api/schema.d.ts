@@ -24779,12 +24779,19 @@ export interface components {
        */
       penalty_points: number;
       /**
+       * Playoff Pending
+       * @default false
+       */
+      playoff_pending: boolean;
+      /**
        * Points
        * @default 0
        */
       points: number;
       /** Prize Idr */
       prize_idr: number;
+      /** Prize Slot */
+      prize_slot?: number | null;
       /** Rank */
       rank: number;
       /**
@@ -24794,6 +24801,8 @@ export interface components {
       registrations: number;
       /** September Choice */
       september_choice?: string | null;
+      /** September Rank */
+      september_rank?: number | null;
       /** Tax Bonus Idr */
       tax_bonus_idr: number;
       /** To Next Tier */
@@ -24813,6 +24822,8 @@ export interface components {
     };
     /** PortalChallengeRankPrize */
     PortalChallengeRankPrize: {
+      /** Min Points */
+      min_points?: number | null;
       /** Prize Idr */
       prize_idr: number;
       /** Rank */

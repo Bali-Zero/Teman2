@@ -188,7 +188,7 @@ ROSTER_ROWS = [
 ]
 
 
-def _r1_entry(email: str, activations: int) -> AwardedEntry:
+def _r1_entry(email: str, activations: int, rank: int = 1) -> AwardedEntry:
     from backend.services.portal.challenge_leaderboard import member_key_from_email
 
     return AwardedEntry(
@@ -197,7 +197,7 @@ def _r1_entry(email: str, activations: int) -> AwardedEntry:
         display_name=email.split("@")[0],
         department=None,
         is_tax=False,
-        rank=1,
+        rank=rank,
         activations=activations,
         invited=activations,
         last_activation_at=None,
@@ -547,80 +547,229 @@ class TestSameIncidentDedupe:
 # ── ranking, dense rank and rank prizes ──────────────────────────────────────
 
 
+def _regs(**points_by_member: int) -> list[dict]:
+    """Registration rows giving each named member exactly N points."""
+    return [
+        {
+            "creator_email": f"{member}@balizero.com",
+            "activations": n,
+            "invited": n,
+            "last_activation_at": NOW,
+        }
+        for member, n in points_by_member.items()
+    ]
+
+
+def _prizes(snapshot) -> dict[str, int]:
+    return {e.member: e.prize_idr for e in snapshot.entries}
+
+
+def _slots(snapshot) -> dict[str, int | None]:
+    return {e.member: e.prize_slot for e in snapshot.entries}
+
+
 class TestRankingAndPrizes:
-    def test_dense_rank_and_prizes_over_distinct_points(self):
-        r1_awarded = [
-            _r1_entry("adit@balizero.com", 23),
-            _r1_entry("surya@balizero.com", 23),  # ties adit but is a Sept. winner -> carry 0
-            _r1_entry("krisna@balizero.com", 5),
+    def test_slot_minimums_are_the_owner_ruling(self):
+        assert r2.RANK_PRIZES_IDR == {
+            1: 6_000_000,
+            2: 3_500_000,
+            3: 2_000_000,
+            4: 1_000_000,
+            5: 700_000,
+        }
+        assert r2.RANK_PRIZE_MIN_POINTS == {1: 100, 2: 80, 3: 60, 4: 30, 5: 20}
+
+    def test_exactly_the_minimum_wins_the_slot(self):
+        snapshot = _score(registration_rows=_regs(adit=20))
+        assert _prizes(snapshot)["adit"] == 700_000
+        assert _slots(snapshot)["adit"] == 5
+        assert snapshot.entries[0].total_prize_idr == 700_000
+
+    def test_exactly_100_points_wins_slot_one(self):
+        snapshot = _score(registration_rows=_regs(adit=100))
+        assert _prizes(snapshot)["adit"] == 6_000_000
+        assert _slots(snapshot)["adit"] == 1
+
+    def test_one_below_the_minimum_wins_nothing(self):
+        snapshot = _score(registration_rows=_regs(adit=19))
+        assert _prizes(snapshot)["adit"] == 0
+        assert _slots(snapshot)["adit"] is None
+
+    def test_nobody_reaching_twenty_means_no_prizes(self):
+        snapshot = _score(registration_rows=_regs(adit=19, vino=10, damar=1))
+        assert all(e.prize_idr == 0 for e in snapshot.entries)
+        assert all(e.total_prize_idr == 0 for e in snapshot.entries)
+        assert all(e.prize_slot is None for e in snapshot.entries)
+
+    def test_slide_example_from_the_ruling(self):
+        """90 -> slot 2, 85 -> slot 3, 70 -> slot 4, 25 -> slot 5, 19 -> nothing."""
+        snapshot = _score(registration_rows=_regs(adit=90, vino=85, damar=70))
+        assert _slots(snapshot)["adit"] == 2
+        assert _slots(snapshot)["vino"] == 3
+        assert _slots(snapshot)["damar"] == 4
+        # a 25 and a 19 need two more players: use the synthetic wider roster
+        # in the next test; here the three slide by themselves.
+        assert _prizes(snapshot)["adit"] == 3_500_000
+        assert _prizes(snapshot)["vino"] == 2_000_000
+        assert _prizes(snapshot)["damar"] == 1_000_000
+
+    def test_full_five_step_slide_and_the_last_gets_nothing(self, monkeypatch):
+        roster_rows = [_roster_row(f"m{i}@balizero.com", f"M{i}") for i in range(5)]
+        monkeypatch.setattr(r2, "ROUND2_PARTICIPANTS", _synthetic_participants(5))
+        registration_rows = [
+            {
+                "creator_email": f"m{i}@balizero.com",
+                "activations": n,
+                "invited": n,
+                "last_activation_at": NOW,
+            }
+            for i, n in enumerate([90, 85, 70, 25, 19])
         ]
-        snapshot = _score(r1_awarded=r1_awarded)
+        snapshot = _score(roster_rows=roster_rows, registration_rows=registration_rows)
+        by_rank = {e.rank: e for e in snapshot.entries}
+        assert [by_rank[r].prize_slot for r in (1, 2, 3, 4, 5)] == [2, 3, 4, 5, None]
+        assert [by_rank[r].prize_idr for r in (1, 2, 3, 4, 5)] == [
+            3_500_000,
+            2_000_000,
+            1_000_000,
+            700_000,
+            0,
+        ]
+
+    def test_a_tie_on_a_prize_slot_is_a_playoff_and_awards_nothing(self):
+        """Zero 2026-09-30: tied players do not share; the slot is pending."""
+        snapshot = _score(registration_rows=_regs(adit=50, vino=50, damar=30))
+        by_member = {e.member: e for e in snapshot.entries}
+        for member in ("adit", "vino"):
+            assert by_member[member].prize_slot == 4
+            assert by_member[member].prize_idr == 0
+            assert by_member[member].total_prize_idr == 0
+            assert by_member[member].playoff_pending is True
+        # the tied slot is still consumed: the next group slides from slot 5
+        assert by_member["damar"].prize_slot == 5
+        assert by_member["damar"].prize_idr == 700_000
+        assert by_member["damar"].playoff_pending is False
+
+    def test_a_single_player_on_a_slot_gets_the_full_prize_without_flag(self):
+        snapshot = _score(registration_rows=_regs(adit=50, vino=30))
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["adit"].prize_slot == 4
+        assert by_member["adit"].prize_idr == 1_000_000
+        assert by_member["adit"].playoff_pending is False
+
+    def test_a_tie_below_every_reachable_minimum_has_no_flag_and_no_prize(self):
+        snapshot = _score(registration_rows=_regs(adit=10, vino=10))
+        for e in snapshot.entries:
+            assert e.playoff_pending is False
+            assert e.prize_slot is None
+            assert e.prize_idr == 0
+
+    def test_a_tie_with_one_eligible_member_is_not_a_playoff(self):
+        r1 = [_r1_entry("surya@balizero.com", 5, rank=1)]
+        snapshot = _score(r1_awarded=r1, registration_rows=_regs(adit=90, surya=70, vino=70))
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["surya"].playoff_pending is False
+        assert by_member["surya"].prize_idr == 0  # ineligible by rank
+        assert by_member["vino"].prize_slot == 3
+        assert by_member["vino"].prize_idr == 2_000_000
+        assert by_member["vino"].playoff_pending is False
+
+    def test_a_group_that_qualifies_for_no_slot_consumes_nothing(self):
+        snapshot = _score(registration_rows=_regs(adit=90, vino=10, damar=1))
+        assert _slots(snapshot)["adit"] == 2
+        assert _slots(snapshot)["vino"] is None
+        assert _slots(snapshot)["damar"] is None
+
+    def test_dense_rank_is_unchanged_by_the_slide(self):
+        snapshot = _score(registration_rows=_regs(adit=90, vino=85))
         by_member = {e.member: e for e in snapshot.entries}
         assert by_member["adit"].rank == 1
-        assert by_member["adit"].prize_idr == r2.RANK_PRIZES_IDR[1]
-        assert by_member["ari.firda"].points == 0
-        assert by_member["krisna"].points == 0
-        # ari.firda and krisna tie at 0 points -> share a rank and its prize
-        assert by_member["ari.firda"].rank == by_member["krisna"].rank
-        assert by_member["ari.firda"].prize_idr == by_member["krisna"].prize_idr
+        assert by_member["vino"].rank == 2
 
-    def test_zero_prize_beyond_the_fifth_rank_row(self, monkeypatch):
+    def test_no_prize_beyond_slot_five(self, monkeypatch):
         roster_rows = [_roster_row(f"m{i}@balizero.com", f"M{i}") for i in range(7)]
         monkeypatch.setattr(r2, "ROUND2_PARTICIPANTS", _synthetic_participants(7))
         registration_rows = [
             {
                 "creator_email": f"m{i}@balizero.com",
-                "activations": 7 - i,
-                "invited": 7 - i,
+                "activations": 200 - 10 * i,
+                "invited": 1,
                 "last_activation_at": NOW,
             }
             for i in range(7)
         ]
         snapshot = _score(roster_rows=roster_rows, registration_rows=registration_rows)
         by_rank = {e.rank: e for e in snapshot.entries}
+        assert by_rank[5].prize_idr == 700_000
         assert by_rank[6].prize_idr == 0
-        assert by_rank[5].prize_idr == r2.RANK_PRIZES_IDR[5]
+        assert by_rank[7].prize_idr == 0
 
-    def test_a_zero_point_tie_at_rank_five_earns_no_prize(self, monkeypatch):
-        """A rank prize requires points > 0 — landing on a prize-bearing
-        rank by tying everyone else at zero is not "winning" it."""
-        roster_rows = [_roster_row(f"m{i}@balizero.com", f"M{i}") for i in range(6)]
-        monkeypatch.setattr(r2, "ROUND2_PARTICIPANTS", _synthetic_participants(6))
-        # m0-m3 get distinct positive points (ranks 1-4); m4/m5 register
-        # nothing and tie at 0 points, landing together on rank 5.
-        registration_rows = [
-            {
-                "creator_email": f"m{i}@balizero.com",
-                "activations": 4 - i,
-                "invited": 4 - i,
-                "last_activation_at": NOW,
-            }
-            for i in range(4)
-        ]
-        snapshot = _score(roster_rows=roster_rows, registration_rows=registration_rows)
-        rank_five = [e for e in snapshot.entries if e.rank == 5]
-        assert len(rank_five) == 2
-        assert all(e.points == 0 for e in rank_five)
-        assert all(e.prize_idr == 0 for e in rank_five)
-        assert all(e.total_prize_idr == 0 for e in rank_five)
 
-    def test_a_one_point_member_at_rank_five_still_earns_the_prize(self, monkeypatch):
-        roster_rows = [_roster_row(f"m{i}@balizero.com", f"M{i}") for i in range(5)]
-        monkeypatch.setattr(r2, "ROUND2_PARTICIPANTS", _synthetic_participants(5))
-        registration_rows = [
-            {
-                "creator_email": f"m{i}@balizero.com",
-                "activations": 5 - i,
-                "invited": 5 - i,
-                "last_activation_at": NOW,
-            }
-            for i in range(5)
+class TestSeptemberPrizeTakerEligibility:
+    def test_taker_at_the_same_rank_as_september_is_eligible(self):
+        r1 = [_r1_entry("surya@balizero.com", 5, rank=3)]
+        snapshot = _score(r1_awarded=r1, registration_rows=_regs(adit=90, vino=85, surya=70))
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["surya"].rank == 3
+        assert by_member["surya"].september_rank == 3
+        assert by_member["surya"].prize_slot == 4
+        assert by_member["surya"].prize_idr == 1_000_000
+
+    def test_taker_at_a_better_rank_than_september_is_eligible(self):
+        r1 = [_r1_entry("surya@balizero.com", 5, rank=4)]
+        snapshot = _score(r1_awarded=r1, registration_rows=_regs(surya=90, adit=10))
+        assert _slots(snapshot)["surya"] == 2
+
+    def test_taker_at_a_worse_rank_is_ineligible_and_frees_the_slot(self):
+        r1 = [_r1_entry("surya@balizero.com", 5, rank=1)]
+        snapshot = _score(r1_awarded=r1, registration_rows=_regs(adit=90, surya=85, vino=70))
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["surya"].rank == 2
+        assert by_member["surya"].september_rank == 1
+        assert by_member["surya"].prize_idr == 0
+        assert by_member["surya"].prize_slot is None
+        assert by_member["surya"].total_prize_idr == 0
+        assert by_member["adit"].prize_slot == 2
+        # surya consumed nothing: vino (rank 3) takes slot 3, not slot 4
+        assert by_member["vino"].prize_slot == 3
+        assert by_member["vino"].prize_idr == 2_000_000
+
+    def test_a_group_of_only_ineligible_members_consumes_nothing(self):
+        r1 = [
+            _r1_entry("surya@balizero.com", 5, rank=1),
+            _r1_entry("krisna@balizero.com", 5, rank=1),
         ]
-        snapshot = _score(roster_rows=roster_rows, registration_rows=registration_rows)
-        by_rank = {e.rank: e for e in snapshot.entries}
-        assert by_rank[5].points == 1
-        assert by_rank[5].prize_idr == r2.RANK_PRIZES_IDR[5]
-        assert by_rank[5].total_prize_idr == r2.RANK_PRIZES_IDR[5]
+        snapshot = _score(
+            r1_awarded=r1, registration_rows=_regs(adit=90, surya=70, krisna=70, vino=65)
+        )
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["surya"].prize_idr == by_member["krisna"].prize_idr == 0
+        assert by_member["adit"].prize_slot == 2
+        assert by_member["vino"].rank == 3
+        assert by_member["vino"].prize_slot == 3
+
+    def test_an_eligible_member_in_a_mixed_group_still_wins_the_shared_slot(self):
+        r1 = [
+            _r1_entry("surya@balizero.com", 5, rank=1),
+            _r1_entry("krisna@balizero.com", 5, rank=4),
+        ]
+        snapshot = _score(r1_awarded=r1, registration_rows=_regs(adit=90, surya=70, krisna=70))
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["surya"].prize_idr == 0
+        assert by_member["krisna"].prize_slot == 3
+        assert by_member["krisna"].prize_idr == 2_000_000
+        assert by_member["krisna"].playoff_pending is False
+
+    def test_september_rank_is_none_for_members_who_did_not_take_the_prize(self):
+        r1 = [_r1_entry("adit@balizero.com", 5, rank=2)]
+        snapshot = _score(r1_awarded=r1, registration_rows=_regs(adit=30))
+        assert all(e.september_rank is None for e in snapshot.entries if e.member == "adit")
+
+    def test_taker_without_an_r1_rank_is_not_eligible(self):
+        snapshot = _score(registration_rows=_regs(surya=90))
+        by_member = {e.member: e for e in snapshot.entries}
+        assert by_member["surya"].september_rank is None
+        assert by_member["surya"].prize_idr == 0
 
 
 # ── six-player ruling (2026-09-29) ───────────────────────────────────────────
@@ -668,20 +817,32 @@ class TestSixParticipantsOnly:
     def test_ranks_prizes_and_team_total_are_among_the_six_only(self):
         snapshot = _score(
             registration_rows=[
-                {"creator_email": "outsider@balizero.com", "activations": 50,
-                 "invited": 50, "last_activation_at": NOW},
-                {"creator_email": "adit@balizero.com", "activations": 3,
-                 "invited": 3, "last_activation_at": NOW},
-                {"creator_email": "vino@balizero.com", "activations": 2,
-                 "invited": 2, "last_activation_at": NOW},
+                {
+                    "creator_email": "outsider@balizero.com",
+                    "activations": 50,
+                    "invited": 50,
+                    "last_activation_at": NOW,
+                },
+                {
+                    "creator_email": "adit@balizero.com",
+                    "activations": 3,
+                    "invited": 3,
+                    "last_activation_at": NOW,
+                },
+                {
+                    "creator_email": "vino@balizero.com",
+                    "activations": 2,
+                    "invited": 2,
+                    "last_activation_at": NOW,
+                },
             ],
         )
         by_member = {e.member: e for e in snapshot.entries}
         assert by_member["adit"].rank == 1
-        assert by_member["adit"].prize_idr == r2.RANK_PRIZES_IDR[1]
         assert by_member["vino"].rank == 2
         assert by_member["damar"].points == 0  # a zero-point participant still appears
         assert snapshot.team_total_points == 5
+
 
 # ── Asya mission ─────────────────────────────────────────────────────────────
 

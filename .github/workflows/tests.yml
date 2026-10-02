@@ -739,32 +739,53 @@ jobs:
           # re-resolution drift this step was designed to kill: pip installs
           # exactly the locked versions, and the unpinned cuda family resolves
           # the same way the install step just resolved it.
-          grep -v '^-e \.\./\.\./packages/cell-core' requirements.lock.txt > /tmp/requirements-audit-raw.txt
+          # TWO locks are audited with ONE ignore list (the IGNORES array below), so the
+          # audits cannot drift. requirements.lock.txt is what CI installs;
+          # requirements-prod.lock.txt is what the Fly image installs (Dockerfile) — it
+          # was unaudited until 2026-10-01, when pyjwt 2.13.0 stayed vulnerable in prod
+          # after the CI lock was bumped (#7708, #7709). Both carry the same cell-core
+          # `-e` line and per-package hash lines, so the same normalisation applies.
           # Hash-mode auto-activation (found 2026-07-21): the lock's per-package
           # --hash lines make pip enable hash mode ALL BY THEMSELVES (any hash ⇒
           # hashes required for everything), so dropping --require-hashes was not
           # enough — the unpinned cuda subtree still failed the closure. Strip
           # the hash continuation lines and their trailing backslashes so the
           # audit runs in plain ==-pinned mode.
-          sed -e '/^[[:space:]]*--hash=sha256:/d' -e 's/[[:space:]]\\$//' /tmp/requirements-audit-raw.txt > /tmp/requirements-audit.txt
-          pip-audit --strict --requirement /tmp/requirements-audit.txt \
-            --ignore-vuln GHSA-69w3-r845-3855 \
-            --ignore-vuln PYSEC-2025-217 \
-            --ignore-vuln CVE-2025-62800 \
-            --ignore-vuln CVE-2025-62801 \
-            --ignore-vuln GHSA-rcfx-77hg-w2wv \
-            --ignore-vuln CVE-2025-69196 \
-            --ignore-vuln CVE-2025-64340 \
-            --ignore-vuln CVE-2026-27124 \
-            --ignore-vuln CVE-2026-28684 \
-            --ignore-vuln CVE-2026-40217 \
-            --ignore-vuln CVE-2026-41488 \
-            --ignore-vuln PYSEC-2025-217 \
-            --ignore-vuln GHSA-8jfx-5878-hv4v \
-            --ignore-vuln CVE-2025-3000 \
-            --ignore-vuln CVE-2026-4372 \
-            --ignore-vuln PYSEC-2026-1325 \
+          IGNORES=(
+            --ignore-vuln GHSA-69w3-r845-3855
+            --ignore-vuln PYSEC-2025-217
+            --ignore-vuln CVE-2025-62800
+            --ignore-vuln CVE-2025-62801
+            --ignore-vuln GHSA-rcfx-77hg-w2wv
+            --ignore-vuln CVE-2025-69196
+            --ignore-vuln CVE-2025-64340
+            --ignore-vuln CVE-2026-27124
+            --ignore-vuln CVE-2026-28684
+            --ignore-vuln CVE-2026-40217
+            --ignore-vuln CVE-2026-41488
+            --ignore-vuln PYSEC-2025-217
+            --ignore-vuln GHSA-8jfx-5878-hv4v
+            --ignore-vuln CVE-2025-3000
+            --ignore-vuln CVE-2026-4372
+            --ignore-vuln PYSEC-2026-1325
             --ignore-vuln PYSEC-2026-2290
+          )
+          # The `if` suspends `bash -e` only for that pipeline, so the second lock is
+          # still audited when the first fails; any failure turns the step red via RC.
+          RC=0
+          for lock in requirements.lock.txt requirements-prod.lock.txt; do
+            echo "::group::pip-audit $lock"
+            if grep -v '^-e \.\./\.\./packages/cell-core' "$lock" > /tmp/requirements-audit-raw.txt \
+              && sed -e '/^[[:space:]]*--hash=sha256:/d' -e 's/[[:space:]]\\$//' /tmp/requirements-audit-raw.txt > /tmp/requirements-audit.txt \
+              && pip-audit --strict --requirement /tmp/requirements-audit.txt "${IGNORES[@]}"; then
+              echo "pip-audit $lock: clean"
+            else
+              echo "::error::pip-audit failed on $lock"
+              RC=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$RC"
 
       - name: Mypy type check (core + models)
         run: |

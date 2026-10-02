@@ -103,6 +103,7 @@ _FIRST_DOCUMENT_COLUMNS = [
     "client_assignee",
 ]
 _REQUEST_COLUMNS = [
+    "id",
     "client_id",
     "practice_id",
     "created_at",
@@ -308,6 +309,7 @@ def render_round2_table(entries: list[r2.Round2Entry], markdown: bool) -> str:
         "unans",
         "unrev",
         "penalty",
+        "slot",
         "prize_idr",
         "choice",
     ]
@@ -323,7 +325,8 @@ def render_round2_table(entries: list[r2.Round2Entry], markdown: bool) -> str:
             "unans": e.unanswered_requests,
             "unrev": e.unreviewed_documents,
             "penalty": e.penalty_points,
-            "prize_idr": e.prize_idr,
+            "slot": e.prize_slot if e.prize_slot is not None else "-",
+            "prize_idr": "playoff" if e.playoff_pending else e.prize_idr,
             "choice": e.september_choice or "-",
         }
         for e in entries

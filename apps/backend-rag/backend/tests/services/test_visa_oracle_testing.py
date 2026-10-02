@@ -17,7 +17,7 @@ from backend.services.visa_oracle_testing import (
 def test_campaign_has_five_per_day_and_shared_reference():
     cases = make_assignments()
     assert len(cases) == len({c["id"] for c in cases}) == 90
-    assert {c["day"] for c in cases} == {"2026-09-30", "2026-10-01", "2026-10-02"}
+    assert {c["day"] for c in cases} == {"2026-10-02", "2026-10-05", "2026-10-06"}
     assert set(Counter((c["slot"], c["day"]) for c in cases).values()) == {5}
     assert set(Counter(c["slot"] for c in cases).values()) == {15}
     for day in {c["day"] for c in cases}:

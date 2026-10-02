@@ -77,6 +77,11 @@ RANK_PRIZES_IDR: dict[int, int] = {
     5: 700_000,
 }
 
+# Zero's ruling, 2026-09-30: each prize SLOT has a minimum score ("almeno":
+# `points >= min`). A member is prized by SLIDING to the first slot they can
+# reach, not by their raw rank — see `_assign_rank_prizes`.
+RANK_PRIZE_MIN_POINTS: dict[int, int] = {1: 100, 2: 80, 3: 60, 4: 30, 5: 20}
+
 ASYA_EMAIL = "asya@balizero.com"
 ASYA_TARGET_POINTS = 60
 ASYA_PRIZE_IDR = 1_000_000
@@ -149,6 +154,22 @@ def working_deadline(start: datetime, hours: float) -> datetime:
                     return day_start + timedelta(hours=remaining)
                 remaining -= available
         cursor = datetime.combine(cursor_date + timedelta(days=1), time(0, 0), tzinfo=WITA)
+
+
+def penalty_start(origin: datetime, hours: float) -> datetime:
+    """The first instant a limit-`hours` penalty measured from `origin`
+    actually counts (`working_hours_between` must EXCEED the limit). Usually
+    the working deadline itself; when the deadline lands exactly on the end
+    of a working day no further working time has accrued, so the penalty
+    only begins when the next working day opens."""
+    deadline = working_deadline(origin, hours)
+    local = _to_wita(deadline)
+    if local.time() != WORKDAY_END:
+        return deadline
+    cursor = local.date() + timedelta(days=1)
+    while not _is_workday(cursor):
+        cursor += timedelta(days=1)
+    return datetime.combine(cursor, WORKDAY_START, tzinfo=WITA)
 
 
 # ── Round selection ──────────────────────────────────────────────────────
@@ -257,7 +278,7 @@ def build_client_requests_sql() -> str:
     start_ts, end_ts = _window_ts()
     return f"""
 WITH {REAL_CLIENTS_CTE}
-SELECT pm.client_id, pm.practice_id, pm.created_at,
+SELECT pm.id, pm.client_id, pm.practice_id, pm.created_at,
        (SELECT MIN(reply.created_at) FROM portal_messages reply
         WHERE reply.client_id = pm.client_id
           AND reply.direction = 'team_to_client'
@@ -374,6 +395,11 @@ class Round2Entry:
     penalty_points: int = 0
     september_choice: str | None = None
     last_event_at: datetime | None = None
+    prize_slot: int | None = None  # the prize slot whose amount this member wins
+    september_rank: int | None = None  # prize-takers only: their R1 rank
+    # Tied with another eligible member on a prize slot: no prize is awarded
+    # until the (not yet announced) play-off decides it.
+    playoff_pending: bool = False
 
 
 @dataclass
@@ -407,11 +433,28 @@ class ScoringEvent:
 
 
 @dataclass
+class ProducerEvent:
+    """INTERNAL input of the live takeover producer (`challenge_events`):
+    one bomb (+3 first document) or penalty that actually counted for a
+    ranked participant. `key` is the stable row identity used only to dedupe
+    in Redis — it never reaches a payload. Not part of `ScoringEvent`'s
+    public shape and never serialised by the dashboard."""
+
+    kind: str  # bomb | penalty
+    email: str
+    points: int
+    at: datetime  # bomb: first_doc_at; penalty: the instant the penalty started
+    key: str
+    reason: str | None = None  # penalty: unanswered_request | unreviewed_document
+
+
+@dataclass
 class Round2Snapshot:
     entries: list[Round2Entry]
     team_total_points: int
     asya_mission: AsyaMission
     recent_events: list[ScoringEvent] = field(default_factory=list)
+    producer_events: list[ProducerEvent] = field(default_factory=list)
 
 
 _NEVER = datetime.max.replace(tzinfo=timezone.utc)
@@ -443,6 +486,7 @@ def _request_penalties(request_rows: list[dict], now: datetime) -> list[dict]:
         if working_hours_between(created_at, reply_at) > RESPONSE_WORKING_HOURS_LIMIT:
             penalties.append(
                 {
+                    "id": row.get("id"),
                     "client_id": row["client_id"],
                     "created_at": created_at,
                     "responsible": _responsible(
@@ -461,6 +505,7 @@ def _review_penalties(review_rows: list[dict], now: datetime) -> list[dict]:
         if working_hours_between(uploaded_at, review_at) > REVIEW_WORKING_HOURS_LIMIT:
             penalties.append(
                 {
+                    "id": row.get("id"),
                     "client_id": row["client_id"],
                     "uploaded_at": uploaded_at,
                     "responsible": _responsible(
@@ -512,6 +557,54 @@ def _mission_bonus_keys(
     return keys
 
 
+def _assign_rank_prizes(ordered: list[Round2Entry], r1_rank_by_email: dict[str, int]) -> None:
+    """Zero's ruling, 2026-09-30. Walk the dense-rank groups in order; a group
+    at rank r takes the smallest slot s >= max(r, next_free_slot) whose minimum
+    the group's points reach. A single ELIGIBLE member wins that slot's prize;
+    2+ eligible members tied on it win NOTHING (Zero's ruling, 2026-09-30:
+    ties play a play-off, rules announced later) and are flagged
+    playoff_pending with prize 0. Either way next_free_slot = s + 1. A group
+    with no reachable slot (or with no eligible member) consumes nothing. A September prize-taker is eligible
+    only if their October dense rank <= their September rank (computed from
+    the R1 awards; no R1 rank -> not eligible)."""
+    for entry in ordered:
+        if entry.email in SEPTEMBER_PRIZE_TAKEN:
+            entry.september_rank = r1_rank_by_email.get(entry.email)
+
+    def eligible(entry: Round2Entry) -> bool:
+        if entry.email not in SEPTEMBER_PRIZE_TAKEN:
+            return True
+        return entry.september_rank is not None and entry.rank <= entry.september_rank
+
+    groups: dict[int, list[Round2Entry]] = {}
+    for entry in ordered:
+        groups.setdefault(entry.rank, []).append(entry)
+
+    next_free = 1
+    for rank in sorted(groups):
+        members = [m for m in groups[rank] if eligible(m)]
+        if not members:
+            continue
+        points = members[0].points
+        slot = next(
+            (
+                s
+                for s in sorted(RANK_PRIZES_IDR)
+                if s >= max(rank, next_free) and points >= RANK_PRIZE_MIN_POINTS[s]
+            ),
+            None,
+        )
+        if slot is None:
+            continue
+        playoff = len(members) >= 2
+        for member in members:
+            member.prize_slot = slot
+            member.playoff_pending = playoff
+            member.prize_idr = 0 if playoff else RANK_PRIZES_IDR[slot]
+            member.total_prize_idr = member.prize_idr
+        next_free = slot + 1
+
+
 def score_round2(
     roster_rows: list[dict],
     r1_awarded: list[AwardedEntry],
@@ -554,6 +647,7 @@ def score_round2(
         )
 
     events: list[ScoringEvent] = []
+    producer_events: list[ProducerEvent] = []
 
     # ── registrations ──
     for row in registration_rows:
@@ -583,6 +677,15 @@ def score_round2(
                 display_name=entry.display_name,
                 points=FIRST_DOCUMENT_POINTS,
                 at=row["first_doc_at"],
+            )
+        )
+        producer_events.append(
+            ProducerEvent(
+                kind="bomb",
+                email=entry.email,
+                points=FIRST_DOCUMENT_POINTS,
+                at=row["first_doc_at"],
+                key=f"first_document:{row.get('practice_id')}",
             )
         )
 
@@ -616,6 +719,16 @@ def score_round2(
                     at=at,
                 )
             )
+            producer_events.append(
+                ProducerEvent(
+                    kind="penalty",
+                    email=entry.email,
+                    points=-UNANSWERED_REQUEST_PENALTY,
+                    at=penalty_start(at, RESPONSE_WORKING_HOURS_LIMIT),
+                    key=f"unanswered_request:{rp.get('id')}",
+                    reason="unanswered_request",
+                )
+            )
 
     for rp in review_penalties:
         responsible = rp["responsible"]
@@ -637,6 +750,16 @@ def score_round2(
                     display_name=entry.display_name,
                     points=-UNREVIEWED_DOCUMENT_PENALTY,
                     at=at,
+                )
+            )
+            producer_events.append(
+                ProducerEvent(
+                    kind="penalty",
+                    email=entry.email,
+                    points=-UNREVIEWED_DOCUMENT_PENALTY,
+                    at=penalty_start(at, REVIEW_WORKING_HOURS_LIMIT),
+                    key=f"unreviewed_document:{rp.get('id')}",
+                    reason="unreviewed_document",
                 )
             )
 
@@ -678,12 +801,7 @@ def score_round2(
     rank_of = {value: idx + 1 for idx, value in enumerate(distinct_points_desc)}
     for entry in ordered:
         entry.rank = rank_of[entry.points]
-        # A rank prize requires points > 0 — a zero-or-negative member never
-        # earns one even when they land on a prize-bearing rank (e.g. every
-        # untouched member ties for the lowest rank at 0 points; nobody at
-        # that rank has "won" anything). Rank itself stays dense as-is.
-        entry.prize_idr = RANK_PRIZES_IDR.get(entry.rank, 0) if entry.points > 0 else 0
-        entry.total_prize_idr = entry.prize_idr
+    _assign_rank_prizes(ordered, {e.email: e.rank for e in r1_awarded})
 
     team_total_points = sum(e.points for e in ordered)
     events.sort(key=lambda e: e.at, reverse=True)
@@ -693,4 +811,5 @@ def score_round2(
         team_total_points=team_total_points,
         asya_mission=asya_mission,
         recent_events=events[:10],
+        producer_events=producer_events,
     )

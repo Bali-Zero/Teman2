@@ -20,6 +20,7 @@ import {
   getDriveProxyUrl,
   getVisaAlertStatus,
 } from "./utils";
+import { formatLongSpan } from "@/lib/utils/format-date";
 
 export function VisaCard({
   client,
@@ -410,7 +411,7 @@ export function VisaCard({
                               ? "today"
                               : days <= 365
                                 ? `⏰ ${days}d`
-                                : `${Math.floor(days / 30)}mo`;
+                                : formatLongSpan(days);
                         return (
                           <span
                             className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${

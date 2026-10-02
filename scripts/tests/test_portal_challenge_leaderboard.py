@@ -11,10 +11,13 @@ out to prod Postgres via scripts/pg.sh (`_run_sql`, `fetch_*`,
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
 from types import ModuleType
+
+import pytest
 
 MODULE_PATH = Path(__file__).resolve().parent.parent / "portal_challenge_leaderboard.py"
 
@@ -162,3 +165,53 @@ def test_main_passes_a_tz_aware_now_to_the_dispatched_round(monkeypatch) -> None
 
     pcl.main([])
     assert seen["now"].tzinfo is not None
+
+
+# ── SQL / column-list parity ─────────────────────────────────────────────
+# `_run_sql` reads psql `-t -A` output BY POSITION, so every column list must
+# name the main SELECT's output columns in order — a column added to the SQL
+# without its list shifts every later field (e.g. `created_at` <- practice_id).
+
+
+def _select_output_names(sql: str) -> list[str]:
+    depth, i, start = 0, 0, None
+    upper = sql.upper()
+    while i < len(sql):
+        ch = sql[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif depth == 0 and start is None and re.match(r"SELECT\b", upper[i:]):
+            start = i + len("SELECT")
+        elif depth == 0 and start is not None and re.match(r"FROM\b", upper[i:]):
+            break
+        i += 1
+    assert start is not None, "no top-level SELECT"
+    parts, depth, cur = [], 0, ""
+    for ch in sql[start:i]:
+        depth += ch == "("
+        depth -= ch == ")"
+        if ch == "," and depth == 0:
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    parts.append(cur)
+    return [re.search(r"(\w+)\s*$", part.strip()).group(1) for part in parts]
+
+
+@pytest.mark.parametrize(
+    ("builder", "columns"),
+    [
+        ("build_registration_aggregates_sql", "_AGGREGATES_COLUMNS"),
+        ("build_first_documents_sql", "_FIRST_DOCUMENT_COLUMNS"),
+        ("build_client_requests_sql", "_REQUEST_COLUMNS"),
+        ("build_required_document_reviews_sql", "_REVIEW_COLUMNS"),
+        ("build_asya_requests_sql", "_ASYA_REQUEST_COLUMNS"),
+        ("build_asya_client_events_sql", "_ASYA_EVENT_COLUMNS"),
+    ],
+)
+def test_round2_column_lists_match_the_select_order(builder: str, columns: str) -> None:
+    sql = getattr(pcl.r2, builder)()
+    assert _select_output_names(sql) == getattr(pcl, columns)

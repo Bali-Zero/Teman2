@@ -902,7 +902,21 @@ def probe_agy(timeout: float) -> tuple[str, str, int]:
     # Judge the reply, not the fact that the process never cleanly exited.
     if res.timed_out and not live:
         return TIMEOUT, ev or "probe timed out", latency_ms
-    status = classify_generic(res.stdout + res.stderr, live, "agy", is_ssh_context())
+    combined = res.stdout + res.stderr
+    # Real exemplar captured in ~/.organism/arsenal/last.json on Mini (2026-10-01,
+    # Mini-HEALER tick): a non-interactive probe invocation hit agy's own
+    # tool-permission prompt and was denied with no TTY to approve it — "Add an
+    # allow-rule under permissions.allow in settings.json ... or re-run with
+    # <flag> to auto-approve all tools." This carries no 401/oauth-token/quota
+    # marker and fell through classify_generic() to a bare UNKNOWN_ERR. It is a
+    # context limitation (nobody to answer the prompt), not a credential death —
+    # same class as agy's own CONTEXT_AUTH keychain split above and claude's
+    # trust-dialog split: the seat may be LIVE when run interactively.
+    if not live and re.search(
+        r"allow-rule under permissions\.allow|auto-approve all tools", combined, re.IGNORECASE
+    ):
+        return CONTEXT_AUTH, ev or "agy tool permission not pre-approved (non-interactive context)", latency_ms
+    status = classify_generic(combined, live, "agy", is_ssh_context())
     return status, ev, latency_ms
 
 

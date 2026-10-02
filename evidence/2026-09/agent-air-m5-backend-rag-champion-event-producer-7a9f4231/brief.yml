@@ -1,0 +1,41 @@
+mandate: >-
+  Portal Champion Round 2 backend producer (Zero, 2026-09-30): publish "bomb"
+  (+3 first client document) and "penalty" (-2 unanswered client request > 3
+  working hours, -1 required document unreviewed > 1 working day) takeover
+  events on the same portal-champion:goals:v1 stream as the registration goal,
+  which gains the additive kind "goal". Only ranked participants; only events
+  due in the last 120 s; dedupe via PUBLISH_ONCE on sha256(kind:row identity).
+  Runs as a 30 s loop in the api process only while Round 2 is live, with a
+  Redis SET NX EX 25 singleton per tick, a 20 s timeout and the kill switch
+  CHAMPION_EVENT_PRODUCER_ENABLED=0/false. The frontend consumer (#7699,
+  #7704) is already live on kita.
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source size (+513/-13 across 5 files: challenge_events.py,
+  challenge_round2.py, main_api.py and two test files), no hot zone.
+dux: claude-opus-5-5
+implementer: claude-sonnet-5
+organ: apps/backend-rag/backend/services/portal/challenge_events.py + challenge_round2.py + apps/backend-rag/backend/app/main_api.py (Fly nuzantara-rag; merging a backend-rag PR deploys it)
+authority: >-
+  Zero 2026-09-30 in the release owner's session: "accentua il blocco schermo
+  quando c'e un goal (da 1 punto o la bomba da 3) e la delusione per le penalty".
+acceptance:
+  - text: >-
+      Producer publishes bomb and penalty events only for ranked participants
+      and only when due in the last 120 s, dedupes via PUBLISH_ONCE, honours the
+      singleton lock and the kill switch; the registration goal carries kind
+      "goal" additively.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/portal/ backend/tests/unit/routers/test_dashboard_summary.py -q
+  - text: >-
+      Live: after a first client document or an unanswered client request older
+      than 3 working hours, the portal-champion SSE stream carries a bomb or
+      penalty entry with the new kind, exactly once, and the kita takeover renders.
+    probe: >-
+      curl -N the portal champion goals SSE stream on nuzantara-rag.fly.dev after
+      deploy and observe one entry with kind "bomb" or "penalty" (staff names
+      only, no client identifiers).
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

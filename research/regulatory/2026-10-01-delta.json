@@ -1,0 +1,86 @@
+{
+  "run_at": "2026-10-01T07:06:11+08:00",
+  "today": "2026-10-01",
+  "yesterday_seen_count": 3,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as yesterday's run"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "0 berita shown, 'Memuat artikel perpajakan...' loading placeholder persists since 2026-09-07"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as yesterday's run"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "200 OK, nav-only, zero extractable dated regulation entries, same as yesterday's run"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "only RUU LLAJ bill under discussion (not enacted), no new act citation in 48h window"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "no PMK entries in range, newest visible entries UU dated Apr-Jun 2026"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest press release 18 Sep 2026, unchanged from yesterday's run"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry KEP-185/PJ/2026 dated 2026-09-02, unchanged from yesterday's run"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible UU 2/2026 Pelindungan Pekerja Rumah Tangga, enacted 30 Apr 2026, unchanged from yesterday's run"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PER-12/PJ/2026",
+      "title_id": "Peraturan Direktur Jenderal Pajak Nomor PER-12/PJ/2026 tentang Perubahan atas PER-11/PJ/2025 mengenai Pembetulan Surat Pemberitahuan Tahunan dan Tata Cara e-Bupot",
+      "title_en": "Directorate General of Taxes Regulation PER-12/PJ/2026 amending PER-11/PJ/2025 on annual tax return (SPT Tahunan) amendment procedures and e-Bupot withholding certificate rules",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "high",
+      "confidence": "high",
+      "impact_note": "Taxpayers who file an amended (pembetulan) SPT Tahunan after already obtaining an installment/deferral approval for PPh Pasal 29 automatically lose that approval from the filing date of the amended return; e-Bupot withholding-certificate procedures are also revised. Clients with active installment/deferral plans should be advised before filing any SPT amendment.",
+      "summary": "PER-12/PJ/2026 replaces parts of PER-11/PJ/2025: Article 129B declares any PPh Art. 29 installment/deferral approval void as soon as an amended annual tax return is submitted; the regulation separately revises e-Bupot (electronic withholding certificate) procedures.",
+      "source": "NB-INTEL-Tax (citing Ortax, 2026-09-30) | DDTC https://news.ddtc.co.id/berita/nasional/1822887/djp-rilis-per-12pj2026-ini-poin-penting-perubahan-aturan-e-bupot",
+      "verbatim_excerpt": "Dalam hal Wajib Pajak melakukan pembetulan atas Surat Pemberitahuan Tahunan yang telah memperoleh surat keputusan persetujuan pengangsuran atau penundaan pembayaran Pajak Penghasilan Pasal 29, surat keputusan persetujuan pengangsuran atau penundaan tersebut dinyatakan tidak berlaku sejak Surat Pemberitahuan Tahunan pembetulan dimaksud disampaikan.",
+      "first_seen_at": "2026-10-01T07:06:11+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026"
+  ],
+  "note": "3 of 4 NB-INTEL returned 'nessuna novita'; NB-INTEL-Tax flagged PER-12/PJ/2026 (segnalato 30 Sep 2026) via a suggested-followup, confirmed verbatim via second query (source Ortax) and cross-validated independently by DDTC web fetch (e-Bupot angle) -> confidence high, single citation with two source angles merged. Primary web sources: hukumonline checked_no_new (only a pending bill, RUU LLAJ); ortax.org/news, muc.co.id, ikpi.or.id all unreachable (recurring pattern, same as prior runs). Backup govt sources (peraturan.go.id, bpk, imigrasi, pajak.go.id, kemenkeu JDIH, kemnaker JDIH) fetched per Step 3 rule since primary sources returned <3 deltas; all outside_window/checked_no_new/unreachable, no additional deltas, states unchanged from yesterday's run."
+}

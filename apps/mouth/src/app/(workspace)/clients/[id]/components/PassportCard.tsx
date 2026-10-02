@@ -22,6 +22,7 @@ import {
   getPassportValidityColor,
   isBirthdayToday,
 } from "./utils";
+import { formatLongSpan } from "@/lib/utils/format-date";
 
 export function PassportCard({
   client,
@@ -371,7 +372,7 @@ export function PassportCard({
                               ? "today"
                               : days <= 365
                                 ? `⏰ ${days}d`
-                                : `${Math.floor(days / 30)}mo`;
+                                : formatLongSpan(days);
                         return (
                           <span
                             className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
@@ -534,7 +535,7 @@ export function PassportCard({
                                   ? "today"
                                   : days <= 365
                                     ? `⏰ ${days}d`
-                                    : `${Math.floor(days / 30)}mo`;
+                                    : formatLongSpan(days);
                             return (
                               <span
                                 className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
