@@ -5,14 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   BookOpen,
-  Layers,
   Activity,
   Sparkles,
   Scale,
   FileText,
   ChevronRight,
   Loader2,
-  History,
   Send,
   Menu,
   X,
@@ -256,7 +254,7 @@ const SourceCard = ({
 }: {
   source: { id: string; title: string; type: string; date: string };
 }) => (
-  <div className="group flex items-center gap-4 p-4 rounded-lg bg-surface-deep/40 border border-white/5 hover:bg-[#151921] hover:border-accent-sand/30 transition-all duration-300 cursor-pointer backdrop-blur-sm">
+  <div className="group flex items-center gap-4 p-4 rounded-lg bg-surface-deep/40 border border-white/5 hover:bg-[#151921] hover:border-accent-sand/30 transition-all duration-300 backdrop-blur-sm">
     <div className="p-2.5 rounded bg-surface-editorial-elevated text-[#888] group-hover:text-accent-sand transition-colors border border-white/5">
       <BookOpen size={14} strokeWidth={1.5} />
     </div>
@@ -1211,36 +1209,10 @@ export default function KBLIExplorerPage() {
               ))}
             </div>
           </section>
-
-          <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
-              Quick Access
-            </h3>
-            <div className="space-y-1">
-              <button className="w-full group flex items-center justify-between px-4 py-3 min-h-[44px] rounded text-sm text-[#666] hover:bg-[#151921] hover:text-[#CCC] transition-all border border-transparent hover:border-white/5 text-left">
-                <span className="flex items-center gap-2">
-                  <History size={14} /> Recent Searches
-                </span>
-                <ChevronRight
-                  size={12}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                />
-              </button>
-              <button className="w-full group flex items-center justify-between px-4 py-3 min-h-[44px] rounded text-sm text-[#666] hover:bg-[#151921] hover:text-[#CCC] transition-all border border-transparent hover:border-white/5 text-left">
-                <span className="flex items-center gap-2">
-                  <Layers size={14} /> Browse by Sector
-                </span>
-                <ChevronRight
-                  size={12}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                />
-              </button>
-            </div>
-          </section>
         </div>
 
         <div className="p-4 border-t border-white/5">
-          <div className="flex items-center gap-3 p-2 rounded hover:bg-[#151921] cursor-pointer transition-colors">
+          <div className="flex items-center gap-3 p-2 rounded">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#D4B483] to-[#8C7350] flex items-center justify-center text-[#050507] text-[10px] font-bold">
               AZ
             </div>
