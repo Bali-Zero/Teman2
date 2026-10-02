@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+from collections import Counter
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -39,13 +40,22 @@ def bali_today() -> str:
     return datetime.now(ZoneInfo("Asia/Makassar")).date().isoformat()
 
 
+def plan_day(assignment_id: str) -> str | None:
+    """The day an assignment sits on in the CURRENT plan. A run's stored
+    ``assigned_day`` is the date it was started, which an owner reschedule leaves
+    behind — every per-day count follows the plan, never the stored date."""
+    case = PLAN.get(assignment_id)
+    return case["day"] if case else None
+
+
 async def expectation_days(conn, who: dict) -> set[str]:
     rows = await conn.fetch(
-        "SELECT assigned_day::text AS day FROM visa_oracle_test_runs WHERE campaign_id=$1 AND member_id=$2 GROUP BY assigned_day HAVING count(*)=5",
+        "SELECT assignment_id FROM visa_oracle_test_runs WHERE campaign_id=$1 AND member_id=$2",
         CAMPAIGN_ID,
         who["id"],
     )
-    return {r["day"] for r in rows}
+    per_day = Counter(plan_day(r["assignment_id"]) for r in rows)
+    return {day for day, n in per_day.items() if day and n == 5}
 
 
 async def review_days(conn, who: dict) -> set[str]:
@@ -111,7 +121,7 @@ async def view(conn, who: dict) -> dict:
         )
     ]
     rows = await conn.fetch(
-        "SELECT assignment_id,slot,member_id,assigned_day,scenario,expected,status,started_at,submitted_at,review,"
+        "SELECT assignment_id,slot,member_id,scenario,expected,status,started_at,submitted_at,review,"
         "result,screenshot IS NOT NULL AS has_image "
         "FROM visa_oracle_test_runs WHERE campaign_id=$1",
         CAMPAIGN_ID,
@@ -174,11 +184,13 @@ async def view(conn, who: dict) -> dict:
             "day": day,
             "planned": 5,
             "submitted": sum(
-                r["status"] == "submitted" and r["slot"] == slot and str(r["assigned_day"]) == day
+                r["status"] == "submitted"
+                and r["slot"] == slot
+                and plan_day(r["assignment_id"]) == day
                 for r in rows
             ),
             "reviewed": sum(
-                bool(r["review"]) and r["slot"] == slot and str(r["assigned_day"]) == day
+                bool(r["review"]) and r["slot"] == slot and plan_day(r["assignment_id"]) == day
                 for r in rows
             ),
         }
@@ -384,7 +396,7 @@ async def review(
     user: dict = Depends(require_team_member),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ):
-    assignment(key)
+    case = assignment(key)
     if body.reproduced and len(body.reproduction_evidence.strip()) < 8:
         raise HTTPException(422, "Reproduction requires an independent evidence record")
     async with pool.acquire() as conn, conn.transaction():
@@ -392,13 +404,13 @@ async def review(
         if not who["can_review"]:
             raise HTTPException(403, "Reviewer required")
         row = await conn.fetchrow(
-            "SELECT member_id,status,review,assigned_day FROM visa_oracle_test_runs WHERE assignment_id=$1 FOR UPDATE",
+            "SELECT member_id,status,review FROM visa_oracle_test_runs WHERE assignment_id=$1 FOR UPDATE",
             key,
         )
         if not row or row["status"] != "submitted":
             raise HTTPException(409, "Only submitted tests can be reviewed")
         authorize_record(who["id"], row["member_id"], review=True, override=who["can_configure"])
-        if str(row["assigned_day"]) not in await review_days(conn, who):
+        if case["day"] not in await review_days(conn, who):
             raise HTTPException(
                 409, "Lock all five personal expectations for this day before reviewing peers"
             )
