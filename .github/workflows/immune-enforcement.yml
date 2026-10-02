@@ -292,6 +292,12 @@ jobs:
               scripts/queue_baseline_probe.py|\
               scripts/lib/offsite_verify.sh|\
               scripts/test_offsite_verify.sh|\
+              scripts/disk_janitor.sh|\
+              scripts/test_disk_janitor.sh|\
+              scripts/qdrant_backup_retention.sh|\
+              scripts/test_qdrant_backup_retention.sh|\
+              infra/launchagents/wrappers/pro-disk-janitor.sh|\
+              infra/launchagents/com.nuzantara.disk-janitor.plist|\
               scripts/fly-pg-backup.sh|\
               scripts/lib/heartbeat.sh|\
               scripts/wr2-cron-wrapper.sh|\
@@ -874,6 +880,18 @@ jobs:
           # (docs/specs/seat-board-drain-v1.md section 4). Asserted as the RELATION
           # key == witness stem == witness job field, never as one literal example.
           bash scripts/test_cron_wrapper_alert.sh
+
+      - name: disk-janitor prune corpus (guilt + innocence + protected-tree refusal)
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
+        run: |
+          # pro.disk_janitor is the first scheduled DELETER under $HOME on Pro (2026-09-29,
+          # Data volume at 97 %). What it may remove is an allowlist and what it must never
+          # touch is asserted with decoys under every protected tree (PII, evidence, models,
+          # worktrees): a janitor whose innocence is not exercised is one bad glob away from
+          # being the incident it was born to prevent.
+          bash scripts/test_disk_janitor.sh
+          # The janitor delegates qdrant retention to its own tested script: that corpus rides along.
+          bash scripts/test_qdrant_backup_retention.sh
 
       - name: login-healthcheck alarm-channel corpus (dead channel must be loud, not routine)
         if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'

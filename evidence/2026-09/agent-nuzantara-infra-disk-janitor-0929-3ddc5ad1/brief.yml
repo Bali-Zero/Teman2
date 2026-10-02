@@ -1,0 +1,28 @@
+task_id: disk-janitor-0929
+gear: 3
+objective: Birth pro.disk_janitor - a bounded, allowlisted daily disk janitor on Pro (launchd wrapper -> scripts/disk_janitor.sh --apply) so the machine-generated accumulators that took Pro's Data volume to 97 % on 2026-09-29 are pruned on a schedule with one receipt per run, without ever touching human-produced or PII-bearing data.
+constraints:
+  - Allowlist only - the payload names every target class explicitly (session scratch >7 d not live, codex transcripts >14 d not open, ~/logs/archive >60 d, uv/docker dangling-only, brew --prune=30, qdrant retention delegated); nothing under $HOME is a target by default.
+  - Protected trees are never targets and refuse_path() aborts the run with rc=2 if any computed target resolves under one - OSINT-Nexus, wa-mirror-media, backups/fly-postgres, PII quarantine, .nuzantara-pilots, .worktrees, .ollama, .colima, huggingface, .claude/backups, .claude/projects.
+  - Docker prunes are dangling/anonymous-only, never `-a` - localci-candidate:1 is pinned by image ID in the local-CI plans and a rebuilt image is refused there.
+  - DRY-RUN by default; the launchd wrapper is the one caller that applies. Kill switches at both layers (PRO_DISK_JANITOR_ENABLED, DISK_JANITOR_ENABLED). /bin/bash 3.2, no new dependencies, no paid endpoint.
+  - The ten organ_birth.py genes stay intact - heartbeat on every exit path, node guard, pidfile, StartInterval without KeepAlive, declared HOME-fork pairs, registry entry with checksum.
+acceptance:
+  - text: WHEN scripts/test_disk_janitor.sh runs, every assertion SHALL pass - dry-run removes nothing and names the right candidates, apply prunes exactly the aged candidates, keeps the live-session scratch dir and fresh files, leaves all eight protected-tree decoys intact, a second apply is a no-op, the kill switch removes nothing, and a target under a protected tree is refused with rc=2.
+    probe: local-tests
+  - text: WHEN the payload runs in DRY-RUN against the real Pro HOME, it SHALL write one receipt line with errors=0 and name only allowlisted candidates.
+    probe: dry-run-live
+  - text: WHEN infra/organ-conformance/check_organ_conformance.py scans the new plist and wrapper, it SHALL report 0 non-conformant births, and organism.tools.validate_organs_registry SHALL accept the registry with its in-place checksum.
+    probe: conformance
+  - text: WHEN the PR has merged and the live pair is installed on Pro, the first kickstart SHALL write ~/.organism/last_seen/pro.disk_janitor.json with status ok and one receipt with mode=APPLY and errors=0 (post-merge arming, tracked by the PENDING-ARMS row).
+    probe: prove-live
+consumer_map:
+  - launchd job com.nuzantara.disk-janitor on Pro (StartInterval 86400) -> ~/scripts/pro-disk-janitor.sh -> ~/nuzantara/scripts/disk_janitor.sh --apply - the only scheduled caller of the payload.
+  - The organism registry and healer - sidecar ~/.organism/last_seen/pro.disk_janitor.json (expected_hb_seconds 86400, recovery launchctl_kickstart).
+  - The immune-enforcement step "disk-janitor prune corpus" - runs scripts/test_disk_janitor.sh on every PR that touches the payload or the test.
+risks:
+  - Ages are mtime-based - a stale scratch dir that was touched recently survives one more cycle; the guard errs toward keeping.
+  - The live-session guard greps ~/.claude/sessions for the session uuid - a session registered under another HOME would not be seen (Pro has a single user).
+  - brew cleanup --prune=30 removes old formula versions - rolling a formula back to an older bottle would need a re-download.
+  - uv cache prune is skipped whenever a uv process is alive (today a day-old uvx browser-use MCP), so that cache is only reclaimed on days the tool is quiet.
+pii: none
