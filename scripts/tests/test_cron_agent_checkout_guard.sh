@@ -6,10 +6,15 @@
 # throwaway repo placed where the wrapper looks by default ($HOME/nuzantara), so
 # this asserts on what the wrapper does with a real git state change.
 #
-# Guilt:     commit on HEAD; commit then fail; branch switch.
+# Guilt:     commit on HEAD; commit then fail; branch switch; commit then
+#            push (origin/main moves with HEAD); commit then reset away.
 # Innocence: untracked report on disk; the sync cron's fetch + fast-forward
 #            moving origin/main and HEAD together; no checkout at all.
 set -uo pipefail
+# Run from a git hook (pre-push) these point at the REAL repo and would win over
+# `git -C <sandbox>`: fresh_checkout would commit and rewrite refs there.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR \
+      GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE GIT_PREFIX
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -34,6 +39,10 @@ G=(git -c user.name=t -c user.email=t@example.invalid -C "$FAKE_CHECKOUT")
 case "$FAKE_MODE" in
     commit)  "${G[@]}" commit -q --allow-empty -m "agent report" ;;
     branch)  "${G[@]}" checkout -q -b agent-side ;;
+    pushed)  "${G[@]}" commit -q --allow-empty -m "agent report"
+             "${G[@]}" update-ref refs/remotes/origin/main HEAD ;;
+    undone)  "${G[@]}" commit -q --allow-empty -m "agent report"
+             "${G[@]}" reset -q --hard origin/main ;;
     report)  echo '{"submitted":0}' > "$FAKE_CHECKOUT/daily_report.json" ;;
     sync)    new="$("${G[@]}" commit-tree "origin/main^{tree}" -p origin/main -m upstream)"
              "${G[@]}" update-ref refs/remotes/origin/main "$new"
@@ -98,6 +107,10 @@ fresh_checkout; run_case guard-commit-fail commit 1
 expect_mutation "agent commits and then the run fails"
 fresh_checkout; run_case guard-branch branch
 expect_mutation "agent switches the H24 checkout to another branch"
+fresh_checkout; run_case guard-pushed pushed
+expect_mutation "agent commits and pushes (ahead stays 0)"
+fresh_checkout; run_case guard-undone undone
+expect_mutation "agent commits then resets it away (branch and ahead unchanged)"
 
 echo "innocence"
 fresh_checkout; run_case guard-report report
@@ -110,6 +123,9 @@ expect_clean "sync cron fast-forwards HEAD with origin/main mid-run"
 mkdir -p "$SANDBOX/not-a-repo"
 run_case guard-norepo none 0 "$SANDBOX/not-a-repo"
 expect_clean "no checkout to measure (guard stays out)"
+[[ "$LOG" == *"checkout guard OFF"* ]] \
+    && ok "an unmeasurable checkout says so in the log" \
+    || bad "the guard went silent instead of logging that it is off"
 
 echo
 [ "$FAILED" -eq 0 ] && { echo "PASS — cron-agent H24 checkout guard"; exit 0; } || { echo "FAIL"; exit 1; }

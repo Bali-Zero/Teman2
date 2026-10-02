@@ -370,17 +370,29 @@ ${err_tail}"
 # sentence is a request; this is the measurement. An agent turn runs with
 # bypassPermissions, so nothing stops it from committing: indexing-daily did
 # exactly that on 2026-09-30 (53f448edd5) and Pro's checkout diverged from
-# origin/main until it was realigned by hand. Prints "<branch> <ahead>", where
+# origin/main until it was realigned by hand. Prints "<branch> <ahead> <reflog>":
 # ahead counts commits on HEAD missing from the LOCAL origin/main ref (never
-# fetched here). The 5-min sync cron only fetches and fast-forwards, which can
-# lower that count but never raise it — so a higher count or another branch
-# after the run is a mutation. No checkout or no origin/main prints nothing,
-# and nothing measured means the guard stays out of the verdict.
+# fetched here), reflog is the length of HEAD's reflog. The 5-min sync cron's
+# only HEAD move is `git merge --ff-only` (scripts/pro/pro-git-pull.sh), which
+# can lower ahead but never raise it and logs a ": Fast-forward" reflog entry.
+# So another branch, a higher ahead, or any other new reflog entry after the
+# run is a mutation — the reflog also catches a commit the agent then pushed,
+# reset away or amended, which leave branch and ahead as they were. No
+# checkout or no origin/main prints nothing, and the guard stays out.
 checkout_state() {
-    local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}" branch ahead
+    local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}" branch ahead reflog
     ahead="$(git -C "$dir" rev-list --count origin/main..HEAD 2>/dev/null)" || return 0
+    [[ "$ahead" =~ ^[0-9]+$ ]] || return 0
     branch="$(git -C "$dir" symbolic-ref -q --short HEAD 2>/dev/null)" || branch="DETACHED"
-    printf '%s %s' "$branch" "$ahead"
+    reflog="$(git -C "$dir" reflog show --format=%gs HEAD 2>/dev/null | wc -l | tr -d ' ')"
+    printf '%s %s %s' "$branch" "$ahead" "${reflog:-0}"
+}
+
+# HEAD reflog subjects written between two reflog lengths, fast-forwards removed.
+checkout_foreign_moves() {
+    local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}" new=$(( $2 - $1 ))
+    (( new > 0 )) || return 0
+    git -C "$dir" reflog show --format=%gs -n "$new" HEAD 2>/dev/null | grep -v ': Fast-forward$'
 }
 
 run_agent() {
@@ -470,8 +482,9 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         fi
     fi
 
-    local checkout_before checkout_after checkout_mutated=0
+    local checkout_before checkout_after checkout_mutated=0 checkout_moves=""
     checkout_before="$(checkout_state)"
+    [[ -z "$checkout_before" ]] && log "checkout guard OFF for this run: ${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara} has no measurable HEAD vs origin/main"
 
     # Five MAX seats, then the Team seat (6, weekly-capped, last-resort by
     # position — never reorder this ahead of 1-5), then legacy and keychain.
@@ -640,8 +653,11 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
     # mid-run (deleted .git, broken origin/main) counts as mutated too.
     if [[ -n "$checkout_before" ]]; then
         checkout_after="$(checkout_state)"
-        if [[ -z "$checkout_after" || "${checkout_after% *}" != "${checkout_before% *}" ]] \
-            || (( ${checkout_after##* } > ${checkout_before##* } )); then
+        local b0 a0 r0 b1 a1 r1
+        read -r b0 a0 r0 <<< "$checkout_before"
+        read -r b1 a1 r1 <<< "${checkout_after:-x 0 0}"
+        checkout_moves="$(checkout_foreign_moves "$r0" "$r1" | head -3 | tr '\n' ';')"
+        if [[ -z "$checkout_after" || "$b1" != "$b0" || -n "$checkout_moves" ]] || (( a1 > a0 )); then
             checkout_mutated=1
         fi
     fi
@@ -655,9 +671,9 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         # Never repaired from here: a reset on the H24 checkout is a human/healer
         # act. Exit 3 is this guard's own code, distinct from 1/124/127.
         local checkout_change="'$checkout_before' -> '${checkout_after:-unmeasurable}'"
-        log "GIT-MUTATION: H24 checkout changed during the agent run, '<branch> <ahead-of-origin/main>' went $checkout_change — realign by hand"
+        log "GIT-MUTATION: H24 checkout changed during the agent run, '<branch> <ahead-of-origin/main> <reflog>' went $checkout_change${checkout_moves:+, new HEAD moves: $checkout_moves} — realign by hand"
         save_state "error" 3 "$duration" "H24 checkout mutated during agent run: $checkout_change"
-        send_telegram "🚨 <b>$JOB_NAME</b> agent mutated the H24 checkout ($checkout_change) — realign by hand"
+        send_telegram "🚨 <b>$JOB_NAME</b>: H24 checkout mutated during the agent run ($checkout_change) — realign by hand"
         return 3
     elif [[ $accepted_success -eq 1 && $exit_code -eq 0 ]]; then
         log "OK duration=${duration}s label=${labels[$idx]}"
