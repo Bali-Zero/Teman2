@@ -1478,8 +1478,13 @@ jobs:
           # this comment used to claim could not happen. `|| RC=$?` puts the command inside
           # an OR list, which `-e` does not treat as a failure to abort on, so the parser's
           # exit code reaches the taxonomy check that explains it instead of killing the step.
+          #
+          # `--tree "${HEAD_SHA}"`: this parser is BASE's, but the observer script an
+          # `observe:` line names is usually NEW in this very PR (Builder Contract 2), so it
+          # lives in the head tree and not in this checkout. The parser is told to ask that
+          # tree - read only, nothing from it is executed.
           RC=0
-          python3 scripts/ci/bites_parse.py --pack - < /tmp/bites-pack.yml > /tmp/bites-parsed.json 2> /tmp/bites-parse.err || RC=$?
+          python3 scripts/ci/bites_parse.py --pack - --tree "${HEAD_SHA}" < /tmp/bites-pack.yml > /tmp/bites-parsed.json 2> /tmp/bites-parse.err || RC=$?
           if [[ $RC -ne 0 && $RC -ne 2 ]]; then
             [[ -s /tmp/bites-parse.err ]] && cat /tmp/bites-parse.err
             echo "::error::scripts/ci/bites_parse.py exited $RC — neither 0 (parsed) nor 2 (malformed). That is outside its own documented taxonomy; failing closed."

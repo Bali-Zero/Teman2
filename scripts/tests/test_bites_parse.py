@@ -30,8 +30,11 @@ attack; only the source line differs.
 from __future__ import annotations
 
 import importlib.util
+import io
+import os
 import pytest
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -1169,3 +1172,369 @@ def test_load_spec_innocence_the_real_allow_list_loads_and_is_the_live_one():
     spec = bp._load_spec(bp.SPEC_PATH)
     assert tuple(spec["commands"]) == bp.ALLOWED_COMMANDS
     assert set(bp.ALLOWED_COMMANDS) <= set(bp._COMMAND_CHECKS)
+
+
+# ------------------------------------------------- HEAD-TREE MODE (`--tree <sha>`)
+#
+# The CI step judges a PR's pack with the BASE checkout's parser, and Builder Contract 2 wants
+# the observer script to ship in the SAME PR - so that script is in the head tree and not on
+# disk. These tests rebuild exactly that workspace: a checkout at BASE (no observer file)
+# whose git objects also hold HEAD (the observer, marker included).
+
+_GIT_ENV = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+_NEW_OBSERVER = "scripts/ci/observe_new.py"
+_NEW_OBSERVE = f"python3 {_NEW_OBSERVER}"
+_MARKED = f"# {bp.OBSERVABLE_MARKER}\nprint('observed')\n"
+
+
+def _git(repo: Path, *args: str) -> str:
+    done = subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+         "-c", "commit.gpgsign=false", "-c", f"core.hooksPath={os.devnull}", *args],
+        cwd=repo, env=_GIT_ENV, capture_output=True, text=True, check=True,
+    )
+    return done.stdout.strip()
+
+
+def _base_checkout_holding_head(tmp_path: Path, head_files: dict[str, str | bytes],
+                                head_symlinks: dict[str, str] | None = None,
+                                head_gitlinks: tuple[str, ...] = (),
+                                head_executable: tuple[str, ...] = (),
+                                object_format: str | None = None) -> tuple[Path, str]:
+    """(repo checked out at BASE, HEAD sha) - HEAD adds files, symlinks and gitlinks (submodule
+    entries, mode 160000, pointing at the BASE commit); `head_executable` files get mode 100755."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q", *(("--object-format", object_format) if object_format else ()))
+    (repo / "README").write_text("base\n", encoding="utf-8")
+    _git(repo, "add", "README")
+    _git(repo, "commit", "-q", "-m", "base")
+    base = _git(repo, "rev-parse", "HEAD")
+    for rel, body in head_files.items():
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(body, bytes):
+            (repo / rel).write_bytes(body)
+        else:
+            (repo / rel).write_text(body, encoding="utf-8")
+    for rel in head_executable:
+        (repo / rel).chmod(0o755)
+    for rel, link_text in (head_symlinks or {}).items():
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(link_text, repo / rel)
+    _git(repo, "add", "-A")
+    for rel in head_gitlinks:   # after `add -A`, which would drop an entry with no directory on disk
+        _git(repo, "update-index", "--add", "--cacheinfo", f"160000,{base},{rel}")
+    _git(repo, "commit", "-q", "-m", "head")
+    head = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-q", base)
+    return repo, head
+
+
+def test_head_tree_innocence_an_observer_only_the_head_tree_holds_parses_clean(tmp_path, monkeypatch):
+    """The whole defect: a NEW observer in the PR was reported missing from the base checkout."""
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    assert not (repo / _NEW_OBSERVER).exists(), "the checkout must really be BASE"
+    assert bp.parse_pack(_pack(_NEW_OBSERVE), tree=head) == {
+        "consumer": "CI", "where": "ci", "observe": _NEW_OBSERVE, "expect": "exit0",
+    }
+
+
+def test_head_tree_guilt_without_tree_the_same_observer_is_missing_from_the_checkout(tmp_path, monkeypatch):
+    """Pins the unchanged default: no `--tree`, the checkout is asked, and it lacks the file."""
+    repo, _head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE))
+    assert bp.classify(result) == "malformed"
+    assert any("does not exist in the checkout" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_a_script_without_the_marker_is_refused(tmp_path, monkeypatch):
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: "print('no marker')\n"})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("does not declare itself observable" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_a_script_absent_from_the_tree_is_refused(tmp_path, monkeypatch):
+    repo, head = _base_checkout_holding_head(tmp_path, {"scripts/ci/other.py": _MARKED})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("does not exist in tree" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_a_symlink_whose_text_carries_the_marker_is_refused(tmp_path, monkeypatch):
+    """A symlink is a blob holding its link text; the marker check must not read that as source."""
+    repo, head = _base_checkout_holding_head(
+        tmp_path, {}, head_symlinks={_NEW_OBSERVER: f"{bp.OBSERVABLE_MARKER}-elsewhere.py"},
+    )
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("not a regular file" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_an_unknown_tree_is_a_failed_question_not_a_missing_file(tmp_path):
+    repo, _head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    problems = bp._guard_observable_script(_NEW_OBSERVE, repo_root=repo, tree="0" * 40)
+    assert problems and "failed question" in problems[0], problems
+
+
+def test_head_tree_guilt_an_option_shaped_tree_is_refused_before_git_sees_it(tmp_path):
+    repo, _head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    problems = bp._guard_observable_script(_NEW_OBSERVE, repo_root=repo, tree="--output=leaked")
+    assert problems and "hex" in problems[0], problems
+    assert not (repo / "leaked").exists()
+
+
+def test_head_tree_guilt_a_path_that_leaves_the_checkout_is_still_refused(tmp_path):
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    for escape in ("../outside.py", "/etc/outside.py"):
+        problems = bp._guard_observable_script(f"python3 {escape}", repo_root=repo, tree=head)
+        assert problems and "outside the checkout" in problems[0], (escape, problems)
+
+
+def test_head_tree_guilt_a_non_utf8_blob_carrying_the_marker_is_refused(tmp_path, monkeypatch):
+    """`errors="replace"` read the marker out of bytes that are not text at all."""
+    body = f"# {bp.OBSERVABLE_MARKER}\n".encode() + b"\xff\xfe\x80 not utf-8\n"
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: body})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("not valid UTF-8" in e for e in result["errors"]), result
+
+
+def test_head_tree_guilt_an_oversize_blob_is_refused_unread(tmp_path, monkeypatch):
+    """The size is asked FIRST: past the cap the bytes are never pulled through git."""
+    body = f"# {bp.OBSERVABLE_MARKER}\n" + "x" * bp._TREE_BLOB_MAX_BYTES + "\n"
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: body})
+    calls: list[list[str]] = []
+    real_run = bp.subprocess.run
+
+    def spy(cmd, *args, **kwargs):
+        calls.append(list(cmd))
+        return real_run(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(bp.subprocess, "run", spy)
+    problems = bp._guard_observable_script(_NEW_OBSERVE, repo_root=repo, tree=head)
+    assert problems and "refused unread" in problems[0], problems
+    assert any(c[:3] == ["git", "cat-file", "-s"] for c in calls), calls
+    assert not any(c[:3] == ["git", "cat-file", "blob"] for c in calls), calls
+
+
+def test_head_tree_innocence_a_utf8_observer_exactly_at_the_size_cap_parses_clean(tmp_path, monkeypatch):
+    """The over-match twin: non-ASCII text is fine and the cap is inclusive."""
+    head_text = f"# {bp.OBSERVABLE_MARKER} \u2014 \u00e9\n"
+    padding = bp._TREE_BLOB_MAX_BYTES - len(head_text.encode("utf-8"))
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: head_text + "x" * padding})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    assert bp.classify(bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)) == "executable"
+
+
+def test_head_tree_guilt_a_gitlink_is_refused(tmp_path, monkeypatch):
+    """A submodule entry is neither a script nor a blob: mode 160000, kind commit."""
+    repo, head = _base_checkout_holding_head(tmp_path, {}, head_gitlinks=(_NEW_OBSERVER,))
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("not a regular file" in e and "160000" in e for e in result["errors"]), result
+
+
+_MARKER_LINE = f"# {bp.OBSERVABLE_MARKER}\n".encode()
+_INVALID_UTF8_BLOBS = {
+    "invalid-with-marker": _MARKER_LINE + b"\xff\xfe\x80\n",
+    "invalid-without-marker": b"print(1)\n\xff\xfe\x80\n",
+    "overlong-2-byte": _MARKER_LINE + b"\xc0\xaf\n",
+    "overlong-3-byte": _MARKER_LINE + b"\xe0\x80\xaf\n",
+    "surrogate-high": _MARKER_LINE + b"\xed\xa0\x80\n",
+    "surrogate-low": _MARKER_LINE + b"\xed\xbf\xbf\n",
+    "truncated-sequence-at-eof": _MARKER_LINE + b"\xe2\x82",
+    "lone-continuation": _MARKER_LINE + b"\x80\n",
+}
+
+
+@pytest.mark.parametrize("body", list(_INVALID_UTF8_BLOBS.values()), ids=list(_INVALID_UTF8_BLOBS))
+def test_head_tree_hostile_matrix_invalid_utf8_is_refused_marker_or_not(tmp_path, monkeypatch, body):
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: body})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("not valid UTF-8" in e for e in result["errors"]), result
+
+
+def test_head_tree_hostile_matrix_a_utf8_bom_is_accepted_as_valid_utf8(tmp_path, monkeypatch):
+    """DECIDED (D-hostile-matrix): a BOM is valid UTF-8, so a marked observer that starts with one is
+    a script that declared itself. Refusing it would over-match an editor's harmless habit."""
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: b"\xef\xbb\xbf" + _MARKER_LINE + b"print(1)\n"})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    assert bp.classify(bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)) == "executable"
+
+
+def _blob_of_exactly(n: int) -> str:
+    head_text = f"# {bp.OBSERVABLE_MARKER}\n"
+    return head_text + "x" * (n - len(head_text))
+
+
+@pytest.mark.parametrize("size", [bp._TREE_BLOB_MAX_BYTES - 1, bp._TREE_BLOB_MAX_BYTES])
+def test_head_tree_hostile_matrix_a_blob_at_cap_minus_one_and_at_the_cap_is_accepted(tmp_path, monkeypatch, size):
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _blob_of_exactly(size)})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    assert bp.classify(bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)) == "executable"
+
+
+def test_head_tree_hostile_matrix_a_blob_at_cap_plus_one_is_refused(tmp_path, monkeypatch):
+    repo, head = _base_checkout_holding_head(
+        tmp_path, {_NEW_OBSERVER: _blob_of_exactly(bp._TREE_BLOB_MAX_BYTES + 1)},
+    )
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("refused unread" in e for e in result["errors"]), result
+
+
+_BAD_SIZE_ANSWERS = {
+    "nonzero-exit": (1, b""), "empty": (0, b""), "not-a-number": (0, b"not-a-number\n"),
+    "negative": (0, b"-5\n"), "two-numbers": (0, b"12 34\n"), "exponent": (0, b"1e6\n"),
+    "non-ascii-digit": (0, "\u00b2\n".encode("utf-8")),
+}
+
+
+@pytest.mark.parametrize("answer", list(_BAD_SIZE_ANSWERS.values()), ids=list(_BAD_SIZE_ANSWERS))
+def test_head_tree_hostile_matrix_a_cat_file_size_that_fails_or_is_not_a_number_is_refused(
+        tmp_path, monkeypatch, answer):
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    calls: list[list[str]] = []
+    real_run = bp.subprocess.run
+
+    def spy(cmd, *args, **kwargs):
+        calls.append(list(cmd))
+        if list(cmd)[:3] == ["git", "cat-file", "-s"]:
+            return subprocess.CompletedProcess(cmd, answer[0], answer[1], b"")
+        return real_run(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(bp.subprocess, "run", spy)
+    problems = bp._guard_observable_script(_NEW_OBSERVE, repo_root=repo, tree=head)
+    assert problems and "could not size" in problems[0], problems
+    assert not any(c[:3] == ["git", "cat-file", "blob"] for c in calls), calls
+
+
+def test_head_tree_hostile_matrix_a_directory_named_like_the_script_is_refused(tmp_path, monkeypatch):
+    repo, head = _base_checkout_holding_head(tmp_path, {f"{_NEW_OBSERVER}/inner.py": _MARKED})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    result = bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)
+    assert bp.classify(result) == "malformed"
+    assert any("not a regular file" in e and "040000" in e for e in result["errors"]), result
+
+
+def test_head_tree_hostile_matrix_an_executable_100755_observer_is_accepted(tmp_path, monkeypatch):
+    repo, head = _base_checkout_holding_head(
+        tmp_path, {_NEW_OBSERVER: _MARKED}, head_executable=(_NEW_OBSERVER,),
+    )
+    assert _git(repo, "ls-tree", head, "--", _NEW_OBSERVER).startswith("100755 blob")
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    assert bp.classify(bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)) == "executable"
+
+
+def test_head_tree_hostile_matrix_a_sha256_repository_tree_id_of_64_digits_is_accepted(tmp_path, monkeypatch):
+    try:
+        repo, head = _base_checkout_holding_head(
+            tmp_path, {_NEW_OBSERVER: _MARKED}, object_format="sha256",
+        )
+    except subprocess.CalledProcessError:
+        pytest.skip("this git cannot create a sha256 repository")
+    assert len(head) == 64
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    assert bp.classify(bp.parse_pack(_pack(_NEW_OBSERVE), tree=head)) == "executable"
+
+
+def test_head_tree_cli_parses_the_new_observer_with_tree_and_refuses_it_without(
+        tmp_path, monkeypatch, capsys):
+    """The step's real call: pack on stdin, `--tree` the head sha, exit 0 vs the old exit 2."""
+    repo, head = _base_checkout_holding_head(tmp_path, {_NEW_OBSERVER: _MARKED})
+    monkeypatch.setattr(bp, "REPO_ROOT", repo)
+    pack = _pack(_NEW_OBSERVE)
+
+    monkeypatch.setattr("sys.stdin", io.StringIO(pack))
+    assert bp.main(["--pack", "-", "--tree", head]) == bp.EXIT_OK
+    assert json.loads(capsys.readouterr().out)["observe"] == _NEW_OBSERVE
+
+    monkeypatch.setattr("sys.stdin", io.StringIO(pack))
+    assert bp.main(["--pack", "-"]) == bp.EXIT_MALFORMED
+    assert json.loads(capsys.readouterr().out)["malformed"] is True
+
+
+def test_head_tree_cli_refuses_an_argument_that_is_not_a_hex_id():
+    done = subprocess.run(
+        ["python3", str(_MODULE_PATH), "--pack", "-", "--tree=main"],
+        input="", capture_output=True, text=True, check=False,
+    )
+    assert done.returncode == bp.EXIT_MALFORMED
+    assert "hex" in done.stderr
+
+
+_BAD_TREE_IDS = {
+    "41-digits": "a" * 41, "63-digits": "a" * 63, "7-digits": "a" * 7, "39-digits": "a" * 39,
+    "uppercase-40": "A" * 40, "uppercase-64": "A" * 64,
+    "option-shaped": "--output=leak", "inner-space": "a" * 20 + " " + "a" * 19,
+    "leading-space": " " + "a" * 40, "trailing-space": "a" * 40 + " ",
+    "trailing-newline": "a" * 40 + "\n", "empty": "", "ref-name": "main", "ref-HEAD": "HEAD",
+    "ref-path": "refs/heads/main",
+}
+
+
+@pytest.mark.parametrize("tree", list(_BAD_TREE_IDS.values()), ids=list(_BAD_TREE_IDS))
+def test_head_tree_cli_refuses_an_id_that_is_not_a_full_lowercase_hex_id(tree):
+    """git truncates 41-63 digits and expands abbreviations: the judged tree may not be the named one.
+
+    The refusal is a VERDICT, not just an exit code: harness-floor `json.load`s stdout, and an
+    empty stdout would reach it as a crash of its own (exit 2 alone read as `<nothing>`)."""
+    done = subprocess.run(
+        ["python3", str(_MODULE_PATH), "--pack", "-", f"--tree={tree}"],
+        input="", capture_output=True, text=True, check=False,
+    )
+    assert done.returncode == bp.EXIT_MALFORMED
+    assert "full lowercase hex" in done.stderr
+    verdict = json.loads(done.stdout)
+    assert verdict["malformed"] is True
+    assert len(verdict["errors"]) == 1 and verdict["errors"][0].startswith("--tree:")
+    assert bp.classify(verdict) == "malformed"
+    problems = bp._guard_observable_script(_NEW_OBSERVE, repo_root=_REPO_ROOT, tree=tree)
+    assert problems and "full lowercase hex" in problems[0], problems
+
+
+def test_head_tree_innocence_only_the_two_full_lengths_of_lowercase_hex_are_ids():
+    assert bp._TREE_ID.fullmatch("0123456789abcdef" * 4)
+    assert bp._TREE_ID.fullmatch("0123456789abcdef" * 2 + "01234567")
+
+
+def test_head_tree_cli_real_process_reads_this_repo_own_tree():
+    """End to end, no monkeypatch: this repo's HEAD really does hold a marked observer."""
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=_REPO_ROOT, capture_output=True,
+                          text=True, check=False)
+    if head.returncode != 0:
+        pytest.skip("not a git checkout")
+    observe = "python3 scripts/ci/bites_parse.py --selftest"
+    done = subprocess.run(
+        ["python3", str(_MODULE_PATH), "--pack", "-", "--tree", head.stdout.strip()],
+        input=_pack(observe), capture_output=True, text=True, check=False, cwd=str(_REPO_ROOT),
+    )
+    assert done.returncode == bp.EXIT_OK, (done.stdout, done.stderr)
+    assert json.loads(done.stdout)["observe"] == observe
+
+
+def test_harness_floor_step_passes_the_head_tree_and_survives_the_parser_exit_code():
+    """The workflow half of the fix, pinned: the step must hand the parser HEAD and must
+    capture its exit code. A step with no `shell:` runs `bash -e`, so a bare call followed by
+    `RC=$?` never reaches `RC=$?` on the very exit 2 the step exists to explain."""
+    workflow = (_REPO_ROOT / ".github" / "workflows" / "harness-floor.yml").read_text(encoding="utf-8")
+    marker = "- name: Bites contract — parse this PR's evidence pack"
+    assert workflow.count(marker) == 1
+    step = re.split(r"\n      - name: ", workflow.split(marker, 1)[1], maxsplit=1)[0]
+    call = [ln.strip() for ln in step.splitlines() if "scripts/ci/bites_parse.py --pack -" in ln]
+    assert len(call) == 1, call
+    assert '--tree "${HEAD_SHA}"' in call[0]
+    assert call[0].endswith("|| RC=$?")
+    assert step.index("RC=0") < step.index("bites_parse.py --pack -")
+    assert not re.search(r"^\s*RC=\$\?\s*$", step, flags=re.MULTILINE)
