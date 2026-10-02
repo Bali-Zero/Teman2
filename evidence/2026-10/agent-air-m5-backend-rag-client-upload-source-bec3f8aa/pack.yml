@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-10/agent-air-m5-backend-rag-client-upload-source-bec3f8aa/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref:
   "team-lead dispatch (2026-10-02, Dux BLUE, Gear 2 provisional): attribute uploaded_source and
   uploaded_by on POST /api/crm/practices/{id}/upload-client-document from the authenticated
