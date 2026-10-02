@@ -1128,6 +1128,16 @@ const v4SourceRows: NamedSourceRow[] = [
     'const cls = ["p-2", "bg-white"];\nfunction X() { return <i className={cls.join(" ")} />; }',
   ],
   [
+    "join resolves array elements in a style value",
+    "G",
+    'const parts = ["1px solid", "#0A2540"];\nfunction X() { return <p style={{ border: parts.join(" ") }} />; }',
+  ],
+  [
+    "join in a style value, innocent twin",
+    "I",
+    'const parts = ["1px solid", "var(--r19-line)"];\nfunction X() { return <p style={{ border: parts.join(" ") }} />; }',
+  ],
+  [
     "P1 walks an unknown call receiver",
     "G",
     'function X() { return <i className={"bg-white".unknownTransform()} />; }',
@@ -1211,6 +1221,16 @@ const v4SourceRows: NamedSourceRow[] = [
     "flatMap returns a synthetic element container",
     "G",
     'const ITEMS = [{ c: "bg-white" }];\nfunction X() { const cls = ITEMS.flatMap((item) => [item.c]); return <i className={cls.join(" ")} />; }',
+  ],
+  [
+    "flatMap flattens array returns in a style value",
+    "G",
+    'const ITEMS = [{ c: "#0A2540" }];\nconst cells = ITEMS.flatMap((item) => [item.c]);\nfunction X() { return <p style={{ color: cells.find(Boolean) }} />; }',
+  ],
+  [
+    "flatMap in a style value, innocent twin",
+    "I",
+    'const ITEMS = [{ c: "var(--r19-ink)" }];\nconst cells = ITEMS.flatMap((item) => [item.c]);\nfunction X() { return <p style={{ color: cells.find(Boolean) }} />; }',
   ],
   [
     "useCallback value is resolved when the callback is called",
@@ -1638,6 +1658,86 @@ describe("r19 colour guard source: v5 one pass", () => {
       }).not.toThrow();
       expect(result).toEqual(expected);
       expect(scan(source).ms).toBeLessThan(1000);
+    },
+  );
+
+  const mapped = (use: string) =>
+    `const items = [{ cls: "@@" }];\nconst M = { a: "@@" };\nconst toCls = (r) => r.cls;\nfunction X() { ${use} }`;
+  const gateHead =
+    'import { cn } from "@/lib/utils";\nimport type { CSSProperties } from "react";\n';
+
+  type ContainerRow = [
+    id: string,
+    source: string,
+    literal: number,
+    use: number,
+    innocent?: string,
+  ];
+  const containerRows: ContainerRow[] = [
+    [
+      "gate-7771b G33 filter(isOn).map(toCls) named callbacks",
+      gateHead +
+        'type It = { on: boolean; cls: string };\nconst items: It[] = [{ on: true, cls: "@@" }];\nconst isOn = (r: It) => r.on;\nconst toCls = (r: It) => r.cls;\nexport function X() { const rows = items.filter(isOn).map(toCls); return <i className={cn(rows)} />; }',
+      4,
+      7,
+    ],
+    [
+      "gate-7771b G34 named map to objects then named map to strings",
+      gateHead +
+        'const names = ["p-2", "@@"];\nconst toObj = (s: string) => ({ cls: s });\nconst pick = (o: { cls: string }) => o.cls;\nexport function X() { const objs = names.map(toObj); const out = objs.map(pick); return <i className={cn(out)} />; }',
+      3,
+      6,
+      "m-1",
+    ],
+    [
+      "gate-7771b G43 flatMap to arrays of classes",
+      gateHead +
+        'const rows = [{ a: "p-1", b: "@@" }];\nexport function X() { const cells = rows.flatMap((r) => [r.a, r.b]); return <i className={cn(cells)} />; }',
+      3,
+      4,
+    ],
+    [
+      "gate-7771b G76 same inline-arrow shape on two receivers",
+      gateHead +
+        'const A = [{ c: "p-1" }];\nconst B = [{ c: "@@" }];\nexport function X() { const a = A.map((x) => x.c); const b = B.map((x) => x.c); return <i className={cn(a, b)} />; }',
+      4,
+      5,
+    ],
+    [
+      "cn(items.map(named))",
+      mapped("return <i className={cn(items.map(toCls))} />;"),
+      1,
+      4,
+    ],
+    [
+      "cn(...items.map(named))",
+      mapped("return <i className={cn(...items.map(toCls))} />;"),
+      1,
+      4,
+    ],
+    [
+      "cn(items.flatMap(inline to arrays))",
+      mapped(
+        'return <i className={cn(items.flatMap((i) => [i.cls, "m-1"]))} />;',
+      ),
+      1,
+      4,
+    ],
+    [
+      "cn(Object.values(M))",
+      mapped("return <i className={cn(Object.values(M))} />;"),
+      2,
+      4,
+    ],
+  ];
+
+  it.each(containerRows)(
+    "P1 descends a synthetic container: %s",
+    (_id, source, literal, use, innocent = "p-2") => {
+      expect(scan(source.replaceAll("@@", "bg-white")).result).toEqual([
+        { line: literal, use, position: "class", text: "bg-white" },
+      ]);
+      expect(scan(source.replaceAll("@@", innocent)).result).toEqual([]);
     },
   );
 

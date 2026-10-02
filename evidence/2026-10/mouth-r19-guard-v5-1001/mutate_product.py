@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Applies the ten gate-7691 product mutants (T1-T5 TaxCalendarBody, Y1-Y5
 MyTaxCalendar) one at a time to the REAL files, runs the per-page guard, and
-restores the file with cp. Run from the worktree root. Every row must be RED."""
+restores the file with cp. Run from the worktree root. Every row must be RED.
+
+RED needs a "Tests N failed" line: any other non-zero exit (vitest missing, a
+transform or load error) is BROKEN and proves nothing."""
 import pathlib, re, shutil, subprocess, sys, tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -37,8 +40,14 @@ def main() -> int:
             lines[line - 1] = lines[line - 1].replace(old, new, 1)
             target.write_text("\n".join(lines))
             run = subprocess.run(["npx", "vitest", "run", GUARDS[key]], cwd=APP, capture_output=True, text=True)
-            tests = re.search(r"Tests\s+(.*)", run.stdout + run.stderr)
-            verdict = "RED" if run.returncode else "GREEN"
+            output = run.stdout + run.stderr
+            tests = re.search(r"Tests\s+(.*)", output)
+            if re.search(r"Tests\s+\d+ failed", output):
+                verdict = "RED"
+            elif run.returncode:
+                verdict = "BROKEN"
+            else:
+                verdict = "GREEN"
             bad += verdict != "RED"
             print(f"{name} | {verdict} | {tests.group(1).strip() if tests else '?'}")
             shutil.copy(backups[key], target)
