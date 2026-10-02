@@ -362,21 +362,47 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
   # e.g. nb-curator — committing a report directly on this main checkout that
   # later got superseded by the same content merged via a PR). In case (b),
   # HEAD's tree is byte-identical to the target ref's tree despite the
-  # divergent history, so resetting to the target ref discards zero content.
-  # Self-heal ONLY when the whole-repo diff is empty (not just the file the
-  # local commit touched) AND the working tree carries no uncommitted
-  # tracked/staged changes to lose. If either fails, fall through to the
-  # existing telegram_alert path unchanged.
-  if git diff --quiet HEAD "$TARGET_REF" 2>/dev/null \
-     && git diff --quiet HEAD 2>/dev/null \
-     && git diff --quiet --cached HEAD 2>/dev/null; then
+  # divergent history, so resetting to the target ref discards zero content
+  # FROM THE COMMITTED HISTORY. The working tree's own uncommitted tracked
+  # changes are a separate concern, handled the same way the happy-path pull
+  # below handles them: stash immediately before the reset, pop immediately
+  # after, inside the same lock. (2026-10-02 hardening: the prior version
+  # required a fully clean tree to even ATTEMPT self-heal, which made the
+  # self-heal permanently unreachable whenever a shared file like
+  # shared/escalations_pro.jsonl — written directly by concurrent producers
+  # and only periodically promoted via PR — was dirty, which on Mini is most
+  # of the time. That starved this exact self-heal for 2.5+ days on a
+  # genuinely content-identical divergence. Stash/pop preserves the
+  # uncommitted work instead of requiring its absence.)
+  if git diff --quiet HEAD "$TARGET_REF" 2>/dev/null; then
     log "  content-identical to $TARGET_REF (different history, same tree) — attempting self-heal"
     SELFHEAL_OK=0
+    SELFHEAL_STASHED=0
     if command -v flock >/dev/null 2>&1; then
       exec 9>/tmp/repo-mutating.lock
       if flock --exclusive --timeout 30 9; then
-        if git reset --hard --quiet "$TARGET_REF" 2>>"$LOG_FILE"; then
-          SELFHEAL_OK=1
+        SELFHEAL_READY=1
+        if ! git diff --quiet HEAD 2>/dev/null || ! git diff --quiet --cached HEAD 2>/dev/null; then
+          if git stash push --quiet -m "mini-git-pull-selfheal $(date +%Y-%m-%d_%H:%M:%S)" 2>>"$LOG_FILE"; then
+            SELFHEAL_STASHED=1
+          else
+            log "WARN: stash failed ahead of content-identical self-heal, skip this tick"
+            SELFHEAL_READY=0
+          fi
+        fi
+        if [ "$SELFHEAL_READY" = "1" ]; then
+          if git reset --hard --quiet "$TARGET_REF" 2>>"$LOG_FILE"; then
+            SELFHEAL_OK=1
+          fi
+          if [ "$SELFHEAL_STASHED" = "1" ]; then
+            if git stash pop --quiet 2>>"$LOG_FILE"; then
+              log "  stash restored cleanly after content-identical self-heal"
+            else
+              log "WARN: stash pop conflict after content-identical self-heal — stash retained"
+              telegram_alert "stash-pop-conflict-selfheal" \
+                "stash pop conflict on Mini after content-identical self-heal to $(git rev-parse --short HEAD 2>/dev/null). \`git status\` + \`git stash list\` on Mini."
+            fi
+          fi
         fi
         flock -u 9 2>/dev/null || true
       else
@@ -427,11 +453,17 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
   # array is empty, so the length check MUST be first and MUST short-
   # circuit (`||`), never `-gt 0 &&` (which silently refused this case
   # instead of crashing — 850 refused ticks 2026-05-10..2026-08-12).
+  #
+  # 2026-10-02 hardening: TOUCHED_PATHS is computed from committed history
+  # (merge-base..HEAD) alone, so a dirty WORKING TREE never needs to block
+  # computing or evaluating it. Only the actual `reset --hard` can discard
+  # uncommitted work, so (mirroring the content-identical block above and
+  # the happy-path pull further below) that step alone is wrapped in a
+  # stash/pop — a dirty shared/escalations_pro.jsonl no longer parks this
+  # self-heal unreachable for days.
   if [ "${SELFHEAL_OK:-0}" != "1" ]; then
     MERGE_BASE=$(git merge-base HEAD "$TARGET_REF" 2>/dev/null)
-    if [ -n "$MERGE_BASE" ] \
-       && git diff --quiet HEAD 2>/dev/null \
-       && git diff --quiet --cached HEAD 2>/dev/null; then
+    if [ -n "$MERGE_BASE" ]; then
       TOUCHED_PATHS=()
       while IFS= read -r -d '' _p; do
         TOUCHED_PATHS+=("$_p")
@@ -440,11 +472,32 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
          || git diff --quiet HEAD "$TARGET_REF" -- "${TOUCHED_PATHS[@]}" 2>/dev/null; then
         log "  every path HEAD's local-only commit(s) touched already matches $TARGET_REF (ahead+behind shape, ${#TOUCHED_PATHS[@]} path(s)) — attempting narrow self-heal"
         SELFHEAL_OK=0
+        SELFHEAL_STASHED=0
         if command -v flock >/dev/null 2>&1; then
           exec 9>/tmp/repo-mutating.lock
           if flock --exclusive --timeout 30 9; then
-            if git reset --hard --quiet "$TARGET_REF" 2>>"$LOG_FILE"; then
-              SELFHEAL_OK=1
+            SELFHEAL_READY=1
+            if ! git diff --quiet HEAD 2>/dev/null || ! git diff --quiet --cached HEAD 2>/dev/null; then
+              if git stash push --quiet -m "mini-git-pull-selfheal-narrow $(date +%Y-%m-%d_%H:%M:%S)" 2>>"$LOG_FILE"; then
+                SELFHEAL_STASHED=1
+              else
+                log "WARN: stash failed ahead of narrow self-heal, skip this tick"
+                SELFHEAL_READY=0
+              fi
+            fi
+            if [ "$SELFHEAL_READY" = "1" ]; then
+              if git reset --hard --quiet "$TARGET_REF" 2>>"$LOG_FILE"; then
+                SELFHEAL_OK=1
+              fi
+              if [ "$SELFHEAL_STASHED" = "1" ]; then
+                if git stash pop --quiet 2>>"$LOG_FILE"; then
+                  log "  stash restored cleanly after narrow self-heal"
+                else
+                  log "WARN: stash pop conflict after narrow self-heal — stash retained"
+                  telegram_alert "stash-pop-conflict-selfheal-narrow" \
+                    "stash pop conflict on Mini after narrow self-heal to $(git rev-parse --short HEAD 2>/dev/null). \`git status\` + \`git stash list\` on Mini."
+                fi
+              fi
             fi
             flock -u 9 2>/dev/null || true
           else
