@@ -66,3 +66,31 @@ spalla:
 spend:
   wall_clock_hours: 1
   adversarial_rounds: 1
+
+dissent:
+  - seat: codex-default-model-read-only
+    objection: "HIGH: two older PRs editing the same MDX collapse to the newest copy and both close, losing the older edit."
+    status: CONFIRMED
+    resolution: "For non-generated kinds a carried file overridden by a newer copy keeps its PR open and alerts. Guilt test: test_an_seo_edit_overridden_by_a_newer_copy_keeps_its_pr_open."
+  - seat: codex-default-model-read-only
+    objection: "HIGH: layout and SEO checks read main before the branch is cut; a merge in between is silently overwritten."
+    status: CONFIRMED
+    resolution: "main is read once per flush; carry, layout replay and cover checks use that sha and the branch is created from it."
+  - seat: codex-default-model-read-only
+    objection: "HIGH: a commit pushed to the older PR after the carry is lost when the PR is closed."
+    status: CONFIRMED
+    resolution: "Carry pinned to headRefOid; close refused when the head moved. Test: test_a_pr_whose_head_moved_after_the_carry_is_not_closed."
+  - seat: codex-default-model-read-only
+    objection: "MED: steps are marked done when arming fails, and nothing retries the arm without new content."
+    status: DISMISSED
+    resolution: "Content is safe in an open PR and the failure is alerted (post-publish:bot-pr-unarmed:<kind>). A no-content heal sweep would close the legacy pile with no new content; follow-up, not this PR."
+  - seat: codex-default-model-read-only
+    objection: "MED: a PR can enter the merge queue between the re-check and the close."
+    status: DISMISSED
+    resolution: "GitHub has no conditional close; its files are already in the successor, so the residual cost is CI, never content."
+
+pii_scan: clean
+pii_scan_note:
+  "The diff and the spalla prompt carry code, synthetic test fixtures (placeholder slugs and paths)
+  and public PR numbers. No client data, no credentials; article slugs in the ground notes are
+  public news-article paths."
