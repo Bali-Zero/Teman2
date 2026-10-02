@@ -227,6 +227,12 @@ export function CompanyTab({
     }>
   >([]);
 
+  // Links beyond the one shown above. A client can hold several active PT
+  // links; listing them keeps a second PT from being silently hidden.
+  const [otherLinks, setOtherLinks] = useState<
+    Array<{ link_id: number; company_name: string; role: string }>
+  >([]);
+
   const [companyDocs, setCompanyDocs] = useState<CompanyDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
@@ -241,8 +247,22 @@ export function CompanyTab({
       try {
         // Step 1: Try linked companies
         const linked = await api.crm.getClientCompanies(clientId);
-        if (!cancelled && linked.length > 0) {
-          const co = linked[0];
+        // The flagged primary link wins; the first row is only the fallback
+        // when no link carries is_primary (the old linked[0] behaviour).
+        const primary = linked.find((l) => l.is_primary) ?? linked[0];
+        if (!cancelled) {
+          setOtherLinks(
+            linked
+              .filter((l) => l !== primary)
+              .map((l) => ({
+                link_id: l.link_id,
+                company_name: l.company_name,
+                role: l.role,
+              })),
+          );
+        }
+        if (!cancelled && primary) {
+          const co = primary;
           setCompanyData({
             company_name: co.company_name,
             company_type: co.company_type,
@@ -791,6 +811,26 @@ export function CompanyTab({
         {co ? (
           <div className="pb-4">
             <StatePill {...companyStatusPill(co.company_status || "active")} />
+          </div>
+        ) : null}
+        {otherLinks.length > 0 ? (
+          <div className="pb-4">
+            <p className="text-[11px] font-[650] uppercase tracking-[0.14em] text-[var(--tx-secondary)]">
+              Also linked ({otherLinks.length})
+            </p>
+            <ul
+              aria-label="Other linked companies"
+              className="mt-2 flex flex-col gap-1 text-sm text-[var(--tx-secondary)]"
+            >
+              {otherLinks.map((l) => (
+                <li key={l.link_id}>
+                  <span className="text-[var(--tx-pure)]">
+                    {l.company_name}
+                  </span>
+                  {l.role ? ` · ${l.role}` : null}
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
       </LedgerSection>
