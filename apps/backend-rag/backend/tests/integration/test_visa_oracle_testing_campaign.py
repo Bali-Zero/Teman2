@@ -19,6 +19,7 @@ from PIL import Image
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.routers import visa_oracle_testing as campaign_router
 from backend.app.routers.visa_oracle_testing import router
+from backend.services.visa_oracle_testing import DAYS
 
 
 def qa_connection():
@@ -94,7 +95,7 @@ def test_qa_connection_requires_ci_for_tcp_database(monkeypatch):
 @pytest_asyncio.fixture
 async def setup(monkeypatch):
     connection = qa_connection()
-    monkeypatch.setattr(campaign_router, "bali_today", lambda: "2026-09-30")
+    monkeypatch.setattr(campaign_router, "bali_today", lambda: DAYS[0])
     schema = "oracle_qa_" + uuid4().hex
     admin = await asyncpg.connect(**connection)
     await admin.execute(f'CREATE SCHEMA "{schema}"')
@@ -221,9 +222,7 @@ async def test_results_wait_for_all_five_personal_expectations(setup, submit):
         ).status_code == 200
         after = (await c.get("/api/visa-oracle/testing")).json()
         for case in after["assignments"]:
-            assert case["can_record_results"] is (
-                case["slot"] == "T01" and case["day"] == "2026-09-30"
-            )
+            assert case["can_record_results"] is (case["slot"] == "T01" and case["day"] == DAYS[0])
         assert (await c.put(path + "/result", json=result(submit=submit))).status_code == 200
 
 
@@ -448,15 +447,57 @@ async def test_private_evidence_is_separate_removable_and_not_loaded_in_lists(se
 @pytest.mark.asyncio
 async def test_date_sensitive_cases_cannot_be_started_on_a_different_day(setup, monkeypatch):
     _, _, make_client = setup
-    monkeypatch.setattr(campaign_router, "bali_today", lambda: "2026-10-01")
+    monkeypatch.setattr(campaign_router, "bali_today", lambda: DAYS[1])
     async with make_client() as c:
         assert (
             await c.post("/api/visa-oracle/testing/D3-T01-1/start", json=expected())
         ).status_code == 409
         data = (await c.get("/api/visa-oracle/testing")).json()
-        assert not any(a["can_start"] for a in data["assignments"] if a["day"] == "2026-10-02")
+        assert not any(a["can_start"] for a in data["assignments"] if a["day"] == DAYS[2])
         # Innocence: the same day's own cases stay startable.
-        assert all(a["can_start"] for a in data["assignments"] if a["day"] == "2026-10-01")
+        assert all(a["can_start"] for a in data["assignments"] if a["day"] == DAYS[1])
         assert (
             await c.post("/api/visa-oracle/testing/D2-T01-1/start", json=expected())
         ).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_cases_started_before_a_reschedule_still_count_toward_their_plan_day(
+    setup, monkeypatch
+):
+    """Owner reschedule 2026-10-02: a tester had locked two day-2 cases under the old
+    calendar, so those rows carry the old start date. The day-lock, the progress
+    counts and self-review must follow the plan day, or the tester could never
+    record results for that day again."""
+    _, pool, make_client = setup
+    monkeypatch.setattr(campaign_router, "bali_today", lambda: DAYS[1])
+    path = "/api/visa-oracle/testing/D2-T01-0"
+    async with make_client() as c:
+        for index in range(2):
+            assert (
+                await c.post(f"/api/visa-oracle/testing/D2-T01-{index}/start", json=expected())
+            ).status_code == 200
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE visa_oracle_test_runs SET assigned_day='2026-10-01' WHERE slot='T01'"
+            )
+        # Guilt: four of five locked is still not a locked day.
+        for index in range(2, 4):
+            assert (
+                await c.post(f"/api/visa-oracle/testing/D2-T01-{index}/start", json=expected())
+            ).status_code == 200
+        assert (await c.put(path + "/result", json=result())).status_code == 409
+        # Innocence: the fifth case completes the plan day across both start dates.
+        assert (
+            await c.post("/api/visa-oracle/testing/D2-T01-4/start", json=expected())
+        ).status_code == 200
+        page = (await c.get("/api/visa-oracle/testing")).json()
+        assert all(
+            a["can_record_results"] for a in page["assignments"] if a["id"].startswith("D2-T01-")
+        )
+        assert (await c.put(path + "/result", json=result())).status_code == 200
+        review = {"verdict": "not_issue", "comment": "Self-reviewed after the reschedule"}
+        assert (await c.patch(path + "/review", json=review)).status_code == 200
+        progress = (await c.get("/api/visa-oracle/testing")).json()["progress"]
+        mine = next(p for p in progress if p["slot"] == "T01" and p["day"] == DAYS[1])
+        assert (mine["submitted"], mine["reviewed"]) == (1, 1)
