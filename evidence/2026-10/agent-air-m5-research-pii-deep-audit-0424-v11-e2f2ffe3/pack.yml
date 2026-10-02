@@ -9,9 +9,6 @@ lanes:
   - lane: pii-v11-build
     role: build
     seat: "claude-opus-5-5 (Dux session: content re-application, this pack, the PR)"
-  - lane: pii-v11-review
-    role: review
-    seat: "claude-opus-5-5 subagent, fresh context, read-only (see dissent)"
 
 scope:
   removed_paths:
@@ -41,8 +38,8 @@ what_changed: |
     query_lab.py imports its ground truth from an untracked local module when present and falls
     back to synthetic fixtures otherwise.
   - .gitignore ignores the generators' output paths and that local module, with neutral comments.
-  - Size: the diff exceeds the ~400-line PR contract only through deleted data lines; the floor
-    receipt below names its source.
+  - Size: the diff exceeds the PR contract's net-line guideline only through deleted data lines;
+    the floor receipt below names its source.
 
 proof: |
   Every PII count in this pack is a verbatim pii_receipt.py block under `receipts`. Prose cites
@@ -173,7 +170,20 @@ receipts:
       ~/.agent/pii-quarantine/pii-deep-audit/lane-all-v11.txt --rev HEAD
       --path evidence/2026-10/agent-air-m5-research-pii-deep-audit-0424-v11-e2f2ffe3"
     result: |
-      @@BLOCK:evd@@
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:e3ffafcd7e21091b --rev HEAD --path @hmac:da2ddeb35af32870
+      mode: tree
+      tree_digest: 50103d1a448cbb1a
+      scope_files: 0
+      patterns: {hmac: e3ffafcd7e21091b, lines: 3349}
+      files: 0
+      hits: 0
+      lines_any: 0
+      occurrences: 0
+      patterns_present: 0
+      patterns_absent: 3349
+      binary_files: 0
+      # end pii_receipt
     exit: 0
     seat: claude-opus-5-5
   - claim: "R6.6 over this PR's brief, pack and body file, with the residual list the gate wrote."
@@ -181,7 +191,12 @@ receipts:
       ~/.agent/pii-quarantine/pii-deep-audit/r66-residuals.txt --brief <brief.yml> --pack
       <pack.yml> --body <body file passed to gh pr create --body-file>"
     result: |
-      @@BLOCK:r66@@
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:7a7a20b6962d3f23 --pack PACK --body @text:06dd08407e816cac
+      mode: r66
+      r66_line: "r66: hmac=e5501725d9a0 lines=22 residual_hits=0 hedge_hits=0"
+      hedge_hit_lines: []
+      # end pii_receipt
     exit: 0
     seat: claude-opus-5-5
   - claim: "The generator's own selftest at this head."

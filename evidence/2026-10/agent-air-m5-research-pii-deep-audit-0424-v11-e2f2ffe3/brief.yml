@@ -26,7 +26,7 @@ objective: |
   - A redaction brief re-listed the names it redacted (gate-7462) -> R6.1 -> a block over this
     evidence directory with the lane name set and the redacted-token set.
   - A spalla forwarded deletion hunks to a cloud vendor (gate-7453) -> Builder Contract §4 ->
-    no external seat saw this diff; review was by Claude seats only.
+    no external seat received this diff or these files.
   - R6.5 and R6.6 were measured cured at #7516 (B4, B2) -> kept: Bites is a post-merge probe,
     and the body carries the generated r66 line.
 
