@@ -2529,6 +2529,106 @@ class TestUploadClientDocument:
         assert update_args[2] == "client note"
         assert update_args[3] == 11
 
+    @staticmethod
+    async def _upload_as(
+        crm_practices: Any,
+        mock_db_pool: MagicMock,
+        mock_db_conn: AsyncMock,
+        current_user: dict,
+        client_row: dict | None,
+        file_name: str = "scan.pdf",
+    ) -> AsyncMock:
+        mock_db_conn.fetchrow = AsyncMock(
+            side_effect=[
+                {
+                    "id": 11,
+                    "practice_id": 7,
+                    "client_id": 42,
+                    "client_name": "Client One",
+                    "document_type": "passport",
+                },
+                client_row,
+            ]
+        )
+        mock_db_conn.execute = AsyncMock(return_value="UPDATE 1")
+        canonical_upload = AsyncMock(return_value={"success": True, "document_id": 501})
+        request = crm_practices.ClientDocumentUploadRequest(
+            required_doc_id=11, file="ZmlsZQ==", file_name=file_name
+        )
+        with (
+            patch.object(crm_practices, "upload_document_base64", canonical_upload, create=True),
+            patch.object(crm_practices, "invalidate_cache", new=AsyncMock()),
+        ):
+            await crm_practices.upload_client_document(
+                practice_id=7,
+                request=request,
+                current_user=current_user,
+                db_pool=mock_db_pool,
+            )
+        return canonical_upload
+
+    @pytest.mark.asyncio
+    async def test_portal_client_upload_is_attributed_to_the_client(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
+    ) -> None:
+        """Champion Round 2 scores documents.uploaded_source='client'; this route
+        used to leave the column default 'team' on every client upload."""
+        from backend.app.routers import crm_practices
+
+        client_user = {"email": "client-42@example.test", "user_id": "u-42", "role": "client"}
+        upload = await self._upload_as(
+            crm_practices, mock_db_pool, mock_db_conn, client_user, {"id": 42}
+        )
+
+        kwargs = upload.await_args.kwargs
+        assert kwargs["uploaded_source"] == "client"
+        assert kwargs["current_user"] is client_user
+
+    @pytest.mark.asyncio
+    async def test_staff_upload_on_behalf_of_the_client_stays_team(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers import crm_practices
+
+        upload = await self._upload_as(crm_practices, mock_db_pool, mock_db_conn, admin_user, None)
+
+        kwargs = upload.await_args.kwargs
+        assert kwargs["uploaded_source"] == "team"
+        assert kwargs["current_user"] is admin_user
+
+    @pytest.mark.asyncio
+    async def test_staff_session_whose_email_owns_the_client_stays_team(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        """Owning the client's email is not enough: only a portal client session
+        earns 'client', so staff cannot mint Round 2 points for themselves."""
+        from backend.app.routers import crm_practices
+
+        upload = await self._upload_as(
+            crm_practices, mock_db_pool, mock_db_conn, admin_user, {"id": 42}
+        )
+
+        assert upload.await_args.kwargs["uploaded_source"] == "team"
+
+    @pytest.mark.asyncio
+    async def test_category_follows_the_required_document_type_like_the_vault(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
+    ) -> None:
+        """A passport whose file name says nothing used to land in 'other' (99_Misc)."""
+        from backend.app.routers import crm_practices
+        from backend.services.portal._mixins.documents import PortalDocumentsMixin
+
+        client_user = {"email": "client-42@example.test", "user_id": "u-42", "role": "client"}
+        upload = await self._upload_as(
+            crm_practices, mock_db_pool, mock_db_conn, client_user, {"id": 42}, "IMG_0042.jpg"
+        )
+
+        category = upload.await_args.kwargs["data"].document_category
+        assert category == "personal"
+        assert category == PortalDocumentsMixin._classify_document_category(
+            "passport", "IMG_0042.jpg"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Constants / module-level

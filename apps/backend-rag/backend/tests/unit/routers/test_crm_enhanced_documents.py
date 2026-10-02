@@ -1145,6 +1145,119 @@ async def test_internal_upload_reuses_base64_upload_with_preverified_access(mock
     assert kwargs["current_user"]["email"] == "wa-mirror-crm-writer@balizero.com"
 
 
+def _documents_insert_values(conn: MagicMock) -> dict:
+    """Map each column of the ``INSERT INTO documents`` call to the value it got."""
+    call = next(c for c in conn.fetchval.await_args_list if "INSERT INTO documents" in c.args[0])
+    sql = call.args[0]
+    cols = [
+        c.strip() for c in sql.split("INSERT INTO documents (", 1)[1].split(")", 1)[0].split(",")
+    ]
+    vals = [v.strip() for v in sql.split("VALUES (", 1)[1].split(")", 1)[0].split(",")]
+    return {
+        col: call.args[int(val[1:])] if val.startswith("$") else val.strip("'")
+        for col, val in zip(cols, vals, strict=True)
+    }
+
+
+async def _upload_passport(mock_db_pool, current_user, **source_kwargs) -> dict:
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.side_effect = [
+        {
+            "id": 1,
+            "full_name": "Client One",
+            "google_drive_folder_id": "root",
+            "client_type": "individual",
+            "phone": None,
+            "phone_normalized": None,
+        }
+    ]
+    conn.fetchval.side_effect = [701]
+    drive_service = AsyncMock()
+    drive_service.get_folder_structure.return_value = {
+        "folders": [{"id": "profile", "name": "00_Profile"}],
+    }
+    drive_service.upload_file_to_folder.return_value = {
+        "id": "drive-file",
+        "webViewLink": "https://drive.test/doc",
+    }
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            return_value=drive_service,
+        ),
+    ):
+        result = await upload_document_base64(
+            client_id=1,
+            data=DocumentUploadBase64(
+                file="ZmlsZQ==",
+                file_name="scan.pdf",
+                document_type="passport",
+                document_category="personal",
+                practice_id=7,
+            ),
+            pool=mock_db_pool,
+            current_user=current_user,
+            background_tasks=BackgroundTasks(),
+            access_already_verified=True,
+            **source_kwargs,
+        )
+
+    assert result["success"] is True
+    return _documents_insert_values(conn)
+
+
+@pytest.mark.asyncio
+async def test_upload_records_client_source_and_the_uploader(mock_db_pool):
+    client_user = {"email": "client-1@example.test", "user_id": "u-1", "role": "client"}
+
+    values = await _upload_passport(mock_db_pool, client_user, uploaded_source="client")
+
+    assert values["uploaded_source"] == "client"
+    assert values["uploaded_by"] == "client-1@example.test"
+    assert values["practice_id"] == 7
+    assert values["document_category"] == "personal"
+
+
+@pytest.mark.asyncio
+async def test_upload_without_an_explicit_source_is_team(mock_db_pool, mock_current_user):
+    """A direct call that omits the kwarg receives the unresolved Depends marker;
+    only the literal 'client' may opt out of 'team'."""
+    values = await _upload_passport(mock_db_pool, mock_current_user)
+
+    assert values["uploaded_source"] == "team"
+    assert values["uploaded_by"] == mock_current_user["email"]
+
+
+def test_upload_endpoint_does_not_let_the_caller_choose_the_source():
+    """uploaded_source drives Champion Round 2 scoring: no request field may set it."""
+    from fastapi.dependencies.utils import get_flat_dependant
+
+    from backend.app.routers.crm_enhanced_documents import router
+
+    route = next(
+        r
+        for r in router.routes
+        if r.path.endswith("/clients/{client_id}/documents/upload")
+        and "/internal/" not in r.path
+        and "POST" in r.methods
+    )
+    flat = get_flat_dependant(route.dependant)
+    exposed = {
+        p.name
+        for p in flat.query_params + flat.body_params + flat.header_params + flat.cookie_params
+    }
+    assert "uploaded_source" not in exposed
+
+
 # ============================================================
 # Round-12 F12 gap 3 — expected_phone_core ownership token
 # ============================================================
