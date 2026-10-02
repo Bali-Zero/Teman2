@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import Page from "./TestingCampaign";
+import Page, { initialDay } from "./TestingCampaign";
 
 const mocks = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("@/lib/api", () => ({ api: { request: mocks.request } }));
@@ -664,4 +664,43 @@ it("allows continuing an already-unlocked day when starting new expectations is 
   expect(
     screen.getByLabelText("Hasil yang Anda harapkan dan alasannya"),
   ).toBeDisabled();
+});
+
+describe("Initial testing day", () => {
+  const days = (...list: string[]) => ({
+    ...fixture(),
+    campaign: {
+      ...fixture().campaign,
+      start_date: list[0],
+      end_date: list[list.length - 1],
+    },
+    assignments: list.map((day, index) => ({
+      ...fixture().assignments[0],
+      id: `a-${index}`,
+      day,
+    })),
+  });
+  it("opens on today when today has cases, otherwise on the first campaign day", () => {
+    const data = days("2026-10-02", "2026-10-05", "2026-10-06");
+    expect(initialDay(data, "2026-10-05")).toBe("2026-10-05");
+    expect(initialDay(data, "2026-10-02")).toBe("2026-10-02");
+    // A weekend gap or a date outside the campaign never selects an empty day.
+    expect(initialDay(data, "2026-10-03")).toBe("2026-10-02");
+    expect(initialDay(data, "2026-10-09")).toBe("2026-10-02");
+  });
+  it("selects today's Bali date on load", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    // 2026-10-05 07:00 WITA is still 2026-10-04 23:00 UTC: proves the Bali calendar.
+    vi.setSystemTime(new Date("2026-10-04T23:00:00Z"));
+    try {
+      mocks.request.mockResolvedValue(
+        days("2026-10-02", "2026-10-05", "2026-10-06"),
+      );
+      render(<Page />);
+      await screen.findByText("Penugasan Anda");
+      expect(screen.getByLabelText("Hari pengujian")).toHaveValue("2026-10-05");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
