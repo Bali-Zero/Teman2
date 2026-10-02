@@ -82,11 +82,11 @@ dissent:
     resolution: "Carry pinned to headRefOid; close refused when the head moved. Test: test_a_pr_whose_head_moved_after_the_carry_is_not_closed."
   - seat: codex-default-model-read-only
     objection: "MED: steps are marked done when arming fails, and nothing retries the arm without new content."
-    status: DISMISSED
+    status: PLAUSIBLE
     resolution: "Content is safe in an open PR and the failure is alerted (post-publish:bot-pr-unarmed:<kind>). A no-content heal sweep would close the legacy pile with no new content; follow-up, not this PR."
   - seat: codex-default-model-read-only
     objection: "MED: a PR can enter the merge queue between the re-check and the close."
-    status: DISMISSED
+    status: PLAUSIBLE
     resolution: "GitHub has no conditional close; its files are already in the successor, so the residual cost is CI, never content."
 
 pii_scan: clean
