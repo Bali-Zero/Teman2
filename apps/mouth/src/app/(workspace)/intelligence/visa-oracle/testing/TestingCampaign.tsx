@@ -316,7 +316,7 @@ export default function OracleTestingPage() {
       <Masthead
         eyebrow="Riset internal · Visa Oracle"
         title="Pengujian tim"
-        sub="2, 5 dan 6 Oktober 2026 · Lima kasus per hari, 15 per orang. Catat apa yang benar-benar terjadi; hasil terhalang tetap berguna."
+        sub="5–7 Oktober 2026 · Lima kasus per hari, 15 per orang. Catat apa yang benar-benar terjadi; hasil terhalang tetap berguna."
         actions={
           <Link className={BUTTON} href="/intelligence/visa-oracle">
             Kembali
