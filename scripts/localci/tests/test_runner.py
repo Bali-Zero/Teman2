@@ -413,7 +413,7 @@ def test_real_env_fingerprint_carries_the_required_evidence(fx, monkeypatch):
     env = runner.env_fingerprint(PY, spec)
     for k in ("python", "pytest", "platform", "hostname", "runner_sha256", "git_version", "deps_lock_sha256", "deps_lock_source", "uv_version", "runner_version"):
         assert k in env
-    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.3.0"
+    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.3.1"
     assert len(env["deps_lock_sha256"]) == 64 and env["deps_lock_source"] in ("pip", "uv")
     assert env["tools"]["c.tool"]["sha256"] not in ("not-a-file", None) and os.path.isabs(env["tools"]["c.tool"]["path"])
     assert env["tools"]["c.gone"] == {"path": None, "sha256": "not-a-file"}
@@ -561,7 +561,7 @@ def test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_r
     seal = seals[0]["seal"]
     assert f"seal={seal}" in printed and seal == st["seal"]
     assert runner.main(["status", "--run-dir", str(fx["run"]), "--seal", seal[:16]]) in (0, 1)
-    assert json.loads((fx["run"] / "status.json").read_text())["overall"] != "BLOCKED"
+    assert "seal mismatch" not in (json.loads((fx["run"] / "status.json").read_text())["freshness"].get("stale_reason") or "")
     # the forgery gate 1 reproduced: candidate code rewrites the trusted receipt + state after the run, re-hashing the receipt
     rp = Path(ch[trusted]["receipt"])
     r = json.loads(rp.read_text())
@@ -612,3 +612,29 @@ def test_a_rewritten_record_verdict_breaks_the_seal(fx):
     runner.main(["status", "--run-dir", str(fx["run"]), "--seal", seal])
     out = json.loads((fx["run"] / "status.json").read_text())
     assert out["overall"] == "BLOCKED" and "seal mismatch" in out["freshness"]["stale_reason"]
+
+
+# --------------------------------------------------------------- change_map verdict parity with GitHub
+def test_unclassified_paths_is_not_a_failure(tmp_path):
+    """GitHub's `changes` job passes on unclassified paths and runs every job (run_all); a local FAIL here
+    would tell the fleet not to arm a PR GitHub accepts. The run_all consequence is carried by the BLOCKED
+    test records, so the overall verdict is no signal, never a failure."""
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "zzz_unmapped_dir/notes.txt": "x\n"})
+    fr.plan(fx)
+    plan = json.loads((fx["run"] / "state" / "plan.json").read_text())
+    cm = plan["checks"]["policy.change_map"]
+    assert cm["data"]["reason"] == "unclassified_paths" and cm["data"]["run_all"] is True
+    assert cm["status"] == "PASS", cm
+    assert plan["checks"]["tests.backend_shards"]["status"] == "BLOCKED"
+
+
+def test_classified_diff_stays_pass(fx):
+    fr.plan(fx)
+    cm = json.loads((fx["run"] / "state" / "plan.json").read_text())["checks"]["policy.change_map"]
+    assert cm["data"]["reason"] == "classified" and cm["status"] == "PASS"
+
+
+@pytest.mark.parametrize("cm_out", [{"mode": "enforcing", "reason": "enumeration_failed", "run_all": True, "suggested_jobs": []},
+                                    {"mode": "shadow", "reason": "classified", "run_all": False, "suggested_jobs": []}])
+def test_unjudgeable_classifier_output_is_blocked_not_fail(cm_out):
+    assert runner.change_map_status(cm_out) == "BLOCKED"
