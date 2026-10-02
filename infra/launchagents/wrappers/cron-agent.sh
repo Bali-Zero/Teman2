@@ -366,6 +366,23 @@ ${err_tail}"
 
 # ── Tier: agent ───────────────────────────────────────────────────────────────
 
+# H24 checkout guard — the hard half of the anti-git prompt sentence below. The
+# sentence is a request; this is the measurement. An agent turn runs with
+# bypassPermissions, so nothing stops it from committing: indexing-daily did
+# exactly that on 2026-09-30 (53f448edd5) and Pro's checkout diverged from
+# origin/main until it was realigned by hand. Prints "<branch> <ahead>", where
+# ahead counts commits on HEAD missing from the LOCAL origin/main ref (never
+# fetched here). The 5-min sync cron only fetches and fast-forwards, which can
+# lower that count but never raise it — so a higher count or another branch
+# after the run is a mutation. No checkout or no origin/main prints nothing,
+# and nothing measured means the guard stays out of the verdict.
+checkout_state() {
+    local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}" branch ahead
+    ahead="$(git -C "$dir" rev-list --count origin/main..HEAD 2>/dev/null)" || return 0
+    branch="$(git -C "$dir" symbolic-ref -q --short HEAD 2>/dev/null)" || branch="DETACHED"
+    printf '%s %s' "$branch" "$ahead"
+}
+
 run_agent() {
     local prompt_file="$SCRIPT_OR_PROMPT"
     if [[ ! -f "$prompt_file" ]]; then
@@ -388,8 +405,8 @@ Do ALL the work inline in this turn — never spawn a background task or backgro
 for this; this is a one-shot print-mode run and backgrounded work is terminated at exit,
 leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05).
 
-Never run \`git add\`/\`git commit\`/\`git push\` or any other git mutation in this repo, even
-if a step in this prompt fails (e.g. a Telegram send returning non-200) — write the result
+Never run \`git add\`/\`git commit\`/\`git push\` or any other git mutation in any checkout on
+this machine (the H24 checkout ~/nuzantara included), even if a step in this prompt fails (e.g. a Telegram send returning non-200) — write the result
 to disk and stop. The main checkout is agent-read-only (Agent Worktree Discipline); a direct
 commit here strands unpushed content and jams the 5-min sync cron on every machine that pulls
 this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in indexing-daily,
@@ -452,6 +469,9 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
             NOOP_FINGERPRINT_VALUE="$fp_now"
         fi
     fi
+
+    local checkout_before checkout_after checkout_mutated=0
+    checkout_before="$(checkout_state)"
 
     # Five MAX seats, then the Team seat (6, weekly-capped, last-resort by
     # position — never reorder this ahead of 1-5), then legacy and keychain.
@@ -615,12 +635,31 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         exit_code=1
     fi
 
+    # Judged on every outcome, success or not: a run that failed after committing
+    # still left the checkout diverged. A checkout that stops being measurable
+    # mid-run (deleted .git, broken origin/main) counts as mutated too.
+    if [[ -n "$checkout_before" ]]; then
+        checkout_after="$(checkout_state)"
+        if [[ -z "$checkout_after" || "${checkout_after% *}" != "${checkout_before% *}" ]] \
+            || (( ${checkout_after##* } > ${checkout_before##* } )); then
+            checkout_mutated=1
+        fi
+    fi
+
     local duration=$(( $(date +%s) - start_ts ))
 
     # Log output (last 80 lines)
     echo "$output" | tail -80 >> "$LOG_FILE"
 
-    if [[ $accepted_success -eq 1 && $exit_code -eq 0 ]]; then
+    if [[ $checkout_mutated -eq 1 ]]; then
+        # Never repaired from here: a reset on the H24 checkout is a human/healer
+        # act. Exit 3 is this guard's own code, distinct from 1/124/127.
+        local checkout_change="'$checkout_before' -> '${checkout_after:-unmeasurable}'"
+        log "GIT-MUTATION: H24 checkout changed during the agent run, '<branch> <ahead-of-origin/main>' went $checkout_change — realign by hand"
+        save_state "error" 3 "$duration" "H24 checkout mutated during agent run: $checkout_change"
+        send_telegram "🚨 <b>$JOB_NAME</b> agent mutated the H24 checkout ($checkout_change) — realign by hand"
+        return 3
+    elif [[ $accepted_success -eq 1 && $exit_code -eq 0 ]]; then
         log "OK duration=${duration}s label=${labels[$idx]}"
         # Explicit tier-provenance line (W89 class-audit, 2026-07-11): which of the
         # numbered/legacy/keychain fallback slots actually answered.
