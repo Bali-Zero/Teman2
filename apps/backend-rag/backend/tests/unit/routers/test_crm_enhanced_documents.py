@@ -1241,8 +1241,9 @@ def test_upload_endpoint_does_not_let_the_caller_choose_the_source():
     """uploaded_source drives Champion Round 2 scoring: no request field may set it."""
     from fastapi.dependencies.utils import get_flat_dependant
 
-    from backend.app.routers.crm_enhanced_documents import router
+    from backend.app.routers.crm_enhanced_documents import DocumentUploadBase64, router
 
+    assert "uploaded_source" not in DocumentUploadBase64.model_fields
     route = next(
         r
         for r in router.routes
