@@ -1538,3 +1538,22 @@ def test_harness_floor_step_passes_the_head_tree_and_survives_the_parser_exit_co
     assert call[0].endswith("|| RC=$?")
     assert step.index("RC=0") < step.index("bites_parse.py --pack -")
     assert not re.search(r"^\s*RC=\$\?\s*$", step, flags=re.MULTILINE)
+
+
+def test_harness_floor_step_passes_the_tree_only_when_the_base_parser_advertises_it():
+    """The step runs the PR's workflow over BASE's parser, so the PR that adds `--tree` is
+    judged by a parser that rejects it (argparse exit 2, empty stdout). The flag must be gated
+    on the base copy's `--help`, and the gate must sit before the call."""
+    workflow = (_REPO_ROOT / ".github" / "workflows" / "harness-floor.yml").read_text(encoding="utf-8")
+    step = re.split(r"\n      - name: ",
+                    workflow.split("- name: Bites contract — parse this PR's evidence pack", 1)[1],
+                    maxsplit=1)[0]
+    probe = "python3 scripts/ci/bites_parse.py --help 2>/dev/null | grep -q -- '--tree'"
+    assert probe in step
+    call = next(ln for ln in step.splitlines() if "scripts/ci/bites_parse.py --pack -" in ln)
+    assert '${TREE_FLAG:+--tree "${HEAD_SHA}"}' in call
+    assert step.index(probe) < step.index("bites_parse.py --pack -")
+    # The other half: once this parser is the base copy, the same probe must fire.
+    assert "--tree" in subprocess.run(
+        ["python3", str(_MODULE_PATH), "--help"], capture_output=True, text=True, check=True,
+    ).stdout
