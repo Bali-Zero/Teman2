@@ -39,6 +39,13 @@ def _access_not_preverified() -> bool:
     return False
 
 
+def _team_upload_source() -> str:
+    # documents.uploaded_source feeds Champion Round 2 scoring, so HTTP callers
+    # can never set it; only an in-process caller that authenticated a portal
+    # client (crm_practices.upload_client_document) passes 'client'.
+    return "team"
+
+
 def _parse_date_or_none(date_str: str | None) -> date | None:
     """Parse YYYY-MM-DD date string or return None."""
     if not date_str:
@@ -584,11 +591,14 @@ async def upload_document_base64(
     current_user: dict = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
     access_already_verified: bool = Depends(_access_not_preverified),
+    uploaded_source: str = Depends(_team_upload_source),
 ) -> dict[str, Any]:
     """
     Upload a document via Base64 (for frontend integration).
     Handles Google Drive upload and document creation.
     """
+    # A direct call that omits the kwarg gets the unresolved Depends marker.
+    source = "client" if uploaded_source == "client" else "team"
     # RBAC check before processing upload
     if access_already_verified is not True:
         async with pool.acquire() as _conn:
@@ -904,8 +914,8 @@ async def upload_document_base64(
                         client_id, document_type, document_category,
                         file_name, file_id, file_url, google_drive_file_url,
                         status, storage_type, notes, subfolder, expiry_date, content_hash,
-                        family_member_id, practice_id
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10, $11, $12, $13)
+                        family_member_id, practice_id, uploaded_by, uploaded_source
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10, $11, $12, $13, $14, $15)
                     RETURNING id
                     """,
                     client_id,
@@ -921,6 +931,8 @@ async def upload_document_base64(
                     content_hash,
                     data.family_member_id,
                     data.practice_id,
+                    current_user.get("email"),
+                    source,
                 )
 
             company_document_id = None
