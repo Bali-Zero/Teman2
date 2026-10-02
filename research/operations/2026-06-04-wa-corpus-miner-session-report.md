@@ -7,6 +7,7 @@ status: DRAFT v7 design, pronto per prova-di-fuoco poi implementazione
 sources:
   - spec: docs/superpowers/specs/2026-06-03-wa-corpus-miner-local-rebuild-design.md
   - memory: discovery_wa_corpus_miner_built_then_removed_2026_06_03.md
+adversarial_review: exempt-redaction-edit
 ---
 
 # Session Report — WhatsApp Corpus-Miner (2026-06-03/04)
@@ -125,7 +126,7 @@ RISKS-URGENCIES / RELATIONSHIP STATUS), ognuna con **citazione verbatim obbligat
 - **TEST 1 (Drive API diretta)**: Google Doc nativo creato nel Workspace zero@ via Service Account
   con Domain-Wide Delegation (`nuzantara-google-drive-sa@nuzantara.iam.gserviceaccount.com` impersona
   `zero@balizero.com`) + `files().create(media=text/markdown → google-apps.document)`. Round-trip
-  export confermato. **Bypassa il MCP docs buggato.** 53 msg chat reale (Alexandre +33614653019).
+  export confermato. **Bypassa il MCP docs buggato.** 53 msg chat reale ([CLIENT-A] [CLIENT-PHONE-A]).
 - **TEST 2 (sync contenuto nuovo)**: query baseline negava un sentinella univoco → dopo
   `nlm source sync --source-ids <id> -y` la query lo cita **verbatim** con cited_text + source_id.
   Propagazione del contenuto nuovo provata end-to-end.
@@ -146,13 +147,13 @@ RISKS-URGENCIES / RELATIONSHIP STATUS), ognuna con **citazione verbatim obbligat
 Package `scripts/wa_corpus/` — 7 moduli, **18 unit test PASS + 1 live skipped**, TDD:
 
 - `classifier.py` — exclusion-first, 4 verdetti (CLIENT/INTERNAL/MULTI_CLIENT/REVIEW). Verificato sui
-  dati: il numero-trappola §7bis `+628563785797` (contact_type=team) → **INTERNAL escluso**; Alexandre → CLIENT.
-- `db.py` — accesso Postgres read-only; `count_distinct_names` con stoplist EN/ID/brand (Alexandre 13→2 nomi).
+  dati: il numero-trappola §7bis `+628563785797` (contact_type=team) → **INTERNAL escluso**; [CLIENT-A] → CLIENT.
+- `db.py` — accesso Postgres read-only; `count_distinct_names` con stoplist EN/ID/brand ([CLIENT-A] 13→2 nomi).
 - `renderer.py` — chat→Doc nativo via Drive API + auto-share (F1).
 - `query_runner.py` — wrapper nlm CLI, sync esplicito (F2), enforcement cited-text.
 - `prompt_master.py` — prompt 6 sezioni grounded + validator.
 - `pilot.py` — driver end-to-end. **Pilot live PASS**: recap 6 sezioni, 4 citazioni verbatim,
-  semanticamente reale (LKPM/OSS, PT AUM, cliente frustrato), read-only (HITL, non scrive CRM).
+  semanticamente reale (LKPM/OSS, [CLIENT-A-CO], cliente frustrato), read-only (HITL, non scrive CRM).
 
 ### AGGIORNAMENTO 2026-06-04 (notte) — SCALA 10 chat + classificatore a 3 categorie
 
@@ -184,18 +185,18 @@ Package `scripts/wa_corpus/` — 7 moduli, **18 unit test PASS + 1 live skipped*
   Il numero è SEMPRE la chiave stabile nel title (per ricerca/rename alla conversione lead→client).
 - `db.crm_name(phone)` (full_name||company_name da `clients`) + `renderer.doc_title(phone, crm_name)`:
   in CRM → `WA · <nome> · <numero>`; non in CRM → `WA · <numero>`.
-- Verificato: Alexandre/Johanna → con nome; `+6281358196299` → solo numero.
+- Verificato: [CLIENT-A]/[CLIENT-B] → con nome; `[CLIENT-PHONE-B]` → solo numero.
 
 **Query perfezionata — recap multi-prospettiva + punti specifici (MOLTI test)** ✅
 
 - `query_lab.py` + `prompt_variants.py`: iterati 5 prompt (v1-v5) su 3 chat reali di Surya
-  (Alexandre/Johanna/Fabio) con scoring ground-truth (recall fatti / allucinazioni / citazioni / char).
+  ([CLIENT-A]/[CLIENT-B]/[CLIENT-C]) con scoring ground-truth (recall fatti / allucinazioni / citazioni / char).
 - **Vincitore v5** (ora `prompt_master.PROMPT_MASTER`): struttura a **2 livelli** — `HEADLINE` (1 frase) +
   `GENERAL RECAP` da 4 punti di vista (Operational / Relationship / Commercial / Risk) +
   `SPECIFIC POINTS` (7 punti: company / service / deadlines / amounts / documents / next-action / last-contact).
   Tutto grounded con quote verbatim, ENGLISH, <2000 char.
-- Risultati v5: Alexandre 5/5 fatti, Fabio cattura `17.8 mill`+date+`war in Iran`, 0 allucinazioni,
-  0 cross-source leak su tutte e 3. E2E produzione su Fabio: 6 citazioni, struttura valida, 1934 char.
+- Risultati v5: [CLIENT-A] 5/5 fatti, [CLIENT-C] cattura `17.8 mill`+date+`war in Iran`, 0 allucinazioni,
+  0 cross-source leak su tutte e 3. E2E produzione su [CLIENT-C]: 6 citazioni, struttura valida, 1934 char.
 - **LAB FINDING (importante)**: NLM è **non-deterministico** nel popolare le `references` strutturate —
   stesso prompt+source → 0 citazioni una run, 8 la successiva. Il `query_runner.run_prompt_master`
   ora **ritenta (max 3)** finché le citazioni sono vuote; se ancora vuote, il chiamante flagga il recap
@@ -228,11 +229,11 @@ Recap scritto in CRM SOLO se in `clients` AND ha citazioni (retry garantisce o f
 
 **VERIFICATO LIVE** (Surya, NB reconcile-test `a10ea479-6e88-4010-8201-6d21720b57a5`):
 
-- run1: `create=2 recap_written=2` → Brandi+Johanna in `clients.strategic_recap` source=wa_auto
+- run1: `create=2 recap_written=2` → [CLIENT-D]+[CLIENT-B] in `clients.strategic_recap` source=wa_auto
   (verificato sul DB: 1560 e 1942 char con HEADLINE grounded).
 - run2 (stessi parametri): `skip=3` → **idempotente**, zero spreco.
 - run3 (simulato prospect→client falsificando last_title a solo-numero): **`rename=1`** → Doc
-  rinominato su Drive E nello state store a `WA · Johanna · +46737002611` (numero preservato). ✅
+  rinominato su Drive E nello state store a `WA · [CLIENT-B] · [CLIENT-PHONE-C]` (numero preservato). ✅
   **Questo è esattamente il caso che Antonello chiedeva.**
 
 **Cron giornaliero** (`run_all_members.py` + `wa_corpus_daily_run.sh` + plist example 05:00 WITA):
@@ -249,10 +250,10 @@ Cestinare su Drive (profilo zero) + cancellare 4 NB di test (`nlm notebook delet
 - NB `WA-CORPUS-PILOT-CLEAN-20260604` (`7e4665c3-1c78-4648-9e49-2415a099abee`)
 - NB `WA-CORPUS-SCALE-SURYA-20260604` (`9c82e1db-1cf5-4048-b9f2-5bc8e0c8f26c`) — 10 Doc WA-MULTI-\*
 - NB `WA-CORPUS-RECONCILE-TEST-20260604` (`a10ea479-6e88-4010-8201-6d21720b57a5`) — 2 Doc reconcile-test
-- Doc `WA-GATE-TEST1-+33614653019-...` (`1YsU-X-4nyhpXEjhfo1phv47WWYtwfw5ie-OQsu67al4`)
-- Doc `WA-+33614653019-...` del pilot (`17TDAELRcd6U2It-nRqo23QZi-k_yBAS1HAfLA47mMsA`)
-- 10 Doc `WA-MULTI-*` + 2 Doc reconcile (`WA · Brandi…`, `WA · Johanna…`) dal cestino Drive di zero@
-- ⚠️ **2 righe `clients.strategic_recap` scritte dal test** (Brandi id 5730, Johanna id 6087, source=wa_auto)
+- Doc `WA-GATE-TEST1-[CLIENT-PHONE-A]-...` (`1YsU-X-4nyhpXEjhfo1phv47WWYtwfw5ie-OQsu67al4`)
+- Doc `WA-[CLIENT-PHONE-A]-...` del pilot (`17TDAELRcd6U2It-nRqo23QZi-k_yBAS1HAfLA47mMsA`)
+- 10 Doc `WA-MULTI-*` + 2 Doc reconcile (`WA · [CLIENT-D]…`, `WA · [CLIENT-B]…`) dal cestino Drive di zero@
+- ⚠️ **2 righe `clients.strategic_recap` scritte dal test** ([CLIENT-D] id 5730, [CLIENT-B] id 6087, source=wa_auto)
   — sono recap reali corretti; lasciarli o resettarli a piacere (`UPDATE clients SET strategic_recap=NULL,
 strategic_recap_source=NULL WHERE id IN (5730,6087)`).
 
@@ -271,5 +272,5 @@ gruppi (23% traffico — il classificatore già li riconosce come GROUP, manca s
 multi-party), rename auto da CRM, cross-NB per i 37 clienti multi-membro, quota/retry batch
 hardening, persistenza recap in `clients.strategic_recap`/`ai_summary` (campi già esistenti). Plus:
 validare a mano i counterpart REVIEW; raffinare la soglia volume per separare i numeri-team
-non ancora marcati (es. `+628213454728` classificato PROSPECT ma forse linea team — il roster
+non ancora marcati (es. `[CLIENT-PHONE-D]` classificato PROSPECT ma forse linea team — il roster
 `whatsapp_contacts.contact_type` va completato).

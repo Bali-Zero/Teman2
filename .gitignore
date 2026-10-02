@@ -944,6 +944,19 @@ research/nb-health/nb-inventory-live.json
 research/crm/*-wa-dossier-*.txt
 research/crm/*-timing-*.json
 
+# Client-PII outputs (Builder Contract §4) — never tracked. scripts/crm_guardian_deep_audit.py
+# writes its jsonl/run.log into research/compliance/deep_audit_*/ of the checkout it runs from.
+research/compliance/deep_audit_*/*.jsonl
+research/compliance/deep_audit_*/run.log
+# CRM guardian xlsx exports. After this removal no xlsx is tracked under research/compliance/,
+# so the extension-wide form ignores nothing that should be tracked.
+research/compliance/*.xlsx
+# apps/backend-rag/backend/services/wa_copilot/metrics_dashboard.py `--eval-set` output.
+research/wa-copilot/*eval-set*.jsonl
+# scripts/wa_corpus/query_lab.py loads its ground truth from this untracked file when present
+# and falls back to synthetic fixtures otherwise.
+scripts/wa_corpus/_ground_truth_local.py
+
 # S7 yield: local PII drafts staging (NEVER commit — UU PDP)
 s7-yield-drafts-local/
 research/crm/*-drafts-local/

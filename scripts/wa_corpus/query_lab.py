@@ -24,29 +24,41 @@ from scripts.wa_corpus.query_runner import _nlm
 
 # Ground-truth per real chat — what the recap MUST surface and must NOT invent.
 # Keyed by source_id so the lab can score whichever chat is queried.
-GROUND_TRUTH = {
-    # Alexandre +33600000000 / PT AUM — frustrated client, LKPM/OSS, email dispute.
-    "8ec03a47-23ec-44e2-9c03-9546e422f17c": {
-        "label": "Alexandre / PT AUM",
-        "must_mention": ["PT AUM", "LKPM", "27 march", "email", "meet"],
-        "must_flag_risk": ["support"],
-        "must_not_invent": ["invoice paid", "payment received", "visa approved", "kitas issued"],
-    },
-    # Johanna +46737002611 / Ciao Bali — investor KITAS bridging, doc collection.
-    "eb00e592-e984-470a-a8ac-8d6b42f2b78e": {
-        "label": "Johanna / Ciao Bali",
-        "must_mention": ["kitas", "ciao bali", "passport", "document"],
-        "must_flag_risk": [],
-        "must_not_invent": ["17 million", "payment received", "tax filing"],
-    },
-    # Fabio +393388991991 / PT Scarlett — KITAS offshore, explicit costs+dates.
-    "1c42a945-bf3c-4dc0-88c6-0356588cee66": {
-        "label": "Fabio / PT Scarlett",
-        "must_mention": ["kitas", "17", "july", "ticket"],
-        "must_flag_risk": [],
-        "must_not_invent": ["lkpm", "ciao bali", "paul baker"],
-    },
-}
+#
+# The REAL ground truth (real client names/phones/companies, tied to real NLM
+# source_ids) lives in the untracked, gitignored
+# scripts/wa_corpus/_ground_truth_local.py (same GROUND_TRUTH dict shape) —
+# these were tracked in THIS file on origin/main until 2026-09-27 (Builder
+# Contract §4, gate G1 on #7468). Recreate that file locally to run this lab
+# against real indexed chats. Absent it, GROUND_TRUTH falls back to the
+# synthetic fixtures below, which keep the module importable/runnable but
+# will not score against a real source_id.
+try:
+    from scripts.wa_corpus._ground_truth_local import GROUND_TRUTH  # type: ignore
+except ImportError:
+    GROUND_TRUTH = {
+        # Client Alpha +6281234567890 / PT Contoh Alpha — synthetic fixture.
+        "fixture-source-alpha": {
+            "label": "Client Alpha / PT Contoh Alpha",
+            "must_mention": ["PT Contoh Alpha", "LKPM", "27 march", "email", "meet"],
+            "must_flag_risk": ["support"],
+            "must_not_invent": ["invoice paid", "payment received", "visa approved", "kitas issued"],
+        },
+        # Client Beta +6281234567891 / PT Contoh Beta — synthetic fixture.
+        "fixture-source-beta": {
+            "label": "Client Beta / PT Contoh Beta",
+            "must_mention": ["kitas", "pt contoh beta", "passport", "document"],
+            "must_flag_risk": [],
+            "must_not_invent": ["17 million", "payment received", "tax filing"],
+        },
+        # Client Gamma +6281234567892 / PT Contoh Gamma — synthetic fixture.
+        "fixture-source-gamma": {
+            "label": "Client Gamma / PT Contoh Gamma",
+            "must_mention": ["kitas", "17", "july", "ticket"],
+            "must_flag_risk": [],
+            "must_not_invent": ["lkpm", "pt contoh beta", "unrelated person"],
+        },
+    }
 
 
 def run(nb_id: str, source_id: str, prompt: str) -> dict:
