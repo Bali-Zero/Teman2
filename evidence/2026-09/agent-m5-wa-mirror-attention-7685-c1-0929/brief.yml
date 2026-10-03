@@ -1,0 +1,18 @@
+gear: 3
+task_id: wa-mirror-attention-7685-c1
+lane: wa-mirror
+host: m5 (M5)
+branch: agent/air-m5/wa-mirror/attention-7685-c1-0929
+gate_class: opus
+l_level: L2
+objective: >-
+  Discharge C1 of the delta gate on #7685 by NARROWING THE CLAIM, not by adding refusals: the
+  workflow comment and the walk's docstring said the assignment-target and load-of-a-test-name
+  refusals hold at "module or class scope", but the walk only enters Test*-named classes without
+  __init__. State exactly what is refused and where, name the residuals, and pin the documented
+  gap with one characterization test. Floor is 3 on the path term (.github/workflows/ hot zone).
+  Zero behavior change in scripts/wa_attention_presence.py (AST-equal with docstrings stripped).
+scope:
+  - ".github/workflows/check-wa-attention-pii.yml - comment only."
+  - "scripts/wa_attention_presence.py - module docstring only."
+  - "scripts/tests/test_wa_attention_presence_walk.py - one characterization test of the declared gap."

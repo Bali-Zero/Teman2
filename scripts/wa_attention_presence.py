@@ -2,8 +2,13 @@
 """Presence check for the wa-mirror attention PII corpus (check-wa-attention-pii.yml).
 
 Every test DEFINED in scripts/tests/test_wa_attention_*.py, found by AST, must appear in the
-pytest junit report as run and unskipped. Constructs the AST cannot follow are refused (RED),
-never guessed: a green run must mean every definition executed.
+pytest junit report as run and unskipped.
+
+What this module refuses is exactly the cases in the GUILT and HOOK_GUILT tables of
+scripts/tests/test_wa_attention_presence_walk.py, each RED-tested. It is deliberately not
+re-enumerated here. What is NOT defended (the named residuals, X1 onwards) is listed in one place
+only: the comment in .github/workflows/check-wa-attention-pii.yml. Anything not in those tables
+is not defended; deliberate reflection is outside this tripwire's threat model.
 """
 from __future__ import annotations
 
