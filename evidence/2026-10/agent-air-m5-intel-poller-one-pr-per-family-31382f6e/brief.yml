@@ -1,0 +1,68 @@
+task: >-
+  Stop the post-publish poller from piling up conflicting bot PRs: each family
+  (bot/news-covers, bot/seo-metadata, bot/homepage-layout, bot/articles-translations)
+  holds at most one open PR outside the merge queue, content in an open PR is never
+  lost, covers are deduplicated against open PRs, and an unarmed PR fails loud.
+lane: intel/poller-one-pr-per-family
+machine: M5
+date: "2026-10-02"
+
+gear: 2
+gear_reason: >-
+  Provisional 2 (one producer script + its unit tests, no workflow/migration/backend-rag
+  path). The CI floor recompute is authoritative.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+design: >-
+  GROUND (2026-10-02, origin/main 370ab29aae). Root cause measured, not assumed: the
+  `--squash` lead is REFUTED. #7681 and #7682 (opened 8 min apart) carry the SAME two
+  cover paths; both show AutoMergeEnabledEvent by the poller's account and
+  AddedToMergeQueueEvent; #7681 merged, #7682 was RemovedFromMergeQueueEvent
+  reason=merge_conflict (2026-09-29T16:14Z), which clears autoMergeRequest. #7784 same
+  (ejected merge_conflict 2026-10-02T02:51Z). The "unarmed half" of the pile is the queue
+  ejecting add/add twins: run_image dedupes against main only, so every cover riding an
+  open PR is regenerated (different bytes) and re-staged at the next tick.
+
+  CHOSEN - supersede-with-carry, rebuilt from main at every flush (reuses the hourly
+  promoter's close-older-unless-queued rule, translate-articles-cron-wrapper.sh:146-169,
+  made cumulative because a poller batch, unlike the promoter's, is NOT a superset):
+  1. List the family's open PRs (exact head-prefix entity, not substring). A PR holding a
+     merge-queue slot is never read, rewritten or closed.
+  2. Every other open PR is folded into the new branch: per file, landed (main blob ==
+     PR blob, or for generated covers/translations any blob on main) is dropped; main
+     untouched since the PR's merge-base is carried byte-for-byte (git blob); main changed
+     the file since is a conflict - NOT carried, the PR stays open and an alert names it.
+  3. homepage-layout.json is never carried as bytes: the slugs each layout PR promoted
+     (hero list at head minus hero list at merge-base) plus this tick's rotations are
+     replayed onto main's CURRENT layout, so a layout PR is rebuilt instead of going
+     DIRTY when another producer moves main (also cures in-tick rotations overwriting
+     each other: every rotate_hero read main, last staged write won).
+  4. New branch from main HEAD, commits, PR, `gh pr merge <n> --auto` (no --squash), then
+     the PR's own state is read (autoMergeRequest OR mergeQueueEntry); neither = log +
+     Telegram alert + flush returns False. Exit code 0 is not the proof.
+  5. Only after every PUT succeeded and the new PR exists are the fully-carried older PRs
+     closed (re-checking the queue right before each close), with --delete-branch and a
+     "Superseded by" comment.
+  6. run_image treats a cover found in ANY open covers PR (queued included) as existing,
+     downloading the hero from that PR's branch when only the card is missing; staged
+     covers that landed on main during the run are dropped at flush.
+  Listing failure = fail closed (no PR opened blind, steps left unmarked for retry).
+
+  REJECTED - fixed-name rolling branch with force-reset: rewrites a branch under the
+  queue and loses the unlanded commits it replaces. Append-to-the-open-PR: cannot cure a
+  PR that is already DIRTY (the routine case for the layout file) and appending under an
+  armed PR races the queue. Close-older-only like the promoter: loses content, because a
+  poller batch carries only what was staged THIS flush. Keeping branch-per-flush and only
+  fixing the cover dedupe: leaves layout and SEO twins conflicting and nothing ever
+  closes a stale PR.
+
+acceptance:
+  A1: "A second flush of a family whose older PR is open and not queued opens ONE new PR carrying the older PR's unlanded files and closes the older PR after the PR exists (guilt: old code opens a sibling and closes nothing)."
+  A2: "A PR holding a merge-queue slot is never read for carry, never written, never closed."
+  A3: "A file main changed since the older PR branched is not carried; that PR stays open and an alert names it."
+  A4: "A cover present only in an open covers PR is not regenerated (no Codex call, no stage)."
+  A5: "Arming runs `gh pr merge <n> --auto` without --squash and reads the PR state; unarmed => alert + flush False."
+  A6: "Layout PRs: promoted slugs of an older layout PR plus this tick's rotations are replayed onto main's current layout."
