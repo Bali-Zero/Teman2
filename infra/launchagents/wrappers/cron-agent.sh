@@ -372,12 +372,18 @@ ${err_tail}"
 # exactly that on 2026-09-30 (53f448edd5) and Pro's checkout diverged from
 # origin/main until it was realigned by hand. Prints "<branch> <ahead> <reflog>":
 # ahead counts commits on HEAD missing from the LOCAL origin/main ref (never
-# fetched here), reflog is the length of HEAD's reflog. The 5-min sync cron's
-# only HEAD move is `git merge --ff-only` (scripts/pro/pro-git-pull.sh), which
-# can lower ahead but never raise it and logs a ": Fast-forward" reflog entry.
-# So another branch, a higher ahead, or any other new reflog entry after the
-# run is a mutation — the reflog also catches a commit the agent then pushed,
-# reset away or amended, which leave branch and ahead as they were. No
+# fetched here), reflog is the length of HEAD's reflog. The periodic git-pull
+# sync (Pro: com.nuzantara.git-pull-main.15min, scripts/pro/pro-git-pull.sh)
+# moves HEAD only with `git merge --ff-only`, which can lower ahead but never
+# raise it and logs a ": Fast-forward" reflog entry. So another branch, a
+# higher ahead, or any other new reflog entry after the run is a mutation — the
+# reflog also catches a commit the agent then pushed, reset away or amended,
+# which leave branch and ahead as they were. With core.logAllRefUpdates off
+# that limb is blind: commit+reset is not caught (commit+push still is, by the
+# commit stamp below). Any OTHER process's `git stash` or `reset --hard HEAD`
+# during the run ("reset: moving to HEAD") also fails it: Pro logged 9 from
+# 2026-09-15 to 10-01, producer unattributed, none inside an agent-tier cron
+# window (Mon 03:30 and 08:00, daily 09:00, Sun 23:00). No
 # checkout or no origin/main prints nothing, and the guard stays out.
 checkout_state() {
     local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}" branch ahead reflog
@@ -405,10 +411,15 @@ checkout_foreign_moves() {
 # there before it (a pushed branch survives as refs/remotes/origin/*) is a
 # mutation. Before/after sets, never --since: the committer date is the
 # agent's to forge. Full sweep measured on Pro: 0.32 s over 27,592 commits.
+# The <...> brackets make the fixed-string match the whole address, so job
+# "audit" never matches "weekly-audit". Not caught, by construction: an agent
+# that overrides GIT_COMMITTER_* itself, commits made only through the API or
+# in another clone, and an unpushed commit whose branch and worktree were
+# deleted (nothing left). The stamp catches a runaway agent, not an adversary.
 agent_commit_mark() { printf '%s@cron-agent.invalid' "$JOB_NAME"; }
 checkout_marked_commits() {
     local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}"
-    git -C "$dir" log --all --reflog -F --committer="$(agent_commit_mark)" --format=%H 2>/dev/null
+    git -C "$dir" log --all --reflog -F --committer="<$(agent_commit_mark)>" --format=%H 2>/dev/null
 }
 
 run_agent() {
@@ -436,7 +447,7 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05).
 Never run \`git add\`/\`git commit\`/\`git push\` or any other git mutation in any checkout on
 this machine (the H24 checkout ~/nuzantara included), even if a step in this prompt fails (e.g. a Telegram send returning non-200) — write the result
 to disk and stop. The main checkout is agent-read-only (Agent Worktree Discipline); a direct
-commit here strands unpushed content and jams the 5-min sync cron on every machine that pulls
+commit here strands unpushed content and jams the periodic git-pull sync on every machine that pulls
 this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in indexing-daily,
 2026-09-30)."
 
@@ -500,7 +511,11 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
 
     local checkout_before checkout_after checkout_mutated=0 checkout_moves="" checkout_marked=""
     checkout_before="$(checkout_state)"
-    local marked_before; marked_before="$(checkout_marked_commits | sort -u)"
+    local marked_before marked_after marked_sweep=1
+    marked_before="$(checkout_marked_commits | sort -u)" || {
+        marked_sweep=0
+        log "commit-stamp sweep OFF for this run: git log --all failed on ${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}"
+    }
     [[ -z "$checkout_before" ]] && log "checkout guard OFF for this run: ${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara} has no measurable HEAD vs origin/main"
 
     # Five MAX seats, then the Team seat (6, weekly-capped, last-resort by
@@ -675,12 +690,25 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         read -r b0 a0 r0 <<< "$checkout_before"
         read -r b1 a1 r1 <<< "${checkout_after:-x 0 0}"
         checkout_moves="$(checkout_foreign_moves "$r0" "$r1" | head -3 | tr '\n' ';')"
-        checkout_marked="$(checkout_marked_commits | sort -u | grep -vxF -f <(printf '%s\n' "$marked_before") \
-            | cut -c1-10 | head -3 | tr '\n' ' ')"
-        if [[ -z "$checkout_after" || "$b1" != "$b0" || -n "$checkout_moves" || -n "$checkout_marked" ]] \
-            || (( a1 > a0 )); then
+        if [[ -z "$checkout_after" || "$b1" != "$b0" || -n "$checkout_moves" ]] || (( a1 > a0 )); then
             checkout_mutated=1
         fi
+    fi
+    # Independent of the HEAD limb (a side worktree never touches HEAD), and
+    # fail-closed: a sweep that worked before the run and fails after it
+    # (a ref broken mid-run) is a mutation, never "nothing found".
+    if [[ $marked_sweep -eq 1 ]]; then
+        if marked_after="$(checkout_marked_commits | sort -u)"; then
+            # An empty after-set has nothing to judge. The here-string would feed
+            # grep one empty line that no before-hash excludes, so a cleanup that
+            # deletes an EARLIER run's stamped branch mid-run would read as a
+            # mutation with no commit named.
+            [[ -n "$marked_after" ]] && checkout_marked="$(grep -vxF -f <(printf '%s\n' "$marked_before") \
+                <<< "$marked_after" | cut -c1-10 | head -3 | tr '\n' ' ')"
+        else
+            checkout_marked="(sweep failed after the run) "
+        fi
+        [[ -n "$checkout_marked" ]] && checkout_mutated=1
     fi
 
     local duration=$(( $(date +%s) - start_ts ))
@@ -691,7 +719,7 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
     if [[ $checkout_mutated -eq 1 ]]; then
         # Never repaired from here: a reset on the H24 checkout is a human/healer
         # act. Exit 3 is this guard's own code, distinct from 1/124/127.
-        local checkout_change="'$checkout_before' -> '${checkout_after:-unmeasurable}'"
+        local checkout_change="'${checkout_before:-unmeasured}' -> '${checkout_after:-unmeasurable}'${checkout_marked:+, stamped commits $checkout_marked}"
         log "GIT-MUTATION: H24 checkout changed during the agent run, '<branch> <ahead-of-origin/main> <reflog>' went $checkout_change${checkout_moves:+, new HEAD moves: $checkout_moves}${checkout_marked:+, commits stamped by this run on any ref: $checkout_marked} — realign by hand"
         save_state "error" 3 "$duration" "H24 checkout mutated during agent run: $checkout_change"
         send_telegram "🚨 <b>$JOB_NAME</b>: H24 checkout mutated during the agent run ($checkout_change) — realign by hand"

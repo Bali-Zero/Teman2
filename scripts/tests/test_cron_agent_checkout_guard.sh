@@ -9,10 +9,14 @@
 # Guilt:     commit on HEAD; commit then fail; branch switch; commit then
 #            push (origin/main moves with HEAD); commit then reset away;
 #            the 2026-09-28 shape (worktree branch from origin/main, commit,
-#            push, worktree and branch removed — HEAD never moves).
+#            push, worktree and branch removed — HEAD never moves); the same
+#            commit backdated; a stamped branch while the HEAD limb is off;
+#            a ref broken mid-run so the after-sweep fails (fail-closed).
 # Innocence: untracked report on disk; the sync cron's fetch + fast-forward
 #            moving origin/main and HEAD together; no checkout at all; a
-#            concurrent session committing on its own branch during the run.
+#            concurrent session committing on its own branch during the run;
+#            an earlier run's stamped commit, kept or deleted mid-run; job
+#            "weekly-<job>" committing under its own, longer stamp.
 set -uo pipefail
 # Run from a git hook (pre-push) these point at the REAL repo and would win over
 # `git -C <sandbox>`: fresh_checkout would commit and rewrite refs there.
@@ -46,6 +50,15 @@ case "$FAKE_MODE" in
              "${G[@]}" update-ref refs/remotes/origin/main HEAD ;;
     undone)  "${G[@]}" commit -q --allow-empty -m "agent report"
              "${G[@]}" reset -q --hard origin/main ;;
+    plumb)   # a stamped commit on a fresh branch, no worktree, HEAD untouched
+             c="$("${G[@]}" commit-tree "HEAD^{tree}" -p HEAD -m deps)"
+             "${G[@]}" update-ref refs/heads/agent/x/plumb "$c" ;;
+    breakref) # a ref broken mid-run: the after-sweep cannot read the graph
+             printf '%040d\n' 1 > "$FAKE_CHECKOUT/.git/refs/heads/broken" ;;
+    suffix)  # a concurrent run of job "weekly-<this job>" commits under its own stamp
+             export GIT_COMMITTER_EMAIL="weekly-$GIT_COMMITTER_EMAIL"
+             c="$("${G[@]}" commit-tree "HEAD^{tree}" -p HEAD -m deps)"
+             "${G[@]}" update-ref refs/remotes/origin/agent/x/weekly "$c" ;;
     side|sibling|forged)
              # sibling = another session on the host: its own identity, not the stamp
              [ "$FAKE_MODE" = sibling ] && unset GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
@@ -60,6 +73,8 @@ case "$FAKE_MODE" in
                  "${G[@]}" branch -q -D agent/x/deps-audit
              fi ;;
     report)  echo '{"submitted":0}' > "$FAKE_CHECKOUT/daily_report.json" ;;
+    prune)   # a cleanup cron deletes an EARLIER run's stamped branch mid-run
+             "${G[@]}" update-ref -d refs/remotes/origin/agent/x/earlier ;;
     sync)    # upstream commits come from GitHub, never from the agent's process tree
              unset GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
              new="$("${G[@]}" commit-tree "origin/main^{tree}" -p origin/main -m upstream)"
@@ -118,6 +133,9 @@ expect_clean() {
     fi
 }
 
+# expect_log <log substring> <ok message> <fail message>
+expect_log() { if [[ "$LOG" == *"$1"* ]]; then ok "$2"; else bad "$3"; fi; }
+
 echo "guilt"
 fresh_checkout; run_case guard-commit commit
 expect_mutation "agent commits on the H24 checkout"
@@ -131,11 +149,19 @@ fresh_checkout; run_case guard-undone undone
 expect_mutation "agent commits then resets it away (branch and ahead unchanged)"
 fresh_checkout; run_case guard-side side
 expect_mutation "agent ships from a side worktree, then removes it (2026-09-28 shape)"
-[[ "$LOG" == *"commits stamped by this run"* ]] \
-    && ok "the side-worktree commit was caught by the committer stamp" \
-    || bad "the side-worktree case was not caught by the committer stamp"
+expect_log "commits stamped by this run" \
+    "the side-worktree commit was caught by the committer stamp" \
+    "the side-worktree case was not caught by the committer stamp"
 fresh_checkout; run_case guard-forged forged
 expect_mutation "agent backdates its side-worktree commit to 2001"
+fresh_checkout; "${G[@]}" -C "$CHECKOUT" update-ref -d refs/remotes/origin/main
+run_case guard-plumb plumb
+expect_mutation "stamped commit on a new branch while the HEAD limb is OFF (no origin/main)"
+fresh_checkout; run_case guard-breakref breakref
+expect_mutation "a ref breaks mid-run so the after-sweep fails (fail-closed)"
+expect_log "sweep failed after the run" \
+    "the fail-closed verdict came from the stamp sweep" \
+    "the broken-ref case was not judged by the stamp sweep"
 
 echo "innocence"
 fresh_checkout; run_case guard-report report
@@ -150,6 +176,15 @@ old="$(GIT_COMMITTER_NAME="cron-agent guard-old" GIT_COMMITTER_EMAIL=guard-old@c
 "${G[@]}" -C "$CHECKOUT" update-ref refs/remotes/origin/agent/x/earlier "$old"
 run_case guard-old report
 expect_clean "a stamped commit from an earlier run is already on a ref"
+# ...and a cleanup deleting that earlier branch mid-run empties the after-set
+fresh_checkout
+old="$(GIT_COMMITTER_NAME="cron-agent guard-prune" GIT_COMMITTER_EMAIL=guard-prune@cron-agent.invalid \
+    "${G[@]}" -C "$CHECKOUT" commit-tree "HEAD^{tree}" -p HEAD -m "earlier violation")"
+"${G[@]}" -C "$CHECKOUT" update-ref refs/remotes/origin/agent/x/earlier "$old"
+run_case guard-prune prune
+expect_clean "a cleanup deletes an earlier run's stamped branch mid-run"
+fresh_checkout; run_case guard-sfx suffix
+expect_clean "job weekly-guard-sfx commits under its own stamp during this run"
 fresh_checkout; run_case guard-sync sync
 expect_clean "sync cron fast-forwards HEAD with origin/main mid-run"
 # the innocence above only counts if the fast-forward really happened
