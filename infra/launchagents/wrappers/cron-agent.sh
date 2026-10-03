@@ -401,13 +401,14 @@ checkout_foreign_moves() {
 # Counting branches or worktrees cannot tell that apart from the sessions that
 # create several a day on Pro, so run_agent() stamps the agent's own commits
 # instead: GIT_COMMITTER_* in the claude env outranks any git config, and any
-# commit carrying the stamp since the run started, reachable from any ref or
-# reflog (a pushed branch survives as refs/remotes/origin/*), is a mutation.
+# stamped commit reachable from any ref or reflog after the run that was not
+# there before it (a pushed branch survives as refs/remotes/origin/*) is a
+# mutation. Before/after sets, never --since: the committer date is the
+# agent's to forge. Full sweep measured on Pro: 0.32 s over 27,592 commits.
 agent_commit_mark() { printf '%s@cron-agent.invalid' "$JOB_NAME"; }
 checkout_marked_commits() {
     local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}"
-    git -C "$dir" log --all --reflog -F --committer="$(agent_commit_mark)" \
-        --since="@$(( $1 - 1 ))" --format=%h 2>/dev/null | head -3 | tr '\n' ' '
+    git -C "$dir" log --all --reflog -F --committer="$(agent_commit_mark)" --format=%H 2>/dev/null
 }
 
 run_agent() {
@@ -499,6 +500,7 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
 
     local checkout_before checkout_after checkout_mutated=0 checkout_moves="" checkout_marked=""
     checkout_before="$(checkout_state)"
+    local marked_before; marked_before="$(checkout_marked_commits | sort -u)"
     [[ -z "$checkout_before" ]] && log "checkout guard OFF for this run: ${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara} has no measurable HEAD vs origin/main"
 
     # Five MAX seats, then the Team seat (6, weekly-capped, last-resort by
@@ -673,7 +675,8 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         read -r b0 a0 r0 <<< "$checkout_before"
         read -r b1 a1 r1 <<< "${checkout_after:-x 0 0}"
         checkout_moves="$(checkout_foreign_moves "$r0" "$r1" | head -3 | tr '\n' ';')"
-        checkout_marked="$(checkout_marked_commits "$start_ts")"
+        checkout_marked="$(checkout_marked_commits | sort -u | grep -vxF -f <(printf '%s\n' "$marked_before") \
+            | cut -c1-10 | head -3 | tr '\n' ' ')"
         if [[ -z "$checkout_after" || "$b1" != "$b0" || -n "$checkout_moves" || -n "$checkout_marked" ]] \
             || (( a1 > a0 )); then
             checkout_mutated=1

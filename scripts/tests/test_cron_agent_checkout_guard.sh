@@ -46,14 +46,16 @@ case "$FAKE_MODE" in
              "${G[@]}" update-ref refs/remotes/origin/main HEAD ;;
     undone)  "${G[@]}" commit -q --allow-empty -m "agent report"
              "${G[@]}" reset -q --hard origin/main ;;
-    side|sibling)
+    side|sibling|forged)
              # sibling = another session on the host: its own identity, not the stamp
              [ "$FAKE_MODE" = sibling ] && unset GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+             # forged = the agent backdates its commit; the sweep must not trust dates
+             [ "$FAKE_MODE" = forged ] && export GIT_COMMITTER_DATE="2001-01-01T00:00:00 +0000"
              wt="$FAKE_CHECKOUT.wt"
              "${G[@]}" worktree add -q -b agent/x/deps-audit "$wt" origin/main
              git -c user.name=t -c user.email=t@example.invalid -C "$wt" commit -q --allow-empty -m deps
              "${G[@]}" update-ref refs/remotes/origin/agent/x/deps-audit agent/x/deps-audit
-             if [ "$FAKE_MODE" = side ]; then
+             if [ "$FAKE_MODE" != sibling ]; then
                  "${G[@]}" worktree remove --force "$wt"
                  "${G[@]}" branch -q -D agent/x/deps-audit
              fi ;;
@@ -132,6 +134,8 @@ expect_mutation "agent ships from a side worktree, then removes it (2026-09-28 s
 [[ "$LOG" == *"commits stamped by this run"* ]] \
     && ok "the side-worktree commit was caught by the committer stamp" \
     || bad "the side-worktree case was not caught by the committer stamp"
+fresh_checkout; run_case guard-forged forged
+expect_mutation "agent backdates its side-worktree commit to 2001"
 
 echo "innocence"
 fresh_checkout; run_case guard-report report
@@ -139,6 +143,13 @@ expect_clean "agent writes its report to disk, uncommitted"
 fresh_checkout; run_case guard-sibling sibling
 expect_clean "another session commits on its own worktree branch mid-run"
 rm -rf "$CHECKOUT.wt"
+# a stamped commit left by an EARLIER run of the same job is not this run's
+fresh_checkout
+old="$(GIT_COMMITTER_NAME="cron-agent guard-old" GIT_COMMITTER_EMAIL=guard-old@cron-agent.invalid \
+    "${G[@]}" -C "$CHECKOUT" commit-tree "HEAD^{tree}" -p HEAD -m "earlier violation")"
+"${G[@]}" -C "$CHECKOUT" update-ref refs/remotes/origin/agent/x/earlier "$old"
+run_case guard-old report
+expect_clean "a stamped commit from an earlier run is already on a ref"
 fresh_checkout; run_case guard-sync sync
 expect_clean "sync cron fast-forwards HEAD with origin/main mid-run"
 # the innocence above only counts if the fast-forward really happened
