@@ -1,14 +1,18 @@
-brief_ref: evidence/2026-10/agent-air-m5-research-pii-deep-audit-0424-v11-e2f2ffe3/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >
-  Mandate from the team lead (SendMessage, 2026-10-02): land the client-PII removal that #7491
-  and #7516 did not, as v11 from a fresh origin/main, under spec S6 R6.7/R6.8. Branch
-  agent/air-m5/research/pii-deep-audit-0424-v11, created by the broker from origin/main
-  370ab29aae (the merge-base of this PR). Reference content fetched by SHA from #7516's head
-  edec8a21f9917a56c0724fe83a081027aba4e880.
+  Mandate from the team lead (SendMessage, 2026-10-02, resumed 2026-10-03 after the first Dux
+  window ended): land the client-PII removal that #7491 and #7516 did not, as v11 from a fresh
+  origin/main, under spec S6 R6.7/R6.8. Branch agent/air-m5/research/pii-deep-audit-0424-v11,
+  created by the broker from origin/main 370ab29aae (the merge-base of this PR). Reference
+  content fetched by SHA from #7516's head edec8a21f9917a56c0724fe83a081027aba4e880, then
+  amended by b4f0edc6d1 after the independent review (dissent items 6, 7 and 8).
 lanes:
   - lane: pii-v11-build
     role: build
-    seat: "claude-opus-5-5 (Dux session: content re-application, this pack, the PR)"
+    seat: "claude-opus-5-5 (Dux sessions: content re-application, review cure, this pack, the PR)"
+  - lane: review-pii-v11
+    role: review
+    seat: "claude-opus-5-5 (fresh read-only reviewer outside the contribution chain, commissioned above the Dux)"
 
 scope:
   removed_paths:
@@ -22,7 +26,7 @@ scope:
     - research/wa-copilot/2026-05-25-eval-set-v1.jsonl
   redacted_paths:
     - research/operations/2026-06-04-wa-corpus-miner-session-report.md
-    - scripts/crm_guardian_phase15_pilot.py
+    - scripts/crm_guardian_phase15_*.py
     - scripts/wa_corpus/prompt_master.py
     - scripts/wa_corpus/prompt_variants.py
     - scripts/wa_corpus/query_lab.py
@@ -30,59 +34,176 @@ scope:
     - tests/wa_corpus/test_reconcile.py
   other_paths:
     - .gitignore
+  paths_note:
+    "Every entry is a git pathspec. Each resolves to exactly one path of this diff with
+    `git diff --name-only 370ab29aae HEAD -- '<entry>'`; the receipts pass that resolved path."
 
 what_changed: |
   - The removed_paths above are deleted from the tree.
-  - Each redacted_paths file carries the blob of #7516's head for that path (blob compare in
-    receipts). Real client literals are replaced by placeholders or synthetic fixtures;
-    query_lab.py imports its ground truth from an untracked local module when present and falls
-    back to synthetic fixtures otherwise.
+  - Each redacted_paths file starts from the blob of #7516's head for that path. Real client
+    literals are replaced by placeholders or synthetic fixtures; query_lab.py imports its ground
+    truth from an untracked local module when present and falls back to synthetic fixtures
+    otherwise.
+  - After the independent review, b4f0edc6d1 also drops the pilot docstring's case notes, replaces
+    the Drive and NotebookLM ids of test documents and notebooks in the wa-corpus report with
+    placeholders, and removes two dates that would be wrong after merge. The "Blob compare" and
+    "Paths changed after the review" receipts show which redacted paths differ from #7516's head.
   - .gitignore ignores the generators' output paths and that local module, with neutral comments.
   - Size: the diff exceeds the PR contract's net-line guideline only through deleted data lines;
     the floor receipt below names its source.
 
 proof: |
-  Every PII count in this pack is a verbatim pii_receipt.py block under `receipts`. Prose cites
-  block keys only. Private inputs live in the lane's 0700 quarantine dir
-  (~/.agent/pii-quarantine/pii-deep-audit/, files 0600) and appear in each argv as an @hmac token
-  under the lane salt the S6 amendment pack already used:
+  Every PII count in this pack is a verbatim pii_receipt.py block under `receipts`, generated at
+  the final content head. Prose cites block keys only. Private inputs live in the lane's 0700
+  quarantine dir (~/.agent/pii-quarantine/pii-deep-audit/, files 0600) and appear in each argv as
+  an @hmac token under the lane salt the S6 amendment pack already used:
   - pilot-names-7.txt: the lane's pilot name set, unchanged since the S6 amendment pack (same
     hmac token).
   - redacted-tokens-v11.txt: name-shaped and phone-shaped tokens taken from the removed lines of
     the redacted_paths, keeping only tokens absent from the post-image of their file.
   - lane-all-v11.txt: the union of redacted-tokens-v11.txt and the multi-word name values of the
     removed data files' name fields (also in plain, title and upper case) plus the pilot set.
-  - r66-residuals.txt: the residual-basename list the lane's gate wrote (R6.6), unchanged.
+  - r66-residuals.txt: the residual-basename list written by the lane's gate session
+    (gate-pii-v11) against this content head, per R6.6. The builder did not edit it.
 
   Deletion (R6.5): `git ls-tree` of the removed_paths returns no line at HEAD.
-  Redaction (R6.5): over the redacted_paths, the merge-base blocks show `files` above 0 for both
-  pattern sets, and the HEAD blocks show `files: 0` and `hits: 0` for both.
-  Name-free evidence: the block over this evidence directory shows `files: 0` for the union set,
-  and the r66 block shows `residual_hits=0 hedge_hits=0` over brief, pack and body file.
+  Redaction (R6.5): over the redacted_paths, the merge-base blocks show `files` above 0 for the
+  pilot set, the redacted-token set and the lane union set, and the HEAD blocks show `files: 0`
+  and `hits: 0` for all three. The redacted-token AFTER block is a construction check: that set
+  keeps only tokens absent from each post-image, so its zero holds by construction. The pilot-set
+  and union-set pairs are the informative measurements.
+  Name-free evidence: the block over this evidence directory shows `files: 0` for the union set.
+  Its `scope_files: 0` is by design, because `scope_files` excludes evidence/ while the counts
+  include it; the same invocation with a pattern file holding a phrase from brief.yml gives a
+  nonzero `files`, so the zero is a real measurement. The r66 block shows
+  `residual_hits=0 hedge_hits=0` over brief, pack and body file.
   No residual file is named or described in this evidence (R6.1), no descriptor ships (R6.8 is
   not engaged), no client id appears, and no block runs with --categories (R6.2).
-  Egress: no external seat (Codex, agy/Gemini, Kimi, TP1) received this diff or these files.
+  Non-generator receipts: "Deletion probe at HEAD", "The same probe at the merge-base", "Blob
+  compare", "Paths changed after the review" and "Egress probe" record the output of the git or
+  shell command in their `cmd`. pii_receipt.py has no ls-tree or log-scan mode, so these are not
+  pii_receipt blocks; a gate re-runs the command as written.
+  Egress: the "Egress probe" receipt measures the M5 local logs of the external seats since the
+  lane began. Beyond that measurement, that no external seat (Codex, agy/Gemini, Kimi, TP1)
+  received this diff or these files is the Dux's attestation.
 
-dissent: []
+seat_override:
+  "PII removal lane under Builder Contract §4 (output boundary): the deleted content may not
+  leave the Anthropic OAuth boundary — on 2026-09-27 an external spalla forwarded this lane's
+  deletion hunks to a cloud vendor (memory
+  discovery_codex_spalla_forwarded_a_pii_removal_diff_to_openai). Independent review is provided
+  by a fresh read-only Claude Opus seat commissioned by the imperator window; its findings are
+  recorded in dissent. Waiver granted by the imperator window (Fable 5.1, owner-opened)
+  2026-10-02."
+
+dissent:
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      1. BLOCKING — R6.6/R6.7, receipt `r66` (`r66_line`). The PR body file the r66 block was generated from no longer exists. Another session overwrote `scratchpad/pr-body.md` in the shared scratchpad, so it now holds an unrelated PR's body. Re-running your checkin.sh `r66` line against the current file gives exit 4 (NO-BLOCK): the `@text:` body digest no longer matches. Cure: rewrite the body under a lane-unique filename, point checkin.sh `--body` at it, and regenerate and paste the r66 block. Cmd: `pii_receipt.py r66 --patterns r66-residuals.txt --brief <brief> --pack <pack> --body scratchpad/pr-body.md --check-in <pack>`, which gave rc=4.
+    status: CONFIRMED
+    disposition: "Accepted. Re-measured by the resumed Dux: the r66 check-in returned NO-BLOCK. The body lives under a lane-unique file in the Dux's own scratchpad, checkin.sh points at it, and the r66 block below was regenerated from that file at the final content head."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      2. BLOCKING — evidence_pack_lint at this head. Committed HEAD fails 2 rules: `dissent` is empty on a Gear-3 pack, and `council_run` is missing. Your uncommitted `seat_override` cures `council_run`, which drops to an overridden NOTICE. `dissent` still fails. So 3c735e17e2 cannot ship. The next head needs `seat_override` and `dissent` committed, then every block re-checked at that head. The r66 counts read the pack's text, so they must be regenerated after the dissent text lands. Cmd: `scripts/evidence_pack_lint.py <pack> --changed-files-file <mb..HEAD> --numstat-file <mb..HEAD> --brief-source-path <brief> --commit-count 4`, run once on the committed pack and once on the working-tree pack.
+    status: CONFIRMED
+    disposition: "Accepted. seat_override and this dissent are committed together, and every block was regenerated after the dissent text landed. Running the lint as harness-floor.yml stages it (pack and brief copied under evidence/ of a synthetic root) surfaced one more defect the direct invocation could not: brief_ref named the real per-PR path instead of the staging literal evidence/brief.yml. Fixed in the same commit."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      3. BLOCKING — R6.6 list consistency, receipt `r66` (`lines=` in `r66_line`). R6.6 defines the residual list against HEAD: tracked at HEAD, carrying the lane's PII, outside the diff. The list used here is unchanged from the v9 gate. At this HEAD it contains basenames that are no longer tracked anywhere in the tree. It also does not cover the files outside the diff that carry the lane's own v11 union set (see the whole-tree blocks in item 5). A gate cross-check of "N consistent" against a v11 report cannot pass on this list. The lane's gate session must rewrite the list; the builder cannot. My direct check is clean, so this is a receipt-validity defect, not an exposure: across brief and pack I found no residual path, no residual basename (one substring hit is part of an in-diff path) and no residual filename stem. Cmd: basename comparison of r66-residuals.txt against `git ls-tree -r --name-only HEAD`, plus `git grep -l -F -f lane-all-v11.txt HEAD -- . ':(exclude)evidence/'` minus `git diff --name-only mb..HEAD`.
+    status: CONFIRMED
+    disposition: "Accepted. The resumed Dux re-measured the stale list (untracked basenames present, none inside the diff) and did not edit it. The lane's gate session gate-pii-v11 rewrote r66-residuals.txt against the final content head, and the r66 block was regenerated from the rewritten list."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      4. NOTICE — R6.5, receipts "R6.5 AFTER, redacted-token set". The proof builds redacted-tokens-v11.txt by keeping only tokens absent from each file's post-image. That makes `files: 0` / `hits: 0` in the AFTER block true by construction, so it cannot detect a partial redaction. Only the merge-base half of that pair, and the pilot-set pair, carry information. I checked independently: the lane union set and the names set over the redacted_paths at HEAD both give 0 lines, and every name- or phone-shaped token on a removed line that survives in a post-image is a generic word, a staff member or a team line. So the redaction holds. Cure: add a block over the redacted_paths at the merge-base and at HEAD with `--patterns lane-all-v11.txt`, or state in the proof that the AFTER token block is a construction check.
+    status: CONFIRMED
+    disposition: "Accepted, both cures. The receipts carry a union-set pair over the redacted_paths (merge-base and HEAD), and the proof labels the redacted-token AFTER block a construction check."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      5. NOTICE — out-of-scope residual (G5 class, outside S6). Two whole-tree blocks at this tree_digest, pasteable verbatim, `--check-in`-verifiable: [the two blocks, `tree --patterns <lane union set> --rev HEAD` and `tree --patterns <redacted-token set> --rev HEAD` with no `--path`, are pasted under receipts as "Whole tree, lane union set" and "Whole tree, redacted-token set", regenerated at the final content head because b4f0edc6d1 moved tree_digest]. The union-set `files` count includes generic-name collisions. Classifying them is the gate's job, for a follow-up lane. Neither block names or isolates a file. Cmd: `pii_receipt.py tree --patterns <set> --rev HEAD` with no `--path`.
+    status: CONFIRMED
+    disposition: "Accepted as a disclosure. The blocks sit under receipts, generated at the final content head, rather than inline here, so the pack carries one copy of each argv. Classifying the out-of-diff hits is left to a follow-up lane, as the item says."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      6. NOTICE — R6.2 in-diff content, scripts/crm_guardian_phase15_*.py docstring and research/operations/2026-06-04-wa-corpus-miner-session-report.md. Both keep CRM ids next to placeholders. Re-link check: no kept id sits within three lines of a pilot-set name, or of a lane-set name for the same client, anywhere at HEAD (evidence/ excluded), so each id is "no longer re-linkable" by that probe. The pilot docstring also keeps two parenthetical case notes beside the ids, and the second records a sensitive personal status. Consider dropping both notes. That changes the blob-identity receipt, so re-paste it with a one-line reason. Cmd: `git grep -z -w -F -C 3 <id> HEAD`, then a set intersection against the pilot and lane sets.
+    status: CONFIRMED
+    disposition: "Accepted and cured in b4f0edc6d1: both case notes are dropped. The blob-compare receipt is re-pasted, and the 'Paths changed after the review' receipt is its one-line reason. The pilot script's path is written in this item and in item 8 in the same pathspec form as scope (see paths_note)."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      7. NOTICE — research/operations/2026-06-04-wa-corpus-miner-session-report.md keeps Google Drive document ids for test documents whose titles carried a client phone. If any of those documents still exists with link sharing, the public repo points straight at it. This cannot be measured from the repo. Either confirm they are deleted from Drive (a GUI step for the owner) or redact the ids too.
+    status: CONFIRMED
+    disposition: "Accepted and cured in b4f0edc6d1: the Drive document ids and the NotebookLM notebook ids in that report are replaced with placeholders. The ids remain in git history, so confirming the documents are deleted from Drive stays an owner step outside this PR."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      8. NOTICE — comment accuracy, scripts/wa_corpus/query_lab.py ("tracked ... until 2026-09-27") and scripts/crm_guardian_phase15_*.py ("redacted 2026-09-27"). Both dates come from the v9 blobs. The literals are still on origin/main today, so both dates will be wrong after merge. Cosmetic, and fixing them breaks the blob-identity receipt. Accept, or fix and re-receipt.
+    status: CONFIRMED
+    disposition: "Accepted and cured in b4f0edc6d1: both comments drop the date. Re-receipted with the blob-compare pair."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      9. NOTICE — R6.7 reach, the receipts "Deletion probe at HEAD", "The same probe at the merge-base" and "Blob compare". These are hand-recorded results of git commands, not pii_receipt output. I re-measured all three and they hold. pii_receipt has no ls-tree mode, so a strict reading of R6.7 ("files ... output of the committed script") could still flag them. Label them non-generator receipts in the proof.
+    status: CONFIRMED
+    disposition: "Accepted. The proof labels them, plus the two receipts added in this round, as non-generator receipts. Their results are command output captured by the generator script at the final content head, not typed."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      10. NOTICE — receipt "Name-free evidence", key `scope_files: 0`. A reader will take this as "measured nothing". It is by design, because `scope_files` excludes evidence/. Innocence probe: the same invocation with a one-line pattern file holding a phrase from brief.yml gives a nonzero `files`, so `files: 0` here is a real measurement. Add one proof sentence saying so.
+    status: CONFIRMED
+    disposition: "Accepted. The proof carries that sentence."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      11. NOTICE — R6.3/R6.4, proof "Egress: no external seat ... received this diff". This is an unmeasured negative claim. Partial measurement: October Codex session logs on M5 and Pro, and the Kimi dir on M5, carry no mention of the lane or its worktree. Add that grep as a receipt, or label the line as the Dux's attestation.
+    status: CONFIRMED
+    disposition: "Accepted, both cures. The 'Egress probe' receipt scans the M5 log dirs of Codex, codex-spalla, Kimi, Gemini and Qwen since the lane began, with a positive control, and the proof labels whatever lies beyond that measurement as the Dux's attestation."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      12. NOTICE — `seat_override`. It exists only in the working tree (uncommitted). Its text, and the brief's line on gate-7453, restate a past vendor-egress incident. #7516's public body and evidence already disclose it, so this adds no new exposure. The waiver itself is an imperator attestation that no command can verify. The council substitute is this single read-only review.
+    status: CONFIRMED
+    disposition: "Accepted. seat_override is committed with its text unchanged; the waiver stays an attestation."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      13. NOTICE — scope and size. One concern. The net size is over the PR-contract guideline only because of deleted data lines. Floor re-measured with `--print-floor` and `--print-floor-source`: matches the pack's floor receipt.
+    status: CONFIRMED
+    disposition: "Accepted, no change needed. The floor receipt was regenerated at the final content head."
+  - seat: "claude-opus-5-5 (review-pii-v11, read-only, head 3c735e17e2)"
+    objection: |
+      14. Verified with no defect, so nothing to fix:
+      - Content is blob-identical to edec8a21 for every redacted path and the same deletion set. The touched paths are unchanged on today's origin/main, the deleted paths are still on it, and HEAD lists none of them.
+      - No collateral: every deleted path carries lane PII at the merge-base. The scripts that reference the deleted plan paths have no cron or LaunchAgent consumer on M5 or Pro.
+      - .gitignore keeps the same patterns as v9 with neutral comments. `git ls-files -i -c --exclude-from=<the patterns>` returns 0, and the local ground-truth module is absent.
+      - Every tree block MATCHES on `--check-in`, against both the committed and the working-tree pack.
+      - `--selftest` PASS. wa_corpus pytest result equals the pack's receipt.
+      - Commit messages and every intermediate evidence commit carry no lane-set, token-set or r66 hit and no hedge.
+      - Branch not pushed, no PR.
+    status: CONFIRMED
+    disposition: "Accepted as measured at 3c735e17e2. The blob identity with edec8a21 no longer holds for the paths b4f0edc6d1 touches, by design (items 6, 7 and 8); the blob-compare receipts show the split at the final content head. The tree blocks were regenerated there, because that commit moved tree_digest."
 
 receipts:
-  - claim: "Deletion probe at HEAD (pre-merge form of the Bites probe)."
+  - claim: "Deletion probe at HEAD (pre-merge form of the Bites probe). Non-generator receipt."
     cmd: "git ls-tree -r --name-only HEAD -- <each removed_paths entry> | wc -l"
     result: "0"
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
-  - claim: "The same probe at the merge-base."
+  - claim: "The same probe at the merge-base. Non-generator receipt."
     cmd: "git ls-tree -r --name-only 370ab29aae0244b6bf590800d7233470a04b21b3 -- <each removed_paths entry> | wc -l"
     result: "8"
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
-  - claim: "Blob compare: each redacted_paths entry at HEAD equals its blob at #7516's head."
+  - claim: "Blob compare: each redacted_paths entry at HEAD against its blob at #7516's head. Non-generator receipt."
     cmd: "for p in <each redacted_paths entry>; do [ $(git rev-parse HEAD:$p) = $(git rev-parse edec8a21f9917a56c0724fe83a081027aba4e880:$p) ] && echo same || echo DIFF; done | sort | uniq -c"
-    result: "7 same"
+    result: |
+      3 DIFF
+      4 same
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
+    seat: claude-opus-5-5
+  - claim: "Paths changed after the review: the set of redacted_paths whose blob differs from #7516's head equals the set of paths changed outside evidence/ since the reviewed head 3c735e17e2, all of them redacted_paths (dissent items 6, 7 and 8). Prints the equality verdict, the set size, and the count of changed paths outside redacted_paths. Non-generator receipt."
+    cmd: 'A=$(git diff --name-only edec8a21f9917a56c0724fe83a081027aba4e880 HEAD -- <each redacted_paths entry>); B=$(git diff --name-only 3c735e17e2 HEAD -- . '':(exclude)evidence/''); [ "$A" = "$B" ] && echo equal-sets || echo DIFFERENT-SETS; echo "$B" | wc -l; echo "$B" | grep -v -x -F -e <each redacted_paths entry> | wc -l'
+    result: |
+      equal-sets
+      3
+      0
+    exit: 0
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
   - claim: "R6.5 BEFORE, pilot name set, redacted_paths at the merge-base."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
@@ -104,7 +225,7 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
   - claim: "R6.5 AFTER, pilot name set, redacted_paths at HEAD."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
@@ -114,7 +235,7 @@ receipts:
       # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: tree --patterns @hmac:b75f801013109975 --rev HEAD --path @hmac:2ad1d8ac742ed4e4 --path @hmac:00afd9beb12012c0 --path @hmac:32b583aea087fbf7 --path @hmac:cc4581fdc8f463c8 --path @hmac:ff392fac48d90b56 --path @hmac:ca2de3d242cd0ceb --path @hmac:6e1fbda0211e0807
       mode: tree
-      tree_digest: 50103d1a448cbb1a
+      tree_digest: 86573699be55dd49
       scope_files: 7
       patterns: {hmac: b75f801013109975, lines: 7}
       files: 0
@@ -126,7 +247,7 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
   - claim: "R6.5 BEFORE, redacted-token set, redacted_paths at the merge-base."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
@@ -148,9 +269,9 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
-  - claim: "R6.5 AFTER, redacted-token set, redacted_paths at HEAD."
+  - claim: "R6.5 AFTER, redacted-token set, redacted_paths at HEAD (construction check, see proof)."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
       ~/.agent/pii-quarantine/pii-deep-audit/redacted-tokens-v11.txt --rev HEAD
       --path <each redacted_paths entry, in listed order>"
@@ -158,7 +279,7 @@ receipts:
       # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: tree --patterns @hmac:43f984c792da2f8c --rev HEAD --path @hmac:2ad1d8ac742ed4e4 --path @hmac:00afd9beb12012c0 --path @hmac:32b583aea087fbf7 --path @hmac:cc4581fdc8f463c8 --path @hmac:ff392fac48d90b56 --path @hmac:ca2de3d242cd0ceb --path @hmac:6e1fbda0211e0807
       mode: tree
-      tree_digest: 50103d1a448cbb1a
+      tree_digest: 86573699be55dd49
       scope_files: 7
       patterns: {hmac: 43f984c792da2f8c, lines: 18}
       files: 0
@@ -170,7 +291,51 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
+    seat: claude-opus-5-5
+  - claim: "R6.5 BEFORE, lane union set, redacted_paths at the merge-base (dissent item 4)."
+    cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/lane-all-v11.txt --rev
+      370ab29aae0244b6bf590800d7233470a04b21b3 --path <each redacted_paths entry, in listed order>"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:e3ffafcd7e21091b --rev 370ab29aae0244b6bf590800d7233470a04b21b3 --path @hmac:2ad1d8ac742ed4e4 --path @hmac:00afd9beb12012c0 --path @hmac:32b583aea087fbf7 --path @hmac:cc4581fdc8f463c8 --path @hmac:ff392fac48d90b56 --path @hmac:ca2de3d242cd0ceb --path @hmac:6e1fbda0211e0807
+      mode: tree
+      tree_digest: c29b319c04844616
+      scope_files: 7
+      patterns: {hmac: e3ffafcd7e21091b, lines: 3349}
+      files: 5
+      hits: 43
+      lines_any: 37
+      occurrences: 45
+      patterns_present: 19
+      patterns_absent: 3330
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-10-03T02:35Z"
+    seat: claude-opus-5-5
+  - claim: "R6.5 AFTER, lane union set, redacted_paths at HEAD (dissent item 4)."
+    cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/lane-all-v11.txt --rev HEAD
+      --path <each redacted_paths entry, in listed order>"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:e3ffafcd7e21091b --rev HEAD --path @hmac:2ad1d8ac742ed4e4 --path @hmac:00afd9beb12012c0 --path @hmac:32b583aea087fbf7 --path @hmac:cc4581fdc8f463c8 --path @hmac:ff392fac48d90b56 --path @hmac:ca2de3d242cd0ceb --path @hmac:6e1fbda0211e0807
+      mode: tree
+      tree_digest: 86573699be55dd49
+      scope_files: 7
+      patterns: {hmac: e3ffafcd7e21091b, lines: 3349}
+      files: 0
+      hits: 0
+      lines_any: 0
+      occurrences: 0
+      patterns_present: 0
+      patterns_absent: 3349
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
   - claim: "Name-free evidence: the union set over this evidence directory at HEAD."
     cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
@@ -180,7 +345,7 @@ receipts:
       # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
       # argv: tree --patterns @hmac:e3ffafcd7e21091b --rev HEAD --path @hmac:da2ddeb35af32870
       mode: tree
-      tree_digest: 50103d1a448cbb1a
+      tree_digest: 86573699be55dd49
       scope_files: 0
       patterns: {hmac: e3ffafcd7e21091b, lines: 3349}
       files: 0
@@ -192,7 +357,49 @@ receipts:
       binary_files: 0
       # end pii_receipt
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
+    seat: claude-opus-5-5
+  - claim: "Whole tree, lane union set, at HEAD (dissent item 5: out-of-scope disclosure, generic-name collisions included)."
+    cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/lane-all-v11.txt --rev HEAD"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:e3ffafcd7e21091b --rev HEAD
+      mode: tree
+      tree_digest: 86573699be55dd49
+      scope_files: 23662
+      patterns: {hmac: e3ffafcd7e21091b, lines: 3349}
+      files: 66
+      hits: 202
+      lines_any: 201
+      occurrences: 204
+      patterns_present: 40
+      patterns_absent: 3309
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-10-03T02:35Z"
+    seat: claude-opus-5-5
+  - claim: "Whole tree, redacted-token set, at HEAD (dissent item 5: out-of-scope disclosure)."
+    cmd: "python3 scripts/evidence/pii_receipt.py tree --patterns
+      ~/.agent/pii-quarantine/pii-deep-audit/redacted-tokens-v11.txt --rev HEAD"
+    result: |
+      # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
+      # argv: tree --patterns @hmac:43f984c792da2f8c --rev HEAD
+      mode: tree
+      tree_digest: 86573699be55dd49
+      scope_files: 23662
+      patterns: {hmac: 43f984c792da2f8c, lines: 18}
+      files: 6
+      hits: 8
+      lines_any: 8
+      occurrences: 8
+      patterns_present: 2
+      patterns_absent: 16
+      binary_files: 0
+      # end pii_receipt
+    exit: 0
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
   - claim: "R6.6 over this PR's brief, pack and body file, with the residual list the gate wrote."
     cmd: "python3 scripts/evidence/pii_receipt.py r66 --patterns
@@ -200,25 +407,33 @@ receipts:
       <pack.yml> --body <body file passed to gh pr create --body-file>"
     result: |
       # pii_receipt v1 | script=scripts/evidence/pii_receipt.py | blob=adf49438a784fed7d752be8d00196eda12e4b23a
-      # argv: r66 --patterns @hmac:e5501725d9a0f957 --brief @text:d4f7cf433c3aa986 --pack PACK --body @text:06dd08407e816cac
+      # argv: r66 --patterns @hmac:1130eec478b04c3d --brief @text:6b33c368dca00a98 --pack PACK --body @text:2fadc229dde55a2d
       mode: r66
-      r66_line: "r66: hmac=e5501725d9a0 lines=22 residual_hits=0 hedge_hits=0"
+      r66_line: "r66: hmac=1130eec478b0 lines=62 residual_hits=0 hedge_hits=0"
       hedge_hit_lines: []
       # end pii_receipt
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
+    seat: claude-opus-5-5
+  - claim: "Egress probe: M5 local logs of external seats since the lane began, lane terms vs a positive control (dissent item 11). Non-generator receipt."
+    cmd: 'bash -c ''D="$HOME/.codex/sessions $HOME/.codex/log $HOME/logs/codex-spalla $HOME/.kimi $HOME/.kimi-code $HOME/.gemini $HOME/.qwen"; find $D -type f -newermt 2026-10-02 -exec grep -lF -e pii-deep-audit-0424-v11 -e crm_guardian_phase15_pilot -e wa-corpus-miner-session-report -e plan.pre-batch03 {} + 2>/dev/null | wc -l; find $D -type f -newermt 2026-10-02 -exec grep -lF -e nuzantara {} + 2>/dev/null | wc -l'''
+    result: |
+      0
+      70
+    exit: 0
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
   - claim: "The generator's own selftest at this head."
     cmd: "python3 scripts/evidence/pii_receipt.py --selftest | tail -1"
     result: "selftest: PASS (0 failing)"
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
   - claim: "The wa_corpus tests pass with the synthetic fixtures."
     cmd: "apps/backend-rag/.venv/bin/python -m pytest -q -p no:cacheprovider tests/wa_corpus | tail -1"
     result: "42 passed, 1 skipped"
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
   - claim: "Deterministic floor and its source."
     cmd:
@@ -227,23 +442,28 @@ receipts:
       --patch-file <workflow patch>"
     result: "3 (source: size)"
     exit: 0
-    ts: "2026-10-02T10:39Z"
+    ts: "2026-10-03T02:35Z"
     seat: claude-opus-5-5
 
 bites:
   consumer: "anyone cloning origin/main of this public repository"
   observation:
     "after merge: git ls-tree -r --name-only origin/main -- <each removed_paths entry> | wc -l
-    prints 0; pii_receipt.py tree --patterns <redacted-tokens-v11.txt> --rev origin/main
-    --path <each redacted_paths entry> shows files: 0; the r66 line keeps residual_hits=0; the
-    wa_corpus tests pass on origin/main"
+    prints 0; pii_receipt.py tree --patterns <lane union set> --rev origin/main --path <each
+    redacted_paths entry> shows files: 0 where the merge-base block shows files above 0; the r66
+    line keeps residual_hits=0; the wa_corpus tests pass on origin/main"
 
 pii_scan: clean
 pii_scan_note:
   "The `+` side carries no lane token: the HEAD blocks over the redacted_paths show hits 0 for
-  both sets, and the evidence block shows hits 0 for the union set. Every client datum this
-  diff touches sits on a `-` line of a removed or redacted file."
+  the pilot, redacted-token and union sets, and the evidence block shows hits 0 for the union
+  set. Every client datum this diff touches sits on a `-` line of a removed or redacted file."
 
 spend:
-  wall_clock_hours: 2
+  wall_clock_hours: 16
   adversarial_rounds: 1
+appetite_exceeded:
+  "Wall clock counts elapsed time from the first commit (2026-10-02 18:27 WITA) to the final
+  evidence commit. Most of it was waiting: on the R9 waiver from the imperator window, on the
+  independent review, on the first Dux window ending, and on the gate session's rewrite of the
+  R6.6 residual list."

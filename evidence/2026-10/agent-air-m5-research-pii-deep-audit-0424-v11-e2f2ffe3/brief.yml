@@ -9,6 +9,9 @@ objective: |
   consecutive gate reds on two evidence causes, while the gate measured their content diff as
   holding. v11 starts from a fresh origin/main, re-applies that content blob-for-blob, and
   writes its evidence under spec S6 R6.1-R6.8 (docs/specs/2026-09-27-evidence-pack-fixed-point.md).
+  After the independent review, b4f0edc6d1 also drops the pilot docstring's case notes, the
+  test-document and notebook ids of the wa-corpus report, and two dates that would be wrong
+  after merge (pack dissent items 6, 7 and 8).
 
   Gear 3 by the deterministic floor (source: size, from the deleted data lines).
 
@@ -36,8 +39,9 @@ acceptance:
       paths."
     probe: "git ls-tree -r --name-only"
   - text:
-      "The redacted-path set SHALL carry 0 hits of the lane's pilot name set and of its
-      redacted-token set at HEAD, where the merge-base showed more than 0 for each."
+      "The redacted-path set SHALL carry 0 hits of the lane's pilot name set, of its
+      redacted-token set and of its union set at HEAD, where the merge-base showed more than 0
+      for each."
     probe: "scripts/evidence/pii_receipt.py tree --patterns"
   - text:
       "This evidence directory SHALL carry 0 hits of the lane name set and of the
