@@ -22,6 +22,9 @@ set -uo pipefail
 # `git -C <sandbox>`: fresh_checkout would commit and rewrite refs there.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR \
       GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE GIT_PREFIX
+# The sandbox pushes for real: no operator config (a global pre-push hook, a
+# url rewrite, commit signing) may reach it.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -36,6 +39,7 @@ bad() { echo "  FAIL — $1"; FAILED=1; }
 
 FAKE_HOME="$SANDBOX/home"
 CHECKOUT="$FAKE_HOME/nuzantara"
+ORIGIN="$SANDBOX/origin.git"
 PROMPT="$SANDBOX/prompt.txt"; echo "submit the daily indexing batch" > "$PROMPT"
 G=(git -c user.name=t -c user.email=t@example.invalid -c init.defaultBranch=main)
 
@@ -67,7 +71,8 @@ case "$FAKE_MODE" in
              wt="$FAKE_CHECKOUT.wt"
              "${G[@]}" worktree add -q -b agent/x/deps-audit "$wt" origin/main
              git -c user.name=t -c user.email=t@example.invalid -C "$wt" commit -q --allow-empty -m deps
-             "${G[@]}" update-ref refs/remotes/origin/agent/x/deps-audit agent/x/deps-audit
+             # a real push: it writes refs/remotes/origin/<branch> by itself
+             "${G[@]}" push -q origin agent/x/deps-audit
              if [ "$FAKE_MODE" != sibling ]; then
                  "${G[@]}" worktree remove --force "$wt"
                  "${G[@]}" branch -q -D agent/x/deps-audit
@@ -93,11 +98,15 @@ exec "$@"
 FAKE
 chmod +x "$SANDBOX/timeout"
 
+# A bare origin with git's default refspec (+refs/heads/*:refs/remotes/origin/*),
+# the one Pro's H24 checkout carries: a push updates the tracking ref itself.
 fresh_checkout() {
-    rm -rf "$CHECKOUT"; mkdir -p "$CHECKOUT"
+    rm -rf "$CHECKOUT" "$ORIGIN"; mkdir -p "$CHECKOUT"
+    "${G[@]}" init -q --bare "$ORIGIN"
     "${G[@]}" -C "$CHECKOUT" init -q
+    "${G[@]}" -C "$CHECKOUT" remote add origin "$ORIGIN"
     "${G[@]}" -C "$CHECKOUT" commit -q --allow-empty -m base
-    "${G[@]}" -C "$CHECKOUT" update-ref refs/remotes/origin/main HEAD
+    "${G[@]}" -C "$CHECKOUT" push -q origin main
 }
 
 # run_case <job> <mode> [fake_rc] [checkout_dir_override] -> sets RC, LOG, STATE
@@ -152,6 +161,15 @@ expect_mutation "agent ships from a side worktree, then removes it (2026-09-28 s
 expect_log "commits stamped by this run" \
     "the side-worktree commit was caught by the committer stamp" \
     "the side-worktree case was not caught by the committer stamp"
+# the guilt above only counts if the push itself left the tracking ref and the
+# local branch is really gone (nothing manufactured by the test)
+if "${G[@]}" -C "$CHECKOUT" rev-parse -q --verify refs/remotes/origin/agent/x/deps-audit >/dev/null \
+    && "${G[@]}" -C "$ORIGIN" rev-parse -q --verify refs/heads/agent/x/deps-audit >/dev/null \
+    && ! "${G[@]}" -C "$CHECKOUT" rev-parse -q --verify refs/heads/agent/x/deps-audit >/dev/null; then
+    ok "the push reached origin and wrote the tracking ref; the local branch is gone"
+else
+    bad "side fake did not push for real, or left its local branch — the guilt case proved nothing"
+fi
 fresh_checkout; run_case guard-forged forged
 expect_mutation "agent backdates its side-worktree commit to 2001"
 fresh_checkout; "${G[@]}" -C "$CHECKOUT" update-ref -d refs/remotes/origin/main

@@ -408,14 +408,17 @@ checkout_foreign_moves() {
 # create several a day on Pro, so run_agent() stamps the agent's own commits
 # instead: GIT_COMMITTER_* in the claude env outranks any git config, and any
 # stamped commit reachable from any ref or reflog after the run that was not
-# there before it (a pushed branch survives as refs/remotes/origin/*) is a
-# mutation. Before/after sets, never --since: the committer date is the
-# agent's to forge. Full sweep measured on Pro: 0.32 s over 27,592 commits.
-# The <...> brackets make the fixed-string match the whole address, so job
-# "audit" never matches "weekly-audit". Not caught, by construction: an agent
-# that overrides GIT_COMMITTER_* itself, commits made only through the API or
-# in another clone, and an unpushed commit whose branch and worktree were
-# deleted (nothing left). The stamp catches a runaway agent, not an adversary.
+# there before it is a mutation. A push alone leaves one: with Pro's fetch
+# refspec (+refs/heads/*:refs/remotes/origin/*) `git push` writes the
+# remote-tracking ref itself, no fetch needed. Before/after sets, never
+# --since: the committer date is the agent's to forge. Full sweep measured on
+# Pro: 0.32 s over 27,592 commits. The <...> brackets make the fixed-string
+# match the whole address, so job "audit" never matches "weekly-audit".
+# Not caught, by construction: an agent that overrides GIT_COMMITTER_* itself;
+# commits made only through the API or in another clone; a commit left on no
+# ref and no reflog (branch, worktree AND remote-tracking ref all deleted,
+# pushed or not); a commit made after the run by a process the agent detached.
+# The stamp catches a runaway agent following its prompt, not an adversary.
 agent_commit_mark() { printf '%s@cron-agent.invalid' "$JOB_NAME"; }
 checkout_marked_commits() {
     local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}"
