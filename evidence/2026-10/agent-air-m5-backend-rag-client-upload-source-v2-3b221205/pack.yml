@@ -1,0 +1,138 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "team-lead dispatch (2026-10-02, Dux BLUE, Gear 2): attribute uploaded_source and uploaded_by
+  on POST /api/crm/practices/{id}/upload-client-document from the authenticated caller, classify
+  like the portal Vault, guilt+innocence tests, class-audit. Successor dispatch (2026-10-03): PR 7796
+  went red on CI for a test-only cause; re-open from fresh origin/main with the same router bytes
+  and the test rewritten on the public surface. task-id client-upload-source-v2, lane backend-rag."
+lanes:
+  - lane: client-upload-source
+    role: build
+    seat: "claude-opus-5-5 (Dux; wrote the tests first, the fix, this pack)"
+  - lane: client-upload-source-spalla-codex
+    role: review
+    seat: "codex-cli 0.157.1 account default model, reasoning high, read-only sandbox, scrubbed env, diff only (round 1, not-ok: 2 MEDIUM PLAUSIBLE + 6 LOW NOT-A-DEFECT)"
+
+pii_scan: clean
+cloud_ok: "AGENTS.md Builder Contract 4 / SYMBIOSIS Law 2: code-only lane on repository diffs and synthetic fixtures (example.test placeholders). No real client rows, names, emails, documents or credentials reached any seat; the spalla received the diff only. This attests the actual no-PII scope, not an exception allowing cloud client-data processing."
+pii_scan_note:
+  "Fixtures use example.test placeholders and the pre-existing 'Client One' placeholder; the spalla
+  saw only the diff. No client id, name or email from PROD appears in the diff, pack or PR body."
+
+grounding:
+  origin_main: "93b85ec6c7 (short sha; predecessor #7796 was cut from 370ab29aae)"
+  router_blobs: "crm_practices.py and crm_enhanced_documents.py blob-identical to predecessor head 25c82bf819 (git rev-parse HEAD:<f> == 25c82bf819:<f>); no origin/main commit touched the six dependent files since 370ab29aae"
+  siblings_2026-10-02T10:00:42Z:
+    open_prs_on_paths: "none (gh pr list --state open, files matching crm_practices|_mixins/documents|challenge_round2|crm_enhanced_documents|drive_poll|intake/writer)"
+    worktree_leases: "only this task on backend-rag (agent_start.py --list)"
+    fleet_mailbox_local: "two 18:08 entries addressed to other sessions; none on these paths"
+  auth_finding: >-
+    get_current_user (app/deps/auth.py:35-101) returns {email, user_id, role, permissions} from
+    the HybridAuthMiddleware state (role = JWT claim or '', middleware/hybrid_auth.py:644/696) or
+    from the Bearer JWT. Portal client sessions are team_members rows with role 'client' and the
+    JWT carries that role (app/routers/auth.py:474-548). The route's own ownership check
+    (crm_practices.py, SELECT id FROM clients WHERE email = caller email, compared with the
+    practice's client_id) admits the owning client; anyone else needs is_crm_admin.
+
+verification:
+  red_on_main: "7 failed, 158 passed (test_crm_practices.py + test_crm_enhanced_documents.py run against origin/main routers): KeyError 'uploaded_source' x5, TypeError unexpected keyword 'uploaded_source' x1, assert None == 'personal' x1"
+  green: "214 passed (test_crm_practices.py + test_crm_enhanced_documents.py + test_documents_mixin.py)"
+  mutation: "role guard removed -> test_staff_session_whose_email_owns_the_client_stays_team fails (1 failed, 4 passed); restored by cp"
+  import_chain: "from backend.app.dependencies import get_current_user; import backend.app.routers.crm_practices -> OK"
+  docs_sync: "python3 scripts/docs_sync.py --diff -> No changes"
+  local_floor: "compute_floor(files, numstat, patch) on the code diff = 1; declared gear 2 per dispatch"
+
+dissent:
+  - seat: codex-cli-0.157.1-default
+    objection: "F6 MEDIUM PLAUSIBLE: the classifier's return vocabulary is not visible in the diff; compatibility with the six folder keys is unproven."
+    status: PLAUSIBLE
+    resolution: "Refuted on disk: _classify_document_category returns only immigration|personal|pma|tax|family|other (services/portal/_mixins/documents.py:87-157), exactly the keys of CATEGORY_TO_FOLDER (services/crm/documents.py:213-220)."
+  - seat: codex-cli-0.157.1-default
+    objection: "F7 MEDIUM PLAUSIBLE: Process-route tests stop at a mocked helper; nested body fields are not inspected."
+    status: CONFIRMED
+    resolution: "Added test_portal_client_upload_reaches_the_documents_insert_as_client (real helper; asserts the INSERT row reads client / caller email / personal / practice 7; fails on main) and an assertion that uploaded_source is not a DocumentUploadBase64 field."
+
+class_audit:
+  probe: "git grep -n -i -E 'insert[[:space:]]+into[[:space:]]+documents([[:space:](]|$)' origin/main (tests and *.md excluded): 15 statements"
+  rows:
+    - "app/routers/crm_enhanced_documents.py:903 upload_document_base64: src NO, by NO -> FIXED (Process route + staff upload + internal intake route all pass here)"
+    - "services/portal/_mixins/documents.py:676 portal Vault: src client, by client email -> correct"
+    - "services/portal/_mixins/documents.py:710 Vault legacy fallback (only on undefined-column error): src NO, by YES -> not reached on PROD, left"
+    - "app/routers/crm_enhanced_documents.py:149 create_document (metadata, staff-only write RBAC): src NO, by NO -> left, staff path"
+    - "app/routers/crm_enhanced_documents.py:297 bulk create (staff-only): src NO, by YES -> left"
+    - "app/routers/admin_drive_health.py:586 admin reconcile: src NO, by NO -> left"
+    - "services/crm/drive_poll_service.py:647 Drive poll cron: src NO, by NO -> left"
+    - "services/intake/writer.py:755, :784 WhatsApp intake commit: src NO, by NO -> left; whether a WA-sent document counts as a client upload for Round 2 is a product decision"
+    - "backend/scripts/seed_portal_qa.py:661 QA seed: src NO, by NO -> left"
+    - "scripts/bulk_populate_clients.py:536, :576, :653 bulk import: src NO, by YES -> left"
+    - "scripts/register_drive_documents.py:215, :236 Drive registration script: src NO, by NO -> left"
+
+out_of_scope_reported:
+  - "Vault uploads with practice_id NULL (10 of 10 since 09-29 per the dispatch): owner product decision."
+  - "challenge_round2.build_required_document_reviews_sql reads practice_required_documents.uploaded_by_client = TRUE, which this route sets for staff uploads too; the UI uses that column as its 'uploaded' flag (useRequiredDocuments.ts:194, RequiredDocumentsCard.tsx:434), so splitting it needs a product decision."
+
+prove_live: |
+  After the fly-deploy run for the merge commit succeeds and /health build_sha descends from it,
+  read-only (nuzantara_readonly):
+    SELECT d.id, d.uploaded_source, (d.uploaded_by IS NOT NULL) AS has_uploader,
+           d.document_category, d.created_at
+    FROM practice_required_documents prd
+    JOIN documents d ON d.id = prd.uploaded_file_id
+    WHERE d.created_at > '<deploy finished, UTC>'
+    ORDER BY d.created_at DESC;
+  Expected: every row has has_uploader = true; a row created by a portal client session reads
+  uploaded_source = 'client'; a row created by a staff session reads 'team'; a passport reads
+  'personal'. Correlate client vs staff from the API audit trail by id only.
+
+ci_finding:
+  run: "Backend Shard 3, run 36994434366, on predecessor #7796 head 25c82bf819"
+  failure: "test_upload_endpoint_does_not_let_the_caller_choose_the_source: ImportError: cannot import name 'get_flat_dependant' from 'fastapi.dependencies.utils' (CI FastAPI 0.141.1, Python 3.11.16); 3365 passed otherwise"
+  cause: "the test imported a FastAPI private helper that exists in the local venv (FastAPI 0.139.0) and is gone in the locked version (requirements.lock.txt: fastapi 0.141.1, starlette 1.6.0)"
+  fix: "the test now builds app.openapi() for the router and asserts no parameter and no request-body property named uploaded_source on POST .../clients/{client_id}/documents/upload, with file_name as a positive control; router code unchanged"
+
+receipts:
+  - claim: "CI failure reproduced locally: the predecessor test under FastAPI 0.141.1 / Starlette 1.6.0 (uv pip --target overlay on PYTHONPATH) raises the same ImportError."
+    cmd: "PYTHONPATH=<overlay fastapi==0.141.1 starlette==1.6.0>:. pytest backend/tests/unit/routers/test_crm_enhanced_documents.py -k test_upload_endpoint_does_not_let_the_caller_choose_the_source (predecessor test body)"
+    result: "ImportError: cannot import name 'get_flat_dependant'"
+    exit: 1
+    ts: "2026-10-03T01:44Z"
+    seat: claude-opus-5-5
+  - claim: "Targeted suite green on the CI-locked FastAPI 0.141.1 / Starlette 1.6.0."
+    cmd: "PYTHONPATH=<overlay>:. pytest backend/tests/unit/routers/test_crm_practices.py backend/tests/unit/routers/test_crm_enhanced_documents.py backend/tests/unit/app/services/portal/test_documents_mixin.py"
+    result: "214 passed"
+    exit: 0
+    ts: "2026-10-03T01:44Z"
+    seat: claude-opus-5-5
+  - claim: "Same suite green on the local FastAPI 0.139.0."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/routers/test_crm_practices.py backend/tests/unit/routers/test_crm_enhanced_documents.py backend/tests/unit/app/services/portal/test_documents_mixin.py"
+    result: "214 passed"
+    exit: 0
+    ts: "2026-10-03T01:44Z"
+    seat: claude-opus-5-5
+  - claim: 'Mutation on FastAPI 0.141.1: uploaded_source turned into a plain query parameter (uploaded_source: str = "team") fails the rewritten exposure test; router restored by cp.'
+    cmd: "PYTHONPATH=<overlay>:. pytest backend/tests/unit/routers/test_crm_enhanced_documents.py -k test_upload_endpoint_does_not_let_the_caller_choose_the_source"
+    result: "1 failed, 53 deselected"
+    exit: 1
+    ts: "2026-10-03T01:45Z"
+    seat: claude-opus-5-5
+  - claim: "RED: new tests against origin/main routers."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/routers/test_crm_practices.py::TestUploadClientDocument backend/tests/unit/routers/test_crm_enhanced_documents.py -k 'upload' (with origin/main crm_practices.py + crm_enhanced_documents.py copied in, restored by cp after)"
+    result: "7 failed, 158 passed (whole two files)"
+    exit: 1
+    ts: "2026-10-02T10:10Z"
+    seat: claude-opus-5-5
+  - claim: "GREEN on the branch, including the owns-email case (same as above; the owns-email case was mutation-tested) and test_category_follows_the_required_document_type_like_the_vault and test_upload_endpoint_does_not_let_the_caller_choose_the_source."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/routers/test_crm_practices.py backend/tests/unit/routers/test_crm_enhanced_documents.py backend/tests/unit/app/services/portal/test_documents_mixin.py"
+    result: "214 passed"
+    exit: 0
+    ts: "2026-10-02T10:10Z"
+    seat: claude-opus-5-5
+  - claim: "Mutation: role guard removed from crm_practices.py (is_client_upload = owns_client) fails test_staff_session_whose_email_owns_the_client_stays_team."
+    cmd: "sed the guard out, PYTHONPATH=. pytest backend/tests/unit/routers/test_crm_practices.py -k TestUploadClientDocument, restore by cp"
+    result: "1 failed, 4 passed; file restored (grep -c 'in CLIENT_ROLES' = 1)"
+    exit: 1
+    ts: "2026-10-02T10:05Z"
+    seat: claude-opus-5-5
+
+spend:
+  adversarial_rounds: 1
