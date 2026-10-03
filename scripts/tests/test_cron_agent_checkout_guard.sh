@@ -7,9 +7,12 @@
 # this asserts on what the wrapper does with a real git state change.
 #
 # Guilt:     commit on HEAD; commit then fail; branch switch; commit then
-#            push (origin/main moves with HEAD); commit then reset away.
+#            push (origin/main moves with HEAD); commit then reset away;
+#            the 2026-09-28 shape (worktree branch from origin/main, commit,
+#            push, worktree and branch removed — HEAD never moves).
 # Innocence: untracked report on disk; the sync cron's fetch + fast-forward
-#            moving origin/main and HEAD together; no checkout at all.
+#            moving origin/main and HEAD together; no checkout at all; a
+#            concurrent session committing on its own branch during the run.
 set -uo pipefail
 # Run from a git hook (pre-push) these point at the REAL repo and would win over
 # `git -C <sandbox>`: fresh_checkout would commit and rewrite refs there.
@@ -43,8 +46,21 @@ case "$FAKE_MODE" in
              "${G[@]}" update-ref refs/remotes/origin/main HEAD ;;
     undone)  "${G[@]}" commit -q --allow-empty -m "agent report"
              "${G[@]}" reset -q --hard origin/main ;;
+    side|sibling)
+             # sibling = another session on the host: its own identity, not the stamp
+             [ "$FAKE_MODE" = sibling ] && unset GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+             wt="$FAKE_CHECKOUT.wt"
+             "${G[@]}" worktree add -q -b agent/x/deps-audit "$wt" origin/main
+             git -c user.name=t -c user.email=t@example.invalid -C "$wt" commit -q --allow-empty -m deps
+             "${G[@]}" update-ref refs/remotes/origin/agent/x/deps-audit agent/x/deps-audit
+             if [ "$FAKE_MODE" = side ]; then
+                 "${G[@]}" worktree remove --force "$wt"
+                 "${G[@]}" branch -q -D agent/x/deps-audit
+             fi ;;
     report)  echo '{"submitted":0}' > "$FAKE_CHECKOUT/daily_report.json" ;;
-    sync)    new="$("${G[@]}" commit-tree "origin/main^{tree}" -p origin/main -m upstream)"
+    sync)    # upstream commits come from GitHub, never from the agent's process tree
+             unset GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+             new="$("${G[@]}" commit-tree "origin/main^{tree}" -p origin/main -m upstream)"
              "${G[@]}" update-ref refs/remotes/origin/main "$new"
              "${G[@]}" merge -q --ff-only origin/main ;;
 esac
@@ -111,10 +127,18 @@ fresh_checkout; run_case guard-pushed pushed
 expect_mutation "agent commits and pushes (ahead stays 0)"
 fresh_checkout; run_case guard-undone undone
 expect_mutation "agent commits then resets it away (branch and ahead unchanged)"
+fresh_checkout; run_case guard-side side
+expect_mutation "agent ships from a side worktree, then removes it (2026-09-28 shape)"
+[[ "$LOG" == *"commits stamped by this run"* ]] \
+    && ok "the side-worktree commit was caught by the committer stamp" \
+    || bad "the side-worktree case was not caught by the committer stamp"
 
 echo "innocence"
 fresh_checkout; run_case guard-report report
 expect_clean "agent writes its report to disk, uncommitted"
+fresh_checkout; run_case guard-sibling sibling
+expect_clean "another session commits on its own worktree branch mid-run"
+rm -rf "$CHECKOUT.wt"
 fresh_checkout; run_case guard-sync sync
 expect_clean "sync cron fast-forwards HEAD with origin/main mid-run"
 # the innocence above only counts if the fast-forward really happened

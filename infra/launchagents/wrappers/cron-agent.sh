@@ -395,6 +395,21 @@ checkout_foreign_moves() {
     git -C "$dir" reflog show --format=%gs -n "$new" HEAD 2>/dev/null | grep -v ': Fast-forward$'
 }
 
+# The H24 HEAD is not the only way out: on 2026-09-28 weekly-dep-audit's agent
+# cut a branch from origin/main in a worktree, committed, pushed and armed a
+# backend-rag PR (#7570) while HEAD only saw the sync cron's fast-forwards.
+# Counting branches or worktrees cannot tell that apart from the sessions that
+# create several a day on Pro, so run_agent() stamps the agent's own commits
+# instead: GIT_COMMITTER_* in the claude env outranks any git config, and any
+# commit carrying the stamp since the run started, reachable from any ref or
+# reflog (a pushed branch survives as refs/remotes/origin/*), is a mutation.
+agent_commit_mark() { printf '%s@cron-agent.invalid' "$JOB_NAME"; }
+checkout_marked_commits() {
+    local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}"
+    git -C "$dir" log --all --reflog -F --committer="$(agent_commit_mark)" \
+        --since="@$(( $1 - 1 ))" --format=%h 2>/dev/null | head -3 | tr '\n' ' '
+}
+
 run_agent() {
     local prompt_file="$SCRIPT_OR_PROMPT"
     if [[ ! -f "$prompt_file" ]]; then
@@ -482,7 +497,7 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         fi
     fi
 
-    local checkout_before checkout_after checkout_mutated=0 checkout_moves=""
+    local checkout_before checkout_after checkout_mutated=0 checkout_moves="" checkout_marked=""
     checkout_before="$(checkout_state)"
     [[ -z "$checkout_before" ]] && log "checkout guard OFF for this run: ${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara} has no measurable HEAD vs origin/main"
 
@@ -561,6 +576,7 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         while IFS= read -r -d '' env_part; do
             env_args+=("$env_part")
         done < <(claude_oauth_env "$token")
+        env_args+=("GIT_COMMITTER_NAME=cron-agent $JOB_NAME" "GIT_COMMITTER_EMAIL=$(agent_commit_mark)")
         attempt_out="$(mktemp "${TMPDIR:-/tmp}/cron-agent-out.XXXXXX")"
         attempt_err="$(mktemp "${TMPDIR:-/tmp}/cron-agent-err.XXXXXX")"
 
@@ -657,7 +673,9 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         read -r b0 a0 r0 <<< "$checkout_before"
         read -r b1 a1 r1 <<< "${checkout_after:-x 0 0}"
         checkout_moves="$(checkout_foreign_moves "$r0" "$r1" | head -3 | tr '\n' ';')"
-        if [[ -z "$checkout_after" || "$b1" != "$b0" || -n "$checkout_moves" ]] || (( a1 > a0 )); then
+        checkout_marked="$(checkout_marked_commits "$start_ts")"
+        if [[ -z "$checkout_after" || "$b1" != "$b0" || -n "$checkout_moves" || -n "$checkout_marked" ]] \
+            || (( a1 > a0 )); then
             checkout_mutated=1
         fi
     fi
@@ -671,7 +689,7 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         # Never repaired from here: a reset on the H24 checkout is a human/healer
         # act. Exit 3 is this guard's own code, distinct from 1/124/127.
         local checkout_change="'$checkout_before' -> '${checkout_after:-unmeasurable}'"
-        log "GIT-MUTATION: H24 checkout changed during the agent run, '<branch> <ahead-of-origin/main> <reflog>' went $checkout_change${checkout_moves:+, new HEAD moves: $checkout_moves} — realign by hand"
+        log "GIT-MUTATION: H24 checkout changed during the agent run, '<branch> <ahead-of-origin/main> <reflog>' went $checkout_change${checkout_moves:+, new HEAD moves: $checkout_moves}${checkout_marked:+, commits stamped by this run on any ref: $checkout_marked} — realign by hand"
         save_state "error" 3 "$duration" "H24 checkout mutated during agent run: $checkout_change"
         send_telegram "🚨 <b>$JOB_NAME</b>: H24 checkout mutated during the agent run ($checkout_change) — realign by hand"
         return 3
