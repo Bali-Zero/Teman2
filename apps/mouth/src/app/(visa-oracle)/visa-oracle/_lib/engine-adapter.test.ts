@@ -1062,14 +1062,16 @@ describe("support reasons are sentences, not machine codes", () => {
   it("has copy for every EXCLUDE code the highest SIGNED pack can emit (Slice A10)", () => {
     const payload = highestSequencePack();
     const codes = excludeReasonCodesOf({ rules: payload.rules ?? [] });
-    // Guard-of-the-guard: today's highest signed pack (seq-23) carries 35
-    // distinct EXCLUDE codes; >= 35 keeps this from going quiet if a pack
-    // regresses to fewer EXCLUDE rules or PACKS_DIR stops resolving. Unlike
-    // the Slice A8-2 test above (a DELTA against seq-22), this is an
-    // ABSOLUTE floor — the technique that let these 14 pre-existing codes go
+    // Guard-of-the-guard: today's highest signed pack (seq-24) carries 34
+    // distinct EXCLUDE codes; >= 34 keeps this from going quiet if a pack
+    // regresses to fewer EXCLUDE rules or PACKS_DIR stops resolving. seq-24
+    // (2026-09-27) retires `hf.e33f.sponsor-required`, the only emitter of
+    // SPONSOR_REQUIRED, so the count moved 35 -> 34 (measured off the signed
+    // pack's rules, never typed). Unlike the Slice A8-2 test above (a DELTA
+    // against seq-22), this is an ABSOLUTE floor — the technique that let these 14 pre-existing codes go
     // uncopied for two pack cycles (they were already in seq-22, so a
     // seq22-vs-source diff can never name them; gate-a8-2's own finding).
-    expect(codes.size).toBeGreaterThanOrEqual(35);
+    expect(codes.size).toBeGreaterThanOrEqual(34);
     const missing = [...codes].filter((code) => !(code in SUPPORT_REASON_COPY));
     expect(missing).toEqual([]);
   });

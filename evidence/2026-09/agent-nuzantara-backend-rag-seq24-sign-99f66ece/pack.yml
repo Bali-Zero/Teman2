@@ -1,0 +1,373 @@
+# Gear-3 evidence pack — seq-24 SIGNING (E33F: a retiree without a confirmed sponsor becomes a candidate; signed, NOT activated).
+# Written by the PR-B implementer (Claude Sonnet 5, a teammate of the session that owns this mandate).
+# Every receipt below is a command this writer executed in this turn (2026-09-27, 01:37Z-01:46Z), not
+# narrated from memory; timestamps of the long test runs are the mtimes of their captured output files.
+# Precedent for the shape: evidence/2026-09/agent-nuzantara-backend-rag-seq24-fold/ (#7459) and
+# evidence/2026-09/agent-air-m5-backend-rag-seq23-sign/ (#7227).
+#
+# WHAT THIS PACK DOES NOT CARRY, ON PURPOSE: council-journal.jsonl content and independent dissent. The
+# review seats are the owning session's lane (generator != grader) — the implementer did not dispatch,
+# simulate or narrate any council round, and no reviewer verdict is asserted here. The owning session
+# appends its `council_run`, the reviewer lanes and their dissent before arming. The `dissent` block
+# below is the implementer's OWN residual-risk notes, labelled as such (seat: self-review, not an
+# independent refuter) so the block is honest rather than empty.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-09-27 — E33F no-sponsor -> candidate. This PR is the SIGNING half of the seq-24
+  mission (fold = PR 7459, mouth = PR 7464); signed, NOT activated.
+mission: >-
+  Visa Oracle seq-24 — PR-B (backend-rag + one mouth test), the signed bundle and the pins a newly
+  signed pack moves.
+lanes:
+  - lane: seq24-sign-pins
+    role: build
+    seat: Claude Sonnet 5 (PR-B implementer teammate)
+  - lane: seq24-sign-ceremony
+    role: build
+    seat: >-
+      a fresh signing session on M5 outside the seq-24 contribution chain, working from its own
+      instruction file (/Users/nuzantara/.tmp/seq24-sign/prompt-for-zero.md on this machine). This
+      implementer did NOT observe the ceremony, never saw or touched the key, and asserts nothing
+      about it beyond the finished file: its own verification of that file is the receipts below.
+  - lane: seq24-sign-ground-truth
+    role: ground_truth
+    seat: >-
+      session (this implementer) — the pack asserts no new regulatory figure and registers no new
+      fact; its ground truth is the source pack the fold PR merged and the verification code already
+      on origin/main, not a notebook.
+    nb: >-
+      Six files this PR reads but never edits, hashed at the base commit and confirmed untouched by
+      this diff: rulepack-prod-024.source.json (the payload that was signed),
+      rulepack-prod-023.signed.json (the chain anchor), backend/services/visa_engine/bundle.py
+      (StaticTrustStore, canonicalize_json, verify_rule_pack), backend/services/visa_engine/models.py
+      (RulePackPayload), backend/scripts/visa_engine/gold_replay_driver.py (build_offline_report,
+      used to re-derive personas 3 and 4) and backend/tests/scripts/visa_engine/test_gold_replay_driver.py
+      (the 17 / 3 floor the persona fix restores).
+    query_hash: "57f614c0b32e9af6e10394b300ae82258b9c9f231616283ef440c96e4d7a7e32" # pragma: allowlist secret
+    note: >-
+      query_hash = sha256 of the six files concatenated in that order via `git show
+      <base>:<path>`, computed this turn; `git diff --name-only` on the same six paths is empty
+      (see receipt below).
+pii_scan: clean
+bites:
+  consumer: >-
+    the CI backend test shards (tests.yml, `backend-shard`), whose sweep collects
+    backend/tests/services/visa_engine — the seq-24 pack gate, the census and the review-hold inventory
+    the observer runs — and the seq-24 activation ceremony, which reads the signed pack this observer
+    proves is the highest signed one
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq24_signed.py
+  expect: "contains:inventory reads seq-24 and all three consumers green"
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3, by size: `evidence_pack_lint.py --print-floor` over this diff's numstat prints 3
+      (the code diff, evidence dir excluded: 8 files, +9,631 / -26; the generated signed pack is 9,330 lines of it). The hand-written part
+      is about 300 net lines. Judgement agrees: a signed production pack over apps/backend-rag/**,
+      where merging is itself the deploy.
+  - id: D-verify-before-use
+    decision: >-
+      The bundle was verified BEFORE it was copied into the repo and again AFTER Prettier, with the
+      repo's own `verify_rule_pack` against the PRODUCTION entry of the public trust-store array in
+      docs/runbooks/visa-engine-key-ceremony.md, never against the signer's self-report:
+      sequence 24, PRODUCTION, previous_payload_sha256 == H23, canonical payload digest == H24 ==
+      the envelope's declared payload_sha256, kid prod-2026-07-1, unsigned_dev False, payload
+      byte-identical to rulepack-prod-024.source.json under JCS. The verifier was a scratch script
+      (never committed) and a second, independent copy of the same ties is now the pinned test.
+  - id: D-prettier
+    decision: >-
+      The raw bundle is not Prettier-clean (10,386 lines, `prettier --check` fails); the repo
+      convention (seq-23, #7227) is to land it Prettier-formatted. The signature covers the
+      JCS-canonical payload, not the file's bytes, so formatting cannot invalidate it — and that was
+      MEASURED, not assumed: the same verification passes on the raw file (sha256 e0476dcd…f2e5) and
+      on the committed one (sha256 e0f5b16d…ea42, 9,330 lines).
+  - id: D-personas
+    decision: >-
+      Only personas 3 and 4 of PRODUCTION_REPLAY_EXPECTATIONS move, and only by dropping
+      SPONSOR_REQUIRED from their no-path codes (the code's only emitter, hf.e33f.sponsor-required,
+      is retired in seq-24). Derived by running gold_replay_driver.build_offline_report on the signed
+      tree, not typed: it reported 15/20 matched with 5 unexplained divergences (personas 1, 9, 10 —
+      the three the test has always named — plus 3 and 4), and the actual no-path codes for 3 and 4
+      are exactly the old lists minus SPONSOR_REQUIRED. After the edit the driver test is back at
+      its 17 / 3 floor. The other four A9.3 personas (2, 5, 12, 20) did not move and were not touched.
+  - id: D-mouth-floor
+    decision: >-
+      The mouth's ABSOLUTE floor of distinct EXCLUDE codes on the highest signed pack moves 35 -> 34.
+      Measured two ways that agree: a scratch python count over rulepack-prod-023.signed.json (35) vs
+      the seq-24 source (34, difference exactly [SPONSOR_REQUIRED]), and the vitest run itself
+      ("expected 34 to be greater than or equal to 35"). No other mouth test moved: the seq-22-only
+      review-copy list stayed empty and honest.
+  - id: D-untouched-pins
+    decision: >-
+      test_review_hold_inventory.py and gold_coverage/fixtures/option_matrix.json are NOT edited
+      although seq-23's signing PR moved them: seq-24 keeps 1 review rule / 0 escalations (the
+      observer prints pack_review_rules 1, pack_unknown_escalations 0) and no option-matrix cell
+      moves. The census likewise needed no pin change — PR #7459 already keyed its
+      _SIGNED_SEQUENCE tables for 24; only their "measured on the candidate" comments were updated to
+      say the signed tree reproduces them. The 14 candidate-mode census tests now skip by design
+      ("no unsigned production source pack sits above the highest signed one"), so the census file
+      goes 53 passed -> 39 passed + 14 skipped, and the signed-mode tests are what grade seq-24 now.
+  - id: D-signed-mode-tests
+    decision: >-
+      test_seq24_pack.py gains TestSignedBundleTiesToSource (8 tests, 85 -> 93): source digest ==
+      H24, signed payload digest == declared == H24, signed payload == source under JCS, the
+      committed bundle verifies against the pinned production key at a fixed instant shortly after
+      its signed_at (never datetime.now()), the chain anchor is the signed seq-23 digest with a null
+      rollback, signed_at postdates created_at, and two GUILTs — one flipped byte moves the digest
+      away from H24, and a scratch copy with one rule removed is refused by the verifier. A missing
+      bundle FAILS, it never skips.
+  - id: D-observer
+    decision: >-
+      scripts/ci/observe_visa_seq24_signed.py is the pack's executable consumer, declared in the
+      top-level `bites:` block above (bites_parse.py admits only a `bites-observable` in-tree script as
+      `observe:`, and the observer is the seq-24 sibling of seq-23's). It asserts
+      review_hold_inventory reports sequence 24 (proof the new file IS the highest signed pack) and runs
+      the seq-24 pack gate, the census and the inventory test. `expect:` matches its SUCCESS-ONLY final
+      line, "inventory reads seq-24 and all three consumers green", not the earlier "highest signed
+      sequence=24": the intermediate line is printed right after the inventory check and BEFORE the three
+      test modules run, so a red consumer would still print it — only the final line is emitted after
+      every step has passed (the script also stops with a non-zero exit on the first failing module).
+      An earlier draft of this PR left the observer named only in receipts, with no machine reading it;
+      a fresh gate rightly called that an orphan. The test-side tie stays
+      test_seq24_pack.py::TestSignedBundleTiesToSource, which the observer itself runs and the CI shard
+      runs on its own.
+receipts:
+  - claim: Base commit, merge-base and branch of the working tree this evidence describes (nothing committed yet when measured).
+    cmd: git rev-parse HEAD && git merge-base origin/main HEAD && git branch --show-current
+    result: "HEAD 212434e0dd2178a93a323dcc098358fc72699dfd, merge-base 212434e0dd2178a93a323dcc098358fc72699dfd, branch agent/nuzantara/backend-rag/seq24-sign (origin/main as last fetched here, no fetch run)"
+    exit: 0
+    ts: "2026-09-27T01:44:51Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: The signed bundle verifies with the repo's own verify_rule_pack against the PUBLIC production key, on the raw file the ceremony produced — BEFORE it enters the repo.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python <scratch verify script>
+      <worktree> /Users/nuzantara/.tmp/seq24-sign/rulepack-prod-024.signed.json
+      (trust store = the PRODUCTION entry of the array in docs/runbooks/visa-engine-key-ceremony.md)
+    result: >-
+      protected {alg Ed25519, domain balizero.visa-rulepack.v1, environment PRODUCTION, kid
+      prod-2026-07-1, schema_version 1.0.0, signed_at 2026-09-27T01:31:02.441320Z}; sequence 24,
+      environment PRODUCTION, rules 113; previous_payload_sha256
+      e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204 == H23 True; canonical payload
+      sha256 5a569091f84a858f1957cdf96086ee7212f67d13a8225d64492a7212093cd272 == H24 True, declared
+      payload_sha256 identical; verify_rule_pack OK, unsigned_dev False, kid prod-2026-07-1;
+      payload == rulepack-prod-024.source.json under JCS True; ALL_CHECKS PASS (the script exits 0 on pass).
+    exit: 0
+    ts: "2026-09-27T01:45:02Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: The same verification on the committed, Prettier-formatted copy; both file digests recorded.
+    cmd: >-
+      prettier --write <packs>/rulepack-prod-024.signed.json; prettier --check <same>; the same
+      verify script on the repo copy; shasum -a 256 on the raw and the committed file
+    result: >-
+      prettier --check "All matched files use Prettier code style!" (before --write it warned on this
+      one file); verification on the repo copy: identical output, ALL_CHECKS PASS; raw file sha256
+      e0476dcd3010b814018afaa313b5cc9f5230c988a55a8f5e152275433ac0f2e5 (10,386 lines), committed
+      file sha256 e0f5b16d9b302eae489bf89e58a738fcd92acb0d27edabca3ca0ec277abcea42 (9,330 lines).
+    exit: 0
+    ts: "2026-09-27T01:45:03Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: Baseline — the visa_engine backend suites on the base commit in the main checkout (candidate seq-24 on disk, NOT yet signed).
+    cmd: cd ~/nuzantara/apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ -p no:cacheprovider
+    result: >-
+      2 failed, 2966 passed, 1 skipped, 1 warning, 31 errors in 118.43s. The 2 failures are
+      test_visa_engine_retention_fk_registry.py (migration 281 not live in the local test DB;
+      UndefinedColumnError policy_scope) and the 31 errors are all test_evaluate_endpoint.py at
+      fixture setup (asyncpg TooManyColumnsError and siblings) — the same local-database state the
+      fold PR (#7459) recorded, none of it a rule-pack byte.
+    exit: 1
+    ts: "2026-09-27T01:37:35Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: First run with the signed bundle on disk, before any pin was moved — it names what the new highest signed pack legitimately changes (one real failure) and it ran concurrently with the baseline on the same local test database.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ -p no:cacheprovider
+    result: >-
+      3 failed, 2951 passed, 15 skipped, 1 warning, 33 errors in 115.37s. The third failure is
+      test_gold_replay_driver.py::test_offline_replay_match_count_does_not_regress_below_measured_floor:
+      "15/20 matched (floor=17), 5 unexplained divergences (ceiling=3) against pack sequence=24". The
+      2 extra errors (tuple concurrently updated, deadlock) are the two runs contending for one test
+      database, and disappear when the suite runs alone (next receipt).
+    exit: 1
+    ts: "2026-09-27T01:37:31Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: The persona divergences were exactly SPONSOR_REQUIRED, and after the edit the driver's own offline report on the signed tree matches personas 3 and 4 and is back at 17 / 3.
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python: gold_replay_driver.build_offline_report(...) and print the summary
+      plus the no-path codes of personas 3 and 4 and the ids that still diverge (read-only). Run once
+      BEFORE the edit (inline, not timestamped: it printed personas 3 and 4 with the old expected lists
+      and actual lists lacking SPONSOR_REQUIRED, summary 15 / 5, as the first-run receipt above also
+      records) and once AFTER, below.
+    result: >-
+      after the edit, pack sequence 24: personas_match 17, unexplained_divergences 3; persona 3 expected
+      == actual == [BVK_NATIONALITY_ONLY, CALLING_VISA_NATIONALITY_NOT_ASSESSED, VOA_NATIONALITY_ONLY,
+      AGE_BELOW_55]; persona 4 expected == actual == [BVK_NATIONALITY_ONLY, ACTIVE_OVERSTAY_SETTLE_FIRST,
+      AGE_BELOW_55]; divergent ids [1, 9, 10] — the three the test has always named.
+    exit: 0
+    ts: "2026-09-27T01:47:43Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: Mouth — first vitest run on the signed tree names the one legitimate move (the EXCLUDE floor).
+    cmd: cd apps/mouth && npx vitest --run "src/app/(visa-oracle)"
+    result: >-
+      Test Files 1 failed | 44 passed (45); Tests 1 failed | 1228 passed (1229): engine-adapter.test.ts
+      "has copy for every EXCLUDE code the highest SIGNED pack can emit (Slice A10)" — "expected 34 to
+      be greater than or equal to 35". Nothing else failed.
+    exit: 1
+    ts: "2026-09-27T01:40:17Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: The floor 35 -> 34 is what the packs say — a scratch count over the packs (never committed).
+    cmd: >-
+      python3: distinct effect.reason_code over rules with effect.type EXCLUDE in
+      rulepack-prod-023.signed.json (payload), rulepack-prod-024.source.json and rulepack-prod-024.signed.json (payload)
+    result: "seq-23 signed: 35 codes / 114 rules; seq-24 source: 34 codes / 113 rules; seq-24 signed: 34 codes / 113 rules, identical code set to the source; seq-23 minus seq-24 == [SPONSOR_REQUIRED]; seq-24 minus seq-23 == []"
+    exit: 0
+    ts: "2026-09-27T01:47:44Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: After the pins moved — the visa_engine backend suites, run ALONE, end with exactly the base's failures and errors and no new one.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ -p no:cacheprovider
+    result: >-
+      2 failed, 2960 passed, 15 skipped, 1 warning, 31 errors in 115.90s. The 2 failures are the same
+      two retention-fk-registry tests and the 31 errors the same test_evaluate_endpoint.py fixture
+      setup errors as the baseline. Reconciliation with the baseline (2966 passed / 1 skipped):
+      -14 candidate-mode census tests now skipped, +14 skipped (1 -> 15), +8 new signed-mode tests
+      in test_seq24_pack.py, so 2966 - 14 + 8 = 2960 passed and 3000 -> 3008 collected.
+    exit: 1
+    ts: "2026-09-27T01:43:15Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: "Acceptance probe 1 — the signed-bundle ties and the signature check, alone (fresh run, the test-side tie the observer also runs)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq24_pack.py::TestSignedBundleTiesToSource -p no:cacheprovider
+    result: "8 passed in 1.31s"
+    exit: 0
+    ts: "2026-09-27T02:16:43Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: The observer the `bites:` block names exits 0 on the signed tree (fresh run after its docstring was corrected and its marker made a real comment).
+    cmd: python3 scripts/ci/observe_visa_seq24_signed.py
+    result: >-
+      review_hold_inventory --json reports highest signed sequence=24, totals pack_review_rules 1,
+      pack_unknown_escalations 0; then test_seq24_pack.py 93 passed, test_interview_walk_census.py
+      39 passed + 14 skipped, test_review_hold_inventory.py 7 passed; it printed "observe_visa_seq24_signed:
+      highest signed sequence=24 totals=..." early and ended with "inventory reads seq-24 and all three
+      consumers green" — the success-only text `expect:` looks for.
+    exit: 0
+    ts: "2026-09-27T02:32:01Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: The two remaining test files that read the packs directory, plus the gold driver file alone.
+    cmd: >-
+      pytest backend/tests/scripts/test_visa_engine_compile_claims.py
+      backend/tests/services/pricing/test_pricing_service_key_collision.py;
+      pytest backend/tests/scripts/visa_engine/test_gold_replay_driver.py
+    result: "91 passed in 2.08s; 14 passed in 1.92s (the driver test is back at its 17 / 3 floor)"
+    exit: 0
+    ts: "2026-09-27T01:45:07Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: Mouth after the floor edit — the whole visa-oracle vitest suite green, tsc clean, Prettier clean on the touched TS and the runbook.
+    cmd: >-
+      cd apps/mouth && npx vitest --run "src/app/(visa-oracle)"; npx tsc --noEmit; prettier --check
+      <engine-adapter.test.ts> <runbook> <signed pack>
+    result: "Test Files 45 passed (45); Tests 1229 passed (1229); tsc exit 0, no output; prettier: All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-09-27T01:46:21Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: Lint on the touched python.
+    cmd: >-
+      apps/backend-rag/.venv/bin/ruff check <fold_pack_seq24.py, test_seq24_pack.py, test_evaluator_gold.py,
+      test_interview_walk_census.py, scripts/ci/observe_visa_seq24_signed.py>; ruff format --check on the
+      files ruff-formatted at base
+    result: >-
+      ruff check: All checks passed!; ruff format --check: fold_pack_seq24.py, test_seq24_pack.py and
+      the observer already formatted. test_evaluator_gold.py is NOT ruff-formatted at base (pre-existing
+      drift on long legal_citations tuples), so it was edited by hand and never reformatted — an
+      accidental `ruff format` run that also touched 78 files under apps/backend-rag/scripts/ was
+      reverted with git checkout of that directory before anything was staged, and the gold file was
+      restored from git and re-edited with only the two persona hunks.
+    exit: 0
+    ts: "2026-09-27T01:45:07Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: Diff size, and the Gear floor it implies.
+    cmd: >-
+      git diff --numstat + `git diff --no-index --numstat /dev/null <new file>` for the two new files,
+      fed to `python3 scripts/evidence_pack_lint.py --numstat-file ... --changed-files-file ... --print-floor`
+    result: "tracked +183/-26 (fold docstring 13/1, gold 10/6, census 11/8, seq24 test 127/5, mouth test 8/6, runbook 14/0); new: signed pack 9330, observer 118; code diff without the evidence dir 8 files +9631/-26 (measured before the evidence dir was written; the whole commit adds this pack's own evidence files on top, which a pack cannot count without changing itself); --print-floor prints 3"
+    exit: 0
+    ts: "2026-09-27T01:47:44Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: The six ground-truth files this PR reads are untouched by this diff.
+    cmd: >-
+      git diff --name-only -- <the six paths> | wc -l; { for f in <the six paths>; do git show
+      "<base>:$f"; done; } | shasum -a 256
+    result: "0 changed; concat sha256 57f614c0b32e9af6e10394b300ae82258b9c9f231616283ef440c96e4d7a7e32"
+    exit: 0
+    ts: "2026-09-27T01:44:51Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: PII scan of the new hand-written files, the generated pack and the tracked diff — no email, passport-like or 16-digit string.
+    cmd: >-
+      grep -cE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' / grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' /
+      grep -cE '\b[0-9]{16}\b' on brief.yml, pack.yml, observe_visa_seq24_signed.py, test_seq24_pack.py and
+      rulepack-prod-024.signed.json; the same email / 16-digit patterns over the added lines of `git diff -U0`
+    result: '0 / 0 / 0 on all five files; the only two hits in the tracked diff are the `@pytest.fixture(scope="module")` decorators (the `@` pattern), no address, no client data'
+    exit: 0
+    ts: "2026-09-27T01:48:39Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: The pack lints clean except for the council_run rule, which is left open on purpose (the council is the owning session's lane, generator != grader). Run on a synthetic staging tree, because the tracked evidence/brief.yml at the repo root is the previous PR's staged brief and would otherwise be read as this one's.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py <scratch>/evidence/pack.yml --repo-root <scratch> --source-path
+      <this pack> --brief-source-path <this brief> --changed-files-file <11 changed paths> --numstat-file <numstat>
+      (the scratch tree holds this pack, this brief as evidence/brief.yml, and the empty council-journal.jsonl)
+    result: >-
+      exactly one violation: "council_run: gear:3 pack declares no council_run journal with >=2 distinct
+      review seats ... marked ok:true" — the journal is empty by design and the owning session appends its
+      council before arming. No other violation and no NOTICE (all five acceptance probes are bound to a
+      receipt); --print-floor over the same numstat prints 3, equal to the declared gear.
+    exit: 1
+    ts: "2026-09-27T01:51:09Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: contract_verify --local is clean.
+    cmd: python3 scripts/contract_verify.py --local
+    result: "no output, exit 0"
+    exit: 0
+    ts: "2026-09-27T01:50:51Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: With the council journal committed (2 non-Anthropic seats, by the owning session) and the observer declared in `bites:`, the pack lints clean and bites_parse returns the block. Supersedes the two earlier lint / contract_verify receipts, which were taken while the journal was empty.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py <scratch>/evidence/pack.yml --repo-root <scratch> --source-path
+      <this pack> --brief-source-path <this brief> --changed-files-file <changed paths> --numstat-file
+      <numstat>; python3 scripts/ci/bites_parse.py --pack <this pack>
+    result: >-
+      "evidence_pack_lint: clean", exit 0; bites_parse prints the four fields (consumer, where ci, observe
+      python3 scripts/ci/observe_visa_seq24_signed.py, expect contains:inventory reads seq-24 and all three
+      consumers green), exit 0; --print-floor 3.
+    exit: 0
+    ts: "2026-09-27T02:32:02Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+  - claim: contract_verify --local is clean, including bites-pack-parses and pack-lint.
+    cmd: python3 scripts/contract_verify.py --local
+    result: "✅ [bites-pack-parses] Harness floor recompute; ✅ [pack-lint] Harness floor recompute; ✅ [retracted-claims] antidotes; exit 0"
+    exit: 0
+    ts: "2026-09-27T02:32:03Z"
+    seat: Claude Sonnet 5 (PR-B implementer)
+dissent:
+  - seat: claude-sonnet-5 (PR-B implementer, SELF-REVIEW — not an independent refuter)
+    objection: >-
+      The ceremony itself is unobserved by this seat. What is proven here is the artifact — the repo's
+      own verify_rule_pack accepts it under the public production key, chained to H23, byte-identical
+      to the merged source — not the process that made it. A fresh gate should decide whether that
+      is enough; the rollback pre-signed for seq-25 lives off-repo and is NOT touched, verified or
+      claimed by this PR.
+    status: PLAUSIBLE
+  - seat: claude-sonnet-5 (PR-B implementer, SELF-REVIEW — not an independent refuter)
+    objection: >-
+      Policy weight, carried from the fold PR: once seq-24 is ACTIVATED an applicant who told us they
+      have no sponsor is shown E33F as a candidate, and the only place the sponsor requirement still
+      appears is the mouth's note (#7464, already merged). This PR activates nothing; the point is
+      flagged so the activation is ordered with the mouth note live in production.
+    status: PLAUSIBLE
+  - seat: claude-sonnet-5 (PR-B implementer, SELF-REVIEW — not an independent refuter)
+    objection: >-
+      The 14 skipped census tests are candidate-mode tests, so from this PR on the census grades
+      seq-24 through its signed-mode tests only. Their pins were derived on the candidate and are
+      reproduced (39 passed) on the signed tree, but the day a NEW unsigned candidate appears above
+      seq-24 the candidate mode wakes up against that candidate's own, still-missing pins — by
+      design, and unrelated to this PR.
+    status: PLAUSIBLE
+appetite:
+  budget: 1 PR, unarmed
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1
+council_run: council-journal.jsonl
