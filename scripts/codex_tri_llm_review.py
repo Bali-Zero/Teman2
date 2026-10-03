@@ -872,5 +872,21 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
-    args_global = parse_args()
-    sys.exit(asyncio.run(main_async(args_global)))
+    # DISABLED (cicatrix W140 sibling, gate on PR #7466/#7475): this script
+    # forwards the WHOLE diff -- including any DELETED line of a data file --
+    # unredacted to Codex+Kimi, the same defect .claude/scripts/codex-spalla.sh
+    # shipped until it was fixed there. Porting scripts/lib/spalla_redact.sh's
+    # three guards (deleted-data-line suppression, PII-path refusal, name
+    # redaction) needs its own guilt+innocence tests to be trustworthy here,
+    # not a same-diff patch bolted on without them -- so this refuses rather
+    # than ship a diff-forwarding path with weaker protection than its
+    # sibling. Exit 3 matches this script's own documented "error (panel did
+    # not complete)" contract; no caller needs a new exit code to handle this.
+    logger.error(
+        "codex_tri_llm_review DISABLED: forwards the diff unredacted to "
+        "Codex+Kimi with no PII guard (cicatrix W140 sibling). Re-enable only "
+        "after routing through scripts/lib/spalla_redact.sh's guards with "
+        "dedicated guilt+innocence tests, or use .claude/scripts/"
+        "codex-spalla.sh instead, which already has them."
+    )
+    sys.exit(3)

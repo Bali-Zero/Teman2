@@ -296,3 +296,28 @@ def test_parse_verdict_normal_json_not_misclassified_as_quota() -> None:
     )
     assert v.error is None
     assert v.verdict == "green"
+
+
+def test_cli_invocation_is_disabled_pending_pii_guard_port() -> None:
+    """cicatrix W140 sibling (gate on PR #7466/#7475, folded into the same
+    round): this script forwards the WHOLE diff -- including any DELETED line
+    of a data file -- unredacted to Codex+Kimi. Until it is routed through
+    scripts/lib/spalla_redact.sh's guards, the real CLI entrypoint (`if
+    __name__ == "__main__"`, never reached by _load_review_module()'s
+    exec_module-based import above) must refuse rather than dispatch. Exit 3
+    matches this script's own documented "error (panel did not complete)"
+    contract -- no caller needs a new exit code for this."""
+    import subprocess
+    import sys as _sys
+
+    repo_root = Path(__file__).resolve().parents[6]
+    script_path = repo_root / "scripts" / "codex_tri_llm_review.py"
+    proc = subprocess.run(
+        [_sys.executable, str(script_path), "--branch", "main"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert proc.returncode == 3, proc.stderr
+    assert "DISABLED" in proc.stderr
+    assert "codex-spalla.sh" in proc.stderr

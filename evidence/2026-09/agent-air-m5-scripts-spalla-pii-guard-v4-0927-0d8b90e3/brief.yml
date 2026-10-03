@@ -1,0 +1,119 @@
+task_id: spalla-pii-guard-v4-0927
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Fourth round on cicatrix W140 (.claude/scripts/codex-spalla.sh forwarded a PII-removal
+  diff's own 959 deleted client full_name lines to the Codex CLI in cleartext). Two
+  teammate messages relaying items from the ORIGINAL v1 gate plus the #7470 gate's final
+  message, folded into this round rather than opened as a fifth: (1) scripts/
+  codex_tri_llm_review.py is a sibling egress path with the same raw-diff-forwarding
+  defect and no guard at all; (2) the PII quarantine directory's true file count was
+  understated in a previous scar draft; (3) quoted non-ASCII paths in git's path-listing
+  output must still be matched by the refusal, with a test against a REAL git repo, not
+  a hand-typed string; (4) the .sh unit-test corpus is not executed by any CI run; (5) the
+  exit-8 refusal for a missing CRM name list did not tell the operator how to fix it;
+  (6) the guard-conformance-registry deferral reasoning in a previous artefact was
+  technically wrong.
+constraints:
+  - >-
+    Only .claude/scripts/codex-spalla.sh, scripts/lib/spalla_redact.sh, scripts/_redact_pii.py,
+    scripts/codex_tri_llm_review.py, scripts/tests/test_codex_spalla.py, scripts/tests/
+    test_codex_spalla_diff_redaction.sh, apps/backend-rag/backend/tests/unit/scripts/
+    test_codex_tri_llm_review_script.py and docs/scars/cicatrix-scars.md (W140) changed
+    relative to the merged v1 (#7466). No new .github/workflows/ file: one was drafted for
+    item (4) and dropped because .github/workflows/* is itself a hot-zone path
+    (scripts/evidence_pack_lint.py's HOTZONE_PATTERNS) — adding one would have forced this
+    Gear-2 bugfix into a full Gear-3 Evidence Pack for a benign test-runner addition. A
+    pytest shim that runs the existing .sh corpus as a subprocess achieves the same CI
+    execution via the already-existing scripts-tests-sweep.yml nightly sweep instead.
+  - >-
+    No real client name/phone/email anywhere in this diff, its tests, its commit or the
+    scar — every fixture is the single invented name "Jane Placeholder", carried over
+    unchanged from v3. scripts/test_redact_pii.py's own fixture list is NEVER a safe
+    source to copy from (v3's near-miss).
+  - >-
+    scripts/codex_tri_llm_review.py's CLI entrypoint (the `if __name__ == "__main__":`
+    block) now refuses outright (exit 3, matching the script's own pre-existing "error
+    /panel did not complete" documented contract) rather than receiving a partial, undertested
+    port of the three spalla_redact.sh guards — a full port needs its own dedicated
+    guilt+innocence tests to be trustworthy, which does not fit inside this round without
+    growing well past a proportionate same-diff patch. The disable is scoped to the CLI
+    only (gated on `__name__`), so the existing import-based unit tests for its pure
+    functions (compute_outcome, parse_verdict, etc.) are unaffected — verified by running
+    them unchanged.
+  - >-
+    The PII quarantine reconciliation (~/.agent/pii-quarantine/ on M5) is reported here by
+    filesystem metadata only (`ls -la`/`stat`, never file contents): 18 files total, 2 from
+    the original incident (traced to the coordinating gate session's own `mv`) and 16 moved
+    in a single batch this fix could not source in either its own session history or the
+    coordinating session's — that batch's origin is left for the team-lead's own
+    reconciliation, not fabricated here.
+acceptance:
+  - text: >-
+      WHEN a diff touches a PII-classed path whose filename contains non-ASCII characters,
+      the wrapper SHALL still refuse (exit 7) — proven end to end against a REAL git repo
+      with a literal non-ASCII filename, not a hand-typed string standing in for git's
+      quoted output.
+    probe: "scripts/tests/test_codex_spalla.py::test_non_ascii_pii_path_is_still_refused"
+  - text: >-
+      WHEN scripts/tests/test_codex_spalla_diff_redaction.sh's corpus is collected by a real
+      CI run (not only run by hand), a pytest shim SHALL execute it as a subprocess and fail
+      the pytest run if that corpus fails or aborts before its own "ALL OK" trailer.
+    probe: >-
+      scripts/tests/test_codex_spalla.py::test_lib_level_diff_redaction_corpus_passes
+      (collected by scripts-tests-sweep.yml's existing nightly `pytest scripts/tests/`)
+  - text: >-
+      WHEN scripts/_redact_pii.py refuses because the dynamic CRM name list could not be
+      loaded (exit 8), the stderr message SHALL tell the operator how to fix it (export
+      DATABASE_URL to the PROD read-only Postgres per scripts/pg.sh's documented working
+      combo, ensure the Fly tunnel is up), not only that the list is unavailable.
+    probe: "manual: scripts/_redact_pii.py's DynamicNameLoadError branch in _cli_main()"
+  - text: >-
+      WHEN scripts/codex_tri_llm_review.py is invoked as a CLI (not imported), it SHALL
+      refuse (exit 3) before building any prompt or dispatching to Codex/Kimi, since it has
+      no PII guard of its own.
+    probe: >-
+      apps/backend-rag/backend/tests/unit/scripts/test_codex_tri_llm_review_script.py::
+      test_cli_invocation_is_disabled_pending_pii_guard_port
+  - text: Every pre-existing guilt/innocence test from v1/v2/v3 SHALL still pass unchanged.
+    probe: >-
+      pytest scripts/tests/test_codex_spalla.py (20/20), bash scripts/tests/
+      test_codex_spalla_diff_redaction.sh (53/53 — unchanged from v3, no new lib-level cases
+      this round), pytest apps/backend-rag/backend/tests/unit/scripts/
+      test_codex_tri_llm_review_script.py (19/19)
+consumer_map:
+  - Every codex-spalla.sh dispatch (any future council/codex-second-opinion invocation)
+    consumes scripts/lib/spalla_redact.sh's three guards directly.
+  - >-
+    scripts-tests-sweep.yml's nightly pytest sweep is now the consumer that actually
+    executes the lib-level .sh corpus, via the new pytest shim.
+  - >-
+    Any future caller of scripts/codex_tri_llm_review.py's CLI now gets an explicit refusal
+    instead of a silent PII-forwarding dispatch.
+risks:
+  - >-
+    scripts/codex_tri_llm_review.py is now fully disabled at its CLI entrypoint until a
+    proper port lands — this removes a working (if unsafe) tri-LLM review capability from
+    whatever workflow relied on it; confirmed via grep that no non-test script imports and
+    calls its main_async() directly (only the CLI path was live), so the blast radius is
+    "the CLI stops producing verdicts" with a clear stderr pointer to the alternative
+    (.claude/scripts/codex-spalla.sh) and to what re-enabling requires.
+  - >-
+    The 16-file quarantine batch's origin is unresolved by this fix (see constraints above)
+    — a known gap, not a fabricated answer, flagged directly to the team-lead in parallel
+    with this PR.
+  - The operator-typed FOCUS brief and the untracked-file PATH list are still not passed
+    through the redactor (documented in the wrapper's own header as a known, lower-risk gap;
+    unchanged from v1/v2/v3).
+grader: >-
+  Independent gate review (REWORK-BUILD verdict on the PR that carried v2 and v3,
+  reworked here across two teammate messages folded into one round rather than a fifth);
+  a fresh gate on this head SHA is expected per the coordinating session.
+budget: >-
+  Existing subscription only; no paid API calls; no external-seat dispatch used for this
+  PR's own review.
+pii: >-
+  none in the final diff — the "Jane Placeholder" fixture from v3 is unchanged and
+  unexpanded this round; no new fixture names were introduced. The quarantine
+  reconciliation above names files by filename/timestamp/size/mode only, never content.
