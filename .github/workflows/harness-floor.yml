@@ -1478,8 +1478,25 @@ jobs:
           # this comment used to claim could not happen. `|| RC=$?` puts the command inside
           # an OR list, which `-e` does not treat as a failure to abort on, so the parser's
           # exit code reaches the taxonomy check that explains it instead of killing the step.
+          #
+          # `--tree "${HEAD_SHA}"`: this parser is BASE's, but the observer script an
+          # `observe:` line names is usually NEW in this very PR (Builder Contract 2), so it
+          # lives in the head tree and not in this checkout. The parser is told to ask that
+          # tree - read only, nothing from it is executed.
+          #
+          # The flag is passed only when the base copy advertises it. This job runs the PR's
+          # workflow over BASE's parser, so the PR that introduces `--tree` (and any PR whose
+          # base predates it) would otherwise hand an unknown flag to a parser that exits 2 on
+          # argv with an empty stdout, and the step would fail on its own judge. Missing FLAG
+          # degrades to the checkout lookup, the same split as the --numstat-file probe above.
+          TREE_FLAG=""
+          if python3 scripts/ci/bites_parse.py --help 2>/dev/null | grep -q -- '--tree'; then
+            TREE_FLAG=1
+          else
+            echo "::notice::the bites_parse.py copy in use (checked out from base) does not support --tree yet — the observe: script is resolved in the base checkout for this run; self-consistent once the --tree parser is on main."
+          fi
           RC=0
-          python3 scripts/ci/bites_parse.py --pack - < /tmp/bites-pack.yml > /tmp/bites-parsed.json 2> /tmp/bites-parse.err || RC=$?
+          python3 scripts/ci/bites_parse.py --pack - ${TREE_FLAG:+--tree "${HEAD_SHA}"} < /tmp/bites-pack.yml > /tmp/bites-parsed.json 2> /tmp/bites-parse.err || RC=$?
           if [[ $RC -ne 0 && $RC -ne 2 ]]; then
             [[ -s /tmp/bites-parse.err ]] && cat /tmp/bites-parse.err
             echo "::error::scripts/ci/bites_parse.py exited $RC — neither 0 (parsed) nor 2 (malformed). That is outside its own documented taxonomy; failing closed."
