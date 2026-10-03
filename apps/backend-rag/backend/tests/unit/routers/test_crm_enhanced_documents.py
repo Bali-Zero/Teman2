@@ -1238,25 +1238,28 @@ async def test_upload_without_an_explicit_source_is_team(mock_db_pool, mock_curr
 
 
 def test_upload_endpoint_does_not_let_the_caller_choose_the_source():
-    """uploaded_source drives Champion Round 2 scoring: no request field may set it."""
-    from fastapi.dependencies.utils import get_flat_dependant
+    """uploaded_source drives Champion Round 2 scoring: no request field may set it.
 
-    from backend.app.routers.crm_enhanced_documents import DocumentUploadBase64, router
+    Judged on the public OpenAPI contract, not FastAPI internals (which moved
+    between releases)."""
+    from fastapi import FastAPI
 
-    assert "uploaded_source" not in DocumentUploadBase64.model_fields
-    route = next(
-        r
-        for r in router.routes
-        if r.path.endswith("/clients/{client_id}/documents/upload")
-        and "/internal/" not in r.path
-        and "POST" in r.methods
+    from backend.app.routers.crm_enhanced_documents import router
+
+    app = FastAPI()
+    app.include_router(router)
+    schema = app.openapi()
+    path = next(
+        p
+        for p in schema["paths"]
+        if p.endswith("/clients/{client_id}/documents/upload") and "/internal/" not in p
     )
-    flat = get_flat_dependant(route.dependant)
-    exposed = {
-        p.name
-        for p in flat.query_params + flat.body_params + flat.header_params + flat.cookie_params
-    }
-    assert "uploaded_source" not in exposed
+    operation = schema["paths"][path]["post"]
+    assert "uploaded_source" not in {p["name"] for p in operation.get("parameters", [])}
+    body_ref = operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+    body = schema["components"]["schemas"][body_ref.rsplit("/", 1)[-1]]
+    assert "file_name" in body["properties"]
+    assert "uploaded_source" not in body["properties"]
 
 
 # ============================================================
