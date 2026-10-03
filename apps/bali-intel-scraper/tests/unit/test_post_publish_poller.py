@@ -78,6 +78,7 @@ def _happy_path_fake_run(calls, put_ok=True, pr_create_ok=True, pr_merge_ok=True
             return _res(returncode=0 if pr_merge_ok else 1, stderr="" if pr_merge_ok else "auto-merge is not allowed")
         if cmd[:3] == ["gh", "api", "graphql"]:
             pr = {"autoMergeRequest": {"enabledAt": "x"} if pr_merge_ok else None, "mergeQueueEntry": None,
+                  "mergeable": "MERGEABLE",
                   "headRefOid": "head"}
             return _res(stdout=json.dumps({"data": {"repository": {"pullRequest": pr}}}))
         return _res(returncode=0)
@@ -561,6 +562,15 @@ class TestRotateHero:
         assert staged_layout["hero_main"] == "new-hero"
         assert staged_layout["hero_2"] == "old-hero"
         assert staged_layout["latest_1"] == "h5"  # evicted old hero_5, cascaded to latest_1
+
+    def test_a_slug_promoted_out_of_latest_is_not_left_there_twice(self):
+        keys = ppp.HERO_KEYS + ppp.LATEST_KEYS
+        layout = dict(zip(keys, ["h1", "h2", "h3", "h4", "h5", "l1", "x", "l3", "l4", "l5"]))
+
+        rotated = ppp._rotate_layout(layout, "x")
+
+        assert [rotated[k] for k in ppp.HERO_KEYS] == ["x", "h1", "h2", "h3", "h4"]
+        assert [rotated[k] for k in ppp.LATEST_KEYS] == ["h5", "l1", "l3", "l4", "l5"]
 
     def test_already_hero_main_is_noop_no_stage(self):
         layout = {"hero_main": "same-slug"}
@@ -1155,6 +1165,8 @@ class _FakeGitHub:
                           "headRefOid": f"oid-{n}"} for n, ref in open_prs]
         self.ref_of = {p["headRefOid"]: p["headRefName"] for p in self.open_prs}
         self.moved = set()  # PR numbers whose head moved after listing
+        self.dirty, self.put_fail = set(), set()  # conflicting PR numbers; paths whose PUT fails
+        self.queue_on_recheck, self.reads = set(), {}  # PRs that enter the queue after one read
         self.queued, self.armed = set(queued), set()
         self.pr_files = pr_files or {}  # branch -> {path: (blob sha, status)}
         self.main = main or {}  # path -> blob sha on main
@@ -1185,7 +1197,10 @@ class _FakeGitHub:
             return _res()
         if cmd[:3] == ["gh", "api", "graphql"]:
             n = int(next(a for a in cmd if a.startswith("n="))[2:])
-            pr = {"autoMergeRequest": {"enabledAt": "x"} if n in self.armed else None,
+            self.reads[n] = self.reads.get(n, 0) + 1
+            if n in self.queue_on_recheck and self.reads[n] > 1:
+                self.queued.add(n)
+            pr = {"mergeable": "CONFLICTING" if n in self.dirty else "MERGEABLE","autoMergeRequest": {"enabledAt": "x"} if n in self.armed else None,
                   "mergeQueueEntry": {"state": "QUEUED"} if n in self.queued else None,
                   "headRefOid": f"oid-{n}" + ("-moved" if n in self.moved else "")}
             return _res(stdout=json.dumps({"data": {"repository": {"pullRequest": pr}}}))
@@ -1203,6 +1218,8 @@ class _FakeGitHub:
         if "/contents/" in s and "PUT" in cmd:
             payload = json.loads(kwargs["input"])
             path = cmd[2].split("/contents/", 1)[1]
+            if path in self.put_fail:
+                return _res(1, stderr="HTTP 422")
             self.puts[path], self.put_shas[path] = base64.b64decode(payload["content"]), payload.get("sha")
             return _res()
         if "/contents/" in s and "--jq" in cmd:
@@ -1330,6 +1347,66 @@ class TestOnePrPerFamily:
             assert ppp.run_image("blind", "business") is False
 
         assert ppp._PENDING_COMMITS == []
+
+    def _old_cover_pr(self, **kwargs):
+        gh = _FakeGitHub(open_prs=[(7001, _OLD_COVERS)], blobs={"s-old": b"old-bytes"},
+                         pr_files={_OLD_COVERS: {f"{_IMG}/old.jpg": ("s-old", "added")}}, **kwargs)
+        ppp._stage_commit("image", f"{_IMG}/new.jpg", b"new-bytes", "msg")
+        return gh
+
+    def test_a_failed_write_on_the_new_branch_closes_nothing(self):
+        gh = self._old_cover_pr()
+        gh.put_fail.add(f"{_IMG}/new.jpg")
+
+        ok, _ = self._flush(gh, ppp.flush_image_batch)
+
+        assert ok is False
+        assert gh.closed == []
+
+    def test_a_pr_that_entered_the_queue_before_its_close_is_not_closed(self):
+        gh = self._old_cover_pr()
+        gh.queue_on_recheck.add(7001)
+
+        ok, _ = self._flush(gh, ppp.flush_image_batch)
+
+        assert ok is True
+        assert gh.puts[f"{_IMG}/old.jpg"] == b"old-bytes"
+        assert gh.closed == []
+
+    def test_a_pr_too_large_to_compare_is_kept_open_and_named(self):
+        gh = self._old_cover_pr()
+        gh.pr_files[_OLD_COVERS] = {f"{_IMG}/c{i}.jpg": (f"s{i}", "added") for i in range(300)}
+        gh.blobs.update({f"s{i}": b"c" for i in range(300)})  # carryable, were the cap not honoured
+
+        ok, alert = self._flush(gh, ppp.flush_image_batch)
+
+        assert gh.puts == {f"{_IMG}/new.jpg": b"new-bytes"}
+        assert gh.closed == []
+        assert any("#7001" in c.args[0] for c in alert.call_args_list)
+
+    def test_an_armed_mergeable_covers_pr_is_left_to_merge(self):
+        # covers flush every ~15 min, a PR needs 22-68 min to merge: superseding
+        # a healthy armed one would restart it at every flush
+        gh = self._old_cover_pr()
+        gh.armed.add(7001)
+
+        ok, _ = self._flush(gh, ppp.flush_image_batch)
+
+        assert ok is True
+        assert gh.puts == {f"{_IMG}/new.jpg": b"new-bytes"}
+        assert gh.closed == []
+        assert not any("/compare/" in " ".join(c) for c in gh.calls)
+
+    def test_an_armed_but_conflicting_covers_pr_is_still_superseded(self):
+        gh = self._old_cover_pr()
+        gh.armed.add(7001)
+        gh.dirty.add(7001)
+
+        ok, _ = self._flush(gh, ppp.flush_image_batch)
+
+        assert ok is True
+        assert gh.puts[f"{_IMG}/old.jpg"] == b"old-bytes"
+        assert gh.closed == [7001]
 
     def test_an_unreadable_pr_list_opens_nothing_and_leaves_the_steps_for_retry(self):
         gh = _FakeGitHub(list_ok=False)

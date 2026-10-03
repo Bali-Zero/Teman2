@@ -1,0 +1,57 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  agent/air-m5/intel/poller-pins-liveness - follow-up of PR #7803 built from the notices of its
+  gate (PASS on 0d131f6ab3), rebased on origin/main once #7803 merged.
+lanes:
+  - lane: poller-pins-liveness-build
+    role: build
+    seat: "claude-opus-5-5 (Dux, BLUE)"
+
+what_changed: |
+  1. Covers and translations: an older PR that is armed and not CONFLICTING is left to merge (not
+     carried, not closed). Only unarmed or conflicting ones are superseded. Layout and SEO keep
+     superseding every unqueued older PR.
+  2. _rotate_layout drops the promoted slug from latest_*; trailing latest keys left without a slug
+     are removed instead of keeping a stale copy.
+  3. Three tests pin guards no test held: no close after a failed PUT (M1), no close when the PR
+     entered the queue before the close (M2), the 300-file compare cap keeps the PR open (M3).
+  4. One PENDING-ARMS row: apps/bali-intel-scraper/tests runs in no CI workflow.
+
+tests:
+  mutants: >-
+    Each mutant applied to the cure and the suite run: M1 (unconditional close) 1 failed / 70
+    passed, M2 (re-check without the queue) 1 failed / 70 passed, M3 (no 300-file cap) 1 failed /
+    70 passed - each killed by exactly its pin.
+  red: >-
+    Against PR #7803's head poller (0d131f6ab3): 2 failed / 69 passed - the liveness test and the
+    latest_* dedupe test. The three pins pass there (they pin behaviour #7803 already had) and so
+    does the conflicting-PR innocence test.
+  green: "71 passed (apps/bali-intel-scraper/tests/unit/test_post_publish_poller.py); ruff clean"
+  correction_of_7803_pack: >-
+    PR #7803's pack (tests.red) said "12 of the 14 new tests"; TestOnePrPerFamily had 13 tests.
+    The red run listed 11 of them failed and 2 passed (queued PR untouched, moved head not closed),
+    plus 6 pre-existing tests that pin the new contract - 17 failed in all, as stated there.
+  ci_gap: "apps/bali-intel-scraper/tests runs in no workflow under .github/ - local evidence only; ledger row added."
+
+dissent:
+  - seat: gate-7803 (fresh Opus 5.5 gate, notices on PASS)
+    objection: "Mutants M1, M2 and M3 survive the 65-test suite: three content-safety guards are unpinned."
+    status: CONFIRMED
+    resolution: "Three _FakeGitHub tests added; each mutant now fails exactly its pin."
+  - seat: gate-7803 (fresh Opus 5.5 gate, notices on PASS)
+    objection: "Liveness: covers flush every ~15 min while create-to-merge takes 22-68 min, so superseding armed CLEAN covers/translation PRs chains 7-11 supersedes and delays covers by hours."
+    status: CONFIRMED
+    resolution: "Armed, not-conflicting covers/translation PRs are left to merge; only unarmed or CONFLICTING ones are superseded."
+  - seat: gate-7803 (fresh Opus 5.5 gate, notices on PASS)
+    objection: "A carried slug main holds in latest_* but not in hero is re-promoted and duplicated."
+    status: CONFIRMED
+    resolution: "_rotate_layout removes the promoted slug from latest_*; test_a_slug_promoted_out_of_latest_is_not_left_there_twice."
+
+pii_scan: clean
+pii_scan_note:
+  "Code, synthetic fixtures (placeholder slugs, paths, PR numbers) and a ledger row naming a test
+  directory. No client data, no credentials."
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
