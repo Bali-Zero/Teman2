@@ -1,0 +1,99 @@
+task_id: cron-agent-commit-mark
+gear: 3
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: |
+  Follow-up to #7800 (approved by team-lead 2026-10-03 as a separate PR after
+  #7800 merges; #7800 merged 2026-10-03T02:29:57Z as 90d61f729b). #7800's
+  guard watches the H24 HEAD: branch, ahead of origin/main, HEAD reflog. It
+  cannot see the 2026-09-28 weekly-dep-audit shape. There the agent-tier
+  Haiku cut branch agent/nuzantara/backend-rag/20260928-deps-audit from
+  origin/main, committed, pushed, opened backend-rag PR #7570 and armed its
+  auto-merge. Pro's HEAD reflog for that window holds only
+  `merge <sha>: Fast-forward` entries (03:17, 03:32, 03:47 WITA).
+
+  The approved design (count refs/heads and worktrees before/after) was
+  replaced, with notice to team-lead, after a measurement on Pro: 146 local
+  heads, 4-25 branch births per day over 8 days, 18 inside the agent-tier
+  cron hours, plus cleanup crons that delete branches. A count would page on
+  concurrent sessions and net to zero against a cleanup.
+
+  Cure: run_agent() puts GIT_COMMITTER_NAME/EMAIL ("cron-agent <job>",
+  "<job>@cron-agent.invalid") in the claude process env only. Before and
+  after the turn it lists every commit on any ref or reflog of the H24 repo
+  whose committer is exactly <job@cron-agent.invalid> (bracketed fixed
+  string). A hash in the after-set and not in the before-set is GIT-MUTATION
+  and exit 3, same path as #7800. Sets, never dates: the committer date is
+  the agent's to forge. The sweep runs independently of the HEAD limb. A
+  sweep that fails before the run turns the limb off for that run and logs
+  it; a sweep that worked before and fails after fails the run closed. Every
+  clean run logs a positive verdict line naming both limbs. Gear 3 by floor
+  (infra/launchagents/*).
+
+acceptance:
+  - text: >-
+      WHEN the agent turn creates a side worktree branch from origin/main,
+      commits, pushes for real (the push itself writes the remote-tracking
+      ref) and removes the worktree and local branch, the wrapper SHALL exit
+      3 with GIT-MUTATION naming the stamped commits, also when the commit is
+      backdated or the HEAD limb is off; WHEN a ref breaks mid-run the
+      wrapper SHALL exit 3 (fail-closed); WHEN another session commits under
+      its own identity, job "weekly-<job>" commits under its own stamp, an
+      earlier run's stamped branch is kept or deleted mid-run, a ref is
+      already broken before the run, or the sync cron fast-forwards, the
+      wrapper SHALL exit 0 with no GIT-MUTATION and a "checkout guard
+      verdict: clean" line naming both limbs.
+    probe: bash scripts/tests/test_cron_agent_checkout_guard.sh
+  - text: >-
+      Every pre-existing cron-agent corpus SHALL stay green.
+    probe: >-
+      for t in oauth_cascade alert_verdict context_diet fingerprint_map
+      no_git_commit_prompt; do bash scripts/tests/test_cron_agent_$t.sh; done
+  - text: >-
+      AFTER merge and the Pro HOME-fork re-sync, the next indexing-daily run
+      (daily 09:00 Pro time) SHALL log "checkout guard verdict: clean, HEAD
+      limb on (...), stamp sweep on (...)" and leave no commit stamped
+      <indexing-daily@cron-agent.invalid> on any ref of ~/nuzantara.
+    probe: >-
+      ssh pro 'grep "checkout guard verdict" ~/logs/cron-agent/indexing-daily.log
+      | tail -1; git -C ~/nuzantara log --all --reflog -F
+      --committer="<indexing-daily@cron-agent.invalid>" --format=%H | wc -l'
+
+assumptions:
+  - text: >-
+      GIT_COMMITTER_NAME/EMAIL in the environment outrank user.name/email and
+      `-c` config for the committer identity, and `-F` makes --committer a
+      fixed string; the <...> brackets make it match the whole address.
+    status: verified
+    probe: >-
+      scratch repo probe 2026-10-03; corpus innocence case "weekly-<job>"
+      and a mutant without the brackets that fails it
+  - text: >-
+      The cost of the sweep on Pro's real repo is negligible and it succeeds
+      today (a failing before-sweep would silently keep the limb off).
+    status: verified
+    probe: >-
+      ssh pro: git log --all --reflog -F --committer=<...> -> rc 0, 0.321 s
+      wall, 1259 refs, 8 worktrees (2026-10-03)
+  - text: >-
+      On Pro a `git push` writes the remote-tracking ref itself, so a pushed
+      branch leaves a local trace with no fetch.
+    status: verified
+    probe: >-
+      ssh pro 'git -C ~/nuzantara config --get-all remote.origin.fetch' ->
+      +refs/heads/*:refs/remotes/origin/*; the 2026-09-28 branch exists on
+      refs/heads and refs/remotes/origin on Pro
+  - text: >-
+      The live wrapper on Pro is the HOME copy ~/scripts/cron-agent.sh, a
+      plain copy synced by hand; every agent-tier crontab line calls it.
+    status: verified
+    probe: >-
+      ssh pro: crontab lines for indexing-daily, learning-pipeline,
+      seo-guardian-weekly, weekly-dep-audit all call ~/scripts/cron-agent.sh;
+      its blob equals 030026f9b3 (2026-09-09), i.e. #7800 is not live yet
+  - text: >-
+      The H24 checkout is a single repo: ~/Desktop/nuzantara is a symlink to
+      ~/nuzantara (same --absolute-git-dir).
+    status: verified
+    probe: ssh pro 'ls -ld ~/Desktop/nuzantara; git -C ~/Desktop/nuzantara rev-parse --absolute-git-dir'

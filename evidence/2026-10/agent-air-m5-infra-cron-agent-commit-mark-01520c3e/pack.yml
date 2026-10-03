@@ -1,0 +1,366 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  Diff is wrapper and test code only; fixtures are synthetic (git identity
+  t@example.invalid, a one-line fake prompt, a mktemp sandbox with a bare
+  origin). No client data, no credential. Every review packet was
+  grep-checked for token shapes (0 hits) and dispatched with env -i, so no
+  session secret reached any vendor.
+council_run: journal.jsonl
+plan_ref: >-
+  team-lead mandate 2026-10-03 (Dux BLUE, resumed lane of a predecessor Dux
+  whose window ended mid-edit): judge and finish the uncommitted sweep edit,
+  run the corpus, commit, re-dispatch Codex + Kimi on the final diff, build
+  the pack, wait for #7800, rebase, push, PR, arm; the gate is commissioned
+  by the level above.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+  - lane: review-cross-family-qwen
+    role: review
+    seat: tp1-qwen3.8-max
+
+what_changed: |
+  2 files, 6 commits on origin/main 30bbe2d15d (#7800 merged as 90d61f729b,
+  so the three #7800 commits fell away in the rebase).
+  - 2167eeffde (predecessor): GIT_COMMITTER_NAME/EMAIL stamp in the claude
+    env; post-run `git log --all --reflog -F --committer=... --since`.
+  - 92915a8f8f (predecessor): before/after hash sets instead of --since.
+  - c3a793daf0 (this session, finishing the predecessor's dirty edit): the
+    sweep runs outside the HEAD-guard block; fail-closed when the after-sweep
+    errors; off-and-logged when the before-sweep errors; bracketed committer
+    match; empty after-set skipped (a regression the dirty edit introduced,
+    caught red before commit); limitation comment.
+  - ea40861242: the test gets a bare origin and a real `git push`; the
+    sandbox ignores global/system git config; comment says why a push leaves
+    a trace and names two more blind spots.
+  - 2e54675f6c: every clean run logs "checkout guard verdict: clean, HEAD
+    limb ..., stamp sweep ..." so the guard is never proven by silence.
+  - 0b6c05049b: innocence case for a ref broken before the run; the
+    mutation line says "new commits stamped for this job".
+  - infra/launchagents/wrappers/cron-agent.sh, scripts/tests/test_cron_agent_checkout_guard.sh.
+  The test is already wired in .github/workflows/immune-enforcement.yml by
+  #7800 (sentinel paths + run step), so no workflow change.
+
+proof: |
+  Deterministic floor 3 (source: path). Guard corpus 26/26 green on M5 and
+  26/26 on Pro (run from /tmp with Pro's Apple git 2.50.1, BSD grep and
+  bash 3.2, then removed). Against the wrapper on origin/main (#7800 only)
+  the same corpus fails 11 assertions; against 92915a8f8f it fails 10; the
+  pre-fix dirty edit failed the "earlier stamped branch deleted mid-run"
+  innocence case. Three guilt mutants of the final wrapper each turn it red
+  (pipefail removed; stamp limb kept on after a failed before-sweep;
+  committer match unbracketed). Five sibling cron-agent corpora green, two
+  pytest pins green, shellcheck counts equal to #7800's (wrapper 5, test 2),
+  bash -n clean. Decoy GIT_DIR left untouched by every corpus run.
+
+seat_note: >-
+  Codex could not review this session's commits: from M5 the system
+  resolver (Tailscale MagicDNS 100.100.100.100) returns no A record for
+  chatgpt.com while dig against 1.1.1.1 does, so codex exec failed with
+  "workspace routing discovery failed" (rc 1). Not retried blind; the cause
+  is local DNS, not the seat. GLM 5.2 (TP1) was dispatched next and died on
+  RemoteDisconnected after 15 s. Qwen 3.8 Max (TP1, a titolare seat) took
+  the second full review of the final head. Codex's counted review is the
+  predecessor's round on 2167eeffde (then f0fd67dd50).
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      HIGH (round 1, on 2167eeffde): the agent controls the env vars that
+      identify it; `unset GIT_COMMITTER_*` before committing in a side
+      worktree defeats the stamp.
+    status: CONFIRMED
+    resolution: >-
+      Accepted as a documented limitation: the wrapper comment names it and
+      states the threat model (a runaway agent following its prompt, not an
+      adversary). Both incidents (2026-09-28, 2026-09-30) were agents doing
+      what their prompt asked. The `sibling` innocence case is exactly this
+      shape and pins it as not caught. A real fence is OS-level (separate
+      user or read-only mount), out of this wrapper's reach.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      HIGH (round 1): --since filters on the committer date, which the agent
+      can backdate.
+    status: CONFIRMED
+    resolution: >-
+      Cured in 92915a8f8f: before/after hash sets, no date filter. Guilt case
+      "backdated to 2001" red on 2167eeffde, green after.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      HIGH (round 1): an unpushed commit whose worktree and branch are
+      deleted is unreachable from every ref and reflog, so the sweep misses
+      it.
+    status: CONFIRMED
+    resolution: >-
+      Accepted as a documented limitation ("a commit left on no ref and no
+      reflog"). Closing it needs a third mechanism (scanning new loose commit
+      objects), which the depth rule sends to a follow-up. Nothing is
+      published in that shape; the published shape (pushed) is caught.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MED (round 1): -F makes the match literal, not exact; job "audit"
+      matches "weekly-audit".
+    status: CONFIRMED
+    resolution: >-
+      Cured in c3a793daf0: --committer="<job@cron-agent.invalid>". Innocence
+      case "weekly-<job>" red on 92915a8f8f, green after; a mutant without
+      the brackets fails it.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MED (round 1): the sweep's exit status is ignored; a broken ref makes
+      git log fail and the empty result reads as no mutation.
+    status: CONFIRMED
+    resolution: >-
+      Cured in c3a793daf0: after-sweep failure fails the run closed (exit 3,
+      "sweep failed after the run"); before-sweep failure turns the limb off
+      and logs it. Guilt case "ref breaks mid-run" red on 92915a8f8f, green
+      after; innocence case "ref broken before the run" added in 0b6c05049b.
+  - seat: kimi-code/k3
+    objection: >-
+      HIGH x2 (round 1, on 2167eeffde): env override; --since backdating.
+    status: CONFIRMED
+    resolution: "Same dispositions as Codex HIGH 1 (accepted, documented) and HIGH 2 (cured in 92915a8f8f)."
+  - seat: kimi-code/k3
+    objection: >-
+      MED (round 1): the stamp sweep only runs inside the HEAD-guard block,
+      so it is skipped whenever HEAD vs origin/main is unmeasurable.
+    status: CONFIRMED
+    resolution: >-
+      Cured in c3a793daf0: the sweep runs on its own. Guilt case "stamped
+      branch while the HEAD limb is off" red on 92915a8f8f, green after.
+  - seat: kimi-code/k3
+    objection: >-
+      MED (round 1): only local refs are visible; a push from another clone
+      or an API-only commit leaves nothing local, and the test's update-ref
+      "push" manufactures a ref reality may not produce.
+    status: CONFIRMED
+    resolution: >-
+      Other clone and API-only: accepted, documented. Test fidelity: cured in
+      ea40861242, the side-worktree cases push for real to a bare origin and
+      an assertion fails the case if the push did not write the tracking ref
+      or left the local branch.
+  - seat: kimi-code/k3
+    objection: >-
+      MED (round 1): overlapping runs of the same job flag each other's
+      commits.
+    status: RETRACTED
+    resolution: >-
+      Refuted: acquire_lock() (wrapper, called before any tier runs) exits 0
+      with "SKIP: lock held by PID" while the previous run's PID is alive, so
+      two runs of one job never overlap.
+  - seat: kimi-code/k3
+    objection: >-
+      LOW (round 1): `git log | head -3` under pipefail can die on SIGPIPE.
+    status: CONFIRMED
+    resolution: >-
+      Cured by 92915a8f8f/c3a793daf0: the sweep pipeline is now
+      `git log | sort -u`, and sort reads all input. The remaining `head -3`
+      calls only trim display strings whose status is never judged.
+  - seat: kimi-code/k3
+    objection: >-
+      LOW (round 1): no guilt case for env override or backdating.
+    status: CONFIRMED
+    resolution: >-
+      Backdating: guilt case added with 92915a8f8f. Env override: pinned as a
+      documented non-detection by the `sibling` innocence case.
+  - seat: kimi-code/k3
+    objection: >-
+      HIGH (round 2, on c3a793daf0): the pipeline status is sort's, so the
+      fail-closed limb is dead code unless the wrapper sets pipefail.
+    status: RETRACTED
+    resolution: >-
+      Refuted: the wrapper's line 29 is `set -uo pipefail` and the corpus
+      runs the wrapper as its own bash process. A mutant with that line
+      changed to `set -u` fails the "ref breaks mid-run" case. Kimi's round 3
+      accepted this disposition.
+  - seat: kimi-code/k3
+    objection: >-
+      HIGH (round 2): the agent can also delete refs/remotes/origin/*,
+      erasing the last trace.
+    status: CONFIRMED
+    resolution: >-
+      Accepted as a documented limitation in ea40861242 (same class and same
+      follow-up as Codex HIGH 3).
+  - seat: kimi-code/k3
+    objection: >-
+      MED (round 2): a pushed branch only appears locally after a fetch, and
+      the wrapper never fetches.
+    status: RETRACTED
+    resolution: >-
+      Refuted by measurement: Pro's remote.origin.fetch is
+      +refs/heads/*:refs/remotes/origin/*, so `git push` writes the tracking
+      ref itself; the 2026-09-28 branch is on Pro as refs/heads and
+      refs/remotes/origin. The corpus now proves it with a real push.
+  - seat: kimi-code/k3
+    objection: >-
+      LOW (round 2): a detached process can commit after the after-sweep.
+    status: CONFIRMED
+    resolution: "Accepted, named in the limitation comment in ea40861242."
+  - seat: kimi-code/k3
+    objection: >-
+      MED (round 3, on ea40861242, verdict GO): commits stamped by job A
+      fetched mid-run would fail job B.
+    status: RETRACTED
+    resolution: >-
+      Refuted for the stated scenario: the stamp is per job and bracketed,
+      so B's sweep never matches A's commits (pinned by the "weekly-<job>"
+      case). The wrapper is deployed on Pro only (declared pair scope). The
+      same-job variant needs the documented other-clone blind spot first and
+      would still name a real mutation by that job: accepted.
+  - seat: kimi-code/k3
+    objection: >-
+      MED (round 3): a persistent before-sweep failure keeps the stamp limb
+      off run after run with one log line and no alert.
+    status: CONFIRMED
+    resolution: >-
+      Partly cured in 2e54675f6c: every clean run's verdict line says "stamp
+      sweep off", and the post-deploy observation reads that line. Paging on
+      a limb that is off is a follow-up, kept consistent with #7800's HEAD
+      limb, which is log-only when off.
+  - seat: kimi-code/k3
+    objection: >-
+      LOW x2 (round 3): no case for the before-sweep failure handler; the
+      log says "this run" for a commit a detached earlier process made.
+    status: CONFIRMED
+    resolution: >-
+      Cured in 0b6c05049b: innocence case "ref broken before the run" (a
+      mutant keeping the limb on fails it) and the line now reads "new
+      commits stamped for this job".
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      MED (final head 0b6c05049b, verdict GO): a cleanup cron deleting a
+      branch or removing a worktree inside the 0.32 s after-sweep could make
+      git log fail and page a clean run; retry once before failing closed.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted as a follow-up, not cured here. The page names "sweep failed
+      after the run", so a race is distinguishable from a stamped commit.
+      A one-shot retry changes the fail-closed limb itself; the depth rule
+      keeps it out of this PR.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      MED: checkout_marked_commits discards git's stderr, so a failed sweep
+      pages with no diagnostic.
+    status: CONFIRMED
+    resolution: >-
+      Accepted as a follow-up (alert quality, same PR as the retry). The
+      verdict and mutation lines already say which limb failed and when.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      LOW: on the fail-closed path the mutation line reads "new commits
+      stamped for this job on any ref: (sweep failed after the run)".
+    status: CONFIRMED
+    resolution: >-
+      Accepted, cosmetic: the parenthetical names the cause. Kimi round 3
+      raised the same line's duplicate commit list; both go to the
+      alert-quality follow-up.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      LOW: an empty before-set gives grep a one-empty-line pattern file.
+    status: RETRACTED
+    resolution: >-
+      The seat itself states it is correct on BSD and GNU grep under -x.
+      Measured: the side-worktree guilt case (empty before-set) passes on
+      M5 and on Pro's BSD grep 2.6.0.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      LOW: the broken-ref cases rely on git failing on a ref to a missing
+      object, which is not a documented contract.
+    status: RETRACTED
+    resolution: >-
+      A git that skipped broken refs silently would turn those cases red,
+      which is the intended alarm: the corpus runs in CI on every change to
+      the wrapper (immune-enforcement.yml).
+  - seat: kimi-code/k3
+    objection: >-
+      (round 3, first run, NO-GO) the shipped committer match is unbracketed
+      and the corpus is red at "weekly-<job>".
+    status: RETRACTED
+    resolution: >-
+      Void: the seat's cwd was the builder's scratchpad, and it read
+      mutbase/, the deliberately unbracketed guilt mutant. HEAD 0b6c05049b
+      line 425 is `--committer="<$(agent_commit_mark)>"`. Re-run from an
+      empty mktemp cwd against the real worktree: GO, corpus 26/26.
+  - seat: kimi-code/k3
+    objection: >-
+      LOW x2 (round 3 re-run, GO): on the fail-closed path the mutation line
+      claims "new commits stamped ... : (sweep failed after the run)"; the
+      verdict's "0 new" is hardcoded behind the checkout_mutated gate.
+    status: CONFIRMED
+    resolution: >-
+      First: same as Qwen's LOW, alert-quality follow-up. Second: correct by
+      construction today (the line only runs when nothing was marked);
+      deriving it from checkout_marked goes to the same follow-up.
+  - seat: claude-opus-5-5
+    objection: >-
+      Builder self-finding while finishing the dirty edit: `<<< "$marked_after"`
+      always feeds grep a trailing empty line, so an empty after-set read as
+      a mutation with no commit named.
+    status: CONFIRMED
+    resolution: >-
+      Cured in c3a793daf0 before it was committed. Innocence case "earlier
+      run's stamped branch deleted mid-run": rc 3 on the dirty edit, rc 0
+      after.
+
+receipts:
+  - claim: "deterministic Gear floor is 3, sourced from PATH"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <changed> --numstat-file <merge-base numstat>"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-10-03T07:21:00Z"
+    seat: claude-opus-5-5
+  - claim: "#7800 merged before this branch was rebased"
+    cmd: "gh pr view 7800 --json state,mergedAt,mergeCommit"
+    result: "MERGED 2026-10-03T02:29:57Z 90d61f729b; #7800 blobs equal origin/main for wrapper and test"
+    exit: 0
+    ts: "2026-10-03T07:18:00Z"
+    seat: claude-opus-5-5
+  - claim: "guard corpus red on older wrappers, green on the final one, decoy GIT_DIR untouched"
+    cmd: "GIT_DIR=<decoy> bash scripts/tests/test_cron_agent_checkout_guard.sh (beside the wrapper at <rev>, then in the worktree)"
+    result: "origin/main 90d61f729b: 11 FAIL; 92915a8f8f: 10 FAIL; final 0b6c05049b: 26 ok PASS; DECOY_UNTOUCHED"
+    exit: 0
+    ts: "2026-10-03T07:38:30Z"
+    seat: claude-opus-5-5
+  - claim: "guilt mutants of the final wrapper are each caught"
+    cmd: "scratchpad mut_generic.sh with MUT_SED = drop pipefail | keep stamp limb on | unbracket committer"
+    result: "5 FAIL | 4 FAIL | 1 FAIL (corpus red each time)"
+    exit: 0
+    ts: "2026-10-03T07:32:10Z"
+    seat: claude-opus-5-5
+  - claim: "the final corpus passes on Pro's real toolchain"
+    cmd: "ssh pro: copy wrapper+test to /tmp/cam-guardtest-0b6c05, bash the test, rm -rf"
+    result: "git 2.50.1 (Apple), BSD grep 2.6.0, bash 3.2.57: rc 0, 26 ok, PASS; dir removed"
+    exit: 0
+    ts: "2026-10-03T07:35:00Z"
+    seat: claude-opus-5-5
+  - claim: "sibling corpora, pins and lint unchanged"
+    cmd: "for t in oauth_cascade alert_verdict context_diet fingerprint_map no_git_commit_prompt; do bash scripts/tests/test_cron_agent_$t.sh; done; pytest test_immune_enforcement_trigger_symmetry.py test_self_repair_system_doctor_cron_agent.py; shellcheck; bash -n"
+    result: "5 PASS; 16 passed; shellcheck wrapper 5 -> 5, test 2 -> 2 (vs #7800); BASH_N_OK"
+    exit: 0
+    ts: "2026-10-03T07:33:00Z"
+    seat: claude-opus-5-5
+  - claim: "the live wrapper on Pro is a stale HOME copy and the sweep is cheap there"
+    cmd: "ssh pro: crontab agent lines, git hash-object ~/scripts/cron-agent.sh, timed git log --all --reflog -F --committer=<...>, remote.origin.fetch"
+    result: "4 agent-tier jobs call ~/scripts/cron-agent.sh; live blob = 030026f9b3 (pre-#7800); sweep rc 0 in 0.321 s; refspec +refs/heads/*:refs/remotes/origin/*"
+    exit: 0
+    ts: "2026-10-03T07:36:30Z"
+    seat: claude-opus-5-5
+
+  - claim: "pre-deploy baseline of the post-deploy observation on Pro"
+    cmd: 'ssh pro ''grep "checkout guard verdict" ~/logs/cron-agent/indexing-daily.log | tail -1; git -C ~/nuzantara log --all --reflog -F --committer="<indexing-daily@cron-agent.invalid>" --format=%H | wc -l'''
+    result: "0 verdict lines (wrapper not deployed), 0 stamped commits"
+    exit: 0
+    ts: "2026-10-03T07:40:41Z"
+    seat: claude-opus-5-5
+
+spend:
+  adversarial_rounds: 4
