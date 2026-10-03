@@ -1,0 +1,165 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+plan_ref: >-
+  PR (agent/air-m5/wa-team/t3-realpg-ci-0929, base main) - ledger item (c) of #7646: a CI job that
+  runs the real-PG suites of the T3 promise corpus with a floor, plus two comment-only fixes from
+  the #7654 gate. No production change.
+lanes:
+  - lane: wa-team-t3-realpg-ci-build
+    role: build
+    seat: "claude-sonnet-5 (wrote the job, ran both council rounds, applied findings by hand)"
+  - lane: wa-team-t3-realpg-ci-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1 REWORK on 1 HIGH + 1 MEDIUM + 2 LOW; delta GO-WITH-NITS on 1 LOW)"
+  - lane: wa-team-t3-realpg-ci-council-kimi
+    role: review
+    seat: "kimi-code/k3 (round 1 REWORK on 2 HIGH + 3 MEDIUM + 1 LOW; delta first attempt timed out, retry GO-WITH-NITS on 1 conditional HIGH + 2 MEDIUM + 2 LOW)"
+
+what_changed: |
+  1. New job `wa team promises real-pg tests` in wa-team-promises-tests.yml: picks the newest
+     /usr/lib/postgresql/<major>/bin that has initdb and pg_ctl (fails loudly if none), appends it
+     to GITHUB_PATH, then runs ONLY scripts/tests/test_wa_team_promises*real_pg.py with
+     WA_TEAM_PROMISES_REAL_PG=1. The step fails on a non-zero exit, on any skipped / deselected /
+     xfailed / xpassed in the summary line, and on a passed count below FLOOR=56 (measured: 56
+     real-PG tests, equal to the unit job's 56 skips at this commit).
+  2. Header comment of the workflow rewritten: real-PG now runs in its own job.
+  3. Comment-only: G-LOW-1 no longer claims deferred reads are caught by the static scan (a
+     two-line read-then-fallback shape is covered by neither test); G7 header says "any record
+     captured by caplog" with the level the test sets.
+
+  Council round 1 changed the design (whole-corpus glob replaced by the real_pg-only glob; apt
+  fallback removed in favour of failing loudly); round 2 nits were applied in the last commit,
+  which no seat re-reviewed. The kimi delta first attempt timed out at 300s (journaled ok:false);
+  journal timestamps are result-file times, council_journal.py was not used at dispatch.
+
+proof: |
+  Verbatim real-PG step run locally with server binaries on PATH:
+    FLOOR=56 -> rc 0, "56 passing cases (floor 56)"
+    FLOOR=57 -> rc 1, "below the floor of 57"
+    REAL_PG unset -> rc 1 (no 'N passed' summary: everything skipped)
+  PG-binary step with no binaries present -> loud error, nonzero.
+  Unit corpus unchanged: 249 passed, 56 skipped. Production file byte-identical to origin/main.
+  The observation that matters is the CI run of the new job on this push, recorded in the PR body.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1 HIGH: the floor covers the whole test_wa_team_promises*.py corpus, so unit tests can satisfy it after real-PG tests are deleted; add a real-PG-only invocation."
+    status: CONFIRMED
+    resolution: "Job runs only the *real_pg.py files; FLOOR=56 is their own count."
+  - seat: kimi-code/k3
+    objection: "Round 1 HIGH: same whole-corpus glob problem, plus a duplicated unit run inflating wall time."
+    status: CONFIRMED
+    resolution: "Same fix."
+  - seat: kimi-code/k3
+    objection: "Round 1 HIGH: PASSED extraction can never succeed because pytest -q pads its summary with '='."
+    status: RETRACTED
+    resolution: "False on disk: with -q the summary is 'N passed in Xs' (seen in local runs, and the unit job parses it the same way). The step was still hardened to grep the summary line instead of tail -1."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1 MEDIUM: the apt fallback installs an unpinned postgresql metapackage that starts a cluster on 5432."
+    status: CONFIRMED
+    resolution: "Fallback removed; the step fails loudly when the image has no server binaries (kimi MEDIUM 5, same point)."
+  - seat: codex-gpt-5.6-sol
+    objection: "Round 1 LOW: tail -1 is a brittle summary locator; the workflow comment claims are stale."
+    status: CONFIRMED
+    resolution: "Summary found by grep; comments corrected (two floors, the real-PG job enabling the variable)."
+  - seat: kimi-code/k3
+    objection: "Round 1 MEDIUM: FLOOR=305 is underivable; 15-minute timeout risk."
+    status: CONFIRMED
+    resolution: "Floor is now the measured 56 of the focused glob; timeout kept at 15 min (the 56 tests run in about 12 s locally, one module-scoped cluster per file)."
+  - seat: kimi-code/k3
+    objection: "Delta HIGH (conditional): the G7 comment's 'DEBUG and up' is unverified."
+    status: CONFIRMED
+    resolution: "Checked on disk: the test uses caplog.at_level(logging.DEBUG); the comment now says so."
+  - seat: kimi-code/k3
+    objection: "Delta MEDIUM: a real-PG test that stops touching PG (stubbed fixture) still counts toward the floor."
+    status: PLAUSIBLE
+    resolution: "OPEN, accepted: no cheap shell fix; stated in the job comment as a residual gap."
+  - seat: kimi-code/k3
+    objection: "Delta LOW: newest-major selection can fail despite an older usable major; comment couplings (floor equals the skip count)."
+    status: CONFIRMED
+    resolution: "Loop over candidates newest-first taking the first with both binaries; the skip-count coupling was removed from the comment."
+  - seat: codex-gpt-5.6-sol
+    objection: "Delta LOW: the header still says binaries are installed only if missing."
+    status: CONFIRMED
+    resolution: "Header reworded to the fail-loudly behaviour."
+  - seat: kimi-code/k3
+    objection: "Delta MEDIUM: 15-minute timeout is thin for cluster-spinning tests."
+    status: PLAUSIBLE
+    resolution: "OPEN, judged low risk: measured 12 s locally for all 56; the first CI run is the observation and the timeout can be raised."
+
+receipts:
+  - claim: "Real-PG step, floor exactly met."
+    cmd: "bash -e <step extracted from the workflow> (FLOOR=56)"
+    result: "wa_team_promises real-PG corpus: 56 passing cases (floor 56)"
+    exit: 0
+    ts: "2026-09-29T11:20:00Z"
+    seat: claude-sonnet-5
+  - claim: "Real-PG step, floor one above."
+    cmd: "bash -e <step extracted from the workflow> (FLOOR=57)"
+    result: "below the floor of 57"
+    exit: 1
+    ts: "2026-09-29T11:20:00Z"
+    seat: claude-sonnet-5
+  - claim: "Real-PG step with the variable unset (all skipped) must not pass."
+    cmd: "bash -e <step with WA_TEAM_PROMISES_REAL_PG removed>"
+    result: "no 'N passed' summary line -> error"
+    exit: 1
+    ts: "2026-09-29T11:20:00Z"
+    seat: claude-sonnet-5
+  - claim: "Production file untouched."
+    cmd: "git diff --quiet origin/main -- scripts/wa_team_promises.py"
+    result: "identical"
+    exit: 0
+    ts: "2026-09-29T11:50:00Z"
+    seat: claude-sonnet-5
+  - claim: "codex round 1, env-scrubbed, read-only sandbox, high effort, diff only."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" codex exec --skip-git-repo-check -s read-only -m gpt-5.6-sol -c model_reasoning_effort=high - < prompt1.txt'
+    result: "VERDICT: REWORK (1 HIGH, 1 MEDIUM, 2 LOW)"
+    exit: 0
+    ts: "2026-09-29T11:35:01Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi round 1 through scripts/kimi_client.py (no-tools agent file, env -i)."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" python3 scripts/kimi_client.py "$(cat prompt1.txt)"'
+    result: "VERDICT: REWORK (2 HIGH, 3 MEDIUM, 1 LOW)"
+    exit: 0
+    ts: "2026-09-29T11:37:12Z"
+    seat: kimi-code/k3
+  - claim: "codex delta round on the round-1 diff plus the fix delta."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" codex exec --skip-git-repo-check -s read-only -m gpt-5.6-sol -c model_reasoning_effort=high - < prompt2.txt'
+    result: "VERDICT: GO-WITH-NITS (1 LOW)"
+    exit: 0
+    ts: "2026-09-29T11:39:23Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "kimi delta round, first attempt."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" python3 scripts/kimi_client.py "$(cat prompt2.txt)"'
+    result: "timed out after 300s, no judgement"
+    exit: 1
+    ts: "2026-09-29T11:43:44Z"
+    seat: kimi-code/k3
+  - claim: "kimi delta round, retry."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" python3 scripts/kimi_client.py "$(cat prompt2.txt)"'
+    result: "VERDICT: GO-WITH-NITS (1 conditional HIGH, 2 MEDIUM, 2 LOW)"
+    exit: 0
+    ts: "2026-09-29T11:46:31Z"
+    seat: kimi-code/k3
+
+pii_scan: clean
+pii_scan_note:
+  "The prompts carried prose written by this session and the git diff of a workflow plus two
+  test-file comments. No fixture content, client data, phone numbers or message text. Both seats
+  ran with a scrubbed environment (env -i, HOME and PATH only); kimi through the repo wrapper's
+  no-tools agent."
+
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+
+appetite_exceeded: |
+  Both ceilings held (about 2 wall-clock hours including the wait for #7654 to merge; 2
+  adversarial rounds). The last commit's nits were not re-reviewed by the seats.
+
+diff:
+  files: 6
+  net_lines: |
+    Workflow, two test files (comments only) and three evidence files. No production code.
+    Line totals are deliberately not declared: the pack is part of the diff it would count.

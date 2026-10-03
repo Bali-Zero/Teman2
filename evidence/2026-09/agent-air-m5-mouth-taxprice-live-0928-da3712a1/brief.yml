@@ -1,0 +1,30 @@
+task: >-
+  Fase 0 lane C: wire /services/tax packages to exact PricingTool catalogue
+  SKUs, replacing the "Check live pricing"/"Contact" placeholder with live
+  IDR prices for the packages that map 1:1 onto a catalogue row, mirroring
+  the pattern visa packages already use.
+lane: mouth/taxprice-live
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: Floor 1, source none — 101 net lines across a data-file edit and
+  a new test file, well under any size/churn threshold.
+acceptance:
+  A1: services_data.tax-pricing.test.ts red on origin/main content, green on
+    HEAD; pricing-snapshot.test.ts, ServicePricing.test.tsx and
+    bali-zero-prices.test.ts stay green; tsc --noEmit exit 0; eslint clean;
+    prettier --check clean.
+  A2: live /services/tax page (npx next dev --webpack -p 3132) renders 7 of
+    9 tax package cards with a numeric IDR price sourced from
+    getExactSnapshotPrice, the 2 ambiguous packages keep "Contact for
+    quote", property packages unchanged.
+  A3: no hardcoded monetary figure introduced in services_data.ts; every
+    wired package's livePriceKey/livePriceCategory resolves through the
+    same pricing-snapshot.ts path visa packages use (no new fallback, no
+    new snapshot logic).
+out_of_scope: >-
+  SPT Annual Company (Operational) and Monthly Tax Report (no exact
+  catalogue match — ambiguous among Annual Basic Package A-D / Annual Tax
+  Company, and 8 basic/bundled x tier rows); compliance_retainers and EFIN
+  Application SKUs (no existing display package names them); property
+  packages (no property SKU exists yet, per spec); page redesign (Fase 2).

@@ -1,0 +1,549 @@
+# contexts_matrix.yaml — the 14 status contexts branch protection on main REQUIRES, each mapped
+# to what a local run can honestly claim. Generated 2026-09-26 by measuring, not by reading YAML:
+# `mapping: executed` means every command under `local` was run in THIS worktree with `$PY` and
+# returned rc=0 (rc + wall seconds recorded beside it). Anything short of that is blocked or
+# not_implemented with the exact reason. `coverage: partial` = executed, but named CI steps were
+# NOT run (listed in `not_run`), so a local PASS is a subset of the hosted verdict, not parity.
+#
+# Source of the 14 names: live branch protection read 2026-09-26 (gh api); cross-checked with
+# infra/required.d/contexts.json (snapshot 2026-09-21, same 14 names, same workflow_file/job_id).
+#
+# `local.cmd` = one argv. `local.steps` = several argv run in order (the context is green only if
+# all are). Both use `$PY` for the interpreter. `kind`: cmd | pytest | trusted_pytest | rule.
+# trusted_base_required=true means the check's OWN logic (classifier / partitioner / guard and its
+# self-test) must be taken from the BASE ref when judging a candidate, or a PR can self-approve.
+#
+# blocked = a precise obstacle stopped a full local run (see `blocker`, `partial_evidence`).
+# not_implemented = no local mapping exists yet. not_applicable_rule = 0 today: no required context
+# can be statically N/A (a required check must always report); per-diff N/A is the runner's
+# change_map decision, not this file's.
+
+summary:
+  generated_at: "2026-09-26T16:11:00Z"
+  base_sha: 41ca67a43f31
+  host: Nuzantara
+  interpreter: /Users/nuzantara/.nuzantara-pilots/local-ci/lci-20260926T152929Z-25281807/venv/bin/python
+  required_contexts: 14
+  executed: 4
+  not_applicable_rule: 0
+  blocked: 9
+  not_implemented: 1
+  executed_full: 1 # R1 gate
+  executed_partial: 3 # catE, actionlint, Merah Putih — see `not_run`
+  never_claim_parity_for:
+    - "E2E Tests (Playwright)"
+    - "Backend Tests (Python)"
+    - "CodeQL Analysis (python)"
+    - "CodeQL Analysis (javascript)"
+    - "Frontend Tests (Next.js) (mouth, true)"
+    - "Every organ is born with its genes"
+    - "antidotes"
+    - "Harness floor recompute"
+    - "Every guard proves guilt AND innocence"
+    - "Visa Oracle fullstack smoke"
+
+contexts:
+  - name: "E2E Tests (Playwright)"
+    workflow_file: .github/workflows/tests.yml
+    job_id: e2e-tests
+    purpose: Playwright specs of apps/mouth against a live FastAPI backend on :8000 with Postgres + Redis.
+    trusted_base_required: false
+    local:
+      kind: cmd
+      cwd: "."
+      cmd: [npx, playwright, test, --config=playwright.config.ts] # run from apps/mouth after the backend is up
+      needs: [python, node, postgres, network]
+    mapping: blocked
+    blocker: >-
+      Job needs Postgres + Redis services, a uv lock-pinned backend install, a backend booted on :8000,
+      `npm install` and `playwright install --with-deps` (network). Worktree node_modules and
+      apps/backend-rag/.venv are symlinks into the main checkout, so installing or running from here
+      writes outside the worktree (and `npm install/ci` from a worktree is banned: it corrupts the
+      shared node_modules). No Postgres on this host (pg_isready absent); docker is up but no image was pulled.
+    smallest_next_action: >-
+      In an executor lane with its own clone: `docker run` a postgres:16 + redis, `npm ci` from that
+      clone's ROOT, boot uvicorn, then `npx playwright test --list` (the credential-free collection
+      step) as the first cheap proof before the full run.
+
+  - name: "Backend Tests (Python)"
+    workflow_file: .github/workflows/tests.yml
+    job_id: backend-tests
+    purpose: Aggregator over backend-static + 3 backend shards; proves the shards tiled the corpus exactly, using the BASE ref's partitioner.
+    trusted_base_required: true
+    local:
+      kind: trusted_pytest
+      cwd: apps/backend-rag
+      modules: [scripts/ci/test_shard_tests.py] # only the partitioner corpus is locally runnable today
+      needs: [python, postgres, network]
+    mapping: blocked
+    blocker: >-
+      The shards run the whole backend pytest corpus (needs the lock-pinned backend deps and a
+      Postgres); the partition guard needs shard receipts produced by those runs. Backend venv here is
+      a symlink into the main checkout (writing through it is outside the worktree) and no Postgres is up.
+    partial_evidence:
+      - argv: [$PY, scripts/ci/test_shard_tests.py]
+        rc: 0
+        seconds: 0.4
+        result: 31 tests OK (the partitioner's own guilt+innocence corpus, workflow step 4 of 8)
+    smallest_next_action: >-
+      Wire `trusted_pytest`: extract scripts/ci/shard_tests.py from BASE into a temp dir (workflow step 5),
+      run its `--check` partition pass against the candidate's test tree without executing the shards
+      (proves tiling, no Postgres needed); leave shard execution to a docker-backed lane.
+
+  - name: "CodeQL Analysis (python)"
+    workflow_file: .github/workflows/security.yml
+    job_id: codeql
+    purpose: GitHub CodeQL security-extended,security-and-quality analysis of the python source (matrix language=python).
+    trusted_base_required: false
+    local:
+      kind: cmd
+      cwd: "."
+      cmd: []
+      needs: [github_hosted]
+    mapping: blocked
+    blocker: >-
+      GitHub-hosted CodeQL action (github/codeql-action init/autobuild/analyze) with no local executor;
+      the `codeql` CLI is not installed on this host (`which codeql` -> not found). The job also
+      self-skips per path (RUN_THIS_LANGUAGE) and uploads SARIF, so a local substitute would not be the same check.
+    smallest_next_action: >-
+      Do not emulate. Keep this context hosted-only; the local run reports it as BLOCKED(github_hosted),
+      which caps the local overall at SUBSET_PASS — never PASS.
+
+  - name: "CodeQL Analysis (javascript)"
+    workflow_file: .github/workflows/security.yml
+    job_id: codeql
+    purpose: GitHub CodeQL security-extended,security-and-quality analysis of the javascript/typescript source (matrix language=javascript).
+    trusted_base_required: false
+    local:
+      kind: cmd
+      cwd: "."
+      cmd: []
+      needs: [github_hosted]
+    mapping: blocked
+    blocker: >-
+      Same as the python leg: GitHub-hosted CodeQL, no local executor, `codeql` CLI absent on this host.
+    smallest_next_action: Keep hosted-only; report BLOCKED(github_hosted) so the local verdict can never read as parity.
+
+  - name: "Frontend Tests (Next.js) (mouth, true)"
+    workflow_file: .github/workflows/tests.yml
+    job_id: frontend-tests
+    purpose: Matrix leg app=mouth, coverage=true — GARUDA contract check, tsc --noEmit, vitest with coverage + threshold, packages/core, admin-dashboard-local and wa-mirror suites.
+    trusted_base_required: false
+    local:
+      kind: cmd
+      cwd: apps/mouth
+      cmd: [npx, vitest, --run, --coverage]
+      needs: [node]
+    mapping: blocked
+    blocker: >-
+      Worktree node_modules and apps/mouth/node_modules are symlinks to the main checkout: vitest/tsc
+      write caches under node_modules/.vite and a coverage dir, i.e. outside this worktree (forbidden
+      in a prepare-only lane), and `npm ci` from a worktree corrupts the shared tree. wa-mirror step runs
+      its own `npm ci` (network). Not executed, so nothing is claimed.
+    smallest_next_action: >-
+      Executor lane with a private clone: `npm ci` at ROOT once, then run the 7 workflow commands in order
+      (openapi-typescript --check, tsc --noEmit, vitest --coverage, test:coverage:check, packages/core,
+      admin-dashboard-local, wa-mirror) and record rc+seconds per command.
+
+  - name: "Every organ is born with its genes"
+    workflow_file: .github/workflows/organ-conformance.yml
+    job_id: conformance
+    purpose: Organ-conformance census + ratchet + its own guilt/innocence corpora + registry checksum.
+    trusted_base_required: true
+    local:
+      kind: trusted_pytest
+      cwd: "."
+      steps:
+        - [$PY, infra/organ-conformance/check_organ_conformance.py]
+        - [$PY, -m, pytest, -q, scripts/tests/test_organism_stale_detector.py]
+        - [
+            $PY,
+            -m,
+            pytest,
+            -q,
+            scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py,
+            scripts/tests/test_organ_heartbeat_workflow_wiring.py,
+          ]
+        - [
+            $PY,
+            -m,
+            pytest,
+            -q,
+            scripts/tests/test_self_reporting_cron_own_plist_margin.py,
+            scripts/tests/test_self_reporting_cron_workflow_wiring.py,
+          ]
+        - [
+            $PY,
+            infra/organ-conformance/check_baseline_ratchet.py,
+            --base,
+            origin/main,
+          ]
+        - [$PY, -m, pytest, -q, infra/organ-conformance/]
+        - [
+            $PY,
+            -m,
+            organism.tools.validate_organs_registry,
+            apps/organism/organism/organs_registry.yaml,
+          ] # PYTHONPATH=<worktree>:<worktree>/apps/organism
+      needs: [python]
+    mapping: blocked
+    blocker: >-
+      Local run is RED, not green: `pytest infra/organ-conformance/` -> 1 failed, 168 passed (rc=1, 19.9 s);
+      test_gene_g2_heartbeat_fires.py::test_a_clean_run_reports_ok_and_says_what_it_did — the real zsh
+      wrapper exits 2 where the test expects 0. CI runs it on an Ubuntu runner with `apt zsh` + it_IT
+      locale; this host is macOS (BSD userland). Root cause not isolated (macOS-userland difference is a
+      hypothesis, NOT verified), so the failure cannot be classed as a product regression or a platform gap.
+    partial_evidence:
+      - {
+          argv: "check_organ_conformance.py",
+          rc: 0,
+          seconds: 3.4,
+          result: "170 plists scanned, 106 grandfathered, 0 regressions, 0 non-conformant births",
+        }
+      - {
+          argv: "pytest test_organism_stale_detector.py",
+          rc: 0,
+          seconds: 5.6,
+          result: "66 passed",
+        }
+      - {
+          argv: "pytest heartbeat_exceeds_poller + workflow_wiring",
+          rc: 0,
+          seconds: 1.5,
+          result: "4 passed, 1 skipped (the documented live-snapshot skip)",
+        }
+      - {
+          argv: "pytest self_reporting_cron plist_margin + wiring",
+          rc: 0,
+          seconds: 1.5,
+          result: "9 passed",
+        }
+      - {
+          argv: "check_baseline_ratchet.py --base origin/main",
+          rc: 0,
+          seconds: 0.2,
+          result: "112 grandfathered (was 112), no growth; local origin/main ref, no fetch",
+        }
+      - {
+          argv: "pytest infra/organ-conformance/",
+          rc: 1,
+          seconds: 19.9,
+          result: "1 failed, 168 passed",
+        }
+      - {
+          argv: "validate_organs_registry",
+          rc: 0,
+          seconds: 0.3,
+          result: "organs_registry.yaml valid",
+        }
+    smallest_next_action: >-
+      Run the single failing test with `-s` and capture the zsh wrapper's stderr (rc=2) to decide platform
+      gap vs regression; if platform, add a `platform_skip` receipt (never a silent deselect) and let the
+      hosted context carry that one test.
+
+  - name: "R1 gate — adversarial review present"
+    workflow_file: .github/workflows/adversarial-review-gate.yml
+    job_id: gate
+    purpose: Generator!=grader gate — a research/**/*.md in the diff must declare a non-author adversarial_review seat plus an "Adversarial review" section.
+    trusted_base_required: true
+    local:
+      kind: trusted_pytest
+      cwd: "."
+      steps:
+        - [$PY, scripts/check_adversarial_review.py, --selftest]
+        - [$PY, scripts/check_adversarial_review.py, --diff, "<BASE_SHA>"] # candidate diff vs base; observed with origin/main
+      needs: [python]
+    mapping: executed
+    coverage: full
+    observed:
+      - {
+          argv: "check_adversarial_review.py --selftest",
+          rc: 0,
+          seconds: 0.5,
+          result: "SELFTEST OK — 27 checks",
+        }
+      - {
+          argv: "check_adversarial_review.py --diff origin/main",
+          rc: 0,
+          seconds: 0.3,
+          result: "no research files in scope (HEAD == origin/main, so the diff is empty: this run proves the harness, not a candidate)",
+        }
+    caveat: The CI step first runs `git fetch origin $BASE_SHA` (network); local uses the existing origin/main ref. For trust the script must be run from the BASE checkout, not the candidate's.
+    blocker: ""
+    smallest_next_action: Run against a real candidate branch with BASE_SHA = the merge base and the script taken from `git show BASE:scripts/check_adversarial_review.py`.
+
+  - name: "antidotes"
+    workflow_file: .github/workflows/immune-enforcement.yml
+    job_id: antidotes
+    purpose: Immune-system antidotes — secret/claim lints with selftests, a 68-file unit corpus and ~45 shell/pytest guilt+innocence corpora (66 steps).
+    trusted_base_required: true
+    local:
+      kind: trusted_pytest
+      cwd: "."
+      steps:
+        - [$PY, scripts/lint_retracted_claims.py, --selftest]
+        - [$PY, scripts/lint_retracted_claims.py, --all]
+        - [$PY, scripts/lint_telegram_tokens.py, --selftest]
+        - [$PY, scripts/lint_telegram_tokens.py, --all]
+        - [$PY, scripts/lint_pg_dsn_credentials.py, --selftest]
+        - [$PY, scripts/lint_pg_dsn_credentials.py, --all]
+        - [$PY, scripts/lint_google_oauth_credentials.py, --selftest]
+        - [$PY, scripts/lint_google_oauth_credentials.py, --all]
+        - [$PY, scripts/tests/test_gateway_callers_read_the_verdict.py]
+        - [$PY, scripts/ci/lint_queue_field_verdict.py, --selftest]
+        - [$PY, scripts/ci/lint_queue_field_verdict.py]
+        - [$PY, scripts/lint_arm_probe.py, --selftest]
+        - [$PY, scripts/lint_arm_probe.py]
+      needs: [python, network]
+    mapping: blocked
+    blocker: >-
+      Only 13 of 66 workflow steps were run (all green). Step 9, the 68-file unit corpus
+      (`pytest -n 4`), was run serially and hit the 120 s cap (rc=124): pytest-xdist is not in the pilot
+      venv. Step 7 needs `pip install detect-secrets` (network, not installed). ~45 later shell/pytest
+      corpora (steps 16-65) are unmapped. A partial green here would be a subset, so it is not claimed.
+    partial_evidence:
+      - {
+          commands: 13,
+          rc: 0,
+          seconds_total_wall: 19.3,
+          result: "retracted-claims (3052 files), telegram-tokens (22638), pg-dsn (22638), google-oauth (22638), gateway-callers (32 read the verdict, 0 blind), queue-field-verdict (9819 files, 0 violations), arm-probe — every selftest and full scan clean",
+        }
+      - {
+          argv: "pytest -q -p no:cacheprovider <68 step-9 files>",
+          rc: 124,
+          seconds: 120.0,
+          result: "TIMEOUT (serial, no xdist)",
+        }
+    smallest_next_action: >-
+      Add pytest-xdist==3.8.0 to the pilot venv (needs owner-authorised pip) and re-run step 9 with `-n 4`
+      and a 300 s cap; then enumerate steps 16-65 into `steps` with the same rc+seconds receipts.
+
+  - name: "Harness floor recompute"
+    workflow_file: .github/workflows/harness-floor.yml
+    job_id: harness-floor
+    purpose: Recomputes the deterministic gear floor from the diff (base-ref checkout, "grader self-protects"), compares it to the declared evidence/brief.yml gear, validates the Gear-3 pack and the Bites contract.
+    trusted_base_required: true
+    local:
+      kind: rule
+      cwd: "."
+      cmd: []
+      needs: [python, github_hosted]
+    mapping: not_implemented
+    blocker: >-
+      Needs PR context the local runner does not model: BASE/HEAD sha + PR number for
+      scripts/ci/hotzone_changed_files.sh (queries the GitHub API), the per-PR evidence-path resolver,
+      and `vars.HARNESS_ENFORCEMENT`. The workflow deliberately runs the BASE copy of
+      evidence_pack_lint.py, which a local run must reproduce via `git show BASE:` to stay honest.
+      Only the lint's own selftest ran here (rc=0, 0.2 s), which is not this check.
+    smallest_next_action: >-
+      Implement a `harness_floor` rule: enumerate changed files with `git diff --name-only BASE...HEAD`
+      (no gh), run BASE's evidence_pack_lint.py --changed-files-file, and compare gear vs floor; mark
+      BLOCKED when evidence_paths.py or the hot-zone list is not resolvable offline.
+
+  - name: "actionlint — workflow schema + expression gate"
+    workflow_file: .github/workflows/actionlint.yml
+    job_id: lint
+    purpose: actionlint (pinned 1.7.12) over every workflow for schema/expression/untrusted-input errors, plus the workflow-timeout floor lint.
+    trusted_base_required: true
+    local:
+      kind: cmd
+      cwd: "."
+      steps:
+        - [$PY, scripts/lint_workflow_timeout_floor.py]
+        - [actionlint, -no-color, "-shellcheck="]
+      needs: [python]
+    mapping: executed
+    coverage: partial
+    observed:
+      - {
+          argv: "lint_workflow_timeout_floor.py",
+          rc: 0,
+          seconds: 0.8,
+          result: "clean (165 jobs scanned, floor 10m)",
+        }
+      - {
+          argv: "actionlint -no-color -shellcheck=",
+          rc: 0,
+          seconds: 0.0,
+          result: "0 errors in 123 files (verbose); local binary 1.7.12 == CI pin 1.7.12",
+        }
+    not_run:
+      - "download + sha256 verify of the pinned linux tarball (network); local binary is a Homebrew source build — same version, hash not comparable"
+      - "guilt control: no known-bad workflow was fed to the local binary in this pass"
+    caveat: pyflakes rule disabled (not installed) — CI runs with `-shellcheck=` and the runner's pyflakes state, which is not pinned by the workflow.
+    blocker: ""
+    smallest_next_action: Feed one deliberately broken workflow (temp dir) through the same argv to record a guilt receipt next to the innocence one.
+
+  - name: "Every guard proves guilt AND innocence"
+    workflow_file: .github/workflows/guard-conformance.yml
+    job_id: conformance
+    purpose: Guard-conformance census (registry vs code, proofs, phantoms, armed) plus ~27 hook/guard guilt+innocence corpora.
+    trusted_base_required: true
+    local:
+      kind: trusted_pytest
+      cwd: "."
+      cmd: []
+      needs: [python, network]
+    mapping: blocked
+    blocker: >-
+      Local run is RED on one group: `pytest scripts/tests/test_window_jump_shell.py
+      scripts/tests/test_tmux_jump_shell.py scripts/tests/test_nz_jump_model_alias.py
+      infra/claude-hooks/test_probe_log_cap.py` -> 2 failed, 33 passed (rc=1, 79.8 s):
+      test_window_jump_shell.py::test_native_route_opens_by_id_types_into_new_then_exits_and_closes_old and
+      test_tmux_jump_shell.py::test_new_window_next_to_own_window_then_exit_into_own_pane_by_id. These drive
+      real tmux/terminal windows and were run from inside a live operator tmux session on Pro (cause not
+      isolated — environment interference is a hypothesis, NOT verified). Workflow step 18 (apt tmux +
+      wa_army_watcher) and step 21 (fastapi + asyncpg, absent from the venv) were not run.
+    partial_evidence:
+      - {
+          commands: 29,
+          rc: 0,
+          result: "census (0 violations, all guards armed in CI), 12 infra/claude-hooks suites, fuzz harness 445/445, evidence_pack_lint 766 passed + selftest, stage_council_journal 19, harness_fable_gate 30, secret-expansion 64/64 + 28, context-window-guard, jump_resume+window_jump 59, window_jump_gesture 37, child/codex suites 205, redaction 183 cases, injected-surface hook, vercel_should_build 48",
+        }
+      - {
+          argv: "pytest window_jump_shell + tmux_jump_shell + nz_jump_model_alias + probe_log_cap",
+          rc: 1,
+          seconds: 79.8,
+          result: "2 failed, 33 passed",
+        }
+    smallest_next_action: >-
+      Re-run those two tests from a non-tmux, non-interactive context (detached process, TMUX unset) and, if
+      green, teach the runner to unset TMUX/window env for this group; then run steps 18 and 21 in a lane
+      that has tmux and fastapi/asyncpg.
+
+  - name: "Visa Oracle fullstack smoke"
+    workflow_file: .github/workflows/tests.yml
+    job_id: visa-oracle-fullstack-smoke
+    purpose: Disposable-DB fullstack smoke of Visa Oracle (backend.scripts.visa_engine.fullstack_smoke) with Playwright chromium.
+    trusted_base_required: false
+    local:
+      kind: cmd
+      cwd: apps/backend-rag
+      cmd: [$PY, -u, -m, backend.scripts.visa_engine.fullstack_smoke]
+      needs: [python, node, postgres, network]
+    mapping: blocked
+    blocker: >-
+      Needs a Postgres service (none running here), the lock-pinned backend deps via uv (venv is a symlink into
+      the main checkout), postgresql-client, `npm install` and `playwright install --with-deps chromium`
+      (network). The smoke creates and drops a disposable database, so it must not point at a shared server.
+    smallest_next_action: >-
+      Executor lane: start a throwaway postgres in docker on a random port, export its DSN, run the smoke
+      once with the 540 s cap the workflow uses and record rc+seconds.
+
+  - name: "Merah Putih DAY palette holds its contrast law"
+    workflow_file: .github/workflows/merah-putih-day-contrast.yml
+    job_id: contrast-guard
+    purpose: WCAG-style contrast law over the Merah Putih DAY palette tokens, plus a guilt control that mutates the ink token and expects the guard to go red.
+    trusted_base_required: true
+    local:
+      kind: pytest
+      cwd: "."
+      modules: [scripts/tests/test_merah_putih_day_contrast.py]
+      cmd: [$PY, -m, pytest, -q, scripts/tests/test_merah_putih_day_contrast.py]
+      needs: [python]
+    mapping: executed
+    coverage: partial
+    observed:
+      - {
+          argv: "pytest -q scripts/tests/test_merah_putih_day_contrast.py",
+          rc: 0,
+          seconds: 4.1,
+          result: "64 passed, 3 skipped",
+        }
+    not_run:
+      - "workflow step 5 (guilt control): it rewrites apps/mouth/src/lib/theme/merahPutihDayVars.ts in place and restores it — not done in a prepare-only worktree; needs a temp copy of the tree"
+      - "workflow step 3 (path sentinel): CI decides run/skip per PR diff; local always runs the full corpus"
+      - "the 3 skipped tests were not investigated"
+    blocker: ""
+    smallest_next_action: Run the guilt control against a `cp -R` of the token file in a temp tree (mutate, expect rc!=0, restore), and read the 3 skip reasons.
+
+  - name: "catE-sovereignty-lint"
+    workflow_file: .github/workflows/catE-sovereignty-lint.yml
+    job_id: catE-sovereignty-lint
+    purpose: Category-E guardian — paid-Anthropic-endpoint ban (constructor + env assignment), ban-prose lint, Law-5 no-autonomous-publish lint, world-readable apps/*/.env, plus its own corpora.
+    trusted_base_required: true
+    local:
+      kind: trusted_pytest
+      cwd: "."
+      steps:
+        - [$PY, -m, pytest, scripts/tests/test_ban_predicates.py, -q]
+        - [
+            $PY,
+            -m,
+            pytest,
+            -q,
+            scripts/test_lint_paid_llm_entity.py,
+            scripts/tests/test_lint_ban_prose.py,
+            scripts/tests/test_vendor_authorization_fence.py,
+            scripts/tests/test_typesafe_client_pin.py,
+            scripts/tests/test_cate_trigger_parity.py,
+          ]
+        - [bash, scripts/tests/test_cate_paid_budget.sh]
+        - - bash
+          - -c
+          - |
+            set -uo pipefail
+            BASELINE=$(awk '!/^[[:space:]]*(#|$)/ {n++} END {print n+0}' .github/workflows/catE-paid-anthropic-baseline.txt)
+            HITS=$(grep -rnE 'Anthropic\(\s*api_key' --include='*.py' . | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_' || true)
+            COUNT=$(printf '%s' "$HITS" | grep -c . || true)
+            [ "$COUNT" -gt "$BASELINE" ] && exit 1
+            HITS=$(grep -rnE 'export[[:space:]]+the paid Anthropic key variable=[^"'"'"'[:space:]]|\bsetenv\([[:space:]]*["'"'"']the paid Anthropic key variable' --include='*.py' --include='*.sh' . | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_|examples/|vendor/' || true)
+            [ -n "$HITS" ] && exit 1
+            BAD=$(find apps -maxdepth 2 -name '.env' -perm /044 2>/dev/null || true)
+            [ -n "$BAD" ] && exit 1
+            exit 0
+        - - bash
+          - -c
+          - |
+            set -uo pipefail
+            T=$(mktemp); git ls-files -- '*.py' '*.sh' '*.yml' '*.yaml' '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' | grep -vE '^(\.venv|node_modules|vendor)/' > "$T"
+            "$PY" scripts/lint/lint_ban_prose.py --files-from "$T"; rc=$?; rm -f "$T"; exit $rc
+        - [$PY, scripts/lint/wr3_lint_autonomous_publish.py]
+      needs: [python]
+    mapping: executed
+    coverage: partial
+    observed:
+      - {
+          argv: "pytest scripts/tests/test_ban_predicates.py -q",
+          rc: 0,
+          seconds: 4.0,
+          result: "25 passed",
+        }
+      - {
+          argv: "pytest -q <5 guard corpora>",
+          rc: 0,
+          seconds: 37.3,
+          result: "314 passed",
+        }
+      - {
+          argv: "bash scripts/tests/test_cate_paid_budget.sh",
+          rc: 0,
+          seconds: 0.2,
+          result: "9 passed, 0 failed (budget corpus)",
+        }
+      - {
+          argv: "#40 + #40b + #44 greps (bash -c)",
+          rc: 0,
+          seconds: 5.0,
+          result: "baseline=0 live=0; no the paid Anthropic key variable value assignment; no world-readable apps/*/.env",
+        }
+      - {
+          argv: "lint_ban_prose.py --files-from <whole tree, 10850 paths>",
+          rc: 0,
+          seconds: 47.9,
+          result: "10846 files scanned, no prose spells a banned shape (warning: 4 unreadable in-scope files, script tolerates it as in CI)",
+        }
+      - {
+          argv: "wr3_lint_autonomous_publish.py",
+          rc: 0,
+          seconds: 0.1,
+          result: "clean",
+        }
+    not_run:
+      - "#40c 'Paid-endpoint ban judged as an entity' (lint_paid_llm_entity.py over the PR's changed files): PR-time only, skipped in CI too on push/merge_group; needs BASE/HEAD sha and, for the model judgment, a paid vendor key + network — not this lane's to use"
+      - "pip install of pytest/pyyaml (already present in the pilot venv)"
+    blocker: ""
+    smallest_next_action: >-
+      Add the changed-files path for #40c using `git diff --name-only BASE...HEAD` and run
+      lint_paid_llm_entity.py WITHOUT a key (the script degrades to the transcribed grep predicate and says so);
+      report the model-judgment leg as NOT_APPLICABLE(no vendor key), never as pass.

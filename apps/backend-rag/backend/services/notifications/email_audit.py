@@ -47,6 +47,7 @@ CRITICAL_EMAIL_TYPES: frozenset[str] = frozenset(
         "hr_bonus",
         "invoice_client",
         "welcome",
+        "process_start_client",
     }
 )
 
@@ -66,6 +67,7 @@ NON_RESURRECTABLE_EMAIL_TYPES: frozenset[str] = frozenset(
         "waiting_docs_client",
         "completion_client",
         "welcome",
+        "process_start_client",
     }
 )
 

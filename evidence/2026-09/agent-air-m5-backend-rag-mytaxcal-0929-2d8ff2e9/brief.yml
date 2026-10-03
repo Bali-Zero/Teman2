@@ -1,0 +1,53 @@
+task: >-
+  "My tax calendar" on tax.balizero.com: a public, stateless POST /api/public/tax-calendar/obligations
+  over the obligations catalog that returns ONLY rules a Tax Department reviewer has cleared (plus a
+  withheld_count), and the R19 wizard on /tax-calendar that consumes it.
+lane: backend-rag/mytaxcal
+machine: air-m5
+date: 2026-09-29
+gear: 3
+gear_reason: >-
+  Floor 3: the diff touches the public auth allowlist (app/auth/public_endpoints.py), the rate limiter
+  and the CORS default origins, i.e. a new unauthenticated surface on the production API.
+acceptance:
+  A1: >-
+    backend: route + clearance tests green with backend/tests/setup/ and the CORS suite; the shipped
+    tax_calendar_public_review.yaml clears exactly 9 rules (owner review, 2026-09-29) and with it a
+    PT PMA + employees + PKP profile gets only cleared rules while every applicable uncleared rule is
+    counted in withheld_count (the full company profile: 9 returned, 9 withheld); a clearance at the
+    right fingerprint releases a verified, review-free rule; a wrong fingerprint, a needs_review rule or
+    an unverified rule stays withheld; the payload never carries verified/needs_review or a withheld id.
+  A2: >-
+    mouth: MyTaxCalendar posts exactly {taxpayer_type:"individual"} or the full company body, renders only
+    what the API returns (no prices, no hard-coded deadlines, no PB1/regency), states withheld rules
+    honestly with a WhatsApp link, handles 429/errors; an R19 anchor test (copper/wash tokens, 8px
+    radius, mounted on the page) as for #7648 — the literal-colour guard is a separate PR by the
+    owner's 2026-09-29 decision.
+  A4: >-
+    provisional dates: each upcoming date carries provisional = (roll == next_business_day and its year
+    is not in holiday_years_loaded()); today 2026-09-29 gives False for 2026 dates and True for 2027
+    dates, never True for roll none; the wizard labels such a date "provisional" and shows one note.
+  A5: >-
+    month-end regression: spt_tahunan_badan with fiscal_year_end 12-31 and today 2026-09-29 returns
+    2027-04-30 only, and every returned due_date parses as a real ISO date.
+  A7: >-
+    result copy: legal_source is not published (absent from the payload and the card); each date and
+    its period key stay on one line at 390 with "provisional" after a real space (company result keeps
+    scrollWidth 390); the review line reads "Reviewed on <date>"; frequency shows a human label (Monthly, Annual, One-time, When an
+    event happens); the withheld note is singular for 1.
+  A6: >-
+    event cards: pse_registration, wajib_lapor_ketenagakerjaan and rptka_imta_expat return
+    upcoming_due_dates = []; the wizard renders "No fixed date - due when the triggering event happens."
+    with no badge, no NaN and no Invalid Date.
+  A3: >-
+    CORS: https://tax.balizero.com in the default origins (live preflight answers 400 today).
+status: >-
+  DRAFT. On 2026-09-29 the owner ("Zero") reviewed and approved 9 rules for public display, recorded in
+  tax_calendar_public_review.yaml (reviewer "Zero (owner)"): pph21_payment, spt_masa_pph21, spt_masa_ppn,
+  spt_tahunan_badan, rups_annual, bpjs_kesehatan_monthly, pse_registration, wajib_lapor_ketenagakerjaan,
+  rptka_imta_expat. The other 12 rules stay withheld. Ongoing signer: the Tax Department person named by
+  the owner. Merge only after a fresh gear-3 gate signs.
+out_of_scope:
+  - Individual / KITAS / PB1 / BPJS rules (not in the 21-rule catalog; owner decisions).
+  - iCal per-profile subscription and email reminders (later lanes).
+  - Penalty summaries per rule (curation by the Tax Department).

@@ -2,9 +2,9 @@ import { GOOGLE_MAPS_URL } from "@/lib/trust-figures";
 
 // Existing public destinations; no duplicate routing or integration layer.
 export const destinations = {
-  // The four tool links keep the destinations of the pre-R19 home (PersonaDoors,
-  // itself byte-identical to FunnelFeature's FUNNEL_HREF; D10 - whether the
-  // subdomains give way to the in-app routes - is not resolved here).
+  // The four tool links keep the destinations of the pre-R19 home (byte-identical
+  // to FunnelFeature's FUNNEL_HREF; D10 - whether the subdomains give way to the
+  // in-app routes - is not resolved here).
   // visa.balizero.com is a legacy 302 to /visa (a 308 to /visa-oracle);
   // tax.balizero.com is a rewrite of /tax-calendar.
   visaOracle: {

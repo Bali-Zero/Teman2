@@ -420,6 +420,30 @@ export function trackPropertyWACTA(): void {
   });
 }
 
+/** Track buyer profile selection (WNI / WNA individual / WNA PT PMA).
+ * Sent through sendGA4Event + trackEvent, never trackFunnelEvent: the backend funnel
+ * allowlist (ALLOWED_EVENTS) does not carry these two selector events, and
+ * adding them there is out of scope here — see
+ * test_analytics_funnel_parity.py. */
+export function trackPropertyBuyerSelected(buyerType: string): void {
+  sendGA4Event("property_buyer_selected", {
+    event_category: "Property",
+    buyer_type: buyerType,
+  });
+  trackEvent("property_buyer_selected", { buyer_type: buyerType });
+}
+
+/** Track intended-use selection (own-use / villa rental / restaurant / …).
+ * Sent through sendGA4Event + trackEvent, never trackFunnelEvent — see
+ * trackPropertyBuyerSelected above. */
+export function trackPropertyUseSelected(useType: string): void {
+  sendGA4Event("property_use_selected", {
+    event_category: "Property",
+    use_type: useType,
+  });
+  trackEvent("property_use_selected", { use_type: useType });
+}
+
 // ============================================================
 // Funnel Home-Block CTA Helpers
 // Dispatches to GA4 + internal CRM bus + funnel store.
@@ -499,32 +523,6 @@ export function trackPropertyCTA(
 // ============================================================
 
 type HeroCTAEvent = "hero_cta_book_call" | "hero_cta_read_dispatch";
-
-// ============================================================
-// Persona Doors (MYTHOS B2, IA-1)
-// ============================================================
-
-/** Which of the four homepage "Start where you are." doors was chosen.
- * B2R2: "tax" added (third door). */
-export type PersonaDoor = "visa" | "company" | "tax" | "property";
-
-/**
- * Track a homepage persona-door click.
- * Triple-dispatch: GA4 + internal CRM bus + funnel store.
- * Event registered in FUNNEL_EVENTS + backend ALLOWED_EVENTS
- * (parity enforced by test_analytics_funnel_parity.py).
- */
-export function trackPersonaDoor(door: PersonaDoor): void {
-  sendGA4Event("persona_door_click", {
-    event_category: "PersonaDoors",
-    door,
-  });
-  trackEvent("persona_door_click", { door });
-  void trackFunnelEvent("persona_door_click", {
-    sessionId: getOrCreateSessionId(),
-    payload: { door },
-  });
-}
 
 /**
  * Track a hero section CTA click.

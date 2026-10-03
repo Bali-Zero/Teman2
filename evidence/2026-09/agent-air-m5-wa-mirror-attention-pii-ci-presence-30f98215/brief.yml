@@ -1,0 +1,17 @@
+gear: 3
+task_id: wa-mirror-attention-pii-ci-presence
+lane: wa-mirror
+host: air-m5 (M5)
+branch: agent/air-m5/wa-mirror/attention-pii-ci-presence-0929
+gate_class: opus
+l_level: L2
+objective: >-
+  Discharge the gate's C1 on #7661: replace the 4-name must_run list in check-wa-attention-pii
+  with a presence set derived by AST from ALL scripts/tests/test_wa_attention_*.py, so that
+  deselecting any test (via -k, --deselect or a conftest modifyitems hook) turns the step RED;
+  correct the comment that overclaimed this; and give the relevance step an empty-base guard
+  that fails closed. Floor is 3 on the path term alone (.github/workflows/ hot zone); the diff
+  is one workflow file. Branch protection and contexts.json are the owner's admin action and are
+  not touched.
+scope:
+  - ".github/workflows/check-wa-attention-pii.yml - AST presence set keyed on (module, class path, function); refusals for constructs the AST cannot follow; pinned known suites; forced collection patterns; empty-base guard and grep tri-state in the relevance step."

@@ -1,0 +1,43 @@
+task: >-
+  T3 P2 resolver: nothing ever marks a promise kept (0 of 202 resolved on Pro). Add `--resolve
+  [--dry-run]` marking an open promise resolved from later evidence in the same thread
+  (media_sent > team_confirmed > client_ack), fill-only and idempotent, an hourly cron wrapper, and
+  the digest consumer (resolved_by_kind totals and overdue-unresolved counts per member, D2).
+lane: wa-team/t3-p2-resolver-0930
+machine: M5
+date: "2026-09-30"
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 (harness floor recompute): the diff edits
+  `.github/workflows/wa-team-promises-tests.yml` (paths + floors). One cross-family council round
+  (codex-gpt-5.6-sol + kimi-code/k3, env-scrubbed, diff-only) ran before the PR.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Guilt cases stay open: evidence before the promise, another thread or line, wrong direction,
+    future-dated, out of window; an already resolved row and a lone resolved_by value are never touched.
+    probe: "scripts/tests/test_wa_team_promises_resolve*.py, real-PG mode: 82 passed, 0 skipped"
+  A2: >-
+    Idempotent and dry-run parity: a second run resolves 0, dry-run counts equal the real run.
+    probe: "test_second_run_resolves_nothing, test_dry_run_counts_what_a_real_run_resolves_and_writes_nothing"
+  A3: >-
+    Pro dry-run (read-only, counts) before activation matches the PR body; after activation a second
+    --resolve --dry-run shows only the deferred client_ack rows still open.
+    probe: "wa_team_promises.py --resolve --dry-run on Pro"
+
+out_of_scope: >-
+  The local-LLM precision audit (PR-C); any notifier to members (D2 forbids it); T7. No write on Pro
+  from this PR; the crontab line is installed by the conductor after prove-live.
+
+assumptions:
+  - text: >-
+      chat_jid is NULL on every recent mirror row, so the thread key uses group_jid / counterpart_lid /
+      counterpart_phone plus the team line instead of the spec's chat_jid.
+    status: verified
+  - text: "Message time is message_date on both sides (never NULL in the last 30 days on Pro)."
+    status: verified

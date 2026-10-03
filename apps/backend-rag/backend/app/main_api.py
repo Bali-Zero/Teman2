@@ -861,6 +861,24 @@ async def lifespan_light(app: FastAPI):
             # even with the real spawn deleted).
             app.state._visa_oracle_sessions_purge_task = _spawn_visa_oracle_sessions_purge_task(app)
 
+            # Portal Champion bomb/penalty takeover producer (Round 2). A task, so
+            # it never delays startup; singleton per tick via a Redis lock inside.
+            from backend.services.portal.challenge_events import (
+                champion_producer_enabled,
+                run_champion_event_producer,
+            )
+
+            if champion_producer_enabled():
+                app.state._champion_event_producer_task = asyncio.create_task(
+                    run_champion_event_producer(app)
+                )
+                logger.info("✅ Portal Champion event producer spawned")
+            else:
+                app.state._champion_event_producer_task = None
+                logger.info(
+                    "Portal Champion event producer disarmed (CHAMPION_EVENT_PRODUCER_ENABLED)"
+                )
+
     init_task = asyncio.create_task(_background_light_init())
     app.state._init_task = init_task
 
@@ -897,6 +915,14 @@ async def lifespan_light(app: FastAPI):
         purge_task.cancel()
         try:
             await purge_task
+        except (asyncio.CancelledError, Exception):
+            pass
+
+    champion_task = getattr(app.state, "_champion_event_producer_task", None)
+    if champion_task is not None:
+        champion_task.cancel()
+        try:
+            await champion_task
         except (asyncio.CancelledError, Exception):
             pass
 

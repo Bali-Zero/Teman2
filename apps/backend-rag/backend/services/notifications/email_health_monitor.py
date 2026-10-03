@@ -34,6 +34,8 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
 from backend.core.secret_log_redaction import install_telegram_token_redaction
+from backend.security.pii_log_identifier import redact_identifier_for_log
+from backend.services.notifications.email_audit import _bounded_scrub
 from backend.services.notifications.email_http import get_email_client
 
 install_telegram_token_redaction()
@@ -346,9 +348,17 @@ class EmailHealthMonitor:
             "",
         ]
         for r in rows[:15]:  # hard cap to avoid oversized Telegram message
-            subj = (r["subject"] or "").strip()[:60]
-            err = (r["error_message"] or "").strip()[:80]
-            lines.append(f"• `{r['email_type']}` → `{r['to_email']}`\n  _{subj}_\n  error: `{err}`")
+            # `subject`/`error_message` are caller-supplied free text and can
+            # themselves carry the recipient's address (e.g. a provider
+            # bounce quoting it back, or a personalized subject line) — see
+            # the same note on `notify_email_failure_critical` in
+            # email_audit.py. `_bounded_scrub` truncates AND scrubs any
+            # email-shaped token, so it replaces the old raw `[:N]` slice
+            # rather than stacking on top of it.
+            subj = _bounded_scrub((r["subject"] or "").strip(), 60)
+            err = _bounded_scrub((r["error_message"] or "").strip(), 80)
+            to_email = redact_identifier_for_log(r["to_email"])
+            lines.append(f"• `{r['email_type']}` → `{to_email}`\n  _{subj}_\n  error: `{err}`")
         if len(rows) > 15:
             lines.append(f"\n_...and {len(rows) - 15} more (see email_send_log)_")
         lines.append(

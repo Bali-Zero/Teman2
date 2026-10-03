@@ -684,10 +684,10 @@ _Discovered: 2026-05-17 evening after Phase 1 production-flip pilot · Resolved:
 
 | client_id | CRM full_name    | Phase 1 identity.full_name                              |
 | --------- | ---------------- | ------------------------------------------------------- |
-| 70        | Oleksandr Ozolin | "Snizhana Yaroshenko" (most-frequent in akta filenames) |
-| 83        | Sofia Mueller    | "Andrey Pozdnyakov" (most-frequent in evisa filenames)  |
+| 70        | Client Alpha | "Partner One" (most-frequent in akta filenames) |
+| 83        | Client Beta    | "Partner Two" (most-frequent in evisa filenames)  |
 
-Both clients' Drive folders contained documents primarily naming a _business partner_ (Snizhana Yaroshenko for Ozolin's PT Trading House, Andrey Pozdnyakov for Sofia's PT Milkup). Gemini, with no document content and no identity-anchor instruction, defaulted to the filename frequency mode. The bug was silent: the ai_summary JSON validated against the v2 schema (passport+identity were optional), the AiSummaryCard frontend rendered "Andrey Pozdnyakov" for Sofia's profile without warning.
+Both clients' Drive folders contained documents primarily naming a _business partner_ (Partner One for Alpha's PT Sample Trading, Partner Two for Beta's PT Sample Retail). Gemini, with no document content and no identity-anchor instruction, defaulted to the filename frequency mode. The bug was silent: the ai_summary JSON validated against the v2 schema (passport+identity were optional), the AiSummaryCard frontend rendered "Partner Two" for Beta's profile without warning.
 
 Discovered via smartness audit on 6 production-flip outputs (clients 70, 83, 266, 278, 283, 350) that Antonello requested before scaling bulk enqueue. The audit ranked outputs on identity fidelity, content-grounded fields populated, and confidence calibration — Phase 1 scored 0/3 on identity-bearing fields for 2/6 clients despite the model self-reporting confidence 0.4–0.7.
 
@@ -727,16 +727,16 @@ Five interlocking changes ship the fix:
 
 | client_id  | Conf 1→1.5 | Identity 1→1.5                              | Corporate fields content-grounded                                        |
 | ---------- | ---------- | ------------------------------------------- | ------------------------------------------------------------------------ |
-| 70 Ozolin  | 0.40→0.55  | Snizhana → **Ozolin ✓**                     | nib + npwp + akta# + capital + address                                   |
-| 83 Sofia   | 0.40→0.85  | Andrey → **Sofia ✓** + honest mismatch note | nib + npwp + akta# + capital + address                                   |
-| 266 Romain | 0.65→0.95  | OK                                          | nib + npwp + akta# + capital + address + passport\_# + nationality FR    |
-| 278 Declan | 0.65→0.85  | OK                                          | nib + npwp + akta# + capital + address + passport\_# + nationality IRISH |
+| 70 Alpha  | 0.40→0.55  | Partner One → **Alpha ✓**                  | nib + npwp + akta# + capital + address                                   |
+| 83 Beta   | 0.40→0.85  | Partner Two → **Beta ✓** + honest mismatch note | nib + npwp + akta# + capital + address                              |
+| 266 Gamma | 0.65→0.95  | OK                                          | nib + npwp + akta# + capital + address + passport\_# + nationality FR    |
+| 278 Delta | 0.65→0.85  | OK                                          | nib + npwp + akta# + capital + address + passport\_# + nationality IRISH |
 
-Article 1 worked exactly as intended for Sofia (case 83): the model kept `"Sofia Mueller"` despite "Sofiia Lerer" dominating filenames and added the honest extraction*notes entry *"CRM full*name 'Sofia Mueller' not present in any document — All documents refer to Sofiia Lerer instead"*. That's the right behavior — surface the data mismatch to the human operator, don't silently overwrite.
+Article 1 worked exactly as intended for Beta (case 83): the model kept `"Client Beta"` despite "Partner Three" dominating filenames and added the honest extraction*notes entry *"CRM full*name 'Client Beta' not present in any document — All documents refer to Partner Three instead"*. That's the right behavior — surface the data mismatch to the human operator, don't silently overwrite.
 
 **GOTCHA:**
 
-- **OCR budget is hard-capped at 30 fresh extractions per client run** (`OCR_MAX_FILES_PER_CLIENT` in worker). Clients with >30 priority docs (Pukhov 197 files, Armando 683 files) lose the tail. Cache hits don't count against budget — subsequent re-enqueues bring the rest in.
+- **OCR budget is hard-capped at 30 fresh extractions per client run** (`OCR_MAX_FILES_PER_CLIENT` in worker). Clients with >30 priority docs (Epsilon 197 files, Zeta 683 files) lose the tail. Cache hits don't count against budget — subsequent re-enqueues bring the rest in.
 - **Phase 1.5 throughput ≈ 19 clients/hour** at 5min/5jobs LaunchAgent cadence (vs Phase 1's 60/h). 154s per cliente avg (Drive download + ~9 priority files OCR in 53s + Gemini call 93s) means each 5min tick covers 2-3 clients, not 5 like Phase 1 metadata-only. Adjust LaunchAgent `StartInterval` if quota allows higher cadence.
 - **Article 1 requires `client_full_name` in the context block** — worker passes it from `clients.full_name`. If a future migration nulls that column, the guardrail silently disappears. Defensive: schema test `test_l1_client_summary_requires_identity_anchor` would fail (TODO).
 - **Workspace AI add-on OAuth refresh** still fails (`invalid_grant`) on the user OAuth path — worker falls back to service account silently. This is a pre-existing P1 unrelated to Phase 1.5 (see `~/.gemini/google_accounts.json` rotation).

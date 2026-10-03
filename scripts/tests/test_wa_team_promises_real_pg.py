@@ -242,3 +242,126 @@ async def test_s6_residual_matches_real_pg_catalog(pg_socket_dir, sql, expected,
     # S6a/S6c: the static parser (no DB at all) must land on the SAME
     # column set PG itself produced.
     assert parse_declared_columns(sql) == expected
+
+
+# --- C1-C4 (PR #7439's re-gate, pull/7439#issuecomment-5848724154):
+# closing the two MECHANISMS S6 only closed instances of. ---
+
+_C1_REAL_PG_CASES = [
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a INT2, b FLOAT8, c TIMESTAMP);",
+        {
+            "t": {
+                ("a", "smallint", False),
+                ("b", "double precision", False),
+                ("c", "timestamp without time zone", False),
+            }
+        },
+        id="C1-int2-float8-timestamp-pg-accepts-parser-must-reject",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a SERIAL4);",
+        {"t": {("a", "integer", True)}},
+        id="C1-serial4-pg-accepts-not-null-parser-must-reject",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a FOO);",
+        "PG-ERROR UndefinedObjectError",
+        # Council-round finding (codex-gpt-5.6-sol, kimi-code/k3, both
+        # independently): the gate's literal wording asked for a real-PG
+        # pairing for FOO specifically, not just the docstring claim on
+        # the static guilt test.
+        id="C1-foo-unknown-type-pg-errors-parser-must-also-reject",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sql, expected", _C1_REAL_PG_CASES)
+async def test_c1_residual_matches_real_pg_catalog_but_parser_rejects(pg_socket_dir, sql, expected, request):
+    case_id = request.node.callspec.id
+    db = f"c1_{case_id[:4].lower()}_{id(sql) % 100000}"
+    truth = await _fresh_scratch_db(pg_socket_dir, db, sql)
+    if isinstance(expected, str):
+        assert isinstance(truth, str) and truth.startswith(expected)
+        with pytest.raises(UnrecognizedSqlShapeError):
+            parse_declared_columns(sql)
+        return
+    assert truth == expected
+    # PG accepts and stores these — the static parser must reject outright
+    # (S6(b)/S1's fail-closed precedent), since none of these keywords is
+    # in _TYPE_ALIASES.
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+_C2_REAL_PG_CASES = [
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (id BIGSERIAL PRIMARY KEY, x TEXT);\n"
+        "CREATE TABLE IF NOT EXISTS t_pkey (bogus_col TEXT NOT NULL);",
+        {"t": {("id", "bigint", True), ("x", "text", False)}},
+        id="C2-implicit-pkey-blocks-later-create-table",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (id BIGSERIAL, x TEXT);\n"
+        "CREATE TABLE IF NOT EXISTS t_id_seq (bogus_col TEXT NOT NULL);",
+        {"t": {("id", "bigint", True), ("x", "text", False)}},
+        id="C2-implicit-seq-blocks-later-create-table",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sql, expected", _C2_REAL_PG_CASES)
+async def test_c2_residual_matches_real_pg_catalog(pg_socket_dir, sql, expected, request):
+    case_id = request.node.callspec.id
+    db = f"c2_{case_id[:4].lower()}_{id(sql) % 100000}"
+    truth = await _fresh_scratch_db(pg_socket_dir, db, sql)
+    assert truth == expected
+    # The implicit relation blocks the later CREATE TABLE in PG too — the
+    # static parser must land on the SAME column set.
+    assert parse_declared_columns(sql) == expected
+
+
+# --- G3 (fresh gate on PR #7478, pull/7478#issuecomment-5851556996): the
+# innocence boundary's real-PG pairing — proves PG itself keeps a 63-byte
+# derived `_pkey` name BYTE-FOR-BYTE untruncated (truncation only bites at
+# 64+, per S6b's own real-PG case above), matching the static parser's
+# accept boundary in
+# test_wa_team_promises_sql_crosscheck.py::test_innocence_g3_derived_pkey_name_exactly_63_bytes_is_accepted. ---
+
+
+@pytest.mark.asyncio
+async def test_g3_derived_pkey_name_exactly_63_bytes_lands_untruncated_in_pg(pg_socket_dir):
+    table = "b" * 58
+    pkey_name = f"{table}_pkey"
+    assert len(pkey_name.encode("utf-8")) == 63
+    db = f"g3_{id(table) % 100000}"
+    admin = await asyncpg.connect(host=str(pg_socket_dir), user="postgres", database="postgres")
+    try:
+        await admin.execute(f'DROP DATABASE IF EXISTS "{db}"')
+        await admin.execute(f'CREATE DATABASE "{db}"')
+    finally:
+        await admin.close()
+    conn = await asyncpg.connect(host=str(pg_socket_dir), user="postgres", database=db)
+    try:
+        await conn.execute(f"CREATE TABLE {table} (id INT PRIMARY KEY)")
+        real_name = await conn.fetchval(
+            "SELECT c.relname FROM pg_class c JOIN pg_namespace s ON s.oid = c.relnamespace "
+            "WHERE s.nspname = 'public' AND c.relkind = 'i'"
+        )
+        # PG's own allocator, not the static parser's guess: the 63-byte
+        # derived name is not truncated (S6b's real-PG case above proves
+        # truncation only bites at 64+, one byte over this boundary).
+        assert real_name == pkey_name
+    finally:
+        await conn.close()
+        admin2 = await asyncpg.connect(host=str(pg_socket_dir), user="postgres", database="postgres")
+        try:
+            await admin2.execute(f'DROP DATABASE IF EXISTS "{db}"')
+        finally:
+            await admin2.close()
+    # The static parser (no DB at all) must accept the same input.
+    assert parse_declared_columns(
+        f"CREATE TABLE IF NOT EXISTS {table} (id INT PRIMARY KEY);"
+    ) == {table: {("id", "integer", True)}}

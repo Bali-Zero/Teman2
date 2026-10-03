@@ -228,7 +228,7 @@ export default function NewsPageClient({
                 <Link
                   key={t.id}
                   href={t.href}
-                  className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full transition"
+                  className="inline-flex min-h-11 items-center text-[12px] font-semibold px-3.5 py-1.5 rounded-full transition"
                   style={{
                     background:
                       "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",

@@ -1,0 +1,96 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  agent/air-m5/intel/poller-one-pr-per-family, base main 370ab29aae - Producer 1 of the bot-PR
+  pile (apps/bali-intel-scraper/scripts/post_publish_poller.py). Producer 2
+  (backend-rag github_publisher.py) is a separate concern, proposed to the lead, not in this PR.
+lanes:
+  - lane: poller-one-pr-per-family-build
+    role: build
+    seat: "claude-opus-5-5 (Dux, BLUE)"
+  - lane: poller-one-pr-per-family-spalla
+    role: review
+    seat: "codex (default account model) read-only red-team on the diff"
+
+what_changed: |
+  1. _flush_batch supersedes instead of piling up: older open PRs of the family that do not hold
+     a merge-queue slot are carried (3-way per file against their merge-base) onto a fresh branch
+     off main with the new batch, then closed once the successor PR exists; a PR with a file main
+     changed since it branched is kept open and alerted.
+  2. homepage-layout.json is replayed from slugs onto main's current layout (older PRs' promoted
+     slugs + this tick's rotations), never carried as bytes.
+  3. Arming: `gh pr merge <n> --auto` (no --squash), then autoMergeRequest OR mergeQueueEntry is
+     read back; neither = Telegram alert + flush False.
+  4. run_image treats a cover held by any open covers PR as existing; staged covers that landed on
+     main during the run are dropped at flush.
+
+ground:
+  measured_at: "2026-10-02T10:28Z"
+  squash_lead: >-
+    REFUTED. #7682/#7681/#7784/#7764 timelines all show AutoMergeEnabledEvent by the poller's
+    account; #7681 merged, #7682 RemovedFromMergeQueueEvent reason=merge_conflict
+    (2026-09-29T16:14:07Z), #7784 the same (2026-10-02T02:51:58Z). #7681 and #7682 carry the same
+    two cover paths. The "unarmed" PRs are queue ejections of add/add twins.
+  siblings: >-
+    No open PR touches post_publish_poller.py or its test (gh pr list --json files, 10:28Z); only
+    lease on the path is this worktree.
+  runtime: >-
+    Pro, launchd com.balizero.post-publish-poller (StartInterval=300), runs
+    /Users/nuzantara/nuzantara/apps/bali-intel-scraper/scripts/post_publish_poller.py from the
+    main checkout (at origin/main 370ab29aae, 0 behind); the checkout is fast-forwarded by
+    com.nuzantara.git-pull-main.15min and by the poller's own git pull at each tick with work.
+
+tests:
+  red: >-
+    Final suite against origin/main's poller (370ab29aae): 17 failed, 48 passed. 12 of the 14 new
+    TestOnePrPerFamily tests fail on behaviour; 2 innocence tests pass (queued PR untouched, moved
+    head not closed); 5 pre-existing tests fail because they now pin the new contract (no
+    --squash, loud arm failure, _open_pr/_arm_pr/_github_default_branch_sha seams).
+  green: "65 passed (apps/bali-intel-scraper/tests/unit/test_post_publish_poller.py); scripts/tests/test_post_publish_poller_codex_bin.py 9 passed; ruff clean"
+  ci_gap: "No workflow under .github/ runs apps/bali-intel-scraper/tests - these tests are local-only evidence."
+
+spalla:
+  seat: "codex exec read-only, default account model (gpt-6-astra), effort high - 9 findings"
+  fixed:
+    - "1 HIGH carried-path collision closed both PRs: non-generated kinds now keep the older PR open when a newer copy overrides its edit"
+    - "2 HIGH base race: main is read ONCE per flush, every check uses that sha and the branch is cut from it"
+    - "3 HIGH promotions cascaded into latest_*: promoted slugs are read across hero+latest slots"
+    - "4 MED slug in main's latest treated as published: only main's HERO slots count as already promoted"
+    - "5 HIGH head moved after carry: carry pinned to headRefOid, close refused when the head moved"
+    - "8 MED unreadable PR list silently disabled cover dedupe: run_image leaves the item queued; PR files read paginated (no 100-file cap)"
+    - "9 MED fake accepted a PUT without sha for a file existing on main: fresh branch now snapshots main, sha asserted"
+  dismissed:
+    - "3b promotion of a slug already in the base hero list is not replayed: ordering only, the slug stays on the page"
+    - "6 MED queue entry between re-check and close: GitHub has no conditional close; the closed PR's files are already in the successor, so the residual cost is CI, never content"
+    - "7 MED steps marked done when arming fails: the content is safe in an open PR and the failure is alerted; retrying the arm without new content needs a per-tick heal sweep, which would start closing the legacy pile with no new content - left as a follow-up, not in this PR"
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+dissent:
+  - seat: codex-default-model-read-only
+    objection: "HIGH: two older PRs editing the same MDX collapse to the newest copy and both close, losing the older edit."
+    status: CONFIRMED
+    resolution: "For non-generated kinds a carried file overridden by a newer copy keeps its PR open and alerts. Guilt test: test_an_seo_edit_overridden_by_a_newer_copy_keeps_its_pr_open."
+  - seat: codex-default-model-read-only
+    objection: "HIGH: layout and SEO checks read main before the branch is cut; a merge in between is silently overwritten."
+    status: CONFIRMED
+    resolution: "main is read once per flush; carry, layout replay and cover checks use that sha and the branch is created from it."
+  - seat: codex-default-model-read-only
+    objection: "HIGH: a commit pushed to the older PR after the carry is lost when the PR is closed."
+    status: CONFIRMED
+    resolution: "Carry pinned to headRefOid; close refused when the head moved. Test: test_a_pr_whose_head_moved_after_the_carry_is_not_closed."
+  - seat: codex-default-model-read-only
+    objection: "MED: steps are marked done when arming fails, and nothing retries the arm without new content."
+    status: PLAUSIBLE
+    resolution: "Content is safe in an open PR and the failure is alerted (post-publish:bot-pr-unarmed:<kind>). A no-content heal sweep would close the legacy pile with no new content; follow-up, not this PR."
+  - seat: codex-default-model-read-only
+    objection: "MED: a PR can enter the merge queue between the re-check and the close."
+    status: PLAUSIBLE
+    resolution: "GitHub has no conditional close; its files are already in the successor, so the residual cost is CI, never content."
+
+pii_scan: clean
+pii_scan_note:
+  "The diff and the spalla prompt carry code, synthetic test fixtures (placeholder slugs and paths)
+  and public PR numbers. No client data, no credentials; article slugs in the ground notes are
+  public news-article paths."

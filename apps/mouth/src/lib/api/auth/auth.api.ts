@@ -11,6 +11,20 @@ type AuthApiClient = Pick<
 /**
  * Authentication API methods
  */
+/**
+ * Read-only probe answering whether the signed-in account is a portal
+ * superuser (may impersonate a client via `?as_client=<id>`). It is a mouth
+ * route handler that reaches the backend's `/api/portal/admin/me` server-side:
+ * the public login bundle may only name `/api/auth/*` routes
+ * (`scripts/assert-public-login-bundle.mjs`). Shared with the public auth
+ * client's endpoint allowlist so the two cannot drift apart.
+ */
+export const PORTAL_SUPERUSER_PROBE_ENDPOINT = "/api/auth/portal-superuser";
+// The probe runs on every staff sign-in BEFORE the redirect timer starts, so a
+// hanging request must not hold the "access granted" screen: past this it is
+// read as "no" and the sign-in proceeds to the backend destination.
+export const PORTAL_SUPERUSER_PROBE_TIMEOUT_MS = 5_000;
+
 export class AuthApi {
   constructor(private client: AuthApiClient) {}
 
@@ -154,5 +168,24 @@ export class AuthApi {
     );
     this.client.setUserProfile(profile);
     return profile;
+  }
+
+  /**
+   * Whether the signed-in account may use the client portal as a superuser.
+   * The backend answers `is_superuser=false` for everyone else and never
+   * throws on its own; a transport failure is read as "no" so a sign-in can
+   * never break on this probe.
+   */
+  async isPortalSuperuser(): Promise<boolean> {
+    try {
+      const me = await this.client.request<{ is_superuser?: boolean }>(
+        PORTAL_SUPERUSER_PROBE_ENDPOINT,
+        {},
+        PORTAL_SUPERUSER_PROBE_TIMEOUT_MS,
+      );
+      return me?.is_superuser === true;
+    } catch {
+      return false;
+    }
   }
 }

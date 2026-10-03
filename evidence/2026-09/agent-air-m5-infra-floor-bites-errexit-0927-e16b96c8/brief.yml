@@ -1,0 +1,101 @@
+task_id: floor-bites-errexit-0927
+gear: 3
+gear_reason: >
+  Single-file diff, but the file is .github/workflows/harness-floor.yml —
+  CODEOWNERS-TIER1 hot zone (HOTZONE_PATTERNS). The change is not a `uses:`
+  version pin (the existing first-party-pin exemption does not apply to a
+  `run:` body edit), so the deterministic floor is 3, measured with
+  `evidence_pack_lint.py --print-floor` on this diff's own changed-files
+  list.
+objective: |
+  Fix the "Bites contract — parse this PR's evidence pack" step in the
+  `harness-floor` job so that a malformed evidence pack's own explanation
+  actually reaches the Checks tab.
+
+  The step's own comment claimed: "errexit is deliberately NOT on in this
+  job's steps, so the parser's non-zero exit is captured rather than
+  aborting the step before the message that explains it." That claim is
+  false. No step in this job (and no `defaults.run.shell` at job or
+  workflow level) declares a `shell:` key, so GitHub Actions runs every
+  `run:` block here as `bash --noprofile --norc -eo pipefail {0}` (its
+  documented default for a non-Windows runner) — errexit IS on. Verified
+  with `grep -n 'shell:' .github/workflows/harness-floor.yml`: zero hits in
+  the whole file before this diff.
+
+  Under `bash -e`, the pre-fix code was:
+
+      python3 scripts/ci/bites_parse.py --pack - < /tmp/bites-pack.yml \
+        > /tmp/bites-parsed.json 2> /tmp/bites-parse.err
+      RC=$?
+
+  `scripts/ci/bites_parse.py` exits 2 (EXIT_MALFORMED) on a malformed
+  pack. As a bare simple command — not part of an `if`/`&&`/`||`/`!` — its
+  non-zero exit aborts the step IMMEDIATELY under `-e`. `RC=$?` on the next
+  line never runs, and neither does any of the taxonomy's `::error::bites:
+  ...` explanations further down the step. The Checks tab shows only
+  "Process completed with exit code 2" — the exact silent-red the comment
+  claimed could not happen. Every builder who hits this has to reproduce
+  the parser locally to learn why their pack was rejected.
+constraints:
+  - "Touch only the one step's parser-invocation lines and its adjacent
+    comment. No other step, job or workflow-level behaviour changes."
+  - "Preserve `set -u` and every existing guard in the step (the HEAD-sha
+    fetch, the ls-tree pathspec checks, the parser-bootstrap fallback) —
+    this PR is scoped to the errexit gap alone."
+  - "The fix must not change the step's observable behaviour for RC 0
+    (parsed clean) or RC 2-with-a-real-taxonomy-message (malformed) on the
+    passing path — only the previously-unreachable RC!=0,2 and RC==2
+    branches start actually printing."
+acceptance:
+  - text: >
+      WHEN scripts/ci/bites_parse.py exits 2 on a malformed pack, the step
+      SHALL print the taxonomy's `::error::bites: ...` explanation lines
+      instead of aborting silently.
+    status: verified
+    probe: "bash floorfix/run-postfix.sh floorfix/malformed-pack.yml"
+  - text: >
+      WHILE the pre-fix code is run identically under `bash -e` against the
+      same malformed pack, it SHALL abort at the parser line with no
+      taxonomy output at all — proving the bug existed.
+    status: verified
+    probe: "bash floorfix/run-prefix.sh floorfix/malformed-pack.yml"
+  - text: >
+      WHEN the pack is valid (parses clean, `expect: exit0` observe
+      contract), the step SHALL print the same "EXECUTABLE bites: contract"
+      notice and exit 0 both before and after the fix — no regression on
+      the passing path.
+    status: verified
+    probe: "bash floorfix/run-postfix.sh floorfix/valid-pack.yml"
+  - text: >
+      WHERE any other line in this same job runs a command and checks `$?`
+      on the following line under the same `bash -e` shape, it SHALL be
+      identified and fixed identically, or explicitly left with a reason.
+    status: verified
+    probe: "grep -n '\\$?' .github/workflows/harness-floor.yml"
+risks:
+  - "A council seat (kimi-code/k3) independently found and investigated one
+    adjacent, pre-existing `-e` fragility one step later in the same block:
+    `CLASSIFICATION=$(python3 -c '...')` (module-top `classify()` call) is a
+    command-substitution assignment, and a failing assignment aborts the
+    step under `-e` too, before the case statement's own `*)` fail-closed
+    branch can print its message. Investigated and left OUT of this PR's
+    scope: `scripts/ci/bites_parse.py`'s `main()` always writes a JSON
+    dict to stdout whenever it exits 0 or 2 (the only two codes this
+    step's taxonomy accepts as ordinary), so the substitution can fail
+    only via filesystem corruption or a `classify()` crash on an
+    unexpected-but-valid dict shape — not reachable through this parser's
+    actual contract. Recorded as dissent below rather than silently
+    dropped."
+  - "This is a comment-and-control-flow fix inside a required status check.
+    A mistake here degrades the SAME failure mode it fixes (silent abort)
+    rather than a worse one, because the change only widens what `-e`
+    tolerates on the one line touched — it does not remove `set -u`, does
+    not touch any `exit 1` guard above the parser call, and does not
+    change the parser's own contract."
+instruction_to_the_grader: |
+  Read the diff and re-run the four local reproductions yourself
+  (extract the step's `run:` body verbatim before/after, feed it the real
+  malformed pack from PR #7489's evidence dir and a real valid pack from
+  any origin/main evidence dir, run each under `bash -e`) rather than
+  trusting this brief's description of what they show.
+pii: none

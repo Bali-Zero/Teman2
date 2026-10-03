@@ -1,0 +1,82 @@
+task_id: s5-hotzone-egress-v3-0927
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor computed for THIS diff (re-run 2026-09-27, merge-base = origin/main
+# at branch time). `git merge-base origin/main HEAD` then `git diff
+# --name-only $MERGE_BASE HEAD` + `git diff --no-renames --numstat
+# $MERGE_BASE HEAD`, fed to `python3 scripts/evidence_pack_lint.py
+# --print-floor --changed-files-file ... --numstat-file ...` returns 3 via
+# the PATH term (.github/workflows/* is hot-zone independent of the new S5
+# entries). Gear 3 declared to match.
+objective: >-
+  REWORK of the second S5 PR (#7476, REWORK-BUILD, gate report
+  scratchpad/reports/gate-7476.md): built fresh from origin/main per the
+  fixed-point method (an armed PR is frozen, never edited in place). Closes
+  three blockers: (1) the required Harness floor recompute check was RED on
+  #7476 for a REAL pack violation, not the pending verdict — pack.yml's
+  diff.net_lines prose said "v1's 3 commits" while the branch (squashed) had
+  1, and the countable-claims rule caught the mismatch against the real PR
+  event payload. Fixed by describing the history without a false countable
+  claim ("a single commit", a word compute_floor's countable-claims scanner
+  does not recognize as a number) and by re-measuring every count on this
+  final commit rather than carrying one forward. (2) The sweep was again
+  file-type-limited (*.sh/*.py only, the same miss class as v1's missing
+  scripts/codex_tri_llm_review.py): extending it to *.js/*.cjs/*.ts found
+  infra/workflows/second-army.js, whose Refute lane forwards a frozen
+  `git diff` verbatim to a cross-family external seat door (codex/agy/qwen)
+  with zero redaction, live via two recorded runs — now added to both
+  lists, the sync test, and classified in S5 alongside its non-egress
+  runner (run-second-army.mjs, OUT). (3) In-flight cross-PR state had gone
+  stale again, twice over: #7470 (named everywhere in v2) closed unmerged
+  and was superseded by #7475 before v2 even opened; #7475 itself closed
+  unmerged before this v3 rework began, superseded by PR #7483. Every
+  artefact now names the spalla cure LANE with an as_of timestamp
+  (`2026-09-27T02:09:06Z`) and the current PR number (#7483: OPEN,
+  auto-merge not armed), rather than a bare number that goes stale within
+  the hour — and the "two S5 paths" claim about that lane, already
+  corrected once to three, is corrected again to FOUR: #7483 also edits
+  `scripts/codex_tri_llm_review.py`, not just codex-spalla.sh/_redact_pii.py/
+  spalla_redact.sh. The Migration section now states the landing-order
+  consequence by PR number: if this PR lands first, #7483's floor
+  recomputes to 3 and its declared `gear: 2` fails closed. Two further
+  factual errors the
+  gate found are also corrected: the pack's dissent disposition wrongly
+  blamed #7466 for touching only "the redactor's caller-facing contract"
+  (false — #7466's files are codex-spalla.sh, spalla_redact.sh, a scar doc
+  and a test; the real KEEP-IN argument is the spalla cure lane editing
+  _redact_pii.py, not #7466), and the "11 callers ... nothing to do with an
+  external seat" label was itself wrong (egress_proxy.py IS an egress
+  chokepoint; dynamic_workflow.py uses this redactor before its own council
+  dispatch) — both reworded to state what is actually true.
+constraints:
+  - "No external seat (codex/kimi/gemini/qwen) dispatched on this diff —
+    this PR itself edits the hot-zone list that gates dispatch to those
+    seats, and generator must never be grader of its own gate surface. The
+    fresh `harness/fable-gate` gate session is this PR's second opinion,
+    per Builder Contract §5."
+  - "Every claim naming another PR's state (#7466, the spalla cure lane)
+    carries an as_of timestamp (S4 of this same spec) since it can and did
+    go stale mid-review, twice."
+  - "No countable claim (a digit or word-number immediately before
+    'commit(s)') appears anywhere in diff/lanes prose unless it equals the
+    branch's actual, re-measured commit count at commit time."
+acceptance:
+  - "scripts/tests/test_hotzone_lists_sync.py: 4 tests pass, and
+    infra/workflows/second-army.js is asserted present on both lists
+    alongside the six prior S5 paths."
+  - "Guilt run: reverting one hot-zone-pr-gate.yml case-block entry to a
+    placeholder makes the sync test fail by name; restoring it returns the
+    suite to green with zero residual diff."
+  - "scripts/evidence_pack_lint.py --selftest passes in full."
+  - "scripts/tests/test_evidence_pack_lint.py's full suite passes at its
+    count measured on THIS commit, not copied forward from v2."
+  - "compute_floor() probed directly on each of the seven S5 paths in
+    isolation returns 3; on an unrelated path returns 1."
+  - "The staged-tree reproduction of harness-floor.yml's own pack
+    validation (repo-root pointed at a synthetic evidence/{brief,pack}.yml
+    pair, canonical brief_ref, the real PR-event commit count fed in) is
+    run BEFORE push, not just claimed after — the exact gap that let v2's
+    false 'validated clean' claim through."
+  - "YAML syntax of both edited workflow files parses clean after the
+    edit."

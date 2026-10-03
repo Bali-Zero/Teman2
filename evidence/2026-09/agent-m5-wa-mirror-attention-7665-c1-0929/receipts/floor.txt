@@ -1,0 +1,2 @@
+cmd: contract_verify.py --local
+floor-needs-brief: 3 (path, .github/workflows/ hot zone); brief present in this diff

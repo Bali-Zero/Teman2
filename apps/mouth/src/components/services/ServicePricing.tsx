@@ -13,7 +13,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { usePricingData } from "@/hooks/usePricingData";
+import {
+  usePricingData,
+  useTierFloorPricingData,
+} from "@/hooks/usePricingData";
+import { R19_VARS } from "@/components/r19/presentation";
 
 // ServiceData without icon (React component cannot be serialized)
 type ServiceDataWithoutIcon = Omit<
@@ -26,38 +30,6 @@ interface ServicePricingProps {
   slug: string;
 }
 
-// Get visa package color based on type (KITAS/KITAP = orange, Visit = blue)
-function getVisaPackageColor(name: string): {
-  bg: string;
-  border: string;
-  badge: string;
-} {
-  const lowerName = name.toLowerCase();
-  // KITAS, KITAP, Working, Freelance, Investor KITAS, Spouse, Dependent, Retirement KITAS = Orange
-  if (
-    lowerName.includes("kitas") ||
-    lowerName.includes("kitap") ||
-    lowerName.includes("working") ||
-    lowerName.includes("freelance") ||
-    lowerName.includes("spouse") ||
-    lowerName.includes("dependent") ||
-    lowerName.includes("retirement") ||
-    lowerName.includes("investor kitas")
-  ) {
-    return {
-      bg: "bg-orange-500/20",
-      border: "border-orange-500/40 hover:border-orange-400",
-      badge: "bg-orange-500",
-    };
-  }
-  // Visit visas (C, D series) = Blue
-  return {
-    bg: "bg-sky-500/20",
-    border: "border-sky-500/40 hover:border-sky-400",
-    badge: "bg-sky-500",
-  };
-}
-
 /**
  * Resolve only an exact PricingTool identity. Static package text is never a
  * price authority; a missing or malformed row becomes contact-required.
@@ -67,6 +39,15 @@ function usePackagePrice(pkg: ServicePackage): string {
     pkg.livePriceKey ?? null,
     pkg.livePriceCategory ?? null,
   );
+  const { price: floorPrice } = useTierFloorPricingData(
+    pkg.livePriceFloorKeys ? (pkg.livePriceCategory ?? null) : null,
+    pkg.livePriceFloorKeys ?? null,
+  );
+  if (pkg.livePriceFloorKeys) {
+    if (!floorPrice) return "Contact";
+    const unit = pkg.livePriceFloorUnit ? `/${pkg.livePriceFloorUnit}` : "";
+    return `from ${floorPrice}${unit}`;
+  }
   return livePrice ?? "Contact";
 }
 
@@ -81,13 +62,23 @@ function PriceValue({
 
   if (price === "Contact") {
     return (
-      <span className="text-2xl font-bold text-accent-blue-editorial">
+      <span
+        className="text-2xl font-medium"
+        style={{ color: "var(--r19-copper)" }}
+      >
         Contact for quote
       </span>
     );
   }
 
-  const amount = <span className="text-3xl font-bold text-white">{price}</span>;
+  const amount = (
+    <span
+      className="text-3xl font-medium"
+      style={{ color: "var(--text-primary)" }}
+    >
+      {price}
+    </span>
+  );
 
   if (variant === "card") {
     return amount;
@@ -96,7 +87,9 @@ function PriceValue({
   return (
     <div>
       {amount}
-      <p className="text-[#22c55e] text-sm mt-1">All-inclusive pricing</p>
+      <p className="text-sm mt-1" style={{ color: "var(--r19-copper)" }}>
+        All-inclusive pricing
+      </p>
     </div>
   );
 }
@@ -111,45 +104,57 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
   return (
     <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
       {/* Pricing Table */}
-      <section className="border-b border-white/10">
+      <section style={{ borderBottom: "1px solid var(--border-subtle)" }}>
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <h2 className="font-serif text-2xl text-white mb-8">Pricing</h2>
+          <h2
+            className="tracking-tight mb-8"
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontWeight: 500,
+              fontSize: "clamp(22px, 2.2vw, 28px)",
+              color: "var(--text-primary)",
+            }}
+          >
+            Pricing
+          </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {service.packages.map((pkg) => {
-              // Use visa colors for visa service
-              const visaColors =
-                slug === "visa" ? getVisaPackageColor(pkg.name) : null;
-
               return (
                 <div
                   key={pkg.name}
                   data-testid="public-service-price-card"
                   data-pricing-category={pkg.livePriceCategory}
                   data-pricing-key={pkg.livePriceKey}
-                  className={`rounded-xl border p-6 transition-all hover:scale-[1.02] ${
-                    slug === "visa" && visaColors
-                      ? `${visaColors.bg} ${visaColors.border}`
-                      : pkg.popular
-                        ? "border-accent-blue-editorial bg-accent-blue-editorial/10 hover:border-accent-blue-editorial"
-                        : "border-white/10 bg-[#0a2540] hover:border-white/30"
-                  }`}
+                  className="rounded-xl border p-6 transition-all hover:scale-[1.02]"
+                  style={{
+                    background: "var(--r19-surface)",
+                    borderColor: pkg.popular
+                      ? "var(--r19-copper)"
+                      : "var(--border-subtle)",
+                  }}
                 >
                   {pkg.popular && (
                     <span
-                      className={`rp-dark-island inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
-                        slug === "visa" && visaColors
-                          ? visaColors.badge
-                          : "bg-accent-blue-editorial"
-                      }`}
+                      className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-4"
+                      style={{
+                        background: "var(--r19-copper)",
+                        color: "var(--r19-cta-ink, #fff)",
+                      }}
                     >
                       Most Popular
                     </span>
                   )}
-                  <h3 className="text-white font-medium text-lg mb-2">
+                  <h3
+                    className="font-medium text-lg mb-2"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {pkg.name}
                   </h3>
-                  <p className="text-white/50 text-sm mb-4">
+                  <p
+                    className="text-sm mb-4"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     {pkg.description}
                   </p>
 
@@ -161,9 +166,13 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                     {pkg.features.map((feature, i) => (
                       <li
                         key={i}
-                        className="flex items-start gap-2 text-white/70 text-sm"
+                        className="flex items-start gap-2 text-sm"
+                        style={{ color: "var(--text-secondary)" }}
                       >
-                        <Check className="w-4 h-4 text-[#22c55e] mt-0.5 flex-shrink-0" />
+                        <Check
+                          className="w-4 h-4 mt-0.5 flex-shrink-0"
+                          style={{ color: "var(--r19-copper)" }}
+                        />
                         {feature}
                       </li>
                     ))}
@@ -176,13 +185,18 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                         dialogTriggerRef.current = event.currentTarget;
                         setSelectedPackage(pkg);
                       }}
-                      className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors ${
-                        slug === "visa" && visaColors
-                          ? `rp-dark-island ${visaColors.badge} text-white hover:opacity-90`
-                          : pkg.popular
-                            ? "rp-dark-island bg-accent-blue-editorial text-white hover:bg-[#1a41cc]"
-                            : "border border-white/20 text-white hover:bg-white/10"
-                      }`}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors"
+                      style={
+                        pkg.popular
+                          ? {
+                              background: "var(--r19-copper)",
+                              color: "var(--r19-cta-ink, #fff)",
+                            }
+                          : {
+                              border: "1px solid var(--r19-line-strong)",
+                              color: "var(--text-primary)",
+                            }
+                      }
                     >
                       <Info className="w-4 h-4" aria-hidden="true" />
                       More Details
@@ -193,7 +207,10 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
             })}
           </div>
 
-          <p className="text-white/40 text-sm text-center mt-8">
+          <p
+            className="text-sm text-center mt-8"
+            style={{ color: "var(--text-tertiary)" }}
+          >
             * All-inclusive pricing. No hidden fees.
           </p>
         </div>
@@ -202,7 +219,18 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
       {/* Modal Popup */}
       {selectedPackage && (
         <DialogContent
-          className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#0a2540] p-0 text-white"
+          className="max-h-[90vh] overflow-y-auto p-0"
+          style={{
+            // Radix portals DialogContent to document.body, outside the
+            // R19Presentation wrapper that would otherwise supply these
+            // vars (see R19_VARS's own "also applied to the Radix portal"
+            // comment) — re-declare them locally so the modal never falls
+            // back to the app's global (dark) root values.
+            ...R19_VARS,
+            border: "1px solid var(--border-subtle)",
+            background: "var(--r19-paper)",
+            color: "var(--text-primary)",
+          }}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             dialogTitleRef.current?.focus();
@@ -215,45 +243,88 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
           <div className="p-8">
             {/* Header */}
             {selectedPackage.popular && (
-              <span className="inline-block px-3 py-1 rounded-full bg-accent-blue-editorial text-white text-xs font-medium mb-4">
+              <span
+                className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-4"
+                style={{
+                  background: "var(--r19-copper)",
+                  color: "var(--r19-cta-ink, #fff)",
+                }}
+              >
                 Most Popular
               </span>
             )}
             <DialogTitle
               ref={dialogTitleRef}
               tabIndex={-1}
-              className="font-serif text-2xl text-white mb-2 outline-none"
+              className="tracking-tight mb-2 outline-none"
+              style={{
+                fontFamily: "var(--font-serif)",
+                fontWeight: 500,
+                fontSize: "24px",
+                color: "var(--text-primary)",
+              }}
             >
               {selectedPackage.name}
             </DialogTitle>
-            <DialogDescription className="text-white/60 mb-6">
+            <DialogDescription
+              className="mb-6"
+              style={{ color: "var(--text-secondary)" }}
+            >
               {selectedPackage.description}
             </DialogDescription>
 
             {/* Price */}
-            <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
+            <div
+              className="rounded-xl p-4 mb-6"
+              style={{
+                background: "var(--r19-surface)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
               <PriceValue pkg={selectedPackage} variant="modal" />
             </div>
 
             {/* Features */}
-            <h3 className="text-white font-medium mb-3">
+            <h3
+              className="font-medium mb-3"
+              style={{ color: "var(--text-primary)" }}
+            >
               What&apos;s Included:
             </h3>
             <ul className="space-y-3 mb-6">
               {selectedPackage.features.map((feature, i) => (
-                <li key={i} className="flex items-start gap-3 text-white/80">
-                  <Check className="w-5 h-5 text-[#22c55e] mt-0.5 flex-shrink-0" />
+                <li
+                  key={i}
+                  className="flex items-start gap-3"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <Check
+                    className="w-5 h-5 mt-0.5 flex-shrink-0"
+                    style={{ color: "var(--r19-copper)" }}
+                  />
                   {feature}
                 </li>
               ))}
             </ul>
 
             {/* Additional Info */}
-            <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
-              <h4 className="text-white/60 text-sm uppercase tracking-wider mb-2">
+            <div
+              className="rounded-xl p-4 mb-6"
+              style={{
+                background: "var(--r19-surface)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
+              <h4
+                className="text-sm uppercase tracking-wider mb-2"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 Our Service Includes:
               </h4>
-              <ul className="text-white/70 text-sm space-y-1">
+              <ul
+                className="text-sm space-y-1"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 <li>• Document preparation & review</li>
                 <li>• Government submission & liaison</li>
                 <li>• Status tracking & updates</li>
@@ -261,7 +332,9 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
               </ul>
             </div>
 
-            {/* WhatsApp CTA */}
+            {/* WhatsApp CTA — brand green kept as-is; guarded by
+                src/app/whatsapp-ink.guard.test.ts sitewide, out of R19-skin
+                scope. */}
             <WhatsAppLeadButton
               source="pricing_modal"
               context={{
@@ -283,7 +356,11 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
             {selectedPackage.link && (
               <Link
                 href={selectedPackage.link.href}
-                className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors mb-3"
+                className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl font-medium transition-colors mb-3"
+                style={{
+                  border: "1px solid var(--r19-line-strong)",
+                  color: "var(--text-primary)",
+                }}
               >
                 {selectedPackage.link.label} →
               </Link>
@@ -291,7 +368,11 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
 
             <Link
               href="/chat"
-              className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
+              className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl font-medium transition-colors"
+              style={{
+                border: "1px solid var(--r19-line-strong)",
+                color: "var(--text-primary)",
+              }}
             >
               <Image
                 src="/assets/logo/zantara-lotus.png"

@@ -501,6 +501,12 @@
           "also_covered_by": ["vaccine"],
           "note": "PENDING-ARMS L1087: warn path used to emit `systemMessage` only — reaches the operator's terminal, never the agent this hook exists to steer, per the Claude Code hooks doc. Now also emits hookSpecificOutput.additionalContext (permissionDecision:\"allow\"), mirroring orchestrate_gate.py's own fix — pinned by test_nudge_hooks_additional_context.py."
         },
+        "infra/claude-hooks/jev_dispatch_gate.py": {
+          "scar": ["superscar-3-generalization"],
+          "symbols": {},
+          "tests": ["scripts/tests/test_jev_dispatch_gate.py"],
+          "note": "PreToolUse(Agent) decision layer (RULED 2026-09-27): Jev (TypeSafe) judges whether a dispatch needs a separate agent and which tier; DENIES once when confident it is a single lookup (identical re-issue passes), DOWNGRADES opus->sonnet/haiku or sonnet->haiku only at high confidence and never on verdict/review work, never upgrades, fail-open on any vendor failure. Guilt+innocence in scripts/tests/test_jev_dispatch_gate.py (collected by scripts-tests-sweep.yml) through the JEV_DISPATCH_GATE_FAKE_ANSWERS seam: deny/one-shot/downgrade/never-upgrade/observe/off/fork/PII-shaped/malformed stdin. PII: deterministic redactor before egress, PII-shaped dispatches never leave the machine."
+        },
         "infra/claude-hooks/data_plane_guard.py": {
           "scar": ["superscar-3-generalization", "superscar-9"],
           "symbols": {},

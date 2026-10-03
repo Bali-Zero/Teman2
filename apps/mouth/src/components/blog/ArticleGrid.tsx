@@ -168,7 +168,7 @@ export function ArticleGrid({
   if (articles.length === 0) {
     return (
       <div className={cn("text-center py-12", className)}>
-        <p className="text-white/50">No articles found</p>
+        <p style={{ color: "var(--r19-muted)" }}>No articles found</p>
       </div>
     );
   }
@@ -202,17 +202,19 @@ export function ArticleGridSkeleton({
 }) {
   const items = Array.from({ length: count }, (_, i) => i);
 
+  const bone = { background: "var(--r19-wash)" };
+
   if (variant === "list") {
     return (
       <div className="space-y-6">
         {items.map((i) => (
           <div key={i} className="flex gap-6 animate-pulse">
-            <div className="w-48 aspect-[4/3] bg-white/5 rounded-xl" />
+            <div className="w-48 aspect-[4/3] rounded-xl" style={bone} />
             <div className="flex-1 space-y-3">
-              <div className="h-4 w-20 bg-white/5 rounded" />
-              <div className="h-6 w-3/4 bg-white/5 rounded" />
-              <div className="h-4 w-full bg-white/5 rounded" />
-              <div className="h-4 w-2/3 bg-white/5 rounded" />
+              <div className="h-4 w-20 rounded" style={bone} />
+              <div className="h-6 w-3/4 rounded" style={bone} />
+              <div className="h-4 w-full rounded" style={bone} />
+              <div className="h-4 w-2/3 rounded" style={bone} />
             </div>
           </div>
         ))}
@@ -224,11 +226,11 @@ export function ArticleGridSkeleton({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
       {items.map((i) => (
         <div key={i} className="animate-pulse">
-          <div className="aspect-[16/10] bg-white/5 rounded-xl mb-4" />
-          <div className="h-4 w-20 bg-white/5 rounded mb-2" />
-          <div className="h-6 w-full bg-white/5 rounded mb-2" />
-          <div className="h-4 w-3/4 bg-white/5 rounded mb-3" />
-          <div className="h-4 w-1/2 bg-white/5 rounded" />
+          <div className="aspect-[16/10] rounded-xl mb-4" style={bone} />
+          <div className="h-4 w-20 rounded mb-2" style={bone} />
+          <div className="h-6 w-full rounded mb-2" style={bone} />
+          <div className="h-4 w-3/4 rounded mb-3" style={bone} />
+          <div className="h-4 w-1/2 rounded" style={bone} />
         </div>
       ))}
     </div>

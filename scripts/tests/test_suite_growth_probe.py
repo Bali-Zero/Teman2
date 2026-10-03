@@ -192,6 +192,185 @@ def test_read_job_timeouts_parses_declared_timeout(tmp_path):
     assert mapping["no-timeout-job"]["timeout_minutes"] is None
 
 
+def test_expand_matrix_job_names_no_template_is_unchanged():
+    """INNOCENCE: a plain `name:` with no `${{ matrix.* }}` template passes
+    through as a single-element list — the common (non-matrix) case."""
+    assert sgp._expand_matrix_job_names(
+        "Backend Tests (Python)", {"strategy": {"matrix": {}}}
+    ) == ["Backend Tests (Python)"]
+
+
+def test_expand_matrix_job_names_renders_every_matrix_value():
+    """GUILT/regression proof: `backend-shard`'s real shape — `name: Backend
+    Shard ${{ matrix.shard }}` plus `strategy.matrix.shard: [1, 2, 3]` — must
+    render into the exact three names the Jobs API reports per matrix
+    instance. Before this function existed, `read_job_timeouts` stored the
+    UNRENDERED template string as the only name, which could never match
+    `Backend Shard 1`/`2`/`3` — the live 2026-09-27 false positive
+    (`suite_growth_probe` alerting "no timeout-minutes entry found for job
+    'backend-shard-1'" on a job that DOES declare timeout-minutes)."""
+    job = {"strategy": {"matrix": {"shard": [1, 2, 3]}}}
+    assert sgp._expand_matrix_job_names("Backend Shard ${{ matrix.shard }}", job) == [
+        "Backend Shard 1",
+        "Backend Shard 2",
+        "Backend Shard 3",
+    ]
+
+
+def test_expand_matrix_job_names_unresolvable_var_returns_template_unchanged():
+    """INNOCENCE (fail towards the OLD behavior, never a guess): a `${{
+    matrix.<var> }}` referencing a key absent from `strategy.matrix` (or not
+    a non-empty list) is left as-is rather than silently dropped or
+    fabricated."""
+    assert sgp._expand_matrix_job_names(
+        "Leg ${{ matrix.os }}", {"strategy": {"matrix": {"shard": [1, 2]}}}
+    ) == ["Leg ${{ matrix.os }}"]
+    assert sgp._expand_matrix_job_names("Leg ${{ matrix.os }}", {}) == [
+        "Leg ${{ matrix.os }}"
+    ]
+
+
+def test_read_job_timeouts_resolves_templated_matrix_name(tmp_path):
+    """End-to-end regression for the same 2026-09-27 gap, through the real
+    `read_job_timeouts` entry point: a `backend-shard`-shaped job's single
+    job-level `timeout-minutes` must be reachable under EACH rendered
+    per-instance key, matching what `build_record`'s `timeout_by_key`
+    lookup (keyed on the API's own rendered job names) will actually query."""
+    workflow = tmp_path / "tests.yml"
+    workflow.write_text(
+        "jobs:\n"
+        "  backend-shard:\n"
+        "    name: Backend Shard ${{ matrix.shard }}\n"
+        "    timeout-minutes: 30\n"
+        "    strategy:\n"
+        "      matrix:\n"
+        "        shard: [1, 2, 3]\n"
+    )
+    mapping, error = sgp.read_job_timeouts(workflow)
+    assert error is None
+    rendered_names = {meta["name"] for meta in mapping.values()}
+    # PLUS the raw, unrendered template string itself (see
+    # test_read_job_timeouts_keeps_raw_template_name_for_skipped_matrix_jobs
+    # below for why: a SKIPPED matrix job is reported by the Jobs API under
+    # this exact literal string, never under a rendered per-instance name).
+    assert rendered_names == {
+        "Backend Shard ${{ matrix.shard }}",
+        "Backend Shard 1",
+        "Backend Shard 2",
+        "Backend Shard 3",
+    }
+    assert all(meta["timeout_minutes"] == 30 for meta in mapping.values())
+
+
+def test_read_job_timeouts_keeps_raw_template_name_for_skipped_matrix_jobs(tmp_path):
+    """GUILT/regression proof for the fresh-gate's own finding (2026-09-27,
+    measured against 43 real merge_group runs of Bali-Zero/Teman2's
+    tests.yml): a matrix job that is SKIPPED never reaches matrix
+    expansion, so the Jobs API reports it as ONE entry — `status:
+    completed`, `conclusion: skipped`, same start/end timestamp — under the
+    LITERAL, unrendered `name:` string, never under `Backend Shard 1/2/3`.
+    `_expand_matrix_job_names` alone (rendering-only) would leave that
+    literal string unmapped again — the same "no timeout-minutes entry
+    found" shape this whole function exists to close, just for the
+    skipped half of the job's life instead of the run half. This pins that
+    `read_job_timeouts` keeps BOTH shapes reachable from one job
+    declaration."""
+    workflow = tmp_path / "tests.yml"
+    workflow.write_text(
+        "jobs:\n"
+        "  backend-shard:\n"
+        "    name: Backend Shard ${{ matrix.shard }}\n"
+        "    timeout-minutes: 30\n"
+        "    strategy:\n"
+        "      matrix:\n"
+        "        shard: [1, 2, 3]\n"
+    )
+    mapping, error = sgp.read_job_timeouts(workflow)
+    assert error is None
+    by_name = {meta["name"]: meta["timeout_minutes"] for meta in mapping.values()}
+    # The exact literal string the Jobs API reports for a SKIPPED instance —
+    # copied from a real API response, not retyped by hand (measured
+    # 2026-09-27, `gh run view <merge_group-run-id> --json jobs`).
+    skipped_api_name = "Backend Shard ${{ matrix.shard }}"
+    assert by_name.get(skipped_api_name) == 30
+    assert by_name.get("Backend Shard 1") == 30
+    assert by_name.get("Backend Shard 2") == 30
+    assert by_name.get("Backend Shard 3") == 30
+
+
+def test_build_record_skipped_matrix_shard_produces_no_missing_timeout_error(
+    tmp_path, monkeypatch
+):
+    """End-to-end regression through the real `build_record` entry point
+    (not just `read_job_timeouts` in isolation): a run window containing a
+    SKIPPED `Backend Shard ${{ matrix.shard }}` entry alongside normal
+    RENDERED `Backend Shard 1/2/3` entries — the exact mixed shape measured
+    live (43 real merge_group runs, 2026-09-27) — must produce ZERO "no
+    timeout-minutes entry found" errors for any of the four job-name
+    variants. Before this fix, the skipped entry alone reproduced the
+    original bug this task exists to close, just under a different error
+    string (`backend-shard-matrix-shard` instead of `backend-shard-1/2/3`)."""
+    wf_dir = tmp_path / ".github" / "workflows"
+    wf_dir.mkdir(parents=True)
+    (wf_dir / "tests.yml").write_text(
+        "jobs:\n"
+        "  backend-shard:\n"
+        "    name: Backend Shard ${{ matrix.shard }}\n"
+        "    timeout-minutes: 30\n"
+        "    strategy:\n"
+        "      matrix:\n"
+        "        shard: [1, 2, 3]\n"
+    )
+    test_dir = tmp_path / "backend" / "tests"
+    test_dir.mkdir(parents=True)
+    (test_dir / "test_placeholder.py").write_text("")
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    (scripts_dir / "tg_notify.py").write_text("# fake gateway for tests\n")
+
+    repo, workflow = "acme/repo", "tests.yml"
+    runs = [
+        _mk_run(1, "merge_group", CURRENT_TS),
+        _mk_run(2, "merge_group", PREVIOUS_TS),
+    ]
+    skipped_job = _mk_job("Backend Shard ${{ matrix.shard }}", 0.0)
+    skipped_job["conclusion"] = "skipped"
+    jobs_by_run = {
+        1: [
+            skipped_job,
+            _mk_job("Backend Shard 1", 8.5),
+            _mk_job("Backend Shard 2", 8.9),
+            _mk_job("Backend Shard 3", 10.1),
+        ],
+        2: [
+            _mk_job("Backend Shard 1", 7.0),
+            _mk_job("Backend Shard 2", 7.5),
+            _mk_job("Backend Shard 3", 8.0),
+        ],
+    }
+    monkeypatch.setattr(sgp.subprocess, "run", _make_fake_gh(repo, workflow, runs, jobs_by_run))
+
+    record = sgp.build_record(
+        repo, workflow, tmp_path, "backend/tests", NOW, 7,
+        tmp_path / "scripts" / "tg_notify.py", dispatch_alerts=False,
+    )
+
+    missing_timeout_errors = [e for e in record["errors"] if "no timeout-minutes entry found" in e]
+    assert missing_timeout_errors == [], (
+        f"expected zero 'no timeout-minutes entry found' errors, got: {missing_timeout_errors}"
+    )
+    # "backend-shard-matrix-shard" is the SKIPPED sample's own job_key (the
+    # API-reported literal name, normalized) — a DIFFERENT key from the
+    # timeout_map's internal "backend-shard"/"backend-shard[n]" keys, which
+    # never surface in record["jobs"] (only their normalized *names* do, via
+    # timeout_by_key). This is exactly the key the fresh gate's own finding
+    # named ('backend-shard-matrix-shard') — asserted here by name, not
+    # retyped from memory of the earlier text.
+    for key in ("backend-shard-matrix-shard", "backend-shard-1", "backend-shard-2", "backend-shard-3"):
+        assert key in record["jobs"], f"expected job key {key!r} in record, got {sorted(record['jobs'])}"
+        assert record["jobs"][key]["timeout_minutes"] == 30
+
+
 def test_read_job_timeouts_missing_pyyaml_degrades_to_declared_error(tmp_path, monkeypatch):
     import builtins
 

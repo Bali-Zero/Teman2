@@ -337,6 +337,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="compliance_alerts", process_groups=_API, tags=("compliance",)),
     # ── Compliance Obligations (A2: reviewer API, HITL bridge to compliance_alerts) ──
     RouterEntry(name="compliance_obligations", process_groups=_API, tags=("compliance",)),
+    RouterEntry(name="tax_calendar_public", process_groups=_API, tags=("compliance", "public")),
     # ── LKPM Compliance ──
     RouterEntry(name="lkpm", process_groups=_API, tags=("compliance",)),
     # ── LLM Cost Tracking (remote ingestion for Pro/Air cron agents) ──
@@ -424,6 +425,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="visa_oracle", process_groups=_API, prefix="__API_V1__", tags=("visa",)),
     # ── Visa Oracle v2 evaluate read-path (W1 — public, exact path, rate-limited) ──
     RouterEntry(name="visa_oracle_evaluate", process_groups=_API, tags=("visa",)),
+    RouterEntry(name="visa_oracle_testing", process_groups=_API, tags=("visa",)),
     # ── Voice ──
     RouterEntry(name="voice", process_groups=_RAG, tags=("media",)),
     # ── War Room Dashboard (Sprint 11 — metrics aggregate queries) ──

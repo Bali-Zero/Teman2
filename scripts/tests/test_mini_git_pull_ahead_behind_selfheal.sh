@@ -49,15 +49,20 @@ fi
 echo "OK: ahead+behind predicate lines present verbatim in $TARGET_SCRIPT"
 
 # The predicate under test, extracted as a function so each scenario runs
-# it identically to the deployed script's logic (merge-base, clean-tree
-# guard, touched-paths diff — same three checks, same order).
+# it identically to the deployed script's ENTRY GATE logic (merge-base,
+# touched-paths diff). 2026-10-02: the working-tree clean-tree requirement
+# was removed from this gate — a dirty tracked file no longer blocks
+# self-heal from being ATTEMPTED, it is stashed immediately before the
+# `reset --hard` and popped immediately after (same pattern the happy-path
+# pull already used). That stash/pop safety net lives inside the lock scope
+# in the real script and is exercised by the end-to-end test
+# test-mini-git-pull-selfheal-dirty.sh, not by this predicate — a predicate
+# can only tell you whether the gate OPENS, not what happens to a stash.
 narrow_selfheal_safe() {
   local target_ref="$1"
   local merge_base
   merge_base=$(git merge-base HEAD "$target_ref" 2>/dev/null) || return 1
   [ -n "$merge_base" ] || return 1
-  git diff --quiet HEAD 2>/dev/null || return 1
-  git diff --quiet --cached HEAD 2>/dev/null || return 1
   local touched=()
   while IFS= read -r -d '' _p; do
     touched+=("$_p")
@@ -124,13 +129,22 @@ else
   pass "scenario B: genuinely conflicting touched-path content correctly refused"
 fi
 
-# --- scenario C: ahead 1, behind 1, content-identical — but the working ---
-# tree carries an uncommitted tracked edit. Must refuse (protect the edit).
+# --- scenario C: ahead 1, behind 1, content-identical touched path — and ---
+# the working tree ALSO carries an uncommitted tracked edit (e.g. the
+# recurring real case: shared/escalations_pro.jsonl, written directly by
+# concurrent producers and only periodically promoted via PR). 2026-10-02:
+# the entry gate no longer depends on tree cleanliness — the deployed script
+# stashes the dirty tracked content immediately before `reset --hard` and
+# pops it immediately after (see test-mini-git-pull-selfheal-dirty.sh for
+# the end-to-end proof that the edit survives). The gate itself must say
+# "safe to attempt" here; refusing would re-introduce the 2.5-day stall this
+# hardening exists to cure.
 REPO_C="$WORKDIR/c"
 mk_repo "$REPO_C"
 (
   cd "$REPO_C"
-  git commit -q --allow-empty -m base
+  echo "v1" >shared.txt
+  git add -A && git commit -q -m base
   BASE=$(git rev-parse HEAD)
   echo "content" >report.md
   git add -A && git commit -q -m "local-only commit"
@@ -139,12 +153,17 @@ mk_repo "$REPO_C"
   echo "unrelated" >other.txt
   git add -A && git commit -q -m "target"
   git checkout -q master 2>/dev/null || git checkout -q main
-  echo "dirty" >report.md
+  # shared.txt pre-dates the merge-base and neither side's new commits touch
+  # it (the real-world analog: shared/escalations_pro.jsonl, untouched by the
+  # stranded GSC-report commit) — dirtying it must not be read as part of
+  # TOUCHED_PATHS at all.
+  echo "v1
+uncommitted local append" >shared.txt
 )
 if (cd "$REPO_C" && narrow_selfheal_safe target); then
-  fail "scenario C: should have refused (uncommitted tracked change present)"
+  pass "scenario C: uncommitted tracked edit unrelated to the touched path does not block the entry gate (stash/pop handles it)"
 else
-  pass "scenario C: uncommitted tracked change correctly refused"
+  fail "scenario C: entry gate should not depend on working-tree cleanliness (W88 2026-10-02 hardening)"
 fi
 
 # --- scenario D: ahead 0 (merge-base equals HEAD, no local-only commits) -

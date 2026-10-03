@@ -1,0 +1,36 @@
+mandate: >-
+  Portal Champion Round 2 takeovers (Zero, 2026-09-30): make the kita
+  workspace-wide full-screen goal takeover more intense for a +1 registration,
+  add a distinct "bomb" takeover for the +3 first-document bonus and a
+  "disappointment" takeover for penalties (-2 unanswered client request > 3
+  working hours, -1 required document unreviewed > 1 working day). Frontend
+  only; the backend producer that emits bomb/penalty events ships after this
+  is live. Old kind-less goal events render as goals; unknown kinds are ignored.
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source size (+421/-62 across 2 files:
+  PortalChampionCelebration.tsx and its test), no hot zone.
+dux: claude-opus-5-5
+implementer: claude-sonnet-5
+organ: apps/mouth/src/components/workspace/PortalChampionCelebration.tsx (kita, Vercel mouth project; production goes live only on promote)
+authority: >-
+  Zero 2026-09-30 in the release owner's session: "accentua il blocco schermo
+  quando c'e un goal (da 1 punto o la bomba da 3) e la delusione per le penalty".
+acceptance:
+  - text: >-
+      A kind-less or kind "goal" event renders the intensified GOAL takeover; a
+      "bomb" event renders the BOM! +3 takeover; a "penalty" event renders the
+      disappointment takeover with its reason line even at activations <= 0;
+      an unknown kind renders nothing; events older than 90 s are dropped.
+    probe: >-
+      cd apps/mouth && npx vitest run
+      src/components/workspace/PortalChampionCelebration.test.tsx
+  - text: >-
+      Reduced motion removes confetti/shake/explosion; dialog a11y (focus trap,
+      restore, Escape) intact; no new dependency; staff names only.
+    probe: >-
+      fresh sign-only gate receipt on 38f3a3f91c (vitest 139/139, tsc, eslint,
+      guilt 9/9 new tests fail on origin/main).
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

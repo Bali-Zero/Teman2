@@ -40,6 +40,7 @@ def get_allowed_origins() -> list[str]:
         "https://www.my.balizero.com",
         "https://knowledge.balizero.com",  # Knowledge subdomain
         "https://visa.balizero.com",  # Visa Oracle product
+        "https://tax.balizero.com",  # Tax calendar product
         "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment
         *(
             ["http://localhost:3000"] if settings.environment != "production" else []

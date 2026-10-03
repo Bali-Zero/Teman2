@@ -1,0 +1,32 @@
+task_id: audit-prod-lock-1001
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  CI's pip-audit step (Backend Static, .github/workflows/tests.yml) audited only
+  apps/backend-rag/requirements.lock.txt, while the Fly image installs
+  requirements-prod.lock.txt (Dockerfile). #7708 fixed the CI lock; production kept pyjwt 2.13.0
+  until #7709. Make the step audit BOTH locks with ONE shared ignore list so the two audits cannot
+  drift. Landing it exposed that main was already red today on new advisories (urllib3 2.7.0:
+  CVE-2026-97687/97688/97689, fix 2.8.0, present in BOTH locks and live in prod; virtualenv 21.7.4:
+  four PYSEC ids, CI lock only), so the same PR bumps those two packages; without them the new
+  audit reds on arrival.
+constraints:
+  - "Same grep/sed normalisation and the same --ignore-vuln set for both locks (IGNORES array); no ignore added or removed."
+  - "The urllib3/virtualenv/python-discovery lock bumps this brief originally carried landed via #7733 and are no longer in this diff; the diff is the pip-audit step plus this evidence."
+  - "Do not arm or merge; merge of apps/backend-rag/** is a Fly deploy, run by the conductor."
+acceptance:
+  - text: "WHEN the pip-audit step runs on main's locks after this change, THEN both audits print 'No known vulnerabilities found' and the step exits 0."
+    probe: "bash -e tmp/step.sh"
+  - text: "WHEN requirements-prod.lock.txt carries pyjwt 2.13.0, THEN the step exits non-zero naming pyjwt."
+    probe: "requirements-prod.lock.txt && bash -e tmp/step.sh"
+consumer_map:
+  - "Backend Static (Python) job, pip-audit step, on the next backend PR's merge_group run: prints one audit per lock."
+  - "Fly image built from requirements-prod.lock.txt: its lock is now audited on every backend PR (the urllib3 2.8.0 bump shipped separately via #7733)."
+risks:
+  - "A failing first audit must not hide the second: the step audits both locks, then fails via an accumulated RC (council MEDIUM, fixed and stub-proved)."
+  - "CVE-2026-103001 (pyjwt, no fix version) appears only on pyjwt 2.13.0; pyjwt 2.15.1 is clean."
+  - "Council r1 (codex-gpt-5.6-sol, kimi-code/k3) ran on the workflow diff; the two PLAUSIBLE LOW findings stay OPEN, accepted (see pack dissent)."
+grader: |
+  Council r1 (codex + kimi) plus executed receipts (green, red and stub runs of the extracted
+  step); a fresh Opus gate session is requested before arming.

@@ -120,10 +120,22 @@ def test_innocence_roles_naming_other_doors_are_not_judged():
 
 
 def test_unprobeable_when_ollama_is_absent():
-    """M5 has no ollama. 'No daemon here' must never be reported as 'all roles resolve'."""
-    with tempfile.TemporaryDirectory() as td:
-        root = _root(Path(td), {"fast": "qwen3.5:9b"})
-        status, n, ev = _probe(_fake_ollama(_listing()), root, which=None)
+    """M5 has no ollama. 'No daemon here' must never be reported as 'all roles resolve'.
+
+    `Path.exists` must be mocked False for the homebrew fallback paths too: on
+    any machine that actually has ollama at `/opt/homebrew/bin/ollama` (mini
+    does), leaving it real makes `shutil.which(None)` irrelevant — the fallback
+    finds the binary anyway and the probe judges roles instead of reporting
+    UNPROBEABLE, which is exactly the false-RECONCILED-shape this test exists
+    to forbid, self-inflicted by the test's own environment leakage."""
+    real_exists = Path.exists
+    Path.exists = lambda self: False
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            root = _root(Path(td), {"fast": "qwen3.5:9b"})
+            status, n, ev = _probe(_fake_ollama(_listing()), root, which=None)
+    finally:
+        Path.exists = real_exists
     assert status == pp.UNPROBEABLE, ev
     assert n == 0
 
@@ -234,3 +246,81 @@ def test_alias_cycle_terminates():
         root = _root(Path(td), {"a": "b", "b": "a"})
         status, _, _ = _probe(_fake_ollama(_listing()), root)
     assert status in (pp.DIVERGED, pp.RECONCILED)
+
+
+def _root_fd(tmp: Path, roles: dict, failure_domains: dict) -> Path:
+    (tmp / "MODEL_TOPOLOGY.json").write_text(
+        json.dumps({"roles": roles, "failure_domains": failure_domains}))
+    return tmp
+
+
+def _probe_as(monkey_run, root: Path, node: str, *, which: str | None = "/usr/bin/ollama"):
+    real_run, real_which = pp.subprocess.run, pp.shutil.which
+    pp.subprocess.run, pp.shutil.which = monkey_run, lambda _: which
+    try:
+        return pp.probe_model_topology_drift(
+            root, {"topology": "MODEL_TOPOLOGY.json", "node": node}, 5)
+    finally:
+        pp.subprocess.run, pp.shutil.which = real_run, real_which
+
+
+def test_innocence_role_scoped_to_another_nodes_ollama_is_not_judged():
+    """`vision`/`ocr_vision` are declared only under `failure_domains.ollama_pro`.
+
+    Found live on mini 2026-09-28: judged against mini's own `ollama list` anyway
+    — a permanent false DIVERGED, since mini was never meant to serve them (the
+    `-mlx` precedent above, one scope over: superscar #3 over-match on NODE, not
+    on model shape)."""
+    roles = {"vision": "qwen2.5vl:7b", "fast": "qwen3.5:9b"}
+    domains = {"ollama_pro": ["vision"], "ollama_mini": []}
+    with tempfile.TemporaryDirectory() as td:
+        root = _root_fd(Path(td), roles, domains)
+        status, n, ev = _probe_as(_fake_ollama(_listing("qwen3.5:9b")), root, "mini")
+    assert status == pp.RECONCILED, ev
+    assert n == 0, "a role scoped to ollama_pro is not mini's missing model"
+    assert any("1 roles name other doors" in line for line in ev), ev
+
+
+def test_guilt_role_scoped_here_is_still_judged():
+    """Scoping to another node must not become a blanket bypass: a role genuinely
+    assigned to THIS node's own ollama domain still fires when its model is
+    absent."""
+    roles = {"cron_primary": "ghost:7b", "vision": "qwen2.5vl:7b"}
+    domains = {"ollama_pro": ["vision"], "ollama_mini": ["cron_primary"]}
+    with tempfile.TemporaryDirectory() as td:
+        root = _root_fd(Path(td), roles, domains)
+        status, n, ev = _probe_as(_fake_ollama(_listing()), root, "mini")
+    assert status == pp.DIVERGED, ev
+    assert n == 1, ev
+    assert any("cron_primary -> ghost:7b" in line for line in ev), ev
+
+
+def test_innocence_role_shared_across_both_nodes_domains_is_still_judged():
+    """A role listed under BOTH `ollama_pro` and `ollama_mini` (a genuinely
+    multi-node role, e.g. `cron_primary`) must stay judged on mini, not fall
+    into the other-node exclusion just because pro also claims it.
+
+    Found live on mini 2026-09-28 while fixing MODEL_TOPOLOGY.json itself:
+    an early draft left `ollama_mini` empty, so `elsewhere_only` (built from
+    every OTHER domain) swallowed `cron_primary`/`cell_tier0` too — the exact
+    esiste≠armato shape this probe exists to catch, self-inflicted by the cure.
+    `assigned_here` must be subtracted BEFORE the role is judged out-of-scope."""
+    roles = {"cron_primary": "qwen3.5:9b"}
+    domains = {"ollama_pro": ["cron_primary"], "ollama_mini": ["cron_primary"]}
+    with tempfile.TemporaryDirectory() as td:
+        root = _root_fd(Path(td), roles, domains)
+        status, n, ev = _probe_as(_fake_ollama(_listing("qwen3.5:9b")), root, "mini")
+    assert status == pp.RECONCILED, ev
+    assert n == 0, ev
+    assert any("1/1 ollama roles resolve" in line for line in ev), ev
+
+
+def test_innocence_empty_failure_domains_keeps_old_flat_behavior():
+    """No `failure_domains` key at all (every fixture above this line) must judge
+    every ollama-shaped role against this machine, unchanged — the node-scoping
+    exclusion only activates when the topology actually declares domains."""
+    with tempfile.TemporaryDirectory() as td:
+        root = _root(Path(td), {"vision": "qwen2.5vl:7b"})
+        status, n, ev = _probe_as(_fake_ollama(_listing()), root, "mini")
+    assert status == pp.DIVERGED, ev
+    assert n == 1, "no failure_domains declared means nothing is out-of-scope"

@@ -181,12 +181,12 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
           <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
             Team Performance
           </span>
-          <span className="text-[9px] text-[var(--bz-text-3)]">
+          <span className="text-[11px] text-[var(--bz-text-3)]">
             · Current Period
           </span>
         </div>
         {overview && (
-          <div className="flex items-center gap-4 text-[9px] text-[var(--bz-text-3)]">
+          <div className="flex items-center gap-4 text-[11px] text-[var(--bz-text-3)]">
             <span className="flex items-center gap-1">
               <span
                 className="w-1.5 h-1.5 rounded-full"
@@ -306,7 +306,7 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
                       >
                         {m.name}
                       </p>
-                      <p className="text-[8px] font-semibold text-[var(--bz-text-3)] truncate leading-tight capitalize">
+                      <p className="text-[11px] font-semibold text-[var(--bz-text-3)] truncate leading-tight capitalize">
                         {m.role}
                       </p>
                     </div>

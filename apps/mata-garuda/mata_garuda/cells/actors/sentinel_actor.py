@@ -19,6 +19,7 @@ from cell_core.types import Proposal, SensorReading
 
 from mata_garuda.config import NLM_NOTEBOOKS, TG_ZERO_CHAT_ID
 from mata_garuda.runtime.knowledge import KnowledgeBase
+from mata_garuda.tools.tg_tools import curl_send
 
 logger = logging.getLogger("mata_garuda.cells")
 
@@ -192,18 +193,7 @@ class SentinelActor:
 
         message = "\n".join(lines)
 
-        try:
-            result = subprocess.run(
-                [
-                    "curl", "-s",
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    "-d", f"chat_id={TG_ZERO_CHAT_ID}",
-                    "--data-urlencode", f"text={message}",
-                ],
-                capture_output=True, text=True, timeout=15,
-            )
-            if '"ok":true' in result.stdout:
-                return True
-        except Exception as e:
-            logger.warning(f"[sentinel_actor] TG failed: {e}")
-        return False
+        ok, reason = curl_send(token, TG_ZERO_CHAT_ID, message)
+        if not ok:
+            logger.warning(f"[sentinel_actor] TG failed: {reason}")
+        return ok

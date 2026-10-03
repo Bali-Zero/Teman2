@@ -52,6 +52,25 @@ describe("MobileNav keyboard navigation", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("names the trigger by its state: Open menu when closed, Close menu when expanded", async () => {
+    render(<MobileNav items={items} funnel="home" />);
+    const trigger = screen.getByRole("button", { name: "Open menu" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(trigger);
+    await screen.findByRole("dialog", { name: "Navigation menu" });
+    // Radix hides the trigger from the accessibility tree while the modal is
+    // open, so assert on the element itself: the DOM must not keep announcing
+    // "Open menu" while aria-expanded is true (found on a physical device).
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(trigger).toHaveAttribute("aria-label", "Close menu");
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).toHaveAttribute("aria-label", "Open menu");
+  });
+
   it("keeps Tab and Shift+Tab inside the open drawer", async () => {
     render(<MobileNav items={items} funnel="home" />);
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));

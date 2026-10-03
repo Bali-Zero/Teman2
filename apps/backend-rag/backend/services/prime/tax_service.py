@@ -75,7 +75,7 @@ def calculate_property_tax(
 # PROPERTY ELIGIBILITY FOR FOREIGNERS
 # =============================================================================
 def calculate_property_eligibility(
-    nationality: str,
+    nationality: str | None,
     zone_code: str | None = None,
     njop_total_idr: float | None = None,
 ) -> dict[str, Any]:
@@ -84,8 +84,18 @@ def calculate_property_eligibility(
     Based on UUPA (Undang-Undang Pokok Agraria), PP 18/2021, and
     the Knowledge Graph property subgraph rules.
     """
-    nat = nationality.strip().upper()
-    is_foreigner = nat in ("WNA", "FOREIGNER", "FOREIGN", "ASING")
+    nat = (nationality or "").strip().upper()
+    is_indonesian = nat in {
+        "WNI",
+        "ID",
+        "IDN",
+        "INDONESIA",
+        "INDONESIAN",
+        "WARGA NEGARA INDONESIA",
+    }
+    # Property ownership must fail closed: only explicit Indonesian identifiers
+    # may be offered Hak Milik.
+    is_foreigner = not is_indonesian
 
     bphtb_estimate = round(njop_total_idr * 0.05) if njop_total_idr else None
 

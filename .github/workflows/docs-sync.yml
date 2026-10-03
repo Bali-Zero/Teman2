@@ -1,9 +1,28 @@
 name: Docs Sync Check
 
-# Required-safe sentinel: always starts, then judges only the merge-base delta.
+# Sentinel: judges only the merge-base delta. On a PR it starts only when the PR touches
+# the docs-sync surface (the `on:` paths below, equal to the step's regex).
 # Volatile repository counts are never compared with tracked markdown.
 on:
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (same set as the "Enumerate merge-base delta" step below). No merge_group:
+  # scripts/ci/lint_trigger_symmetry.py forbids it beside pull_request.paths. A required
+  # context needs pull_request unfiltered again (check_required_workflow_conformance.py).
   pull_request:
+    paths:
+      - "scripts/docs_sync.py"
+      - "scripts/ci/docs_sync_gate.sh"
+      - "scripts/tests/test_docs_sync_atlas.py"
+      - "scripts/tests/test_docs_sync_gate_failclosed.sh"
+      - "README.md"
+      - "INDEX.md"
+      - "docs/AI_ONBOARDING.md"
+      - "docs/runbooks/README.md"
+      - "docs/DOCS_INVENTORY.md"
+      - ".github/workflows/docs-sync.yml"
+      # pytest loads these implicitly for scripts/tests/ (its conftest and package marker).
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
   push:
     branches: [main]
 

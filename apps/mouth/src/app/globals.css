@@ -944,10 +944,13 @@
   --tx-pure: #f7f4ee;
   --tx-primary: #f7f4ee;
   --tx-secondary: rgba(247, 244, 238, 0.62);
-  --tx-tertiary: rgba(247, 244, 238, 0.45);
+  /* Muted was 0.45: 4.23:1 on the base, 4.18:1 on the card — under
+     SC 1.4.3 for the portal labels that read it. 0.62 is 7.04 / 6.74:1,
+     the same step the kita dark block already ships. */
+  --tx-tertiary: rgba(247, 244, 238, 0.62);
   --bz-text-1: #f7f4ee;
   --bz-text-2: rgba(247, 244, 238, 0.62);
-  --bz-text-3: rgba(247, 244, 238, 0.45);
+  --bz-text-3: rgba(247, 244, 238, 0.62);
   --foreground: #f7f4ee;
   --foreground-muted: rgba(247, 244, 238, 0.62);
   --kbli-text-primary: #f7f4ee;
@@ -1579,6 +1582,9 @@ main,
    own backgrounds + white text; we never recolor text inside an element with
    its own non-transparent background.
    WCAG AA: ink #16213a ≈ 13.5:1, soft-ink #475372 ≈ 7.1:1 on paper #f7f6f2.
+   These rules now read the R19 tokens (--r19-ink/-muted/-line/-line-strong/
+   -surface/-paper/-wash/-copper), with the literals above kept as the `var()`
+   fallback for any render without an R19 ancestor.
    ─────────────────────────────────────────────────────────────────────────── */
 
 /* ── Long-form body: MDX renderer (.mdx-content) + markdown fallback (.prose).
@@ -1586,7 +1592,7 @@ main,
       the real colors come from the explicit per-element classes below. ── */
 .rumah-putih .mdx-content,
 .rumah-putih .prose {
-  color: #16213a;
+  color: var(--r19-ink, #16213a);
 }
 .rumah-putih .mdx-content h1,
 .rumah-putih .mdx-content h2,
@@ -1596,7 +1602,7 @@ main,
 .rumah-putih .prose h2,
 .rumah-putih .prose h3,
 .rumah-putih .prose h4 {
-  color: #1e3863 !important; /* navy headings */
+  color: var(--r19-ink, #1e3863) !important; /* headings: R19 ink */
 }
 .rumah-putih .mdx-content p,
 .rumah-putih .mdx-content li,
@@ -1606,38 +1612,38 @@ main,
 .rumah-putih .prose li,
 .rumah-putih .prose ul,
 .rumah-putih .prose ol {
-  color: #1f2a44 !important; /* near-ink body */
+  color: var(--r19-ink, #1f2a44) !important; /* body: R19 ink */
 }
 .rumah-putih .mdx-content strong,
 .rumah-putih .prose strong {
-  color: #16213a !important;
+  color: var(--r19-ink, #16213a) !important;
 }
 .rumah-putih .mdx-content em,
 .rumah-putih .prose em {
-  color: #1f2a44 !important;
+  color: var(--r19-ink, #1f2a44) !important;
 }
 /* Blockquote — hairline-navy rule on a faint navy wash */
 .rumah-putih .mdx-content blockquote,
 .rumah-putih .prose blockquote {
-  color: #475372 !important;
-  background: rgba(30, 56, 99, 0.045) !important;
-  border-left-color: #1e3863 !important;
+  color: var(--r19-muted, #475372) !important;
+  background: var(--r19-wash, rgba(30, 56, 99, 0.045)) !important;
+  border-left-color: var(--r19-copper, #1e3863) !important;
 }
 /* Inline code — ink on a faint navy chip (keep the red token for keywords) */
 .rumah-putih .mdx-content :not(pre) > code,
 .rumah-putih .prose :not(pre) > code {
-  background: rgba(30, 56, 99, 0.08) !important;
-  color: #b3261e !important; /* legible red on light */
+  background: var(--r19-wash, rgba(30, 56, 99, 0.08)) !important;
+  color: var(--r19-ink, #b3261e) !important; /* inline code: R19 ink */
 }
 /* Code block — keep a dark slab (code reads best dark; FT-style island) */
 .rumah-putih .mdx-content pre,
 .rumah-putih .prose pre {
-  background: #0f1f33 !important;
-  border-color: rgba(30, 56, 99, 0.25) !important;
+  background: var(--r19-wash, #0f1f33) !important;
+  border-color: var(--r19-line, rgba(30, 56, 99, 0.25)) !important;
 }
 .rumah-putih .mdx-content pre code,
 .rumah-putih .prose pre code {
-  color: #e8edf6 !important;
+  color: var(--r19-ink, #e8edf6) !important;
 }
 /* Tables — hairline navy borders, ink text, faint navy header */
 .rumah-putih .mdx-content table,
@@ -1650,32 +1656,32 @@ main,
 .rumah-putih .prose th,
 .rumah-putih .prose td,
 .rumah-putih .prose tr {
-  border-color: #e3e1da !important;
+  border-color: var(--r19-line, #e3e1da) !important;
 }
 .rumah-putih .mdx-content thead,
 .rumah-putih .prose thead {
-  background: rgba(30, 56, 99, 0.05) !important;
+  background: var(--r19-wash, rgba(30, 56, 99, 0.05)) !important;
 }
 .rumah-putih .mdx-content th,
 .rumah-putih .prose th {
-  color: #475372 !important;
+  color: var(--r19-muted, #475372) !important;
 }
 .rumah-putih .mdx-content td,
 .rumah-putih .prose td {
-  color: #1f2a44 !important;
+  color: var(--r19-ink, #1f2a44) !important;
 }
 .rumah-putih .mdx-content hr,
 .rumah-putih .prose hr {
-  border-color: #e3e1da !important;
+  border-color: var(--r19-line, #e3e1da) !important;
 }
 .rumah-putih .mdx-content tr:hover,
 .rumah-putih .prose tr:hover {
-  background: rgba(30, 56, 99, 0.04) !important;
+  background: var(--r19-wash, rgba(30, 56, 99, 0.04)) !important;
 }
 /* Image caption under figures */
 .rumah-putih .mdx-content span.block.text-center,
 .rumah-putih .prose span.block.text-center {
-  color: #475372 !important;
+  color: var(--r19-muted, #475372) !important;
 }
 
 /* ── Article + category chrome: re-tint hardcoded white text that sits ON
@@ -1683,57 +1689,60 @@ main,
       text (cover hero, FeaturedCard) which must stay white. ── */
 .rumah-putih .text-white:not(.absolute *),
 .rumah-putih .text-white\/90:not(.absolute *) {
-  color: #16213a !important;
+  color: var(--r19-ink, #16213a) !important;
 }
 .rumah-putih .text-white\/80:not(.absolute *),
 .rumah-putih .text-white\/70:not(.absolute *) {
-  color: #1f2a44 !important;
+  color: var(--r19-ink, #1f2a44) !important;
 }
 .rumah-putih .text-white\/60:not(.absolute *),
 .rumah-putih .text-white\/50:not(.absolute *),
 .rumah-putih .text-white\/40:not(.absolute *) {
-  color: #475372 !important;
+  color: var(--r19-muted, #475372) !important;
 }
 
 /* Hairline rules + faint surfaces that used white-on-dark (on paper). Skip
    image overlays (`.absolute`). */
 .rumah-putih .border-white\/10:not(.absolute *),
 .rumah-putih .border-white\/5:not(.absolute *) {
-  border-color: #e3e1da !important;
+  border-color: var(--r19-line, #e3e1da) !important;
 }
 .rumah-putih .bg-white\/5:not(.absolute *),
 .rumah-putih .bg-white\/10:not(.absolute *) {
-  background-color: #ffffff !important;
+  background-color: var(--r19-surface, #ffffff) !important;
 }
 
 /* Article author card + tag chips + engagement border (dark-glass → white card)
    — these used inline rgba(255,255,255,…) so target them structurally. */
 .rumah-putih article > div.mt-12.p-6.rounded-2xl {
-  background: #ffffff !important;
-  border: 1px solid #e3e1da !important;
-  box-shadow: 0 1px 2px rgba(22, 33, 58, 0.05) !important;
+  background: var(--r19-surface, #ffffff) !important;
+  border: 1px solid var(--r19-line, #e3e1da) !important;
+  box-shadow: none !important;
 }
 /* Tag pills */
 .rumah-putih article a[href^="/insights?tag="] {
-  background: rgba(30, 56, 99, 0.06) !important;
-  color: #475372 !important;
+  background: var(--r19-wash, rgba(30, 56, 99, 0.06)) !important;
+  color: var(--r19-muted, #475372) !important;
 }
 /* Related-articles band (dark wash → paper-raised) */
 .rumah-putih section.bg-\[rgba\(3\,18\,25\,0\.5\)\] {
-  background: #ffffff !important;
-  border-top-color: #e3e1da !important;
+  background: var(--r19-surface, #ffffff) !important;
+  border-top-color: var(--r19-line, #e3e1da) !important;
 }
 
 /* Category index "Popular in …" sidebar card + icon chip */
 .rumah-putih .bg-white\/5.border.border-white\/10:not(.absolute *) {
-  background: #ffffff !important;
-  border-color: #e3e1da !important;
+  background: var(--r19-surface, #ffffff) !important;
+  border-color: var(--r19-line, #e3e1da) !important;
 }
 
 /* Article markdown inline-code red token used by the ReactMarkdown fallback */
 .rumah-putih .text-\[\#ff6b6b\] {
-  color: #b3261e !important;
+  color: var(--r19-ink, #b3261e) !important;
 }
+/* Dark island on purpose: the article Share menu (ArticleEngagement.tsx,
+   `absolute … bg-[#0a1929]`) keeps white text, which the ink retint above
+   skips inside `.absolute`, so its background must stay dark. */
 .rumah-putih .bg-\[\#0a1929\] {
   background: #0f1f33 !important;
 }
@@ -1756,18 +1765,21 @@ main,
    specificity, placed AFTER Batch 1's block (later source order wins on ties).
    WCAG AA: ink #16213a ≈ 13.5:1, soft-ink #475372 ≈ 7.1:1 on paper #f7f6f2;
    navy headings #1e3863 ≈ 10.8:1; white on orange #d14832 ≈ 4.8:1.
+   These rules now read the R19 tokens (--r19-ink/-muted/-line/-line-strong/
+   -surface/-paper/-wash), with the literals above kept as the `var()` fallback
+   for any render without an R19 ancestor.
    ─────────────────────────────────────────────────────────────────────────── */
 
 /* ── Hardcoded-dark hex surfaces → paper-raised white card + hairline. ── */
 .rumah-putih .bg-\[\#0a2540\]:not(.rp-dark-island):not(.rp-dark-island *),
 .rumah-putih .bg-\[\#051C2C\]:not(.rp-dark-island):not(.rp-dark-island *) {
-  background-color: #ffffff !important;
-  border: 1px solid #e3e1da !important;
+  background-color: var(--r19-surface, #ffffff) !important;
+  border: 1px solid var(--r19-line, #e3e1da) !important;
 }
 /* The page root paints paper via RUMAH_VARS inline; the Tailwind bg-[#051C2C]
    class on that same root would otherwise win — neutralize it to paper. */
 .rumah-putih.bg-\[\#051C2C\] {
-  background-color: #f7f6f2 !important;
+  background-color: var(--r19-paper, #f7f6f2) !important;
 }
 
 /* ── Serif section headings + h1/h3 hardcoded text-white → navy (not ink). ── */
@@ -1775,37 +1787,43 @@ main,
 .rumah-putih h2.text-white:not(.rp-dark-island *),
 .rumah-putih h3.text-white:not(.rp-dark-island *),
 .rumah-putih .font-serif.text-white:not(.rp-dark-island *) {
-  color: #1e3863 !important;
+  color: var(--r19-ink, #1e3863) !important;
 }
 
 /* ── Accent-blue-editorial popular card wash (dark-glass → faint navy). ── */
 .rumah-putih
   .bg-accent-blue-editorial\/10:not(.rp-dark-island):not(.rp-dark-island *) {
-  background-color: rgba(30, 56, 99, 0.05) !important;
+  background-color: var(--r19-wash, rgba(30, 56, 99, 0.05)) !important;
 }
 
 /* ── Accent tinted package cards (visa orange/sky at /20) → white + accent
       hairline. These are NOT islands (their text is ink, not white). ── */
 .rumah-putih .bg-orange-500\/20:not(.rp-dark-island),
 .rumah-putih .bg-sky-500\/20:not(.rp-dark-island) {
-  background-color: #ffffff !important;
+  background-color: var(--r19-surface, #ffffff) !important;
 }
 .rumah-putih .border-orange-500\/40 {
-  border-color: color-mix(in srgb, #f97316 36%, #e3e1da) !important;
+  border-color: var(
+    --r19-line-strong,
+    color-mix(in srgb, #f97316 36%, #e3e1da)
+  ) !important;
 }
 .rumah-putih .border-sky-500\/40 {
-  border-color: color-mix(in srgb, #0ea5e9 36%, #e3e1da) !important;
+  border-color: var(
+    --r19-line-strong,
+    color-mix(in srgb, #0ea5e9 36%, #e3e1da)
+  ) !important;
 }
 
 /* ── Secondary "outline" buttons used dark border-white/20 + white text →
       navy hairline + navy ink (they sit on paper, NOT on an island). ── */
 .rumah-putih button.border-white\/20:not(.rp-dark-island *),
 .rumah-putih a.border-white\/20:not(.rp-dark-island *) {
-  border-color: #cfccc2 !important;
-  color: #1e3863 !important;
+  border-color: var(--r19-line-strong, #cfccc2) !important;
+  color: var(--r19-ink, #1e3863) !important;
 }
 .rumah-putih .border-white\/20:not(.rp-dark-island *):hover {
-  background-color: rgba(30, 56, 99, 0.06) !important;
+  background-color: var(--r19-wash, rgba(30, 56, 99, 0.06)) !important;
 }
 
 /* ── DARK-ISLAND re-assert: anything tagged .rp-dark-island keeps its accent

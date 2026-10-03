@@ -558,12 +558,22 @@ async def send_direct_email(
             # caller-supplied PII/free-text (the latter can itself carry an
             # address, e.g. "Re: matteo@example.com") — never logged raw.
             # Reuses email_audit's own digest + bounded scrub, not a new regex.
+            # C3 (#7438 gate, CodeQL 9217, py/log-injection): main's original
+            # line used `{request.subject!r}`, whose repr escapes `\n` — the
+            # #7438 rewrite dropped that when it switched to %-style logging,
+            # so a subject containing a real newline landed in the log
+            # unescaped (a forged log line is a `\n` away). `repr()` restores
+            # the escaping on the SCRUBBED text, same as main had on the raw
+            # one — order matters: scrub first (bounds the input, matches
+            # every other caller's contract), escape second (the digest and
+            # surrounding text can still legitimately contain a literal `\n`
+            # if the caller's subject did).
             logger.info(
                 "Direct email sent to %s via %s (%s) — %s",
                 redact_identifier_for_log(request.to),
                 name,
                 tag,
-                _bounded_scrub(request.subject, 120),
+                repr(_bounded_scrub(request.subject, 120)),
             )
             return SendEmailResponse(
                 success=True,

@@ -129,7 +129,7 @@ export function isPubliclyListed(
  * outside the roster supplies that person's own name and role.
  *
  * But an unknown slug is NOT anonymous. Two consumers resolve a name as
- * `rosterBySlug(slug)?.name ?? slug` (`v2/company/about/page.tsx`,
+ * `rosterBySlug(slug)?.name ?? slug` (`(blog)/about/page.tsx`,
  * `v2/_components/SocialProof.tsx`), so an entry spelled `{ slug: "faysha" }`
  * would miss the roster, fall back to printing the SLUG, and publish the excluded
  * person as visible text with every test green. So the slug is checked against

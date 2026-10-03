@@ -57,19 +57,30 @@ POST-MERGE ONLY. A pull request can add a script and its `bites-observable` mark
 same diff, so the marker is exactly as strong as the review of the diff that introduces
 it - no more. Post-merge, the marked script is reviewed, merged code; against an unmerged
 PR checkout there is no boundary here at all.
+
+HEAD-TREE MODE (`--tree <sha>`). The CI step that lints a pack runs THIS parser from the BASE
+checkout, the only copy it may trust, yet Builder Contract 2 wants the observer script to ship
+in the SAME PR - so the script and its marker live in the PR head tree and not in that
+checkout, and the file-based existence check reported every new observer as missing. With
+`--tree`, only the existence and marker questions move: they are asked of that git tree
+(`git ls-tree` for the path, `git cat-file blob` for the bytes - size-capped, strict UTF-8, no
+shell, read and never run) and every other rule is unchanged. The id must be the FULL lowercase
+hex id. Without `--tree` the checkout is asked, exactly as before.
 """
 
 # bites-observable — this script is reachable from an `observe:` line. It qualifies
-# under its own rule: its two arguments are a flag and a path it only READS, neither
-# of which can name a program to run, a file to write, or a database to reach. See
+# under its own rule: its arguments are a flag, a path and a hex tree id it only READS,
+# none of which can name a program to run, a file to write, or a database to reach. See
 # _guard_observable_script for why location grants nothing and only this marker does.
 
 from __future__ import annotations
 
 import argparse
 import json
+import posixpath
 import re
 import shlex
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -81,6 +92,20 @@ EXIT_MALFORMED = 2
 
 #: This file lives at scripts/ci/, so the checkout root is two levels up.
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+#: `--tree` names a commit or tree by its FULL lowercase hex id and nothing else: 40 digits
+#: (sha-1) or 64 (sha-256). A value beginning with a dash would be read by git as an option, a
+#: ref name is a moving target, and an abbreviated, over-long or upper-case spelling is read
+#: as git pleases (41-63 digits are truncated, so the id that gets judged may name another
+#: tree) - the CI step passes the head sha it already resolved, which is exactly this shape.
+_TREE_ID = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})")
+
+#: A `scripts/ci/*.py` observer is a few KiB; a head-tree blob past this is refused UNREAD,
+#: so a pull request cannot make the step pull megabytes through the marker check.
+_TREE_BLOB_MAX_BYTES = 256 * 1024
+
+#: Ceiling for one git question about the head tree. A lazy blob fetch can stall.
+_GIT_TIMEOUT_S = 60
 
 #: The only substitution the format offers. The executor replaces it; the parser
 #: only has to know it is not an attempt at shell expansion.
@@ -440,7 +465,79 @@ def _guard_command_allowlist(command: str) -> list[str]:
     return _COMMAND_CHECKS[head](head, rest)
 
 
-def _guard_observable_script(command: str, repo_root: Path | None = None) -> list[str]:
+def _tree_source(root: Path, tree: str, rel: str, target: str) -> tuple[str, str]:
+    """(source, "") for a regular file at `rel` in git tree `tree`, else ("", why).
+
+    The head-tree twin of the checkout reads in `_guard_observable_script`, and it fails
+    closed in the same directions. `git ls-tree` answers the path question (empty-and-
+    succeeded is a fact about the tree, failed is a fact about the question, and the two
+    read differently here) and reports the MODE: a symlink is a blob whose bytes are its
+    link text, which `resolve()` would have followed out of the checkout, so anything but
+    a plain file is refused. The bytes are then read by object id, so no path syntax and
+    no textconv filter stands between the id and the content.
+    """
+    if not _TREE_ID.fullmatch(tree):
+        return "", (f"observe: --tree `{tree[:70]}` is not a full lowercase hex id "
+                    f"(exactly 40 or 64 digits)")
+    short = tree[:12]
+    try:
+        listed = subprocess.run(
+            ["git", "--literal-pathspecs", "ls-tree", "-z", tree, "--", rel],
+            cwd=root, capture_output=True, check=False, timeout=_GIT_TIMEOUT_S,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return "", f"observe: `{target}` could not be looked up in tree {short} ({_one_line(exc)})"
+    if listed.returncode != 0:
+        why = " ".join(listed.stderr.decode("utf-8", errors="replace").split())[:200]
+        return "", (f"observe: git could not read tree {short} to look up `{target}` ({why}) - "
+                    f"a failed question, not a negative answer")
+    entry = listed.stdout.decode("utf-8", errors="replace").rstrip("\0")
+    if not entry:
+        return "", f"observe: `{target}` does not exist in tree {short}"
+    meta, _, name = entry.partition("\t")
+    fields = meta.split()
+    if len(fields) != 3 or name != rel:
+        return "", f"observe: git answered something other than one entry for `{target}` in tree {short}"
+    mode, kind, oid = fields
+    if kind != "blob" or mode not in ("100644", "100755"):
+        return "", (f"observe: `{target}` is not a regular file in tree {short} (git mode {mode}, "
+                    f"{kind}) - a symlink or a directory is not a script that declares itself")
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", oid):
+        return "", f"observe: git named an object id for `{target}` that is not hex"
+    try:
+        sized = subprocess.run(
+            ["git", "cat-file", "-s", oid],
+            cwd=root, capture_output=True, check=False, timeout=_GIT_TIMEOUT_S,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return "", f"observe: `{target}` could not be sized in tree {short} ({_one_line(exc)})"
+    size_text = sized.stdout.decode("ascii", errors="replace").strip()
+    if sized.returncode != 0 or not size_text.isdigit():
+        return "", f"observe: git could not size `{target}` in tree {short} - a failed question"
+    if int(size_text) > _TREE_BLOB_MAX_BYTES:
+        return "", (f"observe: `{target}` is {size_text} bytes in tree {short}, over the "
+                    f"{_TREE_BLOB_MAX_BYTES} an observer may be - refused unread")
+    try:
+        blob = subprocess.run(
+            ["git", "cat-file", "blob", oid],
+            cwd=root, capture_output=True, check=False, timeout=_GIT_TIMEOUT_S,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return "", f"observe: `{target}` could not be read from tree {short} ({_one_line(exc)})"
+    if blob.returncode != 0:
+        why = " ".join(blob.stderr.decode("utf-8", errors="replace").split())[:200]
+        return "", f"observe: `{target}` could not be read from tree {short} ({why})"
+    try:
+        # STRICT, unlike the checkout read: a blob that is not UTF-8 has no honest text to
+        # search for the marker in, and `errors="replace"` would let one that carries the
+        # marker bytes read as a script that declared itself.
+        return blob.stdout.decode("utf-8"), ""
+    except UnicodeDecodeError:
+        return "", f"observe: `{target}` in tree {short} is not valid UTF-8 - not Python source"
+
+
+def _guard_observable_script(command: str, repo_root: Path | None = None,
+                             tree: str | None = None) -> list[str]:
     """A `python3 scripts/...` target must declare itself observable, in its own source.
 
     This is the guard Codex's red-team pass forced into existence. `python3 scripts/...`
@@ -453,6 +550,10 @@ def _guard_observable_script(command: str, repo_root: Path | None = None) -> lis
     `bites-observable` in its source. Fail-closed in every direction: no marker, no file,
     unreadable file, or a path that escapes the checkout -> refused. Location grants
     nothing (W109), which is why the check reads the file rather than the path.
+
+    With `tree` (a full lowercase hex commit or tree id) the file is read from THAT git tree
+    instead of the working checkout - see HEAD-TREE MODE in the module docstring. Same rule,
+    other source.
     """
     root = repo_root if repo_root is not None else REPO_ROOT
     try:
@@ -469,12 +570,21 @@ def _guard_observable_script(command: str, repo_root: Path | None = None) -> lis
     if not rest:
         return []
     target = rest[0]
-    path = (root / target).resolve()   # resolve() follows symlinks: a link out is an escape
-    try:
-        path.relative_to(root.resolve())
-    except ValueError:
-        return [f"observe: `{target}` resolves outside the checkout"]
-    if path.suffix != ".py":
+    if tree is None:
+        path = (root / target).resolve()   # resolve() follows symlinks: a link out is an escape
+        try:
+            path.relative_to(root.resolve())
+        except ValueError:
+            return [f"observe: `{target}` resolves outside the checkout"]
+        suffix = path.suffix
+    else:
+        # No filesystem to resolve in a git tree, so the containment is lexical here; a
+        # symlink leaf is refused in `_tree_source`, where its mode is visible.
+        rel = posixpath.normpath(target)
+        if rel.startswith("/") or rel.split("/")[0] == "..":
+            return [f"observe: `{target}` resolves outside the checkout"]
+        suffix = posixpath.splitext(rel)[1]
+    if suffix != ".py":
         # kimi-code/k3, refuting the two-shape cut's final bytes on 2026-09-04: the
         # marker check below is a byte-substring grep over ANY file `python3` is
         # pointed at, extension included - `python3 scripts/ci/bites_allowlist.yaml`
@@ -484,12 +594,17 @@ def _guard_observable_script(command: str, repo_root: Path | None = None) -> lis
         # and a data/doc file is not a script regardless of what its bytes contain.
         return [f"observe: `{target}` is not a `.py` file - `python3` runs Python source, "
                 f"not a marker string that happens to appear in a data or doc file"]
-    if not path.is_file():
-        return [f"observe: `{target}` does not exist in the checkout"]
-    try:
-        source = path.read_text(encoding="utf-8", errors="replace")
-    except OSError as exc:
-        return [f"observe: `{target}` could not be read ({exc})"]
+    if tree is not None:
+        source, problem = _tree_source(root, tree, rel, target)
+        if problem:
+            return [problem]
+    else:
+        if not path.is_file():
+            return [f"observe: `{target}` does not exist in the checkout"]
+        try:
+            source = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            return [f"observe: `{target}` could not be read ({exc})"]
     if OBSERVABLE_MARKER not in source:
         return [
             f"observe: `{target}` does not declare itself observable — add a comment "
@@ -768,8 +883,12 @@ def _yaml_error(exc: Exception) -> str:
     return exc.__class__.__name__
 
 
-def parse_pack(text: str) -> dict[str, Any]:
-    """Parse a pack.yml into one of the three outcomes documented at module top."""
+def parse_pack(text: str, tree: str | None = None) -> dict[str, Any]:
+    """Parse a pack.yml into one of the three outcomes documented at module top.
+
+    `tree` moves the observe-script existence and marker checks to that git tree (HEAD-TREE
+    MODE, module docstring); the pack text itself is always the caller's.
+    """
     invisible = _invisible_in_text(text)
     if invisible:
         return {"malformed": True, "errors": invisible}
@@ -839,7 +958,10 @@ def parse_pack(text: str) -> dict[str, Any]:
     command = values.get("observe", "")
     if command:
         for guard in _COMMAND_GUARDS:
-            errors.extend(guard(command))
+            if guard is _guard_observable_script:
+                errors.extend(guard(command, tree=tree))
+            else:
+                errors.extend(guard(command))
     if values.get("where"):
         errors.extend(_guard_where_scope(values["where"].lower()))
     if values.get("expect"):
@@ -959,12 +1081,26 @@ def main(argv: list[str] | None = None) -> int:
                     help="run the embedded guilt+innocence corpus (no network, no token)")
     ap.add_argument("--pack",
                     help="path to a pack.yml, or - to read one from stdin")
+    ap.add_argument("--tree", metavar="SHA",
+                    help="full lowercase hex commit or tree id (40 or 64 digits): look up the "
+                         "observe script and its `bites-observable` marker in that git tree "
+                         "instead of the checkout")
     args = ap.parse_args(argv)
 
     if args.selftest:
         return run_selftest()
     if not args.pack:
         ap.error("one of --selftest or --pack is required")
+    if args.tree is not None and not _TREE_ID.fullmatch(args.tree):
+        # The caller (harness-floor) reads the verdict as JSON from stdout, so a refusal must
+        # be a verdict too: an empty stdout would reach its `json.load` as a crash of its own.
+        # The value is not echoed - it is text somebody typed.
+        reason = ("--tree: must be a full lowercase hex commit or tree id "
+                  "(exactly 40 or 64 digits)")
+        sys.stderr.write(reason + "\n")
+        sys.stdout.write(json.dumps({"malformed": True, "errors": [reason]},
+                                    indent=2, ensure_ascii=False) + "\n")
+        return EXIT_MALFORMED
 
     if args.pack == "-":
         text = sys.stdin.read()
@@ -992,7 +1128,7 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.write(f"cannot read {args.pack}: {exc}\n")
             return EXIT_MALFORMED
 
-    result = parse_pack(text)
+    result = parse_pack(text, tree=args.tree)
     sys.stdout.write(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
     return EXIT_MALFORMED if result.get("malformed") else EXIT_OK
 

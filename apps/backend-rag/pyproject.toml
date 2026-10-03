@@ -407,7 +407,6 @@ exclude = [
 "backend/scripts/visa_engine/*.py" = ["T20"]  # compile_pack.py/sign_pack.py: offline authoring/signing CLI one-shots — print() IS the operator-facing report (CompilationReport / signing ceremony summary), never app logging
 "backend/verify_soul_persona.py" = ["E402"]  # Verification script with late imports
 "add_docstrings.py" = ["ARG001"]  # Root level script
-"extract_company_data.py" = ["T20"]  # CLI entry point: prints a missing-env-var message before exit(1)
 "_archive/**/*.py" = ["ARG", "E402", "B904"]  # Archived code
 "backend/services/rag/kg_*.py" = ["ARG001"]  # KG subgraph modules with placeholder params
 "backend/services/knowledge_graph/*.py" = ["ARG001"]  # KG services

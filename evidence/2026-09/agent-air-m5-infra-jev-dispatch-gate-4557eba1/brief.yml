@@ -1,0 +1,23 @@
+mandate: >-
+  Jev dispatch gate: a PreToolUse hook on the Agent tool where Jev (TypeSafe
+  System One) judges whether a dispatch needs a separate agent and which tier;
+  one-shot deny when confidently a single lookup, downgrade opus->sonnet/haiku or
+  sonnet->haiku at high confidence, never upgrade, never on verdict/review work,
+  fail-open. Receipts feed `--report` so the saving is observed, not claimed.
+gear: 2
+colour: BLUE
+dux: opus-5-5-xhigh
+implementer: fable-5-1 (owner-opened window, Zero 2026-09-27)
+organ: infra/claude-hooks/jev_dispatch_gate.py (PreToolUse Agent, .claude/settings.json)
+authority: >-
+  Zero 2026-09-27 verbatim "hai carta bianca per implementare Jev, testarlo e
+  renderlo produttivo subit[o]" -> RULED 2026-09-27 in docs/rules/RULINGS.md
+  (widens the -bis perimeter to redacted dispatch metadata).
+acceptance:
+  - a fake needs_agent<=0.10 non-verdict dispatch is denied once and passes on identical re-issue
+  - opus+implementer -> sonnet, opus+grunt -> haiku, sonnet+grunt -> haiku; haiku/fable/inherit/architect/verdict untouched
+  - observe/off/fork/PII-shaped/malformed stdin never emit a decision; receipts never carry the prompt
+  - live probe on 5 synthetic dispatch shapes returns typed answers under 1.5 s with the expected tier
+  - a real dispatch in a fresh session at merged main leaves a receipt with jev_status=ok
+appetite:
+  wall_clock_hours: 3

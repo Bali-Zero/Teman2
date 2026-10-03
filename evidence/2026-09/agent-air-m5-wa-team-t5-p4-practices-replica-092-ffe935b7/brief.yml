@@ -1,0 +1,169 @@
+task_id: t5-p4-practices-replica-0928
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  T5 P4 (owner ruling D3, 2026-09-28): a one-way Fly -> Pro replica of
+  `practices` (+ its `practice_types` dependency), because Pro's copy has
+  been a stale 2026-07-20 snapshot (141 rows vs Fly's ~1,097) and downstream
+  Pro-local readers (P5's scorer among them) see a client as having zero
+  practices when Fly actually has current ones. `scripts/wa_practices_replica.py
+  --sync [--dry-run]` reads Fly practices+clients read-only via
+  `scripts/pg.sh`, re-keys `client_id` through `clients.uuid` (clients are
+  NOT replicated — Pro carries 276 mirror-born leads with ids above Fly's
+  max, so the numeric id is not a safe cross-DB key), and UPSERTs into Pro
+  by `practices_uuid_key` inside one Pro-local transaction, guarded the same
+  way `scripts/wa_team_promises.py` is (refuses before any I/O, including
+  the Fly read, if any `FLY_*` env var is present).
+
+  The stop-gate census (consumer read-set on Pro, required before writing
+  any code) found ONE reader that turns new rows into an outbound effect:
+  `scripts/wa-mirror-attention-classifier.py`'s `has_active_practice` flips
+  an inbound WA message with media from LOW to MEDIUM in Zero's own
+  Telegram digest — the coordinator ruled this in-scope and benign (the
+  classifier's designed behaviour, previously blinded by the stale
+  snapshot; MEDIUM never escalates to a client/team-visible alert, only an
+  aggregate count in Zero's digest).
+
+  A SEPARATE finding, made only once the Pro dry-run ran against REAL Fly
+  data (not the unit suite's fakes): `practices.practice_type_code` matches
+  Fly's schema in name+type but carries an FK to `practice_types(code)`,
+  and Pro's catalog covered only 18/1097 Fly practices' codes (54 vs Fly's
+  120 codes) — a straight copy would have hit `ForeignKeyViolationError` on
+  98.4% of rows. Coordinator ruling: replicate `practice_types` FIRST, in
+  the SAME Pro transaction (Fly is its authority too, and it is reference
+  data with no client PII) — not degrade the row (NULL the field) or throw
+  away 98% of the replica's value.
+constraints:
+  - >-
+    Fly access is READ-ONLY end to end (role `nuzantara_readonly`, `scripts/pg.sh`)
+    — this script never writes to Fly, and `_guard_pro_local_env` refuses
+    outright (exit 2, before the Fly read too) if any `FLY_*` env var is
+    present, since this process also touches Pro's local client/practice
+    data (Symbiosis Law 2).
+  - >-
+    Never DELETEs on either table. A Pro-only `practices`/`practice_types`
+    row (present on Pro, absent from the Fly result) is simply never
+    visited by the write loop.
+  - >-
+    `client_id` is re-keyed through `clients.uuid`, never copied verbatim
+    (clients are not replicated, and Pro's own ids for shared clients
+    differ from Fly's). A Fly practice whose client uuid is absent on Pro,
+    or whose Fly `client_id` is NULL, is counted (`skipped_no_client`) and
+    left uncreated — never given a placeholder client.
+  - >-
+    `user_profile_id` (FK into `user_profiles`, a table holding email/
+    full_name/phone) stays excluded from the copied columns, unchanged from
+    the original design — flagged explicitly to the coordinator per the
+    FK-census ruling's own instruction to report any FK pointing at a
+    people-holding table, rather than silently handled. This replica never
+    reads or writes `user_profiles` in any way.
+  - >-
+    A residual foreign-key violation on ONE `practices` row must never
+    abort the rest of the run — caught per row via a nested `asyncpg`
+    transaction (a real SAVEPOINT once already inside the outer one),
+    counted as `skipped_fk`.
+acceptance:
+  - >-
+    Idempotent: a second `--sync` run against unchanged Fly data reports
+    `inserted=0 updated=0` for every row already synced (`unchanged`
+    increments instead) — proven with a real Postgres cluster, not just an
+    in-memory fake (`test_real_pg_insert_update_unchanged_idempotent`).
+  - >-
+    `--dry-run` executes the identical UPSERT path so PostgreSQL itself
+    computes real insert/update counts, then rolls back — proven the
+    inserted row is gone afterward on a real cluster
+    (`test_real_pg_dry_run_leaves_no_trace`).
+  - >-
+    A Fly practice referencing a `practice_type_code` that exists only on
+    Fly is NOT dropped: `practice_types` replicates first in the same
+    transaction and the practice lands with that code intact, proven
+    against a real cluster carrying the same FK Pro's does
+    (`test_real_pg_practice_type_only_on_fly_is_replicated_first_then_practice_lands`).
+  - >-
+    A `practice_type_code` absent from BOTH the Fly payload and Pro's table
+    is counted as `skipped_fk` and does not abort a sibling row in the same
+    batch, proven against a real cluster
+    (`test_real_pg_practice_type_absent_on_both_sides_is_skipped_fk_not_a_crash`).
+  - >-
+    The success line carries only bare ints (`fly=/inserted=/updated=/
+    unchanged=/skipped_no_client=/skipped_fk=/pro_only_kept=/
+    types_inserted=/types_updated=/wall_ms=`), and the FAIL line never
+    carries the exception message, DETAIL, a value, a name or a uuid —
+    proven by regex/guilt-case unit tests
+    (`test_success_line_is_ints_only`, `test_fail_line_never_leaks_...`).
+  - >-
+    Verified against REAL Fly+Pro data (not just tests) via a staged temp
+    layout on Pro, never on the runtime checkout: `fly=1097 inserted=691
+    updated=133 unchanged=0 skipped_no_client=273 skipped_fk=0
+    pro_only_kept=8 types_inserted=66 types_updated=54` — `updated=133` and
+    `pro_only_kept=8` match the T5 draft spec's own 2026-09-25 measurement
+    (133 shared uuids, 8 Pro-only rows) exactly, and `types_inserted=66 +
+    types_updated=54 = 120` matches Fly's full `practice_types` catalog
+    size measured the same day.
+consumer_map:
+  - >-
+    The hourly cron on Pro (`scripts/wa_practices_replica_cron.sh`, wiring
+    documented in its own header, installed by the conductor AFTER merge —
+    not by this PR). After the conductor's first real run, Pro `practices`
+    count should rise from 141 toward Fly's ~1,097 minus the skipped rows,
+    and "active clients with a practice" should rise (T5 draft: 12 -> ~68).
+  - >-
+    `scripts/wa-mirror-attention-classifier.py`'s `has_active_practice`
+    query (Pro-local `practices`, launchd-scheduled) — this is the reader
+    the stop-gate census flagged; its downstream effect is described in the
+    objective above and was ruled benign by the coordinator before this PR
+    was written.
+  - >-
+    `scripts/crm_automation_engine.py` (Pro cron, daily 07:00 WITA) reads
+    Fly's OWN `practices` directly through the persistent pg-organism-bridge
+    proxy, not Pro's local copy — confirmed unaffected by this replica,
+    named in the stop-gate census for completeness.
+risks:
+  - >-
+    `practice_type_id` (FK into `practice_types(id)`, 1095/1097 Fly rows
+    populated) stays excluded from the copied columns — it is a redundant
+    numeric shadow of `practice_type_code`, which this PR makes always
+    resolvable, and no consumer was found reading the numeric id instead of
+    the code. Re-keying it too through a code->id map on Pro is a cheap
+    follow-up if a future consumer needs it; not done here to keep this
+    PR's one concern (satisfying the FK, not maximizing column coverage).
+  - >-
+    Two asyncpg parameter-binding bugs (boolean/date/timestamptz/integer
+    need native Python types, not the text a `::type` cast produces; the
+    practices UPSERT's column list had silently dropped `client_id`) were
+    caught ONLY by the Pro dry-run against real Fly data, not by the
+    fake-backed unit suite — the real-PG fixtures that should have caught
+    them from the start defaulted those columns to NULL. Both are fixed and
+    the fixtures no longer do that, but it is evidence that a fake-only
+    suite is not sufficient for this class of cross-type-system bug; the
+    real-PG suite (opt-in, `WA_PRACTICES_REPLICA_REAL_PG=1`) is what
+    actually caught both and is the reason this replica should always be
+    re-verified against a live dry-run before its first production run.
+  - >-
+    CI cannot run the real-PG suite (no `pg_ctl`/`initdb` on `ubuntu-latest`
+    by default) — it stays opt-in and local, same posture as
+    `test_wa_team_promises_real_pg.py`. The unit suite (47 cases, fakes)
+    covers the same logical branches but not PostgreSQL's own type-codec
+    behavior.
+grader: >-
+  Generator != grader. This session authored the stop-gate census, the
+  build, the FK census and this evidence pack; a separate coordinator
+  session ruled on both stop conditions (the attention-classifier downstream
+  effect, and the practice_types FK gap) before code was written past each
+  one, and a fresh on-disk gate session grades the diff before merge — this
+  PR is NOT armed and NOT merged by this session.
+budget: >-
+  1 build lane (this session), no council, no cross-family dispatch — a
+  5-file diff (the organ, its cron wrapper, two test files, one CI
+  workflow) whose verification (47 unit + 10 opt-in real-PG tests, `ruff`
+  clean, a live `--sync --dry-run` against real Fly+Pro data staged in a
+  temp layout on Pro and cleaned up afterward) is fully reproducible without
+  ever writing to Fly or leaving non-dry-run state on Pro.
+pii: >-
+  none in this diff's own content (code, tests, CI, evidence). The ORGAN
+  itself processes Pro/Fly client-adjacent data (practices) under the
+  Symbiosis Law 2 lane this PR's guard enforces, but every count this PR's
+  own output/logs/PR body/this brief carries is an int, a column name or a
+  practice-type CODE (a shared service-catalog key, not client data) —
+  never a client id, name, uuid, phone or note.

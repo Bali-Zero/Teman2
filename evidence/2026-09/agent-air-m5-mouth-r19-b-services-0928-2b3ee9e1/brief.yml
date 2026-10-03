@@ -1,0 +1,22 @@
+task: >-
+  R19 group B services: restyle /services/[slug] (visa/company/tax/property) hero, key-info,
+  sidebar CTA, included/requirements/FAQ/other-services and ServicePricing's price-cards +
+  modal onto R19 tokens; strip literal hex, gradients and Tailwind palette utilities from the
+  two files; drop the per-visa-type colour coding (decorative only); re-declare R19 vars on the
+  pricing modal's Radix portal.
+lane: mouth/r19-b-services
+machine: air-m5
+date: 2026-09-28
+gear: 2
+gear_reason: Floor 2, source size, --no-renames churn under threshold incl. this brief.
+acceptance:
+  A1: r19-skin.guard.test.ts red on origin/main's page.tsx/ServicePricing.tsx, green after; tsc exit 0.
+  A2: ServicePricing.test.tsx and whatsapp-ink.guard.test.ts stay green; eslint/prettier clean on changed files.
+  A3:
+    localhost /services/visa and /services/property (desktop+mobile, incl. the pricing modal) show
+    R19 paper/surface/copper skin with no dark-navy/coral/white residue; page height does not grow
+    materially vs. the live page.
+out_of_scope:
+  - services_data.ts content, prices or structure (colour fields only, per lane contract)
+  - getVisaPackageColor's KITAS/Visit distinction (removed — it was colour-only, not behaviour)
+  - WhatsApp CTA brand green (#25D366/#20BD5A) — sitewide convention, guarded by whatsapp-ink.guard.test.ts

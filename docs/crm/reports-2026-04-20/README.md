@@ -25,10 +25,14 @@ which only picks `status='inquiry'` rows). Suggested action:
 
 CSV columns: `client_id, full_name, email, phone, created_at`
 
-## `mismatches.csv` — 14 rows
+## `mismatches.csv` — 14 rows (removed 2026-09-27, PII residual cleanup)
 
-Active practices where `practice.assigned_to` ≠ `client.assigned_to`.
-See `../assignment-mismatches-2026-04-20.md` for the full narrative.
+Active practices where `practice.assigned_to` ≠ `client.assigned_to`. This
+CSV and the companion `../assignment-mismatches-2026-04-20.md` narrative
+carried 6 real client full names past their operational shelf life; both
+were removed and the pre-removal content quarantined on Pro
+(`~/.agent/pii-quarantine/g5-residuals-0927/`). The underlying mismatch
+condition, if still open, is queryable live from `practices`/`clients`.
 
 ## Not exported — lead-only clients (1090 rows)
 

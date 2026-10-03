@@ -5,23 +5,23 @@ import contextlib
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 from collections.abc import AsyncIterator
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from backend.core.redis_manager import RedisManager
 from backend.services.portal.challenge_leaderboard import (
     _is_real_staff_row,
     build_goal_sql,
-    compute_status,
     member_key_from_email,
 )
 
 logger = logging.getLogger(__name__)
 STREAM = "portal-champion:goals:v1"
-CACHE_KEY = "dashboard:portal_challenge:v2"
+CACHE_KEY = "dashboard:portal_challenge:v3"
 MAX_AGE_MS = 90_000
 REPLAY_PAGE = 100
 PUBLISH_ONCE = """
@@ -41,8 +41,25 @@ def portrait_url(value: Any) -> str | None:
     return None
 
 
+def _now() -> datetime:
+    """The one clock seam this module reads through — tests pin the active
+    round deterministically by monkeypatching this NAME rather than the
+    stdlib `datetime` class itself."""
+    return datetime.now(timezone.utc)
+
+
+def compute_status(now: datetime) -> str:
+    """upcoming | live | closed for whichever round is active at `now` — a
+    thin wrapper kept as a module-level name (rather than inlined) so tests
+    can keep monkeypatching `events.compute_status` as the single seam that
+    gates goal delivery, unchanged across the Round 1 -> Round 2 boundary."""
+    from backend.services.portal import challenge_round2 as r2
+
+    return r2.compute_round_status(now, r2.active_round(now))
+
+
 async def publish_registration_goal(pool: Any, client_id: int) -> None:
-    if compute_status(datetime.now(timezone.utc)) != "live":
+    if compute_status(_now()) != "live":
         return
     try:
         async with asyncio.timeout(3):
@@ -52,25 +69,184 @@ async def publish_registration_goal(pool: Any, client_id: int) -> None:
 
 
 async def _publish_registration_goal(pool: Any, client_id: int) -> None:
+    from backend.services.portal import challenge_round2 as r2
+
     redis = RedisManager.get_instance().get_async_client()
     if redis is None:
         logger.warning("Portal Champion goal transport unavailable")
         return
+    now = _now()
+    round_number = r2.active_round(now)
+    lookup_sql = build_goal_sql() if round_number == 1 else r2.build_goal_lookup_sql()
     async with pool.acquire() as connection:
-        row = await connection.fetchrow(build_goal_sql(), client_id)
+        row = await connection.fetchrow(lookup_sql, client_id)
     if row is None or not _is_real_staff_row(row["creator_email"], row["role"]):
         return
     member = member_key_from_email(row["creator_email"])
+    if round_number == 1:
+        activations = int(row["activations"])
+    else:
+        activations = await _round2_points_for_creator(pool, row["creator_email"], now)
+        if activations is None:
+            return  # creator has no scored R2 entry (e.g. Asya) — skip the goal
     goal = {
+        "kind": "goal",
         "member": member,
         "display_name": row["display_name"] or member,
         "avatar_url": portrait_url(row["avatar"]),
-        "activations": int(row["activations"]),
+        "activations": activations,
         "at": row["at"].isoformat(timespec="milliseconds"),
     }
     digest = hashlib.sha256(f"{client_id}:{member}".encode()).hexdigest()
     await redis.delete(CACHE_KEY)
     await redis.eval(PUBLISH_ONCE, 2, STREAM, f"{STREAM}:scored:{digest}", json.dumps(goal))
+
+
+async def compute_round2_snapshot(pool: Any, now: datetime) -> tuple[Any, dict[str, str | None]]:
+    """The full R2 scoring pipeline (SQL fetches + `score_round2`), shared by
+    the goal celebration and the bomb/penalty producer so the two can never
+    disagree about who has how many points. Returns `(snapshot, avatar_by_email)`."""
+    from backend.services.portal import challenge_round2 as r2
+    from backend.services.portal.challenge_leaderboard import (
+        ROSTER_SQL,
+        build_aggregates_sql,
+        compute_awards,
+        merge_roster_and_activity,
+    )
+
+    async with pool.acquire() as connection:
+        roster_records = await connection.fetch(ROSTER_SQL)
+        r1_activity_records = await connection.fetch(build_aggregates_sql())
+        registration_records = await connection.fetch(r2.build_registration_aggregates_sql())
+        first_document_records = await connection.fetch(r2.build_first_documents_sql())
+        request_records = await connection.fetch(r2.build_client_requests_sql())
+        review_records = await connection.fetch(r2.build_required_document_reviews_sql())
+        asya_request_records = await connection.fetch(r2.build_asya_requests_sql())
+        asya_client_event_records = await connection.fetch(r2.build_asya_client_events_sql())
+
+    roster_dicts = [dict(r) for r in roster_records]
+    r1_awarded = compute_awards(
+        merge_roster_and_activity(roster_dicts, [dict(r) for r in r1_activity_records])
+    )
+    avatars = {row["email"]: portrait_url(row.get("avatar")) for row in roster_dicts}
+    snapshot = r2.score_round2(
+        roster_dicts,
+        r1_awarded,
+        [dict(r) for r in registration_records],
+        [dict(r) for r in first_document_records],
+        [dict(r) for r in request_records],
+        [dict(r) for r in review_records],
+        [dict(r) for r in asya_request_records],
+        [dict(r) for r in asya_client_event_records],
+        now,
+    )
+    return snapshot, avatars
+
+
+async def _round2_points_for_creator(pool: Any, creator_email: str, now: datetime) -> int | None:
+    """Scorer `points` for one creator (the goal's `activations` in Round 2).
+    None when the creator has no scored entry (e.g. Asya, excluded from the
+    general ranking) so the caller skips the goal rather than publish a 0.
+    """
+    snapshot, _ = await compute_round2_snapshot(pool, now)
+    for entry in snapshot.entries:
+        if entry.email == creator_email:
+            return entry.points
+    return None
+
+
+PRODUCER_WINDOW_SECONDS = 120
+PRODUCER_INTERVAL_SECONDS = 30
+PRODUCER_LOCK_KEY = "portal-champion:producer:lock:v1"
+PRODUCER_LOCK_TTL_SECONDS = 25
+PRODUCER_TICK_TIMEOUT_SECONDS = 20
+PRODUCER_INITIAL_DELAY_SECONDS = 15
+
+
+def champion_producer_enabled() -> bool:
+    """Kill switch `CHAMPION_EVENT_PRODUCER_ENABLED`: enabled when unset;
+    "0"/"false" (any case, trimmed) disables."""
+    raw = os.getenv("CHAMPION_EVENT_PRODUCER_ENABLED")
+    return raw is None or raw.strip().lower() not in {"0", "false"}
+
+
+async def publish_round2_scoring_events(pool: Any, redis: Any, now: datetime) -> int:
+    """Publish the `bomb` / `penalty` takeover events that became due in
+    (now - 120 s, now] for ranked participants. Payloads carry staff
+    presentation fields only; the row identity is used solely as a dedupe
+    key. Returns how many events were newly published."""
+    snapshot, avatars = await compute_round2_snapshot(pool, now)
+    by_email = {entry.email: entry for entry in snapshot.entries}
+    floor = now - timedelta(seconds=PRODUCER_WINDOW_SECONDS)
+    published = 0
+    invalidated = False
+    for event in snapshot.producer_events:
+        entry = by_email.get(event.email)
+        if entry is None or event.key.endswith(":None") or not (floor < event.at <= now):
+            continue
+        payload: dict[str, Any] = {
+            "kind": event.kind,
+            "member": entry.member,
+            "display_name": entry.display_name,
+            "avatar_url": avatars.get(event.email),
+            "activations": entry.points,
+            "points": event.points,
+            "at": event.at.astimezone(timezone.utc).isoformat(timespec="milliseconds"),
+        }
+        if event.reason:
+            payload["reason"] = event.reason
+        digest = hashlib.sha256(f"{event.kind}:{event.key}".encode()).hexdigest()
+        if not invalidated:
+            await redis.delete(CACHE_KEY)
+            invalidated = True
+        result = await redis.eval(
+            PUBLISH_ONCE, 2, STREAM, f"{STREAM}:scored:{digest}", json.dumps(payload)
+        )
+        if result:
+            published += 1
+    return published
+
+
+async def champion_event_tick(pool: Any, redis: Any, now: datetime | None = None) -> int:
+    """One producer pass: only while Round 2 is live, only for the machine
+    that wins the short Redis lock (active-active safe; the dedupe keys make
+    a rare double run harmless anyway). Never raises."""
+    now = now or _now()
+    try:
+        if compute_status(now) != "live":
+            return 0
+        from backend.services.portal import challenge_round2 as r2
+
+        if r2.active_round(now) != 2:
+            return 0
+        if not await redis.set(PRODUCER_LOCK_KEY, "1", nx=True, ex=PRODUCER_LOCK_TTL_SECONDS):
+            return 0
+        async with asyncio.timeout(PRODUCER_TICK_TIMEOUT_SECONDS):
+            return await publish_round2_scoring_events(pool, redis, now)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        logger.warning("Portal Champion event producer tick failed: %s", type(exc).__name__)
+        return 0
+
+
+async def run_champion_event_producer(app: Any) -> None:
+    """Background loop (api process): a tick every 30 s. Never blocks startup
+    (it is a task) and never dies on Redis/DB errors."""
+    await asyncio.sleep(PRODUCER_INITIAL_DELAY_SECONDS)
+    while True:
+        try:
+            pool = getattr(app.state, "db_pool", None)
+            redis = RedisManager.get_instance().get_async_client()
+            if pool is not None and redis is not None:
+                published = await champion_event_tick(pool, redis)
+                if published:
+                    logger.info("Portal Champion event producer published %d event(s)", published)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.warning("Portal Champion event producer loop error: %s", type(exc).__name__)
+        await asyncio.sleep(PRODUCER_INTERVAL_SECONDS)
 
 
 class GoalFanout:

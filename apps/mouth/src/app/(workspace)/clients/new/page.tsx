@@ -45,6 +45,45 @@ import { cropToSquareBlob } from "@/lib/utils/imageResize";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import PassportScanSection from "./components/PassportScanSection";
 
+interface ExistingClient {
+  id: number;
+  name?: string;
+  assignedTo?: string;
+}
+
+/**
+ * POST /api/crm/clients refuses a phone that another client already holds
+ * with 409 and a DICT detail: {error: "duplicate_phone", message,
+ * existing_client_id, existing_full_name, existing_assigned_to}
+ * (crm_clients.py). The ApiError keeps that body on `.data`. Read it so the
+ * form can name and link the existing record instead of leaving staff to
+ * search for it.
+ */
+function duplicatePhoneDetail(
+  error: unknown,
+): { message?: string; existing: ExistingClient } | null {
+  const detail = (error as { data?: { detail?: unknown } } | null)?.data
+    ?.detail as Record<string, unknown> | undefined;
+  if (!detail || typeof detail !== "object") return null;
+  if (detail.error !== "duplicate_phone") return null;
+  const id = detail.existing_client_id;
+  if (typeof id !== "number") return null;
+  return {
+    message: typeof detail.message === "string" ? detail.message : undefined,
+    existing: {
+      id,
+      name:
+        typeof detail.existing_full_name === "string"
+          ? detail.existing_full_name
+          : undefined,
+      assignedTo:
+        typeof detail.existing_assigned_to === "string"
+          ? detail.existing_assigned_to
+          : undefined,
+    },
+  };
+}
+
 export default function NewClientPage() {
   const router = useRouter();
   const { error: toastError } = useToast();
@@ -54,6 +93,10 @@ export default function NewClientPage() {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Set when create is refused because the phone already belongs to a client.
+  const [existingClient, setExistingClient] = useState<ExistingClient | null>(
+    null,
+  );
   const [activeSection, setActiveSection] = useState<
     "basic" | "personal" | "crm"
   >("basic");
@@ -129,6 +172,7 @@ export default function NewClientPage() {
     }
 
     setIsLoading(true);
+    setExistingClient(null);
     try {
       const user = await api.getProfile();
       if (!user?.email) {
@@ -201,6 +245,14 @@ export default function NewClientPage() {
           (errObj.detail as string) ||
           (errObj.message as string) ||
           "Unknown error";
+      }
+
+      const duplicate = duplicatePhoneDetail(error);
+      if (duplicate) {
+        errorMessage = duplicate.message || "This phone is already registered.";
+        setExistingClient(duplicate.existing);
+      } else {
+        setExistingClient(null);
       }
 
       setFieldErrors({ _form: errorMessage });
@@ -477,6 +529,20 @@ export default function NewClientPage() {
             {fieldErrors._form && (
               <div className="rounded-lg border border-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] p-4 text-sm text-[var(--state-danger)]">
                 {fieldErrors._form}
+                {existingClient && (
+                  <p className="mt-2">
+                    <Link
+                      href={`/clients/${existingClient.id}`}
+                      className="font-semibold underline underline-offset-2"
+                    >
+                      Open existing client #{existingClient.id}
+                      {existingClient.name ? ` · ${existingClient.name}` : ""}
+                    </Link>
+                    {existingClient.assignedTo
+                      ? ` — assigned to ${existingClient.assignedTo}`
+                      : ""}
+                  </p>
+                )}
               </div>
             )}
 

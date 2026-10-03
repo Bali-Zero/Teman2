@@ -8,12 +8,16 @@ Two modes:
   Dedup per phone within 4h.
 
 OSINT-safe: Telegram message contains only:
-- contact display_name + phone (last 4 digits masked)
+- `client #<crm_id>` (opaque CRM id, never a name) or the masked phone alone
+  for a lead the CRM does not know yet — phone always last-4-digits masked
 - reason codes (no free text)
 - N unresolved
 - link to local dashboard (http://localhost:8767)
 
-Raw body NEVER sent to Telegram cloud.
+Raw body NEVER sent to Telegram cloud. Client full_name NEVER sent either
+(Builder Contract §4 output boundary, 2026-09-29 — see contact_label()):
+a cleartext client name in a cloud alert is PII in the clear, full stop, not
+a judgement call left to this file.
 
 State: ~/.cache/wa-mirror-attention-state.json
 """
@@ -90,6 +94,9 @@ STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 CRITICAL_REASONS = {"refund", "complaint", "deadline", "payment_dispute", "lawyer", "audit"}
 DEDUP_WINDOW = timedelta(hours=4)
+# Unresolved HIGH older than this is backlog, not news: the realtime roster ignores it and
+# the digest only COUNTS it (so "all clear" can never be printed over an unanswered backlog).
+HIGH_WINDOW_DAYS = 7
 
 
 def mask_phone(phone: str) -> str:
@@ -116,7 +123,7 @@ def contact_label(item: dict) -> str:
     exactly the case this alerter exists to surface — that rendered the FULL
     number and its masked form side by side:
 
-        +6281312415572 — +6281****5572
+        +6280000000001 — +6280****0001
 
     The masking was not bypassed; it was made pointless by the fallback
     standing next to it. This file's own docstring already promised "phone
@@ -125,10 +132,18 @@ def contact_label(item: dict) -> str:
 
     Two writers of one field means the rule lives in ONE function, so a third
     call site cannot reintroduce the leak by copying the old inline form.
+
+    TIGHTENED 2026-09-29 (Builder Contract §4, output boundary): the mask-vs-
+    fallback defect above was fixed by still naming the client, in the clear,
+    next to the masked phone. That is itself banned — "no ... alert ... may
+    carry client PII in cleartext — use a client_id, a hash, a placeholder or
+    a redaction" is not a judgement call either. `crm_name` is no longer read
+    here (the SELECT that produced it was dropped entirely, so it is never
+    even fetched); a known contact is named by the opaque CRM id instead.
     """
     masked = mask_phone(item.get("phone") or "")
-    name = item.get("crm_name")
-    return f"{name} — {masked}" if name else masked
+    crm_id = item.get("crm_id")
+    return f"client #{crm_id} — {masked}" if crm_id else masked
 
 
 def send_telegram(text: str, tier: str = "p0", dedup_key: str = "") -> bool:
@@ -173,11 +188,34 @@ def save_state(state: dict):
     STATE_PATH.write_text(json.dumps(state, indent=2, default=str))
 
 
+def sender_digits_sql(alias: str = "") -> str:
+    """SQL expression for the sender's bare-digit phone, from what is actually stored.
+
+    `key.senderPn` was dropped by WhatsApp's LID migration; the last inbound
+    row carrying it is dated 2026-05-25, so selectors keyed on it went blind (digest said
+    0 inbound, realtime HIGH never fired). The identity now lives in the structured
+    `sender_phone` column (LID-resolved upstream; the classifier reads the same one)
+    and in `key.remoteJidAlt`. Order is pinned by test: `senderPn` (older rows), then
+    `sender_phone` (the classifier's Zero/team skip keys on it), then `remoteJidAlt`. Fallbacks apply
+    to 1:1 chats only (`remoteJid` not `@g.us`): the alert's intent is a client
+    writing to the team, not group traffic.
+    """
+    p = f"{alias}." if alias else ""
+    key = f"{p}raw_baileys_event->'key'"
+    return f"""NULLIF(COALESCE(
+            NULLIF(REGEXP_REPLACE({key}->>'senderPn', '@.*', ''), ''),
+            CASE WHEN COALESCE({key}->>'remoteJid', '') NOT LIKE '%@g.us' THEN
+              COALESCE(NULLIF(REGEXP_REPLACE({p}sender_phone, '\\D', '', 'g'), ''),
+                       NULLIF(REGEXP_REPLACE({key}->>'remoteJidAlt', '@.*', ''), ''))
+            END
+          ), '')"""
+
+
 async def fetch_high_unresolved(conn: asyncpg.Connection) -> list[dict]:
-    rows = await conn.fetch("""
+    rows = await conn.fetch(f"""
       WITH highs AS (
         SELECT
-          REGEXP_REPLACE(m.raw_baileys_event->'key'->>'senderPn', '@.*', '') AS phone,
+          {sender_digits_sql('m')} AS phone,
           MIN(m.id) AS first_high_id,
           MAX(m.id) AS last_high_id,
           MIN(m.created_at) AS first_high_at,
@@ -189,11 +227,14 @@ async def fetch_high_unresolved(conn: asyncpg.Connection) -> list[dict]:
         WHERE m.attention_priority = 'HIGH'
           AND m.attention_resolved_at IS NULL
           AND m.direction = 'inbound'
-          AND m.raw_baileys_event->'key'->>'senderPn' ~ '^[0-9]+@'
+          -- "realtime" means recent: the alerter was blind for ~4 months (since 2026-05-25), and the
+          -- unresolved HIGH backlog older than the window is history, not news (would be one giant first-scan roster)
+          AND m.created_at >= NOW() - INTERVAL '{HIGH_WINDOW_DAYS} days'
+          AND {sender_digits_sql('m')} ~ '^[0-9]+$'
         GROUP BY 1
       )
       SELECT h.*,
-             c.id AS crm_id, c.full_name AS crm_name, c.status AS crm_status, c.lead_source
+             c.id AS crm_id, c.status AS crm_status, c.lead_source
       FROM highs h
       LEFT JOIN clients c ON c.phone_normalized = h.phone AND c.deleted_at IS NULL
       ORDER BY h.last_high_at DESC
@@ -203,18 +244,18 @@ async def fetch_high_unresolved(conn: asyncpg.Connection) -> list[dict]:
 
 async def fetch_digest_metrics(conn: asyncpg.Connection) -> dict:
     """Aggregate metrics for end-of-day digest (last 24h window)."""
-    row = await conn.fetchrow("""
+    row = await conn.fetchrow(f"""
       WITH window_msgs AS (
-        SELECT * FROM whatsapp_message_context
+        SELECT *, {sender_digits_sql()} AS sender_digits FROM whatsapp_message_context
         WHERE direction='inbound'
           AND created_at >= NOW() - INTERVAL '24 hours'
-          AND raw_baileys_event->'key'->>'senderPn' ~ '^[0-9]+@'
+          AND {sender_digits_sql()} ~ '^[0-9]+$'
       )
       SELECT
         COUNT(*) FILTER (WHERE attention_priority='HIGH' AND attention_resolved_at IS NULL) AS high_open,
         COUNT(*) FILTER (WHERE attention_priority='HIGH' AND attention_resolved_at IS NOT NULL) AS high_resolved,
         COUNT(*) FILTER (WHERE attention_priority='MEDIUM') AS medium,
-        COUNT(DISTINCT REGEXP_REPLACE(raw_baileys_event->'key'->>'senderPn','@.*','')) AS distinct_phones_24h,
+        COUNT(DISTINCT sender_digits) AS distinct_phones_24h,
         COUNT(*) AS inbound_24h
       FROM window_msgs
     """)
@@ -223,7 +264,15 @@ async def fetch_digest_metrics(conn: asyncpg.Connection) -> dict:
       WHERE created_by='wa-mirror-auto-promote'
         AND created_at >= NOW() - INTERVAL '24 hours'
     """)
-    return {**dict(row), "new_leads_24h": new_leads}
+    high_backlog = await conn.fetchval(f"""
+      SELECT COUNT(*) FROM whatsapp_message_context m
+      WHERE m.attention_priority = 'HIGH'
+        AND m.attention_resolved_at IS NULL
+        AND m.direction = 'inbound'
+        AND m.created_at < NOW() - INTERVAL '{HIGH_WINDOW_DAYS} days'
+        AND {sender_digits_sql('m')} ~ '^[0-9]+$'
+    """)
+    return {**dict(row), "new_leads_24h": new_leads, "high_backlog": high_backlog}
 
 
 def _load_episodes(state: dict) -> dict:
@@ -371,8 +420,11 @@ async def cmd_realtime(force: bool = False):
 def _compose_realtime_alert(due: list, tier: str = "p0") -> str:
     """One contact keeps the full detail; several become a compact roster.
 
-    Same OSINT envelope as before either way: display name, masked phone,
-    reason codes, unresolved count, dashboard link. No free text ever.
+    Same OSINT envelope as before either way: opaque `client #<crm_id>` (never
+    a name), masked phone, reason codes, unresolved count, dashboard link. No
+    free text ever. (Docstring corrected 2026-09-29 — it still said "display
+    name" here after contact_label() stopped rendering one; a stale contract
+    is worse than none, because the next reader trusts it.)
 
     `tier` only changes the HEADLINE, never the envelope. A digest batch is a
     reminder about something already reported, and it has to SAY so — a
@@ -433,17 +485,21 @@ async def cmd_digest():
             # (`display` / `phone`); this one says `name` / `it['phone']`.
             # A pattern written from the instance you found catches the
             # instance you found.
-            name = contact_label(it)
+            label = contact_label(it)
             crm_marker = "" if it["crm_id"] else " (new lead)"
             crit = [r for r in (it["reasons"] or []) if r in CRITICAL_REASONS]
             unanswered = "unanswered_thread_3plus" in (it["reasons"] or [])
             tags = crit[:3]
             if unanswered:
                 tags.append("⏰thread")
-            lines.append(f"  • {name}{crm_marker} — {it['n_high']} msg · {' '.join(tags)}")
+            lines.append(f"  • {label}{crm_marker} — {it['n_high']} msg · {' '.join(tags)}")
         if len(items) > 8:
             lines.append(f"  …and {len(items)-8} more")
-    else:
+    backlog = metrics.get("high_backlog") or 0
+    if backlog:
+        lines.append("")
+        lines.append(f"📦 {backlog} older HIGH msgs unresolved (>{HIGH_WINDOW_DAYS}d, count only)")
+    if not items and not backlog:
         lines.append("")
         lines.append("🟢 Everything is acknowledged.")
 

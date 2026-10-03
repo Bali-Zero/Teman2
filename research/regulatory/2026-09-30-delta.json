@@ -1,0 +1,95 @@
+{
+  "run_at": "2026-09-30T07:06:37+08:00",
+  "today": "2026-09-30",
+  "yesterday_seen_count": 1,
+  "new_today_count": 2,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed after 1 retry, same as yesterday"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, confirmed after 1 retry, same as yesterday"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "0 berita shown, 'Memuat artikel perpajakan...' loading placeholder, JS-shell persists since 2026-09-07 path change"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "page loads (200), only nav/contact info, zero extractable dated regulation entries"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "outside_window",
+      "note": "mixed UU/PP results not date-filtered, newest visible mid-2026"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest press release 18 Sep 2026, unchanged from yesterday's run"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry KEP-185/PJ/2026 dated 2026-09-02, unchanged from yesterday's run"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible UU 2/2026 Pelindungan Pekerja Rumah Tangga, enacted 30 Apr 2026 - confirms hukumonline's UU PPRT roadmap mention is not a new act"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PER-6/PJ/2026",
+      "title_id": "Peraturan Direktur Jenderal Pajak Nomor PER-6/PJ/2026 tentang kewajiban registrasi Wajib Pajak GloBE",
+      "title_en": "Directorate General of Taxes Regulation PER-6/PJ/2026 on mandatory GloBE taxpayer registration",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "high",
+      "confidence": "medium",
+      "impact_note": "MNE groups meeting the GloBE EUR 750M threshold must self-register constituent entities via Coretax (Portal Saya) by 2026-09-30 or the tax office adds the status administratively.",
+      "summary": "Multinational enterprise groups meeting the GloBE (Pillar Two) threshold for their first GloBE assessment year 2025 must register as GloBE taxpayers through Coretax before month-end; the statutory deadline is 9 months after the close of the first GloBE tax year.",
+      "source": "DDTC | https://news.ddtc.co.id/berita/nasional/1822837/wp-globe-harus-registrasi-via-coretax-paling-lambat-besok",
+      "verbatim_excerpt": "Permohonan penambahan status sebagai wajib pajak GloBE disampaikan paling lambat 9 bulan setelah berakhirnya tahun pengenaan GloBE pertama pada saat grup PMN memenuhi ketentuan",
+      "first_seen_at": "2026-09-30T07:06:37+08:00"
+    },
+    {
+      "citation": "PMK 49/2026",
+      "title_id": "Peraturan Menteri Keuangan Nomor 49 Tahun 2026 tentang Sistem Pemungutan PPN atas Transaksi Digital Luar Negeri (SPP-TDLN)",
+      "title_en": "Minister of Finance Regulation No. 49/2026 on the VAT Collection System for Cross-Border Digital Transactions (SPP-TDLN)",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "high",
+      "confidence": "high",
+      "impact_note": "Foreign digital merchants/service providers selling to Indonesian customers must embed Indonesian PPN in price and route collection through a designated payment intermediary under SPP-TDLN, effective 2026-09-25.",
+      "summary": "DJP officially implemented SPP-TDLN: foreign merchants must include PPN in the price charged to Indonesian customers, PPN is collected via a designated payment intermediary or other specified party, and the amount remitted to the foreign merchant is net of the PPN collected.",
+      "source": "DDTC + Hukumonline | https://news.ddtc.co.id/berita/nasional/1822830/spp-tdln-resmi-berlaku-ada-3-ketentuan-teknis-ppn-yang-perlu-disimak | https://www.hukumonline.com/berita/a/aturan-baru-ppn-digital--pemerintah-resmi-terapkan-mekanisme-spp-tdln-lt6abb91136237f/",
+      "verbatim_excerpt": "Di bawah SPP-TDLN, pedagang dan penyedia jasa asing wajib memasukkan PPN Indonesia ke dalam harga atau jumlah total yang harus dibayar oleh pelanggan di Indonesia",
+      "first_seen_at": "2026-09-30T07:06:37+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026"
+  ],
+  "note": "4 NB-INTEL all returned 'nessuna novita' (Tax NB repeated same PMK 43/2026 PPN-DTP follow-up as yesterday - existing act, deadline 30 Sep 2026, not a new citation, dropped per hard rule 2). Web primary: hukumonline + ddtc cross-surfaced PMK 49/2026 (SPP-TDLN digital VAT collection, effective 25 Sep) as high-confidence delta; ddtc alone surfaced PER-6/PJ/2026 (GloBE Coretax registration, deadline tomorrow 30 Sep) as medium-confidence single-source delta. hukumonline also surfaced a UU PPRT roadmap-acceleration article - not a new act (UU 2/2026 enacted 30 Apr 2026, confirmed via kemnaker JDIH), dropped. ortax/muc/ikpi/peraturan.go.id/kemenkeu unreachable (same pattern as prior runs). bpk/imigrasi/pajak/kemnaker backup sources all outside 48h window, imigrasi/pajak/kemnaker states unchanged from yesterday's run."
+}

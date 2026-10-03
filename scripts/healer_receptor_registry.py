@@ -108,10 +108,32 @@ def load_registry(path: Path) -> list[dict]:
     return organs
 
 
-def run(node: str, registry_path: Path, sidecar_dir: Path) -> dict:
+def _renamed_away_disabled_plist(agents_dir: Path, label: str) -> bool:
+    """A `<label>.plist` renamed to `<label>.plist.disabled-*` (W-mini convention
+    since 2026-09-25, e.g. `.disabled-20260925-owner-pro`) means the job was
+    deliberately unloaded, not that it crashed. Its heartbeat sidecar will never
+    refresh again, so age-based classification alone would call it 'dead' forever
+    (observed 3 consecutive healer ticks, 2026-09-25/26/27, on
+    mata_garuda.intel_bridge_daily.mini) — same disease as EXEMPT_STATUSES, read
+    from the filesystem instead of the sidecar because a disabled organ writes no
+    sidecar update explaining why."""
+    if not label or not agents_dir.is_dir():
+        return False
+    if (agents_dir / f"{label}.plist").exists():
+        return False
+    return any(agents_dir.glob(f"{label}.plist.disabled-*"))
+
+
+def run(
+    node: str,
+    registry_path: Path,
+    sidecar_dir: Path,
+    launchagents_dir: Path | None = None,
+) -> dict:
     organs = load_registry(registry_path)
     runtime_wanted = f"{node}_launchd"
     now = datetime.now(timezone.utc)
+    agents_dir = launchagents_dir or (Path.home() / "Library" / "LaunchAgents")
 
     report: dict = {
         "schema": 1, "node": node, "checked": 0, "ok": [], "stale": [],
@@ -151,12 +173,19 @@ def run(node: str, registry_path: Path, sidecar_dir: Path) -> dict:
             report["disabled"].append(oid)
             continue
 
+        label = (organ.get("recovery_params") or {}).get("label", "")
+        if organ.get("recovery_action") == "launchctl_kickstart" and _renamed_away_disabled_plist(
+            agents_dir, label
+        ):
+            report["disabled"].append(oid)
+            continue
+
         entry = {
             "id": oid, "status": status,
             "note": str(payload.get("note", ""))[:200],
             "severity": organ.get("severity_on_silence", "warning"),
             "recovery_action": organ.get("recovery_action", ""),
-            "label": (organ.get("recovery_params") or {}).get("label", ""),
+            "label": label,
         }
         if ts is None:
             entry["age_s"] = None

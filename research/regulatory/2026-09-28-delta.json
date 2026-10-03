@@ -1,0 +1,82 @@
+{
+  "run_at": "2026-09-28T07:09:16+08:00",
+  "today": "2026-09-28",
+  "yesterday_seen_count": 0,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, confirmed after 1 retry"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "JS SPA, 'Menampilkan 0 berita' placeholder, zero extractable static articles"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed after 1 retry"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "curl exit 28 after 1 mechanical retry"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "10 articles 24-26 Sep, none cite a numbered reg-type act"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "3166 results for 2026, no PMK 55/2026 entry visible, no clear date-sort confirmation of last-48h items"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest press release 18 Sep 2026"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry KEP-185/PJ/2026 dated 2026-09-02"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "listing sorted by hierarchy not date; newest visible UU 2/2026 (30 Apr 2026)"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PMK 55/2026",
+      "title_id": "Peraturan Menteri Keuangan tentang Ujian Konsultan Pajak (3 jenis ujian: Ujian Kompetensi, Ujian Profesi, Ujian Penyegaran)",
+      "title_en": "Minister of Finance Regulation on Tax Consultant Examinations (3 exam types: competency, professional, refresher)",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "low",
+      "impact_note": "New SKK (Sertifikat Kompetensi Konsultan) certification/exam scheme for tax consultants takes effect 2027 with a transition period for existing practitioners — worth checking whether Bali Zero's own tax-dept certified consultants fall inside the transition window, but no client-facing deadline now.",
+      "summary": "PMK 55/2026 stabilisce tre tipi di esame per konsultan pajak e altri soggetti che agiscono come kuasa wajib pajak: Ujian Kompetensi (BPPK, rilascia SKK valido 3 anni), Ujian Profesi (associazioni consulenti pajak), Ujian Penyegaran (BPPK, estende validità SKK). Entrata in vigore 2027 con periodo di transizione per i praticanti esistenti.",
+      "source": "DDTC News | https://news.ddtc.co.id/berita/nasional/1822662/ada-3-jenis-ujian-dalam-pmk-552026-apa-saja-perbedaannya",
+      "verbatim_excerpt": "Ada 3 jenis ujian yang berkaitan dengan konsultan pajak serta pihak lain yang bertindak sebagai kuasa wajib pajak",
+      "first_seen_at": "2026-09-28T07:09:16+08:00",
+      "confidence": "medium"
+    }
+  ],
+  "seen_citations": [
+    "PMK 55/2026"
+  ],
+  "note": "All 4 NB-INTEL returned 'nessuna novita' (Tax NB appended an unrelated GloBE/Pilar-2 UPE registration offer, not a new-act citation - dropped per hard rule 2, no speculation). Yesterday's delta file (2026-09-27) was missing (cron gap 26-27 Sep) - treated as cold start per spec, yesterday_seen_count=0. Single web delta found (PMK 55/2026, DDTC only, not corroborated by BPK/hukumonline/ikpi within this run) - confidence:medium per cross-validation rule."
+}

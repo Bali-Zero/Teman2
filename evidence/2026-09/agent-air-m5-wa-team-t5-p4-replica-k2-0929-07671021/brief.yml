@@ -1,0 +1,89 @@
+task_id: t5-p4-replica-k2-0929
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  Close condition K2 of PR #7598's delta re-gate (fresh Opus, PASS-WITH-CONDITIONS
+  @13cd517b77): six mutants the gate's own delta mutation round (32 prior + 15 new) found
+  surviving in the unit suite for scripts/wa_practices_replica.py — killed only by the opt-in
+  real-PG suite, or not killed anywhere, so CI itself was blind to a regression of R3/R4/R7
+  even though every one of them is already fixed on `main`.
+
+  N01/N02 (R7's `trigger_maintained=("updated_at",)` reverted on the practices/practice_types
+  UPSERT builder call sites) and N03 (the exclusion reverted from the comparison specifically):
+  two new literal-oracle tests assert `updated_at` appears EXACTLY ONCE in each UPSERT SQL
+  constant — in the INSERT column list — and nowhere in the `SET`/`IS DISTINCT FROM` clauses
+  that follow.
+
+  N05 (the INSERT binds `datetime.now()` instead of Fly's own `updated_at`): one new test pins
+  the actual bound parameter value, captured via the existing fake connection's `fetchrow`, to
+  a literal Fly timestamp far from wall-clock time.
+
+  N15 (`cli_main` returns rc=3 before the counts line is ever written to stdout — the same
+  silent-green class gate finding F3 exists to close): the two existing rc=3 tests now also
+  assert stdout equals the real `_success_line()` wire format, via `capsys`, not just the
+  return code.
+
+  N07 (a NULL Fly `uuid` reaches the `pro_only_kept` query's `fly_uuids` parameter before the
+  skip-check runs, poisoning it on real Postgres — gate finding F2's own failure mode): the
+  fake connection now records the raw `fly_uuids` param passed to `fetchval`, and the existing
+  NULL-uuid test asserts `None` is never in it.
+
+  Every new test/assertion was mutation-verified before being accepted: the corresponding
+  production code was temporarily reverted to the exact mutant shape, the test run in
+  isolation and observed RED with the predicted symptom, then the code restored
+  byte-identical (`diff` confirmed) and the full suite re-run GREEN.
+
+  NO PRODUCTION CODE CHANGED. `scripts/wa_practices_replica.py` is untouched by this diff — if
+  a new test had exposed a real production bug instead of a unit-suite gap, this build lane was
+  instructed to stop and report rather than fix it in this PR, and none did.
+constraints:
+  - "Tests-only, one concern: unit-level literal oracles for named mutants N01/N02/N03/N05/N07/
+    N15, plus the CI floor bump the new passing count requires. Nothing else in scope — the
+    delta gate's other finding (F3, `skipped_invalid` mixing practice/type skips) was marked
+    informational, not a merge condition, and is out of scope here."
+  - "The merged evidence pack for #7598 itself (evidence/2026-09/agent-air-m5-wa-team-
+    t5-p4-practices-replica-092-ffe935b7/) is NOT edited by this PR: doing so would put it in
+    THIS diff, and its `diff:` block correctly describes #7598's own frozen historical numstat
+    at merge — editing it now would break evidence_pack_lint.py's countable-claims rule against
+    THIS branch's numstat (verified empirically: 5 violations). The delta gate's F4 finding
+    (stale counts in that pack) is carried in this PR's body instead, per the gate's own stated
+    fallback, for the coordinator to fold into the ledger."
+  - "Gear 3 by PATH, deterministically: both changed files sit under a hot-zone path
+    (`scripts/tests/test_wa_practices_replica.py`, `.github/workflows/*.yml`) so
+    `--print-floor` returns 3 regardless of size. 2 files, a few hundred lines — a real but
+    small diff."
+acceptance:
+  - text: >-
+      WHEN `_build_upsert_sql`'s `trigger_maintained` exclusion for `updated_at` is reverted on
+      either the practices or practice_types call site, the matching new literal-oracle unit
+      test SHALL fail.
+    probe: n01-n02-n03-sql-literal-oracle
+  - text: >-
+      WHEN `run_sync`'s parameter-construction loop special-cases `updated_at` to wall-clock
+      time instead of Fly's own value, the new INSERT-value unit test SHALL fail.
+    probe: n05-insert-value-oracle
+  - text: >-
+      WHEN `cli_main` returns `rc=3` before writing the counts line to stdout, both existing
+      rc=3 unit tests SHALL fail on their stdout assertion.
+    probe: n15-stdout-oracle
+  - text: >-
+      WHEN a NULL Fly `uuid` reaches the `fly_uuids` list before the skip-check runs, the
+      existing NULL-uuid unit test SHALL fail on its `fly_uuids` assertion, independent of the
+      fake connection's own (non-SQL-NULL-semantics) `pro_only_kept` arithmetic.
+    probe: n07-fly-uuids-oracle
+assumptions:
+  - text: >-
+      Every one of these six mutants is already dead on `main` (fixed at #7598's merge,
+      `9ae496a420`) — this PR closes a CI-coverage gap, not a live defect. Verified directly:
+      `scripts/wa_practices_replica.py` is byte-identical before and after this PR's test
+      additions (`diff` against a pre-change backup, confirmed).
+    status: verified
+  - text: >-
+      The fake connection's `pro_only_kept` arithmetic (`sum(1 for u in self._practices if u
+      not in fly_uuids)`) does not reproduce real Postgres's `uuid <> ALL(ARRAY[..., NULL])`
+      NULL-poisoning semantics, so an assertion on `m.pro_only_kept` alone cannot discriminate
+      N07 — confirmed empirically: reverting the NULL-uuid skip's ordering left
+      `m.pro_only_kept == 1` still passing while the new `None not in conn.last_fly_uuids`
+      assertion correctly failed.
+    status: verified

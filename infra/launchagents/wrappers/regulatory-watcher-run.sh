@@ -64,6 +64,29 @@ LOG="$HOME/logs/regulatory-watcher.log"
 DATE=$(TZ=Asia/Makassar date +%Y-%m-%d)
 DELTA_JSON="$HOME/nuzantara/research/regulatory/${DATE}-delta.json"
 DELTA_BASENAME="${DATE}-delta.json"
+# worktree_isolation.py is a HARD, never-bypassed guard (PENDING-ARMS L1464/L2361):
+# it blocks an agent SESSION (tier 1 is a real Claude session) from writing into
+# the tracked main checkout, even though this wrapper's OWN git ops below are
+# plain shell and are not bound by it. Measured live 2026-09-27: tier 1 did the
+# full analysis (NB-INTEL + 11 web sources) then hit the guard at Step 5 and
+# stalled asking the operator for a decision — the completed, non-partial delta
+# sat unused at /tmp/${DATE}-delta.json. Tier 1's agent spec (Step 5) now writes
+# to a scratch path outside the tracked tree; recover_delta() promotes it.
+#
+# NOT /tmp (fixed post-merge, gate REWORK-BUILD on head 7753eac1): /tmp is
+# world-writable with a predictable, guessable name — the gate proved live that
+# ANY local process (including tier 3's own codex, which this same PR just gave
+# real network access) could drop a markdown file, a schema-invalid JSON, or a
+# symlink to a secrets file at that exact path and have it promoted straight
+# into the PUBLIC repo via promote_delta_via_pr(), since the old recover_delta()
+# did a blind `cp` with no validation. Cure has two independent layers: (1) this
+# directory is private (0700, this user only) instead of world-writable, and
+# (2) recover_delta() below refuses a symlink or a file it doesn't own, and
+# promotes ONLY through extract_delta_from_output()'s schema check +
+# re-serialization — never a byte-for-byte copy of untrusted content.
+DELTA_SCRATCH_DIR="$HOME/.agent/regulatory-watcher/${DATE}"
+mkdir -p "$DELTA_SCRATCH_DIR" && chmod 0700 "$DELTA_SCRATCH_DIR"
+DELTA_SCRATCH="$DELTA_SCRATCH_DIR/${DELTA_BASENAME}"
 
 # W84 fail-fast probe (TAC-2 A4): if this launchd context cannot READ ~/Desktop
 # (TCC grant lost — observed on Pro after the 2026-07-04 reboot: the zsh job got
@@ -164,7 +187,7 @@ echo "[$(date)] regulatory-watcher run starting for $DATE" >> "$LOG"
 # instance names its own parent while it is still alive in the log line.
 echo "[$(date)] launch-context: pid=$$ ppid=$PPID parent=$(ps -o comm= -p $PPID 2>/dev/null || echo dead) lang=${LANG:-unset} ssh=${SSH_CONNECTION:-none} trampolined=${REGWATCH_TRAMPOLINED:-0}" >> "$LOG"
 
-PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
+PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/nuzantara/research/regulatory/ (read-only lookup, that path is fine). Emit JSON to the private SCRATCH path named in the spec's Step 5 (${DELTA_SCRATCH}) — NOT directly into ~/nuzantara/research/regulatory/, which the worktree_isolation guard blocks for an agent session, and NOT /tmp — and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
 
 # Generic prompt re-usable across LLMs (no Claude-specific syntax)
 PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian business services agency). Today is $DATE WITA. Task: detect new Indonesian regulations published in last 48h that affect Bali Zero service lines (visa/immigration, tax, property, regulatory/HR, health). Sources to query (use whichever you can reach): Hukumonline, Ortax, DDTC, MUC, IKPI (news at ikpi.or.id/berita/ — NOT /news/, which 404s), JDIH Kemenkumham/Kemenkeu/Kemnaker, peraturan.go.id (with Mozilla User-Agent), pajak.go.id. Filter to reg-types: Permenkumham, PMK, PP, Perpres, UU, Permenaker, Permenkes, Peraturan BKPM. Emit JSON to ~/nuzantara/research/regulatory/${DATE}-delta.json with schema: {run_at, today, new_today_count, partial:bool, unreachable_sources:[{url,reason,note?}] (default [], reason one of http_403|http_404|timeout|ssl_error|empty_shell — genuine fetch failures ONLY), sources_checked_no_delta:[{url,reason,note?}] (default [], reason one of checked_no_new|outside_window — a source you DID read successfully and found nothing new in; never put these in unreachable_sources), nb_query_errors:[] (default [], always present even when empty), deltas:[{citation,title_id,title_en,service_line,summary,source,verbatim_excerpt}], seen_citations}. Each source you attempt goes in exactly one of unreachable_sources or sources_checked_no_delta — never free-text prose, never omitted keys. Retry a dead source at most once, then record it and move on — never loop on a source. If new_today_count>0, send Telegram via curl to api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage chat_id=\$TELEGRAM_OWNER_CHAT_ID. Cite verbatim. No paraphrasing. No emoji in JSON."
@@ -186,6 +209,53 @@ PYBIN="${REGWATCH_PYTHON:-$(command -v python3 || echo /usr/bin/python3)}"
 # files + mtime-desc: the old `ls -t glob` printed "no matches found" noise AND
 # would have listed the whole cwd under null_glob with an empty expansion.
 recover_delta() {
+    # Tier 1 writes here now (see DELTA_SCRATCH above) instead of attempting a
+    # direct write the worktree_isolation guard would refuse. Check it before
+    # the worktree-glob paths below — it is the common case, not a fallback.
+    #
+    # HARDENED post-merge (gate REWORK-BUILD on head 7753eac1): the previous
+    # version did a blind `cp` — no symlink check, no ownership check, no
+    # content validation. Proved live: a markdown file, `{"hello":"world"}`,
+    # and a symlink to a canary secrets file were all promoted (rc=0, canary
+    # content copied) straight toward promote_delta_via_pr()'s commit+push+
+    # auto-merge into the PUBLIC repo; only partial:true was rejected. Even
+    # with DELTA_SCRATCH now under a private 0700 dir (defense layer 1), this
+    # function never trusts what it finds there (defense layer 2) — it
+    # refuses a symlink or a file it does not own BEFORE reading anything,
+    # and promotes ONLY through extract_delta_from_output()'s schema check +
+    # re-serialization, never a byte-for-byte copy.
+    if [ -L "$DELTA_SCRATCH" ]; then
+        echo "[$(date)] REFUSED: $DELTA_SCRATCH is a symlink — not promoted (untrusted staging path; possible attack)" >> "$LOG"
+        return 1
+    fi
+    if [ -e "$DELTA_SCRATCH" ]; then
+        if [ ! -f "$DELTA_SCRATCH" ]; then
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH exists but is not a regular file — not promoted" >> "$LOG"
+            return 1
+        fi
+        if [ ! -O "$DELTA_SCRATCH" ]; then
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH is not owned by this process (uid mismatch) — not promoted" >> "$LOG"
+            return 1
+        fi
+        if ! extract_delta_from_output "$DELTA_SCRATCH"; then
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH is not parseable JSON matching the delta schema (no {..} object with new_today_count+deltas keys) — not promoted, left in place for manual inspection" >> "$LOG"
+            return 1
+        fi
+        delta_is_partial
+        local _partial_rc=$?
+        if [ "$_partial_rc" -eq 1 ]; then
+            echo "[$(date)] recovered delta from tier-1 scratch file $DELTA_SCRATCH -> main (schema-validated + re-serialized via extract_delta_from_output; worktree_isolation blocks a direct session write)" >> "$LOG"
+            rm -f "$DELTA_SCRATCH"
+            return 0
+        fi
+        rm -f "$DELTA_JSON"
+        if [ "$_partial_rc" -eq 0 ]; then
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH parsed but partial:true — recover_delta only lands COMPLETE deltas, not promoted" >> "$LOG"
+        else
+            echo "[$(date)] REFUSED: $DELTA_SCRATCH extracted but delta_is_partial rejected it as invalid (rc=$_partial_rc) — not promoted" >> "$LOG"
+        fi
+        return 1
+    fi
     setopt local_options null_glob
     local -a _hits
     _hits=( "$HOME"/nuzantara/.worktrees/*/research/regulatory/"$DELTA_BASENAME"(N.om) )
@@ -274,6 +344,17 @@ ensure_delta() {
 # apart from a real completed scan that genuinely found nothing — only `partial`
 # does. A false "0 new" is worse than a visible gap: a gap is honestly absent,
 # this looks like a clean day and silently is not one.
+#
+# THREE-way exit code, not two (hardened post-merge, gate REWORK-BUILD on head
+# 7753eac1): unparsable/non-dict JSON used to exit(1) — the SAME code as a
+# genuinely valid partial:false delta — so a caller checking only "0 vs
+# nonzero" (the original `if delta_is_partial; then ...` shape) could not
+# tell "confirmed clean" from "garbage, never even parsed" and silently
+# accepted garbage as clean. 0 = partial:true (reject, cascade, as before);
+# 1 = confirmed valid JSON with partial:false/absent (accept, unchanged);
+# 2 = invalid — did not parse, or parsed to something other than a JSON
+# object (MUST be treated as worse than partial by every caller: reject and
+# say why, never fall through as "not partial").
 delta_is_partial() {
     [ -f "$DELTA_JSON" ] || return 1
     "$PYBIN" -c '
@@ -281,7 +362,9 @@ import json, sys
 try:
     d = json.load(open(sys.argv[1]))
 except Exception:
-    sys.exit(1)
+    sys.exit(2)
+if not isinstance(d, dict):
+    sys.exit(2)
 sys.exit(0 if d.get("partial") else 1)
 ' "$DELTA_JSON"
 }
@@ -406,8 +489,19 @@ EOF
 ensure_full_delta() {
     local _out="$1"
     ensure_delta "$_out" || return 1
-    if delta_is_partial; then
+    # Exact rc check, not `if delta_is_partial; then` (hardened post-merge,
+    # gate REWORK-BUILD on head 7753eac1): that shape treats ANY nonzero exit
+    # as "not partial, proceed" — collapsing rc=1 (confirmed valid,
+    # partial:false) and rc=2 (invalid/unparsable JSON) into the same "accept"
+    # branch. rc=2 must reject exactly like rc=0, just for a different reason.
+    delta_is_partial
+    local _partial_rc=$?
+    if [ "$_partial_rc" -eq 0 ]; then
         echo "[$(date)] delta landed but partial=true (tier admitted incomplete/no-access scan) — rejecting, cascading to next tier" >> "$LOG"
+        rm -f "$DELTA_JSON"
+        return 1
+    elif [ "$_partial_rc" -ne 1 ]; then
+        echo "[$(date)] delta landed but failed validation (delta_is_partial rc=$_partial_rc — invalid/unparsable JSON) — rejecting, cascading to next tier" >> "$LOG"
         rm -f "$DELTA_JSON"
         return 1
     fi
@@ -498,8 +592,59 @@ if [ $SUCCESS -eq 0 ]; then
         CODEX_SEAT_ENV=(CODEX_HOME="$CODEX_SEAT")
         echo "[$(date)] codex seat: $CODEX_SEAT" >> "$LOG"
     fi
-    env "${CODEX_SEAT_ENV[@]}" \
-        /opt/homebrew/bin/codex exec --sandbox workspace-write --skip-git-repo-check "$PROMPT_GENERIC" </dev/null >"$TMPOUT" 2>&1
+    # workspace-write's DEFAULT sandbox has no outbound network for shell-executed
+    # commands. Measured live 2026-09-27: every `curl` inside `exec` failed with
+    # "Could not resolve host" (DNS itself blocked) for every .go.id/.org/.co.id
+    # target, while codex's own web-search tool (a separate path) worked — so the
+    # agent could search but not fetch/verify, self-reported partial:true on an
+    # otherwise-complete 0-new scan, and ensure_full_delta rightly rejected it,
+    # cascading to tier 4 for no real reason. `sandbox_workspace_write.network_
+    # access=true` alone is NOT enough — proved live on Pro: it still blocked
+    # https://www.google.com with "domain is not on the allowlist for the
+    # current sandbox mode" (this account's `~/.codex/config.toml` sets
+    # `features.network_proxy = true`, a domain-allowlist proxy with nothing on
+    # the list). Disabling that proxy for THIS invocation only is what actually
+    # opened it — confirmed live against hukumonline.com (HTTP:200) after this
+    # exact flag pair. Neither flag widens to --sandbox danger-full-access.
+    #
+    # Env exposure to this tier's shell (untrusted external content -> prompt
+    # injection surface, now with real egress): this wrapper's own `set -a;
+    # source .nuzantara-secrets.env` above exports ~27 vars including
+    # DATABASE_URL/REDIS_PASSWORD/GOOGLE_APPLICATION_CREDENTIALS into ITS OWN
+    # shell, and `env "${CODEX_SEAT_ENV[@]}"` used to hand codex that whole
+    # inherited environment. Measured live 2026-09-27: `-c shell_environment_
+    # policy.inherit=core`/`=none`/`-c allow_login_shell=false` are ALL
+    # INEFFECTIVE — codex's `exec` shell tool re-applies GITHUB_PERSONAL_
+    # ACCESS_TOKEN (exported at this account's `~/.zshrc:9`) and
+    # STARSHIP_SESSION_KEY (from `starship init`) through its own interactive
+    # SHELL SNAPSHOT feature regardless of any of those flags, and
+    # `allow_login_shell=false` also dropped the TELEGRAM_* vars this tier
+    # needs. Verified effective, gate-measured rc 0: `env -i` plus an
+    # explicit allowlist (HOME, PATH, the seat's CODEX_HOME, only the two
+    # TELEGRAM_* vars this tier's prompt uses) so none of the
+    # .nuzantara-secrets.env names reach codex's own process env, PLUS `-c
+    # features.shell_snapshot=false` so codex does not re-apply
+    # ~/.zshrc/starship's own exports on top. `shell_snapshot=false` ALONE
+    # (verified live, own re-check) also drops this allowlist's own
+    # TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID — disabling the snapshot
+    # makes `shell_environment_policy.inherit` the ONLY thing governing what
+    # of codex's (now `env -i`-minimal) own process env reaches the shell
+    # tool, so `inherit=all` must be explicit alongside it: verified live,
+    # 39 names, GITHUB_PAT=0, STARSHIP=0, both TELEGRAM_* present. Pre-
+    # existing gap named, not fixed here: tier 1 (Claude) still inherits
+    # this wrapper's full `set -a` environment too, now with network access.
+    typeset -a CODEX_ENV_ALLOWLIST
+    CODEX_ENV_ALLOWLIST=(HOME="$HOME" PATH="$PATH")
+    CODEX_ENV_ALLOWLIST+=("${CODEX_SEAT_ENV[@]}")
+    [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && CODEX_ENV_ALLOWLIST+=(TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}")
+    [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ] && CODEX_ENV_ALLOWLIST+=(TELEGRAM_OWNER_CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-}")
+    env -i "${CODEX_ENV_ALLOWLIST[@]}" \
+        /opt/homebrew/bin/codex exec --sandbox workspace-write \
+        -c sandbox_workspace_write.network_access=true \
+        -c features.network_proxy=false \
+        -c features.shell_snapshot=false \
+        -c shell_environment_policy.inherit=all \
+        --skip-git-repo-check "$PROMPT_GENERIC" </dev/null >"$TMPOUT" 2>&1
     EXIT=$?
     if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
         SUCCESS=1
@@ -565,22 +710,46 @@ if [ $SUCCESS -eq 0 ]; then
         /opt/homebrew/bin/ollama run qwen3.5:9b "$PROMPT_GENERIC" >"$TMPOUT" 2>&1
         EXIT=$?
         if [ $EXIT -eq 0 ] && ensure_delta "$TMPOUT"; then
-            SUCCESS=1
-            USED_LLM="ollama-qwen3.5:9b-local"
-            if delta_is_partial; then
+            # Exact rc check (hardened post-merge, gate REWORK-BUILD on head
+            # 7753eac1): `if delta_is_partial; then` treated rc=2
+            # (invalid/unparsable JSON) the same as rc=1 (confirmed valid,
+            # not partial) — silently accepting garbage as a clean SUCCESS
+            # with no DEGRADED flag at all, the last-resort tier's own
+            # version of the same bug fixed above for tiers 1-3.
+            delta_is_partial
+            _partial_rc=$?
+            if [ "$_partial_rc" -eq 0 ]; then
+                SUCCESS=1
+                USED_LLM="ollama-qwen3.5:9b-local"
                 DEGRADED=1
                 echo "[$(date)] tier 4 landed but partial=true — ALL 4 tiers failed to complete a real scan, accepting as DEGRADED (not a clean 0-new day)" >> "$LOG"
+            elif [ "$_partial_rc" -eq 1 ]; then
+                SUCCESS=1
+                USED_LLM="ollama-qwen3.5:9b-local"
+            else
+                rm -f "$DELTA_JSON"
+                echo "[$(date)] tier 4 landed invalid/unparsable JSON (delta_is_partial rc=$_partial_rc) — discarding, NOT accepted as success" >> "$LOG"
             fi
         fi
         cat "$TMPOUT" >> "$LOG"
     fi
 fi
 
+# Names the seat + tool set actually used, so the log answers "did this tier
+# have real tools" without needing to re-derive it from the tier's raw output.
+TOOLS_USED="unknown"
+case "$USED_LLM" in
+    claude-sonnet-5-subscription-cascade) TOOLS_USED="Claude agent session: Read/Write/Bash/WebFetch (NB-INTEL + web); delta written to /tmp scratch, promoted via worktree" ;;
+    gemini-3.1-pro-agy) TOOLS_USED="agy print-mode: model-native browsing only, no local shell tool" ;;
+    codex-gpt-5.5) TOOLS_USED="codex exec --sandbox workspace-write, network_access=true + network_proxy=false + shell_snapshot=false + inherit=all, env -i allowlist (HOME/PATH/CODEX_HOME/TELEGRAM_*): shell (curl) + web-search" ;;
+    ollama-qwen3.5:9b-local) TOOLS_USED="none — local text-only model, no browsing/shell, by design (last resort)" ;;
+esac
+
 if [ $SUCCESS -eq 1 ] && [ $DEGRADED -eq 1 ]; then
-    echo "[$(date)] regulatory-watcher run DEGRADED — used: $USED_LLM (partial: no tier completed a real scan)" >> "$LOG"
+    echo "[$(date)] regulatory-watcher run DEGRADED — used: $USED_LLM — tools: $TOOLS_USED (partial: no tier completed a real scan)" >> "$LOG"
     organism_hb_set degraded "used ${USED_LLM}, partial=true — no tier completed a real scan"
 elif [ $SUCCESS -eq 1 ]; then
-    echo "[$(date)] regulatory-watcher run complete — used: $USED_LLM" >> "$LOG"
+    echo "[$(date)] regulatory-watcher run complete — used: $USED_LLM — tools: $TOOLS_USED" >> "$LOG"
     organism_hb_set ok "used ${USED_LLM}"
 
     # W1.4: emit eventbus events for any new regulatory deltas in today's JSON.

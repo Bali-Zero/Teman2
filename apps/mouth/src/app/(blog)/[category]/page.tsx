@@ -23,6 +23,13 @@ export function generateStaticParams(): { category: string }[] {
   return VALID_CATEGORIES.map((category) => ({ category }));
 }
 
+// `[category]` sits at the root of the route tree. With the default
+// `dynamicParams: true`, every unknown single-segment URL was rendered on
+// demand, cached as a prerender and served with a 200 status (live
+// 2026-09-27, Googlebot UA included). With `false`, a category outside
+// generateStaticParams is a real 404 (measured on a local production build).
+export const dynamicParams = false;
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {

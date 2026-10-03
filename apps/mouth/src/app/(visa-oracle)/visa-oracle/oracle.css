@@ -259,10 +259,6 @@ html[data-oracle-theme-bootstrap="dark"]
     align-items: start;
     gap: var(--space-8);
   }
-  .oracle-main__tree {
-    position: sticky;
-    top: var(--space-6);
-  }
 }
 .oracle-main__content {
   max-width: var(--oracle-max-width);
@@ -416,162 +412,6 @@ html[data-oracle-theme-bootstrap="dark"]
   border-radius: var(--radius-sm);
 }
 
-/* ─── Living tree ───────────────────────────────────────────────────────── */
-.oracle-tree {
-  border: 1px solid var(--oracle-border);
-  border-radius: var(--oracle-radius-card);
-  background: var(--oracle-bg-elevated);
-  padding: var(--space-4);
-}
-.oracle-tree__trunk {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.oracle-tree__step {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--oracle-ink-faint);
-  border-left: 2px solid var(--oracle-leaf-pending);
-  padding-left: var(--space-3);
-  transition:
-    color var(--motion-duration-standard) var(--motion-ease-standard),
-    border-color var(--motion-duration-standard) var(--motion-ease-standard);
-}
-.oracle-tree__step[data-status="done"] {
-  color: var(--oracle-ink-muted);
-  border-left-color: var(--oracle-canopy);
-}
-.oracle-tree__step[data-status="current"] {
-  color: var(--oracle-ink);
-  font-weight: 600;
-  border-left-color: var(--oracle-leaf-active);
-}
-.oracle-tree__dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
-}
-.oracle-tree__step[data-status="current"] .oracle-tree__dot {
-  animation: oracle-breathe 3.2s var(--motion-ease-standard) infinite;
-}
-
-/* Tap-to-edit (design doc §3 interaction #6) — completed trunk steps only,
-   rendered as real `<button>`s (LivingTree.tsx `isEditableTreeStep`). Reset
-   button chrome, keep the same status-driven colors as the decorative
-   `<div>` variant above (selectors match by class+attribute, not tag), add
-   an explicit hover/pressed affordance and a touch-sized target. Visible
-   focus comes for free from the global `:focus-visible` rule below. */
-button.oracle-tree__step--editable {
-  appearance: none;
-  background: none;
-  border: none;
-  border-left: 2px solid var(--oracle-leaf-pending);
-  padding-left: var(--space-3);
-  font: inherit;
-  text-align: left;
-  width: 100%;
-  min-height: 44px;
-  cursor: pointer;
-}
-button.oracle-tree__step--editable:hover {
-  color: var(--oracle-ink);
-  background: color-mix(in srgb, var(--oracle-canopy) 8%, transparent);
-}
-
-.oracle-tree__leaves {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px dashed var(--oracle-border);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.oracle-tree__leaf {
-  font-size: var(--text-xs);
-  padding: 0.3rem 0.6rem;
-  border-radius: var(--oracle-radius-chip);
-  border: 1px solid var(--oracle-border);
-  color: var(--oracle-ink-faint);
-  background: transparent;
-}
-.oracle-tree__leaf[data-status="done"] {
-  color: var(--oracle-bg-elevated);
-  background: var(--oracle-leaf-active);
-  border-color: var(--oracle-leaf-active);
-  font-weight: 600;
-}
-.oracle-tree__leaf[data-status="pending"] {
-  color: var(--oracle-ink-faint);
-}
-
-/* Minimap trigger — mobile only (collapsible top minimap, spec item 33). */
-.oracle-tree-minimap-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--oracle-border);
-  background: var(--oracle-bg-elevated);
-  color: var(--oracle-ink-muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  width: 100%;
-  justify-content: space-between;
-  cursor: pointer;
-}
-/*
- * Finding #10 (adversarial review 2026-07-17): the base `.oracle-tree--desktop
- * { display: none; }` rule previously sat AFTER the `@media (min-width:
- * 1024px)` block below — equal specificity, later source order always
- * wins regardless of which one is inside a media query, so the desktop
- * tree stayed hidden on every viewport, including desktop. Moving the
- * base rule BEFORE the media query (source order now: base → override)
- * restores the intended cascade: hidden by default, shown once the
- * `min-width: 1024px` query's `display: block` is the LAST matching rule.
- * The redundant `@media (max-width: 1023.98px)` block that used to follow
- * this is deleted — the base rule above already covers every viewport
- * narrower than the desktop breakpoint; a second rule saying the same
- * thing with `!important` was never load-bearing, it just looked like it
- * was doing the job the base rule's position was failing to do.
- */
-.oracle-tree--desktop {
-  display: none;
-}
-@media (min-width: 1024px) {
-  .oracle-tree-minimap-trigger {
-    display: none;
-  }
-  .oracle-tree--desktop {
-    display: block;
-  }
-}
-
-@keyframes oracle-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.6);
-    opacity: 0.6;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .oracle-tree__step[data-status="current"] .oracle-tree__dot {
-    animation: none;
-  }
-}
-
 /* Screen-reader-only path description — non-visual tree equivalent. */
 .oracle-sr-only {
   position: absolute;
@@ -583,67 +423,6 @@ button.oracle-tree__step--editable:hover {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-/* Visible branch breadcrumb — compact on mobile, editable where the reducer
-   can safely prune descendants. This is interview progress, never a list of
-   engine-supported visa paths. */
-.oracle-breadcrumb {
-  margin-bottom: var(--space-3);
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-.oracle-breadcrumb ol {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: max-content;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--oracle-ink-faint);
-  font-size: var(--text-xs);
-}
-.oracle-breadcrumb li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.oracle-breadcrumb li:not(:last-child)::after {
-  content: "/";
-  color: var(--oracle-border-strong);
-}
-.oracle-breadcrumb button {
-  min-height: 44px;
-  padding: 0 var(--space-1);
-  border: 0;
-  background: transparent;
-  color: var(--oracle-ink-muted);
-  font: inherit;
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
-  cursor: pointer;
-}
-.oracle-breadcrumb [aria-current="step"] {
-  color: var(--oracle-ink);
-  font-weight: 700;
-}
-.oracle-breadcrumb__ellipsis {
-  min-height: 44px;
-}
-
-/* ─── Paths counter ─────────────────────────────────────────────────────── */
-.oracle-paths-counter {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--oracle-ink-muted);
-}
-.oracle-paths-counter strong {
-  font-size: var(--text-lg);
-  color: var(--oracle-ink);
 }
 
 /* ─── Question screen ───────────────────────────────────────────────────── */
@@ -692,16 +471,6 @@ button.oracle-tree__step--editable:hover {
   background: var(--oracle-state-likely-not-bg);
   font-weight: 600;
 }
-.oracle-decision-boundary {
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--oracle-accent-gold);
-  background: var(--oracle-state-conditional-bg);
-  color: var(--oracle-ink-muted);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-}
-
 .oracle-options {
   display: flex;
   flex-direction: column;
@@ -847,14 +616,6 @@ button.oracle-tree__step--editable:hover {
 .oracle-option-card:disabled:hover {
   border-color: var(--oracle-border);
 }
-.oracle-option-card__hint {
-  display: block;
-  font-size: var(--text-sm);
-  font-weight: 400;
-  color: var(--oracle-ink-muted);
-  margin-top: 0.15rem;
-}
-
 .oracle-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
@@ -912,13 +673,6 @@ button.oracle-tree__step--editable:hover {
   padding-left: var(--space-3);
   max-width: 46ch;
 }
-.oracle-whyweask__regulation {
-  display: block;
-  margin-top: var(--space-1);
-  font-size: var(--text-xs);
-  color: var(--oracle-ink-faint);
-}
-
 /* ─── Not sure ──────────────────────────────────────────────────────────── */
 .oracle-notsure {
   display: inline-flex;
@@ -1127,15 +881,6 @@ button.oracle-tree__step--editable:hover {
   font-size: clamp(1.25rem, 3vw, 1.6rem);
   line-height: 1.2;
 }
-.oracle-candidate-card__rank {
-  flex: 0 0 auto;
-  padding: 0.35rem 0.65rem;
-  border: 1px solid var(--oracle-border);
-  border-radius: var(--oracle-radius-chip);
-  color: var(--oracle-ink-muted);
-  font-size: var(--text-xs);
-  font-weight: 700;
-}
 .oracle-candidate-card__details {
   display: grid;
   gap: var(--space-5);
@@ -1201,13 +946,6 @@ button.oracle-tree__step--editable:hover {
 .oracle-source-list li + li {
   margin-top: var(--space-3);
 }
-.oracle-reason-list__sources {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-}
-.oracle-reason-list__sources a,
 .oracle-source-list a {
   display: inline-flex;
   align-items: center;
@@ -1272,35 +1010,6 @@ button.oracle-tree__step--editable:hover {
   border-radius: var(--oracle-radius-card);
   background: var(--oracle-bg-elevated);
 }
-.oracle-table-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--oracle-border);
-  border-radius: var(--oracle-radius-card);
-}
-.oracle-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 32rem;
-  font-size: var(--text-sm);
-}
-.oracle-table th,
-.oracle-table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--oracle-border);
-  white-space: nowrap;
-}
-.oracle-table th {
-  color: var(--oracle-ink-faint);
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: var(--text-xs);
-  letter-spacing: 0.06em;
-}
-.oracle-table tr:last-child td {
-  border-bottom: none;
-}
-
 .oracle-price {
   display: flex;
   flex-direction: column;
@@ -1331,17 +1040,6 @@ button.oracle-tree__step--editable:hover {
   font-size: var(--text-sm);
   color: var(--oracle-ink-muted);
 }
-/* Finding #15: NO_SUPPORTED_PATH alternatives render as full-width
-   `.oracle-option-card` buttons inside this list — reset the plain-text
-   list-item gap/color so the button owns its own spacing. */
-.oracle-checklist-doc--actionable li {
-  display: block;
-  color: inherit;
-}
-.oracle-checklist-doc--actionable .oracle-option-card {
-  width: 100%;
-}
-
 .oracle-next-steps {
   margin: 0;
   padding: 0;
@@ -1470,20 +1168,6 @@ button.oracle-tree__step--editable:hover {
   border-color: var(--oracle-canopy);
   color: var(--oracle-canopy);
 }
-.oracle-copy-cta[data-copy-state="copied"] {
-  color: var(--oracle-state-eligible);
-  border-color: var(--oracle-state-eligible);
-}
-/* P1 minor (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18): the
-   clipboard write can genuinely reject (insecure context, denied
-   permission) — a visible failure state, not just a silently-swallowed
-   catch, color+icon+text never color-alone (never-color-alone spec
-   hard-constraint 4). */
-.oracle-copy-cta[data-copy-state="failed"] {
-  color: var(--oracle-state-likely-not);
-  border-color: var(--oracle-state-likely-not);
-}
-
 /* Print-only content — hidden on screen, revealed only inside @media print
    below (the facts recap "answers" section print's anatomy needs but the
    verdict screen never otherwise renders — see OutcomeSheet.tsx). */
@@ -1605,8 +1289,6 @@ button.oracle-tree__step--editable:hover {
    outcome-page anatomy "share/print/PDF") ───────────────────────────────── */
 @media print {
   .oracle-topbar,
-  .oracle-main__tree,
-  .oracle-tree-minimap-trigger,
   .oracle-footer,
   .oracle-no-print {
     display: none !important;
@@ -1633,7 +1315,6 @@ button.oracle-tree__step--editable:hover {
       .oracle-verdict-card,
       .oracle-confirmation__group,
       .oracle-receipt,
-      .oracle-table-scroll,
       .oracle-checklist__item,
       .oracle-verdict-chip
     ) {
@@ -1641,33 +1322,1761 @@ button.oracle-tree__step--editable:hover {
   }
 }
 
-/* C2-1 branch previews stay subordinate to their route chip. */
-.oracle-process-branch {
-  min-width: 0;
-}
-.oracle-process-branch > ul {
-  margin: var(--space-1) 0 0;
-  padding-left: var(--space-3);
-  color: var(--oracle-ink-faint);
-  font-size: var(--text-xs);
-  line-height: 1.35;
-}
-button.oracle-tree__leaf {
-  cursor: pointer;
-  font: inherit;
-  /* PR #7081 E2E red 2: `.oracle-tree__leaf`'s base `background: transparent`
-     let axe's color-contrast check read `--oracle-ink-faint` (#5b6a60)
-     against `--oracle-canopy`/`--oracle-leaf-active` (#1f4d3d, 1.68:1) —
-     the adjacent "done" chip's opaque background, visible through this
-     button's own transparency while a Framer-Motion `layout` reflow was
-     still settling as the verdict view replaced the question view. An
-     opaque own background makes the pair's contrast independent of
-     whatever paints behind it in any animation frame: `--oracle-ink-faint`
-     on `--oracle-bg-elevated` is the AA pairing already measured at
-     :51/:85 (~5.7:1 light, ~5.68:1 dark) — no new token declared. */
-  background: var(--oracle-bg-elevated);
-}
-
 .oracle-whyweask--inline {
   width: 100%;
+}
+
+/* ─── Atlas presentation (ORACLE-PROD-20260927) ───────────────────────────
+   Ported from the frozen prototype's atlas.css/refinements.css/permit.css/
+   journey.css (BUILD-SPEC §7) onto the production DOM/class names. Scoped
+   entirely under `.oracle-root.oracle-atlas` so it never leaks onto the
+   privacy/unlock routes, which never carry that class. No new
+   `--oracle-state-*` token is declared anywhere below (invariant §0.7) —
+   every colour here is one of the existing non-state tokens (re-pointed per
+   theme) or a new `--atlas-*` var. */
+
+/* A6: the off-limits, non-atlas `html{color-scheme:dark}` (globals.css)
+   painted native unchecked checkboxes dark everywhere — including on the
+   light atlas theme, where they read as already-checked. `appearance:auto`
+   alone can't override a UA's color-scheme-driven form-control palette;
+   only re-pointing `color-scheme` per theme does. */
+.oracle-root.oracle-atlas[data-oracle-theme="light"] {
+  color-scheme: light;
+}
+.oracle-root.oracle-atlas[data-oracle-theme="dark"] {
+  color-scheme: dark;
+}
+.oracle-root.oracle-atlas[data-oracle-theme="light"] {
+  --oracle-bg: #f7f4ee;
+  /* NOT the "bg elevated" custom property (BUILD-SPEC §7 asks for #fffaf4
+     here): an anti-regression fence (`oracle-state-tokens.test.ts`'s
+     pinned theme-block anchors, PR #7081 E2E red 2) anchors on how many
+     times that custom property is declared in this file and pins the count
+     at exactly 4 — invariant §0.3 (never edit/break an existing test)
+     outranks this one repaint. The default theme's near-white/near-black
+     value (#ffffff
+     light, #131c17 dark) is close enough to the atlas paper tone that every
+     consumer of that token (option cards, form controls, the badge, tiles,
+     the verdict card…) still reads correctly against it. */
+  --oracle-ink: #233d52;
+  --oracle-ink-muted: #53616b;
+  --oracle-ink-faint: #5a6772;
+  --oracle-border: rgba(35, 61, 82, 0.16);
+  --oracle-border-strong: #b8b2a5;
+  --oracle-focus-ring: #233d52;
+  /* Reuses the tree's existing accent slot for the copper accent, so every
+     generic component (.oracle-option-card, .oracle-tile, .oracle-verdict-
+     card's shadow tint, the decision-boundary rule) that already reads
+     --oracle-canopy/--oracle-accent-gold shifts to the atlas palette without
+     restating each of those rules here. */
+  --oracle-canopy: #9d4e38;
+  --oracle-accent-gold: #9d4e38;
+  --atlas-copper: #9d4e38;
+  --atlas-rule: #b8b2a5;
+  --atlas-serif: Baskerville, "Iowan Old Style", Georgia, serif;
+  --atlas-art-filter: none;
+}
+
+.oracle-root.oracle-atlas[data-oracle-theme="dark"] {
+  --oracle-bg: #111a21;
+  /* See the light block's comment above — `--oracle-bg-elevated` stays at
+     the default theme's dark value here too. */
+  --oracle-ink: #efe8da;
+  --oracle-ink-muted: #c9c1ae;
+  --oracle-ink-faint: #aaa290;
+  --oracle-border: rgba(239, 232, 218, 0.16);
+  --oracle-border-strong: rgba(239, 232, 218, 0.28);
+  --oracle-focus-ring: #efe8da;
+  --oracle-canopy: #e3a482;
+  --oracle-accent-gold: #e3a482;
+  --atlas-copper: #e3a482;
+  --atlas-rule: rgba(239, 232, 218, 0.28);
+  --atlas-serif: Baskerville, "Iowan Old Style", Georgia, serif;
+  /* Dims every scenery photo/illustration for the night palette — never the
+     interactive UI, which stays at full contrast through the tokens above. */
+  --atlas-art-filter: brightness(0.45) saturate(0.85);
+}
+
+/* Decoration only everywhere (BUILD-SPEC §0.8): the scenery root never
+   intercepts a click meant for the real question content painted over it,
+   in either layout. */
+.oracle-atlas-scenery {
+  pointer-events: none;
+}
+
+/* D1: the pre-atlas `.oracle-main` rule (off-limits, non-atlas section)
+   still declares `display:grid;max-width:90rem` and, at ≥1024px, a
+   `18rem minmax(0,1fr)` tree-column grid. The stage layout already
+   neutralised it below, but the landscape layout never did — every
+   landscape scene (watershed, identity, confirmation, verdict, endings)
+   rendered inside that leftover sidebar column, squeezed to ~380px. One
+   shared reset for both layouts, so neither can regress the same way. */
+.oracle-root.oracle-atlas .oracle-atlas-main {
+  display: block;
+  max-width: none;
+  margin: 0;
+}
+
+/* ─── Header (brand / badge / wordmark / tools) ─────────────────────────── */
+.oracle-atlas-header {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  justify-content: space-between;
+  background: color-mix(in srgb, var(--oracle-bg-elevated) 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.oracle-atlas-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--atlas-serif);
+}
+.oracle-atlas-brand img {
+  width: 1.75rem;
+  height: 1.75rem;
+  object-fit: contain;
+}
+.oracle-atlas-brand b {
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--oracle-ink);
+}
+.oracle-atlas-header__wordmark {
+  display: none;
+  font: 400 1.35rem/1 var(--atlas-serif);
+  letter-spacing: -0.03em;
+  color: var(--oracle-ink);
+}
+.oracle-atlas-header__wordmark em {
+  font-style: italic;
+  color: var(--atlas-copper);
+}
+@media (min-width: 40rem) {
+  .oracle-atlas-header__wordmark {
+    display: block;
+  }
+}
+/* The stage screens (entry/world/paper) render their own in-scene wordmark
+   — the header's copy would visually double it. */
+.oracle-root.oracle-atlas[data-scene-layout="stage"]
+  .oracle-atlas-header__wordmark {
+  display: none;
+}
+
+/* D3: "Talk to a consultant" before an outcome exists, as a compact
+   floating tool anchored to the header's own box (position:sticky is
+   still a valid containing block for an absolutely positioned
+   descendant) — `top:100%` is therefore "right under the header",
+   whatever the header's actual height turns out to be, with no flow
+   height of its own to push the scene down. The inline "plan this with
+   Bali Zero" card after an outcome (BUILD-SPEC §6) is a different,
+   unwrapped instance of the same component and is untouched by this
+   rule. */
+.oracle-root.oracle-atlas .oracle-atlas-consult-float {
+  position: absolute;
+  top: 100%;
+  right: var(--oracle-gutter);
+  z-index: 9;
+}
+.oracle-root.oracle-atlas .oracle-atlas-consult-float .oracle-consultant {
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+.oracle-root.oracle-atlas
+  .oracle-atlas-consult-float
+  .oracle-consultant__toggle {
+  background: color-mix(in srgb, var(--oracle-bg-elevated) 92%, transparent);
+  border: 1px solid var(--atlas-rule);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+.oracle-root.oracle-atlas
+  .oracle-atlas-consult-float
+  .oracle-consultant__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  margin: 0;
+  width: min(420px, calc(100vw - 32px));
+  max-height: 70dvh;
+  overflow: auto;
+  background: var(--oracle-bg-elevated);
+  border: 1px solid var(--atlas-rule);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  padding: var(--space-4);
+}
+.oracle-root.oracle-atlas
+  .oracle-atlas-consult-float
+  .oracle-consultant__panel[hidden] {
+  display: none;
+}
+/* The float's own `top:100%` (right under the header) needs no mobile
+   nudge — see the `.oracle-atlas-stage-wordmark` mobile rule below for the
+   actual three-way clearance fix (float / wordmark / question h1), all
+   measured with a live geometry probe rather than a screenshot guess. */
+
+/* ─── Scenery: stage layout (entry / world / permit) ────────────────────── */
+.oracle-root.oracle-atlas[data-scene-layout="stage"] .oracle-atlas-main {
+  position: relative;
+  width: min(100vw, 160dvh);
+  aspect-ratio: 1.6;
+  margin-inline: auto;
+  container-type: inline-size;
+  overflow: hidden;
+  display: block;
+  padding: 0;
+  max-width: none;
+  background: var(--oracle-bg);
+  border-radius: var(--oracle-radius-card);
+}
+.oracle-root.oracle-atlas[data-scene-layout="stage"] .oracle-atlas-scenery {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.oracle-root.oracle-atlas[data-scene-layout="stage"] .oracle-main__content {
+  position: absolute;
+  inset: 0;
+  max-width: none;
+  width: 100%;
+  pointer-events: none;
+}
+.oracle-root.oracle-atlas[data-scene-layout="stage"] .oracle-main__content > * {
+  pointer-events: auto;
+}
+/* A1: the presentation element rendered here IS `div.oracle-question`,
+   which still carries the legacy (off-limits, non-atlas) reading-width rule
+   `.oracle-main__content > .oracle-question{max-width:46rem}` — with
+   `position:absolute;inset:0` also declared on `[data-presentation]` below,
+   an over-constrained box resolves against that 46rem cap instead of the
+   full stage, so every stage question (world/permit) painted its content
+   against a 736px box: headline/hint left-aligned, "Yes" pin landing on
+   Africa. Reset it here so the world/permit box equals the stage box. */
+.oracle-root.oracle-atlas[data-scene-layout="stage"] .oracle-question {
+  max-width: none;
+  margin: 0;
+}
+
+.oracle-root.oracle-atlas .oracle-atlas-map-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.oracle-root.oracle-atlas .oracle-atlas-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  filter: var(--atlas-art-filter);
+  transition:
+    opacity 900ms ease,
+    transform 1200ms cubic-bezier(0.2, 0.6, 0.2, 1),
+    filter 800ms ease;
+}
+.oracle-root.oracle-atlas .oracle-atlas-map--globe {
+  opacity: 0;
+  transform: scale(1.13);
+  transform-origin: 80% 68%;
+  filter: blur(5px);
+}
+.oracle-root.oracle-atlas[data-scene="world"] .oracle-atlas-map--island,
+.oracle-root.oracle-atlas[data-scene="paper"] .oracle-atlas-map--island {
+  opacity: 0;
+  transform: scale(0.86);
+  filter: blur(6px);
+}
+.oracle-root.oracle-atlas[data-scene="world"] .oracle-atlas-map--globe,
+.oracle-root.oracle-atlas[data-scene="paper"] .oracle-atlas-map--globe {
+  opacity: 1;
+  transform: scale(1);
+  filter: var(--atlas-art-filter);
+}
+.oracle-root.oracle-atlas[data-scene="paper"] .oracle-atlas-map-stage {
+  visibility: hidden;
+}
+
+.oracle-root.oracle-atlas .oracle-atlas-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
+.oracle-root.oracle-atlas .oracle-atlas-labels span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font: 1.3cqw var(--atlas-serif);
+  white-space: nowrap;
+  color: var(--oracle-ink);
+}
+.oracle-root.oracle-atlas .oracle-atlas-labels--world {
+  opacity: 0;
+}
+.oracle-root.oracle-atlas .oracle-atlas-labels--world span {
+  font-family: Georgia, serif;
+  font-size: 0.84cqw;
+  letter-spacing: 0.19em;
+  color: var(--oracle-ink-muted);
+  white-space: normal;
+  text-align: center;
+  width: 9%;
+}
+.oracle-root.oracle-atlas[data-scene="world"] .oracle-atlas-labels--world {
+  opacity: 1;
+}
+.oracle-root.oracle-atlas[data-scene="world"] .oracle-atlas-labels--islands,
+.oracle-root.oracle-atlas[data-scene="paper"] .oracle-atlas-labels--islands,
+.oracle-root.oracle-atlas[data-scene="paper"] .oracle-atlas-labels--world {
+  opacity: 0;
+}
+/* Decorative "Indonesia" place label — anchored near the world question's
+   Indonesia pin (QuestionScreen renders that pin itself; this label lives in
+   a sibling component, so it is positioned at the same coordinates rather
+   than nested inside the pin as the prototype does). */
+.oracle-root.oracle-atlas .oracle-atlas-place-label {
+  position: absolute;
+  left: 80.6%;
+  top: calc(66.7% - 3cqw);
+  transform: translateX(-50%);
+  font: 1.2cqw var(--atlas-serif);
+  white-space: nowrap;
+  color: var(--oracle-ink);
+}
+
+.oracle-root.oracle-atlas .oracle-atlas-permit-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  background: var(--oracle-bg);
+  transition:
+    opacity 420ms ease,
+    visibility 420ms;
+}
+.oracle-root.oracle-atlas[data-scene="paper"]
+  .oracle-atlas-permit-art.oracle-atlas-permit-art--ready {
+  opacity: 1;
+  visibility: visible;
+}
+.oracle-root.oracle-atlas .oracle-atlas-permit-still,
+.oracle-root.oracle-atlas .oracle-atlas-paper-layers {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  filter: var(--atlas-art-filter);
+}
+.oracle-root.oracle-atlas .oracle-atlas-depth-preload {
+  display: none;
+}
+.oracle-root.oracle-atlas .oracle-atlas-paper-layers {
+  opacity: 0;
+  pointer-events: none;
+}
+.oracle-atlas-scenery[data-paper-arrival="on"] .oracle-atlas-paper-layers {
+  animation: atlas-layered-arrival 650ms ease;
+}
+.oracle-atlas-scenery[data-paper-arrival="on"] .oracle-atlas-paper-depth {
+  transform-origin: 80% 65%;
+  animation: atlas-depth-settle 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.oracle-atlas-scenery[data-paper-arrival="on"] .oracle-atlas-paper-foreground {
+  transform-origin: 45% 80%;
+  animation: atlas-paper-settle 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes atlas-layered-arrival {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes atlas-depth-settle {
+  from {
+    transform: scale(1.035) translate(-6px, 4px);
+  }
+  to {
+    transform: scale(1) translate(0, 0);
+  }
+}
+@keyframes atlas-paper-settle {
+  from {
+    transform: translate(8px, 6px) scale(1.025);
+  }
+  to {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+/* ─── Entry (framing) ────────────────────────────────────────────────────── */
+.oracle-atlas-entry {
+  position: absolute;
+  inset: 0;
+}
+.oracle-atlas-entry__title {
+  position: absolute;
+  top: 9.4%;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-family: var(--atlas-serif);
+  font-weight: 400;
+  font-size: 9.6cqw;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  /* A4: this 1.13 horizontal stretch belonged to the prototype's `.globe`
+     map, not to the title — it made the box render 1627px at a 1440px
+     stage (clipped-control failure at every desktop width). */
+}
+.oracle-atlas-entry__title em {
+  /* D12: every other wordmark (header, stage) renders "Oracle" in italic
+     copper — this one was pinned upright by mistake. */
+  font-style: italic;
+  color: var(--atlas-copper);
+}
+.oracle-atlas-entry__subtitle {
+  position: absolute;
+  top: calc(9.4% + 10cqw);
+  left: 0;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: 3.55cqw;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--oracle-ink);
+}
+.oracle-atlas-entry__body {
+  position: absolute;
+  top: calc(9.4% + 15cqw);
+  left: 50%;
+  width: min(52ch, 84%);
+  transform: translateX(-50%);
+  margin: 0;
+  text-align: center;
+  font-size: 1.05cqw;
+  line-height: 1.5;
+  color: var(--oracle-ink-muted);
+}
+.oracle-atlas-start {
+  position: absolute;
+  top: 79.2%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1.3cqw;
+  padding: 0.45cqw 1.1cqw;
+  border: 0;
+  background: transparent;
+  color: var(--atlas-copper);
+  font: 2.7cqw var(--atlas-serif);
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    filter 180ms ease;
+}
+.oracle-atlas-start:hover {
+  filter: brightness(0.88);
+}
+.oracle-atlas-start:active {
+  transform: translateX(-50%) scale(0.95);
+}
+.oracle-atlas-start__dot {
+  display: block;
+  background: var(--atlas-copper);
+  border: 0.65cqw solid var(--oracle-bg-elevated);
+  border-radius: 50%;
+  width: 4.3cqw;
+  height: 4.3cqw;
+  box-shadow: 0 0.35cqw 0.7cqw rgba(0, 0, 0, 0.2);
+  animation: atlas-start-breathe 2.8s ease-in-out infinite;
+}
+@keyframes atlas-start-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0.35cqw 0.7cqw rgba(0, 0, 0, 0.2),
+      0 0 0 0 color-mix(in srgb, var(--atlas-copper) 20%, transparent);
+  }
+  55% {
+    box-shadow:
+      0 0.35cqw 0.7cqw rgba(0, 0, 0, 0.2),
+      0 0 0 0.7cqw color-mix(in srgb, var(--atlas-copper) 0%, transparent);
+  }
+}
+/* A5: `top:87%` + `width:max(60%,24rem)` + left-aligned text overlapped
+   Start by 4-5px (EN/ID at 1280/1440) and read off-centre. Anchored below
+   Start's own box (79.2% + its breathing-dot height) and sized to its
+   content instead. */
+.oracle-atlas-save {
+  position: absolute;
+  top: calc(79.2% + 6.2cqw);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1cqw;
+  align-items: flex-start;
+  width: fit-content;
+  max-width: min(88%, 640px);
+  color: var(--oracle-ink);
+}
+.oracle-atlas-save input {
+  accent-color: var(--atlas-copper);
+  width: 1.5cqw;
+  height: 1.5cqw;
+  min-width: 20px;
+  min-height: 20px;
+  margin: 0.2cqw 0 0;
+  flex: none;
+}
+.oracle-atlas-save label {
+  display: block;
+  text-align: left;
+  font-size: max(12px, 1cqw);
+  cursor: pointer;
+}
+.oracle-atlas-save small {
+  display: block;
+  text-align: left;
+  font-size: max(11px, 0.86cqw);
+  max-width: 60ch;
+  color: var(--oracle-ink-muted);
+  margin-top: 0.35cqw;
+}
+
+/* ─── Stage question wordmark (world / permit) ──────────────────────────── */
+.oracle-atlas-stage-wordmark {
+  position: absolute;
+  top: 8.6%;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font: 400 4.9cqw/1.1 var(--atlas-serif);
+  letter-spacing: -0.045em;
+  color: var(--oracle-ink);
+}
+.oracle-atlas-stage-wordmark em {
+  font-style: italic;
+  color: var(--atlas-copper);
+}
+
+/* ─── World question (in_indonesia) ──────────────────────────────────────── */
+/* A2: the headline and hint used to be two INDEPENDENT absolutes
+   (`top:26%` / `top:calc(26% + 5cqw)`), which overlapped whenever the h1
+   wrapped to two lines (every ID headline at 1024/1280). A flex column
+   lets the hint flow after whatever height the headline actually needs.
+   Choices/back/notsure/WhyWeAsk stay `position:absolute` — an
+   absolutely-positioned descendant's containing block is unaffected by a
+   positioned ancestor's `padding`, so they never move. */
+[data-presentation="world"] {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+[data-presentation="world"] .oracle-question__back {
+  position: absolute;
+  left: 3.5%;
+  bottom: 3.8%;
+  font-size: 1.1cqw;
+}
+[data-presentation="world"] .oracle-headline {
+  position: static;
+  width: auto;
+  max-width: 88cqw;
+  margin: 0;
+  text-align: center;
+  font: 400 3.75cqw/1.15 var(--atlas-serif);
+  letter-spacing: -0.035em;
+}
+[data-presentation="world"] .oracle-question__hint {
+  position: static;
+  width: auto;
+  max-width: 88cqw;
+  margin: 0;
+  text-align: center;
+  font-size: max(13px, 1.25cqw);
+}
+@media (min-width: 701px) {
+  [data-presentation="world"] {
+    gap: 0.7cqw;
+    padding: 16.25% 6% 0;
+  }
+}
+[data-presentation="world"] .oracle-atlas-choices {
+  position: static;
+}
+.oracle-atlas-choice {
+  position: absolute;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.3cqw;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: center;
+}
+.oracle-atlas-choice[data-answer="no"] {
+  left: 24.3%;
+  top: 77.3%;
+  --atlas-choice: var(--oracle-ink);
+}
+.oracle-atlas-choice[data-answer="yes"] {
+  left: 80.6%;
+  top: 66.7%;
+  --atlas-choice: var(--atlas-copper);
+}
+.oracle-atlas-pin {
+  background: var(--atlas-choice);
+  border: 0.28cqw solid var(--oracle-bg-elevated);
+  width: 1.65cqw;
+  min-width: 12px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow: 0 0.25cqw 0.6cqw rgba(0, 0, 0, 0.2);
+  animation: atlas-pin-breathe 2.8s ease-in-out infinite;
+}
+.oracle-atlas-pill {
+  border: 1px solid var(--atlas-choice);
+  background: var(--atlas-choice);
+  color: #fffaf2;
+  border-radius: 3cqw;
+  box-shadow: 0 0.35cqw 0.8cqw rgba(0, 0, 0, 0.22);
+  padding: 0.62cqw 1.55cqw;
+  font: 1.65cqw/1.25 var(--atlas-serif);
+  white-space: nowrap;
+  animation: atlas-choice-breathe 2.8s ease-in-out infinite;
+}
+.oracle-atlas-choice:hover .oracle-atlas-pill {
+  filter: brightness(1.12);
+}
+.oracle-atlas-choice:active {
+  transform: translateX(-50%) scale(0.96);
+}
+@keyframes atlas-pin-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--atlas-choice) 20%, transparent),
+      0 0.25cqw 0.6cqw rgba(0, 0, 0, 0.2);
+  }
+  55% {
+    box-shadow:
+      0 0 0 1cqw color-mix(in srgb, var(--atlas-choice) 0%, transparent),
+      0 0.25cqw 0.6cqw rgba(0, 0, 0, 0.2);
+  }
+}
+@keyframes atlas-choice-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0.35cqw 0.8cqw rgba(0, 0, 0, 0.22),
+      0 0 0 0 color-mix(in srgb, var(--atlas-choice) 16%, transparent);
+  }
+  55% {
+    box-shadow:
+      0 0.4cqw 0.9cqw rgba(0, 0, 0, 0.25),
+      0 0 0 0.65cqw color-mix(in srgb, var(--atlas-choice) 0%, transparent);
+  }
+}
+[data-presentation="world"] .oracle-question__back,
+[data-presentation="world"] .oracle-notsure {
+  font-size: max(14px, 1.1cqw);
+  min-height: 44px;
+}
+[data-presentation="world"] .oracle-notsure {
+  position: absolute;
+  right: 3.5%;
+  bottom: 3.8%;
+}
+/* A3: the WhyWeAsk trigger's box used to sit under the "No" pill (its
+   container measured 515-640px wide). `width:max-content` + a ch/cqw cap
+   keeps it sized to its own label; the open panel renders as a paper card
+   ABOVE the trigger via `column-reverse` (the panel is the trigger's later
+   DOM sibling). */
+[data-presentation="world"] .oracle-whyweask {
+  position: absolute;
+  left: 50%;
+  bottom: 3.8%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(44ch, 40cqw);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  font-size: 13px;
+}
+[data-presentation="world"] .oracle-whyweask__panel {
+  background: var(--oracle-bg-elevated);
+  padding: 10px 14px;
+  border: 1px solid var(--atlas-rule);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ─── Permit question (holds_stay_permit) ────────────────────────────────── */
+/* D5: every child used to carry its OWN `position:absolute;top:X%`, tuned
+   for a 2-line EN headline. A 3-line Indonesian wrap (or the WhyWeAsk/
+   HUMAN_CONTEXT notice that used to render above it — D11 removed the
+   worst of those) pushed later elements' fixed top offsets into each
+   other. One positioned LEFT-HALF column flows its children in normal
+   document order instead, so it self-adjusts to whatever height the
+   content actually needs. `.oracle-question__back` opts back out of the
+   flow (BUILD-SPEC: it "stays exactly where it is") and keeps its own
+   stage-corner position, unaffected by the column's padding (padding on
+   a positioned ancestor never shifts an absolutely positioned child's
+   containing block). */
+[data-presentation="permit"] {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4cqw;
+  width: 52%;
+  padding: 21% 8% 0 8%;
+}
+[data-presentation="permit"] .oracle-question__back {
+  position: absolute;
+  left: 3.5%;
+  bottom: 3.8%;
+  font-size: 1.1cqw;
+}
+[data-presentation="permit"] .oracle-headline {
+  margin: 0;
+  text-align: center;
+  font: 400 3.2cqw/1.18 var(--atlas-serif);
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+[data-presentation="permit"] .oracle-question__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15cqw;
+}
+[data-presentation="permit"] .oracle-whyweask {
+  font-size: 0.9cqw;
+}
+[data-presentation="permit"] .oracle-question__notice {
+  font-size: 0.85cqw;
+}
+[data-presentation="permit"] .oracle-atlas-permit-options {
+  display: flex;
+  gap: 1.1cqw;
+  text-align: center;
+}
+.oracle-atlas-permit-answer {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 5.4cqw;
+  border: 0.16cqw solid #fffaf2;
+  border-radius: 3cqw;
+  color: #fffaf2;
+  font: 2.5cqw/1.2 var(--atlas-serif);
+  box-shadow: 0 0.45cqw 0.9cqw rgba(0, 0, 0, 0.17);
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+.oracle-atlas-permit-answer[data-answer="yes"] {
+  background: var(--atlas-copper);
+}
+.oracle-atlas-permit-answer[data-answer="no"] {
+  background: var(--oracle-ink);
+}
+.oracle-atlas-permit-answer:hover {
+  box-shadow: 0 0.55cqw 1.15cqw rgba(0, 0, 0, 0.25);
+}
+.oracle-atlas-permit-answer:active {
+  transform: translateY(2px) scale(0.98);
+}
+/* `.oracle-notsure` and the second `.oracle-question__notice` are flow
+   children of the column now (declared above) — no absolute offset left
+   to give them here. `.oracle-question__back` keeps its one stage-corner
+   declaration above too. */
+
+/* ─── Scenery: landscape layout (journey) ────────────────────────────────── */
+.oracle-root.oracle-atlas[data-scene-layout="landscape"] .oracle-atlas-main {
+  position: relative;
+  isolation: isolate;
+}
+.oracle-root.oracle-atlas .oracle-atlas-scene-art {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 100dvh;
+  min-height: 820px;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--oracle-bg);
+}
+.oracle-root.oracle-atlas .oracle-atlas-scene-art-inner {
+  position: absolute;
+  inset: 0;
+}
+.oracle-root.oracle-atlas .oracle-atlas-scene-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 65% center;
+  filter: var(--atlas-art-filter);
+}
+.oracle-root.oracle-atlas .oracle-atlas-scene-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--oracle-bg) 95%, transparent) 0%,
+      color-mix(in srgb, var(--oracle-bg) 89%, transparent) 25%,
+      color-mix(in srgb, var(--oracle-bg) 54%, transparent) 45%,
+      transparent 66%
+    ),
+    linear-gradient(0deg, var(--oracle-bg) 0%, transparent 24%);
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"] .oracle-main__content {
+  position: relative;
+  z-index: 1;
+  width: min(550px, 49vw);
+  padding: 126px max(5.8vw, 28px) 42px;
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"][data-scene="watershed"]
+  .oracle-main__content {
+  width: min(610px, 52vw);
+}
+/* D1/D3: confirmation, review-gate and verdict share the "confluence"
+   scene id and need the widest column — the verdict card, outcome
+   reasons, candidate list and the inline consultant card all read as
+   too narrow/centred otherwise. */
+.oracle-root.oracle-atlas[data-scene-layout="landscape"][data-scene="confluence"]
+  .oracle-main__content {
+  width: min(680px, 56vw);
+}
+.oracle-atlas-eyebrow {
+  font: 600 0.7rem/1.5 var(--font-sans, Arial, sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.19em;
+  color: var(--atlas-copper);
+  margin: 0 0 var(--space-4);
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"] .oracle-headline {
+  font: 400 clamp(2rem, 3.9vw, 3.7rem) / 1.06 var(--atlas-serif);
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  color: var(--oracle-ink);
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"] .oracle-headline em {
+  font-style: italic;
+  color: var(--atlas-copper);
+}
+.oracle-atlas-ribbon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-6) 0 var(--space-4);
+  width: 100%;
+  color: var(--atlas-copper);
+}
+.oracle-atlas-ribbon span {
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--atlas-copper) 0%, transparent),
+    color-mix(in srgb, var(--atlas-copper) 50%, transparent)
+  );
+}
+.oracle-atlas-ribbon span:last-child {
+  transform: rotate(180deg);
+}
+.oracle-atlas-glyph {
+  width: 2.9rem;
+  height: 2.4rem;
+  flex: none;
+  overflow: visible;
+}
+.oracle-atlas-glyph path {
+  fill: none;
+  stroke: var(--atlas-copper);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.oracle-atlas-branch-caption {
+  /* Decoration only (BUILD-SPEC §0.8): must never intercept a click meant
+     for the real question options it happens to sit near at some
+     viewport heights (e2e red: it covered `trip_scope`'s "Yes — one main
+     purpose" button and swallowed the pointer event). */
+  pointer-events: none;
+  position: absolute;
+  right: 7vw;
+  top: calc(100dvh - 180px);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 18rem;
+  padding: var(--space-4);
+  color: var(--oracle-ink);
+  background: color-mix(in srgb, var(--oracle-bg-elevated) 92%, transparent);
+  border: 1px solid var(--atlas-rule);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+.oracle-atlas-branch-caption span:last-child {
+  font: italic 1.15rem/1.25 var(--atlas-serif);
+  text-wrap: balance;
+}
+.oracle-atlas-branch-caption .oracle-atlas-glyph {
+  width: 2.4rem;
+  height: 2rem;
+}
+.oracle-atlas-branch-caption .oracle-atlas-glyph path {
+  stroke-width: 1.4;
+}
+/* D2: below ~1050px the content column widens (journey.css's own
+   701-1050px band) and the caption no longer has clear air on the right
+   of it — hide it rather than risk sitting over the column. Supersedes
+   the narrower ≤700px-only hide that used to live in the mobile block. */
+@media (max-width: 1050px) {
+  .oracle-atlas-branch-caption {
+    display: none;
+  }
+}
+
+/* D9: VerdictReveal's "Supported paths found" (and every other
+   programmatically-focused heading) received the browser's heavy default
+   focus ring on mount. Interactive `:focus-visible` rings are untouched. */
+.oracle-root.oracle-atlas :is(h1, h2, h3)[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* D7: a global reset elsewhere forces `appearance:none` on checkboxes,
+   which — combined with no explicit checked-state artwork here — makes
+   every checkbox (entry save opt-in, WhatsApp consent) read as a solid
+   filled square whether checked or not. Restore the native control so
+   `accent-color` actually has something to paint. */
+.oracle-root.oracle-atlas input[type="checkbox"] {
+  appearance: auto;
+  background: none;
+  border: initial;
+  accent-color: var(--atlas-copper);
+}
+.oracle-atlas-branch__arrow {
+  font-size: 1rem;
+  color: var(--atlas-copper);
+}
+.oracle-atlas-orbit {
+  display: inline-block;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--oracle-border-strong);
+  border-top-color: var(--atlas-copper);
+  border-radius: 50%;
+  animation: atlas-orbit 2s linear infinite;
+}
+@keyframes atlas-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.oracle-atlas-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+.oracle-atlas-alternatives {
+  margin: var(--space-6) 0 0;
+  border-top: 1px solid var(--atlas-rule);
+  padding-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+.oracle-atlas-alternatives summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: var(--space-3) 0;
+  color: var(--oracle-ink);
+}
+.oracle-atlas-alternatives > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+@media (min-width: 361px) {
+  .oracle-atlas-alternatives > div {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.oracle-atlas-alternatives button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  min-width: 0;
+  text-align: left;
+  background: var(--oracle-bg-elevated);
+  border: 1px solid var(--oracle-border-strong);
+  color: var(--oracle-ink);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+/* "Your route" dialog */
+.oracle-atlas-route {
+  background: var(--oracle-bg);
+  color: var(--oracle-ink);
+  border: 1px solid var(--atlas-rule);
+  padding: 0;
+  width: min(660px, calc(100vw - 32px));
+  max-height: 88dvh;
+  overflow: auto;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.3);
+}
+.oracle-atlas-route::backdrop {
+  background: color-mix(in srgb, var(--oracle-ink) 55%, transparent);
+  backdrop-filter: blur(7px);
+}
+.oracle-atlas-route {
+  /* F2 fix (ORACLE-PROD-20260927 delta, gate finding 2, corrected depth 1):
+     this rule used to also set `position: relative`, overriding the UA
+     modal `position: fixed` this `<dialog>` gets from `showModal()` —
+     removed, so `position` is left to that UA default. Dropping `relative`
+     alone did NOT restore centring: Tailwind preflight's `* { margin: 0 }`
+     (`node_modules/tailwindcss/preflight.css`) still overrode the UA
+     modal's own `margin: auto`, pinning the fixed, `inset:0` dialog at the
+     viewport's top-left. Restating `margin: auto` here is what actually
+     centres it. */
+  margin: auto;
+  padding: 2.75rem 2.5rem;
+}
+.oracle-atlas-route h2 {
+  font: 2.5rem/1.1 var(--atlas-serif);
+  margin: 0 0 var(--space-6);
+  letter-spacing: -0.03em;
+  color: var(--oracle-ink);
+}
+.oracle-atlas-route__close {
+  position: absolute;
+  right: 14px;
+  top: 10px;
+  width: 44px;
+  height: 44px;
+  font-size: 1.9rem;
+  background: none;
+  border: 0;
+  color: var(--oracle-ink);
+  cursor: pointer;
+}
+.oracle-atlas-route__empty {
+  color: var(--oracle-ink-muted);
+}
+.oracle-atlas-route__ledger {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-5) 0 var(--space-6);
+  border-top: 1px solid var(--atlas-rule);
+}
+.oracle-atlas-route__ledger li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--atlas-rule) 80%, transparent);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.oracle-atlas-route__ledger li > div {
+  flex: 1;
+  min-width: 0;
+}
+.oracle-atlas-route__ledger li > div > span {
+  display: block;
+  color: var(--oracle-ink-muted);
+}
+.oracle-atlas-route__ledger strong {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--oracle-ink);
+  display: block;
+  margin-top: 0.4rem;
+  overflow-wrap: anywhere;
+}
+.oracle-atlas-route__ledger button {
+  background: none;
+  border: 0;
+  min-height: 44px;
+  padding: var(--space-2) 0 var(--space-2) var(--space-2);
+  color: var(--atlas-copper);
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  flex: none;
+  cursor: pointer;
+}
+.oracle-atlas-route__alternatives {
+  margin: var(--space-6) 0 0;
+  border-top: 1px solid var(--atlas-rule);
+  padding-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+.oracle-atlas-route__alternatives summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: var(--space-3) 0;
+  color: var(--oracle-ink);
+}
+.oracle-atlas-route__alternatives > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+@media (min-width: 361px) {
+  .oracle-atlas-route__alternatives > div {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.oracle-atlas-route__alternatives button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  min-width: 0;
+  text-align: left;
+  background: var(--oracle-bg-elevated);
+  border: 1px solid var(--oracle-border-strong);
+  color: var(--oracle-ink);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+/* ─── Watershed tiles (category) ─────────────────────────────────────────── */
+/* D13: a bare `1fr 1fr` track never shrinks below its content's
+   min-content width — at 320/390px the branch buttons' intrinsic width
+   (fixed glyph + gap + label) exceeded half the column, so the grid
+   itself grew past the viewport. `.oracle-root{overflow-x:hidden}`
+   (off-limits, non-atlas) then hid that from `document.scrollWidth`
+   while still clipping the right column for real. `minmax(0, 1fr)`
+   lets each track — and the button inside it — actually shrink/wrap. */
+.oracle-root.oracle-atlas[data-scene-layout="landscape"] .oracle-tiles {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 361px) {
+  .oracle-root.oracle-atlas[data-scene-layout="landscape"] .oracle-tiles {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"] .oracle-atlas-branch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 4.6rem;
+  background: var(--oracle-bg-elevated);
+  border: 1px solid var(--oracle-border-strong);
+  /* D10: the atlas language uses near-sharp corners, not the default
+     pill radius `.oracle-tile` otherwise inherits. */
+  border-radius: 2px;
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"]
+  .oracle-atlas-branch:hover,
+.oracle-root.oracle-atlas[data-scene-layout="landscape"]
+  .oracle-atlas-branch:focus-visible {
+  border-color: var(--atlas-copper);
+  transform: translateY(-2px);
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"]
+  .oracle-atlas-branch
+  .oracle-atlas-glyph {
+  width: 2.3rem;
+  height: 1.9rem;
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"]
+  .oracle-atlas-branch
+  span:not(.oracle-atlas-branch__arrow) {
+  font: 1.25rem/1.15 var(--atlas-serif);
+  flex: 1;
+  min-width: 0;
+}
+
+/* D10: landscape's plain (non-stage) option cards — the prototype's
+   `.answer-option` look (near-sharp corners, rule border, slide-right on
+   hover) instead of the default pill-radius card. */
+.oracle-root.oracle-atlas[data-scene-layout="landscape"] .oracle-option-card {
+  border-radius: 2px;
+  border-color: var(--oracle-border-strong);
+  background: var(--oracle-bg-elevated);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"]
+  .oracle-option-card:hover {
+  border-color: var(--atlas-copper);
+  background: var(--oracle-bg);
+  transform: translateX(4px);
+}
+
+/* ─── Motion pause / reduced motion (scoped to .oracle-atlas only) ───────── */
+.oracle-root.oracle-atlas[data-motion="paused"]
+  :is(
+    .oracle-atlas-scenery,
+    .oracle-atlas-scenery *,
+    .oracle-atlas-start__dot,
+    .oracle-atlas-pin,
+    .oracle-atlas-pill,
+    .oracle-atlas-orbit
+  ) {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .oracle-root.oracle-atlas
+    :is(
+      .oracle-atlas-scenery,
+      .oracle-atlas-scenery *,
+      .oracle-atlas-start__dot,
+      .oracle-atlas-pin,
+      .oracle-atlas-pill,
+      .oracle-atlas-orbit
+    ) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ─── Responsive: stage ≤700px (FIX-ROUND-2 §B — prototype mobile values,
+   header 64px is OUTSIDE `<main>`) ───────────────────────────────────── */
+@media (max-width: 700px) {
+  .oracle-root.oracle-atlas[data-scene-layout="stage"] .oracle-atlas-main {
+    width: 100%;
+    aspect-ratio: auto;
+    min-height: 780px;
+  }
+  /* B1: content now flows (scenery stays the absolute layer behind it) —
+     the desktop `inset:0` stage box only made sense against a fixed
+     1.6-aspect canvas. */
+  .oracle-root.oracle-atlas[data-scene-layout="stage"] .oracle-main__content {
+    position: relative;
+    inset: auto;
+    min-height: 780px;
+  }
+  .oracle-atlas-header {
+    min-height: 64px;
+    height: auto;
+    padding: 10px 18px;
+    gap: 8px;
+    row-gap: 6px;
+  }
+  /* D8: at 320-390px "BALI ZERO", "Your route" and "Pause motion" wrapped
+     to two lines. The brand text is decorative once the logo carries the
+     mark (visually hidden, not `display:none`, so it stays in the
+     accessible tree); every header control keeps its label on one line
+     with tighter padding instead. */
+  .oracle-atlas-brand {
+    gap: 6px;
+  }
+  .oracle-atlas-brand img {
+    width: 26px;
+    height: 26px;
+  }
+  .oracle-atlas-brand b {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  /* A10: with the resume opt-in active, the header can carry FIVE controls
+     (Your route, Pause motion, Clear saved interview, the language toggle
+     pair, the theme toggle) at once — measured total width exceeds even
+     390px on one line. `flex-wrap` lets the actions group break onto a
+     second (or third) row, right-aligned, instead of clipping past the
+     viewport edge; the header's own `min-height`/`height:auto` above lets
+     it grow to fit however many rows that takes. */
+  .oracle-topbar__actions {
+    gap: 6px;
+    row-gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .oracle-atlas-header .oracle-question__back {
+    font-size: 11px;
+    white-space: nowrap;
+    min-height: 0;
+  }
+
+  /* ── Entry: flow column instead of the desktop absolute stack ── */
+  .oracle-root.oracle-atlas[data-scene-layout="stage"] .oracle-atlas-entry {
+    position: relative;
+    inset: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 20px 28px;
+    min-height: 780px;
+    box-sizing: border-box;
+  }
+  .oracle-atlas-entry__title {
+    position: static;
+    top: auto;
+    left: auto;
+    width: auto;
+    font-size: min(18cqw, 72px);
+  }
+  .oracle-atlas-entry__subtitle {
+    position: static;
+    top: auto;
+    left: auto;
+    width: auto;
+    font-size: clamp(18px, 6cqw, 26px);
+  }
+  .oracle-atlas-entry__body {
+    position: static;
+    top: auto;
+    left: auto;
+    transform: none;
+    width: auto;
+    max-width: 34ch;
+    font-size: 15px;
+  }
+  .oracle-atlas-start {
+    position: static;
+    top: auto;
+    left: auto;
+    transform: none;
+    /* Pushes Start (and the save block after it) to the bottom of the
+       flow column, below the island art band, never over it. */
+    margin-top: auto;
+    gap: 12px;
+    font-size: 28px;
+  }
+  .oracle-atlas-start__dot {
+    width: 48px;
+    height: 48px;
+    border-width: 8px;
+  }
+  .oracle-atlas-save {
+    position: static;
+    top: auto;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    width: 100%;
+    max-width: none;
+  }
+  .oracle-atlas-save label {
+    font-size: 12px;
+  }
+  .oracle-atlas-save small {
+    font-size: 11px;
+  }
+
+  /* ── Island/world map: a band under the header, not a full-bleed
+     background (prototype's `.art{top:220px}` minus the 64px header) ── */
+  .oracle-root.oracle-atlas[data-scene-layout="stage"] .oracle-atlas-map {
+    object-fit: contain;
+  }
+  .oracle-root.oracle-atlas[data-scene="entry"] .oracle-atlas-map-stage {
+    top: 156px;
+    bottom: auto;
+    height: 62.5vw;
+  }
+  .oracle-root.oracle-atlas[data-scene="world"] .oracle-atlas-map-stage,
+  .oracle-root.oracle-atlas[data-scene="paper"] .oracle-atlas-map-stage {
+    top: 206px;
+    bottom: auto;
+    height: 62.5vw;
+  }
+
+  /* Three-way mobile clearance (float / wordmark / question h1), measured
+     with a Playwright geometry probe across 320/390 x en/id x world/permit
+     (2026-09-27) rather than a single screenshot: the consult float's
+     bottom sits at header-bottom+36px in every combination, and the
+     question h1's own top sits at header-bottom+76px in the tightest case
+     (world, both widths) — a 40px window total. A first attempt that only
+     pushed the wordmark down (to clear the float) cleared the float but
+     then collided with the h1 instead (measured 23-31px overlap) — the
+     window is too narrow for the original 40px hero size at ANY position.
+     Shrunk to font-size:28px (~31px line box) and centered in the window
+     at top:41px, leaving ~4-5px clear on both sides in every measured
+     combination. */
+  .oracle-atlas-stage-wordmark {
+    font-size: 28px;
+    top: 41px;
+  }
+
+  /* ── World: pins measured from the map band's own 206px top ── */
+  [data-presentation="world"] {
+    padding: 76px 20px 0;
+  }
+  [data-presentation="world"] .oracle-headline {
+    font-size: 28px;
+    line-height: 1.15;
+  }
+  [data-presentation="world"] .oracle-question__hint {
+    font-size: 13px;
+  }
+  [data-presentation="world"] .oracle-atlas-choice[data-answer="no"] {
+    left: 26%;
+    top: calc(206px + 48.3vw);
+  }
+  [data-presentation="world"] .oracle-atlas-choice[data-answer="yes"] {
+    left: 78%;
+    top: calc(206px + 41.7vw);
+  }
+  .oracle-atlas-pill {
+    font-size: 14px;
+    padding: 11px 12px;
+    min-height: 44px;
+    white-space: normal;
+    width: 150px;
+  }
+  /* Measured: 150px overflows the 320px viewport under the "yes" pin's
+     78% left offset — only "no" keeps the wider pill. */
+  [data-presentation="world"]
+    .oracle-atlas-choice[data-answer="yes"]
+    .oracle-atlas-pill {
+    width: 125px;
+  }
+  [data-presentation="world"] .oracle-whyweask {
+    bottom: 134px;
+  }
+  /* D4 (carried forward): `.oracle-question__back`/`.oracle-notsure` are
+     sized in `cqw` (container-relative to the stage box) — at mobile
+     widths that computes to a few px (measured ~4px), unreadable. Fixed
+     px restores a legible, tappable control. Lost in the §B mobile
+     rewrite until re-measured on desktop-en-03-permit.jpg — restored. */
+  [data-presentation="world"] .oracle-question__back,
+  [data-presentation="permit"] .oracle-question__back {
+    font-size: 16px;
+  }
+  [data-presentation="world"] .oracle-notsure {
+    font-size: 16px;
+  }
+  [data-presentation="world"] .oracle-question__back {
+    left: 18px;
+    bottom: 72px;
+  }
+  [data-presentation="world"] .oracle-notsure {
+    right: 18px;
+    bottom: 72px;
+  }
+
+  /* ── Permit: flow column, Back moved to the end (measured Back⟷Not-sure
+     collision 58×30 at 320/390 when Back kept its desktop corner slot) ── */
+  [data-presentation="permit"] {
+    position: relative;
+    inset: auto;
+    width: auto;
+    padding: 84px 24px 28px;
+  }
+  [data-presentation="permit"] .oracle-question__back {
+    position: static;
+    left: auto;
+    bottom: auto;
+    order: 99;
+  }
+  [data-presentation="permit"] .oracle-headline {
+    font-size: 28px;
+    line-height: 1.15;
+  }
+  [data-presentation="permit"] .oracle-question__hint {
+    font-size: 15px;
+  }
+  [data-presentation="permit"] .oracle-whyweask,
+  [data-presentation="permit"] .oracle-question__notice {
+    font-size: 13px;
+  }
+  /* Legibility over the permit art: a paper chip behind the two
+     controls that sit directly on the photo. */
+  [data-presentation="permit"] .oracle-notsure,
+  [data-presentation="permit"] .oracle-whyweask__trigger {
+    background: color-mix(in srgb, var(--oracle-bg-elevated) 92%, transparent);
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  [data-presentation="permit"] .oracle-atlas-permit-options {
+    gap: 10px;
+  }
+  .oracle-atlas-permit-answer {
+    min-height: 64px;
+    font-size: 22px;
+  }
+  /* Permit art band: `top:285px` (prototype) minus the 64px header, with a
+     top-fading wash so the headline reads on paper, not photo. */
+  .oracle-root.oracle-atlas[data-scene="paper"] .oracle-atlas-permit-art {
+    top: 221px;
+    bottom: 0;
+  }
+  .oracle-root.oracle-atlas[data-scene="paper"]
+    .oracle-atlas-permit-art::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 40%;
+    z-index: 1;
+    background: linear-gradient(180deg, var(--oracle-bg) 0%, transparent 100%);
+  }
+
+  @media (max-width: 350px) {
+    [data-presentation="permit"] .oracle-headline {
+      font-size: 26px;
+    }
+  }
+}
+
+/* ─── Responsive: landscape ≤700px (journey.css mobile rules) ───────────── */
+@media (max-width: 700px) {
+  .oracle-root.oracle-atlas .oracle-atlas-scene-art {
+    top: 64px;
+    height: 290px;
+    min-height: 0;
+  }
+  .oracle-root.oracle-atlas .oracle-atlas-scene-art img {
+    object-position: 80% 52%;
+  }
+  .oracle-root.oracle-atlas .oracle-atlas-scene-wash {
+    background: linear-gradient(0deg, var(--oracle-bg) 0%, transparent 42%);
+  }
+  /* The desktop-only `[data-scene="confluence"] .oracle-main__content{width:
+     min(680px,56vw)}` rule (D1/D3, above) carries ONE MORE attribute
+     selector than this reset, so it OUT-SPECIFIES a plain
+     `[data-scene-layout="landscape"] .oracle-main__content` regardless of
+     media query or source order — at 390px, 56vw resolves to ~218px, an
+     unreadably skinny column on every verdict/confirmation/review-gate
+     screen. Naming `[data-scene="confluence"]` explicitly here matches its
+     specificity so cascade order (this rule is later in the file) decides. */
+  .oracle-root.oracle-atlas[data-scene-layout="landscape"]
+    .oracle-main__content,
+  .oracle-root.oracle-atlas[data-scene-layout="landscape"][data-scene="watershed"]
+    .oracle-main__content,
+  .oracle-root.oracle-atlas[data-scene-layout="landscape"][data-scene="confluence"]
+    .oracle-main__content {
+    width: 100%;
+    padding: 300px 24px 28px;
+  }
+  .oracle-atlas-branch-caption {
+    display: none;
+  }
+  /* A9 (carried over from FIX-ROUND-2): the watershed tile/arrow crowding
+     at 390/320 — glyph + label + arrow no longer fit the desktop sizing
+     inside a ~150px-wide mobile tile. The ≤360px one-column grid already
+     exists (`.oracle-tiles{grid-template-columns:minmax(0,1fr)}` above);
+     this is the tile's own internal sizing. Measured on a live 390px
+     two-column screenshot: FIX-ROUND-2's literal 28px glyph / 17px label /
+     8px gap left "employment"/"Retirement"/"Something" one character too
+     wide, wrapping a single orphan letter onto its own line — tightened
+     further here so the common English words fit on one line; the longer
+     Indonesian "ketenagakerjaan" still wraps to a second line, which grows
+     the tile taller, not a mid-word orphan. */
+  .oracle-root.oracle-atlas[data-scene-layout="landscape"]
+    .oracle-atlas-branch {
+    padding: 10px 8px;
+    gap: 6px;
+    min-height: 86px;
+  }
+  .oracle-root.oracle-atlas[data-scene-layout="landscape"]
+    .oracle-atlas-branch
+    .oracle-atlas-glyph {
+    width: 24px;
+    height: 24px;
+  }
+  .oracle-root.oracle-atlas[data-scene-layout="landscape"]
+    .oracle-atlas-branch
+    span:not(.oracle-atlas-branch__arrow) {
+    font-size: 16px;
+    line-height: 1.2;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .oracle-atlas-branch__arrow {
+    font-size: 13px;
+  }
+}
+
+/* ─── ENDING-ROUND E11 — friendly ending surface, same canonical meaning ──
+   Verdict/ending column reads full width of the confluence column instead
+   of the narrower core "reading width"; the candidate card, its `<details>`
+   disclosures and the inline consultant card take the prototype's paper
+   look. Dark theme via existing tokens only; no new `--oracle-state-*`. */
+.oracle-root.oracle-atlas[data-scene-layout="landscape"][data-scene="confluence"]
+  .oracle-main__content
+  > .oracle-verdict-card {
+  max-width: none;
+}
+.oracle-root.oracle-atlas .oracle-candidate-card {
+  padding: 25px 27px;
+  border: 1px solid var(--atlas-rule);
+  border-radius: 2px;
+  background: var(--oracle-bg-elevated);
+}
+.oracle-root.oracle-atlas .oracle-candidate-card__header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.oracle-root.oracle-atlas .oracle-candidate-card__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.oracle-root.oracle-atlas .oracle-candidate-card .oracle-eyebrow {
+  font: 600 11px/1.4 var(--font-sans, Arial, sans-serif);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--atlas-copper);
+  margin: 0;
+}
+.oracle-root.oracle-atlas .oracle-candidate-card__index {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--oracle-ink-muted);
+}
+.oracle-root.oracle-atlas .oracle-candidate-card__title {
+  font: 400 30px/1.15 var(--atlas-serif);
+  color: var(--oracle-ink);
+  margin: 0;
+}
+/* `<details>` summaries: 14px, underline-free, copper +/− marker instead of
+   the browser's default disclosure triangle. Shared by the candidate's
+   "Why this fits" (E4) and the outcome's "Legal references" (E7). */
+.oracle-root.oracle-atlas .oracle-candidate__why,
+.oracle-root.oracle-atlas .oracle-outcome__legal {
+  border-top: 1px solid var(--atlas-rule);
+  padding-top: var(--space-3);
+}
+.oracle-root.oracle-atlas .oracle-candidate__why > summary,
+.oracle-root.oracle-atlas .oracle-outcome__legal > summary {
+  font: 600 14px/1.4 var(--font-sans, Arial, sans-serif);
+  color: var(--oracle-ink);
+  text-decoration: none;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.oracle-root.oracle-atlas
+  .oracle-candidate__why
+  > summary::-webkit-details-marker,
+.oracle-root.oracle-atlas
+  .oracle-outcome__legal
+  > summary::-webkit-details-marker {
+  display: none;
+}
+.oracle-root.oracle-atlas .oracle-candidate__why > summary::before,
+.oracle-root.oracle-atlas .oracle-outcome__legal > summary::before {
+  content: "+";
+  color: var(--atlas-copper);
+  font-weight: 700;
+}
+.oracle-root.oracle-atlas .oracle-candidate__why[open] > summary::before,
+.oracle-root.oracle-atlas .oracle-outcome__legal[open] > summary::before {
+  content: "\2013";
+}
+.oracle-root.oracle-atlas .oracle-candidate__why > *:not(summary),
+.oracle-root.oracle-atlas .oracle-outcome__legal > *:not(summary) {
+  margin-top: var(--space-3);
+}
+/* E8: drop the dashed "receipt" frame on screen — plain section. */
+.oracle-root.oracle-atlas .oracle-receipt {
+  border: none;
+  padding: 0;
+}
+/* FIX-ROUND-1 D3: the inline consultant card (rendered once an outcome
+   exists, via `handoffSlot`) inherits the base non-atlas `.oracle-consultant`
+   rules (centred, capped at `--oracle-reading-width`) — full column width,
+   left-aligned inside the confluence column instead. */
+.oracle-root.oracle-atlas[data-scene-layout="landscape"][data-scene="confluence"]
+  .oracle-consultant {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 0;
+}
+.oracle-root.oracle-atlas[data-scene-layout="landscape"][data-scene="confluence"]
+  .oracle-consultant__panel {
+  max-width: none;
+}
+
+/* ─── Print (FIX-ROUND-2 S4) — placed AFTER every other atlas rule above so
+   nothing here can be overridden by a later cascade. Forces the content
+   column back to a plain, full-width printable flow regardless of which
+   stage/landscape positioning scheme produced it on screen, and hides
+   every decorative or interactive-only surface. ─────────────────────── */
+@media print {
+  .oracle-root.oracle-atlas .oracle-atlas-main,
+  .oracle-root.oracle-atlas[data-scene-layout] .oracle-main__content {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    position: static !important;
+  }
+  .oracle-atlas-scenery,
+  .oracle-atlas-header .oracle-topbar__actions,
+  .oracle-atlas-consult-float,
+  .oracle-atlas-route,
+  .oracle-atlas-branch-caption {
+    display: none !important;
+  }
+  /* F1 fix (ORACLE-PROD-20260927 delta, gate finding 1): a closed
+     `<details>` hides its content through the browser's own UA "details
+     content" slot, not through each child's `display` — `display:block
+     !important` on the children (the rule this replaced) never worked,
+     confirmed empirically (Chromium screenshot + PDF text still omitted
+     the content). The real fix is OutcomeSheet.tsx's beforeprint/
+     afterprint effect, which opens the `<details>` before printing and
+     closes it again after — verified against this app's own Chromium:
+     headless `page.pdf()` DOES fire `beforeprint`/`afterprint` here (not
+     an event-less path), so that effect alone already covers it. This
+     rule targets the UA `::details-content` pseudo-element itself, kept as
+     a genuine fallback for a print path with no JS trigger at all —
+     verified with `page.emulateMedia({ media: "print" })` (fires zero
+     `beforeprint`/`afterprint` events): both disclosures' content passed
+     `checkVisibility()` from this rule alone, with no print event and
+     therefore no JS effect involved (delta proof dir, case F1-diag). */
+  .oracle-root.oracle-atlas .oracle-candidate__why::details-content,
+  .oracle-root.oracle-atlas .oracle-outcome__legal::details-content {
+    content-visibility: visible;
+    display: block;
+  }
 }

@@ -294,7 +294,9 @@ describe("FamilyTab — r19 family ledger", () => {
     );
   });
 
-  it("GUILT: a passport more than a year out renders 'Nmo left' with the 30-day divisor", () => {
+  // Was pinned to "15mo left" — the months-only shape reported as "111mo" on a
+  // ~9-year passport. More than a year out now reads in years + months.
+  it("GUILT: a passport more than a year out renders 'Ny Nmo left', not months-only", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
 
@@ -308,7 +310,9 @@ describe("FamilyTab — r19 family ledger", () => {
       },
     ]);
 
-    expect(screen.getByText(/Passport: 15mo left/)).toBeInTheDocument();
+    // 2026-09-19T12:00Z -> 2028-01-01 = 469 days = 1y + 104d -> "1y 3mo".
+    expect(screen.getByText(/Passport: 1y 3mo left/)).toBeInTheDocument();
+    expect(screen.queryByText(/Passport: 15mo left/)).not.toBeInTheDocument();
   });
 
   it("GUILT: a passport expiring on the current instant renders 'Expires today'", () => {

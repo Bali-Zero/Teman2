@@ -18,6 +18,7 @@ import {
   NewsletterSidebar,
 } from "@/components/blog";
 import type { ArticleCategory, ArticleListItem } from "@/lib/blog/types";
+import { articleHref } from "@/lib/blog/article-href";
 import { useTranslation } from "@/i18n";
 import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
@@ -26,44 +27,37 @@ const CATEGORY_VISUAL: Record<
   ArticleCategory,
   {
     icon: React.ElementType;
-    gradient: string;
     titleKey: string;
     descKey: string;
   }
 > = {
   visas: {
     icon: Plane,
-    gradient: "from-blue-500/20 via-cyan-500/10 to-transparent",
     titleKey: "news.categories.visas",
     descKey: "news.categoryDescriptions.visas",
   },
   business: {
     icon: Building2,
-    gradient: "from-emerald-500/20 via-teal-500/10 to-transparent",
     titleKey: "news.categories.business",
     descKey: "news.categoryDescriptions.business",
   },
   taxes: {
     icon: Scale,
-    gradient: "from-amber-500/20 via-orange-500/10 to-transparent",
     titleKey: "news.categories.taxes",
     descKey: "news.categoryDescriptions.taxes",
   },
   property: {
     icon: Home,
-    gradient: "from-rose-500/20 via-pink-500/10 to-transparent",
     titleKey: "news.categories.property",
     descKey: "news.categoryDescriptions.property",
   },
   living: {
     icon: Sun,
-    gradient: "from-violet-500/20 via-purple-500/10 to-transparent",
     titleKey: "news.categories.living",
     descKey: "news.categoryDescriptions.living",
   },
   trends: {
     icon: Cpu,
-    gradient: "from-fuchsia-500/20 via-pink-500/10 to-transparent",
     titleKey: "news.categories.trends",
     descKey: "news.categoryDescriptions.trends",
   },
@@ -82,13 +76,21 @@ export default function CategoryContent({
 
   const visual = CATEGORY_VISUAL[category];
   const Icon = visual?.icon ?? Plane;
+  const eyebrow = category.charAt(0).toUpperCase() + category.slice(1);
 
   // Handle invalid category (should not reach here — server notFound() guards first)
   if (!visual) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">
+          <h1
+            className="text-2xl mb-4"
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontWeight: 500,
+              color: "var(--r19-ink)",
+            }}
+          >
             Category not found
           </h1>
           <a
@@ -105,9 +107,9 @@ export default function CategoryContent({
   return (
     // MYTHOS Stage-B Batch 1: Rumah Putih light, scoped per-page (NEVER on
     // the shared (blog)/layout.tsx). The .rumah-putih class hooks the scoped
-    // re-tint in globals.css for this page's hardcoded-dark text + cards.
-    // Paint paper on the wrapper so the translucent hero gradient + skeleton
-    // cards sit on warm paper, not the editorial-dark base behind.
+    // re-tint in globals.css for NewsletterSidebar's hardcoded-dark text —
+    // this page's OWN markup below reads --r19-* tokens directly and no
+    // longer depends on that retint (kept only for the untouched sibling).
     <div
       className={`min-h-screen ${RUMAH_CLASS}`}
       style={{
@@ -116,9 +118,11 @@ export default function CategoryContent({
         color: "var(--text-primary)",
       }}
     >
-      {/* Hero section */}
+      {/* Hero section — R19 editorial header: copper eyebrow, Fraunces h1,
+          lead, hairline. No per-category gradient wash. */}
       <section
-        className={`relative py-16 md:py-20 bg-gradient-to-b ${visual.gradient}`}
+        className="relative py-14 md:py-20 border-b"
+        style={{ borderColor: "var(--r19-line)" }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -126,17 +130,46 @@ export default function CategoryContent({
             animate={{ opacity: 1, y: 0 }}
           >
             {/* Icon */}
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mb-6">
-              <Icon className="w-8 h-8 text-white" />
+            <div
+              className="inline-flex items-center justify-center w-14 h-14 rounded-lg mb-6"
+              style={{
+                background: "var(--r19-wash)",
+                border: "1px solid var(--r19-line)",
+              }}
+            >
+              <Icon
+                className="w-6 h-6"
+                style={{ color: "var(--r19-copper)" }}
+              />
+            </div>
+
+            {/* Eyebrow */}
+            <div
+              className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-4"
+              style={{ color: "var(--r19-copper)" }}
+            >
+              {eyebrow}
             </div>
 
             {/* Title */}
-            <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mb-4">
+            <h1
+              className="mb-4"
+              style={{
+                fontFamily: "var(--font-serif)",
+                fontWeight: 500,
+                fontSize: "clamp(30px, 4.5vw, 48px)",
+                lineHeight: 1.1,
+                color: "var(--r19-ink)",
+              }}
+            >
               {t(visual.titleKey)}
             </h1>
 
             {/* Description */}
-            <p className="text-lg text-white/60 max-w-2xl mb-8">
+            <p
+              className="text-lg max-w-2xl mb-8"
+              style={{ color: "var(--r19-muted)" }}
+            >
               {t(visual.descKey)}
             </p>
 
@@ -170,7 +203,7 @@ export default function CategoryContent({
                 />
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-white/50">
+                  <p style={{ color: "var(--r19-muted)" }}>
                     No articles in this category yet.
                   </p>
                 </div>
@@ -179,25 +212,46 @@ export default function CategoryContent({
 
             {/* Sidebar */}
             <div className="lg:col-span-1 space-y-8">
-              {/* Newsletter */}
+              {/* Newsletter — not restyled here, out of this lane's scope */}
               <NewsletterSidebar defaultCategories={[category]} />
 
               {/* Popular in category */}
-              <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
-                <h3 className="font-medium text-white mb-4">
+              <div
+                className="p-6 rounded-lg"
+                style={{
+                  background: "var(--r19-surface)",
+                  border: "1px solid var(--r19-line)",
+                }}
+              >
+                <h3
+                  className="mb-4"
+                  style={{
+                    fontFamily: "var(--font-serif)",
+                    fontWeight: 500,
+                    color: "var(--r19-ink)",
+                  }}
+                >
                   Popular in {t(visual.titleKey)}
                 </h3>
                 <div className="space-y-4">
                   {articles.slice(0, 3).map((article) => (
                     <a
                       key={article.id}
-                      href={`/news/${article.category}/${article.slug}`}
+                      href={articleHref(article)}
                       className="block group"
                     >
-                      <h4 className="text-sm text-white/80 group-hover:text-[var(--accent-funnel-text,#5c8aff)] transition-colors line-clamp-2">
-                        {article.title}
+                      <h4
+                        className="text-sm line-clamp-2 transition-colors"
+                        style={{ color: "var(--r19-ink)" }}
+                      >
+                        <span className="group-hover:text-[var(--r19-copper)]">
+                          {article.title}
+                        </span>
                       </h4>
-                      <p className="text-xs text-white/40 mt-1">
+                      <p
+                        className="text-xs mt-1"
+                        style={{ color: "var(--r19-muted)" }}
+                      >
                         {article.viewCount.toLocaleString("en-US")} views
                       </p>
                     </a>

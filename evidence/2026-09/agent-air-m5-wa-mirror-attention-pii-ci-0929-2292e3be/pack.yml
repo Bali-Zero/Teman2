@@ -1,0 +1,123 @@
+# Gear-3 Evidence Pack - check-wa-attention-pii: real-PG execution proof + sentinel trigger.
+# Written by the Claude session that built this PR (Sonnet 5, lane wa-mirror). Council: two
+# rounds, codex-gpt-5.6-sol and kimi-code/k3, static diff-only, env-scrubbed (see journal).
+task_id: wa-mirror-attention-pii-ci
+gear: 3
+mission_colour: BLUE
+gate_class: opus
+brief_ref: evidence/brief.yml
+base_sha: "dce5127b7ef760e342a640fa7f5422f986cae9e8" # pragma: allowlist secret - origin/main at council time
+head_sha: "e962eba82cac944cefb2b99ea2de47c1fa195924" # pragma: allowlist secret - workflow head after council round 2
+pii_scan: clean
+outcome: >-
+  One workflow file changes. check-wa-attention-pii now (1) triggers on every pull_request and
+  merge_group (sentinel pattern, no top-level paths), with a fail-closed relevance step that
+  ends success on a path-miss; (2) puts the runner's PostgreSQL binaries on PATH and fails
+  loudly if absent; (3) runs ALL scripts/tests/test_wa_attention_*.py with a junit report and
+  fails on any skipped/xfail testcase or on the absence of four named real-PG testcases, so the
+  sender-phone suite's real-Postgres tests cannot silently skip green. No production code, no
+  runtime effect on Pro or the alerter; it only changes what a PR must prove.
+
+compute_floor: 3
+compute_floor_source: path
+compute_floor_note: "evidence_pack_lint.py --print-floor on the workflow-only diff with its numstat: 3 / path (.github/workflows/ hot zone). Net diff ~76 lines."
+
+lanes:
+  - lane: attention-pii-ci-build
+    role: build
+    seat: claude-sonnet-5
+  - lane: attention-pii-ci-council-sol
+    role: review
+    seat: codex-gpt-5.6-sol
+    artifact: reviews/codex-gpt-5.6-sol-r2.md
+  - lane: attention-pii-ci-council-kimi
+    role: review
+    seat: kimi-code/k3
+    artifact: reviews/kimi-code-k3-r2.md
+
+council_run: council-journal.jsonl
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 HIGH: `git diff | grep -q` under pipefail can SIGPIPE git and select run=false (fail-open); a git error also selected false."
+    status: CONFIRMED
+    resolution: "Diff captured to a file in its own checked command (-z, --no-renames, core.quotepath=off) then `grep -zqE`; verified RESOLVED by both seats in round 2."
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 MED: a rename hides the old path of the alerter or a test, so a move-away sentinel-passes."
+    status: CONFIRMED
+    resolution: "--no-renames; receipts/relevance-sentinel.txt shows run=true for a rename-away. RESOLVED (round 2)."
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 MED (+ kimi MED): the skip gate parses terminal text; xfail/xpass, deselect, PYTEST_ADDOPTS or addopts can evade it."
+    status: CONFIRMED
+    resolution: "Structured junit.xml, -o addopts='' -o xfail_strict=true --strict-markers, PYTEST_ADDOPTS cleared, inline check fails on any <skipped> and on absence of four named real-PG testcases. receipts/skip-gate.txt: red for deselect, -k exclusion and forced skip. RESOLVED (round 2)."
+  - seat: kimi-code/k3
+    objection: "R1 MED: conftest.py / pytest config changes can disarm the corpus while the sentinel passes."
+    status: CONFIRMED
+    resolution: "Added to the relevance regex in round 1; round 2 (both seats, independently) found it partial: scripts/conftest.py and scripts/(tests/)pytest.ini etc. were missing. Regex now `(scripts/(tests/)?)?(conftest.py|pytest.ini|pyproject.toml|setup.cfg|tox.ini)`; receipts/relevance-sentinel.txt. Not re-asked: the delta is that one regex alternative plus the identity check below."
+  - seat: codex-gpt-5.6-sol
+    objection: "R2 LOW: required real-PG testcases were matched by bare name, so a same-named test elsewhere could satisfy them."
+    status: CONFIRMED
+    resolution: "Match on (classname endswith test_wa_attention_sender_phone, name with the parametrization suffix stripped)."
+  - seat: kimi-code/k3
+    objection: "R2 LOW: junit/changed.z are left in the workspace with no artifact upload; `edited` adds no-op runs; `find | sort -V | tail -1` picks the newest PG rather than 16."
+    status: PLAUSIBLE
+    resolution: "Accepted as-is: the runner is ephemeral, the sentinel exits green in seconds, and the suite is version-tolerant (it only needs initdb/pg_ctl). Recorded, not changed."
+  - seat: kimi-code/k3
+    objection: "R1 LOW: pull_request types omit ready_for_review."
+    status: RETRACTED
+    resolution: "Added ready_for_review and edited (base retarget); the seat confirmed RESOLVED in round 2."
+
+limitations:
+  - "Both council seats reviewed the diff statically (no tools, no execution); the workflow itself has not run on a GitHub runner at the time of this pack. The PR's own CI run of this workflow is the first execution: it must show `skipped=0` and the four real-PG testcases, and the PR body records that observation."
+  - "The runner's PostgreSQL location (/usr/lib/postgresql/<n>/bin) is read from the image documentation, not verified locally; the PG step fails red if the directory is absent, so a wrong assumption cannot pass silently."
+  - "The four named testcases are a hand-maintained list inside the workflow; renaming one of them requires editing the workflow (fail-closed, by design)."
+  - "Making the check REQUIRED is not done (branch-protection admin action). Until then a red run is visible but does not block the merge queue."
+  - "The guard-conformance registry route was assessed and NOT taken: check_guard_conformance.py hard-codes each surface in main() (a new surface needs a checker edit) and censuses guards by a def-name prefix that the alerter does not use; it proves linkage, not execution, and this PR's need is execution."
+  - "Round 2 findings were applied without a round 3 (Builder Contract: fix-of-a-fix stops at depth 1); the delta is one regex alternative and one identity filter, both exercised locally."
+
+release_requirements:
+  - "Fresh independent Opus 5.5 gate on the exact committed SHA before merge (Builder Contract section 5)."
+  - "Read the PR's own check-wa-attention-pii run log: `skipped=0` and `missing_real_pg=0` must be printed (Bites observation)."
+  - "Owner decision, out of this lane: add check-wa-attention-pii to the required contexts (admin) once the first green run is observed."
+
+cloud_ok: >-
+  Builder Contract section 4 / SYMBIOSIS Law 2: code-only lane. Both council seats received only
+  the workflow diff and a static question set; no client rows, names, phone numbers or
+  credentials. Seats ran with a scrubbed environment (codex: env -i, read-only sandbox, empty
+  cwd; kimi: scripts/kimi_client.py no-tools child).
+
+receipts:
+  - claim: "Full attention corpus with the CI flags: 37 passed, 0 skipped, four real-PG testcases present"
+    cmd: "bash <workflow pytest step extracted from the YAML> (python -m pytest scripts/tests/test_wa_attention_*.py -q -o addopts='' -o xfail_strict=true --strict-markers --junitxml=junit.xml; inline junit check)"
+    result: "37 passed; testcases=37 skipped=0 missing_real_pg=0"
+    exit: 0
+    ts: "2026-09-29T11:38:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/skip-gate.txt
+  - claim: "Skip gate goes RED for three mutants: real-PG test deselected, suite excluded with -k, real-PG fixture forced to skip"
+    cmd: "same step with --deselect / -k 'not sender_phone' / fixture patched to skip (cp backup, restored)"
+    result: "missing_real_pg=1; missing_real_pg=4; skipped=4 - each prints ::error:: and exits 1"
+    exit: 1
+    ts: "2026-09-29T11:38:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/skip-gate.txt
+  - claim: "Relevance step: run=false only for an unrelated change; run=true for rename-away of the alerter, an attention test edit, scripts/tests/pytest.ini and scripts/conftest.py"
+    cmd: "scratch git repo, same git diff --name-only --no-renames -z | grep -zqE argv as the workflow"
+    result: "false / true / true / true / true"
+    exit: 0
+    ts: "2026-09-29T11:38:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/relevance-sentinel.txt
+  - claim: "actionlint clean; check_watcher_coverage.py: all live workflows still covered (job name unchanged)"
+    cmd: "actionlint .github/workflows/check-wa-attention-pii.yml; python3 scripts/check_watcher_coverage.py"
+    result: "no findings; watcher-coverage: all 126 live workflow(s) covered"
+    exit: 0
+    ts: "2026-09-29T11:30:00Z"
+    seat: claude-sonnet-5
+  - claim: "Deterministic Gear-3 floor, path-sourced (.github/workflows/ hot zone)"
+    cmd: "python3 scripts/evidence_pack_lint.py --changed-files-file <f> --numstat-file <f> --print-floor / --print-floor-source"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-09-29T11:39:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/floor.txt

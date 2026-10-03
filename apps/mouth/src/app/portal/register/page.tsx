@@ -19,6 +19,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { Lock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
@@ -33,6 +34,27 @@ const CTA_STYLE = {
   background: "var(--bz-copper-text)",
   color: "var(--bz-on-warm)",
 } as const;
+
+const REGISTRATION_FAILED =
+  "Registration failed. Please try again or contact support.";
+
+/**
+ * POST /api/portal/invite/complete answers a refusal the client can act on
+ * with 400 and a sentence written for them ("Invitation expired",
+ * "This client already has an active portal account", "Another account
+ * already uses this email address" — portal_invite.py, invite_service.py).
+ * The page used to discard it and show the same generic line it shows for a
+ * 500, so neither the client nor staff could tell the cases apart.
+ * Only a 400 is passed through; 5xx, 422 and network errors keep the
+ * generic line.
+ */
+function registrationErrorMessage(err: unknown): string {
+  const status = (err as { statusCode?: unknown } | null)?.statusCode;
+  if (status === 400 && err instanceof Error && err.message) {
+    return err.message;
+  }
+  return REGISTRATION_FAILED;
+}
 
 const INPUT_CLASS =
   "w-full px-4 py-3 bg-[var(--bz-base)] border border-[var(--bz-border)] rounded-lg text-[var(--tx-primary)] placeholder:text-[var(--tx-tertiary)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--bz-copper)_25%,transparent)] focus:border-[var(--bz-copper)]";
@@ -56,6 +78,8 @@ function RegisterContent() {
   const [isValidating, setIsValidating] = useState(true);
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Backend code from /invite/validate ("already_used" | "expired" | "invalid_token").
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [pin, setPin] = useState("");
@@ -78,6 +102,7 @@ function RegisterContent() {
           setClientName(result.clientName || "");
           setClientEmail(result.email || "");
         } else {
+          setErrorCode(result.error ?? null);
           setError(result.message || "This invitation is no longer valid.");
         }
       } catch (err) {
@@ -132,7 +157,7 @@ function RegisterContent() {
         {},
         err instanceof Error ? err : new Error(String(err)),
       );
-      setError("Registration failed. Please try again or contact support.");
+      setError(registrationErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -187,6 +212,9 @@ function RegisterContent() {
   }
 
   if (!isValid) {
+    // A used invitation means the account already exists: send the client to
+    // sign in instead of support (reported 25 Sep, client 12536).
+    const alreadyUsed = errorCode === "already_used";
     return (
       <div className="min-h-screen bg-[var(--bz-base)] flex items-center justify-center p-4">
         <div
@@ -206,19 +234,39 @@ function RegisterContent() {
             />
           </div>
           <h1 className="text-2xl font-bold text-[var(--tx-pure)] mb-2">
-            Invalid Invitation
+            {alreadyUsed ? "Invitation Already Used" : "Invalid Invitation"}
           </h1>
           <p className="text-[var(--tx-secondary)] mb-6">
-            {error ||
-              "This invitation link is no longer valid. Please contact your account manager for a new invitation."}
+            {alreadyUsed
+              ? "Your account is already set up. Sign in with your email and PIN."
+              : error ||
+                "This invitation link is no longer valid. Please contact your account manager for a new invitation."}
           </p>
-          <a
-            href="mailto:zantara@balizero.com"
-            className="inline-block px-6 py-3 rounded-lg font-medium transition-opacity hover:opacity-90"
-            style={CTA_STYLE}
-          >
-            Contact Support
-          </a>
+          {alreadyUsed ? (
+            <>
+              <Link
+                href="/portal/login-upgraded"
+                className="inline-block px-6 py-3 rounded-lg font-medium transition-opacity hover:opacity-90"
+                style={CTA_STYLE}
+              >
+                Sign In
+              </Link>
+              <a
+                href="mailto:zantara@balizero.com"
+                className="block mt-4 text-sm text-[var(--tx-secondary)] underline"
+              >
+                Contact Support
+              </a>
+            </>
+          ) : (
+            <a
+              href="mailto:zantara@balizero.com"
+              className="inline-block px-6 py-3 rounded-lg font-medium transition-opacity hover:opacity-90"
+              style={CTA_STYLE}
+            >
+              Contact Support
+            </a>
+          )}
         </div>
       </div>
     );

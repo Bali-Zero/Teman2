@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { toIcalString } from "@balizero/core/utils";
-import { TAX_DEADLINES } from "../deadlines";
+import { getUpcomingTaxDeadlines } from "../deadlines";
+
+// Computed relative to request time, not build time: force per-request
+// rendering so the feed never freezes on a build-time "now".
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const ics = toIcalString(
-    TAX_DEADLINES.map((d) => ({
+    getUpcomingTaxDeadlines(new Date(), 12).map((d) => ({
       uid: `balizero-tax-${d.id}@balizero.com`,
       summary: d.title,
       start: new Date(d.date),

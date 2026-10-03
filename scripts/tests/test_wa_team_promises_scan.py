@@ -234,13 +234,71 @@ def test_is_first_digest_opportunity_of_the_day_is_the_midnight_hour_only():
     assert not wtp._is_first_digest_opportunity_of_the_day(datetime(2026, 9, 27, 23, 59, tzinfo=W))
 
 
-def test_digest_line_is_exactly_the_three_counts():
-    assert _digest_line(3, 1, 7) == "promises: yesterday 3 (revised 1), unjudged 7"
+def test_wita_yesterday_window_takes_now_as_a_parameter_not_a_fresh_clock_read():
+    """T3 PR-3 / C3 harden: this function used to call `datetime.now(_WITA)`
+    itself — it now takes the caller's own frozen `now_wita`, so two calls
+    with the SAME argument always agree regardless of wall-clock drift
+    between them."""
+    W = wtp._WITA
+    a = wtp._wita_yesterday_window(datetime(2026, 9, 27, 0, 45, tzinfo=W))
+    b = wtp._wita_yesterday_window(datetime(2026, 9, 27, 0, 45, tzinfo=W))
+    assert a == b
+    assert a[2] == "2026-09-26"
+
+
+@pytest.mark.asyncio
+async def test_c3_maybe_send_digest_decides_from_tick_start_not_send_time(monkeypatch):
+    """T3 PR-3 / C3 harden (PENDING-ARMS PWC-CONDITIONS for PR #7367): a tick
+    that starts at 00:45 WITA must still send even if everything BETWEEN the
+    tick-start capture and the actual send happens after 01:00 — the
+    decision and the reporting window both come from the FROZEN
+    `tick_start_wita` argument, never from a fresh clock read taken later.
+    Guilt: a version of `_maybe_send_digest` that read `datetime.now(_WITA)`
+    again internally would see the fake `now()` below (pinned past the
+    midnight hour) and skip — this test would then fail because nothing is
+    sent."""
+    captured = {}
+
+    async def _fake_fetch_digest_counts(pool, start_utc, end_utc):
+        captured["window"] = (start_utc, end_utc)
+        return (0, 0, 0, 0, 0, 0, 0)
+
+    def _fake_send(*args, **kwargs):
+        captured["sent"] = True
+        captured["yesterday_label"] = kwargs.get("yesterday_label")
+
+    monkeypatch.setattr(wtp, "_fetch_digest_counts", _fake_fetch_digest_counts)
+    monkeypatch.setattr(wtp, "_send_scan_digest", _fake_send)
+
+    class _FakeDatetimeAfterTheHour(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            # If _maybe_send_digest (or anything it calls) reads the clock
+            # again instead of using its `tick_start_wita` argument, it lands
+            # here — well past the midnight hour, which the pre-fix shape
+            # would read as "not the first opportunity" and skip.
+            fixed = datetime(2026, 9, 27, 1, 2, tzinfo=wtp._WITA)
+            return fixed.astimezone(tz) if tz is not None else fixed
+
+    monkeypatch.setattr(wtp, "datetime", _FakeDatetimeAfterTheHour)
+
+    tick_start = datetime(2026, 9, 27, 0, 45, tzinfo=wtp._WITA)
+    await wtp._maybe_send_digest(pool=None, tick_start_wita=tick_start)
+
+    assert captured.get("sent") is True
+    assert captured.get("yesterday_label") == "2026-09-26"
+
+
+def test_digest_line_is_exactly_the_seven_counts():
+    assert _digest_line(3, 1, 7, 2, 5, 1, 0) == (
+        "promises: yesterday 3 (revised 1), unjudged 7 judged_true 2 "
+        "judged_false 5 quarantined 1 superseded 0"
+    )
 
 
 def test_digest_line_only_ever_accepts_int_counts():
     with pytest.raises(TypeError):
-        _digest_line("3 (client 42, +628123456789)", 0, 7)  # type: ignore[arg-type]
+        _digest_line("3 (client 42, +628123456789)", 0, 7, 0, 0, 0, 0)  # type: ignore[arg-type]
 
 
 def test_scan_metrics_every_field_is_a_bare_int():
@@ -264,11 +322,14 @@ def test_send_scan_digest_message_carries_only_the_three_counts_and_yesterday_ke
         return _FakeResult()
 
     monkeypatch.setattr(wtp.subprocess, "run", _fake_run)
-    wtp._send_scan_digest(5, 2, 12, yesterday_label="2026-09-26")
+    wtp._send_scan_digest(5, 2, 12, 3, 9, 1, 0, yesterday_label="2026-09-26")
 
     argv = captured["argv"]
     text = argv[-1]
-    assert text == "promises: yesterday 5 (revised 2), unjudged 12"
+    assert text == (
+        "promises: yesterday 5 (revised 2), unjudged 12 judged_true 3 "
+        "judged_false 9 quarantined 1 superseded 0"
+    )
     poison = ["client_id", "phone", "+62", "clause", "message_id"]
     assert not any(p in text for p in poison)
     dedup_idx = argv.index("--dedup-key")
@@ -280,7 +341,7 @@ def test_send_scan_digest_never_raises_on_gateway_failure(monkeypatch):
         raise OSError("gateway unreachable")
 
     monkeypatch.setattr(wtp.subprocess, "run", _boom)
-    result = wtp._send_scan_digest(1, 0, 2, yesterday_label="2026-09-26")  # must not raise
+    result = wtp._send_scan_digest(1, 0, 2, 0, 0, 0, 0, yesterday_label="2026-09-26")  # must not raise
     assert result is None
 
 
@@ -295,7 +356,7 @@ def test_send_scan_digest_sanitizes_a_poisoned_exception_text(monkeypatch, caplo
 
     monkeypatch.setattr(wtp.subprocess, "run", _boom)
     with caplog.at_level(logging.WARNING, logger="wa_team_promises"):
-        wtp._send_scan_digest(1, 0, 2, yesterday_label="2026-09-26")
+        wtp._send_scan_digest(1, 0, 2, 0, 0, 0, 0, yesterday_label="2026-09-26")
 
     full_log = "\n".join(r.message for r in caplog.records)
     assert poison not in full_log
@@ -371,9 +432,9 @@ def test_digest_cadence_sends_exactly_once_per_day_with_the_true_previous_day_to
         # sends over 3 days, at 00:00 AND 06:00 each day, before the gate
         # existed) — the same shape the gate found broke A4.
         if wtp._is_first_digest_opportunity_of_the_day(t):
-            _start_utc, _end_utc, yesterday_label = wtp._wita_yesterday_window()
+            _start_utc, _end_utc, yesterday_label = wtp._wita_yesterday_window(t)
             candidates_yesterday = day_totals.get(yesterday_label, 0)
-            text = wtp._digest_line(candidates_yesterday, 0, 999)
+            text = wtp._digest_line(candidates_yesterday, 0, 999, 0, 0, 0, 0)
             key = f"wa-team-promises:{yesterday_label}"
             status = tgn.notify("digest", "wa-team-promises-scan", text, key)
             if status != "deduped":

@@ -14512,6 +14512,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/public/tax-calendar/obligations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Public Tax Calendar Obligations */
+    post: operations["publicTaxCalendarObligations"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/research/control/playbook": {
     parameters: {
       query?: never;
@@ -16602,6 +16619,126 @@ export interface paths {
      *     defects are 4xx.
      */
     post: operations["evaluateVisaOracleV2"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Campaign */
+    get: operations["campaign_api_visa_oracle_testing_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Export */
+    get: operations["export_api_visa_oracle_testing_export_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/slots/{slot}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Configure Slot */
+    put: operations["configure_slot_api_visa_oracle_testing_slots__slot__put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/{key}/result": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Result */
+    put: operations["result_api_visa_oracle_testing__key__result_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/{key}/review": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Review */
+    patch: operations["review_api_visa_oracle_testing__key__review_patch"];
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/{key}/screenshot": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Screenshot */
+    get: operations["screenshot_api_visa_oracle_testing__key__screenshot_get"];
+    put?: never;
+    post?: never;
+    /** Remove Screenshot */
+    delete: operations["remove_screenshot_api_visa_oracle_testing__key__screenshot_delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa-oracle/testing/{key}/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start */
+    post: operations["start_api_visa_oracle_testing__key__start_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -24571,6 +24708,35 @@ export interface components {
         [key: string]: unknown;
       };
     };
+    /** PortalChallengeAsyaMission */
+    PortalChallengeAsyaMission: {
+      /** Avatar Url */
+      avatar_url?: string | null;
+      /** Bonus Points */
+      bonus_points: number;
+      /** Display Name */
+      display_name: string;
+      /** Is Me */
+      is_me: boolean;
+      /** Member */
+      member: string;
+      /** Mission Bonuses */
+      mission_bonuses: number;
+      /** Penalty Points */
+      penalty_points: number;
+      /** Points */
+      points: number;
+      /** Prize Idr */
+      prize_idr: number;
+      /** Reached */
+      reached: boolean;
+      /** Target Points */
+      target_points: number;
+      /** Unanswered Requests */
+      unanswered_requests: number;
+      /** Unreviewed Documents */
+      unreviewed_documents: number;
+    };
     /** PortalChallengeEntry */
     PortalChallengeEntry: {
       /** Activations */
@@ -24579,10 +24745,20 @@ export interface components {
       avatar_url?: string | null;
       /** Award Tier */
       award_tier: number | null;
+      /**
+       * Carry Points
+       * @default 0
+       */
+      carry_points: number;
       /** Department */
       department: string | null;
       /** Display Name */
       display_name: string;
+      /**
+       * Document Bonuses
+       * @default 0
+       */
+      document_bonuses: number;
       /** Invited */
       invited: number;
       /** Is Me */
@@ -24591,20 +24767,67 @@ export interface components {
       is_tax: boolean;
       /** Last Activation At */
       last_activation_at: string | null;
+      /** Last Event At */
+      last_event_at?: string | null;
       /** Member */
       member: string;
       /** Next Tier Threshold */
       next_tier_threshold: number | null;
+      /**
+       * Penalty Points
+       * @default 0
+       */
+      penalty_points: number;
+      /**
+       * Playoff Pending
+       * @default false
+       */
+      playoff_pending: boolean;
+      /**
+       * Points
+       * @default 0
+       */
+      points: number;
       /** Prize Idr */
       prize_idr: number;
+      /** Prize Slot */
+      prize_slot?: number | null;
       /** Rank */
       rank: number;
+      /**
+       * Registrations
+       * @default 0
+       */
+      registrations: number;
+      /** September Choice */
+      september_choice?: string | null;
+      /** September Rank */
+      september_rank?: number | null;
       /** Tax Bonus Idr */
       tax_bonus_idr: number;
       /** To Next Tier */
       to_next_tier: number | null;
       /** Total Prize Idr */
       total_prize_idr: number;
+      /**
+       * Unanswered Requests
+       * @default 0
+       */
+      unanswered_requests: number;
+      /**
+       * Unreviewed Documents
+       * @default 0
+       */
+      unreviewed_documents: number;
+    };
+    /** PortalChallengeRankPrize */
+    PortalChallengeRankPrize: {
+      /** Min Points */
+      min_points?: number | null;
+      /** Prize Idr */
+      prize_idr: number;
+      /** Rank */
+      rank: number;
     };
     /** PortalChallengeRecentActivation */
     PortalChallengeRecentActivation: {
@@ -24616,8 +24839,25 @@ export interface components {
       /** Display Name */
       display_name: string;
     };
+    /** PortalChallengeRecentEvent */
+    PortalChallengeRecentEvent: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /** Display Name */
+      display_name: string;
+      /** Kind */
+      kind: string;
+      /** Points */
+      points: number;
+    };
     /** PortalChallengeResponse */
     PortalChallengeResponse: {
+      asya_mission?: components["schemas"]["PortalChallengeAsyaMission"] | null;
+      /** Campaign */
+      campaign?: string | null;
       /** Entries */
       entries: components["schemas"]["PortalChallengeEntry"][];
       /**
@@ -24625,13 +24865,35 @@ export interface components {
        * Format: date-time
        */
       generated_at: string;
+      /**
+       * Rank Prizes
+       * @default []
+       */
+      rank_prizes: components["schemas"]["PortalChallengeRankPrize"][];
       /** Recent Activations */
       recent_activations: components["schemas"]["PortalChallengeRecentActivation"][];
+      /**
+       * Recent Events
+       * @default []
+       */
+      recent_events: components["schemas"]["PortalChallengeRecentEvent"][];
+      /**
+       * Round
+       * @default 1
+       */
+      round: number;
+      scoring?: components["schemas"]["PortalChallengeScoringRules"] | null;
+      september?: components["schemas"]["PortalChallengeSeptember"] | null;
       /** Status */
       status: string;
       tax_rules: components["schemas"]["PortalChallengeTaxRules"];
       /** Team Total Activations */
       team_total_activations: number;
+      /**
+       * Team Total Points
+       * @default 0
+       */
+      team_total_points: number;
       /** Tiers */
       tiers: components["schemas"]["PortalChallengeTier"][];
       /** Timezone */
@@ -24646,6 +24908,69 @@ export interface components {
        * Format: date-time
        */
       window_start: string;
+    };
+    /** PortalChallengeScoringRules */
+    PortalChallengeScoringRules: {
+      /** First Document */
+      first_document: number;
+      /** Registration */
+      registration: number;
+      /** Response Working Hours */
+      response_working_hours: number;
+      /** Review Working Hours */
+      review_working_hours: number;
+      /** Service Hours */
+      service_hours: string;
+      /** Unanswered Request */
+      unanswered_request: number;
+      /** Unreviewed Document */
+      unreviewed_document: number;
+    };
+    /** PortalChallengeSeptember */
+    PortalChallengeSeptember: {
+      /** Entries */
+      entries: components["schemas"]["PortalChallengeSeptemberEntry"][];
+      /** Status */
+      status: string;
+      /** Team Total Activations */
+      team_total_activations: number;
+      /**
+       * Window End
+       * Format: date-time
+       */
+      window_end: string;
+      /**
+       * Window Start
+       * Format: date-time
+       */
+      window_start: string;
+    };
+    /** PortalChallengeSeptemberEntry */
+    PortalChallengeSeptemberEntry: {
+      /** Activations */
+      activations: number;
+      /** Avatar Url */
+      avatar_url?: string | null;
+      /** Award Tier */
+      award_tier: number | null;
+      /** Display Name */
+      display_name: string;
+      /** Invited */
+      invited: number;
+      /** Is Tax */
+      is_tax: boolean;
+      /** Member */
+      member: string;
+      /** Prize Idr */
+      prize_idr: number;
+      /** Rank */
+      rank: number;
+      /** September Choice */
+      september_choice?: string | null;
+      /** Tax Bonus Idr */
+      tax_bonus_idr: number;
+      /** Total Prize Idr */
+      total_prize_idr: number;
     };
     /** PortalChallengeTaxRules */
     PortalChallengeTaxRules: {
@@ -25581,6 +25906,98 @@ export interface components {
       /** Reason */
       reason: string;
     };
+    /** ResultPayload */
+    ResultPayload: {
+      /**
+       * Actual
+       * @default
+       */
+      actual: string;
+      /**
+       * Actual State
+       * @default other
+       * @enum {string}
+       */
+      actual_state:
+        | "supported"
+        | "needs_input"
+        | "human_review"
+        | "no_path"
+        | "unavailable"
+        | "blocked"
+        | "other";
+      /**
+       * Category
+       * @default none
+       * @enum {string}
+       */
+      category:
+        | "none"
+        | "eligibility"
+        | "missing_question"
+        | "explanation"
+        | "reference"
+        | "navigation"
+        | "privacy";
+      /**
+       * Certainty
+       * @default observation
+       * @enum {string}
+       */
+      certainty: "observation" | "hypothesis" | "expert";
+      /**
+       * Comment
+       * @default
+       */
+      comment: string;
+      /**
+       * Evidence Ref
+       * @default
+       */
+      evidence_ref: string;
+      /**
+       * Reproducibility
+       * @default not_retried
+       * @enum {string}
+       */
+      reproducibility: "not_retried" | "same" | "different" | "blocked";
+      /**
+       * Screenshot Base64
+       * @default
+       */
+      screenshot_base64: string;
+      /**
+       * Severity
+       * @default none
+       * @enum {string}
+       */
+      severity: "none" | "low" | "medium" | "high";
+      /**
+       * Source Notes
+       * @default
+       */
+      source_notes: string;
+      /**
+       * Steps
+       * @default
+       */
+      steps: string;
+      /**
+       * Submit
+       * @default false
+       */
+      submit: boolean;
+      /**
+       * Synthetic Only
+       * @constant
+       */
+      synthetic_only: true;
+      /**
+       * Uncertainty
+       * @default
+       */
+      uncertainty: string;
+    };
     /** RetrainBody */
     RetrainBody: {
       /** Category */
@@ -25647,6 +26064,26 @@ export interface components {
     RevalidateBody: {
       /** Tier */
       tier?: string | null;
+    };
+    /** ReviewPayload */
+    ReviewPayload: {
+      /** Comment */
+      comment: string;
+      /**
+       * Reproduced
+       * @default false
+       */
+      reproduced: boolean;
+      /**
+       * Reproduction Evidence
+       * @default
+       */
+      reproduction_evidence: string;
+      /**
+       * Verdict
+       * @enum {string}
+       */
+      verdict: "confirmed_issue" | "not_issue" | "needs_expert_review";
     };
     /**
      * ReviewQueueStatsResponse
@@ -26262,6 +26699,16 @@ export interface components {
       /** Stream Lowest Id */
       stream_lowest_id?: string | null;
     };
+    /** SlotPayload */
+    SlotPayload: {
+      /** Member Id */
+      member_id?: string | null;
+      /**
+       * Reviewer
+       * @default false
+       */
+      reviewer: boolean;
+    };
     /** SourceApplicabilityDTO */
     SourceApplicabilityDTO: {
       /**
@@ -26529,6 +26976,35 @@ export interface components {
       | "EDUCATION"
       | "INVESTMENT"
       | "GOVERNMENT";
+    /** StartPayload */
+    StartPayload: {
+      /**
+       * Basis
+       * @enum {string}
+       */
+      basis: "hypothesis" | "official" | "expert" | "needs_review";
+      /** Browser */
+      browser: string;
+      /** Device */
+      device: string;
+      /**
+       * Displayed Version
+       * @default unknown
+       */
+      displayed_version: string;
+      /**
+       * Reference
+       * @default
+       */
+      reference: string;
+      /**
+       * Synthetic Only
+       * @constant
+       */
+      synthetic_only: true;
+      /** Text */
+      text: string;
+    };
     /**
      * StatusResponse
      * @description System status response.
@@ -26649,6 +27125,98 @@ export interface components {
       when?: string | null;
       /** Who */
       who?: string | null;
+    };
+    /** TaxCalendarObligation */
+    TaxCalendarObligation: {
+      /** Authority */
+      authority: string;
+      /** Frequency */
+      frequency: string;
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /**
+       * Reviewed On
+       * Format: date
+       */
+      reviewed_on: string;
+      /** Upcoming Due Dates */
+      upcoming_due_dates: components["schemas"]["UpcomingDueDate"][];
+    };
+    /** TaxCalendarRequest */
+    TaxCalendarRequest: {
+      /** Company Type */
+      company_type?:
+        | (
+            | "PT_PMA"
+            | "PT_PMDN"
+            | "CV"
+            | "KP3A"
+            | "KPPA"
+            | "FOREIGN_PLATFORM"
+            | "OTHER"
+          )
+        | null;
+      /**
+       * Employee Count
+       * @default 0
+       */
+      employee_count: number;
+      /**
+       * Fiscal Year End
+       * @default 12-31
+       */
+      fiscal_year_end: string;
+      /**
+       * Has Employees
+       * @default false
+       */
+      has_employees: boolean;
+      /**
+       * Has Foreign Employees
+       * @default false
+       */
+      has_foreign_employees: boolean;
+      /**
+       * Horizon Days
+       * @default 365
+       */
+      horizon_days: number;
+      /** Investment Stage */
+      investment_stage?: ("construction" | "commercial") | null;
+      /**
+       * Pkp
+       * @default false
+       */
+      pkp: boolean;
+      /**
+       * Pmse Vat Appointed
+       * @default false
+       */
+      pmse_vat_appointed: boolean;
+      /**
+       * Pse Registered
+       * @default false
+       */
+      pse_registered: boolean;
+      /**
+       * Serves Indonesian Users Online
+       * @default false
+       */
+      serves_indonesian_users_online: boolean;
+      /**
+       * Taxpayer Type
+       * @enum {string}
+       */
+      taxpayer_type: "individual" | "company";
+    };
+    /** TaxCalendarResponse */
+    TaxCalendarResponse: {
+      /** Obligations */
+      obligations: components["schemas"]["TaxCalendarObligation"][];
+      /** Withheld Count */
+      withheld_count: number;
     };
     /** TaxCompanyPilotDocument */
     TaxCompanyPilotDocument: {
@@ -27222,6 +27790,18 @@ export interface components {
       subscriberId?: string | null;
       /** Token */
       token?: string | null;
+    };
+    /** UpcomingDueDate */
+    UpcomingDueDate: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Period Key */
+      period_key: string;
+      /** Provisional */
+      provisional: boolean;
     };
     /**
      * UpdatePermissionRequest
@@ -49996,6 +50576,39 @@ export interface operations {
       };
     };
   };
+  publicTaxCalendarObligations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaxCalendarRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaxCalendarResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   playbook_switch_api_research_control_playbook_post: {
     parameters: {
       query?: never;
@@ -53172,6 +53785,248 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["VisaOracleValidationErrorResponse"];
+        };
+      };
+    };
+  };
+  campaign_api_visa_oracle_testing_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  export_api_visa_oracle_testing_export_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  configure_slot_api_visa_oracle_testing_slots__slot__put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slot: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SlotPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  result_api_visa_oracle_testing__key__result_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResultPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  review_api_visa_oracle_testing__key__review_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReviewPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  screenshot_api_visa_oracle_testing__key__screenshot_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  remove_screenshot_api_visa_oracle_testing__key__screenshot_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  start_api_visa_oracle_testing__key__start_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StartPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

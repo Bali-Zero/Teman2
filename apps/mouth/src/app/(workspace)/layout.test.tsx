@@ -114,6 +114,10 @@ vi.mock("@/components/optimization", () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+vi.mock("./dashboard/VisaOracleTestingGuideOverlay", () => ({
+  VisaOracleTestingGuideOverlay: () => null,
+}));
+
 vi.mock("@/hooks/useDashboardData", () => ({
   removeDashboardQueries: vi.fn(),
 }));

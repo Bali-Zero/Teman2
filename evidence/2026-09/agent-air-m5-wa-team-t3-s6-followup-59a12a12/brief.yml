@@ -1,0 +1,83 @@
+task_id: wa-team-t3-s6-followup
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Close conditions C1-C4 from PR #7439's re-gate (pull/7439#issuecomment-5848724154,
+  PASS-WITH-CONDITIONS): the T3 SQL/constant cross-checker
+  (scripts/tests/test_wa_team_promises_sql_crosscheck.py) closed 5 S6 shapes, but the gate
+  found the underlying MECHANISMS behind two of them still open for inputs #7439 did not
+  list, plus two plausible wrong fixes that happened to survive #7439's own tests.
+
+  C1: the type fallback in `_parse_column_def` (`_TYPE_ALIASES.get(raw_type,
+  raw_type.lower())`) silently passed through any type keyword not in `_TYPE_ALIASES` —
+  measured against PG17: 14 silently-wrong keywords (INT2, FLOAT4, FLOAT8, DECIMAL, DEC,
+  TIMESTAMP, TIME, TIMETZ, SERIAL2/4/8, BPCHAR, NCHAR, VARBIT).
+
+  C2: PG shares ONE relation namespace between tables, indexes AND sequences per schema.
+  #7439 fixed table-vs-index collisions but not IMPLICIT relations — a PRIMARY KEY column's
+  backing `<table>_pkey` index and a serial column's backing `<table>_<col>_seq` sequence,
+  both created in the SAME statement as the table itself.
+
+  C3: two plausible wrong fixes survived #7439's own test suite by mutation (not
+  inspection) — adding an index name to `occupied_relations` WITHOUT `.lower()`, and
+  checking identifier length on the SCHEMA token instead of the post-strip bare name. Both
+  already correct on #7439's merged head; neither had a discriminating test.
+
+  C4: raise `FLOOR=` in `.github/workflows/wa-team-promises-tests.yml` (added by #7429) to
+  this PR's own REAL_PG-unset passed count. Gear is 3 DETERMINISTICALLY by PATH: the diff
+  touches `.github/workflows/*`, a hot zone — reproduced with the real tool:
+  `evidence_pack_lint.py --print-floor` against this diff's own changed-files list returns
+  `3`. #7439's own gate deliberately left FLOOR at 122 (not 129) to avoid paying Gear 3
+  twice; this PR pays it once, for the whole C1-C4 closure plus everything the council
+  round below found.
+
+  BEFORE opening the PR, this session ran a Gear-3 council round on its own diff (not
+  requested by the gate, done proactively): codex-gpt-5.6-sol and kimi-code/k3, both
+  dispatched with a scrubbed/no-tools environment (env -i HOME/PATH-only for codex,
+  scripts/kimi_client.py's no-tools agent-file + credential-scrubbed env for kimi), fed
+  only the diff and the gate's own findings — no repo dump, no PII. Both independently
+  converged on the SAME real defect (`_parse_alter_table` discarded `primary_key` from
+  `_parse_column_def`'s return, leaving an ALTER-added PRIMARY KEY column able to fabricate
+  the exact phantom `<table>_pkey` table C2 exists to prevent); codex additionally measured
+  two more real defects (PG's implicit-name allocator truncates the FULL derived name to 63
+  bytes and retries a taken name with a numeric suffix; two columns each marked PRIMARY KEY
+  in one CREATE body is a PG hard error, not a silent no-op). Both seats also separately
+  noted C1 was missing a real-PG case for `FOO` specifically. All four findings were fixed
+  and mutation-verified in this same PR, then re-reviewed in a delta round: kimi returned
+  GO with one question (resolved, see receipts); codex's delta round result is in the pack
+  below.
+
+acceptance:
+  - text:
+      "WHEN any single-word type keyword not in `_TYPE_ALIASES` is used in a column
+      definition, THE PARSER SHALL reject it outright (UnrecognizedSqlShapeError), never
+      silently pass it through lower-cased."
+    probe: "14 parametrized guilt cases (INT2, FLOAT4, FLOAT8, DECIMAL, DEC, TIMESTAMP, TIME, TIMETZ, SERIAL2/4/8, BPCHAR, NCHAR, VARBIT) + FOO, each raising; a full-domain innocence test iterating every key IN `_TYPE_ALIASES` proving none regressed; each of INT2/FLOAT8/TIMESTAMP/SERIAL4/FOO paired with a real-PG case proving PG accepts (or errors, for FOO) what the parser now rejects"
+  - text:
+      "WHEN a table's PRIMARY KEY or a serial-family column (declared in the CREATE body OR
+      added later via ALTER) would create an implicit `<table>_pkey`/`<table>_<col>_seq`
+      relation, THE PARSER SHALL claim that name in the shared relation namespace, so a
+      later CREATE TABLE/INDEX reusing it is read as the PG no-op it actually is; and IF the
+      derived name is already taken or exceeds 63 bytes, THE PARSER SHALL reject outright
+      rather than model PG's own retry-with-suffix/truncation algorithm."
+    probe: "guilt cases for CREATE-body PK, CREATE-body serial, ALTER-added serial, ALTER-added PK (the council-round finding), a >63-byte derived name, an already-occupied derived name, and two-columns-each-PRIMARY-KEY; innocence cases for a table with neither PK nor serial, the real file's own two BIGSERIAL PRIMARY KEY columns not self-colliding, and an idempotent re-CREATE of a PK-bearing table not false-positiving (kimi's delta-round question); 2 real-PG companion cases"
+  - text:
+      "The two SURVIVED-mutant shapes from #7439's own gate (index name added without
+      `.lower()`; identifier length checked on the schema token instead of the post-strip
+      name) SHALL each have a discriminating test, even though both are already correct on
+      this head."
+    probe: "an uppercase-index-name/lowercase-table-name collision case, and a `public.<64 bytes>` qualified-name case, each raising; a `public.<short>` innocence case"
+  - text:
+      "THE PR-gating workflow's FLOOR SHALL equal this PR's own REAL_PG-unset passed count,
+      not a stale lower value, and SHALL still refuse a corpus that shrinks below it."
+    probe: "the verbatim CI step body run under `bash -e` with a clean venv on PATH: FLOOR=158 passes ('158 passing cases'), FLOOR=159 fails ('below the floor')"
+  - text:
+      "Every fix SHALL be proven load-bearing by mutation, not merely present: removing it
+      SHALL turn its own guilt test(s) red, and restoring it SHALL turn them green again,
+      confirmed byte-identical to the pre-mutation file."
+    probe: "9 separate mutation rounds (C1 fallback, C2 CREATE-body claims, C3a .lower(), C3b schema-token check, ALTER-PK registration, length/collision guard, multi-PK rejection — each isolated on a `cp` backup, restored and diffed byte-identical afterward)"
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

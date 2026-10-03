@@ -48,7 +48,6 @@ def test_backend_stability_gate_lists_required_packs() -> None:
     assert "test_lkpm_ready_pack_automation.py" in command_text
     assert "test_compliance_lkpm_readypack.py" in command_text
     assert "test_lkpm_portal_cascade.py" in command_text
-    assert "test_fix_lkpm_q1_2026_client_ids.py" in command_text
     assert "backend/tests/services/rag/test_kg_langgraph.py" in command_text
     assert "backend/tests/services/rag/test_kg_subgraphs.py" in command_text
     assert "backend/tests/services/rag/test_confidence.py" in command_text

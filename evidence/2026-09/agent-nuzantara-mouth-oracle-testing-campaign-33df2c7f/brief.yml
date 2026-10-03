@@ -1,0 +1,29 @@
+task_id: ORACLE-QA-CAMPAIGN-20260928
+task:
+  Authenticated Kita staff testing campaign with immutable expectations, durable
+  observations and independent review
+gear: 3
+gear_reason:
+  New authenticated workflow and SQL migration; cohesive frontend/backend
+  consumer cannot safely ship as unrelated partial changes.
+colour: BLUE
+lane: mouth
+machine: pro
+date: "2026-09-28"
+builder: codex external prepare-only
+grader: claude-opus-5-5
+acceptance:
+  - when: WHEN a staff member opens the campaign
+    shall: SHALL see150assigned slots,5dailypertester,25perperson; no accuracy score
+    probe: backend/tests/services/test_visa_oracle_testing.py::test_campaign_has_five_per_day_and_shared_reference
+  - when: WHEN authenticated callers start, save, submit or review
+    shall: SHALL enforce ownership, immutableexpectations, assignedBalidate and peerblinding
+    probe: backend/tests/integration/test_visa_oracle_testing_campaign.py
+  - when: WHEN a draft has private evidence
+    shall: SHALL persist through reload and allow audited removal without public storage
+    probe:
+      test_private_evidence_is_separate_removable_and_not_loaded_in_lists; local
+      browser QA
+  - when: WHEN preparing release
+    shall: SHALL have independentcouncil and freshClaude gate; externalbuilder nevermerge/arm/deploy
+    probe: council-journal.jsonl and frozen-commit gate receipt

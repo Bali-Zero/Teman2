@@ -1,0 +1,76 @@
+{
+  "run_at": "2026-10-03T07:09:16+08:00",
+  "today": "2026-10-03",
+  "yesterday_seen_count": 5,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "301->/articles, 200 OK, JS-rendered shell, 'Memuat artikel...' placeholder persists since 2026-09-07"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "connection refused (curl exit, HTTP_CODE:000) on both initial fetch and the one mechanical retry"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "latest item (2 Okt 2026) is Gibran ijazah/MK case -- no Permenkumham/PMK/PP/Perpres/UU/Permenaker/Permenkes/BKPM citation in window"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "2 Okt articles are follow-ups on already-seen PMK 37/2025 (marketplace PPh 22, cites new decree KEP-00011/PPMSE-CT/PPH/PJ/2026 issued 28 Sep) and already-seen PMK 49/2026 (SPP-TDLN PPN go-live via 5 Himbara banks+LinkAja) -- judged non-material follow-ups of yesterday's delta, not new citations; recap article on Sept regs is outside_window"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; static sidebar is just a ministry-name filter list, no PMK 2026 entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "homepage press releases (21-30 Sep enforcement/deportation news) -- no regulatory citation in window, unlike prior runs' outside_window classification this run actually parsed dated items and confirmed none match filter"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry still KEP-185/PJ/2026 (bencana alam Nusa Tenggara tax admin policy), unchanged from prior runs"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible UU 2/2026 Pelindungan Pekerja Rumah Tangga, enacted 30 Apr 2026, unchanged from prior runs"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025"
+  ],
+  "note": "4/4 NB-INTEL returned nessuna novita (NB-INTEL-Tax surfaced PER-12/PJ/2026 context again, already in seen_citations). Web: 0 deltas across 5 primary + 6 backup sources. Judgment call: KEP-00011/PPMSE-CT/PPH/PJ/2026 (DJP decree naming Shopee/Tokopedia/Blibli/Lazada as PPh22 withholders, issued 28 Sep, reported by DDTC 2 Oct) and SPP-TDLN go-live (PPN on foreign digital transactions via 5 Himbara banks + LinkAja, basis PMK 49/2026, reported by DDTC 2 Oct) were NOT added as new deltas -- both are operational/implementation follow-ups on regulations whose core citations (PMK 37/2025, PMK 49/2026) are already in seen_citations with no material change to the regulation itself, consistent with yesterday's and today's dedup rule. Flagging this explicitly in case Antonello judges otherwise on review."
+}

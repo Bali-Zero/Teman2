@@ -29,6 +29,8 @@ from __future__ import annotations
 import logging
 import os
 
+from backend.security.pii_log_identifier import redact_identifier_for_log
+from backend.services.notifications.email_audit import _bounded_scrub
 from backend.services.notifications.email_http import get_email_client
 
 logger = logging.getLogger(__name__)
@@ -89,19 +91,23 @@ async def send_via_resend(
         )
         if resp.status_code in (200, 201, 202):
             logger.info(
-                "Resend fallback sent: to=%s subject=%r from=%s",
-                to_email,
-                subject,
+                "Resend fallback sent: to=%s subject=%s from=%s",
+                redact_identifier_for_log(to_email),
+                repr(_bounded_scrub(subject, 120)),
                 from_email,
             )
             return True
         logger.error(
             "Resend API error %d for %s: %s",
             resp.status_code,
-            to_email,
-            resp.text[:300],
+            redact_identifier_for_log(to_email),
+            _bounded_scrub(resp.text, 300),
         )
         return False
     except Exception as e:
-        logger.error("Resend fallback failed for %s: %s", to_email, e)
+        logger.error(
+            "Resend fallback failed for %s: %s",
+            redact_identifier_for_log(to_email),
+            _bounded_scrub(str(e), 400),
+        )
         return False

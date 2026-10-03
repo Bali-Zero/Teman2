@@ -197,12 +197,35 @@ describe("public routes vs the inherited homepage canonical", () => {
   it("the two footer-linked legal pages are cured (guilt, #5887's class)", () => {
     // Measured 2026-09-14: /terms carries 2 internal hrefs and /privacy 3 —
     // the same order as /contact. Crawlable, and until this PR both served
-    // `canonical: https://balizero.com`.
-    for (const rel of ["terms/page.tsx", "privacy/page.tsx"]) {
+    // `canonical: https://balizero.com`. Moved under (blog) (spec C1 PR-A,
+    // 2026-09-27) — same URL, route group only, so the route is NOT
+    // `path.dirname(rel)` here (that would keep the literal "(blog)"
+    // segment); it is paired explicitly instead.
+    for (const [rel, route] of [
+      ["(blog)/terms/page.tsx", "/terms"],
+      ["(blog)/privacy/page.tsx", "/privacy"],
+    ] as const) {
       const expr = canonicalExpr(path.join(APP_DIR, rel));
       expect(expr).not.toBeNull();
-      const route = "/" + path.dirname(rel);
       expect(expr).toBe(`"${ORIGIN}${route}"`);
+    }
+  });
+
+  it("the three company pages are indexable, following /privacy and /terms (owner decision 2026-09-28)", () => {
+    // /about, /careers and /press carried `robots: { index: false, follow: false }`
+    // inherited verbatim from the old /v2/company/* pages when #7551
+    // (2026-09-27) built them on the R19 shell. That inheritance was never a
+    // decision about THESE routes — /privacy and /terms sit in the same
+    // (blog) group with no robots override and are indexed — so a page or a
+    // layout below the root reintroducing `index: false` on any of the three
+    // is a regression, not a redesign, until a future owner decision says
+    // otherwise.
+    for (const rel of [
+      "(blog)/about/page.tsx",
+      "(blog)/careers/page.tsx",
+      "(blog)/press/page.tsx",
+    ] as const) {
+      expect(isNoindex(rel)).toBe(false);
     }
   });
 

@@ -173,6 +173,37 @@ async def test_record_email_result_resurrectable_schedules_retry(fake_pool):
 
 
 @pytest.mark.asyncio
+async def test_record_email_result_process_start_client_non_resurrectable(fake_pool):
+    """R1 (PR #7451 gate follow-up): process_start_client is personalized
+    client-facing mail whose body can't be reconstructed at retry time —
+    like completion_client/waiting_docs_client, a first failure must skip
+    the retry schedule (retry_after=None) so the retry worker never sends
+    a bodiless '[RETRY]' stub to the client."""
+    fake_pool._conn.fetchrow = AsyncMock(
+        return_value={"attempt_number": 1, "email_type": "process_start_client"},
+    )
+
+    await record_email_result(fake_pool, 7, status="failed", provider="brevo", error_message="500")
+
+    update_call = fake_pool._conn.execute.call_args
+    assert update_call.args[5] is None, "process_start_client must not schedule retry — should be None"
+
+
+@pytest.mark.asyncio
+async def test_record_email_result_process_start_team_resurrectable(fake_pool):
+    """R1: process_start_team stays a stateless team notification (like
+    hr_bonus) and DOES get a retry_after on first failure."""
+    fake_pool._conn.fetchrow = AsyncMock(
+        return_value={"attempt_number": 1, "email_type": "process_start_team"},
+    )
+
+    await record_email_result(fake_pool, 7, status="failed", provider="brevo", error_message="500")
+
+    update_call = fake_pool._conn.execute.call_args
+    assert update_call.args[5] is not None, "process_start_team attempt=1 must schedule retry (1h backoff)"
+
+
+@pytest.mark.asyncio
 async def test_record_email_result_attempt_lookup_error_log_does_not_leak(fake_pool, caplog):
     """C4: the attempt_number/email_type lookup's own exception text can
     carry the DB's echo of `to_email` (e.g. a connection error surfaced
@@ -343,10 +374,13 @@ def test_critical_email_types_include_key_flows():
     assert "hr_bonus" in CRITICAL_EMAIL_TYPES
     assert "invoice_client" in CRITICAL_EMAIL_TYPES
     assert "welcome" in CRITICAL_EMAIL_TYPES
+    assert "process_start_client" in CRITICAL_EMAIL_TYPES  # R1 (PR #7451 gate follow-up)
 
 
 def test_is_critical_membership():
     assert is_critical("hr_bonus") is True
+    assert is_critical("process_start_client") is True
+    assert is_critical("process_start_team") is False
     assert is_critical("cron_visa") is False
     assert is_critical("") is False
     assert is_critical("random_string") is False

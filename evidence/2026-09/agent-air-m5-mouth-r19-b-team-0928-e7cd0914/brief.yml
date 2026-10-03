@@ -1,0 +1,37 @@
+task: >-
+  R19 group B, surface 4: retint /team's body to R19 tokens. --rp-accent (slate) swapped for
+  --r19-copper wherever it read as the primary accent (eyebrows, primary CTA, group nav,
+  project links); the per-person linear-gradient system removed entirely, no-photo members
+  now render an R19 tile (wash background, ink serif initial, hairline). Tried and reverted
+  the homepage preview's mix-blend-mode/zoom trick on the baked-in red/"3"-logo photos —
+  verified live it does not neutralize them.
+lane: mouth/r19-b-team
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason:
+  Floor 1 (evidence_pack_lint.py --print-floor), 125-line --no-renames churn
+  across 3 files, well under the 1800-line/size-1828 threshold.
+acceptance:
+  A1:
+    guard test (team.r19-guard.test.tsx) red on origin/main's gradient system, green
+    after; full team test suite green (8/8); tsc --noEmit exit 0; eslint/prettier clean.
+  A2:
+    localhost:3113/team screenshots (1440x900, 390x844) show eyebrow/CTA/group-nav accent
+    switched from navy to copper and no-photo tiles switched from colour gradients to a
+    neutral R19 wash tile; page height unchanged (6897px desktop, 8043px mobile) vs the
+    live balizero.com/team baseline.
+  A3:
+    no section, copy, link/href, price or behaviour removed; DOM semantics (headings,
+    landmarks, aria, test ids) unchanged; roster names/roles/photos untouched.
+out_of_scope: >-
+  The baked-in red backdrop + old "3" brand mark on roster photos (adit, ari, krisna, dea,
+  candra, vino, angel, dewaayu, veronika, damar, zainal-heru-together — confirmed by opening
+  the JPEGs directly) is not fixable by CSS: the logo fills roughly half the frame at full
+  height, overlapping the subject's own silhouette, and several images also bake the name/
+  role text and a small "3" pin badge directly into the pixels. The homepage preview's
+  mix-blend-mode:darken + 4x-zoom technique was ported onto /team's .portrait and tested live
+  (screenshots in /private/tmp/claude-501/r19-b-team-0928/crop-adit-experiment.png) — it does
+  not neutralize the red/logo (the "3" still fills the frame) and the zoom clips into
+  leftover baked-in text on some crops — then reverted. New/reprocessed photography is a
+  human decision, not made here.

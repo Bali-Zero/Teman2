@@ -1,0 +1,417 @@
+brief_ref: evidence/brief.yml
+council_run: council.jsonl
+pii_scan: clean
+plan_ref: >-
+  research/visa/2026-09-27-oracle-production/{WINDOW-SPEC,BUILD-SPEC,FIX-ROUND-1,
+  FIX-ROUND-2,ENDING-ROUND,DELTA-ROUND}.md, progress log PROGRESS.md, freeze record
+  CODE_FROZEN.md (v2 + delta v3), and READY_FOR_REVIEW.md.
+seat_override: >-
+  R8 ground-truth-lane escape: this diff is a presentation-only transplant of an
+  already-approved branching atlas (WINDOW-SPEC/BUILD-SPEC). It touches no visa/KBLI/
+  tax rule or outcome-content data -- the reducer/tree/fact-mapper and
+  engine-adapter.ts (the code that actually consumes ground-truth content) are
+  untouched by design, so no NotebookLM grounding query applies to this diff's own
+  content and no ground_truth lane is declared.
+lanes:
+  - lane: oracle-atlas-build
+    role: build
+    seat:
+      "claude-sonnet-5 (single implementer across serialized rounds, conducted by
+      the Dux claude-opus-5-5 xhigh, who authored specs/QA harness, measured geometry,
+      applied prettier formatting and committed; the final-gate delta round had one
+      claude-sonnet-5 writer under a successor claude-opus-5-5 xhigh Dux)"
+  - lane: oracle-atlas-review-sol
+    role: review
+    seat: "codex-gpt-5.6-sol xhigh (provisional review + final review)"
+  - lane: oracle-atlas-review-kimi
+    role: review
+    seat: "kimi-code/k3 (preliminary + final)"
+  - lane: oracle-atlas-review-qwen
+    role: review
+    seat: "tp1-qwen3.8-max (preliminary + final)"
+  - lane: oracle-atlas-final-gate
+    role: review
+    seat:
+      "claude-opus-5-5 xhigh (fresh independent final gate, coordinator-commissioned;
+      first gate BLOCK on docs candidate 3710a230, recorded as history; a NEW fresh
+      gate on the delta candidate is PENDING and has not run yet)"
+diff:
+  behaviour_change: >-
+    Replaces the visa-oracle route's presentation layer with the approved
+    branching-atlas UI (map-style world/permit stages, category tiles, atlas scenery,
+    a native-dialog route history) while leaving the canonical evaluation/idempotency
+    reducer, SHADOW fail-closed check, consent/resume stores, telemetry and every
+    outcome-content mapping untouched. 19 approved WebPs ship byte-exact under
+    apps/mouth/public/static/visa-oracle/atlas/. No backend, package, lockfile, API,
+    or engine-adapter file changes anywhere in the diff. The final-gate delta makes
+    print/PDF open the default-closed outcome disclosures, centres the route dialog as
+    a fixed modal, and lets Pause suppress the verdict ViewTransition.
+  surface: >-
+    Code under apps/mouth/src/app/(visa-oracle)/visa-oracle and
+    apps/mouth/public/static/visa-oracle, plus this mandate's research/ docs and this
+    evidence directory (counts are in the receipts, measured per commit). New: _lib/atlas-scenes.ts,
+    _components/OracleScenery.tsx, _components/AtlasRoute.tsx, focused tests, 19
+    WebPs. Modified: OracleShell.tsx, QuestionScreen.tsx, WhyWeAsk.tsx,
+    OutcomeSheet.tsx, VerdictReveal copy, i18n.ts (EN+ID), oracle.css, two existing
+    tests updated for approved copy; the delta commit touches only oracle.css,
+    OutcomeSheet.tsx, OracleShell.tsx and their two focused test files.
+receipts:
+  - claim:
+      "code candidate f38cbf469d7e6de53689b1584bd287afc48ad547 (parent origin/main
+      f36e245af2) freezes 35 files, +5055/-319; v2 aggregate sha256 matches after
+      pre-commit prettier reformatted 14 files"
+    cmd: "CODE_FROZEN.md v2 freeze record (per-file sha256 list),
+      research/visa/2026-09-27-oracle-production/CODE_FROZEN.md"
+    result: "af611423607a76e130098faab20c553819d9ced6cbd9cbe4a7f9fa728ee184b9" # pragma: allowlist secret (sha256 manifest hash, not a credential)
+    exit: 0
+    ts: "2026-09-27T13:25:00Z"
+    seat: "claude-opus-5-5 (Dux)"
+  - claim:
+      "independently re-measured diff stat between origin/main f36e245af2 and
+      candidate f38cbf469d7e6de53689b1584bd287afc48ad547 for this evidence pack: 35
+      files changed, matching CODE_FROZEN.md"
+    cmd: "git diff --numstat f36e245af2 f38cbf469d7e6de53689b1584bd287afc48ad547"
+    result: "35 files changed, 5055 insertions(+), 319 deletions(-)"
+    exit: 0
+    ts: "2026-09-27T13:45:08Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim:
+      "deterministic gear floor for this diff is 3, sourced from the SIZE term
+      (measured churn 5374 >= SIZE_GEAR3_THRESHOLD 1828), not a hot-zone path hit --
+      apps/mouth visa-oracle paths are not in HOTZONE_PATTERNS"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <35-file list> --numstat-file <numstat>; same args with
+      --print-floor-source"
+    result: "floor=3; floor_source=size"
+    exit: 0
+    ts: "2026-09-27T13:45:08Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim:
+      "pii_scan clean -- the 35-file diff (apps/mouth/src + apps/mouth/public,
+      6059 diff lines) carries no email, phone, or passport-like pattern; only git
+      blob hashes, SVG path coordinates, and one synthetic test fixture date
+      (1990-01-01, AtlasRoute.test.tsx) matched loose numeric probes"
+    cmd: "git diff f36e245af2 f38cbf469d7e6de53689b1584bd287afc48ad547 --
+      apps/mouth/src apps/mouth/public, scanned with email/phone/passport-like regex
+      probes"
+    result: "0 real PII matches"
+    exit: 0
+    ts: "2026-09-27T13:44:00Z"
+    seat: "claude-sonnet-5 (evidence-pack drafting session)"
+  - claim: "ESLint on the visa-oracle route crashes on the clean baseline itself
+      (eslint-plugin-react vs ESLint 10.11.0) -- a pre-existing failure, not a
+      regression from this diff"
+    cmd: "eslint on apps/mouth/src/app/(visa-oracle)/visa-oracle, clean baseline
+      mirror (timestamp approximate -- the PROGRESS.md GROUND row is not itself
+      clock-stamped)"
+    result: "react/display-name crash: contextOrFilename.getFilename is not a
+      function"
+    exit: 1
+    ts: "2026-09-27T08:50:00Z"
+    seat: "claude-opus-5-5 (Dux)"
+  - claim: "baseline vitest on the clean Pro mirror before this diff existed"
+    cmd: 'vitest run "src/app/(visa-oracle)" on baseline mirror
+      ~/nuzantara/.worktrees/mouth-oracle-prod-0927-pro'
+    result: "45 files / 1229 tests passed, 25s"
+    exit: 0
+    ts: "2026-09-27T08:48:38Z"
+    seat: "claude-opus-5-5 (Dux)"
+  - claim: "exact-SHA canonical production build on frozen candidate
+      f38cbf469d7e6de53689b1584bd287afc48ad547, host Mini, CI-parity env exported
+      before the build (playwright.config.ts webServer.env + tests.yml job env)"
+    cmd: "npm run build (llms generation + next build --webpack +
+      assert-public-login-bundle.mjs + assert-roster-not-in-public-chunks.mjs)"
+    result: "exit 0, Next.js 16.3.4 (webpack)"
+    exit: 0
+    ts: "2026-09-27T13:34:44Z"
+    seat: "claude-opus-5-5 (Dux, host Mini)"
+  - claim: "exact-SHA typecheck on frozen candidate
+      f38cbf469d7e6de53689b1584bd287afc48ad547"
+    cmd: "npx tsc --noEmit -p tsconfig.json"
+    result: "0 errors"
+    exit: 0
+    ts: "2026-09-27T13:34:47Z"
+    seat: "claude-opus-5-5 (Dux, host Mini)"
+  - claim: "exact-SHA unit suite on frozen candidate
+      f38cbf469d7e6de53689b1584bd287afc48ad547, above the 45-file/1229-test
+      pre-change baseline"
+    cmd: 'npx vitest run "src/app/(visa-oracle)"'
+    result: "Test Files 50 passed (50), Tests 1324 passed (1324)"
+    exit: 0
+    ts: "2026-09-27T13:35:10Z"
+    seat: "claude-opus-5-5 (Dux, host Mini)"
+  - claim:
+      "exact-SHA atlas harness (EN/ID x desktop/mobile/narrow, 7 endings, stage
+      geometry 1024/1280/320, dark, reduced motion + Pause, print) on frozen
+      candidate f38cbf469d7e6de53689b1584bd287afc48ad547"
+    cmd: "npx playwright test --config=playwright.config.ts --project=chromium
+      --workers=3 e2e/atlas-qa.local.spec.ts"
+    result: "34 passed"
+    exit: 0
+    ts: "2026-09-27T13:37:16Z"
+    seat: "claude-opus-5-5 (Dux, host Mini)"
+  - claim: "exact-SHA PR e2e gate selection on frozen candidate
+      f38cbf469d7e6de53689b1584bd287afc48ad547 with CI-parity env exported before the
+      build -- the binding gate receipt (run2, superseding run1 below)"
+    cmd: 'npx playwright test --config=playwright.config.ts --project=chromium
+      --ignore-snapshots --reporter=list --grep "page Page|@offline"'
+    result: "134 passed, 1 skipped (existing opt-in BZ_VISUAL_GALLERY gallery,
+      bz-product-family.visual.spec.ts), 0 failed"
+    exit: 0
+    ts: "2026-09-27T13:38:02Z"
+    seat: "claude-opus-5-5 (Dux, host Mini)"
+  - claim:
+      "run1 exact-SHA PR e2e gate on the SAME frozen bytes reported failures --
+      ENVIRONMENTAL, not a code defect: the verification script set
+      NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER only at next start (NEXT_PUBLIC_* must
+      be set before the build, inlined at build time) and never
+      GARUDA_PUBLIC_ENABLED; closed by the run2 receipt above which exported
+      CI-parity env before the build; preserved at
+      /tmp/oracle-prod-0927/sha-f38cbf469d7e6de53689b1584bd287afc48ad547-run1-env-incomplete/SUMMARY.txt
+      on Mini"
+    cmd: 'npx playwright test --config=playwright.config.ts --project=chromium
+      --ignore-snapshots --reporter=list --grep "page Page|@offline" (run1,
+      incomplete env)'
+    result: "130 passed, 4 failed, 1 skipped"
+    exit: 1
+    ts: "2026-09-27T13:40:00Z"
+    seat: "claude-opus-5-5 (Dux, host Mini)"
+  - claim: "all three final review seats (codex-gpt-5.6-sol, kimi-code/k3,
+      tp1-qwen3.8-max) returned PASS on frozen candidate
+      f38cbf469d7e6de53689b1584bd287afc48ad547 / manifest
+      af611423607a76e130098faab20c553819d9ced6cbd9cbe4a7f9fa728ee184b9, zero residual
+      code blockers, only non-blocking notes"
+    cmd: "final review reports and receipts:
+      /tmp/oracle-prod-0927-council/final-{sol,kimi,qwen}.md +
+      final-{sol,kimi,qwen}-receipt.json"
+    result: "3/3 PASS"
+    exit: 0
+    ts: "2026-09-27T13:35:04Z"
+    seat: "codex-gpt-5.6-sol / kimi-code/k3 / tp1-qwen3.8-max"
+  - claim:
+      "final-gate delta: code candidate f7c9d7ee954eb0824db587ab73646c09538f8f45
+      (parent docs commit 3710a230) freezes the same 35 apps/ paths; delta vs
+      3710a230 is 5 files, +257/-12; v3 aggregate sha256 over the 35 committed
+      files, same method that reproduces the v2 aggregate for f38cbf46"
+    cmd:
+      "git diff --shortstat 3710a230 f7c9d7ee95 + per-file sha256 of committed
+      blobs (CODE_FROZEN.md v3, /tmp/oracle-prod-0927-DELTA_FROZEN.json)"
+    result: "017e6f9dd4adeb63f8cc62fa934f310db4a306fc4fa281341dbf6bd976d6499c" # pragma: allowlist secret (sha256 manifest hash, not a credential)
+    exit: 0
+    ts: "2026-09-27T14:57:00Z"
+    seat: "claude-opus-5-5 (successor Dux)"
+  - claim: "pii scan of the delta diff 3710a230..f7c9d7ee (262 added lines): no
+      email, phone or passport-like match"
+    cmd: "git diff 3710a230 f7c9d7ee95 added lines, email/phone/passport-like regex"
+    result: "0 matches"
+    exit: 0
+    ts: "2026-09-27T15:06:00Z"
+    seat: "claude-opus-5-5 (successor Dux)"
+  - claim:
+      "exact-SHA run3 on f7c9d7ee954eb0824db587ab73646c09538f8f45, host Mini,
+      CI-parity env exported before the build: canonical production build"
+    cmd: "npm run build (/tmp/oracle-prod-0927/sha-f7c9d7ee954eb0824db587ab73646c09538f8f45-run3-dux3/build.log)"
+    result: "exit 0, Next.js 16.3.4 (webpack)"
+    exit: 0
+    ts: "2026-09-27T14:56:58Z"
+    seat: "claude-opus-5-5 (successor Dux, host Mini)"
+  - claim: "exact-SHA run3 typecheck on f7c9d7ee954eb0824db587ab73646c09538f8f45"
+    cmd: "npx tsc --noEmit -p tsconfig.json"
+    result: "0 errors"
+    exit: 0
+    ts: "2026-09-27T14:57:01Z"
+    seat: "claude-opus-5-5 (successor Dux, host Mini)"
+  - claim:
+      "exact-SHA run3 unit suite on f7c9d7ee954eb0824db587ab73646c09538f8f45
+      (five new focused tests for print disclosures and Pause)"
+    cmd: 'npx vitest run "src/app/(visa-oracle)"'
+    result: "Test Files 50 passed (50), Tests 1329 passed (1329)"
+    exit: 0
+    ts: "2026-09-27T14:57:24Z"
+    seat: "claude-opus-5-5 (successor Dux, host Mini)"
+  - claim:
+      "exact-SHA run3 delta proof on f7c9d7ee954eb0824db587ab73646c09538f8f45:
+      default-closed PDF text carries the fixture law title, publisher, freshness,
+      support sentence and source dates, disclosures restored after print; route
+      dialog fixed and centred with scroll unchanged after opening on a scrolled
+      verdict at 1280x720 and 390x844; Pause gives 0 ViewTransition calls"
+    cmd: "npx playwright test --project=chromium --workers=1
+      e2e/oracle-delta-proof.local.spec.ts, cases F1-content, F1-manual-events,
+      F1-visitor-open, F1-diag, F1-info-real-print-button,
+      F2-desktop-scrolled-dom-click, F2-mobile-scrolled-dom-click,
+      F2-desktop-top-real-click, F2-mobile-top-real-click, F3-paused,
+      F3-not-paused, F3-os-reduced-motion (copies in
+      /tmp/oracle-prod-0927-final-gate-2/proofs/ on M5)"
+    result: "12 passed"
+    exit: 0
+    ts: "2026-09-27T14:57:36Z"
+    seat: "claude-opus-5-5 (successor Dux, host Mini)"
+  - claim: "exact-SHA run3 atlas harness on f7c9d7ee954eb0824db587ab73646c09538f8f45"
+    cmd: "npx playwright test --project=chromium --workers=3 e2e/atlas-qa.local.spec.ts"
+    result: "34 passed"
+    exit: 0
+    ts: "2026-09-27T14:59:39Z"
+    seat: "claude-opus-5-5 (successor Dux, host Mini)"
+  - claim: "exact-SHA run3 PR e2e gate selection on
+      f7c9d7ee954eb0824db587ab73646c09538f8f45 with CI-parity env exported before
+      the build -- the binding gate receipt for the delta candidate"
+    cmd: 'npx playwright test --config=playwright.config.ts --project=chromium
+      --ignore-snapshots --reporter=list --grep "page Page|@offline"'
+    result:
+      "134 passed, 1 skipped (existing opt-in BZ_VISUAL_GALLERY gallery), 0
+      failed"
+    exit: 0
+    ts: "2026-09-27T15:00:28Z"
+    seat: "claude-opus-5-5 (successor Dux, host Mini)"
+  - claim:
+      "delta review panel on frozen f7c9d7ee954eb0824db587ab73646c09538f8f45:
+      kimi-code/k3 PASS and tp1-qwen3.8-max PASS, all three final-gate findings
+      closed, only non-blocking notes"
+    cmd: "/tmp/oracle-prod-0927-council/delta-final-{kimi,qwen}.md +
+      delta-final-{kimi,qwen}-receipt.json (same packet sha256 70ca44b2)"
+    result: "2/2 PASS"
+    exit: 0
+    ts: "2026-09-27T15:00:52Z"
+    seat: "kimi-code/k3 / tp1-qwen3.8-max"
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "print/PDF geometry regression -- later atlas width/padding overrides
+      the old print reset, leaving the verdict narrow and indented"
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "stale keyboard branch preview -- preview reset on mouse leave only;
+      tabbing out leaves the last focused landscape visible without a
+      focused/selected branch"
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "reduced-motion control is untruthful -- when the OS requests reduced
+      motion, effective motion is already off while the button says Pause and its
+      Resume action cannot resume"
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "checkbox accessible name absorbs the full sensitive-data paragraph
+      instead of a short opt-in label"
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "entry scene mounts four full-size img elements at once (indonesia,
+      world, permit-paper, permit-depth), downloading assets never shown on entry --
+      contradicts the preload-only-current/nearby mandate"
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "every hover/focus on a category tile spawns a fresh Image() fetch
+      with no abort, so a pointer sweep or Tab traversal can trigger up to 11 full
+      WebP downloads"
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "LandscapeArt onerror clears the currently displayed image instead of
+      keeping the prior one, contradicting its own doc comment"
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "world-presentation keyboard focus order may not match visual
+      left-to-right (no/yes) order"
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "AtlasRoute Escape handling relies on close-order timing it does not
+      control instead of an explicit onCancel handler"
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max
+    objection: "stage layout loads four images on entry (indonesia, world,
+      permit-paper, permit-depth), violating the preload-only-current/nearby mandate
+      -- same defect as Kimi's eager permit-art mount finding, filed independently"
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max
+    objection:
+      "SVG clipPath id from useId() may contain a colon, which can fail to
+      resolve inside a url() fragment in Safari/older Chromium"
+    status: RETRACTED
+  - seat: tp1-qwen3.8-max
+    objection:
+      "paper-arrival animation can be cancelled by readiness deps re-running
+      the effect inside the 650ms window"
+    status: RETRACTED
+  - seat: tp1-qwen3.8-max
+    objection: "ConsultantContact unmounts and remounts on the verdict transition (true as observed; same key-change remount existed before the patch, so preserved behaviour, no change)"
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max
+    objection:
+      "LandscapeArt data-art attribute names the outgoing image during the
+      load window instead of the requested one (true as observed; no selector reads it, debug-only, no change)"
+    status: CONFIRMED
+  - seat: claude-opus-5-5
+    objection:
+      "final gate finding 1 (HIGH, blocking): print/PDF drops the legal references,
+      source dates and candidate reasons inside default-closed details; the print CSS
+      on children cannot open a closed details element"
+    status: CONFIRMED
+  - seat: claude-opus-5-5
+    objection:
+      "final gate finding 2 (MEDIUM): position relative on the modal route dialog
+      replaces its fixed positioning and pins it to the top-left"
+    status: CONFIRMED
+  - seat: claude-opus-5-5
+    objection:
+      "final gate finding 3 (LOW): the Pause control does not suppress the verdict
+      ViewTransition; only OS reduced motion does"
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "independent probe of the first delta build: dialog still at x0,y0 although
+      position is fixed -- Tailwind preflight's universal margin reset removes the UA
+      modal margin auto; the earlier scroll jump was Playwright auto-scroll, not the
+      product"
+    status: CONFIRMED
+unresolved:
+  - "Dissent status CONFIRMED in this pack means the finding was accepted as real
+    (the lint's vocabulary is CONFIRMED/PLAUSIBLE/RETRACTED); whether and where it was
+    fixed is stated in FIX-ROUND-2.md, DELTA-ROUND.md and the receipts."
+  - "Retracted-with-evidence, recorded for completeness: Qwen's useId-colon finding
+    was disproven by measuring renderToString(useId()) on this repo's React (19.2/
+    19.3), which renders `_R_0_` -- no colon; Qwen's arrival-truncation finding was
+    disproven because the effect only fires once both readiness flags are already
+    true, and both stay monotonic while the permit art remains mounted, so no re-run
+    path exists inside the 650ms window. Both are FIX-ROUND-2 section C dispositions,
+    corroborated independently by Kimi's and Sol's final reviews."
+  - "Qwen findings 4 and 5 (ConsultantContact key-based remount; LandscapeArt
+    data-art naming the outgoing asset) needed no change: remount-on-key-change is
+    preserved pre-existing behaviour, and data-art is a cosmetic/debug attribute no
+    CSS selector reads -- coordinator ruling, FIX-ROUND-2 section C."
+  - "Sol's final review (13:35:04Z) noted the corrected-CI-env full-gate rerun as
+    still pending at its own review time; the run2 gate receipt in this pack
+    (13:38:02Z, 134 passed / 0 failed) completed after that review and closes the
+    note -- Sol itself states it did not rerun heavy checks."
+  - "Kimi's final review recorded three accepted, non-blocking minors: clicking the
+    AtlasRoute dialog's own backdrop padding closes the dialog (harmless UX quirk,
+    consistent with the other close affordances); outcome.sources_title is now an
+    unreferenced key, which is correct under the keys-stay contract, not a defect;
+    WhyWeAsk's decisionMapping prop is now unread (dead parameter, non-functional,
+    TS does not flag it)."
+  - "ESLint still cannot run on this route at all (pre-existing eslint-plugin-react
+    crash against ESLint 10.11.0) -- out of scope for this diff; tsc/vitest/build/
+    e2e are what actually cover it, per the recorded assumption in brief.yml."
+  - "Pro became unusable mid-mandate (swap filled the shared APFS container); every
+    heavy check that binds this pack ran on Mini instead, and is labelled as such in
+    every receipt above."
+  - "The first fresh claude-opus-5-5 xhigh on-disk gate returned BLOCK on docs
+    candidate 3710a230 (verdict kept at /tmp/oracle-prod-0927-final-gate/verdict.md);
+    its three findings are closed by code candidate
+    f7c9d7ee954eb0824db587ab73646c09538f8f45 (DELTA-ROUND.md). Fresh gate 2 on the
+    docs-only candidate carrying this pack is coordinator-commissioned and PENDING,
+    and the Sol final delta review is relayed by the coordinator. Nothing is pushed;
+    no PR, arm, merge, or deploy has happened."
+  - "Delta review notes accepted without change: if afterprint never fires, the
+    disclosures stay open on screen (fails toward disclosure); a second beforeprint
+    without an afterprint forgets the first batch (same direction);
+    ::details-content is a Chromium-only fallback behind the primary
+    beforeprint/afterprint path."
+  - "Out of the delta's scope, recorded: on a scrolled verdict, closing the route
+    dialog returns focus to the header opener, which scrolls the page to the header
+    because the header is sticky only inside its own container (pre-existing
+    presentation)."

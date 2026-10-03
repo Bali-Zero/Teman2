@@ -1,0 +1,120 @@
+task_id: senderpii-c6
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Closes C2 and C3 of the fresh gate on PR #7449
+  (pull/7449#issuecomment-5849426890), due 2026-10-03:
+
+  C2 — #7449 fixed `_send_with_brevo_fallback`'s own log lines in both
+  `waiting_documents_service.py` and `completed_process_service.py`, but the gate found
+  each file's CALLER still logs the raw client address independently:
+  `waiting_documents_service.py`'s `trigger_on_waiting_documents` logs
+  `f"Document request email sent to client {client_data['email']}"` on success and the
+  raw exception `e` on failure; `completed_process_service.py` splits the same shape
+  across two methods — `_send_completion_email`'s own success log
+  (`"Completion email sent to client %s", client_email`) and `trigger_on_completed`'s
+  except log (raw `e`). Fixed with the same `redact_identifier_for_log`/`_bounded_scrub`
+  helpers already imported into both files by #7449 — no new redaction primitive.
+
+  C3 — `services/notifications/resend_http.py`'s `send_via_resend` (the Resend fallback
+  leg of `send_direct_email`, never touched by #7438/#7449 because those PRs only fixed
+  `router.py`'s own log lines, not the provider module it calls into) had three raw
+  sites: the success log's `to_email` plus a `subject` using `%r` (escapes newlines but
+  does not redact an embedded address — the same shape #7438 fixed in `router.py`
+  itself), the API-error log's `to_email` and unscrubbed `resp.text[:300]`, and the
+  exception log's `to_email` and raw exception text.
+
+  Full backend-wide triage of raw-address logger call sites redone from scratch this
+  time (see the PR body's triage table) — the two prior PRs' triage sections were each
+  found incomplete by the following gate.
+constraints:
+  - "C2/C3 fix exactly the sites the gate named, applying the SAME
+    redact_identifier_for_log/_bounded_scrub treatment #7438/#7449 already established —
+    no new regex, no new redaction primitive."
+  - "resend_http.py's subject follows the same scrub-then-escape order #7438 established
+    for router.py: `repr(_bounded_scrub(subject, 120))`."
+  - "resend_http.py's error-log response body is now scrubbed via `_bounded_scrub(resp.text,
+    300)` instead of the previous raw `resp.text[:300]` slice — bounding happens inside
+    the scrub helper now, not via a bare slice, so an embedded address in the provider's
+    error body is also redacted, not just truncated."
+  - "No client PII in this PR's own artifacts — every example/test address is a synthetic
+    `*.example.com`-shape address."
+acceptance:
+  - text: >-
+      (C2) `trigger_on_waiting_documents` and `trigger_on_completed`/`_send_completion_email`
+      SHALL NOT log the raw client address or raw exception text on their own
+      success/except log lines (independent of `_send_with_brevo_fallback`, already
+      fixed by #7449); non-PII diagnostic text SHALL survive (innocence).
+    probe: "pytest backend/tests/unit/services/crm/test_waiting_documents_service_pii_logs.py backend/tests/unit/services/crm/test_completed_process_service_pii_logs.py"
+  - text: >-
+      (C3) `send_via_resend`'s three log sites (success, API-error, exception) SHALL NOT
+      log the raw recipient address, the raw provider response body, or the raw
+      exception text; the subject SHALL be scrubbed-then-repr'd; non-PII diagnostic text
+      (status codes, non-address error text) SHALL survive.
+    probe: "pytest backend/tests/unit/services/notifications/test_resend_http.py"
+  - text: >-
+      No regression: the full notifications/crm/integrations/invoicing/security test set
+      plus the 3 core RAG suites named in `apps/backend-rag/CLAUDE.md` §11 SHALL still
+      pass; `ruff check` on the 7 touched files SHALL be clean.
+    probe: "pytest backend/tests/unit/services/notifications backend/tests/unit/services/crm backend/tests/unit/app/modules/notifications backend/tests/unit/security backend/tests/unit/services/integrations backend/tests/unit/services/invoicing backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py; ruff check backend/services/crm/waiting_documents_service.py backend/services/crm/completed_process_service.py backend/services/notifications/resend_http.py backend/tests/unit/app/modules/notifications/test_send_email_chain.py backend/tests/unit/services/crm/test_waiting_documents_service_pii_logs.py backend/tests/unit/services/crm/test_completed_process_service_pii_logs.py backend/tests/unit/services/notifications/test_resend_http.py"
+consumer_map:
+  - "`backend/services/crm/waiting_documents_service.py`'s `trigger_on_waiting_documents` /
+    `completed_process_service.py`'s `trigger_on_completed` + `_send_completion_email` —
+    every client-facing waiting-documents/completed-process automation run now logs a
+    digest instead of the recipient address on its own success/except lines."
+  - "`backend/services/notifications/resend_http.py`'s `send_via_resend` — the Resend
+    fallback leg of `send_direct_email` now redacts the recipient on all three outcomes
+    and scrubs the provider response body / exception text."
+  - "This PR's own body — closes the fresh-gate-found completeness gap in #7438's and
+    #7449's own triage sections (a long tail of raw-address sites named as missed)."
+risks:
+  - "The Zoho fallback call this PR's C2 fix sits downstream of
+    (`waiting_documents_service.py`/`completed_process_service.py`'s
+    `self.zoho_email_service.send_email(to_email=..., subject=..., body=...)`) remains
+    dead on `main` (signature mismatch documented in #7449's PR body) — a separate lane
+    (#7451) owns that fix. This PR's except-log scrub is correct regardless of which
+    exception (TypeError today, a real provider error once #7451 lands) flows through it."
+  - "process_automation_service.py (106/108/285/288) and automation.py
+    (172/175/177-179/289/291-298) carry the identical Brevo-then-Zoho raw-address idiom
+    as the two files this PR fixes — same class, explicitly left out again (now a third
+    time named) as a follow-up candidate, to keep this PR bounded to what C2 named."
+  - "A wide staff-identity/auth-audit logging family (login, PIN, JWT, clock-in, HR
+    migration scripts, thread assignment) logs internal team-member emails raw across
+    ~15 files. Left out — different risk class (internal staff identifier, not client
+    PII) and different owners; full list in the PR body so it is not silently lost again."
+grader: |
+  Ran the acceptance-criteria probes above locally (venv `apps/backend-rag/.venv`):
+  7 passed in test_waiting_documents_service_pii_logs.py (4 pre-existing + 3 new caller
+  tests), 7 passed in test_completed_process_service_pii_logs.py (4 pre-existing + 3
+  new), 12 passed in test_resend_http.py (7 pre-existing + 5 new), 38 passed in
+  test_send_email_chain.py (1 test gained a positive assertion, no new test); 1163
+  passed across the wider notifications/crm/integrations/invoicing/security set; 91
+  passed in the 3 core RAG suites. `ruff check` on all 7 touched/new files: clean.
+
+  Mutation verification (cp-backed, never `git checkout --`): backed up all 3 cured
+  source files, replaced each with `0a66a9d3`'s version (this branch's base, #7449's
+  merge commit) in turn, re-ran the full affected-test set together, restored from the
+  cp backup.
+  - All 7 new guilt tests went RED with the raw address/exception/response-body visible:
+    3 in `test_waiting_documents_service_pii_logs.py` (caller success + except + a third
+    covered by the existing innocence assertion), 2 in
+    `test_completed_process_service_pii_logs.py` (`_send_completion_email` success +
+    `trigger_on_completed` except), 3 in `test_resend_http.py` (success, API-error,
+    exception). The 25 pre-existing tests across the same 4 files (helper-level guilt,
+    innocence, non-PII plumbing) stayed GREEN throughout — confirms this PR closes
+    exactly the caller/resend-leg gap the gate named, not a re-fix of #7449's own fix.
+  - Restored: 64/64 green again (`git status --porcelain` on the 3 source files reported
+    no difference from the cp backup after restore).
+budget: >-
+  1 build lane (this session), no cross-family review lane. Locally-recomputed floor via
+  `scripts/evidence_pack_lint.py --print-floor` against this PR's actual changed-files/
+  numstat: floor 1 (churn 283, below the 400-line SIZE_GEAR2_THRESHOLD). Declaring Gear 2
+  anyway, matching the established gear for this PII-fix mandate chain (#7438, #7449),
+  given the security-sensitive nature of the change. 7 files touched: 3 source
+  (+27/-10) + 4 test (1 extended by 5 lines, 3 extended with new guilt/innocence cases,
+  +246/-0 combined). This brief is evidence-only and outside that count.
+pii: >-
+  none — every address in this PR's diff/tests/pack is a synthetic
+  `*.example.com`-shape address; no production `to_email`, practice, or client
+  identifier appears anywhere in this pack or the changed tests.

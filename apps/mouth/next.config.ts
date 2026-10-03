@@ -234,6 +234,12 @@ const nextConfig: NextConfig = {
   // Redirect legacy /kbli-navigator to new Next.js /kbli app
   async redirects() {
     return [
+      // The former zoning pitch now points to the property eligibility tool.
+      {
+        source: "/zoning",
+        destination: "/property/eligibility",
+        permanent: true,
+      },
       // Newsroom deduplication (2026-09-06): preserve inbound links while
       // consolidating duplicate articles created with truncated slugs.
       {
@@ -746,6 +752,43 @@ const nextConfig: NextConfig = {
       {
         source: "/visa/second-home-e33",
         destination: "/visa/second-home",
+        permanent: true,
+      },
+      // R19 legal footer migration (spec C1, PR-A, #7533): /privacy and
+      // /terms keep their URL (route group only), /cookies gets its real
+      // top-level URL. Permanent because the v2 page files are deleted in
+      // the same PR.
+      {
+        source: "/v2/privacy",
+        destination: "/privacy",
+        permanent: true,
+      },
+      {
+        source: "/v2/terms",
+        destination: "/terms",
+        permanent: true,
+      },
+      {
+        source: "/v2/cookies",
+        destination: "/cookies",
+        permanent: true,
+      },
+      // R19 company footer migration (spec C1, PR-B, 2026-09-27): /about,
+      // /careers and /press get their real top-level URL. Permanent
+      // because the v2 page files are deleted in the same PR.
+      {
+        source: "/v2/company/about",
+        destination: "/about",
+        permanent: true,
+      },
+      {
+        source: "/v2/company/careers",
+        destination: "/careers",
+        permanent: true,
+      },
+      {
+        source: "/v2/company/press",
+        destination: "/press",
         permanent: true,
       },
     ];

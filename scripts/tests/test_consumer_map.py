@@ -366,6 +366,30 @@ def test_innocence_excluded_tree_research_is_not_reported_even_as_docs_mention(
     assert "research" not in result.stdout
 
 
+def test_innocence_excluded_tree_evidence_is_not_a_live_consumer(
+    tmp_path: Path,
+) -> None:
+    """evidence/** holds merged PRs' evidence packs (brief.yml,
+    guilt-mutants.txt, reviews) — records of what a PR touched, never
+    executed against the tree. 2026-09-27: renaming a mouth test that an
+    old pack's brief.yml named blocked two pushes as 3 LIVE consumers."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "mouth" / "src" / "app" / "about.test.tsx"
+    _write(target, "it('x', () => {});\n")
+    pack = repo / "evidence" / "2026-09" / "agent-x-mouth-team-78b02ed9"
+    _write(pack / "brief.yml", "files:\n  - apps/mouth/src/app/about.test.tsx\n")
+    _write(pack / "guilt-mutants.txt", "about.test.tsx: mutant 1 killed\n")
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+    assert "evidence/" not in result.stdout
+
+
 # ---------------------------------------------------------------------------
 # Common-basename skip
 # ---------------------------------------------------------------------------

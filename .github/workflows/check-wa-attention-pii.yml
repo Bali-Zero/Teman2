@@ -1,0 +1,150 @@
+# The wa-mirror attention alerter's PII output-boundary guard must keep being
+# able to go RED.
+#
+# `scripts/tests/` is swept in CI with continue-on-error, so a test file
+# there does NOT gate a PR unless a workflow runs it explicitly. This is that
+# workflow, for EVERY scripts/tests/test_wa_attention_*.py — the suites that pin
+# scripts/wa-mirror-attention-telegram.py's OSINT envelope (Builder Contract §4)
+# and its sender-phone selectors: a mutant that
+# reintroduces a client name — under `crm_name`, `full_name`, `name` or
+# `display_name` — into a realtime/roster/digest Telegram message, or that
+# widens `mask_phone()`'s reveal past prefix(4)+suffix(4), or that lets
+# `c.full_name` back into the SELECT, must fail a PR, not just a nightly
+# report nobody reads (superscar #2, esiste != armato).
+#
+# The suites import scripts/wa-mirror-attention-telegram.py by path at
+# collection time, which does real work at import (reads ~/.wa-mirror.env,
+# mkdirs ~/.cache) and requires `asyncpg` to be importable or the whole
+# module skips (see each file's `wa` fixture docstring) — asyncpg is
+# installed explicitly below so the run actually exercises the assertions
+# instead of silently skipping green.
+#
+# The sender-phone suite ALSO drives the real selectors against a throwaway
+# local Postgres and SKIPS when initdb/pg_ctl are missing. A skip is green, so
+# the run would prove nothing while looking fine (superscar #2). The runner ships
+# PostgreSQL binaries under /usr/lib/postgresql/*/bin (not on PATH, service not
+# started): the step below puts them on PATH, and the pytest step FAILS on any
+# skipped test — "0 skipped" is a gate, not a hope.
+#
+# SENTINEL PATTERN (W69, same as guard-conformance.yml): NO top-level
+# pull_request paths filter — the workflow always triggers on PR and in the merge
+# queue so it can become a REQUIRED check without the pending-forever trap (a
+# required context whose workflow never started sits at "Expected" forever).
+# The relevant-paths decision lives in the "Did the alerter change?" step; on a
+# path-miss PR the job ends success. Making it required is a branch-protection
+# change — operator-only.
+name: check-wa-attention-pii
+
+on:
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+    types: [opened, synchronize, reopened, ready_for_review, edited] # edited = base retarget
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-wa-attention-pii-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  check-wa-attention-pii:
+    name: check-wa-attention-pii
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so the path-diff sees the PR base
+          filter: blob:none # partial clone: history without file contents (see guard-conformance.yml)
+
+      - name: Did the alerter change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running the full corpus"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          # An empty base would make `...HEAD` an empty diff and read as "irrelevant": fail closed.
+          if [[ -z "$base" ]]; then
+            echo "::error::pull_request.base.sha is empty - cannot decide relevance, refusing to sentinel-pass"
+            exit 1
+          fi
+          # Captured in its own checked command, NOT piped into `grep -q`: with pipefail an early
+          # grep exit SIGPIPEs git and would select run=false (fail-open); --no-renames so a moved
+          # file reports its OLD path too; -z + quotepath=off so odd filenames are not mangled.
+          git -c core.quotepath=off diff --name-only --no-renames -z "$base"...HEAD > changed.z
+          # grep: 0 = relevant, 1 = irrelevant, anything else (2 = error) must not read as "irrelevant".
+          rc=0
+          grep -zqE \
+            '^(scripts/wa-mirror-attention-telegram\.py|scripts/wa_attention_presence\.py|scripts/tests/test_wa_attention_[^/]*\.py|(scripts/(tests/)?)?(conftest\.py|pytest\.ini|pyproject\.toml|setup\.cfg|tox\.ini)|\.github/workflows/check-wa-attention-pii\.yml)$' changed.z || rc=$?
+          if [[ "$rc" -eq 0 ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$rc" -eq 1 ]]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::alerter, its tests and pytest config untouched - sentinel success"
+          else
+            echo "::error::grep failed (rc=$rc) - refusing to sentinel-pass"
+            exit 1
+          fi
+
+      - name: Set up Python
+        if: steps.relevant.outputs.run == 'true'
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest + asyncpg (pinned to the repo's lockfile version)
+        if: steps.relevant.outputs.run == 'true'
+        run: python -m pip install --quiet pytest asyncpg==0.31.0
+
+      - name: PostgreSQL server binaries on PATH (the real-PG tests must execute)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          pgbin="$(find /usr/lib/postgresql -mindepth 2 -maxdepth 2 -name bin | sort -V | tail -1)"
+          echo "$pgbin" >> "$GITHUB_PATH"
+          "$pgbin/initdb" --version
+          "$pgbin/pg_ctl" --version
+
+      - name: The attention corpus can go RED (guilt AND innocence), with 0 skipped
+        if: steps.relevant.outputs.run == 'true'
+        env:
+          PYTEST_ADDOPTS: "" # nothing from the environment may change what runs
+        run: |
+          set -euo pipefail
+          # Structured report, not terminal text: a skip or an xfail (junit records both as <skipped>)
+          # cannot hide behind a summary line's spelling, and every test DEFINED in these files
+          # (found by AST in scripts/wa_attention_presence.py, not by a hand-kept list) must appear in
+          # the report as run and unskipped - so `-k`, `--deselect` or a conftest modifyitems hook that
+          # drops any definition turns this RED. Identity is (module, class path, function); a
+          # parametrized test is covered per definition (one surviving variant satisfies it), not per
+          # parameter set. The collection patterns are FORCED below to the ones the AST assumes, so a
+          # config override cannot desynchronise them. Constructs the AST cannot follow are refused
+          # (RED), not guessed. CLOSED, each with a guilt case in test_wa_attention_presence_walk.py:
+          # a test def under if/try/with/for/while; any assignment at module or class scope whose
+          # target is a subscript or attribute (globals()[..]=, vars()[..]=, locals()[..]=,
+          # sys.modules[__name__].x=); any module/class-scope statement that LOADS the name of a test
+          # def (aliasing it or passing it to a helper); a rebinding of a test name, `pytest` or
+          # `fixture`; an import that binds a test*/Test* name, `*`, `object`, any *TestCase name or an
+          # aliased fixture; a class or function defined twice in one scope; a Test* class with any
+          # base other than object or a metaclass; a class not named Test* that defines test methods;
+          # any TestCase subclass; a decorator other than pytest.fixture / pytest.mark.* on a test or
+          # Test* class; a module-level setattr/globals/locals/vars/exec/eval/__import__/register
+          # call statement; any .__code__/.__dict__/.__globals__ access in a suite or in conftest.py
+          # at the root, scripts/ or scripts/tests/; and in those files a definition, assignment or
+          # import of pytest_pyfunc_call, pytest_runtest_call/protocol/makereport/logreport,
+          # pytest_report_teststatus, pytest_pycollect_makeitem, pytest_collection_modifyitems,
+          # pytest_plugins, pytest_sessionfinish/unconfigure, hookimpl(specname=...), .obj/.runtest
+          # assignment, pluginmanager/.register use or a star import. Fixtures named test* and Test*
+          # classes with __init__ are not tests and are skipped, as pytest does. The known suites are
+          # pinned so a deleted file cannot shrink the set.
+          # NOT DEFENDED, as a principle: anything not enumerated above is not defended; deliberate
+          # reflection is outside this tripwire's threat model. It catches accidents and lazy
+          # shadowing, it is not a sandbox. A next step, if one is wanted, is an allowlist of the
+          # statement forms permitted at module and class scope, not a longer blacklist.
+          python -m pytest scripts/tests/test_wa_attention_*.py -q -o addopts="" -o python_functions="test" -o python_classes="Test" -o xfail_strict=true --strict-markers --junitxml=junit.xml
+          python scripts/wa_attention_presence.py junit.xml

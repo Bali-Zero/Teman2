@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { flushSync } from "react-dom";
-import { ArrowRight, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import {
   restoreInterviewSnapshot,
@@ -10,7 +17,7 @@ import {
   type BlockedAnswer,
   type InterviewSnapshot,
 } from "../_lib/flow";
-import { QUESTIONS, getLane } from "../_lib/tree";
+import { CATEGORY_KEYS, QUESTIONS, getLane } from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
 import { prepareEvaluationRequest } from "../_lib/evaluation-request";
 import {
@@ -59,8 +66,12 @@ import {
 import { shadowParityMatches } from "../_lib/shadow-parity";
 import type { OutcomeViewModel } from "../_lib/outcome-view-model";
 import type { VisaOracleEvaluateResponse } from "../_lib/visa-oracle-contract";
-import { LivingTree } from "./LivingTree";
-import { PathsCounter } from "./PathsCounter";
+import {
+  ATLAS_ASSET_BASE,
+  atlasCopy,
+  isAtlasCategoryKey,
+  projectAtlasScene,
+} from "../_lib/atlas-scenes";
 import { QuestionScreen } from "./QuestionScreen";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { VerdictReveal } from "./VerdictReveal";
@@ -68,8 +79,8 @@ import { OutcomeSheet } from "./OutcomeSheet";
 import { ConsentHandoff, type ConsentHandoffProps } from "./ConsentHandoff";
 import { ThemeToggle, type OracleTheme } from "./ThemeToggle";
 import { LanguageToggle } from "./LanguageToggle";
-
-const HIDE_COUNTER_ON = new Set(["in_indonesia", "permit_expiry"]);
+import { AtlasBranchCaption, AtlasGlyph, OracleScenery } from "./OracleScenery";
+import { AtlasRoute, type AtlasRouteHandle } from "./AtlasRoute";
 
 /**
  * Shown whenever a real engine decision is rendered from a non-authoritative
@@ -205,7 +216,13 @@ export function OracleShell({ internalMode = false }: OracleShellProps = {}) {
 
   if (hydrated === null) {
     return (
-      <div className="oracle-root" data-oracle-theme="light" data-funnel="visa">
+      <div
+        className="oracle-root oracle-atlas"
+        data-oracle-theme="light"
+        data-funnel="visa"
+        data-scene="entry"
+        data-scene-layout="stage"
+      >
         <p className="oracle-subhead" role="status" aria-live="polite">
           {SESSION_COPY.en.loading}
         </p>
@@ -383,6 +400,29 @@ function OracleShellRuntime({
   const mode = useMemo<VisaOracleMode>(() => resolveVisaOracleMode(), []);
   const reducedMotion = useReducedMotion();
 
+  // Presentational-only state (BUILD-SPEC §6): never read by the reducer,
+  // evaluation effect or any consent/telemetry logic below — scenery and its
+  // controls never decide or gate anything the interview does.
+  const [previewCategory, setPreviewCategory] = useState<string | null>(null);
+  // FIX-ROUND-2 K2: the projection that actually swaps `OracleScenery`'s
+  // asset (and therefore fires an image request) is debounced 150ms behind
+  // the raw hover/focus signal above, so five rapid tile previews resolve
+  // into at most one asset request/projection instead of one per tile.
+  const [debouncedPreviewCategory, setDebouncedPreviewCategory] = useState<
+    string | null
+  >(null);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedPreviewCategory(previewCategory);
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [previewCategory]);
+  const [motionPaused, setMotionPaused] = useState(false);
+  const motion = !reducedMotion && !motionPaused;
+  const routeDialogRef = useRef<AtlasRouteHandle>(null);
+  const resumeDescriptionId = useId();
+  const resumeCheckboxId = useId();
+
   const clearAllEvaluationIdentities = useCallback(() => {
     clearEvaluationIdentities(memoryIdentityStorage);
     clearEvaluationIdentities();
@@ -461,6 +501,44 @@ function OracleShellRuntime({
   } = flow;
   const language = state.language;
   const sessionCopy = SESSION_COPY[language];
+
+  const scene = useMemo(
+    () =>
+      projectAtlasScene(
+        current,
+        state.facts,
+        current.kind === "question" && current.questionId === "category"
+          ? debouncedPreviewCategory
+          : null,
+      ),
+    [current, state.facts, debouncedPreviewCategory],
+  );
+
+  // One question/step key (BUILD-SPEC §6): reset the watershed hover
+  // preview and scroll to the top of the new screen. `document.
+  // documentElement.scrollTop` (not `window.scrollTo`) because jsdom has no
+  // layout and `window.scrollTo` is pure noise there (invariant §0.3 tests).
+  const stepKey =
+    current.kind + (current.kind === "question" ? current.questionId : "");
+  useEffect(() => {
+    setPreviewCategory(null);
+    setDebouncedPreviewCategory(null);
+    document.documentElement.scrollTop = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepKey]);
+
+  // "Your route" only once the interview has something to recap — mirrors
+  // AtlasRoute's own ledger membership test (a question actually recorded a
+  // fact, not merely visited in history).
+  const hasAnsweredQuestion = useMemo(
+    () =>
+      state.history.some(
+        (node) =>
+          node.kind === "question" &&
+          state.facts[node.questionId] !== undefined,
+      ),
+    [state.history, state.facts],
+  );
 
   useEffect(() => {
     if (initialResumeExpiresAtIso !== null) {
@@ -563,14 +641,20 @@ function OracleShellRuntime({
         startViewTransition?: (callback: () => void) => unknown;
       }
     ).startViewTransition;
-    if (reducedMotion || !startViewTransition) {
+    // F3 fix (ORACLE-PROD-20260927 delta, gate finding 3): this used to
+    // gate only on the OS's own `reducedMotion` signal, so pressing the
+    // in-app Pause control (`motionPaused`) left the verdict transition
+    // running anyway. `motion` is the SAME effective flag the rest of the
+    // shell already reads (`!reducedMotion && !motionPaused`) — gating on
+    // it here keeps Pause and the OS setting equally authoritative.
+    if (!motion || !startViewTransition) {
       advance();
       return;
     }
     startViewTransition.call(document, () => {
       flushSync(() => advance());
     });
-  }, [advance, reducedMotion]);
+  }, [advance, motion]);
 
   useEffect(() => {
     if (current.kind === "verdict" && frozenToday === null) {
@@ -822,12 +906,26 @@ function OracleShellRuntime({
       : restoreToday.toISOString(),
   );
 
+  const isStageQuestion =
+    current.kind === "question" &&
+    (current.questionId === "in_indonesia" ||
+      current.questionId === "holds_stay_permit");
+  const eyebrowText =
+    current.kind === "question" && state.pendingFollowUp === current.questionId
+      ? atlasCopy(language, "scene.follow_up")
+      : scene.labelKey
+        ? atlasCopy(language, scene.labelKey)
+        : "";
+
   return (
     <div
-      className="oracle-root"
+      className="oracle-root oracle-atlas"
       data-oracle-theme={theme}
       data-funnel="visa"
       data-internal-preview={internalMode ? "true" : undefined}
+      data-scene={scene.id}
+      data-scene-layout={scene.layout}
+      data-motion={motion ? "on" : "paused"}
     >
       <div className="oracle-shell">
         {internalMode && (
@@ -842,14 +940,50 @@ function OracleShellRuntime({
             {INTERNAL_PREVIEW_NOTICE}
           </p>
         )}
-        <header className="oracle-topbar">
-          <span
-            className="oracle-badge"
-            title={translate(language, "prototype.badge.detail")}
-          >
+        <header className="oracle-topbar oracle-atlas-header">
+          <div className="oracle-atlas-brand">
+            <img src={`${ATLAS_ASSET_BASE}logo.webp`} alt="" />
+            <b>BALI ZERO</b>
+          </div>
+          {/* ENDING-ROUND scope extension: the `title` tooltip exposed
+              "Only deterministic engine outcomes may appear as supported
+              paths" — engine-jargon, on a badge whose own visible text
+              ("Visa decision support") is unchanged. The i18n key stays
+              (BUILD-SPEC keys-stay contract); only this attribute goes. */}
+          <span className="oracle-badge">
             {translate(language, "prototype.badge")}
           </span>
+          <div className="oracle-atlas-header__wordmark" aria-hidden="true">
+            Visa <em>Oracle</em>
+          </div>
           <div className="oracle-topbar__actions">
+            {current.kind !== "framing" && hasAnsweredQuestion && (
+              <button
+                type="button"
+                className="oracle-question__back"
+                onClick={(event) =>
+                  routeDialogRef.current?.open(event.currentTarget)
+                }
+              >
+                {atlasCopy(language, "tools.route")}
+              </button>
+            )}
+            {/* FIX-ROUND-2 S2: when the OS already asks for reduced motion,
+                motion is already off — a Pause/Resume toggle over it is a
+                no-op control. Otherwise the label itself communicates state
+                (Pause motion ⇄ Resume motion), so no `aria-pressed`. */}
+            {!reducedMotion && (
+              <button
+                type="button"
+                className="oracle-question__back"
+                onClick={() => setMotionPaused((value) => !value)}
+              >
+                {atlasCopy(
+                  language,
+                  motionPaused ? "tools.resume" : "tools.pause",
+                )}
+              </button>
+            )}
             {hasLocalResume && (
               <button
                 type="button"
@@ -866,94 +1000,92 @@ function OracleShellRuntime({
               onChange={setTheme}
             />
           </div>
+          {/* D3: a compact floating tool anchored to the header itself (not
+              a full-width strip in the document flow) so it never pushes
+              the scene down. Same component/props as before — only the
+              wrapper and its position are new. Once an outcome exists the
+              "plan this with Bali Zero" card renders inline below instead
+              (unchanged). */}
+          {!outcome && (
+            <div className="oracle-atlas-consult-float">
+              <ConsultantContact
+                key="consultation"
+                language={language}
+                guardianConsentRequired={guardianConsentRequired}
+                context="CONSULTATION"
+              />
+            </div>
+          )}
         </header>
 
-        <ConsultantContact
-          key={outcome ? "assessment" : "consultation"}
-          language={language}
-          guardianConsentRequired={guardianConsentRequired}
-          {...(outcome
-            ? {
-                context: "ASSESSMENT",
-                state: outcome.state as VisaOracleTelemetryState,
-                assessmentReference: outcomeAssessmentReference,
-              }
-            : { context: "CONSULTATION" })}
-        />
-
-        <main className="oracle-main">
-          <div className="oracle-main__tree">
-            <LivingTree
-              language={language}
-              current={current}
-              facts={state.facts}
-              onEditQuestion={handleEdit}
-              onSelectCategory={handleSelectCategory}
-              // Evidence, not inference: only a verdict already in this
-              // attempt's history lets the rail call an off-spine question
-              // the fact the engine asked for (council round 6).
-              visitedVerdict={state.history.some(
-                (node) => node.kind === "verdict",
-              )}
-              outcome={
-                // The rail may name a product ONLY from an engine answer
-                // that is already on screen — never from a local guess, and
-                // never while the request is still in flight.
-                current.kind === "verdict" && outcome !== null && !evaluating
-                  ? {
-                      state: outcome.state,
-                      provenance: outcome.provenance,
-                      candidates: outcome.candidates.map((candidate) => ({
-                        code: candidate.code,
-                        name: candidate.name,
-                      })),
-                    }
-                  : null
-              }
-            />
-          </div>
+        <main className="oracle-main oracle-atlas-main">
+          <OracleScenery scene={scene} motion={motion} language={language} />
 
           <div className="oracle-main__content">
-            {current.kind === "question" &&
-              !HIDE_COUNTER_ON.has(current.questionId) && (
-                <div style={{ marginBottom: "var(--space-4)" }}>
-                  <PathsCounter
-                    language={language}
-                    count={interviewBranchesRemaining}
-                    visible
-                  />
-                </div>
-              )}
-
             {current.kind === "framing" && (
-              <div className="oracle-question">
-                <h1 className="oracle-headline" tabIndex={-1}>
-                  {translate(language, "framing.title")}
+              <div className="oracle-atlas-entry">
+                <h1
+                  className="oracle-headline oracle-atlas-entry__title"
+                  tabIndex={-1}
+                >
+                  Visa <em>Oracle</em>
                 </h1>
-                <p className="oracle-subhead">
+                {/* Existing test pins `getByRole("heading", { name:
+                    translate(lang,"framing.title") })` (OracleShell.test.tsx
+                    "offers generic contact during framing…") — an h2 keeps
+                    that accessible name AND role while the h1 above carries
+                    the wordmark, per BUILD-SPEC §6. */}
+                <h2 className="oracle-atlas-entry__subtitle">
+                  {translate(language, "framing.title")}
+                </h2>
+                <p className="oracle-atlas-entry__body">
                   {translate(language, "framing.body")}
                 </p>
-                <p className="oracle-question__hint">{sessionCopy.resume}</p>
-                <label className="oracle-checklist__item">
+                <button
+                  type="button"
+                  className="oracle-atlas-start"
+                  onClick={startInterview}
+                >
+                  <span
+                    className="oracle-atlas-start__dot"
+                    aria-hidden="true"
+                  />
+                  {translate(language, "framing.cta")}
+                  <span aria-hidden="true"> →</span>
+                </button>
+                {/* FIX-ROUND-2 S3: the checkbox's accessible name is ONLY
+                    the short opt-in text — the full resume sentence is a
+                    separate, always-visible description (`aria-describedby`)
+                    rather than folded into the label, which used to make the
+                    accessible name the whole paragraph. */}
+                <div className="oracle-atlas-save">
                   <input
+                    id={resumeCheckboxId}
                     type="checkbox"
                     checked={resumeEnabled}
+                    aria-describedby={resumeDescriptionId}
                     onChange={(event) =>
                       handleResumeOptIn(event.currentTarget.checked)
                     }
                   />
-                  {sessionCopy.resumeOptIn}
-                </label>
-                <button
-                  type="button"
-                  className="oracle-option-card"
-                  style={{ width: "fit-content" }}
-                  onClick={startInterview}
-                >
-                  {translate(language, "framing.cta")}
-                  <ArrowRight aria-hidden="true" size={18} />
-                </button>
+                  <span>
+                    <label htmlFor={resumeCheckboxId}>
+                      {sessionCopy.resumeOptIn}
+                    </label>
+                    <small id={resumeDescriptionId}>{sessionCopy.resume}</small>
+                  </span>
+                </div>
               </div>
+            )}
+
+            {current.kind === "question" && isStageQuestion && (
+              <div className="oracle-atlas-stage-wordmark" aria-hidden="true">
+                Visa <em>Oracle</em>
+              </div>
+            )}
+
+            {current.kind === "question" && !isStageQuestion && (
+              <p className="oracle-atlas-eyebrow">{eyebrowText}</p>
             )}
 
             {current.kind === "question" && (
@@ -965,6 +1097,20 @@ function OracleShellRuntime({
                 onSkip={() => skip(current.questionId)}
                 onBack={back}
                 canGoBack={canGoBack}
+                presentation={
+                  current.questionId === "in_indonesia"
+                    ? "world"
+                    : current.questionId === "holds_stay_permit"
+                      ? "permit"
+                      : current.questionId === "category"
+                        ? "watershed"
+                        : "default"
+                }
+                onPreviewOption={
+                  current.questionId === "category"
+                    ? setPreviewCategory
+                    : undefined
+                }
                 noticeI18nKey={noticeFor(current.questionId, lane)}
                 conflictI18nKey={conflictNoticeFor(
                   current.questionId,
@@ -976,80 +1122,135 @@ function OracleShellRuntime({
             )}
 
             {current.kind === "confirmation" && (
-              <ConfirmationCard
-                language={language}
-                facts={state.facts}
-                assumptions={assumptions}
-                interviewBranchesRemaining={interviewBranchesRemaining}
-                onBack={back}
-                onEdit={handleEdit}
-                onConfirm={revealVerdict}
-              />
+              <>
+                <p className="oracle-atlas-eyebrow">{eyebrowText}</p>
+                <div className="oracle-atlas-ribbon" aria-hidden="true">
+                  <span />
+                  <AtlasGlyph category={state.facts.category ?? "other"} />
+                  <span />
+                </div>
+                <ConfirmationCard
+                  language={language}
+                  facts={state.facts}
+                  assumptions={assumptions}
+                  interviewBranchesRemaining={interviewBranchesRemaining}
+                  onBack={back}
+                  onEdit={handleEdit}
+                  onConfirm={revealVerdict}
+                />
+              </>
             )}
 
-            {current.kind === "verdict" &&
-              (evaluating || outcome === null ? (
-                <div
-                  className="oracle-verdict-card"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <p className="oracle-subhead">{sessionCopy.evaluating}</p>
-                </div>
-              ) : (
-                <>
-                  <VerdictReveal
-                    language={language}
-                    state={outcome.state}
-                    provenance={outcome.provenance}
-                    legalStatus={outcome.candidates[0]?.legal.status}
-                    isSecondHomeStudioOnly={isSecondHomeStudioOnly(outcome)}
-                  />
-                  <OutcomeSheet
-                    language={language}
-                    outcome={outcome}
-                    facts={state.facts}
-                    onSelectCategory={handleSelectCategory}
-                    onEditMissingInput={handleEdit}
-                    onAskMissingInput={handleAskFollowUp}
-                  />
+            {current.kind === "verdict" && (
+              <>
+                <p className="oracle-atlas-eyebrow">{eyebrowText}</p>
+                {evaluating || outcome === null ? (
                   <div
-                    className="oracle-no-print"
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "var(--space-4)",
-                      marginTop: "var(--space-6)",
-                    }}
+                    className="oracle-verdict-card"
+                    role="status"
+                    aria-live="polite"
                   >
-                    {outcome.state === "TEMPORARILY_UNAVAILABLE" &&
-                      outcome.outage.retryable && (
-                        <button
-                          type="button"
-                          className="oracle-option-card"
-                          onClick={retryEvaluation}
-                        >
-                          {sessionCopy.retry}
-                        </button>
-                      )}
-                    <button
-                      type="button"
-                      className="oracle-question__back"
-                      onClick={handleReviewAnswers}
-                    >
-                      {translate(language, "verdict.edit_answers" as I18nKey)}
-                    </button>
-                    <button
-                      type="button"
-                      className="oracle-question__back"
-                      onClick={handleRestart}
-                    >
-                      {translate(language, "restart.button")}
-                    </button>
+                    <p className="oracle-subhead">{sessionCopy.evaluating}</p>
+                    <span className="oracle-atlas-orbit" aria-hidden="true" />
                   </div>
-                </>
-              ))}
+                ) : (
+                  <>
+                    <VerdictReveal
+                      language={language}
+                      state={outcome.state}
+                      provenance={outcome.provenance}
+                      legalStatus={outcome.candidates[0]?.legal.status}
+                      isSecondHomeStudioOnly={isSecondHomeStudioOnly(outcome)}
+                    />
+                    <OutcomeSheet
+                      language={language}
+                      outcome={outcome}
+                      facts={state.facts}
+                      onSelectCategory={handleSelectCategory}
+                      onEditMissingInput={handleEdit}
+                      onAskMissingInput={handleAskFollowUp}
+                    />
+                    <ConsultantContact
+                      key="assessment"
+                      language={language}
+                      guardianConsentRequired={guardianConsentRequired}
+                      context="ASSESSMENT"
+                      state={outcome.state as VisaOracleTelemetryState}
+                      assessmentReference={outcomeAssessmentReference}
+                    />
+                    <div className="oracle-no-print oracle-atlas-actions">
+                      {outcome.state === "TEMPORARILY_UNAVAILABLE" &&
+                        outcome.outage.retryable && (
+                          <button
+                            type="button"
+                            className="oracle-option-card"
+                            onClick={retryEvaluation}
+                          >
+                            {sessionCopy.retry}
+                          </button>
+                        )}
+                      <button
+                        type="button"
+                        className="oracle-question__back"
+                        onClick={handleReviewAnswers}
+                      >
+                        {translate(language, "verdict.edit_answers" as I18nKey)}
+                      </button>
+                      <button
+                        type="button"
+                        className="oracle-question__back"
+                        onClick={handleRestart}
+                      >
+                        {translate(language, "restart.button")}
+                      </button>
+                    </div>
+                    <details className="oracle-atlas-alternatives">
+                      <summary>{atlasCopy(language, "tools.explore")}</summary>
+                      <div>
+                        {CATEGORY_KEYS.filter(
+                          (category) => category !== state.facts.category,
+                        ).map((category) => (
+                          <button
+                            type="button"
+                            key={category}
+                            onClick={() => handleSelectCategory(category)}
+                          >
+                            {translate(
+                              language,
+                              `q.category.opt.${category}` as I18nKey,
+                            )}
+                            <span aria-hidden="true"> ↗</span>
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  </>
+                )}
+              </>
+            )}
           </div>
+
+          {/* FIX-ROUND-2 A7: a direct child of `<main>`, not of
+              `.oracle-main__content` — that column is `position:relative`
+              in the landscape layout, so the caption's `right`/`top`
+              percentages used to resolve against its ~610px width instead
+              of the full-width stage/scene box. */}
+          {current.kind === "question" &&
+            !isStageQuestion &&
+            (current.questionId === "category" ? (
+              <AtlasBranchCaption
+                category={previewCategory}
+                language={language}
+                hub
+              />
+            ) : (
+              isAtlasCategoryKey(state.facts.category) && (
+                <AtlasBranchCaption
+                  category={state.facts.category}
+                  language={language}
+                />
+              )
+            ))}
         </main>
 
         <footer className="oracle-footer">
@@ -1058,6 +1259,15 @@ function OracleShellRuntime({
             {translate(language, "footer.privacy")}
           </a>
         </footer>
+
+        <AtlasRoute
+          ref={routeDialogRef}
+          language={language}
+          history={state.history}
+          facts={state.facts}
+          onEdit={handleEdit}
+          onSelectCategory={handleSelectCategory}
+        />
       </div>
     </div>
   );

@@ -448,9 +448,7 @@ class TestGetRoleMetricsFakeConstantsGone:
         mock_conn.fetchval = AsyncMock(side_effect=[5, 2, 10000, 1, 14, 4])
         mock_pool = _make_pool(mock_conn)
 
-        result = await get_role_metrics(
-            role="tax", user_id="", _current_user={}, db_pool=mock_pool
-        )
+        result = await get_role_metrics(role="tax", user_id="", _current_user={}, db_pool=mock_pool)
 
         assert result["metrics"]["clienti_compliant"] == 14
         assert result["metrics"]["alert_pajak"] == 4
@@ -529,6 +527,22 @@ class TestPortalChallengeEndpoint:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
             yield mock_cache
+
+    @pytest.fixture(autouse=True)
+    def _pin_round1_now(self, monkeypatch):
+        """Pins the router's own clock seam (`_portal_challenge_now`) to a
+        moment inside Round 1 by default — NOT the stdlib `datetime` class —
+        so every test below stays on the R1 branch deterministically,
+        regardless of the real calendar date the suite happens to run on
+        (after 2026-09-29 00:00 WITA, "today" would otherwise silently flip
+        these onto the R2 branch). The one Round 2 test overrides this seam
+        explicitly with its own later `monkeypatch.setattr` call."""
+        from datetime import datetime, timezone
+
+        import backend.app.routers.dashboard_summary as dashboard_summary
+
+        frozen_now = datetime(2026, 9, 20, 4, 0, tzinfo=timezone.utc)
+        monkeypatch.setattr(dashboard_summary, "_portal_challenge_now", lambda: frozen_now)
 
     def _make_client(self, current_user: dict, mock_pool):
         from fastapi import FastAPI
@@ -651,7 +665,12 @@ class TestPortalChallengeEndpoint:
         # test@balizero.com, which the roster merge deliberately filters as a
         # QA fixture account (see TestMergeRosterAndActivity), so it can't be
         # used to exercise the is_me=True branch here.
-        caller = {"id": "u1", "email": "caller@balizero.com", "role": "member", "full_name": "Caller"}
+        caller = {
+            "id": "u1",
+            "email": "caller@balizero.com",
+            "role": "member",
+            "full_name": "Caller",
+        }
         roster_rows = [
             {
                 "email": "caller@balizero.com",
@@ -697,8 +716,18 @@ class TestPortalChallengeEndpoint:
             },
         ]
         activity_rows = [
-            {"creator_email": "a@balizero.com", "activations": 10, "invited": 10, "last_activation_at": None},
-            {"creator_email": "b@balizero.com", "activations": 7, "invited": 7, "last_activation_at": None},
+            {
+                "creator_email": "a@balizero.com",
+                "activations": 10,
+                "invited": 10,
+                "last_activation_at": None,
+            },
+            {
+                "creator_email": "b@balizero.com",
+                "activations": 7,
+                "invited": 7,
+                "last_activation_at": None,
+            },
         ]
         mock_db_pool._mock_conn.fetch = AsyncMock(side_effect=[roster_rows, activity_rows, []])
         # sum(activations) would be 17; the real distinct-client count (one
@@ -711,3 +740,130 @@ class TestPortalChallengeEndpoint:
 
         assert resp.status_code == 200
         assert resp.json()["team_total_activations"] == 16
+
+    def test_round2_payload_shape_and_the_september_carry_rule(
+        self, mock_current_user, mock_db_pool, monkeypatch
+    ):
+        """Frozen `now` on the Round 2 side of `ROUND2_START` — the endpoint
+        must return the R2 shape (§4 of the spec): `round`, `campaign`,
+        empty `tiers`, populated `rank_prizes`/`scoring`, Asya excluded from
+        `entries` but present in `asya_mission`, and a frozen `september`
+        block. September prize winners carry 0; everyone else carries their
+        R1 activations."""
+        from datetime import datetime, timezone
+
+        import backend.app.routers.dashboard_summary as dashboard_summary
+
+        # Overrides this class's `_pin_round1_now` autouse fixture — same
+        # seam (`_portal_challenge_now`), a Round 2 instant instead.
+        frozen_now = datetime(2026, 10, 5, 3, 0, tzinfo=timezone.utc)
+        monkeypatch.setattr(dashboard_summary, "_portal_challenge_now", lambda: frozen_now)
+
+        roster_rows = [
+            {
+                "email": email,
+                "display_name": name,
+                "department": "accounting" if email == "asya@balizero.com" else "setup",
+                "role": "member",
+                "active": True,
+                "avatar": None,
+            }
+            for email, name in [
+                ("surya@balizero.com", "Surya"),
+                ("ari.firda@balizero.com", "Ari Firda"),
+                ("krisna@balizero.com", "Krisna"),
+                ("adit@balizero.com", "Adit"),
+                ("vino@balizero.com", "Vino"),
+                ("damar@balizero.com", "Damar"),
+                ("outsider@balizero.com", "Outsider"),
+                ("asya@balizero.com", "Asya Nadia"),
+            ]
+        ]
+        r1_activity_rows = [
+            {
+                "creator_email": email,
+                "activations": activations,
+                "invited": activations,
+                "last_activation_at": None,
+            }
+            for email, activations in [
+                ("surya@balizero.com", 25),
+                ("ari.firda@balizero.com", 22),
+                ("krisna@balizero.com", 18),
+                ("adit@balizero.com", 23),
+            ]
+        ]
+        recent_registration_rows = [
+            {"creator_email": "adit@balizero.com", "used_at": frozen_now},
+            {"creator_email": "outsider@balizero.com", "used_at": frozen_now},
+        ]
+        # fetch() order in `_build_round2_payload`: roster, r1_activity,
+        # registration, recent_registration, first_document, request,
+        # review, asya_request, asya_client_event.
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            side_effect=[
+                roster_rows,
+                r1_activity_rows,
+                [],
+                recent_registration_rows,
+                [],
+                [],
+                [],
+                [],
+                [],
+            ]
+        )
+        # fetchval() order: r1_team_total, team_total_registrations.
+        mock_db_pool._mock_conn.fetchval = AsyncMock(side_effect=[4, 0])
+
+        client = self._make_client(mock_current_user, mock_db_pool)
+        resp = client.get("/api/dashboard/portal-challenge")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["round"] == 2
+        assert body["campaign"] == "Lascia o raddoppia"
+        assert body["tiers"] == []
+        assert {p["rank"] for p in body["rank_prizes"]} == {1, 2, 3, 4, 5}
+        assert body["scoring"]["registration"] == 1
+        assert {p["rank"]: p["min_points"] for p in body["rank_prizes"]} == {
+            1: 100,
+            2: 80,
+            3: 60,
+            4: 30,
+            5: 20,
+        }
+
+        member_names = {e["member"] for e in body["entries"]}
+        assert "asya" not in member_names
+
+        by_member = {e["member"]: e for e in body["entries"]}
+        assert by_member["surya"]["carry_points"] == 0
+        assert by_member["surya"]["september_choice"] == "prize"
+        assert by_member["ari.firda"]["carry_points"] == 0
+        assert by_member["krisna"]["carry_points"] == 0
+        assert by_member["adit"]["carry_points"] == 23
+        assert by_member["adit"]["september_choice"] == "carry"
+        # Zero's 2026-09-30 slot rule: adit's 23 carried points clear only
+        # slot 5 (min 20), so he slides there; prize-takers start at 0.
+        assert by_member["adit"]["prize_slot"] == 5
+        assert by_member["adit"]["prize_idr"] == 700_000
+        assert by_member["surya"]["prize_slot"] is None
+        assert by_member["surya"]["september_rank"] == 1
+        assert by_member["adit"]["september_rank"] is None
+        assert all(e["playoff_pending"] is False for e in by_member.values())
+
+        # Zero's 2026-09-29 ruling: only the six September players are ranked.
+        assert member_names == {"surya", "ari.firda", "krisna", "adit", "vino", "damar"}
+        # The live feed never shows a non-participant, in either feed field.
+        assert [ev["display_name"] for ev in body["recent_events"]] == ["Adit"]
+        assert [ev["display_name"] for ev in body["recent_activations"]] == ["Adit"]
+
+        assert body["september"]["status"] == "closed"
+        # September never excluded Asya — that exclusion is an R2-only rule
+        # for the general ranking, so all 8 roster members show up here.
+        assert len(body["september"]["entries"]) == 8
+
+        assert body["asya_mission"]["target_points"] == 60
+        assert body["asya_mission"]["prize_idr"] == 1_000_000
+        assert body["asya_mission"]["is_me"] is False

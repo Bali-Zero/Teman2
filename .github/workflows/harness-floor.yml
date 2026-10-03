@@ -507,6 +507,125 @@ jobs:
           cat /tmp/workflow-patch.txt
 
       # -----------------------------------------------------------------
+      # Step 2d — HOTZONE_PATTERNS may only GROW below floor 3 (ruling
+      # 2026-09-27, prerequisite of codexpin PR-1 #7420). The list lives in
+      # scripts/evidence_pack_lint.py, itself NOT a hot zone, so a floor-1 PR
+      # could drop a pattern and floor that path at 1 for good. When the
+      # linter is in the diff, ANY merge-base (W102) pattern missing at HEAD
+      # floors the diff at 3 (applied in Step 3); adding changes nothing.
+      # Parsed with `ast` from BYTES (nothing executed; a coding cookie
+      # decodes as the interpreter will), not model_routing_gate.py's regex,
+      # which reads a commented-out `# "fly.toml",` as still present. Inline
+      # so a floor-1 PR cannot neuter the parser. FAIL CLOSED to floor 3,
+      # never red: no merge-base, a failed `git show`, a deleted linter, a
+      # name not bound ONCE at module level to a tuple of str literals, or a
+      # casual computed-name rebinding (exec, globals(), setattr, __dict__):
+      # a bar-raiser, NOT a proof. Its false positives are not a floor bump:
+      # the test below reads the tuple with this parser, so one innocent
+      # getattr in the linter turns the required guard-conformance job red.
+      # Import-time code (pickle, runpy, a module the linter imports) can still
+      # rebind the name, and rewiring what READS it needs no rebinding at all.
+      # That class is checked BEHAVIOURALLY instead (coordinator ruling
+      # 2026-09-27, option B): scripts/tests/test_harness_floor_hotzone_list.py
+      # — itself in HOTZONE_PATTERNS — runs the HEAD linter's real floor
+      # computation, with Step 3's inputs, on one path per pattern of
+      # hot-zone-pr-gate.yml's case-block (the oracle, a workflow file) and
+      # fails unless every one is 3; it also fails on ANY tuple/case-block
+      # drift. It runs in the required guard-conformance job, where executing
+      # head code is normal. It makes a narrowing deliberate, not impossible:
+      # a floor-1 edit written to dodge it (keyed on the CI job, or exempting
+      # real paths under a glob) is still ungated.
+      # -----------------------------------------------------------------
+      - name: Hot-zone list may only grow below floor 3
+        if: steps.kill_switch.outputs.disabled != 'true'
+        id: hzlist
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main' }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -u
+          LINTER=scripts/evidence_pack_lint.py
+          if ! grep -qxF -- "$LINTER" /tmp/changed-files.txt; then
+            echo "floor3=false" >> "$GITHUB_OUTPUT"
+            echo "$LINTER is not in this diff — HOTZONE_PATTERNS unchanged by construction"
+            exit 0
+          fi
+          MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)"
+          if [[ -n "$MERGE_BASE" ]] \
+            && git show "$MERGE_BASE:$LINTER" > /tmp/hz-base.py \
+            && git show "$HEAD_SHA:$LINTER" > /tmp/hz-head.py \
+            && python3 - /tmp/hz-base.py /tmp/hz-head.py <<'PY'
+          import ast
+          import sys
+          NAME = "HOTZONE_PATTERNS"
+          # Rebinding a global by a COMPUTED name (exec, globals(), a module __dict__)
+          # hides from the walk below, so any of these at HEAD is unprovable.
+          DYN_NAMES = {"globals", "vars", "locals", "exec", "eval", "compile", "getattr", "setattr", "delattr", "__import__", "__builtins__"}
+          DYN_ATTRS = {"__dict__", "__globals__", "__builtins__", "__getattribute__", "__setattr__", "f_globals", "f_locals", "_getframe", "modules"}
+          DYN_MODULES = {"builtins", "importlib", "inspect", "gc", "ctypes", "operator"}
+
+          def hotzone_patterns(src):
+              """The tuple of str literals NAME is bound to ONCE at module level, else None.
+              `src` is BYTES so a PEP 263 coding cookie (e.g. utf-7) decodes as the interpreter will."""
+              try:
+                  tree = ast.parse(src)
+              except (SyntaxError, ValueError):
+                  return None
+              stores = []
+              for node in ast.walk(tree):
+                  if (
+                      isinstance(node, ast.Name) and node.id in DYN_NAMES
+                      or isinstance(node, ast.Attribute) and node.attr in DYN_ATTRS
+                      or isinstance(node, ast.alias) and (node.name == "*" or node.name.split(".")[0] in DYN_NAMES | DYN_MODULES)
+                      or isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in DYN_MODULES
+                  ):
+                      return None
+                  if isinstance(node, (ast.Name, ast.Attribute)) and isinstance(node.ctx, ast.Load):
+                      continue
+                  if isinstance(node, ast.Name) and node.id == NAME:
+                      stores.append(node)
+                  elif not isinstance(node, ast.Constant) and any(
+                      v == NAME or (isinstance(v, list) and NAME in v) for _, v in ast.iter_fields(node)
+                  ):
+                      return None
+              if len(stores) != 1:
+                  return None
+              for stmt in tree.body:
+                  if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+                      target = stmt.targets[0]
+                  elif isinstance(stmt, ast.AnnAssign):
+                      target = stmt.target
+                  else:
+                      continue
+                  if target is stores[0] and isinstance(stmt.value, ast.Tuple):
+                      elts = stmt.value.elts
+                      if all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in elts):
+                          return tuple(e.value for e in elts)
+              return None
+
+          def main(argv):
+              base, head = (hotzone_patterns(open(p, "rb").read()) for p in argv[1:3])
+              if base is None or head is None:
+                  side = "merge-base" if base is None else "HEAD"
+                  print(f"::warning::{NAME} at {side} is not one module-level tuple of string literals — floor 3")
+                  return 1
+              dropped = [p for p in base if p not in head]
+              for p in dropped:
+                  print(f"::warning::{NAME} drops {p!r} — a shrinking hot-zone list floors this diff at 3")
+              return 1 if dropped else 0
+
+          if __name__ == "__main__":
+              sys.exit(main(sys.argv))
+          PY
+          then
+            echo "floor3=false" >> "$GITHUB_OUTPUT"
+            echo "HOTZONE_PATTERNS did not shrink (merge-base $MERGE_BASE) — no floor raised"
+          else
+            echo "floor3=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::HOTZONE_PATTERNS shrank, or its copies could not be read and parsed (merge-base: ${MERGE_BASE:-unresolvable}) — floor 3"
+          fi
+
+      # -----------------------------------------------------------------
       # Step 3 — compute the deterministic floor UNCONDITIONALLY (brief or
       # not). Adversarial-review finding 2026-08-10: the first cut only
       # computed this INSIDE the "brief present" branch, so a hot-zone diff
@@ -531,6 +650,7 @@ jobs:
         env:
           NETLINES_AVAILABLE: ${{ steps.netlines.outputs.available }}
           WFPATCH_AVAILABLE: ${{ steps.wfpatch.outputs.available }}
+          HZLIST_FLOOR3: ${{ steps.hzlist.outputs.floor3 }}
         run: |
           set -u
           # CORRECTED 2026-08-21 (independent cross-family review, Kimi K3,
@@ -571,6 +691,11 @@ jobs:
             echo "::notice::no workflow patch for this run — no first-party-pin exemption applied (floor computed from hot-zone paths exactly as before that exemption existed)"
           fi
           FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
+          # Step 2d: a shrunk (or unprovable) HOTZONE_PATTERNS floors at 3.
+          # `!= false`, not `== true`: an absent verdict is not a clean one.
+          if [[ "$HZLIST_FLOOR3" != "false" ]]; then
+            FLOOR=3
+          fi
           echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
           echo "deterministic floor for this diff: $FLOOR"
           # SOURCE (S2, 2026-08-27, gate round 2 on PR #5049): WHY the floor
@@ -600,6 +725,9 @@ jobs:
             SOURCE="unknown"
             echo "::notice::the evidence_pack_lint.py copy in use (checked out from base) does not support --print-floor-source yet — floor_source reported as 'unknown' this run (no SIZE-term grace period granted); self-consistent once this PR merges and base's copy is updated"
           fi
+          if [[ "$HZLIST_FLOOR3" != "false" ]]; then
+            case "$SOURCE" in none) SOURCE=path ;; size) SOURCE=both ;; esac
+          fi
           echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
           echo "deterministic floor source for this diff: $SOURCE"
           # STEP SUMMARY (S2, 2026-08-27, gate round 2 on PR #5049): the same
@@ -611,6 +739,7 @@ jobs:
             echo "### Harness floor"
             echo "- floor: \`$FLOOR\`"
             echo "- floor_source: \`$SOURCE\` (none/path/size/both)"
+            echo "- hot-zone list shrank or unprovable (Step 2d): \`$HZLIST_FLOOR3\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # -----------------------------------------------------------------
@@ -1343,11 +1472,31 @@ jobs:
             echo "::error::could not read ${SAFE_PACK_PATH} at ${HEAD_SHA} even though git ls-tree just named it in the tree — a lazy blob fetch failed, or the object is gone. Failing closed."
             exit 1
           fi
-          # `set -u` only above — errexit is deliberately NOT on in this job's steps, so the
-          # parser's non-zero exit is captured rather than aborting the step before the
-          # message that explains it.
-          python3 scripts/ci/bites_parse.py --pack - < /tmp/bites-pack.yml > /tmp/bites-parsed.json 2> /tmp/bites-parse.err
-          RC=$?
+          # This step has no `shell:` override, so GitHub runs it as `bash -e {0}` (its
+          # documented default). A bare command's non-zero exit would abort the step right
+          # here, before any of the taxonomy checks below ever ran — the exact silent-red
+          # this comment used to claim could not happen. `|| RC=$?` puts the command inside
+          # an OR list, which `-e` does not treat as a failure to abort on, so the parser's
+          # exit code reaches the taxonomy check that explains it instead of killing the step.
+          #
+          # `--tree "${HEAD_SHA}"`: this parser is BASE's, but the observer script an
+          # `observe:` line names is usually NEW in this very PR (Builder Contract 2), so it
+          # lives in the head tree and not in this checkout. The parser is told to ask that
+          # tree - read only, nothing from it is executed.
+          #
+          # The flag is passed only when the base copy advertises it. This job runs the PR's
+          # workflow over BASE's parser, so the PR that introduces `--tree` (and any PR whose
+          # base predates it) would otherwise hand an unknown flag to a parser that exits 2 on
+          # argv with an empty stdout, and the step would fail on its own judge. Missing FLAG
+          # degrades to the checkout lookup, the same split as the --numstat-file probe above.
+          TREE_FLAG=""
+          if python3 scripts/ci/bites_parse.py --help 2>/dev/null | grep -q -- '--tree'; then
+            TREE_FLAG=1
+          else
+            echo "::notice::the bites_parse.py copy in use (checked out from base) does not support --tree yet — the observe: script is resolved in the base checkout for this run; self-consistent once the --tree parser is on main."
+          fi
+          RC=0
+          python3 scripts/ci/bites_parse.py --pack - ${TREE_FLAG:+--tree "${HEAD_SHA}"} < /tmp/bites-pack.yml > /tmp/bites-parsed.json 2> /tmp/bites-parse.err || RC=$?
           if [[ $RC -ne 0 && $RC -ne 2 ]]; then
             [[ -s /tmp/bites-parse.err ]] && cat /tmp/bites-parse.err
             echo "::error::scripts/ci/bites_parse.py exited $RC — neither 0 (parsed) nor 2 (malformed). That is outside its own documented taxonomy; failing closed."

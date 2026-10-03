@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import logging
 import os
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -20,6 +19,7 @@ from mata_garuda.config import STREAM_ALERTS, TG_ZERO_CHAT_ID
 from mata_garuda.registry import register_agent
 from mata_garuda.runtime.case_status import case_not_resolved, case_resolved
 from mata_garuda.runtime.knowledge import KnowledgeBase
+from mata_garuda.tools.tg_tools import curl_send
 from mata_garuda.tools.knowledge_tools import kb_search, kb_store
 from mata_garuda.tools.tg_tools import send_tg_alert
 from mata_garuda.types import Agent
@@ -64,6 +64,13 @@ def format_alert(data: dict[str, Any]) -> str:
 
 
 def _send_telegram(text: str, dry_run: bool = False) -> bool:
+    """Send one alert to Zero's TG. Returns ok.
+
+    Delegates to `mata_garuda.tools.tg_tools.curl_send`, which keeps the token out of
+    curl's argv — see that module's docstring for why (this file's own
+    subprocess+curl copy leaked the token into reg-alert.error.log on its
+    30-minute schedule, measured 2026-09-27).
+    """
     if dry_run:
         logger.info(f"[DRY-RUN] would send TG ({len(text)} chars)")
         return True
@@ -71,20 +78,10 @@ def _send_telegram(text: str, dry_run: bool = False) -> bool:
     if not token:
         logger.error("[reg_alert] TELEGRAM_BOT_TOKEN not set")
         return False
-    try:
-        result = subprocess.run(
-            [
-                "curl", "-s",
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                "-d", f"chat_id={TG_ZERO_CHAT_ID}",
-                "--data-urlencode", f"text={text}",
-            ],
-            capture_output=True, text=True, timeout=15,
-        )
-        return '"ok":true' in (result.stdout or "")
-    except Exception as e:
-        logger.error(f"[reg_alert] TG send exception: {e}")
-        return False
+    ok, reason = curl_send(token, TG_ZERO_CHAT_ID, text)
+    if not ok:
+        logger.error(f"[reg_alert] TG send failed: {reason}")
+    return ok
 
 
 # ── operational entrypoint ────────────────────────────────────────────────

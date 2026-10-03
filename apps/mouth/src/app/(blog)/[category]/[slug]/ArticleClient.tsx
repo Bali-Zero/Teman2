@@ -3,7 +3,6 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { format } from "date-fns";
 import { MDXRemoteSerializeResult } from "next-mdx-remote";
 import dynamic from "next/dynamic";
 import remarkGfm from "remark-gfm";
@@ -34,6 +33,7 @@ import {
 // JSON-LD schemas are now injected in <head> by root layout for better SEO
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { cn } from "@/lib/utils";
+import { formatArticleDate } from "@/lib/blog/format-article-date";
 import type { Article, ArticleListItem } from "@/lib/blog/types";
 import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
@@ -92,10 +92,12 @@ function CoverImage({ src, alt }: { src: string; alt: string }) {
 
   if (hasError || !src) {
     return (
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] flex items-center justify-center">
+      <div className="absolute inset-0 bg-[var(--r19-wash)] flex items-center justify-center">
         <div className="text-center px-8">
-          <Sparkles className="w-12 h-12 text-[color-mix(in_srgb,var(--accent-funnel,#3a6dff)_40%,transparent)] mx-auto mb-3" />
-          <p className="text-white/60 text-sm font-medium max-w-md">{alt}</p>
+          <Sparkles className="w-12 h-12 text-[var(--r19-copper)] mx-auto mb-3" />
+          <p className="text-[var(--r19-muted)] text-sm font-medium max-w-md">
+            {alt}
+          </p>
         </div>
       </div>
     );
@@ -214,13 +216,13 @@ export function ArticleClient({
     return (
       <div className="min-h-screen">
         <div className="max-w-4xl mx-auto px-4 py-16 animate-pulse">
-          <div className="h-8 w-32 bg-white/5 rounded mb-4" />
-          <div className="h-12 w-3/4 bg-white/5 rounded mb-8" />
-          <div className="aspect-[21/9] bg-white/5 rounded-2xl mb-8" />
+          <div className="h-8 w-32 bg-[var(--r19-wash)] rounded mb-4" />
+          <div className="h-12 w-3/4 bg-[var(--r19-wash)] rounded mb-8" />
+          <div className="aspect-[21/9] bg-[var(--r19-wash)] rounded-2xl mb-8" />
           <div className="space-y-4">
-            <div className="h-4 bg-white/5 rounded" />
-            <div className="h-4 bg-white/5 rounded w-5/6" />
-            <div className="h-4 bg-white/5 rounded w-4/6" />
+            <div className="h-4 bg-[var(--r19-wash)] rounded" />
+            <div className="h-4 bg-[var(--r19-wash)] rounded w-5/6" />
+            <div className="h-4 bg-[var(--r19-wash)] rounded w-4/6" />
           </div>
         </div>
       </div>
@@ -231,7 +233,7 @@ export function ArticleClient({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">
+          <h1 className="text-2xl font-medium text-[var(--r19-ink)] mb-4">
             Article not found
           </h1>
           <Link
@@ -275,7 +277,7 @@ export function ArticleClient({
           {/* Back link */}
           <Link
             href="/news"
-            className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-8"
+            className="inline-flex items-center gap-2 text-sm text-[var(--r19-muted)] hover:text-[var(--r19-ink)] transition-colors mb-8"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to News
@@ -291,14 +293,14 @@ export function ArticleClient({
               </span>
             )}
             {article.reviewedBy && (
-              <span className="text-xs text-white/50">
+              <span className="text-xs text-[var(--r19-muted)]">
                 Verified by {article.reviewedBy}
               </span>
             )}
           </div>
 
           {/* Title */}
-          <h1 className="font-serif text-3xl md:text-5xl font-bold text-white mb-4 leading-tight animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+          <h1 className="font-serif text-3xl md:text-5xl font-medium tracking-tight text-[var(--r19-ink)] mb-4 leading-tight animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
             {article.title}
           </h1>
 
@@ -306,14 +308,14 @@ export function ArticleClient({
           {article.subtitle && (
             <p
               data-ai-excerpt=""
-              className="text-lg md:text-xl text-white/60 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150"
+              className="text-lg md:text-xl text-[var(--r19-muted)] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150"
             >
               {article.subtitle}
             </p>
           )}
 
           {/* Meta */}
-          <div className="flex flex-wrap items-center gap-6 text-sm text-white/50 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
+          <div className="flex flex-wrap items-center gap-6 text-sm text-[var(--r19-muted)] mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
             {/* Author */}
             <div className="flex items-center gap-3">
               {article.author.avatar ? (
@@ -325,12 +327,14 @@ export function ArticleClient({
                   className="rounded-full"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-[var(--r19-wash)] flex items-center justify-center">
                   <User className="w-5 h-5" />
                 </div>
               )}
               <div>
-                <p className="text-white font-medium">{article.author.name}</p>
+                <p className="text-[var(--r19-ink)] font-medium">
+                  {article.author.name}
+                </p>
                 <p className="text-xs">{article.author.role}</p>
               </div>
             </div>
@@ -339,10 +343,7 @@ export function ArticleClient({
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {format(
-                  new Date(article.publishedAt || article.createdAt),
-                  "MMM d, yyyy",
-                )}
+                {formatArticleDate(article.publishedAt || article.createdAt)}
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
@@ -513,8 +514,8 @@ export function ArticleClient({
                   ai_tags) must never crash the reader with "tags is not
                   iterable". Normalized at the data layer too (normalizeTags). */}
               {Array.isArray(article.tags) && article.tags.length > 0 && (
-                <div className="mt-12 pt-8 border-t border-white/10">
-                  <p className="text-xs font-medium uppercase tracking-wider text-white/60 mb-3">
+                <div className="mt-12 pt-8 border-t border-[var(--r19-line)]">
+                  <p className="text-xs font-medium uppercase tracking-wider text-[var(--r19-muted)] mb-3">
                     Topics
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -522,7 +523,7 @@ export function ArticleClient({
                       <Link
                         key={tag}
                         href={`/insights?tag=${encodeURIComponent(tag)}`}
-                        className="px-3 py-1 rounded-full bg-white/5 text-white/70 text-sm hover:bg-white/10 hover:text-white transition-colors"
+                        className="px-3 py-1 rounded-full border border-[var(--r19-line)] text-[var(--r19-muted)] text-sm hover:border-[var(--r19-line-strong)] hover:text-[var(--r19-ink)] transition-colors"
                       >
                         {tag}
                       </Link>
@@ -532,7 +533,7 @@ export function ArticleClient({
               )}
 
               {/* Author card */}
-              <div className="mt-12 p-6 rounded-2xl bg-[rgba(255,255,255,0.03)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+              <div className="mt-12 p-6 rounded-[8px] bg-[var(--r19-surface)] border border-[var(--r19-line)]">
                 <div className="flex items-start gap-4">
                   {article.author.avatar ? (
                     <Image
@@ -543,19 +544,19 @@ export function ArticleClient({
                       className="rounded-full"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-[var(--r19-wash)] flex items-center justify-center">
                       <User className="w-8 h-8" />
                     </div>
                   )}
                   <div>
-                    <p className="font-medium text-white">
+                    <p className="font-medium text-[var(--r19-ink)]">
                       {article.author.name}
                     </p>
-                    <p className="text-sm text-white/60 mb-2">
+                    <p className="text-sm text-[var(--r19-muted)] mb-2">
                       {article.author.role}
                     </p>
                     {article.author.bio && (
-                      <p className="text-sm text-white/50">
+                      <p className="text-sm text-[var(--r19-muted)]">
                         {article.author.bio}
                       </p>
                     )}
@@ -564,11 +565,11 @@ export function ArticleClient({
               </div>
 
               {/* WhatsApp consultation CTA — tracked lead handoff */}
-              <div className="mt-12 p-6 rounded-2xl bg-[rgba(37,211,102,0.06)] border border-[rgba(37,211,102,0.2)]">
-                <h2 className="font-serif text-xl font-bold text-white">
+              <div className="mt-12 p-6 rounded-[8px] bg-[var(--r19-surface)] border border-[var(--r19-line)]">
+                <h2 className="font-serif text-xl font-medium text-[var(--r19-ink)]">
                   Questions about how this applies to your case?
                 </h2>
-                <p className="mt-2 text-sm text-white/60">
+                <p className="mt-2 text-sm text-[var(--r19-muted)]">
                   Bali Zero handles visas, company setup, tax and property
                   compliance in Indonesia. Ask us directly on WhatsApp.
                 </p>
@@ -592,7 +593,7 @@ export function ArticleClient({
               </div>
 
               {/* Engagement Section - Likes, Comments, Shares */}
-              <div className="mt-12 pt-8 border-t border-white/10">
+              <div className="mt-12 pt-8 border-t border-[var(--r19-line)]">
                 <ArticleEngagement
                   articleId={article.id}
                   articleTitle={article.title}
@@ -620,9 +621,9 @@ export function ArticleClient({
 
       {/* Related articles */}
       {relatedArticles.length > 0 && (
-        <section className="py-12 md:py-16 bg-[rgba(3,18,25,0.5)] backdrop-blur-xl border-t border-[rgba(255,255,255,0.05)]">
+        <section className="py-12 md:py-16 bg-[var(--r19-surface)] border-t border-[var(--r19-line)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-serif text-2xl md:text-3xl font-bold text-white mb-8">
+            <h2 className="font-serif text-2xl md:text-3xl font-medium text-[var(--r19-ink)] mb-8">
               Related Articles
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">

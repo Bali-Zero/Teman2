@@ -1,0 +1,18 @@
+gear: 2
+task_id: wa-mirror-attention-result-guard
+lane: wa-mirror
+host: air-m5 (M5)
+branch: agent/air-m5/wa-mirror/attention-result-guard-0929
+gate_class: opus
+l_level: L2
+objective: >-
+  Discharge conditions C1-C3 of the fresh gate on #7656 by implementing the conductor's spec
+  (docs/specs/2026-09-29-wa-attention-result-guard-spec.md): tests only. A sentinel-seeded
+  result guard on a throwaway Postgres (exact key set per selector, no sentinel in any returned
+  value or rendered text, text columns of clients enumerated from information_schema) and the
+  0/6/8/10/40-day backlog and window-seam fixtures. Floor is 2 on the SIZE term alone (about 450
+  net lines: 78 of them the spec, the rest one test file); no hot-zone path is touched and no
+  production code changes.
+scope:
+  - "docs/specs/2026-09-29-wa-attention-result-guard-spec.md - the conductor's spec, committed first."
+  - "scripts/tests/test_wa_attention_result_guard.py - 5 real-PG tests picked up by the presence gate of check-wa-attention-pii."

@@ -17,12 +17,23 @@ name: P6 federation parallelize-hypothesis gate
 # pull_request-only gives false safety because L2 autonomous-ops direct-push
 # to main silently SKIPS the gate).
 
-# NOTE (BUCO #1 skip→success sentinel, 2026-06-11): top-level pull_request
-# `paths:` filter REMOVED so this can become a required-status-check without
-# the pending-forever trap (W69). The relevant-paths decision lives in the
-# "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
+# NOTE (BUCO #1 skip→success sentinel, 2026-06-11; superseded by the `on:` block below):
+# the pull_request `paths:` filter was removed so this could become a
+# required-status-check without the pending-forever trap (W69), and the
+# relevant-paths decision moved into the "Did relevant paths change?" step. It is not
+# required, so `pull_request` carries `paths:` again, equal to that step's regex; the
+# step remains the defence against an over-match (the job ENDS success).
 on:
-  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (same set as the "Did relevant paths change?" step below). No merge_group:
+  # scripts/ci/lint_trigger_symmetry.py forbids it beside pull_request.paths. A required
+  # context needs pull_request unfiltered again (check_required_workflow_conformance.py).
+  pull_request:
+    paths:
+      - "scripts/federation_parallelize.py"
+      - "scripts/federation_orchestrator.py"
+      - "scripts/test_federation_parallelize_gate.py"
+      - ".github/workflows/p6-federation-parallelize.yml"
   push:
     branches:
       - main
@@ -31,6 +42,7 @@ on:
       - "scripts/federation_orchestrator.py"
       - "scripts/test_federation_parallelize_gate.py"
       - ".github/workflows/p6-federation-parallelize.yml"
+  workflow_dispatch:
 
 concurrency:
   # Per-PR/per-ref for every author. A shared per-workflow group keyed on

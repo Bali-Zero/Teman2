@@ -395,14 +395,14 @@ def test_pending_buffer_holds_no_client_identifiers(tmp_path: Path, stub_model: 
     mail archive and breaks the promise the whole loop is built on.
     """
     backend = FakeBackend(
-        inbox=[_msg("m1", "KITAS for Sofia Mueller", "sofia.mueller@client.example", "T9")],
+        inbox=[_msg("m1", "KITAS for Client Beta", "client.beta@client.example", "T9")],
         bodies={"m1": "About my KITAS, my number is +62 812 3456 7890."},
     )
     asyncio.run(_loop(backend, tmp_path).run())
 
     raw = (tmp_path / "pending.json").read_text(encoding="utf-8")
-    assert "sofia.mueller@client.example" not in raw
-    assert "Sofia Mueller" not in raw
+    assert "client.beta@client.example" not in raw
+    assert "Client Beta" not in raw
     assert "812 3456 7890" not in raw
     assert "T9" in raw  # the thread id is the only external reference kept
 

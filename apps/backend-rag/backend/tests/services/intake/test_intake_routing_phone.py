@@ -395,12 +395,12 @@ def test_phone_match_no_subject_name_stays_link_candidate() -> None:
 
 
 def test_innocence_12927_same_client_ocr_noise_still_links() -> None:
-    # INNOCENCE (live 12927 Gennaro Piraino): phone 0.90 + fuzzy name sim 0.6154
+    # INNOCENCE (live 12927 Client A): phone 0.90 + fuzzy name sim 0.6154
     # pointing at the SAME client id (sender IS the subject, just OCR noise).
     # Must STILL be a boosted LINK_CANDIDATE -- NOT downgraded -- proving the rule
     # triggers on genuine name DISAGREEMENT, not merely "name_sim < 1.0".
     decision, cands, reason = rt._classify_decision(
-        [], [_fuzzy(2916, 0.6154)], [_phone(2916)], subject_name="Gennaro Piraino"
+        [], [_fuzzy(2916, 0.6154)], [_phone(2916)], subject_name="Client A"
     )
     assert decision == rt.DECISION_LINK_CANDIDATE
     assert "sender_subject_mismatch" not in reason
@@ -428,12 +428,12 @@ async def test_resolve_entity_phone_match_named_subject_disagrees_is_ambiguous()
     # End-to-end via resolve_entity: phone resolves the sender, the OCR subject
     # name ("name") resolves to a DIFFERENT client via fuzzy -> sender != subject.
     conn = FakeConn(
-        phone_rows=[{"id": 1526, "full_name": "Adi Bayu Santero"}],
+        phone_rows=[{"id": 1526, "full_name": "Client C"}],
         fuzzy_rows=[{"id": 9001, "name": "Someone Elses Visa", "sim": 0.71}],
     )
     out = await rt.resolve_entity(
         {"name": {"value": "Someone Elses Visa"}}, "kitas",
-        FakePool(conn), sender_phone="081338656330",
+        FakePool(conn), sender_phone="08123456789",
     )
     assert out["decision"] == rt.DECISION_AMBIGUOUS
     assert out["reason"]["sender_subject_mismatch"] is True

@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-30",
+  "timestamp": "2026-09-30T09:02:37.187449",
+  "phase_1_articles": {
+    "name": "Articles Indexing",
+    "total_discovered": 3432,
+    "submitted": 3432,
+    "submitted_pct": 100.0,
+    "status": "COMPLETE",
+    "last_run": "2026-09-28T01:00:13.408155"
+  },
+  "phase_2_kbli": {
+    "name": "KBLI Indexing",
+    "total_urls": 1559,
+    "submitted": 1428,
+    "submitted_pct": 91.6,
+    "failed": 131,
+    "failed_pct": 8.4,
+    "pending": 0,
+    "status": "BACKLOG_COMPLETE",
+    "last_run": "2026-09-26T01:01:48.524411",
+    "active_sas": 3,
+    "daily_limit_per_sa": 200,
+    "total_daily_capacity": 600,
+    "failed_codes_sample": ["18113", "19205", "20121", "20213", "20293"]
+  },
+  "summary": {
+    "total_urls_processed": 4991,
+    "total_submitted": 4860,
+    "total_submitted_pct": 97.4,
+    "total_failed": 131,
+    "total_failed_pct": 2.6,
+    "quota_remaining_today": 0
+  },
+  "telegram_status": "FAILED (invalid token)",
+  "report_saved_to": "apps/evaluator/daily_indexing_report_2026-09-30.json"
+}

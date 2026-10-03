@@ -1,0 +1,25 @@
+task_id: local-ci-followup-0926
+gear: 3
+objective: Ship the versioned Pro local-CI runner (scripts/localci, v0.2.2) with the Pysa taint judge as the local stand-in for CodeQL's python security queries, closing the two fresh-gate findings on its first cut (trusted interpreters forgeable via candidate PYTHONPATH; --extra-check could overwrite a planned policy verdict).
+constraints:
+  - Non-required, single-host gate - it does not replace GitHub branch protection and mints no required status context.
+  - Every trusted check (classifier, ban test, pysa judge and its models) is extracted from the BASE ref and run with `python -I` in a scrubbed env; nothing read from the candidate tree may decide a trusted verdict.
+  - Fail-closed - a missing tool, missing home, tool error or unparseable plan yields BLOCKED/ERROR, never PASS or NOT_APPLICABLE without a recorded reason.
+  - No paid per-token endpoint anywhere in the runner or the judge (stdlib + pinned OSS tools only).
+acceptance:
+  - text: WHEN the localci test suite runs under the pilot venv, every test SHALL pass, including the real Pysa guilt/innocence judge test.
+    probe: local-tests
+  - text: WHEN the runner plans and runs security.pysa_python on a synthetic guilt candidate over the real backend tree (handler that logs user input and returns str(exc)), the check SHALL be FAIL with exactly those new flows in receipts/pysa/report.md; the innocent candidate SHALL be PASS with the base scan cached.
+    probe: guilt-innocence
+  - text: WHEN plan --extra-check names a reserved/planned check or a non-executable spec, plan SHALL exit non-zero and write no plan.json.
+    probe: extra-check-refusal
+  - text: WHEN ruff checks scripts/localci, it SHALL report no error.
+    probe: lint
+consumer_map:
+  - The Pro operator session that runs `python scripts/localci/runner.py plan/run` against a candidate worktree before arming a PR - the runner is the consumer of pysa_check.py and the only caller of security.pysa_python.
+  - The next session that touches apps/backend-rag/backend/**/*.py and wants a local security verdict without CodeQL CLI (unavailable on this public repo without an OSI licence).
+risks:
+  - Pysa 0.10 on the Pyrefly backend ignores ModelQuery, so handler models are generated from the candidate tree's AST by design; a candidate that removes a route decorator hides its own handler from the models - the diff shows the removal, but the judge alone will not.
+  - Baseline scans are cached per backend-subtree sha under the operator's home, outside the repo; a corrupted cache file is a local operator concern, not a candidate-reachable one.
+  - The judge covers log-injection, stack-trace exposure, path injection, SSRF and redirect; XSS via HTMLResponse is not modellable (0/2 in the benchmark) and stays with GitHub's CodeQL.
+pii: none

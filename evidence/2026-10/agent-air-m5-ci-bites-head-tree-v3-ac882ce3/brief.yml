@@ -1,0 +1,72 @@
+task: >-
+  Successor of PR #7526 on a fresh origin/main (SAETTA 7: a harness-caused red is fixed in its own
+  PR). The harness-floor step "Bites contract — parse this PR's evidence pack" runs BASE's
+  scripts/ci/bites_parse.py, which asked the base checkout whether a pack's `observe:` script
+  exists; an observer that is NEW in the PR (Builder Contract 2) was judged
+  `malformed: observe ... does not exist`, so such a PR could never pass the floor (live victim:
+  PR #7504, gate PASS on 9a1413999f, only this step red). #7526 carries the cure
+  (`bites_parse.py --tree <full hex id>` reads the observer from that git tree, read only) but
+  conflicts with main in one hunk of harness-floor.yml (main's side is #7536's exit-code capture)
+  and is armed, so frozen. This PR re-lands #7526's parser and tests blob-identically, resolves the
+  hunk as #7536's capture + #7526's `--tree "${HEAD_SHA}"`, and adds one thing #7526 lacked: the
+  flag is passed only when the base parser's `--help` advertises it, because the job runs the PR's
+  workflow over BASE's parser and #7526 as written would have failed its own floor.
+lane: ci
+machine: m5
+date: 2026-10-02
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: `scripts/evidence_pack_lint.py --numstat-file <numstat vs
+  origin/main> --changed-files-file <names> --print-floor` prints 3. .github/workflows/harness-floor.yml
+  is a hot-zone path and the change sits on the allow-list that decides which commands CI may
+  execute. The floor sets the gear, not the size: the workflow delta is 18 lines.
+acceptance:
+  A1: >-
+    The parser and its tests are #7526's, byte for byte, plus one new workflow-pin test: a pack
+    whose observer exists only in the head tree is `executable` with `--tree <head>` and
+    `malformed` against the base tree or the checkout; a pack whose observer exists nowhere is
+    `malformed` both ways.
+    probe: >-
+      git rev-parse 2bb05c5b9d:scripts/ci/bites_parse.py vs HEAD (identical);
+      python3 scripts/ci/bites_parse.py --pack - --tree <9a1413999f full> and --tree <origin/main full>
+      on PR #7504's real pack; python3 -m pytest scripts/tests/test_bites_parse.py -> 182 passed.
+  A2: >-
+    The workflow delta against origin/main is only #7526's intent plus the flag probe: #7536's
+    `RC=0 ... || RC=$?` capture and #7541's HOTZONE hunks stay as main has them.
+    probe: >-
+      git diff origin/main HEAD -- .github/workflows/harness-floor.yml (one hunk, +18/-1);
+      actionlint clean; YAML loads; scripts/lint_workflow_errexit_decap.py clean.
+  A3: >-
+    Under `bash -e` the step prints a readable `::error::bites:` reason and exits 1 on a malformed
+    pack, exits 0 on an executable one, and with a base parser that lacks `--tree` it emits a
+    `::notice` and judges by the checkout instead of dying.
+    probe: >-
+      the step's `run:` text extracted from the YAML and executed under `bash -e` against the new
+      parser and against origin/main's parser, six pack/parser pairs (receipt R5).
+  A4: >-
+    Live after merge: PR #7504, once its branch is updated, passes the "Harness floor recompute"
+    check with the Bites step printing the EXECUTABLE notice, named by run URL.
+    probe: >-
+      gh run view <run id> --log | grep -A3 "Bites contract" on the new #7504 run; check conclusion
+      success. Owned by the team lead after this merges (it updates #7504's branch).
+out_of_scope: >-
+  The `CLASSIFICATION=$(python3 -c ...)` line in the same step still dies silently under `bash -e`
+  if the import fails (measured here on the ungated shape, receipt R6); #7526 named it and so does
+  this PR, for its own PR. No change to the allow-list, the corpus, the post-merge executor
+  (scripts/contract_driver.py), PR #7526 or PR #7504.
+assumptions:
+  - text: >-
+      This PR's own Harness floor run uses the PR's workflow over origin/main's parser, so it
+      judges this pack with the OLD lookup (checkout, no `--tree`) and prints the `::notice` of
+      the probe. This pack's bites block is prose, which both parsers classify `legacy`, so the
+      old judge cannot wrongly fail or pass it. The first run judged by the NEW lookup is the
+      first PR whose base contains this merge.
+    status: verified
+    probe: >-
+      receipt R5 (old parser + gated step -> notice, then the checkout verdict) and the Bites step
+      log of this PR's own run once its gate verdict is posted.
+  - text: >-
+      Gear 3 needs the independent final-gate verdict on the head SHA; the team lead commissions
+      and posts it, not this builder.
+    status: unverified
+    probe: gh pr checks <pr> after the gate verdict is posted.

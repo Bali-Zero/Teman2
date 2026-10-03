@@ -1,0 +1,230 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scope:
+  Synthetic profiles only; no real client rows or credentials in new source. Staff IDs are server-derived.
+  Tests use synthetic identities.
+lanes:
+  - lane: campaign-backend
+    role: build
+    seat: codex
+  - lane: campaign-frontend
+    role: build
+    seat: codex worker
+  - lane: independent-review
+    role: review
+    seat: claude-opus-5-5
+    status:
+      Independent Opus r3 PASS on e4db99, signature conditional on CI; later narrow CI integration
+      corrections require fresh exact-head verification before signing.
+  - lane: council-kimi
+    role: review
+    seat: kimi-code/k3
+    status: FIX judgement on immutable packet6c7f76e8; disposition recorded
+  - lane: council-gemini
+    role: review
+    seat: agy-gemini-3.1-pro
+    status: FIX judgement on same immutable packet6c7f76e8; disposition recorded
+receipts:
+  - claim: backend
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/services/test_visa_oracle_testing.py
+      backend/tests/integration/test_visa_oracle_testing_campaign.py backend/tests/setup/test_router_registration_parity.py
+      backend/tests/setup/test_router_manifest.py --no-cov --tb=short
+    cwd: apps/backend-rag
+    exit: 0
+    ts: "2026-09-28T02:59:02.535354+00:00"
+    seat: codex
+    environment_keys:
+      - PYTHONPATH
+      - SKIP_SENTRY_INIT
+      - ORACLE_TEST_SOCKET
+  - claim: ci-postgres
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/integration/test_visa_oracle_testing_campaign.py
+      -n 2 --dist loadfile --no-cov --tb=short
+    cwd: apps/backend-rag
+    exit: 0
+    ts: "2026-09-28T02:59:07.833724+00:00"
+    seat: codex
+    environment_keys:
+      - PYTHONPATH
+      - SKIP_SENTRY_INIT
+      - CI
+      - TEST_DATABASE_URL
+  - claim: frontend
+    cmd:
+      node ../../node_modules/vitest/vitest.mjs run 'src/app/(workspace)/intelligence/visa-oracle/testing/page.test.tsx'
+      'src/app/(workspace)/intelligence/visa-oracle/page.test.tsx' 'src/app/(workspace)/intelligence/layout.test.tsx'
+      src/__tests__/workspace-session-gate.test.ts
+    cwd: apps/mouth
+    exit: 0
+    ts: "2026-09-28T02:59:12.104426+00:00"
+    seat: codex
+    environment_keys: []
+  - claim: typescript
+    cmd: node ../../node_modules/typescript/bin/tsc --noEmit --incremental false
+    cwd: apps/mouth
+    exit: 0
+    ts: "2026-09-28T02:59:14.988097+00:00"
+    seat: codex
+    environment_keys: []
+  - claim: ruff
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m ruff check backend/services/visa_oracle_testing.py
+      backend/app/routers/visa_oracle_testing.py backend/tests/services/test_visa_oracle_testing.py backend/tests/integration/test_visa_oracle_testing_campaign.py
+    cwd: apps/backend-rag
+    exit: 0
+    ts: "2026-09-28T02:59:30.636090+00:00"
+    seat: codex
+    environment_keys: []
+  - claim: migration-numbers
+    cmd: python3 scripts/lint_migration_numbers.py
+    cwd: .
+    exit: 0
+    ts: "2026-09-28T02:59:30.674465+00:00"
+    seat: codex
+    environment_keys: []
+  - claim: docs-sync
+    cmd: python3 scripts/docs_sync.py --check --quiet
+    cwd: .
+    exit: 0
+    ts: "2026-09-28T02:59:30.708826+00:00"
+    seat: codex
+    environment_keys: []
+  - claim: diff-check
+    cmd: git diff --check
+    cwd: .
+    exit: 0
+    ts: "2026-09-28T02:59:30.772120+00:00"
+    seat: codex
+    environment_keys: []
+  - claim: updated migration323 apply-all dry-run isolated CI database
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m backend.db.migrate apply-all
+      --dry-run
+    cwd: apps/backend-rag
+    exit: 0
+    ts: "2026-09-28T02:58:31.257642+00:00"
+    seat: codex
+  - claim: Read-only production metadata confirms canonical staff columns; no client rows
+    cmd:
+      bash scripts/pg.sh -X -A -t -c 'SELECT current_user; SELECT column_name FROM information_schema.columns
+      WHERE table_schema='"'"'public'"'"' AND table_name='"'"'team_members'"'"' AND column_name IN ('"'"'id'"'"','"'"'email'"'"','"'"'name'"'"','"'"'full_name'"'"','"'"'role'"'"','"'"'active'"'"')
+      ORDER BY column_name;'
+    exit: 0
+    ts: "2026-09-28T02:32:44.564832+00:00"
+    seat: codex
+    role: nuzantara_readonly
+    columns:
+      - active
+      - email
+      - full_name
+      - id
+      - name
+      - role
+  - claim: openapi-pin
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+      --no-cov --tb=short
+    cwd: apps/backend-rag
+    exit: 0
+    ts: "2026-09-28T03:13:10.353352+00:00"
+    seat: codex
+  - claim: route-frontend
+    cmd:
+      node ../../node_modules/vitest/vitest.mjs run 'src/app/(workspace)/intelligence/visa-oracle/testing/page.test.tsx'
+      'src/app/(workspace)/intelligence/visa-oracle/page.test.tsx'
+    cwd: apps/mouth
+    exit: 0
+    ts: "2026-09-28T03:13:30.615892+00:00"
+    seat: codex
+  - claim: route-typescript
+    cmd: node ../../node_modules/typescript/bin/tsc --noEmit --incremental false
+    cwd: apps/mouth
+    exit: 0
+    ts: "2026-09-28T03:13:35.593300+00:00"
+    seat: codex
+  - claim: type-hint compliance, OpenAPI pin and service regressions after CI fixes
+    cmd:
+      /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/compliance/test_golden_rules.py::test_golden_rule_5_type_hints
+      backend/tests/unit/scripts/test_generate_openapi_schema_pin.py backend/tests/services/test_visa_oracle_testing.py
+      --no-cov --tb=short
+    cwd: apps/backend-rag
+    exit: 0
+    ts: "2026-09-28T03:14:46.760578+00:00"
+    seat: codex
+dissent:
+  - seat: claude-opus-5-5
+    verdict: FIX
+    disposition:
+      Freeze after checks. CI database exercised; reviewers blinded until five expectations;
+      coherent distinct profiles; assigned-day start only; private bytea image separate from lists and removable;
+      server counts and progress. Fresh gate required.
+    objection:
+      Moving candidate; CI skipped real PG; reviewer-testers saw peer answers; fixture duplicates/date
+      drift; image payload/removal and client-derived counts.
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection:
+      Internal reviewer/audit IDs escape into portable projections; duplicate submission might
+      update original timestamp.
+    status: PLAUSIBLE
+    disposition:
+      "Identity-minimization concern reproduced and fixed. Timestamp concern RETRACTED by builder
+      with real PG invariant test: submitted branch never runs UPDATE and submitted_at is unchanged on retry."
+  - seat: kimi-code/k3
+    objection:
+      Portable identity fields; contradictory reproduction verdict; first-review/roster race; staff
+      name-column availability.
+    status: CONFIRMED
+    disposition:
+      "ID projection and reproduced-verdict consistency were reproduced and fixed. Roster counterexample
+      RETRACTED: a slotted reviewer needs five personal starts, which already lock reassignment. Production
+      RO schema probe confirmed both name columns, with no client rows."
+  - seat: claude-opus-5-5
+    status: CONFIRMED
+    verdict: FIX
+    objection:
+      Real CI xdist worker databases skipped; own results could precede all five expectations;
+      rigid SQL dates; retry review UX; fixture explanation; image metadata.
+    disposition:
+      Real two-worker run now33passed0skipped with current_database assertion and strict local-DSN
+      guard. API and UI lock all five expectations before results. SQL date/campaign literals removed; authorized
+      dates unchanged, roster remains owner-configurable. Identical review retries preserve timestamp. Investment
+      prerequisite contrast explicit; unrelated family facts removed. Images losslessly normalized to metadata-free
+      PNG. New independent exact-head gate still required.
+  - seat: github-ci
+    status: CONFIRMED
+    objection:
+      Exact-head CI e4db99 found new static staff route, stale generated OpenAPI pin and three
+      missing type annotations. Campaign33 tests actually passed with0skips.
+    disposition:
+      Client component preserved byte-for-byte behind a force-dynamic server wrapper; guard/baseline
+      unchanged. Canonical OpenAPI generator, TypeScript renderer and formatter regenerate only new campaign
+      contract (513 lines), pin matches live hash. Required annotations added. Exact type-hint compliance
+      and schema-pin regressions plus8service tests passed10/10; route47tests and tsc passed. New-head CI
+      still required; earlier functional CI evidence is not presented as successor validation.
+live_state:
+  Not deployed. No production submissions or roster assignment. External builder will not merge,
+  arm or deploy.
+limitations:
+  - CI-compatible PostgreSQL verified locally, not a claim CI has run on this branch.
+  - Browser QA used an isolated local auth harness; real authentication guards separately covered by integration
+    tests.
+  - iQOO had no connected ADB device; physical mobile QA unavailable.
+  - No general visa accuracy or exhaustive product coverage claimed.
+  - Campaign dates remain the user-authorized28Sep-2Oct; six staff identities await owner configuration,
+    no roster invented. If first day is missed, rescheduling requires an owner decision.
+bites:
+  Kita staff page calls the registered API; browser save/reload preserved locked expectation and
+  draft with private evidence; server tests reject cross-user writes and self-review.
+council_run: council-journal.jsonl
+council_scope:
+  Both seats judged the same supplied immutable patch. Small subsequent fixes address accepted
+  findings; no claim that they reviewed the later fixes. Fresh Claude final gate will inspect the committed
+  final candidate.
+seat_fallback_reason:
+  "agy-gemini-3.1-pro replaces tp1-qwen3.8-max: valid hardened Qwen review returned
+  no judgement; non-quiet diagnosis on 2026-09-28 exposed HTTP 401 Invalid API-key provided (child exit
+  1, 1570ms). No credential/config change. Gemini had already reviewed the immutable packet before the
+  primary probe; that chronology is preserved, not backdated. Kimi is the other primary reviewer."

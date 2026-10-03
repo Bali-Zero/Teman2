@@ -20,18 +20,18 @@ name: worker-plane review panel tests
 # adding it there is a separate, deliberate step, see PENDING-ARMS). A red
 # run here is advisory until that's done — same lesson learned live on
 # PR #3114, where kbli-filiera-vault-compilers was red and not required and
-# the PR merged anyway. Following the repo's own sentinel-gate pattern here
-# regardless (see below) so this workflow is *ready* to become required
-# without also inheriting the W69 pending-forever trap the day someone flips
-# that switch.
+# the PR merged anyway. The relevant-paths decision follows the repo's own
+# sentinel-gate pattern (see below). Promoting this workflow to required would
+# first need `pull_request` unfiltered again (the W69 pending-forever trap), see `on:`.
 #
 # SENTINEL PATTERN (same reasoning as token-lint.yml / guard-conformance.yml,
-# W69): NO top-level pull_request paths: filter — the workflow always
-# triggers on PR, so a future required-check flip never leaves an
-# out-of-scope PR stuck at "Expected — waiting for status" forever. The
-# relevant-paths decision lives in the "Did worker-plane review surfaces
-# change?" step; on a path-miss PR the job ends success (sentinel), without
-# paying the ~2-minute test-suite cost.
+# W69): the relevant-paths decision lives in the "Did worker-plane review surfaces
+# change?" step; on a path-miss the job ends success (sentinel), without paying the
+# ~2-minute test-suite cost. `pull_request` carries `paths:` equal to that step's
+# regex (see `on:`), so an out-of-scope PR starts no run at all; the step remains the
+# defence against an over-match. One predicate does not survive the translation: the
+# step diffs with `--no-renames` (it also sees the OLD path of a rename-away), and a
+# `paths:` filter cannot promise that.
 #
 # PYTHON 3.10+ IS LOAD-BEARING: test_check_worker_plane_review.py uses
 # zip(..., strict=True) (PEP 618). Pinned to 3.11 to match this repo's own
@@ -39,7 +39,28 @@ name: worker-plane review panel tests
 # workflow was verified against.
 
 on:
-  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  # Non-required lint: pull_request starts a run only when the PR touches this job's inputs
+  # (same set as the push filter below and the "Did worker-plane review surfaces change?"
+  # step). No merge_group: scripts/ci/lint_trigger_symmetry.py forbids it beside
+  # pull_request.paths. A required context needs pull_request unfiltered again
+  # (check_required_workflow_conformance.py).
+  pull_request:
+    paths:
+      - "scripts/check_worker_plane_review.py"
+      - "scripts/launch_worker_plane_review_panel.py"
+      - "scripts/freeze_worker_plane_review.py"
+      - "scripts/detect_secrets_auto_triage.py"
+      - "scripts/tests/test_check_worker_plane_review.py"
+      - "scripts/tests/test_launch_worker_plane_review_panel.py"
+      - "scripts/tests/test_worker_plane_review_packet.py"
+      - "scripts/tests/test_v3_final_gate_parity.py"
+      - "scripts/tests/test_detect_secrets_auto_triage.py"
+      - "scripts/tests/test_gate_seat_conformance.py"
+      - "docs/rules/RULINGS.md"
+      - ".github/workflows/worker-plane-review-tests.yml"
+      # pytest loads these implicitly for scripts/tests/ (its conftest and package marker).
+      - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
   push:
     branches: [main]
     paths:

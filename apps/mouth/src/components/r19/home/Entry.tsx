@@ -9,7 +9,7 @@ const navigation = [
   { label: "Explore", href: "/#tools" },
   { label: "Services", href: "/services" },
   { label: "Journal", href: "/news" },
-  { label: "Our story", href: "/v2/company/about" },
+  { label: "Our story", href: "/about" },
   { label: "Our team", href: "/team" },
   { label: "Contact", href: "/contact" },
 ];

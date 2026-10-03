@@ -14,10 +14,12 @@ import pytest
 from scripts.wa_team_promises import (
     EnvGuardError,
     SchemaMismatchError,
+    _expected_status_check_def,
     _fail_line,
     _guard_pro_local_env,
     _REQUIRED_COLUMNS,
     _SQL_PATH,
+    _STATUS_CHECK_NAME,
     run_init_schema,
 )
 import scripts.wa_team_promises as wa_team_promises
@@ -41,8 +43,13 @@ class _FakeTxn:
 
 
 class _FakeConn:
-    def __init__(self, log, index_rows, column_rows):
+    def __init__(self, log, index_rows, column_rows, status_row=None):
         self._log, self._index_rows, self._column_rows = log, index_rows, column_rows
+        # T3 PR-3: verify_status_check's own fetchrow call carries ONE extra
+        # arg (the constraint name), not (table, index) — distinguished by
+        # arg count, tagged "fetchrow_status" (never "fetchrow") so the
+        # PR-1 index-count assertions below stay exactly 2.
+        self._status_row = status_row if status_row is not None else {"def": _expected_status_check_def()}
 
     def transaction(self):
         return _FakeTxn(self._log)
@@ -54,7 +61,11 @@ class _FakeConn:
         self._log.append(("fetch", sql, table, names, types, notnulls))
         return self._column_rows.get(table, [])
 
-    async def fetchrow(self, sql, table, index):
+    async def fetchrow(self, sql, *args):
+        if len(args) == 1:
+            self._log.append(("fetchrow_status", sql, args[0]))
+            return self._status_row
+        table, index = args
         self._log.append(("fetchrow", sql, table, index))
         return self._index_rows.get((table, index))
 
@@ -169,6 +180,41 @@ async def test_run_init_schema_guilt_column_mismatch_rolls_back(column):
     assert log[-1] == "ROLLBACK"
     # the column check runs before either index check — never reached them.
     assert not _positions(log, "fetchrow")
+
+
+@pytest.mark.asyncio
+async def test_run_init_schema_guilt_stale_status_check_rolls_back():
+    """T3 PR-3: a status CHECK that still admits only the PR-1/PR-2 4-value
+    set (missing 'superseded') must roll back init-schema exactly like a
+    missing column or an incompatible index — never silently pass because
+    "some" CHECK exists on the column."""
+    log: list = []
+    rows, cols = _good_rows()
+    stale = {"def": "CHECK ((status = ANY (ARRAY['unjudged'::text, 'judged_true'::text, "
+                     "'judged_false'::text, 'quarantined'::text])))"}
+    pool = _FakePool(_FakeConn(log, rows, cols, status_row=stale))
+
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        await run_init_schema(pool)
+
+    assert exc_info.value.identifier == _STATUS_CHECK_NAME
+    assert "COMMIT" not in log
+    assert log[-1] == "ROLLBACK"
+
+
+@pytest.mark.asyncio
+async def test_run_init_schema_guilt_missing_status_check_rolls_back():
+    log: list = []
+    rows, cols = _good_rows()
+    pool = _FakePool(_FakeConn(log, rows, cols))
+    pool._conn._status_row = None  # simulate no matching pg_constraint row at all
+
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        await run_init_schema(pool)
+
+    assert exc_info.value.identifier == _STATUS_CHECK_NAME
+    assert "COMMIT" not in log
+    assert log[-1] == "ROLLBACK"
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,28 @@
+task: >-
+  R19 group B surface 2: restyle the category index pages (/visas /business /taxes /living
+  /trends) — CategoryContent's per-category gradient hero, CategoryNav's filter pills, and the
+  shared ArticleGrid/ArticleCard cards — to R19 (copper eyebrow/accent, Fraunces, flat surfaces,
+  hairlines), and fix a duplicated-title look on the featured card caused by text overlaid on a
+  dark image colliding with text baked into the cover photo itself.
+lane: mouth/r19-b-category
+machine: air-m5
+date: 2026-09-28
+gear: 2
+gear_reason:
+  Floor 2 per evidence_pack_lint.py --print-floor on the final HEAD (5 files, 628
+  churned lines incl. this brief and the guard test).
+acceptance:
+  A1:
+    r19-guard.test.tsx is red against origin/main's CategoryNav/ArticleCard/ArticleGrid/
+    CategoryContent (10, 37 and a not-yet-existing-eyebrow failure) and green after; existing
+    CategoryContent.test.tsx (canonical article links) and the rest of the (blog)/[category] +
+    components/blog suite (155 tests total) stay green; tsc --noEmit exit 0; eslint 0 errors;
+    prettier --check clean.
+  A2:
+    live-vs-local screenshots of /visas and /living (desktop 1440x900 + mobile 390x844, first
+    2 viewports + full page) show the R19 header/pills/cards and the fixed FeaturedCard, with no
+    section/link/count removed and no material page-height growth (+0.15% to +2.4% measured).
+out_of_scope:
+  NewsletterForm.tsx (components/blog/NewsletterForm.tsx, a different lane); [category]/[slug]/**
+  (article lane, Surface 3); [category]/page.tsx and layout.tsx; pagination on /visas' 77k px
+  page (a human decision per the group-B map, not a skin change).

@@ -14,9 +14,22 @@ export function R19HomeProvider({ children }: { children: ReactNode }) {
   return <R19Context.Provider value={true}>{children}</R19Context.Provider>;
 }
 
-/** Presentation only: server-rendered children retain their data and metadata. */
-export function R19Presentation({ children }: { children: ReactNode }) {
-  const active = isR19Route(usePathname());
+/**
+ * Presentation only: server-rendered children retain their data and metadata.
+ * `force` opts a subtree in regardless of `routePolicy` — the 404 boundaries
+ * need it: an unmatched pathname (e.g. a typo'd single segment) never
+ * satisfies `isR19Route`, so without `force` a not-found page would render
+ * with the pre-R19 dark theme instead of this app's current design.
+ */
+export function R19Presentation({
+  children,
+  force,
+}: {
+  children: ReactNode;
+  force?: boolean;
+}) {
+  const pathname = usePathname();
+  const active = force || isR19Route(pathname);
   return (
     <R19Context.Provider value={active}>
       {active && (

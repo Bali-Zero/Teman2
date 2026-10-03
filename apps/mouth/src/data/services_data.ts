@@ -15,6 +15,13 @@ export interface ServicePackage {
   /** Optional exact PricingTool SSOT identity. Missing rows always abstain. */
   livePriceKey?: string;
   livePriceCategory?: string;
+  /** Optional tier-set floor: when set (with livePriceCategory), the card
+   *  shows "from <catalogue minimum across these keys>" instead of an exact
+   *  price. Mutually exclusive with livePriceKey. */
+  livePriceFloorKeys?: string[];
+  /** Optional billing-period label for a floor price (e.g. "month"). Only
+   *  meaningful alongside livePriceFloorKeys. */
+  livePriceFloorUnit?: string;
 }
 
 export interface ServiceData {
@@ -58,7 +65,9 @@ const SEPARATE_MONETARY_DETAIL =
   /(?:\bIDR\s*\d|\b\d[\d.,]*\s*IDR\b|\bRp\.?\s*\d)/i;
 
 function withoutSeparateMonetaryDetail(value: string | null): value is string {
-  return Boolean(value?.trim()) && !SEPARATE_MONETARY_DETAIL.test(value as string);
+  return (
+    Boolean(value?.trim()) && !SEPARATE_MONETARY_DETAIL.test(value as string)
+  );
 }
 
 const VISA_SERVICE_PACKAGES: ServicePackage[] = VISA_PRICING_CATEGORIES.flatMap(
@@ -66,8 +75,9 @@ const VISA_SERVICE_PACKAGES: ServicePackage[] = VISA_PRICING_CATEGORIES.flatMap(
     getExactPricingSnapshotEntries(category).map((entry) => ({
       name: entry.name,
       description:
-        [entry.description_en, entry.notes].find(withoutSeparateMonetaryDetail) ??
-        `Bali Zero service: ${entry.name}`,
+        [entry.description_en, entry.notes].find(
+          withoutSeparateMonetaryDetail,
+        ) ?? `Bali Zero service: ${entry.name}`,
       price: "Contact",
       features: [entry.duration, entry.validity, entry.notes].filter(
         withoutSeparateMonetaryDetail,
@@ -94,8 +104,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     description:
       "Navigate Indonesia's immigration system with confidence. From short-term visit visas to permanent residency, we handle all visa types with full government compliance and ongoing support.",
     icon: Globe,
-    bgColor: "bg-rose-500/10",
-    iconColor: "text-rose-400",
+    bgColor: "bg-[var(--r19-wash)]",
+    iconColor: "text-[var(--r19-copper)]",
     timeline: "Varies by visa type and sponsor readiness",
     documentsRequired: "Document set varies by pathway",
     validity: "Depends on permit class",
@@ -168,8 +178,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     description:
       "Start your Indonesian business the right way. We handle PT PMA/PMDN formation, business licensing through OSS, special permits like alcohol licenses, and ongoing compliance so you can focus on growth.",
     icon: Building2,
-    bgColor: "bg-orange-500/10",
-    iconColor: "text-orange-400",
+    bgColor: "bg-[var(--r19-wash)]",
+    iconColor: "text-[var(--r19-copper)]",
     timeline: "2-12 weeks",
     documentsRequired: "10-15 docs",
     validity: "Perpetual",
@@ -284,8 +294,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     description:
       "Indonesian tax compliance made simple. From NPWP registration to annual SPT filing, BPJS enrollment to monthly reporting — we handle it all with expert precision.",
     icon: Calculator,
-    bgColor: "bg-amber-500/10",
-    iconColor: "text-amber-400",
+    bgColor: "bg-[var(--r19-wash)]",
+    iconColor: "text-[var(--r19-copper)]",
     timeline: "Ongoing",
     documentsRequired: "Varies",
     validity: "Annual",
@@ -301,6 +311,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Digital NPWP card",
         ],
         popular: false,
+        // consultant_services:"NPWP Personal + Coretax Activation"
+        livePriceKey: "NPWP Personal + Coretax Activation",
+        livePriceCategory: "consultant_services",
       },
       {
         name: "NPWPD Corporate",
@@ -309,10 +322,14 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         features: [
           "Corporate tax ID registration",
           "Regional tax registration",
+          "Per location",
           "Company documentation",
           "Tax office liaison",
         ],
         popular: false,
+        // consultant_services:"NPWPD Registration"
+        livePriceKey: "NPWPD Registration",
+        livePriceCategory: "consultant_services",
       },
       {
         name: "SPT Annual Personal",
@@ -325,6 +342,9 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "E-filing submission",
         ],
         popular: false,
+        // tax_accounting.annual_standalone:"Annual Tax Personal"
+        livePriceKey: "Annual Tax Personal",
+        livePriceCategory: "tax_accounting.annual_standalone",
       },
       {
         name: "SPT Annual Company (Zero)",
@@ -337,6 +357,10 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "E-filing submission",
         ],
         popular: false,
+        // SKU "Annual Company ZERO" = "Yearly Financial Report only"; this
+        // card also promises personal filing, which is the separate 1M
+        // "Annual Tax Personal" SKU — the combined scope has no exact SKU,
+        // so this stays on the Contact placeholder (2026-09-28 ruling).
       },
       {
         name: "SPT Annual Company (Operational)",
@@ -349,6 +373,11 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "E-filing submission",
         ],
         popular: true,
+        // Catalogue's Annual Basic Package A-D all say "Does not include
+        // Annual Personal Tax report"; this card promises "Personal
+        // director filing included", which none of the 4 tiers cover —
+        // stays on Contact, like SPT Annual Company (Zero) (2026-09-29
+        // ruling). The owner will pick the tier set later.
       },
       {
         name: "Monthly Tax Report",
@@ -361,6 +390,17 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Deadline management",
         ],
         popular: false,
+        // No exact SKU: the catalogue's "without LKPM & Annual" tier set
+        // matches this card's scope (no LKPM/Annual mentioned). Shows the
+        // tier-set floor instead.
+        livePriceCategory: "tax_accounting.monthly_tax_basic",
+        livePriceFloorUnit: "month",
+        livePriceFloorKeys: [
+          "Tier 0-50",
+          "Tier 50-100",
+          "Tier 100-200",
+          "Tier 200+",
+        ],
       },
       {
         name: "BPJS Health Insurance",
@@ -373,6 +413,10 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Monthly administration",
         ],
         popular: false,
+        // SKU "BPJS Insurance (Kesehatan)" = registration only; this card
+        // promises "Monthly administration", which the SKU does not cover
+        // and the owner has not confirmed the scope of — stays on Contact
+        // (2026-09-28 ruling).
       },
       {
         name: "BPJS Employment Insurance",
@@ -385,6 +429,10 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Monthly administration",
         ],
         popular: false,
+        // SKU "BPJS Employee (Tenaga Kerja)" = registration only; this card
+        // promises "Monthly administration", which the SKU does not cover
+        // and the owner has not confirmed the scope of — stays on Contact
+        // (2026-09-28 ruling).
       },
       {
         name: "LKPM Report",
@@ -397,6 +445,10 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
           "Government liaison",
         ],
         popular: false,
+        // Catalogue's only LKPM row, "LKPM Yearly Report", is a stand-alone
+        // YEARLY report; this card promises "Quarterly LKPM submission",
+        // which that SKU does not cover — stays on Contact (2026-09-28
+        // ruling, following #7582's own gate finding).
       },
     ],
     included: [
@@ -455,8 +507,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     description:
       "Navigate Indonesian property law with confidence. From due diligence to leasehold agreements, building permits to ownership structures — we protect your investment every step of the way.",
     icon: Home,
-    bgColor: "bg-emerald-500/10",
-    iconColor: "text-emerald-400",
+    bgColor: "bg-[var(--r19-wash)]",
+    iconColor: "text-[var(--r19-copper)]",
     timeline: "Depends on transaction type and due diligence scope",
     documentsRequired: "Varies",
     validity: "Per transaction",

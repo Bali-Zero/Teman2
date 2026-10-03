@@ -1,0 +1,51 @@
+task: >-
+  R19 group B, successor of #7576 (fresh gate REWORK-BUILD): re-point every colour
+  literal in globals.css's MYTHOS Stage-B `.rumah-putih` Batch 1 + Batch 2 blocks to
+  the matching R19 token with the old literal as the var() fallback, and cure the
+  gate's findings — the article Share menu (`.bg-[#0a1929]`, white text inside
+  `.absolute`) stays a dark island; the guard also checks rules that only EXCLUDE
+  `.rp-dark-island`; the PENDING-ARMS row for #7574's PWC no longer reads as a firebreak.
+lane: mouth/r19-b-globals
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: Floor 1, one CSS file + one new guard test, --no-renames churn (59+148 added, 47 removed incl. this brief) well under threshold.
+acceptance:
+  A1: >-
+    globals.rumah-putih.guard.test.ts (new) parses the Batch 1 + Batch 2 block and fails if
+    any rule outside .rp-dark-island carries a colour literal anywhere but a
+    var(--r19-…, …) fallback slot — proven red (46 offenders once `:not(.rp-dark-island)` rules are checked and the Share-menu island is exempt; 39 before the gate fix) against origin/main's
+    globals.css, green (0) after; tsc -p . exit 0; prettier --check clean (eslint ignores
+    *.test.ts repo-wide, same as the pre-existing whatsapp-ink.guard.test.ts).
+  A2: >-
+    live-vs-local computed styles on 3 articles (table+blockquote:
+    /visas/immigration-lounge-bali-malls-2026; plain body: /business/pt-pma-2026-foreign-
+    company-setup-rules; fenced code block: /visas/emergency-visa-procedures-indonesia-guide)
+    all move from the old literal to the matching R19 token, e.g. h2 color
+    rgb(30,56,99)->rgb(29,44,59) (=--r19-ink), blockquote border-left rgb(30,56,99)->
+    rgb(164,75,54) (=--r19-copper), pre background rgb(15,31,51)->rgb(234,227,216)
+    (=--r19-wash). A DOM sweep of every `.rumah-putih` descendant's computed
+    color/background/border on /visas (category index) also lands 20 distinct literal->
+    token pairs, 0 anything else.
+  A3: >-
+    /team, /contact, /services, /services/compliance (already-R19 pages) sweep to 0 changed
+    elements live vs local — this lane's selectors correctly find nothing there. An isolated
+    local origin/main-vs-mine A/B on /services/visa (still pre-R19) confirms the true effect
+    of this diff is a clean 26 literal->token pairs; the noisier raw live-vs-local read on
+    that page (72 pairs, oklch/color-mix noise) and on /news (35 changed) is unrelated
+    environment/content drift, not caused by this change (isolated A/B on /news: 0 changed).
+    Page heights identical before/after on every measured page (no layout shift).
+out_of_scope:
+  - Component-level literal colours (ArticleCard.tsx gradients, ServicePricing.tsx navy,
+    CategoryNav.tsx pills, etc.) belong to the other R19 group-B lanes per the surface map;
+    this lane only owns the two globals.css !important blocks.
+  - The author-card box-shadow (0 1px 2px rgba(22,33,58,0.05)) has no R19-flat equivalent and
+    becomes `none` with no var() fallback, per spec instruction — the one literal removed
+    outright rather than token-mapped.
+  - Sibling lane r19-b-prose's own evidence brief (not yet on origin/main) names this exact
+    globals.css block as its own out-of-scope item ("still force the blockquote left-rule and
+    the real <pre> code-block background — reported, not fixed here") — this PR is that fix.
+  - >-
+    The article Share menu (ArticleEngagement.tsx, bg-[#0a1929] with white text inside
+    .absolute) stays a dark #0f1f33 island on purpose; restyling it to R19 is a
+    component change for a later PR.

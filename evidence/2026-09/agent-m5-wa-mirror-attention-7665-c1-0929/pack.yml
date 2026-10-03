@@ -1,0 +1,107 @@
+# Gear-3 Evidence Pack - check-wa-attention-pii: AST walk refuses the C1 false-GREEN shapes (gate C1 of #7665).
+task_id: wa-mirror-attention-7665-c1
+gear: 3
+mission_colour: BLUE
+gate_class: opus
+brief_ref: evidence/brief.yml
+base_sha: "def1f0dfee207d84a5b187e87ddc9185302d5168" # pragma: allowlist secret - merge-base with origin/main
+head_sha: "5609fac07bd28c94d4bac5a1d1bbd479a6b628dc" # pragma: allowlist secret - final code SHA (merge of origin/main into the R1-R5 fix)
+pii_scan: clean
+outcome: >-
+  The presence walk moves from an inline heredoc to scripts/wa_attention_presence.py and now
+  refuses, RED and never guessed: any import that binds a test*/Test* name (aliased, unaliased or
+  star), object, a TestCase-named class or an aliased pytest.fixture; assignment rebinding of a
+  test name including tuple targets and anything bound under control flow; a Test* class with a
+  base other than object or a metaclass; a class not named Test* that defines test methods; any
+  TestCase subclass; and the runtest/collection hooks (pytest_pyfunc_call, pytest_runtest_call,
+  pytest_runtest_protocol, pytest_runtest_makereport, pytest_pycollect_makeitem,
+  pytest_collection_modifyitems, pytest_plugins, hookimpl specname, .obj/.runtest assignment) in a
+  suite or in the three conftest paths. The real corpus stays at problems=0.
+
+compute_floor: 3
+compute_floor_source: path
+compute_floor_note: ".github/workflows/ hot zone; contract_verify --local reports floor 3."
+
+lanes:
+  - lane: attention-7665-c1-build
+    role: build
+    seat: claude-sonnet-5
+  - lane: attention-7665-c1-council-sol
+    role: review
+    seat: codex-gpt-5.6-sol
+    artifact: reviews/codex-gpt-5.6-sol-r1.md
+  - lane: attention-7665-c1-council-kimi
+    role: review
+    seat: kimi-code/k3
+    artifact: reviews/kimi-code-k3-r1.md
+
+council_run: council-journal.jsonl
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 REWORK HIGH: hooks imported or renamed (import as pytest_pyfunc_call, hookimpl specname) escape the name check."
+    status: CONFIRMED
+    resolution: "hook_problems now also refuses import bindings and specname; guilt tests hook_imported_under_own_name, hook_via_specname."
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 HIGH: pytest_collection_modifyitems can swap item.obj and keep identity."
+    status: CONFIRMED
+    resolution: "pytest_collection_modifyitems is a forbidden hook and any .obj/.runtest assignment is refused; tests modifyitems_def, body_swap_obj."
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 HIGH: import alias under if, tuple-target rebinding bypass."
+    status: CONFIRMED
+    resolution: "Control-flow branch now collects imports and rebindings; targets are walked through tuples; tests import_under_if_shadows, tuple_target_rebinding, assign_under_if_rebinding."
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 HIGH: TestCase aliased on import, test methods under if in a plain class, object aliased base."
+    status: CONFIRMED
+    resolution: "Importing any *TestCase name is refused whatever the alias, non-Test classes are scanned with ast.walk, importing a name `object` is refused; tests testcase_alias_import, test_method_under_if_in_plain_class, object_alias_base."
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 HIGH: fixture heuristic by spelling (aliased fixture false-RED; look-alike decorator excludes a real test)."
+    status: CONFIRMED
+    resolution: "Only pytest.fixture (or bare fixture imported from pytest, unaliased) is a fixture; an aliased import is refused; a look-alike stays in the expected set so a non-run is RED; tests fixture_alias_import, lookalike_fixture_decorator_is_still_expected."
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 MED: hook scan descends into function bodies (false-RED on a local variable named pytest_plugins)."
+    status: CONFIRMED
+    resolution: "hook_problems only reads module-level statements and control flow, not def/class bodies; test test_pytest_configure_and_local_names_are_not_forbidden."
+
+  - seat: kimi-code/k3
+    objection: "R1 REWORK Critical: unknown decorators can replace a test body; module-level setattr/globals write rebinds a collected test; hooks via pluginmanager.register, star import in conftest, logreport/teststatus rewriting the skip."
+    status: CONFIRMED
+    resolution: "CLOSED at the final head, each with a guilt case: decorators other than pytest.fixture / pytest.mark.* on a test or Test* class; module-level setattr/globals/locals/vars/exec/eval/__import__/register CALL STATEMENTS; (gate REWORK R1) any assignment at module or class scope whose target is a subscript or attribute (globals()[..]=, vars()[..]=, locals()[..]=, sys.modules[__name__].x=), any module/class-scope statement that loads a test def name, and any .__code__/.__dict__/.__globals__ access in a suite or conftest; pluginmanager/.register, star imports in suites and conftests; logreport/report_teststatus/sessionfinish/unconfigure hooks; rebinding pytest/fixture. The first version of this resolution claimed globals()[..]= was closed; it was not (only globals().update(...) was) - corrected by the gate and closed in this round."
+  - seat: kimi-code/k3
+    objection: "R1 Critical: the checker, the suite sources and junit.xml live in the same writable checkout the tests run in, so a test can tamper with them; reflection inside function bodies."
+    status: PLAUSIBLE
+    resolution: "Declared, not closed: a test that rewrites the checker or junit.xml on disk, and reflection the enumerated predicates do not name, are outside this tripwire's threat model. Principle: anything not enumerated is not defended; deliberate reflection is outside the threat model. The next step, if wanted, is an allowlist spec of module/class-scope statement forms, not a longer blacklist."
+  - seat: kimi-code/k3
+    objection: "R1 MED false-RED: conditional imports (TYPE_CHECKING), any x.obj assignment, specname on unrelated decorators, module constants named test_*, import pytest as pt."
+    status: PLAUSIBLE
+    resolution: "Accepted: every one fails closed and none exists in the corpus (problems=0); the alternative is a wider hole."
+
+limitations:
+  - "Two seats (codex, then kimi on codex's fixed diff) reviewed statically; both verdicts were REWORK and their findings were applied and verified by the builder's tests. Neither seat was re-asked on the final delta (fix-of-a-fix depth 1). Kimi's tamper-on-disk finding is declared, not closed."
+  - "NOT DEFENDED, as a principle: anything not enumerated in the workflow comment is not defended; deliberate reflection is outside this tripwire's threat model (third-party or -p plugins, conftest outside root/scripts/scripts/tests, on-disk tamper of the checker or junit.xml, generation inside function bodies). Coverage is per definition, not per parameter set."
+  - "The check is not a required context: making it required and regenerating contexts.json is the owner's branch-protection action, out of this lane."
+
+release_requirements:
+  - "Fresh independent Opus 5.5 gate on the exact committed SHA before merge (Builder Contract section 5)."
+  - "This PR's own check-wa-attention-pii run on the merge ref must print defined=51 skipped=0 missing=0 problems=0 absent_suites=0 (50 on main after #7675, plus the N00 control test)."
+
+cloud_ok: >-
+  Builder Contract section 4: code-only lane. The council seat received only the diff and a static
+  question; no client rows, names, phone numbers or credentials; run with env -i, read-only
+  sandbox, empty cwd.
+
+receipts:
+  - claim: "Innocence: real corpus with the CI flags and the extracted walk"
+    cmd: "pytest scripts/tests/test_wa_attention_*.py <CI flags> --junitxml; python scripts/wa_attention_presence.py junit.xml"
+    result: "97 passed; testcases=97 defined=51 skipped=0 missing=0 problems=0 absent_suites=0 (merge of origin/main incl #7675)"
+    exit: 0
+    ts: "2026-09-29T23:40:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/c1-guilt-innocence.txt
+  - claim: "Guilt: 48 synthetic shapes are RED at this head; all 48 were GREEN under the origin/main inline walk and the 8 gate-table cases (N11 N12 N13 N14 N17 N18 N19 C15) were also GREEN at 1688b1fda8"
+    cmd: "old walk exec'd from the origin/main workflow vs scripts/wa_attention_presence.py"
+    result: "3-column receipt: origin/main walk | head 1688b1fda8 | this head; every row ends RED; 0 rows GREEN at this head"
+    exit: 0
+    ts: "2026-09-29T23:40:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/c1-guilt-innocence.txt

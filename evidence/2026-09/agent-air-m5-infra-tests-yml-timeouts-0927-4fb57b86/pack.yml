@@ -1,0 +1,217 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "team-lead dispatch (this session, 2026-09-27): 'PR B — tests.yml timeouts: Pro's
+  suite-growth-probe correctly flags 3 CI jobs in .github/workflows/tests.yml with no
+  timeout-minutes... Identify the 3... add timeout-minutes to each with a value justified by the
+  job's recent durations... take max observed x2, rounded up to 5... make the probe pass locally.'
+  task-id tests-yml-timeouts-0927, lane infra."
+lanes:
+  - lane: tests-yml-timeouts-0927
+    role: build
+    seat:
+      "claude-sonnet-5 (this session, two rounds — round 1 grounded the alert, found 2 real gaps
+      + 1 probe false positive, fixed both tests.yml jobs and the probe's read_job_timeouts()
+      matrix-name resolution, corrected the initial 5-minute value to 10 after measuring the
+      workflow-timeout-floor lint reject it, wrote the probe's new test corpus, authored this
+      pack. Round 2 (this commit) is the cure for the fresh gate's REWORK-BUILD verdict on round
+      1's head (4292c295) — re-measured every countable claim at the final head (pack was stale
+      by a follow-up commit), applied `seat_override` for council_run per the gate's own explicit
+      direction, and fixed a SECOND real gap the gate found empirically against 43 real
+      merge_group runs — a SKIPPED matrix shard is reported by the Jobs API under the raw
+      unrendered `name:` template, which round 1's render-only fix no longer matched (new error
+      'backend-shard-matrix-shard', 3 -> 1, not 3 -> 0). Verified with the gate's own method —
+      real Jobs-API data run through `build_record` at merge-base, round-1 head, and round-2
+      head.)"
+seat_diversity: not_applicable
+seat_diversity_note:
+  "One build lane (fewer than 2 — the D3 floor only applies at >= 2 build lanes). No review lane
+  declared; council_run (R9) is instead resolved via `seat_override` below, per the fresh gate's
+  own explicit direction on round 1 — see dissent for the reason, which is NOT the same gate as
+  D3/seat-diversity and is not satisfied by this note."
+pii_scan: clean
+seat_override:
+  "council_run (R9): no journal.jsonl with >=2 distinct COUNCIL_REVIEW_SEATS entries is declared.
+  This is a solo Claude Sonnet 5 authoring session; COUNCIL_REVIEW_SEATS names only
+  non-Anthropic seats (codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max, tp1-deepseek-v4-pro,
+  tp1-glm-5.2, agy-gemini-3.1-pro) by design, and fabricating a 2-seat cross-family review this
+  session did not actually receive would be dishonest evidence, not a shortcut. The fresh gate
+  that returned REWORK-BUILD on round 1's head (4292c295) explicitly instructed: 'R9 council_run
+  is hard since 2026-09-02: either a real journal with >=2 non-Anthropic seats or
+  seat_override: <reason> per the lint's own documented escape — pick the documented one and say
+  why.' This is that documented escape, applied on that explicit authority rather than
+  self-selected — the underlying fact (no real council convened) is unchanged and is also
+  recorded as CONFIRMED dissent below for anyone reviewing this pack without that context."
+diff:
+  files: 6
+  insertions: 659
+  deletions: 12
+  net_lines: 647
+  behaviour_change:
+    "Full PR diff, both rounds combined (6 files): this evidence pack (brief.yml + pack.yml, the
+    bulk of the line count, documentation/receipts only); `.github/workflows/tests.yml`
+    (evaluator-critical-tests and packages-core-tests each gain `timeout-minutes: 10`, with an
+    inline comment recording the measured max and the lint_workflow_timeout_floor.py correction
+    from an initial 5 — no trigger, permission, secret, or test-selection logic changed on either
+    job); `scripts/suite_growth_probe.py` (round 1 added `_MATRIX_VAR_RE` +
+    `_expand_matrix_job_names()`, threaded through `read_job_timeouts()`'s per-job-id loop; round
+    2 changed that loop to keep the raw, unrendered template name as an EXTRA entry alongside the
+    rendered ones, closing the skipped-matrix-job regression the fresh gate found — the
+    function's return TYPE and its consumer, `build_record`'s `timeout_by_key` construction, are
+    unchanged throughout); `scripts/tests/test_suite_growth_probe.py` (round 1's guilt/innocence
+    pair for the templated-name shape, round 2's guilt/innocence pair for the skipped-shard shape
+    plus an end-to-end `build_record` test, zero existing tests modified); and
+    `scripts/ci/change_map.py` (SCRIPTS_COUPLING census refresh, mechanical re-wrap plus one new
+    entry, no logic change)."
+receipts:
+  - claim:
+      "Before the fix, tests.yml's evaluator-critical-tests and packages-core-tests jobs have no
+      timeout-minutes key at all (direct read of both job blocks)."
+    cmd: "sed -n '1671,1736p' .github/workflows/tests.yml ; sed -n '2167,2221p' .github/workflows/tests.yml"
+    exit: 0
+    ts: "2026-09-27T02:58Z"
+    seat: claude-sonnet-5
+  - claim:
+      "backend-shard already declares timeout-minutes: 30 at the job level (line 909-910),
+      applying to all 3 matrix instances — the probe's alert on this job is not a config gap."
+    cmd: "sed -n '875,912p' .github/workflows/tests.yml"
+    exit: 0
+    ts: "2026-09-27T02:59Z"
+    seat: claude-sonnet-5
+  - claim:
+      "Before the probe fix, read_job_timeouts() maps backend-shard's job id to the literal
+      unrendered name 'Backend Shard ${{ matrix.shard }}', which normalizes to a key that does not
+      match any of the API's real rendered names ('Backend Shard 1'/'2'/'3')."
+    cmd: 'python3 -c "import importlib.util,sys; ...read_job_timeouts(Path(''.github/workflows/tests.yml''))... " (pre-fix HEAD~1)'
+    exit: 0
+    ts: "2026-09-27T03:05Z"
+    seat: claude-sonnet-5
+  - claim:
+      "After the probe fix, read_job_timeouts() resolves backend-shard into 3 keys named 'Backend
+      Shard 1'/'2'/'3', each with timeout_minutes=30, and evaluator-critical-tests /
+      packages-core-tests populate at timeout_minutes=10 with zero unmatched keys (error: None)."
+    cmd:
+      'python3 -c "import importlib.util, sys; from pathlib import Path; spec =
+      importlib.util.spec_from_file_location(''sgp'',''scripts/suite_growth_probe.py''); sgp =
+      importlib.util.module_from_spec(spec); sys.modules[''sgp'']=sgp;
+      spec.loader.exec_module(sgp); m,e = sgp.read_job_timeouts(Path(''.github/workflows/tests.yml''));
+      print(''error:'',e); [print(k,m[k]) for k in (''evaluator-critical-tests'',''packages-core-tests'',
+      ''backend-shard'',''backend-shard[1]'',''backend-shard[2]'')]"'
+    exit: 0
+    ts: "2026-09-27T11:24Z"
+    seat: claude-sonnet-5
+  - claim:
+      "scripts/tests/test_suite_growth_probe.py: 37 passed, 0 failed (was 33 before this pack's 4
+      new tests) — no existing test regressed."
+    cmd: "python3 -m pytest scripts/tests/test_suite_growth_probe.py -q"
+    exit: 0
+    ts: "2026-09-27T11:25Z"
+    seat: claude-sonnet-5
+  - claim:
+      "GUILT: at the pre-correction draft value (timeout-minutes: 5 on both jobs),
+      scripts/lint_workflow_timeout_floor.py reports 2 offenders against its own 10-minute
+      checkout floor and exits 1."
+    cmd: "python3 scripts/lint_workflow_timeout_floor.py"
+    exit: 1
+    ts: "2026-09-27T11:15Z"
+    seat: claude-sonnet-5
+  - claim: "INNOCENCE: after correcting both jobs to timeout-minutes: 10,
+      scripts/lint_workflow_timeout_floor.py reports clean (166 jobs scanned, floor 10m) and exits
+      0."
+    cmd: "python3 scripts/lint_workflow_timeout_floor.py"
+    exit: 0
+    ts: "2026-09-27T11:20Z"
+    seat: claude-sonnet-5
+  - claim:
+      "Real (non-skip) job durations over the last 40 completed tests.yml runs (gh Jobs API):
+      Evaluator Critical Tests tops out at ~0.7min, Shared Core Package Tests at ~1.4min,
+      Backend Shard 1/2/3 at ~8.5/8.9/10.1min respectively — none of the three matrix shards
+      approaches its existing 30-minute job-level timeout."
+    cmd:
+      "gh run list --workflow tests.yml --status completed --limit 40 --json databaseId | ...
+      gh run view <id> --json jobs --jq '.jobs[] | select(...) | [.name,.startedAt,.completedAt]'
+      | python3 (percentile/max over parsed durations)"
+    exit: 0
+    ts: "2026-09-27T11:05Z"
+    seat: claude-sonnet-5
+  - claim: ".github/workflows/tests.yml still parses as valid YAML after both edits."
+    cmd: 'python3 -c "import yaml; yaml.safe_load(open(''.github/workflows/tests.yml'')); print(''OK'')"'
+    exit: 0
+    ts: "2026-09-27T11:26Z"
+    seat: claude-sonnet-5
+  - claim:
+      "ROUND 2 cure, real-data reproduction of the fresh gate's own finding: fetched 50 real
+      merge_group runs of Bali-Zero/Teman2's tests.yml (738 total jobs) via `gh run view --json
+      jobs`, fed them through the actual `build_record()` entry point at three points in this
+      task's history. AT MERGE-BASE (origin/main, before this task): 3 'no timeout-minutes entry
+      found' errors (backend-shard-1/2/3) — the original bug. AT ROUND 1's HEAD (4292c295,
+      render-only fix, the gate's REWORK-BUILD target): 1 error
+      ('backend-shard-matrix-shard') — round 1 fixed the 3 RUN-shape errors but broke the
+      SKIP-shape match the unfixed code had gotten right by accident (no expansion at all meant
+      the raw template name was still the only key, which happened to match a skipped instance's
+      literal API name). AT THIS ROUND's HEAD (raw name kept as an extra map entry): 0 errors, 0
+      total errors of any kind."
+    cmd:
+      'python3 -c "... build_record(''Bali-Zero/Teman2'',''tests.yml'', <repo_root_variant>,
+      ''apps/backend-rag/backend/tests'', datetime.now(timezone.utc), 7, ..., dispatch_alerts=False)
+      ..." run 3x against the same 50-run/738-job real dataset, with subprocess.run monkeypatched
+      to serve it, varying only which git ref''s tests.yml + suite_growth_probe.py copy was under
+      test (origin/main, 4292c295, and this round''s HEAD)'
+    exit: 0
+    ts: "2026-09-27T11:41Z"
+    seat: claude-sonnet-5
+  - claim:
+      "50/50 fetched real merge_group runs include 31 occurrences of a job literally named
+      'Backend Shard ${{ matrix.shard }}' with status=completed, conclusion=skipped, and
+      started_at==completed_at — confirming the gate's finding empirically, independently, rather
+      than taking it on report: GitHub does not expand a skipped matrix job, and reports it under
+      the raw unrendered name."
+    cmd:
+      "for id in $(gh run list --workflow tests.yml --status completed --event merge_group --limit
+      50 --json databaseId --jq '.[].databaseId'); do gh run view $id --json
+      databaseId,createdAt,event,headBranch,jobs; done — then grepped/counted jobs named literally
+      'Backend Shard ${{ matrix.shard }}'"
+    exit: 0
+    ts: "2026-09-27T11:35Z"
+    seat: claude-sonnet-5
+  - claim:
+      "scripts/tests/test_suite_growth_probe.py: 39 passed, 0 failed (was 37 after round 1's 4
+      tests; +2 more this round: a read_job_timeouts-level guilt/innocence pair for the
+      skipped-shard shape, and an end-to-end build_record test reproducing the exact mixed
+      skip+rendered shape measured live, asserting zero 'no timeout-minutes entry found' errors)."
+    cmd: "python3 -m pytest scripts/tests/test_suite_growth_probe.py -q"
+    exit: 0
+    ts: "2026-09-27T11:38Z"
+    seat: claude-sonnet-5
+dissent:
+  - seat: claude-sonnet-5
+    objection:
+      "council_run (R9) is not satisfied by a real journal: this pack declares no journal.jsonl
+      with >=2 distinct COUNCIL_REVIEW_SEATS entries, because this is a solo Claude Sonnet 5
+      authoring session and COUNCIL_REVIEW_SEATS names only non-Anthropic seats. Round 1 of this
+      pack left this UNRESOLVED on the reasoning that seat_override 'would silently defeat the
+      gate' — the fresh gate that reviewed that head (4292c295, REWORK-BUILD verdict) corrected
+      this: R9's OWN documented escape is exactly seat_override, and using it with an honest,
+      specific reason is not defeating the gate, it is the gate's own designed answer for a case
+      where no real council can be convened. Round 2 applies `seat_override` on that explicit
+      authority (see the pack-level `seat_override:` field above). The underlying fact — no real
+      2-seat cross-family council reviewed this diff — is unchanged by the override and is
+      recorded here so a reader judging this pack later has both halves: the escape used, and why
+      the alternative (leaving it a hard R9 violation, or fabricating a journal) was worse."
+    status: CONFIRMED
+  - seat: claude-sonnet-5
+    objection:
+      "frontend-tests' include:-matrix job (auto-suffixed API names like '(mouth, true)') plausibly
+      shares the exact same read_job_timeouts() name-matching gap this pack fixes for
+      backend-shard's `${{ matrix.* }}`-in-name: shape, since its own job's `name:` field
+      ('Frontend Tests (Next.js)') would ALSO fail to match the API's rendered per-instance names
+      under the pre-fix code. This was NOT verified empirically against a live suite-growth-probe
+      run this turn: the local `--no-alert` run against Pro's real GitHub API data was started,
+      ran slowly under measured machine memory distress (swap 90%+, load ~9x/core at session
+      start), and was killed before producing a record rather than left to complete unbounded.
+      `_expand_matrix_job_names()` is scoped generically enough that it would not need a
+      frontend-tests-specific patch IF the gap turns out to be the same shape — but that is an
+      unverified hypothesis, not a confirmed finding, and frontend-tests' `name:` has no `${{
+      matrix.* }}` template for the new function to resolve in the first place (its per-instance
+      disambiguation is GitHub's own auto-suffix, added AFTER this workflow's static name, which
+      is a different mechanism this pack does not attempt to reproduce)."
+    status: PLAUSIBLE

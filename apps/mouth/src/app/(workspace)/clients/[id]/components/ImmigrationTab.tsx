@@ -30,6 +30,7 @@ import {
   type PillTone,
 } from "@/components/workspace/r19";
 import { ValidityTrack } from "./ValidityTrack";
+import { formatLongSpan } from "@/lib/utils/format-date";
 
 // Real `ClientDocument.status` -> the one status vocabulary. Not every
 // document carries this field (intake vs. lifecycle status are different
@@ -45,7 +46,7 @@ const DOC_STATUS_TONE: Record<string, PillTone> = {
 };
 
 /**
- * "Expired Xd ago" / "Expires today" / "⏰ Xd left" / "Xmo left" — the exact
+ * "Expired Xd ago" / "Expires today" / "⏰ Xd left" / "Xy Xmo left" — the
  * wording the old per-card expiry chip used, extracted so the permit panel
  * and the legacy doc cards (Working Permit / Other, untouched by this PR)
  * share one label instead of drifting apart.
@@ -58,7 +59,7 @@ function expiryLabel(daysLeft: number): string {
   if (daysLeft < 0) return `Expired ${Math.abs(daysLeft)}d ago`;
   if (daysLeft === 0) return "Expires today";
   if (daysLeft <= 365) return `⏰ ${daysLeft}d left`;
-  return `${Math.floor(daysLeft / 30)}mo left`;
+  return `${formatLongSpan(daysLeft)} left`;
 }
 
 /** Same eligibility check the old renewal button used — unchanged threshold. */

@@ -153,10 +153,6 @@ export const CATEGORY_KEYS = [
 ] as const;
 export type CategoryKey = (typeof CATEGORY_KEYS)[number];
 
-/** Every category has a finite interview branch. This set describes UI
- * coverage only; it never means a visa path is legally supported. */
-export const BEHAVIORAL_CATEGORIES = new Set<CategoryKey>(CATEGORY_KEYS);
-
 /**
  * 29 real ITAS/ITAP product codes — every one `category: "LIMITED_STAY"` in
  * the signed pack, i.e. an actual stay permit a person can currently hold,

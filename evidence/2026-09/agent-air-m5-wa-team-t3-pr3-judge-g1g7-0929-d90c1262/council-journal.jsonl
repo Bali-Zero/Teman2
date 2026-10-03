@@ -1,0 +1,4 @@
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-29T07:58:13Z", "round": "r1", "verdict": "REWORK"}
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-09-29T08:03:20Z", "round": "r1", "verdict": "GO-WITH-NITS"}
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-29T08:10:52Z", "round": "delta", "verdict": "REWORK"}
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-09-29T08:13:43Z", "round": "delta", "verdict": "REWORK"}

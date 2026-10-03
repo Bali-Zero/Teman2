@@ -1,8 +1,8 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ArticleLoading() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen">
       {/* Hero section skeleton */}
       <div className="max-w-4xl mx-auto px-4 pt-16 pb-8">
         <Skeleton variant="rounded" width={80} height={24} />

@@ -1,0 +1,198 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Mandate from the commissioning session (team-lead, 2026-10-03, mission
+  colour BLUE, Gear 3): apply a role boundary for the client and partner
+  roles to /api/crm/* and /api/admin/* in HybridAuthMiddleware, deny-list by
+  role, single exemption for the client portal's upload operation; reuse an
+  in-process proof harness as a repo test enumerating mounted routes; no
+  change to router registration or handler-level access helpers.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: refute-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+ground:
+  ts: "2026-10-03T01:23:45Z"
+  siblings: >-
+    No open PR touched middleware/hybrid_auth.py or the new test path at
+    01:23:45Z and again at 01:36:16Z (gh pr list --json files); no other
+    worktree lease on this task. Sibling #7796 edits crm_practices.py but
+    not the upload route's path or body model (gh pr diff 7796), so the
+    exemption template stays valid after it merges.
+
+what_changed: |
+  apps/backend-rag/backend/middleware/hybrid_auth.py: new module-level
+  role_boundary_refuses(method, path, role) and ROLE_BOUNDARY_DETAIL. In
+  dispatch, immediately after a successful authentication (inside the
+  api_auth_enabled block, after request.state.user is set), a caller whose
+  normalize_role(role) is in CLIENT_ROLES | EXTERNAL_ROLES ({client, partner})
+  gets 403 {"detail": ROLE_BOUNDARY_DETAIL} with the request's CORS headers
+  when request.url.path (the source every other path decision in this module
+  uses) is /api/crm, /api/admin or below them by whole segment. Exemption:
+  role client, POST, path_matches_template(path,
+  "/api/crm/practices/{practice_id}/upload-client-document"). Every other
+  role, including "" for a token without a role claim, returns False before
+  the path is looked at.
+  apps/backend-rag/backend/tests/security/test_crm_admin_role_boundary.py:
+  40 tests over the full router union behind the real middleware with a
+  stub pool. Round 1 added a root_path-stripping helper and a mount test
+  (fc65aae95f); round 2 showed the helper was itself fail-open, so both are
+  reverted in the following commit under the Builder Contract's fix-of-a-fix
+  depth-1 stop (dissent F2, F2b). The net diff has no root_path handling.
+
+proof: |
+  See receipts. Test file: 37 failed / 3 passed against origin/main's
+  middleware (the 3 are the enumeration tripwire, the API-key fixture pin
+  and the 401 control); 40 passed on the final tree. Mutation (boundary
+  disabled): 12 failed, all guilt; 28 passed, all innocence. 158 guarded
+  (method, route) pairs: 114 under /api/crm, 40 under /api/admin outside
+  crm-kg, 4 under /api/admin/crm-kg. Every test file touching hybrid_auth
+  plus the security, middleware and portal suites: 629 passed. ruff check
+  and ruff format clean. docs_sync: no changes.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F1 HIGH: GET /api/admin/drive/health is a public registry entry, so the
+      middleware returns before authentication and a client/partner token
+      reaches that handler; the upload operation is not the only way through.
+    status: CONFIRMED
+    resolution: >-
+      True and pre-existing, identical for an anonymous request: a public
+      entry returns before authentication, so a credential neither opens nor
+      closes it, and a role boundary on authenticated callers cannot apply
+      there. Not changed (the mandate excludes registry changes); listed as a
+      follow-up. Round 2 accepted this disposition (INFO).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F2 MEDIUM: the check reads request.url.path; with the app mounted under
+      a prefix, /edge/api/admin/... misses the prefixes while Starlette still
+      routes to /api/admin/... (reproduced 200).
+    status: CONFIRMED
+    resolution: >-
+      Conditional on a configuration production does not have: no entrypoint
+      mounts the app or sets a root_path (rg over main_api.py, main_rag.py,
+      main_cloud.py, app_factory.py, fly.toml, Dockerfile), and every other
+      path decision in this middleware (public registry, contract 401) reads
+      the same url.path. The round-1 correction (fc65aae95f) is reverted, see
+      F2b. Follow-up with its own spec: decide paths on the router's route
+      path (Starlette get_route_path semantics) across the whole middleware.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F2b HIGH (round 2, on fc65aae95f): the root_path helper stripped the
+      prefix without a segment boundary, so root_path="/api/c" turned
+      /api/crm/clients/7 into rm/clients/7 for the check while Starlette still
+      routed it (reproduced 200 with a client role).
+    status: CONFIRMED
+    resolution: >-
+      The helper and its mount test are removed; the check reads
+      request.url.path again, the state both reviewers examined in round 1.
+      Not patched a second time: the Builder Contract stops a fix-of-a-fix
+      at depth 1, and the surface goes to the follow-up spec named in F2.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F3 MEDIUM: api_auth_enabled=False skips authentication and the
+      boundary; OPTIONS passes before authentication.
+    status: CONFIRMED
+    resolution: >-
+      True and pre-existing global switches, unchanged by this diff; with auth
+      disabled there is no role to judge. No OPTIONS handler is mounted under
+      these prefixes (both reviewers). Round 2: INFO.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F4 LOW: trailing-slash variants of the upload path are also exempt
+      (path_matches_template strips outer slashes); reproduced 307.
+    status: CONFIRMED
+    resolution: >-
+      Accepted: the 307 lands on the same ownership-checked operation; no
+      other method or segment shape is exempt. Documented behaviour of
+      path_matches_template, shared with the public registry. Round 2: INFO.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F5 MEDIUM: guilt enumeration was GET-only outside crm-kg, the upload
+      test accepted 404/422 without proving the handler ran, no 401 control.
+    status: CONFIRMED
+    resolution: >-
+      Fixed in fc65aae95f and kept: every method of every non-public route
+      under both prefixes (158 pairs; HEAD shares the GET route and the check
+      is method-agnostic outside the exemption) for Bearer; the upload test
+      asserts the stub pool was used; unauthenticated GET and POST are pinned
+      to 401. Round 2 rated the remainder LOW.
+  - seat: kimi-code/k3
+    objection: >-
+      K4 SUSPECTED: an X-API-Key whose configured role is client or partner
+      would now be refused on staff paths.
+    status: RETRACTED
+    resolution: >-
+      APIKeyAuth._parse_role_map accepts only admin and user
+      (services/api_key_auth.py, `role in ("admin", "user")`) and the default
+      is user, so no API key can carry a portal role.
+  - seat: kimi-code/k3
+    objection: >-
+      K6 MEDIUM: the upload test was blind if the route were renamed (a
+      404/405 would pass). K7 LOW: GET-only enumeration. K8 LOW: the test app
+      has only this middleware, not the full production stack.
+    status: CONFIRMED
+    resolution: >-
+      K6 and K7 fixed with F5. K8 answered: no middleware registered by
+      middleware_config rewrites the path, and the order is unchanged.
+
+receipts:
+  - claim: "deterministic floor of this diff"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <merge-base name-only list>; --print-floor-source"
+    result: "floor=1 source=none; gear 3 declared above it (auth middleware of both production processes; merge is the deploy)"
+    exit: 0
+    ts: "2026-10-03T01:35:48Z"
+    seat: claude-opus-5-5
+  - claim: "new test green on the final tree"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/security/test_crm_admin_role_boundary.py -p no:cacheprovider"
+    result: "40 passed"
+    exit: 0
+    ts: "2026-10-03T01:52:33Z"
+    seat: claude-opus-5-5
+  - claim: "new test red against origin/main's middleware"
+    cmd: "git show origin/main:apps/backend-rag/backend/middleware/hybrid_auth.py over the worktree file; same pytest; restore with cp, verified with cmp"
+    result: "37 failed, 3 passed"
+    exit: 1
+    ts: "2026-10-03T01:52:54Z"
+    seat: claude-opus-5-5
+  - claim: "mutation: boundary disabled, only guilt goes red"
+    cmd: "pytest -p plugin replacing hybrid_auth.role_boundary_refuses with a constant False at runtest setup"
+    result: "12 failed (all guilt), 28 passed (all innocence)"
+    exit: 1
+    ts: "2026-10-03T01:53:40Z"
+    seat: claude-opus-5-5
+  - claim: "every test touching hybrid_auth plus security, middleware and portal suites green"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. python -m pytest <18 files matching HybridAuthMiddleware|hybrid_auth> backend/tests/security/ backend/tests/unit/middleware/ backend/tests/unit/routers/test_portal.py -p no:cacheprovider"
+    result: "629 passed"
+    exit: 0
+    ts: "2026-10-03T01:55:59Z"
+    seat: claude-opus-5-5
+  - claim: "lint and format clean; derived docs unchanged"
+    cmd: "ruff check + ruff format on the changed python files; python3 scripts/docs_sync.py"
+    result: "All checks passed; 3 files left unchanged; DOCSYNC OK (no changes)"
+    exit: 0
+    ts: "2026-10-03T01:51:28Z"
+    seat: claude-opus-5-5
+
+pii_scan: clean
+pii_scan_note: >-
+  No client data, OSINT or credential is read, written or quoted. Test
+  tokens are minted in-process with the test secret for synthetic
+  example.com identities; the stub pool returns no rows. External reviewers
+  received the diff and repository code only.
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 2
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD"

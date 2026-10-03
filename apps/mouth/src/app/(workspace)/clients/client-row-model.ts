@@ -19,6 +19,7 @@
 
 import type { PillTone } from "@/components/workspace/r19";
 import type { Client } from "@/lib/api/crm/crm.types";
+import { formatLongSpan } from "@/lib/utils/format-date";
 
 const DAY_MS = 86_400_000;
 
@@ -125,13 +126,14 @@ export function passportTone(daysLeft: number | null): "warning" | "muted" {
   return daysLeft <= 90 ? "warning" : "muted";
 }
 
-/** Short label: "exp 12d ago" | "expires today" | "45d" | "14mo" | "—". */
+/** Short label: "exp 12d ago" | "expires today" | "45d" | "11mo" | "1y 2mo" | "—". */
 export function passportLabel(daysLeft: number | null): string {
   if (daysLeft === null) return "—";
   if (daysLeft < 0) return `exp ${Math.abs(daysLeft)}d ago`;
   if (daysLeft === 0) return "expires today";
   if (daysLeft < 60) return `${daysLeft}d`;
-  return `${Math.round(daysLeft / 30)}mo`;
+  if (daysLeft < 365) return `${Math.round(daysLeft / 30)}mo`;
+  return formatLongSpan(daysLeft);
 }
 
 /** Whole days since last interaction; null when never. */

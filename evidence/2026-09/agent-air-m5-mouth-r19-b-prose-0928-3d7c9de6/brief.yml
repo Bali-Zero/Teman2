@@ -1,0 +1,32 @@
+task: >-
+  R19 group B article body: restyle MDXContent.tsx's shared mdxComponents (the MDX renderer
+  behind ~850 /<category>/<slug> article pages, shared by MDXContentRSC's SSR path) — remove
+  text-white/bg-white/border-white and the literal-hex dark code block, repaint every element
+  with --r19-* tokens (copper links, wash+copper-rule blockquote, wash code/table, hairline
+  images), add missing h5/h6.
+lane: mouth/r19-b-prose
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: Floor 1, source size, --no-renames churn 237 lines (95+114 added/changed, 28 removed) well under threshold.
+acceptance:
+  A1: >-
+    MDXContent.guard.test.tsx (new) renders every mapped element and fails on any
+    text-white/bg-white/border-white/gradient/palette-color/literal-hex/font-black/
+    font-extrabold className — proven red against origin/main's MDXContent.tsx, green after;
+    full touched-file suite (88 tests) green; tsc -p . exit 0; eslint 0 errors; prettier clean.
+  A2: >-
+    live-vs-local computed styles on two real articles (table+blockquote:
+    /visas/immigration-lounge-bali-malls-2026; code+blockquote:
+    /visas/multiple-entry-vs-single-entry-visa-indonesia) — link color measures
+    rgb(164,75,54) = --r19-copper (was rgb(34,81,255) blue); blockquote background/text now
+    the intended --r19-wash/muted wash (was clobbered white/ink by the removed classes).
+  A3: >-
+    page height unchanged on both measured articles (7379px, 43471px scrollHeight,
+    before == after).
+out_of_scope:
+  - globals.css's `.rumah-putih .mdx-content …` !important tag-selector rules (another lane's
+    file) still force the blockquote left-rule and the real <pre> code-block background —
+    reported, not fixed here.
+  - ArticleClient.tsx's own no-mdxSource <ReactMarkdown> fallback duplicates the same
+    old-look classes independently; out of this lane's file list.

@@ -1,0 +1,65 @@
+task: >-
+  Fix the findings of the 2026-09-27 physical-device (iQOO, Asia/Makassar) QA sweep of balizero.com,
+  one commit per finding: P2-a article byline date hydrated to a different calendar day on the
+  server (UTC) than in the browser (WITA), React #418 — pin every blog/news display date to
+  Asia/Makassar through one formatter; P2-b the "Popular" sidebar on the five category pages linked
+  to the non-route /news/<category>/<slug> (15 dead links) — build the canonical /<category>/<slug>
+  (same defect fixed in the unreferenced LatestIntelligence, with a source guard); P3-a the fixed
+  Ask Zantara FAB covered the R19 home Cookies link at the page bottom and the hero caption — reserve
+  its footprint in the footer padding and anchor the caption left on narrow screens; P3-b the mobile
+  menu trigger kept aria-label "Open menu" while expanded — it now names its state; P3-c tap targets
+  below 44px (news topic pills 32, category chips 36, shared footer links 18, drawer close 36) raised
+  to 44 with padding/min-height, not font size.
+lane: mouth
+machine: pro
+date: 2026-09-27
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2 (scripts/evidence_pack_lint.py --print-floor on the diff against
+  origin/main a6fcae5afe): no hot-zone path; presentation/markup fixes in apps/mouth only.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Every fix has a test that fails on main's code and passes on the branch.
+    probe: >-
+      date: TZ=UTC vitest of format-article-date.test.ts + ArticleClient.date.test.tsx failed
+      (byline "Jan 3, 2026" vs WITA "Jan 4, 2026"), pass under TZ=UTC, Asia/Makassar,
+      America/Los_Angeles and Pacific/Kiritimati; popular links: CategoryContent.test.tsx 5 failed
+      (/news/<cat>/<slug>) then 5 passed; trigger label: MobileNav.test.tsx 1 failed then passed;
+      tap targets + FAB: e2e/r19-mobile-touch.spec.ts 6/6 failed on the pre-fix build (36/32/18/36px,
+      caption/FAB overlap 918px2, Cookies link covered) and 6/6 pass on the post-fix build.
+  A2: >-
+    No regression in mouth and the build guards hold.
+    probe: >-
+      cd apps/mouth && npx tsc --noEmit rc 0; npx vitest run: 558 files, 7419 passed, 2 skipped;
+      npm run build (next build --webpack + assert-public-login-bundle + assert-roster-not-in-public-chunks)
+      rc 0 on the final tree; python3 scripts/brand_api_gen.py --check OK; the CI Playwright selection
+      (CI=true --project=chromium --grep "page Page|@offline") on a production build: 135 tests,
+      134 passed, 1 skipped, 0 failed.
+  A3: >-
+    Live after promote: an article published between 16:00 and 24:00 UTC hydrates without #418 on
+    balizero.com, and the five category pages' popular links answer 200.
+    probe: >-
+      browser/curl on the public domain after the production deployment is promoted:
+      /business/kbli-2025-business-codes-existing-permits is 200 (measured before the fix) and the
+      popular hrefs on /business match /<category>/<slug>.
+
+out_of_scope: >-
+  Relative-time labels (date-fns formatDistanceToNow) and the JSON-LD copyrightYear stay
+  process-zone based but are not the day-of-month hydration defect; the home "Explore the Journal"
+  text link and story arrows, the /news search Clear button and /kbli chips are below 44px too and
+  were not in the reported set. Visa Oracle, KBLI, portal, workspace: untouched.
+
+assumptions: >-
+  ESLint could not run locally: eslint-plugin-react in the shared node_modules throws on ESLint 10 —
+  a toolchain defect, CI lints. Port 3000 was held by an unrelated MCP server, so the local
+  Playwright runs used the identical command against a production build on free port 3147, with
+  BZ_E2E_PORT and PLAYWRIGHT_BASE_URL both set to it (the Kita/My specs derive their origins from
+  BZ_E2E_PORT, default 3000).
+  The R19 "home footer category links" of the report are the shared v2 Footer columns (the R19 home
+  footer already carries 44px links).

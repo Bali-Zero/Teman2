@@ -69,33 +69,33 @@ name: wa team promises tests
 #     this corpus's read-set; the cost is a workflow that sometimes runs on
 #     an edit it cannot judge, not a workflow that misses one it should.
 #
-# REAL-PG STAYS OUT OF THIS FILE. `test_wa_team_promises_real_pg.py` and its
-# three siblings do not read `DATABASE_URL` — each spins up its OWN
-# throwaway cluster via `pg_ctl`/`initdb` found on `PATH`
-# (`shutil.which("pg_ctl")`), and skips itself when either binary is absent
-# or `WA_TEAM_PROMISES_REAL_PG` is unset. That is a different shape from this
-# repo's existing service-container pattern (`scripts-tests-sweep.yml`'s
-# `ghcr.io/bali-zero/ci-mirror/postgres:15`, reachable over
-# `localhost:5432`) — a service container answers on a socket, it does not
-# put `pg_ctl`/`initdb` binaries on `PATH` for a `pg_ctl -w start` subprocess
-# to invoke. No existing workflow in this repo runs the local-cluster shape
-# (`git grep -n 'pg_ctl\|initdb' .github/workflows/` returns nothing). Wiring
-# either shape in here would be inventing a new PG setup, which the
-# coordinator's spec says not to do. Left for a follow-up that either adds
-# `postgresql-16` (server package, puts `pg_ctl`/`initdb` on `PATH`) to this
-# runner, or gives the real-PG suites a `DATABASE_URL` mode of their own.
+# REAL-PG RUNS IN ITS OWN JOB BELOW. `test_wa_team_promises_real_pg.py` and its
+# siblings do not read `DATABASE_URL` — each spins up its OWN throwaway
+# cluster via `pg_ctl`/`initdb` found on `PATH` (`shutil.which("pg_ctl")`),
+# and skips itself when either binary is absent or `WA_TEAM_PROMISES_REAL_PG`
+# is unset. A service container (`scripts-tests-sweep.yml`) answers on a
+# socket and puts no such binaries on `PATH`, so the second job instead uses
+# the PostgreSQL server binaries the `ubuntu-latest` image already ships under
+# `/usr/lib/postgresql/<major>/bin` and appends that directory to `PATH`
+# (failing loudly if the image stops shipping them). Until that job
+# existed, G1-G4, G7, G-LOW-2 and the rest of the real-PG suites skipped in CI
+# and protected nothing (#7646 gate Finding 3).
 #
-# The 122/21 unit-vs-skip split below is this corpus's floor after #7413
-# merged to main (2026-09-27, `test_wa_team_promises*.py`, REAL_PG unset):
-# the 21 skips are exactly the real-PG opt-in cases this file does not
-# enable. (Superseded the original 94/16 count from before #7413 merged —
-# found stale by the same fresh gate that found the missing plugin above.)
+# The unit-vs-skip split is not written here: a count in a comment is never
+# re-measured. Each job's FLOOR line is the one number for that job; that
+# step re-runs the corpus and compares the passed count against it. The
+# skips are the real-PG opt-in cases (`WA_TEAM_PROMISES_REAL_PG` unset),
+# which the unit job does not enable; the real-PG job below does, and has its
+# own FLOOR.
 
 on:
   pull_request:
     paths:
       - "scripts/wa_team_promises.py"
       - "scripts/wa_team_promises_scan_cron.sh"
+      - "scripts/wa_team_promises_judge_cron.sh"
+      - "scripts/wa_team_promises_resolve_cron.sh"
+      - "scripts/wa_team_promises_audit_cron.sh"
       - "scripts/sql/pro_local/team_promises*.sql"
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
@@ -116,6 +116,9 @@ on:
     paths:
       - "scripts/wa_team_promises.py"
       - "scripts/wa_team_promises_scan_cron.sh"
+      - "scripts/wa_team_promises_judge_cron.sh"
+      - "scripts/wa_team_promises_resolve_cron.sh"
+      - "scripts/wa_team_promises_audit_cron.sh"
       - "scripts/sql/pro_local/team_promises*.sql"
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
@@ -184,7 +187,7 @@ jobs:
       - name: The T3 promise gate corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=122   # the corpus size on main after #7413 merged (REAL_PG unset)
+          FLOOR=406   # T3 PR-3 gate conditions C1+C2 (G1-G7 + G-LOW-1 subprocess variant) + P2 PR-C audit (+82, then +13 council-round cases = +95 over the 311 base): unit-run passed count, REAL_PG unset
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"
@@ -202,3 +205,74 @@ jobs:
             exit 1
           fi
           echo "wa_team_promises corpus: $PASSED passing cases (floor $FLOOR)"
+
+  # The real-PG suites, actually executing. Two failure shapes this job exists
+  # to make loud: (1) `pg_ctl`/`initdb` missing, so every real-PG test skips and
+  # the run still exits 0; (2) real-PG tests deleted. So the job runs ONLY the
+  # `*real_pg.py` files (a whole-corpus glob would let unit tests prop the count
+  # up after a real-PG deletion), fails on any skip/deselect/xfail/xpass, and fails on
+  # a passed count below the floor (the same `-lt` ratchet as the unit job:
+  # raise it deliberately, never let it fall). The floor is the number of
+  # real-PG tests measured on this commit. Residual gap, stated plainly: a test
+  # that still passes but no longer reaches the cluster (a stubbed fixture)
+  # counts toward the floor; only review can catch that shape.
+  wa-team-promises-real-pg-tests:
+    name: wa team promises real-pg tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install test deps
+        run: pip install --quiet pytest "pytest-asyncio>=1.4.0" "asyncpg>=0.31.0"
+
+      # `initdb` refuses to run as root; the runner user is not root. The
+      # server binaries live outside `PATH` on the image: this step finds the
+      # newest installed major that has both binaries and exports it for the following steps. If the
+      # image ever stops shipping them it fails loudly here rather than
+      # installing a distro package that would also start a cluster on :5432.
+      - name: Put PostgreSQL server binaries on PATH
+        run: |
+          set -euo pipefail
+          PGBIN=""
+          for d in $(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -rV || true); do
+            if [ -x "$d/initdb" ] && [ -x "$d/pg_ctl" ]; then PGBIN="$d"; break; fi
+          done
+          if [ -z "$PGBIN" ]; then
+            echo "::error::no PostgreSQL server binaries (initdb, pg_ctl) under /usr/lib/postgresql/*/bin on this runner image"
+            exit 1
+          fi
+          echo "$PGBIN" >> "$GITHUB_PATH"
+          "$PGBIN/initdb" --version
+          "$PGBIN/pg_ctl" --version
+
+      - name: The T3 promise real-PG corpus executes and does not skip
+        run: |
+          set -uo pipefail
+          FLOOR=105  # real-PG mode, scripts/tests/test_wa_team_promises*real_pg.py only: passed count, zero skips allowed
+          RC=0
+          OUT="$(WA_TEAM_PROMISES_REAL_PG=1 PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*real_pg.py -q 2>&1)" || RC=$?
+          printf '%s\n' "$OUT"
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::the real-PG wa_team_promises corpus did not pass (pytest exit $RC) — output above"
+            exit 1
+          fi
+          SUMMARY="$(printf '%s\n' "$OUT" | grep -E '^[0-9]+ (passed|skipped|failed|deselected|xfailed|xpassed|error)' | tail -1 || true)"
+          PASSED="$(printf '%s\n' "$SUMMARY" | sed -n 's/^\([0-9][0-9]*\) passed.*/\1/p')"
+          if [ -z "$PASSED" ]; then
+            echo "::error::pytest exited 0 but printed no 'N passed' summary line"
+            exit 1
+          fi
+          if printf '%s\n' "$SUMMARY" | grep -qE 'skipped|deselected|xfailed|xpassed'; then
+            echo "::error::real-PG mode did not execute everything ($SUMMARY) — pg_ctl/initdb not found, or an opt-in gate did not open"
+            exit 1
+          fi
+          if [ "$PASSED" -lt "$FLOOR" ]; then
+            echo "::error::the real-PG corpus had $PASSED passing cases, below the floor of $FLOOR — cases were removed"
+            exit 1
+          fi
+          echo "wa_team_promises real-PG corpus: $PASSED passing cases (floor $FLOOR)"

@@ -27,9 +27,9 @@ describe("R19 presentation and portal", () => {
   it.each([
     ["/", 2],
     ["/news", 2],
-    ["/property", 0],
+    ["/property", 2],
     ["/v2", 0],
-    ["/property/eligibility", 0],
+    ["/property/eligibility", 2],
   ])(
     "discovers display fonts in server HTML only on selected route %s",
     (pathname, count) => {
@@ -69,7 +69,27 @@ describe("R19 presentation and portal", () => {
     expect(dialog.style.getPropertyValue("--nav-bg")).toBe("#F7F4EE");
     expect(dialog.style.getPropertyValue("--text-primary")).toBe("#1D2C3B");
   });
-  it("removes the presentation on navigation to the protected property landing", () => {
+  it("force renders data-presentation=r19 on a non-R19 pathname", () => {
+    route.pathname = "/this-does-not-exist-xyz";
+    const { container } = render(
+      <R19Presentation force>
+        <p>Fixture</p>
+      </R19Presentation>,
+    );
+    expect(container.querySelector('[data-presentation="r19"]')).not.toBeNull();
+  });
+
+  it("leaves default (non-forced) behaviour unchanged on a non-R19 pathname", () => {
+    route.pathname = "/this-does-not-exist-xyz";
+    const { container } = render(
+      <R19Presentation>
+        <p>Fixture</p>
+      </R19Presentation>,
+    );
+    expect(container.querySelector('[data-presentation="r19"]')).toBeNull();
+  });
+
+  it("keeps the presentation on navigation to the property landing", () => {
     route.pathname = "/property/example";
     const { container, rerender } = render(
       <R19Presentation>{child}</R19Presentation>,
@@ -77,9 +97,9 @@ describe("R19 presentation and portal", () => {
     expect(container.querySelector('[data-presentation="r19"]')).not.toBeNull();
     route.pathname = "/property";
     rerender(<R19Presentation>{child}</R19Presentation>);
-    expect(container.querySelector('[data-presentation="r19"]')).toBeNull();
+    expect(container.querySelector('[data-presentation="r19"]')).not.toBeNull();
     expect(screen.getByRole("button", { name: "Open menu" }).style.color).toBe(
-      "rgb(255, 255, 255)",
+      "rgb(29, 44, 59)",
     );
   });
 });

@@ -94,6 +94,41 @@ describe("RegisterPage (WS3 day pass)", () => {
     expect(cta.style.color).toBe("var(--bz-on-warm)");
   });
 
+  // Reported 25 Sep: a client who had already registered reopened the email
+  // link and only saw "Contact Support", so the account looked broken.
+  it("an already-used invitation offers Sign In to the portal login", async () => {
+    mockValidate.mockResolvedValue({
+      valid: false,
+      error: "already_used",
+      message: "This invitation has already been used",
+    });
+    render(<RegisterPage />);
+    await screen.findByText("Invitation Already Used");
+
+    const signIn = screen.getByRole("link", { name: "Sign In" });
+    expect(signIn.getAttribute("href")).toBe("/portal/login-upgraded");
+    expect(signIn.style.background).toBe("var(--bz-copper-text)");
+    // Support stays reachable, but no longer as the only way out.
+    expect(
+      screen.getByRole("link", { name: "Contact Support" }),
+    ).toBeInTheDocument();
+  });
+
+  it("GUILT: an expired invitation does NOT offer Sign In", async () => {
+    mockValidate.mockResolvedValue({
+      valid: false,
+      error: "expired",
+      message: "This invitation has expired",
+    });
+    render(<RegisterPage />);
+    await screen.findByText("Invalid Invitation");
+
+    expect(screen.getByText("This invitation has expired")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sign In" })).toBeNull();
+    const cta = screen.getByRole("link", { name: "Contact Support" });
+    expect(cta.style.background).toBe("var(--bz-copper-text)");
+  });
+
   it("PIN mismatch surfaces a --state-danger error box", async () => {
     mockValidate.mockResolvedValue({
       valid: true,
@@ -155,5 +190,76 @@ describe("RegisterPage (WS3 day pass)", () => {
     expect(html).not.toContain("bg-slate-50");
     expect(html).not.toContain("text-muted-cool");
     expect(html).not.toContain("border-white/5");
+  });
+});
+
+/**
+ * Reported 24 Sep (client 12531): "Create Your PIN" ended in the generic
+ * "Registration failed" line. The backend's 400 reasons were thrown away.
+ */
+describe("RegisterPage — submit errors", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParams.current = new URLSearchParams("token=tok-1");
+    mockValidate.mockResolvedValue({
+      valid: true,
+      clientName: "Made Example",
+      email: "made@example.com",
+    });
+  });
+
+  function apiError(message: string, statusCode: number) {
+    return Object.assign(new Error(message), { name: "ApiError", statusCode });
+  }
+
+  async function submitPin() {
+    render(<RegisterPage />);
+    await screen.findByText("Create Your PIN");
+    fireEvent.change(screen.getByPlaceholderText("Enter PIN"), {
+      target: { value: "1234" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Confirm PIN"), {
+      target: { value: "1234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Activate My Portal" }));
+  }
+
+  it("GUILT: a 400 shows the backend reason, not the generic line", async () => {
+    mockComplete.mockRejectedValue(
+      apiError("Another account already uses this email address", 400),
+    );
+    await submitPin();
+
+    expect(
+      await screen.findByText(
+        "Another account already uses this email address",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Registration failed/)).toBeNull();
+  });
+
+  it("INNOCENCE: a 500 keeps the generic line (no server text leaks)", async () => {
+    mockComplete.mockRejectedValue(
+      apiError("Internal server error: asyncpg ...", 500),
+    );
+    await submitPin();
+
+    expect(
+      await screen.findByText(
+        "Registration failed. Please try again or contact support.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/asyncpg/)).toBeNull();
+  });
+
+  it("INNOCENCE: a plain network Error keeps the generic line", async () => {
+    mockComplete.mockRejectedValue(new TypeError("Failed to fetch"));
+    await submitPin();
+
+    expect(
+      await screen.findByText(
+        "Registration failed. Please try again or contact support.",
+      ),
+    ).toBeTruthy();
   });
 });

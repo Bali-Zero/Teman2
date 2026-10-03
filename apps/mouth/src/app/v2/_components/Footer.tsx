@@ -35,7 +35,7 @@ const NEWS = [
 // anchors — all four links landed on the same view). Team has a real page
 // at /team; Careers + Press have none, so they are removed, not faked.
 const COMPANY = [
-  { label: "About", href: "/v2/company/about" },
+  { label: "About", href: "/about" },
   { label: "Team", href: "/team" },
 ];
 
@@ -163,21 +163,21 @@ export function Footer() {
           <div className="flex items-center gap-x-5 gap-y-2 flex-wrap justify-end">
             {/* P4: py-3 -my-3 expands hit area to ~44px without changing visual spacing */}
             <a
-              href="/v2/privacy"
+              href="/privacy"
               className="text-[11px] py-3 -my-3"
               style={{ color: "var(--text-tertiary)" }}
             >
               Privacy Policy
             </a>
             <a
-              href="/v2/terms"
+              href="/terms"
               className="text-[11px] py-3 -my-3"
               style={{ color: "var(--text-tertiary)" }}
             >
               Terms of Service
             </a>
             <a
-              href="/v2/cookies"
+              href="/cookies"
               className="text-[11px] py-3 -my-3"
               style={{ color: "var(--text-tertiary)" }}
             >
@@ -205,12 +205,12 @@ function FooterCol({
       >
         {title}
       </h4>
-      <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
+      <ul className="flex flex-col list-none p-0 m-0">
         {items.map((it) => (
           <li key={it.label}>
             <a
               href={it.href}
-              className="text-[13px] transition-colors"
+              className="inline-flex min-h-11 items-center text-[13px] transition-colors"
               style={{ color: "var(--text-secondary)" }}
             >
               {it.label}

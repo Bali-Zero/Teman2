@@ -1,0 +1,39 @@
+task_id: client-upload-source-v2
+gear: 2
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: |
+  Champion Round 2 scores a staff member when a CLIENT uploads a required document, reading
+  documents.uploaded_source = 'client' (challenge_round2.py build_first_documents_sql and the
+  window query, portal_service.py). The Process-page route
+  POST /api/crm/practices/{practice_id}/upload-client-document delegated to
+  upload_document_base64, whose documents INSERT wrote neither uploaded_source nor uploaded_by,
+  so the PROD column default 'team' applied and every client upload through it scored 0. The
+  same route left document_category to a filename-only guess, so a passport could land in
+  'other' (Drive 99_Misc). Attribute source and uploader from the authenticated caller and
+  classify like the portal Vault path.
+constraints:
+  - "No migration: uploaded_source and uploaded_by already exist on PROD documents (the Vault INSERT writes both)."
+  - "No PROD data write; the four rows corrected by hand on 2026-10-02 stay as they are."
+  - "uploaded_source must not be settable by any HTTP caller: it decides leaderboard points."
+  - "Vault uploads landing with practice_id NULL are out of scope (owner product decision)."
+acceptance:
+  - text: "WHEN a portal client session (role 'client') uploads for its own practice through the Process route, THEN upload_document_base64 receives uploaded_source='client' and the documents INSERT carries uploaded_source='client' and uploaded_by = the caller's email."
+    probe: "PYTHONPATH=. pytest backend/tests/unit/routers/test_crm_practices.py::TestUploadClientDocument backend/tests/unit/routers/test_crm_enhanced_documents.py -k 'upload'"
+  - text: "WHEN a staff session uploads through the same route, including a staff session whose email owns the client row, THEN uploaded_source='team' and uploaded_by = the staff email."
+    probe: "test_staff_session_whose_email_owns_the_client_stays_team"
+  - text: "WHEN the required document type is 'passport' and the file name carries no keyword, THEN document_category is 'personal', equal to PortalDocumentsMixin._classify_document_category."
+    probe: "test_category_follows_the_required_document_type_like_the_vault"
+  - text: "WHEN any HTTP request hits POST /clients/{client_id}/documents/upload, THEN no query/body/header/cookie parameter named uploaded_source exists."
+    probe: "test_upload_endpoint_does_not_let_the_caller_choose_the_source"
+consumer_map:
+  - "Champion Round 2 scorer (services/portal/challenge_round2.py) reading documents.uploaded_source='client' for documents created after the deploy."
+  - "Client portal Process page (apps/mouth portal/(authenticated)/process) and staff workspace RequiredDocumentsCard, both calling the route."
+risks:
+  - "Every row written through upload_document_base64 now records uploaded_by = the authenticated caller's email (staff route: staff email; internal intake route: the service actor). No backend reader of documents.uploaded_by exists outside INSERTs (grepped 2026-10-02)."
+  - "A legacy client token without a role claim would be attributed 'team' (fail toward no points)."
+successor_of: "PR #7796 (armed and frozen; red on Backend Shard 3 for a test-only cause, see pack ci_finding)"
+grader: |
+  Codex GPT-5.6 red-team spalla on the diff only (scrubbed env, read-only sandbox, prompt-only).
+  The harness gate is commissioned by the team lead, not by this Dux.

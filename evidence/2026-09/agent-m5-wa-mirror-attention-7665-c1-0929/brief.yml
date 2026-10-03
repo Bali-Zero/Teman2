@@ -1,0 +1,16 @@
+gear: 3
+task_id: wa-mirror-attention-7665-c1
+lane: wa-mirror
+host: m5 (M5)
+branch: agent/air-m5/wa-mirror/attention-7665-c1-0929
+gate_class: opus
+l_level: L2
+objective: >-
+  Discharge C1 of the fresh gate on #7665: make the AST presence walk behind check-wa-attention-pii
+  refuse import-alias shadows, inherited non-Test bases, TestCase subclasses without the Test
+  prefix and pytest_pyfunc_call-style hooks, and fix the overclaiming comment. Floor is 3 on the
+  path term (.github/workflows/ hot zone). Branch protection and contexts.json are untouched.
+scope:
+  - ".github/workflows/check-wa-attention-pii.yml - calls the extracted walk, relevance regex covers the helper, comment rewritten to state exactly what is refused and what is not."
+  - "scripts/wa_attention_presence.py - the AST walk, extracted so it can be unit-tested."
+  - "scripts/tests/test_wa_attention_presence_walk.py - guilt and innocence tests, part of the corpus the workflow runs."

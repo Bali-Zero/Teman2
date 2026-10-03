@@ -39,12 +39,12 @@ from backend.services.mail_loop.style import (
 # --------------------------------------------------------------------------- #
 
 DRAFT_PRICE = (
-    "Dear Sofia, thank you for reaching out. The KITAS renewal costs "
+    "Dear Alex, thank you for reaching out. The KITAS renewal costs "
     "IDR 12.500.000 all in. We can start once you send the passport scan. "
     "Best regards, Zero"
 )
 SENT_NO_PRICE = (
-    "Dear Sofia, thanks for writing. For the KITAS renewal our team will send "
+    "Dear Alex, thanks for writing. For the KITAS renewal our team will send "
     "you the official quotation shortly. Could you send the passport scan in the "
     "meantime? Best regards, Zero"
 )
@@ -62,7 +62,7 @@ def test_amount_removed_and_handoff_added() -> None:
     assert lesson is not None
     assert "do not quote prices" in lesson
     # The lesson must be about form, never about the person.
-    assert "Sofia" not in lesson
+    assert "Alex" not in lesson
     assert "12.500.000" not in lesson
 
 
@@ -139,11 +139,11 @@ def test_thread_id_is_decisive() -> None:
 
 
 def test_subject_plus_recipient_fallback() -> None:
-    candidates = [_cand("7", None, "Re: KITAS renewal", ("sofia@x.example",))]
+    candidates = [_cand("7", None, "Re: KITAS renewal", ("alex@x.example",))]
     got = match_sent(
         draft_thread_id=None,
         draft_subject="KITAS renewal",
-        draft_to=("Sofia@X.example",),
+        draft_to=("Alex@X.example",),
         candidates=candidates,
     )
     assert got is not None and got.message_id == "7"
@@ -175,7 +175,7 @@ def test_subject_alone_is_not_enough() -> None:
     got = match_sent(
         draft_thread_id=None,
         draft_subject="KITAS",
-        draft_to=("sofia@x.example",),
+        draft_to=("alex@x.example",),
         candidates=candidates,
     )
     assert got is None
@@ -199,7 +199,7 @@ def test_subject_alone_is_not_enough() -> None:
 #      happened to name it. The keyword form would have passed even on a
 #      redactor that only looked for labels.
 PII_SAMPLES = [
-    ("email", "write to sofia.mueller@example.com about it"),
+    ("email", "write to client.beta@example.com about it"),
     ("phone", "her number is +62 812 3456 7890"),
     ("npwp", "the tax id is 09.254.294.3-407.000"),
     ("passport", "passport C4429871 expires soon"),

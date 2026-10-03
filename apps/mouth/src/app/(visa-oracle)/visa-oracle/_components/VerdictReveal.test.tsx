@@ -4,6 +4,7 @@ import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
 } from "../_lib/engine-adapter";
 import { translate, type I18nKey } from "../_lib/i18n";
+import type { Language } from "../_lib/flow";
 import { VerdictReveal } from "./VerdictReveal";
 
 describe("VerdictReveal — D23 Second Home Studio", () => {
@@ -82,7 +83,15 @@ describe("VerdictReveal — D23 Second Home Studio", () => {
         isSecondHomeStudioOnly
       />,
     );
-    expect(screen.getByText("Supported paths found")).toBeInTheDocument();
+    // ENDING-ROUND E1: the headline copy changed ("Supported paths found" →
+    // "A path forward.") — this test only cares that the GENERIC state
+    // headline rendered, not the Studio-specific one, so it now asserts via
+    // `translate()` instead of a hardcoded string.
+    expect(
+      screen.getByText(
+        translate("en", "verdict.headline.SUPPORTED_CANDIDATES"),
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText("Below the Second Home guarantee threshold"),
     ).toBeNull();
@@ -108,4 +117,63 @@ describe("VerdictReveal — the Studio description never repeats the reason body
       expect(reasonBody).not.toContain(sentence);
     }
   });
+});
+
+// ENDING-ROUND E1/E2 (Dux, 2026-09-27T11:15Z): the hero headline/description
+// for SUPPORTED_CANDIDATES and TEMPORARILY_UNAVAILABLE moved from engineering
+// copy ("Supported paths found" / "The deterministic engine supports…") to a
+// friendly ending, without changing the underlying state.
+describe("VerdictReveal — ENDING-ROUND E1/E2 friendly headline/description", () => {
+  it.each<Language>(["en", "id"])(
+    "SUPPORTED_CANDIDATES renders the friendly headline and description, never 'deterministic engine', in %s",
+    (language) => {
+      render(
+        <VerdictReveal
+          language={language}
+          state="SUPPORTED_CANDIDATES"
+          provenance="ENGINE"
+        />,
+      );
+      expect(
+        screen.getByText(
+          translate(language, "verdict.headline.SUPPORTED_CANDIDATES"),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          translate(language, "verdict.state_description.SUPPORTED_CANDIDATES"),
+        ),
+      ).toBeInTheDocument();
+      expect(document.body.textContent).not.toMatch(/deterministic engine/i);
+      expect(document.body.textContent).not.toMatch(/mesin deterministik/i);
+    },
+  );
+
+  it.each<Language>(["en", "id"])(
+    "TEMPORARILY_UNAVAILABLE describes answers as staying on THIS PAGE, never claiming they were saved, in %s",
+    (language) => {
+      render(
+        <VerdictReveal
+          language={language}
+          state="TEMPORARILY_UNAVAILABLE"
+          provenance="ENGINE"
+        />,
+      );
+      expect(
+        screen.getByText(
+          translate(language, "verdict.headline.TEMPORARILY_UNAVAILABLE"),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          translate(
+            language,
+            "verdict.state_description.TEMPORARILY_UNAVAILABLE",
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(document.body.textContent).not.toMatch(/\bsaved\b/i);
+      expect(document.body.textContent).not.toMatch(/\bdisimpan\b/i);
+    },
+  );
 });

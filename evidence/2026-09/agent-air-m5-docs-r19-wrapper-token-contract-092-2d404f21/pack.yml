@@ -1,0 +1,70 @@
+brief_ref: evidence/brief.yml
+task_id: r19-wrapper-token-contract-0927
+gear: 2
+date: 2026-09-27
+machine: M5
+floor: >-
+  Measured with --print-floor and --print-floor-source over the merge-base changed files, numstat and
+  patch. Round 2 adds the census script, so the size term is above SIZE_GEAR2_THRESHOLD; no hot-zone
+  path. See the receipts for the exact value.
+lanes:
+  - lane: r19-wrapper-token-contract
+    role: build
+    seat: claude-opus-5-5 (M5 worktree)
+pii_scan: clean
+dissent: []
+receipts:
+  - claim: "The probe extracted from the spec reports the two B4 tokens, --error, .brand-tagline and 32 copied literals at #7508's head."
+    cmd: awk extraction from the spec, kbli invocation with the three invariants, detached worktree of 94b588cda1
+    result: "undefined_colour_tokens=3 unreached_r19_class_rules=1 bad_invariants=0 copied_literals=32"
+    exit: 1
+    ts: "2026-09-27T06:40:00Z"
+    seat: claude-opus-5-5
+  - claim: The same probe at the round-2 head adds --foreground (B3) and the 5 inline-map copies.
+    cmd: same invocation on a detached worktree of 0e1f773419
+    result: "undefined_colour_tokens=4 unreached_r19_class_rules=1 bad_invariants=0 copied_literals=37"
+    exit: 1
+    ts: "2026-09-27T06:40:00Z"
+    seat: claude-opus-5-5
+  - claim: Innocence and guilt of the probe. The full cure exits 0, the round-1 cure still reports 10, and each of five mutations of the full cure exits 1.
+    cmd: scratch edits to r19Vars.ts, kbli/layout.tsx and kbli-theme.css in the detached tree, probe rerun per case, files restored
+    result: "full cure 0/0/0/0; round-1 cure copied 10; comment-only chrome and import-only unreached 1 each; inline-map copy and one #58626b copied 1 each; minus --nav-icon-color undefined 1; tree clean after restore"
+    exit: 0
+    ts: "2026-09-27T06:40:00Z"
+    seat: claude-opus-5-5
+  - claim: The probe patch is the gate's own, byte for byte, plus one named-exit line; an un-rebased wave tree exits with R3-MISSING instead of a traceback.
+    cmd: patch of the round-1 probe with scratchpad/g7539/probe_fix.diff, cmp against the gate's probe_patched.py; probe on ux-voa-0926
+    result: "cmp identical (sha256 prefix c47d196ddf97) before the added line; voa: R3-MISSING .../components/r19/presentation.ts"
+    exit: 0
+    ts: "2026-09-27T06:36:00Z"
+    seat: claude-opus-5-5
+  - claim: The census flags B1/B4-like regressions as new and nothing when candidate equals reference.
+    cmd: node scripts/r19_contrast_census.mjs on two local static pages (reference ink, candidate with oklch(1 0 0 / 0.68) label, white tagline, white toggle), then candidate = reference
+    result: "selftest PASS; guilt new_failures=3 (1.07, 1.10, 1.10); innocence new_failures=0"
+    exit: 0
+    ts: "2026-09-27T06:35:00Z"
+    seat: claude-opus-5-5
+  - claim: The census is deterministic on production and its click route opens the sector panel.
+    cmd: census with balizero.com as both sides on /kbli and /kbli/56101 at 1440 and 390, run twice; then '/kbli|click=a[href="/kbli/sectors/I"]'
+    result: "both runs new_failures=0 with identical per-route counts; before the settle phase the same run gave 10 false new failures; click route checked 450 elements, new 0"
+    exit: 0
+    ts: "2026-09-27T06:33:00Z"
+    seat: claude-opus-5-5
+  - claim: The spec and the script are Prettier-clean and pass docs-sync, and the embedded probe is byte-identical to the one that produced the receipts.
+    cmd: prettier --check; docs_sync_gate.sh check; cmp of the awk-extracted probe
+    result: Prettier clean; DOCSYNC OK; IDENTICAL
+    exit: 0
+    ts: "2026-09-27T06:42:00Z"
+    seat: claude-opus-5-5
+  - claim: Floor 2 from the size term alone, matching the brief's gear 2. No hot-zone path.
+    cmd: evidence_pack_lint.py --print-floor and --print-floor-source with merge-base changed files, numstat and patch
+    result: "floor=2 source=size"
+    exit: 0
+    ts: "2026-09-27T06:45:00Z"
+    seat: claude-opus-5-5
+outcome: >-
+  Round 2 after gate-7539. The spec's probe now enforces R1.3 and R2.1 as worded. It records a residual no
+  gate had named: .kbli-paper carries 22 whole-value literal copies of R19_VARS values plus 7 retired
+  pre-unification values (6 whole, 1 inside a shadow), disjoint sets, and the kbli neutraliser adds 3
+  more. scripts/r19_contrast_census.mjs ships the R4 census with its self-test, named non-text controls
+  and a settle phase.

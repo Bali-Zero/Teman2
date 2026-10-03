@@ -29,6 +29,7 @@ import logging
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -508,14 +509,25 @@ def _nlm_source_delete(
 
 
 def _send_telegram_alert(message: str) -> None:
-    """Send failure alert to Telegram."""
+    """Send failure alert to Telegram.
+
+    Token goes into a private curl `-K` config file, never argv — a
+    subprocess exception's own `str()` can embed the full argv it was
+    constructed with (measured 2026-09-27 on this exact subprocess+curl
+    shape in apps/mata-garuda), so keeping the token out of argv closes both
+    that path and `ps`/`/proc` visibility. This call already logged no
+    exception detail, so only the argv exposure needed fixing here.
+    """
     if not TG_BOT_TOKEN:
         return
+    cfg_path = None
     try:
+        cfg_fd, cfg_path = tempfile.mkstemp(prefix="tg-send-", suffix=".curlcfg")
+        with os.fdopen(cfg_fd, "w") as fh:
+            fh.write(f'url = "https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"\n')
         subprocess.run(
             [
-                "curl", "-s", "-X", "POST",
-                f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage",
+                "curl", "-s", "-K", cfg_path,
                 "-d", f"chat_id={TG_CHAT_ID}",
                 "-d", f"text={message}",
             ],
@@ -524,6 +536,12 @@ def _send_telegram_alert(message: str) -> None:
         )
     except Exception:
         logger.warning("Telegram alert failed")
+    finally:
+        if cfg_path is not None:
+            try:
+                os.unlink(cfg_path)
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------------------

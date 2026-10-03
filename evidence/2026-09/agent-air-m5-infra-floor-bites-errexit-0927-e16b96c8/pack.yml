@@ -1,0 +1,152 @@
+gear: 3
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: floor-bites-errexit-0927
+    role: build
+    seat: sonnet-5
+  - lane: floor-bites-errexit-0927-review-kimi
+    role: review
+    seat: kimi-code/k3
+bites:
+  consumer:
+    "every future PR whose evidence pack scripts/ci/bites_parse.py classifies malformed on the
+    harness-floor job's Bites-contract step — the next builder reads the taxonomy's ::error::bites:
+    explanation in the Checks tab instead of reproducing the parser locally to learn why. Not yet directly
+    observable on a real GitHub Actions run (no malformed-pack PR has hit main since this merges) — that
+    is the future-observable half; the observation available NOW is the local bash -e reproduction in
+    receipts[1]-[4] above (extracted verbatim step body, pre/post-fix, against a real malformed and a
+    real valid pack) plus this selftest, which proves the parser's own exit-code taxonomy this fix depends
+    on (0=parsed, 2=malformed) is intact."
+  where: ci
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  expect: exit0
+receipts:
+  - claim: actionlint reports zero problems on the modified workflow file.
+    cmd: actionlint .github/workflows/harness-floor.yml
+    result: no output, exit 0
+    exit: 0
+    ts: "2026-09-27T05:11:20Z"
+    seat: sonnet-5
+  - claim:
+      "PRE-fix step body, run verbatim under bash -e against a real malformed pack (PR number 7489's
+      evidence pack, classified malformed by the parser), aborts SILENTLY at the parser line: exit 2, zero
+      stdout/stderr from the step itself — proving the bug (the taxonomy's ::error::bites: lines never
+      print)."
+    cmd: bash floorfix/run-prefix.sh floorfix/malformed-pack.yml
+    result: RC=2
+    exit: 2
+    ts: "2026-09-27T05:11:20Z"
+    seat: sonnet-5
+  - claim:
+      "PRE-fix step body against a real valid pack (an origin/main evidence pack whose bites: block
+      classifies executable) behaves the same before and after the fix: exit 0, prints the EXECUTABLE notice."
+    cmd: bash floorfix/run-prefix.sh floorfix/valid-pack.yml
+    result:
+      "{\n  \"consumer\": \"scripts/ci/observe_visa_seq20_signed.py — the job #5867 shipped to make\
+      \ the signed seq-20 bundle observable. It runs test_seq20_signed_bundle.py and test_interview_walk_census.py,\
+      \ and the census half is precisely the module this PR re-derives. Not a future job: it is on main\
+      \ and runs today.\",\n  \"where\": \"ci\",\n  \"observe\": \"python3 scripts/ci/observe_visa_seq20_signed.py\"\
+      ,\n  \"expect\": \"exit0\"\n}\n::notice:: declares an EXECUTABLE bites: contract — it parsed clean\
+      \ against the allow-list.\nRC=0"
+    exit: 0
+    ts: "2026-09-27T05:11:21Z"
+    seat: sonnet-5
+  - claim:
+      "POST-fix step body, same malformed pack, same bash -e: RC is captured (RC=2), the taxonomy runs,
+      classifies malformed, and prints the full ::error::bites: ... explanation lines before exiting 1 —
+      the bug is fixed."
+    cmd: bash floorfix/run-postfix.sh floorfix/malformed-pack.yml
+    result:
+      "{\n  \"malformed\": true,\n  \"errors\": [\n    \"observe: `scripts/evidence_pack_lint.py`\
+      \ does not declare itself observable — add a comment containing `bites-observable` to it, and only\
+      \ do so for a script whose arguments cannot name a program to run, a file to write, or a database\
+      \ to reach\"\n  ]\n}\n::error::bites: observe: `scripts/evidence_pack_lint.py` does not declare itself\
+      \ observable — add a comment containing `bites-observable` to it, and only do so for a script whose\
+      \ arguments cannot name a program to run, a file to write, or a database to reach\n::error:: declares\
+      \ a MALFORMED executable bites: block — a block that uses any of where/observe/expect must use all\
+      \ four keys and nothing else, and observe: must satisfy the allow-list in scripts/ci/bites_allowlist.yaml\
+      \ (RULED 2026-09-04 option b: exactly `python3 scripts/<path>.py [args]` on a marker-declared script,\
+      \ or `fly <read-only subcommand>`). Prose and an absent bites: key are both fine (NOTICE); this block\
+      \ is neither. If you are EVOLVING the format, this red is expected: the judge here is the parser on\
+      \ main, one version behind the contract you wrote — land the parser change first and the pack that\
+      \ uses it second. See docs/rules/operations.md.\nRC=1"
+    exit: 1
+    ts: "2026-09-27T05:11:29Z"
+    seat: sonnet-5
+  - claim:
+      "POST-fix step body against the same valid pack is unchanged: exit 0, same EXECUTABLE notice
+      — no regression on the passing path."
+    cmd: bash floorfix/run-postfix.sh floorfix/valid-pack.yml
+    result:
+      "{\n  \"consumer\": \"scripts/ci/observe_visa_seq20_signed.py — the job #5867 shipped to make\
+      \ the signed seq-20 bundle observable. It runs test_seq20_signed_bundle.py and test_interview_walk_census.py,\
+      \ and the census half is precisely the module this PR re-derives. Not a future job: it is on main\
+      \ and runs today.\",\n  \"where\": \"ci\",\n  \"observe\": \"python3 scripts/ci/observe_visa_seq20_signed.py\"\
+      ,\n  \"expect\": \"exit0\"\n}\n::notice:: declares an EXECUTABLE bites: contract — it parsed clean\
+      \ against the allow-list.\nRC=0"
+    exit: 0
+    ts: "2026-09-27T05:11:29Z"
+    seat: sonnet-5
+  - claim:
+      "The whole workflow file carries exactly one `$?` shape needing this fix: two hits total, one
+      inside the new explanatory comment's prose ('|| RC=$?' quoted as text) and one in the actual fixed
+      command itself. No other run-then-check-$?-on-the-next-line pattern exists in this job to fix identically."
+    cmd: grep -n '\$?' .github/workflows/harness-floor.yml
+    result:
+      "1349:          # this comment used to claim could not happen. `|| RC=$?` puts the command inside
+
+      1353:          python3 scripts/ci/bites_parse.py --pack - < /tmp/bites-pack.yml > /tmp/bites-parsed.json
+      2> /tmp/bites-parse.err || RC=$?
+
+      RC=0"
+    exit: 0
+    ts: "2026-09-27T05:19:33Z"
+    seat: sonnet-5
+dissent:
+  - seat: sonnet-5
+    objection:
+      "council_run (R9) is not satisfied by a real 2-seat journal: only one COUNCIL_REVIEW_SEATS
+      entry (kimi-code/k3) is recorded. The second attempted seat, codex-gpt-5.6-sol, is SUSPENDED on main
+      (open spec PR 7513, defective PII egress guard) and did not return within this session's time
+      budget for it — team-lead direction was explicit: do not block on it, use seat_override with a dissent
+      entry stating the lane is suspended, the same shape used by PR 7519 and PR 7515's evidence packs.
+      Applied via the pack-level `seat_override:` field above rather than fabricating a second verdict or
+      leaving R9 a hard, unresolved violation."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      One step below the fixed line, `CLASSIFICATION=$(python3 -c '...classify(json.load(open("/tmp/bites-parsed.json")))...')`
+      is a command-substitution assignment; under bash -e a FAILING assignment also aborts the step, before
+      the case statement's own `*)` fail-closed branch can print its message — the same silent-death family
+      this PR fixes, one line further down.
+    status: CONFIRMED
+    resolution:
+      Investigated, left OUT of this PR's scope. bites_parse.py's main() always writes a JSON
+      dict to stdout whenever it exits 0 or 2 (the only two codes this step's taxonomy accepts before reaching
+      this line), and classify() only ever calls .get() on that dict — so the assignment can fail only via
+      filesystem corruption between the two steps or a classify() crash on an unexpected-but-valid shape,
+      neither reachable through the parser's documented contract. A real, narrower fix (widen `|| RC=$?`
+      one line further, or guard the python -c call the same way) is a separate, single-line PR against
+      a genuinely different fragility, not a fix-of-a-fix on this one.
+notes:
+  - codex-gpt-5.6-sol was dispatched via .claude/scripts/codex-spalla.sh (read-only sandbox) for a second
+    review but did not return within this session's time budget for it; the codex-spalla lane is separately
+    known-suspended on main (open spec PR 7513). Per team-lead direction this pack ships on kimi-code/k3's
+    single real review plus seat_override for R9, rather than blocking on or fabricating the second seat.
+  - "The four run-prefix.sh/run-postfix.sh receipts extract the step's `run:` body verbatim (git show origin/main:.github/workflows/harness-floor.yml
+    for the pre-fix lines, the worktree's own copy for post-fix) into a scratch harness under floorfix/
+    that cds into this worktree, stages the named pack at /tmp/bites-pack.yml, and runs the extracted lines
+    under `bash -e` — the same shell GitHub Actions uses for this step, with no shell: override."
+seat_override:
+  "council_run (R9): no journal.jsonl with >=2 distinct COUNCIL_REVIEW_SEATS entries is declared.
+  One real cross-family review was obtained (kimi-code/k3, LGTM, recorded in journal.jsonl) — the second
+  seat this session attempted, codex-gpt-5.6-sol via .claude/scripts/codex-spalla.sh, is SUSPENDED on
+  main per the open spec PR 7513 ('docs(specs): specify the codex-spalla PII guard after four REWORK
+  rounds' — its PII egress guard is known-defective) and was still running past this session's own time
+  budget for it (team-lead instruction, 2026-09-27: do not block on it; fold in a real finding if it lands,
+  otherwise proceed). Fabricating a second seat's verdict this session did not actually receive would
+  be dishonest evidence, not a shortcut — this is R9's own documented escape, applied on that explicit
+  authority, not self-selected. See dissent below for the same fact recorded for a reader without this
+  context."
+council_run: journal.jsonl

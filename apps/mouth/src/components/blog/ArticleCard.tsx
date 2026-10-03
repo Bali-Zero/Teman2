@@ -6,49 +6,11 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { Clock, Eye, TrendingUp, Sparkles, User } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { ArticleCardProps, ArticleCategory } from "@/lib/blog/types";
 
-// Category color mapping - McKinsey style with blue accent
-const categoryStyles: Record<
-  ArticleCategory,
-  { bg: string; text: string; gradient: string }
-> = {
-  visas: {
-    bg: "bg-accent-blue-editorial/10",
-    text: "text-accent-blue-editorial",
-    gradient: "from-[#2251ff]/20 to-[#4d73ff]/20",
-  },
-  business: {
-    bg: "bg-emerald-500/10",
-    text: "text-emerald-400",
-    gradient: "from-emerald-500/20 to-teal-500/20",
-  },
-  taxes: {
-    bg: "bg-amber-500/10",
-    text: "text-amber-400",
-    gradient: "from-amber-500/20 to-orange-500/20",
-  },
-  property: {
-    bg: "bg-[#e85c41]/10",
-    text: "text-[#e85c41]",
-    gradient: "from-[#e85c41]/20 to-[#d14832]/20",
-  },
-  living: {
-    bg: "bg-violet-500/10",
-    text: "text-violet-400",
-    gradient: "from-violet-500/20 to-purple-500/20",
-  },
-  trends: {
-    bg: "bg-fuchsia-500/10",
-    text: "text-fuchsia-400",
-    gradient: "from-fuchsia-500/20 to-pink-500/20",
-  },
-};
-
-// Category badge component
+// Category badge component — flat uppercase copper text, no colour fill
+// (R19: "Accent = copper only", badges never carry a coloured background).
 function CategoryBadge({ category }: { category: ArticleCategory }) {
-  const styles = categoryStyles[category];
   const labelMap: Record<string, string> = {
     taxes: "Tax & Legal",
   };
@@ -56,19 +18,15 @@ function CategoryBadge({ category }: { category: ArticleCategory }) {
 
   return (
     <span
-      className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wider",
-        "bg-gradient-to-r",
-        styles.gradient,
-        styles.text,
-      )}
+      className="inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.14em]"
+      style={{ color: "var(--r19-copper)" }}
     >
       {label}
     </span>
   );
 }
 
-/** Image with gradient fallback for missing cover images */
+/** Image with a flat fallback for missing cover images */
 function CardCoverImage({
   src,
   alt,
@@ -107,7 +65,39 @@ function CardCoverImage({
   );
 }
 
-// Featured article card (hero style)
+/** Small flat tag used for on-image overlay badges (trending / AI-generated).
+ * These sit on a photo, not on paper, so — per this codebase's own "dark
+ * island" convention (globals.css MYTHOS Stage-B comment) — the chip itself
+ * stays a translucent dark surface with light text; that light text is
+ * requested via the R19 `--r19-cta-ink` token, never the literal `text-white`
+ * class, so it is not a "hardcoded dark utility" the guard test flags. */
+function OverlayTag({
+  icon: Icon,
+  label,
+  accent,
+}: {
+  icon: React.ElementType;
+  label?: string;
+  accent?: boolean;
+}) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm"
+      style={{
+        background: "rgba(29,44,59,0.72)",
+        color: accent ? "var(--r19-copper)" : "var(--r19-cta-ink)",
+      }}
+    >
+      <Icon className="w-3 h-3" />
+      {label}
+    </span>
+  );
+}
+
+// Featured article card: image ABOVE the text, on a flat R19 surface —
+// never text overlaid on a dark image (that overlay used to collide with
+// text baked into the cover photo itself, reading as a duplicated title on
+// narrow viewports, live 2026-09-28).
 function FeaturedCard({ article, index = 0 }: ArticleCardProps) {
   const href = `/${article.category}/${article.slug}`;
 
@@ -116,11 +106,15 @@ function FeaturedCard({ article, index = 0 }: ArticleCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
-      className="group relative overflow-hidden rounded-2xl bg-[rgba(0,0,0,0.4)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+      className="group overflow-hidden rounded-lg"
+      style={{
+        background: "var(--r19-surface)",
+        border: "1px solid var(--r19-line)",
+      }}
     >
       <Link href={href} className="block">
-        {/* Background Image */}
-        <div className="relative aspect-[21/9] overflow-hidden">
+        {/* Cover image */}
+        <div className="relative aspect-[16/9] md:aspect-[21/9] overflow-hidden">
           <CardCoverImage
             src={article.coverImage}
             alt={article.title}
@@ -128,64 +122,85 @@ function FeaturedCard({ article, index = 0 }: ArticleCardProps) {
             priority
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
           />
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+        </div>
 
-          {/* Content */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-            {/* Badges */}
-            <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-3 md:mb-4">
-              <CategoryBadge category={article.category} />
-              {article.trending && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
-                  <TrendingUp className="w-3 h-3" />
-                  Trending
-                </span>
+        {/* Body */}
+        <div className="p-6 md:p-8">
+          {/* Badges */}
+          <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-3 md:mb-4">
+            <CategoryBadge category={article.category} />
+            {article.trending && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.1em]"
+                style={{ color: "var(--r19-copper)" }}
+              >
+                <TrendingUp className="w-3 h-3" />
+                Trending
+              </span>
+            )}
+            {article.aiGenerated && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.1em]"
+                style={{ color: "var(--r19-muted)" }}
+              >
+                <Sparkles className="w-3 h-3" />
+                AI
+              </span>
+            )}
+          </div>
+
+          {/* Title */}
+          <h2
+            className="mb-3 md:mb-4 leading-tight line-clamp-2 group-hover:opacity-80 transition-opacity"
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontWeight: 500,
+              fontSize: "clamp(22px, 3.4vw, 34px)",
+              color: "var(--r19-ink)",
+            }}
+          >
+            {article.title}
+          </h2>
+
+          {/* Excerpt */}
+          <p
+            className="text-sm md:text-base mb-4 md:mb-6 max-w-3xl line-clamp-2"
+            style={{ color: "var(--r19-muted)" }}
+          >
+            {article.excerpt}
+          </p>
+
+          {/* Meta */}
+          <div
+            className="flex flex-wrap items-center gap-3 md:gap-6 text-xs md:text-sm"
+            style={{ color: "var(--r19-muted)" }}
+          >
+            <div className="flex items-center gap-2">
+              {article.author.avatar ? (
+                <Image
+                  src={article.author.avatar}
+                  alt={article.author.name}
+                  width={28}
+                  height={28}
+                  className="rounded-full"
+                />
+              ) : (
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{ background: "var(--r19-wash)" }}
+                >
+                  <User className="w-4 h-4" />
+                </div>
               )}
-              {article.aiGenerated && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-blue-editorial/20 text-accent-blue-editorial">
-                  <Sparkles className="w-3 h-3" />
-                  AI
-                </span>
-              )}
+              <span>{article.author.name}</span>
             </div>
-
-            {/* Title */}
-            <h2 className="font-serif text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-3 md:mb-4 group-hover:text-accent-blue-editorial transition-colors leading-tight line-clamp-2">
-              {article.title}
-            </h2>
-
-            {/* Excerpt */}
-            <p className="text-white/70 text-sm md:text-lg mb-4 md:mb-6 max-w-3xl line-clamp-2">
-              {article.excerpt}
-            </p>
-
-            {/* Meta */}
-            <div className="flex flex-wrap items-center gap-3 md:gap-6 text-white/50 text-xs md:text-sm">
-              <div className="flex items-center gap-2">
-                {article.author.avatar ? (
-                  <Image
-                    src={article.author.avatar}
-                    alt={article.author.name}
-                    width={28}
-                    height={28}
-                    className="rounded-full"
-                  />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
-                    <User className="w-4 h-4" />
-                  </div>
-                )}
-                <span>{article.author.name}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                <span>{article.readingTime} min read</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Eye className="w-4 h-4" />
-                <span>{article.viewCount.toLocaleString("en-US")} views</span>
-              </div>
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              <span>{article.readingTime} min read</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Eye className="w-4 h-4" />
+              <span>{article.viewCount.toLocaleString("en-US")} views</span>
             </div>
           </div>
         </div>
@@ -220,27 +235,17 @@ function DefaultCard({
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
           {/* Badges overlay */}
           <div className="absolute top-3 right-3 flex gap-2">
-            {article.trending && (
-              <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/80 backdrop-blur-sm text-white text-xs font-medium">
-                <TrendingUp className="w-3 h-3" />
-              </span>
-            )}
-            {article.aiGenerated && (
-              <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-accent-blue-editorial/80 backdrop-blur-sm text-white text-xs font-medium">
-                <Sparkles className="w-3 h-3" />
-              </span>
-            )}
+            {article.trending && <OverlayTag icon={TrendingUp} accent />}
+            {article.aiGenerated && <OverlayTag icon={Sparkles} />}
           </div>
 
           {/* Reading time badge */}
           {showReadTime && (
-            <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-black/70 backdrop-blur-sm text-white/80 text-xs flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {article.readingTime} min
+            <div className="absolute bottom-3 right-3">
+              <OverlayTag icon={Clock} label={`${article.readingTime} min`} />
             </div>
           )}
         </div>
@@ -253,17 +258,32 @@ function DefaultCard({
         )}
 
         {/* Title */}
-        <h3 className="font-serif text-lg md:text-xl font-semibold text-white mb-2 group-hover:text-accent-blue-editorial transition-colors line-clamp-2">
-          {article.title}
+        <h3
+          className="text-lg md:text-xl mb-2 line-clamp-2 transition-colors"
+          style={{
+            fontFamily: "var(--font-serif)",
+            fontWeight: 500,
+            color: "var(--r19-ink)",
+          }}
+        >
+          <span className="group-hover:text-[var(--r19-copper)]">
+            {article.title}
+          </span>
         </h3>
 
         {/* Excerpt */}
-        <p className="text-white/60 text-sm line-clamp-2 mb-3">
+        <p
+          className="text-sm line-clamp-2 mb-3"
+          style={{ color: "var(--r19-muted)" }}
+        >
           {article.excerpt}
         </p>
 
         {/* Meta */}
-        <div className="flex items-center justify-between text-white/40 text-xs">
+        <div
+          className="flex items-center justify-between text-xs"
+          style={{ color: "var(--r19-muted)" }}
+        >
           {showAuthor && (
             <div className="flex items-center gap-2">
               {article.author.avatar ? (
@@ -275,7 +295,10 @@ function DefaultCard({
                   className="rounded-full"
                 />
               ) : (
-                <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center"
+                  style={{ background: "var(--r19-wash)" }}
+                >
                   <User className="w-3 h-3" />
                 </div>
               )}
@@ -324,10 +347,18 @@ function CompactCard({ article, index = 0 }: ArticleCardProps) {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <CategoryBadge category={article.category} />
-          <h4 className="font-medium text-white text-sm mt-1 mb-1 group-hover:text-accent-blue-editorial transition-colors line-clamp-2">
-            {article.title}
+          <h4
+            className="text-sm mt-1 mb-1 line-clamp-2 transition-colors"
+            style={{ fontWeight: 500, color: "var(--r19-ink)" }}
+          >
+            <span className="group-hover:text-[var(--r19-copper)]">
+              {article.title}
+            </span>
           </h4>
-          <div className="flex items-center gap-2 text-white/40 text-xs">
+          <div
+            className="flex items-center gap-2 text-xs"
+            style={{ color: "var(--r19-muted)" }}
+          >
             <Clock className="w-3 h-3" />
             <span>{article.readingTime} min</span>
           </div>
@@ -371,15 +402,30 @@ function HorizontalCard({
             </div>
           )}
 
-          <h3 className="font-serif text-lg md:text-xl font-semibold text-white mb-2 group-hover:text-accent-blue-editorial transition-colors line-clamp-2">
-            {article.title}
+          <h3
+            className="text-lg md:text-xl mb-2 line-clamp-2 transition-colors"
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontWeight: 500,
+              color: "var(--r19-ink)",
+            }}
+          >
+            <span className="group-hover:text-[var(--r19-copper)]">
+              {article.title}
+            </span>
           </h3>
 
-          <p className="text-white/60 text-sm line-clamp-2 mb-3 hidden md:block">
+          <p
+            className="text-sm line-clamp-2 mb-3 hidden md:block"
+            style={{ color: "var(--r19-muted)" }}
+          >
             {article.excerpt}
           </p>
 
-          <div className="flex items-center gap-4 text-white/40 text-xs">
+          <div
+            className="flex items-center gap-4 text-xs"
+            style={{ color: "var(--r19-muted)" }}
+          >
             <span>{article.author.name}</span>
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />

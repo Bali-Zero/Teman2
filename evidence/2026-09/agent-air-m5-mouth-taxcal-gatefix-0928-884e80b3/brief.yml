@@ -1,0 +1,40 @@
+task: >-
+  Fix-forward on the fresh Opus 5.5 REWORK-BUILD gate for #7583 (gate-7574, 2026-09-28):
+  the tax-calendar rule engine missed a weekend roll that crosses a month boundary (F1),
+  built iCal UIDs from the rolled date so a crossing collided with the next month's own
+  occurrence (F2), and compared against the raw UTC instant instead of the Asia/Makassar
+  calendar date, dropping the due day from 08:00 WITA and off-by-one badges before it (F3).
+  Also removed the dead module-load TAX_DEADLINES export (no code consumer, grepped).
+lane: mouth/taxcal-gatefix
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: >-
+  Floor 1 (evidence_pack_lint.py --print-floor, source "none"): 4 files touched,
+  +254/-21 net lines, one concern (the three gate findings + the dead-export nit), no
+  schema/infra/secrets touched.
+acceptance:
+  A1: >-
+    F1-F3 tests in apps/mouth/src/app/api/tax-calendar/deadlines.test.ts and
+    packages/core/components/DeadlineBadge.test.tsx are RED on origin/main (verified: 8
+    failing before the fix, matching the gate's four measured symptoms) and GREEN after
+    (19/19 and 8/8); a property-sweep test independently re-derives each obligation's next
+    date with a WIDER brute-force scan window (-2 months vs production's -1) over every
+    day 2026-09-28..2030-12-31 at 00:00Z/12:00Z and agrees with production on every check.
+  A2: >-
+    getUpcomingTaxDeadlines(now, 12) produces zero duplicate ids across the two probe
+    clocks that previously collided (2026-09-28, 2027-07-15); tsc --noEmit -p . exits 0;
+    prettier --check clean on all 4 touched files; eslint clean on deadlines.ts (mouth's
+    config) — packages/core has no eslint.config.* in this repo, so DeadlineBadge.tsx/.test.tsx
+    were not eslint-checked (prettier only), a pre-existing repo gap, not introduced here.
+  A3: >-
+    grep across apps/ and packages/ confirms TAX_DEADLINES has no code import (only a doc
+    comment in PersonaDoors.tsx), so removing the dead module-load export is safe.
+out_of_scope:
+  - >-
+    Making the iCal events all-day (VALUE=DATE): the route builds its ICS through the
+    shared toIcalString helper in packages/core/utils, also consumed by
+    apps/mouth/src/app/api/portal/deadlines/ical/route.ts — not by-hand construction in
+    this route, so changing the shared helper would touch that unrelated consumer too.
+  - PB1 day-of-month correctness (Tax-Dept open question, explicitly out of scope per spec).
+  - Any rule's day/month or obligation add/remove (explicitly forbidden per spec).

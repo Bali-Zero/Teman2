@@ -1,0 +1,209 @@
+brief_ref: evidence/brief.yml # canonical staged name — harness-floor.yml stages this PR's dated brief there before linting
+pii_scan: clean
+council: true
+council_run: council-journal.jsonl
+net_lines: 759
+diff:
+  - .claude/skills/modus/PENDING-ARMS.md
+  - .github/workflows/immune-enforcement.yml
+  - apps/organism/organism/organs_registry.yaml
+  - infra/home-fork/declared-pairs.json
+  - infra/launchagents/com.nuzantara.disk-janitor.plist
+  - infra/launchagents/wrappers/pro-disk-janitor.sh
+  - scripts/disk_janitor.sh
+  - scripts/qdrant_backup_retention.sh
+  - scripts/test_disk_janitor.sh
+spend:
+  adversarial_rounds: 7
+  wall_clock_hours: 2.7
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+    note: >-
+      Birth via scripts/organ_birth.py (031372373d): wrapper + plist + registry entry +
+      declared HOME-fork pairs + CI step, payload scripts/disk_janitor.sh, test corpus
+      scripts/test_disk_janitor.sh. Seven council-cure commits followed (001c1e110d,
+      b1bb8f41a8 + 735294946b + 71ffa27cfb, 18b9a2a0ad, 09f5bce21a, c761a28d43, fe4cf17bd5,
+      6432877dea), one per refuter round, each cure carried with its own tripwire assertion. Same seat across the
+      window jump (session 6924cb2c → 4f63af07).
+  - lane: review
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      Adversarial refuter via `codex exec -s read-only` (model gpt-6-astra / gpt-6) on the
+      worktree, five rounds: R1 on 001c1e110d (R1-R8 → b1bb8f41a8), R2 on 735294946b
+      (R1-R6 → 18b9a2a0ad), R3 on 18b9a2a0ad (R1-R3 → 09f5bce21a), R4 on 09f5bce21a
+      (N1-N2 → c761a28d43), R5 on c761a28d43: N3-N6 → fe4cf17bd5 (all in the qdrant delegate + CI selector; see dissent). Its sandbox refused mktemp from
+      round 3 on, so rounds 3-5 are static review plus read-only `--check-path` probes; the
+      builder ran every fixture it asked for and shipped it as a suite assertion.
+  - lane: review
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      Adversarial refuter via `kimi -p` (Kimi Code CLI 2.0.2, tools live, worktree
+      read-only), three rounds: K1 on b1bb8f41a8 (O-1..O-11 → 735294946b + 71ffa27cfb),
+      K2 on 18b9a2a0ad with the round-4 edits in flight (K1-K5 → 09f5bce21a + c761a28d43;
+      K2 caught the harness clobbering the injected delegate, i.e. two assertions red by
+      construction, before they could be committed), K3 on c761a28d43 (delivered 17:58Z): BLOCK, R-1..R-6 — R-1 was already closed by fe4cf17bd5,
+      R-2..R-6 → 6432877dea.
+  - lane: review
+    role: read
+    seat: agy-gemini-3.1-pro
+    note: >-
+      Extra opinion at round 1 on 001c1e110d (DJ-01..04, all cured in 001c1e110d), NOT
+      counted toward quorum: the two titolari above were available and answered, so no
+      reserve substitution happened (its journal line carries role spalla, not review).
+  - lane: final-gate
+    role: review
+    seat: claude-fable-5-1 (window infra-disk-janitor-0929-ee — fresh, outside the contribution chain; Zero's manual --model choice, not the Opus 5.5 routing default)
+    note: >-
+      Pre-gate on fe4cf17bd5 (18:00Z): would-REFUSE with G-1..G-5 (= kimi R-2/R-4/R-5/R-6 reproduced
+      independently, plus the pack naming the wrong gate seat). G-1/G-3/G-4 cured in 6432877dea, G-2 decided
+      below, G-5 corrected in this pack. Final gate on 6432877dea: pending at push time — the gate re-reads
+      on disk, reruns suite + conformance + real dry-run, answers SIGN or REFUSE and publishes the
+      harness/fable-gate status itself; its answer is appended here and to the journal before the merge
+      queue is entered.
+
+dissent:
+  - seat: codex-gpt-5.6-sol (round 1, on 001c1e110d)
+    status: CONFIRMED
+    objection: >-
+      R1-R8 — protection predicate read a here-document (falls through to "not protected"
+      when the temp file cannot be created); DISK_JANITOR_TMP_ROOT steerable; symlinked
+      roots; candidate names in the log; probe rc unchecked; -mtime rounding; wrapper
+      double-logging. CURED in b1bb8f41a8 (arrays instead of I/O, tmp_root_ok(), physical
+      roots, 12-hex hashed names, fail-closed probe), each with a fixture.
+  - seat: kimi-code/k3 (round 1, on b1bb8f41a8)
+    status: CONFIRMED
+    objection: >-
+      O-1..O-11 — mapped onto the codex set except O-9 (a skipped run heartbeats "ok",
+      so a hung payload reads healthy forever) and NEW-3 (protection compared
+      case-sensitive paths on a case-insensitive volume). CURED in 735294946b (skip →
+      warn) and 71ffa27cfb (case-folded comparison).
+  - seat: codex-gpt-5.6-sol (round 2, on 735294946b)
+    status: CONFIRMED
+    objection: >-
+      R1-R6 — protected DESCENDANTS of a directory target, ungated empty-dir sweep,
+      registry read errors read as "dead", nested archive pruned, audit-trail failures
+      silent, abnormal exits without heartbeat. CURED in 18b9a2a0ad.
+  - seat: codex-gpt-5.6-sol (round 3, on 18b9a2a0ad)
+    status: CONFIRMED
+    objection: >-
+      R1 MAJOR — qdrant delegation inherited QDRANT_BACKUP_ROOT from the environment and
+      its targets never met the protected-tree gate; R2 — $(basename) strips a trailing
+      newline before the uuid regex; R3 — HB_DONE set before the sidecar write was known
+      to succeed. CURED in 09f5bce21a (pinned + gated root, parameter expansion,
+      HB_DONE only after a real write).
+  - seat: kimi-code/k3 (round 2, on 18b9a2a0ad + in-flight edits)
+    status: CONFIRMED
+    objection: >-
+      K1 MAJOR = codex R3-R1; K2 MAJOR — the in-flight test could not exercise its subject
+      because run() hardcoded DISK_JANITOR_QDRANT_RETENTION="" (two assertions red by
+      construction, PASS=63 FAIL=2); K3 — malformed age knobs and unlistable roots
+      no-op silently with errors=0; K4 — kill switch read after the audit probe; K5 —
+      early exits ignore a failed heartbeat. K1/K2 CURED in 09f5bce21a (harness honors
+      the injected delegate, fake delegate re-planted after every build), K3/K4/K5 CURED
+      in c761a28d43.
+  - seat: codex-gpt-5.6-sol (round 4, on 09f5bce21a)
+    status: CONFIRMED
+    objection: >-
+      N1 MAJOR — scripts/qdrant_backup_retention.sh split `ls -t` output by line, so an
+      archive name carrying a newline became fragments resolved against the CALLER's cwd
+      and reached `rm -f` unguarded; N2 — the four early exits bypassed the HB_FAIL check.
+      CURED in c761a28d43: every delegate target re-validated (no newline, inside root,
+      direct child, not a symlink, expected type; refused → exit 1 → janitor errors>0),
+      HB_FAIL enforced in the EXIT trap. Asserted with the REAL delegate, a newline-named
+      archive and same-named cwd sentinels (kept), plus a keep-7 control.
+  - seat: codex-gpt-5.6-sol (round 5, on c761a28d43)
+    status: CONFIRMED
+    objection: >-
+      N3 MAJOR — a newline-carrying name INSIDE the root could collide with a real sibling
+      through the line-based readers; N4 MAJOR — the delegate's own log named every
+      candidate in cleartext; N5 MAJOR — fsize() took GNU `stat -f` filesystem text as a
+      size (arithmetic error under set -e on the Ubuntu CI runner); N6 — the CI path
+      selector lacked the delegate. CURED in fe4cf17bd5: newline-named entries refuse both
+      backstops outright, hashed identifiers throughout the delegate log, numeric-only
+      sizes (asserted with a GNU-shaped fake stat), delegate added to the selector.
+  - seat: kimi-code/k3 (round 3, on c761a28d43)
+    status: CONFIRMED
+    objection: >-
+      R-1 MAJOR — inside-root newline fragment deletes a real sibling (= codex N3, closed in
+      fe4cf17bd5); R-2 MAJOR — the tools step is dead under launchd's minimal PATH (no
+      export in wrapper or plist) while reporting rc=0/errors=0; R-3 — the delegate's own
+      corpus orphaned from CI; R-4 — false premise "nothing scheduled the delegate" (Pro's
+      crontab C2.15 runs it daily at 05:10 --apply); R-5 — fixed producer-probe marker makes
+      the real-delegate assertions flaky under `pgrep -f` on a shared machine (3/70); R-6
+      — `--check-path /` OK and trailing-slash HOME (unreachable for a real delete). R-2/R-3/
+      R-5/R-6 CURED in 6432877dea; R-4 DECIDED (see risks) and the narrative corrected here
+      and in PENDING-ARMS.
+  - seat: claude-fable-5-1 (fresh gate window, pre-gate on fe4cf17bd5)
+    status: CONFIRMED
+    objection: >-
+      G-1..G-4 reproduce kimi R-2/R-4/R-5/R-6 independently (launchctl getenv PATH empty on
+      Pro; 17 of 55 sibling wrappers export /opt/homebrew/bin; crontab line 270). G-5: the
+      pack named claude-opus-5-5 as the gate seat while the gate is this Fable window, and
+      called kimi round 3 "in flight" after its verdict had landed. All corrected in
+      6432877dea + this pack revision.
+  - seat: builder (self-check, this window)
+    status: CONFIRMED
+    objection: >-
+      Kimi K2's harness bug plus a second one it did not reach: build() wipes $ROOT, so the
+      fake delegate planted before the first qdrant assertion was gone by the second
+      (64/65). Fixed by re-planting it after every build (09f5bce21a).
+
+receipts:
+  - claim: >-
+      Tripwire corpus on 6432877dea: 86 assertions, 0 failures — dry-run removes nothing,
+      apply prunes exactly the aged candidates, live-session scratch and fresh files kept,
+      all protected-tree decoys intact, second apply a no-op, kill switch removes nothing,
+      protected target refused rc=2, plus every council fixture (rounds 1-7).
+    cmd: bash scripts/test_disk_janitor.sh
+    exit: 0
+    ts: "2026-09-29T18:03:30Z"
+    seat: claude-fable-5-1
+  - claim: shellcheck at warning severity is clean on the payload, the test, the delegate and the wrapper.
+    cmd: shellcheck -S warning -s bash scripts/disk_janitor.sh scripts/test_disk_janitor.sh scripts/qdrant_backup_retention.sh infra/launchagents/wrappers/pro-disk-janitor.sh
+    exit: 0
+    ts: "2026-09-29T18:03:20Z"
+    seat: claude-fable-5-1
+  - claim: "Organ conformance: 171 plists scanned, 0 regressions, 0 non-conformant births (the new plist + wrapper included)."
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py
+    exit: 0
+    ts: "2026-09-29T18:04:34Z"
+    seat: claude-fable-5-1
+  - claim: >-
+      Real DRY-RUN against the live Pro HOME writes one receipt with errors=0 and the
+      delegate (real root, hashed log) returns rc=0: "done freed=0B scratch=0 codex=0
+      logarch=0 errors=0 data_used=93%".
+    cmd: DISK_JANITOR_TOOLS=false DISK_JANITOR_LOG=<scratch>/dj-dry7.log DISK_JANITOR_JOURNAL=<scratch>/dj-dry7.jsonl bash scripts/disk_janitor.sh
+    exit: 0
+    ts: "2026-09-29T18:04:36Z"
+    seat: claude-fable-5-1
+  - claim: "The delegate's own corpus passes on the hardened delegate: 15 passed, 0 failed."
+    cmd: bash scripts/test_qdrant_backup_retention.sh
+    exit: 0
+    ts: "2026-09-29T18:03:10Z"
+    seat: claude-fable-5-1
+
+risks:
+  - >-
+    Healer board (peer gate note): scripts/healer_receptor_registry.py treats both "warn"
+    (skipped: previous run alive) and "error" (errors>0) as unhealthy, so a persistent
+    REFUSE — e.g. a stale scratch dir carrying a PII-named component — puts pro.disk_janitor
+    on the healer-pro 6h board every tick until an operator moves the object. Intended
+    (loud, judged by a session, never a blind kickstart), and it is why the arm's
+    proof-of-armed demands status ok with errors=0, not merely a fresh sidecar.
+  - >-
+    Prove-live precondition (peer gate note): the wrapper runs ~/nuzantara/scripts/disk_janitor.sh,
+    the main checkout on Pro, which advances only through pro.git_pull_main (15 min tick,
+    ~/logs/pro-git-pull.log). The kickstart waits for "OK pulled to <sha containing the
+    merge>" in that log — never a hand pull, ~/nuzantara is read-only for agents.
+  - >-
+    Delegate double-scheduling (kimi R-4 / gate G-2): the birth narrative said nothing
+    scheduled scripts/qdrant_backup_retention.sh — false, Pro's crontab C2.15 runs it daily
+    at 05:10 WITA in --apply mode. DECISION: C2.15 stays until the organ has three green
+    APPLY receipts (mode=APPLY, errors=0, qdrant_rc=0); then retiring C2.15 is an OPERATOR
+    task on the PENDING-ARMS row — the crontab is Zero's config and no session edits it.
+    The double run is idempotent (same script, same root, same keep thresholds).

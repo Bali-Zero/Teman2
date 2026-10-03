@@ -73,7 +73,7 @@ class TestNextBusinessDay:
 
     def test_never_moves_a_date_backwards_and_is_idempotent(self) -> None:
         day = date(2026, 1, 1)
-        while day < date(2027, 1, 1):
+        while day < date(2028, 1, 1):
             rolled = next_business_day(day)
             assert rolled >= day
             assert next_business_day(rolled) == rolled
@@ -83,26 +83,50 @@ class TestNextBusinessDay:
 
 class TestUndecreedYears:
     def test_only_fully_decreed_years_are_reported_loaded(self) -> None:
-        assert holiday_years_loaded() == frozenset({2026})
-        assert 2027 not in holiday_years_loaded()
+        assert holiday_years_loaded() == frozenset({2026, 2027})
+        assert 2028 not in holiday_years_loaded()
 
     def test_an_undecreed_year_rolls_weekends_only(self) -> None:
-        # 1 January is a national holiday every year, but 2027's SKB does not exist, so this
+        # 1 January is a national holiday every year, but 2028's SKB does not exist, so this
         # module must not pretend to know. It under-rolls and `holiday_years_loaded` is how a
         # caller learns to say so — see the obligations register's needs_review_reason.
-        assert is_business_day(date(2027, 1, 1)) is True
-        assert next_business_day(date(2027, 1, 1)) == date(2027, 1, 1)
-        assert next_business_day(date(2027, 1, 2)) == date(2027, 1, 4)  # Sat -> Mon
+        assert is_business_day(date(2028, 1, 3)) is True  # Monday, the 2028 New Year is a Saturday
+        assert is_business_day(date(2028, 8, 17)) is True  # Thursday, Proklamasi, not decreed yet
+        assert next_business_day(date(2028, 8, 17)) == date(2028, 8, 17)
+        assert next_business_day(date(2028, 1, 1)) == date(2028, 1, 3)  # Sat -> Mon
+
+
+class TestDecree2027:
+    def test_new_year_2027_is_closed_and_rolls_to_monday(self) -> None:
+        assert is_business_day(date(2027, 1, 1)) is False
+        assert next_business_day(date(2027, 1, 1)) == date(2027, 1, 4)
+
+    def test_idulfitri_block_2027_crosses_cuti_bersama_and_the_weekend(self) -> None:
+        # Mon 8 Nyepi, Tue 9 CB, Wed 10 / Thu 11 Idulfitri, Fri 12 CB, Sat/Sun, Mon 15 CB -> Tue 16.
+        assert next_business_day(date(2027, 3, 8)) == date(2027, 3, 16)
+
+    def test_named_2027_dates(self) -> None:
+        by_date = {h.at: h for h in HOLIDAYS}
+        assert by_date[date(2027, 8, 17)].kind is HolidayKind.LIBUR_NASIONAL
+        assert by_date[date(2027, 12, 26)].name == "Isra Mikraj Nabi Muhammad saw."
+        assert by_date[date(2027, 12, 24)].kind is HolidayKind.CUTI_BERSAMA
+        assert by_date[date(2027, 3, 15)].kind is HolidayKind.CUTI_BERSAMA
 
 
 class TestDecreedTableIntegrity:
     """The data, not the arithmetic: a hand-edit that invents or drops a day fails here."""
 
-    def test_the_decree_counts_are_17_libur_nasional_and_8_cuti_bersama(self) -> None:
-        kinds = [h.kind for h in HOLIDAYS]
-        assert kinds.count(HolidayKind.LIBUR_NASIONAL) == 17
-        assert kinds.count(HolidayKind.CUTI_BERSAMA) == 8
-        assert len(HOLIDAYS) == 25
+    @pytest.mark.parametrize(
+        ("year", "libur_nasional", "cuti_bersama"), [(2026, 17, 8), (2027, 18, 8)]
+    )
+    def test_the_decree_counts_per_year(
+        self, year: int, libur_nasional: int, cuti_bersama: int
+    ) -> None:
+        kinds = [h.kind for h in HOLIDAYS if h.at.year == year]
+        assert kinds.count(HolidayKind.LIBUR_NASIONAL) == libur_nasional
+        assert kinds.count(HolidayKind.CUTI_BERSAMA) == cuti_bersama
+        assert len(kinds) == libur_nasional + cuti_bersama
+        assert len(HOLIDAYS) == 25 + 26
 
     def test_no_date_outside_a_decreed_year_and_no_duplicate(self) -> None:
         assert {h.at.year for h in HOLIDAYS} <= DECREED_YEARS

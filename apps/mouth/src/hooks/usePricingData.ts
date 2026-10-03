@@ -1,6 +1,9 @@
 "use client";
 
-import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
+import {
+  getExactSnapshotPrice,
+  getTierSetFloorPrice,
+} from "@/lib/pricing-snapshot";
 
 interface PricingResult {
   price: string | null;
@@ -20,6 +23,25 @@ export function usePricingData(
     price:
       serviceKey && category
         ? getExactSnapshotPrice(category, serviceKey)
+        : null,
+    isLoading: false,
+    isError: false,
+  };
+}
+
+/**
+ * Resolve the catalogue's lowest IDR figure across a set of tier keys in one
+ * category — for a package that spans several catalogue tiers instead of
+ * mapping onto one exact SKU. Missing category/keys abstains with `null`.
+ */
+export function useTierFloorPricingData(
+  category: string | null,
+  tierKeys: string[] | null,
+): PricingResult {
+  return {
+    price:
+      category && tierKeys && tierKeys.length > 0
+        ? getTierSetFloorPrice(category, tierKeys)
         : null,
     isLoading: false,
     isError: false,

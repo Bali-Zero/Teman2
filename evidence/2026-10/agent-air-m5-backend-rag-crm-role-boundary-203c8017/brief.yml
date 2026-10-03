@@ -1,0 +1,72 @@
+task_id: crm-role-boundary
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Apply a role boundary to the staff CRM and admin APIs in the hybrid auth
+  layer. Client-portal accounts (role client) and external partners (role
+  partner) authenticate with JWTs signed by the same secret as staff tokens,
+  and nothing between authentication and the handlers told them apart from a
+  colleague on /api/crm/* and /api/admin/*. HybridAuthMiddleware now answers
+  403 for those two roles on those prefixes before any handler runs. The one
+  staff-API operation the client portal calls (POST
+  /api/crm/practices/{practice_id}/upload-client-document) stays open to the
+  client role and keeps its handler's own ownership check.
+
+  Gear 3 is declared above the deterministic floor (1, no hot-zone path):
+  this is a production change to the authentication middleware of both Fly
+  processes, and merging apps/backend-rag/** is the deploy.
+
+acceptance:
+  - text: >-
+      WHEN a client or partner JWT calls any method of any non-public route
+      mounted under /api/crm or /api/admin (Bearer: every method; cookie
+      session: GET, since a cookie's mutating request is refused by CSRF
+      first), the middleware SHALL answer 403 with the boundary detail and SHALL NOT run
+      the handler (the stub pool records no use). The route set is
+      enumerated from include_routers, not hand-listed.
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/security/test_crm_admin_role_boundary.py -p no:cacheprovider -k "refused or unauthenticated"
+  - text: >-
+      WHEN a client JWT calls POST
+      /api/crm/practices/{practice_id}/upload-client-document, the request
+      SHALL reach routing and the handler (no boundary 403); the exemption
+      SHALL NOT extend to another method, a deeper path, or the partner role.
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/security/test_crm_admin_role_boundary.py -p no:cacheprovider -k "upload or boundary_decision"
+  - text: >-
+      WHEN a staff JWT, the X-Internal-Key caller, an X-API-Key with the
+      default user role, or the monitoring JWT calls a CRM route, the request
+      SHALL reach the handler; and for every enumerated route the decision
+      SHALL be "not refused" for staff, admin, internal, user, monitoring,
+      empty and missing roles.
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/security/test_crm_admin_role_boundary.py -p no:cacheprovider -k "other_callers or other_roles"
+  - text: >-
+      The existing middleware, auth-dependency and security suites SHALL stay
+      green (unauthenticated requests still 401 on the existing path).
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/middleware/ backend/tests/security/ backend/tests/unit/app/deps/test_auth_hardened.py backend/tests/unit/security/test_auth_session_enforcement.py backend/tests/integration/test_endpoints_reachable.py backend/tests/unit/routers/test_portal.py -p no:cacheprovider
+  - text: >-
+      AFTER the fly-deploy run for the merge commit, an authenticated request
+      with a portal-role token to GET /api/crm/clients/{id} on
+      nuzantara-rag.fly.dev SHALL return 403 with the boundary detail, while
+      the portal upload route SHALL NOT return the boundary 403.
+    probe: "read-only HTTP observation with a synthetic portal account, run by the commissioning session after deploy"
+
+assumptions:
+  - text: >-
+      The partner portal calls only /api/partners/*, and the client portal's
+      only /api/crm/* call is the document upload.
+    status: verified
+    probe: "rg over apps/mouth/src/app/portal and apps/mouth/src/lib/api/{portal,partners}: the only /api/crm or /api/admin use is crm.api.ts uploadClientDocument from process/page.tsx"
+  - text: >-
+      Both production processes (api via main_api.py, rag via app_factory.py)
+      install HybridAuthMiddleware through middleware_config.register_middleware.
+    status: verified
+    probe: "rg register_middleware app/main_api.py app/setup/app_factory.py"
+  - text: >-
+      A token with no role claim reaches the middleware as role "" and is not
+      refused, so it is exactly as privileged as before.
+    status: verified
+    probe: "test_boundary_decision cases '' and None; authenticate_jwt* set role to payload.get('role') or ''"
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

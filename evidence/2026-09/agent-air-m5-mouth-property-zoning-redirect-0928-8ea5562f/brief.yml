@@ -1,0 +1,26 @@
+task: >-
+  /zoning was a static pitch page whose only action was a WhatsApp link while the working
+  tool is /property/eligibility; /zoning now 308-redirects to the tool, the unreachable page
+  is removed, and the /property landing links to the tool.
+lane: mouth/property-zoning-redirect
+machine: air-m5
+date: 2026-09-28
+gear: 1
+gear_reason: >-
+  Floor 1 (evidence_pack_lint.py --print-floor): 5 files, +29/-188, one concern (route
+  consolidation of the zoning pitch into Property Check), no schema/infra/secrets touched.
+acceptance:
+  A1: >-
+    src/app/zoning-redirect.test.ts asserts {source "/zoning", destination
+    "/property/eligibility", permanent true} in next.config redirects(); red with origin/main's
+    next.config.ts swapped in (108 redirects, none for /zoning), green on HEAD; tsc exit 0.
+  A2: >-
+    Nothing else imports app/zoning or ZoningCheckCTA (grep over apps/mouth), and the sitemap
+    does not list /zoning, so removing the page leaves no dangling link.
+  A3: >-
+    After deploy, curl -sI https://balizero.com/zoning returns 308 with location
+    /property/eligibility, and /property shows a "Free Property Check" link.
+out_of_scope:
+  - >-
+    R19 restyle of the /property landing (still excluded in routePolicy; the new link reuses
+    the page's current classes on purpose so the page stays visually coherent until then).
