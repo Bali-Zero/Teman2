@@ -184,6 +184,10 @@ expect_log "sweep failed after the run" \
 echo "innocence"
 fresh_checkout; run_case guard-report report
 expect_clean "agent writes its report to disk, uncommitted"
+# a clean verdict is a line on disk naming both limbs, never inferred from silence
+expect_log "checkout guard verdict: clean, HEAD limb on ('main 0 1' -> 'main 0 1'), stamp sweep on (0 stamped before, 0 new)" \
+    "a clean run logs that both limbs ran and what they measured" \
+    "a clean run left no positive guard verdict in the log"
 fresh_checkout; run_case guard-sibling sibling
 expect_clean "another session commits on its own worktree branch mid-run"
 rm -rf "$CHECKOUT.wt"
@@ -194,6 +198,9 @@ old="$(GIT_COMMITTER_NAME="cron-agent guard-old" GIT_COMMITTER_EMAIL=guard-old@c
 "${G[@]}" -C "$CHECKOUT" update-ref refs/remotes/origin/agent/x/earlier "$old"
 run_case guard-old report
 expect_clean "a stamped commit from an earlier run is already on a ref"
+expect_log "stamp sweep on (1 stamped before, 0 new)" \
+    "the earlier stamped commit was counted in the before-set, not missed" \
+    "the earlier stamped commit did not reach the before-set"
 # ...and a cleanup deleting that earlier branch mid-run empties the after-set
 fresh_checkout
 old="$(GIT_COMMITTER_NAME="cron-agent guard-prune" GIT_COMMITTER_EMAIL=guard-prune@cron-agent.invalid \
@@ -214,6 +221,9 @@ expect_clean "no checkout to measure (guard stays out)"
 [[ "$LOG" == *"checkout guard OFF"* ]] \
     && ok "an unmeasurable checkout says so in the log" \
     || bad "the guard went silent instead of logging that it is off"
+expect_log "checkout guard verdict: clean, HEAD limb off, stamp sweep off" \
+    "the verdict line says both limbs were off, not clean-by-measurement" \
+    "an unmeasured run's verdict line is missing or claims a limb ran"
 
 echo
 [ "$FAILED" -eq 0 ] && { echo "PASS — cron-agent H24 checkout guard"; exit 0; } || { echo "FAIL"; exit 1; }

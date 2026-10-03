@@ -713,6 +713,17 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         fi
         [[ -n "$checkout_marked" ]] && checkout_mutated=1
     fi
+    # A clean run says what was measured, so "the guard ran and found nothing"
+    # is a line on disk and never inferred from silence (W84: green-but-dead).
+    if [[ $checkout_mutated -eq 0 ]]; then
+        local head_limb="off" sweep_limb="off" stamped_before=0
+        [[ -n "$checkout_before" ]] && head_limb="on ('$checkout_before' -> '$checkout_after')"
+        if [[ $marked_sweep -eq 1 ]]; then
+            [[ -n "$marked_before" ]] && stamped_before="$(grep -c . <<< "$marked_before")"
+            sweep_limb="on ($stamped_before stamped before, 0 new)"
+        fi
+        log "checkout guard verdict: clean, HEAD limb $head_limb, stamp sweep $sweep_limb"
+    fi
 
     local duration=$(( $(date +%s) - start_ts ))
 
