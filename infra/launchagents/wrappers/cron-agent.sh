@@ -734,7 +734,7 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
         # Never repaired from here: a reset on the H24 checkout is a human/healer
         # act. Exit 3 is this guard's own code, distinct from 1/124/127.
         local checkout_change="'${checkout_before:-unmeasured}' -> '${checkout_after:-unmeasurable}'${checkout_marked:+, stamped commits $checkout_marked}"
-        log "GIT-MUTATION: H24 checkout changed during the agent run, '<branch> <ahead-of-origin/main> <reflog>' went $checkout_change${checkout_moves:+, new HEAD moves: $checkout_moves}${checkout_marked:+, commits stamped by this run on any ref: $checkout_marked} — realign by hand"
+        log "GIT-MUTATION: H24 checkout changed during the agent run, '<branch> <ahead-of-origin/main> <reflog>' went $checkout_change${checkout_moves:+, new HEAD moves: $checkout_moves}${checkout_marked:+, new commits stamped for this job on any ref: $checkout_marked} — realign by hand"
         save_state "error" 3 "$duration" "H24 checkout mutated during agent run: $checkout_change"
         send_telegram "🚨 <b>$JOB_NAME</b>: H24 checkout mutated during the agent run ($checkout_change) — realign by hand"
         return 3

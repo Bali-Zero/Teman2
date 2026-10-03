@@ -158,7 +158,7 @@ fresh_checkout; run_case guard-undone undone
 expect_mutation "agent commits then resets it away (branch and ahead unchanged)"
 fresh_checkout; run_case guard-side side
 expect_mutation "agent ships from a side worktree, then removes it (2026-09-28 shape)"
-expect_log "commits stamped by this run" \
+expect_log "new commits stamped for this job on any ref" \
     "the side-worktree commit was caught by the committer stamp" \
     "the side-worktree case was not caught by the committer stamp"
 # the guilt above only counts if the push itself left the tracking ref and the
@@ -208,6 +208,17 @@ old="$(GIT_COMMITTER_NAME="cron-agent guard-prune" GIT_COMMITTER_EMAIL=guard-pru
 "${G[@]}" -C "$CHECKOUT" update-ref refs/remotes/origin/agent/x/earlier "$old"
 run_case guard-prune prune
 expect_clean "a cleanup deletes an earlier run's stamped branch mid-run"
+# a ref already broken BEFORE the run: the stamp limb turns itself off for the
+# run and says so, the HEAD limb still measures, the run is not failed
+fresh_checkout; printf '%040d\n' 1 > "$CHECKOUT/.git/refs/heads/broken"
+run_case guard-preoff report
+expect_clean "a ref is already broken before the run (stamp limb off)"
+expect_log "commit-stamp sweep OFF for this run" \
+    "the stamp limb said it is off for this run" \
+    "the stamp limb went off without a log line"
+expect_log "checkout guard verdict: clean, HEAD limb on ('main 0 1' -> 'main 0 1'), stamp sweep off" \
+    "the verdict line shows the HEAD limb on and the stamp limb off" \
+    "the verdict line hides which limb was off"
 fresh_checkout; run_case guard-sfx suffix
 expect_clean "job weekly-guard-sfx commits under its own stamp during this run"
 fresh_checkout; run_case guard-sync sync
