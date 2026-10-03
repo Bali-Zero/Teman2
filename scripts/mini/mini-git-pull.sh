@@ -413,8 +413,18 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
           if git stash push --quiet -m "mini-git-pull-selfheal $(date +%Y-%m-%d_%H:%M:%S)" 2>>"$LOG_FILE"; then
             SELFHEAL_STASHED=1
           else
-            log "WARN: stash failed ahead of content-identical self-heal, skip this tick"
-            SELFHEAL_READY=0
+            # 2026-10-03: a stash push can itself fail with "needs merge" if an
+            # EARLIER tick's pop conflict left an unmerged path behind (the exact
+            # loop resolve_stash_pop_conflict_to_clean_tree exists to prevent going
+            # forward, but a path already poisoned before that fix landed needs one
+            # cleanup + retry here too, or this tick just re-skips forever).
+            resolve_stash_pop_conflict_to_clean_tree
+            if git stash push --quiet -m "mini-git-pull-selfheal $(date +%Y-%m-%d_%H:%M:%S)" 2>>"$LOG_FILE"; then
+              SELFHEAL_STASHED=1
+            else
+              log "WARN: stash failed ahead of content-identical self-heal, skip this tick"
+              SELFHEAL_READY=0
+            fi
           fi
         fi
         if [ "$SELFHEAL_READY" = "1" ]; then
@@ -509,8 +519,17 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
               if git stash push --quiet -m "mini-git-pull-selfheal-narrow $(date +%Y-%m-%d_%H:%M:%S)" 2>>"$LOG_FILE"; then
                 SELFHEAL_STASHED=1
               else
-                log "WARN: stash failed ahead of narrow self-heal, skip this tick"
-                SELFHEAL_READY=0
+                # 2026-10-03: see the sibling comment in the content-identical
+                # self-heal block above — a stranded unmerged path from before
+                # resolve_stash_pop_conflict_to_clean_tree existed needs one
+                # cleanup + retry here too.
+                resolve_stash_pop_conflict_to_clean_tree
+                if git stash push --quiet -m "mini-git-pull-selfheal-narrow $(date +%Y-%m-%d_%H:%M:%S)" 2>>"$LOG_FILE"; then
+                  SELFHEAL_STASHED=1
+                else
+                  log "WARN: stash failed ahead of narrow self-heal, skip this tick"
+                  SELFHEAL_READY=0
+                fi
               fi
             fi
             if [ "$SELFHEAL_READY" = "1" ]; then
@@ -608,9 +627,19 @@ if [ -n "$DIRTY_TRACKED" ] || [ -n "$DIRTY_STAGED" ]; then
     STASHED=1
     log "Stashed tracked changes ('$STASH_MSG'), pulling $COMMITS_BEHIND commits from $TARGET_REF..."
   else
-    log "ERROR: git stash failed, skip"
-    telegram_alert "stash-failed" "git stash failed on Mini. Manual triage."
-    exit 1
+    # 2026-10-03: see the sibling comment in the self-heal blocks above — a
+    # stranded unmerged path from before resolve_stash_pop_conflict_to_clean_tree
+    # existed needs one cleanup + retry here too, or the happy-path pull loops
+    # forever on the same "needs merge" error every tick.
+    resolve_stash_pop_conflict_to_clean_tree
+    if git stash push --quiet -m "$STASH_MSG" 2>>"$LOG_FILE"; then
+      STASHED=1
+      log "Stashed tracked changes ('$STASH_MSG') after clearing a stranded conflict, pulling $COMMITS_BEHIND commits from $TARGET_REF..."
+    else
+      log "ERROR: git stash failed, skip"
+      telegram_alert "stash-failed" "git stash failed on Mini. Manual triage."
+      exit 1
+    fi
   fi
 else
   log "Clean tracked tree, pulling $COMMITS_BEHIND commits from $TARGET_REF..."
