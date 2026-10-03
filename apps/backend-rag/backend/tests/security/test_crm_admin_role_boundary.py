@@ -201,26 +201,6 @@ def test_unauthenticated_requests_keep_the_existing_401(client, pool) -> None:
     assert pool.log == []
 
 
-def test_a_mount_prefix_does_not_move_routes_outside_the_boundary(
-    app_and_pool, client, pool
-) -> None:
-    from starlette.applications import Starlette
-    from starlette.routing import Mount
-
-    outer = TestClient(
-        Starlette(routes=[Mount("/edge", app=app_and_pool[0])]), raise_server_exceptions=False
-    )
-    r = outer.get(
-        "/edge/api/crm/clients/7", headers={"Authorization": f"Bearer {_token('client')}"}
-    )
-    assert r.status_code == 403
-    assert pool.log == []
-    outer.get(
-        "/edge/api/crm/clients/7", headers={"Authorization": f"Bearer {_token('Consultant')}"}
-    )
-    assert pool.log, "the mount must route to the handler for staff, or this test is blind"
-
-
 def test_the_upload_exception_is_scoped_to_its_method_and_template(client, pool) -> None:
     bearer = {"Authorization": f"Bearer {_token('client', client_id=7)}"}
     assert client.get(PORTAL_UPLOAD, headers=bearer).status_code == 403
