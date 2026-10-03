@@ -1,0 +1,47 @@
+task_id: damar-newsroom-preflight
+gear: 2
+colour: BLUE
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: newsroom-preflight
+    role: build
+    seat: codex-gpt-6
+  - lane: independent-source-review
+    role: review
+    seat: claude-opus-5
+    effort: high
+    status: PASS
+    session_id: 082af785-ff69-4eca-a1a0-39543f06a329
+    note: Independent source review, not the final release gate. Two preceding xhigh attempts timed out without verdict.
+pii_scan: clean
+receipts:
+  - claim: Canonical article detail reports missing or attached cover without its storage reference.
+    cmd: cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest backend/tests/unit/routers/test_workspace_marketing_bridge.py --tb=short --no-cov
+    exit: 0
+    result: 37 passed
+    ts: "2026-09-21"
+    seat: codex-gpt-6
+  - claim: Independent Claude review found no introduced correctness or security defects.
+    cmd: claude --print --model claude-opus-5 --effort high --tools Read,Grep --permission-mode dontAsk
+    exit: 0
+    result: PASS; tests not independently run; review.md records the source diff hash and verdict.
+    ts: "2026-09-21"
+    seat: claude-opus-5
+  - claim: Missing cover is actionable before operation claim; correction permits retry with the same key.
+    cmd: cd apps/nuzantara-mcp && source .venv/bin/activate && PYTHONPATH=. python -m pytest tests/test_workspace_marketing_bridge.py --tb=short
+    exit: 0
+    result: 82 passed
+    ts: "2026-09-21"
+    seat: codex-gpt-6
+dissent:
+  - seat: codex-gpt-6
+    status: CONFIRMED
+    objection: Completeness does not repair the existing advisory/protocol conflict or the reviewer's missing source text.
+residual_risks:
+  - Backend and bridge rollout plus ChatGPT app republish remain necessary; this change is not live.
+  - Existing publisher gates remain authoritative; preflight cannot reserve slots or prevent intervening edits.
+  - Older backend payloads report unavailable preflight and retain the existing publisher checks.
+release:
+  state: prepare_only
+  live_probe: Pending release-owner observation in Damar's actual Marketing Bridge; not claimed live.
+  bites: Damar sees the missing cover and remedy before publication, with no operation or PR created until correction.

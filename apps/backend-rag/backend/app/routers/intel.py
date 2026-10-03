@@ -383,11 +383,20 @@ def _workspace_marketing_summary(item: dict[str, Any]) -> dict[str, Any]:
         safe = item[field]
         if safe is None or isinstance(safe, (str, int, float, bool)):
             public[field] = safe
+    cover_reference = item.get("image_drive_file_id") or item.get("cover_image")
+    public["cover_status"] = (
+        "attached"
+        if isinstance(cover_reference, str) and cover_reference.strip()
+        else "unknown"
+    )
     return public
 
 
 def _workspace_marketing_article(item: dict[str, Any]) -> dict[str, Any]:
     public = _workspace_marketing_summary(item)
+    missing = _workspace_publish_blockers(item)
+    public["cover_status"] = "missing" if "cover_image" in missing else "attached"
+    public["publication_preflight"] = {"missing": missing}
     for field in ("seo_title", "seo_description", "slug", "cover_image_alt"):
         if field in item:
             safe_field = _workspace_text(item[field], max_chars=500)

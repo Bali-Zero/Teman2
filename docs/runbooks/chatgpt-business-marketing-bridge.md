@@ -119,6 +119,28 @@ While the managed runtime is healthy:
    approved; after this manifest changes, an owner/admin must recreate or
    republish the private app before Damar can see the new commands.
 
+### News Room preflight rollout
+
+`newsroom_get_article` exposes `cover_status`, `publication_preflight.missing`
+and the last `fact_gate` bound to the current article copy. Completeness checks
+come from the same backend validator used by publication; they do not grant
+editorial approval, reserve a homepage slot or prove a live page. The list can
+report `unknown` for a Drive-only cover; read article detail before generating
+a replacement. An older backend reports preflight `unavailable`, never complete.
+
+The bridge rejects known missing fields before claiming the request key, so an
+editor can fix them and retry that same key. Existing publisher gates still run.
+After deploying backend and bridge changes, republish the app snapshot above.
+Verify in Damar's actual app that detail shows the missing cover, then attached
+after the canonical upload, and that a missing-cover publish names the remedy
+without creating an operation or a PR. A green local test is not rollout proof.
+
+Known separate issue: the independent reviewer is invoked with tools disabled
+and receives a source URL without fetched source text. This preflight change
+does not fix source access or reconcile advisory bridge wording with the
+external-agent editorial protocol. Never interpret completeness as permission
+to bypass a red gate required by that protocol.
+
 ## Acceptance proof
 
 Run these in order:

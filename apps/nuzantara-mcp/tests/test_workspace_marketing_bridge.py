@@ -263,6 +263,84 @@ async def test_newsroom_projection_redacts_identifiers_and_raw_enrichment() -> N
 
 
 @pytest.mark.asyncio
+async def test_article_detail_shows_preflight_and_current_fact_findings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    payload = {
+        "id": "news_preflight",
+        "title": "Public article",
+        "content": "Verified editorial copy",
+        "cover_status": "missing",
+        "publication_preflight": {"missing": ["cover_image"]},
+    }
+    marketing._write_json_atomic(
+        marketing._fact_gate_path("news_preflight"),
+        {
+            "ok": False,
+            "fingerprint": marketing._article_fingerprint(marketing._public_news_article(payload)),
+            "checked_claims": 2,
+            "findings": ["Confirm the effective date against the source."],
+        },
+    )
+    tools, _ = _capture_tools(AsyncMock(return_value=payload))
+    article = await tools["newsroom_get_article"]("news_preflight")
+    assert article["cover_status"] == "missing"
+    assert article["publication_preflight"] == {"status": "incomplete", "missing": ["cover_image"]}
+    assert article["fact_gate"]["status"] == "BLOCK"
+    assert article["fact_gate"]["findings"] == ["Confirm the effective date against the source."]
+
+    payload["content"] = "Corrected editorial copy"
+    article = await tools["newsroom_get_article"]("news_preflight")
+    assert article["fact_gate"]["status"] == "stale"
+
+
+@pytest.mark.parametrize("preflight", [None, {}, {"missing": "cover_image"}, {"missing": ["private/path"]}])
+def test_missing_or_invalid_preflight_is_unknown_and_never_echoed(preflight: Any) -> None:
+    article = marketing._public_news_article({"publication_preflight": preflight})
+    assert article["publication_preflight"] == {"status": "unavailable", "missing": []}
+    assert article["cover_status"] == "unknown"
+    assert "private/path" not in json.dumps(article)
+
+
+@pytest.mark.asyncio
+async def test_missing_cover_does_not_consume_publish_key_and_correction_can_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    capabilities = {
+        "contract": marketing.NEWSROOM_CONTRACT,
+        "ready": True,
+        "capabilities": {name: "ready" for name in marketing.REQUIRED_NEWSROOM_CAPABILITIES},
+    }
+    payload = {
+        "item_id": "news_preflight",
+        "title": "Public article",
+        "publication_preflight": {"missing": ["cover_image"]},
+    }
+    backend_call = AsyncMock(side_effect=[capabilities, payload])
+    tools, _ = _capture_tools(backend_call)
+    with pytest.raises(ValueError, match="missing: cover_image.*newsroom_attach_cover"):
+        await tools["newsroom_publish"]("news_preflight", "preflight-retry", "CONFIRM", "latest")
+    assert backend_call.await_count == 2
+    assert not marketing._operation_path("newsroom-publish", "preflight-retry").exists()
+
+    payload["publication_preflight"] = {"missing": []}
+    backend_call.side_effect = [capabilities, payload, {
+        "success": True,
+        "github_published": True,
+        "published_url": "https://balizero.com/business/public-article",
+    }]
+    result = await tools["newsroom_publish"]("news_preflight", "preflight-retry", "CONFIRM", "latest")
+    assert result["status"] == "queued_for_publication"
+    backend_call.assert_awaited_with(
+        "/api/workspace-marketing/news/news_preflight/publish",
+        method="POST", json={"confirmation": "DAMAR_CONFIRMED", "position": "latest"},
+    )
+
+
+@pytest.mark.asyncio
 async def test_workspace_health_requires_live_v2_contract_and_write_arm(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
