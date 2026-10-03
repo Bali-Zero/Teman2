@@ -1,0 +1,194 @@
+# Gear-3 evidence pack — successor of PR #7526: the Bites step resolves an in-PR observer in the PR head tree.
+# Written by the Dux of this mandate (Claude Opus 5.5, M5, mission colour BLUE). Every receipt is a command this
+# writer executed on 2026-10-02 between 10:17Z and 10:45Z; outputs are quoted from those runs. Scratch logs live in
+# the session scratchpad and are not committed. The `ts` of R1-R3 and R7 were printed by the runs themselves; those
+# of R4-R6, R8 and R9 are minute-level readings of the session clock, not stamps.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  SAETTA amendment 7 (docs/rules/RULINGS.md, ruled 2026-09-12): a red whose cause is the harness is fixed in a
+  separate PR. Mandate from the team lead, 2026-10-02 ~18:15 WITA: land #7526's content on a fresh origin/main as a
+  successor PR, leave #7526 and #7504 untouched.
+mission: >-
+  PR #7504 (gate PASS on 9a1413999f) is red only in the "Bites contract" step, because the step's base parser
+  looks for the PR's NEW observer in the base checkout. #7526 cured that and then froze: armed, conflicting with
+  main in one hunk, no owning session. This PR is #7526 on fresh main plus the probe that lets the PR which
+  introduces `--tree` be judged at all.
+lanes:
+  - lane: bites-head-tree-successor
+    role: build
+    seat: Claude Opus 5.5 (Dux, M5)
+pii_scan: clean
+bites:
+  consumer: >-
+    the Harness floor job's "Bites contract — parse this PR's evidence pack" step, on every Gear>=2 PR whose
+    evidence pack names an `observe:` script; first named consumer PR #7504, whose observer
+    scripts/ci/observe_visa_seq24_signed.py exists only in its own head tree.
+  observation: >-
+    After this merges and #7504's branch is updated, #7504's "Harness floor recompute" run logs the Bites step's
+    EXECUTABLE notice (no `does not exist in tree` error, no probe notice) and the check concludes success; the
+    run URL is the proof. Locally reproduced now (receipt R4): the same pack with this parser is executable
+    against 9a1413999f and malformed against origin/main.
+decisions:
+  - id: D-content
+    decision: >-
+      Parser and tests are taken from #7526's head 2bb05c5b9d by content, not by cherry-pick: #7526's five commits
+      interleave code with its own evidence directory, which belongs to a branch slug this PR does not have. Main
+      has not touched scripts/ci/bites_parse.py or scripts/tests/test_bites_parse.py since #7526's merge-base
+      a6fcae5afe (`git log a6fcae5afe..origin/main -- <both>` is empty), so a per-file take is the whole of
+      #7526's change to them. bites_parse.py is blob-identical to 2bb05c5b9d (212170bdb9); the test file is
+      #7526's plus one test (D-probe).
+  - id: D-hunk
+    decision: >-
+      The one conflicting hunk of harness-floor.yml: main's side is #7536 (`RC=0`, `|| RC=$?`, and a comment
+      explaining why), #7526's side is the same capture with a different comment plus `--tree "${HEAD_SHA}"`.
+      Kept main's #7536 comment and capture verbatim, added #7526's `--tree` comment paragraph and argument. Edited
+      by hand on that hunk only; every other hunk of the file is origin/main's (receipt R2: one hunk, +18/-1).
+  - id: D-probe
+    decision: >-
+      Added beyond #7526: the step passes `--tree` only when `bites_parse.py --help` advertises it. The job checks
+      out BASE (`ref: merge_group.base_sha || pull_request.base.sha`) but runs the PR's workflow, so in the PR that
+      introduces the flag, and in its merge-group run, the parser is origin/main's, which rejects `--tree`
+      (argparse exit 2, empty stdout); the step then dies at the `CLASSIFICATION=$(...)` capture under `bash -e`
+      with exit 1 and no `::error` (receipt R6). #7526 never met this only because its gate verdict was never
+      posted: run 36294191323 stopped at `harness_gate_read: PENDING`, before the Bites step. The probe mirrors
+      the missing-FLAG-degrades split the same workflow already uses for `--numstat-file`. It also closes #7526's
+      own first dissent (a PR whose base predates the parser). Reported to the team lead before building it.
+  - id: D-self-judgement
+    decision: >-
+      This PR changes the step that judges it. Its own Harness floor runs (pull_request and merge_group) execute
+      the NEW workflow text over the OLD parser, so the probe fails, the step prints the `::notice` and judges
+      this pack by the old checkout lookup. That is a judgement of this pack's bites block by the pre-change
+      rule, not a test of `--tree` in CI: the `--tree` path first runs in CI on the first PR whose base contains
+      this merge (#7504 after its branch update is the named one). This pack's bites block is prose, classified
+      `legacy` by both parsers, so the old judge can neither fail nor pass it wrongly.
+receipts:
+  - claim: "R1 — candidate identity and provenance."
+    cmd: >-
+      git rev-parse HEAD origin/main; git rev-parse {HEAD,2bb05c5b9d,46a2e3d6f5}:scripts/ci/bites_parse.py and
+      :scripts/tests/test_bites_parse.py; gh pr view 7526 --json headRefOid; git fetch origin <sha> then
+      git rev-parse FETCH_HEAD
+    result: >-
+      code head b54e27ebff0ba362a49b296c46170b906a34119f on origin/main 370ab29aae0244b6bf590800d7233470a04b21b3;
+      bites_parse.py 212170bdb995 at HEAD, at 2bb05c5b9d and at 46a2e3d6f5; test file 8725539c29fd at 2bb05c5b9d and
+      46a2e3d6f5, 5eb4d868731a at HEAD (one test added). #7526 headRefOid 2bb05c5b9dc3bc251e9503cb1095923c3f15add7
+      equals the SHA fetched; #7504 headRefOid 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7 equals the SHA fetched.
+    exit: 0
+    ts: "2026-10-02T10:29:18Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R2 — the workflow delta against origin/main is one hunk."
+    cmd: >-
+      git diff --numstat origin/main HEAD -- .github/workflows/harness-floor.yml; the same diff | grep -c '^@@'
+    result: "18 added, 1 removed; 1 hunk (the Bites parser call)"
+    exit: 0
+    ts: "2026-10-02T10:29:18Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R3 — tests, corpus, lints."
+    cmd: >-
+      python3 -m pytest -q -p no:cacheprovider scripts/tests/test_bites_parse.py (python3 and the backend venv);
+      python3 scripts/ci/bites_parse.py --selftest; actionlint .github/workflows/harness-floor.yml;
+      python3 scripts/lint_workflow_errexit_decap.py; ruff check on both Python files;
+      python3 infra/guard-conformance/check_guard_conformance.py; yaml.safe_load of the workflow;
+      evidence_pack_lint.py --numstat-file --changed-files-file --print-floor
+    result: >-
+      182 passed (both interpreters are Python 3.11.15 on M5; CI uses 3.12); selftest 138/138; actionlint no
+      output, rc 0; errexit-decap clean; ruff All checks passed; guard-conformance 0 violations, every censused
+      guard has guilt+innocence; yaml ok; floor 3
+    exit: 0
+    ts: "2026-10-02T10:30:01Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R4 — PR #7504's real pack through this parser, both ways (the reproduction the mandate asked for)."
+    cmd: >-
+      git show 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7:evidence/2026-09/agent-nuzantara-backend-rag-seq24-sign-99f66ece/pack.yml
+      > <scratch>/pack7504.yml; python3 scripts/ci/bites_parse.py --pack - --tree <T> < <scratch>/pack7504.yml
+      for T = 9a1413999f86f5d2e6a9d9175c2a33a638ed07c7 and 370ab29aae0244b6bf590800d7233470a04b21b3; then no --tree
+    result: >-
+      head tree: RC=0, classify executable, observe `python3 scripts/ci/observe_visa_seq24_signed.py`, expect
+      `contains:inventory reads seq-24 and all three consumers green`. origin/main tree: RC=2, malformed,
+      "observe: `scripts/ci/observe_visa_seq24_signed.py` does not exist in tree 370ab29aae02". No --tree from the
+      worktree: RC=2, malformed, "... does not exist in the checkout".
+    exit: 0
+    ts: "2026-10-02T10:20:40Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: 'R5 — the step itself under bash -e: the run: text of the Bites step, extracted from the YAML with yaml.safe_load, from `TREE_FLAG=""` to the end, /tmp paths redirected to scratch, executed with `bash -e`, against this parser (new) and origin/main''s parser (old).'
+    cmd: >-
+      HEAD_SHA=<sha> SAFE_PACK_PATH=pack.yml bash -e <fragment> for six pairs; pack_nowhere = #7504's pack with the
+      observer renamed to scripts/ci/observe_does_not_exist_anywhere.py; pack_basescript = an executable block
+      observing `python3 scripts/ci/bites_parse.py --selftest`
+    result: >-
+      new + #7504 pack: EXECUTABLE notice, step exit 0. new + nowhere: `::error::bites: observe: ... does not exist
+      in tree 9a1413999f86` then the MALFORMED `::error`, exit 1. new + basescript: EXECUTABLE, exit 0. old +
+      #7504 pack: probe `::notice` (no --tree support), then `::error::bites: ... does not exist in the checkout`,
+      MALFORMED, exit 1. old + nowhere: notice, same readable error, exit 1. old + basescript: notice, EXECUTABLE,
+      exit 0.
+    exit: 0
+    ts: "2026-10-02T10:26:30Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R6 — why D-probe exists: #7526's ungated step over origin/main's parser, and the pre-#7536 step."
+    cmd: >-
+      the Bites step fragment of 46a2e3d6f5 (ungated --tree) with origin/main's parser, `bash -e -x`; and the
+      fragment of a9b0e51325^ (before #7536) with origin/main's parser on #7504's pack
+    result: >-
+      ungated: parser stderr `bites_parse.py: error: unrecognized arguments: --tree 9a1413999f...`, RC=2, then
+      `CLASSIFICATION=` empty and the step ends exit 1 with no `::error` line (the CLASSIFICATION capture under
+      bash -e). Pre-#7536: step exit 2, nothing printed. origin/main as it is: readable `::error::bites:` and
+      exit 1, so #7536 already cured the silent death of the parser call itself.
+    exit: 0
+    ts: "2026-10-02T10:27:40Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R7 — mutation check of the new pin test, from a byte-identical backup."
+    cmd: >-
+      (a) call line back to an unconditional `--tree "${HEAD_SHA}"`; (b) the --help probe replaced by `if true`;
+      pytest -k harness_floor_step after each; cp restore; cmp
+    result: "(a) 1 failed, 1 passed; (b) 1 failed, 1 passed; after each restore cmp identical, then 2 passed"
+    exit: 0
+    ts: "2026-10-02T10:30:48Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R8 — the run that stopped #7526 before the Bites step."
+    cmd: "gh run view 36294191323 --log, grep for ##[error]"
+    result: >-
+      two ##[error] lines only: `harness_gate_read: PENDING — no harness/fable-gate verdict has been posted yet on
+      this commit` and `Process completed with exit code 1.`; the Bites step (which follows the gate read) never ran
+    exit: 0
+    ts: "2026-10-02T10:24:30Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R9 — PII-shaped strings in the touched code (email or 16-digit run)."
+    cmd: grep -nE an email pattern or a 16-digit run over the three touched code files
+    result: >-
+      two hits, both reserved-domain fixtures inherited from #7526, no person: test_bites_parse.py:817 `a@b.test`
+      and :1192 `t@example.invalid`. Brief and pack carry no address.
+    exit: 0
+    ts: "2026-10-02T10:20:10Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+dissent:
+  - seat: kimi-code/k3 (round 1, on 46a2e3d6f5)
+    objection: >-
+      LOW: argparse's own exit 2 carries no JSON; claimed to degrade to the step's `*)` branch with a readable
+      message. Disposition: the consequence is right (no false green) but the path is wrong — measured in R6, the
+      step dies at the CLASSIFICATION capture without a message. That is the out-of-scope line named in the brief;
+      D-probe removes the one route by which CI itself would hand the parser an unknown flag. CONFIRMED is
+      the no-false-green half; the readable-message half is corrected by R6.
+    status: CONFIRMED
+  - seat: kimi-code/k3 (round 1, on 46a2e3d6f5)
+    objection: >-
+      LOW: tree-mode containment is lexical (posixpath.normpath); nothing is executed and the bites-observable
+      marker stays the gate. Disposition: accepted as #7526's D-tree-lookup design, not changed here.
+    status: PLAUSIBLE
+  - seat: self-review (the Dux, not an independent refuter)
+    objection: >-
+      No CI run has exercised `--tree` yet and this PR's own runs cannot (D-self-judgement). The first proof in CI is
+      #7504 after this merges — acceptance A4, owned by the team lead, not claimed here.
+    status: CONFIRMED
+  - seat: self-review (the Dux, not an independent refuter)
+    objection: >-
+      R7's mutations edited the workflow file in the worktree for under two seconds each while the round-2 review
+      seats were reading the same worktree; a seat reading at that instant would have seen a mutant. Both seats
+      were told to verify by commit (git rev-parse / git show), and the file is byte-identical to b54e27ebff after.
+    status: PLAUSIBLE
+  - seat: codex-gpt-5.6-sol (round 1, on b54e27ebff)
+    objection: >-
+      LOW: the checkout is `filter: blob:none`, so `git cat-file -s` on an observer blob that is not local may
+      lazy-fetch the whole object before the 256 KiB cap refuses it. Bandwidth and time only: no false green, and
+      the bytes never reach Python. Inherited from #7526's reader, not changed here.
+    status: PLAUSIBLE
+council_run: council-journal.jsonl
