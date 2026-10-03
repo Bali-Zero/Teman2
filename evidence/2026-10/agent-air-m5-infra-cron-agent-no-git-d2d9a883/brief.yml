@@ -1,0 +1,77 @@
+task_id: cron-agent-no-git
+gear: 3
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: |
+  Agent-tier cron jobs must not mutate the H24 checkout. On 2026-09-30 the
+  `indexing-daily` cron on Pro (`~/scripts/cron-agent.sh agent indexing-daily
+  ...`) ran a Haiku 4.5 `claude -p` turn with bypassPermissions which, after a
+  Telegram 401, git-committed its report in Pro's `~/nuzantara` (53f448edd5);
+  the checkout diverged from origin/main until it was realigned by hand on
+  2026-10-01 (ledger PRs #7719/#7722/#7724/#7769/#7777).
+
+  Two halves, one concern:
+  - SOFT (carried from Mini commit 43f37f4651, authored by a Sonnet 5 seat,
+    never pushed): run_agent() appends a sentence forbidding git mutations to
+    every agent-tier prompt. Reworded here to name the checkout, because the
+    cron's cwd is $HOME, which is not a repository.
+  - HARD (this session): run_agent() measures "<branch> <ahead-of-origin/main>"
+    of $HOME/nuzantara before and after the agent turn and fails the run
+    (exit 3, GIT-MUTATION log line, error state, Telegram) when the branch
+    changed or the ahead count rose. It never repairs the checkout.
+
+  Gear is 3 by floor, source PATH (`infra/launchagents/*` hot zone).
+
+acceptance:
+  - text: >-
+      WHEN run_agent() builds an agent-tier prompt, the argv that reaches
+      `claude` SHALL carry the sentence forbidding git add/commit/push and
+      the main-checkout-read-only rationale.
+    probe: bash scripts/tests/test_cron_agent_no_git_commit_prompt.sh
+  - text: >-
+      WHEN the agent turn commits on, or switches the branch of, the checkout
+      at $HOME/nuzantara (or CRON_AGENT_CHECKOUT_DIR), the wrapper SHALL exit
+      3, log GIT-MUTATION and write an error state, also when the run itself
+      failed; WHEN the turn only writes an uncommitted report, or the sync
+      cron fast-forwards HEAD with origin/main mid-run, or there is no
+      checkout, it SHALL exit 0 with no GIT-MUTATION.
+    probe: bash scripts/tests/test_cron_agent_checkout_guard.sh
+  - text: >-
+      The pre-existing cron-agent corpora (oauth cascade, alert verdict,
+      context diet, fingerprint map, nb-agents escapes, seat helper) and the
+      immune-enforcement trigger-symmetry pin SHALL stay green.
+    probe: >-
+      for t in oauth_cascade alert_verdict context_diet fingerprint_map; do
+      bash scripts/tests/test_cron_agent_$t.sh; done;
+      pytest -q scripts/tests/test_immune_enforcement_trigger_symmetry.py
+  - text: >-
+      AFTER merge and the Pro HOME-fork re-sync, the next real indexing-daily
+      run on Pro SHALL leave `git -C ~/nuzantara rev-list --count
+      origin/main..HEAD` at 0 with its report on disk, not committed.
+    probe: >-
+      ssh pro 'cmp -s ~/scripts/cron-agent.sh <(git -C ~/nuzantara show
+      origin/main:infra/launchagents/wrappers/cron-agent.sh) && git -C
+      ~/nuzantara rev-list --count origin/main..HEAD'
+
+assumptions:
+  - text: >-
+      The H24 checkout the agent tier can reach is $HOME/nuzantara, with
+      HOME forced to /Users/nuzantara by the wrapper; on Pro that path is a
+      git checkout whose HEAD equalled origin/main (370ab29aae, ahead 0) at
+      2026-10-02T10:16Z.
+    status: verified
+    probe: ssh pro 'git -C ~/nuzantara rev-list --count origin/main..HEAD'
+  - text: >-
+      The 5-min sync cron only fetches and fast-forwards, so it can lower the
+      ahead count but never raise it (the guard's innocence premise).
+      scripts/pro/pro-git-pull.sh on origin/main has no commit/rebase/reset
+      path: its only HEAD-moving git call is `git merge --ff-only` (L466),
+      the rest are file-level `git checkout HEAD -- <file>`.
+    status: verified
+    probe: grep -nE "git (commit|merge|rebase|reset|checkout)" scripts/pro/pro-git-pull.sh
+  - text: >-
+      The 2026-10-02 09:00 greeting-only run is not a wrapper prompt-passing
+      defect: the transcript shows the full 730-char prompt as the user turn.
+    status: verified
+    probe: Pro transcript ~/.claude/projects/-Users-nuzantara/c62752e0-*.jsonl, user line length

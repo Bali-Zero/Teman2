@@ -261,6 +261,8 @@ jobs:
               scripts/lib/claude_seat.sh|\
               scripts/tests/test_claude_seat_helper.sh|\
               scripts/tests/test_cron_agent_alert_verdict.sh|\
+              scripts/tests/test_cron_agent_no_git_commit_prompt.sh|\
+              scripts/tests/test_cron_agent_checkout_guard.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               scripts/ci/apt_install.sh|\
               scripts/ci/test_apt_install.sh|\
@@ -1153,6 +1155,18 @@ jobs:
           # STATUS WORD is judged (W104), read as an entity and not a substring
           # (`p0_unsent_spooled` is one prefix away from a false "sent").
           bash scripts/tests/test_cron_agent_alert_verdict.sh
+
+      - name: Cron-agent H24 checkout corpus (an agent turn must not commit)
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
+        run: |
+          # 2026-09-30 indexing-daily's agent turn committed its report on Pro's
+          # H24 checkout (53f448edd5) and the checkout diverged from origin/main.
+          # Two halves: the prompt sentence that forbids git mutations must reach
+          # claude's argv, and run_agent() must fail the run (exit 3) when the
+          # checkout's branch or ahead-of-origin/main count changed anyway —
+          # with the sync cron's fast-forward pinned as innocent.
+          bash scripts/tests/test_cron_agent_no_git_commit_prompt.sh
+          bash scripts/tests/test_cron_agent_checkout_guard.sh
 
       - name: Backup phase composition corpus (one dead phase must not kill the other)
         if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
