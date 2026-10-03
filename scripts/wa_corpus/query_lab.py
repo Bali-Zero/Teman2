@@ -28,7 +28,7 @@ from scripts.wa_corpus.query_runner import _nlm
 # The REAL ground truth (real client names/phones/companies, tied to real NLM
 # source_ids) lives in the untracked, gitignored
 # scripts/wa_corpus/_ground_truth_local.py (same GROUND_TRUTH dict shape) —
-# these were tracked in THIS file on origin/main until 2026-09-27 (Builder
+# these were tracked in THIS file on origin/main until this removal (Builder
 # Contract §4, gate G1 on #7468). Recreate that file locally to run this lab
 # against real indexed chats. Absent it, GROUND_TRUTH falls back to the
 # synthetic fixtures below, which keep the module importable/runnable but

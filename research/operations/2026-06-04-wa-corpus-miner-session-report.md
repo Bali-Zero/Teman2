@@ -94,8 +94,8 @@ RISKS-URGENCIES / RELATIONSHIP STATUS), ognuna con **citazione verbatim obbligat
 
 ## TODO manuale Antonello
 
-- Cestinare Google Doc di test: Drive (profilo zero) → `WA-Chat-Surya-6281246627424-PILOT`
-  (id `1W7VcQu1c9NJvBlaIDLtSnI2BHE6P6WnEQODd8uEePz4`) — nessun MCP ha delete-Drive.
+- Cestinare Google Doc di test: Drive (profilo zero) → `[DRIVE-ID-REDACTED]`
+  (id `[DRIVE-ID-REDACTED]`) — nessun MCP ha delete-Drive.
 
 ## Decisioni Antonello (Law 5) prese in sessione
 
@@ -227,7 +227,7 @@ traccia file_id/source_id/nb_id/last_title/last_verdict/last_msg_at/last_recap_a
 `decide_action`, esegue (rename_doc Drive / update+sync / recap+CRM write), persiste, accumula digest.
 Recap scritto in CRM SOLO se in `clients` AND ha citazioni (retry garantisce o flag unverified).
 
-**VERIFICATO LIVE** (Surya, NB reconcile-test `a10ea479-6e88-4010-8201-6d21720b57a5`):
+**VERIFICATO LIVE** (Surya, NB reconcile-test `[NLM-ID-REDACTED]`):
 
 - run1: `create=2 recap_written=2` → [CLIENT-D]+[CLIENT-B] in `clients.strategic_recap` source=wa_auto
   (verificato sul DB: 1560 e 1942 char con HEADLINE grounded).
@@ -246,12 +246,12 @@ warning. Verificato: bash -n OK, plutil -lint OK, dry-run all-members OK. 52 uni
 
 Cestinare su Drive (profilo zero) + cancellare 4 NB di test (`nlm notebook delete <id> -p zero`):
 
-- NB `WA-CORPUS-GATE-TEST-20260604` (`f4dcb203-c6cf-45b1-b6a9-dd5e14bb4663`)
-- NB `WA-CORPUS-PILOT-CLEAN-20260604` (`7e4665c3-1c78-4648-9e49-2415a099abee`)
-- NB `WA-CORPUS-SCALE-SURYA-20260604` (`9c82e1db-1cf5-4048-b9f2-5bc8e0c8f26c`) — 10 Doc WA-MULTI-\*
-- NB `WA-CORPUS-RECONCILE-TEST-20260604` (`a10ea479-6e88-4010-8201-6d21720b57a5`) — 2 Doc reconcile-test
-- Doc `WA-GATE-TEST1-[CLIENT-PHONE-A]-...` (`1YsU-X-4nyhpXEjhfo1phv47WWYtwfw5ie-OQsu67al4`)
-- Doc `WA-[CLIENT-PHONE-A]-...` del pilot (`17TDAELRcd6U2It-nRqo23QZi-k_yBAS1HAfLA47mMsA`)
+- NB `[NLM-ID-REDACTED]` (`[NLM-ID-REDACTED]`)
+- NB `[NLM-ID-REDACTED]` (`[NLM-ID-REDACTED]`)
+- NB `[NLM-ID-REDACTED]` (`[NLM-ID-REDACTED]`) — 10 Doc WA-MULTI-\*
+- NB `[NLM-ID-REDACTED]` (`[NLM-ID-REDACTED]`) — 2 Doc reconcile-test
+- Doc `WA-GATE-TEST1-[CLIENT-PHONE-A]-...` (`[DRIVE-ID-REDACTED]`)
+- Doc `WA-[CLIENT-PHONE-A]-...` del pilot (`[DRIVE-ID-REDACTED]`)
 - 10 Doc `WA-MULTI-*` + 2 Doc reconcile (`WA · [CLIENT-D]…`, `WA · [CLIENT-B]…`) dal cestino Drive di zero@
 - ⚠️ **2 righe `clients.strategic_recap` scritte dal test** ([CLIENT-D] id 5730, [CLIENT-B] id 6087, source=wa_auto)
   — sono recap reali corretti; lasciarli o resettarli a piacere (`UPDATE clients SET strategic_recap=NULL,
