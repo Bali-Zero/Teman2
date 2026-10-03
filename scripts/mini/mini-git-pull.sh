@@ -87,6 +87,33 @@ telegram_alert() {
   echo "$now" > "$state_file"
 }
 
+# 2026-10-03 hardening: a `git stash pop` conflict leaves the conflicted
+# path(s) mid-merge (index stage 1/2/3, conflict markers in the working
+# tree) — "stash retained for human review" was the intent, but nothing
+# ever restored the WORKING TREE to a clean state, so the next tick's own
+# `git stash push` on that same path then fails outright ("needs merge"),
+# forever, regardless of what caused the original conflict. Observed live
+# on Mini: shared/escalations_pro.jsonl stuck mid-merge since 07:15 WITA,
+# every 5-min tick since logging "ERROR: git stash failed, skip" in a
+# loop no human Telegram alert could break (the alert channel itself is
+# the chronically-dead bot token). Checking out HEAD's own blob for each
+# unmerged path clears the conflict and restores a normal working tree
+# WITHOUT touching stash@{0} — the attempted change is still there for a
+# human to `git stash show -p` / `git stash apply` later; only the
+# poisoned mid-merge index entry is cleared.
+resolve_stash_pop_conflict_to_clean_tree() {
+  local path
+  local cleared=0
+  while IFS= read -r -d '' path; do
+    if git checkout --quiet HEAD -- "$path" 2>>"$LOG_FILE"; then
+      cleared=$((cleared + 1))
+    fi
+  done < <(git diff --name-only -z --diff-filter=U 2>/dev/null)
+  if [ "$cleared" -gt 0 ]; then
+    log "  restored $cleared unmerged path(s) to clean HEAD after stash pop conflict (stash@{0} retained)"
+  fi
+}
+
 TARGET_REF="origin/main"
 TARGET_REMOTE="origin"
 
@@ -399,6 +426,7 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
               log "  stash restored cleanly after content-identical self-heal"
             else
               log "WARN: stash pop conflict after content-identical self-heal — stash retained"
+              resolve_stash_pop_conflict_to_clean_tree
               telegram_alert "stash-pop-conflict-selfheal" \
                 "stash pop conflict on Mini after content-identical self-heal to $(git rev-parse --short HEAD 2>/dev/null). \`git status\` + \`git stash list\` on Mini."
             fi
@@ -494,6 +522,7 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
                   log "  stash restored cleanly after narrow self-heal"
                 else
                   log "WARN: stash pop conflict after narrow self-heal — stash retained"
+                  resolve_stash_pop_conflict_to_clean_tree
                   telegram_alert "stash-pop-conflict-selfheal-narrow" \
                     "stash pop conflict on Mini after narrow self-heal to $(git rev-parse --short HEAD 2>/dev/null). \`git status\` + \`git stash list\` on Mini."
                 fi
@@ -593,8 +622,10 @@ if ! git merge --ff-only --quiet "$TARGET_REF" 2>>"$LOG_FILE"; then
   telegram_alert "pull-failed" "git merge --ff-only ${TARGET_REF} failed on Mini. Probably new mismatch type appeared."
   if [ "$STASHED" = "1" ]; then
     log "  attempting to restore stash..."
-    git stash pop --quiet 2>>"$LOG_FILE" || \
+    if ! git stash pop --quiet 2>>"$LOG_FILE"; then
       log "  WARN: stash pop failed too — stash retained"
+      resolve_stash_pop_conflict_to_clean_tree
+    fi
   fi
   exit 1
 fi
@@ -659,6 +690,7 @@ if [ "$STASHED" = "1" ]; then
     log "  stash restored cleanly"
   else
     log "  WARN: stash pop conflict — stash retained."
+    resolve_stash_pop_conflict_to_clean_tree
     telegram_alert "stash-pop-conflict" \
       "stash pop conflict on Mini after ff-pull to ${NEW_HEAD}. \`git status\` + \`git stash list\` on Mini."
     # Don't exit error — pull succeeded. Conflict is a separate issue.
