@@ -1,0 +1,3096 @@
+You are an adversarial reviewer checking a docs-only research README against two JSON data
+excerpts it claims to summarize. This is NOT code — it is a data-capture report from a live
+252-walk enumeration sweep of a visa-eligibility decision engine, re-swept after a code change
+(#7234, Slice A3'-B) landed on top of an already-active rule pack (seq-23 stays seq-23; only the
+engine's routing of ACTIVITY_BOUNDARY-disclosed walks changed). Your job: find any claim in the
+README that is NOT actually supported by the attached JSON excerpts, or any arithmetic/set
+error. Each excerpt row carries walk_id, engine_state, sequence, http_status — every field any
+claim you are asked to check below rests on IS present in the excerpts. One field
+(`rule_pack.payload_sha256`, a 64-char content hash, uniform across all 252 rows in both files)
+is DELIBERATELY EXCLUDED from the excerpt below to avoid a wall of repeated near-duplicate
+hex strings; that specific claim (item 2's second half) was verified separately by the builder
+against the FULL committed JSONs, outside this task, and is NOT something to check here — do not
+flag it as unverifiable from the excerpt, since it is explicitly out of scope for this review.
+Answer with a verdict line "VERDICT: PASS" or "VERDICT: BLOCK", then numbered findings (or "no
+findings").
+
+CLAIMED (verbatim from the README's new "B4-3 addendum (2026-09-24, post-A3'-B)" section):
+
+1. Census table, B4-3 sweep column: SUPPORTED_CANDIDATES=185, NEEDS_INPUT=8,
+   NO_SUPPORTED_PATH=56, HUMAN_REVIEW_REQUIRED=3, total=252. (For reference only, not to be
+   re-derived from data not attached: B4-2b was 172/6/31/43/252 and A9 was 185/8/31/28/252.)
+2. `sequence` = 23 on all 252/252 B4-3 walks (CHECK THIS from the excerpt). `payload_sha256` is
+   uniform across all 252/252 B4-3 walks (OUT OF SCOPE for this review — see note above, do not
+   attempt to verify, do not flag as unverifiable).
+3. `http_status` = 200 on all 252/252 B4-3 walks.
+4. Comparing B4-3 against the A9 sweep (seq-23, pre-#7234) by walk_id: all 252 walk_ids are
+   shared (none added, none dropped). Exactly 25 walks moved engine_state, ALL in the same
+   direction: HUMAN_REVIEW_REQUIRED -> NO_SUPPORTED_PATH. Zero walks moved to
+   SUPPORTED_CANDIDATES. The other 227 walks kept the same engine_state. The 25 moved walk_ids
+   are listed below.
+5. Exactly 3 walk_ids remain HUMAN_REVIEW_REQUIRED in B4-3, and they are exactly:
+   `edge/secondhome_deposit_usd=unsure`, `edge/secondhome_property_value_usd=unsure`,
+   `review-gate/criminal_record` (no other walk_id is HUMAN_REVIEW_REQUIRED in B4-3).
+
+README's 25-walk moved table (walk_id, all HUMAN_REVIEW_REQUIRED in A9 -> NO_SUPPORTED_PATH in
+B4-3):
+edge/business_activity=other
+edge/business_activity=training
+edge/business_activity=unsure
+edge/diaspora_connection=dual
+edge/diaspora_connection=other
+edge/diaspora_connection=unsure
+edge/diaspora_documents=unsure
+edge/investment_amount_usd=1000000000
+edge/investment_amount_usd=unsure
+edge/investment_currency=idr
+edge/investment_currency=still_unsure
+edge/investment_vehicle=family
+edge/investment_vehicle=undecided
+edge/investment_vehicle=unsure
+edge/other_paid_activity=unsure
+edge/other_purpose=arts_sport
+edge/other_purpose=crew
+edge/other_purpose=journalism
+edge/other_purpose=medical
+edge/other_purpose=other
+edge/other_purpose=religious
+edge/other_purpose=unsure
+edge/other_purpose=volunteer
+edge/retirement_basis=unsure
+review-gate/activity_boundary
+
+Attached below: a9-excerpt.json (252 rows, A9 sweep) then b43-excerpt.json (252 rows, B4-3
+sweep). Each row: {walk_id, engine_state, sequence, http_status}.
+
+=== a9-excerpt.json ===
+[
+ {
+  "walk_id": "baseline/all-default",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/application_channel=OFFSHORE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/application_channel=STATUS_BRIDGING",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/application_channel=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/birth_date=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=meetings",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=negotiation",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=conference",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=exploring",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=training",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=other",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_sponsor_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_sponsor_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=work",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=invest",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=remote",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=family",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=retirement",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=second_home",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=study",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=diaspora",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=other",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=A1",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=C1",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=C2",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=C6",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=ITK_FROM_BVK",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=ITK_FROM_VISIT_C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=ITK_FROM_VISIT_D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=ITK_PERALIHAN",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=other",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=descendant",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=dual",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=family",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=other",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_documents=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_documents=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/entry_pattern=MULTIPLE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/entry_pattern=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_marriage_registered=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_marriage_registered=not_applicable",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_marriage_registered=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=CHILD",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=PARENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=SIBLING",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=DEPENDENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=STEPCHILD",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_nationalities=ID",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_nationalities=ID,IT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_nationalities=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=WORKER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=MARITIME_CREW",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=CLERGY",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=FOREIGN_INVESTMENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=SCIENTIFIC_RESEARCH",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=EDUCATION",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=FAMILY_REUNIFICATION",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=REPATRIATION",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=SECOND_HOME",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=MEDICAL_TREATMENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=WORKING_HOLIDAY",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E23U",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E23V",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31G",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31H",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31J",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33G",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_stepchild_birth_certificate_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_stepchild_birth_certificate_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_stepchild_marriage_certificate_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_stepchild_marriage_certificate_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/holds_stay_permit=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/in_indonesia=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/in_indonesia=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_amount_usd=1000000000",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_amount_usd=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_capital_idr=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_capital_market_only=yes",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_capital_market_only=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_currency=idr",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_currency=still_unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_foreign_branch=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_ikn_subsidiary=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_meets_threshold=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_paid_up_capital_idr=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_pt_pma=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_pt_pma=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=SHAREHOLDER_COMMISSIONER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=EMPLOYEE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=NO_OPERATIONAL_ROLE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=property",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=bank_deposit",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=family",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=capital_market",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=undecided",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=MARRIED",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=DIVORCED",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=WIDOWED",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/nationalities=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_paid_activity=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_paid_activity=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=medical",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=volunteer",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=religious",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=arts_sport",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=journalism",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=crew",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=other",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/overstay_days=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/permit_expiry=2020-01-01",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/permit_expiry=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_clients=indonesian",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_clients=mixed",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_clients=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_compensation=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_compensation=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_employer_country=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_pt_pma=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_pt_pma=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/renewal_paid=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/renewal_paid=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=property",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=passive_income",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=family_sponsor",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=undecided",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_undecided_basis=family_sponsor",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_undecided_basis=still_unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_basis=property",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_basis=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_deposit_usd=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_own_name=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_own_name=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_passive_income_usd=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_property_value_usd=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_state_bank=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_state_bank=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=INDIVIDUAL",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=EMPLOYER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=EDUCATION",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=INVESTMENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=GOVERNMENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_diplomatic_household=yes",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_diplomatic_household=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_government_collaboration=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_government_invitation=yes",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_government_invitation=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_trade_office=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_world_figure_invitation=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_days=361",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_days=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E23U",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E23V",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31G",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31H",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31J",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33G",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_admission_confirmed=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_admission_confirmed=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=SECONDARY",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=VOCATIONAL",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=UNDERGRADUATE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=POSTGRADUATE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=RESEARCH",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_sponsor_confirmed=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_sponsor_confirmed=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/trip_scope=multiple",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/trip_scope=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/wants_onshore_conversion=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_indonesia_compensation=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_indonesia_compensation=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_payer=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_payer=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_sponsor_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_sponsor_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/criminal_record",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/health_flag",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/prior_refusal",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/overstay",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/blacklist",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/immigration_investigation",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/pep_or_sanctions",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/source_of_funds_unclear",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/diplomatic_passport",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/ambiguous_sponsor",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/activity_boundary",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/not_certain",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ }
+]
+
+=== b43-excerpt.json ===
+[
+ {
+  "walk_id": "baseline/all-default",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/application_channel=OFFSHORE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/application_channel=STATUS_BRIDGING",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/application_channel=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/birth_date=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=meetings",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=negotiation",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=conference",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=exploring",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=training",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=other",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_activity=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_sponsor_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/business_sponsor_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=work",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=invest",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=remote",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=family",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=retirement",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=second_home",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=study",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=diaspora",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=other",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/category=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=A1",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=C1",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=C2",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=C6",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=ITK_FROM_BVK",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=ITK_FROM_VISIT_C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=ITK_FROM_VISIT_D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=ITK_PERALIHAN",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=other",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/current_status_code=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=descendant",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=dual",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=family",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=other",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_connection=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_documents=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/diaspora_documents=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/entry_pattern=MULTIPLE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/entry_pattern=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_marriage_registered=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_marriage_registered=not_applicable",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_marriage_registered=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=CHILD",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=PARENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=SIBLING",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=DEPENDENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=STEPCHILD",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_relation=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_nationalities=ID",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_nationalities=ID,IT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_nationalities=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=WORKER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=MARITIME_CREW",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=CLERGY",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=FOREIGN_INVESTMENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=SCIENTIFIC_RESEARCH",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=EDUCATION",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=FAMILY_REUNIFICATION",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=REPATRIATION",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=SECOND_HOME",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=MEDICAL_TREATMENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=WORKING_HOLIDAY",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_permit_basis=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E23U",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E23V",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E28F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E30F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31G",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31H",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E31J",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=E33G",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_sponsor_status_code=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_stepchild_birth_certificate_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_stepchild_birth_certificate_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_stepchild_marriage_certificate_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/family_stepchild_marriage_certificate_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/holds_stay_permit=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/in_indonesia=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/in_indonesia=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_amount_usd=1000000000",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_amount_usd=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_capital_idr=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_capital_market_only=yes",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_capital_market_only=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_currency=idr",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_currency=still_unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_foreign_branch=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_ikn_subsidiary=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_meets_threshold=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_paid_up_capital_idr=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_pt_pma=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_pt_pma=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=SHAREHOLDER_COMMISSIONER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=EMPLOYEE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=NO_OPERATIONAL_ROLE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_role=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=property",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=bank_deposit",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=family",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=capital_market",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=undecided",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/investment_vehicle=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=MARRIED",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=DIVORCED",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=WIDOWED",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/marital_status=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/nationalities=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_paid_activity=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_paid_activity=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=medical",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=volunteer",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=religious",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=arts_sport",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=journalism",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=crew",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=other",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/other_purpose=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/overstay_days=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/permit_expiry=2020-01-01",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/permit_expiry=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_clients=indonesian",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_clients=mixed",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_clients=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_compensation=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_compensation=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_employer_country=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_pt_pma=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/remote_pt_pma=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/renewal_paid=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/renewal_paid=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=property",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=passive_income",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=family_sponsor",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=undecided",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_basis=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_undecided_basis=family_sponsor",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/retirement_undecided_basis=still_unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_basis=property",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_basis=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_deposit_usd=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_own_name=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_own_name=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_passive_income_usd=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_property_value_usd=unsure",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_state_bank=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/secondhome_state_bank=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=INDIVIDUAL",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=EMPLOYER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=EDUCATION",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=INVESTMENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=GOVERNMENT",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_category=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_diplomatic_household=yes",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_diplomatic_household=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_government_collaboration=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_government_invitation=yes",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_government_invitation=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_trade_office=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/sponsor_world_figure_invitation=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_days=361",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_days=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E23U",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E23V",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E28F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E30F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31D",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31G",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31H",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E31J",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33A",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33B",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33C",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33E",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33F",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=E33G",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/stay_permit_code=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_admission_confirmed=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_admission_confirmed=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=SECONDARY",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=VOCATIONAL",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=UNDERGRADUATE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=POSTGRADUATE",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=RESEARCH",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=OTHER",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_level=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_sponsor_confirmed=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/study_sponsor_confirmed=unsure",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/trip_scope=multiple",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/trip_scope=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/wants_onshore_conversion=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_indonesia_compensation=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_indonesia_compensation=unsure",
+  "engine_state": "NEEDS_INPUT",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_payer=no",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_payer=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_sponsor_confirmed=no",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "edge/work_sponsor_confirmed=unsure",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/criminal_record",
+  "engine_state": "HUMAN_REVIEW_REQUIRED",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/health_flag",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/prior_refusal",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/overstay",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/blacklist",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/immigration_investigation",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/pep_or_sanctions",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/source_of_funds_unclear",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/diplomatic_passport",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/ambiguous_sponsor",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/activity_boundary",
+  "engine_state": "NO_SUPPORTED_PATH",
+  "sequence": 23,
+  "http_status": 200
+ },
+ {
+  "walk_id": "review-gate/not_certain",
+  "engine_state": "SUPPORTED_CANDIDATES",
+  "sequence": 23,
+  "http_status": 200
+ }
+]

@@ -1,0 +1,16 @@
+tp1_call: credential source: env
+VERDICT: PASS
+
+No findings.
+
+**Verification summary (all claims checked against the attached excerpts):**
+
+1. **Census counts (B4-3):** Counted from b43-excerpt.json — NEEDS_INPUT = 8, HUMAN_REVIEW_REQUIRED = 3, NO_SUPPORTED_PATH = 56, SUPPORTED_CANDIDATES = 252 − 8 − 3 − 56 = 185. Total = 252. All match. ✓
+
+2. **`sequence` = 23 on all 252 B4-3 rows:** Every row in b43-excerpt.json carries `"sequence": 23`. ✓ (payload_sha256 explicitly out of scope per instructions.)
+
+3. **`http_status` = 200 on all 252 B4-3 rows:** Every row in b43-excerpt.json carries `"http_status": 200`. ✓
+
+4. **A9→B4-3 delta:** Both files contain the identical 252 walk_ids (same set, none added/dropped). A9 has 28 HUMAN_REVIEW_REQUIRED rows; B4-3 retains 3 of those, so exactly 25 moved. All 25 moved to NO_SUPPORTED_PATH (verified row-by-row). Zero moved to SUPPORTED_CANDIDATES. The remaining 227 walks are unchanged. The 25 walk_ids listed in the README's moved-table match the data exactly. ✓
+
+5. **Remaining HUMAN_REVIEW_REQUIRED in B4-3:** Exactly three — `edge/secondhome_deposit_usd=unsure`, `edge/<REDACTED>=unsure`, `review-gate/criminal_record` — and no other row in b43-excerpt.json carries that state. ✓
