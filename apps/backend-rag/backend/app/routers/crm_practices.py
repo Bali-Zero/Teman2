@@ -23,6 +23,7 @@ from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
+from backend.app.utils.service_accounts import CLIENT_ROLES, normalize_role
 from backend.core.cache import cached, invalidate_cache
 from backend.services.common.background import spawn
 from backend.services.crm.practice_state_machine import (
@@ -34,6 +35,7 @@ from backend.services.crm.practice_state_machine import (
     validate_transition,
 )
 from backend.services.invoicing import InvoiceAutomationService
+from backend.services.portal._mixins.documents import PortalDocumentsMixin
 
 logger = get_logger(__name__)
 
@@ -2627,10 +2629,15 @@ async def upload_client_document(
                 current_user.get("email"),
             )
 
-            if not client or client["id"] != req_doc["client_id"]:
+            owns_client = bool(client) and client["id"] == req_doc["client_id"]
+            if not owns_client:
                 # Allow team members to upload on behalf of client
                 if not is_crm_admin(current_user):
                     raise HTTPException(status_code=403, detail="Not authorized")
+
+        # Champion Round 2 scores uploaded_source='client': only a portal client
+        # session uploading for its own practice earns it, never a staff session.
+        is_client_upload = owns_client and normalize_role(current_user.get("role")) in CLIENT_ROLES
 
         upload_result = await upload_document_base64(
             client_id=req_doc["client_id"],
@@ -2640,11 +2647,15 @@ async def upload_client_document(
                 document_type=req_doc["document_type"],
                 notes=request.notes,
                 practice_id=practice_id,
+                document_category=PortalDocumentsMixin._classify_document_category(
+                    req_doc["document_type"], request.file_name
+                ),
             ),
             pool=db_pool,
             current_user=current_user,
             background_tasks=background_tasks,
             access_already_verified=True,
+            uploaded_source="client" if is_client_upload else "team",
         )
         doc_id = upload_result["document_id"]
 
