@@ -1557,3 +1557,49 @@ def test_harness_floor_step_passes_the_tree_only_when_the_base_parser_advertises
     assert "--tree" in subprocess.run(
         ["python3", str(_MODULE_PATH), "--help"], capture_output=True, text=True, check=True,
     ).stdout
+
+
+_STUB_PARSER = """import argparse, json, sys
+p = argparse.ArgumentParser()
+p.add_argument("--pack")
+p.add_argument("--selftest", action="store_true")
+{tree_arg}
+p.parse_args()
+print(json.dumps(sys.argv[1:]))
+"""
+
+
+def _run_probe_and_call(tmp_path: Path, *, base_knows_tree: bool) -> tuple[list[str], str]:
+    """Runs the step's own lines, from `TREE_FLAG=""` through the parser call, under `bash -eu`
+    in a checkout whose bites_parse.py is a stub that echoes its argv. Returns (argv, stdout)."""
+    workflow = (_REPO_ROOT / ".github" / "workflows" / "harness-floor.yml").read_text(encoding="utf-8")
+    step = re.split(r"\n      - name: ",
+                    workflow.split("- name: Bites contract — parse this PR's evidence pack", 1)[1],
+                    maxsplit=1)[0]
+    lines = [ln.strip() for ln in step.splitlines()]
+    start = lines.index('TREE_FLAG=""')
+    end = next(i for i, ln in enumerate(lines) if "scripts/ci/bites_parse.py --pack -" in ln)
+    fragment = "\n".join(lines[start:end + 1]).replace("/tmp/", f"{tmp_path}/")
+    stub = tmp_path / "scripts" / "ci" / "bites_parse.py"
+    stub.parent.mkdir(parents=True)
+    stub.write_text(_STUB_PARSER.format(tree_arg='p.add_argument("--tree")' if base_knows_tree else ""),
+                    encoding="utf-8")
+    (tmp_path / "bites-pack.yml").write_text("gear: 3\n", encoding="utf-8")
+    done = subprocess.run(["bash", "-eu", "-c", fragment], cwd=tmp_path, capture_output=True, text=True,
+                          env={**os.environ, "HEAD_SHA": "a" * 40}, check=False)
+    assert done.returncode == 0, (done.stdout, done.stderr)
+    return json.loads((tmp_path / "bites-parsed.json").read_text(encoding="utf-8")), done.stdout
+
+
+def test_harness_floor_probe_innocence_a_base_parser_with_tree_receives_the_head_sha(tmp_path):
+    argv, out = _run_probe_and_call(tmp_path, base_knows_tree=True)
+    assert argv == ["--pack", "-", "--tree", "a" * 40]
+    assert "does not support --tree" not in out
+
+
+def test_harness_floor_probe_guilt_a_base_parser_without_tree_is_never_handed_the_flag(tmp_path):
+    """The PR that introduced `--tree` is judged by main's parser, which rejects it. Handing it the
+    flag anyway is the measured silent death (exit 2, empty stdout, CLASSIFICATION capture)."""
+    argv, out = _run_probe_and_call(tmp_path, base_knows_tree=False)
+    assert argv == ["--pack", "-"]
+    assert "::notice::the bites_parse.py copy in use (checked out from base) does not support --tree" in out
