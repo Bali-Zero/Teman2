@@ -59,6 +59,7 @@ def mock_request():
     req.state = MagicMock()
     req.state.correlation_id = "test-correlation-id"
     req.url.path = "/api/protected"
+    req.scope = {"type": "http", "root_path": ""}
     req.method = "GET"
     req.client.host = "127.0.0.1"
     return req

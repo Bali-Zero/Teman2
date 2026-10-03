@@ -187,6 +187,16 @@ def role_boundary_refuses(method: str, path: str, role: str | None) -> bool:
     )
 
 
+def _route_path(request: Request) -> str:
+    """The path the router matches: `url.path` without any ASGI `root_path`,
+    so a mount prefix cannot move a staff route outside the boundary."""
+    path = request.url.path
+    root_path = request.scope.get("root_path") or ""
+    if root_path and path.startswith(root_path):
+        return path[len(root_path) :] or "/"
+    return path
+
+
 def _get_correlation_id(request: Request) -> str:
     """Extract correlation ID from request state for logging"""
     return (
@@ -476,7 +486,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             request.state.user = auth_result
             request.state.auth_type = auth_result.get("auth_method", "unknown")
 
-            if role_boundary_refuses(request.method, request.url.path, auth_result.get("role")):
+            if role_boundary_refuses(request.method, _route_path(request), auth_result.get("role")):
                 logger.info(
                     "Role boundary refused %s %s for role=%s",
                     request.method,

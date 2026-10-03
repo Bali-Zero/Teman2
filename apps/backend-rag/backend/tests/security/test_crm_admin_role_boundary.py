@@ -36,6 +36,7 @@ from backend.app.utils.cookie_auth import JWT_COOKIE_NAME
 
 STAFF_API_PREFIXES = ("/api/crm/", "/api/admin/")
 ADMIN_CRM_KG_PREFIX = "/api/admin/crm-kg/"
+PORTAL_UPLOAD_TEMPLATE = "/api/crm/practices/{practice_id}/upload-client-document"
 PORTAL_UPLOAD = "/api/crm/practices/7/upload-client-document"
 INTERNAL_KEY = "test-internal-key-for-role-boundary"
 API_KEY_USER = "test_api_key_1"
@@ -114,8 +115,10 @@ def _concrete(path: str) -> str:
 
 
 def _guarded_routes(app: FastAPI) -> Iterator[tuple[str, str]]:
-    """(method, template) for every non-public GET under the staff prefixes, plus
-    every method under ``/api/admin/crm-kg`` (its handlers are all mutating)."""
+    """(method, template) for every non-public route under the staff prefixes.
+
+    Public registry entries are excluded: they return before authentication, so
+    a credential neither opens nor closes them."""
     seen: set[tuple[str, str]] = set()
     for route in iter_leaf_routes(app):
         path = getattr(route, "path", None)
@@ -124,8 +127,7 @@ def _guarded_routes(app: FastAPI) -> Iterator[tuple[str, str]]:
             continue
         if find_entry(_concrete(path)) is not None:
             continue
-        wanted = methods if path.startswith(ADMIN_CRM_KG_PREFIX) else methods & {"GET"}
-        for method in sorted(wanted - {"HEAD"}):
+        for method in sorted(methods - {"HEAD"}):
             if (method, path) not in seen:
                 seen.add((method, path))
                 yield method, path
@@ -150,6 +152,8 @@ def test_portal_roles_are_refused_on_every_staff_route_before_any_handler(
     bearer = {"Authorization": f"Bearer {_token(role, client_id=7)}"}
     wrong: list[str] = []
     for method, template in _all_guarded(app_and_pool):
+        if role == "client" and (method, template) == ("POST", PORTAL_UPLOAD_TEMPLATE):
+            continue
         r = client.request(method, _concrete(template), headers=bearer)
         if r.status_code != 403 or r.json() != {"detail": hybrid_auth.ROLE_BOUNDARY_DETAIL}:
             wrong.append(f"{method} {template} -> {r.status_code}")
@@ -161,6 +165,7 @@ def test_portal_roles_are_refused_on_every_staff_route_before_any_handler(
 def test_portal_roles_are_refused_through_the_session_cookie_too(
     app_and_pool, client, pool, role
 ) -> None:
+    # GET only: a cookie session's mutating request fails CSRF and is 401 before this layer.
     client.cookies.set(JWT_COOKIE_NAME, _token(role, client_id=7))
     wrong: list[str] = []
     for method, template in _all_guarded(app_and_pool):
@@ -179,15 +184,41 @@ def test_role_claim_is_normalised_before_the_boundary(client, pool) -> None:
     assert pool.log == []
 
 
-def test_portal_upload_operation_still_reaches_its_handler(client) -> None:
+def test_portal_upload_operation_still_reaches_its_handler(client, pool) -> None:
     body = {"required_doc_id": 1, "file": "aGVsbG8=", "file_name": "doc.pdf"}
     r = client.post(
         PORTAL_UPLOAD,
         json=body,
         headers={"Authorization": f"Bearer {_token('client', client_id=7)}"},
     )
-    assert r.status_code != 401
     assert r.json().get("detail") != hybrid_auth.ROLE_BOUNDARY_DETAIL, r.text[:200]
+    assert pool.log, r.status_code
+
+
+def test_unauthenticated_requests_keep_the_existing_401(client, pool) -> None:
+    assert client.get("/api/crm/clients/7").status_code == 401
+    assert client.post(PORTAL_UPLOAD, json={}).status_code == 401
+    assert pool.log == []
+
+
+def test_a_mount_prefix_does_not_move_routes_outside_the_boundary(
+    app_and_pool, client, pool
+) -> None:
+    from starlette.applications import Starlette
+    from starlette.routing import Mount
+
+    outer = TestClient(
+        Starlette(routes=[Mount("/edge", app=app_and_pool[0])]), raise_server_exceptions=False
+    )
+    r = outer.get(
+        "/edge/api/crm/clients/7", headers={"Authorization": f"Bearer {_token('client')}"}
+    )
+    assert r.status_code == 403
+    assert pool.log == []
+    outer.get(
+        "/edge/api/crm/clients/7", headers={"Authorization": f"Bearer {_token('Consultant')}"}
+    )
+    assert pool.log, "the mount must route to the handler for staff, or this test is blind"
 
 
 def test_the_upload_exception_is_scoped_to_its_method_and_template(client, pool) -> None:
