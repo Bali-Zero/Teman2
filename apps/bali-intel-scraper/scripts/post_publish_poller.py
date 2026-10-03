@@ -508,7 +508,7 @@ def _commit_to_branch(gh_path: str, content_b64: str, message: str, branch: str)
 
 _ARM_STATE_QUERY = (
     "query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n)"
-    "{headRefOid autoMergeRequest{enabledAt} mergeQueueEntry{state}}}}"
+    "{headRefOid mergeable autoMergeRequest{enabledAt} mergeQueueEntry{state}}}}"
 )
 # Generated per-slug artifacts: any copy already on main means the slug is
 # served, so a twin riding an older PR is landed content, not a conflict.
@@ -547,7 +547,7 @@ def _open_family_prs(branch_prefix: str) -> list[dict] | None:
 
 
 def _pr_state(number: int) -> dict | None:
-    """{"armed", "queued", "head"} as GitHub reports them, None if unreadable.
+    """{"armed", "queued", "head", "mergeable"} as GitHub reports them, None if unreadable.
 
     With a merge queue on main autoMergeRequest and mergeQueueEntry are each
     null in exactly the state the other is set: "armed" is read as their OR.
@@ -557,7 +557,8 @@ def _pr_state(number: int) -> dict | None:
     try:
         pr = data["data"]["repository"]["pullRequest"]
         queued = pr["mergeQueueEntry"] is not None
-        return {"armed": queued or pr["autoMergeRequest"] is not None, "queued": queued, "head": pr["headRefOid"]}
+        return {"armed": queued or pr["autoMergeRequest"] is not None, "queued": queued,
+                "head": pr["headRefOid"], "mergeable": pr.get("mergeable")}
     except (TypeError, KeyError):
         return None
 
@@ -772,6 +773,12 @@ def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
         state = _pr_state(pr["number"])
         if state is None or state["queued"]:
             log(f"  ⏭ #{pr['number']} left untouched — {'holds a merge-queue slot' if state else 'state unreadable'}")
+            continue
+        if kind in _MAIN_WINS_KINDS and state["armed"] and state["mergeable"] != "CONFLICTING":
+            # Covers flush every ~15 min while a PR needs 22-68 min to merge:
+            # superseding a healthy armed PR would restart it forever. Their
+            # per-slug paths never collide (run_image dedupes against open PRs).
+            log(f"  ⏭ #{pr['number']} left to merge — armed and not conflicting")
             continue
         got = _carry_from_pr(pr, kind, main_sha)
         carried += got[0] if got else []
@@ -1553,12 +1560,11 @@ def _rotate_layout(layout: dict, new_slug: str) -> dict:
 
     # New hero list: new slug at front, old heroes shift down (drop last)
     new_heros = [new_slug] + [s for s in old_heros if s and s != new_slug][:len(HERO_KEYS) - 1]
-    # New latest: old hero_5 at front, shift down (drop last)
+    # New latest: old hero_5 at front, shift down (drop last). The promoted slug
+    # leaves latest_* — a replayed promotion can come from there.
     evicted = old_heros[-1] if old_heros[-1] and old_heros[-1] != new_slug else None
-    if evicted:
-        new_latests = [evicted] + [s for s in old_latests if s and s != evicted][:len(LATEST_KEYS) - 1]
-    else:
-        new_latests = old_latests
+    rest = [s for s in old_latests if s and s not in (evicted, new_slug)]
+    new_latests = ([evicted] if evicted else []) + rest[:len(LATEST_KEYS) - (1 if evicted else 0)]
 
     for i, key in enumerate(HERO_KEYS):
         if i < len(new_heros):
@@ -1566,6 +1572,8 @@ def _rotate_layout(layout: dict, new_slug: str) -> dict:
     for i, key in enumerate(LATEST_KEYS):
         if i < len(new_latests):
             layout[key] = new_latests[i]
+        else:
+            layout.pop(key, None)  # never leave a stale copy of a slug that moved up
     return layout
 
 
