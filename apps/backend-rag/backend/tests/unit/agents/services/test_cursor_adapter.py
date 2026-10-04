@@ -25,6 +25,38 @@ def tmp_adapter(tmp_path: Path) -> CursorAdapter:
 class TestCursorAdapterSubprocessFailures:
     """subprocess failures must be caught with narrow, typed exceptions and degrade gracefully."""
 
+    @pytest.mark.parametrize(
+        ("method_name", "target", "returncode", "expected"),
+        [
+            ("open_file", "/tmp/x.py", 0, True),
+            ("open_file", "/tmp/x.py", 2, False),
+            ("open_folder", "/tmp/project", 0, True),
+            ("open_folder", "/tmp/project", 3, False),
+        ],
+    )
+    def test_open_commands_return_by_exit_status(
+        self,
+        tmp_adapter: CursorAdapter,
+        method_name: str,
+        target: str,
+        returncode: int,
+        expected: bool,
+    ) -> None:
+        completed = subprocess.CompletedProcess(["cursor", target], returncode)
+        with patch(
+            "backend.agents.services.cursor_adapter.subprocess.run",
+            return_value=completed,
+        ) as run:
+            method = getattr(tmp_adapter, method_name)
+
+            assert method(target) is expected
+
+        run.assert_called_once_with(
+            ["cursor", target],
+            capture_output=True,
+            timeout=10.0,
+        )
+
     def test_open_file_handles_file_not_found(self, tmp_adapter: CursorAdapter) -> None:
         with patch(
             "backend.agents.services.cursor_adapter.subprocess.run",
@@ -52,6 +84,67 @@ class TestCursorAdapterSubprocessFailures:
             side_effect=subprocess.SubprocessError("generic"),
         ):
             assert tmp_adapter.diff_files("a", "b") is None
+
+    def test_diff_files_returns_stdout_only_on_success(
+        self, tmp_adapter: CursorAdapter
+    ) -> None:
+        completed = subprocess.CompletedProcess(
+            ["cursor", "--diff", "a.py", "b.py"],
+            0,
+            stdout="diff output\n",
+        )
+        with patch(
+            "backend.agents.services.cursor_adapter.subprocess.run",
+            return_value=completed,
+        ) as run:
+            assert tmp_adapter.diff_files("a.py", "b.py") == "diff output\n"
+
+        run.assert_called_once_with(
+            ["cursor", "--diff", "a.py", "b.py"],
+            capture_output=True,
+            text=True,
+            timeout=30.0,
+        )
+
+    def test_diff_files_returns_none_when_cursor_reports_failure(
+        self, tmp_adapter: CursorAdapter
+    ) -> None:
+        completed = subprocess.CompletedProcess(
+            ["cursor", "--diff", "a.py", "b.py"],
+            1,
+            stdout="not returned",
+        )
+        with patch(
+            "backend.agents.services.cursor_adapter.subprocess.run",
+            return_value=completed,
+        ):
+            assert tmp_adapter.diff_files("a.py", "b.py") is None
+
+    def test_is_available_true_when_version_command_succeeds(
+        self, tmp_adapter: CursorAdapter
+    ) -> None:
+        completed = subprocess.CompletedProcess(["cursor", "--version"], 0)
+        with patch(
+            "backend.agents.services.cursor_adapter.subprocess.run",
+            return_value=completed,
+        ) as run:
+            assert tmp_adapter.is_available() is True
+
+        run.assert_called_once_with(
+            ["cursor", "--version"],
+            capture_output=True,
+            timeout=5.0,
+        )
+
+    def test_is_available_false_when_version_command_fails(
+        self, tmp_adapter: CursorAdapter
+    ) -> None:
+        completed = subprocess.CompletedProcess(["cursor", "--version"], 1)
+        with patch(
+            "backend.agents.services.cursor_adapter.subprocess.run",
+            return_value=completed,
+        ):
+            assert tmp_adapter.is_available() is False
 
     def test_is_available_false_when_cursor_missing(self, tmp_adapter: CursorAdapter) -> None:
         with patch(
@@ -86,6 +179,11 @@ class TestCursorAdapterRulesIO:
 
     def test_read_rules_returns_none_if_missing(self, tmp_adapter: CursorAdapter) -> None:
         assert tmp_adapter.read_cursor_rules() is None
+
+    def test_read_rules_returns_file_contents(self, tmp_adapter: CursorAdapter) -> None:
+        tmp_adapter.cursor_rules_file.write_text("Use local tests first.\n")
+
+        assert tmp_adapter.read_cursor_rules() == "Use local tests first.\n"
 
     def test_read_rules_handles_oserror(self, tmp_adapter: CursorAdapter) -> None:
         tmp_adapter.cursor_rules_file.write_text("hi")
