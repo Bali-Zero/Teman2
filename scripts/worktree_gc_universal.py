@@ -112,6 +112,7 @@ import json
 import logging
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -149,6 +150,10 @@ QUARANTINE_EXPIRY_LOG = REPO_ROOT / ".agent-receipts" / "quarantine-ttl-expired.
 # JSON files from this dir (same CLAUDE_TASKS_DIR override as the hook). Chosen
 # over shared/escalations_pro.jsonl because that file is TRACKED — a live
 # nightly write would dirty the main checkout (scar PRs #7807/#7814).
+# ONE summary file per apply-run, one FIXED job id per host: the receptor
+# groups HIGH rows by (source, job, digit-normalised summary), so a per-host
+# job + a count-only summary collapses every night into ONE board line
+# ("x N, latest <date>") instead of one HIGH group per worktree.
 CLAUDE_TASKS_DIR_ENV = "CLAUDE_TASKS_DIR"
 ESCALATION_SOURCE = "worktree_gc_universal"
 
@@ -607,31 +612,61 @@ def _expire_stale_quarantine_refs(*, apply: bool, log_path: Path | None = None) 
     return expired
 
 
-def _emit_escalation(kind: str, slug: str, fields: dict[str, Any]) -> None:
-    """Surface a silent rescue on the SessionStart escalations board.
+def _host_slug() -> str:
+    raw = socket.gethostname().split(".")[0] or "unknown"
+    return "".join(c if c.isalnum() or c in "-_" else "-" for c in raw)
 
-    Writes ONE HIGH claude_tasks/*.json row (atomic tmp+rename). Any failure
-    is logged and swallowed — visibility must NEVER halt or fail the GC run.
+
+def _emit_run_summary(rescues: list[dict[str, Any]]) -> None:
+    """Surface this run's silent rescues on the SessionStart escalations board.
+
+    Writes at most ONE HIGH claude_tasks/*.json file per run (atomic
+    tmp+rename), and nothing when the run rescued nothing. Fixed per-host job
+    id; the error_summary is count-only so the receptor's grouping collapses
+    runs. Per-rescue detail (slug, branch, kind, destination -- never file
+    contents) lives in `rescues`. Any failure is logged and swallowed:
+    visibility must NEVER halt or fail the GC run.
     """
+    if not rescues:
+        return
     try:
         tasks_dir = Path(os.environ.get(CLAUDE_TASKS_DIR_ENV)
                          or Path.home() / ".agent" / "decisions" / "claude_tasks")
         tasks_dir.mkdir(parents=True, exist_ok=True)
+        host = _host_slug()
         now = datetime.now(timezone.utc)
+        n_q = sum(1 for r in rescues if r["kind"] == "quarantined-wip")
+        n_u = sum(1 for r in rescues if r["kind"] == "reclaimed-unpushed-branch")
         row = {
-            "job": f"{ESCALATION_SOURCE}:{kind}:{slug}",
+            "job": f"worktree-gc-rescue:{host}",
             "source": ESCALATION_SOURCE,
-            "kind": kind,
             "priority": "HIGH",
             "created_at": now.timestamp(),
-            **fields,
+            "error_summary": (
+                f"GC rescued {len(rescues)} worktree(s): {n_q} quarantined, "
+                f"{n_u} unpushed branch(es)"
+            ),
+            "quarantined": n_q,
+            "reclaimed_unpushed": n_u,
+            "rescues": rescues,
+            "quarantine_ttl_days": QUARANTINE_TTL_DAYS,
         }
-        path = tasks_dir / f"{ESCALATION_SOURCE}_{kind}_{slug}_{int(now.timestamp())}.json"
+        path = tasks_dir / f"worktree-gc-rescue_{host}_{int(now.timestamp())}.json"
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(row, ensure_ascii=False, indent=2))
         os.replace(tmp, path)
-    except Exception as exc:  # noqa: BLE001 — never let reporting kill the GC
-        logger.warning("escalation write failed for %s %s: %s", kind, slug, exc)
+    except Exception as exc:  # noqa: BLE001 - never let reporting kill the GC
+        logger.warning("escalation summary write failed: %s", exc)
+
+
+def _count_changed_lines(patch: str) -> int:
+    """Added/removed lines in a unified diff. Blank lines and the +++/---
+    file headers are not changes ("" in "+-" is True, hence the explicit
+    non-empty guard)."""
+    return sum(
+        1 for ln in patch.splitlines()
+        if ln and ln[0] in "+-" and not ln.startswith(("+++", "---"))
+    )
 
 
 def _quarantine(worktree: Path, slug: str, *, apply: bool,
@@ -676,10 +711,7 @@ def _quarantine(worktree: Path, slug: str, *, apply: bool,
         patch = _run_git(["diff", "HEAD"], cwd=worktree, check=False).stdout
         (receipts / f"quarantine-{slug}.patch").write_text(patch)
         if info is not None:
-            info["lines"] = sum(
-                1 for ln in patch.splitlines()
-                if ln[:1] in "+-" and not ln.startswith(("+++", "---"))
-            )
+            info["lines"] = _count_changed_lines(patch)
         # Reset the index we just staged so removal is clean.
         _run_git(["reset"], cwd=worktree, check=False)
         return True
@@ -782,9 +814,12 @@ def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
     pruned_phantom = 0
     verb = "would " if not apply else ""
 
+    rescues: list[dict[str, Any]] = []
+
     for e in entries:
         path_str = e["path"]
         path = Path(path_str)
+        pending: list[dict[str, Any]] = []
 
         if e.get("bare"):
             continue
@@ -831,19 +866,10 @@ def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
                 continue
             quarantined += 1
             if apply and q_info.get("ref"):
-                expires = datetime.now(timezone.utc) + timedelta(days=QUARANTINE_TTL_DAYS)
-                _emit_escalation("quarantined-wip", slug, {
-                    "error_summary": (
-                        f"GC froze uncommitted WIP of {path_str} "
-                        f"(branch {e.get('branch')}) onto {q_info['ref']}"
-                    ),
-                    "worktree": path_str,
-                    "branch": e.get("branch"),
-                    "ref": q_info["ref"],
-                    "sha": q_info["sha"][:10],
+                pending.append({
+                    "worktree": slug, "branch": e.get("branch"),
+                    "kind": "quarantined-wip", "destination": q_info["ref"],
                     "changed_lines": q_info.get("lines"),
-                    "expires_at": expires.date().isoformat(),
-                    "recovery": f"git branch recovered/{slug} {q_info['ref']}",
                 })
 
         # Track 2a: detached HEAD → UNCONDITIONAL durable ref to HEAD before
@@ -856,6 +882,7 @@ def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
                     "KEEP %s — could not preserve detached HEAD, refusing "
                     "to remove", path_str,
                 )
+                rescues.extend({**r, "dir_removed": False} for r in pending)
                 continue
         else:
             # Track 2b: named branch → the branch ref already preserves
@@ -871,30 +898,30 @@ def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
                     e.get("branch"),
                 )
                 reclaimed_unpushed += 1
-                if apply:
-                    tip = _run_git(["rev-parse", "--short=10", e.get("branch") or "HEAD"],
-                                   check=False).stdout.strip()
-                    _emit_escalation("reclaimed-unpushed-branch", slug, {
-                        "error_summary": (
-                            f"GC reclaimed dir {path_str}; branch {e.get('branch')} "
-                            f"keeps {unpushed} commit(s) not on origin/main"
-                        ),
-                        "worktree": path_str,
-                        "branch": e.get("branch"),
-                        "ref": f"refs/heads/{e.get('branch')}",
-                        "sha": tip,
-                        "commits": unpushed,
-                        "expires_at": None,
-                        "recovery": f"git worktree add {path_str} {e.get('branch')}",
+                if apply and e.get("branch"):
+                    pending.append({
+                        "worktree": slug, "branch": e["branch"],
+                        "kind": "reclaimed-unpushed-branch",
+                        "destination": f"refs/heads/{e['branch']}",
                     })
 
-        if _remove(path, apply=apply):
+        dir_removed = _remove(path, apply=apply)
+        if dir_removed:
             removed += 1
             logger.info("%sremove counted: %s (total %d)", verb, path_str, removed)
+        # Report only AFTER the removal outcome is known. A quarantine ref
+        # exists regardless, so it is always reported (dir_removed truthful);
+        # an unpushed-branch "reclaim" that reclaimed nothing is not a rescue
+        # and is omitted.
+        for r in pending:
+            if r["kind"] == "reclaimed-unpushed-branch" and not dir_removed:
+                continue
+            rescues.append({**r, "dir_removed": dir_removed})
 
     # Always prune phantom admin entries (cheap, safe, fixes /tmp reboot bug).
     if apply:
         _run_git(["worktree", "prune"], check=False)
+        _emit_run_summary(rescues)
 
     if removed > MAX_REMOVE_ALARM:
         logger.warning(
