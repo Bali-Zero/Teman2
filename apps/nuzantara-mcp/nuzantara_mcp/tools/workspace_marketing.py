@@ -24,6 +24,7 @@ import logging
 import os
 import re
 import shutil
+import signal
 import sys
 import tempfile
 import uuid
@@ -42,6 +43,7 @@ from nuzantara_mcp.workspace_flowkit import run as _run_flowkit_cli
 logger = logging.getLogger(__name__)
 
 BackendCall = Callable[..., Awaitable[dict[str, Any]]]
+_FACT_GATE_TASKS: dict[Path, asyncio.Task[None]] = {}
 
 
 class EditorFacingValueError(ToolError, ValueError):
@@ -551,6 +553,197 @@ def _load_fact_gate(item_id: str) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _fact_job_path(item_id: str) -> Path:
+    return _state_dir() / "fact-gate-jobs" / f"{item_id}.json"
+
+
+def _load_fact_job(item_id: str, path: Path | None = None) -> dict[str, Any]:
+    try:
+        result = json.loads(
+            (path or _fact_job_path(item_id)).read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return {}
+    return result if isinstance(result, dict) else {}
+
+
+def _public_fact_job(job: dict[str, Any]) -> dict[str, Any]:
+    status = job.get("status", "interrupted")
+    item_id = str(job.get("item_id", ""))
+    task = _FACT_GATE_TASKS.get(_fact_job_path(item_id))
+    if status == "running" and (
+        task is None
+        or task.done()
+        or task.get_name() != f"editorial-check:{job.get('request_key_hash')}"
+    ):
+        status = "interrupted"
+    return {
+        "item_id": item_id,
+        "status": status,
+        "started_at": job.get("started_at"),
+        "error_kind": job.get("error_kind"),
+    }
+
+
+async def _invalidate_fact_gate(item_id: str) -> None:
+    task = _FACT_GATE_TASKS.get(_fact_job_path(item_id))
+    previous = _load_fact_job(item_id)
+    # Fence old results before yielding, even if the edit caller is cancelled.
+    _write_json_atomic(
+        _fact_job_path(item_id),
+        {
+            "item_id": item_id,
+            "status": "invalidated",
+            "revision": int(previous.get("revision", 0)) + 1,
+        },
+    )
+    _fact_gate_path(item_id).unlink(missing_ok=True)
+    if task is not None and not task.done():
+        task.cancel()
+        await asyncio.shield(asyncio.gather(task, return_exceptions=True))
+
+
+async def _start_fact_gate(
+    item_id: str,
+    article: dict[str, Any],
+    request_key: str,
+    backend_call: BackendCall,
+    evaluate: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]],
+) -> dict[str, Any]:
+    """Return promptly; a retained task owns the lock and the durable outcome."""
+
+    fingerprint = _article_fingerprint(article)
+    path = _fact_job_path(item_id)
+    previous = _load_fact_job(item_id)
+    revision = previous.get("revision", 0)
+    if request_key:
+        attempt = _load_fact_job(
+            item_id, _operation_path("editorial-gate", request_key)
+        )
+        if attempt:
+            if any(
+                (
+                    attempt.get("item_id") != item_id,
+                    attempt.get("fingerprint") != fingerprint,
+                    attempt.get("revision", 0) != revision,
+                )
+            ):
+                raise ValueError(
+                    "request_key already belongs to another editorial revision"
+                )
+            if attempt.get("status") == "completed":
+                return {**attempt["result"], "status": "completed"}
+            return _public_fact_job(attempt)
+    gate = _load_fact_gate(item_id)
+    same_attempt = previous.get("fingerprint") == fingerprint and (
+        not request_key
+        or previous.get("request_key_hash")
+        == hashlib.sha256(request_key.encode()).hexdigest()
+    )
+    if same_attempt and previous.get("status") != "completed":
+        return _public_fact_job(previous)
+    if (
+        isinstance(gate, dict)
+        and gate.get("fingerprint") == fingerprint
+        and gate.get("revision", 0) == revision
+        and (
+            not request_key
+            or gate.get("request_key_hash")
+            == hashlib.sha256(request_key.encode()).hexdigest()
+        )
+    ):
+        return {
+            **{
+                k: v
+                for k, v in gate.items()
+                if k not in {"fingerprint", "request_key_hash", "revision"}
+            },
+            "status": "completed",
+        }
+    # All article IDs share one provider lease. Non-blocking acquisition is
+    # essential: a blocking flock here would freeze every MCP tool's event loop.
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd = os.open(path.parent / ".provider.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        raise RuntimeError("An editorial fact check is already running") from None
+    effective_key = request_key or uuid.uuid4().hex
+    key_hash = hashlib.sha256(effective_key.encode()).hexdigest()
+    job = {
+        "item_id": item_id,
+        "fingerprint": fingerprint,
+        "request_key_hash": key_hash,
+        "revision": revision,
+        "status": "running",
+        "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+    attempt_path = _operation_path("editorial-gate", effective_key)
+
+    def save() -> None:
+        _write_json_atomic(attempt_path, job)
+        if _load_fact_job(item_id).get("revision", 0) == revision:
+            _write_json_atomic(path, job)
+
+    async def run() -> None:
+        try:
+            result = await evaluate(article)
+            latest = await backend_call(
+                f"/api/workspace-marketing/news/{quote(item_id, safe='')}"
+            )
+            latest_article = _public_news_article(latest)
+            latest_article["item_id"] = item_id
+            if (
+                _article_fingerprint(latest_article) != fingerprint
+                or _load_fact_job(item_id).get("revision", 0) != revision
+            ):
+                job["status"] = "stale"
+            else:
+                result["request_key_hash"] = key_hash
+                result["revision"] = revision
+                _write_json_atomic(_fact_gate_path(item_id), result)
+                job["status"] = "completed"
+                job["result"] = {
+                    k: v
+                    for k, v in result.items()
+                    if k not in {"fingerprint", "request_key_hash", "revision"}
+                }
+        except asyncio.CancelledError:
+            job["status"] = "cancelled"
+            raise
+        except EditorialProviderFailure as exc:
+            job.update(status="failed", error_kind=exc.status)
+        except Exception:
+            # Provider output, tracebacks and prompts never enter durable status.
+            job.update(status="failed", error_kind="unavailable")
+        finally:
+            save()
+
+    def release(task: asyncio.Task[None]) -> None:
+        try:
+            # A task cancelled before its first instruction never enters finally.
+            if task.cancelled() and job["status"] == "running":
+                job["status"] = "cancelled"
+                save()
+            if not task.cancelled() and task.exception() is not None:
+                logger.warning("Editorial background task could not persist its status")
+        finally:
+            os.close(fd)
+            if _FACT_GATE_TASKS.get(path) is task:
+                _FACT_GATE_TASKS.pop(path, None)
+
+    try:
+        save()
+        task = asyncio.create_task(run(), name=f"editorial-check:{key_hash}")
+    except BaseException:
+        os.close(fd)
+        raise
+    _FACT_GATE_TASKS[path] = task
+    task.add_done_callback(release)
+    return _public_fact_job(job)
+
+
 def _fact_gate_summary(item_id: str, article: dict[str, Any]) -> dict[str, Any]:
     """Advisory view of the last fact gate run on this exact article copy.
 
@@ -562,7 +755,9 @@ def _fact_gate_summary(item_id: str, article: dict[str, Any]) -> dict[str, Any]:
     gate = _load_fact_gate(item_id)
     if not isinstance(gate, dict):
         return {"status": "not_run", "findings": []}
-    if gate.get("fingerprint") != _article_fingerprint(article):
+    if gate.get("fingerprint") != _article_fingerprint(article) or gate.get(
+        "revision", 0
+    ) != _load_fact_job(item_id).get("revision", 0):
         return {"status": "stale", "findings": []}
     raw_findings = gate.get("findings")
     findings = (
@@ -836,6 +1031,15 @@ def _is_balizero_public_url(value: str) -> bool:
     )
 
 
+async def _reap_public_subprocess(process: asyncio.subprocess.Process) -> None:
+    """Reap the provider group, including children inheriting its output pipes."""
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    await asyncio.wait_for(process.communicate(), timeout=5)
+
+
 async def _run_public_subprocess(
     argv: list[str],
     *,
@@ -852,6 +1056,7 @@ async def _run_public_subprocess(
         stderr=asyncio.subprocess.PIPE,
         cwd=tempfile.gettempdir(),
         env=env,
+        start_new_session=True,
     )
     try:
         stdout, _stderr = await asyncio.wait_for(
@@ -859,8 +1064,7 @@ async def _run_public_subprocess(
             timeout=timeout_seconds,
         )
     except TimeoutError:
-        process.kill()
-        await process.wait()
+        await _reap_public_subprocess(process)
         # The public message stays constant; the Pro log says WHICH provider and
         # what budget it blew (a 121 s NotebookLM answer hid behind a 75 s cap on
         # 2026-09-04 with nothing in the log to say so).
@@ -870,6 +1074,9 @@ async def _run_public_subprocess(
             timeout_seconds,
         )
         raise EditorialProviderFailure(Path(argv[0]).name, "timeout") from None
+    except asyncio.CancelledError:
+        await _reap_public_subprocess(process)
+        raise
     if process.returncode != 0:
         provider = Path(argv[0]).name
         # Match only known failure shapes, on failure only. Arbitrary provider
@@ -1155,9 +1362,19 @@ async def _query_notebooklm(article: dict[str, Any], notebook_id: str) -> str:
             raise RuntimeError("NotebookLM verifier returned no usable evidence")
         return cleaned if len(parts) == 1 else f"[part {index}/{len(parts)}] {cleaned}"
 
-    notes = await asyncio.gather(
-        *(query_part(index, part_text) for index, part_text in enumerate(parts, start=1))
-    )
+    tasks = [
+        asyncio.create_task(query_part(index, part_text))
+        for index, part_text in enumerate(parts, start=1)
+    ]
+    try:
+        notes = await asyncio.gather(*tasks)
+    except BaseException:
+        # gather propagates errors without cancelling siblings. Keep the job
+        # lease until every sibling has stopped and reaped its provider child.
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
     return "\n\n".join(notes)
 
 
@@ -1888,30 +2105,19 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         )
         if not isinstance(payload, dict):
             raise RuntimeError("News Room returned an unsupported article shape")
-        return _public_news_article(payload)
-
-    @mcp.tool(
-        annotations={
-            "readOnlyHint": False,
-            "destructiveHint": False,
-            "idempotentHint": True,
-            "openWorldHint": True,
-        }
-    )
-    async def newsroom_fact_gate(item_id: str) -> dict[str, Any]:
-        """Optional advisory check: NotebookLM grounding plus an independent review.
-
-        Run only when Damar or Zero asks for a fact check. It never blocks
-        publication; it takes 2-5 minutes and returns findings to consider.
-        """
-
-        safe_id = _validated_item_id(item_id)
-        payload = await backend_call(
-            f"/api/workspace-marketing/news/{quote(safe_id, safe='')}"
-        )
-        if not isinstance(payload, dict):
-            raise RuntimeError("News Room returned an unsupported article shape")
         article = _public_news_article(payload)
+        article["item_id"] = safe_id
+        job = _load_fact_job(safe_id)
+        article["fact_gate"] = (
+            _public_fact_job(job)
+            if job.get("fingerprint") == _article_fingerprint(article)
+            and job.get("status") != "completed"
+            else _fact_gate_summary(safe_id, article)
+        )
+        return article
+
+    async def evaluate_fact_gate(article: dict[str, Any]) -> dict[str, Any]:
+        safe_id = str(article["item_id"])
         category = str(article.get("category") or "").strip().lower()
         notebook = NOTEBOOK_BY_CATEGORY.get(category)
         if notebook is None:
@@ -1966,8 +2172,41 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
                 "verified_at": datetime.now(timezone.utc).isoformat(),
                 "fingerprint": _article_fingerprint(article),
             }
-        _write_json_atomic(_fact_gate_path(safe_id), result)
-        return {key: value for key, value in result.items() if key != "fingerprint"}
+        return result
+
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        }
+    )
+    async def newsroom_fact_gate(item_id: str, request_key: str = "") -> dict[str, Any]:
+        """Start/read an optional advisory fact check; it never blocks publication.
+
+        Returns running promptly, then completed with the durable verdict. Repeat
+        the same call to read it without spending another provider request. Only
+        supply a fresh request_key for an explicitly requested new check. After
+        failed/interrupted status, resolve the cause before a fresh attempt.
+        """
+        safe_id = _validated_item_id(item_id)
+        if request_key:
+            request_key = _validated_request_key(request_key)
+        payload = await backend_call(
+            f"/api/workspace-marketing/news/{quote(safe_id, safe='')}"
+        )
+        if not isinstance(payload, dict):
+            raise RuntimeError("News Room returned an unsupported article shape")
+        article = _public_news_article(payload)
+        article["item_id"] = safe_id
+        if len(_split_article_for_notebooklm(article)) > _NOTEBOOKLM_MAX_PARTS:
+            raise ValueError(
+                "Article is too long for NotebookLM verification; shorten the copy"
+            )
+        return await _start_fact_gate(
+            safe_id, article, request_key, backend_call, evaluate_fact_gate
+        )
 
     @mcp.tool(
         annotations={
@@ -2014,7 +2253,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
             json=payload,
         )
         if result.get("success") is True:
-            _fact_gate_path(safe_id).unlink(missing_ok=True)
+            await _invalidate_fact_gate(safe_id)
         return {"ok": result.get("success") is True, "item_id": safe_id}
 
     @mcp.tool(
@@ -2053,7 +2292,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
             },
         )
         if result.get("success") is True:
-            _fact_gate_path(safe_id).unlink(missing_ok=True)
+            await _invalidate_fact_gate(safe_id)
         return {"ok": result.get("success") is True, "item_id": safe_id}
 
     @mcp.tool(
