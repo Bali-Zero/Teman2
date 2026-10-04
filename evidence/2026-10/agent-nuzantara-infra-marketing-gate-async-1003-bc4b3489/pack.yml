@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-10/agent-nuzantara-infra-marketing-gate-async-1003-bc4b3489/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
   docs/specs/marketing-gate-async-20261001.md - work of the lane infra/marketing-gate-review-20261001,
   recovered from refs/agent-quarantine after the worktree GC removed its worktree with no PR.
