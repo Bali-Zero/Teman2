@@ -1,0 +1,76 @@
+{
+  "run_at": "2026-10-05T07:06:02+08:00",
+  "today": "2026-10-05",
+  "yesterday_seen_count": 5,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "301->/articles followed, 200 OK, JS-rendered shell, 'Memuat artikel...' placeholder persists since 2026-09-07"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "HTTP_CODE:000 on both initial fetch and the one mechanical retry, 30s each"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "newest dated item 2026-10-03T15:33 (ilumni FH Unpar, koalisi kepala BRAN, AI peradilan, BNI, BI-PKP) -- no reg-type match"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "static shell shows PMK 49/2026, PMK 55/2026, PER-12/PJ/2026 headlines -- all already in seen_citations, no new reg number"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; static content is only pagination links (p=1..p=352), no PMK 2026 entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest dated entry 2026-10-02, older than the 48h freshness window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry still KEP-185/PJ/2026 (bencana alam Nusa Tenggara tax admin policy), unchanged from prior runs"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible UU 2/2026 Pelindungan Pekerja Rumah Tangga, enacted 30 Apr 2026, unchanged from prior runs"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025"
+  ],
+  "note": "4/4 NB-INTEL returned nessuna novita (NB-INTEL-Tax surfaced PER-12/PJ/2026 context again plus 2027 PTKP/DTP policy chatter, both non-citable: PER-12/PJ/2026 already in seen_citations, PTKP/DTP 2027 is pre-regulation planning talk with no act number yet). Web: 0 deltas across 5 primary + 6 backup sources, consistent with 2026-10-04 run."
+}
