@@ -1,0 +1,22 @@
+task: >-
+  Recover the orphaned marketing fact-gate work frozen on a quarantine ref and bring it to a PR:
+  newsroom_fact_gate returns a running status promptly while a retained task owns the provider
+  lease and the durable verdict.
+lane: infra/marketing-gate-async
+machine: Pro
+date: "2026-10-04"
+
+gear: 2
+gear_reason: >-
+  One MCP tool module, its tests, one spec, one runbook paragraph. The CI floor recompute is
+  authoritative.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+
+acceptance:
+  A1: "A blocked provider does not keep an MCP request open; reads stay responsive (tests/test_editorial_fact_gate_async.py)."
+  A2: "One provider job globally across article IDs; repeated calls read the same attempt and never relaunch the provider."
+  A3: "Copy/cover edits invalidate an in-flight result; a changed fingerprint cannot overwrite the current verdict; cancellation kills and reaps the provider process group."
+  A4: "Every existing PASS/BLOCK rule of the Bridge is preserved (tests/test_workspace_marketing_bridge.py)."
