@@ -5,6 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -16,7 +17,7 @@ from backend.agents.services.client_segmentation import ClientSegmentationServic
 
 
 @pytest.fixture
-def client_segmentation_service():
+def client_segmentation_service() -> ClientSegmentationService:
     """Create ClientSegmentationService instance"""
     return ClientSegmentationService()
 
@@ -124,3 +125,76 @@ class TestClientSegmentationService:
 
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
         assert should_nurture is False
+        assert reason == ""
+
+    @pytest.mark.parametrize(
+        ("ltv_score", "expected_segment"),
+        [
+            (80.0, "VIP"),
+            (79.99, "HIGH_VALUE"),
+            (60.0, "HIGH_VALUE"),
+            (59.99, "MEDIUM_VALUE"),
+            (40.0, "MEDIUM_VALUE"),
+            (39.99, "LOW_VALUE"),
+        ],
+    )
+    def test_get_segment_uses_inclusive_lower_bounds(
+        self,
+        client_segmentation_service: ClientSegmentationService,
+        ltv_score: float,
+        expected_segment: str,
+    ) -> None:
+        """Catch off-by-one changes around segment thresholds."""
+        assert client_segmentation_service.get_segment(ltv_score) == expected_segment
+
+    @pytest.mark.parametrize(
+        ("ltv_score", "days_since_last", "expected_risk"),
+        [
+            (70.0, 31, "HIGH_RISK"),
+            (70.0, 30, "LOW_RISK"),
+            (69.99, 61, "MEDIUM_RISK"),
+            (69.99, 60, "LOW_RISK"),
+            (70.0, 61, "HIGH_RISK"),
+        ],
+    )
+    def test_calculate_risk_respects_threshold_precedence(
+        self,
+        client_segmentation_service: ClientSegmentationService,
+        ltv_score: float,
+        days_since_last: int,
+        expected_risk: str,
+    ) -> None:
+        """Catch threshold strictness and high-LTV precedence regressions."""
+        assert client_segmentation_service.calculate_risk(ltv_score, days_since_last) == expected_risk
+
+    def test_enrich_client_data_defaults_missing_scores_and_mutates_input(
+        self,
+        client_segmentation_service: ClientSegmentationService,
+    ) -> None:
+        """Catch fallback changes for partial score payloads."""
+        client_data: dict[str, Any] = {"client_id": "synthetic-client"}
+
+        enriched = client_segmentation_service.enrich_client_data(client_data)
+
+        assert enriched is client_data
+        assert enriched["segment"] == "LOW_VALUE"
+        assert enriched["risk_level"] == "MEDIUM_RISK"
+
+    @pytest.mark.parametrize(
+        ("client_data", "expected"),
+        [
+            ({"segment": "VIP", "risk_level": "HIGH_RISK", "days_since_last_interaction": 15}, (True, "VIP inactive for 14+ days")),
+            ({"segment": "VIP", "risk_level": "LOW_RISK", "days_since_last_interaction": 14}, (False, "")),
+            ({"segment": "HIGH_VALUE", "risk_level": "LOW_RISK", "days_since_last_interaction": 60}, (False, "")),
+            ({"segment": "HIGH_VALUE", "risk_level": "LOW_RISK", "days_since_last_interaction": 61}, (True, "High-value client inactive for 60+ days")),
+            ({}, (False, "")),
+        ],
+    )
+    def test_should_nurture_handles_priority_boundaries_and_missing_data(
+        self,
+        client_segmentation_service: ClientSegmentationService,
+        client_data: dict[str, Any],
+        expected: tuple[bool, str],
+    ) -> None:
+        """Catch reason priority, strict day boundaries, and empty payload defaults."""
+        assert client_segmentation_service.should_nurture(client_data) == expected
