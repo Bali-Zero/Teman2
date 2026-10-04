@@ -380,6 +380,10 @@ async def test_fact_gate_uses_mapped_notebook_and_independent_reviewer(
 
     result = await tools["newsroom_fact_gate"]("news_123")
 
+    assert result["status"] == "running"
+    await asyncio.gather(*list(marketing._FACT_GATE_TASKS.values()))
+    result = await tools["newsroom_fact_gate"]("news_123")
+
     assert result["ok"] is True
     assert result["notebooklm_domain"] == "NB-3 Company"
     assert "fingerprint" not in result
@@ -422,6 +426,10 @@ async def test_fact_gate_blocks_pass_with_zero_checked_claims(
     )
     tools, _ = _capture_tools(backend_call)
 
+    result = await tools["newsroom_fact_gate"]("news_tech")
+
+    assert result["status"] == "running"
+    await asyncio.gather(*list(marketing._FACT_GATE_TASKS.values()))
     result = await tools["newsroom_fact_gate"]("news_tech")
 
     assert result["ok"] is False
