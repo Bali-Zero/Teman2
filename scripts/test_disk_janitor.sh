@@ -8,12 +8,19 @@
 # disabled (DISK_JANITOR_TOOLS=false, DISK_JANITOR_QDRANT_RETENTION=""): they are other
 # scripts' contracts. Targets /bin/bash 3.2. Run: bash scripts/test_disk_janitor.sh
 set -uo pipefail
+# Isolation first: no knob inherited from the caller may steer the payload, the wrapper or the
+# fixture git commands at a real path (a pre-push hook exports GIT_DIR; a stray DISK_JANITOR_HOME
+# would aim an --apply at the host's HOME). Every invocation below sets what it needs explicitly.
+for v in $(compgen -v | grep -E '^(DISK_JANITOR_|PRO_DISK_JANITOR_|QDRANT_|GIT_)'); do unset "$v"; done
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT="$HERE/disk_janitor.sh"
 WRAP="$HERE/../infra/launchagents/wrappers/pro-disk-janitor.sh"
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/djfix.XXXXXX")" || { echo "mktemp failed"; exit 70; }
 ROOT="$(cd "$ROOT" && pwd -P)"   # physical: macOS /var -> /private/var, and the payload refuses a symlinked TMP_ROOT chain
 H="$ROOT/home"; T="$ROOT/claude-501"; FAKEBIN="$ROOT/bin"; PIDF="$ROOT/wrapper.pid"
+# Every invocation (payload AND wrapper) inherits a fixture Chrome root: the default is the real
+# /private/var/folders, and an --apply under test must never reach the host's own clones.
+export DISK_JANITOR_CHROME_ROOT="$ROOT/varfolders"
 PASS=0; FAIL=0
 ok(){ echo "  ✅ $1"; PASS=$((PASS+1)); }
 no(){ echo "  ❌ $1"; FAIL=$((FAIL+1)); }
