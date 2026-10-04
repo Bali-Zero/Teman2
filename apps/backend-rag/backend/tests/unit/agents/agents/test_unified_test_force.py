@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -160,8 +161,6 @@ class TestRunFullAnalysis:
     @pytest.mark.asyncio
     async def test_full_analysis_with_differential(self, orchestrator, mock_deps):
         """When differential analyzer returns a delta, it should appear in results."""
-        from types import SimpleNamespace
-
         mock_comp = SimpleNamespace(
             component_type="backend",
             coverage_percent=60.0,
@@ -191,6 +190,51 @@ class TestRunFullAnalysis:
 
         assert result.get("differential_report") is not None
         assert result["differential_report"]["overall_delta"] == 5.0
+
+    @pytest.mark.asyncio
+    async def test_full_analysis_recalculates_after_generated_tests(
+        self,
+        orchestrator,
+        mock_deps,
+    ) -> None:
+        mock_comp = SimpleNamespace(
+            component_type="backend",
+            coverage_percent=40.0,
+            files_analyzed=2,
+            coverage_gaps=[],
+        )
+        mock_report = SimpleNamespace(
+            overall_coverage=40.0,
+            components={"backend": mock_comp},
+            coverage_by_type={"backend": 40.0},
+            critical_gaps=[],
+        )
+        orchestrator.coverage_collector.collect_all_coverage.return_value = mock_report
+        orchestrator.differential_analyzer.calculate_delta.return_value = None
+
+        with (
+            patch.object(
+                orchestrator,
+                "_generate_tests_for_gaps",
+                new_callable=AsyncMock,
+                return_value={"tests_generated": 1, "tests_passed": 1},
+            ) as generate_tests,
+            patch.object(
+                orchestrator,
+                "_recalculate_coverage_after_tests",
+                new_callable=AsyncMock,
+                return_value={"overall_coverage": 88.5, "components": {}},
+            ) as recalculate,
+        ):
+            result = await orchestrator.run_full_analysis(
+                {"generate_tests": True, "max_tests_per_component": 3},
+            )
+
+        generate_tests.assert_awaited_once_with(mock_report, 3)
+        recalculate.assert_awaited_once_with()
+        assert result["coverage_report"]["overall_coverage"] == 88.5
+        assert mock_report.overall_coverage == 88.5
+        assert result["coverage_after_tests"]["overall_coverage"] == 88.5
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +276,61 @@ class TestGenerateTestsForGaps:
 
         assert result["tests_generated"] == 1
         assert result["tests_passed"] == 1
+
+    @pytest.mark.asyncio
+    async def test_counts_failed_generated_test(self, orchestrator, mock_deps) -> None:
+        mock_comp = MagicMock()
+        mock_comp.component_type = "backend"
+        mock_comp.coverage_gaps = [{"file": "b.py", "coverage": 5.0}]
+        mock_report = MagicMock()
+        mock_report.components = {"backend": mock_comp}
+
+        with (
+            patch.object(
+                orchestrator,
+                "_generate_test_with_qwen",
+                new_callable=AsyncMock,
+                return_value="def test_b() -> None: pass",
+            ),
+            patch.object(orchestrator, "_save_test_file", return_value="/tmp/test_b.py"),
+            patch.object(orchestrator, "_run_test", new_callable=AsyncMock, return_value=False),
+        ):
+            result = await orchestrator._generate_tests_for_gaps(mock_report, 5)
+
+        assert result["tests_generated"] == 1
+        assert result["tests_passed"] == 0
+        assert result["tests_failed"] == 1
+
+    @pytest.mark.asyncio
+    async def test_counts_save_failure_and_generation_exception(
+        self,
+        orchestrator,
+        mock_deps,
+    ) -> None:
+        mock_comp = MagicMock()
+        mock_comp.component_type = "backend"
+        mock_comp.coverage_gaps = [
+            {"file": "save_fails.py", "coverage": 1.0},
+            {"file": "generate_raises.py", "coverage": 2.0},
+        ]
+        mock_report = MagicMock()
+        mock_report.components = {"backend": mock_comp}
+
+        async def generate(gap: dict[str, object]) -> str:
+            if gap["file"] == "generate_raises.py":
+                raise RuntimeError("llm exploded")
+            return "def test_generated() -> None: pass"
+
+        with (
+            patch.object(orchestrator, "_generate_test_with_qwen", side_effect=generate),
+            patch.object(orchestrator, "_save_test_file", return_value=None),
+            patch.object(orchestrator, "_run_test", new_callable=AsyncMock) as run_test,
+        ):
+            result = await orchestrator._generate_tests_for_gaps(mock_report, 5)
+
+        assert result["tests_generated"] == 0
+        assert result["tests_failed"] == 2
+        run_test.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
@@ -337,6 +436,34 @@ class TestSaveTestFile:
         assert result is not None
         assert "Component.test.ts" in result
 
+    @pytest.mark.parametrize(
+        ("component", "expected_dir"),
+        [
+            ("zantara-media-backend", "apps/zantara-media-backend/tests"),
+            ("bali-intel-scraper", "apps/bali-intel-scraper/tests/unit"),
+        ],
+    )
+    def test_save_special_backend_component_paths(
+        self,
+        orchestrator,
+        component: str,
+        expected_dir: str,
+    ) -> None:
+        from unittest.mock import mock_open as _mock_open
+
+        gap = {
+            "component": component,
+            "component_type": "backend",
+            "file": "workers/job.py",
+        }
+        with (
+            patch("pathlib.Path.mkdir"),
+            patch("builtins.open", _mock_open()),
+        ):
+            result = orchestrator._save_test_file(gap, "def test_job() -> None: pass")
+
+        assert result == f"{expected_dir}/test_job.py"
+
     def test_save_error_returns_none(self, orchestrator):
         gap = {
             "component": "broken",
@@ -383,12 +510,79 @@ class TestRunTest:
         assert result is True
 
     @pytest.mark.asyncio
+    async def test_run_frontend_test_failure(self, orchestrator) -> None:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=1)
+            result = await orchestrator._run_test(
+                "/tmp/Component.test.ts",
+                {"component_type": "frontend", "component": "mouth-frontend"},
+            )
+        assert result is False
+
+    @pytest.mark.asyncio
     async def test_run_test_exception(self, orchestrator):
         with patch("subprocess.run", side_effect=Exception("no pytest")):
             result = await orchestrator._run_test(
                 "/tmp/test_foo.py", {"component_type": "backend", "component": "backend-rag"}
             )
         assert result is False
+
+
+# ---------------------------------------------------------------------------
+# _recalculate_coverage_after_tests
+# ---------------------------------------------------------------------------
+
+
+class TestRecalculateCoverageAfterTests:
+    @pytest.mark.asyncio
+    async def test_recalculate_coverage_success(self, orchestrator, mock_deps) -> None:
+        from backend.agents.agents import unified_test_force_orchestrator as module
+
+        mock_component = SimpleNamespace(coverage=91.0, files_count=4)
+        updated_report = SimpleNamespace(
+            overall_coverage=90.5,
+            components={"backend": mock_component},
+        )
+        collector = MagicMock()
+        collector.collect_all_coverage = AsyncMock(return_value=updated_report)
+
+        with patch.object(module, "UnifiedCoverageCollector", return_value=collector) as ucc_cls:
+            result = await orchestrator._recalculate_coverage_after_tests()
+
+        assert result == {
+            "overall_coverage": 90.5,
+            "components": {"backend": {"coverage": 91.0, "files": 4}},
+        }
+        ucc_cls.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_recalculate_coverage_handles_empty_report(
+        self,
+        orchestrator,
+        mock_deps,
+    ) -> None:
+        from backend.agents.agents import unified_test_force_orchestrator as module
+
+        collector = MagicMock()
+        collector.collect_all_coverage = AsyncMock(return_value=None)
+
+        with patch.object(module, "UnifiedCoverageCollector", return_value=collector):
+            assert await orchestrator._recalculate_coverage_after_tests() is None
+
+    @pytest.mark.asyncio
+    async def test_recalculate_coverage_handles_exception(
+        self,
+        orchestrator,
+        mock_deps,
+    ) -> None:
+        from backend.agents.agents import unified_test_force_orchestrator as module
+
+        with patch.object(
+            module,
+            "UnifiedCoverageCollector",
+            side_effect=RuntimeError("collector down"),
+        ):
+            assert await orchestrator._recalculate_coverage_after_tests() is None
 
 
 # ---------------------------------------------------------------------------
