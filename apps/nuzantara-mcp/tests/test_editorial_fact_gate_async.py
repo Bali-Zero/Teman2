@@ -474,11 +474,15 @@ async def test_reap_tolerates_kill_errors(monkeypatch, exc):
     proc = _Reaped()
     proc.returncode = None
 
+    attempts = []
+
     def boom(*a):
+        attempts.append(a)
         raise exc
 
     monkeypatch.setattr(os, "killpg", boom)
     await marketing._reap_public_subprocess(proc)
+    assert attempts == [(proc.pid, signal.SIGKILL)]
 
 
 @pytest.mark.asyncio
