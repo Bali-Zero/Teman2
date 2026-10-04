@@ -31,6 +31,9 @@
 #             no process anchored below it; every git checkout found within 3 levels must be a
 #             LINKED worktree (a standalone repository's refs and objects would die with it), not
 #             locked, clean (untracked files count), and its HEAD on some branch/remote/tag ref.
+#             Any .git (file or dir) deeper than that keeps the candidate. A HEAD that will not
+#             resolve is skipped as "unborn" ONLY when it is a symbolic ref to a ref that provably
+#             does not exist; any other failure keeps the tree ("git state unreadable").
 #             Git probes run with --no-optional-locks: a probe that refreshes the index would
 #             reset the 14-day clock it is judging.
 #   tools     uv cache prune (skipped while a uv process holds the lock) · restic cache --cleanup
@@ -39,6 +42,14 @@
 #             by image ID in its plans and is never a candidate) · docker builder prune --filter
 #             until=168h · colima fstrim LAST (guest, when running), so the blocks the docker steps
 #             freed go back to the host in the same run · brew cleanup --prune=30
+# POLICY (reviewed 2026-10-04, stated so the table cannot be read as softer than the code):
+#   codexwt  "clean" means `git status --porcelain --untracked-files=normal`: GITIGNORED files are NOT
+#            work. A stale, clean linked worktree is deleted together with its ignored content (copied
+#            .env, local DBs, notes, build output). A nested repository inside it is the exception
+#            (kept, see above); ignored plain files are not.
+#   docker   "older than 30 d" is the image's BUILD time (`CreatedAt`), not its pull or last-use time.
+#            An image pulled, `docker load`ed or committed recently but built long ago, with no
+#            container descending from it, is a candidate; for load/commit images removal is final.
 # v2 steps land in the receipt's "steps" object with their own df -k delta on the Data volume.
 #
 # DRY-RUN by default: reports candidates, removes nothing. `--apply` acts.
@@ -288,9 +299,27 @@ rgit() { # read-only git: never steered by an inherited GIT_* variable, never ta
   (unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
    bounded 120 git --no-optional-locks "$@")
 }
+wt_unborn() { # $1 checkout → 0 only when HEAD is a symbolic ref whose target ref provably does not exist
+  local sym gp pk rh
+  sym=$(rgit -C "$1" symbolic-ref -q HEAD 2>/dev/null) && [ -n "$sym" ] || return 1
+  gp=$(rgit -C "$1" rev-parse --git-path "$sym" 2>/dev/null) || return 1
+  pk=$(rgit -C "$1" rev-parse --git-path packed-refs 2>/dev/null) || return 1
+  rh=$(rgit -C "$1" rev-parse --git-path refs/heads 2>/dev/null) || return 1
+  [ "${gp#/}" != "$gp" ] || gp="$1/$gp"; [ "${pk#/}" != "$pk" ] || pk="$1/$pk"; [ "${rh#/}" != "$rh" ] || rh="$1/$rh"
+  [ -d "$rh" ] || return 1   # files ref backend only: under any other backend "no loose file" proves nothing
+  [ ! -e "$gp" ] && [ ! -L "$gp" ] || return 1              # a loose ref file exists: it is unreadable, not absent
+  if [ -e "$pk" ]; then grep -q -- " $sym\$" "$pk" 2>/dev/null; [ $? -eq 1 ] || return 1; fi   # packed: 0 = present, 2 = unreadable
+  return 0
+}
 wt_hold() { # $1 worktree dir → prints why it must be kept (empty = no git reason). Fail-closed:
   # any git answer it cannot read is a reason to keep.
   local g st
+  # A repository anywhere BELOW the checkouts probed here (e.g. a clone inside a gitignored scratch dir,
+  # which the parent's `git status` never lists) would die with the tree and take unpushed commits along.
+  # So any .git — file or directory — at depth >= 4 keeps the candidate, at whatever depth it sits.
+  # A find that cannot finish (unreadable subdir) cannot vouch for the absence either.
+  st=$(find "$1" -mindepth 4 -name .git -print -quit 2>/dev/null) || { echo "git state unreadable"; return; }
+  [ -n "$st" ] && { echo "nested repository"; return; }
   while IFS= read -r -d '' g; do
     g=${g%/.git}
     if [ -d "$g/.git" ]; then echo "standalone repository"; return; fi
@@ -298,7 +327,13 @@ wt_hold() { # $1 worktree dir → prints why it must be kept (empty = no git rea
     [ -n "$st" ] && { echo "uncommitted work"; return; }
     st=$(rgit -C "$g" rev-parse --absolute-git-dir 2>/dev/null) || { echo "git state unreadable"; return; }
     [ -e "$st/locked" ] && { echo "locked worktree"; return; }
-    rgit -C "$g" rev-parse -q --verify HEAD >/dev/null 2>&1 || continue   # unborn HEAD: no commit to lose
+    if ! rgit -C "$g" rev-parse -q --verify HEAD >/dev/null 2>&1; then
+      # HEAD unresolvable. Only ONE reading means "no commit to lose": HEAD is a symbolic ref to a ref
+      # that does not exist (unborn branch). A timeout, a corrupt or unreadable ref, a detached HEAD
+      # that will not resolve — all are "cannot tell", and cannot tell keeps the tree.
+      wt_unborn "$g" || { echo "git state unreadable"; return; }
+      continue
+    fi
     st=$(rgit -C "$g" for-each-ref --contains HEAD --count=1 --format=x refs/heads refs/remotes refs/tags 2>/dev/null) \
       || { echo "git state unreadable"; return; }
     [ -z "$st" ] && { echo "commits on no ref"; return; }
