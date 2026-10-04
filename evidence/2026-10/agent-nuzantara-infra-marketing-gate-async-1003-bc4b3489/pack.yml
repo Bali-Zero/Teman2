@@ -1,0 +1,35 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  docs/specs/marketing-gate-async-20261001.md - work of the lane infra/marketing-gate-review-20261001,
+  recovered from refs/agent-quarantine after the worktree GC removed its worktree with no PR.
+lanes:
+  - lane: marketing-gate-async-recovery
+    role: build
+    seat: "claude-sonnet-5-5 (recovery of an external-builder WIP; verified by this session)"
+
+what_changed: |
+  1. newsroom_fact_gate starts a retained background task and returns a running status; a repeat
+     call reads the persisted verdict. Optional request_key requests a fresh attempt.
+  2. One provider lease (non-blocking flock) shared by all article IDs.
+  3. Copy/cover edits bump a revision and invalidate in-flight and stored verdicts.
+  4. Provider subprocess runs in its own session; timeout and cancel kill and reap the group.
+  5. Spec and runbook paragraph; new async test module (507 lines at 264cde43f7).
+
+tests:
+  green: "100 passed (apps/nuzantara-mcp tests/test_editorial_fact_gate_async.py + tests/test_workspace_marketing_bridge.py)"
+  lint: "ruff check clean on the three python files"
+
+fix_round: |
+  Commits 2e79842fb0, 1622b85362, 264cde43f7 on top of 4c66f9bce1, after an independent review.
+  - 2e79842fb0 fix: the provider-reap timeout is caught and logged inside the reap helper, so it no
+    longer replaces the original CancelledError or the provider "timeout" failure; killpg is guarded
+    by returncode is None and tolerates ProcessLookupError/PermissionError; newsroom_publish forces
+    item_id to the validated id so the fingerprint cannot read stale.
+  - 1622b85362 and 264cde43f7 tests: reap timeout on cancel and on timeout (setsid descendant holding
+    the pipes), reaped-leader no-kill, kill errors, crash recovery (persisted running job reads
+    interrupted), and the grandchild test now checks the pid is gone.
+  - Independent verification PASS posted on 264cde43f7 (PR comment 5978823935).
+
+dissent: []
+
+pii_scan: clean

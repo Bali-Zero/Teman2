@@ -168,6 +168,18 @@ both free of article bodies, prompts, identifiers, and secrets.
 
 ### Editorial provider outage
 
+Fact checks return a `running` receipt promptly. Repeat `newsroom_fact_gate` with
+the same item/key to read the durable result; `newsroom_get_article.fact_gate`
+also exposes running/failed/completed advisory status. `running` is neither PASS
+nor BLOCK. Only one provider job runs at a time across articles. A new
+`request_key` explicitly requests another check; never use a new key merely
+because transport timed out. Failed/interrupted work must be diagnosed first.
+Copy/cover updates cancel the previous job and invalidate its revision, so an
+old key cannot resurrect the previous verdict. Runtime restart can interrupt
+an unfinished job; its status does not become a fabricated editorial result.
+After shipping this tool-description/signature change, refresh the private app's
+discovery snapshot through the existing owner/admin approval workflow.
+
 Tunnel health and the News Room HTTP contract do not establish fact-check
 readiness. `workspace_health.editorial_verification` probes NotebookLM with
 `nlm login --check` and the isolated reviewer identity with `claude auth status`.
