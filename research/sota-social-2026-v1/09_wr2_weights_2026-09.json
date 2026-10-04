@@ -1,0 +1,25 @@
+{
+  "persona_weight": {},
+  "tone_resonance": {},
+  "cadence_by_channel": {},
+  "format_mix_by_objective": {},
+  "hook_pattern_top_by_persona": {},
+  "pillar_kpi_targets": {},
+  "channel_priority_top3": [],
+  "publisher_enabled_by_channel": {
+    "instagram": false,
+    "linkedin": false,
+    "tiktok": false,
+    "threads": false,
+    "x_twitter": false,
+    "youtube_long": false,
+    "youtube_shorts": false,
+    "telegram": false,
+    "whatsapp": false,
+    "newsletter": false,
+    "blog_seo": false,
+    "podcast": false,
+    "xiaohongshu_weibo": false,
+    "quora_reddit": false
+  }
+}

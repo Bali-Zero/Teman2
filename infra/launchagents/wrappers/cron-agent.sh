@@ -366,6 +366,65 @@ ${err_tail}"
 
 # ── Tier: agent ───────────────────────────────────────────────────────────────
 
+# H24 checkout guard — the hard half of the anti-git prompt sentence below. The
+# sentence is a request; this is the measurement. An agent turn runs with
+# bypassPermissions, so nothing stops it from committing: indexing-daily did
+# exactly that on 2026-09-30 (53f448edd5) and Pro's checkout diverged from
+# origin/main until it was realigned by hand. Prints "<branch> <ahead> <reflog>":
+# ahead counts commits on HEAD missing from the LOCAL origin/main ref (never
+# fetched here), reflog is the length of HEAD's reflog. The periodic git-pull
+# sync (Pro: com.nuzantara.git-pull-main.15min, scripts/pro/pro-git-pull.sh)
+# moves HEAD only with `git merge --ff-only`, which can lower ahead but never
+# raise it and logs a ": Fast-forward" reflog entry. So another branch, a
+# higher ahead, or any other new reflog entry after the run is a mutation — the
+# reflog also catches a commit the agent then pushed, reset away or amended,
+# which leave branch and ahead as they were. With core.logAllRefUpdates off
+# that limb is blind: commit+reset is not caught (commit+push still is, by the
+# commit stamp below). Any OTHER process's `git stash` or `reset --hard HEAD`
+# during the run ("reset: moving to HEAD") also fails it: Pro logged 9 from
+# 2026-09-15 to 10-01, producer unattributed, none inside an agent-tier cron
+# window (Mon 03:30 and 08:00, daily 09:00, Sun 23:00). No
+# checkout or no origin/main prints nothing, and the guard stays out.
+checkout_state() {
+    local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}" branch ahead reflog
+    ahead="$(git -C "$dir" rev-list --count origin/main..HEAD 2>/dev/null)" || return 0
+    [[ "$ahead" =~ ^[0-9]+$ ]] || return 0
+    branch="$(git -C "$dir" symbolic-ref -q --short HEAD 2>/dev/null)" || branch="DETACHED"
+    reflog="$(git -C "$dir" reflog show --format=%gs HEAD 2>/dev/null | wc -l | tr -d ' ')"
+    printf '%s %s %s' "$branch" "$ahead" "${reflog:-0}"
+}
+
+# HEAD reflog subjects written between two reflog lengths, fast-forwards removed.
+checkout_foreign_moves() {
+    local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}" new=$(( $2 - $1 ))
+    (( new > 0 )) || return 0
+    git -C "$dir" reflog show --format=%gs -n "$new" HEAD 2>/dev/null | grep -v ': Fast-forward$'
+}
+
+# The H24 HEAD is not the only way out: on 2026-09-28 weekly-dep-audit's agent
+# cut a branch from origin/main in a worktree, committed, pushed and armed a
+# backend-rag PR (#7570) while HEAD only saw the sync cron's fast-forwards.
+# Counting branches or worktrees cannot tell that apart from the sessions that
+# create several a day on Pro, so run_agent() stamps the agent's own commits
+# instead: GIT_COMMITTER_* in the claude env outranks any git config, and any
+# stamped commit reachable from any ref or reflog after the run that was not
+# there before it is a mutation. A push alone leaves one: with Pro's fetch
+# refspec (+refs/heads/*:refs/remotes/origin/*) `git push` writes the
+# remote-tracking ref itself, no fetch needed. Before/after sets, never
+# --since: the committer date is the agent's to forge. Full sweep measured on
+# Pro: 0.32 s over 27,592 commits. The <...> brackets make the fixed-string
+# match the whole address, so job "audit" never matches "weekly-audit".
+# Not caught, by construction: an agent that overrides GIT_COMMITTER_* itself;
+# commits made only through the API or in another clone; a commit left on no
+# ref and no reflog (branch, worktree AND remote-tracking ref all deleted,
+# pushed or not); a commit made after the run by a process the agent detached.
+# The stamp catches a runaway agent following its prompt, not an adversary.
+agent_commit_mark() { printf '%s@cron-agent.invalid' "$JOB_NAME"; }
+checkout_marked_commits() {
+    local dir="${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}"
+    git -C "$dir" log --all --reflog -F --committer="<$(agent_commit_mark)>" --format=%H 2>/dev/null
+}
+
 run_agent() {
     local prompt_file="$SCRIPT_OR_PROMPT"
     if [[ ! -f "$prompt_file" ]]; then
@@ -386,7 +445,14 @@ run_agent() {
 
 Do ALL the work inline in this turn — never spawn a background task or background agent
 for this; this is a one-shot print-mode run and backgrounded work is terminated at exit,
-leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
+leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05).
+
+Never run \`git add\`/\`git commit\`/\`git push\` or any other git mutation in any checkout on
+this machine (the H24 checkout ~/nuzantara included), even if a step in this prompt fails (e.g. a Telegram send returning non-200) — write the result
+to disk and stop. The main checkout is agent-read-only (Agent Worktree Discipline); a direct
+commit here strands unpushed content and jams the periodic git-pull sync on every machine that pulls
+this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in indexing-daily,
+2026-09-30)."
 
     log "START tier=agent prompt_file=$prompt_file prompt_len=${#prompt}"
     local start_ts=$(date +%s)
@@ -445,6 +511,15 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
             NOOP_FINGERPRINT_VALUE="$fp_now"
         fi
     fi
+
+    local checkout_before checkout_after checkout_mutated=0 checkout_moves="" checkout_marked=""
+    checkout_before="$(checkout_state)"
+    local marked_before marked_after marked_sweep=1
+    marked_before="$(checkout_marked_commits | sort -u)" || {
+        marked_sweep=0
+        log "commit-stamp sweep OFF for this run: git log --all failed on ${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara}"
+    }
+    [[ -z "$checkout_before" ]] && log "checkout guard OFF for this run: ${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara} has no measurable HEAD vs origin/main"
 
     # Five MAX seats, then the Team seat (6, weekly-capped, last-resort by
     # position — never reorder this ahead of 1-5), then legacy and keychain.
@@ -521,6 +596,7 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         while IFS= read -r -d '' env_part; do
             env_args+=("$env_part")
         done < <(claude_oauth_env "$token")
+        env_args+=("GIT_COMMITTER_NAME=cron-agent $JOB_NAME" "GIT_COMMITTER_EMAIL=$(agent_commit_mark)")
         attempt_out="$(mktemp "${TMPDIR:-/tmp}/cron-agent-out.XXXXXX")"
         attempt_err="$(mktemp "${TMPDIR:-/tmp}/cron-agent-err.XXXXXX")"
 
@@ -608,12 +684,61 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         exit_code=1
     fi
 
+    # Judged on every outcome, success or not: a run that failed after committing
+    # still left the checkout diverged. A checkout that stops being measurable
+    # mid-run (deleted .git, broken origin/main) counts as mutated too.
+    if [[ -n "$checkout_before" ]]; then
+        checkout_after="$(checkout_state)"
+        local b0 a0 r0 b1 a1 r1
+        read -r b0 a0 r0 <<< "$checkout_before"
+        read -r b1 a1 r1 <<< "${checkout_after:-x 0 0}"
+        checkout_moves="$(checkout_foreign_moves "$r0" "$r1" | head -3 | tr '\n' ';')"
+        if [[ -z "$checkout_after" || "$b1" != "$b0" || -n "$checkout_moves" ]] || (( a1 > a0 )); then
+            checkout_mutated=1
+        fi
+    fi
+    # Independent of the HEAD limb (a side worktree never touches HEAD), and
+    # fail-closed: a sweep that worked before the run and fails after it
+    # (a ref broken mid-run) is a mutation, never "nothing found".
+    if [[ $marked_sweep -eq 1 ]]; then
+        if marked_after="$(checkout_marked_commits | sort -u)"; then
+            # An empty after-set has nothing to judge. The here-string would feed
+            # grep one empty line that no before-hash excludes, so a cleanup that
+            # deletes an EARLIER run's stamped branch mid-run would read as a
+            # mutation with no commit named.
+            [[ -n "$marked_after" ]] && checkout_marked="$(grep -vxF -f <(printf '%s\n' "$marked_before") \
+                <<< "$marked_after" | cut -c1-10 | head -3 | tr '\n' ' ')"
+        else
+            checkout_marked="(sweep failed after the run) "
+        fi
+        [[ -n "$checkout_marked" ]] && checkout_mutated=1
+    fi
+    # A clean run says what was measured, so "the guard ran and found nothing"
+    # is a line on disk and never inferred from silence (W84: green-but-dead).
+    if [[ $checkout_mutated -eq 0 ]]; then
+        local head_limb="off" sweep_limb="off" stamped_before=0
+        [[ -n "$checkout_before" ]] && head_limb="on ('$checkout_before' -> '$checkout_after')"
+        if [[ $marked_sweep -eq 1 ]]; then
+            [[ -n "$marked_before" ]] && stamped_before="$(grep -c . <<< "$marked_before")"
+            sweep_limb="on ($stamped_before stamped before, 0 new)"
+        fi
+        log "checkout guard verdict: clean, HEAD limb $head_limb, stamp sweep $sweep_limb"
+    fi
+
     local duration=$(( $(date +%s) - start_ts ))
 
     # Log output (last 80 lines)
     echo "$output" | tail -80 >> "$LOG_FILE"
 
-    if [[ $accepted_success -eq 1 && $exit_code -eq 0 ]]; then
+    if [[ $checkout_mutated -eq 1 ]]; then
+        # Never repaired from here: a reset on the H24 checkout is a human/healer
+        # act. Exit 3 is this guard's own code, distinct from 1/124/127.
+        local checkout_change="'${checkout_before:-unmeasured}' -> '${checkout_after:-unmeasurable}'${checkout_marked:+, stamped commits $checkout_marked}"
+        log "GIT-MUTATION: H24 checkout changed during the agent run, '<branch> <ahead-of-origin/main> <reflog>' went $checkout_change${checkout_moves:+, new HEAD moves: $checkout_moves}${checkout_marked:+, new commits stamped for this job on any ref: $checkout_marked} — realign by hand"
+        save_state "error" 3 "$duration" "H24 checkout mutated during agent run: $checkout_change"
+        send_telegram "🚨 <b>$JOB_NAME</b>: H24 checkout mutated during the agent run ($checkout_change) — realign by hand"
+        return 3
+    elif [[ $accepted_success -eq 1 && $exit_code -eq 0 ]]; then
         log "OK duration=${duration}s label=${labels[$idx]}"
         # Explicit tier-provenance line (W89 class-audit, 2026-07-11): which of the
         # numbered/legacy/keychain fallback slots actually answered.

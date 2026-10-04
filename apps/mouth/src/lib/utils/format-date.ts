@@ -69,3 +69,19 @@ export function formatTimeAgo(dateStr: string | undefined | null): string {
     return "—";
   }
 }
+
+/**
+ * Long day span as years + months: "1y", "9y 2mo". Below a year it stays
+ * months-only ("11mo"), the wording the workspace already used.
+ *
+ * Expiry chips used to stop at months, so a passport valid ~9 more years
+ * rendered "111mo". Years count whole 365-day blocks; the remainder keeps the
+ * 30-day month the chips always used, capped at 11 so "12mo" never appears.
+ */
+export function formatLongSpan(days: number): string {
+  const whole = Math.max(0, Math.floor(days));
+  const years = Math.floor(whole / 365);
+  if (years === 0) return `${Math.floor(whole / 30)}mo`;
+  const months = Math.min(11, Math.floor((whole % 365) / 30));
+  return months === 0 ? `${years}y` : `${years}y ${months}mo`;
+}

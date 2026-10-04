@@ -1,0 +1,25 @@
+task: >-
+  Follow-up to PR #7803 (one open bot PR per post-publish-poller family), from the notices of its
+  gate: pin three content-safety guards no test held, stop superseding healthy armed covers and
+  translation PRs, stop a replayed promotion from duplicating a slug in latest_*, and record the CI
+  gap (apps/bali-intel-scraper/tests runs in no workflow) in the ledger.
+lane: intel/poller-pins-liveness
+machine: M5
+date: "2026-10-03"
+
+gear: 2
+gear_reason: >-
+  Provisional 2: one producer script, its unit tests, one ledger row. The CI floor recompute is
+  authoritative.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+
+acceptance:
+  A1: "Mutant M1 (close superseded PRs even when a PUT failed) goes red: test_a_failed_write_on_the_new_branch_closes_nothing."
+  A2: "Mutant M2 (re-check before close ignores the queue) goes red: test_a_pr_that_entered_the_queue_before_its_close_is_not_closed."
+  A3: "Mutant M3 (no 300-file compare cap) goes red: test_a_pr_too_large_to_compare_is_kept_open_and_named."
+  A4: "An armed, not-conflicting covers/translation PR is neither read for carry nor closed; an armed but CONFLICTING one is still superseded."
+  A5: "Promoting a slug that sits in latest_* moves it to hero_main and removes it from latest_*: no duplicate."
+  A6: "One PENDING-ARMS row for the CI gap, in the ledger format."

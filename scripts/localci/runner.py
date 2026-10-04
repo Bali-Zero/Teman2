@@ -35,7 +35,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-RUNNER_VERSION = "0.3.0"
+RUNNER_VERSION = "0.3.1"
 STATUSES = ("QUEUED", "RUNNING", "PASS", "FAIL", "ERROR", "BLOCKED", "STALE", "INTERRUPTED", "NOT_APPLICABLE")
 BLOCKING = {"ERROR", "BLOCKED", "STALE", "RUNNING", "QUEUED", "INTERRUPTED"}
 EXECUTABLE = ("pytest", "trusted_pytest", "cmd")
@@ -75,6 +75,15 @@ def is_secret_env(name: str) -> bool:
 # Interpreter start-up hooks a candidate tree could plant (sitecustomize/usercustomize/.pth are found
 # through these variables) must never reach a TRUSTED interpreter: no PYTHONPATH, no user site.
 _TRUSTED_ENV_DROP = ("PYTHONPATH", "PYTHONSTARTUP", "PYTHONHOME", "PYTEST_ADDOPTS", "PYTEST_PLUGINS")
+
+
+def change_map_status(cm: dict) -> str:
+    """Mirror GitHub's `changes` job: an unclassified or empty diff passes there and runs every job (run_all),
+    whose weight the BLOCKED test records already carry. Anything the classifier cannot vouch for is no
+    signal (BLOCKED), never FAIL — a local FAIL tells the fleet not to arm a PR GitHub accepts."""
+    if cm.get("mode") == "enforcing" and cm.get("reason") in ("classified", "unclassified_paths", "empty_changed_set"):
+        return "PASS"
+    return "BLOCKED"
 
 
 def trusted_env(base: dict | None = None) -> dict:
@@ -372,7 +381,7 @@ def cmd_plan(a):
     checks = {
         "policy.trusted_classifier_corpus": {"kind": "cmd", "cwd": str(trusted), "cmd": [sys.executable, "test_change_map.py"], "trusted_pythonpath": str(trusted),
             "purpose": "the classifier that decides which jobs run is proven on its own guilt+innocence corpus, from the BASE ref (candidate cannot self-approve)"},
-        "policy.change_map": {"kind": "record", "status": "PASS" if cm.get("mode") == "enforcing" and cm.get("reason") == "classified" else "FAIL",
+        "policy.change_map": {"kind": "record", "status": change_map_status(cm),
             "reason": f"trusted change_map: reason={cm.get('reason')} run_all={cm.get('run_all')} suggested={cm.get('suggested_jobs')}", "data": cm},
         "tests.scripts_impacted": ({"kind": "pytest", "cwd": str(wt), "modules": pure, "python": venv_py,
             "purpose": "impacted backstage tests, blocking locally (GitHub runs scripts/tests only as a report-only sweep)"} if pure else

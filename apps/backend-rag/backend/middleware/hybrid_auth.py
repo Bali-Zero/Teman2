@@ -29,6 +29,7 @@ from backend.app.core.config import settings
 from backend.app.services.api_key_auth import APIKeyAuth
 from backend.app.utils.cookie_auth import get_jwt_from_cookie, is_csrf_exempt, validate_csrf
 from backend.app.utils.logging_utils import sanitize_log_path
+from backend.app.utils.service_accounts import CLIENT_ROLES, EXTERNAL_ROLES, normalize_role
 from backend.services.pii.violation_store import hash_subject
 from backend.services.security.token_revocation import (
     RevocationStoreUnavailable,
@@ -145,6 +146,45 @@ def contract_401_envelope(path: str) -> tuple[dict[str, Any], dict[str, str]] | 
         if any(path_matches_template(path, template) for template in templates):
             return dict(envelope), dict(headers)
     return None
+
+
+#: Roles held by client-portal accounts and external partners. Their JWTs are
+#: signed with the same secret as staff tokens, so authentication alone does
+#: not tell them apart from a colleague; this boundary does, by role.
+_PORTAL_ROLES = CLIENT_ROLES | EXTERNAL_ROLES
+
+#: The staff CRM and admin APIs, matched by whole path segment.
+_STAFF_API_PREFIXES: tuple[str, ...] = ("/api/crm", "/api/admin")
+
+#: The one staff-API operation the client portal calls (the process page's
+#: document upload), open to client roles only. Its handler decides ownership
+#: of the practice itself.
+_PORTAL_STAFF_API_OPERATIONS: tuple[tuple[str, str], ...] = (
+    ("POST", "/api/crm/practices/{practice_id}/upload-client-document"),
+)
+
+ROLE_BOUNDARY_DETAIL = "This account type cannot access this resource"
+
+
+def role_boundary_refuses(method: str, path: str, role: str | None) -> bool:
+    """True when a portal-role caller asks for a staff CRM/admin route.
+
+    A deny-list by role, not an allow-list: machine callers (`internal`, API
+    keys, `monitoring`) and staff are untouched, and a token without a role is
+    exactly as privileged as it was before this check existed.
+    """
+    normalized = normalize_role(role)
+    if normalized not in _PORTAL_ROLES:
+        return False
+    if not any(path == prefix or path.startswith(f"{prefix}/") for prefix in _STAFF_API_PREFIXES):
+        return False
+    return not (
+        normalized in CLIENT_ROLES
+        and any(
+            method == allowed_method and path_matches_template(path, template)
+            for allowed_method, template in _PORTAL_STAFF_API_OPERATIONS
+        )
+    )
 
 
 def _get_correlation_id(request: Request) -> str:
@@ -435,6 +475,21 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
             request.state.user = auth_result
             request.state.auth_type = auth_result.get("auth_method", "unknown")
+
+            if role_boundary_refuses(request.method, request.url.path, auth_result.get("role")):
+                logger.info(
+                    "Role boundary refused %s %s for role=%s",
+                    request.method,
+                    log_path,
+                    normalize_role(auth_result.get("role")),
+                )
+                from fastapi.responses import JSONResponse
+
+                return JSONResponse(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    content={"detail": ROLE_BOUNDARY_DETAIL},
+                    headers=self._cors_headers_for_request(request),
+                )
 
         # Step 3: Process the request. HTTPException is caught here and
         # converted to a JSONResponse so middleware unit tests that bypass

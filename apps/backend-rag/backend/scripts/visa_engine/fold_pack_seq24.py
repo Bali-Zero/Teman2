@@ -1,5 +1,7 @@
 """fold_pack_seq24.py — seq-24, a retiree without a confirmed sponsor becomes an
-E33F candidate. CANDIDATE ONLY: this fold is never signed or activated by itself.
+E33F candidate. This fold never signs or activates anything by itself; its
+output was signed as ``rulepack-prod-024.signed.json`` on 2026-09-27 (see
+"SIGNED" below).
 
 WHAT THIS FOLD IS
 ==================
@@ -40,6 +42,16 @@ trust store exactly as every prior fold verifies its own anchor
 constant alone.
 
     previous_payload_sha256 = e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204
+
+SIGNED (2026-09-27)
+====================
+``rulepack-prod-024.source.json`` was signed OFFLINE on M5 as
+``rulepack-prod-024.signed.json`` (kid ``prod-2026-07-1``, ``signed_at``
+2026-09-27T01:31:02Z), payload_sha256 =
+5a569091f84a858f1957cdf96086ee7212f67d13a8225d64492a7212093cd272 — byte-identical
+to this fold's output under JCS. Signed, NOT activated: the runtime stays on the
+DB-active pack until a separate activation. The signed-bundle ties and the
+signature check live in ``test_seq24_pack.py::TestSignedBundleTiesToSource``.
 
 ROLLBACK is seq-25, a new pack whose ``rollback_of_payload_sha256`` names this
 one — never a rewrite of seq-24.

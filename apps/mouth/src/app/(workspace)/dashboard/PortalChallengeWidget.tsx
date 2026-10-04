@@ -403,7 +403,7 @@ function MyPositionCard({
             Hadiah sementara
           </span>
           <span className="text-[13px] font-bold text-[var(--bz-copper-text)]">
-            {formatIDR(me.total_prize_idr)}
+            {me.playoff_pending ? PLAYOFF_LABEL : formatIDR(me.total_prize_idr)}
           </span>
         </div>
       </div>
@@ -485,6 +485,9 @@ const RANK_MIN_POINTS: Record<number, number> = {
   5: 20,
 };
 
+// Shown instead of a prize amount while a tie on a prize slot awaits its play-off.
+const PLAYOFF_LABEL = "Play-off";
+
 function RankPrizeRow({
   rank,
   prizeIdr,
@@ -524,7 +527,9 @@ function RankPrizeRow({
           className="text-[13px] font-black tabular-nums text-[var(--tx-pure)]"
           style={SERIF}
         >
-          {formatIDR(prizeIdr)}
+          {holders.some((h) => h.playoff_pending)
+            ? PLAYOFF_LABEL
+            : formatIDR(prizeIdr)}
         </p>
         {(minPoints ?? RANK_MIN_POINTS[rank]) != null && (
           <p className="text-[11px] tabular-nums text-[var(--tx-secondary)]">
@@ -1058,7 +1063,7 @@ function RulesDrawer({ data }: { data: PortalChallengeResponse }) {
         aria-haspopup="dialog"
         className={cn(
           FOCUS,
-          "inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-kita-ink-panel-copper)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--bz-kita-ink-panel-copper)] hover:bg-[var(--bz-kita-ink-panel-copper)]/10 transition-colors",
+          "inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-kita-ink-panel-copper)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--bz-kita-ink-panel-copper)] hover:bg-[var(--bz-kita-ink-panel-copper)]/10 transition-colors",
         )}
       >
         <Info size={12} aria-hidden="true" />
@@ -1183,6 +1188,11 @@ function RulesDrawer({ data }: { data: PortalChallengeResponse }) {
                     dengan peringkat Septembernya.
                   </li>
                   <li>Tidak ada bonus Tax baru di ronde ini.</li>
+                  <li>
+                    Nilai sama pada posisi berhadiah tidak membagi hadiah:
+                    pemain yang seri bertanding di play-off, dan hadiah untuk
+                    pemenangnya. Aturan play-off diumumkan kemudian.
+                  </li>
                   <li>
                     «Lascia o raddoppia» adalah{" "}
                     <span className="text-[var(--tx-pure)] font-semibold">

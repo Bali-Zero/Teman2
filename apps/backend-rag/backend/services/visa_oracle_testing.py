@@ -15,8 +15,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 CAMPAIGN_ID = "oracle-team-20260928"
 PLAN_VERSION = "1"
 SLOTS = tuple(f"T{i:02d}" for i in range(1, 7))
-# Owner reschedule 2026-09-30: three mornings from 30 September, themes of days 1–3.
-DAYS = tuple((date(2026, 9, 30) + timedelta(days=i)).isoformat() for i in range(3))
+# Owner reschedule 2026-10-02: no tester run on 30 Sep–2 Oct, so the themes of
+# days 1–3 run on three consecutive days from Monday 5 October.
+DAYS = ("2026-10-05", "2026-10-06", "2026-10-07")
 COUNTRIES = ("IT", "AU", "US", "GB", "DE", "FR")
 
 

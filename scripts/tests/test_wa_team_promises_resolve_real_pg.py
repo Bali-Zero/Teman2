@@ -95,6 +95,12 @@ CREATE TABLE team_members (email TEXT PRIMARY KEY, name TEXT);
 """
 
 
+@pytest.fixture(autouse=True)
+def _no_stored_audit(tmp_path, monkeypatch):
+    # the digest quotes a stored precision when one exists; these cases are about the base line
+    monkeypatch.setattr(wtp, "_AUDIT_STATE_FILE", tmp_path / "audit.json")
+
+
 async def _setup(pool) -> None:
     await run_init_schema(pool)
     async with pool.acquire() as conn:

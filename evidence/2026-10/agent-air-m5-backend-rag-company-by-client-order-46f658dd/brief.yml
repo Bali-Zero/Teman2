@@ -1,0 +1,29 @@
+task_id: company-by-client-order
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  GET /api/crm/companies/by-client/{client_id} (company_router.get_client_companies_early, served
+  by the api process because the light router is mounted before the RAG proxy catch-all) had no
+  ORDER BY. The kita Company tab picks the link flagged is_primary and, when none is primary,
+  falls back to the first row returned, which was heap order. Order primary first, then by link
+  id. is_primary is nullable (BOOLEAN DEFAULT FALSE) and Postgres sorts NULL first under DESC, so
+  NULL is folded to FALSE.
+constraints:
+  - "One line of SQL plus one real-Postgres test module; no schema change, no migration, no response-shape change."
+  - "The access check on the same route is a separate concern (PR-2), not in this diff."
+acceptance:
+  - text: "WHEN a client's links are stored with the primary link last in the heap, THEN the endpoint returns the primary first and the rest in link-id order."
+    probe: "test_primary_link_comes_first_even_when_inserted_last"
+  - text: "WHEN no link is primary and the oldest link was rewritten to the heap end, THEN the endpoint still returns links in link-id order."
+    probe: "test_without_a_primary_links_come_back_in_link_id_order"
+  - text: "WHEN a client has a single link, THEN it is returned unchanged."
+    probe: "test_single_link_is_returned_unchanged"
+consumer_map:
+  - "kita Company tab (apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx) via api.crm.getClientCompanies -> /api/crm/companies/by-client/{id}."
+risks:
+  - "A NULL is_primary row sorting ahead of the primary: covered by the NULL row in the first test; the twin-style `is_primary DESC` mutation goes red."
+  - "Gear declared 2 above the computed floor of 1: the merge of apps/backend-rag/** is a PROD deploy, so the commissioned gate stays merge-blocking."
+grader: |
+  Codex spalla (read-only, env-scrubbed) on the diff, plus executed red/green/mutation receipts on a
+  throwaway local Postgres 17. The final on-disk gate is commissioned by the team lead.

@@ -1,0 +1,46 @@
+task: >-
+  T3 P2 PR-C precision audit: the resolver marks promises kept from later thread evidence, but how
+  often that evidence really fulfils the promise is unmeasured. Add `--audit-resolution [--sample N]`:
+  a random sample of resolved promises, per kind, judged by the local Ollama model; counts only,
+  nothing written to team_promises; last counts stored int-only on Pro and quoted by the resolution
+  digest as `precision media_sent X/N`; a weekly cron wrapper; plus the #7688 C3 fixture edits.
+lane: wa-team/t3-pr-c-precision-1001
+machine: M5
+date: "2026-10-01"
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 (harness floor recompute): the diff edits
+  `.github/workflows/wa-team-promises-tests.yml` (path filter + floors). The data stays on Pro: the
+  model call is guarded to the local Ollama host. A cross-family council (codex-gpt-5.6-sol,
+  kimi-code/k3) reviewed the diff after the gate's delta pass; its findings are fixed in 4f043d4fb2.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    A non-local Ollama host is refused (rc 2, before any DB connection or model call); a sample
+    outside 1-100 is refused; sampling runs in a read-only transaction and team_promises is
+    byte-identical after a run; invalid model output is counted invalid, never plausible.
+    probe: "scripts/tests/test_wa_team_promises_audit*.py (unit 95 passed; real-PG 21 passed)"
+  A2: >-
+    The stored counts are int-only, ignored when stale or malformed, and the digest line carries
+    `precision media_sent X/N` only when a valid media verdict exists.
+    probe: "test_state_roundtrip_is_int_only, test_a_malformed_state_is_ignored_not_trusted, test_the_digest_carries_the_stored_precision_and_stays_int_only"
+  A3: >-
+    Mutants M23 and M24 of #7688 are killed by the folded fixture edits.
+    probe: "link real-PG suite red under each mutant (1 and 2 failures), green on the head"
+
+out_of_scope: >-
+  Any change to resolver rules from the measured precision (decided after the conductor's run); any
+  write on Pro; the crontab install; Telegram delivery (the bot token is dead, owner action).
+
+assumptions:
+  - text: >-
+      The audit samples up to N per kind (not N overall): media_sent is 75 on Pro and team_confirmed 3,
+      so a shared cap would starve the small kind.
+    status: verified
+  - text: "Ollama on Pro serves qwen3.5:9b at 127.0.0.1:11434, the same endpoint the judge uses."
+    status: verified

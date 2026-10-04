@@ -1,0 +1,2 @@
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-10-02T10:27:18Z", "verdict": "NO-GO", "findings": 7, "reviewed_head": "74a4af8df6", "invocation": "kimi -p <packet> -m kimi-code/k3, env -i"}
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-10-02T10:30:16Z", "verdict": "NO-GO", "findings": 3, "reviewed_head": "74a4af8df6", "invocation": "codex exec --sandbox read-only -c model_reasoning_effort=xhigh (account default model), env -i"}

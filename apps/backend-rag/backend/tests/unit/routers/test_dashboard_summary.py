@@ -851,6 +851,7 @@ class TestPortalChallengeEndpoint:
         assert by_member["surya"]["prize_slot"] is None
         assert by_member["surya"]["september_rank"] == 1
         assert by_member["adit"]["september_rank"] is None
+        assert all(e["playoff_pending"] is False for e in by_member.values())
 
         # Zero's 2026-09-29 ruling: only the six September players are ranked.
         assert member_names == {"surya", "ari.firda", "krisna", "adit", "vino", "damar"}

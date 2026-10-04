@@ -12,6 +12,7 @@ import {
   Notice,
   StatePill,
 } from "@/components/workspace/r19";
+import { baliDate } from "@/app/(workspace)/dashboard/VisaOracleTestingBanner";
 import { testingApi } from "./api";
 import type {
   Assignment,
@@ -203,6 +204,17 @@ function dayLabel(day: string) {
     timeZone: "UTC",
   }).format(new Date(`${day}T12:00:00Z`));
 }
+/** Opens on today's Bali date when it has cases (the campaign days are not
+ * consecutive), otherwise on the first campaign day. */
+export function initialDay(
+  data: Pick<CampaignData, "campaign"> & { assignments: { day: string }[] },
+  today: string,
+): string {
+  return data.assignments.some((a) => a.day === today)
+    ? today
+    : data.campaign.start_date;
+}
+
 // Self-review (2026-09-30): a tester only reviews their OWN submitted runs. The
 // admin (no assigned slot) keeps the full cross-slot queue for auditing.
 function ownReview(a: Assignment, viewerSlot: string | null) {
@@ -222,7 +234,9 @@ export default function OracleTestingPage() {
     try {
       const response = await testingApi.load();
       setData(response);
-      setDay((current) => current || response.campaign.start_date);
+      setDay(
+        (current) => current || initialDay(response, baliDate(new Date())),
+      );
     } catch {
       setData(null);
       setFailed(true);
@@ -302,7 +316,7 @@ export default function OracleTestingPage() {
       <Masthead
         eyebrow="Riset internal · Visa Oracle"
         title="Pengujian tim"
-        sub="30 September–2 Oktober 2026 · Lima kasus per hari, 15 per orang. Catat apa yang benar-benar terjadi; hasil terhalang tetap berguna."
+        sub="5–7 Oktober 2026 · Lima kasus per hari, 15 per orang. Catat apa yang benar-benar terjadi; hasil terhalang tetap berguna."
         actions={
           <Link className={BUTTON} href="/intelligence/visa-oracle">
             Kembali

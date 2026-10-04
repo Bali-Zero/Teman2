@@ -95,37 +95,58 @@ fi
 removed_count=0
 freed_bytes=0
 traversed=0
+refused=0
+NL='
+'
+# Every deletion target is re-validated HERE, whatever enumerated it: the line-based `ls -t`
+# readers below split a name carrying a newline into fragments that resolve against the
+# CALLER's cwd (janitor council, codex N1). A refused target is kept, counted and fails the run.
+target_ok() { # $1 path  $2 f|d
+  case "$1" in *"$NL"*) log "  REFUSE (newline in name) $(tag "$1")"; refused=$((refused+1)); return 1 ;; esac
+  case "$1" in "$BACKUP_ROOT"/*) : ;; *) log "  REFUSE (outside root) $(tag "$1")"; refused=$((refused+1)); return 1 ;; esac
+  case "${1#"$BACKUP_ROOT"/}" in ''|.|..|*/*) log "  REFUSE (not a direct child) $(tag "$1")"; refused=$((refused+1)); return 1 ;; esac
+  if [ -L "$1" ]; then log "  REFUSE (symlink) $(tag "$1")"; refused=$((refused+1)); return 1; fi
+  if [ "$2" = f ] && [ ! -f "$1" ]; then log "  REFUSE (not a regular file) $(tag "$1")"; refused=$((refused+1)); return 1; fi
+  if [ "$2" = d ] && [ ! -d "$1" ]; then log "  REFUSE (not a directory) $(tag "$1")"; refused=$((refused+1)); return 1; fi
+  return 0
+}
 
-fsize()     { stat -f '%z' "$1" 2>/dev/null || stat -c '%s' "$1" 2>/dev/null || echo 0; }
-# `|| true` neutralises a find/stat TOCTOU (a file vanishing mid-scan makes find
-# exit non-zero → pipefail → set -e would abort AFTER deletes, defeating the guard).
-dir_bytes() { { find "$1" -type f -exec stat -f '%z' {} + 2>/dev/null || true; } | awk '{s+=$1} END{print s+0}'; }
+# Size via BSD `stat -f` first, GNU `stat -c` second — and ONLY a purely numeric answer is
+# accepted: on GNU, `stat -f '%z'` succeeds and prints filesystem text (codex N5).
+fsize() { local s; s=$(stat -f '%z' "$1" 2>/dev/null); case "$s" in ''|*[!0-9]*) s=$(stat -c '%s' "$1" 2>/dev/null) ;; esac
+          case "$s" in ''|*[!0-9]*) s=0 ;; esac; printf '%s' "$s"; }
+# `|| true` neutralises a find TOCTOU (a file vanishing mid-scan makes find exit non-zero →
+# pipefail → set -e would abort AFTER deletes, defeating the guard).
+dir_bytes() { { find "$1" -type f -print0 2>/dev/null || true; } | { local t=0 f; while IFS= read -r -d '' f; do t=$((t + $(fsize "$f"))); done; printf '%s' "$t"; }; }
+# Output boundary (janitor council, codex N4): this log never carries a candidate's name —
+# entries are logged as a 12-hex sha256 of the root-relative path.
+tag() { printf '%s' "${1#"$BACKUP_ROOT"/}" | { shasum -a 256 2>/dev/null || sha256sum; } | cut -c1-12; }
 
 remove_file() {
-  f="$1"; why="$2"; b=$(fsize "$f")
+  f="$1"; why="$2"; target_ok "$f" f || return 0; b=$(fsize "$f")
   if $APPLY; then
     if rm -f "$f"; then
-      log "  REMOVED [$why] $(basename "$f") (${b}B)"; removed_count=$((removed_count+1)); freed_bytes=$((freed_bytes+b))
+      log "  REMOVED [$why] $(tag "$f") (${b}B)"; removed_count=$((removed_count+1)); freed_bytes=$((freed_bytes+b))
     else
-      log "  WARN could not remove $f"
+      log "  WARN could not remove $(tag "$f")"
     fi
   else
-    log "  WOULD-REMOVE [$why] $(basename "$f") (${b}B)"; removed_count=$((removed_count+1)); freed_bytes=$((freed_bytes+b))
+    log "  WOULD-REMOVE [$why] $(tag "$f") (${b}B)"; removed_count=$((removed_count+1)); freed_bytes=$((freed_bytes+b))
   fi
 }
 
 remove_dir() {
-  d="$1"; why="$2"; b=$(dir_bytes "$d")
+  d="$1"; why="$2"; target_ok "$d" d || return 0; b=$(dir_bytes "$d")
   if $APPLY; then
     # scope-safe recursive clear (never `rm -rf ~`): empty contents then rmdir
     find "$d" -mindepth 1 -delete 2>/dev/null || true
     if rmdir "$d" 2>/dev/null; then
-      log "  REMOVED-DIR [$why] $(basename "$d")/ (${b}B)"; removed_count=$((removed_count+1)); freed_bytes=$((freed_bytes+b))
+      log "  REMOVED-DIR [$why] $(tag "$d")/ (${b}B)"; removed_count=$((removed_count+1)); freed_bytes=$((freed_bytes+b))
     else
-      log "  WARN could not rmdir $d"
+      log "  WARN could not rmdir $(tag "$d")"
     fi
   else
-    log "  WOULD-REMOVE-DIR [$why] $(basename "$d")/ (${b}B)"; removed_count=$((removed_count+1)); freed_bytes=$((freed_bytes+b))
+    log "  WOULD-REMOVE-DIR [$why] $(tag "$d")/ (${b}B)"; removed_count=$((removed_count+1)); freed_bytes=$((freed_bytes+b))
   fi
 }
 
@@ -139,6 +160,15 @@ while IFS= read -r d; do
 done < <(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
               -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]' \
               -mtime +"$ORPHAN_DIR_KEEP_DAYS" 2>/dev/null | sort)
+
+# The two backstops below order candidates with `ls -t`, which is line-based: ONE entry whose
+# name carries a newline would be read as several — fragments that can collide with a real
+# sibling inside the root or resolve outside it (codex N1/N3). Neither producer can emit such
+# a name, so its presence is an anomaly: both backstops are refused, loudly, and the run fails.
+if [ -n "$(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -name "*${NL}*" -print 2>/dev/null | head -c 1)" ]; then
+  log "  REFUSE (newline-named entry in root — line-based backstops unsafe) $(tag "$BACKUP_ROOT")"; refused=$((refused+1))
+  KEEP_TARGZ=999999999; KEEP_SNAP_PER_COLL=999999999   # nothing below can qualify
+fi
 
 # ── 2) BACKSTOP: qdrant-*.tar.gz keep newest KEEP_TARGZ (mirrors producer) ────
 targz=()
@@ -163,7 +193,7 @@ if [ "${#colls[@]}" -gt 0 ]; then
     if [ "${#snaps[@]}" -gt "$KEEP_SNAP_PER_COLL" ]; then
       idx=0
       for f in "${snaps[@]}"; do
-        if [ "$idx" -ge "$KEEP_SNAP_PER_COLL" ]; then traversed=$((traversed+1)); remove_file "$f" "snapshot backstop keep-$KEEP_SNAP_PER_COLL/coll[$coll]"; fi
+        if [ "$idx" -ge "$KEEP_SNAP_PER_COLL" ]; then traversed=$((traversed+1)); remove_file "$f" "snapshot backstop keep-$KEEP_SNAP_PER_COLL/coll[$(tag "$BACKUP_ROOT/$coll")]"; fi
         idx=$((idx+1))
       done
     fi
@@ -183,4 +213,5 @@ fi
 freed_gb=$(awk -v b="$freed_bytes" 'BEGIN{printf "%.2f", b/1073741824}')
 verb="would-free"; $APPLY && verb="freed"
 log "=== COMPLETE ($MODE): $removed_count candidate(s), $verb ${freed_gb}G — footprint now ${total_gb}G${cap_hit} ==="
+[ "$refused" -eq 0 ] || { log "=== $refused target(s) REFUSED by the root guard — exit 1 ==="; exit 1; }
 exit 0

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: d7320bec8364db68ffb26c1e9f0252a2ffe9f297bf5a28ce55cc1a1ca4bcccac # pragma: allowlist secret
+checksum: 138185f5345454f0722d161602684d8f10efafd1d3152f2797ac3afd31facb3b # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3139,5 +3139,30 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.s7_yield_weekly.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.disk_janitor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 172800  # 2x this organ's own 86400s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale
+  owner_module: infra/launchagents/wrappers/pro-disk-janitor.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.disk-janitor
+  severity_on_silence: warning
+  notes: 'Daily bounded disk janitor on Pro (born via organ_birth.py 2026-09-29): wrapper
+    runs scripts/disk_janitor.sh --apply, which prunes only machine-generated
+    accumulators (session scratch >7d not live, codex transcripts >14d, ~/logs/archive
+    >60d, uv/docker dangling, brew leftovers) and delegates ~/backups/qdrant-snapshots
+    to qdrant_backup_retention.sh. Never a target: OSINT-Nexus, wa-mirror-media,
+    fly-postgres dumps, PII quarantine, .nuzantara-pilots, .worktrees, .ollama, .colima,
+    huggingface, .claude/backups. Receipts ~/logs/disk-janitor.receipts.jsonl. Kill
+    switch PRO_DISK_JANITOR_ENABLED=false (wrapper) / DISK_JANITOR_ENABLED=false (payload).'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.disk_janitor.json
     timestamp_field: ts
     status_field: status

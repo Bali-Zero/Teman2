@@ -1,4 +1,4 @@
-# localci — local CI runner and inert release stub (v0.3.0)
+# localci — local CI runner and inert release stub (v0.3.1)
 
 A durable coordinator that runs checks against a frozen candidate and refuses to call anything green on
 missing evidence. It is a **non-required, single-host** gate: it does not replace GitHub branch protection.
@@ -16,6 +16,8 @@ missing evidence. It is a **non-required, single-host** gate: it does not replac
 `plan` runs `policy.paid_anthropic_ban` by default: `scripts/tests/test_ban_predicates.py` is extracted from the
 BASE ref and executed against the candidate tree (`trusted_pytest`; no candidate `conftest`/ini is honoured).
 Trusted checks (classifier, `cmd`, `trusted_pytest`) run `python -I` (ignores user site) with `PYTHONPATH`/`PYTHONSTARTUP`/`PYTHONHOME` removed and `PYTHONSAFEPATH=1`, so a candidate `sitecustomize.py` cannot execute inside them; candidate tests (`pytest` kind) are not trusted checks.
+`policy.change_map` mirrors GitHub's `changes` job (v0.3.1): `classified`, `unclassified_paths` and `empty_changed_set` are PASS
+there (the last two run every job, which the BLOCKED `tests.*` records carry); any other classifier output is BLOCKED, never FAIL.
 `plan.json` is re-hashed against its `plan_hash` on every `run`/`review`/`status`; an edited plan aborts. A `cmd` check with a
 `trusted_pythonpath` carries the sha256 map of that directory and refuses to run when a file was rewritten, added or removed.
 

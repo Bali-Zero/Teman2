@@ -235,6 +235,7 @@ async def get_client_companies_early(
             FROM client_company_links ccl
             JOIN companies c ON ccl.company_id = c.id
             WHERE ccl.client_id = $1
+            ORDER BY COALESCE(ccl.is_primary, FALSE) DESC, ccl.id
             """,
             client_id,
         )

@@ -1,0 +1,197 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  Diff is wrapper/test/workflow code only; fixtures are synthetic (git
+  identity t@example.invalid, a one-line fake prompt). No client data, no
+  credential; the review packet was grep-checked for token shapes (0 hits)
+  and dispatched with env -i so no session secret reached either vendor.
+council_run: journal.jsonl
+plan_ref: >-
+  team-lead mandate 2026-10-02 (~18:10 WITA, Dux BLUE, Gear 3 by floor):
+  carry Mini's unpushed soft cure 43f37f4651, judge it, add the hard half if
+  small and in-perimeter, wire tests, diagnose the 2026-10-02 greeting run,
+  push/PR/arm; the gate is commissioned by the level above.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  Provenance, disclosed because it is not a lane of THIS mission: commit
+  8b35a7e6a1 is the unpushed Mini healer commit 43f37f4651 (its trailer
+  names a Sonnet 5 seat), fetched read-only with format-patch and applied
+  with git am; this mission's single build lane judged it, reworded its
+  sentence and adopted it. The gate may rule otherwise; if it counts that
+  commit as a second build lane, D3 seat-diversity has zero non-Anthropic
+  builders and fails.
+  4 files, 3 commits on origin/main 370ab29aae (8b35a7e6a1 carried from
+  Mini, 74a4af8df6 hard guard, 7284e6730e review fixes).
+  - infra/launchagents/wrappers/cron-agent.sh: anti-git sentence appended to
+    the agent-tier prompt (commit 1, Mini 43f37f4651 carried via git am),
+    reworded to name the checkout; checkout_state() + before/after guard in
+    run_agent(), exit 3 on mutation (commit 2); HEAD-reflog check, guard-OFF
+    log line, integer check, neutral alert wording (commit 3).
+  - scripts/tests/test_cron_agent_no_git_commit_prompt.sh (new, commit 1).
+  - scripts/tests/test_cron_agent_checkout_guard.sh (new, commit 2).
+  - .github/workflows/immune-enforcement.yml: new step running both corpora
+    + both paths in the sentinel list (commit 2).
+
+proof: |
+  Deterministic floor 3 (source: path). Red-then-green for both new corpora;
+  every pre-existing cron-agent corpus green; trigger-symmetry pin green;
+  bash -n and shellcheck (no new warnings). Two cross-family titolare
+  reviews (Kimi K3 NO-GO/7, Codex GPT-5.6 NO-GO/3), scrubbed-env dispatch
+  (env -i), both on 74a4af8df6; every CONFIRMED finding fixed in
+  7284e6730e with its own red-then-green, dispositions below. The final
+  HEAD was not re-reviewed by the seats: the gate is commissioned by the
+  level above on the final sha.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      HIGH: "<branch> <ahead>" misses mutations: commit then push moves
+      origin/main with HEAD (both snapshots main 0); amending an already-ahead
+      commit leaves the count unchanged; a concurrent fetch can hide a new
+      commit behind an old one discovered upstream.
+    status: CONFIRMED
+    resolution: >-
+      Fixed in 7284e6730e: checkout_state() also records HEAD's reflog length
+      and any new entry that is not ": Fast-forward" (the sync cron's only
+      HEAD move, `git merge --ff-only`, scripts/pro/pro-git-pull.sh L466) is
+      a mutation; commit, amend, reset and checkout entries all qualify.
+      Guilt cases "commit+push" and "commit+reset away" RED on 74a4af8df6
+      (rc 0), GREEN after.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      HIGH: the test inherits GIT_DIR/GIT_WORK_TREE (e.g. from a git hook),
+      which override `git -C <sandbox>`; fresh_checkout could commit into and
+      rewrite refs of the real checkout.
+    status: CONFIRMED
+    resolution: >-
+      Fixed in 7284e6730e: the test unsets GIT_DIR, GIT_WORK_TREE,
+      GIT_INDEX_FILE, GIT_OBJECT_DIRECTORY, GIT_COMMON_DIR,
+      GIT_ALTERNATE_OBJECT_DIRECTORIES, GIT_NAMESPACE, GIT_PREFIX. Measured
+      with GIT_DIR pointing at a decoy repo: unhardened copy took the decoy
+      from 1 to 12 commits; hardened test left it at 1.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MED: concurrent human activity during the run is attributed to the
+      agent; the snapshots establish a change, not its author.
+    status: CONFIRMED
+    resolution: >-
+      Alert/log wording changed to "H24 checkout mutated during the agent
+      run". The exit 3 stays by design: the H24 checkout is read-only for
+      every actor except the ff-only sync cron (Agent Worktree Discipline),
+      so any other HEAD move in the window is the disease being guarded,
+      whoever made it, and must page.
+  - seat: kimi-code/k3
+    objection: >-
+      HIGH x2: commit+push and net-zero mutations (commit+reset, update-ref,
+      amend, tag, stash) leave the 2-tuple identical.
+    status: CONFIRMED
+    resolution: >-
+      Same reflog fix as Codex #1 covers commit+push, commit+reset, amend and
+      update-ref of HEAD (reflog entry). Tag and stash do not move HEAD and do
+      not diverge the checkout from origin/main, which is the failure that
+      jammed the sync; out of this guard's scope by design.
+  - seat: kimi-code/k3
+    objection: >-
+      MED: concurrent actors produce a false GIT-MUTATION blaming the agent.
+    status: CONFIRMED
+    resolution: "Same disposition as the third Codex finding: wording fixed, exit 3 kept by design."
+  - seat: kimi-code/k3
+    objection: >-
+      MED: guard silently inert when the before-snapshot is empty (missing
+      checkout, missing origin/main, wrong HOME).
+    status: CONFIRMED
+    resolution: >-
+      Fixed in 7284e6730e: logs "checkout guard OFF for this run: <dir> has no
+      measurable HEAD vs origin/main"; pinned by the no-checkout innocence case
+      (RED on 74a4af8df6, GREEN after).
+  - seat: kimi-code/k3
+    objection: >-
+      MED: early return/exit paths between the two snapshots would skip the
+      verdict.
+    status: RETRACTED
+    resolution: >-
+      Measured: between `checkout_before=` and the verdict block run_agent()
+      has no return or exit, only `continue`/`break` inside the seat loop
+      (awk over the range: the only matches are comments). An external
+      SIGKILL of the wrapper cannot be guarded from inside it.
+  - seat: kimi-code/k3
+    objection: >-
+      LOW: fake claude joins argv with $*; `${override:+...}` unquoted;
+      arithmetic on a possibly non-integer count.
+    status: PLAUSIBLE
+    resolution: >-
+      The override expansion was already quoted at review head
+      (`${override:+"CRON_AGENT_CHECKOUT_DIR=$override"}`); the $* fake is the
+      soft test's argv-content probe, where joining is the intent. Integer
+      check `[[ "$ahead" =~ ^[0-9]+$ ]]` added in 7284e6730e.
+
+receipts:
+  - claim: "deterministic Gear floor is 3, sourced from PATH"
+    cmd: "python3 scripts/evidence_pack_lint.py --changed-files-file <changed> --numstat-file <numstat> --print-floor / --print-floor-source"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-10-02T10:23:30Z"
+    seat: claude-opus-5-5
+  - claim: "soft-guard corpus is RED on origin/main's wrapper and GREEN on the cure"
+    cmd: "bash scripts/tests/test_cron_agent_no_git_commit_prompt.sh (copy beside origin/main wrapper, then in worktree)"
+    result: "origin/main: 2 FAIL -> FAIL; branch: 2 ok -> PASS"
+    exit: 0
+    ts: "2026-10-02T10:19:00Z"
+    seat: claude-opus-5-5
+  - claim: "hard-guard corpus is RED on the soft-only wrapper and GREEN with the guard"
+    cmd: "bash scripts/tests/test_cron_agent_checkout_guard.sh (copy beside HEAD~1 wrapper, then in worktree)"
+    result: "soft-only: 3 guilt FAIL (rc 0/1/0), 3 innocence ok -> FAIL; guarded: 6 ok -> PASS"
+    exit: 0
+    ts: "2026-10-02T10:20:35Z"
+    seat: claude-opus-5-5
+  - claim: "pre-existing cron-agent corpora stay green"
+    cmd: "bash scripts/tests/test_cron_agent_{oauth_cascade,alert_verdict,context_diet,fingerprint_map}.sh; test_nb_agents_cause_escapes.sh"
+    result: "PASS (13 checks); PASS (all checks); PASS; PASS; 11 passed 0 failed"
+    exit: 0
+    ts: "2026-10-02T10:21:30Z"
+    seat: claude-opus-5-5
+  - claim: "claude_seat_helper corpus is green; its red with session OAuth vars set is environmental and identical on pristine origin/main"
+    cmd: "bash -c 'env -u CLAUDE_CODE_OAUTH_TOKEN_{1..6} bash scripts/tests/test_claude_seat_helper.sh'"
+    result: "PASS (all checks); with vars set: FAIL (3) on both branch and pristine origin/main"
+    exit: 0
+    ts: "2026-10-02T10:22:30Z"
+    seat: claude-opus-5-5
+  - claim: "immune-enforcement trigger symmetry + related pytest stay green"
+    cmd: "pytest -q scripts/tests/test_immune_enforcement_trigger_symmetry.py scripts/tests/test_self_repair_system_doctor_cron_agent.py scripts/tests/test_home_fork_bak_shadows.py"
+    result: "51 passed"
+    exit: 0
+    ts: "2026-10-02T10:21:40Z"
+    seat: claude-opus-5-5
+  - claim: "syntax and lint"
+    cmd: "bash -n (wrapper + 2 tests); yaml.safe_load(immune-enforcement.yml); shellcheck -S warning (tests; wrapper vs origin/main)"
+    result: "BASH_N_OK; YAML_OK; tests 0 warnings; wrapper 4 -> 4 (no new)"
+    exit: 0
+    ts: "2026-10-02T10:22:50Z"
+    seat: claude-opus-5-5
+  - claim: "2026-10-02 09:00 greeting-only run received the full prompt"
+    cmd: "ssh pro: parse ~/.claude/projects/-Users-nuzantara/c62752e0-*.jsonl (user turn length, version, attachment sequence) vs the 2026-10-01 run"
+    result: "user turn 730 chars on both runs, CLI 2.1.285 on both; only delta: +mcp_instructions_delta (context7) on 10-02"
+    exit: 0
+    ts: "2026-10-02T10:14:30Z"
+    seat: claude-opus-5-5
+
+  - claim: "review fixes are red on the pre-review head and green after"
+    cmd: "test_cron_agent_checkout_guard.sh beside 74a4af8df6 wrapper; GIT_DIR=<decoy> run of unhardened vs hardened test"
+    result: "74a4af8df6: push/reset-away/guard-OFF 3 FAIL; 7284e6730e: 9 ok PASS; decoy repo 1->12 commits unhardened, 1->1 hardened"
+    exit: 0
+    ts: "2026-10-02T10:32:30Z"
+    seat: claude-opus-5-5
+
+spend:
+  adversarial_rounds: 1

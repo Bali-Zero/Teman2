@@ -422,14 +422,17 @@ def _log_gh_failure(op: str, result: "subprocess.CompletedProcess[str]") -> None
     log(f"  ❌ gh failure ({op}) rc={result.returncode}: {tail}")
 
 
-def _stage_commit(kind: str, gh_path: str, content_bytes: bytes, message: str) -> None:
+def _stage_commit(kind: str, gh_path: str, content_bytes: bytes, message: str, slug: str | None = None) -> None:
     """Queue a file write for the end-of-tick batch flush (see flush_*_batch)."""
-    _PENDING_COMMITS.append({
+    item = {
         "kind": kind,
         "gh_path": gh_path,
         "content_b64": base64.b64encode(content_bytes).decode("utf-8"),
         "message": message,
-    })
+    }
+    if slug:
+        item["slug"] = slug  # a layout write is replayed from its slug at flush
+    _PENDING_COMMITS.append(item)
 
 
 def _github_default_branch_sha() -> str | None:
@@ -448,8 +451,8 @@ def _github_default_branch_sha() -> str | None:
         return None
 
 
-def _create_bot_branch(branch: str) -> bool:
-    sha = _github_default_branch_sha()
+def _create_bot_branch(branch: str, sha: str | None = None) -> bool:
+    sha = sha or _github_default_branch_sha()
     if not sha:
         return False
     try:
@@ -503,7 +506,172 @@ def _commit_to_branch(gh_path: str, content_b64: str, message: str, branch: str)
         return False
 
 
-def _open_and_arm_pr(branch: str, title: str, body: str) -> bool:
+_ARM_STATE_QUERY = (
+    "query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n)"
+    "{headRefOid mergeable autoMergeRequest{enabledAt} mergeQueueEntry{state}}}}"
+)
+# Generated per-slug artifacts: any copy already on main means the slug is
+# served, so a twin riding an older PR is landed content, not a conflict.
+_MAIN_WINS_KINDS = {"image", "translation"}
+
+
+def _gh_json(args: list[str], op: str, timeout: int = 30):
+    """Run `gh <args>` and parse its JSON stdout; None (logged) on any failure."""
+    try:
+        result = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=timeout)
+    except Exception as e:
+        log(f"  ❌ gh error ({op}): {e}")
+        return None
+    if result.returncode != 0:
+        _log_gh_failure(op, result)
+        return None
+    try:
+        return json.loads(result.stdout)
+    except ValueError:
+        log(f"  ❌ gh answered non-JSON ({op}): {(result.stdout or '').strip()[-200:]}")
+        return None
+
+
+def _open_family_prs(branch_prefix: str) -> list[dict] | None:
+    """Open PRs whose head is a branch of this bot family, oldest first.
+
+    None means GitHub could not be read: a caller must not open a PR blind, or
+    the pile of conflicting siblings this guards against comes straight back.
+    """
+    prs = _gh_json(["pr", "list", "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}", "--state", "open",
+                    "--limit", "300", "--json", "number,url,headRefName,headRefOid"], "list open PRs")
+    if not isinstance(prs, list):
+        return None
+    family = [p for p in prs if p.get("headRefName", "").startswith(f"{branch_prefix}-")]
+    return sorted(family, key=lambda p: p["number"])
+
+
+def _pr_state(number: int) -> dict | None:
+    """{"armed", "queued", "head", "mergeable"} as GitHub reports them, None if unreadable.
+
+    With a merge queue on main autoMergeRequest and mergeQueueEntry are each
+    null in exactly the state the other is set: "armed" is read as their OR.
+    """
+    data = _gh_json(["api", "graphql", "-f", f"query={_ARM_STATE_QUERY}", "-f", f"o={GITHUB_OWNER}",
+                     "-f", f"r={GITHUB_REPO}", "-F", f"n={number}"], f"arm state #{number}")
+    try:
+        pr = data["data"]["repository"]["pullRequest"]
+        queued = pr["mergeQueueEntry"] is not None
+        return {"armed": queued or pr["autoMergeRequest"] is not None, "queued": queued,
+                "head": pr["headRefOid"], "mergeable": pr.get("mergeable")}
+    except (TypeError, KeyError):
+        return None
+
+
+def _blob_sha(gh_path: str, ref: str) -> str | None:
+    """Blob sha of `gh_path` at `ref`: "" when absent there, None when unknown."""
+    try:
+        result = subprocess.run(
+            ["gh", "api", "--method", "GET", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}",
+             "-f", f"ref={ref}", "--jq", ".sha"],
+            capture_output=True, text=True, timeout=15,
+        )
+    except Exception:
+        return None
+    if result.returncode == 0:
+        return result.stdout.strip() or None
+    return "" if "HTTP 404" in (result.stderr or "") else None
+
+
+def _carry_from_pr(pr: dict, kind: str, main_sha: str) -> tuple[list[dict], list[str]] | None:
+    """Re-stage what an older open PR of the family holds and main does not.
+
+    Returns (items, uncarried). A file main changed since the PR branched is
+    NOT carried — that PR then stays open, so superseding never drops content.
+    A path held by several PRs keeps the newest copy: a later generation of
+    the same per-slug artifact, made after the older one was staged.
+    The layout file travels as the slugs the PR promoted (see _rebuild_layout).
+    """
+    # Pinned to the head sha read at listing: a commit pushed after it is not
+    # carried, and _close_superseded then refuses to close the PR.
+    cmp = _gh_json(["api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/compare/{main_sha}...{pr['headRefOid']}"],
+                   f"compare #{pr['number']}", timeout=60)
+    try:
+        base, files = cmp["merge_base_commit"]["sha"], cmp["files"]
+    except (TypeError, KeyError):
+        return None
+    if len(files) >= 300:  # the compare API stops listing at 300 files
+        return [], ["<300+ files>"]
+    items, uncarried = [], []
+    for f in files:
+        path = f["filename"]
+        if kind == "layout" and path == HOMEPAGE_LAYOUT_PATH:
+            slugs = _promoted_slugs(pr["headRefOid"], base)
+            if slugs is None:
+                uncarried.append(path)
+            items += [{"kind": kind, "slug": s, "carried": True} for s in slugs or []]
+            continue
+        on_main = _blob_sha(path, main_sha)
+        if on_main == f.get("sha") or (kind in _MAIN_WINS_KINDS and on_main):
+            continue
+        if f.get("status") not in ("added", "modified") or on_main is None or on_main != _blob_sha(path, base):
+            uncarried.append(path)
+            continue
+        blob = _gh_json(["api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/blobs/{f['sha']}"],
+                        f"blob {path}", timeout=60)
+        if not isinstance(blob, dict) or "content" not in blob:
+            uncarried.append(path)
+            continue
+        items.append({"kind": kind, "gh_path": path, "content_b64": blob["content"].replace("\n", ""),
+                      "from_pr": pr["number"],
+                      "message": f"chore(bot): carry {path.rsplit('/', 1)[-1]} over from #{pr['number']}"})
+    return items, uncarried
+
+
+def _layout_at(ref: str) -> dict | None:
+    raw = _download_github_file(HOMEPAGE_LAYOUT_PATH, ref=ref)
+    try:
+        return json.loads(raw) if raw is not None else None
+    except ValueError:
+        return None
+
+
+def _promoted_slugs(head_ref: str, base_ref: str) -> list[str] | None:
+    """Slugs a layout PR put on the homepage, oldest first.
+
+    Read across hero AND latest slots: a PR that promoted more than five
+    slugs has already cascaded its oldest ones into latest_*.
+    """
+    head, base = _layout_at(head_ref), _layout_at(base_ref)
+    if head is None or base is None:
+        return None
+    keys = HERO_KEYS + LATEST_KEYS
+    before = {base.get(k) for k in keys}
+    return [s for s in reversed([head.get(k) for k in keys]) if s and s not in before]
+
+
+def _rebuild_layout(batch: list[dict], main_sha: str) -> list[dict] | None:
+    """Replay every pending hero rotation onto main's CURRENT layout, as one write.
+
+    The file is rewritten whole, so two layout PRs built from different
+    snapshots of main always conflicted — and so did rotations staged in one
+    tick (each read main, the last write won). Replaying slugs instead of
+    carrying bytes keeps whatever another producer put on main meanwhile.
+    """
+    main_layout = _layout_at(main_sha)
+    if main_layout is None:
+        return None
+    on_hero = {main_layout.get(k) for k in HERO_KEYS}
+    layout, slugs = dict(main_layout), []
+    for item in batch:
+        slug = item.get("slug")
+        if slug and not (item.get("carried") and slug in on_hero):
+            layout = _rotate_layout(layout, slug)
+            slugs.append(slug)
+    if layout == main_layout:
+        return []
+    content = json.dumps(layout, indent=2, ensure_ascii=False) + "\n"
+    return [{"kind": "layout", "gh_path": HOMEPAGE_LAYOUT_PATH,
+             "content_b64": base64.b64encode(content.encode("utf-8")).decode("utf-8"),
+             "message": f"feat(homepage): rotate hero → {', '.join(slugs)[:80]}"}]
+
+
+def _open_pr(branch: str, title: str, body: str) -> str | None:
     try:
         pr_result = subprocess.run(
             ["gh", "pr", "create", "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}",
@@ -512,33 +680,77 @@ def _open_and_arm_pr(branch: str, title: str, body: str) -> bool:
         )
     except Exception as e:
         log(f"  ❌ pr create error ({branch}): {e}")
-        return False
+        return None
     if pr_result.returncode != 0:
         _log_gh_failure(f"pr create {branch}", pr_result)
-        return False
+        return None
     log(f"  ✅ PR opened: {pr_result.stdout.strip()}")
+    return pr_result.stdout.strip()
 
+
+def _arm_pr(pr_url: str, kind: str) -> bool:
+    """Arm auto-merge, then prove it from the PR's own state.
+
+    No --squash: the merge queue's ruleset owns the merge method on main. And
+    `gh` exiting 0 proves nothing, so the PR is read back; an unarmed bot PR is
+    an alert, not a log line — it would sit there while siblings pile up.
+    """
+    number = pr_url.rstrip("/").rsplit("/", 1)[-1]
     try:
-        merge_result = subprocess.run(
-            ["gh", "pr", "merge", "--auto", "--squash", "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}", branch],
+        result = subprocess.run(
+            ["gh", "pr", "merge", number, "--auto", "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}"],
             capture_output=True, text=True, timeout=30,
         )
+        if result.returncode != 0:
+            _log_gh_failure(f"pr merge --auto #{number}", result)
     except Exception as e:
-        log(f"  ⚠ pr merge --auto arm error ({branch}): {e}")
-        return True  # PR exists even if arming failed — not a hard failure
-    if merge_result.returncode != 0:
-        _log_gh_failure(f"pr merge --auto {branch}", merge_result)
-    else:
-        log(f"  ✅ auto-merge armed for {branch}")
-    return True
+        log(f"  ❌ pr merge --auto error (#{number}): {e}")
+    state = _pr_state(int(number)) if number.isdigit() else None
+    if state and state["armed"]:
+        log(f"  ✅ #{number} armed{' (in merge queue)' if state['queued'] else ''}")
+        return True
+    log(f"  ❌ #{number} is NOT armed after `gh pr merge --auto` — it will not merge by itself")
+    send_telegram_alert(
+        f"⚠️ Post-publish poller\nBot PR {pr_url} ({kind}) did not arm auto-merge — arm it or close it",
+        dedup_key=f"post-publish:bot-pr-unarmed:{kind}",
+    )
+    return False
+
+
+def _close_superseded(prs: list[dict], successor: str) -> None:
+    for pr in prs:
+        # Re-read just before closing. GitHub has no conditional close, so a PR
+        # entering the queue in the next second can still be closed — its files
+        # are in the successor by then, which costs CI, never content.
+        state = _pr_state(pr["number"])
+        if state is None or state["queued"] or state["head"] != pr["headRefOid"]:
+            log(f"  ⏭ #{pr['number']} not closed — queued, unreadable, or its head moved since it was carried")
+            continue
+        try:
+            result = subprocess.run(
+                ["gh", "pr", "close", str(pr["number"]), "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}",
+                 "--delete-branch", "--comment",
+                 f"Superseded by {successor}: every file of this PR not yet on main was carried there "
+                 "(post_publish_poller.py keeps one open PR per bot family)."],
+                capture_output=True, text=True, timeout=30,
+            )
+        except Exception as e:
+            log(f"  ❌ pr close error (#{pr['number']}): {e}")
+            continue
+        if result.returncode == 0:
+            log(f"  ✅ closed superseded #{pr['number']}")
+        else:
+            _log_gh_failure(f"pr close #{pr['number']}", result)
 
 
 def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
-    """Flush all pending commits of `kind` into ONE bot branch + auto-merged PR.
+    """Flush pending commits of `kind` into the family's ONE open PR.
 
-    Returns True iff the batch was empty, or branch+commits+PR all succeeded
-    (a failed auto-merge arm is logged but not treated as a hard failure — the
-    PR still exists for manual merge).
+    Every older open PR of the family that does not hold a merge-queue slot is
+    superseded: its files not yet on main are carried, with this batch, onto a
+    fresh branch off main, and it is closed once that PR exists. A queued PR is
+    never touched. Returns True iff the batch was empty, or every write landed
+    and the new PR is armed.
     """
     global _PENDING_COMMITS
     batch = [c for c in _PENDING_COMMITS if c["kind"] == kind]
@@ -547,10 +759,70 @@ def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
         return True
     _PENDING_COMMITS = [c for c in _PENDING_COMMITS if c["kind"] != kind]
 
+    # Everything below is computed against ONE snapshot of main, and the new
+    # branch is cut from that same sha, so a merge landing meanwhile cannot be
+    # silently overwritten by a write prepared against an older main.
+    main_sha = _github_default_branch_sha()
+    open_prs = _open_family_prs(branch_prefix) if main_sha else None
+    if open_prs is None:
+        log(f"  ❌ Cannot read main or the open {branch_prefix} PRs — not opening a sibling blind")
+        _finalize_deferred_step_marks(kind, succeeded=False)
+        return False
+    carried, superseded, kept = [], [], []
+    for pr in open_prs:
+        state = _pr_state(pr["number"])
+        if state is None or state["queued"]:
+            log(f"  ⏭ #{pr['number']} left untouched — {'holds a merge-queue slot' if state else 'state unreadable'}")
+            continue
+        if kind in _MAIN_WINS_KINDS and state["armed"] and state["mergeable"] != "CONFLICTING":
+            # Covers flush every ~15 min while a PR needs 22-68 min to merge:
+            # superseding a healthy armed PR would restart it forever. Their
+            # per-slug paths never collide (run_image dedupes against open PRs).
+            log(f"  ⏭ #{pr['number']} left to merge — armed and not conflicting")
+            continue
+        got = _carry_from_pr(pr, kind, main_sha)
+        carried += got[0] if got else []
+        if got is None or got[1]:
+            kept.append(f"#{pr['number']} ({', '.join(got[1]) if got else 'unreadable'})")
+        else:
+            superseded.append(pr)
+
+    if kind == "layout":
+        batch = _rebuild_layout(carried + batch, main_sha)
+        if batch is None:
+            log("  ❌ Cannot read main's homepage layout — rotation left for retry")
+            _finalize_deferred_step_marks(kind, succeeded=False)
+            return False
+    else:
+        fresh = [c for c in batch if not (kind == "image" and _blob_sha(c["gh_path"], main_sha))]
+        final = {c["gh_path"]: c for c in carried + fresh}  # the newest copy of a path wins
+        batch = list(final.values())
+        if kind not in _MAIN_WINS_KINDS:
+            # A rewritten file (SEO) overridden by a newer copy is not carried:
+            # its PR stays open rather than closing on a lost edit.
+            for pr in list(superseded):
+                lost = [c["gh_path"] for c in carried if c.get("from_pr") == pr["number"]
+                        and final[c["gh_path"]]["content_b64"] != c["content_b64"]]
+                if lost:
+                    superseded.remove(pr)
+                    kept.append(f"#{pr['number']} ({', '.join(lost)} overridden by a newer copy)")
+    if kept:
+        log(f"  ⚠ {kind}: kept open, files not carried (main changed them since they branched): {'; '.join(kept)}")
+        send_telegram_alert(
+            f"⚠️ Post-publish poller\n{kind} bot PR(s) kept open, files not carried: "
+            + "; ".join(kept)[:300],
+            dedup_key=f"post-publish:bot-pr-conflict:{kind}",
+        )
+    if not batch:
+        log(f"  ⏭ No {kind} change left that main does not already have")
+        _close_superseded(superseded, "main")
+        _finalize_deferred_step_marks(kind, succeeded=True)
+        return True
+
     branch = f"{branch_prefix}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     log(f"▶ Flushing {len(batch)} {kind} change(s) → branch {branch}")
 
-    if not _create_bot_branch(branch):
+    if not _create_bot_branch(branch, main_sha):
         # The related queue steps are left unmarked, so the poller retries them
         # automatically after a lost batch instead of needing a manual re-push.
         log(f"  ❌ Could not create branch {branch} — {len(batch)} staged {kind} change(s) lost, needs manual re-push")
@@ -569,17 +841,25 @@ def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
     body = (
         f"Automated {kind} batch — {len(batch)} file(s) via the post-publish poller.\n\n"
         "Files:\n" + "\n".join(f"- `{c['gh_path']}`" for c in batch) +
+        ("\n\nSupersedes " + ", ".join(f"#{p['number']}" for p in superseded) if superseded else "") +
         "\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)"
     )
-    if not _open_and_arm_pr(branch, title, body):
+    pr_url = _open_pr(branch, title, body)
+    if not pr_url:
         _finalize_deferred_step_marks(kind, succeeded=False)
         return False
+    armed = _arm_pr(pr_url, kind)
+    if all_ok:
+        _close_superseded(superseded, pr_url)
     _finalize_deferred_step_marks(kind, succeeded=all_ok)
-    return all_ok
+    return all_ok and armed
 
 
 def flush_image_batch() -> bool:
-    return _flush_batch("image", "bot/news-covers", "feat(images): news covers {date} ({n} files)")
+    global _OPEN_COVER_REFS
+    ok = _flush_batch("image", _COVERS_PREFIX, "feat(images): news covers {date} ({n} files)")
+    _OPEN_COVER_REFS = None  # the flush may have superseded the PRs it mapped
+    return ok
 
 
 def flush_seo_batch() -> bool:
@@ -607,8 +887,9 @@ def maybe_flush_all_batches(threshold: int = _FLUSH_THRESHOLD) -> bool:
     ~2 dozen covers staged and lost) previously kept every staged write in RAM
     for the FULL run — 5-10h with the current backlog. This shrinks the exposure
     window to ~`threshold` items (~30-40min). Same flush functions + same
-    Telegram-alert-on-failure condition as the final sweep in main() — more
-    flushes per run (more bot PRs) is intentional, not a bug.
+    Telegram-alert-on-failure condition as the final sweep in main(). Each
+    flush supersedes its family's previous unqueued PR, so more flushes never
+    mean more open bot PRs.
 
     Returns True iff a flush was actually triggered this call.
     """
@@ -628,6 +909,46 @@ def maybe_flush_all_batches(threshold: int = _FLUSH_THRESHOLD) -> bool:
     return True
 
 
+_COVERS_PREFIX = "bot/news-covers"
+_OPEN_COVER_REFS: dict[str, str] | None = None
+
+
+def _cover_refs(gh_paths: list[str]) -> list[str | None] | None:
+    """Where each cover already lives: "main", an open covers PR's branch, or None.
+
+    None overall = the open PRs could not be read; the caller must not
+    regenerate blind. Checking main alone regenerated every cover still riding
+    an open PR at the next tick, and the first twin to merge got the other
+    ejected from the merge queue as an add/add conflict (#7681 merged, #7682
+    ejected, 2026-09-29).
+    """
+    global _OPEN_COVER_REFS
+    on_main = [_image_exists_on_github(p) for p in gh_paths]
+    if all(on_main):
+        return ["main"] * len(gh_paths)
+    if _OPEN_COVER_REFS is None:
+        prs, refs = _open_family_prs(_COVERS_PREFIX), {}
+        for pr in prs or []:
+            try:
+                files = subprocess.run(
+                    ["gh", "api", "--paginate", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/pulls/{pr['number']}/files",
+                     "--jq", ".[].filename"],
+                    capture_output=True, text=True, timeout=60,
+                )
+            except Exception as e:
+                log(f"  ❌ files of #{pr['number']} unreadable: {e}")
+                return None
+            if files.returncode != 0:
+                _log_gh_failure(f"files #{pr['number']}", files)
+                return None
+            for path in files.stdout.split():
+                refs.setdefault(path, pr["headRefName"])
+        if prs is None:
+            return None
+        _OPEN_COVER_REFS = refs
+    return ["main" if hit else _OPEN_COVER_REFS.get(p) for p, hit in zip(gh_paths, on_main)]
+
+
 def _image_exists_on_github(gh_path: str) -> bool:
     try:
         check = subprocess.run(
@@ -639,11 +960,12 @@ def _image_exists_on_github(gh_path: str) -> bool:
         return False
 
 
-def _download_github_file(gh_path: str) -> bytes | None:
-    """Return a GitHub Contents API file's decoded bytes, if it is readable."""
+def _download_github_file(gh_path: str, ref: str = "main") -> bytes | None:
+    """Return a GitHub Contents API file's decoded bytes at `ref`, if it is readable."""
+    query = "" if ref == "main" else f"?ref={ref}"
     try:
         result = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}"],
+            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}{query}"],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:
@@ -1068,26 +1390,30 @@ def run_image(slug: str, category: str, title: str | None = None, article_id: st
 
     Codex-total (no Fireworks). Pre-flight health-check: if Codex is unreachable
     the item stays queued (returns False → retried next tick) rather than
-    publishing a cover-less article. Idempotent: skips if both already on GitHub
-    (main only — re-staging onto the bot branch if a PR is already in flight is
-    harmless, see flush_image_batch). Actual GitHub write happens at end-of-tick
+    publishing a cover-less article. Idempotent: skips a cover already on main
+    OR riding an open covers PR (queued or not, see _cover_refs) — a regenerated
+    twin conflicts with the first copy to merge. Actual GitHub write happens at end-of-tick
     via flush_image_batch(), batched with every other image staged this run.
     """
     hero_gh_path = f"{IMAGE_GH_DIR}/{slug}.jpg"
     card_gh_path = f"{IMAGE_GH_DIR}/{slug}_card.jpg"
     log(f"  ▶ Cover images (hero+card) for {slug}")
 
-    # Idempotency: both already published?
-    hero_done = _image_exists_on_github(hero_gh_path)
-    card_done = _image_exists_on_github(card_gh_path)
+    # Idempotency: both already published, or riding an open covers PR?
+    refs = _cover_refs([hero_gh_path, card_gh_path])
+    if refs is None:
+        log("  ⏸ Open covers PRs unreadable — leaving item queued for next tick")
+        return False
+    hero_ref, card_ref = refs
+    hero_done, card_done = hero_ref is not None, card_ref is not None
     if hero_done and card_done:
-        log("  ⏭ Both covers already on GitHub")
+        log("  ⏭ Both covers already on GitHub (main or an open covers PR)")
         if article_id:
             _update_news_image_url(article_id, f"/static/news/{slug}.jpg")
         return True
 
     if hero_done and not card_done:
-        hero_bytes = _download_github_file(hero_gh_path)
+        hero_bytes = _download_github_file(hero_gh_path, ref=hero_ref)
         if hero_bytes is None:
             return False
         card_bytes = _derive_card_from_hero(hero_bytes)
@@ -1210,18 +1536,35 @@ def rotate_hero(new_slug: str) -> bool:
     # Skip if slug not yet in layout at all (might not have MDX on GitHub yet)
     # We proceed regardless — the new article is being published right now.
 
+    layout = _rotate_layout(layout, new_slug)
+
+    # Stage the write for the end-of-tick layout batch flush, which replays the
+    # slug onto main's layout as it is THEN (see _rebuild_layout)
+    new_content = json.dumps(layout, indent=2, ensure_ascii=False) + "\n"
+    _stage_commit(
+        "layout", HOMEPAGE_LAYOUT_PATH, new_content.encode("utf-8"),
+        f"feat(homepage): rotate hero → {new_slug[:50]}", slug=new_slug,
+    )
+    log(f"  ✅ Hero rotation staged (hero_main={new_slug[:40]})")
+    return True
+
+
+def _rotate_layout(layout: dict, new_slug: str) -> dict:
+    """new_slug becomes hero_main; old hero_5 moves to latest_1 (latest_5 dropped)."""
+    if layout.get("hero_main") == new_slug:
+        return layout
+    layout = dict(layout)
     # Cascade: old hero_main→hero_2→…→hero_5 → latest_1→…→latest_5
     old_heros = [layout.get(k) for k in HERO_KEYS]  # current [main, 2, 3, 4, 5]
     old_latests = [layout.get(k) for k in LATEST_KEYS]
 
     # New hero list: new slug at front, old heroes shift down (drop last)
     new_heros = [new_slug] + [s for s in old_heros if s and s != new_slug][:len(HERO_KEYS) - 1]
-    # New latest: old hero_5 at front, shift down (drop last)
+    # New latest: old hero_5 at front, shift down (drop last). The promoted slug
+    # leaves latest_* — a replayed promotion can come from there.
     evicted = old_heros[-1] if old_heros[-1] and old_heros[-1] != new_slug else None
-    if evicted:
-        new_latests = [evicted] + [s for s in old_latests if s and s != evicted][:len(LATEST_KEYS) - 1]
-    else:
-        new_latests = old_latests
+    rest = [s for s in old_latests if s and s not in (evicted, new_slug)]
+    new_latests = ([evicted] if evicted else []) + rest[:len(LATEST_KEYS) - (1 if evicted else 0)]
 
     for i, key in enumerate(HERO_KEYS):
         if i < len(new_heros):
@@ -1229,15 +1572,9 @@ def rotate_hero(new_slug: str) -> bool:
     for i, key in enumerate(LATEST_KEYS):
         if i < len(new_latests):
             layout[key] = new_latests[i]
-
-    # Stage the write for the end-of-tick layout batch flush (see flush_layout_batch)
-    new_content = json.dumps(layout, indent=2, ensure_ascii=False) + "\n"
-    _stage_commit(
-        "layout", HOMEPAGE_LAYOUT_PATH, new_content.encode("utf-8"),
-        f"feat(homepage): rotate hero → {new_slug[:50]}",
-    )
-    log(f"  ✅ Hero rotation staged (hero_main={new_slug[:40]})")
-    return True
+        else:
+            layout.pop(key, None)  # never leave a stale copy of a slug that moved up
+    return layout
 
 
 # ─── GIT OPERATIONS ───────────────────────────────────────────────────────────

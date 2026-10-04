@@ -90,7 +90,13 @@ export default function VisaClockPage() {
       trustStrip={
         <AppTrustStrip
           items={[
-            { value: "5,021", label: "visas filed since 2019" },
+            // Both figures describe this tool and are derived, not claimed.
+            // The earlier "since 2019" filings figure had no source in any
+            // system we run (see lib/trust-figures.ts) and was removed.
+            {
+              value: String(VISA_OPTIONS.length),
+              label: "visa types covered",
+            },
             { value: "5", label: "checkpoints (D-60 → D-1)" },
           ]}
         />

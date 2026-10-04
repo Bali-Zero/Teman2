@@ -1,0 +1,18 @@
+task_id: newsroom-held9-1003
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Publish the nine held 2026-09-27/09-29 News Room articles as their composed
+  MDX. Each file is the byte-identical blob of its auto-publish bot PR
+  (#7492 #7493 #7495 #7496 #7497 #7499 #7501 #7502 #7678), fetched from the
+  PR's headRefOid. All nine are already public through the news_items
+  fallback of getArticleBySlug as the raw staging body; local MDX takes
+  precedence, so this switches the article page to the composed artifact.
+  Every coverImage/cardImage they reference is already on main. No
+  homepage-layout edit. Content-only diff: no code, no hot-zone path.
+
+  Gear is 2 via the SIZE term alone (9 files, 768 added lines of article
+  content). Decision to publish taken by the team lead on 2026-10-03;
+  #7503 is held (not live anywhere, its E33 claim-ratchet red is an
+  editorial defect).
