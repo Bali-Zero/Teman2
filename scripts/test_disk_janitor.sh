@@ -5,15 +5,24 @@
 # ancestors, PII component, siblings) / scratch naming / missing registry / TMP_ROOT shape /
 # open-file probe / symlinks / odd names / output boundary / the launchd wrapper, asserts
 # exactly what is pruned and what is preserved. External tools and the qdrant delegate are
-# disabled (DISK_JANITOR_TOOLS=false, DISK_JANITOR_QDRANT_RETENTION=""): they are other
-# scripts' contracts. Targets /bin/bash 3.2. Run: bash scripts/test_disk_janitor.sh
+# disabled (DISK_JANITOR_TOOLS=false, DISK_JANITOR_QDRANT_RETENTION="") except where TEST 10
+# puts recording FAKES of colima/uv/restic/docker/brew/pgrep first on PATH: no real tool, no
+# real /private/var/folders and no real ~/.codex is ever reached (the Chrome root is a fixture).
+# Targets /bin/bash 3.2. Run: bash scripts/test_disk_janitor.sh
 set -uo pipefail
+# Isolation first: no knob inherited from the caller may steer the payload, the wrapper or the
+# fixture git commands at a real path (a pre-push hook exports GIT_DIR; a stray DISK_JANITOR_HOME
+# would aim an --apply at the host's HOME). Every invocation below sets what it needs explicitly.
+for v in $(compgen -v | grep -E '^(DISK_JANITOR_|PRO_DISK_JANITOR_|QDRANT_|GIT_)'); do unset "$v"; done
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT="$HERE/disk_janitor.sh"
 WRAP="$HERE/../infra/launchagents/wrappers/pro-disk-janitor.sh"
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/djfix.XXXXXX")" || { echo "mktemp failed"; exit 70; }
 ROOT="$(cd "$ROOT" && pwd -P)"   # physical: macOS /var -> /private/var, and the payload refuses a symlinked TMP_ROOT chain
 H="$ROOT/home"; T="$ROOT/claude-501"; FAKEBIN="$ROOT/bin"; PIDF="$ROOT/wrapper.pid"
+# Every invocation (payload AND wrapper) inherits a fixture Chrome root: the default is the real
+# /private/var/folders, and an --apply under test must never reach the host's own clones.
+export DISK_JANITOR_CHROME_ROOT="$ROOT/varfolders"
 PASS=0; FAIL=0
 ok(){ echo "  ✅ $1"; PASS=$((PASS+1)); }
 no(){ echo "  ❌ $1"; FAIL=$((FAIL+1)); }
@@ -358,6 +367,104 @@ build; bash "$SCRIPT" --check-path / >/dev/null 2>&1; RC=$?
 [ $RC -eq 3 ] && ok "--check-path / is REFUSED (R-6)" || no "/ not refused rc=$RC"
 build; rm -rf "$H/.ollama"; DISK_JANITOR_HOME="$H/" bash "$SCRIPT" --check-path "$H/.ollama/models/m" >/dev/null 2>&1; RC=$?
 [ $RC -eq 3 ] && ok "trailing-slash HOME still protects a not-yet-existing protected root (R-6)" || no "trailing-slash HOME defeated protection rc=$RC"
+
+echo "═══ TEST 10: v2 — chrome code-sign clones, codex worktrees, tool steps (df-delta receipt) ═══"
+CS="$ROOT/varfolders/ab/cd/X/com.google.Chrome.code_sign_clone"; CS2="$ROOT/varfolders/ef/gh/X/com.google.Chrome.code_sign_clone"
+fgit(){ # fixture git: no hooks, no signing, fixed identity, GIT_* already unset above → only ever $ROOT
+  git -c core.hooksPath=/dev/null -c commit.gpgsign=false -c user.name=dj -c user.email=dj@fixture.invalid "$@" >/dev/null 2>&1
+}
+v2build(){ # build + chrome clones + codex worktrees, every file aged so "recent activity" is not what keeps them
+  build
+  for c in old1 old2 newest; do mk "$CS/code_sign_clone.$c/Contents/x"; done
+  mk "$CS2/code_sign_clone.fresh/x"; touch -t "$(date -v-12H +%Y%m%d%H%M 2>/dev/null || date -d '12 hours ago' +%Y%m%d%H%M)" "$CS2/code_sign_clone.fresh"
+  mk "$CS2/code_sign_clone.newer/x"                                         # under 1 d: never a candidate, newest or not
+  for c in old1 old2; do old "$CS/code_sign_clone.$c/Contents/x"  9; old "$CS/code_sign_clone.$c/Contents" 9; old "$CS/code_sign_clone.$c" 9; done
+  old "$CS/code_sign_clone.newest/Contents/x" 3; old "$CS/code_sign_clone.newest/Contents" 3; old "$CS/code_sign_clone.newest" 3
+  mk "$CS/stray-$MARK/x"; old "$CS/stray-$MARK" 30                        # not a clone name: never a candidate
+  W="$H/.codex/worktrees"; BASE="$ROOT/base"   # BASE plays the main repo the linked worktrees belong to
+  for w in stale-$MARK live busy recent pii; do mk "$W/$w/repo/f.txt"; done
+  mk "$W/pii/repo/PII-Quarantine/x"
+  printf '{"pid":2,"sessionId":"%s","cwd":"%s"}\n' "$U_NEW" "$W/live/repo" > "$H/.claude/sessions/2.json"
+  fgit init -q "$BASE"; mk "$BASE/a.txt"; fgit -C "$BASE" add a.txt; fgit -C "$BASE" commit -qm base
+  for w in clean dirty orphan locked; do fgit -C "$BASE" worktree add --detach "$W/$w/repo"; done   # clean: detached on a branch commit
+  mk "$W/dirty/repo/u.txt"                                                     # untracked file: uncommitted work
+  mk "$W/orphan/repo/b.txt"; fgit -C "$W/orphan/repo" add b.txt; fgit -C "$W/orphan/repo" commit -qm orphan   # commit on no ref
+  fgit -C "$BASE" worktree lock "$W/locked/repo"
+  fgit init -q "$W/standalone/repo"; mk "$W/standalone/repo/a.txt"; fgit -C "$W/standalone/repo" add a.txt; fgit -C "$W/standalone/repo" commit -qm s
+  find "$W" -mindepth 1 -exec touch -h -t "$(date -v-30d +%Y%m%d%H%M 2>/dev/null || date -d '30 days ago' +%Y%m%d%H%M)" {} +
+  mk "$W/recent/repo/touched-today.txt"; old "$W/recent/repo" 30; old "$W/recent" 30   # one file touched today
+  mk "$W/young/repo/f.txt"; old "$W/young" 3
+}
+v2build; : > "$ROOT/v2mark"; sleep 1   # anything a probe writes from here on is strictly newer than the mark
+OUT=$(run); RC=$?
+[ $RC -eq 1 ] && have "$CS/code_sign_clone.old1" && have "$W/stale-$MARK" && have "$W/clean/repo/a.txt" && echo "$OUT" | grep -q "chrome_code_sign_clones: dry-run count=2 df_delta=0B" \
+  && echo "$OUT" | grep -q "codex_stale_worktrees: dry-run count=3 df_delta=0B" \
+  && ok "v2 dry-run: counts 2 clones + 3 worktrees (nothing anchored yet), deletes nothing, rc=1 for the refused PII tree" || no "v2 dry-run wrong rc=$RC: $(echo "$OUT" | grep 'dry-run count')"
+[ -z "$(find "$W" "$BASE/.git" -newer "$ROOT/v2mark" -print -quit)" ] && ok "dry-run git probes wrote nothing, in the worktrees or their repo's admin dirs (--no-optional-locks)" \
+  || no "a dry-run probe wrote: $(find "$W" "$BASE/.git" -newer "$ROOT/v2mark" | head -3 | sed "s|$ROOT/||")"
+(cd "$CS/code_sign_clone.old2" && exec sleep 20) & SP=$!; (cd "$W/busy/repo" && exec sleep 20) & SP2=$!; sleep 1
+OUT=$(run --apply); RC=$?; kill $SP $SP2 2>/dev/null; wait $SP $SP2 2>/dev/null
+[ $RC -eq 1 ] && ! have "$CS/code_sign_clone.old1" && ok "stale chrome clone (>1 d, not newest, not in use) removed" || no "stale clone survived rc=$RC"
+have "$CS/code_sign_clone.newest" && echo "$OUT" | grep -q "chrome_code_sign_clones: keep [0-9a-f]\{12\} (newest)" && ok "newest clone kept even when >1 d (the running Chrome's)" || no "newest clone removed"
+have "$CS/code_sign_clone.old2" && echo "$OUT" | grep -q "chrome_code_sign_clones: keep [0-9a-f]\{12\} (in use)" && ok "clone a process is anchored in kept (lsof +D)" || no "in-use clone removed"
+have "$CS2/code_sign_clone.fresh" && have "$CS/stray-$MARK" && ok "fresh clone and non-clone sibling kept" || no "fresh clone or stray removed"
+! have "$W/stale-$MARK" && ! have "$W/clean" && ok "stale codex worktrees removed: plain dir, and a clean linked worktree whose HEAD is on a branch" || no "stale codex worktree survived"
+have "$W/orphan/repo/b.txt" && echo "$OUT" | grep -q "codex_stale_worktrees: keep [0-9a-f]\{12\} (commits on no ref)" && ok "worktree whose HEAD commit is on no branch/remote/tag kept" || no "orphan-commit worktree removed"
+have "$W/locked/repo" && echo "$OUT" | grep -q "codex_stale_worktrees: keep [0-9a-f]\{12\} (locked worktree)" && ok "git-locked worktree kept" || no "locked worktree removed"
+have "$W/standalone/repo/.git" && echo "$OUT" | grep -q "codex_stale_worktrees: keep [0-9a-f]\{12\} (standalone repository)" && ok "standalone repository (refs+objects inside) never a candidate" || no "standalone repository removed"
+have "$W/live" && echo "$OUT" | grep -q "codex_stale_worktrees: keep [0-9a-f]\{12\} (session live)" && ok "worktree that is a live session's cwd kept" || no "live-session worktree removed"
+have "$W/busy" && echo "$OUT" | grep -q "codex_stale_worktrees: keep [0-9a-f]\{12\} (process anchored)" && ok "worktree with a process cwd inside kept (lsof +D port)" || no "anchored worktree removed"
+have "$W/recent/repo/touched-today.txt" && have "$W/young" && ok "worktree with a file touched recently, and a young worktree, kept" || no "recent/young worktree removed"
+have "$W/dirty/repo/u.txt" && echo "$OUT" | grep -q "codex_stale_worktrees: keep [0-9a-f]\{12\} (uncommitted work)" && ok "worktree with uncommitted work kept" || no "dirty worktree removed"
+have "$W/pii/repo/PII-Quarantine/x" && echo "$OUT" | grep -q "codex_stale_worktrees: REFUSE [0-9a-f]\{12\} (protected descendant)" && ok "worktree carrying a PII-Quarantine descendant refused, rc=1" || no "PII worktree removed or not refused"
+decoys_intact && ok "protected decoys intact after v2 steps" || no "a decoy was touched by a v2 step"
+grep -q '"steps":{"chrome_code_sign_clones":{"status":"done","count":1,"df_delta_bytes":-\{0,1\}[0-9]*},"codex_stale_worktrees":{"status":"done","count":2,' "$ROOT/j.jsonl" \
+  && ok "receipt carries per-step status, count and df delta" || no "receipt steps wrong: $(tail -1 "$ROOT/j.jsonl")"
+echo "$OUT" | grep -q "$MARK" && no "a candidate NAME leaked into a v2 log line" || ok "v2 log lines carry hashes only"
+v2build; OUT=$(DISK_JANITOR_LSOF=/nonexistent/lsof run --apply); RC=$?
+[ $RC -eq 1 ] && have "$CS/code_sign_clone.old1" && have "$W/stale-$MARK" && echo "$OUT" | grep -q "chrome_code_sign_clones: error (lsof-unavailable)" \
+  && echo "$OUT" | grep -q "codex_stale_worktrees: error (lsof-unavailable)" && ok "no lsof: both v2 dir steps skipped as ERROR, nothing removed" || no "v2 no-lsof handling rc=$RC"
+v2build; rm -f "$H/.claude/sessions/"*.json; chmod 000 "$H/.claude/sessions"
+OUT=$(run --apply); RC=$?; chmod 755 "$H/.claude/sessions"
+if [ "$(id -u)" -ne 0 ]; then [ $RC -eq 1 ] && have "$W/stale-$MARK" && ok "unreadable session registry: worktree kept, ERROR counted" || no "unreadable registry treated as dead rc=$RC"; fi
+fake_tools(){ # $1 colima status line  $2 image list ("|" rows)  $3 container user of image id
+  mkdir -p "$FAKEBIN"; : > "$ROOT/calls"
+  printf '#!/bin/sh\necho "colima $*" >> %s/calls\n[ "$1" = status ] && echo "%s"\nexit 0\n' "$ROOT" "$1" > "$FAKEBIN/colima"
+  printf '#!/bin/sh\nexit 1\n' > "$FAKEBIN/pgrep"   # no uv process holds the cache lock (the host may run one)
+  for t in uv restic brew; do printf '#!/bin/sh\necho "%s $*" >> %s/calls\nexit 0\n' "$t" "$ROOT" > "$FAKEBIN/$t"; done
+  printf '#!/bin/sh\necho "docker $*" >> %s/calls\ncase "$1 $2" in\n"image ls") printf "%%b" "%s" ;;\n"ps -a") case "$*" in *ancestor=%s*) echo c1 ;; esac ;;\nesac\nexit 0\n' "$ROOT" "$2" "$3" > "$FAKEBIN/docker"
+  chmod +x "$FAKEBIN"/*
+}
+OLDD="2020-01-01 00:00:00 +0000 UTC"; NEWD="$(date +%Y-%m-%d) 00:00:00 +0000 UTC"
+IMGS="i1|localci-candidate|1|$OLDD\ni2|neo4j|5|$OLDD\ni3|stale-img|v1|$OLDD\ni4|fresh-img|v1|$NEWD\ni5|<none>|<none>|$OLDD\n"
+truns(){ DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=true DISK_JANITOR_QDRANT_RETENTION="" DISK_JANITOR_LOG="$ROOT/j.log" DISK_JANITOR_JOURNAL="$ROOT/j.jsonl" PATH="$FAKEBIN:$PATH" bash "$SCRIPT" "$@" 2>&1; }
+build; fake_tools "INFO colima is running using macOS Virtualization.Framework" "$IMGS" i2
+OUT=$(truns --apply); RC=$?
+[ $RC -eq 0 ] && grep -q "colima ssh -- sudo fstrim -av" "$ROOT/calls" && grep -q "uv cache prune" "$ROOT/calls" && grep -q "restic cache --cleanup" "$ROOT/calls" \
+  && ok "apply: colima fstrim, uv cache prune, restic cache --cleanup each invoked" || no "tool verbs not invoked rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
+grep -q "docker image rm stale-img:v1" "$ROOT/calls" && grep -q "docker image rm i5" "$ROOT/calls" && ok "old unused images removed (tagged by ref, untagged by id)" || no "unused images not removed"
+grep -q "docker image rm localci-candidate\|docker image rm i1" "$ROOT/calls" && no "pinned localci-candidate removed" || ok "localci-candidate never a candidate, whatever its age"
+grep -q "docker image rm neo4j\|docker image rm fresh-img" "$ROOT/calls" && no "in-use or fresh image removed" || ok "image used by a container and fresh image kept"
+grep -q "image prune -a\|prune -a" "$ROOT/calls" && no "prune -a issued" || ok "no 'prune -a' ever issued"
+grep -q '"uv_cache_prune":{"status":"done".*"restic_cache_cleanup":{"status":"done".*"docker_unused_images":{"status":"done","count":2,.*"colima_fstrim":{"status":"done","count":1,' "$ROOT/j.jsonl" \
+  && ok "receipt: each tool rule is its own step with status/count/df delta" || no "tool steps receipt wrong: $(tail -1 "$ROOT/j.jsonl")"
+[ "$(grep -n "image rm\|fstrim" "$ROOT/calls" | tail -1 | grep -c fstrim)" -eq 1 ] && ok "fstrim runs after the docker removals (their freed blocks reach the host the same run)" || no "fstrim ran before a docker removal"
+build; fake_tools "INFO colima is running" "$IMGS" none; printf '#!/bin/sh\necho "docker $*" >> %s/calls\n[ "$1" = info ] && exit 1\nexit 0\n' "$ROOT" > "$FAKEBIN/docker"
+printf '#!/bin/sh\nexit 0\n' > "$FAKEBIN/pgrep"   # a uv process is alive: it holds the cache lock
+OUT=$(truns --apply); RC=$?
+[ $RC -eq 0 ] && ! grep -q "image rm\|image ls\|ps -a" "$ROOT/calls" && grep -q '"docker_unused_images":{"status":"skipped","count":0,"df_delta_bytes":[-0-9]*,"reason":"docker-unreachable"}' "$ROOT/j.jsonl" \
+  && ok "docker unreachable: images step skipped, nothing listed or removed" || no "docker-unreachable handling rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
+! grep -q "uv cache prune" "$ROOT/calls" && grep -q '"uv_cache_prune":{"status":"skipped","count":0,"df_delta_bytes":[-0-9]*,"reason":"uv-lock-held"}' "$ROOT/j.jsonl" \
+  && ok "uv process alive: cache prune skipped (lock held), never forced" || no "uv prune ran while a uv process was alive"
+build; fake_tools "INFO colima is running" "$IMGS" none; OUT=$(truns); RC=$?
+[ $RC -eq 0 ] && ! grep -q "fstrim\|cache prune\|--cleanup\|image rm" "$ROOT/calls" && echo "$OUT" | grep -q "docker_unused_images: dry-run count=3" \
+  && ok "dry-run: no tool verb executed, docker candidates counted" || no "dry-run executed a tool verb rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
+build; fake_tools "INFO colima is not running" "" none; OUT=$(truns --apply); RC=$?
+[ $RC -eq 0 ] && ! grep -q "fstrim" "$ROOT/calls" && grep -q '"colima_fstrim":{"status":"skipped","count":0,"df_delta_bytes":[-0-9]*,"reason":"colima-not-running"}' "$ROOT/j.jsonl" \
+  && ok "colima down: fstrim skipped with reason colima-not-running" || no "colima-down handling rc=$RC"
+build; fake_tools "INFO colima is running" "" none; printf '#!/bin/sh\n[ "$1" = ssh ] && exit 1\necho "colima is running"\n' > "$FAKEBIN/colima"; chmod +x "$FAKEBIN/colima"
+OUT=$(truns --apply); RC=$?
+[ $RC -eq 1 ] && echo "$OUT" | grep -q "colima_fstrim: error" && ok "failed fstrim is an ERROR, never a silent done" || no "failed fstrim silent rc=$RC"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]
