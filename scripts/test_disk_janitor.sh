@@ -466,5 +466,38 @@ build; fake_tools "INFO colima is running" "" none; printf '#!/bin/sh\n[ "$1" = 
 OUT=$(truns --apply); RC=$?
 [ $RC -eq 1 ] && echo "$OUT" | grep -q "colima_fstrim: error" && ok "failed fstrim is an ERROR, never a silent done" || no "failed fstrim silent rc=$RC"
 
+echo "═══ TEST 11: review round — nested clone below depth 3, unreadable HEAD, unborn HEAD, ignored files, R6 age, restic failure ═══"
+REALGIT="$(command -v git)"; GITSHIM="$ROOT/gitshim"
+v2build
+# BASE ignores tmp/ for every linked worktree (info/exclude is shared): a clone inside it is invisible to the parent's status
+mkdir -p "$BASE/.git/info"; echo "tmp/" >> "$BASE/.git/info/exclude"
+for w in nested ignored badhead badbranch unborn; do mkdir -p "$W/$w"; done
+fgit -C "$BASE" worktree add --detach "$W/nested/repo"
+fgit init -q "$W/nested/repo/tmp/clone"; mk "$W/nested/repo/tmp/clone/a.txt"; fgit -C "$W/nested/repo/tmp/clone" add a.txt; fgit -C "$W/nested/repo/tmp/clone" commit -qm unpushed   # .git at depth 4
+fgit -C "$BASE" worktree add --detach "$W/ignored/repo"; mk "$W/ignored/repo/tmp/cache/blob.bin"        # ignored PLAIN files, no repository
+fgit -C "$BASE" worktree add --detach "$W/badhead/repo"
+fgit -C "$BASE" branch side; fgit -C "$BASE" worktree add "$W/badbranch/repo" side                         # HEAD symbolic, target exists
+fgit -C "$BASE" worktree add --orphan -b newborn "$W/unborn/repo"                                          # HEAD symbolic, target absent
+mkdir -p "$GITSHIM"   # fails the HEAD resolution for two named checkouts only; every other call is the real git
+printf '#!/bin/sh\ncase "$*" in\n  *"-C %s/badhead/repo rev-parse -q --verify HEAD"*|*"-C %s/badbranch/repo rev-parse -q --verify HEAD"*) exit 128 ;;\nesac\nexec %s "$@"\n' "$W" "$W" "$REALGIT" > "$GITSHIM/git"; chmod +x "$GITSHIM/git"
+find "$W/nested" "$W/ignored" "$W/badhead" "$W/badbranch" "$W/unborn" -exec touch -h -t "$(date -v-30d +%Y%m%d%H%M 2>/dev/null || date -d '30 days ago' +%Y%m%d%H%M)" {} +
+[ -z "$("$REALGIT" -C "$W/nested/repo" status --porcelain --untracked-files=normal 2>/dev/null)" ] && ok "fixture: the nested clone is invisible to its parent's status (the worktree reads as clean)" || no "fixture wrong: parent status lists the nested clone"
+OUT=$(PATH="$GITSHIM:$PATH" run --apply); RC=$?
+have "$W/nested/repo/tmp/clone/.git" && echo "$OUT" | grep -q "codex_stale_worktrees: keep [0-9a-f]\{12\} (nested repository)" && ok "clean worktree holding a gitignored clone at depth 4 kept (unpushed commits would die with it)" || no "nested depth-4 clone destroyed or not reported"
+! have "$W/ignored" && ok "innocence: ignored plain files (no repository) in a stale clean worktree are removed (documented policy)" || no "ignored-files worktree survived"
+have "$W/badhead/repo" && echo "$OUT" | grep -q "codex_stale_worktrees: keep [0-9a-f]\{12\} (git state unreadable)" && ok "detached worktree whose HEAD will not resolve kept as 'git state unreadable'" || no "unresolvable-HEAD worktree removed or mislabelled"
+have "$W/badbranch/repo" && ok "worktree on an EXISTING branch whose rev-parse fails kept (not mistaken for unborn)" || no "failing-rev-parse worktree on a real branch removed"
+! have "$W/unborn" && ok "innocence: genuinely unborn HEAD (symbolic ref to an absent ref) still removed as before" || no "unborn worktree survived (behaviour changed)"
+have "$W/clean/repo" && no "unrelated clean worktree survived" || ok "ordinary stale clean worktree still removed alongside"
+
+build; fake_tools "INFO colima is running" "i6|bad-img|v1|not-a-date\ni3|stale-img|v1|$OLDD\n" none; OUT=$(truns --apply); RC=$?
+echo "$OUT" | grep -q "docker_unused_images: keep [0-9a-f]\{12\} (age unreadable)" && ! grep -q "docker image rm bad-img\|docker image rm i6" "$ROOT/calls" && ok "R6: an unparsable CreatedAt is kept as 'age unreadable', never removed" || no "R6 age-unreadable handling wrong"
+grep -q "docker image rm stale-img:v1" "$ROOT/calls" && ok "R6 innocence: a readable old image in the same listing is still removed" || no "R6 readable old image not removed"
+build; fake_tools "INFO colima is running" "" none; printf '#!/bin/sh\necho "restic $*" >> %s/calls\nexit 1\n' "$ROOT" > "$FAKEBIN/restic"; chmod +x "$FAKEBIN/restic"
+OUT=$(truns --apply); RC=$?
+[ $RC -eq 1 ] && echo "$OUT" | grep -q "restic_cache_cleanup: error" && grep -q '"restic_cache_cleanup":{"status":"error"' "$ROOT/j.jsonl" && ! grep -q '"tools":"[^"]*restic' "$ROOT/j.jsonl" \
+  && ok "failed restic cleanup is an ERROR in log and receipt, rc=1, never listed as done" || no "restic failure not reported as error rc=$RC"
+grep -q '"uv_cache_prune":{"status":"done"' "$ROOT/j.jsonl" && ok "restic failure does not starve the other tool steps" || no "other tool steps starved by the restic failure"
+
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]
