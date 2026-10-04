@@ -31,7 +31,8 @@
 #             no process anchored below it; every git checkout found within 3 levels must be a
 #             LINKED worktree (a standalone repository's refs and objects would die with it), not
 #             locked, clean (untracked files count), and its HEAD on some branch/remote/tag ref.
-#             Any .git (file or dir) deeper than that keeps the candidate. A HEAD that will not
+#             Any .git (file or dir) deeper than that, and any `objects/` directory with a `HEAD` file
+#             beside it (bare repo, --separate-git-dir) anywhere inside, keeps the candidate. A HEAD that will not
 #             resolve is skipped as "unborn" ONLY when it is a symbolic ref to a ref that provably
 #             does not exist; any other failure keeps the tree ("git state unreadable").
 #             Git probes run with --no-optional-locks: a probe that refreshes the index would
@@ -338,6 +339,12 @@ wt_hold() { # $1 worktree dir → prints why it must be kept (empty = no git rea
       || { echo "git state unreadable"; return; }
     [ -z "$st" ] && { echo "commits on no ref"; return; }
   done < <(find "$1" -maxdepth 3 -name .git -print0 2>/dev/null)
+  # Judge the ENTITY, not the spelling: repository data is a directory `objects` with a `HEAD` file next
+  # to it. That is a bare repository, a --separate-git-dir, or any `.git` — at any depth, the candidate
+  # root included — and its refs and objects would die with the tree whatever the checkout beside it says.
+  # (after the per-checkout probes, so their more specific reasons are reported first)
+  st=$(find "$1" -type d -name objects -exec sh -c '[ -f "$1/../HEAD" ]' sh {} \; -print -quit 2>/dev/null) || { echo "git state unreadable"; return; }
+  [ -n "$st" ] && { echo "repository data inside"; return; }
 }
 
 # R2 chrome_code_sign_clones: every Chrome relaunch leaves a code-sign clone of the app bundle.
