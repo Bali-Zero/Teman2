@@ -367,7 +367,137 @@ async def test_cancel_reaps_grandchild_that_inherited_output_pipes(
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(task, 2)
         assert processes[0].returncode is not None
+        grandchild = int(marker.read_text())
+        for _ in range(200):
+            try:
+                os.kill(grandchild, 0)
+            except ProcessLookupError:
+                break
+            await asyncio.sleep(0.01)
+        else:
+            os.kill(grandchild, signal.SIGKILL)
+            pytest.fail("grandchild survived the group reap")
     finally:
         if processes and processes[0].returncode is None:
             os.killpg(processes[0].pid, signal.SIGKILL)
         await asyncio.gather(task, return_exceptions=True)
+
+
+ESCAPER = (
+    "import subprocess,sys,time,pathlib; "
+    "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'],"
+    "start_new_session=True); "
+    "pathlib.Path({marker!r}).write_text(str(p.pid)); time.sleep(30)"
+)
+
+
+async def _wait_marker(marker):
+    async def ready():
+        while not marker.exists():
+            await asyncio.sleep(0.01)
+
+    await asyncio.wait_for(ready(), 3)
+
+
+def _kill_escaped(marker):
+    # The escaped descendant is outside the reaped group: clean it up here.
+    if marker.exists():
+        try:
+            os.kill(int(marker.read_text()), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+@pytest.mark.asyncio
+async def test_cancel_stays_cancelled_when_a_descendant_escapes_the_group(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(marketing, "_REAP_TIMEOUT_SECONDS", 0.3, raising=False)
+    marker = tmp_path / "escaped.pid"
+    task = asyncio.create_task(
+        marketing._run_public_subprocess(
+            [sys.executable, "-c", ESCAPER.format(marker=str(marker))],
+            timeout_seconds=60,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+    )
+    try:
+        await _wait_marker(marker)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 3)
+        assert task.cancelled()
+    finally:
+        _kill_escaped(marker)
+        await asyncio.gather(task, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_provider_timeout_stays_provider_failure_when_a_descendant_escapes(
+    tmp_path, monkeypatch, caplog
+):
+    monkeypatch.setattr(marketing, "_REAP_TIMEOUT_SECONDS", 0.3, raising=False)
+    marker = tmp_path / "escaped.pid"
+    try:
+        with caplog.at_level("WARNING"):
+            with pytest.raises(marketing.EditorialProviderFailure) as raised:
+                await marketing._run_public_subprocess(
+                    [sys.executable, "-c", ESCAPER.format(marker=str(marker))],
+                    timeout_seconds=1,
+                    env={"PATH": "/usr/bin:/bin"},
+                )
+        assert "timed out" in str(raised.value)
+        assert "timed out after 1s" in caplog.text
+    finally:
+        _kill_escaped(marker)
+
+
+class _Reaped:
+    pid = 424242
+    returncode = 0
+
+    async def communicate(self):
+        return b"", b""
+
+
+@pytest.mark.asyncio
+async def test_reap_issues_no_kill_when_leader_already_reaped(monkeypatch):
+    calls = []
+    monkeypatch.setattr(os, "killpg", lambda *a: calls.append(a))
+    await marketing._reap_public_subprocess(_Reaped())
+    assert calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exc", [ProcessLookupError, PermissionError])
+async def test_reap_tolerates_kill_errors(monkeypatch, exc):
+    proc = _Reaped()
+    proc.returncode = None
+
+    def boom(*a):
+        raise exc
+
+    monkeypatch.setattr(os, "killpg", boom)
+    await marketing._reap_public_subprocess(proc)
+
+
+@pytest.mark.asyncio
+async def test_persisted_running_job_without_live_task_reads_interrupted(gate):
+    tools, article, _, _, _ = gate
+    safe = marketing._public_news_article(dict(article))
+    safe["item_id"] = "news_async"
+    marketing._write_json_atomic(
+        marketing._fact_job_path("news_async"),
+        {
+            "item_id": "news_async",
+            "status": "running",
+            "revision": 0,
+            "request_key_hash": "gone",
+            "fingerprint": marketing._article_fingerprint(safe),
+        },
+    )
+    assert marketing._FACT_GATE_TASKS == {}
+    read = await tools["newsroom_get_article"]("news_async")
+    assert read["fact_gate"]["status"] == "interrupted"
+    assert "verdict" not in read["fact_gate"]
+    assert "ok" not in read["fact_gate"]
