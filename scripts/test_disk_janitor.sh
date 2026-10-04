@@ -499,5 +499,25 @@ OUT=$(truns --apply); RC=$?
   && ok "failed restic cleanup is an ERROR in log and receipt, rc=1, never listed as done" || no "restic failure not reported as error rc=$RC"
 grep -q '"uv_cache_prune":{"status":"done"' "$ROOT/j.jsonl" && ok "restic failure does not starve the other tool steps" || no "other tool steps starved by the restic failure"
 
+echo "═══ TEST 12: repository data judged by entity — bare repo, bare+worktree, --separate-git-dir; a plain file named HEAD is not one ═══"
+v2build
+mkdir -p "$BASE/.git/info"; echo "tmp/" >> "$BASE/.git/info/exclude"
+for w in bareig barerepo barewt sep plainhead; do mkdir -p "$W/$w"; done
+fgit -C "$BASE" worktree add --detach "$W/bareig/repo"; fgit clone --bare "$BASE" "$W/bareig/repo/tmp/remote.git"     # bare repo inside a gitignored folder of a clean linked worktree
+fgit clone --bare "$BASE" "$W/barerepo/remote.git"                                                                    # bare repo directly in the candidate
+fgit clone --bare "$BASE" "$W/barewt/proj.git"; fgit -C "$W/barewt/proj.git" worktree add --detach "$W/barewt/main"   # bare repo with its own worktree beside it (.git is a FILE)
+fgit init -q --separate-git-dir="$W/sep/gd" "$W/sep/repo"; mk "$W/sep/repo/a.txt"; fgit -C "$W/sep/repo" add a.txt; fgit -C "$W/sep/repo" commit -qm sep
+mk "$W/plainhead/repo/HEAD"; mk "$W/plainhead/repo/sub/objects/x"                                                     # a plain file HEAD, an objects dir that is NOT its sibling
+find "$W/bareig" "$W/barerepo" "$W/barewt" "$W/sep" "$W/plainhead" -exec touch -h -t "$(date -v-30d +%Y%m%d%H%M 2>/dev/null || date -d '30 days ago' +%Y%m%d%H%M)" {} +
+[ -z "$("$REALGIT" -C "$W/bareig/repo" status --porcelain --untracked-files=normal 2>/dev/null)" ] && ok "fixture: the bare repo is invisible to its parent's status (worktree reads clean)" || no "fixture wrong: parent status lists the bare repo"
+OUT=$(run --apply); RC=$?
+have "$W/bareig/repo/tmp/remote.git/objects" && ok "bare repo inside a gitignored folder kept" || no "bare repo in ignored folder destroyed"
+have "$W/barerepo/remote.git/objects" && ok "bare repo directly in the candidate kept" || no "bare repo in candidate root destroyed"
+have "$W/barewt/proj.git/objects" && have "$W/barewt/main" && ok "bare repo with its own worktree beside it kept" || no "bare repo + worktree destroyed"
+have "$W/sep/gd/objects" && ok "--separate-git-dir repository kept" || no "separate git dir destroyed"
+[ "$(echo "$OUT" | grep -c "codex_stale_worktrees: keep [0-9a-f]\{12\} (repository data inside)")" -ge 3 ] && ok "kept by entity: reported as 'repository data inside'" || no "no 'repository data inside' report for the bare shapes"
+! have "$W/plainhead" && ok "innocence: a plain file named HEAD with no objects/ beside it is treated as before (removed)" || no "plain HEAD file kept (guard over-matches)"
+! have "$W/clean" && ok "innocence: ordinary stale clean linked worktree still removed" || no "ordinary clean worktree survived"
+
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]
