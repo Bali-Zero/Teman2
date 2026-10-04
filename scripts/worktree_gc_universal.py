@@ -144,6 +144,14 @@ QUARANTINE_TTL_ENABLED_ENV = "QUARANTINE_TTL_ENABLED"
 QUARANTINE_SWEEP_ALARM = 50   # WARN (never halt) if a run would expire more than this
 QUARANTINE_EXPIRY_LOG = REPO_ROOT / ".agent-receipts" / "quarantine-ttl-expired.log"
 
+# Silent-rescue visibility (2026-10-03): the SessionStart escalations receptor
+# (scripts/hooks/escalations_alert_sessionstart.sh) reads HIGH claude_tasks
+# JSON files from this dir (same CLAUDE_TASKS_DIR override as the hook). Chosen
+# over shared/escalations_pro.jsonl because that file is TRACKED — a live
+# nightly write would dirty the main checkout (scar PRs #7807/#7814).
+CLAUDE_TASKS_DIR_ENV = "CLAUDE_TASKS_DIR"
+ESCALATION_SOURCE = "worktree_gc_universal"
+
 # Worktrees that must NEVER be GC'd, regardless of age/state.
 # Matched by resolved absolute path.
 ALLOWLIST_PATHS = {
@@ -599,7 +607,35 @@ def _expire_stale_quarantine_refs(*, apply: bool, log_path: Path | None = None) 
     return expired
 
 
-def _quarantine(worktree: Path, slug: str, *, apply: bool) -> bool:
+def _emit_escalation(kind: str, slug: str, fields: dict[str, Any]) -> None:
+    """Surface a silent rescue on the SessionStart escalations board.
+
+    Writes ONE HIGH claude_tasks/*.json row (atomic tmp+rename). Any failure
+    is logged and swallowed — visibility must NEVER halt or fail the GC run.
+    """
+    try:
+        tasks_dir = Path(os.environ.get(CLAUDE_TASKS_DIR_ENV)
+                         or Path.home() / ".agent" / "decisions" / "claude_tasks")
+        tasks_dir.mkdir(parents=True, exist_ok=True)
+        now = datetime.now(timezone.utc)
+        row = {
+            "job": f"{ESCALATION_SOURCE}:{kind}:{slug}",
+            "source": ESCALATION_SOURCE,
+            "kind": kind,
+            "priority": "HIGH",
+            "created_at": now.timestamp(),
+            **fields,
+        }
+        path = tasks_dir / f"{ESCALATION_SOURCE}_{kind}_{slug}_{int(now.timestamp())}.json"
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(row, ensure_ascii=False, indent=2))
+        os.replace(tmp, path)
+    except Exception as exc:  # noqa: BLE001 — never let reporting kill the GC
+        logger.warning("escalation write failed for %s %s: %s", kind, slug, exc)
+
+
+def _quarantine(worktree: Path, slug: str, *, apply: bool,
+                info: dict[str, Any] | None = None) -> bool:
     """Create a quarantine ref capturing the worktree's current tree+untracked.
 
     Uses `git stash create` (produces a commit object without touching the
@@ -631,12 +667,19 @@ def _quarantine(worktree: Path, slug: str, *, apply: bool) -> bool:
             final_ref = _unique_ref(ref, sha)
             _run_git(["update-ref", final_ref, sha], check=False)
             logger.info("quarantined %s -> %s (%s)", worktree, final_ref, sha[:10])
+            if info is not None:
+                info.update(ref=final_ref, sha=sha)
         # Also drop a patch artifact under .agent-receipts/ for human-readable
         # recovery even if the ref is later pruned.
         receipts = REPO_ROOT / ".agent-receipts"
         receipts.mkdir(exist_ok=True)
         patch = _run_git(["diff", "HEAD"], cwd=worktree, check=False).stdout
         (receipts / f"quarantine-{slug}.patch").write_text(patch)
+        if info is not None:
+            info["lines"] = sum(
+                1 for ln in patch.splitlines()
+                if ln[:1] in "+-" and not ln.startswith(("+++", "---"))
+            )
         # Reset the index we just staged so removal is clean.
         _run_git(["reset"], cwd=worktree, check=False)
         return True
@@ -781,11 +824,27 @@ def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
 
         # Track 1: real uncommitted work → stash-quarantine (any worktree).
         if real_dirty:
-            if not _quarantine(path, slug, apply=apply):
+            q_info: dict[str, Any] = {}
+            if not _quarantine(path, slug, apply=apply, info=q_info):
                 logger.warning("KEEP %s — quarantine failed, refusing to remove",
                                path_str)
                 continue
             quarantined += 1
+            if apply and q_info.get("ref"):
+                expires = datetime.now(timezone.utc) + timedelta(days=QUARANTINE_TTL_DAYS)
+                _emit_escalation("quarantined-wip", slug, {
+                    "error_summary": (
+                        f"GC froze uncommitted WIP of {path_str} "
+                        f"(branch {e.get('branch')}) onto {q_info['ref']}"
+                    ),
+                    "worktree": path_str,
+                    "branch": e.get("branch"),
+                    "ref": q_info["ref"],
+                    "sha": q_info["sha"][:10],
+                    "changed_lines": q_info.get("lines"),
+                    "expires_at": expires.date().isoformat(),
+                    "recovery": f"git branch recovered/{slug} {q_info['ref']}",
+                })
 
         # Track 2a: detached HEAD → UNCONDITIONAL durable ref to HEAD before
         # removal (BLOCKER B, round-2, 2026-07-18 — a clean detached-HEAD
@@ -812,6 +871,22 @@ def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
                     e.get("branch"),
                 )
                 reclaimed_unpushed += 1
+                if apply:
+                    tip = _run_git(["rev-parse", "--short=10", e.get("branch") or "HEAD"],
+                                   check=False).stdout.strip()
+                    _emit_escalation("reclaimed-unpushed-branch", slug, {
+                        "error_summary": (
+                            f"GC reclaimed dir {path_str}; branch {e.get('branch')} "
+                            f"keeps {unpushed} commit(s) not on origin/main"
+                        ),
+                        "worktree": path_str,
+                        "branch": e.get("branch"),
+                        "ref": f"refs/heads/{e.get('branch')}",
+                        "sha": tip,
+                        "commits": unpushed,
+                        "expires_at": None,
+                        "recovery": f"git worktree add {path_str} {e.get('branch')}",
+                    })
 
         if _remove(path, apply=apply):
             removed += 1
