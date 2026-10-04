@@ -46,6 +46,8 @@ def _heartbeat_sidecar_isolation(tmp_path, monkeypatch):
     specifically can still override this via its own monkeypatch.setenv
     (function-scoped monkeypatch — last call wins within the same test)."""
     monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(tmp_path / "organism-last-seen"))
+    # Escalation rows land in tmp, never in the real ~/.agent/decisions/claude_tasks.
+    monkeypatch.setenv("CLAUDE_TASKS_DIR", str(tmp_path / "claude-tasks"))
 
 
 class _FakeProc:
@@ -656,6 +658,86 @@ class TestGcIntegration:
         mod.gc(apply=False, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
 
         assert wt.exists()
+
+
+class TestEscalationRows:
+    """Silent rescues (quarantine / RECLAIM-DIR) must reach the SessionStart
+    escalations board (claude_tasks HIGH rows) — and never break the run."""
+
+    @staticmethod
+    def _rows(tmp_path):
+        d = tmp_path / "claude-tasks"
+        return [json.loads(f.read_text()) for f in sorted(d.glob("*.json"))] if d.is_dir() else []
+
+    def test_quarantine_emits_row(self, gc_repo, tmp_path):
+        mod, repo, env = gc_repo
+        wt = mod.WORKTREES_DIR / "feature-dirty-esc"
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        _add_worktree(repo, wt, "feature/dirty-esc", env)
+        (wt / "README.md").write_text("seed\nreal uncommitted change\n")
+        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+
+        mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        (row,) = self._rows(tmp_path)
+        slug = mod._slug(str(wt))
+        assert row["source"] == "worktree_gc_universal"
+        assert row["kind"] == "quarantined-wip"
+        assert row["priority"] == "HIGH"
+        assert row["branch"] == "feature/dirty-esc"
+        assert row["worktree"] == str(wt)
+        assert row["ref"] == f"{mod.QUARANTINE_REF_PREFIX}/{slug}"
+        assert row["sha"] and row["changed_lines"] >= 1
+        assert row["recovery"] == f"git branch recovered/{slug} {row['ref']}"
+        want = (datetime.now(timezone.utc) + timedelta(days=mod.QUARANTINE_TTL_DAYS)).date()
+        assert row["expires_at"] == want.isoformat()
+
+    def test_reclaim_unpushed_emits_row(self, gc_repo, tmp_path):
+        mod, repo, env = gc_repo
+        wt = mod.WORKTREES_DIR / "feature-reclaim-esc"
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        _add_worktree(repo, wt, "feature/reclaim-esc", env)
+        (wt / "new.txt").write_text("unpushed\n")
+        _git(["add", "new.txt"], cwd=wt, env=env)
+        _git(["commit", "-m", "unpushed commit"], cwd=wt, env=env)
+        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+
+        mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        (row,) = self._rows(tmp_path)
+        assert row["kind"] == "reclaimed-unpushed-branch"
+        assert row["branch"] == "feature/reclaim-esc"
+        assert row["commits"] == 1
+        assert row["recovery"] == f"git worktree add {wt} feature/reclaim-esc"
+        assert row["expires_at"] is None
+
+    def test_dry_run_emits_nothing(self, gc_repo, tmp_path):
+        mod, repo, env = gc_repo
+        wt = mod.WORKTREES_DIR / "feature-dry-esc"
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        _add_worktree(repo, wt, "feature/dry-esc", env)
+        (wt / "README.md").write_text("seed\nchange\n")
+        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+
+        mod.gc(apply=False, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        assert self._rows(tmp_path) == []
+
+    def test_write_failure_does_not_abort_run(self, gc_repo, tmp_path, monkeypatch):
+        mod, repo, env = gc_repo
+        blocker = tmp_path / "not-a-dir"
+        blocker.write_text("file where the tasks dir should be")
+        monkeypatch.setenv("CLAUDE_TASKS_DIR", str(blocker))
+        wt = mod.WORKTREES_DIR / "feature-fail-esc"
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        _add_worktree(repo, wt, "feature/fail-esc", env)
+        (wt / "README.md").write_text("seed\nchange\n")
+        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+
+        report = mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        assert report["quarantined"] == 1 and report["removed"] == 1
+        assert not wt.exists()
 
 
 # ---------------------------------------------------------------------------
