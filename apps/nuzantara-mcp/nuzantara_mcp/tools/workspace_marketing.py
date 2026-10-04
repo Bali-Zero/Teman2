@@ -1031,13 +1031,25 @@ def _is_balizero_public_url(value: str) -> bool:
     )
 
 
+_REAP_TIMEOUT_SECONDS = 5
+
+
 async def _reap_public_subprocess(process: asyncio.subprocess.Process) -> None:
     """Reap the provider group, including children inheriting its output pipes."""
+    # Once the leader is reaped its pgid may be reused, so never signal then.
+    if process.returncode is None:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
     try:
-        os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-    await asyncio.wait_for(process.communicate(), timeout=5)
+        await asyncio.wait_for(process.communicate(), timeout=_REAP_TIMEOUT_SECONDS)
+    except TimeoutError:
+        # A descendant outside the killed group still holds the pipes. Do not
+        # let this replace the caller's in-flight exception (cancel / timeout).
+        logger.warning(
+            "Editorial provider group reap timed out; output pipes still held"
+        )
 
 
 async def _run_public_subprocess(
@@ -2369,6 +2381,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         if not isinstance(article_payload, dict):
             raise RuntimeError("News Room returned an unsupported article shape")
         article = _public_news_article(article_payload)
+        article["item_id"] = safe_id
         # RULED Zero 2026-09-04 (Legge 5): Damar's publish order IS the decision.
         # The fact gate no longer stands between the order and the site — it is
         # advisory, reported here when it was run on this exact copy. Until this
