@@ -660,84 +660,166 @@ class TestGcIntegration:
         assert wt.exists()
 
 
-class TestEscalationRows:
-    """Silent rescues (quarantine / RECLAIM-DIR) must reach the SessionStart
-    escalations board (claude_tasks HIGH rows) — and never break the run."""
+class TestEscalationSummary:
+    """Silent rescues (quarantine / RECLAIM-DIR) reach the SessionStart
+    escalations board as ONE HIGH summary file per apply-run under a fixed
+    per-host job id - and never break the run."""
 
     @staticmethod
     def _rows(tmp_path):
         d = tmp_path / "claude-tasks"
         return [json.loads(f.read_text()) for f in sorted(d.glob("*.json"))] if d.is_dir() else []
 
-    def test_quarantine_emits_row(self, gc_repo, tmp_path):
-        mod, repo, env = gc_repo
-        wt = mod.WORKTREES_DIR / "feature-dirty-esc"
+    @staticmethod
+    def _dirty(mod, repo, env, name):
+        wt = mod.WORKTREES_DIR / name
         wt.parent.mkdir(parents=True, exist_ok=True)
-        _add_worktree(repo, wt, "feature/dirty-esc", env)
+        _add_worktree(repo, wt, f"feature/{name}", env)
         (wt / "README.md").write_text("seed\nreal uncommitted change\n")
         _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+        return wt
 
-        mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
-
-        (row,) = self._rows(tmp_path)
-        slug = mod._slug(str(wt))
-        assert row["source"] == "worktree_gc_universal"
-        assert row["kind"] == "quarantined-wip"
-        assert row["priority"] == "HIGH"
-        assert row["branch"] == "feature/dirty-esc"
-        assert row["worktree"] == str(wt)
-        assert row["ref"] == f"{mod.QUARANTINE_REF_PREFIX}/{slug}"
-        assert row["sha"] and row["changed_lines"] >= 1
-        assert row["recovery"] == f"git branch recovered/{slug} {row['ref']}"
-        want = (datetime.now(timezone.utc) + timedelta(days=mod.QUARANTINE_TTL_DAYS)).date()
-        assert row["expires_at"] == want.isoformat()
-
-    def test_reclaim_unpushed_emits_row(self, gc_repo, tmp_path):
-        mod, repo, env = gc_repo
-        wt = mod.WORKTREES_DIR / "feature-reclaim-esc"
+    @staticmethod
+    def _unpushed(mod, repo, env, name):
+        wt = mod.WORKTREES_DIR / name
         wt.parent.mkdir(parents=True, exist_ok=True)
-        _add_worktree(repo, wt, "feature/reclaim-esc", env)
-        (wt / "new.txt").write_text("unpushed\n")
-        _git(["add", "new.txt"], cwd=wt, env=env)
+        _add_worktree(repo, wt, f"feature/{name}", env)
+        (wt / f"{name}.txt").write_text("unpushed\n")
+        _git(["add", f"{name}.txt"], cwd=wt, env=env)
         _git(["commit", "-m", "unpushed commit"], cwd=wt, env=env)
         _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+        return wt
+
+    def test_many_rescues_one_run_emit_exactly_one_file_fixed_job(self, gc_repo, tmp_path):
+        mod, repo, env = gc_repo
+        for i in range(3):
+            self._dirty(mod, repo, env, f"dirty-{i}")
+        for i in range(3):
+            self._unpushed(mod, repo, env, f"unp-{i}")
+
+        mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        (row,) = self._rows(tmp_path)  # exactly one file
+        assert row["job"] == f"worktree-gc-rescue:{mod._host_slug()}"
+        assert "worktree" not in row["job"].split(":", 1)[1]  # no slug in the id
+        assert row["priority"] == "HIGH" and row["source"] == "worktree_gc_universal"
+        assert row["quarantined"] == 3 and row["reclaimed_unpushed"] == 3
+        assert len(row["error_summary"]) <= 80
+        assert len(row["rescues"]) == 6
+        for r in row["rescues"]:
+            assert set(r) >= {"worktree", "branch", "kind", "destination", "dir_removed"}
+            assert r["dir_removed"] is True
+        by_kind = {k: [r for r in row["rescues"] if r["kind"] == k]
+                   for k in ("quarantined-wip", "reclaimed-unpushed-branch")}
+        assert all(r["destination"].startswith(mod.QUARANTINE_REF_PREFIX + "/")
+                   and r["changed_lines"] >= 1 for r in by_kind["quarantined-wip"])
+        assert all(r["destination"] == f"refs/heads/{r['branch']}"
+                   for r in by_kind["reclaimed-unpushed-branch"])
+        # The row never carries file contents / diff text.
+        assert "real uncommitted change" not in json.dumps(row)
+
+    def test_zero_rescues_write_no_file(self, gc_repo, tmp_path):
+        mod, repo, env = gc_repo
+        wt = mod.WORKTREES_DIR / "clean-pushed"
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        _add_worktree(repo, wt, "feature/clean-pushed", env)
+        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+
+        report = mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        assert report["removed"] == 1 and report["quarantined"] == 0
+        assert report["reclaimed_unpushed"] == 0
+        assert self._rows(tmp_path) == []
+        assert not (tmp_path / "claude-tasks").exists()
+
+    def test_dirty_plus_unpushed_reports_both_in_one_file(self, gc_repo, tmp_path):
+        mod, repo, env = gc_repo
+        wt = self._unpushed(mod, repo, env, "both")
+        (wt / "README.md").write_text("seed\ndirty on top\n")
+        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
 
         mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
 
         (row,) = self._rows(tmp_path)
-        assert row["kind"] == "reclaimed-unpushed-branch"
-        assert row["branch"] == "feature/reclaim-esc"
-        assert row["commits"] == 1
-        assert row["recovery"] == f"git worktree add {wt} feature/reclaim-esc"
-        assert row["expires_at"] is None
+        kinds = sorted(r["kind"] for r in row["rescues"])
+        assert kinds == ["quarantined-wip", "reclaimed-unpushed-branch"]
+        assert all(r["branch"] == "feature/both" for r in row["rescues"])
 
-    def test_dry_run_emits_nothing(self, gc_repo, tmp_path):
+    def test_dry_run_writes_nothing_on_both_paths(self, gc_repo, tmp_path):
         mod, repo, env = gc_repo
-        wt = mod.WORKTREES_DIR / "feature-dry-esc"
-        wt.parent.mkdir(parents=True, exist_ok=True)
-        _add_worktree(repo, wt, "feature/dry-esc", env)
-        (wt / "README.md").write_text("seed\nchange\n")
-        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+        self._dirty(mod, repo, env, "dry-dirty")
+        self._unpushed(mod, repo, env, "dry-unp")
 
-        mod.gc(apply=False, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+        report = mod.gc(apply=False, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        assert report["quarantined"] == 1 and report["reclaimed_unpushed"] == 1
+        assert not (tmp_path / "claude-tasks").exists()
+
+    def test_failed_removal_is_not_reported_as_reclaimed(self, gc_repo, tmp_path, monkeypatch):
+        mod, repo, env = gc_repo
+        self._dirty(mod, repo, env, "stuck-dirty")
+        self._unpushed(mod, repo, env, "stuck-unp")
+        monkeypatch.setattr(mod, "_remove", lambda *a, **k: False)
+
+        report = mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        assert report["removed"] == 0
+        (row,) = self._rows(tmp_path)
+        # The unpushed "reclaim" reclaimed nothing -> omitted. The quarantine
+        # ref really exists -> kept, but honestly marked dir_removed=False.
+        (r,) = row["rescues"]
+        assert r["kind"] == "quarantined-wip" and r["dir_removed"] is False
+        assert row["reclaimed_unpushed"] == 0 and row["quarantined"] == 1
+
+    def test_failed_removal_with_nothing_rescued_writes_nothing(self, gc_repo, tmp_path, monkeypatch):
+        mod, repo, env = gc_repo
+        self._unpushed(mod, repo, env, "stuck-only")
+        monkeypatch.setattr(mod, "_remove", lambda *a, **k: False)
+
+        mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
 
         assert self._rows(tmp_path) == []
+
+    def test_branchless_worktree_never_yields_refs_heads_none(self, gc_repo, tmp_path, monkeypatch):
+        mod, repo, env = gc_repo
+        wt = mod.WORKTREES_DIR / "nobranch"
+        wt.mkdir(parents=True)
+        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+        monkeypatch.setattr(mod, "_list_worktrees", lambda: [
+            {"path": str(wt), "branch": None, "detached": False, "bare": False, "head": None}])
+        monkeypatch.setattr(mod, "_unpushed_commits", lambda *a, **k: 2)
+        monkeypatch.setattr(mod, "_has_real_dirty", lambda *a, **k: False)
+        monkeypatch.setattr(mod, "_remove", lambda *a, **k: True)
+
+        mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        d = tmp_path / "claude-tasks"
+        assert not d.exists() or "None" not in "".join(f.read_text() for f in d.glob("*.json"))
+
+    def test_count_changed_lines_ignores_blank_lines_and_headers(self, gc_repo):
+        mod, _repo, _env = gc_repo
+        patch = "--- a/f\n+++ b/f\n@@ -1 +1 @@\n\n-old\n+new\n context\n\n"
+        assert mod._count_changed_lines(patch) == 2
 
     def test_write_failure_does_not_abort_run(self, gc_repo, tmp_path, monkeypatch):
         mod, repo, env = gc_repo
         blocker = tmp_path / "not-a-dir"
         blocker.write_text("file where the tasks dir should be")
         monkeypatch.setenv("CLAUDE_TASKS_DIR", str(blocker))
-        wt = mod.WORKTREES_DIR / "feature-fail-esc"
-        wt.parent.mkdir(parents=True, exist_ok=True)
-        _add_worktree(repo, wt, "feature/fail-esc", env)
-        (wt / "README.md").write_text("seed\nchange\n")
-        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+        wt = self._dirty(mod, repo, env, "fail-esc")
 
         report = mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
 
         assert report["quarantined"] == 1 and report["removed"] == 1
         assert not wt.exists()
+
+    def test_write_is_atomic_no_tmp_left_behind(self, gc_repo, tmp_path):
+        mod, repo, env = gc_repo
+        self._dirty(mod, repo, env, "atomic")
+
+        mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        assert list((tmp_path / "claude-tasks").glob("*.tmp")) == []
 
 
 # ---------------------------------------------------------------------------
