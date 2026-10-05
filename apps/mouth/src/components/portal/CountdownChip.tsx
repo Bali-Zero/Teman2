@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
+import { formatLongSpan } from "@/lib/utils/format-date";
 
 /**
  * CountdownChip — shared portal deadline / age pill.
@@ -84,7 +85,7 @@ export function CountdownChip({
         ? "tomorrow"
         : diffDays <= 365
           ? `⏰ ${diffDays}d left`
-          : `${Math.floor(diffDays / 30)}mo left`;
+          : `${formatLongSpan(diffDays)} left`;
 
   return (
     <span
