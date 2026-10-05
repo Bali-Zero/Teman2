@@ -1268,3 +1268,26 @@ def test_emitted_snapshot_provenance_end_to_end(tmp_path, monkeypatch):
     surface = json.dumps(snap, ensure_ascii=False).lower()
     for word in BANNED_SURFACE_VOCABULARY:
         assert word not in surface, f"banned vocabulary leaked into emitted surface: {word!r}"
+
+
+# Naga P2 on #7887: one account reached through two profile dirs (A3 on Air-M5)
+# must reach consumers keyed by seat id (usage-dashboard.html) as ONE row.
+
+def test_two_active_profiles_of_one_seat_sum_and_keep_provenance():
+    r = suc.merge_profile_results([
+        ("~/.claude", {"status": "ok", "days": {"05/10": {"in": 5, "out": 7}}, "models": {"m": 2}}),
+        ("~/.claude-acct2", {"status": "ok", "days": {"05/10": {"in": 1, "out": 3}, "04/10": {"out": 4}}, "models": {"m": 1}}),
+    ])
+    assert r["status"] == "ok"
+    assert r["days"]["05/10"] == {"in": 6, "out": 10} and r["days"]["04/10"] == {"out": 4}
+    assert r["models"] == {"m": 3}
+    assert [p["source"] for p in r["profiles"]] == ["claude:~/.claude", "claude:~/.claude-acct2"]
+
+
+def test_one_active_and_one_empty_profile_never_loses_the_active_one():
+    r = suc.merge_profile_results([
+        ("~/.claude", {"status": "ok", "days": {"05/10": {"out": 9}}, "models": {}}),
+        ("~/.claude-acct2", {"status": "empty"}),
+    ])
+    assert r["status"] == "ok" and r["days"]["05/10"] == {"out": 9}
+    assert [p["status"] for p in r["profiles"]] == ["ok", "empty"]

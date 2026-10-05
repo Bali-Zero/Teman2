@@ -103,6 +103,33 @@ def machine_seat_map(smap: dict, machine: str | None = None) -> dict:
     return smap
 
 
+def merge_profile_results(results: list[tuple[str, dict]]) -> dict:
+    """Un account raggiunto da più profile dir (A3 su Air-M5) è UNA riga: i
+    contatori si sommano, la provenienza per profilo resta in `profiles`. I
+    consumer indicizzati per id (usage-dashboard.html) altrimenti tengono solo
+    l'ultima riga e perdono i consumi dell'altra (Naga P2 su #7887)."""
+    def add(into: dict, key: str, value) -> None:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            into[key] = into.get(key, 0) + value
+        else:  # a label, not a counter: the first profile's value stands
+            into.setdefault(key, value)
+
+    days: dict = defaultdict(dict)
+    models: dict = {}
+    for _, r in results:
+        for day, counters in (r.get("days") or {}).items():
+            for key, value in counters.items():
+                add(days[day], key, value)
+        for model, value in (r.get("models") or {}).items():
+            add(models, model, value)
+    statuses = [r.get("status") for _, r in results]
+    notes = [r["note"] for _, r in results if r.get("note")]
+    return {"status": "ok" if "ok" in statuses else statuses[0],
+            "days": dict(days), "models": models,
+            "note": "; ".join(notes) or None,
+            "profiles": [{"source": f"claude:{p}", "status": r.get("status")} for p, r in results]}
+
+
 def _day(ts: str) -> str | None:
     """timestamp ISO -> giorno WITA 'DD/MM'. None se non parsabile."""
     try:
@@ -838,9 +865,14 @@ def main() -> int:
     task_dir = Path(os.path.expanduser(args.task_outcomes))
     task_index = {} if task_dir.is_dir() and any(task_dir.glob("*.json")) else None
 
+    profile_dirs_by_seat: dict[str, list[str]] = {}
     for pdir, seat_id in (smap.get("claude_profiles") or {}).items():
-        r = collect_claude(os.path.expanduser(pdir), since, task_index=task_index)
-        seats.append({"id": seat_id, "source": f"claude:{pdir}", "status": r.get("status"),
+        profile_dirs_by_seat.setdefault(seat_id, []).append(pdir)
+    for seat_id, pdirs in profile_dirs_by_seat.items():
+        r = merge_profile_results([
+            (pdir, collect_claude(os.path.expanduser(pdir), since, task_index=task_index))
+            for pdir in pdirs])
+        seats.append({"id": seat_id, "source": "claude:" + "+".join(pdirs), "status": r.get("status"),
                       "days": r.get("days", {}), "models": r.get("models", {}),
                       "metrics": fmt_metrics(r.get("days", {}),
                                              provenance=CLAUDE_LOCAL_JSONL_PROVENANCE)
@@ -854,6 +886,7 @@ def main() -> int:
                           "reading": "observed/provisional — not provider-final",
                           "label": CLAUDE_LOCAL_JSONL_PROVENANCE,
                       },
+                      "profiles": r["profiles"],
                       "note": r.get("note")})
 
     for chome, seat_id in (smap.get("codex_homes") or {}).items():

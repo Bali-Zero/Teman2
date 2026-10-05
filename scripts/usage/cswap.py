@@ -442,8 +442,9 @@ def collect_candidates(seat_map: dict[str, Any], now: datetime,
             # its load, or the split makes it look half as busy as it is.
             by_seat[seat_id]["t5"] += m5h["total"]
             by_seat[seat_id]["t7"] += m7d["total"]
+            by_seat[seat_id]["dirs"].append(pdir_str)
             continue
-        by_seat[seat_id] = {"seat": seat_id, "dir": pdir_str, "path": pdir,
+        by_seat[seat_id] = {"seat": seat_id, "dir": pdir_str, "dirs": [pdir_str], "path": pdir,
                             "t5": m5h["total"], "t7": m7d["total"]}
     return list(by_seat.values())
 
@@ -467,7 +468,9 @@ def choose_seat(candidates: list[dict[str, Any]], state: dict[str, Any], now: da
 
     active_dir = state.get("active_dir")
     if active_dir:
-        current = next((c for c in candidates if c["dir"] == active_dir), None)
+        # Match every profile dir of the seat: state may sit on an alias dir.
+        current = next((c for c in candidates
+                        if active_dir in c.get("dirs", [c["dir"]])), None)
         if current is not None:
             max_t5 = max(c["t5"] for c in candidates)
             under_threshold = max_t5 <= 0 or current["t5"] < threshold * max_t5
@@ -510,7 +513,7 @@ def cmd_auto(seat_map_path: Path, *, do_print: bool, do_activate: bool,
                  f"(5h_total={chosen['t5']}, 7d_total={chosen['t7']})")
 
         if do_activate:
-            switched = state.get("active_dir") != chosen["dir"]
+            switched = state.get("active_dir") not in chosen.get("dirs", [chosen["dir"]])
             new_state = {
                 "active_dir": chosen["dir"],
                 "active_seat": chosen["seat"],

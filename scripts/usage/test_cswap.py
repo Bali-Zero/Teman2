@@ -508,3 +508,23 @@ def test_strip_leading_separator():
     assert cswap._strip_leading_separator(["--", "claude", "-p", "x"]) == ["claude", "-p", "x"]
     assert cswap._strip_leading_separator(["claude"]) == ["claude"]
     assert cswap._strip_leading_separator([]) == []
+
+
+def test_collect_candidates_keeps_every_profile_dir_of_an_aggregated_seat(tmp_path, monkeypatch):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="Air-M5")
+    monkeypatch.setattr(cswap, "_collect_window", lambda pdir, since: {"total": 10})
+    a3 = next(c for c in cswap.collect_candidates(seat_map, cswap._now(), exclude=set()) if c["seat"] == "A3")
+    assert a3["dirs"] == [str(tmp_path / "default"), str(tmp_path / "acct2")]
+
+
+def test_choose_seat_recognises_the_current_seat_through_its_alias_dir():
+    """Naga P2 on #7887: state on A3's SECOND profile dir, switched 5 min ago,
+    A3 far over threshold — the 30-minute guard must still hold."""
+    now = datetime(2026, 10, 5, 12, 0, tzinfo=cswap.WITA)
+    candidates = [
+        {"seat": "A3", "dir": "~/.claude", "dirs": ["~/.claude", "~/.claude-acct2"], "t5": 1000, "t7": 1000},
+        {"seat": "A1", "dir": "~/.claude-a1", "dirs": ["~/.claude-a1"], "t5": 10, "t7": 10},
+    ]
+    state = {"active_dir": "~/.claude-acct2", "active_seat": "A3",
+             "last_switch_ts": (now - timedelta(minutes=5)).isoformat()}
+    assert cswap.choose_seat(candidates, state, now)["seat"] == "A3"
