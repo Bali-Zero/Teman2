@@ -1,0 +1,26 @@
+task_id: seatmap-hostmap
+mission: SEATMAP-20261005
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Make the seat map per-machine so cswap (dispatch) and the seat-usage collector (attribution) read
+  the profile-dir -> seat bindings measured on Air-M5 on 2026-10-05, without writing M5's truth over
+  Pro and Mini; pin every per-machine block to FLEET_TOPOLOGY.json; mark O3's quota independence
+  from O2 as UNVERIFIED (Naga gap 1 + P2).
+constraints:
+  - Pro and Mini have no measured block and keep the unchanged top-level fallback.
+  - A4 has no role chain (routing ruling pending, Naga gap 4) so cswap auto never offers it.
+  - No credential, auth file or identity is read or written; seat_map.json stays identity-free.
+acceptance:
+  - text: WHEN the collector runs on Air-M5 THEN ~/.claude and ~/.claude-acct2 SHALL report A3, ~/.claude-a1 A1, ~/.claude-acct4 A4, ~/.claude-zero-team AZ and ~/.codex-acct2 O3.
+    probe: python3 scripts/usage/seat_usage_collector.py --days 1 --out <scratch>/snap.json; jq '.seats[]|[.id,.source]'
+  - text: WHEN a machine has no by_machine block THEN it SHALL read the top-level map, never Air-M5's.
+    probe: scripts/usage/test_seat_map_by_machine.py::test_machine_without_block_never_inherits_another_machines_truth
+  - text: WHEN a by_machine block drifts from the registry bindings, or the registry binds a machine with no block, THEN the parity test SHALL fail.
+    probe: scripts/usage/test_seat_map_by_machine.py (parity + two negative cases)
+  - text: WHEN one seat is reached through two profile dirs THEN cswap auto SHALL rank it once on the summed load, and SHALL never offer a seat in auto_rotation_excluded.
+    probe: scripts/usage/test_cswap.py
+consumer_map:
+  - scripts/usage/seat_usage_collector.py — run every 1800 s from each host's main checkout by the seat-usage LaunchAgent.
+  - scripts/usage/cswap.py — `cswap auto` / `cswap run` seat selection.

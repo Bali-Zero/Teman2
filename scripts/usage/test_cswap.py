@@ -102,6 +102,57 @@ def test_collect_candidates_excludes_orphan_and_legacy(tmp_path):
     assert "AZ-legacy-verify" not in seats
 
 
+def _write_machine_seat_map(tmp_path: Path) -> Path:
+    """A by_machine block shaped like Air-M5's measured map: one seat (A3)
+    reached through two profile dirs, one seat (A4) kept out of rotation."""
+    for name in ("default", "acct2", "a1", "acct4", "flat-only"):
+        (tmp_path / name).mkdir(exist_ok=True)
+    data = {
+        "claude_profiles": {str(tmp_path / "flat-only"): "AZ"},
+        "by_machine": {
+            "Air-M5": {
+                "claude_profiles": {
+                    str(tmp_path / "default"): "A3",
+                    str(tmp_path / "acct2"): "A3",
+                    str(tmp_path / "a1"): "A1",
+                    str(tmp_path / "acct4"): "A4",
+                },
+                "auto_rotation_excluded": {"A4": "no role chain yet"},
+            }
+        },
+    }
+    p = tmp_path / "seat_map.json"
+    p.write_text(json.dumps(data, indent=2) + "\n")
+    return p
+
+
+def test_load_seat_map_reads_this_machines_block(tmp_path):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="air-m5")
+    assert seat_map["claude_profiles"][str(tmp_path / "a1")] == "A1"
+    assert str(tmp_path / "flat-only") not in seat_map["claude_profiles"]
+
+
+def test_load_seat_map_other_machine_keeps_the_flat_fallback(tmp_path):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="Nuzantara")
+    assert seat_map["claude_profiles"] == {str(tmp_path / "flat-only"): "AZ"}
+
+
+def test_collect_candidates_counts_one_seat_once_across_its_profile_dirs(tmp_path, monkeypatch):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="Air-M5")
+    monkeypatch.setattr(cswap, "_collect_window", lambda pdir, since: {"total": 10})
+    candidates = cswap.collect_candidates(seat_map, cswap._now(), exclude=set())
+    by_seat = {c["seat"]: c for c in candidates}
+    assert sorted(by_seat) == ["A1", "A3"]
+    assert by_seat["A3"]["t5"] == 20 and by_seat["A1"]["t5"] == 10
+
+
+def test_collect_candidates_never_offers_a_seat_held_out_of_rotation(tmp_path):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="Air-M5")
+    seats = {c["seat"] for c in cswap.collect_candidates(seat_map, cswap._now(), exclude=set())}
+    assert "A4" not in seats
+    assert cswap.resolve_seat_dir(seat_map, "A4") == tmp_path / "acct4"
+
+
 def test_list_warns_but_does_not_crash_on_orphan(tmp_path, capsys):
     seat_map_path = _write_seat_map(tmp_path)
     rc = cswap.cmd_list(seat_map_path)

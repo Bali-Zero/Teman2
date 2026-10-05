@@ -1,5 +1,5 @@
 {
-  "_doc": "Local profile dir -> seat mapping, per FLEET_TOPOLOGY.json accounts + research/operations/2026-08-10-fleet-order-spec.md §3.1.",
+  "_doc": "Local profile dir -> seat mapping, per FLEET_TOPOLOGY.json accounts + research/operations/2026-08-10-fleet-order-spec.md §3.1. A machine reads its own by_machine block (key = short hostname, case-insensitive); a machine WITHOUT a block reads the top-level map, which is an unmeasured fallback and never another machine's truth.",
   "_status": "mapping only — this file is tracked in the PUBLIC Bali-Zero/Teman2 repo and carries NO identities. Run `cswap fingerprint` to populate ~/.config/cswap/fingerprints.json (local, 0600, never committed) with real auth-status results.",
   "claude_profiles": {
     "~/.claude": "AZ",
@@ -12,5 +12,26 @@
   "codex_homes": {
     "~/.codex": "O1",
     "~/.codex-o2": "O2"
+  },
+  "by_machine": {
+    "Air-M5": {
+      "_measured": "2026-10-05 on Air-M5: each profile dir answered a real prompt. Mirrors FLEET_TOPOLOGY.json config_dir_by_machine / codex_home_by_machine, pinned by scripts/usage/test_seat_map_by_machine.py. ~/.claude-acct3 exists here but was not measured, so it is not mapped.",
+      "claude_profiles": {
+        "~/.claude": "A3",
+        "~/.claude-acct2": "A3",
+        "~/.claude-a1": "A1",
+        "~/.claude-kaiser": "A2",
+        "~/.claude-acct4": "A4",
+        "~/.claude-zero-team": "AZ"
+      },
+      "codex_homes": {
+        "~/.codex": "O1",
+        "~/.codex-o2": "O2",
+        "~/.codex-acct2": "O3"
+      },
+      "auto_rotation_excluded": {
+        "A4": "no role chain yet — routing ruling pending (Naga gap 4), so `cswap auto` never picks it; `cswap run A4` stays an explicit choice"
+      }
+    }
   }
 }

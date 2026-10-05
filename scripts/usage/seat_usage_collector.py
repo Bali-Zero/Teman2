@@ -56,6 +56,7 @@ import hashlib
 import json
 import os
 import re
+import socket
 import sys
 from collections import defaultdict
 from collections.abc import Iterable
@@ -88,6 +89,18 @@ def _load_seat_map(path: Path) -> dict:
     except Exception as e:
         print(f"[seat-usage] seat_map illeggibile ({e}); uso default", file=sys.stderr)
         return DEFAULT_SEAT_MAP
+
+
+def machine_seat_map(smap: dict, machine: str | None = None) -> dict:
+    """La mappa di QUESTA macchina: il blocco `by_machine` il cui nome è l'hostname
+    corto (case-insensitive), altrimenti il fallback top-level. Il collector gira dal
+    checkout di ogni host: una macchina senza blocco misurato non eredita mai la
+    verità di un'altra (Naga gap 1, 2026-10-05)."""
+    host = (machine or socket.gethostname().split(".")[0]).lower()
+    for name, block in (smap.get("by_machine") or {}).items():
+        if name.lower() == host and isinstance(block, dict):
+            return block
+    return smap
 
 
 def _day(ts: str) -> str | None:
@@ -820,7 +833,7 @@ def main() -> int:
     args = ap.parse_args()
 
     since = NOW - timedelta(days=args.days)
-    smap = _load_seat_map(Path(args.seat_map))
+    smap = machine_seat_map(_load_seat_map(Path(args.seat_map)))
     seats = []
     task_dir = Path(os.path.expanduser(args.task_outcomes))
     task_index = {} if task_dir.is_dir() and any(task_dir.glob("*.json")) else None

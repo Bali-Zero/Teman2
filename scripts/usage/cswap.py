@@ -65,7 +65,7 @@ _THIS_DIR = Path(__file__).resolve().parent
 if str(_THIS_DIR) not in sys.path:
     sys.path.insert(0, str(_THIS_DIR))
 
-from seat_usage_collector import WITA, collect_claude  # noqa: E402  (path setup above)
+from seat_usage_collector import WITA, collect_claude, machine_seat_map  # noqa: E402  (path setup above)
 
 LOCK_TIMEOUT_RC = 75  # EX_TEMPFAIL — same convention as scripts/prepush_suite_lock.sh
 HYSTERESIS_THRESHOLD = 0.9
@@ -104,9 +104,11 @@ def _default_seat_map_path() -> Path:
     return _THIS_DIR / "seat_map.json"
 
 
-def load_seat_map(path: Path) -> dict[str, Any]:
+def load_seat_map(path: Path, machine: Optional[str] = None) -> dict[str, Any]:
+    """This machine's view of seat_map.json: its `by_machine` block when one
+    exists, else the flat top-level map (see machine_seat_map)."""
     try:
-        return json.loads(path.read_text())
+        return machine_seat_map(json.loads(path.read_text()), machine)
     except FileNotFoundError:
         raise SystemExit(f"[cswap] seat map not found: {path}")
     except json.JSONDecodeError as e:
@@ -425,18 +427,25 @@ def collect_candidates(seat_map: dict[str, Any], now: datetime,
     """Impure: touches real profile dirs + calls collect_claude. Kept
     separate from choose_seat() (pure) so the hysteresis/ranking logic is
     unit-testable without real transcript files on disk."""
-    candidates = []
+    held_out = set(exclude) | set(seat_map.get("auto_rotation_excluded") or {})
+    by_seat: dict[str, dict[str, Any]] = {}
     for pdir_str, seat_id in (seat_map.get("claude_profiles") or {}).items():
-        if not is_eligible(seat_id) or seat_id in exclude:
+        if not is_eligible(seat_id) or seat_id in held_out:
             continue
         pdir = Path(os.path.expanduser(pdir_str))
         if not pdir.is_dir():
             continue
         m5h = _collect_window(pdir_str, now - timedelta(hours=5))
         m7d = _collect_window(pdir_str, now - timedelta(days=7))
-        candidates.append({"seat": seat_id, "dir": pdir_str, "path": pdir,
-                            "t5": m5h["total"], "t7": m7d["total"]})
-    return candidates
+        if seat_id in by_seat:
+            # One account reached through two profile dirs is ONE quota: sum
+            # its load, or the split makes it look half as busy as it is.
+            by_seat[seat_id]["t5"] += m5h["total"]
+            by_seat[seat_id]["t7"] += m7d["total"]
+            continue
+        by_seat[seat_id] = {"seat": seat_id, "dir": pdir_str, "path": pdir,
+                            "t5": m5h["total"], "t7": m7d["total"]}
+    return list(by_seat.values())
 
 
 def choose_seat(candidates: list[dict[str, Any]], state: dict[str, Any], now: datetime,

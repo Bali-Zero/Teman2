@@ -97,7 +97,8 @@
       "unrostered_seats": {
         "O3": {
           "email": "zero@balizero.com",
-          "plan": "ChatGPT Team workspace (plan claim reads team) — a quota pool distinct from O2, same work email",
+          "plan": "ChatGPT Team workspace (plan claim reads team), same work email as O2",
+          "quota_independence": "UNVERIFIED — a different workspace is not proof of a quota pool independent of O2; stays unverified until attributed quota measurements exist (Naga P2, 2026-10-05)",
           "lane": "unassigned (logged in by the owner 2026-10-05)",
           "codex_home_by_machine": { "Air-M5": "~/.codex-acct2" },
           "observed_default_model": "gpt-5.6-sol (observed 2026-10-05, Air-M5; no -m slug probed)",
