@@ -101,6 +101,13 @@ def copied_dispatcher(tmp_path: Path) -> Path:
     target = tmp_path / "scripts" / "ai-dispatch.sh"
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(REPO / "scripts" / "ai-dispatch.sh", target)
+    # L50: ai-dispatch.sh sources scripts/lib/seat_watchdog.sh — the copied
+    # dispatcher needs the lib alongside or it fails loud at startup.
+    (target.parent / "lib").mkdir(exist_ok=True)
+    shutil.copy2(
+        REPO / "scripts" / "lib" / "seat_watchdog.sh",
+        target.parent / "lib" / "seat_watchdog.sh",
+    )
     target.chmod(0o755)
     return target
 
