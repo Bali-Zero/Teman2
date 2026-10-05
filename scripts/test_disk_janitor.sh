@@ -5,8 +5,9 @@
 # ancestors, PII component, siblings) / scratch naming / missing registry / TMP_ROOT shape /
 # open-file probe / symlinks / odd names / output boundary / the launchd wrapper, asserts
 # exactly what is pruned and what is preserved. External tools and the qdrant delegate are
-# disabled (DISK_JANITOR_TOOLS=false, DISK_JANITOR_QDRANT_RETENTION=""): they are other
-# scripts' contracts. Targets /bin/bash 3.2. Run: bash scripts/test_disk_janitor.sh
+# disabled (DISK_JANITOR_TOOLS=false, DISK_JANITOR_QDRANT_RETENTION="") except where TEST 10
+# puts recording FAKES of colima/uv/restic/docker/brew/pgrep first on PATH: no real tool is reached.
+# Targets /bin/bash 3.2. Run: bash scripts/test_disk_janitor.sh
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT="$HERE/disk_janitor.sh"
@@ -358,6 +359,60 @@ build; bash "$SCRIPT" --check-path / >/dev/null 2>&1; RC=$?
 [ $RC -eq 3 ] && ok "--check-path / is REFUSED (R-6)" || no "/ not refused rc=$RC"
 build; rm -rf "$H/.ollama"; DISK_JANITOR_HOME="$H/" bash "$SCRIPT" --check-path "$H/.ollama/models/m" >/dev/null 2>&1; RC=$?
 [ $RC -eq 3 ] && ok "trailing-slash HOME still protects a not-yet-existing protected root (R-6)" || no "trailing-slash HOME defeated protection rc=$RC"
+
+echo "═══ TEST 10: tool steps — colima fstrim, uv, restic, docker hygiene (recording fakes, df-delta receipt) ═══"
+# Recording FAKES of colima/uv/restic/docker/brew/pgrep go first on PATH: no real tool is ever reached.
+fake_tools(){ # $1 colima status line  $2 image list ("|" rows)  $3 container user of image id
+  mkdir -p "$FAKEBIN"; : > "$ROOT/calls"
+  printf '#!/bin/sh\necho "colima $*" >> %s/calls\n[ "$1" = status ] && echo "%s"\nexit 0\n' "$ROOT" "$1" > "$FAKEBIN/colima"
+  printf '#!/bin/sh\nexit 1\n' > "$FAKEBIN/pgrep"   # no uv process holds the cache lock (the host may run one)
+  for t in uv restic brew; do printf '#!/bin/sh\necho "%s $*" >> %s/calls\nexit 0\n' "$t" "$ROOT" > "$FAKEBIN/$t"; done
+  printf '#!/bin/sh\necho "docker $*" >> %s/calls\ncase "$1 $2" in\n"image ls") printf "%%b" "%s" ;;\n"ps -a") case "$*" in *ancestor=%s*) echo c1 ;; esac ;;\nesac\nexit 0\n' "$ROOT" "$2" "$3" > "$FAKEBIN/docker"
+  chmod +x "$FAKEBIN"/*
+}
+OLDD="2020-01-01 00:00:00 +0000 UTC"; NEWD="$(date +%Y-%m-%d) 00:00:00 +0000 UTC"
+IMGS="i1|localci-candidate|1|$OLDD\ni2|neo4j|5|$OLDD\ni3|stale-img|v1|$OLDD\ni4|fresh-img|v1|$NEWD\ni5|<none>|<none>|$OLDD\n"
+truns(){ DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=true DISK_JANITOR_QDRANT_RETENTION="" DISK_JANITOR_LOG="$ROOT/j.log" DISK_JANITOR_JOURNAL="$ROOT/j.jsonl" PATH="$FAKEBIN:$PATH" bash "$SCRIPT" "$@" 2>&1; }
+build; fake_tools "INFO colima is running using macOS Virtualization.Framework" "$IMGS" i2
+OUT=$(truns --apply); RC=$?
+[ $RC -eq 0 ] && grep -q "colima ssh -- sudo fstrim -av" "$ROOT/calls" && grep -q "uv cache prune" "$ROOT/calls" && grep -q "restic cache --cleanup" "$ROOT/calls" \
+  && ok "apply: colima fstrim, uv cache prune, restic cache --cleanup each invoked" || no "tool verbs not invoked rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
+grep -q "docker image rm stale-img:v1" "$ROOT/calls" && grep -q "docker image rm i5" "$ROOT/calls" && ok "old unused images removed (tagged by ref, untagged by id)" || no "unused images not removed"
+grep -q "docker image rm localci-candidate\|docker image rm i1" "$ROOT/calls" && no "pinned localci-candidate removed" || ok "localci-candidate never a candidate, whatever its age"
+grep -q "docker image rm neo4j\|docker image rm fresh-img" "$ROOT/calls" && no "in-use or fresh image removed" || ok "image used by a container and fresh image kept"
+grep -q "prune -a" "$ROOT/calls" && no "prune -a issued" || ok "no 'prune -a' ever issued"
+grep -q '"uv_cache_prune":{"status":"done".*"restic_cache_cleanup":{"status":"done".*"docker_unused_images":{"status":"done","count":2,.*"colima_fstrim":{"status":"done","count":1,' "$ROOT/j.jsonl" \
+  && ok "receipt: each tool rule is its own step with status/count/df delta" || no "tool steps receipt wrong: $(tail -1 "$ROOT/j.jsonl")"
+[ "$(grep -n "image rm\|fstrim" "$ROOT/calls" | tail -1 | grep -c fstrim)" -eq 1 ] && ok "fstrim runs after the docker removals (their freed blocks reach the host the same run)" || no "fstrim ran before a docker removal"
+echo "$OUT" | grep -q "stale-img\|neo4j" && no "a docker image NAME leaked into a log line" || ok "docker log lines carry hashes only"
+build; fake_tools "INFO colima is running" "$IMGS" none; printf '#!/bin/sh\necho "docker $*" >> %s/calls\n[ "$1" = info ] && exit 1\nexit 0\n' "$ROOT" > "$FAKEBIN/docker"
+printf '#!/bin/sh\nexit 0\n' > "$FAKEBIN/pgrep"   # a uv process is alive: it holds the cache lock
+OUT=$(truns --apply); RC=$?
+[ $RC -eq 0 ] && ! grep -q "image rm\|image ls\|ps -a" "$ROOT/calls" && grep -q '"docker_unused_images":{"status":"skipped","count":0,"df_delta_bytes":[-0-9]*,"reason":"docker-unreachable"}' "$ROOT/j.jsonl" \
+  && ok "docker unreachable: images step skipped, nothing listed or removed" || no "docker-unreachable handling rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
+! grep -q "uv cache prune" "$ROOT/calls" && grep -q '"uv_cache_prune":{"status":"skipped","count":0,"df_delta_bytes":[-0-9]*,"reason":"uv-lock-held"}' "$ROOT/j.jsonl" \
+  && ok "uv process alive: cache prune skipped (lock held), never forced" || no "uv prune ran while a uv process was alive"
+build; fake_tools "INFO colima is running" "$IMGS" none; OUT=$(truns); RC=$?
+[ $RC -eq 0 ] && ! grep -q "fstrim\|cache prune\|--cleanup\|image rm" "$ROOT/calls" && echo "$OUT" | grep -q "docker_unused_images: dry-run count=3" \
+  && ok "dry-run: no tool verb executed, docker candidates counted" || no "dry-run executed a tool verb rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
+build; fake_tools "INFO colima is not running" "" none; OUT=$(truns --apply); RC=$?
+[ $RC -eq 0 ] && ! grep -q "fstrim" "$ROOT/calls" && grep -q '"colima_fstrim":{"status":"skipped","count":0,"df_delta_bytes":[-0-9]*,"reason":"colima-not-running"}' "$ROOT/j.jsonl" \
+  && ok "colima down: fstrim skipped with reason colima-not-running" || no "colima-down handling rc=$RC"
+build; fake_tools "INFO colima is running" "" none; printf '#!/bin/sh\n[ "$1" = ssh ] && exit 1\necho "colima is running"\n' > "$FAKEBIN/colima"; chmod +x "$FAKEBIN/colima"
+OUT=$(truns --apply); RC=$?
+[ $RC -eq 1 ] && echo "$OUT" | grep -q "colima_fstrim: error" && ok "failed fstrim is an ERROR, never a silent done" || no "failed fstrim silent rc=$RC"
+build; fake_tools "INFO colima is running" "i6|bad-img|v1|not-a-date\ni3|stale-img|v1|$OLDD\n" none; OUT=$(truns --apply); RC=$?
+echo "$OUT" | grep -q "docker_unused_images: keep [0-9a-f]\{12\} (age unreadable)" && ! grep -q "docker image rm bad-img\|docker image rm i6" "$ROOT/calls" && ok "an unparsable CreatedAt is kept as 'age unreadable', never removed" || no "age-unreadable image mishandled"
+grep -q "docker image rm stale-img:v1" "$ROOT/calls" && ok "innocence: a readable old image in the same listing is still removed" || no "readable old image not removed"
+build; fake_tools "INFO colima is running" "" none; printf '#!/bin/sh\necho "restic $*" >> %s/calls\nexit 1\n' "$ROOT" > "$FAKEBIN/restic"; chmod +x "$FAKEBIN/restic"
+OUT=$(truns --apply); RC=$?
+[ $RC -eq 1 ] && echo "$OUT" | grep -q "restic_cache_cleanup: error" && grep -q '"restic_cache_cleanup":{"status":"error"' "$ROOT/j.jsonl" && ! grep -q '"tools":"[^"]*restic' "$ROOT/j.jsonl" \
+  && ok "failed restic cleanup is an ERROR in log and receipt, rc=1, never listed as done" || no "restic failure not reported as error rc=$RC"
+grep -q '"uv_cache_prune":{"status":"done"' "$ROOT/j.jsonl" && ok "restic failure does not starve the other tool steps" || no "other tool steps starved by the restic failure"
+rm -rf "$FAKEBIN"; mkdir -p "$FAKEBIN"
+build; OUT=$(DISK_JANITOR_DOCKER_DAYS=abc truns --apply); RC=$?
+[ $RC -eq 2 ] && ok "non-integer DOCKER_DAYS refuses the run (exit 2)" || no "bad DOCKER_DAYS accepted rc=$RC"
+decoys_intact && ok "protected decoys intact after the tool steps" || no "a decoy was touched by a tool step"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]
