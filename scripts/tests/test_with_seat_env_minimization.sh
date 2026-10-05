@@ -349,6 +349,114 @@ printf '  (real-seat resolution: %s checked, not installed here:%s)\n' \
   "$resolvable_checked" "${resolvable_skipped:- none}"
 check "every installed real seat resolves its own executable" test "$resolvable_failures" -eq 0
 
+# ACCOUNT SELECTION through a config-dir name, bounded to HOME.
+#
+# One CLI, several logins, each in its own config dir under HOME (on M5:
+# ~/.codex, ~/.codex-o2, ~/.codex-acct2). Measured 2026-10-05: with CODEX_HOME
+# undeclared, every dispatch through the broker reached the default home, so a
+# caller wanting another account bypassed the broker. Declaring the name alone
+# would let a caller hand the child ANY directory, so a seat may list it in
+# env_dirs_under_home: the value must canonicalise to an existing directory
+# strictly below HOME, or the broker refuses before the child starts. A
+# throwaway HOME keeps this hermetic; on refusal no capture file may exist,
+# which is the proof the child never ran.
+fake_home="$TEMP_DIR/home"
+outside_dir="$TEMP_DIR/outside"
+mkdir -p "$fake_home/.acct2" "$outside_dir"
+ln -s "$outside_dir" "$fake_home/.escape"
+dir_registry="$TEMP_DIR/dir-seat.json"
+cat >"$dir_registry" <<EOF
+{"seats":{"dir-seat":{"env":["HOME","PATH","TERM","LANG","LC_ALL","TMPDIR","SEAT_DIR"],"env_dirs_under_home":["SEAT_DIR"],"exec_allowlist":["env-capture"],"exec_search_path":["$TEMP_DIR"]}}}
+EOF
+chmod 600 "$dir_registry"
+dir_out="$TEMP_DIR/dir-out"
+dir_seat() { # $1 = SEAT_DIR value, empty = unset; the rest goes to the broker
+  local value="$1"
+  shift
+  rm -f "$dir_out"
+  if [ -n "$value" ]; then
+    SEAT_DIR="$value" HOME="$fake_home" WITH_SEAT_REGISTRY="$dir_registry" "$BROKER" "$@" >"$TEMP_DIR/stdout" 2>"$stderr_file"
+  else
+    HOME="$fake_home" WITH_SEAT_REGISTRY="$dir_registry" "$BROKER" "$@" >"$TEMP_DIR/stdout" 2>"$stderr_file"
+  fi
+}
+LAST_STDERR="$stderr_file"
+dir_seat "$fake_home/.acct2" dir-seat env-capture "$dir_out"
+dir_status=$?
+check "a directory under HOME reaches the child" \
+  bash -c '[ "$1" -eq 0 ] && grep -qx SEAT_DIR "$2"' _ "$dir_status" "$dir_out"
+dir_seat "" dir-seat env-capture "$dir_out"
+dir_status=$?
+check "an unset directory name runs and stays absent" \
+  bash -c '[ "$1" -eq 0 ] && ! grep -qx SEAT_DIR "$2"' _ "$dir_status" "$dir_out"
+for escape in "$outside_dir" "$fake_home/.escape" "$fake_home/../outside" "$fake_home/.missing" ".acct2" "$fake_home"; do
+  dir_seat "$escape" dir-seat env-capture "$dir_out"
+  dir_status=$?
+  check "SEAT_DIR=${escape#"$TEMP_DIR"} is refused and the child never runs" \
+    bash -c '[ "$1" -ne 0 ] && [ ! -e "$2" ]' _ "$dir_status" "$dir_out"
+done
+dir_seat "$outside_dir" --dry-run dir-seat env-capture
+check "--dry-run refuses the directory a real run refuses" test $? -ne 0
+
+# $(...) strips trailing newlines: a HOME whose canonical path ends in one must
+# not be truncated into its newline-less sibling (blind cross-family review,
+# Codex). And HOME=/ refuses rather than bounding nothing.
+nl_root="$TEMP_DIR/nl"
+mkdir -p "$nl_root/home"$'\n' "$nl_root/home/acct"
+ln -s "home"$'\n' "$nl_root/H"
+rm -f "$dir_out"
+SEAT_DIR="$nl_root/home/acct" HOME="$nl_root/H" WITH_SEAT_REGISTRY="$dir_registry" \
+  "$BROKER" dir-seat env-capture "$dir_out" >"$TEMP_DIR/stdout" 2>"$stderr_file"
+dir_status=$?
+check "a HOME ending in a newline is not truncated into a sibling" \
+  bash -c '[ "$1" -ne 0 ] && [ ! -e "$2" ]' _ "$dir_status" "$dir_out"
+SEAT_DIR="$fake_home/.acct2" HOME=/ WITH_SEAT_REGISTRY="$dir_registry" \
+  "$BROKER" --dry-run dir-seat env-capture >"$TEMP_DIR/stdout" 2>"$stderr_file"
+check "HOME=/ refuses rather than bounding nothing" test $? -ne 0
+
+# A bound on a misspelt name would leave the real name unbounded while looking
+# guarded, so a bound must name a declared env entry.
+cat >"$dir_registry" <<EOF
+{"seats":{"dir-seat":{"env":["HOME","PATH","SEAT_DIR"],"env_dirs_under_home":["SEAT_DRI"],"exec_allowlist":["env-capture"],"exec_search_path":["$TEMP_DIR"]}}}
+EOF
+dir_seat "" dir-seat env-capture "$dir_out"
+check "a bound on an undeclared name is a registry error" test $? -ne 0
+
+# The REAL declarations, through a real child, on any machine (CI included):
+# keep each real seat's env lists, swap only its executable for the capture
+# fixture. A secret-shaped name planted in the caller env must not arrive; the
+# names this registry declares for account selection must.
+derived_registry="$TEMP_DIR/derived.json"
+python3 - "$REAL_REGISTRY" "$derived_registry" "$TEMP_DIR" <<'MKDERIVED'
+import json, sys
+seats = json.load(open(sys.argv[1]))["seats"]
+for seat in seats.values():
+    seat["exec_allowlist"] = ["env-capture"]
+    seat["exec_search_path"] = [sys.argv[3]]
+json.dump({"seats": seats}, open(sys.argv[2], "w"))
+MKDERIVED
+chmod 600 "$derived_registry"
+GITHUB_PERSONAL_ACCESS_TOKEN="fake-planted-value"
+export GITHUB_PERSONAL_ACCESS_TOKEN
+"$capture" "$output"
+check "guilt fixture exposes a planted secret-shaped name" grep -qx GITHUB_PERSONAL_ACCESS_TOKEN "$output"
+derived_seat() { # $1 = real seat, $2 = the exact names its child must receive
+  rm -f "$output"
+  env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CONFIG_DIR HOME="$fake_home" USER=seat-test LOGNAME=seat-test \
+    CODEX_HOME="$fake_home/.acct2" WITH_SEAT_REGISTRY="$derived_registry" \
+    "$BROKER" "$1" env-capture "$output" >"$TEMP_DIR/stdout" 2>"$stderr_file"
+  # shellcheck disable=SC2086  # split on purpose: $2 is a space-separated name list
+  printf '%s\n' $2 | LC_ALL=C sort >"$TEMP_DIR/expected"
+  cmp -s "$TEMP_DIR/expected" "$output"
+}
+check "real codex seat: exactly its names, CODEX_HOME in, GITHUB_PERSONAL_ACCESS_TOKEN out" \
+  derived_seat codex "HOME PATH TERM LANG LC_ALL TMPDIR CODEX_HOME"
+HOME="$fake_home" CODEX_HOME="$outside_dir" WITH_SEAT_REGISTRY="$derived_registry" \
+  "$BROKER" --dry-run codex env-capture >"$TEMP_DIR/stdout" 2>"$stderr_file"
+check "real codex seat bounds CODEX_HOME to HOME" test $? -ne 0
+check "real claude-seat: exactly its names, USER in, LOGNAME and GITHUB_PERSONAL_ACCESS_TOKEN out" \
+  derived_seat claude-seat "HOME PATH TERM LANG LC_ALL TMPDIR USER"
+
 check "bash syntax passes" bash -n "$BROKER"
 check "real registry JSON parses" bash -c 'python3 -m json.tool "$1" >/dev/null' _ "$REAL_REGISTRY"
 

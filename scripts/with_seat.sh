@@ -102,6 +102,37 @@ resolve_command() {
   return 1
 }
 
+# A declared name whose value is a config directory (CODEX_HOME) is how a caller
+# picks WHICH logged-in account a CLI uses. Unbounded, the same name would let a
+# caller hand the child a config dir anywhere on disk -- and a config dir decides
+# the model provider, the sandbox default and which MCP servers start. A broker
+# that passes any directory is not an allowlist for that name. So a seat may
+# bound it: the value must canonicalise (symlinks and ".." resolved) to an
+# existing directory strictly below HOME. Checked here, in bash, so the value
+# never reaches the registry parser.
+#
+# The trailing "x" is load-bearing: $(...) strips EVERY trailing newline, so a
+# HOME symlinked to a dir named "home<LF>" canonicalised to ".../home" and a
+# sibling ".../home/acct" passed as under it (found by blind cross-family
+# review, Codex). HOME=/ refuses everything on purpose: under "/" the bound
+# would mean nothing.
+is_directory_under_home() {
+  local value="$1"
+  local home_real
+  local value_real
+
+  case "${HOME:-}" in /*) ;; *) return 1 ;; esac
+  case "$value" in /*) ;; *) return 1 ;; esac
+  home_real="$(cd -P "$HOME" 2>/dev/null && pwd && echo x)" || return 1
+  home_real="${home_real%$'\n'x}"
+  value_real="$(cd -P "$value" 2>/dev/null && pwd && echo x)" || return 1
+  value_real="${value_real%$'\n'x}"
+  case "$value_real" in
+    "$home_real"/?*) return 0 ;;
+  esac
+  return 1
+}
+
 emit_declared_environment() {
   local index
   local env_name
@@ -251,6 +282,16 @@ for item in search_path:
         expanded_search_path.append(item)
 search_path = expanded_search_path
 
+# Optional names whose value must be a directory under HOME (the bash side checks
+# the value). Each must be a declared env name: a bound on a misspelt name would
+# leave the real one unbounded while looking guarded.
+dirs_under_home = seat.get("env_dirs_under_home", [])
+if not isinstance(dirs_under_home, list) or not all(
+    isinstance(item, str) and item in names for item in dirs_under_home
+):
+    sys.stderr.write("with_seat: error: env_dirs_under_home in seat %s must list declared env names\n" % requested_seat)
+    sys.exit(1)
+
 sorted_names = sorted(names)
 # The newline delimiter makes the ordered input to the documented digest unambiguous.
 fingerprint = hashlib.sha256("\n".join(sorted_names).encode("utf-8")).hexdigest()[:16]
@@ -261,6 +302,8 @@ for executable in allowlist:
     print("allow\t%s" % executable)
 for directory in search_path:
     print("searchpath\t%s" % directory)
+for name in dirs_under_home:
+    print("homedir\t%s" % name)
 PY
 then
   exit 1
@@ -276,12 +319,14 @@ fingerprint=""
 declare -a DECLARED_NAMES=()
 declare -a ALLOWED_EXECUTABLES=()
 declare -a SEARCH_PATH=()
+declare -a DIRS_UNDER_HOME=()
 while IFS=$'\t' read -r kind value; do
   case "$kind" in
     fingerprint) fingerprint="$value" ;;
     env) DECLARED_NAMES[${#DECLARED_NAMES[@]}]="$value" ;;
     allow) ALLOWED_EXECUTABLES[${#ALLOWED_EXECUTABLES[@]}]="$value" ;;
     searchpath) SEARCH_PATH[${#SEARCH_PATH[@]}]="$value" ;;
+    homedir) DIRS_UNDER_HOME[${#DIRS_UNDER_HOME[@]}]="$value" ;;
     *) fail "invalid registry parser output" ;;
   esac
 done <"$metadata_file"
@@ -316,6 +361,15 @@ for executable in "${ALLOWED_EXECUTABLES[@]}"; do
   fi
 done
 [ "$allowed" -eq 1 ] || fail "command basename is not permitted for seat $seat"
+
+# Before --dry-run, so a dry run refuses exactly what a real run would. Indexed
+# loop: "${EMPTY[@]}" under set -u is an unbound-variable error on bash 3.2.
+for ((index = 0; index < ${#DIRS_UNDER_HOME[@]}; index++)); do
+  env_name="${DIRS_UNDER_HOME[$index]}"
+  if [[ -n "${!env_name+x}" ]] && ! is_directory_under_home "${!env_name}"; then
+    fail "$env_name must name an existing directory under HOME"
+  fi
+done
 
 if [ "$dry_run" -eq 1 ]; then
   printf 'seat=%s\n' "$seat"

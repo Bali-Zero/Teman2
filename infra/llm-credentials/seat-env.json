@@ -6,9 +6,10 @@
   ],
   "seats": {
     "codex": {
-      "env": ["HOME", "PATH", "TERM", "LANG", "LC_ALL", "TMPDIR"],
+      "env": ["HOME", "PATH", "TERM", "LANG", "LC_ALL", "TMPDIR", "CODEX_HOME"],
+      "env_dirs_under_home": ["CODEX_HOME"],
       "exec_allowlist": ["codex"],
-      "note": "Measured on this machine: Codex authenticates through the config directory under $HOME (~/.codex), not an API-key environment variable. HOME, PATH, TERM, LANG, LC_ALL, and TMPDIR are the functional process minimum; no credential name is declared. Without exec_search_path this seat resolved to the fixed system list's stale codex-cli 0.147.0, whose config.toml shape does not match the 0.155.1 format ~/.codex/config.toml is written in — measured: it dies at startup with 'invalid type: map, expected a boolean in features'. The working 0.155.1 lives under a mise-managed node install; ~/.local/bin/codex is a wrapper that execs it when given arguments (this seat only ever calls it with arguments) and itself falls back to the stale homebrew binary if the mise one is absent, so the seat declares its own search path the same way agy/kimi do rather than pinning the mise node-major dir directly, which would silently vanish if mise moves to another node major.",
+      "note": "Measured on this machine: Codex authenticates through the config directory under $HOME (~/.codex), not an API-key environment variable. HOME, PATH, TERM, LANG, LC_ALL, and TMPDIR are the functional process minimum; no credential name is declared. CODEX_HOME is declared because it selects WHICH config home, and so which login, answers: measured 2026-10-05 on M5, ~/.codex-o2 and ~/.codex-acct2 each answer when named, and with the name undeclared every dispatch through this seat reached ~/.codex, so a caller wanting another account bypassed the broker. It is listed in env_dirs_under_home, so the broker refuses a value that is not an existing directory strictly under HOME (symlinks and .. resolved): the name selects a login, never an arbitrary config dir. Without exec_search_path this seat resolved to the fixed system list's stale codex-cli 0.147.0, whose config.toml shape does not match the 0.155.1 format ~/.codex/config.toml is written in — measured: it dies at startup with 'invalid type: map, expected a boolean in features'. The working 0.155.1 lives under a mise-managed node install; ~/.local/bin/codex is a wrapper that execs it when given arguments (this seat only ever calls it with arguments) and itself falls back to the stale homebrew binary if the mise one is absent, so the seat declares its own search path the same way agy/kimi do rather than pinning the mise node-major dir directly, which would silently vanish if mise moves to another node major.",
       "exec_search_path": [
         "~/.local/bin",
         "/opt/homebrew/bin",
@@ -49,11 +50,12 @@
         "LANG",
         "LC_ALL",
         "TMPDIR",
+        "USER",
         "CLAUDE_CODE_OAUTH_TOKEN",
         "CLAUDE_CONFIG_DIR"
       ],
       "exec_allowlist": ["claude"],
-      "note": "Measured seat kind for headless Claude lanes: it needs the ordinary process minimum plus CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CONFIG_DIR. This lets scripts/fleet_burst.sh use the broker through FLEET_BURST_SEAT_BROKER without widening the child environment. Its binary lives in a different place on each machine, measured 2026-09-21: Pro in ~/.local/bin, Mini in /opt/homebrew/bin, M5 only under the node install managed by mise, reached through the mise shim dir, which does not pin a node version. With no search path declared the broker looked only in the fixed system dirs, so on M5 and Pro this seat could not resolve claude at all (the env-minimization test, every installed real seat resolves its own executable). A declared search path REPLACES the fixed dirs instead of extending them, so they are listed after the two user dirs; a declared dir that does not exist on a machine is skipped.",
+      "note": "Measured seat kind for headless Claude lanes: it needs the ordinary process minimum plus CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CONFIG_DIR. USER is required by a config-dir login whose credential lives in the macOS Keychain: measured 2026-10-05 on M5 with CLAUDE_CONFIG_DIR naming a logged-in dir, the call without USER printed Not logged in, and with USER it reached the stored credential; LOGNAME alone changed nothing, so it is not declared. This lets scripts/fleet_burst.sh use the broker through FLEET_BURST_SEAT_BROKER without widening the child environment. Its binary lives in a different place on each machine, measured 2026-09-21: Pro in ~/.local/bin, Mini in /opt/homebrew/bin, M5 only under the node install managed by mise, reached through the mise shim dir, which does not pin a node version. With no search path declared the broker looked only in the fixed system dirs, so on M5 and Pro this seat could not resolve claude at all (the env-minimization test, every installed real seat resolves its own executable). A declared search path REPLACES the fixed dirs instead of extending them, so they are listed after the two user dirs; a declared dir that does not exist on a machine is skipped.",
       "exec_search_path": [
         "~/.local/bin",
         "~/.local/share/mise/shims",
