@@ -36,18 +36,38 @@ what_changed: |
   No retry predicate, return code, slot order or stdout byte changed. Header no longer lists token_2.
   Naga (owner-appointed reviewer) is mailed after PR-open; not recorded as a seat.
 dissent:
-  - >-
-    Non-zero-exit stdout. Qwen (r1): stderr only. Codex (r1): only under strict envelope validation. Taken: Codex's rule. Stderr-only would hide the very org-disabled slot this PR exists for if the CLI prints it on stdout; innocence test: a failed attempt whose stdout is prose about a weekly limit classifies `other`.
-  - >-
-    Guard-cap INCOMPLETE logged `answered`. Codex (r1) and Qwen (r2): log it `other`. Rejected: the class reports the SEAT's outcome (what the owner rotates on); the seat answered and its stdout is what the caller got with rc 0. The incomplete MANDATE keeps its existing `[cap]` line and HIGH escalation; calling it `other` would make a healthy seat look broken.
-  - >-
-    Job name from the caller. Codex (r1/r2) and Qwen (r1): operator allowlist only. Rejected as stated (no caller sets CLAUDE_CASCADE_JOB, so every line would read job=unknown); cured instead: entry point only, option/assignment/URL words refused, value validated whole. Two reproductions (URL argument, -Xtenant= option) are now tests, RED before their cures.
-  - >-
-    Qwen (r2) claimed zsh treats a quoted `=~` RHS as a literal so every job reads unknown. Refuted by execution: test_job_name_is_validated_whole_never_rewritten[indexing-daily-run.sh] and every golden record (job=golden-job) pass.
-  - >-
-    Qwen (r2): a pre-dispatch global-deadline refusal logged `timeout` "lies". Kept: the job's time budget expired (dur_s=0 shows nothing ran); the old stderr calls the same event "quota/auth failure".
-  - >-
-    DeepSeek (r1) D1 assumed the org pattern was added to a retry predicate; it is not — innocence test answer_with_org_text_on_stderr stays `answered` on the same seat.
+  - seat: tp1-qwen3.8-max (r1) vs codex-gpt-5.6-sol (r1)
+    objection:
+      "Non-zero-exit stdout. Qwen (r1): stderr only. Codex (r1): only under strict envelope validation.
+      Taken: Codex's rule. Stderr-only would hide the very org-disabled slot this PR exists for if the
+      CLI prints it on stdout; innocence test: a failed attempt whose stdout is prose about a weekly limit
+      classifies `other`."
+    status: PLAUSIBLE
+  - seat: codex-gpt-5.6-sol (r1) + tp1-qwen3.8-max (r2)
+    objection:
+      "Guard-cap INCOMPLETE logged `answered`. Codex (r1) and Qwen (r2): log it `other`. Rejected:
+      the class reports the SEAT's outcome (what the owner rotates on); the seat answered and its stdout
+      is what the caller got with rc 0. The incomplete MANDATE keeps its existing `[cap]` line and HIGH
+      escalation; calling it `other` would make a healthy seat look broken."
+    status: PLAUSIBLE
+  - seat: codex-gpt-5.6-sol (r1, r2, cure review) + tp1-qwen3.8-max (r1)
+    objection:
+      "Job name from the caller. Codex (r1/r2) and Qwen (r1): operator allowlist only. Rejected
+      as stated (no caller sets CLAUDE_CASCADE_JOB, so every line would read job=unknown); cured instead:
+      entry point only, option/assignment/URL words refused, value validated whole. Two reproductions (URL
+      argument, -Xtenant= option) are now tests, RED before their cures."
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max (r2)
+    objection:
+      'Qwen (r2): a pre-dispatch global-deadline refusal logged `timeout` "lies". Kept: the job''s
+      time budget expired (dur_s=0 shows nothing ran); the old stderr calls the same event "quota/auth failure".'
+    status: PLAUSIBLE
+refuted:
+  "Refuted by execution, not withdrawn by the seat (kept out of dissent): Qwen (r2) claimed zsh
+  treats a quoted `=~` RHS as a literal so every job reads unknown. Refuted by execution: test_job_name_is_validated_whole_never_rewritten[indexing-daily-run.sh]
+  and every golden record (job=golden-job) pass. || DeepSeek (r1) D1 assumed the org pattern was added
+  to a retry predicate; it is not — innocence test answer_with_org_text_on_stderr stays `answered` on
+  the same seat."
 owed:
   - Exit-0 org-disabled banner on stdout is accepted as an answer today (behaviour defect; separate PR that changes retry).
   - '{"error":null,...} answers match the JSON envelope rule and rotate (existing retry over-match; separate behaviour PR).'
