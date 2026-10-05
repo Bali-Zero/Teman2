@@ -1291,3 +1291,45 @@ def test_one_active_and_one_empty_profile_never_loses_the_active_one():
     ])
     assert r["status"] == "ok" and r["days"]["05/10"] == {"out": 9}
     assert [p["status"] for p in r["profiles"]] == ["ok", "empty"]
+
+
+# Gate BLOCK on #7887 r2: an "unknown" counter (see _acc_tok) must survive the
+# per-seat merge in either order, and a partial profile must never take the
+# snapshot down or hide behind an "ok" seat status.
+
+def test_merge_unknown_then_known_counter_stays_unknown():
+    r = suc.merge_profile_results([
+        ("~/.claude", {"status": "partial", "days": {"05/10": {"cache_w": "unknown"}}}),
+        ("~/.claude-acct2", {"status": "ok", "days": {"05/10": {"cache_w": 4}}}),
+    ])
+    assert r["days"]["05/10"]["cache_w"] == "unknown"
+
+
+def test_merge_known_then_unknown_counter_is_never_an_underestimate():
+    r = suc.merge_profile_results([
+        ("~/.claude", {"status": "ok", "days": {"05/10": {"cache_w": 4}}}),
+        ("~/.claude-acct2", {"status": "partial", "days": {"05/10": {"cache_w": "unknown"}}}),
+    ])
+    assert r["days"]["05/10"]["cache_w"] == "unknown"
+    assert r["status"] == "partial"
+
+
+def test_partial_profile_never_takes_the_snapshot_down(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    seat_map = tmp_path / "seat_map.json"
+    seat_map.write_text(json.dumps({"claude_profiles": {"~/p1": "A3", "~/p2": "A3"}, "codex_homes": {}}))
+    day = suc.NOW.strftime("%d/%m")
+    results = {
+        str(tmp_path / "p1"): {"status": "partial", "models": {},
+                               "days": {day: {"in": 1, "out": 2, "cache_r": 3, "cache_w": "unknown"}}},
+        str(tmp_path / "p2"): {"status": "ok", "models": {},
+                               "days": {day: {"in": 1, "out": 2, "cache_r": 3, "cache_w": 4}}},
+    }
+    monkeypatch.setattr(suc, "collect_claude", lambda pdir, since, task_index=None: results[pdir])
+    out = tmp_path / "snap.json"
+    monkeypatch.setattr(sys, "argv", ["seat_usage_collector.py", "--seat-map", str(seat_map),
+                                      "--out", str(out), "--task-outcomes", str(tmp_path / "none")])
+    assert suc.main() == 0
+    a3 = [s for s in json.loads(out.read_text())["seats"] if s["id"] == "A3"]
+    assert len(a3) == 1 and a3[0]["status"] == "partial"
+    assert a3[0]["days"][day] == {"in": 2, "out": 4, "cache_r": 6, "cache_w": "unknown"}

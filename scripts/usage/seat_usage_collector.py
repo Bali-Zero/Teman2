@@ -107,12 +107,12 @@ def merge_profile_results(results: list[tuple[str, dict]]) -> dict:
     """Un account raggiunto da più profile dir (A3 su Air-M5) è UNA riga: i
     contatori si sommano, la provenienza per profilo resta in `profiles`. I
     consumer indicizzati per id (usage-dashboard.html) altrimenti tengono solo
-    l'ultima riga e perdono i consumi dell'altra (Naga P2 su #7887)."""
+    l'ultima riga e perdono i consumi dell'altra (Naga P2 su #7887). Un contatore
+    "unknown" avvelena la somma in qualunque ordine (semantica di `_acc_tok`), e un
+    profilo "partial" rende "partial" la riga (gate BLOCK su #7887 r2)."""
     def add(into: dict, key: str, value) -> None:
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
-            into[key] = into.get(key, 0) + value
-        else:  # a label, not a counter: the first profile's value stands
-            into.setdefault(key, value)
+        # absent here = no activity (0); "unknown" = not reported (poisons the sum)
+        into[key] = _sum_tok([into[key], value]) if key in into else value
 
     days: dict = defaultdict(dict)
     models: dict = {}
@@ -124,7 +124,8 @@ def merge_profile_results(results: list[tuple[str, dict]]) -> dict:
             add(models, model, value)
     statuses = [r.get("status") for _, r in results]
     notes = [r["note"] for _, r in results if r.get("note")]
-    return {"status": "ok" if "ok" in statuses else statuses[0],
+    status = next((s for s in ("partial", "ok") if s in statuses), statuses[0])
+    return {"status": status,
             "days": dict(days), "models": models,
             "note": "; ".join(notes) or None,
             "profiles": [{"source": f"claude:{p}", "status": r.get("status")} for p, r in results]}
