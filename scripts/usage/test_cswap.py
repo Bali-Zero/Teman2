@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -614,3 +615,117 @@ def test_collect_candidates_aggregated_seat_with_one_unknown_profile_is_unknown(
     monkeypatch.setattr(cswap, "_collect_window", lambda pdir, since: next(totals))
     (a3,) = cswap.collect_candidates(seat_map, cswap._now(), exclude=set())
     assert a3["t5"] == "unknown" and a3["t7"] == 9
+
+
+# --------------------------------------------------------------- exec: the headless door
+#
+# These run the REAL scripts/with_seat.sh (registry overridden to find a fake
+# `claude`), so what the fake records is what a real child would receive.
+
+_REPO = Path(__file__).resolve().parents[2]
+_FAKE_CLAUDE = """#!/bin/bash
+log="$HOME/fake-claude"; mkdir -p "$log"; id="$$-$RANDOM"
+env | cut -d= -f1 | sort > "$log/$id.env"
+printf '%s\\n' "${CLAUDE_CONFIG_DIR:-<unset>}" > "$log/$id.dir"
+if [ -e "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/FAIL" ]; then
+  echo "Failed to authenticate: OAuth session expired and could not be refreshed"; exit 1
+fi
+case "$*" in *PONG*) echo PONG ;; *) echo ANSWER ;; esac
+"""
+_CREDENTIAL_NAME = re.compile(r"TOKEN|SECRET|KEY|PASSWORD|CREDENTIAL|_PAT$")
+
+
+@pytest.fixture
+def door(tmp_path, monkeypatch):
+    fake_bin = tmp_path / "fakebin"
+    fake_bin.mkdir()
+    (fake_bin / "claude").write_text(_FAKE_CLAUDE)
+    (fake_bin / "claude").chmod(0o755)
+    registry = json.loads((_REPO / "infra/llm-credentials/seat-env.json").read_text())
+    registry["seats"]["claude-seat"]["exec_search_path"] = [str(fake_bin)]
+    reg_path = tmp_path / "seat-env.json"
+    reg_path.write_text(json.dumps(registry))
+    reg_path.chmod(0o600)
+    monkeypatch.setenv("WITH_SEAT_REGISTRY", str(reg_path))
+    for d in (".claude", "a1", "kaiser", "acct4", "acct5"):
+        (tmp_path / d).mkdir()
+    seat_map = tmp_path / "seat_map.json"
+    seat_map.write_text(json.dumps({"claude_profiles": {
+        "~/.claude": "A3", "~/a1": "A1", "~/kaiser": "A2", "~/acct4": "A4", "~/acct5": "A5"}}))
+    topology = tmp_path / "topology.json"
+    topology.write_text(json.dumps({"accounts": {"anthropic": {"slots": {
+        "A1": {"plan": "x"}, "A5": {"status": "retired"}}}}}))
+
+    def run(seat, *opts):
+        return cswap.main(["--seat-map", str(seat_map), "exec", "--topology", str(topology),
+                           "--cwd", str(tmp_path), *opts, seat, "--", "claude", "-p", "review"])
+    return run
+
+
+def _calls(home: Path) -> list[tuple[str, list[str]]]:
+    log = home / "fake-claude"
+    return [((log / f"{p.stem}.dir").read_text().strip(), p.read_text().split())
+            for p in sorted(log.glob("*.env"))] if log.is_dir() else []
+
+
+def test_exec_refuses_a_retired_seat_before_any_call(door, tmp_path, capfd):
+    assert door("A5") == cswap.REFUSED_RC
+    assert "retired" in capfd.readouterr().err
+    assert _calls(tmp_path) == []
+
+
+def test_exec_refuses_a_silent_named_seat_and_never_falls_back(door, tmp_path, capfd):
+    (tmp_path / "kaiser" / "FAIL").touch()
+    assert door("A2") == cswap.REFUSED_RC
+    out, err = capfd.readouterr()
+    assert "REFUSED seat=A2" in err and "OAuth session expired" in err
+    assert "ANSWER" not in out
+    assert [d for d, _ in _calls(tmp_path)] == [str(tmp_path / "kaiser")]  # the PONG only
+
+
+def test_exec_child_env_carries_no_credential(door, tmp_path, monkeypatch, capfd):
+    for name in ("CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "GITHUB_PERSONAL_ACCESS_TOKEN",
+                 "AWS_SECRET_ACCESS_KEY"):
+        monkeypatch.setenv(name, "fixture-not-a-secret")
+    assert door("A1") == 0
+    calls = _calls(tmp_path)
+    assert len(calls) == 2  # PONG + the real call
+    for config_dir, names in calls:
+        assert config_dir == str(tmp_path / "a1")
+        assert [n for n in names if _CREDENTIAL_NAME.search(n)] == []
+        assert "CLAUDE_CONFIG_DIR" in names  # innocence: the seat's own name does pass
+
+
+def test_exec_reports_the_seat_that_answered(door, capfd):
+    assert door("A1") == 0
+    out, err = capfd.readouterr()
+    assert out.strip() == "ANSWER"
+    assert "seat=A1 dir=~/a1 pong=ok" in err and "seat=A1 exit=0" in err
+
+
+def test_exec_default_dir_runs_with_config_dir_unset(door, tmp_path):
+    assert door("A3") == 0
+    assert {d for d, _ in _calls(tmp_path)} == {"<unset>"}
+
+
+def test_exec_auto_skips_silent_seats_loudly_and_reports_the_one_used(door, tmp_path, capfd):
+    (tmp_path / ".claude" / "FAIL").touch()
+    (tmp_path / "a1" / "FAIL").touch()
+    assert door("auto") == 0
+    out, err = capfd.readouterr()
+    assert "REFUSED seat=A3" in err and "REFUSED seat=A1" in err
+    assert "seat=A2 dir=~/kaiser pong=ok" in err and out.strip() == "ANSWER"
+    assert str(tmp_path / "acct5") not in {d for d, _ in _calls(tmp_path)}  # retired never tried
+
+
+def test_exec_auto_with_no_answering_seat_refuses(door, tmp_path, capfd):
+    for d in (".claude", "a1", "kaiser", "acct4"):
+        (tmp_path / d / "FAIL").touch()
+    assert door("auto") == cswap.REFUSED_RC
+    assert "no eligible seat answered" in capfd.readouterr().err
+
+
+def test_exec_accepts_only_seat_ids_of_this_machine(door, tmp_path):
+    assert door("A9") == 2
+    assert door(str(tmp_path / "kaiser")) == 2  # a literal dir would hide which seat ran
+    assert _calls(tmp_path) == []

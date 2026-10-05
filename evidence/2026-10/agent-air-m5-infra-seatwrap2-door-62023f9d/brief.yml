@@ -1,0 +1,28 @@
+task_id: seatwrap2-door
+mission: SEATWRAP2-20261005
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  One sanctioned command runs a prompt headless on a named Claude seat, or on the least-loaded seat
+  that answers, from M5: `cswap exec [--cwd DIR] <SEAT|auto> -- claude -p --model M "prompt"`.
+  The seat's config dir comes from the per-machine seat map; the call goes through with_seat.sh's
+  claude-seat allowlist; a retired seat (FLEET_TOPOLOGY status) and a seat whose PONG fails are
+  refused with exit 3 and never swapped for another seat; the seat that answered is reported.
+  Floor measured 1 (source none, 298 net lines, no hot zone); Gear 2 declared because the diff
+  decides which credential a child process runs on.
+constraints:
+  - Touches only scripts/usage/cswap.py and scripts/usage/test_cswap.py; with_seat.sh, seat-env.json, seat_map.json and FLEET_TOPOLOGY.json are read, never edited.
+  - No credential is read, printed or exported; credential-shaped caller names are dropped before with_seat.sh.
+  - The default dir (~/.claude) runs with CLAUDE_CONFIG_DIR unset, because naming it explicitly selects a different, stale Keychain entry (measured on M5 2026-10-05).
+acceptance:
+  - text: WHEN the named seat is retired in FLEET_TOPOLOGY.json THEN exec SHALL exit 3 before any claude call.
+    probe: scripts/usage/test_cswap.py::test_exec_refuses_a_retired_seat_before_any_call
+  - text: WHEN a named seat's PONG fails THEN exec SHALL exit 3 and SHALL NOT run the command on any other seat.
+    probe: scripts/usage/test_cswap.py::test_exec_refuses_a_silent_named_seat_and_never_falls_back
+  - text: WHEN the caller env carries CLAUDE_CODE_OAUTH_TOKEN or other credential-shaped names THEN the child env SHALL carry none of them.
+    probe: scripts/usage/test_cswap.py::test_exec_child_env_carries_no_credential
+  - text: WHEN a seat answers THEN stderr SHALL name the seat and its dir, and stdout SHALL be the command's own output.
+    probe: scripts/usage/test_cswap.py::test_exec_reports_the_seat_that_answered
+consumer_map:
+  - scripts/usage/cswap.py `exec` — a Dux dispatching headless Claude builders/reviewers across A1/A2/A3/A4/AZ on M5.
