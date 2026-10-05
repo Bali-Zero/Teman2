@@ -1,0 +1,37 @@
+task_id: probe-sandbox-nlm-prune-1005
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  The Intel Lake e2e probe (4x/day on Pro) posts one synthetic fixture per
+  run; hop5 deletes its Postgres row but nothing removes the NotebookLM
+  source, so the live sandbox notebook filled to 476 of 500 sources. Add hop6
+  to scripts/probes/intel_lake_e2e_probe.py: list the live sandbox notebook,
+  select sources whose whole entity matches one of the three fixture shapes
+  (exact title, pusher temp-file title, exact host + path url), delete them
+  in batches of 20 (cap 60 per run), and fail the probe only when the fixture
+  residue reaches INTEL_LAKE_PROBE_NLM_RESIDUE_MAX (default 100). Pusher,
+  wrapper and plist untouched. Gear 2 via the SIZE term alone (about 440
+  churned lines, 304 of them tests); no hot-zone path.
+acceptance:
+  - text: >-
+      Selection is by entity: prefix/suffix titles, wrong-length nonces,
+      look-alike hosts, query-string carriers and None fields are never
+      selected; each of the three shapes is.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell pytest
+      backend/tests/unit/scripts/test_intel_lake_probe_nlm_prune.py
+  - text: >-
+      AFTER merge, the first scheduled run of
+      com.balizero.intel-lake.e2e-probe.6h writes a "hop6 PASS" line and a
+      listing of the live sandbox notebook holds no fixture-shaped source
+      older than one probe interval.
+    probe: >-
+      ssh pro 'grep "hop6" ~/logs/intel-lake-probe-cron.log | tail -2; nlm
+      source list 7e6ae978-136c-4c96-bed5-9fab6f39176f --json'
+assumptions:
+  - text: >-
+      Both `nlm source list` and `nlm source delete` accept --profile on nlm
+      0.11.7, and delete takes source ids only (no notebook id).
+    status: verified
+    probe: ssh pro 'nlm source list --help; nlm source delete --help' (2026-10-05)
