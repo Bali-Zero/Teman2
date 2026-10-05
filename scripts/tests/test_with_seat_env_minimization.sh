@@ -351,8 +351,8 @@ check "every installed real seat resolves its own executable" test "$resolvable_
 
 # ACCOUNT SELECTION through a config-dir name, bounded to HOME.
 #
-# One CLI, several logged-in accounts, each in its own config dir under HOME
-# (~/.codex, ~/.codex-o2, ~/.codex-acct2). Measured 2026-10-05: with CODEX_HOME
+# One CLI, several logins, each in its own config dir under HOME (on M5:
+# ~/.codex, ~/.codex-o2, ~/.codex-acct2). Measured 2026-10-05: with CODEX_HOME
 # undeclared, every dispatch through the broker reached the default home, so a
 # caller wanting another account bypassed the broker. Declaring the name alone
 # would let a caller hand the child ANY directory, so a seat may list it in
