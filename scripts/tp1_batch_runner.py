@@ -87,6 +87,7 @@ QUOTA_RE = re.compile(
     re.I,
 )
 RATE_RE = re.compile(r"throttl|rate.?limit|too many requests|requestlimit", re.I)
+AUTH_RE = re.compile(r"invalid.?api.?key|unauthori[sz]ed|access.?denied|authentication", re.I)
 
 
 def assert_token_plan_endpoint(url: str = TP1_CHAT_COMPLETIONS_URL) -> None:
@@ -102,7 +103,7 @@ def classify(status: Optional[int], body: str) -> str:
         return "quota" if QUOTA_RE.search(body or "") else "ok"
     if status is not None and 300 <= status < 400:
         return "quota"  # a gateway that redirects is no longer the endpoint we vetted
-    if status in (401, 402, 403) or QUOTA_RE.search(body or ""):
+    if status in (401, 402, 403) or QUOTA_RE.search(body or "") or AUTH_RE.search(body or ""):
         return "quota"
     if status == 429 or RATE_RE.search(body or ""):
         return "rate"
@@ -146,12 +147,14 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     body = build_body(model, prompt, max_tokens, resolve_effort(model, effort))
     started = time.time()
-    status, raw, tail = no_stream_chat_completion(TP1_CHAT_COMPLETIONS_URL, headers, body, timeout, [token])
+    status, raw, tail = no_stream_chat_completion(TP1_CHAT_COMPLETIONS_URL, headers, body, timeout, [token],
+                                                  raw_errors=True)
     out: dict = {"status": status, "secs": round(time.time() - started, 1), "usage": {}}
     if status != 200:
-        # classify() reads the RAW body: scrub() turns every 24+ char run into <REDACTED>, so
-        # "Throttling.AllocationQuota: quota exceeded" lost its rate marker and stopped the run,
-        # and "insufficient_account_balance" lost its quota marker and was rejected row by row.
+        # classify() reads the RAW body (raw_errors=True above): scrub() turns every 24+ char run
+        # into <REDACTED>, so "Throttling.AllocationQuota: quota exceeded" lost its rate marker and
+        # stopped the run, and "insufficient_account_balance" lost its quota marker and was
+        # rejected row by row. Only the scrubbed body is kept.
         out["kind"] = classify(status, raw or tail or "")
         out["error"] = scrub(raw or tail or "", [token])
         return out
@@ -167,9 +170,7 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
     out["usage"] = {"prompt_tokens": pt, "completion_tokens": ct,
                     "total_tokens": _int(usage.get("total_tokens")) or pt + ct}
     if not out["usage"]["total_tokens"]:
-        # A paid reply that reports no usage still spent tokens: charge the budget an upper bound
-        # (one token per prompt character, plus the full completion allowance), never zero.
-        out["unmetered"] = len(prompt) + max_tokens
+        out["unmetered"] = True  # a paid reply that reports no usage: its cost is unknown, never zero
     out["kind"] = "ok"
     try:
         answer, warning, error = extract_answer(raw)
@@ -179,7 +180,7 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
         out["error"] = scrub(error, [token])
         gateway = doc.get("error")  # a quota error can ride inside a 200: classify() reads only this
         if gateway:
-            out["kind"] = classify(200, json.dumps(gateway))
+            out["kind"] = classify(0, json.dumps(gateway))  # the error object decides: auth, quota, rate
             out["gateway_error"] = scrub(json.dumps(gateway), [token])
     else:
         out["answer"] = scrub(answer or "", [token], keep=_prompt_identifiers(prompt))
@@ -255,7 +256,8 @@ class Runner:
             return "kill-file"
         if dt.datetime.now(dt.timezone.utc) >= self.stop_at:
             return "deadline"
-        if self.token_budget and self.stats["total_tokens"] + self.stats["unmetered_charge"] >= self.token_budget:
+        if self.token_budget and (self.stats["unmetered_replies"] or self.stats["total_tokens"] >= self.token_budget):
+            # a reply without usage makes the spend unknown: a budget it cannot measure stops the run
             return "token-budget"
         return None
 
@@ -305,10 +307,11 @@ class Runner:
         try:
             res = fut.result()
         except Exception as e:  # a crashed call is a transient failure, never a dead runner
-            res = {"status": None, "error": f"{type(e).__name__}: {e}", "usage": {}}
+            res = {"status": None, "error": scrub(f"{type(e).__name__}: {e}"), "usage": {}}
         for k, v in (res.get("usage") or {}).items():
             self.stats[k] += _int(v)
-        self.stats["unmetered_charge"] += _int(res.get("unmetered"))
+        if res.get("unmetered"):
+            self.stats["unmetered_replies"] += 1
         status = res.get("status")
         # tp1_call_once classifies the unscrubbed body; a call that crashed (or a test double) has no kind
         kind = res.get("kind") or classify(status, res.get("gateway_error", "") if status == 200 else res.get("error", ""))

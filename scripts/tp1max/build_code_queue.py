@@ -26,7 +26,9 @@ SKIP_PATH = re.compile(r"(^|/)(\.env|tests?/|__tests__|fixtures?|testdata|test_|
                        r"node_modules|dist/|build/|migrations?/|vendor/|.*secret|.*credential|.*\.min\.)", re.I)
 SECRET = re.compile(r"AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|xox[abp]-|-----BEGIN [A-Z ]*PRIVATE|"
                     r"eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{30,}")
-PHONE = re.compile(r"(\+?62[\s.-]?|\b0)8\d{2}[\s.-]?\d{3,4}[\s.-]?\d{3,5}\b|\+\d{2}[\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{3,4}")
+# Indonesian mobile: 62/+62/0, then 8 and 7-11 more digits in ANY grouping (+62-8123-4567-8901,
+# 62-812-34-56-7890); then any other +CC number written in groups.
+PHONE = re.compile(r"(\+?62[\s.-]?|\b0)8(?:[\s.-]?\d){7,11}\b|\+\d{2}[\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{3,4}")
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 EMAIL_OK = re.compile(r"^(zantara|noreply|no-reply|example|test|user|foo|bar|you|name|info)@|@(example\.(com|org)|anthropic\.com|users\.noreply\.github\.com|localhost)$", re.I)
 CHUNK = 700
@@ -56,15 +58,17 @@ def clean(text: str) -> bool:
     return all(EMAIL_OK.search(e) for e in EMAIL.findall(text))
 
 
-def screen(path: Path) -> "tuple[Optional[str], str]":
+def screen(path: Path, root: Optional[Path] = None) -> "tuple[Optional[str], str]":
     """(text, "ok") when the file may leave the machine, else (None, reason). Never raises."""
     try:
-        if path.is_symlink():
+        rel = path.relative_to(root).parts if root else ()
+        hops = [root.joinpath(*rel[:i]) for i in range(1, len(rel))] if root else []  # a linked DIRECTORY too
+        if path.is_symlink() or any(hop.is_symlink() for hop in hops):
             return None, "symlink"  # it would send whatever the link points at, inside the repo or not
         if path.stat().st_size > MAX_BYTES:
             return None, "oversized"
         data = path.read_bytes()
-    except OSError:
+    except (OSError, ValueError):  # ValueError: a path outside root
         return None, "unreadable"
     if len(data) > MAX_BYTES:
         return None, "oversized"
@@ -88,7 +92,7 @@ def build(repo: Path) -> "tuple[list[dict], collections.Counter]":
         if f in seen:
             continue
         seen.add(f)
-        text, reason = screen(repo / f)
+        text, reason = screen(repo / f, repo)
         if text is None:
             skipped[reason] += 1
             continue

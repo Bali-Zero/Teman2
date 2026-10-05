@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import datetime as dt
+import io
 import json
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -213,7 +216,7 @@ def test_second_runner_on_the_same_out_dir_refuses_without_calling(tmp_path):
 def test_malformed_usage_after_a_paid_200_is_not_paid_again(tmp_path, monkeypatch):
     raw = json.dumps({"choices": [{"message": {"content": "{}"}}], "usage": {"total_tokens": "n/a"}})
     sent = []
-    monkeypatch.setattr(tbr, "no_stream_chat_completion", lambda *a: (sent.append(1), (200, raw, ""))[1])
+    monkeypatch.setattr(tbr, "no_stream_chat_completion", lambda *a, **k: (sent.append(1), (200, raw, ""))[1])
 
     def call(model, prompt):
         return tbr.tp1_call_once(model, prompt, "medium", 10, 1.0, "dummy")
@@ -227,15 +230,28 @@ def test_redirects_are_refused_not_followed():
 
 
 def through_the_door(monkeypatch, tmp_path, transport):
-    """The real tp1_call_once over a faked transport: counts every request that would be paid."""
+    """The real tp1_call_once AND the real transport (no_stream_chat_completion, which scrubs error
+    bodies) over a faked urlopen: counts every request that would be paid."""
     sent = []
     monkeypatch.setattr(sys.modules["tp1_call"], "TP1_UNPARSEABLE_SCRATCH_DIR", tmp_path / "unparseable")
 
-    def fake(*args):
-        sent.append(1)
-        return transport()
+    class Reply(io.BytesIO):
+        status = 200
 
-    monkeypatch.setattr(tbr, "no_stream_chat_completion", fake)
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        sent.append(1)
+        status, body = transport()[:2]
+        if status == 200:
+            return Reply(body.encode())
+        raise urllib.error.HTTPError(req.full_url, status, "error", None, io.BytesIO(body.encode()))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     return sent, lambda model, prompt: tbr.tp1_call_once(model, prompt, "medium", 10, 1.0, "dummy")
 
 
@@ -355,6 +371,13 @@ def test_throttling_quota_wording_backs_off_through_the_door(tmp_path, monkeypat
 def test_insufficient_account_balance_code_stops_the_run_through_the_door(tmp_path, monkeypatch, status):
     body = json.dumps({"error": {"code": "insufficient_account_balance", "message": "please recharge"}})
     sent, call = through_the_door(monkeypatch, tmp_path, lambda: (status, body, body))
+    assert runner(tmp_path, call, n=3, concurrency=1).run() == 5
+    assert len(sent) == 1 and not (tmp_path / "results.jsonl").exists()
+
+
+def test_an_auth_error_inside_a_200_stops_the_run_through_the_door(tmp_path, monkeypatch):
+    body = json.dumps({"error": {"code": "invalid_api_key", "message": "Unauthorized"}})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, body, ""))
     assert runner(tmp_path, call, n=3, concurrency=1).run() == 5
     assert len(sent) == 1 and not (tmp_path / "results.jsonl").exists()
 

@@ -20,6 +20,8 @@ LEAKS = {
     "scripts/phone.sh": 'WA="' + "+62 812 " + "3456 7890" + '"\n',
     "scripts/phone_dash.sh": 'WA="' + "+62-812-" + "3456-7890" + '"\n',
     "scripts/phone_bare.py": 'WA = "' + "0812" + "34567890" + '"\n',
+    "scripts/phone_quads.sh": 'WA="' + "+62-8123-" + "4567-8901" + '"\n',
+    "scripts/phone_pairs.sh": 'WA="' + "62-812-34-" + "56-7890" + '"\n',
     "scripts/mail.ts": 'const owner = "' + "someone.private" + "@" + "gmail.com" + '";\n',
 }
 
@@ -46,6 +48,14 @@ def test_only_clean_text_is_queued_and_every_other_file_is_skipped_and_counted(t
     repo = git_repo(tmp_path / "repo", files)
     (repo / "scripts/link.py").symlink_to(outside)
     subprocess.run(["git", "-C", str(repo), "add", "scripts/link.py"], check=True)
+    (tmp_path / "elsewhere").mkdir()
+    (tmp_path / "elsewhere" / "inner.py").write_text(BODY)
+    (repo / "scripts/realdir").mkdir()
+    (repo / "scripts/realdir/inner.py").write_text(BODY)
+    subprocess.run(["git", "-C", str(repo), "add", "scripts/realdir/inner.py"], check=True)
+    (repo / "scripts/realdir/inner.py").unlink()
+    (repo / "scripts/realdir").rmdir()
+    (repo / "scripts/realdir").symlink_to(tmp_path / "elsewhere")  # tracked file now read THROUGH a linked dir
     (repo / "scripts/gone.py").unlink()  # tracked but missing: stat() raises
     (repo / "scripts/now_a_dir.py").unlink()
     (repo / "scripts/now_a_dir.py").mkdir()  # read_bytes() raises
@@ -55,7 +65,7 @@ def test_only_clean_text_is_queued_and_every_other_file_is_skipped_and_counted(t
 
     assert [json.loads(line)["id"] for line in out.read_text().splitlines()] == ["code:scripts/clean.py"]
     assert json.loads(capsys.readouterr().out)["skipped"] == {
-        "binary": 2, "oversized": 1, "secret_pii": 6, "short": 1, "symlink": 1, "unreadable": 2}
+        "binary": 2, "oversized": 1, "secret_pii": 8, "short": 1, "symlink": 2, "unreadable": 2}
     sent = out.read_text()
     for leak in LEAKS.values():
         assert leak.split('"')[1] not in sent
