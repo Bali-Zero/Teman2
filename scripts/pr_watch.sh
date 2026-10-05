@@ -167,13 +167,30 @@ print((d.get("state") or "") + "|" + (d.get("mergedAt") or ""))
   # non-null, else PENDING; _emit_required_failing excludes PENDING/EXPECTED
   # as in-flight, not failing. StatusContext state is
   # SUCCESS/FAILURE/ERROR/PENDING/EXPECTED as-is.
+  # contexts(first:100) is one PAGE, not the whole rollup — GitHub caps a
+  # page at 100 contexts, and a required check living on page 2+ is
+  # invisible without the loop below: a page-2 FAILURE would never alert
+  # and _emit_missing_required would falsely call a page-2 SUCCESS
+  # MISSING. Each page's --jq prints ONE envelope {"checks":[...],
+  # "hasNext":...,"cursor":...}; the loop feeds endCursor into the next
+  # page's -F after (page 1 sends none), pages accumulate in
+  # $STATE_DIR/<pr>.checkpages.jsonl and python3 merges them into the same
+  # bare array the emitters parse today. A page with rc != 0 keeps the
+  # transient path and skips emission; 10 pages is the hard cap — past it
+  # the set is known-partial, the tick logs (transient) and emits nothing
+  # rather than alert from half the checks.
+  local page=1 cursor="" rollup_rc=0 truncated=0
+  local pages_file="$STATE_DIR/$pr.checkpages.jsonl"
+  : > "$pages_file"
+  local query jqf
   # shellcheck disable=SC2016  # GraphQL $vars / jq $vars stay literal below
-  _gh api graphql -f query='
-    query($owner:String!,$name:String!,$number:Int!) {
+  query='
+    query($owner:String!,$name:String!,$number:Int!,$after:String) {
       repository(owner:$owner,name:$name) {
         pullRequest(number:$number) {
           commits(last:1) {
-            nodes { commit { statusCheckRollup { contexts(first:100) {
+            nodes { commit { statusCheckRollup { contexts(first:100, after:$after) {
+              pageInfo { hasNextPage endCursor }
               nodes {
                 __typename
                 ... on CheckRun { name conclusion isRequired(pullRequestNumber:$number) }
@@ -183,12 +200,66 @@ print((d.get("state") or "") + "|" + (d.get("mergedAt") or ""))
           }
         }
       }
-    }' -F owner="$OWNER" -F name="$NAME" -F number="$pr" \
-      --jq '[.data.repository.pullRequest.commits.nodes[0].commit.statusCheckRollup.contexts.nodes // [] | .[] | if .__typename == "CheckRun" then {name: .name, state: (if .conclusion == null then "PENDING" else .conclusion end), isRequired: .isRequired} else {name: .context, state: .state, isRequired: .isRequired} end]'
-  if (( GH_RC != 0 )); then
-    echo "  (transient) gh api graphql checks #$pr failed rc=$GH_RC: ${GH_ERR:0:160}" >&2
-  else
-    local checks_json="${GH_OUT:-[]}"
+    }'
+  # shellcheck disable=SC2016
+  jqf='.data.repository.pullRequest.commits.nodes[0].commit.statusCheckRollup.contexts as $c | {checks: [$c.nodes // [] | .[] | if .__typename == "CheckRun" then {name: .name, state: (if .conclusion == null then "PENDING" else .conclusion end), isRequired: .isRequired} else {name: .context, state: .state, isRequired: .isRequired} end], hasNext: ($c.pageInfo.hasNextPage // false), cursor: ($c.pageInfo.endCursor // null)}'
+  while (( page <= 10 )); do
+    if (( page == 1 )); then
+      _gh api graphql -f query="$query" -F owner="$OWNER" -F name="$NAME" -F number="$pr" --jq "$jqf"
+    else
+      _gh api graphql -f query="$query" -F owner="$OWNER" -F name="$NAME" -F number="$pr" -F "after=$cursor" --jq "$jqf"
+    fi
+    if (( GH_RC != 0 )); then
+      echo "  (transient) gh api graphql checks #$pr failed rc=$GH_RC: ${GH_ERR:0:160}" >&2
+      rollup_rc=$GH_RC
+      break
+    fi
+    printf '%s\n' "${GH_OUT:-}" >> "$pages_file"
+    local nav
+    nav="$(printf '%s' "${GH_OUT:-}" | python3 -c '
+import json, sys
+try:
+    env = json.load(sys.stdin)
+    has_next = bool(env.get("hasNext"))
+    cursor = env.get("cursor") or ""
+except Exception:
+    has_next = False
+    cursor = ""
+print(("true" if has_next else "false") + "|" + cursor)
+')"
+    if [[ "${nav%%|*}" != "true" ]]; then
+      break
+    fi
+    if (( page == 10 )); then
+      echo "  (transient) gh api graphql checks #$pr: more than 10 pages of check contexts — skipping alerts this tick rather than report from a partial set" >&2
+      truncated=1
+      break
+    fi
+    cursor="${nav#*|}"
+    page=$((page + 1))
+  done
+
+  if (( rollup_rc == 0 && truncated == 0 )); then
+    local checks_json
+    checks_json="$(python3 -c '
+import json, sys
+merged = []
+try:
+    with open(sys.argv[1]) as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                env = json.loads(line)
+            except Exception:
+                continue
+            merged.extend(env.get("checks") or [])
+except Exception:
+    pass
+print(json.dumps(merged))
+' "$pages_file")"
+    rm -f "$pages_file"
     _emit_required_failing "$pr" "$checks_json"
     _emit_missing_required "$pr" "$checks_json"
   fi
