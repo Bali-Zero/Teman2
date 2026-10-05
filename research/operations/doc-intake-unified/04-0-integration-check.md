@@ -4,6 +4,7 @@ domain: operations
 study: doc-intake-unified
 phase: 4.0 — INTEGRATION CHECK (giunzioni P1→P2→P3→P4→P5)
 client_case: false
+adversarial_review: exempt-raw-lane-output-synthesis-carries-the-review # FASE 4.0 lane output of the doc-intake study; its review is carried by 05-final-spec.md (adversarial_review: codex). This change only swaps a sample name for a placeholder
 sources:
   - research/operations/doc-intake-unified/04-1-ingestion-dedup.md
   - research/operations/doc-intake-unified/04-2-queue-orchestrator.md
@@ -105,7 +106,7 @@ Vedi tabella §1. Quattro formule diverse:
 
 ### ⚠️ X10 — `client_id_hint` (P1/P2/P3) vs `client_slug` (P4) vs `client_id` risolto
 - P1/P2/P3 propagano `client_id_hint` (BIGINT, suggerimento di fonte, non autoritativo, C4-safe).
-- P4 input usa `client_slug` (stringa, es. `"marta-reyes"`) come hint — **un'altra rappresentazione** dello stesso concetto.
+- P4 input usa `client_slug` (stringa, es. `"[CLIENT-NAME-REDACTED]"`) come hint — **un'altra rappresentazione** dello stesso concetto.
 - **Da decidere**: P4 deve consumare `client_id_hint` (intero) coerente con P1-P3, non `client_slug`. L'`AUTO_ATTACH`/`LINK_CANDIDATE` di P4 produce poi il `client_id` autoritativo.
 
 ### ⚠️ X11 — `blob_hash` formato: hex grezzo (P1/P2) vs `sha256:...` prefissato (P3/P4)

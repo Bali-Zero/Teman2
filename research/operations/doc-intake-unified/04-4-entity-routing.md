@@ -4,6 +4,7 @@ domain: operations
 study: doc-intake-unified
 phase: 4.4 — ENTITY RESOLUTION & ROUTING
 client_case: false
+adversarial_review: exempt-raw-lane-output-synthesis-carries-the-review # FASE 4.4 lane output of the doc-intake study; its review is carried by 05-final-spec.md (adversarial_review: codex). This change only swaps a sample name for a placeholder
 sources:
   - research/operations/doc-intake-unified/01-system-study.md
   - research/operations/doc-intake-unified/01d-destinations.md
@@ -57,7 +58,7 @@ verificata (agent spec, Step 5). Per ogni documento il blocco rilevante per il m
 
 ```jsonc
 {
-  "client_slug": "marta-reyes",          // hint NON autoritativo (slug suggerito dal classifier)
+  "client_slug": "[CLIENT-NAME-REDACTED]",          // hint NON autoritativo (slug suggerito dal classifier)
   "generated_at": "2026-06-04T...+08:00",
   "generated_by": "document-intake-classifier",
   "source": {                             // ⟵ AGGIUNTA RICHIESTA a PARTE 3 (provenance, vedi §6)
@@ -77,7 +78,7 @@ verificata (agent spec, Step 5). Per ogni documento il blocco rilevante per il m
       "fields": {
         // per-field {value, confidence, source_page}; array per direksi/komisaris
         "passport_number": {"value":"YB1234567","confidence":0.93,"source_page":1},
-        "full_name":       {"value":"MARTA REYES","confidence":0.9,"source_page":1},
+        "full_name":       {"value":"[CLIENT-NAME-REDACTED]","confidence":0.9,"source_page":1},
         "nationality":     {"value":"ESP","confidence":0.95,"source_page":1},
         "birth_date":      {"value":"1989-03-21","confidence":0.88,"source_page":1},
         "kitas_number":    {"value":"2C11JE1234-X","confidence":0.8,"source_page":1}
@@ -126,7 +127,7 @@ NON è un write di destinazione**: è la coda che PARTE 5 legge). Formato JSON d
   "idempotency_key": "<blob_sha256>:<doc_index>:intake-v1",  // C2: exactly-once
 
   "intake_ref": {                         // puntatore all'intake JSON di PARTE 3
-    "file": "research/crm/intake/2026-06-04-marta-reyes-intake.json",
+    "file": "research/crm/intake/2026-06-04-[CLIENT-NAME-REDACTED]-intake.json",
     "doc_index": 0,
     "blob_sha256": "...."
   },
@@ -150,8 +151,8 @@ NON è un write di destinazione**: è la coda che PARTE 5 legge). Formato JSON d
       {"key":"name_jw","kind":"fuzzy","score":0.94,"weight":0.5,"client_id":412}
     ],
     "candidates": [                       // top-N per HITL disambiguation
-      {"client_id":412,"full_name":"M****a R****s","score":0.97},
-      {"client_id":889,"full_name":"M****o R****z","score":0.71}
+      {"client_id":412,"full_name":"[CLIENT-NAME-REDACTED]","score":0.97},
+      {"client_id":889,"full_name":"[CLIENT-NAME-REDACTED]","score":0.71}
     ],
     "reason": "passport exact + nationality concordant (2 signals) ≥ auto threshold",
     "phone_owner_risk": false             // C4: il phone può essere agente/familiare
@@ -168,7 +169,7 @@ NON è un write di destinazione**: è la coda che PARTE 5 legge). Formato JSON d
         "family_member_id": null,
         "document_type": "passport",
         "document_category": "immigration",
-        "file_name": "412_marta-reyes/01_Immigration/passport.pdf",
+        "file_name": "412_[CLIENT-NAME-REDACTED]/01_Immigration/passport.pdf",
         "expiry_date": "2031-05-02",
         "ocr_status": "completed",
         "ocr_extracted_data": { ... }     // PII resta locale; payload non loggato in chiaro
@@ -177,7 +178,7 @@ NON è un write di destinazione**: è la coda che PARTE 5 legge). Formato JSON d
     "D2_drive": {
       "action": "upload+rename",
       "target_folder": "01_Immigration",  // da CATEGORY_TO_FOLDER
-      "target_path": "412_marta-reyes/01_Immigration/passport.pdf",
+      "target_path": "412_[CLIENT-NAME-REDACTED]/01_Immigration/passport.pdf",
       "client_folder_id": "clients.google_drive_folder_id (o CREATE se assente)",
       "writes_back_to_D1": ["file_id","google_drive_file_url"]
     },
@@ -193,7 +194,7 @@ NON è un write di destinazione**: è la coda che PARTE 5 legge). Formato JSON d
     },
     "D3_auditor": {
       "action": "notify-consumer",        // solo se type ∈ {akta,nib,npwp,oss,skt}
-      "intake_json": "research/crm/intake/2026-06-04-marta-reyes-intake.json",
+      "intake_json": "research/crm/intake/2026-06-04-[CLIENT-NAME-REDACTED]-intake.json",
       "trigger": "enqueue company-docs-consistency-auditor (read-only)"
     }
   },

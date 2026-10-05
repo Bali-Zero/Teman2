@@ -2,6 +2,7 @@
 date: 2026-05-25
 domain: operations
 client_case: null
+adversarial_review: exempt-session-capture # hardening + orchestration-audit session capture (not a curated research deliverable); this change only swaps a client name for a placeholder
 sources:
   - "~/.claude/hooks/orchestrate_gate.py (new)"
   - "~/scripts/claude-settings-change-alert.sh (new)"
@@ -49,7 +50,7 @@ Spawn 5 sotto-Claude in parallel testing capacità "Generale di agenti". Misurat
 | ----------------------------------------------- | -------------- | --------------- | --------- | --------- | --------- | ---------------------------------------------------- |
 | **GEN-1** Fan-out audit 4 sotto-sistemi         | **5/5 ⭐⭐**   | 5               | **100%**  | 8         | 76s       | Parallel batch 3+4+1, skip subagent giustificato     |
 | **GEN-2** Cross-LLM panel architetturale        | 3/5            | 5               | 60%       | 0         | 46s       | Panel skipped CON cicatrix-citing — REDESIGN verdict |
-| **GEN-3** MCP routing client Marina Pinyaylova  | **3/3 ⭐⭐⭐** | 3               | **100%**  | 6         | 67s       | RBAC fallback auto + 5 traslitterazioni testate      |
+| **GEN-3** MCP routing client [CLIENT-NAME-REDACTED]  | **3/3 ⭐⭐⭐** | 3               | **100%**  | 6         | 67s       | RBAC fallback auto + 5 traslitterazioni testate      |
 | **GEN-4** Mixed lane research+verify+ship       | 3.5/4 ⭐⭐     | 4               | 87.5%     | 16        | 770s      | Panel quorum 2/3 + failure-graceful                  |
 | **GEN-5** Disambiguation "problemi deploy" vago | **3/3 ⭐⭐**   | 3               | **100%**  | 8         | 68s       | Strategy C (mirato) sopra B (parallel waste)         |
 | **TOTALE**                                      | **17.5/20**    | 20              | **87.5%** | 38        | 17.1 min  | "Generale Eccellente" (≥80% soglia)                  |
