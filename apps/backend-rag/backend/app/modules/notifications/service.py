@@ -436,6 +436,10 @@ class NotificationService:
                 JOIN clients c ON lower(c.assigned_to) = lower(tm.email)
                 WHERE c.id = $1
                   AND tm.active IS NOT FALSE
+                  -- team_members also carries client-portal-login rows
+                  -- (role='client'); a colliding email must not be read as a
+                  -- valid owner (PENDING-ARMS 2026-08-21).
+                  AND tm.role IS DISTINCT FROM 'client'
                 """,
                 client_id,
             )
