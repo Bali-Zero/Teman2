@@ -39,6 +39,13 @@ MIG_DIR = Path(__file__).resolve().parents[2] / "db" / "migrations_v2"
 # (`131_unify_migration_tracking.sql`). 129 and 130 collided with the
 # crm_guardian batch (PR #258) and were renumbered to 142 and 143 by
 # the P0-7 audit fix on 2026-04-29 — see cicatrix STRUCTURAL P0-7.
+#
+# 324 joined the batch on 2026-10-05: it is the migration counterpart of
+# the bootstrap's third `DROP NOT NULL` family
+# (`practices.practice_type_id`), the only one that had none. Prod
+# nullability was measured directly against the production leader
+# (information_schema.columns, is_nullable = 'YES') before the file was
+# written — see the migration header.
 LEGACY_PROMOTION_FILES = (
     "142_legacy_user_profiles.sql",
     "143_legacy_conversations.sql",
@@ -48,6 +55,7 @@ LEGACY_PROMOTION_FILES = (
     "135_legacy_notification_prefs.sql",
     "136_clients_drive_columns_and_defaults.sql",
     "137_team_members_legacy_columns_and_defaults.sql",
+    "324_practices_practice_type_id_nullable.sql",
 )
 
 # Files that landed in the 129/130 number range and are NOT part of the
