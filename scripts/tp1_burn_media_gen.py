@@ -86,8 +86,12 @@ def _req(url, payload=None):
 
 
 def submit_image(prompt):
+    # Measured 2026-10-05: wan2.7-image-pro on the TP1 base accepts the submit
+    # but FAILs the task with InvalidParameter "Field required: input.messages"
+    # unless the multimodal conversation shape is used (input.prompt is wrong).
     return _req(IMG_URL, {"model": "wan2.7-image-pro",
-                          "input": {"prompt": prompt},
+                          "input": {"messages": [{"role": "user",
+                                                  "content": [{"text": prompt}]}]},
                           "parameters": {"size": "1024*1024", "n": 1}})
 
 

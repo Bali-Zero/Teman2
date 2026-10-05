@@ -45,14 +45,20 @@ def _is_done(entry) -> bool:
 
 def call(rec, guard):
     kode = rec["kode"]
-    l0 = rec["l0_ground_truth"]
+    l0 = rec.get("l0_ground_truth") or {}
     l2 = rec.get("l2_compliance_national") or {}
-    l4 = rec["l4_bali"]["bali_status"]["value"]
+    l4 = ((rec.get("l4_bali") or {}).get("bali_status") or {}).get("value") or {}
+    judul = (l0.get("judul_id") or {}).get("value") or ""
+    uraian = ((l0.get("uraian_id") or {}).get("value") or "")[:600]
+    if not judul or not l4.get("status"):
+        # schema records without ground-truth title or Bali status are out of
+        # scope for the grounded editorial: skip permanently, never invent.
+        return kode, None, {"ok": False, "reason": "incomplete-schema-record"}, "none"
     pma = l2.get("pma") or {}
     facts = {
         "kode": kode,
-        "judul": l0["judul_id"]["value"],
-        "uraian": l0["uraian_id"]["value"][:600],
+        "judul": judul,
+        "uraian": uraian,
         "pma_national": f"{(pma.get('pma_status') or {}).get('value')} {(pma.get('pma_max_asing') or {}).get('value')}%",
         "bali_status": l4["status"],
         "bali_reason": l4.get("reason", ""),
