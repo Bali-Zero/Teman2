@@ -1,0 +1,166 @@
+# Gear-3 evidence pack — FIXBATCH-B-20261005: a failed watchdog probe is a third state, never ok.
+# Written by the Dux of this mandate (Claude Sonnet 5.5, M5). Every receipt is a command this writer ran on
+# 2026-10-05 between 18:40Z and 19:30Z; outputs are quoted from those runs. Scratch logs live in the session
+# scratchpad and are not committed. The `ts` values are minute-level readings of the session clock.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Mandate from the team lead, FIXBATCH-B-20261005 (2026-10-05): batch B of findings-ranked.md, items 2, 4, 5;
+  campaign owner ruling that seats may build, builder is never grader.
+mission: >-
+  Three watchdogs reported fine when their own probe had crashed. Candidates from a TP1 static pass, each
+  reproduced RED by a corpus on a worktree from fresh origin/main (99746b46d1) before any cure.
+lanes:
+  - lane: watchdog-third-state-build
+    role: build
+    seat: >-
+      Codex O2 (CODEX_HOME=~/.codex-o2, --sandbox workspace-write) made the diff of the five wrapper/helper
+      files and the helper unit tests from the Dux's spec and the Dux's red corpus; the Dux wrote the corpus and
+      the workflow, read the builder's diff line by line, and added one commit-level change (the EXIT trap that
+      removes the per-run temp file, from the review).
+  - lane: watchdog-third-state-review
+    role: review
+    seat: >-
+      Kimi k3 (read-only), a different family from the builder; verbatim in council-journal.jsonl.
+  - lane: watchdog-third-state-refute
+    role: review
+    seat: Kimi k3 (read-only refutation round on the adopted design); verbatim in council-journal.jsonl.
+seat_diversity: >-
+  Builder Codex (O2). Council: Kimi k3 and Codex O3 (same family as the builder O2, recorded as such, design
+  advice only, not a review of the diff). Review and refutation: Kimi k3. Gemini (agy) reads BUSY (owner's
+  windows) and the TP1 text door has no ready invocation for a read-only repo question, so a third family did
+  not answer: declared, not claimed.
+pii_scan: clean
+bites:
+  consumer: >-
+    Four live consumers, each running from a delivered copy. (1) ~/scripts/healer-run.sh on Mini
+    (mini.healer, receptor 2, declared pair infra/healer/healer-run.sh); (2) ~/scripts/pro-healer.sh on Pro
+    (pro.healer, receptor B, declared pair pro-healer.sh), which cds into the repo checkout that
+    auto-fast-forwards, so scripts/healer_run_checks.py arrives by the pull and only the wrapper needs the
+    sync; (3) ~/.nuzantara-cron/auth_sentinel_cron.sh on M5 (com.balizero.auth-sentinel.daily); (4)
+    ~/scripts/pro-llm-burn-alarm.sh on Pro. Readers of the result: organism_stale_detector (error is
+    UNHEALTHY) and the healer's registry receptor (error is dead).
+  observation: >-
+    After the home-fork sync of the wrapper copies, each organ's next scheduled tick writes its heartbeat
+    from the new text, and a dry run of the LIVE copy with an injected probe failure (a fake probe on the
+    scratch repo path) shows status error where the old copy showed ok. Locally reproduced now (receipts R2
+    and R3): 12 of 22 corpus cases fail on the tree before the cure, all 22 pass after, and the healthy and
+    real-alarm cases are the unchanged ones.
+decisions:
+  - id: D-rule
+    decision: >-
+      One rule for all three: the probe's own failure (crash, missing or unparsable output, non-zero exit that
+      is not the "found something" code) is a third state, heartbeat status error with a note, never ok and
+      never alarm. Council (Kimi k3, Codex O3) agreed on status error, on wrappers keeping exit 0 (the readers
+      read sidecars, not launchd rc), and on not building the cure on Telegram, which is dead fleet-wide.
+  - id: D-healer
+    decision: >-
+      Receptor 2 on both healers: a non-zero proprioception exit or an unparsable, schema-less or empty report
+      becomes the ACTIONABLE reason proprioception-receptor-broken, the same semantics as registry receptor
+      exit 2. healer_run_checks.py now raises on an unreadable report (exit 3) instead of returning 0. The
+      Pro twin drops its inline python, which read only the legacy `verdict` key, so it never counted a
+      divergence in the current `status` schema.
+  - id: D-marker
+    decision: >-
+      Burn alarm: rc=1 means ALARM only with the output marker `llm_burn_alarm: ALARM` (logged only on that
+      path, scripts/llm_burn_alarm.py:497). Codex O3 proposed moving ALARM to rc=10 so that exit space alone
+      separates it from a crash; rejected because it changes the producer's contract and every caller of it
+      in one PR, and a marker needs no producer change. A failed cd is rc 70, error.
+  - id: D-exit0
+    decision: >-
+      Wrappers keep exit 0. auth_sentinel_cron.sh states the contract ("never fail launchd noisily on a
+      monitoring cron") and its FATAL branch already does exit 0 with heartbeat error; the brief asked for a
+      non-zero exit only "where the scheduler or the heartbeat reader expects one", and neither does.
+receipts:
+  - claim: "R1 — the deterministic floor is 3 (path term), per file and for the whole diff."
+    cmd: >-
+      python3 -c 'import evidence_pack_lint as e; ...compute_floor([f]) for each file of
+      git diff --name-only origin/main...HEAD' (run from scripts/)
+    result: >-
+      3 for .github/workflows/watchdog-third-state.yml, infra/launchagents/wrappers/pro-healer.sh and
+      pro-llm-burn-alarm.sh; 1 for healer-run.sh, auth_sentinel_cron.sh, healer_run_checks.py and the two
+      tests; whole diff 3. The push preflight confirmed: floor 3 needs a brief.
+    exit: 0
+    ts: "2026-10-05T19:03Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R2 — RED: the corpus on the tree before the cure reproduces all three defects (plus the Pro schema blindness)."
+    cmd: bash scripts/tests/test_watchdog_third_state.sh (worktree at 99746b46d1, corpus only)
+    result: >-
+      12 FAIL, 10 ok. Failing: mini 4 (crash, exit 2, garbage, no probes list all ACT=0), pro 5 (the same four
+      plus 2 real divergences read ACT=0: the `verdict`-only reader), auth-sentinel 1 (crashed sentinel read
+      status ok), burn-alarm 2 (rc=1 crash and failed cd read "ok | run done: ALARM dispatched").
+    exit: 1
+    ts: "2026-10-05T18:50Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R3 — GREEN after the cure: corpus 22/22 and the helper unit tests."
+    cmd: >-
+      bash scripts/tests/test_watchdog_third_state.sh | grep -c '^ok'; the same without the ok lines;
+      python3 -m pytest scripts/tests/test_healer_run_checks.py -q
+    result: "22; ALL PASS; 17 passed"
+    exit: 0
+    ts: "2026-10-05T19:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R4 — the real proprioception report still parses through the new strict counter (innocence on live data)."
+    cmd: >-
+      python3 scripts/proprioception.py --no-fetch --json | python3 scripts/healer_run_checks.py count-diverged;
+      echo rc=$?
+    result: "prints 6 (this machine's real DIVERGED count), rc=0"
+    exit: 0
+    ts: "2026-10-05T19:02Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R5 — the push gate itself demanded this pack."
+    cmd: git push (husky pre-push, preflight_pack)
+    result: >-
+      PUSH REFUSED, [floor-needs-brief]: deterministic floor is 3 but this diff carries no evidence/brief.yml;
+      actionlint on the new workflow OK, prettier OK.
+    exit: 1
+    ts: "2026-10-05T19:06Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R6 — review and refutation by a different family."
+    cmd: >-
+      scripts/with_seat.sh kimi kimi -p <read-only review prompt> -m kimi-code/k3 (review of the diff, then the
+      refutation round of the adopted design)
+    result: >-
+      Review: PASS, four minor notes (temp file leak on SIGTERM, cured by the EXIT trap in this PR; note not
+      JSON-escaped, literal strings only; test header wording; memoize owed). Refutation: BROKEN on one leg, see
+      dissent[0], with two residues, dissent[1] and dissent[2].
+    exit: 0
+    ts: "2026-10-05T19:25Z"
+    seat: Kimi k3
+dissent:
+  - seat: kimi-code/k3 (refutation round)
+    objection: >-
+      auth-sentinel's third state is unreachable for per-probe failures: scripts/auth_sentinel.py:97 catches
+      every probe exception, main() is "exit 0 sempre" (:439-441), so a missing `claude` binary yields an
+      UNKNOWN row and rc=0, and the wrapper heartbeats ok. Only an uncaught crash outside run_all reaches the
+      rc!=0 branch.
+    status: CONFIRMED
+    disposition: >-
+      The defect of the finding (the wrapper's `|| true` hiding a crash of the sentinel PROCESS) is cured and
+      proven. The deeper point is real and is OWED, not widened: making the sentinel's own UNKNOWN/NOT_FOUND
+      rows count would change the sentinel's documented output contract and needs a ruling on what fraction of
+      UNKNOWN probes is "the sentinel is blind". Depth-1 rule: not stacked on this PR.
+  - seat: kimi-code/k3 (refutation round)
+    objection: >-
+      The ALARM marker certifies the alarm branch, not the dispatch: send() swallows dispatch exceptions
+      (llm_burn_alarm.py:421-424), so a dead notifier prints the marker, rc=1, and the note says "ALARM
+      dispatched". Pre-existing semantics.
+    status: CONFIRMED
+    disposition: Owed (note wording, producer side). Not a regression, and the status stays ok as before.
+  - seat: kimi-code/k3 (refutation round)
+    objection: >-
+      error is consumed as dead by the healer registry (healer_receptor_registry.py:198), and both
+      pro.llm_burn_alarm and auth-sentinel carry recovery_action launchctl_kickstart, so one crashed tick gets
+      a live organ re-run by the healer; organism_stale_detector files it as unhealthy without paging.
+    status: CONFIRMED
+    disposition: >-
+      Accepted: that is the existing reader doing its job on the new truthful status; the action is a forced
+      extra run of an interval job, not destructive, and nobody is paged. Recorded so the consumer is named.
+  - seat: kimi-code/k3 and codex O3 (council)
+    objection: >-
+      receptor-broken should be report-only and never spawn a paid healer session each tick.
+    status: PLAUSIBLE
+    disposition: >-
+      Not adopted: the registry-receptor exit 2 precedent in the same script spawns, and the healer session is
+      the cure path for a broken receptor. Pro has the memo; Mini healer-run.sh does not (owed).
+council_run: council-journal.jsonl

@@ -1,0 +1,55 @@
+task: >-
+  FIXBATCH-B-20261005 (findings-ranked items 2, 4, 5): three watchdogs report "all fine" precisely when
+  their own probe has crashed (superscar #2, green != working). Healer receptor 2 (Mini healer-run.sh and
+  the Pro twin pro-healer.sh) read a crashed proprioception as 0 divergences, and the Pro twin read only the
+  legacy `verdict` key so it could never count a divergence from the current `status` schema. The
+  auth-sentinel cron wrapper swallowed a sentinel crash with `|| true` then heartbeated ok. The Pro
+  llm-burn-alarm wrapper mapped a failed cd and a Python traceback (both rc=1) to "ALARM dispatched" ok.
+  One rule: a probe's own failure is a third state, status error with a note, never ok and never alarm.
+lane: ops
+machine: m5
+date: 2026-10-05
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: `scripts/evidence_pack_lint.py --print-floor` on this diff's changed
+  files prints 3 (path term: .github/workflows/watchdog-third-state.yml, pro-healer.sh and
+  pro-llm-burn-alarm.sh are hot-zone paths). The floor sets the gear, not the size: 8 files, +74 net lines of
+  code and +150 of corpus.
+acceptance:
+  A1: >-
+    A crashed, empty, unparsable or schema-less proprioception report is `proprioception-receptor-broken`
+    (ACTIONABLE) on both healers; a healthy report stays silent; real divergences, in either schema, keep
+    `proprioception:N-diverged`.
+    probe: >-
+      bash scripts/tests/test_watchdog_third_state.sh prints 7 ok lines per healer (14 of 22) and ALL PASS;
+      the same corpus on origin/main's scripts fails 4 (mini) + 5 (pro) of those cases.
+  A2: >-
+    auth_sentinel_cron.sh writes status error with note `sentinel crashed rc=N` on a non-zero sentinel exit;
+    on exit 0 (including a found ACTION) the heartbeat is byte-identical to before.
+    probe: the three auth-sentinel cases of the same corpus.
+  A3: >-
+    pro-llm-burn-alarm.sh heartbeats ok "ALARM dispatched" only when rc=1 AND the run output carries the
+    ALARM marker; rc=1 without it and a failed cd are error; rc 0 and rc 2 heartbeats are unchanged.
+    probe: the five burn-alarm cases of the same corpus.
+  A4: >-
+    Live after delivery: the next scheduled run of each organ writes its heartbeat line from the delivered
+    copy; a dry run of the live copy with an injected probe failure shows status error.
+    probe: >-
+      cat ~/.organism/last_seen/{auth-sentinel,pro.llm_burn_alarm,mini.healer,pro.healer}.json on the host
+      after the home-fork sync and the next tick. Owned by the team lead (delivery step), not claimed here.
+out_of_scope: >-
+  The healer's G11 memoize (pro-healer.sh) can heartbeat ok "memoized" on a stable receptor-broken
+  fingerprint after one incurable verdict (owed). Mini healer-run.sh has no memo, so a persistent
+  receptor-broken spawns a healer session every 4h tick, the same as registry-receptor-broken does today
+  (owed, not widened). llm_burn_alarm.py is unchanged (its rc contract stays). No edit to proprioception.py,
+  organism_stale_detector.py or any plist.
+assumptions:
+  - text: >-
+      The readers of these statuses are sidecar readers (organism_stale_detector maps error to UNHEALTHY in
+      the session-start report), not launchd exit codes, so the wrappers keep exit 0.
+    status: verified
+    probe: grep -n "UNHEALTHY_STATUSES" -A3 scripts/organism_stale_detector.py
+  - text: >-
+      Gear 3 needs the independent final-gate verdict on the head SHA; the team lead commissions and posts it.
+    status: unverified
+    probe: gh pr checks <pr> after the gate verdict is posted.
