@@ -338,8 +338,8 @@ const WelcomeOnboarding = ({
             Are your company codes still valid?
           </h4>
           <p className="text-[#888] text-xs leading-relaxed mb-4">
-            Hundreds of KBLI 2020 codes were revoked on Dec 17. The KBLI 2025
-            transition starts now.
+            KBLI 2025 (Peraturan BPS 7/2025) replaced KBLI 2020 in December
+            2025.
           </p>
           <button
             onClick={onOpenBlackBook}
