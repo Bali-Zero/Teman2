@@ -38,6 +38,8 @@ acceptance:
       cat ~/.organism/last_seen/{auth-sentinel,pro.llm_burn_alarm,mini.healer,pro.healer}.json on the host
       after the home-fork sync and the next tick. Owned by the team lead (delivery step), not claimed here.
 out_of_scope: >-
+  Rule 6 deviation: the council ran after the build and changed nothing in the diff. Also owed: PROPRIOCEPTION_DISABLED=1
+  now reads receptor-broken, so a Mini healer with that switch spawns every tick.
   The healer's G11 memoize (pro-healer.sh) can heartbeat ok "memoized" on a stable receptor-broken
   fingerprint after one incurable verdict (owed). Mini healer-run.sh has no memo, so a persistent
   receptor-broken spawns a healer session every 4h tick, the same as registry-receptor-broken does today

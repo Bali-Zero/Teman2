@@ -14,6 +14,7 @@ on:
   pull_request:
     paths:
       - "scripts/healer_run_checks.py"
+      - "scripts/llm_burn_alarm.py"
       - "scripts/auth_sentinel_cron.sh"
       - "infra/healer/healer-run.sh"
       - "infra/launchagents/wrappers/pro-healer.sh"

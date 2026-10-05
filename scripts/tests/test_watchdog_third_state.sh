@@ -13,7 +13,8 @@
 #
 # Every case runs the REAL shipped text: the receptor block is extracted verbatim
 # from each healer script; the two wrappers run whole under a scratch $HOME.
-# Zero network, zero writes outside a mktemp dir.
+# Zero network, zero writes outside a mktemp dir (the burn wrapper pidfile is redirected there
+# through its PRO_LLM_BURN_ALARM_PIDFILE seam, never the real /tmp path of Pro).
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -124,8 +125,8 @@ esac
 SH
 chmod +x "$BURN_HOME/nuzantara/apps/backend-rag/.venv/bin/python"
 run_burn() { # $1 mode -> "status | note"
-    rm -f "$BURN_HOME/.organism/last_seen/pro.llm_burn_alarm.json" /tmp/nuzantara-pro-llm_burn_alarm.pid
-    HOME="$BURN_HOME" PATH="$TMP/bin:$PATH" FAKE_MODE="$1" \
+    rm -f "$BURN_HOME/.organism/last_seen/pro.llm_burn_alarm.json" "$TMP/burn.pid"
+    HOME="$BURN_HOME" PATH="$TMP/bin:$PATH" FAKE_MODE="$1" PRO_LLM_BURN_ALARM_PIDFILE="$TMP/burn.pid" \
         bash "$REPO/infra/launchagents/wrappers/pro-llm-burn-alarm.sh" >/dev/null 2>&1
     python3 -c '
 import json, sys
@@ -141,5 +142,11 @@ mv "$BURN_HOME/nuzantara" "$BURN_HOME/nuzantara.gone"
 check "burn-alarm: failed cd is error, not ALARM dispatched" \
     "error | run done: cd failed" "$(run_burn ok)"
 mv "$BURN_HOME/nuzantara.gone" "$BURN_HOME/nuzantara"
+
+# The wrapper's ALARM test is a string match on the producer's log line: pin both ends, or a
+# reworded log line turns every real ALARM into "error" with CI green.
+MARKER="llm_burn_alarm: ALARM"
+grep -qF "logger.warning(\"$MARKER" "$REPO/scripts/llm_burn_alarm.py"; check "burn-alarm: producer still logs the marker on a logger.warning" 0 $?
+grep -qF "grep -q \"$MARKER\"" "$REPO/infra/launchagents/wrappers/pro-llm-burn-alarm.sh"; check "burn-alarm: wrapper greps the same marker" 0 $?
 
 [ "$FAIL" -eq 0 ] && echo "ALL PASS" || { echo "FAILURES"; exit 1; }

@@ -11,7 +11,7 @@ LOG_DIR="$HOME/logs/pro-llm_burn_alarm"
 LOG="$LOG_DIR/run.log"
 mkdir -p "$LOG_DIR"
 SIDECAR_DIR="$HOME/.organism/last_seen"
-PIDFILE="/tmp/nuzantara-pro-llm_burn_alarm.pid"
+PIDFILE="${PRO_LLM_BURN_ALARM_PIDFILE:-/tmp/nuzantara-pro-llm_burn_alarm.pid}"   # env seam: tests only
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
 log() { echo "[$(ts)] $*" >> "$LOG"; }

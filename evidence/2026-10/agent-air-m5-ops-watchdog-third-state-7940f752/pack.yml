@@ -1,6 +1,6 @@
 # Gear-3 evidence pack — FIXBATCH-B-20261005: a failed watchdog probe is a third state, never ok.
 # Written by the Dux of this mandate (Claude Sonnet 5.5, M5). Every receipt is a command this writer ran on
-# 2026-10-05 between 18:40Z and 19:30Z; outputs are quoted from those runs. Scratch logs live in the session
+# 2026-10-05 between 10:40Z and 11:19Z (UTC; an earlier draft wrote WITA local times with a Z, corrected in the cure round); outputs are quoted from those runs. Scratch logs live in the session
 # scratchpad and are not committed. The `ts` values are minute-level readings of the session clock.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -47,6 +47,11 @@ bites:
     and R3): 12 of 22 corpus cases fail on the tree before the cure, all 22 pass after, and the healthy and
     real-alarm cases are the unchanged ones.
 decisions:
+  - id: D-posthoc
+    decision: >-
+      The council ran AFTER the build, a Rule 6 deviation (Gear 3 asks for it before). It changed nothing in the
+      diff: its one objection (receptor-broken should not spawn) was not adopted and Codex O3's rc=10 proposal was
+      rejected; the only change after the build, the EXIT trap, came from the Kimi diff review.
   - id: D-rule
     decision: >-
       One rule for all three: the probe's own failure (crash, missing or unparsable output, non-zero exit that
@@ -81,7 +86,7 @@ receipts:
       pro-llm-burn-alarm.sh; 1 for healer-run.sh, auth_sentinel_cron.sh, healer_run_checks.py and the two
       tests; whole diff 3. The push preflight confirmed: floor 3 needs a brief.
     exit: 0
-    ts: "2026-10-05T19:03Z"
+    ts: "2026-10-05T11:03Z"
     seat: Claude Sonnet 5.5 (Dux, M5)
   - claim: "R2 — RED: the corpus on the tree before the cure reproduces all three defects (plus the Pro schema blindness)."
     cmd: bash scripts/tests/test_watchdog_third_state.sh (worktree at 99746b46d1, corpus only)
@@ -90,7 +95,7 @@ receipts:
       plus 2 real divergences read ACT=0: the `verdict`-only reader), auth-sentinel 1 (crashed sentinel read
       status ok), burn-alarm 2 (rc=1 crash and failed cd read "ok | run done: ALARM dispatched").
     exit: 1
-    ts: "2026-10-05T18:50Z"
+    ts: "2026-10-05T10:50Z"
     seat: Claude Sonnet 5.5 (Dux, M5)
   - claim: "R3 — GREEN after the cure: corpus 22/22 and the helper unit tests."
     cmd: >-
@@ -98,7 +103,7 @@ receipts:
       python3 -m pytest scripts/tests/test_healer_run_checks.py -q
     result: "22; ALL PASS; 17 passed"
     exit: 0
-    ts: "2026-10-05T19:00Z"
+    ts: "2026-10-05T11:00Z"
     seat: Claude Sonnet 5.5 (Dux, M5)
   - claim: "R4 — the real proprioception report still parses through the new strict counter (innocence on live data)."
     cmd: >-
@@ -106,7 +111,7 @@ receipts:
       echo rc=$?
     result: "prints 6 (this machine's real DIVERGED count), rc=0"
     exit: 0
-    ts: "2026-10-05T19:02Z"
+    ts: "2026-10-05T11:02Z"
     seat: Claude Sonnet 5.5 (Dux, M5)
   - claim: "R5 — the push gate itself demanded this pack."
     cmd: git push (husky pre-push, preflight_pack)
@@ -114,7 +119,7 @@ receipts:
       PUSH REFUSED, [floor-needs-brief]: deterministic floor is 3 but this diff carries no evidence/brief.yml;
       actionlint on the new workflow OK, prettier OK.
     exit: 1
-    ts: "2026-10-05T19:06Z"
+    ts: "2026-10-05T11:06Z"
     seat: Claude Sonnet 5.5 (Dux, M5)
   - claim: "R6 — review and refutation by a different family."
     cmd: >-
@@ -125,7 +130,7 @@ receipts:
       JSON-escaped, literal strings only; test header wording; memoize owed). Refutation: BROKEN on one leg, see
       dissent[0], with two residues, dissent[1] and dissent[2].
     exit: 0
-    ts: "2026-10-05T19:25Z"
+    ts: "2026-10-05T11:14Z"
     seat: Kimi k3
 dissent:
   - seat: kimi-code/k3 (refutation round)
