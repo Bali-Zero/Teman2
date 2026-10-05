@@ -8,7 +8,7 @@
 |---|---|
 | `usage-dashboard.html` | Dashboard self-contained. Sezione API **già viva** (snapshot dal ledger PG `llm_cost_events`, mig 117). Sezione seat si accende quando il collector gira accanto (fetch di `seat_usage_snapshot.json`). |
 | `seat_usage_collector.py` | Parsa i log locali delle CLI (Claude ×N profili, Codex ×2 CODEX_HOME, agy, kimi) → snapshot JSON. **Armato 2026-08-19 via launchd su M5+Pro+Mini (`infra/launchagents/install_seat_usage_cron.sh` — la prova è lo snapshot scritto dal daemon, mtime-advance, mai un run a mano).** |
-| `seat_map.json` | Generato al primo run: mappa profili locali → seat A1/A2/A3/AZ/O1/O2. Da editare dopo l'installazione di cswap. |
+| `seat_map.json` | Mappa profili locali → seat, **per macchina**: il blocco `by_machine.<hostname corto>` (es. `Air-M5`, misurato) vince; un host senza blocco legge la mappa top-level di fallback. Un account su più profile dir (A3 su Air-M5) è UNA riga dello snapshot, con la provenienza per profilo in `profiles`. Letto da `cswap.py` e dal collector. |
 | `com.nuzantara.seat-usage.plist.template` | Template LaunchAgent (StartInterval 1800, no secrets). L'arming è avvenuto: l'installer `infra/launchagents/install_seat_usage_cron.sh` renderizza QUESTO template (che resta qui accanto al collector by design — l'installer lo risolve dal proprio checkout). |
 
 ## La verità sulle fonti (matrice onestà)
@@ -28,7 +28,7 @@ Console snapshots: sources with no API live in `~/.agent/seat-usage/console_quot
 ## Arming (sessione Mac, in ordine)
 
 1. `python3 scripts/usage/seat_usage_collector.py` → verifica parse sui log VERI (aspettarsi schema-drift: sistemare i campi, è scritto difensivo).
-2. Editare `seat_map.json` con i profili cswap reali → seat.
+2. Editare `seat_map.json` con i profili cswap reali → seat: nel blocco `by_machine.<hostname corto>` della macchina, mai nella mappa top-level di un'altra.
 3. Test 2-3 run; poi spostare il plist template in `infra/launchagents/` e armarlo col pattern degli installer esistenti (wrapper, no secrets, W64 graceful).
 4. Servire la dashboard: opzione minima `python3 -m http.server` nella dir; opzione vera: aggiungerla a `apps/nuz-status-mac` (PENDING).
 5. PROBE-1: aggiungere il poller crediti DashScope al collector.
