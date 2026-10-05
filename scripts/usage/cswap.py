@@ -613,30 +613,27 @@ def retired_seats(topology_path: Path) -> set[str]:
     return {k for k, v in slots.items() if isinstance(v, dict) and v.get("status") == "retired"}
 
 
-def _seat_registry(base: dict[str, str]) -> Path:
-    # Resolved HERE: with_seat.sh runs from another cwd (the PONG's temp dir, --cwd).
-    override = base.get("WITH_SEAT_REGISTRY")
-    return (Path(override).resolve() if override
-            else _THIS_DIR.parent.parent / "infra/llm-credentials/seat-env.json")
+_CANONICAL_REGISTRY = _THIS_DIR.parent.parent / "infra/llm-credentials/seat-env.json"
 
 
-def _claude_seat_names(reg: Path) -> set[str]:
-    """The env names with_seat.sh declares for `claude-seat`, read from the
-    registry it will read. The door hands with_seat.sh ONLY these: anything
+def _claude_seat_names() -> set[str]:
+    """The env names the canonical registry declares for `claude-seat`, minus
+    the shadowing credentials. The door hands with_seat.sh ONLY these: anything
     else reaches bash before the allowlist does — BASH_ENV is sourced at
-    startup and could export a token that then passes as a declared name."""
+    startup and could export a token that then passes as a declared name.
+    WITH_SEAT_REGISTRY is neither honoured nor forwarded: a caller-written
+    registry could declare Bedrock names, or point exec_search_path at its own
+    `claude`, while the door reports a seat (gate-7921)."""
     try:
-        names = json.loads(reg.read_text())["seats"]["claude-seat"]["env"]
+        names = json.loads(_CANONICAL_REGISTRY.read_text())["seats"]["claude-seat"]["env"]
     except (OSError, ValueError, KeyError, TypeError) as e:
-        raise SystemExit(f"[cswap exec] cannot read claude-seat names from {reg}: {type(e).__name__}")
+        raise SystemExit(f"[cswap exec] cannot read claude-seat names from {_CANONICAL_REGISTRY}: "
+                         f"{type(e).__name__}")
     return set(names) - set(_SHADOWING_CREDENTIALS)
 
 
 def seat_child_env(base: dict[str, str], profile_dir: Path) -> dict[str, str]:
-    reg = _seat_registry(base)
-    env = {k: v for k, v in base.items() if k in _claude_seat_names(reg)}
-    if base.get("WITH_SEAT_REGISTRY"):
-        env["WITH_SEAT_REGISTRY"] = str(reg)
+    env = {k: v for k, v in base.items() if k in _claude_seat_names()}
     default_dir = Path(os.path.expanduser("~/.claude"))
     try:
         is_default = profile_dir.samefile(default_dir)
@@ -663,9 +660,11 @@ def _first_meaningful_line(*texts: str) -> str:
 
 
 def pong(with_seat: Path, env: dict[str, str], *,
-         timeout: float = PONG_TIMEOUT_S) -> tuple[bool, str]:
+         timeout: Optional[float] = None) -> tuple[bool, str]:
     """One headless PONG through the same door the real call takes, from an
-    empty cwd. `auth status` saying loggedIn is not proof a seat answers."""
+    empty cwd. `auth status` saying loggedIn is not proof a seat answers: the
+    whole stdout must be exactly PONG."""
+    timeout = PONG_TIMEOUT_S if timeout is None else timeout
     argv = [str(with_seat), "claude-seat", "claude", "-p", "--model", PONG_MODEL, PONG_PROMPT]
     with tempfile.TemporaryDirectory(prefix="cswap-pong-") as cwd:
         try:
@@ -675,8 +674,7 @@ def pong(with_seat: Path, env: dict[str, str], *,
             return False, f"no answer within {timeout:.0f}s"
         except OSError as e:
             return False, f"cannot run {with_seat.name}: {e.strerror}"
-    answer = [line.strip() for line in r.stdout.splitlines() if line.strip()]
-    if r.returncode == 0 and answer and answer[-1].rstrip(".!").upper() == "PONG":
+    if r.returncode == 0 and r.stdout.strip() == "PONG":
         return True, ""
     why = _first_meaningful_line(r.stdout, r.stderr) or f"exit {r.returncode}, no output"
     return False, _redact_if_secretlike(why)
@@ -686,8 +684,9 @@ def cmd_exec(seat_map_path: Path, seat: str, cmd: list[str], *, cwd: str,
              exclude: list[str], topology_path: Path, with_seat: Path) -> int:
     """Run `claude ...` headless on one named seat, or on the least-loaded
     seat that answers its PONG (`auto`), through with_seat.sh's claude-seat
-    allowlist. A named seat that is retired, unknown here or silent is refused
-    with REFUSED_RC; it never falls through to another seat."""
+    allowlist. A named seat that is retired or silent is refused with
+    REFUSED_RC (3), one that is not a seat id here with 2; it never falls
+    through to another seat. --exclude is for `auto` only and names seat ids."""
     argv = _strip_leading_separator(cmd)
     if not argv:
         emit_err("[cswap exec] empty command: pass the claude invocation after --")
@@ -697,6 +696,13 @@ def cmd_exec(seat_map_path: Path, seat: str, cmd: list[str], *, cwd: str,
         return 2
     seat_map = load_seat_map(seat_map_path)
     retired = retired_seats(topology_path)
+    known = set((seat_map.get("claude_profiles") or {}).values())
+    if exclude and seat != "auto":
+        emit_err("[cswap exec] --exclude applies only to `auto`; a named seat is the only one tried")
+        return 2
+    if set(exclude) - known:
+        emit_err(f"[cswap exec] --exclude names no seat of this machine: {sorted(set(exclude) - known)}")
+        return 2
 
     if seat == "auto":
         pool = [c for c in collect_candidates(seat_map, _now(), set(exclude))
@@ -710,7 +716,7 @@ def cmd_exec(seat_map_path: Path, seat: str, cmd: list[str], *, cwd: str,
         if seat in retired:
             emit_err(f"[cswap exec] REFUSED seat={seat}: retired in FLEET_TOPOLOGY.json")
             return REFUSED_RC
-        if seat not in (seat_map.get("claude_profiles") or {}).values():
+        if seat not in known:
             emit_err(f"[cswap exec] REFUSED seat={seat}: not a seat id in this machine's seat map")
             return 2
         try:
@@ -772,7 +778,7 @@ def build_parser() -> argparse.ArgumentParser:
                                          "PONG, through with_seat.sh (seat report on stderr)")
     p_exec.add_argument("--cwd", default=os.getcwd(), help="working directory of the run")
     p_exec.add_argument("--exclude", action="append", default=[], metavar="SEAT",
-                         help="seat id `auto` must not pick (repeatable)")
+                         help="seat id `auto` must not pick (repeatable; refused with a named seat)")
     p_exec.add_argument("--topology", default=str(_default_topology_path()),
                          help="FLEET_TOPOLOGY.json; only seat status is read")
     p_exec.add_argument("seat", help="seat id (A1/A2/A3/A4/AZ) or `auto` = least-loaded answering seat")

@@ -142,6 +142,7 @@ python3 scripts/usage/cswap.py run A2 -- claude -p "..."       # exec under A2's
 python3 scripts/usage/cswap.py auto --print                   # pick least-loaded eligible seat, print its dir only
 python3 scripts/usage/cswap.py auto --activate                # same, and remember the choice (hysteresis state)
 python3 scripts/usage/cswap.py auto --print --exclude A3       # rank excluding A3 for this run
+python3 scripts/usage/cswap.py exec --cwd DIR A2 -- claude -p --model M "..." < /dev/null  # headless on A2 after an exact PONG; retired/silent seat -> exit 3, never another seat; `auto` = least-loaded answering seat
 ```
 
 Composable, interactive:

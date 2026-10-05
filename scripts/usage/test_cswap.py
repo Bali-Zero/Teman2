@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -624,13 +625,16 @@ def test_collect_candidates_aggregated_seat_with_one_unknown_profile_is_unknown(
 
 _REPO = Path(__file__).resolve().parents[2]
 _FAKE_CLAUDE = """#!/bin/bash
-log="$HOME/fake-claude"; mkdir -p "$log"; id="$$-$RANDOM"
+log="$HOME/fake-claude"; mkdir -p "$log"; id="$$-$RANDOM"; cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 env | cut -d= -f1 | sort > "$log/$id.env"
 printf '%s\\n' "${CLAUDE_CONFIG_DIR:-<unset>}" > "$log/$id.dir"
-if [ -e "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/FAIL" ]; then
+if [ -e "$cfg/FAIL" ]; then
   echo "Failed to authenticate: OAuth session expired and could not be refreshed"; exit 1
 fi
-case "$*" in *PONG*) echo PONG ;; *) echo ANSWER ;; esac
+case "$*" in
+  *PONG*) [ -e "$cfg/HANG" ] && sleep 8; echo PONG ;;
+  *) echo ANSWER; [ -e "$cfg/RC" ] && exit "$(cat "$cfg/RC")"; exit 0 ;;
+esac
 """
 _CREDENTIAL_NAME = re.compile(r"TOKEN|SECRET|KEY|PASSWORD|CREDENTIAL|_PAT$")
 
@@ -641,12 +645,16 @@ def door(tmp_path, monkeypatch):
     fake_bin.mkdir()
     (fake_bin / "claude").write_text(_FAKE_CLAUDE)
     (fake_bin / "claude").chmod(0o755)
+    # A copy of the wrapper reads the registry beside it: the door honours no override.
+    (tmp_path / "repo/scripts").mkdir(parents=True)
+    (tmp_path / "repo/infra/llm-credentials").mkdir(parents=True)
+    shutil.copy(_REPO / "scripts/with_seat.sh", tmp_path / "repo/scripts/with_seat.sh")
     registry = json.loads((_REPO / "infra/llm-credentials/seat-env.json").read_text())
     registry["seats"]["claude-seat"]["exec_search_path"] = [str(fake_bin)]
-    reg_path = tmp_path / "seat-env.json"
+    reg_path = tmp_path / "repo/infra/llm-credentials/seat-env.json"
     reg_path.write_text(json.dumps(registry))
     reg_path.chmod(0o600)
-    monkeypatch.setenv("WITH_SEAT_REGISTRY", str(reg_path))
+    monkeypatch.setattr(cswap, "_default_with_seat_path", lambda: tmp_path / "repo/scripts/with_seat.sh")
     for d in (".claude", "a1", "kaiser", "acct4", "acct5"):
         (tmp_path / d).mkdir()
     seat_map = tmp_path / "seat_map.json"
@@ -730,17 +738,64 @@ def test_exec_auto_with_no_answering_seat_refuses(door, tmp_path, capfd):
     assert "no eligible seat answered" in capfd.readouterr().err
 
 
-def test_exec_pong_must_be_the_answer_not_a_mention(door, tmp_path, capfd):
+def test_exec_pong_must_be_the_whole_answer(door, tmp_path, capfd):
     fake = tmp_path / "fakebin" / "claude"
-    fake.write_text(fake.read_text().replace("echo PONG", "echo 'Unable to return PONG'"))
-    assert door("A1") == cswap.REFUSED_RC
-    assert "PONG failed" in capfd.readouterr().err
+    original = fake.read_text()
+    for answer in ("Unable to return PONG", "pong.", "Invalid API key\\nPONG"):
+        fake.write_text(original.replace("echo PONG", f"printf '{answer}\\n'"))
+        assert door("A1") == cswap.REFUSED_RC, answer
+        assert "PONG failed" in capfd.readouterr().err
 
 
-def test_exec_resolves_a_relative_registry_override_before_changing_cwd(door, tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("WITH_SEAT_REGISTRY", "seat-env.json")
+def test_exec_never_honours_or_forwards_a_caller_registry(door, tmp_path, monkeypatch):
+    evil_bin = tmp_path / "evilbin"
+    evil_bin.mkdir()
+    (evil_bin / "claude").write_text('#!/bin/bash\ntouch "$HOME/evil_ran"; echo PONG\n')
+    (evil_bin / "claude").chmod(0o755)
+    paid = ["CLAUDE_CODE_USE_BEDROCK", "AWS_BEARER_TOKEN_BEDROCK", "ANTHROPIC_BEDROCK_BASE_URL"]
+    reg = json.loads((_REPO / "infra/llm-credentials/seat-env.json").read_text())
+    reg["seats"]["claude-seat"]["env"] += paid + ["SHELLOPTS"]
+    reg["seats"]["claude-seat"]["exec_search_path"] = [str(evil_bin)]
+    evil = tmp_path / "evil-registry.json"
+    evil.write_text(json.dumps(reg))
+    evil.chmod(0o600)
+    monkeypatch.setenv("WITH_SEAT_REGISTRY", str(evil))
+    for name in paid:
+        monkeypatch.setenv(name, "fixture")
     assert door("A1") == 0
+    assert not (tmp_path / "evil_ran").exists()
+    assert [(set(paid) | {"SHELLOPTS"}) & set(names) for _, names in _calls(tmp_path)] == [set(), set()]
+
+
+def test_exec_returns_the_command_exit_code(door, tmp_path):
+    (tmp_path / "a1" / "RC").write_text("7")
+    assert door("A1") == 7
+
+
+def test_exec_unreadable_topology_shuts_the_door(door, tmp_path):
+    (tmp_path / "topology.json").unlink()
+    with pytest.raises(SystemExit):
+        door("A1")
+    assert _calls(tmp_path) == []
+
+
+def test_exec_defaults_are_anchored_to_the_repo_not_the_cwd():
+    assert cswap._default_topology_path() == _REPO / "FLEET_TOPOLOGY.json"
+    assert cswap._CANONICAL_REGISTRY == _REPO / "infra/llm-credentials/seat-env.json"
+    assert cswap._default_with_seat_path() == _REPO / "scripts/with_seat.sh"
+
+
+def test_exec_probe_timeout_refuses_the_seat(door, tmp_path, monkeypatch, capfd):
+    monkeypatch.setattr(cswap, "PONG_TIMEOUT_S", 2)
+    (tmp_path / "a1" / "HANG").touch()
+    assert door("A1") == cswap.REFUSED_RC
+    assert "no answer within 2s" in capfd.readouterr().err
+
+
+def test_exec_exclude_is_validated_and_only_for_auto(door, tmp_path):
+    assert door("A1", "--exclude", "A2") == 2
+    assert door("auto", "--exclude", "a1") == 2
+    assert _calls(tmp_path) == []
 
 
 def test_exec_accepts_only_seat_ids_of_this_machine(door, tmp_path):
