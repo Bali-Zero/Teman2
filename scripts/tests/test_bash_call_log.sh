@@ -67,7 +67,7 @@ if [ -f "$HIST" ]; then
     else
         note_fail "command-history.log line format wrong: $(head -1 "$HIST")"
     fi
-    mode="$(stat -f '%Lp' "$HIST" 2>/dev/null || stat -c '%a' "$HIST" 2>/dev/null)"
+    mode="$(stat -c '%a' "$HIST" 2>/dev/null || stat -f '%Lp' "$HIST" 2>/dev/null)"
     if [ "$mode" = "600" ]; then
         note_pass "command-history.log is mode 0600"
     else

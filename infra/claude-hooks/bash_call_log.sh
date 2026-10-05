@@ -31,8 +31,8 @@
 # with a stdin-JSON fallback for forward compatibility, same dual-input
 # convention documented in infra/claude-hooks/mos_capture_post_tool.py.
 #
-# Fail-open throughout: a broken/missing dependency must never surface as a
-# blocked tool call. Every write is best-effort (`|| true`).
+# Fail-open for the tool call: exit 0, empty stdout, best-effort writes.
+# Command text fails closed: redaction failure logs only a placeholder.
 
 set -u
 umask 077
@@ -52,10 +52,27 @@ CMD="$(printf '%s' "$PAYLOAD" | /usr/bin/jq -r '.tool_input.command // "unknown"
 HIST_FILE="$HOME/.claude/command-history.log"
 mkdir -p "$(dirname "$HIST_FILE")" 2>/dev/null || true
 LOGGED_CMD=""
-if command -v python3 >/dev/null 2>&1 && [ -f "$REDACT_PY" ]; then
-    LOGGED_CMD="$(printf '%s' "$CMD" | python3 "$REDACT_PY" 2>/dev/null)"
+REDACT_REASON="missing"
+T="${BASH_CALL_LOG_REDACT_TIMEOUT_S:-2}"
+if [[ ! "$T" =~ ^[1-9][0-9]*$ ]]; then
+    T=2
+elif [ "${#T}" -gt 1 ]; then
+    T=10 # Cap without overflowing shell arithmetic on a huge integer.
 fi
-[ -z "$LOGGED_CMD" ] && LOGGED_CMD="$CMD"
+if command -v python3 >/dev/null 2>&1 && [ -f "$REDACT_PY" ]; then
+    LOGGED_CMD="$(printf '%s' "$CMD" | python3 -c 'import signal,sys,runpy; signal.alarm(int(sys.argv[1])); sys.argv=sys.argv[2:]; runpy.run_path(sys.argv[0], run_name="__main__")' "$T" "$REDACT_PY" 2>/dev/null)"
+    REDACT_RC=$?
+    if [ "$REDACT_RC" -ne 0 ]; then
+        REDACT_REASON="rc=$REDACT_RC"
+    elif [ -z "$LOGGED_CMD" ]; then
+        REDACT_REASON="empty"
+    else
+        REDACT_REASON=""
+    fi
+fi
+if [ -n "$REDACT_REASON" ]; then
+    LOGGED_CMD="$(LC_ALL=C; printf '<REDACTION-FAILED reason=%s len=%s>' "$REDACT_REASON" "${#CMD}")"
+fi
 printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$LOGGED_CMD" >> "$HIST_FILE" 2>/dev/null || true
 chmod 0600 "$HIST_FILE" 2>/dev/null || true
 

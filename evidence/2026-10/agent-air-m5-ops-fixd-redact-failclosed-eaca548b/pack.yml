@@ -1,0 +1,125 @@
+task_id: fixd-redact-failclosed
+mandate_id: FIXBATCH-D-20261005
+colour: BLUE
+gear: 3
+gate_class: final-on-disk
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  The titolare seats besides qwen were unavailable: Kimi's 5-hour window was exhausted at about
+  08:00Z (403), with return expected around 13:00Z, and agy reads BUSY with the owner's windows
+  (campaign addendum 3). The Codex seat (O2, gpt-6-astra) BUILT the cure, so its family is excluded
+  from its own refuter chain. DeepSeek v4-pro is the reserve seat, from a different family.
+brief_ref: evidence/brief.yml
+date: 2026-10-05
+machine: M5
+plan_ref: >-
+  team-lead dispatch FIXBATCH-D-20261005 (dux-fix-d): batch D of findings-ranked.md, items 3 and 9
+  plus the siblings cost_ledger_export and memory_index. Fail CLOSED with a fixed placeholder, the
+  hook contract unchanged, invented fixtures only, exposure reported as counts.
+
+lanes:
+  - lane: ground + red tests + design + disposition + ship
+    role: ground_truth
+    seat: "claude-opus-5-5 xhigh (Dux dux-fix-d)"
+    note: >-
+      Reproduced every defect with a red test on fresh origin/main 99746b46d1 (commit 4afe49773b
+      holds only the tests). Wrote the spec, ran the sealed council and the refutation round,
+      read the builder's diff line by line, fixed the test's stat order for Linux CI and added
+      `set -euo pipefail` to the new workflow step. Measured latency and exposure. Owns the release.
+  - lane: build
+    role: build
+    seat: "codex O2 (CODEX_HOME ~/.codex-o2, gpt-6-astra), --sandbox workspace-write, cwd = worktree"
+    note: "Succeeded on the first attempt. The builder did not touch the red-test files: git diff 4afe49773b -- scripts/tests shows only the Dux's stat-order line."
+  - lane: review of the final diff
+    role: review
+    seat: "tp1-deepseek-v4-pro (non-GPT, read-only text door, --max-tokens 24000)"
+    note: "The first reviewer, tp1-qwen3.8-max, stalled mid-stream: no data for 300 s at 586 s, while the machine load was about 190. It was re-dispatched to DeepSeek."
+
+pii_scan: clean
+pii_scan_note: >-
+  Every name, number, token and DSN in tests, spec and prompts is invented (Zed Q. Invented.,
+  example.invalid, FAKE). The live ~/.claude/command-history.log and shared/hotfix_audit.jsonl
+  were read only by counting scripts that print numbers, never a line.
+
+exposure:
+  hook_fail_open_since: "2026-09-09 (aee320c764, PR #5993; live copy installed 2026-09-09 14:58 local, byte-identical to main today)"
+  command_history_log_lines: 1240091
+  first_dated_line: "2026-06-01"
+  raw_secret_shaped_lines_by_redactor_policy: 0
+  positive_control: "redact('export GH_TOKEN=ghp_FAKE...') changes the line -> True"
+  akia_shaped_lines: "1 (EXAMPLE/FAKE-shaped, not a credential)"
+  pii_shaped: "4182 email hits (3821 team/generic domains, 361 other domains); 58 lines with +62/+39 phone shapes. The hook redactor is a SECRET redactor and never covered PII. Owed, out of scope here."
+  rotation_implied: none
+
+diff:
+  net_lines: >-
+    Production code and workflow come from the builder, plus two lines by the Dux; the tests come
+    from the red commit 4afe49773b. Totals are not declared: the pack is part of the diff it would
+    count, and most of the net lines are tests and this pack.
+  behaviour_change: >-
+    bash_call_log.sh writes `<REDACTION-FAILED reason=<missing|rc=N|empty> len=N>` instead of the
+    raw command, and bounds the redactor at BASH_CALL_LOG_REDACT_TIMEOUT_S (default 2, capped at 10)
+    through SIGALRM inside the same python3 process. redact_secrets.redact() returns "<REDACTED>"
+    on an internal error. _redact_pii pass4 uses stripped names with edge-aware boundaries.
+    _redact_dsn masks through the last "@". memory_index_build redacts the title, the type and the
+    filename. guard-conformance.yml now RUNS test_bash_call_log.sh, which the registry already
+    listed but no workflow executed (W81).
+
+receipts:
+  - claim: "RED on origin/main code: hook leaks the raw command in 5 broken-redactor modes and hangs 30 s; 6 punctuation-edged names leak; 3 DSNs leak password bytes; memory title unredacted."
+    cmd: "sh scripts/tests/test_bash_call_log.sh; pytest scripts/tests/test_redact_pii_dynamic_boundaries.py scripts/tests/test_redaction_siblings_fail_closed.py (at 4afe49773b, code unmodified)"
+    result: "22 passed, 11 failed (hang case: 30s); 10 failed, 11 passed"
+    exit: 1
+    ts: "2026-10-05T11:00:12Z"
+    seat: claude-opus-5-5
+  - claim: "GREEN with the cure; existing suites that touch these files unchanged."
+    cmd: "sh scripts/tests/test_bash_call_log.sh; pytest the two new files + scripts/test_redact_pii.py test_memory_index_build.py test_install_hook_diet.py test_nb_title_redaction.py test_memory_layers.py"
+    result: "36 passed, 0 failed; 122 passed"
+    exit: 0
+    ts: "2026-10-05T11:27:00Z"
+    seat: claude-opus-5-5
+  - claim: "Conformance checker and hot-zone list tests green; hook syntax OK."
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py; pytest test_harness_floor_hotzone_list.py test_hotzone_lists_sync.py; bash -n bash_call_log.sh"
+    result: "0 violation(s); 59 passed; BASH_N_OK"
+    exit: 0
+    ts: "2026-10-05T11:27:00Z"
+    seat: claude-opus-5-5
+  - claim: "Latency: interleaved A/B, live copy (= main) against the new hook, n=20 each, real redactor, load 13.8. No placeholder was produced in any of the 40 runs."
+    cmd: "python3 bench_ab.py ~/.claude/hooks/bash_call_log.sh <worktree>/infra/claude-hooks/bash_call_log.sh 20"
+    result: "old median 160.5 ms, new 142.2 ms (delta -18.3 ms, within noise); CPU median 131.5 vs 122.8 ms; placeholders=0 of 40 lines. Single-run baseline before the build: 78.3 ms median at load ~14. Runs at load 190-212 (sibling suites) were discarded as noise."
+    exit: 0
+    ts: "2026-10-05T11:37:00Z"
+    seat: claude-opus-5-5
+
+review_findings:
+  - seat: tp1-deepseek-v4-pro
+    verbatim: >-
+      Concrete input that breaks an innocence promise: DSN `sqlite:///tmp/test.db` — `_redact_dsn()`
+      returns "<dsn>" because there is no `@` after the `://`. [...] Other defect: LOW –
+      infra/claude-hooks/redact_secrets.py:86-89: when any regex engine exception occurs [...] the
+      whole command text becomes "<REDACTED>" instead of being returned unchanged.
+    disposition: >-
+      Both REJECTED. (1) origin/main already returns "<dsn>" for any DSN without "@"
+      (`if "://" not in dsn or "@" not in dsn`), so the output is byte-identical to before. The
+      export only ever builds Postgres DSNs. (2) This is the fail-closed trade the council ruled on:
+      a whole cut beats echoing the input. No input was found that still gets raw text out.
+
+dissent:
+  - seat: tp1-deepseek-v4-pro
+    objection: "LOW — redact_secrets.redact() turns a benign command into <REDACTED> if the regex engine ever raises"
+    status: CONFIRMED
+    disposition: "kept by design: the council ruled a whole cut over echoing the input; the fixed anchors make the path practically unreachable"
+  - seat: claude-opus-5-5
+    objection: "LOW — net diff above the ~400-line guide"
+    status: CONFIRMED
+    disposition: "kept as one PR, one concern (redactors that fail open); the code change is small and the net lines are mostly the red tests and this pack"
+
+owed:
+  - "Quoted diff headers in scripts/lib/spalla_redact.sh (#9, first half): this lives inside the strip_data_file_deletes rewrite of open PR #7483. Residual noted on #7483 (issuecomment-5993280773): paths with a quote, a backslash or a control character stay C-quoted even with core.quotePath=false."
+  - "PII shapes in command-history.log (361 non-team email hits, 58 phone-shaped lines): the hook has only a SECRET redactor. A PII pass needs its own design."
+  - "hotfix-notify.sh writes the raw command into the TRACKED shared/hotfix_audit.jsonl. origin/main copy: 1 line hit by the redactor's NAME= anchor, value length 1, not a credential."
+
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 3
+spend_note: "Council round 1 (3 seats, 1 empty), refutation round 2 (2 seats), and one final-diff review (qwen stalled, DeepSeek answered)."
