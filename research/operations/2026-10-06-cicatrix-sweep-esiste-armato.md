@@ -1,3 +1,12 @@
+---
+date: 2026-10-06
+domain: operations
+subject: cicatrix-sweep-batch-b-esiste-armato
+status: CENSUS — 5 fresh Esiste≠Armato findings, 6 already tracked; no code changed
+author: kimi (external-builder seat, Air-M5)
+adversarial_review: exempt-census-every-claim-carries-its-reproducing-command-and-ledger-grep-grading-is-the-claude-verifier-session-named-in-the-builder-contract
+---
+
 # Cicatrix sweep 2026-10-06 — Batch B: Esiste≠Armato + name-promises-check census
 
 - **Lane:** `agent/air-m5/docs/cicatrix-sweep-1006` (worktree `.worktrees/docs-cicatrix-sweep-1006`), based on fresh `origin/main` @ `83237f8f93`.
