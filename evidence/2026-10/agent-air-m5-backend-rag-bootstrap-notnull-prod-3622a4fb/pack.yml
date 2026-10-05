@@ -1,0 +1,151 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate from the commissioning session (2026-10-05, PENDING-ARMS row
+  2026-08-26, external-builder seat on Air-M5): settle what production
+  enforces on practices.practice_type_id with ONE read-only
+  information_schema query via scripts/pg.sh, then take branch (2a) or (2b)
+  by the verdict. Verdict: is_nullable = 'YES' → branch (2b): promote the
+  bootstrap's orphaned DROP NOT NULL to a tracked migration (next free
+  number, ROLLBACK marker) and register it in LEGACY_PROMOTION_README.md.
+  No intake fixture change (prod-sanctioned blindness stays, documented).
+
+lanes:
+  - lane: build
+    role: build
+    seat: kimi-code/k3
+  - lane: review-cross-family
+    role: review
+    seat: "owed — generator≠grader: the Claude session verifying this PR convenes the graders; the council that ran is recorded in council_run/journal.jsonl"
+
+ground:
+  ts: "2026-10-05T12:20:00Z"
+  siblings: >-
+    `git log origin/main` at session start: no commit since 2026-08-26
+    touched the practices DROP NOT NULL line, the two intake fixtures, or
+    added a migration counterpart for it; 324 was the next free number at
+    write time. Worktree `.worktrees/backend-rag-bootstrap-notnull-prod` on
+    fresh origin/main (fast-forwarded to 0c97783867 before commit).
+
+what_changed: |
+  apps/backend-rag/backend/db/migrations_v2/324_practices_practice_type_id_nullable.sql:
+  new migration. Forward: `ALTER TABLE practices ALTER COLUMN
+  practice_type_id DROP NOT NULL` — the exact statement the bootstrap
+  issues, now with a committed counterpart like 132 (lkpm_reports) and 137
+  (team_members). Header documents the measured prod verdict (read-only
+  information_schema, is_nullable = 'YES', 2026-10-05) and the two
+  deliberate divergences that remain: the SQLModel CRM model still declares
+  nullable=False, and the CRM INNER JOINs practice_types so a NULL-typed
+  practice is product-invisible (migration 311's placeholder row exists for
+  exactly that reason). Rollback: a DO block that restores SET NOT NULL
+  only when no NULL rows exist — a bare SET NOT NULL would fail on prod
+  rows that legitimately store NULL, the same reason 132/137 omit the
+  restoration.
+  apps/backend-rag/backend/tests/db/test_legacy_promotion_migrations.py:
+  324 added to LEGACY_PROMOTION_FILES with a dated comment, so the batch's
+  structural invariants (ROLLBACK marker, non-empty forward/rollback,
+  idempotency, no SET NOT NULL in forward) now guard this file too. This is
+  the guilt check: the migration cannot silently lose its marker or grow a
+  forward-only NOT NULL restoration without a test going red.
+  apps/backend-rag/backend/db/migrations_v2/LEGACY_PROMOTION_README.md:
+  dated addendum under the mapping table recording the third DROP NOT NULL
+  family, its migration counterpart, and the fact that — unlike the
+  129–137 batch — its prod claim was measured before the file was written.
+  No change to ci_bootstrap_schema.py (its ALTER is now corroborated, not
+  orphaned) and no change to the intake fixtures (branch 2a conditions do
+  not hold).
+
+proof: |
+  See receipts. Structural suites: 54 passed. Intake suites: 79 passed,
+  12 errors — byte-identical result on a clean origin/main tree (git stash
+  -u on the same worktree), so all 12 are pre-existing local-Postgres
+  drift on this thin client, none caused by this diff (which touches no
+  intake code, fixtures, or bootstrap). ruff check and ruff format clean.
+  The new migration parses under backend.db.migration_base.split_migration_sql
+  with non-empty forward and rollback.
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      D1 PLAUSIBLE: the SQLModel CRM model (models.py:116) still declares
+      practice_type_id nullable=False while prod, the bootstrap and now
+      migration 324 all say nullable. A future create_all-based rebuild
+      (Strategy 01 Step 4 cutover) would re-impose NOT NULL from the model
+      and red the intake fixtures loudly — which is 2a's guilt check
+      arriving by accident.
+    status: PLAUSIBLE
+    resolution: >-
+      Documented in the migration header as the same intentional-divergence
+      class as team_members.full_name (137). Aligning the model with prod
+      (or pinning a nullability test against the live schema) is a
+      follow-up with its own spec; not silently folded into this PR
+      (one PR, one concern).
+  - seat: kimi-code/k3
+    objection: >-
+      D2 PLAUSIBLE: the rollback's DO block silently declines to restore
+      NOT NULL when NULL rows exist — a rollback that can no-op without
+      saying so.
+    status: PLAUSIBLE
+    resolution: >-
+      Same shape as 132/137, which omit the restoration entirely; the
+      condition makes the no-op explicit in the catalog rather than an
+      error. Whoever eventually tightens this column (backfill + SET NOT
+      NULL as a separate migration) owns the assertion procedure.
+  - seat: kimi-code/k3
+    objection: >-
+      D3 PLAUSIBLE: the original PENDING-ARM worry — intake fixtures INSERT
+      practices rows with no practice_type_id, and a NULL-typed practice is
+      invisible to every CRM INNER JOIN — remains true in prod semantics.
+    status: PLAUSIBLE
+    resolution: >-
+      Prod-sanctioned: the mandate's branch (2b) explicitly keeps the
+      fixtures as-is when prod is nullable. The invisibility hazard is
+      mitigated at the write path (crm_practices.py always resolves and
+      inserts the column; migration 311's placeholder row covers the
+      no-type inquiry path). If the product ever decides the DB should
+      enforce NOT NULL, branch (2a)'s fixture fixes become due.
+
+receipts:
+  - claim: "production enforces no NOT NULL on practices.practice_type_id (the whole premise of the PR)"
+    cmd: 'scripts/pg.sh -A -F''|'' -c "SELECT table_schema, is_nullable FROM information_schema.columns WHERE table_name=''practices'' AND column_name=''practice_type_id'';"'
+    result: "public|YES — read-only path, exactly one query, no data table touched"
+    exit: 0
+    ts: "2026-10-05T12:20:00Z"
+    seat: kimi-code/k3
+  - claim: "structural suites green with 324 in the batch"
+    cmd: "cd apps/backend-rag && PYTHONPATH=$PWD python -m pytest backend/tests/db/test_legacy_promotion_migrations.py backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py"
+    result: "54 passed (after fast-forward to 0c97783867; same 54 before)"
+    exit: 0
+    ts: "2026-10-05T12:31:00Z"
+    seat: kimi-code/k3
+  - claim: "intake suites: no regression from this diff"
+    cmd: "same pytest over backend/tests/services/intake/test_intake_routing.py test_intake_writer.py; then git stash -u and rerun on clean origin/main; git stash pop"
+    result: "79 passed, 12 errors — IDENTICAL on clean main: the 12 UniqueViolation errors are pre-existing thin-client local-Postgres drift"
+    exit: 1
+    ts: "2026-10-05T12:28:00Z"
+    seat: kimi-code/k3
+  - claim: "lint and format clean on the changed Python file"
+    cmd: "ruff check backend/tests/db/test_legacy_promotion_migrations.py && ruff format --check backend/tests/db/test_legacy_promotion_migrations.py"
+    result: "All checks passed; 1 file already formatted"
+    exit: 0
+    ts: "2026-10-05T12:32:00Z"
+    seat: kimi-code/k3
+  - claim: "migration 324 parses with non-empty forward and rollback"
+    cmd: "PYTHONPATH=. python -c 'split_migration_sql(read 324)'"
+    result: "forward = ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL; rollback = conditional DO block, both non-empty"
+    exit: 0
+    ts: "2026-10-05T12:29:00Z"
+    seat: kimi-code/k3
+
+pii_scan: clean
+pii_scan_note: >-
+  No client data read or written. The single production query targeted
+  information_schema.columns (column metadata only, zero client rows by
+  construction). Tests use synthetic fixtures. No credential was echoed;
+  the read-only password never left scripts/pg.sh's own lookup path.
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD"

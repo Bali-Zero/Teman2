@@ -212,3 +212,37 @@ def test_files_match_directory_listing() -> None:
     assert actual == expected, (
         f"unexpected files in 129–137 range\n  expected: {expected}\n  actual:   {actual}"
     )
+
+
+def test_practices_drop_not_null_stays_tracked() -> None:
+    """Tripwire for the 2026-08-26 PENDING-ARM row (council finding Q2).
+
+    `test_files_match_directory_listing` filters BOTH sides of its
+    comparison to the 129–137 range, so a migration like
+    324_practices_practice_type_id_nullable.sql — added to
+    LEGACY_PROMOTION_FILES years after the original batch — is invisible
+    to that test: deleting its tuple entry would silently disable every
+    structural guard (rollback marker, idempotency, no SET NOT NULL in
+    the forward) with no red. This test pins the load-bearing direction:
+    the bootstrap's `practices.practice_type_id DROP NOT NULL` must keep
+    a migration counterpart, and that counterpart must stay inside
+    LEGACY_PROMOTION_FILES.
+    """
+    bootstrap = (
+        Path(__file__).resolve().parents[3] / "scripts" / "ci_bootstrap_schema.py"
+    ).read_text(encoding="utf-8")
+    assert "ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL" in bootstrap, (
+        "the bootstrap no longer issues the practices DROP NOT NULL — either the drift was "
+        "deliberately removed (then delete this test and migration 324 together) or the "
+        "bootstrap regressed and this tripwire caught it"
+    )
+    counterpart = next(
+        (f for f in LEGACY_PROMOTION_FILES if "practices" in f),
+        None,
+    )
+    assert counterpart is not None, (
+        "no LEGACY_PROMOTION_FILES entry names a practices migration, yet the bootstrap "
+        "still issues the DROP NOT NULL — the untracked-ALTER blindfold from 2026-08-26 "
+        "is back; re-add the migration counterpart to the tuple"
+    )
+    assert (MIG_DIR / counterpart).is_file(), f"missing migration file: {counterpart}"
