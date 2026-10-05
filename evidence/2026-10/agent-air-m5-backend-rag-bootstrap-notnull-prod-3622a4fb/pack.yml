@@ -1,4 +1,5 @@
 brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
 plan_ref: >-
   Mandate from the commissioning session (2026-10-05, PENDING-ARMS row
   2026-08-26, external-builder seat on Air-M5): settle what production
@@ -13,18 +14,21 @@ lanes:
   - lane: build
     role: build
     seat: kimi-code/k3
-  - lane: review-cross-family
+  - lane: review-round-1-and-2
     role: review
-    seat: "owed — generator≠grader: the Claude session verifying this PR convenes the graders; the council that ran is recorded in council_run/journal.jsonl"
+    seat: codex-gpt-5.6-sol
+  - lane: review-round-1
+    role: review
+    seat: tp1-qwen3.8-max
 
 ground:
   ts: "2026-10-05T12:20:00Z"
   siblings: >-
     `git log origin/main` at session start: no commit since 2026-08-26
     touched the practices DROP NOT NULL line, the two intake fixtures, or
-    added a migration counterpart for it; 324 was the next free number at
-    write time. Worktree `.worktrees/backend-rag-bootstrap-notnull-prod` on
-    fresh origin/main (fast-forwarded to 0c97783867 before commit).
+    added a migration counterpart for it. Rebased onto origin/main
+    (ff785db0da) before push; 324 re-verified as the next free number after
+    the rebase. Worktree `.worktrees/backend-rag-bootstrap-notnull-prod`.
 
 what_changed: |
   apps/backend-rag/backend/db/migrations_v2/324_practices_practice_type_id_nullable.sql:
@@ -36,16 +40,21 @@ what_changed: |
   deliberate divergences that remain: the SQLModel CRM model still declares
   nullable=False, and the CRM INNER JOINs practice_types so a NULL-typed
   practice is product-invisible (migration 311's placeholder row exists for
-  exactly that reason). Rollback: a DO block that restores SET NOT NULL
-  only when no NULL rows exist — a bare SET NOT NULL would fail on prod
-  rows that legitimately store NULL, the same reason 132/137 omit the
-  restoration.
+  exactly that reason). Rollback (after council round 1): a DO block that
+  LOCKs practices IN ACCESS EXCLUSIVE MODE, restores SET NOT NULL only when
+  no NULL rows exist, and RAISE WARNINGs when it declines — never silent,
+  race-closed. The forward changes no constraint on prod or bootstrap-built
+  CI but still takes ACCESS EXCLUSIVE for the catalog rewrite (header says
+  so, council Q5).
   apps/backend-rag/backend/tests/db/test_legacy_promotion_migrations.py:
   324 added to LEGACY_PROMOTION_FILES with a dated comment, so the batch's
   structural invariants (ROLLBACK marker, non-empty forward/rollback,
-  idempotency, no SET NOT NULL in forward) now guard this file too. This is
-  the guilt check: the migration cannot silently lose its marker or grow a
-  forward-only NOT NULL restoration without a test going red.
+  idempotency, no SET NOT NULL in forward) now guard this file too; plus
+  new tripwire test_practices_drop_not_null_stays_tracked (council Q2)
+  pinning the bootstrap statement — whitespace-normalized — to the exact
+  counterpart staying inside LEGACY_PROMOTION_FILES, and the counterpart's
+  forward to the same statement. Guilt verified both directions: removing
+  the tuple entry reds the tripwire; so does drifting the forward.
   apps/backend-rag/backend/db/migrations_v2/LEGACY_PROMOTION_README.md:
   dated addendum under the mapping table recording the third DROP NOT NULL
   family, its migration counterpart, and the fact that — unlike the
@@ -55,54 +64,141 @@ what_changed: |
   not hold).
 
 proof: |
-  See receipts. Structural suites: 54 passed. Intake suites: 79 passed,
-  12 errors — byte-identical result on a clean origin/main tree (git stash
-  -u on the same worktree), so all 12 are pre-existing local-Postgres
-  drift on this thin client, none caused by this diff (which touches no
-  intake code, fixtures, or bootstrap). ruff check and ruff format clean.
-  The new migration parses under backend.db.migration_base.split_migration_sql
-  with non-empty forward and rollback.
+  See receipts. Structural suites: 55 passed. Corpus scanners over every
+  migrations_v2 glob (uniqueness, checksum, rollback extraction,
+  policy-scope, data-invariant tripwires, garuda environment, retention
+  family, visa seed): 144 passed across 10 files. Intake suites: 79
+  passed, 12 errors — byte-identical result on a clean origin/main tree
+  (git stash -u on the same worktree), so all 12 are pre-existing
+  local-Postgres drift on this thin client, none caused by this diff (which
+  touches no intake code, fixtures, or bootstrap). ruff check and ruff
+  format clean. Council: codex round 2 PASS-WITH-FINDINGS on the final
+  merge-base diff ("merge ammissibile"); qwen round 1 PASS-WITH-FINDINGS,
+  its curable findings (Q2/Q5) cured and independently verified by codex
+  round 2; qwen round 2 attempted 3 times, provider cancelled every long
+  run (recorded as non-judgement in the journal).
 
 dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F2 MEDIUM (round 1): the rollback was not equivalent to restoring the
+      pre-migration state — with no NULL rows it would introduce a
+      constraint that did not exist before the migration; with NULL rows it
+      silently no-op'd while the runner recorded success.
+    status: CONFIRMED
+    resolution: >-
+      Cured in ba63ccff97: the contract is explicit in the file (on prod
+      and bootstrap-built CI the column was already nullable, so decline is
+      the honest outcome; only a fresh create_all DB has something to
+      restore), the decline branch RAISE WARNINGs, and codex round 2 judged
+      the corrected block correct.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F3 MEDIUM (round 1): the NULL-check and the ALTER were not protected
+      against concurrent inserts landing a NULL row between them.
+    status: CONFIRMED
+    resolution: >-
+      Cured in the same commit: LOCK TABLE public.practices IN ACCESS
+      EXCLUSIVE MODE before the check; the lock covers check-and-alter to
+      its conclusion. Codex round 2 confirmed.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F1 HIGH (round 1): the diff appeared to contain unrelated apps/mouth
+      regressions and four deleted guard tests.
+    status: RETRACTED
+    resolution: >-
+      Artifact of a stale two-dot diff taken while origin/main had advanced
+      past the base; the merge-base-anchored diff is 5 files, all in
+      scope. The council prompt for round 2 used the corrected artifact;
+      both seats re-confirmed scope. The builder recorded the lesson:
+      review packets must be merge-base-anchored.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2 LOW: the tripwire accepted any tuple filename containing
+      "practices", and its bootstrap-statement match was strict text (false
+      positive on public.practices qualification; false negative on
+      reformatting).
+    status: CONFIRMED
+    resolution: >-
+      Cured: the counterpart is pinned to the exact filename and the
+      containment checks run on whitespace-normalized SQL, in both
+      directions (bootstrap and the migration's forward).
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Q2 MEDIUM (round 1): test_files_match_directory_listing filters both
+      sides to the 129–137 range, so deleting 324's tuple entry would
+      silently disable every structural guard on it.
+    status: CONFIRMED
+    resolution: >-
+      Cured: test_practices_drop_not_null_stays_tracked pins the exact
+      counterpart in the tuple and the forward's statement; guilt verified
+      by removing the entry (test reds).
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Q3 MEDIUM (round 1): the rollback no-oped silently when NULL rows
+      existed, leaving the ledger saying "rolled back" while the column
+      stayed nullable.
+    status: CONFIRMED
+    resolution: Cured with F2 (RAISE WARNING on decline).
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Q4 MEDIUM (round 1): the base was stale and "324 is next free" was
+      verified only against local main.
+    status: CONFIRMED
+    resolution: >-
+      Cured: rebased onto origin/main (ff785db0da); 324 re-verified as
+      free after the rebase; test_migration_uniqueness.py is the CI
+      backstop on collision.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Q5 LOW (round 1): the header overstated "No-op on prod" — the ALTER
+      still takes ACCESS EXCLUSIVE on a hot CRM table.
+    status: CONFIRMED
+    resolution: >-
+      Cured: header now states the lock level explicitly.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Q6 LOW (round 1): the proof covered 2 of ~8 corpus-wide scanners that
+      read migrations_v2/*.sql.
+    status: CONFIRMED
+    resolution: >-
+      Cured: 144 tests across 10 corpus scanner files pass on the rebased
+      tree (receipt below).
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Q7 LOW (round 1): the models.py:116 nullable=False divergence is
+      documented but unenforced; at Strategy 01 Step 4 a create_all rebuild
+      would re-impose NOT NULL while 324 records itself applied.
+    status: CONFIRMED
+    resolution: >-
+      Not fixed here (one PR, one concern): pinned as dissent D1 below with
+      the concrete trigger. The new tripwire plus this migration's header
+      make the divergence searchable; the Step-4 cutover PR must own the
+      alignment or a live-schema nullability pin.
   - seat: kimi-code/k3
     objection: >-
-      D1 PLAUSIBLE: the SQLModel CRM model (models.py:116) still declares
-      practice_type_id nullable=False while prod, the bootstrap and now
-      migration 324 all say nullable. A future create_all-based rebuild
-      (Strategy 01 Step 4 cutover) would re-impose NOT NULL from the model
-      and red the intake fixtures loudly — which is 2a's guilt check
-      arriving by accident.
+      D1 PLAUSIBLE (self-refutation, builder seat): the SQLModel CRM model
+      (models.py:116) still declares practice_type_id nullable=False while
+      prod, the bootstrap and migration 324 all say nullable.
     status: PLAUSIBLE
     resolution: >-
-      Documented in the migration header as the same intentional-divergence
-      class as team_members.full_name (137). Aligning the model with prod
-      (or pinning a nullability test against the live schema) is a
-      follow-up with its own spec; not silently folded into this PR
-      (one PR, one concern).
+      Intentional divergence, same class as team_members.full_name (137);
+      recorded in the migration header. Follow-up owner: the Strategy 01
+      Step 4 cutover PR (align the model or pin nullability against the
+      live schema).
   - seat: kimi-code/k3
     objection: >-
-      D2 PLAUSIBLE: the rollback's DO block silently declines to restore
-      NOT NULL when NULL rows exist — a rollback that can no-op without
-      saying so.
+      D3 PLAUSIBLE (self-refutation, builder seat): the original
+      PENDING-ARM worry — intake fixtures INSERT practices rows with no
+      practice_type_id and a NULL-typed practice is invisible to every CRM
+      INNER JOIN — remains true in prod semantics.
     status: PLAUSIBLE
     resolution: >-
-      Same shape as 132/137, which omit the restoration entirely; the
-      condition makes the no-op explicit in the catalog rather than an
-      error. Whoever eventually tightens this column (backfill + SET NOT
-      NULL as a separate migration) owns the assertion procedure.
-  - seat: kimi-code/k3
-    objection: >-
-      D3 PLAUSIBLE: the original PENDING-ARM worry — intake fixtures INSERT
-      practices rows with no practice_type_id, and a NULL-typed practice is
-      invisible to every CRM INNER JOIN — remains true in prod semantics.
-    status: PLAUSIBLE
-    resolution: >-
-      Prod-sanctioned: the mandate's branch (2b) explicitly keeps the
-      fixtures as-is when prod is nullable. The invisibility hazard is
-      mitigated at the write path (crm_practices.py always resolves and
-      inserts the column; migration 311's placeholder row covers the
-      no-type inquiry path). If the product ever decides the DB should
-      enforce NOT NULL, branch (2a)'s fixture fixes become due.
+      Prod-sanctioned: branch (2b) of the mandate keeps the fixtures as-is
+      when prod is nullable. Write path always resolves and inserts the
+      column; migration 311's placeholder row covers the no-type inquiry
+      path. If the product ever wants the DB to enforce NOT NULL, branch
+      (2a)'s fixture fixes become due.
 
 receipts:
   - claim: "production enforces no NOT NULL on practices.practice_type_id (the whole premise of the PR)"
@@ -111,29 +207,41 @@ receipts:
     exit: 0
     ts: "2026-10-05T12:20:00Z"
     seat: kimi-code/k3
-  - claim: "structural suites green with 324 in the batch"
+  - claim: "structural suites green with 324 in the batch and the tripwire live"
     cmd: "cd apps/backend-rag && PYTHONPATH=$PWD python -m pytest backend/tests/db/test_legacy_promotion_migrations.py backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py"
-    result: "54 passed (after fast-forward to 0c97783867; same 54 before)"
+    result: "55 passed (on the rebased tree)"
     exit: 0
-    ts: "2026-10-05T12:31:00Z"
+    ts: "2026-10-05T13:20:00Z"
+    seat: kimi-code/k3
+  - claim: "every corpus-wide scanner over migrations_v2 accepts 324"
+    cmd: "pytest backend/tests/db/test_migration_uniqueness.py test_policy_scope_rollback_guard.py test_migration_checksum_verification.py test_migration_rollback_extraction.py backend/tests/test_data_invariant_tripwires.py backend/tests/app/setup/test_garuda_environment_matches_schema.py backend/tests/test_retention_policy_scope_family_tripwire.py backend/tests/test_visa_types_seed_vs_migration_tripwire.py + the two structural files"
+    result: "144 passed across 10 files"
+    exit: 0
+    ts: "2026-10-05T13:20:00Z"
     seat: kimi-code/k3
   - claim: "intake suites: no regression from this diff"
-    cmd: "same pytest over backend/tests/services/intake/test_intake_routing.py test_intake_writer.py; then git stash -u and rerun on clean origin/main; git stash pop"
+    cmd: "pytest backend/tests/services/intake/test_intake_routing.py test_intake_writer.py; then git stash -u and rerun on clean origin/main; stash pop"
     result: "79 passed, 12 errors — IDENTICAL on clean main: the 12 UniqueViolation errors are pre-existing thin-client local-Postgres drift"
     exit: 1
     ts: "2026-10-05T12:28:00Z"
     seat: kimi-code/k3
-  - claim: "lint and format clean on the changed Python file"
-    cmd: "ruff check backend/tests/db/test_legacy_promotion_migrations.py && ruff format --check backend/tests/db/test_legacy_promotion_migrations.py"
-    result: "All checks passed; 1 file already formatted"
-    exit: 0
-    ts: "2026-10-05T12:32:00Z"
+  - claim: "tripwire guilt: removing 324 from the tuple reds the new test"
+    cmd: "sed the tuple entry out; pytest -k practices_drop_not_null; restore via Edit"
+    result: "1 failed (AssertionError: no LEGACY_PROMOTION_FILES entry names a practices migration) — guilt confirmed"
+    exit: 1
+    ts: "2026-10-05T13:05:00Z"
     seat: kimi-code/k3
-  - claim: "migration 324 parses with non-empty forward and rollback"
-    cmd: "PYTHONPATH=. python -c 'split_migration_sql(read 324)'"
-    result: "forward = ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL; rollback = conditional DO block, both non-empty"
+  - claim: "council round 2: codex PASS-WITH-FINDINGS on the final merge-base diff, cures verified"
+    cmd: "codex exec --sandbox read-only <round-2 prompt> on /tmp/bootstrap-notnull.diff (merge-base-anchored, 5 files)"
+    result: "VERDICT PASS-WITH-FINDINGS, 'merge ammissibile con questi rilievi non bloccanti'; rollback LOCK+WARNING judged correct; 2 LOW cured after; 55 structural tests passed in-seat"
     exit: 0
-    ts: "2026-10-05T12:29:00Z"
+    ts: "2026-10-05T13:49:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "lint and format clean on the changed Python file"
+    cmd: "ruff check + ruff format on backend/tests/db/test_legacy_promotion_migrations.py"
+    result: "All checks passed; already formatted"
+    exit: 0
+    ts: "2026-10-05T13:20:00Z"
     seat: kimi-code/k3
 
 pii_scan: clean
@@ -144,8 +252,15 @@ pii_scan_note: >-
   the read-only password never left scripts/pg.sh's own lookup path.
 
 spend:
-  wall_clock_hours: 1
-  adversarial_rounds: 1
+  wall_clock_hours: 2.5
+  adversarial_rounds: 2
+
+appetite_exceeded: >-
+  Brief estimated 1 hour / 1 adversarial round; the Gear-3 council
+  requirement (2 distinct review seats, R9) plus a provider outage on the
+  qwen seat's round 2 (3 cancelled attempts) took 2.5 hours / 2 rounds.
+  The overrun bought real cross-family review and two cure rounds, not
+  scope growth: the diff stayed one concern throughout.
 
 diff:
   net_lines: "measured by CI from git numstat at merge-base..HEAD"

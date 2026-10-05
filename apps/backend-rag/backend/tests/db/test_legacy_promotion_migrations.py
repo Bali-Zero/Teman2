@@ -225,24 +225,32 @@ def test_practices_drop_not_null_stays_tracked() -> None:
     structural guard (rollback marker, idempotency, no SET NOT NULL in
     the forward) with no red. This test pins the load-bearing direction:
     the bootstrap's `practices.practice_type_id DROP NOT NULL` must keep
-    a migration counterpart, and that counterpart must stay inside
-    LEGACY_PROMOTION_FILES.
+    THIS migration as its counterpart, and the counterpart must stay
+    inside LEGACY_PROMOTION_FILES.
     """
+    counterpart = "324_practices_practice_type_id_nullable.sql"
     bootstrap = (
         Path(__file__).resolve().parents[3] / "scripts" / "ci_bootstrap_schema.py"
     ).read_text(encoding="utf-8")
-    assert "ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL" in bootstrap, (
+    # Whitespace-normalized containment: reformatting the bootstrap's SQL
+    # (or qualifying the table as public.practices) must not blind the
+    # tripwire in either direction (council round 2, codex finding 2).
+    stmt = "ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL"
+    assert stmt in " ".join(bootstrap.split()), (
         "the bootstrap no longer issues the practices DROP NOT NULL — either the drift was "
         "deliberately removed (then delete this test and migration 324 together) or the "
         "bootstrap regressed and this tripwire caught it"
     )
-    counterpart = next(
-        (f for f in LEGACY_PROMOTION_FILES if "practices" in f),
-        None,
+    assert counterpart in LEGACY_PROMOTION_FILES, (
+        f"{counterpart} left LEGACY_PROMOTION_FILES while the bootstrap still issues the "
+        "DROP NOT NULL — the untracked-ALTER blindfold from 2026-08-26 is back; re-add the "
+        "migration counterpart to the tuple"
     )
-    assert counterpart is not None, (
-        "no LEGACY_PROMOTION_FILES entry names a practices migration, yet the bootstrap "
-        "still issues the DROP NOT NULL — the untracked-ALTER blindfold from 2026-08-26 "
-        "is back; re-add the migration counterpart to the tuple"
+    mig_path = MIG_DIR / counterpart
+    assert mig_path.is_file(), f"missing migration file: {counterpart}"
+    mig_sql = mig_path.read_text(encoding="utf-8")
+    forward, _ = _split(mig_sql)
+    assert stmt in " ".join(forward.split()), (
+        f"{counterpart}'s forward no longer issues the bootstrap's DROP NOT NULL — the "
+        "migration and the bootstrap have drifted apart"
     )
-    assert (MIG_DIR / counterpart).is_file(), f"missing migration file: {counterpart}"
