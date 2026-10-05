@@ -312,3 +312,17 @@ def test_publish_refuses_to_republish_a_report(mod, monkeypatch, tmp_path):
     assert rc == 2, "publishing a report built from another report must fail loudly"
     assert not wrote["called"], "write_report must never run when the source isn't live"
     assert "publish" in err.getvalue().lower()
+
+
+def test_retired_slot_is_labelled_retired_never_as_a_live_token_slot(mod, tmp_path):
+    """A5 (slot _2) is retired in FLEET_TOPOLOGY (Zero 2026-10-05): a keychain login
+    still answering for that account must not read as a live fleet seat."""
+    topology = tmp_path / "FLEET_TOPOLOGY.json"
+    topology.write_text(json.dumps({"accounts": {"anthropic": {"slots": {
+        "A3": {"email": "live@example.com", "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_3"},
+        "A5": {"email": "gone@example.com", "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_2",
+               "status": "retired"},
+    }}}}))
+    labels = mod.seat_labels(topology)
+    assert labels["live@example.com"] == "A3/_3"
+    assert labels["gone@example.com"] == "A5/ret"
