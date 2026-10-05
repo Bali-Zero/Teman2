@@ -178,3 +178,26 @@ refresh + polish.
   on the Indonesian pages — worth a quick production spot-check before assuming SEO parity.
 - PR #2991 (the open draft for one structural-fix file) was not examined for overlap with
   the stale list; check before assigning that file to a batch.
+
+## Adversarial review
+
+Seat: kimi-k3 (self-review of the measurement, before Claude verifies). Objections raised
+against this audit and how they survived:
+
+1. **Timestamp staleness ≠ content staleness** — survives as a documented limitation: a pair
+   can be flagged stale where the source edit only touched the TL;DR filler (trivial re-sync),
+   or be timestamp-clean where a same-day bulk commit edited both sides inconsistently. The
+   report states this in "What was NOT checked" and makes body-diff the first step of every
+   refresh batch.
+2. **Frontmatter regex parsing is shallow** — survives: fields were counted by
+   `^key: value` line match only; a field present but nested/malformed (e.g. broken YAML
+   continuation) would be mis-counted as present. Spot checks on reference files
+   (`accounting-software-indonesia.id.mdx`) matched the regex verdict, so the counts are
+   treated as directionally correct, not exact.
+3. **Language sanity sample is a heuristic** — survives: 30 random files, marker-word counts,
+   no human/native review. It excludes English-placeholder translations only at the body
+   level, not at the quality level.
+4. **`translatedAt` may be a stale-mechanics artifact, not a pipeline field** — survives: the
+   report recommends an explicit convention decision rather than assuming the 132 files that
+   carry it define the standard.
+
