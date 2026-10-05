@@ -90,6 +90,34 @@ case "${1:-}" in
           esac
           prev="$a"
         done
+        # checks-rollup probe (its query text contains statusCheckRollup) is
+        # served from rollup_<num>, holding the ALREADY-NORMALISED array the
+        # real --jq shapes; optional rollup_<num>_rc forces the tool rc.
+        for a in "$@"; do
+          case "$a" in
+            *statusCheckRollup*)
+              # Union pin: statusCheckRollup.contexts.nodes is the
+              # StatusCheckRollupContext UNION — GitHub rejects selecting
+              # isRequired directly on it. Every isRequired( line must live
+              # inside a `... on <Type> {` fragment opener line.
+              while IFS= read -r qline; do
+                case "$qline" in
+                  *isRequired*"... on "*|*"... on "*isRequired*) ;;
+                  *isRequired*)
+                    echo "gh: Selections can't be made directly on unions (see selections on StatusCheckRollupContext)" >&2
+                    exit 1
+                    ;;
+                esac
+              done <<< "$a"
+              rc=0
+              [ -f "$FAKE_GH_STATE/rollup_${num}_rc" ] && rc="$(cat "$FAKE_GH_STATE/rollup_${num}_rc")"
+              fx="$FAKE_GH_STATE/rollup_${num}"
+              ctr="$FAKE_GH_STATE/rollup_${num}_ctr"
+              if [ -f "$fx" ]; then _next_line "$fx" "$ctr"; else echo '[]'; fi
+              exit "$rc"
+              ;;
+          esac
+        done
         fx="$FAKE_GH_STATE/graphql_${num}"
         ctr="$FAKE_GH_STATE/graphql_${num}_ctr"
         [ -f "$fx" ] || { echo '{"data":{"repository":{"pullRequest":{"isInMergeQueue":false,"mergeQueueEntry":null}}}}'; exit 0; }
@@ -124,6 +152,15 @@ case "${1:-}" in
         ;;
       checks)
         num="$3"
+        # L1776 regression pin: the real gh 2.97 rejects --json isRequired
+        # exactly so — if the script ever reintroduces the retired call, the
+        # suite goes red instead of silently passing on a permissive fake.
+        case " $* " in
+          *isRequired*)
+            echo 'Unknown JSON field: "isRequired" (supported fields: bucket, completedAt, description, event, link, name, startedAt, state, workflow)' >&2
+            exit 1
+            ;;
+        esac
         rc=0
         [ -f "$FAKE_GH_STATE/checks_${num}_rc" ] && rc="$(cat "$FAKE_GH_STATE/checks_${num}_rc")"
         fx="$FAKE_GH_STATE/checks_${num}"
@@ -191,7 +228,7 @@ check "exactly one ALL_DONE" "$(yesno eval '[ "$(count_of "ALL_DONE" <(printf "%
 
 echo "required-failing — same set once, changed set re-emits, recovery resets:"
 new_world
-cat > "$W/fgh/checks_60" <<'JSON'
+cat > "$W/fgh/rollup_60" <<'JSON'
 [{"name":"Backend Tests","state":"FAILURE","isRequired":true}]
 [{"name":"Backend Tests","state":"FAILURE","isRequired":true}]
 [{"name":"Backend Tests","state":"SUCCESS","isRequired":true}]
@@ -212,7 +249,7 @@ check "REQUIRED-FAILING printed exactly twice (not once per tick)" \
 echo "missing-required — branch-protection context absent from the FULL reported set:"
 new_world
 printf 'Backend Tests (Python)\nDetect Secrets\nE2E (matrix, shard 3)\n' > "$W/fgh/required_names"
-printf '[{"name":"Backend Tests (Python)","state":"SUCCESS","isRequired":true},{"name":"Detect Secrets","state":"SUCCESS","isRequired":true}]\n[{"name":"Backend Tests (Python)","state":"SUCCESS","isRequired":true},{"name":"Detect Secrets","state":"SUCCESS","isRequired":true}]\n' > "$W/fgh/checks_70"
+printf '[{"name":"Backend Tests (Python)","state":"SUCCESS","isRequired":true},{"name":"Detect Secrets","state":"SUCCESS","isRequired":true}]\n[{"name":"Backend Tests (Python)","state":"SUCCESS","isRequired":true},{"name":"Detect Secrets","state":"SUCCESS","isRequired":true}]\n' > "$W/fgh/rollup_70"
 {
   printf '{"state":"OPEN","mergedAt":null,"mergeStateStatus":"CLEAN"}\n'
   printf '{"state":"MERGED","mergedAt":"2026-08-21T04:00:00Z","mergeStateStatus":"CLEAN"}\n'
@@ -250,29 +287,87 @@ check "exit 0 (recovered on the next tick)" "$(yesno test "$RC" = 0)"
 check "eventually MERGED" "$(yesno has '#90 MERGED' "$OUT")"
 check "the transient tick is logged, not swallowed silently" "$(yesno has 'transient' "$OUT")"
 
-echo "W104 — gh pr checks rc!=0 WITH a body is data, not a tool failure (still used):"
+echo "L1776 regression pin — the fake rejects the retired gh pr checks --json isRequired call like real gh 2.97:"
 new_world
-printf '1\n' > "$W/fgh/checks_91_rc"
-printf '[{"name":"Backend Tests","state":"FAILURE","isRequired":true}]\n' > "$W/fgh/checks_91"
+pin_err="$(PATH="$W/bin:$PATH" FAKE_GH_LOG="$LOG" FAKE_GH_STATE="$W/fgh" \
+           gh pr checks 1 --repo test-owner/test-repo --json name,state,isRequired 2>&1)"
+pin_rc=$?
+check "fake exits 1 on the retired call" "$(yesno test "$pin_rc" = 1)"
+check "fake names the unsupported field on stderr" "$(yesno has 'Unknown JSON field: "isRequired"' "$pin_err")"
+
+echo "union pin — the fake reproduces GitHub's StatusCheckRollupContext union rule:"
+new_world
+bad_query='statusCheckRollup { contexts(first:100) {
+  nodes { __typename isRequired(pullRequestNumber:$number) }
+}'
+pin_err="$(PATH="$W/bin:$PATH" FAKE_GH_LOG="$LOG" FAKE_GH_STATE="$W/fgh" \
+           gh api graphql -f query="$bad_query" -F owner=test-owner -F name=test-repo -F number=1 2>&1)"
+pin_rc=$?
+check "fake exits 1 on a bare-union isRequired selection" "$(yesno test "$pin_rc" = 1)"
+check "fake names the union error on stderr" \
+  "$(yesno has "gh: Selections can't be made directly on unions (see selections on StatusCheckRollupContext)" "$pin_err")"
+real_query=""
+emit=0
+while IFS= read -r line; do
+  case "$line" in *"query='") emit=1 ;; esac
+  if [ "$emit" = 1 ]; then real_query="$real_query$line"$'\n'; fi
+  case "$line" in *"' -F owner="*) break ;; esac
+done < "$SCRIPT"
+case "$real_query" in
+  *statusCheckRollup*) : ;;
+  *) echo "HARNESS TOO POOR TO JUDGE: could not extract the rollup query from $SCRIPT" >&2; exit 2 ;;
+esac
+pin_err="$(PATH="$W/bin:$PATH" FAKE_GH_LOG="$LOG" FAKE_GH_STATE="$W/fgh" \
+           gh api graphql -f query="$real_query" -F owner=test-owner -F name=test-repo -F number=1 2>&1)"
+pin_rc=$?
+check "the shipped query passes the fake's union rule (rc 0)" "$(yesno test "$pin_rc" = 0)"
+check "the shipped query draws no union error" "$(yesno eval '! has "Selections can'"'"'t be made directly on unions" "$pin_err"')"
+
+echo "required-failing positive control — required FAILURE named, non-required FAILURE not named:"
+new_world
+printf '[{"name":"Backend Tests","state":"FAILURE","isRequired":true},{"name":"Lint (optional)","state":"FAILURE","isRequired":false}]\n' > "$W/fgh/rollup_91"
 {
   printf '{"state":"OPEN","mergedAt":null,"mergeStateStatus":"CLEAN"}\n'
   printf '{"state":"MERGED","mergedAt":"2026-08-21T07:00:00Z","mergeStateStatus":"CLEAN"}\n'
 } > "$W/fgh/view_91"
 run 91
 check "exit 0" "$(yesno test "$RC" = 0)"
-check "the body was used despite rc!=0 (W104)" "$(yesno has '#91 REQUIRED-FAILING: Backend Tests' "$OUT")"
+check "names the required failing check" "$(yesno has '#91 REQUIRED-FAILING: Backend Tests' "$OUT")"
+check "does not name the non-required failing check" "$(yesno eval '! has "Lint (optional)" "$OUT"')"
 
-echo "W104 — gh pr checks rc!=0 WITH an empty body IS a real transient failure:"
+echo "in-flight required checks are NOT failing — PENDING + EXPECTED stay silent, later FAILURE alerts:"
 new_world
-printf '1\n' > "$W/fgh/checks_92_rc"
-: > "$W/fgh/checks_92"   # empty body, not even '[]'
+cat > "$W/fgh/rollup_93" <<'JSON'
+[{"name":"E2E Tests (Playwright)","state":"PENDING","isRequired":true},{"name":"Visa Oracle fullstack smoke","state":"EXPECTED","isRequired":true}]
+[{"name":"E2E Tests (Playwright)","state":"PENDING","isRequired":true},{"name":"Visa Oracle fullstack smoke","state":"EXPECTED","isRequired":true}]
+[{"name":"E2E Tests (Playwright)","state":"FAILURE","isRequired":true},{"name":"Visa Oracle fullstack smoke","state":"SUCCESS","isRequired":true}]
+JSON
+{
+  printf '{"state":"OPEN","mergedAt":null,"mergeStateStatus":"CLEAN"}\n'
+  printf '{"state":"OPEN","mergedAt":null,"mergeStateStatus":"CLEAN"}\n'
+  printf '{"state":"OPEN","mergedAt":null,"mergeStateStatus":"CLEAN"}\n'
+  printf '{"state":"MERGED","mergedAt":"2026-08-21T09:00:00Z","mergeStateStatus":"CLEAN"}\n'
+} > "$W/fgh/view_93"
+PR_WATCH_MAX_MIN=5 run 93
+check "exit 0" "$(yesno test "$RC" = 0)"
+check "exactly one REQUIRED-FAILING line total — none while in flight, one after FAILURE" \
+  "$(yesno eval '[ "$(count_of "REQUIRED-FAILING:" <(printf "%s" "$OUT"))" = "1" ]')"
+check "REQUIRED-FAILING appears once the check turns FAILURE" \
+  "$(yesno has '#93 REQUIRED-FAILING: E2E Tests (Playwright)' "$OUT")"
+check "the EXPECTED check that went SUCCESS is never named as failing" \
+  "$(yesno eval '! has "REQUIRED-FAILING: Visa Oracle fullstack smoke" "$OUT"')"
+
+echo "transient — a rollup query rc=1 with empty output is logged, polling continues:"
+new_world
+printf '1\n' > "$W/fgh/rollup_92_rc"
+: > "$W/fgh/rollup_92"   # empty body, not even '[]'
 {
   printf '{"state":"OPEN","mergedAt":null,"mergeStateStatus":"CLEAN"}\n'
   printf '{"state":"MERGED","mergedAt":"2026-08-21T08:00:00Z","mergeStateStatus":"CLEAN"}\n'
 } > "$W/fgh/view_92"
 run 92
 check "exit 0 (recovers next tick)" "$(yesno test "$RC" = 0)"
-check "logs the transient checks failure" "$(yesno has 'transient' "$OUT")"
+check "logs the transient rollup failure" "$(yesno has 'transient' "$OUT")"
 check "does not fabricate a REQUIRED-FAILING line from an empty body" "$(yesno eval '! has "REQUIRED-FAILING" "$OUT"')"
 
 echo "timeout — an eternally-OPEN, all-clean PR exits TIMEOUT/1:"
