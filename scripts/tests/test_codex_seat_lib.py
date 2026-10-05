@@ -109,12 +109,37 @@ def test_air_m5_shape_three_logged_in_dirs_are_three_seats_in_order(
     tmp_path: Path,
 ) -> None:
     """O3 (~/.codex-acct2 on Air-M5) is a distinct account: the runtime must
-    see three seats, last in order, exactly as the host seat map declares."""
+    see three seats, O3 last in enumeration order. The host seat map's
+    auto_rotation_order mirrors that order; nothing here reads it."""
     for name in (".codex", ".codex-o2", ".codex-acct2"):
         _seat(tmp_path, name)
 
     assert _run(tmp_path, "codex_seat_count").strip() == "3"
     assert Path(_run(tmp_path, "codex_seat_nth 2").strip()).name == ".codex-acct2"
+
+
+def test_air_m5_rotation_offset_can_open_on_o3(tmp_path: Path) -> None:
+    """O3 is "last" in enumeration only: codex_seat_pick starts at a stored
+    offset, and an offset of 2 opens on O3 (Naga
+    P2-O3-runtime-routing-overclaim)."""
+    for name in (".codex", ".codex-o2", ".codex-acct2"):
+        _seat(tmp_path, name)
+    state = tmp_path / "rotation"
+    state.write_text("2", encoding="utf-8")
+
+    pick = _run(tmp_path, "codex_seat_pick", CODEX_SEAT_STATE_FILE=str(state))
+
+    assert Path(pick.strip()).name == ".codex-acct2"
+
+
+def test_air_m5_excluding_o3_is_a_codex_seat_dirs_change(tmp_path: Path) -> None:
+    for name in (".codex", ".codex-o2", ".codex-acct2"):
+        _seat(tmp_path, name)
+    dirs = f"{tmp_path}/.codex:{tmp_path}/.codex-o2"
+
+    out = _run(tmp_path, "codex_seat_dirs", CODEX_SEAT_DIRS=dirs).split()
+
+    assert [Path(p).name for p in out] == [".codex", ".codex-o2"]
 
 
 def test_pro_shape_two_logged_in_dirs_are_two_seats(tmp_path: Path) -> None:

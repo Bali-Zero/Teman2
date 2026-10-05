@@ -281,6 +281,36 @@ def test_declared_auto_rotation_order_matches_codex_seat_enumeration(
     ]
 
 
+def test_auto_rotation_order_has_no_runtime_reader() -> None:
+    """The registry, the README and codex_seat.sh say the field is declarative
+    only (Naga P2-O3-runtime-routing-overclaim). A tripwire, not a proof: it
+    catches a LITERAL mention outside the maps, the schema, markdown, tests and
+    whole-line `#` comments; a computed key evades it, and any other mention
+    (an inline comment, a docstring) fails closed for a human to judge. The PR
+    that adds a reader must also rewrite the O3 lane sentence and the
+    owed-consumer entry in FLEET_TOPOLOGY.json pending_arms."""
+    scope = ["scripts", "infra", "apps", ".github"]
+    out = subprocess.run(
+        ["git", "grep", "-n", "auto_rotation_order", "--", *scope],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert out.returncode in (0, 1), out.stderr
+    readers = []
+    for line in out.stdout.splitlines():
+        path, _, code = line.split(":", 2)
+        if path.startswith(("scripts/tests/", "infra/conductor/seat_maps/")):
+            continue
+        if path == "infra/conductor/host_seat_map.schema.json" or path.endswith(".md"):
+            continue
+        if code.lstrip().startswith("#"):
+            continue
+        readers.append(line)
+    assert readers == []
+
+
 def test_claude_profiles_and_headless_oauth_slots_stay_unmapped() -> None:
     for path in MAPS.values():
         surface = _read(path)["providers"]["anthropic"]["headless_oauth_surface"]

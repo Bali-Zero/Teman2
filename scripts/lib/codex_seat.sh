@@ -20,7 +20,7 @@
 # that runs the crons they were zero.
 #
 # ONE DIRECTORY NAME, A DIFFERENT SEAT PER HOST. The same name can mean a
-# different role on another machine, so the role is read per host from
+# different role on another machine, so the role is documented per host in
 # infra/conductor/seat_maps/<host>.v1.json and FLEET_TOPOLOGY.json:
 #
 #   Pro / Mini  ~/.codex = O1, ~/.codex-o2 or ~/.codex-acct2 = O2 (two names, ONE
@@ -32,8 +32,10 @@
 # below, so it needs no per-host branch: on Air-M5 its order is the declared
 # `auto_rotation_order` (O1, O2, O3) and a test pins the two together. The field
 # is DECLARATIVE: nothing here reads it. Excluding O3 from automatic rotation
-# means setting CODEX_SEAT_DIRS (or editing the list below) AND updating the
-# field; the test goes red if only one of the two moves. Callers that rotate
+# means setting CODEX_SEAT_DIRS on that host (or editing the list below);
+# editing the field alone changes nothing. The test pins the list below to the
+# field, so moving only one of THOSE two goes red; a host's CODEX_SEAT_DIRS is
+# pinned by no test. Callers that rotate
 # (codex_seat_pick) advance a start offset, so "last" is last in enumeration
 # order, not last in every attempt. A Pro/Mini host is EXPECTED to hold only one
 # of the two O2 names; this function does not enforce that.
