@@ -56,18 +56,19 @@ import { KBLI_CONCORDANCE_2025 } from "./concordance";
 // CONSTANTS & HELPERS
 // =============================================================================
 
-const MOCK_SOURCES = [
+// Titles and types only. Enacted dates are not shown on the page, so they are
+// not stored here: PP 28/2025 was enacted 5 Jun 2025 and Peraturan BPS 7/2025
+// on 17 Dec 2025, which the previous "Jan 2025" / "Feb 2025" values contradicted.
+const OFFICIAL_SOURCES = [
   {
     id: "pp28",
     title: "PP 28/2025 Lampiran I",
     type: "Official Regulation",
-    date: "Jan 2025",
   },
   {
     id: "bps25",
     title: "Peraturan BPS 7/2025",
     type: "Statistical Standard",
-    date: "Feb 2025",
   },
 ];
 
@@ -252,7 +253,7 @@ function renderWithTooltips(text: string): React.ReactNode {
 const SourceCard = ({
   source,
 }: {
-  source: { id: string; title: string; type: string; date: string };
+  source: { id: string; title: string; type: string };
 }) => (
   <div className="group flex items-center gap-4 p-4 rounded-lg bg-surface-deep/40 border border-white/5 hover:bg-[#151921] hover:border-accent-sand/30 transition-all duration-300 backdrop-blur-sm">
     <div className="p-2.5 rounded bg-surface-editorial-elevated text-[#888] group-hover:text-accent-sand transition-colors border border-white/5">
@@ -1203,7 +1204,7 @@ export default function KBLIExplorerPage() {
               Official Sources
             </h3>
             <div className="space-y-3">
-              {MOCK_SOURCES.map((source) => (
+              {OFFICIAL_SOURCES.map((source) => (
                 <SourceCard key={source.id} source={source} />
               ))}
             </div>
