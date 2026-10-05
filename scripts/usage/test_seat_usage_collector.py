@@ -1333,3 +1333,20 @@ def test_partial_profile_never_takes_the_snapshot_down(tmp_path, monkeypatch):
     a3 = [s for s in json.loads(out.read_text())["seats"] if s["id"] == "A3"]
     assert len(a3) == 1 and a3[0]["status"] == "partial"
     assert a3[0]["days"][day] == {"in": 2, "out": 4, "cache_r": 6, "cache_w": "unknown"}
+
+
+# Naga note on #7887 r3: the `models` merge across profiles had no test of its own.
+
+def test_merge_models_sums_overlapping_keeps_disjoint_and_poisons_unknown():
+    r = suc.merge_profile_results([
+        ("~/.claude", {"status": "ok", "models": {"shared": 2, "only-a": 5, "flaky": "unknown"}}),
+        ("~/.claude-acct2", {"status": "ok", "models": {"shared": 3, "only-b": 1, "flaky": 4}}),
+    ])
+    assert r["models"] == {"shared": 5, "only-a": 5, "only-b": 1, "flaky": "unknown"}
+
+
+def test_merge_models_unknown_poisons_in_either_order():
+    a = {"status": "ok", "models": {"m": "unknown"}}
+    b = {"status": "ok", "models": {"m": 4}}
+    assert suc.merge_profile_results([("p1", a), ("p2", b)])["models"] == {"m": "unknown"}
+    assert suc.merge_profile_results([("p1", b), ("p2", a)])["models"] == {"m": "unknown"}
