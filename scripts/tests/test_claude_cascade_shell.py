@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import json
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -245,9 +246,9 @@ def test_exit_zero_auth_quota_and_empty_rotate_to_later_seat(
     bodies.update(
         {
             "token1": 'printf "authentication required\\n" >&2\nexit 0',
-            "token2": 'printf "weekly limit reached\\n"\nexit 0',
-            "token3": "exit 0",
-            "token4": 'printf "seat-four-success\\n"\nexit 0',
+            "token3": 'printf "weekly limit reached\\n"\nexit 0',
+            "token4": "exit 0",
+            "token5": 'printf "seat-five-success\\n"\nexit 0',
         }
     )
     call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
@@ -261,9 +262,9 @@ def test_exit_zero_auth_quota_and_empty_rotate_to_later_seat(
     )
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "seat-four-success\n"
-    assert _labels(call_log) == ["token1", "token2", "token3", "token4"]
-    assert "used: claude-token-4-env" in result.stderr
+    assert result.stdout == "seat-five-success\n"
+    assert _labels(call_log) == ["token1", "token3", "token4", "token5"]
+    assert "used: claude-token-5-env" in result.stderr
     assert list(temp_dir.iterdir()) == []
 
 
@@ -300,7 +301,7 @@ def test_exit_zero_stdout_error_envelopes_rotate(
     bodies.update(
         {
             "token1": f"printf '%s\\n' '{diagnostic}'\nexit 0",
-            "token2": 'printf "seat-two-success\\n"\nexit 0',
+            "token3": 'printf "seat-three-success\\n"\nexit 0',
         }
     )
     call_log, _, env = _fake_fleet(tmp_path, bodies)
@@ -308,8 +309,8 @@ def test_exit_zero_stdout_error_envelopes_rotate(
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "seat-two-success\n"
-    assert _labels(call_log) == ["token1", "token2"]
+    assert result.stdout == "seat-three-success\n"
+    assert _labels(call_log) == ["token1", "token3"]
 
 
 def test_exit_zero_innocent_stdout_may_discuss_auth_and_quota(
@@ -448,7 +449,6 @@ def test_explicit_order_reaches_team_then_legacy_then_keychain(
     assert result.stdout == "keychain-success\n"
     assert _labels(call_log) == [
         "token1",
-        "token2",
         "token3",
         "token4",
         "token5",
@@ -482,7 +482,6 @@ def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
     assert result.stdout == "protected-team-success\n"
     assert _labels(call_log) == [
         "token1",
-        "token2",
         "token3",
         "token4",
         "token5",
@@ -507,7 +506,6 @@ def test_numbered_team_slot_fires_only_after_the_five_max_seats_fail(
     bodies.update(
         {
             "token1": 'printf "authentication required\\n" >&2\nexit 0',
-            "token2": 'printf "weekly limit reached\\n"\nexit 0',
             "token3": "exit 1",
             "token4": 'printf "401 Unauthorized\\n" >&2\nexit 1',
             "token5": "exit 1",
@@ -523,7 +521,6 @@ def test_numbered_team_slot_fires_only_after_the_five_max_seats_fail(
     assert result.stdout == "team-seat-success\n"
     assert _labels(call_log) == [
         "token1",
-        "token2",
         "token3",
         "token4",
         "token5",
@@ -562,7 +559,7 @@ def test_team_slot_is_not_spent_when_an_earlier_max_seat_succeeds(
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "seat-three-success\n"
-    assert _labels(call_log) == ["token1", "token2", "token3"]
+    assert _labels(call_log) == ["token1", "token3"]
     assert "token6" not in _labels(call_log)
 
 
@@ -615,7 +612,7 @@ def test_attempt_timeout_rotates_to_next_seat(tmp_path: Path) -> None:
     bodies.update(
         {
             "token1": "sleep 5\nexit 0",
-            "token2": 'printf "after-timeout-success\\n"\nexit 0',
+            "token3": 'printf "after-timeout-success\\n"\nexit 0',
         }
     )
     call_log, _, env = _fake_fleet(tmp_path, bodies)
@@ -628,7 +625,7 @@ def test_attempt_timeout_rotates_to_next_seat(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "after-timeout-success\n"
-    assert _labels(call_log) == ["token1", "token2"]
+    assert _labels(call_log) == ["token1", "token3"]
     assert elapsed < 6
 
 
@@ -667,7 +664,7 @@ def test_attempt_timeout_kills_provider_descendants(tmp_path: Path) -> None:
                 f'printf "%s\\n" "$!" > "{survivor_file}"\n'
                 "wait"
             ),
-            "token2": 'printf "after-group-kill\\n"\nexit 0',
+            "token3": 'printf "after-group-kill\\n"\nexit 0',
         }
     )
     call_log, _, env = _fake_fleet(tmp_path, bodies)
@@ -678,7 +675,7 @@ def test_attempt_timeout_kills_provider_descendants(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "after-group-kill\n"
-    assert _labels(call_log) == ["token1", "token2"]
+    assert _labels(call_log) == ["token1", "token3"]
     survivor_pid = int(survivor_file.read_text(encoding="utf-8").strip())
     for _ in range(20):
         try:
@@ -1424,12 +1421,12 @@ def test_headless_jump_hop_quota_banner_rotates_seat_without_partial_stdout(tmp_
         _JUMP_WRITER + '"$sid" headless; printf "partial-from-one\\n"; exit 0',
         'printf "weekly limit reached\\n"; exit 0',
     )
-    bodies["token2"] = 'printf "from-two\\n"; exit 0'
+    bodies["token3"] = 'printf "from-three\\n"; exit 0'
     call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "from-two\n"
-    assert _labels(call_log) == ["token1", "token1", "token2"]
+    assert result.stdout == "from-three\n"
+    assert _labels(call_log) == ["token1", "token1", "token3"]
     assert "[retry] claude-token-1-env hop 1" in result.stderr
     assert list(temp_dir.iterdir()) == []
 
@@ -1440,12 +1437,12 @@ def test_headless_jump_hop_failure_rotates_seat_without_partial_stdout(tmp_path:
         _JUMP_WRITER + '"$sid" headless; printf "partial-from-one\\n"; exit 0',
         'exit 3',
     )
-    bodies["token2"] = 'printf "from-two\\n"; exit 0'
+    bodies["token3"] = 'printf "from-three\\n"; exit 0'
     call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "from-two\n"
-    assert _labels(call_log) == ["token1", "token1", "token2"]
+    assert result.stdout == "from-three\n"
+    assert _labels(call_log) == ["token1", "token1", "token3"]
     assert "[error] claude-token-1-env hop 1 exit=3" in result.stderr
     assert list(temp_dir.iterdir()) == []
 
@@ -1663,3 +1660,78 @@ def test_a_jump_file_without_the_marker_still_counts_as_a_trip(tmp_path: Path) -
     rec = json.loads(board.read_text(encoding="utf-8").splitlines()[0])
     assert rec["hops"] == 0 and rec["session"] == _sids(tmp_path)[-1]
 
+
+
+# ---------------------------------------------------------------- retired slots
+# A5 (token slot 2) is retired in FLEET_TOPOLOGY.json — Zero 2026-10-05, the
+# subscription is cancelled. Retirement is operational only if a token still
+# sitting in the environment can never be spent; the values below are dummies.
+
+WR2_WRAPPER = REPO_ROOT / "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh"
+
+
+def _registry_retired_token_slots() -> set[str]:
+    slots = json.loads((REPO_ROOT / "FLEET_TOPOLOGY.json").read_text())["accounts"]["anthropic"]["slots"]
+    return {
+        str(seat["oauth_token_slot"]).rsplit("_", 1)[-1]
+        for seat in slots.values()
+        if seat.get("status") == "retired" and seat.get("oauth_token_slot")
+    }
+
+
+def _shell_array(script: Path, name: str) -> list[str]:
+    match = re.search(rf"^{name}=\(([^)]*)\)", script.read_text(encoding="utf-8"), re.M)
+    assert match, f"{name} not declared in {script.name}"
+    return match.group(1).split()
+
+
+def test_retired_slot_is_never_attempted_even_when_its_token_is_set(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token2"] = 'printf "retired-seat-spent\\n"\nexit 0'
+    bodies["token3"] = 'printf "slot-three-success\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    assert env["CLAUDE_CODE_OAUTH_TOKEN_2"]
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "slot-three-success\n"
+    assert _labels(call_log) == ["token1", "token3"]
+    assert "claude-token-2-env" not in result.stderr
+
+
+def test_retired_slot_value_is_not_retried_under_the_legacy_name(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token2"] = 'printf "retired-seat-spent\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CODE_OAUTH_TOKEN"] = env["CLAUDE_CODE_OAUTH_TOKEN_2"]
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert "retired-seat-spent" not in result.stdout
+    assert "token2" not in _labels(call_log)
+
+
+def test_retired_slot_value_is_not_spent_by_an_earlier_numbered_slot(tmp_path: Path) -> None:
+    # Council refuter (tp1-qwen3.8-max) on 13875dc1b8: slot 1 ran before slot 2
+    # marked the retired value seen, so the same account was spent as slot 1.
+    bodies = _default_bodies()
+    bodies["token2"] = 'printf "retired-seat-spent\\n"\nexit 0'
+    bodies["token3"] = 'printf "slot-three-success\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CODE_OAUTH_TOKEN_1"] = env["CLAUDE_CODE_OAUTH_TOKEN_2"]
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "slot-three-success\n"
+    assert _labels(call_log) == ["token3"]
+
+
+def test_cascade_retired_slots_equal_the_registry() -> None:
+    assert set(_shell_array(CASCADE, "RETIRED_OAUTH_SLOTS")) == _registry_retired_token_slots()
+
+
+def test_wr2_retired_token_vars_equal_the_registry() -> None:
+    declared = {v.rsplit("_", 1)[-1] for v in _shell_array(WR2_WRAPPER, "RETIRED_TOKEN_VARS")}
+    assert declared == _registry_retired_token_slots()

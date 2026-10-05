@@ -959,10 +959,11 @@ def test_wr2_metrics_wrapper_declares_real_account_rotation() -> None:
 
     assert "run_claude_account" in source
     assert (
-        "CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 "
-        "CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4 "
-        "CLAUDE_CODE_OAUTH_TOKEN_5"
+        "CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_3 "
+        "CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5"
     ) in source
+    # Slot 2 (A5) is retired: it stays out of the rotation list on purpose.
+    assert "RETIRED_TOKEN_VARS=(CLAUDE_CODE_OAUTH_TOKEN_2)" in source
     assert "returned empty output" not in source or "grep -q '[^[:space:]]'" in source
     assert "ANTHROPIC_*" in source
 
@@ -1028,7 +1029,8 @@ def test_wr2_metrics_wrapper_reaches_slot_five(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert "used: CLAUDE_CODE_OAUTH_TOKEN_5" in log
-    assert "total=350s max_attempts=7 account_timeout=50s" in log
+    # The measured 2700 s floor clamps the per-attempt budget to the 350 s total.
+    assert "total=350s max_attempts=7 account_timeout=350s" in log
 
 
 def _write_fake_claude_with_mode(path: Path) -> None:

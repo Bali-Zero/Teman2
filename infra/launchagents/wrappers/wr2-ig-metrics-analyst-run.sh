@@ -617,11 +617,20 @@ run_claude_account() {
 CLAUDE_EXIT=98
 CLAUDE_LABELS=()
 CLAUDE_TOKENS=()
-for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5 CLAUDE_CODE_OAUTH_TOKEN_6 CLAUDE_CODE_OAUTH_TOKEN; do
+# Retired token slots: FLEET_TOPOLOGY.json slots with status "retired" (slot 2 =
+# A5, subscription cancelled, Zero 2026-10-05), pinned to the registry by
+# scripts/tests/test_claude_cascade_shell.py. Never attempted even when set, and
+# their value is treated as seen so the legacy name cannot spend the same account.
+RETIRED_TOKEN_VARS=(CLAUDE_CODE_OAUTH_TOKEN_2)
+RETIRED_TOKENS=()
+for token_var in "${RETIRED_TOKEN_VARS[@]}"; do
+  [ -n "${!token_var:-}" ] && RETIRED_TOKENS+=("${!token_var}")
+done
+for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5 CLAUDE_CODE_OAUTH_TOKEN_6 CLAUDE_CODE_OAUTH_TOKEN; do
   token_value="${!token_var:-}"
   [ -z "$token_value" ] && continue
   duplicate=0
-  for seen_token in "${CLAUDE_TOKENS[@]:-}"; do
+  for seen_token in "${CLAUDE_TOKENS[@]:-}" "${RETIRED_TOKENS[@]:-}"; do
     [ "$seen_token" = "$token_value" ] && duplicate=1
   done
   if [ "$duplicate" -eq 0 ]; then

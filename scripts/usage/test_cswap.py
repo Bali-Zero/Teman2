@@ -528,3 +528,89 @@ def test_choose_seat_recognises_the_current_seat_through_its_alias_dir():
     state = {"active_dir": "~/.claude-acct2", "active_seat": "A3",
              "last_switch_ts": (now - timedelta(minutes=5)).isoformat()}
     assert cswap.choose_seat(candidates, state, now)["seat"] == "A3"
+
+
+# ------------------------------------------------ unknown load (gate note on #7887)
+# A counter collect_claude reports as "unknown" is not a zero: the window total
+# is "unknown" (same poison rule as seat_usage_collector._sum_tok, either order)
+# and a seat whose load is unknown is never the least-loaded one.
+
+
+def _fake_window(monkeypatch, days):
+    monkeypatch.setattr(cswap, "collect_claude",
+                        lambda pdir, since: {"status": "partial", "days": days})
+
+
+@pytest.mark.parametrize("days", [
+    {"d1": {"in": 1, "cache_w": "unknown"}, "d2": {"in": 2, "cache_w": 4}},
+    {"d1": {"in": 1, "cache_w": 4}, "d2": {"in": 2, "cache_w": "unknown"}},
+])
+def test_collect_window_unknown_counter_poisons_the_total_in_either_order(monkeypatch, days):
+    _fake_window(monkeypatch, days)
+    w = cswap._collect_window("~/x", cswap._now())
+    assert w["cache_w"] == "unknown" and w["total"] == "unknown"
+    assert w["in"] == 3 and w["out"] == 0, "absent counter = 0, known counters stay exact"
+
+
+def test_collect_window_known_counters_still_sum_to_an_int(monkeypatch):
+    _fake_window(monkeypatch, {"d1": {"in": 1, "out": 2}, "d2": {"in": 3}})
+    w = cswap._collect_window("~/x", cswap._now())
+    assert (w["in"], w["out"], w["total"]) == (4, 2, 6)
+
+
+def test_fmt_tokens_never_raises_on_an_unknown_window():
+    w = {"in": 1, "out": 0, "cache_r": 0, "cache_w": "unknown", "total": "unknown", "status": "partial"}
+    assert "unknown" in cswap._fmt_tokens(w)
+
+
+def test_choose_seat_never_treats_an_unknown_load_as_least_loaded():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("AZ", "/az", "unknown", "unknown"), _cand("A2", "/kaiser", 10**9, 10**9)]
+    assert cswap.choose_seat(candidates, {}, now)["seat"] == "A2"
+    assert cswap.choose_seat(list(reversed(candidates)), {}, now)["seat"] == "A2"
+
+
+def test_choose_seat_unknown_7d_ranks_after_a_known_7d_on_a_5h_tie():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("AZ", "/az", 5, "unknown"), _cand("A2", "/kaiser", 5, 99)]
+    assert cswap.choose_seat(candidates, {}, now)["seat"] == "A2"
+
+
+def test_choose_seat_all_unknown_does_not_crash_and_keeps_the_current_seat():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("A1", "/a1", "unknown", 100), _cand("AZ", "/az", "unknown", 1)]
+    assert cswap.choose_seat(candidates, {"active_dir": "/az"}, now)["seat"] == "AZ"
+    # no state: no evidence to rank, so the choice is deterministic by seat id, not by 7d
+    assert cswap.choose_seat(candidates, {}, now)["seat"] == "A1"
+    assert cswap.choose_seat(list(reversed(candidates)), {}, now)["seat"] == "A1"
+
+
+def test_choose_seat_unknown_current_is_dropped_even_inside_the_flip_flop_window():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("AZ", "/az", "unknown", "unknown"), _cand("A2", "/kaiser", 10, 10)]
+    state = {"active_dir": "/az", "last_switch_ts": (now - timedelta(minutes=5)).isoformat()}
+    assert cswap.choose_seat(candidates, state, now)["seat"] == "A2"
+
+
+def test_choose_seat_naive_last_switch_stamp_never_crashes():
+    aware_now = cswap._now()
+    candidates = [_cand("AZ", "/az", 100, 1), _cand("A2", "/kaiser", 1, 1)]
+    state = {"active_dir": "/az", "last_switch_ts": "2026-08-11T11:55:00"}
+    assert cswap.choose_seat(candidates, state, aware_now)["seat"] in {"AZ", "A2"}
+
+
+def test_choose_seat_current_with_unknown_load_is_not_kept_as_under_threshold():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("AZ", "/az", "unknown", "unknown"), _cand("A2", "/kaiser", 10, 10)]
+    state = {"active_dir": "/az", "last_switch_ts": (now - timedelta(hours=3)).isoformat()}
+    assert cswap.choose_seat(candidates, state, now)["seat"] == "A2"
+
+
+def test_collect_candidates_aggregated_seat_with_one_unknown_profile_is_unknown(tmp_path, monkeypatch):
+    seat_map = json.loads(_write_seat_map(tmp_path).read_text())
+    seat_map["claude_profiles"] = {str(tmp_path / "az"): "A3", str(tmp_path / "acct2"): "A3"}
+    # per profile: (5h, 7d); the first profile has an unknown 5h window
+    totals = iter([{"total": "unknown"}, {"total": 7}, {"total": 4}, {"total": 2}])
+    monkeypatch.setattr(cswap, "_collect_window", lambda pdir, since: next(totals))
+    (a3,) = cswap.collect_candidates(seat_map, cswap._now(), exclude=set())
+    assert a3["t5"] == "unknown" and a3["t7"] == 9

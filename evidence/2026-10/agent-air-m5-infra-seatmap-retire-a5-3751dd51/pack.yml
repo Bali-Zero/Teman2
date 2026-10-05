@@ -1,0 +1,108 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  Branch agent/air-m5/infra/seatmap-retire-a5 from origin/main: retired-slot lists in both cron
+  wrappers (pinned to FLEET_TOPOLOGY by test), retired value marked seen so the legacy name cannot
+  spend it, retired label in claude_seat_quota.py. Mission SEATMAP-20261005, Naga gap 3.
+lanes:
+  - lane: seatmap-retire-a5-build
+    role: build
+    seat: "claude-opus-5.5 (Dux dux-seatmap; tests first, then wrappers)"
+  - lane: seatmap-retire-a5-council-k3
+    role: review
+    seat: "kimi-code/k3 (refuter, falsify-the-core-claim prompt on 13875dc1b8; VERDICT HOLDS)"
+  - lane: seatmap-retire-a5-council-qwen
+    role: review
+    seat: "tp1-qwen3.8-max (refuter, same prompt on 13875dc1b8; VERDICT FALSIFIED, then re-review of the cure)"
+council_run: journal.jsonl
+what_changed: |
+  claude-cascade.sh: RETIRED_OAUTH_SLOTS=(2); a retired index is skipped and its value added to
+  SEEN_OAUTH_TOKENS. wr2-ig-metrics-analyst-run.sh: RETIRED_TOKEN_VARS=(CLAUDE_CODE_OAUTH_TOKEN_2),
+  slot 2 dropped from the rotation list, retired values join the dedupe set. claude_seat_quota.py:
+  a retired slot labels "<seat>/ret". FLEET_TOPOLOGY A5 retired_note rewritten to the new behaviour.
+  Eleven existing cascade tests that used slot 2 as the "next live seat" now use slot 3 with the same
+  failure modes; test_wr2_metrics_wrapper_reaches_slot_five's stale "account_timeout=50s" (red on
+  origin/main before this branch: the measured 2700 s floor clamps to the 350 s total) now reads 350s.
+  Council cure (fe6c4831ce): claude-cascade.sh marks every retired slot's value seen BEFORE the
+  numbered loop, so an earlier slot carrying the retired value cannot spend it either.
+  Naga (owner-appointed reviewer) was mailed for this branch (key naga-seatmap-pr-retire-a5); no
+  review of it had arrived when this pack was written, so Naga is not recorded as a seat.
+receipts:
+  - claim: new negative tests RED before the cure (slot 2 spent)
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py scripts/tests/test_claude_seat_quota.py; bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh
+    exit: "1 (5 failed, 95 passed) / 1 (40 pass, 4 fail)"
+    ts: "2026-10-05T06:33Z"
+    seat: claude-opus-5.5
+  - claim: all suites reading the touched files GREEN after the cure
+    cmd: pytest -q scripts/tests/test_claude_oauth_runtime_fallback.py scripts/tests/test_claude_oauth_slot6_coverage.py scripts/tests/test_claude_cascade_shell.py scripts/tests/test_claude_seat_quota.py scripts/tests/test_llm_fleet_audit.py scripts/tests/test_nb_curator_artifact_gate.py; bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh; zsh -n / bash -n on both wrappers
+    exit: "0 (261 passed) / 0 (44 pass, 0 fail) / 0"
+    ts: "2026-10-05T06:44Z"
+    seat: claude-opus-5.5
+  - claim: test_wr2_metrics_wrapper_reaches_slot_five was already red on origin/main (account_timeout=350s, asserted 50s)
+    cmd: pytest -q scripts/tests/test_claude_oauth_runtime_fallback.py -k reaches_slot_five (on an origin/main checkout)
+    exit: "1"
+    ts: "2026-10-05T06:37Z"
+    seat: claude-opus-5.5
+  - claim: council objection reproduced — retired value spent through slot 1 (RED before the cure)
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py -k earlier_numbered_slot (at 13875dc1b8 + the new test)
+    exit: "1 (stdout 'retired-seat-spent' != 'slot-three-success')"
+    ts: "2026-10-05T07:26Z"
+    seat: claude-opus-5.5
+  - claim: retired-slot tests GREEN after the cure (fe6c4831ce)
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py -k "retired or registry"; zsh -n infra/launchagents/wrappers/claude-cascade.sh
+    exit: "0 (5 passed) / 0"
+    ts: "2026-10-05T07:27Z"
+    seat: claude-opus-5.5
+  - claim: all suites reading the touched files GREEN on the cured head fe6c4831ce
+    cmd: pytest -q scripts/tests/test_claude_oauth_runtime_fallback.py scripts/tests/test_claude_oauth_slot6_coverage.py scripts/tests/test_claude_cascade_shell.py scripts/tests/test_claude_seat_quota.py scripts/tests/test_llm_fleet_audit.py scripts/tests/test_nb_curator_artifact_gate.py; bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh; zsh -n / bash -n on both wrappers
+    exit: "0 (262 passed) / 0 (44 pass, 0 fail) / 0"
+    ts: "2026-10-05T07:32Z"
+    seat: claude-opus-5.5
+spend:
+  wall_clock_hours: 1.5
+dissent:
+  - seat: tp1-qwen3.8-max
+    objection: |-
+      The absolute “never” is not implemented in `claude-cascade.sh` for duplicate token values in an earlier numbered slot. The visible diff resets `SEEN_OAUTH_TOKENS=()` (`infra/launchagents/wrappers/claude-cascade.sh:1075`) and stores only slot numbers in `RETIRED_OAUTH_SLOTS=(2)` (`infra/launchagents/wrappers/claude-cascade.sh:1081`); it does not pre-seed the seen set with retired token values before the numbered loop. The retirement check is reached only when `index` is 2 (`infra/launchagents/wrappers/claude-cascade.sh:1125-1128`), after slot 1 has already been evaluated and can be attempted by the ordinary live-token path (`infra/launchagents/wrappers/claude-cascade.sh:1130`). Thus, with `<REDACTED>` present, if `<REDACTED>` carries the same retired OAuth value, the wrapper attempts that retired value as numbered slot 1 before it is marked seen. The claim explicitly treats the same value under the legacy name as forbidden, so the same value under an earlier numbered slot is also “that token”; the added tests never set slot 1 equal to slot 2, so they do not prove the claimed absolute property (`scripts/tests/<REDACTED>:1688-1700`). The bash wrapper avoids this particular hole by collecting `RETIRED_TOKENS` before the live loop (`infra/launchagents/wrappers/<REDACTED>:624-633`), which makes the cascade gap material.
+    status: CONFIRMED
+    disposition: >-
+      Reproduced on disk before acting: claude-cascade.sh at 13875dc1b8 marked slot 2's value seen
+      only when the loop reached index 2 (the retired branch inside the loop), after slot 1 had
+      already run. New test test_retired_slot_value_is_not_spent_by_an_earlier_numbered_slot was
+      RED (the retired account answered as slot 1). Cured in fe6c4831ce by seeding the seen set
+      from RETIRED_OAUTH_SLOTS before the loop, as the wr2 wrapper already did; the test is green
+      and the full gate suites pass (262 passed, wr2 shell 44/0). The same seat re-reviewed the
+      cure diff (falsify-the-cure prompt): VERDICT CLOSED, no objection. Its other findings: the
+      50s->350s assertion was already red on origin/main (receipt above); registry parity is
+      not vacuous while A5 carries oauth_token_slot (FLEET_TOPOLOGY) and the behavioural tests
+      fail on their own if the retirement is removed from both sides.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): The guarantee is conditional on slot 2 being set, exactly as claimed: if `CLAUDE_CODE_OAUTH_TOKEN` carried the retired value while `CLAUDE_CODE_OAUTH_TOKEN_2` were *unset*, `RETIRED_TOKENS` would be empty and the legacy value would be attempted (wr2-ig-metrics-analyst-run.sh:625-640; same in the cascade) — the value is only knowable via the numbered var. Within the claim's premise this is fine.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED by reading claude-cascade.sh:1081-1085: the pre-seed loop adds the retired value to SEEN_OAUTH_TOKENS only when CLAUDE_CODE_OAUTH_TOKEN_2 is non-empty, so with slot 2 unset and the legacy name carrying the retired value, oauth_token_seen is false at :1154 and the legacy token IS attempted. The registry stores slot numbers, not values, so the value is unknowable without the variable. Notice only, not fixed here (wrapper blobs frozen); the operator removing the _2 line AND the retired value from the legacy name is the cure.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): The `account_timeout=50s`→`350s` flip (scripts/tests/test_claude_oauth_runtime_fallback.py:1032) is collateral to this diff but correct: it aligns a stale assertion with the pre-existing 2700s measured floor clamped to the 350s total (wr2-ig-metrics-analyst-run.sh:389-395, dated 2026-08-08); the test's actual guard (slot 5 reachable) is unchanged.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED on disk: wr2-ig-metrics-analyst-run.sh:389-395 holds the 2700 s floor clamped to TIMEOUT_SECS; the flip to 350s aligns a stale assertion (red on origin/main, receipt above). Disclosed in the PR body and what_changed; no action.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): Moved tests keep their assertion density 1:1 (stdout, exact label sequence, `used:` line, temp-dir emptiness), only renumbered 2→3/3→4/4→5; one cosmetic staleness: `test_numbered_team_slot_fires_only_after_the_five_max_seats_fail` now exercises only four live max seats (scripts/tests/test_claude_cascade_shell.py:~504).
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED: scripts/tests/test_claude_cascade_shell.py:493 test_numbered_team_slot_fires_only_after_the_five_max_seats_fail now sets bodies for token1,3,4,5 (four MAX seats) before token6; the name is cosmetically stale. Order pinned unchanged; no action here.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): Pre-existing, unrelated: the fake claude's LEAK probe lists numbered vars _1.._5 but not _6 (scripts/tests/test_claude_cascade_shell.py:92-106).
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED, pre-existing: the fake claude's LEAK probe in scripts/tests/test_claude_cascade_shell.py:92-96 lists CLAUDE_CODE_OAUTH_TOKEN_1.._5 and not _6. Outside this PR's concern; candidate for the ledger.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): `test_retired_slot_value_is_not_retried_under_the_legacy_name` asserts no returncode, so in isolation it could pass on an early crash — but its sibling asserts the exact sequence `["token1","token3"]` on the same fixture, and the suite is green (100 passed), so the run is proven end-to-end.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED: test_retired_slot_value_is_not_retried_under_the_legacy_name (scripts/tests/test_claude_cascade_shell.py:1703-1712) asserts stdout and label absence but no return code; the shell and pytest suites are green on the head and the sibling tests in the same block drive the same fixture. Notice only.

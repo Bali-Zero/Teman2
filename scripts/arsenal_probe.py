@@ -446,8 +446,17 @@ def sibling_seat_processes(
             if pid in excluded or binary_basename not in names:
                 continue
             tokens = args.split()
-            if ignore_subcommands and any(token in ignore_subcommands for token in tokens):
-                continue
+            if ignore_subcommands:
+                position = next(
+                    (i for i, token in enumerate(tokens[:2]) if Path(token).name == binary_basename),
+                    0,
+                )
+                subcommand = next(
+                    (token for token in tokens[position + 1 :] if not token.startswith("-")),
+                    None,
+                )
+                if subcommand in ignore_subcommands:
+                    continue
             if script is not None and not any(Path(token).name == script for token in tokens):
                 continue
             count += 1
