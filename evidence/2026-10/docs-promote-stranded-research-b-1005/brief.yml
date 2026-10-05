@@ -1,0 +1,11 @@
+task_id: docs-promote-stranded-research-b-1005
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Promote 8 stranded Pro cron outputs from the main checkout: the agent-craft NB-AGENTS deep-research transcripts dated 2026-08-19 to 2026-09-19. Frontmatter exempt-machine-report is added to all 8. The two notes that quote the retracted topology claim get the claim-bound RETRACTED annotation block the lint requires, as added lines only (6 annotation blocks, nothing deleted). Redaction: one client name and one shell prompt string in the other files, plus three citation bodies that were page noise; counts by placeholder are in the commit message.
+  Content-only diff under research/: no code, no hot-zone path, no workflow.
+  The content passed an independent line-by-line PII gate before push; what
+  was redacted is stated as counts by placeholder in the commit message.
+  Gear is 2 via the SIZE term alone. The gear-2 verdict is not asserted here:
+  a fresh gate reads the diff and posts it.
