@@ -489,14 +489,17 @@ diagnostic = re.compile(
     re.I,
 )
 frame = r"\s*(?:(?:claude(?:\s+code)?\s+)?(?:api\s+)?(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
-# A hint is a verb the CLI ends its notices with, followed by a space or by
-# sentence punctuation that ends there: "retry.md" and "retry-amendment.md" are
-# file names, not hints.
+# A hint is a verb the CLI ends its notices with, followed by a space, a dash
+# or ellipsis, or sentence punctuation that ends there: "retry.md" and
+# "retry-amendment.md" are file names, not hints.
 hint = (
-    r"(?:please\s+)?(?:resets?|renews?|try\s+again|retry|"
-    r"use\s+an\s+anthropic\s+api\s+key|(?:ask|contact)\s+your\s+admin|"
-    r"log\s*in|run\s+/login)(?=\s|$|[.,:;!?)](?:\s|$))[^\n]{0,200}"
+    r"(?:(?:please\s+)?(?:resets?|renews?|try\s+again|retry|run\s+/login|"
+    r"use\s+an\s+anthropic\s+api\s+key|(?:ask|contact)\s+your\s+admin)|"
+    r"please\s+log\s*in)(?=\s|$|[\u2014\u2013\u2026·]|[.,:;!?)-](?:\s|$))[^\n]{0,200}"
 )
+# The agent's answer ends with its amendment file path; no CLI notice carries
+# one, so a stdout holding a file path is an answer, never a notice.
+file_path = re.compile(r"(?:^|[\s(\"'])(?:~|\.{1,2})?/[\w.\-/]*\.\w{1,6}\b")
 # Same line: punctuation (never "." or "/" glued to a word, as in a file name)
 # then the rest of THAT line, or a hint. Then at most ONE further line, a hint.
 tail = (
@@ -546,7 +549,7 @@ def failure_class() -> str:
     if diagnostic.search(err):
         return "quota_or_auth"
     for name, head in notices + (("quota_or_auth", quota_or_auth),):
-        if re.fullmatch(frame + "(?:" + head + ")" + tail, out, re.I):
+        if not file_path.search(out) and re.fullmatch(frame + "(?:" + head + ")" + tail, out, re.I):
             return name
         if envelope and re.search(head, envelope, re.I):
             return name
