@@ -65,7 +65,7 @@ _THIS_DIR = Path(__file__).resolve().parent
 if str(_THIS_DIR) not in sys.path:
     sys.path.insert(0, str(_THIS_DIR))
 
-from seat_usage_collector import WITA, collect_claude, machine_seat_map  # noqa: E402  (path setup above)
+from seat_usage_collector import WITA, _sum_tok, collect_claude, machine_seat_map  # noqa: E402  (path setup above)
 
 LOCK_TIMEOUT_RC = 75  # EX_TEMPFAIL — same convention as scripts/prepush_suite_lock.sh
 HYSTERESIS_THRESHOLD = 0.9
@@ -195,17 +195,21 @@ def _collect_window(profile_dir_str: str, since: datetime) -> dict[str, Any]:
     resulting numbers do and don't mean."""
     result = collect_claude(os.path.expanduser(profile_dir_str), since)
     days = result.get("days") or {}
-    totals = {"in": 0, "out": 0, "cache_r": 0, "cache_w": 0}
-    for bucket in days.values():
-        for k in totals:
-            totals[k] += bucket.get(k, 0) or 0
-    totals["total"] = sum(totals.values())
+    totals: dict[str, Any] = {}
+    for k in ("in", "out", "cache_r", "cache_w"):
+        # absent = no activity (0); "unknown" poisons the sum in either order
+        totals[k] = _sum_tok(bucket.get(k, 0) for bucket in days.values())
+    totals["total"] = _sum_tok(totals.values())
     totals["status"] = result.get("status", "unknown")
     return totals
 
 
+def _fmt_n(v: Any) -> str:
+    return f"{v:,}" if isinstance(v, int) else "unknown"
+
+
 def _fmt_tokens(d: dict[str, Any]) -> str:
-    return f"{d['total']:,}tok(in={d['in']:,}/out={d['out']:,}/status={d['status']})"
+    return f"{_fmt_n(d['total'])}tok(in={_fmt_n(d['in'])}/out={_fmt_n(d['out'])}/status={d['status']})"
 
 
 # --------------------------------------------------------------- fingerprint
@@ -440,8 +444,8 @@ def collect_candidates(seat_map: dict[str, Any], now: datetime,
         if seat_id in by_seat:
             # One account reached through two profile dirs is ONE quota: sum
             # its load, or the split makes it look half as busy as it is.
-            by_seat[seat_id]["t5"] += m5h["total"]
-            by_seat[seat_id]["t7"] += m7d["total"]
+            by_seat[seat_id]["t5"] = _sum_tok([by_seat[seat_id]["t5"], m5h["total"]])
+            by_seat[seat_id]["t7"] = _sum_tok([by_seat[seat_id]["t7"], m7d["total"]])
             by_seat[seat_id]["dirs"].append(pdir_str)
             continue
         by_seat[seat_id] = {"seat": seat_id, "dir": pdir_str, "dirs": [pdir_str], "path": pdir,
@@ -455,7 +459,11 @@ def choose_seat(candidates: list[dict[str, Any]], state: dict[str, Any], now: da
     """Pure ranking + hysteresis — no I/O, fully unit-testable.
 
     Rank ascending by 5h consumption (tie-break 7d): the least-loaded
-    eligible seat is the default choice. Then KEEP the currently-active seat
+    eligible seat is the default choice. A load of "unknown" is not a zero: it
+    ranks AFTER every known load and is never kept, not even by the flip-flop
+    window, while a known-load seat exists; only when NO candidate has a known
+    5h load does the choice fall back to the current seat (or, with no state,
+    the lowest seat id) — no evidence, no switch. Then KEEP the currently-active seat
     if EITHER holds: (a) its 5h consumption is under `threshold` (90%) of
     the max observed among candidates — it isn't near the ceiling proxy yet
     — or (b) the last switch was less than `window` (30min) ago — anti
@@ -463,8 +471,17 @@ def choose_seat(candidates: list[dict[str, Any]], state: dict[str, Any], now: da
     if not candidates:
         raise ValueError("no eligible candidates")
 
-    ranked = sorted(candidates, key=lambda c: (c["t5"], c["t7"]))
+    def known(v: Any) -> bool:
+        return isinstance(v, int)
+
+    def rank_key(c: dict[str, Any]) -> tuple:
+        return (not known(c["t5"]), c["t5"] if known(c["t5"]) else 0,
+                c["seat"] if not known(c["t5"]) else "",
+                not known(c["t7"]), c["t7"] if known(c["t7"]) else 0)
+
+    ranked = sorted(candidates, key=rank_key)
     chosen = ranked[0]
+    known_t5 = [c["t5"] for c in candidates if known(c["t5"])]
 
     active_dir = state.get("active_dir")
     if active_dir:
@@ -472,16 +489,19 @@ def choose_seat(candidates: list[dict[str, Any]], state: dict[str, Any], now: da
         current = next((c for c in candidates
                         if active_dir in c.get("dirs", [c["dir"]])), None)
         if current is not None:
-            max_t5 = max(c["t5"] for c in candidates)
-            under_threshold = max_t5 <= 0 or current["t5"] < threshold * max_t5
+            max_t5 = max(known_t5, default=0)
+            under_threshold = known(current["t5"]) and (
+                max_t5 <= 0 or current["t5"] < threshold * max_t5)
             recent_switch = False
             last_switch = state.get("last_switch_ts")
             if last_switch:
                 try:
                     recent_switch = (now - datetime.fromisoformat(last_switch)) < window
-                except ValueError:
+                except (ValueError, TypeError):  # unparsable or naive-vs-aware stamp
                     recent_switch = False
-            if under_threshold or recent_switch:
+            if not known_t5:
+                chosen = current
+            elif known(current["t5"]) and (under_threshold or recent_switch):
                 chosen = current
     return chosen
 
@@ -506,6 +526,9 @@ def cmd_auto(seat_map_path: Path, *, do_print: bool, do_activate: bool,
         state = load_state(state_path)
         chosen = choose_seat(candidates, state, now)
 
+        if not isinstance(chosen["t5"], int):
+            emit_err(f"[cswap auto] WARN seat={chosen['seat']} has an unknown 5h load; "
+                     "chosen only because no seat has a known one")
         if do_print:
             print(str(chosen["path"]))
         else:

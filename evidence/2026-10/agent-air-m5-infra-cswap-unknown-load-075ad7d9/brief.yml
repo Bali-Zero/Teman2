@@ -1,0 +1,22 @@
+task_id: cswap-unknown-load
+mission: SEATMAP-20261005
+gear: 1
+l_level: L2
+gate_class: opus
+objective: >-
+  cswap._collect_window no longer raises TypeError on an "unknown" counter (same poison rule as
+  seat_usage_collector._sum_tok), and the selector never treats an unknown load as the least-loaded
+  seat nor crashes the switch; add the missing test for the models merge across profiles.
+  Floor measured 1 (no hot zone); Gear 1 declared.
+constraints:
+  - Touches only scripts/usage/cswap.py and the two usage test files; roster-O3 files belong to a different PR.
+  - Known-load ranking is unchanged; the seat-id tie-break applies only to unknown loads.
+acceptance:
+  - text: WHEN a window counter is "unknown" THEN _collect_window SHALL return "unknown" for it and for the total, in either order, without raising.
+    probe: scripts/usage/test_cswap.py::test_collect_window_unknown_counter_poisons_the_total_in_either_order
+  - text: WHEN a candidate load is unknown THEN choose_seat SHALL rank it after every known load and SHALL not crash when all are unknown.
+    probe: scripts/usage/test_cswap.py::test_choose_seat_never_treats_an_unknown_load_as_least_loaded
+  - text: WHEN profiles carry overlapping, disjoint and unknown model counts THEN the merge SHALL sum, keep and poison respectively.
+    probe: scripts/usage/test_seat_usage_collector.py::test_merge_models_sums_overlapping_keeps_disjoint_and_poisons_unknown
+consumer_map:
+  - scripts/usage/cswap.py — `cswap auto`, `cswap list` and `cswap run` seat selection and display.
