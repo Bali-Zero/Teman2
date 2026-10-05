@@ -18,6 +18,8 @@ import textwrap
 import time
 from pathlib import Path
 from types import ModuleType
+
+import pytest
 MODULE_PATH = Path(__file__).resolve().parent.parent / "arsenal_probe.py"
 
 
@@ -31,6 +33,13 @@ def _load_module() -> ModuleType:
 
 
 ap = _load_module()
+_REAL_SIBLING_SEAT_PROCESSES = ap.sibling_seat_processes
+
+
+@pytest.fixture(autouse=True)
+def _no_unrelated_seat_processes(monkeypatch):
+    """Keep timeout tests independent of processes running on the host."""
+    monkeypatch.setattr(ap, "sibling_seat_processes", lambda *args: 0)
 
 
 # ---------------------------------------------------------------------------
@@ -1245,6 +1254,55 @@ def test_probe_claude_timeout_classifies_timeout(monkeypatch):
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     status, ev, latency = ap.probe_claude(timeout=5)
     assert status == ap.TIMEOUT
+
+
+def test_probe_timeout_with_same_binary_sibling_is_busy(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/tmp/seatstub", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "", "", timed_out=True)
+    )
+    monkeypatch.setattr(ap, "sibling_seat_processes", lambda *args: 1)
+    status, evidence, _ = ap.probe_kimi(timeout=0.05)
+    assert status == ap.BUSY
+    assert "other seatstub process(es) were running" in evidence
+    assert ap.is_strict_fail(status) is False
+    assert ap.healthy(status) is False
+
+
+def test_probe_timeout_without_same_binary_sibling_stays_timeout(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/tmp/seatstub", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "", "", timed_out=True)
+    )
+    status, _, _ = ap.probe_kimi(timeout=0.05)
+    assert status == ap.TIMEOUT
+
+
+def test_probe_timeout_when_sibling_check_raises_stays_timeout(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/tmp/seatstub", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "", "", timed_out=True)
+    )
+
+    def fail_check(*args, **kwargs):
+        raise RuntimeError("ps unavailable")
+
+    monkeypatch.setattr(ap, "sibling_seat_processes", fail_check)
+    status, _, _ = ap.probe_kimi(timeout=0.05)
+    assert status == ap.TIMEOUT
+
+
+def test_timeout_ignores_same_binary_ancestor(monkeypatch):
+    census = "100 1 claude claude session\n200 100 python python probe.py\n"
+    monkeypatch.setattr(ap.os, "getpid", lambda: 200)
+    monkeypatch.setattr(ap.os, "getppid", lambda: 100)
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda *a, **k: ap.subprocess.CompletedProcess(a[0], 0, census, ""),
+    )
+    monkeypatch.setattr(ap, "sibling_seat_processes", _REAL_SIBLING_SEAT_PROCESSES)
+    assert ap.timeout_status("/usr/bin/claude", "", 10)[0] == ap.TIMEOUT
 
 
 def test_probe_claude_not_logged_in_classifies_auth_dead(monkeypatch):

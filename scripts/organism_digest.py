@@ -305,6 +305,8 @@ def arsenal_card() -> tuple[list[str], list[str]]:
     def mark(s: dict) -> str:
         st = s.get("status", "?")
         seat = s.get("seat", "?")
+        if st == "BUSY":
+            return f"{seat}~busy"
         return f"{seat}✓" if st == "LIVE" else f"{seat}✗{st.lower()}"
 
     rollup = "  " + " ".join(mark(s) for s in seats if isinstance(s, dict)) if seats else "  (report has no seats)"

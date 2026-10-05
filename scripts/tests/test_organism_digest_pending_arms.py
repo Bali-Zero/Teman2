@@ -32,6 +32,32 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import organism_digest  # noqa: E402
 
 
+def test_arsenal_card_distinguishes_live_busy_and_timeout(monkeypatch, tmp_path):
+    report = tmp_path / ".organism" / "arsenal" / "last.json"
+    report.parent.mkdir(parents=True)
+    report.write_text(
+        json.dumps(
+            {
+                "seats": [
+                    {"seat": "claude", "status": "LIVE"},
+                    {"seat": "codex", "status": "BUSY"},
+                    {"seat": "kimi", "status": "TIMEOUT"},
+                ]
+            }
+        )
+    )
+    monkeypatch.setattr(organism_digest, "_home", lambda: tmp_path)
+    monkeypatch.setattr(organism_digest, "_known_seats", lambda: ["claude", "codex", "kimi"])
+    monkeypatch.setattr(organism_digest, "_roster_doors", lambda root: ({}, []))
+
+    lines, errors = organism_digest.arsenal_card()
+
+    assert errors == []
+    assert "claude✓" in lines[1]
+    assert "codex~busy" in lines[1]
+    assert "kimi✗timeout" in lines[1]
+
+
 def _fake_reporter(tmp_path, payload):
     """Install a fake reporter at the REAL boundary the digest crosses.
 
