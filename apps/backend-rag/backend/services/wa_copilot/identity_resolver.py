@@ -192,6 +192,11 @@ async def resolve_team_email(
         """
         SELECT id::TEXT AS tm_id FROM team_members
         WHERE LOWER(email) = LOWER($1) AND active = true
+          -- Real-staff guard (fail-closed, mirrors whatsapp_identity.py): a
+          -- client-portal row (role='client') or unproven (NULL/blank) role
+          -- must not classify the sender as 'team'.
+          AND NULLIF(BTRIM(LOWER(COALESCE(role, ''))), '') IS NOT NULL
+          AND LOWER(BTRIM(COALESCE(role, ''))) <> 'client'
         LIMIT 1
         """,
         str(email),
@@ -421,6 +426,11 @@ async def resolve_team_name(
             WHERE active = true
               AND full_name IS NOT NULL
               AND full_name % $1
+              -- Real-staff guard (fail-closed, mirrors whatsapp_identity.py):
+              -- client rows carry real full_names too — only a non-'client',
+              -- non-blank role proves team identity.
+              AND NULLIF(BTRIM(LOWER(COALESCE(role, ''))), '') IS NOT NULL
+              AND LOWER(BTRIM(COALESCE(role, ''))) <> 'client'
             ORDER BY sim DESC
             LIMIT 2
             """,
