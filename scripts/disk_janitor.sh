@@ -25,9 +25,21 @@
 #             skipped (ERROR) when the open-file probe (lsof) is unavailable or fails (council R5)
 #   logarch   ~/logs/archive/*.gz  (direct children only)       >60 d (log-rotate-run.sh gzips, nothing pruned)
 #   qdrant    scripts/qdrant_backup_retention.sh                  delegated, same --apply mode
-#   tools     uv cache prune (skipped while a uv process holds the lock) · docker image/volume prune
-#             (dangling / anonymous only, NEVER -a: localci-candidate:1 is pinned by image ID in its plans)
-#             · docker builder prune --filter until=168h · brew cleanup --prune=30
+#   tools     uv cache prune (skipped while a uv process holds the lock) · restic cache --cleanup
+#             · docker image/volume prune (dangling / anonymous) · docker unused TAGGED images >30 d
+#             no container descends from (per image, never `prune -a`: localci-candidate is pinned
+#             by image ID in its plans and is never a candidate) · docker builder prune --filter
+#             until=168h · colima fstrim LAST (guest, when running), so the blocks the docker steps
+#             freed go back to the host in the same run · brew cleanup --prune=30
+# POLICY (reviewed 2026-10-04, stated so the table cannot be read as softer than the code):
+#   docker   "older than 30 d" is the image's BUILD time (`CreatedAt`), not its pull or last-use time.
+#            An image pulled, `docker load`ed or committed recently but built long ago, with no
+#            container descending from it, is a candidate; for load/commit images removal is final.
+# These tool steps land in the receipt's "steps" object with their own df -k delta on the Data volume.
+#
+# Deliberately absent: anything that deletes a directory which is or may hold a git checkout
+# (stale ~/.codex/worktrees) and the Chrome code-sign clones. Reclaiming a checkout needs a
+# repository-shape proof that never converged (PR #7841); this janitor removes no git data.
 #
 # DRY-RUN by default: reports candidates, removes nothing. `--apply` acts.
 # `--check-path P` prints OK|REFUSE for P against the protected set and exits (used by the test).
@@ -49,6 +61,10 @@ CODEX_DAYS="${DISK_JANITOR_CODEX_DAYS:-14}"
 LOG_ARCHIVE_DAYS="${DISK_JANITOR_LOG_ARCHIVE_DAYS:-60}"
 TOOLS="${DISK_JANITOR_TOOLS:-true}"
 LSOF="${DISK_JANITOR_LSOF:-lsof}"
+DOCKER_DAYS="${DISK_JANITOR_DOCKER_DAYS:-30}"
+FSTRIM_TIMEOUT="${DISK_JANITOR_FSTRIM_TIMEOUT:-180}"
+DOCKER_KEEP="localci-candidate ${DISK_JANITOR_DOCKER_KEEP:-}"   # extendable, never emptiable
+DF_PATH="${DISK_JANITOR_DF_PATH:-/System/Volumes/Data}"; [ -d "$DF_PATH" ] || DF_PATH=/
 QDRANT_RETENTION="${DISK_JANITOR_QDRANT_RETENTION-$(cd "$(dirname "$0")" && pwd)/qdrant_backup_retention.sh}"
 
 # Protected roots (exact path or anything below it) + one name-based component. Arrays, not a
@@ -118,7 +134,7 @@ if ! { : >> "$LOG_FILE"; } 2>/dev/null || ! { : >> "$JOURNAL"; } 2>/dev/null; th
 fi
 # Age knobs are integers or the run refuses: `find -mtime +abc` lists nothing, and the step
 # would no-op silently with errors=0 in the receipt (kimi K3).
-for knob in SCRATCH_DAYS CODEX_DAYS LOG_ARCHIVE_DAYS; do
+for knob in SCRATCH_DAYS CODEX_DAYS LOG_ARCHIVE_DAYS DOCKER_DAYS FSTRIM_TIMEOUT; do
   case "${!knob}" in
     ''|*[!0-9]*) log "REFUSE: DISK_JANITOR_$knob must be a non-negative integer — exit 2"; exit 2 ;;
   esac
@@ -243,39 +259,95 @@ if [ -n "$QDRANT_RETENTION" ] && [ -f "$QDRANT_RETENTION" ]; then
   fi
 fi
 
+# ── tool steps (2026-10-03 disk-relief spec §B): each one is a separate receipt step whose gain is
+# the `df -k` delta on the Data volume across the step, never `du` — on APFS a clonefile copy
+# (venvs) is counted whole by du and frees almost nothing.
+STEPS=""; S_DF0=""; S_N=0
+df_avail() { df -k "$DF_PATH" 2>/dev/null | awk 'NR==2{print $4*1024}'; }
+step_begin() { S_DF0=$(df_avail); S_N=0; }
+step_end() { # $1 step  $2 done|dry-run|skipped|error  $3 reason (optional, no path ever)
+  local d1 delta=0; d1=$(df_avail)
+  if $APPLY && [ -n "$S_DF0" ] && [ -n "$d1" ]; then delta=$((d1 - S_DF0)); fi
+  STEPS="$STEPS${STEPS:+,}\"$1\":{\"status\":\"$2\",\"count\":$S_N,\"df_delta_bytes\":$delta${3:+,\"reason\":\"$3\"}}"
+  log "$1: $2${3:+ ($3)} count=$S_N df_delta=${delta}B"
+}
+bounded() { local s=$1; shift; perl -e 'alarm shift; exec @ARGV or exit 127' "$s" "$@"; }   # no coreutils timeout on stock macOS
+to_epoch() { date -j -f '%Y-%m-%d %H:%M:%S' "$1" +%s 2>/dev/null || date -d "$1" +%s 2>/dev/null; }
 # ── tool caches: only real tools, only their own safe prune verbs ───────────────
 TOOLS_DONE=""; TOOLS_SEEN=""
-if [ "$TOOLS" = "true" ] && $APPLY; then
-  if command -v uv >/dev/null 2>&1; then
-    TOOLS_SEEN="$TOOLS_SEEN uv"
-    if pgrep -x uv >/dev/null 2>&1; then log "tools: uv cache prune skipped (a uv process holds the cache lock)"
-    else uv cache prune >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE uv" || ERRORS=$((ERRORS + 1)); fi
-  else log "tools: uv not on PATH — skipped"; fi
-  command -v docker >/dev/null 2>&1 && TOOLS_SEEN="$TOOLS_SEEN docker"
-  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+if [ "$TOOLS" = "true" ]; then
+  for t in uv docker brew colima restic; do command -v "$t" >/dev/null 2>&1 && TOOLS_SEEN="$TOOLS_SEEN $t"; done
+  # Every external verb is time-bounded: a daily job hung on one tool would skip every later day
+  # behind the wrapper's live-lock (status=warn) instead of failing once, visibly.
+  # uv_cache_prune (skipped while a uv process holds the cache lock)
+  step_begin
+  if ! command -v uv >/dev/null 2>&1; then step_end uv_cache_prune skipped uv-absent
+  elif pgrep -x uv >/dev/null 2>&1; then step_end uv_cache_prune skipped uv-lock-held
+  elif ! $APPLY; then step_end uv_cache_prune dry-run
+  elif bounded 600 uv cache prune >/dev/null 2>&1; then S_N=1; TOOLS_DONE="$TOOLS_DONE uv"; step_end uv_cache_prune "done"
+  else ERRORS=$((ERRORS + 1)); step_end uv_cache_prune error prune-failed; fi
+  # restic_cache_cleanup: removes only cache dirs restic itself considers stale; no repo needed
+  step_begin
+  if ! command -v restic >/dev/null 2>&1; then step_end restic_cache_cleanup skipped restic-absent
+  elif ! $APPLY; then step_end restic_cache_cleanup dry-run
+  elif bounded 600 restic cache --cleanup >/dev/null 2>&1; then S_N=1; TOOLS_DONE="$TOOLS_DONE restic"; step_end restic_cache_cleanup "done"
+  else ERRORS=$((ERRORS + 1)); step_end restic_cache_cleanup error cleanup-failed; fi
+  if $APPLY && command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     docker image prune -f >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-image" || ERRORS=$((ERRORS + 1))
     docker volume prune -f >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-volume" || ERRORS=$((ERRORS + 1))
     docker builder prune -f --filter until=168h >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-builder" || ERRORS=$((ERRORS + 1))
-  else
-    log "tools: docker not reachable — skipped"
   fi
-  if command -v brew >/dev/null 2>&1; then
-    TOOLS_SEEN="$TOOLS_SEEN brew"
-    brew cleanup --prune=30 -s >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE brew" || ERRORS=$((ERRORS + 1))
-  else log "tools: brew not on PATH — skipped"; fi
-  # No tool at all on PATH is not "nothing to do": it is the launchd-minimal-PATH failure mode
-  # (kimi R-2) and the step would be dead forever under rc=0 — so it is an ERROR.
-  if [ -z "$TOOLS_SEEN" ]; then ERRORS=$((ERRORS + 1)); log "tools: NO tool reachable on PATH — step dead, check the wrapper's PATH export"; fi
-  log "tools: done:${TOOLS_DONE:- none}"
-elif [ "$TOOLS" = "true" ]; then
-  log "tools: would run uv cache prune · docker image/volume/builder prune · brew cleanup --prune=30"
+  # docker_unused_images: tagged images older than DOCKER_DAYS that no container (running or
+  # stopped) descends from. NOT `image prune -a`: localci-candidate is pinned by image ID in the
+  # local-CI plans and a rebuilt image is refused there, so its repository is never a candidate.
+  step_begin
+  if ! command -v docker >/dev/null 2>&1; then step_end docker_unused_images skipped docker-absent
+  elif ! bounded 60 docker info >/dev/null 2>&1; then step_end docker_unused_images skipped docker-unreachable
+  elif ! imgs=$(docker image ls --format '{{.ID}}|{{.Repository}}|{{.Tag}}|{{.CreatedAt}}' 2>/dev/null); then
+    ERRORS=$((ERRORS + 1)); step_end docker_unused_images error list-failed
+  else
+    cutoff=$(( $(date +%s) - DOCKER_DAYS * 86400 ))
+    while IFS='|' read -r id repo tg created; do
+      [ -n "$id" ] || continue
+      case " $DOCKER_KEEP " in *" $repo "*) log "docker_unused_images: keep $(tag "$repo") (pinned repository)"; continue ;; esac
+      ep=$(to_epoch "${created:0:19}") || ep=""
+      [ -n "$ep" ] || { log "docker_unused_images: keep $(tag "$id") (age unreadable)"; continue; }
+      [ "$ep" -lt "$cutoff" ] || continue
+      users=$(docker ps -a -q --filter "ancestor=$id" 2>/dev/null) || { log "docker_unused_images: keep $(tag "$id") (container probe failed)"; continue; }
+      [ -n "$users" ] && { log "docker_unused_images: keep $(tag "$id") (used by a container)"; continue; }
+      ref="$id"; [ "$repo" != "<none>" ] && [ "$tg" != "<none>" ] && ref="$repo:$tg"
+      if ! $APPLY; then S_N=$((S_N + 1)); log "docker_unused_images: would remove $(tag "$ref")"
+      elif docker image rm "$ref" >/dev/null 2>&1; then S_N=$((S_N + 1)); log "docker_unused_images: removed $(tag "$ref")"
+      else ERRORS=$((ERRORS + 1)); log "docker_unused_images: FAILED to remove $(tag "$ref")"; fi
+    done < <(printf '%s\n' "$imgs")
+    if $APPLY; then step_end docker_unused_images "done"; else step_end docker_unused_images dry-run; fi
+  fi
+  # colima_fstrim, AFTER the docker steps: the guest discards the blocks they just freed and vz
+  # punches the matching holes in the host datadisk (idempotent; ~13 GiB measured 2026-10-03).
+  step_begin
+  if ! command -v colima >/dev/null 2>&1; then step_end colima_fstrim skipped colima-absent
+  elif ! bounded 60 colima status 2>&1 | grep -qi 'colima is running'; then step_end colima_fstrim skipped colima-not-running
+  elif ! $APPLY; then step_end colima_fstrim dry-run
+  elif bounded "$FSTRIM_TIMEOUT" colima ssh -- sudo fstrim -av >/dev/null 2>&1; then S_N=1; TOOLS_DONE="$TOOLS_DONE colima-fstrim"; step_end colima_fstrim "done"
+  else ERRORS=$((ERRORS + 1)); step_end colima_fstrim error fstrim-failed-or-timeout; fi
+  if $APPLY; then
+    if command -v brew >/dev/null 2>&1; then
+      brew cleanup --prune=30 -s >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE brew" || ERRORS=$((ERRORS + 1))
+    else log "tools: brew not on PATH — skipped"; fi
+    # No tool at all on PATH is not "nothing to do": it is the launchd-minimal-PATH failure mode
+    # (kimi R-2) and the step would be dead forever under rc=0 — so it is an ERROR.
+    if [ -z "$TOOLS_SEEN" ]; then ERRORS=$((ERRORS + 1)); log "tools: NO tool reachable on PATH — step dead, check the wrapper's PATH export"; fi
+    log "tools: done:${TOOLS_DONE:- none}"
+  else
+    log "tools: would run docker image/volume/builder prune (dangling only) · brew cleanup --prune=30"
+  fi
 fi
 
-DF_AVAIL=$(df -k /System/Volumes/Data 2>/dev/null | awk 'NR==2{print $4*1024}')
-DF_PCT=$(df -k /System/Volumes/Data 2>/dev/null | awk 'NR==2{print $5}' | tr -d '%')
-printf '{"ts":"%s","mode":"%s","host":"%s","freed_bytes":%s,"scratch":%s,"codex":%s,"logarch":%s,"qdrant_rc":"%s","tools":"%s","errors":%s,"data_avail_bytes":%s,"data_used_pct":%s}\n' \
+DF_AVAIL=$(df -k "$DF_PATH" 2>/dev/null | awk 'NR==2{print $4*1024}')
+DF_PCT=$(df -k "$DF_PATH" 2>/dev/null | awk 'NR==2{print $5}' | tr -d '%')
+printf '{"ts":"%s","mode":"%s","host":"%s","freed_bytes":%s,"scratch":%s,"codex":%s,"logarch":%s,"qdrant_rc":"%s","tools":"%s","errors":%s,"data_avail_bytes":%s,"data_used_pct":%s,"steps":{%s}}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$MODE" "$(hostname -s)" "$FREED" "$N_SCRATCH" "$N_CODEX" "$N_LOGARCH" \
-  "$QDRANT_RC" "${TOOLS_DONE# }" "$ERRORS" "${DF_AVAIL:-0}" "${DF_PCT:-0}" >> "$JOURNAL" \
+  "$QDRANT_RC" "${TOOLS_DONE# }" "$ERRORS" "${DF_AVAIL:-0}" "${DF_PCT:-0}" "$STEPS" >> "$JOURNAL" \
   || { ERRORS=$((ERRORS + 1)); log "receipt append FAILED"; }
 log "done freed=${FREED}B scratch=$N_SCRATCH codex=$N_CODEX logarch=$N_LOGARCH errors=$ERRORS data_used=${DF_PCT:-?}%"
 [ "$ERRORS" -eq 0 ]
