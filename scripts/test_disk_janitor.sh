@@ -519,5 +519,38 @@ have "$W/sep/gd/objects" && ok "--separate-git-dir repository kept" || no "separ
 ! have "$W/plainhead" && ok "innocence: a plain file named HEAD with no objects/ beside it is treated as before (removed)" || no "plain HEAD file kept (guard over-matches)"
 ! have "$W/clean" && ok "innocence: ordinary stale clean linked worktree still removed" || no "ordinary clean worktree survived"
 
+echo "═══ TEST 13: fail-closed repository probe — path past 1024 bytes, symlinked objects/, unreadable subdir; non-repos still removed ═══"
+v2build
+D=$(head -c 200 /dev/zero | tr '\0' d)                                                     # one 200-byte path component
+deepen(){ # $1 candidate root, $2 repo dir name beside it → prints the absolute path of the deep dir; the move itself uses RELATIVE paths only
+  local top="$1" name="$2" p="$1" i; mkdir -p "$top"
+  (cd "$top" && for i in 1 2 3 4 5 6; do mkdir "$D" && cd "$D" || exit 1; done && mv ../../../../../../"$name" ./"$name") || return 1
+  for i in 1 2 3 4 5 6; do p="$p/$D"; done; echo "$p"
+}
+fgit clone -q --bare "$BASE" "$W/long/remote.git"
+UC=$("$REALGIT" -c user.name=dj -c user.email=dj@fixture.invalid -C "$W/long/remote.git" commit-tree -m unique "$("$REALGIT" -C "$W/long/remote.git" rev-parse 'HEAD^{tree}')"); fgit -C "$W/long/remote.git" update-ref refs/heads/unique "$UC"
+LDEEP=$(deepen "$W/long" remote.git)
+(mkdir -p "$W/longplain" && cd "$W/longplain" && for i in 1 2 3 4 5 6; do mkdir "$D" && cd "$D"; done && echo x > f.txt)   # a deep directory that is NOT a repository
+fgit clone -q --bare "$BASE" "$W/symobj/remote.git"; mv "$W/symobj/remote.git/objects" "$ROOT/outside-objects"; ln -s "$ROOT/outside-objects" "$W/symobj/remote.git/objects"   # objects/ lives OUTSIDE the candidate
+mkdir -p "$W/symplain"; echo x > "$W/symplain/f.txt"; ln -s "$ROOT/outside-objects" "$W/symplain/objects"                                                      # a symlink named objects, no HEAD beside it
+mk "$W/unreadable/sub/f.txt"; chmod 000 "$W/unreadable/sub"
+AGE="$(date -v-30d +%Y%m%d%H%M 2>/dev/null || date -d '30 days ago' +%Y%m%d%H%M)"
+for t in long longplain; do find "$W/$t" -execdir touch -h -t "$AGE" {} +; touch -h -t "$AGE" "$W/$t"; done   # -execdir: the absolute path of a deep entry is itself too long to touch
+find "$W/symobj" "$W/symplain" "$W/unreadable" -exec touch -h -t "$AGE" {} + 2>/dev/null
+LP_PATH="$LDEEP/remote.git/HEAD"
+[ -n "$UC" ] && [ "${#LP_PATH}" -gt 1024 ] && ! [ -f "$LP_PATH" ] && ( cd "$W/long" && for i in 1 2 3 4 5 6; do cd "$D"; done && [ -f remote.git/HEAD ] ) \
+  && ok "fixture: a real bare repo whose absolute HEAD path is ${#LP_PATH} bytes — an absolute-path test cannot see it, a relative one can" || no "fixture wrong: path ${#LP_PATH} bytes / repo not in place"
+OUT=$(run --apply); RC=$?
+( cd "$W/long" && for i in 1 2 3 4 5 6; do cd "$D"; done && [ -f remote.git/HEAD ] && [ -f "remote.git/objects/${UC:0:2}/${UC:2}" ] ) \
+  && ok "bare repository at an absolute path past 1024 bytes, holding a commit that exists nowhere else, kept" || no "long-path bare repository destroyed"
+echo "$OUT" | grep -q "codex_stale_worktrees: keep [0-9a-f]\{12\} (repository data inside)" && ok "kept by entity, reported as 'repository data inside'" || no "no 'repository data inside' report"
+have "$W/symobj/remote.git/HEAD" && have "$ROOT/outside-objects" && ok "bare repository whose objects/ is a symlink to outside the candidate kept (its refs and HEAD would die otherwise)" || no "symlinked-objects repository destroyed"
+[ "$(id -u)" -eq 0 ] || { have "$W/unreadable/sub" && ok "an unreadable subdirectory cannot vouch for the absence of a repository: kept" || no "unreadable subdir candidate removed"; }
+chmod 700 "$W/unreadable/sub" 2>/dev/null
+! have "$W/longplain" && ok "innocence: a non-repository directory past 1024 bytes is still removed (the guard does not keep everything that is deep)" || no "deep plain directory survived (guard over-keeps)"
+! have "$W/symplain" && ok "innocence: a symlink named objects with no HEAD beside it is not repository data (removed; link only, target intact)" || no "plain dir with an objects symlink survived"
+have "$ROOT/outside-objects" && ok "innocence: removing a candidate never follows the symlink into its target" || no "symlink target damaged"
+! have "$W/clean" && ok "innocence: ordinary stale clean linked worktree still removed" || no "ordinary clean worktree survived"
+
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]
