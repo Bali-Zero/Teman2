@@ -91,6 +91,15 @@ def _alert_dedup_key(urls: list[str]) -> str:
     return "pajak-new:" + hashlib.sha256("\n".join(sorted(urls)).encode()).hexdigest()[:16]
 
 
+def _prior_attempts(entry) -> int:
+    # A hand-edited count would raise on every run and keep the item out of the dead letter forever.
+    value = entry.get("attempts", 0) if isinstance(entry, dict) else entry
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
 def _load_delivery_state() -> dict:
     try:
         state = json.loads(DELIVERY_STATE_PATH.read_text())
@@ -460,7 +469,7 @@ class PajakMonitorJob(BrowserJob):
         for url in urls:
             item_id = _delivery_id(url)
             old = state["items"].get(item_id, {})
-            attempts = int(old.get("attempts", 0) if isinstance(old, dict) else old) + 1
+            attempts = _prior_attempts(old) + 1
             entry = {"attempts": attempts, "first_seen": old.get("first_seen", now)
                      if isinstance(old, dict) else now}
             state["items"][item_id] = entry

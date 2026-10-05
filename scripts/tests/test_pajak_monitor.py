@@ -23,6 +23,8 @@ import types
 import zoneinfo
 from pathlib import Path
 
+import pytest
+
 MODULE_DIR = Path(__file__).parent.parent / "cron-agent-python"
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "pajak"
 
@@ -717,6 +719,47 @@ def test_distinct_alerts_carry_distinct_gateway_keys_and_a_retry_keeps_its_key(t
     assert len(retry_keys) == 2 and retry_keys[0] == retry_keys[1]
     assert retry_keys[0].startswith("pajak-new:")
     assert other_keys[0].startswith("pajak-new:") and other_keys[0] != retry_keys[0]
+
+
+def test_alert_key_ignores_the_order_the_sources_return_the_same_items_in(tmp_path, monkeypatch):
+    # Sources and search results come back in no fixed order; a retried set must keep its key.
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", tmp_path / "delivery-state.json", raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", tmp_path / "dead-letter.jsonl", raising=False)
+    first, second = _peraturan_item("order-a"), _peraturan_item("order-b")
+    job = _make_job()
+    _wire_delivery_run(job, first, set(), [False, True])
+    orders = [[first, second], [second, first]]
+
+    async def fetch_in_turn():
+        return [dict(item) for item in orders.pop(0)], []
+
+    job._fetch_direct_sources = fetch_in_turn
+    asyncio.run(job.run())
+    asyncio.run(job.run())
+
+    assert len(job.sent_dedup_keys) == 2
+    assert job.sent_dedup_keys[0] == job.sent_dedup_keys[1]
+
+
+@pytest.mark.parametrize("corrupted", ["not-a-number", {"attempts": "x"}, None])
+def test_a_hand_corrupted_attempt_count_still_reaches_the_dead_letter(tmp_path, monkeypatch, corrupted):
+    state_path = tmp_path / "delivery-state.json"
+    dlq_path = tmp_path / "dead-letter.jsonl"
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", state_path, raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", dlq_path, raising=False)
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_MAX_ATTEMPTS", 2, raising=False)
+    item = _peraturan_item("corrupted-state")
+    item_id = hashlib.sha256(item["url"].encode()).hexdigest()[:16]
+    state_path.write_text(json.dumps({"items": {item_id: corrupted}}))
+    seen = set()
+    job = _make_job()
+    _wire_delivery_run(job, item, seen, [False, False])
+
+    assert asyncio.run(job.run()).status == "error"
+    assert seen == set()
+    assert asyncio.run(job.run()).status == "error"
+    assert seen == {item["url"]}
+    assert json.loads(dlq_path.read_text().strip())["attempts"] == 2
 
 
 def test_mark_seen_refuses_a_redis_error_reply_that_exits_zero(monkeypatch):
