@@ -135,15 +135,18 @@ yield_carried_paths() {
 }
 
 CHANGED=$(git -C "$WT_PATH" status --porcelain -- apps/mouth/src/content/articles | wc -l | tr -d ' ')
-if [ "$CHANGED" -gt 0 ] && ! yield_carried_paths; then
-  log "ERROR: cannot read or yield the paths open PRs carry — promoting nothing this run"
-  git -C "$WT_PATH" checkout -q -- apps/mouth/src/content/articles
-  git -C "$WT_PATH" clean -fdq -- apps/mouth/src/content/articles
-  python3 scripts/agent_start.py --release "$TASK_ID" >>"$LOG" 2>&1
-  heartbeat degraded "open PRs' paths unreadable, nothing promoted (translate-articles.py exit=$RUN_RC)"
-  exit 1
+if [ "$CHANGED" -gt 0 ]; then
+  if ! yield_carried_paths; then
+    log "ERROR: cannot read or yield the paths open PRs carry — promoting nothing this run"
+    git -C "$WT_PATH" checkout -q -- apps/mouth/src/content/articles
+    git -C "$WT_PATH" clean -fdq -- apps/mouth/src/content/articles
+    python3 scripts/agent_start.py --release "$TASK_ID" >>"$LOG" 2>&1
+    heartbeat degraded "open PRs' paths unreadable, nothing promoted (translate-articles.py exit=$RUN_RC)"
+    exit 1
+  fi
+  # recounted only after a scan: a count never follows an unscanned zero
+  CHANGED=$(git -C "$WT_PATH" status --porcelain -- apps/mouth/src/content/articles | wc -l | tr -d ' ')
 fi
-CHANGED=$(git -C "$WT_PATH" status --porcelain -- apps/mouth/src/content/articles | wc -l | tr -d ' ')
 
 if [ "$CHANGED" -gt 0 ]; then
   log "$CHANGED file(s) changed — promoting via PR"
