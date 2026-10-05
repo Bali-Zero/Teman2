@@ -1,0 +1,276 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  Code and synthetic fixtures only. The phone/email/key literals in
+  scripts/tp1max/test_build_queues.py are invented and assembled at runtime
+  (812 3456 7890 shapes, someone.private@gmail, an AKIA dummy). No queue,
+  result row or live number is in the diff; the live numbers found by the
+  re-screen were reported by hash prefix and masked form only. The live-row
+  check below reports counts only.
+secrets_guard_note: >-
+  The pre-commit ban-predicates guard (P3, detect-secrets diff-scoped) fired on
+  journal.jsonl lines 1 and 3. Located with the guard's own plugin set from
+  .secrets.baseline, span never printed: HexHighEntropyString, line 1 columns
+  144-153 and line 3 columns 182-191, both the 10-char value of the
+  reviewed_head key (entropy 3.12 bits/char). Both resolve to commit objects of
+  this branch (its first and second commit); neither appears in the process
+  environment. A false positive of git-short-sha shape, not a credential. Lines
+  2 and 4 carry the same two values (detect-secrets reports one location per
+  distinct value per file). Cure: the four reviewed_head values are written as
+  "commit <sha10>" so no quoted string is pure hex; no allow-list pragma, no
+  hook bypass. The two pushed commits scan clean with the same plugin set
+  (0 hits on 7 and 5 changed files), so nothing pushed needs rotation.
+council_run: journal.jsonl
+plan_ref: >-
+  team-lead mandate TP1OPS2-20261005, Unit 2 (dux-tp1ops2, BLUE, successor of
+  dux-tp1ops), finished under TP1OPS3-20261005 (dux-tp1ops3): the input screen
+  into the repo, the AllocationQuota over-stop, negative usage / all-failed
+  exit / usage-less replies, tests run by a workflow in the same PR; the
+  review closed item by item before shipping.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-qwen
+    role: review
+    seat: tp1-qwen3.8-max
+
+what_changed: |
+  4f5c661307 + 3eb01cb495 + fa088c5c66 on origin/main beb6991b30.
+  - scripts/tp1_batch_runner.py: classify the RAW error body (door called with
+    raw_errors=True), keep only the scrubbed copy; a 200 carrying a gateway
+    error is classified on that error (auth/quota/rate); AUTH_RE stops the run
+    on a failed credential (fa088c5c66: no longer on the bare word
+    "authentication", which named the service in a 429); usage counts clamp
+    at 0; a usage-less reply stops a budgeted run; exit 4 "stopped:all-failed"
+    when every sent job failed or was rejected; a crashed call's exception
+    text is scrubbed.
+  - scripts/tp1_call.py: no_stream_chat_completion(raw_errors=False) keyword;
+    default behaviour unchanged for every other caller.
+  - scripts/tp1max/build_code_queue.py, build_verify_queue.py: the off-repo
+    builders moved in, fail-closed screen with per-reason skip counts, phone
+    shapes in any digit grouping, linked directories, atomic queue write.
+  - scripts/test_tp1_batch_runner.py (+8 test functions, door faked at urlopen),
+    scripts/tp1max/test_build_queues.py (3 test functions).
+  - .github/workflows/tp1-runner-tests.yml: both suites on py3.9 and py3.11.
+    Before it, no workflow named scripts/test_tp1_batch_runner.py.
+
+proof: |
+  Deterministic floor 3, source path (the new workflow is a hot zone), measured
+  with --print-floor/--print-floor-source on merge-base numstat before
+  declaring, re-measured on the final head. Suite 63 passed on 3.11.15 and on
+  3.9.6. The same tests against origin/main's runner and the predecessor's
+  staged builder: 11 failed. Against round-1 runner 4f5c661307 under the real
+  transport: 4 failed (throttling x2, insufficient_account_balance 400,
+  auth-in-200), i.e. round 1's cure was ineffective in production, as Codex
+  said. Against 3eb01cb495: the two auth-service innocence tests failed
+  (2 failed, 4 passed) before fa088c5c66. actionlint clean.
+
+seat_note: >-
+  Codex answered as gpt-6.1-sol through the Codex O2 account (the
+  codex-gpt-5.6-sol seat label is the lint's id for the Codex titolare).
+  Kimi K3 was out of its 5-hour window until ~13:00Z. Qwen 3.8 Max round 1
+  (effort high) ran out of the 900 s budget still reasoning (0 chars of
+  answer, ok:false in the journal); round 2 ran at effort medium on the final
+  diff.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "P1 (r1): the transport already scrubs a non-200 body, so classify-on-raw read redacted text."
+    status: CONFIRMED
+    resolution: "Cured in 3eb01cb495 (raw_errors=True); tests moved to urlopen level; r2: CLOSED."
+  - seat: codex-gpt-5.6-sol
+    objection: "P1 (r1): a 200 carrying invalid_api_key was classified ok/no_answer."
+    status: CONFIRMED
+    resolution: "Cured in 3eb01cb495 (gateway error classified on its own text, AUTH_RE); r2: CLOSED."
+  - seat: codex-gpt-5.6-sol
+    objection: "P1 (r1): +62-8123-4567-8901 and 62-812-34-56-7890 passed clean(); P1: a tracked file reached through a linked directory was read."
+    status: CONFIRMED
+    resolution: "Cured in 3eb01cb495 with fixtures for both; r2: CLOSED."
+  - seat: codex-gpt-5.6-sol
+    objection: "P2 (r1): exception text unscrubbed; usage-less charge len(prompt)+max_tokens is not an upper bound."
+    status: CONFIRMED
+    resolution: "Cured in 3eb01cb495 (scrub; unknown spend stops a budgeted run); r2: CLOSED."
+  - seat: codex-gpt-5.6-sol
+    objection: "P1 (r1): tp1_call._persist_unparseable_body writes a raw unparseable 200 body to the temp dir."
+    status: PLAUSIBLE
+    resolution: "OUT-OF-SCOPE, owed: review_disposition C1."
+  - seat: codex-gpt-5.6-sol
+    objection: "P2 (r2): AUTH_RE's bare 'authentication' turns a 429 'Too many requests to authentication service' into a stop."
+    status: CONFIRMED
+    resolution: "DEFECT, cured in fa088c5c66 with guilt and innocence rows and a door test: review_disposition C2."
+  - seat: tp1-qwen3.8-max
+    objection: "NO-GO, 18 items on 3eb01cb495 (effort medium)."
+    status: PLAUSIBLE
+    resolution: >-
+      Disposed one by one in review_disposition Q1-Q18 against the code and a
+      probe run on the branch: 0 DEFECT, 18 NOT-A-DEFECT (four rest on a
+      miscount or a misread of the code: Q2, Q10, Q15, Q16). Not retracted by
+      the seat.
+
+review_disposition:
+  - {
+      id: Q1,
+      item: "P1 tp1_call:505/509 error path scrubs only [token]",
+      disposition: NOT-A-DEFECT,
+      proof: "runner:147 sends one credential, the token; :150 and :159 pass [token] to the transport and to scrub(), the same list the transport already used before this PR; scrub's generic 24+ run and Bearer rules still apply",
+    }
+  - {
+      id: Q2,
+      item: "P1 classify(0, gateway) falls to ok",
+      disposition: NOT-A-DEFECT,
+      proof: "classify:112 ends in rejected; probe: classify(0, unknown code) -> rejected, insufficient_account_balance -> quota; door test test_insufficient_account_balance_code_stops_the_run_through_the_door[200]",
+    }
+  - {
+      id: Q3,
+      item: "P1 fallback classify on a 200 without kind",
+      disposition: NOT-A-DEFECT,
+      proof: "tp1_call_once sets kind on every path (:158 :174 :183); a crash has status None -> transient (probe); an unparsable paid 200 is no_answer by the never-pay-twice rule (test_malformed_shape_after_a_paid_200_is_never_sent_again)",
+    }
+  - {
+      id: Q4,
+      item: "P1 kill file during the last settle -> exit 4",
+      disposition: NOT-A-DEFECT,
+      proof: "the loop at :286 ends with reason None only when nothing is pending or in flight: every job was sent and none answered, which is what 4 reports; the kill file persists and the next start returns 3 before any send (:255, test_kill_file_blocks_all_dispatch)",
+    }
+  - {
+      id: Q5,
+      item: "P1 all-done resume reads ok:0 drained; retry+kill race",
+      disposition: NOT-A-DEFECT,
+      proof: "the heartbeat carries skipped_done (:282, emitted through **stats at :363); the race half is Q4",
+    }
+  - {
+      id: Q6,
+      item: "P2 all-zero usage flagged unmetered",
+      disposition: NOT-A-DEFECT,
+      proof: "deliberate fail-closed (:172-173): a non-empty prompt cannot bill 0 prompt tokens; applies only with --token-budget (:259); live: 0 of 2671 answered rows across 7 runs lacked usage",
+    }
+  - {
+      id: Q7,
+      item: "P2 one unmetered reply stops a budgeted run",
+      disposition: NOT-A-DEFECT,
+      proof: "same policy (:259-261), costs idle time never money; same live count, 0 of 2671",
+    }
+  - {
+      id: Q8,
+      item: "P2 _int(Decimal NaN) escapes",
+      disposition: NOT-A-DEFECT,
+      proof: "usage comes from json.loads (:164), which never yields a Decimal; probe: NaN, Infinity, -Infinity, list, dict, a numeric string and -7 -> 0, true -> 1, nothing raised",
+    }
+  - {
+      id: Q9,
+      item: "P2 raw_errors contract documented, not enforced",
+      disposition: NOT-A-DEFECT,
+      proof: "one call site (runner:150-151), which scrubs at :159 before any output",
+    }
+  - {
+      id: Q10,
+      item: "P2 PHONE misses the +62 3-3-3 grouping",
+      disposition: NOT-A-DEFECT,
+      proof: "miscount: 8 digits follow the 8 and the pattern needs 7; probe: the +62 3-3-3 grouping, the 62- 3-7 grouping and the shortest 10-digit 0-prefixed mobile are all caught",
+    }
+  - {
+      id: Q11,
+      item: "P2 EMAIL_OK admits zantara@ any domain",
+      disposition: NOT-A-DEFECT,
+      proof: "the left branch admits only role or placeholder local parts (zantara, noreply, info, test, user ...), none of which names a natural person; a personal local part at a public mail domain is refused (probe). Residual stated: a role address on a company domain passes",
+    }
+  - {
+      id: Q12,
+      item: "P3 symlink check is TOCTOU",
+      disposition: NOT-A-DEFECT,
+      proof: "the swap needs a writer inside the checkout, who could rewrite the file's content directly; the race adds no capability",
+    }
+  - {
+      id: Q13,
+      item: "P3 stat then read",
+      disposition: NOT-A-DEFECT,
+      proof: "the reviewer's own text: no real bug; :68 avoids reading a huge file, :73 re-checks",
+    }
+  - {
+      id: Q14,
+      item: "P3 a minified bundle passes",
+      disposition: NOT-A-DEFECT,
+      proof: "not a secret or PII invariant; SKIP_PATH (:25) and MAX_BYTES (:36) bound the cost",
+    }
+  - {
+      id: Q15,
+      item: "P3 heartbeat sets ok twice",
+      disposition: NOT-A-DEFECT,
+      proof: "Counter omits zero keys from ** (probe: ok absent from {**Counter()}), so :363 guarantees ok:0 is written; Counter['ok'] cannot raise",
+    }
+  - {
+      id: Q16,
+      item: "P3 actions @v7 do not exist",
+      disposition: NOT-A-DEFECT,
+      proof: "the repo's workflows use actions/checkout@v7 130 times and setup-python@v7 79 times; this PR's own CI run resolves them",
+    }
+  - {
+      id: Q17,
+      item: "P3 a red first step skips the second suite",
+      disposition: NOT-A-DEFECT,
+      proof: "the job goes red either way and fail-fast false keeps both Python legs; report granularity only",
+    }
+  - {
+      id: Q18,
+      item: "P3 runner:153 classify on raw, scrub with [token]",
+      disposition: NOT-A-DEFECT,
+      proof: "duplicate of Q1; the reviewer's own text: no bug here",
+    }
+  - {
+      id: C1,
+      item: "Codex r1 P1 tp1_call._persist_unparseable_body writes a raw 200 body",
+      disposition: OUT-OF-SCOPE,
+      proof: "pre-existing tp1_call.py:190-205, not in this diff; reachable from the runner through extract_answer (:176) on any 200 without choices, gateway errors included; lands in TMPDIR/tp1-call-unparseable with the process umask. Owed: a design call, since scrubbing destroys the evidence the function exists for and other callers share the door",
+    }
+  - {
+      id: C2,
+      item: "Codex r2 P2 bare authentication over-stops a 429",
+      disposition: DEFECT,
+      proof: "red on 3eb01cb495 (2 failed, 4 passed), cured in fa088c5c66, 63 passed on 3.11.15 and 3.9.6",
+    }
+
+receipts:
+  - claim: "deterministic floor 3, source path"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <changed> --numstat-file <merge-base numstat> --patch-file <workflow patch>"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-10-05T10:49:00Z"
+    seat: claude-opus-5-5
+  - claim: "suite green on both interpreters"
+    cmd: "python3.11 -m pytest -q scripts/test_tp1_batch_runner.py scripts/tp1max/test_build_queues.py; uv run --python 3.9 --with pytest python -m pytest -q <same>"
+    result: "63 passed / 63 passed (3.9.6)"
+    exit: 0
+    ts: "2026-10-05T11:40:00Z"
+    seat: claude-opus-5-5
+  - claim: "red first: the new tests fail on origin/main's runner and on round-1's runner"
+    cmd: "pytest the same test files beside git show origin/main:scripts/{tp1_batch_runner,tp1_call,arsenal_probe}.py, then beside 4f5c661307's runner"
+    result: "11 failed, 46 passed / 4 failed (-k throttling|insufficient|auth_error)"
+    exit: 1
+    ts: "2026-10-05T11:02:00Z"
+    seat: claude-opus-5-5
+  - claim: "red first for C2: the auth-service innocence tests fail on 3eb01cb495"
+    cmd: "python3.11 -m pytest -q scripts/test_tp1_batch_runner.py -k 'auth_wordings or auth_service'"
+    result: "2 failed, 4 passed"
+    exit: 1
+    ts: "2026-10-05T11:39:00Z"
+    seat: claude-opus-5-5
+  - claim: "no workflow ran the runner tests before this PR"
+    cmd: "grep -rln 'tp1_batch_runner\\|tp1_call' .github/ (origin/main beb6991b30)"
+    result: "no match"
+    exit: 1
+    ts: "2026-10-05T10:44:00Z"
+    seat: claude-opus-5-5
+  - claim: "the journal no longer trips the secrets guard and the pushed commits never did"
+    cmd: "python3 scripts/check_ban_predicates.py <journal>; detect-secrets plugin set of .secrets.baseline over git archive of 4f5c661307 and 3eb01cb495 changed files"
+    result: "no banned spelling; 0 hits / 0 hits"
+    exit: 0
+    ts: "2026-10-05T11:42:00Z"
+    seat: claude-opus-5-5
+
+spend:
+  adversarial_rounds: 3

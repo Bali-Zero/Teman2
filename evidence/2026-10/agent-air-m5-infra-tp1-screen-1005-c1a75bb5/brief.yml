@@ -1,5 +1,5 @@
 task_id: tp1-screen-1005
-gear: 2
+gear: 3
 l_level: L1
 gate_class: opus
 objective: >-
@@ -7,18 +7,21 @@ objective: >-
   input screen that decides what leaves the machine for the Alibaba Token Plan into
   the repo, tested: scripts/tp1max/build_code_queue.py and build_verify_queue.py,
   fail-closed (unreadable, secret/PII including +62/62- separator phone shapes,
-  binary, oversized, symlink -> skipped and counted, never queued). (2) Cure the
+  binary, oversized, symlink (file or linked directory) -> skipped and counted, never queued). (2) Cure the
   AllocationQuota over-stop: the runner classified error bodies AFTER scrub() had
   redacted every 24+ char run, so a 429 "Throttling.AllocationQuota: quota exceeded"
   stopped the run (exit 5) and "insufficient_account_balance" was rejected row by
   row instead of stopping. (3) Negative usage counts rejected; an all-failing run
-  exits 4 instead of 0 "drained"; a reply without usage is charged to
-  --token-budget. (4) A workflow that actually runs these tests (none did).
+  exits 4 instead of 0 "drained"; a reply without usage stops a run
+  that has a --token-budget (its spend is unknown). (4) A workflow that actually runs these tests (none did).
+  Gear 3 by the deterministic floor (source: path; the new workflow file is a
+  hot zone), measured before declaring.
 acceptance:
   - text: >-
-      The 7 tests appended to scripts/test_tp1_batch_runner.py fail on origin/main's
-      runner and pass on this one; the two classification tests go through
-      tp1_call_once over a faked transport, not classify() on raw text.
+      The 8 tests appended to scripts/test_tp1_batch_runner.py fail on origin/main's
+      runner and pass on this one; the classification tests go through
+      tp1_call_once AND the real transport (its scrub included) over a faked
+      urlopen, not classify() on raw text.
     probe: python3 -m pytest -q scripts/test_tp1_batch_runner.py
   - text: >-
       The screen queues only the clean file of a fixture repo holding a symlink, a
