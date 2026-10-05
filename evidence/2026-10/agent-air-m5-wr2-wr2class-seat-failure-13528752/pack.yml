@@ -1,0 +1,95 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  Branch agent/air-m5/wr2/wr2class-seat-failure from origin/main beb6991b30 (after #7898): red tests
+  with a fake claude binary for the three seat-loop defects of wr2-ig-metrics-analyst-run.sh, a
+  three-family council on the classification rule before the build, then one classifier
+  (claude_failure_class) and a local attempt exit. Mission WR2CLASS-20261005.
+lanes:
+  - lane: wr2class-build
+    role: build
+    seat: "claude-opus-5.5 (Dux dux-wr2class; tests first, then the wrapper)"
+  - lane: wr2class-council-codex-o2
+    role: review
+    seat: "codex-o2 (sealed round 1 on the rule; VERDICT AMEND)"
+  - lane: wr2class-council-qwen
+    role: review
+    seat: "tp1-qwen3.8-max (sealed round 1 AMEND; refutation round 2 FALSIFIED)"
+  - lane: wr2class-council-deepseek
+    role: review
+    seat: "tp1-deepseek-v4-pro (sealed round 1; VERDICT ADOPT)"
+  - lane: wr2class-council-codex-o3
+    role: review
+    seat: "codex-o3 (refutation round 2 on the synthesized rule; VERDICT FALSIFIED)"
+  - lane: wr2class-diff-review
+    role: review
+    seat: "codex-o2 (independent review of the built diff, family != builder)"
+council_run: journal.jsonl
+what_changed: |
+  wr2-ig-metrics-analyst-run.sh: claude_stderr_retryable / claude_stdout_retryable /
+  claude_retryable_files are replaced by one claude_failure_class(stdout, stderr, rc) that prints
+  timeout | subscription_disabled | session_limit | quota_or_auth | empty_output, or nothing.
+  Rule taken from claude-cascade.sh:174-239 (read, not edited): stderr is authoritative; stdout is a
+  notice only when the WHOLE payload is one (bare, CLI banner with its hint, "Error:"-framed) or a
+  JSON error envelope. New heads: "organization has disabled Claude subscription access" and the
+  session-limit family (cascade's CLI_USAGE_BANNER head, plus "reached", "out of extra usage").
+  The old stdout matcher's free 240-character tail (which crossed lines and swallowed real answers
+  such as "Rate limit mitigation: ...\n/tmp/a.md") is replaced by: punctuation then the rest of
+  THAT line, or a hint verb, then at most one hint line. JSON envelopes are searched on decoded
+  string values. run_claude_account keeps its exit in a local; only the account loop writes
+  CLAUDE_EXIT, so the keychain fallback is reachable again and every seat failing ends exit 1 with
+  "all Claude OAuth accounts unavailable (last failure: <class>)" and the alert. Unchanged: slot
+  order, RETIRED_TOKEN_VARS (#7898), timeouts, model, and an unclassified non-zero exit still stops
+  the loop.
+receipts:
+  - claim: three defects RED on beb6991b30 with a fake claude binary (new file, before the cure)
+    cmd: python3 -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py
+    exit: "1 (10 failed, 4 passed): disabled seat trace [seat-one, seat-three] never seat-four; session-limit banner accepted from seat-one; all-fail case never reached keychain"
+    ts: "2026-10-05T10:47Z"
+    seat: claude-opus-5.5
+  - claim: claim 3 measured directly — a single seat failing retryably with exit 0 makes the wrapper exit 0
+    cmd: _run() from the new test module, one seat printing "quota exhausted" / "" with rc 0
+    exit: "wrapper rc=0, 'done (exit=0)', no 'all Claude OAuth accounts unavailable', no alert"
+    ts: "2026-10-05T10:49Z"
+    seat: claude-opus-5.5
+  - claim: new suite GREEN on the cure, including every council guilt and innocence fixture
+    cmd: python3 -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py
+    exit: "0 (41 passed)"
+    ts: "2026-10-05T11:08Z"
+    seat: claude-opus-5.5
+  - claim: existing wr2 wrapper suites GREEN
+    cmd: bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh; pytest -q scripts/tests/test_claude_oauth_runtime_fallback.py scripts/tests/test_claude_oauth_slot6_coverage.py scripts/tests/test_claude_cascade_shell.py -k "wr2 or retired or registry"; bash -n on the wrapper
+    exit: "0 (44 pass, 0 fail) / 0 (14 passed) / 0"
+    ts: "2026-10-05T11:19Z"
+    seat: claude-opus-5.5
+  - claim: the 20 failures of the full test_claude_cascade_shell.py run on M5 are claude-cascade.sh subprocess timeouts (10 s) under load average 45-54, on files byte-identical to origin/main
+    cmd: pytest -q (full four files); git diff --quiet origin/main -- infra/launchagents/wrappers/claude-cascade.sh scripts/tests/test_claude_cascade_shell.py; uptime
+    exit: "1 (20 failed, 172 passed; each failure TimeoutExpired on claude-cascade.sh) / 0 (identical) / load 44.95 53.98 39.70"
+    ts: "2026-10-05T11:19Z"
+    seat: claude-opus-5.5
+  - claim: the three findings of the cross-family diff review (codex-o2 BLOCK on 486fbbea19) cured in 545fd985e7, two as new fixtures
+    cmd: python3 -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py; bash -n on the wrapper
+    exit: "0 (43 passed) / 0"
+    ts: "2026-10-05T11:35Z"
+    seat: claude-opus-5.5
+dissent:
+  - seat: codex-o2 (diff review)
+    claim: "BLOCK on 486fbbea19: (1) 'You have hit your session limit\\nPlease try again later.' accepted as an answer; (2) 'You have hit your session limit: this hook earned 2x saves.\\nretry-amendment.md' read as a notice; (3) LAST_FAILURE_CLASS stale when the cascade deadline has already expired."
+    status: CONFIRMED
+    reason: "Cured in 545fd985e7: a hint may start with 'Please'; a hint verb must be followed by a space or sentence-final punctuation; the deadline refusal records class timeout. (1) and (2) are fixtures now."
+  - seat: tp1-qwen3.8-max
+    claim: "An unclassified non-zero exit should MOVE ON (as claude-cascade.sh does): stopping on an unknown phrasing recreates defect 1 for the next wording."
+    status: OVERRULED
+    reason: "codex-o2, codex-o3 and tp1-deepseek-v4-pro hold STOP: the agent writes files, a deterministic failure repeats on every seat at up to $10 each, and the mandate keeps behaviour beyond the failure classes unchanged. Every known seat-failure wording is now a class; a new wording is a one-line head."
+  - seat: codex-o3 / tp1-qwen3.8-max (round 2)
+    claim: "Synthesized rule FALSIFIED: a newline before punctuation swallowed a path line ('Rate limit\\n/tmp/a.md'); 'Quota exhausted\\nretry.md' and 'quota exhausted.md' read as notices; two-line notices with a period before the hint line were missed; the JSON dump hid a notice behind an escaped newline."
+    status: CONFIRMED
+    reason: "Each case is now a fixture in test_every_notice_shape_is_classified / test_no_real_answer_is_classified_as_a_seat_failure and passes: same-line separator only ([ \\t]*), '.' or '/' glued to a word is a file name, at most one hint line, hint verbs refuse a following '.word', envelopes searched on decoded strings."
+  - seat: codex-o2 / codex-o3 / tp1-deepseek-v4-pro
+    claim: "stderr substring authority can discard a valid answer when stderr carries a warning or logged content."
+    status: ACCEPTED-TRADEOFF
+    reason: "Kept for parity with claude-cascade.sh and the mandate (a notice is rejected on stderr, exit 0 or not). claude -p writes only CLI diagnostics to stderr; the cost of a false positive is one more seat, the cost of a false negative is a quota notice passed as the answer."
+residuals:
+  - "Codex o2 round 1: verify the amendment artifact exists before reporting success — out of this concern (success criterion), not done."
+  - "Class audit: scripts/ai-dispatch.sh and infra/launchagents/wrappers/cron-agent.sh carry the same claude_stderr_retryable/claude_stdout_retryable family (ai-dispatch.sh:407-474) and are not cured here."
+  - "claude-cascade.sh's stdout rule has no disabled-subscription head either; it moves on for any non-zero exit, so only an exit-0 stdout notice is exposed there (owned by dux-cascadeobs today, not edited)."

@@ -1,0 +1,29 @@
+task_id: wr2class-seat-failure
+mission: WR2CLASS-20261005
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  In the WR2 IG-metrics analyst wrapper, a failed seat is classified as failed and the account loop
+  moves on: a disabled-subscription seat or a session-limit notice is never accepted as an answer
+  (stdout or stderr, exit 0 or not), a real answer that merely discusses limits or organizations is
+  still accepted, and every seat failing ends non-zero naming the class of the last failure.
+constraints:
+  - Slot order, the retired-slot handling from #7898, timeouts and model choice are unchanged.
+  - No registry edit (FLEET_TOPOLOGY.json is owned by another Dux today).
+  - claude-cascade.sh is read, never edited (dux-cascadeobs owns its logging today); no new shared library.
+  - Every fixture is invented text; no token, account e-mail or org name in tests, logs or the PR.
+  - The wrapper's live copies run from ~/scripts on Pro and M5; merge does not make them live.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN seat 1 fails retryably and seat 3 answers with the disabled-subscription notice (stdout or stderr, exit 0 or 1) THEN the loop SHALL reach seat 4 and use its answer.
+    probe: scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py::test_disabled_subscription_seat_is_passed_and_a_later_seat_answers
+  - text: WHEN a seat prints a session-limit notice (banner or bare, stdout or stderr, exit 0 or 1) THEN it SHALL never be accepted as the answer and the next seat SHALL be tried.
+    probe: scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py::test_session_limit_notice_is_never_accepted_as_an_answer
+  - text: 'WHEN every seat and the keychain fail THEN the wrapper SHALL exit non-zero, log "all Claude OAuth accounts unavailable (last failure: <class>)" and raise the alert.'
+    probe: scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py::test_every_seat_failing_ends_nonzero_and_names_the_last_class
+  - text: WHEN an answer merely mentions session limits, organizations or quota THEN it SHALL be accepted from the first seat.
+    probe: scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py::test_an_answer_that_discusses_limits_or_organizations_is_accepted
+consumer_map:
+  - infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh — weekly WR2 IG-metrics analyst; live copy ~/scripts on Pro and M5 (declared pair); its Pro plist is disabled since 2026-09-01 (WR2 runs only on command), none on M5.
