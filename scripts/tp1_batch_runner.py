@@ -87,7 +87,9 @@ QUOTA_RE = re.compile(
     re.I,
 )
 RATE_RE = re.compile(r"throttl|rate.?limit|too many requests|requestlimit", re.I)
-AUTH_RE = re.compile(r"invalid.?api.?key|unauthori[sz]ed|access.?denied|authentication", re.I)
+# "authentication" alone named the SERVICE in a 429 ("too many requests to authentication service")
+# and stopped the run on a rate limit; only a failed credential is an auth stop.
+AUTH_RE = re.compile(r"invalid.?api.?key|unauthori[sz]ed|access.?denied|authentication.?(error|fail)", re.I)
 
 
 def assert_token_plan_endpoint(url: str = TP1_CHAT_COMPLETIONS_URL) -> None:

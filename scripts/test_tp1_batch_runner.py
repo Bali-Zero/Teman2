@@ -382,6 +382,25 @@ def test_an_auth_error_inside_a_200_stops_the_run_through_the_door(tmp_path, mon
     assert len(sent) == 1 and not (tmp_path / "results.jsonl").exists()
 
 
+@pytest.mark.parametrize("status,body,kind", [
+    (0, json.dumps({"type": "authentication_error", "message": "invalid x-api-key"}), "quota"),
+    (0, json.dumps({"code": "AuthenticationFailed"}), "quota"),
+    (400, "Authentication failed: the credential was not accepted", "quota"),
+    (0, json.dumps({"code": "invalid_api_key"}), "quota"),
+    (429, "Too many requests to authentication service", "rate"),  # names the service, not a failed credential
+])
+def test_classify_auth_wordings(status, body, kind):
+    assert tbr.classify(status, body) == kind
+
+
+def test_a_rate_limit_naming_the_auth_service_backs_off_through_the_door(tmp_path, monkeypatch):
+    body = "Too many requests to authentication service"
+    script = [(429, body, body), (200, OK_RAW, "")]
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: script.pop(0))
+    assert runner(tmp_path, call, n=1, concurrency=1).run() == 0
+    assert len(sent) == 2 and [r["status"] for r in rows(tmp_path)] == ["ok"]
+
+
 def test_negative_usage_counts_never_push_the_totals_down(tmp_path, monkeypatch):
     raw = json.dumps({"choices": [{"message": {"content": "{}"}}],
                       "usage": {"prompt_tokens": -1000, "completion_tokens": 5, "total_tokens": -995}})
