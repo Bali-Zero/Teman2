@@ -216,6 +216,21 @@ EXACT_RULES: dict[str, set[str] | frozenset[str]] = {
         "mouth",
         "backend_python",
     },
+    # Council finding (codex-gpt-5.6-sol, schema-dts-freshness arming PR,
+    # 2026-10-05): tests.yml's required mouth leg now renders
+    # apps/mouth/src/lib/api/schema.d.ts from this script's output
+    # (apps/backend-rag/openapi.json) in its "Check API schema.d.ts
+    # freshness" step, and mutation-pins the render
+    # (scripts/tests/test_required_context_map.py::_assert_mouth_schema_freshness).
+    # The backend pin test guards the schema DICT, not this writer's bytes —
+    # a PR editing only this file would otherwise skip frontend-tests and
+    # land a writer-side drift that the freshness step detects one PR late.
+    # Deliberately an EXACT path, not a directory/prefix rule: sibling
+    # scripts under apps/backend-rag/scripts/ have no mouth consumer.
+    "apps/backend-rag/scripts/generate_openapi.py": {
+        "backend_python",
+        "mouth",
+    },
 }
 
 # Filename-pattern coupling (red-team HIGH-8, 2026-08-14): the visa-engine

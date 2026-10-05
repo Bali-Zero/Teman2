@@ -1932,6 +1932,80 @@ jobs:
           ./node_modules/.bin/openapi-typescript products/garuda-voa/contracts/openapi.yaml \
             --output apps/mouth/src/lib/api/garuda-voa.generated.d.ts --check
 
+      # The OpenAPI drift pin (test_generate_openapi_schema_pin.py, backend
+      # shard) guards layer 1 only — the live backend contract vs the pinned
+      # hash of the last regeneration. Layer 2 was a deliberate scope gap in
+      # that PR: nothing re-RENDERS `schema.d.ts`, so an `openapi-typescript`
+      # bump, a skipped `generate:api`, or a hand-edited line leaves a stale
+      # committed file green forever (PENDING-ARMS row 2026-08-24, part b).
+      # These steps close it in the already-required mouth leg — NOT a new
+      # job: branch protection pins contexts by name (W69 — required checks
+      # disarmed), same reasoning as the GARUDA step above. The backend env
+      # is needed solely to run `create_app().openapi()` (no DB, no network —
+      # the identical degraded-mode import the pin test performs, verified
+      # side-effect-free in its own docstring); the env trio below mirrors
+      # the backend shard's bootstrap steps, and generation runs with cwd =
+      # apps/backend-rag so the repo-root .env is never picked up in CI.
+      - name: Setup Python (API schema freshness)
+        if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      # The uv cache below is restore-only with the SAME key as Backend
+      # Shard's install — a hit restores a compatible copy (the default
+      # branch's cache is visible to every ref; a PR ref's own cache is not
+      # restorable outside itself), and this leg never writes a cache (same
+      # cache-hygiene reasoning as the node cache above).
+      - name: Restore backend uv cache (API schema freshness)
+        if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('apps/backend-rag/requirements.lock.txt') }}
+
+      - name: Install backend deps (uv, API schema freshness)
+        if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
+        run: |
+          pip install --upgrade pip uv
+          cd apps/backend-rag
+          uv pip install --system -r requirements.lock.txt
+          uv pip install --system -e ../../packages/cell-core
+
+      - name: Check API schema.d.ts freshness (regenerate + diff)
+        if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          # 1. Regenerate the backend OpenAPI JSON via the repo's own pinned
+          #    path (also rewrites the drift pin — both enter the diff below).
+          cd apps/backend-rag
+          PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1 python -m scripts.generate_openapi
+          # 2. Re-render schema.d.ts with the lockfile-pinned openapi-typescript,
+          #    invoked DIRECTLY on a fixed input/output pair — same shape as the
+          #    GARUDA contract step above. Deliberately not `npm run generate:api`:
+          #    the gate must not delegate rendering to the candidate-controlled
+          #    package.json script (council finding, codex-gpt-5.6-sol rounds 2-3:
+          #    a repointed script can restore the stale committed bytes and diff
+          #    green). The target is deleted first: an un-recreated target reads
+          #    as a deletion in the diff below.
+          cd ../..
+          rm -f apps/mouth/src/lib/api/schema.d.ts
+          ./node_modules/.bin/openapi-typescript \
+            apps/backend-rag/openapi.json \
+            --output apps/mouth/src/lib/api/schema.d.ts
+          # 3. Prettier exactly as lint-staged would (the committed file is
+          #    prettier-formatted post-generation).
+          ./node_modules/.bin/prettier --write apps/mouth/src/lib/api/schema.d.ts
+          # 4. Any drift — stale render, skipped regeneration, hand edit —
+          #    fails the required leg here, with the cure in the message.
+          git diff --exit-code -- \
+            apps/mouth/src/lib/api/schema.d.ts \
+            apps/mouth/src/lib/api/schema.d.ts.openapi-sha256 \
+            || { echo "::error::schema.d.ts or its drift pin is stale — run 'npm run contract:visa-oracle' in apps/mouth and commit schema.d.ts + pin"; exit 1; }
+
       - name: Typecheck mouth contract consumers
         id: mouth-typecheck
         if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
