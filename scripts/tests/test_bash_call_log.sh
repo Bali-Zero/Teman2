@@ -142,6 +142,120 @@ else
     note_fail "command-history.log not written when hotfix-notify.sh is missing"
 fi
 
+# ---------------------------------------------------------------------------
+# Cases 4-9: the redactor itself breaks — the log must fail CLOSED. Each case
+# runs a COPY of the hook in a scratch dir with a stub redact_secrets.py beside
+# it (or none), because the hook resolves the redactor next to itself. All
+# command text is invented; RAW_MARKER must never reach command-history.log.
+# ---------------------------------------------------------------------------
+RAW_MARKER="zz-invented-raw-marker-4242"
+BROKEN_CMD="echo ${RAW_MARKER} && curl -H 'X-Fake: not-a-real-value-0000' https://example.invalid"
+HOOKCOPY="$WORK/hookcopy"
+
+run_hook_copy() {
+    # $1 = stub redactor mode: missing | real | python source text
+    # $2 = command text. Sets: rc, out, elapsed
+    rm -rf "$HOOKCOPY"
+    mkdir -p "$HOOKCOPY"
+    cp "$TARGET" "$HOOKCOPY/bash_call_log.sh"
+    case "$1" in
+        missing) ;;
+        real) cp "$REPO_ROOT/infra/claude-hooks/redact_secrets.py" "$HOOKCOPY/redact_secrets.py" ;;
+        *) printf '%s\n' "$1" > "$HOOKCOPY/redact_secrets.py" ;;
+    esac
+    payload="$(printf '{"tool_input":{"command":%s}}' "$(printf '%s' "$2" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')")"
+    t0="$(date +%s)"
+    out="$(HOME="$WORK/home" TOOL_CALL="$payload" BASH_CALL_LOG_REDACT_TIMEOUT_S=1 bash "$HOOKCOPY/bash_call_log.sh" 2>/dev/null)"
+    rc=$?
+    elapsed=$(( $(date +%s) - t0 ))
+}
+
+assert_fail_closed() {
+    # $1 = case label
+    if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+        note_pass "$1: hook exit 0 with empty stdout (contract unchanged)"
+    else
+        note_fail "$1: hook rc=$rc stdout=[$out]"
+    fi
+    if [ -f "$HIST" ] && ! grep -q "$RAW_MARKER" "$HIST"; then
+        note_pass "$1: raw command NOT written to command-history.log"
+    else
+        note_fail "$1: raw command LEAKED into command-history.log"
+    fi
+    if [ -f "$HIST" ] && tail -1 "$HIST" | grep -q 'REDACTION-FAILED'; then
+        note_pass "$1: placeholder line written instead"
+    else
+        note_fail "$1: no REDACTION-FAILED placeholder line"
+    fi
+    if [ -f "$RECEIVED" ] && grep -q "$RAW_MARKER" "$RECEIVED"; then
+        note_pass "$1: hotfix pipe still receives the raw command"
+    else
+        note_fail "$1: hotfix pipe payload missing/changed"
+    fi
+}
+
+setup_world
+run_hook_copy missing "$BROKEN_CMD"
+assert_fail_closed "redactor missing"
+
+setup_world
+run_hook_copy 'import sys; sys.exit(3)' "$BROKEN_CMD"
+assert_fail_closed "redactor crashes"
+
+setup_world
+run_hook_copy 'import sys; sys.stdin.read()' "$BROKEN_CMD"
+assert_fail_closed "redactor returns empty"
+
+setup_world
+run_hook_copy 'import sys; sys.stdout.write(sys.stdin.read()); sys.stdout.flush(); sys.exit(1)' "$BROKEN_CMD"
+assert_fail_closed "redactor echoes input then fails"
+
+setup_world
+run_hook_copy 'import time; time.sleep(30)' "$BROKEN_CMD"
+assert_fail_closed "redactor hangs"
+if [ "$elapsed" -le 4 ]; then
+    note_pass "redactor hangs: hook returned in ${elapsed}s (bounded)"
+else
+    note_fail "redactor hangs: hook took ${elapsed}s — a hung redactor stalls every Bash call"
+fi
+
+# A zero/garbage timeout must not disarm the bound (alarm(0) cancels it): the
+# hook falls back to its default and still returns promptly.
+for bad_t in 0 abc -5; do
+    setup_world
+    rm -rf "$HOOKCOPY"; mkdir -p "$HOOKCOPY"
+    cp "$TARGET" "$HOOKCOPY/bash_call_log.sh"
+    printf '%s\n' 'import time; time.sleep(30)' > "$HOOKCOPY/redact_secrets.py"
+    payload="$(printf '{"tool_input":{"command":"echo %s"}}' "$RAW_MARKER")"
+    t0="$(date +%s)"
+    HOME="$WORK/home" TOOL_CALL="$payload" BASH_CALL_LOG_REDACT_TIMEOUT_S="$bad_t" bash "$HOOKCOPY/bash_call_log.sh" >/dev/null 2>&1
+    elapsed=$(( $(date +%s) - t0 ))
+    if [ "$elapsed" -le 5 ] && ! grep -q "$RAW_MARKER" "$HIST" && grep -q 'REDACTION-FAILED' "$HIST"; then
+        note_pass "timeout=${bad_t}: default bound applies (${elapsed}s), placeholder logged"
+    else
+        note_fail "timeout=${bad_t}: elapsed=${elapsed}s or raw/placeholder wrong"
+    fi
+done
+
+# Innocence: the same hook copy with the REAL redactor logs a plain command
+# verbatim and a credential-bearing one redacted, never as a placeholder.
+setup_world
+run_hook_copy real "git status --short && ls -la infra/claude-hooks"
+if [ -f "$HIST" ] && grep -q "git status --short && ls -la infra/claude-hooks" "$HIST" \
+    && ! grep -q 'REDACTION-FAILED' "$HIST"; then
+    note_pass "real redactor: plain command logged verbatim, no placeholder"
+else
+    note_fail "real redactor: plain command not logged verbatim: $(cat "$HIST" 2>/dev/null)"
+fi
+setup_world
+run_hook_copy real "export AWS_SECRET_TOKEN=FAKEnotreal1234567890 && aws s3 ls"
+if [ -f "$HIST" ] && ! grep -q "FAKEnotreal1234567890" "$HIST" && grep -q "REDACTED" "$HIST" \
+    && ! grep -q 'REDACTION-FAILED' "$HIST"; then
+    note_pass "real redactor: credential redacted by the redactor, not by the fallback"
+else
+    note_fail "real redactor: credential case wrong: $(cat "$HIST" 2>/dev/null)"
+fi
+
 echo ""
 echo "== $pass passed, $fail failed =="
 [ "$fail" -eq 0 ]
