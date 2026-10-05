@@ -413,7 +413,7 @@ def sibling_seat_processes(
     ``script`` narrows the census to rows whose args actually invoke that
     script (e.g. a python3 seat counting only ``jules_dispatch.py`` workers,
     not every unrelated python3 process on the box). ``ignore_subcommands``
-    drops rows whose args carry a known-persistent subcommand (e.g. ollama's
+    drops rows whose subcommand (the token right after the binary) is a known-persistent one (e.g. ollama's
     long-lived ``serve`` daemon) that is presence, not contention.
     """
     try:
@@ -446,8 +446,12 @@ def sibling_seat_processes(
             if pid in excluded or binary_basename not in names:
                 continue
             tokens = args.split()
-            if ignore_subcommands and any(token in ignore_subcommands for token in tokens):
-                continue
+            if ignore_subcommands:
+                # The subcommand is the token right after the binary, not any token:
+                # `ollama run <model> serve` is a real job whose prompt says "serve".
+                at = next((i for i, t in enumerate(tokens) if Path(t).name == binary_basename), None)
+                if at is not None and at + 1 < len(tokens) and tokens[at + 1] in ignore_subcommands:
+                    continue
             if script is not None and not any(Path(token).name == script for token in tokens):
                 continue
             count += 1
