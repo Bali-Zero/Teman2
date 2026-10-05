@@ -27,6 +27,9 @@
 #
 # Run via launchd every ~600s (companion plist not shipped in this safe slice —
 # install is an operator step, same pattern as sentinel_meta_watchdog).
+# While undelivered, the gateway runs at most once per 600s launchd tick; its
+# own dedup ladder and P0 budget bound what reaches Telegram, and the local log
+# gains one line per tick.
 
 set -uo pipefail
 
@@ -57,6 +60,7 @@ COOLDOWN_SEC=3600                                                     # 1 h
 LOG_FILE="$HOME/logs/cost-breaker-deadman.log"
 DEADMAN_STATE_FILE="$STATE_DIR/cost_breaker_deadman.json"
 COOLDOWN_FILE="$STATE_DIR/cost_breaker_deadman.cooldown"
+ALERT_STATUS=""
 
 # Source secrets (TELEGRAM_BOT_TOKEN + chat id). NEVER hardcode the token.
 if [[ -f "$HOME/.nuzantara-secrets.env" ]]; then
@@ -121,14 +125,17 @@ classify_file() {
 }
 
 write_state() {
-    local status="$1" detail="$2"
+    local status="$1" detail="$2" undelivered_line=""
+    # Optional 3rd arg: the gateway verdict of an alert that did NOT leave.
+    # Absent, the file is byte-identical to what it always was.
+    [[ -n "${3:-}" ]] && undelivered_line=$'\n'"  \"alert_undelivered\": \"$3\","
     cat > "$DEADMAN_STATE_FILE" <<EOF
 {
   "ts": $(date +%s),
   "generated_at": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
   "status": "$status",
   "critical_threshold_s": $CRITICAL_THRESHOLD_SEC,
-  "detail": "$detail",
+  "detail": "$detail",${undelivered_line}
   "_writer": "cost_breaker_deadman"
 }
 EOF
@@ -153,10 +160,11 @@ cooldown_set() {
 # itself. The gateway's dedup ladder sits behind it as a second, wider floor —
 # belt and braces on an organ that wakes every 600s.
 tg_alert() {
-    local text="$1" gateway py
+    local text="$1" gateway py output line verdict_line status had_python=0
     gateway="$(dirname "$0")/tg_notify.py"
     [[ -f "$gateway" ]] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
     if [[ ! -f "$gateway" ]]; then
+        ALERT_STATUS="no_gateway"
         log "telegram: NO GATEWAY at $gateway — alert NOT sent: $text"
         return 1
     fi
@@ -164,12 +172,34 @@ tg_alert() {
     # so its voice must not depend on that environment's PATH (W108).
     for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
         [[ -x "$py" ]] || continue
-        "$py" "$gateway" --tier p0 --source cost-breaker-deadman \
+        had_python=1
+        output=$("$py" "$gateway" --tier p0 --source cost-breaker-deadman \
             --dedup-key "cost-breaker-deadman:governance-mute" -- "$text" \
-            >>"$LOG_FILE" 2>&1 || log "telegram: gateway send failed"
-        return 0
+            2>&1 | tee -a "$LOG_FILE")
+        verdict_line=""
+        while IFS= read -r line; do
+            [[ "$line" == "tg_notify: "* ]] && verdict_line="$line"
+        done <<< "$output"
+        if [[ -z "$verdict_line" ]]; then
+            ALERT_STATUS="no_verdict"
+            log "telegram: $py produced no tg_notify verdict; trying next interpreter"
+            continue
+        fi
+        status="${verdict_line#tg_notify: }"
+        if [[ "$status" =~ ^[a-z0-9_]+$ ]]; then
+            ALERT_STATUS="$status"
+        else
+            ALERT_STATUS="gateway_error"
+        fi
+        [[ "$ALERT_STATUS" == "sent" ]]
+        return $?
     done
-    log "telegram: no usable python3 — alert NOT sent: $text"
+    if (( had_python == 0 )); then
+        ALERT_STATUS="no_python"
+        log "telegram: no usable python3 — alert NOT sent: $text"
+        return 1
+    fi
+    log "telegram: no gateway verdict from any usable python3 — alert NOT sent: $text"
     return 1
 }
 
@@ -224,8 +254,18 @@ main() {
     # Plain text, no <b>: the raw curl this replaced passed parse_mode=HTML, and
     # the gateway has no parse_mode at all — left as-is the tags would reach Zero
     # literally. Emphasis carried by the emoji and the leading phrase instead.
-    tg_alert "🕳️ GOVERNANCE MUTA: ${stale_detail}— il cost-breaker / verify-the-verifiers non emette più segnale di vita (>${CRITICAL_THRESHOLD_SEC}s). [I]ndaga / [R]iavvia il guardiano / [S]ilenzia 1h?"
-    cooldown_set
+    if tg_alert "🕳️ GOVERNANCE MUTA: ${stale_detail}— il cost-breaker / verify-the-verifiers non emette più segnale di vita (>${CRITICAL_THRESHOLD_SEC}s). [I]ndaga / [R]iavvia il guardiano / [S]ilenzia 1h?"; then
+        cooldown_set
+    elif [[ "$ALERT_STATUS" == "deduped" && -f "$COOLDOWN_FILE" ]]; then
+        # A stamp now exists only after delivery (or human [S]ilenzia); for this
+        # single sender, deduped + stamp is a muted repeat of that delivery.
+        cooldown_set
+    else
+        rm -f "$COOLDOWN_FILE"
+        log "alert NOT delivered (gateway: $ALERT_STATUS) — no cooldown, the next tick retries"
+        write_state "stale" "${stale_detail}" "$ALERT_STATUS"
+    fi
+    return 0
 }
 
 # --- Dispatch --------------------------------------------------------------

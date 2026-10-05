@@ -501,11 +501,12 @@ async def provider_spend_in_window(
     TRISTATE return (P0-1, G4 fail-closed):
       - ``Decimal`` — a GENUINE successful read (even a real $0).
       - ``None``    — spend is UNKNOWN: the DB read raised, OR there was no data
-        source at all (no pool AND no JSONL file present for the window). The
-        caller (``evaluate``/``decide``) maps None -> DEGRADE for a guarded
-        provider rather than ALLOW-ing blind. A read that succeeds but finds no
-        matching rows in a PRESENT source is Decimal("0"), NOT None — empty-but-
-        read is KNOWN-zero, unread is UNKNOWN.
+        source at all (no pool AND no JSONL file present for the window), OR the
+        DB aggregate was not a finite non-negative number. The caller
+        (``evaluate``/``decide``) maps None -> DEGRADE for a guarded provider
+        rather than ALLOW-ing blind. A read that succeeds but finds no matching
+        rows in a PRESENT source is Decimal("0"), NOT None — empty-but-read is
+        KNOWN-zero, unread is UNKNOWN.
 
     Async only because asyncpg is async; the JSONL path runs synchronously.
     """
@@ -603,7 +604,15 @@ async def _pg_provider_spend(
             exc,
         )
         return None
-    return _safe_decimal(value) or Decimal("0")
+    spend = _safe_decimal(value)
+    if spend is None:
+        logger.warning(
+            "cost_breaker: PG spend aggregate for %s is not a finite "
+            "non-negative number (%r) -> spend UNKNOWN",
+            provider,
+            value,
+        )
+    return spend
 
 
 def _pg_alias_set(provider: str) -> list[str]:
