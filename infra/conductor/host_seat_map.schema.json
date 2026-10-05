@@ -45,6 +45,14 @@
       "uniqueItems": true
     }
   },
+  "if": { "properties": { "machine": { "const": "Air-M5" } } },
+  "else": {
+    "properties": {
+      "providers": {
+        "properties": { "openai": { "$ref": "#/$defs/openaiTwoSeats" } }
+      }
+    }
+  },
   "$defs": {
     "seatStatus": {
       "type": "object",
@@ -136,12 +144,19 @@
       }
     },
     "openai": {
+      "oneOf": [
+        { "$ref": "#/$defs/openaiTwoSeats" },
+        { "$ref": "#/$defs/openaiThreeSeats" }
+      ]
+    },
+    "openaiTwoSeats": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "binding_surface",
         "canonical_roster",
         "o2_alias_policy",
+        "auto_rotation_order",
         "seats"
       ],
       "properties": {
@@ -150,6 +165,7 @@
         "o2_alias_policy": {
           "const": "canonical-plus-compatibility-name-is-one-seat"
         },
+        "auto_rotation_order": { "const": ["O1", "O2"] },
         "seats": {
           "type": "array",
           "minItems": 2,
@@ -170,6 +186,71 @@
           ],
           "items": false
         }
+      }
+    },
+    "openaiThreeSeats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_surface",
+        "canonical_roster",
+        "o2_alias_policy",
+        "auto_rotation_order",
+        "seats"
+      ],
+      "properties": {
+        "binding_surface": { "const": "codex-home" },
+        "canonical_roster": { "const": ["O1", "O2", "O3"] },
+        "o2_alias_policy": { "const": "acct2-is-a-distinct-account-O3" },
+        "auto_rotation_order": {
+          "enum": [
+            ["O1", "O2", "O3"],
+            ["O1", "O2"]
+          ]
+        },
+        "seats": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "prefixItems": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "O1" } } }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "O2" } } }
+              ]
+            },
+            { "$ref": "#/$defs/seatStatusO3" }
+          ],
+          "items": false
+        }
+      }
+    },
+    "seatStatusO3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seat_id",
+        "local_binding",
+        "selector_state",
+        "runtime_auth",
+        "evidence",
+        "quota_independence"
+      ],
+      "properties": {
+        "seat_id": { "const": "O3" },
+        "local_binding": { "enum": ["bound", "unbound", "unverified"] },
+        "selector_state": {
+          "enum": ["available", "unavailable", "unverified"]
+        },
+        "runtime_auth": { "const": "unverified" },
+        "evidence": { "enum": ["tracked-pro-seat-map", "no-host-evidence"] },
+        "quota_independence": { "const": "unverified" }
       }
     }
   }

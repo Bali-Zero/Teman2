@@ -1,0 +1,24 @@
+task_id: seatmap-roster-o3
+mission: SEATMAP-20261005
+gear: 1
+l_level: L2
+gate_class: opus
+objective: >-
+  Roster O3 (ChatGPT Team, ~/.codex-acct2 on Air-M5) per host: schema, conductor seat maps, registry,
+  tests; quota_independence stays UNVERIFIED; O3 joins automatic Codex rotation LAST via one declared
+  field per host (Naga gap 2). Floor measured 1 (no hot zone); Gear 1 declared.
+constraints:
+  - Pro and Mini seat maps stay two-seat; only one line (auto_rotation_order) is added to each.
+  - scripts/lib/codex_seat.sh has no functional change; its enumeration order is pinned to the declared field by a test.
+  - auto_rotation_order is declarative: no runtime code reads it today (codex_seat.sh enumerates by auth.json).
+  - No credential or auth file is read; only directory names and fixtures.
+acceptance:
+  - text: WHEN the Pro or Mini map carries O3 THEN the schema SHALL reject it; WHEN Air-M5 lacks quota_independence or says verified THEN the schema SHALL reject it.
+    probe: scripts/tests/test_conductor_host_seat_maps.py (four negative cases)
+  - text: WHEN registry, seat_map.json by_machine Air-M5 and the conductor map disagree on the O3 binding THEN the parity test SHALL fail.
+    probe: scripts/tests/test_conductor_host_seat_maps.py::test_registry_seat_map_and_conductor_agree_on_the_air_m5_codex_bindings
+  - text: WHEN codex_seat.sh enumerates the M5-shaped fixture THEN its order SHALL equal the declared auto_rotation_order.
+    probe: scripts/tests/test_conductor_host_seat_maps.py::test_declared_auto_rotation_order_matches_codex_seat_enumeration
+consumer_map:
+  - scripts/lib/codex_seat.sh — enumerates seats for every codex cron call; its order is the rotation order.
+  - scripts/usage/seat_usage_collector.py — reads by_machine codex_homes, already O3 on Air-M5.

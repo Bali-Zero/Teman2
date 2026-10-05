@@ -66,6 +66,7 @@
       "binding_surface": "codex-home",
       "canonical_roster": ["O1", "O2"],
       "o2_alias_policy": "canonical-plus-compatibility-name-is-one-seat",
+      "auto_rotation_order": ["O1", "O2"],
       "seats": [
         {
           "seat_id": "O1",

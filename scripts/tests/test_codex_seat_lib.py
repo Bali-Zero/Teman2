@@ -105,6 +105,25 @@ def test_both_names_of_the_second_seat_are_recognised(
     assert [Path(p).name for p in out] == [".codex", second]
 
 
+def test_air_m5_shape_three_logged_in_dirs_are_three_seats_in_order(
+    tmp_path: Path,
+) -> None:
+    """O3 (~/.codex-acct2 on Air-M5) is a distinct account: the runtime must
+    see three seats, last in order, exactly as the host seat map declares."""
+    for name in (".codex", ".codex-o2", ".codex-acct2"):
+        _seat(tmp_path, name)
+
+    assert _run(tmp_path, "codex_seat_count").strip() == "3"
+    assert Path(_run(tmp_path, "codex_seat_nth 2").strip()).name == ".codex-acct2"
+
+
+def test_pro_shape_two_logged_in_dirs_are_two_seats(tmp_path: Path) -> None:
+    for name in (".codex", ".codex-acct2"):
+        _seat(tmp_path, name)
+
+    assert _run(tmp_path, "codex_seat_count").strip() == "2"
+
+
 def test_innocence_a_directory_without_auth_json_is_not_a_seat(
     tmp_path: Path,
 ) -> None:
@@ -294,8 +313,7 @@ def test_no_call_site_invokes_codex_without_choosing_a_seat() -> None:
             # adjacency-only pattern above, one line up the stack).
             logical_body = re.sub(r"\\\n[ \t]*", " ", body)
             real = any(
-                _SHELL_CODEX_EXEC.search(line)
-                and not line.lstrip().startswith("#")
+                _SHELL_CODEX_EXEC.search(line) and not line.lstrip().startswith("#")
                 for line in logical_body.splitlines()
             )
         if not real:
@@ -365,7 +383,9 @@ CRON_CASES = [
 ]
 
 
-def _run_cron(tmp_path: Path, case: dict[str, str], *, seat: bool) -> subprocess.CompletedProcess[str]:
+def _run_cron(
+    tmp_path: Path, case: dict[str, str], *, seat: bool
+) -> subprocess.CompletedProcess[str]:
     home = tmp_path / "home"
     if seat:
         _seat(home, ".codex-o2")
