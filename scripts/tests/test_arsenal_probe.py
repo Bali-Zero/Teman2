@@ -298,7 +298,7 @@ def test_healthy_true_only_for_live():
 def test_context_limited_set():
     for status in [ap.CONTEXT_AUTH, ap.CRED_UNAVAILABLE, ap.NOT_INSTALLED]:
         assert ap.context_limited(status) is True
-    for status in [ap.LIVE, ap.AUTH_DEAD, ap.QUOTA_DEAD, ap.SHED, ap.TIMEOUT]:
+    for status in [ap.LIVE, ap.AUTH_DEAD, ap.QUOTA_DEAD, ap.SHED, ap.TIMEOUT, ap.BUDGET_TRUNCATED]:
         assert ap.context_limited(status) is False
 
 
@@ -310,6 +310,9 @@ def test_strict_fail_set():
         assert ap.is_strict_fail(status) is False
     # host limitations never strict-fail either
     for status in [ap.CRED_UNAVAILABLE, ap.NOT_INSTALLED, ap.CONTEXT_AUTH]:
+        assert ap.is_strict_fail(status) is False
+    # third states: visible on the board, never a seat-death strict fail
+    for status in [ap.BUSY, ap.BUDGET_TRUNCATED]:
         assert ap.is_strict_fail(status) is False
 
 
@@ -1653,7 +1656,9 @@ def test_probe_tp1_reasoning_only_truncated_by_length_is_not_live(monkeypatch):
     burns the WHOLE 256-token budget on reasoning returns content: "",
     truncated reasoning_content, and finish_reason: "length" — this produced
     NOTHING usable for a real caller and must not be LIVE forever just
-    because reasoning_content happened to be non-empty."""
+    because reasoning_content happened to be non-empty. PENDING-ARMS row A
+    (2026-08-22): this shape is its own verdict — BUDGET_TRUNCATED, not the
+    UNKNOWN_ERR seat-death classify_generic would otherwise fold it into."""
     monkeypatch.setattr(
         ap,
         "resolve_tp1_key",
@@ -1665,7 +1670,26 @@ def test_probe_tp1_reasoning_only_truncated_by_length_is_not_live(monkeypatch):
     monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
     status, ev, latency = ap.probe_tp1_model("deepseek-v4-pro", timeout=5)
     assert status != ap.LIVE
-    assert status == ap.UNKNOWN_ERR
+    assert status == ap.BUDGET_TRUNCATED
+
+
+def test_probe_tp1_reasoning_tokens_at_max_is_budget_truncated_even_with_stop(monkeypatch):
+    """Mandate condition verbatim: content == "" AND reasoning_tokens >=
+    max_tokens. finish_reason "stop" on a reasoning-only reply whose reasoning
+    consumed the WHOLE budget is still a truncated answer — nothing usable
+    reached the caller. INNOCENCE boundary: reasoning_tokens BELOW the budget
+    (previous test's 40-token "stop" case) stays LIVE."""
+    monkeypatch.setattr(
+        ap,
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
+    )
+    body = _tp1_reasoning_only_body(
+        "deepseek-v4-pro", reasoning_tokens=ap.TP1_PROBE_MAX_TOKENS, finish_reason="stop"
+    )
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    status, ev, latency = ap.probe_tp1_model("deepseek-v4-pro", timeout=5)
+    assert status == ap.BUDGET_TRUNCATED
 
 
 def test_probe_tp1_reasoning_only_with_finish_reason_stop_stays_live(monkeypatch):
@@ -1962,8 +1986,11 @@ def test_tp1_verified_text_roster_is_wired_but_not_required():
     expected = {
         "tp1-deepseek-v4-pro": "deepseek-v4-pro",
         "tp1-deepseek-v4-flash-0731": "deepseek-v4-flash-0731",
+        "tp1-deepseek-v4.1-flash": "deepseek-v4.1-flash",
         "tp1-glm-5.2": "glm-5.2",
+        "tp1-glm-5.3": "glm-5.3",
         "tp1-qwen3.8-max": "qwen3.8-max",
+        "tp1-qwen3.8-flash": "qwen3.8-flash",
         "tp1-qwen3.7-max": "qwen3.7-max",
         "tp1-qwen3.7-plus": "qwen3.7-plus",
         "tp1-qwen3.6-flash": "qwen3.6-flash",
