@@ -282,6 +282,10 @@ on:
       # accompanies was written to close, so being caught by this checker on
       # the way in is the system working, not an obstacle.
       - WR3 spend gate tests
+      # Added 2026-10-05 (tp1-runner-tests.yml, PR #7927): caught by
+      # check_watcher_coverage.py on this PR's own first run; it also runs on
+      # push to main, so a red there must reach this watcher.
+      - TP1 runner tests
       # Added 2026-08-21: main-red-breaker.yml (token-ceremony CI-critical-
       # path work) triggers on `workflow_run` only — this list's contract is
       # name-set membership, not alert-path reachability (see header comment

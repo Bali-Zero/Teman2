@@ -58,6 +58,8 @@ what_changed: |
     scripts/tp1max/test_build_queues.py (3 test functions).
   - .github/workflows/tp1-runner-tests.yml: both suites on py3.9 and py3.11.
     Before it, no workflow named scripts/test_tp1_batch_runner.py.
+  - .github/workflows/main-push-failure-watch.yml: "TP1 runner tests" added to
+    the watched list (check_watcher_coverage.py was red on this PR's first run).
 
 proof: |
   Deterministic floor 3, source path (the new workflow is a hot zone), measured
