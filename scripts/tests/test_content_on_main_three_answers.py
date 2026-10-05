@@ -215,8 +215,9 @@ def test_graveyard_failed_merge_base_is_could_not_tell(graveyard_repo, env, tmp_
 
 def test_graveyard_failed_blob_read_never_matches(graveyard_repo, env, tmp_path):
     work, _ = graveyard_repo
-    s = _run_graveyard(work, env, tmp_path, FAKE_GIT_RE=r"^rev-parse [^ ]+:")
+    s = _run_graveyard(work, env, tmp_path, FAKE_GIT_RE=r"^ls-tree")
     assert "unmerged" not in _section(s, "Content-on-main & deletable")
+    assert "unmerged" in (_section(s, "Could not tell") or [])
 
 
 def test_graveyard_lying_blob_read_never_matches(graveyard_repo, env, tmp_path):
