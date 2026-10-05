@@ -1,0 +1,11 @@
+task_id: docs-promote-stranded-research-a-1005
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Promote 10 stranded Pro cron outputs from the main checkout: 8 nb-curator health/curation snapshots (research/nb-health, 2026-09-28 to 2026-10-05) and the two NB value-monitor weekly tables (research/nb-monitor, W39 and W40). All carry or receive exempt-machine-report frontmatter. No identifier needed redaction. Same lane as the earlier promotions of these directories.
+  Content-only diff under research/: no code, no hot-zone path, no workflow.
+  The content passed an independent line-by-line PII gate before push; what
+  was redacted is stated as counts by placeholder in the commit message.
+  Gear is 2 via the SIZE term alone. The gear-2 verdict is not asserted here:
+  a fresh gate reads the diff and posts it.
