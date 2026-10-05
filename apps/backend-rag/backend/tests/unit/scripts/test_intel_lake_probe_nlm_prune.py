@@ -79,9 +79,11 @@ class FakeNlm:
 
 
 @pytest.fixture(autouse=True)
-def _env(monkeypatch):
+def _env(monkeypatch, tmp_path):
     monkeypatch.delenv("INTEL_LAKE_PROBE_NLM_PRUNE", raising=False)
     monkeypatch.delenv("INTEL_LAKE_PROBE_NLM_RESIDUE_MAX", raising=False)
+    monkeypatch.delenv("INTEL_LAKE_PROBE_NLM_UNKNOWN_MAX", raising=False)
+    monkeypatch.setenv("INTEL_LAKE_PROBE_HOP6_STATE", str(tmp_path / "hop6-state.json"))
 
 
 @pytest.fixture
@@ -305,3 +307,162 @@ def test_live_notebook_constant_matches_pusher_remap(probe):
     assert block, "_NB_UUID_REMAP not found in the pusher"
     remap = dict(re.findall(r'"([0-9a-f-]{36})"\s*:\s*"([0-9a-f-]{36})"', block.group(1)))
     assert remap.get(probe.NB_SANDBOX_UUID) == probe.NB_SANDBOX_LIVE_UUID
+
+
+def test_nlm_push_title_matches_any_run_by_design(probe):
+    """The sandbox notebook is probe-only, so any nlm_push_<8hex>.txt in it is a fixture, this run's or not."""
+    assert probe.select_fixture_ids([_src(1, title="nlm_push_deadbeef.txt")]) == [_sid(1)]
+
+
+class TestOutcomeAndSummary:
+    def test_verified_when_listed_and_nothing_left(self, probe, nlm_present):
+        assert probe.hop6_prune_nlm_fixtures(runner=FakeNlm([_fixture_title(1)])) == ("verified", "")
+        assert probe.hop6_prune_nlm_fixtures(runner=FakeNlm([])) == ("verified", "")
+
+    def test_listing_failure_is_unverified(self, probe, nlm_present):
+        assert probe.hop6_prune_nlm_fixtures(runner=FakeNlm([], list_rc=1)) == ("unverified", "list-rc=1")
+        got = probe.hop6_prune_nlm_fixtures(runner=FakeNlm([], list_stdout="nope"))
+        assert got[0] == "unverified"
+
+    def test_binary_absent_is_unverified(self, probe, monkeypatch):
+        monkeypatch.setattr(probe, "_resolve_nlm", lambda: None)
+        assert probe.hop6_prune_nlm_fixtures(runner=FakeNlm([])) == ("unverified", "nlm-binary-absent")
+
+    def test_failed_delete_is_unverified_with_residue(self, probe, nlm_present):
+        fake = FakeNlm([_fixture_title(1), _fixture_title(2)], delete_rc=1)
+        assert probe.hop6_prune_nlm_fixtures(runner=fake) == ("unverified", "residue=2")
+
+    def test_kill_switch_is_skipped(self, probe, nlm_present, monkeypatch):
+        monkeypatch.setenv("INTEL_LAKE_PROBE_NLM_PRUNE", "0")
+        assert probe.hop6_prune_nlm_fixtures(runner=FakeNlm([])) == ("skipped", "kill-switch")
+
+    def test_summary_claims_six_hops_only_when_verified(self, probe):
+        assert probe.final_summary(("verified", "")) == "PROBE PASS — all 6 hops verified, 0 contamination"
+        unverified = probe.final_summary(("unverified", "list-rc=1"))
+        assert unverified == "PROBE PASS — 5 pipeline hops verified, hop6 UNVERIFIED (list-rc=1)"
+        assert "6 hops" not in unverified
+        skipped = probe.final_summary(("skipped", "kill-switch"))
+        assert skipped == "PROBE PASS — 5 pipeline hops verified, hop6 SKIPPED (kill-switch)"
+        assert "6 hops" not in skipped
+
+
+class TestConsecutiveUnknownCounter:
+    def _count(self, probe) -> int:
+        return probe._read_unknown_count()
+
+    def _fail(self, probe):
+        return probe.hop6_prune_nlm_fixtures(runner=FakeNlm([], list_rc=1))
+
+    def test_increments_on_each_unreadable_listing(self, probe, nlm_present):
+        for expected in (1, 2, 3):
+            self._fail(probe)
+            assert self._count(probe) == expected
+
+    def test_resets_on_a_verified_run(self, probe, nlm_present):
+        self._fail(probe)
+        self._fail(probe)
+        probe.hop6_prune_nlm_fixtures(runner=FakeNlm([_fixture_title(1)]))
+        assert self._count(probe) == 0
+
+    def test_resets_when_listed_even_if_delete_failed(self, probe, nlm_present):
+        self._fail(probe)
+        probe.hop6_prune_nlm_fixtures(runner=FakeNlm([_fixture_title(1)], delete_rc=1))
+        assert self._count(probe) == 0
+
+    def test_raises_at_the_default_of_8_not_before(self, probe, nlm_present):
+        for _ in range(7):
+            self._fail(probe)
+        with pytest.raises(AssertionError, match="hop6"):
+            self._fail(probe)
+
+    def test_env_tunes_the_limit(self, probe, nlm_present, monkeypatch):
+        monkeypatch.setenv("INTEL_LAKE_PROBE_NLM_UNKNOWN_MAX", "2")
+        self._fail(probe)
+        with pytest.raises(AssertionError):
+            self._fail(probe)
+
+    def test_missing_binary_counts_as_unknown(self, probe, monkeypatch):
+        monkeypatch.setattr(probe, "_resolve_nlm", lambda: None)
+        monkeypatch.setenv("INTEL_LAKE_PROBE_NLM_UNKNOWN_MAX", "2")
+        probe.hop6_prune_nlm_fixtures(runner=FakeNlm([]))
+        with pytest.raises(AssertionError):
+            probe.hop6_prune_nlm_fixtures(runner=FakeNlm([]))
+
+    def test_kill_switch_leaves_the_counter_alone(self, probe, nlm_present, monkeypatch):
+        self._fail(probe)
+        monkeypatch.setenv("INTEL_LAKE_PROBE_NLM_PRUNE", "0")
+        probe.hop6_prune_nlm_fixtures(runner=FakeNlm([]))
+        assert self._count(probe) == 1
+
+    @pytest.mark.parametrize("content", ["not json", "[]", '{"consecutive_unknown": "x"}', '{"consecutive_unknown": -3}', '{"consecutive_unknown": true}', ""])
+    def test_corrupt_state_file_restarts_the_count(self, probe, nlm_present, content):
+        probe._unknown_state_path().write_text(content)
+        self._fail(probe)
+        assert self._count(probe) == 1
+
+    def test_missing_state_file_counts_from_zero(self, probe, nlm_present):
+        assert not probe._unknown_state_path().exists()
+        self._fail(probe)
+        assert self._count(probe) == 1
+
+    def test_unwritable_state_never_breaks_the_probe(self, probe, nlm_present, monkeypatch, tmp_path, caplog):
+        blocker = tmp_path / "blocker"
+        blocker.write_text("a file, so a child path cannot be created")
+        monkeypatch.setenv("INTEL_LAKE_PROBE_HOP6_STATE", str(blocker / "state.json"))
+        with caplog.at_level("WARNING", logger="intel-lake.probe"):
+            assert self._fail(probe) == ("unverified", "list-rc=1")
+        assert "state file not written" in caplog.text
+
+
+class TestRunWiring:
+    """run() must log what hop6 really did, with the DB hops stubbed out."""
+
+    def _run(self, probe, monkeypatch, caplog, nlm_runner):
+        async def noop(*a, **k):
+            return None
+
+        class Conn:
+            async def close(self):
+                return None
+
+        async def connect(dsn):
+            return Conn()
+
+        async def hop1(*a, **k):
+            return "item-1"
+
+        async def hop3(*a, **k):
+            return "nb-intel"
+
+        monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/x")
+        monkeypatch.setenv("INTEL_LAKE_PRODUCER_TOKEN", "t")
+        monkeypatch.setattr(probe.asyncpg, "connect", connect)
+        monkeypatch.setattr(probe, "hop1_post_observation", hop1)
+        monkeypatch.setattr(probe, "hop3_check_routing", hop3)
+        for name in ("hop2_check_outbox", "hop2_5_set_sandbox_flag", "hop4_check_nb_push", "hop5_cleanup_verify"):
+            monkeypatch.setattr(probe, name, noop)
+        real = probe.hop6_prune_nlm_fixtures
+        monkeypatch.setattr(probe, "hop6_prune_nlm_fixtures", lambda: real(runner=nlm_runner))
+        monkeypatch.setattr(probe, "_resolve_nlm", lambda: "/fake/nlm")
+        import asyncio
+
+        with caplog.at_level("INFO", logger="intel-lake.probe"):
+            rc = asyncio.run(probe.run(1))
+        return rc, caplog.text
+
+    def test_failed_listing_does_not_claim_six_hops(self, probe, monkeypatch, caplog):
+        rc, text = self._run(probe, monkeypatch, caplog, FakeNlm([], list_rc=1))
+        assert rc == 0
+        assert "PROBE PASS — 5 pipeline hops verified, hop6 UNVERIFIED (list-rc=1)" in text
+        assert "all 6 hops verified" not in text
+
+    def test_clean_prune_claims_six_hops(self, probe, monkeypatch, caplog):
+        rc, text = self._run(probe, monkeypatch, caplog, FakeNlm([_fixture_title(1)]))
+        assert rc == 0
+        assert "PROBE PASS — all 6 hops verified, 0 contamination" in text
+
+    def test_unknown_limit_fails_the_probe(self, probe, monkeypatch, caplog):
+        monkeypatch.setenv("INTEL_LAKE_PROBE_NLM_UNKNOWN_MAX", "1")
+        rc, text = self._run(probe, monkeypatch, caplog, FakeNlm([], list_rc=1))
+        assert rc == 1
+        assert "PROBE FAILED" in text
