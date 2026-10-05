@@ -1,0 +1,122 @@
+task_id: legal-pasal-supersession
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  Close the PENDING-ARMS row of 2026-08-25 with the ledger's MINIMAL arm:
+  chunk-level pasal supersession metadata for amended (not repealed) legal
+  instruments. retrieval_scope is a whole-document field and the
+  current-law guard filters per document — right for a repealed act, wrong
+  for an amended one: UU 6/2011 (amended by UU 63/2024) and Permenkumham
+  22/2023 (amended by Permenkumham 11/2024) must stay `current`, which left
+  their pre-amendment pasal wording retrievable with a real citation, read
+  as current law.
+
+  This PR ships the mechanism, wired for the two known amended pairs: (1) the
+  WRITER — a parser of an amending instrument's own "Pasal X
+  diubah/dicabut/ditambah" clauses plus an annotator stamping flat payload
+  keys (superseded_by_document, superseded_pasal_number, superseded_action,
+  superseded_by_label) onto the base document's matching chunks; (2) the
+  RETRIEVAL RULE — a post-formatting guard that annotates and de-ranks a
+  superseded chunk when its superseding document is in the same result set,
+  no-op otherwise; (3) STAGE 6.5 ingest wiring that runs the writer after a
+  current-scope ingest; (4) a dry-run-first backfill script for the two known
+  pairs, NOT executed against any store by the author.
+
+  Gear 2 is declared at the deterministic floor: this changes the retrieval
+  behavior of the legal search path that answers client-facing visa/legal
+  questions, so an external verdict seat is required; it does not touch the
+  authentication layer or a hot-zone path (that example's floor is why the
+  crm-role-boundary brief declares gear 3).
+
+  Explicitly NOT this arm (the ledger names these as separate decisions): a
+  corpus-wide retro-parse of every amendment ever, and rebuilding the archive
+  around consolidated texts.
+
+acceptance:
+  - text: >-
+      WHEN a result set mixes the pre-amendment wording (UU_6_2011 Pasal 21,
+      score 0.95, carrying superseded_by_document=UU_63_2024) with the
+      amendment's wording (UU_63_2024, score 0.80), the guard SHALL return
+      the amendment first and the superseded 2011 chunk last, carrying
+      is_superseded and a superseded_marker naming UU 63/2024; a
+      non-superseded UU_6_2011 chunk in the same set SHALL stay ahead of the
+      stale chunk and SHALL NOT be marked. (Guilt/innocence proof target of
+      the ledger row.)
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/services/search/test_supersession_guard.py -p no:cacheprovider
+  - text: >-
+      WHEN a superseded chunk's superseding document is NOT in the result
+      set, the guard SHALL leave it unmarked and in rank order (no
+      replacement text = nothing to prefer over it); and result sets with no
+      supersession metadata SHALL pass through unchanged (the whole pre-
+      backfill corpus).
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/services/search/test_supersession_guard.py -p no:cacheprovider -k "noop or stable"
+  - text: >-
+      WHEN an amending instrument's text contains "Pasal X
+      diubah/dicabut/ditambah" clauses citing a target instrument (including
+      ayat/angka/huruf qualifiers, inline re-citations, and wrapped lines),
+      the parser SHALL emit one PasalSupersession per (target, pasal, action)
+      bound to that target; directives with no target in the window and
+      non-amending verbs SHALL produce nothing.
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/core/legal/test_supersession.py -p no:cacheprovider -k "Parse or Identity or Payload"
+  - text: >-
+      WHEN the annotator runs against a vector db, it SHALL write the
+      supersession payload by explicit point ids to exactly the pasal's
+      chunks (never sibling pasals), record missing base chunks as unresolved
+      without raising, and make zero writes in dry_run mode.
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/core/legal/test_supersession.py -p no:cacheprovider -k "Annotate"
+  - text: >-
+      WHEN a current-scope ingest parses to amendment clauses, STAGE 6.5
+      SHALL annotate the base chunks and report status on the ingest result;
+      a store failure SHALL be reported as status=error and SHALL NOT raise.
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/services/ingestion/test_legal_supersession_annotation.py -p no:cacheprovider
+  - text: >-
+      The existing legal ingestion, search, filter, and flat-payload suites
+      SHALL stay green.
+    probe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/services/ingestion/test_legal_ingestion_service.py backend/tests/unit/core/test_qdrant_flat_payload.py backend/tests/services/search/test_search_filters.py backend/tests/unit/kb/test_legal_status_field_integrity_contract.py backend/tests/unit/services/search/test_search_service_coverage.py -p no:cacheprovider
+  - text: >-
+      AFTER the deploy-side act (separate from this PR), the operator runs
+      scripts/backfill_pasal_supersession.py in dry-run against legal_unified
+      for UU_63_2024 and Permenkumham_11_2024 and only then with --apply; a
+      visa question whose answer changed in 2024 SHALL then ground on the
+      63/2024 wording with the 2011 chunk absent from the top results or
+      carrying a superseded marker. Live verification runs at backfill time,
+      not in this PR (no re-ingestion of the live vector store is performed
+      here by design).
+    probe: "operator-run, dry-run-first, documented in the PR body"
+
+assumptions:
+  - text: >-
+      No pasal-level (or any) supersession machinery existed in the legal KB
+      as of 2026-10-06; retrieval_scope remained a whole-document field and
+      _requires_current_law_guard still filtered per document.
+    status: verified
+    probe: "rg -i supersed over apps/backend-rag/backend: only unrelated subsystems (memory, kg, garuda); rg retrieval_scope + _requires_current_law_guard confirm the ledger's described shape on origin/main (83237f8f93)"
+  - text: >-
+      The base documents' stored document_ids for the two known pairs are the
+      normalized identity triples (UU_6_2011, Permen_22_2023), i.e. they were
+      ingested with complete, citable identities.
+    status: assumed
+    probe: "not verified against the store (read-only DB access from this seat is limited and the live store was not touched); the annotator records unmatched bases as unresolved instead of guessing, and the backfill script reports them before any --apply"
+  - text: >-
+      pasal_number is not a payload index on legal_unified, so the annotator
+      scrolls by document_id (indexed) and matches pasal client-side; an
+      unindexed scroll filter is an error on this Qdrant deployment.
+    status: verified
+    probe: "legal_ingestion_service.py only ensure_keyword_payload_index(document_id, metadata.document_id, identity_source, retrieval_scope); qdrant_db set_payload_by_filter/_convert_filter docs and the 2026-08-25 measured note at the ensure calls"
+  - text: >-
+      Chunk payloads for pasal chunks carry a flat pasal_number key (set in
+      hierarchical_indexer._add_pasal_to_chunks), so client-side matching
+      sees it on both flat and legacy-nested points' payload dict.
+    status: verified
+    probe: "backend/core/legal/hierarchical_indexer.py _add_pasal_to_chunks metadata {**metadata, pasal_number: ...}; _upsert_hierarchical_chunks flattens payload"
+  - text: >-
+      The new regexes are ReDoS-safe: every gap is [^\S\n] single-run
+      horizontal space, all quantifiers bounded, verified linear on the
+      constants.py probe idiom (literal prefix + blank-line run).
+    status: verified
+    probe: "local timing: n=2k/8k/32k blank lines -> 0.000/0.001/0.004 s, ~2x per doubling"
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
