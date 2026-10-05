@@ -76,3 +76,33 @@ dissent:
       50s->350s assertion was already red on origin/main (receipt above); registry parity is
       not vacuous while A5 carries oauth_token_slot (FLEET_TOPOLOGY) and the behavioural tests
       fail on their own if the retirement is removed from both sides.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): The guarantee is conditional on slot 2 being set, exactly as claimed: if `CLAUDE_CODE_OAUTH_TOKEN` carried the retired value while `CLAUDE_CODE_OAUTH_TOKEN_2` were *unset*, `RETIRED_TOKENS` would be empty and the legacy value would be attempted (wr2-ig-metrics-analyst-run.sh:625-640; same in the cascade) — the value is only knowable via the numbered var. Within the claim's premise this is fine.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED by reading claude-cascade.sh:1081-1085: the pre-seed loop adds the retired value to SEEN_OAUTH_TOKENS only when CLAUDE_CODE_OAUTH_TOKEN_2 is non-empty, so with slot 2 unset and the legacy name carrying the retired value, oauth_token_seen is false at :1154 and the legacy token IS attempted. The registry stores slot numbers, not values, so the value is unknowable without the variable. Notice only, not fixed here (wrapper blobs frozen); the operator removing the _2 line AND the retired value from the legacy name is the cure.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): The `account_timeout=50s`→`350s` flip (scripts/tests/test_claude_oauth_runtime_fallback.py:1032) is collateral to this diff but correct: it aligns a stale assertion with the pre-existing 2700s measured floor clamped to the 350s total (wr2-ig-metrics-analyst-run.sh:389-395, dated 2026-08-08); the test's actual guard (slot 5 reachable) is unchanged.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED on disk: wr2-ig-metrics-analyst-run.sh:389-395 holds the 2700 s floor clamped to TIMEOUT_SECS; the flip to 350s aligns a stale assertion (red on origin/main, receipt above). Disclosed in the PR body and what_changed; no action.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): Moved tests keep their assertion density 1:1 (stdout, exact label sequence, `used:` line, temp-dir emptiness), only renumbered 2→3/3→4/4→5; one cosmetic staleness: `test_numbered_team_slot_fires_only_after_the_five_max_seats_fail` now exercises only four live max seats (scripts/tests/test_claude_cascade_shell.py:~504).
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED: scripts/tests/test_claude_cascade_shell.py:493 test_numbered_team_slot_fires_only_after_the_five_max_seats_fail now sets bodies for token1,3,4,5 (four MAX seats) before token6; the name is cosmetically stale. Order pinned unchanged; no action here.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): Pre-existing, unrelated: the fake claude's LEAK probe lists numbered vars _1.._5 but not _6 (scripts/tests/test_claude_cascade_shell.py:92-106).
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED, pre-existing: the fake claude's LEAK probe in scripts/tests/test_claude_cascade_shell.py:92-96 lists CLAUDE_CODE_OAUTH_TOKEN_1.._5 and not _6. Outside this PR's concern; candidate for the ledger.
+  - seat: kimi-code/k3
+    objection: |-
+      OTHER_FINDING (verbatim from seat-build-kimi-20261005T064854Z-4482.log; the core claim was HOLDS): `test_retired_slot_value_is_not_retried_under_the_legacy_name` asserts no returncode, so in isolation it could pass on an early crash — but its sibling asserts the exact sequence `["token1","token3"]` on the same fixture, and the suite is green (100 passed), so the run is proven end-to-end.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED: test_retired_slot_value_is_not_retried_under_the_legacy_name (scripts/tests/test_claude_cascade_shell.py:1703-1712) asserts stdout and label absence but no return code; the shell and pytest suites are green on the head and the sibling tests in the same block drive the same fixture. Notice only.
