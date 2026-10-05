@@ -11,8 +11,10 @@ Pipeline hops verified:
     2. PG events_outbox  → trigger fires intel_lake_event
     3. intel_lake_router  → classifies probe URL (rule sandbox-press → nb-intel)
     4. nb-pusher  → delivers to NB-PROBE-SANDBOX
-    5. NotebookLM source_added confirmation
-    6. Cleanup verification — 0 residue post-run
+    5. Postgres cleanup — probe row deleted, stale sandbox rows counted
+    6. NotebookLM cleanup — the probe's own fixtures are deleted from the live
+       sandbox notebook (hop5 only cleans Postgres; the pusher never removes
+       the NotebookLM source, so the notebook would fill to its 500 cap)
 
 Preconditions:
     - `fly proxy 15432:5432 -a nuzantara-postgres &` (DATABASE_URL localhost)
@@ -35,12 +37,18 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
+import json
 import logging
 import os
+import re
+import shutil
+import subprocess
 import sys
 import time
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import urlsplit
 
 import asyncpg
 import httpx
@@ -49,6 +57,24 @@ logger = logging.getLogger("intel-lake.probe")
 
 PROBE_PRODUCER = f"probe-sandbox-{time.strftime('%Y-%m-%d')}"
 NB_SANDBOX_UUID = "1e33e107-4064-48cd-b09d-f7f0a52b31ea"
+# The pusher remaps NB_SANDBOX_UUID to this default-profile notebook (_NB_UUID_REMAP
+# in scripts/intel-lake-nb-pusher-a2/); a test pins the two together.
+NB_SANDBOX_LIVE_UUID = "7e6ae978-136c-4c96-bed5-9fab6f39176f"
+
+_NONCE = r"[0-9a-f]{12}"  # ProbeFixture.generate: uuid4().hex[:12]
+_FIXTURE_TITLE_RE = re.compile(rf"\[PROBE-SANDBOX\] e2e fixture {_NONCE}")
+# Pusher temp name. Matches ANY such source in the notebook, not only this run's:
+# the sandbox notebook is probe-only, so every one is a fixture by assumption.
+_PUSH_TMPFILE_TITLE_RE = re.compile(r"nlm_push_[0-9a-f]{8}\.txt")
+_FIXTURE_URL_PATH_RE = re.compile(rf"/probe-{_NONCE}")
+_FIXTURE_URL_HOST = "probe-sandbox.example.test"
+_SOURCE_ID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+NLM_DELETE_BATCH = 20
+NLM_DELETE_MAX_PER_RUN = 60
+NLM_TIMEOUT_SECONDS = 120
+NLM_RESIDUE_MAX_DEFAULT = 100
+NLM_UNKNOWN_MAX_DEFAULT = 8  # consecutive runs whose residue could not be read: 2 days at 4 runs/day
 
 
 @dataclass
@@ -215,6 +241,175 @@ async def hop5_cleanup_verify(conn: asyncpg.Connection, item_id: str) -> None:
     logger.info("hop5 PASS — probe row cleaned, %s historical sandbox rows", leftover)
 
 
+def _is_fixture_source(source: object) -> bool:
+    """True only when the whole entity is one of the probe's three fixture shapes."""
+    if not isinstance(source, dict):
+        return False
+    title = source.get("title")
+    if isinstance(title, str) and (
+        _FIXTURE_TITLE_RE.fullmatch(title) or _PUSH_TMPFILE_TITLE_RE.fullmatch(title)
+    ):
+        return True
+    url = source.get("url")
+    if isinstance(url, str):
+        parts = urlsplit(url)
+        return (
+            parts.scheme == "https"
+            and parts.netloc == _FIXTURE_URL_HOST
+            and not parts.query
+            and not parts.fragment
+            and _FIXTURE_URL_PATH_RE.fullmatch(parts.path) is not None
+        )
+    return False
+
+
+def select_fixture_ids(sources: list) -> list[str]:
+    """Ids of the probe's own fixtures in a parsed `nlm source list --json`."""
+    return [
+        s["id"]
+        for s in sources
+        if _is_fixture_source(s) and isinstance(s.get("id"), str) and _SOURCE_ID_RE.fullmatch(s["id"])
+    ]
+
+
+def _resolve_nlm() -> str | None:
+    found = shutil.which("nlm")
+    if found:
+        return found
+    fallback = Path.home() / ".local" / "bin" / "nlm"
+    return str(fallback) if fallback.is_file() else None
+
+
+def _nlm(runner, nlm_bin: str, *args: str) -> subprocess.CompletedProcess:
+    return runner(
+        [nlm_bin, *args, "--profile", "default"],
+        capture_output=True,
+        text=True,
+        timeout=NLM_TIMEOUT_SECONDS,
+    )
+
+
+def _unknown_state_path() -> Path:
+    override = os.environ.get("INTEL_LAKE_PROBE_HOP6_STATE")
+    return Path(override) if override else Path.home() / "logs" / "intel-lake-probe-hop6-state.json"
+
+
+def _read_unknown_count() -> int:
+    try:
+        n = json.loads(_unknown_state_path().read_text())["consecutive_unknown"]
+        return n if isinstance(n, int) and not isinstance(n, bool) and n >= 0 else 0
+    except Exception:
+        return 0  # missing or corrupt state: start over, never break the probe
+
+
+def _write_unknown_count(n: int) -> None:
+    try:
+        path = _unknown_state_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"consecutive_unknown": n}))
+        tmp.replace(path)
+    except Exception as e:
+        logger.warning("hop6 WARN — state file not written (%s)", type(e).__name__)
+
+
+def hop6_prune_nlm_fixtures(runner=subprocess.run) -> tuple[str, str]:
+    """Run the prune and keep the consecutive-unknown counter.
+
+    Returns (status, reason), status in verified | skipped | unverified. A run
+    whose listing could not be read leaves the residue UNKNOWN; it still
+    passes, but INTEL_LAKE_PROBE_NLM_UNKNOWN_MAX (default 8) such runs in a row
+    raise, so an expired NLM login cannot keep the probe green forever.
+    """
+    status, reason, listed = _prune_nlm_fixtures(runner)
+    if listed is None:  # kill switch: an operator choice, the counter is untouched
+        return status, reason
+    if listed:
+        _write_unknown_count(0)
+        return status, reason
+    count = _read_unknown_count() + 1
+    _write_unknown_count(count)
+    try:
+        limit = int(os.environ.get("INTEL_LAKE_PROBE_NLM_UNKNOWN_MAX", NLM_UNKNOWN_MAX_DEFAULT))
+    except ValueError:
+        limit = NLM_UNKNOWN_MAX_DEFAULT
+    if count >= limit:
+        raise AssertionError(
+            f"hop6: NotebookLM residue unreadable for {count} consecutive runs (max {limit}), last reason: {reason}"
+        )
+    return status, reason
+
+
+def _prune_nlm_fixtures(runner) -> tuple[str, str, bool | None]:
+    """Delete the probe's own fixtures from the live sandbox NotebookLM notebook.
+
+    Only sources whose entity matches a fixture shape are ever deleted, and
+    only ids from this run's listing of NB_SANDBOX_LIVE_UUID. Returns
+    (status, reason, listed): listed is True when the listing was read, False
+    when it could not be, None when the kill switch skipped the hop. A residue
+    at or above INTEL_LAKE_PROBE_NLM_RESIDUE_MAX raises. Kill switch:
+    INTEL_LAKE_PROBE_NLM_PRUNE=0.
+    """
+    if os.environ.get("INTEL_LAKE_PROBE_NLM_PRUNE", "1") == "0":
+        logger.info("hop6 SKIP — INTEL_LAKE_PROBE_NLM_PRUNE=0")
+        return "skipped", "kill-switch", None
+    nlm_bin = _resolve_nlm()
+    if not nlm_bin:
+        logger.warning("hop6 SKIP — nlm binary not found (PATH or ~/.local/bin/nlm)")
+        return "unverified", "nlm-binary-absent", False
+    try:
+        listed = _nlm(runner, nlm_bin, "source", "list", NB_SANDBOX_LIVE_UUID, "--json")
+        if listed.returncode != 0:
+            logger.warning("hop6 WARN — nlm source list rc=%s, nothing deleted", listed.returncode)
+            return "unverified", f"list-rc={listed.returncode}", False
+        sources = json.loads(listed.stdout)
+    except (subprocess.TimeoutExpired, OSError, ValueError) as e:
+        logger.warning("hop6 WARN — nlm source list failed (%s), nothing deleted", type(e).__name__)
+        return "unverified", f"list-{type(e).__name__}", False
+    if not isinstance(sources, list):
+        logger.warning("hop6 WARN — nlm source list returned %s, nothing deleted", type(sources).__name__)
+        return "unverified", "list-not-a-list", False
+
+    fixture_ids = select_fixture_ids(sources)
+    kept_other = len(sources) - len(fixture_ids)
+    to_delete = fixture_ids[:NLM_DELETE_MAX_PER_RUN]
+    pruned = 0
+    for i in range(0, len(to_delete), NLM_DELETE_BATCH):
+        batch = to_delete[i : i + NLM_DELETE_BATCH]
+        try:
+            deleted = _nlm(runner, nlm_bin, "source", "delete", *batch, "--confirm")
+        except (subprocess.TimeoutExpired, OSError) as e:
+            logger.warning("hop6 WARN — nlm source delete failed (%s) for %s ids", type(e).__name__, len(batch))
+            continue
+        if deleted.returncode == 0:
+            pruned += len(batch)
+        else:
+            logger.warning("hop6 WARN — nlm source delete rc=%s for %s ids", deleted.returncode, len(batch))
+
+    residue = len(fixture_ids) - pruned
+    try:
+        residue_max = int(os.environ.get("INTEL_LAKE_PROBE_NLM_RESIDUE_MAX", NLM_RESIDUE_MAX_DEFAULT))
+    except ValueError:
+        residue_max = NLM_RESIDUE_MAX_DEFAULT
+    if residue >= residue_max:
+        raise AssertionError(
+            f"hop6: {residue} fixture sources left in {NB_SANDBOX_LIVE_UUID} (max {residue_max}) — NotebookLM cleanup is failing"
+        )
+    logger.info("hop6 PASS — pruned=%s residue=%s kept_other=%s", pruned, residue, kept_other)
+    if residue:
+        return "unverified", f"residue={residue}", True
+    return "verified", "", True
+
+
+def final_summary(hop6: tuple[str, str]) -> str:
+    """The last log line; it claims 6 hops only when hop6 really verified."""
+    status, reason = hop6
+    if status == "verified":
+        return "PROBE PASS — all 6 hops verified, 0 contamination"
+    token = "SKIPPED" if status == "skipped" else "UNVERIFIED"
+    return f"PROBE PASS — 5 pipeline hops verified, hop6 {token} ({reason})"
+
+
 async def run(wait_seconds: int) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
@@ -243,6 +438,7 @@ async def run(wait_seconds: int) -> int:
             await hop5_cleanup_verify(conn, item_id)
         finally:
             await conn.close()
+        hop6 = hop6_prune_nlm_fixtures()
     except AssertionError as e:
         logger.error("PROBE FAILED — %s", e)
         return 1
@@ -250,7 +446,8 @@ async def run(wait_seconds: int) -> int:
         logger.exception("PROBE CRASHED")
         return 1
 
-    logger.info("PROBE PASS — all 5 hops verified, 0 contamination")
+    summary = final_summary(hop6)
+    (logger.info if hop6[0] == "verified" else logger.warning)(summary)
     return 0
 
 
