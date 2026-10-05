@@ -28,11 +28,11 @@
 #   - Every `gh` call's rc is captured errexit-immune (`|| var=$?`), never a
 #     bare assignment under `set -e` (W101 — a bare assignment aborts the
 #     script BEFORE the caller can inspect the rc it was written to inspect).
-#   - `gh pr checks` is judged by CONTENT, not exit code alone (W104): its rc
-#     is data-dependent (non-zero can mean "a check is failing", not "the
-#     tool broke") — only rc!=0 WITH an empty body is a real transient
-#     failure. `gh pr view` / `gh api` rc IS a straightforward tool-error
-#     signal, so those are checked on rc alone.
+#   - The checks probe is `gh api graphql` against the PR head commit's
+#     `statusCheckRollup.contexts` (gh 2.97 REJECTS `gh pr checks --json
+#     isRequired` — ledger L1776; requiredness is GraphQL-only). Its rc IS
+#     a straightforward tool-error signal, so it is judged on rc alone —
+#     NOT by the W104 content rule the retired `gh pr checks` call needed.
 #   - `autoMergeRequest` is NEVER read to infer queue state (W118): it reads
 #     null both while a PR is healthily queued AND after it has been
 #     ejected — indistinguishable from that one field. The only way to tell
@@ -160,9 +160,33 @@ print((d.get("state") or "") + "|" + (d.get("mergedAt") or ""))
   fi
 
   # Still OPEN — everything below is advisory, never terminal.
-  _gh pr checks "$pr" "${REPO_FLAGS[@]}" --json name,state,isRequired
-  if (( GH_RC != 0 )) && [[ -z "$GH_OUT" ]]; then
-    echo "  (transient) gh pr checks #$pr failed rc=$GH_RC: ${GH_ERR:0:160}" >&2
+  # Requiredness is GraphQL-only (gh 2.97 rejects --json isRequired, L1776):
+  # read the head commit's statusCheckRollup contexts and normalise them
+  # with --jq into the exact shape _emit_required_failing /
+  # _emit_missing_required already parse. CheckRun.state = conclusion when
+  # non-null, else PENDING; _emit_required_failing excludes PENDING/EXPECTED
+  # as in-flight, not failing. StatusContext state is
+  # SUCCESS/FAILURE/ERROR/PENDING/EXPECTED as-is.
+  # shellcheck disable=SC2016  # GraphQL $vars / jq $vars stay literal below
+  _gh api graphql -f query='
+    query($owner:String!,$name:String!,$number:Int!) {
+      repository(owner:$owner,name:$name) {
+        pullRequest(number:$number) {
+          commits(last:1) {
+            nodes { commit { statusCheckRollup { contexts(first:100) {
+              nodes {
+                __typename
+                ... on CheckRun { name conclusion isRequired(pullRequestNumber:$number) }
+                ... on StatusContext { context state isRequired(pullRequestNumber:$number) }
+              }
+            } } } }
+          }
+        }
+      }
+    }' -F owner="$OWNER" -F name="$NAME" -F number="$pr" \
+      --jq '[.data.repository.pullRequest.commits.nodes[0].commit.statusCheckRollup.contexts.nodes // [] | .[] | if .__typename == "CheckRun" then {name: .name, state: (if .conclusion == null then "PENDING" else .conclusion end), isRequired: .isRequired} else {name: .context, state: .state, isRequired: .isRequired} end]'
+  if (( GH_RC != 0 )); then
+    echo "  (transient) gh api graphql checks #$pr failed rc=$GH_RC: ${GH_ERR:0:160}" >&2
   else
     local checks_json="${GH_OUT:-[]}"
     _emit_required_failing "$pr" "$checks_json"
@@ -174,7 +198,11 @@ print((d.get("state") or "") + "|" + (d.get("mergedAt") or ""))
 }
 
 # _emit_required_failing <pr> <checks_json> — names every isRequired check
-# NOT in {SUCCESS,SKIPPED,NEUTRAL}, deduped against the last-emitted set.
+# in a terminal BAD state: not in {SUCCESS,SKIPPED,NEUTRAL} (ok) and not in
+# {PENDING,EXPECTED} (still in flight — a running check is not failing, it
+# just has not reported yet). Everything else — FAILURE, ERROR, CANCELLED,
+# TIMED_OUT, ACTION_REQUIRED, STARTUP_FAILURE, STALE, … — fails. Deduped
+# against the last-emitted set.
 _emit_required_failing() {
   local pr="$1" checks_json="$2"
   local failing
@@ -185,9 +213,12 @@ try:
 except Exception:
     checks = []
 ok_states = {"SUCCESS", "SKIPPED", "NEUTRAL"}
+in_flight_states = {"PENDING", "EXPECTED"}
 names = sorted(
     c.get("name", "") for c in checks
-    if c.get("isRequired") and c.get("state") not in ok_states
+    if c.get("isRequired")
+    and c.get("state") not in ok_states
+    and c.get("state") not in in_flight_states
 )
 print(",".join(names))
 ')"
