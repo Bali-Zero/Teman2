@@ -19,7 +19,7 @@
 
 **(c) Verification.** Only through `reconcile_service.confirm_payment`. No separate "mark as verified" path.
 
-**(d) Notification.** Through `_notify_lead_about_document`, to accounting. No outbound integration in v1.
+**(d) Notification.** Through `_notify_lead_about_document`. No outbound integration in v1. As written today it does **not** reach accounting: it emails the client's `assigned_to`, falling back to `zero@balizero.com` (`services/portal/_mixins/documents.py:1223,1235`, `86df2556ab`). Reaching accounting needs a decision, see open question 5.
 
 **(e) Test.** `sanitizeRedirect` with `&` in the URL.
 
@@ -40,6 +40,7 @@
 2. Does `confirm_payment` set `paid_date`? With 0 of 895 invoices carrying it, the badge must not depend on `paid_date` until this is known.
 3. Client ownership check on the new endpoint: which existing portal billing guard should it reuse?
 4. Can a client upload again after `rejected` (new row), or is the rejected row reopened?
+5. Notification recipient: `_notify_lead_about_document` sends to the client's `assigned_to` (fallback `zero@balizero.com`). For payment proofs, should it also go to accounting (new recipient parameter), go to accounting instead, or stay with the assigned lead?
 
 ## Delivery order
 
