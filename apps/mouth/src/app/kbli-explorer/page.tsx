@@ -324,16 +324,6 @@ const WelcomeOnboarding = ({
       className="mb-10 p-1 rounded-xl bg-gradient-to-r from-[#D4B483]/40 via-[#D4B483]/10 to-transparent border border-accent-sand/30"
     >
       <div className="bg-[#050507] rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-center gap-6 text-left">
-        <div className="relative shrink-0">
-          <div className="w-16 h-20 bg-[#0A0C10] border border-accent-sand/40 rounded shadow-2xl flex items-center justify-center p-2 text-center transform -rotate-2">
-            <div className="text-[5px] uppercase tracking-wider text-accent-sand">
-              KBLI 2025 Dossier
-            </div>
-          </div>
-          <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-lg">
-            RESTRICTED
-          </div>
-        </div>
         <div className="flex-1">
           <h4 className="text-white font-serif text-lg mb-1">
             Are your company codes still valid?
