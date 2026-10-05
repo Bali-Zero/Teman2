@@ -220,6 +220,7 @@ NOTICES = [
     ("You've reached your session limit.\nContact your admin.\n", "", "session_limit"),
     ("You have hit your session limit · resets 10pm\nPlease run /login\n", "", "session_limit"),
     ("Out of extra usage · resets 11:20pm (Asia/Makassar)\n", "", "session_limit"),
+    ("You have hit your session limit\nPlease try again later.\n", "", "session_limit"),
     ('{"type":"error","error":{"message":"You have hit your session limit"}}', "", "session_limit"),
     ("", SESSION_LIMIT_BANNER, "session_limit"),
     ("quota exhausted\n", "", "quota_or_auth"),
@@ -242,6 +243,7 @@ REAL_ANSWERS = ANSWERS + [
     "Rate limit\n/tmp/ig/amendment.md\n",
     "Quota exhausted\nretry.md\n",
     "quota exhausted.md\n",
+    "You have hit your session limit: this hook earned 2x saves.\nretry-amendment.md\n",
 ]
 
 

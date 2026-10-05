@@ -489,11 +489,13 @@ diagnostic = re.compile(
     re.I,
 )
 frame = r"\s*(?:(?:claude(?:\s+code)?\s+)?(?:api\s+)?(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
-# A hint is a verb the CLI ends its notices with; "retry.md" is a path, not one.
+# A hint is a verb the CLI ends its notices with, followed by a space or by
+# sentence punctuation that ends there: "retry.md" and "retry-amendment.md" are
+# file names, not hints.
 hint = (
-    r"(?:resets?|renews?|try\s+again|retry|use\s+an\s+anthropic\s+api\s+key|"
-    r"(?:ask|contact)\s+your\s+admin|please\s+(?:log\s*in|run\s+/login)|"
-    r"run\s+/login)(?!\w|\.\w)[^\n]{0,200}"
+    r"(?:please\s+)?(?:resets?|renews?|try\s+again|retry|"
+    r"use\s+an\s+anthropic\s+api\s+key|(?:ask|contact)\s+your\s+admin|"
+    r"log\s*in|run\s+/login)(?=\s|$|[.,:;!?)](?:\s|$))[^\n]{0,200}"
 )
 # Same line: punctuation (never "." or "/" glued to a word, as in a file name)
 # then the rest of THAT line, or a hint. Then at most ONE further line, a hint.
@@ -565,6 +567,7 @@ run_claude_account() {
   local attempt_out attempt_err elapsed last_heartbeat sleep_step timed_out claude_pid
   local remaining=$(( CASCADE_DEADLINE - $(date +%s) ))
   if [ "$remaining" -le 0 ]; then
+    LAST_FAILURE_CLASS="timeout"
     return 124
   fi
   local attempt_budget="$ACCOUNT_TIMEOUT_SECS"
