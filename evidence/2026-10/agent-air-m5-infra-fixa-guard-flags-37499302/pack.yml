@@ -43,22 +43,22 @@ receipts:
   - claim: new GUILT rows RED on the origin/main core
     cmd: python3 scripts/test_guardrails_overmatch.py (copy beside the origin/main core)
     exit: "1 (=== 52 FAIL ===, all GUILT)"
-    ts: "2026-10-05T11:52Z"
+    ts: "2026-10-05T11:45Z"
     seat: claude-opus-5.5
   - claim: every guard suite GREEN on the candidate, Python 3.11 and 3.9.6
     cmd: python3 scripts/test_guardrails_overmatch.py; /usr/bin/python3 scripts/test_guardrails_overmatch.py; python3 scripts/test_guardrails_core_overmatch.py; pytest -q scripts/test_guardrails_static.py scripts/test_guardrails_overmatch.py scripts/test_guardrails_core_overmatch.py scripts/tests/test_guardrails_patch7_cd_rm_bypass.py; python3 infra/claude-hooks/test_hook_innocence.py; python3 infra/guard-conformance/check_guard_conformance.py; python3 scripts/guardrails_sync_check.py
     exit: "0 (ALL OK / ALL OK / ALL OK / 5 passed / ALL 164 OK / 0 violations / rc 0)"
-    ts: "2026-10-05T11:52Z"
+    ts: "2026-10-05T11:45Z"
     seat: claude-opus-5.5
   - claim: no verdict change on real commands (old vs new decision function)
     cmd: harness.py corpus core_main.py core_dux.py corpus_all.json (9715 unique commands, bounded tail of ~/.claude/command-history.log)
     exit: "0 (ALLOW->BLOCK=0 BLOCK->ALLOW=0 same=9715 errors=0); seat diff alone: ALLOW->BLOCK=13, all shlex parse failures"
-    ts: "2026-10-05T11:50Z"
+    ts: "2026-10-05T11:45Z"
     seat: claude-opus-5.5
   - claim: dux table 142 rows, 0 failures (task table + dux rows + review rows)
     cmd: harness.py rows core_main.py core_dux.py
     exit: "0 (rows=142 failures=0)"
-    ts: "2026-10-05T11:50Z"
+    ts: "2026-10-05T11:45Z"
     seat: claude-opus-5.5
   - claim: live evidence of the current heredoc/argument policy
     cmd: a Bash call of this session whose python -c argument contained a combined-flag rm of /Users/Shared/
@@ -68,15 +68,17 @@ receipts:
 spend:
   wall_clock_hours: 1.2
 dissent:
-  - objection: |-
+  - seat: tp1-qwen3.7-plus
+    objection: |-
       (1) Bypasses - `env -S "-i rm -rf /"`: `_unwrap_command` sees `env` in `_WRAPPERS`. It pops `-S` (which is in `_WRAPPERS["env"]`) and then unconditionally pops the next token as the argument to `-S`. `remaining` becomes empty. In a real shell, GNU `env -S` splits the string and executes `rm -rf /`.
     status: CONFIRMED
     disposition: >-
       Reproduced (row X56 ALLOW on 8c738d764c). Cured in c3c6d35494: env -S (separate or attached)
       re-enters the wrapper stripping with its split argument; GUILT row added to the CI-run table.
-  - objection: |-
+  - seat: tp1-qwen3.7-plus
+    objection: |-
       (2) Over-matches - `rm -rf /Users/Shared/` and `rm -rf /Users/Shared/*`: the legacy regex only targeted `/Users/<name>`, so this was allowed; the new code blocks it.
-    status: REFUTED
+    status: RETRACTED
     disposition: >-
-      origin/main already blocks it: legacy rule 3 matches /Users/[\w.-]+ followed by /, and the live
+      Retracted on evidence (refuted by the Dux, not withdrawn by the seat): origin/main already blocks it: legacy rule 3 matches /Users/[\w.-]+ followed by /, and the live
       hook blocked a Bash call of this session carrying that string. KEPT row added (verdict unchanged).
