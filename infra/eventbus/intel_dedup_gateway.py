@@ -4,8 +4,11 @@
 Subscribes to bz:intel.collected. For each event:
 1. Compute content_hash (URL + title + entity + date + jurisdiction)
 2. Check Redis SET bz:intel:seen for hash collision
-3. If novel: SADD to seen set + emit bz:intel.deduped (preserve trace_id)
+3. If novel: emit bz:intel.deduped (preserve trace_id), THEN SADD to seen set + ack
 4. If duplicate: log + ack (no downstream propagation)
+5. If handling raises: no ack — the event stays pending (PEL, redelivered on the next boot
+   drain); its last allowed delivery parks it to bz:dlq with the error class only
+
 
 This collapses the 3-source duplication (intel-scraper, regulatory-watcher,
 NB feeder) into a single canonical event stream.
@@ -35,6 +38,10 @@ log = logging.getLogger("intel-dedup-gateway")
 
 SEEN_SET = "bz:intel:seen"
 SEEN_TTL = 90 * 86400  # 90 days
+try:
+    MAX_DELIVERY_ATTEMPTS = max(1, int(os.getenv("INTEL_DEDUP_MAX_DELIVERY_ATTEMPTS", "5")))
+except ValueError:
+    MAX_DELIVERY_ATTEMPTS = 5
 
 
 def _content_hash(payload: dict) -> str:
@@ -72,10 +79,9 @@ def main() -> int:
 
     for env in sub.listen(block_ms=10000, count=20):
         beat("intel-dedup-gateway")
-        # Poison-pill: if event has been redelivered too many times, park to DLQ
         attempts = sub.get_delivery_count(env)
-        if attempts > sub.MAX_DELIVERY_ATTEMPTS:
-            sub.park_to_dlq(env, f"intel-dedup: exceeded {sub.MAX_DELIVERY_ATTEMPTS} attempts")
+        if attempts > MAX_DELIVERY_ATTEMPTS:
+            sub.park_to_dlq(env, "intel-dedup:DeliveryAttemptsExceeded")
             continue
         n_seen += 1
         try:
@@ -93,18 +99,6 @@ def main() -> int:
                 sub.ack(env)
                 continue
 
-            # Atomic add (race-safe vs concurrent dedup workers)
-            added = r.sadd(SEEN_SET, dedup_key)
-            r.expire(SEEN_SET, SEEN_TTL)
-
-            if added == 0:
-                # Race: another worker added it between our check and add
-                n_dup += 1
-                log.info("RACE-DUPLICATE event=%s hash=%s", env.event_id, content_hash)
-                sub.ack(env)
-                continue
-
-            n_new += 1
             normalized_payload = {
                 "source": env.payload.get("source"),
                 "citation_or_url": env.payload.get("citation_or_url"),
@@ -126,14 +120,22 @@ def main() -> int:
                 emitted_by="intel-dedup-gateway",
                 trace_id=env.trace_id,  # KEEP causal chain
             )
+            # Delivery owns the ordering: only a successfully published event
+            # may become deduplicated/acknowledged. A persistence failure leaves
+            # it pending, trading at most one duplicate for never losing it.
+            r.sadd(SEEN_SET, dedup_key)
+            r.expire(SEEN_SET, SEEN_TTL)
+            n_new += 1
             log.info(
                 "NEW event=%s -> deduped=%s hash=%s emitted_by=%s",
                 env.event_id, new_eid, content_hash, env.emitted_by,
             )
-        except Exception as e:
-            log.exception("dedup processing failed for event %s: %s", env.event_id, e)
-        finally:
             sub.ack(env)
+        except Exception as e:
+            error_class = type(e).__name__
+            log.error("dedup processing failed for event %s (%s)", env.event_id, error_class)
+            if attempts >= MAX_DELIVERY_ATTEMPTS:
+                sub.park_to_dlq(env, f"intel-dedup:{error_class}")
 
     return 0
 
