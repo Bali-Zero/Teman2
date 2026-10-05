@@ -22,13 +22,18 @@ SAFETY, by construction rather than by configuration:
     not "ok". A job stopped by a quota or rate error writes no row (it was not
     answered), so the next run picks it up.
   * The proof is rows, not a PID: heartbeat.json counts result rows and tokens.
+  * One runner per out-dir (flock on <out-dir>/.lock): two runners sharing a
+    results file would each send the same pending job.
+  * Redirects are refused process-wide: urllib would otherwise re-send the
+    request, Authorization header included, to whatever host a 3xx names.
 
 Queue row:  {"id": str, "prompt": str, "lane"?: str, "model"?: str}
 Result row: {"id", "lane", "model", "status", "answer", "parsed", "usage",
              "secs", "attempts", "error", "ts"}
 
 Exit codes: 0 queue drained · 2 credential unavailable · 3 stopped by
-deadline / kill file / token budget · 5 stopped by a quota or auth error.
+deadline / kill file / token budget · 5 stopped by a quota, auth or redirect
+error · 6 another runner holds this out-dir.
 
 Usage:
     python3 scripts/tp1_batch_runner.py --queue q.jsonl --out-dir ~/tp1-runs/x \\
@@ -42,6 +47,7 @@ import argparse
 import collections
 import concurrent.futures as cf
 import datetime as dt
+import fcntl
 import json
 import os
 import random
@@ -49,6 +55,7 @@ import re
 import sys
 import time
 import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -89,6 +96,8 @@ def classify(status: Optional[int], body: str) -> str:
     is ambiguous, stopping costs idle time, continuing could cost money."""
     if status == 200:
         return "ok"
+    if status is not None and 300 <= status < 400:
+        return "quota"  # a gateway that redirects is no longer the endpoint we vetted
     if status in (401, 402, 403) or QUOTA_RE.search(body or ""):
         return "quota"
     if status == 429 or RATE_RE.search(body or ""):
@@ -112,6 +121,20 @@ def parse_json_answer(text: Optional[str]) -> Optional[object]:
         return None
 
 
+def _int(value: object) -> int:
+    """A malformed usage field must never raise: this runs AFTER a paid 200, and an
+    exception here would be settled as transient and the job sent (and paid) again."""
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):  # type: ignore[override]
+        return None  # the 3xx surfaces as an HTTPError and classify() stops the run
+
+
 def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: int,
                   timeout: float, token: str) -> dict:
     """Non-streaming on purpose: the streamed reassembly in tp1_call drops the
@@ -128,9 +151,9 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
         usage = json.loads(raw).get("usage") or {}
     except (ValueError, AttributeError):
         usage = {}
-    pt, ct = int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0)
+    pt, ct = _int(usage.get("prompt_tokens")), _int(usage.get("completion_tokens"))
     out["usage"] = {"prompt_tokens": pt, "completion_tokens": ct,
-                    "total_tokens": int(usage.get("total_tokens") or pt + ct)}
+                    "total_tokens": _int(usage.get("total_tokens")) or pt + ct}
     answer, warning, error = extract_answer(raw)
     if error:
         out["error"] = scrub(error, [token])[-300:]
@@ -199,6 +222,19 @@ class Runner:
 
     def run(self) -> int:
         self.out_dir.mkdir(parents=True, exist_ok=True)
+        lock = open(self.out_dir / ".lock", "w")
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            lock.close()
+            sys.stderr.write(f"tp1_batch_runner: another runner holds {self.out_dir}\n")
+            return 6
+        try:
+            return self._run()
+        finally:
+            lock.close()
+
+    def _run(self) -> int:
         done = self.done_ids()
         pending = collections.deque((j, 1) for j in self.jobs if j["id"] not in done)
         self.stats["skipped_done"] = len(self.jobs) - len(pending)
@@ -311,6 +347,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     if unknown:
         ap.error(f"not live TP1 slugs: {sorted(unknown)}")
     assert_token_plan_endpoint()
+    urllib.request.install_opener(urllib.request.build_opener(_NoRedirect))
     token, source, note = resolve_tp1_key()
     if token is None:
         sys.stderr.write(f"tp1_batch_runner: credential unavailable: {note}\n")

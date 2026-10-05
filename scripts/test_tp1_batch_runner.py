@@ -170,6 +170,7 @@ def test_torn_last_line_reruns_that_job_only(tmp_path):
         (500, "internal error", "transient"),
         (None, "timed out", "transient"),
         (400, "Range of input length should be [1, 98304]", "rejected"),
+        (302, "", "quota"),
     ],
 )
 def test_classify(status, body, kind):
@@ -195,3 +196,30 @@ def test_out_dir_inside_the_repo_is_refused(tmp_path):
     inside = Path(tbr.__file__).resolve().parent / "tp1-out"
     with pytest.raises(SystemExit):
         tbr.main(["--queue", str(q), "--out-dir", str(inside)])
+
+
+def test_second_runner_on_the_same_out_dir_refuses_without_calling(tmp_path):
+    import fcntl
+
+    tmp_path.mkdir(exist_ok=True)
+    with open(tmp_path / ".lock", "w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        call = FakeCall()
+        assert runner(tmp_path, call).run() == 6
+        assert call.calls == []
+
+
+def test_malformed_usage_after_a_paid_200_is_not_paid_again(tmp_path, monkeypatch):
+    raw = json.dumps({"choices": [{"message": {"content": "{}"}}], "usage": {"total_tokens": "n/a"}})
+    sent = []
+    monkeypatch.setattr(tbr, "no_stream_chat_completion", lambda *a: (sent.append(1), (200, raw, ""))[1])
+
+    def call(model, prompt):
+        return tbr.tp1_call_once(model, prompt, "medium", 10, 1.0, "dummy")
+
+    assert runner(tmp_path, call, n=1).run() == 0
+    assert len(sent) == 1 and rows(tmp_path)[0]["status"] == "ok"
+
+
+def test_redirects_are_refused_not_followed():
+    assert tbr._NoRedirect().redirect_request(None, None, 302, "Found", {}, "https://example.invalid/") is None
