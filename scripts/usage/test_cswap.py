@@ -687,7 +687,12 @@ def test_exec_child_env_carries_no_credential(door, tmp_path, monkeypatch, capfd
     for name in ("CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "GITHUB_PERSONAL_ACCESS_TOKEN",
                  "AWS_SECRET_ACCESS_KEY"):
         monkeypatch.setenv(name, "fixture-not-a-secret")
+    # bash sources BASH_ENV before with_seat.sh's allowlist runs: it must never reach it.
+    hook = tmp_path / "bash_env.sh"
+    hook.write_text('export CLAUDE_CODE_OAUTH_TOKEN=fixture; touch "$HOME/bash_env_ran"\n')
+    monkeypatch.setenv("BASH_ENV", str(hook))
     assert door("A1") == 0
+    assert not (tmp_path / "bash_env_ran").exists()
     calls = _calls(tmp_path)
     assert len(calls) == 2  # PONG + the real call
     for config_dir, names in calls:
@@ -723,6 +728,13 @@ def test_exec_auto_with_no_answering_seat_refuses(door, tmp_path, capfd):
         (tmp_path / d / "FAIL").touch()
     assert door("auto") == cswap.REFUSED_RC
     assert "no eligible seat answered" in capfd.readouterr().err
+
+
+def test_exec_pong_must_be_the_answer_not_a_mention(door, tmp_path, capfd):
+    fake = tmp_path / "fakebin" / "claude"
+    fake.write_text(fake.read_text().replace("echo PONG", "echo 'Unable to return PONG'"))
+    assert door("A1") == cswap.REFUSED_RC
+    assert "PONG failed" in capfd.readouterr().err
 
 
 def test_exec_accepts_only_seat_ids_of_this_machine(door, tmp_path):

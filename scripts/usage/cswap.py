@@ -613,8 +613,23 @@ def retired_seats(topology_path: Path) -> set[str]:
     return {k for k, v in slots.items() if isinstance(v, dict) and v.get("status") == "retired"}
 
 
+def _claude_seat_names() -> set[str]:
+    """The env names with_seat.sh declares for `claude-seat`, read from the
+    registry it will read. The door hands with_seat.sh ONLY these: anything
+    else reaches bash before the allowlist does — BASH_ENV is sourced at
+    startup and could export a token that then passes as a declared name."""
+    reg = Path(os.environ.get("WITH_SEAT_REGISTRY")
+               or _THIS_DIR.parent.parent / "infra/llm-credentials/seat-env.json")
+    try:
+        names = json.loads(reg.read_text())["seats"]["claude-seat"]["env"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise SystemExit(f"[cswap exec] cannot read claude-seat names from {reg}: {type(e).__name__}")
+    return set(names) - set(_SHADOWING_CREDENTIALS)
+
+
 def seat_child_env(base: dict[str, str], profile_dir: Path) -> dict[str, str]:
-    env = {k: v for k, v in base.items() if k not in _SHADOWING_CREDENTIALS}
+    keep = _claude_seat_names() | {"WITH_SEAT_REGISTRY"}
+    env = {k: v for k, v in base.items() if k in keep}
     default_dir = Path(os.path.expanduser("~/.claude"))
     try:
         is_default = profile_dir.samefile(default_dir)
@@ -653,7 +668,8 @@ def pong(with_seat: Path, env: dict[str, str], *,
             return False, f"no answer within {timeout:.0f}s"
         except OSError as e:
             return False, f"cannot run {with_seat.name}: {e.strerror}"
-    if r.returncode == 0 and "PONG" in r.stdout.upper():
+    answer = [line.strip() for line in r.stdout.splitlines() if line.strip()]
+    if r.returncode == 0 and answer and answer[-1].rstrip(".!").upper() == "PONG":
         return True, ""
     why = _first_meaningful_line(r.stdout, r.stderr) or f"exit {r.returncode}, no output"
     return False, _redact_if_secretlike(why)
