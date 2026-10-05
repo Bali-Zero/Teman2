@@ -293,6 +293,43 @@ assert d["tier"] == "pro", d
 assert d["tier_downgraded_from"] is None, d' <<< "$out"
 }
 
+# agy/pro effort coverage. argv carries the NORMALISED effort (low stays low,
+# everything else is sent as high); report.effort keeps the value the caller
+# REQUESTED (or the default medium), so the two legitimately differ.
+agy_pro_effort_case() {  # agy_pro_effort_case <want-argv-effort> <want-report-effort> [seat_build args...]
+    local want_argv="$1" want_report="$2" out
+    shift 2
+    out="$(seat_env "$SEAT_BUILD" --seat agy --tier pro --role synthesis \
+        --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run "$@" 2>/dev/null)" || return 1
+    python3 -c 'import json,sys
+d=json.load(sys.stdin)
+argv=d["argv"]
+assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv
+assert argv[argv.index("--effort")+1] == sys.argv[1], argv
+assert d["effort"] == sys.argv[2], d' "$want_argv" "$want_report" <<< "$out"
+}
+
+case_agy_pro_explicit_high_stays_high() { agy_pro_effort_case high high --effort high; }
+case_agy_pro_explicit_max_clamps_high() { agy_pro_effort_case high max --gear 3 --effort max; }
+case_agy_pro_default_effort_clamps_high() { agy_pro_effort_case high medium; }
+
+case_agy_pro_invalid_effort_refused_64() {
+    local rc=0
+    seat_env "$SEAT_BUILD" --seat agy --tier pro --role synthesis --effort turbo \
+        --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run >/dev/null 2>&1 || rc=$?
+    [ "$rc" -eq 64 ]
+}
+
+case_agy_pro_downgrade_drops_effort_flag() {
+    local out
+    out="$(seat_env "$SEAT_BUILD" --seat agy --tier pro --effort high \
+        --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
+    python3 -c 'import json,sys
+d=json.load(sys.stdin)
+assert d["tier"] == "flash" and d["tier_downgraded_from"] == "pro", d
+assert "--effort" not in d["argv"], d' <<< "$out"
+}
+
 # ── tier defaulting / SEAT_BUILD_TIER_REQUIRED ───────────────────────────────
 
 case_missing_tier_notice_defaults() {
@@ -366,6 +403,11 @@ run_case "ctx-check: same 900KB task fits codex/sol window" case_codex_sol_handl
 run_case "R4: agy/pro downgrades to flash on small input" case_agy_pro_small_input_downgrades_to_flash
 run_case "R4: agy/pro keeps pro on >200k-token input" case_agy_pro_large_input_keeps_pro
 run_case "R4: agy/pro keeps pro under --role synthesis" case_agy_pro_role_synthesis_keeps_pro_on_small_input
+run_case "agy/pro keeps explicit --effort high" case_agy_pro_explicit_high_stays_high
+run_case "agy/pro clamps explicit max to high, report keeps max" case_agy_pro_explicit_max_clamps_high
+run_case "agy/pro default effort (medium) clamps to high" case_agy_pro_default_effort_clamps_high
+run_case "agy/pro invalid --effort refused (64)" case_agy_pro_invalid_effort_refused_64
+run_case "agy/pro downgraded to flash sends no --effort" case_agy_pro_downgrade_drops_effort_flag
 run_case "missing --tier defaults with a stderr NOTICE" case_missing_tier_notice_defaults
 run_case "SEAT_BUILD_TIER_REQUIRED=1 turns missing --tier into exit 64" case_missing_tier_required_env_exit64
 run_case "unknown --tier value is refused (64)" case_invalid_tier_value_refused
