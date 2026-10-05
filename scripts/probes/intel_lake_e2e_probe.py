@@ -63,7 +63,9 @@ NB_SANDBOX_LIVE_UUID = "7e6ae978-136c-4c96-bed5-9fab6f39176f"
 
 _NONCE = r"[0-9a-f]{12}"  # ProbeFixture.generate: uuid4().hex[:12]
 _FIXTURE_TITLE_RE = re.compile(rf"\[PROBE-SANDBOX\] e2e fixture {_NONCE}")
-_PUSH_TMPFILE_TITLE_RE = re.compile(r"nlm_push_[0-9a-f]{8}\.txt")  # pusher temp name
+# Pusher temp name. Matches ANY such source in the notebook, not only this run's:
+# the sandbox notebook is probe-only, so every one is a fixture by assumption.
+_PUSH_TMPFILE_TITLE_RE = re.compile(r"nlm_push_[0-9a-f]{8}\.txt")
 _FIXTURE_URL_PATH_RE = re.compile(rf"/probe-{_NONCE}")
 _FIXTURE_URL_HOST = "probe-sandbox.example.test"
 _SOURCE_ID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
@@ -72,6 +74,7 @@ NLM_DELETE_BATCH = 20
 NLM_DELETE_MAX_PER_RUN = 60
 NLM_TIMEOUT_SECONDS = 120
 NLM_RESIDUE_MAX_DEFAULT = 100
+NLM_UNKNOWN_MAX_DEFAULT = 8  # consecutive runs whose residue could not be read: 2 days at 4 runs/day
 
 
 @dataclass
@@ -286,34 +289,86 @@ def _nlm(runner, nlm_bin: str, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def hop6_prune_nlm_fixtures(runner=subprocess.run) -> None:
+def _unknown_state_path() -> Path:
+    override = os.environ.get("INTEL_LAKE_PROBE_HOP6_STATE")
+    return Path(override) if override else Path.home() / "logs" / "intel-lake-probe-hop6-state.json"
+
+
+def _read_unknown_count() -> int:
+    try:
+        n = json.loads(_unknown_state_path().read_text())["consecutive_unknown"]
+        return n if isinstance(n, int) and not isinstance(n, bool) and n >= 0 else 0
+    except Exception:
+        return 0  # missing or corrupt state: start over, never break the probe
+
+
+def _write_unknown_count(n: int) -> None:
+    try:
+        path = _unknown_state_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"consecutive_unknown": n}))
+        tmp.replace(path)
+    except Exception as e:
+        logger.warning("hop6 WARN — state file not written (%s)", type(e).__name__)
+
+
+def hop6_prune_nlm_fixtures(runner=subprocess.run) -> tuple[str, str]:
+    """Run the prune and keep the consecutive-unknown counter.
+
+    Returns (status, reason), status in verified | skipped | unverified. A run
+    whose listing could not be read leaves the residue UNKNOWN; it still
+    passes, but INTEL_LAKE_PROBE_NLM_UNKNOWN_MAX (default 8) such runs in a row
+    raise, so an expired NLM login cannot keep the probe green forever.
+    """
+    status, reason, listed = _prune_nlm_fixtures(runner)
+    if listed is None:  # kill switch: an operator choice, the counter is untouched
+        return status, reason
+    if listed:
+        _write_unknown_count(0)
+        return status, reason
+    count = _read_unknown_count() + 1
+    _write_unknown_count(count)
+    try:
+        limit = int(os.environ.get("INTEL_LAKE_PROBE_NLM_UNKNOWN_MAX", NLM_UNKNOWN_MAX_DEFAULT))
+    except ValueError:
+        limit = NLM_UNKNOWN_MAX_DEFAULT
+    if count >= limit:
+        raise AssertionError(
+            f"hop6: NotebookLM residue unreadable for {count} consecutive runs (max {limit}), last reason: {reason}"
+        )
+    return status, reason
+
+
+def _prune_nlm_fixtures(runner) -> tuple[str, str, bool | None]:
     """Delete the probe's own fixtures from the live sandbox NotebookLM notebook.
 
     Only sources whose entity matches a fixture shape are ever deleted, and
-    only ids from this run's listing of NB_SANDBOX_LIVE_UUID. Listing or
-    binary trouble is a WARN/SKIP (the probe still passes); a residue at or
-    above INTEL_LAKE_PROBE_NLM_RESIDUE_MAX means cleanup has been failing for
-    long and raises. Kill switch: INTEL_LAKE_PROBE_NLM_PRUNE=0.
+    only ids from this run's listing of NB_SANDBOX_LIVE_UUID. Returns
+    (status, reason, listed): listed is True when the listing was read, False
+    when it could not be, None when the kill switch skipped the hop. A residue
+    at or above INTEL_LAKE_PROBE_NLM_RESIDUE_MAX raises. Kill switch:
+    INTEL_LAKE_PROBE_NLM_PRUNE=0.
     """
     if os.environ.get("INTEL_LAKE_PROBE_NLM_PRUNE", "1") == "0":
         logger.info("hop6 SKIP — INTEL_LAKE_PROBE_NLM_PRUNE=0")
-        return
+        return "skipped", "kill-switch", None
     nlm_bin = _resolve_nlm()
     if not nlm_bin:
         logger.warning("hop6 SKIP — nlm binary not found (PATH or ~/.local/bin/nlm)")
-        return
+        return "unverified", "nlm-binary-absent", False
     try:
         listed = _nlm(runner, nlm_bin, "source", "list", NB_SANDBOX_LIVE_UUID, "--json")
         if listed.returncode != 0:
             logger.warning("hop6 WARN — nlm source list rc=%s, nothing deleted", listed.returncode)
-            return
+            return "unverified", f"list-rc={listed.returncode}", False
         sources = json.loads(listed.stdout)
     except (subprocess.TimeoutExpired, OSError, ValueError) as e:
         logger.warning("hop6 WARN — nlm source list failed (%s), nothing deleted", type(e).__name__)
-        return
+        return "unverified", f"list-{type(e).__name__}", False
     if not isinstance(sources, list):
         logger.warning("hop6 WARN — nlm source list returned %s, nothing deleted", type(sources).__name__)
-        return
+        return "unverified", "list-not-a-list", False
 
     fixture_ids = select_fixture_ids(sources)
     kept_other = len(sources) - len(fixture_ids)
@@ -341,6 +396,18 @@ def hop6_prune_nlm_fixtures(runner=subprocess.run) -> None:
             f"hop6: {residue} fixture sources left in {NB_SANDBOX_LIVE_UUID} (max {residue_max}) — NotebookLM cleanup is failing"
         )
     logger.info("hop6 PASS — pruned=%s residue=%s kept_other=%s", pruned, residue, kept_other)
+    if residue:
+        return "unverified", f"residue={residue}", True
+    return "verified", "", True
+
+
+def final_summary(hop6: tuple[str, str]) -> str:
+    """The last log line; it claims 6 hops only when hop6 really verified."""
+    status, reason = hop6
+    if status == "verified":
+        return "PROBE PASS — all 6 hops verified, 0 contamination"
+    token = "SKIPPED" if status == "skipped" else "UNVERIFIED"
+    return f"PROBE PASS — 5 pipeline hops verified, hop6 {token} ({reason})"
 
 
 async def run(wait_seconds: int) -> int:
@@ -371,7 +438,7 @@ async def run(wait_seconds: int) -> int:
             await hop5_cleanup_verify(conn, item_id)
         finally:
             await conn.close()
-        hop6_prune_nlm_fixtures()
+        hop6 = hop6_prune_nlm_fixtures()
     except AssertionError as e:
         logger.error("PROBE FAILED — %s", e)
         return 1
@@ -379,7 +446,8 @@ async def run(wait_seconds: int) -> int:
         logger.exception("PROBE CRASHED")
         return 1
 
-    logger.info("PROBE PASS — all 6 hops verified, 0 contamination")
+    summary = final_summary(hop6)
+    (logger.info if hop6[0] == "verified" else logger.warning)(summary)
     return 0
 
 
