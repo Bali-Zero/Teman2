@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 
 sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__)))
-from deepseek_client import api_key  # noqa: E402
+from deepseek_client import api_key, log_cost_event  # noqa: E402
 
 HOST = "https://token-plan.ap-southeast-1.maas.aliyuncs.com"
 KEY = api_key()
@@ -60,6 +60,7 @@ def probe(name, url, payload, extra_headers):
 def main():
     for name, url, payload, extra in PROBES:
         status, body = probe(name, url, payload, extra)
+        log_cost_event(payload.get("model", "unknown"), {}, purpose="burn-media-probe")
         print(f"{status:>4} | {name} | {url}\n       {body}", flush=True)
     print("probe complete — verdict goes into the task brief", flush=True)
 

@@ -1,3 +1,12 @@
+---
+date: 2026-10-05
+domain: operations
+client_case: N/A — internal fleet governance (Alibaba Token Plan burn cycle)
+sources: 4
+discovered_by: session (worktree .worktrees/ops-tp1-burn-oct26, mandate Zero 2026-10-05)
+adversarial_review: codex
+---
+
 # Task Brief — TP1 quota burn, cycle 2026-09-11 → 2026-10-12 (UTC+8)
 
 > Owner mandate (Zero, 2026-10-05, interactive Qwen/TP1 session): consume the Token Plan Pro
@@ -86,6 +95,42 @@ exponential backoff on 429. Heavy execution runs on Pro (`ssh pro`); M5 orchestr
 - **Window-aware model choice inside runners:** night 22:00–08:00 WITA → `qwen3.8-max` +
   reasoning_effort high (Night 50% Off); day → `qwen3.7-plus` + effort low. One long-lived
   process per lane, no model-switch restarts, no output-file races.
+- **Codex (Sol) adversarial review** on commit `21d6254b04`: REQUEST-CHANGES, 11 findings
+  (1 blocker: caps did not reserve capacity atomically; majors: invisible retries,
+  drain-discards-paid-work, locale-suffixed translations misread as EN originals, manifest
+  race + partial JSON, shared deadline stranding late submissions, task-id lost on poll
+  errors, media lane ledger-blind, `--images 0` meaning unlimited, resume freezing transient
+  failures). ALL fixed in the successor commit; guilt+innocence tests in
+  `scripts/tests/test_tp1_burn_guard.py`; evidence brief at
+  `evidence/2026-10/agent-air-m5-ops-tp1-burn-oct26/brief.yml` (gear 2, gate_class opus, BLUE).
+
+## Adversarial review
+
+codex (Sol), on commit `21d6254b04`, 2026-10-05: **11 raised, 11 survived as fixes in the
+successor commit, 0 waived.** The surviving objections and their cures:
+
+1. (blocker) caps did not reserve capacity atomically and queued workers never re-checked the
+   guard → `BurnGuard.reserve()` claims the slot at submit; workers re-check `ok()` before every
+   paid attempt.
+2. failed/retried HTTP attempts were invisible to the cap and ledger → `add_attempt()` counts
+   them; media submits write `log_cost_event` rows.
+3. mid-run cap break discarded already-paid queued work → pending futures are cancelled and the
+   running few are drained into the output.
+4. locale-suffixed translations (.it/.fr/.ru) misread as EN originals → discovery and media
+   prompts accept only stems with no locale dot.
+5. manifest checkpoint serialized without the lock, straight onto the final file → checkpoint()
+   dumps under the lock via tmp + `os.replace`.
+6. one shared deadline stranded late submissions as permanent TIMEOUT → per-job deadline
+   computed at submit; POLL_TIMEOUT/POLL_ERROR stay retryable.
+7. task id persisted only after polling → persisted the moment the provider accepts.
+8. media lane ledger-blind (calibration blind spot) → ledger row per submit, per probe, per
+   TTS probe.
+9. `--images 0` meant unlimited → 0 disables, default 100.
+10. fence regex stripped inner code fences → wrap-only stripping.
+11. resume froze transient API failures forever → only PASS and real fact-gate REJECTs count as
+    done.
+
+Guilt+innocence tests for 1-4 and 10: `scripts/tests/test_tp1_burn_guard.py` (5 passed locally).
 
 ## Schedule
 

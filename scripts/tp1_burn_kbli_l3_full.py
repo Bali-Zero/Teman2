@@ -11,10 +11,12 @@ _l3_generated.json and the curated KBLI datasets (data-plane guard, AGENTS.md
 §0.0.5) are never written by this runner. A canonical writer merges later.
 
 Model follows the window: qwen3.8-max + effort high at night (Night 50% Off),
-qwen3.7-plus + effort low by day. Guard: tp1_burn_common.BurnGuard caps.
+qwen3.7-plus + effort low by day. Guard: tp1_burn_common.BurnGuard caps,
+reserved atomically at submit (codex review 2026-10-05).
 """
 import json
 import os
+import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -29,6 +31,16 @@ import kbli_l3_generate as kg  # noqa: E402
 SCHEMA = kg.SCHEMA
 DONE_CANON = kg.OUT
 OUT = f"{kg.WT}/data/kbli_schema_v2/_l3_generated_burn_oct26.json"
+
+#: transient failure reasons that must NOT freeze a code out of future runs.
+TRANSIENT_REASONS = {"parse/api fail", "guard", None}
+
+
+def _is_done(entry) -> bool:
+    prov = (entry or {}).get("provenance") or {}
+    if prov.get("fact_gate") == "PASS":
+        return True
+    return prov.get("fact_gate") == "REJECT" and prov.get("reason") not in TRANSIENT_REASONS
 
 
 def call(rec, guard):
@@ -46,6 +58,8 @@ def call(rec, guard):
         "bali_reason": l4.get("reason", ""),
     }
     for attempt in range(3):
+        if not guard.ok():
+            return kode, None, {"ok": False, "reason": "guard"}, "none"
         model = window_model()
         try:
             result = complete(
@@ -57,8 +71,7 @@ def call(rec, guard):
                 purpose="burn-kbli-l3",
             )
             guard.add(result.usage)
-            import re as _re
-            content = _re.sub(r"^```json|```$", "", result.text.strip()).strip()
+            content = re.sub(r"^```json|```$", "", result.text.strip()).strip()
             obj = json.loads(content)
             return kode, obj, fact_gate(obj, kode, l4["status"]), model
         except DeepSeekBudgetExceeded:
@@ -66,8 +79,9 @@ def call(rec, guard):
         except Exception:
             if attempt == 2:
                 return kode, None, {"ok": False, "reason": "parse/api fail"}, model
+            guard.add_attempt()
             time.sleep(1.5 * (attempt + 1))
-    return kode, None, {"ok": False, "reason": "unreachable"}, "unknown"
+    return kode, None, {"ok": False, "reason": "parse/api fail"}, "unknown"
 
 
 def main():
@@ -78,24 +92,26 @@ def main():
     done = {}
     for path in (DONE_CANON, OUT):
         if os.path.exists(path):
-            done.update(json.load(open(path)))
+            for k, v in json.load(open(path)).items():
+                if _is_done(v):
+                    done[k] = v
     todo = [k for k in recs if k not in done]
     print(f"burn-kbli-l3: {len(recs)} records, {len(done)} done, {len(todo)} todo, "
           f"workers={workers} cap={guard.stats()}", flush=True)
 
-    results = {}
-    if os.path.exists(OUT):
-        results = json.load(open(OUT))
+    results = {k: v for k, v in done.items() if k in recs}
     rejected = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = {}
+        futs = set()
         for k in todo:
-            if not guard.ok():
+            if not guard.reserve():
                 print("burn guard cap reached — stopping submission", flush=True)
                 break
-            futs[ex.submit(call, recs[k], guard)] = k
+            futs.add(ex.submit(call, recs[k], guard))
         n = 0
         for f in as_completed(futs):
+            if f.cancelled():
+                continue
             kode, obj, verdict, model = f.result()
             n += 1
             if verdict.get("ok") and obj:
@@ -110,8 +126,11 @@ def main():
                 json.dump(results, open(OUT, "w"), ensure_ascii=False, indent=1)
                 print(f"  {n}/{len(todo)} | rejected={rejected} | {guard.stats()}", flush=True)
             if not guard.ok():
-                print("burn guard cap reached mid-run — draining", flush=True)
-                break
+                # cancel what never started; keep collecting the running few so
+                # paid work is never discarded (codex review #3).
+                pending = sum(1 for p in futs if p.cancel())
+                print(f"burn guard cap reached mid-run — cancelled {pending} pending, "
+                      f"draining running", flush=True)
     json.dump(results, open(OUT, "w"), ensure_ascii=False, indent=1)
     ok = sum(1 for v in results.values() if v.get("provenance", {}).get("fact_gate") == "PASS")
     print(f"DONE burn-kbli-l3: {len(results)} processed, PASS={ok}, REJECT={rejected} "

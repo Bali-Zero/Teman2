@@ -1,0 +1,68 @@
+task_id: tp1-burn-oct26
+gear: 2
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: |
+  Ship the batch runners and governance brief for the 2026-10 Alibaba Token Plan
+  (TP1) quota-burn cycle mandated by Zero on 2026-10-05: consume the prepaid
+  monthly pool (2.13% used at arming, resets 2026-10-12 00:00 UTC+8, unspent
+  credits lost at auto-renew) up to a hard 85% ceiling, keeping 15% operational
+  buffer (owner ruling). Five scripts under scripts/ (tp1_burn_common,
+  tp1_burn_kbli_l3_full, tp1_burn_translate_id, tp1_burn_media_gen,
+  tp1_burn_media_probe) reuse the existing ledger-writing TP1 client
+  (deepseek_client) and write DRAFT queues only: data/kbli_schema_v2/
+  _l3_generated_burn_oct26.json, data/burn_drafts/id_mdx/**,
+  data/burn_drafts/media/media_manifest.json. Curated KBLI datasets, canonical
+  queues and the content tree are never written. Gear 2 matches the
+  deterministic harness floor (new paid-endpoint consumers + research doc).
+
+acceptance:
+  - text: >-
+      WHEN the burn guard is constructed with a call cap of 2, a third reserve()
+      SHALL be refused before any work is submitted; retried failed attempts
+      SHALL count against the cap; and a success whose cumulative tokens exceed
+      the token cap SHALL flip ok() to False (fail-closed).
+    probe: python3 -m pytest scripts/tests/test_tp1_burn_guard.py -q -p no:cacheprovider -k "reserve or attempts or token_cap"
+  - text: >-
+      WHEN the lane-3 discovery runs over a tree containing an EN original with
+      its .id.mdx target, an EN original without one, and a locale-suffixed
+      .it.mdx translation, it SHALL return exactly the one untranslated EN
+      original; and strip_wrap_fence SHALL remove only a wrapping fence,
+      preserving inner code fences.
+    probe: python3 -m pytest scripts/tests/test_tp1_burn_guard.py -q -p no:cacheprovider -k "discover or fence"
+  - text: >-
+      THE five burn scripts SHALL compile clean and the research brief SHALL
+      carry the R1 adversarial-review frontmatter (reviewer seat != author).
+    probe: python3 -m py_compile scripts/tp1_burn_common.py scripts/tp1_burn_kbli_l3_full.py scripts/tp1_burn_translate_id.py scripts/tp1_burn_media_gen.py scripts/tp1_burn_media_probe.py && python3 scripts/check_adversarial_review.py --files research/operations/2026-10-05-tp1-burn-task-brief.md
+  - text: >-
+      NO burn script SHALL write outside its three draft locations: a rg over
+      the five scripts for write/open("w")/write_text targets SHALL name only
+      _l3_generated_burn_oct26.json, paths under data/burn_drafts/, the
+      manifest tmp file, or ledger files owned by deepseek_client.
+    probe: "rg -n 'open\\(|write_text|os.replace' scripts/tp1_burn_*.py reviewed by the gate seat against the three draft locations"
+
+assumptions:
+  - text: >-
+      TP1 (ledger provider deepseek) is unguarded by cost_breaker by fleet
+      design, so the burn's only spend guard is BurnGuard plus the 12h console
+      checkpoint loop; raising no breaker budget is required and none is done.
+    status: verified
+    probe: "rg -n 'GUARDED_PROVIDERS' scripts/cost_breaker.py -> claude_oauth/gemini/openrouter only"
+  - text: >-
+      The KBLI schema and curated datasets are UNTRACKED (public repo, data-plane
+      guard), so runners read them only from a checkout that carries data/; the
+      Pro launch copies data/kbli_schema_v2 into the worktree and commits never
+      include it.
+    status: verified
+    probe: "codex adversarial review 2026-10-05 noted the schema absent from the worktree; git ls-files data/kbli_schema_v2 is empty"
+  - text: >-
+      wan2.7-image-pro and happyhorse-1.1-t2v accept async submissions on the
+      TP1 base (200 PENDING, measured 2026-10-05); OpenAI-style image/speech
+      paths 404 there, so the runner uses the native paths only.
+    status: verified
+    probe: "scripts/tp1_burn_media_probe.py run 2026-10-05 from M5; statuses recorded in the task brief D0 findings"
+
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1

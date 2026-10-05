@@ -3,12 +3,18 @@
 
 The fleet cost_breaker deliberately leaves provider ``deepseek`` (the TP1 door)
 UNGUARDED — flat subscription, zero marginal cost, same posture as kimi/ollama
-(see ``cost_breaker.GUARDED_PROVIDERS``; the retired metered DeepSeek door's
-$5 slot was not carried forward). The burn's guard therefore lives HERE: a hard
-per-run token/call cap, fail-closed, on top of the 12h console-% checkpoint
-loop in research/operations/2026-10-05-tp1-burn-task-brief.md. Ledger
-visibility is untouched: every call still goes through
-``deepseek_client.complete`` -> ``log_cost_event``.
+(see ``cost_breaker.GUARDED_PROVIDERS``; the retired metered door's $5 slot was
+not carried forward). The burn's guard therefore lives HERE: a hard per-run
+token/call cap, fail-closed, on top of the 12h console-% checkpoint loop in
+research/operations/2026-10-05-tp1-burn-task-brief.md. Ledger visibility is
+untouched: every chat call still rides ``deepseek_client.complete`` ->
+``log_cost_event``.
+
+Capacity accounting (codex adversarial review 2026-10-05, blocker #1): the cap
+is RESERVED atomically at submit time (``reserve``), failed/retried HTTP
+attempts are counted (``add_attempt``) so a retry storm cannot hide from the
+cap, and ``add`` records only the token volume of a successful usage block.
+Callers must check ``ok()`` again inside workers before each paid attempt.
 """
 from __future__ import annotations
 
@@ -37,7 +43,7 @@ def window_effort() -> str:
 
 
 class BurnGuard:
-    """Hard per-run caps; fail-closed. ``add`` returns False once exceeded."""
+    """Hard per-run caps; fail-closed. See module docstring for the accounting."""
 
     def __init__(self, max_tokens: int | None = None, max_calls: int | None = None) -> None:
         self.max_tokens = int(
@@ -55,13 +61,27 @@ class BurnGuard:
     def _over(self) -> bool:
         return self.tokens >= self.max_tokens or self.calls >= self.max_calls
 
+    def reserve(self) -> bool:
+        """Atomically claim one call slot BEFORE submitting paid work."""
+        with self._lock:
+            if self._over():
+                return False
+            self.calls += 1
+            return True
+
+    def add_attempt(self) -> bool:
+        """Count a failed/retried paid attempt (no usage block available)."""
+        with self._lock:
+            self.calls += 1
+            return not self._over()
+
     def add(self, usage: dict) -> bool:
+        """Record the token volume of one successful usage block."""
         total = int(usage.get("total_tokens") or 0) or (
             int(usage.get("prompt_tokens") or 0) + int(usage.get("completion_tokens") or 0)
         )
         with self._lock:
             self.tokens += total
-            self.calls += 1
             return not self._over()
 
     def ok(self) -> bool:
