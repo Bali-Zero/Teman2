@@ -1,6 +1,6 @@
 {
   "_version": "1.4+hierarchy-20260908",
-  "_updated": "2026-10-05 (seat registry reconciled: A5 retired, O3 recorded, M5 config-dir map — see accounts.anthropic.slots.A5 / accounts.openai.unrostered_seats.O3; previous: 2026-09-15 (RULED 2026-09-06→08: two-imperator hierarchy — see _invariants[0]; previous:2026-08-20 (Zero ruling, Legge 5, verbatim: 'Togliere Fable 5 dal workflow, lo u…)",
+  "_updated": "2026-10-05 (seat registry reconciled: A5 retired, O3 recorded, M5 config-dir map — see accounts.anthropic.slots.A5 / accounts.openai.slots.O3; previous: 2026-09-15 (RULED 2026-09-06→08: two-imperator hierarchy — see _invariants[0]; previous:2026-08-20 (Zero ruling, Legge 5, verbatim: 'Togliere Fable 5 dal workflow, lo u…)",
   "_doc": "SSOT for the CLOUD fleet: orchestrators, accounts, role fallback chains. Local Ollama assignments stay in MODEL_TOPOLOGY.json (unchanged). Rationale: research/operations/2026-08-09-quattro-gruppi-e-continuita.md. Law: AGENTS.md §17 + CLAUDE.md.",
   "_invariants": [
     "Final on-disk gate, ALL gears (RULED 2026-09-06→08, supersedes the 2026-08-20 permanent-Opus rule below): an ASSIGNMENT to a qualified independent verifier outside the contribution chain — a Claude session on the Opus 5.5 xhigh seat, rotating across ALL Anthropic accounts (AZ->A2->A3->A1), never cascading to a weaker model; all accounts dead => task SUSPENDS/QUEUES. Two imperators, equal (Fable 5.1 owner-opened window, Astra) appoint a temporary Dux between two equal generals (Opus 5.5, Sol); imperators never fan out or implement. Fable 5.1 is never auto-routed and never a gate seat. Parity widens no permission. Map: docs/architecture/dual-consul/army-map.md",
@@ -77,7 +77,7 @@
       "oauth_slot_note": "Slot->account VERIFIED 2026-08-23 via `claude auth status` per config-dir plus the setup-token transcript (each token preceded by the command that minted it). An OAuth token carries NO identity - `auth status` on one returns only authMethod:oauth_token, no email - so this mapping and the comment beside each slot in ~/.nuzantara-secrets.env are the ONLY registry; it must be written AT setup-token time, never reconstructed afterwards. Measured the same day: `claude setup-token` does NOT revoke the account's previous token, so every superseded token stays valid ~1y and is revocable only from the web console."
     },
     "openai": {
-      "mechanism": "CODEX_HOME per-account dirs (~/.codex = O1, ~/.codex-o2 = O2). --profile switches models, NOT identity; only auth.json controls identity. No native auto-failover: the conductor rotates explicitly.",
+      "mechanism": "CODEX_HOME per-account dirs (~/.codex = O1, ~/.codex-o2 = O2; on Air-M5 only, ~/.codex-acct2 = O3 — on Pro the same directory name is O2). --profile switches models, NOT identity; only auth.json controls identity. No native auto-failover: the conductor rotates explicitly.",
       "slots": {
         "O1": {
           "email": "antonellosiano@gmail.com",
@@ -92,18 +92,15 @@
           "lane": "builders (Terra/Luna) + Sol backup",
           "codex_home_by_machine": { "Air-M5": "~/.codex-o2" },
           "observed_default_model": "gpt-5.6-sol (observed 2026-10-05, Air-M5; no -m slug probed)"
-        }
-      },
-      "unrostered_seats": {
+        },
         "O3": {
           "email": "zero@balizero.com",
           "plan": "ChatGPT Team workspace (plan claim reads team), same work email as O2",
           "quota_independence": "UNVERIFIED — a different workspace is not proof of a quota pool independent of O2; stays unverified until attributed quota measurements exist (Naga P2, 2026-10-05)",
-          "lane": "unassigned (logged in by the owner 2026-10-05)",
+          "lane": "automatic Codex rotation through the runtime directory list, not through the manifest — Dux ruling 2026-10-05 on the owner's mandate, reversible by him. On Air-M5 scripts/lib/codex_seat.sh enumerates CODEX_SEAT_DIRS (default ~/.codex:~/.codex-o2:~/.codex-acct2, auth.json present), so O3 is LAST in the default directory enumeration (a host CODEX_SEAT_DIRS can reorder it); codex_seat_pick rotates a start offset, so O3 is not last in every attempt. auto_rotation_order in the seat maps is DECLARATIVE ONLY — no runtime reads it (see pending_arms): excluding O3 is a CODEX_SEAT_DIRS change on the host, editing the manifest alone excludes nothing",
           "codex_home_by_machine": { "Air-M5": "~/.codex-acct2" },
           "observed_default_model": "gpt-5.6-sol (observed 2026-10-05, Air-M5; no -m slug probed)",
-          "not_a_fleet_seat": "A teammate (Damar) holds a premium seat in this Team workspace: a personal seat, NOT a fleet seat, never routed to.",
-          "roster_note": "Kept outside slots because canonical_roster [O1, O2] is pinned by infra/conductor/host_seat_map.schema.json, the three infra/conductor/seat_maps/*.v1.json and scripts/tests/test_conductor_host_seat_maps.py — see pending_arms."
+          "not_a_fleet_seat": "A teammate (Damar) holds a premium seat in this Team workspace: a personal seat, NOT a fleet seat, never routed to."
         }
       }
     },
@@ -576,7 +573,8 @@
     "ORPHANED 2026-10-05 (A5 retired, ruled by Zero): cloud routines ssot-contradiction-hunter and secret-pattern-sweep, previously on A5, need a new home — re-home on an active seat or retire them",
     "operator: remove the CLAUDE_CODE_OAUTH_TOKEN_2 line (A5's slot) from the secrets file on Pro and Mini — the cron cascade already skips an empty slot (infra/launchagents/wrappers/claude-cascade.sh:1133 `if [ -n \"$token\" ] && ! oauth_token_seen \"$token\"` inside the `for index in 1 2 3 4 5 6` loop at :1095; a retired slot is skipped outright at :1129); no code change needed in the cascade — the other slot-2 readers are the next entry",
     "SLOT-2 READERS still outside the two cured wrappers (class audit on 7e1fc0e71a, 2026-10-05; 18 reader sites in 16 files, grep-derived — a reader that builds the variable name some other way would not appear): shell cron-agent.sh:528 (infra/launchagents/wrappers), scripts/lib/claude_seat.sh:127,158,260 (via _claude_seat_slots :48, 1..6; scripts/claude-live.sh:56 consumes its pick), scripts/ai-dispatch.sh:515; python apps/backend-rag/backend/llm/claude_oauth_client.py:231 (1-4), apps/backend-rag/scripts/auto_verifier.py:199, apps/backend-rag/scripts/verified_generator.py:350, apps/bali-intel-scraper/scripts/bz_image_style.py:537, apps/bali-intel-scraper/scripts/claude_cli_enricher.py:147, apps/evaluator/nlm_deep_research/t4_monitor.py:213, apps/nuzantara-mcp/nuzantara_mcp/tools/workspace_marketing.py:1173 (_REVIEWER_SEAT_ORDER :1161), scripts/dlq_autopilot.py:521, scripts/wr2_html_renderer/claude_vision.py:336, scripts/zantara-gateway/claude_client.py:110, scripts/wr3_dispatch_v2.py:187, scripts/wr3_reflexion_synthesis.py:334, apps/mata-garuda/mata_garuda/runtime/cli_runtime.py:60. OWED: each must honour the retired-slot list in this registry or be shown harmless (a dead token is rejected and the loop falls through to the next seat, costing one failed attempt per call). Consumer: the operator deleting the _2 line from the secrets file on Pro and Mini (previous entry) retires the whole class at once and is the cure; until then none of these is claimed cured. NOTE the PR #7898 body said ~17; the count on disk is 18 sites",
-    "OpenAI roster: O3 (~/.codex-acct2, ChatGPT Team) sits in accounts.openai.unrostered_seats because canonical_roster [O1, O2] is pinned by infra/conductor/host_seat_map.schema.json, the three infra/conductor/seat_maps/*.v1.json and scripts/tests/test_conductor_host_seat_maps.py — extend all of them together in one PR, then move O3 into slots",
+    "OpenAI roster: O1/O2/O3 in slots; O3 is bound only on Air-M5 (~/.codex-acct2, ChatGPT Team) and rostered per host by infra/conductor/seat_maps/air-m5.v1.json (o2_alias_policy acct2-is-a-distinct-account-O3); Pro and Mini keep the two-seat shape",
+    "OpenAI rotation runtime consumer OWED (Naga P2-O3-runtime-routing-overclaim, 2026-10-05; deferred, not built): no runtime reads auto_rotation_order in infra/conductor/seat_maps/*.v1.json — scripts/lib/codex_seat.sh enumerates directories (CODEX_SEAT_DIRS or its default list) and rotates a start offset. Until a consumer reads the field (or the field is removed), excluding or reordering O3 is a CODEX_SEAT_DIRS change on the host. scripts/tests/test_conductor_host_seat_maps.py::test_auto_rotation_order_has_no_runtime_reader is a tripwire for a LITERAL reader under scripts/, infra/, apps/ and .github/ (a computed key evades it): the PR that adds a reader must also rewrite accounts.openai.slots.O3.lane and this entry",
     "seat-quota ledger ~/.claude/seat-quota.json has no scheduled publisher (publisher missing): measured 2026-10-05 it was 58,407 min stale on Air-M5 and 12,755 min on Pro until refreshed by hand on Air-M5; scripts/claude_seat_quota.py writes it but nothing schedules it (back-to-back runs rate-limit the endpoint)"
   ]
 }

@@ -64,8 +64,9 @@
     },
     "openai": {
       "binding_surface": "codex-home",
-      "canonical_roster": ["O1", "O2"],
-      "o2_alias_policy": "canonical-plus-compatibility-name-is-one-seat",
+      "canonical_roster": ["O1", "O2", "O3"],
+      "o2_alias_policy": "acct2-is-a-distinct-account-O3",
+      "auto_rotation_order": ["O1", "O2", "O3"],
       "seats": [
         {
           "seat_id": "O1",
@@ -80,6 +81,14 @@
           "selector_state": "unverified",
           "runtime_auth": "unverified",
           "evidence": "no-host-evidence"
+        },
+        {
+          "seat_id": "O3",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence",
+          "quota_independence": "unverified"
         }
       ]
     }
@@ -87,7 +96,7 @@
   "operator_actions": [
     "operator[profile_binding]: bind each intended Claude seat to an Air-M5-local profile",
     "operator[interactive_login]: authenticate each intended Claude seat on Air-M5 and capture a fresh seat-specific proof",
-    "operator[profile_binding]: normalize Air-M5 O1 and O2 without treating the O2 compatibility name as another seat",
-    "operator[interactive_login]: authenticate Air-M5 O1 and O2 separately and capture fresh seat-specific proofs"
+    "operator[profile_binding]: normalize Air-M5 O1, O2 and O3 (O3 is the distinct Team account behind the acct2 directory name on this host)",
+    "operator[interactive_login]: authenticate Air-M5 O1, O2 and O3 separately and capture fresh seat-specific proofs"
   ]
 }

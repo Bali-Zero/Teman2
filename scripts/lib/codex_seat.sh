@@ -19,14 +19,27 @@
 # never touched by anything. Two accounts were one account, and on the machine
 # that runs the crons they were zero.
 #
-# TWO NAMES, ONE ROLE. The second seat is called `~/.codex-o2` by the repo SSOT
-# (FLEET_TOPOLOGY.json, codex.md, the fleet-order spec) and `~/.codex-acct2` by
-# the global CLAUDE.md. Both names exist in the fleet TODAY, on different
-# machines. A list that knows only one of them makes the other machine's second
-# seat invisible — which is this very defect, relocated. Both are listed. If a
-# machine ever has both, they hold two distinct auth.json, i.e. honestly two
-# seats.
+# ONE DIRECTORY NAME, A DIFFERENT SEAT PER HOST. The same name can mean a
+# different role on another machine, so the role is documented per host in
+# infra/conductor/seat_maps/<host>.v1.json and FLEET_TOPOLOGY.json:
 #
+#   Pro / Mini  ~/.codex = O1, ~/.codex-o2 or ~/.codex-acct2 = O2 (two names, ONE
+#               seat: a machine holds at most one of them) -> two seats
+#   Air-M5      ~/.codex = O1, ~/.codex-o2 = O2, ~/.codex-acct2 = O3 (a distinct
+#               ChatGPT Team account) -> three seats
+#
+# This function only enumerates directories that hold an auth.json, in the order
+# below, so it needs no per-host branch: on Air-M5 its order is the declared
+# `auto_rotation_order` (O1, O2, O3) and a test pins the two together. The field
+# is DECLARATIVE: nothing here reads it. Excluding O3 from automatic rotation
+# means setting CODEX_SEAT_DIRS on that host (or editing the list below);
+# editing the field alone changes nothing. The test pins the list below to the
+# field, so moving only one of THOSE two goes red; a host's CODEX_SEAT_DIRS is
+# pinned by no test. Callers that rotate
+# (codex_seat_pick) advance a start offset, so "last" is last in enumeration
+# order, not last in every attempt. A Pro/Mini host is EXPECTED to hold only one
+# of the two O2 names; this function does not enforce that.
+
 # `auth.json` presence is a PROXY for "usable" and it can lie: a revoked token
 # leaves the file exactly where it was. That is deliberately not load-bearing
 # here. It buys one thing only — never spending an attempt on a directory that
