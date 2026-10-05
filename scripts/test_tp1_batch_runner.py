@@ -123,7 +123,7 @@ def test_persistent_rate_limit_at_floor_is_presumed_quota(tmp_path):
 def test_transient_error_retries_then_records_failure(tmp_path):
     dead = {"status": None, "error": "timed out", "usage": {}}
     call = FakeCall([dead, dead])
-    assert runner(tmp_path, call, n=1, max_attempts=2).run() == 0
+    assert runner(tmp_path, call, n=1, max_attempts=2).run() == 4  # its only job failed: not a clean drain
     assert [(r["status"], r["attempts"]) for r in rows(tmp_path)] == [("failed", 2)]
     assert len(call.calls) == 2
 
@@ -335,3 +335,48 @@ def test_main_installs_the_no_redirect_opener_before_the_credential(tmp_path, mo
     assert tbr.main(["--queue", str(q), "--out-dir", str(tmp_path / "out")]) == 2
     assert len(installed) == 1
     assert any(isinstance(h, tbr._NoRedirect) for h in installed[0].handlers)
+
+
+OK_RAW = json.dumps({"choices": [{"message": {"content": '{"defects": []}'}}], "usage": {"total_tokens": 5}})
+
+
+@pytest.mark.parametrize("body", [
+    "Throttling.AllocationQuota: quota exceeded",
+    '{"code":"Throttling.AllocationQuota","message":"Allocated quota exceeded"}',
+], ids=["plain", "json"])
+def test_throttling_quota_wording_backs_off_through_the_door(tmp_path, monkeypatch, body):
+    script = [(429, body, body), (200, OK_RAW, "")]
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: script.pop(0))
+    assert runner(tmp_path, call, n=1, concurrency=1).run() == 0
+    assert len(sent) == 2 and [r["status"] for r in rows(tmp_path)] == ["ok"]
+
+
+@pytest.mark.parametrize("status", [400, 200])
+def test_insufficient_account_balance_code_stops_the_run_through_the_door(tmp_path, monkeypatch, status):
+    body = json.dumps({"error": {"code": "insufficient_account_balance", "message": "please recharge"}})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (status, body, body))
+    assert runner(tmp_path, call, n=3, concurrency=1).run() == 5
+    assert len(sent) == 1 and not (tmp_path / "results.jsonl").exists()
+
+
+def test_negative_usage_counts_never_push_the_totals_down(tmp_path, monkeypatch):
+    raw = json.dumps({"choices": [{"message": {"content": "{}"}}],
+                      "usage": {"prompt_tokens": -1000, "completion_tokens": 5, "total_tokens": -995}})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, raw, ""))
+    assert runner(tmp_path, call, n=1).run() == 0
+    hb = heartbeat(tmp_path)
+    assert (hb["prompt_tokens"], hb["completion_tokens"], hb["total_tokens"]) == (0, 5, 5)
+
+
+def test_a_run_whose_every_sent_job_failed_is_not_reported_as_drained(tmp_path):
+    bad = {"status": 400, "error": "Range of input length should be [1, 98304]", "usage": {}}
+    assert runner(tmp_path, FakeCall([bad, bad]), n=2).run() == 4
+    assert heartbeat(tmp_path)["state"] == "stopped:all-failed" and heartbeat(tmp_path)["ok"] == 0
+    assert runner(tmp_path, FakeCall(), n=2).run() == 0  # nothing left to send is still a clean drain
+
+
+def test_a_reply_without_usage_is_charged_to_the_token_budget(tmp_path, monkeypatch):
+    raw = json.dumps({"choices": [{"message": {"content": "{}"}}]})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, raw, ""))
+    assert runner(tmp_path, call, n=3, concurrency=1, token_budget=1).run() == 3
+    assert len(sent) == 1

@@ -33,8 +33,9 @@ Result row: {"id", "lane", "model", "status", "answer", "parsed", "usage",
              "secs", "attempts", "error", "ts"}
 
 Exit codes: 0 queue drained · 2 credential unavailable · 3 stopped by
-deadline / kill file / token budget · 5 stopped by a quota, auth or redirect
-error · 6 another runner holds this out-dir.
+deadline / kill file / token budget · 4 drained, but every job it sent came
+back failed or rejected · 5 stopped by a quota, auth or redirect error ·
+6 another runner holds this out-dir.
 
 Usage:
     python3 scripts/tp1_batch_runner.py --queue q.jsonl --out-dir ~/tp1-runs/x \\
@@ -128,7 +129,7 @@ def _int(value: object) -> int:
     """A malformed usage field must never raise: this runs AFTER a paid 200, and an
     exception here would be settled as transient and the job sent (and paid) again."""
     try:
-        return int(value or 0)
+        return max(0, int(value or 0))  # a negative count would pull the budget's total down
     except (TypeError, ValueError, OverflowError):
         return 0
 
@@ -148,7 +149,11 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
     status, raw, tail = no_stream_chat_completion(TP1_CHAT_COMPLETIONS_URL, headers, body, timeout, [token])
     out: dict = {"status": status, "secs": round(time.time() - started, 1), "usage": {}}
     if status != 200:
-        out["error"] = scrub(raw or tail or "", [token])  # whole body: classify() reads all of it
+        # classify() reads the RAW body: scrub() turns every 24+ char run into <REDACTED>, so
+        # "Throttling.AllocationQuota: quota exceeded" lost its rate marker and stopped the run,
+        # and "insufficient_account_balance" lost its quota marker and was rejected row by row.
+        out["kind"] = classify(status, raw or tail or "")
+        out["error"] = scrub(raw or tail or "", [token])
         return out
     # Everything below runs AFTER a paid 200 and must not raise: settle() would read the
     # exception as transient and send (and pay for) the job again.
@@ -161,6 +166,11 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
     pt, ct = _int(usage.get("prompt_tokens")), _int(usage.get("completion_tokens"))
     out["usage"] = {"prompt_tokens": pt, "completion_tokens": ct,
                     "total_tokens": _int(usage.get("total_tokens")) or pt + ct}
+    if not out["usage"]["total_tokens"]:
+        # A paid reply that reports no usage still spent tokens: charge the budget an upper bound
+        # (one token per prompt character, plus the full completion allowance), never zero.
+        out["unmetered"] = len(prompt) + max_tokens
+    out["kind"] = "ok"
     try:
         answer, warning, error = extract_answer(raw)
     except Exception as e:
@@ -169,6 +179,7 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
         out["error"] = scrub(error, [token])
         gateway = doc.get("error")  # a quota error can ride inside a 200: classify() reads only this
         if gateway:
+            out["kind"] = classify(200, json.dumps(gateway))
             out["gateway_error"] = scrub(json.dumps(gateway), [token])
     else:
         out["answer"] = scrub(answer or "", [token], keep=_prompt_identifiers(prompt))
@@ -244,7 +255,7 @@ class Runner:
             return "kill-file"
         if dt.datetime.now(dt.timezone.utc) >= self.stop_at:
             return "deadline"
-        if self.token_budget and self.stats["total_tokens"] >= self.token_budget:
+        if self.token_budget and self.stats["total_tokens"] + self.stats["unmetered_charge"] >= self.token_budget:
             return "token-budget"
         return None
 
@@ -284,8 +295,11 @@ class Runner:
                     job, attempt = inflight.pop(fut)
                     reason = self.settle(job, attempt, fut, pending) or reason
                 self.beat("running" if reason is None else f"stopping:{reason}", force=bool(finished))
+        if reason is None and not (self.stats["ok"] or self.stats["no_answer"]) \
+                and self.stats["failed"] + self.stats["rejected"]:
+            reason = "all-failed"  # a run that sent jobs and got no answer at all is not a clean drain
         self.beat(f"stopped:{reason or 'drained'}", force=True)
-        return 0 if reason is None else 5 if reason == "quota" else 3
+        return {None: 0, "quota": 5, "all-failed": 4}.get(reason, 3)
 
     def settle(self, job: dict, attempt: int, fut: cf.Future, pending: collections.deque) -> Optional[str]:
         try:
@@ -293,9 +307,11 @@ class Runner:
         except Exception as e:  # a crashed call is a transient failure, never a dead runner
             res = {"status": None, "error": f"{type(e).__name__}: {e}", "usage": {}}
         for k, v in (res.get("usage") or {}).items():
-            self.stats[k] += int(v or 0)
+            self.stats[k] += _int(v)
+        self.stats["unmetered_charge"] += _int(res.get("unmetered"))
         status = res.get("status")
-        kind = classify(status, res.get("gateway_error", "") if status == 200 else res.get("error", ""))
+        # tp1_call_once classifies the unscrubbed body; a call that crashed (or a test double) has no kind
+        kind = res.get("kind") or classify(status, res.get("gateway_error", "") if status == 200 else res.get("error", ""))
         if kind != "ok":
             self.last_error = f"{kind}: HTTP {res.get('status')}: {(res.get('error') or '')[-160:]}"
         if kind == "ok":
@@ -341,7 +357,7 @@ class Runner:
         self.last_beat = now
         hours = max(now - self.started, 1.0) / 3600
         hb = {"ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "pid": os.getpid(),
-              "state": state, "queue": len(self.jobs), **self.stats, "concurrency": self.limit,
+              "state": state, "queue": len(self.jobs), **self.stats, "ok": self.stats["ok"], "concurrency": self.limit,
               "calls_per_hour": round(self.stats["ok"] / hours, 1),
               "tokens_per_hour": int(self.stats["total_tokens"] / hours),
               "stop_at": self.stop_at.isoformat(), "kill_file": str(self.kill_file), "last_error": self.last_error}
