@@ -397,6 +397,16 @@ grep -q "docker image rm neo4j\|docker image rm fresh-img" "$ROOT/calls" && no "
 # F3 (review of #7859): judge the recorded argv of each call, not a spelling of it
 argv_prune_all(){ awk '$1=="docker"{p=0;a=0;for(i=2;i<=NF;i++){if($i=="prune")p=1;if($i~/^--all(=|$)/||$i~/^-[A-Za-z]*a[A-Za-z]*$/)a=1}if(p&&a)bad=1}END{exit !bad}' "$1"; }
 argv_rm_force(){ awk '$1=="docker"{r=0;f=0;for(i=2;i<=NF;i++){if($i=="rm")r=1;if($i~/^--force(=|$)/||$i~/^-[A-Za-z]*f[A-Za-z]*$/)f=1}if(r&&f)bad=1}END{exit !bad}' "$1"; }
+# F-A (verifier of #7877): the argv of every recorded call is judged as an ENTITY (tool + verb) against the
+# only read-only probes a dry-run may make; anything else is a mutation, whatever its spelling.
+argv_mutating(){ awk '{k=$1" "$2; if($1=="docker"&&$2=="image")k=k" "$3} k!="docker info"&&k!="docker image ls"&&k!="docker ps"&&k!="colima status"{bad=1} END{exit !bad}' "$1"; }
+RO_PROBES="docker info\ndocker image ls --format {{.ID}}\ndocker ps -a -q --filter ancestor=i2\ncolima status\n"
+printf "$RO_PROBES" > "$ROOT/ro0"; DET_OK=yes; argv_mutating "$ROOT/ro0" && DET_OK=no
+for mv in "docker image prune -f" "docker volume prune -f" "docker builder prune -f --filter until=168h" "docker image rm a:b" "docker system prune" "uv cache prune" "restic cache --cleanup" "brew cleanup" "colima ssh -- sudo fstrim -av" "colima stop" "docker rm c1"; do
+  printf "$RO_PROBES$mv\n" > "$ROOT/ro1"; argv_mutating "$ROOT/ro1" || DET_OK="no($mv)"
+done
+: > "$ROOT/ro2"; argv_mutating "$ROOT/ro2" && DET_OK=no
+[ "$DET_OK" = yes ] && ok "mutation detector: quiet on the read-only probes (and an empty log), fires on each prune/rm/cleanup/fstrim/stop verb" || no "mutation detector blind or over-matching: $DET_OK"
 printf 'docker image prune --all -f\n' > "$ROOT/m1"; printf 'docker volume prune --all -f\n' > "$ROOT/m2"; printf 'docker image prune -af\n' > "$ROOT/m3"; printf 'docker builder prune -fa --filter until=168h\n' > "$ROOT/m4"; printf 'docker image rm --force x\n' > "$ROOT/m5"; printf 'docker image rm -f x\n' > "$ROOT/m6"
 printf 'docker image prune -f\ndocker builder prune -f --filter until=168h\ndocker ps -a -q --filter ancestor=i2\ndocker image rm a:b\n' > "$ROOT/m7"
 { argv_prune_all "$ROOT/m1" && argv_prune_all "$ROOT/m2" && argv_prune_all "$ROOT/m3" && argv_prune_all "$ROOT/m4" && argv_rm_force "$ROOT/m5" && argv_rm_force "$ROOT/m6" && ! argv_prune_all "$ROOT/m7" && ! argv_rm_force "$ROOT/m7"; } \
@@ -406,6 +416,7 @@ argv_rm_force "$ROOT/calls" && no "docker image rm was forced" || ok "docker ima
 for v in "image prune -f" "volume prune -f" "builder prune -f --filter until=168h"; do
   grep -Fxq "docker $v" "$ROOT/calls" && ok "docker $v issued with exactly its dangling-only argv" || no "docker $v missing or altered: $(grep prune "$ROOT/calls" | tr '\n' ';')"
 done
+argv_mutating "$ROOT/calls" && ok "innocence: the same detector DOES fire on the --apply run's recorded argv (the dry-run check below cannot be vacuous)" || no "detector blind on the --apply run: $(tr '\n' ';' < "$ROOT/calls")"
 grep -q '"uv_cache_prune":{"status":"done".*"restic_cache_cleanup":{"status":"done".*"docker_unused_images":{"status":"done","count":2,.*"colima_fstrim":{"status":"done","count":1,' "$ROOT/j.jsonl" \
   && ok "receipt: each tool rule is its own step with status/count/df delta" || no "tool steps receipt wrong: $(tail -1 "$ROOT/j.jsonl")"
 [ "$(grep -n "image rm\|fstrim" "$ROOT/calls" | tail -1 | grep -c fstrim)" -eq 1 ] && ok "fstrim runs after the docker removals (their freed blocks reach the host the same run)" || no "fstrim ran before a docker removal"
@@ -420,6 +431,9 @@ OUT=$(truns --apply); RC=$?
 build; fake_tools "INFO colima is running" "$IMGS" none; OUT=$(truns); RC=$?
 [ $RC -eq 0 ] && ! grep -q "fstrim\|cache prune\|--cleanup\|image rm" "$ROOT/calls" && echo "$OUT" | grep -q "docker_unused_images: dry-run count=3" \
   && ok "dry-run: no tool verb executed, docker candidates counted" || no "dry-run executed a tool verb rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
+grep -Fxq "docker info" "$ROOT/calls" && grep -q "^docker image ls" "$ROOT/calls" && grep -q "^docker ps -a" "$ROOT/calls" && grep -Fxq "colima status" "$ROOT/calls" \
+  && ok "dry-run really probed (docker info, image ls, ps, colima status are in the recorded calls, so the check below reads real data)" || no "dry-run probes not recorded: $(tr '\n' ';' < "$ROOT/calls")"
+argv_mutating "$ROOT/calls" && no "dry-run ran a mutating verb (prune/rm/cleanup/fstrim/...): $(tr '\n' ';' < "$ROOT/calls")" || ok "dry-run: every recorded call is a read-only probe (no docker image/volume/builder prune, no uv/restic/brew call, no fstrim)"
 build; fake_tools "INFO colima is not running" "" none; OUT=$(truns --apply); RC=$?
 [ $RC -eq 0 ] && ! grep -q "fstrim" "$ROOT/calls" && grep -q '"colima_fstrim":{"status":"skipped","count":0,"df_delta_bytes":[-0-9]*,"reason":"colima-not-running"}' "$ROOT/j.jsonl" \
   && ok "colima down: fstrim skipped with reason colima-not-running" || no "colima-down handling rc=$RC"
@@ -444,19 +458,29 @@ build; fake_tools "INFO colima is running" "$IMGS" none; OUT=$(FAKE_RM_FAIL=1 tr
 [ $RC -eq 1 ] && grep -q '"docker_unused_images":{"status":"error"[^}]*"reason":"rm-failed"' "$ROOT/j.jsonl" && ok "failed docker image rm: step=error rm-failed, never done" || no "failed rm reported rc=$RC"
 
 # F1: bounded() is a real deadline. The fake ignores ALRM and TERM and sleeps 31 s (a Go binary's behaviour).
+# Cases run CONCURRENTLY: each in its own root under $HC (the fixture globals are re-pointed inside a
+# background subshell), writes "ok|msg" or "no|msg" to its own file, and the parent reports them in call order.
+HC="$ROOT/hc"; HC_N=0
 hang_case(){ # $1 FAKE_HANG key  $2 step ("" = just errors>=1)  $3 reason  $4 regex of a LATER step that must still have run
-  local el p st alive="" shape=ok
-  build; fake_tools "INFO colima is running" "$IMGS" none; : > "$ROOT/hang.pid"; SECONDS=0
-  OUT=$(FAKE_HANG="$1" DISK_JANITOR_TOOL_TIMEOUT=2 DISK_JANITOR_CACHE_TIMEOUT=2 DISK_JANITOR_FSTRIM_TIMEOUT=2 truns --apply); RC=$?; el=$SECONDS
-  sleep 1
-  for p in $(cat "$ROOT/hang.pid"); do st=$(ps -o stat= -p "$p" 2>/dev/null); case "$st" in ''|Z*) ;; *) alive="$alive $p" ;; esac; done
-  [ "$RC" -eq 1 ] || shape="rc=$RC (want 1)"
-  [ "$el" -lt 20 ] || shape="took ${el}s: not bounded"
-  [ -z "$alive" ] || shape="child left behind:$alive"
-  grep -q '"errors":[1-9]' "$ROOT/j.jsonl" || shape="errors not counted"
-  [ -z "$2" ] || grep -q "\"$2\":{\"status\":\"error\"[^}]*\"reason\":\"$3\"" "$ROOT/j.jsonl" || shape="no $2 error $3: $(grep -o "\"$2\":{[^}]*}" "$ROOT/j.jsonl")"
-  grep -q "$4" "$ROOT/j.jsonl" || shape="later step did not run"
-  [ "$shape" = ok ] && ok "hung '$1' (ignores ALRM+TERM): returns in ${el}s, ${2:-prune/brew} error ${3:-counted}, later steps ran, no child left" || no "hung '$1': $shape"
+  HC_N=$((HC_N+1))
+  (
+    local el p st alive="" shape=ok w=0
+    ROOT="$HC/$HC_N"; H="$ROOT/home"; T="$ROOT/claude-501"; FAKEBIN="$ROOT/bin"; mkdir -p "$ROOT"
+    build; fake_tools "INFO colima is running" "$IMGS" none; : > "$ROOT/hang.pid"; SECONDS=0
+    OUT=$(FAKE_HANG="$1" DISK_JANITOR_TOOL_TIMEOUT=3 DISK_JANITOR_CACHE_TIMEOUT=3 DISK_JANITOR_FSTRIM_TIMEOUT=3 truns --apply); RC=$?; el=$SECONDS
+    while :; do   # bounded poll (3 s) for the killed children to be gone, not a fixed sleep
+      alive=""; for p in $(cat "$ROOT/hang.pid"); do st=$(ps -o stat= -p "$p" 2>/dev/null); case "$st" in ''|Z*) ;; *) alive="$alive $p" ;; esac; done
+      { [ -z "$alive" ] || [ $w -ge 30 ]; } && break; w=$((w+1)); sleep 0.1
+    done
+    [ "$RC" -eq 1 ] || shape="rc=$RC (want 1)"
+    [ "$el" -lt 20 ] || shape="took ${el}s: not bounded"
+    [ -z "$alive" ] || shape="child left behind:$alive"
+    grep -q '"errors":[1-9]' "$ROOT/j.jsonl" || shape="errors not counted"
+    [ -z "$2" ] || grep -q "\"$2\":{\"status\":\"error\"[^}]*\"reason\":\"$3\"" "$ROOT/j.jsonl" || shape="no $2 error $3: $(grep -o "\"$2\":{[^}]*}" "$ROOT/j.jsonl")"
+    grep -q "$4" "$ROOT/j.jsonl" || shape="later step did not run"
+    if [ "$shape" = ok ]; then echo "ok|hung '$1' (ignores ALRM+TERM): returns in ${el}s, ${2:-prune/brew} error ${3:-counted}, later steps ran, no child left"
+    else echo "no|hung '$1': $shape"; fi > "$HC/$HC_N.res"
+  ) &
 }
 COLIMA_DONE='"colima_fstrim":{"status":"done"'; DOCKER_DONE='"docker_unused_images":{"status":"done"'
 hang_case "docker:info"       docker_unused_images docker-info-timeout "$COLIMA_DONE"
@@ -469,6 +493,11 @@ hang_case "uv:"               uv_cache_prune       prune-timeout       "$COLIMA_
 hang_case "restic:"           restic_cache_cleanup cleanup-timeout     "$COLIMA_DONE"
 hang_case "docker:volume prune" "" "" "$COLIMA_DONE"
 hang_case "brew:"             "" "" "$COLIMA_DONE"
+wait
+i=1; while [ $i -le $HC_N ]; do
+  res=$(cat "$HC/$i.res" 2>/dev/null) || res="no|hung case $i wrote no result"; [ -n "$res" ] || res="no|hung case $i wrote no result"
+  case "$res" in ok\|*) ok "${res#ok|}" ;; *) no "${res#no|}" ;; esac; i=$((i+1))
+done
 
 # F5: colima status that floods its stdout; grep -q would exit first and SIGPIPE it (rc 141 under pipefail)
 build; fake_tools "x" "" none
