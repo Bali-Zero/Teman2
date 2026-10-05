@@ -118,7 +118,14 @@ POLL_S = 20
 # workflow — so editing one without the other fails CI rather than drifting quietly.
 #
 BUNDLE_PATHS = ("apps/mouth", "packages", "package.json", "package-lock.json", "vercel.json")
-BUNDLE_EXCLUDE: tuple[str, ...] = ()
+# Documentation-only changes under those roots do not change the built bundle: Vercel builds
+# from the same sources either way, so a pure-.md commit is one Vercel deliberately SKIPPED,
+# and aiming production at it resurrects the 2026-08-10 defect (target = a sha with no READY
+# build and no path to currency). Same rule, same tokens, in the sentinel's inline pathspec.
+BUNDLE_EXCLUDE: tuple[str, ...] = (
+    ":(exclude,glob)apps/mouth/**/*.md",
+    ":(exclude,glob)packages/**/*.md",
+)
 
 
 def _read_auth() -> dict:

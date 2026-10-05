@@ -120,7 +120,9 @@ jobs:
         run: |
           set -uo pipefail
           sha=$(git log -1 --format=%H -- \
-            apps/mouth packages package.json package-lock.json vercel.json)
+            apps/mouth packages package.json package-lock.json vercel.json \
+            ':(exclude,glob)apps/mouth/**/*.md' \
+            ':(exclude,glob)packages/**/*.md')
           if [ -z "$sha" ]; then
             echo "::warning::no commit touches the deploy-relevant paths — nothing to assert"
             echo "skip=true" >> "$GITHUB_OUTPUT"

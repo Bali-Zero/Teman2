@@ -173,6 +173,27 @@ def test_an_e2e_only_commit_moves_the_target(repo):
     assert sha == newer
 
 
+def test_an_mouth_readme_only_commit_does_not_move_the_target(repo):
+    """Guilt: a docs-only change inside apps/mouth matches BUNDLE_PATHS but changes nothing in
+    the built bundle — Vercel skips such commits, so targeting one strands production (the
+    2026-08-10 shape, one directory deeper)."""
+    work, shas = repo
+    _commit(work, "apps/mouth/README.md", "# docs only\n")
+    _run(work, "push", "-q", "origin", "main")
+    sha, _how = vpd._deploy_relevant_head()
+    assert sha == shas["e2e"], "a .md-only commit must not become the promote target"
+
+
+def test_an_mouth_tsx_commit_still_moves_the_target(repo):
+    """Innocence's mirror: the exclude must not silence real bundle changes. A nested .tsx
+    change still moves the target even though the .md glob now guards the same tree."""
+    work, shas = repo
+    newer = _commit(work, "apps/mouth/components/widget.tsx", "export const w = 1\n")
+    _run(work, "push", "-q", "origin", "main")
+    sha, _how = vpd._deploy_relevant_head()
+    assert sha == newer
+
+
 def test_a_later_frontend_commit_does_move_the_target(repo):
     """Innocence's mirror: the selector must not be inert. A real frontend change moves it."""
     work, shas = repo
