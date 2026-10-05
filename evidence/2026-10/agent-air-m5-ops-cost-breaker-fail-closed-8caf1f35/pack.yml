@@ -58,20 +58,50 @@ dissent:
     resolution: "Log reworded (the gateway's dedup decides when it re-sends). The gateway defect itself is owed to tg_notify's owner, outside this batch (measured on Pro: dedup ts == p0_unsent ts 2026-09-25T07:34:59.84Z)."
   - seat: kimi-k3
     objection: "#2 MINOR: a stamp written by the pre-fix version satisfies the deduped re-arm, so a deploy while the gateway dedups an old failed send mutes the dead-man up to ~6 h."
-    status: NOTICE
-    resolution: "Measured on Pro: the live stamp (2026-09-25T21:25Z) is bogus, but the gateway's dedup entry for this key is 2026-09-25T07:34Z, streak 1, far past its 6 h window, so the next attempt is a real send, not deduped. Hazard needs an old-code failed attempt between now and delivery; bounded and self-healing."
+    status: PLAUSIBLE
+    resolution: "Left as a notice. Measured on Pro: the live stamp (2026-09-25T21:25Z) is bogus, but the gateway's dedup entry for this key is 2026-09-25T07:34Z, streak 1, far past its 6 h window, so the next attempt is a real send, not deduped. Hazard needs an old-code failed attempt between now and delivery; bounded and self-healing."
   - seat: kimi-k3
     objection: "#3 MINOR: rm -f of the stamp destroys delivery proof; drop it."
-    status: REFUTED
-    resolution: "Without the removal, an OLD delivered stamp plus a NEW failed attempt makes the next tick's 'deduped' re-arm the cooldown on zero proof — the original defect. The false alarm Kimi describes (delivered T0, transient gateway error, then deduped read as undelivered) is real but errs loud and ends with the gateway window. Three checks now kill the rm-dropped mutant."
+    status: CONFIRMED
+    resolution: "The false-alarm sequence is real; the proposed cure is rejected. Without the removal, an OLD delivered stamp plus a NEW failed attempt makes the next tick's 'deduped' re-arm the cooldown on zero proof — the original defect. The false alarm Kimi describes (delivered T0, transient gateway error, then deduped read as undelivered) is real but errs loud and ends with the gateway window. Three checks now kill the rm-dropped mutant."
   - seat: kimi-k3
     objection: "#4 NIT: no test for no_gateway/no_python; the no-verdict fan-out call count is unpinned."
     status: CONFIRMED
     resolution: "no_gateway and the per-interpreter call count are pinned; no_python cannot be faked without editing the absolute list (W108) and stays untested."
   - seat: kimi-k3
     objection: "#5 NIT: test_tg_sender_migration.sh runs the extracted tg_alert without a log() stub, so fail-loud is proven by 'log: command not found'."
-    status: NOTICE
-    resolution: "Pre-existing harness gap in the tg-gateway lane, not edited here; owed to that file's owner."
+    status: CONFIRMED
+    resolution: "Left as a notice. Pre-existing harness gap in the tg-gateway lane, not edited here; owed to that file's owner."
+  - seat: kimi-k3
+    objection: "Follow-up on the disposition delta cd350e4fed..a48e3c6e87 (verbatim in review-raw.md): refutation of the #3 cure accepted, #1 and #4 confirmed, #2 and #5 acceptable as notices, no new defect."
+    status: CONFIRMED
+    resolution: "VERDICT ACCEPT on the delta."
+pii_scan: clean
+receipts:
+  - claim: "Dead-man alert-path and stale-detection checks green at 107f3f9244."
+    cmd: "bash scripts/test_cost_breaker_deadman.sh"
+    result: "passed=28 failed=0"
+    exit: 0
+    ts: "2026-10-05T13:09:48Z"
+    seat: claude-opus-5.5
+  - claim: "Corrupt PG aggregate is UNKNOWN and DEGRADEs; finite aggregates stay KNOWN."
+    cmd: "python3 -m pytest -q scripts/test_cost_breaker.py -k fixc"
+    result: "8 passed, 52 deselected"
+    exit: 0
+    ts: "2026-10-05T13:10:18Z"
+    seat: claude-opus-5.5
+  - claim: "Whole cost-breaker suite green."
+    cmd: "python3 -m pytest -q scripts/test_cost_breaker.py"
+    result: "60 passed"
+    exit: 0
+    ts: "2026-10-05T13:10:19Z"
+    seat: claude-opus-5.5
+  - claim: "tg sender migration contract still holds (gateway reached, key, poisoned PATH, fail-loud)."
+    cmd: "bash scripts/tests/test_tg_sender_migration.sh"
+    result: "PASS=80 FAIL=0"
+    exit: 0
+    ts: "2026-10-05T13:09:54Z"
+    seat: claude-opus-5.5
 owed:
   - "tg_notify.py: the dedup entry is written before the send outcome, so an unsent P0 mutes its own retries for TG_DEDUP_HOURS (all P0 senders, not only the dead-man)."
   - "test_tg_sender_migration.sh: log() stub for the dead-man in _extra_env so the fail-loud check proves the branch."

@@ -17,3 +17,23 @@
 
   VERDICT: ACCEPT
 ```
+
+# Kimi K3 follow-up on the disposition delta cd350e4fed..a48e3c6e87 (verbatim, same session, read-only)
+
+```text
+• The delta and disposition hold up under re-attack:
+
+  1. **#1 — CONFIRMED.** The new log line (deadman:265) now says the next tick "asks again" and the gateway's dedup decides re-send — accurate, matches the measured gateway behavior.
+
+  2. **#3 — REFUTATION ACCEPTED, and it's right.** Replaying my proposed cure (drop the `rm`): the failed attempt only returns `p0_unsent_spooled` when the gateway had decided to SEND (dedup entry past its window or absent), and the gateway stamps its dedup entry before knowing the outcome — so the next tick's `deduped` carries zero delivery information about THAT attempt. Without the rm, a stale delivered stamp + `deduped` re-arms the cooldown and mutes a repeat the gateway itself judged newsworthy (streak-2, "ripetuta N×") — the original defect shape, fail-silent. With the rm, "stamp present" means "the LAST attempt was delivered" — a sound invariant; my false-alarm sequence errs loud (log + state field only, no Telegram spam) and is bounded by the gateway window. Fail-loud is the correct side for a dead-man. The new comment (lines 9-11 of the delta) states exactly this invariant.
+
+  3. **The three new checks kill the rm-dropped mutant as claimed:** `sent` → expire stamp → `$unsent` → `test ! -e "$cooldown"` fails the moment the rm is removed; the following `deduped` tick pins both "no re-arm after a failed attempt" and `alert_undelivered=deduped`. The laundering sequence is now red by construction.
+
+  4. **#4 — CONFIRMED.** The `no_gateway` guilt pair (cooldown absent + `alert_undelivered=no_gateway`) is correctly sandboxed (fallback `$HOME/nuzantara/...` doesn't exist under the fake HOME), and the `ncalls == n_py` check pins the no-verdict fan-out to exactly one call per existing absolute interpreter — bounded, no storm. The `n_py` loop is safe under `set -u`/no-`set -e`.
+
+  5. **#2 / #5 as notices — ACCEPTABLE.** #2's residual risk needs a bogus stamp AND a live gateway dedup entry to coincide; the measured Pro state (dedup entry 2026-09-25, far past its window) means the next attempt is a real send, and the risk is bounded by the gateway window regardless. #5 is pre-existing in another lane.
+
+  No new defect in the delta itself: it changes one log line and one comment, keeps the rm, and adds tests that only tighten the net.
+
+  VERDICT: ACCEPT
+```
