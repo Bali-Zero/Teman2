@@ -1,0 +1,77 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  FIXBATCH-C-20261005 (findings-ranked items 6 and 14). Red tests first on a worktree from origin/main 5ec3d63463
+  (commit f489074d76), build handed to Codex through scripts/seat_build.sh, read line by line and adjusted by the
+  Dux, reviewed by Kimi K3 (a third family), findings disposed in a48e3c6e87.
+lanes:
+  - lane: cost-breaker-red-tests
+    role: build
+    seat: "claude-opus-5.5 (Dux dux-fix-c: Pro read-only measurement, consumer map, 2 pytest + 10 shell red checks, spec)"
+  - lane: cost-breaker-build
+    role: build
+    seat: "Codex gpt-5.6-sol, effort high, CODEX_HOME ~/.codex-acct2 (O3), via scripts/seat_build.sh --seat codex --tier sol; rc 0, 1417 s; seat log on M5 .worktrees/seat-build-codex-20261005T123003Z-55906.log"
+  - lane: cost-breaker-review
+    role: review
+    seat: "Kimi K3 (kimi-code/k3 via scripts/with_seat.sh, read-only): VERDICT ACCEPT on cd350e4fed, 3 MINOR + 2 NIT; verbatim in review-raw.md"
+what_changed: |
+  scripts/cost_breaker_deadman.sh: tg_alert reads the gateway's own verdict (the last `tg_notify: <status>` line;
+  tg_notify.py always exits 0) into ALERT_STATUS and returns 0 only on `sent`; an interpreter that printed no
+  verdict falls through to the next absolute python3 (the `return 0` inside the loop is gone). main starts the
+  cooldown on `sent`, or on `deduped` while the stamp exists (the stamp now means "the last attempt was delivered" or
+  a human's [S]ilenzia); anything else removes the stamp, logs "alert NOT delivered (gateway: <status>)" and writes
+  `alert_undelivered` into cost_breaker_deadman.json. write_state's optional 3rd argument adds that key; without it
+  the file is byte-identical. Exit status stays 0 in every branch.
+  scripts/cost_breaker.py: _pg_provider_spend returns _safe_decimal(value) (None for NaN / Infinity / negative /
+  garbage / None, with a warning) instead of `or Decimal("0")`; docstring clause added.
+  Dux changes to the builder's diff: write_state collapsed from two heredocs to one template with an optional line;
+  the redundant `[[ -f ]] &&` before `rm -f` dropped; after review, the log wording, a comment on why the stamp is
+  cleared, and the review-driven tests.
+proof: |
+  Red on origin/main 5ec3d63463 (scripts unchanged, tests of f489074d76): pytest -k fixc 5 failed / 3 passed;
+  test_cost_breaker_deadman.sh 9 failed / 13 passed. Green at a48e3c6e87: scripts/test_cost_breaker.py 60 passed;
+  scripts/test_cost_breaker_deadman.sh passed=28 failed=0; scripts/tests/test_tg_sender_migration.sh PASS=80 FAIL=0;
+  scripts/test_deepseek_client.py and scripts/tests/test_verify_the_verifiers.py green; lint_tg_direct_senders rc 0;
+  bash -n clean. Mutant "stamp removal dropped" -> 3 checks red. Byte identity, origin/main vs head, same inputs
+  (fake gateway, temp HOME): healthy tick and delivered tick -> state (minus ts), stamp, log (minus timestamps) and
+  exit code IDENTICAL (8/8).
+  Consumer measured read-only on Pro 2026-10-05T12:22Z: launchd com.nuzantara.cost-breaker-deadman, StartInterval
+  600, runs /Users/nuzantara/nuzantara/scripts/cost_breaker_deadman.sh (repo checkout at 5ec3d63463, == origin/main;
+  not a declared $HOME pair), 1300 runs, last exit 0. Its log since 2026-08-17: 7 `tg_notify: sent`, 2
+  `p0_unsent_spooled`, 1 `p0_overflow_spooled`, 2 gateway internal errors (ENOSPC), 0 "gateway send failed". After
+  Telegram died (2026-09-20): 2026-09-23T01:13+08 p0_unsent, 2026-09-25T15:34+08 p0_unsent, 2026-09-26T04:25+08 and
+  05:25+08 ENOSPC — each followed by the cooldown; 10 ticks on 09-26 logged "cooldown active, not alerting" with three
+  alive-signals stale. Spool: pending.jsonl holds 2 deadman p0_unsent records (counted, not printed).
+  The hourly breaker (com.nuzantara.cost-breaker, cost_breaker_run.sh) reads the JSONL export only: 3747 verdict lines,
+  all ALLOW, 0 UNKNOWN; no production caller passes conn_or_pool (git grep), so the PG change has no live consumer today.
+decision: |
+  "Fail closed" for #14 is the EXISTING G4 state, not a new one: None = spend UNKNOWN, logged, never read as $0, mapped
+  by decide() to DEGRADE. A DEGRADE stops nothing fleet-wide (the CLI logs and exits 1; deepseek_client refuses only
+  its own call), and no live caller reaches the PG path, so a distinct UNKNOWN-with-held-verdict state would be
+  machinery without a consumer. Not taken: a SQL row filter (cost_usd <> 'NaN' AND cost_usd >= 0) that would mirror the
+  JSONL skip-one-row semantics — untestable here without a real Postgres, and numeric NaN sorts above every number.
+  For #6, delivery is the gateway's own verdict, never its exit code; the storm bound is the launchd tick (one gateway
+  call per 600 s while undelivered) plus the gateway's dedup ladder and P0 budget.
+dissent:
+  - seat: kimi-k3
+    objection: "#1 MINOR: the log line 'the next tick retries' over-promises — tg_notify stamps its dedup entry before the send outcome, so after p0_unsent the retries get 'deduped' for ~6 h."
+    status: CONFIRMED
+    resolution: "Log reworded (the gateway's dedup decides when it re-sends). The gateway defect itself is owed to tg_notify's owner, outside this batch (measured on Pro: dedup ts == p0_unsent ts 2026-09-25T07:34:59.84Z)."
+  - seat: kimi-k3
+    objection: "#2 MINOR: a stamp written by the pre-fix version satisfies the deduped re-arm, so a deploy while the gateway dedups an old failed send mutes the dead-man up to ~6 h."
+    status: NOTICE
+    resolution: "Measured on Pro: the live stamp (2026-09-25T21:25Z) is bogus, but the gateway's dedup entry for this key is 2026-09-25T07:34Z, streak 1, far past its 6 h window, so the next attempt is a real send, not deduped. Hazard needs an old-code failed attempt between now and delivery; bounded and self-healing."
+  - seat: kimi-k3
+    objection: "#3 MINOR: rm -f of the stamp destroys delivery proof; drop it."
+    status: REFUTED
+    resolution: "Without the removal, an OLD delivered stamp plus a NEW failed attempt makes the next tick's 'deduped' re-arm the cooldown on zero proof — the original defect. The false alarm Kimi describes (delivered T0, transient gateway error, then deduped read as undelivered) is real but errs loud and ends with the gateway window. Three checks now kill the rm-dropped mutant."
+  - seat: kimi-k3
+    objection: "#4 NIT: no test for no_gateway/no_python; the no-verdict fan-out call count is unpinned."
+    status: CONFIRMED
+    resolution: "no_gateway and the per-interpreter call count are pinned; no_python cannot be faked without editing the absolute list (W108) and stays untested."
+  - seat: kimi-k3
+    objection: "#5 NIT: test_tg_sender_migration.sh runs the extracted tg_alert without a log() stub, so fail-loud is proven by 'log: command not found'."
+    status: NOTICE
+    resolution: "Pre-existing harness gap in the tg-gateway lane, not edited here; owed to that file's owner."
+owed:
+  - "tg_notify.py: the dedup entry is written before the send outcome, so an unsent P0 mutes its own retries for TG_DEDUP_HOURS (all P0 senders, not only the dead-man)."
+  - "test_tg_sender_migration.sh: log() stub for the dead-man in _extra_env so the fail-loud check proves the branch."
