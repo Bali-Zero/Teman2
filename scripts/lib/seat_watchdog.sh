@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Source-safe process-group watchdog vendored from scripts/ai-dispatch.sh.
-# ai-dispatch.sh cannot be sourced: it changes directory, enables strict mode,
-# and dispatches at top level. This deliberate duplication is ledgered by D1.
+# Source-safe process-group watchdog — SINGLE SOURCE of run_with_timeout (ledger L50).
+# Previously a deliberate duplicate of the copy in scripts/ai-dispatch.sh (ledgered by D1);
+# L50 deleted the dispatcher's in-file copy, so ai-dispatch.sh and seat_build.sh both
+# source this file. ai-dispatch.sh cannot be sourced itself: it changes directory,
+# enables strict mode, and dispatches at top level.
 # Fleet hosts have neither timeout(1) nor gtimeout(1), so this stays pure Bash.
 
 run_with_timeout() {
