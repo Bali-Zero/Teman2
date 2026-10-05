@@ -87,12 +87,13 @@ def _happy_path_fake_run(calls, put_ok=True, pr_create_ok=True, pr_merge_ok=True
 
 
 class TestFlushImageBatch:
-    def test_empty_batch_is_a_noop(self):
+    def test_empty_batch_writes_opens_and_closes_nothing(self):
+        # it still reads main and the family (the stranded-PR sweep), never writes
         calls = []
         with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
             ok = ppp.flush_image_batch()
         assert ok is True
-        assert calls == []
+        assert not any("PUT" in c["cmd"] or c["cmd"][:2] == ["gh", "pr"] for c in calls)
 
 
 class TestDeferredStepMarks:
@@ -1466,6 +1467,72 @@ class TestOnePrPerFamily:
 
         download.assert_called_once_with(f"{_IMG}/half.jpg", ref=_OLD_COVERS)
         assert [c["gh_path"] for c in ppp._PENDING_COMMITS] == [f"{_IMG}/half_card.jpg"]
+
+    def test_run_image_does_not_regenerate_covers_an_open_article_pr_ships(self):
+        # 2026-10-05: auto-publish #7855 shipped the coretax covers with its MDX; the
+        # poller read only main and its own family, regenerated them as #7858, and the
+        # queue ejected #7858 add/add the moment #7855 merged
+        slug = "coretax-replace-tax-return-amendments-october-2026"
+        article = "auto-publish/news_20261004_172851_7b7566e7-95ef032ff3c7f24d55a05712"
+        gh = _FakeGitHub(
+            open_prs=[(7849, "agent/nuzantara/mouth/hourly-20261005113006"), (7855, article)],
+            pr_files={article: {f"{_IMG}/{slug}.jpg": ("s1", "added"), f"{_IMG}/{slug}_card.jpg": ("s2", "added"),
+                                f"apps/mouth/src/content/articles/tax-legal/{slug}.mdx": ("s3", "added")}})
+
+        with (
+            patch("scripts.post_publish_poller.subprocess.run", side_effect=gh),
+            patch.object(ppp, "codex_healthy", side_effect=AssertionError("must not regenerate")),
+        ):
+            assert ppp.run_image(slug, "tax") is True
+
+        assert ppp._PENDING_COMMITS == []
+        assert not any("/pulls/7849/" in " ".join(c) for c in gh.calls)  # not a cover carrier
+
+    def test_with_nothing_staged_a_stranded_pr_main_already_serves_is_retired(self):
+        # #7856/#7858/#7860: ejected add/add, auto-merge dropped by the queue, and no
+        # later tick staged a cover, so the supersede pass that retires them never ran
+        stranded = "bot/news-covers-20261005-113349"
+        slug = "coretax-replace-tax-return-amendments-october-2026"
+        gh = _FakeGitHub(open_prs=[(7858, stranded)],
+                         main={f"{_IMG}/{slug}.jpg": "d8fec3e8d3", f"{_IMG}/{slug}_card.jpg": "f75e760723"},
+                         pr_files={stranded: {f"{_IMG}/{slug}.jpg": ("d4314b9d41", "added"),
+                                              f"{_IMG}/{slug}_card.jpg": ("81742022ac", "added")}})
+        gh.dirty.add(7858)
+
+        ok, _ = self._flush(gh, ppp.flush_image_batch)
+
+        assert ok is True
+        assert gh.closed == [7858]
+        assert gh.puts == {}
+        assert not any(c[:3] == ["gh", "pr", "create"] for c in gh.calls)
+
+    def test_with_nothing_staged_a_pr_still_holding_unlanded_content_is_left_open(self):
+        gh = _FakeGitHub(open_prs=[(7001, _OLD_COVERS)], blobs={"s-old": b"old-bytes"},
+                         pr_files={_OLD_COVERS: {f"{_IMG}/old.jpg": ("s-old", "added")}})
+        gh.dirty.add(7001)
+
+        ok, _ = self._flush(gh, ppp.flush_image_batch)
+
+        assert ok is True
+        assert gh.closed == [] and gh.puts == {}
+        assert not any(c[:3] == ["gh", "pr", "create"] for c in gh.calls)
+
+    def test_with_nothing_staged_an_unreadable_listing_still_marks_the_steps_done(self):
+        gh = _FakeGitHub(list_ok=False)
+        ppp._defer_step_mark("image", "S", "image")  # covers already served, nothing to flush
+
+        with patch.object(ppp, "mark_step_done") as mark:
+            ok, _ = self._flush(gh, ppp.flush_image_batch)
+
+        assert ok is True
+        mark.assert_called_once_with("S", "image")
+
+    def test_with_nothing_staged_seo_and_layout_do_not_touch_github(self):
+        gh = _FakeGitHub()
+
+        assert self._flush(gh, ppp.flush_seo_batch)[0] is True
+        assert self._flush(gh, ppp.flush_layout_batch)[0] is True
+        assert gh.calls == []
 
     def test_layout_replays_older_pr_promotions_and_this_ticks_rotations_onto_current_main(self):
         old_layout = "bot/homepage-layout-20261001-120000"

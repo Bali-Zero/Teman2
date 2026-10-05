@@ -532,18 +532,23 @@ def _gh_json(args: list[str], op: str, timeout: int = 30):
         return None
 
 
+def _open_prs(head_prefixes: tuple[str, ...]) -> list[dict] | None:
+    """Open PRs whose head branch starts with one of `head_prefixes`, oldest first."""
+    prs = _gh_json(["pr", "list", "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}", "--state", "open",
+                    "--limit", "300", "--json", "number,url,headRefName,headRefOid"], "list open PRs")
+    if not isinstance(prs, list):
+        return None
+    return sorted((p for p in prs if p.get("headRefName", "").startswith(head_prefixes)),
+                  key=lambda p: p["number"])
+
+
 def _open_family_prs(branch_prefix: str) -> list[dict] | None:
     """Open PRs whose head is a branch of this bot family, oldest first.
 
     None means GitHub could not be read: a caller must not open a PR blind, or
     the pile of conflicting siblings this guards against comes straight back.
     """
-    prs = _gh_json(["pr", "list", "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}", "--state", "open",
-                    "--limit", "300", "--json", "number,url,headRefName,headRefOid"], "list open PRs")
-    if not isinstance(prs, list):
-        return None
-    family = [p for p in prs if p.get("headRefName", "").startswith(f"{branch_prefix}-")]
-    return sorted(family, key=lambda p: p["number"])
+    return _open_prs((f"{branch_prefix}-",))
 
 
 def _pr_state(number: int) -> dict | None:
@@ -754,9 +759,13 @@ def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
     """
     global _PENDING_COMMITS
     batch = [c for c in _PENDING_COMMITS if c["kind"] == kind]
-    if not batch:
+    if not batch and kind not in _MAIN_WINS_KINDS:
         _finalize_deferred_step_marks(kind, succeeded=True)
         return True
+    # Nothing staged still sweeps a main-wins family: a PR the queue ejected
+    # add/add loses its auto-merge and, without this, sat open until some later
+    # tick staged a file of the same kind (#7856/#7858/#7860, 2026-10-05).
+    sweep = not batch
     _PENDING_COMMITS = [c for c in _PENDING_COMMITS if c["kind"] != kind]
 
     # Everything below is computed against ONE snapshot of main, and the new
@@ -766,8 +775,8 @@ def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
     open_prs = _open_family_prs(branch_prefix) if main_sha else None
     if open_prs is None:
         log(f"  ❌ Cannot read main or the open {branch_prefix} PRs — not opening a sibling blind")
-        _finalize_deferred_step_marks(kind, succeeded=False)
-        return False
+        _finalize_deferred_step_marks(kind, succeeded=sweep)
+        return sweep
     carried, superseded, kept = [], [], []
     for pr in open_prs:
         state = _pr_state(pr["number"])
@@ -806,6 +815,11 @@ def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
                 if lost:
                     superseded.remove(pr)
                     kept.append(f"#{pr['number']} ({', '.join(lost)} overridden by a newer copy)")
+    if sweep:
+        # Retire only the PRs main already serves in full; content main lacks
+        # waits for a tick that stages something, as before.
+        superseded = [p for p in superseded if not any(c.get("from_pr") == p["number"] for c in carried)]
+        batch = []
     if kept:
         log(f"  ⚠ {kind}: kept open, files not carried (main changed them since they branched): {'; '.join(kept)}")
         send_telegram_alert(
@@ -910,24 +924,29 @@ def maybe_flush_all_batches(threshold: int = _FLUSH_THRESHOLD) -> bool:
 
 
 _COVERS_PREFIX = "bot/news-covers"
+# backend-rag's article composer opens one auto-publish/* PR per article, its
+# covers next to the MDX, and the post-publish queue hands the slug over while
+# that PR is still open.
+_ARTICLE_PR_PREFIX = "auto-publish/"
 _OPEN_COVER_REFS: dict[str, str] | None = None
 
 
 def _cover_refs(gh_paths: list[str]) -> list[str | None] | None:
-    """Where each cover already lives: "main", an open covers PR's branch, or None.
+    """Where each cover already lives: "main", an open PR's branch, or None.
 
-    None overall = the open PRs could not be read; the caller must not
-    regenerate blind. Checking main alone regenerated every cover still riding
-    an open PR at the next tick, and the first twin to merge got the other
-    ejected from the merge queue as an add/add conflict (#7681 merged, #7682
-    ejected, 2026-09-29).
+    The open PRs read are the covers family AND the article PRs. None overall =
+    they could not be read; the caller must not regenerate blind. Checking main
+    alone regenerated every cover still riding an open PR at the next tick, and
+    the first twin to merge got the other ejected from the merge queue as an
+    add/add conflict (#7681/#7682, 2026-09-29; article PRs #7854/#7855/#7857
+    against covers PRs #7856/#7858/#7860, 2026-10-05).
     """
     global _OPEN_COVER_REFS
     on_main = [_image_exists_on_github(p) for p in gh_paths]
     if all(on_main):
         return ["main"] * len(gh_paths)
     if _OPEN_COVER_REFS is None:
-        prs, refs = _open_family_prs(_COVERS_PREFIX), {}
+        prs, refs = _open_prs((f"{_COVERS_PREFIX}-", _ARTICLE_PR_PREFIX)), {}
         for pr in prs or []:
             try:
                 files = subprocess.run(
@@ -1391,7 +1410,7 @@ def run_image(slug: str, category: str, title: str | None = None, article_id: st
     Codex-total (no Fireworks). Pre-flight health-check: if Codex is unreachable
     the item stays queued (returns False → retried next tick) rather than
     publishing a cover-less article. Idempotent: skips a cover already on main
-    OR riding an open covers PR (queued or not, see _cover_refs) — a regenerated
+    OR riding an open covers or article PR (queued or not, see _cover_refs) — a regenerated
     twin conflicts with the first copy to merge. Actual GitHub write happens at end-of-tick
     via flush_image_batch(), batched with every other image staged this run.
     """
