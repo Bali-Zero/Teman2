@@ -132,6 +132,46 @@ successor commit, 0 waived.** The surviving objections and their cures:
 
 Guilt+innocence tests for 1-4 and 10: `scripts/tests/test_tp1_burn_guard.py` (5 passed locally).
 
+## Lane 7 outcomes (2026-10-05 evening, two agentic burn sessions)
+
+~44.6M tokens consumed (test-gap 14.58M, docs 29.99M) — densest burn per wall-minute of the
+cycle, as predicted. Both sessions prepare-only; both branches deliberately LEFT LOCAL
+(unpushed): their `research/operations/*-queue.md` artifacts carry no R1 frontmatter and this
+seat will not declare an adversarial review it did not perform. A shipping session picks them
+up from the worktrees.
+
+- **test-gap** — branch `agent/air-m5/infra/test-gap-oct26` (worktree
+  `.worktrees/infra-test-gap-oct26`, 2 commits): 8 new pytest files over safety-critical
+  modules (ledger export, outbox replay/prune, circuit breaker, worktree keep, WA janitor,
+  PII-in-logs audit, canva lease watchdog), targeted run 270 passed / 0 failed, 366 with
+  neighbours. Four real defects pinned, cures queued not applied: (1)
+  `wa_mirror_session_janitor._phone_to_name()` AttributeError on a top-level LIST accounts
+  file (dead janitor = the 2026-06-09 ghost-row crash-loop minus its safety net); (2)
+  `audit_pii_in_logs` misses attribute-rooted loggers (`self.logger`, `app.logger`) so its PII
+  count is a floor; (3) `wr2_canva_lease_watchdog.main()` propagates a Telegram failure AFTER
+  leases were recovered; (4) `circuit_breaker` HALF_OPEN has no second timer. Structural:
+  `scripts-tests-sweep.yml` is continue-on-error and not required (the new tests gate nothing
+  until promoted), and 15 root-level `scripts/test_*.py` (incl. `test_redact_pii.py`) are named
+  by no gate. Gap queue: `research/operations/2026-05-...-test-gap-queue.md` in that worktree.
+- **docs** — branch `agent/air-m5/docs/refresh-queue-oct26` (worktree
+  `.worktrees/docs-refresh-queue-oct26`, 3 commits): 10 stale reference docs corrected (+144
+  net), 25 briefed, 691-line queue. Ship prerequisites for the shipping session: rebase over
+  `origin/main` #7890 with the UNION resolution on the r3 spec (their `[CLIENT-NAME-REDACTED]`
+  placeholders + this branch's de-linking), regenerate `docs/DOCS_INVENTORY.md` in the same PR
+  (inventory-check gate), split PRs A (corrections+inventory) / B (report) / C (tooling
+  D1-D3: `docs_audit.py:55` LINK_RE truncates at first `)` → false-positive STALE on
+  `](<https://…(…)>)`; `docs_link_fixer.py:145` starves the fixer model of context;
+  `docs_link_fixer.py:352` reads a file-count as a link-count).
+
+### Escalations to Zero (owner decisions, not this seat's)
+
+1. **Privacy:** `docs/superpowers/plans/2026-05-08-domain-mesh-phase0-foundations.md` still
+   carries 3 cleartext client identifiers (#7890 cleaned 5 of the 6 files found; this one
+   remains). Untouched by the burn lane on purpose — routing is a privacy-owner call.
+2. The four pinned defects above need a cure lane (the janitor one is a resurrected scar).
+3. Promoting `scripts-tests-sweep.yml` from report-only to a required check is a shipping
+   session's decision (it changes what gates merges).
+
 ## Schedule
 
 - **D0 (2026-10-05)**: brief + worktree `ops-tp1-burn-oct26`; lane-7 workers launched daytime;
