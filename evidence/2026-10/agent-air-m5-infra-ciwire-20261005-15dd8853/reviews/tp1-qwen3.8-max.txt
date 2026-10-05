@@ -1,0 +1,18 @@
+# Review by tp1-qwen3.8-max (TP1 text door, diff + two files in the prompt), verbatim
+# candidate: same diff, 2026-10-05. Disposition is in pack.yml dissent.
+
+VERDICT: BLOCK
+
+**MEDIUM** `.github/workflows/fleet-burst-tests.yml:84-87,111-114` — `scripts/lib/seat_watchdog.sh` is absent from both `paths` lists, yet `<REDACTED>` exists solely to prove the dispatcher sources that lib (its comment: "proves scripts/ai-dispatch.sh uses the SHARED run_with_timeout from scripts/lib/seat_watchdog.sh"). A change to the lib would not trigger the workflow. — confirmed by reading the suite's header and the `DISPATCHER` invocation that exercises `run_with_timeout`; the lib path appears nowhere in the diff's paths additions.
+
+**LOW** `.github/workflows/fleet-burst-tests.yml` (job level) — I cannot confirm `timeout-minutes: 10` is present. The diff context around `jobs:` does not show it being added; the mandate requires it. If the existing file already carries it, this is a non-issue, but I have no on-disk confirmation from the diff alone. — searched the entire diff for `timeout-minutes`; not found.
+
+**INFO** `scripts/lib/seat_watchdog.sh:16` — `set -m` inside a subshell on a non-interactive GitHub-runner bash: this is the mechanism that gives the child its own PGID for the `kill -- -"$pgid"` escalation. On ubuntu-latest bash 5.x in a CI script this works (job-control monitor mode is permitted in non-interactive shells), so no macOS-ism or missing-tool issue. No `stat -f`, `date -v`, `sed -i ''`, or `gtimeout` anywhere in either suite. — read both provided scripts in full.
+
+**INFO** `.github/workflows/fleet-burst-tests.yml:172-183` — sed pattern `s/^SUMMARY \([0-9][0-9]*\) passed, 0 failed$/\1/p` correctly anchors to the exact `printf 'SUMMARY %d passed, %d failed\n'` format in the suite (line 89 of the test). Floor 3 matches the three `check` calls (guilt, fail-loud, syntax). `grep -c '^  ok '` floor 51 for pr_watch: I cannot confirm the count without the body of `test_pr_watch.sh`, which was not provided in the diff text. — read the suite's `check` invocations and SUMMARY printf.
+
+**INFO** Timeout budget: ~120 s watchdog guilt case + <5 s other checks + pr_watch (fake gh, no real sleeps expected) + existing steps. 600 s job timeout leaves ample margin. — arithmetic from the suite's own `~120s hardcoded run_gemini timeout` comment.
+
+**INFO** YAML parse: the two new steps are valid block scalars (`run: |`), correctly indented, inserted between existing steps without disturbing order. The `|| { …; exit 1; }` guard prevents `set -e` from silently swallowing a suite crash before the count assertion runs. — read the diff hunk at face value.
+
+One omission blocks: add `"scripts/lib/seat_watchdog.sh"` to both paths lists.
