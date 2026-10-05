@@ -16,6 +16,7 @@ THE RULE (same invariant as branch_graveyard_cleanup.sh content_on_main, W88):
   merge-base against origin/main) and (b) the `add -A` dirty snapshot payload
   (diff <ref>^ <ref>). A pure deletion is also fine when that file is already absent
   from main. Never decided by three-dot diff or ancestor alone (both lie post-squash).
+  Any checker error is 'could not tell' -> AMBIGUOUS (kept), never LANDED.
 
 GUARDS (why you can trust it):
   - KEEP on: genuine unique content, any ambiguity, missing object, merge-base
@@ -113,24 +114,68 @@ def _worktree_name_from_ref(short: str) -> str | None:
 # --------------------------------------------------------------------------- #
 # resolver
 # --------------------------------------------------------------------------- #
-def _rev_parse_path(ref: str, path: str) -> str:
-    r = _git(["rev-parse", f"{ref}:{path}"], check=False)
-    return r.stdout.strip() if r.returncode == 0 else "__ABSENT__"
+def _path_set(ref_a: str, ref_b: str) -> list[str] | None:
+    """Paths differing between ref_a..ref_b (two commits), NUL-safe.
 
-
-def _path_set(ref_a: str, ref_b: str) -> list[str]:
-    """Paths differing between ref_a..ref_b (two commits), NUL-safe."""
+    None = the checker itself failed — 'could not tell', never an empty answer."""
     r = _git(["diff", "--name-only", "-z", ref_a, ref_b], check=False)
     if r.returncode != 0:
-        return []
+        return None
     return [p for p in r.stdout.split("\0") if p]
 
 
-def _blob_matches_main(ref: str, path: str) -> bool:
-    """True iff ref:path blob == origin/main:path (or both absent)."""
-    bh = _rev_parse_path(ref, path)
-    mh = _rev_parse_path(MAIN_REF, path)
-    return bh == mh
+def _tree_entries(ref: str) -> dict[str, str] | None:
+    """path -> '<mode> <type> <sha>' for a tree; None when unreadable."""
+    r = _git(["ls-tree", "-r", "-z", "--full-tree", ref], check=False)
+    if r.returncode != 0:
+        return None
+    entries: dict[str, str] = {}
+    for rec in r.stdout.split("\0"):
+        if not rec:
+            continue
+        meta, _, path = rec.partition("\t")
+        entries[path] = meta
+    return entries
+
+
+def _parents(commit: str) -> list[str] | None:
+    """commit's parents ([] for a root commit); None when unreadable."""
+    r = _git(["rev-list", "--parents", "-n", "1", commit], check=False)
+    toks = r.stdout.split()
+    if r.returncode != 0 or not toks:
+        return None
+    return toks[1:]
+
+
+def _ancestor_fork(obj: str) -> str | None:
+    """Where an ancestor-of-main obj forked off main's first-parent line.
+
+    Ancestry is not proof (a merged-then-reverted commit is an ancestor whose
+    content is gone from main), so an ancestor still diffs from its fork point.
+    None = could not tell."""
+    chain = _git(["rev-list", "--first-parent", "--ancestry-path", f"{obj}..{MAIN_REF}"],
+                 check=False)
+    if chain.returncode != 0:
+        return None
+    commits = chain.stdout.split()
+    oldest_parents = _parents(commits[-1]) if commits else [obj]  # no chain: obj IS main's tip
+    if not oldest_parents:
+        return None
+    if oldest_parents[0] == obj:  # obj is ON main's first-parent line
+        own = _parents(obj)
+        return own[0] if own else None
+    fork = _git(["merge-base", oldest_parents[0], obj], check=False)  # side-parent merge
+    if fork.returncode != 0 or not fork.stdout.strip():
+        return None
+    return fork.stdout.strip()
+
+
+def _same_tree(a: str, b: str) -> bool:
+    """True only when both trees resolve and are identical."""
+    ta = _git(["rev-parse", "--verify", "-q", f"{a}^{{tree}}"], check=False)
+    tb = _git(["rev-parse", "--verify", "-q", f"{b}^{{tree}}"], check=False)
+    return (ta.returncode == 0 and tb.returncode == 0
+            and bool(ta.stdout.strip()) and ta.stdout.strip() == tb.stdout.strip())
 
 
 def classify(objname: str) -> dict:
@@ -140,29 +185,54 @@ def classify(objname: str) -> dict:
         "verdict": R_AMBIGUOUS, "reason": "", "authored": 0, "delta": 0,
         "diverged": 0, "sample": "",
     }
-    # pure ancestor of main -> landed (fast path)
-    if _git(["merge-base", "--is-ancestor", objname, MAIN_REF], check=False).returncode == 0:
-        fields["verdict"] = R_LANDED
-        fields["reason"] = "ancestor-of-main"
-        return fields
-    # merge-base must resolve, else ambiguous (never delete)
-    mb = _git(["merge-base", MAIN_REF, objname], check=False).stdout.strip()
-    if not mb:
-        fields["reason"] = "merge-base-unresolvable"
+    # Ancestry is NOT proof (a merged-then-reverted commit is an ancestor whose
+    # content is gone from main) — it only decides which base we diff from.
+    anc_rc = _git(["merge-base", "--is-ancestor", objname, MAIN_REF], check=False).returncode
+    was_ancestor = anc_rc == 0
+    if was_ancestor:
+        mb = _ancestor_fork(objname)
+        if mb is None:
+            fields["reason"] = "ancestor-fork-unresolvable"
+            return fields
+    elif anc_rc == 1:
+        # merge-base must resolve, else ambiguous (never delete)
+        mb = _git(["merge-base", MAIN_REF, objname], check=False).stdout.strip()
+        if not mb:
+            fields["reason"] = "merge-base-unresolvable"
+            return fields
+    else:
+        fields["reason"] = "ancestor-check-failed"
         return fields
 
     authored = _path_set(mb, objname)
+    if authored is None:
+        fields["reason"] = "authored-diff-failed"
+        return fields
     fields["authored"] = len(authored)
     # fragile object? treat missing tree as ambiguous
     if _git(["cat-file", "-e", objname], check=False).returncode != 0:
         fields["reason"] = "missing-object"
         return fields
+    # an empty diff is believed only when the trees really are equal
+    if not authored and not _same_tree(mb, objname):
+        fields["reason"] = "empty-diff-but-trees-differ"
+        return fields
 
     # dirty add -A snapshot payload on top of parent
+    parents = _parents(objname)
+    if parents is None:
+        fields["reason"] = "parent-unresolvable"
+        return fields
     delta: list[str] = []
-    par = _git(["rev-parse", f"{objname}^"], check=False).stdout.strip()
-    if par:
-        delta = _path_set(par, objname)
+    if parents:  # a root commit has no payload
+        maybe_delta = _path_set(parents[0], objname)
+        if maybe_delta is None:
+            fields["reason"] = "delta-diff-failed"
+            return fields
+        if not maybe_delta and not _same_tree(parents[0], objname):
+            fields["reason"] = "empty-delta-but-trees-differ"
+            return fields
+        delta = maybe_delta
     fields["delta"] = len(delta)
 
     if fields["authored"] > LARGE_SCOPE_SHORTCUT:
@@ -172,9 +242,14 @@ def classify(objname: str) -> dict:
         return fields
 
     scope = authored + [p for p in delta if p not in authored]
+    obj_entries = _tree_entries(objname)
+    main_entries = _tree_entries(MAIN_REF)
+    if obj_entries is None or main_entries is None:
+        fields["reason"] = "tree-unreadable"
+        return fields
     diverged = []
     for p in scope:
-        if not _blob_matches_main(objname, p):
+        if obj_entries.get(p) != main_entries.get(p):
             diverged.append(p)
             if len(diverged) >= 25:  # enough evidence; LANDED refs must check all anyway
                 pass
@@ -185,7 +260,7 @@ def classify(objname: str) -> dict:
         fields["sample"] = " | ".join(diverged[:8])
     else:
         fields["verdict"] = R_LANDED
-        fields["reason"] = "content-on-main"
+        fields["reason"] = "ancestor-of-main" if was_ancestor else "content-on-main"
     return fields
 
 

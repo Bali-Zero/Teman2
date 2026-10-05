@@ -120,15 +120,17 @@ MAIN_SHA=$(git rev-parse "$MAIN_REF")
 BRANCHES_TSV="/tmp/branch_cleanup_branches.$$"
 MERGED_TSV="/tmp/branch_cleanup_merged.$$"
 CONTENT_TSV="/tmp/branch_cleanup_content.$$"
+UNDETERMINED_TSV="/tmp/branch_cleanup_undetermined.$$"
 PRMERGED_TSV="/tmp/branch_cleanup_prmerged.$$"
 ZOMBIE_TSV="/tmp/branch_cleanup_zombie.$$"
 STALE_TSV="/tmp/branch_cleanup_stale.$$"
 MERGED_PRS_TSV="/tmp/branch_cleanup_gh_prs.$$"
 REPORT_TMP="/tmp/branch_cleanup_report.$$"
+NAMES_TMP="/tmp/branch_cleanup_names.$$"
 
 cleanup_tmp() {
-    rm -f "$BRANCHES_TSV" "$MERGED_TSV" "$CONTENT_TSV" "$PRMERGED_TSV" "$ZOMBIE_TSV" \
-          "$STALE_TSV" "$MERGED_PRS_TSV" "$REPORT_TMP"
+    rm -f "$BRANCHES_TSV" "$MERGED_TSV" "$CONTENT_TSV" "$UNDETERMINED_TSV" "$PRMERGED_TSV" \
+          "$ZOMBIE_TSV" "$STALE_TSV" "$MERGED_PRS_TSV" "$REPORT_TMP" "$NAMES_TMP"
 }
 trap cleanup_tmp EXIT
 
@@ -201,26 +203,51 @@ pr_merged_match() {
 # three-dot signal is itself a proxy that lies post-squash — the exact W88 trap.
 # The only honest test is blob equality on the files the branch actually touched.
 #
-# Returns 0 (content already on main, safe to delete) / 1 (genuine unmerged work).
+# Returns 0 (content already on main, safe to delete) / 1 (genuine unmerged
+# work) / 2 (could not tell: any checker error — never deletes, and never
+# claims "not on main" either; the caller reports it by name).
 content_on_main() {
-    local branch="$1" mb f bh mh
-    mb=$(git merge-base "$MAIN_REF" "$branch" 2>/dev/null) || return 1
+    local branch="$1" mb f bh mh mb_rc diff_rc mb_tree br_tree
+    # A failed merge-base is "could not tell", EXCEPT exit 1 with empty output:
+    # that is an honest "no common ancestor" (orphaned history) — today's
+    # answer 1. Any other non-zero exit, or exit 0 with empty output, -> 2.
+    mb=$(git merge-base "$MAIN_REF" "$branch" 2>/dev/null)
+    mb_rc=$?
+    if [[ $mb_rc -ne 0 ]]; then
+        [[ $mb_rc -eq 1 && -z "$mb" ]] && return 1
+        return 2
+    fi
+    [[ -z "$mb" ]] && return 2
     # Files the branch changed since its merge-base (two-dot from the REAL base —
     # NOT three-dot from main). For each, the branch's blob must equal main's
     # blob. A file the branch DELETED (absent on branch) must also be absent on
     # main. Any surviving difference => genuine unmerged content.
+    git diff --name-only "$mb" "$branch" > "$NAMES_TMP" 2>/dev/null
+    diff_rc=$?
+    [[ $diff_rc -ne 0 ]] && return 2
+    if [[ ! -s "$NAMES_TMP" ]]; then
+        # Empty name list: believe it only when the trees prove it (a really
+        # empty diff). Anything else is a failed read in disguise -> 2.
+        mb_tree=$(git rev-parse --verify -q "$mb^{tree}" 2>/dev/null)
+        [[ $? -ne 0 || -z "$mb_tree" ]] && return 2
+        br_tree=$(git rev-parse --verify -q "$branch^{tree}" 2>/dev/null)
+        [[ $? -ne 0 || -z "$br_tree" ]] && return 2
+        [[ "$mb_tree" == "$br_tree" ]] && return 0
+        return 2
+    fi
     while IFS= read -r f; do
         [[ -z "$f" ]] && continue
         bh=$(git rev-parse "$branch:$f" 2>/dev/null || echo __ABSENT_BRANCH__)
         mh=$(git rev-parse "$MAIN_REF:$f" 2>/dev/null || echo __ABSENT_MAIN__)
         [[ "$bh" != "$mh" ]] && return 1
-    done < <(git diff --name-only "$mb" "$branch" 2>/dev/null)
+    done < "$NAMES_TMP"
     return 0
 }
 
 # === Classify ===
 : > "$MERGED_TSV"
 : > "$CONTENT_TSV"
+: > "$UNDETERMINED_TSV"
 : > "$PRMERGED_TSV"
 : > "$ZOMBIE_TSV"
 : > "$STALE_TSV"
@@ -237,8 +264,16 @@ while IFS=$'\t' read -r branch ts sha; do
     fi
     # Ancestor-check FAILED — but the content may still be on main via squash /
     # rework. MANDATORY second check by CONTENT, never trust ancestor alone.
-    if content_on_main "$branch"; then
+    # Three answers: 0 = on main, 1 = genuine unmerged work, 2 = could not tell
+    # (never deletes; must NOT fall into zombie/stale — those claim "not on main").
+    content_on_main "$branch"
+    content_rc=$?
+    if [[ $content_rc -eq 0 ]]; then
         printf '%s\t%s\t%s\t%s\n' "$branch" "$age_days" "$sha" "$short" >> "$CONTENT_TSV"
+        continue
+    elif [[ $content_rc -eq 2 ]]; then
+        printf '%s\t%s\t%s\t%s\n' "$branch" "$age_days" "$sha" "$short" >> "$UNDETERMINED_TSV"
+        echo "[branch_cleanup] WARN: content check failed for $branch — could not tell, kept" >&2
         continue
     fi
     # Both tree-based checks missed it — ask GitHub directly whether this exact
@@ -259,7 +294,7 @@ while IFS=$'\t' read -r branch ts sha; do
 done < "$BRANCHES_TSV"
 
 # === Sort each category by age descending (in-place) ===
-for f in "$MERGED_TSV" "$CONTENT_TSV" "$PRMERGED_TSV" "$ZOMBIE_TSV" "$STALE_TSV"; do
+for f in "$MERGED_TSV" "$CONTENT_TSV" "$UNDETERMINED_TSV" "$PRMERGED_TSV" "$ZOMBIE_TSV" "$STALE_TSV"; do
     if [[ -s "$f" ]]; then
         sort -t$'\t' -k2 -n -r -o "$f" "$f"
     fi
@@ -267,6 +302,7 @@ done
 
 MERGED_COUNT=$(wc -l < "$MERGED_TSV" | tr -d ' ')
 CONTENT_COUNT=$(wc -l < "$CONTENT_TSV" | tr -d ' ')
+UNDETERMINED_COUNT=$(wc -l < "$UNDETERMINED_TSV" | tr -d ' ')
 PRMERGED_COUNT=$(wc -l < "$PRMERGED_TSV" | tr -d ' ')
 ZOMBIE_COUNT=$(wc -l < "$ZOMBIE_TSV" | tr -d ' ')
 STALE_COUNT=$(wc -l < "$STALE_TSV" | tr -d ' ')
@@ -299,6 +335,7 @@ emit_section() {
     echo "Summary:"
     echo "- Merged & deletable (SHA ancestor of main): $MERGED_COUNT"
     echo "- Content-on-main & deletable (squash/rework, verified by diff): $CONTENT_COUNT"
+    echo "- Could not tell (content check failed) — REPORT ONLY, never deleted: $UNDETERMINED_COUNT"
     echo "- PR-merged (gh headRefOid match, categories 1+2 missed it) — REPORT ONLY: $PRMERGED_COUNT"
     echo "- Zombie claude/* (>${CLAUDE_AGE_DAYS}d, content NOT on main): $ZOMBIE_COUNT"
     echo "- Stale others (>${STALE_AGE_DAYS}d, content NOT on main): $STALE_COUNT"
@@ -306,6 +343,7 @@ emit_section() {
 
     emit_section "Merged & deletable (SHA ancestor of main, safe to remove)" "$MERGED_TSV" "merged,"
     emit_section "Content-on-main & deletable (squash/rework — diff vs main is empty or pure-deletion, safe to remove)" "$CONTENT_TSV" "last commit"
+    emit_section "Could not tell (content check failed) — REPORT ONLY, never deleted" "$UNDETERMINED_TSV" "last commit"
     emit_section "PR-merged (gh confirms headRefOid on a MERGED PR; categories 1+2 missed it) — REPORT ONLY, not yet in --apply" "$PRMERGED_TSV" "last commit"
     emit_section "Zombie claude/* (>${CLAUDE_AGE_DAYS}d, content NOT on main) — REPORT ONLY" "$ZOMBIE_TSV" "last commit"
     emit_section "Stale others (>${STALE_AGE_DAYS}d, content NOT on main) — REPORT ONLY" "$STALE_TSV" "last commit"

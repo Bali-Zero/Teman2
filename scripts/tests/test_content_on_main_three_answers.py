@@ -267,14 +267,23 @@ def test_quarantine_reverted_merge_is_not_landed(quarantine):
 
 @pytest.mark.parametrize("mode", ["fail", "empty"])
 def test_quarantine_failed_diff_is_could_not_tell(quarantine, monkeypatch, mode):
-    mod, tips, _ = quarantine
+    mod, tips, work = quarantine
     monkeypatch.setenv("FAKE_GIT_RE", r"^diff --name-only")
     monkeypatch.setenv("FAKE_GIT_MODE", mode)
     f = mod.classify(tips["unmerged"])
     assert f["verdict"] == mod.R_AMBIGUOUS, f
     assert f["reason"], "could-not-tell must say why"
     if mode == "empty":
-        assert mod.classify(tips["empty"])["verdict"] == mod.R_LANDED
+        # a net-zero branch still carries a payload (its last commit), so an
+        # empty answer about that payload is a lie the trees expose ...
+        assert mod.classify(tips["empty"])["verdict"] == mod.R_AMBIGUOUS
+        # ... while a commit that changes nothing at all is REALLY empty: still landed
+        base = _git(work, "merge-base", "main", tips["unmerged"])
+        _git(work, "checkout", "-q", "-b", "noop", base)
+        _git(work, "commit", "-q", "--allow-empty", "-m", "noop")
+        noop = _git(work, "rev-parse", "HEAD")
+        _git(work, "checkout", "-q", "main")
+        assert mod.classify(noop)["verdict"] == mod.R_LANDED
 
 
 def test_quarantine_failed_blob_read_is_could_not_tell(quarantine, monkeypatch):
@@ -284,8 +293,9 @@ def test_quarantine_failed_blob_read_is_could_not_tell(quarantine, monkeypatch):
     assert f["verdict"] == mod.R_AMBIGUOUS, f
 
 
-def test_quarantine_failed_ancestry_walk_is_could_not_tell(quarantine, monkeypatch):
+@pytest.mark.parametrize("probe", [r"^rev-list", r"^merge-base --is-ancestor"])
+def test_quarantine_failed_ancestry_walk_is_could_not_tell(quarantine, monkeypatch, probe):
     mod, tips, _ = quarantine
-    monkeypatch.setenv("FAKE_GIT_RE", r"^rev-list")
+    monkeypatch.setenv("FAKE_GIT_RE", probe)
     f = mod.classify(tips["plain"])
-    assert f["verdict"] != mod.R_LANDED, f
+    assert f["verdict"] == mod.R_AMBIGUOUS, f
