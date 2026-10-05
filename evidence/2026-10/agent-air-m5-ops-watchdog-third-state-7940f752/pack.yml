@@ -16,7 +16,7 @@ lanes:
     seat: >-
       Codex O2 (CODEX_HOME=~/.codex-o2, --sandbox workspace-write) made the diff of the five wrapper/helper
       files and the helper unit tests from the Dux's spec and the Dux's red corpus; the Dux wrote the corpus and
-      the workflow, read the builder's diff line by line, and added one commit-level change (the EXIT trap that
+      the workflow, read the builder's diff line by line, and added one change after review (the EXIT trap that
       removes the per-run temp file, from the review).
   - lane: watchdog-third-state-review
     role: review
@@ -27,9 +27,9 @@ lanes:
     seat: Kimi k3 (read-only refutation round on the adopted design); verbatim in council-journal.jsonl.
 seat_diversity: >-
   Builder Codex (O2). Council: Kimi k3 and Codex O3 (same family as the builder O2, recorded as such, design
-  advice only, not a review of the diff). Review and refutation: Kimi k3. Gemini (agy) reads BUSY (owner's
-  windows) and the TP1 text door has no ready invocation for a read-only repo question, so a third family did
-  not answer: declared, not claimed.
+  advice only, not a review of the diff). Review and refutation: Kimi k3. Second independent review: TP1
+  qwen3.8-max through the text door (PASS, diff pasted in the prompt). Gemini (agy) reads BUSY (owner's
+  windows) and was not asked.
 pii_scan: clean
 bites:
   consumer: >-
