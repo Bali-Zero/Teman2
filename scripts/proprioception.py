@@ -2466,7 +2466,7 @@ DEFAULT_REGISTRY: list[dict] = [
         # Reader, not prober: re-emits the last arsenal_probe report (no live LLM
         # calls here — the heavy probe is healer-armed on Mini AND on Pro since
         # 2026-07-18, pro-healer Receptor D). Transients
-        # (QUOTA/SHED/TIMEOUT) are ok_values: they belong to transition alerting,
+        # (QUOTA/SHED/TIMEOUT/BUSY — BUSY is contention, not death) are ok_values: they belong to transition alerting,
         # not boundary reconciliation — only persistent seat-death DIVERGEs.
         "id": "arsenal_seats", "type": "wrap",
         "target": ["python3", "{repo}/scripts/arsenal_probe.py", "--read-last", "--json"],
@@ -2476,7 +2476,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "severity": "P1", "parse": "findings_list", "unwrap_key": "findings",
         "verdict_key": "status",
         "ok_values": ["LIVE", "CRED_UNAVAILABLE", "NOT_INSTALLED", "CONTEXT_AUTH",
-                       "SHED", "QUOTA_DEAD", "TIMEOUT"],
+                       "SHED", "QUOTA_DEAD", "TIMEOUT", "BUSY"],
         "fix_hint": "scripts/arsenal_probe.py --table for detail; AUTH/BALANCE dead = operator relogin/top-up (see docs/runbooks/arsenal-probe.md)",
     },
     {
