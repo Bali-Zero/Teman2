@@ -1,6 +1,6 @@
 {
   "_version": "1.4+hierarchy-20260908",
-  "_updated": "2026-09-15 (RULED 2026-09-06→08: two-imperator hierarchy — see _invariants[0]; previous: 2026-08-20 (Zero ruling, Legge 5, verbatim: 'Togliere Fable 5 dal workflow, lo u…)",
+  "_updated": "2026-10-05 (seat registry reconciled: A5 retired, O3 recorded, M5 config-dir map — see accounts.anthropic.slots.A5 / accounts.openai.unrostered_seats.O3; previous: 2026-09-15 (RULED 2026-09-06→08: two-imperator hierarchy — see _invariants[0]; previous:2026-08-20 (Zero ruling, Legge 5, verbatim: 'Togliere Fable 5 dal workflow, lo u…)",
   "_doc": "SSOT for the CLOUD fleet: orchestrators, accounts, role fallback chains. Local Ollama assignments stay in MODEL_TOPOLOGY.json (unchanged). Rationale: research/operations/2026-08-09-quattro-gruppi-e-continuita.md. Law: AGENTS.md §17 + CLAUDE.md.",
   "_invariants": [
     "Final on-disk gate, ALL gears (RULED 2026-09-06→08, supersedes the 2026-08-20 permanent-Opus rule below): an ASSIGNMENT to a qualified independent verifier outside the contribution chain — a Claude session on the Opus 5.5 xhigh seat, rotating across ALL Anthropic accounts (AZ->A2->A3->A1), never cascading to a weaker model; all accounts dead => task SUSPENDS/QUEUES. Two imperators, equal (Fable 5.1 owner-opened window, Astra) appoint a temporary Dux between two equal generals (Opus 5.5, Sol); imperators never fan out or implement. Fable 5.1 is never auto-routed and never a gate seat. Parity widens no permission. Map: docs/architecture/dual-consul/army-map.md",
@@ -17,51 +17,63 @@
   "accounts": {
     "anthropic": {
       "mechanism": "OAuth profile swap (cswap-style; profiles in Keychain on macOS). PENDING-ARMS: install+test on Pro and Air-M5.",
-      "policy": "Lanes are HOME assignments, not fences: every lane drains its home account first, then the ladder borrows automatically from the least-loaded other account (nothing sits idle). Sacrifice order when the gate needs a window: cron/batch lane pauses FIRST to donate its account. Donor mechanism UNARMED until the cron auto-pause hook lands (PENDING-ARMS): today donor rotation is a manual act. SUPERSEDED 2026-08-19 (Zero, fleet-max-throughput mandate): the estate is 5 MAX (A1-A5) + 1 Team Premium (AZ) — A4 antozero1987 and A5 sianoantonello exist, both Max 20x; ladders may draw on A1-A5+AZ. The 2026-08-10 'no A4 exists' resolution described that day's estate, not an invariant. The 'TRE MAX' wording in the global home CLAUDE.md is now stale in the opposite direction — that file is host-boundary protected from agent writes, correction is an operator paste-apply.",
+      "policy": "Lanes are HOME assignments, not fences: every lane drains its home account first, then the ladder borrows automatically from the least-loaded other account (nothing sits idle). Sacrifice order when the gate needs a window: cron/batch lane pauses FIRST to donate its account. Donor mechanism UNARMED until the cron auto-pause hook lands (PENDING-ARMS): today donor rotation is a manual act. SUPERSEDED 2026-08-19 (Zero, fleet-max-throughput mandate): the estate is 5 MAX (A1-A5) + 1 Team Premium (AZ) — A4 antozero1987 and A5 sianoantonello exist, both Max 20x; ladders may draw on A1-A5+AZ. The 2026-08-10 'no A4 exists' resolution described that day's estate, not an invariant. The 'TRE MAX' wording in the global home CLAUDE.md is now stale in the opposite direction — that file is host-boundary protected from agent writes, correction is an operator paste-apply. SUPERSEDED 2026-10-05 (Zero, owner ruling: the Claude Max subscription on the A5 account is cancelled): A5 is retired — the estate is 4 Max 20x (A1-A4) + 1 Team Premium (AZ); ladders draw on A1-A4+AZ and A5 is no longer a live seat.",
       "slots": {
         "A1": {
           "email": "antonellosiano@gmail.com",
           "plan": "Claude Max 20x",
           "lane": "interactive/architect daily driver",
           "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_1",
-          "config_dir": "~/.claude-antonellosiano"
+          "config_dir": "~/.claude-antonellosiano",
+          "config_dir_by_machine": { "Air-M5": "~/.claude-a1" }
         },
         "A2": {
           "email": "kaiser198719871987@gmail.com",
           "plan": "Claude Max 20x",
           "lane": "subagents/build + Cowork cloud sessions (this session observed here)",
           "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_5",
-          "config_dir": "~/.claude-kaiser"
+          "config_dir": "~/.claude-kaiser",
+          "config_dir_by_machine": { "Air-M5": "~/.claude-kaiser" }
         },
         "A3": {
           "email": "applevisionpro1987@gmail.com",
           "plan": "Claude Max 20x",
           "lane": "cron/batch — designated DONOR: auto-pause to free its window for the gate",
           "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_3",
-          "config_dir": "~/.claude-acct3"
+          "config_dir": "~/.claude-acct3",
+          "config_dir_by_machine": {
+            "Air-M5": ["~/.claude", "~/.claude-acct2"]
+          }
         },
         "A4": {
           "email": "antozero1987@gmail.com",
           "plan": "Claude Max 20x",
-          "lane": "cloud routines (afternoon PR-babysit + weekly PENDING-ARMS triage) — CLI login pending (M5 spare CLAUDE_CONFIG_DIR)",
+          "lane": "cloud routines (afternoon PR-babysit + weekly PENDING-ARMS triage) — CLI login on M5 verified 2026-10-05 (~/.claude-acct4)",
           "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_4",
-          "config_dir": "~/.claude-antozero"
+          "config_dir": "~/.claude-antozero",
+          "config_dir_by_machine": { "Air-M5": "~/.claude-acct4" }
         },
         "A5": {
           "email": "sianoantonello@gmail.com",
           "plan": "Claude Max 20x",
           "lane": "Mini ~/.claude machine login (verified live 2026-08-19) + cloud routines (ssot-contradiction-hunter, secret-pattern-sweep)",
           "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_2",
-          "config_dir": "~/.claude-acct2"
+          "config_dir": "~/.claude-acct2",
+          "status": "retired",
+          "retired": "2026-10-05",
+          "retired_by": "ruled by Zero 2026-10-05 (the Claude Max subscription on this account is cancelled)",
+          "retired_note": "History above kept as the record of what the seat carried. Its lane's Mini machine login and two cloud routines (ssot-contradiction-hunter, secret-pattern-sweep) are ORPHANED — see pending_arms. Token slot CLAUDE_CODE_OAUTH_TOKEN_2 is dead; the cron cascade skips an empty slot."
         },
         "AZ": {
           "email": "zero@balizero.com",
           "plan": "Claude Team seat Premium",
           "lane": "GATE PRIMARY (dedicated allowance for the final on-disk gate lives here — Opus 5.5 xhigh effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) + escalations",
           "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_6",
-          "config_dir": "~/.claude-zero-team"
+          "config_dir": "~/.claude-zero-team",
+          "config_dir_by_machine": { "Air-M5": "~/.claude-zero-team" }
         }
       },
+      "config_dir_by_machine_note": "Measured 2026-10-05: each Air-M5 seat above answered a real prompt that day, identity and plan read with `CLAUDE_CONFIG_DIR=<dir> claude auth status`. The default ~/.claude reads logged-in only with CLAUDE_CONFIG_DIR UNSET (set explicitly to ~/.claude it reports not logged in). ~/.claude-acct3 and ~/.claude-siano hold no working login. The top-level config_dir values are the Pro-era names and are kept.",
       "oauth_slot_note": "Slot->account VERIFIED 2026-08-23 via `claude auth status` per config-dir plus the setup-token transcript (each token preceded by the command that minted it). An OAuth token carries NO identity - `auth status` on one returns only authMethod:oauth_token, no email - so this mapping and the comment beside each slot in ~/.nuzantara-secrets.env are the ONLY registry; it must be written AT setup-token time, never reconstructed afterwards. Measured the same day: `claude setup-token` does NOT revoke the account's previous token, so every superseded token stays valid ~1y and is revocable only from the web console."
     },
     "openai": {
@@ -70,12 +82,27 @@
         "O1": {
           "email": "antonellosiano@gmail.com",
           "plan": "ChatGPT Pro",
-          "lane": "refuter primary (Sol xhigh/max)"
+          "lane": "refuter primary (Sol xhigh/max)",
+          "codex_home_by_machine": { "Air-M5": "~/.codex" },
+          "observed_default_model": "gpt-6-astra (observed 2026-10-05, Air-M5; no -m slug probed)"
         },
         "O2": {
           "email": "zero@balizero.com",
           "plan": "ChatGPT Pro",
-          "lane": "builders (Terra/Luna) + Sol backup"
+          "lane": "builders (Terra/Luna) + Sol backup",
+          "codex_home_by_machine": { "Air-M5": "~/.codex-o2" },
+          "observed_default_model": "gpt-5.6-sol (observed 2026-10-05, Air-M5; no -m slug probed)"
+        }
+      },
+      "unrostered_seats": {
+        "O3": {
+          "email": "zero@balizero.com",
+          "plan": "ChatGPT Team workspace (plan claim reads team) — a quota pool distinct from O2, same work email",
+          "lane": "unassigned (logged in by the owner 2026-10-05)",
+          "codex_home_by_machine": { "Air-M5": "~/.codex-acct2" },
+          "observed_default_model": "gpt-5.6-sol (observed 2026-10-05, Air-M5; no -m slug probed)",
+          "not_a_fleet_seat": "A teammate (Damar) holds a premium seat in this Team workspace: a personal seat, NOT a fleet seat, never routed to.",
+          "roster_note": "Kept outside slots because canonical_roster [O1, O2] is pinned by infra/conductor/host_seat_map.schema.json, the three infra/conductor/seat_maps/*.v1.json and scripts/tests/test_conductor_host_seat_maps.py — see pending_arms."
         }
       }
     },
@@ -536,13 +563,18 @@
   },
   "pending_arms": [
     "cswap (or equivalent OAuth profile swapper) installed+tested on Pro and Air-M5 with the 4 real accounts",
-    "~/.codex-o2 second CODEX_HOME created+logged in (zero@balizero.com); aliases codex-o1/codex-o2",
+    "~/.codex-o2 second CODEX_HOME created+logged in (zero@balizero.com); aliases codex-o1/codex-o2 — CLOSED 2026-10-05: ~/.codex-o2 exists on Air-M5 and answers (default model gpt-5.6-sol observed, see accounts.openai.slots.O2). Aliases not re-checked.",
     "PROBE-1-residual CLOSED 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md) — burn-rate measured (qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 promoted PROBATION->ARMED); credits endpoint not API-exposed, but console-verified same day (see accounts.alibaba.slots.TP1.console_verified_2026_08_14): Pro Plan, 7-day rolling quota 56.31% used, within plan. PROBE-2/3 still open; PROBE-4 (MiniMax) is now MOOT — MiniMax is not in this plan's roster at all (console-verified), see role_chains grunt/batch_throughput.",
     "decide whether deepseek-v4-flash-0731 substitutes deepseek-v4-pro in the refuter/reasoner role_chains or gets its own dedicated row (both currently point at -pro, which has zero measured TP1 mileage)",
     "TP1 Pro Plan Auto-Renewal decision CLOSED 2026-08-14: operator[business] decision taken same evening as the console read — Zero ENABLED auto-renewal (was NOT ENABLED at the 21:32 console read); see accounts.alibaba.slots.TP1.console_verified_2026_08_14.plan.",
     "operator[business]/decision: unexploited TP1 capabilities (Wan 2.7 image-gen, HappyHorse 1.1 video-gen, Qwen-Audio TTS/realtime) are paid-for but wired into zero role_chains — decide whether to use them",
     "dispatcher script scripts/seat_dispatch.py reading this file (Mac session, needs live CLI testing)",
     "MODEL_TOPOLOGY.json v3: reconcile cloud_fallback (gemini-cli deprecated 2026-06-18 -> agy) and aider_fix (deepseek RETIRED)",
-    "cron auto-pause hook for the donor rule (A3 frees its window when the gate calls)"
+    "cron auto-pause hook for the donor rule (A3 frees its window when the gate calls)",
+    "ORPHANED 2026-10-05 (A5 retired, ruled by Zero): the Mini ~/.claude machine login that A5 carried (verified live 2026-08-19) needs a new home — pick an active seat (A1-A4 or AZ) and log Mini in",
+    "ORPHANED 2026-10-05 (A5 retired, ruled by Zero): cloud routines ssot-contradiction-hunter and secret-pattern-sweep, previously on A5, need a new home — re-home on an active seat or retire them",
+    "operator: remove the CLAUDE_CODE_OAUTH_TOKEN_2 line (A5's slot) from the secrets file on Pro and Mini — the cron cascade already skips an empty slot (infra/launchagents/wrappers/claude-cascade.sh:1119 `if [ -n \"$token\" ] && ! oauth_token_seen \"$token\"` inside the `for index in 1 2 3 4 5 6` loop at :1085); no code change needed",
+    "OpenAI roster: O3 (~/.codex-acct2, ChatGPT Team) sits in accounts.openai.unrostered_seats because canonical_roster [O1, O2] is pinned by infra/conductor/host_seat_map.schema.json, the three infra/conductor/seat_maps/*.v1.json and scripts/tests/test_conductor_host_seat_maps.py — extend all of them together in one PR, then move O3 into slots",
+    "seat-quota ledger ~/.claude/seat-quota.json has no scheduled publisher (publisher missing): measured 2026-10-05 it was 58,407 min stale on Air-M5 and 12,755 min on Pro until refreshed by hand on Air-M5; scripts/claude_seat_quota.py writes it but nothing schedules it (back-to-back runs rate-limit the endpoint)"
   ]
 }
