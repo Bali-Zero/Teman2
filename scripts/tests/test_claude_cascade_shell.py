@@ -2005,7 +2005,7 @@ def test_oauth_slot_seats_equal_the_registry() -> None:
     assert declared == registry
 
 
-@pytest.mark.parametrize("parent", ["script", "python"])
+@pytest.mark.parametrize("parent", ["script", "python", "python_option"])
 def test_job_name_comes_from_the_caller_entry_point_never_an_argument(tmp_path: Path, parent: str) -> None:
     # Council round 2 (Codex O3): every argv word was scanned, so a data
     # argument shaped like a script (`https://CanaryOrg.sh`) became the job.
@@ -2022,12 +2022,14 @@ def test_job_name_comes_from_the_caller_entry_point_never_an_argument(tmp_path: 
     argv = {
         "script": ["/bin/zsh", str(caller), "--tenant", "https://CanaryOrg.sh"],
         "python": ["python3", "-c", spawn, "--tenant", "https://CanaryOrg.sh"],
+        # cure review (Codex O3): an attached option is data, not an entry point
+        "python_option": ["python3", "-Xtenant=/CanaryOrg.sh", "-c", spawn],
     }[parent]
 
     result = subprocess.run(argv, capture_output=True, text=True, check=False, env=env, timeout=20)
 
     attempts, results = _records(result.stderr)
-    expected = {"script": "nightly-digest-run.sh", "python": "unknown"}[parent]
+    expected = {"script": "nightly-digest-run.sh", "python": "unknown", "python_option": "unknown"}[parent]
     assert attempts[0]["job"] == expected
     assert results[0][0] == expected
     assert "CanaryOrg" not in result.stderr

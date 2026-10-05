@@ -565,7 +565,8 @@ cascade_job_name() {
     # the launchd label. From the parent's argv only the ENTRY POINT is read
     # (argv[1], or argv[2] after a zsh/bash/sh/python interpreter) — never an
     # argument, which may be data (council round 2: a `--tenant https://x.sh`
-    # argument was taken as the job). A value is VALIDATED, never rewritten:
+    # argument was taken as the job; an option word like `-Xk=/x.sh` is not an
+    # entry point either). A value is VALIDATED, never rewritten:
     # anything outside the job-name shape (an e-mail's @, a space, > 64 chars)
     # becomes `unknown` whole — truncating would keep a prefix of it.
     local job="${CLAUDE_CASCADE_JOB:-}" word
@@ -577,7 +578,7 @@ cascade_job_name() {
             zsh|bash|sh|python*) word="${parent_argv[2]:-}" ;;
         esac
         case "$word" in
-            *://*) ;;
+            -*|*=*|*://*) ;;
             *.sh|*.zsh|*.py) job="${word:t}" ;;
         esac
     fi
