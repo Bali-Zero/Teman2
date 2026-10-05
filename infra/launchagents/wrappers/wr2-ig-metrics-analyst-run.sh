@@ -441,22 +441,45 @@ trap 'cleanup_active_claude 129' HUP
 trap 'cleanup_active_claude 130' INT
 trap 'cleanup_active_claude 143' TERM
 
-claude_stderr_retryable() {
-  local stderr_file="$1"
-  grep -qiE \
-    'rate.?limit|too many requests|(^|[^0-9/])429([^0-9/]|$)|exhausted|quota|usage limit|weekly limit|hit your limit|authentication (failed|required|expired)|auth required|login required|please (log in|login)|not logged in|not authenticated|invalid[_ ](grant|token)|token[_ ]revoked|refresh_token|unauthori[sz]ed|(^|[^0-9/])401([^0-9/]|$)' \
-    "$stderr_file"
-}
-
-claude_stdout_retryable() {
-  local stdout_file="$1"
-  python3 - "$stdout_file" <<'PY'
+# Seat-failure classes, judged per attempt. Same rule as claude-cascade.sh:
+# stderr is a diagnostic channel, so a notice there is authoritative; stdout is
+# content, so it is a notice only when the WHOLE payload is one (bare, a CLI
+# banner with its hint, an "Error:"-framed record) or a JSON error envelope.
+# After the head only a punctuation-led rest of that line or a hint verb may
+# follow, then at most one line that is itself a hint ("Resets at ...", "Use an
+# Anthropic API key ..."), never content: an answer that discusses limits or
+# organizations ends with its amendment path and stays an answer. Prints the
+# class, or nothing when the attempt is an answer (exit 0) or a failure no
+# class covers (non-zero: the loop stops, as before).
+claude_failure_class() {
+  python3 - "$1" "$2" "$3" <<'PY'
 import json
 import re
 import sys
 
-text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
-broad = re.compile(
+out = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+err = open(sys.argv[2], encoding="utf-8", errors="replace").read()
+rc = int(sys.argv[3])
+notices = (
+    ("subscription_disabled",
+     r"(?:your\s+)?organi[sz]ation\s+has\s+disabled\s+claude\s+subscription\s+"
+     r"access(?:\s+for\s+claude\s+code)?"),
+    ("session_limit",
+     r"(?:you(?:'ve|’ve|\s+have)\s+)?(?:hit|reached)\s+your\s+"
+     r"(?:session\s+|weekly\s+|usage\s+)?limit|"
+     r"(?:session|weekly)\s+limit\s+(?:reached|exceeded)|"
+     r"(?:you(?:'re|’re|\s+are|'ve|’ve|\s+have)\s+)?out\s+of\s+extra\s+usage"),
+)
+quota_or_auth = (
+    r"rate.?limit(?:ed| exceeded)?|too many requests|"
+    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
+    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
+    r"hit your limit|authentication (?:failed|required|expired)|auth required|"
+    r"login required|please (?:log in|login|run /login)|not logged in|"
+    r"not authenticated|invalid[_ ](?:grant|token)|token[_ ]revoked|"
+    r"refresh_token(?:_reused)?|unauthori[sz]ed|401(?: unauthori[sz]ed)?"
+)
+diagnostic = re.compile(
     r"rate.?limit|too many requests|(?<![\d/])429(?![\d/])|exhausted|quota|"
     r"usage limit|weekly limit|hit your limit|authentication "
     r"(?:failed|required|expired)|auth required|login required|"
@@ -465,23 +488,24 @@ broad = re.compile(
     r"unauthori[sz]ed|(?<![\d/])401(?![\d/])",
     re.I,
 )
-whole = re.compile(
-    r"\s*(?:(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
-    r"(?:rate.?limit(?:ed| exceeded)?|too many requests|"
-    r"429(?:\s+too many requests)?|quota (?:exceeded|exhausted)|"
-    r"usage limit(?: reached| exceeded)?|weekly limit(?: reached| exceeded)?|"
-    r"hit your limit|authentication (?:failed|required|expired)|auth required|"
-    r"login required|please (?:log in|login)|not logged in|not authenticated|"
-    r"invalid[_ ](?:grant|token)|token[_ ]revoked|refresh_token(?:_reused)?|"
-    r"unauthori[sz]ed|401(?: unauthori[sz]ed)?)"
-    r"(?:[\s:.,;\-].{0,240})?\s*",
-    re.I | re.S,
+frame = r"\s*(?:(?:claude(?:\s+code)?\s+)?(?:api\s+)?(?:error|fatal)(?:\s*[:\-]\s*|\s+))?"
+# A hint is a verb the CLI ends its notices with; "retry.md" is a path, not one.
+hint = (
+    r"(?:resets?|renews?|try\s+again|retry|use\s+an\s+anthropic\s+api\s+key|"
+    r"(?:ask|contact)\s+your\s+admin|please\s+(?:log\s*in|run\s+/login)|"
+    r"run\s+/login)(?!\w|\.\w)[^\n]{0,200}"
+)
+# Same line: punctuation (never "." or "/" glued to a word, as in a file name)
+# then the rest of THAT line, or a hint. Then at most ONE further line, a hint.
+tail = (
+    r"(?:[ \t]*(?:[^\w\s./]|[./](?!\w))[^\n]{0,240}|[ \t]+" + hint + r")?"
+    r"(?:[ \t]*\n\s*" + hint + r")?[\s.!]*"
 )
 try:
-    payload = json.loads(text)
+    payload = json.loads(out)
 except (json.JSONDecodeError, TypeError):
     payload = None
-is_error = False
+envelope = ""
 if isinstance(payload, dict):
     result = payload.get("result")
     result_kind = ""
@@ -490,25 +514,49 @@ if isinstance(payload, dict):
             result.get("type") or result.get("status") or result.get("subtype") or ""
         ).lower()
     envelope_kind = str(payload.get("type") or payload.get("status") or "").lower()
-    is_error = (
+    if (
         payload.get("is_error") is True
         or envelope_kind in {"error", "failed", "failure"}
-        or (
-            envelope_kind == "result"
-            and payload.get("subtype") not in (None, "success")
-        )
+        or (envelope_kind == "result" and payload.get("subtype") not in (None, "success"))
         or result_kind in {"error", "failed", "failure"}
-    )
-retryable = (
-    bool(is_error and broad.search(json.dumps(payload, ensure_ascii=False)))
-    or bool(whole.fullmatch(text))
-)
-raise SystemExit(0 if retryable else 1)
-PY
-}
+    ):
+        # Decoded string values, not the re-serialised dump: a "\n" escape
+        # would otherwise split a notice the CLI wrapped across two lines.
+        def strings(node):
+            if isinstance(node, str):
+                yield node
+            elif isinstance(node, dict):
+                for value in node.values():
+                    yield from strings(value)
+            elif isinstance(node, list):
+                for value in node:
+                    yield from strings(value)
 
-claude_retryable_files() {
-  claude_stderr_retryable "$2" || claude_stdout_retryable "$1"
+        envelope = " ".join(strings(payload))
+
+
+def failure_class() -> str:
+    if rc == 124:
+        return "timeout"
+    for name, head in notices:
+        if re.search(head, err, re.I):
+            return name
+    if diagnostic.search(err):
+        return "quota_or_auth"
+    for name, head in notices + (("quota_or_auth", quota_or_auth),):
+        if re.fullmatch(frame + "(?:" + head + ")" + tail, out, re.I):
+            return name
+        if envelope and re.search(head, envelope, re.I):
+            return name
+    if envelope and diagnostic.search(envelope):
+        return "quota_or_auth"
+    if rc == 0 and not out.strip():
+        return "empty_output"
+    return ""
+
+
+print(failure_class())
+PY
 }
 
 run_claude_account() {
@@ -585,36 +633,44 @@ run_claude_account() {
     fi
   done
 
-  CLAUDE_EXIT=0
-  wait "$claude_pid" 2>/dev/null && CLAUDE_EXIT=0 || CLAUDE_EXIT=$?
+  # The attempt's exit stays LOCAL: only the account loop owns CLAUDE_EXIT, so a
+  # retryable failure can no longer leave a stale 0 behind for the final exit.
+  local attempt_rc=0 failure_class
+  wait "$claude_pid" 2>/dev/null || attempt_rc=$?
   # Reap any background descendant the CLI left in its dedicated group.
   terminate_claude_group "$claude_pid"
   ACTIVE_CLAUDE_PID=""
   ACTIVE_CLAUDE_PGID=""
   if [ "$timed_out" -eq 1 ]; then
-    CLAUDE_EXIT=124
+    attempt_rc=124
   fi
 
-  if [ "$CLAUDE_EXIT" -eq 124 ] || \
-     { [ "$CLAUDE_EXIT" -eq 0 ] && ! grep -q '[^[:space:]]' "$attempt_out"; } || \
-     claude_retryable_files "$attempt_out" "$attempt_err"; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} unavailable (exit=${CLAUDE_EXIT}) — trying next account" >> "$ERR"
+  failure_class="$(claude_failure_class "$attempt_out" "$attempt_err" "$attempt_rc")" \
+    || failure_class="unclassifiable"
+  if [ -n "$failure_class" ]; then
+    LAST_FAILURE_CLASS="$failure_class"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} unavailable (exit=${attempt_rc}, class=${failure_class}) — trying next account" >> "$ERR"
     rm -f "$attempt_out" "$attempt_err"
     return 98
   fi
-  if [ "$CLAUDE_EXIT" -eq 0 ]; then
+  if [ "$attempt_rc" -eq 0 ]; then
     cat "$attempt_out" >> "$LOG"
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] used: ${label} claude-sonnet-5 (exit=0)" >> "$LOG"
     rm -f "$attempt_out" "$attempt_err"
     return 0
   fi
 
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} failed (exit=${CLAUDE_EXIT})" >> "$ERR"
+  LAST_FAILURE_CLASS="exit_${attempt_rc}"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] ${label} failed (exit=${attempt_rc})" >> "$ERR"
   rm -f "$attempt_out" "$attempt_err"
-  return "$CLAUDE_EXIT"
+  # 98 is the loop's "next account" signal; a CLI that exits 98 on its own is
+  # an unclassified failure and must not pass for one.
+  [ "$attempt_rc" -ne 98 ] || attempt_rc=1
+  return "$attempt_rc"
 }
 
 CLAUDE_EXIT=98
+LAST_FAILURE_CLASS="no_account"
 CLAUDE_LABELS=()
 CLAUDE_TOKENS=()
 # Retired token slots: FLEET_TOPOLOGY.json slots with status "retired" (slot 2 =
@@ -644,15 +700,14 @@ for token_index in "${!CLAUDE_LABELS[@]}"; do
     CLAUDE_EXIT=0
     break
   else
-    attempt_rc=$?
-    if [ "$attempt_rc" -ne 98 ]; then
-      CLAUDE_EXIT="$attempt_rc"
+    CLAUDE_EXIT=$?
+    if [ "$CLAUDE_EXIT" -ne 98 ]; then
       break
     fi
   fi
 done
 
-if [ "$CLAUDE_EXIT" -ne 0 ] && [ "$CLAUDE_EXIT" -eq 98 ]; then
+if [ "$CLAUDE_EXIT" -eq 98 ]; then
   if run_claude_account "keychain" ""; then
     CLAUDE_EXIT=0
   else
@@ -662,13 +717,13 @@ fi
 
 if [ "$CLAUDE_EXIT" -eq 98 ]; then
   CLAUDE_EXIT=1
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] all Claude OAuth accounts unavailable" >> "$ERR"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] all Claude OAuth accounts unavailable (last failure: ${LAST_FAILURE_CLASS})" >> "$ERR"
 fi
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst done (exit=${CLAUDE_EXIT})" >> "$LOG"
 
 if [ "$CLAUDE_EXIT" -ne 0 ]; then
-  notify_failure "⚠️ wr2-ig-metrics-analyst FAILED (exit=${CLAUDE_EXIT}) on $(hostname -s). Weekly IG-insights amendment NOT produced — see ${ERR}" \
+  notify_failure "⚠️ wr2-ig-metrics-analyst FAILED (exit=${CLAUDE_EXIT}, last failure: ${LAST_FAILURE_CLASS}) on $(hostname -s). Weekly IG-insights amendment NOT produced — see ${ERR}" \
     "wr2-ig-metrics-analyst:$(date +%Y-W%V):$(hostname -s)"
 fi
 
