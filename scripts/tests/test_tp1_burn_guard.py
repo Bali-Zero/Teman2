@@ -47,11 +47,14 @@ def test_discover_skips_locale_suffixed_translations(tmp_path, monkeypatch):
     (articles / "visa" / "b.mdx").write_text("body\n", encoding="utf-8")
     (articles / "visa" / "b.it.mdx").write_text("body it\n", encoding="utf-8")
     (articles / "visa" / "c.mdx").write_text("body\n", encoding="utf-8")
-    (articles / "visa" / "c.id.mdx").write_text("exists\n", encoding="utf-8")
+    (drafts / "visa").mkdir(parents=True)
+    (drafts / "visa" / "c.id.mdx").write_text("existing draft\n", encoding="utf-8")
     monkeypatch.setattr(tr, "ARTICLES", articles)
     monkeypatch.setattr(tr, "DRAFTS", drafts)
-    todo = [p.name for p in tr.discover(0)]
-    assert todo == ["b.mdx"]  # a has its id target; c too; b.it is a translation
+    todo = sorted(p.name for p in tr.discover(0))
+    # refresh semantics: originals with a canonical target are still todo;
+    # locale translations and already-drafted originals are not.
+    assert todo == ["a.mdx", "b.mdx"]
 
 
 def test_strip_wrap_fence_keeps_inner_fences():

@@ -49,14 +49,21 @@ def strip_wrap_fence(text: str) -> str:
 
 
 def discover(limit):
+    """EN originals (stem with no locale dot), refreshed as drafts.
+
+    Measured 2026-10-05: every original already carries a .id.mdx target and
+    every locale translation has its id sibling — the missing-file backlog is
+    ZERO. The canonical pipeline's real work is FRESHNESS (re-translate when
+    the EN source moves), so this burn lane refreshes ALL originals as drafts;
+    Subhi/the canonical pipeline promotes the better ones after review.
+    """
     todo = []
     for en in sorted(ARTICLES.rglob("*.mdx")):
         if "." in en.stem:  # locale-suffixed translation (.id/.it/.fr/.ru), not an original
             continue
-        target = en.with_name(en.stem + ".id.mdx")
         rel = en.relative_to(ARTICLES)
         draft = DRAFTS / rel.with_name(rel.stem + ".id.mdx")
-        if target.exists() or draft.exists():
+        if draft.exists():
             continue
         todo.append(en)
         if limit and len(todo) >= limit:

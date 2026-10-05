@@ -49,7 +49,9 @@ OUTDIR = WT / "data" / "burn_drafts" / "media"
 MANIFEST = OUTDIR / "media_manifest.json"
 
 #: statuses that mean "settled" — everything else is retried by the next run.
-TERMINAL = {"SUCCEEDED", "FAILED", "SUBMIT_FAIL", "NO_TASK_ID"}
+#: Measured 2026-10-05: image submits 429 under 8-way concurrency, so SUBMIT_FAIL
+#: and provider FAILED must stay retryable once the backoff fix lands.
+TERMINAL = {"SUCCEEDED", "NO_TASK_ID"}
 
 TITLE_RE = re.compile(r"^title:\s*(.+)$", re.MULTILINE)
 DESC_RE = re.compile(r"^description:\s*(.+)$", re.MULTILINE)
@@ -137,15 +139,31 @@ def run_task(kind, key, model, payload_fn, poll_seconds, guard, manifest, lock):
     if not guard.reserve():
         return
     deadline = time.time() + poll_seconds  # per-job deadline, computed at submit
-    try:
-        submitted = payload_fn()
-        task_id = (submitted.get("output") or {}).get("task_id")
-    except Exception as exc:  # noqa: BLE001 — one bad asset must not kill the batch
+    submitted = None
+    last_error = None
+    for attempt in range(4):  # 429 backoff: image gen refuses 8-way concurrency
+        if not guard.ok():
+            return
+        try:
+            submitted = payload_fn()
+            break
+        except urllib.error.HTTPError as exc:
+            last_error = exc
+            if exc.code == 429 and attempt < 3:
+                guard.add_attempt()
+                time.sleep(5 * (attempt + 1))
+                continue
+            break
+        except Exception as exc:  # noqa: BLE001 — one bad asset must not kill the batch
+            last_error = exc
+            break
+    if submitted is None:
         with lock:
             manifest[key] = {"kind": kind, "model": model, "status": "SUBMIT_FAIL",
-                             "error": str(exc)[:200]}
+                             "error": str(last_error)[:200]}
         log_cost_event(model, {}, purpose="burn-media-submit-fail")
         return
+    task_id = (submitted.get("output") or {}).get("task_id")
     log_cost_event(model, {}, purpose="burn-media")
     if not task_id:
         with lock:
@@ -177,7 +195,7 @@ def main():
     args = ap.parse_args()
     n_images = 100 if args.images is None else args.images
 
-    workers = int(os.environ.get("BURN_WORKERS", "8"))
+    workers = int(os.environ.get("BURN_MEDIA_WORKERS", "2"))
     guard = BurnGuard()
     OUTDIR.mkdir(parents=True, exist_ok=True)
     manifest = {}
