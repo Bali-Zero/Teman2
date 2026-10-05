@@ -4,43 +4,68 @@ plan_ref: >-
   Branch agent/air-m5/wr2/wr2class-seat-failure from origin/main beb6991b30 (after #7898): red tests
   with a fake claude binary for the three seat-loop defects of wr2-ig-metrics-analyst-run.sh, a
   three-family council on the classification rule before the build, then one classifier
-  (claude_failure_class) and a local attempt exit. Mission WR2CLASS-20261005.
+  (claude_failure_class) and a local attempt exit. Mission WR2CLASS-20261005. The first Dux
+  (dux-wr2class) died at the 12:00Z window jump with four local commits never pushed; its successor
+  (dux-wr2class2) rebased them onto origin/main 5ec3d63463 at 12:21Z (none of the three new main
+  commits touches these files), disposed the post-build Kimi K3 refutation, added one cure commit and
+  shipped. Rebase map: 486fbbea19 -> 64db389f04, 545fd985e7 -> b70b8f49c5, 22f957ed30 -> a3f6134473,
+  f22ee522cb -> a39574409d; cure 5dad03b98f (its first, unpushed version 7c881b79b7 was amended after Kimi K3's second pass).
 lanes:
   - lane: wr2class-build
     role: build
-    seat: "claude-opus-5.5 (Dux dux-wr2class; tests first, then the wrapper)"
-  - lane: wr2class-council-codex-o2
+    seat: "claude-opus-5.5 (Dux dux-wr2class: tests first, then the wrapper, commits 64db389f04, b70b8f49c5, a39574409d; its successor dux-wr2class2: rebase, cure commit 5dad03b98f, this pack)"
+  - lane: wr2class-council-codex
     role: review
-    seat: "codex-o2 (sealed round 1 on the rule; VERDICT AMEND)"
+    seat: "codex-default-home (dispatched as codex-o2; sealed round 1 on the rule; VERDICT AMEND)"
   - lane: wr2class-council-qwen
     role: review
     seat: "tp1-qwen3.8-max (sealed round 1 AMEND; refutation round 2 FALSIFIED)"
   - lane: wr2class-council-deepseek
     role: review
     seat: "tp1-deepseek-v4-pro (sealed round 1; VERDICT ADOPT)"
-  - lane: wr2class-council-codex-o3
+  - lane: wr2class-council-codex-r2
     role: review
-    seat: "codex-o3 (refutation round 2 on the synthesized rule; VERDICT FALSIFIED)"
+    seat: "codex-default-home (dispatched as codex-o3; refutation round 2 on the synthesized rule; VERDICT FALSIFIED)"
   - lane: wr2class-diff-review
     role: review
-    seat: "codex-o2 (independent review of the built diff, family != builder)"
+    seat: "codex-default-home (post-build review of 486fbbea19 BLOCK, re-review of 545fd985e7 BLOCK; family openai != builder)"
+  - lane: wr2class-diff-refutation
+    role: review
+    seat: "kimi-code/k3 (post-build refutation of f22ee522cb, FALSIFIED; second pass on 7c881b79b7, FALSIFIED, cured by amendment into 5dad03b98f; family moonshot != builder)"
+  - lane: wr2class-delta-review
+    role: review
+    seat: "codex-default-home (post-build review of the 7c881b79b7 -> 5dad03b98f delta, BLOCK, disposed in dissent; family openai != builder)"
 council_run: journal.jsonl
+seat_fallback_reason: >-
+  tp1-deepseek-v4-pro sat in sealed round 1 (10:58Z) in place of kimi-code/k3: the imperator's
+  addendum-3 (read 10:15Z) recorded Kimi's 5-hour window exhausted with HTTP 403 from ~08:00Z, and
+  addendum-4 records it answering again only from ~11:10Z. codex-gpt-5.6-sol is not claimed: the Codex
+  door used (scripts/with_seat.sh with CODEX_HOME) ran the default home with model gpt-6-astra, so those
+  rows are journaled as codex-default-home. Kimi K3 sat later, post-build, as the diff refuter.
+council_timing: >-
+  Rounds 1-2 on the rule (10:58Z, 11:06Z) ran BEFORE the first build commit (486fbbea19, 11:20Z). The
+  diff reviews (11:30Z, 11:40Z) and the Kimi K3 refutations (12:06Z, and the pass on 7c881b79b7) are
+  post-build by construction: they judge built diffs.
 what_changed: |
   wr2-ig-metrics-analyst-run.sh: claude_stderr_retryable / claude_stdout_retryable /
   claude_retryable_files are replaced by one claude_failure_class(stdout, stderr, rc) that prints
   timeout | subscription_disabled | session_limit | quota_or_auth | empty_output, or nothing.
   Rule taken from claude-cascade.sh:174-239 (read, not edited): stderr is authoritative; stdout is a
   notice only when the WHOLE payload is one (bare, CLI banner with its hint, "Error:"-framed) or a
-  JSON error envelope. New heads: "organization has disabled Claude subscription access" and the
-  session-limit family (cascade's CLI_USAGE_BANNER head, plus "reached", "out of extra usage").
-  The old stdout matcher's free 240-character tail (which crossed lines and swallowed real answers
-  such as "Rate limit mitigation: ...\n/tmp/a.md") is replaced by: punctuation then the rest of
-  THAT line, or a hint verb, then at most one hint line. JSON envelopes are searched on decoded
+  JSON error envelope, and a stdout carrying a file path (the analyst's answer ends with its amendment
+  path) is never a notice. Heads: "organization has disabled Claude subscription access" and the
+  session-limit family over every "You've hit your ..." notice the installed CLI builds (session, weekly,
+  usage, Opus, Sonnet, Fable, usage credit, fast, monthly, monthly spend limits, the team's shared
+  budget), plus "reached", "out of extra usage" and "out of usage credits". A path counts plain,
+  quoted or backticked. After the head: punctuation then the
+  rest of THAT line, or a hint verb, then at most one hint line. JSON envelopes are searched on decoded
   string values. run_claude_account keeps its exit in a local; only the account loop writes
   CLAUDE_EXIT, so the keychain fallback is reachable again and every seat failing ends exit 1 with
-  "all Claude OAuth accounts unavailable (last failure: <class>)" and the alert. Unchanged: slot
-  order, RETIRED_TOKEN_VARS (#7898), timeouts, model, and an unclassified non-zero exit still stops
-  the loop.
+  "all Claude OAuth accounts unavailable (last failure: <class>)" and the alert; a CLI exiting 98 on
+  its own is an unclassified failure, never the loop's next-account signal. Unchanged: slot order,
+  RETIRED_TOKEN_VARS (#7898), timeouts, model, and an unclassified non-zero exit still stops the loop.
+spend:
+  wall_clock_hours: 2.5
 receipts:
   - claim: three defects RED on beb6991b30 with a fake claude binary (new file, before the cure)
     cmd: python3 -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py
@@ -67,29 +92,113 @@ receipts:
     exit: "1 (20 failed, 172 passed; each failure TimeoutExpired on claude-cascade.sh) / 0 (identical) / load 44.95 53.98 39.70"
     ts: "2026-10-05T11:19Z"
     seat: claude-opus-5.5
-  - claim: the three findings of the cross-family diff review (codex-o2 BLOCK on 486fbbea19) cured in 545fd985e7, two as new fixtures
+  - claim: the three findings of the cross-family diff review (codex BLOCK on 486fbbea19) cured in 545fd985e7, two as new fixtures
     cmd: python3 -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py; bash -n on the wrapper
     exit: "0 (43 passed) / 0"
     ts: "2026-10-05T11:35Z"
     seat: claude-opus-5.5
+  - claim: the installed CLI (claude-code 2.1.289) builds its limit notice as "You've hit your ${limit}" over session/weekly/Opus/Sonnet/Fable/usage credit limits, carries the disabled-subscription notice verbatim, and has no "Claude usage limit reached" / "Claude AI usage limit reached" template
+    cmd: strings -n 16 <claude-code bin> > cli-strings.txt; python3 re.finditer over it for "var Vye=", "You've hit your ${", "disabled Claude subscription", "Claude (AI )?usage limit"
+    exit: "Vye={five_hour:session limit, seven_day:weekly limit, seven_day_opus:Opus limit, seven_day_sonnet:Sonnet limit, seven_day_overage_included:Fable limit, overage:usage credit limit}; o_() returns `You've hit your ${e}${n}${g}`; fto = the subscription notice; Claude (AI )?usage limit: NONE"
+    ts: "2026-10-05T12:24Z"
+    seat: claude-opus-5.5
+  - claim: RED first for the CLI's model-limit notices (cure 7c881b79b7), on the pre-cure wrapper
+    cmd: python3 -B -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py
+    exit: "1 (6 failed, 48 passed): sonnet-stdout-exit-0 accepted as the answer, sonnet-stderr-exit-1 stopped the loop, Sonnet/Opus/Fable/usage-credit notice shapes unclassified; the Sonnet-limit innocence answer stays an answer"
+    ts: "2026-10-05T12:28Z"
+    seat: claude-opus-5.5
+  - claim: "GREEN on the bytes of 7c881b79b7; the retired-slot test of PR 7898 and the existing wr2 suites stay green"
+    cmd: bash -n <wrapper>; python3 -B -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py; bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh; pytest scripts/tests/test_claude_cascade_shell.py::test_wr2_retired_token_vars_equal_the_registry; pytest test_claude_oauth_runtime_fallback.py test_claude_oauth_slot6_coverage.py test_claude_cascade_shell.py -k "wr2 or retired or registry"
+    exit: "0 / 0 (55 passed) / 0 (44 pass, 0 fail) / 0 (1 passed) / 0 (14 passed, 137 deselected); load average 166"
+    ts: "2026-10-05T12:31Z"
+    seat: claude-opus-5.5
+  - claim: one mutation per claimed property in a scratch copy, each killed by the named test (scratch mutate.py, -k the test)
+    cmd: "M1 disabled head broken; M2 stdout fullmatch off; M3 claim-3 reverted (global CLAUDE_EXIT write + old loop + old keychain guard); M4 file-path guard off; M5 last class dropped from the log line; M6 model-limit heads reverted; M7 empty_output dropped; M8 exit-98 mapping dropped; M9 unclassified failure moves on"
+    exit: "9/9 KILLED: M1 disabled_subscription[stderr-exit-1]; M2 session_limit[banner-stdout-exit-0]; M3 every_seat_failing[disabled]; M4 no_real_answer[...Please retry...amendment.md]; M5 every_seat_failing[disabled]; M6 session_limit[sonnet-stderr-exit-1]; M7 every_seat_failing[empty]; M8 test_a_cli_exiting_98_is_not_a_next_account_signal; M9 test_an_unclassified_failure_still_stops_the_loop"
+    ts: "2026-10-05T12:34Z"
+    seat: claude-opus-5.5
+  - claim: paths the PR did not mean to change are byte-identical, origin/main vs 7c881b79b7, same fake seats, timestamps and tmp paths normalised (rc, seat trace, log, err log, stdout, stderr)
+    cmd: python3 -B golden.py (scratch) — G1 first seat answers; G2 retired slot 2 set, slot 1 quota on stderr, slot 3 answers; G3 keychain only; G4 multi-line answer mentioning organizations
+    exit: "G1 IDENTICAL; G3 IDENTICAL; G4 IDENTICAL; G2 differs only in the err-log line gaining ', class=quota_or_auth' (intended); trace [seat-one, seat-three] and rc 0 on both"
+    ts: "2026-10-05T12:33Z"
+    seat: claude-opus-5.5
+  - claim: Kimi K3 payloads replayed through HEAD's claude_failure_class and base beb6991b30's claude_retryable_files (scratch dispose.sh)
+    cmd: bash dispose.sh
+    exit: "F1 head='' base=not-retryable; F1b ''/not-retryable; F2a ''/not-retryable; F2b ''/retryable; F3 quota_or_auth/retryable; T13 ''/not-retryable; CLI Sonnet-limit exit 0 session_limit/not-retryable; CLI 'Usage limit reached ·' quota_or_auth/retryable; CLI subscription notice exit 0 subscription_disabled/not-retryable"
+    ts: "2026-10-05T12:32Z"
+    seat: claude-opus-5.5
+  - claim: downstream exposure of claim 2 — no seat notice ever reached the analyst log, the amendments or the review queue
+    cmd: grep -r -i -c -E 'hit your|session limit|disabled Claude subscription|out of extra usage|usage limit' over ~/logs/wr2-ig-metrics-analyst.log, ~/.claude/skills/bali-zero-brand/_proposed-amendments, the queue and its archive, on M5 and (ssh, read-only) Pro
+    exit: "0 matching lines on every path (M5 has no analyst log); Pro's last run 2026-08-30T22:15:21Z used slot 1 with exit 0"
+    ts: "2026-10-05T12:31Z"
+    seat: claude-opus-5.5
+  - claim: RED first for Kimi K3's second pass on 7c881b79b7 (backticked answer path rotated away; fast/monthly/monthly spend/team budget/usage credits notices unclassified)
+    cmd: python3 -B -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py -k "every_notice_shape or no_real_answer"
+    exit: "1 (6 failed, 38 passed, 17 deselected)"
+    ts: "2026-10-05T12:50Z"
+    seat: claude-opus-5.5
+  - claim: "GREEN on 5dad03b98f, the four acceptance probes included; the retired-slot test of PR 7898 and the existing wr2 suites stay green"
+    cmd: bash -n <wrapper>; python3 -B -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py::test_disabled_subscription_seat_is_passed_and_a_later_seat_answers scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py::test_session_limit_notice_is_never_accepted_as_an_answer scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py::test_every_seat_failing_ends_nonzero_and_names_the_last_class scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py::test_an_answer_that_discusses_limits_or_organizations_is_accepted (inside the full-module run); python3 -B -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py; bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh; pytest scripts/tests/test_claude_cascade_shell.py::test_wr2_retired_token_vars_equal_the_registry; pytest test_claude_oauth_runtime_fallback.py test_claude_oauth_slot6_coverage.py test_claude_cascade_shell.py -k "wr2 or retired or registry"
+    exit: "0 / 0 (61 passed) / 0 (44 pass, 0 fail) / 0 (1 passed) / 0 (14 passed, 137 deselected); load average 252"
+    ts: "2026-10-05T12:54Z"
+    seat: claude-opus-5.5
+  - claim: mutations re-run on 5dad03b98f, plus M10 (backtick dropped from the path guard) and M11 (team budget head dropped); golden and Kimi-payload replay unchanged
+    cmd: python3 -B mutate.py; python3 -B golden.py; bash dispose.sh (scratch)
+    exit: "11/11 KILLED (M10 no_real_answer[...saved `/tmp/ig/amendment-2026-10-05.md`]; M11 every_notice_shape[team's shared budget]); golden G1/G3/G4 IDENTICAL, G2 only the intended class= in the err log; dispose identical to the 12:32Z run"
+    ts: "2026-10-05T12:56Z"
+    seat: claude-opus-5.5
 dissent:
-  - seat: codex-o2 (diff review)
-    claim: "BLOCK on 486fbbea19: (1) 'You have hit your session limit\\nPlease try again later.' accepted as an answer; (2) 'You have hit your session limit: this hook earned 2x saves.\\nretry-amendment.md' read as a notice; (3) LAST_FAILURE_CLASS stale when the cascade deadline has already expired."
+  - seat: codex-default-home (diff review)
+    objection: "BLOCK on 486fbbea19: (1) 'You have hit your session limit\\nPlease try again later.' accepted as an answer; (2) 'You have hit your session limit: this hook earned 2x saves.\\nretry-amendment.md' read as a notice; (3) LAST_FAILURE_CLASS stale when the cascade deadline has already expired."
     status: CONFIRMED
-    reason: "Cured in 545fd985e7: a hint may start with 'Please'; a hint verb must be followed by a space or sentence-final punctuation; the deadline refusal records class timeout. (1) and (2) are fixtures now."
+    reason: "Cured in 545fd985e7: a hint may start with 'Please'; a hint verb must be followed by a space or sentence-final punctuation; the deadline refusal records class timeout. (1) and (2) are fixtures now; (3) has no test (it only changes the alert text) — stated, not hidden."
+  - seat: codex-default-home (diff re-review)
+    objection: "BLOCK on 545fd985e7: 'You have hit your session limit: ...\\nPlease retry this hook next week; amendment saved to /tmp/ig/amendment.md.' and '...\\nLogin conversion increased 25%; saved /tmp/ig/amendment.md.' classified session_limit; 'You have hit your session limit\\nRetry—after 60 seconds.' and '...\\nResets… at 11:20pm' accepted as answers."
+    status: CONFIRMED
+    reason: "Cured in f22ee522cb: a stdout carrying a file path is never a notice; bare 'login' is no longer a hint; dash and ellipsis follow a hint verb. All four payloads are fixtures."
+  - seat: kimi-code/k3 (post-build refutation, F1)
+    objection: "'Claude usage limit reached. Your limit will reset at 8pm.' (and 'Claude AI usage limit reached|1759708800') on stdout, rc 1, is unclassified, so the loop stops instead of moving on."
+    status: CONFIRMED
+    reason: "Partly: those exact strings are not in the installed CLI (2.1.289): NONE in its strings, and base beb6991b30 did not classify them either; with rc 1 the run stops with exit 1 and the alert, never passes them as an answer. The CLASS is real, though: the CLI's own template 'You've hit your Sonnet limit · resets ...' (the cap this Sonnet analyst meets) was unclassified on stdout and stderr. Red first, cured in 5dad03b98f."
+  - seat: kimi-code/k3 (post-build refutation, F2)
+    objection: "The file-path guard unclassifies a stdout notice that mentions a path: 'You've hit your weekly limit. Logs in /Users/x/.claude/usage.json', 'Error: rate limit exceeded — see /var/log/claude/retry.log for details' (rc 1)."
+    status: PLAUSIBLE
+    reason: "Accepted trade-off, not cured: neither the CLI's limit builder o_() nor its subscription notice carries a path (strings receipt). The guard is the cure of the re-review's false positives on real answers ending with the amendment path. On rc != 0 such a payload ends the run with exit 1 and the alert (fail closed); base classified F2b but not F2a."
+  - seat: kimi-code/k3 (post-build refutation, F3)
+    objection: "A real answer on stdout (rc 0) with a transient stderr warning 'stream warning: rate limit hit, retried OK' is classified quota_or_auth and discarded."
+    status: PLAUSIBLE
+    reason: "Accepted trade-off, not cured: base-identical (base claude_retryable_files: retryable on the same payload) and the claude-cascade.sh rule the mandate names: stderr is authoritative. Cost of the false positive: one more seat; cost of the false negative: a quota notice passed as the answer. Already raised by the council (row below)."
+  - seat: kimi-code/k3 (post-build refutation, T13)
+    objection: "Notice + hint + a third line ('You've hit your weekly limit\\nResets at 3am\\nSee https://status.anthropic.com for details', rc 1) is unclassified and stops the loop."
+    status: PLAUSIBLE
+    reason: "Not acted on: the CLI's notice builders emit one line (o_() and the subscription constant); base did not classify this payload either (dispose receipt); rc 1 ends the run with exit 1 and the alert."
+  - seat: kimi-code/k3 (post-build refutation pass 2, finding 1)
+    objection: "On 7c881b79b7 a two-line real answer opening with a model-limit phrase and ending with a backticked path ('You've hit your Sonnet limit — reels capped at 30/min this window.\\nTry again with the carousel lane; saved `/tmp/ig/amendment-2026-10-05.md`') is classified session_limit: the path guard did not accept a backtick before the path."
+    status: CONFIRMED
+    reason: "Real shape: the analyst's own last log lines on Pro print the amendment path in backticks. Red first, cured in 5dad03b98f (backtick in the guard's leading class); the payload is a fixture and mutation M10 kills it."
+  - seat: kimi-code/k3 (post-build refutation pass 2, finding 2)
+    objection: "Pre-existing: 'You've hit your fast limit', '...monthly limit', '...team's shared budget', 'You're out of usage credits. /model to switch models.' (stderr, rc 1) are unclassified, so the loop stops."
+    status: CONFIRMED
+    reason: "All are strings of the installed CLI (Kimi read them from the binary; the strings receipt agrees). Red first, cured in 5dad03b98f; each is a fixture, mutation M11 kills the team-budget head."
+  - seat: codex-default-home (delta review of 7c881b79b7 -> 5dad03b98f)
+    objection: "BLOCK: two-line real answers that open with a newly named limit and end with a backticked path the guard does not read as a path (relative 'research/.../2026-10-05-ig.md', '.claude/skills/.../ig-insights.md', or one with a space) are classified session_limit; and 'You've hit your monthly limit\\nSwitch to another model to continue.' / 'You've hit your fast limit\\n/model to switch models.' are unclassified (pre-existing)."
+    status: PLAUSIBLE
+    reason: "Not cured, by rule: this is the third review round on the same cause, the stdout answer-path guard (absolute path, then backticked path, now relative or spaced path), and Builder Contract 1 stops a fix-of-a-fix at depth 1 because the surface is under-specified. The same shape already reaches the session-limit head shipped since f22ee522cb. Bound: such an answer is rotated to the next seat (one more seat spent), never a notice passed as content; a two-line answer opening with a limit phrase appears in no analyst run on record (0 matching lines in the Pro log), whose answers are multi-paragraph reports. The two unclassified shapes split what the CLI prints on ONE line ('... budget. Switch to another model ...', '... usage credits. /model to switch models.', strings receipt); on rc != 0 they stop the run with the alert. Spec owed in residuals."
   - seat: tp1-qwen3.8-max
-    claim: "An unclassified non-zero exit should MOVE ON (as claude-cascade.sh does): stopping on an unknown phrasing recreates defect 1 for the next wording."
-    status: OVERRULED
-    reason: "codex-o2, codex-o3 and tp1-deepseek-v4-pro hold STOP: the agent writes files, a deterministic failure repeats on every seat at up to $10 each, and the mandate keeps behaviour beyond the failure classes unchanged. Every known seat-failure wording is now a class; a new wording is a one-line head."
-  - seat: codex-o3 / tp1-qwen3.8-max (round 2)
-    claim: "Synthesized rule FALSIFIED: a newline before punctuation swallowed a path line ('Rate limit\\n/tmp/a.md'); 'Quota exhausted\\nretry.md' and 'quota exhausted.md' read as notices; two-line notices with a period before the hint line were missed; the JSON dump hid a notice behind an escaped newline."
+    objection: "An unclassified non-zero exit should MOVE ON (as claude-cascade.sh does): stopping on an unknown phrasing recreates defect 1 for the next wording."
+    status: PLAUSIBLE
+    reason: 'Overruled: codex (default home, rounds 1-2) and tp1-deepseek-v4-pro hold STOP: the agent writes files, a deterministic failure repeats on every seat at up to $10 each, and the mandate keeps behaviour beyond the failure classes unchanged. Every limit and subscription notice the installed CLI builds ("You''ve hit your ...", the disabled-subscription constant, out of extra usage / usage credits) is now a class; a new wording is a one-line head.'
+  - seat: codex-default-home / tp1-qwen3.8-max (round 2)
+    objection: "Synthesized rule FALSIFIED: a newline before punctuation swallowed a path line ('Rate limit\\n/tmp/a.md'); 'Quota exhausted\\nretry.md' and 'quota exhausted.md' read as notices; two-line notices with a period before the hint line were missed; the JSON dump hid a notice behind an escaped newline."
     status: CONFIRMED
-    reason: "Each case is now a fixture in test_every_notice_shape_is_classified / test_no_real_answer_is_classified_as_a_seat_failure and passes: same-line separator only ([ \\t]*), '.' or '/' glued to a word is a file name, at most one hint line, hint verbs refuse a following '.word', envelopes searched on decoded strings."
-  - seat: codex-o2 / codex-o3 / tp1-deepseek-v4-pro
-    claim: "stderr substring authority can discard a valid answer when stderr carries a warning or logged content."
-    status: ACCEPTED-TRADEOFF
-    reason: "Kept for parity with claude-cascade.sh and the mandate (a notice is rejected on stderr, exit 0 or not). claude -p writes only CLI diagnostics to stderr; the cost of a false positive is one more seat, the cost of a false negative is a quota notice passed as the answer."
+    reason: "Each case is a fixture in test_every_notice_shape_is_classified / test_no_real_answer_is_classified_as_a_seat_failure and passes: same-line separator only ([ \\t]*), '.' or '/' glued to a word is a file name, at most one hint line, hint verbs refuse a following '.word', envelopes searched on decoded strings."
+  - seat: codex-default-home / tp1-deepseek-v4-pro
+    objection: "stderr substring authority can discard a valid answer when stderr carries a warning or logged content."
+    status: PLAUSIBLE
+    reason: "Accepted trade-off: kept for parity with claude-cascade.sh and the mandate (a notice is rejected on stderr, exit 0 or not). claude -p writes only CLI diagnostics to stderr; the cost of a false positive is one more seat, the cost of a false negative is a quota notice passed as the answer."
 residuals:
-  - "Codex o2 round 1: verify the amendment artifact exists before reporting success — out of this concern (success criterion), not done."
+  - "Codex round 1: verify the amendment artifact exists before reporting success — out of this concern (success criterion), not done."
   - "Class audit: scripts/ai-dispatch.sh and infra/launchagents/wrappers/cron-agent.sh carry the same claude_stderr_retryable/claude_stdout_retryable family (ai-dispatch.sh:407-474) and are not cured here."
-  - "claude-cascade.sh's stdout rule has no disabled-subscription head either; it moves on for any non-zero exit, so only an exit-0 stdout notice is exposed there (owned by dux-cascadeobs today, not edited)."
+  - "claude-cascade.sh's stdout rule has no disabled-subscription head and no Sonnet/Opus/Fable-limit head either; it moves on for any non-zero exit, so only an exit-0 stdout notice is exposed there (PR #7925 owns that file today, not edited)."
+  - "SPEC OWED (owner: the imperator assigns it): judge an answer by the analyst's own output contract (the amendment file it is told to write, and that the file exists), not by path shapes on stdout; it would retire the answer-path guard that three review rounds moved. Until then the guard's boundary is two-line answers that open with a limit phrase."
+  - "The deadline-refusal class (timeout on an already expired cascade) has no test: it only changes the alert text."

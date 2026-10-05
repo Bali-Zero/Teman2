@@ -26,4 +26,4 @@ acceptance:
   - text: WHEN an answer merely mentions session limits, organizations or quota THEN it SHALL be accepted from the first seat.
     probe: scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py::test_an_answer_that_discusses_limits_or_organizations_is_accepted
 consumer_map:
-  - infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh — weekly WR2 IG-metrics analyst; live copy ~/scripts on Pro and M5 (declared pair); its Pro plist is disabled since 2026-09-01 (WR2 runs only on command), none on M5.
+  - infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh — weekly WR2 IG-metrics analyst; live copy ~/scripts/wr2-ig-metrics-analyst-run.sh on Pro and M5 (declared pair, machines pro+m5; both byte-identical to origin/main at 12:31Z); its Pro weekly plist is com.balizero.wr2.ig-metrics-analyst.weekly.plist.disabled (not loaded; last run in its log 2026-08-30T22:15:21Z), none on M5, so it runs only when invoked by command.
