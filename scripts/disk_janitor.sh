@@ -32,7 +32,8 @@
 #             LINKED worktree (a standalone repository's refs and objects would die with it), not
 #             locked, clean (untracked files count), and its HEAD on some branch/remote/tag ref.
 #             Any .git (file or dir) deeper than that, and any `objects/` directory with a `HEAD` file
-#             beside it (bare repo, --separate-git-dir) anywhere inside, keeps the candidate. A HEAD that will not
+#             beside it (bare repo, --separate-git-dir) anywhere inside, at any path length, keeps the
+#             candidate; so does a symlink named objects with a HEAD beside it. A probe that cannot answer keeps. A HEAD that will not
 #             resolve is skipped as "unborn" ONLY when it is a symbolic ref to a ref that provably
 #             does not exist; any other failure keeps the tree ("git state unreadable").
 #             Git probes run with --no-optional-locks: a probe that refreshes the index would
@@ -48,6 +49,10 @@
 #            work. A stale, clean linked worktree is deleted together with its ignored content (copied
 #            .env, local DBs, notes, build output). A nested repository inside it is the exception
 #            (kept, see above); ignored plain files are not.
+#            Accepted shapes, NOT guarded (decided in the PR table, 2026-10-05): a directory with objects/ and
+#            refs/ but NO HEAD (git itself refuses to open it as a repository), and a tracked file changed
+#            behind --skip-worktree / --assume-unchanged (invisible to git status, same class as the
+#            ignored-files policy above) are removed with the worktree.
 #   docker   "older than 30 d" is the image's BUILD time (`CreatedAt`), not its pull or last-use time.
 #            An image pulled, `docker load`ed or committed recently but built long ago, with no
 #            container descending from it, is a candidate; for load/commit images removal is final.
@@ -343,7 +348,11 @@ wt_hold() { # $1 worktree dir → prints why it must be kept (empty = no git rea
   # to it. That is a bare repository, a --separate-git-dir, or any `.git` — at any depth, the candidate
   # root included — and its refs and objects would die with the tree whatever the checkout beside it says.
   # (after the per-checkout probes, so their more specific reasons are reported first)
-  st=$(find "$1" -type d -name objects -exec sh -c '[ -f "$1/../HEAD" ]' sh {} \; -print -quit 2>/dev/null) || { echo "git state unreadable"; return; }
+  # The probe tests HEAD relative to the directory that holds `objects` (-execdir): an absolute-path test
+  # fails with ENAMETOOLONG past 1024 bytes and that failure read as "no HEAD here" (a probe that cannot
+  # answer must KEEP, never delete). `objects` may itself be a symlink (objects stored outside): -type l.
+  # /bin/sh by absolute path so a relative PATH entry cannot make find refuse -execdir; any failure keeps.
+  st=$(find "$1" \( -type d -o -type l \) -name objects -execdir /bin/sh -c '[ -f HEAD ]' sh \; -print -quit 2>/dev/null) || { echo "git state unreadable"; return; }
   [ -n "$st" ] && { echo "repository data inside"; return; }
 }
 
