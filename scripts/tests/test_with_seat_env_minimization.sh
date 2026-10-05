@@ -398,6 +398,22 @@ done
 dir_seat "$outside_dir" --dry-run dir-seat env-capture
 check "--dry-run refuses the directory a real run refuses" test $? -ne 0
 
+# $(...) strips trailing newlines: a HOME whose canonical path ends in one must
+# not be truncated into its newline-less sibling (blind cross-family review,
+# Codex). And HOME=/ refuses rather than bounding nothing.
+nl_root="$TEMP_DIR/nl"
+mkdir -p "$nl_root/home"$'\n' "$nl_root/home/acct"
+ln -s "home"$'\n' "$nl_root/H"
+rm -f "$dir_out"
+SEAT_DIR="$nl_root/home/acct" HOME="$nl_root/H" WITH_SEAT_REGISTRY="$dir_registry" \
+  "$BROKER" dir-seat env-capture "$dir_out" >"$TEMP_DIR/stdout" 2>"$stderr_file"
+dir_status=$?
+check "a HOME ending in a newline is not truncated into a sibling" \
+  bash -c '[ "$1" -ne 0 ] && [ ! -e "$2" ]' _ "$dir_status" "$dir_out"
+SEAT_DIR="$fake_home/.acct2" HOME=/ WITH_SEAT_REGISTRY="$dir_registry" \
+  "$BROKER" --dry-run dir-seat env-capture >"$TEMP_DIR/stdout" 2>"$stderr_file"
+check "HOME=/ refuses rather than bounding nothing" test $? -ne 0
+
 # A bound on a misspelt name would leave the real name unbounded while looking
 # guarded, so a bound must name a declared env entry.
 cat >"$dir_registry" <<EOF

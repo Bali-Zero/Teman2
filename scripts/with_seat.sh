@@ -110,6 +110,12 @@ resolve_command() {
 # bound it: the value must canonicalise (symlinks and ".." resolved) to an
 # existing directory strictly below HOME. Checked here, in bash, so the value
 # never reaches the registry parser.
+#
+# The trailing "x" is load-bearing: $(...) strips EVERY trailing newline, so a
+# HOME symlinked to a dir named "home<LF>" canonicalised to ".../home" and a
+# sibling ".../home/acct" passed as under it (found by blind cross-family
+# review, Codex). HOME=/ refuses everything on purpose: under "/" the bound
+# would mean nothing.
 is_directory_under_home() {
   local value="$1"
   local home_real
@@ -117,8 +123,10 @@ is_directory_under_home() {
 
   case "${HOME:-}" in /*) ;; *) return 1 ;; esac
   case "$value" in /*) ;; *) return 1 ;; esac
-  home_real="$(cd -P "$HOME" 2>/dev/null && pwd)" || return 1
-  value_real="$(cd -P "$value" 2>/dev/null && pwd)" || return 1
+  home_real="$(cd -P "$HOME" 2>/dev/null && pwd && echo x)" || return 1
+  home_real="${home_real%$'\n'x}"
+  value_real="$(cd -P "$value" 2>/dev/null && pwd && echo x)" || return 1
+  value_real="${value_real%$'\n'x}"
   case "$value_real" in
     "$home_real"/?*) return 0 ;;
   esac
