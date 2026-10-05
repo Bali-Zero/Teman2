@@ -276,7 +276,7 @@ _SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish", "su"}
 _WRAPPERS: dict[str, set[str]] = {
     "sudo": {"-u", "-g", "-h", "-p", "-C", "-D", "-r", "-t", "-U", "-T"},
     "doas": {"-u", "-C"},
-    "env": {"-u", "-C", "-S"},
+    "env": {"-u", "-C"},
     "command": set(),
     "builtin": set(),
     "exec": {"-a"},
@@ -319,7 +319,10 @@ def _unwrap_command(tokens: list[str]) -> list[str]:
         remaining = remaining[1:]
         while remaining and (remaining[0].startswith("-") or _ASSIGNMENT.match(remaining[0])):
             option = remaining.pop(0)
-            if option in _WRAPPERS[name] and remaining:
+            if name == "env" and option.startswith("-S"):  # env -S splits its argument into argv
+                split = option[2:] or (remaining.pop(0) if remaining else "")
+                remaining = split.split() + remaining
+            elif option in _WRAPPERS[name] and remaining:
                 remaining.pop(0)
         if name in _WRAPPERS_WITH_OPERAND and remaining:
             remaining = remaining[1:]

@@ -113,6 +113,7 @@ CASES: list[tuple[str, bool, str]] = [
     ("rm -r -f /Users", True, "GUILT: every home"),
     ("su -c 'rm -r -f /'", True, "GUILT: su -c"),
     ("flock /tmp/l rm -r -f /", True, "GUILT: flock with a lock file"),
+    ('env -S "-i rm -r -f /"', True, "GUILT: env -S splits its argument (TP1 review)"),
     # innocence keeps the verdict origin/main gave (True = the legacy regex blocks it)
     ("rm -rf ./build", False, "INNOCENCE: relative build dir"),
     ("rm -r -f node_modules", False, "INNOCENCE: split flags, relative"),
@@ -122,6 +123,7 @@ CASES: list[tuple[str, bool, str]] = [
     ("rm -rf ~/.cache/foo", True, "KEPT: legacy regex blocks a home subpath, combined flags"),
     ("rm -r -f ~/.cache/foo", False, "INNOCENCE: home subpath, split flags (not widened)"),
     ("rm -r -f /Users/someone/repo/.worktrees/x", False, "INNOCENCE: worktree cleanup"),
+    ("rm -rf /Users/Shared/", True, "KEPT: legacy regex blocks /Users/<any>, combined flags"),
     ("git rm -r --cached .", False, "INNOCENCE: git rm"),
     ('echo "rm -rf /"', False, "INNOCENCE: quoted echo"),
     ("grep -n 'rm -rf /' notes.md", False, "INNOCENCE: grep pattern"),
