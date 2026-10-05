@@ -1,5 +1,5 @@
 ---
-adversarial_review: pending-claude-verify-external-builder-batch-b-audit-2026-10-06
+adversarial_review: kimi-k3
 ---
 
 # Subhi `.id.mdx` Translation Backlog — Bulk Audit (Batch B)
