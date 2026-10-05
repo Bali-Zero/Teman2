@@ -552,5 +552,26 @@ chmod 700 "$W/unreadable/sub" 2>/dev/null
 have "$ROOT/outside-objects" && ok "innocence: removing a candidate never follows the symlink into its target" || no "symlink target damaged"
 ! have "$W/clean" && ok "innocence: ordinary stale clean linked worktree still removed" || no "ordinary clean worktree survived"
 
+echo "═══ TEST 14: owner decision — HEAD-less repository data and hidden index flags fail closed ═══"
+v2build
+for w in headless objonly skipwt assumewt; do mkdir -p "$W/$w"; done
+fgit clone -q --bare "$BASE" "$W/headless/remote.git"
+HC=$("$REALGIT" -c user.name=dj -c user.email=dj@fixture.invalid -C "$W/headless/remote.git" commit-tree -m unique "$("$REALGIT" -C "$W/headless/remote.git" rev-parse 'HEAD^{tree}')"); fgit -C "$W/headless/remote.git" update-ref refs/heads/unique "$HC"
+rm -f "$W/headless/remote.git/HEAD"                                                       # objects/ + refs/ holding a commit that exists nowhere else, HEAD gone
+mk "$W/objonly/objects/x"                                                                  # objects/ with neither HEAD nor refs beside it: not a repository
+fgit -C "$BASE" worktree add --detach "$W/skipwt/repo"; fgit -C "$W/skipwt/repo" update-index --skip-worktree a.txt; echo hidden-skip > "$W/skipwt/repo/a.txt"
+fgit -C "$BASE" worktree add --detach "$W/assumewt/repo"; fgit -C "$W/assumewt/repo" update-index --assume-unchanged a.txt; echo hidden-assume > "$W/assumewt/repo/a.txt"
+AGE="$(date -v-30d +%Y%m%d%H%M 2>/dev/null || date -d '30 days ago' +%Y%m%d%H%M)"
+find "$W/headless" "$W/objonly" "$W/skipwt" "$W/assumewt" -exec touch -h -t "$AGE" {} +
+[ -n "$HC" ] && [ ! -e "$W/headless/remote.git/HEAD" ] && [ -z "$("$REALGIT" -C "$W/skipwt/repo" status --porcelain --untracked-files=normal 2>/dev/null)" ] && [ -z "$("$REALGIT" -C "$W/assumewt/repo" status --porcelain --untracked-files=normal 2>/dev/null)" ] \
+  && ok "fixture: HEAD-less repo holds a unique commit; both hidden-change worktrees read clean to git status" || no "fixture wrong (HC='$HC')"
+OUT=$(run --apply); RC=$?
+have "$W/headless/remote.git/objects/${HC:0:2}/${HC:2}" && have "$W/headless/remote.git/refs" && ok "objects/ + refs/ without HEAD, holding a unique commit, kept" || no "HEAD-less repository destroyed"
+! have "$W/objonly" && ok "innocence: a directory named objects with neither HEAD nor refs beside it is still removed" || no "objects-only directory survived (guard over-keeps)"
+have "$W/skipwt/repo/a.txt" && grep -q hidden-skip "$W/skipwt/repo/a.txt" && ok "change hidden behind --skip-worktree kept" || no "skip-worktree change destroyed"
+have "$W/assumewt/repo/a.txt" && grep -q hidden-assume "$W/assumewt/repo/a.txt" && ok "change hidden behind --assume-unchanged kept" || no "assume-unchanged change destroyed"
+echo "$OUT" | grep -c "codex_stale_worktrees: keep [0-9a-f]\{12\} (hidden index state)" | grep -q '^2$' && ok "kept by entity, reported as 'hidden index state'" || no "no 'hidden index state' report x2"
+! have "$W/clean" && ok "innocence: ordinary stale clean linked worktree with no flagged entries still removed" || no "ordinary clean worktree survived"
+
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [ $FAIL -eq 0 ]
