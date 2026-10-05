@@ -1,6 +1,6 @@
 task: >-
   Finish pro.disk_janitor v2 (PR #7841): the R5 repository guard fails CLOSED (a probe that cannot
-  answer keeps the candidate), and the accepted-policy shapes are written down.
+  answer keeps the candidate), and the HEAD-less repository and hidden index flags are guarded too.
 lane: infra/disk-janitor-v2
 machine: Pro
 date: "2026-10-05"
@@ -18,4 +18,4 @@ acceptance:
   A1: "A bare repository at an absolute path past 1024 bytes holding a unique commit is kept (scripts/test_disk_janitor.sh TEST 13)."
   A2: "A bare repository whose objects/ is a symlink to outside the candidate is kept; a symlink named objects with no HEAD beside it, and a deep non-repository directory, are still removed."
   A3: "Guilt assertions of TEST 13 are red against the previous head 2deb34b0fb and green on this one."
-  A4: "Accepted-policy shapes (HEAD-less objects/+refs/ directory, --skip-worktree changes) are stated in the script POLICY block and the PR table."
+  A4: "A HEAD-less objects/+refs/ directory and a linked worktree with skip-worktree or assume-unchanged index entries are kept; an objects-only directory and an ordinary clean worktree are still removed (TEST 14, red on ad354e1027). Owner decision 2026-10-05: fail closed on both."
