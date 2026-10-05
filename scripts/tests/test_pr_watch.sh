@@ -14,6 +14,11 @@
 #   missing-required  — a branch-protection context absent from the FULL
 #                       reported name set (not just isRequired ones) is
 #                       flagged — the skipped-matrix-job shape.
+#   pagination        — >100 check contexts: page 2 is fetched via the
+#                       after cursor (page 1 sends none); a page-2 required
+#                       FAILURE alerts and a page-2 required SUCCESS is
+#                       not falsely MISSING; past 10 pages the tick logs
+#                       (transient) and emits nothing.
 #   W118 trap         — isInMergeQueue flips true->false while the PR is
 #                       still OPEN: EJECTED-FROM-QUEUE fires. Never inferred
 #                       from autoMergeRequest (this script never even reads
@@ -91,8 +96,14 @@ case "${1:-}" in
           prev="$a"
         done
         # checks-rollup probe (its query text contains statusCheckRollup) is
-        # served from rollup_<num>, holding the ALREADY-NORMALISED array the
-        # real --jq shapes; optional rollup_<num>_rc forces the tool rc.
+        # served from rollup_<num>, one JSON envelope per call. A fixture
+        # line starting with '[' is a bare normalised array (the legacy
+        # fixture shape) wrapped here into the envelope the real --jq
+        # prints per page: {"checks":[...],"hasNext":false,"cursor":null} —
+        # so every pre-pagination scenario keeps serving unchanged. A line
+        # starting with '{' is already an envelope and is served verbatim
+        # (pagination scenarios set hasNext/cursor themselves). optional
+        # rollup_<num>_rc forces the tool rc.
         for a in "$@"; do
           case "$a" in
             *statusCheckRollup*)
@@ -109,11 +120,30 @@ case "${1:-}" in
                     ;;
                 esac
               done <<< "$a"
+              # Log the after= cursor this rollup call carried (empty when
+              # absent, i.e. page 1) appended to the call log in the same
+              # style as the argv line above.
+              after="" prev=""
+              for b in "$@"; do
+                case "$prev" in
+                  -F) case "$b" in after=*) after="${b#after=}";; esac;;
+                esac
+                prev="$b"
+              done
+              printf 'rollup-after=%s\n' "$after" >> "$FAKE_GH_LOG"
               rc=0
               [ -f "$FAKE_GH_STATE/rollup_${num}_rc" ] && rc="$(cat "$FAKE_GH_STATE/rollup_${num}_rc")"
               fx="$FAKE_GH_STATE/rollup_${num}"
               ctr="$FAKE_GH_STATE/rollup_${num}_ctr"
-              if [ -f "$fx" ]; then _next_line "$fx" "$ctr"; else echo '[]'; fi
+              if [ -f "$fx" ]; then
+                line="$(_next_line "$fx" "$ctr")"
+                case "$line" in
+                  "["*) printf '{"checks":%s,"hasNext":false,"cursor":null}\n' "$line" ;;
+                  *)    printf '%s\n' "$line" ;;
+                esac
+              else
+                echo '{"checks":[],"hasNext":false,"cursor":null}'
+              fi
               exit "$rc"
               ;;
           esac
@@ -311,7 +341,7 @@ emit=0
 while IFS= read -r line; do
   case "$line" in *"query='") emit=1 ;; esac
   if [ "$emit" = 1 ]; then real_query="$real_query$line"$'\n'; fi
-  case "$line" in *"' -F owner="*) break ;; esac
+  case "$line" in *"' -F owner="*|"    }'") break ;; esac
 done < "$SCRIPT"
 case "$real_query" in
   *statusCheckRollup*) : ;;
@@ -369,6 +399,48 @@ run 92
 check "exit 0 (recovers next tick)" "$(yesno test "$RC" = 0)"
 check "logs the transient rollup failure" "$(yesno has 'transient' "$OUT")"
 check "does not fabricate a REQUIRED-FAILING line from an empty body" "$(yesno eval '! has "REQUIRED-FAILING" "$OUT"')"
+
+echo "pagination — a required check on page 2 alerts and is not falsely MISSING:"
+new_world
+cat > "$W/fgh/rollup_96" <<'JSON'
+{"checks":[{"name":"Backend Tests (Python)","state":"SUCCESS","isRequired":true},{"name":"E2E (Playwright)","state":"SUCCESS","isRequired":true},{"name":"Lint (optional)","state":"SUCCESS","isRequired":false}],"hasNext":true,"cursor":"C1"}
+{"checks":[{"name":"Backend Tests","state":"FAILURE","isRequired":true},{"name":"Detect Secrets","state":"SUCCESS","isRequired":true}],"hasNext":false,"cursor":null}
+JSON
+printf 'Backend Tests\nDetect Secrets\n' > "$W/fgh/required_names"
+{
+  printf '{"state":"OPEN","mergedAt":null,"mergeStateStatus":"CLEAN"}\n'
+  printf '{"state":"MERGED","mergedAt":"2026-10-05T01:00:00Z","mergeStateStatus":"CLEAN"}\n'
+} > "$W/fgh/view_96"
+run 96
+check "exit 0" "$(yesno test "$RC" = 0)"
+check "page-2 required FAILURE alerts" "$(yesno has '#96 REQUIRED-FAILING: Backend Tests' "$OUT")"
+check "page-2 required SUCCESS is not flagged MISSING" "$(yesno eval '! has "MISSING-REQUIRED" "$OUT"')"
+check "page-1 rollup call sent no after cursor" \
+  "$(yesno eval '[ "$(grep "^rollup-after=" "$LOG" | sed -n 1p)" = "rollup-after=" ]')"
+check "page-2 rollup call sent after=C1" \
+  "$(yesno eval '[ "$(grep "^rollup-after=" "$LOG" | sed -n 2p)" = "rollup-after=C1" ]')"
+
+echo "pagination cap — hasNext past 10 pages logs transient, emits nothing:"
+new_world
+{
+  i=0
+  while [ "$i" -lt 12 ]; do
+    printf '{"checks":[{"name":"Backend Tests","state":"FAILURE","isRequired":true}],"hasNext":true,"cursor":"CX"}\n'
+    i=$((i + 1))
+  done
+} > "$W/fgh/rollup_97"
+printf 'Backend Tests\n' > "$W/fgh/required_names"
+{
+  printf '{"state":"OPEN","mergedAt":null,"mergeStateStatus":"CLEAN"}\n'
+  printf '{"state":"MERGED","mergedAt":"2026-10-05T02:00:00Z","mergeStateStatus":"CLEAN"}\n'
+} > "$W/fgh/view_97"
+run 97
+check "exit 0" "$(yesno test "$RC" = 0)"
+check "no REQUIRED-FAILING from a known-partial set" "$(yesno eval '! has "REQUIRED-FAILING" "$OUT"')"
+check "no MISSING-REQUIRED from a known-partial set" "$(yesno eval '! has "MISSING-REQUIRED" "$OUT"')"
+check "exactly 10 rollup pages were fetched (hard cap)" \
+  "$(yesno eval '[ "$(count_of "^rollup-after=" "$LOG")" = "10" ]')"
+check "the over-cap tick logs a transient line naming the 10-page cap" "$(yesno has 'more than 10 pages' "$OUT")"
 
 echo "timeout — an eternally-OPEN, all-clean PR exits TIMEOUT/1:"
 new_world
