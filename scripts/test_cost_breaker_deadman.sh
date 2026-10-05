@@ -134,6 +134,29 @@ expect "deduped without a delivered stamp starts NO cooldown" test ! -e "$cooldo
 reset_sb
 run_tick ''
 expect "no gateway verdict starts NO cooldown" test ! -e "$cooldown"
+n_py=0
+for p in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do [[ -x "$p" ]] && n_py=$((n_py + 1)); done
+expect "no verdict: each absolute python3 tried once, no more ($n_py calls)" test "$(ncalls)" = "$n_py"
+
+# Guilt: no gateway anywhere is undelivered, and says so.
+reset_sb
+mv "$sb/scripts/tg_notify.py" "$sb/scripts/tg_notify.hidden"
+run_tick 'tg_notify: sent'
+mv "$sb/scripts/tg_notify.hidden" "$sb/scripts/tg_notify.py"
+expect "no gateway starts NO cooldown" test ! -e "$cooldown"
+expect "no gateway is recorded as undelivered" test "$(state_field alert_undelivered)" = "no_gateway"
+
+# Guilt: an OLD delivered stamp must not launder a NEW failed attempt. The
+# gateway stamps its dedup entry before it knows the send failed, so the tick
+# after a failure answers "deduped"; that must still read as undelivered.
+reset_sb
+run_tick 'tg_notify: sent'
+touch -t 202001010000 "$cooldown"
+run_tick "$unsent"
+expect "a failed attempt clears an older delivered stamp" test ! -e "$cooldown"
+run_tick 'tg_notify: deduped'
+expect "deduped after a failed attempt starts NO cooldown" test ! -e "$cooldown"
+expect "deduped after a failed attempt is recorded as undelivered" test "$(state_field alert_undelivered)" = "deduped"
 
 # Innocence: a SENT alert starts the cooldown and the next tick stays quiet.
 reset_sb

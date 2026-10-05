@@ -261,8 +261,11 @@ main() {
         # single sender, deduped + stamp is a muted repeat of that delivery.
         cooldown_set
     else
+        # Clearing the stamp keeps "stamp present" meaning "the LAST attempt was
+        # delivered": an older delivered stamp must not turn the gateway muting
+        # THIS failed attempt (its "deduped" next tick) into a delivery.
         rm -f "$COOLDOWN_FILE"
-        log "alert NOT delivered (gateway: $ALERT_STATUS) — no cooldown, the next tick retries"
+        log "alert NOT delivered (gateway: $ALERT_STATUS) — no cooldown: the next tick asks again, the gateway's dedup decides when it re-sends"
         write_state "stale" "${stale_detail}" "$ALERT_STATUS"
     fi
     return 0
