@@ -22,6 +22,10 @@ WRAPPER = REPO_ROOT / "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh
 
 SESSION_LIMIT_BANNER = "You have hit your session limit · resets 11:20pm (Asia/Makassar)\n"
 SESSION_LIMIT_BARE = "You have hit your session limit\n"
+# The CLI builds every rate-limit notice as "You've hit your <limit>" (claude-code
+# 2.1.289: session, weekly, Opus, Sonnet, Fable, usage credit). The analyst runs
+# Sonnet, so the Sonnet weekly cap is the notice this wrapper actually meets.
+SONNET_LIMIT_BANNER = "You've hit your Sonnet limit · resets Oct 7, 3am (Asia/Makassar)\n"
 SUBSCRIPTION_DISABLED = (
     "Your organization has disabled Claude subscription access for Claude Code"
     " · Use an Anthropic API key instead, or ask your admin to enable access\n"
@@ -114,6 +118,8 @@ LIMIT_SHAPES = {
     "bare-stdout-exit-0": {"out": SESSION_LIMIT_BARE, "rc": 0},
     "banner-stdout-exit-1": {"out": SESSION_LIMIT_BANNER, "rc": 1},
     "banner-stderr-exit-1": {"out": "", "err": SESSION_LIMIT_BANNER, "rc": 1},
+    "sonnet-stdout-exit-0": {"out": SONNET_LIMIT_BANNER, "rc": 0},
+    "sonnet-stderr-exit-1": {"out": "", "err": SONNET_LIMIT_BANNER, "rc": 1},
 }
 
 
@@ -128,7 +134,7 @@ def test_session_limit_notice_is_never_accepted_as_an_answer(tmp_path: Path, sha
     assert trace == ["seat-one", "seat-three"]
     assert rc == 0
     assert "used: CLAUDE_CODE_OAUTH_TOKEN_3" in log
-    assert "hit your session limit" not in log
+    assert "hit your" not in log
 
 
 LAST_FAILURES = {
@@ -186,6 +192,17 @@ def test_an_unclassified_failure_still_stops_the_loop(tmp_path: Path) -> None:
     assert rc == 2
 
 
+def test_a_cli_exiting_98_is_not_a_next_account_signal(tmp_path: Path) -> None:
+    seat_dir = tmp_path / "seats"
+    seat_dir.mkdir()
+    _seat(seat_dir, "seat-one", out="", err="Error: agent definition not found\n", rc=98)
+
+    rc, trace, _, _ = _run(tmp_path, {1: "seat-one", 3: "seat-three"})
+
+    assert trace == ["seat-one"]
+    assert rc == 1
+
+
 # Council fixtures (WR2CLASS-20261005, rounds 1-2): each judged by the wrapper's
 # own claude_failure_class, extracted from the file rather than copied.
 def _classify(tmp_path: Path, out: str, err: str = "", rc: int = 0) -> str:
@@ -225,6 +242,15 @@ NOTICES = [
     ("You have hit your session limit\nResets… at 11:20pm (Asia/Makassar)\n", "", "session_limit"),
     ('{"type":"error","error":{"message":"You have hit your session limit"}}', "", "session_limit"),
     ("", SESSION_LIMIT_BANNER, "session_limit"),
+    (SONNET_LIMIT_BANNER, "", "session_limit"),
+    ("You've hit your Opus limit · resets 11:20pm · progress saved\n", "", "session_limit"),
+    ("You've hit your Fable limit\n", "", "session_limit"),
+    ("", "You've hit your usage credit limit · resets Nov 1\n", "session_limit"),
+    ("You've hit your fast limit\n", "", "session_limit"),
+    ("You've hit your monthly limit — raise it below, or it resets next month.\n", "", "session_limit"),
+    ("You've hit your monthly spend limit · your plan limit resets Nov 1\n", "", "session_limit"),
+    ("", "You've hit your team's shared budget. Switch to another model to continue.\n", "session_limit"),
+    ("You're out of usage credits. /model to switch models.\n", "", "session_limit"),
     ("quota exhausted\n", "", "quota_or_auth"),
     ("Please run /login.\n", "", "quota_or_auth"),
 ]
@@ -250,6 +276,9 @@ REAL_ANSWERS = ANSWERS + [
     "Please retry this hook next week; amendment saved to /tmp/ig/amendment.md.\n",
     "You have hit your session limit: this hook earned 2x saves.\n"
     "Login conversion increased 25%; saved /tmp/ig/amendment.md.\n",
+    "You've hit your Sonnet limit on reels: carousels kept 2x saves.\n/tmp/a.md\n",
+    "You've hit your Sonnet limit — reels capped at 30/min this window.\n"
+    "Try again with the carousel lane; saved `/tmp/ig/amendment-2026-10-05.md`\n",
 ]
 
 

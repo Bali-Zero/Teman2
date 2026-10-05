@@ -464,11 +464,16 @@ notices = (
     ("subscription_disabled",
      r"(?:your\s+)?organi[sz]ation\s+has\s+disabled\s+claude\s+subscription\s+"
      r"access(?:\s+for\s+claude\s+code)?"),
+    # The CLI builds its limit notices as "You've hit your <limit>" over
+    # session, weekly, Opus, Sonnet, Fable, usage credit, fast, monthly and
+    # monthly spend limits, or the team's shared budget (claude-code 2.1.289);
+    # this analyst runs Sonnet, so the Sonnet cap is one it meets.
     ("session_limit",
      r"(?:you(?:'ve|’ve|\s+have)\s+)?(?:hit|reached)\s+your\s+"
-     r"(?:session\s+|weekly\s+|usage\s+)?limit|"
+     r"(?:(?:(?:session|weekly|usage|opus|sonnet|fable|usage\s+credit|fast|monthly|"
+     r"(?:channel(?:'s|’s)\s+)?monthly\s+spend)\s+)?limit|team(?:'s|’s)\s+shared\s+budget)|"
      r"(?:session|weekly)\s+limit\s+(?:reached|exceeded)|"
-     r"(?:you(?:'re|’re|\s+are|'ve|’ve|\s+have)\s+)?out\s+of\s+extra\s+usage"),
+     r"(?:you(?:'re|’re|\s+are|'ve|’ve|\s+have)\s+)?out\s+of\s+(?:extra\s+usage|usage\s+credits)"),
 )
 quota_or_auth = (
     r"rate.?limit(?:ed| exceeded)?|too many requests|"
@@ -499,7 +504,7 @@ hint = (
 )
 # The agent's answer ends with its amendment file path; no CLI notice carries
 # one, so a stdout holding a file path is an answer, never a notice.
-file_path = re.compile(r"(?:^|[\s(\"'])(?:~|\.{1,2})?/[\w.\-/]*\.\w{1,6}\b")
+file_path = re.compile(r"(?:^|[\s(\"'`])(?:~|\.{1,2})?/[\w.\-/]*\.\w{1,6}\b")
 # Same line: punctuation (never "." or "/" glued to a word, as in a file name)
 # then the rest of THAT line, or a hint. Then at most ONE further line, a hint.
 tail = (
