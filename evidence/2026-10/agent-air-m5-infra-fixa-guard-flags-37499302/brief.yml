@@ -1,0 +1,28 @@
+task_id: fixa-guard-flags
+mission: FIXBATCH-A-20261005
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  The static guardrail that must refuse a catastrophic recursive delete of the filesystem root or
+  the home directory refuses it in every spelling a shell accepts (split or reordered flags, quoted
+  targets, a tilde, wrappers, separators, substitutions, nested shells), and every command it
+  allowed before that deletes nothing protected keeps its verdict.
+constraints:
+  - Nothing destructive is executed to test the guard; only the decision function sees the strings.
+  - No existing rule is loosened; the legacy rm regexes keep running after the new check.
+  - Paths below home keep the legacy verdict (combined-flag spelling only); widening them is policy, not this PR.
+  - Standard library only, Python 3.9 compatible, no network.
+  - The live copies under ~/.claude are not touched by this PR; delivery is assigned by the imperator after merge.
+appetite:
+  wall_clock_hours: 2
+acceptance:
+  - text: WHEN a recursive rm targets root, home, an ancestor of home or all their children in any listed spelling THEN evaluate() SHALL return BLOCK.
+    probe: python3 scripts/test_guardrails_overmatch.py (51 GUILT rows, all ALLOW on origin/main 99746b46d1)
+  - text: WHEN a command was ALLOWED on origin/main and deletes nothing protected THEN its verdict SHALL be unchanged.
+    probe: python3 scripts/test_guardrails_overmatch.py (22 INNOCENCE/KEPT rows) + 9715 real commands from ~/.claude/command-history.log, 0 verdict changes
+  - text: WHEN the guard's other rules are evaluated THEN their verdicts SHALL be unchanged.
+    probe: infra/claude-hooks/test_hook_innocence.py (164 OK), scripts/test_guardrails_static.py, scripts/test_guardrails_core_overmatch.py, guardrails_sync_check.py rc=0
+consumer_map:
+  - M5 ~/.claude/hooks/guardrails-client.sh Tier 2 -> ~/.claude/hooks/guardrails-static.py -> _load_repo_core() -> ~/Desktop/nuzantara (symlink to ~/nuzantara main checkout) scripts/guardrails_static_core.py
+  - Pro Tier 2 -> ~/Desktop/nuzantara/scripts/guardrails_static_core.py (Tier 1 daemon ~/.claude/daemons/guardrails.py answers first, HOME-only, not delivered by this PR)
