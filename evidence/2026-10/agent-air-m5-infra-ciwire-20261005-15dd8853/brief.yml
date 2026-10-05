@@ -1,0 +1,40 @@
+task: >-
+  Mission CIWIRE-20261005. Two shell suites merged today are executed by no workflow:
+  scripts/tests/test_ai_dispatch_shared_watchdog.sh (#7881) and scripts/tests/test_pr_watch.sh (#7894).
+  Wire both into the existing .github/workflows/fleet-burst-tests.yml, with path filters that include the
+  suites and the scripts they exercise, and a count floor per step.
+lane: infra
+machine: m5
+date: 2026-10-05
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: `scripts/evidence_pack_lint.py --changed-files-file <names>
+  --numstat-file <numstat vs origin/main> --patch-file <patch> --print-floor` prints 3 and
+  `--print-floor-source` names the path term: .github/workflows/* is in HOTZONE_PATTERNS. The floor sets
+  the gear, not the size: the whole code delta is +42 lines in one workflow file.
+acceptance:
+  A1: >-
+    Both suites pass under a clean environment and, wired as the workflow steps, go red when the
+    behaviour they pin is broken.
+    probe: >-
+    env -i runs of both suites on M5 (SUMMARY 3 passed, 0 failed; 51 ok); the two steps' exact run text
+    extracted from the YAML and executed on a scratch copy of scripts/ with one mutation each.
+  A2: >-
+    Both pull_request.paths and push.paths name each suite and the script it executes
+    (scripts/ai-dispatch.sh, scripts/pr_watch.sh; scripts/lib/seat_watchdog.sh was already listed).
+    probe: >-
+    yaml.safe_load of the workflow and a membership check of the six paths in both lists.
+  A3: >-
+    Live: this PR's own run of the job "Fleet burst dispatcher tests" executes both new steps green and
+    logs each suite's pass count.
+    probe: >-
+    gh run view <run id> --log | grep -E 'test_ai_dispatch_shared_watchdog.sh: |test_pr_watch.sh: '.
+out_of_scope: >-
+  The other orphan scripts/tests/test_*.sh (listed in the PR body, not wired). No required-context change
+  (repo settings, operator-gated). No change to the suites or to the scripts they test.
+assumptions:
+  - text: >-
+      ubuntu-latest runs both suites like M5 does. Only a PR run can prove it; the reviewers read the code
+      and could not run an ubuntu runner.
+    status: unverified
+    probe: the PR's own run of "Fleet burst dispatcher tests" (acceptance A3).
