@@ -1076,9 +1076,13 @@ SEEN_OAUTH_TOKENS=()
 # Retired token slots: FLEET_TOPOLOGY.json slots with status "retired" (slot 2 =
 # A5, subscription cancelled, Zero 2026-10-05), pinned to the registry by
 # scripts/tests/test_claude_cascade_shell.py. A retired slot is never attempted
-# even when its variable is set, and its value is marked seen so the legacy
-# name cannot spend the same account.
+# even when its variable is set, and its value is marked seen BEFORE the loop so
+# neither an earlier slot nor the legacy name can spend the same account.
 RETIRED_OAUTH_SLOTS=(2)
+for retired_index in "${RETIRED_OAUTH_SLOTS[@]}"; do
+    retired_var="CLAUDE_CODE_OAUTH_TOKEN_$retired_index"
+    [ -n "${(P)retired_var:-}" ] && SEEN_OAUTH_TOKENS+=("${(P)retired_var}")
+done
 oauth_token_seen() {
     local candidate="$1"
     local existing
@@ -1123,7 +1127,6 @@ for index in 1 2 3 4 5 6; do
     esac
 
     if (( ${RETIRED_OAUTH_SLOTS[(Ie)$index]} )); then
-        [ -n "$token" ] && SEEN_OAUTH_TOKENS+=("$token")
         continue
     fi
 

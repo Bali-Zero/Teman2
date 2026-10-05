@@ -1712,6 +1712,22 @@ def test_retired_slot_value_is_not_retried_under_the_legacy_name(tmp_path: Path)
     assert "token2" not in _labels(call_log)
 
 
+def test_retired_slot_value_is_not_spent_by_an_earlier_numbered_slot(tmp_path: Path) -> None:
+    # Council refuter (tp1-qwen3.8-max) on 13875dc1b8: slot 1 ran before slot 2
+    # marked the retired value seen, so the same account was spent as slot 1.
+    bodies = _default_bodies()
+    bodies["token2"] = 'printf "retired-seat-spent\\n"\nexit 0'
+    bodies["token3"] = 'printf "slot-three-success\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CODE_OAUTH_TOKEN_1"] = env["CLAUDE_CODE_OAUTH_TOKEN_2"]
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "slot-three-success\n"
+    assert _labels(call_log) == ["token3"]
+
+
 def test_cascade_retired_slots_equal_the_registry() -> None:
     assert set(_shell_array(CASCADE, "RETIRED_OAUTH_SLOTS")) == _registry_retired_token_slots()
 
