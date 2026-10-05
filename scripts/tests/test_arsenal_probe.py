@@ -1343,6 +1343,30 @@ def test_timeout_concurrent_ollama_job_is_busy(monkeypatch):
     assert status == ap.BUSY
 
 
+def test_timeout_ollama_run_with_serve_in_prompt_is_busy(monkeypatch):
+    _fake_census(monkeypatch, "401 1 ollama ollama run qwen3.5:9b serve\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.BUSY
+
+
+def test_timeout_ollama_run_with_quoted_serve_sentence_is_busy(monkeypatch):
+    _fake_census(monkeypatch, '401 1 ollama ollama run qwen3.5:9b please serve me\n')
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.BUSY
+
+
+def test_timeout_absolute_path_ollama_serve_is_not_contention(monkeypatch):
+    _fake_census(monkeypatch, "400 1 /opt/homebrew/bin/ollama /opt/homebrew/bin/ollama serve\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.TIMEOUT
+
+
+def test_timeout_bare_ollama_serve_is_not_contention(monkeypatch):
+    _fake_census(monkeypatch, "400 1 ollama ollama serve\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.TIMEOUT
+
+
 def test_probe_jules_and_ollama_pass_their_census_filters(monkeypatch):
     seen = []
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (f"/x/{name}", True))
