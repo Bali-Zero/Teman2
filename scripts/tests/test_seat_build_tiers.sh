@@ -7,7 +7,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SEAT_BUILD="$REPO_ROOT/scripts/seat_build.sh"
+SEAT_BUILD="${SEAT_BUILD:-$REPO_ROOT/scripts/seat_build.sh}"
 FIXTURE="$(mktemp -d)"
 MAIN_REPO="$FIXTURE/main"
 LINKED_WT="$FIXTURE/linked"
@@ -120,7 +120,42 @@ d=json.load(sys.stdin)
 argv=d["argv"]
 assert "--model" in argv and argv[argv.index("--model")+1] == "gemini-3.8-flash-high", argv
 assert "--print-timeout" in argv and argv[argv.index("--print-timeout")+1] == "8m", argv
+assert "--effort" not in argv, argv
 assert "-p" in argv, argv' <<< "$out"
+}
+
+case_agy_tier_pro_derived_xhigh_clamps_high() {
+    local out
+    out="$(seat_env "$SEAT_BUILD" --seat agy --tier pro --role synthesis --gear 3 \
+        --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
+    python3 -c 'import json,sys
+d=json.load(sys.stdin)
+argv=d["argv"]
+assert argv[2] == "Tier test task, small.", argv
+assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv
+assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
+}
+
+case_agy_tier_pro_explicit_low_stays_low() {
+    local out
+    out="$(seat_env "$SEAT_BUILD" --seat agy --tier pro --role synthesis --gear 3 --effort low \
+        --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
+    python3 -c 'import json,sys
+d=json.load(sys.stdin)
+argv=d["argv"]
+assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv
+assert argv[argv.index("--effort")+1] == "low", argv' <<< "$out"
+}
+
+case_agy_tier_pro_explicit_medium_clamps_high() {
+    local out
+    out="$(seat_env "$SEAT_BUILD" --seat agy --tier pro --role synthesis --gear 3 --effort medium \
+        --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
+    python3 -c 'import json,sys
+d=json.load(sys.stdin)
+argv=d["argv"]
+assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv
+assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
 }
 
 case_qwen_unchanged_ignores_tier() {
@@ -314,6 +349,9 @@ run_case "codex/luna argv carries -m gpt-5.6-luna" case_codex_tier_luna_argv
 run_case "kimi/k3 argv carries -m kimi-code/k3" case_kimi_tier_k3_argv
 run_case "kimi/highspeed at medium effort is allowed" case_kimi_tier_highspeed_medium_ok
 run_case "agy/flash argv carries --model gemini-3.8-flash-high" case_agy_tier_flash_argv
+run_case "agy/pro derives xhigh and clamps it to --effort high" case_agy_tier_pro_derived_xhigh_clamps_high
+run_case "agy/pro keeps explicit --effort low" case_agy_tier_pro_explicit_low_stays_low
+run_case "agy/pro clamps explicit medium to --effort high" case_agy_tier_pro_explicit_medium_clamps_high
 run_case "qwen ignores --tier entirely" case_qwen_unchanged_ignores_tier
 run_case "ctx-check fails CLOSED on a missing/unreadable config" case_ctx_config_missing_is_hard_error
 run_case "ctx-check exempts a legitimately-absent pair (qwen)" case_ctx_config_valid_absence_is_exempt

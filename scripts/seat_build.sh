@@ -450,7 +450,13 @@ main() {
             task_index=9
             ;;
         kimi) seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2 ;;
-        agy) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 8m); task_index=2 ;;
+        agy)
+            seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 8m)
+            task_index=2
+            if [ "$MODEL" = "gemini-3.1-pro" ]; then
+                [ "$EFFORT" = low ] && seat_argv+=(--effort low) || seat_argv+=(--effort high)
+            fi
+            ;;
         qwen) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;  # unchanged
         tp1) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$EFFORT"); task_index=2 ;;
     esac
