@@ -172,6 +172,26 @@ up from the worktrees.
 3. Promoting `scripts-tests-sweep.yml` from report-only to a required check is a shipping
    session's decision (it changes what gates merges).
 
+## Checkpoint #1 — 2026-10-05 20:07 WITA
+
+- **kbli**: crashed at 1.767/2.422 (`l0_ground_truth.uraian_id` null on some schema records,
+  unguarded subscript) → guard + permanent skip as `incomplete-schema-record` in `9872a9ca14`;
+  resumed with 655 todo. Output so far: 1.531 PASS / 236 fact-gate REJECT.
+- **translate**: 112/851 ok, 0 fail, 1.07M tokens; pace ~134/h → completes inside the night
+  window on qwen3.8-max.
+- **media**: run 1 = 6/6 happyhorse videos SUCCEEDED; 848 images FAILED provider-side with
+  `InvalidParameter: Field required: input.messages` (submit accepted, task refused: the probe's
+  200 PENDING measured acceptance, not validity) → multimodal `input.messages` shape in
+  `9872a9ca14`, all 848 retryable and retrying at workers=2 with 429 backoff. TTS probe:
+  http-403 on the multimodal path → TTS EXCLUDED from lane 5, measured, not guessed.
+- **Ledger (day, chat lanes)**: qwen3.7-plus 6.21M tokens (kbli ~5.1M + translate ~1.1M).
+  Lane 7 agentic sessions: ~44.6M tokens (own harness, not this JSONL). Media: credits per
+  asset, ledger rows carry call counts only.
+- **Caps**: 6.2M/40M tokens (15%), ~4k/200k calls — healthy, no resize needed.
+- **Calibration PENDING**: needs the console read (baseline 2.13% @ 14:36 UTC+8). Requested
+  from Zero at this checkpoint; pts-per-Mtok derives from his number, then D1 worker sizing.
+- Night window opens 22:00 WITA: runners auto-switch to qwen3.8-max + effort high (−50%).
+
 ## Schedule
 
 - **D0 (2026-10-05)**: brief + worktree `ops-tp1-burn-oct26`; lane-7 workers launched daytime;
