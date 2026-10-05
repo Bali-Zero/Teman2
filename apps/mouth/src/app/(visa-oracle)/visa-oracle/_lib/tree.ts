@@ -118,7 +118,6 @@ export interface OracleQuestion {
    * gov-demo armor). Optional by construction: not every question is
    * sensitive enough to warrant a disclosure glyph. */
   whyWeAsk?: { i18nKey: string };
-  sensitive?: boolean;
   notSure?: NotSureBehavior;
 }
 
@@ -228,7 +227,6 @@ function qualificationQuestion(id: string, factPath: string): OracleQuestion {
     kind: "branch",
     group: "details",
     decisionMapping: { kind: "FACT", factPaths: [factPath] },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -247,7 +245,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["immigration.currently_in_indonesia"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.in_indonesia.opt.yes" },
       { key: "no", labelI18nKey: "q.in_indonesia.opt.no" },
@@ -264,7 +261,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["immigration.current_status_expiry"],
     },
-    sensitive: false,
     options: [],
     dateInput: { labelI18nKey: "q.permit_expiry.label" },
     whyWeAsk: { i18nKey: "why.permit_expiry" },
@@ -279,7 +275,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["immigration.current_status_code"],
     },
-    sensitive: true,
     options: [
       { key: "A1", labelI18nKey: "q.current_status_code.opt.A1" },
       { key: "C1", labelI18nKey: "q.current_status_code.opt.C1" },
@@ -326,7 +321,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "branch",
     group: "location",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -345,7 +339,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["immigration.current_status_code"],
     },
-    sensitive: true,
     options: STAY_PERMIT_CODES.map((key) => ({
       key,
       labelI18nKey: `q.stay_permit_code.opt.${key}`,
@@ -373,7 +366,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["immigration.renewal_paid"],
     },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -390,7 +382,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["immigration.overstay_days"],
     },
-    sensitive: true,
     options: [],
     numberInput: {
       min: 0,
@@ -411,7 +402,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["process.wants_onshore_conversion"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -428,7 +418,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["process.application_channel"],
     },
-    sensitive: false,
     options: [
       { key: "OFFSHORE", labelI18nKey: "q.application_channel.opt.OFFSHORE" },
       {
@@ -452,7 +441,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["person.nationalities"],
     },
-    sensitive: true,
     options: [],
     codeInput: {
       labelI18nKey: "q.nationalities.label",
@@ -468,7 +456,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "date",
     group: "identity",
     decisionMapping: { kind: "FACT", factPaths: ["person.birth_date"] },
-    sensitive: true,
     options: [],
     dateInput: { labelI18nKey: "q.birth_date.label", maxToday: true },
     whyWeAsk: { i18nKey: "why.birth_date" },
@@ -483,7 +470,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["person.guardian_consent"],
     },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -505,7 +491,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["intent.purposes"],
     },
-    sensitive: false,
     whyWeAsk: { i18nKey: "why.category" },
     options: CATEGORY_KEYS.map((key) => ({
       key,
@@ -519,7 +504,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "branch",
     group: "intent",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
     options: [
       { key: "single", labelI18nKey: "q.trip_scope.opt.single" },
       { key: "multiple", labelI18nKey: "q.trip_scope.opt.multiple" },
@@ -533,7 +517,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "FACT", factPaths: ["intent.entry_pattern"] },
-    sensitive: false,
     options: [
       { key: "SINGLE", labelI18nKey: "q.entry_pattern.opt.SINGLE" },
       { key: "MULTIPLE", labelI18nKey: "q.entry_pattern.opt.MULTIPLE" },
@@ -562,7 +545,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["sponsor.type"],
     },
-    sensitive: false,
     options: [
       { key: "NONE", labelI18nKey: "q.sponsor_category.opt.NONE" },
       {
@@ -628,7 +610,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
     options: [
       { key: "meetings", labelI18nKey: "q.business_activity.opt.meetings" },
       {
@@ -664,7 +645,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["work.employer_is_indonesian_entity"],
     },
-    sensitive: true,
     whyWeAsk: { i18nKey: "why.work_payer" },
     options: [
       { key: "yes", labelI18nKey: "q.work_payer.opt.yes" },
@@ -681,7 +661,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["work.indonesia_source_compensation"],
     },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -698,7 +677,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["work.indonesian_work_sponsor_confirmed"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -730,7 +708,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["work.serves_indonesian_clients"],
     },
-    sensitive: true,
     whyWeAsk: { i18nKey: "why.remote_clients" },
     options: [
       { key: "foreign", labelI18nKey: "q.remote_clients.opt.foreign" },
@@ -748,7 +725,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["work.indonesia_source_compensation"],
     },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -765,7 +741,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["work.employer_country_code"],
     },
-    sensitive: true,
     options: [],
     codeInput: {
       labelI18nKey: "q.remote_employer_country.label",
@@ -783,7 +758,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["investment.pt_pma_committed"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -797,7 +771,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
     options: [
       { key: "pt_pma", labelI18nKey: "q.investment_vehicle.opt.pt_pma" },
       { key: "property", labelI18nKey: "q.investment_vehicle.opt.property" },
@@ -832,7 +805,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["investment.pt_pma_committed"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -849,7 +821,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["investment.investment_capital_idr"],
     },
-    sensitive: true,
     options: [],
     numberInput: {
       min: 0,
@@ -889,7 +860,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
     options: [
       { key: "idr", labelI18nKey: "q.investment_currency.opt.idr" },
       { key: "usd", labelI18nKey: "q.investment_currency.opt.usd" },
@@ -920,7 +890,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["investment.investment_amount_usd"],
     },
-    sensitive: true,
     options: [],
     numberInput: {
       min: 0,
@@ -941,7 +910,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["investment.paid_up_capital_idr"],
     },
-    sensitive: true,
     options: [],
     numberInput: {
       min: 0,
@@ -962,7 +930,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["investment.proposed_role"],
     },
-    sensitive: false,
     options: [
       {
         key: "SHAREHOLDER_DIRECTOR",
@@ -1033,7 +1000,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["family.relation_to_sponsor"],
     },
-    sensitive: true,
     options: [
       { key: "SPOUSE", labelI18nKey: "q.family_relation.opt.SPOUSE" },
       { key: "CHILD", labelI18nKey: "q.family_relation.opt.CHILD" },
@@ -1058,7 +1024,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "FACT", factPaths: ["person.marital_status"] },
-    sensitive: true,
     options: [
       { key: "SINGLE", labelI18nKey: "q.marital_status.opt.SINGLE" },
       { key: "MARRIED", labelI18nKey: "q.marital_status.opt.MARRIED" },
@@ -1078,7 +1043,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["family.sponsor_nationalities"],
     },
-    sensitive: true,
     options: [],
     codeInput: {
       labelI18nKey: "q.family_sponsor_nationalities.label",
@@ -1113,7 +1077,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["family.sponsor_status_code"],
     },
-    sensitive: true,
     options: STAY_PERMIT_CODES.map((key) => ({
       key,
       labelI18nKey: `q.stay_permit_code.opt.${key}`,
@@ -1131,7 +1094,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       factPaths: ["family.marriage_registered"],
       unknownValues: ["not_applicable"],
     },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1152,7 +1114,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["family.sponsor_confirmed"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1181,7 +1142,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["family.sponsor_confirmed"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1213,7 +1173,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["family.sponsor_confirmed"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1241,7 +1200,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["family.stepchild_marriage_certificate_confirmed"],
     },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1260,7 +1218,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["family.stepchild_birth_certificate_confirmed"],
     },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1305,7 +1262,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     decisionMapping: {
       kind: "HUMAN_CONTEXT",
     },
-    sensitive: true,
     options: [
       {
         key: "EXPERT",
@@ -1366,7 +1322,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
     options: [
       {
         key: "bank_deposit",
@@ -1414,7 +1369,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
     options: [
       {
         key: "deposit_or_income",
@@ -1444,7 +1398,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
     options: [
       {
         key: "bank_deposit",
@@ -1464,7 +1417,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["secondhome.bank_deposit_usd"],
     },
-    sensitive: true,
     options: [],
     numberInput: {
       min: 0,
@@ -1487,7 +1439,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["secondhome.bank_deposit_at_state_bank"],
     },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1505,7 +1456,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["secondhome.bank_deposit_in_own_name"],
     },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1523,7 +1473,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["secondhome.qualifying_property_value_usd"],
     },
-    sensitive: true,
     options: [],
     numberInput: {
       min: 0,
@@ -1546,7 +1495,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["secondhome.passive_monthly_income_usd"],
     },
-    sensitive: true,
     options: [],
     numberInput: {
       min: 0,
@@ -1565,7 +1513,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "FACT", factPaths: ["study.level"] },
-    sensitive: false,
     options: [
       { key: "PRIMARY", labelI18nKey: "q.study_level.opt.PRIMARY" },
       { key: "SECONDARY", labelI18nKey: "q.study_level.opt.SECONDARY" },
@@ -1593,7 +1540,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["study.admission_confirmed"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1611,7 +1557,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "FACT",
       factPaths: ["study.sponsor_confirmed"],
     },
-    sensitive: false,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1626,7 +1571,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: true,
     options: [
       {
         key: "former_wni",
@@ -1649,7 +1593,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "branch",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1669,7 +1612,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "choice",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
     options: [
       { key: "transit", labelI18nKey: "q.other_purpose.opt.transit" },
       { key: "medical", labelI18nKey: "q.other_purpose.opt.medical" },
@@ -1689,7 +1631,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "branch",
     group: "details",
     decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: true,
     options: [
       { key: "yes", labelI18nKey: "q.boolean.yes" },
       { key: "no", labelI18nKey: "q.boolean.no" },
@@ -1703,7 +1644,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     kind: "number",
     group: "details",
     decisionMapping: { kind: "FACT", factPaths: ["intent.stay_days"] },
-    sensitive: false,
     options: [],
     numberInput: {
       min: 1,
@@ -1724,7 +1664,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       kind: "REVIEW_ONLY",
       factPaths: ["immigration.violation_history"],
     },
-    sensitive: true,
     whyWeAsk: { i18nKey: "why.review_gate" },
     options: [
       { key: "none", labelI18nKey: "q.review_gate.opt.none" },
