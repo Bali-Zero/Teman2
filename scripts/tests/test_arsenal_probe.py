@@ -1343,6 +1343,18 @@ def test_timeout_concurrent_ollama_job_is_busy(monkeypatch):
     assert status == ap.BUSY
 
 
+def test_timeout_ollama_job_with_serve_in_the_prompt_is_busy(monkeypatch):
+    _fake_census(monkeypatch, "401 1 ollama /opt/homebrew/bin/ollama run qwen3.5:9b serve\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.BUSY
+
+
+def test_timeout_ollama_serve_with_flags_is_still_the_daemon(monkeypatch):
+    _fake_census(monkeypatch, "400 1 ollama ollama serve\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.TIMEOUT
+
+
 def test_probe_jules_and_ollama_pass_their_census_filters(monkeypatch):
     seen = []
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (f"/x/{name}", True))
