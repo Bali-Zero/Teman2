@@ -1040,6 +1040,11 @@ class TestLocalCompensationWitnesses:
 # ---------------------------------------------------------------------------
 
 
+#: The gold-coverage-7 lane grew the shared corpus 20 -> 27 (E31E, E31G,
+#: E31H, E31J, E33, E33E, E33F); all 27 replay against seq-20. E33F's
+#: persona carries ``family.sponsor_confirmed`` KNOWN true because
+#: seq-19/seq-20's ``el.e33f.retirement`` still requires it (dropped only at
+#: seq-24), so no seq-20 skip-list entry is needed.
 def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
     return [
         (path.name, json.loads(path.read_text(encoding="utf-8")))
@@ -1048,8 +1053,8 @@ def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_twenty_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 20
+    def test_corpus_has_twenty_seven_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 27
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]
