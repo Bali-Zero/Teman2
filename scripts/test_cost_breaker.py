@@ -721,3 +721,49 @@ def test_p2_1_cooldown_seconds_env_override() -> None:
     assert cb._push_cooldown_seconds(env={"COST_BREAKER_PUSH_COOLDOWN_SEC": "120"}) == 120
     # invalid -> default
     assert cb._push_cooldown_seconds(env={"COST_BREAKER_PUSH_COOLDOWN_SEC": "x"}) == cb._DEFAULT_PUSH_COOLDOWN_SEC
+
+
+# ---------------------------------------------------------------------------
+# FIXBATCH-C #14 — a corrupt PG aggregate is UNKNOWN, never a silent $0
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "aggregate",
+    [Decimal("NaN"), Decimal("Infinity"), Decimal("-3.50"), "not-a-number", None],
+)
+def test_fixc_corrupt_pg_aggregate_is_unknown_and_degrades(
+    config: cb.BreakerConfig, aggregate: object,
+) -> None:
+    import asyncio
+
+    # numeric SUM() is NaN as soon as one row is NaN, and COALESCE does not
+    # touch it: the read SUCCEEDED but its value is not a spend. Reading it as
+    # $0 lets the breaker ALLOW on the very aggregate it cannot interpret.
+    conn = _FakeConn(aggregate)
+    spend = asyncio.run(
+        cb.provider_spend_in_window("openrouter", 3600, conn_or_pool=conn),
+    )
+    assert spend is None, f"corrupt aggregate {aggregate!r} must be UNKNOWN, not {spend!r}"
+    decision = cb.decide("openrouter", spend, config, push=lambda _t: True)
+    assert decision.verdict is cb.Verdict.DEGRADE
+    assert decision.spend_usd is None
+
+
+@pytest.mark.parametrize(
+    ("aggregate", "expected"),
+    [(Decimal("0"), Decimal("0")), (0, Decimal("0")), (Decimal("1.25"), Decimal("1.25"))],
+)
+def test_fixc_finite_pg_aggregate_is_still_known_spend(
+    config: cb.BreakerConfig, aggregate: object, expected: Decimal,
+) -> None:
+    import asyncio
+
+    # Innocence: a genuine $0 (and any finite non-negative sum) stays KNOWN.
+    conn = _FakeConn(aggregate)
+    spend = asyncio.run(
+        cb.provider_spend_in_window("openrouter", 3600, conn_or_pool=conn),
+    )
+    assert spend == expected
+    assert spend is not None
+    assert cb.evaluate("openrouter", spend, config) is cb.Verdict.ALLOW
