@@ -1,0 +1,26 @@
+tp1_call: credential source: vault
+C1: HOLDS — mark_seen is called only after `ok=True` (line `if not await self._mark_seen(urls)`) or after dead-letter threshold (`if dead_urls and await self._mark_seen(dead_urls)`); reconciliation path marks seen for items whose prior delivery was already accepted (`_locally_delivered` checks `"delivered": True`).
+
+C2: HOLDS — `<REDACTED>` increments per-item attempts in JSON state file, writes JSONL with exactly `{id, url, first_seen, attempts, last_error}` where `last_error` is `type(exc).__name__` or literal `"DeliveryNotAccepted"`; `attempts >= DELIVERY_MAX_ATTEMPTS` triggers `_mark_seen(dead_urls)` then `<REDACTED>`; state persists in `<REDACTED>` across runs.
+
+C3: HOLDS — after accepted send + failed `_mark_seen`, `_remember_delivered(urls)` writes `"delivered": True`; next run's `_locally_delivered` filters those items out of `new_items` before composing/sending, so no re-send occurs. Compound failure of both Redis AND local file (exception in `_save_delivery_state`) could exceed one duplicate, but the stated mechanism operates correctly.
+
+C4: HOLDS — `p0_unsent_spooled` is in the "custody taken" set, so `send_telegram` returns True; job proceeds to `_mark_seen`, items become seen, next run skips them. No retry loop, no extra logging path, one send per run regardless.
+
+C5: HOLDS — `_alert_dedup_key` returns `"pajak-new:" + sha256("\n".join(sorted(urls)))[:16]`; distinct URL sets produce distinct digests; identical sets (retry) produce the same key deterministically.
+
+C6: HOLDS — except-block has no `sub.ack(env)` and no `r.sadd`; `if attempts >= MAX_DELIVERY_ATTEMPTS: sub.park_to_dlq(env, f"intel-dedup:{error_class}")` parks with class name only; success path: `sub.emit` → `r.sadd` → `sub.ack` each exactly once; duplicate path: `sub.ack(env); continue` with no emit.
+
+C7: HOLDS — pajak healthy path: `_write_intel_feed` same content, `send_telegram` same message body (only added `dedup_key=` kwarg), `_mark_seen` same Redis commands, final state identical. Gateway healthy path: `emit` → `SADD` → `EXPIRE` → `ack` all execute once; removed SADD-race branch was unreachable with single consumer; `finally:ack` vs inline `ack` equivalent on success.
+
+**Extra defects:**
+
+D1: `_REDIS_ERROR_REPLY` regex misses `MOVED`, `ASK`, `WRONGTYPE`, `CROSSSLOT` prefixes. Input: Redis Cluster slot migration returns `MOVED 3999 10.0.0.2:7001\n` with exit 0; regex doesn't match, `_mark_seen` returns True, items treated as persisted when they are not → silent data loss of seen-state.
+
+D2: Gateway crash between `sub.emit(...)` and `r.sadd(...)` leaves event published but un-ACKed/un-seen. On reboot `sub.listen()` re-yields PEL entry; `SISMEMBER` returns False → event published a second time downstream. Concrete: `kill -9` the process between those two lines.
+
+D3: Batch-level dead-lettering poisons innocent items. Input: gateway rejects a 3-item batch (e.g., 20 s timeout) for 5 consecutive runs; all three items hit `attempts==5`, all are dead-lettered and marked seen, even though only one URL may be problematic. The two valid regulations are permanently lost.
+
+D4: `<REDACTED>` writes the dead-letter JSONL only when `attempts == DELIVERY_MAX_ATTEMPTS` (strict equality). If `_mark_seen(dead_urls)` fails and the item re-appears next run, attempts becomes 6; the `==` guard prevents a second JSONL line, but `<REDACTED>` still returns the url in `dead_urls`, causing a repeated `_mark_seen` attempt every run indefinitely with no log indication the item is stuck.
+
+D5: `_save_delivery_state` uses `temporary.replace(DELIVERY_STATE_PATH)` but does not `fsync` the file or the directory. On power loss after `replace` but before journal commit, the state file can be zero-length; next `_load_delivery_state` catches the `ValueError` from `json.loads("")` and resets to `{"items":{}}`, silently discarding all accumulated attempt counters → a poison item's count resets to 0, defeating the dead-letter bound.

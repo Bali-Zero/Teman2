@@ -1,0 +1,37 @@
+task_id: fixe-ack-after-delivery-dux
+mission: FIXBATCH-E-20261005
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Work is marked done only after it is delivered. pajak_monitor marks a regulation seen only after
+  the Telegram gateway accepted the alert that carried it, with a content dedup key so the gateway's
+  repeat ladder cannot mute new regulations; intel_dedup_gateway ACKs an event only after the deduped
+  event was published.
+constraints:
+  - No real Telegram, Redis or message bus in tests; fakes only. No chat id or token anywhere.
+  - Healthy path byte-identical (result, message, tier, seen-state, intel feed, lake payloads, redis writes).
+  - Dead letter and logs carry the error CLASS only, never message text.
+  - Live copies run from ~/scripts on Pro (home-fork pairs); the merge does not make them live.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN the gateway does not accept the alert THEN the items SHALL stay unseen and be retried next run.
+    probe: scripts/tests/test_pajak_monitor.py::test_delivery_failure_is_retried_then_success_is_marked_once
+  - text: WHEN an item fails DELIVERY_MAX_ATTEMPTS times THEN it SHALL be dead-lettered (class only) and marked seen.
+    probe: scripts/tests/test_pajak_monitor.py::test_poison_item_is_dead_lettered_at_configured_bound_with_legacy_state
+  - text: WHEN the send was accepted but the seen-mark failed THEN the next run SHALL reconcile without re-sending.
+    probe: scripts/tests/test_pajak_monitor.py::test_seen_persist_failure_after_send_is_an_error
+  - text: WHEN two alerts carry different item sets THEN their gateway keys SHALL differ; a retried set SHALL keep its key.
+    probe: scripts/tests/test_pajak_monitor.py::test_distinct_alerts_carry_distinct_gateway_keys_and_a_retry_keeps_its_key
+  - text: WHEN the gateway handler raises THEN the event SHALL NOT be ACKed nor marked seen; at the bound it SHALL be parked with the class only.
+    probe: infra/eventbus/test_intel_dedup_gateway.py (5 tests)
+consumer_map:
+  - scripts/cron-agent-python/pajak_monitor.py — Pro crontab `0 0 * * *` run.sh pajak-monitor, executes the HOME copy ~/scripts/cron-agent-python/pajak_monitor.py.
+  - infra/eventbus/intel_dedup_gateway.py — Pro LaunchAgent com.balizero.intel-dedup-gateway (KeepAlive), executes the HOME copy ~/scripts/eventbus/intel_dedup_gateway.py.
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  findings-ranked.md batch E (items 7, 8). Built by the Codex seat (gpt-5.6-sol, O3) in
+  .worktrees/infra-fixe-ack-after-delivery; verified, completed and committed by Dux dux-fix-e
+  (Opus 5.5) and shipped from its own worktree because the seat's auto-continuation kept writing there.

@@ -1,0 +1,67 @@
+brief_ref: evidence/brief.yml
+gear: 2
+pii_scan: clean
+spend:
+  wall_clock_hours: 1.2
+measured_floor: "2 (source: size; evidence_pack_lint.py --print-floor/--print-floor-source on the staged diff, 4 code files +478/-28)"
+lanes:
+  - lane: fixe-build
+    role: build
+    seat: "codex gpt-5.6-sol (O3, scripts/seat_build.sh, rc 0, 1698 s)"
+  - lane: fixe-verify
+    role: build
+    seat: "claude-opus-5.5 (Dux dux-fix-e: content dedup key, dead-letter url + log line, redis reply grading, gateway bound/duplicate tests)"
+  - lane: fixe-review-tp1
+    role: review
+    seat: "tp1-qwen3.8-max (read-only, falsify-the-claims prompt on 306d07b884's production diff; C1-C7 HOLDS, 5 extra findings) — verbatim: review-tp1-qwen3.8-max.txt"
+dissent:
+  - seat: tp1-qwen3.8-max
+    objection: "D1: the redis reply regex misses MOVED/ASK/WRONGTYPE/CROSSSLOT, so _mark_seen can read an error reply as persisted."
+    status: CONFIRMED
+    disposition: "Cured in 95332c0637 for the replies a single local Redis can send (WRONGTYPE, MISCONF, OOM, with a test); MOVED/ASK/CROSSSLOT are cluster-only and not applicable."
+  - seat: tp1-qwen3.8-max
+    objection: "D2: a gateway crash between publish and SADD republishes the event once on the next boot drain."
+    status: PLAUSIBLE
+    disposition: "Accepted by design: at most one duplicate downstream instead of a lost event (task contract)."
+  - seat: tp1-qwen3.8-max
+    objection: "D3: a rejected alert dead-letters all its items together, innocent ones included."
+    status: PLAUSIBLE
+    disposition: "Accepted: the failure is per message (gateway missing/timeout/unparseable), not per item; each dead-letter line keeps the public url for a re-send."
+  - seat: tp1-qwen3.8-max
+    objection: "D4: an item past the bound whose seen-mark keeps failing is re-marked every run with no specific log line."
+    status: PLAUSIBLE
+    disposition: "Accepted: such a run already ends status=error (paged by run_job) and redis_mark_error is logged on exceptions."
+  - seat: tp1-qwen3.8-max
+    objection: "D5: the state file is replaced without fsync; a power loss can reset attempt counters."
+    status: PLAUSIBLE
+    disposition: "Accepted: a reset counter restarts the bound once; it never loses or duplicates an item beyond the bound."
+  - seat: claude-opus-5.5
+    objection: "The candidate premise (send fails, item lost) measured 0 lost items on Pro: all 11 non-accepted sends since 2026-08-14 had been spooled by tg_notify. The 22 lost items came through an ACCEPTED 'deduped' verdict on a constant first line."
+    status: CONFIRMED
+    disposition: "Content dedup key added (the cure that bites); the ordering fix stays as the guard for the next gateway fault."
+what_changed: |
+  pajak_monitor.py: seen-state written after an accepted send; per-set content dedup key on the alert;
+  bounded retry (PAJAK_DELIVERY_MAX_ATTEMPTS=5) with a counter in ~/.intel_scraper/pajak_delivery_state.json,
+  then ~/.intel_scraper/pajak_dead_letter.jsonl (id, url, first_seen, attempts, class) and seen; an
+  accepted send whose mark failed leaves a local receipt the next run reconciles without re-sending;
+  _mark_seen grades the redis-cli reply. intel_dedup_gateway.py: publish, then SADD + ACK; a raising
+  handler is not ACKed and is parked to bz:dlq with the class on its last allowed delivery (5).
+receipts:
+  - claim: new tests RED on origin/main's pajak_monitor.py and intel_dedup_gateway.py
+    cmd: pytest -q red2/scripts/tests/test_pajak_monitor.py red2/infra/eventbus/test_intel_dedup_gateway.py (origin/main sources, new tests)
+    exit: "1 (10 failed, 13 passed)"
+    ts: "2026-10-05T11:28Z"
+    seat: claude-opus-5.5
+  - claim: all suites touching the files GREEN
+    cmd: pytest -q scripts/tests/test_pajak_monitor.py scripts/tests/test_pajak_parse.py infra/eventbus/test_intel_dedup_gateway.py scripts/tests/test_agent_job_telegram_gateway.py scripts/tests/test_tg_notify_identity_ladder.py
+    exit: "0 (67 passed / 38 passed)"
+    ts: "2026-10-05T11:47Z"
+    seat: claude-opus-5.5
+  - claim: healthy path byte-identical old vs new on the same fake inputs (two runs)
+    cmd: python3 scratchpad/dux-fix-e/healthy_equiv.py <origin test harness> <new test harness>
+    exit: "0 — result, sends (msg+tier), seen, intel files, lake payloads, redis writes, extra files: IDENTICAL; gateway: publish payload, acks, dlq, seen IDENTICAL"
+    ts: "2026-10-05T11:47Z"
+    seat: claude-opus-5.5
+owed:
+  - "infra/eventbus/test_intel_dedup_gateway.py runs in no PR workflow (no workflow runs infra/eventbus tests); wiring it is a .github/workflows edit, floor 3, own PR."
+  - "Same mark-before-send shape, not cured here: oss_monitor.py:93 (mark) before :97 (send), imigrasi_monitor.py:91 before :101, intel_radar_daily_digest.py:129-146 marks processed whatever `ok` says; oss/imigrasi alerts also carry no dedup key (constant first line)."

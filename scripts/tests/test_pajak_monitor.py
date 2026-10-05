@@ -731,5 +731,8 @@ def test_mark_seen_refuses_a_redis_error_reply_that_exits_zero(monkeypatch):
     replies[:] = ["NOAUTH Authentication required.\n", "1\n"]
     assert asyncio.run(job._mark_seen(["https://pajak.go.id/id/peraturan/x"])) is False
 
+    replies[:] = ["MISCONF Errors writing to the RDB snapshot\n"]
+    assert asyncio.run(job._mark_seen(["https://pajak.go.id/id/peraturan/x"])) is False
+
     replies[:] = ["1\n", "1\n"]
     assert asyncio.run(job._mark_seen(["https://pajak.go.id/id/peraturan/x"])) is True
