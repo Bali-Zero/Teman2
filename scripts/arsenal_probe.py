@@ -73,6 +73,7 @@ BALANCE_DEAD = "BALANCE_DEAD"
 MODEL_ERR = "MODEL_ERR"
 SHED = "SHED"
 TIMEOUT = "TIMEOUT"
+BUSY = "BUSY"
 CRED_UNAVAILABLE = "CRED_UNAVAILABLE"
 NOT_INSTALLED = "NOT_INSTALLED"
 UNKNOWN_ERR = "UNKNOWN_ERR"
@@ -400,6 +401,53 @@ def is_strict_fail(status: str) -> bool:
 
 
 # ---------------------------------------------------------------- subprocess helper
+
+def sibling_seat_processes(binary_basename: str, exclude_pids: set[int]) -> int:
+    """Count other live processes for a seat binary; fail toward TIMEOUT."""
+    try:
+        proc = subprocess.run(
+            ["ps", "-axo", "pid=,ppid=,comm=,args="], capture_output=True, text=True, timeout=1
+        )
+        if proc.returncode != 0:
+            return 0
+        rows = []
+        for line in proc.stdout.splitlines():
+            fields = line.strip().split(None, 3)
+            if len(fields) < 3:
+                continue
+            pid_text, ppid_text, command = fields[:3]
+            rows.append((int(pid_text), int(ppid_text), command, fields[3] if len(fields) == 4 else ""))
+
+        own_pid = os.getpid()
+        excluded = set(exclude_pids) | {own_pid}
+        parent_by_pid = {pid: ppid for pid, ppid, _, _ in rows}
+        ancestor = parent_by_pid.get(own_pid, os.getppid())
+        while ancestor > 1 and ancestor not in excluded:
+            excluded.add(ancestor)
+            ancestor = parent_by_pid.get(ancestor, 0)
+        excluded.update(pid for pid, ppid, _, _ in rows if ppid == own_pid)
+
+        count = 0
+        for pid, _, command, args in rows:
+            argv = args.split()[:2]
+            names = {Path(command).name, *(Path(arg).name for arg in argv)}
+            if pid not in excluded and binary_basename in names:
+                count += 1
+        return count
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return 0
+
+
+def timeout_status(binary: str, evidence: str, latency_ms: int) -> tuple[str, str, int]:
+    """Distinguish a contended CLI seat from an otherwise unexplained timeout."""
+    basename = Path(binary).name
+    try:
+        siblings = sibling_seat_processes(basename, set())
+    except Exception:
+        siblings = 0
+    if siblings:
+        return BUSY, f"probe timed out while {siblings} other {basename} process(es) were running", latency_ms
+    return TIMEOUT, evidence or "probe timed out", latency_ms
 
 class ProbeResult:
     __slots__ = ("returncode", "stdout", "stderr", "timed_out")
@@ -859,7 +907,7 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
     # DEFAULT_TIMEOUTS comment — this is exactly the agy pipe-leak shape, kept generic
     # here in case another CLI ever exhibits the same grandchild-holds-the-pipe defect).
     if res.timed_out and not live:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+        return timeout_status(binp, ev, latency_ms)
     combined = res.stdout + res.stderr
     # claude CLI's unauthenticated shape ("Not logged in · Please run
     # /login") carries no 401/oauth-token marker, only this short prose, and
@@ -901,7 +949,7 @@ def probe_agy(timeout: float) -> tuple[str, str, int]:
     live = "PONG" in res.stdout
     # Judge the reply, not the fact that the process never cleanly exited.
     if res.timed_out and not live:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+        return timeout_status(binp, ev, latency_ms)
     combined = res.stdout + res.stderr
     # Real exemplar captured in ~/.organism/arsenal/last.json on Mini (2026-10-01,
     # Mini-HEALER tick): a non-interactive probe invocation hit agy's own
@@ -933,7 +981,7 @@ def probe_kimi(timeout: float) -> tuple[str, str, int]:
     ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
     live = "PONG" in res.stdout
     if res.timed_out and not live:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+        return timeout_status(binp, ev, latency_ms)
     combined = res.stdout + res.stderr
     # kimi-code's unauthenticated state prints "No providers configured" /
     # "not logged in" with no 401 marker — that is a credential death (cure:
@@ -958,7 +1006,7 @@ def probe_codex(timeout: float) -> tuple[str, str, int]:
     ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
     live = "PONG" in res.stdout
     if res.timed_out and not live:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+        return timeout_status(binp, ev, latency_ms)
     status = classify_generic(res.stdout + res.stderr, live, "codex", is_ssh_context())
     return status, ev, latency_ms
 
@@ -977,7 +1025,7 @@ def probe_codex_spark(timeout: float) -> tuple[str, str, int]:
     ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
     live = "PONG" in res.stdout
     if res.timed_out and not live:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+        return timeout_status(binp, ev, latency_ms)
     status = classify_generic(res.stdout + res.stderr, live, "codex", is_ssh_context())
     return status, ev, latency_ms
 
@@ -1002,7 +1050,7 @@ def probe_jules(timeout: float) -> tuple[str, str, int]:
             live = True
 
     if res.timed_out and not live:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+        return timeout_status(binp, ev, latency_ms)
 
     combined = res.stdout + res.stderr
     # 2026-08-21 (healer tick, Mini): jules_dispatch.py's own credential-missing
@@ -1037,7 +1085,7 @@ def probe_ollama(timeout: float, live_gen: bool = False) -> tuple[str, str, int]
     latency_ms = int((time.monotonic() - t0) * 1000)
     model_listed = "qwen3.5" in res.stdout
     if res.timed_out and not model_listed:
-        return TIMEOUT, path_note + (evidence_tail(res.stdout + res.stderr) or "probe timed out"), latency_ms
+        return timeout_status(binp, path_note + evidence_tail(res.stdout + res.stderr), latency_ms)
     if not model_listed:
         ev = path_note + evidence_tail(res.stdout + " " + res.stderr)
         status = classify_generic(res.stdout + res.stderr, False, "ollama", is_ssh_context())
@@ -1057,7 +1105,7 @@ def probe_ollama(timeout: float, live_gen: bool = False) -> tuple[str, str, int]
     latency_ms = int((time.monotonic() - t0) * 1000)
     live = bool(gen_res.stdout.strip())
     if gen_res.timed_out and not live:
-        return TIMEOUT, path_note + "live-gen timed out", latency_ms
+        return timeout_status(binp, path_note + "live-gen timed out", latency_ms)
     ev = path_note + evidence_tail(gen_res.stdout + " " + gen_res.stderr)
     status = classify_generic(gen_res.stdout + gen_res.stderr, live, "ollama", is_ssh_context())
     return status, ev or "live-gen produced no output", latency_ms
@@ -1079,7 +1127,7 @@ def probe_nlm(timeout: float) -> tuple[str, str, int]:
     except (json.JSONDecodeError, ValueError):
         live = False
     if res.timed_out and not live:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+        return timeout_status(binp, ev, latency_ms)
     combined = res.stdout + res.stderr
     # nlm's expired-credential shape ("Run nlm login to re-authenticate")
     # carries no 401/oauth-token marker, only this prose, and fell through
@@ -1151,7 +1199,7 @@ def probe_qwen_cloud_code(timeout: float) -> tuple[str, str, int]:
     )
     live = "PONG" in res.stdout
     if res.timed_out and not live:
-        return TIMEOUT, ev or "probe timed out", latency_ms
+        return timeout_status(binp, ev, latency_ms)
     status = classify_generic(res.stdout + res.stderr, live, "qwen-cloud-code", is_ssh_context())
     return status, ev, latency_ms
 
