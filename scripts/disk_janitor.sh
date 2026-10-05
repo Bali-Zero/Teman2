@@ -61,8 +61,10 @@ CODEX_DAYS="${DISK_JANITOR_CODEX_DAYS:-14}"
 LOG_ARCHIVE_DAYS="${DISK_JANITOR_LOG_ARCHIVE_DAYS:-60}"
 TOOLS="${DISK_JANITOR_TOOLS:-true}"
 LSOF="${DISK_JANITOR_LSOF:-lsof}"
-DOCKER_DAYS="${DISK_JANITOR_DOCKER_DAYS:-30}"
-FSTRIM_TIMEOUT="${DISK_JANITOR_FSTRIM_TIMEOUT:-180}"
+DOCKER_DAYS="${DISK_JANITOR_DOCKER_DAYS-30}"       # no colon: a set-but-empty knob is refused below, not defaulted
+TOOL_TIMEOUT="${DISK_JANITOR_TOOL_TIMEOUT-120}"     # docker info/ls/ps/rm, colima status
+CACHE_TIMEOUT="${DISK_JANITOR_CACHE_TIMEOUT-600}"   # uv, restic, docker prunes, brew
+FSTRIM_TIMEOUT="${DISK_JANITOR_FSTRIM_TIMEOUT-180}"
 DOCKER_KEEP="localci-candidate ${DISK_JANITOR_DOCKER_KEEP:-}"   # extendable, never emptiable
 DF_PATH="${DISK_JANITOR_DF_PATH:-/System/Volumes/Data}"; [ -d "$DF_PATH" ] || DF_PATH=/
 QDRANT_RETENTION="${DISK_JANITOR_QDRANT_RETENTION-$(cd "$(dirname "$0")" && pwd)/qdrant_backup_retention.sh}"
@@ -134,11 +136,23 @@ if ! { : >> "$LOG_FILE"; } 2>/dev/null || ! { : >> "$JOURNAL"; } 2>/dev/null; th
 fi
 # Age knobs are integers or the run refuses: `find -mtime +abc` lists nothing, and the step
 # would no-op silently with errors=0 in the receipt (kimi K3).
-for knob in SCRATCH_DAYS CODEX_DAYS LOG_ARCHIVE_DAYS DOCKER_DAYS FSTRIM_TIMEOUT; do
+for knob in SCRATCH_DAYS CODEX_DAYS LOG_ARCHIVE_DAYS; do
   case "${!knob}" in
     ''|*[!0-9]*) log "REFUSE: DISK_JANITOR_$knob must be a non-negative integer — exit 2"; exit 2 ;;
   esac
 done
+# DOCKER_DAYS and the timeouts are plain decimal integers in a range: `0` is no age floor / no
+# timeout, `08` aborts bash arithmetic mid-run and `030` reads as octal, a 15-digit value
+# overflows (review of #7859, F6). Refused before any step runs.
+knob_range() { # $1 knob  $2 min  $3 max
+  local v=${!1}
+  case "$v" in ''|0*|*[!0-9]*) v="" ;; esac
+  if [ -z "$v" ] || [ "${#v}" -gt 6 ] || [ "$v" -lt "$2" ] || [ "$v" -gt "$3" ]; then
+    log "REFUSE: DISK_JANITOR_$1 must be a plain integer $2..$3 (no sign, no leading zero) — exit 2"; exit 2
+  fi
+}
+knob_range DOCKER_DAYS 7 3650
+for knob in TOOL_TIMEOUT CACHE_TIMEOUT FSTRIM_TIMEOUT; do knob_range "$knob" 1 86400; done
 
 # The scratch root is the one target that can be pointed elsewhere by env/plist (council O3/R2):
 # absolute, basename exactly claude-<digits>, no "." or ".." components, and — when it exists —
@@ -271,68 +285,122 @@ step_end() { # $1 step  $2 done|dry-run|skipped|error  $3 reason (optional, no p
   STEPS="$STEPS${STEPS:+,}\"$1\":{\"status\":\"$2\",\"count\":$S_N,\"df_delta_bytes\":$delta${3:+,\"reason\":\"$3\"}}"
   log "$1: $2${3:+ ($3)} count=$S_N df_delta=${delta}B"
 }
-bounded() { local s=$1; shift; perl -e 'alarm shift; exec @ARGV or exit 127' "$s" "$@"; }   # no coreutils timeout on stock macOS
+# bounded SECONDS CMD…: a real deadline (no coreutils timeout on stock macOS). `alarm`+`exec` is not one:
+# Go binaries (docker, colima, restic) ignore SIGALRM. The parent forks, the child gets its own process
+# group and /dev/null as stdin; at the deadline the group gets TERM, then KILL after 2 s. rc 124 = timed
+# out, otherwise the command's rc (death by signal n reads 128+n).
+bounded() {
+  local s=$1; shift
+  perl -e 'use POSIX ":sys_wait_h"; my $t = shift; my $p = fork; defined $p or exit 127;
+    if (!$p) { setpgrp(0, 0); open STDIN, "<", "/dev/null"; exec { $ARGV[0] } @ARGV or exit 127 }
+    my ($end, $r, $to) = (time + $t, 0, 0);
+    until (($r = waitpid($p, WNOHANG)) != 0) {
+      if (!$to && time >= $end) { $to = 1; kill "TERM", -$p; kill "TERM", $p; $end = time + 2 }
+      elsif ($to && time >= $end) { kill "KILL", -$p; kill "KILL", $p; $r = waitpid($p, 0); last }
+      select(undef, undef, undef, 0.1);
+    }
+    kill "KILL", -$p if $to;
+    exit 124 if $to; exit 127 if $r < 0;
+    exit($? & 127 ? 128 + ($? & 127) : $? >> 8);' "$s" "$@"
+}
 to_epoch() { date -j -f '%Y-%m-%d %H:%M:%S' "$1" +%s 2>/dev/null || date -d "$1" +%s 2>/dev/null; }
+timeout_or() { [ "$2" -eq 124 ] && echo "$3" || echo "$1"; }   # $1 reason, $2 rc, $3 reason when rc is the bounded() timeout
+# docker_unused_images: tagged images older than DOCKER_DAYS that no container (running or
+# stopped) descends from. NOT `image prune -a`: localci-candidate is pinned by image ID in the
+# local-CI plans and a rebuilt image is refused there, so its repository is never a candidate.
+# A pin matches the LAST path component of the repository (a registry prefix does not unpin it,
+# `my-localci-candidate` is not pinned). Unreadable, epoch-0 or pre-2000 build dates are kept.
+# A failed container probe keeps the image and ends the step as an error, never as `done`.
+docker_unused_images() {
+  local imgs lrc id repo tg created base ep cutoff users prc ref rrc bad=""
+  step_begin
+  if [ "$DOCKER_RC" = absent ]; then step_end docker_unused_images skipped docker-absent; return 0; fi
+  if [ "$DOCKER_RC" = 124 ]; then ERRORS=$((ERRORS + 1)); step_end docker_unused_images error docker-info-timeout; return 0; fi
+  if [ "$DOCKER_RC" != 0 ]; then step_end docker_unused_images skipped docker-unreachable; return 0; fi
+  imgs=$(bounded "$TOOL_TIMEOUT" docker image ls --format '{{.ID}}|{{.Repository}}|{{.Tag}}|{{.CreatedAt}}' 2>/dev/null); lrc=$?
+  if [ "$lrc" -ne 0 ]; then ERRORS=$((ERRORS + 1)); step_end docker_unused_images error "$(timeout_or list-failed "$lrc" list-timeout)"; return 0; fi
+  cutoff=$(( $(date +%s) - DOCKER_DAYS * 86400 ))
+  while IFS='|' read -r id repo tg created; do
+    [ -n "$id" ] || continue
+    base=${repo##*/}
+    [ -n "$base" ] || { log "docker_unused_images: keep $(tag "$id") (no repository name)"; continue; }
+    case " $DOCKER_KEEP " in *" $repo "*|*" $base "*) log "docker_unused_images: keep $(tag "$repo") (pinned repository)"; continue ;; esac
+    ep=$(to_epoch "${created:0:19}") || ep=""
+    { [ -n "$ep" ] && [ "$ep" -ge 946684800 ] 2>/dev/null; } || { log "docker_unused_images: keep $(tag "$id") (age unreadable)"; continue; }
+    [ "$ep" -lt "$cutoff" ] || continue
+    users=$(bounded "$TOOL_TIMEOUT" docker ps -a -q --filter "ancestor=$id" 2>/dev/null); prc=$?
+    if [ "$prc" -ne 0 ]; then
+      ERRORS=$((ERRORS + 1)); log "docker_unused_images: keep $(tag "$id") (container probe failed rc=$prc)"
+      if [ "$prc" -eq 124 ]; then bad=probe-timeout; break; fi
+      bad=${bad:-probe-failed}; continue
+    fi
+    [ -n "$users" ] && { log "docker_unused_images: keep $(tag "$id") (used by a container)"; continue; }
+    ref="$id"; [ "$repo" != "<none>" ] && [ "$tg" != "<none>" ] && ref="$repo:$tg"
+    if ! $APPLY; then S_N=$((S_N + 1)); log "docker_unused_images: would remove $(tag "$ref")"; continue; fi
+    bounded "$TOOL_TIMEOUT" docker image rm "$ref" >/dev/null 2>&1; rrc=$?
+    if [ "$rrc" -eq 0 ]; then S_N=$((S_N + 1)); log "docker_unused_images: removed $(tag "$ref")"
+    else
+      ERRORS=$((ERRORS + 1)); log "docker_unused_images: FAILED to remove $(tag "$ref") rc=$rrc"
+      if [ "$rrc" -eq 124 ]; then bad=rm-timeout; break; fi
+      bad=${bad:-rm-failed}
+    fi
+  done < <(printf '%s\n' "$imgs")
+  if [ -n "$bad" ]; then step_end docker_unused_images error "$bad"
+  elif $APPLY; then step_end docker_unused_images "done"; else step_end docker_unused_images dry-run; fi
+}
 # ── tool caches: only real tools, only their own safe prune verbs ───────────────
 TOOLS_DONE=""; TOOLS_SEEN=""
 if [ "$TOOLS" = "true" ]; then
   for t in uv docker brew colima restic; do command -v "$t" >/dev/null 2>&1 && TOOLS_SEEN="$TOOLS_SEEN $t"; done
-  # Every external verb is time-bounded: a daily job hung on one tool would skip every later day
-  # behind the wrapper's live-lock (status=warn) instead of failing once, visibly.
+  # Every external verb below runs through bounded() (a real deadline, TERM then KILL): a daily job
+  # hung on one tool would skip every later day behind the wrapper's live-lock (status=warn) instead
+  # of failing once, visibly. A timed-out step is an error with a named reason; later steps still run.
   # uv_cache_prune (skipped while a uv process holds the cache lock)
   step_begin
   if ! command -v uv >/dev/null 2>&1; then step_end uv_cache_prune skipped uv-absent
   elif pgrep -x uv >/dev/null 2>&1; then step_end uv_cache_prune skipped uv-lock-held
   elif ! $APPLY; then step_end uv_cache_prune dry-run
-  elif bounded 600 uv cache prune >/dev/null 2>&1; then S_N=1; TOOLS_DONE="$TOOLS_DONE uv"; step_end uv_cache_prune "done"
-  else ERRORS=$((ERRORS + 1)); step_end uv_cache_prune error prune-failed; fi
+  else
+    bounded "$CACHE_TIMEOUT" uv cache prune >/dev/null 2>&1; rc=$?
+    if [ "$rc" -eq 0 ]; then S_N=1; TOOLS_DONE="$TOOLS_DONE uv"; step_end uv_cache_prune "done"
+    else ERRORS=$((ERRORS + 1)); step_end uv_cache_prune error "$(timeout_or prune-failed "$rc" prune-timeout)"; fi
+  fi
   # restic_cache_cleanup: removes only cache dirs restic itself considers stale; no repo needed
   step_begin
   if ! command -v restic >/dev/null 2>&1; then step_end restic_cache_cleanup skipped restic-absent
   elif ! $APPLY; then step_end restic_cache_cleanup dry-run
-  elif bounded 600 restic cache --cleanup >/dev/null 2>&1; then S_N=1; TOOLS_DONE="$TOOLS_DONE restic"; step_end restic_cache_cleanup "done"
-  else ERRORS=$((ERRORS + 1)); step_end restic_cache_cleanup error cleanup-failed; fi
-  if $APPLY && command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-    docker image prune -f >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-image" || ERRORS=$((ERRORS + 1))
-    docker volume prune -f >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-volume" || ERRORS=$((ERRORS + 1))
-    docker builder prune -f --filter until=168h >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-builder" || ERRORS=$((ERRORS + 1))
-  fi
-  # docker_unused_images: tagged images older than DOCKER_DAYS that no container (running or
-  # stopped) descends from. NOT `image prune -a`: localci-candidate is pinned by image ID in the
-  # local-CI plans and a rebuilt image is refused there, so its repository is never a candidate.
-  step_begin
-  if ! command -v docker >/dev/null 2>&1; then step_end docker_unused_images skipped docker-absent
-  elif ! bounded 60 docker info >/dev/null 2>&1; then step_end docker_unused_images skipped docker-unreachable
-  elif ! imgs=$(docker image ls --format '{{.ID}}|{{.Repository}}|{{.Tag}}|{{.CreatedAt}}' 2>/dev/null); then
-    ERRORS=$((ERRORS + 1)); step_end docker_unused_images error list-failed
   else
-    cutoff=$(( $(date +%s) - DOCKER_DAYS * 86400 ))
-    while IFS='|' read -r id repo tg created; do
-      [ -n "$id" ] || continue
-      case " $DOCKER_KEEP " in *" $repo "*) log "docker_unused_images: keep $(tag "$repo") (pinned repository)"; continue ;; esac
-      ep=$(to_epoch "${created:0:19}") || ep=""
-      [ -n "$ep" ] || { log "docker_unused_images: keep $(tag "$id") (age unreadable)"; continue; }
-      [ "$ep" -lt "$cutoff" ] || continue
-      users=$(docker ps -a -q --filter "ancestor=$id" 2>/dev/null) || { log "docker_unused_images: keep $(tag "$id") (container probe failed)"; continue; }
-      [ -n "$users" ] && { log "docker_unused_images: keep $(tag "$id") (used by a container)"; continue; }
-      ref="$id"; [ "$repo" != "<none>" ] && [ "$tg" != "<none>" ] && ref="$repo:$tg"
-      if ! $APPLY; then S_N=$((S_N + 1)); log "docker_unused_images: would remove $(tag "$ref")"
-      elif docker image rm "$ref" >/dev/null 2>&1; then S_N=$((S_N + 1)); log "docker_unused_images: removed $(tag "$ref")"
-      else ERRORS=$((ERRORS + 1)); log "docker_unused_images: FAILED to remove $(tag "$ref")"; fi
-    done < <(printf '%s\n' "$imgs")
-    if $APPLY; then step_end docker_unused_images "done"; else step_end docker_unused_images dry-run; fi
+    bounded "$CACHE_TIMEOUT" restic cache --cleanup >/dev/null 2>&1; rc=$?
+    if [ "$rc" -eq 0 ]; then S_N=1; TOOLS_DONE="$TOOLS_DONE restic"; step_end restic_cache_cleanup "done"
+    else ERRORS=$((ERRORS + 1)); step_end restic_cache_cleanup error "$(timeout_or cleanup-failed "$rc" cleanup-timeout)"; fi
   fi
+  DOCKER_RC=absent   # one reachability probe shared by the v1 prunes and docker_unused_images
+  if command -v docker >/dev/null 2>&1; then bounded "$TOOL_TIMEOUT" docker info >/dev/null 2>&1; DOCKER_RC=$?; fi
+  if $APPLY && [ "$DOCKER_RC" = 0 ]; then
+    bounded "$CACHE_TIMEOUT" docker image prune -f >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-image" || ERRORS=$((ERRORS + 1))
+    bounded "$CACHE_TIMEOUT" docker volume prune -f >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-volume" || ERRORS=$((ERRORS + 1))
+    bounded "$CACHE_TIMEOUT" docker builder prune -f --filter until=168h >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE docker-builder" || ERRORS=$((ERRORS + 1))
+  fi
+  docker_unused_images
   # colima_fstrim, AFTER the docker steps: the guest discards the blocks they just freed and vz
   # punches the matching holes in the host datadisk (idempotent; ~13 GiB measured 2026-10-03).
   step_begin
   if ! command -v colima >/dev/null 2>&1; then step_end colima_fstrim skipped colima-absent
-  elif ! bounded 60 colima status 2>&1 | grep -qi 'colima is running'; then step_end colima_fstrim skipped colima-not-running
-  elif ! $APPLY; then step_end colima_fstrim dry-run
-  elif bounded "$FSTRIM_TIMEOUT" colima ssh -- sudo fstrim -av >/dev/null 2>&1; then S_N=1; TOOLS_DONE="$TOOLS_DONE colima-fstrim"; step_end colima_fstrim "done"
-  else ERRORS=$((ERRORS + 1)); step_end colima_fstrim error fstrim-failed-or-timeout; fi
+  else
+    # captured first, matched after: `colima status | grep -q` under pipefail reads a SIGPIPE'd colima as "not running"
+    cst=$(bounded "$TOOL_TIMEOUT" colima status 2>&1); rc=$?; cst=$(lc "$cst")
+    if [ "$rc" -eq 124 ]; then ERRORS=$((ERRORS + 1)); step_end colima_fstrim error colima-status-timeout
+    elif ! case "$cst" in *"colima is running"*) true ;; *) false ;; esac; then step_end colima_fstrim skipped colima-not-running
+    elif ! $APPLY; then step_end colima_fstrim dry-run
+    else
+      bounded "$FSTRIM_TIMEOUT" colima ssh -- sudo fstrim -av >/dev/null 2>&1; rc=$?
+      if [ "$rc" -eq 0 ]; then S_N=1; TOOLS_DONE="$TOOLS_DONE colima-fstrim"; step_end colima_fstrim "done"
+      else ERRORS=$((ERRORS + 1)); step_end colima_fstrim error "$(timeout_or fstrim-failed "$rc" fstrim-timeout)"; fi
+    fi
+  fi
   if $APPLY; then
     if command -v brew >/dev/null 2>&1; then
-      brew cleanup --prune=30 -s >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE brew" || ERRORS=$((ERRORS + 1))
+      bounded "$CACHE_TIMEOUT" brew cleanup --prune=30 -s >/dev/null 2>&1 && TOOLS_DONE="$TOOLS_DONE brew" || ERRORS=$((ERRORS + 1))
     else log "tools: brew not on PATH — skipped"; fi
     # No tool at all on PATH is not "nothing to do": it is the launchd-minimal-PATH failure mode
     # (kimi R-2) and the step would be dead forever under rc=0 — so it is an ERROR.
