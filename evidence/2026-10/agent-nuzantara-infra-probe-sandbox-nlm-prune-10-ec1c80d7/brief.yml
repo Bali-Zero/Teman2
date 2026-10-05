@@ -11,8 +11,14 @@ objective: >-
   (exact title, pusher temp-file title, exact host + path url), delete them
   in batches of 20 (cap 60 per run), and fail the probe only when the fixture
   residue reaches INTEL_LAKE_PROBE_NLM_RESIDUE_MAX (default 100). Pusher,
-  wrapper and plist untouched. Gear 2 via the SIZE term alone (about 440
-  churned lines, 304 of them tests); no hot-zone path.
+  wrapper and plist untouched. hop6 returns its outcome and the final line
+  claims "all 6 hops verified" only when the listing was read and nothing
+  fixture-shaped is left; otherwise "5 pipeline hops verified, hop6
+  UNVERIFIED (<reason>)". A listing that cannot be read leaves the residue
+  unknown; INTEL_LAKE_PROBE_NLM_UNKNOWN_MAX (default 8) consecutive unknown
+  runs fail the probe, counted in ~/logs/intel-lake-probe-hop6-state.json.
+  Gear 2 via the SIZE term alone (about 700 churned lines, 468 of them
+  tests); no hot-zone path.
 acceptance:
   - text: >-
       Selection is by entity: prefix/suffix titles, wrong-length nonces,
@@ -21,6 +27,14 @@ acceptance:
     probe: >-
       cd apps/backend-rag && PYTHONPATH=.:../crm-cell pytest
       backend/tests/unit/scripts/test_intel_lake_probe_nlm_prune.py
+  - text: >-
+      WHEN the NotebookLM listing fails, the probe SHALL still exit 0 but its
+      last line SHALL say "hop6 UNVERIFIED (<reason>)" and never "all 6 hops
+      verified"; the 8th consecutive unreadable run SHALL fail the probe.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell pytest
+      backend/tests/unit/scripts/test_intel_lake_probe_nlm_prune.py -k
+      "Counter or Summary or RunWiring"
   - text: >-
       AFTER merge, the first scheduled run of
       com.balizero.intel-lake.e2e-probe.6h writes a "hop6 PASS" line and a
