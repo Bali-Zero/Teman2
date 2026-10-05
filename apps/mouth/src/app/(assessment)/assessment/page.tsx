@@ -13,7 +13,7 @@ interface BlockState {
 type Phase = "intro" | "briefing" | "blocks" | "done";
 
 // ── Constants ──────────────────────────────────────────────────────
-const CANDIDATE_NAME = "Subhi Darajat";
+const CANDIDATE_NAME = "Kandidat";
 const BLOCK_TITLES = [
   "Blok 1 — Memahami Organisme",
   "Blok 2 — Medan Perangmu",
