@@ -737,6 +737,12 @@ def test_exec_pong_must_be_the_answer_not_a_mention(door, tmp_path, capfd):
     assert "PONG failed" in capfd.readouterr().err
 
 
+def test_exec_resolves_a_relative_registry_override_before_changing_cwd(door, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("WITH_SEAT_REGISTRY", "seat-env.json")
+    assert door("A1") == 0
+
+
 def test_exec_accepts_only_seat_ids_of_this_machine(door, tmp_path):
     assert door("A9") == 2
     assert door(str(tmp_path / "kaiser")) == 2  # a literal dir would hide which seat ran

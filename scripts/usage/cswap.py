@@ -613,13 +613,18 @@ def retired_seats(topology_path: Path) -> set[str]:
     return {k for k, v in slots.items() if isinstance(v, dict) and v.get("status") == "retired"}
 
 
-def _claude_seat_names() -> set[str]:
+def _seat_registry(base: dict[str, str]) -> Path:
+    # Resolved HERE: with_seat.sh runs from another cwd (the PONG's temp dir, --cwd).
+    override = base.get("WITH_SEAT_REGISTRY")
+    return (Path(override).resolve() if override
+            else _THIS_DIR.parent.parent / "infra/llm-credentials/seat-env.json")
+
+
+def _claude_seat_names(reg: Path) -> set[str]:
     """The env names with_seat.sh declares for `claude-seat`, read from the
     registry it will read. The door hands with_seat.sh ONLY these: anything
     else reaches bash before the allowlist does — BASH_ENV is sourced at
     startup and could export a token that then passes as a declared name."""
-    reg = Path(os.environ.get("WITH_SEAT_REGISTRY")
-               or _THIS_DIR.parent.parent / "infra/llm-credentials/seat-env.json")
     try:
         names = json.loads(reg.read_text())["seats"]["claude-seat"]["env"]
     except (OSError, ValueError, KeyError, TypeError) as e:
@@ -628,8 +633,10 @@ def _claude_seat_names() -> set[str]:
 
 
 def seat_child_env(base: dict[str, str], profile_dir: Path) -> dict[str, str]:
-    keep = _claude_seat_names() | {"WITH_SEAT_REGISTRY"}
-    env = {k: v for k, v in base.items() if k in keep}
+    reg = _seat_registry(base)
+    env = {k: v for k, v in base.items() if k in _claude_seat_names(reg)}
+    if base.get("WITH_SEAT_REGISTRY"):
+        env["WITH_SEAT_REGISTRY"] = str(reg)
     default_dir = Path(os.path.expanduser("~/.claude"))
     try:
         is_default = profile_dir.samefile(default_dir)

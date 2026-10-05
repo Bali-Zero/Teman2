@@ -9,7 +9,7 @@ objective: >-
   The seat's config dir comes from the per-machine seat map; the call goes through with_seat.sh's
   claude-seat allowlist; a retired seat (FLEET_TOPOLOGY status) and a seat whose PONG fails are
   refused with exit 3 and never swapped for another seat; the seat that answered is reported.
-  Floor measured 1 (source none, 298 net lines, no hot zone); Gear 2 declared because the diff
+  Floor measured 1 (source none, under 400 net lines, no hot zone); Gear 2 declared because the diff
   decides which credential a child process runs on.
 constraints:
   - Touches only scripts/usage/cswap.py and scripts/usage/test_cswap.py; with_seat.sh, seat-env.json, seat_map.json and FLEET_TOPOLOGY.json are read, never edited.
