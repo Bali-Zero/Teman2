@@ -74,7 +74,7 @@ The pipeline pattern Bali Zero's `NB-INTEL` already executes (cron-fed scraper �
 
 **Pattern key**: single-pass ADD-only extraction (one LLM call, no UPDATE/DELETE to start), entity linking across memories, multi-signal retrieval combining semantic + BM25 + entity-match. Open-source SDK (Python, JS), self-hostable.
 
-**Useful for Bali Zero**: MEDIUM — Mem0 overlaps with Cognee but is more "agent conversation memory" oriented vs. Cognee's broader knowledge-graph framing. Could be the per-conversation memory inside Bali Zero's CRM-Guardian pipeline (client interaction history per cliente Marta Reyes, Marina Pinyaylova, etc.) while Cognee handles structural domain knowledge.
+**Useful for Bali Zero**: MEDIUM — Mem0 overlaps with Cognee but is more "agent conversation memory" oriented vs. Cognee's broader knowledge-graph framing. Could be the per-conversation memory inside Bali Zero's CRM-Guardian pipeline (client interaction history per cliente [CLIENT-NAME-REDACTED], [CLIENT-NAME-REDACTED], etc.) while Cognee handles structural domain knowledge.
 
 ### 1.4 Letta (formerly MemGPT) — Stateful agent platform
 
@@ -153,7 +153,7 @@ The pipeline pattern Bali Zero's `NB-INTEL` already executes (cron-fed scraper �
 
 **Pattern key**: workflow-as-state-machine, with checkpointing (for crash recovery), interruption (for human-in-the-loop), and time-travel (replay from any node). Ingestion fits as a graph where nodes are scrape→clean→score→route→push.
 
-**Useful for Bali Zero**: MEDIUM — LangGraph would _replace_ the bash-cron-orchestrated ingestion with a Python state machine. Buys observability and crash-resume; costs adoption tax. The cleaner alternative is to keep cron orchestration and use LangGraph only inside specific complex sub-pipelines (e.g. Marina Pinyaylova KBLI BATARA-resolver workflow — multi-step research flow that benefits from a state-machine).
+**Useful for Bali Zero**: MEDIUM — LangGraph would _replace_ the bash-cron-orchestrated ingestion with a Python state machine. Buys observability and crash-resume; costs adoption tax. The cleaner alternative is to keep cron orchestration and use LangGraph only inside specific complex sub-pipelines (e.g. [CLIENT-NAME-REDACTED] KBLI BATARA-resolver workflow — multi-step research flow that benefits from a state-machine).
 
 ### 1.8 LlamaIndex — Agentic Document Workflows (ADW) 1.0
 

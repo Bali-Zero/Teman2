@@ -56,7 +56,7 @@ Poi `superpowers:brainstorming` (verifica se le decisioni B2.a + B2.b del design
 
 5. **Quote engine grounding** (R3 Sink 3):
    - `quote_engine.py`: input cliente profile + KBLI + complexity factors, output draft XLSX/PDF
-   - Grounding: NB-4 (procedure), NB-3 (KBLI), NB-WORKBENCH casi simili (Marta storia)
+   - Grounding: NB-4 (procedure), NB-3 (KBLI), NB-WORKBENCH casi simili ([CLIENT-NAME-REDACTED] storia)
    - Sign-off Veronika via signed-by field
 
 6. **Cron LaunchAgent**:
@@ -113,7 +113,7 @@ Dopo l'implementazione, lancia 3-LLM wave (Codex + DeepSeek + NotebookLM NB-1) *
 **PRIMA di partire questa fase**:
 
 1. Decidi PJAP partner (Pajakku vs PajakExpress) e firma contratto. Senza, dry-run only.
-2. Conferma con Veronika che il workflow L1-L6 + Veronika sign-off finale è compatibile col modo in cui lei lavora oggi (Marta Reyes case ha mostrato 4 cicatrici evitate, non aggiungerne nuove).
+2. Conferma con Veronika che il workflow L1-L6 + Veronika sign-off finale è compatibile col modo in cui lei lavora oggi ([CLIENT-NAME-REDACTED] case ha mostrato 4 cicatrici evitate, non aggiungerne nuove).
 3. Decidi B2.a (NB-INTEL-Coretax dedicato vs sub-tag) — R3 conferma fortemente "dedicato".
 4. Decidi B2.b (Quote consistency detector attivo/silent/off) — default suggerito: silent (logga ma non alert real-time).
 

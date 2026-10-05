@@ -479,16 +479,16 @@ Joki = "broker" che fanno SPT al posto del WP (illegal/grey). Emergenza Joki = s
 
 > "One provider handles payroll and PPh 21. A different firm handles PPN. A third prepares the annual SPT. No single provider sees the complete picture. Reconciliation between them is the business owner's responsibility. An advisor who handles PPh 21 and PPh 23 but not PPN and SPT Tahunan is not in a position to guarantee that the annual return will reconcile cleanly." — [BaliVisa.co — why every PT PMA needs an accountant](https://balivisa.co/why-your-pt-pma-in-bali-needs-an-accountant/).
 
-Bali Zero **risolve già** la frammentazione perché ha tax team integrato (Veronika lead, Angel, Adit) — prove dal caso Marta Reyes IDR 18jt complete-stack quote.
+Bali Zero **risolve già** la frammentazione perché ha tax team integrato (Veronika lead, Angel, Adit) — prove dal caso [CLIENT-NAME-REDACTED] IDR 18jt complete-stack quote.
 
 ### 8.5 Cosa Bali Zero fa già (osservazione codebase + memory)
 
 Inferred dai progetti recenti documentati in `~/.claude/projects/-Users-nuzantara/memory/`:
 
-- **SPT Tahunan Badan/OP** ([project_marta_reyes_spt_2026_05_05.md](~/.claude/projects/-Users-nuzantara/memory/project_marta_reyes_spt_2026_05_05.md)) — quote IDR 18jt complete (modal 10,5 mld + saldo 2,3 mld + ~130 transazioni 2025 + 7 mesi PPh 21 arretrati Giu-Dic).
+- **SPT Tahunan Badan/OP** ([project_[CLIENT-NAME-REDACTED]_spt_2026_05_05.md](~/.claude/projects/-Users-nuzantara/memory/project_[CLIENT-NAME-REDACTED]_spt_2026_05_05.md)) — quote IDR 18jt complete (modal 10,5 mld + saldo 2,3 mld + ~130 transazioni 2025 + 7 mesi PPh 21 arretrati Giu-Dic).
 - **PPh 21/23/26 monthly + annual reconciliation**.
 - **PPN equalizzazione** (output VAT vs input VAT vs SPT Tahunan).
-- **Compliance KBLI mapping** ([project Marina Pinyaylova](~/.claude/projects/-Users-nuzantara/memory/MEMORY.md) Tuka-Tibubeneng, 7 KBLI digital tourism content).
+- **Compliance KBLI mapping** ([project [CLIENT-NAME-REDACTED]](~/.claude/projects/-Users-nuzantara/memory/MEMORY.md) Tuka-Tibubeneng, 7 KBLI digital tourism content).
 - **SPT extension awareness** ([research SPT extension 31 May](~/Desktop/nuzantara/research/tax/2026-05-01-spt-extension-31-may.md)) — KEP-71/PJ/2026 + PENG-31/PJ.09/2026 already captured con NB-4 + DeepSeek + Gemini cross-verification.
 
 ### 8.6 Workflow automation map (tech-stops vs human-signs)
