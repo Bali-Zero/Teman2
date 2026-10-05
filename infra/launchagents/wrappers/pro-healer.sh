@@ -152,15 +152,13 @@ fi
 
 # Receptor B: proprioception — boundary divergences on THIS machine
 PROP_JSON=$(python3 scripts/proprioception.py --json --no-fetch 2>/dev/null)
-DIVERGED=$(printf '%s' "$PROP_JSON" | python3 -c "
-import json,sys
-try:
-    d=json.load(sys.stdin)
-    print(sum(1 for p in d.get('probes',[]) if str(p.get('verdict','')).upper()=='DIVERGED'))
-except Exception:
-    print(0)
-" 2>/dev/null)
-if [ "${DIVERGED:-0}" -gt 0 ] 2>/dev/null; then
+PROP_EXIT=$?
+DIVERGED=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py count-diverged 2>/dev/null)
+CHECK_EXIT=$?
+# The probe's own failure is a THIRD state, like registry receptor exit 2 (superscar #2).
+if [ "$PROP_EXIT" -ne 0 ] || [ "$CHECK_EXIT" -ne 0 ]; then
+    ACTIONABLE=1; REASONS="${REASONS}proprioception-receptor-broken "
+elif [ "${DIVERGED:-0}" -gt 0 ] 2>/dev/null; then
     ACTIONABLE=1; REASONS="${REASONS}proprioception:${DIVERGED}-diverged "
 fi
 

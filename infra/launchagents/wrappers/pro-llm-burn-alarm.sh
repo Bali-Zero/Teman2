@@ -62,25 +62,35 @@ REPO="$HOME/nuzantara"
 PY="$REPO/apps/backend-rag/.venv/bin/python"
 [ -x "$PY" ] || PY="/opt/homebrew/bin/python3"
 [ -x "$PY" ] || PY="python3"
+RUN_OUTPUT=$(mktemp "$LOG_DIR/run.XXXXXX")
+trap 'rm -f "$PIDFILE" "$RUN_OUTPUT"' EXIT
+CD_FAILED=0
 if cd "$REPO" 2>>"$LOG"; then
-    "$PY" scripts/llm_burn_alarm.py >> "$LOG" 2>&1
+    "$PY" scripts/llm_burn_alarm.py > "$RUN_OUTPUT" 2>&1
     RC=$?
 else
     log "FATAL: cd $REPO failed"
-    RC=1
+    RC=70
+    CD_FAILED=1
 fi
+cat "$RUN_OUTPUT" >> "$LOG"
 
-# llm_burn_alarm.py's own exit contract: 0=OK (quiet), 1=ALARM (dispatched —
-# the organ worked correctly, it just found something), 2=CANNOT_VERIFY (the
-# organ could NOT do its job — genuinely degraded, worth the healer's
-# attention). Only rc=2 (or anything unexpected) counts as an organ failure
-# here — rc=1 is a successful run whose finding happens to be bad news, and
-# collapsing it into "error" would train the healer to chase a working alarm.
+# Exit contract: 0=OK, 1=ALARM only with the ALARM output marker,
+# 2=CANNOT_VERIFY. A crash without the marker or a failed cd is an error.
 case "$RC" in
     0) heartbeat "ok" "run done: no anomaly" ;;
-    1) heartbeat "ok" "run done: ALARM dispatched" ;;
+    1) if grep -q "llm_burn_alarm: ALARM" "$RUN_OUTPUT"; then
+           heartbeat "ok" "run done: ALARM dispatched"
+       else
+           heartbeat "error" "run done: rc=1 without an ALARM marker (probe crashed)"
+       fi ;;
     2) heartbeat "error" "run done: CANNOT_VERIFY (rc=2)" ;;
-    *) heartbeat "error" "run done: unexpected rc=$RC" ;;
+    *) if [ "$CD_FAILED" -eq 1 ]; then
+           heartbeat "error" "run done: cd failed"
+       else
+           heartbeat "error" "run done: unexpected rc=$RC"
+       fi ;;
 esac
+rm -f "$RUN_OUTPUT"
 log "run done rc=$RC"
 exit 0

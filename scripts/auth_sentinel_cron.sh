@@ -29,8 +29,10 @@ fi
 # G2 gene — heartbeat: scrivi la prova-di-vita così il guardiano stesso è
 # monitorabile e non diventa un green-but-dead (scar #2 esiste≠armato).
 heartbeat() {
-  printf '{"organ":"auth-sentinel","host":"%s","ts":"%s","status":"%s"}\n' \
-    "$(hostname -s)" "$(ts)" "${1:-ok}" > "$HEARTBEAT_DIR/auth-sentinel.json" 2>/dev/null || true
+  local note=""
+  [ -n "${2:-}" ] && note=',"note":"'"$2"'"'
+  printf '{"organ":"auth-sentinel","host":"%s","ts":"%s","status":"%s"%s}\n' \
+    "$(hostname -s)" "$(ts)" "${1:-ok}" "$note" > "$HEARTBEAT_DIR/auth-sentinel.json" 2>/dev/null || true
 }
 
 # unset ANTHROPIC_API_KEY: il probe claude usa il CLI OAuth, mai la key a pagamento
@@ -52,7 +54,13 @@ fi
 
 # Il sentinel manda gli alert da sé (ramo ACTION → Telegram gateway). Qui logghiamo
 # il verdetto completo per audit; exit 0 sempre (gli ACTION viaggiano via alert).
-python3 "$REPO/scripts/auth_sentinel.py" >> "$LOG" 2>&1 || true
-heartbeat "ok"
+python3 "$REPO/scripts/auth_sentinel.py" >> "$LOG" 2>&1
+rc=$?
+if [ "$rc" -eq 0 ]; then
+  heartbeat "ok"
+else
+  echo "[$(ts)] sentinel crashed rc=$rc" >> "$LOG"
+  heartbeat "error" "sentinel crashed rc=$rc"
+fi
 echo "[$(ts)] auth-sentinel tick end" >> "$LOG"
 exit 0
