@@ -454,6 +454,7 @@ main() {
             seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 8m)
             task_index=2
             if [ "$MODEL" = "gemini-3.1-pro" ]; then
+                # argv gets the normalised low|high; report.effort keeps the REQUESTED value.
                 [ "$EFFORT" = low ] && seat_argv+=(--effort low) || seat_argv+=(--effort high)
             fi
             ;;
