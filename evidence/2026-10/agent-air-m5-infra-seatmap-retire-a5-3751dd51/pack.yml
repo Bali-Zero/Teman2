@@ -1,4 +1,5 @@
-brief_ref: evidence/2026-10/agent-air-m5-infra-seatmap-retire-a5-3751dd51/brief.yml
+brief_ref: evidence/brief.yml
+pii_scan: clean
 plan_ref: >-
   Branch agent/air-m5/infra/seatmap-retire-a5 from origin/main: retired-slot lists in both cron
   wrappers (pinned to FLEET_TOPOLOGY by test), retired value marked seen so the legacy name cannot
@@ -36,3 +37,4 @@ receipts:
     seat: claude-opus-5.5
 spend:
   wall_clock_hours: 1
+dissent: []
