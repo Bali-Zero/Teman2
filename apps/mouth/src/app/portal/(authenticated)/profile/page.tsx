@@ -105,7 +105,7 @@ const isBirthdayToday = (dateOfBirth: string | undefined): boolean => {
   );
 };
 
-import { formatDate } from "@/lib/utils/format-date";
+import { formatDate, formatLongSpan } from "@/lib/utils/format-date";
 import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 // ============================================================================
@@ -567,7 +567,7 @@ export default function ProfilePage() {
                           ? "Expires today"
                           : days <= 365
                             ? `⏰ ${days}d left`
-                            : `${Math.floor(days / 30)}mo left`;
+                            : `${formatLongSpan(days)} left`;
                     return (
                       <span
                         className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold"

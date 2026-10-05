@@ -35,6 +35,7 @@ import type {
   PortalDocument,
 } from "@/lib/api/portal/portal.types";
 import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
+import { formatLongSpan } from "@/lib/utils/format-date";
 
 // Day surface (concept .panel): warm-paper card, hairline warm border, soft
 // navy shadow (near-invisible on dark). Shared by every card on this page.
@@ -336,7 +337,7 @@ export default function VisaPage() {
                             ? `Expired ${Math.abs(visaInfo.current.daysRemaining)}d ago`
                             : visaInfo.current.daysRemaining <= 365
                               ? `⏰ ${visaInfo.current.daysRemaining}d left`
-                              : `${Math.floor(visaInfo.current.daysRemaining / 30)}mo left`,
+                              : `${formatLongSpan(visaInfo.current.daysRemaining)} left`,
                         tone:
                           visaInfo.current.daysRemaining <= 0
                             ? "danger"
