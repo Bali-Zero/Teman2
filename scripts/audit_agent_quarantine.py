@@ -125,7 +125,11 @@ def _path_set(ref_a: str, ref_b: str) -> list[str] | None:
 
 
 def _tree_entries(ref: str) -> dict[str, str] | None:
-    """path -> '<mode> <type> <sha>' for a tree; None when unreadable."""
+    """path -> blob SHA (3rd meta field) for a tree; None when unreadable.
+
+    A record without a TAB or without exactly 3 meta fields, or a successful
+    but EMPTY listing, is a lying checker -> None (could not tell), never an
+    empty answer that would make every path "absent on both sides"."""
     r = _git(["ls-tree", "-r", "-z", "--full-tree", ref], check=False)
     if r.returncode != 0:
         return None
@@ -133,8 +137,13 @@ def _tree_entries(ref: str) -> dict[str, str] | None:
     for rec in r.stdout.split("\0"):
         if not rec:
             continue
-        meta, _, path = rec.partition("\t")
-        entries[path] = meta
+        meta, sep, path = rec.partition("\t")
+        fields = meta.split()
+        if not sep or len(fields) != 3:
+            return None
+        entries[path] = fields[2]
+    if not entries:
+        return None
     return entries
 
 
@@ -158,16 +167,20 @@ def _ancestor_fork(obj: str) -> str | None:
     if chain.returncode != 0:
         return None
     commits = chain.stdout.split()
-    oldest_parents = _parents(commits[-1]) if commits else [obj]  # no chain: obj IS main's tip
+    if not commits:  # obj IS main's tip (or the walk lied): first-parent line, see below
+        return None
+    oldest_parents = _parents(commits[-1])
     if not oldest_parents:
         return None
-    if oldest_parents[0] == obj:  # obj is ON main's first-parent line
-        own = _parents(obj)
-        return own[0] if own else None
-    fork = _git(["merge-base", oldest_parents[0], obj], check=False)  # side-parent merge
-    if fork.returncode != 0 or not fork.stdout.strip():
+    if oldest_parents[0] == obj:
+        # obj is ON main's first-parent line (incl. obj == main tip): the
+        # branch's extent cannot be known there -> could-not-tell (kept).
         return None
-    return fork.stdout.strip()
+    fork = _git(["merge-base", "--all", oldest_parents[0], obj], check=False)  # side-parent merge
+    bases = fork.stdout.split()
+    if fork.returncode != 0 or len(bases) != 1:  # empty, or >1 (criss-cross)
+        return None
+    return bases[0]
 
 
 def _same_tree(a: str, b: str) -> bool:
@@ -195,9 +208,10 @@ def classify(objname: str) -> dict:
             fields["reason"] = "ancestor-fork-unresolvable"
             return fields
     elif anc_rc == 1:
-        # merge-base must resolve, else ambiguous (never delete)
-        mb = _git(["merge-base", MAIN_REF, objname], check=False).stdout.strip()
-        if not mb:
+        # merge-base must resolve (exit 0 AND non-empty), else ambiguous
+        mb_r = _git(["merge-base", MAIN_REF, objname], check=False)
+        mb = mb_r.stdout.strip()
+        if mb_r.returncode != 0 or not mb:
             fields["reason"] = "merge-base-unresolvable"
             return fields
     else:

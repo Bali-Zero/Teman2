@@ -30,7 +30,10 @@ REAL_GIT = shutil.which("git")
 FAKE_GIT = """#!/bin/bash
 args="$*"
 if [[ -n "${FAKE_GIT_RE:-}" && "$args" =~ $FAKE_GIT_RE ]]; then
-    if [[ "${FAKE_GIT_MODE:-fail}" == empty ]]; then exit 0; fi
+    case "${FAKE_GIT_MODE:-fail}" in
+        empty|lie) exit 0 ;;                      # exit 0 with EMPTY stdout
+        partial) echo "keep.txt"; exit 128 ;;     # partial output, then fail
+    esac
     echo "fatal: injected by test" >&2
     exit 128
 fi
@@ -190,7 +193,7 @@ def test_graveyard_innocence_landed_content_still_deletable(graveyard_repo, env,
     assert not _section(s, "Could not tell")
 
 
-@pytest.mark.parametrize("mode", ["fail", "empty"])
+@pytest.mark.parametrize("mode", ["fail", "empty", "partial"])
 def test_graveyard_failed_diff_is_could_not_tell(graveyard_repo, env, tmp_path, mode):
     work, _ = graveyard_repo
     s = _run_graveyard(work, env, tmp_path, FAKE_GIT_RE=r"^diff --name-only", FAKE_GIT_MODE=mode)
@@ -214,6 +217,21 @@ def test_graveyard_failed_blob_read_never_matches(graveyard_repo, env, tmp_path)
     work, _ = graveyard_repo
     s = _run_graveyard(work, env, tmp_path, FAKE_GIT_RE=r"^rev-parse [^ ]+:")
     assert "unmerged" not in _section(s, "Content-on-main & deletable")
+
+
+def test_graveyard_lying_blob_read_never_matches(graveyard_repo, env, tmp_path):
+    """git that exits 0 with EMPTY stdout lies: every path reads absent."""
+    work, _ = graveyard_repo
+    s = _run_graveyard(work, env, tmp_path, FAKE_GIT_RE=r"^ls-tree", FAKE_GIT_MODE="lie")
+    assert "unmerged" not in _section(s, "Content-on-main & deletable")
+
+
+def test_graveyard_failed_ancestor_check_is_could_not_tell(graveyard_repo, env, tmp_path):
+    """A failed --is-ancestor probe is could-not-tell, never category 1."""
+    work, _ = graveyard_repo
+    s = _run_graveyard(work, env, tmp_path, FAKE_GIT_RE=r"^merge-base --is-ancestor")
+    assert "plain" not in _section(s, "Merged & deletable")
+    assert "plain" in (_section(s, "Could not tell") or [])
 
 
 # --------------------------------------------------------------------------- #
@@ -265,7 +283,7 @@ def test_quarantine_reverted_merge_is_not_landed(quarantine):
     assert mod.classify(tips["reverted"])["verdict"] == mod.R_UNIQUE
 
 
-@pytest.mark.parametrize("mode", ["fail", "empty"])
+@pytest.mark.parametrize("mode", ["fail", "empty", "partial"])
 def test_quarantine_failed_diff_is_could_not_tell(quarantine, monkeypatch, mode):
     mod, tips, work = quarantine
     monkeypatch.setenv("FAKE_GIT_RE", r"^diff --name-only")
@@ -299,3 +317,44 @@ def test_quarantine_failed_ancestry_walk_is_could_not_tell(quarantine, monkeypat
     monkeypatch.setenv("FAKE_GIT_RE", probe)
     f = mod.classify(tips["plain"])
     assert f["verdict"] == mod.R_AMBIGUOUS, f
+
+
+def test_quarantine_lying_tree_read_is_could_not_tell(quarantine, monkeypatch):
+    """git that exits 0 with EMPTY stdout lies: an empty tree listing is
+    believed by nobody -> ambiguous, never 'absent on both sides'."""
+    mod, tips, _ = quarantine
+    monkeypatch.setenv("FAKE_GIT_RE", r"^ls-tree")
+    monkeypatch.setenv("FAKE_GIT_MODE", "lie")
+    f = mod.classify(tips["unmerged"])
+    assert f["verdict"] == mod.R_AMBIGUOUS, f
+
+
+def test_quarantine_unresolvable_merge_base_is_could_not_tell(quarantine, monkeypatch):
+    mod, tips, _ = quarantine
+    monkeypatch.setenv("FAKE_GIT_RE", r"^merge-base [^-]")
+    monkeypatch.setenv("FAKE_GIT_MODE", "fail")
+    f = mod.classify(tips["unmerged"])
+    assert f["verdict"] == mod.R_AMBIGUOUS, f
+    assert f["reason"] == "merge-base-unresolvable"
+
+
+def test_quarantine_failed_delta_diff_is_could_not_tell(quarantine, monkeypatch):
+    """A snapshot commit on the unmerged tip: only the delta diff is failed,
+    the authored diff is honest -> the failure is pinned to the payload."""
+    mod, tips, work = quarantine
+    _git(work, "checkout", "-q", "unmerged")
+    snap = _commit(work, "u2.txt", "u2\n", "snapshot on unmerged tip")
+    _git(work, "checkout", "-q", "main")
+    monkeypatch.setenv("FAKE_GIT_RE", rf"^diff --name-only -z {tips['unmerged']}")
+    monkeypatch.setenv("FAKE_GIT_MODE", "fail")
+    f = mod.classify(snap)
+    assert f["verdict"] == mod.R_AMBIGUOUS, f
+    assert f["reason"] == "delta-diff-failed"
+
+
+def test_quarantine_ref_on_main_first_parent_line_is_could_not_tell(quarantine):
+    """Safe-direction change: an ancestor sitting ON main's first-parent line
+    has no knowable fork point -> ambiguous (kept), never LANDED."""
+    mod, _, work = quarantine
+    on_line = _git(work, "rev-parse", "main~1")
+    assert mod.classify(on_line)["verdict"] == mod.R_AMBIGUOUS

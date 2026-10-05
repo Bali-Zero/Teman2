@@ -207,7 +207,7 @@ pr_merged_match() {
 # work) / 2 (could not tell: any checker error — never deletes, and never
 # claims "not on main" either; the caller reports it by name).
 content_on_main() {
-    local branch="$1" mb f bh mh mb_rc diff_rc mb_tree br_tree
+    local branch="$1" mb f bh mh mb_rc diff_rc mb_tree br_tree compared
     # A failed merge-base is "could not tell", EXCEPT exit 1 with empty output:
     # that is an honest "no common ancestor" (orphaned history) — today's
     # answer 1. Any other non-zero exit, or exit 0 with empty output, -> 2.
@@ -235,12 +235,31 @@ content_on_main() {
         [[ "$mb_tree" == "$br_tree" ]] && return 0
         return 2
     fi
-    while IFS= read -r f; do
+    compared=0
+    while IFS= read -r f || [[ -n "$f" ]]; do
         [[ -z "$f" ]] && continue
-        bh=$(git rev-parse "$branch:$f" 2>/dev/null || echo __ABSENT_BRANCH__)
-        mh=$(git rev-parse "$MAIN_REF:$f" 2>/dev/null || echo __ABSENT_MAIN__)
-        [[ "$bh" != "$mh" ]] && return 1
+        compared=$((compared + 1))
+        # Per-file blob read via ls-tree (literal pathspec: a name that
+        # happens to look like a glob is read verbatim). Exit != 0 on either
+        # side is could-not-tell; empty output means the path is ABSENT there.
+        bh=$(GIT_LITERAL_PATHSPECS=1 git ls-tree --full-tree "$branch" -- "$f" 2>/dev/null) || return 2
+        mh=$(GIT_LITERAL_PATHSPECS=1 git ls-tree --full-tree "$MAIN_REF" -- "$f" 2>/dev/null) || return 2
+        read -r _ _ bh _ <<< "$bh"
+        read -r _ _ mh _ <<< "$mh"
+        # Both present and SHAs equal -> next file. Anything else (one
+        # absent, both absent, SHAs differ) is a genuine difference -> 1.
+        [[ -z "$bh" || -z "$mh" || "$bh" != "$mh" ]] && return 1
     done < "$NAMES_TMP"
+    if (( compared == 0 )); then
+        # Name file non-empty but every line blank: exactly the epistemics of
+        # an empty name list — believe it only when the trees prove it.
+        mb_tree=$(git rev-parse --verify -q "$mb^{tree}" 2>/dev/null)
+        [[ $? -ne 0 || -z "$mb_tree" ]] && return 2
+        br_tree=$(git rev-parse --verify -q "$branch^{tree}" 2>/dev/null)
+        [[ $? -ne 0 || -z "$br_tree" ]] && return 2
+        [[ "$mb_tree" == "$br_tree" ]] && return 0
+        return 2
+    fi
     return 0
 }
 
@@ -258,8 +277,17 @@ while IFS=$'\t' read -r branch ts sha; do
     short="${branch#$REMOTE/}"
     # Merged check via merge-base ancestor lookup against main (fast path:
     # true/ff merges where the branch SHA IS an ancestor of main).
-    if git merge-base --is-ancestor "$sha" "$MAIN_SHA" 2>/dev/null; then
+    git merge-base --is-ancestor "$sha" "$MAIN_SHA" 2>/dev/null
+    anc_rc=$?
+    if [[ $anc_rc -eq 0 ]]; then
         printf '%s\t%s\t%s\t%s\n' "$branch" "$age_days" "$sha" "$short" >> "$MERGED_TSV"
+        continue
+    fi
+    if [[ $anc_rc -ne 1 ]]; then
+        # Anything that is not a clean 0/1 from the ancestor probe is
+        # could-not-tell: never delete, never claim "not on main" either.
+        printf '%s\t%s\t%s\t%s\n' "$branch" "$age_days" "$sha" "$short" >> "$UNDETERMINED_TSV"
+        echo "[branch_cleanup] WARN: ancestor check failed for $branch — could not tell, kept" >&2
         continue
     fi
     # Ancestor-check FAILED — but the content may still be on main via squash /
