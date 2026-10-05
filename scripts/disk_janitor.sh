@@ -33,7 +33,9 @@
 #             locked, clean (untracked files count), and its HEAD on some branch/remote/tag ref.
 #             Any .git (file or dir) deeper than that, and any `objects/` directory with a `HEAD` file
 #             beside it (bare repo, --separate-git-dir) anywhere inside, at any path length, keeps the
-#             candidate; so does a symlink named objects with a HEAD beside it. A probe that cannot answer keeps. A HEAD that will not
+#             candidate; so does a symlink named objects with a HEAD beside it, and an objects/ with a refs/
+#             beside it even when HEAD is missing. A checkout whose index flags any entry skip-worktree or
+#             assume-unchanged (ls-files -v: S or lowercase) is kept: git status cannot see those changes. A probe that cannot answer keeps. A HEAD that will not
 #             resolve is skipped as "unborn" ONLY when it is a symbolic ref to a ref that provably
 #             does not exist; any other failure keeps the tree ("git state unreadable").
 #             Git probes run with --no-optional-locks: a probe that refreshes the index would
@@ -49,10 +51,8 @@
 #            work. A stale, clean linked worktree is deleted together with its ignored content (copied
 #            .env, local DBs, notes, build output). A nested repository inside it is the exception
 #            (kept, see above); ignored plain files are not.
-#            Accepted shapes, NOT guarded (decided in the PR table, 2026-10-05): a directory with objects/ and
-#            refs/ but NO HEAD (git itself refuses to open it as a repository), and a tracked file changed
-#            behind --skip-worktree / --assume-unchanged (invisible to git status, same class as the
-#            ignored-files policy above) are removed with the worktree.
+#            Owner decision 2026-10-05: fail closed on the HEAD-less repository and on hidden index flags;
+#            no accepted-risk shape remains.
 #   docker   "older than 30 d" is the image's BUILD time (`CreatedAt`), not its pull or last-use time.
 #            An image pulled, `docker load`ed or committed recently but built long ago, with no
 #            container descending from it, is a candidate; for load/commit images removal is final.
@@ -331,6 +331,11 @@ wt_hold() { # $1 worktree dir → prints why it must be kept (empty = no git rea
     if [ -d "$g/.git" ]; then echo "standalone repository"; return; fi
     st=$(rgit -C "$g" status --porcelain --untracked-files=normal 2>/dev/null) || { echo "git state unreadable"; return; }
     [ -n "$st" ] && { echo "uncommitted work"; return; }
+    # Changes hidden from `git status`: an index entry flagged skip-worktree (S) or assume-unchanged
+    # (lowercase) can differ from HEAD with status showing nothing. Any such flag, or a probe that cannot
+    # answer, keeps the tree.
+    st=$(rgit -C "$g" ls-files -v 2>/dev/null) || { echo "git state unreadable"; return; }
+    printf '%s\n' "$st" | grep -q '^[a-zS]'; case $? in 0) echo "hidden index state"; return ;; 1) ;; *) echo "git state unreadable"; return ;; esac
     st=$(rgit -C "$g" rev-parse --absolute-git-dir 2>/dev/null) || { echo "git state unreadable"; return; }
     [ -e "$st/locked" ] && { echo "locked worktree"; return; }
     if ! rgit -C "$g" rev-parse -q --verify HEAD >/dev/null 2>&1; then
@@ -348,11 +353,13 @@ wt_hold() { # $1 worktree dir → prints why it must be kept (empty = no git rea
   # to it. That is a bare repository, a --separate-git-dir, or any `.git` — at any depth, the candidate
   # root included — and its refs and objects would die with the tree whatever the checkout beside it says.
   # (after the per-checkout probes, so their more specific reasons are reported first)
+  # Repository data = `objects` with a `HEAD` file OR a `refs` directory beside it: a repository whose HEAD
+  # was lost is still refs and objects that exist nowhere else.
   # The probe tests HEAD relative to the directory that holds `objects` (-execdir): an absolute-path test
   # fails with ENAMETOOLONG past 1024 bytes and that failure read as "no HEAD here" (a probe that cannot
   # answer must KEEP, never delete). `objects` may itself be a symlink (objects stored outside): -type l.
   # /bin/sh by absolute path so a relative PATH entry cannot make find refuse -execdir; any failure keeps.
-  st=$(find "$1" \( -type d -o -type l \) -name objects -execdir /bin/sh -c '[ -f HEAD ]' sh \; -print -quit 2>/dev/null) || { echo "git state unreadable"; return; }
+  st=$(find "$1" \( -type d -o -type l \) -name objects -execdir /bin/sh -c '[ -f HEAD ] || [ -d refs ]' sh \; -print -quit 2>/dev/null) || { echo "git state unreadable"; return; }
   [ -n "$st" ] && { echo "repository data inside"; return; }
 }
 
