@@ -166,6 +166,7 @@ on:
       - infra/workflows contract tests
       - Insight cover cards — no article may wear another article's card
       - "intake-review reader liveness (5xx SICK corpus)"
+      - "watchdog third state (probe failure is neither ok nor alarm)"
       - Intel Router Tests
       - kbli-68112-collision-regression
       - kbli-filiera-vault-compilers

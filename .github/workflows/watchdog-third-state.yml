@@ -1,0 +1,51 @@
+# watchdog third state — executor for its own corpus (superscar #2: green != working)
+# ----------------------------------------------------------------------------
+# Three watchdogs (healer receptor 2 on Mini and Pro, auth-sentinel cron, burn-alarm
+# wrapper) used to report fine when their OWN probe had crashed. The corpus proves a
+# probe failure is a third state, and that the healthy and real-alarm paths did not
+# move. `scripts/tests/*.sh` has no generic executor (scripts-tests-sweep.yml only
+# collects pytest files and is continue-on-error), so this small path-filtered
+# workflow is the executor, same shape as intake-review-reader-liveness.yml.
+# Deliberately NOT a required context.
+
+name: "watchdog third state (probe failure is neither ok nor alarm)"
+
+on:
+  pull_request:
+    paths:
+      - "scripts/healer_run_checks.py"
+      - "scripts/llm_burn_alarm.py"
+      - "scripts/auth_sentinel_cron.sh"
+      - "infra/healer/healer-run.sh"
+      - "infra/launchagents/wrappers/pro-healer.sh"
+      - "infra/launchagents/wrappers/pro-llm-burn-alarm.sh"
+      - "scripts/tests/test_watchdog_third_state.sh"
+      - "scripts/tests/test_healer_run_checks.py"
+      - ".github/workflows/watchdog-third-state.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  third-state-corpus:
+    name: probe failure is a third state — guilt + innocence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: The four shells still parse
+        run: |
+          bash -n infra/healer/healer-run.sh
+          bash -n infra/launchagents/wrappers/pro-healer.sh
+          bash -n infra/launchagents/wrappers/pro-llm-burn-alarm.sh
+          bash -n scripts/auth_sentinel_cron.sh
+
+      - name: Corpus (bash + stdlib python3)
+        run: bash scripts/tests/test_watchdog_third_state.sh
+
+      - name: Receptor helper unit tests
+        run: |
+          python3 -m pip install --quiet pytest
+          python3 -m pytest scripts/tests/test_healer_run_checks.py -q

@@ -35,16 +35,25 @@ AUTH_REQUIRED_MARKERS: tuple[str, ...] = (
 )
 
 
+class ProbeReportError(ValueError):
+    """The proprioception report cannot be checked."""
+
+
 def count_diverged_probes(raw_json: str) -> int:
     """Count DIVERGED proprioception probes across current and legacy schemas."""
     try:
         data = json.loads(raw_json)
-    except json.JSONDecodeError:
-        return 0
+    except json.JSONDecodeError as exc:
+        raise ProbeReportError(f"malformed JSON: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise ProbeReportError("probe report must be a dict")
 
     probes = data.get("probes")
     if not isinstance(probes, list):
-        return 0
+        raise ProbeReportError("probes must be a list")
+    if not probes:
+        raise ProbeReportError("probes must not be empty")
 
     count = 0
     for probe in probes:
@@ -78,7 +87,12 @@ def main(argv: list[str]) -> int:
     command = argv[1]
     payload = _read_stdin()
     if command == "count-diverged":
-        sys.stdout.write(f"{count_diverged_probes(payload)}\n")
+        try:
+            count = count_diverged_probes(payload)
+        except ProbeReportError as exc:
+            sys.stderr.write(f"{exc}\n")
+            return 3
+        sys.stdout.write(f"{count}\n")
         return 0
     if command == "classify-session-tail":
         sys.stdout.write(f"{classify_session_tail(payload)}\n")
