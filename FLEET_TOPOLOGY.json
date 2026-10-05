@@ -62,7 +62,7 @@
           "status": "retired",
           "retired": "2026-10-05",
           "retired_by": "ruled by Zero 2026-10-05 (the Claude Max subscription on this account is cancelled)",
-          "retired_note": "History above kept as the record of what the seat carried. Its lane's Mini machine login and two cloud routines (ssot-contradiction-hunter, secret-pattern-sweep) are ORPHANED — see pending_arms. Token slot CLAUDE_CODE_OAUTH_TOKEN_2 is dead; the cron cascade skips an empty slot."
+          "retired_note": "History above kept as the record of what the seat carried. Its lane's Mini machine login and two cloud routines (ssot-contradiction-hunter, secret-pattern-sweep) are ORPHANED — see pending_arms. Token slot CLAUDE_CODE_OAUTH_TOKEN_2 is dead: claude-cascade.sh (RETIRED_OAUTH_SLOTS) and wr2-ig-metrics-analyst-run.sh (RETIRED_TOKEN_VARS) never attempt it even when it is set, pinned to this status by scripts/tests/test_claude_cascade_shell.py; other slot-2 readers are listed in pending_arms."
         },
         "AZ": {
           "email": "zero@balizero.com",

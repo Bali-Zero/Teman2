@@ -347,6 +347,49 @@ else
     ko "mutante assente o non valido — controllo di mutazione non eseguito"
 fi
 
+# ---------------------------------------------------------------- SLOT RITIRATO
+# A5 (token slot 2) e ritirato in FLEET_TOPOLOGY.json (Zero 2026-10-05, abbonamento
+# cancellato). Con il token 2 presente nell'ambiente non deve MAI essere tentato,
+# nemmeno sotto il nome legacy. Valori fittizi, mai un token vero.
+make_token_world() {
+    make_world "$1" 1 "" 0 yes
+    cat > "$1/bin/claude" <<EOF
+#!/bin/bash
+printf '%s\n' "\${CLAUDE_CODE_OAUTH_TOKEN:-<keychain>}" >> "$1/claude-tokens.txt"
+echo "fake claude answer"
+exit 0
+EOF
+    chmod +x "$1/bin/claude"
+}
+run_with_tokens() {
+    local root="$1"; shift
+    env -i \
+        HOME="$root" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin" \
+        TMPDIR="$root/tmp" \
+        WR2_IG_AGY_BIN="$root/bin/agy" \
+        WR2_IG_CLAUDE_BIN="$root/bin/claude" \
+        WR2_IG_METRICS_TIMEOUT_SECS=70 \
+        WR2_IG_METRICS_POLL_SECS=1 \
+        WR2_IG_METRICS_KILL_GRACE_SECS=1 \
+        "$@" \
+        /bin/bash "$WRAPPER_SRC" >/dev/null 2>&1
+}
+
+echo "[R1] slot 2 ritirato — mai tentato anche con il token presente"
+W="$TMPROOT/retired"; mkdir -p "$W/tmp"
+make_token_world "$W"
+run_with_tokens "$W" CLAUDE_CODE_OAUTH_TOKEN_2=dummy-retired-slot-2 CLAUDE_CODE_OAUTH_TOKEN_3=dummy-slot-3
+has "lo slot successivo e tentato" "dummy-slot-3" "$W/claude-tokens.txt"
+hasnt "lo slot 2 ritirato non e mai tentato" "dummy-retired-slot-2" "$W/claude-tokens.txt"
+
+echo "[R2] slot 2 ritirato — nemmeno sotto il nome legacy"
+W="$TMPROOT/retired-legacy"; mkdir -p "$W/tmp"
+make_token_world "$W"
+run_with_tokens "$W" CLAUDE_CODE_OAUTH_TOKEN_2=dummy-retired-slot-2 CLAUDE_CODE_OAUTH_TOKEN=dummy-retired-slot-2
+has "si arriva al keychain" "<keychain>" "$W/claude-tokens.txt"
+hasnt "il valore ritirato non rientra dal nome legacy" "dummy-retired-slot-2" "$W/claude-tokens.txt"
+
 echo
 echo "risultato: $PASS pass, $FAIL fail"
 [ "$FAIL" -eq 0 ]

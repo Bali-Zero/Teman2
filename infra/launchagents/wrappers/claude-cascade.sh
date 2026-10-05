@@ -1060,7 +1060,7 @@ DEFAULT_CLAUDE_BIN="${CLAUDE_CASCADE_DEFAULT_BIN:-$HOME/.local/share/mise/shims/
 [ ! -x "$DEFAULT_CLAUDE_BIN" ] && DEFAULT_CLAUDE_BIN="/opt/homebrew/bin/claude"
 
 # The authoritative fleet order is explicit and deterministic:
-#   1 → 2 → 3 → 4 → 5 → 6 (zero@ Team) → legacy → keychain.
+#   1 → 3 → 4 → 5 → 6 (zero@ Team) → legacy → keychain (slot 2 retired).
 # Each explicit token receives an isolated config directory and each child sees
 # only its selected token. Duplicate values are skipped without being logged.
 #
@@ -1073,6 +1073,12 @@ DEFAULT_CLAUDE_BIN="${CLAUDE_CASCADE_DEFAULT_BIN:-$HOME/.local/share/mise/shims/
 # reorders this violates that ruling.
 typeset -a SEEN_OAUTH_TOKENS
 SEEN_OAUTH_TOKENS=()
+# Retired token slots: FLEET_TOPOLOGY.json slots with status "retired" (slot 2 =
+# A5, subscription cancelled, Zero 2026-10-05), pinned to the registry by
+# scripts/tests/test_claude_cascade_shell.py. A retired slot is never attempted
+# even when its variable is set, and its value is marked seen so the legacy
+# name cannot spend the same account.
+RETIRED_OAUTH_SLOTS=(2)
 oauth_token_seen() {
     local candidate="$1"
     local existing
@@ -1115,6 +1121,11 @@ for index in 1 2 3 4 5 6; do
             config_dir="$HOME/.claude-zero-team"
             ;;
     esac
+
+    if (( ${RETIRED_OAUTH_SLOTS[(Ie)$index]} )); then
+        [ -n "$token" ] && SEEN_OAUTH_TOKENS+=("$token")
+        continue
+    fi
 
     if [ -n "$token" ] && ! oauth_token_seen "$token"; then
         SEEN_OAUTH_TOKENS+=("$token")
