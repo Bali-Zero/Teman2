@@ -402,8 +402,20 @@ def is_strict_fail(status: str) -> bool:
 
 # ---------------------------------------------------------------- subprocess helper
 
-def sibling_seat_processes(binary_basename: str, exclude_pids: set[int]) -> int:
-    """Count other live processes for a seat binary; fail toward TIMEOUT."""
+def sibling_seat_processes(
+    binary_basename: str,
+    exclude_pids: set[int],
+    script: Optional[str] = None,
+    ignore_subcommands: tuple[str, ...] = (),
+) -> int:
+    """Count other live processes for a seat binary; fail toward TIMEOUT.
+
+    ``script`` narrows the census to rows whose args actually invoke that
+    script (e.g. a python3 seat counting only ``jules_dispatch.py`` workers,
+    not every unrelated python3 process on the box). ``ignore_subcommands``
+    drops rows whose args carry a known-persistent subcommand (e.g. ollama's
+    long-lived ``serve`` daemon) that is presence, not contention.
+    """
     try:
         proc = subprocess.run(
             ["ps", "-axo", "pid=,ppid=,comm=,args="], capture_output=True, text=True, timeout=1
@@ -431,18 +443,35 @@ def sibling_seat_processes(binary_basename: str, exclude_pids: set[int]) -> int:
         for pid, _, command, args in rows:
             argv = args.split()[:2]
             names = {Path(command).name, *(Path(arg).name for arg in argv)}
-            if pid not in excluded and binary_basename in names:
-                count += 1
+            if pid in excluded or binary_basename not in names:
+                continue
+            tokens = args.split()
+            if ignore_subcommands and any(token in ignore_subcommands for token in tokens):
+                continue
+            if script is not None and not any(Path(token).name == script for token in tokens):
+                continue
+            count += 1
         return count
     except (OSError, subprocess.SubprocessError, ValueError):
         return 0
 
 
-def timeout_status(binary: str, evidence: str, latency_ms: int) -> tuple[str, str, int]:
+def timeout_status(
+    binary: str,
+    evidence: str,
+    latency_ms: int,
+    script: Optional[str] = None,
+    ignore_subcommands: tuple[str, ...] = (),
+) -> tuple[str, str, int]:
     """Distinguish a contended CLI seat from an otherwise unexplained timeout."""
     basename = Path(binary).name
     try:
-        siblings = sibling_seat_processes(basename, set())
+        census_kwargs: dict[str, Any] = {}
+        if script is not None:
+            census_kwargs["script"] = script
+        if ignore_subcommands:
+            census_kwargs["ignore_subcommands"] = ignore_subcommands
+        siblings = sibling_seat_processes(basename, set(), **census_kwargs)
     except Exception:
         siblings = 0
     if siblings:
@@ -1050,7 +1079,7 @@ def probe_jules(timeout: float) -> tuple[str, str, int]:
             live = True
 
     if res.timed_out and not live:
-        return timeout_status(binp, ev, latency_ms)
+        return timeout_status(binp, ev, latency_ms, script="jules_dispatch.py")
 
     combined = res.stdout + res.stderr
     # 2026-08-21 (healer tick, Mini): jules_dispatch.py's own credential-missing
@@ -1085,7 +1114,12 @@ def probe_ollama(timeout: float, live_gen: bool = False) -> tuple[str, str, int]
     latency_ms = int((time.monotonic() - t0) * 1000)
     model_listed = "qwen3.5" in res.stdout
     if res.timed_out and not model_listed:
-        return timeout_status(binp, path_note + evidence_tail(res.stdout + res.stderr), latency_ms)
+        return timeout_status(
+            binp,
+            path_note + evidence_tail(res.stdout + res.stderr),
+            latency_ms,
+            ignore_subcommands=("serve",),
+        )
     if not model_listed:
         ev = path_note + evidence_tail(res.stdout + " " + res.stderr)
         status = classify_generic(res.stdout + res.stderr, False, "ollama", is_ssh_context())
@@ -1105,7 +1139,9 @@ def probe_ollama(timeout: float, live_gen: bool = False) -> tuple[str, str, int]
     latency_ms = int((time.monotonic() - t0) * 1000)
     live = bool(gen_res.stdout.strip())
     if gen_res.timed_out and not live:
-        return timeout_status(binp, path_note + "live-gen timed out", latency_ms)
+        return timeout_status(
+            binp, path_note + "live-gen timed out", latency_ms, ignore_subcommands=("serve",)
+        )
     ev = path_note + evidence_tail(gen_res.stdout + " " + gen_res.stderr)
     status = classify_generic(gen_res.stdout + gen_res.stderr, live, "ollama", is_ssh_context())
     return status, ev or "live-gen produced no output", latency_ms
@@ -1437,7 +1473,8 @@ def render_table(report: dict) -> str:
     summ = report["summary"]
     lines.append(
         f"summary: live={summ['live']} dead_strict={summ['dead_strict']} "
-        f"context_limited={summ['context_limited']} transient={summ['transient']}"
+        f"context_limited={summ['context_limited']} transient={summ['transient']} "
+        f"busy={summ.get('busy', 0)}"
     )
     # scar family #2/#97 (Esiste!=Armato / display-cap-reads-as-complete): always
     # declare N of M explicitly — never let a reader infer "0 seats" reads as clean.
@@ -1454,7 +1491,7 @@ def summary_line(report: dict) -> str:
     return (
         f"arsenal_probe {report['machine']}: {summ['live']} of {total} seats OK "
         f"({summ['dead_strict']} dead_strict, {summ['context_limited']} context_limited, "
-        f"{summ['transient']} transient){tail}"
+        f"{summ['transient']} transient, {summ.get('busy', 0)} busy){tail}"
     )
 
 
@@ -1503,6 +1540,7 @@ def run(seats: list[str], timeout_mult: float, live_gen: bool, machine: str) -> 
     dead_strict_n = sum(1 for r in seat_results if is_strict_fail(r["status"]))
     context_limited_n = sum(1 for r in seat_results if context_limited(r["status"]))
     transient_n = sum(1 for r in seat_results if r["status"] in (QUOTA_DEAD, SHED, TIMEOUT))
+    busy_n = sum(1 for r in seat_results if r["status"] == BUSY)
 
     report = {
         "schema": SCHEMA_VERSION,
@@ -1517,6 +1555,7 @@ def run(seats: list[str], timeout_mult: float, live_gen: bool, machine: str) -> 
             "dead_strict": dead_strict_n,
             "context_limited": context_limited_n,
             "transient": transient_n,
+            "busy": busy_n,
         },
     }
     return report

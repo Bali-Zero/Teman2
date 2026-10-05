@@ -1305,6 +1305,65 @@ def test_timeout_ignores_same_binary_ancestor(monkeypatch):
     assert ap.timeout_status("/usr/bin/claude", "", 10)[0] == ap.TIMEOUT
 
 
+def _fake_census(monkeypatch, census):
+    monkeypatch.setattr(ap.os, "getpid", lambda: 900)
+    monkeypatch.setattr(ap.os, "getppid", lambda: 1)
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda *a, **k: ap.subprocess.CompletedProcess(a[0], 0, census, ""),
+    )
+    monkeypatch.setattr(ap, "sibling_seat_processes", _REAL_SIBLING_SEAT_PROCESSES)
+
+
+def test_timeout_unrelated_python_worker_is_not_jules_contention(monkeypatch):
+    _fake_census(monkeypatch, "900 1 python3 python3 scripts/jules_dispatch.py list-sources\n"
+                              "300 1 python3 python3 scripts/some_other_worker.py\n")
+    status = ap.timeout_status("/usr/bin/python3", "", 10, script="jules_dispatch.py")[0]
+    assert status == ap.TIMEOUT
+
+
+def test_timeout_real_concurrent_jules_is_busy(monkeypatch):
+    _fake_census(monkeypatch, "900 1 python3 python3 scripts/jules_dispatch.py list-sources\n"
+                              "300 1 python3 python3 scripts/jules_dispatch.py create-session\n")
+    status = ap.timeout_status("/usr/bin/python3", "", 10, script="jules_dispatch.py")[0]
+    assert status == ap.BUSY
+
+
+def test_timeout_persistent_ollama_server_is_not_contention(monkeypatch):
+    _fake_census(monkeypatch, "400 1 ollama /opt/homebrew/bin/ollama serve\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.TIMEOUT
+
+
+def test_timeout_concurrent_ollama_job_is_busy(monkeypatch):
+    _fake_census(monkeypatch, "400 1 ollama /opt/homebrew/bin/ollama serve\n"
+                              "401 1 ollama /opt/homebrew/bin/ollama run qwen3.5:9b hi\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.BUSY
+
+
+def test_probe_jules_and_ollama_pass_their_census_filters(monkeypatch):
+    seen = []
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (f"/x/{name}", True))
+    monkeypatch.setattr(ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "", "", timed_out=True))
+    monkeypatch.setattr(ap, "sibling_seat_processes", lambda *a, **k: seen.append((a, k)) or 0)
+    ap.probe_jules(timeout=0.05)
+    ap.probe_ollama(timeout=0.05)
+    assert seen[0][1].get("script") == "jules_dispatch.py"
+    assert seen[1][1].get("ignore_subcommands") == ("serve",)
+
+
+def test_run_counts_busy_in_summary_and_rendered_lines(tmp_path, monkeypatch):
+    monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
+    monkeypatch.setitem(ap.PROBE_FUNCS, "claude", lambda timeout: (ap.LIVE, "PONG", 10))
+    monkeypatch.setitem(ap.PROBE_FUNCS, "codex", lambda timeout: (ap.BUSY, "contended", 10))
+    report = ap.run(seats=["claude", "codex"], timeout_mult=1.0, live_gen=False, machine="m5")
+    assert report["summary"]["busy"] == 1
+    assert "busy=1" in ap.render_table(report)
+    assert "1 busy" in ap.summary_line(report)
+
+
 def test_probe_claude_not_logged_in_classifies_auth_dead(monkeypatch):
     # guilt: real exemplar captured in ~/.organism/arsenal/last.json on Mini
     # (2026-08-05T04:53:56Z) — the claude CLI's unauthenticated shape has no
