@@ -40,7 +40,7 @@ if "--task-id" in args:
 TRANSLATE = """\
 import os, pathlib
 root = pathlib.Path(os.environ["NUZANTARA_REPO_ROOT"])
-for rel in os.environ["FAKE_TRANSLATED"].split(","):
+for rel in filter(None, os.environ["FAKE_TRANSLATED"].split(",")):
     (root / rel).parent.mkdir(parents=True, exist_ok=True)
     (root / rel).write_text("---\\nlocale: id\\n---\\nhourly copy\\n")
 """
@@ -137,6 +137,28 @@ def test_when_every_path_is_carried_nothing_is_pushed_or_opened(home: Path) -> N
     assert _promoted(home) == set()
     assert not any(c[:2] == ["pr", "create"] for c in _gh_calls(home))
     assert "--release" in (home / "agent_start.log").read_text()
+
+
+def test_a_carried_list_larger_than_a_pipe_buffer_still_yields(home: Path) -> None:
+    # `print "$CARRIED" | grep -q` under pipefail: grep matched on line 1 and quit,
+    # print died of SIGPIPE (141) on the rest, and the `if` read the match as a miss
+    page = json.loads((home / "open_prs.json").read_text())
+    filler = [_node(f"agent/air-m5/docs/big-{i}", [f"docs/{'x' * 80}/{i}/{j}.md" for j in range(100)])
+              for i in range(40)]
+    page["data"]["repository"]["pullRequests"]["nodes"] += filler
+    (home / "open_prs.json").write_text(json.dumps(page))
+
+    result = _run(home, [POLLER_PATH, FREE_PATH])
+
+    assert result.returncode == 0
+    assert _promoted(home) == {FREE_PATH}
+
+
+def test_a_run_with_nothing_to_promote_does_not_scan_open_prs(home: Path) -> None:
+    result = _run(home, [])
+
+    assert result.returncode == 0
+    assert not any(c[:2] == ["api", "graphql"] and any("files(first" in a for a in c) for c in _gh_calls(home))
 
 
 def test_an_unreadable_pr_listing_promotes_nothing_and_says_degraded(home: Path) -> None:

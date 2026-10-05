@@ -108,25 +108,41 @@ log "translate-articles.py exit=$RUN_RC"
 # and this run, cut from main, cannot see it: both PRs add the same file and the
 # queue ejects whichever merges second (#7862 merged, #7867 add/add, 2026-10-05).
 # Older hourly PRs are not yielded to — the loop below supersedes them — unless
-# they hold a queue slot and so stay. Unreadable → nothing is promoted: the batch
-# is cumulative, and the next run re-detects the same work from main.
-OPEN_PR_FILES_QUERY='query($endCursor:String){repository(owner:"Bali-Zero",name:"Teman2"){pullRequests(states:OPEN,first:50,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{headRefName mergeQueueEntry{state} files(first:100){nodes{path}}}}}}'
-if ! CARRIED=$(gh api graphql --paginate -f query="$OPEN_PR_FILES_QUERY" \
-    --jq '.data.repository.pullRequests.nodes[] | select((.headRefName | startswith("agent/nuzantara/mouth/hourly-") | not) or .mergeQueueEntry != null) | .files.nodes[]?.path' 2>>"$LOG"); then
-  log "ERROR: cannot read the paths open PRs carry — promoting nothing this run"
+# they hold a queue slot and so stay. Read only when this run has output. Any
+# failure → nothing is promoted: the batch is cumulative, and the next run
+# re-detects the same work from main.
+yield_carried_paths() {
+  local query carried entry p
+  local -a carried_paths entries
+  query='query($endCursor:String){repository(owner:"Bali-Zero",name:"Teman2"){pullRequests(states:OPEN,first:50,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{headRefName mergeQueueEntry{state} files(first:100){nodes{path}}}}}}'
+  carried=$(gh api graphql --paginate -f query="$query" \
+      --jq '.data.repository.pullRequests.nodes[] | select((.headRefName | startswith("agent/nuzantara/mouth/hourly-") | not) or .mergeQueueEntry != null) | .files.nodes[]?.path' 2>>"$LOG") || return 1
+  # An array lookup, not `print | grep -q`: under pipefail a list larger than
+  # the pipe buffer turned an early match into SIGPIPE (141), read as a miss.
+  carried_paths=(${(f)carried})
+  # -z: raw paths, never C-quoted; "XY path" entries, "??" = untracked.
+  entries=(${(0)"$(git -C "$WT_PATH" status --porcelain -z --untracked-files=all -- apps/mouth/src/content/articles)"}) || return 1
+  for entry in $entries; do
+    p=${entry[4,-1]}
+    (( ${carried_paths[(Ie)$p]} )) || continue
+    if [[ ${entry[1,2]} == '??' ]]; then
+      rm -f -- "$WT_PATH/$p" || return 1
+    else
+      git -C "$WT_PATH" checkout -q HEAD -- "$p" || return 1
+    fi
+    log "yielded $p — another open PR already carries it"
+  done
+}
+
+CHANGED=$(git -C "$WT_PATH" status --porcelain -- apps/mouth/src/content/articles | wc -l | tr -d ' ')
+if [ "$CHANGED" -gt 0 ] && ! yield_carried_paths; then
+  log "ERROR: cannot read or yield the paths open PRs carry — promoting nothing this run"
   git -C "$WT_PATH" checkout -q -- apps/mouth/src/content/articles
   git -C "$WT_PATH" clean -fdq -- apps/mouth/src/content/articles
   python3 scripts/agent_start.py --release "$TASK_ID" >>"$LOG" 2>&1
   heartbeat degraded "open PRs' paths unreadable, nothing promoted (translate-articles.py exit=$RUN_RC)"
   exit 1
 fi
-for p in ${(f)"$(git -C "$WT_PATH" status --porcelain --untracked-files=all -- apps/mouth/src/content/articles | cut -c4-)"}; do
-  if print -r -- "$CARRIED" | grep -qxF -- "$p"; then
-    git -C "$WT_PATH" checkout -q HEAD -- "$p" 2>/dev/null || rm -f -- "$WT_PATH/$p"
-    log "yielded $p — another open PR already carries it"
-  fi
-done
-
 CHANGED=$(git -C "$WT_PATH" status --porcelain -- apps/mouth/src/content/articles | wc -l | tr -d ' ')
 
 if [ "$CHANGED" -gt 0 ]; then
