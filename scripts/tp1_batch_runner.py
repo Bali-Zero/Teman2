@@ -20,7 +20,8 @@ SAFETY, by construction rather than by configuration:
   * Idempotent: an id already present in results.jsonl is never sent again (an
     HTTP 200 was paid for). --retry-failed re-sends only rows whose status is
     not "ok". A job stopped by a quota or rate error writes no row (it was not
-    answered), so the next run picks it up.
+    answered), so the next run picks it up. A crash between a paid reply and its
+    fsync'd row re-sends the calls then in flight on resume: at-least-once.
   * The proof is rows, not a PID: heartbeat.json counts result rows and tokens.
   * One runner per out-dir (flock on <out-dir>/.lock): two runners sharing a
     results file would each send the same pending job.
@@ -79,7 +80,9 @@ QUOTA_RE = re.compile(
     r"|quota[^\"]{0,40}(exhaust|used up|insufficient|depleted)"
     r"|exceeded your (current )?quota"
     r"|credits?[^\"]{0,30}(exhaust|insufficient|depleted|used up)"
-    r"|(plan|subscription)[^\"]{0,40}(expired|exhausted|inactive)",
+    r"|(plan|subscription)[^\"]{0,40}(expired|exhausted|inactive)"
+    r"|insufficient[_ ](account[_ ])?balance|balance[^\"]{0,30}(insufficient|exhaust|depleted|not enough)"
+    r"|^(?!.*throttl).*?quota (has been )?exceeded",  # Alibaba's Throttling.* quota codes are rate limits
     re.I,
 )
 RATE_RE = re.compile(r"throttl|rate.?limit|too many requests|requestlimit", re.I)
@@ -94,8 +97,8 @@ def assert_token_plan_endpoint(url: str = TP1_CHAT_COMPLETIONS_URL) -> None:
 def classify(status: Optional[int], body: str) -> str:
     """ok | quota | rate | transient | rejected. Quota wins over rate: when a body
     is ambiguous, stopping costs idle time, continuing could cost money."""
-    if status == 200:
-        return "ok"
+    if status == 200:  # only a gateway error object is ever passed here for a 200, never model text
+        return "quota" if QUOTA_RE.search(body or "") else "ok"
     if status is not None and 300 <= status < 400:
         return "quota"  # a gateway that redirects is no longer the endpoint we vetted
     if status in (401, 402, 403) or QUOTA_RE.search(body or ""):
@@ -126,7 +129,7 @@ def _int(value: object) -> int:
     exception here would be settled as transient and the job sent (and paid) again."""
     try:
         return int(value or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 
@@ -145,18 +148,28 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
     status, raw, tail = no_stream_chat_completion(TP1_CHAT_COMPLETIONS_URL, headers, body, timeout, [token])
     out: dict = {"status": status, "secs": round(time.time() - started, 1), "usage": {}}
     if status != 200:
-        out["error"] = scrub(raw or tail or "", [token])[-300:]
+        out["error"] = scrub(raw or tail or "", [token])  # whole body: classify() reads all of it
         return out
+    # Everything below runs AFTER a paid 200 and must not raise: settle() would read the
+    # exception as transient and send (and pay for) the job again.
     try:
-        usage = json.loads(raw).get("usage") or {}
-    except (ValueError, AttributeError):
-        usage = {}
+        doc = json.loads(raw)
+    except ValueError:
+        doc = None
+    doc = doc if isinstance(doc, dict) else {}
+    usage = doc.get("usage") if isinstance(doc.get("usage"), dict) else {}
     pt, ct = _int(usage.get("prompt_tokens")), _int(usage.get("completion_tokens"))
     out["usage"] = {"prompt_tokens": pt, "completion_tokens": ct,
                     "total_tokens": _int(usage.get("total_tokens")) or pt + ct}
-    answer, warning, error = extract_answer(raw)
+    try:
+        answer, warning, error = extract_answer(raw)
+    except Exception as e:
+        answer, warning, error = None, None, f"unparseable response ({type(e).__name__})"
     if error:
-        out["error"] = scrub(error, [token])[-300:]
+        out["error"] = scrub(error, [token])
+        gateway = doc.get("error")  # a quota error can ride inside a 200: classify() reads only this
+        if gateway:
+            out["gateway_error"] = scrub(json.dumps(gateway), [token])
     else:
         out["answer"] = scrub(answer or "", [token], keep=_prompt_identifiers(prompt))
         if warning:
@@ -211,6 +224,21 @@ class Runner:
                 done.add(row.get("id"))
         return done
 
+    def drop_torn_tail(self) -> None:
+        """A crash can leave a last line without its newline; the next row appended onto it
+        would fuse into one unparseable line and that job would be paid for on every rerun."""
+        if not self.results.exists():
+            return
+        with open(self.results, "rb+") as fh:
+            data = fh.read()
+            if data and not data.endswith(b"\n"):
+                cut = data.rfind(b"\n") + 1
+                try:
+                    json.loads(data[cut:])
+                    fh.write(b"\n")  # a complete row that only lost its newline is kept
+                except ValueError:
+                    fh.truncate(cut)
+
     def stop_reason(self) -> Optional[str]:
         if self.kill_file.exists():
             return "kill-file"
@@ -235,6 +263,7 @@ class Runner:
             lock.close()
 
     def _run(self) -> int:
+        self.drop_torn_tail()
         done = self.done_ids()
         pending = collections.deque((j, 1) for j in self.jobs if j["id"] not in done)
         self.stats["skipped_done"] = len(self.jobs) - len(pending)
@@ -265,7 +294,8 @@ class Runner:
             res = {"status": None, "error": f"{type(e).__name__}: {e}", "usage": {}}
         for k, v in (res.get("usage") or {}).items():
             self.stats[k] += int(v or 0)
-        kind = classify(res.get("status"), res.get("error", ""))
+        status = res.get("status")
+        kind = classify(status, res.get("gateway_error", "") if status == 200 else res.get("error", ""))
         if kind != "ok":
             self.last_error = f"{kind}: HTTP {res.get('status')}: {(res.get('error') or '')[-160:]}"
         if kind == "ok":
@@ -294,11 +324,11 @@ class Runner:
 
     def write(self, job: dict, attempt: int, res: dict, status: str) -> None:
         self.stats[status] += 1
-        answer = res.get("answer")
+        answer, error = res.get("answer"), res.get("error")
         row = {"id": job["id"], "lane": job.get("lane"), "model": job.get("model") or self.model,
                "status": status, "answer": answer, "parsed": parse_json_answer(answer),
                "usage": res.get("usage") or {}, "secs": res.get("secs"), "attempts": attempt,
-               "error": res.get("error"), "ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
+               "error": error[-300:] if error else error, "ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
         with open(self.results, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             fh.flush()

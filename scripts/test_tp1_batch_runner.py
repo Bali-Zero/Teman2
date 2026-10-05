@@ -6,6 +6,7 @@ import datetime as dt
 import json
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -223,3 +224,114 @@ def test_malformed_usage_after_a_paid_200_is_not_paid_again(tmp_path, monkeypatc
 
 def test_redirects_are_refused_not_followed():
     assert tbr._NoRedirect().redirect_request(None, None, 302, "Found", {}, "https://example.invalid/") is None
+
+
+def through_the_door(monkeypatch, tmp_path, transport):
+    """The real tp1_call_once over a faked transport: counts every request that would be paid."""
+    sent = []
+    monkeypatch.setattr(sys.modules["tp1_call"], "TP1_UNPARSEABLE_SCRATCH_DIR", tmp_path / "unparseable")
+
+    def fake(*args):
+        sent.append(1)
+        return transport()
+
+    monkeypatch.setattr(tbr, "no_stream_chat_completion", fake)
+    return sent, lambda model, prompt: tbr.tp1_call_once(model, prompt, "medium", 10, 1.0, "dummy")
+
+
+def test_torn_last_line_is_paid_for_once_across_reruns(tmp_path):
+    runner(tmp_path, FakeCall(), n=2).run()
+    good = [line for line in (tmp_path / "results.jsonl").read_text().splitlines() if '"j0"' in line]
+    (tmp_path / "results.jsonl").write_text(good[0] + "\n" + '{"id": "j1", "sta')
+    second, third = FakeCall(), FakeCall()
+    runner(tmp_path, second, n=2).run()
+    runner(tmp_path, third, n=2).run()
+    assert second.calls == ["prompt 1"] and third.calls == []
+    assert sorted(r["id"] for r in rows(tmp_path)) == ["j0", "j1"]
+
+
+def test_complete_last_row_without_its_newline_is_kept_not_paid_again(tmp_path):
+    runner(tmp_path, FakeCall(), n=2).run()
+    (tmp_path / "results.jsonl").write_text((tmp_path / "results.jsonl").read_text().rstrip("\n"))
+    again = FakeCall()
+    runner(tmp_path, again, n=3).run()
+    assert again.calls == ["prompt 2"]
+    assert sorted(r["id"] for r in rows(tmp_path)) == ["j0", "j1", "j2"]
+
+
+@pytest.mark.parametrize("raw", [
+    json.dumps({"choices": [{"message": {"content": "{}"}}], "usage": ["malformed"]}),
+    json.dumps({"choices": [{"message": "not a dict"}], "usage": {"total_tokens": 7}}),
+    '{"choices": [{"message": {"content": "{}"}}], "usage": {"total_tokens": Infinity}}',
+], ids=["list_usage", "message_not_dict", "infinite_usage"])
+def test_malformed_shape_after_a_paid_200_is_never_sent_again(tmp_path, monkeypatch, raw):
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, raw, ""))
+    assert runner(tmp_path, call, n=1).run() == 0
+    assert len(sent) == 1
+    assert [r["status"] for r in rows(tmp_path)] in (["ok"], ["no_answer"])
+
+
+@pytest.mark.parametrize("status", [429, 400])
+def test_long_quota_body_stops_the_run_at_the_first_call(tmp_path, monkeypatch, status):
+    body = '{"error":{"code":"insufficient_quota","message":"' + "lorem ipsum dolor " * 25 + '"}}'
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (status, body, body[-160:]))
+    assert runner(tmp_path, call, n=3, concurrency=1, max_rate_strikes=3).run() == 5
+    assert len(sent) == 1
+    assert not (tmp_path / "results.jsonl").exists()
+
+
+def test_quota_error_inside_a_200_stops_the_run_but_an_answer_about_quota_does_not(tmp_path, monkeypatch):
+    for name, message in (("short", "quota exhausted"), ("long", "lorem ipsum dolor " * 25)):
+        body = json.dumps({"error": {"code": "insufficient_quota", "message": message}})
+        sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, body, ""))
+        assert runner(tmp_path / name, call, n=3, concurrency=1).run() == 5, name
+        assert len(sent) == 1 and not (tmp_path / name / "results.jsonl").exists()
+    answer = json.dumps({"choices": [{"message": {"content": "QUOTA_RE matches insufficient_quota"}}],
+                         "usage": {"total_tokens": 5}})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, answer, ""))
+    assert runner(tmp_path / "b", call, n=2, concurrency=1).run() == 0
+    assert len(sent) == 2 and [r["status"] for r in rows(tmp_path / "b")] == ["ok", "ok"]
+    loose = json.dumps({"explanation": "quota exceeded means insufficient balance"})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, loose, ""))
+    assert runner(tmp_path / "c", call, n=1).run() == 0
+    assert len(sent) == 1 and [r["status"] for r in rows(tmp_path / "c")] == ["no_answer"]
+
+
+@pytest.mark.parametrize(
+    "status,body,kind",
+    [
+        (400, "insufficient balance", "quota"),
+        (400, '{"code":"Insufficient_Balance","message":"account balance is insufficient"}', "quota"),
+        (429, "monthly token quota exceeded", "quota"),
+        (429, "quota exceeded", "quota"),
+        (429, "Throttling.AllocationQuota: Allocated quota exceeded", "rate"),
+        (429, "Throttling.AllocationQuota: quota exceeded", "rate"),
+        (400, "Range of input length should be [1, 98304]", "rejected"),
+    ],
+)
+def test_classify_exhaustion_wordings(status, body, kind):
+    assert tbr.classify(status, body) == kind
+
+
+def test_rate_limit_retry_waits_for_the_backoff(tmp_path):
+    stamps = []
+    rate = {"status": 429, "error": "Too Many Requests", "usage": {}}
+
+    class Stamped(FakeCall):
+        def __call__(self, model, prompt):
+            stamps.append(time.monotonic())
+            return super().__call__(model, prompt)
+
+    assert runner(tmp_path, Stamped([rate]), n=1, concurrency=1, backoff=0.3).run() == 0
+    assert len(stamps) == 2 and stamps[1] - stamps[0] >= 0.3
+
+
+def test_main_installs_the_no_redirect_opener_before_the_credential(tmp_path, monkeypatch):
+    q = tmp_path / "q.jsonl"
+    q.write_text('{"id": "a", "prompt": "x"}\n')
+    installed = []
+    monkeypatch.setattr(tbr.urllib.request, "install_opener", installed.append)
+    monkeypatch.setattr(tbr, "resolve_tp1_key", lambda: (None, None, "test: no credential"))
+    assert tbr.main(["--queue", str(q), "--out-dir", str(tmp_path / "out")]) == 2
+    assert len(installed) == 1
+    assert any(isinstance(h, tbr._NoRedirect) for h in installed[0].handlers)
