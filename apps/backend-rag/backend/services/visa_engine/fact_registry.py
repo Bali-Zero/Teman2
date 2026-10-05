@@ -2,8 +2,9 @@
 
 Source: ``research/visa/2026-07-17-visa-oracle-v2-round2-codex-engine-
 concretization.md`` §1 (module layout, ``fact_registry.py``) and §2
-(``ApplicantFacts.facts`` — the 44 collected paths + the 4 ``derived.*``
-paths this catalog also carries).
+(``ApplicantFacts.facts`` — one entry per collected path plus one per
+``derived.*`` path this catalog also carries; the path set is whatever
+``enums.FactPath`` currently declares — never hand-counted here).
 
 Why this exists alongside ``enums.FactPath``: ``FactPath`` is the *closed
 vocabulary* (which strings are legal fact paths at all — enforced by the

@@ -17,6 +17,7 @@ from backend.services.visa_engine.api_models import (
     DisclosedReviewFlag,
     VisaOracleEvaluateRequest,
 )
+from backend.services.visa_engine.enums import APPLICANT_FACT_PATHS
 from backend.services.visa_engine.models import ApplicantFactsData, Decision
 from backend.tests.services.visa_engine import _gold_fixtures as gf
 from backend.tests.services.visa_engine.gold_replay import _persona_expected
@@ -97,16 +98,17 @@ def test_all_canonical_personas_map_to_the_real_wire_model() -> None:
 
         assert validated.assessment_id == driver._persona_assessment_id(persona.id)
         assert set(payload["facts"]) == expected_fact_aliases
-        # 57, not 41 (2026-08-23 vocabulary extension, PR #4650; 44→45
-        # 2026-08-24 F4/PR #4719 adds `immigration.renewal_paid`; 45→46
-        # PR-D4c-1 adds `investment.investment_amount_usd`; 46→56 W-VO-S21
-        # adds the ten seq-21 qualification booleans; 56→57 Slice A7-B
-        # (2026-09-21) adds `person.guardian_consent`): the count
-        # is derived structurally above from `ApplicantFactsData.model_fields`
-        # aliases, so this literal is a redundant pin, not the source of
-        # truth — bump it in lockstep whenever that model gains a field.
-        assert len(payload["facts"]) == 57
         assert payload["disclosed_review_flags"] == []
+
+
+def test_applicant_fact_vocabulary_is_one_derived_cardinality_pin() -> None:
+    """The ONE executable assertion on vocabulary size, derived from the two
+    structural sources of truth (the ``FactPath`` registry and the wire
+    model) instead of a hand-transcribed literal. A vocabulary-only change
+    that lands on one source but not the other goes red HERE, in one suite,
+    naming both counts — every other suite asserts which keys and which
+    values, so it needs no edit when the vocabulary grows."""
+    assert len(APPLICANT_FACT_PATHS) == len(ApplicantFactsData.model_fields)
 
 
 def test_report_structure_preserves_expected_actual_and_null_explanation() -> None:

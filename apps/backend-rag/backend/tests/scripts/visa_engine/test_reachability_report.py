@@ -136,39 +136,14 @@ def test_unused_fact_paths_is_registry_minus_used(seq7_report) -> None:
     all_paths = {str(p.value) for p in DEFAULT_FACT_REGISTRY.all_paths()}
     assert set(seq7_report.unused_fact_paths) == all_paths - set(seq7_report.used_fact_paths)
     assert seq7_report.total_fact_paths == len(all_paths)
-    # The exact 14-path headline (was 8; 2026-08-23 vocabulary extension —
-    # PR #4650 — added 4 new registry paths that no rule in
-    # rulepack-prod-007.source.json references yet, which is exactly what
-    # "vocabulary-only, no rulepack change" means: `derived.has_active_stay_permit`,
-    # `family.sponsor_permit_basis`, `family.stepchild_marriage_certificate_confirmed`,
-    # `family.stepchild_birth_certificate_confirmed`). Was 12; 2026-08-24 F4
-    # (D12 active-stay-permit exclusion) adds the 13th, `immigration.renewal_paid` —
-    # also vocabulary-only against this frozen seq-7 baseline. Was 13; PR-D4c-1
-    # adds the 14th, `investment.investment_amount_usd` — again vocabulary-only:
-    # this frozen seq-7 pack has no rule that reads it. This is not a counter
-    # update, it is the receipt — the count rising by exactly one is what
-    # "declared but read by no rule" looks like from the reachability report's
-    # side, and it is this PR's central claim. Unlike the other four, it stays
-    # unused *by design* until a future seq folds a rule that reads it: a
-    # deliberately dormant fact, not an accidentally orphaned one — do not
-    # "fix" it by bumping the number down.
-    #
-    # Was 14; W-VO-S21 (2026-09-13) adds the TEN seq-21 qualification
-    # booleans, taking it to 24. The same receipt reading applies with one
-    # difference worth stating: unlike `investment.investment_amount_usd`,
-    # these ten ARE read by rules — but by rules that live in
-    # `rulepack-prod-021.source.json`, and this fixture is pinned to the
-    # FROZEN seq-7 pack. "Unused against seq-7" is therefore the expected
-    # reading of a fact introduced fourteen sequences later, and the number
-    # rising by exactly ten is the receipt that the registry grew by exactly
-    # ten. `test_seq21_pack.py` is where those rules' readers are proven.
-    #
-    # Was 24; Slice A7-B (2026-09-21) adds the 25th, `person.guardian_consent`
-    # — read only by `evaluate_path._apply_minor_privacy_hold`, a PUBLIC
-    # POLICY ADAPTER that runs after `evaluate_with_trace`, never by a
-    # compiled RULE this seq-7 (or any) rulepack could reference. Vocabulary-
-    # only against every pack, by construction — not a staleness to fix.
-    assert len(seq7_report.unused_fact_paths) == 25
+    # Cardinality deliberately NOT pinned here: the structural identity above
+    # already derives the unused set from the registry and the pack, so a
+    # hand-transcribed count would only force per-PR bumps across shards.
+    # "Unused against the frozen seq-7 pack" is the expected reading for any
+    # vocabulary-only addition — including facts read only by public-policy
+    # adapters or by rules in later-sequence packs — not a staleness to fix.
+    # The single derived cardinality pin for the whole vocabulary lives in
+    # `test_gold_replay_driver.py::test_applicant_fact_vocabulary_is_one_derived_cardinality_pin`.
 
 
 def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> None:
@@ -179,59 +154,20 @@ def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> Non
     assert seq7_report.required_facts_ast_mismatches == ()
 
 
-def test_not_asked_facts_are_exactly_the_five_hardcoded_in_the_mapper() -> None:
+def test_not_asked_facts_match_the_unconditional_mapper_placeholders() -> None:
     assert DEFAULT_FACT_MAPPER_PATH.exists(), (
         "the default fact-mapper path is stale — the live interview moved "
         "and this script's default needs updating"
     )
     text = DEFAULT_FACT_MAPPER_PATH.read_text(encoding="utf-8")
     # Independent extraction: a plain unconditional-assignment regex, not the
-    # module's own compiled pattern.
+    # module's own compiled pattern. This is a behaviour assertion (which
+    # keys), not a cardinality pin: a fact whose interview question ships
+    # drops out of this list the same way `immigration.renewal_paid`,
+    # `investment.investment_amount_usd`, and the seq-21 qualification
+    # booleans did — update the expectation only when the mapper's
+    # unconditional `unknownFact(NOT_ASKED)` idiom actually changes.
     found = sorted(set(re.findall(r'"([a-z_]+\.[a-z_]+)":\s*unknownFact\(NOT_ASKED\),', text)))
-    # `immigration.renewal_paid` used to be a sixth entry here, but 2026-08-24
-    # F4 (D12 active-stay-permit exclusion) shipped the real interview
-    # question for it (tree.ts, gated in flow.ts's
-    # `computeNextNode`/`shouldAskRenewalPaid`), so fact-mapper.ts:591 now
-    # maps it through `booleanFact(facts.renewal_paid)` — a real answered
-    # fact, not an unconditional NOT_ASKED placeholder. It correctly dropped
-    # out of this list. PR-D4c-1 (2026-09-13) put a NEW sixth entry back in:
-    # `investment.investment_amount_usd` was contract-only (the wire key
-    # existed for a later PR, D4c-2, to send an answer through), so
-    # fact-mapper.ts mapped it through the same unconditional
-    # `unknownFact(NOT_ASKED)` idiom every other not-yet-interviewed fact
-    # uses. PR-D4c-2 (THIS PR, 2026-09-13) is that later PR: the
-    # `merit`/`family`/`undecided` investment-vehicle branches now ask a real
-    # currency-bound question for it (`investment_currency`/
-    # `investment_amount_usd`, tree.ts, gated in flow.ts's
-    # `getCategoryQuestionIds`), so fact-mapper.ts now maps it through
-    # `integerFact(facts.investment_amount_usd, ...)` — a real, conditionally
-    # answered fact (KNOWN when `usd` was chosen and answered, an explicit
-    # UNKNOWN otherwise), never an unconditional NOT_ASKED placeholder. It
-    # correctly drops out of this list, the same way `immigration.
-    # renewal_paid` did before it — six back to five.
-    #
-    # W-VO-S21 (2026-09-13) put TEN back in: the seq-21 qualification
-    # booleans (five `investment.*`, five `sponsor.*`) were contract-only in
-    # the mapper, exactly as `investment.investment_amount_usd` was between
-    # PR-D4c-1 and PR-D4c-2. That comment ended "each one drops out of this
-    # list the day its question ships — five plus ten is fifteen".
-    #
-    # W-VO-Q (THIS PR, mission SAETTA-VO3, 2026-09-14) is that day, and it is
-    # all ten at once: `tree.ts` registers the ten questions and
-    # `getCategoryQuestionIds` (flow.ts) asks each on the one branch where its
-    # rule's premises can hold, so fact-mapper.ts now maps every one of them
-    # through `booleanFact(...)` — KNOWN(true) on yes, KNOWN(false) on no, and
-    # UNKNOWN(NOT_ASKED) only on a branch that never showed the question,
-    # where the rule reading it is already definitely false on its purpose or
-    # sponsor premise. `investment.ikn_subsidiary` additionally carries the
-    # entailment `investment_establishes_company === "no" -> known(false)`.
-    # None of them is an UNCONDITIONAL `unknownFact(NOT_ASKED)` any more, so
-    # all ten correctly drop out of this list — fifteen back to five, the same
-    # way `immigration.renewal_paid` and `investment.investment_amount_usd`
-    # dropped out before them.
-    #
-    # `intent.requested_product_code` stays: no seq-21 rule for the nine new
-    # products reads it, so no question was owed for it here.
     assert found == [
         "commercial.service_fee_budget_idr",
         "commercial.wants_quote",
