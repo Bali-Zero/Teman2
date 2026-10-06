@@ -24,7 +24,7 @@ acceptance:
   - text: WHEN the live required names differ from the names the local run was planned with, the comparator SHALL report the drift and exit 1.
     probe: scripts/localci/tests/test_hosted_compare.py::test_drift_between_live_required_names_and_the_local_plan_exits_1
   - text: WHEN the comparator talks to GitHub, every call SHALL be a bare GET.
-    probe: scripts/localci/tests/test_hosted_compare.py::test_every_github_call_is_a_bare_get
+    probe: scripts/localci/tests/test_hosted_compare.py::test_the_live_path_issues_only_bare_gets
   - text: WHEN it runs on Pro against a real local run of a merged, hosted-green commit, the comparator SHALL emit one row per live required context carrying the hosted and the local verdict.
     probe: pack.yml receipts, the Pro run on run dir gate-ground-1006-f42fd16429
   - text: WHEN the spec states a number about the live gate, that number SHALL have been measured in this session.

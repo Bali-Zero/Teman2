@@ -100,6 +100,7 @@ def test_a_red_anywhere_on_the_commit_is_red_whatever_the_order_or_the_timestamp
 
 def test_a_same_named_commit_status_must_pass_too():
     assert _one("OK", [_run("a", "success")], [_st("a", "failure")], app_id=None) == "FALSE_GREEN"
+    assert _one("OK", [_run("a", "success")], [_st("a", "error")], app_id=None) == "FALSE_GREEN"
     assert _one("OK", [_run("a", "success")], [_st("a", "pending")], app_id=None) == "HOSTED_PENDING"
     assert _one("OK", [], [_st("a", "success")], app_id=None) == "AGREE"
 

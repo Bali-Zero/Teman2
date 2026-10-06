@@ -82,7 +82,7 @@ receipts:
     exit: 0
     ts: "2026-10-06T08:20:00Z"
     seat: claude-fable-5-1 driving Pro over ssh
-  - claim: The comparator corpus is green, and each of fifteen single-rule mutants of the comparator turns it red.
+  - claim: The comparator corpus is green, and each of fifteen single-rule mutants of the comparator turns it red; the gate's own eight found one survivor ('error' no longer red), cured by a corpus row.
     cmd: python -m pytest -q scripts/localci/tests/test_hosted_compare.py ; the same after each in-place mutation, source restored byte-identical
     exit: 0
     ts: "2026-10-06T08:18:00Z"
@@ -125,6 +125,10 @@ dissent:
     objection: "Going private drops free hosted minutes and needs a Code Security entitlement for CodeQL; 'safe to extend to tests.yml' ignores the spec's own Tier R conditions; Tier R gives no independence from a GitHub control-plane outage; sampling merged shas only keeps the survivors and a re-run can erase a hosted red."
     status: CONFIRMED
     resolution: "Spec §5 items 1 and 3, §7 and the Tier L promotion rule (§4.2) rewritten accordingly: rejected candidates required, pairs stored when observed."
+  - seat: claude-opus-5-5
+    objection: "Final gate on ee2bfcaa4a, PASS with notices: the red-dominance wording overstates the live path (GitHub lists only the latest attempt of each check); the corpus did not pin the 'error' status state as red; the brief named a test that no longer exists; the spec's 369 local tests and 165 ubuntu-latest jobs were not reproduced (252 collected before this change, 166 on this tree); reading classic protection only is an unlisted residual; a hand-forged status.json with an out-of-vocabulary verdict reads LOCAL_BLIND."
+    status: CONFIRMED
+    resolution: "Cured in the follow-up commit on this branch: wording in the docstring, README and spec §8, an 'error' row in the corpus, the brief's probe name, both numbers, the residual. The forged-status case stays as documented behaviour: a real runner cannot emit it and blind is never green."
 owed:
   - Run scripts/localci/tests in a hosted job (spec §4 step 2); until then the comparator's corpus has no hosted consumer.
   - After merge, re-run the comparator on Pro from main and record the output on the PR (prove-live).

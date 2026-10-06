@@ -10,8 +10,9 @@ commit statuses of the run's candidate sha) with the local per-context verdict a
     LOCAL_BLIND     hosted has a verdict, local has none (BLOCKED / UNCOVERED / unmapped)
     HOSTED_PENDING  hosted has no complete verdict from the required source — nothing to compare
 
-The hosted verdict of a context is order-free and RED-DOMINANT: red if ANY entry carrying that
-name on the commit is red (GitHub requires a same-named check and status to both pass, and a
+The hosted verdict of a context is order-free and RED-DOMINANT: red if ANY entry GitHub lists
+under that name for the commit is red (the latest attempt of each check; a red that a re-run
+replaced is not listed) (GitHub requires a same-named check and status to both pass, and a
 later green from another event does not erase a red); green only when at least one entry from
 the REQUIRED source (the pinned ``app_id``, or any source when none is pinned) is complete and
 none is pending. No timestamp is compared.

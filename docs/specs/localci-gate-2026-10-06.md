@@ -28,7 +28,7 @@ Recommended shape — **C′: hosted writes, local predicts, execution may move 
   by `hosted_compare.py`); `strict: false`; 0 required reviews. **11 of 14 pin no source app** (`app_id: null`);
   only Visa Oracle smoke, Merah Putih and catE pin `15368` (GitHub Actions). GitHub's REST doc says an omitted
   `app_id` means "any app if it was not set by a GitHub App". Not probed live: the probe is forging a status.
-- **Runners**: 0 self-hosted registered; `runs-on` census 165 `ubuntu-latest`, 3 `ubuntu-24.04`, 2 `macos-latest`.
+- **Runners**: 0 self-hosted registered; `runs-on` census 166 `ubuntu-latest`, 3 `ubuntu-24.04`, 2 `macos-latest`.
 - **Repository**: **public**, org-owned, no licence, `allow_forking: true`, 0 forks; fork-PR workflow approval =
   `first_time_contributors`. Standard hosted minutes are free on public repositories, so no cost motive was
   found (the org's billing page was not read).
@@ -39,7 +39,7 @@ Recommended shape — **C′: hosted writes, local predicts, execution may move 
   runner planned itself, and it plans none of them. The matrix's "4 executed" is a hand measurement dated
   2026-09-26, not runner coverage. The runner's own checks: classifier corpus PASS, paid-endpoint ban PASS (25
   tests, contained), `tests.scripts_impacted` ERROR (pytest rc=2 at collection, on a hosted-green commit).
-- **Local suite**: no job under `.github/workflows` runs `scripts/localci/tests` (369 tests, by hand only).
+- **Local suite**: no job under `.github/workflows` runs `scripts/localci/tests` (252 tests collected before this change, by hand only).
 - **Pro**: M4 Pro, 14 cores, 48 GB; OS users `nuzantara` and `zantara-codex`; `sudo -n` refused (password) — a
   second OS user is a real boundary there, and creating one is the operator's.
 
@@ -159,6 +159,9 @@ number that is not such a pair is not evidence.
 - The comparison covers one sha: `agreement=0/14` is the starting line, not a trend.
 - `hosted_compare.py` judges the hosted side red-dominant: any red entry carrying a context's name on the commit
   is red. It can therefore report a FALSE_GREEN the merge queue did not act on (a red `push` run beside a green
-  `merge_group` run); it errs toward the alarm.
+  `merge_group` run); it errs toward the alarm. "Any entry" means the entries GitHub lists for the commit: the
+  check-runs endpoint returns the latest attempt of each check, so a red that a re-run replaced is not seen.
+- It reads classic branch protection only. No ruleset requires a status check today; one that did would be
+  invisible to it and would not show up as drift.
 - `hosted_compare.py` has no hosted consumer for its own tests until step 2; today its consumer is the Pro run.
 - Nothing in this PR posts a status, edits branch protection, registers a runner or changes a workflow.

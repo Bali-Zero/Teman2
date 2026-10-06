@@ -137,7 +137,7 @@ candidate sha, and names each required context `AGREE`, `FALSE_GREEN`, `FALSE_RE
 reports drift between the live required names and the names the run was planned with, and which required contexts pin no source
 app. Every call is a GET through `gh api`: it posts nothing and needs no arming, so the comparison the adapter was built for does
 not need the adapter armed. A local verdict counts only where the runner recorded a per-context `OK` or `FAIL`; anything else is
-blind. The hosted side is order-free and red-dominant: any red entry carrying the context's name on the commit is red, and green
+blind. The hosted side is order-free and red-dominant: any red entry GitHub lists under the context's name for the commit is red (latest attempt of each check), and green
 needs a complete entry from the required source (the pinned `app_id` when there is one). A `--fixtures` document is refused unless
 it is bound to the same repo, branch and sha. Exit 0 = compared and complete, 1 = a FALSE_GREEN or name drift, 2 = unusable input,
 3 = incomplete (a required context is still pending). Why this exists and what it measured first (`agreement=0/14` on 2026-10-06):
