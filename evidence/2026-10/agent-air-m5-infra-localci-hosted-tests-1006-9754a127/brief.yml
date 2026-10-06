@@ -1,0 +1,46 @@
+task_id: localci-hosted-tests-1006
+mission: LOCALCI-GATE
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Computed floor: the diff adds a file under .github/workflows/, a hot zone. The mission itself was declared
+  Gear 3 by its mandate (docs/specs/localci-gate-2026-10-06.md); this is step 2 of that spec's sequence.
+l_level: L2
+gate_class: opus
+objective: >-
+  Give the local CI runner's own test suite a hosted consumer: a pull request that touches scripts/localci
+  runs scripts/localci/tests on GitHub-hosted metal, with the tests that usually skip (containment, state
+  machine) actually executing, and with any undeclared skip turning the job red.
+constraints:
+  - The required set is not edited; no existing workflow is edited; the new job is not a required context.
+  - The job reads the repository only (permissions contents read); no secret, no status post, no runner registered.
+  - A skipped test is never counted as evidence; a declared skip is named in the workflow file, in one place.
+  - No paid per-token API is used.
+acceptance:
+  - text: WHEN a pull request touches scripts/localci, the hosted job SHALL run scripts/localci/tests with the candidate image built and hypothesis installed.
+    probe: the "localci tests" check run on this pull request (its log, pack.yml receipts)
+  - text: WHEN the junit report carries a skip whose reason no allowance explains, skip_budget.py SHALL exit 1 and name the test.
+    probe: scripts/localci/tests/test_skip_budget.py::test_an_undeclared_skip_exits_1_and_is_named
+  - text: WHEN an allowance explains no skip in the report, skip_budget.py SHALL exit 1.
+    probe: scripts/localci/tests/test_skip_budget.py::test_an_allowance_that_explains_no_skip_is_stale_and_exits_1
+  - text: WHEN an allowance matches the empty string, or the report cannot be read, skip_budget.py SHALL refuse with exit 2.
+    probe: scripts/localci/tests/test_skip_budget.py::test_an_allowance_that_matches_the_empty_reason_is_refused
+  - text: WHEN a pattern matches only a test's name or file path, skip_budget.py SHALL NOT treat the skip as declared.
+    probe: scripts/localci/tests/test_skip_budget.py::test_the_reason_is_searched_never_the_test_name_or_its_file_path
+  - text: WHEN the host environment forces colour, the uncontained guilt twin SHALL still read the attack's observations from the check log.
+    probe: scripts/localci/tests/test_isolation.py::test_uncontained_candidate_code_really_reaches_host_state
+assumptions:
+  - text: A red on a non-required check does not hold the merge queue, so this job informs and does not bind.
+    status: unverified
+    note: Follows from GitHub's merge-queue rules (only required checks gate a merge group); not probed, because the probe is merging a red.
+    probe: the operator adds "localci tests" to the required set, or a later step folds the suite into an already-required job
+  - text: The Pysa end-to-end test stays skipped on hosted metal because no measured Pysa home exists there.
+    status: unverified
+    note: Setting one up needs the pinned pyre-check, its stubs and the backend venv; not attempted in this change.
+    probe: a later job that runs pysa_check.py setup before the suite, after which the allowance goes stale and is removed
+consumer_map:
+  - .github/workflows/localci-tests.yml — the job itself runs on every pull request that touches scripts/localci, this one first.
+  - scripts/localci/skip_budget.py is consumed by that workflow's last step.
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2

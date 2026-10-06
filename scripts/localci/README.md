@@ -147,3 +147,9 @@ it is bound to the same repo, branch and sha. Exit 0 = compared and complete, 1 
 
 `PYTHONPATH=<worktree> python -m pytest scripts/localci/tests -q` (real temporary git repos; the hypothesis state machine
 is skipped when hypothesis is absent).
+
+**Hosted run.** `.github/workflows/localci-tests.yml` runs this suite on every pull request that touches `scripts/localci/**`,
+with the candidate image built and hypothesis installed, so the containment tests and the state machine execute there. It is
+not a required context. `python scripts/localci/skip_budget.py <junit.xml> --allow REGEX ...` then reads the junit report: a skip
+whose reason no `--allow` explains is exit 1, and so is an `--allow` that explains no skip; the one declared skip is the Pysa
+end-to-end test, which needs a measured Pysa home. A new skip is declared in that workflow step or it is a red.
