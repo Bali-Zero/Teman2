@@ -325,6 +325,8 @@ def test_quota_error_inside_a_200_stops_the_run_but_an_answer_about_quota_does_n
         (429, "Throttling.AllocationQuota: Allocated quota exceeded", "rate"),
         (429, "Throttling.AllocationQuota: quota exceeded", "rate"),
         (400, "Range of input length should be [1, 98304]", "rejected"),
+        (429, 'quota exceeded\nThrottling.AllocationQuota', "rate"),  # a RAW body keeps its newlines
+        (429, '{\n "message": "quota exceeded"\n}', "quota"),
     ],
 )
 def test_classify_exhaustion_wordings(status, body, kind):
@@ -502,3 +504,12 @@ def test_a_crashed_calls_exception_text_reaches_no_output(tmp_path, capsys):
 def test_scrub_error_replaces_the_callers_exact_value_before_the_email_shape():
     token = "ab" + "@" + "x.io" + "/Z9"  # a secret that also looks like an e-mail: no fragment may survive
     assert tbr.scrub_error(f"key {token} from {DECOY_MAIL}", [token]) == "key <REDACTED> from <EMAIL>"
+
+
+def test_an_answer_beside_a_gateway_error_is_kept_and_the_next_reply_decides(tmp_path, monkeypatch):
+    both = json.dumps({"error": {"code": "invalid_api_key"}, "choices": [{"message": {"content": "{}"}}],
+                       "usage": {"total_tokens": 5}})
+    script = [(200, both, ""), (401, "Unauthorized", "")]
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: script.pop(0))
+    assert runner(tmp_path, call, n=3, concurrency=1).run() == 5
+    assert len(sent) == 2 and [r["status"] for r in rows(tmp_path)] == ["ok"]  # paid once, kept, then stopped

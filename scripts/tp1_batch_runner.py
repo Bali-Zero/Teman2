@@ -60,7 +60,7 @@ ambiguous body stops rather than retries. One send = one paid request.
   R rate, BOUNDED BACKOFF: a 429 that is not Q/A, or RATE_RE (throttl, rate limit, too
     many requests, requestlimit) on any status; Throttling.*Quota codes are rate. Job
     re-queued with no attempt counted, concurrency halved, wait backoff*2^strikes
-    (cap 600 s); at concurrency 1 each rate is a strike, and max_rate_strikes (Runner
+    (cap 600 s, then +0-25% jitter); at concurrency 1 each rate is a strike, and max_rate_strikes (Runner
     keyword, default 6, no CLI flag) strikes stop the run as Q. t: rate_limit_backs_off_*,
     persistent_rate_limit_at_floor_*, rate_limit_retry_waits_*,
     throttling_quota_wording_backs_off_*, a_rate_limit_naming_the_auth_service_*.
@@ -69,9 +69,12 @@ ambiguous body stops rather than retries. One send = one paid request.
     t: transient_error_retries_then_records_failure.
   J rejected, NO RETRY: any other status (400 "Range of input length ..."), or an
     unknown error object in a 200: row "rejected". t: classify, classify_auth_wordings.
-  G a 200 carrying an error object is classified on that object by Q/A/R/J
-    (classify(200, obj) == classify(0, obj); empty = ok). Model text is never
-    classified: an answer about quota is an answer. t: quota_error_inside_a_200_*.
+  G a 200 with no parsable answer that carries an error object is classified on
+    that object by Q/A/R/J (classify(200, obj) == classify(0, obj); empty = ok).
+    A 200 WITH a parsable answer is K even beside an error object: the paid answer
+    is kept, never paid twice, and the next reply decides. Model text is never
+    classified: an answer about quota is an answer. t: quota_error_inside_a_200_*,
+    an_answer_beside_a_gateway_error_is_kept_*. Newlines in a body read as spaces.
   K ok: a 200 without an error object, row "ok" or "no_answer". t: drains_queue_*.
   Run level. F every sent job failed or was rejected: stopped:all-failed, exit 4 (a
     loop may treat 4 as continue). U a reply without usage stops a --token-budget
@@ -160,6 +163,7 @@ def assert_token_plan_endpoint(url: str = TP1_CHAT_COMPLETIONS_URL) -> None:
 def classify(status: Optional[int], body: str) -> str:
     """ok | quota | rate | transient | rejected. Quota wins over rate: when a body
     is ambiguous, stopping costs idle time, continuing could cost money."""
+    body = re.sub(r"[\r\n]+", " ", body or "")  # a RAW body keeps its newlines; QUOTA_RE's ^/. must see one line
     if status == 200:  # only a 200's gateway error object is ever passed here, never model text
         return classify(0, body) if body else "ok"  # spec row G: the object decides, as on an error status
     if status is not None and 300 <= status < 400:
