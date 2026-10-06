@@ -127,13 +127,13 @@ export default function ComparisonModal({
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left text-[10px] uppercase tracking-widest text-[#555] py-3 px-3 border-b border-white/5 w-28">
+                      <th className="text-left text-[11px] uppercase tracking-widest text-[#555] py-3 px-3 border-b border-white/5 w-28">
                         Field
                       </th>
                       {details.map((d, i) => (
                         <th
                           key={i}
-                          className="text-left text-[10px] uppercase tracking-widest text-accent-sand py-3 px-3 border-b border-white/5"
+                          className="text-left text-[11px] uppercase tracking-widest text-accent-sand py-3 px-3 border-b border-white/5"
                         >
                           {d?.code || codes[i]}
                         </th>

@@ -4,12 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 
 type RiskLevel =
-  | "low"
-  | "medium-low"
-  | "medium"
-  | "medium-high"
-  | "high"
-  | "not-classified";
+  "low" | "medium-low" | "medium" | "medium-high" | "high" | "not-classified";
 
 const NEEDLE_ANGLES: Record<RiskLevel, number> = {
   low: 25,
@@ -131,7 +126,7 @@ export default function RiskGauge({ level }: { level: RiskLevel }) {
         <circle cx={CX} cy={CY} r={2} fill="#050507" />
       </svg>
       <span
-        className="text-[10px] uppercase tracking-widest mt-1"
+        className="text-[11px] uppercase tracking-widest mt-1"
         style={{ color }}
       >
         {label}
