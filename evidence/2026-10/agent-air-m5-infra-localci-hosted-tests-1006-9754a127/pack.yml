@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-10/agent-air-m5-infra-localci-hosted-tests-1006-9754a127/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
   Mission LOCALCI-GATE, opened by Zero in a Fable 5.1 window on 2026-10-06. Design artifact:
   docs/specs/localci-gate-2026-10-06.md, merged with pull request 7991; this change is step 2 of its §4 sequence
