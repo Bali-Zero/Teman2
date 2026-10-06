@@ -1,0 +1,151 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  Code and synthetic fixtures only. The decoys in scripts/test_tp1_batch_runner.py
+  (an e-mail at an invented client-example.co.id domain, a short token, a bearer,
+  a 24+ run) are assembled by concatenation at runtime. The one live wording quoted
+  (heartbeat last_error of the three M5 jobs, 2026-10-05) is a provider message
+  with its id already redacted; no row, queue or answer from the live tree is in
+  the diff.
+council_run: journal.jsonl
+council: true
+plan_ref: >-
+  team-lead mandate to dux-tp1recut, 2026-10-06: close #7927 after its final gate
+  BLOCK (gate-7927 receipt), re-cut the runner half from fresh origin/main as PR-A;
+  PR-B (input screen) is a separate Codex build.
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+what_changed: |
+  fa81966b46 + 1f7a66a0d6 + 4b73ceb20a on origin/main 6243ea54c4.
+  - scripts/tp1_batch_runner.py: the door is called with raw_errors=True and
+    classify() reads the raw body (CR/LF folded to spaces); scrub_error() (caller
+    token, then e-mails, then scrub()'s shapes) on every error text that reaches a
+    row, the heartbeat or stderr, the crash path included (Runner(secrets=)); a
+    200's error object is classified by the same rules as an error status, unless
+    the 200 also carries a parsable answer (kept, never paid twice); AUTH_RE on a
+    failed credential only; usage clamps at 0; exit 4 stopped:all-failed; a
+    usage-less reply stops a budgeted run; ERROR CLASSES spec in the docstring.
+  - scripts/tp1_call.py: no_stream_chat_completion(raw_errors=False) keyword;
+    every other caller unchanged.
+  - scripts/test_tp1_batch_runner.py: door tests at urlopen level, the B2 scrub
+    tests through main(), the live 2026-10-05 wording, classify rows per spec row.
+  - .github/workflows/tp1-runner-tests.yml (3.9 + 3.11) and its entry in
+    main-push-failure-watch.yml.
+proof: |
+  Floor 3, source path, measured before the first commit (02:15:40Z) and again on
+  the final head. Red first: with #7927's runner the three B2 tests failed on the
+  decoy e-mail only (token, bearer and 24+ run were already scrubbed by
+  scrub(raw, [token]) and scrub()'s Bearer/24+ rules). Ten mutations on the final
+  head, each red, including the two the gate saw survive (error kept raw, crash
+  text unscrubbed). 73 passed on 3.11.15 and on 3.9.6. actionlint clean, watcher
+  coverage green. The council (sealed x3, one refutation round) ran 02:06-02:11Z,
+  before the first code commit at 02:16:04Z.
+seat_note: >-
+  Codex answered every call as gpt-6.1-sol from the O2 account: the rollout files
+  of all four sessions are under ~/.codex-o2/sessions, none under ~/.codex.
+  Qwen (TP1) is out until the quota reset 2026-10-11T16:00Z; Gemini agy is the
+  owner's. #7927's journal is NOT reused here: it held post-build reviews of the
+  previous cut only.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "R1 P1: a 200 with an error object AND a parsable answer is recorded ok (spec row G said the object decides)."
+    status: CONFIRMED (spec), behaviour kept by design
+    resolution: "Error-wins would drop a paid answer and re-pay it next run; answer-wins never pays twice and the next reply decides. Spec G corrected in 4b73ceb20a, pinned by test_an_answer_beside_a_gateway_error_is_kept_and_the_next_reply_decides. Codex r2: CLOSED."
+  - seat: codex-gpt-5.6-sol
+    objection: "R2 P2: QUOTA_RE ^/. stop at a raw body's newline: a multi-line throttling body stops the run."
+    status: CONFIRMED
+    resolution: "classify() folds CR/LF (4b73ceb20a); two classify rows red before; Kimi F1 is the mirror case, same cure. Codex r2: CLOSED."
+  - seat: kimi-code/k3
+    objection: "Q3 (council): Runner already receives the token, pass it to the crash scrub."
+    status: PARTLY CONFIRMED
+    resolution: "Premise false (Runner receives a call closure); the cure stands as a new Runner keyword argument that main() fills with the caller token, and the crash test carries the bare caller token."
+review_disposition:
+  - {
+      id: C-R1,
+      item: "200 with answer + error object",
+      disposition: DEFECT,
+      proof: "spec G rewritten; door test pins answer kept then 401 stops after 2 sends",
+    }
+  - {
+      id: C-R2,
+      item: "QUOTA_RE vs raw newlines",
+      disposition: DEFECT,
+      proof: "classify folds CR/LF; mutation M10 red 2",
+    }
+  - {
+      id: C-R3,
+      item: "suite not run in the read-only sandbox",
+      disposition: NOT-A-DEFECT,
+      proof: "73 passed on 3.11.15 and 3.9.6 at 02:30Z, receipts below",
+    }
+  - {
+      id: K-F1,
+      item: "pretty-printed quota exceeded backs off",
+      disposition: DEFECT,
+      proof: "same cure as C-R2; classify row (429, multi-line quota exceeded) -> quota",
+    }
+  - {
+      id: K-F2,
+      item: "spec says cap 600 s, jitter after the cap gives 750 s",
+      disposition: DEFECT,
+      proof: "spec row R now states +0-25% jitter after the cap",
+    }
+  - {
+      id: K-F3,
+      item: "200 with answer + error object",
+      disposition: DEFECT,
+      proof: "same as C-R1",
+    }
+  - {
+      id: K-F4,
+      item: "explicit ok key duplicates **self.stats",
+      disposition: NOT-A-DEFECT,
+      proof: "self.stats is a collections.Counter: a never-incremented key is absent from **self.stats; test_a_run_whose_every_sent_job_failed_is_not_reported_as_drained asserts ok == 0",
+    }
+receipts:
+  - claim: "deterministic floor 3, source path, before the first commit"
+    cmd: "python3 -B scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <cached vs 6243ea54c4> --numstat-file <same> --patch-file <workflows>"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-10-06T02:15:40Z"
+    seat: claude-opus-5-5
+  - claim: "red first: the B2 tests fail before the cure, on the e-mail only"
+    cmd: "python3 -m pytest -q scripts/test_tp1_batch_runner.py (with #7927's runner)"
+    result: "3 failed, 62 passed; AssertionError: assert ['ops.decoy@c...xample.co.id'] == []"
+    exit: 1
+    ts: "2026-10-06T02:07:52Z"
+    seat: claude-opus-5-5
+  - claim: "every redaction and classification change is load-bearing"
+    cmd: "mutate.py: ten single-line mutations of the final runner, full suite each"
+    result: "10 of 10 RED (M1 error kept raw 2, M2 crash unscrubbed 1, M3 no e-mail step 5, M4 gateway raw 1, M5 secrets ignored 1, M6 e-mail before exact 1, M7 old classify(200) 5, M8 unguarded empty 5, M9 raw_errors=False 3, M10 no newline fold 2)"
+    exit: 1
+    ts: "2026-10-06T02:30:10Z"
+    seat: claude-opus-5-5
+  - claim: "suite green on both interpreters, final head"
+    cmd: "python3 -m pytest -q scripts/test_tp1_batch_runner.py; uv run --no-project --python 3.9 --with pytest python -m pytest -q scripts/test_tp1_batch_runner.py"
+    result: "73 passed (3.11.15) / 73 passed (3.9.6)"
+    exit: 0
+    ts: "2026-10-06T02:30:20Z"
+    seat: claude-opus-5-5
+  - claim: "workflow lint and watcher coverage"
+    cmd: "actionlint .github/workflows/tp1-runner-tests.yml; python3 scripts/check_watcher_coverage.py"
+    result: "clean; all 128 live workflows covered"
+    exit: 0
+    ts: "2026-10-06T02:30:27Z"
+    seat: claude-opus-5-5
+  - claim: "no workflow ran the runner tests before this PR"
+    cmd: "git grep -l tp1_batch_runner 6243ea54c4 -- .github/"
+    result: "no match"
+    exit: 1
+    ts: "2026-10-06T02:31:00Z"
+    seat: claude-opus-5-5
+spend:
+  adversarial_rounds: 3

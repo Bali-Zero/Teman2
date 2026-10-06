@@ -1,0 +1,40 @@
+task_id: tp1-runner-recut
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  Re-cut of #7927 (closed after its final gate BLOCK), runner half only. (b) The TP1
+  batch runner classifies the RAW provider error body (raw_errors=True at the door):
+  a throttling 429 backs off, bounded; balance/quota exhaustion stops after one send;
+  an auth error inside a 200 stops; a bare "authentication" in a 429 is a rate limit.
+  Gate blocker B2: the scrub of that body is proved by door tests (decoy bearer
+  token, caller token, e-mail and 24+ run absent from every output, crash path
+  included). (c) Negative usage clamps to 0, an all-failing run exits 4, a reply
+  without usage stops a budgeted run. (d) A workflow runs the runner tests on 3.9
+  and 3.11. The depth-2 fix-of-a-fix on AUTH_RE is answered by a written spec
+  (ERROR CLASSES, module docstring) with the tests named per row. The input screen
+  (scripts/tp1max/) is PR-B, not here. Gear 3 by the measured floor (path: a new
+  workflow is a hot zone).
+acceptance:
+  - text: >-
+      The B2 door tests fail before the cure (the e-mail reaches results.jsonl, the
+      heartbeat and the crash row) and pass after; each removed redaction turns a
+      test red (the two mutations the gate saw survive now die).
+    probe: python3 -m pytest -q scripts/test_tp1_batch_runner.py -k "reaches_no_output or scrub_error"
+  - text: >-
+      The live 2026-10-05 wording (HTTP 429, insufficient_quota, "-plan 1-month quota
+      has been exhausted") stops the run after one send, with and without its codes.
+    probe: python3 -m pytest -q scripts/test_tp1_batch_runner.py -k live_2026_10_05
+  - text: >-
+      Every test reference in the ERROR CLASSES spec resolves to a test function.
+    probe: the resolver in the pack's receipts (0 unresolved of 23 refs)
+  - text: >-
+      The suite passes on 3.9 (the live jobs' /usr/bin/python3) and 3.11, in CI.
+    probe: .github/workflows/tp1-runner-tests.yml on this PR head
+assumptions:
+  - text: scrub() keeps e-mails, so a provider body echoing one reached rows and the heartbeat.
+    status: verified
+    probe: red-first run 2026-10-06T02:07:52Z, 3 failed on the decoy e-mail only
+  - text: No workflow on origin/main runs scripts/test_tp1_batch_runner.py.
+    status: verified
+    probe: grep -rln tp1_batch_runner .github/ on 6243ea54c4 (gate 7927 row 10, same base family)
