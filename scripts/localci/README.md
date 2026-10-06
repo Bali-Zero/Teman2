@@ -148,8 +148,13 @@ it is bound to the same repo, branch and sha. Exit 0 = compared and complete, 1 
 `PYTHONPATH=<worktree> python -m pytest scripts/localci/tests -q` (real temporary git repos; the hypothesis state machine
 is skipped when hypothesis is absent).
 
-**Hosted run.** `.github/workflows/localci-tests.yml` runs this suite on every pull request that touches `scripts/localci/**`,
-with the candidate image built and hypothesis installed, so the containment tests and the state machine execute there. It is
-not a required context. `python scripts/localci/skip_budget.py <junit.xml> --allow REGEX ...` then reads the junit report: a skip
-whose reason no `--allow` explains is exit 1, and so is an `--allow` that explains no skip; the one declared skip is the Pysa
-end-to-end test, which needs a measured Pysa home. A new skip is declared in that workflow step or it is a red.
+**Hosted run.** `.github/workflows/localci-tests.yml` runs this suite on every pull request that touches `scripts/localci/**`, or one
+of the real-repo files the suite copies from outside it (`runner.TRUSTED_CLASSIFIER_FILES`), with the candidate image built and
+hypothesis installed. It is not a required context. `python scripts/localci/skip_budget.py <junit.xml>` then reads the junit report
+and applies three rules; each failure is exit 1. (1) `--allow TEST_REGEX REASON_REGEX`: a skip is declared only if the regex matches
+its test id and its reason, and each allowance must explain exactly one skip (none is STALE, two or more is OVERUSED); any other
+skip is UNDECLARED. (2) `--require TEST_REGEX`: at least one executed test case must match, so a skipped, deselected or
+never-collected test is MISSING. (3) `--min-executed N`: at least N cases executed (default 1). A green job therefore means: the
+declared skip (the Pysa end-to-end test, which needs a measured Pysa home) is the only skip, the named required tests executed, and
+at least the floor number of cases executed. It does not mean the rest of the suite is as strong as those tests, and failures and
+errors stay pytest's own exit code. A blanket pattern (empty, or matching every string) and an inconsistent report are refused, exit 2.

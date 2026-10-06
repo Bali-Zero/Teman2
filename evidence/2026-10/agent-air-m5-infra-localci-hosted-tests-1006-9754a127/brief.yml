@@ -19,14 +19,26 @@ constraints:
 acceptance:
   - text: WHEN a pull request touches scripts/localci, the hosted job SHALL run scripts/localci/tests with the candidate image built and hypothesis installed.
     probe: the "localci tests" check run on this pull request (its log, pack.yml receipts)
-  - text: WHEN the junit report carries a skip whose reason no allowance explains, skip_budget.py SHALL exit 1 and name the test.
+  - text: WHEN the junit report carries a skip that no allowance explains, skip_budget.py SHALL exit 1 and name the test.
     probe: scripts/localci/tests/test_skip_budget.py::test_an_undeclared_skip_exits_1_and_is_named
-  - text: WHEN an allowance explains no skip in the report, skip_budget.py SHALL exit 1.
+  - text: WHEN the same skip reason appears on a test id the allowance does not name, skip_budget.py SHALL treat that skip as undeclared.
+    probe: scripts/localci/tests/test_skip_budget.py::test_the_same_reason_on_a_different_test_id_is_undeclared
+  - text: WHEN an allowance explains no skip, skip_budget.py SHALL exit 1 as STALE.
     probe: scripts/localci/tests/test_skip_budget.py::test_an_allowance_that_explains_no_skip_is_stale_and_exits_1
-  - text: WHEN an allowance matches the empty string, or the report cannot be read, skip_budget.py SHALL refuse with exit 2.
-    probe: scripts/localci/tests/test_skip_budget.py::test_an_allowance_that_matches_the_empty_reason_is_refused
-  - text: WHEN a pattern matches only a test's name or file path, skip_budget.py SHALL NOT treat the skip as declared.
+  - text: WHEN an allowance explains two or more skips, skip_budget.py SHALL exit 1 as OVERUSED.
+    probe: scripts/localci/tests/test_skip_budget.py::test_two_skips_explained_by_one_allowance_are_overused
+  - text: WHEN a required test did not execute (skipped, deselected or never collected), skip_budget.py SHALL exit 1 as MISSING, including on a real pytest report written with -k.
+    probe: scripts/localci/tests/test_skip_budget.py::test_round_trip_through_a_real_pytest_junit
+  - text: WHEN fewer cases executed than the floor (default 1), skip_budget.py SHALL exit 1 as TOO FEW.
+    probe: scripts/localci/tests/test_skip_budget.py::test_with_the_default_floor_one_allowed_skip_and_nothing_executed_is_not_clean
+  - text: WHEN a pattern does not compile, matches the empty string or matches a string no test id contains, skip_budget.py SHALL refuse with exit 2.
+    probe: scripts/localci/tests/test_skip_budget.py::test_a_blanket_pattern_is_refused_in_every_position
+  - text: WHEN the report holds a skipped element outside a test case, or testsuites that do not add up to its test cases, skip_budget.py SHALL refuse with exit 2.
+    probe: scripts/localci/tests/test_skip_budget.py::test_a_skipped_element_outside_a_test_case_is_refused
+  - text: WHEN a pattern matches only a test's name or file path and not its reason, skip_budget.py SHALL NOT treat the skip as declared.
     probe: scripts/localci/tests/test_skip_budget.py::test_the_reason_is_searched_never_the_test_name_or_its_file_path
+  - text: WHEN a pull request changes a real-repo file the suite copies from outside scripts/localci, the workflow's path filter SHALL select it.
+    probe: scripts/localci/tests/test_hosted_workflow.py::test_the_filter_covers_the_suite_the_workflow_and_every_outside_input_it_reads
   - text: WHEN the host environment forces colour, the uncontained guilt twin SHALL still read the attack's observations from the check log.
     probe: scripts/localci/tests/test_isolation.py::test_uncontained_candidate_code_really_reaches_host_state
 assumptions:
