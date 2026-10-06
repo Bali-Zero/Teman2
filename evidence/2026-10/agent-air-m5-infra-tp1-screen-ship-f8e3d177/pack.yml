@@ -1,0 +1,328 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  Code and invented fixtures only. Every phone, e-mail and credential-shaped value in
+  scripts/tp1max/test_build_queues.py is assembled at runtime by concatenation; detect-secrets
+  reports 0 hits on scripts/tp1max/ and this directory. The real-tree measurements were taken
+  by path and reason only; phone windows were printed with every digit masked, e-mails by TLD.
+  The council answers in journal.jsonl carry the seats' own example shapes; on the lines the
+  screen itself flags, the backtick spans were replaced by "<example redacted>" (16 lines);
+  the sha256 of each raw answer is recorded and the raw text stays in the verifier's scratch.
+council_run: journal.jsonl
+seat_override: >-
+  DECLARED at the imperator's order, for the imperator to weigh before the final gate. The gear-3
+  council quorum (R9) and reviewer independence cannot be met by the lint's listed seats today. The
+  builder is Codex O3, so the three Codex O2 rows are the builder's family and are not counted as
+  independent. Kimi K3 answered round 1 (NO-GO, every item dispositioned in review_disposition), then
+  timed out in round 2 (1200 s) and stopped on its 5-hour quota (403) during the final review. The
+  TP1 seats (qwen3.8-max, deepseek, glm) are out of monthly quota (429) until 2026-10-11T16:00Z;
+  agy-gemini is busy in the owner's windows. Fallbacks tried on the imperator's order: the Qwen CLI
+  has no broker seat (unknown seat qwen); Ollama qwen3.5:9b on Mini, local and unlisted, answered on the
+  retry (NO-GO, 10 items: 1 confirmed and cured in a56b2e5723, 8 not defects by probe, 1 declared limit).
+plan_ref: >-
+  team-lead mandate to dux-tp1screen (campaign 2026-10-05/06): verify and ship PR-B, the
+  hardened TP1 input screen, re-cut of part (a) of the closed PR #7927 after its final gate
+  (receipt ~/.agent/campaign-20261005/work/gate-7927/receipt.txt, blocker B1). Codex O3 built
+  from task.md (seat_build.sh, 01:59-02:17Z); the Claude verifier judges on disk and ships.
+lanes:
+  - lane: build
+    role: build
+    seat: codex-gpt-5.6-sol
+  - lane: verify-harden-ship
+    role: build
+    seat: claude-opus-5-5
+  - lane: council-codex-o2
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: council-and-final-review-kimi
+    role: review
+    seat: kimi-code/k3
+what_changed: |
+  Commits 1bd6123449, a29ba11f58, ae8589555e, 5815a04fa1, a56b2e5723 on origin/main f9635d4835.
+  - scripts/tp1max/build_code_queue.py: the queue builder with a fail-closed screen. Reasons:
+    unsafe_path, excluded_path, symlink (file or linked directory), unreadable (vanished,
+    unreadable, a directory), oversized, empty, binary, short, secret, phone, email,
+    screen_error. Phones: separator-normalised digit runs, group-aligned windows, Indonesian
+    mobile/landline and international shapes. Secrets — explicit families, PEM header, URL
+    credentials, key-like names assigned a literal. E-mail: role mailbox at own domains or any
+    address at a documentation domain. The path is screened with the text.
+  - scripts/tp1max/build_verify_queue.py: from #7927; stage-A findings are re-screened and
+    the skips counted (skipped_unclean_findings).
+  - scripts/tp1max/test_build_queues.py: guilt per shape, innocence corpus, exact per-reason
+    counts on a fixture repo, fail-closed exception, verify re-screen.
+  - .github/workflows/tp1-screen-tests.yml (py3.9 + py3.11) and its entry in
+    main-push-failure-watch.yml.
+  Against the Codex build: the optional detect-secrets plugin layer was removed (verdict
+  differed between CI and M5); compound names, JSON keys, shell NAME=value, PEM with escaped
+  newlines, DSN, merged/identifier/NBSP/unicode-dash/00-prefix phones, person addresses at
+  own domains, excluded paths counted, two quadratic regexes bounded.
+proof: |
+  Deterministic floor 3, source path (a new workflow), measured with --print-floor.
+  Verifier fixture tree (invented): Codex build 17 of 93 guilt files queued, #7927's 49;
+  this head 0 of 95, every reason count exact; 20 innocence files, 20 queued.
+  Real tree at origin/main f9635d4835, same tree for both: #7927's screen 5297 jobs, this one
+  5205 (consumer command on 3.9.6 at a56b2e5723, 04:45:10Z). 96 files leave the queue
+  (mostly secret — key-like names with literal values, DSN passwords); 10 enter, each read: 7 role mailboxes and 3 *.invalid, an image
+  id, a regex naming xoxb-, a key whose value spells FAKE.
+  Mutations on scratch copies: 39 + 15 + 3 targeted, all red after tests were added for the
+  two survivors. Suite: 4 passed on 3.11.15 and 3.9.6; 512 KiB adversarial inputs under 0.3 s.
+seat_note: >-
+  Codex answered as gpt-6.1-sol; the round-1 session file is under ~/.codex-o2/sessions, so
+  the O2 account answered (the builder was O3: same family, so Codex sat on the council only,
+  never as the grader). Kimi K3 round 2 timed out at 1200 s with no answer (ok:false); its
+  final cross-family review stopped on the seat's 5-hour quota (403) with no verdict, so the
+  final diff was re-reviewed by Codex O2 (same family as the builder; disclosed as such). TP1
+  Qwen is out of monthly quota until 2026-10-11T16:00Z, Gemini agy busy in the owner's windows.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "r1 C2 / r2 R1: secrets shorter than 8 (now 6) chars, and DSN passwords under 2, still pass."
+    status: PLAUSIBLE
+    resolution: "Lowered 8 -> 6 (quoted) and 3 -> 2 (DSN); shorter is a declared limit: a 1-5 char value is not distinguishable from code at acceptable cost."
+  - seat: codex-gpt-5.6-sol
+    objection: "r1 C8: a phone wrapped over a newline is two fragments."
+    status: PLAUSIBLE
+    resolution: "Declared limit; joining across lines would merge numeric columns everywhere."
+  - seat: codex-gpt-5.6-sol
+    objection: "r1 C11: TOCTOU between the symlink checks and read_bytes()."
+    status: PLAUSIBLE
+    resolution: "Declared limit: needs a concurrent local writer during a hand-run build on the owner's laptop."
+  - seat: codex-gpt-5.6-sol
+    objection: "r2 N2: a credential containing xxxx/example is excused."
+    status: PLAUSIBLE
+    resolution: "Declared limit: for a random token the odds are below 1e-5; families are excused only by xxxx/example/<."
+review_disposition:
+  - {
+      id: O1,
+      item: "Ollama: CI pytest path cannot import the module",
+      disposition: NOT-A-DEFECT,
+      proof: "the test inserts its own directory into sys.path; the workflow's exact command passes from the repo root",
+    }
+  - {
+      id: O2,
+      item: "Ollama: person address at own domain passes",
+      disposition: NOT-A-DEFECT,
+      proof: "probe returns email",
+    }
+  - {
+      id: O3,
+      item: "Ollama: phone wrapped over a newline",
+      disposition: LIMIT,
+      proof: "already declared",
+    }
+  - {
+      id: O4,
+      item: "Ollama: quoted lowercase word passes",
+      disposition: NOT-A-DEFECT,
+      proof: "probe returns secret; guilt test",
+    }
+  - {
+      id: O5,
+      item: "Ollama: quoted kebab value with digits passes",
+      disposition: NOT-A-DEFECT,
+      proof: "probe returns secret",
+    }
+  - {
+      id: O6,
+      item: "Ollama: lower-case PEM header",
+      disposition: CURED,
+      proof: "a56b2e5723; guilt; pem-case-sensitive RED",
+    }
+  - {
+      id: O7,
+      item: "Ollama: DSN password starting with !",
+      disposition: NOT-A-DEFECT,
+      proof: "probe returns secret",
+    }
+  - {
+      id: O8,
+      item: "Ollama: JWT with fullwidth chars",
+      disposition: NOT-A-DEFECT,
+      proof: "the standard short JWT returns secret; a fullwidth JWT is not a JWT",
+    }
+  - {
+      id: O9,
+      item: "Ollama: .env.example read",
+      disposition: NOT-A-DEFECT,
+      proof: "SKIP_PATH excludes it and its extension is not a candidate",
+    }
+  - {
+      id: O10,
+      item: "Ollama: +62 spaced phone missed",
+      disposition: NOT-A-DEFECT,
+      proof: "probe returns phone; guilt test",
+    }
+  - {
+      id: F1,
+      item: "final: double-quoted value holding an apostrophe",
+      disposition: LIMIT,
+      proof: "declared; a value with both quote kinds is not parsed",
+    }
+  - {
+      id: F2,
+      item: "final: unquoted shell literal of 6-7 chars",
+      disposition: LIMIT,
+      proof: "unquoted values need 8+ chars",
+    }
+  - {
+      id: F3,
+      item: "final: DSN password shaped like snake_case excused",
+      disposition: CURED,
+      proof: "5815a04fa1; guilt: a postgres URL whose password is snake_case; dsn-name-exempt RED",
+    }
+  - {
+      id: F4,
+      item: "final: any quoted value starting with $ excused",
+      disposition: CURED,
+      proof: "5815a04fa1; only a braced template or a dollar plus an upper-case name; dollar-always-excused RED",
+    }
+  - {
+      id: F5,
+      item: "final: quoted local part before @",
+      disposition: LIMIT,
+      proof: "declared; RFC 5322 quoted local parts are not parsed",
+    }
+  - {
+      id: KF,
+      item: "Kimi final trace: escaped quote inside a value",
+      disposition: CURED,
+      proof: "a29ba11f58; no-escaped-value RED",
+    }
+  - {
+      id: C1/K1,
+      item: "quoted bare word / CONSTANT / kebab password excused",
+      disposition: CURED,
+      proof: "test guilt: lowercasepassword, postgres, X9K2..., correct-horse-...; mutations kebab-passphrase-excused, const-needs-no-underscore RED",
+    }
+  - {
+      id: C2/K2,
+      item: "passphrase with spaces; short values",
+      disposition: CURED-PARTLY,
+      proof: "spaces and 6+ chars; quoted-no-spaces, quoted-min-8 RED; under 6 = limit",
+    }
+  - {
+      id: C3,
+      item: "family excused by placeholder-ish substring",
+      disposition: CURED,
+      proof: "xkeysib-...sample... guilt; family-placeholder-wide RED",
+    }
+  - {
+      id: C4,
+      item: "DSN lowercase/short password",
+      disposition: CURED,
+      proof: "guilt: the two-character DSN password",
+    }
+  - {
+      id: C5,
+      item: "the AWS secret-key variable name not traversed",
+      disposition: NOT-A-DEFECT,
+      proof: "classify on that name assigned 40 mixed characters returns secret, run 2026-10-06",
+    }
+  - {
+      id: C6,
+      item: "shell NAME=value with a letters-only value",
+      disposition: CURED,
+      proof: "guilt; drop-shell-rule RED",
+    }
+  - {
+      id: C7,
+      item: "+ (44) 20 ...",
+      disposition: CURED,
+      proof: "guilt; drop-plus-paren RED",
+    }
+  - {
+      id: C9/N3,
+      item: "person!info@ / person'info@ own domain",
+      disposition: CURED,
+      proof: "guilt; local-part-no-bang RED",
+    }
+  - {
+      id: C10/K8/K10,
+      item: "subdomains, +tag",
+      disposition: CURED,
+      proof: "innocence a@docs.example.org, info+qa@mail.balizero.com; drop-plus-tag-strip RED",
+    }
+  - {
+      id: C12,
+      item: "repo root a symlink",
+      disposition: NOT-A-DEFECT,
+      proof: "git ls-files lists the repo the root resolves to; nothing outside it is read",
+    }
+  - {
+      id: K3,
+      item: "fullwidth digits",
+      disposition: CURED,
+      proof: "guilt; drop-unicode-digits RED",
+    }
+  - {
+      id: K4,
+      item: "0 812 3456 7890",
+      disposition: CURED,
+      proof: "guilt; drop-whole-run RED",
+    }
+  - {
+      id: K5,
+      item: "whsec_ ASIA ghu_ glpat- npm_ slack webhook age",
+      disposition: CURED,
+      proof: "guilt; drop-asia, drop-ghu-only, drop-glpat-npm-whsec RED",
+    }
+  - {
+      id: K6/R2,
+      item: "short and empty-payload JWT",
+      disposition: CURED,
+      proof: "guilt; drop-short-jwt RED",
+    }
+  - {
+      id: K9,
+      item: "punycode / non-ASCII domain",
+      disposition: CURED,
+      proof: "guilt an address at a punycode domain",
+    }
+  - {
+      id: N1,
+      item: "!StrongPass92 excused when quoted",
+      disposition: CURED,
+      proof: "guilt; bang-excused-when-quoted RED",
+    }
+  - {
+      id: N4,
+      item: "sensitive file NAME enters job id and prompt",
+      disposition: CURED,
+      proof: "fixture file wa_0812...py -> phone; path-not-classified RED",
+    }
+  - {
+      id: N5,
+      item: "verify builder copies stage-A findings unscreened",
+      disposition: CURED,
+      proof: "test row m4; verify-no-rescreen RED",
+    }
+  - {
+      id: N6,
+      item: "triple-quoted literal",
+      disposition: CURED,
+      proof: "guilt; no-triple-quotes RED",
+    }
+receipts:
+  - claim: "deterministic floor 3, source path"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <changed> --numstat-file <numstat> --patch-file <workflow patch>"
+    result: "see the PR body (measured on the final head)"
+    exit: 0
+    ts: "2026-10-06T03:55:00Z"
+    seat: claude-opus-5-5
+  - claim: "suite green on both interpreters"
+    cmd: "python3 -m pytest -q scripts/tp1max/test_build_queues.py; uv run --python 3.9 --with pytest python -m pytest -q <same>"
+    result: "4 passed / 4 passed (3.9.6)"
+    exit: 0
+    ts: "2026-10-06T03:41:30Z"
+    seat: claude-opus-5-5
+  - claim: "consumer command on the committed tree"
+    cmd: "/usr/bin/python3 scripts/tp1max/build_code_queue.py <worktree> <scratch>/bites_code_queue.jsonl"
+    result: "jobs 5230; skipped email 159, empty 34, excluded_path 4181, oversized 2, phone 92, secret 61, short 139"
+    exit: 0
+    ts: "2026-10-06T03:43:41Z"
+    seat: claude-opus-5-5
+  - claim: "no workflow ran scripts/tp1max tests before this PR"
+    cmd: "git grep -n tp1max origin/main -- .github/workflows"
+    result: "no match"
+    exit: 1
+    ts: "2026-10-06T02:22:00Z"
+    seat: claude-opus-5-5

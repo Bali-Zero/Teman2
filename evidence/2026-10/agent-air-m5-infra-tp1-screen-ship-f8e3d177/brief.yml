@@ -1,0 +1,43 @@
+task_id: tp1-screen-ship
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  PR-B of the #7927 re-cut: the hardened TP1 input screen alone. The final gate of #7927
+  BLOCKED on B1 — on an invented fixture tree 31 sensitive files reached the queue that a
+  hand-run step sends to the paid third-party TP1 plan (credential families, phones in most
+  groupings, role addresses on any domain; unicode/newline paths dropped uncounted). Codex O3
+  built the cure from the gate's text; a Claude verifier judged it on disk, found 17 more
+  leaks in its own fixture, hardened it through a two-family council, and ships screen, tests
+  and the CI that runs them. Gear 3 by the deterministic floor (a new workflow is a hot zone).
+acceptance:
+  - text: >-
+      Every guilt shape the gate listed, and each one the council added, is refused by the
+      screen under its own reason (secret / phone / email / unsafe_path / symlink / binary /
+      empty / oversized / unreadable / excluded_path / screen_error); every innocence shape is
+      queued; per-reason skip counts on a fixture repo are exact.
+    probe: python3 -m pytest -q scripts/tp1max/test_build_queues.py
+  - text: >-
+      Each detector, the digit normalisation, the e-mail allowlist, the path checks and the
+      fail-closed except are load-bearing: removing any one turns the suite red.
+    probe: mutation runs on a scratch copy (mutate.py / mutate2.py, verifier scratch)
+  - text: >-
+      The suite runs in CI on Python 3.9 (the M5 /usr/bin/python3 that builds the queue) and
+      3.11, on every PR and main push touching scripts/tp1max/**, and a red on main reaches
+      the watcher.
+    probe: .github/workflows/tp1-screen-tests.yml on this PR head; scripts/check_watcher_coverage.py
+  - text: >-
+      The consumer command, run on the real tree at this head, prints the per-reason summary
+      with no sensitive file queued.
+    probe: /usr/bin/python3 scripts/tp1max/build_code_queue.py <repo> <scratch>/code_queue.jsonl
+assumptions:
+  - text: >-
+      No workflow on origin/main runs scripts/tp1max tests (the directory does not exist there).
+    status: verified
+    probe: git grep -n tp1max origin/main -- .github/workflows (no match, 2026-10-06)
+  - text: >-
+      detect-secrets is importable on the M5 laptop but not installed by CI, so the Codex
+      build's optional plugin layer made the verdict environment-dependent; it was removed in
+      favour of explicit families.
+    status: verified
+    probe: python3 -c 'import detect_secrets' on M5 (3.11.15) succeeds; the workflow installs pytest only
