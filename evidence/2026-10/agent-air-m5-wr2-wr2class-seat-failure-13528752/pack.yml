@@ -10,6 +10,8 @@ plan_ref: >-
   commits touches these files), disposed the post-build Kimi K3 refutation, added one cure commit and
   shipped. Rebase map: 486fbbea19 -> 64db389f04, 545fd985e7 -> b70b8f49c5, 22f957ed30 -> a3f6134473,
   f22ee522cb -> a39574409d; cure 5dad03b98f (its first, unpushed version 7c881b79b7 was amended after Kimi K3's second pass).
+  Cure round 2026-10-06 (dux-wr2class3) after the final gate's BLOCK: one commit wires the test module
+  into the required antidotes job; no wrapper or test byte changes.
 lanes:
   - lane: wr2class-build
     role: build
@@ -45,7 +47,8 @@ seat_fallback_reason: >-
 council_timing: >-
   Rounds 1-2 on the rule (10:58Z, 11:06Z) ran BEFORE the first build commit (486fbbea19, 11:20Z). The
   diff reviews (11:30Z, 11:40Z) and the Kimi K3 refutations (12:06Z, and the pass on 7c881b79b7) are
-  post-build by construction: they judge built diffs.
+  post-build by construction: they judge built diffs. So are the final gate (BLOCK, 2026-10-06T01:54Z)
+  and the codex-o2 review of the cure delta (PASS, 2026-10-06T02:01Z).
 what_changed: |
   wr2-ig-metrics-analyst-run.sh: claude_stderr_retryable / claude_stdout_retryable /
   claude_retryable_files are replaced by one claude_failure_class(stdout, stderr, rc) that prints
@@ -64,6 +67,10 @@ what_changed: |
   "all Claude OAuth accounts unavailable (last failure: <class>)" and the alert; a CLI exiting 98 on
   its own is an unclassified failure, never the loop's next-account signal. Unchanged: slot order,
   RETIRED_TOKEN_VARS (#7898), timeouts, model, and an unclassified non-zero exit still stops the loop.
+  .github/workflows/immune-enforcement.yml (cure round): the antidotes job's "wr2-ig-metrics-analyst
+  wrapper corpus" step runs the test module, and the module is a sentinel path of that job, so a revert
+  of any of the three cures turns a required check red (the shell corpus and test_claude_cascade_shell.py
+  are green on the defective base).
 spend:
   wall_clock_hours: 2.5
 receipts:
@@ -147,6 +154,11 @@ receipts:
     exit: "11/11 KILLED (M10 no_real_answer[...saved `/tmp/ig/amendment-2026-10-05.md`]; M11 every_notice_shape[team's shared budget]); golden G1/G3/G4 IDENTICAL, G2 only the intended class= in the err log; dispose identical to the 12:32Z run"
     ts: "2026-10-05T12:56Z"
     seat: claude-opus-5.5
+  - claim: the antidotes step command runs green from the worktree root, and the workflow's own guards hold on the edited file
+    cmd: bash -e -c 'bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh; python3 -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py'; python3 -m pytest -q -p no:cacheprovider test_immune_enforcement_trigger_symmetry.py test_lint_workflow_errexit_decap.py test_unreachable_workflow_conditions.py test_check_required_workflow_conformance.py test_lint_trigger_symmetry.py test_required_context_map.py; actionlint -color -shellcheck= .github/workflows/immune-enforcement.yml
+    exit: "0 (44 pass, 0 fail; 61 passed) / 0 (117 passed) / 0"
+    ts: "2026-10-06T02:02Z"
+    seat: claude-opus-5.5
 dissent:
   - seat: codex-default-home (diff review)
     objection: "BLOCK on 486fbbea19: (1) 'You have hit your session limit\\nPlease try again later.' accepted as an answer; (2) 'You have hit your session limit: this hook earned 2x saves.\\nretry-amendment.md' read as a notice; (3) LAST_FAILURE_CLASS stale when the cascade deadline has already expired."
@@ -201,4 +213,5 @@ residuals:
   - "Class audit: scripts/ai-dispatch.sh and infra/launchagents/wrappers/cron-agent.sh carry the same claude_stderr_retryable/claude_stdout_retryable family (ai-dispatch.sh:407-474) and are not cured here."
   - "claude-cascade.sh's stdout rule has no disabled-subscription head and no Sonnet/Opus/Fable-limit head either; it moves on for any non-zero exit, so only an exit-0 stdout notice is exposed there (PR #7925 owns that file today, not edited)."
   - "SPEC OWED (owner: the imperator assigns it): judge an answer by the analyst's own output contract (the amendment file it is told to write, and that the file exists), not by path shapes on stdout; it would retire the answer-path guard that three review rounds moved. Until then the guard's boundary is two-line answers that open with a limit phrase."
+  - 'Head list pinned to claude-code 2.1.289 and never re-measured: the final gate found two 2.1.290 strings still accepted as the answer on stdout at rc 0, base-identical ("Your organization is out of usage credits. Contact your admin to add more." and "You''ve hit your channel''s monthly usage limit"). Re-measurement owed.'
   - "The deadline-refusal class (timeout on an already expired cascade) has no test: it only changes the alert text."
