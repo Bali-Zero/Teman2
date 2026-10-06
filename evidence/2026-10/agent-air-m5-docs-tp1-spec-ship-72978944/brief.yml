@@ -1,0 +1,40 @@
+task_id: tp1-spec-ship
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  Write the spec and the declared shape corpus for the TP1 input screen before any further cure.
+  The final gate blocked the screen three times on new leaked shapes (#7927 B1: 31, #7971 B1: 16,
+  #7971 B1-r2: 12) and found no stated corpus a check could converge on; Builder Contract 1 says a
+  depth-2 cure is a spec. Codex O1 drafted spec and corpus (seat_build.sh, 12:36-13:12Z); a Claude
+  verifier mapped every receipt item to a row, added the misses, fixed the rules that contradicted
+  the receipts or the innocence rows, and ships the corpus with a schema test wired into the TP1
+  runner workflow. Gear 3 by the deterministic floor (a workflow edit is a hot zone).
+acceptance:
+  - text: >-
+      Every leaked shape of the three receipts, the six untested rules, the YAML next-line case, the
+      Kimi items and the #7971 known limits map to a corpus row; at least 30 innocence rows come from
+      the measured innocent-loss breakdown.
+    probe: python3 -m pytest -q scripts/tp1max/test_screen_corpus.py (source counts 31/16/12/6, innocence >= 30)
+  - text: >-
+      Every row reconstructs, every guilt row holds the shape its expected_reason claims, the
+      declared limits are exactly the rows the spec lists, and the corpus file holds no token-, DSN-
+      or phone-shaped literal; each of these checks can fail.
+    probe: the same pytest on 3.9 and 3.11; mutation battery on scratch copies (14 mutants, all red)
+  - text: >-
+      The repo's secret guards find nothing in the four changed files.
+    probe: detect-secrets-hook --baseline .secrets.baseline <files>; scripts/lint_pg_dsn_credentials.py, lint_telegram_tokens.py, lint_google_oauth_credentials.py <files>
+  - text: >-
+      The schema test runs in CI on every PR and main push that touches the corpus, the test or the
+      spec, and its red reaches the existing watcher entry.
+    probe: .github/workflows/tp1-runner-tests.yml on this PR head (both legs); "TP1 runner tests" in main-push-failure-watch.yml
+assumptions:
+  - text: >-
+      No workflow on origin/main runs scripts/tp1max tests; only tp1-runner-tests.yml exists.
+    status: verified
+    probe: ls .github/workflows | grep tp1 (tp1-runner-tests.yml only, 2026-10-06); git ls-tree origin/main scripts/tp1max (empty)
+  - text: >-
+      The next screen judges path plus text at its entry point; MIN_CHARS and the EXT/ROOTS/SKIP_PATH
+      filters are builder policy, as in refs/pull/7971/head.
+    status: verified
+    probe: git show refs/pull/7971/head:scripts/tp1max/build_code_queue.py (classify(path + text) after the MIN_CHARS check)

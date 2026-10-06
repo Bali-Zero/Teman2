@@ -1,0 +1,224 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  Docs, invented data and a schema test only. Every credential-, DSN-, phone- and e-mail-shaped
+  value in scripts/tp1max/screen_corpus.yaml is assembled by its construct (concatenation, repeat,
+  base64) and never appears whole on one line; the corpus test scans the raw file for those shapes
+  and finds none. Domains are invented (client.corp, *.invalid, RFC 2606 names) or the project's own;
+  locals on own domains are synthetic. US/UK/AU numbers use the reserved fictional ranges.
+  detect-secrets v1.5.0 (pre-commit hook form) and the repo's DSN, Telegram and Google OAuth lints
+  report 0 findings on every changed file, this journal included. No provider call was made.
+council_run: journal.jsonl
+seat_override: >-
+  DECLARED for the imperator to weigh at the final gate. The floor is 3 by path (a workflow edit).
+  Seats that could not sit: Kimi K3 is out of its quota (the imperator's word in the mandate; not
+  re-attempted, to spend no call on a known 403); the TP1 seats answer 429 until 2026-10-11T16:00Z;
+  agy-gemini is busy in the owner's windows; there is no qwen seat (unknown seat qwen, 2026-10-06
+  04:29Z). The drafter is Codex O1, so the two Codex O2 rows are the builder's family: they are a
+  council voice, not an independent grader. Ollama qwen3.5:9b on Mini answered round 1 (NO-GO,
+  15 items: 0 confirmed defects, 2 cosmetic NITs taken) but is not in the lint's seat list. The
+  Claude verifier is a third family and the only grader; the final gate is the independent check.
+plan_ref: >-
+  team-lead mandate to dux-tp1spec (campaign 2026-10-05/06): verify and ship the TP1 input-screen
+  SPEC and shape CORPUS drafted by Codex O1 (scripts/seat_build.sh, 12:36-13:12Z, task
+  ~/.agent/campaign-20261005/work/codex-tp1-spec/task.md) after three final-gate blocks
+  (receipts gate-7927, gate-7971, gate-7971-r2 under ~/.agent/campaign-20261005/work/).
+lanes:
+  - lane: draft
+    role: build
+    seat: codex-gpt-5.6-sol
+  - lane: verify-extend-ship
+    role: build
+    seat: claude-opus-5-5
+  - lane: council-codex-o2
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: council-ollama-mini
+    role: review
+    seat: ollama-mini/qwen3.5:9b
+what_changed: |
+  - docs/specs/tp1-input-screen.md: the spec. Threat model; decision order; literal/placeholder
+    semantics; named-assignment tiers P/S/K with value placement (same line, next line, block
+    scalar) and annotations; credential-bearing CLI/HTTP/URL contexts; bounded families; decoded
+    views (URL, unicode/hex escapes, HTML, base64 joined across 64/76-column wraps, two layers);
+    phones on group-aligned digit windows with date/amount/sign exemptions; e-mail allowlist of exact
+    role locals on own domains, one exact vendor no-reply address and RFC-reserved names; national IDs
+    and CRM names; structural refusals; O(n) bound, summary schema with the builder's keys; six
+    declared limits; measurable acceptance.
+  - scripts/tp1max/screen_corpus.yaml: 274 rows, 196 guilt / 78 innocence (Codex draft 185 = 131/54).
+  - scripts/tp1max/test_screen_corpus.py: schema, reconstruction, claimed shapes, base64 round trip,
+    setup coherence, source counts, limits = spec list, summary keys = reason enum, raw-literal scan.
+  - .github/workflows/tp1-runner-tests.yml: the corpus test as a step of the existing TP1 workflow
+    (py3.9 + 3.11), with the corpus, the test and the spec added to its paths.
+proof: |
+  Deterministic floor 3, source path, measured with --print-floor / --print-floor-source.
+  Coverage: gate-7927 B1 31 rows, gate-7971 B1 16, gate-7971-r2 B1-r2 12, N1 6, YAML next line 1
+  (machine-counted by the test); 78 innocence rows, 69 outside the structural category.
+  Test: 463 passed on 3.11 and on 3.9.6. Mutations on scratch copies: 18 of 19 corpus/spec mutants
+  red, the survivor is equivalent (standard and urlsafe base64 coincide for that payload); a
+  materialiser mutant (drop the last encoded byte) turns 10 tests red.
+seat_note: >-
+  Both Codex rounds came from ~/.codex-o2 (session files 01a1116c-fd2d and 01a11176-ffc5); the model
+  reported itself as gpt-6.1-sol. Round 1's first final answer (15 items, Italian) sits in the stderr
+  trace; a Codex Stop hook made it rewrite a one-line meta answer, so the journal carries the first.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "r1 #6: short or letters-only literals under Tier S names leave."
+    status: PLAUSIBLE
+    resolution: "Declared limit lim_04: a 16-character mixed floor keeps labels such as token_type values innocent."
+  - seat: ollama-mini/qwen3.5:9b
+    objection: "r1 #3/#5/#6: the test's claim regexes are cruder than the spec's rules."
+    status: PLAUSIBLE
+    resolution: "Not a defect by design: the claim check only proves a guilt row's payload carries its family; the screen's tests come with PR-C."
+review_disposition:
+  - {
+      id: C1-1,
+      item: "sshpass prose read as an operand",
+      disposition: CONFIRMED,
+      proof: "innocent_43 reworded; spec: option at line end or before punctuation; r2 HOLDS",
+    }
+  - {
+      id: C1-2,
+      item: "next line after = needs indentation",
+      disposition: CONFIRMED,
+      proof: "spec: one newline, optional indentation; r2 HOLDS",
+    }
+  - {
+      id: C1-3,
+      item: "amount exemption hides a dot-grouped +62 mobile",
+      disposition: CONFIRMED,
+      proof: "spec exception + row c1_03; r2 HOLDS",
+    }
+  - {
+      id: C1-4,
+      item: "family and JWT bounds not numeric",
+      disposition: CONFIRMED,
+      proof: "spec bounds; r2 HOLDS",
+    }
+  - {
+      id: C1-5,
+      item: "KITAS and name grammar undefined",
+      disposition: CONFIRMED,
+      proof: "KITAS removed, name grammar stated; r2 HOLDS",
+    }
+  - {
+      id: C1-6,
+      item: "short Tier S literals",
+      disposition: DECLARED-LIMIT,
+      proof: "lim_04; r2 HOLDS",
+    }
+  - {
+      id: C1-7,
+      item: "templates with literal fragments",
+      disposition: CONFIRMED,
+      proof: "spec rule + c1_07; r2 HOLDS",
+    }
+  - {
+      id: C1-8,
+      item: "YAML block scalars",
+      disposition: CONFIRMED,
+      proof: "spec rule + c1_08 in a heredoc; r2 HOLDS",
+    }
+  - {
+      id: C1-9,
+      item: "formatted NPWP",
+      disposition: CONFIRMED,
+      proof: "spec + c1_09; r2 HOLDS",
+    }
+  - {
+      id: C1-10,
+      item: "views and families without a witness row",
+      disposition: CONFIRMED,
+      proof: "c1_10a-h; r2 HOLDS",
+    }
+  - {
+      id: C1-11,
+      item: "secret claim accepts a bare keyword",
+      disposition: CONFIRMED,
+      proof: "r2 BROKEN (whitespace operator) -> removed, explicit CLI/netrc alternatives, negative-control test added",
+    }
+  - {
+      id: C1-12,
+      item: "setup not coherent with reason",
+      disposition: CONFIRMED,
+      proof: "size checks; r2 HOLDS",
+    }
+  - {
+      id: C1-13,
+      item: "claim check bypasses encodings",
+      disposition: CONFIRMED,
+      proof: "round-trip test; r2 HOLDS; materialiser mutant red",
+    }
+  - {
+      id: C1-14,
+      item: "raw scan misses families",
+      disposition: CONFIRMED,
+      proof: "scan widened + positive control; r2 HOLDS",
+    }
+  - {
+      id: C1-15,
+      item: "reason enum self-referential",
+      disposition: CONFIRMED,
+      proof: "canonical set + spec summary keys; r2 HOLDS",
+    }
+  - {
+      id: C2-16,
+      item: "webhook rows vs the default suffix rule",
+      disposition: CONFIRMED,
+      proof: "Discord and Slack path grammars stated",
+    }
+  - {
+      id: C2-17,
+      item: "refute disposition 11",
+      disposition: CONFIRMED,
+      proof: "same cure as C1-11",
+    }
+  - {
+      id: O-1-12,
+      item: "Ollama items 1-12 (tier P vs rows, generic suffixes, claim regexes, PyYAML pin, fullwidth digits, subdomains, limit rows)",
+      disposition: NOT-A-DEFECT,
+      proof: "each read against the files: rows cited are innocence e-mail rows; Tier S covers *_SECRET; views apply NFKC and [dot]; limit rows are guilt shapes whose payload is still checked",
+    }
+  - {
+      id: O-13-14,
+      item: "Ollama NITs: 'unlabelled' NIK row prefixed '# ref'; path wording",
+      disposition: CONFIRMED,
+      proof: "row prefix '# noted'; spec: the path is part of the screened text",
+    }
+  - {
+      id: O-15,
+      item: "test path resolution",
+      disposition: NOT-A-DEFECT,
+      proof: "uses Path(__file__).resolve(); CI runs from the repo root",
+    }
+receipts:
+  - claim: "deterministic floor 3, source path"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <changed> --numstat-file <numstat> --patch-file <workflow patch>"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-10-06T13:52:08Z"
+    seat: claude-opus-5-5
+  - claim: "corpus test green on both interpreters"
+    cmd: "python3 -m pytest -q scripts/tp1max/test_screen_corpus.py; uv run --python 3.9 --with pytest --with PyYAML==6.0.3 python -m pytest -q <same>"
+    result: "463 passed in 4.15s / 463 passed in 8.50s (3.9.6)"
+    exit: 0
+    ts: "2026-10-06T13:53:08Z"
+    seat: claude-opus-5-5
+  - claim: "secret guards clean on every changed file"
+    cmd: "detect-secrets-hook --baseline .secrets.baseline <files>; scripts/lint_pg_dsn_credentials.py, lint_telegram_tokens.py, lint_google_oauth_credentials.py <files>"
+    result: "rc 0 each, pack and journal included"
+    exit: 0
+    ts: "2026-10-06T13:53:24Z"
+    seat: claude-opus-5-5
+  - claim: "acceptance probes: python3 -m pytest -q scripts/tp1max/test_screen_corpus.py (source counts, limits, raw scan), the same pytest on 3.9 and 3.11, mutation battery on scratch copies"
+    cmd: "python3 -I ~/.agent/campaign-20261005/work/dux-tp1spec/mutate_test.py <worktree>"
+    result: "18 of 19 mutants red, 1 equivalent; materialiser mutant 10 red"
+    exit: 0
+    ts: "2026-10-06T13:48:10Z"
+    seat: claude-opus-5-5
+  - claim: ".github/workflows/tp1-runner-tests.yml on this PR head (both legs)"
+    cmd: "gh pr checks <pr> (after push)"
+    result: "recorded in the PR body Bites line"
+    exit: 0
+    ts: "2026-10-06T13:53:24Z"
+    seat: claude-opus-5-5
