@@ -57,7 +57,7 @@ seat_note: >-
 dissent:
   - seat: codex-gpt-5.6-sol
     objection: "R1 P1: a 200 with an error object AND a parsable answer is recorded ok (spec row G said the object decides)."
-    status: CONFIRMED (spec), behaviour kept by design
+    status: CONFIRMED
     resolution: "Error-wins would drop a paid answer and re-pay it next run; answer-wins never pays twice and the next reply decides. Spec G corrected in 4b73ceb20a, pinned by test_an_answer_beside_a_gateway_error_is_kept_and_the_next_reply_decides. Codex r2: CLOSED."
   - seat: codex-gpt-5.6-sol
     objection: "R2 P2: QUOTA_RE ^/. stop at a raw body's newline: a multi-line throttling body stops the run."
@@ -65,7 +65,7 @@ dissent:
     resolution: "classify() folds CR/LF (4b73ceb20a); two classify rows red before; Kimi F1 is the mirror case, same cure. Codex r2: CLOSED."
   - seat: kimi-code/k3
     objection: "Q3 (council): Runner already receives the token, pass it to the crash scrub."
-    status: PARTLY CONFIRMED
+    status: PLAUSIBLE
     resolution: "Premise false (Runner receives a call closure); the cure stands as a new Runner keyword argument that main() fills with the caller token, and the crash test carries the bare caller token."
 review_disposition:
   - {
@@ -145,7 +145,19 @@ receipts:
     cmd: "git grep -l tp1_batch_runner 6243ea54c4 -- .github/"
     result: "no match"
     exit: 1
-    ts: "2026-10-06T02:31:00Z"
+    ts: "2026-10-06T03:30:29Z"
+    seat: claude-opus-5-5
+  - claim: "every test the ERROR CLASSES spec names resolves to a test function"
+    cmd: "python3 resolver over the module docstring: each name after a standalone t: (a trailing * = prefix) against def test_* in scripts/test_tp1_batch_runner.py"
+    result: "24 refs, 0 unresolved"
+    exit: 0
+    ts: "2026-10-06T03:34:04Z"
+    seat: claude-opus-5-5
+  - claim: "acceptance probes on the final code head"
+    cmd: "python3 -m pytest -q scripts/test_tp1_batch_runner.py -k 'reaches_no_output or scrub_error'; python3 -m pytest -q scripts/test_tp1_batch_runner.py -k live_2026_10_05; full suite"
+    result: "5 passed / 2 passed / 73 passed"
+    exit: 0
+    ts: "2026-10-06T03:35:44Z"
     seat: claude-opus-5-5
 spend:
   adversarial_rounds: 3

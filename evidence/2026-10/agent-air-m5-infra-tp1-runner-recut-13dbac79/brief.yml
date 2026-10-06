@@ -27,7 +27,7 @@ acceptance:
     probe: python3 -m pytest -q scripts/test_tp1_batch_runner.py -k live_2026_10_05
   - text: >-
       Every test reference in the ERROR CLASSES spec resolves to a test function.
-    probe: the resolver in the pack's receipts (0 unresolved of 23 refs)
+    probe: the resolver in the pack's receipts (0 unresolved of 24 refs)
   - text: >-
       The suite passes on 3.9 (the live jobs' /usr/bin/python3) and 3.11, in CI.
     probe: .github/workflows/tp1-runner-tests.yml on this PR head
