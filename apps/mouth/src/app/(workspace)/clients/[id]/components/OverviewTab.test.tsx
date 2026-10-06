@@ -238,3 +238,63 @@ describe("OverviewTab — delete client affordance", () => {
     ).toBe(true);
   });
 });
+
+describe("OverviewTab — Company docs tile (K22)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.crm.getClientAiSummary).mockResolvedValue({
+      status: "not_generated",
+    } as any);
+    vi.mocked(api.crm.getClientWaCaseIntelligence).mockResolvedValue({
+      status: "not_generated",
+      cases: [],
+    } as any);
+  });
+
+  const tileValue = (label: string) =>
+    screen.getByText(label).closest("[title]")?.querySelector("p")?.textContent;
+
+  it("GUILT: a client with linked companies sees the company document count", () => {
+    render(
+      <OverviewTab
+        {...baseProps}
+        stats={{
+          ...stats,
+          documents_count: 3,
+          company_count: 2,
+          company_documents_count: 5,
+        }}
+        expiryAlerts={[]}
+        needsViewerAction={false}
+      />,
+    );
+    expect(tileValue("Company docs")).toBe("5");
+    // The client tile keeps its own number; the two sets are not summed.
+    expect(tileValue("Client docs")).toBe("3");
+  });
+
+  it("INNOCENCE: no linked company renders no Company docs tile", () => {
+    render(
+      <OverviewTab
+        {...baseProps}
+        stats={{ ...stats, company_count: 0, company_documents_count: 0 }}
+        expiryAlerts={[]}
+        needsViewerAction={false}
+      />,
+    );
+    expect(screen.queryByText("Company docs")).toBeNull();
+    expect(screen.getByText("Client docs")).toBeTruthy();
+  });
+
+  it("INNOCENCE: a response without the field renders no tile instead of 0", () => {
+    render(
+      <OverviewTab
+        {...baseProps}
+        stats={{ ...stats, company_count: 1 }}
+        expiryAlerts={[]}
+        needsViewerAction={false}
+      />,
+    );
+    expect(screen.queryByText("Company docs")).toBeNull();
+  });
+});
