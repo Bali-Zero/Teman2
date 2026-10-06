@@ -5037,6 +5037,9 @@ export interface paths {
     /**
      * Update Document
      * @description Update a document.
+     *
+     *     `client_visible` is a separate gate: only CRM admins, Team Leader, Tax Lead and
+     *     Supervisor may send it (403 otherwise, nothing written).
      */
     patch: operations["update_document_api_crm_clients__client_id__documents__doc_id__patch"];
     trace?: never;
@@ -21534,6 +21537,8 @@ export interface components {
     };
     /** DocumentUpdate */
     DocumentUpdate: {
+      /** Client Visible */
+      client_visible?: boolean | null;
       /** Document Category */
       document_category?: string | null;
       /** Document Type */
