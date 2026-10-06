@@ -102,6 +102,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -120,7 +121,25 @@ HEALTH_MISSING = "MISSING"
 HEALTH_DANGLING = "DANGLING_SYMLINK"
 HEALTH_GONE = "GONE"  # worktree directory itself is absent — stale registry entry
 
+# No `.husky/_` ON PURPOSE: the worktree's sole pusher passes a trusted core.hooksPath.
+HEALTH_TRUSTED_HOOK_ROOT = "TRUSTED_HOOK_ROOT"
+
 FINDING_HEALTHS = frozenset({HEALTH_MISSING, HEALTH_DANGLING})
+
+# Worktrees that must NOT carry the relative `.husky/_` dispatcher. The Codex
+# autofix runtime checks out the FAILED branch it repairs, so a `.husky/_` there
+# would run hook code supplied by that branch (scripts/codex_automation_lib.sh,
+# codex_auto_trusted_prepush_*). Its pusher passes `-c core.hooksPath=<trusted
+# bundle>` instead: the push IS gated, by a hook root this lint cannot see.
+# Keyed by the exact path under the repo root (an entity, never a substring), and
+# honoured only while the named pusher overrides core.hooksPath on EVERY `git push`
+# it runs — drop the override and the worktree reads MISSING again.
+TRUSTED_HOOK_ROOT_RUNTIMES: Dict[str, str] = {
+    ".worktrees/codex-autofix-ci-runtime": "scripts/codex/codex-nightly-autofix-ci.sh",
+}
+
+# `push` as the git SUBCOMMAND (after -c/-C options) — `git stash push` is not one.
+_GIT_PUSH = re.compile(r"\bgit((?:\s+-[cC]\s+\S+)*)\s+push\b")
 
 
 @dataclass
@@ -255,6 +274,29 @@ def check_husky_health(wt_path: Path) -> Tuple[str, bool]:
     return HEALTH_MISSING, False
 
 
+def pusher_overrides_hooks_path(script: Path) -> bool:
+    """True iff `script` runs at least one `git push` and EVERY one carries
+    `-c core.hooksPath=...`. Unreadable or push-less = False (fail toward a finding)."""
+    try:
+        text = script.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    pushes = [
+        m for line in text.splitlines() if not line.lstrip().startswith("#")
+        for m in _GIT_PUSH.finditer(line)
+    ]
+    return bool(pushes) and all("core.hooksPath=" in m.group(1) for m in pushes)
+
+
+def is_trusted_hook_root(wt_path: Path, repo_root: Path) -> bool:
+    try:
+        rel = wt_path.resolve().relative_to(repo_root.resolve()).as_posix()
+    except ValueError:
+        return False
+    pusher = TRUSTED_HOOK_ROOT_RUNTIMES.get(rel)
+    return pusher is not None and pusher_overrides_hooks_path(repo_root / pusher)
+
+
 def scan(repo_root: Path, *, porcelain_output: Optional[str] = None) -> List[WorktreeRecord]:
     """Enumerate every worktree and check `.husky/_` health.
 
@@ -274,6 +316,8 @@ def scan(repo_root: Path, *, porcelain_output: Optional[str] = None) -> List[Wor
             health, is_symlink = HEALTH_GONE, False
         else:
             health, is_symlink = check_husky_health(wt_path)
+            if health == HEALTH_MISSING and is_trusted_hook_root(wt_path, repo_root):
+                health = HEALTH_TRUSTED_HOOK_ROOT
 
         records.append(
             WorktreeRecord(

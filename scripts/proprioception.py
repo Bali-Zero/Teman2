@@ -2381,6 +2381,11 @@ DEFAULT_REGISTRY: list[dict] = [
         # gc cron's job — not a worktree pushing without a gate. The tool itself scores
         # it the same way (FINDING_HEALTHS = MISSING | DANGLING); if the two ever
         # disagree, this list is the side that is wrong.
+        #
+        # TRUSTED_HOOK_ROOT (2026-10-06): a worktree that must NOT carry `.husky/_`
+        # (the Codex autofix runtime checks out the failed branch it repairs) and
+        # whose sole pusher passes a trusted `-c core.hooksPath=`. The tool scores it
+        # as no finding and re-proves the override every scan.
         "id": "worktree_gate_shim", "type": "wrap",
         "target": ["python3", "{repo}/scripts/lint_worktree_husky_symlink.py", "--json"],
         "class": "worktree<->gate",
@@ -2388,7 +2393,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "machines": ["all"], "tags": ["fast"], "timeout_sec": 60,
         "severity": "P1",
         "parse": "findings_list", "unwrap_key": "worktrees",
-        "verdict_key": "health", "ok_values": ["OK", "GONE"],
+        "verdict_key": "health", "ok_values": ["OK", "GONE", "TRUSTED_HOOK_ROOT"],
         "fix_hint": "recreate via `python scripts/agent_start.py` (it symlinks .husky/_), or "
                     "`ln -sfn <main-checkout>/.husky/_ <worktree>/.husky/_` — a worktree born from a "
                     "bare `git worktree add` pushes with NO gate and reports a clean push",

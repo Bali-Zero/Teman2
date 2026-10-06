@@ -13,6 +13,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -448,7 +449,8 @@ def test_the_registry_and_the_tool_agree_on_what_counts_as_a_finding() -> None:
     would be graded a finding by the organ and not by the tool, or vice versa.
     """
     ok = set(_gate_entry()["ok_values"])
-    all_healths = {lwhs.HEALTH_OK, lwhs.HEALTH_MISSING, lwhs.HEALTH_DANGLING, lwhs.HEALTH_GONE}
+    all_healths = {lwhs.HEALTH_OK, lwhs.HEALTH_MISSING, lwhs.HEALTH_DANGLING, lwhs.HEALTH_GONE,
+                   lwhs.HEALTH_TRUSTED_HOOK_ROOT}
     assert ok | set(lwhs.FINDING_HEALTHS) == all_healths, (
         "every health state the tool can emit must be classified by the registry: "
         f"ok={sorted(ok)} findings={sorted(lwhs.FINDING_HEALTHS)} all={sorted(all_healths)}"
@@ -477,3 +479,60 @@ def test_the_parser_contract_matches_the_tools_json_shape() -> None:
     assert entry["unwrap_key"] in payload, f"unwrap_key {entry['unwrap_key']!r} absent from the tool's JSON"
     assert entry["verdict_key"] in payload[entry["unwrap_key"]][0], \
         f"verdict_key {entry['verdict_key']!r} absent from a worktree record"
+
+
+# ------------------------------------------- trusted hook root (guilt/innocence)
+
+_AUTOFIX_REL = ".worktrees/codex-autofix-ci-runtime"
+
+
+def _trusted_fleet(tmp_path: Path, pusher_body: Optional[str], wt_rel: str = _AUTOFIX_REL):
+    repo = _mk_repo(tmp_path)
+    if pusher_body is not None:
+        pusher = repo / lwhs.TRUSTED_HOOK_ROOT_RUNTIMES[_AUTOFIX_REL]
+        pusher.parent.mkdir(parents=True)
+        pusher.write_text(pusher_body)
+    wt = repo / wt_rel
+    (wt / ".husky").mkdir(parents=True)
+    porcelain = (
+        f"worktree {repo}\nHEAD aaa\nbranch refs/heads/main\n\n"
+        f"worktree {wt}\nHEAD bbb\ndetached\n"
+    )
+    return next(r for r in lwhs.scan(repo, porcelain_output=porcelain) if r.path == wt)
+
+
+_GATED = 'git stash push -u -m "$T"\nif ! git -c core.hooksPath="$H" push -u origin "$B"; then exit 1; fi\n'
+
+
+def test_innocence_trusted_runtime_with_gated_pusher_is_not_a_finding(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, _GATED)
+    assert rec.health == lwhs.HEALTH_TRUSTED_HOOK_ROOT
+    assert rec.is_finding is False
+
+
+def test_guilt_trusted_runtime_whose_pusher_has_a_bare_push_is_a_finding(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, _GATED + 'git push origin "$B"\n')
+    assert rec.health == lwhs.HEALTH_MISSING
+    assert rec.is_finding is True
+
+
+def test_guilt_trusted_runtime_without_its_pusher_is_a_finding(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, None)
+    assert rec.health == lwhs.HEALTH_MISSING
+
+
+def test_guilt_pusher_that_never_pushes_proves_nothing(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, 'git stash push -u\n# git -c core.hooksPath=x push\n')
+    assert rec.health == lwhs.HEALTH_MISSING
+
+
+def test_guilt_lookalike_path_is_not_the_declared_entity(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, _GATED, wt_rel=_AUTOFIX_REL + "-copy")
+    assert rec.health == lwhs.HEALTH_MISSING
+    assert rec.is_finding is True
+
+
+def test_live_declared_pushers_still_override_hooks_path() -> None:
+    repo = Path(__file__).resolve().parents[2]
+    for rel, pusher in lwhs.TRUSTED_HOOK_ROOT_RUNTIMES.items():
+        assert lwhs.pusher_overrides_hooks_path(repo / pusher), (rel, pusher)
