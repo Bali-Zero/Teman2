@@ -319,7 +319,11 @@ async def resolve_asset_manifest(
     destination = (output_dir / f".pending-hero-{target_key}-{attempt_id}.png").resolve()
     if destination.parent != output_dir:
         return _fallback("generation_failed")
-    generator = generate or _flowkit_generator(flowkit_cli)
+    # agy is the default hero generator; FlowKit only runs when a caller
+    # explicitly passes a ``flowkit_cli`` (legacy opt-in until retirement).
+    generator = generate or (
+        _flowkit_generator(flowkit_cli) if flowkit_cli is not None else _agy_generator()
+    )
     try:
         source_path = (await generator(target.prompt, destination)).resolve()
     except asyncio.CancelledError:
@@ -651,6 +655,63 @@ async def _release_reservation_and_discard(
     except (OSError, ValueError):
         logger.exception("Magazine fingerprint reservation release failed")
     await _discard_paths(paths, output_dir=output_dir)
+
+
+def _agy_generator() -> GenerateAsset:
+    """Spawn ``scripts/agy_image.py`` as a CLI subprocess (a path, never an import)."""
+    cli = Path(
+        os.getenv(
+            "MAGAZINE_AGY_CLI",
+            str(Path(__file__).resolve().parents[4] / "scripts" / "agy_image.py"),
+        )
+    )
+
+    async def generate(prompt: str, destination: Path) -> Path:
+        child_env = {
+            key: value for key, value in os.environ.items() if key in _FLOWKIT_ENV_ALLOWLIST
+        }
+        process = await asyncio.create_subprocess_exec(
+            sys.executable,
+            str(cli),
+            "generate-image",
+            "--prompt",
+            prompt,
+            "--dest",
+            str(destination),
+            "--width",
+            "1344",
+            "--height",
+            "768",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=child_env,
+            start_new_session=True,
+        )
+        process_group_id = getattr(process, "pid", 0)
+        try:
+            try:
+                stdout, _stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=_GENERATION_TIMEOUT_S
+                )
+            except TimeoutError:
+                raise RuntimeError("asset generation timed out") from None
+            if process.returncode != 0:
+                raise RuntimeError("asset generation failed")
+            if process_group_id > 0 and _process_group_is_alive(process_group_id):
+                raise RuntimeError("asset generation left child processes running")
+            try:
+                result = json.loads(stdout)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError("asset generation returned invalid output") from exc
+            if not isinstance(result, dict) or result.get("ok") is not True:
+                raise RuntimeError("asset generation returned a failure")
+            return destination
+        finally:
+            if process_group_id > 0 and _process_group_is_alive(process_group_id):
+                cleanup = asyncio.create_task(_terminate_process_group(process))
+                await _finish_shielded_task(cleanup)
+
+    return generate
 
 
 def _flowkit_generator(flowkit_cli: Path | None) -> GenerateAsset:
