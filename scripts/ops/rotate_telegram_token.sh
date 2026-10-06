@@ -38,7 +38,7 @@ lineno=$(grep -nE "$LINE_RE" "$F" | cut -d: -f1 | tr '\n' ' ' || true)
 # The candidate reaches awk on fd 3 (never argv, never the environment). Modes: same | shape | write.
 filter() {
   SHAPE="$SHAPE_RE" awk -v mode="$1" -v key="$KEY" '
-    BEGIN { if ((getline VAL < "/dev/fd/3") <= 0) VAL = "" }
+    BEGIN { VAL = ""; if (mode != "shape" && (getline VAL < "/dev/fd/3") <= 0) VAL = "" }
     $0 ~ "^[[:space:]]*(export[[:space:]]+)?" key "=" {
       v = $0; sub(/^[^=]*=/, "", v); cr = (v ~ /\r$/) ? "\r" : ""; sub(/\r$/, "", v)
       if (v ~ /^".*"[ \t]*$/ || v ~ /^\047.*\047[ \t]*$/) { sub(/^./, "", v); sub(/["\047][ \t]*$/, "", v) }
