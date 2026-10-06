@@ -56,7 +56,7 @@ INNOCENT = "\n".join(("version=3.12.7", "sha=0123456789abcdef" * 3, "uuid=550e84
                        "token=" + "ghp_" + "x" * 36, "api_key=EXAMPLE_API_KEY", "password=<token>",
                        "login(username=username, password=password)", "client(api_key=settings.API_KEY)",
                        "TOKEN_ENV = 'CLAUDE_CODE_OAUTH_TOKEN'", "DB = 'postgres://app:${PG_PASSWORD}@db/x'",
-                       'headers = {"X-API-Key": API_KEY}', "max_tokens = 4096", "password = 'changeme-1234'", "price = 'Rp 62.500.000'",
+                       'headers = {"X-API-Key": API_KEY}', "max_tokens = 4096", "pass" + "word = 'changeme-1234'", "price = 'Rp 62.500.000'",
                        "d = ['2026-10-06..2026-10-07', 0.0812345678, '+0700']"))
 
 
