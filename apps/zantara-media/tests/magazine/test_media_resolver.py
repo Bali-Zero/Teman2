@@ -1077,17 +1077,26 @@ async def test_default_generator_is_agy(
     story_factory: Callable[..., dict[str, Any]],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from scripts import agy_image
-
-    calls: list[tuple[str, int, int]] = []
-
-    def fake_agy(prompt: str, dest: Path, *, width: int = 0, height: int = 0, **_kw: Any) -> Path:
-        calls.append((prompt, width, height))
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(_image_bytes())
-        return dest
-
-    monkeypatch.setattr(agy_image, "generate_image_with_agy", fake_agy)
+    log = tmp_path / "agy_calls.log"
+    image_path = tmp_path / "fixture.png"
+    image_path.write_bytes(_image_bytes())
+    stub = tmp_path / "stub_agy.py"
+    stub.write_text(
+        "import argparse, json, shutil\n"
+        "from pathlib import Path\n"
+        "p = argparse.ArgumentParser()\n"
+        "p.add_argument('command')\n"
+        "p.add_argument('--prompt')\n"
+        "p.add_argument('--dest')\n"
+        "p.add_argument('--width')\n"
+        "p.add_argument('--height')\n"
+        "a = p.parse_args()\n"
+        f"open({str(log)!r}, 'a').write(a.width + 'x' + a.height + '\\n')\n"
+        "Path(a.dest).parent.mkdir(parents=True, exist_ok=True)\n"
+        f"shutil.copyfile({str(image_path)!r}, a.dest)\n"
+        "print(json.dumps({'ok': True, 'dest': a.dest}))\n"
+    )
+    monkeypatch.setenv("MAGAZINE_AGY_CLI", str(stub))
 
     async def describe(_data: bytes, _filename: str) -> tuple[str, dict[str, str]]:
         return "Abstract editorial scene with no visible text or people.", {"model": "local"}
@@ -1107,5 +1116,4 @@ async def test_default_generator_is_agy(
     assert result.fallback_reason is None
     assert len(result.manifest.intents) == 1
     assert result.manifest.intents[0].source_path.is_file()
-    assert len(calls) == 1
-    assert calls[0][1:] == (1344, 768)
+    assert log.read_text().splitlines() == ["1344x768"]

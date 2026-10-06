@@ -6,10 +6,13 @@ key, no FlowKit. Generator is never grader: callers MUST QA the returned image
 """
 from __future__ import annotations
 
+import argparse
+import json
 import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -108,3 +111,28 @@ def generate_image_with_agy(
         card = card.resize((width, height), Image.LANCZOS)
         card.save(out, format="JPEG", quality=90, optimize=True)
     return out
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Generate one image through agy.")
+    sub = parser.add_subparsers(dest="command", required=True)
+    gen = sub.add_parser("generate-image")
+    gen.add_argument("--prompt", required=True)
+    gen.add_argument("--dest", required=True)
+    gen.add_argument("--width", type=int, default=1344)
+    gen.add_argument("--height", type=int, default=768)
+    gen.add_argument("--timeout", type=float, default=240.0)
+    args = parser.parse_args(argv)
+    try:
+        out = generate_image_with_agy(
+            args.prompt, args.dest, width=args.width, height=args.height, timeout=args.timeout
+        )
+    except Exception as exc:  # noqa: BLE001 - CLI contract: one JSON line, rc 1
+        print(json.dumps({"ok": False, "error": str(exc)}))
+        return 1
+    print(json.dumps({"ok": True, "dest": str(out)}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

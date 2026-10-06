@@ -1,6 +1,7 @@
 """Tests for scripts/agy_image.py: no real agy call."""
 from __future__ import annotations
 
+import json
 import subprocess
 
 import pytest
@@ -80,3 +81,27 @@ def test_center_crop_aspect(size):
 def test_available(monkeypatch, found):
     monkeypatch.setattr(agy_image.shutil, "which", lambda b: "/x/agy" if found else None)
     assert agy_image.agy_image_available() is found
+
+
+def test_cli_success(tmp_path, monkeypatch, capsys):
+    def fake(prompt, dest, **kw):
+        _png(dest)
+        return dest
+
+    monkeypatch.setattr(agy_image, "generate_image_with_agy", fake)
+    dest = tmp_path / "o.png"
+    rc = agy_image.main(["generate-image", "--prompt", "p", "--dest", str(dest)])
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out)["ok"] is True
+    assert dest.is_file()
+
+
+def test_cli_failure(tmp_path, monkeypatch, capsys):
+    def boom(*a, **kw):
+        raise AgyImageError("nope")
+
+    monkeypatch.setattr(agy_image, "generate_image_with_agy", boom)
+    rc = agy_image.main(["generate-image", "--prompt", "p", "--dest", str(tmp_path / "o.png")])
+    assert rc == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["ok"] is False and "nope" in out["error"]

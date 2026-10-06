@@ -658,16 +658,58 @@ async def _release_reservation_and_discard(
 
 
 def _agy_generator() -> GenerateAsset:
-    """Wrap the sync ``scripts/agy_image`` helper as the async generation seam."""
-    repo_root = str(Path(__file__).resolve().parents[4])
-    if repo_root not in sys.path:
-        sys.path.insert(0, repo_root)
-    from scripts import agy_image
+    """Spawn ``scripts/agy_image.py`` as a CLI subprocess (a path, never an import)."""
+    cli = Path(
+        os.getenv(
+            "MAGAZINE_AGY_CLI",
+            str(Path(__file__).resolve().parents[4] / "scripts" / "agy_image.py"),
+        )
+    )
 
     async def generate(prompt: str, destination: Path) -> Path:
-        return await asyncio.to_thread(
-            agy_image.generate_image_with_agy, prompt, destination, width=1344, height=768
+        child_env = {
+            key: value for key, value in os.environ.items() if key in _FLOWKIT_ENV_ALLOWLIST
+        }
+        process = await asyncio.create_subprocess_exec(
+            sys.executable,
+            str(cli),
+            "generate-image",
+            "--prompt",
+            prompt,
+            "--dest",
+            str(destination),
+            "--width",
+            "1344",
+            "--height",
+            "768",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=child_env,
+            start_new_session=True,
         )
+        process_group_id = getattr(process, "pid", 0)
+        try:
+            try:
+                stdout, _stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=_GENERATION_TIMEOUT_S
+                )
+            except TimeoutError:
+                raise RuntimeError("asset generation timed out") from None
+            if process.returncode != 0:
+                raise RuntimeError("asset generation failed")
+            if process_group_id > 0 and _process_group_is_alive(process_group_id):
+                raise RuntimeError("asset generation left child processes running")
+            try:
+                result = json.loads(stdout)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError("asset generation returned invalid output") from exc
+            if not isinstance(result, dict) or result.get("ok") is not True:
+                raise RuntimeError("asset generation returned a failure")
+            return destination
+        finally:
+            if process_group_id > 0 and _process_group_is_alive(process_group_id):
+                cleanup = asyncio.create_task(_terminate_process_group(process))
+                await _finish_shielded_task(cleanup)
 
     return generate
 
