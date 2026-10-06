@@ -1,0 +1,62 @@
+task_id: fixg-content-on-main
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  FIXBATCH-G-20261005 (commissioned by the imperator window, mission colour
+  BLUE). Two deciders answer "is this content on main?" right before a
+  deletion: scripts/branch_graveyard_cleanup.sh content_on_main() (category 2
+  is what --apply deletes) and scripts/audit_agent_quarantine.py classify()
+  (LANDED is what --apply prunes). Both read a FAILED git call as "nothing
+  differs": a failed diff gave an empty path set, two failed blob reads
+  compared equal, and an ancestor of main was LANDED with no content check (a
+  merged-then-reverted branch is an ancestor whose content is gone).
+
+  The question now has three answers: yes (proved blob by blob), no, and
+  could not tell. Every checker error, including a git that exits 0 with an
+  empty or partial answer the trees contradict, is could-not-tell: it never
+  deletes, never marks LANDED, and is reported by name (a REPORT-ONLY
+  graveyard section; the AMBIGUOUS verdict with a reason in the audit).
+
+  Gear 3 is the deterministic floor (source: path, the
+  .github/workflows/broker-hygiene.yml edit that makes CI run the tests).
+
+acceptance:
+  - text: >-
+      WHEN git diff, merge-base, merge-base --is-ancestor, ls-tree or the
+      ancestry walk fails, or answers empty/partial while the trees disagree,
+      the graveyard SHALL NOT list the branch as Content-on-main or Merged &
+      deletable and SHALL list it under "Could not tell", and the quarantine
+      audit SHALL answer AMBIGUOUS, never LANDED.
+    probe: python3 -m pytest scripts/tests/test_content_on_main_three_answers.py -q -p no:cacheprovider -k "failed or lie or could_not_tell"
+  - text: >-
+      WHEN a quarantine ref is an ancestor of main whose content was reverted
+      off main, the audit SHALL answer UNIQUE (kept), not LANDED.
+    probe: python3 -m pytest scripts/tests/test_content_on_main_three_answers.py -q -p no:cacheprovider -k reverted
+  - text: >-
+      WHEN content truly is on main (squash-merged, cherry-picked, plain
+      --no-ff merge, a really empty diff, a deletion also absent on main for
+      the audit), the answers SHALL stay what origin/main answers today.
+    probe: python3 -m pytest scripts/tests/test_content_on_main_three_answers.py -q -p no:cacheprovider -k innocence
+  - text: >-
+      The graveyard category-5 suite SHALL stay green and both suites SHALL be
+      run by CI (broker-hygiene.yml).
+    probe: sh scripts/tests/test_branch_graveyard_prmerged.sh
+
+assumptions:
+  - text: >-
+      The only scheduled consumer is Pro's launchd job
+      com.nuzantara.branch-cleanup.weekly, running the repo checkout
+      /Users/nuzantara/nuzantara/scripts/branch_graveyard_cleanup.sh in
+      DRY-RUN (no --apply); the quarantine audit has no scheduler.
+    status: verified
+    probe: "ssh pro: plutil -p ~/Library/LaunchAgents/com.nuzantara.branch-cleanup.weekly.plist; launchctl list | grep branch-cleanup; crontab -l | grep -E 'graveyard|quarantine' (empty); infra/home-fork/declared-pairs.json has no entry for either script"
+  - text: >-
+      Mini's copy of the same plist (repo template path /Users/nuzantara/nuzantara)
+      could not be inspected: Mini was unreachable on the tailnet.
+    status: unverified
+    probe: "ssh -o ConnectTimeout=8 -o BatchMode=yes mini true -> Operation timed out"
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
