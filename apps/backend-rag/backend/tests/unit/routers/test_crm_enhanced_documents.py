@@ -507,7 +507,7 @@ async def test_visibility_flip_allowed_roles_writes_and_records_timeline(mock_db
     conn = mock_db_pool._mock_conn
     conn.fetchrow.return_value = {"client_visible": True}
     conn.execute.return_value = "UPDATE 1"
-    user = {"id": "u-1", "email": "someone@example.test", "role": role}
+    user = {"user_id": "u-1", "email": "someone@example.test", "role": role}
 
     p1, p2 = _patch_ctx()
     with p1, p2:
@@ -540,7 +540,7 @@ async def test_visibility_field_from_other_roles_is_403_and_writes_nothing(mock_
     from backend.app.routers.crm_enhanced_documents import update_document
 
     conn = mock_db_pool._mock_conn
-    user = {"id": "u-2", "email": "someone@example.test", "role": role}
+    user = {"user_id": "u-2", "email": "someone@example.test", "role": role}
 
     p1, p2 = _patch_ctx()
     with p1, p2, pytest.raises(HTTPException) as exc_info:
@@ -573,7 +573,7 @@ async def test_visibility_unchanged_value_records_no_timeline(mock_db_pool):
             doc_id=10,
             data=DocumentUpdate(client_visible=False),
             pool=mock_db_pool,
-            current_user={"id": "u-1", "role": "Supervisor"},
+            current_user={"user_id": "u-1", "role": "Supervisor"},
         )
 
     assert _writes(conn, "timeline_events") == []
@@ -594,7 +594,7 @@ async def test_patch_without_visibility_field_behaves_as_before_for_any_role(moc
             doc_id=10,
             data=DocumentUpdate(notes="n"),
             pool=mock_db_pool,
-            current_user={"id": "u-3", "role": "Consultant"},
+            current_user={"user_id": "u-3", "role": "Consultant"},
         )
 
     assert result["success"] is True
@@ -625,7 +625,7 @@ async def test_timeline_failure_does_not_undo_the_flip(mock_db_pool):
             doc_id=10,
             data=DocumentUpdate(client_visible=False),
             pool=mock_db_pool,
-            current_user={"id": "u-1", "role": "Team Leader"},
+            current_user={"user_id": "u-1", "role": "Team Leader"},
         )
 
     assert result["success"] is True
@@ -2039,3 +2039,62 @@ async def test_upload_succeeds_for_whatsapp_only_owner(
         )
 
     assert result["success"] is True  # the resolver arm's defining case completes
+
+
+def _db_honouring_projection(rows):
+    """A fetch() that returns only the `d.<column>` names the SELECT projects."""
+    import re
+
+    async def _fetch(sql, *_args):
+        projected = set(re.findall(r"\bd\.(\w+)", sql.split("FROM documents")[0]))
+        return [{k: v for k, v in row.items() if k in projected} for row in rows]
+
+    return _fetch
+
+
+@pytest.mark.asyncio
+async def test_client_documents_list_returns_stored_client_visible(mock_db_pool, mock_current_user):
+    from backend.app.routers.crm_enhanced_documents import get_client_documents
+
+    rows = [
+        {"id": 1, "client_visible": True},
+        {"id": 2, "client_visible": False},
+    ]
+    mock_db_pool._mock_conn.fetch.side_effect = _db_honouring_projection(rows)
+
+    with patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()):
+        result = await get_client_documents(
+            client_id=1,
+            category=None,
+            include_archived=False,
+            pool=mock_db_pool,
+            current_user=mock_current_user,
+        )
+
+    assert {d["id"]: d["client_visible"] for d in result} == {1: True, 2: False}
+
+
+@pytest.mark.asyncio
+async def test_timeline_actor_is_never_an_email(mock_db_pool):
+    from backend.app.routers.crm_enhanced import DocumentUpdate
+    from backend.app.routers.crm_enhanced_documents import update_document
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.return_value = {"client_visible": False}
+    conn.execute.return_value = "UPDATE 1"
+    # the auth dependency falls back to the email when it has no id
+    user = {"user_id": "someone@example.test", "email": "someone@example.test", "role": "Tax Lead"}
+
+    p1, p2 = _patch_ctx()
+    with p1, p2:
+        await update_document(
+            client_id=1,
+            doc_id=10,
+            data=DocumentUpdate(client_visible=True),
+            pool=mock_db_pool,
+            current_user=user,
+        )
+
+    description = _writes(conn, "timeline_events")[0].args[3]
+    assert "someone@example.test" not in description
+    assert "user_id=unresolved" in description
