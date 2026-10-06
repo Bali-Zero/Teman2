@@ -263,7 +263,7 @@ const SourceCard = ({
       <h4 className="text-sm font-medium text-silver group-hover:text-white font-serif tracking-wide">
         {source.title}
       </h4>
-      <p className="text-[10px] md:text-[10px] uppercase tracking-widest text-[#666] mt-1">
+      <p className="text-[10px] uppercase tracking-widest text-[#666] mt-1">
         {source.type}
       </p>
     </div>
@@ -801,7 +801,7 @@ const InspectorChoreographed = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
             <FileText size={12} /> Official Description
           </h3>
           <p className="text-sm text-[#CCC] leading-loose font-light border-l border-accent-sand/30 pl-5 italic">
@@ -816,7 +816,7 @@ const InspectorChoreographed = ({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
               <Scale size={12} /> Required Licenses
             </h3>
             <div className="relative">
@@ -918,7 +918,7 @@ const InspectorChoreographed = ({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
             <Activity size={12} /> Related Business Codes
           </h3>
           <div className="flex flex-wrap gap-2">
