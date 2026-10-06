@@ -526,6 +526,8 @@ export interface ClientProfile {
     documents_count: number;
     practices_count: number;
     company_count?: number;
+    /** Active documents of every company linked to the client (any link). */
+    company_documents_count?: number;
     expired_count: number;
     red_alerts: number;
     yellow_alerts: number;
