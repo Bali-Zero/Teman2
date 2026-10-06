@@ -1,20 +1,21 @@
 """Decode policy shared by every HS256 bearer-token verifier (PyJWT).
 
 These options reproduce what python-jose accepted before the migration:
-`exp` is mandatory and verified, and a future-dated `iat` is not a reason to
-reject (PyJWT rejects it by default; python-jose never did). Signature,
-algorithm, `nbf`, `aud`, `sub` and `jti` checks keep PyJWT's defaults, which
-match python-jose's. Callers catch `jwt.PyJWTError`, the base of every error
-PyJWT raises for an invalid token.
+`exp` is mandatory and a token stays valid through its `exp` second, and a
+future-dated `iat` is not a reason to reject (PyJWT rejects it by default;
+python-jose never did). Signature, algorithm, `nbf`, `aud`, `sub` and `jti`
+checks keep PyJWT's defaults, which match python-jose's. Callers catch
+`jwt.PyJWTError`, the base of every error PyJWT raises for an invalid token.
 """
 
+import time
 from collections.abc import Sequence
 from typing import Any
 
 import jwt
 
 JWT_DECODE_OPTIONS = {
-    "verify_exp": True,
+    "verify_exp": False,
     "require": ["exp"],
     "verify_iat": False,
     "verify_aud": True,
@@ -24,6 +25,17 @@ JWT_DECODE_OPTIONS = {
 def decode_jwt(token: str, key: Any, *, algorithms: Sequence[str]) -> dict[str, Any]:
     """Decode with PyJWT while retaining python-jose 3.5 claim semantics."""
     claims = jwt.decode(token, key, algorithms=algorithms, options=JWT_DECODE_OPTIONS)
+
+    # python-jose compared exp with the current whole second (expired once
+    # exp < floor(now)); PyJWT expires a token one second earlier
+    # (exp <= now, now a float). Its check is disabled above (`require` still
+    # makes exp mandatory) and python-jose's boundary is applied here.
+    try:
+        exp = int(claims["exp"])
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise jwt.DecodeError("Expiration Time claim (exp) must be an integer.") from exc
+    if exp < int(time.time()):
+        raise jwt.ExpiredSignatureError("Signature has expired")
 
     # python-jose checked that iat was integer-convertible but did not reject a
     # future value. PyJWT couples those two checks, so keep its check disabled

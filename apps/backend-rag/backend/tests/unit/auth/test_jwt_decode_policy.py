@@ -43,6 +43,16 @@ def test_expired_token_is_rejected():
         _decode(_token({"exp": _exp(-5)}))
 
 
+def test_exp_boundary_matches_python_jose(monkeypatch):
+    # A token is valid through its exp second and expired from the next one;
+    # PyJWT alone would expire it one second earlier.
+    t = 1_900_000_000
+    monkeypatch.setattr(time, "time", lambda: t + 0.9)
+    assert _decode(_token({"exp": t}))["exp"] == t
+    with pytest.raises(jwt.ExpiredSignatureError):
+        _decode(_token({"exp": t - 1}))
+
+
 def test_missing_exp_is_rejected():
     with pytest.raises(jwt.MissingRequiredClaimError):
         _decode(_token({"sub": "u1"}))
@@ -221,7 +231,7 @@ def test_every_decode_call_site_pins_algorithms_and_uses_the_shared_decoder():
 
 def test_shared_options_are_explicit_and_use_pyjwt_spelling():
     assert JWT_DECODE_OPTIONS == {
-        "verify_exp": True,
+        "verify_exp": False,
         "require": ["exp"],
         "verify_iat": False,
         "verify_aud": True,
