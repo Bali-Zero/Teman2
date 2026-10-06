@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Skip budget for a junit report: a skipped test proves nothing, so every skip is declared, and what must run, ran.
+"""Skip budget for a junit report: reported skips are declared, required tests executed, and the executed floor held.
 
     python scripts/localci/skip_budget.py <junit.xml> [--allow TEST_REGEX REASON_REGEX]... [--require TEST_REGEX]... [--min-executed N]
 
@@ -7,8 +7,10 @@ A test id is ``classname::name`` ('?' for a missing part); an xfail is a skip he
   --allow    explains a skip iff TEST_REGEX searches its id AND REASON_REGEX searches its reason (the junit ``message``, never the file path).
              Each allowance must explain EXACTLY ONE skip: none is STALE, so a removed test cannot leave a hole behind; two or more is
              OVERUSED, so one allowance cannot cover a whole module. A skip no allowance explains is UNDECLARED.
-  --require  at least one EXECUTED test case must match; a deselected, never-collected or skipped test leaves it MISSING.
+  --require  at least one EXECUTED test case must match; no executed match is MISSING, including when every match was deselected, never collected or skipped.
   --min-executed  a floor on executed cases (default 1): a report where nothing executed is never clean.
+Junit omits deselected and never-collected tests. An omitted test with no matching --require is invisible if the executed floor still holds;
+other executed cases can replace it in the count. This is not proof that every intended test ran.
 A pattern that fails to compile, matches the empty string, or matches "\\x00\\x00" (a string no id or reason contains: this catches ``(?=.)``,
 ``.``, ``.+``, ``\\S``) is refused. Patterns in general are not policed: the exactly-one rule and the test-id binding are what bound a loose one.
 A report with a ``<skipped>`` outside a ``<testcase>``, or whose testsuites do not add up to its test cases, is refused.

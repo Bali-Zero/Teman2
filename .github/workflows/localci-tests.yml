@@ -12,7 +12,9 @@ name: localci tests
 # a declared skip is bound to ONE test and counted (an undeclared skip is a red, and so is a
 # declared skip that no longer happens or one allowance covering two), the tests that prove
 # containment, the seal and the state machine must have EXECUTED (a deselected or skipped one is
-# a red), and a floor on executed cases means a suite that quietly shrank is a red too.
+# a red), and at least 331 cases must execute (the last proved hosted count).
+# Junit omits deselected and never-collected tests: an omitted test with no --require can
+# still pass if other executed cases keep the count at or above the floor.
 #
 # Declared today, one: the Pysa end-to-end test. It needs a measured Pysa home (pinned
 # pyre-check, stubs and the backend venv); that proof stays on Pro.
@@ -25,6 +27,23 @@ on:
     paths:
       - "scripts/localci/**"
       - ".github/workflows/localci-tests.yml"
+      # pytest searches ancestor configuration and loads ancestor conftests, even outside scripts/localci
+      - "pytest.ini"
+      - ".pytest.ini"
+      - "pytest.toml"
+      - ".pytest.toml"
+      - "pyproject.toml"
+      - "tox.ini"
+      - "setup.cfg"
+      - "conftest.py"
+      - "scripts/pytest.ini"
+      - "scripts/.pytest.ini"
+      - "scripts/pytest.toml"
+      - "scripts/.pytest.toml"
+      - "scripts/pyproject.toml"
+      - "scripts/tox.ini"
+      - "scripts/setup.cfg"
+      - "scripts/conftest.py"
       # real-repo files the suite copies into its fixture repos (runner.TRUSTED_CLASSIFIER_FILES): a change there changes the suite's result
       - "scripts/ci/change_map.py"
       - "scripts/ci/test_change_map.py"
@@ -37,6 +56,23 @@ on:
     paths:
       - "scripts/localci/**"
       - ".github/workflows/localci-tests.yml"
+      # pytest searches ancestor configuration and loads ancestor conftests, even outside scripts/localci
+      - "pytest.ini"
+      - ".pytest.ini"
+      - "pytest.toml"
+      - ".pytest.toml"
+      - "pyproject.toml"
+      - "tox.ini"
+      - "setup.cfg"
+      - "conftest.py"
+      - "scripts/pytest.ini"
+      - "scripts/.pytest.ini"
+      - "scripts/pytest.toml"
+      - "scripts/.pytest.toml"
+      - "scripts/pyproject.toml"
+      - "scripts/tox.ini"
+      - "scripts/setup.cfg"
+      - "scripts/conftest.py"
       # real-repo files the suite copies into its fixture repos (runner.TRUSTED_CLASSIFIER_FILES): a change there changes the suite's result
       - "scripts/ci/change_map.py"
       - "scripts/ci/test_change_map.py"
@@ -87,4 +123,4 @@ jobs:
             --require 'test_runner::test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_run_forgery$' \
             --require 'test_stateful\.TestGateMachine::runTest$' \
             --require 'test_hosted_compare::' \
-            --min-executed 295
+            --min-executed 331

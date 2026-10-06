@@ -1,6 +1,8 @@
 """The hosted workflow's path filter and skip-budget step must keep covering what the suite really reads."""
 from __future__ import annotations
 
+import shlex
+
 import yaml
 
 from .fixture_repo import REAL_REPO, runner
@@ -31,7 +33,15 @@ def test_the_filter_covers_the_suite_the_workflow_and_every_outside_input_it_rea
     assert not [f for f in OUTSIDE_INPUTS if not _covered(f, paths)]
 
 
+def test_the_filter_covers_every_ancestor_pytest_configuration_and_conftest():
+    paths = _load()["pull_request"]
+    names = ("pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml", "pyproject.toml", "tox.ini", "setup.cfg", "conftest.py")
+    assert not [prefix + name for prefix in ("", "scripts/") for name in names if not _covered(prefix + name, paths)]
+
+
 def test_the_skip_budget_step_requires_executed_tests_and_a_floor():
     steps = _load()["doc"]["jobs"]["localci-tests"]["steps"]
     command = next(s["run"] for s in steps if "skip_budget.py" in s.get("run", ""))
     assert "--require" in command and "--min-executed" in command
+    args = shlex.split(command)
+    assert int(args[args.index("--min-executed") + 1]) >= 331

@@ -1,4 +1,4 @@
-"""Guilt + innocence corpus for the junit skip budget: a skip nobody declared, or a test that never ran, must not read as a green suite."""
+"""Guilt + innocence corpus for the junit skip budget: undeclared skips, missing required tests and a missed floor must not read as green."""
 from __future__ import annotations
 
 import importlib.util
@@ -201,7 +201,10 @@ def test_round_trip_through_a_real_pytest_junit(tmp_path, capsys):
     assert "test_xfail" in out and "undeclared: xfail" in out
     assert _main(report, *allowed, "--allow", "test_shapes::test_xfail$", "^undeclared: xfail$", "--require", "test_shapes::test_ran$") == sb.EXIT_OK
     deselected = tmp_path / "deselected.xml"
-    run = run_pytest(deselected, "-k", "test_ran")                                  # pytest is green; the other tests were never collected
+    run = run_pytest(deselected, "-k", "test_ran")                                  # pytest is green; deselected tests are absent from junit
     assert run.returncode == 0, run.stdout + run.stderr
     assert _main(deselected, "--require", "test_shapes::test_marker$") == sb.EXIT_FOUND
-    assert _main(deselected, "--allow", "test_module_level", "^could not import ", "--require", "test_shapes::test_ran$") == sb.EXIT_OK
+    selected = ("--allow", "test_module_level", "^could not import ", "--require", "test_shapes::test_ran$")
+    assert _main(deselected, *selected, "--min-executed", "2") == sb.EXIT_FOUND
+    assert "TOO FEW     executed=1 < min-executed=2" in capsys.readouterr().out
+    assert _main(deselected, *selected, "--min-executed", "1") == sb.EXIT_OK        # omitted non-required tests are invisible once the floor holds
