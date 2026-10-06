@@ -118,6 +118,20 @@ def is_crm_admin(user: dict) -> bool:
     return role in ("admin", "board member", "ceo", "founder")
 
 
+#: Job titles (``team_members.role``, lower-cased) that may flip a document's
+#: client visibility besides the CRM admins.
+DOCUMENT_VISIBILITY_ROLES = frozenset({"team leader", "tax lead", "supervisor"})
+
+
+def can_change_document_visibility(user: dict) -> bool:
+    """CRM admins, plus Team Leader / Tax Lead / Supervisor, may flip `client_visible`."""
+    if not user:
+        return False
+    if is_crm_admin(user):
+        return True
+    return (user.get("role") or "").lower().strip() in DOCUMENT_VISIBILITY_ROLES
+
+
 def can_view_all_practices(user: dict) -> bool:
     """
     Check if a user can see ALL practices (admin, super admin, accounting).

@@ -23,7 +23,7 @@ from backend.app.routers.crm_enhanced import (
     _dispatch_ocr_by_folder,
 )
 from backend.app.routers.documents_proxy import assert_drive_file_belongs_to_client
-from backend.app.utils.crm_utils import verify_client_access
+from backend.app.utils.crm_utils import can_change_document_visibility, verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
 from backend.db.repositories.client_repository import CORE_OWNER_IDS_SQL
@@ -98,7 +98,7 @@ async def get_client_documents(
                 d.id, d.document_type, d.document_category,
                 d.file_name, d.file_id, d.file_url, d.google_drive_file_url,
                 d.status, d.expiry_date, d.notes, d.is_archived,
-                d.family_member_id, d.practice_id,
+                d.family_member_id, d.practice_id, d.client_visible,
                 d.created_at, d.updated_at,
                 fm.full_name as family_member_name,
                 CASE
@@ -381,6 +381,9 @@ async def update_document(
 ) -> dict[str, Any]:
     """
     Update a document.
+
+    `client_visible` is a separate gate: only CRM admins, Team Leader, Tax Lead and
+    Supervisor may send it (403 otherwise, nothing written).
     """
     # Date field that needs string → date object conversion for asyncpg
     date_fields = {"expiry_date"}
@@ -388,8 +391,11 @@ async def update_document(
     update_fields = []
     values = []
     param_num = 1
+    payload = data.model_dump(exclude_unset=True)
+    visibility_in_payload = "client_visible" in payload
+    new_visible = payload.get("client_visible")
 
-    for field, value in data.model_dump(exclude_unset=True).items():
+    for field, value in payload.items():
         # Convert date fields: empty string → None, valid string → date object
         if field in date_fields:
             if value == "" or value is None:
@@ -410,24 +416,84 @@ async def update_document(
 
     values.extend([doc_id, client_id])
 
+    old_visible = None
     async with pool.acquire() as conn:
         await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
+        if visibility_in_payload and not can_change_document_visibility(current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have permission to change document client visibility.",
+            )
         if data.file_id:
             await assert_drive_file_belongs_to_client(data.file_id, client_id, conn)
-        result = await conn.execute(
-            f"""
-            UPDATE documents
-            SET {", ".join(update_fields)}, updated_at = NOW()
-            WHERE id = ${param_num} AND client_id = ${param_num + 1}
-            """,
-            *values,
-        )
+        async with conn.transaction():
+            if new_visible is not None:
+                old_row = await conn.fetchrow(
+                    "SELECT client_visible FROM documents WHERE id = $1 AND client_id = $2 FOR UPDATE",
+                    doc_id,
+                    client_id,
+                )
+                old_visible = old_row["client_visible"] if old_row else None
+            result = await conn.execute(
+                f"""
+                UPDATE documents
+                SET {", ".join(update_fields)}, updated_at = NOW()
+                WHERE id = ${param_num} AND client_id = ${param_num + 1}
+                """,
+                *values,
+            )
 
         if result == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Document not found")
 
+    if new_visible is not None and old_visible is not None and old_visible != new_visible:
+        await _record_visibility_timeline_event(
+            pool, client_id, doc_id, old_visible, new_visible, current_user
+        )
+
     await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True}
+
+
+def _actor_id(actor: dict) -> str:
+    """The auth dependency's `user_id`, which falls back to the email when no id
+    is known: an email is PII, so it is never written to the Timeline."""
+    raw = str(actor.get("user_id") or actor.get("id") or "")
+    return "unresolved" if not raw or "@" in raw else raw
+
+
+async def _record_visibility_timeline_event(
+    pool: Any,
+    client_id: int,
+    doc_id: int,
+    old_visible: bool,
+    new_visible: bool,
+    actor: dict,
+) -> None:
+    """Best-effort Timeline entry on a SEPARATE connection, after the change committed.
+
+    Same shape as the portal's document soft-delete audit (event_type 'status_change',
+    the only value the chk_timeline_event_type CHECK allows for this), but
+    client_visible=false: the client portal must never read "hidden from you".
+    Ids and role only, no file name, no email.
+    """
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO timeline_events (
+                    client_id, event_type, title, description, event_date, client_visible, color
+                )
+                VALUES ($1, 'status_change', $2, $3, NOW(), false, 'info')
+                """,
+                client_id,
+                "Document client visibility changed",
+                f"document_id={doc_id} client_visible: {str(old_visible).lower()} -> "
+                f"{str(new_visible).lower()} by user_id={_actor_id(actor)} "
+                f"role={(actor.get('role') or 'unknown')}",
+            )
+    except Exception as e:
+        logger.warning("Could not record visibility timeline event for doc %s: %s", doc_id, e)
 
 
 @router.delete("/clients/{client_id}/documents/{doc_id}")
@@ -668,9 +734,7 @@ async def upload_document_base64(
                 # must refuse too. All cooperative phone writers serialize on
                 # the phonecore advisory lock, making the authoritative in-TX
                 # run of this check race-safe against them.
-                rows = await _conn.fetch(
-                    CORE_OWNER_IDS_SQL, [data.expected_phone_core]
-                )
+                rows = await _conn.fetch(CORE_OWNER_IDS_SQL, [data.expected_phone_core])
                 return [r["id"] for r in rows] == [client_id]
 
             if data.expected_phone_core:

@@ -998,6 +998,7 @@ class DocumentUpdate(BaseModel):
     status: str | None = None
     notes: str | None = None
     is_archived: bool | None = None
+    client_visible: bool | None = None
 
 
 class ClientProfileUpdate(BaseModel):
@@ -1085,7 +1086,7 @@ async def get_client_profile(
                 d.file_name, d.file_id, d.file_url, d.google_drive_file_url,
                 d.status, d.expiry_date, d.notes, d.family_member_id,
                 d.practice_id, d.created_at, d.updated_at,
-                d.deleted_at, d.uploaded_source, d.ocr_extracted_data,
+                d.deleted_at, d.uploaded_source, d.ocr_extracted_data, d.client_visible,
                 fm.full_name as family_member_name,
                 CASE
                     WHEN d.expiry_date <= CURRENT_DATE THEN 'expired'
