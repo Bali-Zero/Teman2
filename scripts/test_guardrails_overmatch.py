@@ -16,6 +16,7 @@ from __future__ import annotations
 import importlib.util
 import pathlib
 import sys
+import time
 
 CORE = pathlib.Path(__file__).resolve().parent / "guardrails_static_core.py"
 _spec = importlib.util.spec_from_file_location("gcore", str(CORE))
@@ -35,6 +36,10 @@ B = "ba" + "sh"
 P = " | "
 B64 = "base" + "64"
 SYS = "os.sys" + "tem"
+
+# Local acceptance is <200 ms on Air-M5; 1 s leaves 5x margin for shared CI.
+ROBUSTNESS_TIME_LIMIT_SECONDS = 1.0
+MEGABYTE = 1024 * 1024
 
 CASES: list[tuple[str, bool, str]] = [
     # ---- force-push over-match (the 'main' substring bug) --------------------
@@ -156,10 +161,110 @@ def test_guardrails_overmatch():
     assert not fails, "guardrails over-match regressions:\n" + "\n".join(fails)
 
 
+def _timed_decision(command: str) -> tuple[str, float]:
+    started = time.perf_counter()
+    verdict = _core.evaluate({"tool_name": "Bash", "tool_input": {"command": command}})
+    return verdict, time.perf_counter() - started
+
+
+def test_4000_line_continuation_decides_within_bound():
+    command = ("printf x \\\n" * 3_999) + "done"
+    verdict, elapsed = _timed_decision(command)
+    assert verdict == "ALLOW"
+    assert elapsed < ROBUSTNESS_TIME_LIMIT_SECONDS, f"4000 continuations took {elapsed:.3f}s"
+
+
+def test_megabyte_token_decides_within_bound():
+    verdict, elapsed = _timed_decision("echo " + ("x" * MEGABYTE))
+    assert verdict == "ALLOW"
+    assert elapsed < ROBUSTNESS_TIME_LIMIT_SECONDS, f"1 MiB token took {elapsed:.3f}s"
+
+
+def test_over_cap_delete_shape_blocks():
+    delete_word = "r" + "m"
+    delete_shapes = (
+        delete_word + " -r -f /",
+        "rmdir /",
+        "unlink /tmp/x",
+        "shred /tmp/x",
+        "find / -delete",
+        "find / -exec " + delete_word + " {} +",
+    )
+    for shape in delete_shapes:
+        verdict, elapsed = _timed_decision(("x" * MEGABYTE) + "; " + shape)
+        assert verdict == "BLOCK command too long to analyse safely", shape
+        assert elapsed < ROBUSTNESS_TIME_LIMIT_SECONDS, f"over-cap guilt took {elapsed:.3f}s"
+
+
+def test_over_cap_harmless_matches_base_verdict():
+    verdict, elapsed = _timed_decision("printf %s " + ("x" * MEGABYTE))
+    assert verdict == "ALLOW"
+    assert elapsed < ROBUSTNESS_TIME_LIMIT_SECONDS, f"over-cap innocence took {elapsed:.3f}s"
+
+
+def test_over_cap_shell_unquoted_delete_blocks():
+    delete_word, root = "r" + "m", " -r -f /"
+    spellings = ("\\" + delete_word, "r\\m", "'r''m'", '"r"m', "r\\\nm", "env -S" + delete_word)
+    for shape in [spelling + root for spelling in spellings] + ['env -S"' + delete_word + root + '"']:
+        verdict, elapsed = _timed_decision(("x" * MEGABYTE) + "; " + shape)
+        assert verdict == "BLOCK command too long to analyse safely", shape
+        assert elapsed < ROBUSTNESS_TIME_LIMIT_SECONDS, f"over-cap guilt took {elapsed:.3f}s"
+
+
+def test_near_cap_token_decides_within_bound():
+    verdict, elapsed = _timed_decision("echo " + ("x" * (_core._MAX_COMMAND_LENGTH - 16)))
+    assert verdict == "ALLOW"
+    assert elapsed < ROBUSTNESS_TIME_LIMIT_SECONDS, f"near-cap token took {elapsed:.3f}s"
+
+
+def test_deep_eval_chain_decides_within_bound():
+    verdict, elapsed = _timed_decision(("eval " * 2_000) + "true")
+    assert verdict == "ALLOW"
+    assert elapsed < ROBUSTNESS_TIME_LIMIT_SECONDS, f"2000 nested evals took {elapsed:.3f}s"
+
+
+def test_deep_eval_chain_delete_blocks():
+    verdict, _ = _timed_decision(("eval " * 20) + "r" + "m -r -f /")
+    assert verdict.startswith("BLOCK"), verdict
+
+
+def test_unclosed_brace_list_decides_within_bound():
+    verdict, elapsed = _timed_decision("r" + "m -r /tmp/{" + ("a," * 30_000))
+    assert verdict == "ALLOW"
+    assert elapsed < ROBUSTNESS_TIME_LIMIT_SECONDS, f"unclosed brace list took {elapsed:.3f}s"
+
+
+ROBUSTNESS_TESTS = (
+    test_4000_line_continuation_decides_within_bound,
+    test_megabyte_token_decides_within_bound,
+    test_over_cap_delete_shape_blocks,
+    test_over_cap_harmless_matches_base_verdict,
+    test_over_cap_shell_unquoted_delete_blocks,
+    test_near_cap_token_decides_within_bound,
+    test_deep_eval_chain_decides_within_bound,
+    test_deep_eval_chain_delete_blocks,
+    test_unclosed_brace_list_decides_within_bound,
+)
+
+
+def evaluate_robustness() -> list[str]:
+    failures = []
+    for test in ROBUSTNESS_TESTS:
+        try:
+            test()
+        except Exception as exc:
+            failures.append(f"{test.__name__}: {type(exc).__name__}: {exc}")
+    return failures
+
+
 if __name__ == "__main__":
-    fails = evaluate()
+    robustness_fails = evaluate_robustness()
+    fails = evaluate() + robustness_fails
     for cmd, want, desc in CASES:
         got = blocks(cmd)
         print(f"  [{'OK ' if got == want else 'FAIL'}] {desc}: blocks={got}")
+    for test in ROBUSTNESS_TESTS:
+        failed = [line for line in robustness_fails if line.startswith(test.__name__ + ":")]
+        print(f"  [{'FAIL' if failed else 'OK '}] {failed[0][:160] if failed else test.__name__}")
     print("=== " + ("ALL OK" if not fails else f"{len(fails)} FAIL") + " ===")
     sys.exit(1 if fails else 0)
