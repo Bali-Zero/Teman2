@@ -237,7 +237,7 @@ const KBLIInspector = ({
         </h2>
 
         <div className="space-y-3">
-          <div className="flex justify-between items-center text-[11px] md:text-[10px] uppercase tracking-widest text-[#666]">
+          <div className="flex justify-between items-center text-[11px] uppercase tracking-widest text-[#666]">
             <span className={riskBadge.className}>{riskBadge.label}</span>
             <span className="text-accent-sand">{data.licensing_status}</span>
           </div>
@@ -258,7 +258,7 @@ const KBLIInspector = ({
 
       <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-10 custom-scrollbar">
         <section>
-          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
             <FileText size={12} /> Official Description
           </h3>
           <p className="text-sm text-[#CCC] leading-loose font-light border-l border-accent-sand/30 pl-5 italic">
@@ -269,7 +269,7 @@ const KBLIInspector = ({
         {/* NEW: 2026 Business Intelligence Section */}
         {data.intel && (
           <section className="space-y-6">
-            <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
               <Activity size={12} className="text-blue-400" /> 2026 Business
               Intelligence
             </h3>
@@ -309,7 +309,7 @@ const KBLIInspector = ({
 
         {data.licenses.length > 0 && (
           <section>
-            <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
               <Scale size={12} /> Required Licenses
             </h3>
             <div className="space-y-4">
@@ -386,7 +386,7 @@ const KBLIInspector = ({
           <section aria-labelledby="related-requirements-heading">
             <h3
               id="related-requirements-heading"
-              className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-2 flex items-center gap-2"
+              className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-2 flex items-center gap-2"
             >
               <ClipboardList size={12} /> Related Requirements (Not Permits)
             </h3>
@@ -421,7 +421,7 @@ const KBLIInspector = ({
         )}
 
         <section>
-          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
             <Activity size={12} /> Related Business Codes
           </h3>
           <div className="flex flex-wrap gap-2">
