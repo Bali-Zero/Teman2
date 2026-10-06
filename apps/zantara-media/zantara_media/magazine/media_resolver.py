@@ -319,7 +319,11 @@ async def resolve_asset_manifest(
     destination = (output_dir / f".pending-hero-{target_key}-{attempt_id}.png").resolve()
     if destination.parent != output_dir:
         return _fallback("generation_failed")
-    generator = generate or _flowkit_generator(flowkit_cli)
+    # agy is the default hero generator; FlowKit only runs when a caller
+    # explicitly passes a ``flowkit_cli`` (legacy opt-in until retirement).
+    generator = generate or (
+        _flowkit_generator(flowkit_cli) if flowkit_cli is not None else _agy_generator()
+    )
     try:
         source_path = (await generator(target.prompt, destination)).resolve()
     except asyncio.CancelledError:
@@ -651,6 +655,21 @@ async def _release_reservation_and_discard(
     except (OSError, ValueError):
         logger.exception("Magazine fingerprint reservation release failed")
     await _discard_paths(paths, output_dir=output_dir)
+
+
+def _agy_generator() -> GenerateAsset:
+    """Wrap the sync ``scripts/agy_image`` helper as the async generation seam."""
+    repo_root = str(Path(__file__).resolve().parents[4])
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    from scripts import agy_image
+
+    async def generate(prompt: str, destination: Path) -> Path:
+        return await asyncio.to_thread(
+            agy_image.generate_image_with_agy, prompt, destination, width=1344, height=768
+        )
+
+    return generate
 
 
 def _flowkit_generator(flowkit_cli: Path | None) -> GenerateAsset:
