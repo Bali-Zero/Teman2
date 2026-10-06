@@ -1,0 +1,50 @@
+task_id: localci-gate-1006
+mission: LOCALCI-GATE
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Declared by the mandate, above the computed floor of 1 (no hot-zone path, size under the threshold): the
+  mission decides the boundary between a candidate and its judge on the merge-governance surface. The diff
+  itself flips nothing.
+l_level: L2
+gate_class: opus
+objective: >-
+  Decide, on evidence re-measured on 2026-10-06, whether one Pro host can honestly become the gate that counts
+  for the 14 required contexts; record the decision as a spec; ship the first step of the chosen shape without
+  flipping the gate — a read-only comparator that states every local-CI claim as a pair against the hosted
+  verdict for the same commit.
+constraints:
+  - No required check is weakened, deleted, renamed or stubbed; no workflow is edited.
+  - Nothing posts a commit status; the adapter stays inert; the only branch-protection call is a GET.
+  - No runner is registered, no credential is read or printed, no paid per-token API is used.
+  - A local verdict that is not a recorded per-context OK or FAIL is blind, never green.
+acceptance:
+  - text: WHEN a local run is green on a context whose hosted verdict is red, the comparator SHALL name it FALSE_GREEN and exit 1.
+    probe: scripts/localci/tests/test_hosted_compare.py (false-green, red-conclusion and mixed-run tests)
+  - text: WHEN the live required names differ from the names the local run was planned with, the comparator SHALL report the drift and exit 1.
+    probe: scripts/localci/tests/test_hosted_compare.py::test_drift_between_live_required_names_and_the_local_plan_exits_1
+  - text: WHEN the comparator talks to GitHub, every call SHALL be a bare GET.
+    probe: scripts/localci/tests/test_hosted_compare.py::test_every_github_call_is_a_bare_get
+  - text: WHEN it runs on Pro against a real local run of a merged, hosted-green commit, the comparator SHALL emit one row per live required context carrying the hosted and the local verdict.
+    probe: pack.yml receipts, the Pro run on run dir gate-ground-1006-f42fd16429
+  - text: WHEN the spec states a number about the live gate, that number SHALL have been measured in this session.
+    probe: pack.yml receipts
+assumptions:
+  - text: A required context with no pinned app_id can be written by any app or token holding status write.
+    status: unverified
+    note: Stated by GitHub's REST documentation for the app_id field; not probed live because the probe is forging a status.
+    probe: the operator pins app_id 15368 on the 11 contexts and a status posted by a session token no longer satisfies them
+  - text: GitHub-hosted minutes are free for this repository because it is public.
+    status: unverified
+    note: Standard GitHub terms for public repositories; the organisation's billing page was not read.
+    probe: the organisation's Actions billing page
+  - text: The CodeQL CLI is not licensed for local use on this repository.
+    status: unverified
+    note: Recorded position of scripts/localci/README.md (public repository, no OSI licence); not re-derived here.
+    probe: an operator reading of the CodeQL terms for a public non-OSI repository on own hardware
+consumer_map:
+  - docs/specs/localci-gate-2026-10-06.md §2 — its agreement line and per-context local column are the comparator's output on Pro.
+  - The Dux of any later local-CI mission at GROUND — the command replaces the hand re-measurement of the required set and of local coverage.
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2

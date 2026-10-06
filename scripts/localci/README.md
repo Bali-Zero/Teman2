@@ -12,6 +12,7 @@ missing evidence. It is a **non-required, single-host** gate: it does not replac
 | `review --run-dir D --file review.json` | imports an independent review (sha/tree/base + `reviewer_seat` != builder, `verdict` exactly `PASS`) |
 | `status --run-dir D [--quiet] [--strict]` | recomputes freshness + overall, writes `status.json/html` |
 | `python scripts/localci/release_stub.py propose\|reconcile ...` | inert release journal (see below) |
+| `python scripts/localci/hosted_compare.py <status.json> [--repo R] [--branch B] [--fixtures F] [--out D]` | read-only: sets the run beside the HOSTED verdicts of the same sha (see below) |
 
 `plan` runs `policy.paid_anthropic_ban` by default: `scripts/tests/test_ban_predicates.py` is extracted from the
 BASE ref and executed against the candidate tree (`trusted_pytest`; no candidate `conftest`/ini is honoured).
@@ -128,6 +129,19 @@ review PASS, a fresh worktree, and an unused idempotency key `(candidate_sha, tr
 ALLOW for the same key is DENY "duplicate". `reconcile` lists ALLOW_PROPOSED rows with no later ACKED row;
 `reconcile --ack REQUEST` records the outcome. A future real releaser that crashes between the journal write and its side
 effect gives **at-least-once** delivery: it needs an idempotent side effect plus reconciliation, never exactly-once.
+
+## Hosted comparison (read-only)
+
+`hosted_compare.py` reads the contexts branch protection requires LIVE and the hosted check runs and commit statuses of the run's
+candidate sha, and names each required context `AGREE`, `FALSE_GREEN`, `FALSE_RED`, `LOCAL_BLIND` or `HOSTED_PENDING`. It also
+reports drift between the live required names and the names the run was planned with, and which required contexts pin no source
+app. Every call is a GET through `gh api`: it posts nothing and needs no arming, so the comparison the adapter was built for does
+not need the adapter armed. A local verdict counts only where the runner recorded a per-context `OK` or `FAIL`; anything else is
+blind. The hosted side is order-free and red-dominant: any red entry carrying the context's name on the commit is red, and green
+needs a complete entry from the required source (the pinned `app_id` when there is one). A `--fixtures` document is refused unless
+it is bound to the same repo, branch and sha. Exit 0 = compared and complete, 1 = a FALSE_GREEN or name drift, 2 = unusable input,
+3 = incomplete (a required context is still pending). Why this exists and what it measured first (`agreement=0/14` on 2026-10-06):
+`docs/specs/localci-gate-2026-10-06.md`.
 
 ## Tests
 
