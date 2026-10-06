@@ -3,7 +3,7 @@
 
 Every queued job is sent to an external provider (the Alibaba Token Plan), so the input screen is
 fail-closed: a file is queued only when it was read, is UTF-8 text under MAX_BYTES, is not a
-symlink, sits on a printable-ASCII path, and carries no secret shape, phone number or e-mail address
+symlink nor a FIFO/device, sits on a printable-ASCII path, and carries no secret shape, phone number or e-mail address
 but a role mailbox or a documentation domain. Anything else is SKIPPED and counted by reason, never sent; a screen that
 raises counts as screen_error. Test/fixture/data/content paths are never even read.
 
@@ -11,13 +11,18 @@ Usage: build_code_queue.py <repo> <out queue.jsonl>
 """
 from __future__ import annotations
 
+import base64
 import collections
 import hashlib
+import html
 import json
+import os
 import re
+import stat
 import subprocess
 import sys
 import unicodedata
+import urllib.parse
 from pathlib import Path
 from typing import Optional
 
@@ -34,19 +39,27 @@ EMAIL_OWN = re.compile(r"(?:[a-z0-9-]+\.)*(?:balizero\.com|zantara\.io|nuzantara
 EMAIL_ROLE = re.compile(r"zantara|noreply|no-reply|info|admin|test|support|hello|contact|team|ops|dev|bot|"
                         r"notifications?|alerts?", re.I)
 # A run of digits joined by any separator a human puts in a phone number (NBSP, unicode dashes too).
-PHONE_RUN = re.compile(r"(?<![A-Za-z0-9])(?:\+[ \t]?)?\(?\d(?:[\d \t  -​  　./()\-‐-―−]*\d)?"
+PHONE_RUN = re.compile(r"(?<![0-9])(?:\+[ \t]?)?\(?\d(?:[\d \t  -​  　./()\-‐-―−]*\d)?"
                        r"(?![A-Za-z0-9])")
 PHONE_DIGITS = re.compile(r"00[1-9]\d{7,13}|628\d{8,11}|08\d{8,11}|0[2-7]\d{7,10}|62[2-7]\d{7,10}")
 FAMILY = re.compile(
     r"xkeysib-[A-Za-z0-9_-]{16,}|\d{8,10}:[A-Za-z0-9_-]{35}|(?:FlyV1\s+|fo1_|fm[12]_)[A-Za-z0-9_+/=-]{16,}|"
     r"gh[pousr]_[A-Za-z0-9]{20,}|glpat-[A-Za-z0-9_-]{20,}|npm_[A-Za-z0-9]{36}|whsec_[A-Za-z0-9+/=]{16,}|github_pat_[A-Za-z0-9_]{20,}|[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|"
     r"GOCSPX-[A-Za-z0-9_-]{16,}|ya29\.[A-Za-z0-9_-]{20,}|(?:AKIA|ASIA)[0-9A-Z]{16}|AGE-SECRET-KEY-1[0-9A-Z]{50,}|hooks\.slack\.com/services/T[A-Za-z0-9_/]{16,}|xox[a-z]-[A-Za-z0-9-]{16,}|"
-    r"sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}|eyJ[\w-]{8,}\.[\w-]{2,}\.[\w-]{10,}|AIza[0-9A-Za-z_-]{30,}")
+    r"sk-[A-Za-z0-9_-]{20,}|(?<![\w-])eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}|(?<![\w-])eyJ[\w-]{8,}\.[\w-]{2,}\.[\w-]{10,}|hf_[A-Za-z0-9]{30,}|"
+    r"discord(?:app)?\.com/api/webhooks/\d{5,30}/[\w-]{30,}|AccountKey=[A-Za-z0-9+/]{40,}|AIza[0-9A-Za-z_-]{30,}")
 PEM = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY", re.I)  # the header alone: a body may follow as "\n"-escaped text
 DSN = re.compile(r"(?<![a-z0-9+.-])[a-z][a-z0-9+.-]{0,20}://[^\s/:@'\"]*:([^\s/@'\"]{2,})@", re.I)
 # A key-like NAME (compound too: DB_PASSWORD, client_secret, "api_key":) assigned a literal.
-KEYWORD = re.compile(r"(?<![\w.-])[\w.-]{0,40}?(?:passw(?:or)?d|secret|api[_-]?key|access[_-]?key|token)\w{0,40}\\?['\"]?"  # \" too: JSON
-                     r"\s*[:=]\s*(?:\\?['\"]{1,3}(?P<q>(?:[^'\"\n\\]|\\.){6,})\\?['\"]|(?P<b>[^\s'\"$`{}()<\[\],;:]{8,}))", re.I)
+KEYWORD = re.compile(r"(?<![\w.-])[\w.-]{0,40}?(?:passw(?:or)?d|secret|api[_-]?key|access[_-]?key|private[_-]?key|token)\w{0,40}\\?['\"]?"  # \" too: JSON
+                     r"[ \t]*(?::[ \t]*|=[ \t]*(?:\([ \t]*)?(?:\\?\r?\n[ \t]*)?)(?:\\?['\"]{1,3}(?P<q>(?:[^'\"\n\\]|\\.){6,})\\?['\"]|(?P<b>[^\s'\"$`{}()<\[\],;:]{8,}))", re.I)
+# A credential in a shell/HTTP/netrc context: Authorization header, curl -u, --password, netrc.
+CONTEXT = re.compile(r"\bAuthorization['\"]?[ \t]*[:=][ \t]*['\"]?(?:Basic|Bearer|Token)[ \t]+(?P<v>[A-Za-z0-9+/=._~-]{12,256})"
+                     r"|(?<![\w-])(?:-u[ \t]*|--user(?:[ \t]+|=))(?:(?P<qq>['\"])[^\s:'\"]{1,64}:(?P<wq>[^'\"\n]{6,256})(?P=qq)|[^\s:'\"]{1,64}:(?P<w>[^\s'\"]{6,256}))"
+                     r"|(?<![\w-])--pass(?:word|wd)?(?:[ \t]+|=)['\"]?(?P<x>[^\s'\"]{6,256})"
+                     r"|\blogin[ \t]+\S{1,64}[ \t]+passw(?:or)?d[ \t]+(?P<y>\S{6,256})|^[ \t]*password[ \t]+(?P<z>\S{6,256})[ \t]*$",
+                     re.I | re.M)
+B64 = re.compile(r"(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{16,}={0,2}")
 CHUNK = 700
 MIN_CHARS = 300
 MAX_BYTES = 512 * 1024
@@ -106,8 +119,28 @@ def _has_secret(text: str) -> bool:
     if any(not (_placeholder(v) or _template(v) or re.fullmatch(r"(?i:pass(?:word|wd)?|secret)", v))
            for v in (m.group(1) for m in DSN.finditer(text))):  # a URL password is never a variable name
         return True
-    return any(_literal(m.group("q") or m.group("b"), m.group("q") is not None, bool(re.match(r"[A-Z0-9_]+=\S", m.group())))
-               for m in KEYWORD.finditer(text))
+    if any(_literal(m.group("q") or m.group("b"), m.group("q") is not None, bool(re.match(r"[A-Z0-9_]+=\S", m.group())))
+           for m in KEYWORD.finditer(text)):
+        return True
+    return any(_literal(m.group(m.lastgroup), False, m.lastgroup != "v") for m in CONTEXT.finditer(text))  # a header is never $VAR
+
+
+def _decoded(text: str) -> str:
+    """Printable text hidden in base64 runs (a key wrapped in a k8s/env blob), even behind a binary head."""
+    out = []
+    for m in B64.finditer(text):
+        try:
+            raw = base64.b64decode(m.group() + "=" * (-len(m.group()) % 4), validate=True).decode("latin-1")
+        except ValueError:
+            continue
+        out += re.findall(r"[\t\n\r\x20-\x7e]{6,}", raw)
+    return "\n".join(out)
+
+
+def _unescaped(text: str) -> str:
+    """%2B62 / %40 / + / &#43; as the eye reads them."""
+    text = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), urllib.parse.unquote(text))
+    return html.unescape(text)
 
 
 def _has_phone(text: str) -> bool:
@@ -135,14 +168,17 @@ def _has_phone(text: str) -> bool:
     return False
 
 
+def _has_email(text: str) -> bool:
+    return any(not (EMAIL_RESERVED.fullmatch(domain) or EMAIL_OWN.fullmatch(domain) and EMAIL_ROLE.fullmatch(local.strip("'").split("+")[0]))
+               for local, domain in EMAIL.findall(text))
+
+
 def classify(text: str) -> Optional[str]:
-    if _has_secret(text):
-        return "secret"
-    if _has_phone(text):
-        return "phone"
-    if any(not (EMAIL_RESERVED.fullmatch(domain) or EMAIL_OWN.fullmatch(domain) and EMAIL_ROLE.fullmatch(local.strip("'").split("+")[0]))
-           for local, domain in EMAIL.findall(text)):
-        return "email"
+    plain = _unescaped(text)
+    views = [v for v in (text, plain, _decoded(text), _decoded(plain) if plain != text else "") if v]  # one level deep
+    for reason, found in (("secret", _has_secret), ("phone", _has_phone), ("email", _has_email)):
+        if any(found(v) for v in views):
+            return reason
     return None
 
 
@@ -159,9 +195,13 @@ def screen(path: Path, root: Optional[Path] = None) -> "tuple[Optional[str], str
         hops = [root.joinpath(*rel[:i]) for i in range(1, len(rel))] if root else []  # a linked DIRECTORY too
         if path.is_symlink() or any(hop.is_symlink() for hop in hops):
             return None, "symlink"  # it would send whatever the link points at, inside the repo or not
-        if path.stat().st_size > MAX_BYTES:
-            return None, "oversized"
-        data = path.read_bytes()
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))  # a FIFO must not block
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_BYTES:
+            os.close(fd)
+            return None, "oversized" if stat.S_ISREG(st.st_mode) else "not_regular"
+        with os.fdopen(fd, "rb") as fh:
+            data = fh.read(MAX_BYTES + 1)
     except (OSError, ValueError):  # ValueError: a path outside root
         return None, "unreadable"
     if len(data) > MAX_BYTES:

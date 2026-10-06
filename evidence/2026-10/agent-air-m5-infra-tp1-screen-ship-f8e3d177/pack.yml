@@ -10,7 +10,13 @@ pii_scan_note: >-
   the sha256 of each raw answer is recorded and the raw text stays in the verifier's scratch.
 council_run: journal.jsonl
 seat_override: >-
-  DECLARED at the imperator's order, for the imperator to weigh before the final gate. The gear-3
+  DECLARED at the imperator's order, for the imperator to weigh before the final gate; renewed for
+  the gate-#7971 cure round. In that round Kimi K3 is the only listed, non-builder seat that answered:
+  NO-GO on the first cure (8 items, all cured), a second pass that timed out at 1500 s after its
+  trace found a cubic separator (cured), NO-GO on the third pass (3 items, all cured) and a fourth
+  pass that timed out at 900 s after its probes showed those 3 closed and 4 P3 shapes, declared as
+  limits. Ollama qwen3.5:9b on Mini, unlisted, ran out of its 6000-token budget with no verdict.
+  Codex stays excluded as the builder's family. Before that round: The gear-3
   council quorum (R9) and reviewer independence cannot be met by the lint's listed seats today. The
   builder is Codex O3, so the three Codex O2 rows are the builder's family and are not counted as
   independent. Kimi K3 answered round 1 (NO-GO, every item dispositioned in review_disposition), then
@@ -38,11 +44,12 @@ lanes:
     role: review
     seat: kimi-code/k3
 what_changed: |
-  Commits 1bd6123449, a29ba11f58, ae8589555e, 5815a04fa1, a56b2e5723 on origin/main f9635d4835.
+  Commits 1bd6123449, a29ba11f58, ae8589555e, 5815a04fa1, a56b2e5723, fe16a70557 and the
+  gate-#7971 cure commit on origin/main f9635d4835.
   - scripts/tp1max/build_code_queue.py: the queue builder with a fail-closed screen. Reasons:
-    unsafe_path, excluded_path, symlink (file or linked directory), unreadable (vanished,
-    unreadable, a directory), oversized, empty, binary, short, secret, phone, email,
-    screen_error. Phones: separator-normalised digit runs, group-aligned windows, Indonesian
+    unsafe_path, excluded_path, symlink (file or linked directory), not_regular (a FIFO, device
+    or directory where a tracked file was), unreadable (vanished or unreadable), oversized,
+    empty, binary, short, secret, phone, email, screen_error. Phones: separator-normalised digit runs, group-aligned windows, Indonesian
     mobile/landline and international shapes. Secrets — explicit families, PEM header, URL
     credentials, key-like names assigned a literal. E-mail: role mailbox at own domains or any
     address at a documentation domain. The path is screened with the text.
@@ -56,16 +63,43 @@ what_changed: |
   differed between CI and M5); compound names, JSON keys, shell NAME=value, PEM with escaped
   newlines, DSN, merged/identifier/NBSP/unicode-dash/00-prefix phones, person addresses at
   own domains, excluded paths counted, two quadratic regexes bounded.
+  Gate #7971 cure (one commit, gate BLOCK B1): context rules judged as literals for
+  Authorization Basic/Bearer/Token headers, curl -u/--user (with a space, glued, "=" or a
+  quoted credential), --password/--passwd and netrc login/password lines; private_key among
+  the key-like names; families hf_, Discord webhook URLs and Azure AccountKey=. Every
+  detector runs on four views: the text, its unescaped form (URL %XX, \uXXXX, HTML entities),
+  and the printable runs of 6+ characters inside its base64 runs (and inside the unescaped
+  form's). A phone glued to letters is found. The JWT alternatives start only at a token
+  start, so they are linear without a length cap; KEYWORD has one [ \t]* per gap, "=" may
+  cross one newline (also after "(" or a backslash) and ":" may not; quoted values have no
+  upper cap. The read is os.open with O_NONBLOCK and O_NOFOLLOW, then fstat and S_ISREG.
 proof: |
   Deterministic floor 3, source path (a new workflow), measured with --print-floor.
   Verifier fixture tree (invented): Codex build 17 of 93 guilt files queued, #7927's 49;
   this head 0 of 95, every reason count exact; 20 innocence files, 20 queued.
-  Real tree at origin/main f9635d4835, same tree for both: #7927's screen 5297 jobs, this one
-  5205 (consumer command on 3.9.6 at a56b2e5723, 04:45:10Z). 96 files leave the queue
-  (mostly secret — key-like names with literal values, DSN passwords); 10 enter, each read: 7 role mailboxes and 3 *.invalid, an image
-  id, a regex naming xoxb-, a key whose value spells FAKE.
-  Mutations on scratch copies: 39 + 15 + 3 targeted, all red after tests were added for the
-  two survivors. Suite: 4 passed on 3.11.15 and 3.9.6; 512 KiB adversarial inputs under 0.3 s.
+  Gate #7971's own fixture tree (its fixture_attack.py, read-only): fe16a70557 queued 16 of
+  92 guilt files; this head 0 of 92, all 20 special files under the expected reason; 6 of 28
+  innocence files skipped (f-string DSN template, shell lowercase var, $(cmd), token_type
+  bearer, an unsigned max, a +date), against 7 at fe16a70557.
+  Real tree at origin/main f9635d4835, same tree each time: #7927's screen 5297 jobs,
+  fe16a70557 5205, this head 5192 (08:20:21Z). Against fe16a70557, 13 files leave and none is
+  sensitive: 6 dates after a label or identifier, 2 SVG paths and 1 list of years (phone, the
+  cost of finding a phone glued to letters); 2 type annotations naming Ed25519PrivateKey after
+  private_key, and 3 tuples of quoted words under a key-like name (secret). 7 enter: 5 class
+  names followed by a docstring (the old newline-crossing KEYWORD) and 2 date lists.
+  Red first: the suite at fe16a70557 hung on the FIFO and refused the netrc line first
+  (05:44Z); the current tests against the first cure and against Kimi's third-pass code are
+  red (07:22:54Z, 07:40:55Z).
+  Mutations on scratch copies, this round: 40 distinct mutants aimed at the cure, all red. Four
+  that first timed out under a load average above 300 were re-run red with a longer timeout;
+  the blocking-open mutant hangs the suite by design. One over-flagging survivor was killed
+  with a new innocence line. The 61 earlier mutants were re-run: 47 red, and 14 no longer
+  apply verbatim, each covered by a re-pointed mutant or, for the phone lookbehind changed on
+  purpose, by letter-glued-phone-off.
+  CPU cost at 512 KiB for 18 pathological inputs, the gate's 13 included: at most 1.87 s
+  (fe16a70557: 64 KiB of eyJ took 10.46 s; now 0.14 s, and 1.16 s at 512 KiB). The suite
+  holds a linearity test on process_time: four times the input may cost at most eight times.
+  Suite: 5 passed on 3.11.15 and 3.9.6.
 seat_note: >-
   Codex answered as gpt-6.1-sol; the round-1 session file is under ~/.codex-o2/sessions, so
   the O2 account answered (the builder was O3: same family, so Codex sat on the council only,
@@ -90,6 +124,10 @@ dissent:
     objection: "r2 N2: a credential containing xxxx/example is excused."
     status: PLAUSIBLE
     resolution: "Declared limit: for a random token the odds are below 1e-5; families are excused only by xxxx/example/<."
+  - seat: kimi-code/k3
+    objection: "cure pass 4 trace: four depth-2 shapes of the curl -u context rule and of the base64 view still pass."
+    status: PLAUSIBLE
+    resolution: "Declared limits: a quoted user name holding a space, an unclosed quote, a quoted value over 256 characters, a NUL byte inside a base64-wrapped value."
 review_disposition:
   - {
       id: O1,
@@ -301,6 +339,144 @@ review_disposition:
       disposition: CURED,
       proof: "guilt; no-triple-quotes RED",
     }
+  - {
+      id: G1,
+      item: "gate 1b: netrc login/password line, curl -u name:value, --password with a space, Authorization Basic and Bearer literals",
+      disposition: CURED,
+      proof: "guilt line each; ctx-netrc-off, ctx-curl-u-off, ctx-password-flag-off, ctx-auth-off RED",
+    }
+  - {
+      id: G2,
+      item: "gate 1b: PEM body without header assigned to PRIVATE_KEY and to a JSON private_key",
+      disposition: CURED,
+      proof: "guilt; no-private-key-name RED",
+    }
+  - {
+      id: G3,
+      item: "gate 1b: a base64-wrapped Brevo key",
+      disposition: CURED,
+      proof: "guilt; no-b64-decode, no-decoded-views RED",
+    }
+  - {
+      id: G4,
+      item: "gate 1b: hf_, Discord webhook URL, Azure AccountKey=",
+      disposition: CURED,
+      proof: "guilt; drop-hf, drop-discord, drop-azure RED",
+    }
+  - {
+      id: G5,
+      item: "gate 1b: wa.me/%2B62, phone=%2B62%20, a JS string with the u002B escape before 62, a phone glued to letters",
+      disposition: CURED,
+      proof: "guilt; no-unquote, no-u-escape, letter-glued-phone-off RED",
+    }
+  - {
+      id: G6,
+      item: "gate 1b: an e-mail with %40",
+      disposition: CURED,
+      proof: "guilt; no-unescaped-views RED",
+    }
+  - {
+      id: G7,
+      item: "gate 5: JWT alternative quadratic (64 KiB 10.46 s)",
+      disposition: CURED,
+      proof: "0.14 s at 64 KiB, 1.16 s at 512 KiB; jwt-no-token-start RED on the linearity test",
+    }
+  - {
+      id: G8,
+      item: "gate: KEYWORD's whitespace run crosses a newline (class TokenUsage + docstring)",
+      disposition: CURED,
+      proof: "innocence line; keyword-old-separator RED",
+    }
+  - {
+      id: G9,
+      item: "gate: EMAIL_ROLE fullmatch -> match survives",
+      disposition: CURED,
+      proof: "guilt devi at an own domain; role-fullmatch-to-match RED",
+    }
+  - {
+      id: G10,
+      item: "gate: a FIFO in place of a tracked file hangs the build",
+      disposition: CURED,
+      proof: "not_regular counted; fifo-not-checked RED, fifo-blocking-open hangs the suite",
+    }
+  - {
+      id: KD1,
+      item: "Kimi cure-1: newline right after =",
+      disposition: CURED,
+      proof: "guilt; keyword-no-newline-after-eq RED",
+    }
+  - {
+      id: KD2,
+      item: "Kimi cure-1: JWT caps fail open on a real-length token",
+      disposition: CURED,
+      proof: "guilt with a 600-char payload; jwt-capped-512 RED",
+    }
+  - {
+      id: KD3,
+      item: "Kimi cure-1: quoted value capped at 256",
+      disposition: CURED,
+      proof: "guilt 336 chars; quoted-cap-256 RED",
+    }
+  - {
+      id: KD4,
+      item: "Kimi cure-1: base64 run capped at 4096 hides a tail",
+      disposition: CURED,
+      proof: "guilt at offset ~4133; b64-capped-4096 RED",
+    }
+  - {
+      id: KD5,
+      item: "Kimi cure-1: each new view feeds only one detector",
+      disposition: CURED,
+      proof: "four views for every detector; no-unescaped-views, no-decoded-views RED",
+    }
+  - {
+      id: KD6,
+      item: "Kimi cure-1: --user= and glued -u",
+      disposition: CURED,
+      proof: "guilt; ctx-user-eq-off RED",
+    }
+  - {
+      id: KD7,
+      item: "Kimi cure-1: an all-caps Authorization value excused as a shell name",
+      disposition: CURED,
+      proof: "guilt; ctx-header-shell-rule RED",
+    }
+  - {
+      id: KD8,
+      item: "Kimi cure-1: two escape fixtures pass on the raw text",
+      disposition: CURED,
+      proof: "rebuilt with +44 groupings; no-u-escape now RED (it survived before)",
+    }
+  - {
+      id: KS,
+      item: "Kimi pass 2 trace: three adjacent space-or-tab runs after = are cubic",
+      disposition: CURED,
+      proof: "one space-or-tab run per gap, 0.62 s at 512 KiB; separator-cubic RED",
+    }
+  - {
+      id: KN1,
+      item: "Kimi pass 3: a quoted value over 4096 chars fails open",
+      disposition: CURED,
+      proof: "guilt 4800 chars; quoted-cap-4096 RED",
+    }
+  - {
+      id: KN2,
+      item: "Kimi pass 3: a quoted curl -u credential with spaces",
+      disposition: CURED,
+      proof: "guilt; ctx-curl-quoted-off and ctx-value-first-group RED",
+    }
+  - {
+      id: KN3,
+      item: "Kimi pass 3: a binary head hides the decoded tail",
+      disposition: CURED,
+      proof: "printable runs of 6+; decoded-all-or-nothing RED",
+    }
+  - {
+      id: KL,
+      item: "Kimi pass 4 trace: curl -u with a quoted user holding a space, an unclosed quote, a quoted value over 256, a NUL inside a base64-wrapped value",
+      disposition: LIMIT,
+      proof: "declared in the PR body; depth-2 shapes of one context rule",
+    }
 receipts:
   - claim: "deterministic floor 3, source path"
     cmd: "python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <changed> --numstat-file <numstat> --patch-file <workflow patch>"
@@ -310,19 +486,37 @@ receipts:
     seat: claude-opus-5-5
   - claim: "suite green on both interpreters"
     cmd: "python3 -m pytest -q scripts/tp1max/test_build_queues.py; uv run --python 3.9 --with pytest python -m pytest -q <same>"
-    result: "4 passed / 4 passed (3.9.6)"
+    result: "5 passed / 5 passed (3.9.6)"
     exit: 0
-    ts: "2026-10-06T03:41:30Z"
+    ts: "2026-10-06T08:24:00Z"
     seat: claude-opus-5-5
   - claim: "consumer command on the committed tree"
     cmd: "/usr/bin/python3 scripts/tp1max/build_code_queue.py <worktree> <scratch>/bites_code_queue.jsonl"
-    result: "jobs 5230; skipped email 159, empty 34, excluded_path 4181, oversized 2, phone 92, secret 61, short 139"
+    result: "jobs 5192; skipped email 157, empty 34, excluded_path 4181, oversized 2, phone 96, secret 85, short 139 (build() of the cure on the worktree)"
     exit: 0
-    ts: "2026-10-06T03:43:41Z"
+    ts: "2026-10-06T08:20:21Z"
     seat: claude-opus-5-5
   - claim: "no workflow ran scripts/tp1max tests before this PR"
     cmd: "git grep -n tp1max origin/main -- .github/workflows"
     result: "no match"
     exit: 1
     ts: "2026-10-06T02:22:00Z"
+    seat: claude-opus-5-5
+  - claim: "gate #7971 fixture tree: 0 of 92 guilt files queued"
+    cmd: "/usr/bin/python3 -I -B ~/.agent/campaign-20261005/work/gate-7971/fixture_attack.py <worktree>/scripts/tp1max <scratch>"
+    result: "guilt_queued [], special_mismatch [], special_ok 20, 6 innocence skips"
+    exit: 0
+    ts: "2026-10-06T07:52:58Z"
+    seat: claude-opus-5-5
+  - claim: "red first, then green"
+    cmd: "pytest of the current tests on fe16a70557, on the first cure and on Kimi's third-pass code (scratch copies)"
+    result: "fe16a70557 hang on the FIFO and netrc refused first; first cure 2 failed; third-pass code 2 failed (the 4800-char quoted value first)"
+    exit: 1
+    ts: "2026-10-06T07:44:46Z"
+    seat: claude-opus-5-5
+  - claim: "linear cost at 512 KiB"
+    cmd: "cost_final.py: the gate's misc_probe cases plus base64 blobs, unclosed quoted values and spaces after '='"
+    result: "18 cases, CPU at most 1.87 s"
+    exit: 0
+    ts: "2026-10-06T07:30:33Z"
     seat: claude-opus-5-5
