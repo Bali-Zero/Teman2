@@ -46,7 +46,7 @@ PEM = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY")  # the header alone: a bod
 DSN = re.compile(r"(?<![a-z0-9+.-])[a-z][a-z0-9+.-]{0,20}://[^\s/:@'\"]*:([^\s/@'\"]{2,})@", re.I)
 # A key-like NAME (compound too: DB_PASSWORD, client_secret, "api_key":) assigned a literal.
 KEYWORD = re.compile(r"(?<![\w.-])[\w.-]{0,40}?(?:passw(?:or)?d|secret|api[_-]?key|access[_-]?key|token)\w{0,40}\\?['\"]?"  # \" too: JSON
-                     r"\s*[:=]\s*(?:\\?['\"]{1,3}(?P<q>[^'\"\n\\]{6,})\\?['\"]|(?P<b>[^\s'\"$`{}()<\[\],;:]{8,}))", re.I)
+                     r"\s*[:=]\s*(?:\\?['\"]{1,3}(?P<q>(?:[^'\"\n\\]|\\.){6,})\\?['\"]|(?P<b>[^\s'\"$`{}()<\[\],;:]{8,}))", re.I)
 CHUNK = 700
 MIN_CHARS = 300
 MAX_BYTES = 512 * 1024

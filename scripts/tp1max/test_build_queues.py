@@ -40,6 +40,7 @@ GUILT = {
         'DB_PASSWORD = "' + "!StrongPass92" + '"', 'API_KEY = "' + "X9K2" + "QWERTY7Z" * 2 + '"',
         'x = "{\\"password\\": \\"' + "hunter2hunter2" + '\\"}"',  # an all-caps token; escaped JSON in a string
         'DB_PASSWORD = """' + "InventedPass92" + '"""',
+        'DB_PASSWORD = "' + "Sup3r" + chr(92) + '"' + "Secret99" + '"',  # an escaped quote inside the value
     ],
     "phone": ["(0812) 3456-7890", "+62 (812) 3456–7890", "0812  3456  7890",
               "0812/3456/7890", "0812—3456—7890", "(021) 555-0123", "+62 21 555 0123",
