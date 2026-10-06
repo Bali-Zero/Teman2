@@ -1,0 +1,13 @@
+task_id: doc-client-visible-1006
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Drive-registered notes (.txt/.md) land client_visible=false through one shared
+  predicate at every Drive registration writer; the staff document PATCH accepts
+  client_visible for CRM admins and Team Leader / Tax Lead / Supervisor (403 and
+  no write otherwise) and records the flip on the client Timeline, hidden from
+  the client, ids and role only; staff document reads return the flag. Backend
+  only, no migration. Gear is 2 via the SIZE term alone (583 net lines, mostly
+  tests); the path term is 1. The gear-2 verdict is not asserted here: a fresh
+  gate read the candidate on disk and its verdict is posted as harness/fable-gate.
