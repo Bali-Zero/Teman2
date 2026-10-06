@@ -312,15 +312,21 @@ def _apply_dynamic_rule(
         )
         return text
 
-    # Escape each name (avoid regex injection from a name like "John (Mr.)")
-    # then build a single \b(?:Name1|Name2|...)\b alternation.
-    escaped = [re.escape(n) for n in names if n.strip()]
-    if not escaped:
+    names = [n.strip() for n in names if n.strip()]
+    if not names:
         return text
     # Sort longest-first so multi-word names match BEFORE their substrings
     # ("Budi Santoso" before "Budi").
-    escaped.sort(key=len, reverse=True)
-    pattern = r"\b(?:" + "|".join(escaped) + r")\b"
+    names.sort(key=len, reverse=True)
+    # Escape each name (avoid regex injection from a name like "John (Mr.)")
+    # and guard only its word-character edges in the single alternation.
+    escaped = [
+        (r"(?<!\w)" if re.match(r"\w", n[0]) else "")
+        + re.escape(n)
+        + (r"(?!\w)" if re.match(r"\w", n[-1]) else "")
+        for n in names
+    ]
+    pattern = r"(?:" + "|".join(escaped) + r")"
     # P2 §7.1 BUG #2 fix: case-insensitive. CRM names arrive title-cased from
     # Postgres ("Budi Santoso") but appear lowercased in WhatsApp text
     # ("budi santoso"). Without re.IGNORECASE the lowercase form BYPASSED the
