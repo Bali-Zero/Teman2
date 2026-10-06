@@ -507,13 +507,18 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 61-path fact vocabulary (57 applicant + 4 derived; spec §2 ``FactPath``)
+# FactPath — the closed fact vocabulary (spec §2 ``FactPath``); the
+# applicant-collected subset is ``APPLICANT_FACT_PATHS`` below, the
+# engine-computed subset ``DERIVED_FACT_PATHS``. Both are derived
+# structurally from this enum — never hand-counted.
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 57 applicant-collected
-    + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
+    """Every fact path the engine may ever reference — the
+    applicant-collected paths (``APPLICANT_FACT_PATHS``) plus the derived
+    ones (``DERIVED_FACT_PATHS``) (spec §2 ``ApplicantFactPath`` +
+    ``FactPath``, extended by the
     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
     two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
@@ -771,12 +776,12 @@ class FactPath(str, Enum):
     DERIVED_HAS_ACTIVE_STAY_PERMIT = "derived.has_active_stay_permit"
 
 
-#: The 57 applicant-collected paths (everything except ``derived.*``).
+#: The applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )
 
-#: The 4 engine-computed paths, never collected from the applicant directly.
+#: The engine-computed paths, never collected from the applicant directly.
 DERIVED_FACT_PATHS: frozenset[FactPath] = frozenset(FactPath) - APPLICANT_FACT_PATHS
 
 #: Facts that describe commercial willingness/budget, never legal eligibility.

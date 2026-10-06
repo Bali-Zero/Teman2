@@ -917,7 +917,9 @@ SponsorPermitBasisFact = Annotated[
 
 
 # ---------------------------------------------------------------------------
-# ApplicantFacts (spec §2) — the 56 applicant-collected fact paths, each
+# ApplicantFacts (spec §2) — the applicant-collected fact paths (one field
+# per path, structurally equal to ``APPLICANT_FACT_PATHS`` — see
+# ``test_applicant_fact_vocabulary_is_one_derived_cardinality_pin``), each
 # typed per its own *Fact union above. Field names use Python-safe
 # identifiers with the dotted wire name as the Pydantic alias (same pattern
 # as ``TimeRange.from_``/``alias="from"``) since a dotted path cannot be a

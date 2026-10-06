@@ -228,16 +228,12 @@ def _resolve_nationality_alpha2(nationality: str) -> str | None:
 
 
 def _default_unknown_facts() -> dict[str, UnknownFact]:
-    """The 46 applicant-collected fact paths (widened 2026-08-23 — three
-    optional/defaulted `family.stepchild_*`/`family.sponsor_permit_basis`
-    keys — again 2026-08-24, `immigration.renewal_paid`, F4, and again
-    2026-09-13, `investment.investment_amount_usd`, PR-D4c-1; this
-    function derives its key set from ``APPLICANT_FACT_PATHS`` structurally,
-    so it required no code change), each defaulted to
-    ``UnknownFact(reason=NOT_ASKED)`` — a Match wizard submission never asked
-    the other 42 facts a full visa_oracle interview would. Sharing one frozen
-    ``UnknownFact`` instance across every key is safe (immutable model, no
-    per-key state).
+    """The applicant-collected fact paths (key set derived structurally from
+    ``APPLICANT_FACT_PATHS``, so a vocabulary extension requires no code
+    change here), each defaulted to ``UnknownFact(reason=NOT_ASKED)`` — a
+    Match wizard submission never asks the full fact set a complete
+    visa_oracle interview would. Sharing one frozen ``UnknownFact`` instance
+    across every key is safe (immutable model, no per-key state).
     """
 
     default = UnknownFact(status="UNKNOWN", reason=UnknownReason.NOT_ASKED)
@@ -251,13 +247,14 @@ def build_shadow_facts(
     duration_months: int,
     match_hash: str,
 ) -> ApplicantFacts | None:
-    """Adapt a 4-field Match submission into a full 44-key ``ApplicantFacts``.
+    """Adapt a 4-field Match submission into a full ``ApplicantFacts``.
 
-    Every one of the 44 fields is built defensively: the 3 KNOWN-able ones
+    Every field is built defensively: the 3 KNOWN-able ones
     (``person.nationalities``/``intent.purposes``/``intent.stay_days``) are
     each attempted in their own ``try/except`` — a failure on any single
     field degrades ONLY that field to its ``UnknownFact`` default, never
-    aborts the whole build. The remaining 41 stay ``UNKNOWN(NOT_ASKED)``.
+    aborts the whole build. All fields the submission does not cover stay
+    ``UNKNOWN(NOT_ASKED)``.
     Returns ``None`` only if the ``ApplicantFacts`` construction fails
     entirely (e.g. the facts dict itself is somehow malformed) — the whole
     SHADOW evaluation aborts silently in that case (caller logs and returns).

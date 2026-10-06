@@ -22045,8 +22045,10 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 57 applicant-collected
-     *     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
+     * @description Every fact path the engine may ever reference — the
+     *     applicant-collected paths (``APPLICANT_FACT_PATHS``) plus the derived
+     *     ones (``DERIVED_FACT_PATHS``) (spec §2 ``ApplicantFactPath`` +
+     *     ``FactPath``, extended by the
      *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
      *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
      *     two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
