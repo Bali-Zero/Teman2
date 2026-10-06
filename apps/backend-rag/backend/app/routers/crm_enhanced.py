@@ -998,6 +998,7 @@ class DocumentUpdate(BaseModel):
     status: str | None = None
     notes: str | None = None
     is_archived: bool | None = None
+    client_visible: bool | None = None
 
 
 class ClientProfileUpdate(BaseModel):
