@@ -12,7 +12,8 @@ LOG="$LOG_DIR/run.log"
 mkdir -p "$LOG_DIR"
 TG_SOURCE="healer-pro"
 SIDECAR_DIR="$HOME/.organism/last_seen"
-PIDFILE="/tmp/nuzantara-pro-healer.pid"
+HEALER_STATE_DIR="$HOME/.organism/healer-pro"
+PIDFILE="${PRO_HEALER_PIDFILE:-/tmp/nuzantara-pro-healer.pid}"
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
 log() { echo "[$(ts)] $*" >> "$LOG"; }
@@ -153,13 +154,18 @@ fi
 # Receptor B: proprioception — boundary divergences on THIS machine
 PROP_JSON=$(python3 scripts/proprioception.py --json --no-fetch 2>/dev/null)
 PROP_EXIT=$?
-DIVERGED=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py count-diverged 2>/dev/null)
+PROP_SUMMARY=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py proprioception-summary 2>>"$LOG")
 CHECK_EXIT=$?
+DIVERGED=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '1p')
+SESSION_CURABLE=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '2p')
+DIVERGED_IDS=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '3p')
 # The probe's own failure is a THIRD state, like registry receptor exit 2 (superscar #2).
 if [ "$PROP_EXIT" -ne 0 ] || [ "$CHECK_EXIT" -ne 0 ]; then
     ACTIONABLE=1; REASONS="${REASONS}proprioception-receptor-broken "
+elif [ "${SESSION_CURABLE:-0}" -gt 0 ] 2>/dev/null; then
+    ACTIONABLE=1; REASONS="${REASONS}proprioception:${SESSION_CURABLE}/${DIVERGED}-session-curable "
 elif [ "${DIVERGED:-0}" -gt 0 ] 2>/dev/null; then
-    ACTIONABLE=1; REASONS="${REASONS}proprioception:${DIVERGED}-diverged "
+    log "skip: ${DIVERGED} diverged, none session-curable at P0-P1: ${DIVERGED_IDS:-unknown}"
 fi
 
 # Receptor C: declared HOME pairs drift on pro (superscar #1)
@@ -201,18 +207,20 @@ if [ "$ARSENAL_AGE_H" -ge 20 ] && [ -f "scripts/arsenal_probe.py" ]; then
     log "arsenal probe: report ${ARSENAL_AGE_H}h old — refreshing (live seat probes)"
     python3 scripts/arsenal_probe.py --quiet >> "$LOG" 2>&1 || true
 fi
+NEW_DEAD=""
 if [ -f "$ARSENAL_REPORT" ]; then
-    NEW_DEAD=$(python3 - <<'PY' 2>/dev/null
-import json, os
-try:
-    d = json.load(open(os.path.expanduser("~/.organism/arsenal/last.json")))
-    strict = {"AUTH_DEAD", "BALANCE_DEAD", "MODEL_ERR", "UNKNOWN_ERR"}
-    print(",".join(f"{t['seat']}:{t['to']}" for t in d.get("transitions", [])
-                   if t.get("to") in strict))
-except Exception:
-    pass
-PY
-)
+    ARSENAL_GATE=$(python3 scripts/healer_run_checks.py arsenal-transitions \
+        --state "$HEALER_STATE_DIR/arsenal-last-acted.json" \
+        < "$ARSENAL_REPORT" 2>>"$LOG")
+    ARSENAL_GATE_RC=$?
+    NEW_DEAD=$(printf '%s\n' "$ARSENAL_GATE" | sed -n '1p')
+    ALREADY_ACTED=$(printf '%s\n' "$ARSENAL_GATE" | sed -n '2p')
+    ARSENAL_REPORT_TS=$(printf '%s\n' "$ARSENAL_GATE" | sed -n '3p')
+    if [ "$ARSENAL_GATE_RC" -ne 0 ]; then
+        log "skip: arsenal transition gate unreadable (rc=$ARSENAL_GATE_RC)"
+    elif [ -n "$ALREADY_ACTED" ]; then
+        log "skip: arsenal transition already acted: ${ALREADY_ACTED} report-ts=${ARSENAL_REPORT_TS}"
+    fi
     if [ -n "$NEW_DEAD" ]; then
         ACTIONABLE=1; REASONS="${REASONS}arsenal:${NEW_DEAD} "
         telegram p0 "healer-pro:arsenal-seat-dead" "🔌 ARSENALE (Pro): seat morto rilevato — ${NEW_DEAD}. Dettaglio: ~/.organism/arsenal/last.json (docs/runbooks/arsenal-probe.md)"
@@ -220,7 +228,7 @@ PY
 fi
 
 if [ "$ACTIONABLE" -eq 0 ]; then
-    log "pre-check clean (pro organs alive, 0 diverged, pairs aligned) — no LLM spawn"
+    log "pre-check clean (pro organs alive, 0 session-curable diverged, pairs aligned) — no LLM spawn"
     heartbeat "ok" "idle: pre-check clean"
     exit 0
 fi
@@ -261,8 +269,8 @@ for p in (prop.get("probes") if isinstance(prop, dict) else []) or []:
     if not isinstance(p, dict):
         continue
     verdict = str(p.get("status") or p.get("verdict") or "").upper()
-    if verdict == "DIVERGED":
-        diverged_probes.append(str(p.get("id", "")))
+    if verdict == "DIVERGED":  # the cure joins the key: a session-curable probe moving is new work
+        diverged_probes.append(f'{p.get("id", "")}:{p.get("cure", "session")}')
 
 # lint_home_fork.py --check prints breach lines as "  - <text>"; a stale-checkout
 # notice ("  ~ <text>") is NOT a breach and must not perturb the fingerprint.
@@ -284,7 +292,7 @@ print(json.dumps({
 PY
 )
 FINGERPRINT=$(printf '%s' "$RECEPTOR_STATE_JSON" | python3 scripts/healer_memo.py fingerprint 2>>"$LOG")
-MEMO_STATE="$HOME/.organism/healer-pro/memo.json"
+MEMO_STATE="$HEALER_STATE_DIR/memo.json"
 MEMO_RC=0
 MEMO_OUT=$(python3 scripts/healer_memo.py check --state "$MEMO_STATE" --fingerprint "$FINGERPRINT" 2>&1) || MEMO_RC=$?
 log "healer_memo check (rc=$MEMO_RC): $MEMO_OUT"

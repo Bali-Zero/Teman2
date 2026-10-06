@@ -1,0 +1,131 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  Branch agent/air-m5/ops/healer-receptors from origin/main ca586694c2, rebased onto 65b340c05c before push. Codex O1 built the
+  first diff in a linked worktree (scripts/seat_build.sh, 2026-10-06 13:21-14:07Z, prepare-only, no commit). The first Claude
+  verifier died with its window; dux-healer-ship-2 re-verified on disk, amended (a-d), ran a sealed three-family council
+  (16:10-16:13Z) and one refutation round (16:18-16:20Z), folded amendments e-h, then committed and shipped. Owner order
+  "fai tu" on the Pro healer, 2026-10-06.
+lanes:
+  - lane: healer-receptors-build
+    role: build
+    seat: "codex-o1 (scripts/seat_build.sh --seat codex --tier sol; receptor B/D, cure schema, 5 tests; prepare-only)"
+  - lane: healer-receptors-verify
+    role: build
+    seat: "claude-opus-5.5 (dux-healer-ship-2: on-disk verification, red-first on origin/main exports, adversarial scratch suite, amendments a-h, this pack, commit, push, arm)"
+  - lane: healer-receptors-council-claude
+    role: review
+    seat: "claude-opus-5.5 (sealed round 1, written first; AMEND)"
+  - lane: healer-receptors-council-codex
+    role: review
+    seat: "codex-o2 (gpt-6.1-sol, sessions 01a111fb / 01a11201 under ~/.codex-o2; round 1 AMEND, round 2 FALSIFIED; builder family)"
+  - lane: healer-receptors-council-ollama
+    role: review
+    seat: "ollama-qwen3.5:9b (Mini, local; round 1 AMEND after one empty attempt, round 2 FALSIFIED)"
+council_run: journal.jsonl
+seat_override: >-
+  Gear-3 quorum short of three counted non-builder families. Kimi (kimi-code/k3) and the TP1 seats (Alibaba monthly quota exhausted
+  since 2026-10-05T15:55Z, 429 until 2026-10-11T16:00Z) are quota-dead and agy (Gemini) is busy with the owner's interactive
+  windows, per the imperator's standing campaign rules of 2026-10-06; none was re-probed (TP1: "do not retry"). Fallback used:
+  ollama-qwen3.5:9b on Mini (largest qwen in `ssh mini ollama list`), which this lint does not count. Codex O2 is the builder's
+  family (Codex O1 built the diff): its voice counts as a seat, not as independence. The gate should weigh the council as
+  anthropic + openai(builder family) + local qwen.
+council_timing: >-
+  Round 1 sealed: claude 16:10:43Z (before either other answer was read), codex-o2 16:11:22-16:12:36Z, ollama 16:11:34Z (empty)
+  and 16:12:29-16:12:53Z. Round 2 refutation: ollama 16:18:02-16:18:22Z, codex-o2 16:17:54-16:19:44Z. All before the first
+  commit of this branch. Amendments a-d precede the council; e-g follow round 1; h follows round 2.
+what_changed: |
+  scripts/proprioception.py: schema 2 / runner 1.1.0. Every verdict carries cure: session | owner | pr (default session; registry
+  values validated). Static owner: tailnet_policy_drift, git_alignment. Static pr: regulatory_promotion, door_canon_parity (the Pro
+  healer mandate forbids repo writes and PRs). Dynamic owner only when EVERY finding proves it and the evidence covers all
+  n_findings: arsenal_seats all AUTH_DEAD/BALANCE_DEAD; launchd_liveness all DEAD-GREEN + "operation not permitted" (TCC);
+  home_fork_scripts all live paths uid 0. last.md prints cure= per probe.
+  scripts/healer_run_checks.py: proprioception-summary (diverged count, session-curable P0/P1 count, ids; exact cure match;
+  non-object probes rejected) and arsenal-transitions (dedup by the report's own ts per (seat, state); state file
+  ~/.organism/healer-pro/arsenal-last-acted.json written tmp + replace; a corrupt file or entry reads as never acted and says so;
+  a report without ts or with a non-object transition is rc 3). count-diverged (Mini healer) unchanged.
+  infra/launchagents/wrappers/pro-healer.sh: receptor B spawns only on a session-curable P0/P1 probe, reason
+  proprioception:<k>/<n>-session-curable, else one run.log line "skip: <n> diverged, none session-curable at P0-P1: <ids>";
+  helper stderr into run.log. Receptor D acts once per new report ts and logs "already acted" / "gate unreadable". The G11 memo
+  key gains each diverged probe's cure. Test-only seam PRO_HEALER_PIDFILE.
+  scripts/tests/test_pro_healer_receptors.py (7 whole-wrapper/schema cases); test_watchdog_third_state.sh pro row expects the
+  new reason; .github/workflows/watchdog-third-state.yml runs the new module.
+  Verifier amendments over Codex O1: a exact cure match; b corrupt state = never acted (Codex raised -> receptor D mute forever);
+  c reason k/n-session-curable + clean line wording; d third-state test row; e non-object probes/transitions rejected (codex-o2 r1);
+  f helper stderr to run.log (ollama r1); g skip line says "at P0-P1" (codex-o2 r1); h cure in the memo key (codex-o2 r2).
+spend:
+  wall_clock_hours: 1.5
+receipts:
+  - claim: no Codex continuation was live in the worktree when the verifier took it
+    cmd: ps -axo pid,command | grep "context_bridge.py continue" | grep -v grep
+    exit: "1 (no process), at start and again before commit"
+    ts: "2026-10-06T16:16Z"
+    seat: claude-opus-5.5
+  - claim: RED first on origin/main 65b340c05c exports of the wrapper, healer_run_checks.py and proprioception.py (base helper too), final test file
+    cmd: python -m pytest -q -p no:cacheprovider --rootdir=<scratch red-mine> <scratch red-mine>/scripts/tests/test_pro_healer_receptors.py
+    exit: "1 (7 failed of 7): B innocence spawned (1 != 0); D innocence spawned twice (2 != 1); B guilt reason absent; cure 'Owner' read as a plain divergence, not receptor-broken; corrupt state not logged; D tuple not persisted; KeyError cure"
+    ts: "2026-10-06T16:23Z"
+    seat: claude-opus-5.5
+  - claim: GREEN on the final tree, existing suites included
+    cmd: python -m pytest -q scripts/tests/test_pro_healer_receptors.py scripts/tests/test_healer_run_checks.py scripts/tests/test_proprioception*.py scripts/tests/test_healer_memo.py; bash scripts/tests/test_proprioception_{finding_count,output_cap,receptor_ranking}.sh; bash scripts/tests/test_watchdog_third_state.sh; proprioception.py --selftest; bash -n; git diff --check
+    exit: "0 (215 passed) / 14+8+7 passed, 0 failed / ALL PASS / SELFTEST OK (21 probes) / 0 / 0"
+    ts: "2026-10-06T16:23Z"
+    seat: claude-opus-5.5
+  - claim: adversarial scratch suite (subclass of the shipped harness, real wrapper) holds for B and D edge cases
+    cmd: python -m pytest -q work/dux-healer-ship/adv/test_adv_receptors.py -k adv
+    exit: "0 (19 passed, 15 subtests): missing cure -> session; Session/OWNER/garbage/None/list -> receptor-broken; empty, unparsable, [null] boards -> receptor-broken; owner+session -> 1/2 spawn; P2-only -> skip; B skip keeps the registry alarm; corrupt state x4 -> never acted, logged, healed; older ts -> skip; two seats -> both; DEAD-LIVE-DEAD on 3 ts -> 2 spawns; state dir created, no tmp left; no ts / null transition -> rc 3 logged, no spawn"
+    ts: "2026-10-06T16:17Z"
+    seat: claude-opus-5.5
+  - claim: the new proprioception.py read-only on Pro gives 7 DIVERGED, 4 session-curable P1
+    cmd: ssh pro 'cd ~/nuzantara && python3 - --json --no-report --no-fetch' < scripts/proprioception.py | python3 scripts/healer_run_checks.py proprioception-summary
+    exit: "schema 2; home_fork_scripts owner; worktree_gate_shim, launchd_liveness (14), organs_heartbeat (10), arsenal_seats (AUTH_DEAD+MODEL_ERR+UNKNOWN_ERR) session P1; launchagent_canon P2; child_calibration P3 -> 7 / 4"
+    ts: "2026-10-06T16:05Z"
+    seat: claude-opus-5.5
+  - claim: the HOME-fork pair is aligned before merge, so delivery is one exact copy
+    cmd: ssh pro 'git -C ~/nuzantara hash-object ~/scripts/pro-healer.sh'; git rev-parse origin/main:infra/launchagents/wrappers/pro-healer.sh; ssh mini 'ls ~/scripts/pro-healer.sh'
+    exit: "48267b60c3 == 48267b60c3; Mini: No such file"
+    ts: "2026-10-06T16:05Z"
+    seat: claude-opus-5.5
+  - claim: swapping cures between two diverged probes changes the memo fingerprint (amendment h)
+    cmd: the wrapper's RECEPTOR_STATE heredoc fed both boards, piped to scripts/healer_memo.py fingerprint
+    exit: "95b00cf823... vs bed002ec74... (distinct)"
+    ts: "2026-10-06T16:20Z"
+    seat: claude-opus-5.5
+dissent:
+  - seat: codex-o2 (round 1, finding 1)
+    objection: "A lone P2 session probe (launchagent_canon zombie) is curable by bootout yet the skip line calls it 'none session-curable'."
+    status: CONFIRMED
+    reason: "Wording cured (g): the line says 'at P0-P1'. The P2 skip itself stays: the task gates on priority <= P1."
+  - seat: codex-o2 (round 1, finding 2)
+    objection: "Receptor D still spawns once on a new AUTH_DEAD, which no session can cure; notify without spawn."
+    status: PLAUSIBLE
+    reason: "Not acted: out of this concern. D now spawns once per new report ts instead of every tick; notify-only for AUTH/BALANCE is a residual."
+  - seat: codex-o2 (round 1, finding 3)
+    objection: '{"probes":[null]} and {"transitions":[null]} are read as clean: the receptor is mute on a malformed input.'
+    status: CONFIRMED
+    reason: "Cured (e): both are rc 3, receptor-broken / gate unreadable in run.log; adversarial rows cover them."
+  - seat: ollama-qwen3.5:9b (round 1, finding 1)
+    objection: "An owner-cured probe is skipped, so a session cannot try it."
+    status: FALSIFIED
+    reason: "By definition: owner = sudo, GUI or credential; the Pro healer session cannot perform it."
+  - seat: ollama-qwen3.5:9b (round 1, finding 2)
+    objection: "A TCC-blocked launchd job classified session still spawns."
+    status: FALSIFIED
+    reason: "All-TCC findings are owner (dynamic); a mixed probe stays session on purpose (one curable finding is work)."
+  - seat: ollama-qwen3.5:9b (round 1, finding 3)
+    objection: "State-file parse errors and summary exceptions are swallowed by 2>/dev/null."
+    status: CONFIRMED
+    reason: "Half: the state loader already wrote to run.log (2>>LOG); the summary helper's stderr was dropped. Cured (f)."
+  - seat: ollama-qwen3.5:9b (round 2)
+    objection: "A cure like 'auto' crashes the summary (rc 3) and loses the session-curable reason."
+    status: FALSIFIED
+    reason: "The vocabulary is closed (validate_registry); an unknown value is receptor-broken, which still spawns with a reason, and (f) names the value in run.log."
+  - seat: codex-o2 (round 2)
+    objection: "Two probes swapping cures keep the same id set, so the G11 memo fingerprint is unchanged and an 'incurable' memo suppresses the new P1 session work."
+    status: CONFIRMED
+    reason: "Cured (h): each diverged probe enters the memo key as id:cure. One-time fingerprint change on Pro after delivery (one memo MISS)."
+residuals:
+  - "Spawn lever: on Pro today receptors A (registry:6-dead-organs) and C (home-fork-drift on the sudo-only pair) fire every tick and 4 probes stay session P1, so this PR alone does not reduce Pro spawns. A/C and the G11 memo are a separate mandate."
+  - "Coarse inputs: arsenal_seats MODEL_ERR (stale seat definition) is a pr cure, organs_heartbeat credential failures are owner, launchd NOT-LOADED is owner; all read as session today. Per-finding cure is a follow-up."
+  - "Receptor D: notify without spawn for AUTH_DEAD/BALANCE_DEAD (codex-o2 r1). The tuple is persisted when acted, before the memo; a failed Telegram send still marks it acted."
+  - "Delivery owed after merge: ~/scripts/pro-healer.sh on Pro from the merged blob (.bak-<date>-pre<PR>, blob check), by a Claude session."
