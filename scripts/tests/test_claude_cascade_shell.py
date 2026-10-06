@@ -1735,3 +1735,319 @@ def test_cascade_retired_slots_equal_the_registry() -> None:
 def test_wr2_retired_token_vars_equal_the_registry() -> None:
     declared = {v.rsplit("_", 1)[-1] for v in _shell_array(WR2_WRAPPER, "RETIRED_TOKEN_VARS")}
     assert declared == _registry_retired_token_slots()
+
+
+# ------------------------------------------------- per-attempt observability
+# CASCADEOBS 2026-10-05. The wrapper now says, for every Claude seat attempt,
+# which slot and seat it tried and the failure CLASS, plus one result line.
+# The five GOLDEN scenarios pin what must NOT move: the attempt sequence, the
+# stdout callers parse, the exit code and every pre-existing stderr line. The
+# fixture was recorded from the pre-change wrapper (beb6991b30);
+# CLAUDE_CASCADE_GOLDEN_SCRIPT re-runs the comparison against any other copy.
+
+GOLDEN_SCRIPT = Path(os.environ.get("CLAUDE_CASCADE_GOLDEN_SCRIPT", str(CASCADE)))
+GOLDEN_FIXTURE = Path(__file__).parent / "fixtures" / "claude_cascade_golden.json"
+NEW_RECORD = re.compile(r"^\[cascade-(attempt|result)\] ")
+ATTEMPT = re.compile(
+    r"^\[cascade-attempt\] v=1 job=(?P<job>\S+) slot=(?P<slot>\S+) seat=(?P<seat>\S+) "
+    r"class=(?P<cls>answered|rate_limited|auth_dead|retired_skip|timeout|empty_output|other) "
+    r"rc=(?P<rc>\S+) dur_s=\d+ src=(?P<src>live|ledger|pinned)$"
+)
+RESULT = re.compile(r"^\[cascade-result\] v=1 job=(\S+) slot=(\S+) seat=(\S+) rc=(\d+)$")
+ORG_DISABLED_TEXT = (
+    "Your organization has disabled Claude subscription access for Claude Code"
+    " · Use an Anthropic API key instead, or ask your admin to enable access"
+)
+# The Claude CLI's session-limit banner (recorded since #3018). QUOTA_PATTERN
+# does not contain it; "weekly limit" matched only as a substring (gate B1).
+SESSION_LIMIT_TEXT = "You have hit your session limit · resets 11:20pm (Asia/Makassar)"
+GOLDEN_SCENARIOS = {
+    "first_slot_answers": {"token1": 'printf "answer-one\\n"\nexit 0'},
+    "rate_limited_then_second_answers": {
+        "token1": 'printf "Claude AI usage limit reached|1759651200\\n" >&2\nexit 1',
+        "token3": 'printf "answer-three\\n"\nexit 0',
+    },
+    "dead_slot_then_answer": {
+        "token1": f'printf "%s\\n" "{ORG_DISABLED_TEXT}" >&2\nexit 1',
+        "token3": 'printf "answer-three\\n"\nexit 0',
+    },
+    "all_fail": {},
+    "retired_slot_in_the_middle": {
+        "token1": 'printf "rate limit exceeded\\n" >&2\nexit 1',
+        "token2": 'printf "retired-seat-spent\\n"\nexit 0',
+        "token3": "exit 0",
+        "token4": 'printf "answer-four\\n"\nexit 0',
+    },
+}
+
+
+def _golden_fleet(tmp_path: Path, name: str) -> tuple[Path, dict[str, str]]:
+    failing = {label: "exit 1" for label in ("agy", "kimi", "codex", "ollama", "fm")}
+    call_log, _, env = _fake_fleet(tmp_path, _default_bodies() | GOLDEN_SCENARIOS[name], failing)
+    env["CLAUDE_CODE_OAUTH_TOKEN_6"] = TOKEN_VALUES["token6"]
+    env["CLAUDE_CASCADE_JOB"] = "golden-job"
+    return call_log, env
+
+
+def _golden_stderr(stderr: str, tmp_path: Path) -> list[str]:
+    return [
+        line.replace(str(tmp_path), "<tmp>")
+        for line in stderr.splitlines()
+        if not NEW_RECORD.match(line)
+    ]
+
+
+def _records(stderr: str) -> tuple[list[dict[str, str]], list[tuple[str, ...]]]:
+    attempts, results = [], []
+    for line in stderr.splitlines():
+        if line.startswith("[cascade-attempt]"):
+            match = ATTEMPT.match(line)
+            assert match, f"attempt line off-schema: {line!r}"
+            attempts.append(match.groupdict())
+        elif line.startswith("[cascade-result]"):
+            match = RESULT.match(line)
+            assert match, f"result line off-schema: {line!r}"
+            results.append(match.groups())
+    return attempts, results
+
+
+@pytest.mark.parametrize("name", sorted(GOLDEN_SCENARIOS))
+def test_golden_attempts_stdout_exit_and_old_stderr_are_unchanged(tmp_path: Path, name: str) -> None:
+    golden = json.loads(GOLDEN_FIXTURE.read_text(encoding="utf-8"))[name]
+    call_log, env = _golden_fleet(tmp_path, name)
+    # Same location for every copy under test: the wrapper looks for its
+    # libraries next to itself, and that lookup is not what is compared.
+    script = tmp_path / "claude-cascade.sh"
+    shutil.copyfile(GOLDEN_SCRIPT, script)
+
+    result = subprocess.run(
+        ["/bin/zsh", str(script), "hermetic prompt"],
+        capture_output=True, text=True, check=False, env=env, timeout=30,
+    )
+
+    assert _labels(call_log) == golden["calls"], result.stderr
+    assert result.stdout == golden["stdout"]
+    assert result.returncode == golden["rc"]
+    assert _golden_stderr(result.stderr, tmp_path) == golden["stderr"]
+
+
+GOLDEN_RECORDS = {
+    "first_slot_answers": ([("1", "A1", "answered")], ("1", "A1", "0")),
+    "rate_limited_then_second_answers": (
+        [("1", "A1", "rate_limited"), ("2", "A5", "retired_skip"), ("3", "A3", "answered")],
+        ("3", "A3", "0"),
+    ),
+    "dead_slot_then_answer": (
+        [("1", "A1", "auth_dead"), ("2", "A5", "retired_skip"), ("3", "A3", "answered")],
+        ("3", "A3", "0"),
+    ),
+    "all_fail": (
+        [("1", "A1", "other"), ("2", "A5", "retired_skip"), ("3", "A3", "other"),
+         ("4", "A4", "other"), ("5", "A2", "other"), ("6", "AZ", "other"),
+         ("legacy", "unmapped", "other"), ("keychain", "unmapped", "other")],
+        ("none", "none", "1"),
+    ),
+    "retired_slot_in_the_middle": (
+        [("1", "A1", "rate_limited"), ("2", "A5", "retired_skip"), ("3", "A3", "empty_output"),
+         ("4", "A4", "answered")],
+        ("4", "A4", "0"),
+    ),
+}
+
+
+@pytest.mark.parametrize("name", sorted(GOLDEN_SCENARIOS))
+def test_every_attempt_names_slot_seat_and_class_and_one_result_line(tmp_path: Path, name: str) -> None:
+    _, env = _golden_fleet(tmp_path, name)
+
+    result = _run_cascade(env, "hermetic prompt")
+
+    attempts, results = _records(result.stderr)
+    expected_attempts, (slot, seat, rc) = GOLDEN_RECORDS[name]
+    assert [(a["slot"], a["seat"], a["cls"]) for a in attempts] == expected_attempts
+    assert {a["job"] for a in attempts} == {"golden-job"}
+    assert results == [("golden-job", slot, seat, rc)]
+    assert str(result.returncode) == rc
+
+
+def _first_slot(tmp_path: Path, body: str, *, env_extra: dict[str, str] | None = None):
+    bodies = _default_bodies()
+    bodies["token1"] = body
+    bodies["token3"] = 'printf "answer-three\\n"\nexit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    env.update(env_extra or {})
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    attempts, _ = _records(result.stderr)
+    return result, attempts[0]
+
+
+CLASS_CASES = {
+    # guilt: each failure shape names its class
+    "quota_on_stderr": ('printf "You have hit your weekly limit\\n" >&2\nexit 1', "rate_limited"),
+    "org_disabled_on_stderr": (f'printf "%s\\n" "{ORG_DISABLED_TEXT}" >&2\nexit 1', "auth_dead"),
+    "org_disabled_on_stdout_exit_1": (f'printf "%s\\n" "{ORG_DISABLED_TEXT}"\nexit 1', "auth_dead"),
+    "oauth_401_on_stderr": ('printf "API Error: 401 OAuth token has expired\\n" >&2\nexit 1', "auth_dead"),
+    "empty_stdout_exit_0": ("exit 0", "empty_output"),
+    "unknown_crash": ('printf "segmentation fault\\n" >&2\nexit 139', "other"),
+    # guilt (gate B1): the session-limit banner names rate_limited on every
+    # channel the CLI uses for it, as the [retry] logic already treats it
+    "session_limit_banner_on_stdout_exit_0": (f'printf "%s\\n" "{SESSION_LIMIT_TEXT}"\nexit 0', "rate_limited"),
+    "session_limit_banner_on_stdout_exit_1": (f'printf "%s\\n" "{SESSION_LIMIT_TEXT}"\nexit 1', "rate_limited"),
+    "session_limit_banner_on_stderr_exit_1": (
+        f'printf "%s\\n" "{SESSION_LIMIT_TEXT}" >&2\nexit 1', "rate_limited",
+    ),
+    # guilt: a match early in a LARGE stderr (council round 2, Codex O3: a
+    # `printf | grep -q` pipeline under pipefail read it as no match)
+    "quota_then_1mib_of_stderr": (
+        'printf "weekly limit reached\\n" >&2\nhead -c 1048576 /dev/zero | tr "\\0" x >&2\nexit 1',
+        "rate_limited",
+    ),
+    "org_disabled_then_1mib_of_stderr": (
+        f'printf "%s\\n" "{ORG_DISABLED_TEXT}" >&2\nhead -c 1048576 /dev/zero | tr "\\0" x >&2\nexit 1',
+        "auth_dead",
+    ),
+    # innocence: an ANSWER that talks about the failure stays an answer
+    "answer_about_rate_limits": (
+        'printf "The API returns 429 when the rate limit is exceeded; back off and retry.\\n"\nexit 0',
+        "answered",
+    ),
+    "answer_with_org_text_on_stderr": (
+        f'printf "%s\\n" "{ORG_DISABLED_TEXT}" >&2\nprintf "real answer\\n"\nexit 0',
+        "answered",
+    ),
+    "answer_quoting_the_session_limit_banner": (
+        'printf "When you hit your session limit the CLI prints a reset time; plan around it.\\n"\nexit 0',
+        "answered",
+    ),
+    # innocence: a failed attempt whose stdout is prose is not read for the class
+    "failed_attempt_prose_mentions_quota": (
+        'printf "Here is a summary: the weekly limit resets on Monday.\\n"\nexit 2',
+        "other",
+    ),
+    "failed_attempt_prose_mentions_session_limit": (
+        'printf "Tip: if you hit your session limit, wait for the reset.\\n"\nexit 2',
+        "other",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(CLASS_CASES))
+def test_attempt_class_guilt_and_innocence(tmp_path: Path, case: str) -> None:
+    body, expected = CLASS_CASES[case]
+
+    _, first = _first_slot(tmp_path, body)
+
+    assert (first["slot"], first["seat"], first["cls"]) == ("1", "A1", expected)
+
+
+def test_watchdog_timeout_is_timeout(tmp_path: Path) -> None:
+    _, first = _first_slot(
+        tmp_path, "sleep 5\nexit 0", env_extra={"CLAUDE_CASCADE_ATTEMPT_TIMEOUT_SEC": "1"}
+    )
+
+    assert first["cls"] == "timeout"
+
+
+def test_global_deadline_is_timeout_not_rate_limited(tmp_path: Path) -> None:
+    # "global deadline exhausted" matches QUOTA_PATTERN's "exhausted" and
+    # returns 98: the class comes from run_bounded's decision, not the text.
+    bodies = _default_bodies()
+    bodies["token1"] = "sleep 3\nexit 1"
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CASCADE_DEADLINE_SEC"] = "1"
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    attempts, _ = _records(result.stderr)
+    assert attempts[0]["cls"] == "timeout"
+    assert all(a["cls"] in {"timeout", "retired_skip"} for a in attempts), attempts
+
+
+def test_seat_ledger_skip_is_rate_limited_from_the_ledger(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token3"] = 'printf "answer-three\\n"\nexit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    lib = tmp_path / "seat_state_stub.sh"
+    lib.write_text('seat_state_precheck_skip() { [ "$1" = claude-token-1-env ]; }\n', encoding="utf-8")
+    env["CASCADE_TEST_SEAT_STATE_LIB"] = str(lib)
+    script = tmp_path / "cascade-with-ledger.sh"
+    script.write_text(
+        CASCADE.read_text(encoding="utf-8").replace(
+            'seat_state_precheck_skip() { return 1; }',
+            'source "$CASCADE_TEST_SEAT_STATE_LIB"',
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        ["/bin/zsh", str(script), "hermetic prompt", "--claude-only"],
+        capture_output=True, text=True, check=False, env=env, timeout=20,
+    )
+
+    attempts, _ = _records(result.stderr)
+    assert (attempts[0]["slot"], attempts[0]["cls"], attempts[0]["src"]) == ("1", "rate_limited", "ledger")
+
+
+def test_attempt_records_never_carry_a_token_or_an_account(tmp_path: Path) -> None:
+    secret_stderr = (
+        f'printf "401 unauthorized for {TOKEN_VALUES["token1"]} owner someone@example.com\\n" >&2\nexit 1'
+    )
+    result, first = _first_slot(tmp_path, secret_stderr)
+
+    assert first["cls"] == "auth_dead"
+    records = [l for l in result.stderr.splitlines() if NEW_RECORD.match(l)]
+    blob = "\n".join(records)
+    for value in TOKEN_VALUES.values():
+        assert value not in blob and value[:8] not in blob
+    assert "@" not in blob and "example" not in blob
+
+
+@pytest.mark.parametrize(
+    "job, expected",
+    [("indexing-daily-run.sh", "indexing-daily-run.sh"), ("someone@example.com", "unknown"),
+     ("x" * 65, "unknown"), ("two words", "unknown")],
+)
+def test_job_name_is_validated_whole_never_rewritten(tmp_path: Path, job: str, expected: str) -> None:
+    _, first = _first_slot(tmp_path, 'printf "ok\\n"\nexit 0', env_extra={"CLAUDE_CASCADE_JOB": job})
+
+    assert first["job"] == expected
+
+
+def test_oauth_slot_seats_equal_the_registry() -> None:
+    slots = json.loads((REPO_ROOT / "FLEET_TOPOLOGY.json").read_text())["accounts"]["anthropic"]["slots"]
+    registry = {
+        int(str(seat["oauth_token_slot"]).rsplit("_", 1)[-1]): name
+        for name, seat in slots.items()
+        if seat.get("oauth_token_slot")
+    }
+    declared = dict(enumerate(_shell_array(CASCADE, "OAUTH_SLOT_SEATS"), start=1))
+    assert declared == registry
+
+
+@pytest.mark.parametrize("parent", ["script", "python", "python_option"])
+def test_job_name_comes_from_the_caller_entry_point_never_an_argument(tmp_path: Path, parent: str) -> None:
+    # Council round 2 (Codex O3): every argv word was scanned, so a data
+    # argument shaped like a script (`https://CanaryOrg.sh`) became the job.
+    bodies = _default_bodies()
+    bodies["token1"] = 'printf "ok\\n"\nexit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    env["CASCADE_UNDER_TEST"] = str(CASCADE)
+    caller = tmp_path / "nightly-digest-run.sh"
+    caller.write_text('/bin/zsh "$CASCADE_UNDER_TEST" "hermetic prompt" --claude-only\n', encoding="utf-8")
+    spawn = (
+        "import os, subprocess; subprocess.run(['/bin/zsh', os.environ['CASCADE_UNDER_TEST'],"
+        " 'hermetic prompt', '--claude-only'])"
+    )
+    argv = {
+        "script": ["/bin/zsh", str(caller), "--tenant", "https://CanaryOrg.sh"],
+        "python": ["python3", "-c", spawn, "--tenant", "https://CanaryOrg.sh"],
+        # cure review (Codex O3): an attached option is data, not an entry point
+        "python_option": ["python3", "-Xtenant=/CanaryOrg.sh", "-c", spawn],
+    }[parent]
+
+    result = subprocess.run(argv, capture_output=True, text=True, check=False, env=env, timeout=20)
+
+    attempts, results = _records(result.stderr)
+    expected = {"script": "nightly-digest-run.sh", "python": "unknown", "python_option": "unknown"}[parent]
+    assert attempts[0]["job"] == expected
+    assert results[0][0] == expected
+    assert "CanaryOrg" not in result.stderr
