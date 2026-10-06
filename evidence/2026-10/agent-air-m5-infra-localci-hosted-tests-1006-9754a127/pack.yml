@@ -1,0 +1,198 @@
+brief_ref: evidence/2026-10/agent-air-m5-infra-localci-hosted-tests-1006-9754a127/brief.yml
+plan_ref: >-
+  Mission LOCALCI-GATE, opened by Zero in a Fable 5.1 window on 2026-10-06. Design artifact:
+  docs/specs/localci-gate-2026-10-06.md, merged with pull request 7991; this change is step 2 of its §4 sequence
+  ("run scripts/localci/tests in a hosted job"). Zero typed "continua" in this window after that merge.
+lanes:
+  - lane: localci-hosted-tests-build
+    role: build
+    seat: "claude-fable-5-1 (window opened by Zero; ground, workflow, first skip budget, the observed() fix, this pack)"
+  - lane: localci-hosted-tests-cure
+    role: build
+    seat: "claude-sonnet-5 (subagent; cure of the first review's five findings and the last consolidation, each to a closed spec, verified on disk by the window above)"
+  - lane: localci-hosted-tests-refuter-cure
+    role: build
+    seat: "codex-gpt-6.1-sol (codex-rescue door, workspace-write; cure of the refuter's first two findings — floor and path filter — written from the findings' text, commit 4f17fe095e)"
+  - lane: localci-hosted-tests-refuter
+    role: review
+    seat: "agy-gemini-3.1-pro (agy --sandbox --model gemini-3.1-pro-high, prompt-only; pass 1 on ea37c76df6, pass 2 on 4f17fe095e)"
+  - lane: localci-hosted-tests-final-gate
+    role: review
+    seat: "claude-opus-5-5 (fresh session outside the chain; final on-disk gate, published as harness/fable-gate — held, see owed)"
+council_run: council-journal.jsonl
+seat_override: >-
+  One external family reviewed the tree independently: Gemini 3.1 Pro, two refuter passes. Codex reviewed the first
+  draft and its five reproduced findings drove the first cure, but it then built the lane that cures the refuter's
+  findings, so from that point it is a contributor and is not offered as an independent reviewer; its journal line
+  says so. (Its true name, gpt-6.1-sol, would not have counted for R9 either: the roster still names
+  codex-gpt-5.6-sol.) The other titular seats were dead. The final on-disk gate is the independent judgment of
+  record and has not run yet.
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stood in because the two remaining titular seats were dead: kimi TIMEOUT and
+  tp1-qwen3.8-max QUOTA_DEAD (monthly plan quota, reset 2026-10-11; tp1-glm-5.2 shares it). Observed by
+  arsenal_probe at 2026-10-06T08:03:06Z (recorded in the mission's first pack) and again in the organism report
+  injected at this session's start, 2026-10-06T15:45Z; not re-probed by hand in this session.
+pii_scan: clean
+pii_scan_note: Workflow, a junit reader, tests and docs only; no client data was read or written.
+what_changed: |
+  .github/workflows/localci-tests.yml (new): runs scripts/localci/tests on pull requests and main pushes that
+  touch scripts/localci, the six scripts/ci files the suite copies into its fixture repos, scripts/__init__.py or
+  one of the sixteen pytest configuration paths above the suite. It builds the candidate image and installs
+  hypothesis so the containment tests and the state machine execute, then judges the junit report. Not a
+  required context.
+  scripts/localci/skip_budget.py (new): reads a junit report. An allowance is a (test id, reason) pair that must
+  explain exactly one skip, and a skip must be explained by exactly one allowance; required tests must have
+  executed; a floor bounds the executed count; blanket patterns and inconsistent reports are refused.
+  scripts/localci/tests/test_skip_budget.py (new): guilt and innocence corpus, including a round trip through a
+  real pytest report. scripts/localci/tests/test_hosted_workflow.py (new): pins the workflow's path filter, the
+  anchoring of its test-id patterns and its floor.
+  scripts/localci/tests/test_isolation.py: observed() strips colour sequences before matching.
+  scripts/localci/README.md: one paragraph on the hosted run and what a green job does and does not mean.
+proof: |
+  See receipts. Nothing in this change edits an existing workflow, the required set or branch protection, and
+  nothing posts a status. The job runs with contents read and no secret.
+bites:
+  consumer: >-
+    The "localci tests" job itself: it triggers on its own workflow file and on scripts/localci, so this pull
+    request is its first consumer and every later local-CI pull request the next.
+  observation: >-
+    GitHub Actions, 2026-10-06, four runs of the job on this pull request, all success. First, on f926e0f541:
+    299 passed, 1 skipped. After the first cure, on ea37c76df6: 331 passed, 1 skipped,
+    cases=332 executed=331 undeclared=0 stale=0 overused=0 missing=0. After the Codex lane, on 4f17fe095e:
+    332 passed, 1 skipped, executed=332 against a floor of 331. After the consolidation, on dd9f737ba0: 335 passed,
+    1 skipped, cases=336 executed=335 undeclared=0 stale=0 overused=0 missing=0 ambiguous=0. The one skip is
+    always the declared Pysa test; all five required tests executed, under the anchored patterns too. The same tree on M5, without docker
+    and hypothesis, has 9 skips, and the budget with the workflow's own arguments exits 1 there.
+ground:
+  ts: "2026-10-06T15:48:00Z"
+  siblings: >-
+    No open pull request touched scripts/localci or this workflow at 15:48Z and again at 16:00Z before the first
+    push; ten touched other workflow files. The only local-CI broker lease was the mission's own. One peer window
+    is on the same mission: the resumed LOCALCI-GATE session, which closed step 1 (prove-live, worktree release,
+    ledger row in pull request 7993) and told the owner that this step waits for his word — see owed.
+spend:
+  adversarial_rounds: 3
+  wall_clock_hours: 2
+appetite_exceeded: >-
+  Three adversarial rounds against a declared two. Codex on the first draft and Gemini on its cure were the two
+  planned. The third (Gemini on 4f17fe095e) exists because the tree changed again when the build composition was
+  corrected: a second Anthropic build lane had been opened, the D3 rule then requires a non-Anthropic builder,
+  that builder's lane needed a review from another family, and the only other live family was Gemini. The third
+  round's findings were consolidated in one commit with no fourth round; the final gate reads the final tree.
+receipts:
+  - claim: No workflow ran scripts/localci/tests before this change.
+    cmd: git grep -n -E 'scripts/localci' origin/main -- .github/workflows
+    exit: 1
+    ts: "2026-10-06T15:49:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: On a clean origin/main (65b340c05c) the suite fails on M5 with one test, test_uncontained_candidate_code_really_reaches_host_state, KeyError 'canary'; FORCE_COLOR is set in that shell and the check log carries the observation behind an escape sequence.
+    cmd: python3.11 -m pytest scripts/localci/tests -q -rs ; then the single test with --basetemp and a read of logs/ctx.attack.log
+    exit: 1
+    ts: "2026-10-06T15:52:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: With the observed() fix the same test passes with FORCE_COLOR set and with it empty, and the whole suite gives 290 passed, 9 skipped on M5.
+    cmd: python3.11 -m pytest scripts/localci/tests -q -rs --junitxml=m5-junit.xml
+    exit: 0
+    ts: "2026-10-06T15:59:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: First hosted run, head f926e0f541, job localci tests success; 299 passed, 1 skipped (Pysa home), the candidate image built on ubuntu-latest.
+    cmd: gh run view 37492372601 --log
+    exit: 0
+    ts: "2026-10-06T16:08:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: The cured budget, given the workflow's own arguments and the real M5 report, exits 1 with 8 UNDECLARED, 4 MISSING and TOO FEW; the five Codex reproductions each fail closed.
+    cmd: python3.11 scripts/localci/skip_budget.py m5-junit.xml --allow ... --require ... --min-executed 295 ; python3.11 -m pytest scripts/localci/tests/test_skip_budget.py scripts/localci/tests/test_hosted_workflow.py -q
+    exit: 1
+    ts: "2026-10-06T17:14:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: Second hosted run, head ea37c76df6, success; 331 passed, 1 skipped; cases=332 executed=331 undeclared=0 stale=0 overused=0 missing=0.
+    cmd: gh run view 37502048902 --log
+    exit: 0
+    ts: "2026-10-06T17:23:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: The Codex lane (floor 331, sixteen configuration paths, limit stated in three places) passes the two test files, actionlint and git diff --check before it is committed.
+    cmd: python3.11 -m pytest scripts/localci/tests/test_skip_budget.py scripts/localci/tests/test_hosted_workflow.py -q ; actionlint .github/workflows/localci-tests.yml ; git diff --check
+    exit: 0
+    ts: "2026-10-06T17:32:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: Third hosted run, head 4f17fe095e, success; 332 passed, 1 skipped; cases=333 executed=332 undeclared=0 stale=0 overused=0 missing=0.
+    cmd: gh run view 37504364494 --log
+    exit: 0
+    ts: "2026-10-06T17:37:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: Both callers of observed() index the returned dict (seen["canary"]) straight after the call, so an observation that cannot be read fails the test with KeyError; neither can pass on an empty dict.
+    cmd: grep -n -A3 'seen = observed' scripts/localci/tests/test_isolation.py
+    exit: 0
+    ts: "2026-10-06T17:41:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: pytest 9.1.1 looks for pytest.toml, .pytest.toml, pytest.ini, .pytest.ini, pyproject.toml, tox.ini and setup.cfg; none of the names in the path filter is invented.
+    cmd: grep -n -E 'pytest\.(toml|ini)|pyproject\.toml' <site-packages>/_pytest/config/findpaths.py
+    exit: 0
+    ts: "2026-10-06T17:41:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: After the consolidation (AMBIGUOUS rule, anchored test ids, scripts/__init__.py in the filter) the two test files give 50 passed and the workflow is clean under actionlint.
+    cmd: python3.11 -m pytest scripts/localci/tests/test_skip_budget.py scripts/localci/tests/test_hosted_workflow.py -q ; actionlint .github/workflows/localci-tests.yml
+    exit: 0
+    ts: "2026-10-06T17:41:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: Fourth hosted run, head dd9f737ba0, success; 335 passed, 1 skipped; cases=336 executed=335 undeclared=0 stale=0 overused=0 missing=0 ambiguous=0, so every anchored pattern matched an executed test and the anchored allowance matched the one skip.
+    cmd: gh run view 37505445107 --log
+    exit: 0
+    ts: "2026-10-06T17:50:00Z"
+    seat: claude-fable-5-1 on M5
+dissent:
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER, on the first draft. The budget judged skips only: with the hard tests deselected or never collected (PYTEST_ADDOPTS, -k, --ignore) pytest and the budget both exit 0, down to cases=1 executed=0 (reproduced)."
+    status: CONFIRMED
+    resolution: "--require names tests that must have executed (the contained-attack test, the contained timeout, the seal forgery test, the hypothesis state machine, the comparator corpus) and --min-executed sets a floor, default 1. Corpus rows, including a real pytest report written with -k."
+  - seat: codex-gpt-6.1-sol
+    objection: "MEDIUM, on the first draft. An allowance was a reason only: two tests, or a whole module, could skip under the Pysa reason, and deleting the allowed test did not make the allowance stale if another skip reused the reason (reproduced)."
+    status: CONFIRMED
+    resolution: "An allowance is now a (test id, reason) pair and must explain exactly one skip: none is STALE, two or more is OVERUSED. Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "LOW, on the first draft. The blanket-pattern refusal covered the empty string only; (?=.) explained every non-empty reason, and the docstring claimed more than the code did (reproduced)."
+    status: CONFIRMED
+    resolution: "A pattern that matches a sentinel no id or reason contains is refused in every position, and the docstring now says patterns in general are not policed."
+  - seat: codex-gpt-6.1-sol
+    objection: "MEDIUM, on the first draft. The path filter missed real-repo inputs: the suite copies the six runner.TRUSTED_CLASSIFIER_FILES from scripts/ci into its fixture repos, so a change there did not start the job."
+    status: CONFIRMED
+    resolution: "The six paths are in both triggers, and test_hosted_workflow.py fails when the runner's list and the filter drift apart."
+  - seat: codex-gpt-6.1-sol
+    objection: "LOW, on the first draft. A skipped element outside a test case was ignored (synthetic XML, not a shape pytest 9.1.1 writes)."
+    status: CONFIRMED
+    resolution: "Such a report is refused, and so is one whose testsuites do not add up to its test cases. Both checked against real pytest reports first."
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM, pass 1. A test that is deselected or renamed and is not one of the required ones leaves no trace in the junit; while the floor still holds the budget exits 0."
+    status: CONFIRMED
+    resolution: "Inherent to reading a junit. The Codex lane moved the floor to the last proved hosted count (331), pinned it with a test, and stated the remaining limit in the workflow header, the README and the module docstring."
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM, pass 1. A pytest configuration file or conftest.py added at the repository root or in scripts would change the suite without starting the job."
+    status: CONFIRMED
+    resolution: "The Codex lane added the sixteen configuration paths pytest 9 looks for (root and scripts) to both triggers, with a test pinning them. The orchestrating window had drafted a different cure (a pytest invocation that ignores outside configuration) and discarded it unshipped so that this lane was built by one seat."
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM, pass 2. Two allowances can explain the same skip: neither is stale, neither is overused, so a removed test's allowance survives by matching another declared skip."
+    status: CONFIRMED
+    resolution: "A skip explained by two or more allowances is AMBIGUOUS, exit 1. Corpus rows for guilt and innocence."
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW, pass 2. The workflow's test-id patterns were not anchored at the start, so a module named fake_test_pysa_check could take the allowance."
+    status: CONFIRMED
+    resolution: "Every test-id pattern of the step, allowance and requirements alike, now starts with ^scripts\\.localci\\.tests\\. and a test pins that."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER as filed, pass 2. observed() strips SGR sequences only; a line prefixed by another CSI sequence would make it return an empty dict and the containment test would falsely pass."
+    status: RETRACTED
+    resolution: 'Not withdrawn by the seat: refuted by the orchestrating window on the code the objection names, and the final gate can re-check it. Both callers index the dict straight away (seen["canary"]), so an unread observation is a KeyError and the test fails; no caller passes on an empty dict (receipt). The candidate in these tests is the fixture''s own attack, not an outside party. No change.'
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM, pass 2. The floor is pinned at 331 in a test as well as in the workflow, so a legitimate removal of tests needs two edits."
+    status: CONFIRMED
+    resolution: "Kept on purpose: lowering the floor is the one edit that should be loud. The real cost is elsewhere and is recorded in owed: the floor lives in a workflow file, a hot zone, so changing it is a Gear-3 change."
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW, pass 2. pytest.toml, .pytest.toml and .pytest.ini are not real configuration names; and scripts/__init__.py is missing from the filter."
+    status: CONFIRMED
+    resolution: "Half confirmed, half refuted. scripts/__init__.py is now in both triggers and pinned by a test. The three names are real: pytest 9.1.1's findpaths.py lists them (receipt), so they stay."
+owed:
+  - The final on-disk gate and the arming are HELD for the owner. The mission's resumed session told Zero at 16:01Z that this step is a new mandate waiting for his word, while this window had already built it from his "continua". The pull request stays a draft until he answers.
+  - At merge, the mission ledger row written with pull request 7993 needs its hosted-job arm closed.
+  - The job is not a required context, so a red informs and does not hold the merge queue. Making it bind is an edit of the required set, which is the operator's (spec §5.7).
+  - The budget's arguments (allowance, requirements, floor) live in the workflow file, which is a hot zone. Any change to them is a Gear-3 change. A follow-up can move them to a file under scripts/localci and pass it with argparse's file prefix; not done here.
+  - The Pysa end-to-end test stays unrun on hosted metal.
+  - Loop note for AMENDMENTS. The second build lane was routed to Sonnet before the D3 rule was read; the pack lint caught it. Read D3 before opening a second build lane at Gear 2 or above.
