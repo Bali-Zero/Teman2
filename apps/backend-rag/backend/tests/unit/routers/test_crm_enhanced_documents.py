@@ -484,6 +484,153 @@ async def test_update_document_not_found(mock_db_pool, mock_current_user):
     assert exc_info.value.status_code == 404
 
 
+# --- client_visible on PATCH ---------------------------------------------
+
+
+def _patch_ctx():
+    return (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+    )
+
+
+def _writes(conn, needle):
+    return [c for c in conn.execute.call_args_list if needle in c.args[0]]
+
+
+@pytest.mark.parametrize("role", ["Team Leader", "tax lead", " Supervisor ", "admin"])
+@pytest.mark.asyncio
+async def test_visibility_flip_allowed_roles_writes_and_records_timeline(mock_db_pool, role):
+    from backend.app.routers.crm_enhanced import DocumentUpdate
+    from backend.app.routers.crm_enhanced_documents import update_document
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.return_value = {"client_visible": True}
+    conn.execute.return_value = "UPDATE 1"
+    user = {"id": "u-1", "email": "someone@example.test", "role": role}
+
+    p1, p2 = _patch_ctx()
+    with p1, p2:
+        result = await update_document(
+            client_id=1,
+            doc_id=10,
+            data=DocumentUpdate(client_visible=False),
+            pool=mock_db_pool,
+            current_user=user,
+        )
+
+    assert result["success"] is True
+    updates = _writes(conn, "UPDATE documents")
+    assert len(updates) == 1 and updates[0].args[1] is False
+    events = _writes(conn, "timeline_events")
+    assert len(events) == 1
+    sql, _client, _title, description = events[0].args
+    assert "false" in sql.lower()  # staff-only entry, never client-visible
+    assert "document_id=10" in description
+    assert "true -> false" in description
+    assert "user_id=u-1" in description
+    assert f"role={role}" in description
+    assert "someone@example.test" not in description
+
+
+@pytest.mark.parametrize("role", ["Consultant", "Tax Manager", "Reception", "user", "", None])
+@pytest.mark.asyncio
+async def test_visibility_field_from_other_roles_is_403_and_writes_nothing(mock_db_pool, role):
+    from backend.app.routers.crm_enhanced import DocumentUpdate
+    from backend.app.routers.crm_enhanced_documents import update_document
+
+    conn = mock_db_pool._mock_conn
+    user = {"id": "u-2", "email": "someone@example.test", "role": role}
+
+    p1, p2 = _patch_ctx()
+    with p1, p2, pytest.raises(HTTPException) as exc_info:
+        await update_document(
+            client_id=1,
+            doc_id=10,
+            data=DocumentUpdate(client_visible=True, notes="x"),
+            pool=mock_db_pool,
+            current_user=user,
+        )
+
+    assert exc_info.value.status_code == 403
+    conn.execute.assert_not_called()
+    conn.fetchrow.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_visibility_unchanged_value_records_no_timeline(mock_db_pool):
+    from backend.app.routers.crm_enhanced import DocumentUpdate
+    from backend.app.routers.crm_enhanced_documents import update_document
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.return_value = {"client_visible": False}
+    conn.execute.return_value = "UPDATE 1"
+
+    p1, p2 = _patch_ctx()
+    with p1, p2:
+        await update_document(
+            client_id=1,
+            doc_id=10,
+            data=DocumentUpdate(client_visible=False),
+            pool=mock_db_pool,
+            current_user={"id": "u-1", "role": "Supervisor"},
+        )
+
+    assert _writes(conn, "timeline_events") == []
+
+
+@pytest.mark.asyncio
+async def test_patch_without_visibility_field_behaves_as_before_for_any_role(mock_db_pool):
+    from backend.app.routers.crm_enhanced import DocumentUpdate
+    from backend.app.routers.crm_enhanced_documents import update_document
+
+    conn = mock_db_pool._mock_conn
+    conn.execute.return_value = "UPDATE 1"
+
+    p1, p2 = _patch_ctx()
+    with p1, p2:
+        result = await update_document(
+            client_id=1,
+            doc_id=10,
+            data=DocumentUpdate(notes="n"),
+            pool=mock_db_pool,
+            current_user={"id": "u-3", "role": "Consultant"},
+        )
+
+    assert result["success"] is True
+    assert "client_visible" not in _writes(conn, "UPDATE documents")[0].args[0]
+    conn.fetchrow.assert_not_called()
+    assert _writes(conn, "timeline_events") == []
+
+
+@pytest.mark.asyncio
+async def test_timeline_failure_does_not_undo_the_flip(mock_db_pool):
+    from backend.app.routers.crm_enhanced import DocumentUpdate
+    from backend.app.routers.crm_enhanced_documents import update_document
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.return_value = {"client_visible": True}
+
+    async def _execute(sql, *args):
+        if "timeline_events" in sql:
+            raise RuntimeError("timeline down")
+        return "UPDATE 1"
+
+    conn.execute.side_effect = _execute
+
+    p1, p2 = _patch_ctx()
+    with p1, p2:
+        result = await update_document(
+            client_id=1,
+            doc_id=10,
+            data=DocumentUpdate(client_visible=False),
+            pool=mock_db_pool,
+            current_user={"id": "u-1", "role": "Team Leader"},
+        )
+
+    assert result["success"] is True
+
+
 @pytest.mark.asyncio
 async def test_update_document_no_fields(mock_db_pool, mock_current_user):
     from backend.app.routers.crm_enhanced_documents import update_document
@@ -1410,7 +1557,10 @@ async def test_upload_with_owned_expected_core_proceeds(
         "phone_normalized": "6281234567890",
     }
     conn = mock_db_pool._mock_conn
-    conn.fetchrow.side_effect = [row, {"phone": row["phone"], "phone_normalized": row["phone_normalized"]}]
+    conn.fetchrow.side_effect = [
+        row,
+        {"phone": row["phone"], "phone_normalized": row["phone_normalized"]},
+    ]
     conn.fetch.return_value = [{"id": 1}]  # sole owner (F18)
     conn.fetchval.side_effect = [701]  # documents.id
 
