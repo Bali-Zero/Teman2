@@ -1,0 +1,35 @@
+{
+  "collection": "legal_unified",
+  "dry_run": true,
+  "known_pairs_reference": {
+    "UU_63_2024": "UU_6_2011",
+    "Permenkumham_11_2024": "Permen_22_2023"
+  },
+  "summaries": [
+    {
+      "amendment_doc_id": "UU_63_2024",
+      "amendment_label": "UU 63/2024",
+      "dry_run": true,
+      "clauses_parsed": 2,
+      "annotated_points": 0,
+      "annotated_pasals": [],
+      "unresolved": [
+        "UU 6/2023 Pasal 3 (no chunk under document_id='UU_6_2023')",
+        "UU 6/2023 Pasal 16 (no chunk under document_id='UU_6_2023')"
+      ],
+      "amendment_file": "/Users/nuzantara/Desktop/nuzantara/data/kb_sources/2026_updates/UU_63_2024_Perubahan_Ketiga_UU_Keimigrasian.pdf"
+    },
+    {
+      "amendment_doc_id": "Permen_11_2024",
+      "amendment_label": "Permen 11/2024",
+      "dry_run": true,
+      "clauses_parsed": 1,
+      "annotated_points": 0,
+      "annotated_pasals": [],
+      "unresolved": [
+        "UU 12/2006 Pasal 129 (no chunk under document_id='UU_12_2006')"
+      ],
+      "amendment_file": "/Users/nuzantara/Desktop/nuzantara/.worktrees/legal-supersession-dryrun/data/source_documents/t0_regulations/permenkumham_11_2024_perubahan_visa.pdf"
+    }
+  ]
+}
