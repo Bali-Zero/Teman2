@@ -94,8 +94,15 @@ export function PortalMessages({
     prevMessageCountRef.current = messages.length;
   }, [messages]);
 
+  // One request per message: Enter fires on every keydown (and on key
+  // auto-repeat), and isSending only reaches the button after a re-render, so
+  // a synchronous ref is the guard. Client 10247, 6 Oct 2026: 21 identical
+  // messages stored within 3.6s.
+  const sendInFlight = useRef(false);
+
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (sendInFlight.current || !newMessage.trim()) return;
+    sendInFlight.current = true;
     setIsSending(true);
     try {
       await api.crm.sendPortalMessage(clientId, newMessage.trim());
@@ -106,6 +113,7 @@ export function PortalMessages({
     } catch (err) {
       toast.error("Failed to send", { description: (err as Error).message });
     } finally {
+      sendInFlight.current = false;
       setIsSending(false);
     }
   };
@@ -259,7 +267,17 @@ export function PortalMessages({
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              !e.repeat &&
+              !e.nativeEvent.isComposing
+            ) {
+              e.preventDefault();
+              void handleSend();
+            }
+          }}
           placeholder={`Message ${clientName}...`}
           className="flex-1 bg-[var(--bz-surface)] border border-[var(--bz-border)] rounded-lg px-3 py-2 text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:border-[var(--line-control)]"
         />
