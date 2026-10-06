@@ -84,10 +84,14 @@ def _placeholder(value: str) -> bool:
                           value, re.I))
 
 
+def _template(value: str) -> bool:
+    return bool(re.match(r"\$\{[^}]+\}|\$[A-Z_][A-Z0-9_]*(?![\w])", value))  # ${PG_PASSWORD}, $DB_PASS
+
+
 def _literal(value: str, quoted: bool, shell: bool = False) -> bool:
     """True when the value assigned to a key-like name looks like a credential, not a name or a reference."""
-    lead = ("$", "%", "{", "~", "/") if quoted else ("$", "%", "{", "~", "/", "?", "-", "+", ".", "!")
-    if _placeholder(value) or "://" in value or value.startswith(lead):
+    lead = ("%", "{", "~", "/") if quoted else ("$", "%", "{", "~", "/", "?", "-", "+", ".", "!")
+    if _placeholder(value) or _template(value) or "://" in value or value.startswith(lead):
         return False  # a template, a path, a URL; unquoted also a shell expansion (${X:?msg}) or !!flag
     if re.fullmatch(r"[\d_.]+|(?:[A-Z][A-Za-z]*|x)(?:-[A-Z][A-Za-z]*|-[a-z]+)+|(?i:pass(?:word|wd)?|secret)", value):
         return False  # a number (1_000_000), an X-Header-Name, the placeholder word itself (user:password@host)
@@ -99,7 +103,8 @@ def _literal(value: str, quoted: bool, shell: bool = False) -> bool:
 def _has_secret(text: str) -> bool:
     if PEM.search(text) or any(not re.search(r"x{4,}|example|<", m.group(), re.I) for m in FAMILY.finditer(text)):
         return True
-    if any(_literal(m.group(1), True) for m in DSN.finditer(text)):
+    if any(not (_placeholder(v) or _template(v) or re.fullmatch(r"(?i:pass(?:word|wd)?|secret)", v))
+           for v in (m.group(1) for m in DSN.finditer(text))):  # a URL password is never a variable name
         return True
     return any(_literal(m.group("q") or m.group("b"), m.group("q") is not None, bool(re.match(r"[A-Z0-9_]+=\S", m.group())))
                for m in KEYWORD.finditer(text))
