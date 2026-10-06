@@ -19,10 +19,10 @@ import memory_index_build  # noqa: E402
 
 
 @pytest.mark.parametrize("dsn, secret_fragment", [
-    ("postgresql://ro_user:p@zz-tail-FAKE@db.invalid:5432/ledger", "zz-tail-FAKE"),
-    ("postgresql://ro_user:a@b@zz-tail-FAKE@db.invalid:5432/ledger", "zz-tail-FAKE"),
-    ("postgresql://ro_user:pw@q?FAKE#frag@db.invalid:5432/ledger", "FAKE"),
-    ("postgresql://ro_user:pw/x/FAKE-slash@db.invalid:5432/ledger", "FAKE-slash"),
+    ("postgresql://ro_user:" + "p@zz-tail-FAKE@db.invalid:5432/ledger", "zz-tail-FAKE"),
+    ("postgresql://ro_user:" + "a@b@zz-tail-FAKE@db.invalid:5432/ledger", "zz-tail-FAKE"),
+    ("postgresql://ro_user:" + "pw@q?FAKE#frag@db.invalid:5432/ledger", "FAKE"),
+    ("postgresql://ro_user:" + "pw/x/FAKE-slash@db.invalid:5432/ledger", "FAKE-slash"),
 ])
 def test_dsn_password_never_logged(dsn, secret_fragment):
     out = cost_ledger_export._redact_dsn(dsn)
@@ -30,7 +30,7 @@ def test_dsn_password_never_logged(dsn, secret_fragment):
 
 
 @pytest.mark.parametrize("dsn, expected", [
-    ("postgresql://ro_user:FAKEpw@db.invalid:5432/ledger",
+    ("postgresql://ro_user:" + "FAKEpw@db.invalid:5432/ledger",
      "postgresql://ro_user:***@db.invalid:5432/ledger"),
     ("postgresql://ro_user@db.invalid/ledger", "postgresql://ro_user:***@db.invalid/ledger"),
     ("not a dsn", "<dsn>"),

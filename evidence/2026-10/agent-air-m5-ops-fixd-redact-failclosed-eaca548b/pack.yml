@@ -91,6 +91,19 @@ receipts:
     ts: "2026-10-05T11:37:00Z"
     seat: claude-opus-5-5
 
+  - claim: "Gate BLOCK cure (one round): the antidotes step 'No literal backend_rag_v2 DSN password' flagged the invented ro_user DSN fixture at scripts/tests/test_redaction_siblings_fail_closed.py:25. The 5 DSN fixtures are now built by concatenation; the runtime strings are byte-identical, so the tests keep their meaning."
+    cmd: "python scripts/lint_pg_dsn_credentials.py --selftest; python scripts/lint_pg_dsn_credentials.py --all; lint scan_text() on the HEAD 63ecb85e75 copy of the file vs the cured file"
+    result: "selftest OK - 11 guilt, 29 innocence; no literal Postgres DSN password (any role) or GOCSPX- OAuth client secret in 23195 tracked text file(s); HEAD copy 1 finding, cured copy 0"
+    exit: 0
+    ts: "2026-10-06T01:33:07Z"
+    seat: claude-opus-5-5
+  - claim: "The PR's suites are unchanged by the cure."
+    cmd: "sh scripts/tests/test_bash_call_log.sh; pytest the same 7-file set as the GREEN receipt above"
+    result: "36 passed, 0 failed; 122 passed"
+    exit: 0
+    ts: "2026-10-06T01:33:15Z"
+    seat: claude-opus-5-5
+
 review_findings:
   - seat: tp1-deepseek-v4-pro
     verbatim: >-
@@ -113,11 +126,20 @@ dissent:
     objection: "LOW — net diff above the ~400-line guide"
     status: CONFIRMED
     disposition: "kept as one PR, one concern (redactors that fail open); the code change is small and the net lines are mostly the red tests and this pack"
+  - seat: claude-opus-5-5
+    objection: "Final gate: the latency claim 'new faster' (n=20) does not reproduce. At n=200 the head is +15 ms median (172 vs 157 ms)."
+    status: CONFIRMED
+    disposition: "the PR body now states the gate's measured number; the n=20 receipt above stays as the historical run"
+  - seat: claude-opus-5-5
+    objection: "Final gate: punctuation-family names still pass on base and head alike: CRM '(Xyl Fakename)' vs text 'Xyl Fakename', 'Ltd.' vs 'Ltd'."
+    status: CONFIRMED
+    disposition: "declared as a limit in the PR body; matching a name across its own punctuation needs its own design"
 
 owed:
   - "Quoted diff headers in scripts/lib/spalla_redact.sh (#9, first half): this lives inside the strip_data_file_deletes rewrite of open PR #7483. Residual noted on #7483 (issuecomment-5993280773): paths with a quote, a backslash or a control character stay C-quoted even with core.quotePath=false."
   - "PII shapes in command-history.log (361 non-team email hits, 58 phone-shaped lines): the hook has only a SECRET redactor. A PII pass needs its own design."
   - "hotfix-notify.sh writes the raw command into the TRACKED shared/hotfix_audit.jsonl. origin/main copy: 1 line hit by the redactor's NAME= anchor, value length 1, not a credential."
+  - "scripts/memory/memory_index_build.py has no runtime caller: D3b is in force only when it is run by hand."
 
 spend:
   wall_clock_hours: 1.0
