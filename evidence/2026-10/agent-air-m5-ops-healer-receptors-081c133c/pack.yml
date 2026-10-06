@@ -91,6 +91,11 @@ receipts:
     exit: "95b00cf823... vs bed002ec74... (distinct)"
     ts: "2026-10-06T16:20Z"
     seat: claude-opus-5.5
+  - claim: the seven acceptance probes pass by node id on the rebased head e2af354b11 (origin/main 9acca8dd76)
+    cmd: python -m pytest -q -p no:cacheprovider scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_guilt_p1_session_probe_spawns scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_innocence_owner_and_p3_skip_with_ledger scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_invalid_cure_fails_visible_not_skipped scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_d_guilt_newer_report_timestamp_spawns_and_persists_tuple scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_d_innocence_same_report_timestamp_next_tick_skips_with_ledger scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_d_corrupt_state_reads_as_never_acted_and_says_so scripts/tests/test_pro_healer_receptors.py::ProprioceptionCureSchemaTest::test_undeclared_cure_defaults_to_session_and_both_boards_carry_it
+    exit: "0 (7 passed)"
+    ts: "2026-10-06T16:29Z"
+    seat: claude-opus-5.5
 dissent:
   - seat: codex-o2 (round 1, finding 1)
     objection: "A lone P2 session probe (launchagent_canon zombie) is curable by bootout yet the skip line calls it 'none session-curable'."
@@ -106,20 +111,20 @@ dissent:
     reason: "Cured (e): both are rc 3, receptor-broken / gate unreadable in run.log; adversarial rows cover them."
   - seat: ollama-qwen3.5:9b (round 1, finding 1)
     objection: "An owner-cured probe is skipped, so a session cannot try it."
-    status: FALSIFIED
-    reason: "By definition: owner = sudo, GUI or credential; the Pro healer session cannot perform it."
+    status: PLAUSIBLE
+    reason: "Refuted, not acted: By definition: owner = sudo, GUI or credential; the Pro healer session cannot perform it."
   - seat: ollama-qwen3.5:9b (round 1, finding 2)
     objection: "A TCC-blocked launchd job classified session still spawns."
-    status: FALSIFIED
-    reason: "All-TCC findings are owner (dynamic); a mixed probe stays session on purpose (one curable finding is work)."
+    status: PLAUSIBLE
+    reason: "Refuted, not acted: All-TCC findings are owner (dynamic); a mixed probe stays session on purpose (one curable finding is work)."
   - seat: ollama-qwen3.5:9b (round 1, finding 3)
     objection: "State-file parse errors and summary exceptions are swallowed by 2>/dev/null."
     status: CONFIRMED
     reason: "Half: the state loader already wrote to run.log (2>>LOG); the summary helper's stderr was dropped. Cured (f)."
   - seat: ollama-qwen3.5:9b (round 2)
     objection: "A cure like 'auto' crashes the summary (rc 3) and loses the session-curable reason."
-    status: FALSIFIED
-    reason: "The vocabulary is closed (validate_registry); an unknown value is receptor-broken, which still spawns with a reason, and (f) names the value in run.log."
+    status: PLAUSIBLE
+    reason: "Refuted, not acted: The vocabulary is closed (validate_registry); an unknown value is receptor-broken, which still spawns with a reason, and (f) names the value in run.log."
   - seat: codex-o2 (round 2)
     objection: "Two probes swapping cures keep the same id set, so the G11 memo fingerprint is unchanged and an 'incurable' memo suppresses the new P1 session work."
     status: CONFIRMED
