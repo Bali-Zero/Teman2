@@ -1,0 +1,44 @@
+# TP1 batch runner. Until this workflow, no job ran scripts/test_tp1_batch_runner.py: the
+# runner's never-pays-twice, stop-condition and error-class tests (spec: the runner's module
+# docstring, ERROR CLASSES) were green only on the laptop that wrote them. The paths are the
+# runner's whole import closure. 3.9 is the interpreter the live jobs run under (/usr/bin/python3
+# on M5 and Pro); 3.11 is the repo's default.
+name: TP1 runner tests
+
+on:
+  pull_request:
+    paths: &guarded_paths
+      - "scripts/tp1_batch_runner.py"
+      - "scripts/test_tp1_batch_runner.py"
+      - "scripts/tp1_call.py"
+      - "scripts/arsenal_probe.py"
+      - ".github/workflows/tp1-runner-tests.yml"
+  push:
+    branches:
+      - main
+    paths: *guarded_paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tp1-runner-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  tp1-runner-tests:
+    name: TP1 runner tests (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.11"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -q pytest
+      - name: Runner — resume, stop conditions, classification and scrub through the real door
+        run: python -m pytest -q scripts/test_tp1_batch_runner.py
