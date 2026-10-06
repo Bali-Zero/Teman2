@@ -28,6 +28,7 @@ from backend.app.utils.crm_utils import (
 )
 from backend.app.utils.json_utils import from_jsonb, to_jsonb
 from backend.core.cache import invalidate_cache
+from backend.services.crm.admin_document_visibility import admin_document_not_team_deleted_clause
 from backend.services.crm.permit_label import resolve_permit_label
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
@@ -1080,7 +1081,7 @@ async def get_client_profile(
 
         # Get documents grouped by category
         documents = await conn.fetch(
-            """
+            f"""
             SELECT
                 d.id, d.document_type, d.document_category,
                 d.file_name, d.file_id, d.file_url, d.google_drive_file_url,
@@ -1098,6 +1099,7 @@ async def get_client_profile(
             LEFT JOIN client_family_members fm ON d.family_member_id = fm.id
             WHERE d.client_id = $1
               AND (d.is_archived IS NULL OR d.is_archived = false)
+              AND {admin_document_not_team_deleted_clause("d")}
             ORDER BY d.document_category, d.document_type
             """,
             client_id,
