@@ -24,6 +24,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
+import re
 import subprocess
 import sys
 import time
@@ -68,6 +70,52 @@ DETAIL_FETCH_TIMEOUT_S = 20.0
 DETAIL_ENRICH_BUDGET_MARGIN_S = 60.0
 
 INTEL_INCOMING_DIR = Path.home() / ".intel_scraper" / "incoming"
+DELIVERY_STATE_PATH = INTEL_INCOMING_DIR.parent / "pajak_delivery_state.json"
+DEAD_LETTER_PATH = INTEL_INCOMING_DIR.parent / "pajak_dead_letter.jsonl"
+try:
+    DELIVERY_MAX_ATTEMPTS = max(1, int(os.getenv("PAJAK_DELIVERY_MAX_ATTEMPTS", "5")))
+except ValueError:
+    DELIVERY_MAX_ATTEMPTS = 5
+_REDIS_ERROR_REPLY = re.compile(r"^(NOAUTH|WRONGPASS|NOPERM|ERR|WRONGTYPE|MISCONF|OOM|LOADING|BUSY|READONLY|MASTERDOWN|CLUSTERDOWN)\b")
+
+
+def _delivery_id(url: str) -> str:
+    return hashlib.sha256(url.encode()).hexdigest()[:16]
+
+
+def _alert_dedup_key(urls: list[str]) -> str:
+    """One gateway identity per SET of new items. Without it tg_notify falls back to the
+    alert's first line, "Pajak Monitor — #N new", the same for every alert, and its repeat
+    ladder muted different regulations as one condition: on Pro 7 runs / 22 items answered
+    "deduped" (2026-09-25→10-04) and were marked seen undelivered. A retried set keeps its key."""
+    return "pajak-new:" + hashlib.sha256("\n".join(sorted(urls)).encode()).hexdigest()[:16]
+
+
+def _prior_attempts(entry) -> int:
+    # A hand-edited count would raise on every run and keep the item out of the dead letter forever.
+    value = entry.get("attempts", 0) if isinstance(entry, dict) else entry
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def _load_delivery_state() -> dict:
+    try:
+        state = json.loads(DELIVERY_STATE_PATH.read_text())
+        if isinstance(state, dict) and isinstance(state.get("items", {}), dict):
+            state.setdefault("items", {})
+            return state
+    except (OSError, ValueError, TypeError):
+        pass
+    return {"items": {}}
+
+
+def _save_delivery_state(state: dict) -> None:
+    DELIVERY_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = DELIVERY_STATE_PATH.with_suffix(DELIVERY_STATE_PATH.suffix + ".tmp")
+    temporary.write_text(json.dumps(state, sort_keys=True))
+    temporary.replace(DELIVERY_STATE_PATH)
 
 # Tax keywords relevant to Bali Zero clients
 # Broad coverage: any DJP regulation is potentially relevant
@@ -108,6 +156,18 @@ class PajakMonitorJob(BrowserJob):
         new_items = [i for i in relevant if i.get("url") and i["url"] not in seen_urls]
         self.log_step("dedup", outputs={"new": len(new_items), "total": len(relevant)})
 
+        # A prior send may have succeeded while Redis persistence failed. Reconcile
+        # that durable local receipt without sending the alert over and over.
+        delivered = self._locally_delivered(new_items)
+        if delivered:
+            delivered_urls = [i["url"] for i in delivered]
+            if not await self._mark_seen(delivered_urls):
+                return RunResult(status="error", duration_s=self._elapsed(),
+                                 side_effects=self._side_effects, output="seen_persist_failed")
+            self._clear_delivery_failures(delivered_urls)
+            delivered_ids = {_delivery_id(url) for url in delivered_urls}
+            new_items = [i for i in new_items if _delivery_id(i["url"]) not in delivered_ids]
+
         if not new_items:
             self._record_success()
             return RunResult(
@@ -120,16 +180,43 @@ class PajakMonitorJob(BrowserJob):
         # Peraturan detail enrichment (citation + verbatim excerpt for admission)
         await self._enrich_peraturan_details(new_items)
 
-        # Mark seen + write Intel feed
-        await self._mark_seen([i["url"] for i in new_items])
+        # Keep the existing Intel output unchanged; seen-state belongs to the
+        # Telegram delivery below, not to discovery.
         intel_count = self._write_intel_feed(new_items)
         if intel_count > 0:
             self._side_effects.append(f"intel_feed:{intel_count}")
 
         # Telegram alert
         msg = self._compose_alert(new_items)
-        ok = await self.send_telegram(msg)
+        urls = [i["url"] for i in new_items]
+        error_class = "DeliveryNotAccepted"
+        try:
+            ok = await self.send_telegram(msg, dedup_key=_alert_dedup_key(urls))
+        except Exception as exc:
+            ok = False
+            error_class = type(exc).__name__
         self.log_step("telegram_send", side_effect="pajak_alert" if ok else None)
+
+        if not ok:
+            try:
+                dead_urls = self._record_delivery_failures(urls, error_class)
+            except Exception as exc:
+                self.logger.error("delivery_state_error", error=type(exc).__name__)
+                dead_urls = []
+            if dead_urls and await self._mark_seen(dead_urls):
+                self._clear_delivery_failures(dead_urls)
+            return RunResult(status="error", duration_s=self._elapsed(),
+                             side_effects=self._side_effects, output="telegram_delivery_failed")
+
+        if not await self._mark_seen(urls):
+            self.logger.error("seen_persist_failed", error="RedisWriteError")
+            try:
+                self._remember_delivered(urls)
+            except Exception as exc:
+                self.logger.error("delivery_state_error", error=type(exc).__name__)
+            return RunResult(status="error", duration_s=self._elapsed(),
+                             side_effects=self._side_effects, output="seen_persist_failed")
+        self._clear_delivery_failures(urls)
 
         self._record_success()
         return RunResult(
@@ -361,13 +448,64 @@ class PajakMonitorJob(BrowserJob):
             pass
         return set()
 
-    async def _mark_seen(self, urls: list[str]) -> None:
+    async def _mark_seen(self, urls: list[str]) -> bool:
         try:
-            for url in urls:
-                subprocess.run(["redis-cli", "SADD", REDIS_KEY_SEEN, url], capture_output=True, timeout=5)
-            subprocess.run(["redis-cli", "EXPIRE", REDIS_KEY_SEEN, str(REDIS_EXPIRY)], capture_output=True, timeout=5)
-        except Exception:
-            pass
+            # redis-cli exits 0 on an error REPLY (NOAUTH, READONLY...): grade the reply too.
+            commands = [["SADD", REDIS_KEY_SEEN, url] for url in urls]
+            commands.append(["EXPIRE", REDIS_KEY_SEEN, str(REDIS_EXPIRY)])
+            for command in commands:
+                result = subprocess.run(["redis-cli", *command], capture_output=True, text=True, timeout=5)
+                if result.returncode != 0 or _REDIS_ERROR_REPLY.match(result.stdout or ""):
+                    return False
+            return True
+        except Exception as exc:
+            self.logger.error("redis_mark_error", error=type(exc).__name__)
+            return False
+
+    def _record_delivery_failures(self, urls: list[str], error_class: str) -> list[str]:
+        state = _load_delivery_state()
+        now = datetime.now(WITA).isoformat()
+        dead_urls = []
+        for url in urls:
+            item_id = _delivery_id(url)
+            old = state["items"].get(item_id, {})
+            attempts = _prior_attempts(old) + 1
+            entry = {"attempts": attempts, "first_seen": old.get("first_seen", now)
+                     if isinstance(old, dict) else now}
+            state["items"][item_id] = entry
+            if attempts == DELIVERY_MAX_ATTEMPTS:
+                DEAD_LETTER_PATH.parent.mkdir(parents=True, exist_ok=True)
+                # The url is a public DJP address and the only handle a human can re-send from.
+                with DEAD_LETTER_PATH.open("a") as handle:
+                    handle.write(json.dumps({"id": item_id, "url": url, "first_seen": entry["first_seen"],
+                                             "attempts": attempts, "last_error": error_class}) + "\n")
+                self.logger.error("pajak_delivery_dead_lettered", id=item_id, last_error=error_class)
+            if attempts >= DELIVERY_MAX_ATTEMPTS:
+                dead_urls.append(url)
+        _save_delivery_state(state)
+        return dead_urls
+
+    def _locally_delivered(self, items: list[dict]) -> list[dict]:
+        entries = _load_delivery_state()["items"]
+        return [item for item in items if isinstance(entries.get(_delivery_id(item["url"])), dict)
+                and entries[_delivery_id(item["url"])].get("delivered")]
+
+    def _remember_delivered(self, urls: list[str]) -> None:
+        state = _load_delivery_state()
+        now = datetime.now(WITA).isoformat()
+        for url in urls:
+            entry = state["items"].setdefault(_delivery_id(url), {})
+            if not isinstance(entry, dict):
+                entry = {"attempts": int(entry)}
+                state["items"][_delivery_id(url)] = entry
+            entry.update({"delivered": True, "first_seen": entry.get("first_seen", now)})
+        _save_delivery_state(state)
+
+    def _clear_delivery_failures(self, urls: list[str]) -> None:
+        state = _load_delivery_state()
+        removed = [state["items"].pop(_delivery_id(url), None) for url in urls]
+        if any(value is not None for value in removed):
+            _save_delivery_state(state)
 
     def _write_intel_feed(self, items: list[dict]) -> int:
         try:
