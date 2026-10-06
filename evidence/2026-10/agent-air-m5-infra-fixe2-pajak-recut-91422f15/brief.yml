@@ -1,0 +1,38 @@
+task_id: fixe2-pajak-recut
+mission: FIXBATCH-E-20261005
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Re-cut of the pajak half of #7929 after its final gate blocked: a new pajak regulation is never muted
+  by the gateway's title-based dedup (one content key per item set) and never marked seen before the
+  gateway accepted the alert that carries it. The event-bus gateway part of #7929 is not in this PR.
+constraints:
+  - Carry the builder's two pajak files over by content from 41329cf606; no rebuild, no gateway file.
+  - No real Telegram, Redis or message bus in tests; fakes only. No chat id or token anywhere.
+  - Healthy path byte-identical to origin/main (result, message, tier, seen-state, intel feed, lake payloads, redis writes).
+  - Dead letter and logs carry the error CLASS only, never message text.
+  - The live copy runs from ~/scripts on Pro (home-fork pair); the merge does not make it live.
+appetite:
+  wall_clock_hours: 2
+acceptance:
+  - text: WHEN the gateway does not accept the alert THEN the items SHALL stay unseen and be retried next run.
+    probe: scripts/tests/test_pajak_monitor.py::test_delivery_failure_is_retried_then_success_is_marked_once
+  - text: WHEN an item fails DELIVERY_MAX_ATTEMPTS times THEN it SHALL be dead-lettered (class only) and marked seen.
+    probe: scripts/tests/test_pajak_monitor.py::test_poison_item_is_dead_lettered_at_configured_bound_with_legacy_state
+  - text: WHEN the send was accepted but the seen-mark failed THEN the next run SHALL reconcile without re-sending.
+    probe: scripts/tests/test_pajak_monitor.py::test_seen_persist_failure_after_send_is_an_error
+  - text: WHEN two alerts carry different item sets THEN their gateway keys SHALL differ; a retried set SHALL keep its key.
+    probe: scripts/tests/test_pajak_monitor.py::test_distinct_alerts_carry_distinct_gateway_keys_and_a_retry_keeps_its_key
+  - text: WHEN the same items come back in a different order on a retry THEN the gateway key SHALL be the same.
+    probe: scripts/tests/test_pajak_monitor.py::test_alert_key_ignores_the_order_the_sources_return_the_same_items_in
+  - text: WHEN an item's stored attempt count is unparseable THEN it SHALL still reach the dead letter at the bound.
+    probe: scripts/tests/test_pajak_monitor.py::test_a_hand_corrupted_attempt_count_still_reaches_the_dead_letter
+consumer_map:
+  - scripts/cron-agent-python/pajak_monitor.py — Pro crontab `0 0 * * *` (Pro TZ WITA) run.sh pajak-monitor, executes the HOME copy ~/scripts/cron-agent-python/pajak_monitor.py.
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  Ruling of the imperator after gate-7929-w4 BLOCK: ship (a)+(b) alone from fresh origin/main, close #7929,
+  (c) not built today. Code built by the Codex seat (O3 home) in #7929 and cured there by Dux dux-fix-e;
+  carried over by content and completed (order test, corrupted-count cure) by Dux dux-fix-e2 (Opus 5.5).

@@ -42,6 +42,9 @@ Commands:
   cswap run <seat-or-dir> [-- cmd...]  exec a command (default: interactive `claude`) under that seat
   cswap auto [--print] [--activate] [--exclude SEAT ...]
                                        pick the least-loaded eligible seat (hysteresis + lock)
+  cswap exec [--cwd DIR] [--exclude SEAT] <SEAT|auto> -- claude -p --model M "prompt" < /dev/null
+                                       headless run on a seat that answers its PONG; a retired
+                                       or silent named seat is refused (exit 3), never swapped
 
 Composable: `CLAUDE_CONFIG_DIR=$(python3 scripts/usage/cswap.py auto --print) claude`
 
@@ -57,6 +60,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -574,6 +578,169 @@ def cmd_run(seat_map_path: Path, seat_or_dir: str, cmd: list[str]) -> int:
     return 1  # pragma: no cover — unreachable unless execvpe itself fails
 
 
+# --------------------------------------------------------------- exec (headless door)
+
+PONG_MODEL = "claude-haiku-4-5"
+PONG_PROMPT = "Reply with exactly one word: PONG"
+PONG_TIMEOUT_S = 120.0
+REFUSED_RC = 3
+
+# A credential in the caller's env outranks the seat's own login: with
+# CLAUDE_CODE_OAUTH_TOKEN set, `claude` answers on the TOKEN's account whatever
+# CLAUDE_CONFIG_DIR says, and the door would report a seat it never used.
+# with_seat.sh's claude-seat kind declares that name, so it would pass.
+_SHADOWING_CREDENTIALS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+                          "CLAUDE_CODE_OAUTH_TOKEN")
+
+
+def _default_with_seat_path() -> Path:
+    return _THIS_DIR.parent / "with_seat.sh"
+
+
+def _default_topology_path() -> Path:
+    return _THIS_DIR.parent.parent / "FLEET_TOPOLOGY.json"
+
+
+def retired_seats(topology_path: Path) -> set[str]:
+    """Seat ids FLEET_TOPOLOGY.json marks `status: retired` (A5 since
+    2026-10-05). Only the status field is read. Unreadable is fatal: a door
+    that cannot tell a retired seat from a live one stays shut."""
+    try:
+        slots = json.loads(topology_path.read_text())["accounts"]["anthropic"]["slots"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise SystemExit(f"[cswap exec] cannot read seat status from {topology_path}: "
+                         f"{type(e).__name__}")
+    return {k for k, v in slots.items() if isinstance(v, dict) and v.get("status") == "retired"}
+
+
+_CANONICAL_REGISTRY = _THIS_DIR.parent.parent / "infra/llm-credentials/seat-env.json"
+
+
+def _claude_seat_names() -> set[str]:
+    """The env names the canonical registry declares for `claude-seat`, minus
+    the shadowing credentials. The door hands with_seat.sh ONLY these: anything
+    else reaches bash before the allowlist does — BASH_ENV is sourced at
+    startup and could export a token that then passes as a declared name.
+    WITH_SEAT_REGISTRY is neither honoured nor forwarded: a caller-written
+    registry could declare Bedrock names, or point exec_search_path at its own
+    `claude`, while the door reports a seat (gate-7921)."""
+    try:
+        names = json.loads(_CANONICAL_REGISTRY.read_text())["seats"]["claude-seat"]["env"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise SystemExit(f"[cswap exec] cannot read claude-seat names from {_CANONICAL_REGISTRY}: "
+                         f"{type(e).__name__}")
+    return set(names) - set(_SHADOWING_CREDENTIALS)
+
+
+def seat_child_env(base: dict[str, str], profile_dir: Path) -> dict[str, str]:
+    env = {k: v for k, v in base.items() if k in _claude_seat_names()}
+    default_dir = Path(os.path.expanduser("~/.claude"))
+    try:
+        is_default = profile_dir.samefile(default_dir)
+    except OSError:
+        is_default = False
+    if is_default:
+        # The default dir's login lives under the Keychain name Claude uses when
+        # CLAUDE_CONFIG_DIR is UNSET; naming the dir explicitly looks up another
+        # entry. Measured 2026-10-05 on M5: explicit ~/.claude -> "OAuth session
+        # expired"; unset -> PONG from the same account as ~/.claude-acct2 (A3).
+        env.pop("CLAUDE_CONFIG_DIR", None)
+    else:
+        env["CLAUDE_CONFIG_DIR"] = str(profile_dir)
+    return env
+
+
+def _first_meaningful_line(*texts: str) -> str:
+    for text in texts:
+        for line in text.splitlines():
+            line = line.strip()
+            if line and not line.startswith(("with_seat: seat=", "Warning:")):
+                return line[:160]
+    return ""
+
+
+def pong(with_seat: Path, env: dict[str, str], *,
+         timeout: Optional[float] = None) -> tuple[bool, str]:
+    """One headless PONG through the same door the real call takes, from an
+    empty cwd. `auth status` saying loggedIn is not proof a seat answers: the
+    whole stdout must be exactly PONG."""
+    timeout = PONG_TIMEOUT_S if timeout is None else timeout
+    argv = [str(with_seat), "claude-seat", "claude", "-p", "--model", PONG_MODEL, PONG_PROMPT]
+    with tempfile.TemporaryDirectory(prefix="cswap-pong-") as cwd:
+        try:
+            r = subprocess.run(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                               capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return False, f"no answer within {timeout:.0f}s"
+        except OSError as e:
+            return False, f"cannot run {with_seat.name}: {e.strerror}"
+    if r.returncode == 0 and r.stdout.strip() == "PONG":
+        return True, ""
+    why = _first_meaningful_line(r.stdout, r.stderr) or f"exit {r.returncode}, no output"
+    return False, _redact_if_secretlike(why)
+
+
+def cmd_exec(seat_map_path: Path, seat: str, cmd: list[str], *, cwd: str,
+             exclude: list[str], topology_path: Path, with_seat: Path) -> int:
+    """Run `claude ...` headless on one named seat, or on the least-loaded
+    seat that answers its PONG (`auto`), through with_seat.sh's claude-seat
+    allowlist. A named seat that is retired or silent is refused with
+    REFUSED_RC (3), one that is not a seat id here with 2; it never falls
+    through to another seat. --exclude is for `auto` only and names seat ids."""
+    argv = _strip_leading_separator(cmd)
+    if not argv:
+        emit_err("[cswap exec] empty command: pass the claude invocation after --")
+        return 2
+    if not Path(cwd).is_dir():
+        emit_err(f"[cswap exec] --cwd is not a directory: {cwd}")
+        return 2
+    seat_map = load_seat_map(seat_map_path)
+    retired = retired_seats(topology_path)
+    known = set((seat_map.get("claude_profiles") or {}).values())
+    if exclude and seat != "auto":
+        emit_err("[cswap exec] --exclude applies only to `auto`; a named seat is the only one tried")
+        return 2
+    if set(exclude) - known:
+        emit_err(f"[cswap exec] --exclude names no seat of this machine: {sorted(set(exclude) - known)}")
+        return 2
+
+    if seat == "auto":
+        pool = [c for c in collect_candidates(seat_map, _now(), set(exclude))
+                if c["seat"] not in retired]
+        order = []
+        while pool:
+            pick = choose_seat(pool, {}, _now())
+            order.append(pick)
+            pool.remove(pick)
+    else:
+        if seat in retired:
+            emit_err(f"[cswap exec] REFUSED seat={seat}: retired in FLEET_TOPOLOGY.json")
+            return REFUSED_RC
+        if seat not in known:
+            emit_err(f"[cswap exec] REFUSED seat={seat}: not a seat id in this machine's seat map")
+            return 2
+        try:
+            pdir = resolve_seat_dir(seat_map, seat)
+        except ValueError as e:
+            emit_err(f"[cswap exec] REFUSED {e}")
+            return REFUSED_RC
+        mapped = next(d for d, s in seat_map["claude_profiles"].items() if s == seat)
+        order = [{"seat": seat, "dir": mapped, "path": pdir}]
+
+    for cand in order:
+        env = seat_child_env(dict(os.environ), cand["path"])
+        ok, why = pong(with_seat, env)
+        if not ok:
+            emit_err(f"[cswap exec] REFUSED seat={cand['seat']} dir={cand['dir']}: PONG failed: {why}")
+            continue  # only `auto` has a next candidate: a named seat's order is itself
+        emit_err(f"[cswap exec] seat={cand['seat']} dir={cand['dir']} pong=ok")
+        rc = subprocess.run([str(with_seat), "claude-seat", *argv], cwd=cwd, env=env).returncode
+        emit_err(f"[cswap exec] seat={cand['seat']} exit={rc}")
+        return rc
+    emit_err("[cswap exec] REFUSED: no eligible seat answered its PONG")
+    return REFUSED_RC
+
+
 # --------------------------------------------------------------- CLI
 
 
@@ -605,6 +772,18 @@ def build_parser() -> argparse.ArgumentParser:
                          help="also record the choice as active in the state file")
     p_auto.add_argument("--exclude", nargs="*", default=[], metavar="SEAT",
                          help="seat ids to exclude from ranking this run")
+
+    # Options go BEFORE the seat: everything after it is the claude command.
+    p_exec = sub.add_parser("exec", help="run `claude ...` headless on a seat that answers its "
+                                         "PONG, through with_seat.sh (seat report on stderr)")
+    p_exec.add_argument("--cwd", default=os.getcwd(), help="working directory of the run")
+    p_exec.add_argument("--exclude", action="append", default=[], metavar="SEAT",
+                         help="seat id `auto` must not pick (repeatable; refused with a named seat)")
+    p_exec.add_argument("--topology", default=str(_default_topology_path()),
+                         help="FLEET_TOPOLOGY.json; only seat status is read")
+    p_exec.add_argument("seat", help="seat id (A1/A2/A3/A4/AZ) or `auto` = least-loaded answering seat")
+    p_exec.add_argument("cmd", nargs=argparse.REMAINDER,
+                         help="-- claude -p --model <m> \"<prompt>\" (redirect stdin from /dev/null)")
     return p
 
 
@@ -623,6 +802,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.command == "auto":
         return cmd_auto(seat_map_path, do_print=args.do_print, do_activate=args.do_activate,
                          exclude=args.exclude)
+    if args.command == "exec":
+        return cmd_exec(seat_map_path, args.seat, args.cmd, cwd=args.cwd, exclude=args.exclude,
+                        topology_path=Path(args.topology), with_seat=_default_with_seat_path())
     parser.error("unknown command")  # pragma: no cover — argparse enforces `required=True`
     return 2
 

@@ -1,0 +1,12 @@
+(1) Bypasses
+- `env -S "-i rm -rf /"`
+  Walkthrough: `_unwrap_command` sees `env` in `_WRAPPERS`. It pops `-S` (which is in `_WRAPPERS["env"]`) and then unconditionally pops the next token `"-i rm -rf /"` as the argument to `-S`. `remaining` becomes empty. `<REDACTED>` receives an empty list, sees no `rm`, and returns `False`. The segment is allowed. In a real shell, GNU `env -S` splits the string and executes `rm -rf /`.
+
+(2) Over-matches (Innocent commands blocked)
+- `rm -rf /Users/Shared/`
+  Walkthrough: The legacy regex only targeted `/Users/<name>`, so this was allowed. The new code's `_is_protected_rm_target` normalizes the path to `/Users/Shared` and matches it against `r"/Users(?:/[\w.-]+)?(?:/\*)?"`, which successfully matches `/Users/Shared`. Thus it is blocked, even though `/Users/Shared` is not the home directory itself.
+- `rm -rf /Users/Shared/*`
+  Walkthrough: Same as above, normalizes to `/Users/Shared/*` and matches the regex, resulting in a block for a non-protected shared directory.
+
+(3) Crash paths
+none found

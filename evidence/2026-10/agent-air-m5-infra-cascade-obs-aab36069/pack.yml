@@ -1,0 +1,169 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  Branch agent/air-m5/infra/cascade-obs from origin/main beb6991b30 (after #7898): per-attempt
+  [cascade-attempt] and per-run [cascade-result] stderr lines in claude-cascade.sh, class named at
+  try_claude's existing return-code branches, slot->seat pinned to FLEET_TOPOLOGY by test, golden
+  fixture recorded on the pre-change wrapper. Mission CASCADEOBS-20261005, gear 3 = measured floor.
+  Gate N2, stated as found: the build overlapped council round 1 (tests ran 10:52:12Z, before the last
+  round-1 answer at 10:53:54Z), so round 1 is partly post-hoc for the scaffold; round 2 refuted the built diff.
+  Gate-cure round (2026-10-06, Dux dux-cascadeobs2): final gate BLOCK B1, one commit.
+lanes:
+  - lane: cascade-obs-build
+    role: build
+    seat: "claude-opus-5.5 (Dux dux-cascadeobs; golden first on the old wrapper, then the wrapper; gate-B1 cure by dux-cascadeobs2)"
+  - lane: cascade-obs-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol via O2 (round 1 red-team) and O3 (round 2 cross-family refuter + cure review); codex-gpt-6.1-sol via O2 (gate-cure delta review)"
+  - lane: cascade-obs-council-qwen
+    role: review
+    seat: "tp1-qwen3.8-max (round 1 constructive, round 2 cross-family refuter)"
+  - lane: cascade-obs-council-deepseek
+    role: review
+    seat: "tp1-deepseek-v4-pro (round 1 refuter, reserve seat)"
+council_run: journal.jsonl
+seat_fallback_reason: >-
+  Kimi K3 (titolare) was unavailable: its 5-hour window was exhausted at ~08:00Z (403, campaign
+  addendum 3) and not expected back before ~13:00Z; agy reads BUSY (the owner's windows). DeepSeek v4
+  Pro sat the refuter chair in round 1 so that three families answered sealed.
+what_changed: |
+  claude-cascade.sh: OAUTH_SLOT_SEATS=(A1 A5 A3 A4 A2 AZ) (index = token slot, pinned to the registry);
+  cascade_attempt_log writes `[cascade-attempt] v=1 job slot seat class rc dur_s src` at every exit
+  of try_claude (answered / ledger skip / retryable / non-zero exit / empty / hop failures) and at the
+  retired-slot `continue`; cleanup_cascade captures `$?` first and writes `[cascade-result] v=1 job
+  slot seat rc` once per run. attempt_failure_class names timeout from a flag run_bounded sets on its
+  two timeout paths, else auth_dead (AUTH_PATTERN or the new ORG_DISABLED_PATTERN), else rate_limited
+  (QUOTA_PATTERN), else other; it reads stderr from the file and stdout only when the whole stdout is a
+  diagnostic (existing envelope rule or the org-disabled banner), never through a pipe. The job name is
+  CLAUDE_CASCADE_JOB, else the caller's entry-point basename, else the launchd label, validated whole.
+  No retry predicate, return code, slot order or stdout byte changed. Header no longer lists token_2.
+  Gate cure (B1): the rate_limited class also reads `hit your (<word> )?limit`, so the CLI session-limit
+  banner logs rate_limited on stdout exit 0, stdout exit 1 and stderr exit 1 (QUOTA_PATTERN itself unchanged).
+  Naga (owner-appointed reviewer) is mailed after PR-open; not recorded as a seat.
+dissent:
+  - seat: tp1-qwen3.8-max (r1) vs codex-gpt-5.6-sol (r1)
+    objection:
+      "Non-zero-exit stdout. Qwen (r1): stderr only. Codex (r1): only under strict envelope validation.
+      Taken: Codex's rule. Stderr-only would hide the very org-disabled slot this PR exists for if the
+      CLI prints it on stdout; innocence test: a failed attempt whose stdout is prose about a weekly limit
+      classifies `other`."
+    status: PLAUSIBLE
+  - seat: codex-gpt-5.6-sol (r1) + tp1-qwen3.8-max (r2)
+    objection:
+      "Guard-cap INCOMPLETE logged `answered`. Codex (r1) and Qwen (r2): log it `other`. Rejected:
+      the class reports the SEAT's outcome (what the owner rotates on); the seat answered and its stdout
+      is what the caller got with rc 0. The incomplete MANDATE keeps its existing `[cap]` line and HIGH
+      escalation; calling it `other` would make a healthy seat look broken."
+    status: PLAUSIBLE
+  - seat: codex-gpt-5.6-sol (r1, r2, cure review) + tp1-qwen3.8-max (r1)
+    objection:
+      "Job name from the caller. Codex (r1/r2) and Qwen (r1): operator allowlist only. Rejected
+      as stated (no caller sets CLAUDE_CASCADE_JOB, so every line would read job=unknown); cured instead:
+      entry point only, option/assignment/URL words refused, value validated whole. Two reproductions (URL
+      argument, -Xtenant= option) are now tests, RED before their cures."
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max (r2)
+    objection:
+      'Qwen (r2): a pre-dispatch global-deadline refusal logged `timeout` "lies". Kept: the job''s
+      time budget expired (dur_s=0 shows nothing ran); the old stderr calls the same event "quota/auth failure".'
+    status: PLAUSIBLE
+  - seat: codex-gpt-6.1-sol (gate-cure review, O2)
+    objection:
+      "Codex (cure review, minor): stderr prose like 'if you hit your session limit, wait' or the word
+      'limitation' now reads rate_limited. Kept: stderr is the diagnostic channel and QUOTA_PATTERN already
+      reads 'weekly limit' on stderr the same way; the class drives no retry; stdout prose stays `other`
+      (innocence test failed_attempt_prose_mentions_session_limit)."
+    status: PLAUSIBLE
+refuted:
+  "Refuted by execution, not withdrawn by the seat (kept out of dissent): Qwen (r2) claimed zsh
+  treats a quoted `=~` RHS as a literal so every job reads unknown. Refuted by execution: test_job_name_is_validated_whole_never_rewritten[indexing-daily-run.sh]
+  and every golden record (job=golden-job) pass. || DeepSeek (r1) D1 assumed the org pattern was added
+  to a retry predicate; it is not — innocence test answer_with_org_text_on_stderr stays `answered` on
+  the same seat."
+owed:
+  - Exit-0 org-disabled banner on stdout is accepted as an answer today (behaviour defect; separate PR that changes retry).
+  - '{"error":null,...} answers match the JSON envelope rule and rotate (existing retry over-match; separate behaviour PR).'
+  - No existing report or probe reads the new lines (only two wrappers mention the `used:` line, in comments); a reader (per-seat last class across ~/logs on Pro) is owed — not built here.
+  - WR2 wrapper classification (dux-wr2class), slot order/rotation (owner), the 18 other readers of slot 2 — out of scope.
+  - Delivery to Pro ~/scripts/claude-cascade.sh is manual. Today it equals the base wrapper (blob 19b74bf33f, mtime 2026-10-05T10:46:08Z); after merge cp + cmp -s. Pro callers that run the wrapper from $REPO_ROOT are not covered by that step (gate N3).
+  - "Gate N1: under a UTF-8 locale, a FAILED attempt whose stdout has invalid bytes adds 2 `tr: Illegal byte sequence` lines to stderr (the class's tr pipeline and the pre-existing envelope check it calls); stdout, calls and rc unchanged. One LC_ALL=C on the new pipeline leaves 1 line (measured), so the fix is owed."
+  - "Gate N3: 684 net lines, over the ~400 contract (code+tests 427, the rest golden fixture and pack)."
+  - "Codex (cure review, minor): `hit your 5-hour limit` (digits) is matched neither by the class nor by the pre-existing stdout envelope."
+spend:
+  wall_clock_hours: 1
+receipts:
+  - claim: golden 5/5 on the PRE-change wrapper (worktree file == beb6991b30) before any wrapper edit
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py -k golden (test_golden_attempts_stdout_exit_and_old_stderr_are_unchanged, calls/stdout/rc form)
+    exit: "0 (5 passed)"
+    ts: "2026-10-05T10:48Z"
+    seat: claude-opus-5.5
+  - claim: golden fixture (calls, stdout, rc, every old stderr line) recorded from the pre-change copy and re-checked against it
+    cmd: CLAUDE_CASCADE_GOLDEN_SCRIPT=<git show beb6991b30:infra/launchagents/wrappers/claude-cascade.sh> pytest -q scripts/tests/test_claude_cascade_shell.py -k golden_attempts
+    exit: "0 (5 passed)"
+    ts: "2026-10-05T10:56Z"
+    seat: claude-opus-5.5
+  - claim: the 14 record/class tests are RED on the pre-change wrapper
+    cmd: test functions run with CASCADE = beb6991b30 copy (scratch harness)
+    exit: "14 of 14 RED"
+    ts: "2026-10-05T10:56Z"
+    seat: claude-opus-5.5
+  - claim: suites reading the wrapper GREEN on the round-1 build (pre round-2 cures)
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py scripts/tests/test_claude_oauth_runtime_fallback.py scripts/tests/test_claude_oauth_slot6_coverage.py
+    exit: "0 (179 passed)"
+    ts: "2026-10-05T11:03Z"
+    seat: claude-opus-5.5
+  - claim: round-2 reproductions RED before their cures (1 MiB stderr quota/org; python -c URL argument; -Xtenant= option at 9ec8cc14d3)
+    cmd: test functions run against the pre-cure copies (scratch harness)
+    exit: "RED x4 before, GREEN after"
+    ts: "2026-10-05T11:22Z"
+    seat: claude-opus-5.5
+  - claim: observability subset GREEN on the cured head
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py -k "golden or attempt or class or timeout or deadline or ledger or job_name or oauth_slot_seats or entry_point"
+    exit: "0"
+    ts: "2026-10-05T11:23Z"
+    seat: claude-opus-5.5
+  - claim: full suites on the cured head NOT green locally — every failure is subprocess.TimeoutExpired (10 s) in pre-existing tests while M5 load average was 143-156 (sibling Dux suites); CI is the clean judge
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py -k "golden or attempt or class or timeout or deadline or ledger or job_name or oauth_slot_seats or entry_point or retired"; uptime
+    exit: "1 (3 failed: test_attempt_timeout_kills_provider_descendants, test_global_deadline_prevents_later_seats_from_starting, test_retired_slot_value_is_not_retried_under_the_legacy_name — all TimeoutExpired; load 156)"
+    ts: "2026-10-05T11:29Z"
+    seat: claude-opus-5.5
+  - claim: gate-B1 guilt tests RED on the PR head 0f5089d16f (3 session-limit banner channels read `other`), 2 innocence tests green
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py -k session_limit
+    exit: "1 (3 failed, 2 passed)"
+    ts: "2026-10-06T01:31:58Z"
+    seat: claude-opus-5.5
+  - claim: the same 5 tests GREEN on the cure
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py -k session_limit
+    exit: "0 (5 passed)"
+    ts: "2026-10-06T01:33:03Z"
+    seat: claude-opus-5.5
+  - claim: golden 5/5 against the base wrapper beb6991b30, the PR head 0f5089d16f and the cure
+    cmd: CLAUDE_CASCADE_GOLDEN_SCRIPT=<before.sh | pr-head.sh> pytest -q scripts/tests/test_claude_cascade_shell.py -k golden_attempts; then without the env var
+    exit: "0 (5 passed x3)"
+    ts: "2026-10-06T01:33:12Z"
+    seat: claude-opus-5.5
+  - claim: full suites GREEN on the cure (load average 6)
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py scripts/tests/test_claude_oauth_runtime_fallback.py scripts/tests/test_claude_oauth_slot6_coverage.py
+    exit: "0 (189 passed)"
+    ts: "2026-10-06T01:35:15Z"
+    seat: claude-opus-5.5
+  - claim: old (beb6991b30) vs cured wrapper over all 16 class cases - calls, stdout, rc and every old stderr line identical
+    cmd: scratch harness diff_cases.py (the test module's _fake_fleet, both scripts copied to the same path)
+    exit: "0 (same=16 diff=0)"
+    ts: "2026-10-06T01:35:36Z"
+    seat: claude-opus-5.5
+  - claim: Pro ~/scripts/claude-cascade.sh equals the base blob; no `[cascade-` line in ~/logs yet; cron-agent logs carry no `[claude-cascade]` line
+    cmd: ssh pro 'git hash-object ~/scripts/claude-cascade.sh; grep -rh "^\\[cascade-" ~/logs | wc -l; cat ~/logs/cron-agent/*.log | grep -c "\\[claude-cascade\\]"'
+    exit: "0 (19b74bf33f, mtime 2026-10-05T10:46:08Z; 0; 0)"
+    ts: "2026-10-06T01:36:19Z"
+    seat: claude-opus-5.5
+  - claim: N1 - one LC_ALL=C on the new tr pipeline leaves 1 of the 2 Illegal byte sequence lines
+    cmd: scratch harness n1_repro.py (UTF-8 locale, stdout with invalid bytes, exit 1) on before / head / cure / one-LC_ALL variant
+    exit: "0 (tr lines 0 / 2 / 2 / 1)"
+    ts: "2026-10-06T01:38:21Z"
+    seat: claude-opus-5.5
+  - claim: cross-family read-only review of the cure delta
+    cmd: CODEX_HOME=~/.codex-o2 scripts/with_seat.sh codex codex exec --sandbox read-only --skip-git-repo-check <prompt> (new session file only under ~/.codex-o2)
+    exit: "0 (VERDICT: SOUND, 2 minor, 2 nit)"
+    ts: "2026-10-06T01:37:27Z"
+    seat: codex-gpt-6.1-sol

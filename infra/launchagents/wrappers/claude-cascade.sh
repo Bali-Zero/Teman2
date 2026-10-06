@@ -2,9 +2,10 @@
 # claude-cascade.sh — single entry point for autonomous Claude invocations with full fallback cascade.
 #
 # Tries CLI binaries in this order, falling back on quota/auth/empty/timeout:
-#   1. Explicit Claude OAuth seats: token_1, token_2, token_3, token_4, token_5
-#      (5 MAX seats, in order), token_6 (zero@ Team, last resort by position),
-#      legacy token, then macOS keychain
+#   1. Explicit Claude OAuth seats: token_1, token_3, token_4, token_5
+#      (the 4 live MAX seats, in order; token_2 is retired and never attempted),
+#      token_6 (zero@ Team, last resort by position), legacy token, then
+#      macOS keychain
 #   2. agy -p (Antigravity CLI Gemini 3.1 Pro, Google AI Ultra sub)
 #   3. Kimi Code K3
 #   4. codex exec --sandbox read-only (ChatGPT Pro)
@@ -23,7 +24,9 @@
 # provider boundary to Gemini/Kimi/Codex/Ollama. This is load-bearing for jobs
 # that require Claude-specific agents, tool permissions, or output contracts.
 #
-# Output: stdout = LLM response. Stderr = which tier was used + which tiers were skipped.
+# Output: stdout = LLM response. Stderr = which tier was used + which tiers were skipped,
+# plus one `[cascade-attempt]` line per Claude seat attempt and one `[cascade-result]`
+# line per run (schema at OAUTH_SLOT_SEATS below).
 # Exit codes: 0 = success on any tier. 1 = ALL tiers failed. 2 = bad usage.
 #
 # Quota-exhaust detection patterns (case-insensitive grep):
@@ -60,6 +63,7 @@ terminate_attempt_group() {
 }
 
 cleanup_cascade() {
+    local cascade_rc=$?
     if [ -n "${ACTIVE_WATCHER_PID:-}" ]; then
         kill "$ACTIVE_WATCHER_PID" 2>/dev/null || true
         wait "$ACTIVE_WATCHER_PID" 2>/dev/null || true
@@ -74,6 +78,8 @@ cleanup_cascade() {
     for temp_path in "${CASCADE_TEMP_FILES[@]}"; do
         [ -n "$temp_path" ] && rm -f -- "$temp_path" 2>/dev/null || true
     done
+    [ "${CASCADE_STARTED:-0}" = "1" ] && echo "[cascade-result] v=1 job=$CASCADE_JOB slot=${CASCADE_ANSWER_SLOT:-none} seat=${CASCADE_ANSWER_SEAT:-none} rc=$cascade_rc" >&2
+    return 0
 }
 
 trap cleanup_cascade EXIT
@@ -280,10 +286,14 @@ run_bounded() {
     shift 3
 
     local now remaining allowed timeout_marker exit_code child_pid python_bin
+    # Read by attempt_failure_class: the watchdog decided, not the message
+    # (the deadline text below also matches QUOTA_PATTERN's "exhausted").
+    CASCADE_ATTEMPT_TIMED_OUT=0
     now="$(date +%s)"
     remaining=$(( CASCADE_DEADLINE_AT - now ))
     if [ "$remaining" -le 0 ]; then
         echo "global deadline exhausted before $label" >"$tmperr"
+        CASCADE_ATTEMPT_TIMED_OUT=1
         return 124
     fi
     allowed="$CASCADE_ATTEMPT_TIMEOUT_SEC"
@@ -343,6 +353,7 @@ except ProcessLookupError:
 
     if [ -e "$timeout_marker" ]; then
         echo "attempt timed out after ${allowed}s" >"$tmperr"
+        CASCADE_ATTEMPT_TIMED_OUT=1
         return 124
     fi
     return "$exit_code"
@@ -526,6 +537,107 @@ guard_tripped_in_run() {
         || [ -f "$JUMP_STATE_DIR/pending-jump-$1.json" ]
 }
 
+# ---------------------------------------------------------------------------
+# Per-attempt observability (CASCADEOBS 2026-10-05): which seat answered this
+# job, and why the earlier ones did not. Two stderr line shapes, keys in order:
+#   [cascade-attempt] v=1 job=<job> slot=<1-6|team-wrapper|legacy|keychain> seat=<seat|unmapped> class=<class> rc=<attempt rc> dur_s=<int> src=<live|ledger|pinned>
+#   [cascade-result] v=1 job=<job> slot=<slot|none> seat=<seat|none> rc=<exit code>
+# New keys are only ever appended; a reader must ignore keys it does not know.
+# class is a CLOSED list: answered rate_limited auth_dead retired_skip timeout
+# empty_output other. It is named where try_claude already chose its return
+# code and never changes one. seat=none with rc=0 means another family
+# answered (the `used:` line names it). A line carries a slot and a seat id
+# only — never a token or any piece of one, never an account or org name;
+# provider text is classified, never copied.
+#
+# Slot → seat, index = token slot: FLEET_TOPOLOGY.json
+# accounts.anthropic.slots.<seat>.oauth_token_slot, pinned by
+# scripts/tests/test_claude_cascade_shell.py. The live copy runs from $HOME
+# with no registry beside it, so nothing is read at runtime.
+OAUTH_SLOT_SEATS=(A1 A5 A3 A4 A2 AZ)
+# The seat found dead by hand on 2026-10-05 exits 1 with this text, which
+# neither QUOTA_PATTERN nor AUTH_PATTERN matches. It names a class; it is not
+# a retry trigger.
+ORG_DISABLED_PATTERN="organization has disabled claude subscription access"
+
+cascade_job_name() {
+    # Who called: CLAUDE_CASCADE_JOB, else the caller script's basename, else
+    # the launchd label. From the parent's argv only the ENTRY POINT is read
+    # (argv[1], or argv[2] after a zsh/bash/sh/python interpreter) — never an
+    # argument, which may be data (council round 2: a `--tenant https://x.sh`
+    # argument was taken as the job; an option word like `-Xk=/x.sh` is not an
+    # entry point either). A value is VALIDATED, never rewritten:
+    # anything outside the job-name shape (an e-mail's @, a space, > 64 chars)
+    # becomes `unknown` whole — truncating would keep a prefix of it.
+    local job="${CLAUDE_CASCADE_JOB:-}" word
+    local -a parent_argv
+    if [ -z "$job" ]; then
+        parent_argv=(${(z)"$(ps -o args= -p "$PPID" 2>/dev/null)"})
+        word="${parent_argv[1]:-}"
+        case "${(L)word:t}" in
+            zsh|bash|sh|python*) word="${parent_argv[2]:-}" ;;
+        esac
+        case "$word" in
+            -*|*=*|*://*) ;;
+            *.sh|*.zsh|*.py) job="${word:t}" ;;
+        esac
+    fi
+    [ -z "$job" ] && [ "${XPC_SERVICE_NAME:-0}" != "0" ] && job="${XPC_SERVICE_NAME:-}"
+    if [[ "$job" =~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' ]]; then
+        REPLY="$job"
+    else
+        REPLY=unknown
+    fi
+}
+
+cascade_attempt_log() {
+    # $1 = try_claude label, $2 = class, $3 = attempt start (epoch s), $4 = src,
+    # $5 = the return code try_claude is about to give its caller.
+    local slot seat
+    case "$1" in
+        claude-token-6-team-wrapper) slot=team-wrapper; seat="${OAUTH_SLOT_SEATS[6]}" ;;
+        claude-token-legacy-env) slot=legacy; seat=unmapped ;;
+        claude-keychain) slot=keychain; seat=unmapped ;;
+        claude-token-<1-6>-*) slot="${${1#claude-token-}%%-*}"; seat="${OAUTH_SLOT_SEATS[$slot]}" ;;
+        *) slot=unknown; seat=unmapped ;;
+    esac
+    if [ "$2" = "answered" ]; then
+        CASCADE_ANSWER_SLOT="$slot"
+        CASCADE_ANSWER_SEAT="$seat"
+    fi
+    echo "[cascade-attempt] v=1 job=$CASCADE_JOB slot=$slot seat=$seat class=$2 rc=$5 dur_s=$(( $(date +%s) - $3 )) src=$4" >&2
+}
+
+attempt_failure_class() {
+    # $1 = stdout file, $2 = stderr file of an attempt that did NOT answer.
+    # stderr is diagnostic; stdout joins only when it is itself a diagnostic
+    # (the envelope rule stdout_is_retryable_envelope applies), so an answer
+    # that discusses rate limits never names the class. grep reads files and
+    # here-strings, never a pipe: under pipefail an early `grep -q` match on a
+    # large stderr SIGPIPEs the writer and reads as NO match (council round 2).
+    # The session-limit banner ("You have hit your session limit · resets …")
+    # is a quota failure that QUOTA_PATTERN does not spell (gate B1).
+    local compact="" dead="$ORG_DISABLED_PATTERN|$AUTH_PATTERN"
+    local quota="$QUOTA_PATTERN|hit your ([[:alpha:]]+ )?limit"
+    if [ "${CASCADE_ATTEMPT_TIMED_OUT:-0}" = "1" ]; then
+        REPLY=timeout
+        return 0
+    fi
+    if [ -s "$1" ] && [ "$(wc -c <"$1" | tr -d ' ')" -le 8192 ]; then
+        compact="$(tr '\n\r\t' '   ' <"$1" | tr -s ' ')"
+        stdout_is_retryable_envelope "$1" "$RETRYABLE_PATTERN|$ORG_DISABLED_PATTERN" \
+            || grep -qiE "^[[:space:]]*(your )?$ORG_DISABLED_PATTERN" <<<"$compact" \
+            || compact=""
+    fi
+    if grep -qiE "$dead" -- "$2" 2>/dev/null || { [ -n "$compact" ] && grep -qiE "$dead" <<<"$compact"; }; then
+        REPLY=auth_dead
+    elif grep -qiE "$quota" -- "$2" 2>/dev/null || { [ -n "$compact" ] && grep -qiE "$quota" <<<"$compact"; }; then
+        REPLY=rate_limited
+    else
+        REPLY=other
+    fi
+}
+
 claude_seat_invoke() {
     # $1 = session id for this invocation; $2 = previous session id (hop) or "".
     # Uses try_claude's own locals (bin, oauth_token, config_dir, label,
@@ -558,10 +670,12 @@ try_claude() {
     # advances to the next seat exactly as it would after a live quota rejection.
     if [ "${SEAT_STATE_PRECHECK:-1}" != "0" ] && seat_state_precheck_skip "$label"; then
         echo "  [skip] $label — seat ledger reports this seat exhausted (no dispatch spent)" >&2
+        cascade_attempt_log "$label" rate_limited "$(date +%s)" ledger 98
         return 98
     fi
 
-    local tmpout tmperr exit_code
+    local tmpout tmperr exit_code attempt_start
+    attempt_start="$(date +%s)"
     new_temp_file
     tmpout="$REPLY"
     new_temp_file
@@ -579,16 +693,21 @@ try_claude() {
     # classification therefore precedes the exit-code success check.
     if retryable_failure_detected "$tmpout" "$tmperr" "$exit_code"; then
         echo "  [retry] $label quota/auth failure" >&2
+        attempt_failure_class "$tmpout" "$tmperr"
+        cascade_attempt_log "$label" "$REPLY" "$attempt_start" live 98
         rm -f "$tmpout" "$tmperr"
         return 98
     fi
     if [ "$exit_code" -ne 0 ]; then
         echo "  [error] $label exit=$exit_code" >&2
+        attempt_failure_class "$tmpout" "$tmperr"
+        cascade_attempt_log "$label" "$REPLY" "$attempt_start" live "$exit_code"
         rm -f "$tmpout" "$tmperr"
         return "$exit_code"
     fi
     if [ ! -s "$tmpout" ]; then
         echo "  [error] $label returned empty output" >&2
+        cascade_attempt_log "$label" empty_output "$attempt_start" live 97
         rm -f "$tmpout" "$tmperr"
         return 97
     fi
@@ -618,11 +737,19 @@ try_claude() {
         # a hop must cascade to the next seat, not pass as the seat's answer.
         if retryable_failure_detected "$tmpout" "$tmperr" "$exit_code"; then
             echo "  [retry] $label hop $hop quota/auth failure (partial work kept in $jump_file)" >&2
+            attempt_failure_class "$tmpout" "$tmperr"
+            cascade_attempt_log "$label" "$REPLY" "$attempt_start" live 98
             rm -f "$tmpout" "$tmperr" "$acc"
             return 98
         fi
         if [ "$exit_code" -ne 0 ] || [ ! -s "$tmpout" ]; then
             echo "  [error] $label hop $hop exit=$exit_code (empty=$([ -s "$tmpout" ] && echo no || echo yes)) — nothing emitted, partial work kept in $jump_file" >&2
+            if [ "$exit_code" -eq 0 ]; then
+                REPLY=empty_output
+            else
+                attempt_failure_class "$tmpout" "$tmperr"
+            fi
+            cascade_attempt_log "$label" "$REPLY" "$attempt_start" live 96
             rm -f "$tmpout" "$tmperr" "$acc"
             return 96
         fi
@@ -649,6 +776,7 @@ try_claude() {
     cat "$acc"
     rm -f "$tmpout" "$tmperr" "$acc"
     echo "[claude-cascade] used: $label$([ "$hop" -gt 0 ] && echo " (hops: $hop)")" >&2
+    cascade_attempt_log "$label" answered "$attempt_start" live 0
     return 0
 }
 
@@ -1051,6 +1179,9 @@ try_fm() {
 
 # ============= CASCADE =============
 echo "[claude-cascade] starting (prompt ${#PROMPT} chars, agent='$AGENT', model='$MODEL')" >&2
+cascade_job_name
+CASCADE_JOB="$REPLY"
+CASCADE_STARTED=1
 
 # Claude OAuth binary. Credentials are selected explicitly below; the binary's
 # ambient default/keychain identity is never consulted before the final step.
@@ -1127,6 +1258,7 @@ for index in 1 2 3 4 5 6; do
     esac
 
     if (( ${RETIRED_OAUTH_SLOTS[(Ie)$index]} )); then
+        cascade_attempt_log "$label" retired_skip "$(date +%s)" pinned -
         continue
     fi
 
