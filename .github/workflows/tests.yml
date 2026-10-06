@@ -769,10 +769,27 @@ jobs:
             --ignore-vuln CVE-2026-4372
             --ignore-vuln PYSEC-2026-1325
             --ignore-vuln PYSEC-2026-2290
+            --ignore-vuln CVE-2026-85394
           )
           # The `if` suspends `bash -e` only for that pipeline, so the second lock is
           # still audited when the first fails; any failure turns the step red via RC.
           RC=0
+          # python-jose CVE-2026-85394 has no fixed release, so its ignore above is
+          # bound to python-jose 3.5.0 and to a re-check date (.pip-audit-ignore.md).
+          # Crossing either boundary fails this step: the ignore cannot silently
+          # outlive the reasoning that justified it (council refutation, 2026-10-06).
+          JOSE_PIN="python-jose==3.5.0"
+          JOSE_RECHECK="2026-11-06"
+          for lock in requirements.lock.txt requirements-prod.lock.txt; do
+            if ! grep -Fqx -- "${JOSE_PIN} \\" "$lock"; then
+              echo "::error::$lock no longer pins ${JOSE_PIN}: re-evaluate (or, if python-jose is gone, remove) the CVE-2026-85394 ignore and this guard"
+              RC=1
+            fi
+          done
+          if [[ ! "$(date -u +%F)" < "$JOSE_RECHECK" ]]; then
+            echo "::error::the CVE-2026-85394 (python-jose) ignore reached its re-check date $JOSE_RECHECK: migrate to PyJWT or re-justify it in .pip-audit-ignore.md"
+            RC=1
+          fi
           for lock in requirements.lock.txt requirements-prod.lock.txt; do
             echo "::group::pip-audit $lock"
             if grep -v '^-e \.\./\.\./packages/cell-core' "$lock" > /tmp/requirements-audit-raw.txt \

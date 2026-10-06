@@ -1,0 +1,65 @@
+task: >-
+  Cure the pip-audit red on origin/main. The Backend Static job's pip-audit step fails on main's own
+  backend-rag locks (new advisories in multidict, fsspec, langgraph-sdk, werkzeug, and python-jose, which has
+  no fixed release). Because the REQUIRED aggregate "Backend Tests (Python)" reads Backend Static's result, no
+  PR touching apps/backend-rag/** can merge until main is cured (gate receipt of PR #7928, notice N1).
+lane: backend-rag
+machine: m5
+date: 2026-10-06
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: `scripts/evidence_pack_lint.py --print-floor` on this diff's changed files
+  prints 3 because .github/workflows/tests.yml is a hot-zone path; the same files without tests.yml print 1.
+  The ignore list lives only in the tests.yml step, so the hot-zone edit cannot be avoided. Net diff is small
+  (lock hash churn plus about 55 lines of workflow and doc).
+acceptance:
+  A1: >-
+    The Backend Static pip-audit step, exactly as written in tests.yml, is clean on both
+    requirements.lock.txt and requirements-prod.lock.txt.
+    probe: >-
+      the step's run block extracted from tests.yml with yaml.safe_load and executed with bash -e
+      (only /tmp remapped to scratch), pip-audit 2.10.1 from requirements-ci-tools.txt: RC 0, both locks
+      "clean"; on origin/main's locks the same command fails with 5 + 3 findings.
+  A2: >-
+    Only the four fixable packages move, to their minimal fixed versions, in the lock(s) that carry them; no
+    transitive drag; the uv header command is unchanged.
+    probe: record-level parser over both locks (version + every hash line) against origin/main.
+  A3: >-
+    The python-jose ignore is bound mechanically: the step fails while the ignore exists if either lock stops
+    pinning python-jose==3.5.0 or the UTC date reaches 2026-11-06; it stays green on the real locks today.
+    probe: guard-only run of the same extracted block with a lock copy pinned to 3.5.1 (RC 1), date 2026-11-06
+    (RC 1), date 2026-11-05 (RC 0), real locks today (RC 0).
+  A4: >-
+    The backend works on the bumped locks: the full backend pytest set (every module the CI shards own) is green
+    on a venv built from requirements.lock.txt, and a venv built from requirements-prod.lock.txt (what the Fly
+    image installs) imports backend.app.main_cloud, boots uvicorn, serves /health and /health/ready 200, and
+    answers 401 (not 500) to a forged bearer token on /api/auth/profile.
+    probe: scratch prove.sh / prove2.sh logs, quoted in the pack receipts.
+  A5: >-
+    Live after merge (the merge IS the Fly deploy of nuzantara-rag): `fly status -a nuzantara-rag` shows the
+    new release healthy, `curl -s -o /dev/null -w '%{http_code}' https://nuzantara-rag.fly.dev/health` is 200,
+    and a forged bearer token on /api/auth/profile is 401. Owned by the post-merge prove-live step, not claimed
+    here.
+out_of_scope: >-
+  The python-jose to PyJWT migration (OWED, separate PR before 2026-11-06: the CI guard turns the step red on
+  that date). The other already-ignored advisories in .pip-audit-ignore.md are not revisited. No code change
+  in apps/backend-rag/backend. fly.toml and the Dockerfile are untouched (read only). Dependabot PR #7944 is
+  not touched.
+assumptions:
+  - text: >-
+      Production JWTs are HS256 with the shared secret settings.jwt_secret_key; no deployment overrides
+      jwt_algorithm to an asymmetric algorithm. The default is HS256 in code; the live Fly value of the
+      setting was not read (secrets and config stay with the owner).
+    status: unverified
+    probe: >-
+      every jwt.decode call site passes algorithms=[...] with one HMAC algorithm (git grep, 11 sites);
+      config.py:544 default HS256.
+  - text: >-
+      pip-audit resolves --ignore-vuln through advisory aliases, so one id covers both CVE-2026-85394 and
+      GHSA-3qf3-8w2g-rqmx.
+    status: verified
+    probe: pip-audit --strict --no-deps --disable-pip on python-jose==3.5.0 with only the GHSA id ignored prints "1 ignored".
+  - text: >-
+      Gear 3 needs the independent final-gate verdict on the head SHA; the imperator commissions it.
+    status: unverified
+    probe: gh pr checks <pr> after the gate verdict is posted.
