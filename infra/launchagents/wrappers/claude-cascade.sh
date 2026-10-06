@@ -615,7 +615,10 @@ attempt_failure_class() {
     # that discusses rate limits never names the class. grep reads files and
     # here-strings, never a pipe: under pipefail an early `grep -q` match on a
     # large stderr SIGPIPEs the writer and reads as NO match (council round 2).
+    # The session-limit banner ("You have hit your session limit · resets …")
+    # is a quota failure that QUOTA_PATTERN does not spell (gate B1).
     local compact="" dead="$ORG_DISABLED_PATTERN|$AUTH_PATTERN"
+    local quota="$QUOTA_PATTERN|hit your ([[:alpha:]]+ )?limit"
     if [ "${CASCADE_ATTEMPT_TIMED_OUT:-0}" = "1" ]; then
         REPLY=timeout
         return 0
@@ -628,7 +631,7 @@ attempt_failure_class() {
     fi
     if grep -qiE "$dead" -- "$2" 2>/dev/null || { [ -n "$compact" ] && grep -qiE "$dead" <<<"$compact"; }; then
         REPLY=auth_dead
-    elif grep -qiE "$QUOTA_PATTERN" -- "$2" 2>/dev/null || { [ -n "$compact" ] && grep -qiE "$QUOTA_PATTERN" <<<"$compact"; }; then
+    elif grep -qiE "$quota" -- "$2" 2>/dev/null || { [ -n "$compact" ] && grep -qiE "$quota" <<<"$compact"; }; then
         REPLY=rate_limited
     else
         REPLY=other

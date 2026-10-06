@@ -1758,6 +1758,9 @@ ORG_DISABLED_TEXT = (
     "Your organization has disabled Claude subscription access for Claude Code"
     " · Use an Anthropic API key instead, or ask your admin to enable access"
 )
+# The Claude CLI's session-limit banner (recorded since #3018). QUOTA_PATTERN
+# does not contain it; "weekly limit" matched only as a substring (gate B1).
+SESSION_LIMIT_TEXT = "You have hit your session limit · resets 11:20pm (Asia/Makassar)"
 GOLDEN_SCENARIOS = {
     "first_slot_answers": {"token1": 'printf "answer-one\\n"\nexit 0'},
     "rate_limited_then_second_answers": {
@@ -1885,6 +1888,13 @@ CLASS_CASES = {
     "oauth_401_on_stderr": ('printf "API Error: 401 OAuth token has expired\\n" >&2\nexit 1', "auth_dead"),
     "empty_stdout_exit_0": ("exit 0", "empty_output"),
     "unknown_crash": ('printf "segmentation fault\\n" >&2\nexit 139', "other"),
+    # guilt (gate B1): the session-limit banner names rate_limited on every
+    # channel the CLI uses for it, as the [retry] logic already treats it
+    "session_limit_banner_on_stdout_exit_0": (f'printf "%s\\n" "{SESSION_LIMIT_TEXT}"\nexit 0', "rate_limited"),
+    "session_limit_banner_on_stdout_exit_1": (f'printf "%s\\n" "{SESSION_LIMIT_TEXT}"\nexit 1', "rate_limited"),
+    "session_limit_banner_on_stderr_exit_1": (
+        f'printf "%s\\n" "{SESSION_LIMIT_TEXT}" >&2\nexit 1', "rate_limited",
+    ),
     # guilt: a match early in a LARGE stderr (council round 2, Codex O3: a
     # `printf | grep -q` pipeline under pipefail read it as no match)
     "quota_then_1mib_of_stderr": (
@@ -1904,9 +1914,17 @@ CLASS_CASES = {
         f'printf "%s\\n" "{ORG_DISABLED_TEXT}" >&2\nprintf "real answer\\n"\nexit 0',
         "answered",
     ),
+    "answer_quoting_the_session_limit_banner": (
+        'printf "When you hit your session limit the CLI prints a reset time; plan around it.\\n"\nexit 0',
+        "answered",
+    ),
     # innocence: a failed attempt whose stdout is prose is not read for the class
     "failed_attempt_prose_mentions_quota": (
         'printf "Here is a summary: the weekly limit resets on Monday.\\n"\nexit 2',
+        "other",
+    ),
+    "failed_attempt_prose_mentions_session_limit": (
+        'printf "Tip: if you hit your session limit, wait for the reset.\\n"\nexit 2',
         "other",
     ),
 }
