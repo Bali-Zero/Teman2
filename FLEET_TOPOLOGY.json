@@ -367,7 +367,7 @@
         {
           "model": "deepseek-v4-pro",
           "accounts": ["TP1"],
-          "note": "PROBATION — eligible_for_quorum: false (third opinion only, never counts toward the 2-family quorum). CONFIRMED STILL CORRECT 2026-08-14 (PROBE-1-residual): deepseek-v4-pro shows ZERO measured calls in the 2026-08-08→14 burn-rate window — the 806 calls / 131.2M tokens measured that window were deepseek-v4-flash-0731, a DIFFERENT model/tier with its own PROBATION->ARMED promotion recorded at accounts.alibaba.slots.TP1. Do not conflate: -pro is not armed by -flash's mileage. deepseek-v4-flash has no dedicated role_chain entry yet — PENDING-ARMS: decide whether it substitutes -pro here or gets its own row."
+          "note": "QUORUM-ELIGIBLE (reserve/fallback) — RULED Zero 2026-09-02 (quorum pool split into titolari+reserve), owner standing ruling 2026-08-22 'deepseek va usato', GO reconfirmed 2026-10-06. It counts toward the 2-family quorum via COUNCIL_REVIEW_SEATS_FALLBACK in scripts/evidence_pack_lint.py, with the reserve-substitution seat_fallback_reason rule. History kept honest: PROBATION + eligible_for_quorum:false was correct until 2026-08-14 (PROBE-1-residual: zero measured calls in the 2026-08-08→14 window — the 806 calls / 131.2M tokens that window were deepseek-v4-flash-0731, a DIFFERENT tier, ARMED same day; do-not-conflate stands as history, not as the current state). Live probe 2026-10-06 (M5, arsenal_probe): the TP1 door answers for deepseek-v4-pro — HTTP 429 plan 1-month quota exhausted, resets 2026-10-11T16:00Z; transient plan-wide QUOTA, not seat death (the second-army dead_tiers_2026_09_15 listing of this seat is superseded, see _dead_tiers_superseded_2026_10_06). Probe live before counting it. deepseek-v4-flash-0731 has no dedicated role_chain entry yet — PENDING-ARMS: decide whether it substitutes -pro here or gets its own row."
         }
       ],
       "quorum_note": "Gear 3: zero available refuters => QUEUE, never reaches the gate. Refutation done but 2-family diversity unmet => pack marked degraded, the gate weighs it. PROBATION seats never count toward quorum. HARD family-exclusion: a family that built or counter-built the task is skipped in its refuter chain.",
@@ -489,7 +489,7 @@
         {
           "model": "deepseek-v4-pro",
           "accounts": ["TP1"],
-          "note": "PROBATION — CONFIRMED STILL CORRECT 2026-08-14 (PROBE-1-residual): zero measured calls for -pro specifically in the 2026-08-08→14 burn-rate window; deepseek-v4-flash-0731 (different tier) was ARMED by that same measurement, see accounts.alibaba.slots.TP1 — not the same model, do not conflate."
+          "note": "QUORUM-ELIGIBLE reserve — same promotion as role_chains.refuter (quorum pool RULED Zero 2026-09-02; standing ruling 2026-08-22 'deepseek va usato'; GO reconfirmed 2026-10-06). History: PROBATION was correct until 2026-08-14 (PROBE-1-residual: zero measured -pro calls in the 2026-08-08→14 burn window; deepseek-v4-flash-0731 is a different tier, ARMED that same day — do not conflate). Live probe 2026-10-06: the TP1 door answers for the seat, HTTP 429 plan 1-month quota exhausted resetting 2026-10-11T16:00Z (transient plan-wide QUOTA, not seat death)."
         },
         {
           "model": "claude-opus-5-5",
@@ -548,13 +548,9 @@
       "_gemini_slug_probe": "agy models on M5 2026-09-15 returned gemini-3.8-flash-{high,medium,low} / gemini-3.7-flash-* / gemini-3.6-flash-*; the repo-wide gemini-3.5-flash spelling is stale and was NOT in the live list",
       "async_queue_front": "Jules: dispatch 09:00 WITA, harvest every 3h, cap 3/day, queue infra/army/jules-queue/; never a synchronous lane",
       "final_gate": "UNCHANGED: role_chains.gear3_final_gate (BLUE) / role_chains.gear3_final_gate_orange (ORANGE); never cascaded, never cheapened",
-      "dead_tiers_2026_09_15": [
-        "kimi",
-        "qwen-cloud-code",
-        "tp1-glm-5.2",
-        "tp1-deepseek-v4-pro"
-      ],
+      "dead_tiers_2026_09_15": ["kimi", "qwen-cloud-code", "tp1-glm-5.2"],
       "_dead_tier_note": "a dead tier is DECLARED in the run output, never silently skipped; the builder roster falls through to the next live seat",
+      "_dead_tiers_superseded_2026_10_06": "tp1-deepseek-v4-pro WAS listed in dead_tiers_2026_09_15 (plan-quota exhaustion shape) and was removed same day as the owner GO 2026-10-06 ('deepseek va usato', standing ruling 2026-08-22) re-opened it for quorum use. Live probe 2026-10-06 (M5, arsenal_probe --seats tp1-deepseek-v4-pro): the TP1 door answers for the seat — HTTP 429 plan 1-month quota exhausted, resets 2026-10-11T16:00Z; a transient plan-wide QUOTA state, not a seat death. A tier's death is declared per-run from the live probe, never assumed from this file.",
       "pii": "ollama local only; output boundary per CLAUDE.md Builder Contract 4",
       "on_exhaustion": "queue"
     }
