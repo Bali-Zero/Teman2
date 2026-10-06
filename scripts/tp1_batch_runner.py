@@ -14,8 +14,9 @@ SAFETY, by construction rather than by configuration:
     no fallback door in this module and nothing here can buy quota.
   * The first hard quota/auth error (HTTP 401/402/403, or a body that says the
     quota/credit/plan is exhausted) stops dispatch. So does a 429 that survives
-    backoff at concurrency 1 for --max-rate-strikes rounds: an exhausted plan
-    whose error wording nobody has seen yet still stops the run.
+    backoff at concurrency 1 for max_rate_strikes rounds: an exhausted plan
+    whose error wording nobody has seen yet still stops the run. ERROR CLASSES
+    below is the spec.
   * Dispatch also stops at --stop-at, on the kill file, and at --token-budget.
   * Idempotent: an id already present in results.jsonl is never sent again (an
     HTTP 200 was paid for). --retry-failed re-sends only rows whose status is
@@ -33,8 +34,56 @@ Result row: {"id", "lane", "model", "status", "answer", "parsed", "usage",
              "secs", "attempts", "error", "ts"}
 
 Exit codes: 0 queue drained · 2 credential unavailable · 3 stopped by
-deadline / kill file / token budget · 5 stopped by a quota, auth or redirect
-error · 6 another runner holds this out-dir.
+deadline / kill file / token budget · 4 drained, but every job it sent came
+back failed or rejected · 5 stopped by a quota, auth or redirect error ·
+6 another runner holds this out-dir.
+
+ERROR CLASSES — the spec classify()/settle() implement; tests in
+scripts/test_tp1_batch_runner.py named per row ("t:" = test_ prefix dropped). The body
+is read RAW (door called with raw_errors=True); rows are tried top-down, so an
+ambiguous body stops rather than retries. One send = one paid request.
+  Q quota, STOP AFTER ONE SEND: HTTP 401/402/403, any 3xx, or QUOTA_RE on any status
+    (insufficient_quota, arrearage, overdue, quota..exhausted/used up/depleted,
+    exceeded your quota, credits/plan/subscription..exhausted/expired,
+    insufficient_(account_)balance, "quota exceeded" without "throttl"). No new
+    dispatch, in-flight calls finish, no row (unanswered: the next run sends it),
+    stopped:quota, exit 5. SEEN LIVE, HTTP 429, all three M5 jobs 2026-10-05
+    15:54-15:55Z (heartbeat keeps a 160-char tail): '-plan 1-month quota has been
+    exhausted. The quota will reset at 10-11 16:00:00 UTC.' type/code insufficient_quota.
+    t: the_live_2026_10_05_quota_wording_stops_after_one_send, hard_quota_error_stops_*,
+    auth_or_payment_status_stops_the_run, long_quota_body_stops_*,
+    insufficient_account_balance_code_stops_*, classify, classify_exhaustion_wordings.
+  A auth, same class and action as Q: AUTH_RE (invalid api key, unauthorized, access
+    denied, authentication error/failed) on any non-200 status or in a 200's error
+    object. The bare word "authentication" is not a trigger: it names the service in
+    a 429 (row R). t: classify_auth_wordings, an_auth_error_inside_a_200_stops_*.
+  R rate, BOUNDED BACKOFF: a 429 that is not Q/A, or RATE_RE (throttl, rate limit, too
+    many requests, requestlimit) on any status; Throttling.*Quota codes are rate. Job
+    re-queued with no attempt counted, concurrency halved, wait backoff*2^strikes
+    (cap 600 s); at concurrency 1 each rate is a strike, and max_rate_strikes (Runner
+    keyword, default 6, no CLI flag) strikes stop the run as Q. t: rate_limit_backs_off_*,
+    persistent_rate_limit_at_floor_*, rate_limit_retry_waits_*,
+    throttling_quota_wording_backs_off_*, a_rate_limit_naming_the_auth_service_*.
+  T transient, BOUNDED RETRY: no status (transport error, crashed call), 408, 5xx;
+    re-sent up to max_attempts (default 2), then row "failed".
+    t: transient_error_retries_then_records_failure.
+  J rejected, NO RETRY: any other status (400 "Range of input length ..."), or an
+    unknown error object in a 200: row "rejected". t: classify, classify_auth_wordings.
+  G a 200 carrying an error object is classified on that object by Q/A/R/J
+    (classify(200, obj) == classify(0, obj); empty = ok). Model text is never
+    classified: an answer about quota is an answer. t: quota_error_inside_a_200_*.
+  K ok: a 200 without an error object, row "ok" or "no_answer". t: drains_queue_*.
+  Run level. F every sent job failed or was rejected: stopped:all-failed, exit 4 (a
+    loop may treat 4 as continue). U a reply without usage stops a --token-budget
+    run (spend unknown), exit 3. N negative usage counts clamp at 0.
+    t: a_run_whose_every_sent_job_failed_*, a_reply_without_usage_*, negative_usage_*.
+  Scrub, every class: only scrub_error() text reaches a row, the heartbeat or stderr
+    (the caller's exact token, then e-mails, then scrub()'s Bearer/prefix/24+ shapes).
+    Known limits: a provider body's short non-caller tokens and sub-24-char keys
+    survive; tp1_call still keeps a 200's raw body in its unparseable temp dir (C1).
+    t: an_error_body_echoing_a_token_and_an_email_reaches_no_output,
+    a_crashed_calls_exception_text_reaches_no_output, scrub_error_replaces_*.
+  Wordings: only Q's live one was read on disk; every other wording is a test fixture.
 
 Usage:
     python3 scripts/tp1_batch_runner.py --queue q.jsonl --out-dir ~/tp1-runs/x \\
@@ -86,6 +135,20 @@ QUOTA_RE = re.compile(
     re.I,
 )
 RATE_RE = re.compile(r"throttl|rate.?limit|too many requests|requestlimit", re.I)
+# "authentication" alone named the SERVICE in a 429 ("too many requests to authentication service")
+# and stopped the run on a rate limit; only a failed credential is an auth stop.
+AUTH_RE = re.compile(r"invalid.?api.?key|unauthori[sz]ed|access.?denied|authentication.?(error|fail)", re.I)
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+")
+
+
+def scrub_error(text: str, secrets: Optional[list[str]] = None) -> str:
+    """Error text before any output (row, heartbeat, stderr). Spec "Scrub": the caller's exact secret
+    values first, then e-mails (scrub() keeps them), then scrub()'s Bearer/prefix/24+ shapes. Error
+    text only: an answer quoting an address from the reviewed source is the product, not a leak."""
+    for secret in secrets or []:
+        if secret:
+            text = text.replace(secret, "<REDACTED>")
+    return scrub(EMAIL_RE.sub("<EMAIL>", text), secrets)
 
 
 def assert_token_plan_endpoint(url: str = TP1_CHAT_COMPLETIONS_URL) -> None:
@@ -97,11 +160,11 @@ def assert_token_plan_endpoint(url: str = TP1_CHAT_COMPLETIONS_URL) -> None:
 def classify(status: Optional[int], body: str) -> str:
     """ok | quota | rate | transient | rejected. Quota wins over rate: when a body
     is ambiguous, stopping costs idle time, continuing could cost money."""
-    if status == 200:  # only a gateway error object is ever passed here for a 200, never model text
-        return "quota" if QUOTA_RE.search(body or "") else "ok"
+    if status == 200:  # only a 200's gateway error object is ever passed here, never model text
+        return classify(0, body) if body else "ok"  # spec row G: the object decides, as on an error status
     if status is not None and 300 <= status < 400:
         return "quota"  # a gateway that redirects is no longer the endpoint we vetted
-    if status in (401, 402, 403) or QUOTA_RE.search(body or ""):
+    if status in (401, 402, 403) or QUOTA_RE.search(body or "") or AUTH_RE.search(body or ""):
         return "quota"
     if status == 429 or RATE_RE.search(body or ""):
         return "rate"
@@ -128,7 +191,7 @@ def _int(value: object) -> int:
     """A malformed usage field must never raise: this runs AFTER a paid 200, and an
     exception here would be settled as transient and the job sent (and paid) again."""
     try:
-        return int(value or 0)
+        return max(0, int(value or 0))  # a negative count would pull the budget's total down
     except (TypeError, ValueError, OverflowError):
         return 0
 
@@ -145,10 +208,16 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     body = build_body(model, prompt, max_tokens, resolve_effort(model, effort))
     started = time.time()
-    status, raw, tail = no_stream_chat_completion(TP1_CHAT_COMPLETIONS_URL, headers, body, timeout, [token])
+    status, raw, tail = no_stream_chat_completion(TP1_CHAT_COMPLETIONS_URL, headers, body, timeout, [token],
+                                                  raw_errors=True)
     out: dict = {"status": status, "secs": round(time.time() - started, 1), "usage": {}}
     if status != 200:
-        out["error"] = scrub(raw or tail or "", [token])  # whole body: classify() reads all of it
+        # classify() reads the RAW body (raw_errors=True above): scrub() turns every 24+ char run
+        # into <REDACTED>, so "Throttling.AllocationQuota: quota exceeded" lost its rate marker and
+        # stopped the run, and "insufficient_account_balance" lost its quota marker and was
+        # rejected row by row. Only the scrubbed body is kept.
+        out["kind"] = classify(status, raw or tail or "")
+        out["error"] = scrub_error(raw or tail or "", [token])
         return out
     # Everything below runs AFTER a paid 200 and must not raise: settle() would read the
     # exception as transient and send (and pay for) the job again.
@@ -161,15 +230,19 @@ def tp1_call_once(model: str, prompt: str, effort: Optional[str], max_tokens: in
     pt, ct = _int(usage.get("prompt_tokens")), _int(usage.get("completion_tokens"))
     out["usage"] = {"prompt_tokens": pt, "completion_tokens": ct,
                     "total_tokens": _int(usage.get("total_tokens")) or pt + ct}
+    if not out["usage"]["total_tokens"]:
+        out["unmetered"] = True  # a paid reply that reports no usage: its cost is unknown, never zero
+    out["kind"] = "ok"
     try:
         answer, warning, error = extract_answer(raw)
     except Exception as e:
         answer, warning, error = None, None, f"unparseable response ({type(e).__name__})"
     if error:
-        out["error"] = scrub(error, [token])
+        out["error"] = scrub_error(error, [token])
         gateway = doc.get("error")  # a quota error can ride inside a 200: classify() reads only this
         if gateway:
-            out["gateway_error"] = scrub(json.dumps(gateway), [token])
+            out["kind"] = classify(200, json.dumps(gateway))
+            out["gateway_error"] = scrub_error(json.dumps(gateway), [token])
     else:
         out["answer"] = scrub(answer or "", [token], keep=_prompt_identifiers(prompt))
         if warning:
@@ -197,8 +270,8 @@ class Runner:
                  model: str, concurrency: int = 4, max_concurrency: int = 12,
                  stop_at: Optional[dt.datetime] = None, kill_file: Optional[Path] = None,
                  token_budget: int = 0, max_attempts: int = 2, max_rate_strikes: int = 6,
-                 backoff: float = 15.0, retry_failed: bool = False) -> None:
-        self.jobs, self.call, self.model = jobs, call, model
+                 backoff: float = 15.0, retry_failed: bool = False, secrets: Optional[list[str]] = None) -> None:
+        self.jobs, self.call, self.model, self.secrets = jobs, call, model, list(secrets or [])
         self.out_dir = out_dir
         self.results = out_dir / "results.jsonl"
         self.heartbeat = out_dir / "heartbeat.json"
@@ -244,7 +317,8 @@ class Runner:
             return "kill-file"
         if dt.datetime.now(dt.timezone.utc) >= self.stop_at:
             return "deadline"
-        if self.token_budget and self.stats["total_tokens"] >= self.token_budget:
+        if self.token_budget and (self.stats["unmetered_replies"] or self.stats["total_tokens"] >= self.token_budget):
+            # a reply without usage makes the spend unknown: a budget it cannot measure stops the run
             return "token-budget"
         return None
 
@@ -284,20 +358,26 @@ class Runner:
                     job, attempt = inflight.pop(fut)
                     reason = self.settle(job, attempt, fut, pending) or reason
                 self.beat("running" if reason is None else f"stopping:{reason}", force=bool(finished))
+        if reason is None and not (self.stats["ok"] or self.stats["no_answer"]) \
+                and self.stats["failed"] + self.stats["rejected"]:
+            reason = "all-failed"  # a run that sent jobs and got no answer at all is not a clean drain
         self.beat(f"stopped:{reason or 'drained'}", force=True)
-        return 0 if reason is None else 5 if reason == "quota" else 3
+        return {None: 0, "quota": 5, "all-failed": 4}.get(reason, 3)
 
     def settle(self, job: dict, attempt: int, fut: cf.Future, pending: collections.deque) -> Optional[str]:
         try:
             res = fut.result()
         except Exception as e:  # a crashed call is a transient failure, never a dead runner
-            res = {"status": None, "error": f"{type(e).__name__}: {e}", "usage": {}}
+            res = {"status": None, "error": scrub_error(f"{type(e).__name__}: {e}", self.secrets), "usage": {}}
         for k, v in (res.get("usage") or {}).items():
-            self.stats[k] += int(v or 0)
+            self.stats[k] += _int(v)
+        if res.get("unmetered"):
+            self.stats["unmetered_replies"] += 1
         status = res.get("status")
-        kind = classify(status, res.get("gateway_error", "") if status == 200 else res.get("error", ""))
+        # tp1_call_once classifies the unscrubbed body; a call that crashed (or a test double) has no kind
+        kind = res.get("kind") or classify(status, res.get("gateway_error", "") if status == 200 else res.get("error", ""))
         if kind != "ok":
-            self.last_error = f"{kind}: HTTP {res.get('status')}: {(res.get('error') or '')[-160:]}"
+            self.last_error = f"{kind}: HTTP {res.get('status')}: {(res.get('gateway_error') or res.get('error') or '')[-160:]}"
         if kind == "ok":
             self.rate_strikes, self.ok_streak = 0, self.ok_streak + 1
             if self.ok_streak >= 2 * self.limit and self.limit < self.max_c:
@@ -341,7 +421,7 @@ class Runner:
         self.last_beat = now
         hours = max(now - self.started, 1.0) / 3600
         hb = {"ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "pid": os.getpid(),
-              "state": state, "queue": len(self.jobs), **self.stats, "concurrency": self.limit,
+              "state": state, "queue": len(self.jobs), **self.stats, "ok": self.stats["ok"], "concurrency": self.limit,
               "calls_per_hour": round(self.stats["ok"] / hours, 1),
               "tokens_per_hour": int(self.stats["total_tokens"] / hours),
               "stop_at": self.stop_at.isoformat(), "kill_file": str(self.kill_file), "last_error": self.last_error}
@@ -390,7 +470,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     runner = Runner(jobs, out_dir, call, model=args.model, concurrency=args.concurrency,
                     max_concurrency=args.max_concurrency, stop_at=stop_at,
                     kill_file=Path(args.kill_file).expanduser() if args.kill_file else None,
-                    token_budget=args.token_budget, retry_failed=args.retry_failed)
+                    token_budget=args.token_budget, retry_failed=args.retry_failed, secrets=[token])
     return runner.run()
 
 
