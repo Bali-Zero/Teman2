@@ -42,6 +42,7 @@ GUILT = {
         'DB_PASSWORD = """' + "InventedPass92" + '"""',
         'DB_PASSWORD = "' + "Sup3r" + chr(92) + '"' + "Secret99" + '"',  # an escaped quote inside the value
         "postgres://app:" + "ab_cd_ef" + "@db/x", 'DB_PASSWORD = "' + "$" + "Ab3dE6Fg9" + '"',  # final review F3, F4
+        "-----begin " + "rsa private key-----",  # a lower-case PEM header (Ollama review O6)
     ],
     "phone": ["(0812) 3456-7890", "+62 (812) 3456–7890", "0812  3456  7890",
               "0812/3456/7890", "0812—3456—7890", "(021) 555-0123", "+62 21 555 0123",

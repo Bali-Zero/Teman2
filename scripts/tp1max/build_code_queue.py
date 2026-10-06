@@ -42,7 +42,7 @@ FAMILY = re.compile(
     r"gh[pousr]_[A-Za-z0-9]{20,}|glpat-[A-Za-z0-9_-]{20,}|npm_[A-Za-z0-9]{36}|whsec_[A-Za-z0-9+/=]{16,}|github_pat_[A-Za-z0-9_]{20,}|[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|"
     r"GOCSPX-[A-Za-z0-9_-]{16,}|ya29\.[A-Za-z0-9_-]{20,}|(?:AKIA|ASIA)[0-9A-Z]{16}|AGE-SECRET-KEY-1[0-9A-Z]{50,}|hooks\.slack\.com/services/T[A-Za-z0-9_/]{16,}|xox[a-z]-[A-Za-z0-9-]{16,}|"
     r"sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}|eyJ[\w-]{8,}\.[\w-]{2,}\.[\w-]{10,}|AIza[0-9A-Za-z_-]{30,}")
-PEM = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY")  # the header alone: a body may follow as "\n"-escaped text
+PEM = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY", re.I)  # the header alone: a body may follow as "\n"-escaped text
 DSN = re.compile(r"(?<![a-z0-9+.-])[a-z][a-z0-9+.-]{0,20}://[^\s/:@'\"]*:([^\s/@'\"]{2,})@", re.I)
 # A key-like NAME (compound too: DB_PASSWORD, client_secret, "api_key":) assigned a literal.
 KEYWORD = re.compile(r"(?<![\w.-])[\w.-]{0,40}?(?:passw(?:or)?d|secret|api[_-]?key|access[_-]?key|token)\w{0,40}\\?['\"]?"  # \" too: JSON
