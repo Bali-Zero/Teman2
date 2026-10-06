@@ -484,12 +484,15 @@ def test_the_parser_contract_matches_the_tools_json_shape() -> None:
 # ------------------------------------------- trusted hook root (guilt/innocence)
 
 _AUTOFIX_REL = ".worktrees/codex-autofix-ci-runtime"
+_AUTOFIX_PUSHER = "scripts/codex/codex-nightly-autofix-ci.sh"
+_TOKEN = '"$TRUSTED_PREPUSH_HOOKS"'
+_REPO = Path(__file__).resolve().parents[2]
 
 
 def _trusted_fleet(tmp_path: Path, pusher_body: Optional[str], wt_rel: str = _AUTOFIX_REL):
     repo = _mk_repo(tmp_path)
     if pusher_body is not None:
-        pusher = repo / lwhs.TRUSTED_HOOK_ROOT_RUNTIMES[_AUTOFIX_REL]
+        pusher = repo / _AUTOFIX_PUSHER
         pusher.parent.mkdir(parents=True)
         pusher.write_text(pusher_body)
     wt = repo / wt_rel
@@ -501,7 +504,10 @@ def _trusted_fleet(tmp_path: Path, pusher_body: Optional[str], wt_rel: str = _AU
     return next(r for r in lwhs.scan(repo, porcelain_output=porcelain) if r.path == wt)
 
 
-_GATED = 'git stash push -u -m "$T"\nif ! git -c core.hooksPath="$H" push -u origin "$B"; then exit 1; fi\n'
+_GATED = (
+    'git stash push -u -m "$T"\n'
+    f'if ! git -c core.hooksPath={_TOKEN} push -u origin "$B"; then exit 1; fi\n'
+)
 
 
 def test_innocence_trusted_runtime_with_gated_pusher_is_not_a_finding(tmp_path: Path) -> None:
@@ -514,6 +520,36 @@ def test_guilt_trusted_runtime_whose_pusher_has_a_bare_push_is_a_finding(tmp_pat
     rec = _trusted_fleet(tmp_path, _GATED + 'git push origin "$B"\n')
     assert rec.health == lwhs.HEALTH_MISSING
     assert rec.is_finding is True
+
+
+def test_guilt_dev_null_hooks_path_is_not_trusted(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, 'git -c core.hooksPath=/dev/null push -u origin "$B"\n')
+    assert rec.health == lwhs.HEALTH_MISSING
+
+
+def test_guilt_relative_hooks_path_is_not_trusted(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, 'git -c core.hooksPath=.husky/_ push -u origin "$B"\n')
+    assert rec.health == lwhs.HEALTH_MISSING
+
+
+def test_guilt_second_hooks_path_overriding_the_token_is_not_trusted(tmp_path: Path) -> None:
+    body = f'git -c core.hooksPath={_TOKEN} -c core.hooksPath=/tmp/anyone push origin "$B"\n'
+    assert _trusted_fleet(tmp_path, body).health == lwhs.HEALTH_MISSING
+
+
+def test_guilt_bare_push_behind_a_line_continuation_is_seen(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, _GATED + 'git \\\n  push origin "$B"\n')
+    assert rec.health == lwhs.HEALTH_MISSING
+
+
+def test_guilt_bare_push_with_a_long_option_is_seen(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, _GATED + 'git --no-pager push origin "$B"\n')
+    assert rec.health == lwhs.HEALTH_MISSING
+
+
+def test_guilt_bare_push_through_a_variable_git_binary_is_seen(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, _GATED + '"$GIT" push origin "$B"\n')
+    assert rec.health == lwhs.HEALTH_MISSING
 
 
 def test_guilt_trusted_runtime_without_its_pusher_is_a_finding(tmp_path: Path) -> None:
@@ -532,7 +568,18 @@ def test_guilt_lookalike_path_is_not_the_declared_entity(tmp_path: Path) -> None
     assert rec.is_finding is True
 
 
-def test_live_declared_pushers_still_override_hooks_path() -> None:
-    repo = Path(__file__).resolve().parents[2]
-    for rel, pusher in lwhs.TRUSTED_HOOK_ROOT_RUNTIMES.items():
-        assert lwhs.pusher_overrides_hooks_path(repo / pusher), (rel, pusher)
+def test_innocence_the_real_pusher_is_trusted(tmp_path: Path) -> None:
+    rec = _trusted_fleet(tmp_path, (_REPO / _AUTOFIX_PUSHER).read_text())
+    assert rec.health == lwhs.HEALTH_TRUSTED_HOOK_ROOT
+
+
+def test_guilt_the_real_pusher_with_dev_null_swapped_in_is_not_trusted(tmp_path: Path) -> None:
+    real = (_REPO / _AUTOFIX_PUSHER).read_text()
+    assert _TOKEN in real
+    rec = _trusted_fleet(tmp_path, real.replace(f"core.hooksPath={_TOKEN}", "core.hooksPath=/dev/null"))
+    assert rec.health == lwhs.HEALTH_MISSING
+
+
+def test_live_declared_pushers_still_pin_their_token() -> None:
+    for rel, (pusher, token) in lwhs.TRUSTED_HOOK_ROOT_RUNTIMES.items():
+        assert lwhs.pusher_pins_hooks_path(_REPO / pusher, token), (rel, pusher, token)

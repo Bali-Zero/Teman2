@@ -2384,8 +2384,8 @@ DEFAULT_REGISTRY: list[dict] = [
         #
         # TRUSTED_HOOK_ROOT (2026-10-06): a worktree that must NOT carry `.husky/_`
         # (the Codex autofix runtime checks out the failed branch it repairs) and
-        # whose sole pusher passes a trusted `-c core.hooksPath=`. The tool scores it
-        # as no finding and re-proves the override every scan.
+        # whose sole pusher sets `-c core.hooksPath=<declared token>` on every push.
+        # The tool scores it as no finding and re-reads that exact token every scan.
         "id": "worktree_gate_shim", "type": "wrap",
         "target": ["python3", "{repo}/scripts/lint_worktree_husky_symlink.py", "--json"],
         "class": "worktree<->gate",

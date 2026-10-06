@@ -132,14 +132,24 @@ FINDING_HEALTHS = frozenset({HEALTH_MISSING, HEALTH_DANGLING})
 # codex_auto_trusted_prepush_*). Its pusher passes `-c core.hooksPath=<trusted
 # bundle>` instead: the push IS gated, by a hook root this lint cannot see.
 # Keyed by the exact path under the repo root (an entity, never a substring), and
-# honoured only while the named pusher overrides core.hooksPath on EVERY `git push`
-# it runs — drop the override and the worktree reads MISSING again.
-TRUSTED_HOOK_ROOT_RUNTIMES: Dict[str, str] = {
-    ".worktrees/codex-autofix-ci-runtime": "scripts/codex/codex-nightly-autofix-ci.sh",
+# honoured only while EVERY `git push` the named pusher runs sets
+# `-c core.hooksPath=<the declared token>` — that exact text, nothing else as its
+# hooks path. `/dev/null`, a relative `.husky/_` or any other value is no trust.
+# Declared limits of a static scan: a push built at runtime (eval, a function
+# wrapping `push`) and `--git-dir <dir>` with a space are not seen.
+TRUSTED_HOOK_ROOT_RUNTIMES: Dict[str, Tuple[str, str]] = {
+    ".worktrees/codex-autofix-ci-runtime": (
+        "scripts/codex/codex-nightly-autofix-ci.sh",
+        '"$TRUSTED_PREPUSH_HOOKS"',
+    ),
 }
 
-# `push` as the git SUBCOMMAND (after -c/-C options) — `git stash push` is not one.
-_GIT_PUSH = re.compile(r"\bgit((?:\s+-[cC]\s+\S+)*)\s+push\b")
+# `push` as the git SUBCOMMAND after -c/-C pairs and long options (--no-pager); the
+# binary may be `git` or a shell variable ("$GIT"). `git stash push` is not one.
+_GIT_PUSH = re.compile(
+    r'(?:\bgit\b|"?\$\{?\w+\}?"?)((?:\s+(?:-[cC]\s+\S+|--[\w-]+(?:=\S+)?))*)\s+push\b'
+)
+_HOOKS_PATH_OPT = re.compile(r"-c\s+core\.hooksPath=(\S+)")
 
 
 @dataclass
@@ -274,18 +284,26 @@ def check_husky_health(wt_path: Path) -> Tuple[str, bool]:
     return HEALTH_MISSING, False
 
 
-def pusher_overrides_hooks_path(script: Path) -> bool:
-    """True iff `script` runs at least one `git push` and EVERY one carries
-    `-c core.hooksPath=...`. Unreadable or push-less = False (fail toward a finding)."""
+def pusher_pins_hooks_path(script: Path, token: str) -> bool:
+    """True iff `script` runs at least one `git push` and EVERY one sets
+    `-c core.hooksPath=<token>` as its only hooks path. Line continuations are
+    joined first. Unreadable or push-less = False (fail toward a finding)."""
     try:
         text = script.read_text(encoding="utf-8")
     except OSError:
         return False
+    text = re.sub(r"\\\n", " ", text)
     pushes = [
         m for line in text.splitlines() if not line.lstrip().startswith("#")
         for m in _GIT_PUSH.finditer(line)
     ]
-    return bool(pushes) and all("core.hooksPath=" in m.group(1) for m in pushes)
+    if not pushes:
+        return False
+    for m in pushes:
+        values = _HOOKS_PATH_OPT.findall(m.group(1))
+        if not values or any(v != token for v in values):
+            return False
+    return True
 
 
 def is_trusted_hook_root(wt_path: Path, repo_root: Path) -> bool:
@@ -293,8 +311,11 @@ def is_trusted_hook_root(wt_path: Path, repo_root: Path) -> bool:
         rel = wt_path.resolve().relative_to(repo_root.resolve()).as_posix()
     except ValueError:
         return False
-    pusher = TRUSTED_HOOK_ROOT_RUNTIMES.get(rel)
-    return pusher is not None and pusher_overrides_hooks_path(repo_root / pusher)
+    entry = TRUSTED_HOOK_ROOT_RUNTIMES.get(rel)
+    if entry is None:
+        return False
+    pusher, token = entry
+    return pusher_pins_hooks_path(repo_root / pusher, token)
 
 
 def scan(repo_root: Path, *, porcelain_output: Optional[str] = None) -> List[WorktreeRecord]:
