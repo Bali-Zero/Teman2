@@ -25,9 +25,9 @@ import pytest
 
 asyncpg = pytest.importorskip("asyncpg")
 
+import jwt as pyjwt
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from jose import jwt as jose_jwt
 
 from backend.app.core.database import init_asyncpg_connection
 from backend.app.routers import garuda_staff_router
@@ -204,7 +204,7 @@ def _bearer(email: str, role: str) -> str:
         "exp": datetime.now(UTC) + timedelta(hours=1),
         "iat": datetime.now(UTC),
     }
-    token = jose_jwt.encode(payload, _JWT_SECRET, algorithm="HS256")
+    token = pyjwt.encode(payload, _JWT_SECRET, algorithm="HS256")
     return f"Bearer {token}"
 
 

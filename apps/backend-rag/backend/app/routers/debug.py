@@ -70,13 +70,12 @@ def verify_debug_access(
         # and gate on the canonical admin roles (matches the per-endpoint
         # role check elsewhere in this router: role in {admin, founder}).
         try:
-            from jose import jwt
+            from backend.app.utils.jwt_decode import decode_jwt
 
-            payload = jwt.decode(
+            payload = decode_jwt(
                 token,
                 settings.jwt_secret_key,
                 algorithms=["HS256"],
-                options={"verify_exp": True, "require_exp": True},
             )
             # Reject non-access tokens (refresh tokens carry type != "access").
             token_type = payload.get("type")

@@ -71,9 +71,10 @@ from typing import Any
 
 import asyncpg
 from fastapi import Request
-from jose import JWTError, jwt
+from jwt import PyJWTError
 
 from backend.app.utils.crm_utils import PRACTICES_EXTRA_VIEW_EMAILS
+from backend.app.utils.jwt_decode import decode_jwt
 from backend.app.utils.service_accounts import is_human_team_member, normalize_role
 from backend.services.security.token_revocation import (
     RevocationStoreUnavailable,
@@ -241,13 +242,12 @@ def _decode_staff_jwt(token: str) -> dict[str, Any] | None:
     from backend.app.core.config import settings
 
     try:
-        payload = jwt.decode(
+        payload = decode_jwt(
             token,
             settings.jwt_secret_key,
             algorithms=["HS256"],
-            options={"verify_exp": True, "require_exp": True},
         )
-    except JWTError:
+    except PyJWTError:
         return None
 
     if payload.get("type") != "access":

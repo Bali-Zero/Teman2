@@ -4,9 +4,9 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import jwt as pyjwt
 import pytest
 from fastapi import HTTPException
-from jose import jwt as jose_jwt
 
 
 @pytest.fixture(autouse=True)
@@ -51,7 +51,7 @@ class TestTokenCreation:
             data={"sub": "user-1", "email": "test@balizero.com", "role": "admin"},
             expires_delta=timedelta(hours=1),
         )
-        payload = jose_jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+        payload = pyjwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
         assert "jti" in payload
         uuid.UUID(payload["jti"])
 
@@ -64,7 +64,7 @@ class TestTokenCreation:
             data={"sub": "user-1", "email": "test@balizero.com", "role": "admin"},
             expires_delta=timedelta(hours=1),
         )
-        payload = jose_jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+        payload = pyjwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
         assert payload.get("type") == "access"
 
     def test_access_token_has_iat(self):
@@ -76,7 +76,7 @@ class TestTokenCreation:
             data={"sub": "user-1", "email": "test@balizero.com", "role": "admin"},
             expires_delta=timedelta(hours=1),
         )
-        payload = jose_jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+        payload = pyjwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
         assert "iat" in payload
 
 
@@ -99,7 +99,7 @@ class TestJWTExpiryValidation:
             "jti": "test-jti-001",
             "type": "access",
         }
-        return jose_jwt.encode(payload, secret, algorithm="HS256")
+        return pyjwt.encode(payload, secret, algorithm="HS256")
 
     def _make_request(self) -> MagicMock:
         """Helper: create mock request without user in state."""
@@ -157,7 +157,7 @@ class TestValidationModuleExpiry:
             "jti": "test-jti-002",
             "type": "access",
         }
-        return jose_jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+        return pyjwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
 
     def _get_secret(self) -> str:
         from backend.app.core.config import settings
@@ -216,7 +216,7 @@ class TestFullAuthFlowS03:
         token = create_access_token(
             data={"sub": "u1", "email": "zero@balizero.com", "role": "admin"},
         )
-        payload = jose_jwt.decode(
+        payload = pyjwt.decode(
             token,
             settings.jwt_secret_key,
             algorithms=["HS256"],
@@ -283,7 +283,7 @@ class TestTokenRevocationInAuth:
             "jti": jti,
             "type": "access",
         }
-        return jose_jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+        return pyjwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
 
     def _make_request(self) -> MagicMock:
         request = MagicMock()
@@ -357,7 +357,7 @@ class TestSprint3QuickFixes:
         from backend.app.deps.auth import get_current_user
 
         now = datetime.now(timezone.utc)
-        token = jose_jwt.encode(
+        token = pyjwt.encode(
             {
                 "sub": "u1",
                 "email": "t@b.com",
@@ -383,7 +383,7 @@ class TestSprint3QuickFixes:
         from backend.app.deps.auth import get_current_user
 
         now = datetime.now(timezone.utc)
-        token = jose_jwt.encode(
+        token = pyjwt.encode(
             {
                 "sub": "u1",
                 "email": "t@b.com",
@@ -408,7 +408,7 @@ class TestSprint3QuickFixes:
         from backend.app.deps.auth import get_current_user
 
         now = datetime.now(timezone.utc)
-        token = jose_jwt.encode(
+        token = pyjwt.encode(
             {"sub": "u1", "email": "t@b.com", "role": "admin", "exp": now + timedelta(hours=1)},
             settings.jwt_secret_key,
             algorithm="HS256",

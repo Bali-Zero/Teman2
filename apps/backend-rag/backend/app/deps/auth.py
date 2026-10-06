@@ -2,7 +2,7 @@
 Authentication and authorization dependencies.
 
 Provides JWT validation, user extraction, and RBAC guards.
-No heavy service imports at module level — only jose, fastapi.security.
+No heavy service imports at module level — only PyJWT, fastapi.security.
 """
 
 import logging
@@ -10,8 +10,9 @@ from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+from jwt import PyJWTError
 
+from backend.app.utils.jwt_decode import decode_jwt
 from backend.app.utils.service_accounts import is_human_team_member, normalize_role
 from backend.services.security.token_revocation import (
     RevocationStoreUnavailable,
@@ -72,11 +73,10 @@ def get_current_user(
 
         token = credentials.credentials
 
-        payload = jwt.decode(
+        payload = decode_jwt(
             token,
             settings.jwt_secret_key,
             algorithms=["HS256"],
-            options={"verify_exp": True, "require_exp": True},
         )
 
         # S03-S3: Reject non-access tokens (e.g. refresh tokens)
@@ -99,7 +99,7 @@ def get_current_user(
             "role": payload.get("role", "user"),
             "permissions": payload.get("permissions", []),
         }
-    except JWTError as e:
+    except PyJWTError as e:
         logger.warning("JWT validation failed: %s", e)
         raise HTTPException(
             status_code=401,

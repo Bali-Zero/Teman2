@@ -86,9 +86,8 @@ sse-starlette>=3.4.8  # Updated 2026-03-14: SSE disconnect handling improvements
 playwright>=1.62.0  # Security and browser updates
 
 # Authentication
-PyJWT>=2.13.0  # Security fix: CVE-2026-32597 crit header validation
-python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
-cryptography>=50.0.0  # GHSA-537c-gmf6-5ccf fix (vulnerable static OpenSSL in wheels) — pins transitive python-jose dep above the advisory
+PyJWT[crypto]==2.15.1  # Security fix: CVE-2026-32597 crit header validation
+cryptography>=50.0.0  # GHSA-537c-gmf6-5ccf fix (vulnerable static OpenSSL in wheels)
 bcrypt>=5.0.0  # Security and performance improvements
 
 # Database
