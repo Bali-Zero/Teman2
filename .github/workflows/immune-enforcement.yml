@@ -256,6 +256,7 @@ jobs:
               scripts/tests/test_wa_session_liveness_wrapper.sh|\
               infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh|\
               scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh|\
+              scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py|\
               infra/launchagents/wrappers/cron-agent.sh|\
               scripts/tests/test_cron_agent_oauth_cascade.sh|\
               scripts/lib/claude_seat.sh|\
@@ -1058,6 +1059,13 @@ jobs:
           # default path does not exist on a runner (or on M5), so without the
           # override every machine is structurally unable to reproduce the red.
           bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh
+          # Seat failure classes (#7935): a disabled subscription or a limit
+          # notice is never an answer, and a final retryable failure exits
+          # non-zero. The shell corpus above and test_claude_cascade_shell.py
+          # are GREEN on the defective base, so this module is the only check
+          # that turns a revert of any of the three cures red.
+          python -m pip install --quiet pytest
+          python -m pytest -q -p no:cacheprovider scripts/tests/test_wr2_metrics_wrapper_seat_failure_classes.py
 
       - name: OAuth seat cascade corpus (a dead seat must be skipped, not fatal)
         if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
