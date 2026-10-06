@@ -15,7 +15,7 @@ this file, in a shell history, in argv, or in any log: `${VAR:+SET}` probes only
 | M5                               | none by design: P0s relay `ssh pro` (`TG_RELAY_SSH=pro`)                                                        | nothing to do                          |
 | launchd user env (boot copy)     | `launchctl setenv` by `scripts/launchd_env_loader.sh` (allowlist: bot token + 3 chat ids), refreshed every 12 h | rerun the loader, step 4               |
 | GitHub Actions secret            | `TELEGRAM_BOT_TOKEN` (36 refs in 21 workflows; chat id is `TELEGRAM_OWNER_CHAT_ID`, unchanged)                  | `gh secret set`, step 5                |
-| Fly app `nuzantara-rag`          | `TELEGRAM_BOT_TOKEN` (`apps/backend-rag/backend/app/core/config.py`)                                            | `fly secrets set`, step 6              |
+| Fly app `nuzantara-rag`          | `TELEGRAM_BOT_TOKEN` (`apps/backend-rag/backend/app/core/config.py`)                                            | `fly secrets import`, step 6           |
 | Old `.bak-*` of the secrets file | the dead token                                                                                                  | harmless once rotated; keep 0600       |
 
 Consumers that only read the file or the env at each run (`scripts/tg_notify.py`,
@@ -76,12 +76,26 @@ gh secret set TELEGRAM_BOT_TOKEN -R Bali-Zero/Teman2   # paste at the prompt; no
 ## 6. Fly (`nuzantara-rag`)
 
 ```bash
-read -rs -p "token: " TG; echo
+printf 'token: ' >&2; IFS= read -rs TG; echo >&2
+[ -n "$TG" ] || { echo "empty, abort" >&2; exit 1; }   # never import an empty value
 printf 'TELEGRAM_BOT_TOKEN=%s\n' "$TG" | fly secrets import -a nuzantara-rag; unset TG
 ```
 
 `fly secrets import` reads stdin, so the value never reaches argv or history, and it sets one
-release. This restarts the `api` machine: do it outside a client-facing window.
+release. This restarts every machine of the app (process groups `api` and `rag`): do it outside a
+client-facing window. Do not use `read -p` for the prompt: in zsh (the login shell on M5 and Pro) `-p`
+means coprocess, the read fails, and the pipe would import an empty `TELEGRAM_BOT_TOKEN=`.
+
+Declared limits of `rotate_telegram_token.sh` (known, not fixed here):
+
+- Under bash 3.2 (`/bin/bash` on macOS) the here-string that carries the token to awk is backed by an
+  unlinked 0600 file in the temp dir for a moment. Never argv, env or log.
+- A write landing between the final `cksum` re-check and the `mv` is lost. No writer of the secrets file is
+  known besides humans.
+- A secrets file without a trailing newline is refused ("line count differs"). An inline comment after
+  the value is dropped and quoting is normalised on rewrite.
+- A new bot (BotFather account lost) also needs the Fly webhook secret and webhook re-registration;
+  this runbook does not cover that.
 
 ## 7. Verify
 
