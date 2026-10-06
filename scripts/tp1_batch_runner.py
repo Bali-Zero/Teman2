@@ -73,8 +73,8 @@ ambiguous body stops rather than retries. One send = one paid request.
     that object by Q/A/R/J (classify(200, obj) == classify(0, obj); empty = ok).
     A 200 WITH a parsable answer is K even beside an error object: the paid answer
     is kept, never paid twice, and the next reply decides. Model text is never
-    classified: an answer about quota is an answer. t: quota_error_inside_a_200_*,
-    an_answer_beside_a_gateway_error_is_kept_*. Newlines in a body read as spaces.
+    classified: an answer about quota is an answer. Newlines in a body read as
+    spaces. t: quota_error_inside_a_200_*, an_answer_beside_a_gateway_error_is_kept_*.
   K ok: a 200 without an error object, row "ok" or "no_answer". t: drains_queue_*.
   Run level. F every sent job failed or was rejected: stopped:all-failed, exit 4 (a
     loop may treat 4 as continue). U a reply without usage stops a --token-budget
