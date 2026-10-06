@@ -130,6 +130,37 @@ class TestGetClientProfile:
         assert "d.uploaded_source" in doc_queries[0]
 
     @pytest.mark.asyncio
+    async def test_profile_documents_return_stored_client_visible(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict, client_row: dict
+    ) -> None:
+        """One stored-true and one stored-false row both surface their flag.
+
+        The fake fetch hands back only the ``d.<column>`` names the documents
+        SELECT projects, so dropping ``d.client_visible`` from the query turns
+        this red.
+        """
+        import re
+
+        from backend.app.routers.crm_enhanced import get_client_profile
+
+        stored = [{"id": 1, "client_visible": True}, {"id": 2, "client_visible": False}]
+
+        async def _fetch(sql: str, *_args: object) -> list[dict]:
+            if "FROM documents d" not in sql:
+                return []
+            projected = set(re.findall(r"\bd\.(\w+)", sql.split("FROM documents")[0]))
+            return [{k: v for k, v in row.items() if k in projected} for row in stored]
+
+        with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
+            mock_db_conn.fetchrow = AsyncMock(return_value=client_row)
+            mock_db_conn.fetch = AsyncMock(side_effect=_fetch)
+            result = await get_client_profile(
+                client_id=42, pool=mock_db_pool, current_user=admin_user
+            )
+
+        assert {d["id"]: d["client_visible"] for d in result["documents"]} == {1: True, 2: False}
+
+    @pytest.mark.asyncio
     async def test_profile_documents_carry_resolved_permit_label(
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict, client_row: dict
     ) -> None:

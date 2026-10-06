@@ -98,7 +98,7 @@ async def get_client_documents(
                 d.id, d.document_type, d.document_category,
                 d.file_name, d.file_id, d.file_url, d.google_drive_file_url,
                 d.status, d.expiry_date, d.notes, d.is_archived,
-                d.family_member_id, d.practice_id,
+                d.family_member_id, d.practice_id, d.client_visible,
                 d.created_at, d.updated_at,
                 fm.full_name as family_member_name,
                 CASE
@@ -455,6 +455,13 @@ async def update_document(
     return {"success": True}
 
 
+def _actor_id(actor: dict) -> str:
+    """The auth dependency's `user_id`, which falls back to the email when no id
+    is known: an email is PII, so it is never written to the Timeline."""
+    raw = str(actor.get("user_id") or actor.get("id") or "")
+    return "unresolved" if not raw or "@" in raw else raw
+
+
 async def _record_visibility_timeline_event(
     pool: Any,
     client_id: int,
@@ -482,7 +489,7 @@ async def _record_visibility_timeline_event(
                 client_id,
                 "Document client visibility changed",
                 f"document_id={doc_id} client_visible: {str(old_visible).lower()} -> "
-                f"{str(new_visible).lower()} by user_id={actor.get('id')} "
+                f"{str(new_visible).lower()} by user_id={_actor_id(actor)} "
                 f"role={(actor.get('role') or 'unknown')}",
             )
     except Exception as e:
@@ -727,9 +734,7 @@ async def upload_document_base64(
                 # must refuse too. All cooperative phone writers serialize on
                 # the phonecore advisory lock, making the authoritative in-TX
                 # run of this check race-safe against them.
-                rows = await _conn.fetch(
-                    CORE_OWNER_IDS_SQL, [data.expected_phone_core]
-                )
+                rows = await _conn.fetch(CORE_OWNER_IDS_SQL, [data.expected_phone_core])
                 return [r["id"] for r in rows] == [client_id]
 
             if data.expected_phone_core:
