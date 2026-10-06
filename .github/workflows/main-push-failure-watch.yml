@@ -362,6 +362,9 @@ on:
       #     worse than no instrument.
       - Craft instruments (advisory)
       - mq state oracle tests
+      # Added 2026-10-06 (tp1-screen-tests.yml): it also runs on push to
+      # main, so a red there must reach this watcher.
+      - TP1 screen tests
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never

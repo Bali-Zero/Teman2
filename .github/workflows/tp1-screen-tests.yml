@@ -1,0 +1,40 @@
+# TP1 queue screen. scripts/tp1max/build_code_queue.py decides which files of this public repo
+# leave the machine for a paid third-party model plan (TP1); until this workflow its guilt and
+# innocence tests were green only on the laptop that wrote them. 3.9 is /usr/bin/python3 on M5,
+# where the queue is built; 3.11 is the repo default.
+name: TP1 screen tests
+
+on:
+  pull_request:
+    paths: &guarded_paths
+      - "scripts/tp1max/**"
+      - ".github/workflows/tp1-screen-tests.yml"
+  push:
+    branches:
+      - main
+    paths: *guarded_paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tp1-screen-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  tp1-screen-tests:
+    name: TP1 screen tests (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.11"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -q pytest
+      - name: Queue screen — guilt shapes skipped by reason, innocence queued, fail-closed
+        run: python -m pytest -q scripts/tp1max/test_build_queues.py
