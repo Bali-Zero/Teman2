@@ -1,0 +1,57 @@
+task: >-
+  Migrate apps/backend-rag from python-jose 3.5.0 to PyJWT. python-jose carries CVE-2026-85394 with no fixed
+  release; PR #7965 ignored it with a dated CI guard that turns Backend Static red on 2026-11-06. Eleven
+  production modules import it. The change moves them to PyJWT (already a direct dependency, 2.15.1 in both
+  locks), drops python-jose and its two transitive packages (ecdsa, rsa) from both locks, and removes the
+  ignore, the guard and the stale ecdsa ignore in the same change.
+lane: backend-rag
+machine: m5
+date: 2026-10-06
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: scripts/evidence_pack_lint.py --print-floor on this diff's changed files
+  prints 3, source "path" (.github/workflows/tests.yml is a hot-zone path, and the merge is a Fly deploy of
+  authentication code). Net production code is small (about 55 lines added, 53 removed in 11 modules plus one
+  new 12-line module); the rest is tests, lock churn and doc removal.
+acceptance:
+  A1:
+    text: >-
+      No file under apps/backend-rag imports python-jose; both locks drop python-jose, ecdsa and rsa and keep
+      PyJWT 2.15.1; the CVE-2026-85394 and PYSEC-2026-1325 ignores, the JOSE_PIN/JOSE_RECHECK guard and the
+      mypy override are gone.
+    probe: >-
+      git grep for "from jose|import jose" under apps/backend-rag; uv pip compile with the exact header
+      command of each lock; the pip-audit step of tests.yml on the new locks (Backend Static on the PR).
+  A2:
+    text: >-
+      Every decode call site accepts and rejects what it did under python-jose, except the differences listed
+      in the pack. Every except that caught JWTError now catches PyJWTError, so an invalid token is still 401.
+    probe: >-
+      backend/tests/unit/auth/test_jwt_decode_policy.py (27 cases, measured side by side against python-jose
+      3.5.0 in a scratch venv) plus the existing per-site suites, which now forge tokens with PyJWT.
+  A3:
+    text: >-
+      The full backend pytest set is green on a venv built from requirements.lock.txt, and a venv built from
+      requirements-prod.lock.txt (what the Fly image installs) imports backend.app.main_cloud, boots uvicorn,
+      serves /health 200 and answers 401 to a forged bearer token.
+    probe: scratch prove.sh in ~/.agent/campaign-20261005/work/dux-pyjwt/, results quoted in the pack receipts.
+  A4:
+    text: >-
+      Live after merge (the merge IS the Fly deploy of nuzantara-rag): post-deploy-health passes,
+      /health prints 200 and a forged bearer token on a protected route prints 401. Owned by the post-merge
+      prove-live step, not claimed here.
+    probe: curl -s -o /dev/null -w '%{http_code}' on /health and on a protected route with a forged bearer.
+out_of_scope: >-
+  JWKS / asymmetric keys (none exist on any path). Token issuance changes (claims are unchanged). fly.toml, the
+  Dockerfile and .env files (read only or untouched). The PENDING-ARMS ledger row for this migration, which
+  the ledger owner closes after the merge. Other pip-audit ignores are not revisited.
+assumptions:
+  - text: >-
+      Every production token is HS256 with settings.jwt_secret_key and carries no aud, iss or at_hash.
+    status: unverified
+    probe: >-
+      no encode site sets aud/iss/at_hash (git grep); the Fly value of jwt_algorithm was not read (secrets and
+      config stay with the owner); config default is HS256.
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA; the imperator commissions it.
+    status: unverified
+    probe: gh pr checks <pr> after the gate verdict is posted.
