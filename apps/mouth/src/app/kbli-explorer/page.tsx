@@ -1153,7 +1153,7 @@ export default function KBLIExplorerPage() {
               <span className="font-serif text-lg tracking-wide text-silver">
                 Zantara
               </span>
-              <span className="text-[9px] uppercase tracking-[0.3em] text-[#444] -mt-1">
+              <span className="text-[11px] uppercase tracking-[0.3em] text-[#444] -mt-1">
                 Business Code Guide
               </span>
             </div>
@@ -1168,7 +1168,7 @@ export default function KBLIExplorerPage() {
 
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
               2025 Transition
             </h3>
             <button
@@ -1183,14 +1183,14 @@ export default function KBLIExplorerPage() {
                   ASK ABOUT YOUR CODES
                 </span>
               </div>
-              <p className="text-[10px] text-[#888] leading-tight group-hover:text-[#CCC] transition-colors">
+              <p className="text-[11px] text-[#888] leading-tight group-hover:text-[#CCC] transition-colors">
                 Ask our team which KBLI 2025 code replaces yours.
               </p>
             </button>
           </section>
 
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
               Official Sources
             </h3>
             <div className="space-y-3">
@@ -1203,14 +1203,14 @@ export default function KBLIExplorerPage() {
 
         <div className="p-4 border-t border-white/5">
           <div className="flex items-center gap-3 p-2 rounded">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#D4B483] to-[#8C7350] flex items-center justify-center text-[#050507] text-[10px] font-bold">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#D4B483] to-[#8C7350] flex items-center justify-center text-[#050507] text-[11px] font-bold">
               AZ
             </div>
             <div>
               <div className="text-xs font-medium text-silver">
                 Business Assistant
               </div>
-              <div className="text-[10px] text-[#555] uppercase tracking-wider">
+              <div className="text-[11px] text-[#555] uppercase tracking-wider">
                 Ready to help
               </div>
             </div>
