@@ -121,7 +121,11 @@ jobs:
           set -uo pipefail
           sha=$(git log -1 --format=%H -- \
             apps/mouth packages package.json package-lock.json vercel.json \
-            ':(exclude,glob)apps/mouth/**/*.md' \
+            ':(exclude,glob)apps/mouth/*.md' \
+            ':(exclude,glob)apps/mouth/docs/**/*.md' \
+            ':(exclude,glob)apps/mouth/e2e/**/*.md' \
+            ':(exclude,glob)apps/mouth/scripts/**/*.md' \
+            ':(exclude,glob)apps/mouth/src/**/*.md' \
             ':(exclude,glob)packages/**/*.md')
           if [ -z "$sha" ]; then
             echo "::warning::no commit touches the deploy-relevant paths — nothing to assert"
