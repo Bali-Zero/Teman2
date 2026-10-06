@@ -5,8 +5,9 @@
 
 A test id is ``classname::name`` ('?' for a missing part); an xfail is a skip here; "executed" is a test case with no ``<skipped>`` child.
   --allow    explains a skip iff TEST_REGEX searches its id AND REASON_REGEX searches its reason (the junit ``message``, never the file path).
-             Each allowance must explain EXACTLY ONE skip: none is STALE, so a removed test cannot leave a hole behind; two or more is
-             OVERUSED, so one allowance cannot cover a whole module. A skip no allowance explains is UNDECLARED.
+             Each allowance must explain EXACTLY ONE skip: none is STALE (it explains nothing in this report); two or more is
+             OVERUSED, so one allowance cannot cover a whole module. A skip no allowance explains is UNDECLARED, and a skip that two or
+             more allowances explain is AMBIGUOUS: a removed test's allowance could otherwise stay alive by matching another declared skip.
   --require  at least one EXECUTED test case must match; no executed match is MISSING, including when every match was deselected, never collected or skipped.
   --min-executed  a floor on executed cases (default 1): a report where nothing executed is never clean.
 Junit omits deselected and never-collected tests. An omitted test with no matching --require is invisible if the executed floor still holds;
@@ -18,7 +19,7 @@ A report with a ``<skipped>`` outside a ``<testcase>``, or whose testsuites do n
 Failures and errors are not judged here — pytest's own exit code carries them. This reads the report only, and the report is
 the one the same job wrote a step earlier: stdlib ElementTree, as in runner.py, no new dependency.
 
-Exit 0 = nothing undeclared, stale, overused, missing or below the floor · 1 = at least one of those ·
+Exit 0 = nothing undeclared, stale, overused, ambiguous, missing or below the floor · 1 = at least one of those ·
 2 = unusable input (unreadable or inconsistent report, a report with no test case, a bad or blanket pattern).
 """
 from __future__ import annotations
@@ -109,6 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     undeclared = [(test, reason) for test, reason in skips if not any(test in m for m in matched)]
     stale = [a for a, m in zip(args.allow, matched) if not m]
     overused = [(a, m) for a, m in zip(args.allow, matched) if len(m) > 1]
+    ambiguous = [(test, n) for test, _ in skips if (n := sum(test in m for m in matched)) > 1]
     missing = [p for p in required if not any(p.search(test) for test in executed)]
     too_few = len(executed) < args.min_executed
     for test, reason in undeclared:
@@ -117,13 +119,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"STALE       --allow {test_rx!r} {reason_rx!r} explains no skip")
     for (test_rx, reason_rx), tests in overused:
         print(f"OVERUSED    --allow {test_rx!r} {reason_rx!r} explains {len(tests)} skips, not one: {', '.join(tests)}")
+    for test, n in ambiguous:
+        print(f"AMBIGUOUS   {test} is explained by {n} allowances, not one")
     for pattern in missing:
         print(f"MISSING     --require {pattern.pattern!r} matched no executed test")
     if too_few:
         print(f"TOO FEW     executed={len(executed)} < min-executed={args.min_executed}")
     print(f"cases={len(cases)} executed={len(executed)} skipped={len(skips)} undeclared={len(undeclared)} stale={len(stale)} "
-          f"overused={len(overused)} missing={len(missing)}")
-    return EXIT_FOUND if undeclared or stale or overused or missing or too_few else EXIT_OK
+          f"overused={len(overused)} missing={len(missing)} ambiguous={len(ambiguous)}")
+    return EXIT_FOUND if undeclared or stale or overused or ambiguous or missing or too_few else EXIT_OK
 
 
 if __name__ == "__main__":

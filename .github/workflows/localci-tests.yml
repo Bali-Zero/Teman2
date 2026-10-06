@@ -44,6 +44,7 @@ on:
       - "scripts/tox.ini"
       - "scripts/setup.cfg"
       - "scripts/conftest.py"
+      - "scripts/__init__.py"
       # real-repo files the suite copies into its fixture repos (runner.TRUSTED_CLASSIFIER_FILES): a change there changes the suite's result
       - "scripts/ci/change_map.py"
       - "scripts/ci/test_change_map.py"
@@ -73,6 +74,7 @@ on:
       - "scripts/tox.ini"
       - "scripts/setup.cfg"
       - "scripts/conftest.py"
+      - "scripts/__init__.py"
       # real-repo files the suite copies into its fixture repos (runner.TRUSTED_CLASSIFIER_FILES): a change there changes the suite's result
       - "scripts/ci/change_map.py"
       - "scripts/ci/test_change_map.py"
@@ -117,10 +119,10 @@ jobs:
       - name: Skip budget (every skip is declared here, the required tests executed, the floor held — or the job is red)
         run: |
           python scripts/localci/skip_budget.py "$RUNNER_TEMP/localci-junit.xml" \
-            --allow 'test_pysa_check::test_judge_flags_new_guilt_flows_and_not_innocent_ones$' '^Pysa home not set up at ' \
-            --require 'test_isolation::test_contained_candidate_code_cannot_touch_host_state_in_pytest_or_trusted_pytest$' \
-            --require 'test_isolation::test_contained_timeout_kills_the_container_and_is_error$' \
-            --require 'test_runner::test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_run_forgery$' \
-            --require 'test_stateful\.TestGateMachine::runTest$' \
-            --require 'test_hosted_compare::' \
+            --allow '^scripts\.localci\.tests\.test_pysa_check::test_judge_flags_new_guilt_flows_and_not_innocent_ones$' '^Pysa home not set up at ' \
+            --require '^scripts\.localci\.tests\.test_isolation::test_contained_candidate_code_cannot_touch_host_state_in_pytest_or_trusted_pytest$' \
+            --require '^scripts\.localci\.tests\.test_isolation::test_contained_timeout_kills_the_container_and_is_error$' \
+            --require '^scripts\.localci\.tests\.test_runner::test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_run_forgery$' \
+            --require '^scripts\.localci\.tests\.test_stateful\.TestGateMachine::runTest$' \
+            --require '^scripts\.localci\.tests\.test_hosted_compare::' \
             --min-executed 331

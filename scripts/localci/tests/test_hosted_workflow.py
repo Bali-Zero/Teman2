@@ -37,6 +37,7 @@ def test_the_filter_covers_every_ancestor_pytest_configuration_and_conftest():
     paths = _load()["pull_request"]
     names = ("pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml", "pyproject.toml", "tox.ini", "setup.cfg", "conftest.py")
     assert not [prefix + name for prefix in ("", "scripts/") for name in names if not _covered(prefix + name, paths)]
+    assert _covered("scripts/__init__.py", paths)                                    # absent today; if added, `import scripts.localci` executes it
 
 
 def test_the_skip_budget_step_requires_executed_tests_and_a_floor():
@@ -45,3 +46,10 @@ def test_the_skip_budget_step_requires_executed_tests_and_a_floor():
     assert "--require" in command and "--min-executed" in command
     args = shlex.split(command)
     assert int(args[args.index("--min-executed") + 1]) >= 331
+
+
+def test_every_test_id_regex_in_the_skip_budget_step_is_anchored_to_the_full_dotted_module_path():
+    steps = _load()["doc"]["jobs"]["localci-tests"]["steps"]
+    args = shlex.split(next(s["run"] for s in steps if "skip_budget.py" in s.get("run", "")))
+    ids = [args[i + 1] for i, a in enumerate(args) if a in ("--allow", "--require")]
+    assert len(ids) >= 5 and all(rx.startswith(r"^scripts\.localci\.tests\.") for rx in ids), ids

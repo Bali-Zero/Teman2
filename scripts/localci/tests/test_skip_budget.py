@@ -44,12 +44,12 @@ ALLOW_PYSA = ("--allow", r"test_mod::test_e2e$", "^Pysa home not set up at ")
 # ------------------------------------------------------------------------------- innocence
 def test_a_report_with_no_skip_and_no_allowance_is_clean(tmp_path, capsys):
     assert _main(_report(tmp_path, _case("test_a"), _case("test_b"))) == sb.EXIT_OK
-    assert "cases=2 executed=2 skipped=0 undeclared=0 stale=0 overused=0 missing=0" in capsys.readouterr().out
+    assert "cases=2 executed=2 skipped=0 undeclared=0 stale=0 overused=0 missing=0 ambiguous=0" in capsys.readouterr().out
 
 
 def test_a_declared_skip_bound_to_its_test_id_is_clean_and_counted_as_not_executed(tmp_path, capsys):
     assert _main(_report(tmp_path, _case("test_a"), _case("test_e2e", PYSA)), *ALLOW_PYSA) == sb.EXIT_OK
-    assert "cases=2 executed=1 skipped=1 undeclared=0 stale=0 overused=0 missing=0" in capsys.readouterr().out
+    assert "cases=2 executed=1 skipped=1 undeclared=0 stale=0 overused=0 missing=0 ambiguous=0" in capsys.readouterr().out
 
 
 def test_a_require_that_matches_an_executed_test_is_clean(tmp_path):
@@ -85,6 +85,19 @@ def test_two_skips_explained_by_one_allowance_are_overused(tmp_path, capsys):
 def test_a_whole_module_skipped_with_one_reason_is_not_covered_by_one_allowance(tmp_path):
     report = _report(tmp_path, _case("test_a"), *(_case(f"test_{i}", PYSA) for i in range(3)))
     assert _main(report, "--allow", "test_mod::", "^Pysa home") == sb.EXIT_FOUND
+
+
+def test_a_skip_explained_by_two_allowances_is_ambiguous(tmp_path, capsys):
+    report = _report(tmp_path, _case("test_a"), _case("test_e2e", PYSA))
+    assert _main(report, *ALLOW_PYSA, "--allow", "test_e2e$", "^Pysa home") == sb.EXIT_FOUND
+    out = capsys.readouterr().out
+    assert "AMBIGUOUS   pkg.test_mod::test_e2e is explained by 2 allowances, not one" in out and "ambiguous=1" in out
+
+
+def test_two_allowances_over_two_distinct_skips_each_matched_by_one_are_clean(tmp_path, capsys):
+    report = _report(tmp_path, _case("test_a"), _case("test_e2e", PYSA), _case("test_contained", DOCKER))
+    assert _main(report, *ALLOW_PYSA, "--allow", "test_contained$", "^docker image") == sb.EXIT_OK
+    assert "ambiguous=0" in capsys.readouterr().out
 
 
 def test_an_allowance_that_explains_no_skip_is_stale_and_exits_1(tmp_path, capsys):
@@ -197,7 +210,7 @@ def test_round_trip_through_a_real_pytest_junit(tmp_path, capsys):
                "--allow", "test_module_level", "^could not import 'no_such_module_for_skip_budget'")
     assert _main(report, *allowed) == sb.EXIT_FOUND
     out = capsys.readouterr().out
-    assert "cases=5 executed=1 skipped=4 undeclared=1 stale=0 overused=0 missing=0" in out
+    assert "cases=5 executed=1 skipped=4 undeclared=1 stale=0 overused=0 missing=0 ambiguous=0" in out
     assert "test_xfail" in out and "undeclared: xfail" in out
     assert _main(report, *allowed, "--allow", "test_shapes::test_xfail$", "^undeclared: xfail$", "--require", "test_shapes::test_ran$") == sb.EXIT_OK
     deselected = tmp_path / "deselected.xml"
