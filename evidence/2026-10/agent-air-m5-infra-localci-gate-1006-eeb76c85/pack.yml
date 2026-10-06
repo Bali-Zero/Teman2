@@ -55,7 +55,11 @@ ground:
     M5, none on these paths. Fleet mailbox carried nothing addressed to this lane.
 spend:
   adversarial_rounds: 1
-  wall_clock_hours: 2
+  wall_clock_hours: 7
+appetite_exceeded: >-
+  Wall clock ran from the first ground probe (2026-10-06T07:24Z) to the pre-push sibling probe (14:18Z), about
+  7 hours against a declared 6. Most of it was waiting: two external reviews and two gate passes ran in the
+  background and the window sat idle between their notifications. Adversarial rounds stayed inside the appetite.
 receipts:
   - claim: Live protection requires 14 contexts; 11 carry no pinned app_id; merge queue ruleset 19779175 is active with enforce_admins true.
     cmd: gh api repos/Bali-Zero/Teman2/branches/main/protection ; gh api repos/Bali-Zero/Teman2/rules/branches/main
