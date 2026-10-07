@@ -1,0 +1,50 @@
+task_id: localci-executor-a-1007
+mission: LOCALCI-EXECUTOR (phase A, PR-A1)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Declared by the mandate: the change decides what a local verdict on a required context may claim, on the
+  boundary between a candidate and its judge. It flips nothing — GitHub stays the writer, no workflow, branch
+  protection or status is touched, the adapter stays inert.
+l_level: L2
+gate_class: opus
+objective: >-
+  Make scripts/localci/runner.py EXECUTE required contexts honestly, so that hosted_compare.py moves rows from
+  LOCAL_BLIND to AGREE on real commits: R1 gate, actionlint, Merah Putih and catE-sovereignty-lint in this PR,
+  each planned from the BASE copy of its workflow job with every step accounted for, judges taken from BASE.
+constraints:
+  - No .github/workflows file, branch protection or commit status is touched; gh_status_adapter.py stays inert.
+  - Candidate code runs only inside the container; on the host only BASE copies of judges or a version-pinned tool run.
+  - A context is green only when every step it runs returned 0; a step that cannot run is BLOCKED, never skipped.
+  - No npm install/ci, no new daemon, no secret read or printed, no paid per-token API.
+acceptance:
+  - text: WHEN the runner plans a candidate against the matrix, it SHALL plan one ctx.<slug> check per executed context and evaluate_contexts SHALL resolve the context to it.
+    probe: "test_contexts_exec.py::test_a_host_context_runs_every_step_from_base_and_passes_a_clean_candidate"
+  - text: WHEN a step of a context fails, the context SHALL be FAIL; WHEN a step cannot start, BLOCKED; never PASS.
+    probe: "test_contexts_exec.py::test_a_violation_turns_the_context_red"
+  - text: WHEN the candidate rewrites the judge the runner runs, the BASE copy SHALL still judge it; WHEN that BASE judge is green, the context SHALL be BLOCKED, not PASS.
+    probe: "test_contexts_exec.py::test_a_candidate_cannot_swap_the_judge_that_runs_on_the_host"
+  - text: WHEN a BASE workflow step is unmapped, not run, conditioned on an unevaluated expression or duplicated, the context SHALL be BLOCKED naming it.
+    probe: "test_contexts_exec.py::test_a_context_that_cannot_be_planned_honestly_is_blocked_with_its_reason"
+  - text: WHEN run on Pro against the newest merged hosted-green main commit, hosted_compare SHALL report AGREE >= 4 (the contexts this PR executes) and FALSE_GREEN = 0.
+    probe: "measure.sh final-main-"
+  - text: WHEN a candidate carries a deliberate violation for one of the four contexts, that context SHALL be RED locally and HOSTED_PENDING in hosted_compare (unpushed sha).
+    probe: "compare_unpushed.sh final-guilt-"
+  - text: WHEN candidate code is about to run, the seal SHALL already be minted, and it SHALL re-derive UNCHANGED at the end of the run.
+    probe: "status --seal"
+assumptions:
+  - text: Running a BASE step whose `if:` GitHub might evaluate false can only add red locally, never hide a hosted red.
+    status: unverified
+    note: Argued, not measured — every step that reaches a hosted red also runs locally unless the matrix marks it not_applicable with a reason. Recorded per step as if_not_evaluated.
+    probe: a candidate where a conditioned step is green locally and the hosted job red, which would contradict it
+  - text: ubuntu-latest has no pyflakes on PATH, so actionlint there skips the pyflakes rule as it does on Pro.
+    status: unverified
+    note: Not read from the runner-image manifest; the workflow does not pin it. Recorded as a caveat on the actionlint context.
+    probe: the ubuntu-24.04 runner-image software list, or `which pyflakes` in a hosted job
+consumer_map:
+  - scripts/localci/hosted_compare.py on Pro — its AGREE rows on main commits are this change's output.
+  - docs/specs/localci-gate-2026-10-06.md §4 sequence step 3 (the runner plans the deterministic contexts from BASE).
+  - The Tier L promotion count (§4.2) — every stored hosted_compare.json pair from now on carries four executed contexts.
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2

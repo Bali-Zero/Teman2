@@ -1,0 +1,144 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-EXECUTOR phase A, handed by the team lead of Zero's session on 2026-10-07 ("make the local CI
+  fully operational, no excuses"); this pack is PR-A1 (planning mechanism + R1 + actionlint + Merah Putih + catE).
+  Design anchor: docs/specs/localci-gate-2026-10-06.md §4 sequence step 3.
+lanes:
+  - lane: localci-executor-a-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux of LOCALCI-EXECUTOR, M5; heavy execution on Pro over ssh)"
+  - lane: localci-executor-a-redteam
+    role: review
+    seat: "codex-gpt-6.1-sol (codex:codex-rescue runtime, read-only, default-to-defective)"
+  - lane: localci-executor-a-refuter
+    role: review
+    seat: "agy-gemini-3.1-pro (agy --sandbox --model gemini-3.1-pro-high, prompt-only, diff inlined)"
+  - lane: localci-executor-a-final-gate
+    role: review
+    seat: "claude-opus-5-5 (fresh session outside the chain, commissioned by the team lead on the committed sha)"
+council_run: council-journal.jsonl
+seat_override: >-
+  Two external families reviewed the candidate (OpenAI Codex, Google Gemini 3.1 Pro), but only one line counts for
+  R9: the Codex home's configured default is gpt-6.1-sol (~/.codex/config.toml, codex-cli 0.160.1) while the roster
+  names codex-gpt-5.6-sol, so the Codex line is journalled under its true name and does not qualify — the same
+  position PR #7991's pack took. The seat was not renamed to fit the roster.
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stood in because both remaining titular seats were dead at dispatch
+  (scripts/arsenal_probe.py --seats kimi,tp1-qwen3.8-max, 2026-10-07T03:55:06Z on M5): kimi QUOTA_DEAD
+  (membership quota, transition TIMEOUT -> QUOTA_DEAD), tp1-qwen3.8-max QUOTA_DEAD (HTTP 429, monthly plan quota,
+  reset 2026-10-11 16:00 UTC).
+pii_scan: clean
+pii_scan_note: Runner code, a contexts matrix, tests and GitHub check metadata only; no client data was read or written.
+what_changed: |
+  scripts/localci/runner.py (v0.4.0): plans one check per `mapping: executed` context (local.check = ctx.<slug>).
+  resolve_steps maps EVERY step of the BASE copy of the workflow job (argv / verbatim run: body / not_applicable
+  with reason); unmapped, not_run, duplicated, expression-bearing or continue-on-error steps plan BLOCKED.
+  plan_context_check: where=host -> kind trusted_steps (BASE copies of judges under python -I, or a tool whose
+  -version equals the BASE pin and which resolves outside the candidate, its sha256 pinned; trusted, sealed, run
+  before candidate code); where=container -> kind contained_steps (candidate sandbox, BASE trusted_files laid
+  over, merge_group environment, setup-python pin checked against the image). A green while the candidate
+  rewrites a trusted file, the workflow or a .gitattributes is BLOCKED. Step results land in receipts and status.
+  scripts/localci/steps_driver.py (new): runner-owned, sha-pinned; one junit testcase per step, rc/junit cross-checked.
+  scripts/localci/candidate.Dockerfile: python 3.12 (ubuntu-latest's python3, the MP/catE interpreter).
+  scripts/localci/contexts_matrix.yaml: R1, actionlint, Merah Putih, catE rewritten to the step map; executed now
+  means the runner executes it; never_claim_parity_for = exactly the other ten (suite-checked); parity_gaps added.
+  scripts/localci/README.md, tests/test_contexts_exec.py (new), fixture_repo.py, test_runner.py (version, trust kinds).
+proof: |
+  See receipts. Nothing in this change posts a status, edits branch protection, touches a workflow or arms the
+  adapter. Before it: agreement=0/14 on hosted-green main commits (spec §2). After it, measured on Pro: 4/14 AGREE
+  with 0 FALSE_GREEN on three distinct hosted-green main commits, and each of the four contexts RED on a
+  deliberate violation (five guilt candidates) while the other three stay green.
+bites:
+  consumer: >-
+    scripts/localci/hosted_compare.py run on Pro over a local run of a hosted-green main commit (the comparator
+    that spec §4 makes the only place a local claim is stated).
+  observation: >-
+    Pro, 2026-10-07 04:27Z, runner at 19137db (sha256 8acf38ba…) on 01d1241330 (base 1df44b9b65), live GETs:
+    AGREE for R1 gate, actionlint, Merah Putih and catE-sovereignty-lint; agreement=4/14 false_green=0 false_red=0
+    local_blind=10 hosted_pending=0, exit 0. Same on 1df44b9b65 and d961f053b4.
+ground:
+  ts: "2026-10-07T03:05:00Z"
+  siblings: >-
+    `gh pr list --state open --json number,files`: no open PR touches scripts/localci. Broker list on M5: no
+    local-CI lane (healer-receptors, tg-runbook-blocks, tp1-screen-spec live; eight orphans). Pro worktree created
+    by the broker for this lane; Pro's main checkout was not written.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 2
+receipts:
+  - claim: Pro carries docker (colima, arm64), actionlint 1.7.12 (Homebrew), the backend venv python 3.11.11 with PyYAML 6.0.3 and pytest 9.0.3, no pyflakes, no pytest-xdist.
+    cmd: ssh pro 'which docker actionlint colima; actionlint -version; colima status; <venv>/bin/python -c "import yaml,pytest"; python -c "import xdist"; which pyflakes'
+    exit: 0
+    ts: "2026-10-07T03:11:02Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: The candidate image was rebuilt on python 3.12 and pinned by ID (sha256:9eba7b4f97c4…, PYTHON_VERSION=3.12.15); the previous 3.11 image was sha256:5388c413dbf3….
+    cmd: docker build -q -t localci-candidate:1 - < scripts/localci/candidate.Dockerfile ; docker image inspect localci-candidate:1
+    exit: 0
+    ts: "2026-10-07T04:20:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: The localci suite is green on Pro with docker — 381 passed, 1 skipped (hypothesis absent from the backend venv; the hosted job installs it); the 3 contained ctx tests executed, among them test_contexts_exec.py::test_a_host_context_runs_every_step_from_base_and_passes_a_clean_candidate, test_contexts_exec.py::test_a_violation_turns_the_context_red, test_contexts_exec.py::test_a_candidate_cannot_swap_the_judge_that_runs_on_the_host, test_contexts_exec.py::test_a_context_that_cannot_be_planned_honestly_is_blocked_with_its_reason (and their contained twins).
+    cmd: PYTHONPATH=$PWD <venv>/bin/python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider (Pro worktree, code of 19137db)
+    exit: 0
+    ts: "2026-10-07T04:24:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: On three hosted-green main commits the runner executes the four contexts and hosted_compare reports AGREE 4/14, FALSE_GREEN 0, exit 0 — 01d1241330 (base 1df44b9b65), 1df44b9b65 (base d961f053b4), d961f053b4 (base 5c840278b8). The seal is printed before the first contained check and re-derives UNCHANGED at the end; status --seal leaves stale_reason null.
+    cmd: ~/.nuzantara-pilots/local-ci/executor-a/measure.sh final-main-<sha10> <base> (runner.py plan --contexts-file <matrix> ; run ; status --seal ; hosted_compare.py <run>/status.json)
+    exit: 0
+    ts: "2026-10-07T04:31:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: Guilt per context, each an unpushed candidate on d961f053b4 built with git plumbing (no hook rewrote the bytes) — R1 (research note without review) FAIL; R1 with check_adversarial_review.py rewritten to exit 0 FAIL (BASE judge ran); actionlint (a workflow whose trigger is the unknown event pushh) FAIL; Merah Putih (ink token mutated) FAIL on the corpus and the guilt-control steps; catE (a paid constructor line in apps/) FAIL on the constructor-budget step. In each run only the targeted context is red, the seal is UNCHANGED, and hosted_compare against the live required set with zero hosted entries (GitHub answers HTTP 422 for an unknown sha) reports HOSTED_PENDING for every context, AGREE 0.
+    cmd: guilt.sh <r1|r1swap|actionlint|mp|cate> ; measure.sh final-guilt-<g> d961f053b4 ; compare_unpushed.sh final-guilt-<g>
+    exit: 0
+    ts: "2026-10-07T04:38:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: Before the review round (c11f9c9) the same four contexts already read AGREE 4/14 on d961f053b4 and RED on the four guilt candidates; the fixes in 19137db did not move any verdict.
+    cmd: measure.sh main-d961f053-r1 / guilt-<g> (run dirs kept beside the final ones)
+    exit: 0
+    ts: "2026-10-07T03:37:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+dissent:
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER: a declared tool version does not authenticate the host tool — a fake actionlint earlier on PATH (relative or inside the candidate) reporting 1.7.12 would be probed and then run as a trusted host check."
+    status: CONFIRMED
+    resolution: "A pinned tool that resolves relative or inside the candidate worktree is never probed (BLOCKED); its realpath and sha256 are pinned at plan time and re-checked before it runs (gone -> BLOCKED, changed -> ERROR). Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR: the sandbox gets raw blobs while GitHub's checkout applies .gitattributes conversions (working-tree-encoding reproduced with cat-file --filters): a candidate can make the hosted guard crash while the local one is green."
+    status: CONFIRMED
+    resolution: "Any changed .gitattributes in the diff keeps a contained green from being claimed (BLOCKED). BASE's .gitattributes carries only merge=union and binary, which convert nothing. Corpus row."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR: actions/setup-python is ignored — Merah Putih pins 3.12, the image was 3.11; a candidate failing only on 3.12 is a FALSE_GREEN."
+    status: CONFIRMED
+    resolution: "A setup-python pin must name the interpreter the steps run under (image PYTHON_VERSION for container, the coordinator for host), else BLOCKED. Image moved to python 3.12; R1's 3.11 pin matches the host venv. Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR: duplicate step names collapse in by_name and a BASE step is silently skipped (reproduced: planned=1, hosted_first_rc=1). Gemini found the same."
+    status: CONFIRMED
+    resolution: "A BASE job with duplicate step names plans BLOCKED. Corpus row."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR: job/workflow defaults.run.working-directory ignored, and the host executor ignored the step cwd (reproduced). Gemini found the same."
+    status: CONFIRMED
+    resolution: "cwd = step working-directory, else the job/workflow default, validated to stay inside the tree; both executors honour it. Corpus rows (resolver and a host job run)."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR: bash -c is not GitHub's script-file shell (BASH_SOURCE differs, reproduced)."
+    status: CONFIRMED
+    resolution: "A verbatim body is written to a file and run with GitHub's own templates: `bash -e {0}` when shell is unspecified, the pipefail form for `shell: bash`; any other shell plans BLOCKED. Corpus row."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR: a step killed by a signal is reported FAIL by the driver."
+    status: CONFIRMED
+    resolution: "Signal -> junit error type=signal, driver rc 4, verdict ERROR (no verdict on the candidate). Classifier rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR: step if: conditions are neither evaluated nor blocked."
+    status: PLAUSIBLE
+    resolution: "Running a step GitHub might skip can only add red: a hosted red comes from a step that also runs locally unless the matrix marks it not_applicable with a written reason. The condition is now recorded per step (if_not_evaluated) and the argument is an assumption in the brief, with the observation that would refute it."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER: a workflow env PYTHONPATH merged into a host step lets a pinned tool spawn python that imports candidate modules."
+    status: RETRACTED
+    resolution: "trusted_env() already drops PYTHONPATH, PYTHONSTARTUP, PYTHONHOME, PYTEST_ADDOPTS and PYTEST_PLUGINS after the merge and sets PYTHONSAFEPATH=1. Proven with a corpus row: a workflow setting PYTHONPATH/PYTHONSTARTUP plans them and no host process sees them."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR: env_fingerprint omits contained_steps, so an image change would not stale a PASS."
+    status: RETRACTED
+    resolution: "contained_steps is in CANDIDATE_KINDS, whose first env_fingerprint branch records image_id and the docker identity; the seat saw the diff only, not that unchanged branch."
+residuals:
+  - "On a PR head (not a merge_group commit) hosted catE runs the #40c model judgment with a vendor key and the PR-scoped prose scan; the local run has no counterpart for the first — a FALSE_GREEN there is possible and is listed in the matrix's parity_gaps."
+  - "Contained verdicts stay candidate-produced (junit written inside the sandbox), as trusted_pytest was before: a deliberately malicious candidate can forge its own contained green, exactly as it can make its own hosted job exit 0."
+  - "test_the_real_matrix_accounts_for_every_step… reads workflows outside the hosted localci-tests path filter: a later workflow change is caught by `plan` (BLOCKED), not by that test. Widening the filter is a workflow edit, outside this mandate."
+  - "PR size: +840/-185 lines before this pack (runner +307/-20, steps_driver +87, test_contexts_exec +324, matrix +91/-159, README +25), about 655 net — above the ~400 guide; the split the mandate named (A1/A2) is kept and this half is not divisible without shipping a planner no context uses."
