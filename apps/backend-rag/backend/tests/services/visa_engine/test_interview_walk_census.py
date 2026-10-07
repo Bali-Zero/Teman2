@@ -630,6 +630,9 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
         "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW_SEQ24,
     },
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[24]
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1202,6 +1205,9 @@ EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] 
         **_SEQ24_OUTCOME_CHANGES,
     },
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+EXPECTED_OUTCOME_BY_SEQUENCE[25] = EXPECTED_OUTCOME_BY_SEQUENCE[24]
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1256,6 +1262,9 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
         "SUPPORTED_CANDIDATES": 99,
     },
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE[25] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[24]
 
 #: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
 #: PR-5. A cure that moves walks between blocking facts instead of removing
@@ -1296,6 +1305,9 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
     # replay, reproduced on the signed tree.
     24: {"secondhome.passive_monthly_income_usd": 1},
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[25] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[24]
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1424,6 +1436,9 @@ STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
         }
     ),
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+STUDIO_HELD_WALKS_BY_SEQUENCE[25] = STUDIO_HELD_WALKS_BY_SEQUENCE[24]
 STUDIO_HELD_WALKS: frozenset[str] = STUDIO_HELD_WALKS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, frozenset())
 STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
 

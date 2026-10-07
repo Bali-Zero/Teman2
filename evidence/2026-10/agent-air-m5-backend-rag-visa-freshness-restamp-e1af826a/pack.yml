@@ -1,0 +1,152 @@
+# Gear-3 evidence pack — seq-25: the 18 OFFICIAL_PORTAL sources re-stamped from a read ledger,
+# signed, and ACTIVATED (seq-24 then seq-25) on 2026-10-07. Every receipt below is a command this
+# session executed on 2026-10-07 between 13:26Z and 13:55Z; nothing is narrated from memory.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-07 — restore the Visa Oracle and activate ("lancia sciami per attivare e rendere
+  tutto operativo"). seq-24 (owner-ruled 2026-09-27, owner-signed, never activated) activated first
+  because validate_activation anchors previous_payload_sha256 on the ACTIVE pack.
+mission: >-
+  Visa Oracle seq-25 — portal re-stamp from a ledger written during the reading; sign; two
+  activations; prove-live on every product.
+lanes:
+  - lane: seq25-readers
+    role: build
+    seat: >-
+      three Claude Sonnet 5 readers in parallel (reader-a: E31A-E31E; reader-b: E31F-E31J, D1;
+      reader-c: D2, D12, E30A, E30B, the two country lists, the press release, the Alih Status page)
+      plus two orchestrator spot-checks (E31B, VoA list). Each reader ran portal_read_receipt.py
+      once, read the saved text, and wrote one judgement line per record with a verbatim
+      checked_sentence verified by grep -F before writing.
+  - lane: seq25-fold-sign-activate
+    role: build
+    seat: this session (Claude Fable 5.1, owner-opened window) — fold, sign_pack on M5, ceremony.
+  - lane: seq25-prove-live
+    role: review
+    seat: backend-verifier (Claude Sonnet 5, read-only) — gold replay live vs offline, persona by persona.
+  - lane: seq25-council
+    role: review
+    seat: codex-gpt-5.6-sol (red-team, read-only sandbox) + agy-gemini-3.1-pro (constructive) on the staged patch — council-journal.jsonl.
+  - lane: seq25-ground-truth
+    role: ground_truth
+    seat: >-
+      the 18 served pages themselves (receipts carry URL, HTTP status, fetched_at, visible-text
+      sha256, saved text) — no notebook, no memory; the pack asserts no new regulatory figure.
+    nb: research/visa/2026-10-07-freshness-restamp-seq25/ (21 receipts, 18 judgements, 18 text files, disposition.json)
+    query_hash: "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
+    note: query_hash = the seq-25 payload_sha256 the ledger produced (fold is deterministic on the ledger).
+pii_scan: clean
+bites:
+  consumer: >-
+    production itself — the engine binds the DB-active pack per request, so the consumer of the
+    signed bundle is the activation that already happened (activation_id
+    d2752a16-cd3f-46f0-81f0-fe32dcc43c05, 2026-10-07T13:49Z) and the CI backend shard that runs
+    test_seq25_pack.py, the walk census and the review-hold inventory through the observer.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq25_signed.py
+  expect: "contains:inventory reads seq-25 and all three consumers green"
+decisions:
+  - id: D-chain
+    decision: >-
+      Anchor seq-25 on the SIGNED seq-24 and activate 24 then 25, rather than fold on seq-23 and
+      orphan the owner-signed seq-24. The off-repo pre-signed "seq-25 rollback of seq-24" bundle
+      named in fold_pack_seq24.py is superseded by construction (any rollback of seq-24 after
+      seq-25 is active must be a new sequence > 25); it was never inserted, nothing collides.
+  - id: D-stamp
+    decision: >-
+      verified_at is DERIVED (earliest successful fetched_at over all receipts, 13:32:18Z), never
+      typed; the fold refuses any ledger gap by record id. content_sha256 untouched (quotation
+      fingerprint; CSRF token makes fetch hashes unstable) — receipts now carry a visible-text
+      fingerprint so the next re-stamp has something to compare.
+  - id: D-changed
+    decision: >-
+      The eight "changed" reader verdicts (E31B/C/D/E/F/G/H/J offer a 1-or-2-year ITAS; pack models
+      1 year) were dispositioned by id as NOT page drift — identical on the 2026-08-30 pack — and
+      tracked as a product-modelling gap in PENDING-ARMS (owner decision: Bali Zero prices the
+      1-year dependent product).
+  - id: D-ceremony-before-merge
+    decision: >-
+      The ceremony ran BEFORE the bundle PR landed, as on 2026-09-06 (seq-20), because production
+      was mute on every product and the activation does not depend on the merge; the window is
+      closed by the signed-ties tests (committed bytes == activated digest 603f777e…9d11).
+receipts:
+  - claim: All 18 portal pages were fetched with a receipt written at request time; every receipt is a 200 with the key phrase found.
+    cmd: python3 -I backend/scripts/visa_engine/portal_read_receipt.py --pack …/rulepack-prod-024.signed.json --out-dir research/visa/2026-10-07-freshness-restamp-seq25 --reader {orchestrator,reader-a,reader-b,reader-c} --ids …
+    result: "21 receipts over 18 distinct records, all http=200 key_phrase_found=true; earliest fetched_at 2026-10-07T13:32:18Z, latest 13:35:13Z"
+    exit: 0
+    ts: "2026-10-07T13:35:13Z"
+    seat: three Sonnet 5 readers + this session (orchestrator spot-checks)
+  - claim: The fold derives the stamp from the ledger and chains to the signed seq-24.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.fold_pack_seq25 --seq24-source …/rulepack-prod-024.source.json --ledger-dir research/visa/2026-10-07-freshness-restamp-seq25 --output …/rulepack-prod-025.source.json
+    result: "seq-25 payload_sha256 = 603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11, chained to seq-24 5a569091…2272, 18 portal records re-stamped verified_at=2026-10-07T13:32:18Z (a first run at 13:37:5xZ was refused: created_at 13:38:00Z still in the future — the wall-clock guard works)"
+    exit: 0
+    ts: "2026-10-07T13:38:05Z"
+    seat: this session
+  - claim: The bundle was signed offline on M5 with the production key and verifies against the PUBLIC trust store after Prettier.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.sign_pack …/rulepack-prod-025.source.json --kid prod-2026-07-1 --key-file ~/.config/nuzantara/visa-signing/2026-07-prod-1.ed25519.pem --environment PRODUCTION --sequence 25 --output …/rulepack-prod-025.signed.json --i-know-this-is-production && prettier --write … && verify_rule_pack(StaticTrustStore.from_env())
+    result: "OK — signed and self-verified; signed_at 2026-10-07T13:39:07Z; verified seq 25 payload_sha256 603f777e…9d11 == source JCS digest 603f777e…9d11"
+    exit: 0
+    ts: "2026-10-07T13:39:07Z"
+    seat: this session
+  - claim: Every consumer of the highest signed pack is green with seq-25 on disk.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_seq25_pack.py backend/tests/scripts/visa_engine/test_portal_read_receipt.py backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/scripts/visa_engine/test_review_hold_inventory.py backend/tests/services/visa_engine/test_evaluator_gold.py backend/tests/scripts/visa_engine/test_gold_replay_driver.py backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_gold_replay_artifact.py backend/tests/scripts/visa_engine/test_gold_coverage_eval.py backend/tests/scripts/visa_engine/test_gold_coverage_replay.py -q
+    result: "154 passed, 14 skipped in 21.66s (M5, loadavg 9.5)"
+    exit: 0
+    ts: "2026-10-07T13:44:30Z"
+    seat: this session
+  - claim: The ceremony path to the PG primary works and both anti-rollback pre-gates pass before any write.
+    cmd: ceremony.sh dry — flyctl proxy 15433:5433 5683e090f3d228.vm.nuzantara-postgres.internal -a nuzantara-postgres (Pro); ssh -N -L 15433:127.0.0.1:15433 pro (M5); psql as postgres; activate_pack dry-run ×2
+    result: "postgres recovery=false db=nuzantara_rag; active before 23|2026.9.23|e5f791b5…2204; s24 'anti-rollback pre-gate passed … would_insert_and_activate=true'; s25 idem"
+    exit: 0
+    ts: "2026-10-07T13:48:38Z"
+    seat: this session
+  - claim: seq-24 then seq-25 are activated in production with two distinct ephemeral logins, and the ceremony leaves nothing behind.
+    cmd: ceremony.sh yes — CREATE ROLE visa_pack_writer_ceremony_261007 / visa_activation_ceremony_261007 (VALID UNTIL +3h, GRANT CONNECT); activate_pack --yes ×2; REVOKE CONNECT + DROP ROLE; pkill the Pro proxy
+    result: "seq-24 activation_id e1e01743-b290-4dee-9c45-08218e58a228; seq-25 activation_id d2752a16-cd3f-46f0-81f0-fe32dcc43c05; active after 25|2026.10.7|603f777e…9d11|d2752a16…; open activations 1; leftover ceremony roles 0; pro: no flyctl proxy left"
+    exit: 0
+    ts: "2026-10-07T13:49:26Z"
+    seat: this session
+  - claim: The freshness sentinel on Pro reads the new pack from the database and reports nothing stale.
+    cmd: ssh pro 'python3 scripts/visa_freshness_sentinel.py --dry-run'
+    result: "outcome OK, pack_sequence 25, pack_version 2026.10.7, pack_source database, portal_total 18, stale 0, approaching 0 (was STALE 18/18 at every run since 2026-10-02 01:43 WITA)"
+    exit: 0
+    ts: "2026-10-07T13:51:40Z"
+    seat: this session
+  - claim: Production answers again on every gold persona; no HUMAN_REVIEW_REQUIRED.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.gold_replay_driver --live --out …/gold-live-seq25.json
+    result: "20/20 HTTP 200 as synthetic_gold; pack sequence 25 rule_pack_id f10e5cee-9b96-55d4-8107-ea90561d8a87; states SUPPORTED_CANDIDATES 10 / NEEDS_INPUT 6 / NO_SUPPORTED_PATH 4 / HUMAN_REVIEW_REQUIRED 0; personas_match 17/20, unexplained_divergences 3"
+    exit: 1
+    ts: "2026-10-07T13:52:30Z"
+    seat: this session
+  - claim: The 3 gold divergences are corpus drift, not a production defect — live equals the signed pack offline on all 20.
+    cmd: gold_replay_driver --offline on rulepack-prod-025.signed.json, compared persona by persona with the live report (state, candidates, reason codes)
+    result: "live == offline on all 20; divergences = personas 1 (longer no_path code list), 9 and 10 (D12 SUPPORTED where gold expects DIRECT_ONSHORE_CONVERSION_UNSUPPORTED / STATUS_BRIDGING_REVIEW), all present offline too; no persona in HUMAN_REVIEW_REQUIRED live or offline"
+    exit: 0
+    ts: "2026-10-07T13:55:00Z"
+    seat: backend-verifier (Claude Sonnet 5, read-only)
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  titolari kimi-code/k3 and tp1-qwen3.8-max were QUOTA_DEAD at mission start (arsenal probe
+  injected at SessionStart 2026-10-07: "seat kimi: QUOTA_DEAD", "seat tp1-qwen3.8-max:
+  QUOTA_DEAD", "tp1-glm-5.2: QUOTA_DEAD"); codex-gpt-5.6-sol played as titolare and the
+  reserve agy-gemini-3.1-pro filled the second seat.
+dissent:
+  - seat: self-review (this session, not an independent refuter)
+    objection: >-
+      The reader rubric produced eight "changed" verdicts for a pre-existing superset (page offers
+      more than the pack models). The fold handles it honestly (named disposition by id), but a
+      rubric that distinguishes "page contradicts the pack" from "page exceeds the pack" at the
+      reader would make the disposition rarer.
+    status: PLAUSIBLE
+    note: carried — a note for the next re-stamp, not a condition on this head
+  - seat: self-review
+    objection: >-
+      The lane is still not an organ: nothing schedules the next read before 2026-11-08T13:32:18Z.
+      The sentinel is the only guard and its STALE key mutes on the dedup ladder (168h) — the exact
+      shape that just hid a six-day outage.
+    status: CONFIRMED
+    note: open — two PENDING-ARMS rows (re-attestation organ; sentinel re-alert on persistent STALE), not fixed here
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1

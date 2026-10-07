@@ -1817,3 +1817,35 @@ almost every transcript "guilty" — the false-positive flood would have buried 
 **Family: #4 (Secret/PII in the clear)** — cousin to W-numbers on the trigger hook's own secret
 hygiene: same family, but the payload here is CLIENT PII carried by the CONTENT of a diff, not a
 credential carried by a command string.
+
+## W141 — the portal stamps expired a second time, and the alert that existed was muted — 2026-10-07
+
+**TRAUMA:** the 18 `OFFICIAL_PORTAL` stamps of the active Visa Oracle pack
+(`verified_at 2026-08-30T13:18Z`, 32-day window from seq-18) crossed their boundary at
+2026-10-01T13:18Z. From the next request every product answered `HUMAN_REVIEW_REQUIRED`
+with an empty candidate list (`DECISIVE_SOURCE_STALE`) — "This needs a human, not an
+algorithm" on the public page — for six days, found only because Zero printed a result page
+to PDF and asked why. Second occurrence of the 2026-08-30 incident
+(`research/visa/2026-08-30-freshness-restamp-seq17-attestation.md`). The guard EXISTED and
+FIRED: `scripts/visa_freshness_sentinel.py` on Pro logged APPROACHING from 2026-09-29 and
+STALE from 2026-10-01. Nobody heard it: the Telegram bot token was 401-dead from 2026-09-22 to
+2026-10-06, so both first sends were lost, and once the token came back the key
+`visa-freshness:stale:23` was already on the gateway's dedup ladder (streak 4, 168h mute) —
+every later run logged `deduped`. The weekly re-attestation lane that seq-18's docstring
+named as the real fix was never an organ; seq-23 and seq-24 shipped without touching a stamp.
+
+**ANTIBODY:** the re-stamp is now mechanical and auditable, not a constant in a file:
+`portal_read_receipt.py` writes one receipt per fetch AT REQUEST TIME (URL, HTTP status,
+`fetched_at`, key phrase found, visible-text fingerprint, saved text); readers write
+judgements with a verbatim `checked_sentence`; `fold_pack_seq25.py` DERIVES `verified_at`
+(earliest successful read) and refuses every gap by record id. seq-25 active
+2026-10-07T13:49Z, next boundary 2026-11-08T13:32:18Z. Ceremony mechanics (primary machine id,
+superuser password source, two-login roles, M5 tunnel conflict) in
+`docs/runbooks/visa-engine-key-ceremony.md`.
+
+**GOTCHA:** (1) a PERSISTENT condition (STALE, every 6h, for days) must re-alert on a
+schedule; a dedup ladder built for flapping turns a standing outage into one lost message.
+(2) A deadline alarm whose delivery channel is dead is silence — the sentinel's own
+heartbeat read `error rc=1` for six days and no receptor turned that into a page. (3) A
+freshness window is a promise kept by nobody until the READ is scheduled; widening it (seq-18)
+only moved the date. Family #2 (Esiste≠Armato), with #8 (the channel flap) as the accomplice.
