@@ -49,8 +49,9 @@ what_changed: |
   scripts/localci/tests/test_isolation.py: observed() strips colour sequences before matching.
   scripts/localci/README.md: one paragraph on the hosted run and what a green job does and does not mean.
 proof: |
-  See receipts. Nothing in this change edits an existing workflow, the required set or branch protection, and
-  nothing posts a status. The job runs with contents read and no secret.
+  See receipts. The one existing workflow this change edits is main-push-failure-watch.yml, which gains the line
+  "localci tests" so a red run on main reaches the failure watcher (the gate's BLOCK, cured). Nothing edits the
+  required set or branch protection, and nothing posts a status. The job runs with contents read and no secret.
 bites:
   consumer: >-
     The "localci tests" job itself: it triggers on its own workflow file and on scripts/localci, so this pull
@@ -140,6 +141,11 @@ receipts:
     exit: 0
     ts: "2026-10-06T17:50:00Z"
     seat: claude-fable-5-1 on M5
+  - claim: After the gate's BLOCK is cured, the watcher-coverage check passes with all 129 live workflows covered, both workflow files are clean under actionlint, and the two test files give 50 passed.
+    cmd: python3 scripts/check_watcher_coverage.py ; actionlint .github/workflows/localci-tests.yml .github/workflows/main-push-failure-watch.yml ; python3.11 -m pytest scripts/localci/tests/test_skip_budget.py scripts/localci/tests/test_hosted_workflow.py -q
+    exit: 0
+    ts: "2026-10-07T01:33:00Z"
+    seat: claude-fable-5-1 on M5
 dissent:
   - seat: codex-gpt-6.1-sol
     objection: "BLOCKER, on the first draft. The budget judged skips only: with the hard tests deselected or never collected (PYTEST_ADDOPTS, -k, --ignore) pytest and the budget both exit 0, down to cases=1 executed=0 (reproduced)."
@@ -189,8 +195,12 @@ dissent:
     objection: "LOW, pass 2. pytest.toml, .pytest.toml and .pytest.ini are not real configuration names; and scripts/__init__.py is missing from the filter."
     status: CONFIRMED
     resolution: "Half confirmed, half refuted. scripts/__init__.py is now in both triggers and pinned by a test. The three names are real: pytest 9.1.1's findpaths.py lists them (receipt), so they stay."
+  - seat: claude-opus-5-5
+    objection: "BLOCK, final gate round 1 on 1b6cef8ecf. The new workflow carries push: branches: [main] but its name is missing from main-push-failure-watch.yml, so the repo's watcher-coverage check (green on main) goes red after merge and a red run of the job on main never reaches the failure watcher; the PR body and the pack did not mention it. Notices: the body still said draft and counted four runs, the floor comment called 331 the last proved count while later runs executed 332 and 335, and a space was lost at test_isolation.py:26."
+    status: CONFIRMED
+    resolution: "The job's name is added to the watcher's list (the one existing workflow this change now touches); check_watcher_coverage.py exits 0 with all 129 live workflows covered. The floor comment now dates the count, the space is back, the body and this pack are corrected. Gate round 2 reads the new head."
 owed:
-  - The final on-disk gate and the arming are HELD for the owner. The mission's resumed session told Zero at 16:01Z that this step is a new mandate waiting for his word, while this window had already built it from his "continua". The pull request stays a draft until he answers.
+  - Zero chose, through the mission's resumed session (AskUserQuestion answered 2026-10-07T01:19Z), that this window finishes the pull request. Gate round 1 on 1b6cef8ecf was BLOCK (watcher coverage), cured; round 2 reads the cured head before arming.
   - At merge, the mission ledger row written with pull request 7993 needs its hosted-job arm closed.
   - The job is not a required context, so a red informs and does not hold the merge queue. Making it bind is an edit of the required set, which is the operator's (spec §5.7).
   - The budget's arguments (allowance, requirements, floor) live in the workflow file, which is a hot zone. Any change to them is a Gear-3 change. A follow-up can move them to a file under scripts/localci and pass it with argparse's file prefix; not done here.

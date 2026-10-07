@@ -12,7 +12,8 @@ name: localci tests
 # a declared skip is bound to ONE test and counted (an undeclared skip is a red, and so is a
 # declared skip that no longer happens or one allowance covering two), the tests that prove
 # containment, the seal and the state machine must have EXECUTED (a deselected or skipped one is
-# a red), and at least 331 cases must execute (the last proved hosted count).
+# a red), and at least 331 cases must execute (the hosted count proved on 2026-10-06 when the floor
+# was set; later runs executed more, and the floor is raised by hand).
 # Junit omits deselected and never-collected tests: an omitted test with no --require can
 # still pass if other executed cases keep the count at or above the floor.
 #

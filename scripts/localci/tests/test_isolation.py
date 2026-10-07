@@ -23,7 +23,7 @@ from scripts.localci import pysa_check as pc
 pytestmark = pytest.mark.usefixtures("fake_env")
 IMAGE = fr.ISOLATION_IMAGE
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
-needs_docker =pytest.mark.skipif(not fr.docker_image_ready(), reason=f"docker image {IMAGE} unavailable — containment is proven live on Pro, not here")
+needs_docker = pytest.mark.skipif(not fr.docker_image_ready(), reason=f"docker image {IMAGE} unavailable — containment is proven live on Pro, not here")
 
 
 def events(fx) -> list[dict]:

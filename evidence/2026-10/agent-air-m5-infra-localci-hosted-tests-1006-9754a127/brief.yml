@@ -12,7 +12,7 @@ objective: >-
   runs scripts/localci/tests on GitHub-hosted metal, with the tests that usually skip (containment, state
   machine) actually executing, and with any undeclared skip turning the job red.
 constraints:
-  - The required set is not edited; no existing workflow is edited; the new job is not a required context.
+  - The required set is not edited; the only existing workflow touched is the main-push failure watcher, which gains the new job's name; the new job is not a required context.
   - The job reads the repository only (permissions contents read); no secret, no status post, no runner registered.
   - A skipped test is never counted as evidence; a declared skip is named in the workflow file, in one place.
   - No paid per-token API is used.
