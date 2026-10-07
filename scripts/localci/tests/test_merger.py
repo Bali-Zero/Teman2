@@ -246,20 +246,99 @@ def test_a_status_that_failed_or_is_not_bound_to_this_run_lends_no_verdict(world
     assert (d["overall"], d["contexts"]) == ("ERROR", {}) and d["error"]
 
 
-def test_host_git_config_never_reaches_the_candidate(world, monkeypatch, tmp_path):
+@pytest.mark.parametrize("scope", ["global-file", "env-scope", "env-parameters"])
+def test_host_git_config_never_reaches_the_candidate(world, monkeypatch, tmp_path, scope):
     marker = tmp_path / "HOST_FILTER_RAN"
-    evil = tmp_path / "evil.gitconfig"
-    evil.write_text(f'[filter "evil"]\n\tsmudge = sh -c "touch {marker}; cat"\n\tclean = sh -c "touch {marker}; cat"\n'
-                    f'[merge "evil"]\n\tdriver = sh -c "touch {marker}; false"\n')
+    hook = tmp_path / "evil.sh"
+    hook.write_text(f"#!/bin/sh\ntouch {marker}\ncat\n")
+    hook.chmod(0o755)
+    config = {"filter.evil.smudge": str(hook), "filter.evil.clean": str(hook), "filter.evil.required": "true", "merge.evil.driver": f"{hook} %O %A %B"}
+    if scope == "global-file":
+        evil = tmp_path / "evil.gitconfig"
+        evil.write_text('[filter "evil"]\n' + "".join(f"\t{k.split('.')[-1]} = {v}\n" for k, v in config.items() if k.startswith("filter."))
+                        + f'[merge "evil"]\n\tdriver = {config["merge.evil.driver"]}\n')
+        monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(evil))
+    elif scope == "env-parameters":   # the form `git -c` hands to its children
+        monkeypatch.setenv("GIT_CONFIG_PARAMETERS", " ".join(f"'{k}'='{v}'" for k, v in config.items()))
+    else:
+        monkeypatch.setenv("GIT_CONFIG_COUNT", str(len(config)))
+        for i, (k, v) in enumerate(config.items()):
+            monkeypatch.setenv(f"GIT_CONFIG_KEY_{i}", k)
+            monkeypatch.setenv(f"GIT_CONFIG_VALUE_{i}", v)
     src = world.state.parent / "src"
     g(src, "checkout", "-q", "-b", "pr6", world.base)
     head6 = commit(src, {".gitattributes": "* filter=evil merge=evil\n", "f.txt": "x\n"}, "attributes that name a host filter")
     g(world.origin, "fetch", "-q", str(src), "+pr6:refs/pull/6/head")
-    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(evil))
+    subprocess.run(["git", "-C", str(src), "-c", f"filter.evil.smudge={hook}", "show", "HEAD:f.txt"], check=True, capture_output=True, env=GIT_ENV)
+    assert not marker.exists()   # `show` filters nothing: the probe itself leaves no marker
+    subprocess.run(["sh", str(hook)], input="", text=True, check=True)
+    assert marker.exists()       # ...and the planted filter does run when invoked: the guilt below can go red
+    marker.unlink()
     world.gh.prs = [pr(6, head6)]
     assert world.tick() == 0
     assert not marker.exists() and [r["overall"] for r in world.journal() if r["kind"] == "decision"] == ["BLOCKED"]
-    assert all(c["env"]["GIT_CONFIG_GLOBAL"] == "/dev/null" and c["env"]["GIT_CONFIG_NOSYSTEM"] == "1" for c in world.runner.calls)
+    for c in world.runner.calls:
+        assert (c["env"]["GIT_CONFIG_GLOBAL"], c["env"]["GIT_CONFIG_NOSYSTEM"], c["env"]["GIT_CONFIG_KEY_0"]) == ("/dev/null", "1", "core.hooksPath")
+
+
+
+def test_a_mirror_local_fsmonitor_never_runs_during_the_merge(world, tmp_path):
+    marker = tmp_path / "FSMONITOR_RAN"
+    hook = tmp_path / "fsmon.sh"
+    hook.write_text(f"#!/bin/sh\ntouch {marker}\n")
+    hook.chmod(0o755)
+    probe = tmp_path / "probe"
+    probe.mkdir()
+    g(probe, "init", "-q")
+    subprocess.run(["git", "-C", str(probe), "-c", f"core.fsmonitor={hook}", "status"], capture_output=True, env=GIT_ENV)
+    assert marker.exists()   # the planted monitor does run on an index refresh: the guilt below can go red
+    marker.unlink()
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0   # the first tick creates the mirror
+    g(world.state / "repo.git", "config", "core.fsmonitor", str(hook))
+    src = world.state.parent / "src"
+    g(src, "checkout", "-q", "-b", "pr7", world.base)
+    head7 = commit(src, {"g.txt": "y\n"}, "second")
+    g(world.origin, "fetch", "-q", str(src), "+pr7:refs/pull/7/head")
+    world.gh.prs = [pr(7, head7)]
+    assert world.tick() == 0
+    assert not marker.exists() and [r["pr"] for r in world.journal() if r["kind"] == "decision"] == [1, 7]
+
+
+def test_host_attributes_never_rewrite_the_candidate_the_runner_sees(world, monkeypatch, tmp_path):
+    xdg = tmp_path / "xdg"
+    (xdg / "git").mkdir(parents=True)
+    (xdg / "git" / "attributes").write_text("* text eol=crlf\n")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg))
+    probe = tmp_path / "probe"
+    probe.mkdir()
+    g(probe, "init", "-q")
+    commit(probe, {"h.txt": "a\nb\n"}, "lf")
+    (probe / "h.txt").unlink()
+    subprocess.run(["git", "-C", str(probe), "checkout", "--", "h.txt"], check=True, env={**GIT_ENV, "XDG_CONFIG_HOME": str(xdg)})
+    assert (probe / "h.txt").read_bytes() == b"a\r\nb\r\n"   # the host file does rewrite a checkout: the guilt below can go red
+    src = world.state.parent / "src"
+    g(src, "checkout", "-q", "-b", "pr8", world.base)
+    head8 = commit(src, {"h.txt": "a\nb\n"}, "lf file")
+    g(world.origin, "fetch", "-q", str(src), "+pr8:refs/pull/8/head")
+    seen, inner = {}, mg.runner_exec
+
+    def spy(argv, cwd, env, timeout):
+        if "--worktree" in argv:
+            seen["h"] = (Path(argv[argv.index("--worktree") + 1]) / "h.txt").read_bytes()
+        return inner(argv, cwd, env, timeout)
+    monkeypatch.setattr(mg, "runner_exec", spy)
+    world.gh.prs = [pr(8, head8)]
+    assert world.tick() == 0 and seen["h"] == b"a\nb\n"
+
+def test_a_caller_git_dir_or_index_never_redirects_the_merger(world, monkeypatch, tmp_path):
+    decoy = tmp_path / "decoy.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(decoy)], check=True, env=GIT_ENV)
+    monkeypatch.setenv("GIT_DIR", str(decoy))
+    monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path / "decoy.index"))
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0
+    assert [r["overall"] for r in world.journal() if r["kind"] == "decision"] == ["BLOCKED"] and not (tmp_path / "decoy.index").exists()
 
 
 def test_a_recycled_pid_is_not_the_holder(world):
@@ -383,6 +462,15 @@ def test_a_failed_github_read_is_an_error_line_and_the_lease_is_released(world, 
     assert not (world.state / "lease.json").exists()
 
 
+def test_a_missing_gh_is_an_error_line_not_a_traceback(world, monkeypatch):
+    def no_gh(path):
+        raise FileNotFoundError(2, "No such file or directory", "gh")
+    monkeypatch.setattr(mg.hc, "gh_get", no_gh)
+    assert world.tick() == 1
+    assert [r["kind"] for r in world.journal()] == ["error"] and "gh" in world.journal()[0]["error"]
+    assert not (world.state / "lease.json").exists()
+
+
 def test_a_runner_plan_failure_is_an_error_decision_never_a_verdict(world, monkeypatch):
     monkeypatch.setattr(mg, "runner_exec", FakeRunner(plan_rc=1))
     world.gh.prs = [pr(1, world.head1)]
@@ -411,3 +499,64 @@ def test_merge_refuses_with_exit_2_whatever_it_is_given(capsys):
 def test_selftest_passes(capsys):
     assert mg.main(["--selftest"]) == 0
     assert "FAIL" not in capsys.readouterr().out
+
+
+def test_a_filesystem_error_after_a_pr_is_picked_is_an_error_decision_not_a_retry_loop(world, monkeypatch):
+    def broken(*a, **kw):
+        raise PermissionError(13, "Permission denied", "cand")
+    monkeypatch.setattr(mg, "fresh_worktree", broken)
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 1 and world.tick() == 0
+    assert [(r["kind"], r.get("overall")) for r in world.journal()] == [("decision", "ERROR")]
+
+
+WRAPPER = _MODULE.parent / "localci_merger_tick.sh"
+
+
+def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    g(src, "init", "-q", "-b", "main")
+    commit(src, {"scripts/localci/merger.py": "v1\n", "scripts/localci/hosted_compare.py": "hc\n"}, "v1")
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True, env=GIT_ENV)
+    fake_py = tmp_path / "py"
+    fake_py.write_text('#!/bin/sh\necho "$@" > "$OUT_ARGS"\ncat "$2" > "$OUT_CODE"\n')
+    fake_py.chmod(0o755)
+    state = tmp_path / "state"
+    env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "MERGER_PYTHON": str(fake_py), "MERGER_NODE": "n1", "MERGER_STATE_DIR": str(state),
+           "MERGER_SEED": str(origin), "MERGER_REMOTE_URL": str(origin), "OUT_ARGS": str(tmp_path / "args"), "OUT_CODE": str(tmp_path / "code"),
+           "GIT_DIR": str(tmp_path / "decoy"), "GIT_CONFIG_PARAMETERS": "'core.hooksPath'='/nowhere'"}
+
+    def wrap():
+        return subprocess.run(["bash", str(WRAPPER)], env=env, capture_output=True, text=True)
+    first = wrap()
+    assert first.returncode == 0, first.stderr
+    assert (tmp_path / "code").read_text() == "v1\n"
+    assert (tmp_path / "args").read_text().split() == ["-I", (tmp_path / "args").read_text().split()[1], "tick", "--node", "n1",
+                                                       "--state-dir", str(state), "--python", str(fake_py)]
+    commit(src, {"scripts/localci/merger.py": "v2\n"}, "v2")
+    g(src, "push", "-q", str(origin), "main")
+    assert wrap().returncode == 0 and (tmp_path / "code").read_text() == "v2\n"
+    origin.rename(tmp_path / "gone.git")
+    dead = wrap()
+    assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2\n"
+    assert heartbeat(tmp_path)["status"] == "ok"
+
+
+def heartbeat(home):
+    return json.loads((home / ".organism" / "last_seen" / "pro.localci_merger.json").read_text())
+
+
+def test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch(tmp_path):
+    fake_py = tmp_path / "py"
+    fake_py.write_text('#!/bin/sh\ntouch "$OUT_RAN"\nexit 1\n')
+    fake_py.chmod(0o755)
+    env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "MERGER_PYTHON": str(fake_py), "MERGER_NODE": "n1",
+           "MERGER_STATE_DIR": str(tmp_path / "state"), "MERGER_SEED": str(tmp_path / "no-seed.git"), "OUT_RAN": str(tmp_path / "ran")}
+    off = subprocess.run(["bash", str(WRAPPER)], env={**env, "LOCALCI_MERGER_ENABLED": "false"}, capture_output=True, text=True)
+    assert off.returncode == 0 and heartbeat(tmp_path)["status"] == "disabled" and not (tmp_path / "state").exists()
+    no_mirror = subprocess.run(["bash", str(WRAPPER)], env=env, capture_output=True, text=True)
+    assert no_mirror.returncode != 0 and heartbeat(tmp_path)["status"] == "error" and not (tmp_path / "ran").exists()
+    no_python = subprocess.run(["bash", str(WRAPPER)], env={k: v for k, v in env.items() if k != "MERGER_PYTHON"}, capture_output=True, text=True)
+    assert no_python.returncode != 0 and heartbeat(tmp_path)["status"] == "error"

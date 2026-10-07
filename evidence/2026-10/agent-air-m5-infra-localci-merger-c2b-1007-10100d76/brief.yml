@@ -1,0 +1,77 @@
+task_id: localci-merger-c2b-1007
+mission: LOCALCI-SOVEREIGN
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Declared by the mandate: phase D's instrument of the plan that moves the merge decision off GitHub onto Pro. The
+  report is the number the operator reads before flipping GitHub's merge queue off (phase E: 0 FALSE_GREEN over >= 50
+  merges or 14 days), so a report that can print zero when a false green happened would make the flip unsafe. The diff
+  flips nothing: shadow mode, GETs only, a launchd tick that journals.
+l_level: L2
+gate_class: opus
+objective: >-
+  Ship PR-C2 of phase C/D of docs/specs/localci-sovereign-2026-10-07.md: `merger.py report`, which joins every journalled
+  decision with what GitHub did with that head and sums hosted_compare's per-context classes as the phase-D instrument,
+  plus the launchd schedule on Pro (wrapper + plist, StartInterval, no KeepAlive) and the eight notices of PR #8017's
+  gate.
+constraints:
+  - SHADOW only — no merge, no POST, no label, no comment; every GitHub call of the report is a GET through hosted_compare.gh_get.
+  - runner.py, contexts_matrix.yaml and hosted_compare.py are not edited (the sibling phase-A lane owns them); no .github edit; no branch-protection call; no paid API; no token printed.
+  - The scheduled tick runs merger.py as committed on origin/main, never a working-tree copy (superscar #1); StartInterval and no KeepAlive (superscar #7).
+  - Built from a fresh origin/main after PR-C1 (#8017) merged; nothing pushed to C1's branch.
+acceptance:
+  - text: WHEN a decision's gate said OK on a context GitHub had red, the report SHALL count a FALSE_GREEN and exit 1, at the decision and at the context level.
+    probe: scripts/localci/tests/test_merger_report.py::test_a_pass_on_a_head_github_closed_red_is_a_false_green_at_both_levels_and_exits_1
+  - text: WHEN a decision line recorded a FALSE_GREEN at tick time, the report SHALL count it even if GitHub has since turned green or stopped requiring the context.
+    probe: scripts/localci/tests/test_merger_report.py::test_a_false_green_seen_at_tick_time_is_never_erased_by_a_later_green
+  - text: WHEN the queue merged the decided head on the decided base, the report SHALL compare on merge_commit_sha.
+    probe: scripts/localci/tests/test_merger_report.py::test_a_merged_head_is_compared_per_context_with_the_queue_commit_not_the_head
+  - text: WHEN the merge commit's parent is another base than the decision's, the report SHALL compare on the head.
+    probe: scripts/localci/tests/test_merger_report.py::test_the_queue_commit_judges_only_a_decision_on_the_base_it_was_built_on
+  - text: WHEN a PR merged at another head or its gate had no usable contexts file, it SHALL NOT count toward phase E's merges.
+    probe: scripts/localci/tests/test_merger_report.py::test_a_merge_at_another_head_or_without_a_usable_gate_is_not_a_compared_merge
+  - text: WHEN an input is unusable (torn journal line, state dir or decision of another repo, merged PR without merge sha, bad --since), the report SHALL exit 2 and count nothing.
+    probe: scripts/localci/tests/test_merger_report.py::test_unusable_inputs_are_refused_never_counted
+  - text: WHEN a GitHub read fails, the report SHALL exit 2 and count nothing.
+    probe: scripts/localci/tests/test_merger_report.py::test_an_unusable_github_read_is_refused_never_counted
+  - text: WHEN the report reads GitHub, it SHALL use GETs only, one per PR.
+    probe: scripts/localci/tests/test_merger_report.py::test_the_report_reads_github_only_through_gets
+  - text: WHEN launchd ticks, the wrapper SHALL run the merger as committed on origin/main at one resolved sha, drop every inherited GIT_* variable and survive a dead remote.
+    probe: scripts/localci/tests/test_merger.py::test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote
+  - text: WHEN gh or git is missing, the tick SHALL journal an error line, never a traceback.
+    probe: scripts/localci/tests/test_merger.py::test_a_missing_gh_is_an_error_line_not_a_traceback
+  - text: WHEN a filesystem error hits after a PR is picked, the tick SHALL journal an ERROR decision for that key, never a retry loop.
+    probe: scripts/localci/tests/test_merger.py::test_a_filesystem_error_after_a_pr_is_picked_is_an_error_decision_not_a_retry_loop
+  - text: WHEN host or caller git config (global file, GIT_CONFIG_COUNT, GIT_CONFIG_PARAMETERS) names a filter or merge driver, it SHALL NOT run on the candidate.
+    probe: scripts/localci/tests/test_merger.py::test_host_git_config_never_reaches_the_candidate
+  - text: WHEN the caller exports GIT_DIR or GIT_INDEX_FILE, the merger SHALL NOT be redirected.
+    probe: scripts/localci/tests/test_merger.py::test_a_caller_git_dir_or_index_never_redirects_the_merger
+  - text: WHEN the mirror's own config names a core.fsmonitor, it SHALL NOT run during the merge.
+    probe: scripts/localci/tests/test_merger.py::test_a_mirror_local_fsmonitor_never_runs_during_the_merge
+  - text: WHEN a host attributes file sets eol=crlf, the candidate the runner sees SHALL be unchanged.
+    probe: scripts/localci/tests/test_merger.py::test_host_attributes_never_rewrite_the_candidate_the_runner_sees
+  - text: WHEN the organ conformance gate scans the plist, it SHALL find every gene (registry entry, heartbeat, kill switch) and no regression.
+    probe: python3 infra/organ-conformance/check_organ_conformance.py
+  - text: WHEN the wrapper exits by any path (ok, failure before Python, missing configuration, kill switch), it SHALL leave the heartbeat with that verdict, and LOCALCI_MERGER_ENABLED=false SHALL stop it before any git.
+    probe: scripts/localci/tests/test_merger.py::test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch
+  - text: WHEN the plist is loaded on Pro, launchd SHALL run a tick that journals a decision line, and the report SHALL read the live journal.
+    probe: "launchctl print gui/$(id -u)/com.balizero.localci-merger"
+assumptions:
+  - text: The merge commit of a queue-merged PR carries the queue's merge_group runs.
+    status: verified
+    note: "Measured 2026-10-07T11:00:41Z on #8012 → merge_commit_sha 56c6f70d86d3: merge_group 18, push 9, workflow_run 13 runs on that sha."
+    probe: >-
+      gh api "repos/Bali-Zero/Teman2/actions/runs?head_sha=$(gh api repos/Bali-Zero/Teman2/pulls/8012 --jq .merge_commit_sha)&per_page=100"
+      --jq '[.workflow_runs[] | .event] | group_by(.) | map({(.[0]): length}) | add'
+  - text: The bare mirror fetches anonymously with host git config isolated.
+    status: verified
+    note: "Bali-Zero/Teman2 is public (gh api repos/Bali-Zero/Teman2 --jq .private → false); the launchd tick fetched under GIT_CONFIG_GLOBAL=/dev/null."
+    probe: launchd tick of 2026-10-07T10:56:16Z, code=147893328732
+consumer_map:
+  - The Pro launchd job com.balizero.localci-merger — it runs the tick every 600 s and appends to ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl.
+  - The phase E decision (operator) — it reads `merger.py report`; the criterion line is printed by the report.
+  - The organism sentinel — registry organ pro.localci_merger, fed by the heartbeat ~/.organism/last_seen/pro.localci_merger.json.
+  - scripts/lint_home_fork.py --check on Pro — the declared pair ~/.nuzantara-cron/localci_merger_tick.sh ↔ scripts/localci/localci_merger_tick.sh.
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1

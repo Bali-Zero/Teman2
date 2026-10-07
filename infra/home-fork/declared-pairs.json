@@ -2,6 +2,12 @@
   "_doc": "Declared HOME-executed script copies and their git-tracked twins (superscar #1 HOME-fork drift). Consumed by scripts/lint_home_fork.py --check (sha256 live vs repo) and --discover (a HOME-executed payload NOT listed here and NOT allow-matched is an UNDECLARED finding). Overlapping SSOT note: scripts/proprioception.py DEFAULT_REGISTRY 'home_fork_scripts' declares its own pairs — lint_home_fork.py merges them at runtime (best-effort import) so the two lists cannot silently drift; add NEW pairs HERE. Paths use ~ (expanded per-machine: balizero on M5, nuzantara on Pro/Mini). 'machines': m5|pro|mini|all.",
   "pairs": [
     {
+      "live": "~/.nuzantara-cron/localci_merger_tick.sh",
+      "repo": "scripts/localci/localci_merger_tick.sh",
+      "machines": ["pro"],
+      "_note": "launchd organ pro.localci_merger (com.balizero.localci-merger): the LOCALCI-SOVEREIGN shadow merger tick; the plist runs this copy, which runs merger.py from origin/main."
+    },
+    {
       "live": "~/.fly/bin/fly_pg_tunnel_supervisor.sh",
       "repo": "scripts/fly_pg_tunnel_supervisor.sh",
       "machines": ["m5"],
