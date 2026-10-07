@@ -35,7 +35,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-RUNNER_VERSION = "0.4.0"
+RUNNER_VERSION = "0.5.0"
 STATUSES = ("QUEUED", "RUNNING", "PASS", "FAIL", "ERROR", "BLOCKED", "STALE", "INTERRUPTED", "NOT_APPLICABLE")
 BLOCKING = {"ERROR", "BLOCKED", "STALE", "RUNNING", "QUEUED", "INTERRUPTED"}
 EXECUTABLE = ("pytest", "trusted_pytest", "cmd", "trusted_steps", "contained_steps")
@@ -365,6 +365,7 @@ IMPLICIT_USES = ("actions/checkout@", "actions/setup-python@")   # stood in for 
 STEPS_DRIVER = Path(__file__).with_name("steps_driver.py")
 # What a contained step sees of GitHub: the merge_group event (the build whose verdict lands on main), and an offline pip.
 CONTAINED_STEP_ENV = {"CI": "true", "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "merge_group", "GITHUB_WORKSPACE": "/w",
+                      "HOME": "/home/runner", "SHELL": "/bin/bash", "PIP_FIND_LINKS": "/opt/wheels",
                       "RUNNER_TEMP": "/tmp/runner-temp", "PIP_NO_INDEX": "1", "PIP_DISABLE_PIP_VERSION_CHECK": "1"}
 
 
@@ -380,12 +381,26 @@ def _step_cwd(ws: dict, run_defaults: dict) -> str:
     return "." if wd in (".", "./") else safe_tree_path(str(wd).rstrip("/"))
 
 
-def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None = None) -> tuple[list | None, str | None]:
+HOSTED_RUNNERS = ("ubuntu-latest", "ubuntu-24.04")   # what the host tools and candidate.Dockerfile stand in for
+
+
+def written_reason(v) -> str | None:
+    """A not-applicable reason is a string with something legible in it: a flag, a list or a blank (zero-width included) is not."""
+    return v.strip() if isinstance(v, str) and any(ch.isalnum() for ch in v) else None
+
+
+def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None = None,
+                  wf_env: dict | None = None) -> tuple[list | None, str | None]:
     """Account for EVERY step of the BASE workflow job, in matrix order: a transcribed `argv`, the BASE `run:` body verbatim (written
     to a script file and run with GitHub's shell template), or `not_applicable` with a reason. A step the matrix does not name, a
     `not_run` step, duplicate step names, or an expression the runner does not evaluate makes the context BLOCKED — the local verdict
     never covers less than the job and still calls itself the job's. A step's `if:` is recorded, not evaluated: running a step
-    GitHub might skip can only add red, never hide it."""
+    GitHub might skip can only add red, never hide it. Env merges as GitHub does: workflow, job, step, then the matrix's overrides;
+    a job that runs in its own `container:`, beside `services:`, or on another runner image is not emulated."""
+    runs_on = job.get("runs-on")
+    runs_on = runs_on[0] if isinstance(runs_on, list) and len(runs_on) == 1 else runs_on   # `[ubuntu-latest]` is one label
+    if (shape := [k for k in ("container", "services") if k in job]) or runs_on not in HOSTED_RUNNERS:
+        return None, f"BASE job shape not emulated: {shape or ''} runs-on={job.get('runs-on')!r} (the sandbox stands in for {HOSTED_RUNNERS})"
     wsteps = [s for s in (job.get("steps") or []) if isinstance(s, dict)]
     names = [s["name"] for s in wsteps if isinstance(s.get("name"), str)]
     if (dups := sorted({n for n in names if names.count(n) > 1})):
@@ -408,10 +423,12 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
         if st.get("not_run"):
             not_run.append(f"{wname!r}: {st['not_run']}")
             continue
-        if st.get("not_applicable"):
-            out.append({"name": wname, "not_applicable": str(st["not_applicable"])})
+        if "not_applicable" in st:
+            if (reason := written_reason(st["not_applicable"])) is None:
+                return None, f"matrix step {wname!r}: not_applicable needs a written reason, got {st['not_applicable']!r}"
+            out.append({"name": wname, "not_applicable": reason})
             continue
-        env = {k: str(v) for k, v in {**(job.get("env") or {}), **(ws.get("env") or {})}.items()}
+        env = {k: str(v) for k, v in {**(wf_env or {}), **(job.get("env") or {}), **(ws.get("env") or {})}.items()}
         env.update({k: base if v == "$BASE_SHA" else str(v) for k, v in (st.get("env") or {}).items()})
         step = {"name": wname}
         if st.get("argv"):
@@ -429,6 +446,8 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
             return None, f"workflow step {wname!r}: working-directory {e}"
         if ws.get("if") is not None:
             step["if_not_evaluated"] = str(ws["if"])
+        if st.get("trusted_scan") is False:   # a path filter (`case` list, `git diff -- <paths>`) names surfaces, not judges
+            step["trusted_scan"] = False
         out.append(step)
     unmapped = [s.get("name") or s.get("uses") or "<unnamed step>" for s in wsteps
                 if s.get("name") not in seen and not str(s.get("uses", "")).startswith(IMPLICIT_USES)]
@@ -436,15 +455,59 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
     return (None, why) if why else (out, None)
 
 
-def python_pin_mismatch(job: dict, have: str | None) -> str | None:
-    """actions/setup-python is stood in for by the interpreter the steps run under: its pinned version must be that one's."""
-    for s in job.get("steps") or []:
-        if isinstance(s, dict) and str(s.get("uses", "")).startswith("actions/setup-python@"):
-            want = str(((s.get("with") or {}).get("python-version")) or "")
-            parts = [p for p in want.split(".") if p not in ("x", "*")]
-            if not want or not have or (have.split(".")[:len(parts)] != parts):
-                return f"BASE setup-python pins python-version {want!r}, the interpreter here is {have!r}"
-    return None
+def named_scripts(wt: Path, base: str, steps: list) -> list:
+    """Every .py/.sh file at BASE that a step names outright, and every .py/.sh under a directory it names with a trailing slash
+    (`pytest infra/organ-conformance/`): the judges a context's own workflow runs, taken from BASE. Comment lines are not read, nor
+    steps the matrix marks `trusted_scan: false` (path sentinels, whose path lists name the surfaces under test, not judges)."""
+    listing = git(wt, "ls-tree", "-r", "--name-only", base).splitlines()
+    text = "\n".join(ln for s in steps if s.get("trusted_scan") is not False
+                     for ln in ((s.get("script") or "") + "\n" + " ".join(s.get("argv") or [])).splitlines() if not ln.lstrip().startswith("#"))
+    toks = set(re.findall(r"[A-Za-z0-9_][A-Za-z0-9_./-]*", text))
+    scripts = [f for f in listing if f.endswith((".py", ".sh"))]
+    named = {f for f in scripts if f in toks}
+    for d in (t for t in toks if t.endswith("/") and t.count("/") >= 2):   # `infra/organ-conformance/`, never a bare `scripts/`
+        named |= {f for f in scripts if f.startswith(d)}
+    return sorted(named)
+
+
+def select_python(job: dict, have: str | None, extra: dict | None = None) -> tuple[str | None, str | None]:
+    """actions/setup-python is stood in for by the interpreter the steps run under: its pin must name the default one ("" = no PATH
+    change) or one of the image's extra interpreters (`LOCALCI_PYTHONS`, full versions; its bin dir goes first on PATH, as
+    setup-python does). A pin without a minor ("3", "3.x": hosted takes the newest), an absent pin (hosted reads a version file) or a
+    second setup-python step (an interpreter switch mid-job) is not emulated. (prefix, None) or (None, why)."""
+    pins = [s for s in job.get("steps") or [] if isinstance(s, dict) and str(s.get("uses", "")).startswith("actions/setup-python@")]
+    if len(pins) > 1:
+        return None, f"BASE job runs actions/setup-python {len(pins)} times: an interpreter switch mid-job is not emulated"
+    if not pins:
+        return "", None
+    want = str(((pins[0].get("with") or {}).get("python-version")) or "")
+    parts = [p for p in want.split(".") if p not in ("x", "*")]
+    if len(parts) >= 2 and all(p.isdigit() for p in parts):
+        if have and have.split(".")[:len(parts)] == parts:
+            return "", None
+        if (hit := next((d for v, d in sorted((extra or {}).items()) if v.split(".")[:len(parts)] == parts), None)):
+            return hit, None
+    return None, f"BASE setup-python pins python-version {want!r}, the interpreters here are {[have, *sorted(extra or {})]!r}"
+
+
+HISTORY_MAX_FILES = 3000
+
+
+def history_delta(wt: Path, base: str, cand: str) -> dict | str:
+    """What the sandbox needs to rebuild BASE as a commit under the candidate's: the paths the candidate added, and the BASE mode and
+    blob of every path it modified, deleted or retyped. Inside, `main` and `origin/main` are that BASE commit (see steps_driver)."""
+    raw = subprocess.run(["git", "-C", str(wt), "diff", "--raw", "--no-abbrev", "--no-renames", "-z", base, cand], capture_output=True, check=True).stdout.decode()
+    fields, added, olds = raw.split("\0"), [], []
+    for meta, rel in zip(fields[0::2], fields[1::2]):
+        old_mode, _new_mode, old_oid, _new_oid, status = meta.lstrip(":").split(" ")
+        if "160000" in (old_mode, _new_mode):
+            return f"the candidate changes the submodule pointer {rel!r}: the sandbox tree carries no gitlinks, BASE is not rebuilt"
+        if "\n" in rel:
+            return f"the changed path {rel!r} holds a newline: BASE is not rebuilt inside the sandbox"
+        (added if status == "A" else olds).append(safe_tree_path(rel) if status == "A" else [safe_tree_path(rel), old_mode, old_oid])
+    if len(added) + len(olds) > HISTORY_MAX_FILES:
+        return f"the diff touches {len(added) + len(olds)} paths (> {HISTORY_MAX_FILES}): BASE is not rebuilt inside the sandbox"
+    return {"added": added, "base": olds}
 
 
 def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str, ctx: dict, trusted_sha: dict, changed: list,
@@ -465,20 +528,26 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
             raise TypeError("job is not a mapping")
     except Exception as e:  # noqa: BLE001 — an unreadable BASE workflow is no plan, never a guess
         return _blocked(f"BASE workflow {wf} job {ctx.get('job_id')!r} unreadable at {base[:12]}: {type(e).__name__}")
-    steps, why = resolve_steps(job, local, base, ((doc.get("defaults") or {}).get("run")) or {})
-    if why or (why := python_pin_mismatch(job, pyv.get(where))):
-        return _blocked(why)
+    steps, why = resolve_steps(job, local, base if where == "host" else "main", ((doc.get("defaults") or {}).get("run")) or {}, doc.get("env") or {})
+    prefix, why2 = select_python(job, pyv.get(where), pyv.get("container_extra") if where == "container" else None)
+    if why or why2:
+        return _blocked(why or why2)
     try:
         files = [safe_tree_path(str(f)) for f in local.get("trusted_files") or []]
     except RuntimeError as e:
         return _blocked(f"trusted_files: {e}")
+    if local.get("trusted_from_steps"):
+        files += [f for f in named_scripts(wt, base, steps) if f not in files]
     blobs = {f: _extract_base_file(wt, base, f) for f in files}
     if (missing := [f for f, b in blobs.items() if b is None]):
         return _blocked(f"trusted file(s) {missing} missing at base {base[:12]} — the candidate would supply its own judge")
-    modified = [f for f in [*files, str(wf)] if _extract_base_file(wt, cand, f) != (blobs.get(f) if f in blobs else _extract_base_file(wt, base, f))]
+    judged = [*files, str(wf)]   # mode and object: a judge turned into a symlink or an executable is a rewritten judge
+    modified = [f for f, a, b in zip(judged, tree_entries(wt, base, judged), tree_entries(wt, cand, judged)) if a != b]
     if where == "container":   # the sandbox gets raw blobs: a changed .gitattributes can make GitHub's checkout materialize other bytes
         modified += [f for f in changed if f.rsplit("/", 1)[-1] == ".gitattributes"]
     spec = {"context": name, "cwd": str(wt), "steps": steps, "trusted_files": files, "judge_modified": modified}
+    if isinstance(tm := job.get("timeout-minutes"), (int, float)) and not isinstance(tm, bool) and tm > 0:
+        spec["timeout_s"] = int(tm * 60)   # hosted kills the job there: no local green may take longer
     if where == "container":
         for f, b in blobs.items():
             dest = trusted / "base_files" / f
@@ -488,7 +557,12 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
         for s in steps:
             if s.get("argv"):
                 s["argv"] = ["python" if x == "$PY" else x for x in s["argv"]]
-        return {**spec, "kind": "contained_steps", "git_index": bool(local.get("git_index")), "env": CONTAINED_STEP_ENV,
+        history = history_delta(wt, base, cand) if local.get("git_index") else None
+        if isinstance(history, str):
+            return _blocked(history)
+        return {**spec, "kind": "contained_steps", "git_index": bool(local.get("git_index")), "history": history, "path_prefix": prefix,
+                "venv": True,
+                "env": CONTAINED_STEP_ENV,
                 "driver_sha256": sha256_file(STEPS_DRIVER), "purpose": f"{name}: {len(steps)} workflow step(s) in the candidate sandbox, {files} from BASE"}
     tdir = trusted / "ctx" / ctx["check"]
     for f, b in blobs.items():
@@ -500,7 +574,7 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
         path = os.path.realpath(found) if found else None
         if path and (not os.path.isabs(found) or Path(path).is_relative_to(os.path.realpath(wt)) or not os.path.isfile(path)):
             return _blocked(f"{tool}: resolves to {found!r} — relative or inside the candidate worktree, never executed as a judge")
-        want = str((job.get("env") or {}).get(var, ""))
+        want = str({**(doc.get("env") or {}), **(job.get("env") or {})}.get(var, ""))
         got = ((_try([path, "-version"]) or "").splitlines() or [""])[0].strip() if path else None
         if not want or got != want:
             return _blocked(f"{tool}: host binary {path or 'not on PATH'} reports version {got!r}, BASE {wf} pins {var}={want!r}")
@@ -519,6 +593,14 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
     return {**spec, "kind": "trusted_steps", "trusted_dir": str(tdir), "trusted_dir_sha256": full_dir_map(tdir),
             "tool_sha256": {p: sha256_file(Path(p)) for p in pins.values()},
             "purpose": f"{name}: BASE {files} and pinned {sorted(pins)} judge the candidate tree on the host (no candidate code runs)"}
+
+
+def tree_entries(wt: Path, rev: str, paths: list) -> list:
+    """(mode, type, object) of each path at `rev`, None where absent; paths taken literally, never as pathspec patterns."""
+    out = subprocess.run(["git", "--literal-pathspecs", "-C", str(wt), "ls-tree", "-z", "--full-tree", rev, "--", *paths],
+                         capture_output=True, check=True).stdout.decode()
+    got = {rec.split("\t", 1)[1]: tuple(rec.split("\t", 1)[0].split(" ")) for rec in out.split("\0") if "\t" in rec}
+    return [got.get(p) for p in paths]
 
 
 def full_dir_map(td: Path) -> dict:
@@ -582,7 +664,7 @@ def cmd_plan(a):
         checks[name] = {"kind": "trusted_pytest", "cwd": str(wt), "python": venv_py, "trusted_files": [rel],
                         "purpose": f"{rel} extracted from BASE {base[:12]} and run against the candidate tree (candidate cannot rewrite its own guard)"}
     iso = isolation_spec(a.isolation, a.isolation_image)
-    pyv = {"host": platform.python_version(), "container": iso.get("python_version")}
+    pyv = {"host": platform.python_version(), "container": iso.get("python_version"), "container_extra": iso.get("pythons") or {}}
     ctxs = load_contexts(a.contexts_file)   # operator input, like the runner itself: never read from the candidate's tree
     for cname, ctx in ctxs["map"].items():
         if ctx["mapping"] != "executed" or not ctx["local"].get("steps"):
@@ -732,9 +814,11 @@ def isolation_spec(mode: str, image: str) -> dict:
     lines = r.stdout.strip().splitlines()
     if r.returncode != 0 or not lines or not lines[0].startswith("sha256:"):
         return {"mode": "container", "image": image, "error": f"image {image!r} not inspectable (rc={r.returncode}): {r.stderr.strip()[:200]}"}
-    pyv = next((ln.split("=", 1)[1] for ln in lines[1:] if ln.startswith("PYTHON_VERSION=")), None)   # set by the official python images
+    env = dict(ln.split("=", 1) for ln in lines[1:] if "=" in ln)
+    pyv = env.get("PYTHON_VERSION")   # set by the official python images; LOCALCI_PYTHONS="<major.minor>=<bin dir> ..." by candidate.Dockerfile
+    extra = dict(x.split("=", 1) for x in env.get("LOCALCI_PYTHONS", "").split() if "=" in x)
     return {"mode": "container", "image": image, "image_id": lines[0], "docker": os.path.realpath(docker), "network": "none",
-            "mounts": [], "user": f"{SANDBOX_UID}:{SANDBOX_UID}", "python_version": pyv}
+            "mounts": [], "user": f"{SANDBOX_UID}:{SANDBOX_UID}", "init": True, "python_version": pyv, "pythons": extra}
 
 
 def isolation_of(plan: dict) -> dict:
@@ -745,7 +829,7 @@ def isolation_of(plan: dict) -> dict:
 def _tar_add(tf: tarfile.TarFile, name: str, data: bytes | None = None, mode: int = 0o644, link: str | None = None) -> None:
     ti = tarfile.TarInfo(name)
     ti.uid = ti.gid = SANDBOX_UID
-    ti.mtime = 0
+    ti.mtime = int(time.time())   # a checkout writes its files now; mtime 0 made every file 56 years old to an age-reading test
     if data is None and link is None:
         ti.type, ti.mode = tarfile.DIRTYPE, 0o755
         tf.addfile(ti)
@@ -856,7 +940,7 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
     ctr = re.sub(r"[^a-zA-Z0-9_.-]", "-", f"localci-{plan['run_id']}-{name}")[:100] + "-" + os.urandom(4).hex()
     denv = trusted_env()
     create = [docker, "create", "--name", ctr, "--label", "org.nuzantara.localci=candidate", "--label", f"org.nuzantara.localci.run={run_label(run_dir)}",
-              "--network", "none", "--cap-drop", "ALL",
+              "--network", "none", "--cap-drop", "ALL", "--init",   # an init reaps orphans, as the hosted runner's does
               "--security-opt", "no-new-privileges", "--user", iso["user"], "--pids-limit", "1024", "--memory", "4g", "--workdir", workdir,
               *[f"--env={k}={v}" for k, v in sorted(env.items())], iso["image_id"], *inner]
     try:
@@ -939,8 +1023,8 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
     extra: dict[str, bytes] = {}
     for rel in spec.get("trusted_files") or []:
         bp = run_dir / "state" / "trusted" / "base_files" / rel
-        blob = bp.read_bytes() if bp.exists() else b""
-        if not blob or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):
+        blob = bp.read_bytes() if bp.exists() else None   # an empty __init__.py is a blob too
+        if blob is None or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):
             return {"status": "ERROR", "reason": f"trusted blob {rel} missing or differs from the plan's sha256", "rc": None, "counts": None}
         overrides[rel] = blob
     if kind == "pytest":
@@ -953,7 +1037,11 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
         if sha256_bytes(drv) != spec.get("driver_sha256"):
             return {"status": "ERROR", "reason": "steps driver changed since the plan pinned it", "rc": None, "counts": None}
         extra["cfg/steps_driver.py"] = drv
-        extra["cfg/steps.json"] = json.dumps({"context": spec["context"], "root": workdir, "git_index": spec.get("git_index"), "env": spec["env"],
+        hist = spec.get("history") or {"added": [], "base": []}
+        for (rel, _mode, oid), blob in zip(hist["base"], read_blobs(Path(plan["worktree"]), [o for _, _, o in hist["base"]])):
+            extra[f"cfg/base/{rel}"] = blob
+        extra["cfg/steps.json"] = json.dumps({"context": spec["context"], "root": workdir, "git_index": spec.get("git_index"), "history": spec.get("history"),
+                                              "path_prefix": spec.get("path_prefix") or "", "venv": bool(spec.get("venv")), "env": spec["env"],
                                               "steps": spec["steps"]}).encode()
         inner = ["python", "-I", "/cfg/steps_driver.py", "/cfg/steps.json", "/out/junit.xml"]
     else:
@@ -983,6 +1071,21 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
             "isolation": "container"}
 
 
+def read_blobs(wt: Path, oids: list) -> list:
+    if not oids:
+        return []
+    r = subprocess.run(["git", "-C", str(wt), "cat-file", "--batch"], input="".join(f"{o}\n" for o in oids).encode(), capture_output=True, check=True,
+                       timeout=COPY_TIMEOUT_S)
+    out, buf = [], io.BytesIO(r.stdout)
+    for o in oids:
+        hdr = buf.readline().decode().split()
+        if len(hdr) != 3 or hdr[0] != o or hdr[1] != "blob":
+            raise RuntimeError(f"BASE blob {o} unreadable: {hdr}")
+        out.append(buf.read(int(hdr[2])))
+        buf.read(1)
+    return out
+
+
 def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
     """A context is PASS only when every step it runs returned 0 and every other step is NOT_APPLICABLE with a reason. A red step
     dominates (FAIL > ERROR > BLOCKED); a green won with the BASE judge while the candidate rewrites that judge is not claimed."""
@@ -992,12 +1095,12 @@ def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
             return status, f"{len(bad)} step(s) {status}: " + "; ".join(f"{s['name']} ({s['reason']})" for s in bad)[:600]
     ran = [s for s in steps if s["status"] == "PASS"]
     na = [s for s in steps if s["status"] == "NOT_APPLICABLE"]
-    if not ran or len(ran) + len(na) != len(steps) or any(not (s.get("reason") or "").strip() for s in na):
+    if not ran or len(ran) + len(na) != len(steps) or any(written_reason(s.get("reason")) is None for s in na):
         return "ERROR", f"{len(ran)} step(s) ran, {len(na)} not applicable of {len(steps)} — no executed step or an unexplained one is not PASS"
     if spec.get("judge_modified"):
         return "BLOCKED", (f"{len(ran)} step(s) rc=0 with the BASE judge, but the candidate rewrites {spec['judge_modified']}: hosted judges with "
                            "the candidate's copy, which this run did not execute — no green claimed")
-    return "PASS", f"{len(ran)} step(s) rc=0" + (f"; not applicable: " + "; ".join(f"{s['name']} ({s['reason']})" for s in na) if na else "")
+    return "PASS", f"{len(ran)} step(s) rc=0" + ("; not applicable: " + "; ".join(f"{s['name']} ({s['reason']})" for s in na) if na else "")
 
 
 def parse_step_junit(p: Path) -> list | None:
@@ -1089,6 +1192,7 @@ def reap_containers(plan: dict, store: Store) -> str | None:
 
 
 def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> dict:
+    timeout = spec.get("timeout_s") or timeout   # a context's budget is its hosted job's timeout-minutes, else the run-wide default
     log = run_dir / "logs" / f"{name}.log"
     junit = run_dir / "receipts" / f"{name}.junit.xml"
     junit.unlink(missing_ok=True)   # a junit left by an earlier attempt is never this attempt's evidence
@@ -1111,8 +1215,8 @@ def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> d
         blobs: dict[str, bytes] = {}
         for rel in spec["trusted_files"]:
             bp = run_dir / "state" / "trusted" / "base_files" / rel
-            blob = bp.read_bytes() if bp.exists() else b""
-            if not blob or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):
+            blob = bp.read_bytes() if bp.exists() else None
+            if blob is None or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):
                 return {"status": "ERROR", "reason": f"trusted blob {rel} missing or differs from the plan's sha256", "rc": None, "counts": None}
             blobs[rel] = blob
         overlay = run_dir / "state" / "trusted" / "overlay" / name

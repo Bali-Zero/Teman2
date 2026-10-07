@@ -1,7 +1,8 @@
-# localci — local CI runner and inert release stub (v0.4.0)
+# localci — local CI runner and inert release stub (v0.5.0)
 
 A durable coordinator that runs checks against a frozen candidate and refuses to call anything green on
-missing evidence. It is a **non-required, single-host** gate: it does not replace GitHub branch protection.
+missing evidence. It is a **non-required, single-host** gate: it does not replace GitHub branch protection — until the
+local gate does (RULED 2026-10-07 in `docs/rules/RULINGS.md`; plan and sequence in `docs/specs/localci-sovereign-2026-10-07.md`).
 
 ## Commands (`PYTHONPATH=<worktree> python -m scripts.localci.runner ...`)
 
@@ -57,29 +58,47 @@ runner's own trusted checks, counts as uncontained candidate exposure, and a pla
 can rewrite any Pysa home together with its manifest and baseline index — nothing kept in this user's files can tell, so run
 `pysa_check.py setup --home <home> --rebuild` before a contained plan relies on that home again (accepted limit, not a check).
 
-## Required contexts the runner executes (v0.4.0)
+## Required contexts the runner executes (v0.4.0, container shape v0.5.0)
 
 `mapping: executed` in `contexts_matrix.yaml` now means the runner runs the context: `plan` reads each executed context's
 `local` block and plans ONE check, `local.check` (`ctx.<slug>`), which `evaluate_contexts` resolves for the context. Its
 `local.steps` must account for EVERY step of the BASE copy of the context's workflow job (matched by `workflow_step`, or by a
 `workflow_step_prefix` that hits exactly one step when the full name spells a banned shape): a transcribed `argv` (`$PY`,
-`$BASE_SHA` placeholders), the BASE `run:` body verbatim (container only, `bash --noprofile --norc -eo pipefail`), or
-`not_applicable` with a reason. `actions/checkout` and `actions/setup-python` are stood in for by the tree copy and the
-interpreter. An unmapped BASE step, a `not_run` step, a `${{ }}` the matrix does not override, a `continue-on-error` step, a
-trusted file missing at BASE, or a host step that would run candidate code plans the context as a BLOCKED record naming why.
+`$BASE_SHA` placeholders), the BASE `run:` body verbatim (container only, written to a file and run under GitHub's own
+template: `bash -e {0}` when the step names no shell, `bash --noprofile --norc -eo pipefail {0}` for `shell: bash`), or
+`not_applicable` with a written reason (a string; a flag is refused). `actions/checkout` and `actions/setup-python` are stood
+in for by the tree copy and the interpreter. Env merges as GitHub's does: workflow, job, step, then the matrix's overrides. An
+unmapped BASE step, a `not_run` step, a `${{ }}` the matrix does not override, a `continue-on-error` step, a job with its own
+`container:` or `services:` or another `runs-on` than ubuntu-latest/24.04, a trusted file missing at BASE, or a host step
+that would run candidate code plans the context as a BLOCKED record naming why.
 
 | `where` | kind | what runs | trust |
 |---|---|---|---|
 | `host` | `trusted_steps` | `$PY -I <BASE copy of a trusted file>` or a tool whose `-version` equals the BASE workflow's pin (`tool_pins`, else BLOCKED), cwd = the candidate worktree, read as data | trusted: runs before the seal, sealed, its BASE dir sha-mapped and re-verified |
-| `container` | `contained_steps` | `steps_driver.py` (runner-owned, sha pinned in the plan) runs the steps in the candidate sandbox with the BASE copies of `trusted_files` laid over the candidate's; `git_index: true` commits the frozen tree inside the container for steps that call `git`; the environment is the `merge_group` event's (`CI`, `GITHUB_EVENT_NAME=merge_group`, offline pip) | contained, like `trusted_pytest`: candidate-produced junit, after the seal |
+| `container` | `contained_steps` | `steps_driver.py` (runner-owned, sha pinned in the plan) runs the steps in the candidate sandbox with the BASE copies of `trusted_files` laid over the candidate's; `git_index: true` rebuilds BASE inside the container from the BASE blobs of the paths the candidate changed and commits the candidate on it, so `main`, `origin/main` and `git fetch origin main` name BASE, objects packed as after a fetch; the environment is the `merge_group` event's (`CI`, `GITHUB_EVENT_NAME=merge_group`, offline pip, `HOME=/home/runner`, `SHELL=/bin/bash`) under an init that reaps orphans | contained, like `trusted_pytest`: candidate-produced junit, after the seal |
+
+The image (`candidate.Dockerfile`) is ubuntu 24.04 — the hosted runner's distribution, so `jq`, `curl`, `crontab`, `tmux`,
+`zsh`, `shellcheck` answer as they do there — with python 3.12 as the default (also `/usr/bin/python3`) and 3.11 beside it.
+A BASE `actions/setup-python` pin selects the default interpreter or one the image declares in `LOCALCI_PYTHONS` (its bin dir
+goes first on PATH, as setup-python does); any other pin is BLOCKED. `trusted_from_steps: true` adds to `trusted_files` every
+BASE `.py`/`.sh` a step names outright and every one under a directory it names with a trailing slash (`pytest
+infra/organ-conformance/`); a step marked `trusted_scan: false` (a path sentinel, whose path list names the surfaces under test,
+not judges) is not read. The BASE job's `timeout-minutes` is the context's budget (hosted kills the job there), else `run --timeout`.
 
 A context is PASS only when every step it runs returns 0 and every other step is `not_applicable` with a reason; a red step
 dominates (FAIL > ERROR > BLOCKED), and a step that cannot start is BLOCKED, never skipped. The driver's exit code and its
 junit (one test case per planned step, in order) must agree or the verdict is ERROR. When the candidate rewrites one of the
-context's `trusted_files` or its workflow, a green won with the BASE judge is reported **BLOCKED**: hosted judges with the
-candidate's copy, which this run did not execute. The matrix is operator input, like the runner: pass the trusted copy with
+context's `trusted_files` or its workflow (a change of tree entry: bytes, mode or type), or — for a container context — any
+`.gitattributes`, a green won with the BASE judge is reported **BLOCKED**: hosted judges with the candidate's copy (or
+materializes other bytes), which this run did not execute. The matrix is operator input, like the runner: pass the trusted copy with
 `--contexts-file`, never the candidate's. `summary.never_claim_parity_for` lists exactly the contexts the runner does not execute
 (the suite checks it); `summary.parity_gaps` lists the steps of executed contexts whose hosted twin can still differ.
+
+**Coordinator interpreter.** The env fingerprint hashes the coordinator venv's `pip freeze`. A venv holding an editable install
+of a moving checkout (Pro's backend-rag venv carries `cell_core` from the main checkout, so its freeze names that checkout's
+HEAD) drifts whenever the checkout moves mid-run, and every receipt goes STALE, as it should. Measure from a venv that tracks
+nothing (on Pro: `~/.nuzantara-pilots/local-ci/executor-a/venv311`, pyenv 3.11.11 + PyYAML + pytest) and diff its freeze at
+the start and the end of a run when a STALE needs explaining.
 
 ## Security: Pysa taint judge (`security.pysa_python`)
 

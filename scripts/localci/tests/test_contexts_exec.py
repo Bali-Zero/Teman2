@@ -1,8 +1,10 @@
-"""Required contexts the runner EXECUTES (v0.4.0): every BASE workflow step accounted for, BASE judges, guilt and innocence."""
+"""Required contexts the runner EXECUTES (v0.4.0; container shape v0.5.0): every BASE workflow step accounted for, BASE judges, guilt and innocence."""
 from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -151,6 +153,21 @@ def test_a_host_tool_runs_only_at_the_version_the_base_workflow_pins(tmp_path, m
         assert "TOOL_VERSION='1.2.3'" in c["reason"]
 
 
+def test_a_tool_pin_set_at_workflow_level_is_the_pin(tmp_path, monkeypatch):
+    _tool(tmp_path, monkeypatch, "1.2.3")
+    wf = dict(WORKFLOW, env={"TOOL_VERSION": "1.2.3"}, jobs={"gate": _job(env={})})
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "clean\n"}, {**BASE_EXTRA, WF: yaml.safe_dump(wf)})
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [tool_ctx()])))
+    fr.run(fx)
+    assert fr.status(fx)["checks"]["ctx.judge"]["status"] == "PASS"
+
+
+@pytest.mark.parametrize("reason", ["", "\u200b", "[]"])
+def test_a_not_applicable_row_without_a_written_reason_is_never_pass(reason):
+    steps = [{"name": "a", "status": "PASS", "reason": "rc=0"}, {"name": "b", "status": "NOT_APPLICABLE", "reason": reason}]
+    assert runner.steps_verdict(steps, {})[0] == "ERROR"
+
+
 def test_a_step_that_cannot_start_is_blocked_never_pass(tmp_path, monkeypatch):
     tool = _tool(tmp_path, monkeypatch, "1.2.3")
     fx = planned(tmp_path, {"docs/new.md": "clean\n"}, tool_ctx())
@@ -215,6 +232,37 @@ def test_a_verbatim_body_runs_from_a_file_under_githubs_own_shell_template(shell
         assert steps is None and "shell='sh'" in why
     else:
         assert steps[0]["argv"] == argv and steps[0]["script"] == "python scripts/judge.py --selftest" and "-c" not in steps[0]["argv"]
+
+
+@pytest.mark.parametrize("na", [True, "", "   ", 1, [], "\u200b"])
+def test_not_applicable_needs_a_written_reason_not_a_flag(na):
+    local = {**contained_ctx()["local"], "steps": [*contained_ctx()["local"]["steps"][:3], {"workflow_step": "pr sentinel", "not_applicable": na}]}
+    steps, why = runner.resolve_steps(_job(), local, "b" * 40)
+    assert steps is None and "written reason" in why
+
+
+@pytest.mark.parametrize("over", [{"services": {"pg": {"image": "postgres"}}}, {"services": {}}, {"container": "node:20"}, {"runs-on": "macos-latest"},
+                                  {"runs-on": ["ubuntu-latest", "gpu"]}, {"runs-on": "${{ matrix.os }}"}])
+def test_a_job_shape_the_sandbox_does_not_stand_in_for_is_blocked(over):
+    steps, why = runner.resolve_steps(_job(**over), contained_ctx()["local"], "b" * 40)
+    assert steps is None and "job shape not emulated" in why
+
+
+@pytest.mark.parametrize("runs_on", ["ubuntu-24.04", ["ubuntu-latest"]])
+def test_a_hosted_label_in_either_spelling_is_the_runner_the_sandbox_stands_in_for(runs_on):
+    assert runner.resolve_steps(_job(**{"runs-on": runs_on}), contained_ctx()["local"], "b" * 40)[1] is None
+
+
+def test_workflow_level_env_reaches_the_steps_under_the_job_and_step_env():
+    steps, why = runner.resolve_steps(_job(env={"TOOL_VERSION": "job", "X": "job"}), contained_ctx()["local"], "b" * 40, {}, {"WF_ONLY": "1", "TOOL_VERSION": "wf", "X": "wf"})
+    assert why is None and steps[0]["env"]["WF_ONLY"] == "1" and steps[0]["env"]["TOOL_VERSION"] == "job"
+    assert steps[1]["env"]["X"] == "job" and steps[1]["env"]["BASE_SHA"] == "b" * 40     # the matrix override beats the step's
+    job = _job(env={"X": "job"})
+    job["steps"][2]["env"] = {"X": "step", "BASE_SHA": "${{ github.sha }}"}   # the judge step; the matrix overrides BASE_SHA
+    steps, why = runner.resolve_steps(job, contained_ctx()["local"], "b" * 40, {}, {"X": "wf"})
+    assert why is None and steps[0]["env"]["X"] == "job" and steps[1]["env"]["X"] == "step"
+    steps, why = runner.resolve_steps(_job(), contained_ctx()["local"], "b" * 40, {}, {"X": "${{ github.sha }}"})
+    assert steps is None and "expressions" in why   # an unevaluated expression at workflow level blocks like one in a step
 
 
 def test_working_directory_comes_from_the_step_or_the_job_default_and_stays_in_the_tree():
@@ -286,6 +334,88 @@ def test_a_changed_gitattributes_keeps_a_contained_green_from_being_claimed(fx):
     assert runner.steps_verdict([{"name": "x", "status": "PASS", "reason": "rc=0"}], spec)[0] == "BLOCKED"
 
 
+@pytest.mark.parametrize("pin,want", [
+    ("3.12", ""), ("3.11", "/opt/py311/bin"), ("3.11.17", "/opt/py311/bin"), ("3.11.x", "/opt/py311/bin"),
+    ("3.11.5", None), ("3.10", None), ("3.x", None), ("3", None), ("", None), ("3.11\n3.12", None)])   # hosted: newest / a version file
+def test_a_setup_python_pin_selects_the_default_or_an_extra_interpreter_or_blocks(pin, want):
+    job = {"steps": [{"uses": "actions/setup-python@v7", "with": {"python-version": pin}}]}
+    prefix, why = runner.select_python(job, "3.12.15", {"3.11.17": "/opt/py311/bin"})
+    assert prefix == want and (why is None) == (want is not None)
+    assert runner.select_python({"steps": [{"run": "true"}]}, "3.12.15") == ("", None)
+    two = {"steps": [*job["steps"], {"uses": "actions/setup-python@v7", "with": {"python-version": "3.12"}}]}
+    assert runner.select_python(two, "3.12.15", {"3.11.17": "/opt/py311/bin"})[0] is None   # an interpreter switch mid-job
+
+
+def test_judges_named_by_the_steps_come_from_base_and_a_sentinels_path_list_does_not(tmp_path):
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {**BASE_EXTRA, "infra/gate/check.py": "", "infra/gate/test_check.py": "",
+                                                       "scripts/product.py": "", "scripts/noted.py": "", "scripts/lib/x.sh": ""})
+    steps = [{"name": "run", "script": "python3 scripts/judge.py\npython3 -m pytest infra/gate/ -q\n# python3 scripts/noted.py\n"},
+             {"name": "sentinel", "trusted_scan": False, "script": 'case "$f" in scripts/product.py|infra/other/) ;; esac\n'},
+             {"name": "argv", "argv": ["bash", "scripts/lib/x.sh", "scripts/"]}]
+    assert runner.named_scripts(fx["repo"], fx["base"], steps) == sorted([JUDGE, "infra/gate/check.py", "infra/gate/test_check.py", "scripts/lib/x.sh"])
+    fx, s = ran(tmp_path / "plan", {"docs/new.md": "clean\n"}, host_ctx(trusted_files=[], trusted_from_steps=True))
+    assert s["checks"]["ctx.judge"]["status"] == "PASS" and plan_spec(fx)["trusted_files"] == [JUDGE]
+
+
+def test_the_sandbox_rebuilds_base_under_the_candidate_so_main_and_origin_main_name_it(tmp_path):
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "added\n", "docs/ok.md": "changed\n"}, {**BASE_EXTRA, "scripts/gone.py": "x = 1\n"})
+    repo = fx["repo"]
+    fr.git(repo, "rm", "-q", "scripts/gone.py")
+    os.symlink("ok.md", repo / "docs" / "link.md")
+    fr.git(repo, "add", "-A")
+    fr.git(repo, "commit", "-q", "-m", "delete + symlink")
+    cand = fr.git(repo, "rev-parse", "HEAD")
+    hist = runner.history_delta(repo, fx["base"], cand)
+    assert sorted(hist["added"]) == ["docs/link.md", "docs/new.md"] and sorted(p for p, _, _ in hist["base"]) == ["docs/ok.md", "scripts/gone.py"]
+    root, cfg = tmp_path / "w", tmp_path / "cfg"
+    root.mkdir()
+    subprocess.run(f"git -C {repo} archive {cand} | tar -x -C {root}", shell=True, check=True)
+    for (rel, _, _), blob in zip(hist["base"], runner.read_blobs(repo, [o for _, _, o in hist["base"]])):
+        (cfg / "base" / rel).parent.mkdir(parents=True, exist_ok=True)
+        (cfg / "base" / rel).write_bytes(blob)
+    probe = ("set -e; git rev-parse main^{tree} origin/main^{tree} HEAD^{tree} > ../trees; git fetch -q origin main; "
+             "git rev-parse FETCH_HEAD^{tree} >> ../trees; git diff --name-only main HEAD > ../diff; git count-objects -v > ../objects")
+    (cfg / "steps.json").write_text(json.dumps({"context": "t", "root": str(root), "git_index": True, "history": hist, "env": {},
+                                                 "steps": [{"name": "probe", "argv": ["bash", "-c", probe]}]}))
+    r = subprocess.run([sys.executable, "-I", str(runner.STEPS_DRIVER), str(cfg / "steps.json"), str(tmp_path / "junit.xml")],
+                       capture_output=True, text=True, env={**fr.GIT_ENV, "HOME": str(tmp_path)})
+    assert r.returncode == 0, r.stdout + r.stderr
+    base_tree, cand_tree = fr.git(repo, "rev-parse", f"{fx['base']}^{{tree}}"), fr.git(repo, "rev-parse", f"{cand}^{{tree}}")
+    assert (tmp_path / "trees").read_text().split() == [base_tree, base_tree, cand_tree, base_tree]
+    assert sorted((tmp_path / "diff").read_text().split()) == ["docs/link.md", "docs/new.md", "docs/ok.md", "scripts/gone.py"]
+    assert "count: 0" in (tmp_path / "objects").read_text().splitlines()   # packed, as a fresh fetch is
+    fr.git(repo, "update-index", "--add", "--cacheinfo", f"160000,{fx['base']},vendor/sub")
+    fr.git(repo, "commit", "-q", "-m", "gitlink")
+    assert "submodule pointer" in runner.history_delta(repo, fx["base"], fr.git(repo, "rev-parse", "HEAD"))   # refused at plan
+    fr.git(repo, "rm", "-q", "--cached", "vendor/sub")
+    (repo / "docs" / "a\nb.md").write_text("x\n")
+    fr.git(repo, "add", "-A")
+    fr.git(repo, "commit", "-q", "-m", "newline path")
+    assert "newline" in runner.history_delta(repo, fx["base"], fr.git(repo, "rev-parse", "HEAD"))
+
+
+def test_the_hosted_jobs_timeout_bounds_the_context_so_no_green_outlasts_it(tmp_path):
+    wf = dict(WORKFLOW, jobs={"gate": {**WORKFLOW["jobs"]["gate"], "timeout-minutes": 0.05}})   # hosted kills the job at 3 s
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {**BASE_EXTRA, WF: yaml.safe_dump(wf), "scripts/slow.py": "import time\ntime.sleep(60)\n"})
+    ctx = host_ctx(trusted_files=[JUDGE, "scripts/slow.py"])
+    ctx["local"]["steps"][0] = {"workflow_step": "selftest", "argv": ["$PY", "scripts/slow.py"]}
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])))
+    fr.run(fx)
+    c = fr.status(fx)["checks"]["ctx.judge"]
+    assert plan_spec(fx)["timeout_s"] == 3 and c["status"] == "ERROR" and "3s budget" in c["reason"]
+
+
+def test_a_judge_whose_mode_changes_is_a_rewritten_judge(tmp_path):
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "clean\n"}, BASE_EXTRA)
+    (fx["repo"] / JUDGE).chmod(0o755)   # same bytes, another tree entry: GitHub checks out what the candidate's tree says
+    fr.git(fx["repo"], "add", "-A")
+    fr.git(fx["repo"], "commit", "-q", "-m", "judge +x")
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [host_ctx()])))
+    fr.run(fx)
+    c = fr.status(fx)["checks"]["ctx.judge"]
+    assert plan_spec(fx)["judge_modified"] == [JUDGE] and c["status"] == "BLOCKED"
+
+
 # --------------------------------------------------------------- container: BASE steps verbatim, in the candidate sandbox
 @needs_docker
 @pytest.mark.parametrize("candidate,want", [
@@ -303,6 +433,37 @@ def test_a_contained_context_runs_base_steps_verbatim_with_its_guilt_control(tmp
     assert st["seal_first"]["why"].startswith("trusted checks done") and f"seal={st['seal_first']['seal']}" in capsys.readouterr().out
     runner.main(["status", "--run-dir", str(fx["run"]), "--seal", st["seal_first"]["seal"]])
     assert "seal mismatch" not in (json.loads((fx["run"] / "status.json").read_text())["freshness"]["stale_reason"] or "")
+
+
+SANDBOX_PROBE = (
+    "set -euxo pipefail\n"   # traced: the log names the line that broke
+    'test "$(git rev-parse main^{tree})" = "$BASE_TREE"\n'                                      # BASE rebuilt under the candidate
+    'git fetch -q origin main && test "$(git rev-parse origin/main)" = "$(git rev-parse main)"\n'
+    'test "$(git diff --name-only main HEAD)" = docs/new.md\n'
+    "python -c 'import os, sys, time; sys.exit(time.time() - os.stat(\"docs/ok.md\").st_mtime > 3600)'\n"   # checked out now
+    'test "$HOME" = /home/runner && touch "$HOME/written" && test "$(id -un)" = runner\n'
+    'test "$(getent passwd "$(id -u)" | cut -d: -f7)" = /bin/bash\n'                             # tmux starts the login shell
+    "! python -c 'import yaml' && pip install -q pyyaml && python -c 'import yaml'\n"            # bare until a step installs, offline
+    "(sleep 0.1 &); sleep 1; ! ps -eo stat= | grep -q '^Z'\n"                                    # an init reaps the orphan
+    "python -c 'import sys; sys.exit(sys.version_info[:2] != (3, 11))'\n"                        # the setup-python 3.11 pin
+    "{ crontab -l 2>&1 || true; } | grep -q '^no crontab for'\n")                              # as hosted, not EACCES
+
+
+@needs_docker
+def test_the_sandbox_looks_like_a_fresh_hosted_checkout_of_the_pinned_job(tmp_path):
+    wf = {"name": "sb", "on": {"pull_request": None}, "jobs": {"sb": {"runs-on": "ubuntu-latest", "steps": [
+        {"uses": "actions/checkout@v7"}, {"uses": "actions/setup-python@v7", "with": {"python-version": "3.11"}},
+        {"name": "probe", "run": SANDBOX_PROBE}]}}}
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {".github/workflows/sb.yml": yaml.safe_dump(wf), "scripts/empty.py": "", "docs/ok.md": "fine\n"})
+    ctx = {"name": "SB", "workflow_file": ".github/workflows/sb.yml", "job_id": "sb", "mapping": "executed", "local": {
+        "check": "ctx.judge", "where": "container", "git_index": True, "trusted_files": ["scripts/empty.py"],   # an empty BASE blob is a blob
+        "steps": [{"workflow_step": "probe", "env": {"BASE_TREE": fr.git(fx["repo"], "rev-parse", f"{fx['base']}^{{tree}}")}}]}}
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])), "--isolation", "container",
+            "--isolation-image", fr.ISOLATION_IMAGE)
+    fr.run(fx)
+    c = fr.status(fx)["checks"]["ctx.judge"]
+    assert c["status"] == "PASS", (c, (fx["run"] / "logs" / "ctx.judge.log").read_text()[-3000:])
+    assert plan_spec(fx)["path_prefix"] == "/opt/py311/bin" and json.loads((fx["run"] / "state" / "plan.json").read_text())["isolation"]["init"] is True
 
 
 # --------------------------------------------------------------- the real matrix
