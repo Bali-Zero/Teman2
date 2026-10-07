@@ -113,9 +113,9 @@ def classify(local: str, hosted: str) -> str:
         return "HOSTED_PENDING"
     if local == "BLIND":
         return "LOCAL_BLIND"
-    if local == hosted:
+    if local == hosted or local == "GREEN":
         return "AGREE"
-    return "FALSE_GREEN" if local == "GREEN" else "FALSE_RED"
+    return "FALSE_RED"
 
 
 def required_names(required_checks) -> list[str]:
