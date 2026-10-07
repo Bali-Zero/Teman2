@@ -6,7 +6,10 @@ import importlib.util
 import json
 import os
 import re
+import signal
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -64,8 +67,10 @@ class FakeGH:
 
 
 class FakeRunner:
-    def __init__(self, overall="BLOCKED", plan_rc=0):
-        self.overall, self.plan_rc, self.calls = overall, plan_rc, []
+    def __init__(self, overall="BLOCKED", plan_rc=0, run_out=f"policy.change_map: PASS\nseal={SEAL}  # end of run\n", sleep=0, alarm=0,
+                 status_rc=0, bind=None):
+        self.overall, self.plan_rc, self.run_out, self.sleep, self.alarm, self.calls = overall, plan_rc, run_out, sleep, alarm, []
+        self.status_rc, self.bind = status_rc, bind or {}
 
     def __call__(self, argv, cwd, env, timeout):
         sub, run_dir = argv[3], Path(argv[argv.index("--run-dir") + 1])
@@ -76,13 +81,18 @@ class FakeRunner:
             call["worktree_head"] = g(argv[argv.index("--worktree") + 1], "rev-parse", "HEAD")
         self.calls.append(call)
         if sub == "plan":
+            if self.alarm:   # the watchdog fires while the gate runs, whatever the clone and fetch cost before it
+                signal.alarm(self.alarm)
             return subprocess.CompletedProcess(argv, self.plan_rc, "{}", "")
         if sub == "run":
-            return subprocess.CompletedProcess(argv, 0, f"policy.change_map: PASS\nseal={SEAL}  # end of run\n", "")
-        (run_dir / "status.json").write_text(json.dumps({"overall": self.overall, "candidate_sha": self.calls[0].get("worktree_head"),
+            time.sleep(self.sleep)
+            return subprocess.CompletedProcess(argv, 0, self.run_out, "")
+        plan = self.calls[0]["argv"]
+        bind = {"candidate_sha": self.calls[0].get("worktree_head"), "base_sha": plan[plan.index("--base") + 1], "seal": SEAL, **self.bind}
+        (run_dir / "status.json").write_text(json.dumps({"overall": self.overall, **bind,
                                                          "contexts": {"status": "ok", "results": {"ctx-a": {"verdict": "OK", "mapping": "executed"}}},
                                                          "checks": {"policy.change_map": {"status": "PASS"}}}))
-        return subprocess.CompletedProcess(argv, 0, self.overall + "\n", "")
+        return subprocess.CompletedProcess(argv, self.status_rc, self.overall + "\n", "")
 
 
 @pytest.fixture
@@ -140,12 +150,14 @@ def test_conflict_is_a_decision_with_no_run(world):
     assert not (world.state / "cand").exists() or not any((world.state / "cand").iterdir())
 
 
-def test_candidate_is_main_plus_head_and_the_gate_runs_from_base_with_the_base_matrix(world):
+def test_candidate_is_main_plus_head_squashed_and_the_gate_runs_from_base_with_the_base_matrix(world):
     world.gh.prs = [pr(1, world.head1)]
     assert world.tick() == 0
     (d,) = [r for r in world.journal() if r["kind"] == "decision"]
     repo = world.state / "repo.git"
-    assert g(repo, "rev-list", "--parents", "-n1", d["candidate_sha"]).split()[1:] == [world.base, world.head1]
+    assert g(repo, "rev-list", "--parents", "-n1", d["candidate_sha"]).split()[1:] == [world.base]   # the queue squashes: one parent, main
+    files = {f: g(repo, "show", f"{d['candidate_sha']}:{f}") for f in ("b.txt", "c.txt", mg.MATRIX)}
+    assert files == {"b.txt": "pr1", "c.txt": "main", mg.MATRIX: "candidate matrix"}
     assert g(repo, "show", "-s", "--format=%an %cn", d["candidate_sha"]) == "localci-merger localci-merger"
     plan, run, status = world.runner.calls
     assert [c["sub"] for c in (plan, run, status)] == ["plan", "run", "status"]
@@ -165,15 +177,135 @@ def test_candidate_is_main_plus_head_and_the_gate_runs_from_base_with_the_base_m
     assert not (world.state / "cand" / f"pr1-{world.head1[:12]}-{world.base[:12]}").exists()
 
 
-def test_a_head_that_could_fast_forward_still_gets_a_merge_commit(world):
+def test_a_head_on_top_of_main_is_still_a_new_squash_commit_never_the_head_itself(world):
     src = world.state.parent / "src"
     g(src, "checkout", "-q", "-b", "pr3", world.base)
-    head3 = commit(src, {"d.txt": "pr3\n"}, "pr3 on top of main")
+    commit(src, {"d.txt": "pr3\n"}, "pr3 on top of main")
+    head3 = commit(src, {"e.txt": "pr3 again\n"}, "pr3 second commit")
     g(world.origin, "fetch", "-q", str(src), "+pr3:refs/pull/3/head")
     world.gh.prs = [pr(3, head3)]
     assert world.tick() == 0
     (d,) = [r for r in world.journal() if r["kind"] == "decision"]
-    assert g(world.state / "repo.git", "rev-list", "--parents", "-n1", d["candidate_sha"]).split()[1:] == [world.base, head3]
+    repo = world.state / "repo.git"
+    assert d["candidate_sha"] != head3 and g(repo, "rev-list", "--parents", "-n1", d["candidate_sha"]).split()[1:] == [world.base]
+    assert g(repo, "rev-parse", f"{d['candidate_sha']}^{{tree}}") == g(repo, "rev-parse", f"{head3}^{{tree}}")
+
+
+def test_a_head_already_in_main_is_skipped_once_not_at_every_tick(world):
+    src = world.state.parent / "src"
+    old = g(src, "rev-parse", "main~1")
+    g(world.origin, "update-ref", "refs/pull/4/head", old)
+    world.gh.prs = [pr(4, old)]
+    assert world.tick() == 0 and world.tick() == 0
+    assert [(r["kind"], r.get("why")) for r in world.journal()] == [("skipped", "head_in_base")] and world.runner.calls == []
+
+
+def test_a_merge_that_fails_without_a_conflict_is_one_error_decision_not_a_loop(world):
+    src = world.state.parent / "src"
+    g(src, "checkout", "-q", "--orphan", "stray")
+    stray = commit(src, {"z.txt": "unrelated\n"}, "unrelated history")
+    g(world.origin, "fetch", "-q", str(src), "+stray:refs/pull/5/head")
+    world.gh.prs = [pr(5, stray), pr(1, world.head1, created="2026-10-02T00:00:00Z")]
+    assert world.tick() == 1 and world.tick() == 0
+    decided = [(r["pr"], r["overall"]) for r in world.journal() if r["kind"] == "decision"]
+    assert decided == [(5, "ERROR"), (1, "BLOCKED")] and "conflicted path" in world.journal()[0]["error"]
+
+
+def test_the_watchdog_turns_a_hung_gate_into_an_error_decision_and_frees_the_lease(world, monkeypatch):
+    monkeypatch.setattr(mg, "runner_exec", FakeRunner(sleep=10, alarm=1))
+    world.gh.prs = [pr(1, world.head1)]
+    rc = mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin),
+                  "--python", "py", "--tick-timeout", "1"])
+    (d,) = [r for r in world.journal() if r["kind"] == "decision"]
+    assert rc == 1 and d["overall"] == "ERROR" and "tick-timeout" in d["error"] and not (world.state / "lease.json").exists()
+
+
+def test_a_runner_past_its_timeout_is_terminated_before_it_is_killed(tmp_path):
+    code = "import signal,sys,time\nsignal.signal(signal.SIGTERM, lambda *a: (print('cleaned up', flush=True), sys.exit(3)))\nprint('up', flush=True)\ntime.sleep(30)"
+    t0 = time.monotonic()
+    res = mg.runner_exec([sys.executable, "-c", code], tmp_path, dict(os.environ), timeout=2)
+    assert res.returncode == 124 and "cleaned up" in res.stdout and "timed out" in res.stderr and time.monotonic() - t0 < 20
+
+
+def test_only_the_seal_printed_before_candidate_code_runs_is_passed_on(world, monkeypatch):
+    forged = "cd" * 32
+    monkeypatch.setattr(mg, "runner_exec", FakeRunner(run_out=f"seal={SEAL}  # trusted checks done\nctx.x: ERROR — boom\nseal={forged}\n"))
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0
+    assert mg.runner_exec.calls[2]["argv"][-2:] == ["--seal", SEAL]
+
+
+@pytest.mark.parametrize("runner", [dict(status_rc=1), dict(run_out="policy.change_map: PASS\nseal WITHHELD  # no seal\n"),
+                                    dict(bind={"candidate_sha": "e" * 40}), dict(bind={"seal": "cd" * 32})],
+                         ids=["status-failed", "no-seal", "other-candidate", "other-seal"])
+def test_a_status_that_failed_or_is_not_bound_to_this_run_lends_no_verdict(world, monkeypatch, runner):
+    monkeypatch.setattr(mg, "runner_exec", FakeRunner(overall="PASS", **runner))
+    world.gh.prs = [pr(1, world.head1)]
+    world.tick()
+    (d,) = [r for r in world.journal() if r["kind"] == "decision"]
+    assert (d["overall"], d["contexts"]) == ("ERROR", {}) and d["error"]
+
+
+def test_host_git_config_never_reaches_the_candidate(world, monkeypatch, tmp_path):
+    marker = tmp_path / "HOST_FILTER_RAN"
+    evil = tmp_path / "evil.gitconfig"
+    evil.write_text(f'[filter "evil"]\n\tsmudge = sh -c "touch {marker}; cat"\n\tclean = sh -c "touch {marker}; cat"\n'
+                    f'[merge "evil"]\n\tdriver = sh -c "touch {marker}; false"\n')
+    src = world.state.parent / "src"
+    g(src, "checkout", "-q", "-b", "pr6", world.base)
+    head6 = commit(src, {".gitattributes": "* filter=evil merge=evil\n", "f.txt": "x\n"}, "attributes that name a host filter")
+    g(world.origin, "fetch", "-q", str(src), "+pr6:refs/pull/6/head")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(evil))
+    world.gh.prs = [pr(6, head6)]
+    assert world.tick() == 0
+    assert not marker.exists() and [r["overall"] for r in world.journal() if r["kind"] == "decision"] == ["BLOCKED"]
+    assert all(c["env"]["GIT_CONFIG_GLOBAL"] == "/dev/null" and c["env"]["GIT_CONFIG_NOSYSTEM"] == "1" for c in world.runner.calls)
+
+
+def test_a_recycled_pid_is_not_the_holder(world):
+    world.state.mkdir()
+    (world.state / "lease.json").write_text(json.dumps({"host": mg.HOST, "pid": os.getpid(), "pid_start": "Thu Jan  1 00:00:00 1970", "lease_id": "old"}))
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0
+    assert [r["kind"] for r in world.journal()] == ["lease_reclaimed", "decision"]
+
+
+def test_the_journal_is_private_and_a_torn_tail_does_not_swallow_the_next_decision(world):
+    world.state.mkdir()
+    (world.state / "decisions.jsonl").write_text('{"kind": "decision", "pr": 1, "head_s')
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0
+    assert [r["pr"] for r in world.journal() if r["kind"] == "decision"] == [1]
+    fresh = world.state.parent / "fresh"
+    fresh.mkdir()
+    mg.journal(fresh, {"kind": "probe"})
+    assert (fresh / "decisions.jsonl").stat().st_mode & 0o777 == 0o600
+
+
+def test_a_state_dir_bound_to_another_repo_is_refused(world):
+    world.state.mkdir()
+    (world.state / "repo").write_text("other/repo\n")
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 2 and world.journal() == [] and world.runner.calls == []
+
+
+def test_a_relative_state_dir_is_resolved_before_any_git_or_runner_path(world, monkeypatch):
+    monkeypatch.chdir(world.state.parent)
+    world.gh.prs = [pr(1, world.head1)]
+    assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", "state", "--remote-url", str(world.origin), "--python", "py"]) == 0
+    (d,) = [r for r in world.journal() if r["kind"] == "decision"]
+    assert Path(d["run_dir"]).is_absolute() and d["overall"] == "BLOCKED"
+
+
+def test_errors_are_redacted_before_they_reach_the_journal():
+    leaky = "fatal: https://x-access-token:ghs_abcdefghijklmnopqrstuv@github.com/o/r.git token ghp_ABCDEFGHIJKLMNOPQRST and github_pat_11AAAAAAAAAAAAAAAAAAAA"
+    out = mg.redact(leaky)
+    assert "ghs_" not in out and "ghp_" not in out and "github_pat_" not in out and "x-access-token" not in out and "github.com/o/r.git" in out
+
+
+def test_a_remote_url_carrying_credentials_is_refused(world):
+    assert mg.main(["tick", "--node", mg.HOST, "--state-dir", str(world.state), "--remote-url", "https://x:y@github.com/o/r.git"]) == 2
+    assert not world.state.exists()
 
 
 def test_the_same_pr_head_and_base_is_never_run_twice_but_a_new_head_is(world):

@@ -3,14 +3,15 @@
 
 ``tick`` holds a per-repo lease pinned to one host (``--node``), takes the open, non-draft, SAME-REPO pull request
 on ``--base`` that is armed (auto-merge) or labelled ``localci:merge`` and not yet decided at (head sha, origin/<base>
-sha), builds the merge candidate as the queue does (origin/<base> + the head, ``--no-ff``, fixed author
-``localci-merger``), runs the local gate on it with the runner and the contexts matrix of BASE — never the
+sha), builds the merge candidate as the queue does (origin/<base> + the head squashed into one commit — the live
+queue's merge_method is SQUASH — fixed author ``localci-merger``), runs the local gate on it with the runner and the contexts matrix of BASE — never the
 candidate's — and sets it beside the hosted verdict of the PR HEAD sha (the queue's verdict lands on a merge-group
 commit this process cannot see). One line per decision in ``<state-dir>/decisions.jsonl``; the same (pr, head, base)
 is never run twice. A fork PR is journalled ``refused: fork`` and never fetched. ``merge`` refuses: phase E is not armed.
 
-Every GitHub call is a bare ``gh api`` GET (``hosted_compare.gh_get``): nothing here merges, posts, labels or
-comments, and no candidate code is imported — it runs only inside the BASE runner, contained as the runner does.
+Every GitHub API call is a bare ``gh api`` GET (``hosted_compare.gh_get``) and the only other traffic is ``git fetch``:
+nothing here merges, posts, labels or comments, and no candidate code is imported — it runs only inside the BASE
+runner, contained as the runner does.
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ import os
 import platform
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -41,12 +43,20 @@ HEAD_NOTE = "hosted verdict read on the PR head sha: the queue's verdict lands o
 MATRIX = "scripts/localci/contexts_matrix.yaml"
 RUNNER_ENV = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT")  # an allowlist: no token reaches the runner
 GIT_SAFE = ("-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-c", "rerere.enabled=false")  # no hook, signer or recorded resolution acts on a candidate
+# no host config either: a filter, merge driver or fsmonitor configured globally would run on candidate paths outside any container
+GIT_ISOLATED = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0"}
 SEAL_RE = re.compile(r"^seal=([0-9a-f]{64})\b", re.M)
+SECRET_RE = re.compile(r"(gh[opsru]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,}|(?<=://)[^/@\s]+(?=@)|(?i:bearer|token)\s+\S+)")
 HOST = platform.node()
 
 
+class Stopped(Exception):
+    """SIGTERM during a tick: the runner is stopped cleanly, nothing is decided, the key is retried."""
+
+
 class MergerError(RuntimeError):
-    """The tick cannot reach a decision; journalled as an error, never as a verdict."""
+    """No verdict: before a PR is picked it is an `error` line (the next tick retries); after, an ERROR decision for
+    that (pr, head, base) — retried at the next base, so one poisoned PR cannot hold the queue — which reads as blind."""
 
 
 def now() -> str:
@@ -60,11 +70,22 @@ def atomic_write(p: Path, data: str) -> None:
     os.replace(tmp, p)
 
 
+def redact(text) -> str:
+    return SECRET_RE.sub("[REDACTED]", str(text))[-500:]
+
+
 def journal(state: Path, rec: dict) -> dict:
     line = {"ts": now(), "host": HOST, **rec}
-    fd = os.open(state / "decisions.jsonl", os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    data = (json.dumps(line, sort_keys=True) + "\n").encode()
+    fd = os.open(state / "decisions.jsonl", os.O_RDWR | os.O_APPEND | os.O_CREAT, 0o600)
     try:
-        os.write(fd, (json.dumps(line, sort_keys=True) + "\n").encode())
+        size = os.fstat(fd).st_size
+        if size and os.pread(fd, 1, size - 1) != b"\n":
+            data = b"\n" + data   # a torn tail stays its own unreadable line instead of swallowing this one
+        view = memoryview(data)
+        while view:
+            view = view[os.write(fd, view):]
+        os.fsync(fd)
     finally:
         os.close(fd)
     return line
@@ -85,9 +106,9 @@ def read_journal(state: Path) -> list[dict]:
 
 def git(cwd: Path | None, *args: str, env: dict | None = None, check: bool = True, timeout: int = 1800) -> subprocess.CompletedProcess:
     argv = ["git", *(["-C", str(cwd)] if cwd else []), *GIT_SAFE, *args]
-    res = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env={**(env or os.environ), "GIT_TERMINAL_PROMPT": "0"})
+    res = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env={**(env or os.environ), **GIT_ISOLATED})
     if check and res.returncode != 0:
-        raise MergerError(f"git {' '.join(args[:2])} failed (rc={res.returncode}): {res.stderr.strip()[-300:]}")
+        raise MergerError(f"git {' '.join(args[:2])} failed (rc={res.returncode}): {redact(res.stderr.strip()[-300:])}")
     return res
 
 
@@ -127,9 +148,11 @@ def take_lease(state: Path, repo: str):
     fh = open(state / "lease.lock", "a+")
     try:
         fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
+        if os.fstat(fh.fileno()).st_ino != os.stat(state / "lease.lock").st_ino:
+            raise BlockingIOError("lease.lock was replaced while it was being taken")
+    except (BlockingIOError, FileNotFoundError) as exc:
         fh.close()
-        return None, read_lease(state) or {"why": "lease.lock is held"}
+        return None, read_lease(state) or {"why": str(exc) or "lease.lock is held"}
     prev = read_lease(state)
     if prev and prev.get("host") and (prev["host"] != HOST or pid_alive(prev.get("pid"), prev.get("pid_start"))):
         fh.close()
@@ -177,7 +200,7 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str) -> tuple
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
     `main` moves on every merge, so oldest-first alone would re-decide one PR at each new base and starve the rest."""
-    decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if r.get("kind") == "decision"}
+    decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if r.get("kind") == "decision" or r.get("why") == "head_in_base"}
     refused = {(r.get("pr"), r.get("head_sha")) for r in recs if r.get("kind") == "refused"}
     last: dict = {}
     for r in recs:
@@ -227,15 +250,28 @@ def drop_worktree(repo: Path, path: Path) -> None:
 
 
 def runner_exec(argv: list[str], cwd: Path, env: dict, timeout: int) -> subprocess.CompletedProcess:
-    try:
-        return subprocess.run(argv, cwd=str(cwd), env=env, capture_output=True, text=True, timeout=timeout)
-    except subprocess.TimeoutExpired as exc:
-        return subprocess.CompletedProcess(argv, 124, str(exc.stdout or ""), f"timed out after {timeout}s")
+    """On a timeout, the watchdog or a stop, the runner gets SIGTERM first — it marks its checks INTERRUPTED and removes its
+    container in a `finally` — and SIGKILL only 60 s later."""
+    with subprocess.Popen(argv, cwd=str(cwd), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except BaseException as exc:
+            proc.terminate()
+            try:
+                out, err = proc.communicate(timeout=60)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                out, err = proc.communicate()
+            if not isinstance(exc, subprocess.TimeoutExpired):
+                raise
+            return subprocess.CompletedProcess(argv, 124, out, f"{err}\ntimed out after {timeout}s")
+        return subprocess.CompletedProcess(argv, proc.returncode, out, err)
 
 
 def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sha: str) -> dict:
     """plan → run → status with the BASE runner and matrix (trusted_base_required applies to the merger too)."""
-    env = {k: os.environ[k] for k in RUNNER_ENV if k in os.environ} | {"PYTHONPATH": str(base_wt), "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
+    env = {k: os.environ[k] for k in RUNNER_ENV if k in os.environ} | GIT_ISOLATED | {"PYTHONPATH": str(base_wt), "PYTHONNOUSERSITE": "1",
+                                                                                     "PYTHONDONTWRITEBYTECODE": "1"}
     runner = [a.python, "-m", "scripts.localci.runner"]
     plan = [*runner, "plan", "--run-dir", str(run_dir), "--worktree", str(cand), "--base", base_sha, "--candidate", cand_sha]
     if (base_wt / MATRIX).is_file():
@@ -252,14 +288,20 @@ def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sh
 
     if step("plan", plan, 900).returncode != 0:
         return {**out, "status": {"overall": "ERROR"}, "error": "runner plan failed (merger.log)"}
-    seal = SEAL_RE.search(step("run", [*runner, "run", "--run-dir", str(run_dir)], a.run_timeout).stdout)
+    seal = SEAL_RE.search(step("run", [*runner, "run", "--run-dir", str(run_dir)], a.run_timeout).stdout)   # the first: printed before candidate code runs
     out["seal"] = seal.group(1) if seal else None
-    step("status", [*runner, "status", "--run-dir", str(run_dir), "--quiet", *(["--seal", out["seal"]] if seal else [])], 900)
+    if not seal:
+        return {**out, "status": {"overall": "ERROR"}, "error": "the runner printed no seal (merger.log): nothing vouches for its status"}
+    if step("status", [*runner, "status", "--run-dir", str(run_dir), "--quiet", "--seal", out["seal"]], 900).returncode != 0:
+        return {**out, "status": {"overall": "ERROR"}, "error": "runner status failed (merger.log)"}
     try:
         status = json.loads((run_dir / "status.json").read_text())
     except (OSError, json.JSONDecodeError) as exc:
         return {**out, "status": {"overall": "ERROR"}, "error": f"status.json unreadable: {exc}"}
-    return {**out, "status": status if isinstance(status, dict) else {"overall": "ERROR"}}
+    binding = (status.get("candidate_sha"), status.get("base_sha"), status.get("seal")) if isinstance(status, dict) else None
+    if binding != (cand_sha, base_sha, out["seal"]):
+        return {**out, "status": {"overall": "ERROR"}, "error": f"status.json is bound to {binding}, not to this candidate, base and seal"}
+    return {**out, "status": status}
 
 
 def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path) -> dict:
@@ -267,16 +309,16 @@ def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path)
     try:
         live = hc.fetch_live(repo, base, head)
         rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])
-    except hc.CompareError as exc:
-        return {**out, "error": str(exc)[-300:]}
-    rep.update(source="live", repo=repo, branch=base, **out)
-    atomic_write(run_dir / "hosted_compare.json", json.dumps(rep, indent=2) + "\n")
+        rep.update(source="live", repo=repo, branch=base, **out)
+        atomic_write(run_dir / "hosted_compare.json", json.dumps(rep, indent=2) + "\n")
+    except Exception as exc:  # noqa: BLE001 — a failed comparison is recorded beside the gate's verdict, never loses it
+        return {**out, "error": redact(f"{type(exc).__name__}: {exc}")}
     return {**out, "agreement": rep["agreement"], "counts": rep["counts"], "drift": rep["drift"], "exit": hc.exit_code(rep)}
 
 
 def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str) -> int:
     t0 = time.monotonic()
-    rec = {"kind": "decision", "mode": "shadow", "pr": n, "head_sha": head, "base_sha": base_sha, "lease_id": lease_id}
+    rec = {"kind": "decision", "mode": "shadow", "repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "lease_id": lease_id}
     if git(repo_dir, "merge-base", "--is-ancestor", head, base_sha, check=False).returncode == 0:
         journal(state, {**rec, "kind": "skipped", "why": "head_in_base"})
         return 0
@@ -284,18 +326,18 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
     cand = state / "cand" / key
     try:
         fresh_worktree(repo_dir, cand, base_sha)
-        if git(cand, "merge", "--no-ff", "--no-commit", head, check=False).returncode != 0:
+        when = git(repo_dir, "show", "-s", "--format=%cI", base_sha).stdout.strip()   # fixed identity and date: same (head, base) → same candidate sha
+        ident = {f"GIT_{who}_{what}": val for who in ("AUTHOR", "COMMITTER") for what, val in (("NAME", AUTHOR), ("EMAIL", f"{AUTHOR}@localhost"), ("DATE", when))}
+        if git(cand, "merge", "--squash", head, check=False, env={**os.environ, **ident}).returncode != 0:
             conflicts = git(cand, "diff", "--name-only", "--diff-filter=U", check=False).stdout.split()
-            git(cand, "merge", "--abort", check=False)
             if not conflicts:
                 raise MergerError(f"merge of #{n} {head[:12]} failed without a conflicted path")
             journal(state, {**rec, "overall": "CONFLICT", "candidate_sha": None, "conflicts": conflicts[:50], "run_dir": None,
                             "elapsed_s": round(time.monotonic() - t0, 1)})
             print(f"merger: #{n} CONFLICT on {base_sha[:12]} ({len(conflicts)} paths) — journalled, no run")
             return 0
-        when = git(repo_dir, "show", "-s", "--format=%cI", base_sha).stdout.strip()   # fixed identity and date: same (head, base) → same candidate sha
-        ident = {f"GIT_{who}_{what}": val for who in ("AUTHOR", "COMMITTER") for what, val in (("NAME", AUTHOR), ("EMAIL", f"{AUTHOR}@localhost"), ("DATE", when))}
-        git(cand, "commit", "--quiet", "-m", f"localci-merger: candidate of #{n} ({head[:12]}) on {a.base} {base_sha[:12]}", env={**os.environ, **ident})
+        git(cand, "commit", "--quiet", "--allow-empty", "-m", f"localci-merger: candidate of #{n} ({head[:12]}) on {a.base} {base_sha[:12]}",
+            env={**os.environ, **ident})
         cand_sha = git(cand, "rev-parse", "HEAD").stdout.strip()
         for old in (state / "base").glob("*") if (state / "base").is_dir() else []:
             if old.name != base_sha:
@@ -304,7 +346,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         run_dir = state / "runs" / f"{key}-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
         gate = run_gate(a, base_wt, cand, run_dir, base_sha, cand_sha)
         status = gate["status"]
-        ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) else {}
+        ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) and not gate.get("error") else {}   # an unvouched status lends no verdict
         results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
         line = journal(state, {**rec, "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
                                "contexts_status": ctx.get("status"), "contexts": {k: (v or {}).get("verdict") for k, v in results.items()},
@@ -315,6 +357,11 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
         return 0
+    except MergerError as exc:   # a decision with no verdict: this (pr, head, base) is not retried, the next base is
+        journal(state, {**rec, "overall": "ERROR", "error": redact(exc), "candidate_sha": None, "run_dir": None,
+                        "elapsed_s": round(time.monotonic() - t0, 1)})
+        print(f"merger: #{n} ERROR — {redact(exc)}", file=sys.stderr)
+        return 1
     finally:
         drop_worktree(repo_dir, cand)
 
@@ -340,27 +387,46 @@ def tick(a, state: Path, lease_id: str) -> int:
     return decide(a, state, repo_dir, lease_id, n, head, base_sha)
 
 
+def _raise(exc_type, why: str):
+    def handler(signum, _frame):
+        raise exc_type(f"{why} (signal {signum})")
+    return handler
+
+
 def cmd_tick(a) -> int:
-    state = Path(a.state_dir).expanduser()
+    state = Path(a.state_dir).expanduser().resolve()
     state.mkdir(parents=True, exist_ok=True)
     if HOST != a.node:   # superscar #10: one host decides; any other exits clean and leaves the lease alone
         journal(state, {"kind": "skipped", "why": "node", "node": a.node})
         print(f"merger: host {HOST!r} is not the pinned node {a.node!r} — nothing done")
         return 0
+    bound = state / "repo"   # one state dir, one repo: a journal never answers for another repository's keys
+    if not bound.exists():
+        bound.write_text(a.repo.lower() + "\n")
+    if bound.read_text().strip() != a.repo.lower():
+        print(f"merger: refusing — {state} belongs to {bound.read_text().strip()!r}, not {a.repo!r}", file=sys.stderr)
+        return 2
     fh, lease = take_lease(state, a.repo)
     if fh is None:
         journal(state, {"kind": "skipped", "why": "lease", "holder": lease})
         print("merger: the lease is held — nothing done")
         return 0
+    # superscar #2: a hung tick holds the lease and looks alive — the watchdog turns it into an ERROR decision; a stop is no verdict
+    old = {s: signal.signal(s, h) for s, h in ((signal.SIGALRM, _raise(MergerError, f"tick exceeded --tick-timeout {a.tick_timeout}s")),
+                                               (signal.SIGTERM, _raise(Stopped, "stopped")))}
+    signal.alarm(a.tick_timeout)
     try:
         if lease["reclaimed"] is not None:
             journal(state, {"kind": "lease_reclaimed", "stale": lease["reclaimed"], "lease_id": lease["lease_id"]})
         return tick(a, state, lease["lease_id"])
-    except (MergerError, hc.CompareError, subprocess.TimeoutExpired) as exc:
-        journal(state, {"kind": "error", "error": str(exc)[-500:], "lease_id": lease["lease_id"]})
-        print(f"merger: error — {exc}", file=sys.stderr)
+    except (MergerError, Stopped, hc.CompareError, subprocess.TimeoutExpired) as exc:
+        journal(state, {"kind": "error", "error": redact(exc), "lease_id": lease["lease_id"]})
+        print(f"merger: error — {redact(exc)}", file=sys.stderr)
         return 1
     finally:
+        signal.alarm(0)
+        for s, h in old.items():
+            signal.signal(s, h)
         drop_lease(state, fh, lease)
 
 
@@ -418,7 +484,8 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--seed", help="local clone to hardlink objects from when the mirror is first created")
     t.add_argument("--remote-url", help="fetch URL (default https://github.com/<repo>.git)")
     t.add_argument("--python", default=sys.executable, help="interpreter that runs the BASE runner")
-    t.add_argument("--run-timeout", type=int, default=5400)
+    t.add_argument("--run-timeout", type=int, default=5400, help="seconds for the runner's `run` step")
+    t.add_argument("--tick-timeout", type=int, default=9000, help="watchdog for the whole tick; past it the decision is ERROR")
     sub.add_parser("merge", help=PHASE_E)
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["merge"]:   # whatever follows: there is no merge path to reach
@@ -429,6 +496,9 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "tick":
         if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", a.repo) or not re.match(r"^[A-Za-z0-9_./-]+$", a.base) or ".." in a.base:
             print(f"merger: refusing repo {a.repo!r} / base {a.base!r}", file=sys.stderr)
+            return 2
+        if a.remote_url and re.match(r"^[a-z+]+://[^/]*@", a.remote_url):
+            print("merger: refusing a --remote-url that carries credentials: they would be stored in the mirror's config", file=sys.stderr)
             return 2
         return cmd_tick(a)
     ap.print_help()
