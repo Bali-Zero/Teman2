@@ -1,36 +1,41 @@
 # contexts_matrix.yaml — the 14 status contexts branch protection on main REQUIRES, each mapped
-# to what a local run can honestly claim. Generated 2026-09-26 by measuring, not by reading YAML:
-# `mapping: executed` means every command under `local` was run in THIS worktree with `$PY` and
-# returned rc=0 (rc + wall seconds recorded beside it). Anything short of that is blocked or
-# not_implemented with the exact reason. `coverage: partial` = executed, but named CI steps were
-# NOT run (listed in `not_run`), so a local PASS is a subset of the hosted verdict, not parity.
+# to what a local run can honestly claim.
+#
+# `mapping: executed` means THE RUNNER EXECUTES IT (v0.4.0): `plan` reads `local` and plans one
+# check, `local.check` (ctx.<slug>), that runs every step and is PASS only when every step it runs
+# returns 0 and every other step is not_applicable with a reason. `local.steps` accounts for EVERY
+# step of the BASE workflow job, matched by `workflow_step` (or a unique `workflow_step_prefix`):
+#   argv: [...]          a transcribed command (`$PY` = the interpreter, `$BASE_SHA` = the plan's base)
+#   (no argv)            the BASE `run:` body itself, verbatim, under bash -eo pipefail (container only)
+#   not_applicable: why  recorded as such; never counted as run
+#   not_run: why         the context is BLOCKED until it runs
+# A BASE step the matrix does not name (other than actions/checkout and actions/setup-python), an
+# expression the runner does not evaluate, or a host step that would execute candidate code makes
+# the context BLOCKED. `where: host` = BASE scripts / version-pinned tools judging the candidate tree
+# as data (trusted, sealed); `where: container` = the steps run in the candidate sandbox with the
+# BASE copies of `trusted_files` laid over the candidate's, emulating the merge_group event. When
+# the candidate rewrites a trusted file or the workflow, a green is reported BLOCKED: hosted judges
+# with the candidate's copy, which the run did not execute. This file is operator input, like the
+# runner: pass the trusted copy with --contexts-file, never the candidate's.
 #
 # Source of the 14 names: live branch protection read 2026-09-26 (gh api); cross-checked with
 # infra/required.d/contexts.json (snapshot 2026-09-21, same 14 names, same workflow_file/job_id).
 #
-# `local.cmd` = one argv. `local.steps` = several argv run in order (the context is green only if
-# all are). Both use `$PY` for the interpreter. `kind`: cmd | pytest | trusted_pytest | rule.
 # trusted_base_required=true means the check's OWN logic (classifier / partitioner / guard and its
 # self-test) must be taken from the BASE ref when judging a candidate, or a PR can self-approve.
-#
 # blocked = a precise obstacle stopped a full local run (see `blocker`, `partial_evidence`).
 # not_implemented = no local mapping exists yet. not_applicable_rule = 0 today: no required context
 # can be statically N/A (a required check must always report); per-diff N/A is the runner's
 # change_map decision, not this file's.
 
 summary:
-  generated_at: "2026-09-26T16:11:00Z"
-  base_sha: 41ca67a43f31
-  host: Nuzantara
-  interpreter: /Users/nuzantara/.nuzantara-pilots/local-ci/lci-20260926T152929Z-25281807/venv/bin/python
+  updated_at: "2026-10-07"
   required_contexts: 14
-  executed: 4
+  executed: 4 # R1 gate, actionlint, Merah Putih, catE — by the runner, every BASE workflow step accounted for
   not_applicable_rule: 0
   blocked: 9
   not_implemented: 1
-  executed_full: 1 # R1 gate
-  executed_partial: 3 # catE, actionlint, Merah Putih — see `not_run`
-  never_claim_parity_for:
+  never_claim_parity_for: # exactly the contexts the runner does not execute (machine-checked by the suite)
     - "E2E Tests (Playwright)"
     - "Backend Tests (Python)"
     - "CodeQL Analysis (python)"
@@ -41,6 +46,9 @@ summary:
     - "Harness floor recompute"
     - "Every guard proves guilt AND innocence"
     - "Visa Oracle fullstack smoke"
+  parity_gaps: # steps of EXECUTED contexts whose hosted twin can differ from the local run
+    - "catE-sovereignty-lint on a PR head: hosted runs the #40c model judgment (vendor key) and the PR-scoped prose scan; local runs the merge_group shape (whole tree, no model)"
+    - "every container context runs the merge_group shape; PR-only steps (path sentinels) are not_applicable with reasons"
 
 contexts:
   - name: "E2E Tests (Playwright)"
@@ -247,30 +255,20 @@ contexts:
     purpose: Generator!=grader gate — a research/**/*.md in the diff must declare a non-author adversarial_review seat plus an "Adversarial review" section.
     trusted_base_required: true
     local:
-      kind: trusted_pytest
-      cwd: "."
+      check: ctx.r1-gate
+      where: host # the BASE script reads the candidate tree as data (git diff + text): trusted, sealed, no candidate code runs
+      trusted_files: [scripts/check_adversarial_review.py]
       steps:
-        - [$PY, scripts/check_adversarial_review.py, --selftest]
-        - [$PY, scripts/check_adversarial_review.py, --diff, "<BASE_SHA>"] # candidate diff vs base; observed with origin/main
-      needs: [python]
+        - workflow_step: "R1 gate — prove the guard on its own fixtures (guilt + innocence)"
+          argv: [$PY, scripts/check_adversarial_review.py, --selftest]
+        - workflow_step: Fetch base ref
+          not_applicable: the plan's BASE is a commit the runner already resolved locally; nothing to fetch
+        - workflow_step: "R1 gate — adversarial review present"
+          argv: [$PY, scripts/check_adversarial_review.py, --diff, $BASE_SHA]
+          env: { BASE_SHA: $BASE_SHA }
     mapping: executed
     coverage: full
-    observed:
-      - {
-          argv: "check_adversarial_review.py --selftest",
-          rc: 0,
-          seconds: 0.5,
-          result: "SELFTEST OK — 27 checks",
-        }
-      - {
-          argv: "check_adversarial_review.py --diff origin/main",
-          rc: 0,
-          seconds: 0.3,
-          result: "no research files in scope (HEAD == origin/main, so the diff is empty: this run proves the harness, not a candidate)",
-        }
-    caveat: The CI step first runs `git fetch origin $BASE_SHA` (network); local uses the existing origin/main ref. For trust the script must be run from the BASE checkout, not the candidate's.
     blocker: ""
-    smallest_next_action: Run against a real candidate branch with BASE_SHA = the merge base and the script taken from `git show BASE:scripts/check_adversarial_review.py`.
 
   - name: "antidotes"
     workflow_file: .github/workflows/immune-enforcement.yml
@@ -346,33 +344,26 @@ contexts:
     purpose: actionlint (pinned 1.7.12) over every workflow for schema/expression/untrusted-input errors, plus the workflow-timeout floor lint.
     trusted_base_required: true
     local:
-      kind: cmd
-      cwd: "."
+      check: ctx.actionlint
+      where: host # BASE floor lint + a version-pinned host binary, both reading the candidate's workflows as data
+      trusted_files: [scripts/lint_workflow_timeout_floor.py]
+      tool_pins: { actionlint: ACTIONLINT_VERSION } # host `actionlint -version` must equal the BASE job's pin, else BLOCKED
+      host_modules: [yaml]
       steps:
-        - [$PY, scripts/lint_workflow_timeout_floor.py]
-        - [actionlint, -no-color, "-shellcheck="]
-      needs: [python]
+        - workflow_step: Download actionlint (pinned version + sha256)
+          not_applicable: >-
+            the host binary stands in, version-checked against the BASE pin at plan time (path + sha256 in the env
+            fingerprint); the linux_amd64 tarball hash does not apply to an arm64 Homebrew build
+        - workflow_step: "Checkout-budget floor (a job's floor is the checkout, not its script)"
+          argv: [$PY, scripts/lint_workflow_timeout_floor.py]
+        - workflow_step: Lint all workflow files
+          argv: [actionlint, -no-color, "-shellcheck="]
     mapping: executed
-    coverage: partial
-    observed:
-      - {
-          argv: "lint_workflow_timeout_floor.py",
-          rc: 0,
-          seconds: 0.8,
-          result: "clean (165 jobs scanned, floor 10m)",
-        }
-      - {
-          argv: "actionlint -no-color -shellcheck=",
-          rc: 0,
-          seconds: 0.0,
-          result: "0 errors in 123 files (verbose); local binary 1.7.12 == CI pin 1.7.12",
-        }
-    not_run:
-      - "download + sha256 verify of the pinned linux tarball (network); local binary is a Homebrew source build — same version, hash not comparable"
-      - "guilt control: no known-bad workflow was fed to the local binary in this pass"
-    caveat: pyflakes rule disabled (not installed) — CI runs with `-shellcheck=` and the runner's pyflakes state, which is not pinned by the workflow.
+    coverage: full
+    caveat: >-
+      actionlint runs pyflakes on python `run:` blocks only when pyflakes is on PATH; neither Pro nor (as far as measured)
+      ubuntu-latest has it, and the workflow does not pin that state.
     blocker: ""
-    smallest_next_action: Feed one deliberately broken workflow (temp dir) through the same argv to record a guilt receipt next to the innocence one.
 
   - name: "Every guard proves guilt AND innocence"
     workflow_file: .github/workflows/guard-conformance.yml
@@ -436,26 +427,19 @@ contexts:
     purpose: WCAG-style contrast law over the Merah Putih DAY palette tokens, plus a guilt control that mutates the ink token and expects the guard to go red.
     trusted_base_required: true
     local:
-      kind: pytest
-      cwd: "."
-      modules: [scripts/tests/test_merah_putih_day_contrast.py]
-      cmd: [$PY, -m, pytest, -q, scripts/tests/test_merah_putih_day_contrast.py]
-      needs: [python]
+      check: ctx.merah-putih
+      where: container # the guilt control rewrites the token file: it does so in the container's throwaway copy
+      git_index: true # the guilt control ends with `git diff --exit-code` on the restored token file
+      trusted_files: [scripts/tests/test_merah_putih_day_contrast.py]
+      steps:
+        - workflow_step: Install the parser the sentinel and the filter test both need
+        - workflow_step: Did a guarded surface change?
+          not_applicable: merge_group/push builds answer run=true without a diff, and the runner always runs the full guard
+        - workflow_step: "The guard's own corpus is green"
+        - workflow_step: The guard can still go red (guilt control)
     mapping: executed
-    coverage: partial
-    observed:
-      - {
-          argv: "pytest -q scripts/tests/test_merah_putih_day_contrast.py",
-          rc: 0,
-          seconds: 4.1,
-          result: "64 passed, 3 skipped",
-        }
-    not_run:
-      - "workflow step 5 (guilt control): it rewrites apps/mouth/src/lib/theme/merahPutihDayVars.ts in place and restores it — not done in a prepare-only worktree; needs a temp copy of the tree"
-      - "workflow step 3 (path sentinel): CI decides run/skip per PR diff; local always runs the full corpus"
-      - "the 3 skipped tests were not investigated"
+    coverage: full
     blocker: ""
-    smallest_next_action: Run the guilt control against a `cp -R` of the token file in a temp tree (mutate, expect rc!=0, restore), and read the 3 skip reasons.
 
   - name: "catE-sovereignty-lint"
     workflow_file: .github/workflows/catE-sovereignty-lint.yml
@@ -463,87 +447,35 @@ contexts:
     purpose: Category-E guardian — paid-Anthropic-endpoint ban (constructor + env assignment), ban-prose lint, Law-5 no-autonomous-publish lint, world-readable apps/*/.env, plus its own corpora.
     trusted_base_required: true
     local:
-      kind: trusted_pytest
-      cwd: "."
+      check: ctx.cate-sovereignty
+      where: container # the BASE corpora exercise the candidate's guard implementations
+      git_index: true # the whole-tree prose scan enumerates with `git ls-files`
+      trusted_files:
+        - scripts/tests/test_ban_predicates.py
+        - scripts/test_lint_paid_llm_entity.py
+        - scripts/tests/test_lint_ban_prose.py
+        - scripts/tests/test_vendor_authorization_fence.py
+        - scripts/tests/test_typesafe_client_pin.py
+        - scripts/tests/test_cate_trigger_parity.py
+        - scripts/tests/test_cate_paid_budget.sh
+        - scripts/lint/lint_ban_prose.py
+        - scripts/lint/wr3_lint_autonomous_publish.py
+        - infra/ban-prose/grandfathered.json
+        - .github/workflows/catE-paid-anthropic-baseline.txt
       steps:
-        - [$PY, -m, pytest, scripts/tests/test_ban_predicates.py, -q]
-        - [
-            $PY,
-            -m,
-            pytest,
-            -q,
-            scripts/test_lint_paid_llm_entity.py,
-            scripts/tests/test_lint_ban_prose.py,
-            scripts/tests/test_vendor_authorization_fence.py,
-            scripts/tests/test_typesafe_client_pin.py,
-            scripts/tests/test_cate_trigger_parity.py,
-          ]
-        - [bash, scripts/tests/test_cate_paid_budget.sh]
-        - - bash
-          - -c
-          - |
-            set -uo pipefail
-            BASELINE=$(awk '!/^[[:space:]]*(#|$)/ {n++} END {print n+0}' .github/workflows/catE-paid-anthropic-baseline.txt)
-            HITS=$(grep -rnE 'Anthropic\(\s*api_key' --include='*.py' . | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_' || true)
-            COUNT=$(printf '%s' "$HITS" | grep -c . || true)
-            [ "$COUNT" -gt "$BASELINE" ] && exit 1
-            HITS=$(grep -rnE 'export[[:space:]]+the paid Anthropic key variable=[^"'"'"'[:space:]]|\bsetenv\([[:space:]]*["'"'"']the paid Anthropic key variable' --include='*.py' --include='*.sh' . | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_|examples/|vendor/' || true)
-            [ -n "$HITS" ] && exit 1
-            BAD=$(find apps -maxdepth 2 -name '.env' -perm /044 2>/dev/null || true)
-            [ -n "$BAD" ] && exit 1
-            exit 0
-        - - bash
-          - -c
-          - |
-            set -uo pipefail
-            T=$(mktemp); git ls-files -- '*.py' '*.sh' '*.yml' '*.yaml' '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' | grep -vE '^(\.venv|node_modules|vendor)/' > "$T"
-            "$PY" scripts/lint/lint_ban_prose.py --files-from "$T"; rc=$?; rm -f "$T"; exit $rc
-        - [$PY, scripts/lint/wr3_lint_autonomous_publish.py]
-      needs: [python]
+        - workflow_step: "ban-predicates — transcription parity + guilt/innocence"
+        - workflow_step: "the guards' own corpora — the suites no gating workflow ran"
+        - workflow_step: catE # its YAML name runs into ` #40 …`, which YAML reads as a comment: GitHub and the runner both see "catE"
+        - workflow_step: Ban NEW paid Anthropic constructor (vs committed baseline)
+        - workflow_step_prefix: "Ban ANTHROPIC_" # the full name spells the banned assignment shape
+        - workflow_step: Paid-endpoint ban judged as an entity
+          not_applicable: >-
+            the model judgment needs a paid vendor key this host does not hold; hosted skips it too on merge_group
+            and push (no PR base). On a PR head hosted runs it and this run has no counterpart (see never_claim_parity_for)
+        - workflow_step: Prose must not spell a banned shape (blocking)
+          env: { BASE_SHA: "", HEAD_SHA: "", PR_NUMBER: "", GH_TOKEN: "" } # merge_group: no PR base, so the whole tree is scanned
+        - workflow_step: Law-5 autonomous-publish lint (blocking)
+        - workflow_step: Ban world-readable apps/*/.env (perm > 0600)
     mapping: executed
-    coverage: partial
-    observed:
-      - {
-          argv: "pytest scripts/tests/test_ban_predicates.py -q",
-          rc: 0,
-          seconds: 4.0,
-          result: "25 passed",
-        }
-      - {
-          argv: "pytest -q <5 guard corpora>",
-          rc: 0,
-          seconds: 37.3,
-          result: "314 passed",
-        }
-      - {
-          argv: "bash scripts/tests/test_cate_paid_budget.sh",
-          rc: 0,
-          seconds: 0.2,
-          result: "9 passed, 0 failed (budget corpus)",
-        }
-      - {
-          argv: "#40 + #40b + #44 greps (bash -c)",
-          rc: 0,
-          seconds: 5.0,
-          result: "baseline=0 live=0; no the paid Anthropic key variable value assignment; no world-readable apps/*/.env",
-        }
-      - {
-          argv: "lint_ban_prose.py --files-from <whole tree, 10850 paths>",
-          rc: 0,
-          seconds: 47.9,
-          result: "10846 files scanned, no prose spells a banned shape (warning: 4 unreadable in-scope files, script tolerates it as in CI)",
-        }
-      - {
-          argv: "wr3_lint_autonomous_publish.py",
-          rc: 0,
-          seconds: 0.1,
-          result: "clean",
-        }
-    not_run:
-      - "#40c 'Paid-endpoint ban judged as an entity' (lint_paid_llm_entity.py over the PR's changed files): PR-time only, skipped in CI too on push/merge_group; needs BASE/HEAD sha and, for the model judgment, a paid vendor key + network — not this lane's to use"
-      - "pip install of pytest/pyyaml (already present in the pilot venv)"
+    coverage: full
     blocker: ""
-    smallest_next_action: >-
-      Add the changed-files path for #40c using `git diff --name-only BASE...HEAD` and run
-      lint_paid_llm_entity.py WITHOUT a key (the script degrades to the transcribed grep predicate and says so);
-      report the model-judgment leg as NOT_APPLICABLE(no vendor key), never as pass.
