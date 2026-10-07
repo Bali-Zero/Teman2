@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 138185f5345454f0722d161602684d8f10efafd1d3152f2797ac3afd31facb3b # pragma: allowlist secret
+checksum: a653a11243a619753c8307c24435a59e8b7be00555b7aeca2fe246ab00cfc312 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3164,5 +3164,27 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.disk_janitor.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.localci_merger
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1800
+  owner_module: scripts/localci/localci_merger_tick.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.localci-merger
+  severity_on_silence: warning
+  notes: 'LOCALCI-SOVEREIGN shadow merger tick on Pro (docs/specs/localci-sovereign-2026-10-07.md,
+    phases C-D): decides one armed same-repo PR per tick on the local gate, journals
+    it in ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl and merges nothing.
+    Wrapper runs merger.py as committed on origin/main from the merger mirror. Kill
+    switch LOCALCI_MERGER_ENABLED=false. Phase-D instrument: merger.py report.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.localci_merger.json
     timestamp_field: ts
     status_field: status

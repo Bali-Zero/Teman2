@@ -273,14 +273,17 @@ on any FALSE_GREEN (per decision, per context now, or recorded at tick time), 2 
 
 `infra/launchagents/com.balizero.localci-merger.plist`: `StartInterval` 600 s, `RunAtLoad`, no `KeepAlive` (a one-shot,
 superscar #7), `PATH` set explicitly (a tick without `gh` on PATH is an `error` line). It runs
-`~/.nuzantara-cron/localci_merger_tick.sh` (a copy of `scripts/localci/merger_tick.sh`), which drops every inherited `GIT_*`
+`~/.nuzantara-cron/localci_merger_tick.sh` (a copy of `scripts/localci/localci_merger_tick.sh`), which drops every inherited `GIT_*`
 variable, fetches `origin/main` into the merger's mirror (a failed fetch is not fatal: the tick journals its own), resolves ONE
 sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a working-tree copy. A failure before Python starts
 (no git, no mirror) writes no journal line; it is in `~/logs/localci-merger.err.log`, and the report's `longest_silence` shows
-the gap. Install (operator of Pro, user `nuzantara`):
+the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error` or `disabled`;
+registry id `pro.localci_merger`), and `LOCALCI_MERGER_ENABLED=false` in the plist's environment stops the ticks without
+uninstalling. The live copy is a declared HOME-fork pair (`infra/home-fork/declared-pairs.json`): `scripts/lint_home_fork.py
+--check` on Pro names a drift from the repo. Install (operator of Pro, user `nuzantara`):
 
     mkdir -p ~/.nuzantara-cron ~/logs
-    cp scripts/localci/merger_tick.sh ~/.nuzantara-cron/localci_merger_tick.sh
+    cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/localci_merger_tick.sh
     sed -e "s#__HOME__#$HOME#g" -e "s#__VENV_PYTHON__#$HOME/nuzantara/apps/backend-rag/.venv/bin/python#g" \
         infra/launchagents/com.balizero.localci-merger.plist > ~/Library/LaunchAgents/com.balizero.localci-merger.plist
     launchctl load ~/Library/LaunchAgents/com.balizero.localci-merger.plist

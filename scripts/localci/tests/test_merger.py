@@ -510,7 +510,7 @@ def test_a_filesystem_error_after_a_pr_is_picked_is_an_error_decision_not_a_retr
     assert [(r["kind"], r.get("overall")) for r in world.journal()] == [("decision", "ERROR")]
 
 
-WRAPPER = _MODULE.parent / "merger_tick.sh"
+WRAPPER = _MODULE.parent / "localci_merger_tick.sh"
 
 
 def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(tmp_path):
@@ -541,3 +541,22 @@ def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(t
     origin.rename(tmp_path / "gone.git")
     dead = wrap()
     assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2\n"
+    assert heartbeat(tmp_path)["status"] == "ok"
+
+
+def heartbeat(home):
+    return json.loads((home / ".organism" / "last_seen" / "pro.localci_merger.json").read_text())
+
+
+def test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch(tmp_path):
+    fake_py = tmp_path / "py"
+    fake_py.write_text('#!/bin/sh\ntouch "$OUT_RAN"\nexit 1\n')
+    fake_py.chmod(0o755)
+    env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "MERGER_PYTHON": str(fake_py), "MERGER_NODE": "n1",
+           "MERGER_STATE_DIR": str(tmp_path / "state"), "MERGER_SEED": str(tmp_path / "no-seed.git"), "OUT_RAN": str(tmp_path / "ran")}
+    off = subprocess.run(["bash", str(WRAPPER)], env={**env, "LOCALCI_MERGER_ENABLED": "false"}, capture_output=True, text=True)
+    assert off.returncode == 0 and heartbeat(tmp_path)["status"] == "disabled" and not (tmp_path / "state").exists()
+    no_mirror = subprocess.run(["bash", str(WRAPPER)], env=env, capture_output=True, text=True)
+    assert no_mirror.returncode != 0 and heartbeat(tmp_path)["status"] == "error" and not (tmp_path / "ran").exists()
+    no_python = subprocess.run(["bash", str(WRAPPER)], env={k: v for k, v in env.items() if k != "MERGER_PYTHON"}, capture_output=True, text=True)
+    assert no_python.returncode != 0 and heartbeat(tmp_path)["status"] == "error"
