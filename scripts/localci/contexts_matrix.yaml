@@ -51,7 +51,7 @@ summary:
     - "Backend Tests: matrix legs run one after another in fresh sandboxes (parallelism 1 on Colima 4 CPU / 8 GiB); hosted runs them on separate runners at once"
     - "Harness floor: the Gear >= 2 verdict reader runs at plan time on the host with the operator's gh, reading the PR's commit status as it stands then; hosted read it when the queue ran"
     - "E2E Tests: hosted starts the backend with four repository secrets (QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY, JWT_SECRET) and runs the specs with E2E_TEST_EMAIL/PIN set; here all six are empty. BASE's selected specs (page Page|@offline) read neither credential today, but a candidate whose backend start or selected specs fail only when they are set is GREEN here and RED hosted (a FALSE_GREEN shape no prod-credential-free run can close; Visa Oracle smoke reads no secret)"
-    - "E2E, Visa Oracle smoke and Frontend Tests: npm installs offline from a cache filled at plan time on linux/arm64 (a lock that lacks the linux-x64 optional native package hosted needs is GREEN here); hosted fetches them, and E2E's browser-install step (apt + CDN, the W118 flake) is replaced by the deps image's install of the lock's playwright-core browser, so a hosted failure of that step is not reproduced"
+    - "E2E, Visa Oracle smoke and Frontend Tests: npm installs offline from a cache filled at plan time on linux/arm64 (a lock that lacks the linux-x64 optional native package hosted needs is GREEN here); hosted fetches them, and the browser-install steps of E2E and Visa Oracle smoke (apt + CDN, one 600 s attempt hosted, the W118 flake) are replaced by the deps image's install of the lock's playwright-core browser (retried at build), so a hosted failure or timeout of that step is not reproduced"
 
 contexts:
   - name: "E2E Tests (Playwright)"
@@ -124,7 +124,7 @@ contexts:
         - workflow_step: Upload Playwright report
           not_applicable: an upload with if-no-files-found warn cannot fail the job; there is no artifact store here
     mapping: executed
-    coverage: partial # runs every step, without the six repository secrets hosted holds (parity_gaps)
+    coverage: partial # without the six repository secrets hosted holds, and the browser from the deps image (parity_gaps)
     blocker: ""
 
   - name: "Backend Tests (Python)"
@@ -504,7 +504,7 @@ contexts:
             - --dispatch-sha
             - ""
           env: { GH_TOKEN: "" } # stripped from every trusted environment; gh answers with its stored login, a read
-          no_verdict_when: CANNOT-VERIFY # the reader's own word for "the read itself failed" (a GitHub 5xx): asked again, then no verdict
+          no_verdict_when: "::error::harness_gate_read: CANNOT-VERIFY" # its own stderr line for "the read itself failed" (a GitHub 5xx): asked again, then no verdict
         - workflow_step: Bites contract — parse this PR's evidence pack
     mapping: executed
     coverage: full

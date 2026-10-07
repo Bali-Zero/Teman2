@@ -21,7 +21,6 @@ import hashlib
 import html
 import io
 import json
-import math
 import os
 import platform
 import shlex
@@ -464,7 +463,7 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
             tm = ws.get("timeout-minutes")
             if coe not in (None, False, True) or (tm is not None and (isinstance(tm, bool) or not isinstance(tm, (int, float)) or tm <= 0)):
                 return None, f"workflow step {wname!r}: continue-on-error/timeout-minutes must be literals here"
-            step.update({k: v for k, v in (("id", ws.get("id")), ("continue_on_error", coe is True), ("timeout_s", math.ceil(tm * 60) if tm else None)) if v})
+            step.update({k: v for k, v in (("id", ws.get("id")), ("continue_on_error", coe is True), ("timeout_s", tm * 60 if tm else None)) if v})
         elif ws.get("timeout-minutes") is not None:   # hosted kills the step there; only the expression-mode driver does too
             return None, f"workflow step {wname!r}: a step timeout-minutes is emulated only in a service context (expressions: true)"
         if st.get("trusted_scan") is False:   # a path filter (`case` list, `git diff -- <paths>`) names surfaces, not judges
@@ -998,8 +997,8 @@ def run_host_reader(argv: list, cwd: Path, timeout: int | None, no_verdict: str 
             r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout or 300, env=trusted_env(), cwd=str(cwd))
         except (OSError, subprocess.TimeoutExpired) as e:
             return {"rc": None, "reason": f"host reader could not run: {type(e).__name__}"}
-        out = r.stdout + r.stderr
-        if not (no_verdict and r.returncode != 0 and no_verdict in out):
+        out = r.stdout + r.stderr   # the reader's own error line, on stderr, line-anchored: a description it echoes (stdout) cannot fake it
+        if not (no_verdict and r.returncode != 0 and any(ln.startswith(no_verdict) for ln in r.stderr.splitlines())):
             return {"rc": r.returncode, "reason": f"host, at plan: BASE {Path(argv[2]).name} rc={r.returncode}", "log": out[-4000:]}
     return {"rc": None, "reason": f"host, at plan: BASE {Path(argv[2]).name} could not read GitHub ({no_verdict!r}, {len(READER_RETRY_WAITS)} tries): "
             "no verdict on the candidate, re-run", "log": out[-4000:]}
@@ -1117,7 +1116,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 return _blocked(f"job {jid}: {deps_note}")
         planned.append({"job_id": jid, "needs": needs, "legs": legs, "steps": steps, "job_env": jenv, "services": svcs, "path_prefix": prefix,
                         "checkout": checkout, "image_id": image_id, "deps": deps_note, "venv": local.get("bare_venv", True) is not False,
-                        "timeout_s": math.ceil(tm * 60)})
+                        "timeout_s": tm * 60})
         upstream.add(jid)
     for f in local.get("egress_trusted") or []:   # a tool an egress step runs is BASE's pin, or the step does not run at all
         if _extract_base_file(wt, base, f) != _extract_base_file(wt, cand, f):

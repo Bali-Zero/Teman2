@@ -282,10 +282,15 @@ def test_a_host_reader_is_the_base_copy_run_at_plan_and_its_answer_is_frozen_in_
     assert step["precomputed"]["rc"] == 3 and step["side"]["argv"][1] == "-I"   # BASE's reader answered; the candidate's exits 0
 
 
+MARK = "::error::r: CANNOT-VERIFY"
+ERR = "import sys; print({!r}, file=sys.stderr); raise SystemExit(1)"
+
+
 @pytest.mark.parametrize("body,marker,rc,tries", [
-    ("print('::error::CANNOT-VERIFY gh: HTTP 500'); raise SystemExit(1)", "CANNOT-VERIFY", None, 3),   # GitHub failed: no verdict
-    ("print('::error::no gate verdict'); raise SystemExit(1)", "CANNOT-VERIFY", 1, 1),                # the reader judged: a verdict
-    ("print('::error::CANNOT-VERIFY'); raise SystemExit(1)", None, 1, 1),                            # no marker declared: as before
+    (ERR.format(MARK + " (read failed) gh: HTTP 500"), MARK, None, 3),                                   # GitHub failed: no verdict
+    (ERR.format("::error::r: no gate verdict"), MARK, 1, 1),                                              # the reader judged: a verdict
+    ("print('r: posted description = ' + repr('" + MARK + "')); " + ERR.format("::error::r: red"), MARK, 1, 1),  # echoed text: still a verdict
+    (ERR.format(MARK), None, 1, 1),                                                                       # no marker declared: as before
 ])
 def test_a_host_reader_that_could_not_read_github_is_asked_again_then_gives_no_verdict(tmp_path, monkeypatch, body, marker, rc, tries):
     monkeypatch.setattr(runner, "READER_RETRY_WAITS", (0, 0, 0))
