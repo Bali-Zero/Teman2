@@ -54,7 +54,7 @@ run_receptor() { # $1 healer-spec, $2 mode, $3 exit code -> "ACT=.. REASONS=[..]
     script="$(printf '%s' "$1" | cut -d: -f2)"
     start="$(printf '%s' "$1" | cut -d: -f3)"
     end="$(printf '%s' "$1" | cut -d: -f4)"
-    { echo 'ACTIONABLE=0; REASONS=""'
+    { echo 'ACTIONABLE=0; REASONS=""; LOG=/dev/null; log() { :; }'
       awk -v s="$start" -v e="$end" 'index($0, s)==1{on=1} index($0, e)==1{on=0} on' "$script"
       echo 'echo "ACT=$ACTIONABLE REASONS=[${REASONS% }]"'
     } > "$TMP/driver.sh"
@@ -64,6 +64,10 @@ run_receptor() { # $1 healer-spec, $2 mode, $3 exit code -> "ACT=.. REASONS=[..]
 while IFS= read -r spec; do
     [ -n "$spec" ] || continue
     name="${spec%%:*}"
+    case "$name" in  # the Pro twin names the session-curable share (receptor B cure gate)
+        pro) DIV2="proprioception:2/2-session-curable"; DIV1="proprioception:1/1-session-curable" ;;
+        *)   DIV2="proprioception:2-diverged"; DIV1="proprioception:1-diverged" ;;
+    esac
     check "$name healer: crash (exit 1, no output) is receptor-broken" \
         "ACT=1 REASONS=[proprioception-receptor-broken]" "$(run_receptor "$spec" crash 0)"
     check "$name healer: exit 2 with parsable JSON is receptor-broken" \
@@ -75,9 +79,9 @@ while IFS= read -r spec; do
     check "$name healer: healthy stays silent" \
         "ACT=0 REASONS=[]" "$(run_receptor "$spec" healthy 0)"
     check "$name healer: real divergences keep the alarm path" \
-        "ACT=1 REASONS=[proprioception:2-diverged]" "$(run_receptor "$spec" diverged 0)"
+        "ACT=1 REASONS=[$DIV2]" "$(run_receptor "$spec" diverged 0)"
     check "$name healer: legacy verdict schema still counted" \
-        "ACT=1 REASONS=[proprioception:1-diverged]" "$(run_receptor "$spec" legacy 0)"
+        "ACT=1 REASONS=[$DIV1]" "$(run_receptor "$spec" legacy 0)"
 done <<EOF
 $HEALERS
 EOF

@@ -21,6 +21,8 @@ on:
       - "infra/launchagents/wrappers/pro-llm-burn-alarm.sh"
       - "scripts/tests/test_watchdog_third_state.sh"
       - "scripts/tests/test_healer_run_checks.py"
+      - "scripts/tests/test_pro_healer_receptors.py"
+      - "scripts/proprioception.py"
       - ".github/workflows/watchdog-third-state.yml"
   workflow_dispatch: {}
 
@@ -48,4 +50,4 @@ jobs:
       - name: Receptor helper unit tests
         run: |
           python3 -m pip install --quiet pytest
-          python3 -m pytest scripts/tests/test_healer_run_checks.py -q
+          python3 -m pytest scripts/tests/test_healer_run_checks.py scripts/tests/test_pro_healer_receptors.py -q

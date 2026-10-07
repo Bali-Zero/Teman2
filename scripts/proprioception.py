@@ -53,9 +53,10 @@ import sys
 import time
 from pathlib import Path
 
-RUNNER_VERSION = "1.0.0"
-SCHEMA_VERSION = 1
+RUNNER_VERSION = "1.1.0"
+SCHEMA_VERSION = 2
 RECONCILED, DIVERGED, UNPROBEABLE = "RECONCILED", "DIVERGED", "UNPROBEABLE"
+CURE_VALUES = {"session", "owner", "pr"}
 REPORT_DIR = Path.home() / ".nuzantara-proprioception"
 
 # The boundary taxonomy. A class with no probe scoped to this machine appears as
@@ -157,7 +158,7 @@ def redact(line: str) -> str:
 
 
 def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n: int,
-            evidence: list[str], fix_hint: str, t0: float) -> dict:
+            evidence: list[str], fix_hint: str, t0: float, cure: str = "session") -> dict:
     return {
         "id": pid,
         "boundary": boundary,
@@ -167,8 +168,57 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
         "n_findings": n,
         "evidence": [redact(e)[:200] for e in evidence[:5]],
         "fix_hint": fix_hint,
+        "cure": cure,
         "duration_ms": int((time.monotonic() - t0) * 1000),
     }
+
+
+def cure_for_result(entry: dict, status: str, n: int, evidence: list[str]) -> str:
+    """Choose a non-session cure only when this result proves it."""
+    declared = str(entry.get("cure", "session"))
+    if status != DIVERGED:
+        return declared
+
+    if entry.get("id") == "arsenal_seats":
+        states = []
+        for line in evidence:
+            try:
+                item = json.loads(line)
+            except (TypeError, json.JSONDecodeError):
+                return "session"
+            states.append(str(item.get("status", "")))
+        if len(states) == n and states and all(s in {"AUTH_DEAD", "BALANCE_DEAD"} for s in states):
+            return "owner"
+
+    if entry.get("id") == "launchd_liveness":
+        findings = []
+        for line in evidence:
+            try:
+                findings.append(json.loads(line))
+            except (TypeError, json.JSONDecodeError):
+                return "session"
+        if len(findings) == n and findings and all(
+            item.get("verdict") == "DEAD-GREEN"
+            and "operation not permitted" in str(item.get("log_marker", "")).lower()
+            for item in findings
+        ):
+            return "owner"
+
+    if entry.get("id") == "home_fork_scripts":
+        live_paths = []
+        for line in evidence:
+            match = re.match(r"^(?:DIVERGED: )(.+?) != ", line)
+            if not match:
+                match = re.match(r"^NO REPO COUNTERPART: (.+?) executes live ", line)
+            if match:
+                live_paths.append(Path(os.path.expanduser(match.group(1))))
+        if len(live_paths) == n and live_paths:
+            try:
+                if all(path.stat().st_uid == 0 for path in live_paths):
+                    return "owner"
+            except OSError:
+                pass  # not provably root-owned: fail open toward a session
+    return declared
 
 
 def finding_label(probe: dict) -> str:
@@ -2254,6 +2304,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "infra/tailscale/policy.hujson <-> the packet filter this node enforces",
         "machines": ["all"], "tags": ["fast"], "timeout_sec": 30,
         "severity": "P1",
+        "cure": "owner",
         "parse": "tri_state_exit",
         "fix_hint": ("DIVERGED here is expected until policy.hujson is applied in the "
                      "Tailscale admin console (operator[GUI], runbook "
@@ -2283,6 +2334,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "machine-checkout <-> origin/main",
         "machines": ["all"], "tags": ["fast", "remote-safe"], "timeout_sec": 40,
         "severity": "P1", "args": {"behind_warn": 10},
+        "cure": "owner",
         "fix_hint": "interactive pull on this machine's main (never from an agent session)",
     },
     {
@@ -2291,6 +2343,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "produced-on-host <-> committed-to-repo",
         "machines": ["all"], "tags": ["fast", "remote-safe"], "timeout_sec": 20,
         "severity": "P1",
+        "cure": "pr",
         "args": {"pairs": [{"glob": "research/regulatory/*-delta.json", "label": "regulatory deltas"}]},
         "fix_hint": "promote stranded deltas: git add research/regulatory/*-delta.json + PR",
     },
@@ -2309,6 +2362,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "the canon block of CLAUDE.md <-> AGENTS.md <-> GEMINI.md <-> QWEN.md",
         "machines": ["all"], "tags": ["fast", "remote-safe"], "timeout_sec": 15,
         "severity": "P1",
+        "cure": "pr",
         "args": {"reference": "CLAUDE.md", "doors": ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md"]},
         "fix_hint": "copy the reference door's block VERBATIM into the diverging door — the block is shared doctrine, so the cure is never to reword it locally; if the reference is the one that is wrong, fix it there and re-copy outward",
     },
@@ -2619,6 +2673,8 @@ def validate_registry(registry: list[dict]) -> list[str]:
             errors.append(f"probe[{i}] ({e.get('id')}): unknown builtin '{e.get('target')}'")
         if e.get("class") not in KNOWN_BOUNDARY_CLASSES:
             errors.append(f"probe[{i}] ({e.get('id')}): class '{e.get('class')}' not in taxonomy")
+        if e.get("cure", "session") not in CURE_VALUES:
+            errors.append(f"probe[{i}] ({e.get('id')}): invalid cure '{e.get('cure')}'")
     return errors
 
 
@@ -2689,7 +2745,8 @@ def write_report(report: dict) -> None:
              ""]
     for r in report["probes"]:
         mark = {"RECONCILED": "OK ", "DIVERGED": "!! ", "UNPROBEABLE": "?? "}[r["status"]]
-        lines.append(f"- {mark}[{r['severity']}] {r['id']} ({r['boundary']}) — {r['n_findings']} findings, {r['duration_ms']}ms")
+        lines.append(f"- {mark}[{r['severity']}] {r['id']} ({r['boundary']}) — "
+                     f"{r['n_findings']} findings, {r['duration_ms']}ms, cure={r['cure']}")
         for e in r["evidence"]:
             lines.append(f"    - {e}")
         if r["status"] == DIVERGED:
@@ -2830,7 +2887,7 @@ def main() -> int:
         if root is None:
             results.append(verdict(entry["id"], entry["boundary"], entry["class"], UNPROBEABLE,
                                    entry["severity"], 0, ["no repo checkout found on this machine"],
-                                   entry["fix_hint"], t0))
+                                   entry["fix_hint"], t0, entry.get("cure", "session")))
             continue
         try:
             if entry["type"] == "builtin":
@@ -2851,8 +2908,9 @@ def main() -> int:
             fix_hint = _arsenal_seats_vcr_m5_remedy(entry)
         elif entry["id"] == "guardian_freshness":
             fix_hint = _guardian_freshness_remedy(entry, ev)
+        cure = cure_for_result(entry, status, n, ev)
         results.append(verdict(entry["id"], entry["boundary"], entry["class"], status,
-                               entry["severity"], n, ev, fix_hint, t0))
+                               entry["severity"], n, ev, fix_hint, t0, cure))
 
     if args.fleet:
         self_path = Path(__file__) if "__file__" in globals() and Path(__file__).exists() else None
