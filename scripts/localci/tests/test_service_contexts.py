@@ -39,6 +39,13 @@ def test_expressions_evaluate_as_the_hosted_runner_does(expr, ctx, want):
     assert X.substitute("${{ " + expr + " }}", ctx) == want
 
 
+@pytest.mark.parametrize("text,want", [("  ", 0.0), ("0x10", 16.0), ("+0x10", None), ("0xffffffff", -1.0), ("0x100000000", None),
+                                       ("0o37777777777", -1.0), ("1_0", None), ("1e3", 1000.0), (".5", 0.5), ("Infinity", float("inf"))])
+def test_strings_become_numbers_as_actions_runner_parse_number_reads_them(text, want):
+    got = X._num(text)
+    assert (got != got) if want is None else got == want   # None: NaN, which equals nothing
+
+
 @pytest.mark.parametrize("expr", ["secrets.CODECOV_TOKEN != ''", "github.token", "hashFiles('a')", "inputs.x", "format('{0}', 1)", "a[0]"])
 def test_a_value_hosted_holds_and_this_run_does_not_is_refused_never_read_as_empty(expr):
     with pytest.raises(X.ExprError):
@@ -79,6 +86,29 @@ def drive(tmp_path: Path, steps: list) -> tuple[list, int]:
     rc = subprocess.run([sys.executable, "-I", str(runner.STEPS_DRIVER), str(tmp_path / "steps.json"), str(tmp_path / "j.xml")],
                         capture_output=True).returncode
     return runner.parse_expr_junit(tmp_path / "j.xml"), rc
+
+
+def _driver():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("localci_steps_driver", runner.STEPS_DRIVER)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.mark.parametrize("raw,want", [(b"k=v\r\n", {"k": "v\r"}), (b"k<<E\na\r\nb\r\nE\n", {"k": "a\r\nb\r"}), (b"\xef\xbb\xbfk=v\n", {"k": "v"}),
+                                     (b"k<<E\nv\nE", {"k": "v"}), (b"\n\nk=1\nk=2\n", {"k": "2"}), (b"k<<E\r\nv\nE\n", None), (b"k<<E\nv", None)])
+def test_github_output_is_read_back_as_the_hosted_linux_runner_reads_it(tmp_path, raw, want):
+    (tmp_path / "o").write_bytes(raw)
+    got, err = _driver().read_kv_file(tmp_path / "o")
+    assert (err is not None) if want is None else (got, err) == (want, None)
+
+
+def test_continue_on_error_covers_a_signal_as_hosted_but_the_step_still_has_no_verdict(tmp_path):
+    sh = ["bash", "-e", "{0}"]
+    got, rc = drive(tmp_path, [{"name": "dies", "id": "a", "argv": sh, "script": "kill -TERM $$\n", "continue_on_error": True},
+                               {"name": "next", "argv": sh, "script": 'test "${{ steps.a.conclusion }}" = success\n'}])
+    assert [s["status"] for s in got] == ["ERROR", "PASS"]
 
 
 @pytest.mark.parametrize("body", ['echo "k<<END" >> "$GITHUB_OUTPUT"; echo v >> "$GITHUB_OUTPUT"', 'echo "garbage" >> "$GITHUB_OUTPUT"',
@@ -210,6 +240,7 @@ def test_a_chain_is_planned_from_base_with_its_expressions_kept_for_the_driver(t
     ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ job.container.id }}"}}]}, "only job.status is"),
     ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ strategy.job-total }}"}}]}, "strategy is not modelled"),
     ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ github.event.repository.name }}"}}]}, "merge_group payload"),
+    ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ github.event.merge_group.head_commit.id }}"}}]}, "merge_group field"),
     ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ needs.unit.outputs.n }}"}}]}, "upstream output"),
     ({"jobs": []}, "needs ['unit']"),
     ({"service_images": {}}, "no operator-pinned stand-in"),
@@ -273,7 +304,7 @@ def test_steps_listed_out_of_base_order_are_blocked_because_outputs_and_status_f
     ('demo==1.0; python_version >= "3" --no-binary=:all:', False),   # pip reads ` --...` as an option: it would lift --only-binary
     ("demo==1.0 --no-binary=:all:", False), ('x==1; extra == "a --no-binary"', False), ("x==1 @ https://e/x.whl", False),
     ("--index-url https://e/simple", False), ("-e ../../packages/cell-core", False), ("x>=1", False),
-    ('pywin32==306 ; sys_platform == "win32" \\', True), ("a[b,c]==1.2.3", True),
+    ('pywin32==306 ; sys_platform == "win32" \\', True), ("a[b,c]==1.2.3", True), ('x==1; platform_release == "5.15-generic"', True),
     ('x==1; platform_machine == "x86_64" and (python_version < "3.12" or os_name != "nt")', True),
 ])
 def test_only_a_plain_pin_reaches_the_networked_download(line, kept):

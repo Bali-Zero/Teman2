@@ -61,12 +61,17 @@ def bare_python(prefix: str) -> str:
 
 
 def read_kv_file(p: Path) -> tuple[dict, str | None]:
-    """GITHUB_OUTPUT as the hosted runner reads it back (FileCommandManager): lines split on \\n (a \\r\\n ending drops its \\r),
-    `key=value`, or `key<<DELIM` ... `DELIM`; an empty key or delimiter, a line of neither shape, or a missing delimiter fails the
-    step there, so it fails it here. -> (outputs, error)."""
-    lines, out, i = (p.read_bytes().decode("utf-8", "replace").split("\n") if p.exists() else []), {}, 0
+    """GITHUB_OUTPUT as the hosted Linux runner reads it back (FileCommandManager): UTF-8 (a BOM dropped), lines split on \\n only
+    (a \\r stays in the value), empty lines skipped, `key=value` or `key<<DELIM` ... a line exactly DELIM; an empty key or delimiter,
+    a line of neither shape, a missing delimiter or a value line with no newline fails the step there, so it fails it here.
+    -> (outputs, error)."""
+    lines = p.read_bytes().decode("utf-8-sig", "replace").split("\n") if p.exists() else [""]
+    has_nl = [True] * (len(lines) - 1) + [False]
+    if lines[-1] == "":
+        lines, has_nl = lines[:-1], has_nl[:-1]
+    out, i = {}, 0
     while i < len(lines):
-        ln, i = lines[i].removesuffix("\r"), i + 1
+        ln, i = lines[i], i + 1
         if not ln:
             continue
         eq, hd = ln.find("="), ln.find("<<")
@@ -74,13 +79,15 @@ def read_kv_file(p: Path) -> tuple[dict, str | None]:
             key, val = ln.split("=", 1)
         elif hd >= 0:
             key, delim = ln.split("<<", 1)
+            if not key or not delim:
+                return out, f"GITHUB_OUTPUT: invalid format {ln!r}"
             buf = []
-            while i < len(lines) and lines[i].rstrip("\r\n") != delim:
+            while i >= len(lines) or lines[i] != delim:
+                if i >= len(lines) or not has_nl[i]:
+                    return out, f"GITHUB_OUTPUT: no matching delimiter for {ln!r}"
                 buf.append(lines[i])
                 i += 1
-            if not key or not delim or i >= len(lines):
-                return out, f"GITHUB_OUTPUT: no matching delimiter for {ln!r}" if key and delim else f"GITHUB_OUTPUT: invalid format {ln!r}"
-            val, i = "\n".join(buf)[:-1] if buf and buf[-1].endswith("\r") else "\n".join(buf), i + 1
+            val, i = "\n".join(buf), i + 1
         else:
             return out, f"GITHUB_OUTPUT: invalid format {ln!r}"
         if not key:
@@ -152,14 +159,15 @@ def expr_steps(cfg: dict, root: str, prefix: str, gh: Path, suite) -> tuple[int,
         case.set("time", f"{time.monotonic() - t0:.3f}")
         case.set("cpu", f"{cpu1.ru_utime + cpu1.ru_stime - cpu0.ru_utime - cpu0.ru_stime:.3f}")
         outcome = "success" if rc == 0 else "failure"
-        if rc is not None and rc > 0 and st.get("continue_on_error"):
+        coe = rc != 0 and bool(st.get("continue_on_error"))   # hosted: outcome failure, conclusion success, the job goes on
+        if rc is not None and rc > 0 and coe:
             case.set("outcome", "failure")
             ET.SubElement(case, "system-out").text = f"rc={rc} {note}".strip()
-        elif rc is None:
-            blocked, status = blocked + 1, "failure"
+        elif rc is None:   # no verdict on the candidate either way: BLOCKED, whatever continue-on-error says
+            blocked, status = blocked + 1, status if coe else "failure"
             ET.SubElement(case, "error", type="not-started", message=note)
         elif rc < 0:
-            killed, status = killed + 1, "failure"
+            killed, status = killed + 1, status if coe else "failure"
             ET.SubElement(case, "error", type="signal", message=f"killed by signal {-rc}")
         elif rc != 0:
             failed += 1
@@ -167,7 +175,7 @@ def expr_steps(cfg: dict, root: str, prefix: str, gh: Path, suite) -> tuple[int,
             ET.SubElement(case, "failure", message=f"rc={rc} {note}".strip())
         if st.get("id"):
             ctx["steps"][st["id"]] = {"outputs": outputs, "outcome": outcome,
-                                      "conclusion": "success" if st.get("continue_on_error") and rc is not None and rc > 0 else outcome}
+                                      "conclusion": "success" if coe else outcome}
         print(f"##[localci] step {i} rc={rc} {note}".rstrip(), flush=True)
     return failed, killed, blocked, skipped
 

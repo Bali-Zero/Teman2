@@ -22,7 +22,7 @@ _TOKEN = re.compile(r"\s*(?:(?P<str>'(?:[^']|'')*')|(?P<num>\d+(?:\.\d+)?)|(?P<o
                     r"|(?P<word>[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)*))")
 _WRAP = re.compile(r"\$\{\{(.*?)\}\}", re.S)
 _DEC = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?")
-_RADIX = re.compile(r"([+-]?)0([xo])([0-9a-fA-F]+)")
+_RADIX = re.compile(r"0(?:x([0-9a-fA-F]+)|o([0-7]+))")
 
 
 class ExprError(ValueError):
@@ -126,15 +126,15 @@ def _num(v) -> float:
         return float(v)
     if isinstance(v, (dict, list)):
         return math.nan
-    t = str(v).strip()
+    t = str(v).strip()   # ExpressionUtility.ParseNumber: trim; '' 0; invariant decimal; unsigned 0x/0o read as an Int32; Infinity
     if t == "":
         return 0.0
+    if _DEC.fullmatch(t):
+        return float(t)
     if (m := _RADIX.fullmatch(t)):
-        try:
-            return float(int(m.group(1) + m.group(3), 16 if m.group(2) == "x" else 8))
-        except ValueError:
-            return math.nan
-    return float(t) if _DEC.fullmatch(t) else math.nan
+        n = int(m.group(1), 16) if m.group(1) else int(m.group(2), 8)
+        return math.nan if n > 0xFFFFFFFF else float(n - (1 << 32) if n >= 1 << 31 else n)
+    return {"infinity": math.inf, "+infinity": math.inf, "-infinity": -math.inf}.get(t.lower(), math.nan)
 
 
 def truthy(v) -> bool:

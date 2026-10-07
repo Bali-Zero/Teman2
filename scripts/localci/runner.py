@@ -629,9 +629,9 @@ SERVICE_STEP_ENV = {"UV_OFFLINE": "1", "UV_FIND_LINKS": "/opt/wheels"}   # uv's 
 RUNNER_CTX = {"os": "Linux", "arch": "ARM64", "temp": "/tmp/runner-temp", "name": "localci"}   # arm64 here, X64 hosted: a parity gap
 ARTIFACT_MAX_BYTES = 256 << 20
 DEPS_LABEL = "org.nuzantara.localci.deps"
-_MARKER_ATOM = r"""(?:[a-z_]+|"[^"\s-]*"|'[^'\s-]*')\s*(?:===|==|!=|<=|>=|<|>|~=|not\s+in|in)\s*(?:[a-z_]+|"[^"\s-]*"|'[^'\s-]*')"""
-# `name[extras]==version`, optionally `; <PEP 508 marker>` — nothing else: pip reads ` -...` anywhere on a line as an option
-# (`--no-binary` would lift --only-binary), so a quoted marker value may not even hold a dash after whitespace.
+_MARKER_ATOM = r"""(?:[a-z_]+|"[^"]*"|'[^']*')\s*(?:===|==|!=|<=|>=|<|>|~=|not\s+in|in)\s*(?:[a-z_]+|"[^"]*"|'[^']*')"""
+# `name[extras]==version`, optionally `; <PEP 508 marker>` — nothing else; and pip reads a space-separated token starting with `-`
+# anywhere on the line as an option (`--no-binary` would lift --only-binary), so _pin_lines also drops any line with a `\s-`.
 REQ_PIN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(\[[A-Za-z0-9,._-]+\])?==[A-Za-z0-9.+!_-]+"
                      rf"(\s*;\s*\(*\s*{_MARKER_ATOM}\s*\)*(?:\s+(?:and|or)\s+\(*\s*{_MARKER_ATOM}\s*\)*)*)?\s*\\?$")
 # The deps image: the candidate image plus an offline wheelhouse of the closure a job's install steps ask for, so they re-run
@@ -702,7 +702,8 @@ def github_ctx(base: str, pr: int | None, repo: str) -> dict:
     """The merge_group event inside the sandbox, where `main` is the rebuilt BASE commit and `localci` the candidate's."""
     head_ref = f"refs/heads/gh-readonly-queue/main/pr-{pr}-{base}" if pr else ""
     return {"event_name": "merge_group", "repository": repo, "sha": "localci", "ref": head_ref or "refs/heads/localci", "actor": "localci",
-            "event": {"merge_group": {"base_sha": "main", "head_sha": "localci", "head_ref": head_ref, "base_ref": "refs/heads/main"}}}
+            "event": {"action": "checks_requested",
+                      "merge_group": {"base_sha": "main", "head_sha": "localci", "head_ref": head_ref, "base_ref": "refs/heads/main"}}}
 
 
 def _seconds(v: str) -> float:
@@ -764,7 +765,7 @@ def _pin_lines(blob: bytes) -> tuple[list, list]:
         t = ln.strip()
         if not t or t.startswith("#") or re.fullmatch(r"--hash=sha256:[0-9a-f]{64}\s*\\?", t):
             continue
-        (keep if REQ_PIN.match(t) else dropped).append(t.rstrip("\\").strip())
+        (keep if REQ_PIN.match(t) and not re.search(r"\s-", t) else dropped).append(t.rstrip("\\").strip())
     return keep, dropped
 
 
@@ -825,7 +826,7 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
     return have[0], note
 
 
-MERGE_GROUP_EVENT_KEYS = {"action", "merge_group", "repository", "organization", "installation", "sender", "enterprise"}
+MERGE_GROUP_EVENT_KEYS = {"merge_group", "repository", "organization", "installation", "sender", "enterprise"}   # `action` is modelled
 
 
 def unmodelled_path(path: list, gh: dict, needs: list, stood_in: dict) -> str | None:
