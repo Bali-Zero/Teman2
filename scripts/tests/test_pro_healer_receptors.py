@@ -10,8 +10,10 @@ import shutil
 import subprocess
 import tempfile
 import time
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -68,9 +70,12 @@ print(os.environ["FAKE_PROP_JSON"])
         _executable(self.repo / "scripts/arsenal_probe.py", "#!/usr/bin/env python3\n")
         _executable(self.repo / "scripts/tg_notify.py", "#!/usr/bin/env python3\nprint('fake')\n")
         _executable(self.repo / "scripts/healer_memo.py", """#!/usr/bin/env python3
-import sys
+import os, sys
 cmd = sys.argv[1]
-if cmd == "fingerprint": print("fixture-fingerprint")
+if cmd == "fingerprint":
+    with open(os.environ.get("FAKE_MEMO_INPUTS", os.devnull), "a") as fh:
+        fh.write(sys.stdin.read().strip() + "\\n")
+    print("fixture-fingerprint")
 elif cmd == "check": print("MISS")
 elif cmd == "verdict-from-escalations": print("curable")
 """)
@@ -94,6 +99,7 @@ elif cmd == "verdict-from-escalations": print("curable")
             "FAKE_PROP_JSON": json.dumps({"probes": probes}),
             "PRO_HEALER_CASCADE_BIN": str(self.cascade),
             "PRO_HEALER_PIDFILE": str(self.tmp / "healer.pid"),
+            "FAKE_MEMO_INPUTS": str(self.tmp / "memo-inputs"),
         })
         return subprocess.run(
             ["bash", str(self.wrapper)], env=env, text=True, capture_output=True,
@@ -171,12 +177,63 @@ elif cmd == "verdict-from-escalations": print("curable")
         self.assertEqual(json.loads(state.read_text())["last_acted"][0]["report_ts"], "2026-10-06T01:00:00Z")
 
 
+    def test_memo_key_changes_when_two_probes_swap_cures(self) -> None:
+        for a, b in (("owner", "session"), ("session", "owner")):
+            self._run([{"id": "a", "status": "DIVERGED", "severity": "P1", "cure": a},
+                       {"id": "b", "status": "DIVERGED", "severity": "P1", "cure": b}])
+        keys = [json.loads(line)["diverged_probes"]
+                for line in (self.tmp / "memo-inputs").read_text().splitlines()]
+        self.assertEqual(len(keys), 2)
+        self.assertNotEqual(keys[0], keys[1])
+
+
+def _proprioception():
+    spec = importlib.util.spec_from_file_location("proprioception_under_test", PROPRIOCEPTION)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class CureForResultTest(unittest.TestCase):
+    """The classifier receptor B skips on: owner only when EVERY finding proves it."""
+
+    def setUp(self) -> None:
+        self.mod = _proprioception()
+
+    def _cure(self, pid: str, evidence: list[str], n: int | None = None) -> str:
+        n = len(evidence) if n is None else n
+        return self.mod.cure_for_result({"id": pid}, self.mod.DIVERGED, n, evidence)
+
+    def test_arsenal_owner_only_when_every_seat_is_auth_or_balance_dead(self) -> None:
+        def seat(status: str) -> str:
+            return json.dumps({"status": status, "seat": "x"})
+        self.assertEqual(self._cure("arsenal_seats", [seat("AUTH_DEAD"), seat("BALANCE_DEAD")]), "owner")
+        self.assertEqual(self._cure("arsenal_seats", [seat("AUTH_DEAD"), seat("MODEL_ERR"), seat("UNKNOWN_ERR")]), "session")
+        self.assertEqual(self._cure("arsenal_seats", [seat("AUTH_DEAD")], n=2), "session")
+        cut = json.dumps({"status": "AUTH_DEAD", "detail": "x" * 200})[:160]
+        self.assertEqual(self._cure("arsenal_seats", [cut]), "session")
+
+    def test_launchd_owner_only_when_every_finding_is_a_tcc_denial(self) -> None:
+        tcc = json.dumps({"label": "a", "verdict": "DEAD-GREEN", "log_marker": "Operation not permitted"})
+        other = json.dumps({"label": "b", "verdict": "FAILING-HONESTLY", "log_marker": "exit 1"})
+        self.assertEqual(self._cure("launchd_liveness", [tcc, tcc]), "owner")
+        self.assertEqual(self._cure("launchd_liveness", [tcc, other]), "session")
+        self.assertEqual(self._cure("launchd_liveness", [tcc], n=2), "session")
+
+    def test_home_fork_owner_only_when_every_live_path_is_root_owned(self) -> None:
+        def stat(path: Path, *args: object, **kwargs: object) -> types.SimpleNamespace:
+            return types.SimpleNamespace(st_uid=0 if str(path).startswith("/usr/local/") else 501)
+        root = "DIVERGED: /usr/local/lib/wa.sh != scripts/wa.sh — a fix is stranded on one side (x)"
+        user = "NO REPO COUNTERPART: /Users/u/scripts/y.sh executes live with no source of truth in repo"
+        with mock.patch.object(self.mod.Path, "stat", stat):
+            self.assertEqual(self._cure("home_fork_scripts", [root, root]), "owner")
+            self.assertEqual(self._cure("home_fork_scripts", [root, user]), "session")
+
+
 class ProprioceptionCureSchemaTest(unittest.TestCase):
     def test_undeclared_cure_defaults_to_session_and_both_boards_carry_it(self) -> None:
-        spec = importlib.util.spec_from_file_location("proprioception_under_test", PROPRIOCEPTION)
-        mod = importlib.util.module_from_spec(spec)
-        assert spec.loader is not None
-        spec.loader.exec_module(mod)
+        mod = _proprioception()
         with tempfile.TemporaryDirectory() as td:
             mod.REPORT_DIR = Path(td)
             probe = mod.verdict(
