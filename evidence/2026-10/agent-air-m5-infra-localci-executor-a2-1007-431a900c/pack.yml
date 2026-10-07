@@ -1,9 +1,11 @@
 brief_ref: evidence/brief.yml
 plan_ref: >-
   Mandate LOCALCI-EXECUTOR phase A, handed by the team lead of Zero's session on 2026-10-07 ("make the local CI
-  fully operational, no excuses"); this pack is PR-A2 (container additions + organ + guard + antidotes), stacked on
-  PR-A1 (planning + R1 + actionlint + Merah Putih + catE). Design anchor: docs/specs/localci-gate-2026-10-06.md §4
-  sequence step 3.
+  fully operational, no excuses"); this pack is PR-A2 (container additions + organ + guard + antidotes), built on
+  PR-A1 (#8015, squash feb9e84337: planning + R1 + actionlint + Merah Putih + catE) and cherry-picked onto
+  origin/main after it merged. Design anchors: docs/specs/localci-gate-2026-10-06.md §4 sequence step 3, and the
+  end state RULED 2026-10-07 (docs/rules/RULINGS.md; docs/specs/localci-sovereign-2026-10-07.md) — the local gate
+  on Pro decides merges once proven; phase A is the common foundation of that plan.
 lanes:
   - lane: localci-executor-a2-build
     role: build
@@ -20,12 +22,14 @@ lanes:
 council_run: council-journal.jsonl
 seat_override: >-
   Two external families reviewed the candidate (OpenAI Codex, Google Gemini 3.1 Pro), but only one line counts for
-  R9: the Codex seat reported its model as gpt-6.1-sol while the roster names codex-gpt-5.6-sol, so the Codex line
+  R9: the Codex seat reported its model as gpt-6.1-sol (and as "GPT-6 (Codex)" on the pass over the notice fold)
+  while the roster names codex-gpt-5.6-sol, so the Codex line
   is journalled under its true name and does not qualify — the position PR #7991 and PR-A1 took. The seat was not
   renamed to fit the roster.
 seat_fallback_reason: >-
   The reserve agy-gemini-3.1-pro stood in because both remaining titular seats were dead at dispatch
-  (scripts/arsenal_probe.py --seats kimi,tp1-qwen3.8-max, 2026-10-07T08:20:37Z on M5): kimi QUOTA_DEAD
+  (scripts/arsenal_probe.py --seats kimi,tp1-qwen3.8-max on M5, 2026-10-07T08:20:37Z and again 12:37:31Z
+  for the pass over the notice fold): kimi QUOTA_DEAD
   (membership quota), tp1-qwen3.8-max QUOTA_DEAD (HTTP 429, monthly plan quota, reset 2026-10-11 16:00 UTC).
 pii_scan: clean
 pii_scan_note: Runner code, a Dockerfile, a contexts matrix, tests and GitHub check metadata only; no client data was read or written.
@@ -44,60 +48,87 @@ what_changed: |
   empty trusted blobs accepted; HOME/SHELL/PIP_FIND_LINKS in the step env.
   scripts/localci/steps_driver.py: rebuilds BASE inside the sandbox (main, origin/main, origin = itself), packs
   objects, runs the steps in a bare venv of the selected interpreter.
-  scripts/localci/README.md, tests/test_contexts_exec.py (+7 tests), tests/test_runner.py (version).
+  scripts/localci/README.md, tests/test_contexts_exec.py (+13 tests), tests/test_runner.py (version).
+  Folded from the PR-A1 final gate (be7fc440c2, refuted and cured in 9a57dba337 and 02faa27294): not_applicable needs a string reason; env merges workflow -> job ->
+  step -> matrix; a job with container:/services: or a runs-on other than ubuntu-latest/24.04 is BLOCKED; README
+  fixes (GitHub's real shell templates, the .gitattributes and tree-entry halves of the BLOCKED-green rule, the
+  coordinator venv, the 2026-10-07 ruling); catE's #40c note points at parity_gaps.
 proof: |
   See receipts. Nothing in this change posts a status, edits branch protection, touches a workflow or arms the
-  adapter. Before it (PR-A1): agreement=4/14 on hosted-green main commits. After it, measured on Pro with the
-  committed code: 7/14 AGREE with 0 FALSE_GREEN on three hosted-green main commits, and organ, guard and antidotes
-  each RED on a deliberate violation while the other six executed contexts stay green.
+  adapter. Before it (PR-A1, merged as #8015): agreement=4/14 on hosted-green main commits. After it, measured on
+  Pro at the final HEAD 02faa27294: 7/14 AGREE with 0 FALSE_GREEN on the newest hosted-green main commit
+  1478933287, organ RED on a deliberate violation while the other six executed contexts stay green, suite 448
+  passed. Earlier code measured the same on 481b42dd9e, 0e6d48a4e9, 01d1241330 (f8f6bdb80d) and on 1478933287 and
+  feb9e84337 (be7fc440c2), with guard and antidotes each RED on their own violation.
 bites:
   consumer: >-
     scripts/localci/hosted_compare.py run on Pro over a local run of a hosted-green main commit (the comparator
     that spec §4 makes the only place a local claim is stated).
   observation: >-
-    Pro, 2026-10-07 09:20Z, runner at f8f6bdb80d (sha256 f79cb9e2…), image sha256:2c9b1d54104d…, on 481b42dd9e
-    (base 0e6d48a4e9), live GETs: AGREE for R1 gate, actionlint, Merah Putih, catE, organ, guard and antidotes;
-    agreement=7/14 false_green=0 false_red=0 local_blind=7 hosted_pending=0, exit 0. Same on 0e6d48a4e9 and
-    01d1241330.
+    Pro, 2026-10-07 12:16Z, runner at 02faa27294 (sha256 49a5b8fab354…), image sha256:2c9b1d54104d…, coordinator
+    venv311, on 1478933287 (base 45b72942e8), live GETs: AGREE for R1 gate, actionlint, Merah Putih, catE, organ,
+    guard and antidotes; agreement=7/14 false_green=0 false_red=0 local_blind=7 hosted_pending=0, exit 0.
 ground:
-  ts: "2026-10-07T08:32:45Z"
+  ts: "2026-10-07T12:05:40Z"
   siblings: >-
-    `gh pr list --state open --json number,files`: no open PR touches scripts/localci. The Pro broker worktree of
+    `gh pr list --state open --json number,files`: no open PR touches scripts/localci. Phase B (executor-b, a
+    sibling session) runs its own localci code and containers on Pro's docker VM; nothing of it is shared with
+    this run but the VM. The Pro broker worktree of
     PR-A1 is reused as the candidate checkout (detached per measured sha, restored after); Pro's main checkout was
     not written. The image tag localci-candidate:1 on Pro has no other consumer (no launchd job or crontab names it).
 spend:
-  adversarial_rounds: 1
-  wall_clock_hours: 4
+  adversarial_rounds: 2
+  wall_clock_hours: 7
 receipts:
   - claim: The candidate image builds from the committed Dockerfile on ubuntu 24.04 with python 3.12.15 default (and /usr/bin/python3), 3.11.17 at /opt/py311 (LOCALCI_PYTHONS=3.11.17=/opt/py311/bin), the sandbox user named runner, crontab answering "no crontab for runner", and a 33-wheel offline wheelhouse; tagged localci-candidate:1 on Pro as sha256:2c9b1d54104d….
     cmd: docker build -q -t localci-candidate:1 - < scripts/localci/candidate.Dockerfile ; docker run --rm -u 65534:65534 localci-candidate:1 sh -c 'id -un; echo $LOCALCI_PYTHONS; ls /opt/wheels | wc -l'
     exit: 0
     ts: "2026-10-07T09:14:00Z"
     seat: claude-opus-5-5 driving Pro over ssh
-  - claim: The localci suite is green on Pro with docker and the fixed image — 396 passed, 1 skipped (hypothesis absent from the coordinator venv; the hosted job installs it); the contained tests executed, among them test_contexts_exec.py::test_the_sandbox_looks_like_a_fresh_hosted_checkout_of_the_pinned_job, and the host rows test_contexts_exec.py::test_the_real_matrix_accounts_for_every_step_of_every_executed_context_and_names_the_rest, test_contexts_exec.py::test_the_sandbox_rebuilds_base_under_the_candidate_so_main_and_origin_main_name_it, test_contexts_exec.py::test_the_hosted_jobs_timeout_bounds_the_context_so_no_green_outlasts_it, test_contexts_exec.py::test_a_judge_whose_mode_changes_is_a_rewritten_judge.
-    cmd: LOCALCI_ISOLATION_IMAGE=localci-candidate:a2b <venv>/bin/python -m pytest scripts/localci/tests -q -p no:cacheprovider (Pro, a tree of d961f053b4 with scripts/localci of f8f6bdb)
+  - claim: At the final HEAD (02faa27294; runner sha256 49a5b8fab354…) the localci suite is green on Pro with docker and the image — 448 passed, 1 skipped (tests/test_stateful.py, hypothesis absent from the coordinator venv; the hosted job installs it). Then, per test with -rA, PASSED on Pro — test_contexts_exec.py::test_the_sandbox_looks_like_a_fresh_hosted_checkout_of_the_pinned_job (contained), test_contexts_exec.py::test_the_real_matrix_accounts_for_every_step_of_every_executed_context_and_names_the_rest, test_contexts_exec.py::test_the_sandbox_rebuilds_base_under_the_candidate_so_main_and_origin_main_name_it, test_contexts_exec.py::test_the_hosted_jobs_timeout_bounds_the_context_so_no_green_outlasts_it, test_contexts_exec.py::test_a_judge_whose_mode_changes_is_a_rewritten_judge, test_contexts_exec.py::test_not_applicable_needs_a_written_reason_not_a_flag (6 rows), test_contexts_exec.py::test_a_job_shape_the_sandbox_does_not_stand_in_for_is_blocked (6 rows), test_contexts_exec.py::test_a_hosted_label_in_either_spelling_is_the_runner_the_sandbox_stands_in_for, test_contexts_exec.py::test_workflow_level_env_reaches_the_steps_under_the_job_and_step_env, test_contexts_exec.py::test_a_tool_pin_set_at_workflow_level_is_the_pin, test_contexts_exec.py::test_a_not_applicable_row_without_a_written_reason_is_never_pass. Earlier suites, kept for the record - be7fc440c2 437 passed / 1 skipped; f8f6bdb80d 396 passed / 1 skipped.
+    cmd: final-a2e.sh (LOCALCI_ISOLATION_IMAGE=localci-candidate:1 venv311/bin/python -m pytest scripts/localci/tests -q -p no:cacheprovider, Pro, a tree of 1478933287 with scripts/localci of 02faa27294) ; the same with -rAs -k <the named tests>
     exit: 0
-    ts: "2026-10-07T08:28:00Z"
+    ts: "2026-10-07T12:40:00Z"
     seat: claude-opus-5-5 driving Pro over ssh
-  - claim: On three hosted-green main commits the runner executes the seven contexts and hosted_compare reports AGREE 7/14, FALSE_GREEN 0, FALSE_RED 0, exit 0 — final-a2c-main-481b42dd9e (base 0e6d48a4e9), final-a2c-main-0e6d48a4e9 (base 07af5f06dd), final-a2c-main-01d1241330 (base 1df44b9b65). The seal is printed before the first contained check and re-derives UNCHANGED at the end; status --seal leaves stale_reason null; the coordinator venv's pip freeze is identical at start and end of each run. antidotes runs in 329-333 s against its job's 600 s budget.
+  - claim: At the final HEAD (02faa27294), rebased on origin/main after PR-A1 merged, on the newest hosted-green main commit final-a2e-main-1478933287 (base 45b72942e8) the runner executes the seven contexts and hosted_compare (live GETs) reports agreement=7/14 false_green=0 false_red=0 local_blind=7 hosted_pending=0, exit 0; the seal re-derives UNCHANGED at the end, stale_reason null, coordinator venv unchanged, antidotes 354 s against its 600 s budget. The code changed after the measurements below (the PR-A1 gate notices, refuted and cured); its plan of the same commit is the earlier code's plan byte for byte apart from run-dir paths, timestamps and run_id (state/plan.json of final-a2d-main-1478933287 vs final-a2e-main-1478933287, key by key), because none of the seven executed jobs has a workflow env, a container/services key, a list runs-on or an illegible reason.
+    cmd: final-a2e.sh -> measure-a2e.sh final-a2e-main-1478933287 45b72942e8 (runner.py plan --contexts-file <matrix> ; run ; status --seal ; hosted_compare.py <run>/status.json ; pip freeze diff) ; plan.json diff
+    exit: 0
+    ts: "2026-10-07T12:16:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: At the final HEAD, guilt for organ — an unpushed candidate on 1478933287 (organs_registry.yaml edited without its checksum, plumbing-built) — ctx.organ-genes FAIL on "Registry still validates (checksum + invariants)" only; the other six executed contexts PASS; seal UNCHANGED; the fixture compare reads HOSTED_PENDING for all 14, FALSE_GREEN 0, exit 3 (incomplete), after the live compare refused the unknown sha (HTTP 422, exit 2).
+    cmd: guilt-a2.sh organ 1478933287 ; measure-a2e.sh final-a2e-guilt-organ 1478933287 ; compare_unpushed-a2e.sh final-a2e-guilt-organ
+    exit: 3
+    ts: "2026-10-07T12:35:52Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: At be7fc440c2 (the notice fold before its refuters), right after the rebase - final-a2d-main-1478933287 (base 45b72942e8) and final-a2d-main-feb9e84337 (base 56c6f70d86, PR-A1's squash) each read agreement=7/14 false_green=0 false_red=0, exit 0, seal UNCHANGED, coordinator venv unchanged; final-a2d-guilt-guard (_is_secret neutered on 1478933287) FAIL on the secret-expansion corpus step only, the other six PASS, fixture compare HOSTED_PENDING x14, exit 3.
+    cmd: final-a2d.sh -> measure-a2d.sh final-a2d-main-<sha10> <base> ; guilt-a2.sh guard 1478933287 ; measure-a2d.sh final-a2d-guilt-guard ; compare_unpushed-a2d.sh final-a2d-guilt-guard
+    exit: 3
+    ts: "2026-10-07T12:04:02Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: Before the rebase (code f8f6bdb80d, stacked on PR-A1's 758a305bec), on three hosted-green main commits the runner executes the seven contexts and hosted_compare reports AGREE 7/14, FALSE_GREEN 0, FALSE_RED 0, exit 0 — final-a2c-main-481b42dd9e (base 0e6d48a4e9), final-a2c-main-0e6d48a4e9 (base 07af5f06dd), final-a2c-main-01d1241330 (base 1df44b9b65). The seal is printed before the first contained check and re-derives UNCHANGED at the end; status --seal leaves stale_reason null; the coordinator venv's pip freeze is identical at start and end of each run. antidotes runs in 329-333 s against its job's 600 s budget.
     cmd: ~/.nuzantara-pilots/local-ci/executor-a/measure-a2c.sh final-a2c-main-<sha10> <base> (runner.py plan --contexts-file <matrix> ; run ; status --seal ; hosted_compare.py <run>/status.json ; pip freeze diff)
     exit: 0
     ts: "2026-10-07T09:52:00Z"
     seat: claude-opus-5-5 driving Pro over ssh
-  - claim: Guilt per context, each an unpushed candidate on 481b42dd9e built with git plumbing (no hook rewrote the bytes) — organ (an organ's expected_hb_seconds edited without its registry checksum) FAIL on "Registry still validates"; guard (secret_expansion_guard._is_secret neutered to return False) FAIL on the secret-expansion corpus step. In each run only the targeted context is red, the seal is UNCHANGED, and hosted_compare against the live required set with zero hosted entries (GitHub answers HTTP 422 for an unknown sha) reports HOSTED_PENDING for every context, AGREE 0.
+  - claim: Guilt per context, each an unpushed candidate on 481b42dd9e built with git plumbing (no hook rewrote the bytes) — organ (an organ's expected_hb_seconds edited without its registry checksum) FAIL on "Registry still validates"; guard (secret_expansion_guard._is_secret neutered to return False) FAIL on the secret-expansion corpus step. In each run only the targeted context is red, the seal is UNCHANGED, and hosted_compare against the live required set with zero hosted entries (GitHub answers HTTP 422 for an unknown sha, so the live compare inside measure refuses with exit 2) reports HOSTED_PENDING for every context, AGREE 0, FALSE_GREEN 0, and exits 3 (incomplete) as designed.
     cmd: guilt-a2.sh <organ|guard> 481b42dd9e ; measure-a2c.sh final-a2c-guilt-<g> 481b42dd9e ; compare_unpushed-a2c.sh final-a2c-guilt-<g>
-    exit: 0
+    exit: 3
     ts: "2026-10-07T10:24:00Z"
     seat: claude-opus-5-5 driving Pro over ssh
-  - claim: Guilt for antidotes — an unpushed candidate on 481b42dd9e adding a synthetic Telegram bot token (many distinct characters) to docs/ — FAIL on "No Telegram bot token in the tree" only; the other six executed contexts PASS; seal UNCHANGED; HOSTED_PENDING for all 14. Two earlier attempts are kept, not counted - the first fixture's body had 3 distinct characters, which the BASE lint itself treats as a placeholder (hosted would be green too, so antidotes stayed PASS, an innocence row in effect); the second hit a transient sandbox start failure in four contexts (git init / venv rc 1 while a sibling session ran localci containers on the same VM), reported ERROR, never PASS.
+  - claim: Guilt for antidotes — an unpushed candidate on 481b42dd9e adding a synthetic Telegram bot token (many distinct characters) to docs/ — FAIL on "No Telegram bot token in the tree" only; the other six executed contexts PASS; seal UNCHANGED; HOSTED_PENDING for all 14 (fixture compare exit 3, incomplete). Two earlier attempts are kept, not counted - the first fixture's body had 3 distinct characters, which the BASE lint itself treats as a placeholder (hosted would be green too, so antidotes stayed PASS, an innocence row in effect); the second hit a transient sandbox start failure in four contexts (git init / venv rc 1 while a sibling session ran localci containers on the same VM), reported ERROR, never PASS.
     cmd: guilt-a2.sh antidotes 481b42dd9e ; measure-a2c.sh final-a2c-guilt-antidotes3 481b42dd9e ; compare_unpushed-a2c.sh final-a2c-guilt-antidotes3 (earlier attempts final-a2c-guilt-antidotes, -antidotes2)
-    exit: 0
+    exit: 3
     ts: "2026-10-07T11:06:23Z"
     seat: claude-opus-5-5 driving Pro over ssh
-  - claim: Before the review round (3db6c1c69c, backend venv as coordinator) the same seven contexts already read AGREE 7/14, FALSE_GREEN 0 on 481b42dd9e, 0e6d48a4e9 and 01d1241330; after it, two runs with the backend venv as coordinator read 0/14 with every check PASS but STALE — the venv's pip freeze embeds Pro's main-checkout HEAD (editable cell_core) and the main-puller moved it mid-run; with a dedicated coordinator venv (pyenv 3.11.11 + PyYAML 6.0.3 + pytest 9.0.3) no run drifted.
-    cmd: measure-a2.sh final-a2-main-<sha10> / measure-a2b.sh final-a2b-main-<sha10> (run dirs kept beside the final ones; receipt env vs status env diff names deps_lock_sha256)
+  - claim: Before the review round (3db6c1c69c, backend venv as coordinator) the same seven contexts already read AGREE 7/14, FALSE_GREEN 0 on 481b42dd9e, 0e6d48a4e9 and 01d1241330. After it (f8f6bdb80d), still on the backend venv, final-a2b-main-481b42dd9e and final-a2b-main-0e6d48a4e9 read 0/14 with all seven contexts PASS but STALE — receipt env and status env differ in deps_lock_sha256 alone — while final-a2b-main-01d1241330 stayed PASS with its freeze diff empty. That venv's freeze is 420 lines with one editable install, `-e git+<repo>@63b4c26ba8…#egg=cell_core`, i.e. Pro's main-checkout HEAD, which the main-puller moves mid-run. The cure is a dedicated coordinator venv, ~/.nuzantara-pilots/local-ci/executor-a/venv311 (pyenv 3.11.11 + PyYAML 6.0.3 + pytest 9.0.3, a 6-line freeze with no editable install); every final-a2c and final-a2d run captures its freeze at start and end, and every diff is empty.
+    cmd: measure-a2b.sh final-a2b-main-<sha10> (PY=backend venv) / measure-a2c.sh, measure-a2d.sh (PY=venv311); <run>.freeze.{start,end,diff}; receipt env vs status env compared key by key
     exit: 0
     ts: "2026-10-07T09:05:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: Correction to PR-A1's pack (A1 final-gate notice 5) — its proof says that in each guilt run "the other three stay green"; in final-guilt-r1 (R1 guilt) the other three (actionlint, Merah Putih, catE) are STALE, not PASS — env drift, receipt and status differing in deps_lock_sha256 alone, the same backend-venv cause as above. Their logs read rc 0 (previous=PASS), but a STALE is not a green and hosted_compare counts it BLIND. The guilt claim itself holds (R1 FAIL); the sibling-green half of that sentence was not measured clean. Its guilt receipt also records exit 0 where the fixture compare exits 3 (incomplete, all 14 HOSTED_PENDING, by design) — re-run now on final-guilt-r1, rc=3; this pack's own guilt receipts made the same slip before review and now record 3.
+    cmd: runs/final-guilt-r1/status.json (ctx.r1-gate FAIL; ctx.actionlint, ctx.merah-putih, ctx.cate-sovereignty STALE, reason "env drift (receipt env_hash 18a1ec9c7361 != current 6ea4e08983fd)"); receipts/*.json env vs status.json env
+    exit: 0
+    ts: "2026-10-07T11:50:00Z"
     seat: claude-opus-5-5 driving Pro over ssh
 dissent:
   - seat: codex-gpt-6.1-sol
@@ -152,6 +183,26 @@ dissent:
     objection: "FALSE_GREEN: a candidate conftest.py (not a named script) can bypass the BASE test file's assertions."
     status: RETRACTED
     resolution: "Hosted runs the same candidate conftest.py (pull_request runs the PR's code), so hosted is green too: AGREE, not FALSE_GREEN. A candidate forging its own green is the residual PR-A1 already records."
+  - seat: codex-gpt-6.1-sol
+    objection: "FALSE_GREEN (fold review of be7fc440c2): a not_applicable reason of only U+200B passes .strip(), so a `run: exit 1` step is skipped with no visible reason; and steps_verdict accepts any non-blank junit reason (a `[]` serialised by the driver reads PASS)."
+    status: CONFIRMED
+    resolution: "written_reason: a reason is a string with a letter or a digit, checked at plan and again in steps_verdict (9a57dba337). Corpus rows ('\\u200b', [], '[]' -> BLOCKED / ERROR); the strip-only mutants are killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "WRONG_BLOCKED (fold review): a host tool pin declared in the workflow-level env is read from the job env only, so a matching binary plans BLOCKED."
+    status: CONFIRMED
+    resolution: "Pins read workflow env, then job env (9a57dba337). Corpus row; the job-only mutant is killed. No executed workflow declares a workflow-level env today."
+  - seat: codex-gpt-6.1-sol
+    objection: "DOC (fold review): the README promises BLOCKED for a job with container: or services:, the guard tested truthiness, so `services: {}` passed."
+    status: CONFIRMED
+    resolution: "The key's presence blocks (9a57dba337). Corpus row `services: {}`."
+  - seat: codex-gpt-6.1-sol
+    objection: "NIT (fold review): the env test pins workflow < job but not job < step; swapping them survives."
+    status: CONFIRMED
+    resolution: "Explicit collisions workflow/job/step/matrix with the winner asserted (9a57dba337); the swap mutant is killed."
+  - seat: agy-gemini-3.1-pro
+    objection: "WRONG_BLOCKED (fold review): `runs-on: [ubuntu-latest]` is a valid spelling of the hosted runner and the job-shape guard blocks it."
+    status: CONFIRMED
+    resolution: "A one-label list reads as that label; a two-label list stays BLOCKED (02faa27294). Corpus rows for both."
 residuals:
   - "Contained verdicts stay candidate-produced (junit written inside the sandbox), as in PR-A1: a deliberately malicious candidate can forge its own contained green, exactly as it can make its own hosted job exit 0."
   - "Steps' `if:` are recorded, not evaluated: every step runs locally (assumption in the brief, carried from PR-A1)."
@@ -161,5 +212,6 @@ residuals:
   - "The wheelhouse is frozen at image build: an unpinned `pip install fastapi` resolves to the wheel built in, where hosted takes the newest release that day."
   - "antidotes runs in 329-407 s on Pro against its job's 600 s budget (the slowest under concurrent load): a busier host can turn it ERROR (timeout) where hosted is green — never green."
   - "Pro's docker VM is shared: a sibling session ran its own localci containers during these measurements, and one run saw four sandboxes fail to start (ERROR, not PASS). A concurrent localci user on the same VM is a contention source the runner does not arbitrate."
-  - "The coordinator python must not track a moving checkout: Pro's backend venv embeds the main checkout's HEAD in pip freeze, so a run that uses it goes STALE whenever main moves mid-run. Measurements here use a dedicated venv; nothing in the runner changed for it."
-  - "Stacked on PR-A1: this branch carries A1's three commits until A1 merges, then it is rebased onto origin/main before it opens."
+  - "The coordinator python must not track a moving checkout: Pro's backend venv embeds the main checkout's HEAD in pip freeze, so a run that uses it goes STALE whenever main moves mid-run. Measurements here use a dedicated venv (README, Coordinator interpreter); the runner reports the drift as STALE, it does not prevent it."
+  - "PR-A1 final-gate notices 1, 2, 5 and 6 are folded here (be7fc440c2 and this pack); 8 was the gate's own staging. Carried unchanged: (3) a setup-python pin is matched against the versions the image declares (PYTHON_VERSION, LOCALCI_PYTHONS), not against an interpreter run per plan — the image build asserts them and the contained probe runs 3.11 inside, but the image is trusted by ID; (4) the host actionlint's sha256 is measured by the runner and re-checked, never compared with a known-good hash (BASE pins the linux_amd64 tarball); (7) contained verdicts are candidate-produced junit (first residual above); (9) on M5 the docker/Pysa/hypothesis tests skip — the contained paths are proven on Pro only."
+  - "Steps run with the workflow-level env merged now; none of the seven executed workflows declares one today, so no measured verdict moved — the rows prove the merge, not a live consumer."

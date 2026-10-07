@@ -4,8 +4,9 @@ colour: BLUE
 gear: 3
 gear_reason: >-
   Declared by the mandate: the change decides what a local verdict on three more required contexts may claim, and
-  it reshapes the sandbox candidate code runs in. It flips nothing — GitHub stays the writer, no workflow, branch
-  protection or status is touched, the adapter stays inert.
+  it reshapes the sandbox candidate code runs in. It flips nothing: GitHub keeps deciding merges until the local gate
+  replaces it (RULED 2026-10-07, docs/rules/RULINGS.md; plan docs/specs/localci-sovereign-2026-10-07.md), and this
+  PR touches no workflow, branch protection or status; the adapter stays inert.
 l_level: L2
 gate_class: opus
 objective: >-
@@ -29,8 +30,12 @@ acceptance:
     probe: "test_contexts_exec.py::test_the_hosted_jobs_timeout_bounds_the_context_so_no_green_outlasts_it"
   - text: WHEN a judge's tree entry changes (mode or object), a green SHALL be BLOCKED.
     probe: "test_contexts_exec.py::test_a_judge_whose_mode_changes_is_a_rewritten_judge"
+  - text: WHEN a matrix step is not_applicable with a flag or a blank instead of a written reason, the context SHALL be BLOCKED.
+    probe: "test_contexts_exec.py::test_not_applicable_needs_a_written_reason_not_a_flag"
+  - text: WHEN the BASE job runs in its own container, beside services, or on another runner image, the context SHALL be BLOCKED; workflow-level env SHALL reach the steps under job and step env.
+    probe: "test_contexts_exec.py::test_a_job_shape_the_sandbox_does_not_stand_in_for_is_blocked"
   - text: WHEN run on Pro against the newest merged hosted-green main commits, hosted_compare SHALL report AGREE >= 7 and FALSE_GREEN = 0.
-    probe: "final-a2c-main-"
+    probe: "final-a2d-main-"
   - text: WHEN a candidate carries a deliberate violation for organ, guard or antidotes, that context SHALL be RED locally and HOSTED_PENDING in hosted_compare (unpushed sha).
     probe: "final-a2c-guilt-"
 assumptions:
@@ -45,6 +50,7 @@ assumptions:
 consumer_map:
   - scripts/localci/hosted_compare.py on Pro — its AGREE rows on main commits are this change's output.
   - docs/specs/localci-gate-2026-10-06.md §4 sequence step 3 (the runner plans the deterministic contexts from BASE).
+  - docs/specs/localci-sovereign-2026-10-07.md (RULED 2026-10-07) — the local gate that is to decide merges builds on these executed contexts.
   - The localci-tests hosted job — it builds candidate.Dockerfile and runs the new contained tests.
 appetite:
   wall_clock_hours: 6
