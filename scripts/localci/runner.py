@@ -663,6 +663,13 @@ USER 65534
 RUN --network=none xargs -r "$PY" -m pip install -q --disable-pip-version-check --no-deps --no-index < /req/install.txt
 USER root
 """
+# A job with no Python closure (Frontend Tests: node only) starts from the candidate image as it is: no wheel stage, no interpreter
+# handed to the sandbox user.
+DEPS_BARE = """\
+ARG BASE
+FROM ${BASE}
+USER root
+"""
 # Node, when the job calls it (ubuntu-latest carries one; setup-node pins one): the official image's binary and its npm.
 DEPS_NODE = """\
 COPY --from=node:{v}-bookworm-slim /usr/local/bin/node /usr/local/bin/node
@@ -839,7 +846,7 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
     if why or ((deps.get("npm") or browser) and not node) or any(not re.fullmatch(r"[a-z0-9][a-z0-9.+-]*", a) for a in apt) \
             or browser not in ("", "chromium", "firefox", "webkit") or (browser and not pw):
         return None, f"deps: {why or 'npm/playwright need deps.node and an npm lock naming playwright-core; apt names are package names'}"
-    dockerfile = DEPS_DOCKERFILE + (DEPS_NODE.format(v=node) if node else "")
+    dockerfile = (DEPS_DOCKERFILE if reqs or pkgs or fetch else DEPS_BARE) + (DEPS_NODE.format(v=node) if node else "")
     if npm_files:
         dockerfile = dockerfile.replace("\nFROM ${BASE}\n", "\n" + DEPS_NPM_STAGE.format(v=node) + "FROM ${BASE}\n", 1)
     dockerfile += (DEPS_APT.format(pkgs=" ".join(apt)) if apt else "") + (DEPS_PLAYWRIGHT.format(pw=pw, browser=browser) if browser else "") \
