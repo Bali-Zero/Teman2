@@ -9,10 +9,8 @@ a `--max-budget-usd 10` session against the same dead organs, tick after tick,
 for zero new information (`shared/escalations_pro.jsonl` carries 8 open HIGH
 `healer_pro_tick` entries of the shape "N dead organs ... 0/N curable").
 
-The fingerprint MUST include the heartbeat status (not just the count) of the
-dead organs — the revision criterion D-004 names explicitly: two ticks with
-the same COUNT of dead organs are not the same state if a different organ
-died, or the same organ's status text changed.
+The fingerprint keys dead organs by identity+cure, not by age. A dead organ
+aging in place is no new work; a new organ or a cure-boundary change is.
 
 Subcommands:
     fingerprint                Read a receptor-state JSON object on stdin,
@@ -38,7 +36,6 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger("healer_memo")
 if not logger.handlers:
@@ -49,8 +46,6 @@ if not logger.handlers:
 KILL_SWITCH_ENV = "PRO_HEALER_MEMO"
 DEFAULT_MAX_AGE_H = 24.0
 DEFAULT_MAX_SKIPS = 3
-AGE_BUCKET_CAP_H = 48
-
 EXIT_SPAWN = 0
 EXIT_SKIP = 3
 
@@ -67,23 +62,6 @@ def _kill_switch_disabled() -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _age_bucket(age_s: Any) -> int:
-    """floor(age_s / 3600) capped at AGE_BUCKET_CAP_H.
-
-    A malformed/missing age must never crash the fingerprint (it would take
-    down the healer's pre-check with it) — it degrades to bucket 0, which
-    only means "this organ's age never distinguishes two states on its own",
-    not that the organ is ignored (id/status/recovery_action still count).
-    """
-    try:
-        age = float(age_s)
-    except (TypeError, ValueError):
-        return 0
-    if age < 0:
-        return 0
-    return min(int(age // 3600), AGE_BUCKET_CAP_H)
-
-
 def fingerprint(receptor_state: dict) -> str:
     """Deterministic sha256 hex over the organ-state shape D-004 names.
 
@@ -94,9 +72,9 @@ def fingerprint(receptor_state: dict) -> str:
     dead_tuples = sorted(
         (
             str(o.get("id", "")),
-            str(o.get("status", "")),
+            str(o.get("cure", "session")),
             str(o.get("recovery_action", "")),
-            _age_bucket(o.get("age_s")),
+            str(o.get("label", "")),
         )
         for o in dead
         if isinstance(o, dict)
@@ -104,19 +82,25 @@ def fingerprint(receptor_state: dict) -> str:
 
     diverged = sorted(str(p) for p in (receptor_state.get("diverged_probes") or []))
     drifted = sorted(str(p) for p in (receptor_state.get("drifted_pairs") or []))
+    counts = receptor_state.get("session_curable") or {}
+    session_curable = {
+        key: counts.get(key, 0) if isinstance(counts, dict) else 0
+        for key in ("registry", "proprioception", "home_fork")
+    }
     arsenal_new_dead = sorted(
         str(t) for t in (receptor_state.get("arsenal_new_dead") or [])
     )
-    reasons_tokens = sorted(
-        tok for tok in str(receptor_state.get("reasons", "")).split() if tok
+    receptor_failures = sorted(
+        str(item) for item in (receptor_state.get("receptor_failures") or [])
     )
 
     canonical = {
         "dead_organs": [list(t) for t in dead_tuples],
         "diverged_probes": diverged,
         "drifted_pairs": drifted,
+        "session_curable": session_curable,
         "arsenal_new_dead": arsenal_new_dead,
-        "reasons_tokens": reasons_tokens,
+        "receptor_failures": receptor_failures,
     }
     blob = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
