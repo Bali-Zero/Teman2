@@ -16,6 +16,7 @@ runner, contained as the runner does.
 from __future__ import annotations
 
 import argparse
+import ast
 import calendar
 from collections import Counter
 from statistics import median
@@ -51,7 +52,7 @@ GIT_ISOLATED = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "G
                 "GIT_CONFIG_COUNT": "3", "GIT_CONFIG_KEY_0": "core.hooksPath", "GIT_CONFIG_VALUE_0": "/dev/null",
                 "GIT_CONFIG_KEY_1": "core.fsmonitor", "GIT_CONFIG_VALUE_1": "false",
                 "GIT_CONFIG_KEY_2": "core.attributesFile", "GIT_CONFIG_VALUE_2": "/dev/null"}   # the runner's git too
-CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "BLIND", "PENDING", "HOSTED_RED_MERGED")
+CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "BLIND", "PENDING")
 _TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")   # fullmatch only: `$` would let a trailing newline through
 _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 MIN_COMPARED_CONTEXTS = 12   # spec §2 phase B: AGREE >= 12 of 14 — a merge compared on fewer contexts is not evidence for phase E
@@ -282,11 +283,14 @@ def runner_exec(argv: list[str], cwd: Path, env: dict, timeout: int) -> subproce
 
 
 def runner_takes(base_wt: Path, flag: str) -> bool:
-    """The BASE runner's own source decides which flags it takes: a merger ahead of main never breaks an older runner's plan."""
+    """The BASE runner's own source decides which flags it takes — an `add_argument` call naming the flag, read with ast so a
+    comment or another string never counts: a merger ahead of main never breaks an older runner's plan."""
     try:
-        return f'"{flag}"' in (base_wt / "scripts" / "localci" / "runner.py").read_text()
-    except OSError:
+        tree = ast.parse((base_wt / "scripts" / "localci" / "runner.py").read_text())
+    except (OSError, SyntaxError, ValueError):
         return False
+    return any(isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "add_argument"
+               and any(isinstance(arg, ast.Constant) and arg.value == flag for arg in node.args) for node in ast.walk(tree))
 
 
 def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sha: str, pr: int) -> dict:
@@ -464,14 +468,12 @@ def merger_side(overall) -> str:
     return "GREEN" if overall == "PASS" else "RED" if overall == "FAIL" else "BLIND"
 
 
-def github_side(merged_here: bool, live: dict) -> str:
-    """The required checks of the judged sha, red-dominant. A merged candidate is GREEN unless its own merge commit carries a red
-    required check: the queue merges a failed entry when a later entry of its group passes (grouping HEADGREEN), so 'merged' is
-    no proof of green — #8026's queue commit 2a1e00e0d3 had antidotes red and merged."""
+def github_side(live: dict) -> str:
+    """The required checks of the judged sha (the merge commit when the queue merged the decided candidate), red-dominant. Merging
+    proves nothing: the queue merges a failed entry when a later entry of its group passes (grouping HEADGREEN) — #8026's queue
+    commit 2a1e00e0d3 had antidotes red and merged — and it can merge an entry before that entry's own runs report."""
     by = hc.hosted_entries(live["check_runs"], live["statuses"])
     seen = {hc.hosted_verdict(by.get(c["context"], []), c.get("app_id"))["verdict"] for c in live["required_checks"]}
-    if merged_here:
-        return "RED" if "RED" in seen else "GREEN"
     return "RED" if "RED" in seen else "PENDING" if "PENDING" in seen else "GREEN"
 
 
@@ -561,7 +563,7 @@ def cmd_report(a) -> int:
                 lives[sha] = hc.fetch_live(a.repo, a.base, sha)
                 hc.required_names(lives[sha]["required_checks"])
             live = lives[sha]
-            github = github_side(merged_here, live)
+            github = github_side(live)
             # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
             recorded_fg += recorded_false_green(d)
             for k, v in (d.get("durations") if isinstance(d.get("durations"), dict) else {}).items():
@@ -579,9 +581,9 @@ def cmd_report(a) -> int:
             if merged_here and not is_ts(merged_at):
                 raise hc.CompareError(f"#{n} merged at the decided candidate but carries no merged_at")
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
-                         "github": github, "merged": prs[n].get("merged") is True,
-                         # GitHub merged a red required check: a hosted failure, counted apart, never a local false green
-                         "class": "HOSTED_RED_MERGED" if merged_here and github == "RED" else classify(merger_side(d.get("overall")), github),
+                         "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
+                         # GitHub merged a red required check: a HOSTED failure, flagged and counted apart beside the class
+                         "hosted_red_merged": merged_here and github == "RED",
                          "compared_contexts": compared_ctx, "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
@@ -589,6 +591,7 @@ def cmd_report(a) -> int:
         print(f"merger report: refusing — {exc}", file=sys.stderr)
         return 2
     counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
+    hosted_red_merged = sum(1 for r in rows if r["hosted_red_merged"])
     first, last = (rows[0]["ts"], rows[-1]["ts"]) if rows else (None, None)
     days = _days(first, last) if rows else 0.0
     silence_h = _longest_gap_h(r["ts"] for r in window)
@@ -615,7 +618,7 @@ def cmd_report(a) -> int:
                       "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "skipped": skipped,
                       "decisions_without_code_sha": without_code_sha,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
-           "counts": counts, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "phase_e_ready": ready, "rows": rows,
+           "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "phase_e_ready": ready, "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     atomic_write(state / "report.json", json.dumps(out, indent=2) + "\n")
     print(f"{'PR':7} {'HEAD':12} {'BASE':12} {'MERGER':11} {'GITHUB':7} {'MERGED':6} CLASS")
@@ -637,7 +640,8 @@ def cmd_report(a) -> int:
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
           f"compared); now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}; "
-          f"hosted_red_merged={counts['HOSTED_RED_MERGED']} (information: GitHub merged a red required check — never a blocker)")
+          f"hosted_red_merged={hosted_red_merged} (information: GitHub merged a red required check; the hosted failure itself never "
+          f"blocks READY, a local false green on it does)")
     return 1 if fg else 0
 
 

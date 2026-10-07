@@ -67,13 +67,14 @@ def test_a_pass_on_a_head_github_closed_red_is_a_false_green_at_both_levels_and_
     rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS")], gh)
     assert rc == 1 and [r["class"] for r in rep["rows"]] == ["FALSE_GREEN"]
     assert rep["counts"]["FALSE_GREEN"] == 1 and rep["context_counts"]["FALSE_GREEN"] == K
+    assert rep["rows"][0]["hosted_red_merged"] is False and rep["hosted_red_merged"] == 0   # closed red, never merged: not a hosted merge
     assert f"false_green={K + 1}" in capsys.readouterr().out
 
 
 def test_every_class_on_its_own_fixture(tmp_path, monkeypatch):
     gh = FakeGH({2: pull(B, merged=True), 3: pull(C), 4: pull(D), 5: pull(E, merged=True)},
                 {B: "failure", C: "success", D: None, A: "failure", E: "success", M: "success"})
-    recs = [decision(2, B, "PASS"),              # merged at this very candidate: GitHub let it through, whatever a stale red says
+    recs = [decision(2, B, "PASS"),              # merged: judged on its queue commit (green), whatever a stale red on the head says
             decision(3, C, "FAIL", ctx="FAIL"),  # local red, hosted green
             decision(4, D, "PASS"),              # hosted still running
             decision(5, A, "FAIL", ctx="FAIL"),  # merged later at E: this older head was red on GitHub too
@@ -88,7 +89,8 @@ def test_every_class_on_its_own_fixture(tmp_path, monkeypatch):
 def test_a_merged_head_is_compared_per_context_with_the_queue_commit_not_the_head(tmp_path, monkeypatch):
     gh = FakeGH({2: pull(B, merged=True)}, {B: "success", M: "failure"})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "BLOCKED")], gh)
-    assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == K and rep["rows"][0]["class"] == "HOSTED_RED_MERGED"
+    assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == K and rep["rows"][0]["class"] == "BLIND"
+    assert rep["rows"][0]["hosted_red_merged"] is True and rep["hosted_red_merged"] == 1
 
 
 def test_conflict_and_error_decisions_are_blind_and_add_no_context_counts(tmp_path, monkeypatch):
@@ -124,10 +126,12 @@ def test_only_pass_is_green_and_only_fail_is_red_for_the_merger(overall, expecte
     assert mg.merger_side(overall) == expected
 
 
-def test_a_pr_merged_at_the_decided_head_is_green_even_before_its_queue_commit_reports(tmp_path, monkeypatch):
+def test_a_merged_candidate_whose_queue_commit_has_not_reported_is_pending_never_green(tmp_path, monkeypatch):
+    # the queue merges an entry once a later entry of its group passes (HEADGREEN): merging is no verdict
     gh = FakeGH({2: pull(B, merged=True)}, {B: "failure", M: None})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "FAIL", ctx="FAIL")], gh)
-    assert rep["rows"][0]["github"] == "GREEN" and rep["rows"][0]["class"] == "FALSE_RED" and rc == 0
+    assert (rep["rows"][0]["class"], rep["rows"][0]["github"], rep["rows"][0]["hosted_red_merged"]) == ("PENDING", "PENDING", False)
+    assert rep["context_counts"]["HOSTED_PENDING"] == K and rep["window"]["compared_merges"] == 0 and rc == 0
 
 
 def test_a_missing_gh_is_refused_not_a_traceback(tmp_path, monkeypatch, capsys):
@@ -326,15 +330,19 @@ def test_a_line_dated_in_the_future_is_flagged_and_never_ages_the_window_negativ
     assert "1 line(s) dated in the future" in capsys.readouterr().out
 
 
-def test_github_merging_a_red_required_check_is_a_hosted_failure_counted_apart_never_a_blocker(tmp_path, monkeypatch, capsys):
+
+@pytest.mark.parametrize("local,ready", [("FAIL", True), ("OK", False)])
+def test_github_merging_a_red_required_check_is_flagged_apart_and_only_a_local_false_green_on_it_blocks(tmp_path, monkeypatch, capsys,
+                                                                                                       local, ready):
     recs, gh = merged_world(50, 14.0)
     red_mc = "2" * 40   # #8026's shape: its own queue commit red, merged because a later entry of the group went green
     gh.pulls[7] = {**gh.pulls[7], "merge_commit_sha": red_mc}
     gh.parents[red_mc], gh.checks[red_mc] = [BASE], "failure"
-    recs[6] = {**recs[6], "overall": "FAIL", "contexts": dict.fromkeys(CTX, "FAIL")}   # the local gate refused it
+    recs[6] = {**recs[6], "overall": local if local == "FAIL" else "BLOCKED", "contexts": dict.fromkeys(CTX, local)}
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     row = rep["rows"][6]
-    assert (row["class"], row["github"], row["hosted_sha"]) == ("HOSTED_RED_MERGED", "RED", red_mc)
-    assert rep["counts"]["HOSTED_RED_MERGED"] == 1 and rep["counts"]["FALSE_GREEN"] == 0 and rep["context_counts"]["FALSE_GREEN"] == 0
-    assert rep["window"]["compared_merges"] == 50 and rep["phase_e_ready"] is True and rc == 0
+    assert (row["class"], row["github"], row["hosted_sha"], row["hosted_red_merged"]) == ("AGREE" if ready else "BLIND", "RED", red_mc, True)
+    assert rep["hosted_red_merged"] == 1 and rep["counts"]["FALSE_GREEN"] == 0 and rep["context_counts"]["FALSE_GREEN"] == (0 if ready else K)
+    assert rep["window"]["compared_merges"] == 50 and rep["phase_e_ready"] is ready and rc == (0 if ready else 1)
     assert "hosted_red_merged=1" in capsys.readouterr().out
+

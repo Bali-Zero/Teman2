@@ -37,13 +37,17 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "merges-unsorted": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())',
                         'merges = list({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())', (REPORT,)),
     "merged-at-unrequired": (PY, "            if merged_here and not is_ts(merged_at):", "            if False:", (REPORT,)),
-    "merged-is-green": (PY, '''    if merged_here:
-        return "RED" if "RED" in seen else "GREEN"''', '''    if merged_here:
-        return "GREEN"''', (REPORT,)),
-    "hosted-red-merged-unclassed": (PY, '"class": "HOSTED_RED_MERGED" if merged_here and github == "RED" else classify(',
-                                    '"class": classify(', (REPORT,)),
+    "merged-pending-is-green": (PY, "            github = github_side(live)", "            github = github_side(live)\n            github = \"GREEN\" if merged_here and github == \"PENDING\" else github", (REPORT,)),
+    "merged-red-is-green": (PY, "            github = github_side(live)", "            github = \"GREEN\" if merged_here else github_side(live)", (REPORT,)),
+    "hosted-red-merged-never": (PY, '"hosted_red_merged": merged_here and github == "RED",', '"hosted_red_merged": False,', (REPORT,)),
+    "hosted-red-merged-any-red": (PY, '"hosted_red_merged": merged_here and github == "RED",', '"hosted_red_merged": github == "RED",', (REPORT,)),
+    "hosted-red-merged-overrides-class": (PY, '"class": classify(merger_side(d.get("overall")), github),',
+                                          '"class": "BLIND" if merged_here and github == "RED" else classify(merger_side(d.get("overall")), github),', (REPORT,)),
     "pr-number-always": (PY, 'if runner_takes(base_wt, "--pr-number"):', "if True:", (TICK,)),
     "pr-number-never": (PY, 'if runner_takes(base_wt, "--pr-number"):', "if False:", (TICK,)),
+    "pr-number-substring": (PY, '        tree = ast.parse((base_wt / "scripts" / "localci" / "runner.py").read_text())',
+                            '        return flag in (base_wt / "scripts" / "localci" / "runner.py").read_text()', (TICK,)),
+    "pr-number-any-call": (PY, 'isinstance(node.func, ast.Attribute) and node.func.attr == "add_argument"', "True", (TICK,)),
     # the false-green count and the READY line
     "recorded-or-zero": (PY, '    value = counts.get("FALSE_GREEN") if isinstance(counts, dict) else None',
                          '    value = (counts.get("FALSE_GREEN") or 0) if isinstance(counts, dict) else 0', (REPORT,)),

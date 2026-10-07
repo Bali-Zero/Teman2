@@ -651,10 +651,18 @@ def test_every_journal_line_carries_the_code_sha_it_ran(world, monkeypatch):
         assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--code-sha", bad]) == 2
 
 
-def test_a_base_runner_that_takes_the_pr_number_is_given_it(world):
-    world.base = commit(world.src, {"scripts/localci/runner.py": 'p.add_argument("--pr-number", type=int)\n'}, "runner names the PR")
+
+@pytest.mark.parametrize("source,given", [('p.add_argument("--pr-number", type=int)\n', True),
+                                          ("p.add_argument('--pr-number', type=int)\n", True),
+                                          ('# "--pr-number" is planned for later\nHELP = "--pr-number"\n', False),
+                                          ('p.add_argument("--pr", type=int)\n', False),
+                                          ('p.error("--pr-number")\n', False),
+                                          ('p.add_argument("--pr-number"\n', False)])
+def test_the_pr_number_is_given_only_to_a_base_runner_that_declares_it(world, source, given):
+    world.base = commit(world.src, {"scripts/localci/runner.py": source}, "runner as it stands at the base")
     g(world.src, "push", "-q", str(world.origin), "main")
     world.gh.prs = [pr(1, world.head1)]
     assert world.tick() == 0
     plan = world.runner.calls[0]["argv"]
-    assert plan[plan.index("--pr-number") + 1] == "1" and plan[plan.index("--base") + 1] == world.base
+    assert plan[plan.index("--base") + 1] == world.base
+    assert (plan[plan.index("--pr-number") + 1] == "1") if given else ("--pr-number" not in plan)
