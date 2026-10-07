@@ -195,8 +195,9 @@ One `tick` decides at most one pull request:
    from `https://github.com/<repo>.git`; a `--remote-url` carrying credentials is refused), `refs/pull/N/head` must still be
    the head the API listed (else `skipped: head_moved`). The candidate is `origin/<base>` plus the head squashed into ONE
    commit — the live merge queue's `merge_method` is `SQUASH` (rules read 2026-10-07) — committed by `localci-merger` with
-   the base's commit date, so the same (head, base) always yields the same candidate sha. Git runs with no host or caller configuration (`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`, every inherited
-   `GIT_*` variable dropped, `core.hooksPath=/dev/null`) and no signer or rerere. A
+   the base's commit date, so the same (head, base) always yields the same candidate sha. Git runs with no host or caller configuration (`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`,
+   `GIT_ATTR_NOSYSTEM=1`, every inherited `GIT_*` variable dropped; `core.hooksPath` and `core.attributesFile` are
+   `/dev/null`, `core.fsmonitor` is off) and no signer or rerere. A
    conflict is the decision `CONFLICT`, with the conflicted paths and no run. The queue tests a PR on top of the entries
    ahead of it (up to 5 built at once); the merger tests it on `origin/<base>` alone.
 5. **Gate.** `plan → run → status --seal` of the runner taken from a worktree of the BASE sha, with BASE's
@@ -241,30 +242,44 @@ it, so that orphan run is never journalled.
 
     python scripts/localci/merger.py report [--repo Bali-Zero/Teman2] [--base main] [--state-dir ...] [--since 2026-10-07]
 
-Reads only `kind=decision` lines (from `--since`, an ISO prefix) and sets each beside what GitHub did with that head, through
-GETs: the PR (`pulls/N`) and the live required contexts. GitHub's side is GREEN when the PR merged AT THIS HEAD (its queue let
-it through); otherwise the required contexts on the head, red-dominant (RED, else PENDING, else GREEN). The merger's side is
-GREEN only for `overall=PASS`, RED only for `FAIL`; everything else (BLOCKED, SUBSET_PASS, CONFLICT, ERROR) is blind. Classes
-per decision: `AGREE`, `FALSE_GREEN` (merger PASS, GitHub red), `FALSE_RED`, `BLIND`, `PENDING` (GitHub has no verdict yet).
+Reads the journal strictly (an unreadable line, a state dir bound to another repo or a decision of another repo is exit 2,
+never skipped) and sets every `kind=decision` line since `--since` (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SSZ`) beside what
+GitHub did with that head, through GETs: the PR (`pulls/N`), the merge commit's parents and the live required contexts.
+GitHub's side is GREEN when the PR merged AT THIS HEAD (its queue let it through); otherwise the required contexts on the head,
+red-dominant (RED, else PENDING, else GREEN). The merger's side is GREEN only for `overall=PASS`, RED only for `FAIL`;
+everything else (BLOCKED, SUBSET_PASS, CONFLICT, ERROR) is blind. Classes per decision: `AGREE`, `FALSE_GREEN` (merger PASS,
+GitHub red), `FALSE_RED`, `BLIND`, `PENDING` (GitHub has no verdict yet).
 
 Because the runner leaves `review.independent` QUEUED, `overall` is never PASS in shadow and the per-decision FALSE_GREEN
-count is vacuous today. The phase-D instrument is the CONTEXT level: for every decision whose gate ran, `hosted_compare.compare`
-of its per-context verdicts against GitHub's, summed over the window (`AGREE`, `FALSE_GREEN`, `FALSE_RED`, `LOCAL_BLIND`,
-`HOSTED_PENDING`). For a PR merged at the decided head the comparison is made on `merge_commit_sha` — the commit the queue
-tested and pushed, which carries the `merge_group` runs (measured on #8012 → 56c6f70d86: 18 merge_group workflow runs) — not on
-the head; any later `push` run of a same-named check on that commit counts too, red-dominant. The report prints the table, the
-window (first/last decision, days, distinct PRs, PRs merged) and the phase E criterion (0 FALSE_GREEN over ≥ 50 merges or 14
-days, spec §2) with today's numbers; it writes `<state-dir>/report.json`. Exit 1 when any FALSE_GREEN (either level), 2 when
-GitHub cannot be read (nothing is counted on a failed read), else 0.
+count is vacuous today. The phase-D instrument is the CONTEXT level, in two parts that are both counted:
+
+- **now:** for every decision whose gate ran, `hosted_compare.compare` of its per-context verdicts against GitHub's, summed over
+  the window (`AGREE`, `FALSE_GREEN`, `FALSE_RED`, `LOCAL_BLIND`, `HOSTED_PENDING`). When the queue merged the decided head ON
+  THE DECIDED BASE (the merge commit's only parent is the decision's `base_sha`), the comparison is made on `merge_commit_sha` —
+  the very candidate the queue tested and pushed, which carries the `merge_group` runs (measured on #8012 → 56c6f70d86: 18
+  merge_group workflow runs); any later `push` run of a same-named check on that commit counts too, red-dominant, which can
+  only ADD a false green. Otherwise it is made on the head. A merged PR with no merge sha is exit 2.
+- **at tick time:** the `hosted_compare.counts.FALSE_GREEN` each decision line recorded. A red GitHub later re-ran green, or a
+  context it stopped requiring, cannot erase a disagreement once seen.
+
+The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges` (PRs merged AT a decided head whose gate ran
+with a usable contexts file) — only the latter counts toward the phase E criterion (0 FALSE_GREEN over ≥ 50 merges or 14 days,
+spec §2). `days` is floored (13.9999 is not 14), and `longest_silence` is the widest gap between any two journal lines in the
+window: a merger that stopped writing does not age the window unnoticed. The report writes `<state-dir>/report.json`. Exit 1
+on any FALSE_GREEN (per decision, per context now, or recorded at tick time), 2 on an unusable input or a failed GitHub read
+(nothing is counted then), else 0.
 
 ### Schedule (launchd, Pro)
 
 `infra/launchagents/com.balizero.localci-merger.plist`: `StartInterval` 600 s, `RunAtLoad`, no `KeepAlive` (a one-shot,
 superscar #7), `PATH` set explicitly (a tick without `gh` on PATH is an `error` line). It runs
-`~/.nuzantara-cron/localci_merger_tick.sh` (a copy of `scripts/localci/merger_tick.sh`), which fetches `origin/main` into the
-merger's mirror and runs `merger.py` and `hosted_compare.py` as committed there — never a working-tree copy. Install (operator
-of Pro, user `nuzantara`):
+`~/.nuzantara-cron/localci_merger_tick.sh` (a copy of `scripts/localci/merger_tick.sh`), which drops every inherited `GIT_*`
+variable, fetches `origin/main` into the merger's mirror (a failed fetch is not fatal: the tick journals its own), resolves ONE
+sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a working-tree copy. A failure before Python starts
+(no git, no mirror) writes no journal line; it is in `~/logs/localci-merger.err.log`, and the report's `longest_silence` shows
+the gap. Install (operator of Pro, user `nuzantara`):
 
+    mkdir -p ~/.nuzantara-cron ~/logs
     cp scripts/localci/merger_tick.sh ~/.nuzantara-cron/localci_merger_tick.sh
     sed -e "s#__HOME__#$HOME#g" -e "s#__VENV_PYTHON__#$HOME/nuzantara/apps/backend-rag/.venv/bin/python#g" \
         infra/launchagents/com.balizero.localci-merger.plist > ~/Library/LaunchAgents/com.balizero.localci-merger.plist

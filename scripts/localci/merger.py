@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import calendar
+import math
 import fcntl
 import importlib.util
 import json
@@ -45,9 +46,13 @@ MATRIX = "scripts/localci/contexts_matrix.yaml"
 RUNNER_ENV = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT")  # an allowlist: no token reaches the runner
 GIT_SAFE = ("-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-c", "rerere.enabled=false")  # no hook, signer or recorded resolution acts on a candidate
 # no host config either: a filter, merge driver or fsmonitor configured globally would run on candidate paths outside any container
-GIT_ISOLATED = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
-                "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.hooksPath", "GIT_CONFIG_VALUE_0": "/dev/null"}   # the runner's git too
+GIT_ISOLATED = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "GIT_ATTR_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
+                "GIT_CONFIG_COUNT": "3", "GIT_CONFIG_KEY_0": "core.hooksPath", "GIT_CONFIG_VALUE_0": "/dev/null",
+                "GIT_CONFIG_KEY_1": "core.fsmonitor", "GIT_CONFIG_VALUE_1": "false",
+                "GIT_CONFIG_KEY_2": "core.attributesFile", "GIT_CONFIG_VALUE_2": "/dev/null"}   # the runner's git too
 CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "BLIND", "PENDING")
+_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+_SINCE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$")
 SEAL_RE = re.compile(r"^seal=([0-9a-f]{64})\b", re.M)
 SECRET_RE = re.compile(r"(gh[opsru]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,}|(?<=://)[^/@\s]+(?=@)|(?i:bearer|token)\s+\S+)")
 HOST = platform.node()
@@ -361,7 +366,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
         return 0
-    except MergerError as exc:   # a decision with no verdict: this (pr, head, base) is not retried, the next base is
+    except (MergerError, OSError) as exc:   # a decision with no verdict: this (pr, head, base) is not retried, the next base is
         journal(state, {**rec, "overall": "ERROR", "error": redact(exc), "candidate_sha": None, "run_dir": None,
                         "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} ERROR — {redact(exc)}", file=sys.stderr)
@@ -462,54 +467,101 @@ def _epoch(ts: str) -> float:
     return calendar.timegm(time.strptime(ts, "%Y-%m-%dT%H:%M:%SZ"))
 
 
+def strict_journal(state: Path) -> list[dict]:
+    """The report's reader: an unreadable line is refused, never skipped — a dropped decision would be a dropped red."""
+    p = state / "decisions.jsonl"
+    recs = []
+    for i, raw in enumerate(p.read_text().splitlines() if p.exists() else [], 1):
+        try:
+            rec = json.loads(raw)
+        except json.JSONDecodeError:
+            raise hc.CompareError(f"decisions.jsonl line {i} is unreadable — look at it and repair the journal before counting") from None
+        if not isinstance(rec, dict) or not _TS_RE.match(str(rec.get("ts"))):
+            raise hc.CompareError(f"decisions.jsonl line {i} is not a journal record")
+        recs.append(rec)
+    return recs
+
+
+def queue_sha(a, pr: dict, d: dict, parents: dict) -> str:
+    """The sha whose hosted verdict judges decision ``d``: the merge commit when the queue merged this head ON THE DECIDED BASE
+    (the very candidate, with its merge_group runs), else the head."""
+    if not (pr.get("merged") is True and head_of(pr) == d.get("head_sha")):
+        return str(d.get("head_sha"))
+    mc = pr.get("merge_commit_sha")
+    if not hc._SHA_RE.match(str(mc)):
+        raise hc.CompareError(f"#{d.get('pr')} merged at the decided head but carries no merge_commit_sha")
+    if mc not in parents:
+        commit = hc.gh_get(f"repos/{a.repo}/commits/{mc}")
+        parents[mc] = [x.get("sha") for x in commit.get("parents") or []] if isinstance(commit, dict) else []
+    return mc if parents[mc] == [d.get("base_sha")] else str(d.get("head_sha"))
+
+
 def cmd_report(a) -> int:
     state = Path(a.state_dir).expanduser().resolve()
-    decisions = [r for r in read_journal(state) if r.get("kind") == "decision" and str(r.get("ts")) >= (a.since or "")]
     prs: dict = {}
     lives: dict = {}
+    parents: dict = {}
     rows = []
     ctx_counts = dict.fromkeys(hc.CLASSES, 0)
+    recorded_fg = 0
     try:
+        if a.since and not _SINCE_RE.match(a.since):
+            raise hc.CompareError(f"--since {a.since!r}: give YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ")
+        bound = (state / "repo").read_text().strip() if (state / "repo").exists() else None
+        if bound not in (None, a.repo.lower()):
+            raise hc.CompareError(f"{state} belongs to {bound!r}, not {a.repo!r}")
+        window = [r for r in strict_journal(state) if str(r["ts"]) >= (a.since or "")]
+        decisions = [r for r in window if r.get("kind") == "decision"]
+        if any(str(d.get("repo", a.repo)).lower() != a.repo.lower() for d in decisions):
+            raise hc.CompareError("a decision in the window belongs to another repository")
         for d in decisions:
             n, head = d.get("pr"), str(d.get("head_sha"))
             if n not in prs:
                 prs[n] = hc.gh_get(f"repos/{a.repo}/pulls/{n}")
             merged_here = prs[n].get("merged") is True and head_of(prs[n]) == head
-            # merged at this head: the queue's own verdict is on the merge commit it pushed to main — compare there, not on the head
-            sha = prs[n].get("merge_commit_sha") if merged_here and hc._SHA_RE.match(str(prs[n].get("merge_commit_sha"))) else head
+            sha = queue_sha(a, prs[n], d, parents)
             if sha not in lives:
                 lives[sha] = hc.fetch_live(a.repo, a.base, sha)
                 hc.required_names(lives[sha]["required_checks"])
             live = lives[sha]
             github = github_side(merged_here, live)
+            # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
+            recorded_fg += int(((d.get("hosted_compare") or {}).get("counts") or {}).get("FALSE_GREEN") or 0)
             if d.get("contexts_status") is not None:   # the gate ran: set its per-context verdicts beside the hosted ones
                 status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"],
                                                                                  "results": {k: {"verdict": v} for k, v in (d.get("contexts") or {}).items()}}}
                 for k, v in hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])["counts"].items():
                     ctx_counts[k] += v
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
-                         "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github)})
+                         "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
+                         "compared_merge": merged_here and d.get("contexts_status") == "ok"})
     except (hc.CompareError, OSError, KeyError, TypeError, AttributeError) as exc:
         print(f"merger report: refusing — {exc}", file=sys.stderr)
         return 2
     counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
     first, last = (rows[0]["ts"], rows[-1]["ts"]) if rows else (None, None)
-    days = round((_epoch(last) - _epoch(first)) / 86400, 2) if rows else 0.0
-    merged = sorted({r["pr"] for r in rows if r["merged"]})
+    days = math.floor((_epoch(last) - _epoch(first)) / 86.4) / 1000 if rows else 0.0   # floored: 13.9999 days is not 14
+    stamps = sorted(_epoch(str(r["ts"])) for r in window)
+    silence_h = round(max((b - a_ for a_, b in zip(stamps, stamps[1:])), default=0) / 3600, 2)
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
-                      "merged_prs": len(merged)}, "counts": counts, "context_counts": ctx_counts, "rows": rows,
+                      "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": len({r["pr"] for r in rows if r["compared_merge"]}),
+                      "longest_silence_h": silence_h},
+           "counts": counts, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     atomic_write(state / "report.json", json.dumps(out, indent=2) + "\n")
     print(f"{'PR':7} {'HEAD':12} {'BASE':12} {'MERGER':11} {'GITHUB':7} {'MERGED':6} CLASS")
     for r in rows:
         print(f"#{r['pr']:<6} {r['head_sha'][:12]} {str(r['base_sha'])[:12]} {str(r['overall']):11} {r['github']:7} {'yes' if r['merged'] else 'no':6} {r['class']}")
     w = out["window"]
-    print(f"window: {first} .. {last} ({days} days) decisions={w['decisions']} distinct_prs={w['distinct_prs']} merged_prs={w['merged_prs']}")
+    print(f"window: {first} .. {last} ({days} days) decisions={w['decisions']} distinct_prs={w['distinct_prs']} merged_prs={w['merged_prs']} "
+          f"compared_merges={w['compared_merges']} longest_silence={silence_h}h")
     print("pr-level: " + " ".join(f"{k.lower()}={v}" for k, v in counts.items()))
-    print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items()))
-    print(f"phase E needs 0 FALSE_GREEN over >= 50 merges or 14 days: now false_green={counts['FALSE_GREEN']}+{ctx_counts['FALSE_GREEN']}(ctx), "
-          f"merges={w['merged_prs']}, days={days}")
-    return 1 if counts["FALSE_GREEN"] or ctx_counts["FALSE_GREEN"] else 0
+    print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items())
+          + f" | false_green recorded at tick time={recorded_fg}")
+    fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
+    print(f"phase E needs 0 FALSE_GREEN over >= 50 compared merges or 14 days: now false_green={fg}, compared_merges={w['compared_merges']}, "
+          f"days={days}, longest_silence={silence_h}h")
+    return 1 if fg else 0
 
 
 def cmd_merge(_a) -> int:
