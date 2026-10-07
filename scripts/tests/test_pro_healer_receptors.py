@@ -26,6 +26,9 @@ PROPRIOCEPTION = Path(os.environ.get(
 HEALER_RUN_CHECKS = Path(os.environ.get(
     "HEALER_RUN_CHECKS_UNDER_TEST", ROOT / "scripts/healer_run_checks.py"
 ))
+HEALER_MEMO = Path(os.environ.get(
+    "HEALER_MEMO_UNDER_TEST", ROOT / "scripts/healer_memo.py"
+))
 CLEAN_PROBES = [{"id": "clean", "status": "RECONCILED", "severity": "P1"}]
 
 
@@ -59,6 +62,8 @@ python3 -c 'import os,sys; print(int(os.path.getmtime(sys.argv[1])))' "$last"
         self.marker = self.tmp / "claude-spawns"
         _executable(self.bin / "claude", """#!/bin/sh
 echo spawned >> "$FAKE_CLAUDE_MARKER"
+printf '%s' "$1" > "$FAKE_PROMPT"
+printf '%s\n' "${FAKE_SESSION_OUTPUT:-}"
 exit 0
 """)
         self.cascade = self.tmp / "fake-cascade"
@@ -81,14 +86,19 @@ sys.exit(int(os.environ.get("FAKE_LHF_RC", "0")))
         _executable(self.repo / "scripts/arsenal_probe.py", "#!/usr/bin/env python3\n")
         _executable(self.repo / "scripts/tg_notify.py", "#!/usr/bin/env python3\nprint('fake')\n")
         _executable(self.repo / "scripts/healer_memo.py", """#!/usr/bin/env python3
-import os, sys
+import os, subprocess, sys
 cmd = sys.argv[1]
 if cmd == "fingerprint":
     with open(os.environ.get("FAKE_MEMO_INPUTS", os.devnull), "a") as fh:
         fh.write(sys.stdin.read().strip() + "\\n")
     print("fixture-fingerprint")
 elif cmd == "check": print("MISS")
-elif cmd == "verdict-from-escalations": print("curable")
+elif cmd == "verdict-from-escalations": print(os.environ.get("FAKE_ESC_VERDICT", "unknown"))
+elif cmd == "verdict-from-session":
+    raise SystemExit(subprocess.call([sys.executable, os.environ["REAL_MEMO"], *sys.argv[1:]]))
+elif cmd == "record":
+    with open(os.environ["FAKE_RECORDED"], "a") as fh:
+        fh.write(sys.argv[sys.argv.index("--verdict") + 1] + "\\n")
 """)
         self.arsenal = self.home / ".organism/arsenal/last.json"
         self.arsenal.parent.mkdir(parents=True)
@@ -108,6 +118,8 @@ elif cmd == "verdict-from-escalations": print("curable")
         registry_rc: int = 0,
         home_fork: dict | str | None = None,
         home_fork_rc: int = 0,
+        session_output: str = "",
+        esc_verdict: str = "unknown",
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env.update({
@@ -126,6 +138,11 @@ elif cmd == "verdict-from-escalations": print("curable")
             "PRO_HEALER_CASCADE_BIN": str(self.cascade),
             "PRO_HEALER_PIDFILE": str(self.tmp / "healer.pid"),
             "FAKE_MEMO_INPUTS": str(self.tmp / "memo-inputs"),
+            "FAKE_PROMPT": str(self.tmp / "prompt"),
+            "FAKE_SESSION_OUTPUT": session_output,
+            "FAKE_ESC_VERDICT": esc_verdict,
+            "REAL_MEMO": str(HEALER_MEMO),
+            "FAKE_RECORDED": str(self.tmp / "recorded"),
         })
         return subprocess.run(
             ["bash", str(self.wrapper)], env=env, text=True, capture_output=True,
@@ -143,7 +160,77 @@ elif cmd == "verdict-from-escalations": print("curable")
         result = self._run(CLEAN_PROBES, registry=registry, registry_rc=1)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self._spawn_count(), 1)
-        self.assertIn("ACTIONABLE: registry:1/1-session-curable", self._log())
+        self.assertIn("ACTIONABLE: registry:1/1-dead 0-findings", self._log())
+        self.assertNotIn("alive_with_findings", self._log())
+
+    def test_a_reason_names_dead_session_dead_and_findings(self) -> None:
+        registry = {
+            "dead": [{"id": "fixable", "cure": "session"}, {"id": "tcc", "cure": "owner"}],
+            "findings": [{"id": "kbli"}, {"id": "launchd"}],
+        }
+        result = self._run(CLEAN_PROBES, registry=registry, registry_rc=1)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 1)
+        self.assertIn("ACTIONABLE: registry:1/2-dead 2-findings", self._log())
+        self.assertIn("registry alive_with_findings: 2 (kbli,launchd)", self._log())
+
+    def test_a_innocence_findings_only_do_not_spawn(self) -> None:
+        registry = {"dead": [], "findings": [{"id": "kbli"}]}
+        result = self._run(CLEAN_PROBES, registry=registry, registry_rc=0)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 0, self._log())
+        self.assertIn("registry alive_with_findings: 1 (kbli)", self._log())
+        self.assertNotIn("ACTIONABLE", self._log())
+
+    def test_a_malformed_findings_bucket_is_a_broken_receptor(self) -> None:
+        registry = {"dead": [], "findings": "kbli"}
+        result = self._run(CLEAN_PROBES, registry=registry, registry_rc=0)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 1)
+        self.assertIn("ACTIONABLE: registry-receptor-broken", self._log())
+
+    def test_verdict_total_counts_every_receptor_item(self) -> None:
+        live = self.tmp / "live-user.sh"
+        live.write_text("fixture\n")
+        drift = {"check_breaches": [f"DIVERGED: {live} != scripts/live-user.sh — fixture"]}
+        self._write_arsenal([{"seat": "claude", "from": "LIVE", "to": "AUTH_DEAD"}])
+        probes = [{"id": "fixable", "status": "DIVERGED", "severity": "P1"}]
+        rows = {  # registry session 1 + probe 1 + drift 1 + arsenal 1 (+ broken receptor 1)
+            "dead-probe-drift-arsenal": dict(registry={"dead": [{"id": "x"}]}, registry_rc=1),
+            "broken-probe-drift-arsenal": dict(registry={"receptor_broken": "x"}, registry_rc=2),
+        }
+        got = {}
+        for row, kwargs in rows.items():
+            (self.home / ".organism/healer-pro/arsenal-last-acted.json").unlink(missing_ok=True)
+            self._run(probes, home_fork=drift, home_fork_rc=1, **kwargs)
+            got[row] = (self.tmp / "prompt").read_text().rsplit("<n_cured>/", 1)[1]
+        self.assertEqual(got, {"dead-probe-drift-arsenal": "4", "broken-probe-drift-arsenal": "4"})
+
+    def test_session_verdict_reaches_the_memo_record(self) -> None:
+        two = [{"id": f"fix-{x}", "status": "DIVERGED", "severity": "P1"} for x in "ab"]
+        rows = {  # row: (session output, escalation verdict, recorded verdict, ledger token)
+            "cured": ("HEALER_VERDICT: cured 2/2", "unknown", "cured", None),
+            "incurable": ("HEALER_VERDICT: incurable 0/2", "unknown", "incurable", None),
+            "partial": ("HEALER_VERDICT: partial 1/2", "unknown", "partial", None),
+            "part-of-the-work": ("HEALER_VERDICT: incurable 0/1", "incurable", "unknown", "invalid"),
+            "missing": ("result: 0 cure runtime eseguite", "unknown", "unknown", "missing"),
+            "missing-escalation-fallback": ("", "incurable", "incurable", "missing"),
+            "garbage": ("HEALER_VERDICT: garbage", "unknown", "unknown", "invalid"),
+            "later-garbage-no-fallback": (
+                "HEALER_VERDICT: incurable 0/2\nHEALER_VERDICT: garbage", "incurable", "unknown", "invalid"),
+            "line-beats-escalation": ("HEALER_VERDICT: cured 2/2", "incurable", "cured", None),
+        }
+        got = {}
+        for row, (output, esc, _, _) in rows.items():
+            self._run(two, session_output=output, esc_verdict=esc)
+            tick = self._log().rsplit("ACTIONABLE:", 1)[1]
+            ledger = [t for t in ("missing", "invalid") if f"verdict-line-{t}" in tick]
+            got[row] = ((self.tmp / "recorded").read_text().splitlines()[-1], ledger[0] if ledger else None)
+        self.assertEqual(got, {row: (v, t) for row, (_, _, v, t) in rows.items()})
+        self.assertIn(
+            "HEALER_VERDICT: cured|incurable|partial <n_cured>/2",
+            (self.tmp / "prompt").read_text(),
+        )
 
     def test_a_innocence_owner_only_dead_skips_with_ledger(self) -> None:
         registry = {"dead": [{"id": "tcc-only", "cure": "owner"}]}
@@ -215,8 +302,8 @@ elif cmd == "verdict-from-escalations": print("curable")
             "a-exit1-not-json": (1, "registry-receptor-broken"),
             "a-exit0-not-json": (1, "registry-receptor-broken"),
             "a-undeclared-cure": (1, "registry-receptor-broken"),
-            "a-cure-missing": (1, "registry:1/1-session-curable"),
-            "a-mixed": (1, "registry:1/2-session-curable"),
+            "a-cure-missing": (1, "registry:1/1-dead 0-findings"),
+            "a-mixed": (1, "registry:1/2-dead 0-findings"),
             "c-rc1-no-breach": (1, "home-fork-receptor-broken"),
             "c-rc1-not-json": (1, "home-fork-receptor-broken"),
             "c-unrecognised-line": (1, "home-fork-drift:1/1-session-curable"),

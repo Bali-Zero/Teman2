@@ -18,6 +18,10 @@ Subcommands:
     check                      Decide SPAWN (exit 0) vs SKIP (exit 3) against
                                 a persisted state file.
     record                     Persist {fingerprint, verdict, spawned_at}.
+    verdict-from-session       Read the session log's LAST `HEALER_VERDICT:`
+                                line strictly: cured / incurable / partial;
+                                malformed or another tick's total = unknown;
+                                no such line at all = missing.
     verdict-from-escalations   Classify the newest `healer_pro_tick` line in
                                 shared/escalations_pro.jsonl since a given
                                 time as incurable / cured / unknown.
@@ -49,7 +53,7 @@ DEFAULT_MAX_SKIPS = 3
 EXIT_SPAWN = 0
 EXIT_SKIP = 3
 
-VALID_VERDICTS = ("incurable", "cured", "unknown")
+VALID_VERDICTS = ("incurable", "cured", "partial", "unknown")
 
 
 def _kill_switch_disabled() -> bool:
@@ -170,6 +174,28 @@ def _classify_summary(text: str) -> str:
     if _CURED_WORD_RE.search(text):
         return "cured"
     return "unknown"
+
+
+_SESSION_VERDICT_RE = re.compile(r"HEALER_VERDICT: (cured|incurable|partial) ([0-9]+)/([0-9]+)")
+
+
+def verdict_from_session(text: str, expect_total: int | None = None) -> str:
+    """The LAST line naming HEALER_VERDICT decides, parsed strictly: a later
+    malformed line voids an earlier valid one (unknown spawns, never skips), the
+    counts must agree with the word (cured n/n, incurable 0/n, partial k/n) and
+    n must be the tick's own total, so a verdict on part of the work never
+    memoizes the rest. No such line at all is "missing", not "unknown"."""
+    candidates = [line.strip() for line in text.splitlines() if "HEALER_VERDICT" in line]
+    if not candidates:
+        return "missing"
+    match = _SESSION_VERDICT_RE.fullmatch(candidates[-1])
+    if not match:
+        return "unknown"
+    verdict, cured, total = match.group(1), int(match.group(2)), int(match.group(3))
+    expected = {"cured": cured == total, "incurable": cured == 0, "partial": 0 < cured < total}
+    if expect_total is not None and total != expect_total:
+        return "unknown"
+    return verdict if total > 0 and expected[verdict] else "unknown"
 
 
 # ---------------------------------------------------------------------------
@@ -305,6 +331,15 @@ def cmd_verdict_from_escalations(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verdict_from_session(args: argparse.Namespace) -> int:
+    try:
+        text = Path(args.file).expanduser().read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        text = ""
+    print(verdict_from_session(text, args.expect_total))
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -342,6 +377,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_verdict.add_argument("--file", required=True)
     p_verdict.add_argument("--since", required=True)
     p_verdict.set_defaults(func=cmd_verdict_from_escalations)
+
+    p_session = sub.add_parser(
+        "verdict-from-session", help="parse the session log's last HEALER_VERDICT line"
+    )
+    p_session.add_argument("--file", required=True)
+    p_session.add_argument("--expect-total", type=int, default=None)
+    p_session.set_defaults(func=cmd_verdict_from_session)
 
     return parser
 

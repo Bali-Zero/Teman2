@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -85,6 +86,37 @@ def test_summarize_registry_branch_table() -> None:
 def test_summarize_registry_rejects_malformed_or_undeclared_cure(raw: str) -> None:
     with pytest.raises(checks.ProbeReportError):
         checks.summarize_registry(raw)
+
+
+def test_registry_findings_branch_table() -> None:
+    rows = {
+        "bucket-absent-is-none": {"dead": []},
+        "named": {"dead": [], "findings": [{"id": "kbli"}, {"id": "launchd"}]},
+        "id-missing": {"dead": [], "findings": [{}]},
+    }
+    got = {row: checks.registry_findings(json.dumps(data)) for row, data in rows.items()}
+    assert got == {
+        "bucket-absent-is-none": [],
+        "named": ["kbli", "launchd"],
+        "id-missing": ["(unknown)"],
+    }
+
+
+@pytest.mark.parametrize("raw", [
+    "not-json", "[]", '{"findings": "kbli"}', '{"findings": [1]}', '{"findings": null}',
+])
+def test_registry_findings_rejects_a_malformed_bucket(raw: str) -> None:
+    with pytest.raises(checks.ProbeReportError):
+        checks.registry_findings(raw)
+
+
+def test_registry_summary_cli_prints_findings_after_dead() -> None:
+    raw = json.dumps({"dead": [{"id": "a", "cure": "owner"}], "findings": [{"id": "k"}]})
+    out = subprocess.run(
+        [sys.executable, str(_MOD_PATH), "registry-summary"],
+        input=raw, capture_output=True, text=True, check=True,
+    ).stdout
+    assert out == "1\n0\na\n1\nk\n"
 
 
 def test_summarize_home_fork_branch_table(tmp_path, monkeypatch) -> None:

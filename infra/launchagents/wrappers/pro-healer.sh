@@ -143,15 +143,21 @@ REG_CHECK_EXIT=$?
 REG_DEAD=$(printf '%s\n' "$REG_SUMMARY" | sed -n '1p')
 REG_SESSION=$(printf '%s\n' "$REG_SUMMARY" | sed -n '2p')
 REG_DEAD_IDS=$(printf '%s\n' "$REG_SUMMARY" | sed -n '3p')
+REG_FINDINGS=$(printf '%s\n' "$REG_SUMMARY" | sed -n '4p')
+REG_FINDING_IDS=$(printf '%s\n' "$REG_SUMMARY" | sed -n '5p')
 # Exit 1 means "dead organs"; exit 1 with none listed is a broken receptor, not health.
 if [ "$REG_EXIT" -eq 2 ] || [ "$REG_CHECK_EXIT" -ne 0 ] \
     || { [ "$REG_EXIT" -eq 1 ] && [ "${REG_DEAD:-0}" = "0" ]; }; then
     ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "
 elif [ "$REG_EXIT" -eq 1 ] && [ "${REG_SESSION:-0}" -gt 0 ] 2>/dev/null; then
     ACTIONABLE=1
-    REASONS="${REASONS}registry:${REG_SESSION}/${REG_DEAD}-session-curable "
+    REASONS="${REASONS}registry:${REG_SESSION}/${REG_DEAD}-dead ${REG_FINDINGS:-0}-findings "
 elif [ "$REG_EXIT" -eq 1 ] && [ "${REG_DEAD:-0}" -gt 0 ] 2>/dev/null; then
     log "skip: registry ${REG_DEAD} dead, none session-curable: ${REG_DEAD_IDS:-unknown}"
+fi
+# A detector that ran on time and reported what it found is alive, not a patient.
+if [ "${REG_FINDINGS:-0}" -gt 0 ] 2>/dev/null; then
+    log "registry alive_with_findings: ${REG_FINDINGS} (${REG_FINDING_IDS}) — not dead, no spawn on their account"
 fi
 
 # Receptor B: proprioception — boundary divergences on THIS machine
@@ -358,12 +364,28 @@ if [ ! -x "$CASCADE_BIN" ]; then
     exit 1
 fi
 
+# The n_total the session must echo in its HEALER_VERDICT line: every item this
+# tick asks it to cure, so a verdict on part of the work never memoizes the rest.
+VERDICT_TOTAL=0
+for n in "${REG_SESSION:-0}" "${SESSION_CURABLE:-0}" "${LHF_SESSION:-0}"; do
+    case "$n" in ''|*[!0-9]*) ;; *) VERDICT_TOTAL=$((VERDICT_TOTAL + n)) ;; esac
+done
+for t in $REASONS; do
+    case "$t" in *-receptor-broken) VERDICT_TOTAL=$((VERDICT_TOTAL + 1)) ;; esac
+done
+for t in ${NEW_DEAD//,/ }; do VERDICT_TOTAL=$((VERDICT_TOTAL + 1)); done
+
 SESSION_LOG="$LOG_DIR/session-$(date +%Y%m%d-%H%M%S).log"
 SPAWN_TS_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 export HEALER_RUN=1
 "$CASCADE_BIN" "$(cat "$MANDATE")
 
-CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
+CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}
+
+Chiudi il report con UNA riga macchina, senza markdown, dove ${VERDICT_TOTAL} = gli
+elementi curabili che questo tick ti chiede di curare e n_cured = quelli curati
+(cured = tutti, incurable = nessuno, partial = alcuni):
+HEALER_VERDICT: cured|incurable|partial <n_cured>/${VERDICT_TOTAL}" \
     --claude-only --model "$MODEL" -- \
     --dangerously-skip-permissions --strict-mcp-config \
     --mcp-config '{"mcpServers":{}}' \
@@ -402,11 +424,24 @@ TAIL=$(tail -c 600 "$SESSION_LOG" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 log "session exit=$RC — tail: ${TAIL:0:300}"
 
 # G11_memoize (continued): record this tick's outcome so the NEXT tick can
-# memoize against it. The verdict comes from the healer's own escalation
-# write (shared/escalations_pro.jsonl), never from $RC — a session can exit 0
-# after concluding "0/N curable" (that IS success: the diagnosis is correct).
-MEMO_VERDICT=$(python3 scripts/healer_memo.py verdict-from-escalations \
-    --file shared/escalations_pro.jsonl --since "$SPAWN_TS_ISO" 2>>"$LOG")
+# memoize against it. The verdict is the session's own HEALER_VERDICT line,
+# else (unchanged) the healer's escalation write (shared/escalations_pro.jsonl),
+# never $RC — a session can exit 0 after concluding "0/N curable" (that IS
+# success: the diagnosis is correct).
+MEMO_VERDICT=$(python3 scripts/healer_memo.py verdict-from-session \
+    --file "$SESSION_LOG" --expect-total "$VERDICT_TOTAL" 2>>"$LOG")
+case "$MEMO_VERDICT" in
+    cured|incurable|partial) ;;
+    missing)
+        log "verdict-line-missing: no HEALER_VERDICT line in $SESSION_LOG"
+        MEMO_VERDICT=$(python3 scripts/healer_memo.py verdict-from-escalations \
+            --file shared/escalations_pro.jsonl --since "$SPAWN_TS_ISO" 2>>"$LOG")
+        ;;
+    *)
+        log "verdict-line-invalid: last HEALER_VERDICT line in $SESSION_LOG is malformed or not <k>/${VERDICT_TOTAL}"
+        MEMO_VERDICT="unknown"
+        ;;
+esac
 [ -n "$MEMO_VERDICT" ] || MEMO_VERDICT="unknown"
 if [ -n "${FINGERPRINT:-}" ]; then
     python3 scripts/healer_memo.py record --state "$MEMO_STATE" \
