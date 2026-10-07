@@ -273,8 +273,8 @@ reported is PENDING, one whose merge commit carries a red required check is RED.
 `overall=PASS`, RED only for `FAIL`; everything else (BLOCKED, SUBSET_PASS, CONFLICT, ERROR) is blind. Classes per decision:
 `AGREE`, `FALSE_GREEN` (merger PASS, GitHub red), `FALSE_RED`, `BLIND`, `PENDING` (GitHub has no verdict yet).
 
-Apart from the classes, the report reads the required checks on the merge commit of EVERY merged PR in the window, whichever
-candidate the merger decided, and lists as `hosted_red_merged` each one GitHub merged with a required check red there (PR,
+Apart from the classes, the report reads the required checks on the merge commit of every PR the window decided that GitHub
+merged, whichever candidate the merger decided (a merge the merger never decided is no evidence about either gate), and lists as `hosted_red_merged` each one GitHub merged with a required check red there (PR,
 merge commit, red contexts; one printed line each). #8026 is the case: decided on an older base, so its row is judged on its
 green head and is not a compared merge, yet its queue commit 2a1e00e0d3 merged with `antidotes` red. That is a HOSTED
 failure: counted apart and printed on the phase E line as information, and by itself it never blocks READY. A local false

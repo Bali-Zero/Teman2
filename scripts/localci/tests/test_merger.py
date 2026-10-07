@@ -657,9 +657,13 @@ def test_every_journal_line_carries_the_code_sha_it_ran(world, monkeypatch):
                                           ('# "--pr-number" is planned for later\nHELP = "--pr-number"\n', False),
                                           ('p.add_argument("--pr", type=int)\n', False),
                                           ('p.error("--pr-number")\n', False),
-                                          ('p.add_argument("--pr-number"\n', False)])
+                                          ('p.add_argument("--pr-number"\n', False),
+                                          (b'p.add_argument("--pr-number")  # \xff\n', False)])
 def test_the_pr_number_is_given_only_to_a_base_runner_that_declares_it(world, source, given):
-    world.base = commit(world.src, {"scripts/localci/runner.py": source}, "runner as it stands at the base")
+    runner = world.src / "scripts" / "localci" / "runner.py"
+    runner.parent.mkdir(parents=True, exist_ok=True)
+    runner.write_bytes(source if isinstance(source, bytes) else source.encode())   # bytes: a source that is not UTF-8
+    world.base = commit(world.src, {}, "runner as it stands at the base")
     g(world.src, "push", "-q", str(world.origin), "main")
     world.gh.prs = [pr(1, world.head1)]
     assert world.tick() == 0

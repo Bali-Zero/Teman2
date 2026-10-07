@@ -49,6 +49,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "pr-number-never": (PY, 'if runner_takes(base_wt, "--pr-number"):', "if False:", (TICK,)),
     "pr-number-substring": (PY, '        tree = ast.parse((base_wt / "scripts" / "localci" / "runner.py").read_text())',
                             '        return flag in (base_wt / "scripts" / "localci" / "runner.py").read_text()', (TICK,)),
+    "pr-number-undecodable-crashes": (PY, "    except (OSError, SyntaxError, ValueError):\n        return False\n    return any(",
+                                      "    except (OSError, SyntaxError):\n        return False\n    return any(", (TICK,)),
     "pr-number-any-call": (PY, 'isinstance(node.func, ast.Attribute) and node.func.attr == "add_argument"', "True", (TICK,)),
     # the false-green count and the READY line
     "recorded-or-zero": (PY, '    value = counts.get("FALSE_GREEN") if isinstance(counts, dict) else None',
