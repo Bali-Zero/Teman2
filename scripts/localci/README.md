@@ -122,6 +122,22 @@ context is satisfied). The workflow file and any changed `.gitattributes` are ju
 candidate changed it is reported BLOCKED. `bare_venv: false` keeps the image interpreter (the job installs with
 `uv pip install --system`).
 
+Node jobs (E2E, Visa Oracle smoke) add three deps keys, all built into the same deps image at plan time:
+
+- `npm: package-lock.json` — the candidate's lock and the manifests it installs (root and each declared workspace, read as
+  data) fill an npm cache in the official `node:<deps.node>` image with `npm ci --ignore-scripts`: network, no package code.
+  Every lock entry must resolve to `https://registry.npmjs.org/` with an `sha512` integrity, or be a declared workspace link;
+  anything else (a tarball URL, git, a path) is BLOCKED. The job's own `npm install` then runs verbatim, offline
+  (`npm_config_offline`), its lifecycle scripts inside the sandbox.
+- `playwright: chromium` — the lock's `playwright-core` version, from the registry, runs `install --with-deps chromium` as
+  root with network at build (`PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright`); the job's browser-install step needs root and
+  network the sandbox never has, so it is `not_applicable` with that reason.
+- `apt: [postgresql-client]` — OS packages the job's own bounded installer finds already present (`apt_install.sh` exits 0).
+
+A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
+overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
+can change.
+
 ### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB)
 
 Checks run one after another and so do a service context's legs (parallelism 1): the backend shards take up to 6 GiB each

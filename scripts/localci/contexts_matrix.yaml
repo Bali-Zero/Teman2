@@ -33,16 +33,14 @@
 summary:
   updated_at: "2026-10-07"
   required_contexts: 14
-  executed: 9 # R1 gate, actionlint, Merah Putih, catE, organ, guard, antidotes, Backend Tests, Harness floor — by the runner, every BASE workflow step accounted for
+  executed: 11 # R1 gate, actionlint, Merah Putih, catE, organ, guard, antidotes, Backend Tests, Harness floor, E2E, Visa Oracle smoke — by the runner, every BASE workflow step accounted for
   not_applicable_rule: 0
-  blocked: 5
+  blocked: 3
   not_implemented: 0
   never_claim_parity_for: # exactly the contexts the runner does not execute (machine-checked by the suite)
-    - "E2E Tests (Playwright)"
     - "CodeQL Analysis (python)"
     - "CodeQL Analysis (javascript)"
     - "Frontend Tests (Next.js) (mouth, true)"
-    - "Visa Oracle fullstack smoke"
   parity_gaps: # steps of EXECUTED contexts whose hosted twin can differ from the local run
     - "catE-sovereignty-lint on a PR head: hosted runs the #40c model judgment (vendor key) and the PR-scoped prose scan; local runs the merge_group shape (whole tree, no model)"
     - "every container context runs the merge_group shape; PR-only steps (path sentinels) are not_applicable with reasons or run with the merge_group answer"
@@ -53,6 +51,8 @@ summary:
     - "Backend Tests: node (24, the official image's) and the data the suite downloads (tiktoken cl100k_base, spaCy en_core_web_lg 3.8.0) are sha256-pinned in the matrix; hosted takes whatever the runner image and the network serve that day"
     - "Backend Tests: matrix legs run one after another in fresh sandboxes (parallelism 1 on Colima 4 CPU / 8 GiB); hosted runs them on separate runners at once"
     - "Harness floor: the Gear >= 2 verdict reader runs at plan time on the host with the operator's gh, reading the PR's commit status as it stands then; hosted read it when the queue ran"
+    - "E2E and Visa Oracle smoke: hosted starts the backend with four repository secrets (QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY, JWT_SECRET) and E2E with E2E_TEST_EMAIL/PIN; here they are empty — a spec or startup path that behaves differently with them set can differ"
+    - "E2E and Visa Oracle smoke: npm installs offline from a cache filled at plan time (the lock's registry tarballs for linux/arm64); hosted fetches them, and its browser-install step (apt + CDN, the W118 flake) is replaced by the deps image's install"
 
 contexts:
   - name: "E2E Tests (Playwright)"
@@ -61,21 +61,72 @@ contexts:
     purpose: Playwright specs of apps/mouth against a live FastAPI backend on :8000 with Postgres + Redis.
     trusted_base_required: false
     local:
-      kind: cmd
-      cwd: "."
-      cmd: [npx, playwright, test, --config=playwright.config.ts] # run from apps/mouth after the backend is up
-      needs: [python, node, postgres, network]
-    mapping: blocked
-    blocker: >-
-      Job needs Postgres + Redis services, a uv lock-pinned backend install, a backend booted on :8000,
-      `npm install` and `playwright install --with-deps` (network). Worktree node_modules and
-      apps/backend-rag/.venv are symlinks into the main checkout, so installing or running from here
-      writes outside the worktree (and `npm install/ci` from a worktree is banned: it corrupts the
-      shared node_modules). No Postgres on this host (pg_isready absent); docker is up but no image was pulled.
-    smallest_next_action: >-
-      In an executor lane with its own clone: `docker run` a postgres:16 + redis, `npm ci` from that
-      clone's ROOT, boot uvicorn, then `npx playwright test --list` (the credential-free collection
-      step) as the first cheap proof before the full run.
+      check: ctx.e2e-tests
+      where: container
+      expressions: true
+      runs_when: e2e-tests # the job's `if:` reads the classifier's run_e2e_tests: the trusted change_map stands in
+      memory: 7g
+      bare_venv: false
+      service_images:
+        "ghcr.io/bali-zero/ci-mirror/postgres:15": "postgres:15"
+        "ghcr.io/bali-zero/ci-mirror/redis:7": "redis:7"
+      deps: # the backend closure plus node, the npm cache of the root lock, the lock's Playwright browser and psql (one recipe, shared)
+        requirements:
+          - apps/backend-rag/requirements.lock.txt
+          - apps/backend-rag/requirements-ci-tools.txt
+        packages:
+          [
+            pytest,
+            pytest-cov,
+            pytest-asyncio,
+            pytest-mock,
+            fakeredis,
+            pytest-xdist,
+          ]
+        node: "24"
+        npm: package-lock.json
+        playwright: chromium
+        apt: [postgresql-client]
+        fetch:
+          - url: https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken
+            sha256: 223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7 # pragma: allowlist secret — a public file's digest
+            path: /tmp/data-gym-cache/9b5ad71b2ce5302211f9c61530b329a4922fc6a4
+          - url: https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+            sha256: 293e9547a655b25499198ab15a525b05b9407a75f10255e405e8c3854329ab63 # pragma: allowlist secret — a public file's digest
+            path: /opt/wheels/en_core_web_lg-3.8.0-py3-none-any.whl
+            install: true
+      needs:
+        changes: { result: success, outputs: { run_e2e_tests: "true" } }
+      steps:
+        - workflow_step: Setup Node.js
+          not_applicable: the deps image carries node 24 (the official image's binary and npm); the plan checks the BASE pin against it
+        - workflow_step: Install backend dependencies (uv, lock-pinned)
+        - workflow_step: Start backend (FastAPI on :8000)
+          env: # hosted reads four repository secrets here; this run holds none of them and never reads the operator's
+            QDRANT_URL: ""
+            QDRANT_API_KEY: ""
+            OPENAI_API_KEY: ""
+            JWT_SECRET: ""
+        - workflow_step: Install Node dependencies
+        - workflow_step: Cache Next.js build cache (mouth)
+          not_applicable: no cache layer; a cold Next.js build is what a cache miss runs hosted
+        - workflow_step: E2E specs must collect with no credentials present
+        - workflow_step: Cache Playwright browser binaries
+          not_applicable: no cache layer; the deps image holds the browser
+        - workflow_step: Install Playwright browsers
+          not_applicable: >-
+            needs root and network (apt-get for the OS libraries, the browser CDN); the deps image ran the lock's
+            playwright-core `install --with-deps chromium` at plan time instead
+        - workflow_step: Run E2E tests
+          env: { E2E_TEST_EMAIL: "", E2E_TEST_PIN: "" } # repository secrets hosted; the selected specs (page Page|@offline) are credential-free
+        - workflow_step: Save Next.js build cache (mouth, main only)
+          not_applicable: no cache layer (and its `if:` needs github.ref == refs/heads/main, false on a merge_group ref)
+        - workflow_step: Check Playwright report
+        - workflow_step: Upload Playwright report
+          not_applicable: an upload with if-no-files-found warn cannot fail the job; there is no artifact store here
+    mapping: executed
+    coverage: full
+    blocker: ""
 
   - name: "Backend Tests (Python)"
     workflow_file: .github/workflows/tests.yml
@@ -234,7 +285,10 @@ contexts:
     smallest_next_action: >-
       Executor lane with a private clone: `npm ci` at ROOT once, then run the 7 workflow commands in order
       (openapi-typescript --check, tsc --noEmit, vitest --coverage, test:coverage:check, packages/core,
-      admin-dashboard-local, wa-mirror) and record rc+seconds per command.
+      admin-dashboard-local, wa-mirror) and record rc+seconds per command. Runner v0.6.0 (phase B) found the next
+      row: the job is a one-leg slice of an include-only matrix (needs a leg selector), and apps/wa-mirror's own
+      `npm ci` fetches libsignal from git+ssh://github.com at a pinned commit, which the deps image's registry-only
+      npm stage refuses (`npm_inputs`); both are owed before this context can run.
 
   - name: "Every organ is born with its genes"
     workflow_file: .github/workflows/organ-conformance.yml
@@ -523,18 +577,63 @@ contexts:
     purpose: Disposable-DB fullstack smoke of Visa Oracle (backend.scripts.visa_engine.fullstack_smoke) with Playwright chromium.
     trusted_base_required: false
     local:
-      kind: cmd
-      cwd: apps/backend-rag
-      cmd: [$PY, -u, -m, backend.scripts.visa_engine.fullstack_smoke]
-      needs: [python, node, postgres, network]
-    mapping: blocked
-    blocker: >-
-      Needs a Postgres service (none running here), the lock-pinned backend deps via uv (venv is a symlink into
-      the main checkout), postgresql-client, `npm install` and `playwright install --with-deps chromium`
-      (network). The smoke creates and drops a disposable database, so it must not point at a shared server.
-    smallest_next_action: >-
-      Executor lane: start a throwaway postgres in docker on a random port, export its DSN, run the smoke
-      once with the 540 s cap the workflow uses and record rc+seconds.
+      check: ctx.visa-oracle-smoke
+      where: container
+      expressions: true
+      runs_when: e2e-tests # the job's `if:` reads run_e2e_tests, as E2E's does
+      memory: 7g
+      bare_venv: false
+      service_images:
+        "ghcr.io/bali-zero/ci-mirror/postgres:15": "postgres:15"
+      deps: # the backend closure plus node, the npm cache of the root lock, the lock's Playwright browser and psql (one recipe, shared)
+        requirements:
+          - apps/backend-rag/requirements.lock.txt
+          - apps/backend-rag/requirements-ci-tools.txt
+        packages:
+          [
+            pytest,
+            pytest-cov,
+            pytest-asyncio,
+            pytest-mock,
+            fakeredis,
+            pytest-xdist,
+          ]
+        node: "24"
+        npm: package-lock.json
+        playwright: chromium
+        apt: [postgresql-client]
+        fetch:
+          - url: https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken
+            sha256: 223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7 # pragma: allowlist secret — a public file's digest
+            path: /tmp/data-gym-cache/9b5ad71b2ce5302211f9c61530b329a4922fc6a4
+          - url: https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+            sha256: 293e9547a655b25499198ab15a525b05b9407a75f10255e405e8c3854329ab63 # pragma: allowlist secret — a public file's digest
+            path: /opt/wheels/en_core_web_lg-3.8.0-py3-none-any.whl
+            install: true
+      needs:
+        changes: { result: success, outputs: { run_e2e_tests: "true" } }
+      steps:
+        - workflow_step: Setup Node.js
+          not_applicable: the deps image carries node 24 (the official image's binary and npm); the plan checks the BASE pin against it
+        - workflow_step: Cache uv package cache
+          not_applicable: no cache layer; the deps image holds the closure the install step re-runs offline
+        - workflow_step: Install backend dependencies (uv, lock-pinned)
+        - workflow_step: Retry uv install once (timeout only, never a real resolution failure)
+        - workflow_step: Guard — fail the job if uv install (or its one timeout-only retry) did not succeed
+        - workflow_step: Install postgresql-client (bounded, fail-closed — scripts/ci/apt_install.sh)
+        - workflow_step: Install Node dependencies
+        - workflow_step: Cache Playwright browser binaries
+          not_applicable: no cache layer; the deps image holds the browser
+        - workflow_step: Install Playwright browsers
+          not_applicable: >-
+            needs root and network (apt-get for the OS libraries, the browser CDN); the deps image ran the lock's
+            playwright-core `install --with-deps chromium` at plan time instead
+        - workflow_step: Run the disposable-DB fullstack smoke
+        - workflow_step: Retry the fullstack smoke once (known hang signature only, never a real assertion failure)
+        - workflow_step: Guard — fail the job if the smoke (or its one hang-only retry) did not succeed
+    mapping: executed
+    coverage: full
+    blocker: ""
 
   - name: "Merah Putih DAY palette holds its contrast law"
     workflow_file: .github/workflows/merah-putih-day-contrast.yml

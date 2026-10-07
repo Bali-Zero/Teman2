@@ -668,6 +668,30 @@ RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf .
  && node --version | grep -q "^v{v}\\."
 ENV LOCALCI_NODE={v}
 """
+# npm: the candidate's lockfile and package manifests (data) fill an npm cache in the official node image with network and no
+# lifecycle script (`--ignore-scripts`: no package code runs there); the job's own `npm install` then runs verbatim, offline, from
+# that cache, its scripts inside the sandbox. Every lock entry resolves to the public registry or is a workspace link (checked).
+DEPS_NPM_STAGE = """\
+FROM node:{v}-bookworm-slim AS npmcache
+COPY npm/ /src/
+RUN cd /src && npm ci --ignore-scripts --no-audit --no-fund --loglevel=error --cache /npm-cache && rm -rf /src
+"""
+DEPS_NPM = """\
+COPY --from=npmcache --chown=65534:65534 /npm-cache /opt/npm-cache
+"""
+# Playwright: the lock's playwright-core, from the registry, installs its browser and the OS libraries it needs (apt) as root
+# with network at build; the job's own browser-install step needs root and network, which the sandbox never has.
+DEPS_PLAYWRIGHT = """\
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+RUN npm_config_cache=/tmp/npx-root npx -y playwright-core@{pw} install --with-deps {browser} && rm -rf /tmp/npx-root \\
+ && chmod -R a+rX /opt/ms-playwright
+"""
+DEPS_APT = """\
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends {pkgs} && rm -rf /var/lib/apt/lists/*
+"""
+DEPS_OFFLINE_NPM = """\
+ENV npm_config_cache=/opt/npm-cache npm_config_offline=true npm_config_update_notifier=false
+"""
 DEPS_FETCH_PY = """\
 import hashlib, json, os, shutil, sys, urllib.request
 mode, spec, where = sys.argv[1:4]
@@ -791,9 +815,21 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
     node = str(deps.get("node") or "")
     if node and not node.isdigit():
         return None, "deps.node must be a major version"
+    npm_files, pw, why = npm_inputs(wt, cand, deps) if deps.get("npm") else ({}, "", None)
+    apt = sorted(str(a) for a in deps.get("apt") or [])
+    browser = str(deps.get("playwright") or "")
+    if why or ((deps.get("npm") or browser) and not node) or any(not re.fullmatch(r"[a-z0-9][a-z0-9.+-]*", a) for a in apt) \
+            or browser not in ("", "chromium", "firefox", "webkit") or (browser and not pw):
+        return None, f"deps: {why or 'npm/playwright need deps.node and an npm lock naming playwright-core; apt names are package names'}"
     dockerfile = DEPS_DOCKERFILE + (DEPS_NODE.format(v=node) if node else "")
+    if npm_files:
+        dockerfile = dockerfile.replace("\nFROM ${BASE}\n", "\n" + DEPS_NPM_STAGE.format(v=node) + "FROM ${BASE}\n", 1)
+    dockerfile += (DEPS_APT.format(pkgs=" ".join(apt)) if apt else "") + (DEPS_PLAYWRIGHT.format(pw=pw, browser=browser) if browser else "") \
+        + (DEPS_NPM + DEPS_OFFLINE_NPM if npm_files else "")
     recipe = {"base": iso["image_id"], "python": py, "requirements": sorted(set(reqs)), "packages": pkgs, "fetch": fetch, "node": node,
               "dockerfile": sha256_bytes((dockerfile + DEPS_FETCH_PY).encode())}
+    if npm_files or apt or browser:   # absent keys keep a recipe built before them (and its image) as it was
+        recipe.update(npm={k: sha256_bytes(v) for k, v in sorted(npm_files.items())}, playwright=[browser, pw], apt=apt)
     digest = sha256_json(recipe)
     tag, docker = f"localci-deps:{digest[:16]}", iso["docker"]
     note = f"deps {tag} ({len(recipe['requirements'])} pins + {pkgs}, {len(fetch)} fetched file(s)); not reaching the network stage: {dropped}"
@@ -807,6 +843,9 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
         (ctxd / "install.txt").write_text("".join(f"{f['path']}\n" for f in fetch if f["install"]))
         (ctxd / "fetch.py").write_text(DEPS_FETCH_PY)
         (ctxd / "Dockerfile").write_text(dockerfile)
+        for rel, blob in npm_files.items():
+            (ctxd / "npm" / rel).parent.mkdir(parents=True, exist_ok=True)
+            (ctxd / "npm" / rel).write_bytes(blob)
         base_tag = f"localci-deps-base:{iso['image_id'].split(':')[-1][:16]}"
         denv = trusted_env()
         with open(run_dir / "logs" / f"deps-{slug}.log", "w") as fh:
@@ -877,6 +916,45 @@ def unmodelled_path(path: list, gh: dict, needs: list, stood_in: dict) -> str | 
     return None
 
 
+def npm_inputs(wt: Path, cand: str, deps: dict) -> tuple[dict, str, str | None]:
+    """The candidate's npm lock and the manifests it installs (root + each workspace), read as data -> (files, playwright-core
+    version, why-not). A lock entry that resolves anywhere but the public registry (a tarball URL, git, a file path that is not a
+    declared workspace) is refused: the networked stage fetches only what the registry serves under the lock's integrity."""
+    lock_rel = safe_tree_path(str(deps["npm"]))
+    root = lock_rel.rsplit("/", 1)[0] + "/" if "/" in lock_rel else ""
+    files: dict = {}
+    for rel in (lock_rel, f"{root}package.json"):
+        if (blob := _extract_base_file(wt, cand, rel)) is None:
+            return {}, "", f"{rel} absent from the candidate"
+        files[rel[len(root):]] = blob
+    try:
+        lock, manifest = json.loads(files["package-lock.json"]), json.loads(files["package.json"])
+    except (KeyError, ValueError) as e:
+        return {}, "", f"npm lock/manifest unreadable: {type(e).__name__}"
+    ws = manifest.get("workspaces") or []
+    ws = ws.get("packages") or [] if isinstance(ws, dict) else ws
+    if any(not isinstance(w, str) or any(c in w for c in "*?[") for w in ws):
+        return {}, "", "npm workspaces must be plain paths (no globs)"
+    for w in ws:
+        rel = f"{root}{safe_tree_path(w.rstrip('/'))}/package.json"
+        if (blob := _extract_base_file(wt, cand, rel)) is None:
+            return {}, "", f"workspace manifest {rel} absent from the candidate"
+        files[rel[len(root):]] = blob
+    pkgs = lock.get("packages") if isinstance(lock.get("packages"), dict) else None
+    if pkgs is None:
+        return {}, "", "npm lock has no `packages` map (lockfileVersion >= 2 required)"
+    for key, ent in pkgs.items():
+        res = ent.get("resolved") if isinstance(ent, dict) else None
+        if res is None:
+            continue
+        if ent.get("link") is True and res.rstrip("/") in [w.rstrip("/") for w in ws]:
+            continue
+        if not (str(res).startswith("https://registry.npmjs.org/") and str(ent.get("integrity", "")).startswith("sha512-")):
+            return {}, "", f"npm lock entry {key!r} resolves to {str(res)[:80]!r}: only the public registry with an integrity is fetched"
+    pw = str((pkgs.get("node_modules/playwright-core") or {}).get("version") or "")
+    return files, pw if re.fullmatch(r"\d+\.\d+\.\d+", pw) else "", None
+
+
 def run_host_reader(argv: list, cwd: Path, timeout: int | None) -> dict:
     """A BASE reader of GitHub state (the harness gate verdict) at plan time, before any candidate code: python -I on the BASE copy,
     secrets stripped from its environment (gh answers with its stored login, a read). Its rc is frozen into the plan, so the seal
@@ -931,6 +1009,9 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
         svcs, why3 = plan_services(job, local.get("service_images") or {}, iso["docker"])
         if why or why2 or why3:
             return _blocked(f"job {jid}: {why or why2 or why3}")
+        nodes = {str((s.get("with") or {}).get("node-version", "")) for s in job.get("steps") or [] if str(s.get("uses", "")).startswith("actions/setup-node@")}
+        if nodes and nodes != {str((local.get("deps") or {}).get("node") or "")}:
+            return _blocked(f"job {jid}: setup-node pins {sorted(nodes)}, the deps image carries node {(local.get('deps') or {}).get('node')!r}")
         checkout = None
         for s in job.get("steps") or []:
             w = (s.get("with") or {}) if str(s.get("uses", "")).startswith("actions/checkout@") else {}

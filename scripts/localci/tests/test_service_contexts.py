@@ -377,6 +377,46 @@ def test_an_egress_verdict_that_does_not_match_its_exit_code_is_no_verdict(tmp_p
     assert got["rc"] is None and "no consistent verdict" in got["reason"]
 
 
+def npm_repo(tmp_path: Path, lock_entries: dict, workspaces: list) -> tuple[Path, str]:
+    lock = {"lockfileVersion": 3, "packages": {"": {"workspaces": workspaces}, **lock_entries}}
+    files = {"package.json": json.dumps({"name": "r", "workspaces": workspaces}), "package-lock.json": json.dumps(lock),
+             **{f"{w}/package.json": json.dumps({"name": w}) for w in workspaces if "*" not in w}}
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, **files})
+    return fx["repo"], fx["candidate"]
+
+
+REG = {"resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz", "integrity": "sha512-x", "version": "1.63.0"}
+
+
+def test_the_npm_closure_is_the_locks_registry_entries_and_its_workspace_manifests(tmp_path):
+    repo, cand = npm_repo(tmp_path, {"node_modules/playwright-core": REG, "node_modules/w": {"resolved": "apps/w", "link": True}}, ["apps/w"])
+    files, pw, why = runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})
+    assert why is None and pw == "1.63.0" and sorted(files) == ["apps/w/package.json", "package-lock.json", "package.json"]
+
+
+@pytest.mark.parametrize("entries,workspaces,needle", [
+    ({"node_modules/x": {"resolved": "https://evil.example/x.tgz", "integrity": "sha512-x"}}, [], "only the public registry"),
+    ({"node_modules/x": {"resolved": "git+ssh://git@github.com/e/x.git#abc"}}, [], "only the public registry"),
+    ({"node_modules/x": {"resolved": "https://registry.npmjs.org/x/-/x-1.tgz"}}, [], "only the public registry"),   # no integrity
+    ({"node_modules/x": {"resolved": "../outside", "link": True}}, [], "only the public registry"),                  # not a workspace
+    ({}, ["apps/*"], "no globs"),
+])
+def test_an_npm_lock_that_fetches_outside_the_registry_is_refused(tmp_path, entries, workspaces, needle):
+    repo, cand = npm_repo(tmp_path, entries, workspaces)
+    _, _, why = runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})
+    assert why and needle in why
+
+
+def test_a_setup_node_pin_the_deps_image_does_not_carry_is_blocked(tmp_path, monkeypatch):
+    unit = WORKFLOW["jobs"]["unit"]
+    wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "unit": {**unit, "steps": [
+        unit["steps"][0], {"name": "node", "uses": "actions/setup-node@v7", "with": {"node-version": "26"}}, *unit["steps"][1:]]}}}
+    ctx = svc_ctx(deps={"node": "24"}, jobs=[{"job_id": "unit", "steps": [{"workflow_step": "node", "not_applicable": "stood in"},
+                                                                         {"workflow_step": "test"}]}])
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, ctx, {WF: yaml.safe_dump(wf)})
+    assert spec["status"] == "BLOCKED" and "setup-node pins ['26']" in spec["reason"]
+
+
 def test_an_upstream_verdict_reaches_the_fan_in_and_an_upstream_without_one_stops_the_chain(monkeypatch, tmp_path):
     spec = {"jobs": [{"job_id": "unit", "legs": [{"n": 1}, {"n": 2}]}, {"job_id": "fanin", "legs": [{}]}], "needs": {}, "judge_modified": []}
     seen = []
