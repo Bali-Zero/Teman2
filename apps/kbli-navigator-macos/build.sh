@@ -101,10 +101,15 @@ fi
 KBLI_BOOK_PDF_DIR="${KBLI_BOOK_PDF_DIR:-$HOME/kbli-navigator-app/Resources}"
 BOOK_PDFS=("Bali-Threshold-2026.pdf" "Bali-Threshold-2026-ID.pdf")
 for pdf in "${BOOK_PDFS[@]}"; do
+  # present, plausibly sized (> 1 MB) and really a PDF: a truncated or mislabelled file must not ship
   if [[ ! -f "$KBLI_BOOK_PDF_DIR/$pdf" ]]; then
     echo "✗ book PDF missing: $KBLI_BOOK_PDF_DIR/$pdf" >&2
     echo "  Set KBLI_BOOK_PDF_DIR to a directory holding ${BOOK_PDFS[*]}." >&2
     echo "  Archive: gdrive:M5-archive-2026-10-06/logo-tar/kbli-navigator-app.tar (Resources/)." >&2
+    exit 5
+  fi
+  if [[ "$(wc -c < "$KBLI_BOOK_PDF_DIR/$pdf")" -lt 1000000 || "$(head -c 4 "$KBLI_BOOK_PDF_DIR/$pdf")" != "%PDF" ]]; then
+    echo "✗ book PDF looks truncated or is not a PDF: $KBLI_BOOK_PDF_DIR/$pdf" >&2
     exit 5
   fi
 done
@@ -258,10 +263,14 @@ echo "▸ book PDFs: copied from $KBLI_BOOK_PDF_DIR"
 BUILD_COMMIT="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 DATASET_SHA256="$(shasum -a 256 "$APP/Contents/Resources/KBLI_2025_FINAL_CLEAN.json" | cut -d' ' -f1)"
 RECORDS="$(python3 -c "import json; print(len(json.load(open('$APP/Contents/Resources/KBLI_2025_FINAL_CLEAN.json'))['data']))")"
+# "dirty" must cover every tracked input that reaches the bundle: this app's own tree AND
+# the canonical dataset + overlay it was copied from (they may live in another checkout).
+DIRTY="false"
 if [[ -n "$(git -C "$ROOT" status --porcelain -- . 2>/dev/null | grep -v '^??')" ]]; then
   DIRTY="true"
-else
-  DIRTY="false"
+fi
+if [[ -n "${CANON:-}" && -n "$(git -C "$CANON_REPO" status --porcelain -- "$CANON" "$CANON_REPO/data/kbli-app-overlay" 2>/dev/null | grep -v '^??')" ]]; then
+  DIRTY="true"
 fi
 python3 -c "
 import json, sys
