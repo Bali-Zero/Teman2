@@ -93,6 +93,11 @@ receipts:
     exit: 0
     ts: "2026-10-07T08:07:24Z"
     seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "Every acceptance probe of the brief named by test id passes at fdd016aa0d on M5: 9 passed."
+    cmd: "python -m pytest -q scripts/localci/tests/test_merger.py::test_fork_pr_is_refused_journalled_once_and_never_fetched_or_run scripts/localci/tests/test_merger.py::test_conflict_is_a_decision_with_no_run scripts/localci/tests/test_merger.py::test_candidate_is_main_plus_head_squashed_and_the_gate_runs_from_base_with_the_base_matrix scripts/localci/tests/test_merger.py::test_the_same_pr_head_and_base_is_never_run_twice_but_a_new_head_is scripts/localci/tests/test_merger.py::test_merge_refuses_with_exit_2_whatever_it_is_given scripts/localci/tests/test_merger.py::test_node_mismatch_exits_0_and_leaves_the_lease_alone scripts/localci/tests/test_merger.py::test_a_live_lease_is_respected scripts/localci/tests/test_merger.py::test_a_held_lease_lock_is_respected scripts/localci/tests/test_merger.py::test_a_dead_holders_lease_is_reclaimed_journalled_and_released"
+    exit: 0
+    ts: "2026-10-07T08:12:51Z"
+    seat: claude-opus-5-5 on M5
   - claim: Each of 28 single-rule mutants of merger.py at fdd016aa0d turns test_merger.py red (fork, draft, idempotency, head_in_base, BASE matrix, BASE cwd, node pin, live lease, flock, pid start, squash, conflict, host git config, status binding, status rc, first seal, hosted sha, env allowlist, head moved, lease release, ERROR decision, redaction, torn tail, 0600, repo binding, relative state dir, credential URL, graceful terminate); source restored byte-identical.
     cmd: python3 $CLAUDE_JOB_DIR/tmp/mutate.py
     exit: 0
@@ -121,11 +126,11 @@ dissent:
     resolution: "Adopted only when `run` printed a seal, `status --seal` exited 0 and status.json carries this candidate, base and seal; otherwise ERROR with no per-context verdict. Four parametrised guilt cases."
   - seat: codex-gpt-6.1-sol
     objection: "Lease and journal are not scoped to the repository: two state dirs hold two locks; a journal reused for another repo answers with that repo's keys."
-    status: PARTIAL
+    status: PLAUSIBLE
     resolution: "A state dir is now bound to one repo (`repo` file; a mismatch exits 2) and decision lines carry `repo`. Two state dirs for the same repo on one host remain two locks — one plist, one state dir is the operator contract; the cross-dir and cross-host fence is the Postgres lease of spec §3."
   - seat: codex-gpt-6.1-sol
     objection: "Replacing lease.lock in the acquisition window lets two holders proceed."
-    status: PARTIAL
+    status: PLAUSIBLE
     resolution: "After flock the locked inode is compared with the path's; a replaced file is refused. A replacement after that check by the same OS user stays possible: the flock is single-host mutual exclusion, not a fence (same statement as the runner's lock section)."
   - seat: codex-gpt-6.1-sol
     objection: "Unsanitised git/gh stderr reaches the journal and the output; truncation does not redact a token."
@@ -141,7 +146,7 @@ dissent:
     resolution: "Recycled-pid, host-config, status-failure and 0600 tests added; the 28-mutant sweep kills all."
   - seat: agy-gemini-3.1-pro
     objection: "BLOCKER: a candidate can echo a fake `seal=` on stdout and force a PASS."
-    status: REJECTED
+    status: RETRACTED
     resolution: "status --seal can only downgrade (a mismatch is BLOCKED; a match is the real seal), and the first seal line is printed before any candidate code runs. Hardened anyway: the first seal is used and status.json must carry it; a test forges a later seal line and asserts the first one is passed on."
   - seat: agy-gemini-3.1-pro
     objection: "Unrelated histories fail the merge with no conflicted path, raise, and loop forever."
@@ -153,15 +158,15 @@ dissent:
     resolution: "Measured: the live queue's merge_method is SQUASH. The candidate is now one squash commit on origin/main (deviation from the mandate's literal --no-ff, toward its intent: 'exactly as the queue does'). Stacking of up to 5 queue entries is not reproduced — stated."
   - seat: agy-gemini-3.1-pro
     objection: "A lease naming another host can never be reclaimed: failover deadlocks."
-    status: PARTIAL
+    status: PLAUSIBLE
     resolution: "By design (superscar #10): the merger never reclaims another host's lease; the README now says removing it is an operator act. The state dir is host-local today."
   - seat: agy-gemini-3.1-pro
     objection: "A credential in --remote-url lands in repo.git/config, which the candidate container can read."
-    status: PARTIAL
+    status: PLAUSIBLE
     resolution: "Premise false: the runner streams the tree from the object store, no bind mount, the container never sees repo.git. Hardened anyway: a --remote-url carrying userinfo is refused."
   - seat: agy-gemini-3.1-pro
     objection: "A transient runner crash becomes a permanent ERROR decision."
-    status: PARTIAL
+    status: PLAUSIBLE
     resolution: "Kept as a decision on purpose — a retry-forever key lets one PR hold the queue; the key changes with every merge to main, so the PR is re-decided at the next base. ERROR reads as blind, never as a verdict; MergerError's docstring now says so."
 owed:
   - "PR-C2: `merger.py report` (phase D's instrument: decisions joined with GitHub's outcome per head — AGREE / FALSE_GREEN / FALSE_RED / BLIND / PENDING, plus per-context hosted_compare totals) and a launchd plist (StartInterval, no KeepAlive) installed on Pro with its own prove-live. Until C2 ships, ticks run only by hand."
