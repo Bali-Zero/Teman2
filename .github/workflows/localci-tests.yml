@@ -1,0 +1,129 @@
+name: localci tests
+
+# The local CI runner's own suite, on hosted metal — docs/specs/localci-gate-2026-10-06.md §4, step 2.
+#
+# Until this workflow NO job ran scripts/localci/tests: the code that judges candidates on Pro
+# (runner, seal, containment, Pysa judge, hosted comparator) was itself judged by hand only.
+#
+# A suite whose hard tests skip is green for free, and this one skips exactly where it matters:
+# the containment tests skip without docker and the pinned candidate image, the state machine
+# skips without hypothesis. So this job builds the image, installs hypothesis, and then
+# scripts/localci/skip_budget.py reads the junit report, three rules, all in the last step:
+# a declared skip is bound to ONE test and counted (an undeclared skip is a red, and so is a
+# declared skip that no longer happens or one allowance covering two), the tests that prove
+# containment, the seal and the state machine must have EXECUTED (a deselected or skipped one is
+# a red), and at least 331 cases must execute (the hosted count proved on 2026-10-06 when the floor
+# was set; later runs executed more, and the floor is raised by hand).
+# Junit omits deselected and never-collected tests: an omitted test with no --require can
+# still pass if other executed cases keep the count at or above the floor.
+#
+# Declared today, one: the Pysa end-to-end test. It needs a measured Pysa home (pinned
+# pyre-check, stubs and the backend venv); that proof stays on Pro.
+#
+# NOT a required context: the required set is the operator's (spec §5.7). A red here shows on
+# the pull request; it does not hold the merge queue.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/localci/**"
+      - ".github/workflows/localci-tests.yml"
+      # pytest searches ancestor configuration and loads ancestor conftests, even outside scripts/localci
+      - "pytest.ini"
+      - ".pytest.ini"
+      - "pytest.toml"
+      - ".pytest.toml"
+      - "pyproject.toml"
+      - "tox.ini"
+      - "setup.cfg"
+      - "conftest.py"
+      - "scripts/pytest.ini"
+      - "scripts/.pytest.ini"
+      - "scripts/pytest.toml"
+      - "scripts/.pytest.toml"
+      - "scripts/pyproject.toml"
+      - "scripts/tox.ini"
+      - "scripts/setup.cfg"
+      - "scripts/conftest.py"
+      - "scripts/__init__.py"
+      # real-repo files the suite copies into its fixture repos (runner.TRUSTED_CLASSIFIER_FILES): a change there changes the suite's result
+      - "scripts/ci/change_map.py"
+      - "scripts/ci/test_change_map.py"
+      - "scripts/ci/security_gate_flags.py"
+      - "scripts/ci/hotzone_changed_files.sh"
+      - "scripts/ci/impact_map.py"
+      - "scripts/ci/test_impact_map.py"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/localci/**"
+      - ".github/workflows/localci-tests.yml"
+      # pytest searches ancestor configuration and loads ancestor conftests, even outside scripts/localci
+      - "pytest.ini"
+      - ".pytest.ini"
+      - "pytest.toml"
+      - ".pytest.toml"
+      - "pyproject.toml"
+      - "tox.ini"
+      - "setup.cfg"
+      - "conftest.py"
+      - "scripts/pytest.ini"
+      - "scripts/.pytest.ini"
+      - "scripts/pytest.toml"
+      - "scripts/.pytest.toml"
+      - "scripts/pyproject.toml"
+      - "scripts/tox.ini"
+      - "scripts/setup.cfg"
+      - "scripts/conftest.py"
+      - "scripts/__init__.py"
+      # real-repo files the suite copies into its fixture repos (runner.TRUSTED_CLASSIFIER_FILES): a change there changes the suite's result
+      - "scripts/ci/change_map.py"
+      - "scripts/ci/test_change_map.py"
+      - "scripts/ci/security_gate_flags.py"
+      - "scripts/ci/hotzone_changed_files.sh"
+      - "scripts/ci/impact_map.py"
+      - "scripts/ci/test_impact_map.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: localci-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  localci-tests:
+    name: localci tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      # fastapi: test_pysa_check.py imports it at module level. hypothesis: without it the
+      # state machine in test_stateful.py is skipped at collection.
+      - name: Install the suite's dependencies
+        run: pip install --quiet pytest==9.1.1 PyYAML==6.0.3 fastapi==0.141.1 'hypothesis>=6.100,<7.0'
+
+      - name: Build the candidate image (the containment tests skip without it)
+        run: docker build --quiet -t localci-candidate:1 - < scripts/localci/candidate.Dockerfile
+
+      - name: localci suite
+        run: python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider --junitxml="$RUNNER_TEMP/localci-junit.xml"
+
+      - name: Skip budget (every skip is declared here, the required tests executed, the floor held — or the job is red)
+        run: |
+          python scripts/localci/skip_budget.py "$RUNNER_TEMP/localci-junit.xml" \
+            --allow '^scripts\.localci\.tests\.test_pysa_check::test_judge_flags_new_guilt_flows_and_not_innocent_ones$' '^Pysa home not set up at ' \
+            --require '^scripts\.localci\.tests\.test_isolation::test_contained_candidate_code_cannot_touch_host_state_in_pytest_or_trusted_pytest$' \
+            --require '^scripts\.localci\.tests\.test_isolation::test_contained_timeout_kills_the_container_and_is_error$' \
+            --require '^scripts\.localci\.tests\.test_runner::test_trusted_checks_run_before_candidate_tests_and_the_seal_catches_a_post_run_forgery$' \
+            --require '^scripts\.localci\.tests\.test_stateful\.TestGateMachine::runTest$' \
+            --require '^scripts\.localci\.tests\.test_hosted_compare::' \
+            --min-executed 331

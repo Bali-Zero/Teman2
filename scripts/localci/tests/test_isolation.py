@@ -8,6 +8,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -21,6 +22,7 @@ from scripts.localci import pysa_check as pc
 
 pytestmark = pytest.mark.usefixtures("fake_env")
 IMAGE = fr.ISOLATION_IMAGE
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
 needs_docker = pytest.mark.skipif(not fr.docker_image_ready(), reason=f"docker image {IMAGE} unavailable — containment is proven live on Pro, not here")
 
 
@@ -90,7 +92,9 @@ def attack_repo(tmp_path: Path) -> tuple[dict, dict]:
 
 
 def observed(fx: dict, name: str) -> dict:
-    lines = [x for x in Path(fr.load_state(fx)["checks"][name]["log"]).read_text().splitlines() if x.startswith("E ") and "OBSERVED {" in x]
+    # an uncontained check inherits the host environment: under FORCE_COLOR its pytest colours the log, and the "E " line starts with an escape
+    log = ANSI.sub("", Path(fr.load_state(fx)["checks"][name]["log"]).read_text())
+    lines = [x for x in log.splitlines() if x.startswith("E ") and "OBSERVED {" in x]
     return json.loads(lines[-1].split("OBSERVED ", 1)[1]) if lines else {}
 
 
