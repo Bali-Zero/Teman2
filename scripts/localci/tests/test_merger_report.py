@@ -1,8 +1,10 @@
 """Guilt + innocence for `merger.py report`, phase D's instrument: journal decisions beside what GitHub did with each head."""
 from __future__ import annotations
 
+import calendar
 import importlib.util
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -14,16 +16,16 @@ _spec.loader.exec_module(mg)
 
 REPO = "o/r"
 A, B, C, D, E, M = ("a" * 40, "b" * 40, "c" * 40, "d" * 40, "e" * 40, "1" * 40)
+BASE = "f" * 40
+CTX = tuple(f"ctx-{i:02d}" for i in range(mg.MIN_COMPARED_CONTEXTS))   # a merge counts only when this many contexts were compared
+K = len(CTX)
 
 
-def decision(pr, head, overall, ctx="OK", ts="2026-10-07T08:00:00Z"):
+def decision(pr, head, overall, ctx="OK", ts="2026-10-07T08:00:00Z", contexts=None):
     rec = {"kind": "decision", "ts": ts, "pr": pr, "head_sha": head, "base_sha": BASE, "candidate_sha": "9" * 40, "overall": overall}
     if ctx is not None:
-        rec.update(contexts_status="ok", contexts={"ctx-a": ctx})
+        rec.update(contexts_status="ok", contexts=contexts if contexts is not None else dict.fromkeys(CTX, ctx))
     return rec
-
-
-BASE = "f" * 40
 
 
 class FakeGH:
@@ -37,17 +39,18 @@ class FakeGH:
         if path.count("/") == 4 and path.startswith(f"repos/{REPO}/commits/"):
             return {"parents": [{"sha": s} for s in self.parents[path.rsplit("/", 1)[1]]]}
         if path == f"repos/{REPO}/branches/main/protection/required_status_checks":
-            return {"checks": [{"context": "ctx-a", "app_id": 15368}]}
+            return {"checks": [{"context": c, "app_id": 15368} for c in CTX]}
         sha, kind = path.split("/")[4], path.split("/")[5].split("?")[0]
         if kind == "status":
             return {"statuses": []}
         concl = self.checks[sha]
-        return {"check_runs": [{"name": "ctx-a", "status": "completed" if concl else "in_progress", "conclusion": concl, "head_sha": sha,
-                                "app": {"id": 15368, "slug": "github-actions"}}]}
+        return {"check_runs": [{"name": c, "status": "completed" if concl else "in_progress", "conclusion": concl, "head_sha": sha,
+                                "app": {"id": 15368, "slug": "github-actions"}} for c in CTX]}
 
 
-def pull(head, merged=False, state="open", merge_commit=M):
-    return {"merged": merged, "state": "closed" if merged else state, "head": {"sha": head}, "merge_commit_sha": merge_commit if merged else None}
+def pull(head, merged=False, state="open", merge_commit=M, merged_at="2026-10-07T09:00:00Z"):
+    return {"merged": merged, "state": "closed" if merged else state, "head": {"sha": head}, "merge_commit_sha": merge_commit if merged else None,
+            "merged_at": merged_at if merged else None}
 
 
 def run_report(tmp_path, monkeypatch, recs, gh, *extra):
@@ -63,29 +66,29 @@ def test_a_pass_on_a_head_github_closed_red_is_a_false_green_at_both_levels_and_
     gh = FakeGH({1: pull(A, state="closed")}, {A: "failure"})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS")], gh)
     assert rc == 1 and [r["class"] for r in rep["rows"]] == ["FALSE_GREEN"]
-    assert rep["counts"]["FALSE_GREEN"] == 1 and rep["context_counts"]["FALSE_GREEN"] == 1
-    assert "false_green=1" in capsys.readouterr().out
+    assert rep["counts"]["FALSE_GREEN"] == 1 and rep["context_counts"]["FALSE_GREEN"] == K
+    assert f"false_green={K + 1}" in capsys.readouterr().out
 
 
 def test_every_class_on_its_own_fixture(tmp_path, monkeypatch):
     gh = FakeGH({2: pull(B, merged=True), 3: pull(C), 4: pull(D), 5: pull(E, merged=True)},
                 {B: "failure", C: "success", D: None, A: "failure", E: "success", M: "success"})
-    recs = [decision(2, B, "PASS"),              # merged at this very head: GitHub let it through, whatever a stale red says
+    recs = [decision(2, B, "PASS"),              # merged at this very candidate: GitHub let it through, whatever a stale red says
             decision(3, C, "FAIL", ctx="FAIL"),  # local red, hosted green
             decision(4, D, "PASS"),              # hosted still running
             decision(5, A, "FAIL", ctx="FAIL"),  # merged later at E: this older head was red on GitHub too
-            decision(5, E, "BLOCKED", ctx="BLOCKED")]
+            decision(5, E, "BLOCKED", ctx="BLOCKED")]   # merged, but nothing compared locally: not evidence for phase E
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     assert [r["class"] for r in rep["rows"]] == ["AGREE", "FALSE_RED", "PENDING", "AGREE", "BLIND"]
-    assert rc == 0 and rep["window"]["merged_prs"] == 2 and rep["window"]["distinct_prs"] == 4 and rep["window"]["compared_merges"] == 2
-    assert rep["context_counts"] == {"AGREE": 2, "FALSE_GREEN": 0, "FALSE_RED": 1, "LOCAL_BLIND": 1, "HOSTED_PENDING": 1}
-    assert rep["rows"][0]["hosted_sha"] == M and rep["rows"][2]["hosted_sha"] == D   # a merged head is judged where the queue judged it
+    assert rc == 0 and rep["window"]["merged_prs"] == 2 and rep["window"]["distinct_prs"] == 4 and rep["window"]["compared_merges"] == 1
+    assert rep["context_counts"] == {"AGREE": 2 * K, "FALSE_GREEN": 0, "FALSE_RED": K, "LOCAL_BLIND": K, "HOSTED_PENDING": K}
+    assert rep["rows"][0]["hosted_sha"] == M and rep["rows"][2]["hosted_sha"] == D   # a merged candidate is judged where the queue judged it
 
 
 def test_a_merged_head_is_compared_per_context_with_the_queue_commit_not_the_head(tmp_path, monkeypatch):
     gh = FakeGH({2: pull(B, merged=True)}, {B: "success", M: "failure"})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "BLOCKED")], gh)
-    assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == 1 and rep["rows"][0]["class"] == "BLIND"
+    assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == K and rep["rows"][0]["class"] == "BLIND"
 
 
 def test_conflict_and_error_decisions_are_blind_and_add_no_context_counts(tmp_path, monkeypatch):
@@ -150,10 +153,13 @@ def test_a_merge_at_another_head_or_without_a_usable_gate_is_not_a_compared_merg
 def test_the_queue_commit_judges_only_a_decision_on_the_base_it_was_built_on(tmp_path, monkeypatch):
     gh = FakeGH({2: pull(B, merged=True)}, {B: "failure", M: "success"}, parents={M: ["7" * 40]})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "BLOCKED")], gh)
-    assert rep["rows"][0]["hosted_sha"] == B and rep["context_counts"]["FALSE_GREEN"] == 1 and rc == 1
+    row = rep["rows"][0]
+    assert row["hosted_sha"] == B and row["github"] == "RED" and rep["context_counts"]["FALSE_GREEN"] == K and rc == 1
+    assert rep["window"]["compared_merges"] == 0   # GitHub merged another candidate (same head, another base)
 
 
-@pytest.mark.parametrize("case", ["state-bound-elsewhere", "decision-of-another-repo", "unreadable-line", "merged-without-merge-sha", "bad-since"])
+@pytest.mark.parametrize("case", ["state-bound-elsewhere", "decision-of-another-repo", "unreadable-line", "merged-without-merge-sha",
+                                  "merged-without-merged-at", "bad-since", "ts-with-newline"])
 def test_unusable_inputs_are_refused_never_counted(tmp_path, monkeypatch, case):
     recs, gh, extra = [decision(1, A, "PASS")], FakeGH({1: pull(A)}, {A: "failure"}), []
     state = tmp_path / "state"
@@ -164,8 +170,12 @@ def test_unusable_inputs_are_refused_never_counted(tmp_path, monkeypatch, case):
         recs = [{**recs[0], "repo": "other/repo"}]
     elif case == "merged-without-merge-sha":
         gh.pulls[1] = {**pull(A, merged=True), "merge_commit_sha": None}
+    elif case == "merged-without-merged-at":
+        gh.pulls[1], gh.checks[M] = {**pull(A, merged=True), "merged_at": None}, "success"
     elif case == "bad-since":
         extra = ["--since", "2026-10-07Z"]
+    elif case == "ts-with-newline":
+        recs = [{**recs[0], "ts": "2026-10-07T08:00:00Z\n"}]
     if case == "unreadable-line":
         (state / "decisions.jsonl").write_text(json.dumps(recs[0]) + "\n" + '{"kind": "decision", "pr": 2, "head_s' + "\n")
         monkeypatch.setattr(mg.hc, "gh_get", gh)
@@ -178,7 +188,119 @@ def test_unusable_inputs_are_refused_never_counted(tmp_path, monkeypatch, case):
 
 def test_days_are_floored_and_the_longest_silence_is_reported(tmp_path, monkeypatch):
     gh = FakeGH({1: pull(A)}, {A: "success"})
-    recs = [decision(1, A, "BLOCKED", ts="2026-10-01T00:00:00Z"), {"kind": "skipped", "why": "lease", "ts": "2026-10-01T06:00:00Z"},
-            decision(1, A, "BLOCKED", ts="2026-10-14T23:59:59Z")]
+    recs = [decision(1, A, "BLOCKED", ts="2026-09-01T00:00:00Z"), {"kind": "skipped", "why": "lease", "ts": "2026-09-01T06:00:00Z"},
+            decision(1, A, "BLOCKED", ts="2026-09-14T23:59:59Z")]
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     assert rep["window"]["days"] == 13.999 and rep["window"]["longest_silence_h"] == 330.0 and rc == 0
+    assert rep["window"]["last_line_age_h"] > 24   # the silence since the last line, measured against the clock
+
+
+def test_a_merge_commit_with_the_base_among_two_parents_is_not_the_decided_candidate(tmp_path, monkeypatch):
+    gh = FakeGH({2: pull(B, merged=True)}, {B: "failure", M: "success"}, parents={M: [BASE, B]})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "BLOCKED")], gh)
+    assert rep["rows"][0]["hosted_sha"] == B and rep["context_counts"]["FALSE_GREEN"] == K and rc == 1
+
+
+@pytest.mark.parametrize("counts", [{"FALSE_GREEN": "1"}, {"FALSE_GREEN": True}, {"FALSE_GREEN": False}, {"FALSE_GREEN": -1},
+                                    {"FALSE_GREEN": 1.5}, {"FALSE_GREEN": 0.0}, {"FALSE_GREEN": None}, {"FALSE_GREEN": ""},
+                                    {"FALSE_GREEN": [1]}, {"FALSE_GREEN": {}}, {"AGREE": 3}, [], "x"])
+def test_a_recorded_false_green_that_is_not_a_count_is_refused(tmp_path, monkeypatch, counts):
+    d = {**decision(1, A, "BLOCKED"), "hosted_compare": {"counts": counts}}
+    rc, rep = run_report(tmp_path, monkeypatch, [d], FakeGH({1: pull(A)}, {A: "success"}))
+    assert rc == 2 and rep is None
+
+
+def test_a_comparison_that_failed_at_tick_time_recorded_no_false_green(tmp_path, monkeypatch):
+    d = {**decision(1, A, "BLOCKED"), "hosted_compare": {"error": "gh api down"}}
+    rc, rep = run_report(tmp_path, monkeypatch, [d], FakeGH({1: pull(A)}, {A: "success"}))
+    assert rc == 0 and rep["recorded_context_false_green"] == 0
+
+
+def test_errors_and_skips_are_counted_and_only_decisions_measure_the_gap(tmp_path, monkeypatch, capsys):
+    recs = [decision(1, A, "BLOCKED", ts="2026-10-01T00:00:00Z"), {"kind": "error", "error": "x", "ts": "2026-10-01T06:00:00Z"},
+            {"kind": "skipped", "why": "lease", "ts": "2026-10-01T12:00:00Z"}, {"kind": "skipped", "why": "lease", "ts": "2026-10-01T18:00:00Z"},
+            {"kind": "skipped", "why": "node", "ts": "2026-10-01T23:00:00Z"}, decision(1, A, "BLOCKED", ts="2026-10-02T00:00:00Z")]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    w = rep["window"]
+    assert (w["errors"], w["skipped"], w["longest_decision_gap_h"], w["longest_silence_h"]) == (1, {"lease": 2, "node": 1}, 24.0, 6.0)
+    assert "errors=1" in capsys.readouterr().out and rc == 0
+
+
+def test_the_report_names_the_code_each_decision_was_written_by(tmp_path, monkeypatch):
+    recs = [{**decision(1, A, "BLOCKED"), "code_sha": "c" * 40}, decision(1, A, "BLOCKED", ts="2026-10-07T09:00:00Z")]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    assert [r["code_sha"] for r in rep["rows"]] == ["c" * 40, None] and rep["window"]["code_shas"] == ["c" * 40] and rc == 0
+
+
+def stamp(day: float) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(calendar.timegm((2026, 10, 1, 0, 0, 0)) + int(day * 86400)))
+
+
+def merged_world(n_prs, days_apart=0.0, contexts=None):
+    pulls, checks, recs = {}, {M: "success"}, []
+    for i in range(n_prs):
+        head = f"{i + 1:040x}"
+        pulls[i + 1], checks[head] = pull(head, merged=True, merged_at=stamp(i * days_apart)), "success"
+        recs.append(decision(i + 1, head, "BLOCKED", ts=stamp(i * days_apart), contexts=contexts))
+    return recs, FakeGH(pulls, checks)
+
+
+@pytest.mark.parametrize("n_prs,days_apart,ready", [(50, 0.0, True), (49, 0.0, False), (2, 14.0, True), (2, 13.99, False)])
+def test_phase_e_readiness_counts_compared_merges_and_days_only_between_them(tmp_path, monkeypatch, capsys, n_prs, days_apart, ready):
+    recs, gh = merged_world(n_prs, days_apart)
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert rep["window"]["compared_merges"] == n_prs and rep["phase_e_ready"] is ready and rc == 0
+    assert ("phase E READY" if ready else "phase E NOT READY") in capsys.readouterr().out
+
+
+def test_the_journal_order_does_not_change_readiness(tmp_path, monkeypatch):
+    recs, gh = merged_world(2, 14.0)
+    rc, rep = run_report(tmp_path, monkeypatch, recs[::-1], gh)
+    assert rep["window"]["compared_days"] == 14.0 and rep["phase_e_ready"] is True and rc == 0
+
+
+def test_one_merge_decided_twice_fourteen_days_apart_is_one_merge_and_no_span(tmp_path, monkeypatch):
+    gh = FakeGH({1: pull(A, merged=True, merged_at=stamp(14))}, {A: "success", M: "success"})
+    recs = [decision(1, A, "BLOCKED", ts=stamp(0)), decision(1, A, "BLOCKED", ts=stamp(14))]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert (rep["window"]["compared_merges"], rep["window"]["compared_days"], rep["phase_e_ready"]) == (1, 0.0, False) and rc == 0
+
+
+@pytest.mark.parametrize("blind", [K, 1])
+def test_merges_compared_on_fewer_contexts_than_phase_b_are_not_evidence(tmp_path, monkeypatch, blind):
+    contexts = {c: ("BLOCKED" if i < blind else "OK") for i, c in enumerate(CTX)}
+    recs, gh = merged_world(50, contexts=contexts)
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert rep["window"]["merged_prs"] == 50 and rep["window"]["compared_merges"] == 0 and rep["phase_e_ready"] is False and rc == 0
+
+
+def test_fourteen_days_of_decisions_without_a_compared_merge_are_not_ready(tmp_path, monkeypatch):
+    recs = [decision(1, A, "BLOCKED", ts="2026-10-01T00:00:00Z"), decision(1, A, "BLOCKED", ts="2026-10-20T00:00:00Z")]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    assert rep["window"]["days"] >= 14 and rep["window"]["compared_merges"] == 0 and rep["phase_e_ready"] is False and rc == 0
+
+
+@pytest.mark.parametrize("source", ["recorded", "context-now", "decision"])
+def test_any_one_false_green_keeps_fifty_compared_merges_not_ready(tmp_path, monkeypatch, source):
+    recs, gh = merged_world(50)
+    if source == "recorded":
+        recs[7] = {**recs[7], "hosted_compare": {"counts": {"FALSE_GREEN": 1}}}
+    else:   # an open PR whose head GitHub has red: the local gate said OK on its contexts (and, for "decision", PASS overall)
+        gh.pulls[99], gh.checks[A] = pull(A), "failure"
+        recs.append(decision(99, A, "PASS" if source == "decision" else "BLOCKED"))
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert rep["window"]["compared_merges"] == 50 and rep["phase_e_ready"] is False and rc == 1
+
+
+def test_the_report_names_the_longest_tick_and_where_the_time_went(tmp_path, monkeypatch, capsys):
+    gh = FakeGH({1: pull(A), 2: pull(B), 3: pull(C)}, {A: "success", B: "success", C: "success"})
+    recs = [{**decision(1, A, "BLOCKED"), "elapsed_s": 100, "durations": {"ctx.a": 600.0, "ctx.b": 650}},
+            {**decision(2, B, "BLOCKED"), "elapsed_s": 900.5, "durations": {"ctx.a": 40.0, "ctx.b": None, "ctx.c": "slow"}},
+            {**decision(3, C, "BLOCKED"), "elapsed_s": 300, "durations": ["ctx.a", 9999]},
+            {**decision(3, C, "BLOCKED"), "elapsed_s": "x"}, {**decision(3, C, "BLOCKED"), "elapsed_s": True},
+            {**decision(3, C, "BLOCKED"), "elapsed_s": -1}]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert rep["window"]["ticks"] == {"timed": 3, "longest_s": 900.5, "longest_pr": 2, "median_s": 300,
+                                      "check_max_s": {"ctx.b": 650, "ctx.a": 600.0}} and rc == 0
+    assert list(rep["window"]["ticks"]["check_max_s"]) == ["ctx.b", "ctx.a"]
+    assert "longest 900.5s (#2), median 300s; slowest checks: ctx.b=650s, ctx.a=600.0s" in capsys.readouterr().out

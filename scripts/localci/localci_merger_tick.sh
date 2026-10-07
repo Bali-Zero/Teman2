@@ -4,14 +4,19 @@
 # pair, node=pro). Runs merger.py and hosted_compare.py exactly as committed on origin/main, read at ONE resolved sha from
 # the merger's own mirror — never from a working tree, which drifts (superscar #1). One-shot: launchd's StartInterval runs
 # it again, there is no KeepAlive (#7). Every exit path writes the heartbeat ~/.organism/last_seen/pro.localci_merger.json
-# (#2): ok, error (a failure before Python starts writes no journal line, so this is where it shows) or disabled.
+# (#2) through scripts/lib/heartbeat.sh: ok, error (a failure before Python starts writes no journal line, so this is where it
+# shows) or disabled (the kill switch: an operator's stop, which the healer and the sentinel treat as exempt, not as a failure).
 set -euo pipefail
 ORGAN_ID="pro.localci_merger"
-SIDECAR_DIR="$HOME/.organism/last_seen"
-
+HB_LIB="${MERGER_HEARTBEAT_LIB:-$HOME/nuzantara/scripts/lib/heartbeat.sh}"
+# the library runs in its OWN process (its CLI mode), never sourced: code from a working checkout cannot change this
+# script's options, traps or exit status — the rest of the merger comes from origin/main at one sha
 heartbeat() { # $1 status, $2 note
-  mkdir -p "$SIDECAR_DIR"
-  printf '{"ts":"%s","status":"%s","note":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+  if [ -r "$HB_LIB" ]; then
+    "$BASH" "$HB_LIB" "$ORGAN_ID" "$1" "$2" || echo "merger_tick: heartbeat not written by $HB_LIB" >&2
+  else
+    echo "merger_tick: no heartbeat library at $HB_LIB — the organ will read stale" >&2
+  fi
 }
 
 # kill switch: an operator stop without uninstalling; the disabled heartbeat keeps the healer from resurrecting it
@@ -26,7 +31,8 @@ SHA=""
 finish() {
   local rc=$?
   if [ -n "$CODE" ]; then rm -rf "$CODE"; fi
-  if [ "$rc" -eq 0 ]; then heartbeat ok "tick rc=0 code=${SHA:0:12}"; else heartbeat error "tick rc=$rc code=${SHA:0:12}"; fi
+  local code="${SHA:0:12}"
+  if [ "$rc" -eq 0 ]; then heartbeat ok "tick rc=0 code=${code:-none}"; else heartbeat error "tick rc=$rc code=${code:-none}"; fi
 }
 trap finish EXIT
 
@@ -38,6 +44,10 @@ NODE="${MERGER_NODE:-}"    # the only host allowed to decide
 # an explicit exit, not ${VAR:?}: bash leaves an expansion error's status out of the EXIT trap, and the heartbeat would say ok
 if [ -z "$PY" ] || [ -z "$NODE" ]; then
   echo "merger_tick: MERGER_PYTHON and MERGER_NODE are required" >&2
+  exit 2
+fi
+if [ ! -x "$PY" ]; then
+  echo "merger_tick: MERGER_PYTHON $PY is not an executable interpreter (the merger's venv: see scripts/localci/README.md)" >&2
   exit 2
 fi
 while IFS= read -r v; do unset "$v"; done < <(compgen -e | grep '^GIT_' || true)   # no caller GIT_DIR, index or config
@@ -58,5 +68,9 @@ CODE="$(mktemp -d "${TMPDIR:-/tmp}/localci-merger.XXXXXX")"
 for f in merger.py hosted_compare.py; do
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f"
 done
+# provenance only when the extracted merger knows the flag: a newer wrapper beside an older main (or a stale mirror after a
+# failed fetch) must still tick, never die on argparse
+CODE_FLAG=""
+if grep -q -- "--code-sha" "$CODE/merger.py"; then CODE_FLAG="--code-sha=$SHA"; fi
 echo "merger_tick: $(date -u +%FT%TZ) code=${SHA:0:12}"
-"$PY" -I "$CODE/merger.py" tick --node "$NODE" --state-dir "$STATE" --python "$PY"
+"$PY" -I "$CODE/merger.py" tick --node "$NODE" --state-dir "$STATE" --python "$PY" ${CODE_FLAG:+"$CODE_FLAG"}

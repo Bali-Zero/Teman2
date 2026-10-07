@@ -91,7 +91,7 @@ class FakeRunner:
         bind = {"candidate_sha": self.calls[0].get("worktree_head"), "base_sha": plan[plan.index("--base") + 1], "seal": SEAL, **self.bind}
         (run_dir / "status.json").write_text(json.dumps({"overall": self.overall, **bind,
                                                          "contexts": {"status": "ok", "results": {"ctx-a": {"verdict": "OK", "mapping": "executed"}}},
-                                                         "checks": {"policy.change_map": {"status": "PASS"}}}))
+                                                         "checks": {"policy.change_map": {"status": "PASS", "duration_s": 12.5}}}))
         return subprocess.CompletedProcess(argv, self.status_rc, self.overall + "\n", "")
 
 
@@ -174,6 +174,7 @@ def test_candidate_is_main_plus_head_squashed_and_the_gate_runs_from_base_with_t
     assert hosted["sha"] == world.head1 and "merge-group" in hosted["note"] and hosted["counts"]["AGREE"] == 1
     assert json.loads((Path(d["run_dir"]) / "hosted_compare.json").read_text())["sha"] == world.head1
     assert {"ts", "host", "lease_id", "elapsed_s", "run_dir", "checks"} <= set(d) and d["host"] == mg.HOST
+    assert d["checks"] == {"policy.change_map": "PASS"} and d["durations"] == {"policy.change_map": 12.5}
     assert not (world.state / "cand" / f"pr1-{world.head1[:12]}-{world.base[:12]}").exists()
 
 
@@ -215,7 +216,7 @@ def test_the_watchdog_turns_a_hung_gate_into_an_error_decision_and_frees_the_lea
     monkeypatch.setattr(mg, "runner_exec", FakeRunner(sleep=10, alarm=1))
     world.gh.prs = [pr(1, world.head1)]
     rc = mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin),
-                  "--python", "py", "--tick-timeout", "1"])
+                  "--python", "py", "--tick-timeout", "120"])   # the fake re-arms 1 s at the gate: a loaded host's clone cannot trip it
     (d,) = [r for r in world.journal() if r["kind"] == "decision"]
     assert rc == 1 and d["overall"] == "ERROR" and "tick-timeout" in d["error"] and not (world.state / "lease.json").exists()
 
@@ -511,52 +512,113 @@ def test_a_filesystem_error_after_a_pr_is_picked_is_an_error_decision_not_a_retr
 
 
 WRAPPER = _MODULE.parent / "localci_merger_tick.sh"
+HB_LIB = _MODULE.parents[1] / "lib" / "heartbeat.sh"
+# launchd runs the wrapper with /bin/bash (3.2 on macOS, where a ${VAR:?} error reaches the EXIT trap with status 0); the tests
+# run the same interpreter whenever it exists, or a bash 5 would keep that guilt green
+BASH = "/bin/bash" if Path("/bin/bash").exists() else "bash"
 
 
-def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(tmp_path):
-    src = tmp_path / "src"
-    src.mkdir()
-    g(src, "init", "-q", "-b", "main")
-    commit(src, {"scripts/localci/merger.py": "v1\n", "scripts/localci/hosted_compare.py": "hc\n"}, "v1")
-    origin = tmp_path / "origin.git"
-    subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True, env=GIT_ENV)
-    fake_py = tmp_path / "py"
-    fake_py.write_text('#!/bin/sh\necho "$@" > "$OUT_ARGS"\ncat "$2" > "$OUT_CODE"\n')
-    fake_py.chmod(0o755)
-    state = tmp_path / "state"
-    env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "MERGER_PYTHON": str(fake_py), "MERGER_NODE": "n1", "MERGER_STATE_DIR": str(state),
-           "MERGER_SEED": str(origin), "MERGER_REMOTE_URL": str(origin), "OUT_ARGS": str(tmp_path / "args"), "OUT_CODE": str(tmp_path / "code"),
-           "GIT_DIR": str(tmp_path / "decoy"), "GIT_CONFIG_PARAMETERS": "'core.hooksPath'='/nowhere'"}
-
-    def wrap():
-        return subprocess.run(["bash", str(WRAPPER)], env=env, capture_output=True, text=True)
-    first = wrap()
-    assert first.returncode == 0, first.stderr
-    assert (tmp_path / "code").read_text() == "v1\n"
-    assert (tmp_path / "args").read_text().split() == ["-I", (tmp_path / "args").read_text().split()[1], "tick", "--node", "n1",
-                                                       "--state-dir", str(state), "--python", str(fake_py)]
-    commit(src, {"scripts/localci/merger.py": "v2\n"}, "v2")
-    g(src, "push", "-q", str(origin), "main")
-    assert wrap().returncode == 0 and (tmp_path / "code").read_text() == "v2\n"
-    origin.rename(tmp_path / "gone.git")
-    dead = wrap()
-    assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2\n"
-    assert heartbeat(tmp_path)["status"] == "ok"
+def wrap(env):
+    return subprocess.run([BASH, str(WRAPPER)], env=env, capture_output=True, text=True)
 
 
 def heartbeat(home):
     return json.loads((home / ".organism" / "last_seen" / "pro.localci_merger.json").read_text())
 
 
-def test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch(tmp_path):
+def mirror_world(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    g(src, "init", "-q", "-b", "main")
+    commit(src, {"scripts/localci/merger.py": "v1 --code-sha\n", "scripts/localci/hosted_compare.py": "hc\n"}, "v1")
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True, env=GIT_ENV)
     fake_py = tmp_path / "py"
-    fake_py.write_text('#!/bin/sh\ntouch "$OUT_RAN"\nexit 1\n')
+    fake_py.write_text('#!/bin/sh\necho "$@" > "$OUT_ARGS"\ncat "$2" > "$OUT_CODE"\n')
     fake_py.chmod(0o755)
-    env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "MERGER_PYTHON": str(fake_py), "MERGER_NODE": "n1",
-           "MERGER_STATE_DIR": str(tmp_path / "state"), "MERGER_SEED": str(tmp_path / "no-seed.git"), "OUT_RAN": str(tmp_path / "ran")}
-    off = subprocess.run(["bash", str(WRAPPER)], env={**env, "LOCALCI_MERGER_ENABLED": "false"}, capture_output=True, text=True)
+    env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "MERGER_PYTHON": str(fake_py), "MERGER_NODE": "n1", "MERGER_STATE_DIR": str(tmp_path / "state"),
+           "MERGER_SEED": str(origin), "MERGER_REMOTE_URL": str(origin), "MERGER_HEARTBEAT_LIB": str(HB_LIB),
+           "OUT_ARGS": str(tmp_path / "args"), "OUT_CODE": str(tmp_path / "code")}
+    return src, origin, fake_py, env
+
+
+def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(tmp_path):
+    src, origin, fake_py, env = mirror_world(tmp_path)
+    env = {**env, "GIT_DIR": str(tmp_path / "decoy"), "GIT_CONFIG_PARAMETERS": "'core.hooksPath'='/nowhere'"}
+    first = wrap(env)
+    assert first.returncode == 0, first.stderr
+    assert (tmp_path / "code").read_text() == "v1 --code-sha\n"
+    sha1 = g(origin, "rev-parse", "main")
+    args = (tmp_path / "args").read_text().split()
+    assert args == ["-I", args[1], "tick", "--node", "n1", "--state-dir", env["MERGER_STATE_DIR"], "--python", str(fake_py), f"--code-sha={sha1}"]
+    commit(src, {"scripts/localci/merger.py": "v2 --code-sha\n"}, "v2")
+    g(src, "push", "-q", str(origin), "main")
+    assert wrap(env).returncode == 0 and (tmp_path / "code").read_text() == "v2 --code-sha\n"
+    origin.rename(tmp_path / "gone.git")
+    dead = wrap(env)
+    assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2 --code-sha\n"
+    assert heartbeat(tmp_path)["status"] == "ok" and heartbeat(tmp_path)["note"].endswith(g(src, "rev-parse", "main")[:12])
+
+
+def test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch(tmp_path):
+    _, _, fake_py, env = mirror_world(tmp_path)
+    off = wrap({**env, "LOCALCI_MERGER_ENABLED": "false"})
     assert off.returncode == 0 and heartbeat(tmp_path)["status"] == "disabled" and not (tmp_path / "state").exists()
-    no_mirror = subprocess.run(["bash", str(WRAPPER)], env=env, capture_output=True, text=True)
-    assert no_mirror.returncode != 0 and heartbeat(tmp_path)["status"] == "error" and not (tmp_path / "ran").exists()
-    no_python = subprocess.run(["bash", str(WRAPPER)], env={k: v for k, v in env.items() if k != "MERGER_PYTHON"}, capture_output=True, text=True)
-    assert no_python.returncode != 0 and heartbeat(tmp_path)["status"] == "error"
+    fake_py.write_text("#!/bin/sh\nexit 1\n")
+    failed = wrap(env)
+    assert failed.returncode == 1 and heartbeat(tmp_path)["status"] == "error"
+    no_mirror = wrap({**env, "MERGER_SEED": str(tmp_path / "no-seed.git"), "MERGER_STATE_DIR": str(tmp_path / "state2")})
+    assert no_mirror.returncode != 0 and heartbeat(tmp_path)["status"] == "error"
+
+
+@pytest.mark.parametrize("missing", ["MERGER_PYTHON", "MERGER_NODE"])
+def test_a_missing_required_variable_stops_before_any_git_and_says_error(tmp_path, missing):
+    _, _, _, env = mirror_world(tmp_path)
+    res = wrap({k: v for k, v in env.items() if k != missing})
+    assert res.returncode == 2 and "MERGER_PYTHON and MERGER_NODE are required" in res.stderr
+    assert not (tmp_path / "state").exists() and heartbeat(tmp_path)["status"] == "error"
+
+
+def test_a_missing_heartbeat_library_is_said_aloud_and_changes_nothing_else(tmp_path):
+    _, _, _, env = mirror_world(tmp_path)
+    res = wrap({**env, "MERGER_HEARTBEAT_LIB": str(tmp_path / "nowhere.sh")})
+    assert res.returncode == 0 and "no heartbeat library" in res.stderr and (tmp_path / "code").read_text() == "v1 --code-sha\n"
+    assert not (tmp_path / ".organism").exists()
+
+
+def test_an_older_merger_on_main_is_ticked_without_the_flag_it_does_not_know(tmp_path):
+    src, origin, fake_py, env = mirror_world(tmp_path)
+    commit(src, {"scripts/localci/merger.py": "old merger\n"}, "older")
+    g(src, "push", "-q", str(origin), "main")
+    res = wrap(env)
+    assert res.returncode == 0 and not any(a.startswith("--code-sha") for a in (tmp_path / "args").read_text().split())
+
+
+def test_the_heartbeat_library_runs_in_its_own_process_and_cannot_end_the_tick(tmp_path):
+    _, _, fake_py, env = mirror_world(tmp_path)
+    hostile = tmp_path / "hostile.sh"
+    hostile.write_text("set +eu\nexit 0\n")
+    fake_py.write_text("#!/bin/sh\nexit 1\n")
+    res = wrap({**env, "MERGER_HEARTBEAT_LIB": str(hostile)})
+    assert res.returncode == 1   # sourced, its `exit 0` would have ended the wrapper green before the tick ran
+
+
+def test_a_python_that_is_not_executable_stops_before_any_git(tmp_path):
+    _, _, _, env = mirror_world(tmp_path)
+    res = wrap({**env, "MERGER_PYTHON": str(tmp_path / "no-venv" / "bin" / "python")})
+    assert res.returncode == 2 and "not an executable interpreter" in res.stderr and not (tmp_path / "state").exists()
+    assert heartbeat(tmp_path)["status"] == "error"
+
+
+def test_every_journal_line_carries_the_code_sha_it_ran(world, monkeypatch):
+    world.gh.prs = [pr(1, world.head1)]
+    code = "c" * 40
+    assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin),
+                    "--python", "py", "--code-sha", code]) == 0
+    assert [r.get("code_sha") for r in world.journal()] == [code]
+    assert mg.main(["tick", "--node", "elsewhere", "--repo", REPO, "--state-dir", str(world.state), "--code-sha", code]) == 0
+    assert world.journal()[-1]["code_sha"] == code and world.journal()[-1]["why"] == "node"
+    assert mg.main(["tick", "--node", "elsewhere", "--repo", REPO, "--state-dir", str(world.state)]) == 0
+    assert "code_sha" not in world.journal()[-1]   # a run without the flag stamps nothing, whatever the last run in this process did
+    for bad in ("main", code + "\n", code.upper()):
+        assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--code-sha", bad]) == 2

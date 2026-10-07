@@ -1,0 +1,73 @@
+task_id: localci-merger-c3-1007
+mission: LOCALCI-SOVEREIGN
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Declared by the mandate: the report is phase D's instrument, the number the operator reads before turning GitHub's
+  merge queue off (phase E), and this change rewrites the line that says READY. A report that can say READY on one
+  merge, on blind contexts or on days alone would make the flip unsafe. The diff flips nothing: shadow mode, GETs only,
+  a launchd tick that journals.
+l_level: L2
+gate_class: opus
+objective: >-
+  Ship PR-C3b of docs/specs/localci-sovereign-2026-10-07.md phases C-D: the owed notices of #8020's and #8021's gates
+  except `merge --armed` (C3a, held for a ruling) — the merger's own coordinator venv, the code sha on every journal
+  line, a report with error/skip counts, the longest gap between decisions and a phase-E line that depends on compared
+  merges and never on days alone, the merge-commit-parents test, the /bin/bash pin, the isolated required-variable
+  cases and the heartbeat through scripts/lib/heartbeat.sh with "disabled" documented as not unhealthy.
+constraints:
+  - SHADOW only — no merge, no POST, no label, no comment; every GitHub call is a GET through hosted_compare.gh_get.
+  - runner.py, contexts_matrix.yaml and hosted_compare.py are not edited (the sibling phase-A/B lane owns them); no .github edit; no branch-protection call; no paid API; no token printed.
+  - The scheduled tick runs merger.py as committed on origin/main at one resolved sha (superscar #1); no code from a working checkout runs inside the wrapper's own shell.
+  - The live wrapper and plist on Pro change only after merge (superscar #9 — the wrapper and the merger.py it extracts must agree on the flags).
+acceptance:
+  - text: WHEN fewer than 50 merges were compared and the compared merges span less than 14 days, the phase E line SHALL say NOT READY whatever the window's age.
+    probe: scripts/localci/tests/test_merger_report.py::test_phase_e_readiness_counts_compared_merges_and_days_only_between_them
+  - text: WHEN fourteen days of decisions contain no compared merge, the phase E line SHALL say NOT READY.
+    probe: scripts/localci/tests/test_merger_report.py::test_fourteen_days_of_decisions_without_a_compared_merge_are_not_ready
+  - text: WHEN one PR is decided twice fourteen days apart, it SHALL count as one merge with no span.
+    probe: scripts/localci/tests/test_merger_report.py::test_one_merge_decided_twice_fourteen_days_apart_is_one_merge_and_no_span
+  - text: WHEN the journal's lines are out of order, the readiness SHALL NOT change.
+    probe: scripts/localci/tests/test_merger_report.py::test_the_journal_order_does_not_change_readiness
+  - text: WHEN fewer than 12 contexts had a verdict on both sides, a merge SHALL NOT count as compared.
+    probe: scripts/localci/tests/test_merger_report.py::test_merges_compared_on_fewer_contexts_than_phase_b_are_not_evidence
+  - text: WHEN any one false green exists (per decision, per context now, or recorded at tick time), fifty compared merges SHALL NOT be READY.
+    probe: scripts/localci/tests/test_merger_report.py::test_any_one_false_green_keeps_fifty_compared_merges_not_ready
+  - text: WHEN GitHub merged the head on another base, the decision SHALL be judged on its head and SHALL NOT count as a compared merge.
+    probe: scripts/localci/tests/test_merger_report.py::test_the_queue_commit_judges_only_a_decision_on_the_base_it_was_built_on
+  - text: WHEN the merge commit has the decided base among two parents, it SHALL NOT judge the decision.
+    probe: scripts/localci/tests/test_merger_report.py::test_a_merge_commit_with_the_base_among_two_parents_is_not_the_decided_candidate
+  - text: WHEN a recorded FALSE_GREEN is not a non-negative integer, the report SHALL exit 2 and count nothing.
+    probe: scripts/localci/tests/test_merger_report.py::test_a_recorded_false_green_that_is_not_a_count_is_refused
+  - text: WHEN a timestamp carries a trailing newline or a merged candidate has no merged_at, the report SHALL exit 2.
+    probe: scripts/localci/tests/test_merger_report.py::test_unusable_inputs_are_refused_never_counted
+  - text: WHEN errors and skips fill a window, the report SHALL count them and measure the longest gap between decisions apart from the gap between any lines.
+    probe: scripts/localci/tests/test_merger_report.py::test_errors_and_skips_are_counted_and_only_decisions_measure_the_gap
+  - text: WHEN the tick runs with --code-sha, every journal line SHALL carry it; a run without the flag SHALL stamp nothing; a value that is not 40 lowercase hex SHALL be exit 2.
+    probe: scripts/localci/tests/test_merger.py::test_every_journal_line_carries_the_code_sha_it_ran
+  - text: WHEN the merger extracted from main does not know --code-sha, the wrapper SHALL tick without it.
+    probe: scripts/localci/tests/test_merger.py::test_an_older_merger_on_main_is_ticked_without_the_flag_it_does_not_know
+  - text: WHEN the heartbeat library exits or changes shell options, the wrapper's own exit status SHALL be unchanged.
+    probe: scripts/localci/tests/test_merger.py::test_the_heartbeat_library_runs_in_its_own_process_and_cannot_end_the_tick
+  - text: WHEN MERGER_PYTHON or MERGER_NODE is unset, each on its own, the wrapper SHALL exit 2 before any git and leave an error heartbeat.
+    probe: scripts/localci/tests/test_merger.py::test_a_missing_required_variable_stops_before_any_git_and_says_error
+  - text: WHEN MERGER_PYTHON names no executable interpreter, the wrapper SHALL exit 2 before any git.
+    probe: scripts/localci/tests/test_merger.py::test_a_python_that_is_not_executable_stops_before_any_git
+  - text: WHEN the merger ticks from its own venv on Pro, the decision line SHALL carry the code sha and the runner's receipts SHALL bind that venv's dependencies.
+    probe: "tail -1 ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl (Pro)"
+assumptions:
+  - text: The BASE runner's trusted checks need only the standard library, pytest and PyYAML from the coordinator python.
+    status: verified
+    note: "The own-venv tick on Pro (pytest 9.0.3, PyYAML 6.0.3, python 3.11.11) ran every planned check that is not QUEUED or BLOCKED by design: PASS 7, QUEUED 1, not applicable 3, BLOCKED 2 — the same shape as the shared venv's last clean tick."
+    probe: Pro manual tick of 2026-10-07T13:19:27Z, decision #7962
+  - text: scripts/lib/heartbeat.sh has a CLI mode.
+    status: verified
+    note: 'Its last lines run organism_heartbeat "$@" when the file is executed rather than sourced (BASH_SOURCE == $0).'
+    probe: grep -n 'BASH_SOURCE' scripts/lib/heartbeat.sh
+consumer_map:
+  - The Pro launchd job com.balizero.localci-merger — after merge its wrapper passes --code-sha and its plist names the merger's own venv.
+  - The phase E decision (operator) — it reads `merger.py report`; READY is printed only on compared merges.
+  - The organism sentinel — organ pro.localci_merger, fed by ~/.organism/last_seen/pro.localci_merger.json through heartbeat.sh.
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1
