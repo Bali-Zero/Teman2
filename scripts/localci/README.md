@@ -282,14 +282,19 @@ count is vacuous today. The phase-D instrument is the CONTEXT level, in two part
 - **at tick time:** the `hosted_compare.counts.FALSE_GREEN` each decision line recorded. A red GitHub later re-ran green, or a
   context it stopped requiring, cannot erase a disagreement once seen.
 
-The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges` (PRs merged AT a decided head whose gate ran
-with a usable contexts file), and counts the window's `error` lines and `skipped` lines by reason. **The operator reads
+The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges`, and counts the window's `error` lines and
+`skipped` lines by reason. A merge is COMPARED when GitHub merged the very candidate the merger decided (the decided head, its
+merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides (`MIN_COMPARED_CONTEXTS`,
+the AGREE ≥ 12 of 14 of spec §2 phase B): a merge compared on blind contexts is no evidence. Each compared PR counts once, at
+GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads
 `compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN and either ≥ 50 compared merges or ≥ 14
 days between the first and the last compared merge (spec §2) — a window that only aged, with nothing compared, is never
-READY. Days are floored in integer seconds (13.9999 is not 14; 14 is). Two gaps are printed: the longest between DECISIONS
-(errors and skips keep a journal busy without deciding anything) and the longest between any two journal lines (a merger that
-stopped writing at all). A recorded FALSE_GREEN that is not a non-negative integer is an unusable input. The report writes
-`<state-dir>/report.json`. Exit 1 on any FALSE_GREEN (per decision, per context now, or recorded at tick time), 2 on an
+READY, and until phase B lands no merge is compared at all. Days are floored in integer seconds (13.9999 is not 14; 14 is).
+Three silences are printed: the longest gap between DECISIONS (errors and skips keep a journal busy without deciding
+anything), the longest between any two journal lines, and the age of the last line (a merger that stopped writing at all).
+Rows carry the `code_sha` that wrote them and the window lists the code shas it saw. A recorded FALSE_GREEN that is not a
+non-negative integer, a timestamp that is not exactly `YYYY-MM-DDTHH:MM:SSZ`, or a merged candidate without `merged_at` is an
+unusable input. The report writes `<state-dir>/report.json`. Exit 1 on any FALSE_GREEN (per decision, per context now, or recorded at tick time), 2 on an
 unusable input or a failed GitHub read (nothing is counted then), else 0.
 
 ### Schedule (launchd, Pro)
@@ -301,13 +306,17 @@ variable, fetches `origin/main` into the merger's mirror (a failed fetch is not 
 sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a working-tree copy. A failure before Python starts
 (no git, no mirror) writes no journal line; it is in `~/logs/localci-merger.err.log`, and the report's `longest_silence` shows
 the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error` or `disabled`;
-registry id `pro.localci_merger`) through `scripts/lib/heartbeat.sh` from the canonical checkout (`MERGER_HEARTBEAT_LIB`
-overrides it; a missing library is said on stderr and the organ reads stale). `LOCALCI_MERGER_ENABLED=false` in the plist's
-environment stops the ticks without uninstalling; its `disabled` heartbeat is not an unhealthy status — the healer's
-`EXEMPT_STATUSES` holds it and the sentinel does not page on it — because a kill switch is an operator's act, not a
-failure. The wrapper passes `--code-sha` (the resolved sha), so every journal line names the code that wrote it. The live copy is a declared HOME-fork pair (`infra/home-fork/declared-pairs.json`): `scripts/lint_home_fork.py
---check` on Pro names a drift from the repo. The wrapper checks `MERGER_PYTHON` and `MERGER_NODE` with an explicit test and
-`exit 2`, never `${VAR:?}`: under macOS `/bin/bash` 3.2 an expansion error reaches the `EXIT` trap with status 0, the script
+registry id `pro.localci_merger`) by running `scripts/lib/heartbeat.sh` from the canonical checkout in its own process (its
+CLI mode, never `source`: a working checkout's file cannot change the wrapper's options, traps or exit status;
+`MERGER_HEARTBEAT_LIB` overrides the path; a missing library is said on stderr and the organ reads stale).
+`LOCALCI_MERGER_ENABLED=false` in the plist's environment stops the ticks without uninstalling; its `disabled` heartbeat is
+not an unhealthy status — the healer's `EXEMPT_STATUSES` holds it and the sentinel does not page on it — because a kill
+switch is an operator's act, not a failure. The wrapper passes `--code-sha=<resolved sha>` when the extracted `merger.py`
+knows the flag (an older main, or a stale mirror after a failed fetch, still ticks), so every journal line names the code
+that wrote it. The live copy is a declared HOME-fork pair (`infra/home-fork/declared-pairs.json`):
+`scripts/lint_home_fork.py --check` on Pro names a drift from the repo. The wrapper refuses with `exit 2`, before any git,
+an unset `MERGER_PYTHON` or `MERGER_NODE` or an interpreter that is not executable, and it tests them explicitly, never with
+`${VAR:?}`: under macOS `/bin/bash` 3.2 an expansion error reaches the `EXIT` trap with status 0, the script
 exits 0 and the heartbeat would say `ok` (measured; the wrapper test keeps it red). Replace the live copy atomically (copy
 beside it, then `mv`): bash reads a running script as it goes.
 

@@ -529,7 +529,7 @@ def mirror_world(tmp_path):
     src = tmp_path / "src"
     src.mkdir()
     g(src, "init", "-q", "-b", "main")
-    commit(src, {"scripts/localci/merger.py": "v1\n", "scripts/localci/hosted_compare.py": "hc\n"}, "v1")
+    commit(src, {"scripts/localci/merger.py": "v1 --code-sha\n", "scripts/localci/hosted_compare.py": "hc\n"}, "v1")
     origin = tmp_path / "origin.git"
     subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True, env=GIT_ENV)
     fake_py = tmp_path / "py"
@@ -546,16 +546,16 @@ def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(t
     env = {**env, "GIT_DIR": str(tmp_path / "decoy"), "GIT_CONFIG_PARAMETERS": "'core.hooksPath'='/nowhere'"}
     first = wrap(env)
     assert first.returncode == 0, first.stderr
-    assert (tmp_path / "code").read_text() == "v1\n"
+    assert (tmp_path / "code").read_text() == "v1 --code-sha\n"
     sha1 = g(origin, "rev-parse", "main")
     args = (tmp_path / "args").read_text().split()
-    assert args == ["-I", args[1], "tick", "--node", "n1", "--state-dir", env["MERGER_STATE_DIR"], "--python", str(fake_py), "--code-sha", sha1]
-    commit(src, {"scripts/localci/merger.py": "v2\n"}, "v2")
+    assert args == ["-I", args[1], "tick", "--node", "n1", "--state-dir", env["MERGER_STATE_DIR"], "--python", str(fake_py), f"--code-sha={sha1}"]
+    commit(src, {"scripts/localci/merger.py": "v2 --code-sha\n"}, "v2")
     g(src, "push", "-q", str(origin), "main")
-    assert wrap(env).returncode == 0 and (tmp_path / "code").read_text() == "v2\n"
+    assert wrap(env).returncode == 0 and (tmp_path / "code").read_text() == "v2 --code-sha\n"
     origin.rename(tmp_path / "gone.git")
     dead = wrap(env)
-    assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2\n"
+    assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2 --code-sha\n"
     assert heartbeat(tmp_path)["status"] == "ok" and heartbeat(tmp_path)["note"].endswith(g(src, "rev-parse", "main")[:12])
 
 
@@ -581,8 +581,32 @@ def test_a_missing_required_variable_stops_before_any_git_and_says_error(tmp_pat
 def test_a_missing_heartbeat_library_is_said_aloud_and_changes_nothing_else(tmp_path):
     _, _, _, env = mirror_world(tmp_path)
     res = wrap({**env, "MERGER_HEARTBEAT_LIB": str(tmp_path / "nowhere.sh")})
-    assert res.returncode == 0 and "no heartbeat library" in res.stderr and (tmp_path / "code").read_text() == "v1\n"
+    assert res.returncode == 0 and "no heartbeat library" in res.stderr and (tmp_path / "code").read_text() == "v1 --code-sha\n"
     assert not (tmp_path / ".organism").exists()
+
+
+def test_an_older_merger_on_main_is_ticked_without_the_flag_it_does_not_know(tmp_path):
+    src, origin, fake_py, env = mirror_world(tmp_path)
+    commit(src, {"scripts/localci/merger.py": "old merger\n"}, "older")
+    g(src, "push", "-q", str(origin), "main")
+    res = wrap(env)
+    assert res.returncode == 0 and not any(a.startswith("--code-sha") for a in (tmp_path / "args").read_text().split())
+
+
+def test_the_heartbeat_library_runs_in_its_own_process_and_cannot_end_the_tick(tmp_path):
+    _, _, fake_py, env = mirror_world(tmp_path)
+    hostile = tmp_path / "hostile.sh"
+    hostile.write_text("set +eu\nexit 0\n")
+    fake_py.write_text("#!/bin/sh\nexit 1\n")
+    res = wrap({**env, "MERGER_HEARTBEAT_LIB": str(hostile)})
+    assert res.returncode == 1   # sourced, its `exit 0` would have ended the wrapper green before the tick ran
+
+
+def test_a_python_that_is_not_executable_stops_before_any_git(tmp_path):
+    _, _, _, env = mirror_world(tmp_path)
+    res = wrap({**env, "MERGER_PYTHON": str(tmp_path / "no-venv" / "bin" / "python")})
+    assert res.returncode == 2 and "not an executable interpreter" in res.stderr and not (tmp_path / "state").exists()
+    assert heartbeat(tmp_path)["status"] == "error"
 
 
 def test_every_journal_line_carries_the_code_sha_it_ran(world, monkeypatch):
@@ -593,4 +617,7 @@ def test_every_journal_line_carries_the_code_sha_it_ran(world, monkeypatch):
     assert [r.get("code_sha") for r in world.journal()] == [code]
     assert mg.main(["tick", "--node", "elsewhere", "--repo", REPO, "--state-dir", str(world.state), "--code-sha", code]) == 0
     assert world.journal()[-1]["code_sha"] == code and world.journal()[-1]["why"] == "node"
-    assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--code-sha", "main"]) == 2
+    assert mg.main(["tick", "--node", "elsewhere", "--repo", REPO, "--state-dir", str(world.state)]) == 0
+    assert "code_sha" not in world.journal()[-1]   # a run without the flag stamps nothing, whatever the last run in this process did
+    for bad in ("main", code + "\n", code.upper()):
+        assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--code-sha", bad]) == 2
