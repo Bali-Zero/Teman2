@@ -60,28 +60,40 @@ def bare_python(prefix: str) -> str:
     return str(venv / "bin")
 
 
-def read_kv_file(p: Path) -> dict:
-    """GITHUB_OUTPUT as the hosted runner reads it back: `key=value` lines and `key<<DELIM` ... `DELIM` blocks."""
-    lines, out, i = (p.read_text(errors="replace").splitlines() if p.exists() else []), {}, 0
+def read_kv_file(p: Path) -> tuple[dict, str | None]:
+    """GITHUB_OUTPUT as the hosted runner reads it back (FileCommandManager): lines split on \\n (a \\r\\n ending drops its \\r),
+    `key=value`, or `key<<DELIM` ... `DELIM`; an empty key or delimiter, a line of neither shape, or a missing delimiter fails the
+    step there, so it fails it here. -> (outputs, error)."""
+    lines, out, i = (p.read_bytes().decode("utf-8", "replace").split("\n") if p.exists() else []), {}, 0
     while i < len(lines):
-        ln, i = lines[i], i + 1
-        if "<<" in ln and ("=" not in ln or ln.index("<<") < ln.index("=")):
+        ln, i = lines[i].removesuffix("\r"), i + 1
+        if not ln:
+            continue
+        eq, hd = ln.find("="), ln.find("<<")
+        if eq >= 0 and (hd < 0 or eq < hd):
+            key, val = ln.split("=", 1)
+        elif hd >= 0:
             key, delim = ln.split("<<", 1)
             buf = []
-            while i < len(lines) and lines[i] != delim:
+            while i < len(lines) and lines[i].rstrip("\r\n") != delim:
                 buf.append(lines[i])
                 i += 1
-            out[key], i = "\n".join(buf), i + 1
-        elif "=" in ln:
-            key, val = ln.split("=", 1)
-            out[key] = val
-    return out
+            if not key or not delim or i >= len(lines):
+                return out, f"GITHUB_OUTPUT: no matching delimiter for {ln!r}" if key and delim else f"GITHUB_OUTPUT: invalid format {ln!r}"
+            val, i = "\n".join(buf)[:-1] if buf and buf[-1].endswith("\r") else "\n".join(buf), i + 1
+        else:
+            return out, f"GITHUB_OUTPUT: invalid format {ln!r}"
+        if not key:
+            return out, f"GITHUB_OUTPUT: invalid format {ln!r}"
+        out[key] = val
+    return out, None
 
 
 def expr_steps(cfg: dict, root: str, prefix: str, gh: Path, suite) -> tuple[int, int, int, int]:
     """Expression mode (service contexts): `if:` decided as the hosted runner decides it, `${{ }}` in env and bodies evaluated at
     step start, `continue-on-error` and step `timeout-minutes` honoured, outputs read back for later steps, and emulated artifact
-    steps. An unconditioned step still runs after a failure (more evidence, never less red); a conditioned one sees the job status."""
+    steps. A step with no `if:` is `success()`, so after a failure only `always()`/`failure()` steps run, as hosted; `job.status`
+    is the job's status as it stands."""
     sys.path.insert(0, str(Path(__file__).parent))
     import gh_expr as X   # noqa: PLC0415 — runner-owned, shipped beside this driver and sha-pinned with it
     import resource       # noqa: PLC0415
@@ -97,10 +109,10 @@ def expr_steps(cfg: dict, root: str, prefix: str, gh: Path, suite) -> tuple[int,
             skipped += 1
             ET.SubElement(case, "skipped", message=st["not_applicable"])
             continue
-        ctx["env"] = jenv
-        if "if" in st and not X.step_runs(st["if"], ctx, status):
+        ctx["env"], ctx["job"] = jenv, {"status": status}
+        if not X.step_runs(st.get("if"), ctx, status):
             skipped += 1
-            ET.SubElement(case, "skipped", message=f"if: {' '.join(str(st['if']).split())} -> false (status {status})")
+            ET.SubElement(case, "skipped", message=f"if: {' '.join(str(st.get('if', 'success()')).split())} -> false (status {status})")
             if st.get("id"):
                 ctx["steps"][st["id"]] = {"outputs": {}, "outcome": "skipped", "conclusion": "skipped"}
             continue
@@ -133,26 +145,29 @@ def expr_steps(cfg: dict, root: str, prefix: str, gh: Path, suite) -> tuple[int,
                 note = f"could not start: {type(e).__name__}: {e}"
             except subprocess.TimeoutExpired:
                 rc, note = 124, f"step timeout-minutes ({st.get('timeout_s')}s) exceeded"
+        outputs, bad = read_kv_file(outp)
+        if bad and rc == 0:
+            rc, note = 1, bad
         cpu1 = resource.getrusage(resource.RUSAGE_CHILDREN)
         case.set("time", f"{time.monotonic() - t0:.3f}")
         case.set("cpu", f"{cpu1.ru_utime + cpu1.ru_stime - cpu0.ru_utime - cpu0.ru_stime:.3f}")
         outcome = "success" if rc == 0 else "failure"
-        if rc is None:
-            blocked += 1
+        if rc is not None and rc > 0 and st.get("continue_on_error"):
+            case.set("outcome", "failure")
+            ET.SubElement(case, "system-out").text = f"rc={rc} {note}".strip()
+        elif rc is None:
+            blocked, status = blocked + 1, "failure"
             ET.SubElement(case, "error", type="not-started", message=note)
         elif rc < 0:
-            killed += 1
+            killed, status = killed + 1, "failure"
             ET.SubElement(case, "error", type="signal", message=f"killed by signal {-rc}")
-        elif rc != 0 and st.get("continue_on_error"):
-            case.set("outcome", "failure")
-            ET.SubElement(case, "system-out").text = f"continue-on-error: rc={rc} {note}".strip()
         elif rc != 0:
             failed += 1
             status = "failure"
             ET.SubElement(case, "failure", message=f"rc={rc} {note}".strip())
         if st.get("id"):
-            ctx["steps"][st["id"]] = {"outputs": read_kv_file(outp), "outcome": outcome,
-                                      "conclusion": "success" if st.get("continue_on_error") else outcome}
+            ctx["steps"][st["id"]] = {"outputs": outputs, "outcome": outcome,
+                                      "conclusion": "success" if st.get("continue_on_error") and rc is not None and rc > 0 else outcome}
         print(f"##[localci] step {i} rc={rc} {note}".rstrip(), flush=True)
     return failed, killed, blocked, skipped
 

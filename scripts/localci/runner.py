@@ -629,7 +629,11 @@ SERVICE_STEP_ENV = {"UV_OFFLINE": "1", "UV_FIND_LINKS": "/opt/wheels"}   # uv's 
 RUNNER_CTX = {"os": "Linux", "arch": "ARM64", "temp": "/tmp/runner-temp", "name": "localci"}   # arm64 here, X64 hosted: a parity gap
 ARTIFACT_MAX_BYTES = 256 << 20
 DEPS_LABEL = "org.nuzantara.localci.deps"
-REQ_PIN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(\[[A-Za-z0-9,._-]+\])?==[A-Za-z0-9.+!_-]+(\s*;[^#\\]*)?\s*\\?$")
+_MARKER_ATOM = r"""(?:[a-z_]+|"[^"\s-]*"|'[^'\s-]*')\s*(?:===|==|!=|<=|>=|<|>|~=|not\s+in|in)\s*(?:[a-z_]+|"[^"\s-]*"|'[^'\s-]*')"""
+# `name[extras]==version`, optionally `; <PEP 508 marker>` — nothing else: pip reads ` -...` anywhere on a line as an option
+# (`--no-binary` would lift --only-binary), so a quoted marker value may not even hold a dash after whitespace.
+REQ_PIN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(\[[A-Za-z0-9,._-]+\])?==[A-Za-z0-9.+!_-]+"
+                     rf"(\s*;\s*\(*\s*{_MARKER_ATOM}\s*\)*(?:\s+(?:and|or)\s+\(*\s*{_MARKER_ATOM}\s*\)*)*)?\s*\\?$")
 # The deps image: the candidate image plus an offline wheelhouse of the closure a job's install steps ask for, so they re-run
 # verbatim with no network (pip and uv read /opt/wheels), plus public files the job's code downloads at run time (fetched once,
 # sha256-pinned in the matrix). Built at plan time with network, but nothing of the candidate executes: wheels only
@@ -821,6 +825,38 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
     return have[0], note
 
 
+MERGE_GROUP_EVENT_KEYS = {"action", "merge_group", "repository", "organization", "installation", "sender", "enterprise"}
+
+
+def unmodelled_path(path: list, gh: dict, needs: list, stood_in: dict) -> str | None:
+    """Why a path the BASE job reads holds a value hosted that this run does not (refused), or None. `steps`, `env`, `matrix` and
+    `vars` are the run's own (vars as the matrix declares them); a key absent from a merge_group event is null hosted as here."""
+    low = [p.lower() for p in path]
+    root, k1 = low[0], (low[1] if len(low) > 1 else None)
+    if root == "github":
+        if k1 != "event":
+            return None if k1 in {k.lower() for k in gh} else "is a github property this run does not model"
+        if len(low) > 2 and low[2] == "merge_group":
+            return None if len(low) == 3 or low[3] in gh["event"]["merge_group"] else "is a merge_group field this run does not model"
+        return "is part of the merge_group payload this run does not model" if len(low) > 2 and low[2] in MERGE_GROUP_EVENT_KEYS else None
+    if root == "runner":
+        return None if k1 in RUNNER_CTX else "is a runner property this run does not model"
+    if root == "job":
+        return None if low[1:] == ["status"] else "is a job property this run does not model (only job.status is)"
+    if root == "strategy":
+        return "strategy is not modelled"
+    if root == "needs" and k1 is not None:
+        if k1 not in [n.lower() for n in needs]:
+            return None
+        rest, si = low[2:], next((v for k, v in stood_in.items() if k.lower() == k1), None)
+        if rest[:1] == ["result"] or not rest:
+            return None
+        if rest[:1] == ["outputs"] and si is not None and (len(rest) == 1 or rest[1] in {k.lower() for k in si.get("outputs") or {}}):
+            return None
+        return "is an upstream output this run does not carry"
+    return None
+
+
 def run_host_reader(argv: list, cwd: Path, timeout: int | None) -> dict:
     """A BASE reader of GitHub state (the harness gate verdict) at plan time, before any candidate code: python -I on the BASE copy,
     secrets stripped from its environment (gh answers with its stored login, a read). Its rc is frozen into the plan, so the seal
@@ -853,7 +889,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
     except Exception as e:  # noqa: BLE001
         return _blocked(f"BASE workflow {wf} unreadable at {base[:12]}: {type(e).__name__}")
     gh = github_ctx(base, pr_number, str(local.get("repository") or "Bali-Zero/Teman2"))
-    static = {"github": gh, "vars": dict(local.get("vars") or {}), "runner": RUNNER_CTX, "matrix": {}, "needs": {}, "env": {}, "steps": {}, "job": {}, "strategy": {}}
+    static = {"github": gh, "vars": dict(local.get("vars") or {}), "runner": RUNNER_CTX, "matrix": {}, "needs": {}, "env": {}, "steps": {}}
     upstream, planned = set((local.get("needs") or {})), []
     for jl in [*(local.get("jobs") or []), {**local, "job_id": ctx.get("job_id")}]:
         jid, job = jl.get("job_id"), jobs_doc.get(jl.get("job_id"))
@@ -867,6 +903,9 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
         steps, why = resolve_steps({**job, "env": jenv}, jl, "main", ((doc.get("defaults") or {}).get("run")) or {}, expressions=True)
         if why:
             return _blocked(f"job {jid}: {why}")
+        order = [s.get("name") for s in job.get("steps") or [] if isinstance(s, dict)]
+        if [st["name"] for st in steps] != [n for n in order if n in {st["name"] for st in steps}]:
+            return _blocked(f"job {jid}: the matrix lists its steps out of BASE order; outputs and job status flow in that order")
         prefix, why = select_python(job, pyv.get("container"), pyv.get("container_extra"))
         legs, why2 = matrix_legs(job)
         svcs, why3 = plan_services(job, local.get("service_images") or {}, iso["docker"])
@@ -885,18 +924,24 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                     return _blocked(f"job {jid}: checkout ref: {e}")
                 checkout = "base"
         try:
-            for k, v in jenv.items():
-                X.validate(v)
+            texts = [*jenv.values(), *(str((s.get("with") or {}).get("ref", "")) for s in job.get("steps") or [])]
             for st in steps:
-                for txt in (st.get("script"), *(st.get("env") or {}).values(), *((st.get("emulate") or {}).values())):
-                    X.validate(str(txt or ""))
-                    if st.get("script") and re.search(r"GITHUB_(ENV|PATH|STATE)\b", st["script"]):
-                        raise X.ExprError(f"step {st['name']!r} writes GITHUB_ENV/PATH/STATE, which the driver does not read back")
-                if "if" in st:
-                    X.parse(X.unwrap(st["if"]))
+                if st.get("script") and re.search(r"GITHUB_(ENV|PATH|STATE)\b", st["script"]):
+                    raise X.ExprError(f"step {st['name']!r} writes GITHUB_ENV/PATH/STATE, which the driver does not read back")
+                texts += [str(t or "") for t in (st.get("script"), *(st.get("env") or {}).values(), *((st.get("emulate") or {}).values()))]
+                texts += ["${{ " + X.unwrap(str(st["if"])) + " }}"] if "if" in st else []
+            for t in texts:
+                for path in X.paths(t):
+                    if (why := unmodelled_path(path, gh, needs, local.get("needs") or {})):
+                        raise X.ExprError(f"`{'.'.join(path)}` {why}")
         except X.ExprError as e:
             return _blocked(f"job {jid}: {e}")
-        for ms, st in zip(jl.get("steps") or [], steps):
+        tm = job.get("timeout-minutes", 360)
+        if isinstance(tm, bool) or not isinstance(tm, (int, float)) or tm <= 0:
+            return _blocked(f"job {jid}: timeout-minutes {tm!r} is not a plain number of minutes")
+        by_name = {str(ms.get("workflow_step") or ms.get("workflow_step_prefix")): ms for ms in jl.get("steps") or [] if ms.get("side")}
+        for st in steps:
+            ms = next((m for k, m in by_name.items() if st["name"] == k or st["name"].startswith(k) and by_name[k].get("workflow_step_prefix")), None)
             if (ms or {}).get("side") == "egress":   # run in its own sandbox WITH network: only the files it names, only tools BASE pins
                 for a, b in (ms.get("rewrite") or []):
                     if st.get("script", "").count(a) != 1:
@@ -921,10 +966,9 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
             image_id, deps_note = plan_deps_image(wt, cand, iso, local["deps"], prefix, run_dir, re.sub(r"[^a-z0-9-]", "-", str(ctx["check"])[4:]))
             if image_id is None:
                 return _blocked(f"job {jid}: {deps_note}")
-        tm = job.get("timeout-minutes")
         planned.append({"job_id": jid, "needs": needs, "legs": legs, "steps": steps, "job_env": jenv, "services": svcs, "path_prefix": prefix,
                         "checkout": checkout, "image_id": image_id, "deps": deps_note, "venv": local.get("bare_venv", True) is not False,
-                        "timeout_s": int(tm * 60) if isinstance(tm, (int, float)) and not isinstance(tm, bool) and tm > 0 else 360 * 60})
+                        "timeout_s": int(tm * 60)})
         upstream.add(jid)
     for f in local.get("egress_trusted") or []:   # a tool an egress step runs is BASE's pin, or the step does not run at all
         if _extract_base_file(wt, base, f) != _extract_base_file(wt, cand, f):
@@ -1548,8 +1592,11 @@ def start_services(docker: str, svcs: list, prefix: str, label: str, denv: dict,
         argv = [docker, "run", "-d", "--name", ctr, "--label", "org.nuzantara.localci=service", "--label", f"org.nuzantara.localci.run={label}",
                 "--network", f"container:{owner}" if owner else "none", "--health-cmd", h["cmd"], "--health-interval", h["interval"],
                 "--health-timeout", h["timeout"], "--health-retries", h["retries"], *[f"--env={k}={v}" for k, v in sorted(s["env"].items())], s["image_id"]]
-        names.append(ctr)
-        r = subprocess.run(argv, capture_output=True, text=True, timeout=120, env=denv)
+        names.append(ctr)   # before docker is asked: a run that times out may still have created it, and the caller removes it
+        try:
+            r = subprocess.run(argv, capture_output=True, text=True, timeout=120, env=denv)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return names, owner, f"service {s['name']} did not start: {type(e).__name__}"
         if r.returncode != 0:
             return names, owner, f"service {s['name']} did not start (image {s['image_id'][:19]}): {r.stderr.strip()[:200]}"
         owner = owner or ctr
@@ -1662,7 +1709,11 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
                                     collect=collect if uploads else None)
     finally:
         for c in ctrs:
-            _remove_verified(iso["docker"], c, denv)
+            try:
+                _remove_verified(iso["docker"], c, denv)
+            except Exception as e:   # noqa: BLE001 — one stuck service must not keep the others alive; the run reaper sweeps by label
+                with open(log, "a") as fh:
+                    fh.write(f"# service {c} not removed: {type(e).__name__}\n")
     out["seconds"] = round(time.monotonic() - t0, 3)
     if err:
         out["infra"] = ("ERROR", f"{label}: {err}")
@@ -1694,9 +1745,9 @@ def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base:
                                 "/w", network="bridge", image_id=job["image_id"], memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]))
     got = parse_expr_junit(junit) if not err else None
     tail = log.read_text(errors="replace")[-4000:] if log.exists() else ""
-    if err or not got or rc not in (0, 1):
-        return {"rc": None, "reason": f"egress sandbox gave no verdict: {err or f'rc={rc}'}", "log": tail}
-    return {"rc": 0 if got[0]["status"] == "PASS" else 1, "reason": f"egress sandbox: {got[0]['reason']}", "log": tail}
+    if err or not got or len(got) != 1 or got[0]["name"] != st["name"] or (rc, got[0]["status"]) not in ((0, "PASS"), (1, "FAIL")):
+        return {"rc": None, "reason": f"egress sandbox gave no consistent verdict: {err or f'rc={rc}, junit {got}'}", "log": tail}
+    return {"rc": rc, "reason": f"egress sandbox: {got[0]['reason']}", "log": tail}
 
 
 def _execute_jobs(name: str, spec: dict, run_dir: Path, plan: dict, log: Path) -> dict:
@@ -1718,6 +1769,8 @@ def _execute_jobs(name: str, spec: dict, run_dir: Path, plan: dict, log: Path) -
         needs[job["job_id"]] = {"result": "success" if all(r["rc"] == 0 for r in mine) else "failure", "outputs": {}}
     combined = [{**s, "name": f"{r['label']} › {s['name']}"} for r in legs for s in r["steps"]]
     status, reason = steps_verdict(combined, spec)
+    if (coe := [s["name"] for s in combined if s["status"] == "PASS" and s["reason"].startswith("continue-on-error")]):
+        reason += f"; continue-on-error, failed without failing the job (as hosted): {coe}"
     with open(log, "w") as fh:
         fh.writelines(f"# {r['label']}: rc={r['rc']} {r['seconds']}s cpu={r['cpu']}s log={r['log']}\n" for r in legs)
     return {"status": status, "reason": reason + " [contained: candidate-produced junit]", "rc": max(r["rc"] for r in legs),

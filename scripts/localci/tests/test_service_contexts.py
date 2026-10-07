@@ -29,6 +29,11 @@ MATRIX = Path(runner.__file__).with_name("contexts_matrix.yaml")
     ("steps.x.outputs.y == ''", {"steps": {}}, "true"),
     ("github.event_name == 'workflow_dispatch' && github.sha || ''", {"github": {"event_name": "merge_group", "sha": "s"}}, ""),
     ("!(steps.a.outputs.n == '2' && steps.a.outputs.s == 'size')", {"steps": {"a": {"outputs": {"n": "2", "s": "SIZE"}}}}, "false"),
+    # actions/runner ParseNumber / OrdinalIgnoreCase / identity, as the refuters reproduced them
+    ("'   ' == 0", {}, "true"), ("'0x10' == 16", {}, "true"), ("'0o10' == 8", {}, "true"), ("'1_0' == 10", {}, "false"),
+    ("github.REF == 'refs/heads/main'", {"github": {"ref": "refs/heads/main"}}, "true"),
+    ("'STRASSE' == 'straße'", {}, "false"), ("matrix == job", {"matrix": {}, "job": {}}, "false"),
+    ("steps.absent.outputs.x == 0", {"steps": {}}, "true"), ("null == false", {}, "true"), ("'abc' == 0", {}, "false"),
 ])
 def test_expressions_evaluate_as_the_hosted_runner_does(expr, ctx, want):
     assert X.substitute("${{ " + expr + " }}", ctx) == want
@@ -59,14 +64,36 @@ def test_the_driver_decides_conditions_reads_outputs_and_honours_continue_on_err
         {"name": "after red", "argv": sh, "script": "exit 0\n", "if": "steps.a.outputs.flag == 'on'"},
         {"name": "upload", "if": "always()", "emulate": {"action": "upload", "path": "${{ runner.temp }}/none", "name": "x", "pattern": "",
                                                         "merge": False, "if_no_files_found": "error"}},
+        {"name": "unconditioned", "argv": sh, "script": "exit 0\n"},                        # implicit success(): skipped after a red
+        {"name": "status", "argv": sh, "script": 'test "${{ job.status }}" = failure\n', "if": "always()"},
     ]
+    got, rc = drive(tmp_path, steps)
+    assert rc == 1 and [s["status"] for s in got] == ["PASS", "PASS", "NOT_APPLICABLE", "FAIL", "NOT_APPLICABLE", "FAIL", "NOT_APPLICABLE", "PASS"]
+    assert got[0]["reason"] == "continue-on-error: rc=3" and "-> false" in got[2]["reason"] and "status failure" in got[4]["reason"]
+    assert "success()" in got[6]["reason"]
+
+
+def drive(tmp_path: Path, steps: list) -> tuple[list, int]:
     cfg = {"context": "t", "root": str(tmp_path), "env": {}, "job_env": {}, "expr": {"github": {}, "runner": {"temp": "missing"}}, "steps": steps}
     (tmp_path / "steps.json").write_text(json.dumps(cfg))
     rc = subprocess.run([sys.executable, "-I", str(runner.STEPS_DRIVER), str(tmp_path / "steps.json"), str(tmp_path / "j.xml")],
                         capture_output=True).returncode
-    got = runner.parse_expr_junit(tmp_path / "j.xml")
-    assert rc == 1 and [s["status"] for s in got] == ["PASS", "PASS", "NOT_APPLICABLE", "FAIL", "NOT_APPLICABLE", "FAIL"]
-    assert got[0]["reason"].startswith("continue-on-error") and "-> false" in got[2]["reason"] and "status failure" in got[4]["reason"]
+    return runner.parse_expr_junit(tmp_path / "j.xml"), rc
+
+
+@pytest.mark.parametrize("body", ['echo "k<<END" >> "$GITHUB_OUTPUT"; echo v >> "$GITHUB_OUTPUT"', 'echo "garbage" >> "$GITHUB_OUTPUT"',
+                                  'echo "k<<" >> "$GITHUB_OUTPUT"'])
+def test_a_malformed_github_output_fails_its_step_as_hosted(tmp_path, body):
+    got, rc = drive(tmp_path, [{"name": "w", "id": "w", "argv": ["bash", "-e", "{0}"], "script": body + "\n"}])
+    assert rc == 1 and got[0]["status"] == "FAIL" and "GITHUB_OUTPUT" in got[0]["reason"]
+
+
+def test_a_step_killed_by_a_signal_turns_the_job_status_to_failure(tmp_path):
+    sh = ["bash", "-e", "{0}"]
+    got, rc = drive(tmp_path, [{"name": "dies", "argv": sh, "script": "kill -TERM $$\n"},
+                               {"name": "on success", "argv": sh, "script": "exit 0\n", "if": "success()"},
+                               {"name": "on failure", "argv": sh, "script": "exit 0\n", "if": "failure()"}])
+    assert [s["status"] for s in got] == ["ERROR", "NOT_APPLICABLE", "PASS"]
 
 
 # ------------------------------------------------------------------ services: planned from BASE, pinned, healthy or BLOCKED
@@ -179,6 +206,11 @@ def test_a_chain_is_planned_from_base_with_its_expressions_kept_for_the_driver(t
 
 @pytest.mark.parametrize("over,needle", [
     ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ secrets.X }}"}}]}, "not modelled"),
+    ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ github.run_id }}"}}]}, "github property this run does not model"),
+    ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ job.container.id }}"}}]}, "only job.status is"),
+    ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ strategy.job-total }}"}}]}, "strategy is not modelled"),
+    ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ github.event.repository.name }}"}}]}, "merge_group payload"),
+    ({"steps": [{"workflow_step": "assert", "env": {"R": "${{ needs.unit.outputs.n }}"}}]}, "upstream output"),
     ({"jobs": []}, "needs ['unit']"),
     ({"service_images": {}}, "no operator-pinned stand-in"),
 ])
@@ -222,6 +254,68 @@ def test_a_host_step_that_is_not_a_trusted_base_reader_is_blocked(tmp_path, monk
 def test_a_deps_recipe_the_runner_cannot_pin_is_refused_before_anything_is_built(tmp_path, deps, needle):
     image, why = runner.plan_deps_image(tmp_path, "c" * 40, {"image_id": "sha256:" + "a" * 64, "docker": "/nonexistent"}, deps, "", tmp_path, "t")
     assert image is None and needle in why
+
+
+def test_a_job_timeout_given_as_an_expression_is_blocked_not_read_as_the_default(tmp_path, monkeypatch):
+    wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "fanin": {**WORKFLOW["jobs"]["fanin"], "timeout-minutes": "${{ fromJSON(env.T) }}"}}}
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), {WF: yaml.safe_dump(wf)})
+    assert spec["status"] == "BLOCKED" and "timeout-minutes" in spec["reason"]
+
+
+def test_steps_listed_out_of_base_order_are_blocked_because_outputs_and_status_flow_in_order(tmp_path, monkeypatch):
+    ctx = host_ctx(["$PY", READER, "--repo", "${{ github.repository }}"])
+    ctx["local"]["steps"].reverse()
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, ctx, HOST_BASE)
+    assert spec["status"] == "BLOCKED" and "out of BASE order" in spec["reason"]
+
+
+@pytest.mark.parametrize("line,kept", [
+    ('demo==1.0; python_version >= "3" --no-binary=:all:', False),   # pip reads ` --...` as an option: it would lift --only-binary
+    ("demo==1.0 --no-binary=:all:", False), ('x==1; extra == "a --no-binary"', False), ("x==1 @ https://e/x.whl", False),
+    ("--index-url https://e/simple", False), ("-e ../../packages/cell-core", False), ("x>=1", False),
+    ('pywin32==306 ; sys_platform == "win32" \\', True), ("a[b,c]==1.2.3", True),
+    ('x==1; platform_machine == "x86_64" and (python_version < "3.12" or os_name != "nt")', True),
+])
+def test_only_a_plain_pin_reaches_the_networked_download(line, kept):
+    keep, dropped = runner._pin_lines((line + "\n").encode())
+    assert bool(keep) is kept and bool(dropped) is not kept
+
+
+def test_a_service_whose_start_times_out_is_still_handed_back_for_removal(tmp_path, monkeypatch):
+    docker = str(fake_docker(tmp_path))
+    svcs, _ = runner.plan_services({"services": {"postgres": SVC, "redis": {**SVC, "image": "ghcr.io/x/ci-mirror/redis:7", "env": {}}}},
+                                   {**IMAGES, "ghcr.io/x/ci-mirror/redis:7": "redis:7"}, docker)
+    real, calls = subprocess.run, []
+
+    def run(argv, **kw):
+        calls.append(argv)
+        if argv[1:3] == ["run", "-d"] and len([c for c in calls if c[1:3] == ["run", "-d"]]) == 2:
+            raise subprocess.TimeoutExpired(argv, 120)
+        return real(argv, **kw)
+    monkeypatch.setattr(runner.subprocess, "run", run)
+    names, owner, why = runner.start_services(docker, svcs, "localci-t", "lbl", runner.trusted_env(), tmp_path / "log")
+    assert len(names) == 2 and why and "TimeoutExpired" in why
+
+
+@pytest.mark.parametrize("rc,cases", [(1, [("WRONG-STEP", "PASS")]), (1, [("audit", "PASS")]), (0, [("audit", "FAIL")]),
+                                      (0, [("audit", "PASS"), ("extra", "PASS")]), (3, [("audit", "BLOCKED")])])
+def test_an_egress_verdict_that_does_not_match_its_exit_code_is_no_verdict(tmp_path, monkeypatch, rc, cases):
+    def fake_exec(name, spec, run_dir, plan, inner, a, extra, env, log, junit, *rest, **kw):
+        suite = runner.ET.Element("testsuite")
+        for n, st in cases:
+            tc = runner.ET.SubElement(suite, "testcase", name=n)
+            if st == "FAIL":
+                runner.ET.SubElement(tc, "failure", message="rc=1")
+            elif st == "BLOCKED":
+                runner.ET.SubElement(tc, "error", type="not-started", message="x")
+        runner.ET.ElementTree(suite).write(junit)
+        return rc, None
+    monkeypatch.setattr(runner, "execute_contained", fake_exec)
+    for d in ("receipts", "logs"):
+        (tmp_path / d).mkdir(exist_ok=True)
+    st = {"name": "audit", "side": {"where": "egress", "inputs": [], "rewrite": []}}
+    got = runner._run_egress("ctx.t", {"context": "t"}, {"timeout_s": 60, "image_id": "i"}, st, "s", {}, {}, {}, [], tmp_path, {})
+    assert got["rc"] is None and "no consistent verdict" in got["reason"]
 
 
 def test_an_upstream_verdict_reaches_the_fan_in_and_an_upstream_without_one_stops_the_chain(monkeypatch, tmp_path):

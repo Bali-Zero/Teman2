@@ -4,11 +4,12 @@ never guessed, outside it. Runner-owned: runner.py validates every expression at
 steps_driver.py (sha-pinned) so steps' `if:`, `env:` and `run:` bodies are evaluated at run time, when `steps.*` exist.
 
 Grammar: 'string' ('' escapes a quote), numbers, true/false/null, context paths (`a.b-c.d`), ( ), !, ==, !=, &&, ||, and the
-status functions always() success() failure() cancelled(). Semantics (docs: "Evaluate expressions in workflows and actions"):
-`&&`/`||` return an operand, not a bool; `==`/`!=` compare two strings case-insensitively and coerce any other pair to numbers
-(null 0, true 1, '' 0, a non-numeric string NaN, which equals nothing); falsy = false, 0, '', null, NaN. A path into a context
-that does not exist is null; a ROOT the run does not model (secrets, inputs, hashFiles, ...) is an ExprError — a value hosted
-holds and this run does not is never read as ''.
+status functions always() success() failure() cancelled(). Semantics (actions/runner's ExpressionUtility and EvaluationResult):
+`&&`/`||` return an operand, not a bool; `==`/`!=` compare two strings ignoring case per character (OrdinalIgnoreCase), two
+objects by identity, and coerce any other pair to numbers (null 0, true 1, a string trimmed: '' 0, decimal, 0x hex, 0o octal,
+anything else NaN, which equals nothing); falsy = false, 0, '', null, NaN; property names match ignoring case. A path into a
+context that does not exist is null; a ROOT the run does not model (secrets, inputs, hashFiles, ...) is an ExprError, and the
+planner refuses a path under a modelled root whose hosted value the run does not hold (`paths()`) — never read as ''.
 """
 from __future__ import annotations
 
@@ -20,6 +21,8 @@ STATUS_FUNCS = ("always", "success", "failure", "cancelled")
 _TOKEN = re.compile(r"\s*(?:(?P<str>'(?:[^']|'')*')|(?P<num>\d+(?:\.\d+)?)|(?P<op>==|!=|&&|\|\||!|\(|\))"
                     r"|(?P<word>[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)*))")
 _WRAP = re.compile(r"\$\{\{(.*?)\}\}", re.S)
+_DEC = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?")
+_RADIX = re.compile(r"([+-]?)0([xo])([0-9a-fA-F]+)")
 
 
 class ExprError(ValueError):
@@ -86,7 +89,8 @@ def parse(src: str):
                 raise ExprError(f"function {val}() is not modelled")
             return ("call", val)
         parts = val.split(".")
-        if parts[0] not in ROOTS or parts[:2] == ["github", "token"]:
+        parts[0] = parts[0].lower()
+        if parts[0] not in ROOTS or [p.lower() for p in parts[:2]] == ["github", "token"]:
             raise ExprError(f"{val!r} is not modelled (a value hosted holds that this run does not)")
         return ("path", parts)
 
@@ -100,24 +104,52 @@ def has_status_call(node) -> bool:
     return node[0] == "call" or any(isinstance(x, tuple) and has_status_call(x) for x in node[1:])
 
 
+def paths(text: str) -> list:
+    """Every context path the `${{ }}` in `text` reads (parts as written, root lowered)."""
+    found: list = []
+
+    def walk(n):
+        if n[0] == "path":
+            found.append(n[1])
+        for x in n[1:]:
+            if isinstance(x, tuple):
+                walk(x)
+    for m in _WRAP.finditer(text):
+        walk(parse(m.group(1)))
+    return found
+
+
 def _num(v) -> float:
-    if v is None or v == "":
+    if v is None:
         return 0.0
     if isinstance(v, (bool, int, float)):
         return float(v)
-    try:
-        return float(str(v).strip())
-    except ValueError:
+    if isinstance(v, (dict, list)):
         return math.nan
+    t = str(v).strip()
+    if t == "":
+        return 0.0
+    if (m := _RADIX.fullmatch(t)):
+        try:
+            return float(int(m.group(1) + m.group(3), 16 if m.group(2) == "x" else 8))
+        except ValueError:
+            return math.nan
+    return float(t) if _DEC.fullmatch(t) else math.nan
 
 
 def truthy(v) -> bool:
     return not (v is None or v is False or v == "" or (isinstance(v, (int, float)) and not isinstance(v, bool) and (v == 0 or math.isnan(v))))
 
 
+def _fold(s: str) -> str:
+    return "".join(u if len(u := c.upper()) == 1 else c for c in s)
+
+
 def _eq(a, b) -> bool:
     if isinstance(a, str) and isinstance(b, str):
-        return a.casefold() == b.casefold()
+        return _fold(a) == _fold(b)
+    if isinstance(a, (dict, list)) or isinstance(b, (dict, list)):
+        return a is b
     if type(a) is type(b) and not isinstance(a, (int, float)):
         return a == b
     x, y = _num(a), _num(b)
@@ -131,10 +163,12 @@ def evaluate(node, ctx: dict, status: str = "success"):
     if kind == "path":
         cur = ctx
         for p in node[1]:
-            cur = cur.get(p) if isinstance(cur, dict) else None
+            if not isinstance(cur, dict):
+                return None
+            cur = cur[p] if p in cur else next((v for k, v in cur.items() if k.lower() == p.lower()), None)
         return cur
     if kind == "call":
-        return {"always": True, "success": status == "success", "failure": status == "failure", "cancelled": False}[node[1]]
+        return {"always": True, "success": status == "success", "failure": status == "failure", "cancelled": status == "cancelled"}[node[1]]
     if kind == "not":
         return not truthy(evaluate(node[1], ctx, status))
     if kind == "cmp":
