@@ -97,6 +97,12 @@ review_disposition:
       disposition: CONFIRMED,
       proof: "r2_13, r2_14 with rule phrases; mutants Tier K hex, subscript and tskey now red",
     }
+  - {
+      id: G8019-B1,
+      item: "gate-8019: 5 PII shapes on neither a rule nor a remainder (CRM keys, unlabelled phones, unlabelled IDs, split PII literal)",
+      disposition: CONFIRMED,
+      proof: "rem_crm_key added; rem_phone_label, g7971n_05, rem_views widened; wa.me/tel: act like a label (g8019_01); Codex r3 lone-0 grouping folded into rem_phone_label",
+    }
 receipts:
   - claim: "deterministic floor 3, source path"
     cmd: "python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <changed> --numstat-file <numstat> --patch-file <workflow patch>"
@@ -127,4 +133,16 @@ receipts:
     result: "recorded in the PR body Bites line"
     exit: 0
     ts: "2026-10-07T07:23:13Z"
+    seat: claude-opus-5-5
+  - claim: "cure round 1 (gate-8019): corpus test green on both interpreters"
+    cmd: "python3 -m pytest -q scripts/tp1max/test_screen_corpus.py; uv run --no-project --python 3.9 --with pytest --with PyYAML==6.0.3 python -m pytest -q <same>"
+    result: "666 passed (3.11.15) / 666 passed (3.9.6)"
+    exit: 0
+    ts: "2026-10-07T13:44:58Z"
+    seat: claude-opus-5-5
+  - claim: "cure round 1 (gate-8019): secret guards and prettier clean"
+    cmd: "detect-secrets-hook --baseline .secrets.baseline <files> in a scratch repo; lint_pg_dsn_credentials/lint_telegram_tokens/lint_google_oauth_credentials <files>; prettier --check"
+    result: "rc 0 each"
+    exit: 0
+    ts: "2026-10-07T13:45:03Z"
     seat: claude-opus-5-5

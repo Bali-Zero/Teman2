@@ -19,7 +19,7 @@ Why it exists: the final gate blocked the screen three times (#7927 B1: 31 leake
 
 The screen judges one candidate: `(path, bytes)` read from the working tree at build time — the bytes
 that would leave, not the committed blob. It returns `queue` or `skip(reason)`. Order: structural
-checks; bounded read; UTF-8 decode; decoded views; credential rules; PII rules. The first reason wins.
+checks; bounded read; UTF-8 decode; decoded views; credential rules; PII rules. The first reason wins. PII rules run in the order phone, e-mail, `id_number`, `crm_name`, so a value under `nomor_telepon` (both a phone label and an ID label) is a phone.
 The path is screened as text together with the content, because it leaves in the job id and the prompt.
 
 Builder policy is separate from the screen: candidate selection (`EXT`, `ROOTS`, `SKIP_PATH`, counted as
@@ -55,7 +55,7 @@ normalised: case-folded; camelCase, `-` and `.` split into `_` segments; a trail
 (`PASSWORD2`, `oauthToken1`). A stem matches a segment that equals it or ends with it (`PGPASSWORD`, `SSHPASS`), in ANY
 position of the name: `PG_PASSWORD_RO`, `DB_PASSWORD_2`, `CLAUDE_CODE_OAUTH_TOKEN_1` and `api_key_v2` are credential names
 (`r2_04`, `r2_05`). The name takes the tier of its most specific stem: a two-segment stem such as `SECRET_KEY` beats `KEY`.
-A credential under a name that holds no stem (`PIN = "482193"`, `ACCESS_CODE`) is the declared limit `rem_stem`.
+A credential under a name that holds no stem (`PIN = "482193"`, `ACCESS_CODE`, plurals such as `TOKENS`, a `sessionid` cookie, `PASSCODE`/`OTP`, the `default` of a Terraform `sensitive` variable) is the declared limit `rem_stem`.
 
 **Property words.** A name is not credential-bearing when a property word follows its LAST stem segment: `file`, `path`,
 `dir`, `url`, `uri`, `endpoint`, `host`, `port`, `len`, `length`, `min`, `max`, `count`, `size`, `limit`, `rounds`,
@@ -165,8 +165,7 @@ padding. Consecutive lines that are pure base64 and all but the last of equal le
 candidate is decoded (no prefix window: `kimi_21`), read as latin-1, C0/C1 control characters except
 tab/CR/LF deleted (`kl_04`: a NUL inside the name), and screened by the same rules. Decoding recurses to
 a total depth of TWO layers (`normative_11`); a malformed candidate yields no view and the raw text is
-still screened. Each layer is at most 3/4 of its input, so total work stays below 2.4·n. Any other encoding of a
-credential — a hex dump, rot13, reversed or split text — is the declared limit `rem_views`.
+still screened. Each layer is at most 3/4 of its input, so total work stays below 2.4·n. A credential or a PII value in any other reversible view — a hex dump, rot13, reversed text, or a literal split by concatenation (`"08" + "12" + "3456" + "7890"`) — is the declared limit `rem_views`.
 
 ## PII entities
 
@@ -178,10 +177,10 @@ Separators split the digit stream into GROUPS. A candidate starts at a group bou
 preceded by a digit (a letter, `_` or punctuation may precede it: `phone628…`, `WA_NUMBER_62…`) and
 spans consecutive groups up to 15 digits; every group-aligned prefix is tested, so a trailing year or a
 second number (`… / 0813…`) does not hide the first. Markers: `+` glued to the first digit or inside
-`(+62)`; `00` followed by a country code `[1-9]`; `tel:`, `wa.me/`, `@s.whatsapp.net`; a phone label attached to the value: a key or label whose normalised name has a segment `phone`, `telephone`, `telepon`, `telp`, `tel`, `mobile`, `cell`, `hp`, `wa`, `whatsapp` or `contact` (`no_hp`, `nomor_telepon`, `r2_07`).
+`(+62)`; `00` followed by a country code `[1-9]`; `tel:`, `wa.me/`, `@s.whatsapp.net`; a phone label attached to the value: a key or label whose normalised name has a segment `phone`, `telephone`, `telepon`, `telp`, `tel`, `mobile`, `cell`, `hp`, `wa`, `whatsapp` or `contact` (`no_hp`, `nomor_telepon`, `r2_07`). The markers `tel:`, `wa.me/` and `@s.whatsapp.net` act like a label: the 7–15-digit value they introduce is a phone with or without `+` (`https://wa.me/39 347 1234567`, `g8019_01`).
 A labelled value with 7–15 digits is a phone in any domestic grouping, including Indonesian, Italian,
 German and US forms; labels alone, placeholders and all-zero examples are innocent, as are ports and
-version strings merely adjacent to a label. The amount exemption below never applies to a labelled value (`phone: "347.123.456"`, `r2_17`). A label segment followed by a property word (Named assignments: `contact_count`, `phone_type`) is not a phone label (`r2_innocent_03`). A phone in a domestic, non-Indonesian grouping under a label outside this list (`ufficio: 347 123 4567`), or one the date or amount exemptions remove (`+39.347.123.456`, a labelled value shaped like a valid date), is the declared limit `rem_phone_label`.
+version strings merely adjacent to a label. The amount exemption below never applies to a labelled value (`phone: "347.123.456"`, `r2_17`). A label segment followed by a property word (Named assignments: `contact_count`, `phone_type`) is not a phone label (`r2_innocent_03`). A phone-shaped digit stream without a recognised label — under a label outside this list (`ufficio: 347 123 4567`), in a table cell or in prose (`Chiamare Mario al 347 123 4567`) — in a grouping the guilty shapes do not name (a domestic non-Indonesian number, an Indonesian number whose first group is a lone `0` such as `0 361 777777`), or one the date or amount exemptions remove (`+39.347.123.456`, a labelled value shaped like a valid date), is the declared limit `rem_phone_label`.
 
 Guilty shapes: Indonesian mobile `08` + 8–11 digits, `628`/`+628`/`00628` + 8–11, and `62 (0)8…` /
 `+62 (0)8…` with the `(0)` dropped; Indonesian landline `0[2-7]` + 7–10 more digits, or the same after
@@ -223,11 +222,11 @@ full match, never a prefix match).
 or a passport, KITAS or KITAP number: 6–16 letters and digits, with at least 6 digits, in any issuer's
 order (`AB1234567`, a 9-digit US/UK number, `C01X00T47`, an alphanumeric KITAS card number). The value
 must be attached to a key or label whose normalised name (as in Named assignments) has a segment
-`nik`, `ktp`, `kk`, `npwp`, `kitas`, `kitap`, `passport`, `paspor`, `document`, `dokumen`, `nomor` or `national` (`no_ktp`, `nomor_kitas`, `passport_number`, `passportNo`, `no_paspor`, `document_number`, `no_dokumen`, `national_id`: `r2_06`, `r2_11`); `nomor_invoice: "INV2026001234"` is skipped too, an accepted over-skip. An identifier under a label outside this list (`ssn`, `codice_fiscale`) is the declared limit `rem_id_label`; a number under a recognised label but outside the 6–16 / ≥ 6-digit grammar (`passport: "AB12345"`) is the declared limit `rem_id_grammar`. A label by itself, a whole-value placeholder, or an
+`nik`, `ktp`, `kk`, `npwp`, `kitas`, `kitap`, `passport`, `paspor`, `document`, `dokumen`, `nomor` or `national` (`no_ktp`, `nomor_kitas`, `passport_number`, `passportNo`, `no_paspor`, `document_number`, `no_dokumen`, `national_id`: `r2_06`, `r2_11`); `nomor_invoice: "INV2026001234"` is skipped too, an accepted over-skip. An identifier under a label outside this list (`ssn`, `codice_fiscale`) is the declared limit `rem_id_label`; a number under a recognised label but outside the 6–16 / ≥ 6-digit grammar (`passport: "AB12345"`) is the declared limit `rem_id_grammar`. An identity number with no recognised label attached — in prose or in a table column (`| Paspor |`) — is the declared limit `g7971n_05`. A label by itself, a whole-value placeholder, or an
 all-zero example is innocent. `crm_name`: a string literal of 2–6
 words, each starting with a letter, under a key `name`, `full_name`, `nama`, `client_name`,
 `customer_name` or `contact_name`, in a record whose other keys name a client/customer/contact/lead/stage
-or hold a phone or e-mail field (`normative_10`). A name in a CRM record outside the 2–6-word grammar — a single word (mononyms are common in Indonesia), seven or more words, a word that starts with a non-letter — is the declared limit `rem_crm_mononym`.
+or hold a phone or e-mail field (`normative_10`). A name in a CRM record outside the 2–6-word grammar — a single word (mononyms are common in Indonesia), seven or more words, a word that starts with a non-letter — is the declared limit `rem_crm_mononym`. A 2–6-word name under any other key that denotes a person's name (`nama_lengkap`, `customerName`, `clientName`, `fullName`) inside a CRM-shaped record is the declared limit `rem_crm_key`.
 Innocent: class names, authorship prose, personas under reserved domains, ordinary identifiers.
 This screen is not a general named-entity recogniser; see the declared limits.
 
@@ -266,12 +265,10 @@ the `unsafe_path` entries. `short` is builder policy; every other key is a scree
 
 ## Closed vocabularies and their remainders
 
-This section is the spec of the spec. Every closed list above is a vocabulary, and every vocabulary ends with ONE
-declared remainder: what lies outside it is named in a sentence, has its own `limit: true` row and appears in the
+This section is the spec of the spec. Every closed list above is a vocabulary, and every vocabulary ends with its declared remainder — one, or two where the table lists two: what lies outside it is named in a sentence, has its own `limit: true` row and appears in the
 Declared limits. A closed list without a remainder is a spec defect, and so is a remainder without a row. A new leak
 is cured by naming the remainder it fell into, not by a row chasing the shape. Rows that pin a rule carry `rule:`, a
-phrase quoted verbatim from this spec; the schema test fails when the phrase is missing, so deleting a rule's text turns
-its row red (every remainder row carries one).
+phrase quoted verbatim from this spec; the schema test fails when the phrase is missing, so deleting a PINNED phrase turns its row red (every remainder row carries one); rule text that no row quotes is not covered by this check.
 
 | Vocabulary                     | Section                               | Remainder                                |
 | ------------------------------ | ------------------------------------- | ---------------------------------------- |
@@ -286,11 +283,12 @@ its row red (every remainder row carries one).
 | CLI flags and contexts         | Credential-bearing contexts           | `rem_cli`                                |
 | credential families            | Credential families                   | `g7988_10`                               |
 | decoded views and depth        | Decoded views                         | `rem_views`, `r2x_11`                    |
-| phone labels                   | Phones                                | `rem_phone_label`                        |
+| phone shapes and labels        | Phones                                | `rem_phone_label`                        |
 | phone grouping chains          | Phones                                | `rem_slash_phone`                        |
 | ID labels                      | National IDs                          | `rem_id_label`; unlabelled: `g7971n_05`  |
 | ID number grammar              | National IDs                          | `rem_id_grammar`                         |
 | CRM name grammar and structure | National IDs                          | `rem_crm_mononym`; outside CRM: `lim_01` |
+| CRM name keys                  | National IDs                          | `rem_crm_key`                            |
 | e-mail spellings               | E-mail                                | `lim_02`                                 |
 | PII enumeration                | Threat model                          | `lim_pan`, `lim_iban`                    |
 
@@ -302,7 +300,7 @@ remainder.
 These guilt shapes MAY be queued. Each is a corpus row with `limit: true`; the test fails if this list
 and those rows differ. Everything not listed here is a defect when it leaks.
 
-- `limit:g7971n_05` — a 16-digit NIK without a recognised label (prose or an unlisted key).
+- `limit:g7971n_05` — an identity number (NIK, passport, KITAS/KITAP, NPWP) without a recognised label attached, in prose or a table column.
 - `limit:r2x_11` — a credential or a PII value under three or more base64 layers (depth is bounded at two for cost).
 - `limit:lim_01` — a personal name outside any CRM-like structure (no named-entity recognition).
 - `limit:lim_02` — an address spelled with plain words (`person at client dot corp`).
@@ -311,19 +309,20 @@ and those rows differ. Everything not listed here is a defect when it leaks.
 - `limit:lim_04` — a Tier S literal shorter than 16 characters or letters-only (`SERVICE_TOKEN = "shortTok"`).
 - `limit:g7988_10` — a bare token family absent from the explicit family list; unlisted bare families
   are not caught unless their surrounding assignment or credential context triggers a tier/context rule.
-- `limit:rem_stem` — a credential under a name holding no Tier P/S/K stem (`PIN = "482193"`).
+- `limit:rem_stem` — a credential under a name holding no Tier P/S/K stem (`PIN = "482193"`, `TOKENS`, `sessionid`, `PASSCODE`, a Terraform `sensitive` default).
 - `limit:rem_property` — a credential stored under a stem followed by a property word (`DB_PASSWORD_FILE`).
 - `limit:rem_short_digits` — an all-digit Tier P literal of fewer than 6 digits (`password: 4821`).
 - `limit:rem_tierk_short` — a Tier K value outside the opaque grammar (short, digit-free, or holding `:`, `.` or a space).
 - `limit:rem_placeholder` — a real credential equal to a placeholder, boolean or status word (`changeme`, `passed`).
 - `limit:rem_carrier` — a credential reaching code in an unlisted carrier (positional, three-argument setter).
 - `limit:rem_cli` — a credential in an unlisted context (`ldapsearch -w`, a `.pgpass` row with a numeric host or user).
-- `limit:rem_views` — a credential in an encoding outside the decoded views (hex dump, rot13).
-- `limit:rem_phone_label` — a domestic non-Indonesian phone under an unlisted label (`ufficio:`), or one the date/amount exemptions remove.
+- `limit:rem_views` — a credential or a PII value in a reversible view outside the decoded views (hex dump, rot13, split literal).
+- `limit:rem_phone_label` — a phone-shaped digit stream without a recognised label (unlisted label, table cell, prose) in a grouping the guilty shapes do not name (non-Indonesian domestic, a lone `0` first group), or one the date/amount exemptions remove.
 - `limit:rem_slash_phone` — phone groups chained only by spaced `/`.
 - `limit:rem_id_label` — an identity number under an unlisted label (`ssn`, `codice_fiscale`).
 - `limit:rem_id_grammar` — a number under an ID label outside the 6–16 / ≥ 6-digit grammar.
 - `limit:rem_crm_mononym` — a CRM name outside the 2–6-word grammar (one word, seven or more, a non-letter start).
+- `limit:rem_crm_key` — a 2–6-word personal name under an unlisted name key in a CRM-shaped record (`nama_lengkap`, `customerName`).
 - `limit:lim_pan` — a payment card number: out of scope, owner decision pending (UU PDP art. 4(2)(f)).
 - `limit:lim_iban` — an IBAN: out of scope, owner decision pending (UU PDP art. 4(2)(f)).
 
