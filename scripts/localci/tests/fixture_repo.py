@@ -48,14 +48,14 @@ def write(repo: Path, files: dict) -> None:
         p.write_text(body)
 
 
-def make_repo(root: Path, candidate_files: dict | None = None) -> dict:
+def make_repo(root: Path, candidate_files: dict | None = None, base_extra: dict | None = None) -> dict:
     repo = root / "wt"
     repo.mkdir(parents=True)
     git(repo, "init", "-q", "-b", "main")
     for f in runner.TRUSTED_CLASSIFIER_FILES:
         (repo / f).parent.mkdir(parents=True, exist_ok=True)
         (repo / f).write_bytes((REAL_REPO / f).read_bytes())
-    write(repo, BASE_FILES)
+    write(repo, {**BASE_FILES, **(base_extra or {})})
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", "base")
     base = git(repo, "rev-parse", "HEAD")

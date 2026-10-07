@@ -1,4 +1,4 @@
-# localci — local CI runner and inert release stub (v0.3.1)
+# localci — local CI runner and inert release stub (v0.4.0)
 
 A durable coordinator that runs checks against a frozen candidate and refuses to call anything green on
 missing evidence. It is a **non-required, single-host** gate: it does not replace GitHub branch protection.
@@ -56,6 +56,30 @@ runner's own trusted checks, counts as uncontained candidate exposure, and a pla
 `status --seal` BLOCKED) exactly like an `--isolation none` plan. Such plans print a WARNING at `plan`: candidate code on the host
 can rewrite any Pysa home together with its manifest and baseline index — nothing kept in this user's files can tell, so run
 `pysa_check.py setup --home <home> --rebuild` before a contained plan relies on that home again (accepted limit, not a check).
+
+## Required contexts the runner executes (v0.4.0)
+
+`mapping: executed` in `contexts_matrix.yaml` now means the runner runs the context: `plan` reads each executed context's
+`local` block and plans ONE check, `local.check` (`ctx.<slug>`), which `evaluate_contexts` resolves for the context. Its
+`local.steps` must account for EVERY step of the BASE copy of the context's workflow job (matched by `workflow_step`, or by a
+`workflow_step_prefix` that hits exactly one step when the full name spells a banned shape): a transcribed `argv` (`$PY`,
+`$BASE_SHA` placeholders), the BASE `run:` body verbatim (container only, `bash --noprofile --norc -eo pipefail`), or
+`not_applicable` with a reason. `actions/checkout` and `actions/setup-python` are stood in for by the tree copy and the
+interpreter. An unmapped BASE step, a `not_run` step, a `${{ }}` the matrix does not override, a `continue-on-error` step, a
+trusted file missing at BASE, or a host step that would run candidate code plans the context as a BLOCKED record naming why.
+
+| `where` | kind | what runs | trust |
+|---|---|---|---|
+| `host` | `trusted_steps` | `$PY -I <BASE copy of a trusted file>` or a tool whose `-version` equals the BASE workflow's pin (`tool_pins`, else BLOCKED), cwd = the candidate worktree, read as data | trusted: runs before the seal, sealed, its BASE dir sha-mapped and re-verified |
+| `container` | `contained_steps` | `steps_driver.py` (runner-owned, sha pinned in the plan) runs the steps in the candidate sandbox with the BASE copies of `trusted_files` laid over the candidate's; `git_index: true` commits the frozen tree inside the container for steps that call `git`; the environment is the `merge_group` event's (`CI`, `GITHUB_EVENT_NAME=merge_group`, offline pip) | contained, like `trusted_pytest`: candidate-produced junit, after the seal |
+
+A context is PASS only when every step it runs returns 0 and every other step is `not_applicable` with a reason; a red step
+dominates (FAIL > ERROR > BLOCKED), and a step that cannot start is BLOCKED, never skipped. The driver's exit code and its
+junit (one test case per planned step, in order) must agree or the verdict is ERROR. When the candidate rewrites one of the
+context's `trusted_files` or its workflow, a green won with the BASE judge is reported **BLOCKED**: hosted judges with the
+candidate's copy, which this run did not execute. The matrix is operator input, like the runner: pass the trusted copy with
+`--contexts-file`, never the candidate's. `summary.never_claim_parity_for` lists exactly the contexts the runner does not execute
+(the suite checks it); `summary.parity_gaps` lists the steps of executed contexts whose hosted twin can still differ.
 
 ## Security: Pysa taint judge (`security.pysa_python`)
 

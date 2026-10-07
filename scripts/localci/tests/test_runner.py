@@ -413,7 +413,7 @@ def test_real_env_fingerprint_carries_the_required_evidence(fx, monkeypatch):
     env = runner.env_fingerprint(PY, spec)
     for k in ("python", "pytest", "platform", "hostname", "runner_sha256", "git_version", "deps_lock_sha256", "deps_lock_source", "uv_version", "runner_version"):
         assert k in env
-    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.3.1"
+    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == runner.RUNNER_VERSION == "0.4.0"
     assert len(env["deps_lock_sha256"]) == 64 and env["deps_lock_source"] in ("pip", "uv")
     assert env["tools"]["c.tool"]["sha256"] not in ("not-a-file", None) and os.path.isabs(env["tools"]["c.tool"]["path"])
     assert env["tools"]["c.gone"] == {"path": None, "sha256": "not-a-file"}
@@ -595,7 +595,7 @@ def test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code(t
             assert ends[n] <= boundary, n                    # runner-planned cmd verdicts are sealed
         elif spec["kind"] in ("trusted_pytest", "pytest"):
             assert starts[n] >= boundary, n                  # anything that runs candidate code starts after the seal
-    assert runner.TRUSTED_KINDS == ("cmd",)
+    assert runner.TRUSTED_KINDS == ("cmd", "trusted_steps")
     with pytest.raises(SystemExit):
         runner.main(["status", "--run-dir", str(fx["run"]), "--seal", "ab"])   # a 2-char prefix would match almost anything
 
