@@ -1,0 +1,137 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Seat-utilization campaign 2026-10-05, owner's order relayed by the imperator window (session ca23919c): cure
+  gate-7990's BLOCKER (post-merge audit of pull request 7990) by specifying the runbook's paste surface and testing
+  it, instead of patching step 6 a third time. Build task for the Codex seat:
+  ~/.agent/campaign-20261005/work/codex-tg-runbook/task.md; gate receipts gate-7986 and gate-7990 (rows C1-C8).
+lanes:
+  - lane: tg-runbook-blocks-build
+    role: build
+    seat: "codex-gpt-5.6-sol (account O1, scripts/seat_build.sh --seat codex --tier sol --effort high, 01:23-01:41Z; first draft of the runbook, the test and the workflow step)"
+  - lane: tg-runbook-blocks-verify
+    role: build
+    seat: "claude-opus-5-5 (Dux dux-tg-runbook-ship; on-disk verification of the Codex draft, its corrections, the council's cures, this pack)"
+  - lane: tg-runbook-blocks-council-codex
+    role: review
+    seat: "codex-gpt-6.1-sol (account O2, scripts/with_seat.sh codex codex exec --sandbox read-only, sealed, from a scratch copy)"
+  - lane: tg-runbook-blocks-council-ollama
+    role: review
+    seat: "ollama-qwen3.5-9b (Mini, local Ollama HTTP API on 127.0.0.1, num_ctx 16384, sealed, diff inlined)"
+council_run: council-journal.jsonl
+seat_override: >-
+  The council is three families (Anthropic, OpenAI, Alibaba open weights) but only one of its non-Anthropic seats is
+  independent of every contributor: the Codex reviewer (O2, gpt-6.1-sol) is the builder's family (O1, gpt-5.6-sol),
+  and the Claude seat is the verifier who also corrected the tree, so it is a contributor. The seat that is
+  independent of both is ollama-qwen3.5-9b, which this lint does not count. Kimi and the TP1 seats were not
+  dispatched: the TP1 monthly quota is exhausted until 2026-10-11T16:00Z (campaign rules v2) and Kimi was reported
+  quota-dead by the imperator; agy (Gemini) reads busy with the owner's windows and is never signalled. The final
+  on-disk gate, commissioned by the imperator, is the independent judgment of record.
+seat_fallback_reason: >-
+  ollama-qwen3.5-9b (the largest text Qwen on Mini, `ssh mini ollama list` 2026-10-07T02:4xZ) stands in for the
+  dead Kimi/TP1 seats and the busy agy seat; not re-probed by hand in this session.
+pii_scan: clean
+pii_scan_note: A runbook, a shell test and a workflow step; fake tokens built by concatenation; no client data, no secrets file read.
+what_changed: |
+  docs/runbooks/telegram-token-rotation.md: a Conventions paragraph that specifies the paste surface (interactive
+  zsh with interactivecomments off or bash 3.2, bracketed or raw paste: no `#` in a block, no `exit`, multi-line
+  steps as one { ...; } compound, tokens read with `IFS= read -rs`, never on argv); every block rewritten to it.
+  Step 6 is byte-identical to gate-7990's verified cure. Step 3 is `cd ~/nuzantara` on every host (on Pro the
+  Desktop path is a symlink to it). Step 8.2 is split so the dry run is read before the send. Inline comments
+  moved to prose; Fly process groups api, rag and drive named.
+  scripts/ops/test_runbook_blocks.sh (new): extracts every bash fence, applies the static rules, and runs each
+  block in zsh and bash, as one -c string ("whole") and line by line on stdin ("raw", where zsh -i really reads
+  `#` as a word and an early `read` swallows the next line), with a fake HOME and recording shims; asserts the
+  fly import, the absence of the token from output and argv, TG unset, the block's own status, that Python
+  heredocs compile, and that raw logs equal whole logs.
+  .github/workflows/tg-gateway.yml: path filter gains the runbook and both shell tests; the gateway job ends with
+  one step that installs zsh when absent and runs this test and scripts/ops/test_rotate_telegram_token.sh.
+proof: |
+  See receipts. The runbook on origin/main fails the test (55 failures, including step 6's garbage import in a
+  raw paste); the head passes in both shells and both modes; seven mutants of the head runbook each fail it; a
+  pty paste simulation of all nine head blocks (36 runs) is clean.
+bites:
+  consumer: >-
+    The gateway (anti-regrowth lint) job of tg-gateway.yml: its path filter selects this pull request, and its last
+    step runs scripts/ops/test_runbook_blocks.sh and scripts/ops/test_rotate_telegram_token.sh.
+  observation: >-
+    Before push, on M5, the step's exact command: rc 0, "PASS: 9 shell blocks under zsh and bash, whole and raw
+    paste, token and empty input", rotation test 27 ok ALL PASS; the same test on origin/main's runbook: rc 1,
+    55 failure(s). The hosted run on this pull request is quoted in its body.
+ground:
+  ts: "2026-10-07T01:42:00Z"
+  siblings: >-
+    No `context_bridge.py continue` process and no process with its cwd in the worktree (lsof) at 01:42Z. origin/main
+    moved from ffeda3061c to d961f053b4 during the work; none of the four new commits touches these three files.
+spend:
+  adversarial_rounds: 2
+  wall_clock_hours: 2
+receipts:
+  - claim: A -c string honours `#` in zsh even with nointeractivecomments, while the same line on stdin to zsh -i is read with `#` as a word; so the draft's zsh run did not reproduce the owner's shell.
+    cmd: "zsh -f -o nointeractivecomments -ic 'echo a # b' ; printf 'echo a # b\\n' | zsh -f -o nointeractivecomments -i -s"
+    exit: 0
+    ts: "2026-10-07T03:00:38Z"
+    seat: claude-opus-5-5 on M5
+  - claim: Interactive zsh has interactivecomments off on M5 and on Pro, and on Pro ~/Desktop/nuzantara is a symlink to ~/nuzantara.
+    cmd: "/bin/zsh -ic '[[ -o interactivecomments ]] && echo IC=on || echo IC=off' ; ssh pro (same, plus ls -ld ~/Desktop/nuzantara)"
+    exit: 0
+    ts: "2026-10-07T03:00:38Z"
+    seat: claude-opus-5-5 on M5
+  - claim: Step 6 is byte-identical to gate-7990's verified cure.
+    cmd: awk extraction of the "## 6." fence | cmp - ~/.agent/campaign-20261005/work/gate-7990/step6_cure.sh
+    exit: 0
+    ts: "2026-10-07T02:47:02Z"
+    seat: claude-opus-5-5 on M5
+  - claim: The test fails on origin/main's runbook with 55 failures, among them step 6 in a raw paste importing the next line as the secret and running the typed token as a command.
+    cmd: bash scripts/ops/test_runbook_blocks.sh <git show origin/main:docs/runbooks/telegram-token-rotation.md>
+    exit: 1
+    ts: "2026-10-07T03:00:15Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Eight mutants of the head runbook each fail the test (inline `#`, `exit 1`, `read -p`, step 6 without braces, `read -r` without -s, a decoy `: 'read -rs'; IFS= read -r TG`, invalid Python in a heredoc, a failing cd)."
+    cmd: bash scripts/ops/test_runbook_blocks.sh mut/<m>.md for m1..m8
+    exit: 1
+    ts: "2026-10-07T02:59:50Z"
+    seat: claude-opus-5-5 on M5
+  - claim: On a pty, all nine head blocks pasted into zsh -f -i (interactivecomments off, ZLE bracketed paste), zsh raw and bash 3.2 raw, with the token or an empty answer, give 36 of 36 clean runs; origin/main reproduces gate-7990's parse error and garbage import.
+    cmd: pty_sim.sh (script(1), recording shims, fake HOME) in the Dux scratch
+    exit: 0
+    ts: "2026-10-07T02:50:09Z"
+    seat: claude-opus-5-5 on M5
+  - claim: The workflow step's exact command passes locally, and the guards are clean.
+    cmd: the step's run block from the worktree root; actionlint; shellcheck -s bash; git diff --check; lint_telegram_tokens.py; detect-secrets-hook --baseline .secrets.baseline; test_tg_gateway_trigger_symmetry.py
+    exit: 0
+    ts: "2026-10-07T06:35:57Z"
+    seat: claude-opus-5-5 on M5
+dissent:
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER: replacing `read -rs TG` with `read -r TG` in step 6 survives the test; a real terminal would echo the token."
+    status: CONFIRMED
+    resolution: "Static rule: a `read` in a block without -s fails the test (mutant m5 red)."
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER: step 4's loader passes the token to launchctl setenv on argv, against the stated 'never reach argv'."
+    status: CONFIRMED
+    resolution: "Wording, not code: the loader is existing code with a declared caveat; the Conventions now name it as the one exception. Replacing the loader's mechanism is out of scope (owed)."
+  - seat: codex-gpt-6.1-sol
+    objection: "MEDIUM: the final TG probe supplies the shell's status, so a failing block passes; Python heredocs are recorded, never compiled."
+    status: CONFIRMED
+    resolution: "The probe now also requires the block's own status 0 (mutant m7 red) and every recorded `python3 -` heredoc must compile (mutant m6 red)."
+  - seat: codex-gpt-6.1-sol
+    objection: "LOW: CI's /bin/bash is bash 5, not 3.2; zsh is not pinned."
+    status: CONFIRMED
+    resolution: "Declared limit: bash 3.2 is proven on M5 (local test and pty); CI proves zsh and bash 5."
+  - seat: codex-gpt-6.1-sol
+    objection: "Refutation FALSIFIED: the silent-read rule judged lines, so a decoy `: 'read -rs'; IFS= read -r TG` passed."
+    status: CONFIRMED
+    resolution: "The rule now judges every `read` occurrence with its flags; the decoy is mutant m8, red."
+  - seat: codex-gpt-6.1-sol
+    objection: "Refutation FALSIFIED: step 6 ends `fi; unset TG; }`, so a failed fly import returns 0, and a fly shim exiting 1 leaves the test green."
+    status: CONFIRMED
+    resolution: "Confirmed as a fact, not cured: step 6 stays byte-identical to the form gate-7990 verified on a pty (C1-C8); a status-preserving variant would be a new, unverified block. fly's own error reaches the owner's terminal (stderr is not redirected). Declared in the PR body as a limit."
+  - seat: codex-gpt-6.1-sol
+    objection: "Refutation SURVIVES with caveats: a heredoc that compiles but raises at run time passes; raw token runs only where the whole run consumed the token, so 'every block both ways' overstated it."
+    status: CONFIRMED
+    resolution: "Heredoc run-time errors declared as a limit (executing them needs a stubbed tg_notify). The Conventions now say the test pastes every block whole and line by line (the raw empty run covers every block)."
+owed:
+  - The owner's step: a new token from BotFather (account to be confirmed), then runbook steps 3-4 on Pro and Mini, 5 (GitHub), 6 (Fly, restarts every nuzantara-rag machine), then a Claude session runs steps 7-8.
+  - step 4's loader still hands the token to launchctl setenv on argv (existing code, declared caveat).
+  - The pty paste simulation (real ZLE bracketed paste) is not in CI; CI covers whole and raw paste plus the static rules.
+  - Python heredocs in steps 7-8 are compiled by the test, not executed.

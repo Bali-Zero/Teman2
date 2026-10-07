@@ -7,6 +7,15 @@ this file, in a shell history, in argv, or in any log: `${VAR:+SET}` probes only
 
 **The one human step** is BotFather. Everything below is one command per host.
 
+**Conventions.** The blocks are pasted into interactive zsh (M5, Pro: `interactivecomments` off)
+or bash 3.2, with or without bracketed paste. So: no `#` inside a block (zsh reads it as a word:
+a parse error or extra arguments), explanations stay in prose; no `exit` (it closes the owner's
+terminal or ssh session); every multi-line step is ONE `{ …; }` compound command, so nothing runs
+before the whole block is read and no `read` can swallow the next pasted line; tokens are read
+with `IFS= read -rs` and never reach argv (step 4's loader is the declared exception, see its
+caveat). `scripts/ops/test_runbook_blocks.sh` (CI `tg-gateway`) pastes every block whole and
+line by line in both shells and fails on any breach.
+
 ## 1. Where the token lives (names and counts, 2026-10-06, `c8b495ff35`)
 
 | Place                            | Name                                                                                                            | Rotated by                             |
@@ -23,8 +32,8 @@ Consumers that only read the file or the env at each run (`scripts/tg_notify.py`
 up on their next tick. Re-find stray copies by file NAME only, never print matches:
 
 ```bash
-grep -lE '^(export )?TELEGRAM_BOT_TOKEN=' ~/.nuzantara-secrets.env* 2>/dev/null
-grep -l 'TELEGRAM_BOT_TOKEN' ~/Library/LaunchAgents/*.plist 2>/dev/null   # names only
+{ grep -lE '^(export )?TELEGRAM_BOT_TOKEN=' ~/.nuzantara-secrets.env* 2>/dev/null
+grep -l 'TELEGRAM_BOT_TOKEN' ~/Library/LaunchAgents/*.plist 2>/dev/null; }
 ```
 
 A plist hit means a daemon with an embedded or inherited value: decide per file, do not
@@ -44,11 +53,15 @@ only; `scripts/lint_telegram_tokens.py` keeps any literal out of the tree.
 
 ## 3. Per host (Pro, then Mini; run ON the host)
 
+The checkout is `~/nuzantara` on every host (on Pro `~/Desktop/nuzantara` is a symlink to it).
+The block shows which file and line would change (no value), prompts invisibly for the new token
+and swaps it atomically after a shape check, then reports `TELEGRAM_BOT_TOKEN: SET, shape: ok`.
+
 ```bash
-cd ~/nuzantara   # Pro: ~/Desktop/nuzantara
-scripts/ops/rotate_telegram_token.sh --dry-run   # which file and line would change, no value
-scripts/ops/rotate_telegram_token.sh             # hidden prompt, shape check, atomic swap
-scripts/ops/rotate_telegram_token.sh --check     # TELEGRAM_BOT_TOKEN: SET, shape: ok
+{ cd ~/nuzantara &&
+scripts/ops/rotate_telegram_token.sh --dry-run &&
+scripts/ops/rotate_telegram_token.sh &&
+scripts/ops/rotate_telegram_token.sh --check; }
 ```
 
 The script requires the file to be mode 600 already (fix with `chmod 600` first), writes an
@@ -58,8 +71,10 @@ the same token is a no-op. Shape only: it cannot know the token is live, step 7 
 
 ## 4. Refresh the launchd boot copy (macOS hosts, after each host swap)
 
+This re-sources the secrets file and sets only the loader's allowlist.
+
 ```bash
-bash scripts/launchd_env_loader.sh   # re-sources the file, setenv of the allowlist
+bash scripts/launchd_env_loader.sh
 ```
 
 Caveat, existing code: the loader hands the value to `launchctl setenv` as an argument, visible
@@ -69,22 +84,25 @@ old token until restarted. Check a shell with `${TELEGRAM_BOT_TOKEN:+SET}` and `
 
 ## 5. GitHub secret
 
+Paste the token only at the hidden prompt; it is not placed in argv.
+
 ```bash
-gh secret set TELEGRAM_BOT_TOKEN -R Bali-Zero/Teman2   # paste at the prompt; nothing on argv
+gh secret set TELEGRAM_BOT_TOKEN -R Bali-Zero/Teman2
 ```
 
 ## 6. Fly (`nuzantara-rag`)
 
 ```bash
-printf 'token: ' >&2; IFS= read -rs TG; echo >&2
-[ -n "$TG" ] || { echo "empty, abort" >&2; exit 1; }   # never import an empty value
-printf 'TELEGRAM_BOT_TOKEN=%s\n' "$TG" | fly secrets import -a nuzantara-rag; unset TG
+{ printf 'token: ' >&2; IFS= read -rs TG; echo >&2
+  if [ -n "$TG" ]; then printf 'TELEGRAM_BOT_TOKEN=%s\n' "$TG" | fly secrets import -a nuzantara-rag
+  else echo "empty: nothing imported" >&2; fi; unset TG; }
 ```
 
 `fly secrets import` reads stdin, so the value never reaches argv or history, and it sets one
-release. This restarts every machine of the app (process groups `api` and `rag`): do it outside a
-client-facing window. Do not use `read -p` for the prompt: in zsh (the login shell on M5 and Pro) `-p`
-means coprocess, the read fails, and the pipe would import an empty `TELEGRAM_BOT_TOKEN=`.
+release. This restarts every machine of the app across process groups `api`, `rag`, and `drive`:
+do it outside a client-facing window. Do not use `read -p` for the prompt: in zsh (the login shell
+on M5 and Pro) `-p` means coprocess, the read fails, and the pipe would import an empty
+`TELEGRAM_BOT_TOKEN=`.
 
 Declared limits of `rotate_telegram_token.sh` (known, not fixed here):
 
@@ -99,8 +117,11 @@ Declared limits of `rotate_telegram_token.sh` (known, not fixed here):
 
 ## 7. Verify
 
+The first call is `getMe` with the host's own credentials and prints only ok and the username; the
+second sends directly to the owner chat (through the gateway a new p0 family would go to the board).
+
 ```bash
-python3 - <<'PY'   # getMe with the host's own credentials; prints only ok + username
+{ python3 - <<'PY'
 import json, sys, urllib.request
 sys.path.insert(0, "scripts"); import tg_notify
 t, _ = tg_notify.resolve_credentials()
@@ -110,11 +131,12 @@ try:
 except Exception as e:
     print("getMe FAILED:", type(e).__name__, getattr(e, "code", ""))
 PY
-python3 - <<'PY'   # direct send to the owner chat; the gateway would route a new p0 family to the board
+python3 - <<'PY'
 import sys; sys.path.insert(0, "scripts"); import socket, tg_notify
 t, c = tg_notify.resolve_credentials()
 print("sent:", tg_notify.send_telegram(t, c, f"token rotation test {socket.gethostname()}"))
 PY
+}
 ```
 
 The test must print `sent: True` (with `TG_DRY_RUN` set it only spools, so unset it first) and the message must arrive in the owner chat.
@@ -129,25 +151,33 @@ escalation must close on its next tick.
    gateway ladder while the token was dead. Remove only that key, under the spool flock:
 
    ```bash
-   python3 - <<'PY'
+   { python3 - <<'PY'
    import sys; sys.path.insert(0, "scripts"); import tg_notify as t
    KEY = "cost-breaker-deadman:governance-mute"
    sp = t._spool_dir()
-   with t._spool_lock(sp):          # same flock (.spool.lock) every gateway writer takes
+   with t._spool_lock(sp):
        s = t._load_state(sp)
        print("removed" if s.get("dedup", {}).pop(KEY, None) else "absent")
        t._save_state(sp, s)
    PY
+   }
    ```
+
+   The lock in that block is the same `.spool.lock` flock taken by every gateway writer.
 
 2. **Drain the spool.** Count first, render, then flush (one grouped message, grouped by source, cut at 3500 characters;
    unsent P0 lines carry a red mark, and a long spool can truncate them, so read the dry run):
 
    ```bash
-   S=~/.organism/tg_spool
-   grep -c '"p0_unsent": true' $S/pending.jsonl; wc -l < $S/pending.jsonl
-   python3 scripts/tg_digest_flush.py --dry-run | head -50   # read before sending
-   python3 scripts/tg_digest_flush.py                         # send; failure keeps the spool, exit 3
+   { S=~/.organism/tg_spool
+   grep -c '"p0_unsent": true' "$S/pending.jsonl"; wc -l < "$S/pending.jsonl"
+   python3 scripts/tg_digest_flush.py --dry-run | head -50; unset S; }
+   ```
+
+   Read that output, then send. A failed send keeps the spool and exits 3.
+
+   ```bash
+   python3 scripts/tg_digest_flush.py
    ```
 
    To discard instead of sending: archive, never delete (`archive/` is the history): move
