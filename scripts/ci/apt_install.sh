@@ -49,13 +49,59 @@ APT_OPTS=(
   -o DPkg::Lock::Timeout=30
 )
 
-# Ceiling: 60 + 60 = 120s worst case. Every caller has at least a 10-minute
-# budget, so a stall now costs two minutes and SAYS SO, instead of consuming
-# the job and reporting a cancellation nobody can attribute.
+# Ceiling: (60 + 60) primary + (60 + 60) fallback = 240s worst case. Every
+# caller has at least a 10-minute budget, so a stall now costs four minutes
+# and SAYS SO, instead of consuming the job and reporting a cancellation
+# nobody can attribute.
 if ! timeout 60 sudo apt-get "${APT_OPTS[@]}" update -qq; then
-  echo "::warning::apt_install: 'apt-get update' stalled or failed; attempting install against the existing cache"
+  echo "::warning::apt_install: primary mirror update stalled or failed; attempting install against the existing cache"
 fi
 timeout 60 sudo apt-get "${APT_OPTS[@]}" install -y -qq "$@" || true
+
+if [ "$VERIFY" = "-" ] || command -v "$VERIFY" >/dev/null 2>&1; then
+  echo "apt_install: delivered by primary mirror"
+else
+  FALLBACK_ATTEMPTED=0
+  SOURCE_FILE="${APT_INSTALL_SOURCES_FILE:-}"
+  if [ -z "$SOURCE_FILE" ]; then
+    if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+      SOURCE_FILE=/etc/apt/sources.list.d/ubuntu.sources
+    elif [ -f /etc/apt/sources.list ]; then
+      SOURCE_FILE=/etc/apt/sources.list
+    fi
+  fi
+
+  if [ -z "$SOURCE_FILE" ] || [ ! -f "$SOURCE_FILE" ]; then
+    echo "apt_install: no active apt sources file; fallback skipped" >&2
+  else
+    SOURCE_URL="$(grep -Eo 'https?://[^/[:space:]]+' "$SOURCE_FILE" | head -n 1 || true)"
+    SOURCE_HOST="${SOURCE_URL#*://}"
+    SOURCE_HOST="${SOURCE_HOST%%/*}"
+    if [ -z "$SOURCE_URL" ] || [ -z "$SOURCE_HOST" ]; then
+      echo "apt_install: no mirror host in active apt sources; fallback skipped" >&2
+    else
+      FALLBACK_HOST=archive.ubuntu.com
+      [ "$SOURCE_HOST" = "$FALLBACK_HOST" ] && FALLBACK_HOST=us.archive.ubuntu.com
+      TMP_SOURCES="$(mktemp)"
+      TMP_SOURCE_PARTS="$(mktemp -d)"
+      trap 'rm -f "$TMP_SOURCES"; rmdir "$TMP_SOURCE_PARTS" 2>/dev/null || true' EXIT
+      sed "s#://$SOURCE_HOST/#://$FALLBACK_HOST/#g" "$SOURCE_FILE" >"$TMP_SOURCES"
+      FALLBACK_ATTEMPTED=1
+      timeout 60 sudo apt-get "${APT_OPTS[@]}" \
+        -o "Dir::Etc::SourceList=$TMP_SOURCES" \
+        -o "Dir::Etc::SourceParts=$TMP_SOURCE_PARTS" update -qq || true
+      timeout 60 sudo apt-get "${APT_OPTS[@]}" \
+        -o "Dir::Etc::SourceList=$TMP_SOURCES" \
+        -o "Dir::Etc::SourceParts=$TMP_SOURCE_PARTS" install -y -qq "$@" || true
+      if command -v "$VERIFY" >/dev/null 2>&1; then
+        echo "apt_install: delivered by fallback mirror $FALLBACK_HOST"
+      fi
+    fi
+  fi
+  if [ "$FALLBACK_ATTEMPTED" = "1" ] && ! command -v "$VERIFY" >/dev/null 2>&1; then
+    echo "apt_install: package '$*' is still unavailable" >&2
+  fi
+fi
 
 # FAIL-CLOSED. Without this the script would exit 0 after a failed install and
 # the caller would go green with the tool absent — the same class of defect

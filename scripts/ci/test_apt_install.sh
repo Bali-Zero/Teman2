@@ -38,8 +38,10 @@ setup() {
   mkdir -p "$BIN"
   LOG_TIMEOUT="$SANDBOX/timeout.log"
   LOG_APT="$SANDBOX/apt.log"
+  LOG_SOURCE="$SANDBOX/fallback.sources"
   : >"$LOG_TIMEOUT"
   : >"$LOG_APT"
+  : >"$LOG_SOURCE"
 
   cat >"$BIN/timeout" <<EOF
 #!/usr/bin/env bash
@@ -56,7 +58,27 @@ EOF
   cat >"$BIN/apt-get" <<EOF
 #!/usr/bin/env bash
 echo "\$@" >>"$LOG_APT"
-for a in "\$@"; do
+ARGS=("\$@")
+SOURCE_LIST=""
+for ((i = 0; i < \${#ARGS[@]}; i++)); do
+  if [ "\${ARGS[i]}" = "-o" ]; then
+    i=\$((i + 1))
+    case "\${ARGS[i]}" in Dir::Etc::SourceList=*) SOURCE_LIST="\${ARGS[i]#Dir::Etc::SourceList=}" ;; esac
+  fi
+done
+IS_UPDATE=0
+for a in "\${ARGS[@]}"; do [ "\$a" = "update" ] && IS_UPDATE=1; done
+if [ "\${APT_REQUIRE_FALLBACK:-}" = "1" ]; then
+  if [ -z "\$SOURCE_LIST" ]; then exit 100; fi
+  cat "\$SOURCE_LIST" >"$LOG_SOURCE"
+  [ "\$IS_UPDATE" = "1" ] && exit "\${APT_FALLBACK_UPDATE_RC:-0}"
+  if [ -n "\${APT_CREATES:-}" ]; then
+    printf '#!/bin/sh\nexit 0\n' >"$BIN/\$APT_CREATES"
+    chmod +x "$BIN/\$APT_CREATES"
+  fi
+  exit "\${APT_FALLBACK_RC:-0}"
+fi
+for a in "\${ARGS[@]}"; do
   if [ "\$a" = "update" ]; then exit \${APT_UPDATE_RC:-0}; fi
 done
 if [ -n "\${APT_CREATES:-}" ]; then
@@ -110,11 +132,45 @@ else
 fi
 # The arithmetic that the FIRST cure got wrong (3x180s inside a 10-min budget).
 TOTAL=$(awk '{s += $1} END {print s+0}' "$LOG_TIMEOUT")
-if [ "$TOTAL" -le 120 ]; then
+if [ "$TOTAL" -le 240 ]; then
   ok "total bound ${TOTAL}s fits well inside a ten-minute job budget"
 else
   fail "total bound ${TOTAL}s is too close to (or over) the job budget"
 fi
+teardown
+
+# The primary mirror can stall while another mirror is healthy. The fallback
+# must use an isolated sources file, never rewrite /etc/apt.
+setup
+SOURCES="$SANDBOX/ubuntu.sources"
+printf 'Types: deb\nURIs: http://azure.archive.ubuntu.com/ubuntu\nSuites: noble\n' >"$SOURCES"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+[ "$RC" = "0" ] && ok "fallback mirror delivers after primary stalls" || fail "fallback mirror rc=$RC (want 0)"
+grep -q 'delivered by fallback mirror archive.ubuntu.com' "$SANDBOX/out" && ok "...and names the fallback mirror" || fail "fallback delivery was not reported"
+grep -q 'archive.ubuntu.com' "$LOG_SOURCE" && ! grep -q 'azure.archive.ubuntu.com' "$LOG_SOURCE" && ok "...and rewrites only the temporary sources file" || fail "fallback sources were not rewritten"
+if grep -q '/etc/apt' "$LOG_APT"; then fail "fallback wrote /etc/apt"; else ok "...and never writes /etc/apt"; fi
+teardown
+
+# A second stalled mirror still fails closed and names the unavailable package.
+setup
+SOURCES="$SANDBOX/ubuntu.sources"
+printf 'URIs: http://azure.archive.ubuntu.com/ubuntu\n' >"$SOURCES"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_FALLBACK_RC=100 APT_INSTALL_SOURCES_FILE="$SOURCES")
+[ "$RC" != "0" ] && ok "two stalled mirrors fail closed" || fail "two stalled mirrors rc=0"
+grep -q "package 'nzfakebin' is still unavailable" "$SANDBOX/out" && ok "...and names the package" || fail "missing package failure message"
+TOTAL=$(awk '{s += $1} END {print s+0}' "$LOG_TIMEOUT")
+[ "$TOTAL" -le 240 ] && ok "...within the 240s timeout ceiling" || fail "timeout ceiling ${TOTAL}s exceeds 240s"
+teardown
+
+# Without a readable active sources file, fallback is explicitly skipped.
+setup
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_INSTALL_RC=100 APT_INSTALL_SOURCES_FILE="$SANDBOX/no-sources")
+[ "$RC" != "0" ] && ok "no sources file fails closed" || fail "no sources file rc=0"
+grep -q 'no active apt sources file; fallback skipped' "$SANDBOX/out" && ok "...and reports fallback skipped" || fail "missing no-sources message"
+[ "$(grep -c 'apt_install:' "$SANDBOX/out")" = "1" ] && ok "...with one stderr diagnostic" || fail "no-sources emitted extra diagnostics"
 teardown
 
 # The fail-open I wrote once and must not write again: apt exits 0, the
