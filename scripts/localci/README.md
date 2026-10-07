@@ -137,7 +137,7 @@ Node jobs (E2E, Visa Oracle smoke) add three deps keys, all built into the same 
 
 A required context that is one leg of a matrix (`Frontend Tests (Next.js) (mouth, true)`) names it with `leg:`; an include-only
 matrix expands as hosted expands it. A network failure in the egress sandbox (a timeout or refused connection in its log) is no
-verdict on the candidate: ERROR, re-run. A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
+verdict on the candidate (the step is BLOCKED, never green; a vulnerability finding stays a verdict): re-run. A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
 overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
 can change.
 

@@ -21,6 +21,7 @@ import hashlib
 import html
 import io
 import json
+import math
 import os
 import platform
 import shlex
@@ -463,7 +464,7 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
             tm = ws.get("timeout-minutes")
             if coe not in (None, False, True) or (tm is not None and (isinstance(tm, bool) or not isinstance(tm, (int, float)) or tm <= 0)):
                 return None, f"workflow step {wname!r}: continue-on-error/timeout-minutes must be literals here"
-            step.update({k: v for k, v in (("id", ws.get("id")), ("continue_on_error", coe is True), ("timeout_s", int(tm * 60) if tm else None)) if v})
+            step.update({k: v for k, v in (("id", ws.get("id")), ("continue_on_error", coe is True), ("timeout_s", math.ceil(tm * 60) if tm else None)) if v})
         elif ws.get("timeout-minutes") is not None:   # hosted kills the step there; only the expression-mode driver does too
             return None, f"workflow step {wname!r}: a step timeout-minutes is emulated only in a service context (expressions: true)"
         if st.get("trusted_scan") is False:   # a path filter (`case` list, `git diff -- <paths>`) names surfaces, not judges
@@ -1023,9 +1024,11 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
             return _blocked(f"job {jid}: the matrix lists its steps out of BASE order; outputs and job status flow in that order")
         prefix, why = select_python(job, pyv.get("container"), pyv.get("container_extra"))
         legs, why2 = matrix_legs(job)
-        if legs and jl.get("leg") is not None:   # a required context that is one leg's check run: "Frontend Tests (Next.js) (mouth, true)"
-            legs = [g for g in legs if g == jl["leg"]]
-            why2 = why2 or (None if len(legs) == 1 else f"leg {jl['leg']!r} is not exactly one leg of the BASE matrix")
+        if legs and (want := jl.get("leg")) is not None:   # a required context that is one leg's check run: "Frontend Tests (Next.js) (mouth, true)"
+            legs = [g for g in legs if set(g) == set(want) and all(type(g[k]) is type(v) and g[k] == v for k, v in want.items())]   # 1 is not true
+            shown = "(" + ", ".join(str(v).lower() if isinstance(v, bool) else str(v) for v in legs[0].values()) + ")" if len(legs) == 1 else None
+            why2 = why2 or (None if shown and jid == ctx.get("job_id") and name.endswith(shown) else
+                            f"leg {want!r} is not exactly one leg of the context's own job, the one whose check run is {name!r}")
         svcs, why3 = plan_services(job, local.get("service_images") or {}, iso["docker"])
         if why or why2 or why3:
             return _blocked(f"job {jid}: {why or why2 or why3}")
@@ -1093,7 +1096,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 return _blocked(f"job {jid}: {deps_note}")
         planned.append({"job_id": jid, "needs": needs, "legs": legs, "steps": steps, "job_env": jenv, "services": svcs, "path_prefix": prefix,
                         "checkout": checkout, "image_id": image_id, "deps": deps_note, "venv": local.get("bare_venv", True) is not False,
-                        "timeout_s": int(tm * 60)})
+                        "timeout_s": math.ceil(tm * 60)})
         upstream.add(jid)
     for f in local.get("egress_trusted") or []:   # a tool an egress step runs is BASE's pin, or the step does not run at all
         if _extract_base_file(wt, base, f) != _extract_base_file(wt, cand, f):
@@ -1872,9 +1875,11 @@ def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base:
     tail = log.read_text(errors="replace")[-4000:] if log.exists() else ""
     if err or not got or len(got) != 1 or got[0]["name"] != st["name"] or (rc, got[0]["status"]) not in ((0, "PASS"), (1, "FAIL")):
         return {"rc": None, "reason": f"egress sandbox gave no consistent verdict: {err or f'rc={rc}, junit {got}'}", "log": tail}
-    if rc == 1 and (net := re.search(r"(ReadTimeoutError|ConnectTimeoutError|NewConnectionError|Max retries exceeded|Temporary failure in name "
-                                     r"resolution)[^\n]{0,120}", tail)):
-        return {"rc": None, "reason": f"the network failed the egress step, not the candidate ({net.group(0)[:100]}): no verdict, re-run", "log": tail}
+    full = log.read_text(errors="replace") if log.exists() else ""
+    if rc == 1 and not re.search(r"known vulnerabilit|^Name +Version +ID", full, re.I | re.M) and (  # a finding is a verdict, network or not
+            net := re.search(r"(ReadTimeoutError|ConnectTimeoutError|NewConnectionError|Max retries exceeded|Temporary failure in name "
+                             r"resolution)[^\n]{0,120}", full)):
+        return {"rc": None, "reason": f"the network failed the egress step, not the candidate ({net.group(0)[:100]}): no verdict (never green), re-run", "log": tail}
     return {"rc": rc, "reason": f"egress sandbox: {got[0]['reason']}", "log": tail}
 
 

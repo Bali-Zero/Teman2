@@ -421,6 +421,23 @@ def test_an_include_only_matrix_expands_as_hosted_and_a_context_can_be_one_leg(m
         assert [g for g in legs if g == leg] == want and len(legs) == 2
 
 
+@pytest.mark.parametrize("name,leg,ok", [
+    ("Fan In (a, true)", {"app": "a", "cov": True}, True),
+    ("Fan In (a, true)", {"app": "a", "cov": 1}, False),        # 1 is not true: hosted would name that leg "(a, 1)"
+    ("Fan In (a, true)", {"app": "a", "cov": "true"}, False),
+    ("Fan In (b, false)", {"app": "a", "cov": True}, False),   # the leg run must be the one the required context names
+    ("Fan In (a, true)", {"app": "a"}, False),
+])
+def test_a_leg_selector_takes_exactly_the_leg_the_required_context_names(tmp_path, monkeypatch, name, leg, ok):
+    matrix = {"include": [{"app": "a", "cov": True}, {"app": "b", "cov": False}]}
+    wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "fanin": {**WORKFLOW["jobs"]["fanin"], "strategy": {"matrix": matrix}}}}
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, {**svc_ctx(leg=leg), "name": name}, {WF: yaml.safe_dump(wf)})
+    if ok:
+        assert spec.get("status") != "BLOCKED" and spec["jobs"][1]["legs"] == [{"app": "a", "cov": True}]
+    else:
+        assert spec["status"] == "BLOCKED" and "exactly one leg" in spec["reason"]
+
+
 def test_the_npm_closure_is_the_locks_registry_entries_and_its_workspace_manifests(tmp_path):
     repo, cand = npm_repo(tmp_path, {"node_modules/playwright-core": REG, "node_modules/w": {"resolved": "apps/w", "link": True}}, ["apps/w"])
     files, pw, why = runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})
@@ -463,6 +480,10 @@ def test_a_network_failure_in_the_egress_sandbox_is_no_verdict_on_the_candidate(
     st = {"name": "audit", "side": {"where": "egress", "inputs": [], "rewrite": []}}
     got = runner._run_egress("ctx.t", {"context": "t"}, {"timeout_s": 60, "image_id": "i"}, st, "s", {}, {}, {}, [], tmp_path, {})
     assert got["rc"] is None and "the network failed" in got["reason"]
+    finding = "Found 1 known vulnerability in 1 package\nName Version ID\nx 1.0 CVE-1\n"   # a finding beside a timeout stays a verdict
+    monkeypatch.setattr(runner, "execute_contained", lambda *a, **k: (fake_exec(*a, **k), a[8].write_text(a[8].read_text() + finding))[0])
+    got = runner._run_egress("ctx.t", {"context": "t"}, {"timeout_s": 60, "image_id": "i"}, st, "s", {}, {}, {}, [], tmp_path, {})
+    assert got["rc"] == 1
 
 
 def test_an_upstream_verdict_reaches_the_fan_in_and_an_upstream_without_one_stops_the_chain(monkeypatch, tmp_path):
