@@ -830,6 +830,24 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
 MERGE_GROUP_EVENT_KEYS = {"merge_group", "repository", "organization", "installation", "sender", "enterprise"}   # `action` is modelled
 
 
+REBUILT_IDS = {("github", "sha"), ("github", "event", "merge_group", "base_sha"), ("github", "event", "merge_group", "head_sha")}
+
+
+def rebuilt_id(texts) -> str | None:
+    """The first commit id the sandbox rebuilds that `texts` reads: only the driver knows those ids, once it has built the commits, so a text
+    the runner evaluates itself (an artifact name or path, a host or egress step) cannot read them (Codex, B1 delta review)."""
+    X = _gh_expr()
+    for t in texts:
+        try:
+            found = X.paths(str(t or ""))
+        except X.ExprError:   # what does not parse is refused where that text is evaluated
+            continue
+        for path in found:   # the id itself, or an object that holds it (`${{ github.event.merge_group }}`)
+            if any(ids[:len(path)] == tuple(str(p).lower() for p in path) for ids in REBUILT_IDS):
+                return ".".join(path)
+    return None
+
+
 def unmodelled_path(path: list, gh: dict, needs: list, stood_in: dict) -> str | None:
     """Why a path the BASE job reads holds a value hosted that this run does not (refused), or None. `steps`, `env`, `matrix` and
     `vars` are the run's own (vars as the matrix declares them); a key absent from a merge_group event is null hosted as here."""
@@ -936,6 +954,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 for path in X.paths(t):
                     if (why := unmodelled_path(path, gh, needs, local.get("needs") or {})):
                         raise X.ExprError(f"`{'.'.join(path)}` {why}")
+            if (rid := rebuilt_id(v for st in steps for v in (st.get("emulate") or {}).values())):
+                raise X.ExprError(f"an artifact name or path reads `{rid}`, a commit id only the driver knows")
         except X.ExprError as e:
             return _blocked(f"job {jid}: {e}")
         tm = job.get("timeout-minutes", 360)
@@ -944,6 +964,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
         by_name = {str(ms.get("workflow_step") or ms.get("workflow_step_prefix")): ms for ms in jl.get("steps") or [] if ms.get("side")}
         for st in steps:
             ms = next((m for k, m in by_name.items() if st["name"] == k or st["name"].startswith(k) and by_name[k].get("workflow_step_prefix")), None)
+            if ms and (rid := rebuilt_id([st.get("script"), *(st.get("env") or {}).values(), *(ms.get("argv") or [])])):
+                return _blocked(f"job {jid}: side step {st['name']!r} reads `{rid}`, a commit id only the driver knows (it runs outside it)")
             if (ms or {}).get("side") == "egress":   # run in its own sandbox WITH network: only the files it names, only tools BASE pins
                 for a, b in (ms.get("rewrite") or []):
                     if st.get("script", "").count(a) != 1:

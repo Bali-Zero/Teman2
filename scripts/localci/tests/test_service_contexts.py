@@ -301,6 +301,20 @@ def test_a_deps_recipe_the_runner_cannot_pin_is_refused_before_anything_is_built
     assert image is None and needle in why
 
 
+def test_a_commit_id_the_sandbox_rebuilds_is_refused_wherever_the_runner_evaluates_the_text_itself(tmp_path, monkeypatch):
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, host_ctx(["$PY", READER, "--sha", "${{ github.SHA }}"]), HOST_BASE)
+    assert spec["status"] == "BLOCKED" and "github.SHA" in spec["reason"] and "only the driver knows" in spec["reason"]
+    assert runner.rebuilt_id(["${{ github.event.merge_group }}"]) == "github.event.merge_group"
+    assert runner.rebuilt_id(["${{ github.event.merge_group.head_ref }} github.sha", "${{ github.repository }}"]) is None
+    up = {"name": "up", "uses": "actions/upload-artifact@v4", "with": {"name": "cov-${{ github.event.merge_group.head_sha }}", "path": "out"}}
+    wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "unit": {**WORKFLOW["jobs"]["unit"], "steps": [*WORKFLOW["jobs"]["unit"]["steps"], up]}}}
+    ctx = svc_ctx(jobs=[{"job_id": "unit", "steps": [{"workflow_step": "test"}, {"workflow_step": "up", "emulate": True}]}])
+    spec = planned_svc(tmp_path / "art", monkeypatch, fr.CANDIDATE_FILES, ctx, {WF: yaml.safe_dump(wf)})
+    assert spec["status"] == "BLOCKED" and "artifact name or path" in spec["reason"]
+    up["with"]["name"] = "cov"
+    assert planned_svc(tmp_path / "ok", monkeypatch, fr.CANDIDATE_FILES, ctx, {WF: yaml.safe_dump(wf)}).get("status") != "BLOCKED"
+
+
 def test_a_job_timeout_given_as_an_expression_is_blocked_not_read_as_the_default(tmp_path, monkeypatch):
     wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "fanin": {**WORKFLOW["jobs"]["fanin"], "timeout-minutes": "${{ fromJSON(env.T) }}"}}}
     spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), {WF: yaml.safe_dump(wf)})
