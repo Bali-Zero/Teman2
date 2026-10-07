@@ -63,7 +63,7 @@ export default function ComparisonModal({
         return (
           <div className="space-y-1">
             {detail.licenses.length === 0 ? (
-              <span className="text-xs text-[#555]">None</span>
+              <span className="text-xs text-[#888]">None</span>
             ) : (
               detail.licenses.map((l, i) => (
                 <div key={i} className="text-xs text-[#BBB]">
@@ -102,7 +102,7 @@ export default function ComparisonModal({
                 <Dialog.Title className="text-lg font-serif text-[#F0F0F0]">
                   Compare KBLI Codes
                 </Dialog.Title>
-                <Dialog.Description className="text-xs text-[#666] mt-1">
+                <Dialog.Description className="text-xs text-[#888] mt-1">
                   Side-by-side comparison of {codes.length} business codes
                 </Dialog.Description>
               </div>
@@ -127,7 +127,7 @@ export default function ComparisonModal({
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left text-[11px] uppercase tracking-widest text-[#555] py-3 px-3 border-b border-white/5 w-28">
+                      <th className="text-left text-[11px] uppercase tracking-widest text-[#888] py-3 px-3 border-b border-white/5 w-28">
                         Field
                       </th>
                       {details.map((d, i) => (
@@ -146,7 +146,7 @@ export default function ComparisonModal({
                         key={col}
                         className="border-b border-white/5 last:border-0"
                       >
-                        <td className="py-3 px-3 text-xs text-[#666] font-medium align-top whitespace-nowrap">
+                        <td className="py-3 px-3 text-xs text-[#888] font-medium align-top whitespace-nowrap">
                           {col}
                         </td>
                         {details.map((d, i) => (
@@ -154,7 +154,7 @@ export default function ComparisonModal({
                             {d ? (
                               getCellValue(d, col)
                             ) : (
-                              <span className="text-xs text-[#444]">Error</span>
+                              <span className="text-xs text-[#888]">Error</span>
                             )}
                           </td>
                         ))}
