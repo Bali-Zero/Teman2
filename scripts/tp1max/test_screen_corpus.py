@@ -72,15 +72,23 @@ SEP = re.compile(r"[\s().\-/‐-― ]")
 CLAIM = {
     "secret": lambda v: re.search(
         r"(?im)gh[pousr]_\w{20}|github_pat_|glpat-|npm_\w{20}|[sr]k_live_|sk-|xkeysib-|SG\.\w|hf_\w{20}|xox[abprs]-\d"
-        r"|AIza|GOCSPX-|ya29\.|AKIA|ASIA|FlyV1|f[mo][12]_|AGE-SECRET-KEY-|whsec_|eyJ\w+\.\w+\.|PRIVATE[ _]KEY-----"
+        r"|EAA[A-Za-z0-9]{20}|tskey-[\w-]{20}|gsk_[A-Za-z0-9]{20}|vendorz_[A-Za-z0-9]{20}"
+        r"|AIza|GOCSPX-|ya29\.|AKIA|ASIA|FlyV1|f[mo][12]_|AGE-SECRET-KEY-|whsec_|eyJ\w+\.\w+\.|PRIVATE[ _]KEY(?: BLOCK)?-----"
         r"|webhooks/\d|hooks\.slack\.com/services/T|AccountKey=\w|\d{6,}:AA"
+        r"|os\.environ\.setdefault\([^\n]+|\bsetenv(?:\s+|\s*\()\W{0,2}\w*(?:pass|secret|token|key)\w*[^\n]+"
+        r"|<password>[^<]+</password>|\bpassword=\"[^\"]+\"|\"auth\"\s*:\s*\"[^\"]+\"|_auth(?:Token)?\s*=\s*\S+"
         r"|(?:pass|pwd|_pw\b|secret|token|api_?key|_key|auth)\w*\W{0,3}\s*[:=]\s*(?:[|>]-?\s+)?\(?\W{0,2}[^\s'\"$\\]"
         r"|--(?:http-|ftp-|proxy-)?pass(?:word|wd)?[=\s]+\S|\blogin\s+\S+\s+password\s+\S|^\s*password\s+\S+\s*$"
         r"|(?<![\w-])-[pu]\s?['\"]?[^\s'\"]|--user\W|://[^\s/:@]+:[^\s@{]+@|^[^:\s]+:\d+:[^:\s]+:[^:\s]+:\S+$", v),
-    "phone": lambda v: re.search(r"(?:\+|00)?\d{9,15}", SEP.sub("", v)),
+    "phone": lambda v: re.search(
+        r"(?i)(?:phone|whatsapp|wa|mobile|hp|telp?|no_hp)\W*(?:\d\D*){7,15}|(?:\+|00)?\d{9,15}",
+        SEP.sub("", v)),
     "email": lambda v: re.search(r"(?:\"[^\"]+\"|[^\s@<>\"]+)@[^\s@<>\"]+\.[A-Za-z]{2,}", re.sub(
         r"\s*\.\s*|\s*[\[(]dot[\])]\s*|\s+dot\s+", ".", re.sub(r"\s*[\[(]at[\])]\s*|\s+at\s+", "@", v))),
-    "id_number": lambda v: re.search(r"(?<!\d)\d{15,16}(?!\d)|\b[A-Z]\d{7}\b", re.sub(r"(?<=\d)[.\-](?=\d)", "", v)),
+    "id_number": lambda v: re.search(
+        r"(?i)(?:passport|paspor|kitas|kitap)\w*\W*(?=(?:[A-Z]*\d){6})[A-Z0-9]{6,16}\b"
+        r"|(?:nik|ktp|kk|npwp)\W*\d{6,16}\b|(?<!\d)\d{15,16}(?!\d)|\b[A-Z]\d{7}\b",
+        re.sub(r"(?<=\d)[.\-](?=\d)", "", v)),
     "crm_name": lambda v: re.search(r"[A-Z][a-z]+ [A-Z][a-z]+", v),
 }
 
@@ -174,6 +182,7 @@ def test_receipt_coverage_and_declared_limits_match_the_spec():
     assert by_source.get("gate-7971:B1") == 16
     assert by_source.get("gate-7971-r2:B1-r2") == 12
     assert by_source.get("gate-7971-r2:N1") == 6
+    assert by_source.get("gate-7988") == 33
     assert sum(1 for r in ROWS if r["kind"] == "innocence" and r["category"] != "structural") >= 30
     spec = SPEC.read_text(encoding="utf-8")
     limits = {r["id"] for r in ROWS if r.get("limit")}
@@ -181,13 +190,29 @@ def test_receipt_coverage_and_declared_limits_match_the_spec():
     assert limits and limits == named, (sorted(limits), sorted(named))
 
 
-TOKEN_SHAPED = re.compile(
+BARE_TOKEN_FAMILY = re.compile(
     r"gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|xkeysib-\w{20,}|AKIA[0-9A-Z]{16}|AIza[\w-]{30,}"
-    r"|-----BEGIN[A-Z ]*PRIVATE KEY-----|\d{8,10}:AA[\w-]{30,}|sk_live_\w{20,}|SG\.[\w-]{20,}\.[\w-]{20,}"
-    r"|hf_\w{30,}|eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,}|://[^\s/:@\"'{}$]+:[^\s@\"'{}$]{2,}@"
+    r"|-----BEGIN[A-Z ]*PRIVATE KEY(?: BLOCK)?-----|\d{8,10}:AA[\w-]{30,}|sk_live_\w{20,}|SG\.[\w-]{20,}\.[\w-]{20,}"
+    r"|hf_\w{30,}|(?<![\w-])eyJ[\w-]{10,8192}\.[\w-]{10,8192}\.[\w-]{10,8192}"
     r"|npm_\w{30,}|glpat-\w{20,}|xox[abprs]-\d{6,}|AGE-SECRET-KEY-1\w{20,}|whsec_\w{20,}|GOCSPX-\w{20,}"
     r"|sk-proj-\w{20,}|f[mo][12]_\w{20,}|AccountKey=[\w+/]{20,}|hooks\.slack\.com/services/T\w+/B|webhooks/\d{10,}/"
-    r"|(?:\+?62|\b0)8\d{2}[ -]?\d{3,4}[ -]?\d{3,4}|\+\d{1,3}(?:[ .-]?\d{2,4}){3}", re.I)
+    r"|EAA[A-Za-z0-9]{20,}|tskey-[\w-]{20,}|gsk_[A-Za-z0-9]{20,}|vendorz_[A-Za-z0-9]{20,}", re.I)
+
+ID_MOBILE = re.compile(r"(?:\+?62|\b0)8\d{2}[ -]?\d{3,4}[ -]?\d{3,4}")
+
+TOKEN_SHAPED = re.compile(
+    BARE_TOKEN_FAMILY.pattern
+    + r"|://[^\s/:@\"'{}$]+:[^\s@\"'{}$]{2,}@"
+    + "|" + ID_MOBILE.pattern + r"|\+\d{1,3}(?:[ .-]?\d{2,4}){3}", re.I)
+
+
+@pytest.mark.parametrize("row", [r for r in ROWS if r["kind"] == "innocence"],
+                         ids=[r["id"] for r in ROWS if r["kind"] == "innocence"])
+def test_materialised_innocence_matches_no_credential_family(row):
+    value = materialise(row)
+    value = value.decode("latin-1") if isinstance(value, bytes) else value
+    assert BARE_TOKEN_FAMILY.search(value) is None, row["id"]
+    assert ID_MOBILE.search(value) is None, row["id"]
 
 
 def test_the_corpus_file_holds_no_token_dsn_or_phone_shaped_literal():

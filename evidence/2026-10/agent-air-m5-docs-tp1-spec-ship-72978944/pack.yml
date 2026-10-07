@@ -36,6 +36,9 @@ lanes:
   - lane: council-ollama-mini
     role: review
     seat: ollama-mini/qwen3.5:9b
+  - lane: cure-r1-gate-7988
+    role: build
+    seat: codex-gpt-5.6-sol
 what_changed: |
   - docs/specs/tp1-input-screen.md: the spec. Threat model; decision order; literal/placeholder
     semantics; named-assignment tiers P/S/K with value placement (same line, next line, block
@@ -45,7 +48,13 @@ what_changed: |
     role locals on own domains, one exact vendor no-reply address and RFC-reserved names; national IDs
     and CRM names; structural refusals; O(n) bound, summary schema with the builder's keys; six
     declared limits; measurable acceptance.
-  - scripts/tp1max/screen_corpus.yaml: 274 rows, 196 guilt / 78 innocence (Codex draft 185 = 131/54).
+  - scripts/tp1max/screen_corpus.yaml: 274 rows, 196 guilt / 78 innocence (Codex draft 185 = 131/54);
+    after cure round 1 (gate-7988) 307 rows, 223 guilt / 84 innocence.
+  - cure round 1 (gate-7988 B1/B2): Codex O2 built the spec/corpus cure (seat_build.sh, 01:29-01:47Z,
+    2026-10-07); the Claude verifier re-ran the gate's 36 shapes on the cured text, corrected 8 defects
+    of the cure (9-digit passports, the real Tailscale shape, a Tier K regression on hex and 20-31
+    character keys, bypass/compass, registry auth slots, the B2 wording, bundled guilt rows, PGP
+    armor) and added g7988_20-27 and g7988_innocent_04-06. 33 rows carry source gate-7988.
   - scripts/tp1max/test_screen_corpus.py: schema, reconstruction, claimed shapes, base64 round trip,
     setup coherence, source counts, limits = spec list, summary keys = reason enum, raw-literal scan.
   - .github/workflows/tp1-runner-tests.yml: the corpus test as a step of the existing TP1 workflow
@@ -53,7 +62,9 @@ what_changed: |
 proof: |
   Deterministic floor 3, source path, measured with --print-floor / --print-floor-source.
   Coverage: gate-7927 B1 31 rows, gate-7971 B1 16, gate-7971-r2 B1-r2 12, N1 6, YAML next line 1
-  (machine-counted by the test); 78 innocence rows, 69 outside the structural category.
+  (machine-counted by the test); 78 innocence rows, 73 outside the structural category (69 also
+  excluding the 4 cost rows). After cure round 1: gate-7988 33 rows (27 guilt, 1 a declared limit;
+  6 innocence), 84 innocence rows, 79 outside structural, 75 also excluding cost.
   Test: 463 passed on 3.11 and on 3.9.6. Mutations on scratch copies: 18 of 19 corpus/spec mutants
   red, the survivor is equivalent (standard and urlsafe base64 coincide for that payload); a
   materialiser mutant (drop the last encoded byte) turns 10 tests red.
@@ -191,6 +202,24 @@ review_disposition:
       disposition: NOT-A-DEFECT,
       proof: "uses Path(__file__).resolve(); CI runs from the repo root",
     }
+  - {
+      id: G7988-B1,
+      item: "gate-7988: 19 of 26 invented guilt shapes queued under the spec as written",
+      disposition: CONFIRMED,
+      proof: "g7988_01-27 one entity per row; rules in Named assignments, Assignment carriers, contexts, families, phones, national IDs; g7988_10 declared limit",
+    }
+  - {
+      id: G7988-B2,
+      item: "gate-7988: innocent_34 decided a landline by the phone text",
+      disposition: CONFIRMED,
+      proof: "landline candidate needs its own 0[2-7] first group or a marker; lone 0 and spaced / end a chain; dux_06 stays guilty",
+    }
+  - {
+      id: G7988-N1,
+      item: "gate-7988: innocence rows only checked raw",
+      disposition: CONFIRMED,
+      proof: "schema test materialises every innocence row: no credential family, no Indonesian mobile; mutants M3-M6 red",
+    }
 receipts:
   - claim: "deterministic floor 3, source path"
     cmd: "python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <changed> --numstat-file <numstat> --patch-file <workflow patch>"
@@ -215,6 +244,24 @@ receipts:
     result: "18 of 19 mutants red, 1 equivalent; materialiser mutant 10 red"
     exit: 0
     ts: "2026-10-06T13:48:10Z"
+    seat: claude-opus-5-5
+  - claim: "cure round 1: corpus test green on both interpreters"
+    cmd: "python3 -m pytest -q scripts/tp1max/test_screen_corpus.py; uv run --no-project --python 3.9 --with pytest --with PyYAML==6.0.3 python -m pytest -q <same>"
+    result: "607 passed (3.11.15) / 607 passed (3.9.6, pytest 8.4.2)"
+    exit: 0
+    ts: "2026-10-07T02:55:24Z"
+    seat: claude-opus-5-5
+  - claim: "cure round 1: secret guards clean, prettier clean"
+    cmd: "detect-secrets-hook --baseline .secrets.baseline <3 files> in a scratch repo (built canary rc 1); lint_pg_dsn_credentials/lint_telegram_tokens/lint_google_oauth_credentials <3 files>; prettier --check"
+    result: "rc 0 each; baseline unchanged"
+    exit: 0
+    ts: "2026-10-07T02:55:38Z"
+    seat: claude-opus-5-5
+  - claim: "cure round 1: mutation battery on scratch copies"
+    cmd: "python3 ~/.agent/campaign-20261005/work/dux-tp1spec-cure/mutate.py <worktree>"
+    result: "9 of 9 mutants red (limit both sides, built token/mobile/tailscale/PGP in innocence, passport claim, row deleted, phone digits)"
+    exit: 0
+    ts: "2026-10-07T02:55:27Z"
     seat: claude-opus-5-5
   - claim: ".github/workflows/tp1-runner-tests.yml on this PR head (both legs)"
     cmd: "gh pr checks <pr> (after push)"

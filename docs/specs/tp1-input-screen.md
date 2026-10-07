@@ -33,8 +33,9 @@ installed detector must not change it (the #7971 Codex build did exactly that; t
 A **literal** is a concrete scalar: quoted, after `=` or `:`, in a credential-bearing CLI slot, or in a
 URI authority. Not a literal: a shell variable or `${…}`/`{…}` interpolation, `$(…)` command
 substitution, a function call or attribute reference, an environment read, a type or class name, and a
-value that is WHOLLY a placeholder (`<…>`, `redacted`, `example`, `dummy`, `fake`, `placeholder`,
-`changeme`, `YOUR_…`). The placeholder test is on the complete value: a family token that merely
+value that is WHOLLY a placeholder (`<…>`, `redacted`, `example`, `dummy`, `fake`, `placeholder`, `xxx`,
+`changeme`, `YOUR_…` or `your-…` in any case, as in the value `your-api-key-here` of
+`g7988_innocent_05`). The placeholder test is on the complete value: a family token that merely
 contains `xxxx` or `example` stays guilty (`kimi_34`, `kl_05`), and a run of one repeated character is
 not a placeholder — that is how fixtures write tokens. An empty literal is not a value. A template or
 concatenation is innocent only when every credential slot in it is a reference: a literal fragment in a
@@ -46,13 +47,18 @@ credential slot (`f"postgresql://app:<literal>@{host}"`, `c1_07`) is a literal.
 
 The entity is `NAME <op> literal` in any of: `NAME = lit`, `NAME: lit`, `"NAME": "lit"`, `NAME=lit`,
 `export NAME=lit`, keyword argument `name="lit"`, `.npmrc` `//host/:_authToken=lit`. The name is
-normalised (case-folded, camelCase and `-` split into `_` segments); the rule reads its LAST segments.
+normalised (case-folded, camelCase and `-` split into `_` segments). Tier P/S/K stems match either the
+last `_`-separated segment or a suffix of the whole normalised name: `PGPASSWORD`, `SSHPASS`,
+`MYSQL_PWD`, and arbitrary names ending in `PASSWORD`, `SECRET`, `TOKEN` or `_KEY` cannot escape by
+attaching a prefix. The suffix match never applies to a whole name that is an ordinary word ending in a
+stem — `bypass`, `compass`, `encompass`, `surpass`, `trespass`, `overpass`, `underpass`
+(`BYPASS = "yes"` and `COMPASS = "north"` are innocent).
 
-| Tier | Name ends in                                                                                                                                     | Guilty literal                                                                                                                              | Innocent counterpart                                                                                                                         |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| P    | `PASS`, `PASSWD`, `PASSWORD`, `PASSPHRASE`, `PWD`, `PW`                                                                                          | any non-empty literal, any length, quoted or not, letters-only included (`DB_PASS`, `MYSQL_PWD`, `DRILL_PW`)                                | empty literal; number or boolean; a status word equal to a name segment or in {pass, passed, fail, failed, ok, skip} (`STATE_PASS = "pass"`) |
-| S    | `SECRET`, `TOKEN`, `AUTH_TOKEN`, `API_KEY`, `APIKEY`, `ACCESS_KEY`, `SECRET_KEY`, `PRIVATE_KEY`, `SIGNING_KEY`, `CLIENT_SECRET`, `CREDENTIAL(S)` | ≥ 16 characters mixing letters with a digit or non-letter, or ≥ 32 hex digits                                                               | `token_type = "Bearer"`, `token_status` (last segment is not in the tier); references; `$(…)`                                                |
-| K    | any other `KEY` except `PUBLIC_KEY`/`PUB_KEY`/`PUBKEY`                                                                                           | an opaque run: ≥ 32 hex digits, or ≥ 20 characters of the base64/base64url alphabet with a letter and a digit and no `:`, `.`, `/` or space | `CACHE_KEY = "session:user-profile:v2"`; settings references; public keys                                                                    |
+| Tier | Name ends in                                                                                                                                     | Guilty literal                                                                                                                                                                                                                             | Innocent counterpart                                                                                                                              |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P    | `PASS`, `PASSWD`, `PASSWORD`, `PASSPHRASE`, `PWD`, `PW`                                                                                          | any non-empty literal, any length, quoted or not, letters-only included (`DB_PASS`, `MYSQL_PWD`, `DRILL_PW`)                                                                                                                               | empty literal; number or boolean; a status word equal to a name segment or in {pass, passed, fail, failed, ok, skip} (`STATE_PASS = "pass"`)      |
+| S    | `SECRET`, `TOKEN`, `AUTH_TOKEN`, `API_KEY`, `APIKEY`, `ACCESS_KEY`, `SECRET_KEY`, `PRIVATE_KEY`, `SIGNING_KEY`, `CLIENT_SECRET`, `CREDENTIAL(S)` | ≥ 16 characters mixing letters with a digit or non-letter, or ≥ 32 hex digits                                                                                                                                                              | `token_type = "Bearer"`, `token_status` (last segment is not in the tier); references; `$(…)`                                                     |
+| K    | any other name ending in `KEY` except `PUBLIC_KEY`/`PUB_KEY`/`PUBKEY`                                                                            | an opaque value: ≥ 32 hex digits, or ≥ 20 characters all from the standard or URL-safe base64 alphabet (`+`, `/`, `-`, `_` and terminal `=` padding included) with a letter and a digit; a value holding `:`, `.` or a space is not opaque | `CACHE_KEY = "session:user-profile:v2"`; a path of lower-case `/`-separated segments (`uploads/2026/10/report`); settings references; public keys |
 
 A family signature (next section) overrides every length and tier condition.
 
@@ -63,10 +69,20 @@ trailing `:` (`password:` then an indented `pw`), after a YAML block-scalar indi
 line, or a mapping/tuple item as the value (`class TokenUsage:` + docstring is innocent).
 
 **Annotations.** After `:` in code, an unquoted value that is a builtin type name (`str`, `int`,
-`bytes`, `bool`, `float`, `dict`, `list`, `Any`, `None`, `object`) or a CamelCase identifier,
-optionally followed by `[…]`, `=`, `|` or `.attr(…)`, is an annotation or reference
-(`private_key: Ed25519PrivateKey`, `private_key = Ed25519PrivateKey.generate()`). Any other unquoted
-value after a Tier P/S/K name is a literal (`password: letmein`, same line, is guilty).
+`bytes`, `bool`, `float`, `dict`, `list`, `Any`, `None`, `object`) or a letters-only CamelCase
+identifier, optionally followed by `[…]`, `=`, `|` or `.attr(…)`, is an annotation or reference
+(`private_key: Ed25519PrivateKey`, `private_key = Ed25519PrivateKey.generate()`). A mixed-class value
+(letters with a digit or a non-letter) of ≥ 8 characters is a literal even when it resembles CamelCase
+(`password: Sup3rSecret` and a base64 value under `password:` in a Kubernetes Secret are guilty).
+Any other unquoted value after a Tier P/S/K name is a literal (`password: letmein`, same line, is guilty).
+
+**Assignment carriers.** The tier of the NAME decides, unchanged, when the name/value pair is written as
+`os.environ["NAME"] = "lit"`, `os.environ.setdefault("NAME", "lit")`, `setenv NAME lit`,
+`setenv("NAME", "lit", …)` or `putenv("NAME=lit")`, an XML element `<NAME>lit</NAME>` or a quoted
+attribute `NAME="lit"` (`g7988_14`, `g7988_26`), or `.pypirc` `password = lit`; `.git-credentials`
+lines are URIs (next section). Registry auth slots are guilty for ANY non-empty literal, because they
+hold base64 of `user:password` or a registry token: Docker `config.json` `"auth"` and
+`"identitytoken"` values, and `.npmrc` `_auth=`, `_authToken=` and `_password=`.
 
 ### Credential-bearing contexts
 
@@ -81,12 +97,14 @@ below the file cap, and may contain spaces (`kl_01`–`kl_03`).
   a five-field `host:port:db:user:password` row whose port is digits or `*` and whose user/password are not numeric;
 - `Authorization` / `Proxy-Authorization`: `Basic|Bearer|Token <literal>`, header or mapping syntax;
 - `auth=(user, password)` and equivalent literal two-tuples passed as `auth`;
-- an HTTPS `git clone` URL and `postgres(ql)`, `redis(s)`, `mongodb(+srv)` URLs whose user-info
-  holds a literal password or token, of any length (one character included).
+- any URI whose scheme matches `[a-z][a-z0-9+.-]*://` and whose user-info is `user:literal@`,
+  including mysql, AMQP, Redis, MongoDB, HTTPS and composite schemes such as
+  `postgresql+asyncpg`; the literal may be one character.
 
 Innocent: the same syntax with a variable, template or placeholder operand; prose naming an option
 without an operand (an option at the end of a line or followed only by punctuation); `date -u +%Y…`; an all-numeric colon list (`7880:7881:7882:50000:60000`); a URL with
-no user-info or a `{pwd}` template; `Authorization: Bearer YOUR_JWT_TOKEN`.
+no user-info or a `{pwd}` template. In particular `user:${PASS}@`, `user:<password>@` and
+`user:xxx@` are placeholders, not credentials; `Authorization: Bearer YOUR_JWT_TOKEN` is innocent.
 
 ### Credential families
 
@@ -100,10 +118,13 @@ Required: GitHub `ghp_`,
 and `whsec_`; OpenAI `sk-` (incl. `sk-proj-`); Brevo `xkeysib-`; SendGrid `SG.<22>.<43>`; HuggingFace
 `hf_`; Slack `xox[abprs]-` and `hooks.slack.com/services/`; Discord webhook URLs; Telegram
 `<bot id>:AA…`; Google `AIza`, `GOCSPX-`, `ya29.`; AWS `AKIA`/`ASIA` ids and 40-character secret
-values under an AWS secret name (assignment or JSON key); Fly `FlyV1`, `fm1_`, `fm2_`, `fo1_`; age
-`AGE-SECRET-KEY-1`; Azure `AccountKey=`. Every family here has its own corpus row; a family joins this
+values under an AWS secret name (assignment or JSON key); Fly `FlyV1`, `fm1_`, `fm2_`, `fo1_`; Meta
+`EAA[A-Za-z0-9]{20,}`; Tailscale `tskey-` (general grammar: the real
+`tskey-auth-<id>CNTRL-<secret>` keeps its inner `-`, `g7988_08`); Groq
+`gsk_[A-Za-z0-9]{20,}`; age `AGE-SECRET-KEY-1`; Azure `AccountKey=`. Every family here has its own corpus row; a family joins this
 list only together with its row. PEM private keys: header in any case, LF, CRLF or `\n`-escaped; a header alone is
-sufficient; a headerless body is guilty under a Tier S name. A PEM PUBLIC key block is innocent.
+sufficient; a headerless body is guilty under a Tier S name. An OpenPGP `-----BEGIN PGP PRIVATE KEY
+BLOCK-----` armor header is guilty like a PEM header (`g7988_27`). A PEM PUBLIC key block is innocent.
 JWT: three base64url segments of 8–8192 characters each, the first starting `eyJ`, matched in linear time.
 
 ## Decoded views
@@ -131,11 +152,19 @@ preceded by a digit (a letter, `_` or punctuation may precede it: `phone628…`,
 spans consecutive groups up to 15 digits; every group-aligned prefix is tested, so a trailing year or a
 second number (`… / 0813…`) does not hide the first. Markers: `+` glued to the first digit or inside
 `(+62)`; `00` followed by a country code `[1-9]`; `tel:`, `wa.me/`, `@s.whatsapp.net`; a phone label
-(`phone`, `tel`, `hp`, `wa`, `whatsapp`, `mobile`, `contact`) attached to the value.
+(`phone`, `whatsapp`, `wa`, `mobile`, `hp`, `tel`, `telp`, `no_hp`, `contact`) attached to the value.
+A labelled value with 7–15 digits is a phone in any domestic grouping, including Indonesian, Italian,
+German and US forms; labels alone, placeholders and all-zero examples are innocent, as are ports and
+version strings merely adjacent to a label.
 
 Guilty shapes: Indonesian mobile `08` + 8–11 digits, `628`/`+628`/`00628` + 8–11, and `62 (0)8…` /
 `+62 (0)8…` with the `(0)` dropped; Indonesian landline `0[2-7]` + 7–10 more digits, or the same after
-`+62`; international `+`/`00` + country code with 8–15 digits in total.
+`+62`; international `+`/`00` + country code with 8–15 digits in total. A landline candidate is one
+whose OWN first group starts with `0[2-7]` (`(0361) 777777`, `021-5555555`), or one that carries a
+marker (a phone label, a glued `+62`, `tel:`). A first group that is a lone `0` never starts a
+landline, and a `/` with a space on either side is an operator that ends the chain (each side is its
+own candidate), so `(h >>> 0) / 4294967295` is two numbers and neither is a phone, while the two
+mobiles of `dux_06` stay two phones.
 
 Innocent, checked BEFORE phone matching and removed from the stream: dates and times (`YYYY-MM-DD`,
 `DD-MM-YYYY`, `DD/MM/YYYY`, `YYYY.MM.DD` with valid month/day, optional `HH:MM[:SS]`, ISO 8601);
@@ -164,9 +193,13 @@ full match, never a prefix match).
 
 ### National IDs (reason `id_number`) and CRM-like names (reason `crm_name`)
 
-`id_number`: a 16-digit NIK/KTP/KK, a 15–16-digit NPWP (with or without its `.`/`-` formatting: `c1_09`)
-or a passport number (one letter + 7 digits) attached to a key or label `nik`, `ktp`, `no_ktp`,
-`nomor_ktp`, `kk`, `npwp`, `passport`, `passport_no`, `paspor`. `crm_name`: a string literal of 2–6
+`id_number`: a 16-digit NIK/KTP/KK, a 15–16-digit NPWP (with or without its `.`/`-` formatting: `c1_09`),
+or a passport, KITAS or KITAP number: 6–16 letters and digits, with at least 6 digits, in any issuer's
+order (`AB1234567`, a 9-digit US/UK number, `C01X00T47`, an alphanumeric KITAS card number). The value
+must be attached to a key or label whose normalised name (as in Named assignments) has a segment
+`nik`, `ktp`, `kk`, `npwp`, `kitas`, `kitap`, `passport` or `paspor` (`no_ktp`, `nomor_kitas`,
+`passport_number`, `passportNo`, `no_paspor`). A label by itself, a whole-value placeholder, or an
+all-zero example is innocent. `crm_name`: a string literal of 2–6
 words, each starting with a letter, under a key `name`, `full_name`, `nama`, `client_name`,
 `customer_name` or `contact_name`, in a record whose other keys name a client/customer/contact/lead/stage
 or hold a phone or e-mail field (`normative_10`).
@@ -215,8 +248,11 @@ and those rows differ. Everything not listed here is a defect when it leaks.
 - `limit:r2x_11` — a credential under three or more base64 layers (depth is bounded at two for cost).
 - `limit:lim_01` — a personal name outside any CRM-like structure (no named-entity recognition).
 - `limit:lim_02` — an address spelled with plain words (`person at client dot corp`).
-- `limit:lim_03` — a capitalised letters-only password after `:` in code, read as a type annotation.
+- `limit:lim_03` — the screen does not catch an unquoted, letters-only CamelCase password after `:`
+  (for example `password: Summer`), because that shape is indistinguishable from a type annotation.
 - `limit:lim_04` — a Tier S literal shorter than 16 characters or letters-only (`SERVICE_TOKEN = "shortTok"`).
+- `limit:g7988_10` — a bare token family absent from the explicit family list; unlisted bare families
+  are not caught unless their surrounding assignment or credential context triggers a tier/context rule.
 
 Fail-closed bounds are not limits: oversized, binary, unsafe-path, unreadable and `screen_error` files
 are refused and asserted as such. Encrypted, compressed or hashed values are not cleartext and are out of scope.
@@ -228,7 +264,9 @@ are refused and asserted as such. Encrypted, compressed or hashed values are not
    reported, not asserted. Structural rows run through the builder in a temporary directory.
 2. `test_screen_corpus.py` stays green: schema, reconstruction, claimed shapes, source counts
    (31 + 16 + 12 receipt leaks, 6 untested rules, ≥ 30 innocence rows), this limit list, and a corpus
-   file with no token-, DSN- or phone-shaped literal.
+   file with no token-, DSN- or phone-shaped literal; every innocence row, MATERIALISED, carries no
+   credential family and no Indonesian mobile (the schema test asserts both). The implementation test
+   does the same before asserting that the row queues.
 3. Mutation: removing any single decoded view, family, context rule or structural check turns at least
    one corpus row red (#7971 r2 left 6 claimed rules green; Kimi D8: escape rows passing on raw text).
 4. The guard suite proves the cost bound, deterministic per-reason accounting, atomic output, and that an
