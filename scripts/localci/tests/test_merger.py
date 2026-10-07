@@ -117,7 +117,7 @@ def world(tmp_path, monkeypatch):
     monkeypatch.setattr(mg, "runner_exec", runner)
     w = type("World", (), {})()
     w.state, w.origin, w.gh, w.runner = tmp_path / "state", origin, gh, runner
-    w.base, w.head1, w.head2 = base, head1, head2
+    w.base, w.head1, w.head2, w.src = base, head1, head2, src
     w.tick = lambda node=mg.HOST: mg.main(["tick", "--node", node, "--repo", REPO, "--state-dir", str(w.state), "--remote-url", str(origin), "--python", "py"])
     w.journal = lambda: mg.read_journal(w.state)
     return w
@@ -166,6 +166,7 @@ def test_candidate_is_main_plus_head_squashed_and_the_gate_runs_from_base_with_t
         assert c["argv"][:3] == ["py", "-m", "scripts.localci.runner"] and c["env"]["PYTHONPATH"] == str(c["cwd"])
         assert not [k for k in c["env"] if k.endswith(("TOKEN", "_KEY", "SECRET")) or k.startswith("GH_")]
     assert plan["argv"][plan["argv"].index("--base") + 1] == world.base
+    assert "--pr-number" not in plan["argv"]   # this base's runner does not take the flag: never break an older runner's plan
     assert plan["argv"][plan["argv"].index("--candidate") + 1] == d["candidate_sha"] == plan["worktree_head"]
     assert plan["matrix"] == "base matrix\n"   # the candidate's rewritten matrix never judges it
     assert status["argv"][-2:] == ["--seal", SEAL]
@@ -648,3 +649,12 @@ def test_every_journal_line_carries_the_code_sha_it_ran(world, monkeypatch):
     assert "code_sha" not in world.journal()[-1]   # a run without the flag stamps nothing, whatever the last run in this process did
     for bad in ("main", code + "\n", code.upper()):
         assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--code-sha", bad]) == 2
+
+
+def test_a_base_runner_that_takes_the_pr_number_is_given_it(world):
+    world.base = commit(world.src, {"scripts/localci/runner.py": 'p.add_argument("--pr-number", type=int)\n'}, "runner names the PR")
+    g(world.src, "push", "-q", str(world.origin), "main")
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0
+    plan = world.runner.calls[0]["argv"]
+    assert plan[plan.index("--pr-number") + 1] == "1" and plan[plan.index("--base") + 1] == world.base

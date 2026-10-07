@@ -223,7 +223,9 @@ One `tick` decides at most one pull request:
    `contexts_matrix.yaml` (`trusted_base_required` holds for the merger too): the candidate's runner and matrix never judge
    it. The seal passed on is the first one `run` prints — before any candidate code runs. The runner gets an allowlisted
    environment (no token) with the same git isolation, so its own git calls on the candidate see no host config or hook
-   either. Candidate code runs only inside the runner, contained as the runner contains it.
+   either. Candidate code runs only inside the runner, contained as the runner contains it. `plan` gets `--pr-number <N>`
+   whenever the BASE runner's own source takes that flag, so `merge_group.head_ref` names the PR as the queue's does (the
+   Harness floor context parses it); a BASE runner older than the flag is planned without it, never broken by it.
 6. **Hosted.** `hosted_compare.compare` against the live required contexts of the PR HEAD sha — the queue's own verdict
    lands on a merge-group commit the merger cannot see; the journal line says so (`hosted_compare.note`).
 
@@ -265,10 +267,23 @@ it, so that orphan run is never journalled.
 Reads the journal strictly (an unreadable line, a state dir bound to another repo or a decision of another repo is exit 2,
 never skipped) and sets every `kind=decision` line since `--since` (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SSZ`) beside what
 GitHub did with that head, through GETs: the PR (`pulls/N`), the merge commit's parents and the live required contexts.
-GitHub's side is GREEN when the PR merged AT THIS HEAD (its queue let it through); otherwise the required contexts on the head,
-red-dominant (RED, else PENDING, else GREEN). The merger's side is GREEN only for `overall=PASS`, RED only for `FAIL`;
-everything else (BLOCKED, SUBSET_PASS, CONFLICT, ERROR) is blind. Classes per decision: `AGREE`, `FALSE_GREEN` (merger PASS,
-GitHub red), `FALSE_RED`, `BLIND`, `PENDING` (GitHub has no verdict yet).
+GitHub's side is the required contexts of the judged sha, red-dominant (RED, else PENDING, else GREEN); a PR merged at the
+decided candidate is GREEN unless its own merge commit carries a red required check, never GREEN merely because it merged. The
+merger's side is GREEN only for `overall=PASS`, RED only for `FAIL`; everything else (BLOCKED, SUBSET_PASS, CONFLICT, ERROR)
+is blind. Classes per decision: `AGREE`, `FALSE_GREEN` (merger PASS, GitHub red), `FALSE_RED`, `BLIND`, `PENDING` (GitHub
+has no verdict yet) and `HOSTED_RED_MERGED` — GitHub merged a candidate whose merge commit has a red required check. That is
+a HOSTED failure: it is counted apart and printed on the phase E line as information, it is never a local FALSE_GREEN and
+never blocks READY (each of its contexts is still compared one by one below, so a context the local gate passed and the merge
+commit failed is still a context FALSE_GREEN).
+
+Why GitHub merges a red required check (measured 2026-10-07 by GET only). `main`'s merge-queue ruleset 19779175
+(`merge-queue-main`, active, no bypass actor) sets `grouping_strategy: HEADGREEN` (`max_entries_to_build` 5,
+`max_entries_to_merge` 4) — the UI's "Only merge non-failing pull requests" turned off: a PR whose own group commit fails may
+merge when the last entry of its group passes. The classic protection lists `antidotes` among its 14 required contexts
+(`strict: false`, no app pinned). #8026's queue commit 2a1e00e0d3 had `antidotes` red (merge_group run, attempt 1); #8027's
+queue commit 9637bf5a5e, built on top of it and green on all 36 checks it ran, carried the group, and both merged at
+17:18:25Z. The local gate judges every candidate on its own, so it refuses what this queue setting lets through. Changing the
+setting is Zero's call, not this code's.
 
 Because the runner leaves `review.independent` QUEUED, `overall` is never PASS in shadow and the per-decision FALSE_GREEN
 count is vacuous today. The phase-D instrument is the CONTEXT level, in two parts that are both counted:

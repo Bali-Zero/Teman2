@@ -88,7 +88,7 @@ def test_every_class_on_its_own_fixture(tmp_path, monkeypatch):
 def test_a_merged_head_is_compared_per_context_with_the_queue_commit_not_the_head(tmp_path, monkeypatch):
     gh = FakeGH({2: pull(B, merged=True)}, {B: "success", M: "failure"})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "BLOCKED")], gh)
-    assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == K and rep["rows"][0]["class"] == "BLIND"
+    assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == K and rep["rows"][0]["class"] == "HOSTED_RED_MERGED"
 
 
 def test_conflict_and_error_decisions_are_blind_and_add_no_context_counts(tmp_path, monkeypatch):
@@ -324,3 +324,17 @@ def test_a_line_dated_in_the_future_is_flagged_and_never_ages_the_window_negativ
     rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
     assert rc == 0 and rep["window"]["future_lines"] == 1 and rep["window"]["last_line_age_h"] == 0.0
     assert "1 line(s) dated in the future" in capsys.readouterr().out
+
+
+def test_github_merging_a_red_required_check_is_a_hosted_failure_counted_apart_never_a_blocker(tmp_path, monkeypatch, capsys):
+    recs, gh = merged_world(50, 14.0)
+    red_mc = "2" * 40   # #8026's shape: its own queue commit red, merged because a later entry of the group went green
+    gh.pulls[7] = {**gh.pulls[7], "merge_commit_sha": red_mc}
+    gh.parents[red_mc], gh.checks[red_mc] = [BASE], "failure"
+    recs[6] = {**recs[6], "overall": "FAIL", "contexts": dict.fromkeys(CTX, "FAIL")}   # the local gate refused it
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    row = rep["rows"][6]
+    assert (row["class"], row["github"], row["hosted_sha"]) == ("HOSTED_RED_MERGED", "RED", red_mc)
+    assert rep["counts"]["HOSTED_RED_MERGED"] == 1 and rep["counts"]["FALSE_GREEN"] == 0 and rep["context_counts"]["FALSE_GREEN"] == 0
+    assert rep["window"]["compared_merges"] == 50 and rep["phase_e_ready"] is True and rc == 0
+    assert "hosted_red_merged=1" in capsys.readouterr().out

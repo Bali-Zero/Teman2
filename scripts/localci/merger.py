@@ -51,7 +51,7 @@ GIT_ISOLATED = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "G
                 "GIT_CONFIG_COUNT": "3", "GIT_CONFIG_KEY_0": "core.hooksPath", "GIT_CONFIG_VALUE_0": "/dev/null",
                 "GIT_CONFIG_KEY_1": "core.fsmonitor", "GIT_CONFIG_VALUE_1": "false",
                 "GIT_CONFIG_KEY_2": "core.attributesFile", "GIT_CONFIG_VALUE_2": "/dev/null"}   # the runner's git too
-CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "BLIND", "PENDING")
+CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "BLIND", "PENDING", "HOSTED_RED_MERGED")
 _TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")   # fullmatch only: `$` would let a trailing newline through
 _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 MIN_COMPARED_CONTEXTS = 12   # spec §2 phase B: AGREE >= 12 of 14 — a merge compared on fewer contexts is not evidence for phase E
@@ -281,7 +281,15 @@ def runner_exec(argv: list[str], cwd: Path, env: dict, timeout: int) -> subproce
         return subprocess.CompletedProcess(argv, proc.returncode, out, err)
 
 
-def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sha: str) -> dict:
+def runner_takes(base_wt: Path, flag: str) -> bool:
+    """The BASE runner's own source decides which flags it takes: a merger ahead of main never breaks an older runner's plan."""
+    try:
+        return f'"{flag}"' in (base_wt / "scripts" / "localci" / "runner.py").read_text()
+    except OSError:
+        return False
+
+
+def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sha: str, pr: int) -> dict:
     """plan → run → status with the BASE runner and matrix (trusted_base_required applies to the merger too)."""
     env = {k: os.environ[k] for k in RUNNER_ENV if k in os.environ} | GIT_ISOLATED | {"PYTHONPATH": str(base_wt), "PYTHONNOUSERSITE": "1",
                                                                                      "PYTHONDONTWRITEBYTECODE": "1"}
@@ -289,6 +297,8 @@ def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sh
     plan = [*runner, "plan", "--run-dir", str(run_dir), "--worktree", str(cand), "--base", base_sha, "--candidate", cand_sha]
     if (base_wt / MATRIX).is_file():
         plan += ["--contexts-file", str(base_wt / MATRIX)]
+    if runner_takes(base_wt, "--pr-number"):   # merge_group.head_ref names the PR, as the queue does (Harness floor parses it)
+        plan += ["--pr-number", str(pr)]
     run_dir.mkdir(parents=True)
     out: dict = {"seal": None}
 
@@ -357,7 +367,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
                 drop_worktree(repo_dir, old)
         base_wt = fresh_worktree(repo_dir, state / "base" / base_sha, base_sha)
         run_dir = state / "runs" / f"{key}-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
-        gate = run_gate(a, base_wt, cand, run_dir, base_sha, cand_sha)
+        gate = run_gate(a, base_wt, cand, run_dir, base_sha, cand_sha, n)
         status = gate["status"]
         ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) and not gate.get("error") else {}   # an unvouched status lends no verdict
         results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
@@ -455,11 +465,13 @@ def merger_side(overall) -> str:
 
 
 def github_side(merged_here: bool, live: dict) -> str:
-    """GREEN when GitHub merged the PR at this very head (its queue let it through); else the required checks of the head, red-dominant."""
-    if merged_here:
-        return "GREEN"
+    """The required checks of the judged sha, red-dominant. A merged candidate is GREEN unless its own merge commit carries a red
+    required check: the queue merges a failed entry when a later entry of its group passes (grouping HEADGREEN), so 'merged' is
+    no proof of green — #8026's queue commit 2a1e00e0d3 had antidotes red and merged."""
     by = hc.hosted_entries(live["check_runs"], live["statuses"])
     seen = {hc.hosted_verdict(by.get(c["context"], []), c.get("app_id"))["verdict"] for c in live["required_checks"]}
+    if merged_here:
+        return "RED" if "RED" in seen else "GREEN"
     return "RED" if "RED" in seen else "PENDING" if "PENDING" in seen else "GREEN"
 
 
@@ -567,7 +579,9 @@ def cmd_report(a) -> int:
             if merged_here and not is_ts(merged_at):
                 raise hc.CompareError(f"#{n} merged at the decided candidate but carries no merged_at")
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
-                         "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
+                         "github": github, "merged": prs[n].get("merged") is True,
+                         # GitHub merged a red required check: a hosted failure, counted apart, never a local false green
+                         "class": "HOSTED_RED_MERGED" if merged_here and github == "RED" else classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
@@ -622,7 +636,8 @@ def cmd_report(a) -> int:
           + f" | false_green recorded at tick time={recorded_fg}")
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
-          f"compared); now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}")
+          f"compared); now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}; "
+          f"hosted_red_merged={counts['HOSTED_RED_MERGED']} (information: GitHub merged a red required check — never a blocker)")
     return 1 if fg else 0
 
 
