@@ -1,0 +1,130 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  Spec, corpus and test carry no client data: every phone, ID, card and IBAN shape is synthetic, built by
+  concatenation in the corpus, and the council journal holds only synthetic shapes.
+council_run: journal.jsonl
+seat_override: >-
+  The floor is 3 by path (a workflow edit is a hot zone). Seats that could sit: Codex O2 (round 1 sealed and
+  the round-2 refutation), Ollama qwen3.5:9b on Mini (round 1 sealed, not in the lint's seat list) and the
+  Claude verifier (round 1 sealed, written before reading the others). Seats that could not: Kimi K3 out of
+  quota, the TP1 seats answer 429 until 2026-10-11T16:00Z, agy-gemini busy in the owner's windows, no qwen
+  seat. Codex O1 drafted the original spec, so the Codex rows are the drafter's family; the final gate is the
+  independent check.
+plan_ref: >-
+  team-lead mandate to dux-tp1spec-cure (2026-10-07): #7988 suspended after gate-7988-r2 BLOCKED e435a60b3d on
+  the same cause as round 1 (closed lists with no declared remainder); re-cut as a new PR whose change is the
+  method. Receipts ~/.agent/campaign-20261005/work/gate-7988b/receipt.txt and gate-7988-r2/receipt.txt.
+lanes:
+  - lane: draft-and-cure-r1
+    role: build
+    seat: codex-gpt-5.6-sol
+  - lane: method-recut
+    role: build
+    seat: claude-opus-5-5
+  - lane: council-codex-o2
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: council-ollama-mini
+    role: review
+    seat: ollama-mini/qwen3.5:9b
+what_changed: |
+  - docs/specs/tp1-input-screen.md: new section "Closed vocabularies and their remainders" (18 vocabularies,
+    each with one declared remainder that has a limit row); stems match in any name segment unless a closed list of
+    property words follows the last stem; subscript carriers on any expression and pair-taking calls; all-digit Tier P
+    literals of 6 or more digits; redis-cli -a and the --pass/--auth flags; empty URI user; numeric .pgpass password;
+    phone labels telepon/telephone/cell by segment, labels followed by a property word are not labels, amount
+    exemption off for labelled values; ID labels document/dokumen/nomor/national and space-grouped NIK; type-shaped
+    identifiers as the annotation rule (fixes innocent_30); shell values are literals; PAN and IBAN declared out of
+    scope pending the owner's decision; acceptance 6 restated as rule-or-remainder.
+  - scripts/tp1max/screen_corpus.yaml: 36 rows with source gate-7988-r2 (18 rule rows, 3 innocence, 15 remainder
+    limits); rule phrases on lim_03, g7971n_05 and g7988_08. 343 rows in total.
+  - scripts/tp1max/test_screen_corpus.py: optional `rule:` field checked verbatim (whitespace-normalised) against the
+    spec; every gate-7988-r2 limit row must carry one; remainder rows are pinned by their rule, not by the claim regexes;
+    tskey claim requires the real <id>CNTRL-<secret> shape; claim regexes widened for the new labels and flags.
+  - .github/workflows/tp1-runner-tests.yml: the corpus test as a step of the TP1 runner workflow (unchanged from #7988).
+proof: |
+  Floor 3, source path (--print-floor / --print-floor-source on the staged change list against the branch base).
+  663 passed on 3.11.15 and on 3.9.6. Mutation battery: 12 of 13 red, among them the gate's three survivors (Tier K
+  hex text, any-expression subscript text, dash-free tskey row); the survivor drops one of three copies of the
+  owner-pending sentence, which the other two copies still pin.
+seat_note: >-
+  Codex rows came from ~/.codex-o2 (sessions 01a1152d and 01a11534). Codex round 2's final message was rewritten by its
+  Stop hook into one meta line; the journal carries its first answer from the stderr trace.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "r2 #14: a rule phrase proves the text exists, not the behaviour."
+    status: PLAUSIBLE
+    resolution: "Behaviour is acceptance 1 of the implementation (PR-C); the phrase pins the text so a rule cannot vanish silently."
+  - seat: ollama-mini/qwen3.5:9b
+    objection: "r1 #4/#11: raise the all-digit threshold to 8."
+    status: PLAUSIBLE
+    resolution: "Not adopted: six digits is the mandate's floor; shorter values are the declared remainder rem_short_digits."
+review_disposition:
+  - {
+      id: R1-codex-3..8,
+      item: "pgpass numeric, ID grammar, CRM mononym, labelled amount, Tier K < 20, real changeme",
+      disposition: CONFIRMED,
+      proof: "r2_18 rule; rem_id_grammar, rem_crm_mononym, r2_17, rem_tierk_short, rem_placeholder; Codex r2 1-6 HOLDS",
+    }
+  - {
+      id: R1-codex-9..14,
+      item: "property precedence, put carriers, shell references, Optional[str], identifier after =, BYPASS_MODE",
+      disposition: CONFIRMED,
+      proof: "r2_16, carriers list, r2_innocent_02, annotation rule, lim_03 wording, ordinary words per segment; Codex r2 7-12 HOLDS",
+    }
+  - {
+      id: R2-codex-16..25,
+      item: "residual sub-vocabularies: status words, digit-free Tier K, numeric pgpass host/user, CRM grammar, 3-layer PII, date/amount-shaped phones, contact_count",
+      disposition: CONFIRMED,
+      proof: "folded into rem_placeholder, rem_tierk_short, rem_cli, rem_crm_mononym, r2x_11, rem_phone_label; property words on phone labels + r2_innocent_03; UI-string over-skip stated",
+    }
+  - {
+      id: G7988R2-B1,
+      item: "gate-7988-r2: 8 shapes queued undeclared from 4 closed lists",
+      disposition: CONFIRMED,
+      proof: "r2_01-r2_09 and the remainder table; every vocabulary names a limit row",
+    }
+  - {
+      id: G7988R2-N1,
+      item: "innocent_30 Ed25519PrivateKey guilty by the mixed-class sentence",
+      disposition: CONFIRMED,
+      proof: "type-shaped identifier rule (digit runs followed by a capital, at most two); mixed-class sentence removed",
+    }
+  - {
+      id: G7988R2-N2,
+      item: "Tier K hex and 20-31 band unpinned; spec-text mutants green",
+      disposition: CONFIRMED,
+      proof: "r2_13, r2_14 with rule phrases; mutants Tier K hex, subscript and tskey now red",
+    }
+receipts:
+  - claim: "deterministic floor 3, source path"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source --changed-files-file <changed> --numstat-file <numstat> --patch-file <workflow patch>"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-10-07T07:23:13Z"
+    seat: claude-opus-5-5
+  - claim: "corpus test green on both interpreters"
+    cmd: "python3 -m pytest -q scripts/tp1max/test_screen_corpus.py; uv run --no-project --python 3.9 --with pytest --with PyYAML==6.0.3 python -m pytest -q <same>"
+    result: "663 passed (3.11.15) / 663 passed (3.9.6, pytest 8.4.2)"
+    exit: 0
+    ts: "2026-10-07T07:21:55Z"
+    seat: claude-opus-5-5
+  - claim: "mutation battery on scratch copies"
+    cmd: "python3 ~/.agent/campaign-20261005/work/dux-tp1spec-recut/mutate2.py <worktree>"
+    result: "12 of 13 red; the survivor removes one of three copies of the owner-pending sentence"
+    exit: 0
+    ts: "2026-10-07T07:21:57Z"
+    seat: claude-opus-5-5
+  - claim: "secret guards clean on every changed file"
+    cmd: "detect-secrets-hook --baseline .secrets.baseline <files> in a scratch repo; lint_pg_dsn_credentials.py, lint_telegram_tokens.py, lint_google_oauth_credentials.py <files>; prettier --check"
+    result: "rc 0 each after three spec wordings were changed that the keyword detector flagged"
+    exit: 0
+    ts: "2026-10-07T07:23:13Z"
+    seat: claude-opus-5-5
+  - claim: ".github/workflows/tp1-runner-tests.yml on this PR head (both legs)"
+    cmd: "gh pr checks <pr> (after push)"
+    result: "recorded in the PR body Bites line"
+    exit: 0
+    ts: "2026-10-07T07:23:13Z"
+    seat: claude-opus-5-5

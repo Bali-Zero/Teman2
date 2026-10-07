@@ -1,0 +1,415 @@
+schema: tp1-screen-corpus/v1
+cap_bytes: 524288
+reason_enum:
+  [
+    secret,
+    phone,
+    email,
+    crm_name,
+    id_number,
+    symlink,
+    not_regular,
+    oversized,
+    empty,
+    binary,
+    unsafe_path,
+    unreadable,
+    screen_error,
+    excluded_path,
+  ]
+construction:
+  literal: text is exact file content when construct is absent
+  concat: concatenate scalar parts; a repeat mapping expands its character count
+  bytes_concat: concatenate byte hex parts and UTF-8 scalar parts
+  base64: construct the nested value, encode it (urlsafe alphabet when urlsafe is true), and wrap at the stated column (0 = no wrap)
+  unicode_digits: construct the nested value, then map each ASCII digit through the declared Unicode zero code point
+  structural: setup describes filesystem state; text remains the benign or generated payload
+  path: a content row is judged as the file setup.path when given, else src/<id>.txt
+  limit: true marks a guilt shape the spec DECLARES the screen may queue; every other guilt row must be skipped with expected_reason
+# prettier-ignore
+rows:
+  # gate-7927: 31 leaked shapes, in receipt order.
+  - {id: g7927_01, kind: guilt, category: secret_family, text: "GitHub fine-grained token", construct: {op: concat, parts: ["github_pat_", {repeat: "x", count: 30}]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_02, kind: guilt, category: secret_family, text: "GitHub OAuth token", construct: {op: concat, parts: ["gho_", {repeat: "a", count: 32}]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_03, kind: guilt, category: secret_family, text: "Stripe live secret", construct: {op: concat, parts: ["sk_", "live_", {repeat: "b", count: 28}]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_04, kind: guilt, category: secret_family, text: "Brevo API key", construct: {op: concat, parts: ["xkeysib-", {repeat: "c", count: 28}]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_05, kind: guilt, category: secret_family, text: "Telegram bot token", construct: {op: concat, parts: [{repeat: "7", count: 9}, ":AA", {repeat: "d", count: 33}]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_06, kind: guilt, category: secret_family, text: "Google OAuth client secret", construct: {op: concat, parts: ["GOC", "SPX-", {repeat: "e", count: 28}]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_07, kind: guilt, category: secret_family, text: "Fly machine token", construct: {op: concat, parts: ["FlyV1 ", "fm", "2_", {repeat: "f", count: 30}]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_08, kind: guilt, category: secret_assignment, text: "AWS secret access value in assignment", construct: {op: concat, parts: ["AWS_SECRET_ACCESS_KEY=\"", {repeat: "a1", count: 20}, "\""]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_09, kind: guilt, category: secret_assignment, text: "32-hex API key assignment", construct: {op: concat, parts: ["api_key=\"", {repeat: "ab", count: 16}, "\""]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_10, kind: guilt, category: secret_assignment, text: "password literal assignment", construct: {op: concat, parts: ["PASSWORD=\"", "p4ss-", {repeat: "q", count: 12}, "\""]}, expected_reason: secret, source: "gate-7927:B1"}
+  - {id: g7927_11, kind: guilt, category: phone, text: "(0812) grouped mobile", construct: {op: concat, parts: ["(", "08", "12", ") ", {repeat: "3", count: 4}, "-", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_12, kind: guilt, category: phone, text: "+62 parenthesized area", construct: {op: concat, parts: ["+62 (812) ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_13, kind: guilt, category: phone, text: "(+62) grouped mobile", construct: {op: concat, parts: ["(+62) 812 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_14, kind: guilt, category: phone, text: "+62 optional trunk", construct: {op: concat, parts: ["+62 (0)812 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_15, kind: guilt, category: phone, text: "mobile with double spaces", construct: {op: concat, parts: ["08", "12  ", {repeat: "3", count: 4}, "  ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_16, kind: guilt, category: phone, text: "mobile with slash separators", construct: {op: concat, parts: ["08", "12/", {repeat: "3", count: 4}, "/", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_17, kind: guilt, category: phone, text: "mobile with en dash", construct: {op: concat, parts: ["08", "12\u2013", {repeat: "3", count: 4}, "\u2013", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_18, kind: guilt, category: phone, text: "Bali landline", construct: {op: concat, parts: ["(0361) ", {repeat: "7", count: 6}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_19, kind: guilt, category: phone, text: "Jakarta landline", construct: {op: concat, parts: ["021-", {repeat: "5", count: 7}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_20, kind: guilt, category: phone, text: "US international", construct: {op: concat, parts: ["+1 415 ", {repeat: "5", count: 3}, " 0123"]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_21, kind: guilt, category: phone, text: "UK international", construct: {op: concat, parts: ["+44 20 ", "7946", " 0123"]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_22, kind: guilt, category: phone, text: "AU international", construct: {op: concat, parts: ["+61 2 ", "5550", " 1234"]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_23, kind: guilt, category: phone, text: "FR international", construct: {op: concat, parts: ["+33 1 ", {repeat: "4", count: 2}, " ", {repeat: "5", count: 2}, " ", {repeat: "6", count: 2}, " ", {repeat: "7", count: 2}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_24, kind: guilt, category: phone, text: "RU international", construct: {op: concat, parts: ["+7 495 ", {repeat: "2", count: 3}, "-", {repeat: "3", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_25, kind: guilt, category: phone, text: "DE optional trunk", construct: {op: concat, parts: ["+49 (0)30 ", {repeat: "4", count: 4}, " ", {repeat: "5", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_26, kind: guilt, category: phone, text: "IT landline", construct: {op: concat, parts: ["+39 06 ", {repeat: "6", count: 4}, " ", {repeat: "7", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_27, kind: guilt, category: phone, text: "UA spaced international", construct: {op: concat, parts: ["+380 44 ", {repeat: "3", count: 3}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_28, kind: guilt, category: phone, text: "00-prefix Italy", construct: {op: concat, parts: ["0039 06 ", {repeat: "6", count: 4}, " ", {repeat: "7", count: 4}]}, expected_reason: phone, source: "gate-7927:B1"}
+  - {id: g7927_29, kind: guilt, category: email, text: "role local on non-allowlisted client domain", construct: {op: concat, parts: ["info", "@", "client.corp"]}, expected_reason: email, source: "gate-7927:B1"}
+  - {id: g7927_30, kind: guilt, category: email, text: "personal local on non-allowlisted client domain", construct: {op: concat, parts: ["person", "@", "client.corp"]}, expected_reason: email, source: "gate-7927:B1"}
+  - {id: g7927_31, kind: guilt, category: email, text: "project role word on non-allowlisted client domain", construct: {op: concat, parts: ["zantara", "@", "client.corp"]}, expected_reason: email, source: "gate-7927:B1"}
+
+  # gate-7971 round 1: 16 new leaks.
+  - {id: g7971_01, kind: guilt, category: secret_context, text: ".netrc one-line login/password", construct: {op: concat, parts: ["login demo password ", "p4ss-", {repeat: "a", count: 8}]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_02, kind: guilt, category: secret_context, text: "curl short user/password option", construct: {op: concat, parts: ["curl -u demo:", "p4ss-", {repeat: "b", count: 8}, " https://service.invalid"]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_03, kind: guilt, category: secret_context, text: "--password with space", construct: {op: concat, parts: ["tool --password ", "p4ss-", {repeat: "c", count: 8}]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_04, kind: guilt, category: secret_context, text: "Authorization Basic literal", construct: {op: concat, parts: ["Authorization: Basic ", {repeat: "d", count: 24}]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_05, kind: guilt, category: secret_context, text: "Authorization Bearer literal", construct: {op: concat, parts: ["Authorization: Bearer ", "mix9_", {repeat: "e", count: 20}]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_06, kind: guilt, category: secret_assignment, text: "headerless private-key body assignment", construct: {op: concat, parts: ["PRIVATE_KEY=\"", "MIIE", {repeat: "Ab3d", count: 40}, "\""]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_07, kind: guilt, category: secret_assignment, text: "JSON private_key body", construct: {op: concat, parts: ["{\"private_key\":\"", "MIIE", {repeat: "Cd4e", count: 40}, "\"}"]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_08, kind: guilt, category: decoded, text: "base64-wrapped Brevo key", construct: {op: base64, value: {op: concat, parts: ["xkeysib-", {repeat: "f", count: 28}]}, wrap: 0}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_09, kind: guilt, category: secret_family, text: "HuggingFace token", construct: {op: concat, parts: ["hf_", {repeat: "g", count: 36}]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_10, kind: guilt, category: secret_family, text: "Discord webhook", construct: {op: concat, parts: ["https://discord.com/api/webhooks/", {repeat: "7", count: 18}, "/", {repeat: "h", count: 40}]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_11, kind: guilt, category: secret_family, text: "Azure AccountKey connection field", construct: {op: concat, parts: ["DefaultEndpointsProtocol=https;AccountKey=", {repeat: "Ab", count: 30}, ";EndpointSuffix=core.windows.net"]}, expected_reason: secret, source: "gate-7971:B1"}
+  - {id: g7971_12, kind: guilt, category: phone, text: "URL-encoded wa.me number", construct: {op: concat, parts: ["wa.me/%2B62%20812%20", {repeat: "3", count: 4}, "%20", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7971:B1"}
+  - {id: g7971_13, kind: guilt, category: phone, text: "URL-encoded phone query", construct: {op: concat, parts: ["phone=%2B62%20812%20", {repeat: "3", count: 4}, "%20", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7971:B1"}
+  - {id: g7971_14, kind: guilt, category: phone, text: "JavaScript string containing +62 mobile", construct: {op: concat, parts: ["const contact = \"+62 812 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}, "\""]}, expected_reason: phone, source: "gate-7971:B1"}
+  - {id: g7971_15, kind: guilt, category: phone, text: "phone digits glued to identifier", construct: {op: concat, parts: ["const phone", "62812", {repeat: "3", count: 7}, " = true"]}, expected_reason: phone, source: "gate-7971:B1"}
+  - {id: g7971_16, kind: guilt, category: email, text: "URL-encoded personal project-domain address", construct: {op: concat, parts: ["person", "%40", "balizero.com"]}, expected_reason: email, source: "gate-7971:B1"}
+
+  # gate-7971 round 2: 12 new leaks.
+  - {id: g7971r2_01, kind: guilt, category: secret_context, text: "sshpass separate -p operand", construct: {op: concat, parts: ["sshpass -p '", "pw", "' ssh demo@host.invalid"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_02, kind: guilt, category: secret_context, text: "sshpass glued -p operand", construct: {op: concat, parts: ["sshpass -p", "pw", " ssh demo@host.invalid"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_03, kind: guilt, category: secret_context, text: ".pgpass five-field row", construct: {op: concat, parts: ["db.invalid:5432:app:demo:", "pw"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_04, kind: guilt, category: secret_context, text: "mysql glued -p operand", construct: {op: concat, parts: ["mysql -u root -p", "pw"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_05, kind: guilt, category: secret_context, text: "docker login -p operand", construct: {op: concat, parts: ["docker login -u bot -p ", "pw", " registry.invalid"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_06, kind: guilt, category: secret_assignment, text: "DB_PASS short env literal", construct: {op: concat, parts: ["DB_PASS=", "pw"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_07, kind: guilt, category: secret_assignment, text: "export MYSQL_PWD short literal", construct: {op: concat, parts: ["export MYSQL_PWD=", "pw"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_08, kind: guilt, category: secret_assignment, text: "64-hex SIGNING_KEY", construct: {op: concat, parts: ["SIGNING_KEY=\"", {repeat: "ab", count: 32}, "\""]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_09, kind: guilt, category: secret_context, text: "requests auth tuple", construct: {op: concat, parts: ["requests.get(url, auth=(\"demo\", \"", "pw", "\"))"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_10, kind: guilt, category: decoded, text: "credential base64-wrapped at 76 columns", construct: {op: base64, value: {op: concat, parts: ["PASSWORD=", "p4ss-", {repeat: "z", count: 80}]}, wrap: 76}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_11, kind: guilt, category: secret_context, text: "wget --http-password with space", construct: {op: concat, parts: ["wget --http-password ", "pw", " https://service.invalid"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+  - {id: g7971r2_12, kind: guilt, category: secret_family, text: "SendGrid API key inside a call", construct: {op: concat, parts: ["client = SendGridAPIClient(\"", "S", "G.", {repeat: "a", count: 22}, ".", {repeat: "b", count: 43}, "\")"]}, expected_reason: secret, source: "gate-7971-r2:B1-r2"}
+
+  # Six claimed-but-untested rules, and the YAML next-line regression.
+  - {id: untested_01, kind: guilt, category: secret_context, text: "Authorization Token literal", construct: {op: concat, parts: ["Authorization: Token ", "mix9_", {repeat: "a", count: 20}]}, expected_reason: secret, source: "gate-7971-r2:N1"}
+  - {id: untested_02, kind: guilt, category: secret_context, text: "--user with space", construct: {op: concat, parts: ["curl --user demo:", "p4ss-", {repeat: "b", count: 8}, " https://service.invalid"]}, expected_reason: secret, source: "gate-7971-r2:N1"}
+  - {id: untested_03, kind: guilt, category: secret_context, text: "-u glued", construct: {op: concat, parts: ["curl -udemo:", "p4ss-", {repeat: "c", count: 8}, " https://service.invalid"]}, expected_reason: secret, source: "gate-7971-r2:N1"}
+  - {id: untested_04, kind: guilt, category: secret_context, text: "--passwd operand", construct: {op: concat, parts: ["tool --passwd=", "p4ss-", {repeat: "d", count: 8}]}, expected_reason: secret, source: "gate-7971-r2:N1"}
+  - {id: untested_05, kind: guilt, category: secret_context, text: ".netrc password on separate line", construct: {op: concat, parts: ["machine service.invalid\nlogin demo\npassword ", "p4ss-", {repeat: "e", count: 8}]}, expected_reason: secret, source: "gate-7971-r2:N1"}
+  - {id: untested_06, kind: guilt, category: decoded, text: "HTML-entity digits: no phone in the raw text, one after unescape", construct: {op: concat, parts: ["call &#48;&#56;", "&#49;&#50;", {repeat: "&#51;", count: 4}, {repeat: "&#52;", count: 4}]}, expected_reason: phone, source: "gate-7971-r2:N1"}
+  - {id: untested_06b, kind: guilt, category: decoded, text: "HTML-entity plus before a mobile", construct: {op: concat, parts: ["tel:&#43;62 812 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7971-r2:2c"}
+  - {id: yaml_next_01, kind: guilt, category: secret_assignment, text: "YAML password scalar on next line", construct: {op: concat, parts: ["password:\n  ", "pw"]}, expected_reason: secret, source: "gate-7971-r2:N2"}
+
+  # Kimi/Ollama review items not already represented above.
+  - {id: kimi_01, kind: guilt, category: secret_assignment, text: "quoted lowercase password", construct: {op: concat, parts: ["DB_PASSWORD=\"", "lowercasepass", "\""]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_02, kind: guilt, category: secret_assignment, text: "quoted multi-word passphrase", construct: {op: concat, parts: ["API_KEY=\"", "correct horse battery staple 9", "\""]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_03, kind: guilt, category: phone, text: "fullwidth-digit Indonesian mobile", construct: {op: unicode_digits, value: {op: concat, parts: ["08", "12", {repeat: "3", count: 4}, {repeat: "4", count: 4}]}, zero_codepoint: "FF10"}, expected_reason: phone, source: "dux-final:Kimi-r1"}
+  - {id: kimi_04, kind: guilt, category: phone, text: "space after national trunk", construct: {op: concat, parts: ["0 812 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "dux-final:Kimi-r1"}
+  - {id: kimi_05, kind: guilt, category: secret_family, text: "Stripe webhook secret", construct: {op: concat, parts: ["whsec_", {repeat: "a", count: 28}]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_06, kind: guilt, category: secret_family, text: "AWS temporary access ID", construct: {op: concat, parts: ["AS", "IA", {repeat: "A1", count: 8}]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_07, kind: guilt, category: secret_family, text: "GitHub user-to-server token", construct: {op: concat, parts: ["ghu_", {repeat: "a", count: 30}]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_08, kind: guilt, category: secret_family, text: "GitLab personal access token", construct: {op: concat, parts: ["glpat-", {repeat: "b", count: 24}]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_09, kind: guilt, category: secret_family, text: "npm token", construct: {op: concat, parts: ["npm_", {repeat: "c", count: 36}]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_10, kind: guilt, category: secret_family, text: "Slack webhook URL", construct: {op: concat, parts: ["https://hooks.slack.com/services/T", {repeat: "A", count: 8}, "/B", {repeat: "B", count: 8}, "/", {repeat: "c", count: 24}]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_11, kind: guilt, category: secret_family, text: "age private key", construct: {op: concat, parts: ["AGE-SECRET-KEY-1", {repeat: "Q", count: 58}]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_12, kind: guilt, category: secret_family, text: "compact bounded JWT", construct: {op: concat, parts: ["eyJ", {repeat: "a", count: 14}, ".", {repeat: "b", count: 12}, ".", {repeat: "c", count: 24}]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_13, kind: guilt, category: secret_assignment, text: "uppercase mixed API key", construct: {op: concat, parts: ["API_KEY=\"", {repeat: "X9", count: 10}, "\""]}, expected_reason: secret, source: "dux-final:Kimi-r1"}
+  - {id: kimi_14, kind: innocence, category: email_allowlist, text: "user@mail.example.com", source: "dux-final:Kimi-r1"}
+  - {id: kimi_15, kind: innocence, category: email_allowlist, text: "info@mail.balizero.com", source: "dux-final:Kimi-r1"}
+  - {id: kimi_16, kind: guilt, category: email, text: "personal address with punycode TLD", construct: {op: concat, parts: ["person", "@xn--demo.xn--p1ai"]}, expected_reason: email, source: "dux-final:Kimi-r1"}
+  - {id: kimi_17, kind: innocence, category: email_allowlist, text: "info+qa@balizero.com", source: "dux-final:Kimi-r1"}
+  - {id: kimi_18, kind: guilt, category: secret_assignment, text: "assignment value after one formatting newline", construct: {op: concat, parts: ["api_key =\n  \"", "mix9_", {repeat: "d", count: 20}, "\""]}, expected_reason: secret, source: "dux-r2:Kimi-D1"}
+  - {id: kimi_19, kind: guilt, category: secret_family, text: "JWT with long payload segment", construct: {op: concat, parts: ["eyJ", {repeat: "a", count: 17}, ".", {repeat: "Q", count: 600}, ".", {repeat: "s", count: 40}]}, expected_reason: secret, source: "dux-r2:Kimi-D2"}
+  - {id: kimi_20, kind: guilt, category: secret_assignment, text: "headerless private-key body over 256 chars", construct: {op: concat, parts: ["PRIVATE_KEY=\"MIIE", {repeat: "Ab3d", count: 90}, "\""]}, expected_reason: secret, source: "dux-r2:Kimi-D3"}
+  - {id: kimi_21, kind: guilt, category: decoded, text: "secret after byte 4096 of a base64 run", construct: {op: base64, value: {op: concat, parts: [{repeat: "x", count: 3100}, " PASSWORD=", "p4ss-", {repeat: "q", count: 16}]}, wrap: 0}, expected_reason: secret, source: "dux-r2:Kimi-D4"}
+  - {id: kimi_22, kind: guilt, category: decoded, text: "URL-escaped secret assignment", construct: {op: concat, parts: ["api%5Fkey%3D%22", "mix9_", {repeat: "e", count: 20}, "%22"]}, expected_reason: secret, source: "dux-r2:Kimi-D5"}
+  - {id: kimi_23, kind: guilt, category: decoded, text: "base64-wrapped phone", construct: {op: base64, value: {op: concat, parts: ["+62 812 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, wrap: 0}, expected_reason: phone, source: "dux-r2:Kimi-D5"}
+  - {id: kimi_24, kind: guilt, category: secret_context, text: "--user equals form", construct: {op: concat, parts: ["curl --user=demo:", "p4ss-", {repeat: "f", count: 8}, " https://service.invalid"]}, expected_reason: secret, source: "dux-r2:Kimi-D6"}
+  - {id: kimi_25, kind: guilt, category: secret_context, text: "uppercase mixed Bearer literal", construct: {op: concat, parts: ["Authorization: Bearer ", {repeat: "Q9", count: 14}]}, expected_reason: secret, source: "dux-r2:Kimi-D7"}
+  - {id: kimi_26, kind: guilt, category: secret_assignment, text: "quoted private key body over 4096 chars", construct: {op: concat, parts: ["PRIVATE_KEY=\"", {repeat: "Ab3d", count: 1200}, "\""]}, expected_reason: secret, source: "dux-r2:Kimi-N1"}
+  - {id: kimi_27, kind: guilt, category: secret_context, text: "quoted CLI password containing spaces", construct: {op: concat, parts: ["curl -u \"demo:", "Sup3r Secret 99", "\" https://service.invalid"]}, expected_reason: secret, source: "dux-r2:Kimi-N2"}
+  - {id: kimi_28, kind: guilt, category: decoded, text: "binary-headed base64 with printable secret tail", construct: {op: base64, value: {op: bytes_concat, parts: [{hex: "00ff"}, "PASSWORD=", "p4ss-", {repeat: "r", count: 16}]}, wrap: 0}, expected_reason: secret, source: "dux-r2:Kimi-N3"}
+  - {id: kimi_29, kind: guilt, category: secret_family, text: "lower-case PEM private-key header", construct: {op: concat, parts: ["-----BEGIN ", "private key", "-----\n", {repeat: "MIIE", count: 20}]}, expected_reason: secret, source: "dux-final:Ollama"}
+  - {id: kimi_30, kind: guilt, category: secret_assignment, text: "escaped quote inside assigned secret", construct: {op: concat, parts: ["DB_PASSWORD=\"", "Sup3r\\\"Secret99", "\""]}, expected_reason: secret, source: "dux-final:Kimi-trace"}
+  - {id: kimi_31, kind: guilt, category: phone, text: "phone wrapped over one formatting newline", construct: {op: concat, parts: ["tel:+62 812\n  ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "dux-final:declared-limit-closed"}
+  - {id: kimi_32, kind: guilt, category: secret_assignment, text: "assigned literal containing both quote kinds", construct: {op: concat, parts: ["PASSWORD=", "\"mix9-'quoted-", {repeat: "s", count: 12}, "\""]}, expected_reason: secret, source: "dux-final:declared-limit-closed"}
+  - {id: kimi_33, kind: guilt, category: email, text: "quoted personal local part", construct: {op: concat, parts: ["\"person label\"", "@", "client.corp"]}, expected_reason: email, source: "dux-final:declared-limit-closed"}
+  - {id: kimi_34, kind: guilt, category: secret_family, text: "family token containing placeholder-like run", construct: {op: concat, parts: ["ghp_", "mix9xxxx", {repeat: "a", count: 24}]}, expected_reason: secret, source: "dux-final:declared-limit-closed"}
+
+  # The 20 round-1 structural groups, plus FIFO/socket/screen-error regressions.
+  - {id: structural_01, kind: guilt, category: structural, text: "<benign ASCII padded to 10 MiB>", setup: {type: regular, size: 10485760}, expected_reason: oversized, source: "gate-7971:special"}
+  - {id: structural_02, kind: guilt, category: structural, text: "<symlink target outside root>", setup: {type: symlink, target: outside_root}, expected_reason: symlink, source: "gate-7971:special"}
+  - {id: structural_03, kind: guilt, category: structural, text: "<file below symlinked directory>", setup: {type: linked_directory, target: outside_root}, expected_reason: symlink, source: "gate-7971:special"}
+  - {id: structural_04, kind: guilt, category: structural, text: "<file vanishes before open>", setup: {type: vanish_before_open}, expected_reason: unreadable, source: "gate-7971:special"}
+  - {id: structural_05, kind: guilt, category: structural, text: "<permission denied regular file>", setup: {type: regular, mode: "000"}, expected_reason: unreadable, source: "gate-7971:special"}
+  - {id: structural_06, kind: guilt, category: structural, text: "hardlink bytes contain a secret assignment", construct: {op: concat, parts: ["PASSWORD=", "p4ss-", {repeat: "t", count: 16}]}, setup: {type: hardlink, original: outside_root}, expected_reason: secret, source: "gate-7971:special"}
+  - {id: structural_07, kind: innocence, category: structural, text: "print('clean BOM source')", setup: {type: regular, bom: utf8}, source: "gate-7971:special"}
+  - {id: structural_08, kind: guilt, category: structural, text: "CRLF phone content", construct: {op: concat, parts: ["contact = \"+62 812 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}, "\"\r\n"]}, setup: {type: regular}, expected_reason: phone, source: "gate-7971:special"}
+  - {id: structural_09, kind: guilt, category: structural, text: "print('clean')", setup: {type: regular, path: "scripts/caf\u00e9.py"}, expected_reason: unsafe_path, source: "gate-7971:special"}
+  - {id: structural_10, kind: guilt, category: structural, text: "print('clean')", setup: {type: regular, path_contains: newline}, expected_reason: unsafe_path, source: "gate-7971:special"}
+  - {id: structural_11, kind: innocence, category: structural, text: "print('repeated dots are safe')", setup: {type: regular, path: "scripts/a..b.py"}, source: "gate-7971:special"}
+  - {id: structural_12, kind: innocence, category: structural, text: "print('spaces are safe')", setup: {type: regular, path: "scripts/a b.py"}, source: "gate-7971:special"}
+  - {id: structural_13, kind: guilt, category: structural, text: "", setup: {type: regular, size: 0}, expected_reason: empty, source: "gate-7971:special"}
+  - {id: structural_14, kind: guilt, category: structural, text: "<ASCII with NUL byte>", setup: {type: regular, bytes_hex: "610062"}, expected_reason: binary, source: "gate-7971:special"}
+  - {id: structural_15, kind: guilt, category: structural, text: "<invalid UTF-8 latin-1 byte>", setup: {type: regular, bytes_hex: "636166e9"}, expected_reason: binary, source: "gate-7971:special"}
+  - {id: structural_16, kind: innocence, category: structural, text: "<benign ASCII exactly at cap>", setup: {type: regular, size: 524288}, source: "gate-7971:special"}
+  - {id: structural_17, kind: innocence, category: structural, text: "<benign ASCII one byte below cap>", setup: {type: regular, size: 524287}, source: "gate-7971:special"}
+  - {id: structural_18, kind: guilt, category: structural, text: "<benign ASCII one byte over cap>", setup: {type: regular, size: 524289}, expected_reason: oversized, source: "gate-7971:special"}
+  - {id: structural_19, kind: guilt, category: structural, text: "print('fixture path exclusion')", setup: {type: regular, path: "scripts/fixtures/example.py"}, expected_reason: excluded_path, source: "gate-7971:special"}
+  - {id: structural_20, kind: guilt, category: structural, text: "print('clean')", setup: {type: regular, path_construct: {op: concat, parts: ["scripts/wa_", "08", "12", {repeat: "3", count: 8}, ".py"]}}, expected_reason: phone, source: "gate-7971:special"}
+  - {id: structural_21, kind: guilt, category: structural, text: "print('clean')", setup: {type: regular, path_construct: {op: concat, parts: ["scripts/person", "@", "client.corp.py"]}}, expected_reason: email, source: "gate-7971:special"}
+  - {id: structural_22, kind: guilt, category: structural, text: "<FIFO>", setup: {type: fifo}, expected_reason: not_regular, source: "gate-7971-r2:robust-fifo"}
+  - {id: structural_23, kind: guilt, category: structural, text: "<Unix socket>", setup: {type: socket}, expected_reason: not_regular, source: "gate-7971-r2:robust-fifo"}
+  - {id: structural_24, kind: guilt, category: structural, text: "<classifier raises>", setup: {type: injected_exception, stage: classify}, expected_reason: screen_error, source: "gate-7971:failclosed"}
+
+  # Measured innocence: real-tree false-loss shapes and neutral controls.
+  - {id: innocent_01, kind: innocence, category: numeric, text: "version = '3.11.15'", source: "gate-7971:innocence"}
+  - {id: innocent_02, kind: innocence, category: numeric, text: "40-hex commit SHA", construct: {op: concat, parts: ["d847b6f41ca372446a58ec9d123e", "387aae63f1b4"]}, source: "gate-7971:innocence"}
+  - {id: innocent_03, kind: innocence, category: numeric, text: "request_id = '123e4567-e89b-12d3-a456-426614174000'", source: "gate-7971:innocence"}
+  - {id: innocent_04, kind: innocence, category: numeric, text: "bind = '127.0.0.1:8000'", source: "gate-7971:innocence"}
+  - {id: innocent_05, kind: innocence, category: numeric, text: "bind6 = '[2001:db8::1]:443'", source: "gate-7971:innocence"}
+  - {id: innocent_06, kind: innocence, category: numeric, text: "color = '#123456'", source: "gate-7971:innocence"}
+  - {id: innocent_07, kind: innocence, category: fixture, text: "base64_vector = 'SGVsbG8sIHdvcmxkIQ=='", source: "gate-7971:innocence"}
+  - {id: innocent_08, kind: innocence, category: docs, text: "GitHub tokens use the ghp_ family; no value is present.", source: "gate-7971:innocence"}
+  - {id: innocent_09, kind: innocence, category: numeric, text: "created_at = '2026-10-06T08:42:21Z'", source: "gate-7971:innocence"}
+  - {id: innocent_10, kind: innocence, category: numeric, text: "epoch_ms = 1770100941000", source: "gate-7971:innocence"}
+  - {id: innocent_11, kind: innocence, category: numeric, text: "prompt_tokens = 63028572", source: "gate-7971:innocence"}
+  - {id: innocent_12, kind: innocence, category: code_reference, text: "token = os.environ['SERVICE_TOKEN']", source: "gate-7971:innocence"}
+  - {id: innocent_13, kind: innocence, category: code_reference, text: "digest = hashlib.sha256(data).hexdigest()", source: "gate-7971:innocence"}
+  - {id: innocent_14, kind: innocence, category: numeric, text: "price_idr = 15000000", source: "gate-7971:innocence"}
+  - {id: innocent_15, kind: innocence, category: numeric, text: "isbn = '978-1-4028-9462-6'", source: "gate-7971:innocence"}
+  - {id: innocent_16, kind: innocence, category: numeric, text: "release_date = '2026-09-23'", source: "gate-7971:innocence"}
+  - {id: innocent_17, kind: innocence, category: numeric, text: "coordinate = (-8.6500, 115.2167)", source: "gate-7971:innocence"}
+  - {id: innocent_18, kind: innocence, category: numeric, text: "image_id = 9912081200001234", source: "gate-7971:innocence"}
+  - {id: innocent_19, kind: innocence, category: numeric, text: "kbli_codes = ['62010', '63122']", source: "gate-7971:innocence"}
+  - {id: innocent_20, kind: innocence, category: email_allowlist, text: "notifications@balizero.com", source: "gate-7971:innocence"}
+  - {id: innocent_21, kind: innocence, category: email_allowlist, text: "admin@subdomain.nuzantara.com", source: "gate-7971:innocence"}
+  - {id: innocent_22, kind: innocence, category: email_allowlist, text: "test@example.com", source: "gate-7971:innocence"}
+  - {id: innocent_23, kind: innocence, category: template, text: "dsn = f'postgresql://{user}:{pwd}@{host}/{db}'", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_24, kind: innocence, category: template, text: "dsn = 'postgresql://' + user + ':' + password + '@' + host", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_25, kind: innocence, category: code_reference, text: "class TokenUsage:\n    \"\"\"Tracks model accounting.\"\"\"", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_26, kind: innocence, category: code_reference, text: "class TokenEstimator:\n    \"\"\"Estimates counts.\"\"\"", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_27, kind: innocence, category: code_reference, text: "class TokenWatchdog:\n    pass", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_28, kind: innocence, category: code_reference, text: "class TokenBucket:\n    rate: float", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_29, kind: innocence, category: code_reference, text: "class OrchestratorTokenStorage:\n    backend: object", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_30, kind: innocence, category: type_annotation, text: "private-key type annotation", construct: {op: concat, parts: ["private_key: Ed25519", "PrivateKey"]}, source: "gate-7971-r2:real-tree-loss"}
+  - {id: innocent_31, kind: innocence, category: shell_reference, text: "FLY_API_TOKEN=\"$token\"", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_32, kind: innocence, category: shell_reference, text: "TOKEN=\"$(security find-generic-password -w)\"", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_33, kind: innocence, category: code_reference, text: "token_type = 'Bearer'", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_34, kind: innocence, category: arithmetic, text: "ratio = (h >>> 0) / 4294967295", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_35, kind: innocence, category: date, text: "# Opus release: 2026-09-23", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_36, kind: innocence, category: svg, text: "path = 'M12 8 L20 16 L4 16 Z'", source: "gate-7971-r2:real-tree-loss"}
+  - {id: innocent_37, kind: innocence, category: date, text: "meeting = '06-10-2026 08:30'", source: "dux-final:known-overflag"}
+  - {id: innocent_38, kind: innocence, category: tuple, text: "modes = ('private_key', 'public_key', 'signing_key')", source: "gate-7971-r2:real-tree-loss"}
+  - {id: innocent_39, kind: innocence, category: tuple, text: "status = ('TOKEN', 'READY', 'PASS')", source: "gate-7971-r2:real-tree-loss"}
+  - {id: innocent_40, kind: innocence, category: code_reference, text: "INDEXNOW_KEY = settings.indexnow_key", source: "gate-7971-r2:queue-scan"}
+  - {id: innocent_41, kind: innocence, category: template, text: "PASSWORD = '$PASSWORD'", source: "spec:placeholder"}
+  - {id: innocent_42, kind: innocence, category: template, text: "Authorization: Bearer <redacted>", source: "spec:placeholder"}
+  - {id: innocent_43, kind: innocence, category: docs, text: "Never pass the password to sshpass with -p", source: "spec:documentation"}
+  - {id: innocent_44, kind: innocence, category: crm_name, text: "class SamplePersonName: pass", source: "spec:name-context"}
+  - {id: innocent_45, kind: innocence, category: limit, text: "ciphertext = '<opaque encrypted bytes>'", source: "spec:non-cleartext"}
+  - {id: innocent_46, kind: innocence, category: limit, text: "64-hex digest under a non-key name", construct: {op: concat, parts: ["sha256 = '", {repeat: "a", count: 64}, "'"]}, source: "spec:non-cleartext"}
+
+  # Additional explicit task entities and declared fail-closed limits.
+  - {id: normative_01, kind: guilt, category: secret_context, text: "Proxy-Authorization Basic literal", construct: {op: concat, parts: ["Proxy-Authorization: Basic ", {repeat: "a", count: 24}]}, expected_reason: secret, source: "task:explicit"}
+  - {id: normative_02, kind: guilt, category: secret_context, text: "Postgres URL credential", construct: {op: concat, parts: ["postgresql://demo:", "p4ss-", {repeat: "b", count: 8}, "@db.invalid/app"]}, expected_reason: secret, source: "task:explicit"}
+  - {id: normative_03, kind: guilt, category: secret_context, text: "Redis URL credential", construct: {op: concat, parts: ["redis://demo:", "p4ss-", {repeat: "c", count: 8}, "@cache.invalid/0"]}, expected_reason: secret, source: "task:explicit"}
+  - {id: normative_04, kind: guilt, category: secret_context, text: "MongoDB SRV URL credential", construct: {op: concat, parts: ["mongodb+srv://demo:", "p4ss-", {repeat: "d", count: 8}, "@cluster.invalid/app"]}, expected_reason: secret, source: "task:explicit"}
+  - {id: normative_05, kind: guilt, category: secret_context, text: "Git clone URL credential", construct: {op: concat, parts: ["git clone https://demo:", "tok9-", {repeat: "e", count: 16}, "@git.invalid/repo"]}, expected_reason: secret, source: "task:explicit"}
+  - {id: normative_06, kind: guilt, category: secret_family, text: "PEM with CRLF", construct: {op: concat, parts: ["-----BEGIN PRIVATE", " KEY-----\r\n", {repeat: "MIIE", count: 20}, "\r\n-----END PRIVATE", " KEY-----"]}, expected_reason: secret, source: "task:explicit"}
+  - {id: normative_07, kind: guilt, category: secret_family, text: "PEM with escaped newline", construct: {op: concat, parts: ["-----BEGIN PRIVATE", " KEY-----\\n", {repeat: "MIIE", count: 20}, "\\n-----END PRIVATE", " KEY-----"]}, expected_reason: secret, source: "task:explicit"}
+  - {id: normative_08, kind: guilt, category: phone, text: "tel URI", construct: {op: concat, parts: ["tel:+62-812-", {repeat: "3", count: 4}, "-", {repeat: "4", count: 4}]}, expected_reason: phone, source: "task:explicit"}
+  - {id: normative_09, kind: guilt, category: phone, text: "WhatsApp JID", construct: {op: concat, parts: ["62812", {repeat: "3", count: 7}, "@s.whatsapp.net"]}, expected_reason: phone, source: "task:explicit"}
+  - {id: normative_10, kind: guilt, category: crm_name, text: "client record personal name", construct: {op: concat, parts: ["client = {\"name\": \"", "Synthetic Person", "\", \"stage\": \"lead\"}"]}, expected_reason: crm_name, source: "task:explicit"}
+  - {id: normative_11, kind: guilt, category: decoded, text: "credential under two base64 layers", construct: {op: base64, value: {op: base64, value: {op: concat, parts: ["PASSWORD=", "p4ss-", {repeat: "v", count: 16}]}, wrap: 0}, wrap: 0}, expected_reason: secret, source: "spec:two-layers"}
+  - {id: normative_12, kind: guilt, category: decoded, text: "secret-named assignment holding malformed base64", construct: {op: concat, parts: ["encoded_secret=", {repeat: "A", count: 25}, "%"]}, expected_reason: secret, source: "spec:malformed-encoding"}
+  - {id: normative_13, kind: guilt, category: structural, text: "<descriptor inode changes after enumeration>", setup: {type: replace_before_open, expected_inode_mismatch: true}, expected_reason: unreadable, source: "spec:descriptor-check"}
+  - {id: normative_14, kind: guilt, category: secret_assignment, text: "quoted password shorter than six characters", construct: {op: concat, parts: ["PASSWORD=\"", "pw", "\""]}, expected_reason: secret, source: "dux-final:old-limit-closed"}
+  - {id: normative_15, kind: guilt, category: secret_context, text: "database URL with one-character password", construct: {op: concat, parts: ["postgresql://demo:", "p", "@db.invalid/app"]}, expected_reason: secret, source: "dux-final:old-limit-closed"}
+
+  # Verifier additions (dux-tp1spec): receipt items Codex O1's draft did not map to a row.
+  # gate-7927 1b: shapes the #7927 screen already caught; family regressions the next screen must keep.
+  - {id: h7927_01, kind: guilt, category: secret_family, text: "AWS access key id", construct: {op: concat, parts: ["AK", "IA", {repeat: "Z7", count: 8}]}, expected_reason: secret, source: "gate-7927:1b"}
+  - {id: h7927_02, kind: guilt, category: secret_family, text: "OpenAI project key", construct: {op: concat, parts: ["sk-", "proj-", {repeat: "a1", count: 24}]}, expected_reason: secret, source: "gate-7927:1b"}
+  - {id: h7927_03, kind: guilt, category: secret_family, text: "GitHub classic token", construct: {op: concat, parts: ["ghp_", {repeat: "a", count: 36}]}, expected_reason: secret, source: "gate-7927:1b"}
+  - {id: h7927_04, kind: guilt, category: secret_family, text: "Slack bot token", construct: {op: concat, parts: ["xox", "b-", {repeat: "1", count: 12}, "-", {repeat: "2", count: 12}, "-", {repeat: "c", count: 24}]}, expected_reason: secret, source: "gate-7927:1b"}
+  - {id: h7927_05, kind: guilt, category: secret_family, text: "PEM RSA private key with LF", construct: {op: concat, parts: ["-----BEGIN RSA PRIVATE", " KEY-----\n", {repeat: "MIIE", count: 20}, "\n-----END RSA PRIVATE", " KEY-----"]}, expected_reason: secret, source: "gate-7927:1b"}
+  - {id: h7927_06, kind: guilt, category: secret_family, text: "Google API key", construct: {op: concat, parts: ["AI", "za", {repeat: "S", count: 35}]}, expected_reason: secret, source: "gate-7927:1b"}
+  - {id: h7927_07, kind: guilt, category: phone, text: "plain 08 mobile", construct: {op: concat, parts: ["08", "12", {repeat: "3", count: 4}, {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:1b"}
+  - {id: h7927_08, kind: guilt, category: phone, text: "62 mobile without plus", construct: {op: concat, parts: ["62", "812", {repeat: "3", count: 4}, {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:1b"}
+  - {id: h7927_09, kind: guilt, category: phone, text: "plain wa.me link", construct: {op: concat, parts: ["https://wa.me/", "62812", {repeat: "3", count: 4}, {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:1b"}
+  - {id: h7927_10, kind: guilt, category: phone, text: "single-digit spacing", construct: {op: concat, parts: ["0 8 1 2 ", "3 3 3 3 ", "4 4 4 4"]}, expected_reason: phone, source: "gate-7927:1b"}
+  - {id: h7927_11, kind: guilt, category: phone, text: "NBSP separators", construct: {op: concat, parts: ["08", "12 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "gate-7927:1b"}
+  - {id: h7927_12, kind: guilt, category: phone, text: "2-2-2 grouping", construct: {op: concat, parts: ["08 12 ", "33 33 ", "44 44"]}, expected_reason: phone, source: "gate-7927:1b"}
+
+  # dux-tp1screen fixture: what the Codex O3 build leaked before the #7971 screen.
+  - {id: dux_01, kind: guilt, category: secret_assignment, text: "SECRET_KEY compound name", construct: {op: concat, parts: ["SECRET_KEY = \"", "dj4ngo-", {repeat: "k9", count: 12}, "\""]}, expected_reason: secret, source: "dux-final:O3-leak"}
+  - {id: dux_02, kind: guilt, category: secret_assignment, text: "client_secret YAML value", construct: {op: concat, parts: ["client_secret: \"", {repeat: "Cs7", count: 8}, "\""]}, expected_reason: secret, source: "dux-final:O3-leak"}
+  - {id: dux_03, kind: guilt, category: secret_assignment, text: "JSON password key", construct: {op: concat, parts: ["{\"pass", "word\": \"", "p4ss-", {repeat: "j", count: 8}, "\"}"]}, expected_reason: secret, source: "dux-final:O3-leak"}
+  - {id: dux_04, kind: guilt, category: secret_family, text: "header-only PEM private key", construct: {op: concat, parts: ["-----BEGIN EC PRIVATE", " KEY-----"]}, expected_reason: secret, source: "dux-final:O3-leak"}
+  - {id: dux_05, kind: guilt, category: secret_assignment, text: "AWS secret access value in JSON", construct: {op: concat, parts: ["{\"aws_secret_access_key\": \"", {repeat: "Ab1", count: 13}, "x\"}"]}, expected_reason: secret, source: "gate-7971:1a"}
+  - {id: dux_06, kind: guilt, category: phone, text: "two mobiles joined by a slash", construct: {op: concat, parts: ["08", "12-", {repeat: "3", count: 4}, "-", {repeat: "4", count: 4}, " / ", "08", "13-", {repeat: "5", count: 4}, "-", {repeat: "6", count: 4}]}, expected_reason: phone, source: "dux-final:O3-leak"}
+  - {id: dux_07, kind: guilt, category: phone, text: "mobile followed by a year", construct: {op: concat, parts: ["call 08", "12 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}, " 2026"]}, expected_reason: phone, source: "dux-final:O3-leak"}
+  - {id: dux_08, kind: guilt, category: phone, text: "mobile inside an upper-case identifier", construct: {op: concat, parts: ["WA_NUMBER_", "62812", {repeat: "3", count: 4}, {repeat: "4", count: 4}, " = True"]}, expected_reason: phone, source: "dux-final:O3-leak"}
+  - {id: dux_09, kind: guilt, category: phone, text: "U+2010 hyphen separators", construct: {op: concat, parts: ["08", "12‐", {repeat: "3", count: 4}, "‐", {repeat: "4", count: 4}]}, expected_reason: phone, source: "dux-final:O3-leak"}
+  - {id: dux_10, kind: guilt, category: phone, text: "62 (0)812 without plus", construct: {op: concat, parts: ["62 (0)", "812 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "dux-final:O3-leak"}
+  - {id: dux_11, kind: guilt, category: phone, text: "00-prefix Indonesia", construct: {op: concat, parts: ["00", "62 812 ", {repeat: "3", count: 4}, " ", {repeat: "4", count: 4}]}, expected_reason: phone, source: "dux-final:O3-leak"}
+
+  # gate-7971 1b "declared limits that also queue" and N6 "out of declared scope": the spec closes them.
+  - {id: g7971n_01, kind: guilt, category: secret_assignment, text: "letters-only unquoted YAML password, same line", construct: {op: concat, parts: ["pass", "word: ", "let", "mein"]}, expected_reason: secret, source: "gate-7971:1b-limit"}
+  - {id: g7971n_02, kind: guilt, category: email, text: "bracketed at/dot address", construct: {op: concat, parts: ["person", " [at] ", "client", " [dot] ", "corp"]}, expected_reason: email, source: "gate-7971:1b-limit"}
+  - {id: g7971n_03, kind: guilt, category: id_number, text: "labelled 16-digit NIK", construct: {op: concat, parts: ["nik: \"", "5171", "04", "120850", "0001", "\""]}, expected_reason: id_number, source: "gate-7971:N6"}
+  - {id: g7971n_04, kind: guilt, category: id_number, text: "labelled passport number", construct: {op: concat, parts: ["passport_no = \"", "X", {repeat: "1", count: 7}, "\""]}, expected_reason: id_number, source: "gate-7971:N6"}
+  - {id: g7971n_05, kind: guilt, category: id_number, text: "NIK without a recognised label, in prose", construct: {op: concat, parts: ["# noted ", "5171", "04", "120850", "0001"]}, expected_reason: id_number, source: "gate-7971:N6", rule: "without a recognised label", limit: true}
+
+  # #7971 head b32c4f58e9 "Known limits" not yet represented.
+  - {id: kl_01, kind: guilt, category: secret_context, text: "curl -u quoted user name with a space", construct: {op: concat, parts: ["curl -u \"demo user:", "p4ss-", {repeat: "u", count: 8}, "\" https://service.invalid"]}, expected_reason: secret, source: "pr-7971-b32c:known-limits"}
+  - {id: kl_02, kind: guilt, category: secret_context, text: "curl -u unclosed quote", construct: {op: concat, parts: ["curl -u \"demo:", "p4ss-", {repeat: "w", count: 8}, " https://service.invalid"]}, expected_reason: secret, source: "pr-7971-b32c:known-limits"}
+  - {id: kl_03, kind: guilt, category: secret_context, text: "curl -u quoted value over 256 characters", construct: {op: concat, parts: ["curl -u \"demo:", {repeat: "Pw9", count: 100}, "\" https://service.invalid"]}, expected_reason: secret, source: "pr-7971-b32c:known-limits"}
+  - {id: kl_04, kind: guilt, category: decoded, text: "NUL byte inside a base64-wrapped credential name", construct: {op: base64, value: {op: bytes_concat, parts: ["PASS", {hex: "00"}, "WORD=", "p4ss-", {repeat: "n", count: 16}]}, wrap: 0}, expected_reason: secret, source: "pr-7971-b32c:known-limits"}
+  - {id: kl_05, kind: guilt, category: secret_family, text: "family token containing the word example", construct: {op: concat, parts: ["ghp_", "example", {repeat: "Q1", count: 15}]}, expected_reason: secret, source: "pr-7971-b32c:known-limits"}
+  - {id: kl_06, kind: guilt, category: structural, text: "<parent directory swapped for a symlink after the check>", setup: {type: parent_swapped_to_symlink, target: outside_root}, expected_reason: symlink, source: "pr-7971-b32c:known-limits"}
+
+  # gate-7971-r2 rows 2c/4b/4c and gate-7971 3: held shapes and fail-closed paths worth pinning.
+  - {id: r2x_01, kind: guilt, category: secret_assignment, text: "assignment value on the line after =", construct: {op: concat, parts: ["pass", "word =\n\"", "pw", "\""]}, expected_reason: secret, source: "gate-7971-r2:4b"}
+  - {id: r2x_02, kind: guilt, category: decoded, text: "base64url credential", construct: {op: base64, urlsafe: true, value: {op: concat, parts: ["API_KEY=", {repeat: "Zz9>", count: 8}]}, wrap: 0}, expected_reason: secret, source: "gate-7971-r2:2c"}
+  - {id: r2x_03, kind: guilt, category: decoded, text: "AWS key id under base64", construct: {op: base64, value: {op: concat, parts: ["AK", "IA", {repeat: "Q3", count: 8}]}, wrap: 0}, expected_reason: secret, source: "gate-7971-r2:2c"}
+  - {id: r2x_04, kind: guilt, category: secret_assignment, text: "npmrc _authToken", construct: {op: concat, parts: ["//registry.invalid/:_auth", "Token=", {repeat: "Nb3", count: 12}]}, expected_reason: secret, source: "gate-7971-r2:2c"}
+  - {id: r2x_05, kind: guilt, category: decoded, text: "HTML-entity at sign", construct: {op: concat, parts: ["person", "&#64;", "client.corp"]}, expected_reason: email, source: "gate-7971-r2:2c"}
+  - {id: r2x_06, kind: guilt, category: decoded, text: "unicode-escaped at sign", construct: {op: concat, parts: ["person", "\\u0040", "client.corp"]}, expected_reason: email, source: "gate-7971-r2:2c"}
+  - {id: r2x_07, kind: guilt, category: structural, text: "<directory where a tracked file was>", setup: {type: directory}, expected_reason: not_regular, source: "gate-7971-r2:4c"}
+  - {id: r2x_08, kind: guilt, category: structural, text: "<read raises RuntimeError>", setup: {type: injected_exception, stage: read}, expected_reason: screen_error, source: "gate-7971:3"}
+  - {id: r2x_09, kind: guilt, category: structural, text: "<path check raises>", setup: {type: injected_exception, stage: path_check}, expected_reason: screen_error, source: "gate-7971:3"}
+  - {id: r2x_10, kind: guilt, category: structural, text: "<classifier raises RecursionError>", setup: {type: injected_exception, stage: classify, exception: RecursionError}, expected_reason: screen_error, source: "gate-7971:3"}
+  - {id: r2x_11, kind: guilt, category: decoded, text: "credential under three base64 layers", construct: {op: base64, value: {op: base64, value: {op: base64, value: {op: concat, parts: ["PASSWORD=", "p4ss-", {repeat: "m", count: 16}]}, wrap: 0}, wrap: 0}, wrap: 0}, expected_reason: secret, source: "spec:depth-limit", limit: true}
+
+  # E-mail: the gate-7971 mutation survivor (role prefix is not a role mailbox) and own-domain persons.
+  - {id: em_01, kind: guilt, category: email, text: "role word as a prefix on an own domain", construct: {op: concat, parts: ["info", "synthetic", "@", "balizero.com"]}, expected_reason: email, source: "gate-7971:4-survivor"}
+  - {id: em_02, kind: guilt, category: email, text: "team prefix on an own domain", construct: {op: concat, parts: ["team", "synthetic", "@", "zantara.io"]}, expected_reason: email, source: "gate-7971:4-survivor"}
+  - {id: em_03, kind: guilt, category: email, text: "personal address on an own domain", construct: {op: concat, parts: ["synthetic.person", "@", "nuzantara.com"]}, expected_reason: email, source: "gate-7971:2c"}
+
+  # Declared limits: guilt shapes the spec says the screen may queue (each listed in the spec).
+  - {id: lim_01, kind: guilt, category: crm_name, text: "personal name in free prose", construct: {op: concat, parts: ["# Follow up with ", "Synthetic", " Person", " about the invoice"]}, expected_reason: crm_name, source: "spec:declared-limit", limit: true}
+  - {id: lim_02, kind: guilt, category: email, text: "address spelled with plain words", construct: {op: concat, parts: ["person", " at ", "client", " dot ", "corp"]}, expected_reason: email, source: "spec:declared-limit", limit: true}
+
+  - {id: lim_03, kind: guilt, category: secret_assignment, text: "unquoted password shaped like a type identifier after a colon", construct: {op: concat, parts: ["pass", "word: ", "Sum", "mer"]}, expected_reason: secret, source: "spec:declared-limit", rule: "shaped like a type identifier", limit: true}
+
+  # Cost: adversarial inputs at the cap (gate-7971 row 5, dux-r2 cost table); innocent, must finish inside the bound.
+  - {id: cost_01, kind: innocence, category: cost, text: "eyJ repeated to the cap", construct: {op: concat, parts: [{repeat: "eyJ", count: 174762}]}, source: "gate-7971:5"}
+  - {id: cost_02, kind: innocence, category: cost, text: "letters-only file at the cap", construct: {op: concat, parts: [{repeat: "a", count: 524288}]}, source: "dux-final:hang"}
+  - {id: cost_03, kind: innocence, category: cost, text: "percent escapes to the cap", construct: {op: concat, parts: [{repeat: "%41", count: 174762}]}, source: "gate-7971-r2:4a"}
+  - {id: cost_04, kind: innocence, category: cost, text: "digit groups to the cap", construct: {op: concat, parts: [{repeat: "12 ", count: 174762}]}, source: "dux-r2:cubic-separator"}
+
+  # Innocence: the rest of the real-tree loss breakdown (gate-7971 2c, gate-7971-r2 2d/3) and rule boundaries.
+  - {id: innocent_47, kind: innocence, category: code_reference, text: "token_status = \"expired\"", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_48, kind: innocence, category: code_reference, text: "SLACK_RE = re.compile(r\"xox[baprs]-[0-9A-Za-z-]+\")", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_49, kind: innocence, category: code_reference, text: "token_url = \"https://auth.example.com/oauth/token\"", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_50, kind: innocence, category: code_reference, text: "const token = process.env.API_TOKEN;", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_51, kind: innocence, category: numeric, text: "amount: \"+15.000.000\"", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_52, kind: innocence, category: arithmetic, text: "delta = \"+1234/-5678\"", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_53, kind: innocence, category: date, text: "years = [2021, 2022, 2023, 2024]", source: "gate-7971-r2:real-tree-loss"}
+  - {id: innocent_54, kind: innocence, category: date, text: "date: 06/10/2026", source: "gate-7971-r2:real-tree-loss"}
+  - {id: innocent_55, kind: innocence, category: date, text: "Updated: 2026.10.06", source: "gate-7971-r2:real-tree-loss"}
+  - {id: innocent_56, kind: innocence, category: code_reference, text: "private_key = Ed25519PrivateKey.generate()", source: "gate-7971-r2:real-tree-loss"}
+  - {id: innocent_57, kind: innocence, category: email_allowlist, text: "Co-Authored-By: Claude <noreply@anthropic.com>", source: "gate-7971:real-tree-loss"}
+  - {id: innocent_58, kind: innocence, category: code_reference, text: "STATE_PASS = \"pass\"", source: "gate-7971-r2:queue-scan"}
+  - {id: innocent_59, kind: innocence, category: numeric, text: "rtc_ports = \"7880:7881:7882:50000:60000\"", source: "gate-7971-r2:queue-scan"}
+  - {id: innocent_60, kind: innocence, category: code_reference, text: "CACHE_KEY = \"session:user-profile:v2\"", source: "gate-7971-r2:queue-scan"}
+  - {id: innocent_61, kind: innocence, category: code_reference, text: "public key literal", construct: {op: concat, parts: ["PUBLIC_KEY = \"", "MCowBQYDK2VwAyEA", {repeat: "Pk7", count: 10}, "\""]}, source: "gate-7971-r2:queue-scan"}
+  - {id: innocent_62, kind: innocence, category: type_annotation, text: "annotated password with an empty default", construct: {op: concat, parts: ["pass", "word: str = \"\""]}, source: "spec:empty-literal"}
+  - {id: innocent_63, kind: innocence, category: code_reference, text: "PEM public key block", construct: {op: concat, parts: ["-----BEGIN PUBLIC", " KEY-----\n", {repeat: "MIIB", count: 10}, "\n-----END PUBLIC", " KEY-----"]}, source: "spec:public-key"}
+  - {id: innocent_64, kind: innocence, category: shell_reference, text: "stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)", source: "gate-7971:queue-scan"}
+  - {id: innocent_65, kind: innocence, category: template, text: "Authorization: Bearer YOUR_JWT_TOKEN", source: "gate-7971:queue-scan"}
+  - {id: innocent_66, kind: innocence, category: docs, text: "Indonesian mobiles start with +62 or 08.", source: "spec:prefix-only"}
+
+  # Council round 1 (Codex O2, 13:35-13:38Z): rows for the gaps it found.
+  - {id: c1_03, kind: guilt, category: phone, text: "+62 mobile in dot-separated groups of three", construct: {op: concat, parts: ["+62", ".812", ".", {repeat: "3", count: 3}, ".", {repeat: "4", count: 3}]}, expected_reason: phone, source: "council-r1:codex-3"}
+  - {id: c1_07, kind: guilt, category: secret_context, text: "f-string DSN with a literal password and a templated host", construct: {op: concat, parts: ["dsn = f\"postgresql://app:", "p4ss-", {repeat: "y", count: 8}, "@{host}/db\""]}, expected_reason: secret, source: "council-r1:codex-7"}
+  - {id: c1_08, kind: guilt, category: secret_assignment, text: "YAML block scalar password inside a heredoc", construct: {op: concat, parts: ["cat <<EOF > app.yml\ndb:\n  pass", "word: >-\n    ", "p4ss-", {repeat: "z", count: 8}, "\nEOF"]}, expected_reason: secret, source: "council-r1:codex-8"}
+  - {id: c1_09, kind: guilt, category: id_number, text: "formatted NPWP under its label", construct: {op: concat, parts: ["npwp: \"", "09.876", ".543.2", "-101.000", "\""]}, expected_reason: id_number, source: "council-r1:codex-9"}
+  - {id: c1_10a, kind: guilt, category: decoded, text: "hex-escaped at sign", construct: {op: concat, parts: ["person", "\\x40", "client.corp"]}, expected_reason: email, source: "council-r1:codex-10"}
+  - {id: c1_10b, kind: guilt, category: decoded, text: "long unicode-escaped at sign", construct: {op: concat, parts: ["person", "\\U00000040", "client.corp"]}, expected_reason: email, source: "council-r1:codex-10"}
+  - {id: c1_10c, kind: guilt, category: secret_family, text: "GitHub server-to-server token", construct: {op: concat, parts: ["ghs_", {repeat: "s", count: 36}]}, expected_reason: secret, source: "council-r1:codex-10"}
+  - {id: c1_10d, kind: guilt, category: secret_family, text: "GitHub refresh token", construct: {op: concat, parts: ["ghr_", {repeat: "t", count: 36}]}, expected_reason: secret, source: "council-r1:codex-10"}
+  - {id: c1_10e, kind: guilt, category: secret_family, text: "Stripe restricted key", construct: {op: concat, parts: ["rk_", "live_", {repeat: "r", count: 28}]}, expected_reason: secret, source: "council-r1:codex-10"}
+  - {id: c1_10f, kind: guilt, category: secret_family, text: "Google OAuth access token", construct: {op: concat, parts: ["ya", "29.", {repeat: "Yq", count: 20}]}, expected_reason: secret, source: "council-r1:codex-10"}
+  - {id: c1_10g, kind: guilt, category: secret_family, text: "Fly fm1 token", construct: {op: concat, parts: ["fm", "1_", {repeat: "g", count: 30}]}, expected_reason: secret, source: "council-r1:codex-10"}
+  - {id: c1_10h, kind: guilt, category: secret_family, text: "Fly fo1 token", construct: {op: concat, parts: ["fo", "1_", {repeat: "h", count: 30}]}, expected_reason: secret, source: "council-r1:codex-10"}
+  - {id: lim_04, kind: guilt, category: secret_assignment, text: "short letters-only literal under a token name", construct: {op: concat, parts: ["SERVICE_TOKEN = \"", "short", "Tok", "\""]}, expected_reason: secret, source: "council-r1:codex-6", limit: true}
+
+  # gate-7988 cure round 1: 27 guilt rows (one entity each; g7988_20-27 added by the verifier) and 6 innocence boundaries.
+  - {id: g7988_01, kind: guilt, category: secret_assignment, text: "Tier P stem at the suffix of a whole name", construct: {op: concat, parts: ["PGPASS", "WORD = \"", "p4ss-", {repeat: "q", count: 12}, "\""]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_02, kind: guilt, category: secret_context, text: "credentials in an arbitrary composite URI scheme", construct: {op: concat, parts: ["postgresql+asyncpg://demo:", "p4ss-", {repeat: "r", count: 8}, "@db.invalid/app"]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_03, kind: guilt, category: secret_assignment, text: "Tier K standard-base64 alphabet with padding", construct: {op: concat, parts: ["ROTATION_KEY = \"", {repeat: "Ab9+/", count: 7}, "=\""]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_04, kind: guilt, category: id_number, text: "labelled two-letter passport number", construct: {op: concat, parts: ["no_paspor = \"", "AB", "123", "4567", "\""]}, expected_reason: id_number, source: "gate-7988"}
+  - {id: g7988_05, kind: guilt, category: id_number, text: "labelled alphanumeric KITAS card number", construct: {op: concat, parts: ["nomor_kitas: \"", "2C11AB", "1234", "567", "\""]}, expected_reason: id_number, source: "gate-7988"}
+  - {id: g7988_06, kind: guilt, category: phone, text: "labelled US phone without plus or country code", construct: {op: concat, parts: ["phone: \"(", "415) ", "555-", "0123", "\""]}, expected_reason: phone, source: "gate-7988"}
+  - {id: g7988_07, kind: guilt, category: secret_family, text: "Meta bare token family", construct: {op: concat, parts: ["EA", "A", {repeat: "A7", count: 12}]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_08, kind: guilt, category: secret_family, text: "Tailscale bare token family", construct: {op: concat, parts: ["tskey-", "auth-", "k", {repeat: "Q8", count: 4}, "CNTRL-", {repeat: "T8", count: 16}]}, expected_reason: secret, source: "gate-7988", rule: "`tskey-auth-<id>CNTRL-<secret>`"}
+  - {id: g7988_09, kind: guilt, category: secret_family, text: "Groq bare token family", construct: {op: concat, parts: ["gsk", "_", {repeat: "G9", count: 12}]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_10, kind: guilt, category: secret_family, text: "unlisted bare token family", construct: {op: concat, parts: ["vendorz", "_", {repeat: "V7", count: 12}]}, expected_reason: secret, source: "gate-7988", limit: true}
+  - {id: g7988_11, kind: guilt, category: secret_assignment, text: "os.environ subscript assignment", construct: {op: concat, parts: ["os.environ[\"APP_PASS", "WORD\"] = \"", "p4ss-", {repeat: "s", count: 8}, "\""]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_12, kind: guilt, category: secret_assignment, text: "os.environ setdefault assignment", construct: {op: concat, parts: ["os.environ.setdefault(\"APP_PASS", "WORD\", \"", "p4ss-", {repeat: "t", count: 8}, "\")"]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_13, kind: guilt, category: secret_assignment, text: "setenv function-call assignment", construct: {op: concat, parts: ["setenv(\"APP_PASS", "WORD\", \"", "p4ss-", {repeat: "u", count: 8}, "\", 1);"]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_14, kind: guilt, category: secret_assignment, text: "XML credential element", construct: {op: concat, parts: ["<pass", "word>", "p4ss-", {repeat: "v", count: 8}, "</pass", "word>"]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_15, kind: guilt, category: secret_context, text: "Docker config auth value", construct: {op: concat, parts: ["{\"auths\":{\"registry.invalid\":{\"auth\":\"", {repeat: "Qz7", count: 12}, "\"}}}"]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_16, kind: guilt, category: secret_assignment, text: "npmrc legacy auth assignment", construct: {op: concat, parts: ["_auth", "=", {repeat: "B7", count: 12}]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_17, kind: guilt, category: secret_assignment, text: "pypirc password assignment", construct: {op: concat, parts: ["[distutils]\npassword", " = ", "p4ss-", {repeat: "x", count: 8}]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_18, kind: guilt, category: secret_context, text: "git-credentials URI", construct: {op: concat, parts: ["https://demo:", "p4ss-", {repeat: "y", count: 8}, "@git.invalid"]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_19, kind: guilt, category: secret_assignment, text: "mixed-class password mistaken for a CamelCase annotation", construct: {op: concat, parts: ["pass", "word: ", "Sup3r", "Secret"]}, expected_reason: secret, source: "gate-7988"}
+
+  - {id: g7988_innocent_01, kind: innocence, category: template, text: "URI user-info placeholders", construct: {op: concat, parts: ["mysql://user:", "${PASS}", "@db.invalid/app\namqp://user:", "<password>", "@mq.invalid/vhost\nredis://user:", "xxx", "@cache.invalid/0"]}, source: "gate-7988"}
+  - {id: g7988_innocent_02, kind: innocence, category: id_number, text: "ID labels placeholders and zero-filled examples", construct: {op: concat, parts: ["passport_number\nno_paspor = ", "<passport>", "\nkitas = ", "placeholder", "\nnpwp = ", "00000", "00000", "00000"]}, source: "gate-7988"}
+  - {id: g7988_innocent_03, kind: innocence, category: phone, text: "phone labels placeholders examples ports and versions", construct: {op: concat, parts: ["phone: ", "<number>", "\nwa: ", "000 0000", "\ntel: port ", "5432", "\nmobile version ", "3.11.15"]}, source: "gate-7988"}
+  - {id: g7988_20, kind: guilt, category: id_number, text: "labelled nine-digit US or UK passport number", construct: {op: concat, parts: ["passport_number = \"", "5", "1234", "5678", "\""]}, expected_reason: id_number, source: "gate-7988"}
+  - {id: g7988_21, kind: guilt, category: id_number, text: "camelCase passport label with letters and digits interleaved", construct: {op: concat, parts: ["passportNo: \"", "C01X", "00T47", "\""]}, expected_reason: id_number, source: "gate-7988"}
+  - {id: g7988_22, kind: guilt, category: id_number, text: "labelled KITAP number", construct: {op: concat, parts: ["kitap = \"", "98765", "43210", "\""]}, expected_reason: id_number, source: "gate-7988"}
+  - {id: g7988_23, kind: guilt, category: phone, text: "labelled Italian mobile without plus or country code", construct: {op: concat, parts: ["whatsapp: \"", "347 ", "123 ", "4567", "\""]}, expected_reason: phone, source: "gate-7988"}
+  - {id: g7988_24, kind: guilt, category: phone, text: "labelled German mobile with trunk zero", construct: {op: concat, parts: ["mobile = \"", "0151 ", "2345 ", "6789", "\""]}, expected_reason: phone, source: "gate-7988"}
+  - {id: g7988_25, kind: guilt, category: phone, text: "labelled Indonesian mobile without trunk zero or 62", construct: {op: concat, parts: ["no_hp: ", "812 ", "3456 ", "7890"]}, expected_reason: phone, source: "gate-7988"}
+  - {id: g7988_26, kind: guilt, category: secret_assignment, text: "XML credential attribute", construct: {op: concat, parts: ["<db pass", "word=\"", "p4ss-", {repeat: "w", count: 8}, "\"/>"]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_27, kind: guilt, category: secret_family, text: "OpenPGP private key armor", construct: {op: concat, parts: ["-----BEGIN PGP PRIV", "ATE KEY BLOCK-----\n", {repeat: "lQOYBF", count: 10}, "\n-----END PGP PRIV", "ATE KEY BLOCK-----"]}, expected_reason: secret, source: "gate-7988"}
+  - {id: g7988_innocent_04, kind: innocence, category: code_reference, text: "Tier K lower-case path and ordinary words ending in a Tier P stem", construct: {op: concat, parts: ["STORAGE_KEY = \"", "uploads/2026/10/quarterly/summary", "\"\nBYPASS = \"yes\"\nCOMPASS = \"north\""]}, source: "gate-7988"}
+  - {id: g7988_innocent_05, kind: innocence, category: template, text: "hyphenated your- placeholder value", construct: {op: concat, parts: ["\"api_", "key\": \"", "your-api-key-here", "\""]}, source: "gate-7988"}
+  - {id: g7988_innocent_06, kind: innocence, category: arithmetic, text: "# Opus + 2026-09-23", source: "gate-7988"}
+
+  # gate-7988-r2 re-cut: rule rows pinned by a verbatim spec phrase, and one declared remainder per closed vocabulary.
+  - {id: r2_01, kind: guilt, category: secret_assignment, text: "subscript carrier on a copied env", construct: {op: "concat", parts: ["env[\"PG", "PASS", "WORD\"] = \"", "p4ss-", {repeat: "q", count: 8}, "\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "on ANY expression"}
+  - {id: r2_02, kind: guilt, category: secret_assignment, text: "subscript carrier on a payload", construct: {op: "concat", parts: ["payload[\"secret_", "token\"] = \"", {repeat: "Tk9", count: 7}, "\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "where the last quoted key is the NAME"}
+  - {id: r2_03, kind: guilt, category: secret_assignment, text: "nested subscript carrier", construct: {op: "concat", parts: ["cfg[\"smtp\"][\"pass", "word\"] = \"", "p4ss-", {repeat: "q", count: 8}, "\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "a copied `env`, a `payload`, a nested"}
+  - {id: r2_04, kind: guilt, category: secret_assignment, text: "stem followed by a qualifier segment", construct: {op: "concat", parts: ["export PG_PASS", "WORD_RO='", "p4ss-", {repeat: "q", count: 8}, "'"]}, expected_reason: secret, source: "gate-7988-r2", rule: "in ANY position of the name"}
+  - {id: r2_05, kind: guilt, category: secret_assignment, text: "stem followed by an index segment", construct: {op: "concat", parts: ["DB_PASS", "WORD_2 = \"", "p4ss-", {repeat: "q", count: 8}, "\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "in ANY position of the name"}
+  - {id: r2_06, kind: guilt, category: id_number, text: "document_number under a passport document type", construct: {op: "concat", parts: ["{\"document_type\": \"passport\", \"document_number\": \"", "C01X", "00T47", "\"}"]}, expected_reason: id_number, source: "gate-7988-r2", rule: "`document_number`"}
+  - {id: r2_07, kind: guilt, category: phone, text: "Indonesian phone label with an Italian mobile", construct: {op: "concat", parts: ["telepon: \"", "347 ", "123 ", "4567", "\""]}, expected_reason: phone, source: "gate-7988-r2", rule: "`telepon`"}
+  - {id: r2_08, kind: guilt, category: secret_assignment, text: "unquoted all-digit password", construct: {op: "concat", parts: ["pass", "word: ", "8473", "6251"]}, expected_reason: secret, source: "gate-7988-r2", rule: "an all-digit literal of ≥ 6 digits"}
+  - {id: r2_09, kind: guilt, category: secret_context, text: "redis-cli -a password flag", construct: {op: "concat", parts: ["redis-cli -h cache.invalid -a ", "p4ss-", {repeat: "q", count: 8}]}, expected_reason: secret, source: "gate-7988-r2", rule: "after `redis-cli`, `valkey-cli`, `keydb-cli`"}
+  - {id: r2_10, kind: guilt, category: id_number, text: "space-grouped NIK with no landline group", construct: {op: "concat", parts: ["nik: \"", "5171 ", "1412 ", "8850 ", "1001", "\""]}, expected_reason: id_number, source: "gate-7988-r2", rule: "space grouping"}
+  - {id: r2_11, kind: guilt, category: id_number, text: "national_id label", construct: {op: "concat", parts: ["national_id: \"", "3171", "0101", "9001", "0001", "\""]}, expected_reason: id_number, source: "gate-7988-r2", rule: "`national_id`"}
+  - {id: r2_12, kind: guilt, category: secret_assignment, text: "Vault token in a shell export", construct: {op: "concat", parts: ["export VAULT_", "TOKEN=hvs.", {repeat: "CAESI7", count: 5}]}, expected_reason: secret, source: "gate-7988-r2", rule: "every unquoted value except"}
+  - {id: r2_13, kind: guilt, category: secret_assignment, text: "Tier K 64 hex digits", construct: {op: "concat", parts: ["ENCRYPTION_", "KEY = \"", {repeat: "a3", count: 32}, "\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "an opaque value: ≥ 32 hex digits"}
+  - {id: r2_14, kind: guilt, category: secret_assignment, text: "Tier K 24-character base64 key", construct: {op: "concat", parts: ["AES_", "KEY = \"", "q3J/8kL2", "pZ7xN4vB", "9mT1sQ==", "\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "≥ 20 characters all from the standard or URL-safe base64 alphabet"}
+  - {id: r2_15, kind: guilt, category: secret_context, text: "URI user-info with an empty user", construct: {op: "concat", parts: ["REDIS_URL = \"redis://", ":", "p4ss-", {repeat: "q", count: 8}, "@cache.invalid:6379/0\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "the user may be empty"}
+  - {id: r2_16, kind: guilt, category: secret_assignment, text: "stem restored after a property word", construct: {op: "concat", parts: ["PASS", "WORD_FILE_TOKEN = \"", {repeat: "Pf7", count: 7}, "\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "A stem after the property word restores it"}
+  - {id: r2_17, kind: guilt, category: phone, text: "labelled phone shaped like an amount", construct: {op: "concat", parts: ["phone: \"", "347.", "123.", "456", "\""]}, expected_reason: phone, source: "gate-7988-r2", rule: "never applies to a labelled value"}
+  - {id: r2_18, kind: guilt, category: secret_context, text: "pgpass row with a numeric password", construct: {op: "concat", parts: ["db.invalid:5432:app:demo:", "8473", "6251"]}, expected_reason: secret, source: "gate-7988-r2", rule: "the password may be numeric"}
+  - {id: r2_innocent_01, kind: innocence, category: code_reference, text: "property words after the last stem", construct: {op: "concat", parts: ["PASS", "WORD_FILE = \"/run/secrets/db\"\nTOKEN_TTL = 3600\nSECRET_NAME = \"prod/db/main\"\nCANARY_TOKEN_HEADER = \"X-Canary-Token\"\nAPI_KEY_ID = \"kid-2026-10-rotation\"\nPASS", "WORD_MIN_LENGTH = 12\nBYPASS_MODE = \"yes\""]}, source: "gate-7988-r2", rule: "follows its LAST stem segment"}
+  - {id: r2_innocent_02, kind: innocence, category: code_reference, text: "shell references and type annotations", construct: {op: "concat", parts: ["export PASS", "WORD=$PASS", "WORD\nPASS", "WORD=$(fetch_secret) psql\npass", "word: Optional[str]\nprivate_key = Ed25519", "PrivateKey.generate()"]}, source: "gate-7988-r2", rule: "every unquoted value except"}
+  - {id: r2_innocent_03, kind: innocence, category: code_reference, text: "phone label followed by a property word", construct: {op: concat, parts: ["contact_count = ", "1234", "567", "\nphone_type: \"mobile\""]}, source: "gate-7988-r2", rule: "is not a phone label"}
+  - {id: rem_stem, kind: guilt, category: secret_assignment, text: "credential under a name with no stem", construct: {op: "concat", parts: ["PIN = \"", "4821", "93\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "is the declared limit `rem_stem`", limit: true}
+  - {id: rem_property, kind: guilt, category: secret_assignment, text: "credential stored under a property word", construct: {op: "concat", parts: ["DB_PASS", "WORD_FILE = \"", "p4ss-", {repeat: "q", count: 8}, "\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "is the declared limit `rem_property`", limit: true}
+  - {id: rem_short_digits, kind: guilt, category: secret_assignment, text: "all-digit password under 6 digits", construct: {op: "concat", parts: ["pass", "word: ", "48", "21"]}, expected_reason: secret, source: "gate-7988-r2", rule: "(declared limit `rem_short_digits`)", limit: true}
+  - {id: rem_tierk_short, kind: guilt, category: secret_assignment, text: "Tier K value under 20 characters", construct: {op: "concat", parts: ["ROTATION_", "KEY = \"", "Ab9Cd8Ef7", "Gh6Ij5Kl4M", "\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "the declared limit `rem_tierk_short`", limit: true}
+  - {id: rem_placeholder, kind: guilt, category: secret_assignment, text: "real credential equal to a placeholder word", construct: {op: "concat", parts: ["PASS", "WORD = \"", "change", "me\""]}, expected_reason: secret, source: "gate-7988-r2", rule: "is the declared limit `rem_placeholder`", limit: true}
+  - {id: rem_carrier, kind: guilt, category: secret_assignment, text: "credential passed positionally without its name", construct: {op: "concat", parts: ["connect(\"db.invalid\", \"app\", \"", "p4ss-", {repeat: "q", count: 8}, "\")"]}, expected_reason: secret, source: "gate-7988-r2", rule: "is the declared limit `rem_carrier`", limit: true}
+  - {id: rem_cli, kind: guilt, category: secret_context, text: "password flag of an unlisted tool", construct: {op: "concat", parts: ["ldapsearch -x -D cn=admin -w ", "p4ss-", {repeat: "q", count: 8}]}, expected_reason: secret, source: "gate-7988-r2", rule: "is the declared limit `rem_cli`", limit: true}
+  - {id: rem_views, kind: guilt, category: decoded, text: "credential as a hex dump", construct: {op: "concat", parts: ["dump: 44 42 5f 50 41 53 53 3d ", "70 34 73 73 2d 71 71 71 71"]}, expected_reason: secret, source: "gate-7988-r2", rule: "is the declared limit `rem_views`", limit: true}
+  - {id: rem_phone_label, kind: guilt, category: phone, text: "domestic phone under an unlisted label", construct: {op: "concat", parts: ["ufficio: \"", "347 ", "123 ", "4567", "\""]}, expected_reason: phone, source: "gate-7988-r2", rule: "limit `rem_phone_label`", limit: true}
+  - {id: rem_slash_phone, kind: guilt, category: phone, text: "phone groups chained by spaced slashes", construct: {op: "concat", parts: ["08", "12 / ", "3456 / ", "7890"]}, expected_reason: phone, source: "gate-7988-r2", rule: "are the declared limit `rem_slash_phone`", limit: true}
+  - {id: rem_id_label, kind: guilt, category: id_number, text: "identity number under an unlisted label", construct: {op: "concat", parts: ["ssn: \"", "123-", "45-", "6789", "\""]}, expected_reason: id_number, source: "gate-7988-r2", rule: "is the declared limit `rem_id_label`", limit: true}
+  - {id: rem_id_grammar, kind: guilt, category: id_number, text: "passport number outside the grammar", construct: {op: "concat", parts: ["passport: \"", "AB", "12345", "\""]}, expected_reason: id_number, source: "gate-7988-r2", rule: "`rem_id_grammar`", limit: true}
+  - {id: rem_crm_mononym, kind: guilt, category: crm_name, text: "single-word name in a CRM record", construct: {op: "concat", parts: ["{\"client\": true, \"stage\": \"lead\", \"name\": \"", "Wayan", "\"}"]}, expected_reason: crm_name, source: "gate-7988-r2", rule: "is the declared limit `rem_crm_mononym`", limit: true}
+  - {id: lim_pan, kind: guilt, category: id_number, text: "payment card number, out of scope", construct: {op: "concat", parts: ["card = \"", "4111 ", "1111 ", "1111 ", "1111", "\""]}, expected_reason: id_number, source: "gate-7988-r2", rule: "Declared out of scope: payment card numbers (PAN) and IBANs", limit: true}
+  - {id: lim_iban, kind: guilt, category: id_number, text: "IBAN, out of scope", construct: {op: "concat", parts: ["iban: \"", "DE89 ", "3704 ", "0044 ", "0532 ", "0130 ", "00", "\""]}, expected_reason: id_number, source: "gate-7988-r2", rule: "owner decision pending (UU PDP art. 4(2)(f))", limit: true}

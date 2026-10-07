@@ -1,0 +1,34 @@
+task_id: tp1-spec-recut
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  Re-cut the TP1 input-screen spec and corpus of #7988 (suspended after a second final-gate BLOCK on the
+  same cause: closed lists with no declared remainder) as a new PR whose change is the METHOD: every closed
+  vocabulary of the spec ends with one declared remainder that has its own limit row, rows pin rules by a
+  verbatim spec phrase that the schema test checks, and the gate-7988-r2 shapes land on a rule or a
+  remainder. Gear 3 by the deterministic floor (a workflow edit is a hot zone).
+acceptance:
+  - text: >-
+      WHEN the schema test runs, every closed vocabulary listed in the spec's "Closed vocabularies and their
+      remainders" table SHALL name a remainder that is a limit row listed in Declared limits, and every
+      gate-7988-r2 limit row SHALL carry a rule phrase found verbatim in the spec.
+    probe: python3 -m pytest -q scripts/tp1max/test_screen_corpus.py (test_every_rule_phrase_is_in_the_spec_and_every_remainder_carries_one, limits == spec list)
+  - text: >-
+      IF a pinned rule's text is deleted from the spec (Tier K hex, any-expression subscript, any-position stem,
+      all-digit Tier P, empty URI user, telepon, a remainder sentence) THEN the schema test SHALL go red.
+    probe: python3 ~/.agent/campaign-20261005/work/dux-tp1spec-recut/mutate2.py <worktree> (mutation battery on scratch copies)
+  - text: >-
+      WHEN the corpus test runs on Python 3.9 and 3.11 it SHALL pass, and the repo's secret guards SHALL find
+      nothing in the changed files.
+    probe: python3 -m pytest -q scripts/tp1max/test_screen_corpus.py; uv run --python 3.9 …; detect-secrets-hook --baseline .secrets.baseline <files>; lint_pg_dsn_credentials.py, lint_telegram_tokens.py, lint_google_oauth_credentials.py <files>
+  - text: >-
+      WHEN the 26 round-1 shapes, the 33 round-2 shapes and 15 new shapes are judged on the new text, every
+      credential or PII shape SHALL land on a named rule or a declared remainder.
+    probe: the rule-per-shape table in the PR body, each row naming the spec section or the limit id
+assumptions:
+  - text: >-
+      The four starting files are the content of agent/air-m5/docs/tp1-spec-ship at e435a60b3d (the closed #7988
+      head); the evidence directory is new.
+    status: verified
+    probe: git checkout agent/air-m5/docs/tp1-spec-ship -- <4 files>; git diff --stat origin/main
