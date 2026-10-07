@@ -76,6 +76,10 @@ ground:
     this run but the VM. The Pro broker worktree of
     PR-A1 is reused as the candidate checkout (detached per measured sha, restored after); Pro's main checkout was
     not written. The image tag localci-candidate:1 on Pro has no other consumer (no launchd job or crontab names it).
+appetite_exceeded: >-
+  7 wall-clock hours against 6: after PR-A1 merged, the branch was rebuilt on origin/main, the PR-A1 gate's notices
+  were folded, a second refuter round ran over the fold (six findings, cured) and Pro was re-measured at the final
+  HEAD. No ceiling on adversarial rounds was passed (2 of 2).
 spend:
   adversarial_rounds: 2
   wall_clock_hours: 7
