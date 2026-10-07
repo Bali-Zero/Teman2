@@ -12,6 +12,38 @@ import type {
 } from "@/lib/api/crm/crm.types";
 import { Modal } from "../Modal";
 
+/**
+ * What the team may upload from the Documents tab. Word was added on the
+ * team's request (7 Oct 2026); the CRM upload endpoint stores any MIME it is
+ * given (crm_enhanced_documents.py, no allow-list), so the gate is here.
+ * Keyed by extension so a browser that reports an empty `File.type` for a
+ * Word file (common without Office installed) is still accepted and sent
+ * with the right MIME instead of "".
+ */
+const MIME_BY_EXTENSION: Record<string, string> = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+};
+const ALLOWED_MIMES = new Set([
+  ...Object.values(MIME_BY_EXTENSION),
+  "image/jpg",
+]);
+const ACCEPT = Object.keys(MIME_BY_EXTENSION)
+  .map((ext) => `.${ext}`)
+  .join(",");
+
+/** The MIME to upload with, or null when the file is not allowed. */
+function resolveUploadMime(file: File): string | null {
+  if (ALLOWED_MIMES.has(file.type)) return file.type;
+  if (file.type) return null;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return MIME_BY_EXTENSION[ext] ?? null;
+}
+
 export function AddDocumentModal({
   clientId,
   categories,
@@ -46,19 +78,13 @@ export function AddDocumentModal({
     family_member_id: "",
   });
 
-  const allowedTypes = [
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "application/pdf",
-  ];
   const maxSize = 10 * 1024 * 1024; // 10MB
 
   const handleFileSelect = useCallback(
     (file: File) => {
-      if (!allowedTypes.includes(file.type)) {
+      if (!resolveUploadMime(file)) {
         toast.error("Invalid file type", {
-          description: "Please upload JPG, PNG, or PDF",
+          description: "Please upload PDF, JPG, PNG, DOC or DOCX",
         });
         return;
       }
@@ -116,7 +142,7 @@ export function AddDocumentModal({
           file: base64,
           file_name: formData.file_name,
           document_type: formData.document_type || "document",
-          mime_type: selectedFile.type,
+          mime_type: resolveUploadMime(selectedFile) ?? selectedFile.type,
           document_category: formData.document_category,
           subfolder_hint: defaultSubfolderHint,
           expiry_date: formData.expiry_date || undefined,
@@ -180,7 +206,7 @@ export function AddDocumentModal({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
+          accept={ACCEPT}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) handleFileSelect(file);
@@ -213,7 +239,7 @@ export function AddDocumentModal({
               Drop file here or click to browse
             </p>
             <p className="text-xs text-[var(--bz-text-3)]">
-              PDF, JPG, PNG — max 10MB
+              PDF, JPG, PNG, DOC, DOCX — max 10MB
             </p>
           </div>
         )}
