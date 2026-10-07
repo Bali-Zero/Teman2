@@ -1,0 +1,171 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN phase C (the merger, SHADOW only), handed by the team lead of the 2026-10-07 mission to
+  this BLUE Dux; plan docs/specs/localci-sovereign-2026-10-07.md §2 (phase C), ruling docs/rules/RULINGS.md RULED
+  2026-10-07. Split agreed in the mandate: PR-C1 = tick, lease, merge stub, tests (this pack); PR-C2 = report and plist.
+lanes:
+  - lane: localci-merger-c-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux, M5 worktree infra-localci-merger-c-1007; ground, code, tests, Pro proof, this pack)"
+  - lane: localci-merger-c-redteam
+    role: review
+    seat: "codex-gpt-6.1-sol (codex-companion 1.0.6 via the codex:codex-rescue subagent, read-only, effort high)"
+  - lane: localci-merger-c-refuter
+    role: review
+    seat: "agy-gemini-3.1-pro (agy --sandbox --model gemini-3.1-pro-high, prompt-only, files inlined)"
+council_run: council-journal.jsonl
+seat_override: >-
+  Two external families reviewed the candidate (OpenAI Codex and Google Gemini 3.1 Pro), but only the Gemini line counts
+  for R9: the Codex runtime printed gpt-6.1-sol while the roster still names codex-gpt-5.6-sol, so the Codex line is
+  journalled under its true name and does not qualify. The seat was not renamed to fit the roster.
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stood in because the remaining titular seats were dead at dispatch (arsenal_probe
+  2026-10-07T07:43:32Z on M5): kimi QUOTA_DEAD (membership quota), tp1-qwen3.8-max and tp1-glm-5.2 QUOTA_DEAD (HTTP 429,
+  monthly plan quota, reset 2026-10-11T16:00Z). agy and codex were LIVE.
+pii_scan: clean
+pii_scan_note: >-
+  Code, tests and GitHub metadata only (PR numbers, shas, check names). The journal carries no PR title, author or body;
+  no client data was read or written.
+what_changed: |
+  scripts/localci/merger.py (new): the shadow merger. `tick --node H` pins the host, takes an flock + lease.json lease
+  (dead holder reclaimed and journalled, live or foreign holder respected), lists open same-repo PRs that are armed or
+  labelled localci:merge with GETs through hosted_compare.gh_get (forks journalled `refused: fork`, never fetched),
+  picks one not decided at (head, origin/main), builds the candidate in its own bare clone as origin/main plus the head
+  squashed into one commit (the live queue's merge_method is SQUASH), runs plan → run → status --seal of the BASE runner
+  with the BASE contexts matrix and an allowlisted, config-isolated environment, adopts the status only when it is bound
+  to this candidate, base and seal, compares with the hosted verdict of the PR head, and journals one line per decision.
+  `merge` refuses with exit 2; `--selftest` runs triage and lease guilt/innocence offline.
+  scripts/localci/tests/test_merger.py (new): 33 cases on real temporary git repos with a local origin, GitHub and the
+  runner faked.
+  scripts/localci/README.md: section "Merger (phase C, shadow)" — tick steps, failure semantics, state-dir layout,
+  journal schema, limits.
+proof: |
+  See receipts. Nothing in this change merges, posts, labels, comments or touches branch protection: the merger's only
+  GitHub API calls are GETs through hosted_compare.gh_get (a test fails any `gh` subprocess that bypasses it) and its
+  only other traffic is `git fetch`. runner.py, contexts_matrix.yaml and hosted_compare.py are untouched.
+bites:
+  consumer: >-
+    The Pro shadow journal ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl (user nuzantara) — every decision line is
+    this tool's output, and PR-C2's report reads exactly this schema.
+  observation: >-
+    Pro, 2026-10-07T08:03:05Z, tick from fdd016aa0d against armed PR #7736 (head fb7c8fe9ca32): decision BLOCKED,
+    candidate 3099e55645b1 with one parent = origin/main 56c6f70d86d3, seal a73f82afb95d, runner rc plan/run/status 0/0/0,
+    hosted_compare on the head agreement=0/14 local_blind=14 false_green=0, run dir
+    runs/pr7736-fb7c8fe9ca32-56c6f70d86d3-20261007T080249Z, 22.2 s.
+ground:
+  ts: "2026-10-07T07:24:09Z"
+  siblings: >-
+    The sibling Dux dux-localci-executor holds worktree infra-localci-executor-a-1007 (runner v0.4.0, PR-A1 not yet
+    open); its diff touches runner.py, contexts_matrix.yaml, README lines 1-4 and 57-80, steps_driver.py and its tests.
+    This change touches none of those files except a new README section after line 145, and adds two new files.
+    #8012 (the ruling) merged during the session as 56c6f70d86, the base of this branch.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 1.5
+receipts:
+  - claim: The live merge queue on main squashes (merge_method SQUASH, up to 5 entries built at once, HEADGREEN grouping); the REST pulls list carries auto_merge for armed PRs (10 armed, all same-repo, at ground).
+    cmd: gh api repos/Bali-Zero/Teman2/rules/branches/main --jq '.[] | select(.type=="merge_queue") | .parameters' ; gh api 'repos/Bali-Zero/Teman2/pulls?state=open&base=main&per_page=100'
+    exit: 0
+    ts: "2026-10-07T08:07:51Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "First live tick on Pro (code 39e3ce77af, mirror seeded by a hardlink clone of ~/nuzantara) decided armed PR #7503 at origin/main 56c6f70d86 — BLOCKED, seal 3b3666c930f5, hosted agreement 0/14 (local_blind 14) — in 25.5 s wall including the seed clone; the gate itself took 20.2 s with runner v0.3.1 from BASE."
+    cmd: python scripts/localci/merger.py tick --node Nuzantara --seed ~/nuzantara --python ~/nuzantara/apps/backend-rag/.venv/bin/python
+    exit: 0
+    ts: "2026-10-07T07:37:51Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "Live lease and node pin on Pro — a second tick launched while the first held the lease journalled `skipped: lease` and exited 0; a tick with --node Mini journalled `skipped: node`, exited 0 and left lease.json as the holder wrote it; the first tick decided #7613."
+    cmd: tick & sleep 3; tick; tick --node Mini; cat lease.json
+    exit: 0
+    ts: "2026-10-07T07:38:30Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "Live tick from fdd016aa0d decided #7736 with a squash candidate (one parent, origin/main), seal re-derived by status and bound in status.json, hosted 0/14 local_blind."
+    cmd: python scripts/localci/merger.py tick --node Nuzantara --python <venv> ; git rev-list --parents -n1 <candidate>
+    exit: 0
+    ts: "2026-10-07T08:03:05Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: 'SIGTERM during the runner''s run stopped it (the runner process gone, no container left from the merger''s run dir), journalled an `error` line "stopped (signal 15)" and no decision, released the lease; kill -9 of a tick holding the lease left lease.json behind, and the next tick journalled `lease_reclaimed` naming the dead pid, then decided #7943.'
+    cmd: tick & (kill -TERM once the runner runs) ; tick & (kill -9 once lease.json exists) ; tick
+    exit: 0
+    ts: "2026-10-07T08:04:01Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: The localci suite on Pro at fdd016aa0d is green with docker and the Pysa home present — 367 passed, 1 skipped (hypothesis is not installed in the Pro venv; the hosted job installs it) — and the selftest prints 7 ok.
+    cmd: PYTHONPATH=$PWD python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider ; python scripts/localci/merger.py --selftest
+    exit: 0
+    ts: "2026-10-07T08:07:24Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: Each of 28 single-rule mutants of merger.py at fdd016aa0d turns test_merger.py red (fork, draft, idempotency, head_in_base, BASE matrix, BASE cwd, node pin, live lease, flock, pid start, squash, conflict, host git config, status binding, status rc, first seal, hosted sha, env allowlist, head moved, lease release, ERROR decision, redaction, torn tail, 0600, repo binding, relative state dir, credential URL, graceful terminate); source restored byte-identical.
+    cmd: python3 $CLAUDE_JOB_DIR/tmp/mutate.py
+    exit: 0
+    ts: "2026-10-07T08:11:52Z"
+    seat: claude-opus-5-5 on M5
+dissent:
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER: hooks, signer and rerere were off but host git config was not — a filter or merge driver configured globally runs on candidate paths outside any container (reproduced with a configured filter via git hash-object)."
+    status: CONFIRMED
+    resolution: "Every merger git call and the runner it starts run with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1; a guilt test plants a filter and a merge driver in a global config and a candidate .gitattributes naming them, and asserts the marker never appears."
+  - seat: codex-gpt-6.1-sol
+    objection: "A short os.write is acknowledged; a torn tail with no newline swallows the next full decision (reproduced: zero decisions recovered)."
+    status: CONFIRMED
+    resolution: "The journal writes until done and fsyncs; a tail without a newline gets one first, so a torn line stays its own unreadable line. Test with a planted torn tail."
+  - seat: codex-gpt-6.1-sol
+    objection: "A failure after the gate (hosted_summary raising OSError) loses the decision and re-runs the gate at the same key."
+    status: CONFIRMED
+    resolution: "The hosted comparison catches every exception and records it beside the gate's verdict. A crash between the gate and the journal still re-runs that key — stated, not cured (no reservation record)."
+  - seat: codex-gpt-6.1-sol
+    objection: "head_in_base is journalled as skipped, triage only treats decisions as terminal: one PR starves the queue. (Also raised by agy-gemini-3.1-pro.)"
+    status: CONFIRMED
+    resolution: "head_in_base is terminal for its key; test asserts one line over two ticks."
+  - seat: codex-gpt-6.1-sol
+    objection: "A status is adopted without a seal, after `status` failed, or bound to another candidate (reproduced: PASS with candidate WRONG, status_rc 1, seal None)."
+    status: CONFIRMED
+    resolution: "Adopted only when `run` printed a seal, `status --seal` exited 0 and status.json carries this candidate, base and seal; otherwise ERROR with no per-context verdict. Four parametrised guilt cases."
+  - seat: codex-gpt-6.1-sol
+    objection: "Lease and journal are not scoped to the repository: two state dirs hold two locks; a journal reused for another repo answers with that repo's keys."
+    status: PARTIAL
+    resolution: "A state dir is now bound to one repo (`repo` file; a mismatch exits 2) and decision lines carry `repo`. Two state dirs for the same repo on one host remain two locks — one plist, one state dir is the operator contract; the cross-dir and cross-host fence is the Postgres lease of spec §3."
+  - seat: codex-gpt-6.1-sol
+    objection: "Replacing lease.lock in the acquisition window lets two holders proceed."
+    status: PARTIAL
+    resolution: "After flock the locked inode is compared with the path's; a replaced file is refused. A replacement after that check by the same OS user stays possible: the flock is single-host mutual exclusion, not a fence (same statement as the runner's lock section)."
+  - seat: codex-gpt-6.1-sol
+    objection: "Unsanitised git/gh stderr reaches the journal and the output; truncation does not redact a token."
+    status: CONFIRMED
+    resolution: "Every error is passed through redact() (GitHub token shapes, URL userinfo, bearer/token words) before it is journalled or printed; a --remote-url with credentials is refused. Test on a planted string."
+  - seat: codex-gpt-6.1-sol
+    objection: "A relative --state-dir builds worktrees under repo.git/ and hands relative paths to a runner running in another cwd."
+    status: CONFIRMED
+    resolution: "The state dir is resolved to absolute first. Test with chdir and a relative path."
+  - seat: codex-gpt-6.1-sol
+    objection: "Mutants survive: pid_alive always true, GIT_SAFE removed, run/status failures ignored, journal permissions."
+    status: CONFIRMED
+    resolution: "Recycled-pid, host-config, status-failure and 0600 tests added; the 28-mutant sweep kills all."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER: a candidate can echo a fake `seal=` on stdout and force a PASS."
+    status: REJECTED
+    resolution: "status --seal can only downgrade (a mismatch is BLOCKED; a match is the real seal), and the first seal line is printed before any candidate code runs. Hardened anyway: the first seal is used and status.json must carry it; a test forges a later seal line and asserts the first one is passed on."
+  - seat: agy-gemini-3.1-pro
+    objection: "Unrelated histories fail the merge with no conflicted path, raise, and loop forever."
+    status: CONFIRMED
+    resolution: "A failure after a PR is picked is an ERROR decision for that key, retried only at the next base. Test with an orphan history."
+  - seat: agy-gemini-3.1-pro
+    objection: "The merger always builds a two-parent merge; the queue may squash."
+    status: CONFIRMED
+    resolution: "Measured: the live queue's merge_method is SQUASH. The candidate is now one squash commit on origin/main (deviation from the mandate's literal --no-ff, toward its intent: 'exactly as the queue does'). Stacking of up to 5 queue entries is not reproduced — stated."
+  - seat: agy-gemini-3.1-pro
+    objection: "A lease naming another host can never be reclaimed: failover deadlocks."
+    status: PARTIAL
+    resolution: "By design (superscar #10): the merger never reclaims another host's lease; the README now says removing it is an operator act. The state dir is host-local today."
+  - seat: agy-gemini-3.1-pro
+    objection: "A credential in --remote-url lands in repo.git/config, which the candidate container can read."
+    status: PARTIAL
+    resolution: "Premise false: the runner streams the tree from the object store, no bind mount, the container never sees repo.git. Hardened anyway: a --remote-url carrying userinfo is refused."
+  - seat: agy-gemini-3.1-pro
+    objection: "A transient runner crash becomes a permanent ERROR decision."
+    status: PARTIAL
+    resolution: "Kept as a decision on purpose — a retry-forever key lets one PR hold the queue; the key changes with every merge to main, so the PR is re-decided at the next base. ERROR reads as blind, never as a verdict; MergerError's docstring now says so."
+owed:
+  - "PR-C2: `merger.py report` (phase D's instrument: decisions joined with GitHub's outcome per head — AGREE / FALSE_GREEN / FALSE_RED / BLIND / PENDING, plus per-context hosted_compare totals) and a launchd plist (StartInterval, no KeepAlive) installed on Pro with its own prove-live. Until C2 ships, ticks run only by hand."
+  - "The runner plans review.independent and leaves it QUEUED, so overall is never PASS in shadow: the PR-level FALSE_GREEN count stays vacuous until the merger imports a review; the per-context comparison is the live instrument."
+  - "Runner v0.3.1 on main executes no required context: every decision so far is local_blind 14/14. Phase A (sibling lane) changes that without any change here."
+  - "A kill -9 of a tick leaves its runner child running to the runner's own deadline (stated in the README)."
+  - "Second host (Mini) needs the Postgres lease of spec §3 before it may tick."

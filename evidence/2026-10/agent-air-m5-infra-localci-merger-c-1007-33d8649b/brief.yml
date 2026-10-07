@@ -1,0 +1,52 @@
+task_id: localci-merger-c-1007
+mission: LOCALCI-SOVEREIGN
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Declared by the mandate: phase C of the plan that moves the merge decision off GitHub onto Pro. The merger
+  is the future principal that pushes to main, so the boundary between a candidate and its judge, the lease
+  that keeps one decider per repo and the journal phase D counts are all decided here. The diff itself flips
+  nothing: shadow mode, GETs only.
+l_level: L2
+gate_class: opus
+objective: >-
+  Ship phase C of docs/specs/localci-sovereign-2026-10-07.md in SHADOW mode: a lease-holding, host-pinned,
+  same-repo-only merge decider on Pro that builds the merge candidate as the queue does, runs the local gate on
+  it with the BASE runner and matrix, sets it beside the hosted verdict of the PR head and journals one line per
+  decision, never merging, posting or labelling.
+constraints:
+  - SHADOW only — no merge, no POST, no label, no comment; every GitHub call is a GET through hosted_compare.gh_get.
+  - The candidate never judges itself — runner, classifier and contexts matrix come from BASE; no candidate code is imported by the merger.
+  - Fork PRs are read and journalled, never fetched or executed.
+  - One active merger per repo — flock plus lease file plus a hostname pin; a mismatched host exits 0 and leaves the lease alone.
+  - runner.py, contexts_matrix.yaml and hosted_compare.py are not edited (the sibling phase-A lane owns them); no .github edit; no branch-protection call; no paid API; no token printed.
+acceptance:
+  - text: WHEN a fork PR is armed, the merger SHALL journal it once per head as refused fork and never fetch or run it.
+    probe: scripts/localci/tests/test_merger.py::test_fork_pr_is_refused_journalled_once_and_never_fetched_or_run
+  - text: WHEN the PR head conflicts with origin/main, the merger SHALL journal a CONFLICT decision and invoke no runner.
+    probe: scripts/localci/tests/test_merger.py::test_conflict_is_a_decision_with_no_run
+  - text: WHEN the merger decides, the candidate SHALL be origin/main plus the head (two parents, fixed author) and the runner SHALL run from a BASE worktree with the BASE contexts matrix, never the candidate's.
+    probe: scripts/localci/tests/test_merger.py::test_candidate_is_main_plus_head_and_the_gate_runs_from_base_with_the_base_matrix
+  - text: WHEN a (pr, head, base) is already in the journal, the merger SHALL NOT run it again.
+    probe: scripts/localci/tests/test_merger.py::test_the_same_pr_head_and_base_is_never_run_twice_but_a_new_head_is
+  - text: WHEN the host is not the pinned node, the tick SHALL exit 0, journal skipped node and leave the lease untouched; WHEN a live holder has the lease it SHALL be respected; WHEN the holder is dead the lease SHALL be reclaimed and journalled.
+    probe: scripts/localci/tests/test_merger.py (node, live, held-lock and dead-holder tests) and the Pro receipts
+  - text: WHEN asked to merge, the merger SHALL refuse with exit 2 and name phase E.
+    probe: scripts/localci/tests/test_merger.py::test_merge_refuses_with_exit_2_whatever_it_is_given
+  - text: WHEN it ticks on Pro against a real open armed PR, the merger SHALL journal a decision line carrying a real run dir, the seal, the per-context verdicts and the hosted comparison of the head.
+    probe: pack.yml receipts, ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl on Pro
+assumptions:
+  - text: The hosted verdict of the PR head approximates the queue's verdict, which lands on a merge-group commit.
+    status: unverified
+    note: The merge-group commit is not visible to the merger before it merges; the journal line states this.
+    probe: phase D report joining decisions with the merged commit's checks
+  - text: The REST pulls list carries auto_merge for PRs waiting for their checks.
+    status: verified
+    note: Read live on 2026-10-07 (gh api pulls list, auto_merge non-null on 10 open PRs).
+    probe: gh api 'repos/Bali-Zero/Teman2/pulls?state=open&base=main&per_page=100' --jq '.[].auto_merge'
+consumer_map:
+  - The Pro shadow journal ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl — every decision line is this tool's output.
+  - Phase D (PR-C2 report) — it joins this journal with GitHub's outcome; its classes need the schema fixed here.
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2
