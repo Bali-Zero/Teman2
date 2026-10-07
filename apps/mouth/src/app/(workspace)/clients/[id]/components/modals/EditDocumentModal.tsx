@@ -16,6 +16,7 @@ export function EditDocumentModal({
   document,
   categories,
   familyMembers,
+  canChangeVisibility = false,
   onClose,
   onSave,
 }: {
@@ -23,10 +24,18 @@ export function EditDocumentModal({
   document: ClientDocument;
   categories: DocumentCategory[];
   familyMembers: FamilyMember[];
+  /** Viewer may flip `client_visible` (see document-visibility.ts). */
+  canChangeVisibility?: boolean;
   onClose: () => void;
   onSave: () => void;
 }) {
   const [isSaving, setIsSaving] = useState(false);
+  // `client_visible` absent = a backend that does not return it yet: no row
+  // at all. `null` reads as hidden, the same as the portal predicate
+  // (`client_visible = true`, _document_visibility.py).
+  const visibilityKnown = document.client_visible !== undefined;
+  const initialVisible = document.client_visible === true;
+  const [clientVisible, setClientVisible] = useState(initialVisible);
   const [formData, setFormData] = useState({
     file_name: document.file_name || "",
     document_type: document.document_type || "",
@@ -53,6 +62,14 @@ export function EditDocumentModal({
         family_member_id: formData.family_member_id
           ? Number(formData.family_member_id)
           : undefined,
+        // Contract (Comm Log 192): send the field ONLY when the viewer
+        // actually moved the toggle — the backend writes a Timeline row
+        // per real change and 403s the whole PATCH for other roles.
+        ...(canChangeVisibility &&
+        visibilityKnown &&
+        clientVisible !== initialVisible
+          ? { client_visible: clientVisible }
+          : {}),
       });
       toast.success("Document updated");
       onSave();
@@ -169,6 +186,24 @@ export function EditDocumentModal({
             placeholder="https://drive.google.com/..."
           />
         </div>
+        {visibilityKnown &&
+          (canChangeVisibility ? (
+            <label className="md:col-span-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={clientVisible}
+                onChange={(e) => setClientVisible(e.target.checked)}
+                className="h-4 w-4"
+              />
+              Visible to client in the portal
+            </label>
+          ) : (
+            <p className="md:col-span-2 text-[11px] text-[var(--tx-secondary)]">
+              {initialVisible
+                ? "Visible to the client in the portal."
+                : "Hidden from the client in the portal."}
+            </p>
+          ))}
       </div>
     </Modal>
   );

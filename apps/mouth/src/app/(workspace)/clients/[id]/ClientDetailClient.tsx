@@ -84,6 +84,7 @@ import { AddFamilyMemberModal } from "./components/modals/AddFamilyMemberModal";
 import { EditFamilyMemberModal } from "./components/modals/EditFamilyMemberModal";
 import { AddDocumentModal } from "./components/modals/AddDocumentModal";
 import { EditDocumentModal } from "./components/modals/EditDocumentModal";
+import { viewerCanChangeDocumentVisibility } from "./components/modals/document-visibility";
 import { AddCompanyModal } from "./components/modals/AddCompanyModal";
 
 /**
@@ -1363,6 +1364,9 @@ export function ClientDetailClient({
           document={editingDocument}
           categories={docCategories}
           familyMembers={family_members}
+          canChangeVisibility={viewerCanChangeDocumentVisibility(
+            currentUserRole,
+          )}
           onClose={() => {
             setActiveModal("none");
             setEditingDocument(null);
