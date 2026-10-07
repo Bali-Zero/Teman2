@@ -1,0 +1,141 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN phases C-D (the merger), handed by the team lead of the 2026-10-07 mission to this BLUE Dux;
+  plan docs/specs/localci-sovereign-2026-10-07.md §2, ruling docs/rules/RULINGS.md RULED 2026-10-07. PR-C3b (#8027,
+  merged 9637bf5a5e, proved live on Pro) carried seven gate notices to C3a; the lead ruled N2 (READY needs both thresholds,
+  stated in the spec by #8028) and ruled the enqueue path (B + ENQUEUE). Split agreed with the lead in flight: C3a-1 (this
+  PR: N1, N2, N4, N5, N6) and C3a-2 (the enqueue path and its one live proof), serialized because both touch merger.py.
+lanes:
+  - lane: localci-merger-c3a1-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux, M5 worktree infra-localci-merger-c3a-1008 and its Pro mirror; code, tests, Pro proofs, this pack)"
+  - lane: localci-merger-c3a1-redteam
+    role: review
+    seat: "codex-gpt-6-astra (codex-companion via the codex:codex-rescue subagent, read-only, effort high)"
+  - lane: localci-merger-c3a1-refuter
+    role: review
+    seat: "agy-gemini-3.1-pro (agy --sandbox --model gemini-3.1-pro-high, prompt-only, diff and wrapper inlined)"
+council_run: council-journal.jsonl
+seat_override: >-
+  Two external families reviewed the candidate (OpenAI Codex and Google Gemini 3.1 Pro), but only the Gemini line counts
+  for R9: the Codex runtime printed gpt-6-astra while the roster names codex-gpt-5.6-sol, so the Codex line is journalled
+  under its true name and does not qualify. The seat was not renamed to fit the roster.
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stood in because the remaining titular seats were dead at dispatch (arsenal_probe
+  2026-10-07T15:52:47Z on M5, ~/.organism/arsenal/last.json): kimi, tp1-qwen3.8-max and tp1-glm-5.2 QUOTA_DEAD. agy
+  answered this review (rc 0 at 17:56:47Z).
+pii_scan: clean
+pii_scan_note: >-
+  Code, tests and GitHub metadata only (PR numbers, shas, check names). The journal and the report carry no PR title,
+  author or body; no client data was read or written.
+what_changed: |
+  scripts/localci/merger.py (report): READY = 0 FALSE_GREEN AND >= 50 compared merges AND >= 14 days between the first
+  and the last compared merge (was OR); decisions without a valid code_sha of any JSON type are counted, never refused,
+  and the window lists valid shas only; the last line's age is clamped at 0 and future-dated lines are counted.
+  scripts/localci/localci_merger_tick.sh: heartbeat.sh is extracted from the merger's mirror at the tick's resolved sha
+  into a per-run temp file and published to <state-dir>/heartbeat.sh only when non-empty; exits before the extraction run
+  the copy the last tick extracted; an empty library counts as absent. Nothing on the tick path reads ~/nuzantara.
+  scripts/localci/tests/mutants/merger_mutants.py (new): 45 single-rule mutants of merger.py and the wrapper, applied to
+  a temporary copy of scripts/localci and scripts/lib; KILLED only on pytest exit 1, ERROR on any other non-zero exit,
+  STALE when a rule's text does not occur once or equals its replacement; inherited PYTEST_* options dropped.
+  Tests: test_merger.py +3 cases, test_merger_report.py +5; README: the READY rule, the heartbeat source, the sweep.
+  Net size 269 added, 40 deleted (mutant table and runner 143, tests 77, README 30, code 19).
+proof: |
+  See receipts. Every GitHub call is still a GET through hosted_compare.gh_get; runner.py, contexts_matrix.yaml and
+  hosted_compare.py are untouched; nothing is merged, enqueued, labelled or posted.
+bites:
+  consumer: >-
+    The Pro launchd job com.balizero.localci-merger, whose wrapper after merge extracts heartbeat.sh from the mirror each
+    tick; the operator's phase E read of `merger.py report`; a gate replaying the mutant sweep.
+  observation: >-
+    Pro, before merge: the C3a-1 wrapper run by hand on the own venv (18:12:31Z-18:28:52Z) extracted heartbeat.sh from the
+    mirror at c5e8c27b2d0d into ~/.nuzantara-pilots/local-ci/merger/heartbeat.sh (cmp -s identical to that blob, no temp
+    copy left), decided #7979 BLOCKED (hosted 7/14, 973.7 s, code_sha c5e8c27b2d0d, 16 durations) and wrote the heartbeat
+    through that copy {"ts":"2026-10-07T18:28:52Z","status":"ok","note":"tick rc=0 code=c5e8c27b2d0d"}; err log empty.
+    The C3a-1 report on the live journal at 18:11:22Z: 27 decisions without a valid code_sha counted, phase E NOT READY
+    under the both-thresholds line, rc 0. After merge (owed): the launchd tick on main's wrapper does the same.
+ground:
+  ts: "2026-10-07T17:42:04Z"
+  siblings: >-
+    Branch started from origin/main c5e8c27b2d after #8027 merged (agent_start); no sibling lane touched scripts/localci
+    meanwhile; git merge-tree against origin/main clean.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 1.2
+receipts:
+  - claim: "The C3a-1 report on the live Pro journal: 31 decisions over 18 PRs, merged_prs=6, compared_merges=0, errors=1, skipped {lease: 4, node: 1}; code shas seen [185845204162, 688d1dec3b8a, c5e8c27b2d0d, d2d4ba4cb114] and 27 decisions without a valid code_sha (lines written before C3b), counted and not refused; longest tick 1264.6 s; phase E NOT READY with the new 'and' line; rc 0."
+    cmd: ~/.nuzantara-pilots/local-ci/merger/venv/bin/python -I scripts/localci/merger.py report
+    exit: 0
+    ts: "2026-10-07T18:11:22Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The in-repo mutant sweep at cce459bafc kills 45 of 45 mutants (no survivor, no error, no stale rule), each on a temporary copy, the baselines of all three test-file sets green; started 18:01:21Z."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py
+    exit: 0
+    ts: "2026-10-07T18:10:44Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Codex's vacuous-pass reproduction no longer passes: with PYTEST_ADDOPTS='-k test_merge_refuses_with_exit_2_whatever_it_is_given' in the caller's environment, the sweep still reports ready-either, ready-days-boundary and sh-heartbeat-empty-runs KILLED (the option is dropped before pytest runs)."
+    cmd: PYTEST_ADDOPTS='-k test_merge_refuses_with_exit_2_whatever_it_is_given' python3 scripts/localci/tests/mutants/merger_mutants.py --only ready-either ready-days-boundary sh-heartbeat-empty-runs
+    exit: 0
+    ts: "2026-10-07T18:15:10Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The merger suites pass at cce459bafc on M5: 111 passed; every acceptance probe of the brief named by test id passes: 8 probes, 15 cases."
+    cmd: "PYTHONPATH=$PWD python3 -m pytest -q scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py ; python3 -m pytest -q scripts/localci/tests/test_merger_report.py::test_phase_e_readiness_needs_fifty_compared_merges_and_fourteen_days_between_them scripts/localci/tests/test_merger_report.py::test_any_one_false_green_keeps_fifty_compared_merges_not_ready scripts/localci/tests/test_merger_report.py::test_the_journal_order_does_not_change_readiness scripts/localci/tests/test_merger_report.py::test_decisions_without_provenance_are_counted_never_refused scripts/localci/tests/test_merger_report.py::test_a_line_dated_in_the_future_is_flagged_and_never_ages_the_window_negative scripts/localci/tests/test_merger.py::test_the_heartbeat_library_comes_from_the_mirror_at_the_ticks_sha_never_from_a_checkout scripts/localci/tests/test_merger.py::test_a_missing_heartbeat_library_is_said_aloud_and_changes_nothing_else scripts/localci/tests/test_merger.py::test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch"
+    exit: 0
+    ts: "2026-10-07T18:13:21Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Organ and home-fork gates at cce459bafc: organ conformance 172 plists, 0 regressions, 0 non-conformant births; ratchet holds (112); shellcheck clean on the wrapper; lint_home_fork --check on M5 exit 0, no breach."
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py ; check_baseline_ratchet.py --base origin/main ; shellcheck scripts/localci/localci_merger_tick.sh ; python3 scripts/lint_home_fork.py --check --json
+    exit: 0
+    ts: "2026-10-07T18:13:24Z"
+    seat: claude-opus-5-5 on M5
+  - claim: 'The C3a-1 wrapper, run by hand on Pro under env -i with HOME, PATH, MERGER_NODE and the own venv (no MERGER_HEARTBEAT_LIB), resolved code c5e8c27b2d0d, extracted scripts/lib/heartbeat.sh from the mirror into ~/.nuzantara-pilots/local-ci/merger/heartbeat.sh (cmp -s identical to the c5e8c27b2d0d blob; no .heartbeat.sh.* temp file left), decided #7979 at 18:28:49Z — BLOCKED, PASS 10 / QUEUED 1 / not applicable 4 / BLOCKED 1, hosted 7/14, 973.7 s, code_sha c5e8c27b2d0d5e2a9a9019b42bac702f06d21281, 16 durations — exited 0 with an empty err log, and the heartbeat came through the extracted copy: {"ts":"2026-10-07T18:28:52Z","status":"ok","note":"tick rc=0 code=c5e8c27b2d0d"}.'
+    cmd: env -i HOME=$HOME PATH=... MERGER_NODE=Nuzantara MERGER_PYTHON=<venv> /bin/bash <worktree>/scripts/localci/localci_merger_tick.sh ; git show c5e8c27b2d0d:scripts/lib/heartbeat.sh | cmp -s - ~/.nuzantara-pilots/local-ci/merger/heartbeat.sh ; cat ~/.organism/last_seen/pro.localci_merger.json ; tail -1 decisions.jsonl
+    exit: 0
+    ts: "2026-10-07T18:28:52Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The localci suite on Pro at cce459bafc is green with docker and the Pysa home present: 526 passed, 1 skipped (hypothesis is not installed in the Pro backend-rag venv)."
+    cmd: PYTHONPATH=$PWD ~/nuzantara/apps/backend-rag/.venv/bin/python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-07T18:17:50Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+dissent:
+  - seat: codex-gpt-6-astra
+    objection: "P1: the sweep counts 'no test ran' as a kill — with PYTEST_ADDOPTS selecting one unrelated test, pytest exits 5 on the report file and the mutant reads KILLED."
+    status: CONFIRMED
+    resolution: "KILLED only on pytest exit 1; exit 0 is SURVIVED and any other exit ERROR (the sweep fails); inherited PYTEST_* variables are dropped; a baseline runs for every test-file set a mutant uses. The reproduction now reports KILLED for the right reason."
+  - seat: codex-gpt-6-astra
+    objection: "P2: a code_sha that is a list, dict, int or bool raises TypeError while building the window's sha set or printing it, after report.json was written."
+    status: CONFIRMED
+    resolution: "The window's code shas are built from valid shas only; every other value is counted as invalid. Test with six odd JSON types."
+  - seat: codex-gpt-6-astra
+    objection: "P2: two overlapping wrappers share .heartbeat.sh.new; one can publish the other's half-written copy."
+    status: CONFIRMED
+    resolution: "Each run extracts into its own mktemp file and moves it only when non-empty; a failed extraction removes it. launchd never overlaps the job, but a hand run beside it can. Test: no temp copy left behind."
+  - seat: codex-gpt-6-astra
+    objection: "P2: an empty heartbeat cache runs as a silent no-op — no heartbeat, no diagnostic."
+    status: CONFIRMED
+    resolution: "An empty library counts as absent (said on stderr) and an empty extraction is never published. Test parametrised absent/empty; mutant killed."
+  - seat: codex-gpt-6-astra
+    objection: "P2: no case just under 14 days — `compared_days >= 13.999` survives the report tests."
+    status: CONFIRMED
+    resolution: "The readiness matrix carries 50 merges over 14 days minus one second (NOT READY); the boundary mutant joins the table and is killed."
+  - seat: agy-gemini-3.1-pro
+    objection: "MINOR: a test with no compared merge stays green if AND becomes OR again."
+    status: PLAUSIBLE
+    resolution: "That test was never the guard; the readiness matrix is — (50, 14 days minus one second) and (50, 0 days) fail under OR, and the ready-either mutant is killed in the sweep."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR: on a host that never ticked, the kill switch or a missing variable leaves the organ silent, where the checkout's library used to beat."
+    status: PLAUSIBLE
+    resolution: "True for the first run of a new host only, and kept on purpose: running heartbeat.sh from a checkout is what N4 removes, and extracting before the kill switch would make the switch touch git. The wrapper says 'no heartbeat library' on stderr and the organ reads stale, the fail-safe signal; Pro already holds an extracted copy after its first tick. Documented in the README."
+  - seat: agy-gemini-3.1-pro
+    objection: 'BLOCKER: r["code_sha"] raises KeyError for journal lines without the key.'
+    status: RETRACTED
+    resolution: "The rows are built by the report itself with code_sha always present (d.get('code_sha')); the provenance test journals a decision without the key and the report exits 0 counting it."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR: merger.py mutants paired with test_merger.py pass vacuously because those tests use a fake merger.py; sh-code-flag-always survives."
+    status: RETRACTED
+    resolution: "Only the wrapper tests use a fake interpreter; the tick tests run the real module loaded from scripts/localci/merger.py (of the temporary copy). Measured: all four code-sha mutants and sh-code-flag-always are KILLED in the 45/45 sweep (the older-merger test ticks a main without the flag)."
+owed:
+  - "C3a-2: the enqueue path per the lead's ruling (consent label set by a maintainer, the no-local-red criterion — pending the lead's answer on contexts mapped blocked —, GitHub's required checks green on the head, GraphQL enqueuePullRequest with expectedHeadOid, never PUT, one enqueue per (pr, head), the queue entry followed from issue events) and its one live proof, run from main's code after its gate."
+  - "After merge on Pro: re-take the wrapper from main (copy beside, mv, cmp -s against the blob); the next tick writes ~/.nuzantara-pilots/local-ci/merger/heartbeat.sh — prove it equals main's blob and that the heartbeat lands; lint_home_fork --check for the pair."
+  - "Pen residual (carried): anything the merger does on GitHub runs under the ambient gh token; only Zero's dedicated merger credential cures it. review.independent has no local seat (carried)."

@@ -1,0 +1,51 @@
+task_id: localci-merger-c3a-1008
+mission: LOCALCI-SOVEREIGN
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Declared by the mandate: the report is phase D's instrument, the line the operator reads before turning GitHub's merge
+  queue off (phase E), and this change rewrites its READY rule. The wrapper change moves the last file the tick read
+  from a working checkout onto the mirror. The diff flips nothing: shadow mode, GETs only, a launchd tick that journals.
+l_level: L2
+gate_class: opus
+objective: >-
+  Ship PR-C3a-1 of docs/specs/localci-sovereign-2026-10-07.md phases C-D: the notices of #8027's gate — N2 (READY needs
+  0 FALSE_GREEN AND >= 50 compared merges AND >= 14 days between them, the lead's ruling, stated in the spec by #8028),
+  N1 (decisions without a valid code_sha counted, never refused), N5 (the last line's age clamped, future-dated lines
+  counted), N4 (heartbeat.sh from the mirror at the tick's sha, never a working checkout) and N6 (the mutant sweep
+  replayable from the repository). The enqueue path is C3a-2.
+constraints:
+  - SHADOW only — no merge, no enqueue, no POST, no label, no comment; every GitHub call is a GET through hosted_compare.gh_get.
+  - runner.py, contexts_matrix.yaml and hosted_compare.py are not edited; no .github edit; no branch-protection call; no paid API; no token printed.
+  - Nothing on the tick path is read from a working checkout (superscar #1); the mutant sweep never writes into the checkout.
+acceptance:
+  - text: WHEN fewer than 50 merges were compared, or the compared merges span less than 14 days (14 days minus one second included), the phase E line SHALL say NOT READY.
+    probe: scripts/localci/tests/test_merger_report.py::test_phase_e_readiness_needs_fifty_compared_merges_and_fourteen_days_between_them
+  - text: WHEN any one false green exists, fifty compared merges over fourteen days SHALL NOT be READY.
+    probe: scripts/localci/tests/test_merger_report.py::test_any_one_false_green_keeps_fifty_compared_merges_not_ready
+  - text: WHEN the journal's lines are out of order, the readiness SHALL NOT change.
+    probe: scripts/localci/tests/test_merger_report.py::test_the_journal_order_does_not_change_readiness
+  - text: WHEN decisions carry no code_sha or one that is not a full lowercase sha of any JSON type, the report SHALL count them and exit 0, listing only valid shas.
+    probe: scripts/localci/tests/test_merger_report.py::test_decisions_without_provenance_are_counted_never_refused
+  - text: WHEN a journal line is dated in the future, the report SHALL count it and never print a negative age.
+    probe: scripts/localci/tests/test_merger_report.py::test_a_line_dated_in_the_future_is_flagged_and_never_ages_the_window_negative
+  - text: WHEN the tick runs, heartbeat.sh SHALL come from the mirror at the tick's sha, a working checkout's copy SHALL NOT run, and an early exit SHALL run the copy the last tick extracted.
+    probe: scripts/localci/tests/test_merger.py::test_the_heartbeat_library_comes_from_the_mirror_at_the_ticks_sha_never_from_a_checkout
+  - text: WHEN the heartbeat library is absent or empty, the wrapper SHALL say so on stderr and change nothing else.
+    probe: scripts/localci/tests/test_merger.py::test_a_missing_heartbeat_library_is_said_aloud_and_changes_nothing_else
+  - text: WHEN the kill switch is set on a host that never ticked, the wrapper SHALL stop before any git and say that no library is there.
+    probe: scripts/localci/tests/test_merger.py::test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch
+  - text: WHEN the mutant sweep runs, every rule SHALL be applied to a temporary copy, a mutant SHALL count as killed only on a pytest failure, and the sweep SHALL exit 0 only when every mutant is killed.
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py
+assumptions:
+  - text: Every main the mirror can serve carries scripts/lib/heartbeat.sh with a CLI mode.
+    status: verified
+    note: 'scripts/lib/heartbeat.sh is on main with `organism_heartbeat "$@"` under a BASH_SOURCE == $0 guard; the wrapper keeps the previous copy and says so when a sha lacks it.'
+    probe: git show origin/main:scripts/lib/heartbeat.sh | grep -n BASH_SOURCE
+consumer_map:
+  - The Pro launchd job com.balizero.localci-merger — after merge its wrapper extracts heartbeat.sh into ~/.nuzantara-pilots/local-ci/merger/heartbeat.sh each tick.
+  - The phase E decision (operator) — it reads `merger.py report`; READY now needs both thresholds.
+  - A gate or a later builder — it replays scripts/localci/tests/mutants/merger_mutants.py.
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
