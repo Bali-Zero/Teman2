@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import calendar
 from collections import Counter
+from statistics import median
 import fcntl
 import importlib.util
 import json
@@ -363,6 +364,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         line = journal(state, {**rec, "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
                                "contexts_status": ctx.get("status"), "contexts": {k: (v or {}).get("verdict") for k, v in results.items()},
                                "checks": {k: (v or {}).get("status") for k, v in (status.get("checks") or {}).items()},
+                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},
                                "seal": gate["seal"], "runner_rc": {k: v for k, v in gate.items() if k.endswith("_rc")},
                                "hosted_compare": hosted_summary(a.repo, a.base, status, head, run_dir), "run_dir": str(run_dir),
                                "elapsed_s": round(time.monotonic() - t0, 1)})
@@ -475,6 +477,10 @@ def is_sha(x) -> bool:
     return isinstance(x, str) and _FULL_SHA.fullmatch(x) is not None
 
 
+def is_num(x) -> bool:
+    return type(x) in (int, float) and x >= 0
+
+
 def is_ts(x) -> bool:
     return isinstance(x, str) and _TS_RE.fullmatch(x) is not None
 
@@ -520,6 +526,7 @@ def cmd_report(a) -> int:
     rows = []
     ctx_counts = dict.fromkeys(hc.CLASSES, 0)
     recorded_fg = 0
+    check_max_s: dict = {}   # the slowest run of each check in the window: where a tick's time goes
     try:
         if a.since and not _SINCE_RE.fullmatch(a.since):
             raise hc.CompareError(f"--since {a.since!r}: give YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ")
@@ -545,6 +552,9 @@ def cmd_report(a) -> int:
             github = github_side(merged_here, live)
             # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
             recorded_fg += recorded_false_green(d)
+            for k, v in (d.get("durations") if isinstance(d.get("durations"), dict) else {}).items():
+                if is_num(v):
+                    check_max_s[k] = max(check_max_s.get(k, 0), v)
             compared_ctx = 0
             if d.get("contexts_status") is not None:   # the gate ran: set its per-context verdicts beside the hosted ones
                 status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"],
@@ -559,6 +569,7 @@ def cmd_report(a) -> int:
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "merged_at": merged_at, "code_sha": d.get("code_sha"),
+                         "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
     except (hc.CompareError, OSError, KeyError, TypeError, AttributeError) as exc:
         print(f"merger report: refusing — {exc}", file=sys.stderr)
@@ -577,11 +588,15 @@ def cmd_report(a) -> int:
     ready = fg == 0 and (compared_merges >= 50 or compared_days >= 14)   # days count only between compared merges, never alone
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
     errors = sum(1 for r in window if r.get("kind") == "error")
+    timed = sorted((r["elapsed_s"], r["pr"]) for r in rows if r["elapsed_s"] is not None)
+    ticks = {"timed": len(timed), "longest_s": timed[-1][0] if timed else None, "longest_pr": timed[-1][1] if timed else None,
+             "median_s": median(t for t, _ in timed) if timed else None,
+             "check_max_s": dict(sorted(check_max_s.items(), key=lambda kv: -kv[1]))}
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
                       "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
                       "last_line_age_h": last_line_age_h, "errors": errors, "skipped": skipped,
-                      "code_shas": sorted({r["code_sha"] for r in rows if r["code_sha"]})},
+                      "code_shas": sorted({r["code_sha"] for r in rows if r["code_sha"]}), "ticks": ticks},
            "counts": counts, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "phase_e_ready": ready, "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     atomic_write(state / "report.json", json.dumps(out, indent=2) + "\n")
@@ -593,6 +608,9 @@ def cmd_report(a) -> int:
           f"compared_merges={compared_merges} errors={errors} skipped={skipped or 0}")
     print(f"gaps: longest between decisions={decision_gap_h}h, longest between any journal lines={silence_h}h, "
           f"last line {last_line_age_h}h ago; code shas in the window: {[c[:12] for c in w['code_shas']] or 'none recorded'}")
+    slow = ", ".join(f"{k}={v}s" for k, v in list(ticks["check_max_s"].items())[:3]) or "none journalled"
+    print(f"ticks: {ticks['timed']} timed decisions, longest {ticks['longest_s']}s (#{ticks['longest_pr']}), median {ticks['median_s']}s; "
+          f"slowest checks: {slow}")
     print("pr-level: " + " ".join(f"{k.lower()}={v}" for k, v in counts.items()))
     print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items())
           + f" | false_green recorded at tick time={recorded_fg}")

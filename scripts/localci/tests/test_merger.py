@@ -91,7 +91,7 @@ class FakeRunner:
         bind = {"candidate_sha": self.calls[0].get("worktree_head"), "base_sha": plan[plan.index("--base") + 1], "seal": SEAL, **self.bind}
         (run_dir / "status.json").write_text(json.dumps({"overall": self.overall, **bind,
                                                          "contexts": {"status": "ok", "results": {"ctx-a": {"verdict": "OK", "mapping": "executed"}}},
-                                                         "checks": {"policy.change_map": {"status": "PASS"}}}))
+                                                         "checks": {"policy.change_map": {"status": "PASS", "duration_s": 12.5}}}))
         return subprocess.CompletedProcess(argv, self.status_rc, self.overall + "\n", "")
 
 
@@ -174,6 +174,7 @@ def test_candidate_is_main_plus_head_squashed_and_the_gate_runs_from_base_with_t
     assert hosted["sha"] == world.head1 and "merge-group" in hosted["note"] and hosted["counts"]["AGREE"] == 1
     assert json.loads((Path(d["run_dir"]) / "hosted_compare.json").read_text())["sha"] == world.head1
     assert {"ts", "host", "lease_id", "elapsed_s", "run_dir", "checks"} <= set(d) and d["host"] == mg.HOST
+    assert d["checks"] == {"policy.change_map": "PASS"} and d["durations"] == {"policy.change_map": 12.5}
     assert not (world.state / "cand" / f"pr1-{world.head1[:12]}-{world.base[:12]}").exists()
 
 
@@ -215,7 +216,7 @@ def test_the_watchdog_turns_a_hung_gate_into_an_error_decision_and_frees_the_lea
     monkeypatch.setattr(mg, "runner_exec", FakeRunner(sleep=10, alarm=1))
     world.gh.prs = [pr(1, world.head1)]
     rc = mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin),
-                  "--python", "py", "--tick-timeout", "1"])
+                  "--python", "py", "--tick-timeout", "120"])   # the fake re-arms 1 s at the gate: a loaded host's clone cannot trip it
     (d,) = [r for r in world.journal() if r["kind"] == "decision"]
     assert rc == 1 and d["overall"] == "ERROR" and "tick-timeout" in d["error"] and not (world.state / "lease.json").exists()
 

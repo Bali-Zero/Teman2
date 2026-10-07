@@ -294,8 +294,10 @@ Three silences are printed: the longest gap between DECISIONS (errors and skips 
 anything), the longest between any two journal lines, and the age of the last line (a merger that stopped writing at all).
 Rows carry the `code_sha` that wrote them and the window lists the code shas it saw. A recorded FALSE_GREEN that is not a
 non-negative integer, a timestamp that is not exactly `YYYY-MM-DDTHH:MM:SSZ`, or a merged candidate without `merged_at` is an
-unusable input. The report writes `<state-dir>/report.json`. Exit 1 on any FALSE_GREEN (per decision, per context now, or recorded at tick time), 2 on an
-unusable input or a failed GitHub read (nothing is counted then), else 0.
+unusable input. The ticks line prints the longest and the median decision time and the slowest run of each check in the
+window (the runner's `duration_s`, journalled per decision as `durations`). The report writes `<state-dir>/report.json`.
+Exit 1 on any FALSE_GREEN (per decision, per context now, or recorded at tick time), 2 on an unusable input or a failed
+GitHub read (nothing is counted then), else 0.
 
 ### Schedule (launchd, Pro)
 
@@ -319,6 +321,16 @@ an unset `MERGER_PYTHON` or `MERGER_NODE` or an interpreter that is not executab
 `${VAR:?}`: under macOS `/bin/bash` 3.2 an expansion error reaches the `EXIT` trap with status 0, the script
 exits 0 and the heartbeat would say `ok` (measured; the wrapper test keeps it red). Replace the live copy atomically (copy
 beside it, then `mv`): bash reads a running script as it goes.
+
+Capacity (measured 2026-10-07). The runner executes its checks one after another — `cmd_run` walks the planned names in a
+single loop and no check starts before the previous one has its receipt — so a tick costs the sum of its checks. With
+phase A's contained contexts on main, ticks took 883 s, 886 s and 1097 s (#7978, #7979, #7943) against a `StartInterval` of
+600 s. launchd never overlaps a job with itself, so the cadence is one PR per tick + 600 s (about 25 minutes), and it grows
+with phase B's service contexts. `StartInterval` stays 600 (a shorter one buys nothing while a tick outlasts it); running
+checks in parallel is phase B's runner work. The heartbeat is written when a tick ends, so two heartbeats are up to
+tick + 600 s apart: the organ's `expected_hb_seconds` is 3600, not 1800. A `running` heartbeat at tick start was not chosen
+— the sentinel's `running` branch has no staleness downgrade (`scripts/nuzantara-sentinel.py`), so a hung tick would read
+healthy for ever.
 
 The merger runs the BASE runner with its OWN coordinator venv, `~/.nuzantara-pilots/local-ci/merger/venv` (the plist's
 `MERGER_PYTHON`): the runner fingerprints the coordinator's `pip freeze` into every receipt, and a shared venv that another job
