@@ -381,12 +381,19 @@ def _step_cwd(ws: dict, run_defaults: dict) -> str:
     return "." if wd in (".", "./") else safe_tree_path(str(wd).rstrip("/"))
 
 
-def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None = None) -> tuple[list | None, str | None]:
+HOSTED_RUNNERS = ("ubuntu-latest", "ubuntu-24.04")   # what the host tools and candidate.Dockerfile stand in for
+
+
+def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None = None,
+                  wf_env: dict | None = None) -> tuple[list | None, str | None]:
     """Account for EVERY step of the BASE workflow job, in matrix order: a transcribed `argv`, the BASE `run:` body verbatim (written
     to a script file and run with GitHub's shell template), or `not_applicable` with a reason. A step the matrix does not name, a
     `not_run` step, duplicate step names, or an expression the runner does not evaluate makes the context BLOCKED — the local verdict
     never covers less than the job and still calls itself the job's. A step's `if:` is recorded, not evaluated: running a step
-    GitHub might skip can only add red, never hide it."""
+    GitHub might skip can only add red, never hide it. Env merges as GitHub does: workflow, job, step, then the matrix's overrides;
+    a job that runs in its own `container:`, beside `services:`, or on another runner image is not emulated."""
+    if (shape := [k for k in ("container", "services") if job.get(k)]) or job.get("runs-on") not in HOSTED_RUNNERS:
+        return None, f"BASE job shape not emulated: {shape or ''} runs-on={job.get('runs-on')!r} (the sandbox stands in for {HOSTED_RUNNERS})"
     wsteps = [s for s in (job.get("steps") or []) if isinstance(s, dict)]
     names = [s["name"] for s in wsteps if isinstance(s.get("name"), str)]
     if (dups := sorted({n for n in names if names.count(n) > 1})):
@@ -409,10 +416,12 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
         if st.get("not_run"):
             not_run.append(f"{wname!r}: {st['not_run']}")
             continue
-        if st.get("not_applicable"):
-            out.append({"name": wname, "not_applicable": str(st["not_applicable"])})
+        if "not_applicable" in st:
+            if not isinstance(st["not_applicable"], str) or not st["not_applicable"].strip():
+                return None, f"matrix step {wname!r}: not_applicable needs a written reason, got {st['not_applicable']!r}"
+            out.append({"name": wname, "not_applicable": st["not_applicable"].strip()})
             continue
-        env = {k: str(v) for k, v in {**(job.get("env") or {}), **(ws.get("env") or {})}.items()}
+        env = {k: str(v) for k, v in {**(wf_env or {}), **(job.get("env") or {}), **(ws.get("env") or {})}.items()}
         env.update({k: base if v == "$BASE_SHA" else str(v) for k, v in (st.get("env") or {}).items()})
         step = {"name": wname}
         if st.get("argv"):
@@ -512,7 +521,7 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
             raise TypeError("job is not a mapping")
     except Exception as e:  # noqa: BLE001 — an unreadable BASE workflow is no plan, never a guess
         return _blocked(f"BASE workflow {wf} job {ctx.get('job_id')!r} unreadable at {base[:12]}: {type(e).__name__}")
-    steps, why = resolve_steps(job, local, base if where == "host" else "main", ((doc.get("defaults") or {}).get("run")) or {})
+    steps, why = resolve_steps(job, local, base if where == "host" else "main", ((doc.get("defaults") or {}).get("run")) or {}, doc.get("env") or {})
     prefix, why2 = select_python(job, pyv.get(where), pyv.get("container_extra") if where == "container" else None)
     if why or why2:
         return _blocked(why or why2)

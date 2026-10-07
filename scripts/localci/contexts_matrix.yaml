@@ -476,7 +476,7 @@ contexts:
         - workflow_step: Paid-endpoint ban judged as an entity
           not_applicable: >-
             the model judgment needs a paid vendor key this host does not hold; hosted skips it too on merge_group
-            and push (no PR base). On a PR head hosted runs it and this run has no counterpart (see never_claim_parity_for)
+            and push (no PR base). On a PR head hosted runs it and this run has no counterpart (see summary.parity_gaps)
         - workflow_step: Prose must not spell a banned shape (blocking)
           env: { BASE_SHA: "", HEAD_SHA: "", PR_NUMBER: "", GH_TOKEN: "" } # merge_group: no PR base, so the whole tree is scanned
         - workflow_step: Law-5 autonomous-publish lint (blocking)

@@ -219,6 +219,26 @@ def test_a_verbatim_body_runs_from_a_file_under_githubs_own_shell_template(shell
         assert steps[0]["argv"] == argv and steps[0]["script"] == "python scripts/judge.py --selftest" and "-c" not in steps[0]["argv"]
 
 
+@pytest.mark.parametrize("na", [True, "", "   ", 1])
+def test_not_applicable_needs_a_written_reason_not_a_flag(na):
+    local = {**contained_ctx()["local"], "steps": [*contained_ctx()["local"]["steps"][:3], {"workflow_step": "pr sentinel", "not_applicable": na}]}
+    steps, why = runner.resolve_steps(_job(), local, "b" * 40)
+    assert steps is None and "written reason" in why
+
+
+@pytest.mark.parametrize("over", [{"services": {"pg": {"image": "postgres"}}}, {"container": "node:20"}, {"runs-on": "macos-latest"}])
+def test_a_job_shape_the_sandbox_does_not_stand_in_for_is_blocked(over):
+    steps, why = runner.resolve_steps(_job(**over), contained_ctx()["local"], "b" * 40)
+    assert steps is None and "job shape not emulated" in why
+
+
+def test_workflow_level_env_reaches_the_steps_under_the_job_and_step_env():
+    steps, why = runner.resolve_steps(_job(env={"TOOL_VERSION": "job"}), contained_ctx()["local"], "b" * 40, {}, {"WF_ONLY": "1", "TOOL_VERSION": "wf"})
+    assert why is None and steps[0]["env"]["WF_ONLY"] == "1" and steps[0]["env"]["TOOL_VERSION"] == "job"
+    steps, why = runner.resolve_steps(_job(), contained_ctx()["local"], "b" * 40, {}, {"X": "${{ github.sha }}"})
+    assert steps is None and "expressions" in why   # an unevaluated expression at workflow level blocks like one in a step
+
+
 def test_working_directory_comes_from_the_step_or_the_job_default_and_stays_in_the_tree():
     steps, _ = runner.resolve_steps(_job(defaults={"run": {"working-directory": "docs"}}), contained_ctx()["local"], "b" * 40)
     assert {s.get("cwd") for s in steps if "argv" in s} == {"docs"}
