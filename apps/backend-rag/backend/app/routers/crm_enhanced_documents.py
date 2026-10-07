@@ -29,6 +29,7 @@ from backend.core.cache import invalidate_cache
 from backend.db.repositories.client_repository import CORE_OWNER_IDS_SQL
 from backend.phone_lock import lock_cores, phone_core, phone_value_state
 from backend.services.common.background import spawn
+from backend.services.crm.admin_document_visibility import admin_document_not_deleted_clause
 from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
@@ -111,6 +112,9 @@ async def get_client_documents(
             LEFT JOIN client_family_members fm ON d.family_member_id = fm.id
             WHERE d.client_id = $1
         """
+        # Deleted by the team (status) or by the client in the portal
+        # (deleted_at) never shows here, archived or not.
+        query += f" AND {admin_document_not_deleted_clause('d')}"
         params = [client_id]
         param_num = 2
 
@@ -572,12 +576,13 @@ async def get_client_ocr_status(
     async with pool.acquire() as conn:
         await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         docs = await conn.fetch(
-            """
+            f"""
             SELECT id, document_type, file_name, ocr_status, ocr_completed_at,
                    ocr_extracted_data
             FROM documents
             WHERE client_id = $1
               AND ocr_status IS NOT NULL
+              AND {admin_document_not_deleted_clause()}
             ORDER BY updated_at DESC
             LIMIT 10
             """,
