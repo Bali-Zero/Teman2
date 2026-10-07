@@ -973,15 +973,24 @@ def npm_inputs(wt: Path, cand: str, deps: dict) -> tuple[dict, str, str | None]:
     return files, pw if re.fullmatch(r"\d+\.\d+\.\d+", pw) else "", None
 
 
-def run_host_reader(argv: list, cwd: Path, timeout: int | None) -> dict:
+READER_RETRY_WAITS = (0, 10, 30)
+
+
+def run_host_reader(argv: list, cwd: Path, timeout: int | None, no_verdict: str | None = None) -> dict:
     """A BASE reader of GitHub state (the harness gate verdict) at plan time, before any candidate code: python -I on the BASE copy,
     secrets stripped from its environment (gh answers with its stored login, a read). Its rc is frozen into the plan, so the seal
     covers it, and the driver folds it in at the step's position, where the step's own `if:` decides whether it counts."""
-    try:
-        r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout or 300, env=trusted_env(), cwd=str(cwd))
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return {"rc": None, "reason": f"host reader could not run: {type(e).__name__}"}
-    return {"rc": r.returncode, "reason": f"host, at plan: BASE {Path(argv[2]).name} rc={r.returncode}", "log": (r.stdout + r.stderr)[-4000:]}
+    for wait in READER_RETRY_WAITS:   # a reader that says it could not read GitHub (`no_verdict`, the matrix's) is asked again, then no verdict
+        time.sleep(wait)
+        try:
+            r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout or 300, env=trusted_env(), cwd=str(cwd))
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return {"rc": None, "reason": f"host reader could not run: {type(e).__name__}"}
+        out = r.stdout + r.stderr
+        if not (no_verdict and r.returncode != 0 and no_verdict in out):
+            return {"rc": r.returncode, "reason": f"host, at plan: BASE {Path(argv[2]).name} rc={r.returncode}", "log": out[-4000:]}
+    return {"rc": None, "reason": f"host, at plan: BASE {Path(argv[2]).name} could not read GitHub ({no_verdict!r}, {len(READER_RETRY_WAITS)} tries): "
+            "no verdict on the candidate, re-run", "log": out[-4000:]}
 
 
 def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: str, ctx: dict, changed: list, pyv: dict, iso: dict, cm: dict,
@@ -1088,7 +1097,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 (tdir / argv[1]).parent.mkdir(parents=True, exist_ok=True)
                 (tdir / argv[1]).write_bytes(blob)
                 st["side"] = {"where": "host", "argv": [sys.executable, "-I", str(tdir / argv[1]), *argv[2:]], "base_sha256": sha256_bytes(blob)}
-                st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"))
+                st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"), ms.get("no_verdict_when"))
         image_id, deps_note = iso["image_id"], ""
         if local.get("deps"):
             image_id, deps_note = plan_deps_image(wt, cand, iso, local["deps"], prefix, run_dir, re.sub(r"[^a-z0-9-]", "-", str(ctx["check"])[4:]))

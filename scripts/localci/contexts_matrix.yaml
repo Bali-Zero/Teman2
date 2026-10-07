@@ -504,6 +504,7 @@ contexts:
             - --dispatch-sha
             - ""
           env: { GH_TOKEN: "" } # stripped from every trusted environment; gh answers with its stored login, a read
+          no_verdict_when: CANNOT-VERIFY # the reader's own word for "the read itself failed" (a GitHub 5xx): asked again, then no verdict
         - workflow_step: Bites contract — parse this PR's evidence pack
     mapping: executed
     coverage: full

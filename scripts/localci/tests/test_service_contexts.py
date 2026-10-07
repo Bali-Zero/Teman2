@@ -282,6 +282,19 @@ def test_a_host_reader_is_the_base_copy_run_at_plan_and_its_answer_is_frozen_in_
     assert step["precomputed"]["rc"] == 3 and step["side"]["argv"][1] == "-I"   # BASE's reader answered; the candidate's exits 0
 
 
+@pytest.mark.parametrize("body,marker,rc,tries", [
+    ("print('::error::CANNOT-VERIFY gh: HTTP 500'); raise SystemExit(1)", "CANNOT-VERIFY", None, 3),   # GitHub failed: no verdict
+    ("print('::error::no gate verdict'); raise SystemExit(1)", "CANNOT-VERIFY", 1, 1),                # the reader judged: a verdict
+    ("print('::error::CANNOT-VERIFY'); raise SystemExit(1)", None, 1, 1),                            # no marker declared: as before
+])
+def test_a_host_reader_that_could_not_read_github_is_asked_again_then_gives_no_verdict(tmp_path, monkeypatch, body, marker, rc, tries):
+    monkeypatch.setattr(runner, "READER_RETRY_WAITS", (0, 0, 0))
+    calls = tmp_path / "calls"
+    (tmp_path / "r.py").write_text(f"open({str(calls)!r}, 'a').write('.')\n{body}\n")
+    got = runner.run_host_reader([sys.executable, "-I", str(tmp_path / "r.py")], tmp_path, 30, marker)
+    assert got["rc"] == rc and len(calls.read_text()) == tries and ("no verdict" in got["reason"]) is (rc is None)
+
+
 @pytest.mark.parametrize("argv", [["bash", "-c", "true"], ["$PY", "scripts/ci/other.py"], ["$PY", READER, "${{ secrets.X }}"]])
 def test_a_host_step_that_is_not_a_trusted_base_reader_is_blocked(tmp_path, monkeypatch, argv):
     spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, host_ctx(argv), HOST_BASE)
