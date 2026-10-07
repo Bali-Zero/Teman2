@@ -451,6 +451,11 @@ def test_a_leg_selector_takes_exactly_the_leg_the_required_context_names(tmp_pat
         assert spec["status"] == "BLOCKED" and "exactly one leg" in spec["reason"]
 
 
+def test_the_npm_stage_renders_one_offline_install_per_declared_lock():
+    stage = runner.DEPS_NPM_STAGE.format(v="24")   # str.format: the shell's own braces must survive it
+    assert "FROM node:24-bookworm-slim" in stage and '"/src/${lock%/package-lock.json}"' in stage and "--ignore-scripts" in stage
+
+
 def test_the_npm_closure_is_the_locks_registry_entries_and_its_workspace_manifests(tmp_path):
     repo, cand = npm_repo(tmp_path, {"node_modules/playwright-core": REG, "node_modules/w": {"resolved": "apps/w", "link": True}}, ["apps/w"])
     files, pw, why = runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})

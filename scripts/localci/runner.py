@@ -678,7 +678,7 @@ DEPS_NPM_STAGE = """\
 FROM node:{v}-bookworm-slim AS npmcache
 COPY npm/ /src/
 RUN for lock in $(cd /src && find . -name package-lock.json | sort); do \\
-      (cd "/src/${lock%/package-lock.json}" && npm ci --ignore-scripts --no-audit --no-fund --loglevel=error --cache /npm-cache) || exit 1; \\
+      (cd "/src/${{lock%/package-lock.json}}" && npm ci --ignore-scripts --no-audit --no-fund --loglevel=error --cache /npm-cache) || exit 1; \\
     done && rm -rf /src
 """
 DEPS_NPM = """\
