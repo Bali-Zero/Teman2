@@ -30,7 +30,7 @@ pii_scan_note:
 
 diff:
   net_lines: |
-    Source-only import: roughly 30,000 added lines across 133 files, of which about 9,800 are two
+    Source-only import: roughly 30,000 added lines across 137 files, of which about 9,800 are two
     pretty-printed i18n JSON files and the rest Swift sources, tests, tools, deploy scripts and
     markdown. The size floor is the import itself.
   behaviour_change: >-
@@ -92,15 +92,15 @@ dissent:
     resolution: "Fixed: size above 1 MB and a %PDF header are required; proved accept and reject cases. A content hash was not added because the books are replaced on purpose when a new edition is built."
   - seat: agy-gemini-3.1-pro
     objection: "HIGH: no copy logic exists for the three overlay files, so they would be missing from the bundle on a clean checkout."
-    status: REFUTED
+    status: RETRACTED
     resolution: "The reviewer saw only the diff. The unchanged lines 198-212 of build.sh sync all three files from data/kbli-app-overlay into Resources/; the Pro build log prints 'editorial overlay: synced' and the file lists match the installed app."
   - seat: agy-gemini-3.1-pro
     objection: "HIGH: build.sh never copies the canonical dataset into the source Resources/, so consumers read a missing or stale file."
-    status: REFUTED
+    status: RETRACTED
     resolution: "The unchanged lines 172-182 copy the canonical into Resources/ at every build ('refreshed Resources/ from canonical' in the Pro log); the bundle copy then follows."
   - seat: agy-gemini-3.1-pro
     objection: "MEDIUM: REPO_ROOT may be undefined in sync_kbli_dataset.sh."
-    status: REFUTED
+    status: RETRACTED
     resolution: "scripts/sync_kbli_dataset.sh defines REPO_ROOT at line 46 under set -euo pipefail, before APP_REPO."
   - seat: agy-gemini-3.1-pro
     objection: "LOW: the ROOT/../nuzantara probe is a stale fallback in the monorepo."
