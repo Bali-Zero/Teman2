@@ -47,7 +47,59 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-09-22 — keep current)
+## 1. LIVE STATE (last update 2026-10-07 — keep current)
+
+**🟢 2026-10-07 — A FULL `inspect_kbli` SWEEP (MUSE SPARK, 1,559/1,559) EXPOSED 35 LOCATED CODES
+SERVED WRONG AT RUNTIME, AND THE SYNC TOOL'S "ALREADY AGREES" WAS THE LIE.** Muse Spark's sweep
+(`.worktrees/ops-kbli-full-inspection/kbli-inspection/`, 2026-10-06, re-aggregated here: 1,559 rows,
+0 missing/dup; PMA `NOT_VERIFIED` 853 · TERBUKA 579 · TERBATAS 68 · TERTUTUP 59) measures the RUNTIME
+surface only; its report never crosses canonical. Crossed here: canonical `located` **722**, runtime
+**706** → 16 codes `NOT_VERIFIED` at runtime, plus 19 whose `pma_official_basis` differed — **35**.
+Three causes, each measured on the stores through the read-only role, never off a tool's report:
+
+- **14 codes (incl. `51101` TERBATAS 49%, proven live 2026-08-02 and REGRESSED since) — the Qdrant
+  BPS point carried `pma_status` but `pma_verification_status: None`**, while KG and
+  `kbli_documents` were `located`. `kbli_qdrant_pma_sync.py::stale_points()` (lines 209-210) SKIPS
+  any point whose blob has no `## Status PMA` block (`unshaped`) and the per-code line prints
+  _"already agrees with canonical"_ without ever comparing the flat keys — superscar #2 shape, a
+  green over a bad world. Cured by a one-off `set_payload` of the 7-key tuple from the canonical
+  (sha `c29d6e6aea7a4fdb`, = `origin/main` 58e74f69e4) on exactly those 14 `doc_type=kbli_bps`
+  points (`20112 26602 42998 51101 82200 85520 85572 85573 85574 85579 85592 85593 85595 85610`),
+  NOT via the tool, because the tool cannot see them. **Tool fix still owed** (ledgered): compare
+  flat fields on unshaped points too and refuse only the PROSE half; guilt test = a point with no
+  block and a stale flat key must be reported stale.
+- **2 codes (`93113`, `93193`) + the other 7 of PR #7161's OSS-refresh ADOPT lot (`19206 20111 75002
+75009 93115 93191 93195`) — canonical cured 2026-09-22, runtime never synced.** #7161's `Bites:`
+  covers the 6 canonical copies only; balizero.com was ahead (reads canonical), WA/webchat/
+  `kbli-explorer`/MCP still served the July gap. Synced code-scoped from the Fly image, dataset
+  pinned: Qdrant pma 2/2 written · `kg_kbli_resync --only` 2/2 · `kbli_documents_cure --pma-only`
+  2/2 + `--licensing-only` 9/9 (cure-run `kbli_adopt_runtime_sync:2026-10-07`, judul/content
+  byte-identical, 9 archive rows) · `kg_kbli_licensing_from_canonical --phase 1a` **8 built, 93191
+  REFUSED** (legacy-served, 5 live edges, Phase 2 `--replace-legacy` — declared, not an error).
+  Note `--cure-run` is REQUIRED with `--apply` on the documents cure: the first apply printed a
+  usage error that a `grep APPLIED` swallowed; verify by SQL, never by the script's tail.
+- **19 codes (13xxx batik/textile cluster, 14200, 14302, 15111-15114)** — stores agree TODAY; the
+  divergence in the sweep was the **30-day inspect cache** (entries pre-date the 2026-09-24 basis
+  rewrites #7231/#7297). Corollary worth the capital letters: **A FULL SWEEP POPULATES THE CACHE FOR
+  ALL 1,559 CODES** — every cure after 2026-10-06 must bust its codes or it is invisible until
+  ~2026-11-05.
+
+Cache: 23 + 20 entries evicted (`kbli_inspect_v8_`). **Prove-live** after eviction: `inspect_kbli
+51101` → `TERBATAS / 49 / located / entry #31`; `13133` → `TERBATAS / 0 / located / Lampiran II
+batik`; `85579` → `TERBUKA / 100 / located`; `93113` → located + 1 licence built; `19206` → licence
+built, `inherited_from 19291` note. Website unchanged and correct (`/kbli/93113` renders the adopted
+rows, `/kbli/51101` the 49%); macOS fleet app dataset = canonical `c29d6e6aea7a4fdb` on M5/Pro/Mini.
+**Declared residuals:** (1) the Qdrant point TEXT (`search_kbli`/RAG blob) for the 9 ADOPT codes
+still carries the July gap prose — `--layer pma` refuses prose it cannot locate and the licensing
+re-index needs `--only` on `reindex_kbli_2025_final.py` (own lane); (2) `kbli_documents.licensing_status`
+stays `PENDING_REGULATION` on the 9 with rows present — the cure derives it from the still-present
+`per_skala_disputed_pp28_collision` marker the ADOPT compiler left behind (nothing reads it off this
+table, conformance-only); (3) `91300` renders `risk_profile: "Unknown"` — `_resolve_risk_profile`'s
+no-`ORDER BY` fallback picks a `Sertifikat Standar` node tiered Unknown over two Menengah Rendah
+rows (the latent fragility ledgered 2026-08-05, now with one live victim). Muse Spark verdict:
+coverage/validation sound and reproducible (nested/flat 520/1039 content-identical), but a runtime
+census without a canonical cross-check reports a distribution, not a defect list — the 35 were
+there to be found and the report called "Irrisolti: nessuno".
 
 **🟢 2026-09-22 — PHASE 1a, THE §7 KG DETECTOR AND PMA RESIDUAL-OPEN LOT 2 ARE ALL SHIPPED AND
 PROVEN LIVE ON ALL FOUR RUNTIME STORES, INCLUDING A PRE-EXISTING 43-CODE DOCUMENTS-LAG RESIDUAL
