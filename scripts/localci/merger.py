@@ -579,13 +579,16 @@ def cmd_report(a) -> int:
     days = _days(first, last) if rows else 0.0
     silence_h = _longest_gap_h(r["ts"] for r in window)
     decision_gap_h = _longest_gap_h(r["ts"] for r in rows)   # errors and skips keep the journal busy; only decisions age the window
-    last_line_age_h = round((time.time() - max(_epoch(r["ts"]) for r in window)) / 3600, 2) if window else None
+    clock = time.time()
+    future_lines = sum(1 for r in window if _epoch(r["ts"]) > clock)   # a host clock that ran ahead: said, never a negative age
+    last_line_age_h = round(max(0.0, clock - max(_epoch(r["ts"]) for r in window)) / 3600, 2) if window else None
+    without_code_sha = sum(1 for r in rows if not is_sha(r["code_sha"]))   # lines older than provenance are counted, never refused
     # one event per merged PR, at GitHub's merged_at: duplicate decisions of one PR, or the journal's order, cannot widen the span
     merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())
     compared_merges = len(merges)
     compared_days = _days(merges[0], merges[-1]) if merges else 0.0
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
-    ready = fg == 0 and (compared_merges >= 50 or compared_days >= 14)   # days count only between compared merges, never alone
+    ready = fg == 0 and compared_merges >= 50 and compared_days >= 14   # lead's ruling 2026-10-07: both, never either
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
     errors = sum(1 for r in window if r.get("kind") == "error")
     timed = sorted((r["elapsed_s"], r["pr"]) for r in rows if r["elapsed_s"] is not None)
@@ -595,7 +598,8 @@ def cmd_report(a) -> int:
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
                       "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
-                      "last_line_age_h": last_line_age_h, "errors": errors, "skipped": skipped,
+                      "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "skipped": skipped,
+                      "decisions_without_code_sha": without_code_sha,
                       "code_shas": sorted({r["code_sha"] for r in rows if r["code_sha"]}), "ticks": ticks},
            "counts": counts, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "phase_e_ready": ready, "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
@@ -607,15 +611,17 @@ def cmd_report(a) -> int:
     print(f"window: {first} .. {last} ({days} days) decisions={w['decisions']} distinct_prs={w['distinct_prs']} merged_prs={w['merged_prs']} "
           f"compared_merges={compared_merges} errors={errors} skipped={skipped or 0}")
     print(f"gaps: longest between decisions={decision_gap_h}h, longest between any journal lines={silence_h}h, "
-          f"last line {last_line_age_h}h ago; code shas in the window: {[c[:12] for c in w['code_shas']] or 'none recorded'}")
+          f"last line {last_line_age_h}h ago" + (f", {future_lines} line(s) dated in the future" if future_lines else "")
+          + f"; code shas in the window: {[c[:12] for c in w['code_shas']] or 'none recorded'}, "
+          f"{without_code_sha} decision(s) without a valid code_sha")
     slow = ", ".join(f"{k}={v}s" for k, v in list(ticks["check_max_s"].items())[:3]) or "none journalled"
     print(f"ticks: {ticks['timed']} timed decisions, longest {ticks['longest_s']}s (#{ticks['longest_pr']}), median {ticks['median_s']}s; "
           f"slowest checks: {slow}")
     print("pr-level: " + " ".join(f"{k.lower()}={v}" for k, v in counts.items()))
     print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items())
           + f" | false_green recorded at tick time={recorded_fg}")
-    print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges or 14 days between the first and "
-          f"last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
+    print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
+          f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
           f"compared); now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}")
     return 1 if fg else 0
 

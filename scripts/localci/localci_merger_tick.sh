@@ -8,9 +8,11 @@
 # shows) or disabled (the kill switch: an operator's stop, which the healer and the sentinel treat as exempt, not as a failure).
 set -euo pipefail
 ORGAN_ID="pro.localci_merger"
-HB_LIB="${MERGER_HEARTBEAT_LIB:-$HOME/nuzantara/scripts/lib/heartbeat.sh}"
-# the library runs in its OWN process (its CLI mode), never sourced: code from a working checkout cannot change this
-# script's options, traps or exit status — the rest of the merger comes from origin/main at one sha
+STATE="${MERGER_STATE_DIR:-$HOME/.nuzantara-pilots/local-ci/merger}"
+# heartbeat.sh too is read from the mirror at the tick's sha, never from a working checkout: each tick refreshes the copy
+# in the state dir, and an exit before that (kill switch, missing configuration) uses the copy the last tick extracted
+HB_LIB="${MERGER_HEARTBEAT_LIB:-$STATE/heartbeat.sh}"
+# the library runs in its OWN process (its CLI mode), never sourced: it cannot change this script's options, traps or exit status
 heartbeat() { # $1 status, $2 note
   if [ -r "$HB_LIB" ]; then
     "$BASH" "$HB_LIB" "$ORGAN_ID" "$1" "$2" || echo "merger_tick: heartbeat not written by $HB_LIB" >&2
@@ -36,7 +38,6 @@ finish() {
 }
 trap finish EXIT
 
-STATE="${MERGER_STATE_DIR:-$HOME/.nuzantara-pilots/local-ci/merger}"
 SEED="${MERGER_SEED:-$HOME/nuzantara}"
 URL="${MERGER_REMOTE_URL:-https://github.com/Bali-Zero/Teman2.git}"
 PY="${MERGER_PYTHON:-}"    # the interpreter that runs the BASE runner
@@ -68,6 +69,11 @@ CODE="$(mktemp -d "${TMPDIR:-/tmp}/localci-merger.XXXXXX")"
 for f in merger.py hosted_compare.py; do
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f"
 done
+if git -C "$STATE/repo.git" show "$SHA:scripts/lib/heartbeat.sh" > "$STATE/.heartbeat.sh.new"; then
+  mv -f "$STATE/.heartbeat.sh.new" "$STATE/heartbeat.sh"
+else
+  echo "merger_tick: no scripts/lib/heartbeat.sh at ${SHA:0:12} — keeping the copy the last tick extracted" >&2
+fi
 # provenance only when the extracted merger knows the flag: a newer wrapper beside an older main (or a stale mirror after a
 # failed fetch) must still tick, never die on argparse
 CODE_FLAG=""

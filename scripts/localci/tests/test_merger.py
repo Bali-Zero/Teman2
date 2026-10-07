@@ -530,14 +530,15 @@ def mirror_world(tmp_path):
     src = tmp_path / "src"
     src.mkdir()
     g(src, "init", "-q", "-b", "main")
-    commit(src, {"scripts/localci/merger.py": "v1 --code-sha\n", "scripts/localci/hosted_compare.py": "hc\n"}, "v1")
+    commit(src, {"scripts/localci/merger.py": "v1 --code-sha\n", "scripts/localci/hosted_compare.py": "hc\n",
+                 "scripts/lib/heartbeat.sh": HB_LIB.read_text()}, "v1")
     origin = tmp_path / "origin.git"
     subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True, env=GIT_ENV)
     fake_py = tmp_path / "py"
     fake_py.write_text('#!/bin/sh\necho "$@" > "$OUT_ARGS"\ncat "$2" > "$OUT_CODE"\n')
     fake_py.chmod(0o755)
     env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "MERGER_PYTHON": str(fake_py), "MERGER_NODE": "n1", "MERGER_STATE_DIR": str(tmp_path / "state"),
-           "MERGER_SEED": str(origin), "MERGER_REMOTE_URL": str(origin), "MERGER_HEARTBEAT_LIB": str(HB_LIB),
+           "MERGER_SEED": str(origin), "MERGER_REMOTE_URL": str(origin),
            "OUT_ARGS": str(tmp_path / "args"), "OUT_CODE": str(tmp_path / "code")}
     return src, origin, fake_py, env
 
@@ -562,21 +563,41 @@ def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(t
 
 def test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch(tmp_path):
     _, _, fake_py, env = mirror_world(tmp_path)
+    first = wrap({**env, "LOCALCI_MERGER_ENABLED": "false"})   # nothing extracted yet: said aloud, no git, no state
+    assert first.returncode == 0 and "no heartbeat library" in first.stderr and not (tmp_path / "state").exists()
+    assert wrap(env).returncode == 0 and heartbeat(tmp_path)["status"] == "ok"
     off = wrap({**env, "LOCALCI_MERGER_ENABLED": "false"})
-    assert off.returncode == 0 and heartbeat(tmp_path)["status"] == "disabled" and not (tmp_path / "state").exists()
+    assert off.returncode == 0 and heartbeat(tmp_path)["status"] == "disabled"
     fake_py.write_text("#!/bin/sh\nexit 1\n")
     failed = wrap(env)
     assert failed.returncode == 1 and heartbeat(tmp_path)["status"] == "error"
-    no_mirror = wrap({**env, "MERGER_SEED": str(tmp_path / "no-seed.git"), "MERGER_STATE_DIR": str(tmp_path / "state2")})
+    no_mirror = wrap({**env, "MERGER_SEED": str(tmp_path / "no-seed.git"), "MERGER_STATE_DIR": str(tmp_path / "state2"),
+                      "MERGER_HEARTBEAT_LIB": str(tmp_path / "state" / "heartbeat.sh")})
     assert no_mirror.returncode != 0 and heartbeat(tmp_path)["status"] == "error"
 
 
 @pytest.mark.parametrize("missing", ["MERGER_PYTHON", "MERGER_NODE"])
 def test_a_missing_required_variable_stops_before_any_git_and_says_error(tmp_path, missing):
     _, _, _, env = mirror_world(tmp_path)
+    env["MERGER_HEARTBEAT_LIB"] = str(HB_LIB)
     res = wrap({k: v for k, v in env.items() if k != missing})
     assert res.returncode == 2 and "MERGER_PYTHON and MERGER_NODE are required" in res.stderr
     assert not (tmp_path / "state").exists() and heartbeat(tmp_path)["status"] == "error"
+
+
+def test_the_heartbeat_library_comes_from_the_mirror_at_the_ticks_sha_never_from_a_checkout(tmp_path):
+    src, origin, _, env = mirror_world(tmp_path)
+    planted = tmp_path / "nuzantara" / "scripts" / "lib" / "heartbeat.sh"   # the working checkout the wrapper used to read
+    planted.parent.mkdir(parents=True)
+    planted.write_text(f"touch {tmp_path / 'checkout-ran'}\n")
+    marked = HB_LIB.read_text() + f"\n[ -n \"${{1:-}}\" ] && echo \"$2\" >> {tmp_path / 'main-v2-ran'}\n"
+    commit(src, {"scripts/lib/heartbeat.sh": marked}, "heartbeat v2")
+    g(src, "push", "-q", str(origin), "main")
+    assert wrap(env).returncode == 0 and heartbeat(tmp_path)["status"] == "ok"
+    assert (tmp_path / "state" / "heartbeat.sh").read_text() == marked and (tmp_path / "main-v2-ran").read_text() == "ok\n"
+    assert not (tmp_path / "checkout-ran").exists()
+    off = wrap({**env, "LOCALCI_MERGER_ENABLED": "false"})   # an early exit runs the copy the last tick extracted
+    assert off.returncode == 0 and (tmp_path / "main-v2-ran").read_text() == "ok\ndisabled\n" and not (tmp_path / "checkout-ran").exists()
 
 
 def test_a_missing_heartbeat_library_is_said_aloud_and_changes_nothing_else(tmp_path):
@@ -605,7 +626,7 @@ def test_the_heartbeat_library_runs_in_its_own_process_and_cannot_end_the_tick(t
 
 def test_a_python_that_is_not_executable_stops_before_any_git(tmp_path):
     _, _, _, env = mirror_world(tmp_path)
-    res = wrap({**env, "MERGER_PYTHON": str(tmp_path / "no-venv" / "bin" / "python")})
+    res = wrap({**env, "MERGER_PYTHON": str(tmp_path / "no-venv" / "bin" / "python"), "MERGER_HEARTBEAT_LIB": str(HB_LIB)})
     assert res.returncode == 2 and "not an executable interpreter" in res.stderr and not (tmp_path / "state").exists()
     assert heartbeat(tmp_path)["status"] == "error"
 

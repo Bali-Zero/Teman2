@@ -287,12 +287,14 @@ The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges
 merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides (`MIN_COMPARED_CONTEXTS`,
 the AGREE ≥ 12 of 14 of spec §2 phase B): a merge compared on blind contexts is no evidence. Each compared PR counts once, at
 GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads
-`compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN and either ≥ 50 compared merges or ≥ 14
-days between the first and the last compared merge (spec §2) — a window that only aged, with nothing compared, is never
-READY, and until phase B lands no merge is compared at all. Days are floored in integer seconds (13.9999 is not 14; 14 is).
-Three silences are printed: the longest gap between DECISIONS (errors and skips keep a journal busy without deciding
-anything), the longest between any two journal lines, and the age of the last line (a merger that stopped writing at all).
-Rows carry the `code_sha` that wrote them and the window lists the code shas it saw. A recorded FALSE_GREEN that is not a
+`compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN AND ≥ 50 compared merges AND ≥ 14 days
+between the first and the last compared merge (spec §2, ruled 2026-10-07: both, never either) — a window that only aged,
+with nothing compared, is never READY, and until phase B lands no merge is compared at all. Days are floored in integer
+seconds (13.9999 is not 14; 14 is). Three silences are printed: the longest gap between DECISIONS (errors and skips keep a
+journal busy without deciding anything), the longest between any two journal lines, and the age of the last line (a merger
+that stopped writing at all), never negative — a line dated in the future (a host clock ahead) is counted and printed
+instead. Rows carry the `code_sha` that wrote them, the window lists the code shas it saw and counts the decisions without a
+valid one (lines older than provenance are counted, never refused). A recorded FALSE_GREEN that is not a
 non-negative integer, a timestamp that is not exactly `YYYY-MM-DDTHH:MM:SSZ`, or a merged candidate without `merged_at` is an
 unusable input. The ticks line prints the longest and the median decision time and the slowest run of each check in the
 window (the runner's `duration_s`, journalled per decision as `durations`). The report writes `<state-dir>/report.json`.
@@ -308,9 +310,11 @@ variable, fetches `origin/main` into the merger's mirror (a failed fetch is not 
 sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a working-tree copy. A failure before Python starts
 (no git, no mirror) writes no journal line; it is in `~/logs/localci-merger.err.log`, and the report's `longest_silence` shows
 the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error` or `disabled`;
-registry id `pro.localci_merger`) by running `scripts/lib/heartbeat.sh` from the canonical checkout in its own process (its
-CLI mode, never `source`: a working checkout's file cannot change the wrapper's options, traps or exit status;
-`MERGER_HEARTBEAT_LIB` overrides the path; a missing library is said on stderr and the organ reads stale).
+registry id `pro.localci_merger`) by running `scripts/lib/heartbeat.sh` in its own process (its CLI mode, never `source`: the
+library cannot change the wrapper's options, traps or exit status). That library too comes from the mirror at the tick's
+sha, never from a working checkout: each tick refreshes `<state-dir>/heartbeat.sh`, and an exit before the extraction (the
+kill switch, missing configuration) runs the copy the last tick extracted — on a host that never ticked there is none, which
+is said on stderr and the organ reads stale. `MERGER_HEARTBEAT_LIB` overrides the path (tests).
 `LOCALCI_MERGER_ENABLED=false` in the plist's environment stops the ticks without uninstalling; its `disabled` heartbeat is
 not an unhealthy status — the healer's `EXEMPT_STATUSES` holds it and the sentinel does not page on it — because a kill
 switch is an operator's act, not a failure. The wrapper passes `--code-sha=<resolved sha>` when the extracted `merger.py`
@@ -353,6 +357,11 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
 
 `PYTHONPATH=<worktree> python -m pytest scripts/localci/tests -q` (real temporary git repos; the hypothesis state machine
 is skipped when hypothesis is absent).
+
+`python3 scripts/localci/tests/mutants/merger_mutants.py` replays the merger's mutation sweep: each single-rule mutant of
+`merger.py` or `localci_merger_tick.sh` is applied to a temporary copy of `scripts/localci` and `scripts/lib` (the checkout
+is never touched) and must turn its test file red. A rule whose text no longer occurs exactly once is STALE, not skipped.
+Exit 0 only when the baseline passes and every mutant is killed; `--only NAME` and `--list` narrow it.
 
 **Hosted run.** `.github/workflows/localci-tests.yml` runs this suite on every pull request that touches `scripts/localci/**`, the
 workflow, ancestor pytest configuration or conftests at the repository root or in `scripts/`, or one of the real-repo files the suite

@@ -232,29 +232,33 @@ def test_the_report_names_the_code_each_decision_was_written_by(tmp_path, monkey
     assert [r["code_sha"] for r in rep["rows"]] == ["c" * 40, None] and rep["window"]["code_shas"] == ["c" * 40] and rc == 0
 
 
-def stamp(day: float) -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(calendar.timegm((2026, 10, 1, 0, 0, 0)) + int(day * 86400)))
+def stamp(day: float, seconds: int = 0) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(calendar.timegm((2026, 10, 1, 0, 0, 0)) + int(day * 86400) + seconds))
 
 
-def merged_world(n_prs, days_apart=0.0, contexts=None):
+def merged_world(n_prs, span_days=0.0, contexts=None):
+    """n merged PRs, each decided and merged at the same moment, the first and the last span_days apart (whole seconds)."""
     pulls, checks, recs = {}, {M: "success"}, []
     for i in range(n_prs):
-        head = f"{i + 1:040x}"
-        pulls[i + 1], checks[head] = pull(head, merged=True, merged_at=stamp(i * days_apart)), "success"
-        recs.append(decision(i + 1, head, "BLOCKED", ts=stamp(i * days_apart), contexts=contexts))
+        head, at = f"{i + 1:040x}", stamp(0, round(i * span_days * 86400 / max(n_prs - 1, 1)))
+        pulls[i + 1], checks[head] = pull(head, merged=True, merged_at=at), "success"
+        recs.append(decision(i + 1, head, "BLOCKED", ts=at, contexts=contexts))
     return recs, FakeGH(pulls, checks)
 
 
-@pytest.mark.parametrize("n_prs,days_apart,ready", [(50, 0.0, True), (49, 0.0, False), (2, 14.0, True), (2, 13.99, False)])
-def test_phase_e_readiness_counts_compared_merges_and_days_only_between_them(tmp_path, monkeypatch, capsys, n_prs, days_apart, ready):
-    recs, gh = merged_world(n_prs, days_apart)
+# lead's ruling 2026-10-07: READY needs >= 50 compared merges AND >= 14 days between the first and the last AND 0 FALSE_GREEN
+@pytest.mark.parametrize("n_prs,span_days,ready", [(50, 14.0, True), (49, 14.0, False), (50, 13.99, False), (50, 0.0, False),
+                                                   (2, 14.0, False)])
+def test_phase_e_readiness_needs_fifty_compared_merges_and_fourteen_days_between_them(tmp_path, monkeypatch, capsys, n_prs, span_days,
+                                                                                      ready):
+    recs, gh = merged_world(n_prs, span_days)
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     assert rep["window"]["compared_merges"] == n_prs and rep["phase_e_ready"] is ready and rc == 0
     assert ("phase E READY" if ready else "phase E NOT READY") in capsys.readouterr().out
 
 
 def test_the_journal_order_does_not_change_readiness(tmp_path, monkeypatch):
-    recs, gh = merged_world(2, 14.0)
+    recs, gh = merged_world(50, 14.0)
     rc, rep = run_report(tmp_path, monkeypatch, recs[::-1], gh)
     assert rep["window"]["compared_days"] == 14.0 and rep["phase_e_ready"] is True and rc == 0
 
@@ -282,7 +286,7 @@ def test_fourteen_days_of_decisions_without_a_compared_merge_are_not_ready(tmp_p
 
 @pytest.mark.parametrize("source", ["recorded", "context-now", "decision"])
 def test_any_one_false_green_keeps_fifty_compared_merges_not_ready(tmp_path, monkeypatch, source):
-    recs, gh = merged_world(50)
+    recs, gh = merged_world(50, 14.0)   # ready on counts and days: only the false green stands in the way
     if source == "recorded":
         recs[7] = {**recs[7], "hosted_compare": {"counts": {"FALSE_GREEN": 1}}}
     else:   # an open PR whose head GitHub has red: the local gate said OK on its contexts (and, for "decision", PASS overall)
@@ -304,3 +308,18 @@ def test_the_report_names_the_longest_tick_and_where_the_time_went(tmp_path, mon
                                       "check_max_s": {"ctx.b": 650, "ctx.a": 600.0}} and rc == 0
     assert list(rep["window"]["ticks"]["check_max_s"]) == ["ctx.b", "ctx.a"]
     assert "longest 900.5s (#2), median 300s; slowest checks: ctx.b=650s, ctx.a=600.0s" in capsys.readouterr().out
+
+
+def test_decisions_without_provenance_are_counted_never_refused(tmp_path, monkeypatch, capsys):
+    recs = [{**decision(1, A, "BLOCKED"), "code_sha": "c" * 40}, decision(1, A, "BLOCKED", ts="2026-10-07T09:00:00Z"),
+            {**decision(1, A, "BLOCKED", ts="2026-10-07T10:00:00Z"), "code_sha": "not-a-sha"}]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    assert rc == 0 and rep["window"]["decisions_without_code_sha"] == 2
+    assert "2 decision(s) without a valid code_sha" in capsys.readouterr().out
+
+
+def test_a_line_dated_in_the_future_is_flagged_and_never_ages_the_window_negative(tmp_path, monkeypatch, capsys):
+    recs = [decision(1, A, "BLOCKED"), {"kind": "skipped", "why": "lease", "ts": "2099-01-01T00:00:00Z"}]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    assert rc == 0 and rep["window"]["future_lines"] == 1 and rep["window"]["last_line_age_h"] == 0.0
+    assert "1 line(s) dated in the future" in capsys.readouterr().out
