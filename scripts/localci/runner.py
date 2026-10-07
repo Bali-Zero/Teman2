@@ -692,7 +692,8 @@ RUN npm_config_cache=/tmp/npx-root npx -y playwright-core@{pw} install --with-de
  && chmod -R a+rX /opt/ms-playwright
 """
 DEPS_APT = """\
-RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends {pkgs} && rm -rf /var/lib/apt/lists/*
+RUN A='-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30' && timeout 900 apt-get $A update -qq && \\
+    DEBIAN_FRONTEND=noninteractive timeout 900 apt-get $A install -y -qq --no-install-recommends {pkgs} && rm -rf /var/lib/apt/lists/*
 """
 DEPS_OFFLINE_NPM = """\
 ENV npm_config_cache=/opt/npm-cache npm_config_offline=true npm_config_update_notifier=false
