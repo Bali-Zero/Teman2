@@ -246,20 +246,49 @@ def test_a_status_that_failed_or_is_not_bound_to_this_run_lends_no_verdict(world
     assert (d["overall"], d["contexts"]) == ("ERROR", {}) and d["error"]
 
 
-def test_host_git_config_never_reaches_the_candidate(world, monkeypatch, tmp_path):
+@pytest.mark.parametrize("scope", ["global-file", "env-scope", "env-parameters"])
+def test_host_git_config_never_reaches_the_candidate(world, monkeypatch, tmp_path, scope):
     marker = tmp_path / "HOST_FILTER_RAN"
-    evil = tmp_path / "evil.gitconfig"
-    evil.write_text(f'[filter "evil"]\n\tsmudge = sh -c "touch {marker}; cat"\n\tclean = sh -c "touch {marker}; cat"\n'
-                    f'[merge "evil"]\n\tdriver = sh -c "touch {marker}; false"\n')
+    hook = tmp_path / "evil.sh"
+    hook.write_text(f"#!/bin/sh\ntouch {marker}\ncat\n")
+    hook.chmod(0o755)
+    config = {"filter.evil.smudge": str(hook), "filter.evil.clean": str(hook), "filter.evil.required": "true", "merge.evil.driver": f"{hook} %O %A %B"}
+    if scope == "global-file":
+        evil = tmp_path / "evil.gitconfig"
+        evil.write_text('[filter "evil"]\n' + "".join(f"\t{k.split('.')[-1]} = {v}\n" for k, v in config.items() if k.startswith("filter."))
+                        + f'[merge "evil"]\n\tdriver = {config["merge.evil.driver"]}\n')
+        monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(evil))
+    elif scope == "env-parameters":   # the form `git -c` hands to its children
+        monkeypatch.setenv("GIT_CONFIG_PARAMETERS", " ".join(f"'{k}'='{v}'" for k, v in config.items()))
+    else:
+        monkeypatch.setenv("GIT_CONFIG_COUNT", str(len(config)))
+        for i, (k, v) in enumerate(config.items()):
+            monkeypatch.setenv(f"GIT_CONFIG_KEY_{i}", k)
+            monkeypatch.setenv(f"GIT_CONFIG_VALUE_{i}", v)
     src = world.state.parent / "src"
     g(src, "checkout", "-q", "-b", "pr6", world.base)
     head6 = commit(src, {".gitattributes": "* filter=evil merge=evil\n", "f.txt": "x\n"}, "attributes that name a host filter")
     g(world.origin, "fetch", "-q", str(src), "+pr6:refs/pull/6/head")
-    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(evil))
+    subprocess.run(["git", "-C", str(src), "-c", f"filter.evil.smudge={hook}", "show", "HEAD:f.txt"], check=True, capture_output=True, env=GIT_ENV)
+    assert not marker.exists()   # `show` filters nothing: the probe itself leaves no marker
+    subprocess.run(["sh", str(hook)], input="", text=True, check=True)
+    assert marker.exists()       # ...and the planted filter does run when invoked: the guilt below can go red
+    marker.unlink()
     world.gh.prs = [pr(6, head6)]
     assert world.tick() == 0
     assert not marker.exists() and [r["overall"] for r in world.journal() if r["kind"] == "decision"] == ["BLOCKED"]
-    assert all(c["env"]["GIT_CONFIG_GLOBAL"] == "/dev/null" and c["env"]["GIT_CONFIG_NOSYSTEM"] == "1" for c in world.runner.calls)
+    for c in world.runner.calls:
+        assert (c["env"]["GIT_CONFIG_GLOBAL"], c["env"]["GIT_CONFIG_NOSYSTEM"], c["env"]["GIT_CONFIG_KEY_0"]) == ("/dev/null", "1", "core.hooksPath")
+
+
+def test_a_caller_git_dir_or_index_never_redirects_the_merger(world, monkeypatch, tmp_path):
+    decoy = tmp_path / "decoy.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(decoy)], check=True, env=GIT_ENV)
+    monkeypatch.setenv("GIT_DIR", str(decoy))
+    monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path / "decoy.index"))
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0
+    assert [r["overall"] for r in world.journal() if r["kind"] == "decision"] == ["BLOCKED"] and not (tmp_path / "decoy.index").exists()
 
 
 def test_a_recycled_pid_is_not_the_holder(world):
@@ -380,6 +409,15 @@ def test_a_failed_github_read_is_an_error_line_and_the_lease_is_released(world, 
     monkeypatch.setattr(mg.hc, "gh_get", down)
     assert world.tick() == 1
     assert [(r["kind"], r["error"]) for r in world.journal()] == [("error", "gh api down")]
+    assert not (world.state / "lease.json").exists()
+
+
+def test_a_missing_gh_is_an_error_line_not_a_traceback(world, monkeypatch):
+    def no_gh(path):
+        raise FileNotFoundError(2, "No such file or directory", "gh")
+    monkeypatch.setattr(mg.hc, "gh_get", no_gh)
+    assert world.tick() == 1
+    assert [r["kind"] for r in world.journal()] == ["error"] and "gh" in world.journal()[0]["error"]
     assert not (world.state / "lease.json").exists()
 
 

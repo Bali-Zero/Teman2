@@ -16,6 +16,7 @@ runner, contained as the runner does.
 from __future__ import annotations
 
 import argparse
+import calendar
 import fcntl
 import importlib.util
 import json
@@ -44,7 +45,9 @@ MATRIX = "scripts/localci/contexts_matrix.yaml"
 RUNNER_ENV = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT")  # an allowlist: no token reaches the runner
 GIT_SAFE = ("-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-c", "rerere.enabled=false")  # no hook, signer or recorded resolution acts on a candidate
 # no host config either: a filter, merge driver or fsmonitor configured globally would run on candidate paths outside any container
-GIT_ISOLATED = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0"}
+GIT_ISOLATED = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
+                "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.hooksPath", "GIT_CONFIG_VALUE_0": "/dev/null"}   # the runner's git too
+CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "BLIND", "PENDING")
 SEAL_RE = re.compile(r"^seal=([0-9a-f]{64})\b", re.M)
 SECRET_RE = re.compile(r"(gh[opsru]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,}|(?<=://)[^/@\s]+(?=@)|(?i:bearer|token)\s+\S+)")
 HOST = platform.node()
@@ -106,7 +109,8 @@ def read_journal(state: Path) -> list[dict]:
 
 def git(cwd: Path | None, *args: str, env: dict | None = None, check: bool = True, timeout: int = 1800) -> subprocess.CompletedProcess:
     argv = ["git", *(["-C", str(cwd)] if cwd else []), *GIT_SAFE, *args]
-    res = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env={**(env or os.environ), **GIT_ISOLATED})
+    inherited = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}   # no caller GIT_DIR, index or env-scope config
+    res = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env={**inherited, **(env or {}), **GIT_ISOLATED})
     if check and res.returncode != 0:
         raise MergerError(f"git {' '.join(args[:2])} failed (rc={res.returncode}): {redact(res.stderr.strip()[-300:])}")
     return res
@@ -328,7 +332,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         fresh_worktree(repo_dir, cand, base_sha)
         when = git(repo_dir, "show", "-s", "--format=%cI", base_sha).stdout.strip()   # fixed identity and date: same (head, base) → same candidate sha
         ident = {f"GIT_{who}_{what}": val for who in ("AUTHOR", "COMMITTER") for what, val in (("NAME", AUTHOR), ("EMAIL", f"{AUTHOR}@localhost"), ("DATE", when))}
-        if git(cand, "merge", "--squash", head, check=False, env={**os.environ, **ident}).returncode != 0:
+        if git(cand, "merge", "--squash", head, check=False, env=ident).returncode != 0:
             conflicts = git(cand, "diff", "--name-only", "--diff-filter=U", check=False).stdout.split()
             if not conflicts:
                 raise MergerError(f"merge of #{n} {head[:12]} failed without a conflicted path")
@@ -337,7 +341,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
             print(f"merger: #{n} CONFLICT on {base_sha[:12]} ({len(conflicts)} paths) — journalled, no run")
             return 0
         git(cand, "commit", "--quiet", "--allow-empty", "-m", f"localci-merger: candidate of #{n} ({head[:12]}) on {a.base} {base_sha[:12]}",
-            env={**os.environ, **ident})
+            env=ident)
         cand_sha = git(cand, "rev-parse", "HEAD").stdout.strip()
         for old in (state / "base").glob("*") if (state / "base").is_dir() else []:
             if old.name != base_sha:
@@ -419,7 +423,7 @@ def cmd_tick(a) -> int:
         if lease["reclaimed"] is not None:
             journal(state, {"kind": "lease_reclaimed", "stale": lease["reclaimed"], "lease_id": lease["lease_id"]})
         return tick(a, state, lease["lease_id"])
-    except (MergerError, Stopped, hc.CompareError, subprocess.TimeoutExpired) as exc:
+    except (MergerError, Stopped, hc.CompareError, subprocess.TimeoutExpired, OSError) as exc:   # OSError: `gh` or `git` missing from PATH
         journal(state, {"kind": "error", "error": redact(exc), "lease_id": lease["lease_id"]})
         print(f"merger: error — {redact(exc)}", file=sys.stderr)
         return 1
@@ -428,6 +432,84 @@ def cmd_tick(a) -> int:
         for s, h in old.items():
             signal.signal(s, h)
         drop_lease(state, fh, lease)
+
+
+# ------------------------------------------------------------------ report: phase D's instrument
+def merger_side(overall) -> str:
+    return "GREEN" if overall == "PASS" else "RED" if overall == "FAIL" else "BLIND"
+
+
+def github_side(merged_here: bool, live: dict) -> str:
+    """GREEN when GitHub merged the PR at this very head (its queue let it through); else the required checks of the head, red-dominant."""
+    if merged_here:
+        return "GREEN"
+    by = hc.hosted_entries(live["check_runs"], live["statuses"])
+    seen = {hc.hosted_verdict(by.get(c["context"], []), c.get("app_id"))["verdict"] for c in live["required_checks"]}
+    return "RED" if "RED" in seen else "PENDING" if "PENDING" in seen else "GREEN"
+
+
+def classify(merger: str, github: str) -> str:
+    if github == "PENDING":
+        return "PENDING"
+    if merger == "BLIND":
+        return "BLIND"
+    if merger == github:
+        return "AGREE"
+    return "FALSE_GREEN" if merger == "GREEN" else "FALSE_RED"
+
+
+def _epoch(ts: str) -> float:
+    return calendar.timegm(time.strptime(ts, "%Y-%m-%dT%H:%M:%SZ"))
+
+
+def cmd_report(a) -> int:
+    state = Path(a.state_dir).expanduser().resolve()
+    decisions = [r for r in read_journal(state) if r.get("kind") == "decision" and str(r.get("ts")) >= (a.since or "")]
+    prs: dict = {}
+    lives: dict = {}
+    rows = []
+    ctx_counts = dict.fromkeys(hc.CLASSES, 0)
+    try:
+        for d in decisions:
+            n, head = d.get("pr"), str(d.get("head_sha"))
+            if n not in prs:
+                prs[n] = hc.gh_get(f"repos/{a.repo}/pulls/{n}")
+            merged_here = prs[n].get("merged") is True and head_of(prs[n]) == head
+            # merged at this head: the queue's own verdict is on the merge commit it pushed to main — compare there, not on the head
+            sha = prs[n].get("merge_commit_sha") if merged_here and hc._SHA_RE.match(str(prs[n].get("merge_commit_sha"))) else head
+            if sha not in lives:
+                lives[sha] = hc.fetch_live(a.repo, a.base, sha)
+                hc.required_names(lives[sha]["required_checks"])
+            live = lives[sha]
+            github = github_side(merged_here, live)
+            if d.get("contexts_status") is not None:   # the gate ran: set its per-context verdicts beside the hosted ones
+                status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"],
+                                                                                 "results": {k: {"verdict": v} for k, v in (d.get("contexts") or {}).items()}}}
+                for k, v in hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])["counts"].items():
+                    ctx_counts[k] += v
+            rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
+                         "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github)})
+    except (hc.CompareError, OSError, KeyError, TypeError, AttributeError) as exc:
+        print(f"merger report: refusing — {exc}", file=sys.stderr)
+        return 2
+    counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
+    first, last = (rows[0]["ts"], rows[-1]["ts"]) if rows else (None, None)
+    days = round((_epoch(last) - _epoch(first)) / 86400, 2) if rows else 0.0
+    merged = sorted({r["pr"] for r in rows if r["merged"]})
+    out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
+                      "merged_prs": len(merged)}, "counts": counts, "context_counts": ctx_counts, "rows": rows,
+           "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
+    atomic_write(state / "report.json", json.dumps(out, indent=2) + "\n")
+    print(f"{'PR':7} {'HEAD':12} {'BASE':12} {'MERGER':11} {'GITHUB':7} {'MERGED':6} CLASS")
+    for r in rows:
+        print(f"#{r['pr']:<6} {r['head_sha'][:12]} {str(r['base_sha'])[:12]} {str(r['overall']):11} {r['github']:7} {'yes' if r['merged'] else 'no':6} {r['class']}")
+    w = out["window"]
+    print(f"window: {first} .. {last} ({days} days) decisions={w['decisions']} distinct_prs={w['distinct_prs']} merged_prs={w['merged_prs']}")
+    print("pr-level: " + " ".join(f"{k.lower()}={v}" for k, v in counts.items()))
+    print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items()))
+    print(f"phase E needs 0 FALSE_GREEN over >= 50 merges or 14 days: now false_green={counts['FALSE_GREEN']}+{ctx_counts['FALSE_GREEN']}(ctx), "
+          f"merges={w['merged_prs']}, days={days}")
+    return 1 if counts["FALSE_GREEN"] or ctx_counts["FALSE_GREEN"] else 0
 
 
 def cmd_merge(_a) -> int:
@@ -486,6 +568,11 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--python", default=sys.executable, help="interpreter that runs the BASE runner")
     t.add_argument("--run-timeout", type=int, default=5400, help="seconds for the runner's `run` step")
     t.add_argument("--tick-timeout", type=int, default=9000, help="watchdog for the whole tick; past it the decision is ERROR")
+    r = sub.add_parser("report", help="phase D: every decision beside what GitHub did with that head")
+    r.add_argument("--repo", default=hc.DEFAULT_REPO)
+    r.add_argument("--base", default=hc.DEFAULT_BRANCH)
+    r.add_argument("--state-dir", default=str(DEFAULT_STATE))
+    r.add_argument("--since", help="only decisions whose ts >= this ISO prefix (e.g. 2026-10-07)")
     sub.add_parser("merge", help=PHASE_E)
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["merge"]:   # whatever follows: there is no merge path to reach
@@ -493,6 +580,8 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
+    if a.cmd == "report":
+        return cmd_report(a)
     if a.cmd == "tick":
         if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", a.repo) or not re.match(r"^[A-Za-z0-9_./-]+$", a.base) or ".." in a.base:
             print(f"merger: refusing repo {a.repo!r} / base {a.base!r}", file=sys.stderr)
