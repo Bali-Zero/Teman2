@@ -195,40 +195,111 @@ def _proprioception():
     return mod
 
 
+def _seat(status: str) -> str:
+    return json.dumps({"status": status, "seat": "x"})
+
+
+def _launchd(verdict: str, marker: str, **extra: str) -> str:
+    return json.dumps({"verdict": verdict, "log_marker": marker, **extra})
+
+
+TCC = _launchd("DEAD-GREEN", "Operation not permitted")
+ROOT_DIV = "DIVERGED: /usr/local/lib/wa.sh != scripts/wa.sh — a fix is stranded on one side (x)"
+ROOT_NOREPO = "NO REPO COUNTERPART: /usr/local/bin/k.sh executes live with no source of truth in repo"
+USER_NOREPO = "NO REPO COUNTERPART: /Users/u/scripts/y.sh executes live with no source of truth in repo"
+
+# (branch-row, evidence, n, expected). Every branch of cure_for_result that returns owner or
+# falls back has a guilt row (owner) and an innocence row (stays session); n=None means len(evidence).
+ARSENAL_ROWS = [
+    ("A1-parse-guilt", [_seat("AUTH_DEAD")], None, "owner"),
+    ("A1-parse-innocence-cut-at-160", [json.dumps({"status": "AUTH_DEAD", "detail": "x" * 200})[:160]], None, "session"),
+    ("A1-parse-innocence-not-a-string", [None], None, "session"),
+    ("A2-coverage-guilt", [_seat("AUTH_DEAD"), _seat("BALANCE_DEAD")], None, "owner"),
+    ("A2-coverage-innocence", [_seat("AUTH_DEAD")], 2, "session"),
+    ("A3-nonempty-innocence", [], 0, "session"),
+    ("A4-all-guilt", [_seat("AUTH_DEAD"), _seat("AUTH_DEAD")], None, "owner"),
+    ("A4-all-innocence", [_seat("AUTH_DEAD"), _seat("MODEL_ERR"), _seat("UNKNOWN_ERR")], None, "session"),
+    ("A5-state-set-guilt", [_seat("BALANCE_DEAD")], None, "owner"),
+    ("A5-state-set-innocence-caseless", [_seat("auth_dead")], None, "session"),
+    ("A5-state-set-innocence-prefix", [_seat("AUTH_DEAD_SOFT")], None, "session"),
+    ("A5-state-set-innocence-quota", [_seat("QUOTA_DEAD")], None, "session"),
+    ("A6-status-key-innocence", [json.dumps({"seat": "x"})], None, "session"),
+]
+LAUNCHD_ROWS = [
+    ("L1-parse-guilt", [TCC], None, "owner"),
+    ("L1-parse-innocence-cut-at-160",
+     [_launchd("DEAD-GREEN", "Operation not permitted", program="x" * 200)[:160]], None, "session"),
+    ("L1-parse-innocence-not-a-string", [None], None, "session"),
+    ("L2-coverage-guilt", [TCC, TCC], None, "owner"),
+    ("L2-coverage-innocence", [TCC], 2, "session"),
+    ("L3-nonempty-innocence", [], 0, "session"),
+    ("L4-all-innocence", [TCC, _launchd("FAILING-HONESTLY", "exit 1")], None, "session"),
+    ("L5-verdict-innocence", [_launchd("DEAD-NONZERO", "Operation not permitted")], None, "session"),
+    ("L6-tcc-marker-innocence", [_launchd("DEAD-GREEN", "exit 0")], None, "session"),
+    ("L7-caseless-marker-guilt", [_launchd("DEAD-GREEN", "OPERATION NOT PERMITTED")], None, "owner"),
+]
+HOME_FORK_ROWS = [
+    ("H1-diverged-form-guilt", [ROOT_DIV], None, "owner"),
+    ("H1-diverged-form-innocence", ["DIVERGED /usr/local/lib/wa.sh != scripts/wa.sh"], None, "session"),
+    ("H2-norepo-form-guilt", [ROOT_NOREPO], None, "owner"),
+    ("H2-norepo-form-innocence", [USER_NOREPO], None, "session"),
+    ("H3-coverage-innocence", [ROOT_DIV, "CHECKOUT-STALE: origin/main unknown"], 2, "session"),
+    ("H4-nonempty-innocence", [], 0, "session"),
+    ("H5-all-guilt", [ROOT_DIV, ROOT_NOREPO], None, "owner"),
+    ("H5-all-innocence", [ROOT_DIV, USER_NOREPO], None, "session"),
+    ("H6-stat-error-innocence", ["DIVERGED: /usr/local/vanished.sh != scripts/v.sh — x"], None, "session"),
+    ("H7-expanduser-guilt", ["DIVERGED: ~/root.sh != scripts/root.sh — x"], None, "owner"),
+]
+
+
 class CureForResultTest(unittest.TestCase):
     """The classifier receptor B skips on: owner only when EVERY finding proves it."""
 
     def setUp(self) -> None:
         self.mod = _proprioception()
 
-    def _cure(self, pid: str, evidence: list[str], n: int | None = None) -> str:
-        n = len(evidence) if n is None else n
-        return self.mod.cure_for_result({"id": pid}, self.mod.DIVERGED, n, evidence)
+    def _cures(self, pid: str, rows: list) -> dict[str, str]:
+        return {name: self.mod.cure_for_result({"id": pid}, self.mod.DIVERGED,
+                                               len(evidence) if n is None else n, evidence)
+                for name, evidence, n, _ in rows}
 
-    def test_arsenal_owner_only_when_every_seat_is_auth_or_balance_dead(self) -> None:
-        def seat(status: str) -> str:
-            return json.dumps({"status": status, "seat": "x"})
-        self.assertEqual(self._cure("arsenal_seats", [seat("AUTH_DEAD"), seat("BALANCE_DEAD")]), "owner")
-        self.assertEqual(self._cure("arsenal_seats", [seat("AUTH_DEAD"), seat("MODEL_ERR"), seat("UNKNOWN_ERR")]), "session")
-        self.assertEqual(self._cure("arsenal_seats", [seat("AUTH_DEAD")], n=2), "session")
-        cut = json.dumps({"status": "AUTH_DEAD", "detail": "x" * 200})[:160]
-        self.assertEqual(self._cure("arsenal_seats", [cut]), "session")
+    def test_arsenal_branches(self) -> None:
+        self.assertEqual(self._cures("arsenal_seats", ARSENAL_ROWS), {r[0]: r[3] for r in ARSENAL_ROWS})
 
-    def test_launchd_owner_only_when_every_finding_is_a_tcc_denial(self) -> None:
-        tcc = json.dumps({"label": "a", "verdict": "DEAD-GREEN", "log_marker": "Operation not permitted"})
-        other = json.dumps({"label": "b", "verdict": "FAILING-HONESTLY", "log_marker": "exit 1"})
-        self.assertEqual(self._cure("launchd_liveness", [tcc, tcc]), "owner")
-        self.assertEqual(self._cure("launchd_liveness", [tcc, other]), "session")
-        self.assertEqual(self._cure("launchd_liveness", [tcc], n=2), "session")
+    def test_launchd_branches(self) -> None:
+        self.assertEqual(self._cures("launchd_liveness", LAUNCHD_ROWS), {r[0]: r[3] for r in LAUNCHD_ROWS})
 
-    def test_home_fork_owner_only_when_every_live_path_is_root_owned(self) -> None:
+    def test_home_fork_branches(self) -> None:
         def stat(path: Path, *args: object, **kwargs: object) -> types.SimpleNamespace:
-            return types.SimpleNamespace(st_uid=0 if str(path).startswith("/usr/local/") else 501)
-        root = "DIVERGED: /usr/local/lib/wa.sh != scripts/wa.sh — a fix is stranded on one side (x)"
-        user = "NO REPO COUNTERPART: /Users/u/scripts/y.sh executes live with no source of truth in repo"
+            if "vanished" in str(path):
+                raise FileNotFoundError(str(path))
+            root = str(path).startswith("/usr/local/") or str(path) == os.path.expanduser("~/root.sh")
+            return types.SimpleNamespace(st_uid=0 if root else 501)
         with mock.patch.object(self.mod.Path, "stat", stat):
-            self.assertEqual(self._cure("home_fork_scripts", [root, root]), "owner")
-            self.assertEqual(self._cure("home_fork_scripts", [root, user]), "session")
+            cures = self._cures("home_fork_scripts", HOME_FORK_ROWS)
+        self.assertEqual(cures, {r[0]: r[3] for r in HOME_FORK_ROWS})
+
+    def test_common_branches(self) -> None:
+        cure, m = self.mod.cure_for_result, self.mod
+        with self.subTest(branch="C1-not-diverged-guilt"):
+            self.assertEqual(cure({"id": "tailnet_policy_drift", "cure": "owner"}, m.UNPROBEABLE, 0, []), "owner")
+        with self.subTest(branch="C1-not-diverged-innocence"):
+            self.assertEqual(cure({"id": "arsenal_seats"}, m.RECONCILED, 1, [_seat("AUTH_DEAD")]), "session")
+        with self.subTest(branch="C2-declared-guilt"):
+            self.assertEqual(cure({"id": "git_alignment", "cure": "owner"}, m.DIVERGED, 1, ["behind 12"]), "owner")
+        with self.subTest(branch="C2-declared-innocence"):
+            self.assertEqual(cure({"id": "regulatory_promotion", "cure": "pr"}, m.DIVERGED, 1, ["x"]), "pr")
+        with self.subTest(branch="C3-default-innocence"):
+            self.assertEqual(cure({"id": "worktree_gate_shim"}, m.DIVERGED, 2, ["a", "b"]), "session")
+
+    def test_registry_static_cures_and_validation(self) -> None:
+        declared = {e["id"]: e.get("cure", "session") for e in self.mod.DEFAULT_REGISTRY}
+        self.assertEqual({k: v for k, v in declared.items() if v != "session"}, {
+            "tailnet_policy_drift": "owner", "git_alignment": "owner",
+            "regulatory_promotion": "pr", "door_canon_parity": "pr"})
+        self.assertEqual(self.mod.validate_registry(self.mod.DEFAULT_REGISTRY), [])
+        bad = [dict(e, cure="Owner") if e["id"] == "git_alignment" else e for e in self.mod.DEFAULT_REGISTRY]
+        self.assertTrue(any("invalid cure" in err for err in self.mod.validate_registry(bad)))
 
 
 class ProprioceptionCureSchemaTest(unittest.TestCase):
