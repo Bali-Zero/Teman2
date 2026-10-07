@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from jose import jwt
+import jwt
 
 from backend.app.core.config import settings
 from backend.app.modules.identity.models import User

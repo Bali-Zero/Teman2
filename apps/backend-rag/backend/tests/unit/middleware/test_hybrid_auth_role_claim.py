@@ -64,7 +64,10 @@ async def test_a_token_without_a_role_claim_is_refused_by_the_team_gate(
     middleware: HybridAuthMiddleware, path: str
 ) -> None:
     """Guilt: the old default mapped an absent claim to ``member`` and passed."""
-    with patch("jose.jwt.decode", return_value={"sub": "1", "email": "a@balizero.com"}):
+    with patch(
+        "backend.app.utils.jwt_decode.decode_jwt",
+        return_value={"sub": "1", "email": "a@balizero.com"},
+    ):
         if path == "cookie":
             ctx = await middleware.authenticate_jwt_token("token")
         else:
@@ -84,7 +87,7 @@ async def test_an_explicit_staff_role_claim_still_passes(
 ) -> None:
     """Innocence: a real ``member`` (two staff rows) keeps its access."""
     payload = {"sub": "1", "email": "a@balizero.com", "role": role}
-    with patch("jose.jwt.decode", return_value=payload):
+    with patch("backend.app.utils.jwt_decode.decode_jwt", return_value=payload):
         if path == "cookie":
             ctx = await middleware.authenticate_jwt_token("token")
         else:

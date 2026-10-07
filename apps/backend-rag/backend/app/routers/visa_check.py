@@ -15,8 +15,8 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 
 import asyncpg
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Path
-from jose import jwt
 from pydantic import BaseModel, Field, field_validator
 
 from backend.app.core.config import settings

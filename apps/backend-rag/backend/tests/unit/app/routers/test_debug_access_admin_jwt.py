@@ -29,7 +29,7 @@ def _settings():
 
 
 def _make_jwt(role: str, secret: str) -> str:
-    from jose import jwt
+    import jwt
 
     return jwt.encode(
         {

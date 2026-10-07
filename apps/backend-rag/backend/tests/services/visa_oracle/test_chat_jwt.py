@@ -16,9 +16,9 @@ os.environ.setdefault("ENVIRONMENT", "test")
 
 from datetime import datetime, timedelta, timezone
 
+import jwt
 import pytest
 from fastapi import HTTPException
-from jose import jwt
 from starlette.requests import Request
 
 from backend.app.core.config import settings
