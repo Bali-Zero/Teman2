@@ -138,17 +138,20 @@ REASONS=""
 # Receptor A: registry-driven dead-organ scan on THIS node (DNA/GENOME 4c)
 REG_OUT=$(python3 scripts/healer_receptor_registry.py --node pro --json 2>/dev/null)
 REG_EXIT=$?
-if [ "$REG_EXIT" -eq 1 ]; then
-    REG_DEAD=$(printf '%s' "$REG_OUT" | python3 -c "
-import json,sys
-try:
-    print(len(json.load(sys.stdin).get('dead',[])))
-except Exception:
-    print(1)
-" 2>/dev/null)
-    ACTIONABLE=1; REASONS="${REASONS}registry:${REG_DEAD:-?}-dead-organs "
-elif [ "$REG_EXIT" -eq 2 ]; then
+REG_SUMMARY=$(printf '%s' "$REG_OUT" | python3 scripts/healer_run_checks.py registry-summary 2>>"$LOG")
+REG_CHECK_EXIT=$?
+REG_DEAD=$(printf '%s\n' "$REG_SUMMARY" | sed -n '1p')
+REG_SESSION=$(printf '%s\n' "$REG_SUMMARY" | sed -n '2p')
+REG_DEAD_IDS=$(printf '%s\n' "$REG_SUMMARY" | sed -n '3p')
+# Exit 1 means "dead organs"; exit 1 with none listed is a broken receptor, not health.
+if [ "$REG_EXIT" -eq 2 ] || [ "$REG_CHECK_EXIT" -ne 0 ] \
+    || { [ "$REG_EXIT" -eq 1 ] && [ "${REG_DEAD:-0}" = "0" ]; }; then
     ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "
+elif [ "$REG_EXIT" -eq 1 ] && [ "${REG_SESSION:-0}" -gt 0 ] 2>/dev/null; then
+    ACTIONABLE=1
+    REASONS="${REASONS}registry:${REG_SESSION}/${REG_DEAD}-session-curable "
+elif [ "$REG_EXIT" -eq 1 ] && [ "${REG_DEAD:-0}" -gt 0 ] 2>/dev/null; then
+    log "skip: registry ${REG_DEAD} dead, none session-curable: ${REG_DEAD_IDS:-unknown}"
 fi
 
 # Receptor B: proprioception — boundary divergences on THIS machine
@@ -181,11 +184,24 @@ fi
 # verdict text is captured, not discarded, in EITHER branch — a guard
 # whose product is a verdict must not have that verdict thrown away by
 # its only reader.
-LHF_CHECK_OUT=$(python3 scripts/lint_home_fork.py --check 2>&1)
+LHF_CHECK_OUT=$(python3 scripts/lint_home_fork.py --check --json 2>>"$LOG")
 LHF_CHECK_RC=$?
+LHF_SUMMARY=$(printf '%s' "$LHF_CHECK_OUT" | python3 scripts/healer_run_checks.py home-fork-summary 2>>"$LOG")
+LHF_SUMMARY_RC=$?
+LHF_DRIFTED=$(printf '%s\n' "$LHF_SUMMARY" | sed -n '1p')
+LHF_SESSION=$(printf '%s\n' "$LHF_SUMMARY" | sed -n '2p')
+LHF_IDS=$(printf '%s\n' "$LHF_SUMMARY" | sed -n '3p')
+LHF_CURABLE_IDS=$(printf '%s\n' "$LHF_SUMMARY" | sed -n '4p')
 if [ $(( LHF_CHECK_RC & 1 )) -ne 0 ]; then
-    ACTIONABLE=1; REASONS="${REASONS}home-fork-drift "
     log "home-fork --check (rc=$LHF_CHECK_RC): $LHF_CHECK_OUT"
+    if [ "$LHF_SUMMARY_RC" -ne 0 ] || [ "${LHF_DRIFTED:-0}" -eq 0 ] 2>/dev/null; then
+        ACTIONABLE=1; REASONS="${REASONS}home-fork-receptor-broken "
+    elif [ "${LHF_SESSION:-0}" -gt 0 ] 2>/dev/null; then
+        ACTIONABLE=1
+        REASONS="${REASONS}home-fork-drift:${LHF_SESSION}/${LHF_DRIFTED}-session-curable "
+    else
+        log "skip: home-fork ${LHF_DRIFTED} drift, none session-curable: ${LHF_IDS:-unknown}"
+    fi
 elif [ $(( LHF_CHECK_RC & 4 )) -ne 0 ]; then
     log "home-fork --check: CANNOT-VERIFY (rc=$LHF_CHECK_RC), not treated as drift: $LHF_CHECK_OUT"
 fi
@@ -228,7 +244,11 @@ if [ -f "$ARSENAL_REPORT" ]; then
 fi
 
 if [ "$ACTIONABLE" -eq 0 ]; then
-    log "pre-check clean (pro organs alive, 0 session-curable diverged, pairs aligned) — no LLM spawn"
+    if [ "${REG_DEAD:-0}" -eq 0 ] 2>/dev/null \
+        && [ "${DIVERGED:-0}" -eq 0 ] 2>/dev/null \
+        && [ "${LHF_DRIFTED:-0}" -eq 0 ] 2>/dev/null; then
+        log "pre-check clean (pro organs alive, 0 session-curable diverged, pairs aligned) — no LLM spawn"
+    fi
     heartbeat "ok" "idle: pre-check clean"
     exit 0
 fi
@@ -241,9 +261,13 @@ fi
 # skipped cure (#2 Esiste≠Armato) — MEMO_RC not in {0,3} falls through untouched.
 export _HM_REG_OUT="$REG_OUT"
 export _HM_PROP_JSON="$PROP_JSON"
-export _HM_LHF_OUT="$LHF_CHECK_OUT"
+export _HM_LHF_IDS="${LHF_IDS:-}"
+export _HM_LHF_CURABLE_IDS="${LHF_CURABLE_IDS:-}"
 export _HM_NEW_DEAD="${NEW_DEAD:-}"
 export _HM_REASONS="$REASONS"
+export _HM_REG_SESSION="${REG_SESSION:-0}"
+export _HM_PROP_SESSION="${SESSION_CURABLE:-0}"
+export _HM_LHF_SESSION="${LHF_SESSION:-0}"
 RECEPTOR_STATE_JSON=$(python3 - <<'PY'
 import json, os
 
@@ -256,7 +280,6 @@ def _load(name):
 
 reg = _load("_HM_REG_OUT")
 prop = _load("_HM_PROP_JSON")
-lhf_out = os.environ.get("_HM_LHF_OUT", "")
 new_dead_raw = os.environ.get("_HM_NEW_DEAD", "")
 reasons = os.environ.get("_HM_REASONS", "")
 
@@ -272,22 +295,34 @@ for p in (prop.get("probes") if isinstance(prop, dict) else []) or []:
     if verdict == "DIVERGED":  # the cure joins the key: a session-curable probe moving is new work
         diverged_probes.append(f'{p.get("id", "")}:{p.get("cure", "session")}')
 
-# lint_home_fork.py --check prints breach lines as "  - <text>"; a stale-checkout
-# notice ("  ~ <text>") is NOT a breach and must not perturb the fingerprint.
-drifted_pairs = [
-    ln.strip()[2:].strip()
-    for ln in lhf_out.splitlines()
-    if ln.strip().startswith("- ")
+lhf_curable = set(os.environ.get("_HM_LHF_CURABLE_IDS", "").split(","))
+drifted_pairs = [  # each pair with its cure: a drift moving across the cure boundary is new work
+    f'{t}:{"session" if t in lhf_curable else "owner"}'
+    for t in os.environ.get("_HM_LHF_IDS", "").split(",") if t
 ]
-
 arsenal_new_dead = [t for t in new_dead_raw.split(",") if t]
+def _count(name):
+    try:
+        return int(os.environ.get(name, "0") or 0)
+    except ValueError:
+        return 0
+
+session_curable = {
+    "registry": _count("_HM_REG_SESSION"),
+    "proprioception": _count("_HM_PROP_SESSION"),
+    "home_fork": _count("_HM_LHF_SESSION"),
+}
+receptor_failures = sorted(
+    token for token in reasons.split() if token.endswith("-receptor-broken")
+)
 
 print(json.dumps({
     "dead_organs": dead_organs,
     "diverged_probes": diverged_probes,
     "drifted_pairs": drifted_pairs,
+    "session_curable": session_curable,
+    "receptor_failures": receptor_failures,
     "arsenal_new_dead": arsenal_new_dead,
-    "reasons": reasons,
 }))
 PY
 )

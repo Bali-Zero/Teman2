@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end guilt/innocence tests for pro-healer receptors B and D."""
+"""End-to-end guilt/innocence tests for pro-healer receptors A-D."""
 
 from __future__ import annotations
 
@@ -23,6 +23,10 @@ WRAPPER = Path(os.environ.get(
 PROPRIOCEPTION = Path(os.environ.get(
     "PROPRIOCEPTION_UNDER_TEST", ROOT / "scripts/proprioception.py"
 ))
+HEALER_RUN_CHECKS = Path(os.environ.get(
+    "HEALER_RUN_CHECKS_UNDER_TEST", ROOT / "scripts/healer_run_checks.py"
+))
+CLEAN_PROBES = [{"id": "clean", "status": "RECONCILED", "severity": "P1"}]
 
 
 def _executable(path: Path, text: str) -> None:
@@ -44,7 +48,7 @@ class ProHealerHarness(unittest.TestCase):
         (self.repo / "CLAUDE.md").write_text("fixture\n")
         self.wrapper = self.repo / "infra/launchagents/wrappers/pro-healer.sh"
         shutil.copy2(WRAPPER, self.wrapper)
-        shutil.copy2(ROOT / "scripts/healer_run_checks.py", self.repo / "scripts")
+        shutil.copy2(HEALER_RUN_CHECKS, self.repo / "scripts")
         (self.repo / "infra/healer/HEALER-PRO-MANDATE.md").write_text("test mandate\n")
 
         _executable(self.bin / "hostname", "#!/bin/sh\necho nuzantara\n")
@@ -60,13 +64,20 @@ exit 0
         self.cascade = self.tmp / "fake-cascade"
         _executable(self.cascade, "#!/bin/sh\nexec claude \"$@\"\n")
         _executable(self.repo / "scripts/healer_receptor_registry.py", """#!/usr/bin/env python3
-print('{"dead": []}')
+import os, sys
+print(os.environ.get("FAKE_REG_JSON", '{"dead": []}'))
+sys.exit(int(os.environ.get("FAKE_REG_RC", "0")))
 """)
         _executable(self.repo / "scripts/proprioception.py", """#!/usr/bin/env python3
 import os
 print(os.environ["FAKE_PROP_JSON"])
 """)
-        _executable(self.repo / "scripts/lint_home_fork.py", "#!/usr/bin/env python3\n")
+        _executable(self.repo / "scripts/lint_home_fork.py", """#!/usr/bin/env python3
+import os, sys
+sys.stderr.write(os.environ.get("FAKE_LHF_STDERR", ""))
+print(os.environ.get("FAKE_LHF_JSON", '{"check_breaches": []}'))
+sys.exit(int(os.environ.get("FAKE_LHF_RC", "0")))
+""")
         _executable(self.repo / "scripts/arsenal_probe.py", "#!/usr/bin/env python3\n")
         _executable(self.repo / "scripts/tg_notify.py", "#!/usr/bin/env python3\nprint('fake')\n")
         _executable(self.repo / "scripts/healer_memo.py", """#!/usr/bin/env python3
@@ -89,7 +100,15 @@ elif cmd == "verdict-from-escalations": print("curable")
     def _write_arsenal(self, transitions: list[dict], ts: str = "2026-10-06T01:00:00Z") -> None:
         self.arsenal.write_text(json.dumps({"ts": ts, "transitions": transitions}))
 
-    def _run(self, probes: list[dict]) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self,
+        probes: list[dict],
+        *,
+        registry: dict | str | None = None,
+        registry_rc: int = 0,
+        home_fork: dict | str | None = None,
+        home_fork_rc: int = 0,
+    ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env.update({
             "HOME": str(self.home),
@@ -97,6 +116,13 @@ elif cmd == "verdict-from-escalations": print("curable")
             "SSH_CONNECTION": "fixture",
             "FAKE_CLAUDE_MARKER": str(self.marker),
             "FAKE_PROP_JSON": json.dumps({"probes": probes}),
+            "FAKE_REG_JSON": registry if isinstance(registry, str)
+            else json.dumps(registry or {"dead": []}),
+            "FAKE_REG_RC": str(registry_rc),
+            "FAKE_LHF_JSON": home_fork if isinstance(home_fork, str)
+            else json.dumps(home_fork or {"check_breaches": []}),
+            "FAKE_LHF_STDERR": "warning: fixture noise on stderr\n",
+            "FAKE_LHF_RC": str(home_fork_rc),
             "PRO_HEALER_CASCADE_BIN": str(self.cascade),
             "PRO_HEALER_PIDFILE": str(self.tmp / "healer.pid"),
             "FAKE_MEMO_INPUTS": str(self.tmp / "memo-inputs"),
@@ -111,6 +137,90 @@ elif cmd == "verdict-from-escalations": print("curable")
 
     def _log(self) -> str:
         return (self.home / "logs/pro-healer/run.log").read_text()
+
+    def test_a_guilt_session_curable_dead_organ_spawns(self) -> None:
+        registry = {"dead": [{"id": "fixable", "cure": "session"}]}
+        result = self._run(CLEAN_PROBES, registry=registry, registry_rc=1)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 1)
+        self.assertIn("ACTIONABLE: registry:1/1-session-curable", self._log())
+
+    def test_a_innocence_owner_only_dead_skips_with_ledger(self) -> None:
+        registry = {"dead": [{"id": "tcc-only", "cure": "owner"}]}
+        result = self._run(CLEAN_PROBES, registry=registry, registry_rc=1)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 0, self._log())
+        self.assertIn(
+            "skip: registry 1 dead, none session-curable: tcc-only", self._log()
+        )
+        self.assertEqual(self._log().count("skip:"), 1)
+        self.assertNotIn("ACTIONABLE", self._log())
+
+    def test_a_broken_receptor_still_spawns(self) -> None:
+        result = self._run(
+            CLEAN_PROBES, registry={"receptor_broken": "fixture"}, registry_rc=2
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 1)
+        self.assertIn("ACTIONABLE: registry-receptor-broken", self._log())
+
+    def test_c_guilt_writable_live_path_spawns(self) -> None:
+        live = self.tmp / "live-user.sh"
+        live.write_text("fixture\n")
+        breach = f"DIVERGED: {live} != scripts/live-user.sh — fixture"
+        result = self._run(
+            CLEAN_PROBES, home_fork={"check_breaches": [breach]}, home_fork_rc=1
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 1)
+        self.assertIn("ACTIONABLE: home-fork-drift:1/1-session-curable", self._log())
+
+    def test_c_innocence_root_owned_live_path_skips_with_ledger(self) -> None:
+        breach = "DIVERGED: /bin/sh != scripts/sh — fixture"
+        result = self._run(
+            CLEAN_PROBES, home_fork={"check_breaches": [breach]}, home_fork_rc=1
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 0, self._log())
+        self.assertIn(
+            "skip: home-fork 1 drift, none session-curable: /bin/sh", self._log()
+        )
+        self.assertEqual(self._log().count("skip:"), 1)
+        self.assertIn("home-fork --check (rc=1):", self._log())
+        self.assertNotIn("receptor-broken", self._log())
+
+    def test_a_and_c_third_states_spawn_with_named_reasons(self) -> None:
+        unrecognised = "DIVERGED: scripts/x.sh is absent from this checkout — the CHECKOUT is the stale side"
+        rows = {
+            "a-exit1-no-dead": dict(registry={"dead": []}, registry_rc=1),
+            "a-exit1-not-json": dict(registry="not json", registry_rc=1),
+            "a-exit0-not-json": dict(registry="not json", registry_rc=0),
+            "a-undeclared-cure": dict(registry={"dead": [{"id": "x", "cure": "Owner"}]}, registry_rc=1),
+            "a-cure-missing": dict(registry={"dead": [{"id": "x"}]}, registry_rc=1),
+            "a-mixed": dict(registry={"dead": [{"id": "x", "cure": "owner"},
+                                               {"id": "y", "cure": "session"}]}, registry_rc=1),
+            "c-rc1-no-breach": dict(home_fork={"check_breaches": []}, home_fork_rc=1),
+            "c-rc1-not-json": dict(home_fork="not json", home_fork_rc=1),
+            "c-unrecognised-line": dict(home_fork={"check_breaches": [unrecognised]}, home_fork_rc=1),
+        }
+        got = {}
+        for row, kwargs in rows.items():
+            self.marker.unlink(missing_ok=True)
+            (self.home / "logs/pro-healer/run.log").unlink(missing_ok=True)
+            self._run(CLEAN_PROBES, **kwargs)
+            line = next((ln for ln in self._log().splitlines() if "ACTIONABLE:" in ln), "")
+            got[row] = (self._spawn_count(), line.split("ACTIONABLE: ", 1)[-1].split(" —")[0].strip())
+        self.assertEqual(got, {
+            "a-exit1-no-dead": (1, "registry-receptor-broken"),
+            "a-exit1-not-json": (1, "registry-receptor-broken"),
+            "a-exit0-not-json": (1, "registry-receptor-broken"),
+            "a-undeclared-cure": (1, "registry-receptor-broken"),
+            "a-cure-missing": (1, "registry:1/1-session-curable"),
+            "a-mixed": (1, "registry:1/2-session-curable"),
+            "c-rc1-no-breach": (1, "home-fork-receptor-broken"),
+            "c-rc1-not-json": (1, "home-fork-receptor-broken"),
+            "c-unrecognised-line": (1, "home-fork-drift:1/1-session-curable"),
+        })
 
     def test_b_guilt_p1_session_probe_spawns(self) -> None:
         result = self._run([
@@ -185,6 +295,32 @@ elif cmd == "verdict-from-escalations": print("curable")
                 for line in (self.tmp / "memo-inputs").read_text().splitlines()]
         self.assertEqual(len(keys), 2)
         self.assertNotEqual(keys[0], keys[1])
+
+    def test_memo_key_carries_the_drifted_pair_and_the_dead_cure(self) -> None:
+        live = self.tmp / "live-user.sh"
+        live.write_text("fixture\n")
+        self._run(CLEAN_PROBES, registry={"dead": [{"id": "x", "cure": "owner", "age_s": 9}]},
+                  registry_rc=1, home_fork={"check_breaches": [f"DIVERGED: {live} != s/l.sh — f"]},
+                  home_fork_rc=1)
+        breaches = [f"DIVERGED: {live} != s/l.sh — f", "DIVERGED: /bin/sh != s/sh — f"]
+        self._run(CLEAN_PROBES, home_fork={"check_breaches": breaches}, home_fork_rc=1)
+        keys = [json.loads(line) for line in (self.tmp / "memo-inputs").read_text().splitlines()]
+        self.assertEqual(
+            [(k["drifted_pairs"], k["dead_organs"][0]["cure"] if k["dead_organs"] else None) for k in keys],
+            [([f"{live}:session"], "owner"), ([f"{live}:session", "/bin/sh:owner"], None)],
+        )
+
+    def test_memo_key_carries_proprioception_session_curable_count(self) -> None:
+        registry = {"dead": [{"id": "also-fixable", "cure": "session"}]}
+        for cure in ("session", "owner"):
+            self._run(
+                [{"id": "a", "status": "DIVERGED", "severity": "P1", "cure": cure}],
+                registry=registry,
+                registry_rc=1,
+            )
+        counts = [json.loads(line)["session_curable"]["proprioception"]
+                for line in (self.tmp / "memo-inputs").read_text().splitlines()]
+        self.assertEqual(counts, [1, 0])
 
 
 def _proprioception():

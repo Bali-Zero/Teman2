@@ -34,11 +34,18 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
 HEALTHY_STATUSES = {"ok", "success", "healthy", "starting", "running"}
+CURES = {"session", "owner"}
+# The same entity proprioception.py's launchd classifier reads in a log_marker:
+# the macOS TCC denial text. "Permission denied" (EACCES, a chmod) is NOT it.
+TCC_DENIAL = "operation not permitted"
+LAUNCHCTL_NOT_FOUND = 113
 EXEMPT_STATUSES = {"disabled"}
 DEAD_MULTIPLIER = 3
 _REEXEC_GUARD_ENV = "_HEALER_REGISTRY_REEXEC_DONE"
@@ -111,12 +118,8 @@ def load_registry(path: Path) -> list[dict]:
 def _renamed_away_disabled_plist(agents_dir: Path, label: str) -> bool:
     """A `<label>.plist` renamed to `<label>.plist.disabled-*` (W-mini convention
     since 2026-09-25, e.g. `.disabled-20260925-owner-pro`) means the job was
-    deliberately unloaded, not that it crashed. Its heartbeat sidecar will never
-    refresh again, so age-based classification alone would call it 'dead' forever
-    (observed 3 consecutive healer ticks, 2026-09-25/26/27, on
-    mata_garuda.intel_bridge_daily.mini) — same disease as EXEMPT_STATUSES, read
-    from the filesystem instead of the sidecar because a disabled organ writes no
-    sidecar update explaining why."""
+    deliberately unloaded. Its stale sidecar remains a visible dead finding, but
+    this entity proof makes its cure owner-only instead of spawning a session."""
     if not label or not agents_dir.is_dir():
         return False
     if (agents_dir / f"{label}.plist").exists():
@@ -124,20 +127,84 @@ def _renamed_away_disabled_plist(agents_dir: Path, label: str) -> bool:
     return any(agents_dir.glob(f"{label}.plist.disabled-*"))
 
 
+def _tcc_denial(value: object) -> bool:
+    return TCC_DENIAL in str(value).lower()
+
+
+def _launchctl_print(label: str) -> tuple[bool | None, str]:
+    """Loaded state plus the job's `last exit` lines (read-only).
+
+    True = loaded, False = launchd answers "service not found" (113), None =
+    unprobeable. Only the `last exit ...` lines are evidence: the rest of the
+    print (program, arguments, environment) is configuration, not a verdict."""
+    if not label:
+        return None, ""
+    try:
+        result = subprocess.run(
+            ["launchctl", "print", f"gui/{os.getuid()}/{label}"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None, ""
+    if result.returncode == LAUNCHCTL_NOT_FOUND:
+        return False, ""
+    if result.returncode != 0:
+        return None, ""
+    exit_lines = [
+        ln.strip() for ln in result.stdout.splitlines()
+        if ln.strip().startswith("last exit")
+    ]
+    return True, "\n".join(exit_lines)
+
+
+def _dead_cure(
+    organ: dict,
+    payload: dict,
+    agents_dir: Path,
+    loaded: bool | None,
+    launchctl_evidence: str,
+) -> str:
+    """Owner only on explicit entity/evidence; ambiguity defaults to session.
+
+    An undeclared cure value raises: run() fails, main() exits 2 and the
+    healer reads registry-receptor-broken (visible), never a silent skip."""
+    declared = organ.get("cure", "session")
+    if declared not in CURES:
+        raise ValueError(f"organ {organ.get('id', '<no-id>')}: invalid cure {declared!r}")
+    if declared == "owner":
+        return "owner"
+    if (
+        _tcc_denial(payload.get("status", ""))
+        or _tcc_denial(payload.get("note", ""))
+        or _tcc_denial(launchctl_evidence)
+    ):
+        return "owner"
+    label = (organ.get("recovery_params") or {}).get("label", "")
+    owner_note = organ.get("owner_note") or organ.get("disabled_reason")
+    if loaded is False and (
+        _renamed_away_disabled_plist(agents_dir, label) or bool(owner_note)
+    ):
+        return "owner"
+    return "session"
+
+
 def run(
     node: str,
     registry_path: Path,
     sidecar_dir: Path,
     launchagents_dir: Path | None = None,
+    launchctl_probe: Callable[[str], tuple[bool | None, str]] | None = None,
 ) -> dict:
     organs = load_registry(registry_path)
     runtime_wanted = f"{node}_launchd"
     now = datetime.now(timezone.utc)
     agents_dir = launchagents_dir or (Path.home() / "Library" / "LaunchAgents")
+    probe_launchctl = launchctl_probe or _launchctl_print
 
     report: dict = {
         "schema": 1, "node": node, "checked": 0, "ok": [], "stale": [],
-        "dead": [], "never_armed": [], "disabled": [], "skipped_exempt": 0,
+        "dead": [], "dead_session": 0, "dead_owner": 0,
+        "never_armed": [], "disabled": [], "skipped_exempt": 0,
         "blind_spots": [
             "legacy dialect ~/heartbeat/<label>.ts not read (grandfathered, "
             "see genome doc §6.4)"
@@ -174,12 +241,15 @@ def run(
             continue
 
         label = (organ.get("recovery_params") or {}).get("label", "")
-        if organ.get("recovery_action") == "launchctl_kickstart" and _renamed_away_disabled_plist(
-            agents_dir, label
+        # Mini's separate healer is not cure-aware yet; preserve its established
+        # disabled exemption while Pro keeps the finding visible as owner-only.
+        if (
+            node != "pro"
+            and organ.get("recovery_action") == "launchctl_kickstart"
+            and _renamed_away_disabled_plist(agents_dir, label)
         ):
             report["disabled"].append(oid)
             continue
-
         entry = {
             "id": oid, "status": status,
             "note": str(payload.get("note", ""))[:200],
@@ -190,13 +260,21 @@ def run(
         if ts is None:
             entry["age_s"] = None
             entry["note"] = f"malformed sidecar: {entry['note']}"
-            report["dead"].append(entry)
-            continue
+            is_dead = True
+        else:
+            age = (now - ts).total_seconds()
+            entry["age_s"] = int(age)
+            is_dead = age > DEAD_MULTIPLIER * expected or status not in HEALTHY_STATUSES
 
-        age = (now - ts).total_seconds()
-        entry["age_s"] = int(age)
-        if age > DEAD_MULTIPLIER * expected or status not in HEALTHY_STATUSES:
+        if is_dead:
+            loaded, launchctl_evidence = (None, "")
+            if organ.get("recovery_action") == "launchctl_kickstart" and label:
+                loaded, launchctl_evidence = probe_launchctl(label)
+            entry["cure"] = _dead_cure(
+                organ, payload, agents_dir, loaded, launchctl_evidence
+            )
             report["dead"].append(entry)
+            report[f"dead_{entry['cure']}"] += 1
         elif age > expected:
             report["stale"].append(entry)
         else:
@@ -236,6 +314,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"node={report['node']} checked={report['checked']} ok={len(report['ok'])} "
             f"stale={len(report['stale'])} dead={len(report['dead'])} "
+            f"dead_session={report['dead_session']} dead_owner={report['dead_owner']} "
             f"never_armed={len(report['never_armed'])} disabled={len(report['disabled'])}"
         )
         for d in report["dead"]:

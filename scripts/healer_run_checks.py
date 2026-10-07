@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -43,6 +45,11 @@ class ProbeReportError(ValueError):
 
 CURE_VALUES = {"session", "owner", "pr"}
 STRICT_ARSENAL_STATES = {"AUTH_DEAD", "BALANCE_DEAD", "MODEL_ERR", "UNKNOWN_ERR"}
+_HOME_FORK_LIVE_RE = (
+    re.compile(r"^DIVERGED: (.+?) != "),
+    re.compile(r"^NO-REPO-TWIN: (.+?) executes live "),
+)
+
 
 
 def _probes(raw_json: str, *, strict: bool = False) -> list[dict[str, Any]]:
@@ -92,6 +99,58 @@ def summarize_proprioception(raw_json: str) -> tuple[list[str], list[str]]:
         if cure == "session" and int(severity[1:]) <= 1:
             curable.append(probe_id)
     return diverged, curable
+
+
+def summarize_registry(raw_json: str) -> tuple[list[str], list[str]]:
+    """Return (all dead ids, session-curable dead ids), rejecting foreign cures."""
+    try:
+        data = json.loads(raw_json)
+    except json.JSONDecodeError as exc:
+        raise ProbeReportError(f"malformed registry JSON: {exc}") from exc
+    dead = data.get("dead") if isinstance(data, dict) else None
+    if not isinstance(dead, list) or not all(isinstance(item, dict) for item in dead):
+        raise ProbeReportError("registry report must contain a dead object list")
+    ids: list[str] = []
+    curable: list[str] = []
+    for item in dead:
+        organ_id = str(item.get("id") or "(unknown)")
+        cure = item.get("cure", "session")
+        if not isinstance(cure, str) or cure not in {"session", "owner"}:
+            raise ProbeReportError(f"dead organ {organ_id}: invalid cure {cure!r}")
+        ids.append(organ_id)
+        if cure == "session":
+            curable.append(organ_id)
+    return ids, curable
+
+
+def summarize_home_fork(raw_json: str) -> tuple[list[str], list[str]]:
+    """Return (all drifted live paths, paths writable by this healer session)."""
+    try:
+        data = json.loads(raw_json)
+    except json.JSONDecodeError as exc:
+        raise ProbeReportError(f"malformed HOME-fork JSON: {exc}") from exc
+    breaches = data.get("check_breaches") if isinstance(data, dict) else None
+    if not isinstance(breaches, list) or not all(isinstance(item, str) for item in breaches):
+        raise ProbeReportError("HOME-fork report must contain a check_breaches string list")
+    paths: list[str] = []
+    curable: list[str] = []
+    for breach in breaches:
+        match = next((rx.match(breach) for rx in _HOME_FORK_LIVE_RE if rx.match(breach)), None)
+        if match is None:
+            # No live path to judge (e.g. "DIVERGED: <repo> is absent from this
+            # checkout"): unprovable owner cure, so it stays session-curable.
+            paths.append(breach[:80])
+            curable.append(breach[:80])
+            continue
+        path = Path(os.path.expanduser(match.group(1)))
+        paths.append(str(path))
+        try:
+            owner_only = path.stat().st_uid == 0 or not os.access(path, os.W_OK)
+        except OSError:
+            owner_only = False  # fail open: an unprovable owner cure stays session-curable
+        if not owner_only:
+            curable.append(str(path))
+    return paths, curable
 
 
 def _report_time(value: object) -> datetime:
@@ -208,6 +267,24 @@ def main(argv: list[str]) -> int:
             sys.stderr.write(f"{exc}\n")
             return 3
         sys.stdout.write(f"{len(diverged)}\n{len(curable)}\n{','.join(diverged)}\n")
+        return 0
+    if command == "registry-summary" and len(argv) == 2:
+        try:
+            dead, curable = summarize_registry(payload)
+        except ProbeReportError as exc:
+            sys.stderr.write(f"{exc}\n")
+            return 3
+        sys.stdout.write(f"{len(dead)}\n{len(curable)}\n{','.join(dead)}\n")
+        return 0
+    if command == "home-fork-summary" and len(argv) == 2:
+        try:
+            drifted, curable = summarize_home_fork(payload)
+        except ProbeReportError as exc:
+            sys.stderr.write(f"{exc}\n")
+            return 3
+        sys.stdout.write(
+            f"{len(drifted)}\n{len(curable)}\n{','.join(drifted)}\n{','.join(curable)}\n"
+        )
         return 0
     if command == "arsenal-transitions" and len(argv) == 4 and argv[2] == "--state":
         try:

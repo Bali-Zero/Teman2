@@ -11,13 +11,16 @@ branch below asserts SPAWN, never SKIP.
 
 import importlib.util
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
-_MOD_PATH = Path(__file__).resolve().parents[1] / "healer_memo.py"
+_MOD_PATH = Path(os.environ.get(
+    "HEALER_MEMO_UNDER_TEST", Path(__file__).resolve().parents[1] / "healer_memo.py"
+))
 _spec = importlib.util.spec_from_file_location("healer_memo", _MOD_PATH)
 mod = importlib.util.module_from_spec(_spec)
 sys.modules["healer_memo"] = mod
@@ -40,69 +43,91 @@ def _now_iso() -> str:
 def test_fingerprint_is_deterministic_across_key_and_list_order():
     state_a = {
         "dead_organs": [
-            {"id": "a", "status": "fail", "recovery_action": "human_only", "age_s": 100},
-            {"id": "b", "status": "degraded", "recovery_action": "", "age_s": 7200},
+            {"id": "a", "status": "fail", "cure": "owner", "age_s": 100},
+            {"id": "b", "status": "degraded", "cure": "session", "age_s": 7200},
         ],
-        "diverged_probes": ["p2", "p1"],
-        "drifted_pairs": ["pair-x"],
         "arsenal_new_dead": ["claude:AUTH_DEAD"],
-        "reasons": "registry:2-dead-organs proprioception:1-diverged",
+        "session_curable": {"registry": 1, "proprioception": 0, "home_fork": 0},
     }
     state_b = {
-        "reasons": "proprioception:1-diverged registry:2-dead-organs",
+        "session_curable": {"home_fork": 0, "proprioception": 0, "registry": 1},
         "arsenal_new_dead": ["claude:AUTH_DEAD"],
-        "drifted_pairs": ["pair-x"],
-        "diverged_probes": ["p1", "p2"],
         "dead_organs": [
-            {"id": "b", "age_s": 7200, "recovery_action": "", "status": "degraded"},
-            {"age_s": 100, "id": "a", "status": "fail", "recovery_action": "human_only"},
+            {"id": "b", "age_s": 7200, "cure": "session", "status": "degraded"},
+            {"age_s": 100, "id": "a", "status": "fail", "cure": "owner"},
         ],
     }
     assert mod.fingerprint(state_a) == mod.fingerprint(state_b)
 
 
-def test_fingerprint_sensitive_to_organ_status_change():
+def test_fingerprint_stable_for_same_dead_set_observed_six_hours_later():
     base = {
-        "dead_organs": [{"id": "a", "status": "fail", "recovery_action": "x", "age_s": 10}],
-        "diverged_probes": [],
-        "drifted_pairs": [],
+        "dead_organs": [{"id": "a", "status": "fail", "cure": "owner", "age_s": 10}],
         "arsenal_new_dead": [],
-        "reasons": "registry:1-dead-organs",
-    }
-    changed = json.loads(json.dumps(base))
-    changed["dead_organs"][0]["status"] = "degraded"
-
-    assert mod.fingerprint(base) != mod.fingerprint(changed)
-
-
-def test_fingerprint_sensitive_to_age_bucket_change():
-    base = {
-        "dead_organs": [{"id": "a", "status": "fail", "recovery_action": "x", "age_s": 100}],
-        "diverged_probes": [],
-        "drifted_pairs": [],
-        "arsenal_new_dead": [],
-        "reasons": "",
+        "session_curable": {"registry": 0, "proprioception": 0, "home_fork": 0},
     }
     later = json.loads(json.dumps(base))
-    later["dead_organs"][0]["age_s"] = 100 + 3700  # crosses a 1h bucket boundary
+    later["dead_organs"][0]["age_s"] += 6 * 3600
 
-    assert mod.fingerprint(base) != mod.fingerprint(later)
+    assert mod.fingerprint(base) == mod.fingerprint(later)
 
 
-def test_fingerprint_age_bucket_caps_and_never_raises_on_bad_age():
-    huge = {
-        "dead_organs": [{"id": "a", "status": "fail", "recovery_action": "", "age_s": 999999}],
-        "diverged_probes": [], "drifted_pairs": [], "arsenal_new_dead": [], "reasons": "",
+def test_new_dead_organ_changes_fingerprint_and_spawns(tmp_path):
+    base = {
+        "dead_organs": [{"id": "a", "status": "fail", "cure": "owner", "age_s": 100}],
+        "arsenal_new_dead": [],
+        "session_curable": {"registry": 0, "proprioception": 0, "home_fork": 0},
     }
-    huger = json.loads(json.dumps(huge))
-    huger["dead_organs"][0]["age_s"] = 9999999
-    malformed = json.loads(json.dumps(huge))
-    malformed["dead_organs"][0]["age_s"] = "not-a-number"
+    changed = json.loads(json.dumps(base))
+    changed["dead_organs"].append({"id": "b", "cure": "session", "age_s": 1})
 
-    # Both huge ages saturate the same cap bucket -> identical fingerprint.
-    assert mod.fingerprint(huge) == mod.fingerprint(huger)
-    # A malformed age must not raise.
-    mod.fingerprint(malformed)
+    base_fp = mod.fingerprint(base)
+    changed_fp = mod.fingerprint(changed)
+    assert base_fp != changed_fp
+    state = tmp_path / "memo.json"
+    assert mod.main([
+        "record", "--state", str(state), "--fingerprint", base_fp,
+        "--verdict", "incurable", "--spawned-at", _now_iso(),
+    ]) == 0
+    assert mod.main([
+        "check", "--state", str(state), "--fingerprint", changed_fp,
+    ]) == mod.EXIT_SPAWN
+
+
+def test_fingerprint_component_table():
+    """Every key component moves the fingerprint (guilt); age/status/note never do (innocence)."""
+    base = {
+        "dead_organs": [{"id": "a", "cure": "owner", "status": "fail", "note": "n", "age_s": 1}],
+        "diverged_probes": ["p:session"],
+        "drifted_pairs": ["/x/y.sh"],
+        "session_curable": {"registry": 0, "proprioception": 1, "home_fork": 0},
+        "arsenal_new_dead": [],
+        "receptor_failures": [],
+    }
+    edits = {
+        "dead-id": lambda s: s["dead_organs"][0].update(id="b"),
+        "dead-cure": lambda s: s["dead_organs"][0].update(cure="session"),
+        "dead-label": lambda s: s["dead_organs"][0].update(label="com.new.job"),
+        "dead-recovery-action": lambda s: s["dead_organs"][0].update(recovery_action="human_only"),
+        "diverged-probe-cure": lambda s: s.update(diverged_probes=["p:owner"]),
+        "drifted-pair": lambda s: s.update(drifted_pairs=["/x/z.sh"]),
+        "count-registry": lambda s: s["session_curable"].update(registry=1),
+        "count-proprioception": lambda s: s["session_curable"].update(proprioception=2),
+        "count-home-fork": lambda s: s["session_curable"].update(home_fork=1),
+        "arsenal-new-dead": lambda s: s.update(arsenal_new_dead=["claude:AUTH_DEAD"]),
+        "receptor-failure": lambda s: s.update(receptor_failures=["registry-receptor-broken"]),
+        "age-48h-innocence": lambda s: s["dead_organs"][0].update(age_s=48 * 3600),
+        "status-innocence": lambda s: s["dead_organs"][0].update(status="degraded"),
+        "note-innocence": lambda s: s["dead_organs"][0].update(note="other"),
+    }
+    got = {}
+    for row, edit in edits.items():
+        state = json.loads(json.dumps(base))
+        edit(state)
+        got[row] = mod.fingerprint(state) != mod.fingerprint(base)
+    assert got == {row: not row.endswith("-innocence") for row in edits}
+
+
 
 
 # ---------------------------------------------------------------------------
