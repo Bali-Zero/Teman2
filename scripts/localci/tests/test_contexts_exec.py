@@ -288,12 +288,16 @@ def test_a_changed_gitattributes_keeps_a_contained_green_from_being_claimed(fx):
     assert runner.steps_verdict([{"name": "x", "status": "PASS", "reason": "rc=0"}], spec)[0] == "BLOCKED"
 
 
-@pytest.mark.parametrize("pin,want", [("3.12", ""), ("3.11", "/opt/py311/bin"), ("3.x", ""), ("3.10", None), ("", None)])
+@pytest.mark.parametrize("pin,want", [
+    ("3.12", ""), ("3.11", "/opt/py311/bin"), ("3.11.17", "/opt/py311/bin"), ("3.11.x", "/opt/py311/bin"),
+    ("3.11.5", None), ("3.10", None), ("3.x", None), ("3", None), ("", None), ("3.11\n3.12", None)])   # hosted: newest / a version file
 def test_a_setup_python_pin_selects_the_default_or_an_extra_interpreter_or_blocks(pin, want):
     job = {"steps": [{"uses": "actions/setup-python@v7", "with": {"python-version": pin}}]}
-    prefix, why = runner.select_python(job, "3.12.15", {"3.11": "/opt/py311/bin"})
+    prefix, why = runner.select_python(job, "3.12.15", {"3.11.17": "/opt/py311/bin"})
     assert prefix == want and (why is None) == (want is not None)
     assert runner.select_python({"steps": [{"run": "true"}]}, "3.12.15") == ("", None)
+    two = {"steps": [*job["steps"], {"uses": "actions/setup-python@v7", "with": {"python-version": "3.12"}}]}
+    assert runner.select_python(two, "3.12.15", {"3.11.17": "/opt/py311/bin"})[0] is None   # an interpreter switch mid-job
 
 
 def test_judges_named_by_the_steps_come_from_base_and_a_sentinels_path_list_does_not(tmp_path):
@@ -334,20 +338,36 @@ def test_the_sandbox_rebuilds_base_under_the_candidate_so_main_and_origin_main_n
     assert (tmp_path / "trees").read_text().split() == [base_tree, base_tree, cand_tree, base_tree]
     assert sorted((tmp_path / "diff").read_text().split()) == ["docs/link.md", "docs/new.md", "docs/ok.md", "scripts/gone.py"]
     assert "count: 0" in (tmp_path / "objects").read_text().splitlines()   # packed, as a fresh fetch is
+    fr.git(repo, "update-index", "--add", "--cacheinfo", f"160000,{fx['base']},vendor/sub")
+    fr.git(repo, "commit", "-q", "-m", "gitlink")
+    assert "submodule pointer" in runner.history_delta(repo, fx["base"], fr.git(repo, "rev-parse", "HEAD"))   # refused at plan
+    fr.git(repo, "rm", "-q", "--cached", "vendor/sub")
+    (repo / "docs" / "a\nb.md").write_text("x\n")
+    fr.git(repo, "add", "-A")
+    fr.git(repo, "commit", "-q", "-m", "newline path")
+    assert "newline" in runner.history_delta(repo, fx["base"], fr.git(repo, "rev-parse", "HEAD"))
 
 
-def test_a_context_budget_from_the_matrix_bounds_its_steps(tmp_path):
-    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {**BASE_EXTRA, "scripts/slow.py": "import time\ntime.sleep(60)\n"})
-    ctx = host_ctx(timeout_s=2, trusted_files=[JUDGE, "scripts/slow.py"])
+def test_the_hosted_jobs_timeout_bounds_the_context_so_no_green_outlasts_it(tmp_path):
+    wf = dict(WORKFLOW, jobs={"gate": {**WORKFLOW["jobs"]["gate"], "timeout-minutes": 0.05}})   # hosted kills the job at 3 s
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {**BASE_EXTRA, WF: yaml.safe_dump(wf), "scripts/slow.py": "import time\ntime.sleep(60)\n"})
+    ctx = host_ctx(trusted_files=[JUDGE, "scripts/slow.py"])
     ctx["local"]["steps"][0] = {"workflow_step": "selftest", "argv": ["$PY", "scripts/slow.py"]}
     fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])))
     fr.run(fx)
     c = fr.status(fx)["checks"]["ctx.judge"]
-    assert plan_spec(fx)["timeout_s"] == 2 and c["status"] == "ERROR" and "2s budget" in c["reason"]
-    ctx["local"]["timeout_s"] = 10 ** 6
-    fx2 = fr.make_repo(tmp_path / "big", {"docs/new.md": "x\n"}, {**BASE_EXTRA, "scripts/slow.py": "pass\n"})
-    fr.plan(fx2, "--contexts-file", str(fr.contexts_file(fx2, tmp_path / "big.yaml", [ctx])))
-    assert "timeout_s" not in plan_spec(fx2)
+    assert plan_spec(fx)["timeout_s"] == 3 and c["status"] == "ERROR" and "3s budget" in c["reason"]
+
+
+def test_a_judge_whose_mode_changes_is_a_rewritten_judge(tmp_path):
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "clean\n"}, BASE_EXTRA)
+    (fx["repo"] / JUDGE).chmod(0o755)   # same bytes, another tree entry: GitHub checks out what the candidate's tree says
+    fr.git(fx["repo"], "add", "-A")
+    fr.git(fx["repo"], "commit", "-q", "-m", "judge +x")
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [host_ctx()])))
+    fr.run(fx)
+    c = fr.status(fx)["checks"]["ctx.judge"]
+    assert plan_spec(fx)["judge_modified"] == [JUDGE] and c["status"] == "BLOCKED"
 
 
 # --------------------------------------------------------------- container: BASE steps verbatim, in the candidate sandbox
@@ -375,8 +395,9 @@ SANDBOX_PROBE = (
     'git fetch -q origin main && test "$(git rev-parse origin/main)" = "$(git rev-parse main)"\n'
     'test "$(git diff --name-only main HEAD)" = docs/new.md\n'
     "python -c 'import os, sys, time; sys.exit(time.time() - os.stat(\"docs/ok.md\").st_mtime > 3600)'\n"   # checked out now
-    'test "$HOME" = /home/runner && touch "$HOME/written"\n'
+    'test "$HOME" = /home/runner && touch "$HOME/written" && test "$(id -un)" = runner\n'
     'test "$(getent passwd "$(id -u)" | cut -d: -f7)" = /bin/bash\n'                             # tmux starts the login shell
+    "! python -c 'import yaml' && pip install -q pyyaml && python -c 'import yaml'\n"            # bare until a step installs, offline
     "(sleep 0.1 &); sleep 1; ! ps -eo stat= | grep -q '^Z'\n"                                    # an init reaps the orphan
     "python -c 'import sys; sys.exit(sys.version_info[:2] != (3, 11))'\n"                        # the setup-python 3.11 pin
     "{ crontab -l 2>&1 || true; } | grep -q '^no crontab for'\n")                              # as hosted, not EACCES

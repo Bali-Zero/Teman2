@@ -79,7 +79,7 @@ A BASE `actions/setup-python` pin selects the default interpreter or one the ima
 goes first on PATH, as setup-python does); any other pin is BLOCKED. `trusted_from_steps: true` adds to `trusted_files` every
 BASE `.py`/`.sh` a step names outright and every one under a directory it names with a trailing slash (`pytest
 infra/organ-conformance/`); a step marked `trusted_scan: false` (a path sentinel, whose path list names the surfaces under test,
-not judges) is not read. `timeout_s` (≤ 3600) is the context's own budget in place of `run --timeout`.
+not judges) is not read. The BASE job's `timeout-minutes` is the context's budget (hosted kills the job there), else `run --timeout`.
 
 A context is PASS only when every step it runs returns 0 and every other step is `not_applicable` with a reason; a red step
 dominates (FAIL > ERROR > BLOCKED), and a step that cannot start is BLOCKED, never skipped. The driver's exit code and its

@@ -41,7 +41,7 @@ def index_tree(root: str, history: dict | None, base_dir: Path) -> None:
         oids = git("hash-object", "-w", "--no-filters", "--stdin-paths", data="".join(f"{p}\n" for p in paths)).split() if paths else []
         if oids != [o for _, _, o in history["base"]]:
             raise RuntimeError("a BASE blob shipped into the sandbox does not hash to the BASE object it claims to be")
-        git("update-index", "--index-info", data="".join(f"{m} {o}\t{p}\n" for p, m, o in history["base"]))
+        git("update-index", "-z", "--index-info", data="".join(f"{m} {o}\t{p}\0" for p, m, o in history["base"]))
         base = git("commit-tree", git("write-tree"), "-m", "localci BASE")
         git("update-ref", "refs/heads/main", base)
         git("update-ref", "refs/remotes/origin/main", base)
@@ -52,11 +52,20 @@ def index_tree(root: str, history: dict | None, base_dir: Path) -> None:
     git("repack", "-a", "-d", "-q")   # packed, as a fresh fetch is: thousands of loose objects invite an auto-gc mid-step
 
 
+def bare_python(prefix: str) -> str:
+    """setup-python hands the job an interpreter with nothing installed: a venv of the pinned one, so a step sees exactly what the
+    steps before it `pip install`ed (offline, from the image's wheelhouse) and never a package another job needed."""
+    venv = Path("/tmp/localci-python")
+    subprocess.run([os.path.join(prefix, "python3") if prefix else "python3", "-m", "venv", str(venv)], check=True, stdout=subprocess.DEVNULL)
+    return str(venv / "bin")
+
+
 def main(cfg_path: str, junit_path: str) -> int:
     cfg = json.loads(Path(cfg_path).read_text())
     root = cfg["root"]
     if cfg.get("git_index"):
         index_tree(root, cfg.get("history"), Path(cfg_path).parent / "base")
+    prefix = os.pathsep.join(p for p in (bare_python(cfg.get("path_prefix") or "") if cfg.get("venv") else "", cfg.get("path_prefix")) if p)
     gh = Path("/tmp/localci-gh")
     gh.mkdir(parents=True, exist_ok=True)
     suite = ET.Element("testsuite", name=cfg["context"])
@@ -67,7 +76,7 @@ def main(cfg_path: str, junit_path: str) -> int:
             skipped += 1
             ET.SubElement(case, "skipped", message=st["not_applicable"])
             continue
-        path = os.pathsep.join(p for p in (cfg.get("path_prefix"), os.environ.get("PATH")) if p)   # setup-python's stand-in
+        path = os.pathsep.join(p for p in (prefix, os.environ.get("PATH")) if p)   # setup-python's stand-in
         env = {**os.environ, "PATH": path, **cfg.get("env", {}), **st.get("env", {}),
                **{k: str(gh / f"{k.lower()}-{i}") for k in ("GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY")}}   # written, never read back
         Path(env.get("RUNNER_TEMP", "/tmp")).mkdir(parents=True, exist_ok=True)

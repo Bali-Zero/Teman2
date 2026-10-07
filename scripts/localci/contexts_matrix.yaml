@@ -12,8 +12,8 @@
 # A BASE step the matrix does not name (other than actions/checkout and actions/setup-python), an
 # expression the runner does not evaluate, or a host step that would execute candidate code makes
 # the context BLOCKED. `trusted_from_steps: true` takes from BASE every script a step names (a step
-# marked `trusted_scan: false` is a path sentinel and is not read); `timeout_s` is the context's own
-# budget. `where: host` = BASE scripts / version-pinned tools judging the candidate tree
+# marked `trusted_scan: false` is a path sentinel and is not read); the BASE job's timeout-minutes
+# is the context's budget. `where: host` = BASE scripts / version-pinned tools judging the candidate tree
 # as data (trusted, sealed); `where: container` = the steps run in the candidate sandbox with the
 # BASE copies of `trusted_files` laid over the candidate's, emulating the merge_group event. When
 # the candidate rewrites a trusted file or the workflow, a green is reported BLOCKED: hosted judges
@@ -163,7 +163,6 @@ contexts:
       where: container
       git_index: true
       trusted_from_steps: true
-      timeout_s: 900
       steps:
         - workflow_step: Did organ surfaces change?
           trusted_scan: false # git/echo only; its `git diff -- <paths>` list is the surfaces under test
@@ -218,7 +217,6 @@ contexts:
       where: container
       git_index: true
       trusted_from_steps: true
-      timeout_s: 1800
       steps:
         - workflow_step: Detect immune-relevant changes (sentinel path check)
           trusted_scan: false # git/grep/echo only; its `case` list is the surfaces under test
@@ -301,7 +299,7 @@ contexts:
     mapping: executed
     coverage: full
     caveat: >-
-      python 3.11 (the job's setup-python pin) goes first on PATH; pytest-xdist, httpx, ruff, detect-secrets are in the image
+      python 3.11 (the job's setup-python pin) goes first on PATH, as a bare venv; every package a step pip-installs comes from the image's offline wheelhouse
     blocker: ""
 
   - name: "Harness floor recompute"
@@ -363,7 +361,6 @@ contexts:
       where: container
       git_index: true
       trusted_from_steps: true
-      timeout_s: 1200
       steps:
         - workflow_step: Did guard surfaces change?
           not_applicable: its body reads the event name through an expression; on merge_group it answers run=true, and the runner runs every step anyway

@@ -365,7 +365,7 @@ IMPLICIT_USES = ("actions/checkout@", "actions/setup-python@")   # stood in for 
 STEPS_DRIVER = Path(__file__).with_name("steps_driver.py")
 # What a contained step sees of GitHub: the merge_group event (the build whose verdict lands on main), and an offline pip.
 CONTAINED_STEP_ENV = {"CI": "true", "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "merge_group", "GITHUB_WORKSPACE": "/w",
-                      "HOME": "/home/runner", "SHELL": "/bin/bash",
+                      "HOME": "/home/runner", "SHELL": "/bin/bash", "PIP_FIND_LINKS": "/opt/wheels",
                       "RUNNER_TEMP": "/tmp/runner-temp", "PIP_NO_INDEX": "1", "PIP_DISABLE_PIP_VERSION_CHECK": "1"}
 
 
@@ -456,21 +456,25 @@ def named_scripts(wt: Path, base: str, steps: list) -> list:
 
 def select_python(job: dict, have: str | None, extra: dict | None = None) -> tuple[str | None, str | None]:
     """actions/setup-python is stood in for by the interpreter the steps run under: its pin must name the default one ("" = no PATH
-    change) or one of the image's extra interpreters (its bin dir goes first on PATH, as setup-python does). (prefix, None) or (None, why)."""
-    for s in job.get("steps") or []:
-        if isinstance(s, dict) and str(s.get("uses", "")).startswith("actions/setup-python@"):
-            want = str(((s.get("with") or {}).get("python-version")) or "")
-            parts = [p for p in want.split(".") if p not in ("x", "*")]
-            if want and have and have.split(".")[:len(parts)] == parts:
-                return "", None
-            if want and (hit := next((d for v, d in (extra or {}).items() if v.split(".")[:len(parts)] == parts), None)):
-                return hit, None
-            return None, f"BASE setup-python pins python-version {want!r}, the interpreters here are {[have, *sorted(extra or {})]!r}"
-    return "", None
+    change) or one of the image's extra interpreters (`LOCALCI_PYTHONS`, full versions; its bin dir goes first on PATH, as
+    setup-python does). A pin without a minor ("3", "3.x": hosted takes the newest), an absent pin (hosted reads a version file) or a
+    second setup-python step (an interpreter switch mid-job) is not emulated. (prefix, None) or (None, why)."""
+    pins = [s for s in job.get("steps") or [] if isinstance(s, dict) and str(s.get("uses", "")).startswith("actions/setup-python@")]
+    if len(pins) > 1:
+        return None, f"BASE job runs actions/setup-python {len(pins)} times: an interpreter switch mid-job is not emulated"
+    if not pins:
+        return "", None
+    want = str(((pins[0].get("with") or {}).get("python-version")) or "")
+    parts = [p for p in want.split(".") if p not in ("x", "*")]
+    if len(parts) >= 2 and all(p.isdigit() for p in parts):
+        if have and have.split(".")[:len(parts)] == parts:
+            return "", None
+        if (hit := next((d for v, d in sorted((extra or {}).items()) if v.split(".")[:len(parts)] == parts), None)):
+            return hit, None
+    return None, f"BASE setup-python pins python-version {want!r}, the interpreters here are {[have, *sorted(extra or {})]!r}"
 
 
 HISTORY_MAX_FILES = 3000
-MAX_CONTEXT_TIMEOUT_S = 3600
 
 
 def history_delta(wt: Path, base: str, cand: str) -> dict | str:
@@ -481,7 +485,9 @@ def history_delta(wt: Path, base: str, cand: str) -> dict | str:
     for meta, rel in zip(fields[0::2], fields[1::2]):
         old_mode, _new_mode, old_oid, _new_oid, status = meta.lstrip(":").split(" ")
         if "160000" in (old_mode, _new_mode):
-            continue
+            return f"the candidate changes the submodule pointer {rel!r}: the sandbox tree carries no gitlinks, BASE is not rebuilt"
+        if "\n" in rel:
+            return f"the changed path {rel!r} holds a newline: BASE is not rebuilt inside the sandbox"
         (added if status == "A" else olds).append(safe_tree_path(rel) if status == "A" else [safe_tree_path(rel), old_mode, old_oid])
     if len(added) + len(olds) > HISTORY_MAX_FILES:
         return f"the diff touches {len(added) + len(olds)} paths (> {HISTORY_MAX_FILES}): BASE is not rebuilt inside the sandbox"
@@ -519,12 +525,13 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
     blobs = {f: _extract_base_file(wt, base, f) for f in files}
     if (missing := [f for f, b in blobs.items() if b is None]):
         return _blocked(f"trusted file(s) {missing} missing at base {base[:12]} — the candidate would supply its own judge")
-    modified = [f for f in [*files, str(wf)] if _extract_base_file(wt, cand, f) != (blobs.get(f) if f in blobs else _extract_base_file(wt, base, f))]
+    judged = [*files, str(wf)]   # mode and object: a judge turned into a symlink or an executable is a rewritten judge
+    modified = [f for f, a, b in zip(judged, tree_entries(wt, base, judged), tree_entries(wt, cand, judged)) if a != b]
     if where == "container":   # the sandbox gets raw blobs: a changed .gitattributes can make GitHub's checkout materialize other bytes
         modified += [f for f in changed if f.rsplit("/", 1)[-1] == ".gitattributes"]
     spec = {"context": name, "cwd": str(wt), "steps": steps, "trusted_files": files, "judge_modified": modified}
-    if isinstance(local.get("timeout_s"), int) and 0 < local["timeout_s"] <= MAX_CONTEXT_TIMEOUT_S:
-        spec["timeout_s"] = local["timeout_s"]
+    if isinstance(tm := job.get("timeout-minutes"), (int, float)) and not isinstance(tm, bool) and tm > 0:
+        spec["timeout_s"] = int(tm * 60)   # hosted kills the job there: no local green may take longer
     if where == "container":
         for f, b in blobs.items():
             dest = trusted / "base_files" / f
@@ -538,6 +545,7 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
         if isinstance(history, str):
             return _blocked(history)
         return {**spec, "kind": "contained_steps", "git_index": bool(local.get("git_index")), "history": history, "path_prefix": prefix,
+                "venv": True,
                 "env": CONTAINED_STEP_ENV,
                 "driver_sha256": sha256_file(STEPS_DRIVER), "purpose": f"{name}: {len(steps)} workflow step(s) in the candidate sandbox, {files} from BASE"}
     tdir = trusted / "ctx" / ctx["check"]
@@ -569,6 +577,14 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
     return {**spec, "kind": "trusted_steps", "trusted_dir": str(tdir), "trusted_dir_sha256": full_dir_map(tdir),
             "tool_sha256": {p: sha256_file(Path(p)) for p in pins.values()},
             "purpose": f"{name}: BASE {files} and pinned {sorted(pins)} judge the candidate tree on the host (no candidate code runs)"}
+
+
+def tree_entries(wt: Path, rev: str, paths: list) -> list:
+    """(mode, type, object) of each path at `rev`, None where absent; paths taken literally, never as pathspec patterns."""
+    out = subprocess.run(["git", "--literal-pathspecs", "-C", str(wt), "ls-tree", "-z", "--full-tree", rev, "--", *paths],
+                         capture_output=True, check=True).stdout.decode()
+    got = {rec.split("\t", 1)[1]: tuple(rec.split("\t", 1)[0].split(" ")) for rec in out.split("\0") if "\t" in rec}
+    return [got.get(p) for p in paths]
 
 
 def full_dir_map(td: Path) -> dict:
@@ -1009,7 +1025,8 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
         for (rel, _mode, oid), blob in zip(hist["base"], read_blobs(Path(plan["worktree"]), [o for _, _, o in hist["base"]])):
             extra[f"cfg/base/{rel}"] = blob
         extra["cfg/steps.json"] = json.dumps({"context": spec["context"], "root": workdir, "git_index": spec.get("git_index"), "history": spec.get("history"),
-                                              "path_prefix": spec.get("path_prefix") or "", "env": spec["env"], "steps": spec["steps"]}).encode()
+                                              "path_prefix": spec.get("path_prefix") or "", "venv": bool(spec.get("venv")), "env": spec["env"],
+                                              "steps": spec["steps"]}).encode()
         inner = ["python", "-I", "/cfg/steps_driver.py", "/cfg/steps.json", "/out/junit.xml"]
     else:
         extra["cfg/pytest-trusted.ini"] = b"[pytest]\npythonpath = /w\n"
@@ -1159,7 +1176,7 @@ def reap_containers(plan: dict, store: Store) -> str | None:
 
 
 def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> dict:
-    timeout = spec.get("timeout_s") or timeout   # a context's own budget (matrix `local.timeout_s`) beats the run-wide default
+    timeout = spec.get("timeout_s") or timeout   # a context's budget is its hosted job's timeout-minutes, else the run-wide default
     log = run_dir / "logs" / f"{name}.log"
     junit = run_dir / "receipts" / f"{name}.junit.xml"
     junit.unlink(missing_ok=True)   # a junit left by an earlier attempt is never this attempt's evidence
