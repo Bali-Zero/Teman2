@@ -1,4 +1,4 @@
-task_id: localci-merger-c2-1007
+task_id: localci-merger-c2b-1007
 mission: LOCALCI-SOVEREIGN
 colour: BLUE
 gear: 3
@@ -50,6 +50,10 @@ acceptance:
     probe: scripts/localci/tests/test_merger.py::test_a_mirror_local_fsmonitor_never_runs_during_the_merge
   - text: WHEN a host attributes file sets eol=crlf, the candidate the runner sees SHALL be unchanged.
     probe: scripts/localci/tests/test_merger.py::test_host_attributes_never_rewrite_the_candidate_the_runner_sees
+  - text: WHEN the organ conformance gate scans the plist, it SHALL find every gene (registry entry, heartbeat, kill switch) and no regression.
+    probe: python3 infra/organ-conformance/check_organ_conformance.py
+  - text: WHEN the wrapper exits by any path (ok, failure before Python, missing configuration, kill switch), it SHALL leave the heartbeat with that verdict, and LOCALCI_MERGER_ENABLED=false SHALL stop it before any git.
+    probe: scripts/localci/tests/test_merger.py::test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch
   - text: WHEN the plist is loaded on Pro, launchd SHALL run a tick that journals a decision line, and the report SHALL read the live journal.
     probe: "launchctl print gui/$(id -u)/com.balizero.localci-merger"
 assumptions:
@@ -66,6 +70,8 @@ assumptions:
 consumer_map:
   - The Pro launchd job com.balizero.localci-merger — it runs the tick every 600 s and appends to ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl.
   - The phase E decision (operator) — it reads `merger.py report`; the criterion line is printed by the report.
+  - The organism sentinel — registry organ pro.localci_merger, fed by the heartbeat ~/.organism/last_seen/pro.localci_merger.json.
+  - scripts/lint_home_fork.py --check on Pro — the declared pair ~/.nuzantara-cron/localci_merger_tick.sh ↔ scripts/localci/localci_merger_tick.sh.
 appetite:
   wall_clock_hours: 4
   adversarial_rounds: 1

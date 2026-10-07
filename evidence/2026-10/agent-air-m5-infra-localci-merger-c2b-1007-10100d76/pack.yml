@@ -2,12 +2,14 @@ brief_ref: evidence/brief.yml
 plan_ref: >-
   Mandate LOCALCI-SOVEREIGN phase C/D (the merger, SHADOW only), handed by the team lead of the 2026-10-07 mission to
   this BLUE Dux; plan docs/specs/localci-sovereign-2026-10-07.md §2 (phases C-D), ruling docs/rules/RULINGS.md RULED
-  2026-10-07. Split agreed in the mandate: PR-C1 (#8017, merged 619fee6cef) = tick, lease, merge stub; PR-C2 (this
-  pack) = report, launchd schedule and the eight notices of C1's gate.
+  2026-10-07. Split agreed in the mandate: PR-C1 (#8017, merged 619fee6cef) = tick, lease, merge stub; PR-C2 = report,
+  launchd schedule and the eight notices of C1's gate. PR-C2 opened as #8020 (gate PASS on 49dc3e5c95) and went red on
+  the organ conformance gate (the new plist had no genes); armed means frozen, so this branch replaces it from a fresh
+  origin/main: the three signed commits cherry-picked unchanged plus one commit that gives the organ its genes.
 lanes:
   - lane: localci-merger-c2-build
     role: build
-    seat: "claude-opus-5-5 (BLUE Dux, M5 worktree infra-localci-merger-c2-1007; code, tests, Pro install and proof, this pack)"
+    seat: "claude-opus-5-5 (BLUE Dux, M5 worktrees infra-localci-merger-c2-1007 and -c2b-1007; code, tests, Pro install and proof, this pack)"
   - lane: localci-merger-c2-redteam
     role: review
     seat: "codex-gpt-6.1-sol (codex-companion via the codex:codex-rescue subagent, read-only, effort high)"
@@ -36,13 +38,17 @@ what_changed: |
   longest silence between journal lines; exit 1 on any FALSE_GREEN, 2 on an unusable input. Hardening (C1 gate notices
   N1-N4 and the reviews): git() drops every inherited GIT_* variable and isolates config, attributes, hooks and fsmonitor,
   also in the runner env; an OSError is an error line in the tick and an ERROR decision once a PR is picked.
-  scripts/localci/merger_tick.sh (new) + infra/launchagents/com.balizero.localci-merger.plist (new): launchd tick every
-  600 s, no KeepAlive, PATH explicit; runs merger.py and hosted_compare.py as committed at one resolved origin/main sha
-  read from the merger's own mirror; a failed fetch is not fatal (the tick journals its own).
+  scripts/localci/localci_merger_tick.sh (new) + infra/launchagents/com.balizero.localci-merger.plist (new): launchd tick
+  every 600 s, no KeepAlive, PATH explicit; runs merger.py and hosted_compare.py as committed at one resolved origin/main
+  sha read from the merger's own mirror; a failed fetch is not fatal (the tick journals its own). Organ genes: registry
+  entry pro.localci_merger (apps/organism/organism/organs_registry.yaml, checksum updated), heartbeat sidecar on every
+  exit path (ok / error / disabled), kill switch LOCALCI_MERGER_ENABLED, and the HOME copy declared as a pair in
+  infra/home-fork/declared-pairs.json (superscar #1).
   scripts/localci/tests/test_merger_report.py (new, 25 cases) and test_merger.py from 33 to 41 cases.
   scripts/localci/README.md: "Report (phase D's instrument)" and "Schedule (launchd, Pro)" under the Merger section.
-  Net size 587 added, 16 deleted (merger.py 147, tests 320, wrapper/plist 65, README 55): one concern — the report and the
-  schedule that feeds it; the tests are most of it and splitting them from the code they guard would ship it unguarded.
+  Net size about 650 added (merger.py 147, tests ~340, wrapper/plist ~85, registry/pair ~30, README ~60): one concern —
+  the report and the scheduled organ that feeds it; the tests are most of it and splitting them from the code they guard
+  would ship it unguarded.
 proof: |
   See receipts. The report's only GitHub calls are GETs through hosted_compare.gh_get; the tick is unchanged in kind
   (GETs and git fetch). runner.py, contexts_matrix.yaml and hosted_compare.py are untouched.
@@ -98,16 +104,31 @@ receipts:
     exit: 0
     ts: "2026-10-07T10:19:05Z"
     seat: claude-opus-5-5 driving Pro over ssh
-  - claim: "Every acceptance probe of the brief named by test id passes at bf70d95bda on M5: 21 passed."
-    cmd: "python -m pytest -q scripts/localci/tests/test_merger_report.py::test_a_pass_on_a_head_github_closed_red_is_a_false_green_at_both_levels_and_exits_1 scripts/localci/tests/test_merger_report.py::test_a_false_green_seen_at_tick_time_is_never_erased_by_a_later_green scripts/localci/tests/test_merger_report.py::test_the_queue_commit_judges_only_a_decision_on_the_base_it_was_built_on scripts/localci/tests/test_merger_report.py::test_a_merged_head_is_compared_per_context_with_the_queue_commit_not_the_head scripts/localci/tests/test_merger_report.py::test_a_merge_at_another_head_or_without_a_usable_gate_is_not_a_compared_merge scripts/localci/tests/test_merger_report.py::test_unusable_inputs_are_refused_never_counted scripts/localci/tests/test_merger_report.py::test_an_unusable_github_read_is_refused_never_counted scripts/localci/tests/test_merger_report.py::test_the_report_reads_github_only_through_gets scripts/localci/tests/test_merger.py::test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote scripts/localci/tests/test_merger.py::test_a_missing_gh_is_an_error_line_not_a_traceback scripts/localci/tests/test_merger.py::test_a_filesystem_error_after_a_pr_is_picked_is_an_error_decision_not_a_retry_loop scripts/localci/tests/test_merger.py::test_host_git_config_never_reaches_the_candidate scripts/localci/tests/test_merger.py::test_a_caller_git_dir_or_index_never_redirects_the_merger scripts/localci/tests/test_merger.py::test_a_mirror_local_fsmonitor_never_runs_during_the_merge scripts/localci/tests/test_merger.py::test_host_attributes_never_rewrite_the_candidate_the_runner_sees"
+  - claim: "Every acceptance probe of the brief named by test id passes at 85a4d13bf0 on M5: 22 passed."
+    cmd: "python -m pytest -q scripts/localci/tests/test_merger_report.py::test_a_pass_on_a_head_github_closed_red_is_a_false_green_at_both_levels_and_exits_1 scripts/localci/tests/test_merger_report.py::test_a_false_green_seen_at_tick_time_is_never_erased_by_a_later_green scripts/localci/tests/test_merger_report.py::test_the_queue_commit_judges_only_a_decision_on_the_base_it_was_built_on scripts/localci/tests/test_merger_report.py::test_a_merged_head_is_compared_per_context_with_the_queue_commit_not_the_head scripts/localci/tests/test_merger_report.py::test_a_merge_at_another_head_or_without_a_usable_gate_is_not_a_compared_merge scripts/localci/tests/test_merger_report.py::test_unusable_inputs_are_refused_never_counted scripts/localci/tests/test_merger_report.py::test_an_unusable_github_read_is_refused_never_counted scripts/localci/tests/test_merger_report.py::test_the_report_reads_github_only_through_gets scripts/localci/tests/test_merger.py::test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote scripts/localci/tests/test_merger.py::test_a_missing_gh_is_an_error_line_not_a_traceback scripts/localci/tests/test_merger.py::test_a_filesystem_error_after_a_pr_is_picked_is_an_error_decision_not_a_retry_loop scripts/localci/tests/test_merger.py::test_host_git_config_never_reaches_the_candidate scripts/localci/tests/test_merger.py::test_a_caller_git_dir_or_index_never_redirects_the_merger scripts/localci/tests/test_merger.py::test_a_mirror_local_fsmonitor_never_runs_during_the_merge scripts/localci/tests/test_merger.py::test_host_attributes_never_rewrite_the_candidate_the_runner_sees scripts/localci/tests/test_merger.py::test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch"
     exit: 0
-    ts: "2026-10-07T11:00:09Z"
+    ts: "2026-10-07T11:50:50Z"
     seat: claude-opus-5-5 on M5
   - claim: "Each of 26 single-rule mutants turns the merger tests red: 21 in merger.py (global config, env-scope config inherited, runner hooksPath, OSError in tick, OSError in decide, OSError in report, merged-not-green, BLOCKED-as-green, no exit 1, recorded false green ignored, any merge counted, torn line skipped, state repo unchecked, decision repo unchecked, missing merge sha falls back, merge commit on any base, merge commit never, days rounded up, --since unvalidated, silence ignored, context FALSE_RED dropped), 3 in merger_tick.sh (GIT_* kept, fetch fatal, HEAD instead of the resolved sha) and 2 more (fsmonitor and attributesFile overrides removed); sources restored byte-identical. GIT_ATTR_NOSYSTEM removed survives: planting a system attributes file needs root."
     cmd: python3 $CLAUDE_JOB_DIR/tmp/mutate_c2b.py ; two ad-hoc mutants of the overrides
     exit: 0
     ts: "2026-10-07T10:47:24Z"
     seat: claude-opus-5-5 on M5
+  - claim: "#8020 (the three signed commits) went red on 'Every organ is born with its genes': NEW organ without genes, missing G1_registry, G2_heartbeat, G5_kill_switch. At 85a4d13bf0 the gate passes: com.balizero.localci-merger has no missing gene (advisory G10 only; the merger holds its own flock lease), wrapper resolved to scripts/localci/localci_merger_tick.sh; 172 plists, 0 regressions, 0 non-conformant births; baseline ratchet rc 0; organs_registry.yaml valid with its checksum, edited append-only (24 lines)."
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py ; python3 infra/organ-conformance/check_baseline_ratchet.py ; PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml
+    exit: 0
+    ts: "2026-10-07T11:46:18Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Wrapper genes under mutation: heartbeat always ok, kill switch ignored, EXIT trap removed, required variables back to a ${VAR:?} expansion (which reaches the EXIT trap with status 0 on /bin/bash 3.2 and would write ok), GIT_* kept, fetch fatal and HEAD instead of the resolved sha are each KILLED by the wrapper tests; an `if false` on the explicit required-variable check survives as an equivalent mutant (the empty interpreter fails later and the heartbeat still says error)."
+    cmd: ad-hoc mutation of scripts/localci/localci_merger_tick.sh against pytest -k wrapper, source restored byte-identical
+    exit: 0
+    ts: "2026-10-07T11:45:30Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Two failures in suites this change touches are pre-existing and reproduce on the tree without it (C2 at 49dc3e5c95): infra/organ-conformance/test_gene_g2_heartbeat_fires.py::test_a_clean_run_reports_ok_and_says_what_it_did (nb-curator wrapper, M5 and Pro) and apps/organism/tests/test_genome_no_active_active.py (com.balizero.wr2control and com.nuzantara.mailbox-janitor.daily enrolled on two hosts). Both test the existing registry and organs, not pro.localci_merger."
+    cmd: PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -rf infra/organ-conformance apps/organism/tests/test_genome_no_active_active.py (both worktrees, Pro backend-rag venv)
+    exit: 1
+    ts: "2026-10-07T11:49:40Z"
+    seat: claude-opus-5-5 driving Pro over ssh
 dissent:
   - seat: codex-gpt-6.1-sol
     objection: "BLOCKER: the report rebuilds every comparison from GitHub's present, so a FALSE_GREEN seen at tick time disappears after a green re-run or when the context stops being required."
@@ -184,6 +205,7 @@ dissent:
 owed:
   - "PR-C3 (phase E rehearsal, named here, not built): a `merge --armed` path gated on an environment flag AND the label `localci:merge-shadow-ok`, exercised once on a sandbox repository or a docs-only PR with GitHub's own required checks still required. Until C3, `merge` refuses with exit 2."
   - "The runner plans review.independent and leaves it QUEUED, so overall is never PASS in shadow: the PR-level FALSE_GREEN stays vacuous until the merger imports a review; the context level (now + recorded at tick time) is the live instrument."
-  - "The launchd job runs on Pro from a wrapper copied from this branch; after merge the copy is re-taken from main (cmp -s against origin/main, superscar #1)."
+  - "The launchd job runs on Pro from a wrapper copied from this branch; after merge the copy is re-taken from main and checked with cmp -s against origin/main's blob; from then on scripts/lint_home_fork.py --check on Pro watches the declared pair."
   - "GIT_ATTR_NOSYSTEM has no guilt test (planting a system attributes file needs root)."
+  - "PR-C3 also carries the notices of #8020's gate (fresh Opus 5.5, PASS on 49dc3e5c95, 10 notices): the surviving mutant `parents[mc] == [base]` → `base in parents` (test with parents [BASE, HEAD]); error/skipped counts and the longest gap between DECISIONS in the report, and a phase-E line that depends on compared_merges, never on days alone; a non-numeric recorded FALSE_GREEN is exit 2, not a traceback; decision lines carry the code sha; MERGER_PYTHON gets the merger's own coordinator venv instead of the mutable backend-rag venv; the README tells the operator to read compared_merges, not days. Phase D cadence: one PR per 600 s tick; StartInterval 300 only after measuring the gate once A2/B land."
   - "A kill -9 of a tick leaves its runner child running to the runner's own deadline; a second host (Mini) needs the Postgres lease of spec §3 before it may tick (both carried from C1)."
