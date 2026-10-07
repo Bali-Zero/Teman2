@@ -18,7 +18,12 @@ Panel-hardened semantics (red-team 2026-07-06):
   - registry entries with enabled: false or expected_hb_seconds <= 0 are skipped
     (liveness-exempt by declaration).
   - dead = sidecar age > 3 × expected_hb_seconds, or status not in the healthy
-    set (same classification as scripts/sentinel-aggregate.py).
+    set (same classification as scripts/sentinel-aggregate.py) — EXCEPT, on
+    Pro, a fresh sidecar whose unhealthy status comes with the producer's own
+    proof that its detector completed: that organ is ALIVE WITH FINDINGS (it
+    ran on time and honestly reported what it found), listed under `findings`,
+    never `dead`. The proof is a closed allowlist of live producer shapes
+    (_COMPLETION_PROOF, one entry per producer); anything else stays dead with a note.
   - malformed sidecar = dead with note (the organ's writer is broken — W54:
     a timestamp-format drift once killed a staleness check silently).
   - Mini legacy dialect (~/heartbeat/<label>.ts) is NOT read — declared blind
@@ -34,6 +39,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Callable
@@ -188,6 +194,45 @@ def _dead_cure(
     return "session"
 
 
+def _note_proof(pattern: str) -> Callable[[dict], str | None]:
+    regex = re.compile(pattern)
+
+    def proof(payload: dict) -> str | None:
+        match = regex.match(str(payload.get("note", "")))
+        return f"note:{match.group(0).strip()}" if match else None
+
+    return proof
+
+
+def _pulse_proof(payload: dict) -> str | None:
+    """apps/cell/cell/main.py: a completed pulse writes exactly pulse_count, tier
+    and action; a pulse that THREW writes pulse_count and `error`."""
+    metadata = payload.get("metadata")
+    completed = (
+        isinstance(metadata, dict)
+        and set(metadata) == {"pulse_count", "tier", "action"}
+        and type(metadata["pulse_count"]) is int
+        and metadata["pulse_count"] >= 0
+    )
+    return "metadata.pulse_count" if completed else None
+
+
+# Closed allowlist, one entry per live producer: the organ, the status its
+# detector writes when it COMPLETED and found something, and that run's sidecar
+# shape. The crash / cannot-verify path writes another status or shape and stays
+# dead. Not listed, so dead: pro.visa_freshness_sentinel ("rc=1" is STALE or an
+# uncaught exception), prose, "detector_rc=N" alone.
+_COMPLETION_PROOF = {
+    # kbli-surface-conformance-run.sh: rc 1 WITH the report header
+    "pro.kbli_surface_conformance": ("error", _note_proof(r"detector_rc=1 result=divergence(?:\s|$)")),
+    # launchd-liveness-detector.sh: alarm count parsed from the detector's JSON
+    "pro.launchd_liveness": ("degraded", _note_proof(r"[1-9][0-9]* alarm\(s\)(?:\s|$)")),
+    # meta_one_steward.py: a completed tick (a crash writes "error" + the exception text)
+    "pro.meta_one_steward": ("warning", _note_proof(r"token=(?:alive|dead)$")),
+    "cell.organism": ("fail", _pulse_proof),
+}
+
+
 def run(
     node: str,
     registry_path: Path,
@@ -203,7 +248,7 @@ def run(
 
     report: dict = {
         "schema": 1, "node": node, "checked": 0, "ok": [], "stale": [],
-        "dead": [], "dead_session": 0, "dead_owner": 0,
+        "dead": [], "dead_session": 0, "dead_owner": 0, "findings": [],
         "never_armed": [], "disabled": [], "skipped_exempt": 0,
         "blind_spots": [
             "legacy dialect ~/heartbeat/<label>.ts not read (grandfathered, "
@@ -264,7 +309,18 @@ def run(
         else:
             age = (now - ts).total_seconds()
             entry["age_s"] = int(age)
-            is_dead = age > DEAD_MULTIPLIER * expected or status not in HEALTHY_STATUSES
+            fresh = age <= DEAD_MULTIPLIER * expected
+            # Mini's healer is not findings-aware: its classification is unchanged.
+            if fresh and node == "pro" and status not in HEALTHY_STATUSES:
+                proof_status, proof = _COMPLETION_PROOF.get(oid, (None, None))
+                evidence = proof(payload) if status == proof_status else None
+                if evidence:
+                    entry["state"] = "alive_with_findings"
+                    entry["completion_evidence"] = evidence
+                    report["findings"].append(entry)
+                    continue
+                entry["note"] = f"no detector completion evidence: {entry['note']}"
+            is_dead = not fresh or status not in HEALTHY_STATUSES
 
         if is_dead:
             loaded, launchctl_evidence = (None, "")
@@ -315,10 +371,13 @@ def main(argv: list[str] | None = None) -> int:
             f"node={report['node']} checked={report['checked']} ok={len(report['ok'])} "
             f"stale={len(report['stale'])} dead={len(report['dead'])} "
             f"dead_session={report['dead_session']} dead_owner={report['dead_owner']} "
+            f"findings={len(report['findings'])} "
             f"never_armed={len(report['never_armed'])} disabled={len(report['disabled'])}"
         )
         for d in report["dead"]:
             print(f"  DEAD {d['id']} age={d['age_s']}s status={d['status']} ({d['severity']})")
+        for f in report["findings"]:
+            print(f"  FINDINGS {f['id']} age={f['age_s']}s status={f['status']} ({f['completion_evidence']})")
         for oid in report["never_armed"]:
             print(f"  NEVER-ARMED {oid} (ledger's job, not a healer target)")
     return report["exit"]

@@ -1,0 +1,120 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  Branch agent/air-m5/ops/healer-registry-semantics. Codex O1 built a first diff (scripts/seat_build.sh --seat codex --tier
+  sol, 2026-10-07 10:16-10:33Z, prepare-only, no commit) against origin/main 619fee6cef. The Claude verifier
+  (dux-healer-registry-ship) found it off-base (it re-implemented PR 8018's receptor A inline) and its completion allowlist
+  matching crash shapes of three of the four live producers, rebuilt the candidate on PR 8018's head a5f82c04b2, measured
+  the live shapes read-only on Pro and Mini, ran a sealed three-family council (10:53-10:55Z) and one refutation round
+  (11:07-11:17Z), folded five council amendments, then committed after PR 8018 merged. Owner order "fai tu" on the Pro healer.
+lanes:
+  - lane: healer-registry-semantics-build
+    role: build
+    seat: "codex-o1 (scripts/seat_build.sh --seat codex --tier sol; first findings/verdict diff; prepare-only)"
+  - lane: healer-registry-semantics-verify
+    role: build
+    seat: "claude-opus-5.5 (dux-healer-registry-ship: on-disk verification V0-V3, rebuild on PR 8018, red-first, 62 mutants, live shapes, this pack, commit, push, arm)"
+  - lane: healer-registry-semantics-council-claude
+    role: review
+    seat: "claude-opus-5.5 (sealed round 1, written first; AMEND; round 2 adjudication)"
+  - lane: healer-registry-semantics-council-codex
+    role: review
+    seat: "codex-o2 (gpt-6.1-sol, sessions 01a115ff / 01a1160b under ~/.codex-o2/sessions = O2 verified; round 1 BLOCK, round 2 8 HELD / 6 FALSIFIED + 1 new; builder family)"
+  - lane: healer-registry-semantics-council-ollama
+    role: review
+    seat: "ollama-qwen3.5:9b (Mini, local, think=false; round 1 PASS, round 2 4 HELD)"
+council_run: journal.jsonl
+seat_override: >-
+  Gear-3 quorum short of three counted non-builder families. Kimi (kimi-code/k3) and the TP1 seats (Alibaba monthly quota
+  exhausted since 2026-10-05T15:55Z, 429 until 2026-10-11T16:00Z) are quota-dead and agy (Gemini) is busy with the owner's
+  interactive windows, per the imperator's standing campaign rules; none was re-probed (TP1: "do not retry"). Fallback used:
+  ollama-qwen3.5:9b on Mini, which this lint does not count. Codex O2 is the builder's family (Codex O1 built the first
+  diff): its voice counts as a seat, not as independence. The gate should weigh the council as anthropic + openai(builder
+  family) + local qwen.
+council_timing: >-
+  Round 1 sealed: claude 10:53:40Z (before any other seat was asked), codex-o2 10:54:17-10:55:21Z, ollama
+  10:54:20-10:54:56Z. Round 2 refutation: codex-o2 11:07:05-11:07:39Z, ollama 11:07:08-11:07:50Z, claude adjudication
+  11:17:07Z. All before the first commit of this branch. Verifier findings V0-V3 precede the council; codex r1 #1-#4 were
+  folded before round 2; codex r2 new #1 (cell shape) after it.
+what_changed: |
+  scripts/healer_receptor_registry.py: on node pro, a fresh sidecar (age <= 3 x expected_hb_seconds) with an unhealthy status
+  is ALIVE WITH FINDINGS (new `findings` list, state alive_with_findings, completion_evidence) when it matches its own organ's
+  entry in the closed allowlist _COMPLETION_PROOF: pro.kbli_surface_conformance error + note "detector_rc=1 result=divergence";
+  pro.launchd_liveness degraded + note "<N>=1..> alarm(s)"; pro.meta_one_steward warning + note "token=alive|dead";
+  cell.organism fail + metadata exactly {pulse_count (int >= 0), tier, action}. Everything else unhealthy stays dead with note
+  "no detector completion evidence: <note>" (pro.visa_freshness_sentinel's "rc=1" is STALE or an uncaught exception, so it
+  is not listed). Mini is unchanged (node gate). Findings never count in dead / dead_session / dead_owner or the exit code.
+  scripts/healer_run_checks.py: registry-summary prints two more lines (findings count, ids); an absent bucket is none, a
+  malformed one exits 3 (registry-receptor-broken).
+  infra/launchagents/wrappers/pro-healer.sh: receptor A reason registry:<session>/<dead>-dead <findings>-findings; a findings
+  line in run.log; the prompt asks for one final "HEALER_VERDICT: cured|incurable|partial <n_cured>/<T>" with T computed by
+  the wrapper (every session-curable item, receptor-broken token and new arsenal death of the tick); the verdict is
+  verdict-from-session --expect-total T: a valid line is recorded; no line at all logs verdict-line-missing and falls back to
+  the unchanged escalation classifier; a malformed or wrong-total last line logs verdict-line-invalid and records unknown.
+  scripts/healer_memo.py: verdict_from_session (last line naming HEALER_VERDICT, stripped, full-match strict, counts coherent
+  with the word, total > 0 and == T); partial is persistable and never skips; the memo still skips only on incurable.
+  Tests: test_healer_receptor_findings.py (34-row producer branch table), test_healer_session_verdict.py (21-row parser table,
+  tick total, skip semantics), test_healer_run_checks.py (findings bucket), test_pro_healer_receptors.py (reason, findings-only,
+  malformed bucket, verdict table, tick total).
+spend:
+  wall_clock_hours: 1.5
+receipts:
+  - claim: no Codex continuation was live in the worktree when the verifier took it
+    cmd: ps -axo pid,command | grep "context_bridge.py continue"; lsof -a -p <every codex pid> -d cwd
+    exit: "no process; no codex pid with this cwd"
+    ts: "2026-10-07T10:34Z"
+    seat: claude-opus-5.5
+  - claim: RED first on the git-archive export of PR 8018's head a5f82c04b2 (the base this lands on), final test files
+    cmd: PRO_HEALER_UNDER_TEST=<base> HEALER_RUN_CHECKS_UNDER_TEST=<base> HEALER_MEMO_UNDER_TEST=<base> HEALER_REGISTRY_UNDER_TEST=<base> python -m pytest -q <4 test files>
+    exit: "1 (21 failed, 55 passed): guilt rows kbli/launchd/meta/cell 'dead' on base; base records 'unknown' for a session ending HEALER_VERDICT incurable; record --verdict partial rejected"
+    ts: "2026-10-07T10:46Z"
+    seat: claude-opus-5.5
+  - claim: every state-deciding branch is pinned by a guilt and an innocence row
+    cmd: python -I work/dux-healer-registry-ship/mutate.py (scratch copies injected via the *_UNDER_TEST seams)
+    exit: "M0 green; 62 mutants, 62 red, 0 survived"
+    ts: "2026-10-07T11:16Z"
+    seat: claude-opus-5.5
+  - claim: live Pro shapes, read-only from an export bundle (no fetch, no live copy touched)
+    cmd: tar bundle | ssh pro 'd=$(mktemp -d) ... bash run.sh $d pro' (candidate registry --node pro --json vs checkout registry; registry-summary; verdict-from-session on the 2 latest session logs)
+    exit: "dead 6 -> 2 (visa rc=1, disk_monitor empty note), findings 4 (cell metadata.pulse_count, launchd 2 alarm(s), kbli detector_rc=1 result=divergence, meta token=dead); both session logs -> no HEALER_VERDICT line"
+    ts: "2026-10-07T10:51Z"
+    seat: claude-opus-5.5
+  - claim: Mini sees the same dead set and exit
+    cmd: tar bundle | ssh mini 'd=$(mktemp -d) ... bash run.sh $d mini'
+    exit: "dead 0 / 0, findings 0, disabled 1 / 1, exit 0 / 0"
+    ts: "2026-10-07T10:51Z"
+    seat: claude-opus-5.5
+dissent:
+  - seat: codex-o2 (round 1, finding 1)
+    objection: "A meta steward crash whose exception text is token=dead writes status error + that note and lands in findings."
+    status: CONFIRMED
+    reason: "Cured: each proof is bound to its producer's completed status (meta = warning); row M5; mutant R9c red."
+  - seat: codex-o2 (round 1, finding 2)
+    objection: "The allowlist is global, not bound to producer identity; metadata pulse_count null passes."
+    status: CONFIRMED
+    reason: "Cured: _COMPLETION_PROOF keyed by organ id; int pulse_count; rows X1/X2/C4/C5; mutants R15/R16/R11c red."
+  - seat: codex-o2 (round 1, finding 3)
+    objection: "A verdict covering part of the tick (incurable 0/1 of 2 patients) memoizes the whole tick."
+    status: CONFIRMED
+    reason: "Cured: the wrapper writes the tick total T into the prompt and passes --expect-total T; row part-of-the-work; mutants W10/W13-W17/V13/V14 red."
+  - seat: codex-o2 (round 1, finding 4)
+    objection: "A later malformed line yields unknown, then the escalation fallback can return incurable and skip."
+    status: CONFIRMED
+    reason: "Cured: only a MISSING line falls back; an invalid one is recorded unknown; row later-garbage-no-fallback; mutants W11/V12 red."
+  - seat: codex-o2 (round 2, new 1)
+    objection: "cell.organism with pulse_count -1 and no tier/action enters findings."
+    status: CONFIRMED
+    reason: "Cured: exact key set {pulse_count,tier,action}, int >= 0; rows C8-C11; mutants R11a-R11f red."
+  - seat: codex-o2 (round 2, on ollama r1 #2)
+    objection: "A missing verdict line still lets the escalation classifier return incurable and skip."
+    status: PLAUSIBLE
+    reason: "Declared, not acted: that is the unchanged pre-existing classifier the brief keeps for a missing line."
+  - seat: ollama-qwen3.5:9b (round 2, new)
+    objection: "Six inputs restating findings-only / dead outcomes."
+    status: PLAUSIBLE
+    reason: "Refuted as non-defects: each is the designed outcome; a findings-only tick spawns nothing, so no verdict line exists."
+residuals:
+  - "Spawn lever: on Pro today 4 of 6 dead organs move to findings, but visa (rc=1 ambiguous) and disk_monitor (empty note) stay dead/session, and receptor B reads 4/7: the next tick still spawns. Next levers: the visa and disk_monitor producers writing a completion shape, B's 4 probes."
+  - "The memo can skip only after a session writes a valid incurable 0/T line; the two latest Pro sessions predate the prompt (no line)."
+  - "The allowlist lives in the receptor: a producer changing its note shape moves its organ back to dead (spawn), never the other way."
+  - "Delivery owed after merge: ~/scripts/pro-healer.sh on Pro only after the Pro checkout contains the merge (merge-base --is-ancestor), .bak-<date>-pre<PR>, blob check, by a Claude session."

@@ -123,6 +123,18 @@ def summarize_registry(raw_json: str) -> tuple[list[str], list[str]]:
     return ids, curable
 
 
+def registry_findings(raw_json: str) -> list[str]:
+    """Ids of alive-with-findings organs; an absent bucket is none (old receptor)."""
+    try:
+        data = json.loads(raw_json)
+    except json.JSONDecodeError as exc:
+        raise ProbeReportError(f"malformed registry JSON: {exc}") from exc
+    findings = data.get("findings", []) if isinstance(data, dict) else None
+    if not isinstance(findings, list) or not all(isinstance(item, dict) for item in findings):
+        raise ProbeReportError("registry findings must be an object list")
+    return [str(item.get("id") or "(unknown)") for item in findings]
+
+
 def summarize_home_fork(raw_json: str) -> tuple[list[str], list[str]]:
     """Return (all drifted live paths, paths writable by this healer session)."""
     try:
@@ -271,10 +283,14 @@ def main(argv: list[str]) -> int:
     if command == "registry-summary" and len(argv) == 2:
         try:
             dead, curable = summarize_registry(payload)
+            findings = registry_findings(payload)
         except ProbeReportError as exc:
             sys.stderr.write(f"{exc}\n")
             return 3
-        sys.stdout.write(f"{len(dead)}\n{len(curable)}\n{','.join(dead)}\n")
+        sys.stdout.write(
+            f"{len(dead)}\n{len(curable)}\n{','.join(dead)}\n"
+            f"{len(findings)}\n{','.join(findings)}\n"
+        )
         return 0
     if command == "home-fork-summary" and len(argv) == 2:
         try:

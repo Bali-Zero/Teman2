@@ -1,0 +1,41 @@
+task_id: healer-registry-semantics
+mission: seat-utilization campaign 2026-10-05/07 (owner order "fai tu" on the Pro healer, 2026-10-06), third healer lever
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  The Pro healer stops treating a detector that ran on time and reported findings as a dead organ, and the spawned
+  session's verdict reaches the G11 memo: on Pro, a fresh sidecar (age <= 3 x expected_hb_seconds) with an unhealthy
+  status and a closed-allowlist proof that its detector completed is alive_with_findings (listed, not dead, no spawn on
+  its account); receptor A's reason is registry:<session>/<dead>-dead <findings>-findings; the session ends with one
+  HEALER_VERDICT line that the wrapper parses strictly into the memo record, and a missing line is ledgered and falls back
+  to the unchanged escalation classifier.
+constraints:
+  - The live copy ~/scripts/pro-healer.sh on Pro is NOT touched by this PR; delivery is a separate step after merge.
+  - scripts/proprioception.py is unchanged byte for byte.
+  - Nothing is silenced by accident - a crash, a cannot-verify run, an ambiguous exit code or unknown prose stays dead; a malformed findings bucket is registry-receptor-broken (visible).
+  - The Mini healer (infra/healer/healer-run.sh, exit code + dead count) sees the same dead set and exit as before (node gate).
+  - Only an incurable verdict ever lets the memo skip; partial and unknown spawn.
+  - No network, secrets or client data in tests or logs.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN a fresh unhealthy sidecar carries one live producer's completed-with-findings shape THEN the organ SHALL be in findings and not dead, and each shape's crash / cannot-verify twin SHALL stay dead.
+    probe: scripts/tests/test_healer_receptor_findings.py::test_branch_table
+  - text: WHEN an unhealthy sidecar has no completion proof THEN the organ SHALL stay dead with note "no detector completion evidence".
+    probe: scripts/tests/test_healer_receptor_findings.py::test_unhealthy_without_proof_is_dead_and_says_why
+  - text: WHEN the node is mini THEN the classification SHALL be unchanged.
+    probe: scripts/tests/test_healer_receptor_findings.py::test_mini_classification_is_unchanged
+  - text: WHEN only findings are reported THEN the wrapper SHALL NOT spawn and SHALL log them; WHEN dead and findings coexist THEN the reason SHALL be registry:<k>/<n>-dead <f>-findings.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_innocence_findings_only_do_not_spawn
+  - text: WHEN a session ends with a valid HEALER_VERDICT line THEN the memo SHALL record that verdict; WHEN the last candidate line is missing or malformed THEN it SHALL log verdict-line-missing and use the unchanged escalation classifier.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_session_verdict_reaches_the_memo_record
+  - text: WHEN the session log is parsed THEN the LAST line naming HEALER_VERDICT SHALL decide, strictly, with counts coherent with the word.
+    probe: scripts/tests/test_healer_session_verdict.py::test_session_verdict_branch_table
+  - text: WHEN the state is unchanged THEN only an incurable verdict SHALL skip; a new dead organ SHALL spawn even after incurable.
+    probe: scripts/tests/test_healer_session_verdict.py::test_a_new_dead_organ_spawns_even_after_incurable
+consumer_map:
+  - infra/launchagents/wrappers/pro-healer.sh - Pro healer, every 6 h (com.nuzantara.healer-pro.6h); live copy ~/scripts/pro-healer.sh on Pro (declared HOME-fork pair). Mini has no copy.
+  - scripts/healer_receptor_registry.py - read from the Pro and Mini checkouts by both healers; the Mini healer reads only the exit code and len(dead).
+  - scripts/healer_run_checks.py - registry-summary, read from the Pro checkout by the wrapper.
+  - scripts/healer_memo.py - verdict-from-session / record / check, read from the Pro checkout by the wrapper; state ~/.organism/healer-pro/memo.json on Pro.
