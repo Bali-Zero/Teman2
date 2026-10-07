@@ -33,22 +33,26 @@
 summary:
   updated_at: "2026-10-07"
   required_contexts: 14
-  executed: 7 # R1 gate, actionlint, Merah Putih, catE, organ, guard, antidotes — by the runner, every BASE workflow step accounted for
+  executed: 9 # R1 gate, actionlint, Merah Putih, catE, organ, guard, antidotes, Backend Tests, Harness floor — by the runner, every BASE workflow step accounted for
   not_applicable_rule: 0
-  blocked: 6
-  not_implemented: 1
+  blocked: 5
+  not_implemented: 0
   never_claim_parity_for: # exactly the contexts the runner does not execute (machine-checked by the suite)
     - "E2E Tests (Playwright)"
-    - "Backend Tests (Python)"
     - "CodeQL Analysis (python)"
     - "CodeQL Analysis (javascript)"
     - "Frontend Tests (Next.js) (mouth, true)"
-    - "Harness floor recompute"
     - "Visa Oracle fullstack smoke"
   parity_gaps: # steps of EXECUTED contexts whose hosted twin can differ from the local run
     - "catE-sovereignty-lint on a PR head: hosted runs the #40c model judgment (vendor key) and the PR-scoped prose scan; local runs the merge_group shape (whole tree, no model)"
     - "every container context runs the merge_group shape; PR-only steps (path sentinels) are not_applicable with reasons or run with the merge_group answer"
     - "a context with BASE judges (trusted_files, trusted_from_steps): a PR that changes a judge AND what it judges can be RED here and green hosted (FALSE_RED); a green with a changed judge is BLOCKED, never claimed"
+    - "service contexts (Backend Tests, Harness floor) run in linux/arm64 sandboxes on Pro's Colima; hosted is ubuntu-latest x64: wheels differ per arch (torch +cu130 aarch64), and the services run the docker.io arm64 twins of the ghcr mirror's amd64 copies"
+    - "Backend Tests: the install closure is resolved into a deps image at plan time from the candidate's pins (its unpinned extras resolve then); the install steps re-run verbatim against it offline"
+    - "Backend Tests: pip-audit runs in an egress sandbox with --no-deps --disable-pip on the same requirement files, so it audits the pins the locks list; hosted resolves them in a throwaway venv first and also audits what the locks leave unpinned (the cuda subtree, or a dependency a lock omits) — a vulnerable unlisted dependency can be red hosted and green here (installing it here would run wheel code with network)"
+    - "Backend Tests: node (24, the official image's) and the data the suite downloads (tiktoken cl100k_base, spaCy en_core_web_lg 3.8.0) are sha256-pinned in the matrix; hosted takes whatever the runner image and the network serve that day"
+    - "Backend Tests: matrix legs run one after another in fresh sandboxes (parallelism 1 on Colima 4 CPU / 8 GiB); hosted runs them on separate runners at once"
+    - "Harness floor: the Gear >= 2 verdict reader runs at plan time on the host with the operator's gh, reading the PR's commit status as it stands then; hosted read it when the queue ran"
 
 contexts:
   - name: "E2E Tests (Playwright)"
@@ -79,24 +83,103 @@ contexts:
     purpose: Aggregator over backend-static + 3 backend shards; proves the shards tiled the corpus exactly, using the BASE ref's partitioner.
     trusted_base_required: true
     local:
-      kind: trusted_pytest
-      cwd: apps/backend-rag
-      modules: [scripts/ci/test_shard_tests.py] # only the partitioner corpus is locally runnable today
-      needs: [python, postgres, network]
-    mapping: blocked
-    blocker: >-
-      The shards run the whole backend pytest corpus (needs the lock-pinned backend deps and a
-      Postgres); the partition guard needs shard receipts produced by those runs. Backend venv here is
-      a symlink into the main checkout (writing through it is outside the worktree) and no Postgres is up.
-    partial_evidence:
-      - argv: [$PY, scripts/ci/test_shard_tests.py]
-        rc: 0
-        seconds: 0.4
-        result: 31 tests OK (the partitioner's own guilt+innocence corpus, workflow step 4 of 8)
-    smallest_next_action: >-
-      Wire `trusted_pytest`: extract scripts/ci/shard_tests.py from BASE into a temp dir (workflow step 5),
-      run its `--check` partition pass against the candidate's test tree without executing the shards
-      (proves tiling, no Postgres needed); leave shard execution to a docker-backed lane.
+      check: ctx.backend-tests
+      where: container
+      expressions: true # a service context: the job chain, its services, its lock and its `${{ }}` are reproduced (runner v0.6.0)
+      runs_when: backend-tests # the jobs' `if:` reads the classifier's run_backend_tests: the trusted change_map stands in
+      memory: 6g
+      bare_venv: false # `uv pip install --system` writes into the interpreter setup-python names, not a venv
+      service_images: # ci-image-mirror.yml copies docker.io/library/<tag> (linux/amd64, digests preserved); its arm64 twin stands in here
+        "ghcr.io/bali-zero/ci-mirror/postgres:15": "postgres:15"
+        "ghcr.io/bali-zero/ci-mirror/redis:7": "redis:7"
+      deps: # the closure the install steps ask for, built into the deps image from the candidate's own files (pins only)
+        requirements:
+          - apps/backend-rag/requirements.lock.txt
+          - apps/backend-rag/requirements-ci-tools.txt
+        packages: # the shard install's unpinned line
+          - pytest
+          - pytest-cov
+          - pytest-asyncio
+          - pytest-mock
+          - fakeredis
+          - pytest-xdist
+        node: "24" # the suite shells out to node (KBLI gold content); ubuntu-latest carries one, its major may differ
+        fetch: # public files the suite downloads at run time hosted (tiktoken's BPE table, cached under its sha1(url) name)
+          - url: https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken
+            sha256: 223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7 # pragma: allowlist secret — a public file's digest
+            path: /tmp/data-gym-cache/9b5ad71b2ce5302211f9c61530b329a4922fc6a4
+          # presidio's default NLP engine: hosted, AnalyzerEngine() pip-installs it from GitHub at test time (spacy 3.8 -> 3.8.0)
+          - url: https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+            sha256: 293e9547a655b25499198ab15a525b05b9407a75f10255e405e8c3854329ab63 # pragma: allowlist secret — a public file's digest
+            path: /opt/wheels/en_core_web_lg-3.8.0-py3-none-any.whl
+            install: true
+      egress_trusted: [apps/backend-rag/requirements-ci-tools.txt] # pip-audit's own pin: BASE's, or the egress step does not run
+      needs: # the `changes` job on merge_group, as its outputs read there: the impact map is PR-lane only, so the full corpus runs
+        changes:
+          result: success
+          outputs:
+            run_backend_tests: "true"
+            impact_run_all: "true"
+            impact_selected_tests: ""
+      env:
+        HAS_CODECOV_TOKEN: "false" # `secrets.CODECOV_TOKEN != ''`: the repository holds no such secret (BASE note, 2026-08-23), hosted reads false
+      jobs:
+        - job_id: backend-static
+          steps:
+            - workflow_step: Cache dependencies (uv)
+              not_applicable: no cache layer; the deps image holds the closure the install step re-runs offline
+            - workflow_step: Install dependencies (uv, lock-pinned)
+            - workflow_step: pip-audit
+              side: egress # the vulnerability service is on the network; the step runs alone with the three files it reads
+              inputs:
+                [
+                  apps/backend-rag/requirements.lock.txt,
+                  apps/backend-rag/requirements-prod.lock.txt,
+                  apps/backend-rag/requirements-ci-tools.txt,
+                ]
+              rewrite: # no resolution through pip: the lock is the closure, and no candidate-chosen package executes with network
+                - [
+                    "pip-audit --strict --requirement",
+                    "pip-audit --strict --no-deps --disable-pip --requirement",
+                  ]
+            - workflow_step: Mypy type check (core + models)
+            - workflow_step: Import chain gate
+            - workflow_step: Check LLM cost tracking coverage
+            - workflow_step: Run core tests (fast gate — always run)
+            - workflow_step: Upload core-gate test results
+              not_applicable: a continue-on-error diagnostic upload (BASE says nothing gates on it); there is no artifact store here
+        - job_id: backend-shard
+          steps:
+            - workflow_step: Runner probe (temporary, day-0)
+            - workflow_step: Cache dependencies (uv)
+              not_applicable: no cache layer; the deps image holds the closure the install step re-runs offline
+            - workflow_step: Install dependencies (uv, lock-pinned)
+            - workflow_step: Bootstrap SQLModel tables
+            - workflow_step: Apply database migrations
+            - workflow_step: Run backend stability gate
+            - workflow_step: Compute this shard's chunk
+            - workflow_step: Run unit tests (sharded)
+            - workflow_step: Upload shard receipts
+              emulate: true # the runner copies the shard's receipts out and lays them where the fan-in downloads them
+      steps:
+        - workflow_step: Assert every upstream job succeeded
+        - workflow_step: Download shard receipts
+          emulate: true
+        - workflow_step: Verify the partitioner's own guilt and innocence corpus
+        - workflow_step: Extract trusted partitioner (base ref)
+        - workflow_step: Partition guard — the shards tiled the corpus exactly
+        - workflow_step: Prove each shard reported executed tests
+        - workflow_step: Combine shard coverage and enforce the threshold
+        - workflow_step: Upload coverage to Codecov
+          not_applicable: >-
+            codecov-action under `if: env.HAS_CODECOV_TOKEN == 'true'`, false here and hosted (no CODECOV_TOKEN secret)
+        - workflow_step: Report shard balance
+        - workflow_step: Upload test results
+          not_applicable: >-
+            an `if: always()` upload with if-no-files-found warn cannot fail the job; there is no artifact store here
+    mapping: executed
+    coverage: full
+    blocker: ""
 
   - name: "CodeQL Analysis (python)"
     workflow_file: .github/workflows/security.yml
@@ -308,21 +391,48 @@ contexts:
     purpose: Recomputes the deterministic gear floor from the diff (base-ref checkout, "grader self-protects"), compares it to the declared evidence/brief.yml gear, validates the Gear-3 pack and the Bites contract.
     trusted_base_required: true
     local:
-      kind: rule
-      cwd: "."
-      cmd: []
-      needs: [python, github_hosted]
-    mapping: not_implemented
-    blocker: >-
-      Needs PR context the local runner does not model: BASE/HEAD sha + PR number for
-      scripts/ci/hotzone_changed_files.sh (queries the GitHub API), the per-PR evidence-path resolver,
-      and `vars.HARNESS_ENFORCEMENT`. The workflow deliberately runs the BASE copy of
-      evidence_pack_lint.py, which a local run must reproduce via `git show BASE:` to stay honest.
-      Only the lint's own selftest ran here (rc=0, 0.2 s), which is not this check.
-    smallest_next_action: >-
-      Implement a `harness_floor` rule: enumerate changed files with `git diff --name-only BASE...HEAD`
-      (no gh), run BASE's evidence_pack_lint.py --changed-files-file, and compare gear vs floor; mark
-      BLOCKED when evidence_paths.py or the hot-zone list is not resolvable offline.
+      check: ctx.harness-floor
+      where: container # the job checks out BASE and reads the candidate through git: its scripts are BASE's by construction
+      expressions: true
+      vars: {} # repository variables read 2026-10-07 (GET actions/variables): HARNESS_ENFORCEMENT is unset, so `vars.*` is '' as hosted
+      trusted_files: [scripts/ci/harness_gate_read.py]
+      steps:
+        - workflow_step: Kill switch
+        - workflow_step: Install linter dependency (PyYAML)
+        - workflow_step: Enumerate changed files (merge-base anchored)
+          env: { GH_TOKEN: "" } # the merge-base resolves inside the sandbox, so the PR-files API fallback that would read it never runs
+        - workflow_step: Resolve this PR's evidence paths
+        - workflow_step: Compute measured net lines (merge-base anchored, best-effort)
+        - workflow_step: Capture workflow patch for the path-term exemption
+        - workflow_step: Hot-zone list may only grow below floor 3
+        - workflow_step: Compute deterministic floor from diff
+        - workflow_step: Does this PR's own diff carry evidence/brief.yml?
+        - workflow_step: Not a harness task (no brief, floor == 1 — not applicable)
+        - workflow_step: NOTICE (grace period) then FAIL — floor==2 via the SIZE term alone, no evidence/brief.yml
+        - workflow_step: FAIL — floor >= 2 diff with no evidence/brief.yml (no grace period applies)
+        - workflow_step: Compare declared gear to the deterministic floor
+        - workflow_step: Not a gated task (gear 1 — fable-gate not applicable)
+        - workflow_step: Gear-3 — validate evidence/pack.yml against the Evidence Pack contract
+        - workflow_step: Gear >= 2 — read the real gate verdict
+          side: host # the verdict lives in a GitHub commit status: BASE's reader runs on the host and reads it with the operator's gh
+          argv:
+            - $PY
+            - scripts/ci/harness_gate_read.py
+            - --event-name
+            - merge_group
+            - --repo
+            - "${{ github.repository }}"
+            - --pr-head-sha
+            - ""
+            - --merge-group-head-ref
+            - "${{ github.event.merge_group.head_ref }}"
+            - --dispatch-sha
+            - ""
+          env: { GH_TOKEN: "" } # stripped from every trusted environment; gh answers with its stored login, a read
+        - workflow_step: Bites contract — parse this PR's evidence pack
+    mapping: executed
+    coverage: full
+    blocker: ""
 
   - name: "actionlint — workflow schema + expression gate"
     workflow_file: .github/workflows/actionlint.yml

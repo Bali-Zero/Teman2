@@ -1,4 +1,4 @@
-# localci — local CI runner and inert release stub (v0.5.0)
+# localci — local CI runner and inert release stub (v0.6.0)
 
 A durable coordinator that runs checks against a frozen candidate and refuses to call anything green on
 missing evidence. It is a **non-required, single-host** gate: it does not replace GitHub branch protection — until the
@@ -99,6 +99,42 @@ of a moving checkout (Pro's backend-rag venv carries `cell_core` from the main c
 HEAD) drifts whenever the checkout moves mid-run, and every receipt goes STALE, as it should. Measure from a venv that tracks
 nothing (on Pro: `~/.nuzantara-pilots/local-ci/executor-a/venv311`, pyenv 3.11.11 + PyYAML + pytest) and diff its freeze at
 the start and the end of a run when a STALE needs explaining.
+
+## Service contexts (v0.6.0)
+
+A context with `expressions: true` is a **service context** (kind `contained_jobs`): its BASE job and every job it `needs:`
+(listed in `local.jobs`, each mapped step by step like any container context) are planned from the BASE workflow and run in
+order, each matrix leg in its own fresh sandbox. What the runner reproduces, and what it refuses:
+
+| surface | how | BLOCKED when |
+|---|---|---|
+| `services:` | BASE's spec only (the candidate's is never read); image via the operator-pinned `service_images` map, id pinned at plan; BASE's literal `env:`; docker health flags only; started before the job, removed after it (`docker rm -f`, verified) | the tag has no pinned stand-in (tag drift), an option is not a health flag, a port map is not identity, env holds an expression, or a service is not healthy within its own health budget |
+| networking | the first service owns a loopback-only netns (`--network none`); other services and the job join it, so `localhost:5432` answers as on hosted | — |
+| `${{ }}` | `gh_expr.py` (runner-owned, sha-pinned, shipped beside the driver): `github`, `env`, `matrix`, `needs`, `steps`, `vars`, `runner`, status functions; `if:`, `env:`, `run:` evaluated at run time, `continue-on-error`, step `timeout-minutes`, `$GITHUB_OUTPUT` | `secrets.*`, `github.token`, `hashFiles`, `inputs`, any other function, a `GITHUB_ENV`/`GITHUB_PATH` write — a value hosted holds is never read as `''` |
+| install steps | verbatim, offline: the **deps image** (`localci-deps:<recipe digest>`) is the candidate image plus a wheelhouse at `/opt/wheels` built at plan time from the candidate's requirement files reduced to `name==version` pins (`--only-binary`: no build backend runs), the declared extra packages, `deps.node`, and `deps.fetch` files (https, sha256-pinned, outside the tree); verified by label and layer chain on the pinned candidate image | a requirement file is absent, the build fails, or a fetch pin differs |
+| egress step | a step marked `side: egress` runs alone in a bridged sandbox holding only its named `inputs`, after a one-shot `rewrite`; its `egress_trusted` files must equal BASE | an input differs from BASE, the rewrite does not match once |
+| host reader | a step marked `side: host` must be `$PY <a trusted file present at BASE>`: the BASE copy runs under `-I` at **plan time** (secrets stripped; `gh` answers with its stored login, a read) and its rc is frozen into the plan, folded in at the step's position | any other argv |
+| artifacts | `upload-artifact`/`download-artifact` marked `emulate: true` are copied out of the stopped sandbox and laid into the fan-in's tree (≤ 256 MiB) | an upload with no files and `if-no-files-found: error` fails the step, as hosted |
+| `needs` | each upstream job's result (`success`/`failure`) and the matrix's `needs:` stand-ins (the `changes` job's merge_group outputs) | a needed job neither planned nor stood in; an upstream that could not run stops the chain (ERROR/BLOCKED, never a downstream green) |
+
+`runs_when` reads the trusted change_map: when hosted would skip the jobs, the context is `NOT_APPLICABLE` (a skipped required
+context is satisfied). The workflow file and any changed `.gitattributes` are judges: a green won with BASE's copy while the
+candidate changed it is reported BLOCKED. `bare_venv: false` keeps the image interpreter (the job installs with
+`uv pip install --system`).
+
+### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB)
+
+Checks run one after another and so do a service context's legs (parallelism 1): the backend shards take up to 6 GiB each
+and the VM has 8. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a sibling lane's runs shared the host.
+
+| check | wall s | in-sandbox CPU s | legs (wall / CPU s) |
+|---|---|---|---|
+| ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 |
+| ctx.harness-floor | 67 | 0.5 | one leg; the Gear ≥ 2 reader ran at plan |
+| whole run, 14 required contexts | 2267 | — | plan 6 s with the deps image cached |
+
+The deps image (`localci-deps:<digest16>`, 9.85 GB: 294 aarch64 wheels, node 24, the fetched files) is built once per
+recipe: 394 s cold at plan (download, install, export), then a cache hit while the candidate's pins and the image are unchanged.
 
 ## Security: Pysa taint judge (`security.pysa_python`)
 

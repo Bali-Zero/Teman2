@@ -1,0 +1,53 @@
+task_id: localci-services-b-1007
+mission: LOCALCI-SOVEREIGN (phase B, PR-B1)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Declared by the mandate: the change decides what a local verdict on two required contexts may claim, and it
+  starts service containers and builds a dependency image beside the candidate sandbox. It flips nothing — GitHub
+  stays the writer, no workflow, branch protection or status is touched.
+l_level: L2
+gate_class: opus
+objective: >-
+  Make scripts/localci/runner.py execute the service contexts of phase B (docs/specs/localci-sovereign-2026-10-07.md
+  §2): Backend Tests (Python) — backend-static, three backend shards beside Postgres and Redis, and the fan-in — and
+  Harness floor recompute, each planned from the BASE workflow job chain with every step accounted for, so that
+  hosted_compare moves both rows from LOCAL_BLIND to AGREE on merged hosted-green commits.
+constraints:
+  - No .github/ file, branch protection or commit status is touched; nothing is posted.
+  - Candidate code runs only inside containers; services take BASE's spec and BASE's literal env, never a host value.
+  - Nothing is read from ~/.nuzantara-secrets.env; no secret is read or printed; no paid per-token API.
+  - No npm install/ci on a host or in a worktree; the dependency closure is built inside docker.
+  - A context is green only when every step it runs returned 0; a step or service that cannot run is BLOCKED, never skipped.
+acceptance:
+  - text: WHEN a BASE service names an image tag without an operator-pinned stand-in (tag drift), or declares options other than health flags, a non-identity port or an expression in env, the context SHALL be BLOCKED naming why.
+    probe: "test_service_contexts.py::test_a_service_the_runner_cannot_reproduce_is_blocked_naming_why"
+  - text: WHEN a service does not become healthy within its health budget, the job SHALL be BLOCKED and the service removed.
+    probe: "test_service_contexts.py::test_an_unhealthy_service_blocks_the_job_and_is_torn_down"
+  - text: WHEN host variables named like secrets are set, no service SHALL receive any env key but BASE's literal map, and no value SHALL ride on a docker argv.
+    probe: "test_service_contexts.py::test_no_host_secret_reaches_a_service_or_rides_on_its_argv"
+  - text: WHEN the candidate rewrites the service spec in its workflow, the BASE spec SHALL be the one planned and a green SHALL be reported BLOCKED.
+    probe: "test_service_contexts.py::test_the_base_service_spec_is_the_one_planned_whatever_the_candidate_writes"
+  - text: WHEN an expression reads a value hosted holds and the run does not (secrets, github.token, hashFiles, inputs), the context SHALL be BLOCKED, never evaluated as ''.
+    probe: "test_service_contexts.py::test_a_value_hosted_holds_and_this_run_does_not_is_refused_never_read_as_empty"
+  - text: WHEN run on Pro against merged hosted-green main commits, hosted_compare SHALL report AGREE for Backend Tests and Harness floor, and FALSE_GREEN = 0.
+    probe: "measure.sh f5-main-"
+  - text: WHEN an unpushed candidate fails one backend test, only Backend Tests SHALL be RED; WHEN it touches a hot zone without a brief, only Harness floor SHALL be RED; hosted_compare SHALL say HOSTED_PENDING, never AGREE.
+    probe: "measure.sh f-guilt-"
+  - text: WHEN candidate code is about to run, the seal SHALL already be minted, and it SHALL re-derive UNCHANGED at the end; no container or network of the run SHALL survive it.
+    probe: "status --seal, docker ps -a and docker network ls before and after"
+assumptions:
+  - text: The arm64 twins of postgres:15 and redis:7 behave as the amd64 copies ci-image-mirror.yml serves hosted for what the suite asks of them.
+    status: unverified
+    note: Same tags, same upstream (docker.io/library), different architecture; the mirror's amd64 digests are not pullable here without a token.
+    probe: a backend test that passes on one architecture and fails on the other
+  - text: The wheels pip resolves for linux/aarch64 at plan time give the suite the same answers as the x86_64 wheels hosted installs.
+    status: unverified
+    note: Pins are the candidate's own; torch ships +cu130 aarch64 here. Listed in the matrix parity_gaps.
+    probe: a FALSE_RED or FALSE_GREEN on Backend Tests traced to a wheel's architecture
+consumer_map:
+  - scripts/localci/hosted_compare.py on Pro — its AGREE rows for Backend Tests and Harness floor are this change's output.
+  - docs/specs/localci-sovereign-2026-10-07.md §2 phase B (AGREE >= 12 of 14 with A2 and PR-B2).
+appetite:
+  wall_clock_hours: 8
+  adversarial_rounds: 2
