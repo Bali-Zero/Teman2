@@ -111,6 +111,20 @@ def test_continue_on_error_covers_a_signal_as_hosted_but_the_step_still_has_no_v
     assert [s["status"] for s in got] == ["ERROR", "PASS"]
 
 
+def test_the_merge_group_shas_are_the_hex_ids_of_base_and_of_the_candidate_built_on_it(tmp_path):
+    (tmp_path / "f.txt").write_text("x\n")
+    gh = runner.github_ctx("b" * 40, 1, "o/r")
+    script = 'test "$(git rev-parse main)" = "${{ github.event.merge_group.base_sha }}"\ntest "$(git rev-parse HEAD)" = "${{ github.sha }}"\n' \
+             'echo "${{ github.event.merge_group.head_sha }}" | grep -qxE "[0-9a-f]{40}"\n'
+    cfg = {"context": "t", "root": str(tmp_path), "env": {}, "job_env": {}, "git_index": True, "history": {"added": [], "base": []},
+           "expr": {"github": gh, "runner": {}}, "steps": [{"name": "ids", "argv": ["bash", "-e", "{0}"], "script": script}]}
+    (tmp_path / "cfg").mkdir()
+    (tmp_path / "cfg" / "steps.json").write_text(json.dumps(cfg))
+    rc = subprocess.run([sys.executable, "-I", str(runner.STEPS_DRIVER), str(tmp_path / "cfg" / "steps.json"), str(tmp_path / "j.xml")],
+                        capture_output=True).returncode
+    assert rc == 0 and runner.parse_expr_junit(tmp_path / "j.xml")[0]["status"] == "PASS"
+
+
 @pytest.mark.parametrize("body", ['echo "k<<END" >> "$GITHUB_OUTPUT"; echo v >> "$GITHUB_OUTPUT"', 'echo "garbage" >> "$GITHUB_OUTPUT"',
                                   'echo "k<<" >> "$GITHUB_OUTPUT"'])
 def test_a_malformed_github_output_fails_its_step_as_hosted(tmp_path, body):

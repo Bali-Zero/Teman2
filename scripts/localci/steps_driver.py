@@ -126,6 +126,7 @@ def expr_steps(cfg: dict, root: str, prefix: str, gh: Path, suite) -> tuple[int,
         senv = {**jenv, **{k: X.substitute(str(v), ctx, status) for k, v in (st.get("env") or {}).items()}}
         ctx["env"] = senv
         outp = gh / f"github_output-{i}"
+        outp.write_text("")   # a fresh file per step, as hosted hands one
         path = os.pathsep.join(p for p in (prefix, os.environ.get("PATH")) if p)
         env = {**os.environ, "PATH": path, **cfg.get("env", {}), **senv, "GITHUB_OUTPUT": str(outp), "GITHUB_STEP_SUMMARY": str(gh / f"summary-{i}")}
         Path(env.get("RUNNER_TEMP", "/tmp")).mkdir(parents=True, exist_ok=True)
@@ -185,6 +186,11 @@ def main(cfg_path: str, junit_path: str) -> int:
     root = cfg["root"]
     if cfg.get("git_index"):
         index_tree(root, cfg.get("history"), Path(cfg_path).parent / "base")
+        if (gh := (cfg.get("expr") or {}).get("github")):   # the merge_group ids as hosted hands them: hex, BASE and the candidate on it
+            ids = {r: subprocess.run(["git", "rev-parse", r], cwd=root, capture_output=True, text=True, check=True).stdout.strip()
+                   for r in ("main", "localci")}
+            gh["sha"] = ids["localci"]
+            gh["event"]["merge_group"].update(base_sha=ids["main"], head_sha=ids["localci"])
     if cfg.get("checkout") == "base":   # a job that checks out its BASE ref (`with: ref: <base sha>`) and reads the candidate through git
         subprocess.run(["git", "checkout", "-q", "--detach", "main"], cwd=root, check=True)
     prefix = os.pathsep.join(p for p in (bare_python(cfg.get("path_prefix") or "") if cfg.get("venv") else "", cfg.get("path_prefix")) if p)

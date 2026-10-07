@@ -699,7 +699,8 @@ def _gh_expr():
 
 
 def github_ctx(base: str, pr: int | None, repo: str) -> dict:
-    """The merge_group event inside the sandbox, where `main` is the rebuilt BASE commit and `localci` the candidate's."""
+    """The merge_group event inside the sandbox, where `main` is the rebuilt BASE commit and `localci` the candidate's; the driver
+    replaces these two names with their hex ids once it has built them (hosted hands hex ids, and judges check the shape)."""
     head_ref = f"refs/heads/gh-readonly-queue/main/pr-{pr}-{base}" if pr else ""
     return {"event_name": "merge_group", "repository": repo, "sha": "localci", "ref": head_ref or "refs/heads/localci", "actor": "localci",
             "event": {"action": "checks_requested",
