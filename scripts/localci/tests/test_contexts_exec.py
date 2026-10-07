@@ -1,8 +1,10 @@
-"""Required contexts the runner EXECUTES (v0.4.0): every BASE workflow step accounted for, BASE judges, guilt and innocence."""
+"""Required contexts the runner EXECUTES (v0.4.0; container shape v0.5.0): every BASE workflow step accounted for, BASE judges, guilt and innocence."""
 from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -286,6 +288,68 @@ def test_a_changed_gitattributes_keeps_a_contained_green_from_being_claimed(fx):
     assert runner.steps_verdict([{"name": "x", "status": "PASS", "reason": "rc=0"}], spec)[0] == "BLOCKED"
 
 
+@pytest.mark.parametrize("pin,want", [("3.12", ""), ("3.11", "/opt/py311/bin"), ("3.x", ""), ("3.10", None), ("", None)])
+def test_a_setup_python_pin_selects_the_default_or_an_extra_interpreter_or_blocks(pin, want):
+    job = {"steps": [{"uses": "actions/setup-python@v7", "with": {"python-version": pin}}]}
+    prefix, why = runner.select_python(job, "3.12.15", {"3.11": "/opt/py311/bin"})
+    assert prefix == want and (why is None) == (want is not None)
+    assert runner.select_python({"steps": [{"run": "true"}]}, "3.12.15") == ("", None)
+
+
+def test_judges_named_by_the_steps_come_from_base_and_a_sentinels_path_list_does_not(tmp_path):
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {**BASE_EXTRA, "infra/gate/check.py": "", "infra/gate/test_check.py": "",
+                                                       "scripts/product.py": "", "scripts/noted.py": "", "scripts/lib/x.sh": ""})
+    steps = [{"name": "run", "script": "python3 scripts/judge.py\npython3 -m pytest infra/gate/ -q\n# python3 scripts/noted.py\n"},
+             {"name": "sentinel", "trusted_scan": False, "script": 'case "$f" in scripts/product.py|infra/other/) ;; esac\n'},
+             {"name": "argv", "argv": ["bash", "scripts/lib/x.sh", "scripts/"]}]
+    assert runner.named_scripts(fx["repo"], fx["base"], steps) == sorted([JUDGE, "infra/gate/check.py", "infra/gate/test_check.py", "scripts/lib/x.sh"])
+    fx, s = ran(tmp_path / "plan", {"docs/new.md": "clean\n"}, host_ctx(trusted_files=[], trusted_from_steps=True))
+    assert s["checks"]["ctx.judge"]["status"] == "PASS" and plan_spec(fx)["trusted_files"] == [JUDGE]
+
+
+def test_the_sandbox_rebuilds_base_under_the_candidate_so_main_and_origin_main_name_it(tmp_path):
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "added\n", "docs/ok.md": "changed\n"}, {**BASE_EXTRA, "scripts/gone.py": "x = 1\n"})
+    repo = fx["repo"]
+    fr.git(repo, "rm", "-q", "scripts/gone.py")
+    os.symlink("ok.md", repo / "docs" / "link.md")
+    fr.git(repo, "add", "-A")
+    fr.git(repo, "commit", "-q", "-m", "delete + symlink")
+    cand = fr.git(repo, "rev-parse", "HEAD")
+    hist = runner.history_delta(repo, fx["base"], cand)
+    assert sorted(hist["added"]) == ["docs/link.md", "docs/new.md"] and sorted(p for p, _, _ in hist["base"]) == ["docs/ok.md", "scripts/gone.py"]
+    root, cfg = tmp_path / "w", tmp_path / "cfg"
+    root.mkdir()
+    subprocess.run(f"git -C {repo} archive {cand} | tar -x -C {root}", shell=True, check=True)
+    for (rel, _, _), blob in zip(hist["base"], runner.read_blobs(repo, [o for _, _, o in hist["base"]])):
+        (cfg / "base" / rel).parent.mkdir(parents=True, exist_ok=True)
+        (cfg / "base" / rel).write_bytes(blob)
+    probe = ("set -e; git rev-parse main^{tree} origin/main^{tree} HEAD^{tree} > ../trees; git fetch -q origin main; "
+             "git rev-parse FETCH_HEAD^{tree} >> ../trees; git diff --name-only main HEAD > ../diff; git count-objects -v > ../objects")
+    (cfg / "steps.json").write_text(json.dumps({"context": "t", "root": str(root), "git_index": True, "history": hist, "env": {},
+                                                 "steps": [{"name": "probe", "argv": ["bash", "-c", probe]}]}))
+    r = subprocess.run([sys.executable, "-I", str(runner.STEPS_DRIVER), str(cfg / "steps.json"), str(tmp_path / "junit.xml")],
+                       capture_output=True, text=True, env={**fr.GIT_ENV, "HOME": str(tmp_path)})
+    assert r.returncode == 0, r.stdout + r.stderr
+    base_tree, cand_tree = fr.git(repo, "rev-parse", f"{fx['base']}^{{tree}}"), fr.git(repo, "rev-parse", f"{cand}^{{tree}}")
+    assert (tmp_path / "trees").read_text().split() == [base_tree, base_tree, cand_tree, base_tree]
+    assert sorted((tmp_path / "diff").read_text().split()) == ["docs/link.md", "docs/new.md", "docs/ok.md", "scripts/gone.py"]
+    assert "count: 0" in (tmp_path / "objects").read_text().splitlines()   # packed, as a fresh fetch is
+
+
+def test_a_context_budget_from_the_matrix_bounds_its_steps(tmp_path):
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {**BASE_EXTRA, "scripts/slow.py": "import time\ntime.sleep(60)\n"})
+    ctx = host_ctx(timeout_s=2, trusted_files=[JUDGE, "scripts/slow.py"])
+    ctx["local"]["steps"][0] = {"workflow_step": "selftest", "argv": ["$PY", "scripts/slow.py"]}
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])))
+    fr.run(fx)
+    c = fr.status(fx)["checks"]["ctx.judge"]
+    assert plan_spec(fx)["timeout_s"] == 2 and c["status"] == "ERROR" and "2s budget" in c["reason"]
+    ctx["local"]["timeout_s"] = 10 ** 6
+    fx2 = fr.make_repo(tmp_path / "big", {"docs/new.md": "x\n"}, {**BASE_EXTRA, "scripts/slow.py": "pass\n"})
+    fr.plan(fx2, "--contexts-file", str(fr.contexts_file(fx2, tmp_path / "big.yaml", [ctx])))
+    assert "timeout_s" not in plan_spec(fx2)
+
+
 # --------------------------------------------------------------- container: BASE steps verbatim, in the candidate sandbox
 @needs_docker
 @pytest.mark.parametrize("candidate,want", [
@@ -303,6 +367,36 @@ def test_a_contained_context_runs_base_steps_verbatim_with_its_guilt_control(tmp
     assert st["seal_first"]["why"].startswith("trusted checks done") and f"seal={st['seal_first']['seal']}" in capsys.readouterr().out
     runner.main(["status", "--run-dir", str(fx["run"]), "--seal", st["seal_first"]["seal"]])
     assert "seal mismatch" not in (json.loads((fx["run"] / "status.json").read_text())["freshness"]["stale_reason"] or "")
+
+
+SANDBOX_PROBE = (
+    "set -euxo pipefail\n"   # traced: the log names the line that broke
+    'test "$(git rev-parse main^{tree})" = "$BASE_TREE"\n'                                      # BASE rebuilt under the candidate
+    'git fetch -q origin main && test "$(git rev-parse origin/main)" = "$(git rev-parse main)"\n'
+    'test "$(git diff --name-only main HEAD)" = docs/new.md\n'
+    "python -c 'import os, sys, time; sys.exit(time.time() - os.stat(\"docs/ok.md\").st_mtime > 3600)'\n"   # checked out now
+    'test "$HOME" = /home/runner && touch "$HOME/written"\n'
+    'test "$(getent passwd "$(id -u)" | cut -d: -f7)" = /bin/bash\n'                             # tmux starts the login shell
+    "(sleep 0.1 &); sleep 1; ! ps -eo stat= | grep -q '^Z'\n"                                    # an init reaps the orphan
+    "python -c 'import sys; sys.exit(sys.version_info[:2] != (3, 11))'\n"                        # the setup-python 3.11 pin
+    "{ crontab -l 2>&1 || true; } | grep -q '^no crontab for'\n")                              # as hosted, not EACCES
+
+
+@needs_docker
+def test_the_sandbox_looks_like_a_fresh_hosted_checkout_of_the_pinned_job(tmp_path):
+    wf = {"name": "sb", "on": {"pull_request": None}, "jobs": {"sb": {"runs-on": "ubuntu-latest", "steps": [
+        {"uses": "actions/checkout@v7"}, {"uses": "actions/setup-python@v7", "with": {"python-version": "3.11"}},
+        {"name": "probe", "run": SANDBOX_PROBE}]}}}
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {".github/workflows/sb.yml": yaml.safe_dump(wf), "scripts/empty.py": "", "docs/ok.md": "fine\n"})
+    ctx = {"name": "SB", "workflow_file": ".github/workflows/sb.yml", "job_id": "sb", "mapping": "executed", "local": {
+        "check": "ctx.judge", "where": "container", "git_index": True, "trusted_files": ["scripts/empty.py"],   # an empty BASE blob is a blob
+        "steps": [{"workflow_step": "probe", "env": {"BASE_TREE": fr.git(fx["repo"], "rev-parse", f"{fx['base']}^{{tree}}")}}]}}
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])), "--isolation", "container",
+            "--isolation-image", fr.ISOLATION_IMAGE)
+    fr.run(fx)
+    c = fr.status(fx)["checks"]["ctx.judge"]
+    assert c["status"] == "PASS", (c, (fx["run"] / "logs" / "ctx.judge.log").read_text()[-3000:])
+    assert plan_spec(fx)["path_prefix"] == "/opt/py311/bin" and json.loads((fx["run"] / "state" / "plan.json").read_text())["isolation"]["init"] is True
 
 
 # --------------------------------------------------------------- the real matrix

@@ -23,19 +23,40 @@ GIT_ID = {"GIT_AUTHOR_NAME": "localci", "GIT_AUTHOR_EMAIL": "localci@invalid", "
           "GIT_COMMITTER_EMAIL": "localci@invalid"}
 
 
-def index_tree(root: str) -> None:
-    """Steps that call `git ls-files`/`git diff` see the frozen tree as one commit. The tar carries tracked blobs only, so
-    `add -f` indexes exactly the candidate's tracked set (ignored-but-tracked files included)."""
+def index_tree(root: str, history: dict | None, base_dir: Path) -> None:
+    """Steps that call `git ls-files`/`git diff` see the frozen tree as a commit. The tar carries tracked blobs only, so `add -f`
+    indexes exactly the candidate's tracked set (ignored-but-tracked files included). With `history`, BASE is rebuilt first —
+    the candidate's index minus the paths it added, plus the BASE blob and mode of every path it changed (<cfg dir>/base/<path>) — and
+    the candidate commit sits on it: `main`, `origin/main` and a fetch of `origin main` (origin = this repo) all name BASE."""
     env = {**os.environ, **GIT_ID}
-    for argv in (["git", "init", "-q"], ["git", "add", "-A", "-f"], ["git", "commit", "-q", "--no-verify", "-m", "localci candidate tree"]):
-        subprocess.run(argv, cwd=root, env=env, check=True, stdout=subprocess.DEVNULL)
+
+    def git(*args: str, data: str | None = None) -> str:
+        return subprocess.run(["git", *args], cwd=root, env=env, input=data, check=True, capture_output=True, text=True).stdout.strip()
+
+    git("init", "-q", "-b", "localci")
+    git("add", "-A", "-f")
+    if history is not None:
+        git("update-index", "--force-remove", "-z", "--stdin", data="".join(f"{p}\0" for p in history["added"]))
+        paths = [str(base_dir / p) for p, _, _ in history["base"]]
+        oids = git("hash-object", "-w", "--no-filters", "--stdin-paths", data="".join(f"{p}\n" for p in paths)).split() if paths else []
+        if oids != [o for _, _, o in history["base"]]:
+            raise RuntimeError("a BASE blob shipped into the sandbox does not hash to the BASE object it claims to be")
+        git("update-index", "--index-info", data="".join(f"{m} {o}\t{p}\n" for p, m, o in history["base"]))
+        base = git("commit-tree", git("write-tree"), "-m", "localci BASE")
+        git("update-ref", "refs/heads/main", base)
+        git("update-ref", "refs/remotes/origin/main", base)
+        git("remote", "add", "origin", root)
+        git("update-ref", "HEAD", base)
+        git("add", "-A", "-f")
+    git("commit", "-q", "--no-verify", "--allow-empty", "-m", "localci candidate tree")
+    git("repack", "-a", "-d", "-q")   # packed, as a fresh fetch is: thousands of loose objects invite an auto-gc mid-step
 
 
 def main(cfg_path: str, junit_path: str) -> int:
     cfg = json.loads(Path(cfg_path).read_text())
     root = cfg["root"]
     if cfg.get("git_index"):
-        index_tree(root)
+        index_tree(root, cfg.get("history"), Path(cfg_path).parent / "base")
     gh = Path("/tmp/localci-gh")
     gh.mkdir(parents=True, exist_ok=True)
     suite = ET.Element("testsuite", name=cfg["context"])
@@ -46,7 +67,8 @@ def main(cfg_path: str, junit_path: str) -> int:
             skipped += 1
             ET.SubElement(case, "skipped", message=st["not_applicable"])
             continue
-        env = {**os.environ, **cfg.get("env", {}), **st.get("env", {}),
+        path = os.pathsep.join(p for p in (cfg.get("path_prefix"), os.environ.get("PATH")) if p)   # setup-python's stand-in
+        env = {**os.environ, "PATH": path, **cfg.get("env", {}), **st.get("env", {}),
                **{k: str(gh / f"{k.lower()}-{i}") for k in ("GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY")}}   # written, never read back
         Path(env.get("RUNNER_TEMP", "/tmp")).mkdir(parents=True, exist_ok=True)
         argv = st["argv"]

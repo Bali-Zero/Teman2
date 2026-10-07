@@ -11,7 +11,9 @@
 #   not_run: why         the context is BLOCKED until it runs
 # A BASE step the matrix does not name (other than actions/checkout and actions/setup-python), an
 # expression the runner does not evaluate, or a host step that would execute candidate code makes
-# the context BLOCKED. `where: host` = BASE scripts / version-pinned tools judging the candidate tree
+# the context BLOCKED. `trusted_from_steps: true` takes from BASE every script a step names (a step
+# marked `trusted_scan: false` is a path sentinel and is not read); `timeout_s` is the context's own
+# budget. `where: host` = BASE scripts / version-pinned tools judging the candidate tree
 # as data (trusted, sealed); `where: container` = the steps run in the candidate sandbox with the
 # BASE copies of `trusted_files` laid over the candidate's, emulating the merge_group event. When
 # the candidate rewrites a trusted file or the workflow, a green is reported BLOCKED: hosted judges
@@ -31,9 +33,9 @@
 summary:
   updated_at: "2026-10-07"
   required_contexts: 14
-  executed: 4 # R1 gate, actionlint, Merah Putih, catE — by the runner, every BASE workflow step accounted for
+  executed: 7 # R1 gate, actionlint, Merah Putih, catE, organ, guard, antidotes — by the runner, every BASE workflow step accounted for
   not_applicable_rule: 0
-  blocked: 9
+  blocked: 6
   not_implemented: 1
   never_claim_parity_for: # exactly the contexts the runner does not execute (machine-checked by the suite)
     - "E2E Tests (Playwright)"
@@ -41,14 +43,12 @@ summary:
     - "CodeQL Analysis (python)"
     - "CodeQL Analysis (javascript)"
     - "Frontend Tests (Next.js) (mouth, true)"
-    - "Every organ is born with its genes"
-    - "antidotes"
     - "Harness floor recompute"
-    - "Every guard proves guilt AND innocence"
     - "Visa Oracle fullstack smoke"
   parity_gaps: # steps of EXECUTED contexts whose hosted twin can differ from the local run
     - "catE-sovereignty-lint on a PR head: hosted runs the #40c model judgment (vendor key) and the PR-scoped prose scan; local runs the merge_group shape (whole tree, no model)"
-    - "every container context runs the merge_group shape; PR-only steps (path sentinels) are not_applicable with reasons"
+    - "every container context runs the merge_group shape; PR-only steps (path sentinels) are not_applicable with reasons or run with the merge_group answer"
+    - "a context with BASE judges (trusted_files, trusted_from_steps): a PR that changes a judge AND what it judges can be RED here and green hosted (FALSE_RED); a green with a changed judge is BLOCKED, never claimed"
 
 contexts:
   - name: "E2E Tests (Playwright)"
@@ -159,95 +159,33 @@ contexts:
     purpose: Organ-conformance census + ratchet + its own guilt/innocence corpora + registry checksum.
     trusted_base_required: true
     local:
-      kind: trusted_pytest
-      cwd: "."
+      check: ctx.organ-genes
+      where: container
+      git_index: true
+      trusted_from_steps: true
+      timeout_s: 900
       steps:
-        - [$PY, infra/organ-conformance/check_organ_conformance.py]
-        - [$PY, -m, pytest, -q, scripts/tests/test_organism_stale_detector.py]
-        - [
-            $PY,
-            -m,
-            pytest,
-            -q,
-            scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py,
-            scripts/tests/test_organ_heartbeat_workflow_wiring.py,
-          ]
-        - [
-            $PY,
-            -m,
-            pytest,
-            -q,
-            scripts/tests/test_self_reporting_cron_own_plist_margin.py,
-            scripts/tests/test_self_reporting_cron_workflow_wiring.py,
-          ]
-        - [
-            $PY,
-            infra/organ-conformance/check_baseline_ratchet.py,
-            --base,
-            origin/main,
-          ]
-        - [$PY, -m, pytest, -q, infra/organ-conformance/]
-        - [
-            $PY,
-            -m,
-            organism.tools.validate_organs_registry,
-            apps/organism/organism/organs_registry.yaml,
-          ] # PYTHONPATH=<worktree>:<worktree>/apps/organism
-      needs: [python]
-    mapping: blocked
-    blocker: >-
-      Local run is RED, not green: `pytest infra/organ-conformance/` -> 1 failed, 168 passed (rc=1, 19.9 s);
-      test_gene_g2_heartbeat_fires.py::test_a_clean_run_reports_ok_and_says_what_it_did — the real zsh
-      wrapper exits 2 where the test expects 0. CI runs it on an Ubuntu runner with `apt zsh` + it_IT
-      locale; this host is macOS (BSD userland). Root cause not isolated (macOS-userland difference is a
-      hypothesis, NOT verified), so the failure cannot be classed as a product regression or a platform gap.
-    partial_evidence:
-      - {
-          argv: "check_organ_conformance.py",
-          rc: 0,
-          seconds: 3.4,
-          result: "170 plists scanned, 106 grandfathered, 0 regressions, 0 non-conformant births",
-        }
-      - {
-          argv: "pytest test_organism_stale_detector.py",
-          rc: 0,
-          seconds: 5.6,
-          result: "66 passed",
-        }
-      - {
-          argv: "pytest heartbeat_exceeds_poller + workflow_wiring",
-          rc: 0,
-          seconds: 1.5,
-          result: "4 passed, 1 skipped (the documented live-snapshot skip)",
-        }
-      - {
-          argv: "pytest self_reporting_cron plist_margin + wiring",
-          rc: 0,
-          seconds: 1.5,
-          result: "9 passed",
-        }
-      - {
-          argv: "check_baseline_ratchet.py --base origin/main",
-          rc: 0,
-          seconds: 0.2,
-          result: "112 grandfathered (was 112), no growth; local origin/main ref, no fetch",
-        }
-      - {
-          argv: "pytest infra/organ-conformance/",
-          rc: 1,
-          seconds: 19.9,
-          result: "1 failed, 168 passed",
-        }
-      - {
-          argv: "validate_organs_registry",
-          rc: 0,
-          seconds: 0.3,
-          result: "organs_registry.yaml valid",
-        }
-    smallest_next_action: >-
-      Run the single failing test with `-s` and capture the zsh wrapper's stderr (rc=2) to decide platform
-      gap vs regression; if platform, add a `platform_skip` receipt (never a silent deselect) and let the
-      hosted context carry that one test.
+        - workflow_step: Did organ surfaces change?
+          trusted_scan: false # git/echo only; its `git diff -- <paths>` list is the surfaces under test
+          env:
+            EVENT_NAME: merge_group
+            BASE: ""
+            HEAD: ""
+        - workflow_step: Install test deps
+        - workflow_step: Gate — check_organ_conformance
+        - workflow_step: The receptor still reads what the organs write
+        - workflow_step: An organ cannot beat faster than its bridge's poller
+        - workflow_step: A self-reporting cron cannot beat faster than its own plist
+        - workflow_step: Baseline is a one-way ratchet (panel round-2)
+        - workflow_step: Require zsh (the G2 corpus executes a real zsh wrapper)
+        - workflow_step: Generate the UTF-8 locale the collation test measures under
+        - workflow_step: Gate proves guilt AND innocence (own test suites)
+        - workflow_step: Registry still validates (checksum + invariants)
+    mapping: executed
+    coverage: full
+    caveat: >-
+      the G2 corpus runs a real zsh wrapper and the collation test needs it_IT.UTF-8: both are in the image
+    blocker: ""
 
   - name: "R1 gate — adversarial review present"
     workflow_file: .github/workflows/adversarial-review-gate.yml
@@ -276,45 +214,95 @@ contexts:
     purpose: Immune-system antidotes — secret/claim lints with selftests, a 68-file unit corpus and ~45 shell/pytest guilt+innocence corpora (66 steps).
     trusted_base_required: true
     local:
-      kind: trusted_pytest
-      cwd: "."
+      check: ctx.antidotes
+      where: container
+      git_index: true
+      trusted_from_steps: true
+      timeout_s: 1800
       steps:
-        - [$PY, scripts/lint_retracted_claims.py, --selftest]
-        - [$PY, scripts/lint_retracted_claims.py, --all]
-        - [$PY, scripts/lint_telegram_tokens.py, --selftest]
-        - [$PY, scripts/lint_telegram_tokens.py, --all]
-        - [$PY, scripts/lint_pg_dsn_credentials.py, --selftest]
-        - [$PY, scripts/lint_pg_dsn_credentials.py, --all]
-        - [$PY, scripts/lint_google_oauth_credentials.py, --selftest]
-        - [$PY, scripts/lint_google_oauth_credentials.py, --all]
-        - [$PY, scripts/tests/test_gateway_callers_read_the_verdict.py]
-        - [$PY, scripts/ci/lint_queue_field_verdict.py, --selftest]
-        - [$PY, scripts/ci/lint_queue_field_verdict.py]
-        - [$PY, scripts/lint_arm_probe.py, --selftest]
-        - [$PY, scripts/lint_arm_probe.py]
-      needs: [python, network]
-    mapping: blocked
-    blocker: >-
-      Only 13 of 66 workflow steps were run (all green). Step 9, the 68-file unit corpus
-      (`pytest -n 4`), was run serially and hit the 120 s cap (rc=124): pytest-xdist is not in the pilot
-      venv. Step 7 needs `pip install detect-secrets` (network, not installed). ~45 later shell/pytest
-      corpora (steps 16-65) are unmapped. A partial green here would be a subset, so it is not claimed.
-    partial_evidence:
-      - {
-          commands: 13,
-          rc: 0,
-          seconds_total_wall: 19.3,
-          result: "retracted-claims (3052 files), telegram-tokens (22638), pg-dsn (22638), google-oauth (22638), gateway-callers (32 read the verdict, 0 blind), queue-field-verdict (9819 files, 0 violations), arm-probe — every selftest and full scan clean",
-        }
-      - {
-          argv: "pytest -q -p no:cacheprovider <68 step-9 files>",
-          rc: 124,
-          seconds: 120.0,
-          result: "TIMEOUT (serial, no xdist)",
-        }
-    smallest_next_action: >-
-      Add pytest-xdist==3.8.0 to the pilot venv (needs owner-authorised pip) and re-run step 9 with `-n 4`
-      and a 300 s cap; then enumerate steps 16-65 into `steps` with the same rc+seconds receipts.
+        - workflow_step: Detect immune-relevant changes (sentinel path check)
+          trusted_scan: false # git/grep/echo only; its `case` list is the surfaces under test
+          env: # merge_group: no pull_request shas; the merge group's base and head are BASE and the candidate
+            BASE_SHA: ""
+            HEAD_SHA: ""
+            LEDGER_BASE_SHA: $BASE_SHA
+            LEDGER_HEAD_SHA: HEAD
+        - workflow_step: Retracted-claims lint — prove the guard, then scan every markdown
+        - workflow_step: No Telegram bot token in the tree — prove the guard, then scan
+        - workflow_step: No literal backend_rag_v2 DSN password in the tree — prove the guard, then scan
+        - workflow_step: No hardcoded Google OAuth credentials in the tree — prove the guard, then scan
+        - workflow_step: Local detect-secrets pre-flight tool — prove it can still fail
+        - workflow_step: Gateway callers must read the VERDICT, not the exit code
+        - workflow_step: Unit tests (guilt + innocence per tool)
+        - workflow_step: "Ledger-only diff: run the ledger's own readers"
+        - workflow_step: Runtime Truth meta-contract (external to runner)
+          env:
+            HOME: /tmp/runner-temp/runtime-truth-home
+            TMPDIR: /tmp/runner-temp/runtime-truth-tmp
+        - workflow_step: Runtime Truth CI gauntlet (four incident contracts)
+          env:
+            HOME: /tmp/runner-temp/runtime-truth-home
+            TMPDIR: /tmp/runner-temp/runtime-truth-tmp
+        - workflow_step: apps/zantara-media suite has a runner (replaces the garuda alert pin)
+        - workflow_step: Superscar byte-budget + completeness (cicatrix-superscar.md stays a bridge)
+        - workflow_step: PII gate merge-scope guilt+innocence (.husky/pre-commit)
+        - workflow_step: A probe line reports 1 of N as 1 of N (proprioception receptor + CLI)
+        - workflow_step: print() gate guilt+innocence+cannot-verify (.husky/pre-commit, Golden Rule
+        - workflow_step: The regen warns when it runs mid-merge (advice, never a refusal)
+        - workflow_step: No run-block decapitates its own failure branch (W101, 4th instance)
+        - workflow_step: Fly credential resolver corpus (shell, guilt + innocence, both historical worlds)
+        - workflow_step: Queue-field verdict lint — prove the guard, then scan every tracked file
+        - workflow_step: Arm-probe lint — prove the guard, then scan every tracked file
+        - workflow_step: Off-site artifact gate corpus (guilt + innocence)
+        - workflow_step: Pre-push fail-closed corpus (W101 shell-semantics + task
+        - workflow_step: tip-drift corpus — the branch cannot move under the gate (guilt + innocence + W84)
+        - workflow_step: cron-state failure alert corpus (guilt + innocence + fail-open)
+        - workflow_step: cron-runner failure alert corpus (3 exits + innocence + fail-open)
+        - workflow_step: cron-wrapper failure alert corpus (key names its own witness + innocence + fail-open)
+        - workflow_step: disk-janitor prune corpus (guilt + innocence + protected-tree refusal)
+        - workflow_step: login-healthcheck alarm-channel corpus (dead channel must be loud, not routine)
+        - workflow_step: WR2 wrapper failure-voice corpora (BOTH wrappers, 9 + 8 launchd jobs)
+        - workflow_step: One voice per cron failure (payload + wrapper must not both send)
+        - workflow_step: Pipeline run-verdict corpora (a deliberate skip is not a failure)
+        - workflow_step: DLQ terminal speaks once (one stuck job, one P0)
+        - workflow_step: Connectome alert honesty corpus (freshness + truncation + delivery)
+        - workflow_step: Connectome retirement markers (a retirement can be DECLARED in the repo)
+        - workflow_step: wa-mirror liveness wrapper corpus (a cron armed to nothing must say so)
+        - workflow_step: wr2-ig-metrics-analyst wrapper corpus (errexit-fatal probe + no voice)
+        - workflow_step: OAuth seat cascade corpus (a dead seat must be skipped, not fatal)
+        - workflow_step: apt helper corpus (a bounded install that still fails closed)
+        - workflow_step: Codex seat corpus (two paid subscriptions, and a 401 default seat)
+        - workflow_step: Claude seat helper corpus (a plain script must reach a live seat)
+        - workflow_step: Cron-agent alert verdict corpus (a lost alert must not buy silence)
+        - workflow_step: Cron-agent H24 checkout corpus (an agent turn must not commit)
+        - workflow_step: Backup phase composition corpus (one dead phase must not kill the other)
+        - workflow_step: Claude-CLI installer corpus (upstream partial publish must not break the image)
+        - workflow_step: Merge-queue re-arm corpora (classifier + population, guilt + innocence)
+        - workflow_step: Telegram delivery verdict corpus (guilt + innocence + fail-closed)
+        - workflow_step: Required-workflow conformance (Merge-OS v2 Wave 0, Codex F12)
+        - workflow_step: Trigger symmetry — a queue-only path filter is a head-green/queue-red split
+        - workflow_step: "Unreachable workflow if: conditions (security.yml orphaned-alarm class)"
+        - workflow_step: declared-pairs.json is valid JSON with sane shape
+        - workflow_step: Doc-executable-refs lint (docs cite only real scripts/*.py|.sh)
+        - workflow_step: Public-asset-refs lint (code names only assets that exist in public/)
+        - workflow_step: TCC-Desktop-paths lint (no *.sh/*.py/*.plist hardcodes ~/Desktop/nuzantara)
+        - workflow_step: Claude-headless-limits lint (tool-armed -p/--print carries --max-budget-usd)
+        - workflow_step: Trusted-classifier extraction lists are import-closed
+        - workflow_step: Claude-headless-model-pin lint (-p/--print carries --model)
+        - workflow_step: Tailnet node verifier keys on DNSName, not HostName or an ssh alias
+        - workflow_step: Pro main-puller corpus (the collision resolver)
+        - workflow_step: Pro main-puller collision matrix stays on its reviewed baseline
+        - workflow_step: Immune contracts self-test (the detector still detects)
+        - workflow_step: Immune contracts registry matches the real emitters and consumers
+        - workflow_step: known_gaps may only shrink (fetch main by name, then compare)
+        - workflow_step: Immune contracts corpus (named, because scripts/tests/ gates nothing)
+        - workflow_step: PENDING-ARMS ledger parses (report smoke, exit 0 signaler)
+        - workflow_step: No phantom-operator lines in the ledger (strict-phantom gate)
+    mapping: executed
+    coverage: full
+    caveat: >-
+      python 3.11 (the job's setup-python pin) goes first on PATH; pytest-xdist, httpx, ruff, detect-secrets are in the image
+    blocker: ""
 
   - name: "Harness floor recompute"
     workflow_file: .github/workflows/harness-floor.yml
@@ -371,36 +359,56 @@ contexts:
     purpose: Guard-conformance census (registry vs code, proofs, phantoms, armed) plus ~27 hook/guard guilt+innocence corpora.
     trusted_base_required: true
     local:
-      kind: trusted_pytest
-      cwd: "."
-      cmd: []
-      needs: [python, network]
-    mapping: blocked
-    blocker: >-
-      Local run is RED on one group: `pytest scripts/tests/test_window_jump_shell.py
-      scripts/tests/test_tmux_jump_shell.py scripts/tests/test_nz_jump_model_alias.py
-      infra/claude-hooks/test_probe_log_cap.py` -> 2 failed, 33 passed (rc=1, 79.8 s):
-      test_window_jump_shell.py::test_native_route_opens_by_id_types_into_new_then_exits_and_closes_old and
-      test_tmux_jump_shell.py::test_new_window_next_to_own_window_then_exit_into_own_pane_by_id. These drive
-      real tmux/terminal windows and were run from inside a live operator tmux session on Pro (cause not
-      isolated — environment interference is a hypothesis, NOT verified). Workflow step 18 (apt tmux +
-      wa_army_watcher) and step 21 (fastapi + asyncpg, absent from the venv) were not run.
-    partial_evidence:
-      - {
-          commands: 29,
-          rc: 0,
-          result: "census (0 violations, all guards armed in CI), 12 infra/claude-hooks suites, fuzz harness 445/445, evidence_pack_lint 766 passed + selftest, stage_council_journal 19, harness_fable_gate 30, secret-expansion 64/64 + 28, context-window-guard, jump_resume+window_jump 59, window_jump_gesture 37, child/codex suites 205, redaction 183 cases, injected-surface hook, vercel_should_build 48",
-        }
-      - {
-          argv: "pytest window_jump_shell + tmux_jump_shell + nz_jump_model_alias + probe_log_cap",
-          rc: 1,
-          seconds: 79.8,
-          result: "2 failed, 33 passed",
-        }
-    smallest_next_action: >-
-      Re-run those two tests from a non-tmux, non-interactive context (detached process, TMUX unset) and, if
-      green, teach the runner to unset TMUX/window env for this group; then run steps 18 and 21 in a lane
-      that has tmux and fastapi/asyncpg.
+      check: ctx.guard-guilt-innocence
+      where: container
+      git_index: true
+      trusted_from_steps: true
+      timeout_s: 1200
+      steps:
+        - workflow_step: Did guard surfaces change?
+          not_applicable: its body reads the event name through an expression; on merge_group it answers run=true, and the runner runs every step anyway
+        - workflow_step: Conformance census (registry vs code, proofs, phantoms, armed)
+        - workflow_step: W85 pin — documented-broken stash over-match still captured
+        - workflow_step: Tilde/env target-resolver suite (blind-spot fixed 2026-07-06)
+        - workflow_step: W83/W84 hook regression suites (previously unexecuted anywhere)
+        - workflow_step: W92 write-dispatch fix + runtime-state allowlist (2026-07-11)
+        - workflow_step: Segment-scoped remote-dispatch fix (6th over-match, 2026-07-11)
+        - workflow_step: W105 nested-worktree removal (over-match + composition twin)
+        - workflow_step: W117 ssh-dispatched discard of a remote main checkout
+        - workflow_step: L04 lane check — the library decides correctly
+        - workflow_step: L04 lane check — the decision reaches a real stop boundary
+        - workflow_step: orchestrate_gate.py dispatch-vocabulary + disarm-notice suites
+        - workflow_step: Guard fuzz/property corpus (worktree_isolation.py, 445 cases)
+        - workflow_step: SubagentStop hook guilt+innocence (subagent_stop_verify.py)
+        - workflow_step: Context-window guard + window jump corpora (previously unexecuted anywhere)
+        - workflow_step: Secret-expansion guard corpus + Qwen installer refusal paths
+        - workflow_step: Army watcher re-pipes the jumped-to pane (real tmux, 2026-09-19)
+          # the body minus its two `sudo apt-get` lines: tmux is in the image (offline, no sudo), the rest is verbatim
+          argv:
+            - bash
+            - -c
+            - |
+              set -euo pipefail
+              command -v tmux
+              tmux -V
+              python3 -m pytest -q scripts/tests/test_wa_army_watcher_shell.py
+        - workflow_step: Native child adapter + mandate ledger + Codex bridge suites
+        - workflow_step: Vercel ignore-step guard + pointer (guilt, innocence, exit contract)
+        - workflow_step: wa-mirror control API path confinement (roster-derived identity)
+        - workflow_step: Evidence Pack lint guilt+innocence (evidence_pack_lint.py)
+        - workflow_step: Hot-zone list floor guilt+innocence (harness-floor.yml Step 2d + behavioural)
+        - workflow_step: Council-journal staging guilt+innocence (stage_council_journal.py)
+        - workflow_step: PII receipt generator guilt+innocence (pii_receipt.py)
+        - workflow_step: harness/fable-gate publisher pin (harness_fable_gate.py)
+        - workflow_step: codex-spalla-trigger.sh secret-redaction guilt+innocence
+        - workflow_step: redaction fail-closed guilt+innocence (bash_call_log, _redact_pii pass4, siblings)
+        - workflow_step: injected_surface_sessionstart.sh never-silent guilt+innocence
+        - workflow_step: Sentinel success (no guard surfaces changed)
+    mapping: executed
+    coverage: full
+    caveat: >-
+      real tmux and zsh in the image; the apt lines of the army-watcher step are its transcription's only change
+    blocker: ""
 
   - name: "Visa Oracle fullstack smoke"
     workflow_file: .github/workflows/tests.yml
