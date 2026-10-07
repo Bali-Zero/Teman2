@@ -263,7 +263,7 @@ const SourceCard = ({
       <h4 className="text-sm font-medium text-silver group-hover:text-white font-serif tracking-wide">
         {source.title}
       </h4>
-      <p className="text-[10px] uppercase tracking-widest text-[#666] mt-1">
+      <p className="text-[11px] uppercase tracking-widest text-[#666] mt-1">
         {source.type}
       </p>
     </div>
@@ -334,7 +334,7 @@ const WelcomeOnboarding = ({
           </p>
           <button
             onClick={onOpenBlackBook}
-            className="flex items-center gap-2 text-accent-sand text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors group"
+            className="flex items-center gap-2 text-accent-sand text-[11px] font-bold uppercase tracking-widest hover:text-white transition-colors group"
           >
             <span>Ask about your codes</span>
             <ArrowRight
@@ -375,7 +375,7 @@ const WelcomeOnboarding = ({
     </div>
 
     <div className="border-t border-white/5 pt-8 md:pt-10">
-      <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-6">
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-6">
         How it works
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
@@ -464,7 +464,7 @@ const AIMessageContent = ({
       {isTyping && isLatest && (
         <button
           onClick={skip}
-          className="text-[10px] uppercase tracking-widest text-[#555] hover:text-accent-sand transition-colors"
+          className="text-[11px] uppercase tracking-widest text-[#555] hover:text-accent-sand transition-colors"
         >
           Skip &rarr;
         </button>
@@ -525,7 +525,7 @@ const AIMessageContent = ({
                         <div className="flex items-center gap-3">
                           {pmaBadgeInline.label && (
                             <span
-                              className="text-[10px] px-2 py-0.5 rounded-full border"
+                              className="text-[11px] px-2 py-0.5 rounded-full border"
                               style={{
                                 color: pmaBadgeInline.color,
                                 backgroundColor: pmaBadgeInline.bg,
@@ -547,7 +547,7 @@ const AIMessageContent = ({
                         {result.description}
                       </p>
                       {!compareMode && (
-                        <div className="flex items-center gap-1 mt-2 text-[10px] text-[#555] group-hover:text-accent-sand transition-colors">
+                        <div className="flex items-center gap-1 mt-2 text-[11px] text-[#555] group-hover:text-accent-sand transition-colors">
                           <span>View details</span>
                           <ChevronRight size={10} />
                         </div>
@@ -788,7 +788,7 @@ const InspectorChoreographed = ({
           className="flex items-center justify-between"
         >
           <RiskGauge level={riskLevel} />
-          <span className="text-[10px] uppercase tracking-widest text-accent-sand">
+          <span className="text-[11px] uppercase tracking-widest text-accent-sand">
             {data.licensing_status}
           </span>
         </motion.div>
@@ -834,7 +834,7 @@ const InspectorChoreographed = ({
                     className="flex gap-3"
                   >
                     {/* Step number */}
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-deep border border-white/10 text-[10px] text-[#666] flex items-center justify-center font-mono z-10">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-deep border border-white/10 text-[11px] text-[#666] flex items-center justify-center font-mono z-10">
                       {idx + 1}
                     </div>
                     <div
@@ -859,7 +859,7 @@ const InspectorChoreographed = ({
                             </span>
                           )}
                         </span>
-                        <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
+                        <span className="text-[11px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
                           {lic.sla}
                         </span>
                       </div>
@@ -877,7 +877,7 @@ const InspectorChoreographed = ({
                       </div>
                       {lic.requirements.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-white/5">
-                          <p className="text-[10px] text-[#444] uppercase mb-2">
+                          <p className="text-[11px] text-[#444] uppercase mb-2">
                             What you need to do:
                           </p>
                           <ul className="space-y-1">
@@ -1309,7 +1309,7 @@ export default function KBLIExplorerPage() {
                   exit={{ opacity: 0, y: -10 }}
                   className="absolute top-full mt-2 left-0 w-full bg-surface-deep border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden"
                 >
-                  <div className="p-2 border-b border-white/5 text-[10px] uppercase tracking-widest text-[#555] px-4">
+                  <div className="p-2 border-b border-white/5 text-[11px] uppercase tracking-widest text-[#555] px-4">
                     Related Results
                   </div>
                   <div className="max-h-60 overflow-y-auto custom-scrollbar">
