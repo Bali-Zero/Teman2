@@ -276,7 +276,7 @@ const KBLIInspector = ({
 
             <div className="grid grid-cols-1 gap-4">
               <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-5">
-                <h4 className="text-blue-400 font-bold text-[10px] uppercase tracking-wider mb-2">
+                <h4 className="text-blue-400 font-bold text-[11px] uppercase tracking-wider mb-2">
                   What it Means
                 </h4>
                 <p className="text-[#CCC] text-xs leading-relaxed">
@@ -284,7 +284,7 @@ const KBLIInspector = ({
                 </p>
               </div>
               <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-5">
-                <h4 className="text-amber-400 font-bold text-[10px] uppercase tracking-wider mb-2">
+                <h4 className="text-amber-400 font-bold text-[11px] uppercase tracking-wider mb-2">
                   What you Need
                 </h4>
                 <p className="text-[#CCC] text-xs leading-relaxed whitespace-pre-line">
@@ -292,7 +292,7 @@ const KBLIInspector = ({
                 </p>
               </div>
               <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-5">
-                <h4 className="text-green-400 font-bold text-[10px] uppercase tracking-wider mb-2">
+                <h4 className="text-green-400 font-bold text-[11px] uppercase tracking-wider mb-2">
                   The Bali Context
                 </h4>
                 <p className="text-[#CCC] text-xs leading-relaxed whitespace-pre-line">
@@ -301,7 +301,7 @@ const KBLIInspector = ({
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-[10px] text-[#888] italic">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-[11px] text-[#888] italic">
               <strong>2025 Transition:</strong> {data.intel.whatChanged}
             </div>
           </section>
@@ -331,7 +331,7 @@ const KBLIInspector = ({
                         </span>
                       )}
                     </span>
-                    <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
+                    <span className="text-[11px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
                       {lic.sla}
                     </span>
                   </div>
@@ -349,7 +349,7 @@ const KBLIInspector = ({
                   </div>
                   {lic.requirements.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-white/5">
-                      <p className="text-[10px] text-[#444] uppercase mb-2">
+                      <p className="text-[11px] text-[#444] uppercase mb-2">
                         What you need to do:
                       </p>
                       <ul className="space-y-1">
@@ -401,7 +401,7 @@ const KBLIInspector = ({
                   key={group.key}
                   className="rounded border border-white/5 bg-[#0A0C10] p-4"
                 >
-                  <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-accent-sand">
+                  <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-accent-sand">
                     {group.label}
                   </h4>
                   <ul className="space-y-2">
