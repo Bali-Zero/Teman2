@@ -137,8 +137,24 @@ interesting points spawn round N+1 research. No round limit. Opus 5.5 orchestrat
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (updated 2026-09-19; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-10-07; update on every state change)
 
+- **Active production pack: seq-25 (activated 2026-10-07T13:49Z from M5, PR #8026, merge
+  `2a1e00e0d3`).** The 18 `OFFICIAL_PORTAL` stamps of seq-23 went STALE on 2026-10-01T13:18Z
+  and every product answered `HUMAN_REVIEW_REQUIRED` with an empty candidate list for six days
+  (scar W141: the sentinel fired into a 401-dead Telegram token, then sat muted on the dedup
+  ladder). Cure: a two-login ceremony activated seq-24 (`e1e01743…`, owner-signed 2026-09-27,
+  never activated) and then seq-25 (`d2752a16…`, payload `603f777e…9d11`, kid
+  `prod-2026-07-1`). seq-25 = seq-24 + the 18 portal stamps re-derived from a read ledger
+  written DURING the reading (`research/visa/2026-10-07-freshness-restamp-seq25/`, tool
+  `portal_read_receipt.py`, fold `fold_pack_seq25.py`); rules and products byte-identical.
+  `verified_at 2026-10-07T13:32:18Z` → **next freshness boundary 2026-11-08T13:32:18Z**: a
+  seq-26 re-stamp must be signed and activated before it, and the lane is still a session act,
+  not an organ (`.claude/skills/modus/PENDING-ARMS.md`, row 2026-10-07). Proven live: sentinel
+  on Pro `OK pack 25 stale 0`; gold replay live 20/20 HTTP 200, `HUMAN_REVIEW_REQUIRED 0`,
+  live == offline on every persona (the 3 divergences on personas 1/9/10 are pre-existing
+  gold-corpus drift). Every seq-20/seq-22 bullet below is history. Attestation:
+  `research/visa/2026-10-07-freshness-restamp-seq25-attestation.md`.
 - **This entry was stale by construction, not wrong-by-lying** (VISA-ORACLE-DW-20260919 PLAN
   §1.1): the seq-20 bullet immediately below was last updated 2026-09-11; seq-22 landed
   2026-09-16 (`44b9b36d32`, PR #6675, "land the signed seq-22 bundle, v3") and is now the

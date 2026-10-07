@@ -7,6 +7,20 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-07 (M5, freshness re-stamp seq-25, PR #8026, merge `2a1e00e0d3`): **production
+  moved seq-23 → seq-24 → seq-25 in one ceremony (13:49Z).** The 18 `OFFICIAL_PORTAL` stamps
+  had been STALE since 2026-10-01T13:18Z (32-day window from the 2026-08-30 stamp), every
+  product folding to `HUMAN_REVIEW_REQUIRED` with an empty candidate list — second occurrence,
+  scar W141 (sentinel fired into a 401-dead Telegram token, then dedup-muted). seq-25 re-derives
+  `verified_at = 2026-10-07T13:32:18Z` from a read ledger written during the reading
+  (`research/visa/2026-10-07-freshness-restamp-seq25/`: receipts at request time, three
+  parallel readers' judgements, disposition by id, saved visible text); the fold validates every
+  receipt and judgement (Codex BLOCK → cured) and ties the saved text to the receipt fingerprint
+  (Gemini HIGH → cured). Rules/products byte-identical to seq-24; 8 "changed" verdicts
+  dispositioned (pages offer a 1-or-2-year ITAS, the pack models 1 year — modelling gap, owner
+  ruling pending). Next boundary **2026-11-08T13:32:18Z**; re-attestation still not an organ.
+  Prove-live: sentinel `OK pack 25 stale 0`, gold replay live 20/20, `HUMAN_REVIEW_REQUIRED 0`.
+
 - 2026-09-11 (Mini, Codex verification — decisiveness/review-reason coverage): **The public
   explanation mechanism exists and renders, but the requested 100% coverage does not hold.**
   Audit at `be45266252f4e1ccbaf19d2b81c73f03af676e05`, Pro/Mini synchronized.
