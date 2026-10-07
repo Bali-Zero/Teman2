@@ -244,7 +244,8 @@ State dir (`~/.nuzantara-pilots/local-ci/merger/`):
 | `cand/<key>/` | the candidate worktree, removed after each decision |
 | `runs/pr<N>-<head12>-<base12>-<UTC>/` | the runner's run dir, plus `merger.log` (runner argv, rc, output) and `hosted_compare.json` |
 
-Journal: every line has `ts`, `host`, `kind`. `kind=decision` (the only kind a later report counts) carries `mode: shadow`,
+Journal: every line has `ts`, `host`, `kind`, and `code_sha` when the launchd wrapper ran it (the origin/main commit the
+merger was extracted from). `kind=decision` (the only kind a later report counts) carries `mode: shadow`,
 `pr`, `head_sha`, `base_sha`, `candidate_sha`, `overall` (the runner's PASS / SUBSET_PASS / BLOCKED / FAIL, or `CONFLICT`,
 or `ERROR`), `error`, `contexts_status`, `contexts` (per required context: the runner's verdict, OK / FAIL / UNCOVERED or
 the blocking status), `checks` (per check status), `seal`, `runner_rc`, `hosted_compare` (`sha` = the head, `note`,
@@ -282,11 +283,14 @@ count is vacuous today. The phase-D instrument is the CONTEXT level, in two part
   context it stopped requiring, cannot erase a disagreement once seen.
 
 The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges` (PRs merged AT a decided head whose gate ran
-with a usable contexts file) — only the latter counts toward the phase E criterion (0 FALSE_GREEN over ≥ 50 merges or 14 days,
-spec §2). `days` is floored (13.9999 is not 14), and `longest_silence` is the widest gap between any two journal lines in the
-window: a merger that stopped writing does not age the window unnoticed. The report writes `<state-dir>/report.json`. Exit 1
-on any FALSE_GREEN (per decision, per context now, or recorded at tick time), 2 on an unusable input or a failed GitHub read
-(nothing is counted then), else 0.
+with a usable contexts file), and counts the window's `error` lines and `skipped` lines by reason. **The operator reads
+`compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN and either ≥ 50 compared merges or ≥ 14
+days between the first and the last compared merge (spec §2) — a window that only aged, with nothing compared, is never
+READY. Days are floored in integer seconds (13.9999 is not 14; 14 is). Two gaps are printed: the longest between DECISIONS
+(errors and skips keep a journal busy without deciding anything) and the longest between any two journal lines (a merger that
+stopped writing at all). A recorded FALSE_GREEN that is not a non-negative integer is an unusable input. The report writes
+`<state-dir>/report.json`. Exit 1 on any FALSE_GREEN (per decision, per context now, or recorded at tick time), 2 on an
+unusable input or a failed GitHub read (nothing is counted then), else 0.
 
 ### Schedule (launchd, Pro)
 
@@ -297,19 +301,29 @@ variable, fetches `origin/main` into the merger's mirror (a failed fetch is not 
 sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a working-tree copy. A failure before Python starts
 (no git, no mirror) writes no journal line; it is in `~/logs/localci-merger.err.log`, and the report's `longest_silence` shows
 the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error` or `disabled`;
-registry id `pro.localci_merger`), and `LOCALCI_MERGER_ENABLED=false` in the plist's environment stops the ticks without
-uninstalling. The live copy is a declared HOME-fork pair (`infra/home-fork/declared-pairs.json`): `scripts/lint_home_fork.py
+registry id `pro.localci_merger`) through `scripts/lib/heartbeat.sh` from the canonical checkout (`MERGER_HEARTBEAT_LIB`
+overrides it; a missing library is said on stderr and the organ reads stale). `LOCALCI_MERGER_ENABLED=false` in the plist's
+environment stops the ticks without uninstalling; its `disabled` heartbeat is not an unhealthy status — the healer's
+`EXEMPT_STATUSES` holds it and the sentinel does not page on it — because a kill switch is an operator's act, not a
+failure. The wrapper passes `--code-sha` (the resolved sha), so every journal line names the code that wrote it. The live copy is a declared HOME-fork pair (`infra/home-fork/declared-pairs.json`): `scripts/lint_home_fork.py
 --check` on Pro names a drift from the repo. The wrapper checks `MERGER_PYTHON` and `MERGER_NODE` with an explicit test and
 `exit 2`, never `${VAR:?}`: under macOS `/bin/bash` 3.2 an expansion error reaches the `EXIT` trap with status 0, the script
 exits 0 and the heartbeat would say `ok` (measured; the wrapper test keeps it red). Replace the live copy atomically (copy
-beside it, then `mv`): bash reads a running script as it goes. Install (operator of Pro, user `nuzantara`):
+beside it, then `mv`): bash reads a running script as it goes.
 
+The merger runs the BASE runner with its OWN coordinator venv, `~/.nuzantara-pilots/local-ci/merger/venv` (the plist's
+`MERGER_PYTHON`): the runner fingerprints the coordinator's `pip freeze` into every receipt, and a shared venv that another job
+updates mid-run turns every PASS receipt STALE at `status` time (measured on the backend-rag venv, 2026-10-07). Install
+(operator of Pro, user `nuzantara`):
+
+    python3.11 -m venv ~/.nuzantara-pilots/local-ci/merger/venv
+    ~/.nuzantara-pilots/local-ci/merger/venv/bin/pip install --quiet pytest==9.0.3 PyYAML==6.0.3
     mkdir -p ~/.nuzantara-cron ~/logs
     cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/.localci_merger_tick.sh.new
     mv -f ~/.nuzantara-cron/.localci_merger_tick.sh.new ~/.nuzantara-cron/localci_merger_tick.sh
     cmp -s scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/localci_merger_tick.sh && echo "live copy == repo"
-    sed -e "s#__HOME__#$HOME#g" -e "s#__VENV_PYTHON__#$HOME/nuzantara/apps/backend-rag/.venv/bin/python#g" \
-        infra/launchagents/com.balizero.localci-merger.plist > ~/Library/LaunchAgents/com.balizero.localci-merger.plist
+    sed -e "s#__HOME__#$HOME#g" infra/launchagents/com.balizero.localci-merger.plist \
+        > ~/Library/LaunchAgents/com.balizero.localci-merger.plist
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.localci-merger.plist
     tail -3 ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl   # green≠working: read the journal, not the exit code
     cat ~/.organism/last_seen/pro.localci_merger.json

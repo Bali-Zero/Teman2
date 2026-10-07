@@ -1,8 +1,10 @@
 """Guilt + innocence for `merger.py report`, phase D's instrument: journal decisions beside what GitHub did with each head."""
 from __future__ import annotations
 
+import calendar
 import importlib.util
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -182,3 +184,57 @@ def test_days_are_floored_and_the_longest_silence_is_reported(tmp_path, monkeypa
             decision(1, A, "BLOCKED", ts="2026-10-14T23:59:59Z")]
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     assert rep["window"]["days"] == 13.999 and rep["window"]["longest_silence_h"] == 330.0 and rc == 0
+
+
+def test_a_merge_commit_with_the_base_among_two_parents_is_not_the_decided_candidate(tmp_path, monkeypatch):
+    gh = FakeGH({2: pull(B, merged=True)}, {B: "failure", M: "success"}, parents={M: [BASE, B]})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "BLOCKED")], gh)
+    assert rep["rows"][0]["hosted_sha"] == B and rep["context_counts"]["FALSE_GREEN"] == 1 and rc == 1
+
+
+@pytest.mark.parametrize("recorded", ["1", True, -1, 1.5, [1]])
+def test_a_recorded_false_green_that_is_not_a_count_is_refused(tmp_path, monkeypatch, recorded):
+    d = {**decision(1, A, "BLOCKED"), "hosted_compare": {"counts": {"FALSE_GREEN": recorded}}}
+    rc, rep = run_report(tmp_path, monkeypatch, [d], FakeGH({1: pull(A)}, {A: "success"}))
+    assert rc == 2 and rep is None
+
+
+def test_errors_and_skips_are_counted_and_only_decisions_measure_the_gap(tmp_path, monkeypatch, capsys):
+    recs = [decision(1, A, "BLOCKED", ts="2026-10-01T00:00:00Z"), {"kind": "error", "error": "x", "ts": "2026-10-01T06:00:00Z"},
+            {"kind": "skipped", "why": "lease", "ts": "2026-10-01T12:00:00Z"}, {"kind": "skipped", "why": "lease", "ts": "2026-10-01T18:00:00Z"},
+            {"kind": "skipped", "why": "node", "ts": "2026-10-01T23:00:00Z"}, decision(1, A, "BLOCKED", ts="2026-10-02T00:00:00Z")]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    w = rep["window"]
+    assert (w["errors"], w["skipped"], w["longest_decision_gap_h"], w["longest_silence_h"]) == (1, {"lease": 2, "node": 1}, 24.0, 6.0)
+    assert "errors=1" in capsys.readouterr().out and rc == 0
+
+
+def merged_world(n_prs, days_apart=0.0):
+    pulls, checks, recs = {}, {M: "success"}, []
+    for i in range(n_prs):
+        head = f"{i + 1:040x}"
+        pulls[i + 1], checks[head] = pull(head, merged=True), "success"
+        t = time.gmtime(calendar.timegm((2026, 10, 1, 0, 0, 0)) + int(i * days_apart * 86400))
+        recs.append(decision(i + 1, head, "BLOCKED", ts=time.strftime("%Y-%m-%dT%H:%M:%SZ", t)))
+    return recs, FakeGH(pulls, checks)
+
+
+@pytest.mark.parametrize("n_prs,days_apart,ready", [(50, 0.0, True), (49, 0.0, False), (2, 14.0, True), (2, 13.99, False)])
+def test_phase_e_readiness_counts_compared_merges_and_days_only_between_them(tmp_path, monkeypatch, capsys, n_prs, days_apart, ready):
+    recs, gh = merged_world(n_prs, days_apart)
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert rep["window"]["compared_merges"] == n_prs and rep["phase_e_ready"] is ready and rc == 0
+    assert ("phase E READY" if ready else "phase E NOT READY") in capsys.readouterr().out
+
+
+def test_fourteen_days_of_decisions_without_a_compared_merge_are_not_ready(tmp_path, monkeypatch):
+    recs = [decision(1, A, "BLOCKED", ts="2026-10-01T00:00:00Z"), decision(1, A, "BLOCKED", ts="2026-10-20T00:00:00Z")]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    assert rep["window"]["days"] >= 14 and rep["window"]["compared_merges"] == 0 and rep["phase_e_ready"] is False and rc == 0
+
+
+def test_a_single_false_green_keeps_fifty_compared_merges_not_ready(tmp_path, monkeypatch):
+    recs, gh = merged_world(50)
+    recs[7] = {**recs[7], "hosted_compare": {"counts": {"FALSE_GREEN": 1}}}
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert rep["window"]["compared_merges"] == 50 and rep["phase_e_ready"] is False and rc == 1

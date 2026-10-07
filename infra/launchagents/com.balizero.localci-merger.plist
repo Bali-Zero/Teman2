@@ -13,7 +13,7 @@
         <key>MERGER_NODE</key>
         <string>Nuzantara</string>
         <key>MERGER_PYTHON</key>
-        <string>__VENV_PYTHON__</string>
+        <string>__HOME__/.nuzantara-pilots/local-ci/merger/venv/bin/python</string>
     </dict>
     <key>ProgramArguments</key>
     <array>

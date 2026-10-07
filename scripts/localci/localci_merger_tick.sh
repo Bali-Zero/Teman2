@@ -4,15 +4,18 @@
 # pair, node=pro). Runs merger.py and hosted_compare.py exactly as committed on origin/main, read at ONE resolved sha from
 # the merger's own mirror — never from a working tree, which drifts (superscar #1). One-shot: launchd's StartInterval runs
 # it again, there is no KeepAlive (#7). Every exit path writes the heartbeat ~/.organism/last_seen/pro.localci_merger.json
-# (#2): ok, error (a failure before Python starts writes no journal line, so this is where it shows) or disabled.
+# (#2) through scripts/lib/heartbeat.sh: ok, error (a failure before Python starts writes no journal line, so this is where it
+# shows) or disabled (the kill switch: an operator's stop, which the healer and the sentinel treat as exempt, not as a failure).
 set -euo pipefail
 ORGAN_ID="pro.localci_merger"
-SIDECAR_DIR="$HOME/.organism/last_seen"
-
-heartbeat() { # $1 status, $2 note
-  mkdir -p "$SIDECAR_DIR"
-  printf '{"ts":"%s","status":"%s","note":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
-}
+HB_LIB="${MERGER_HEARTBEAT_LIB:-$HOME/nuzantara/scripts/lib/heartbeat.sh}"
+if [ -r "$HB_LIB" ]; then
+  # shellcheck source=/dev/null
+  source "$HB_LIB"
+else
+  organism_heartbeat() { echo "merger_tick: no heartbeat library at $HB_LIB — the organ will read stale" >&2; }
+fi
+heartbeat() { organism_heartbeat "$ORGAN_ID" "$1" "$2"; }
 
 # kill switch: an operator stop without uninstalling; the disabled heartbeat keeps the healer from resurrecting it
 if [ "${LOCALCI_MERGER_ENABLED:-true}" = "false" ]; then
@@ -59,4 +62,4 @@ for f in merger.py hosted_compare.py; do
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f"
 done
 echo "merger_tick: $(date -u +%FT%TZ) code=${SHA:0:12}"
-"$PY" -I "$CODE/merger.py" tick --node "$NODE" --state-dir "$STATE" --python "$PY"
+"$PY" -I "$CODE/merger.py" tick --node "$NODE" --state-dir "$STATE" --python "$PY" --code-sha "$SHA"

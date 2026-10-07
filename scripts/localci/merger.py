@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import argparse
 import calendar
-import math
+from collections import Counter
 import fcntl
 import importlib.util
 import json
@@ -56,6 +56,7 @@ _SINCE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$")
 SEAL_RE = re.compile(r"^seal=([0-9a-f]{64})\b", re.M)
 SECRET_RE = re.compile(r"(gh[opsru]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,}|(?<=://)[^/@\s]+(?=@)|(?i:bearer|token)\s+\S+)")
 HOST = platform.node()
+CODE_SHA: str | None = None   # the origin/main commit the launchd wrapper extracted this file from; stamped on every journal line
 
 
 class Stopped(Exception):
@@ -83,7 +84,7 @@ def redact(text) -> str:
 
 
 def journal(state: Path, rec: dict) -> dict:
-    line = {"ts": now(), "host": HOST, **rec}
+    line = {"ts": now(), "host": HOST, **({"code_sha": CODE_SHA} if CODE_SHA else {}), **rec}
     data = (json.dumps(line, sort_keys=True) + "\n").encode()
     fd = os.open(state / "decisions.jsonl", os.O_RDWR | os.O_APPEND | os.O_CREAT, 0o600)
     try:
@@ -403,6 +404,11 @@ def _raise(exc_type, why: str):
 
 
 def cmd_tick(a) -> int:
+    global CODE_SHA
+    if a.code_sha is not None and not hc._SHA_RE.match(a.code_sha):
+        print(f"merger: refusing — --code-sha {a.code_sha!r} is not a full commit sha", file=sys.stderr)
+        return 2
+    CODE_SHA = a.code_sha
     state = Path(a.state_dir).expanduser().resolve()
     state.mkdir(parents=True, exist_ok=True)
     if HOST != a.node:   # superscar #10: one host decides; any other exits clean and leaves the lease alone
@@ -526,7 +532,10 @@ def cmd_report(a) -> int:
             live = lives[sha]
             github = github_side(merged_here, live)
             # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
-            recorded_fg += int(((d.get("hosted_compare") or {}).get("counts") or {}).get("FALSE_GREEN") or 0)
+            recorded = ((d.get("hosted_compare") or {}).get("counts") or {}).get("FALSE_GREEN") or 0
+            if type(recorded) is not int or recorded < 0:   # a count that is not a count is an unusable input, never a zero
+                raise hc.CompareError(f"#{n} at {d.get('ts')}: recorded FALSE_GREEN {recorded!r} is not a count")
+            recorded_fg += recorded
             if d.get("contexts_status") is not None:   # the gate ran: set its per-context verdicts beside the hosted ones
                 status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"],
                                                                                  "results": {k: {"verdict": v} for k, v in (d.get("contexts") or {}).items()}}}
@@ -540,13 +549,21 @@ def cmd_report(a) -> int:
         return 2
     counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
     first, last = (rows[0]["ts"], rows[-1]["ts"]) if rows else (None, None)
-    days = math.floor((_epoch(last) - _epoch(first)) / 86.4) / 1000 if rows else 0.0   # floored: 13.9999 days is not 14
-    stamps = sorted(_epoch(str(r["ts"])) for r in window)
-    silence_h = round(max((b - a_ for a_, b in zip(stamps, stamps[1:])), default=0) / 3600, 2)
+    days = _days(first, last) if rows else 0.0
+    silence_h = _longest_gap_h(r["ts"] for r in window)
+    decision_gap_h = _longest_gap_h(r["ts"] for r in rows)   # errors and skips keep the journal busy; only decisions age the window
+    compared = [r for r in rows if r["compared_merge"]]
+    compared_merges = len({r["pr"] for r in compared})
+    compared_days = _days(compared[0]["ts"], compared[-1]["ts"]) if compared else 0.0
+    fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
+    ready = fg == 0 and (compared_merges >= 50 or compared_days >= 14)   # days count only between compared merges, never alone
+    skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
+    errors = sum(1 for r in window if r.get("kind") == "error")
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
-                      "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": len({r["pr"] for r in rows if r["compared_merge"]}),
-                      "longest_silence_h": silence_h},
-           "counts": counts, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "rows": rows,
+                      "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
+                      "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
+                      "errors": errors, "skipped": skipped},
+           "counts": counts, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "phase_e_ready": ready, "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     atomic_write(state / "report.json", json.dumps(out, indent=2) + "\n")
     print(f"{'PR':7} {'HEAD':12} {'BASE':12} {'MERGER':11} {'GITHUB':7} {'MERGED':6} CLASS")
@@ -554,14 +571,23 @@ def cmd_report(a) -> int:
         print(f"#{r['pr']:<6} {r['head_sha'][:12]} {str(r['base_sha'])[:12]} {str(r['overall']):11} {r['github']:7} {'yes' if r['merged'] else 'no':6} {r['class']}")
     w = out["window"]
     print(f"window: {first} .. {last} ({days} days) decisions={w['decisions']} distinct_prs={w['distinct_prs']} merged_prs={w['merged_prs']} "
-          f"compared_merges={w['compared_merges']} longest_silence={silence_h}h")
+          f"compared_merges={compared_merges} errors={errors} skipped={skipped or 0}")
+    print(f"gaps: longest between decisions={decision_gap_h}h, longest between any journal lines={silence_h}h")
     print("pr-level: " + " ".join(f"{k.lower()}={v}" for k, v in counts.items()))
     print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items())
           + f" | false_green recorded at tick time={recorded_fg}")
-    fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
-    print(f"phase E needs 0 FALSE_GREEN over >= 50 compared merges or 14 days: now false_green={fg}, compared_merges={w['compared_merges']}, "
-          f"days={days}, longest_silence={silence_h}h")
+    print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges or 14 days between the first and "
+          f"last compared merge; now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}")
     return 1 if fg else 0
+
+
+def _days(first: str, last: str) -> float:
+    return (int(_epoch(last) - _epoch(first)) * 1000 // 86400) / 1000   # floored in integers: 13.9999 days is not 14, 14 days is
+
+
+def _longest_gap_h(stamps) -> float:
+    ts = sorted(_epoch(str(t)) for t in stamps)
+    return round(max((b - a for a, b in zip(ts, ts[1:])), default=0) / 3600, 2)
 
 
 def cmd_merge(_a) -> int:
@@ -620,6 +646,7 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--python", default=sys.executable, help="interpreter that runs the BASE runner")
     t.add_argument("--run-timeout", type=int, default=5400, help="seconds for the runner's `run` step")
     t.add_argument("--tick-timeout", type=int, default=9000, help="watchdog for the whole tick; past it the decision is ERROR")
+    t.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
     r = sub.add_parser("report", help="phase D: every decision beside what GitHub did with that head")
     r.add_argument("--repo", default=hc.DEFAULT_REPO)
     r.add_argument("--base", default=hc.DEFAULT_BRANCH)
