@@ -126,6 +126,50 @@ payload, so the file's formatting does not matter). **Signed, not activated.**
 The standing regression is
 `test_seq24_pack.py::TestSignedBundleTiesToSource`.
 
+## Signing + activation note (2026-10-07, seq-25 — and seq-24's deferred activation)
+
+`rulepack-prod-025.signed.json` (the 18 `OFFICIAL_PORTAL` sources re-stamped from
+the 2026-10-07 read ledger, `research/visa/2026-10-07-freshness-restamp-seq25/`;
+rules and products byte-identical to seq-24) was signed offline on M5 with the
+production key, `kid: prod-2026-07-1`, `signed_at` 2026-10-07T13:39:07Z,
+`payload_sha256`
+`603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11`, chained to the
+signed seq-24 (`5a569091f84a858f1957cdf96086ee7212f67d13a8225d64492a7212093cd272`).
+Digest re-verified unchanged after Prettier.
+
+**Activated the same day, two activations in order** (the anti-rollback gate anchors
+`previous_payload_sha256` on the pack active at that instant, so seq-24 had to go
+first): seq-24 `activation_id e1e01743-b290-4dee-9c45-08218e58a228` (reason
+`seq24-e33f-penjamin-261007`), then seq-25 `activation_id
+d2752a16-cd3f-46f0-81f0-fe32dcc43c05` (reason `seq25-portal-restamp-261007`), actor
+`consul-session-m5`, 13:49Z. Exactly one open activation afterwards (seq-25).
+
+Ceremony mechanics measured this run, where they differ from the 2026-09-06 notes:
+
+- The PG primary is now machine `5683e090f3d228` (`fly machines list -a
+nuzantara-postgres` → ROLE primary); `0801696b541568`, named in every earlier
+  entry, is STOPPED. Target the primary explicitly:
+  `flyctl proxy 15433:5433 <primary>.vm.nuzantara-postgres.internal -a nuzantara-postgres`
+  on Pro (the only host with Fly auth), then `ssh -N -L 15433:127.0.0.1:15433 pro`
+  from M5. Check `pg_is_in_recovery()` is `f` before minting anything.
+- `~/.config/nuzantara/visa-signing/activation-operator-password` is NOT the
+  superuser password — it belongs to the persistent login role
+  `visa_activation_operator`. The superuser (`postgres`) password is the machine's
+  `OPERATOR_PASSWORD`: fetch it machine-side on Pro into a 0600 file
+  (`flyctl ssh console -a nuzantara-postgres --machine <primary> -C "printenv
+OPERATOR_PASSWORD" > ~/.tmp/visa-ceremony/su.pw`), read it into a shell variable,
+  delete the file at cleanup. Never print it.
+- Ephemeral logins `visa_pack_writer_ceremony_<yymmdd>` (`IN ROLE visa_pack_writer`)
+  and `visa_activation_ceremony_<yymmdd>` (`IN ROLE visa_activation_executor`),
+  `VALID UNTIL` +3h, `GRANT CONNECT` each; cleanup = `REVOKE CONNECT` then `DROP
+ROLE`, then `select count(*) from pg_roles where rolname like 'visa_%_ceremony_%'`
+  must read 0.
+- While Pro's `flyctl proxy` was open, M5's own read-only tunnel
+  (`com.nuzantara.fly-pg-tunnel`, :15432) died "during handshake" and respawned by
+  itself ~30 s after the ceremony proxy closed (two WireGuard proxies on one
+  account). Expect `scripts/pg.sh` on M5 to be unavailable for the ceremony's
+  duration; verify through the sentinel on Pro or after the respawn.
+
 ## Rotation
 
 1. Mint a new kid (e.g. `2027-01-prod-1`) with the same procedure.
