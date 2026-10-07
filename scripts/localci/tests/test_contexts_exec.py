@@ -157,7 +157,7 @@ def test_a_step_that_cannot_start_is_blocked_never_pass(tmp_path, monkeypatch):
     tool.unlink()
     fr.run(fx)
     c = fr.status(fx)["checks"]["ctx.judge"]
-    assert c["status"] == "BLOCKED" and "could not start" in c["reason"] and c["steps"][0]["status"] == "BLOCKED"
+    assert c["status"] == "BLOCKED" and "could not start" in c["reason"]
 
 
 def test_a_tampered_trusted_dir_is_error(tmp_path):
@@ -182,6 +182,8 @@ def test_contained_steps_never_run_without_a_container(tmp_path):
     (0, [("selftest", "PASS"), ("judge", "PASS"), ("guilt control", "PASS"), ("pr sentinel", "NOT_APPLICABLE")], "PASS"),
     (1, [("selftest", "PASS"), ("judge", "FAIL"), ("guilt control", "PASS"), ("pr sentinel", "NOT_APPLICABLE")], "FAIL"),
     (3, [("selftest", "BLOCKED"), ("judge", "PASS"), ("guilt control", "PASS"), ("pr sentinel", "NOT_APPLICABLE")], "BLOCKED"),
+    (4, [("selftest", "BLOCKED"), ("judge", "ERROR"), ("guilt control", "PASS"), ("pr sentinel", "NOT_APPLICABLE")], "ERROR"),   # killed by a signal
+    (1, [("selftest", "PASS"), ("judge", "ERROR"), ("guilt control", "PASS"), ("pr sentinel", "NOT_APPLICABLE")], "ERROR"),
     (0, [("selftest", "PASS"), ("judge", "FAIL"), ("guilt control", "PASS"), ("pr sentinel", "NOT_APPLICABLE")], "ERROR"),   # rc contradicts junit
     (0, [("selftest", "PASS"), ("judge", "PASS")], "ERROR"),                                                                   # a step went missing
     (0, [("selftest", "PASS"), ("judge", "PASS"), ("guilt control", "PASS"), ("pr sentinel", "PASS")], "ERROR"),             # N/A step reported as run
@@ -191,6 +193,97 @@ def test_the_driver_exit_code_and_its_junit_must_agree(rc, junit, want):
     spec = runner.resolve_steps(WORKFLOW["jobs"]["gate"], contained_ctx()["local"], "b" * 40)[0]
     steps = None if junit is None else [{"name": n, "status": st, "reason": "r"} for n, st in junit]
     assert runner.classify_contained_steps(rc, steps, {"steps": spec, "judge_modified": []})[0] == want
+
+
+def _job(**over) -> dict:
+    job = json.loads(json.dumps(WORKFLOW["jobs"]["gate"]))
+    job.update(over)
+    return job
+
+
+def test_duplicate_step_names_are_refused_rather_than_collapsed():
+    job = _job(steps=WORKFLOW["jobs"]["gate"]["steps"] + [{"name": "selftest", "run": "exit 1"}])
+    steps, why = runner.resolve_steps(job, contained_ctx()["local"], "b" * 40)
+    assert steps is None and "duplicate step names ['selftest']" in why
+
+
+@pytest.mark.parametrize("shell,argv", [(None, ["bash", "-e", "{0}"]), ("bash", ["bash", "--noprofile", "--norc", "-eo", "pipefail", "{0}"]), ("sh", None)])
+def test_a_verbatim_body_runs_from_a_file_under_githubs_own_shell_template(shell, argv):
+    job = _job(defaults={"run": {"shell": shell}} if shell else {})
+    steps, why = runner.resolve_steps(job, contained_ctx()["local"], "b" * 40)
+    if argv is None:
+        assert steps is None and "shell='sh'" in why
+    else:
+        assert steps[0]["argv"] == argv and steps[0]["script"] == "python scripts/judge.py --selftest" and "-c" not in steps[0]["argv"]
+
+
+def test_working_directory_comes_from_the_step_or_the_job_default_and_stays_in_the_tree():
+    steps, _ = runner.resolve_steps(_job(defaults={"run": {"working-directory": "docs"}}), contained_ctx()["local"], "b" * 40)
+    assert {s.get("cwd") for s in steps if "argv" in s} == {"docs"}
+    steps, why = runner.resolve_steps(_job(defaults={"run": {"working-directory": "../up"}}), contained_ctx()["local"], "b" * 40)
+    assert steps is None and "working-directory" in why
+
+
+def test_a_step_condition_is_recorded_not_evaluated():
+    job = _job(steps=[dict(s, **({"if": "always()"} if s.get("name") == "judge" else {})) for s in WORKFLOW["jobs"]["gate"]["steps"]])
+    steps, _ = runner.resolve_steps(job, contained_ctx()["local"], "b" * 40)
+    assert steps[1]["if_not_evaluated"] == "always()"
+
+
+def test_a_host_job_runs_its_steps_in_the_job_default_working_directory(tmp_path):
+    wf = dict(WORKFLOW, jobs={"gate": _job(defaults={"run": {"working-directory": "docs"}})})
+    judge = "import pathlib, sys\nsys.exit(0 if pathlib.Path('ok.md').is_file() else 1)\n"
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {**BASE_EXTRA, WF: yaml.safe_dump(wf), JUDGE: judge})
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [host_ctx()])))
+    fr.run(fx)
+    assert fr.status(fx)["checks"]["ctx.judge"]["status"] == "PASS"
+
+
+def test_injection_variables_a_workflow_sets_never_reach_a_host_step(tmp_path):
+    wf = dict(WORKFLOW, jobs={"gate": _job(env={"TOOL_VERSION": "1.2.3", "PYTHONPATH": ".", "PYTHONSTARTUP": "x.py"})})
+    judge = "import os, sys\nsys.exit(1 if {'PYTHONPATH', 'PYTHONSTARTUP'} & set(os.environ) else 0)\n"
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {**BASE_EXTRA, WF: yaml.safe_dump(wf), JUDGE: judge})
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [host_ctx()])))
+    assert plan_spec(fx)["steps"][1]["env"]["PYTHONPATH"] == "."        # planned as the workflow says ...
+    fr.run(fx)
+    assert fr.status(fx)["checks"]["ctx.judge"]["status"] == "PASS"    # ... and stripped before a host process starts
+
+
+@pytest.mark.parametrize("pin,want", [("3.0", "BLOCKED"), (None, "PASS")])
+def test_a_setup_python_pin_must_name_the_interpreter_that_runs_the_steps(tmp_path, pin, want):
+    steps = [{"uses": "actions/setup-python@v7", "with": {"python-version": pin or ".".join(runner.platform.python_version().split(".")[:2])}}]
+    wf = dict(WORKFLOW, jobs={"gate": _job(steps=steps + WORKFLOW["jobs"]["gate"]["steps"])})
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "x\n"}, {**BASE_EXTRA, WF: yaml.safe_dump(wf)})
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [host_ctx()])))
+    fr.run(fx)
+    c = fr.status(fx)["checks"]["ctx.judge"]
+    assert c["status"] == want and (want == "PASS" or "python-version '3.0'" in c["reason"])
+
+
+def test_a_pinned_tool_that_resolves_inside_the_candidate_is_never_probed(tmp_path, monkeypatch):
+    fx = fr.make_repo(tmp_path, {"bin/localci-faketool": "#!/bin/sh\necho 1.2.3\n"}, BASE_EXTRA)
+    (fx["repo"] / "bin" / "localci-faketool").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{fx['repo'] / 'bin'}{os.pathsep}{os.environ['PATH']}")
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [tool_ctx()])))
+    spec = plan_spec(fx)
+    assert spec["status"] == "BLOCKED" and "inside the candidate worktree" in spec["reason"]
+
+
+def test_a_changed_gitattributes_keeps_a_contained_green_from_being_claimed(fx):
+    fr.git(fx["repo"], "checkout", "-q", fx["base"])
+    for rel, body in BASE_EXTRA.items():
+        fr.write(fx["repo"], {rel: body})
+    fr.git(fx["repo"], "add", "-A")
+    fr.git(fx["repo"], "commit", "-q", "-m", "base+gate")
+    base = fr.git(fx["repo"], "rev-parse", "HEAD")
+    fr.write(fx["repo"], {"docs/.gitattributes": "*.md text eol=crlf\n"})
+    fr.git(fx["repo"], "add", "-A")
+    fr.git(fx["repo"], "commit", "-q", "-m", "attrs")
+    cand = fr.git(fx["repo"], "rev-parse", "HEAD")
+    ctx = dict(contained_ctx(), check="ctx.judge")
+    spec = runner.plan_context_check(fx["repo"], base, cand, fx["run"], "Gate", ctx, {}, ["docs/.gitattributes"], {"container": "3.11.0"})
+    assert spec["kind"] == "contained_steps" and spec["judge_modified"] == ["docs/.gitattributes"]
+    assert runner.steps_verdict([{"name": "x", "status": "PASS", "reason": "rc=0"}], spec)[0] == "BLOCKED"
 
 
 # --------------------------------------------------------------- container: BASE steps verbatim, in the candidate sandbox

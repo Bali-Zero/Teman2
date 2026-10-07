@@ -4,8 +4,10 @@
 Runner-owned: runner.py injects this file and its steps config at /cfg (never from the candidate tree) and pins its sha256 in
 the plan. Usage: python -I steps_driver.py <steps.json> <junit.xml>
 
-Exit 0 = every executed step returned 0 · 1 = at least one step failed · 3 = a step could not start and none failed ·
-2 = the driver itself broke (no verdict). Every step runs even after a failure: the junit is the per-step evidence.
+Exit 0 = every executed step returned 0 · 1 = at least one step failed · 4 = a step was killed by a signal and none failed ·
+3 = a step could not start and nothing worse happened · 2 = the driver itself broke (no verdict). Every step runs even after a
+failure: the junit is the per-step evidence. A verbatim `run:` body is written to a file and its path replaces `{0}` in GitHub's
+shell template, as the hosted runner does.
 """
 from __future__ import annotations
 
@@ -37,7 +39,7 @@ def main(cfg_path: str, junit_path: str) -> int:
     gh = Path("/tmp/localci-gh")
     gh.mkdir(parents=True, exist_ok=True)
     suite = ET.Element("testsuite", name=cfg["context"])
-    failed = blocked = skipped = 0
+    failed = killed = blocked = skipped = 0
     for i, st in enumerate(cfg["steps"]):
         case = ET.SubElement(suite, "testcase", classname="localci.ctx", name=st["name"])
         if "not_applicable" in st:
@@ -47,26 +49,34 @@ def main(cfg_path: str, junit_path: str) -> int:
         env = {**os.environ, **cfg.get("env", {}), **st.get("env", {}),
                **{k: str(gh / f"{k.lower()}-{i}") for k in ("GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY")}}   # written, never read back
         Path(env.get("RUNNER_TEMP", "/tmp")).mkdir(parents=True, exist_ok=True)
+        argv = st["argv"]
+        if "script" in st:
+            script = gh / f"step-{i}.sh"
+            script.write_text(st["script"])
+            argv = [str(script) if a == "{0}" else a for a in argv]
         print(f"##[localci] step {i}: {st['name']}", flush=True)
         t0 = time.monotonic()
         try:
-            rc = subprocess.run(st["argv"], cwd=os.path.join(root, st.get("cwd") or "."), env=env).returncode
+            rc = subprocess.run(argv, cwd=os.path.join(root, st.get("cwd") or "."), env=env).returncode
         except OSError as e:
             rc = None
             blocked += 1
-            ET.SubElement(case, "error", message=f"could not start: {type(e).__name__}: {e}")
+            ET.SubElement(case, "error", type="not-started", message=f"could not start: {type(e).__name__}: {e}")
         else:
-            if rc != 0:
+            if rc < 0:
+                killed += 1
+                ET.SubElement(case, "error", type="signal", message=f"killed by signal {-rc}")
+            elif rc != 0:
                 failed += 1
                 ET.SubElement(case, "failure", message=f"rc={rc}")
         case.set("time", f"{time.monotonic() - t0:.3f}")
         print(f"##[localci] step {i} rc={rc}", flush=True)
     suite.set("tests", str(len(cfg["steps"])))
     suite.set("failures", str(failed))
-    suite.set("errors", str(blocked))
+    suite.set("errors", str(blocked + killed))
     suite.set("skipped", str(skipped))
     ET.ElementTree(suite).write(junit_path, encoding="utf-8", xml_declaration=True)
-    return 1 if failed else 3 if blocked else 0
+    return 1 if failed else 4 if killed else 3 if blocked else 0
 
 
 if __name__ == "__main__":
