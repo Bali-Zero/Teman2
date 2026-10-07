@@ -87,6 +87,19 @@ receipts:
     exit: "dead [] / [], disabled 1 / 1 equal, exit 0 / 0"
     ts: "2026-10-07T10:05Z"
     seat: claude-opus-5.5
+  - claim: >-
+      the seven acceptance probes pass by node id on the rebased head 0459eb4eda (origin/main 619fee6cef):
+      scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_guilt_session_curable_dead_organ_spawns,
+      scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_innocence_owner_only_dead_skips_with_ledger,
+      scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_c_innocence_root_owned_live_path_skips_with_ledger,
+      scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_and_c_third_states_spawn_with_named_reasons,
+      scripts/tests/test_healer_memo.py::test_fingerprint_stable_for_same_dead_set_observed_six_hours_later,
+      scripts/tests/test_healer_memo.py::test_fingerprint_component_table,
+      scripts/tests/test_healer_receptor_disabled_plist.py::test_dead_cure_branch_table
+    cmd: python3 -c '<brief.yml acceptance probes>' | xargs python -m pytest -q -p no:cacheprovider
+    exit: "0 (7 passed)"
+    ts: "2026-10-07T10:12:42Z"
+    seat: claude-opus-5.5
 dissent:
   - seat: codex-o2 (round 1, finding 1)
     objection: "Two drifted pairs, first only A curable then only B curable: the key carried paths without cure and stayed equal."
