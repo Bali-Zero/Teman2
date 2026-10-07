@@ -271,10 +271,14 @@ GitHub's side is the required contexts of the judged sha — the merge commit wh
 the head — red-dominant (RED, else PENDING, else GREEN). Merging is no verdict: a merged candidate whose merge commit has not
 reported is PENDING, one whose merge commit carries a red required check is RED. The merger's side is GREEN only for
 `overall=PASS`, RED only for `FAIL`; everything else (BLOCKED, SUBSET_PASS, CONFLICT, ERROR) is blind. Classes per decision:
-`AGREE`, `FALSE_GREEN` (merger PASS, GitHub red), `FALSE_RED`, `BLIND`, `PENDING` (GitHub has no verdict yet). Beside the
-class, `hosted_red_merged` flags a decision whose candidate GitHub merged with a red required check on its merge commit. That
-is a HOSTED failure: counted apart and printed on the phase E line as information, and by itself it never blocks READY. A
-local false green on the same candidate still does — a context the local gate passed and the merge commit failed is a context
+`AGREE`, `FALSE_GREEN` (merger PASS, GitHub red), `FALSE_RED`, `BLIND`, `PENDING` (GitHub has no verdict yet).
+
+Apart from the classes, the report reads the required checks on the merge commit of EVERY merged PR in the window, whichever
+candidate the merger decided, and lists as `hosted_red_merged` each one GitHub merged with a required check red there (PR,
+merge commit, red contexts; one printed line each). #8026 is the case: decided on an older base, so its row is judged on its
+green head and is not a compared merge, yet its queue commit 2a1e00e0d3 merged with `antidotes` red. That is a HOSTED
+failure: counted apart and printed on the phase E line as information, and by itself it never blocks READY. A local false
+green on a candidate the queue merged still does — a context the local gate passed and the merge commit failed is a context
 FALSE_GREEN, and a local PASS against that red is a decision FALSE_GREEN.
 
 Why GitHub merges a red required check (measured 2026-10-07 by GET only). `main`'s merge-queue ruleset 19779175

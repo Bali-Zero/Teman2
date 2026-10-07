@@ -468,12 +468,16 @@ def merger_side(overall) -> str:
     return "GREEN" if overall == "PASS" else "RED" if overall == "FAIL" else "BLIND"
 
 
+def required_verdicts(live: dict) -> dict:
+    by = hc.hosted_entries(live["check_runs"], live["statuses"])
+    return {c["context"]: hc.hosted_verdict(by.get(c["context"], []), c.get("app_id"))["verdict"] for c in live["required_checks"]}
+
+
 def github_side(live: dict) -> str:
     """The required checks of the judged sha (the merge commit when the queue merged the decided candidate), red-dominant. Merging
     proves nothing: the queue merges a failed entry when a later entry of its group passes (grouping HEADGREEN) — #8026's queue
     commit 2a1e00e0d3 had antidotes red and merged — and it can merge an entry before that entry's own runs report."""
-    by = hc.hosted_entries(live["check_runs"], live["statuses"])
-    seen = {hc.hosted_verdict(by.get(c["context"], []), c.get("app_id"))["verdict"] for c in live["required_checks"]}
+    seen = set(required_verdicts(live).values())
     return "RED" if "RED" in seen else "PENDING" if "PENDING" in seen else "GREEN"
 
 
@@ -582,16 +586,26 @@ def cmd_report(a) -> int:
                 raise hc.CompareError(f"#{n} merged at the decided candidate but carries no merged_at")
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
-                         # GitHub merged a red required check: a HOSTED failure, flagged and counted apart beside the class
-                         "hosted_red_merged": merged_here and github == "RED",
                          "compared_contexts": compared_ctx, "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
+        # GitHub merged a red required check: a HOSTED failure, read on every merged PR's own merge commit whichever candidate the
+        # merger decided (#8026 was decided on an older base and is judged above on its green head), counted apart, never a class
+        hosted_red_merged = []
+        for n in sorted(k for k, v in prs.items() if v.get("merged") is True):
+            mc = prs[n].get("merge_commit_sha")
+            if not is_sha(mc):
+                raise hc.CompareError(f"#{n} is merged but carries no merge commit sha")
+            if mc not in lives:
+                lives[mc] = hc.fetch_live(a.repo, a.base, mc)
+                hc.required_names(lives[mc]["required_checks"])
+            red = sorted(k for k, v in required_verdicts(lives[mc]).items() if v == "RED")
+            if red:
+                hosted_red_merged.append({"pr": n, "merge_commit_sha": mc, "red": red})
     except (hc.CompareError, OSError, KeyError, TypeError, AttributeError) as exc:
         print(f"merger report: refusing — {exc}", file=sys.stderr)
         return 2
     counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
-    hosted_red_merged = sum(1 for r in rows if r["hosted_red_merged"])
     first, last = (rows[0]["ts"], rows[-1]["ts"]) if rows else (None, None)
     days = _days(first, last) if rows else 0.0
     silence_h = _longest_gap_h(r["ts"] for r in window)
@@ -637,10 +651,12 @@ def cmd_report(a) -> int:
     print("pr-level: " + " ".join(f"{k.lower()}={v}" for k, v in counts.items()))
     print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items())
           + f" | false_green recorded at tick time={recorded_fg}")
+    for h in hosted_red_merged:
+        print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
           f"compared); now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}; "
-          f"hosted_red_merged={hosted_red_merged} (information: GitHub merged a red required check; the hosted failure itself never "
+          f"hosted_red_merged={len(hosted_red_merged)} (information: GitHub merged a red required check; the hosted failure itself never "
           f"blocks READY, a local false green on it does)")
     return 1 if fg else 0
 

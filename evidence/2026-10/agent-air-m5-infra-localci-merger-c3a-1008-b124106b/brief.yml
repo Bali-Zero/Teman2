@@ -13,7 +13,7 @@ objective: >-
   0 FALSE_GREEN AND >= 50 compared merges AND >= 14 days between them, the lead's ruling, stated in the spec by #8028),
   N1 (decisions without a valid code_sha counted, never refused), N5 (the last line's age clamped, future-dated lines
   counted), N4 (heartbeat.sh from the mirror at the tick's sha, never a working checkout) and N6 (the mutant sweep
-  replayable from the repository), plus the lead's two additions: a merged red required check is flagged hosted_red_merged
+  replayable from the repository), plus the lead's two additions: every merged PR's merge commit is read and a red required check there is listed as hosted_red_merged
   (never 'merged = GREEN'), and `runner plan` gets the PR number when the BASE runner takes it. The enqueue path is C3a-2.
 constraints:
   - SHADOW only — no merge, no enqueue, no POST, no label, no comment; every GitHub call is a GET through hosted_compare.gh_get.
@@ -38,8 +38,10 @@ acceptance:
     probe: scripts/localci/tests/test_merger.py::test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch
   - text: WHEN the mutant sweep runs, every rule SHALL be applied to a temporary copy, a mutant SHALL count as killed only on a pytest failure, and the sweep SHALL exit 0 only when every mutant is killed.
     probe: python3 scripts/localci/tests/mutants/merger_mutants.py
-  - text: WHEN GitHub merged the decided candidate with a red required check on its own merge commit, the report SHALL flag it hosted_red_merged, count it apart and print it, and SHALL withhold READY for it only when the local gate passed what that commit failed.
+  - text: WHEN GitHub merged a PR of the window with a red required check on its merge commit, whichever candidate the merger decided, the report SHALL list it as hosted_red_merged and print it, and SHALL withhold READY for it only when the local gate passed what that commit failed.
     probe: scripts/localci/tests/test_merger_report.py::test_github_merging_a_red_required_check_is_flagged_apart_and_only_a_local_false_green_on_it_blocks
+  - text: WHEN the merger decided a PR on an older base than the one the queue merged it on (#8026's shape), the report SHALL judge the row on the head and still list the red merge commit.
+    probe: scripts/localci/tests/test_merger_report.py::test_a_pr_merged_red_on_another_base_than_the_decided_one_is_still_listed_as_a_hosted_red_merge
   - text: WHEN GitHub merged the decided candidate before its merge commit reported, the report SHALL read GitHub's side PENDING, never GREEN.
     probe: scripts/localci/tests/test_merger_report.py::test_a_merged_candidate_whose_queue_commit_has_not_reported_is_pending_never_green
   - text: WHEN the BASE runner's source declares --pr-number in an add_argument call (any quoting), the tick SHALL pass the PR number to `runner plan`; WHEN it does not, the plan SHALL carry no such flag.

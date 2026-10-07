@@ -67,7 +67,7 @@ def test_a_pass_on_a_head_github_closed_red_is_a_false_green_at_both_levels_and_
     rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS")], gh)
     assert rc == 1 and [r["class"] for r in rep["rows"]] == ["FALSE_GREEN"]
     assert rep["counts"]["FALSE_GREEN"] == 1 and rep["context_counts"]["FALSE_GREEN"] == K
-    assert rep["rows"][0]["hosted_red_merged"] is False and rep["hosted_red_merged"] == 0   # closed red, never merged: not a hosted merge
+    assert rep["hosted_red_merged"] == []   # closed red, never merged: not a hosted merge
     assert f"false_green={K + 1}" in capsys.readouterr().out
 
 
@@ -90,7 +90,7 @@ def test_a_merged_head_is_compared_per_context_with_the_queue_commit_not_the_hea
     gh = FakeGH({2: pull(B, merged=True)}, {B: "success", M: "failure"})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "BLOCKED")], gh)
     assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == K and rep["rows"][0]["class"] == "BLIND"
-    assert rep["rows"][0]["hosted_red_merged"] is True and rep["hosted_red_merged"] == 1
+    assert rep["hosted_red_merged"] == [{"pr": 2, "merge_commit_sha": M, "red": list(CTX)}]
 
 
 def test_conflict_and_error_decisions_are_blind_and_add_no_context_counts(tmp_path, monkeypatch):
@@ -130,7 +130,7 @@ def test_a_merged_candidate_whose_queue_commit_has_not_reported_is_pending_never
     # the queue merges an entry once a later entry of its group passes (HEADGREEN): merging is no verdict
     gh = FakeGH({2: pull(B, merged=True)}, {B: "failure", M: None})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "FAIL", ctx="FAIL")], gh)
-    assert (rep["rows"][0]["class"], rep["rows"][0]["github"], rep["rows"][0]["hosted_red_merged"]) == ("PENDING", "PENDING", False)
+    assert (rep["rows"][0]["class"], rep["rows"][0]["github"], rep["hosted_red_merged"]) == ("PENDING", "PENDING", [])
     assert rep["context_counts"]["HOSTED_PENDING"] == K and rep["window"]["compared_merges"] == 0 and rc == 0
 
 
@@ -341,8 +341,25 @@ def test_github_merging_a_red_required_check_is_flagged_apart_and_only_a_local_f
     recs[6] = {**recs[6], "overall": local if local == "FAIL" else "BLOCKED", "contexts": dict.fromkeys(CTX, local)}
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     row = rep["rows"][6]
-    assert (row["class"], row["github"], row["hosted_sha"], row["hosted_red_merged"]) == ("AGREE" if ready else "BLIND", "RED", red_mc, True)
-    assert rep["hosted_red_merged"] == 1 and rep["counts"]["FALSE_GREEN"] == 0 and rep["context_counts"]["FALSE_GREEN"] == (0 if ready else K)
+    assert (row["class"], row["github"], row["hosted_sha"]) == ("AGREE" if ready else "BLIND", "RED", red_mc)
+    assert rep["hosted_red_merged"] == [{"pr": 7, "merge_commit_sha": red_mc, "red": list(CTX)}] and rep["counts"]["FALSE_GREEN"] == 0 and rep["context_counts"]["FALSE_GREEN"] == (0 if ready else K)
     assert rep["window"]["compared_merges"] == 50 and rep["phase_e_ready"] is ready and rc == (0 if ready else 1)
-    assert "hosted_red_merged=1" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "hosted_red_merged=1" in out and f"hosted_red_merged: #7 merged at {red_mc[:12]} with required red: ctx-00, ctx-01" in out
 
+
+
+def test_a_pr_merged_red_on_another_base_than_the_decided_one_is_still_listed_as_a_hosted_red_merge(tmp_path, monkeypatch):
+    # #8026's exact shape: decided on an older base, so judged on its green head; the queue built it on a newer main, red, and merged it
+    red_mc, newer_main = "2" * 40, "3" * 40
+    gh = FakeGH({2: pull(B, merged=True, merge_commit=red_mc)}, {B: "success", red_mc: "failure"}, parents={red_mc: [newer_main]})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "FAIL", ctx="FAIL")], gh)
+    row = rep["rows"][0]
+    assert (row["hosted_sha"], row["github"], row["class"], row["compared_merge"]) == (B, "GREEN", "FALSE_RED", False)
+    assert rep["hosted_red_merged"] == [{"pr": 2, "merge_commit_sha": red_mc, "red": list(CTX)}] and rc == 0
+
+
+def test_a_pr_merged_at_a_later_head_without_a_merge_commit_sha_is_refused(tmp_path, monkeypatch, capsys):
+    gh = FakeGH({2: {**pull(B, merged=True), "merge_commit_sha": None}}, {A: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(2, A, "FAIL", ctx="FAIL")], gh)   # an older head: judged on itself
+    assert rc == 2 and rep is None and "#2 is merged but carries no merge commit sha" in capsys.readouterr().err
