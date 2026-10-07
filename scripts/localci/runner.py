@@ -384,6 +384,11 @@ def _step_cwd(ws: dict, run_defaults: dict) -> str:
 HOSTED_RUNNERS = ("ubuntu-latest", "ubuntu-24.04")   # what the host tools and candidate.Dockerfile stand in for
 
 
+def written_reason(v) -> str | None:
+    """A not-applicable reason is a string with something legible in it: a flag, a list or a blank (zero-width included) is not."""
+    return v.strip() if isinstance(v, str) and any(ch.isalnum() for ch in v) else None
+
+
 def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None = None,
                   wf_env: dict | None = None) -> tuple[list | None, str | None]:
     """Account for EVERY step of the BASE workflow job, in matrix order: a transcribed `argv`, the BASE `run:` body verbatim (written
@@ -392,7 +397,7 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
     never covers less than the job and still calls itself the job's. A step's `if:` is recorded, not evaluated: running a step
     GitHub might skip can only add red, never hide it. Env merges as GitHub does: workflow, job, step, then the matrix's overrides;
     a job that runs in its own `container:`, beside `services:`, or on another runner image is not emulated."""
-    if (shape := [k for k in ("container", "services") if job.get(k)]) or job.get("runs-on") not in HOSTED_RUNNERS:
+    if (shape := [k for k in ("container", "services") if k in job]) or job.get("runs-on") not in HOSTED_RUNNERS:
         return None, f"BASE job shape not emulated: {shape or ''} runs-on={job.get('runs-on')!r} (the sandbox stands in for {HOSTED_RUNNERS})"
     wsteps = [s for s in (job.get("steps") or []) if isinstance(s, dict)]
     names = [s["name"] for s in wsteps if isinstance(s.get("name"), str)]
@@ -417,9 +422,9 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
             not_run.append(f"{wname!r}: {st['not_run']}")
             continue
         if "not_applicable" in st:
-            if not isinstance(st["not_applicable"], str) or not st["not_applicable"].strip():
+            if (reason := written_reason(st["not_applicable"])) is None:
                 return None, f"matrix step {wname!r}: not_applicable needs a written reason, got {st['not_applicable']!r}"
-            out.append({"name": wname, "not_applicable": st["not_applicable"].strip()})
+            out.append({"name": wname, "not_applicable": reason})
             continue
         env = {k: str(v) for k, v in {**(wf_env or {}), **(job.get("env") or {}), **(ws.get("env") or {})}.items()}
         env.update({k: base if v == "$BASE_SHA" else str(v) for k, v in (st.get("env") or {}).items()})
@@ -567,7 +572,7 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
         path = os.path.realpath(found) if found else None
         if path and (not os.path.isabs(found) or Path(path).is_relative_to(os.path.realpath(wt)) or not os.path.isfile(path)):
             return _blocked(f"{tool}: resolves to {found!r} — relative or inside the candidate worktree, never executed as a judge")
-        want = str((job.get("env") or {}).get(var, ""))
+        want = str({**(doc.get("env") or {}), **(job.get("env") or {})}.get(var, ""))
         got = ((_try([path, "-version"]) or "").splitlines() or [""])[0].strip() if path else None
         if not want or got != want:
             return _blocked(f"{tool}: host binary {path or 'not on PATH'} reports version {got!r}, BASE {wf} pins {var}={want!r}")
@@ -1088,7 +1093,7 @@ def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
             return status, f"{len(bad)} step(s) {status}: " + "; ".join(f"{s['name']} ({s['reason']})" for s in bad)[:600]
     ran = [s for s in steps if s["status"] == "PASS"]
     na = [s for s in steps if s["status"] == "NOT_APPLICABLE"]
-    if not ran or len(ran) + len(na) != len(steps) or any(not (s.get("reason") or "").strip() for s in na):
+    if not ran or len(ran) + len(na) != len(steps) or any(written_reason(s.get("reason")) is None for s in na):
         return "ERROR", f"{len(ran)} step(s) ran, {len(na)} not applicable of {len(steps)} — no executed step or an unexplained one is not PASS"
     if spec.get("judge_modified"):
         return "BLOCKED", (f"{len(ran)} step(s) rc=0 with the BASE judge, but the candidate rewrites {spec['judge_modified']}: hosted judges with "

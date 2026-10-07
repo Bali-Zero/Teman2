@@ -153,6 +153,21 @@ def test_a_host_tool_runs_only_at_the_version_the_base_workflow_pins(tmp_path, m
         assert "TOOL_VERSION='1.2.3'" in c["reason"]
 
 
+def test_a_tool_pin_set_at_workflow_level_is_the_pin(tmp_path, monkeypatch):
+    _tool(tmp_path, monkeypatch, "1.2.3")
+    wf = dict(WORKFLOW, env={"TOOL_VERSION": "1.2.3"}, jobs={"gate": _job(env={})})
+    fx = fr.make_repo(tmp_path, {"docs/new.md": "clean\n"}, {**BASE_EXTRA, WF: yaml.safe_dump(wf)})
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [tool_ctx()])))
+    fr.run(fx)
+    assert fr.status(fx)["checks"]["ctx.judge"]["status"] == "PASS"
+
+
+@pytest.mark.parametrize("reason", ["", "\u200b", "[]"])
+def test_a_not_applicable_row_without_a_written_reason_is_never_pass(reason):
+    steps = [{"name": "a", "status": "PASS", "reason": "rc=0"}, {"name": "b", "status": "NOT_APPLICABLE", "reason": reason}]
+    assert runner.steps_verdict(steps, {})[0] == "ERROR"
+
+
 def test_a_step_that_cannot_start_is_blocked_never_pass(tmp_path, monkeypatch):
     tool = _tool(tmp_path, monkeypatch, "1.2.3")
     fx = planned(tmp_path, {"docs/new.md": "clean\n"}, tool_ctx())
@@ -219,22 +234,28 @@ def test_a_verbatim_body_runs_from_a_file_under_githubs_own_shell_template(shell
         assert steps[0]["argv"] == argv and steps[0]["script"] == "python scripts/judge.py --selftest" and "-c" not in steps[0]["argv"]
 
 
-@pytest.mark.parametrize("na", [True, "", "   ", 1])
+@pytest.mark.parametrize("na", [True, "", "   ", 1, [], "\u200b"])
 def test_not_applicable_needs_a_written_reason_not_a_flag(na):
     local = {**contained_ctx()["local"], "steps": [*contained_ctx()["local"]["steps"][:3], {"workflow_step": "pr sentinel", "not_applicable": na}]}
     steps, why = runner.resolve_steps(_job(), local, "b" * 40)
     assert steps is None and "written reason" in why
 
 
-@pytest.mark.parametrize("over", [{"services": {"pg": {"image": "postgres"}}}, {"container": "node:20"}, {"runs-on": "macos-latest"}])
+@pytest.mark.parametrize("over", [{"services": {"pg": {"image": "postgres"}}}, {"services": {}}, {"container": "node:20"}, {"runs-on": "macos-latest"},
+                                  {"runs-on": ["ubuntu-latest", "gpu"]}, {"runs-on": "${{ matrix.os }}"}])
 def test_a_job_shape_the_sandbox_does_not_stand_in_for_is_blocked(over):
     steps, why = runner.resolve_steps(_job(**over), contained_ctx()["local"], "b" * 40)
     assert steps is None and "job shape not emulated" in why
 
 
 def test_workflow_level_env_reaches_the_steps_under_the_job_and_step_env():
-    steps, why = runner.resolve_steps(_job(env={"TOOL_VERSION": "job"}), contained_ctx()["local"], "b" * 40, {}, {"WF_ONLY": "1", "TOOL_VERSION": "wf"})
+    steps, why = runner.resolve_steps(_job(env={"TOOL_VERSION": "job", "X": "job"}), contained_ctx()["local"], "b" * 40, {}, {"WF_ONLY": "1", "TOOL_VERSION": "wf", "X": "wf"})
     assert why is None and steps[0]["env"]["WF_ONLY"] == "1" and steps[0]["env"]["TOOL_VERSION"] == "job"
+    assert steps[1]["env"]["X"] == "job" and steps[1]["env"]["BASE_SHA"] == "b" * 40     # the matrix override beats the step's
+    job = _job(env={"X": "job"})
+    job["steps"][2]["env"] = {"X": "step", "BASE_SHA": "${{ github.sha }}"}   # the judge step; the matrix overrides BASE_SHA
+    steps, why = runner.resolve_steps(job, contained_ctx()["local"], "b" * 40, {}, {"X": "wf"})
+    assert why is None and steps[0]["env"]["X"] == "job" and steps[1]["env"]["X"] == "step"
     steps, why = runner.resolve_steps(_job(), contained_ctx()["local"], "b" * 40, {}, {"X": "${{ github.sha }}"})
     assert steps is None and "expressions" in why   # an unevaluated expression at workflow level blocks like one in a step
 
