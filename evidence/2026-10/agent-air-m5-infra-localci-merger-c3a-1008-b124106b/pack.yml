@@ -47,10 +47,10 @@ what_changed: |
   merger.py (tick, lead's B1 ruling): `runner plan` gets --pr-number <N> when an add_argument call in the BASE runner's
   source names the flag (ast; a comment, a help string, another call or a source that does not parse never counts), so
   merge_group.head_ref names the PR as the queue's does; a BASE runner older than the flag is planned without it.
-  The median tick prints rounded to 0.1 s. Mutant table: 56 rules.
-  Tests: test_merger.py +4 cases (9 runner-source variants), test_merger_report.py +7 (one C2b test inverted: it pinned
+  The median tick prints rounded to 0.1 s. Mutant table: 60 rules.
+  Tests: test_merger.py +4 cases (9 runner-source variants), test_merger_report.py +9 (one C2b test inverted: it pinned
   'merged at the decided head = GREEN'); README: READY rule, heartbeat source, sweep, the hosted red merge and its mechanism.
-  Net size 417 added, 63 deleted (mutant table and runner 169, tests 128, README 47, code 73).
+  Net size 459 added, 66 deleted (mutant table and runner 179, tests 160, README 47, code 73).
 proof: |
   See receipts. Every GitHub call is still a GET through hosted_compare.gh_get; runner.py, contexts_matrix.yaml and
   hosted_compare.py are untouched; nothing is merged, enqueued, labelled or posted.
@@ -82,12 +82,12 @@ ground:
     Branch started from origin/main c5e8c27b2d after #8027 merged (agent_start); no sibling lane touched scripts/localci
     meanwhile; git merge-tree against origin/main clean.
 appetite_exceeded: >-
-  Three adversarial rounds where the brief planned one: the lead added two scopes in flight (the #8026 hosted red merge and
-  the PR number for B1's Harness floor), each refuted on its own delta, and the live journal showed the first shape of the
-  hosted red merge missing #8026 itself; each round's findings are in dissent.
+  Four adversarial rounds where the brief planned one: the lead added two scopes in flight (the #8026 hosted red merge and
+  the PR number for B1's Harness floor), refuted on their own delta by both families as the lead asked, and the live journal
+  showed the first shape of the hosted red merge missing #8026 itself; each round's findings are in dissent.
 spend:
-  adversarial_rounds: 3
-  wall_clock_hours: 2.4
+  adversarial_rounds: 4
+  wall_clock_hours: 2.9
 receipts:
   - claim: "The report at 08648551e5 on the live Pro journal (33 decisions, 19 PRs, 6 merged): 'hosted_red_merged: #8026 merged at 2a1e00e0d36d with required red: antidotes', phase E line 'hosted_red_merged=1 (information ...)', NOT READY, context false_green 0, rc 0. The same journal under b042083b22 (the decision-level flag) listed nothing: #8026 was decided on base 53de39e6a07c and merged on 9068e322b6f9, so its row is judged on its green head."
     cmd: ~/.nuzantara-pilots/local-ci/merger/venv/bin/python -I scripts/localci/merger.py report
@@ -104,20 +104,20 @@ receipts:
     exit: 0
     ts: "2026-10-07T18:11:22Z"
     seat: claude-opus-5-5 driving Pro over ssh
-  - claim: "The in-repo mutant sweep at 0bdf56f75d kills 56 of 56 mutants (no survivor, no error, no stale rule), each on a temporary copy, the baselines of all three test-file sets green; started 19:20:32Z, no edit to the tree while it ran."
+  - claim: "The in-repo mutant sweep at c303bced95 kills 60 of 60 mutants (no survivor, no error, no stale rule), each on a temporary copy, the baselines of all three test-file sets green; started 19:47:08Z, no edit to the tree while it ran."
     cmd: python3 scripts/localci/tests/mutants/merger_mutants.py
     exit: 0
-    ts: "2026-10-07T19:36:38Z"
+    ts: "2026-10-07T20:01:04Z"
     seat: claude-opus-5-5 on M5
   - claim: "Codex's vacuous-pass reproduction no longer passes: with PYTEST_ADDOPTS='-k test_merge_refuses_with_exit_2_whatever_it_is_given' in the caller's environment, the sweep still reports ready-either, ready-days-boundary and sh-heartbeat-empty-runs KILLED (the option is dropped before pytest runs)."
     cmd: PYTEST_ADDOPTS='-k test_merge_refuses_with_exit_2_whatever_it_is_given' python3 scripts/localci/tests/mutants/merger_mutants.py --only ready-either ready-days-boundary sh-heartbeat-empty-runs
     exit: 0
     ts: "2026-10-07T18:15:10Z"
     seat: claude-opus-5-5 on M5
-  - claim: "The merger suites pass at 0bdf56f75d on M5: 122 passed; every acceptance probe of the brief named by test id passes: 12 probes, 26 cases."
+  - claim: "The merger suites pass at c303bced95 on M5: 126 passed; every acceptance probe of the brief named by test id passes: 12 probes, 26 cases."
     cmd: "PYTHONPATH=$PWD python3 -m pytest -q scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py ; python3 -m pytest -q scripts/localci/tests/test_merger_report.py::test_phase_e_readiness_needs_fifty_compared_merges_and_fourteen_days_between_them scripts/localci/tests/test_merger_report.py::test_any_one_false_green_keeps_fifty_compared_merges_not_ready scripts/localci/tests/test_merger_report.py::test_the_journal_order_does_not_change_readiness scripts/localci/tests/test_merger_report.py::test_decisions_without_provenance_are_counted_never_refused scripts/localci/tests/test_merger_report.py::test_a_line_dated_in_the_future_is_flagged_and_never_ages_the_window_negative scripts/localci/tests/test_merger.py::test_the_heartbeat_library_comes_from_the_mirror_at_the_ticks_sha_never_from_a_checkout scripts/localci/tests/test_merger.py::test_a_missing_heartbeat_library_is_said_aloud_and_changes_nothing_else scripts/localci/tests/test_merger.py::test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch scripts/localci/tests/test_merger_report.py::test_github_merging_a_red_required_check_is_flagged_apart_and_only_a_local_false_green_on_it_blocks scripts/localci/tests/test_merger_report.py::test_a_pr_merged_red_on_another_base_than_the_decided_one_is_still_listed_as_a_hosted_red_merge scripts/localci/tests/test_merger_report.py::test_a_merged_candidate_whose_queue_commit_has_not_reported_is_pending_never_green scripts/localci/tests/test_merger.py::test_the_pr_number_is_given_only_to_a_base_runner_that_declares_it"
     exit: 0
-    ts: "2026-10-07T19:38:00Z"
+    ts: "2026-10-07T20:02:01Z"
     seat: claude-opus-5-5 on M5
   - claim: "Organ and home-fork gates at cce459bafc: organ conformance 172 plists, 0 regressions, 0 non-conformant births; ratchet holds (112); shellcheck clean on the wrapper; lint_home_fork --check on M5 exit 0, no breach. The wrapper and infra/ are unchanged from cce459bafc to 0bdf56f75d; shellcheck and lint_home_fork re-run clean at 0bdf56f75d (19:38Z)."
     cmd: python3 infra/organ-conformance/check_organ_conformance.py ; check_baseline_ratchet.py --base origin/main ; shellcheck scripts/localci/localci_merger_tick.sh ; python3 scripts/lint_home_fork.py --check --json
@@ -129,10 +129,10 @@ receipts:
     exit: 0
     ts: "2026-10-07T18:28:52Z"
     seat: claude-opus-5-5 driving Pro over ssh
-  - claim: "The localci suite on Pro at 0bdf56f75d is green with docker and the Pysa home present: 537 passed, 1 skipped (hypothesis is not installed in the Pro backend-rag venv)."
+  - claim: "The localci suite on Pro at c303bced95 is green with docker and the Pysa home present: 541 passed, 1 skipped (hypothesis is not installed in the Pro backend-rag venv)."
     cmd: PYTHONPATH=$PWD ~/nuzantara/apps/backend-rag/.venv/bin/python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider
     exit: 0
-    ts: "2026-10-07T19:24:59Z"
+    ts: "2026-10-07T19:51:39Z"
     seat: claude-opus-5-5 driving Pro over ssh
 dissent:
   - seat: codex-gpt-6-astra
@@ -207,9 +207,17 @@ dissent:
     objection: "Round 3 MINOR: removing ValueError from the probe's except survives."
     status: CONFIRMED
     resolution: "The reachable ValueError is UnicodeDecodeError on a BASE runner that is not UTF-8 (a null byte is SyntaxError on 3.11); case and mutant pr-number-undecodable-crashes added at 0bdf56f75d, killed."
+  - seat: codex-gpt-6-astra
+    objection: "Delta round (8e2d179db8..7b81c98861) P3: no fixture holds two red merges, so a `break` after the first listed one survives."
+    status: CONFIRMED
+    resolution: "Test with two red merge commits and a PR decided twice: exactly two entries, two printed lines, count 2; mutant hosted-red-merged-first-only killed (c303bced95)."
+  - seat: codex-gpt-6-astra
+    objection: "Delta round P3: FakeGH gives one conclusion to every context of a sha, so a GREEN-dominant or PENDING-over-RED github_side, or a red list naming every context, survives."
+    status: CONFIRMED
+    resolution: "FakeGH takes {context: conclusion}; three mixed cases (red+pending, pending alone, two reds) pin the row verdict and the red list; mutants github-side-green-dominant, github-side-pending-over-red and hosted-red-merged-all-contexts killed (c303bced95)."
 owed:
   - "Spec docs line (one line, next docs PR): docs/specs/localci-sovereign-2026-10-07.md §3/§7 gain the phase-E evidence that the local gate refuses what the hosted gate let through — #8026 merged at 2a1e00e0d3 with antidotes red under the queue's HEADGREEN grouping, while the merger's decision on it was FAIL."
-  - "B1 (#8032) open at this pack's writing: the first merger tick after B1 merges must show 'Harness floor recompute' AGREE on a gear >= 2 PR through --pr-number; observe it on the live journal and comment it on this PR."
+  - "B1 (#8032) armed and not merged at 19:47:56Z, so no journal line shows the FALSE_RED yet: main's BASE runner does not execute Harness floor, and the latest decisions read 'Harness floor recompute': BLOCKED (#7943 at 2026-10-07T19:16:38Z, code_sha c5e8c27b2d0d). Owed and commented on this PR: if B1 merges before this PR is installed, the first gear >= 2 decision journalled with 'Harness floor recompute': FAIL by main's merger (no --pr-number), quoted line by line; then the first tick after this PR's install showing it AGREE on a gear >= 2 PR."
   - "C3a-2: the enqueue path per the lead's ruling (consent label set by a maintainer, the no-local-red criterion of ruling A — no FAIL/ERROR/STALE/BLOCKED check, review.independent the only QUEUED, every executed required context OK, every other context named with its mapping, executed_required on the line —, GitHub's required checks green on the head, GraphQL enqueuePullRequest with expectedHeadOid, never PUT, one enqueue per (pr, head), the queue entry followed from issue events) and its one live proof, run from main's code after its gate."
   - "After merge on Pro: re-take the wrapper from main (copy beside, mv, cmp -s against the blob); the next tick writes ~/.nuzantara-pilots/local-ci/merger/heartbeat.sh — prove it equals main's blob and that the heartbeat lands; lint_home_fork --check for the pair."
   - "Pen residual (carried): anything the merger does on GitHub runs under the ambient gh token; only Zero's dedicated merger credential cures it. review.independent has no local seat (carried)."
