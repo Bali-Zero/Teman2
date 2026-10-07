@@ -122,6 +122,20 @@ context is satisfied). The workflow file and any changed `.gitattributes` are ju
 candidate changed it is reported BLOCKED. `bare_venv: false` keeps the image interpreter (the job installs with
 `uv pip install --system`).
 
+### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB)
+
+Checks run one after another and so do a service context's legs (parallelism 1): the backend shards take up to 6 GiB each
+and the VM has 8. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a sibling lane's runs shared the host.
+
+| check | wall s | in-sandbox CPU s | legs (wall / CPU s) |
+|---|---|---|---|
+| ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 |
+| ctx.harness-floor | 67 | 0.5 | one leg; the Gear ≥ 2 reader ran at plan |
+| whole run, 14 required contexts | 2267 | — | plan 6 s with the deps image cached |
+
+The deps image (`localci-deps:<digest16>`, 9.85 GB: 294 aarch64 wheels, node 24, the fetched files) is built once per
+recipe: 394 s cold at plan (download, install, export), then a cache hit while the candidate's pins and the image are unchanged.
+
 ## Security: Pysa taint judge (`security.pysa_python`)
 
 CodeQL CLI cannot run on this repo (public, no OSI licence), so the python security queries are stood in for by Pysa
