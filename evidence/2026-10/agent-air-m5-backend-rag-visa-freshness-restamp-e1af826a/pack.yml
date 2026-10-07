@@ -126,6 +126,11 @@ receipts:
     ts: "2026-10-07T13:55:00Z"
     seat: backend-verifier (Claude Sonnet 5, read-only)
 council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  titolari kimi-code/k3 and tp1-qwen3.8-max were QUOTA_DEAD at mission start (arsenal probe
+  injected at SessionStart 2026-10-07: "seat kimi: QUOTA_DEAD", "seat tp1-qwen3.8-max:
+  QUOTA_DEAD", "tp1-glm-5.2: QUOTA_DEAD"); codex-gpt-5.6-sol played as titolare and the
+  reserve agy-gemini-3.1-pro filled the second seat.
 dissent:
   - seat: self-review (this session, not an independent refuter)
     objection: >-

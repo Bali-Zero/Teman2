@@ -65,6 +65,30 @@ substring of the saved text. `verified_at` is then the earliest successful
   Somalia). VoA list: 97 lines. Press release 2024-04-24 and the Alih Status ITK→ITAS
   service page: unchanged in substance.
 
+## Adversarial review
+
+Two seats, read-only on the staged patch and the ledger (2026-10-07, 13:54Z–14:04Z;
+`evidence/2026-10/agent-air-m5-backend-rag-visa-freshness-restamp-e1af826a/council-journal.jsonl`).
+
+**Codex GPT-5.6 (red-team): BLOCK, 8 findings, 3 cured on this head, none surviving as a
+blocker.** (1) BLOCK — only the earliest `fetched_at` was validated: one page's receipts moved
+to 2099 still produced seq-25. Cured: every successful receipt is validated (URL, not in the
+future, after the previous stamp), guilt test. (2) MEDIUM — a receipt for a foreign URL and a
+judgement older than its fetch were accepted. Cured by the same gates, guilt tests. (3) MEDIUM
+— "not page drift" was unproven without an August snapshot. Cured by rewording: the 1-year
+assumption is still supported; the August state is not provable. (4)–(8) re-derived PASS by
+the refuter: the other gates refuse every mutation, fingerprint tie 18/18, rules/products/
+`content_sha256` identical, exactly 18 records moved, both signatures verify, chain equals
+the signed seq-24, census 39 passed, observer executable, no secret or PII.
+
+**Gemini 3.1 Pro (constructive): GO-WITH-CONDITIONS, 7 findings, 1 cured, 2 surviving as
+notes.** HIGH 1 — saved text not tied to the receipt's fingerprint: cured
+(`_saved_text_matches_a_receipt`, guilt test). Surviving: MEDIUM 2 — one text file per record
+is overwritten by a later fetch (mitigated by the fingerprint tie; per-fetch suffix next
+time); HIGH 7 — the next re-stamp must be a scheduled organ, not a session act (PENDING-ARMS).
+MEDIUM 3 / LOW 4–6 accepted as design (lane identifier in `verified_by`, readers read the
+saved text, global-earliest instant, disposition tracked).
+
 ## Two residual risks, still named
 
 **`content_sha256` was deliberately not moved** — same reasoning as seq-13/seq-17: it
