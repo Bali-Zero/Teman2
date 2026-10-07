@@ -143,6 +143,63 @@ it is bound to the same repo, branch and sha. Exit 0 = compared and complete, 1 
 3 = incomplete (a required context is still pending). Why this exists and what it measured first (`agreement=0/14` on 2026-10-06):
 `docs/specs/localci-gate-2026-10-06.md`.
 
+## Merger (phase C, shadow)
+
+`merger.py` is phase C of `docs/specs/localci-sovereign-2026-10-07.md` in SHADOW mode: it decides what the local gate would
+do with a pull request and journals it. It merges nothing, posts nothing, labels nothing; every GitHub call is a bare GET
+through `hosted_compare.gh_get`. `merger.py merge` refuses with exit 2 whatever it is given (phase E is not armed);
+`merger.py --selftest` runs the triage and lease guilt/innocence offline.
+
+    python scripts/localci/merger.py tick --node Nuzantara [--repo Bali-Zero/Teman2] [--base main] \
+        [--state-dir ~/.nuzantara-pilots/local-ci/merger] [--seed ~/nuzantara] [--python <venv python>]
+
+One `tick` decides at most one pull request:
+
+1. **Node pin.** On a host whose name is not `--node`, the tick journals `skipped: node` and exits 0 without touching the lease.
+2. **Lease.** An `flock` on `lease.lock` plus `lease.json` (`host`, `pid`, `pid_start`, `ts`, `lease_id`). A held flock, a
+   holder on another host or a live holder pid (same start time) is respected: `skipped: lease`, exit 0. A file left by a
+   dead holder is reclaimed and journalled `lease_reclaimed`. Single host by construction: a second host is a later step
+   (spec §3, a lease in Postgres).
+3. **Queue.** Open pull requests on `--base`, non-draft, armed (`auto_merge` set) or labelled `localci:merge`. A head or base
+   repository other than `--repo` is a fork: journalled once per head as `refused: fork`, never fetched. Order: a head never
+   decided first, then the head whose last decision is oldest, then `created_at` — `main` moves on every merge, so plain
+   oldest-first would re-decide one PR at every new base. A (pr, head, base) already in the journal is never run again.
+4. **Candidate.** In the merger's own bare clone (`--seed` hardlinks a local clone's objects the first time; fetches come
+   from GitHub), `refs/pull/N/head` must still be the head the API listed (else `skipped: head_moved`). The candidate is
+   `origin/<base>` with the head merged `--no-ff`, committed by `localci-merger` with the base's commit date, so the same
+   (head, base) always yields the same candidate sha. No hook, signer or rerere runs. A conflict is the decision
+   `CONFLICT`, with the conflicted paths and no run.
+5. **Gate.** `plan → run → status --seal` of the runner taken from a worktree of the BASE sha, with BASE's
+   `contexts_matrix.yaml` (`trusted_base_required` holds for the merger too): the candidate's runner and matrix never judge
+   it. The runner gets an allowlisted environment (no token). Candidate code runs only inside the runner, contained as the
+   runner contains it.
+6. **Hosted.** `hosted_compare.compare` against the live required contexts of the PR HEAD sha — the queue's own verdict
+   lands on a merge-group commit the merger cannot see; the journal line says so (`hosted_compare.note`).
+
+State dir (`~/.nuzantara-pilots/local-ci/merger/`):
+
+| path | what |
+|---|---|
+| `decisions.jsonl` | the journal (0600), one JSON line per event |
+| `lease.lock`, `lease.json` | the lease; `lease.json` exists only while a tick holds it, or after a holder died |
+| `repo.git/` | the merger's bare clone; `refs/merger/base`, `refs/merger/pr/<N>` |
+| `base/<base sha>/` | the BASE worktree the runner runs from (one, the current base) |
+| `cand/<key>/` | the candidate worktree, removed after each decision |
+| `runs/pr<N>-<head12>-<base12>-<UTC>/` | the runner's run dir, plus `merger.log` (runner argv, rc, output) and `hosted_compare.json` |
+
+Journal: every line has `ts`, `host`, `kind`. `kind=decision` (the only kind a later report counts) carries `mode: shadow`,
+`pr`, `head_sha`, `base_sha`, `candidate_sha`, `overall` (the runner's PASS / SUBSET_PASS / BLOCKED / FAIL, or `CONFLICT`,
+or `ERROR` when the runner could not produce a status), `error`, `contexts_status`, `contexts` (per required context: the
+runner's verdict, OK / FAIL / UNCOVERED or the blocking status), `checks` (per check status), `seal`, `runner_rc`, `hosted_compare` (`sha` = the
+head, `note`, `agreement`, `counts`, `drift`, `exit`, or `error`), `run_dir`, `elapsed_s`, `lease_id`. Other kinds:
+`refused` (`why: fork`), `skipped` (`why: node | lease | head_moved | head_in_base`), `lease_reclaimed` (`stale`: the dead
+holder's record), `error` (a git or GitHub failure; the tick exits 1, nothing is decided).
+
+Limits, stated: the runner plans `review.independent` and leaves it BLOCKED until a review is imported, so `overall` is never
+PASS in shadow today — the per-context columns are the comparison that carries information. A `kill -9` of a tick leaves its
+runner child running to the runner's own deadline; the next tick removes the candidate worktree under it, so that orphan run
+is never journalled.
+
 ## Tests
 
 `PYTHONPATH=<worktree> python -m pytest scripts/localci/tests -q` (real temporary git repos; the hypothesis state machine
