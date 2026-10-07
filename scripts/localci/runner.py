@@ -692,12 +692,14 @@ DEPS_NPM = """\
 COPY --from=npmcache --chown=65534:65534 /npm-cache /opt/npm-cache
 """
 # Playwright: the lock's playwright-core, from the registry, installs its browser and the OS libraries it needs (apt) as root
-# with network at build; the job's own browser-install step needs root and network, which the sandbox never has.
+# with network at build; the job's own browser-install step needs root and network, which the sandbox never has. A child that
+# drops PLAYWRIGHT_BROWSERS_PATH (the visa smoke's sanitized env keeps HOME) finds it at the runner user's default cache path.
 DEPS_PLAYWRIGHT = """\
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 RUN for i in 1 2 3; do npm_config_cache=/tmp/npx-root timeout 1200 npx -y playwright-core@{pw} install --with-deps {browser} && break; \\
       [ $i = 3 ] && exit 1; sleep 5; done && rm -rf /tmp/npx-root \\
- && chmod -R a+rX /opt/ms-playwright
+ && chmod -R a+rX /opt/ms-playwright \\
+ && install -d -o 65534 -g 65534 /home/runner/.cache && ln -s /opt/ms-playwright /home/runner/.cache/ms-playwright
 """
 DEPS_APT = """\
 RUN A='-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::Languages=none' && \\
