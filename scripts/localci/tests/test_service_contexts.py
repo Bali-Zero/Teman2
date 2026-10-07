@@ -400,6 +400,27 @@ def npm_repo(tmp_path: Path, lock_entries: dict, workspaces: list) -> tuple[Path
 REG = {"resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz", "integrity": "sha512-x", "version": "1.63.0"}
 
 
+def test_a_github_dependency_pinned_to_a_full_commit_is_fetched_and_a_moving_one_is_refused(tmp_path):
+    pinned = {"resolved": "git+ssh://git@github.com/whiskeysockets/libsignal-node.git#" + "b" * 40}
+    repo, cand = npm_repo(tmp_path / "a", {"node_modules/libsignal": pinned}, [])
+    assert runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})[2] is None
+    repo, cand = npm_repo(tmp_path / "b", {"node_modules/libsignal": {"resolved": "git+ssh://git@github.com/w/l.git#main"}}, [])
+    assert "full commit id" in runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})[2]
+
+
+@pytest.mark.parametrize("matrix,leg,want", [
+    ({"include": [{"app": "mouth", "coverage": True}, {"app": "admin", "coverage": False}]}, {"app": "mouth", "coverage": True},
+     [{"app": "mouth", "coverage": True}]),
+    ({"include": [{"app": "mouth"}], "exclude": [{"app": "x"}]}, None, None),
+])
+def test_an_include_only_matrix_expands_as_hosted_and_a_context_can_be_one_leg(matrix, leg, want):
+    legs, why = runner.matrix_legs({"strategy": {"matrix": matrix}})
+    if want is None:
+        assert legs is None and "not emulated" in why
+    else:
+        assert [g for g in legs if g == leg] == want and len(legs) == 2
+
+
 def test_the_npm_closure_is_the_locks_registry_entries_and_its_workspace_manifests(tmp_path):
     repo, cand = npm_repo(tmp_path, {"node_modules/playwright-core": REG, "node_modules/w": {"resolved": "apps/w", "link": True}}, ["apps/w"])
     files, pw, why = runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})
@@ -427,6 +448,21 @@ def test_a_setup_node_pin_the_deps_image_does_not_carry_is_blocked(tmp_path, mon
                                                                          {"workflow_step": "test"}]}])
     spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, ctx, {WF: yaml.safe_dump(wf)})
     assert spec["status"] == "BLOCKED" and "setup-node pins ['26']" in spec["reason"]
+
+
+def test_a_network_failure_in_the_egress_sandbox_is_no_verdict_on_the_candidate(tmp_path, monkeypatch):
+    def fake_exec(name, spec, run_dir, plan, inner, a, extra, env, log, junit, *rest, **kw):
+        log.write_text("urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='pypi.org', port=443): Read timed out.\n")
+        suite = runner.ET.Element("testsuite")
+        runner.ET.SubElement(runner.ET.SubElement(suite, "testcase", name="audit"), "failure", message="rc=1")
+        runner.ET.ElementTree(suite).write(junit)
+        return 1, None
+    monkeypatch.setattr(runner, "execute_contained", fake_exec)
+    for d in ("receipts", "logs"):
+        (tmp_path / d).mkdir(exist_ok=True)
+    st = {"name": "audit", "side": {"where": "egress", "inputs": [], "rewrite": []}}
+    got = runner._run_egress("ctx.t", {"context": "t"}, {"timeout_s": 60, "image_id": "i"}, st, "s", {}, {}, {}, [], tmp_path, {})
+    assert got["rc"] is None and "the network failed" in got["reason"]
 
 
 def test_an_upstream_verdict_reaches_the_fan_in_and_an_upstream_without_one_stops_the_chain(monkeypatch, tmp_path):

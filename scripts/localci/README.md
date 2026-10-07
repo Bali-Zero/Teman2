@@ -126,15 +126,18 @@ Node jobs (E2E, Visa Oracle smoke) add three deps keys, all built into the same 
 
 - `npm: package-lock.json` — the candidate's lock and the manifests it installs (root and each declared workspace, read as
   data) fill an npm cache in the official `node:<deps.node>` image with `npm ci --ignore-scripts`: network, no package code.
-  Every lock entry must resolve to `https://registry.npmjs.org/` with an `sha512` integrity, or be a declared workspace link;
-  anything else (a tarball URL, git, a path) is BLOCKED. The job's own `npm install` then runs verbatim, offline
+  Every lock entry must resolve to `https://registry.npmjs.org/` with an `sha512` integrity, be a declared workspace link, or
+  name a GitHub repository at a full 40-hex commit (npm fetches its https tarball; no git, no credentials); anything else (a
+  tarball URL, a moving git ref, a path) is BLOCKED. `npm:` may list several locks (a standalone app that runs its own `npm ci`). The job's own `npm install` then runs verbatim, offline
   (`npm_config_offline`), its lifecycle scripts inside the sandbox.
 - `playwright: chromium` — the lock's `playwright-core` version, from the registry, runs `install --with-deps chromium` as
   root with network at build (`PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright`); the job's browser-install step needs root and
   network the sandbox never has, so it is `not_applicable` with that reason.
 - `apt: [postgresql-client]` — OS packages the job's own bounded installer finds already present (`apt_install.sh` exits 0).
 
-A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
+A required context that is one leg of a matrix (`Frontend Tests (Next.js) (mouth, true)`) names it with `leg:`; an include-only
+matrix expands as hosted expands it. A network failure in the egress sandbox (a timeout or refused connection in its log) is no
+verdict on the candidate: ERROR, re-run. A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
 overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
 can change.
 

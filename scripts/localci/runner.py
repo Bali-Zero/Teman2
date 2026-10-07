@@ -676,7 +676,9 @@ ENV LOCALCI_NODE={v}
 DEPS_NPM_STAGE = """\
 FROM node:{v}-bookworm-slim AS npmcache
 COPY npm/ /src/
-RUN cd /src && npm ci --ignore-scripts --no-audit --no-fund --loglevel=error --cache /npm-cache && rm -rf /src
+RUN for lock in $(cd /src && find . -name package-lock.json | sort); do \\
+      (cd "/src/${lock%/package-lock.json}" && npm ci --ignore-scripts --no-audit --no-fund --loglevel=error --cache /npm-cache) || exit 1; \\
+    done && rm -rf /src
 """
 DEPS_NPM = """\
 COPY --from=npmcache --chown=65534:65534 /npm-cache /opt/npm-cache
@@ -778,8 +780,11 @@ def matrix_legs(job: dict) -> tuple[list | None, str | None]:
     m = (job.get("strategy") or {}).get("matrix")
     if m is None:
         return [{}], None
+    if isinstance(m, dict) and list(m) == ["include"] and isinstance(m["include"], list) and m["include"] \
+            and all(isinstance(x, dict) and x for x in m["include"]):
+        return [dict(x) for x in m["include"]], None   # include alone: each entry is one job, as hosted expands it
     if not isinstance(m, dict) or any(k in m for k in ("include", "exclude")) or any(not isinstance(v, list) or not v for v in m.values()):
-        return None, "strategy.matrix with include/exclude or non-list axes is not emulated"
+        return None, "strategy.matrix with include/exclude beside axes, or non-list axes, is not emulated"
     legs = [{}]
     for k, vals in m.items():
         legs = [{**leg, k: v} for leg in legs for v in vals]
@@ -817,7 +822,14 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
     node = str(deps.get("node") or "")
     if node and not node.isdigit():
         return None, "deps.node must be a major version"
-    npm_files, pw, why = npm_inputs(wt, cand, deps) if deps.get("npm") else ({}, "", None)
+    npm_files, pw, why = {}, "", None
+    for lock in [deps["npm"]] if isinstance(deps.get("npm"), str) else deps.get("npm") or []:
+        files, pw1, why = npm_inputs(wt, cand, {"npm": lock})
+        if why:
+            break
+        pre = lock.rsplit("/", 1)[0] + "/" if "/" in lock else ""
+        npm_files.update({pre + k: v for k, v in files.items()})
+        pw = pw or pw1
     apt = sorted(str(a) for a in deps.get("apt") or [])
     browser = str(deps.get("playwright") or "")
     if why or ((deps.get("npm") or browser) and not node) or any(not re.fullmatch(r"[a-z0-9][a-z0-9.+-]*", a) for a in apt) \
@@ -951,8 +963,11 @@ def npm_inputs(wt: Path, cand: str, deps: dict) -> tuple[dict, str, str | None]:
             continue
         if ent.get("link") is True and res.rstrip("/") in [w.rstrip("/") for w in ws]:
             continue
+        if re.fullmatch(r"git\+(?:ssh://git@|https://)github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git#[0-9a-f]{40}", str(res)):
+            continue   # pinned to a full commit id: npm fetches github's https tarball of that commit (no git, no credentials)
         if not (str(res).startswith("https://registry.npmjs.org/") and str(ent.get("integrity", "")).startswith("sha512-")):
-            return {}, "", f"npm lock entry {key!r} resolves to {str(res)[:80]!r}: only the public registry with an integrity is fetched"
+            return {}, "", (f"npm lock entry {key!r} resolves to {str(res)[:80]!r}: only the public registry with an integrity, "
+                            "or a github repository at a full commit id, is fetched")
     pw = str((pkgs.get("node_modules/playwright-core") or {}).get("version") or "")
     return files, pw if re.fullmatch(r"\d+\.\d+\.\d+", pw) else "", None
 
@@ -1008,6 +1023,9 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
             return _blocked(f"job {jid}: the matrix lists its steps out of BASE order; outputs and job status flow in that order")
         prefix, why = select_python(job, pyv.get("container"), pyv.get("container_extra"))
         legs, why2 = matrix_legs(job)
+        if legs and jl.get("leg") is not None:   # a required context that is one leg's check run: "Frontend Tests (Next.js) (mouth, true)"
+            legs = [g for g in legs if g == jl["leg"]]
+            why2 = why2 or (None if len(legs) == 1 else f"leg {jl['leg']!r} is not exactly one leg of the BASE matrix")
         svcs, why3 = plan_services(job, local.get("service_images") or {}, iso["docker"])
         if why or why2 or why3:
             return _blocked(f"job {jid}: {why or why2 or why3}")
@@ -1854,6 +1872,9 @@ def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base:
     tail = log.read_text(errors="replace")[-4000:] if log.exists() else ""
     if err or not got or len(got) != 1 or got[0]["name"] != st["name"] or (rc, got[0]["status"]) not in ((0, "PASS"), (1, "FAIL")):
         return {"rc": None, "reason": f"egress sandbox gave no consistent verdict: {err or f'rc={rc}, junit {got}'}", "log": tail}
+    if rc == 1 and (net := re.search(r"(ReadTimeoutError|ConnectTimeoutError|NewConnectionError|Max retries exceeded|Temporary failure in name "
+                                     r"resolution)[^\n]{0,120}", tail)):
+        return {"rc": None, "reason": f"the network failed the egress step, not the candidate ({net.group(0)[:100]}): no verdict, re-run", "log": tail}
     return {"rc": rc, "reason": f"egress sandbox: {got[0]['reason']}", "log": tail}
 
 

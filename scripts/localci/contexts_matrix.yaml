@@ -33,14 +33,13 @@
 summary:
   updated_at: "2026-10-07"
   required_contexts: 14
-  executed: 11 # R1 gate, actionlint, Merah Putih, catE, organ, guard, antidotes, Backend Tests, Harness floor, E2E, Visa Oracle smoke — by the runner, every BASE workflow step accounted for
+  executed: 12 # R1 gate, actionlint, Merah Putih, catE, organ, guard, antidotes, Backend Tests, Harness floor, E2E, Visa Oracle smoke, Frontend Tests — by the runner, every BASE workflow step accounted for
   not_applicable_rule: 0
-  blocked: 3
+  blocked: 2
   not_implemented: 0
   never_claim_parity_for: # exactly the contexts the runner does not execute (machine-checked by the suite)
     - "CodeQL Analysis (python)"
     - "CodeQL Analysis (javascript)"
-    - "Frontend Tests (Next.js) (mouth, true)"
   parity_gaps: # steps of EXECUTED contexts whose hosted twin can differ from the local run
     - "catE-sovereignty-lint on a PR head: hosted runs the #40c model judgment (vendor key) and the PR-scoped prose scan; local runs the merge_group shape (whole tree, no model)"
     - "every container context runs the merge_group shape; PR-only steps (path sentinels) are not_applicable with reasons or run with the merge_group answer"
@@ -272,23 +271,45 @@ contexts:
     purpose: Matrix leg app=mouth, coverage=true — GARUDA contract check, tsc --noEmit, vitest with coverage + threshold, packages/core, admin-dashboard-local and wa-mirror suites.
     trusted_base_required: false
     local:
-      kind: cmd
-      cwd: apps/mouth
-      cmd: [npx, vitest, --run, --coverage]
-      needs: [node]
-    mapping: blocked
-    blocker: >-
-      Worktree node_modules and apps/mouth/node_modules are symlinks to the main checkout: vitest/tsc
-      write caches under node_modules/.vite and a coverage dir, i.e. outside this worktree (forbidden
-      in a prepare-only lane), and `npm ci` from a worktree corrupts the shared tree. wa-mirror step runs
-      its own `npm ci` (network). Not executed, so nothing is claimed.
-    smallest_next_action: >-
-      Executor lane with a private clone: `npm ci` at ROOT once, then run the 7 workflow commands in order
-      (openapi-typescript --check, tsc --noEmit, vitest --coverage, test:coverage:check, packages/core,
-      admin-dashboard-local, wa-mirror) and record rc+seconds per command. Runner v0.6.0 (phase B) found the next
-      row: the job is a one-leg slice of an include-only matrix (needs a leg selector), and apps/wa-mirror's own
-      `npm ci` fetches libsignal from git+ssh://github.com at a pinned commit, which the deps image's registry-only
-      npm stage refuses (`npm_inputs`); both are owed before this context can run.
+      check: ctx.frontend-tests-mouth
+      where: container
+      expressions: true
+      runs_when: frontend-tests # the decide step reads the classifier's run_frontend_tests: the trusted change_map stands in
+      leg: { app: mouth, coverage: true } # the required context is this one leg's check run
+      memory: 7g
+      bare_venv: false
+      deps: # node, and the npm caches of the root lock and of apps/wa-mirror's own lock (its step runs its own `npm ci`)
+        node: "24"
+        npm: [package-lock.json, apps/wa-mirror/package-lock.json]
+      env:
+        HAS_CODECOV_TOKEN: "false" # `secrets.CODECOV_TOKEN != ''`: the repository holds no such secret (as for Backend Tests)
+      needs:
+        changes: { result: success, outputs: { run_frontend_tests: "true" } }
+      steps:
+        - workflow_step: Decide whether to run
+        - workflow_step: Setup Node.js
+          not_applicable: the deps image carries node 24 (the official image's binary and npm); the plan checks the BASE pin against it
+        - workflow_step: Cache dependencies
+          not_applicable: no cache layer; the install step runs from the deps image's npm cache
+        - workflow_step: Install dependencies
+        - workflow_step: Save node cache (main only)
+          not_applicable: no cache layer (and its `if:` needs github.ref == refs/heads/main, false on a merge_group ref)
+        - workflow_step: Check GARUDA generated contract
+        - workflow_step: Typecheck mouth contract consumers
+        - workflow_step: Run tests (with coverage)
+        - workflow_step: Run tests (no coverage gate)
+        - workflow_step: Check coverage threshold
+        - workflow_step: Run packages/core tests (shared design-system suite)
+        - workflow_step: Run admin-dashboard-local tests (except real Python process integration)
+        - workflow_step: Run wa-mirror bridge suite (installs from its own lockfile)
+        - workflow_step: Upload coverage
+          not_applicable: >-
+            codecov-action under `if: … env.HAS_CODECOV_TOKEN == 'true'`, false here and hosted (no CODECOV_TOKEN secret)
+        - workflow_step: Upload frontend coverage artifact
+          not_applicable: an upload with if-no-files-found warn cannot fail the job; there is no artifact store here
+    mapping: executed
+    coverage: full
+    blocker: ""
 
   - name: "Every organ is born with its genes"
     workflow_file: .github/workflows/organ-conformance.yml
