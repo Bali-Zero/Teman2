@@ -10,16 +10,17 @@ Why it exists: the final gate blocked the screen three times (#7927 B1: 31 leake
 
 1. What leaves: the bytes of every queued file, its repository-relative path, and the prompt built from them.
 2. To whom: a paid third-party model API (the TP1 plan), outside Nuzantara's trust boundary.
-3. Never leaves: credential values; client PII — phone numbers in any grouping or reversible encoding, personal e-mail addresses, national-ID and passport numbers, personal names in CRM-like records.
+3. Never leaves, in any grouping or reversible encoding that a declared rule covers: credential values; client PII — phone numbers, personal e-mail addresses, national-ID and passport numbers, personal names in CRM-like records (the four enumerated entities). What no rule covers is a declared remainder (item 7, Declared limits).
 4. May leave: ordinary source, exact role mailboxes on the project's own domains, RFC-reserved example addresses, prose that names a secret family without a value.
 5. The screen decides on entities and context, fails closed, and counts every refusal; a public repo is no exception to the output boundary.
 6. Declared out of scope: payment card numbers (PAN) and IBANs, personal financial data that UU PDP 27/2022 classifies as specific personal data — owner decision pending (UU PDP art. 4(2)(f)). Rows `lim_pan` and `lim_iban` are declared limits; if the owner adopts them they join `id_number`.
+7. Any other personal data outside the four enumerated entities, whatever its category, is a DECLARED LIMIT of this screen — for example a date of birth, a postal address, a messaging or social handle, a vehicle plate, location coordinates, religion or marital status, health notes, financial data other than the PAN and IBAN of item 6, such as a bank account number or a salary, or a record that combines such data with a name; owner decision pending (UU PDP art. 4(2) and 4(3)); such files are queued unless another rule fires.
 
 ## Contract and decision order
 
 The screen judges one candidate: `(path, bytes)` read from the working tree at build time — the bytes
 that would leave, not the committed blob. It returns `queue` or `skip(reason)`. Order: structural
-checks; bounded read; UTF-8 decode; decoded views; credential rules; PII rules. The first reason wins. PII rules run in the order phone, e-mail, `id_number`, `crm_name`, so a value under `nomor_telepon` (both a phone label and an ID label) is a phone.
+checks; bounded read; UTF-8 decode; decoded views; credential rules; PII rules. The first reason wins. Within PII, the unique precedence is phone → e-mail → `id_number` → `crm_name`; therefore `nomor_telepon` resolves to phone even though `nomor` is also an ID label.
 The path is screened as text together with the content, because it leaves in the job id and the prompt.
 
 Builder policy is separate from the screen: candidate selection (`EXT`, `ROOTS`, `SKIP_PATH`, counted as
@@ -73,7 +74,7 @@ the property word restores it (`PASSWORD_FILE_TOKEN` is Tier S, `r2_16`). A cred
 | Tier | Stem, any segment                                                                                                                                | Guilty literal                                                                                                                                                                                                                                                                                                                                                                                 | Innocent counterpart                                                                                                                                                                                                                              |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | P    | `PASS`, `PASSWD`, `PASSWORD`, `PASSPHRASE`, `PWD`, `PW`                                                                                          | any non-empty literal, any length, quoted or not, letters-only included (`DB_PASS`, `MYSQL_PWD`, `DRILL_PW`); an all-digit literal of ≥ 6 digits (eight digits under a Tier P key, `r2_08`)                                                                                                                                                                                                    | empty literal; an all-digit literal of fewer than 6 digits (declared limit `rem_short_digits`); a boolean word (true, false, yes, no); a status word equal to a name segment or in {pass, passed, fail, failed, ok, skip} (`STATE_PASS = "pass"`) |
-| S    | `SECRET`, `TOKEN`, `AUTH_TOKEN`, `API_KEY`, `APIKEY`, `ACCESS_KEY`, `SECRET_KEY`, `PRIVATE_KEY`, `SIGNING_KEY`, `CLIENT_SECRET`, `CREDENTIAL(S)` | ≥ 16 characters mixing letters with a digit or non-letter, or ≥ 32 hex digits                                                                                                                                                                                                                                                                                                                  | `token_type = "Bearer"`, `token_status` (a property word follows the stem); references; `$(…)`; shorter or letters-only literals are the declared limit `lim_04`                                                                                  |
+| S    | `SECRET`, `TOKEN`, `AUTH_TOKEN`, `API_KEY`, `APIKEY`, `ACCESS_KEY`, `SECRET_KEY`, `PRIVATE_KEY`, `SIGNING_KEY`, `CLIENT_SECRET`, `CREDENTIAL(S)` | ≥ 16 characters mixing letters with a digit or non-letter, or ≥ 32 hex digits                                                                                                                                                                                                                                                                                                                  | `token_type = "Bearer"`, `token_status` (a property word follows the stem); references; `$(…)`; shorter, letters-only or letter-free literals (digits or punctuation only) that are not ≥ 32 hex digits are the declared limit `lim_04`           |
 | K    | any other name ending in `KEY` except `PUBLIC_KEY`/`PUB_KEY`/`PUBKEY`                                                                            | an opaque value: ≥ 32 hex digits, or ≥ 20 characters all from the standard or URL-safe base64 alphabet (`+`, `/`, `-`, `_` and terminal `=` padding included) with a letter and a digit; a value holding `:`, `.` or a space is not opaque; values outside this grammar (shorter than 20 characters, without a digit, or holding `:`, `.` or a space) are the declared limit `rem_tierk_short` | `CACHE_KEY = "session:user-profile:v2"`; a path of lower-case `/`-separated segments (`uploads/2026/10/report`); settings references; public keys                                                                                                 |
 
 A family signature (next section) overrides every length and tier condition.
@@ -148,7 +149,7 @@ values under an AWS secret name (assignment or JSON key); Fly `FlyV1`, `fm1_`, `
 `EAA[A-Za-z0-9]{20,}`; Tailscale `tskey-` (general grammar: the real
 `tskey-auth-<id>CNTRL-<secret>` keeps its inner `-`, `g7988_08`); Groq
 `gsk_[A-Za-z0-9]{20,}`; age `AGE-SECRET-KEY-1`; Azure `AccountKey=`. Every family here has its own corpus row; a family joins this
-list only together with its row; what lies outside the list is the declared limit `g7988_10`. PEM private keys: header in any case, LF, CRLF or `\n`-escaped; a header alone is
+list only together with its row; what lies outside the list — an unlisted family, or a listed family's value outside its stated grammar (a JWT segment shorter than 8 characters, as in an empty `e30` payload) — is the declared limit `g7988_10`. PEM private keys: header in any case, LF, CRLF or `\n`-escaped; a header alone is
 sufficient; a headerless body is guilty under a Tier S name. An OpenPGP `-----BEGIN PGP PRIVATE KEY
 BLOCK-----` armor header is guilty like a PEM header (`g7988_27`). A PEM PUBLIC key block is innocent.
 JWT: three base64url segments of 8–8192 characters each, the first starting `eyJ`, matched in linear time.
@@ -165,7 +166,7 @@ padding. Consecutive lines that are pure base64 and all but the last of equal le
 candidate is decoded (no prefix window: `kimi_21`), read as latin-1, C0/C1 control characters except
 tab/CR/LF deleted (`kl_04`: a NUL inside the name), and screened by the same rules. Decoding recurses to
 a total depth of TWO layers (`normative_11`); a malformed candidate yields no view and the raw text is
-still screened. Each layer is at most 3/4 of its input, so total work stays below 2.4·n. A credential or a PII value in any other reversible view — a hex dump, rot13, reversed text, or a literal split by concatenation (`"08" + "12" + "3456" + "7890"`) — is the declared limit `rem_views`.
+still screened. Each layer is at most 3/4 of its input, so total work stays below 2.4·n. A reversible view outside that set which contains either a credential or PII — a hex dump, rot13, reversed text, or a literal split by concatenation (`"08" + "12" + "3456" + "7890"`) — is uniquely assigned to declared limit `rem_views`.
 
 ## PII entities
 
@@ -180,7 +181,7 @@ second number (`… / 0813…`) does not hide the first. Markers: `+` glued to t
 `(+62)`; `00` followed by a country code `[1-9]`; `tel:`, `wa.me/`, `@s.whatsapp.net`; a phone label attached to the value: a key or label whose normalised name has a segment `phone`, `telephone`, `telepon`, `telp`, `tel`, `mobile`, `cell`, `hp`, `wa`, `whatsapp` or `contact` (`no_hp`, `nomor_telepon`, `r2_07`). The markers `tel:`, `wa.me/` and `@s.whatsapp.net` act like a label: the 7–15-digit value they introduce is a phone with or without `+` (`https://wa.me/39 347 1234567`, `g8019_01`).
 A labelled value with 7–15 digits is a phone in any domestic grouping, including Indonesian, Italian,
 German and US forms; labels alone, placeholders and all-zero examples are innocent, as are ports and
-version strings merely adjacent to a label. The amount exemption below never applies to a labelled value (`phone: "347.123.456"`, `r2_17`). A label segment followed by a property word (Named assignments: `contact_count`, `phone_type`) is not a phone label (`r2_innocent_03`). A phone-shaped digit stream without a recognised label — under a label outside this list (`ufficio: 347 123 4567`), in a table cell or in prose (`Chiamare Mario al 347 123 4567`) — in a grouping the guilty shapes do not name (a domestic non-Indonesian number, an Indonesian number whose first group is a lone `0` such as `0 361 777777`), or one the date or amount exemptions remove (`+39.347.123.456`, a labelled value shaped like a valid date), is the declared limit `rem_phone_label`.
+version strings merely adjacent to a label. The amount exemption below never applies to a labelled value (`phone: "347.123.456"`, `r2_17`). A label segment followed by a property word (Named assignments: `contact_count`, `phone_type`) is not a phone label (`r2_innocent_03`). A phone-shaped digit stream without a recognised label — under a label outside this list (`ufficio: 347 123 4567`), in a table cell or in prose (`Chiamare Mario al 347 123 4567`) — in a grouping the guilty shapes do not name (a domestic non-Indonesian number, an Indonesian number whose first group is a lone `0` such as `0 361 777777`), or one the date or amount exemptions remove (`+39.347.123.456`, a labelled value shaped like a valid date), or a labelled value with fewer than 7 or more than 15 digits (`telp: 777777`, a local number without its area code), is the declared limit `rem_phone_label`.
 
 Guilty shapes: Indonesian mobile `08` + 8–11 digits, `628`/`+628`/`00628` + 8–11, and `62 (0)8…` /
 `+62 (0)8…` with the `(0)` dropped; Indonesian landline `0[2-7]` + 7–10 more digits, or the same after
@@ -222,7 +223,7 @@ full match, never a prefix match).
 or a passport, KITAS or KITAP number: 6–16 letters and digits, with at least 6 digits, in any issuer's
 order (`AB1234567`, a 9-digit US/UK number, `C01X00T47`, an alphanumeric KITAS card number). The value
 must be attached to a key or label whose normalised name (as in Named assignments) has a segment
-`nik`, `ktp`, `kk`, `npwp`, `kitas`, `kitap`, `passport`, `paspor`, `document`, `dokumen`, `nomor` or `national` (`no_ktp`, `nomor_kitas`, `passport_number`, `passportNo`, `no_paspor`, `document_number`, `no_dokumen`, `national_id`: `r2_06`, `r2_11`); `nomor_invoice: "INV2026001234"` is skipped too, an accepted over-skip. An identifier under a label outside this list (`ssn`, `codice_fiscale`) is the declared limit `rem_id_label`; a number under a recognised label but outside the 6–16 / ≥ 6-digit grammar (`passport: "AB12345"`) is the declared limit `rem_id_grammar`. An identity number with no recognised label attached — in prose or in a table column (`| Paspor |`) — is the declared limit `g7971n_05`. A label by itself, a whole-value placeholder, or an
+`nik`, `ktp`, `kk`, `npwp`, `kitas`, `kitap`, `passport`, `paspor`, `document`, `dokumen`, `nomor` or `national` (`no_ktp`, `nomor_kitas`, `passport_number`, `passportNo`, `no_paspor`, `document_number`, `no_dokumen`, `national_id`: `r2_06`, `r2_11`); `nomor_invoice: "INV2026001234"` is skipped too, an accepted over-skip. An identifier under a label outside this list (`ssn`, `codice_fiscale`) is the declared limit `rem_id_label`; a number under a recognised label but outside the 6–16 / ≥ 6-digit grammar (`passport: "AB12345"`) is the declared limit `rem_id_grammar`. An identity number of any issuer or grammar with no recognised ID label attached — in prose or in a table column (`| Paspor |`) — is the declared limit `g7971n_05`. A label by itself, a whole-value placeholder, or an
 all-zero example is innocent. `crm_name`: a string literal of 2–6
 words, each starting with a letter, under a key `name`, `full_name`, `nama`, `client_name`,
 `customer_name` or `contact_name`, in a record whose other keys name a client/customer/contact/lead/stage
@@ -270,27 +271,27 @@ Declared limits. A closed list without a remainder is a spec defect, and so is a
 is cured by naming the remainder it fell into, not by a row chasing the shape. Rows that pin a rule carry `rule:`, a
 phrase quoted verbatim from this spec; the schema test fails when the phrase is missing, so deleting a PINNED phrase turns its row red (every remainder row carries one); rule text that no row quotes is not covered by this check.
 
-| Vocabulary                     | Section                               | Remainder                                |
-| ------------------------------ | ------------------------------------- | ---------------------------------------- |
-| name stems (Tier P/S/K)        | Named assignments                     | `rem_stem`                               |
-| property words                 | Named assignments                     | `rem_property`                           |
-| all-digit Tier P threshold (6) | Named assignments                     | `rem_short_digits`                       |
-| Tier S floor (16, mixed)       | Named assignments                     | `lim_04`                                 |
-| Tier K floor (20)              | Named assignments                     | `rem_tierk_short`                        |
-| type-shaped identifiers        | Annotations and references            | `lim_03`                                 |
-| placeholder words              | Literals, references and placeholders | `rem_placeholder`                        |
-| assignment carriers            | Assignment carriers                   | `rem_carrier`                            |
-| CLI flags and contexts         | Credential-bearing contexts           | `rem_cli`                                |
-| credential families            | Credential families                   | `g7988_10`                               |
-| decoded views and depth        | Decoded views                         | `rem_views`, `r2x_11`                    |
-| phone shapes and labels        | Phones                                | `rem_phone_label`                        |
-| phone grouping chains          | Phones                                | `rem_slash_phone`                        |
-| ID labels                      | National IDs                          | `rem_id_label`; unlabelled: `g7971n_05`  |
-| ID number grammar              | National IDs                          | `rem_id_grammar`                         |
-| CRM name grammar and structure | National IDs                          | `rem_crm_mononym`; outside CRM: `lim_01` |
-| CRM name keys                  | National IDs                          | `rem_crm_key`                            |
-| e-mail spellings               | E-mail                                | `lim_02`                                 |
-| PII enumeration                | Threat model                          | `lim_pan`, `lim_iban`                    |
+| Vocabulary                     | Section                               | Remainder                                 |
+| ------------------------------ | ------------------------------------- | ----------------------------------------- |
+| name stems (Tier P/S/K)        | Named assignments                     | `rem_stem`                                |
+| property words                 | Named assignments                     | `rem_property`                            |
+| all-digit Tier P threshold (6) | Named assignments                     | `rem_short_digits`                        |
+| Tier S floor (16, mixed)       | Named assignments                     | `lim_04`                                  |
+| Tier K floor (20)              | Named assignments                     | `rem_tierk_short`                         |
+| type-shaped identifiers        | Annotations and references            | `lim_03`                                  |
+| placeholder words              | Literals, references and placeholders | `rem_placeholder`                         |
+| assignment carriers            | Assignment carriers                   | `rem_carrier`                             |
+| CLI flags and contexts         | Credential-bearing contexts           | `rem_cli`                                 |
+| credential families            | Credential families                   | `g7988_10`                                |
+| decoded views and depth        | Decoded views                         | `rem_views`, `r2x_11`                     |
+| phone shapes and labels        | Phones                                | `rem_phone_label`                         |
+| phone grouping chains          | Phones                                | `rem_slash_phone`                         |
+| ID labels                      | National IDs                          | `rem_id_label`; unlabelled: `g7971n_05`   |
+| ID number grammar              | National IDs                          | `rem_id_grammar`                          |
+| CRM name grammar and structure | National IDs                          | `rem_crm_mononym`; outside CRM: `lim_01`  |
+| CRM name keys                  | National IDs                          | `rem_crm_key`                             |
+| e-mail spellings               | E-mail                                | `lim_02`                                  |
+| PII enumeration                | Threat model                          | `rem_pii_other` (+ `lim_pan`, `lim_iban`) |
 
 The e-mail allowlist is the one closed list whose outside is GUILTY (everything not allowed is skipped), so it needs no
 remainder.
@@ -300,15 +301,15 @@ remainder.
 These guilt shapes MAY be queued. Each is a corpus row with `limit: true`; the test fails if this list
 and those rows differ. Everything not listed here is a defect when it leaks.
 
-- `limit:g7971n_05` — an identity number (NIK, passport, KITAS/KITAP, NPWP) without a recognised label attached, in prose or a table column.
+- `limit:g7971n_05` — an identity number of any issuer or grammar (NIK, passport, KITAS/KITAP, NPWP, a foreign ID) without a recognised label attached, in prose or a table column.
 - `limit:r2x_11` — a credential or a PII value under three or more base64 layers (depth is bounded at two for cost).
 - `limit:lim_01` — a personal name outside any CRM-like structure (no named-entity recognition).
 - `limit:lim_02` — an address spelled with plain words (`person at client dot corp`).
 - `limit:lim_03` — an unquoted password shaped like a type identifier after `:` or `=` (`password: Summer`,
   `password: Welcome1Password`): indistinguishable from an annotation or a name reference.
-- `limit:lim_04` — a Tier S literal shorter than 16 characters or letters-only (`SERVICE_TOKEN = "shortTok"`).
+- `limit:lim_04` — a Tier S literal outside the guilty grammar: shorter than 16 characters, letters-only, or with no letter at all (digits or punctuation only) — never a value of ≥ 32 hex digits, which is guilty (`SERVICE_TOKEN = "shortTok"`).
 - `limit:g7988_10` — a bare token family absent from the explicit family list; unlisted bare families
-  are not caught unless their surrounding assignment or credential context triggers a tier/context rule.
+  are not caught unless their surrounding assignment or credential context triggers a tier/context rule; also a listed family's value outside its own grammar (a JWT with a segment under 8 characters).
 - `limit:rem_stem` — a credential under a name holding no Tier P/S/K stem (`PIN = "482193"`, `TOKENS`, `sessionid`, `PASSCODE`, a Terraform `sensitive` default).
 - `limit:rem_property` — a credential stored under a stem followed by a property word (`DB_PASSWORD_FILE`).
 - `limit:rem_short_digits` — an all-digit Tier P literal of fewer than 6 digits (`password: 4821`).
@@ -317,12 +318,13 @@ and those rows differ. Everything not listed here is a defect when it leaks.
 - `limit:rem_carrier` — a credential reaching code in an unlisted carrier (positional, three-argument setter).
 - `limit:rem_cli` — a credential in an unlisted context (`ldapsearch -w`, a `.pgpass` row with a numeric host or user).
 - `limit:rem_views` — a credential or a PII value in a reversible view outside the decoded views (hex dump, rot13, split literal).
-- `limit:rem_phone_label` — a phone-shaped digit stream without a recognised label (unlisted label, table cell, prose) in a grouping the guilty shapes do not name (non-Indonesian domestic, a lone `0` first group), or one the date/amount exemptions remove.
+- `limit:rem_phone_label` — a phone-shaped digit stream without a recognised label (unlisted label, table cell, prose) in a grouping the guilty shapes do not name (non-Indonesian domestic, a lone `0` first group), or one the date/amount exemptions remove, or a labelled value outside the 7–15-digit band.
 - `limit:rem_slash_phone` — phone groups chained only by spaced `/`.
 - `limit:rem_id_label` — an identity number under an unlisted label (`ssn`, `codice_fiscale`).
 - `limit:rem_id_grammar` — a number under an ID label outside the 6–16 / ≥ 6-digit grammar.
 - `limit:rem_crm_mononym` — a CRM name outside the 2–6-word grammar (one word, seven or more, a non-letter start).
 - `limit:rem_crm_key` — a 2–6-word personal name under an unlisted name key in a CRM-shaped record (`nama_lengkap`, `customerName`).
+- `limit:rem_pii_other`, `limit:rem_pii_other_address`, `limit:rem_pii_other_messaging`, `limit:rem_pii_other_social`, `limit:rem_pii_other_plate` — five witnesses for the catch-all personal-data remainder of threat-model item 7 (date of birth, postal address, messaging handle, social handle, vehicle plate); its other examples share these rows; PAN and IBAN stay on item 6 (`lim_pan`, `lim_iban`).
 - `limit:lim_pan` — a payment card number: out of scope, owner decision pending (UU PDP art. 4(2)(f)).
 - `limit:lim_iban` — an IBAN: out of scope, owner decision pending (UU PDP art. 4(2)(f)).
 

@@ -195,10 +195,19 @@ def test_receipt_coverage_and_declared_limits_match_the_spec():
 
 def test_every_rule_phrase_is_in_the_spec_and_every_remainder_carries_one():
     spec = " ".join(SPEC.read_text(encoding="utf-8").split())
-    missing = [r["id"] for r in ROWS if "rule" in r and " ".join(r["rule"].split()) not in spec]
-    assert not missing, missing
+    not_once = [(r["id"], spec.count(" ".join(r["rule"].split()))) for r in ROWS
+                if "rule" in r and spec.count(" ".join(r["rule"].split())) != 1]
+    assert not not_once, not_once
     unpinned = [r["id"] for r in ROWS if r.get("limit") and r["source"] == "gate-7988-r2" and "rule" not in r]
     assert not unpinned, unpinned
+
+
+def test_the_vocabulary_table_names_a_limit_row_for_each_of_its_19_vocabularies():
+    section = SPEC.read_text(encoding="utf-8").split("## Closed vocabularies and their remainders", 1)[1].split("\n## ", 1)[0]
+    table = [line for line in section.splitlines() if line.startswith("| ") and not line.startswith(("| Vocabulary", "| ---"))]
+    limits = {r["id"] for r in ROWS if r.get("limit")}
+    named = [set(re.findall(r"`([a-z0-9_]+)`", line.split("|")[3])) for line in table]
+    assert len(table) == 19 and all(ids and ids <= limits for ids in named), (len(table), named)
 
 
 BARE_TOKEN_FAMILY = re.compile(
