@@ -281,6 +281,56 @@ def test_host_git_config_never_reaches_the_candidate(world, monkeypatch, tmp_pat
         assert (c["env"]["GIT_CONFIG_GLOBAL"], c["env"]["GIT_CONFIG_NOSYSTEM"], c["env"]["GIT_CONFIG_KEY_0"]) == ("/dev/null", "1", "core.hooksPath")
 
 
+
+def test_a_mirror_local_fsmonitor_never_runs_during_the_merge(world, tmp_path):
+    marker = tmp_path / "FSMONITOR_RAN"
+    hook = tmp_path / "fsmon.sh"
+    hook.write_text(f"#!/bin/sh\ntouch {marker}\n")
+    hook.chmod(0o755)
+    probe = tmp_path / "probe"
+    probe.mkdir()
+    g(probe, "init", "-q")
+    subprocess.run(["git", "-C", str(probe), "-c", f"core.fsmonitor={hook}", "status"], capture_output=True, env=GIT_ENV)
+    assert marker.exists()   # the planted monitor does run on an index refresh: the guilt below can go red
+    marker.unlink()
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0   # the first tick creates the mirror
+    g(world.state / "repo.git", "config", "core.fsmonitor", str(hook))
+    src = world.state.parent / "src"
+    g(src, "checkout", "-q", "-b", "pr7", world.base)
+    head7 = commit(src, {"g.txt": "y\n"}, "second")
+    g(world.origin, "fetch", "-q", str(src), "+pr7:refs/pull/7/head")
+    world.gh.prs = [pr(7, head7)]
+    assert world.tick() == 0
+    assert not marker.exists() and [r["pr"] for r in world.journal() if r["kind"] == "decision"] == [1, 7]
+
+
+def test_host_attributes_never_rewrite_the_candidate_the_runner_sees(world, monkeypatch, tmp_path):
+    xdg = tmp_path / "xdg"
+    (xdg / "git").mkdir(parents=True)
+    (xdg / "git" / "attributes").write_text("* text eol=crlf\n")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg))
+    probe = tmp_path / "probe"
+    probe.mkdir()
+    g(probe, "init", "-q")
+    commit(probe, {"h.txt": "a\nb\n"}, "lf")
+    (probe / "h.txt").unlink()
+    subprocess.run(["git", "-C", str(probe), "checkout", "--", "h.txt"], check=True, env={**GIT_ENV, "XDG_CONFIG_HOME": str(xdg)})
+    assert (probe / "h.txt").read_bytes() == b"a\r\nb\r\n"   # the host file does rewrite a checkout: the guilt below can go red
+    src = world.state.parent / "src"
+    g(src, "checkout", "-q", "-b", "pr8", world.base)
+    head8 = commit(src, {"h.txt": "a\nb\n"}, "lf file")
+    g(world.origin, "fetch", "-q", str(src), "+pr8:refs/pull/8/head")
+    seen, inner = {}, mg.runner_exec
+
+    def spy(argv, cwd, env, timeout):
+        if "--worktree" in argv:
+            seen["h"] = (Path(argv[argv.index("--worktree") + 1]) / "h.txt").read_bytes()
+        return inner(argv, cwd, env, timeout)
+    monkeypatch.setattr(mg, "runner_exec", spy)
+    world.gh.prs = [pr(8, head8)]
+    assert world.tick() == 0 and seen["h"] == b"a\nb\n"
+
 def test_a_caller_git_dir_or_index_never_redirects_the_merger(world, monkeypatch, tmp_path):
     decoy = tmp_path / "decoy.git"
     subprocess.run(["git", "init", "-q", "--bare", str(decoy)], check=True, env=GIT_ENV)
@@ -449,3 +499,45 @@ def test_merge_refuses_with_exit_2_whatever_it_is_given(capsys):
 def test_selftest_passes(capsys):
     assert mg.main(["--selftest"]) == 0
     assert "FAIL" not in capsys.readouterr().out
+
+
+def test_a_filesystem_error_after_a_pr_is_picked_is_an_error_decision_not_a_retry_loop(world, monkeypatch):
+    def broken(*a, **kw):
+        raise PermissionError(13, "Permission denied", "cand")
+    monkeypatch.setattr(mg, "fresh_worktree", broken)
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 1 and world.tick() == 0
+    assert [(r["kind"], r.get("overall")) for r in world.journal()] == [("decision", "ERROR")]
+
+
+WRAPPER = _MODULE.parent / "merger_tick.sh"
+
+
+def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    g(src, "init", "-q", "-b", "main")
+    commit(src, {"scripts/localci/merger.py": "v1\n", "scripts/localci/hosted_compare.py": "hc\n"}, "v1")
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True, env=GIT_ENV)
+    fake_py = tmp_path / "py"
+    fake_py.write_text('#!/bin/sh\necho "$@" > "$OUT_ARGS"\ncat "$2" > "$OUT_CODE"\n')
+    fake_py.chmod(0o755)
+    state = tmp_path / "state"
+    env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "MERGER_PYTHON": str(fake_py), "MERGER_NODE": "n1", "MERGER_STATE_DIR": str(state),
+           "MERGER_SEED": str(origin), "MERGER_REMOTE_URL": str(origin), "OUT_ARGS": str(tmp_path / "args"), "OUT_CODE": str(tmp_path / "code"),
+           "GIT_DIR": str(tmp_path / "decoy"), "GIT_CONFIG_PARAMETERS": "'core.hooksPath'='/nowhere'"}
+
+    def wrap():
+        return subprocess.run(["bash", str(WRAPPER)], env=env, capture_output=True, text=True)
+    first = wrap()
+    assert first.returncode == 0, first.stderr
+    assert (tmp_path / "code").read_text() == "v1\n"
+    assert (tmp_path / "args").read_text().split() == ["-I", (tmp_path / "args").read_text().split()[1], "tick", "--node", "n1",
+                                                       "--state-dir", str(state), "--python", str(fake_py)]
+    commit(src, {"scripts/localci/merger.py": "v2\n"}, "v2")
+    g(src, "push", "-q", str(origin), "main")
+    assert wrap().returncode == 0 and (tmp_path / "code").read_text() == "v2\n"
+    origin.rename(tmp_path / "gone.git")
+    dead = wrap()
+    assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2\n"
