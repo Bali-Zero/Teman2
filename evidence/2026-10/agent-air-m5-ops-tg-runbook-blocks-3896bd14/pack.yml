@@ -130,8 +130,13 @@ dissent:
     objection: "Refutation SURVIVES with caveats: a heredoc that compiles but raises at run time passes; raw token runs only where the whole run consumed the token, so 'every block both ways' overstated it."
     status: CONFIRMED
     resolution: "Heredoc run-time errors declared as a limit (executing them needs a stubbed tg_notify). The Conventions now say the test pastes every block whole and line by line (the raw empty run covers every block)."
+  - seat: claude-opus-5-5
+    objection: "BLOCK, final gate gate-8013 on 701ceb370d: the required antidotes check is red (test_lint_tcc_desktop_paths): the new test carried two dead ~/Desktop/nuzantara paths (fake-home mkdir and the shim loop), dead since step 3 became cd ~/nuzantara. Notice N1: a token piped into an unshimmed external (xargs echo) passed the test."
+    status: CONFIRMED
+    resolution: 'Both Desktop paths removed (lint_tcc_desktop_paths.py rc 0, its tests 15 passed); a static rule now fails any block that pipes "$TG" into something other than fly or gh (xargs echo mutant m9 red). Head still PASS 9 blocks, origin/main still 55 failure(s).'
 owed:
   - The owner's step: a new token from BotFather (account to be confirmed), then runbook steps 3-4 on Pro and Mini, 5 (GitHub), 6 (Fly, restarts every nuzantara-rag machine), then a Claude session runs steps 7-8.
   - step 4's loader still hands the token to launchctl setenv on argv (existing code, declared caveat).
   - The pty paste simulation (real ZLE bracketed paste) is not in CI; CI covers whole and raw paste plus the static rules.
   - Python heredocs in steps 7-8 are compiled by the test, not executed.
+  - "argv is recorded only for shimmed commands; a token reaching an unshimmed external other than through a pipe (for example env X=$TG cmd) is not caught."

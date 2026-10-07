@@ -34,8 +34,7 @@ setup_case() {
   home_dir="$case_dir/home"
   log_dir="$case_dir/logs"
   mkdir -p "$log_dir" "$case_dir/shims" "$home_dir/Library/LaunchAgents" \
-    "$home_dir/.organism/tg_spool" "$home_dir/nuzantara/scripts/ops" \
-    "$home_dir/Desktop/nuzantara/scripts/ops"
+    "$home_dir/.organism/tg_spool" "$home_dir/nuzantara/scripts/ops"
   printf 'TELEGRAM_BOT_TOKEN=\n' > "$home_dir/.nuzantara-secrets.env"
   printf '<string>TELEGRAM_BOT_TOKEN</string>\n' > "$home_dir/Library/LaunchAgents/test.plist"
   printf '{"p0_unsent": true}\n' > "$home_dir/.organism/tg_spool/pending.jsonl"
@@ -54,8 +53,8 @@ SHIM
   chmod +x "$case_dir/shims/command-shim"
   for name in fly gh ssh python3; do cp "$case_dir/shims/command-shim" "$case_dir/shims/$name"; done
 
-  for repo in "$home_dir/nuzantara" "$home_dir/Desktop/nuzantara"; do
-    cat > "$repo/scripts/ops/rotate_telegram_token.sh" <<'SHIM'
+  repo="$home_dir/nuzantara"
+  cat > "$repo/scripts/ops/rotate_telegram_token.sh" <<'SHIM'
 #!/bin/bash
 n=0
 while [ -e "$TEST_LOG_DIR/rotate.$n.args" ]; do n=$((n + 1)); done
@@ -63,12 +62,11 @@ printf '%s\n' "$@" > "$TEST_LOG_DIR/rotate.$n.args"
 if [ "$#" -eq 0 ]; then IFS= read -r value || value=; printf '%s' "$value" > "$TEST_LOG_DIR/rotate.$n.stdin"; unset value
 else : > "$TEST_LOG_DIR/rotate.$n.stdin"; fi
 SHIM
-    cat > "$repo/scripts/launchd_env_loader.sh" <<'SHIM'
+  cat > "$repo/scripts/launchd_env_loader.sh" <<'SHIM'
 #!/bin/bash
 printf '%s\n' "$@" > "$TEST_LOG_DIR/launchd.args"
 SHIM
-    chmod +x "$repo/scripts/ops/rotate_telegram_token.sh" "$repo/scripts/launchd_env_loader.sh"
-  done
+  chmod +x "$repo/scripts/ops/rotate_telegram_token.sh" "$repo/scripts/launchd_env_loader.sh"
 }
 
 # Mode "whole": the block is one -c string, parsed before it runs (bracketed paste); a -c string
@@ -124,6 +122,9 @@ block_rc=\$?; [ -z \"\${TG+x}\" ] && [ \"\$block_rc\" -eq 0 ]"
 for block in "$TMP"/blocks/*.sh; do
   if grep -q '#' "$block"; then fail "$(basename "$block") contains #"; fi
   if grep -Eq '(^|[^[:alnum:]_])exit([^[:alnum:]_]|$)' "$block"; then fail "$(basename "$block") contains exit"; fi
+  if grep -oE '"[$]TG"[[:space:]]*\|[[:space:]]*[^[:space:]]+' "$block" | grep -Evq '\|[[:space:]]*(fly|gh)$'; then
+    fail "$(basename "$block") pipes the token into something other than fly or gh"
+  fi
   if grep -oE '(^|[^[:alnum:]_.])read([[:space:]]+-[[:alpha:]]+)*[[:space:]]' "$block" | grep -vq -- '-[[:alpha:]]*s'; then
     fail "$(basename "$block") has a read without -s (the answer would echo)"
   fi
