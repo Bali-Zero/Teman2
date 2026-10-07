@@ -478,7 +478,7 @@ def test_the_real_matrix_accounts_for_every_step_of_every_executed_context_and_n
     assert executed and all(c["local"].get("check", "").startswith("ctx.") and c["local"]["where"] in ("host", "container") for c in executed)
     for c in executed:
         job = yaml.safe_load((fr.REAL_REPO / c["workflow_file"]).read_text())["jobs"][c["job_id"]]
-        steps, why = runner.resolve_steps(job, c["local"], "b" * 40)
+        steps, why = runner.resolve_steps(job, c["local"], "b" * 40, expressions=bool(c["local"].get("expressions")))
         assert why is None and steps, (c["name"], why)
         assert all((fr.REAL_REPO / f).is_file() for f in c["local"].get("trusted_files", [])), c["name"]
     assert sorted(doc["summary"]["never_claim_parity_for"]) == sorted(c["name"] for c in doc["contexts"] if c["mapping"] != "executed")

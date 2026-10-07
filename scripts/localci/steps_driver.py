@@ -60,15 +60,117 @@ def bare_python(prefix: str) -> str:
     return str(venv / "bin")
 
 
+def read_kv_file(p: Path) -> dict:
+    """GITHUB_OUTPUT as the hosted runner reads it back: `key=value` lines and `key<<DELIM` ... `DELIM` blocks."""
+    lines, out, i = (p.read_text(errors="replace").splitlines() if p.exists() else []), {}, 0
+    while i < len(lines):
+        ln, i = lines[i], i + 1
+        if "<<" in ln and ("=" not in ln or ln.index("<<") < ln.index("=")):
+            key, delim = ln.split("<<", 1)
+            buf = []
+            while i < len(lines) and lines[i] != delim:
+                buf.append(lines[i])
+                i += 1
+            out[key], i = "\n".join(buf), i + 1
+        elif "=" in ln:
+            key, val = ln.split("=", 1)
+            out[key] = val
+    return out
+
+
+def expr_steps(cfg: dict, root: str, prefix: str, gh: Path, suite) -> tuple[int, int, int, int]:
+    """Expression mode (service contexts): `if:` decided as the hosted runner decides it, `${{ }}` in env and bodies evaluated at
+    step start, `continue-on-error` and step `timeout-minutes` honoured, outputs read back for later steps, and emulated artifact
+    steps. An unconditioned step still runs after a failure (more evidence, never less red); a conditioned one sees the job status."""
+    sys.path.insert(0, str(Path(__file__).parent))
+    import gh_expr as X   # noqa: PLC0415 — runner-owned, shipped beside this driver and sha-pinned with it
+    import resource       # noqa: PLC0415
+
+    ctx = {**cfg["expr"], "steps": {}, "env": {}}
+    status, failed, killed, blocked, skipped = "success", 0, 0, 0, 0
+    jenv: dict = {}
+    for k, v in (cfg.get("job_env") or {}).items():
+        jenv[k] = X.substitute(str(v), {**ctx, "env": jenv}, status)
+    for i, st in enumerate(cfg["steps"]):
+        case = ET.SubElement(suite, "testcase", classname="localci.ctx", name=st["name"])
+        if "not_applicable" in st:
+            skipped += 1
+            ET.SubElement(case, "skipped", message=st["not_applicable"])
+            continue
+        ctx["env"] = jenv
+        if "if" in st and not X.step_runs(st["if"], ctx, status):
+            skipped += 1
+            ET.SubElement(case, "skipped", message=f"if: {' '.join(str(st['if']).split())} -> false (status {status})")
+            if st.get("id"):
+                ctx["steps"][st["id"]] = {"outputs": {}, "outcome": "skipped", "conclusion": "skipped"}
+            continue
+        senv = {**jenv, **{k: X.substitute(str(v), ctx, status) for k, v in (st.get("env") or {}).items()}}
+        ctx["env"] = senv
+        outp = gh / f"github_output-{i}"
+        path = os.pathsep.join(p for p in (prefix, os.environ.get("PATH")) if p)
+        env = {**os.environ, "PATH": path, **cfg.get("env", {}), **senv, "GITHUB_OUTPUT": str(outp), "GITHUB_STEP_SUMMARY": str(gh / f"summary-{i}")}
+        Path(env.get("RUNNER_TEMP", "/tmp")).mkdir(parents=True, exist_ok=True)
+        print(f"##[localci] step {i}: {st['name']}", flush=True)
+        t0, cpu0, rc, note = time.monotonic(), resource.getrusage(resource.RUSAGE_CHILDREN), None, ""
+        if "precomputed" in st:   # run by the runner outside this sandbox (BASE judge on the host, or a declared egress step)
+            rc, note = st["precomputed"].get("rc"), st["precomputed"].get("reason", "")
+            print(st["precomputed"].get("log", ""), flush=True)
+        elif "emulate" in st:     # actions/upload-artifact and download-artifact: the runner moves the files; the step checks them here
+            em = st["emulate"]
+            p = Path(root) / X.substitute(em.get("path", ""), ctx, status)
+            have = p.is_dir() and any(p.iterdir()) or p.is_file()
+            rc = 1 if (em["action"] == "upload" and not have and em.get("if_no_files_found", "warn") == "error") else 0
+            note = f"{em['action']} {p}: {'files present' if have else 'no files'}"
+        else:
+            argv = st["argv"]
+            if "script" in st:
+                script = gh / f"step-{i}.sh"
+                script.write_text(X.substitute(st["script"], ctx, status))
+                argv = [str(script) if a == "{0}" else a for a in argv]
+            try:
+                rc = subprocess.run(argv, cwd=os.path.join(root, st.get("cwd") or "."), env=env, timeout=st.get("timeout_s")).returncode
+            except OSError as e:
+                note = f"could not start: {type(e).__name__}: {e}"
+            except subprocess.TimeoutExpired:
+                rc, note = 124, f"step timeout-minutes ({st.get('timeout_s')}s) exceeded"
+        cpu1 = resource.getrusage(resource.RUSAGE_CHILDREN)
+        case.set("time", f"{time.monotonic() - t0:.3f}")
+        case.set("cpu", f"{cpu1.ru_utime + cpu1.ru_stime - cpu0.ru_utime - cpu0.ru_stime:.3f}")
+        outcome = "success" if rc == 0 else "failure"
+        if rc is None:
+            blocked += 1
+            ET.SubElement(case, "error", type="not-started", message=note)
+        elif rc < 0:
+            killed += 1
+            ET.SubElement(case, "error", type="signal", message=f"killed by signal {-rc}")
+        elif rc != 0 and st.get("continue_on_error"):
+            case.set("outcome", "failure")
+            ET.SubElement(case, "system-out").text = f"continue-on-error: rc={rc} {note}".strip()
+        elif rc != 0:
+            failed += 1
+            status = "failure"
+            ET.SubElement(case, "failure", message=f"rc={rc} {note}".strip())
+        if st.get("id"):
+            ctx["steps"][st["id"]] = {"outputs": read_kv_file(outp), "outcome": outcome,
+                                      "conclusion": "success" if st.get("continue_on_error") else outcome}
+        print(f"##[localci] step {i} rc={rc} {note}".rstrip(), flush=True)
+    return failed, killed, blocked, skipped
+
+
 def main(cfg_path: str, junit_path: str) -> int:
     cfg = json.loads(Path(cfg_path).read_text())
     root = cfg["root"]
     if cfg.get("git_index"):
         index_tree(root, cfg.get("history"), Path(cfg_path).parent / "base")
+    if cfg.get("checkout") == "base":   # a job that checks out its BASE ref (`with: ref: <base sha>`) and reads the candidate through git
+        subprocess.run(["git", "checkout", "-q", "--detach", "main"], cwd=root, check=True)
     prefix = os.pathsep.join(p for p in (bare_python(cfg.get("path_prefix") or "") if cfg.get("venv") else "", cfg.get("path_prefix")) if p)
     gh = Path("/tmp/localci-gh")
     gh.mkdir(parents=True, exist_ok=True)
     suite = ET.Element("testsuite", name=cfg["context"])
+    if cfg.get("expr") is not None:
+        failed, killed, blocked, skipped = expr_steps(cfg, root, prefix, gh, suite)
+        return finish(suite, cfg, junit_path, failed, killed, blocked, skipped)
     failed = killed = blocked = skipped = 0
     for i, st in enumerate(cfg["steps"]):
         case = ET.SubElement(suite, "testcase", classname="localci.ctx", name=st["name"])
@@ -102,6 +204,10 @@ def main(cfg_path: str, junit_path: str) -> int:
                 ET.SubElement(case, "failure", message=f"rc={rc}")
         case.set("time", f"{time.monotonic() - t0:.3f}")
         print(f"##[localci] step {i} rc={rc}", flush=True)
+    return finish(suite, cfg, junit_path, failed, killed, blocked, skipped)
+
+
+def finish(suite, cfg: dict, junit_path: str, failed: int, killed: int, blocked: int, skipped: int) -> int:
     suite.set("tests", str(len(cfg["steps"])))
     suite.set("failures", str(failed))
     suite.set("errors", str(blocked + killed))

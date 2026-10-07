@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import fnmatch
 import hashlib
 import html
 import io
@@ -35,12 +36,12 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-RUNNER_VERSION = "0.5.0"
+RUNNER_VERSION = "0.6.0"
 STATUSES = ("QUEUED", "RUNNING", "PASS", "FAIL", "ERROR", "BLOCKED", "STALE", "INTERRUPTED", "NOT_APPLICABLE")
 BLOCKING = {"ERROR", "BLOCKED", "STALE", "RUNNING", "QUEUED", "INTERRUPTED"}
-EXECUTABLE = ("pytest", "trusted_pytest", "cmd", "trusted_steps", "contained_steps")
+EXECUTABLE = ("pytest", "trusted_pytest", "cmd", "trusted_steps", "contained_steps", "contained_jobs")
 # kinds in which CANDIDATE code executes (trusted_pytest: BASE test, candidate implementation; contained_steps: a required context's steps)
-CANDIDATE_KINDS = ("pytest", "trusted_pytest", "contained_steps")
+CANDIDATE_KINDS = ("pytest", "trusted_pytest", "contained_steps", "contained_jobs")
 ISOLATIONS = ("container", "none")
 DEFAULT_ISOLATION_IMAGE = "localci-candidate:1"   # scripts/localci/candidate.Dockerfile
 SANDBOX_UID = 65534
@@ -390,16 +391,18 @@ def written_reason(v) -> str | None:
 
 
 def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None = None,
-                  wf_env: dict | None = None) -> tuple[list | None, str | None]:
+                  wf_env: dict | None = None, expressions: bool = False) -> tuple[list | None, str | None]:
     """Account for EVERY step of the BASE workflow job, in matrix order: a transcribed `argv`, the BASE `run:` body verbatim (written
     to a script file and run with GitHub's shell template), or `not_applicable` with a reason. A step the matrix does not name, a
     `not_run` step, duplicate step names, or an expression the runner does not evaluate makes the context BLOCKED — the local verdict
     never covers less than the job and still calls itself the job's. A step's `if:` is recorded, not evaluated: running a step
     GitHub might skip can only add red, never hide it. Env merges as GitHub does: workflow, job, step, then the matrix's overrides;
-    a job that runs in its own `container:`, beside `services:`, or on another runner image is not emulated."""
+    a job that runs in its own `container:`, beside `services:`, or on another runner image is not emulated. `expressions` (service
+    contexts): `${{ }}`, `if:`, `continue-on-error` and step `timeout-minutes` are kept for the driver to evaluate (gh_expr.py;
+    plan_service_context validates them), artifact actions may be `emulate`d, and `services:` are plan_services' to judge."""
     runs_on = job.get("runs-on")
     runs_on = runs_on[0] if isinstance(runs_on, list) and len(runs_on) == 1 else runs_on   # `[ubuntu-latest]` is one label
-    if (shape := [k for k in ("container", "services") if k in job]) or runs_on not in HOSTED_RUNNERS:
+    if (shape := [k for k in ("container", "services") if k in job and not (expressions and k == "services")]) or runs_on not in HOSTED_RUNNERS:
         return None, f"BASE job shape not emulated: {shape or ''} runs-on={job.get('runs-on')!r} (the sandbox stands in for {HOSTED_RUNNERS})"
     wsteps = [s for s in (job.get("steps") or []) if isinstance(s, dict)]
     names = [s["name"] for s in wsteps if isinstance(s.get("name"), str)]
@@ -428,6 +431,15 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
                 return None, f"matrix step {wname!r}: not_applicable needs a written reason, got {st['not_applicable']!r}"
             out.append({"name": wname, "not_applicable": reason})
             continue
+        if expressions and st.get("emulate"):
+            act = next((v for k, v in EMULATED_USES.items() if str(ws.get("uses", "")).startswith(k)), None)
+            w = ws.get("with") or {}
+            if act is None or "\n" in str(w.get("path", "")).strip() or ws.get("continue-on-error"):
+                return None, f"workflow step {wname!r}: only a single-path, fail-on-error upload/download-artifact is emulated"
+            out.append({"name": wname, **({"if": str(ws["if"])} if ws.get("if") is not None else {}),
+                        "emulate": {"action": act, **{k: str(w.get(k, "")) for k in ("path", "name", "pattern")}, "merge": w.get("merge-multiple") is True,
+                                    "if_no_files_found": str(w.get("if-no-files-found", "warn"))}})
+            continue
         env = {k: str(v) for k, v in {**(wf_env or {}), **(job.get("env") or {}), **(ws.get("env") or {})}.items()}
         env.update({k: base if v == "$BASE_SHA" else str(v) for k, v in (st.get("env") or {}).items()})
         step = {"name": wname}
@@ -435,17 +447,23 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
             step["argv"] = [base if x == "$BASE_SHA" else str(x) for x in st["argv"]]
         else:
             run, shell = ws.get("run"), ws.get("shell") or defaults.get("shell")
-            if not isinstance(run, str) or "${{" in run or shell not in SHELLS:
+            if not isinstance(run, str) or ("${{" in run and not expressions) or shell not in SHELLS:
                 return None, f"workflow step {wname!r} is not a bash run: body without expressions (shell={shell!r}) — transcribe it as argv or give a reason"
             step.update(argv=list(SHELLS[shell]), script=run)
-        if (expr := sorted(k for k, v in env.items() if "${{" in v)) or ws.get("continue-on-error"):
+        coe = ws.get("continue-on-error")
+        if not expressions and ((expr := sorted(k for k, v in env.items() if "${{" in v)) or coe):
             return None, f"workflow step {wname!r}: env {expr} carry expressions the runner does not evaluate (override them) or the step is continue-on-error"
         try:
             step.update(env=env, cwd=_step_cwd(ws, defaults))
         except RuntimeError as e:
             return None, f"workflow step {wname!r}: working-directory {e}"
         if ws.get("if") is not None:
-            step["if_not_evaluated"] = str(ws["if"])
+            step["if" if expressions else "if_not_evaluated"] = str(ws["if"])
+        if expressions:
+            tm = ws.get("timeout-minutes")
+            if coe not in (None, False, True) or (tm is not None and (isinstance(tm, bool) or not isinstance(tm, (int, float)))):
+                return None, f"workflow step {wname!r}: continue-on-error/timeout-minutes must be literals here"
+            step.update({k: v for k, v in (("id", ws.get("id")), ("continue_on_error", coe is True), ("timeout_s", int(tm * 60) if tm else None)) if v})
         if st.get("trusted_scan") is False:   # a path filter (`case` list, `git diff -- <paths>`) names surfaces, not judges
             step["trusted_scan"] = False
         out.append(step)
@@ -603,6 +621,328 @@ def tree_entries(wt: Path, rev: str, paths: list) -> list:
     return [got.get(p) for p in paths]
 
 
+# ------------------------------------------------------- service contexts (v0.6.0): jobs, services, deps images, expressions
+GH_EXPR = Path(__file__).with_name("gh_expr.py")
+EMULATED_USES = {"actions/upload-artifact@": "upload", "actions/download-artifact@": "download"}
+HEALTH_FLAGS = {"--health-cmd": "cmd", "--health-interval": "interval", "--health-timeout": "timeout", "--health-retries": "retries"}
+SERVICE_STEP_ENV = {"UV_OFFLINE": "1", "UV_FIND_LINKS": "/opt/wheels"}   # uv's spelling of the offline wheelhouse pip already gets
+RUNNER_CTX = {"os": "Linux", "arch": "ARM64", "temp": "/tmp/runner-temp", "name": "localci"}   # arm64 here, X64 hosted: a parity gap
+ARTIFACT_MAX_BYTES = 256 << 20
+DEPS_LABEL = "org.nuzantara.localci.deps"
+REQ_PIN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(\[[A-Za-z0-9,._-]+\])?==[A-Za-z0-9.+!_-]+(\s*;[^#\\]*)?\s*\\?$")
+# The deps image: the candidate image plus an offline wheelhouse of the closure a job's install steps ask for, so they re-run
+# verbatim with no network (pip and uv read /opt/wheels), plus public files the job's code downloads at run time (fetched once,
+# sha256-pinned in the matrix). Built at plan time with network, but nothing of the candidate executes: wheels only
+# (--only-binary, no build backend runs), from requirement lines reduced to `name==version` pins (an -e path, a URL or an index
+# option never reaches the network stage). The interpreter the job's setup-python pin names is handed to the sandbox user, as
+# the hosted toolcache belongs to the runner user, so `pip install` / `uv pip install --system` write where they do hosted.
+DEPS_DOCKERFILE = """\
+ARG BASE
+FROM ${BASE} AS wheels
+ARG PY
+USER root
+COPY req.txt pkgs.txt fetch.json fetch.py install.txt /req/
+RUN "$PY" -m pip download --no-cache-dir -q --disable-pip-version-check --only-binary=:all: -d /wheels -r /req/req.txt \\
+ && "$PY" -m pip download --no-cache-dir -q --disable-pip-version-check --only-binary=:all: -d /wheels pip uv setuptools wheel $(cat /req/pkgs.txt) \\
+ && "$PY" /req/fetch.py get /req/fetch.json /fetch
+FROM ${BASE}
+ARG PY
+USER root
+RUN chown -R 65534:65534 "$(dirname "$(dirname "$(readlink -f "$PY")")")"
+COPY --from=wheels /wheels/ /opt/wheels/
+COPY --from=wheels /req /req
+RUN --network=none --mount=type=bind,from=wheels,source=/fetch,target=/mnt/fetch "$PY" /req/fetch.py put /req/fetch.json /mnt/fetch
+USER 65534
+RUN --network=none xargs -r "$PY" -m pip install -q --disable-pip-version-check --no-deps --no-index < /req/install.txt
+USER root
+"""
+# Node, when the job calls it (ubuntu-latest carries one; setup-node pins one): the official image's binary and its npm.
+DEPS_NODE = """\
+COPY --from=node:{v}-bookworm-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:{v}-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \\
+ && node --version | grep -q "^v{v}\\."
+ENV LOCALCI_NODE={v}
+"""
+DEPS_FETCH_PY = """\
+import hashlib, json, os, shutil, sys, urllib.request
+mode, spec, where = sys.argv[1:4]
+os.makedirs(where, exist_ok=True)
+for i, f in enumerate(json.load(open(spec))):
+    if mode == "get":
+        data = urllib.request.urlopen(f["url"], timeout=300).read()
+        if hashlib.sha256(data).hexdigest() != f["sha256"]:
+            sys.exit(f"{f['url']}: sha256 differs from the matrix pin")
+        open(os.path.join(where, str(i)), "wb").write(data)
+    else:
+        os.makedirs(os.path.dirname(f["path"]), exist_ok=True)
+        shutil.copyfile(os.path.join(where, str(i)), f["path"])
+        d = f["path"]
+        while d not in ("/", "/tmp", "/home"):
+            os.chown(d, 65534, 65534)
+            d = os.path.dirname(d)
+"""
+
+
+def _gh_expr():
+    """gh_expr.py by path: the same file the driver gets at /cfg, whether the runner runs as a script or as a module."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("localci_gh_expr", GH_EXPR)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def github_ctx(base: str, pr: int | None, repo: str) -> dict:
+    """The merge_group event inside the sandbox, where `main` is the rebuilt BASE commit and `localci` the candidate's."""
+    head_ref = f"refs/heads/gh-readonly-queue/main/pr-{pr}-{base}" if pr else ""
+    return {"event_name": "merge_group", "repository": repo, "sha": "localci", "ref": head_ref or "refs/heads/localci", "actor": "localci",
+            "event": {"merge_group": {"base_sha": "main", "head_sha": "localci", "head_ref": head_ref, "base_ref": "refs/heads/main"}}}
+
+
+def _seconds(v: str) -> float:
+    m = re.fullmatch(r"(\d+(?:\.\d+)?)(ms|s|m)?", v.strip())
+    if not m:
+        raise ValueError(v)
+    return float(m.group(1)) * {"ms": 0.001, "s": 1, "m": 60, None: 1}[m.group(2)]
+
+
+def plan_services(job: dict, images: dict, docker: str) -> tuple[list | None, str | None]:
+    """A job's `services:` as BASE declares them. The image must have an operator-pinned local stand-in (a BASE tag the operator never
+    vetted is BLOCKED, not guessed), its id is pinned now; env is BASE's literal map and nothing else (no host variable can reach it);
+    only health flags are honoured, and only identity port maps, which the shared loopback reaches as the hosted job reaches localhost."""
+    out = []
+    for sname, svc in (job.get("services") or {}).items():
+        svc = svc if isinstance(svc, dict) else {}
+        ref = str(svc.get("image") or "")
+        if not images.get(ref):
+            return None, f"service {sname}: BASE image {ref!r} has no operator-pinned stand-in in local.service_images"
+        env = {str(k): str(v) for k, v in (svc.get("env") or {}).items()}
+        if any("${{" in v for v in env.values()):
+            return None, f"service {sname}: env carries expressions"
+        ports = [str(p) for p in svc.get("ports") or []]
+        if not ports or any(not re.fullmatch(r"(\d+):\1", p) for p in ports):
+            return None, f"service {sname}: ports {ports} — only identity maps (N:N) are reachable on the shared loopback"
+        try:
+            toks, health = shlex.split(str(svc.get("options") or "")), {}
+            while toks:
+                flag = toks.pop(0)
+                if flag not in HEALTH_FLAGS or not toks:
+                    return None, f"service {sname}: option {flag!r} is not emulated (only {sorted(HEALTH_FLAGS)})"
+                health[HEALTH_FLAGS[flag]] = toks.pop(0)
+            budget = (int(health["retries"]) + 1) * (_seconds(health["interval"]) + _seconds(health["timeout"]))
+        except (ValueError, KeyError) as e:
+            return None, f"service {sname}: health options incomplete or unreadable ({type(e).__name__}: {e})"
+        iid = (_try([docker, "image", "inspect", "--format", "{{.Id}}", images[ref]]) or "").strip()
+        if not iid.startswith("sha256:"):
+            return None, f"service {sname}: stand-in image {images[ref]!r} for {ref} is not present (docker pull it, then plan again)"
+        out.append({"name": str(sname), "image": ref, "local_image": images[ref], "image_id": iid, "env": env, "ports": ports, "health": health,
+                    "health_budget_s": budget + 60})
+    return out, None
+
+
+def matrix_legs(job: dict) -> tuple[list | None, str | None]:
+    m = (job.get("strategy") or {}).get("matrix")
+    if m is None:
+        return [{}], None
+    if not isinstance(m, dict) or any(k in m for k in ("include", "exclude")) or any(not isinstance(v, list) or not v for v in m.values()):
+        return None, "strategy.matrix with include/exclude or non-list axes is not emulated"
+    legs = [{}]
+    for k, vals in m.items():
+        legs = [{**leg, k: v} for leg in legs for v in vals]
+    return legs, None
+
+
+def _pin_lines(blob: bytes) -> tuple[list, list]:
+    keep, dropped = [], []
+    for ln in blob.decode(errors="replace").splitlines():
+        t = ln.strip()
+        if not t or t.startswith("#") or re.fullmatch(r"--hash=sha256:[0-9a-f]{64}\s*\\?", t):
+            continue
+        (keep if REQ_PIN.match(t) else dropped).append(t.rstrip("\\").strip())
+    return keep, dropped
+
+
+def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run_dir: Path, slug: str) -> tuple[str | None, str]:
+    """(image id, note) or (None, why). Cached by recipe digest: the same lock on the same candidate image reuses its image."""
+    reqs, dropped = [], []
+    for rel in deps.get("requirements") or []:
+        blob = _extract_base_file(wt, cand, safe_tree_path(str(rel)))   # the CANDIDATE's requirement file, read as data
+        if blob is None:
+            return None, f"deps: {rel} absent from the candidate"
+        k, d = _pin_lines(blob)
+        reqs, dropped = reqs + k, dropped + d
+    pkgs = sorted(str(p) for p in deps.get("packages") or [])
+    if any(not re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]*", p) for p in pkgs):
+        return None, "deps.packages must be bare distribution names"
+    fetch = [{"url": str(f.get("url")), "sha256": str(f.get("sha256")), "path": str(f.get("path")), "install": f.get("install") is True}
+             for f in deps.get("fetch") or []]
+    if any(not f["url"].startswith("https://") or not re.fullmatch(r"[0-9a-f]{64}", f["sha256"]) or not f["path"].startswith("/")
+           or ".." in f["path"].split("/") or f["path"].startswith("/w/") for f in fetch):
+        return None, "deps.fetch entries need an https url, a sha256 pin and an absolute path outside the tree"
+    py = f"{prefix.rstrip('/')}/python3" if prefix else "python3"
+    node = str(deps.get("node") or "")
+    if node and not node.isdigit():
+        return None, "deps.node must be a major version"
+    dockerfile = DEPS_DOCKERFILE + (DEPS_NODE.format(v=node) if node else "")
+    recipe = {"base": iso["image_id"], "python": py, "requirements": sorted(set(reqs)), "packages": pkgs, "fetch": fetch, "node": node,
+              "dockerfile": sha256_bytes((dockerfile + DEPS_FETCH_PY).encode())}
+    digest = sha256_json(recipe)
+    tag, docker = f"localci-deps:{digest[:16]}", iso["docker"]
+    note = f"deps {tag} ({len(recipe['requirements'])} pins + {pkgs}, {len(fetch)} fetched file(s)); not reaching the network stage: {dropped}"
+    have = (_try([docker, "image", "inspect", "--format", "{{.Id}} {{index .Config.Labels \"" + DEPS_LABEL + "\"}}", tag]) or "").split()
+    if have[1:] != [digest]:
+        ctxd = run_dir / "state" / "deps" / slug
+        ctxd.mkdir(parents=True, exist_ok=True)
+        (ctxd / "req.txt").write_text("\n".join(recipe["requirements"]) + "\n")
+        (ctxd / "pkgs.txt").write_text(" ".join(pkgs) + "\n")
+        (ctxd / "fetch.json").write_text(json.dumps(fetch))
+        (ctxd / "install.txt").write_text("".join(f"{f['path']}\n" for f in fetch if f["install"]))
+        (ctxd / "fetch.py").write_text(DEPS_FETCH_PY)
+        (ctxd / "Dockerfile").write_text(dockerfile)
+        base_tag = f"localci-deps-base:{iso['image_id'].split(':')[-1][:16]}"
+        denv = trusted_env()
+        with open(run_dir / "logs" / f"deps-{slug}.log", "w") as fh:
+            ok = subprocess.run([docker, "tag", iso["image_id"], base_tag], stdout=fh, stderr=subprocess.STDOUT, env=denv, timeout=60).returncode == 0
+            try:
+                ok = ok and subprocess.run([docker, "build", "--progress=plain", "--label", f"{DEPS_LABEL}={digest}", "--build-arg", f"BASE={base_tag}",
+                                            "--build-arg", f"PY={py}", "-t", tag, str(ctxd)], stdout=fh, stderr=subprocess.STDOUT, env=denv,
+                                           timeout=3600).returncode == 0
+            except subprocess.TimeoutExpired:
+                ok = False
+        if not ok:
+            return None, f"deps image build failed (logs/deps-{slug}.log): the job's install closure is not available offline"
+        have = (_try([docker, "image", "inspect", "--format", "{{.Id}} {{index .Config.Labels \"" + DEPS_LABEL + "\"}}", tag]) or "").split()
+    layers = lambda ref: (_try([docker, "image", "inspect", "--format", "{{json .RootFS.Layers}}", ref]) or "null")   # noqa: E731
+    base_l, deps_l = json.loads(layers(iso["image_id"])) or [], json.loads(layers(have[0] if have else tag)) or []
+    if have[1:] != [digest] or not base_l or deps_l[:len(base_l)] != base_l:
+        return None, f"deps image {tag} is not built on the pinned candidate image {iso['image_id'][:19]} (label or layer chain differs)"
+    return have[0], note
+
+
+def run_host_reader(argv: list, cwd: Path, timeout: int | None) -> dict:
+    """A BASE reader of GitHub state (the harness gate verdict) at plan time, before any candidate code: python -I on the BASE copy,
+    secrets stripped from its environment (gh answers with its stored login, a read). Its rc is frozen into the plan, so the seal
+    covers it, and the driver folds it in at the step's position, where the step's own `if:` decides whether it counts."""
+    try:
+        r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout or 300, env=trusted_env(), cwd=str(cwd))
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return {"rc": None, "reason": f"host reader could not run: {type(e).__name__}"}
+    return {"rc": r.returncode, "reason": f"host, at plan: BASE {Path(argv[2]).name} rc={r.returncode}", "log": (r.stdout + r.stderr)[-4000:]}
+
+
+def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: str, ctx: dict, changed: list, pyv: dict, iso: dict, cm: dict,
+                         run_dir: Path, pr_number: int | None) -> dict:
+    """A required context whose job `needs:` other jobs, runs beside `services:`, installs a lock, or decides steps with expressions:
+    every job of the chain is planned from BASE, each matrix leg runs in its own fresh sandbox with its own services, and the context's
+    own job sees its upstreams' artifacts and results. Anything the runner cannot reproduce is BLOCKED naming why."""
+    local, wf = ctx["local"], str(ctx.get("workflow_file"))
+    flag = local.get("runs_when")
+    if flag and change_map_status(cm) == "PASS" and not cm.get("run_all") and flag not in (cm.get("suggested_jobs") or []):
+        return {"kind": "record", "status": "NOT_APPLICABLE", "reason": f"trusted change_map does not select {flag} (suggested={cm.get('suggested_jobs')}): "
+                "the hosted job skips, and a skipped required context is satisfied"}
+    if local.get("where") != "container" or iso.get("mode") != "container" or iso.get("error"):
+        return _blocked(f"a service context runs only under --isolation container ({iso.get('error') or iso.get('mode')})")
+    X = _gh_expr()
+    try:
+        import yaml
+
+        doc = yaml.safe_load(_extract_base_file(wt, base, wf) or b"")
+        jobs_doc = doc["jobs"]
+    except Exception as e:  # noqa: BLE001
+        return _blocked(f"BASE workflow {wf} unreadable at {base[:12]}: {type(e).__name__}")
+    gh = github_ctx(base, pr_number, str(local.get("repository") or "Bali-Zero/Teman2"))
+    static = {"github": gh, "vars": dict(local.get("vars") or {}), "runner": RUNNER_CTX, "matrix": {}, "needs": {}, "env": {}, "steps": {}, "job": {}, "strategy": {}}
+    upstream, planned = set((local.get("needs") or {})), []
+    for jl in [*(local.get("jobs") or []), {**local, "job_id": ctx.get("job_id")}]:
+        jid, job = jl.get("job_id"), jobs_doc.get(jl.get("job_id"))
+        if not isinstance(job, dict):
+            return _blocked(f"job {jid!r} absent from BASE {wf}")
+        needs = job.get("needs") or []
+        needs = [needs] if isinstance(needs, str) else list(needs)
+        if (unknown := [n for n in needs if n not in upstream]):
+            return _blocked(f"job {jid}: needs {unknown}, neither run here nor declared in local.needs")
+        jenv = {str(k): str(v) for k, v in {**(doc.get("env") or {}), **(job.get("env") or {}), **(jl.get("env") or {})}.items()}
+        steps, why = resolve_steps({**job, "env": jenv}, jl, "main", ((doc.get("defaults") or {}).get("run")) or {}, expressions=True)
+        if why:
+            return _blocked(f"job {jid}: {why}")
+        prefix, why = select_python(job, pyv.get("container"), pyv.get("container_extra"))
+        legs, why2 = matrix_legs(job)
+        svcs, why3 = plan_services(job, local.get("service_images") or {}, iso["docker"])
+        if why or why2 or why3:
+            return _blocked(f"job {jid}: {why or why2 or why3}")
+        checkout = None
+        for s in job.get("steps") or []:
+            w = (s.get("with") or {}) if str(s.get("uses", "")).startswith("actions/checkout@") else {}
+            if set(w) - {"fetch-depth", "ref", "filter"}:
+                return _blocked(f"job {jid}: checkout with {sorted(set(w) - {'fetch-depth', 'ref', 'filter'})} is not emulated")
+            if "ref" in w:
+                try:
+                    if X.substitute(str(w["ref"]), static) != "main":
+                        return _blocked(f"job {jid}: checkout ref {w['ref']!r} is neither the candidate nor its BASE")
+                except X.ExprError as e:
+                    return _blocked(f"job {jid}: checkout ref: {e}")
+                checkout = "base"
+        try:
+            for k, v in jenv.items():
+                X.validate(v)
+            for st in steps:
+                for txt in (st.get("script"), *(st.get("env") or {}).values(), *((st.get("emulate") or {}).values())):
+                    X.validate(str(txt or ""))
+                    if st.get("script") and re.search(r"GITHUB_(ENV|PATH|STATE)\b", st["script"]):
+                        raise X.ExprError(f"step {st['name']!r} writes GITHUB_ENV/PATH/STATE, which the driver does not read back")
+                if "if" in st:
+                    X.parse(X.unwrap(st["if"]))
+        except X.ExprError as e:
+            return _blocked(f"job {jid}: {e}")
+        for ms, st in zip(jl.get("steps") or [], steps):
+            if (ms or {}).get("side") == "egress":   # run in its own sandbox WITH network: only the files it names, only tools BASE pins
+                for a, b in (ms.get("rewrite") or []):
+                    if st.get("script", "").count(a) != 1:
+                        return _blocked(f"job {jid}: rewrite {a!r} must match the BASE body of {st['name']!r} exactly once")
+                    st["script"] = st["script"].replace(a, b)
+                st["side"] = {"where": "egress", "inputs": [safe_tree_path(str(p)) for p in ms.get("inputs") or []], "rewrite": ms.get("rewrite") or []}
+            elif (ms or {}).get("side") == "host":   # a BASE reader of GitHub state, run NOW on the host: its answer is frozen in the plan
+                try:
+                    argv = [X.substitute(str(x), static) for x in st.get("argv") or []]
+                except X.ExprError as e:
+                    return _blocked(f"job {jid}: host step {st['name']!r}: {e}")
+                blob = _extract_base_file(wt, base, argv[1]) if len(argv) > 1 and argv[0] == "$PY" and argv[1] in (local.get("trusted_files") or []) else None
+                if blob is None:
+                    return _blocked(f"job {jid}: host step {st['name']!r} must run `$PY <a trusted file present at BASE>`")
+                tdir = trusted / "ctx" / str(ctx["check"])
+                (tdir / argv[1]).parent.mkdir(parents=True, exist_ok=True)
+                (tdir / argv[1]).write_bytes(blob)
+                st["side"] = {"where": "host", "argv": [sys.executable, "-I", str(tdir / argv[1]), *argv[2:]], "base_sha256": sha256_bytes(blob)}
+                st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"))
+        image_id, deps_note = iso["image_id"], ""
+        if local.get("deps"):
+            image_id, deps_note = plan_deps_image(wt, cand, iso, local["deps"], prefix, run_dir, re.sub(r"[^a-z0-9-]", "-", str(ctx["check"])[4:]))
+            if image_id is None:
+                return _blocked(f"job {jid}: {deps_note}")
+        tm = job.get("timeout-minutes")
+        planned.append({"job_id": jid, "needs": needs, "legs": legs, "steps": steps, "job_env": jenv, "services": svcs, "path_prefix": prefix,
+                        "checkout": checkout, "image_id": image_id, "deps": deps_note, "venv": local.get("bare_venv", True) is not False,
+                        "timeout_s": int(tm * 60) if isinstance(tm, (int, float)) and not isinstance(tm, bool) and tm > 0 else 360 * 60})
+        upstream.add(jid)
+    for f in local.get("egress_trusted") or []:   # a tool an egress step runs is BASE's pin, or the step does not run at all
+        if _extract_base_file(wt, base, f) != _extract_base_file(wt, cand, f):
+            return _blocked(f"{f} differs from BASE: an egress step would run tools the candidate chose, with network")
+    history = history_delta(wt, base, cand)
+    if isinstance(history, str):
+        return _blocked(history)
+    judged = [wf]
+    modified = [f for f, a, b in zip(judged, tree_entries(wt, base, judged), tree_entries(wt, cand, judged)) if a != b]
+    modified += [f for f in changed if f.rsplit("/", 1)[-1] == ".gitattributes"]
+    return {"kind": "contained_jobs", "context": name, "cwd": str(wt), "jobs": planned, "judge_modified": modified, "trusted_files": [],
+            "history": history, "expr": static, "needs": dict(local.get("needs") or {}), "memory": str(local.get("memory") or "4g"),
+            "driver_sha256": sha256_file(STEPS_DRIVER), "expr_sha256": sha256_file(GH_EXPR),
+            "timeout_s": sum(j["timeout_s"] * len(j["legs"]) for j in planned),
+            "purpose": f"{name}: jobs {[j['job_id'] for j in planned]} from BASE {wf}, each leg in a fresh sandbox"
+                       f"{' with services ' + str(sorted({s['name'] for j in planned for s in j['services']})) if any(j['services'] for j in planned) else ''}"}
+
+
 def full_dir_map(td: Path) -> dict:
     return {str(f.relative_to(td)): sha256_file(f) for f in sorted(td.rglob("*")) if f.is_file()} if td.is_dir() else {}
 
@@ -672,7 +1012,10 @@ def cmd_plan(a):
         chk = ctx.get("check")
         if not isinstance(chk, str) or not CTX_CHECK_NAME.match(chk) or chk in checks:
             sys.exit(f"context {cname!r}: an executed context with steps needs a unique local.check matching {CTX_CHECK_NAME.pattern}, got {chk!r}")
-        checks[chk] = plan_context_check(wt, base, ident["candidate_sha"], trusted, cname, ctx, trusted_sha, changed, pyv)
+        if ctx["local"].get("expressions"):   # service contexts (v0.6.0): job chains, services, deps images, evaluated expressions
+            checks[chk] = plan_service_context(wt, base, ident["candidate_sha"], trusted, cname, ctx, changed, pyv, iso, cm, run_dir, a.pr_number)
+        else:
+            checks[chk] = plan_context_check(wt, base, ident["candidate_sha"], trusted, cname, ctx, trusted_sha, changed, pyv)
     for extra in (a.extra_check or []):
         name, eq, spec_s = extra.partition("=")
         if not eq or not EXTRA_CHECK_NAME.match(name):
@@ -699,7 +1042,7 @@ def cmd_plan(a):
         if iso.get("error"):
             checks[name] = {"kind": "record", "status": "BLOCKED", "reason": f"isolation=container unavailable at plan time: {iso['error']} — candidate code is not "
                             "run uncontained unless the plan says --isolation none"}
-        elif spec["kind"] == "contained_steps" and iso["mode"] != "container":
+        elif spec["kind"] in ("contained_steps", "contained_jobs") and iso["mode"] != "container":
             checks[name] = _blocked("a required context's steps run only under --isolation container: they execute candidate code and mutate "
                                     "their tree (guilt controls)")
         else:
@@ -850,7 +1193,7 @@ def safe_tree_path(rel: str) -> str:
 
 
 def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], extra: dict[str, bytes], group: list | None = None,
-                    timeout: float | None = None) -> int:
+                    timeout: float | None = None, paths: set | None = None) -> int:
     """Tar `commit`'s tree from the OBJECT STORE into `sink` under w/ — never the checkout (ignored files such as .env or a venv stay
     out) and never `git archive` (it honours the candidate's export-ignore). `overrides` replace blobs (BASE test files); `extra` lands
     outside w/. Owned by the sandbox uid so candidate tests can write where they could in a checkout."""
@@ -860,7 +1203,7 @@ def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], ex
         if rec:
             meta, rel = rec.split("\t", 1)
             mode, kind, oid = meta.split(" ")
-            if kind == "blob":
+            if kind == "blob" and (paths is None or rel in paths):   # `paths`: an egress side step gets only the files it reads
                 entries.append((mode, oid, safe_tree_path(rel)))
     parents = lambda paths, top: {f"{top}{q}" for n in paths for q in Path(n).parents if str(q) != "."}   # noqa: E731
     dirs = sorted({"w", "out"} | parents({rel for _, _, rel in entries} | set(overrides), "w/") | parents(extra, ""))
@@ -931,7 +1274,8 @@ def _read_junit_out(docker: str, ctr: str, junit: Path) -> str | None:
 
 
 def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: list[str], overrides: dict[str, bytes], extra: dict[str, bytes],
-                      env: dict, log: Path, junit: Path, timeout: int, workdir: str = "/w") -> tuple[int | None, str | None]:
+                      env: dict, log: Path, junit: Path, timeout: int, workdir: str = "/w", network: str = "none", image_id: str | None = None,
+                      memory: str = "4g", collect=None, paths: set | None = None) -> tuple[int | None, str | None]:
     """Run candidate code in a fresh container: no bind mount, no network, no capability, non-root, no host environment.
     The tree goes in as a tar stream and only the junit comes out; the host run dir, receipts, credentials and the Pysa
     home are not reachable from inside. Returns (rc, error)."""
@@ -940,9 +1284,9 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
     ctr = re.sub(r"[^a-zA-Z0-9_.-]", "-", f"localci-{plan['run_id']}-{name}")[:100] + "-" + os.urandom(4).hex()
     denv = trusted_env()
     create = [docker, "create", "--name", ctr, "--label", "org.nuzantara.localci=candidate", "--label", f"org.nuzantara.localci.run={run_label(run_dir)}",
-              "--network", "none", "--cap-drop", "ALL", "--init",   # an init reaps orphans, as the hosted runner's does
-              "--security-opt", "no-new-privileges", "--user", iso["user"], "--pids-limit", "1024", "--memory", "4g", "--workdir", workdir,
-              *[f"--env={k}={v}" for k, v in sorted(env.items())], iso["image_id"], *inner]
+              "--network", network, "--cap-drop", "ALL", "--init",   # an init reaps orphans, as the hosted runner's does
+              "--security-opt", "no-new-privileges", "--user", iso["user"], "--pids-limit", "1024", "--memory", memory, "--workdir", workdir,
+              *[f"--env={k}={v}" for k, v in sorted(env.items())], image_id or iso["image_id"], *inner]
     try:
         r = subprocess.run(create, capture_output=True, text=True, timeout=120, env=denv)
         if r.returncode != 0:
@@ -960,7 +1304,7 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
             t_end = time.monotonic() + COPY_TIMEOUT_S
             try:
                 watchdog.start()
-                n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra, group, COPY_TIMEOUT_S)
+                n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra, group, COPY_TIMEOUT_S, paths)
                 cp.stdin.close()
                 cp.wait(timeout=max(1.0, t_end - time.monotonic()))
             except (OSError, subprocess.SubprocessError, RuntimeError, ValueError) as e:
@@ -981,7 +1325,7 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
         if cp.returncode != 0:
             return None, f"candidate tree copy-in failed (rc={cp.returncode}): {err.decode(errors='replace').strip()[:300]}"
         with open(log, "a") as fh:
-            fh.write(f"# isolation=container image={iso['image_id']} network=none user={iso['user']} mounts=none tree={plan['candidate_sha']} blobs={n}\n")
+            fh.write(f"# isolation=container image={image_id or iso['image_id']} network={network} user={iso['user']} mounts=none tree={plan['candidate_sha']} blobs={n}\n")
             fh.flush()
             try:
                 rc = subprocess.run([docker, "start", "-a", ctr], stdout=fh, stderr=subprocess.STDOUT, timeout=timeout, env=denv).returncode
@@ -989,6 +1333,8 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
                 subprocess.run([docker, "kill", ctr], capture_output=True, timeout=60, env=denv)
                 return None, f"timeout after {timeout}s (container killed; removal verified below or the run aborts)"
         why = _read_junit_out(docker, ctr, junit)
+        if collect is not None:   # artifacts a later job downloads, copied out of the stopped container before it is removed
+            why = "; ".join(x for x in (why, collect(docker, ctr)) if x) or None
         if why:
             with open(log, "a") as fh:
                 fh.write(f"# junit: {why}\n")
@@ -1191,12 +1537,204 @@ def reap_containers(plan: dict, store: Store) -> str | None:
     return None
 
 
+def start_services(docker: str, svcs: list, prefix: str, label: str, denv: dict, log: Path) -> tuple[list, str | None, str | None]:
+    """(containers, netns owner, why-not). The first service owns a loopback-only network namespace (`--network none`); the other
+    services and then the job join it, so `localhost:<port>` reaches them exactly as the hosted job reaches its mapped ports, and no
+    container of the run has an interface to anything else. Healthy within the BASE health budget, or the job does not start."""
+    names, owner = [], None
+    for s in svcs:
+        ctr = re.sub(r"[^a-zA-Z0-9_.-]", "-", f"{prefix}-svc-{s['name']}")[:110] + "-" + os.urandom(3).hex()
+        h = s["health"]
+        argv = [docker, "run", "-d", "--name", ctr, "--label", "org.nuzantara.localci=service", "--label", f"org.nuzantara.localci.run={label}",
+                "--network", f"container:{owner}" if owner else "none", "--health-cmd", h["cmd"], "--health-interval", h["interval"],
+                "--health-timeout", h["timeout"], "--health-retries", h["retries"], *[f"--env={k}={v}" for k, v in sorted(s["env"].items())], s["image_id"]]
+        names.append(ctr)
+        r = subprocess.run(argv, capture_output=True, text=True, timeout=120, env=denv)
+        if r.returncode != 0:
+            return names, owner, f"service {s['name']} did not start (image {s['image_id'][:19]}): {r.stderr.strip()[:200]}"
+        owner = owner or ctr
+    for s, ctr in zip(svcs, names):
+        t0, state = time.monotonic(), "starting"
+        while state == "starting" and time.monotonic() - t0 < s["health_budget_s"]:
+            time.sleep(0.5)
+            state = (_try([docker, "inspect", "--format", "{{.State.Health.Status}}", ctr]) or "gone").strip()
+        with open(log, "a") as fh:
+            fh.write(f"# service {s['name']} ({s['local_image']} {s['image_id'][:19]} for {s['image']}): {state} after {time.monotonic() - t0:.1f}s\n")
+        if state != "healthy":
+            return names, owner, f"service {s['name']} is {state!r} after {time.monotonic() - t0:.0f}s (BASE health check, budget {s['health_budget_s']:.0f}s)"
+    return names, owner, None
+
+
+def _collect_dir(docker: str, ctr: str, src: str) -> tuple[dict, str | None]:
+    """Regular files under `src` in the stopped container, by relative path, size-capped — what upload-artifact would have kept."""
+    p = subprocess.Popen([docker, "cp", f"{ctr}:{src.rstrip('/')}/.", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=trusted_env())
+    watchdog, files, total = threading.Timer(COPY_TIMEOUT_S, p.kill), {}, 0
+    try:
+        watchdog.start()
+        with tarfile.open(fileobj=p.stdout, mode="r|") as t:
+            for m in t:
+                rel = "/".join(x for x in m.name.split("/") if x not in ("", "."))
+                if not m.isfile() or not rel:
+                    continue
+                total += m.size
+                if total > ARTIFACT_MAX_BYTES:
+                    return files, f"artifact {src} exceeds {ARTIFACT_MAX_BYTES} bytes"
+                files[safe_tree_path(rel)] = t.extractfile(m).read()
+    except (tarfile.TarError, OSError, RuntimeError) as e:
+        return files, f"artifact copy-out of {src} failed: {type(e).__name__}"
+    finally:
+        watchdog.cancel()
+        p.kill()
+        p.wait()
+    return files, None
+
+
+def parse_expr_junit(p: Path) -> list | None:
+    """The driver's junit in expression mode: a skipped case is NOT_APPLICABLE (with the condition that skipped it), a passed case
+    marked outcome=failure is a continue-on-error step (its job did not fail), `cpu` is the step's CPU seconds."""
+    steps = parse_step_junit(p)
+    if steps is None:
+        return None
+    for s, tc in zip(steps, ET.parse(p).getroot().iter("testcase")):
+        s["cpu"] = float(tc.get("cpu") or 0)
+        if tc.get("outcome") == "failure":
+            s["reason"] = "continue-on-error: " + ((tc.findtext("system-out") or "").strip() or "outcome failure")
+    return steps
+
+
+def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: dict, needs: dict, arts: dict, X) -> dict:
+    """One job (one matrix leg) in a fresh sandbox with fresh services: rc, steps, artifacts; `infra` set when there is no verdict."""
+    label = job["job_id"] + (f"[{','.join(str(v) for v in leg.values())}]" if leg else "")
+    slug = re.sub(r"[^A-Za-z0-9_.-]", "-", label)
+    log, junit = run_dir / "logs" / f"{name}.{slug}.log", run_dir / "receipts" / f"{name}.{slug}.junit.xml"
+    junit.unlink(missing_ok=True)
+    iso, denv, t0 = spec["isolation"], trusted_env(), time.monotonic()
+    ctx = {**spec["expr"], "matrix": dict(leg), "needs": {j: needs[j] for j in job["needs"]}}
+    drv, exs = STEPS_DRIVER.read_bytes(), GH_EXPR.read_bytes()
+    out = {"label": label, "rc": None, "steps": [], "seconds": 0.0, "cpu": 0.0, "infra": None, "log": str(log)}
+    if sha256_bytes(drv) != spec["driver_sha256"] or sha256_bytes(exs) != spec["expr_sha256"]:
+        out["infra"] = ("ERROR", "steps driver or gh_expr changed since the plan pinned them")
+        return out
+    base_extra: dict[str, bytes] = {"cfg/steps_driver.py": drv, "cfg/gh_expr.py": exs}
+    hist = spec.get("history") or {"added": [], "base": []}
+    for (rel, _mode, _oid), blob in zip(hist["base"], read_blobs(Path(plan["worktree"]), [o for _, _, o in hist["base"]])):
+        base_extra[f"cfg/base/{rel}"] = blob
+    env = {"HOME": "/tmp", "LANG": "C.UTF-8"}
+    inner = ["python", "-I", "/cfg/steps_driver.py", "/cfg/steps.json", "/out/junit.xml"]
+    cfg_base = {"root": "/w", "path_prefix": job["path_prefix"], "venv": job["venv"], "env": {**CONTAINED_STEP_ENV, **SERVICE_STEP_ENV},
+                "job_env": job["job_env"], "expr": ctx}
+    steps = []
+    for st in job["steps"]:
+        st = dict(st)
+        if (st.get("side") or {}).get("where") == "egress":
+            st["precomputed"] = _run_egress(name, spec, job, st, slug, cfg_base, base_extra, env, inner, run_dir, plan)
+        steps.append(st)
+    extra = dict(base_extra)
+    for st in steps:
+        em = st.get("emulate") or {}
+        if em.get("action") == "download":
+            dest = safe_tree_path(X.substitute(em["path"], ctx))
+            for aname, files in sorted(arts.items()):
+                if fnmatch.fnmatchcase(aname, X.substitute(em["pattern"] or em["name"], ctx)):
+                    extra.update({f"w/{dest}/{'' if em['merge'] else aname + '/'}{rel}": b for rel, b in files.items()})
+    extra["cfg/steps.json"] = json.dumps({**cfg_base, "context": f"{spec['context']} / {label}", "git_index": True, "history": spec.get("history"),
+                                          "checkout": job.get("checkout"), "steps": steps}).encode()
+    uploads = [(X.substitute(em["name"], ctx), X.substitute(em["path"], ctx)) for em in (s.get("emulate") or {} for s in steps) if em.get("action") == "upload"]
+
+    def collect(docker: str, ctr: str) -> str | None:
+        why = []
+        for aname, path in uploads:
+            files, err = _collect_dir(docker, ctr, path if path.startswith("/") else f"/w/{path}")
+            arts[aname] = files
+            why += [err] if err else []
+        return "; ".join(why) or None
+
+    ctrs, owner = [], None
+    try:
+        with open(log, "w") as fh:
+            fh.write(f"# {now()} {label}: image {job['image_id'][:19]} services {[s['name'] for s in job['services']]}\n")
+        ctrs, owner, why = start_services(iso["docker"], job["services"], f"localci-{plan['run_id']}-{name}-{slug}", run_label(run_dir), denv, log)
+        if why:
+            out["infra"] = ("BLOCKED", f"{label}: {why}")
+            return out
+        rc, err = execute_contained(f"{name}.{slug}", spec, run_dir, plan, inner, {}, extra, env, log, junit, job["timeout_s"], "/w",
+                                    network=f"container:{owner}" if owner else "none", image_id=job["image_id"], memory=spec.get("memory", "4g"),
+                                    collect=collect if uploads else None)
+    finally:
+        for c in ctrs:
+            _remove_verified(iso["docker"], c, denv)
+    out["seconds"] = round(time.monotonic() - t0, 3)
+    if err:
+        out["infra"] = ("ERROR", f"{label}: {err}")
+        return out
+    got = parse_expr_junit(junit)
+    want = 1 if got and any(s["status"] == "FAIL" for s in got) else 4 if got and any(s["status"] == "ERROR" for s in got) else \
+        3 if got and any(s["status"] == "BLOCKED" for s in got) else 0
+    if rc is None or rc < 0 or rc == 2 or got is None or [s["name"] for s in got] != [s["name"] for s in steps] or rc != want:
+        out["infra"] = ("ERROR", f"{label}: driver rc={rc}, junit {'unreadable' if got is None else f'{len(got)} case(s), expected rc {want}'} — no verdict")
+        return out
+    out.update(rc=rc, steps=got, cpu=round(sum(s["cpu"] for s in got), 3))
+    return out
+
+
+def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base: dict, base_extra: dict, env: dict, inner: list,
+                run_dir: Path, plan: dict) -> dict:
+    """A step that needs the network (pip-audit asks a vulnerability service) runs alone in a sandbox on the default bridge: no
+    service, no git history, only the candidate files it names (data), and tools the plan proved are BASE's pins. Its rc is folded
+    into the job's own run at its position, under the step's own `if:`."""
+    one = {k: v for k, v in st.items() if k not in ("side", "if")}
+    junit = run_dir / "receipts" / f"{name}.{slug}.egress.junit.xml"
+    log = run_dir / "logs" / f"{name}.{slug}.egress.log"
+    junit.unlink(missing_ok=True)
+    extra = {k: v for k, v in base_extra.items() if not k.startswith("cfg/base/")}
+    extra["cfg/steps.json"] = json.dumps({**cfg_base, "context": f"{spec['context']} / {slug} / egress", "steps": [one]}).encode()
+    with open(log, "w") as fh:
+        fh.write(f"# {now()} egress step {st['name']!r}: inputs {st['side']['inputs']}, rewrites {st['side']['rewrite']}\n")
+    rc, err = execute_contained(f"{name}.{slug}.egress", spec, run_dir, plan, inner, {}, extra, env, log, junit, st.get("timeout_s") or job["timeout_s"],
+                                "/w", network="bridge", image_id=job["image_id"], memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]))
+    got = parse_expr_junit(junit) if not err else None
+    tail = log.read_text(errors="replace")[-4000:] if log.exists() else ""
+    if err or not got or rc not in (0, 1):
+        return {"rc": None, "reason": f"egress sandbox gave no verdict: {err or f'rc={rc}'}", "log": tail}
+    return {"rc": 0 if got[0]["status"] == "PASS" else 1, "reason": f"egress sandbox: {got[0]['reason']}", "log": tail}
+
+
+def _execute_jobs(name: str, spec: dict, run_dir: Path, plan: dict, log: Path) -> dict:
+    """The context's jobs in BASE `needs:` order, legs one after another (parallelism 1: the measured capacity of this host), each
+    in its own sandbox; the context's own job last, with its upstreams' results and artifacts. An upstream with no verdict (a service
+    that never got healthy, a sandbox that broke) stops the chain: the context is ERROR/BLOCKED, never red on the candidate's account."""
+    X = _gh_expr()
+    needs, arts, legs, t0 = {k: dict(v) for k, v in (spec.get("needs") or {}).items()}, {}, [], time.monotonic()
+    for job in spec["jobs"]:
+        mine = []
+        for leg in job["legs"]:
+            r = _run_leg(name, spec, job, leg, run_dir, plan, needs, arts, X)
+            legs.append(r)
+            if r["infra"]:
+                st, why = r["infra"]
+                return {"status": st, "reason": why, "rc": None, "duration_s": round(time.monotonic() - t0, 3), "counts": None, "log": r["log"],
+                        "jobs": [{k: x[k] for k in ("label", "rc", "seconds", "cpu")} for x in legs], "isolation": "container"}
+            mine.append(r)
+        needs[job["job_id"]] = {"result": "success" if all(r["rc"] == 0 for r in mine) else "failure", "outputs": {}}
+    combined = [{**s, "name": f"{r['label']} › {s['name']}"} for r in legs for s in r["steps"]]
+    status, reason = steps_verdict(combined, spec)
+    with open(log, "w") as fh:
+        fh.writelines(f"# {r['label']}: rc={r['rc']} {r['seconds']}s cpu={r['cpu']}s log={r['log']}\n" for r in legs)
+    return {"status": status, "reason": reason + " [contained: candidate-produced junit]", "rc": max(r["rc"] for r in legs),
+            "duration_s": round(time.monotonic() - t0, 3), "counts": None, "steps": combined, "log": str(log), "isolation": "container",
+            "jobs": [{k: x[k] for k in ("label", "rc", "seconds", "cpu")} for x in legs]}
+
+
 def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> dict:
     timeout = spec.get("timeout_s") or timeout   # a context's budget is its hosted job's timeout-minutes, else the run-wide default
     log = run_dir / "logs" / f"{name}.log"
     junit = run_dir / "receipts" / f"{name}.junit.xml"
     junit.unlink(missing_ok=True)   # a junit left by an earlier attempt is never this attempt's evidence
     kind = spec["kind"]
+    if kind == "contained_jobs":
+        if (spec.get("isolation") or {}).get("mode") != "container":
+            return {"status": "ERROR", "reason": "contained jobs planned without a container", "rc": None, "counts": None}
+        return _execute_jobs(name, spec, run_dir, plan, log)
     if kind in CANDIDATE_KINDS and (spec.get("isolation") or {}).get("mode") == "container":
         return _execute_candidate_contained(name, spec, run_dir, plan, timeout, log, junit)
     if kind == "trusted_steps":
@@ -1780,6 +2318,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--isolation", choices=ISOLATIONS, default="container",
                    help="where candidate code (pytest, trusted_pytest) runs: a mount-less, network-less container (default) or, explicitly, as the operator")
     p.add_argument("--isolation-image", default=DEFAULT_ISOLATION_IMAGE, help="docker image for --isolation container; pinned by ID at plan time")
+    p.add_argument("--pr-number", type=int, help="the pull request the candidate merges (merge_group.head_ref names it, as the queue does)")
     p.set_defaults(fn=cmd_plan)
     r = sub.add_parser("run")
     r.add_argument("--run-dir", required=True)
