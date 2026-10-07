@@ -43,9 +43,10 @@ class FakeGH:
         sha, kind = path.split("/")[4], path.split("/")[5].split("?")[0]
         if kind == "status":
             return {"statuses": []}
-        concl = self.checks[sha]
-        return {"check_runs": [{"name": c, "status": "completed" if concl else "in_progress", "conclusion": concl, "head_sha": sha,
-                                "app": {"id": 15368, "slug": "github-actions"}} for c in CTX]}
+        concl = self.checks[sha]   # one conclusion for every context, or {context: conclusion} with "success" for the rest
+        by = concl if isinstance(concl, dict) else dict.fromkeys(CTX, concl)
+        return {"check_runs": [{"name": c, "status": "completed" if by.get(c, "success") else "in_progress", "conclusion": by.get(c, "success"),
+                                "head_sha": sha, "app": {"id": 15368, "slug": "github-actions"}} for c in CTX]}
 
 
 def pull(head, merged=False, state="open", merge_commit=M, merged_at="2026-10-07T09:00:00Z"):
@@ -363,3 +364,27 @@ def test_a_pr_merged_at_a_later_head_without_a_merge_commit_sha_is_refused(tmp_p
     gh = FakeGH({2: {**pull(B, merged=True), "merge_commit_sha": None}}, {A: "success"})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, A, "FAIL", ctx="FAIL")], gh)   # an older head: judged on itself
     assert rc == 2 and rep is None and "#2 is merged but carries no merge commit sha" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("mixed,github,red", [({"ctx-03": "failure", "ctx-05": None}, "RED", ["ctx-03"]),
+                                              ({"ctx-05": None}, "PENDING", []),
+                                              ({"ctx-03": "failure", "ctx-07": "timed_out"}, "RED", ["ctx-03", "ctx-07"])])
+def test_one_red_or_pending_required_context_decides_a_merge_commit_and_only_the_red_ones_are_listed(tmp_path, monkeypatch, mixed, github,
+                                                                                                       red):
+    gh = FakeGH({2: pull(B, merged=True)}, {B: "success", M: mixed})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "BLOCKED")], gh)
+    assert rep["rows"][0]["github"] == github
+    assert rep["hosted_red_merged"] == ([{"pr": 2, "merge_commit_sha": M, "red": red}] if red else [])
+
+
+def test_every_red_merge_is_listed_once_however_many_decisions_its_pr_had(tmp_path, monkeypatch, capsys):
+    red1, red3 = "2" * 40, "4" * 40
+    gh = FakeGH({1: pull(A, merged=True, merge_commit=red1), 2: pull(B, merged=True), 3: pull(C, merged=True, merge_commit=red3)},
+                {A: "success", B: "success", C: "success", M: "success", red1: "failure", red3: {"ctx-00": "failure"}},
+                parents={red1: [BASE], red3: [BASE]})
+    recs = [decision(1, A, "BLOCKED"), decision(2, B, "BLOCKED"), decision(1, A, "BLOCKED", ts="2026-10-07T09:00:00Z"),
+            decision(3, C, "BLOCKED")]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert rep["hosted_red_merged"] == [{"pr": 1, "merge_commit_sha": red1, "red": list(CTX)}, {"pr": 3, "merge_commit_sha": red3, "red": ["ctx-00"]}]
+    out = capsys.readouterr().out
+    assert out.count("hosted_red_merged: #") == 2 and "hosted_red_merged=2" in out
