@@ -1,9 +1,11 @@
 """Replayable mutation sweep for the merger (merger.py, localci_merger_tick.sh) against its two test files.
 
 Every mutant is ONE textual rule applied to a temporary copy of scripts/localci and scripts/lib — the checkout is never
-touched, so a killed sweep leaves nothing behind. A rule whose text no longer occurs exactly once is reported STALE (the
-code moved and the table must follow it), never skipped. Exit 0 only when the unmutated copy passes and every mutant is
-killed; 1 on a survivor or a stale rule; 2 when the baseline itself fails.
+touched, so a killed sweep leaves nothing behind. A mutant is KILLED only when pytest ran its tests and one failed (exit 1);
+exit 0 is SURVIVED, and any other exit (nothing collected, a collection or usage error) is ERROR, never a kill. pytest runs
+without inherited PYTEST_* options, so a caller's -k or plugin cannot deselect the guilt. A rule whose text no longer
+occurs exactly once is STALE (the code moved and the table must follow it), never skipped. Exit 0 only when every test
+file set passes unmutated and every mutant is killed; 1 on a survivor, an error or a stale rule; 2 when a baseline fails.
 
     python3 scripts/localci/tests/mutants/merger_mutants.py [--only NAME ...] [--list]
 """
@@ -45,6 +47,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
                             "ready = fg == 0 and compared_merges >= 50 and days >= 14", (REPORT,)),
     "ready-ignores-ctx-fg": (PY, "ready = fg == 0 and", 'ready = (counts["FALSE_GREEN"] + recorded_fg) == 0 and', (REPORT,)),
     "ready-49": (PY, "compared_merges >= 50 and", "compared_merges >= 49 and", (REPORT,)),
+    "ready-days-boundary": (PY, "compared_days >= 14   #", "compared_days >= 13.999   #", (REPORT,)),
     "days-float": (PY, "return (int(_epoch(last) - _epoch(first)) * 1000 // 86400) / 1000",
                    "return round((_epoch(last) - _epoch(first)) / 86400, 3)", (REPORT,)),
     # inputs the report must refuse
@@ -82,7 +85,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "sh-heartbeat-sourced": (SH, '"$BASH" "$HB_LIB" "$ORGAN_ID" "$1" "$2" ||', '{ source "$HB_LIB"; organism_heartbeat "$ORGAN_ID" "$1" "$2"; } ||', (TICK,)),
     "sh-heartbeat-from-checkout": (SH, 'HB_LIB="${MERGER_HEARTBEAT_LIB:-$STATE/heartbeat.sh}"',
                                    'HB_LIB="${MERGER_HEARTBEAT_LIB:-$HOME/nuzantara/scripts/lib/heartbeat.sh}"', (TICK,)),
-    "sh-heartbeat-not-refreshed": (SH, '  mv -f "$STATE/.heartbeat.sh.new" "$STATE/heartbeat.sh"', "  :", (TICK,)),
+    "sh-heartbeat-not-refreshed": (SH, '  mv -f "$HB_NEW" "$STATE/heartbeat.sh"', "  :", (TICK,)),
+    "sh-heartbeat-empty-runs": (SH, 'if [ -r "$HB_LIB" ] && [ -s "$HB_LIB" ]; then', 'if [ -r "$HB_LIB" ]; then', (TICK,)),
     "sh-python-x-unchecked": (SH, 'if [ ! -x "$PY" ]; then', "if false; then", (TICK,)),
     "sh-required-check-gone": (SH, 'if [ -z "$PY" ] || [ -z "$NODE" ]; then', "if false; then", (TICK,)),
     "sh-required-via-expansion": (SH, 'PY="${MERGER_PYTHON:-}"    # the interpreter that runs the BASE runner', 'PY="${MERGER_PYTHON:?required}"', (TICK,)),
@@ -97,9 +101,14 @@ def copy_tree(dest: Path) -> None:
 
 
 def run_tests(tree: Path, files: tuple[str, ...]) -> int:
-    env = {**os.environ, "PYTHONPATH": str(tree), "PYTHONDONTWRITEBYTECODE": "1"}
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTEST_")}
+    env.update(PYTHONPATH=str(tree), PYTHONDONTWRITEBYTECODE="1")
     return subprocess.run([sys.executable, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *files], cwd=tree, env=env,
                           capture_output=True, text=True).returncode
+
+
+def verdict(rc: int) -> str:
+    return {0: "SURVIVED", 1: "KILLED"}.get(rc, f"ERROR (pytest exit {rc})")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -119,24 +128,28 @@ def main(argv: list[str] | None = None) -> int:
         tree = Path(tmp)
         copy_tree(tree)
         originals = {f: (tree / f).read_text() for f in (PY, SH)}
-        if run_tests(tree, (REPORT, TICK)):
-            print("baseline: the unmutated copy fails its own tests — nothing to measure", file=sys.stderr)
-            return 2
-        survived, stale = [], []
+        for files in sorted({MUTANTS[n][3] for n in names}):
+            if (rc := run_tests(tree, files)) != 0:
+                print(f"baseline: the unmutated copy gives pytest exit {rc} on {' '.join(files)} — nothing to measure", file=sys.stderr)
+                return 2
+        survived, stale, errors = [], [], []
         for n in names:
             target, old, new, tests = MUTANTS[n]
-            if originals[target].count(old) != 1:
+            if originals[target].count(old) != 1 or old == new:
                 stale.append(n)
                 print(f"{n:30} STALE (the rule's text occurs {originals[target].count(old)} times)", flush=True)
                 continue
             (tree / target).write_text(originals[target].replace(old, new))
-            killed = run_tests(tree, tests) != 0
+            v = verdict(run_tests(tree, tests))
             (tree / target).write_text(originals[target])
-            if not killed:
+            if v == "SURVIVED":
                 survived.append(n)
-            print(f"{n:30} {'KILLED' if killed else 'SURVIVED'}", flush=True)
-    print(f"{len(names) - len(survived) - len(stale)}/{len(names)} killed; survivors: {survived or 'none'}; stale: {stale or 'none'}")
-    return 1 if survived or stale else 0
+            elif v != "KILLED":
+                errors.append(n)
+            print(f"{n:30} {v}", flush=True)
+    killed = len(names) - len(survived) - len(stale) - len(errors)
+    print(f"{killed}/{len(names)} killed; survivors: {survived or 'none'}; errors: {errors or 'none'}; stale: {stale or 'none'}")
+    return 1 if survived or stale or errors else 0
 
 
 if __name__ == "__main__":

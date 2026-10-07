@@ -14,10 +14,10 @@ STATE="${MERGER_STATE_DIR:-$HOME/.nuzantara-pilots/local-ci/merger}"
 HB_LIB="${MERGER_HEARTBEAT_LIB:-$STATE/heartbeat.sh}"
 # the library runs in its OWN process (its CLI mode), never sourced: it cannot change this script's options, traps or exit status
 heartbeat() { # $1 status, $2 note
-  if [ -r "$HB_LIB" ]; then
+  if [ -r "$HB_LIB" ] && [ -s "$HB_LIB" ]; then
     "$BASH" "$HB_LIB" "$ORGAN_ID" "$1" "$2" || echo "merger_tick: heartbeat not written by $HB_LIB" >&2
   else
-    echo "merger_tick: no heartbeat library at $HB_LIB — the organ will read stale" >&2
+    echo "merger_tick: no heartbeat library at $HB_LIB (absent or empty) — the organ will read stale" >&2
   fi
 }
 
@@ -69,9 +69,11 @@ CODE="$(mktemp -d "${TMPDIR:-/tmp}/localci-merger.XXXXXX")"
 for f in merger.py hosted_compare.py; do
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f"
 done
-if git -C "$STATE/repo.git" show "$SHA:scripts/lib/heartbeat.sh" > "$STATE/.heartbeat.sh.new"; then
-  mv -f "$STATE/.heartbeat.sh.new" "$STATE/heartbeat.sh"
+HB_NEW="$(mktemp "$STATE/.heartbeat.sh.XXXXXX")"   # one temp file per run: a hand run beside launchd never shares it
+if git -C "$STATE/repo.git" show "$SHA:scripts/lib/heartbeat.sh" > "$HB_NEW" && [ -s "$HB_NEW" ]; then
+  mv -f "$HB_NEW" "$STATE/heartbeat.sh"
 else
+  rm -f "$HB_NEW"
   echo "merger_tick: no scripts/lib/heartbeat.sh at ${SHA:0:12} — keeping the copy the last tick extracted" >&2
 fi
 # provenance only when the extracted merger knows the flag: a newer wrapper beside an older main (or a stale mirror after a

@@ -247,7 +247,7 @@ def merged_world(n_prs, span_days=0.0, contexts=None):
 
 
 # lead's ruling 2026-10-07: READY needs >= 50 compared merges AND >= 14 days between the first and the last AND 0 FALSE_GREEN
-@pytest.mark.parametrize("n_prs,span_days,ready", [(50, 14.0, True), (49, 14.0, False), (50, 13.99, False), (50, 0.0, False),
+@pytest.mark.parametrize("n_prs,span_days,ready", [(50, 14.0, True), (49, 14.0, False), (50, 14 - 1 / 86400, False), (50, 0.0, False),
                                                    (2, 14.0, False)])
 def test_phase_e_readiness_needs_fifty_compared_merges_and_fourteen_days_between_them(tmp_path, monkeypatch, capsys, n_prs, span_days,
                                                                                       ready):
@@ -311,11 +311,12 @@ def test_the_report_names_the_longest_tick_and_where_the_time_went(tmp_path, mon
 
 
 def test_decisions_without_provenance_are_counted_never_refused(tmp_path, monkeypatch, capsys):
-    recs = [{**decision(1, A, "BLOCKED"), "code_sha": "c" * 40}, decision(1, A, "BLOCKED", ts="2026-10-07T09:00:00Z"),
-            {**decision(1, A, "BLOCKED", ts="2026-10-07T10:00:00Z"), "code_sha": "not-a-sha"}]
+    odd = ["not-a-sha", ["c" * 40], {"sha": "c" * 40}, 123, True, "C" * 40]
+    recs = [{**decision(1, A, "BLOCKED"), "code_sha": "c" * 40}, decision(1, A, "BLOCKED", ts="2026-10-07T09:00:00Z")]
+    recs += [{**decision(1, A, "BLOCKED", ts=f"2026-10-07T1{i}:00:00Z"), "code_sha": v} for i, v in enumerate(odd)]
     rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
-    assert rc == 0 and rep["window"]["decisions_without_code_sha"] == 2
-    assert "2 decision(s) without a valid code_sha" in capsys.readouterr().out
+    assert rc == 0 and rep["window"]["decisions_without_code_sha"] == 1 + len(odd) and rep["window"]["code_shas"] == ["c" * 40]
+    assert f"{1 + len(odd)} decision(s) without a valid code_sha" in capsys.readouterr().out
 
 
 def test_a_line_dated_in_the_future_is_flagged_and_never_ages_the_window_negative(tmp_path, monkeypatch, capsys):

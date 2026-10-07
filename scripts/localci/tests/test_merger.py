@@ -595,14 +595,19 @@ def test_the_heartbeat_library_comes_from_the_mirror_at_the_ticks_sha_never_from
     g(src, "push", "-q", str(origin), "main")
     assert wrap(env).returncode == 0 and heartbeat(tmp_path)["status"] == "ok"
     assert (tmp_path / "state" / "heartbeat.sh").read_text() == marked and (tmp_path / "main-v2-ran").read_text() == "ok\n"
+    assert not list((tmp_path / "state").glob(".heartbeat.sh.*"))   # each run's temp copy is moved or removed, never left behind
     assert not (tmp_path / "checkout-ran").exists()
     off = wrap({**env, "LOCALCI_MERGER_ENABLED": "false"})   # an early exit runs the copy the last tick extracted
     assert off.returncode == 0 and (tmp_path / "main-v2-ran").read_text() == "ok\ndisabled\n" and not (tmp_path / "checkout-ran").exists()
 
 
-def test_a_missing_heartbeat_library_is_said_aloud_and_changes_nothing_else(tmp_path):
+@pytest.mark.parametrize("library", ["absent", "empty"])
+def test_a_missing_heartbeat_library_is_said_aloud_and_changes_nothing_else(tmp_path, library):
     _, _, _, env = mirror_world(tmp_path)
-    res = wrap({**env, "MERGER_HEARTBEAT_LIB": str(tmp_path / "nowhere.sh")})
+    lib = tmp_path / "lib.sh"
+    if library == "empty":
+        lib.write_text("")   # a truncated copy runs as a silent no-op: it is no library
+    res = wrap({**env, "MERGER_HEARTBEAT_LIB": str(lib)})
     assert res.returncode == 0 and "no heartbeat library" in res.stderr and (tmp_path / "code").read_text() == "v1 --code-sha\n"
     assert not (tmp_path / ".organism").exists()
 

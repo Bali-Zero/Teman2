@@ -314,7 +314,9 @@ registry id `pro.localci_merger`) by running `scripts/lib/heartbeat.sh` in its o
 library cannot change the wrapper's options, traps or exit status). That library too comes from the mirror at the tick's
 sha, never from a working checkout: each tick refreshes `<state-dir>/heartbeat.sh`, and an exit before the extraction (the
 kill switch, missing configuration) runs the copy the last tick extracted — on a host that never ticked there is none, which
-is said on stderr and the organ reads stale. `MERGER_HEARTBEAT_LIB` overrides the path (tests).
+is said on stderr and the organ reads stale. Each run extracts into its own temporary file and publishes it with `mv` only
+when it is not empty; an empty library is treated as absent (it would run as a silent no-op). `MERGER_HEARTBEAT_LIB`
+overrides the path (tests).
 `LOCALCI_MERGER_ENABLED=false` in the plist's environment stops the ticks without uninstalling; its `disabled` heartbeat is
 not an unhealthy status — the healer's `EXEMPT_STATUSES` holds it and the sentinel does not page on it — because a kill
 switch is an operator's act, not a failure. The wrapper passes `--code-sha=<resolved sha>` when the extracted `merger.py`
@@ -360,8 +362,10 @@ is skipped when hypothesis is absent).
 
 `python3 scripts/localci/tests/mutants/merger_mutants.py` replays the merger's mutation sweep: each single-rule mutant of
 `merger.py` or `localci_merger_tick.sh` is applied to a temporary copy of `scripts/localci` and `scripts/lib` (the checkout
-is never touched) and must turn its test file red. A rule whose text no longer occurs exactly once is STALE, not skipped.
-Exit 0 only when the baseline passes and every mutant is killed; `--only NAME` and `--list` narrow it.
+is never touched) and must turn its test file red: KILLED means pytest ran and a test failed (exit 1); exit 0 is SURVIVED and
+any other exit (nothing collected, a collection error) is ERROR, never a kill. Inherited `PYTEST_*` options are dropped, so a
+caller's `-k` cannot deselect the guilt. A rule whose text no longer occurs exactly once is STALE, not skipped. Exit 0 only
+when every test-file set passes unmutated and every mutant is killed; `--only NAME` and `--list` narrow it.
 
 **Hosted run.** `.github/workflows/localci-tests.yml` runs this suite on every pull request that touches `scripts/localci/**`, the
 workflow, ancestor pytest configuration or conftests at the repository root or in `scripts/`, or one of the real-repo files the suite
