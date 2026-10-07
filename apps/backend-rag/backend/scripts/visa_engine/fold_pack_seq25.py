@@ -233,8 +233,22 @@ def _saved_text_matches_a_receipt(ledger: Ledger, record_id: str, successes: lis
     return any(r.get("visible_text_sha256") == actual for r in successes)
 
 
-def attestation_instant(ledger: Ledger, portal_records: list[dict[str, Any]]) -> str:
-    """The ``verified_at`` the ledger supports, or abort naming the gap."""
+def attestation_instant(
+    ledger: Ledger,
+    portal_records: list[dict[str, Any]],
+    *,
+    now: datetime | None = None,
+) -> str:
+    """The ``verified_at`` the ledger supports, or abort naming the gap.
+
+    EVERY successful receipt is validated, not only the earliest (Codex review
+    finding 1, 2026-10-07: a future-dated receipt that is not the minimum used to
+    ride through): it must name the record's own canonical URL, be after the
+    previous stamp and not after ``now``; every judgement must come after a
+    successful read of its record.
+    """
+    real_now = now or _real_now_utc()
+    previous_stamp = _parse_utc(EXPECTED_SEQ24_STAMP, what="seq-24 stamp")
     earliest: datetime | None = None
     for record in portal_records:
         record_id = record["source_record_id"]
@@ -244,6 +258,27 @@ def attestation_instant(ledger: Ledger, portal_records: list[dict[str, Any]]) ->
                 f"{record_id[:8]} ({record['source_key']}): no receipt with HTTP 200 and the "
                 "key phrase found — this page was not successfully read; it cannot be re-stamped"
             )
+        first_read: datetime | None = None
+        for receipt in successes:
+            if receipt.get("canonical_url") != record["canonical_url"]:
+                _fail(
+                    f"{record_id[:8]} ({record['source_key']}): a receipt names "
+                    f"{receipt.get('canonical_url')!r}, not the record's canonical_url — not a read of this page"
+                )
+            instant = _parse_utc(receipt["fetched_at"], what=f"{record_id[:8]} fetched_at")
+            if instant > real_now:
+                _fail(
+                    f"{record_id[:8]} ({record['source_key']}): receipt fetched_at {receipt['fetched_at']!r} "
+                    "is in the future — a read that has not happened yet cannot be attested"
+                )
+            if instant <= previous_stamp:
+                _fail(
+                    f"{record_id[:8]} ({record['source_key']}): receipt fetched_at {receipt['fetched_at']!r} "
+                    f"is not after the seq-24 stamp {EXPECTED_SEQ24_STAMP}"
+                )
+            if first_read is None or instant < first_read:
+                first_read = instant
+        assert first_read is not None
         if not _saved_text_matches_a_receipt(ledger, record_id, successes):
             _fail(
                 f"{record_id[:8]} ({record['source_key']}): the saved visible text does not carry the "
@@ -253,6 +288,13 @@ def attestation_instant(ledger: Ledger, portal_records: list[dict[str, Any]]) ->
         if not judged:
             _fail(f"{record_id[:8]} ({record['source_key']}): fetched but never judged")
         for judgement in judged:
+            judged_at = _parse_utc(str(judgement.get("judged_at")), what=f"{record_id[:8]} judged_at")
+            if judged_at < first_read or judged_at > real_now:
+                _fail(
+                    f"{record_id[:8]} ({record['source_key']}): judged_at {judgement.get('judged_at')!r} is not "
+                    f"between the first successful read ({first_read.strftime(UTC_FORMAT)}) and now — a "
+                    "judgement must follow the read it judges"
+                )
             verdict = judgement.get("semantic_change")
             if verdict not in JUDGEMENT_VERDICTS:
                 _fail(f"{record_id[:8]}: judgement verdict {verdict!r} is not one of {sorted(JUDGEMENT_VERDICTS)}")
@@ -268,10 +310,8 @@ def attestation_instant(ledger: Ledger, portal_records: list[dict[str, Any]]) ->
                     f"{record_id[:8]}: checked_sentence is not a substring of the saved visible text — "
                     "the quote does not come from what was served"
                 )
-        for receipt in successes:
-            instant = _parse_utc(receipt["fetched_at"], what=f"{record_id[:8]} fetched_at")
-            if earliest is None or instant < earliest:
-                earliest = instant
+        if earliest is None or first_read < earliest:
+            earliest = first_read
     assert earliest is not None
     return earliest.strftime(UTC_FORMAT)
 
@@ -391,9 +431,7 @@ def fold(
             f"found {sorted(str(s) for s in stamps)} — someone already moved part of the set"
         )
 
-    verified_at = attestation_instant(ledger, portals)
-    if _parse_utc(verified_at, what="verified_at") <= _parse_utc(EXPECTED_SEQ24_STAMP, what="seq-24 stamp"):
-        _fail(f"the ledger's earliest read {verified_at} is not after the seq-24 stamp {EXPECTED_SEQ24_STAMP}")
+    verified_at = attestation_instant(ledger, portals, now=observed_at)
 
     out = json.loads(json.dumps(seq24))
     restamped = 0

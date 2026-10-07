@@ -2,7 +2,7 @@
 # signed, and ACTIVATED (seq-24 then seq-25) on 2026-10-07. Every receipt below is a command this
 # session executed on 2026-10-07 between 13:26Z and 13:55Z; nothing is narrated from memory.
 gear: 3
-brief_ref: evidence/2026-10/agent-air-m5-backend-rag-visa-freshness-restamp-e1af826a/brief.yml
+brief_ref: evidence/brief.yml
 ruling: >-
   Zero, 2026-10-07 — restore the Visa Oracle and activate ("lancia sciami per attivare e rendere
   tutto operativo"). seq-24 (owner-ruled 2026-09-27, owner-signed, never activated) activated first
@@ -133,13 +133,15 @@ dissent:
       more than the pack models). The fold handles it honestly (named disposition by id), but a
       rubric that distinguishes "page contradicts the pack" from "page exceeds the pack" at the
       reader would make the disposition rarer.
-    status: carried — note for the next re-stamp, not a condition on this head
+    status: PLAUSIBLE
+    note: carried — a note for the next re-stamp, not a condition on this head
   - seat: self-review
     objection: >-
       The lane is still not an organ: nothing schedules the next read before 2026-11-08T13:32:18Z.
       The sentinel is the only guard and its STALE key mutes on the dedup ladder (168h) — the exact
       shape that just hid a six-day outage.
-    status: open — two PENDING-ARMS rows (re-attestation organ; sentinel re-alert on persistent STALE), not fixed here
+    status: CONFIRMED
+    note: open — two PENDING-ARMS rows (re-attestation organ; sentinel re-alert on persistent STALE), not fixed here
 spend:
   wall_clock_hours: 1.5
   adversarial_rounds: 1

@@ -339,7 +339,54 @@ class TestLedgerGate:
 
         for path in ledger_copy.glob("*-receipts.jsonl"):
             _rewrite_jsonl(path, postdate)
-        with pytest.raises(SystemExit, match="has not happened yet"):
+        with pytest.raises(SystemExit, match="is in the future"):
+            fold(seq24_source, seq24_signed, load_ledger(ledger_copy), observed_at=OBSERVED_AT)
+
+    def test_guilt_a_future_receipt_that_is_not_the_minimum_is_still_refused(
+        self, seq24_source: dict[str, Any], seq24_signed: dict[str, Any], ledger_copy: Path, prod_trust_store_env: None
+    ) -> None:
+        """Codex finding 1 (2026-10-07): only the minimum used to be checked, so one
+        page's receipts moved to 2099 rode through while the others set the stamp."""
+        victim = _portals(seq24_source)[17]["source_record_id"]
+
+        def postdate_one(row: dict[str, Any]) -> dict[str, Any]:
+            if row["source_record_id"] == victim:
+                row["fetched_at"] = "2099-01-01T00:00:00Z"
+            return row
+
+        for path in ledger_copy.glob("*-receipts.jsonl"):
+            _rewrite_jsonl(path, postdate_one)
+        with pytest.raises(SystemExit, match=f"{victim[:8]}.*is in the future"):
+            fold(seq24_source, seq24_signed, load_ledger(ledger_copy), observed_at=OBSERVED_AT)
+
+    def test_guilt_a_receipt_for_another_url_is_not_a_read_of_this_page(
+        self, seq24_source: dict[str, Any], seq24_signed: dict[str, Any], ledger_copy: Path, prod_trust_store_env: None
+    ) -> None:
+        victim = _portals(seq24_source)[2]["source_record_id"]
+
+        def swap_url(row: dict[str, Any]) -> dict[str, Any]:
+            if row["source_record_id"] == victim:
+                row["canonical_url"] = "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/C1"
+            return row
+
+        for path in ledger_copy.glob("*-receipts.jsonl"):
+            _rewrite_jsonl(path, swap_url)
+        with pytest.raises(SystemExit, match="not the record's canonical_url"):
+            fold(seq24_source, seq24_signed, load_ledger(ledger_copy), observed_at=OBSERVED_AT)
+
+    def test_guilt_a_judgement_written_before_the_read_is_refused(
+        self, seq24_source: dict[str, Any], seq24_signed: dict[str, Any], ledger_copy: Path, prod_trust_store_env: None
+    ) -> None:
+        victim = _portals(seq24_source)[4]["source_record_id"]
+
+        def predate(row: dict[str, Any]) -> dict[str, Any]:
+            if row["source_record_id"] == victim:
+                row["judged_at"] = "2026-10-07T13:00:00Z"
+            return row
+
+        for path in ledger_copy.glob("*-judgements.jsonl"):
+            _rewrite_jsonl(path, predate)
+        with pytest.raises(SystemExit, match="a judgement must follow the read it judges"):
             fold(seq24_source, seq24_signed, load_ledger(ledger_copy), observed_at=OBSERVED_AT)
 
     def test_innocence_every_saved_text_carries_a_receipts_fingerprint(

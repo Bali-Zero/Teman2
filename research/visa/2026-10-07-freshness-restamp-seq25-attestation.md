@@ -57,9 +57,10 @@ substring of the saved text. `verified_at` is then the earliest successful
 - D1, D2, D12, E30A, E30B, E31A: page and pack agree (stay, sponsor, purpose).
 - E31B, E31C, E31D, E31E, E31F, E31G, E31H, E31J: the page offers a 1-year OR 2-year
   ITAS (2-year PNBP Rp 8.500.000); the pack models the 1-year option only
-  (`FIXED_DAYS 365/365`). This was already so on the 30 August pack (seq-17), so it is
-  not page drift — the rules' assumption is still supported — but it IS a product
-  modelling gap, dispositioned by id and tracked in `PENDING-ARMS.md`.
+  (`FIXED_DAYS 365/365`). The pack has modelled 1 year only since at least seq-17 (30 August), so the
+  rules' assumption is still supported today; whether the 2-year option was already on
+  the page in August is NOT provable (no earlier snapshot) — a product modelling gap,
+  dispositioned by id and tracked in `PENDING-ARMS.md`, not a stamp blocker.
 - Calling Visa list: 6 countries (Afganistan, Israel, Korea Utara, Liberia, Nigeria,
   Somalia). VoA list: 97 lines. Press release 2024-04-24 and the Alih Status ITK→ITAS
   service page: unchanged in substance.
