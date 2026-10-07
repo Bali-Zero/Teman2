@@ -77,8 +77,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "check-max-last": (PY, "check_max_s[k] = max(check_max_s.get(k, 0), v)", "check_max_s[k] = v", (REPORT,)),
     "check-max-unsorted": (PY, "dict(sorted(check_max_s.items(), key=lambda kv: -kv[1]))", "dict(sorted(check_max_s.items()))", (REPORT,)),
     "is-num-any-number": (PY, "return type(x) in (int, float) and x >= 0", "return isinstance(x, (int, float))", (REPORT,)),
-    "median-is-mean": (PY, '"median_s": median(t for t, _ in timed) if timed else None',
-                       '"median_s": sum(t for t, _ in timed) / len(timed) if timed else None', (REPORT,)),
+    "median-is-mean": (PY, '"median_s": round(median(t for t, _ in timed), 1) if timed else None',
+                       '"median_s": round(sum(t for t, _ in timed) / len(timed), 1) if timed else None', (REPORT,)),
     "longest-is-first": (PY, '"longest_s": timed[-1][0] if timed else None', '"longest_s": timed[0][0] if timed else None', (REPORT,)),
     # the tick's journal
     "durations-not-journalled": (PY, '                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},\n',

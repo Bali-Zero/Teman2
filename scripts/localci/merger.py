@@ -607,7 +607,7 @@ def cmd_report(a) -> int:
     errors = sum(1 for r in window if r.get("kind") == "error")
     timed = sorted((r["elapsed_s"], r["pr"]) for r in rows if r["elapsed_s"] is not None)
     ticks = {"timed": len(timed), "longest_s": timed[-1][0] if timed else None, "longest_pr": timed[-1][1] if timed else None,
-             "median_s": median(t for t, _ in timed) if timed else None,
+             "median_s": round(median(t for t, _ in timed), 1) if timed else None,
              "check_max_s": dict(sorted(check_max_s.items(), key=lambda kv: -kv[1]))}
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,

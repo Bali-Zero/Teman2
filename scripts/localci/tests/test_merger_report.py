@@ -300,14 +300,14 @@ def test_the_report_names_the_longest_tick_and_where_the_time_went(tmp_path, mon
     gh = FakeGH({1: pull(A), 2: pull(B), 3: pull(C)}, {A: "success", B: "success", C: "success"})
     recs = [{**decision(1, A, "BLOCKED"), "elapsed_s": 100, "durations": {"ctx.a": 600.0, "ctx.b": 650}},
             {**decision(2, B, "BLOCKED"), "elapsed_s": 900.5, "durations": {"ctx.a": 40.0, "ctx.b": None, "ctx.c": "slow"}},
-            {**decision(3, C, "BLOCKED"), "elapsed_s": 300, "durations": ["ctx.a", 9999]},
+            {**decision(3, C, "BLOCKED"), "elapsed_s": 300.04, "durations": ["ctx.a", 9999]},
             {**decision(3, C, "BLOCKED"), "elapsed_s": "x"}, {**decision(3, C, "BLOCKED"), "elapsed_s": True},
             {**decision(3, C, "BLOCKED"), "elapsed_s": -1}]
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
-    assert rep["window"]["ticks"] == {"timed": 3, "longest_s": 900.5, "longest_pr": 2, "median_s": 300,
+    assert rep["window"]["ticks"] == {"timed": 3, "longest_s": 900.5, "longest_pr": 2, "median_s": 300.0,
                                       "check_max_s": {"ctx.b": 650, "ctx.a": 600.0}} and rc == 0
     assert list(rep["window"]["ticks"]["check_max_s"]) == ["ctx.b", "ctx.a"]
-    assert "longest 900.5s (#2), median 300s; slowest checks: ctx.b=650s, ctx.a=600.0s" in capsys.readouterr().out
+    assert "longest 900.5s (#2), median 300.0s; slowest checks: ctx.b=650s, ctx.a=600.0s" in capsys.readouterr().out
 
 
 def test_decisions_without_provenance_are_counted_never_refused(tmp_path, monkeypatch, capsys):
