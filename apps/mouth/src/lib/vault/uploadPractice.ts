@@ -24,7 +24,11 @@ export function resolveUploadPractice(
   active: readonly Pick<PortalMatter, "id">[],
   choice: UploadPracticeChoice,
 ): string | null {
-  if (choice !== undefined) return choice;
+  if (
+    choice === null ||
+    (choice !== undefined && active.some((m) => String(m.id) === choice))
+  )
+    return choice;
   return active.length === 1 ? String(active[0].id) : null;
 }
 

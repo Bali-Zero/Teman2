@@ -29,7 +29,20 @@ describe("uploadPractice", () => {
 
   it("a client choice, including 'no practice', beats the default", () => {
     expect(resolveUploadPractice([m(7, "inquiry")], null)).toBeNull();
-    expect(resolveUploadPractice([m(7, "inquiry")], "9")).toBe("9");
+    expect(resolveUploadPractice([m(1, "inquiry"), m(2, "inquiry")], "2")).toBe(
+      "2",
+    );
+  });
+
+  it("drops a pick that left the active list, back to the default", () => {
+    const one = [m(7, "inquiry")];
+    expect(resolveUploadPractice(one, "9")).toBe(
+      resolveUploadPractice(one, undefined),
+    );
+    expect(resolveUploadPractice(one, "9")).toBe("7");
+    expect(
+      resolveUploadPractice([m(1, "inquiry"), m(2, "inquiry")], "9"),
+    ).toBeNull();
   });
 
   it("blocks upload only for 2+ active practices with none chosen", () => {
