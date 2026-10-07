@@ -280,14 +280,20 @@ sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a 
 the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error` or `disabled`;
 registry id `pro.localci_merger`), and `LOCALCI_MERGER_ENABLED=false` in the plist's environment stops the ticks without
 uninstalling. The live copy is a declared HOME-fork pair (`infra/home-fork/declared-pairs.json`): `scripts/lint_home_fork.py
---check` on Pro names a drift from the repo. Install (operator of Pro, user `nuzantara`):
+--check` on Pro names a drift from the repo. The wrapper checks `MERGER_PYTHON` and `MERGER_NODE` with an explicit test and
+`exit 2`, never `${VAR:?}`: under macOS `/bin/bash` 3.2 an expansion error reaches the `EXIT` trap with status 0, the script
+exits 0 and the heartbeat would say `ok` (measured; the wrapper test keeps it red). Replace the live copy atomically (copy
+beside it, then `mv`): bash reads a running script as it goes. Install (operator of Pro, user `nuzantara`):
 
     mkdir -p ~/.nuzantara-cron ~/logs
-    cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/localci_merger_tick.sh
+    cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/.localci_merger_tick.sh.new
+    mv -f ~/.nuzantara-cron/.localci_merger_tick.sh.new ~/.nuzantara-cron/localci_merger_tick.sh
+    cmp -s scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/localci_merger_tick.sh && echo "live copy == repo"
     sed -e "s#__HOME__#$HOME#g" -e "s#__VENV_PYTHON__#$HOME/nuzantara/apps/backend-rag/.venv/bin/python#g" \
         infra/launchagents/com.balizero.localci-merger.plist > ~/Library/LaunchAgents/com.balizero.localci-merger.plist
-    launchctl load ~/Library/LaunchAgents/com.balizero.localci-merger.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.localci-merger.plist
     tail -3 ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl   # green≠working: read the journal, not the exit code
+    cat ~/.organism/last_seen/pro.localci_merger.json
 
 ## Tests
 

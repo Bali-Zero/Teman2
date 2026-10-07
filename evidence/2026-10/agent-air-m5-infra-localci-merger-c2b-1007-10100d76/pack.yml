@@ -46,7 +46,7 @@ what_changed: |
   infra/home-fork/declared-pairs.json (superscar #1).
   scripts/localci/tests/test_merger_report.py (new, 25 cases) and test_merger.py from 33 to 41 cases.
   scripts/localci/README.md: "Report (phase D's instrument)" and "Schedule (launchd, Pro)" under the Merger section.
-  Net size about 650 added (merger.py 147, tests ~340, wrapper/plist ~85, registry/pair ~30, README ~60): one concern —
+  Net size 673 added, 17 deleted (merger.py 147, tests 339, wrapper/plist 94, registry/pair 29, README 64): one concern —
   the report and the scheduled organ that feeds it; the tests are most of it and splitting them from the code they guard
   would ship it unguarded.
 proof: |
@@ -54,9 +54,15 @@ proof: |
   (GETs and git fetch). runner.py, contexts_matrix.yaml and hosted_compare.py are untouched.
 bites:
   consumer: >-
-    The Pro launchd job com.balizero.localci-merger (user nuzantara), which runs the tick every 600 s and appends to
-    ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl; the operator's phase E decision reads `merger.py report`.
+    The Pro launchd job com.balizero.localci-merger (user nuzantara, organ pro.localci_merger), which runs the tick every
+    600 s, appends to ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl and beats
+    ~/.organism/last_seen/pro.localci_merger.json; the operator's phase E decision reads `merger.py report`.
   observation: >-
+    Pro, launchd run 6 of com.balizero.localci-merger, the first with the genes wrapper (installed 11:53:14Z, cmp -s
+    identical to 85a4d13bf0:scripts/localci/localci_merger_tick.sh, plist unchanged): tick 2026-10-07T11:59:06Z with
+    code=147893328732, decision line 12:01:40Z for armed PR #8019 (head 52214abac7c4) — BLOCKED, candidate
+    c417a776b89e on base 147893328732, seal 7864753864c5, hosted agreement 4/14, 151.1 s, exit 0; heartbeat
+    {"ts":"2026-10-07T12:01:42Z","status":"ok","note":"tick rc=0 code=147893328732"}. Before it, with the gated wrapper:
     Pro, launchd run 1 of com.balizero.localci-merger (bootstrapped 2026-10-07T10:56:15Z, RunAtLoad): wrapper code=147893328732
     (origin/main, read from the mirror), decision line 2026-10-07T10:59:12Z for armed PR #7961 (head c664152d40d8) —
     BLOCKED, candidate 6627597f4028 on base 147893328732, seal 154e41b57edd, hosted agreement 4/14, 171.9 s, last exit
@@ -72,8 +78,33 @@ ground:
     infra/launchagents (git merge-tree clean).
 spend:
   adversarial_rounds: 1
-  wall_clock_hours: 1.2
+  wall_clock_hours: 2.2
 receipts:
+  - claim: "The genes wrapper went live on Pro without touching the plist: copied beside the live file and moved over it (a running bash reads its script as it goes), cmp -s identical to 85a4d13bf0:scripts/localci/localci_merger_tick.sh, the installed plist cmp -s identical to the repo plist after the __HOME__/__VENV_PYTHON__ substitution, so no bootout/bootstrap. launchd run 6 (StartInterval, no hand) ran it: decision #8019 BLOCKED (candidate c417a776b89e, seal 7864753864c5, 4/14, 151.1 s) at 12:01:40Z, exit 0, err log empty, heartbeat ok at 12:01:42Z."
+    cmd: git show HEAD:scripts/localci/localci_merger_tick.sh > ~/.nuzantara-cron/.localci_merger_tick.sh.new && mv -f ... ; cmp -s ; launchctl print gui/$(id -u)/com.balizero.localci-merger ; cat ~/.organism/last_seen/pro.localci_merger.json ; tail -1 decisions.jsonl
+    exit: 0
+    ts: "2026-10-07T12:01:51Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: 'The kill switch on Pro, with HOME redirected to a temp dir so the real sidecar is untouched: LOCALCI_MERGER_ENABLED=false printed ''not ticking'', exited 0, created no state dir and wrote {"status":"disabled","note":"kill switch LOCALCI_MERGER_ENABLED=false"}.'
+    cmd: env -i HOME=$(mktemp -d) PATH=/usr/bin:/bin LOCALCI_MERGER_ENABLED=false /bin/bash ~/.nuzantara-cron/localci_merger_tick.sh
+    exit: 0
+    ts: "2026-10-07T11:53:21Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "lint_home_fork --check with this branch's pairs: on M5 exit 0 (208 pairs, no breach; the new pair is pro-only). On Pro it reads the pair and reports NO-REPO-TWIN for ~/.nuzantara-cron/localci_merger_tick.sh because the lint resolves the repo side in the canonical checkout ~/nuzantara (main), where the twin lands only with this PR — the expected pre-merge state; the same run also reports a DIVERGED wa-codex-broker copy unrelated to this change. After merge the lint on Pro is the durable HOME-fork check (owed: run it once main is pulled)."
+    cmd: python3 scripts/lint_home_fork.py --check --config <worktree>/infra/home-fork/declared-pairs.json --json
+    exit: 0
+    ts: "2026-10-07T11:53:40Z"
+    seat: claude-opus-5-5 on M5 and driving Pro over ssh
+  - claim: "The organ-conformance workflow's steps pass locally at 85a4d13bf0: stale detector + heartbeat-vs-poller 70 passed 1 skipped; self-reporting-cron margin 9 passed (expected_hb_seconds 1800 against StartInterval 600); ratchet --base origin/main holds (112, no growth); registry validates. The tests that read declared-pairs or the registry: 534 passed, 1 skipped, 1 failed — test_regulatory_watcher_schema_fix::test_declared_home_fork_pair_registered, which expects the regulatory-watcher pair on {pro, m5} while origin/main already declares {pro, m5, mini} (pre-existing, not this change). The localci suite on Pro: 448 passed, 1 skipped."
+    cmd: pytest scripts/tests/test_organism_stale_detector.py scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py scripts/tests/test_organ_heartbeat_workflow_wiring.py ; pytest scripts/tests/test_self_reporting_cron_own_plist_margin.py scripts/tests/test_self_reporting_cron_workflow_wiring.py ; check_baseline_ratchet.py --base origin/main ; pytest <scripts/tests reading pairs/registry> ; pytest scripts/localci/tests (Pro)
+    exit: 1
+    ts: "2026-10-07T12:05:57Z"
+    seat: claude-opus-5-5 on M5 and driving Pro over ssh
+  - claim: "The first registry edit went through `validate_organs_registry --update-checksum` (the step organ_birth.py --apply also runs), which re-serialised the whole file with yaml.safe_dump: 108 lines of churn, every comment dropped. Redone as a pure append of the new entry (24 lines) with the checksum computed the validator's way (compute_checksum over the parsed organs), same digest a653a11243a6; the validator passes."
+    cmd: git diff --numstat <merge-base> -- apps/organism/organism/organs_registry.yaml (121/108 before, 23/1 after) ; validate_organs_registry
+    exit: 0
+    ts: "2026-10-07T11:47:00Z"
+    seat: claude-opus-5-5 on M5
   - claim: "The report on the live Pro journal (C2 at bf70d95bda) reads 6 decisions (#7503, #7613, #7736, #7943, #7944, #7945), all BLOCKED and PR-level BLIND; context-level agree=8 false_green=0 false_red=0 local_blind=76 hosted_pending=0; recorded at tick time 0; compared_merges=0, days=0.109, longest_silence=2.1h; rc 0."
     cmd: python scripts/localci/merger.py report
     exit: 0
