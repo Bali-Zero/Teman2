@@ -461,9 +461,11 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
             step["if" if expressions else "if_not_evaluated"] = str(ws["if"])
         if expressions:
             tm = ws.get("timeout-minutes")
-            if coe not in (None, False, True) or (tm is not None and (isinstance(tm, bool) or not isinstance(tm, (int, float)))):
+            if coe not in (None, False, True) or (tm is not None and (isinstance(tm, bool) or not isinstance(tm, (int, float)) or tm <= 0)):
                 return None, f"workflow step {wname!r}: continue-on-error/timeout-minutes must be literals here"
             step.update({k: v for k, v in (("id", ws.get("id")), ("continue_on_error", coe is True), ("timeout_s", int(tm * 60) if tm else None)) if v})
+        elif ws.get("timeout-minutes") is not None:   # hosted kills the step there; only the expression-mode driver does too
+            return None, f"workflow step {wname!r}: a step timeout-minutes is emulated only in a service context (expressions: true)"
         if st.get("trusted_scan") is False:   # a path filter (`case` list, `git diff -- <paths>`) names surfaces, not judges
             step["trusted_scan"] = False
         out.append(step)

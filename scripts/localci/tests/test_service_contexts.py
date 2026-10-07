@@ -315,6 +315,18 @@ def test_a_commit_id_the_sandbox_rebuilds_is_refused_wherever_the_runner_evaluat
     assert planned_svc(tmp_path / "ok", monkeypatch, fr.CANDIDATE_FILES, ctx, {WF: yaml.safe_dump(wf)}).get("status") != "BLOCKED"
 
 
+@pytest.mark.parametrize("expressions,tm,needle", [(False, 5, "only in a service context"), (True, 0, "must be literals"),
+                                                    (True, "${{ env.T }}", "must be literals"), (True, -1, "must be literals")])
+def test_a_step_timeout_is_emulated_in_a_service_context_and_blocked_elsewhere(expressions, tm, needle):
+    job = {"runs-on": "ubuntu-latest", "steps": [{"name": "s", "run": "true", "timeout-minutes": tm}]}
+    steps, why = runner.resolve_steps(job, {"steps": [{"workflow_step": "s"}]}, "main", expressions=expressions)
+    assert steps is None and needle in why
+    if expressions:
+        ok, _ = runner.resolve_steps({**job, "steps": [{**job["steps"][0], "timeout-minutes": 5}]}, {"steps": [{"workflow_step": "s"}]}, "main",
+                                     expressions=True)
+        assert ok[0]["timeout_s"] == 300
+
+
 def test_a_job_timeout_given_as_an_expression_is_blocked_not_read_as_the_default(tmp_path, monkeypatch):
     wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "fanin": {**WORKFLOW["jobs"]["fanin"], "timeout-minutes": "${{ fromJSON(env.T) }}"}}}
     spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), {WF: yaml.safe_dump(wf)})
