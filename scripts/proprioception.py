@@ -2503,8 +2503,16 @@ DEFAULT_REGISTRY: list[dict] = [
         # *.agent_worktree_cleanup advisories ("WIP worktree skipped") would sit at
         # P1 on every node forever, which is how a channel earns being ignored —
         # the failure this detector was born to end, re-created one severity up.
-        # stale / dead_channel / corrupt / unhealthy still DIVERGE, unchanged.
-        "verdict_key": "kind", "ok_values": ["warning"],
+        # kind="disabled" (added 2026-10-08) is a sidecar frozen forever because
+        # the organ was deliberately disarmed (plist renamed to .disabled-*,
+        # same fact healer_receptor_registry.py's own EXEMPT_STATUSES/
+        # _renamed_away_disabled_plist path already stopped alarming on via
+        # PR #7553) — mata_garuda.intel_bridge_daily.mini DIVERGED here on every
+        # tick for 2+ weeks after that disable despite being correctly exempt
+        # in the registry receptor (see organism_stale_detector.py's
+        # KNOWN_INTENTIONALLY_DISABLED_STALE). stale / dead_channel / corrupt /
+        # unhealthy still DIVERGE, unchanged.
+        "verdict_key": "kind", "ok_values": ["warning", "disabled"],
         "fix_hint": "read the organ's own log — restart is NOT the cure (heartbeat TAC 2026-07-02)",
     },
     {
