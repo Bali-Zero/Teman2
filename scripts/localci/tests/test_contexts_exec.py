@@ -248,6 +248,11 @@ def test_a_job_shape_the_sandbox_does_not_stand_in_for_is_blocked(over):
     assert steps is None and "job shape not emulated" in why
 
 
+@pytest.mark.parametrize("runs_on", ["ubuntu-24.04", ["ubuntu-latest"]])
+def test_a_hosted_label_in_either_spelling_is_the_runner_the_sandbox_stands_in_for(runs_on):
+    assert runner.resolve_steps(_job(**{"runs-on": runs_on}), contained_ctx()["local"], "b" * 40)[1] is None
+
+
 def test_workflow_level_env_reaches_the_steps_under_the_job_and_step_env():
     steps, why = runner.resolve_steps(_job(env={"TOOL_VERSION": "job", "X": "job"}), contained_ctx()["local"], "b" * 40, {}, {"WF_ONLY": "1", "TOOL_VERSION": "wf", "X": "wf"})
     assert why is None and steps[0]["env"]["WF_ONLY"] == "1" and steps[0]["env"]["TOOL_VERSION"] == "job"

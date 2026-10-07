@@ -397,7 +397,9 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
     never covers less than the job and still calls itself the job's. A step's `if:` is recorded, not evaluated: running a step
     GitHub might skip can only add red, never hide it. Env merges as GitHub does: workflow, job, step, then the matrix's overrides;
     a job that runs in its own `container:`, beside `services:`, or on another runner image is not emulated."""
-    if (shape := [k for k in ("container", "services") if k in job]) or job.get("runs-on") not in HOSTED_RUNNERS:
+    runs_on = job.get("runs-on")
+    runs_on = runs_on[0] if isinstance(runs_on, list) and len(runs_on) == 1 else runs_on   # `[ubuntu-latest]` is one label
+    if (shape := [k for k in ("container", "services") if k in job]) or runs_on not in HOSTED_RUNNERS:
         return None, f"BASE job shape not emulated: {shape or ''} runs-on={job.get('runs-on')!r} (the sandbox stands in for {HOSTED_RUNNERS})"
     wsteps = [s for s in (job.get("steps") or []) if isinstance(s, dict)]
     names = [s["name"] for s in wsteps if isinstance(s.get("name"), str)]
