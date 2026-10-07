@@ -259,7 +259,9 @@ One `tick` decides at most one pull request:
    `contexts_matrix.yaml` (`trusted_base_required` holds for the merger too): the candidate's runner and matrix never judge
    it. The seal passed on is the first one `run` prints — before any candidate code runs. The runner gets an allowlisted
    environment (no token) with the same git isolation, so its own git calls on the candidate see no host config or hook
-   either. Candidate code runs only inside the runner, contained as the runner contains it.
+   either. Candidate code runs only inside the runner, contained as the runner contains it. `plan` gets `--pr-number <N>`
+   whenever the BASE runner's own source takes that flag, so `merge_group.head_ref` names the PR as the queue's does (the
+   Harness floor context parses it); a BASE runner older than the flag is planned without it, never broken by it.
 6. **Hosted.** `hosted_compare.compare` against the live required contexts of the PR HEAD sha — the queue's own verdict
    lands on a merge-group commit the merger cannot see; the journal line says so (`hosted_compare.note`).
 
@@ -301,10 +303,28 @@ it, so that orphan run is never journalled.
 Reads the journal strictly (an unreadable line, a state dir bound to another repo or a decision of another repo is exit 2,
 never skipped) and sets every `kind=decision` line since `--since` (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SSZ`) beside what
 GitHub did with that head, through GETs: the PR (`pulls/N`), the merge commit's parents and the live required contexts.
-GitHub's side is GREEN when the PR merged AT THIS HEAD (its queue let it through); otherwise the required contexts on the head,
-red-dominant (RED, else PENDING, else GREEN). The merger's side is GREEN only for `overall=PASS`, RED only for `FAIL`;
-everything else (BLOCKED, SUBSET_PASS, CONFLICT, ERROR) is blind. Classes per decision: `AGREE`, `FALSE_GREEN` (merger PASS,
-GitHub red), `FALSE_RED`, `BLIND`, `PENDING` (GitHub has no verdict yet).
+GitHub's side is the required contexts of the judged sha — the merge commit when the queue merged the decided candidate, else
+the head — red-dominant (RED, else PENDING, else GREEN). Merging is no verdict: a merged candidate whose merge commit has not
+reported is PENDING, one whose merge commit carries a red required check is RED. The merger's side is GREEN only for
+`overall=PASS`, RED only for `FAIL`; everything else (BLOCKED, SUBSET_PASS, CONFLICT, ERROR) is blind. Classes per decision:
+`AGREE`, `FALSE_GREEN` (merger PASS, GitHub red), `FALSE_RED`, `BLIND`, `PENDING` (GitHub has no verdict yet).
+
+Apart from the classes, the report reads the required checks on the merge commit of every PR the window decided that GitHub
+merged, whichever candidate the merger decided (a merge the merger never decided is no evidence about either gate), and lists as `hosted_red_merged` each one GitHub merged with a required check red there (PR,
+merge commit, red contexts; one printed line each). #8026 is the case: decided on an older base, so its row is judged on its
+green head and is not a compared merge, yet its queue commit 2a1e00e0d3 merged with `antidotes` red. That is a HOSTED
+failure: counted apart and printed on the phase E line as information, and by itself it never blocks READY. A local false
+green on a candidate the queue merged still does — a context the local gate passed and the merge commit failed is a context
+FALSE_GREEN, and a local PASS against that red is a decision FALSE_GREEN.
+
+Why GitHub merges a red required check (measured 2026-10-07 by GET only). `main`'s merge-queue ruleset 19779175
+(`merge-queue-main`, active, no bypass actor) sets `grouping_strategy: HEADGREEN` (`max_entries_to_build` 5,
+`max_entries_to_merge` 4) — the UI's "Only merge non-failing pull requests" turned off: a PR whose own group commit fails may
+merge when the last entry of its group passes. The classic protection lists `antidotes` among its 14 required contexts
+(`strict: false`, no app pinned). #8026's queue commit 2a1e00e0d3 had `antidotes` red (merge_group run, attempt 1); #8027's
+queue commit 9637bf5a5e, built on top of it and green on all 36 checks it ran, carried the group, and both merged at
+17:18:25Z. The local gate judges every candidate on its own, so it refuses what this queue setting lets through. Changing the
+setting is Zero's call, not this code's.
 
 Because the runner leaves `review.independent` QUEUED, `overall` is never PASS in shadow and the per-decision FALSE_GREEN
 count is vacuous today. The phase-D instrument is the CONTEXT level, in two parts that are both counted:
@@ -323,12 +343,14 @@ The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges
 merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides (`MIN_COMPARED_CONTEXTS`,
 the AGREE ≥ 12 of 14 of spec §2 phase B): a merge compared on blind contexts is no evidence. Each compared PR counts once, at
 GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads
-`compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN and either ≥ 50 compared merges or ≥ 14
-days between the first and the last compared merge (spec §2) — a window that only aged, with nothing compared, is never
-READY, and until phase B lands no merge is compared at all. Days are floored in integer seconds (13.9999 is not 14; 14 is).
-Three silences are printed: the longest gap between DECISIONS (errors and skips keep a journal busy without deciding
-anything), the longest between any two journal lines, and the age of the last line (a merger that stopped writing at all).
-Rows carry the `code_sha` that wrote them and the window lists the code shas it saw. A recorded FALSE_GREEN that is not a
+`compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN AND ≥ 50 compared merges AND ≥ 14 days
+between the first and the last compared merge (spec §2, ruled 2026-10-07: both, never either) — a window that only aged,
+with nothing compared, is never READY, and until phase B lands no merge is compared at all. Days are floored in integer
+seconds (13.9999 is not 14; 14 is). Three silences are printed: the longest gap between DECISIONS (errors and skips keep a
+journal busy without deciding anything), the longest between any two journal lines, and the age of the last line (a merger
+that stopped writing at all), never negative — a line dated in the future (a host clock ahead) is counted and printed
+instead. Rows carry the `code_sha` that wrote them, the window lists the code shas it saw and counts the decisions without a
+valid one (lines older than provenance are counted, never refused). A recorded FALSE_GREEN that is not a
 non-negative integer, a timestamp that is not exactly `YYYY-MM-DDTHH:MM:SSZ`, or a merged candidate without `merged_at` is an
 unusable input. The ticks line prints the longest and the median decision time and the slowest run of each check in the
 window (the runner's `duration_s`, journalled per decision as `durations`). The report writes `<state-dir>/report.json`.
@@ -344,9 +366,13 @@ variable, fetches `origin/main` into the merger's mirror (a failed fetch is not 
 sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a working-tree copy. A failure before Python starts
 (no git, no mirror) writes no journal line; it is in `~/logs/localci-merger.err.log`, and the report's `longest_silence` shows
 the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error` or `disabled`;
-registry id `pro.localci_merger`) by running `scripts/lib/heartbeat.sh` from the canonical checkout in its own process (its
-CLI mode, never `source`: a working checkout's file cannot change the wrapper's options, traps or exit status;
-`MERGER_HEARTBEAT_LIB` overrides the path; a missing library is said on stderr and the organ reads stale).
+registry id `pro.localci_merger`) by running `scripts/lib/heartbeat.sh` in its own process (its CLI mode, never `source`: the
+library cannot change the wrapper's options, traps or exit status). That library too comes from the mirror at the tick's
+sha, never from a working checkout: each tick refreshes `<state-dir>/heartbeat.sh`, and an exit before the extraction (the
+kill switch, missing configuration) runs the copy the last tick extracted — on a host that never ticked there is none, which
+is said on stderr and the organ reads stale. Each run extracts into its own temporary file and publishes it with `mv` only
+when it is not empty; an empty library is treated as absent (it would run as a silent no-op). `MERGER_HEARTBEAT_LIB`
+overrides the path (tests).
 `LOCALCI_MERGER_ENABLED=false` in the plist's environment stops the ticks without uninstalling; its `disabled` heartbeat is
 not an unhealthy status — the healer's `EXEMPT_STATUSES` holds it and the sentinel does not page on it — because a kill
 switch is an operator's act, not a failure. The wrapper passes `--code-sha=<resolved sha>` when the extracted `merger.py`
@@ -389,6 +415,13 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
 
 `PYTHONPATH=<worktree> python -m pytest scripts/localci/tests -q` (real temporary git repos; the hypothesis state machine
 is skipped when hypothesis is absent).
+
+`python3 scripts/localci/tests/mutants/merger_mutants.py` replays the merger's mutation sweep: each single-rule mutant of
+`merger.py` or `localci_merger_tick.sh` is applied to a temporary copy of `scripts/localci` and `scripts/lib` (the checkout
+is never touched) and must turn its test file red: KILLED means pytest ran and a test failed (exit 1); exit 0 is SURVIVED and
+any other exit (nothing collected, a collection error) is ERROR, never a kill. Inherited `PYTEST_*` options are dropped, so a
+caller's `-k` cannot deselect the guilt. A rule whose text no longer occurs exactly once is STALE, not skipped. Exit 0 only
+when every test-file set passes unmutated and every mutant is killed; `--only NAME` and `--list` narrow it.
 
 **Hosted run.** `.github/workflows/localci-tests.yml` runs this suite on every pull request that touches `scripts/localci/**`, the
 workflow, ancestor pytest configuration or conftests at the repository root or in `scripts/`, or one of the real-repo files the suite
