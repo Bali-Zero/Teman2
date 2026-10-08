@@ -754,6 +754,9 @@ def _seconds(v: str) -> float:
     return float(m.group(1)) * {"ms": 0.001, "s": 1, "m": 60, None: 1}[m.group(2)]
 
 
+SERVICE_KEYS = {"image", "credentials", "env", "ports", "options"}   # what a hosted service may declare, but `volumes`: never mounted here
+
+
 def plan_services(job: dict, images: dict, docker: str) -> tuple[list | None, str | None]:
     """A job's `services:` as BASE declares them. The image must have an operator-pinned local stand-in (a BASE tag the operator never
     vetted is BLOCKED, not guessed), its id is pinned now; env is BASE's literal map and nothing else (no host variable can reach it);
@@ -761,6 +764,8 @@ def plan_services(job: dict, images: dict, docker: str) -> tuple[list | None, st
     out = []
     for sname, svc in (job.get("services") or {}).items():
         svc = svc if isinstance(svc, dict) else {}
+        if (extra := sorted(set(svc) - SERVICE_KEYS)):
+            return None, f"service {sname}: {extra} not emulated (a volume is never mounted into a service here; only {sorted(SERVICE_KEYS)} are read)"
         ref = str(svc.get("image") or "")
         if not images.get(ref):
             return None, f"service {sname}: BASE image {ref!r} has no operator-pinned stand-in in local.service_images"

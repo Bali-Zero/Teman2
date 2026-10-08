@@ -563,6 +563,14 @@ def test_a_host_reader_whose_argv_reads_the_queue_ref_is_blocked_without_a_pr_nu
                                                                                                        ["event"]["merge_group"]["head_ref"][-40:])
 
 
+def test_a_service_with_volumes_is_blocked_and_docker_is_never_asked_to_mount_anything(tmp_path):
+    vol = {**SVC, "volumes": ["/var/run/docker.sock:/var/run/docker.sock"]}
+    svcs, why = runner.plan_services({"services": {"postgres": vol}}, IMAGES, str(fake_docker(tmp_path)))
+    assert svcs is None and "volumes" in why and "never mounted" in why and not (tmp_path / "docker.argv").exists()
+    svcs, why = runner.plan_services({"services": {"postgres": SVC}}, IMAGES, str(fake_docker(tmp_path)))
+    assert why is None and [s["name"] for s in svcs] == ["postgres"]
+
+
 @pytest.mark.parametrize("read,step_env,needle", [
     ("${{ env.COLLECT }}", {}, "env.COLLECT"),          # declared at workflow level
     ("${{ env.TAG }}", {"TAG": "t"}, "env.TAG"),        # declared on the step itself
