@@ -714,14 +714,11 @@ def format_alert_text(verdict: Verdict) -> str:
 # ---------------------------------------------------------------------------
 
 
-def send_alert(verdict: Verdict, gateway_path: Path = TG_NOTIFY) -> str | None:
-    """Route the verdict through `scripts/tg_notify.py`. Returns the gateway's
-    machine-readable verdict string, or None when nothing was sent (OK, or
-    the gateway could not be reached). NEVER raises — a gateway failure must
-    not crash the sentinel (house contract, `drive_token_watchdog.py`)."""
-    if verdict.outcome == OUTCOME_OK:
-        return None
-
+def _send(
+    verdict: Verdict, gateway_path: Path, key: str | None = None
+) -> tuple[str | None, str]:
+    """One gateway call. Returns (gateway verdict, failure class). The class is
+    "" when the gateway answered; otherwise a reason that carries no secret."""
     # ANOMALY is p0, not digest: a portal record the engine cannot age is a record
     # the engine treats as UNKNOWN, which is a decision-integrity fact, not a
     # housekeeping note.
@@ -731,11 +728,11 @@ def send_alert(verdict: Verdict, gateway_path: Path = TG_NOTIFY) -> str | None:
         else "digest"
     )
     text = format_alert_text(verdict)
-    key = dedup_key(verdict)
+    key = key or dedup_key(verdict)
 
     if not gateway_path.is_file():
         logger.warning("tg_notify.py not found at %s — alert NOT sent: %s", gateway_path, key)
-        return None
+        return None, "gateway-missing"
 
     try:
         proc = subprocess.run(
@@ -753,10 +750,197 @@ def send_alert(verdict: Verdict, gateway_path: Path = TG_NOTIFY) -> str | None:
             "tg_notify: %s (rc=%s, tier=%s, key=%s)",
             gateway_verdict or "NO VERDICT", proc.returncode, tier, key,
         )
-        return gateway_verdict
+        return gateway_verdict, "" if gateway_verdict else "no-verdict"
     except Exception as exc:  # noqa: BLE001 — gateway failure must NEVER crash the sentinel
-        logger.warning("tg_notify invocation failed: %s", exc)
+        logger.warning("tg_notify invocation failed: %s", type(exc).__name__)
+        return None, "gateway-exception"
+
+
+def send_alert(
+    verdict: Verdict, gateway_path: Path = TG_NOTIFY, key: str | None = None
+) -> str | None:
+    """Route the verdict through `scripts/tg_notify.py`. Returns the gateway's
+    machine-readable verdict string, or None when nothing was sent (OK, or
+    the gateway could not be reached). NEVER raises — a gateway failure must
+    not crash the sentinel (house contract, `drive_token_watchdog.py`)."""
+    if verdict.outcome == OUTCOME_OK:
         return None
+    return _send(verdict, gateway_path, key)[0]
+
+
+# ---------------------------------------------------------------------------
+# Persistent-condition re-alert (W141)
+#
+# The gateway's mute ladder (6h/24h/72h/168h) is built for FLAPPING conditions.
+# A STALE pack is a standing outage: one lost first send plus a 168h mute is
+# six days of silence. For STALE, and APPROACHING within a week of the
+# boundary, this sentinel owns the schedule: every send goes out under a
+# fresh gateway key (so the ladder never mutes it) and the sentinel's own
+# state decides when the next one is due. A send that was not delivered does
+# not move that schedule.
+# ---------------------------------------------------------------------------
+
+REALERT_INTERVAL_S = 23 * 3600  # 24h minus one launchd-jitter hour
+APPROACHING_PERSIST_S = 7 * 86400
+ESCALATION_JOB = "visa-freshness-sentinel:persistent"
+
+
+def _state_path() -> Path:
+    override = os.environ.get("VISA_FRESHNESS_STATE")
+    if override:
+        return Path(override)
+    return Path.home() / ".local" / "state" / "nuzantara" / "visa_freshness_sentinel.json"
+
+
+def load_state(path: Path) -> dict[str, Any]:
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_state(path: Path, state: dict[str, Any]) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(state, sort_keys=True))
+        os.replace(tmp, path)
+    except OSError as exc:
+        logger.warning("state not saved (%s): the next run re-alerts early", type(exc).__name__)
+
+
+def is_persistent(verdict: Verdict) -> bool:
+    if verdict.outcome == OUTCOME_STALE:
+        return True
+    if verdict.outcome == OUTCOME_APPROACHING and verdict.approaching:
+        left = min((f.boundary - verdict.now).total_seconds() for f in verdict.approaching)
+        return left <= APPROACHING_PERSIST_S
+    return False
+
+
+def _condition(verdict: Verdict) -> str:
+    return f"{verdict.outcome}:{verdict.pack_sequence}"
+
+
+def decide_alert(verdict: Verdict, state: dict[str, Any], now_ts: float) -> dict[str, Any]:
+    """Pure: what this run would do about the alert, and why."""
+    streak = int(state.get("delivered_streak", 0))
+    dedup_state = {
+        "condition": state.get("condition"),
+        "delivered_streak": streak,
+        "undelivered_attempts": int(state.get("undelivered_attempts", 0)),
+        "last_delivered_ts": state.get("last_delivered_ts"),
+        "next_due_ts": state.get("next_due_ts"),
+    }
+    if verdict.outcome == OUTCOME_OK:
+        return {"would_send": False, "reason": "ok-resets-ladder", "dedup_state": dedup_state}
+    if not is_persistent(verdict):
+        return {"would_send": None, "reason": "gateway-ladder", "dedup_state": dedup_state}
+    if state.get("condition") != _condition(verdict):
+        return {"would_send": True, "reason": "new-condition", "dedup_state": dedup_state}
+    due = float(state.get("next_due_ts") or 0)
+    if now_ts >= due:
+        why = "retry-undelivered" if not state.get("last_delivered_ts") else "realert-due"
+        return {"would_send": True, "reason": why, "dedup_state": dedup_state}
+    return {"would_send": False, "reason": "not-due-yet", "dedup_state": dedup_state}
+
+
+def _escalation_open(verdict: Verdict) -> None:
+    """Write the ONE HIGH board row for this standing condition (idempotent)."""
+    try:
+        from scripts.sentinel_lib import escalations as esc
+
+        summary = format_alert_text(verdict).replace("\n", " | ")[:400]
+        if esc.is_job_open(ESCALATION_JOB) and _last_escalated(esc) == verdict.outcome:
+            return
+        esc.write_escalation({
+            "job": ESCALATION_JOB,
+            "type": "visa_freshness_persistent",
+            "priority": "HIGH",
+            "outcome": verdict.outcome,
+            "error_summary": summary,
+            "detail": "Visa Oracle answers HUMAN_REVIEW_REQUIRED while portal stamps are stale; "
+            "cure is the re-attestation ceremony (docs/runbooks/visa-engine-key-ceremony.md).",
+            "context": "visa-freshness-sentinel",
+        })
+    except Exception as exc:  # noqa: BLE001 — the board must never crash the sentinel
+        logger.warning("escalation row not written: %s", type(exc).__name__)
+
+
+def _last_escalated(esc: Any) -> str | None:
+    rows = [e for e in esc.read_all_escalations() if e.get("job") == ESCALATION_JOB]
+    return rows[0].get("outcome") if rows else None
+
+
+def _escalation_resolve() -> None:
+    try:
+        from scripts.sentinel_lib import escalations as esc
+
+        if esc.is_job_open(ESCALATION_JOB):
+            esc.mark_resolved(ESCALATION_JOB)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("escalation not resolved: %s", type(exc).__name__)
+
+
+def run_alert_cycle(
+    verdict: Verdict,
+    *,
+    dry_run: bool,
+    now_ts: float,
+    state_path: Path | None = None,
+    gateway_path: Path = TG_NOTIFY,
+) -> dict[str, Any]:
+    """Decide, send, record. In dry-run only the decision is computed."""
+    path = state_path or _state_path()
+    state = load_state(path)
+    decision = decide_alert(verdict, state, now_ts)
+    if dry_run:
+        return decision
+
+    if verdict.outcome == OUTCOME_OK:
+        if state:
+            save_state(path, {})
+        _escalation_resolve()
+        return decision
+
+    if decision["would_send"] is None:
+        send_alert(verdict, gateway_path)  # non-persistent: the gateway ladder decides
+        return decision
+
+    _escalation_open(verdict)
+    if not decision["would_send"]:
+        return decision
+
+    cond = _condition(verdict)
+    if state.get("condition") != cond:
+        state = {"condition": cond, "delivered_streak": 0}
+    attempts = int(state.get("undelivered_attempts", 0))
+    day = datetime.fromtimestamp(now_ts, timezone.utc).strftime("%Y%m%d")
+    key = f"{dedup_key(verdict)}:d{day}:a{attempts}"
+    gateway_verdict, failure = _send(verdict, gateway_path, key)
+    decision["gateway_verdict"] = gateway_verdict
+    if gateway_verdict == "sent":
+        state.update(
+            delivered_streak=int(state.get("delivered_streak", 0)) + 1,
+            undelivered_attempts=0,
+            last_delivered_ts=now_ts,
+            next_due_ts=now_ts + REALERT_INTERVAL_S,
+        )
+        decision["delivered"] = True
+    else:
+        reason = failure or str(gateway_verdict)
+        logger.warning("undelivered: reason=%s key=%s", reason, key)
+        decision.update(delivered=False, undelivered_reason=reason)
+        state["undelivered_attempts"] = attempts + 1
+        # "spooled" is deterministic custody (board routing): retrying every run
+        # only adds rows. Every other failure is transient: retry on the next run.
+        if gateway_verdict == "spooled":
+            state["next_due_ts"] = now_ts + REALERT_INTERVAL_S
+        else:
+            state["next_due_ts"] = now_ts
+    save_state(path, state)
+    return decision
 
 
 # ---------------------------------------------------------------------------
@@ -791,14 +975,15 @@ def main(argv: list[str] | None = None) -> int:
         now = datetime.now(timezone.utc)
 
     verdict = build_verdict(now, args.warn_seconds)
-
-    if args.dry_run:
-        print(json.dumps(verdict.to_json(), indent=2))
-    else:
-        gateway_verdict = send_alert(verdict)
-        print(json.dumps(verdict.to_json(), indent=2))
+    decision = run_alert_cycle(
+        verdict, dry_run=args.dry_run, now_ts=now.timestamp()
+    )
+    out = verdict.to_json()
+    out["alert_decision"] = decision
+    print(json.dumps(out, indent=2))
+    if not args.dry_run:
         if verdict.outcome != OUTCOME_OK:
-            logger.info("gateway verdict: %s", gateway_verdict)
+            logger.info("alert decision: %s", decision.get("reason"))
         else:
             logger.info("OK — %d OFFICIAL_PORTAL source(s) within policy", verdict.portal_total)
 
