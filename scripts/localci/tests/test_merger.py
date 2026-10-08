@@ -50,6 +50,7 @@ class FakeGH:
         self.prs: list = []
         self.paths: list = []
         self.conclusion = "success"
+        self.roles = {"maint": "maintain", "boss": "admin"}
 
     def __call__(self, path):
         self.paths.append(path)
@@ -63,14 +64,46 @@ class FakeGH:
                                     "app": {"id": 15368, "slug": "github-actions"}}]}
         if m:
             return {"statuses": []}
+        m = re.fullmatch(rf"repos/{REPO}/collaborators/([A-Za-z0-9-]+)/permission", path)
+        if m:
+            return {"role_name": self.roles.get(m[1], "write")}
         raise AssertionError(f"unexpected GitHub read {path}")
+
+
+class FakeGraphQL:
+    """GitHub's GraphQL as the merger may see it: the PR read, built from FakeGH's PRs (``over`` patches it), and the mutation, recorded."""
+
+    def __init__(self, gh):
+        self.gh, self.calls, self.over, self.fail = gh, [], {}, None
+        self.entry = {"id": "MQE_x", "position": 3, "state": "QUEUED"}
+
+    def __call__(self, query, **variables):
+        self.calls.append((query, variables))
+        if query == mg.ENQUEUE:
+            if self.fail:
+                raise mg.GraphQLError(self.fail)
+            return {"enqueuePullRequest": {"mergeQueueEntry": self.entry}}
+        assert query == mg.PR_QUERY and f"{variables['owner']}/{variables['name']}" == REPO, (query, variables)
+        (p,) = [x for x in self.gh.prs if x["number"] == variables["number"]]
+        names = [lb["name"] for lb in p["labels"]]
+        return {"repository": {"pullRequest": {
+            "id": f"PR_node_{p['number']}", "state": "OPEN", "isDraft": p["draft"], "isCrossRepository": False, "baseRefName": "main",
+            "headRefOid": p["head"]["sha"], "isInMergeQueue": False, "mergeQueueEntry": None, "labels": {"nodes": [{"name": n} for n in names]},
+            "timelineItems": {"nodes": [labelled(n, "maint") for n in names]}, **self.over}}}
+
+    def mutations(self):
+        return [v for q, v in self.calls if q == mg.ENQUEUE]
+
+
+def labelled(name, login, kind="LabeledEvent", actor="User"):
+    return {"__typename": kind, "label": {"name": name}, "actor": {"__typename": actor, "login": login}}
 
 
 class FakeRunner:
     def __init__(self, overall="BLOCKED", plan_rc=0, run_out=f"policy.change_map: PASS\nseal={SEAL}  # end of run\n", sleep=0, alarm=0,
-                 status_rc=0, bind=None):
+                 status_rc=0, bind=None, doc=None):
         self.overall, self.plan_rc, self.run_out, self.sleep, self.alarm, self.calls = overall, plan_rc, run_out, sleep, alarm, []
-        self.status_rc, self.bind = status_rc, bind or {}
+        self.status_rc, self.bind, self.doc = status_rc, bind or {}, doc or {}
 
     def __call__(self, argv, cwd, env, timeout):
         sub, run_dir = argv[3], Path(argv[argv.index("--run-dir") + 1])
@@ -91,7 +124,7 @@ class FakeRunner:
         bind = {"candidate_sha": self.calls[0].get("worktree_head"), "base_sha": plan[plan.index("--base") + 1], "seal": SEAL, **self.bind}
         (run_dir / "status.json").write_text(json.dumps({"overall": self.overall, **bind,
                                                          "contexts": {"status": "ok", "results": {"ctx-a": {"verdict": "OK", "mapping": "executed"}}},
-                                                         "checks": {"policy.change_map": {"status": "PASS", "duration_s": 12.5}}}))
+                                                         "checks": {"policy.change_map": {"status": "PASS", "duration_s": 12.5}}, **self.doc}))
         return subprocess.CompletedProcess(argv, self.status_rc, self.overall + "\n", "")
 
 
@@ -113,10 +146,13 @@ def world(tmp_path, monkeypatch):
     g(origin, "update-ref", "refs/pull/1/head", head1)
     g(origin, "update-ref", "refs/pull/2/head", head2)
     gh, runner = FakeGH(), FakeRunner()
+    gql = FakeGraphQL(gh)
     monkeypatch.setattr(mg.hc, "gh_get", gh)
+    monkeypatch.setattr(mg, "gh_graphql", gql)
     monkeypatch.setattr(mg, "runner_exec", runner)
+    monkeypatch.delenv(mg.ARM_ENV, raising=False)
     w = type("World", (), {})()
-    w.state, w.origin, w.gh, w.runner = tmp_path / "state", origin, gh, runner
+    w.state, w.origin, w.gh, w.gql, w.runner = tmp_path / "state", origin, gh, gql, runner
     w.base, w.head1, w.head2, w.src = base, head1, head2, src
     w.tick = lambda node=mg.HOST: mg.main(["tick", "--node", node, "--repo", REPO, "--state-dir", str(w.state), "--remote-url", str(origin), "--python", "py"])
     w.journal = lambda: mg.read_journal(w.state)
@@ -348,7 +384,7 @@ def test_a_recycled_pid_is_not_the_holder(world):
     (world.state / "lease.json").write_text(json.dumps({"host": mg.HOST, "pid": os.getpid(), "pid_start": "Thu Jan  1 00:00:00 1970", "lease_id": "old"}))
     world.gh.prs = [pr(1, world.head1)]
     assert world.tick() == 0
-    assert [r["kind"] for r in world.journal()] == ["lease_reclaimed", "decision"]
+    assert [r["kind"] for r in world.journal()] == ["lease_reclaimed", "decision", "would_enqueue"]
 
 
 def test_the_journal_is_private_and_a_torn_tail_does_not_swallow_the_next_decision(world):
@@ -450,7 +486,7 @@ def test_a_dead_holders_lease_is_reclaimed_journalled_and_released(world):
     world.gh.prs = [pr(1, world.head1)]
     assert world.tick() == 0
     kinds = [r["kind"] for r in world.journal()]
-    assert kinds == ["lease_reclaimed", "decision"] and world.journal()[0]["stale"]["lease_id"] == "stale"
+    assert kinds == ["lease_reclaimed", "decision", "would_enqueue"] and world.journal()[0]["stale"]["lease_id"] == "stale"
     assert world.journal()[0]["lease_id"] == world.journal()[1]["lease_id"] != "stale"
     assert not (world.state / "lease.json").exists()
 
@@ -481,16 +517,17 @@ def test_a_runner_plan_failure_is_an_error_decision_never_a_verdict(world, monke
     assert d["overall"] == "ERROR" and "plan" in d["error"] and d["runner_rc"] == {"plan_rc": 1}
 
 
-def test_every_github_call_is_a_get_through_hosted_compare(world, monkeypatch):
+def test_every_github_call_is_a_get_or_the_graphql_read_and_unarmed_no_mutation_is_sent(world, monkeypatch):
     real = subprocess.run
 
     def guarded(argv, *a, **kw):
-        assert argv[0] != "gh", f"a GitHub call bypassed hosted_compare.gh_get: {argv}"
+        assert argv[0] != "gh", f"a GitHub call bypassed hosted_compare.gh_get and gh_graphql: {argv}"
         return real(argv, *a, **kw)
     monkeypatch.setattr(subprocess, "run", guarded)
-    world.gh.prs = [pr(1, world.head1), pr(9, "9" * 40, fork=True)]
+    world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL]), pr(9, "9" * 40, fork=True)]
     assert world.tick() == 0
     assert world.gh.paths and all(not re.search(r"/(merge|labels|comments|reviews)\b", p) for p in world.gh.paths)
+    assert [q for q, _ in world.gql.calls] == [mg.PR_QUERY] and world.gql.mutations() == []
 
 
 def test_merge_refuses_with_exit_2_whatever_it_is_given(capsys):
@@ -642,7 +679,7 @@ def test_every_journal_line_carries_the_code_sha_it_ran(world, monkeypatch):
     code = "c" * 40
     assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin),
                     "--python", "py", "--code-sha", code]) == 0
-    assert [r.get("code_sha") for r in world.journal()] == [code]
+    assert [(r["kind"], r.get("code_sha")) for r in world.journal()] == [("decision", code), ("would_enqueue", code)]
     assert mg.main(["tick", "--node", "elsewhere", "--repo", REPO, "--state-dir", str(world.state), "--code-sha", code]) == 0
     assert world.journal()[-1]["code_sha"] == code and world.journal()[-1]["why"] == "node"
     assert mg.main(["tick", "--node", "elsewhere", "--repo", REPO, "--state-dir", str(world.state)]) == 0
@@ -670,6 +707,176 @@ def test_the_pr_number_is_given_only_to_a_base_runner_that_declares_it(world, so
     plan = world.runner.calls[0]["argv"]
     assert plan[plan.index("--base") + 1] == world.base
     assert (plan[plan.index("--pr-number") + 1] == "1") if given else ("--pr-number" not in plan)
+
+
+# ------------------------------------------------------------------ the enqueue path (C3a-2)
+HEAD7 = "7" * 40
+GOOD = {"overall": "BLOCKED",
+        "checks": {"ctx.a": {"status": "PASS"}, "tests.frontend_mouth": {"status": "BLOCKED"}, "security.pysa_python": {"status": "NOT_APPLICABLE"},
+                   "review.independent": {"status": "QUEUED"}},
+        "contexts": {"status": "ok", "required": ["ctx-a", "CodeQL"],
+                     "results": {"ctx-a": {"mapping": "executed", "verdict": "OK"}, "CodeQL": {"mapping": "blocked", "verdict": "BLOCKED"}}}}
+
+
+def live_doc(**conclusions):
+    by = {"ctx-a": "success", "CodeQL": "success", **conclusions}
+    return {"required_checks": [{"context": c, "app_id": None} for c in ("ctx-a", "CodeQL")], "statuses": [],
+            "check_runs": [{"name": c, "status": "completed" if v else "in_progress", "conclusion": v, "app": {"id": 15368}}
+                           for c, v in by.items() if v != "missing"]}
+
+
+@pytest.fixture
+def enq(tmp_path, monkeypatch):
+    """Everything holds and both halves are armed: each guilt below breaks exactly one sub-criterion."""
+    gh = FakeGH()
+    gh.prs = [pr(7, HEAD7, armed=False, labels=[mg.ARM_LABEL])]
+    gql = FakeGraphQL(gh)
+    monkeypatch.setattr(mg.hc, "gh_get", gh)
+    monkeypatch.setattr(mg, "gh_graphql", gql)
+    monkeypatch.setenv(mg.ARM_ENV, "1")
+    w = type("Enq", (), {})()
+    w.gh, w.gql, w.state, w.status, w.live = gh, gql, tmp_path, json.loads(json.dumps(GOOD)), live_doc()
+    a = type("A", (), {"repo": REPO, "base": "main"})()
+    rec = {"repo": REPO, "pr": 7, "head_sha": HEAD7, "base_sha": "b" * 40, "candidate_sha": "c" * 40, "lease_id": "L"}
+    w.run = lambda: mg.enqueue_step(a, tmp_path, rec, mg.local_side(w.status), w.live)
+    return w
+
+
+def _check(name, status):
+    return lambda w: w.status["checks"][name].update(status=status)
+
+
+def _result(name, **kw):
+    return lambda w: w.status["contexts"]["results"][name].update(**kw)
+
+
+def _hosted(**conclusions):
+    return lambda w: setattr(w, "live", live_doc(**conclusions))
+
+
+def _pr(**over):
+    return lambda w: w.gql.over.update(over)
+
+
+def _timeline(*events):
+    return _pr(timelineItems={"nodes": list(events)})
+
+
+GUILT = {
+    "local_checks_clean": [_check("ctx.a", "FAIL"), _check("ctx.a", "ERROR"), _check("ctx.a", "STALE"),
+                           _check("tests.frontend_mouth", "INTERRUPTED"), _check("ctx.a", "RUNNING"), _check("ctx.a", None),
+                           _check("security.pysa_python", "QUEUED")],   # only the review may wait
+    "review_independent": [_check("review.independent", "BLOCKED"), _check("review.independent", "FAIL"), _check("review.independent", "STALE")],
+    "executed_contexts_ok": [_result("ctx-a", verdict="FAIL"), _result("ctx-a", verdict="BLOCKED"),    # BLOCKED only when NOT executed
+                             _result("CodeQL", mapping="executed"), _result("ctx-a", verdict="UNCOVERED"),
+                             lambda w: w.status["contexts"]["results"].pop("ctx-a"), lambda w: w.status["contexts"].update(status="invalid")],
+    "hosted_required_green": [_hosted(**{"ctx-a": c}) for c in ("failure", "cancelled", "timed_out", "action_required", None, "missing")]
+                             + [lambda w: setattr(w, "live", None)],
+    "head_unchanged": [_pr(headRefOid="8" * 40)],
+    "same_repo": [_pr(isCrossRepository=True)],
+    "not_draft": [_pr(isDraft=True)],
+    "base_main": [_pr(baseRefName="release")],
+    "open": [_pr(state="CLOSED"), _pr(state="MERGED")],
+    "not_in_queue": [_pr(isInMergeQueue=True, mergeQueueEntry={"id": "MQE_old", "position": 1, "state": "QUEUED"}),
+                     _pr(mergeQueueEntry={"id": "MQE_old", "position": 1, "state": "QUEUED"})],
+    "first_enqueue": [lambda w: mg.journal(w.state, {"kind": "enqueued", "pr": 7, "head_sha": HEAD7})],
+    "label_privileged": [lambda w: w.gh.prs[0].update(labels=[]), _timeline(labelled(mg.ARM_LABEL, "dev")),
+                         _timeline(labelled(mg.ARM_LABEL, "renovate", actor="Bot")),
+                         _timeline(labelled(mg.ARM_LABEL, "maint"), labelled(mg.ARM_LABEL, "maint", kind="UnlabeledEvent"),
+                                   labelled(mg.ARM_LABEL, "dev")),   # the account that applied it LAST arms, or not
+                         _timeline()],
+}
+CASES = [pytest.param(name, f, id=f"{name}-{i}") for name, fs in GUILT.items() for i, f in enumerate(fs)]
+
+
+def test_the_guilt_table_breaks_every_sub_criterion():
+    assert tuple(GUILT) == mg.CRITERION
+
+
+@pytest.mark.parametrize("name,guilt", CASES)
+def test_each_sub_criterion_alone_refuses_the_enqueue_and_the_line_names_it(enq, name, guilt):
+    guilt(enq)
+    line = enq.run()
+    assert line["refused"] == [name] and line["criterion"] == {k: k != name for k in mg.CRITERION} and line["ok"] is False
+    assert isinstance(line["why"][name], str) and list(line["why"]) == [name]
+    assert line["kind"] == ("would_enqueue" if name == "label_privileged" else "enqueue_refused") and enq.gql.mutations() == []
+    assert mg.read_journal(enq.state)[-1] == line
+
+
+@pytest.mark.parametrize("tweak", [None, _hosted(CodeQL="skipped"), _hosted(CodeQL="neutral"), _timeline(labelled(mg.ARM_LABEL, "boss")),
+                                   _check("review.independent", "PASS")], ids=["all-hold", "skipped", "neutral", "admin", "review-pass"])
+def test_when_every_sub_criterion_holds_and_both_halves_are_armed_one_mutation_enqueues_the_decided_head(enq, capsys, tweak):
+    if tweak:
+        tweak(enq)
+    line = enq.run()
+    assert enq.gql.mutations() == [{"pr": "PR_node_7", "oid": HEAD7}]
+    assert (line["kind"], line["refused"], line["ok"], line["armed_env"]) == ("enqueued", [], True, True) and all(line["criterion"].values())
+    assert (line["entry_id"], line["position"], line["entry_state"], line["expected_head_oid"], line["live_head_oid"]) == ("MQE_x", 3, "QUEUED", HEAD7, HEAD7)
+    assert (line["executed_required"], line["non_executed"], line["pull_request_id"]) == ("1/2", {"CodeQL": "blocked"}, "PR_node_7")
+    assert {"ts", "host", "pr", "head_sha", "base_sha", "candidate_sha", "lease_id", "why", "label_actor"} <= set(line) and line["why"] == {}
+    out = capsys.readouterr().out
+    assert "#7 enqueued" in out and "executed_required=1/2" in out and "CodeQL (blocked)" in out and "entry=MQE_x position=3" in out
+
+
+@pytest.mark.parametrize("value", [None, "0", "true", "yes", " 1"])
+def test_without_the_env_flag_the_merger_stays_shadow_and_journals_the_same_criterion(enq, monkeypatch, value):
+    if value is None:
+        monkeypatch.delenv(mg.ARM_ENV)
+    else:
+        monkeypatch.setenv(mg.ARM_ENV, value)
+    line = enq.run()
+    assert (line["kind"], line["refused"], line["ok"], line["armed_env"]) == ("would_enqueue", ["armed_env"], True, False)
+    assert all(line["criterion"].values()) and line["expected_head_oid"] == HEAD7 and enq.gql.mutations() == []
+
+
+def test_an_unreadable_pull_request_refuses_every_sub_criterion_it_holds_with_the_read_error(enq, monkeypatch):
+    def down(query, **variables):
+        raise mg.GraphQLError(mg.redact("gh api graphql rc=1: Something went wrong ghp_" + "A" * 24))
+    monkeypatch.setattr(mg, "gh_graphql", down)
+    line = enq.run()
+    pr_side = ["head_unchanged", "same_repo", "not_draft", "base_main", "open", "not_in_queue", "first_enqueue", "label_privileged"]
+    assert line["kind"] == "would_enqueue" and line["refused"] == pr_side and not any(line["criterion"][k] for k in pr_side)
+    assert all("Something went wrong" in line["why"][k] and "ghp_" not in line["why"][k] for k in pr_side)
+
+
+@pytest.mark.parametrize("fail,entry", [("gh api graphql rc=1: Pull request is in an unmergeable state; token ghp_" + "B" * 24, None),
+                                        (None, None), (None, {"position": 1})])
+def test_a_failed_mutation_is_journalled_redacted_and_sent_once(enq, fail, entry):
+    enq.gql.fail, enq.gql.entry = fail, entry
+    line = enq.run()
+    assert line["kind"] == "enqueue_error" and len(enq.gql.mutations()) == 1 and "entry_id" not in line
+    assert ("unmergeable" in line["error"] if fail else "no merge queue entry" in line["error"]) and "ghp_" not in line["error"]
+
+
+def test_a_tick_journals_would_enqueue_after_its_decision_and_names_the_non_executed_contexts(world, capsys):
+    world.runner.doc = {k: GOOD[k] for k in ("checks", "contexts")}
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]   # the arm label alone puts the PR in front of the merger
+    assert world.tick() == 0
+    d, w = world.journal()
+    assert (d["kind"], d["executed_required"], d["non_executed"]) == ("decision", "1/2", {"CodeQL": "blocked"})
+    assert (w["kind"], w["refused"], w["expected_head_oid"], w["candidate_sha"], w["base_sha"]) == ("would_enqueue", ["armed_env"], world.head1,
+                                                                                                    d["candidate_sha"], world.base)
+    assert all(w["criterion"].values()) and w["lease_id"] == d["lease_id"] and world.gql.mutations() == []
+    assert "would_enqueue" in capsys.readouterr().out
+
+
+def test_an_armed_tick_enqueues_the_decided_head_once_and_a_decision_without_a_verdict_never_enqueues(world, monkeypatch):
+    monkeypatch.setenv(mg.ARM_ENV, "1")
+    world.runner.doc = {k: GOOD[k] for k in ("checks", "contexts")}
+    world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL]), pr(2, world.head2, labels=[mg.ARM_LABEL])]
+    assert world.tick() == 0 and world.tick() == 0   # #1 decided and enqueued; #2 conflicts with main: no verdict, no criterion
+    assert [(r["kind"], r["pr"]) for r in world.journal()] == [("decision", 1), ("enqueued", 1), ("decision", 2)]
+    assert world.gql.mutations() == [{"pr": "PR_node_1", "oid": world.head1}]
+
+
+def test_a_gate_error_vouches_for_nothing_and_never_enqueues(world, monkeypatch):
+    monkeypatch.setenv(mg.ARM_ENV, "1")
+    monkeypatch.setattr(mg, "runner_exec", FakeRunner(bind={"seal": "cd" * 32}, doc={k: GOOD[k] for k in ("checks", "contexts")}))
+    world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL])]
+    assert world.tick() == 0
+    d, line = world.journal()
+    assert d["error"] and line["kind"] == "enqueue_refused" and {"local_checks_clean", "review_independent", "executed_contexts_ok"} <= set(line["refused"])
+    assert world.gql.mutations() == []
 
 
 def test_gh_graphql_passes_strings_raw_and_integers_typed_and_returns_the_data(monkeypatch):

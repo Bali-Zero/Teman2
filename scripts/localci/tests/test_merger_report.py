@@ -400,3 +400,20 @@ def test_a_merge_with_a_hosted_context_still_pending_is_not_a_compared_merge(tmp
     assert rep["rows"][0]["github"] == {None: "PENDING", "success": "GREEN", "failure": "RED"}[late]
     assert rep["rows"][0]["compared_contexts"] == (K if late is None else K + 1)   # the per-context count was never the hole
     assert rep["window"]["compared_merges"] == counted and rep["rows"][0]["compared_merge"] is bool(counted)
+
+
+def test_the_phase_e_line_counts_enqueued_and_would_enqueue_apart_and_neither_is_a_decision(tmp_path, monkeypatch, capsys):
+    t = "2026-10-08T01:00:00Z"
+    kinds = [("enqueued", True), ("would_enqueue", True), ("would_enqueue", True), ("would_enqueue", False), ("enqueue_refused", False),
+             ("enqueue_error", True)]
+    recs = [decision(1, A, "BLOCKED", ts=t)] + [{"kind": k, "ts": t, "pr": 1, "head_sha": A, "ok": ok} for k, ok in kinds]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    assert rep["window"]["enqueue"] == {"enqueued": 1, "enqueue_refused": 1, "enqueue_error": 1, "would_enqueue": 2}   # only every-true counts
+    assert rep["window"]["decisions"] == 1 and rc == 0
+    (line,) = [x for x in capsys.readouterr().out.splitlines() if x.startswith("phase E")]
+    assert line.endswith("; enqueued=1 would_enqueue=2 enqueue_refused=1 enqueue_error=1")
+
+
+def test_a_journal_older_than_the_enqueue_path_reports_zero_enqueues(tmp_path, monkeypatch):
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "BLOCKED")], FakeGH({1: pull(A)}, {A: "success"}))
+    assert rep["window"]["enqueue"] == {"enqueued": 0, "enqueue_refused": 0, "enqueue_error": 0, "would_enqueue": 0} and rc == 0
