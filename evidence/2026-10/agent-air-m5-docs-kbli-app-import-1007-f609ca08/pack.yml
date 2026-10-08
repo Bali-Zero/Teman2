@@ -30,7 +30,7 @@ pii_scan_note:
 
 diff:
   net_lines: |
-    Source-only import: roughly 30,000 added lines across 138 files, of which about 9,800 are two
+    Source-only import (the diff of #8041 itself, not of this amendment): roughly 30,000 added lines, of which about 9,800 are two
     pretty-printed i18n JSON files and the rest Swift sources, tests, tools, deploy scripts and
     markdown. The size floor is the import itself.
   behaviour_change: >-
