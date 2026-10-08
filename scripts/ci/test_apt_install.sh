@@ -115,7 +115,9 @@ teardown() { rm -rf "$SANDBOX"; }
 # Runs the subject with ONLY the stub dir on PATH (plus the system dirs the
 # script's own `set`/`command` need). Captures rc without tripping errexit.
 run_sut() {
-  ( PATH="$BIN:/usr/bin:/bin" "$@" bash "$SUT" "${SUT_ARGS[@]}" ) >"$SANDBOX/out" 2>&1
+  # No case reads the host's /etc/apt: a case names its sources file through
+  # the seam, or gets none (the corpus also runs on a Linux runner in CI).
+  ( PATH="$BIN:/usr/bin:/bin" APT_INSTALL_SOURCES_FILE="$SANDBOX/no-such-sources" "$@" bash "$SUT" "${SUT_ARGS[@]}" ) >"$SANDBOX/out" 2>&1
   echo $?
 }
 
@@ -198,7 +200,7 @@ cat >"$SOURCES" <<'EOF'
 ##   universe    - Community maintained packages. Software in this repository receives maintenance
 ##                 from volunteers in the Ubuntu community, or a 10 year security maintenance
 ##                 commitment from Canonical when an Ubuntu Pro subscription is attached.
-##   multiverse  - Community maintained of restricted. Software in this repository is
+##   multiverse  - Community maintained of restricted. Software from this repository is
 ##                 ENTIRELY UNSUPPORTED by the Ubuntu team, and may not be under a free
 ##                 licence. Please satisfy yourself as to your rights to use the software.
 ##                 Also, please note that software in multiverse WILL NOT receive any
@@ -329,6 +331,28 @@ RC=$(run_sut env APT_UPDATE_RC=1 APT_CREATES=nzfakebin)
 grep -q "install" "$LOG_APT" && ok "...and apt-get install was actually reached" || fail "apt-get install never ran"
 teardown
 
+# ---------------------------------------------------- the surface never costs
+# The surface read is a diagnostic: an unreadable sources file or a file with
+# thousands of URIs: lines must not stop the primary attempt (HEAD~1 exited 2
+# and 141 here before any apt call; main exits 0).
+setup
+SOURCES="$SANDBOX/locked.sources"; printf 'Types: deb\nURIs: http://azure.archive.ubuntu.com/ubuntu/\n' >"$SOURCES"; chmod 000 "$SOURCES"
+if [ -r "$SOURCES" ]; then
+  ok "unreadable-file case skipped: this user reads mode-000 files (root)"
+else
+  SUT_ARGS=(nzfakebin nzfakebin)
+  RC=$(run_sut env APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+  [ "$RC" = 0 ] && [ "$(grep -c . "$LOG_APT")" -ge 2 ] && ok "an unreadable sources file never costs the primary attempt" || fail "unreadable sources file: rc=$RC apt calls=$(grep -c . "$LOG_APT")"
+  if grep -q '^apt_install: sources=' "$SANDBOX/out"; then fail "surface line printed for an unreadable file"; else ok "...and prints no surface line for it"; fi
+fi
+chmod 644 "$SOURCES"; teardown
+setup
+SOURCES="$SANDBOX/long.sources"; { printf 'Types: deb\n'; yes 'URIs: http://azure.archive.ubuntu.com/ubuntu/' | head -n 3000; } >"$SOURCES"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+[ "$RC" = 0 ] && [ "$(grep -c . "$LOG_APT")" -ge 2 ] && grep -Fq 'primary=azure.archive.ubuntu.com via=direct' "$SANDBOX/out" && ok "3000 URIs: lines never cost the primary attempt (no SIGPIPE under pipefail)" || fail "long sources file: rc=$RC apt calls=$(grep -c . "$LOG_APT")"
+teardown
+
 # ------------------------------------------------------------- the '-' door
 # `locales` has no binary of its own — the caller asserts with `locale -a`.
 # The sentinel must skip verification WITHOUT skipping the install.
@@ -337,6 +361,13 @@ SUT_ARGS=(- locales)
 RC=$(run_sut env)
 [ "$RC" = "0" ] && ok "'-' sentinel exits 0 with no binary to verify" || fail "'-' sentinel rc=$RC (want 0)"
 grep -q "locales" "$LOG_APT" && ok "...and still installed the package" || fail "'-' sentinel skipped the install too"
+teardown
+# ...and never reaches the fallback: the caller asserts, the script does not retry.
+setup
+SOURCES="$SANDBOX/ubuntu.sources"; printf 'Types: deb\nURIs: http://azure.archive.ubuntu.com/ubuntu/\n' >"$SOURCES"
+SUT_ARGS=(- locales)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES")
+[ "$RC" = "0" ] && [ ! -s "$LOG_SOURCE" ] && ! grep -q 'did not deliver' "$SANDBOX/out" && ! grep -q 'still unavailable' "$SANDBOX/out" && grep -q 'delivered by primary mirror' "$SANDBOX/out" && ok "'-' sentinel never runs the fallback nor its warning" || fail "'-' sentinel reached the fallback (rc=$RC)"
 teardown
 
 # ------------------------------------------------------------------- misuse

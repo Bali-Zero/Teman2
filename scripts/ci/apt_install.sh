@@ -74,19 +74,22 @@ SOURCE_URI=""
 SOURCE_HOST=""
 SOURCE_VIA=""
 SOURCE_IS_PORTS=0
-if [ -n "$SOURCE_FILE" ] && [ -f "$SOURCE_FILE" ]; then
-  if grep -q '^URIs:' "$SOURCE_FILE"; then
+# This block is a diagnostic: it must never cost the primary attempt. Hence
+# -r (an unreadable file is skipped, not fatal), single-pass awk (no pipe to
+# take SIGPIPE under pipefail on a long file) and || true on every read.
+if [ -n "$SOURCE_FILE" ] && [ -r "$SOURCE_FILE" ]; then
+  if grep -q '^URIs:' "$SOURCE_FILE" 2>/dev/null; then
     SOURCE_FORMAT=deb822
-    SOURCE_URI="$(sed -n 's/^URIs:[[:space:]]*//p' "$SOURCE_FILE" | head -n 1 | awk '{print $1}')"
+    SOURCE_URI="$(awk '/^URIs:/ { sub(/^URIs:[[:space:]]*/, ""); print $1; exit }' "$SOURCE_FILE" || true)"
   else
     SOURCE_FORMAT=one-line
-    SOURCE_URI="$(awk '/^(deb|deb-src)[[:space:]]/ { i = 2; if ($2 ~ /^\[/) { while (i <= NF && $i !~ /\]$/) i++; i++ } print $i; exit }' "$SOURCE_FILE")"
+    SOURCE_URI="$(awk '/^(deb|deb-src)[[:space:]]/ { i = 2; if ($2 ~ /^\[/) { while (i <= NF && $i !~ /\]$/) i++; i++ } print $i; exit }' "$SOURCE_FILE" || true)"
   fi
 
   if [ "${SOURCE_URI#mirror+file:}" != "$SOURCE_URI" ]; then
     SOURCE_VIA="${APT_INSTALL_MIRROR_LIST:-${SOURCE_URI#mirror+file:}}"
     if [ -r "$SOURCE_VIA" ]; then
-      SOURCE_HOST="$(awk 'NF {u=$1; sub(/^https?:\/\//, "", u); sub(/\/.*/, "", u); print u; exit}' "$SOURCE_VIA")"
+      SOURCE_HOST="$(awk 'NF {u=$1; sub(/^https?:\/\//, "", u); sub(/\/.*/, "", u); print u; exit}' "$SOURCE_VIA" || true)"
     fi
     [ -n "$SOURCE_HOST" ] || SOURCE_HOST="$SOURCE_URI"
   else
@@ -111,7 +114,7 @@ if [ "$VERIFY" = "-" ] || command -v "$VERIFY" >/dev/null 2>&1; then
   echo "apt_install: delivered by primary mirror"
 else
   FALLBACK_ATTEMPTED=0
-  if [ -z "$SOURCE_FILE" ] || [ ! -f "$SOURCE_FILE" ]; then
+  if [ -z "$SOURCE_FILE" ] || [ ! -r "$SOURCE_FILE" ]; then
     echo "apt_install: no active apt sources file; fallback skipped" >&2
   elif [ "$SOURCE_IS_PORTS" = "1" ]; then
     echo "apt_install: ubuntu-ports has no fallback mirror; fallback skipped" >&2
