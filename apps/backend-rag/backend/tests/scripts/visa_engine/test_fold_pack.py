@@ -166,6 +166,50 @@ class TestInnocence:
         assert hashlib.sha256(canonicalize_json(_read_json(output))).hexdigest() == SEQ25_DIGEST
 
 
+class TestDefaultCreatedAt:
+    """The default created_at keeps its seconds, so a ledger judged seconds ago does not out-date the pack."""
+
+    def _cli(self, ledger: Path, output: Path, observed_at: datetime, *extra: str) -> int:
+        return main(
+            [
+                "--anchor-source", str(_PACKS / "rulepack-prod-024.source.json"),
+                "--anchor-signed", str(_PACKS / "rulepack-prod-024.signed.json"),
+                "--ledger-dir", str(ledger),
+                "--output", str(output),
+                "--created-by", META["created_by"],
+                "--verified-by", META["verified_by"],
+                *extra,
+            ],
+            observed_at=observed_at,
+        )  # fmt: skip
+
+    def _judged_seconds_ago(self, ledger: Path, anchor: dict[str, Any]) -> datetime:
+        _mutate(
+            ledger,
+            "*-judgements.jsonl",
+            _portal_ids(anchor)[0],
+            lambda r: r.update(judged_at="2026-10-07T13:41:30Z"),
+        )
+        return datetime(2026, 10, 7, 13, 41, 32, tzinfo=timezone.utc)
+
+    def test_guilt_a_ledger_judged_two_seconds_ago_folds_with_the_default(
+        self, anchor: dict[str, Any], trust: StaticTrustStore, ledger_copy: Path, tmp_path: Path
+    ) -> None:
+        observed = self._judged_seconds_ago(ledger_copy, anchor)
+        out = tmp_path / "out.json"
+        assert self._cli(ledger_copy, out, observed) == 0
+        assert _read_json(out)["created_at"] == "2026-10-07T13:41:32Z"
+
+    def test_innocence_an_explicit_created_at_before_the_evidence_still_fails(
+        self, anchor: dict[str, Any], trust: StaticTrustStore, ledger_copy: Path, tmp_path: Path
+    ) -> None:
+        observed = self._judged_seconds_ago(ledger_copy, anchor)
+        with pytest.raises(SystemExit, match="precedes the ledger's latest evidence"):
+            self._cli(
+                ledger_copy, tmp_path / "o.json", observed, "--created-at", "2026-10-07T13:38:00Z"
+            )
+
+
 class TestAnchorGuilt:
     def test_a_flipped_signature_raises_the_verification_error(
         self, anchor: dict[str, Any], anchor_signed: dict[str, Any], trust: StaticTrustStore

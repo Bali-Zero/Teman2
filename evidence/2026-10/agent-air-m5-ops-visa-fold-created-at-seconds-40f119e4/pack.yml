@@ -1,0 +1,59 @@
+# Gear-1 evidence pack - PR-O3, the fold's default created_at keeps its seconds.
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Team lead mandate PR-O3, 2026-10-08 - the fold refused created_at 12:47:00Z against evidence at 12:47:02Z.
+mission: >-
+  The default created_at is now, with seconds, never before the ledger's latest evidence.
+lanes:
+  - lane: fold-created-at-build
+    role: build
+    seat: Claude Fable 5.1 implementer (worktree ops-visa-fold-created-at-seconds).
+  - lane: fold-created-at-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed 2026-10-07 seq-25 read ledger and seq-24 signed pair, folded through the unchanged
+      test and the offline observer; no notebook, no memory, no regulatory figure asserted.
+    nb: research/visa/2026-10-07-freshness-restamp-seq25/
+    query_hash: "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
+    note: query_hash = the seq-25 payload digest the fold must still reproduce
+pii_scan: clean
+bites:
+  consumer: the weekly launchd run of com.nuzantara.visa-reattestation on Pro, whose fold uses the default created_at.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_reattest_organ.py
+  expect: "contains:offline run produced unsigned seq-25 candidate"
+decisions:
+  - id: D-no-minute-reliance
+    decision: >-
+      Nothing else relied on the minute-truncated created_at: the only occurrence was the default in
+      fold_pack_generic.main, and the pack version derives from the date (year.month.day), not the instant.
+receipts:
+  - claim: The fold test file is green, including the guilt test (a ledger judged two seconds before the fold folds with the default created_at; the old default fails it with "created_at 13:41:00Z precedes the ledger's latest evidence 13:41:30Z") and the innocence test (an explicit earlier created_at still fails with the same message).
+    cmd: PYTHONPATH=apps/backend-rag python -m pytest apps/backend-rag/backend/tests/scripts/visa_engine/test_fold_pack.py
+    result: "37 passed in 1.34s"
+    exit: 0
+    ts: "2026-10-08T12:49:39Z"
+    seat: Claude Fable 5.1
+  - claim: The organ suite is green.
+    cmd: PYTHONPATH=apps/backend-rag python -m pytest scripts/tests/test_visa_reattestation_organ.py
+    result: "46 passed in 10.21s"
+    exit: 0
+    ts: "2026-10-08T12:49:50Z"
+    seat: Claude Fable 5.1
+  - claim: The offline observer still reproduces the committed seq-25 digest through the fold.
+    cmd: python3 scripts/ci/observe_visa_reattest_organ.py
+    result: "observe_visa_reattest_organ: offline run produced unsigned seq-25 candidate ... digest 603f777e...9d11, PR text carries Bites:"
+    exit: 0
+    ts: "2026-10-08T12:49:51Z"
+    seat: Claude Fable 5.1
+  - claim: Ruff check and format are clean on the two touched files.
+    cmd: ruff check and ruff format --check on fold_pack_generic.py and test_fold_pack.py
+    result: "All checks passed!; 2 files already formatted"
+    exit: 0
+    ts: "2026-10-08T12:49:51Z"
+    seat: Claude Fable 5.1
+dissent: []
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

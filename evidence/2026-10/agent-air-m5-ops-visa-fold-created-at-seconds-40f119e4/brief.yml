@@ -1,0 +1,19 @@
+slug: agent-air-m5-ops-visa-fold-created-at-seconds-40f119e4
+gear: 1
+gear_reason: >-
+  One-line default plus a guilt test, in a fold that only runs offline from the organ. Nothing
+  is signed, activated or deployed by it.
+ruling: >-
+  Team lead mandate PR-O3, 2026-10-08 - the organ's second real run on Pro proved the fingerprint
+  shortcut, then the fold refused its own default created_at.
+mission: >-
+  The fold's default created_at keeps its seconds and never precedes the ledger's latest evidence.
+objective: >-
+  A ledger whose latest judgement is seconds old folds with the default created_at; an explicit
+  created_at before the evidence still fails with the same message.
+scope:
+  - apps/backend-rag/backend/scripts/visa_engine/fold_pack_generic.py (default created_at)
+  - apps/backend-rag/backend/tests/scripts/visa_engine/test_fold_pack.py (guilt and innocence)
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

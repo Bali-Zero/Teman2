@@ -404,6 +404,18 @@ def fold(
     return out
 
 
+def _default_created_at(anchor: dict[str, Any], ledger: Ledger, now: datetime) -> str:
+    """Now, with its seconds, but never before the ledger's latest evidence (a clock behind it uses it)."""
+    portals = [r for r in anchor["source_records"] if r.get("authority_type") == PORTAL_AUTHORITY]
+    try:
+        evidence = latest_evidence(ledger, portals)
+    except (
+        ValueError
+    ):  # no evidence at all: the fold itself refuses the ledger with its own message
+        return _fmt(now)
+    return _fmt(max(now, evidence))
+
+
 def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Fold pack N+1 (portal re-stamp) from a signed anchor and a read ledger."
@@ -437,7 +449,6 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
         _fail("--output collides with an input")
     now = observed_at or _real_now_utc()
     version = args.version or f"{now.year}.{now.month}.{now.day}"
-    created_at = args.created_at or _fmt(now.replace(second=0, microsecond=0))
     try:
         trust_store = StaticTrustStore.from_env(args.trust_store_env)
     except RulePackVerificationError as exc:
@@ -445,6 +456,7 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
     anchor = json.loads(args.anchor_source.read_text(encoding="utf-8"))
     anchor_signed = json.loads(args.anchor_signed.read_text(encoding="utf-8"))
     ledger = load_ledger(args.ledger_dir)
+    created_at = args.created_at or _default_created_at(anchor, ledger, now)
     readers = sorted({str(j.get("reader")) for j in ledger.judgements})
     verified_by = args.verified_by or f"agent.fold-pack.live-recheck:{'+'.join(readers)}"
     disagreements: list[dict[str, str]] = []
