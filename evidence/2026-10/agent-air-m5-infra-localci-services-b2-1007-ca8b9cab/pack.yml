@@ -39,26 +39,29 @@ what_changed: |
   BLOCKED elsewhere; a network failure in the egress sandbox or a host reader that could not read GitHub is no verdict,
   never green or red. Folded from the PR-B1 gate (a-f): the queue ref without --pr-number BLOCKS; a declared env.X in a
   text the runner evaluates itself BLOCKS; a service with volumes BLOCKS; every refusal names its step and variable, never a
-  value; tests.backend_shards/tests.frontend_mouth are superseded once their contexts are planned.
+  value; tests.backend_shards/tests.frontend_mouth are superseded once their contexts are planned. Every container the
+  runner removes (candidate, service, reaped orphan) goes with `docker rm -f -v`, so the anonymous volumes postgres/redis
+  declare die with it (89 had filled Pro's VM).
   scripts/localci/contexts_matrix.yaml: 12 executed, the two CodeQL contexts blocked; parity_gaps for the three contexts.
   scripts/localci/README.md (service contexts, refusals, capacity); tests/test_service_contexts.py, tests/test_runner.py.
 proof: |
   See receipts. Nothing in this change posts a status, edits branch protection, touches a workflow or arms the adapter.
   Before it: E2E, Frontend (mouth, true) and Visa Oracle smoke LOCAL_BLIND on every commit (9/14 with B1). After it, on
-  Pro: 1df44b9b65 read agreement=12/14 false_green=0 with all three executed and AGREE (runner 1c26bf7a8b, the branch
-  before the d7599e3fe9 reader/timeout cure and the five folds). The final head on origin/main's head ebdad0739f read
-  agreement=10/14 false_green=0 false_red=2: Frontend and Visa Oracle smoke executed and AGREE, while E2E and Backend Tests
-  went red on Pro's Colima disk filling up (ENOSPC in npm's extraction, DiskFullError in a service Postgres), not on the
-  candidate. Guilt candidates turned only their own context red.
+  Pro, the final head 535dbff589 on origin/main's head ebdad0739f read agreement=11/14 false_green=0 false_red=1: E2E,
+  Frontend (mouth, true) and Visa Oracle smoke all executed and AGREE. The one FALSE_RED is Backend Tests, whose service
+  Postgres ran out of disk (DiskFullError, then recovery mode) while the shadow merger ran its own Backend Tests on the
+  same 59 GB VM; it is not the candidate. 1df44b9b65 read 12/14 with all three AGREE (runner 1c26bf7a8b). Guilt
+  candidates turned only their own context red.
 bites:
   consumer: >-
     scripts/localci/hosted_compare.py run on Pro over a local run of a merged hosted-green main commit (the comparator
     spec §4 makes the only place a local claim is stated).
   observation: >-
-    Pro, 2026-10-08, runner of 3875569f4d (sha256 c447cc11…), origin/main head ebdad0739f (#8041, base 538251ee69), live
-    GETs: agreement=10/14 false_green=0 false_red=2 local_blind=2 (CodeQL x2 only); Frontend Tests (Next.js) (mouth, true)
-    and Visa Oracle fullstack smoke AGREE, executed; E2E Tests and Backend Tests FALSE_RED on ENOSPC (disk), so the 12/14
-    target is met only by the earlier 1df44b9b65 run (12/14, all three AGREE executed) and is owed on the final head.
+    Pro, 2026-10-08T02:35Z, runner of the final head 535dbff589 (sha256 b8081acd…), origin/main head ebdad0739f (#8041,
+    base 538251ee69), run dir ~/.nuzantara-pilots/local-ci/executor-b/runs/b2h-main-ebdad0739f, live GETs:
+    agreement=11/14 false_green=0 false_red=1 local_blind=2 (CodeQL x2 only). E2E Tests, Frontend Tests (Next.js)
+    (mouth, true) and Visa Oracle fullstack smoke AGREE, executed. Backend Tests FALSE_RED on the VM's disk (a concurrent
+    shadow-merger run), so 12/14 on the final head is owed a run with the VM to itself.
 ground:
   ts: "2026-10-08T00:54:26Z"
   siblings: >-
@@ -67,15 +70,35 @@ ground:
     moved to ebdad0739f (#8041, apps/kbli-navigator-macos only). Pro's main checkout was not written: runs use the B
     lane's worktree, code archived into ~/.nuzantara-pilots/local-ci/executor-b/code-b2g from a bundle.
 appetite_exceeded: >-
-  About thirteen hours of wall clock against eight (first B2 commit 13:00Z on 2026-10-07, final measurement 01:33Z on
+  About fourteen hours of wall clock against eight (first B2 commit 13:00Z on 2026-10-07, final-head measurement 02:35Z on
   2026-10-08): the first Dux died mid-work and a fresh one resumed from disk; the deps image needed four build cures on Pro
-  (str.format braces, apt bounded and retried on a stalled mirror, a node-only recipe, the browser path); and the final
-  measurement met a full disk on Pro and is owed.
+  (str.format braces, apt bounded and retried on a stalled mirror, a node-only recipe, the browser path); and two
+  final-head measurements met a full disk on Pro (the leaked volumes, cured here; then a concurrent merger run).
 spend:
   adversarial_rounds: 2
-  wall_clock_hours: 13
+  wall_clock_hours: 14
 receipts:
-  - claim: "Final head 3875569f4d on origin/main head ebdad0739f (PR #8041, base 538251ee69): agreement=10/14 false_green=0 false_red=2 local_blind=2 hosted_pending=0. AGREE executed: Frontend Tests (Next.js) (mouth, true) 320 s wall / 518 s CPU, Visa Oracle fullstack smoke 115/44, Harness floor 66, antidotes, organ genes, guard guilt+innocence, R1 gate, actionlint, Merah Putih, catE. FALSE_RED: E2E Tests (npm's install printed 10036 `TAR_ENTRY_ERROR ENOSPC: no space left on device` lines and exited 0, then the collect step failed on a missing @sentry/core file) and Backend Tests (backend-shard[2] `asyncpg.exceptions.DiskFullError: ... No space left on device` in its service Postgres). LOCAL_BLIND: the two CodeQL contexts only. Whole run 2541 s; seal minted 00:51:10Z, UNCHANGED at the end; 0 new containers or networks; coordinator venv (executor-a/venv311) unchanged."
+  - claim: "Final head 535dbff589 on origin/main head ebdad0739f (PR #8041, base 538251ee69), after the owner-side prune left 0 dangling volumes and 17.7 GB free (`docker run --rm alpine df -h /`): agreement=11/14 false_green=0 false_red=1 local_blind=2 hosted_pending=0. AGREE executed: E2E Tests 309 s wall / 215 s CPU, Frontend Tests (Next.js) (mouth, true) 287/508, Visa Oracle fullstack smoke 128/41, Harness floor, antidotes, organ genes, guard guilt+innocence, R1 gate, actionlint, Merah Putih, catE. FALSE_RED: Backend Tests (backend-shard[2] DiskFullError in its service Postgres; backend-shard[3] 11376 passed then 2 errors, `the database system is in recovery mode`). LOCAL_BLIND: the two CodeQL contexts only. Whole run 2652 s; seal minted 01:51:40Z, UNCHANGED at the end; 0 new containers or networks; coordinator venv unchanged."
+    cmd: ssh pro 'zsh chainb2h.sh start' (measure.sh with C=code-b2h and PY=executor-a/venv311; plan --pr-number 8041, run, status --seal, hosted_compare live)
+    exit: 0
+    ts: "2026-10-08T02:35:51Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The Backend FALSE_RED is the VM's disk under two concurrent runs, not the candidate: free space fell from 17.7 GB to under 1 GB during backend-shard[2]/[3], while the shadow merger ran its own Backend Tests for PR #7961 on the same VM (its shard containers seen live beside ours). A backend shard sandbox's writable layer alone reached 9.5 GB (`docker ps --size`), so two shards at once exhaust a 59 GB VM that also holds 47 GB of images."
+    cmd: ssh pro 'docker run --rm --network none alpine df -m / (polled every 10-15 s); docker ps --size; docker system df'
+    exit: 0
+    ts: "2026-10-08T02:13:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The -v cure holds live: 0 dangling volumes before the run; 6 after it, created in pairs at 02:07:39Z, 02:09:26Z and 02:11:20Z, the cadence of the merger's PR #7961 shard legs (main's runner, no -v). None coincides with the start of any of this run's service legs (01:59:38Z, 02:04:55Z, 02:06:56Z, 02:16:29Z, 02:33:42Z). On Pro's docker, test_a_removal_takes_the_anonymous_volume_and_spares_a_named_volume_and_a_bind_mount passes."
+    cmd: ssh pro 'docker volume ls -q -f dangling=true; docker volume inspect --format {{.CreatedAt}}; head -1 runs/b2h-main-ebdad0739f/logs/<leg>.log'
+    exit: 0
+    ts: "2026-10-08T02:40:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "535dbff589 removes every container with `docker rm -f -v` (_remove_verified for candidate and service containers, reap_containers for orphans). test_every_container_removal_takes_its_anonymous_volumes_with_it pins -v on every container-removal argv in runner.py's source (AST, both sites) and on the fake docker's argv; dropping -v from either site fails it (two mutants, each `1 failed`). The suite at 535dbff589: Pro with docker 689 passed, 0 skipped (297 s); M5 674 passed, 14 skipped (needs_docker)."
+    cmd: python3 -m pytest scripts/localci/tests -q (M5); PYTHONPATH=$W executor-b/venv311/bin/python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider (Pro)
+    exit: 0
+    ts: "2026-10-08T02:40:51Z"
+    seat: claude-opus-5-5 on M5 and driving Pro over ssh
+  - claim: "First final-head run, 3875569f4d (before the -v cure), on origin/main head ebdad0739f (PR #8041, base 538251ee69): agreement=10/14 false_green=0 false_red=2 local_blind=2 hosted_pending=0. AGREE executed: Frontend Tests (Next.js) (mouth, true) 320 s wall / 518 s CPU, Visa Oracle fullstack smoke 115/44, Harness floor 66, antidotes, organ genes, guard guilt+innocence, R1 gate, actionlint, Merah Putih, catE. FALSE_RED: E2E Tests (npm's install printed 10036 `TAR_ENTRY_ERROR ENOSPC: no space left on device` lines and exited 0, then the collect step failed on a missing @sentry/core file) and Backend Tests (backend-shard[2] `asyncpg.exceptions.DiskFullError: ... No space left on device` in its service Postgres). LOCAL_BLIND: the two CodeQL contexts only. Whole run 2541 s; seal minted 00:51:10Z, UNCHANGED at the end; 0 new containers or networks; coordinator venv (executor-a/venv311) unchanged."
     cmd: ssh pro 'zsh chainb2g.sh start' (measure.sh with C=code-b2g and PY=executor-a/venv311; plan --pr-number 8041, run, status --seal, hosted_compare live, docker ps -a / network ls before and after)
     exit: 0
     ts: "2026-10-08T01:33:31Z"
@@ -193,11 +216,11 @@ dissent:
     status: CONFIRMED
     resolution: "Each BLOCKED naming what it refuses, names only (a78908a6fb, 4618fdf492, bf83f6c13d), with guilt and innocence rows."
 residuals:
-  - "The 12/14 target is met by the 1df44b9b65 run (runner 1c26bf7a8b), not yet by the final head: on ebdad0739f E2E and Backend Tests went red on Pro's full disk. Owed: free the dangling volumes (a destructive step on the VM the live merger shares, not taken without the owner's word) and re-run those two contexts on ebdad0739f."
-  - "Service containers are removed with `docker rm -f` without -v (B1's teardown, also on main and in the live merger): each Postgres/Redis leg leaves an anonymous volume (89 on Pro). A one-flag fix with a corpus row belongs in a follow-up; it was kept out because this PR is limited to the six folds."
-  - "A disk-full failure in a contained step reads FAIL (FALSE_RED), as a network failure did before PR-B2 made it no verdict; an ENOSPC rule of the same shape is owed."
+  - "12/14 on the final head is owed: 535dbff589 read 11/14 with E2E, Frontend and Visa Oracle smoke AGREE, and Backend Tests FALSE_RED on disk while the shadow merger ran beside it. A Backend-only re-run needs the VM to itself (the merger paused, an operator decision), or a larger VM disk. 1df44b9b65 read 12/14 on runner 1c26bf7a8b."
+  - "Until this merges, main's runner (and the live shadow merger) still removes containers without -v: each of its service legs leaves an anonymous volume (6 more appeared during this run)."
+  - "A disk-full failure in a contained step reads FAIL (FALSE_RED), as a network failure did before PR-B2 made it no verdict; an ENOSPC rule, or a free-space floor before a sandbox starts, is owed. The measurement and the merger share one 59 GB VM with no admission control between them."
   - "E2E runs with the six repository secrets empty: a candidate whose backend start or selected specs fail only with them set is GREEN here and RED hosted (FALSE_GREEN shape, declared in parity_gaps; coverage partial)."
   - "The browser-install steps of E2E and Visa Oracle smoke are not run (the deps image installs the lock's browser); a hosted failure of that step is not reproduced. npm installs offline on linux/arm64: a lock missing the linux-x64 optional native package hosted needs is GREEN here."
-  - "The six folds (a-f) had no adversarial round of their own: they follow the PR-B1 final gate's notices and carry guilt and innocence rows; the independent final gate is the orchestrator's. tests.frontend_mouth was folded with tests.backend_shards because its context is this PR's."
-  - "PR size: +620/-78 against the merge base 538251ee69 (runner +207/-26, matrix +167/-46, tests +216/-2, README +30/-4), 542 net, above the ~400 guide; the three contexts share one planner path and one deps recipe, and the folds amend the same functions."
+  - "The six folds (a-f) and the -v cure had no adversarial round of their own: they follow the PR-B1 final gate's notices and carry guilt and innocence rows; the independent final gate is the orchestrator's. tests.frontend_mouth was folded with tests.backend_shards because its context is this PR's."
+  - "PR size: +681/-84 against the merge base 538251ee69 (runner +212/-31, matrix +167/-46, tests +272/-3, README +30/-4), 597 net, above the ~400 guide; the three contexts share one planner path and one deps recipe, and the folds amend the same functions."
   - "Journal lines name the commits as they were when each seat reviewed them; after the rebase onto 538251ee69, 10e41088e9/5f1ddd436a/9b387e0129/350be47f38/20f2a17f3f/1c26bf7a8b/746d4d3d11 are bdd63777ca/9cbefabaa4/602fc48632/2087d23a2f/7172810893/ffa1b01ece/d7599e3fe9."
