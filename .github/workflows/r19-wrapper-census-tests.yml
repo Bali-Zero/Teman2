@@ -4,7 +4,9 @@ name: r19-wrapper-census-tests
 # token census (scripts/mouth/r19_wrapper_token_census.py) against its
 # contract (docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md), with
 # guilt and innocence. Mission kbli-nav-design-loop, lot W0. Not a required
-# context; W1 arms the live census as a Playwright test in apps/mouth.
+# context. Lot W1 arms the live census in apps/mouth as the `wrapper-census-live`
+# job (src/test/r19-wrapper.test.ts, `npm test -- r19-wrapper`), with the guilt
+# and innocence fixtures.
 
 on:
   pull_request:
@@ -12,6 +14,9 @@ on:
       - "scripts/mouth/**"
       - "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md"
       - ".github/workflows/r19-wrapper-census-tests.yml"
+      - "apps/mouth/**"
+      - "packages/core/**"
+      - ".claude/skills/design/strumenti/measure.py"
   workflow_dispatch:
 
 permissions:
@@ -31,3 +36,27 @@ jobs:
         run: python -m pip install --quiet pytest
       - name: Replay the census against the contract
         run: python -m pytest scripts/mouth/tests -q -p no:cacheprovider
+
+  wrapper-census-live:
+    runs-on: ubuntu-latest
+    # npm install + the Chromium shell + a cold `next dev --webpack` compile of five pages.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Restore node_modules
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-workspace-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        run: npm install --no-fund
+      - name: Install the Chromium headless shell
+        run: npx playwright install --with-deps --only-shell chromium
+      - name: Live census, palette guard, guilt and innocence fixtures
+        working-directory: apps/mouth
+        run: npm test -- r19-wrapper
