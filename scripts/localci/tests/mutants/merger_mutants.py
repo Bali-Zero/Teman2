@@ -169,6 +169,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-grace-4": (PRUNE, "IN_FLIGHT_GRACE_H = 6 ", "IN_FLIGHT_GRACE_H = 4 ", (PRUNE_T,)),
     "b6-grace-8": (PRUNE, "IN_FLIGHT_GRACE_H = 6 ", "IN_FLIGHT_GRACE_H = 8 ", (PRUNE_T,)),
     "b6-run-in-progress-ignored": (PRUNE, "        elif im[\"tag\"] in in_progress or im[\"id\"] in in_progress:", "        elif False:", (PRUNE_T,)),
+    "b6-cap-counts-tags": (PRUNE, 'len({o["id"] for o in by_recipe[r] if o["created"] is not None and o["created"] > im["created"]})', 'len([o["id"] for o in by_recipe[r] if o["created"] is not None and o["created"] > im["created"]])', (PRUNE_T,)),
     "b6-second-kept-unnamed": (PRUNE, "        elif k < MAX_IMAGES_PER_RECIPE and ref is not None:", "        elif k < MAX_IMAGES_PER_RECIPE:", (PRUNE_T,)),
     "b6-rm-forced": (PRUNE, '_docker(docker, "image", "rm", im["tag"])', '_docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
     "b6-builder-never": (PRUNE, "    if not dry:   # the build cache grows", "    if False:   # the build cache grows", (PRUNE_T,)),

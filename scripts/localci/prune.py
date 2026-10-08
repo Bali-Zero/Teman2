@@ -157,7 +157,7 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
     out = []
     for im in images:
         r = im["recipe"]
-        k = 0 if im["created"] is None else sum(1 for o in by_recipe[r] if o["created"] is not None and o["created"] > im["created"])
+        k = 0 if im["created"] is None else len({o["id"] for o in by_recipe[r] if o["created"] is not None and o["created"] > im["created"]})   # distinct images, not tags
         ref = min([h for h in (recent.get(im["tag"]), ids.get(im["id"])) if h is not None], default=None)
         seen = "no plan of the last 48 h names it" if ref is None else f"its youngest plan is {ref:.1f} h old"
         if never(im["tag"], stand_ins):

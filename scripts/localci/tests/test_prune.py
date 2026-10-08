@@ -379,3 +379,11 @@ def test_an_unreadable_matrix_removes_nothing(tmp_path):
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--matrix", str(tmp_path / "absent.yaml")]) == 1
     line = journal(state)[-1]
     assert line["images"]["removed"] == [] and line["images"]["errors"][0]["error"].startswith("unreadable (FileNotFoundError)")
+
+
+def test_the_cap_counts_images_not_tags_an_image_with_two_tags_is_one(tmp_path):   # council round 3 (Codex)
+    newest = image("c" * 16, 2, "backend-tests")
+    twin = {**image("d" * 16, 2, "backend-tests"), "id": newest["id"], "created": newest["created"]}   # one image, two deps tags
+    second = image("a" * 16, 60, "backend-tests")
+    d = decided(*world(tmp_path, [newest, twin, second], {"pr1-x-20261006T120000Z": (47, {"ctx.backend-tests": second["tag"]})}))
+    assert d[second["tag"]]["remove"] is False and d[second["tag"]]["rule"] == "image 2 of 2 of recipe backend-tests, named by a plan 47.0 h ago"
