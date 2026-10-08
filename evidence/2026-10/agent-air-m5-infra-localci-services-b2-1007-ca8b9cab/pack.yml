@@ -161,8 +161,8 @@ dissent:
     resolution: "timeout_s = minutes * 60, exact (d7599e3fe9). Probe: test_a_step_timeout_is_emulated_in_a_service_context_and_blocked_elsewhere."
   - seat: codex-gpt-6.1-sol
     objection: "BLOCKER (round 2): a declared parity gap does not stop a GREEN."
-    status: PLAUSIBLE
-    resolution: "Not acted on: parity_gaps and coverage state what a green may not claim, they do not alter verdicts — as for every A1/A2/B1 gap. The comparator reads coverage; the decision to rely on a partial context is the merger's, phase C."
+    status: CONFIRMED
+    resolution: "Not cured, owed (B3). Nothing reads `coverage` today: no non-test file under scripts/localci mentions it (hosted_compare.py and merger.py have 0 hits for coverage/parity/partial). E2E is declared `coverage: partial` in contexts_matrix.yaml, but its row in hosted_compare.json carries no coverage key, so a `coverage: partial` AGREE counts as a full AGREE in hosted_compare and in the merger's count of compared contexts."
   - seat: codex-gpt-6.1-sol
     objection: "MAJOR (round 2): the reader's no-verdict marker matched echoed text, so a genuine red could become no verdict."
     status: CONFIRMED
@@ -216,6 +216,8 @@ dissent:
     status: CONFIRMED
     resolution: "Each BLOCKED naming what it refuses, names only (a78908a6fb, 4618fdf492, bf83f6c13d), with guilt and innocence rows."
 residuals:
+  - "Owed (B3): hosted_compare carries each context's `coverage` on its row and the merger counts `partial` AGREEs apart from full ones. Today a `coverage: partial` AGREE (E2E) counts as full in both."
+  - "Gate LOW: test_every_container_removal_takes_its_anonymous_volumes_with_it walks runner.py's AST only; a container removal in another module, or written as a list literal whose first element is a constant, would escape it."
   - "12/14 on the final head is owed: 535dbff589 read 11/14 with E2E, Frontend and Visa Oracle smoke AGREE, and Backend Tests FALSE_RED on disk while the shadow merger ran beside it. A Backend-only re-run needs the VM to itself (the merger paused, an operator decision), or a larger VM disk. 1df44b9b65 read 12/14 on runner 1c26bf7a8b."
   - "Until this merges, main's runner (and the live shadow merger) still removes containers without -v: each of its service legs leaves an anonymous volume (6 more appeared during this run)."
   - "A disk-full failure in a contained step reads FAIL (FALSE_RED), as a network failure did before PR-B2 made it no verdict; an ENOSPC rule, or a free-space floor before a sandbox starts, is owed. The measurement and the merger share one 59 GB VM with no admission control between them."
