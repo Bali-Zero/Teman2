@@ -205,7 +205,7 @@ export const AtlasRoute = forwardRef<AtlasRouteHandle, AtlasRouteProps>(
           </ol>
         )}
         {selectedCategory && (
-          <details className="oracle-atlas-route__alternatives">
+          <details className="oracle-atlas-route__alternatives oracle-no-print">
             <summary>{atlasCopy(language, "tools.explore")}</summary>
             <div>
               {CATEGORY_KEYS.filter(

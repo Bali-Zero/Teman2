@@ -1204,7 +1204,7 @@ function OracleShellRuntime({
                         {translate(language, "restart.button")}
                       </button>
                     </div>
-                    <details className="oracle-atlas-alternatives">
+                    <details className="oracle-atlas-alternatives oracle-no-print">
                       <summary>{atlasCopy(language, "tools.explore")}</summary>
                       <div>
                         {CATEGORY_KEYS.filter(
