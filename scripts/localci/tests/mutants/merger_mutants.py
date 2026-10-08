@@ -153,6 +153,14 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-rm-forced": (PRUNE, '_docker(docker, "image", "rm", im["tag"])', '_docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
     "b6-builder-always": (PRUNE, "if removed and not dry:", "if not dry:", (PRUNE_T,)),
     "b6-dry-run-removes": (PRUNE, "r = None if dry else _docker(", "r = None if False else _docker(", (PRUNE_T,)),
+    # B6-2: 7 days full, then the bulk goes; 30 days, then only the verdict files
+    "b6-full-days-6": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 6, 30", (PRUNE_T,)),
+    "b6-full-days-8": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 8, 30", (PRUNE_T,)),
+    "b6-verdict-days-29": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 7, 29", (PRUNE_T,)),
+    "b6-verdict-days-31": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 7, 31", (PRUNE_T,)),
+    "b6-verdict-files-lost": (PRUNE, "rel not in VERDICT", "True", (PRUNE_T,)),
+    "b6-call-graphs-kept": (PRUNE, "f in BULK)", "False)", (PRUNE_T,)),
+    "b6-undated-run-trimmed": (PRUNE, "if age_h is None or age_h < FULL_DAYS * 24:", "if age_h is not None and age_h < FULL_DAYS * 24:", (PRUNE_T,)),
     # the tick's journal
     "durations-not-journalled": (PY, '                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},\n',
                                  "", (TICK,)),

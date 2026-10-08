@@ -178,3 +178,61 @@ def test_the_deps_build_labels_the_recipe_it_built(tmp_path):
                            tmp_path, "backend-tests")
     build = [ln for ln in (tmp_path / "docker.argv").read_text().splitlines() if ln.startswith("build ")]
     assert build and "--label org.nuzantara.localci.recipe=backend-tests" in build[0]
+
+
+# ------------------------------------------------------------------ B6-2: run directories keep their verdict and lose their bulk
+RUN_FILES = ("status.json", "hosted_compare.json", "merger.log", "state/plan.json", "state/journal.jsonl", "state/state.json",
+             "receipts/ctx.a.junit.xml", "receipts/ctx.a.json", "logs/ctx.a.log", "logs/deps-backend-tests.log",
+             "receipts/pysa/base/results/call-graph.json", "receipts/pysa/base/results/higher-order-call-graph.json",
+             "receipts/pysa/base/results/taint-output.json", "receipts/pysa/candidate/results/call-graph.json")
+SEVEN_DAY_KEEPS = {f for f in RUN_FILES if not f.startswith("logs/") and not f.endswith("call-graph.json")}
+
+
+def run_dir(runs: Path, age_days: float) -> Path:
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(NOW - age_days * 24 * H))
+    run = runs / f"pr1-{'a' * 12}-{'b' * 12}-{stamp}"
+    for rel in RUN_FILES:
+        (run / rel).parent.mkdir(parents=True, exist_ok=True)
+        (run / rel).write_text(rel)
+    return run
+
+
+def files(run: Path) -> set:
+    return {p.relative_to(run).as_posix() for p in run.rglob("*") if p.is_file() or p.is_symlink()}
+
+
+def test_a_run_keeps_everything_for_seven_days_then_its_verdict_and_loses_logs_and_call_graphs(tmp_path):
+    runs = tmp_path / "runs"
+    young, week, month_less, month = (run_dir(runs, d) for d in (6.5, 7.5, 29.5, 30.5))
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert files(young) == set(RUN_FILES)
+    assert files(week) == files(month_less) == SEVEN_DAY_KEEPS and not (week / "logs").exists()
+    assert files(month) == {"status.json", "hosted_compare.json", "state/plan.json"} and not (month / "receipts").exists()
+    assert (set(out["trimmed_7d"]), out["trimmed_30d"]) == ({week.name, month_less.name}, [month.name]) and out["freed_gb"] >= 0
+    again = pm.trim_runs(runs, NOW, dry=False)   # a trimmed run is not trimmed twice
+    assert again["trimmed_7d"] == [] and again["trimmed_30d"] == []
+
+
+def test_a_dry_run_trims_nothing_a_run_without_a_dated_name_is_never_touched_and_a_link_goes_as_a_link(tmp_path):
+    runs = tmp_path / "runs"
+    week = run_dir(runs, 9)
+    undated = runs / "hand-made"
+    (undated / "logs").mkdir(parents=True)
+    (undated / "logs" / "x.log").write_text("x")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "keep.txt").write_text("keep")
+    (week / "logs" / "linked").symlink_to(outside)
+    out = pm.trim_runs(runs, NOW, dry=True)
+    assert out["trimmed_7d"] == [week.name] and files(week) == set(RUN_FILES) | {"logs/linked"}
+    pm.trim_runs(runs, NOW, dry=False)
+    assert (undated / "logs" / "x.log").exists() and (outside / "keep.txt").read_text() == "keep" and not (week / "logs").exists()
+
+
+def test_prune_journals_the_trim_and_never_touches_the_decisions_journal(tmp_path):
+    state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
+    (state / "decisions.jsonl").write_text('{"kind": "decision", "ts": "2026-09-01T00:00:00Z"}\n')
+    week = run_dir(state / "runs", 8)
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 0
+    lines = journal(state)
+    assert lines[0] == {"kind": "decision", "ts": "2026-09-01T00:00:00Z"} and lines[-1]["runs"]["trimmed_7d"] == [week.name]
