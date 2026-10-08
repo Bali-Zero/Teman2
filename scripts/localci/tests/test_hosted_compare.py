@@ -264,3 +264,13 @@ def test_a_partial_context_still_reports_its_false_green_and_fails_the_run():
 def test_a_blind_partial_context_is_not_counted_as_compared_at_all():
     rep = hc.compare(_status({"E2E": _cov("ERROR", "partial", E2E_NOTE)}), _req("E2E"), [_run("E2E")], [])
     assert _klass(rep, "E2E") == "LOCAL_BLIND" and rep["coverage"] == {"compared_full": 0, "compared_partial": [], "compared_unrecorded": []}
+
+
+# ------------------------------------------------------------------ a host out of disk is no verdict (B3)
+@pytest.mark.parametrize("hosted", ["success", "failure"])
+def test_a_context_the_host_could_not_judge_is_blind_never_false_red_and_never_agree(hosted):
+    # guilt: before B3 the same run read FAIL here, and FALSE_RED beside a hosted green (Backend Tests, B2 final head)
+    res = {**_cov("ERROR", "full"), "no_verdict": "host_disk_full"}
+    rep = hc.compare(_status({"a": res}), _req("a"), [_run("a", hosted)], [])
+    assert _klass(rep, "a") == "LOCAL_BLIND" and rep["rows"][0]["local_detail"] == "ERROR (executed) host_disk_full"
+    assert rep["counts"]["FALSE_RED"] == 0 and rep["coverage"]["compared_full"] == 0

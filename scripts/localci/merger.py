@@ -425,6 +425,7 @@ def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
 # the criterion and the one write
 CHECK_OK = ("PASS", "NOT_APPLICABLE", "BLOCKED")   # a BLOCKED check backs no executed context here: the contexts below judge those
 NON_EXECUTED = ("blocked", "not_implemented")
+HOST_NO_VERDICT = ("host_disk_full", "host_disk_below_floor")   # the runner's own no-verdict reasons: the host, not the candidate (B3)
 GATE = ("local_checks_clean", "review_independent", "executed_contexts_ok", "hosted_required_green", "head_unchanged", "same_repo",
         "not_draft", "base_main", "open", "not_in_queue", "first_enqueue")
 CRITERION = (*GATE, "label_privileged")   # the env flag, the arm's other half, is journalled apart
@@ -439,11 +440,14 @@ def local_side(status: dict) -> dict:
     ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) else {}
     results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
     required = ctx.get("required") if isinstance(ctx.get("required"), list) else []
-    non_executed, not_ok, not_full = {}, {}, {}
+    non_executed, not_ok, not_full, host = {}, {}, {}, {}
     for name in required:
         res = results[name] if isinstance(name, str) and isinstance(results.get(name), dict) else {}
+        nv = res.get("no_verdict") if isinstance(res.get("no_verdict"), str) else ""
         if res.get("mapping") in NON_EXECUTED and res.get("verdict") == "BLOCKED":
             non_executed[name] = res["mapping"]
+        elif res.get("verdict") in ("ERROR", "BLOCKED") and nv.split(" ")[0] in HOST_NO_VERDICT:
+            host[str(name)] = nv   # not executed and not a FAIL: an executed mapping without a verdict still refuses (spec §2 C3a-2)
         elif res.get("verdict") != "OK":
             not_ok[str(name)] = f"{res.get('verdict')} ({res.get('mapping')})"
         elif res.get("coverage") != "full":   # executed and OK on a subset of its hosted twin: it passes, and the line names it
@@ -453,9 +457,11 @@ def local_side(status: dict) -> dict:
     why = {"local_checks_clean": "the gate vouched for no check" if not states else f"checks not clean: {bad}" if bad else None,
            "review_independent": None if review in ("QUEUED", "PASS") else f"review.independent is {review}, not QUEUED or PASS",
            "executed_contexts_ok": (f"contexts {ctx.get('status')!r} with {len(required)} required" if ctx.get("status") != "ok" or not required
-                                    else f"executed required contexts not OK: {not_ok}" if not_ok else None)}
-    return {"why": why, "executed_required": f"{len(required) - len(non_executed)}/{len(required)}" + coverage_suffix(not_full),
-            "non_executed": non_executed, "partial": not_full}
+                                    else "; ".join(x for x in (f"executed required contexts not OK: {not_ok}" if not_ok else "",
+                                                               f"required contexts not executed, no verdict on this host (not a FAIL): {host}"
+                                                               if host else "") if x) or None)}
+    return {"why": why, "executed_required": f"{len(required) - len(non_executed) - len(host)}/{len(required)}" + coverage_suffix(not_full),
+            "non_executed": non_executed, "partial": not_full, "host_no_verdict": host}
 
 
 def coverage_suffix(not_full: dict) -> str:
@@ -482,7 +488,8 @@ def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
     line = {**rec, **facts, "expected_head_oid": head, "criterion": criterion, "ok": all(criterion.values()), "armed_env": armed_env,
             "refused": [k for k, v in criterion.items() if not v] + ([] if armed_env else ["armed_env"]),
             "why": {k: why.get(k) or facts.get("read_error") or "not evaluated" for k, v in criterion.items() if not v},
-            "executed_required": loc["executed_required"], "non_executed": loc["non_executed"], "partial": loc["partial"]}
+            "executed_required": loc["executed_required"], "non_executed": loc["non_executed"], "partial": loc["partial"],
+            "host_no_verdict": loc["host_no_verdict"]}
     kind = "would_enqueue" if not (armed_env and criterion["label_privileged"]) else "enqueue_refused" if not line["ok"] else "enqueued"
     if kind == "enqueued":
         try:
@@ -496,7 +503,9 @@ def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
             kind, line["error"] = "enqueue_error", redact(f"{type(exc).__name__}: {exc}")
     out = journal(state, {**line, "kind": kind})
     print(f"merger: #{n} {kind} head={head[:12]} refused={out['refused']} executed_required={loc['executed_required']} non_executed="
-          f"{[f'{k} ({v})' for k, v in loc['non_executed'].items()]}" + (f" entry={out['entry_id']} position={out['position']}" if kind == "enqueued" else ""))
+          f"{[f'{k} ({v})' for k, v in loc['non_executed'].items()]}"
+          + (f" host_no_verdict={[f'{k} ({v})' for k, v in loc['host_no_verdict'].items()]}" if loc["host_no_verdict"] else "")
+          + (f" entry={out['entry_id']} position={out['position']}" if kind == "enqueued" else ""))
     return out
 
 
@@ -541,7 +550,8 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
                                "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},
                                "seal": gate["seal"], "runner_rc": {k: v for k, v in gate.items() if k.endswith("_rc")},
                                "hosted_compare": hosted, "run_dir": str(run_dir), "executed_required": loc["executed_required"],
-                               "non_executed": loc["non_executed"], "partial": loc["partial"], "elapsed_s": round(time.monotonic() - t0, 1)})
+                               "non_executed": loc["non_executed"], "partial": loc["partial"], "host_no_verdict": loc["host_no_verdict"],
+                               "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
         enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": cand_sha, "lease_id": lease_id},

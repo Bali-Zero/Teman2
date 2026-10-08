@@ -26,6 +26,7 @@ TICK = "scripts/localci/tests/test_merger.py"
 PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
 HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
 HCT, RUNT = "scripts/localci/tests/test_hosted_compare.py", "scripts/localci/tests/test_runner.py"
+HD = "scripts/localci/tests/test_host_disk.py"
 RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
                                          "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
                                          "test_the_real_matrix_declares_e2e_partial_with_its_reason"))
@@ -158,6 +159,26 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "runner-absent-coverage-partial": (RUNNER, 'coverage = it.get("coverage", "full")', 'coverage = it.get("coverage", "partial")', RUNT_COV),
     "runner-unreadable-coverage-full": (RUNNER, "        if coverage not in COVERAGES:\n", "        if False:\n", RUNT_COV),
     "runner-results-drop-coverage": (RUNNER, '        cov = {"coverage": ctx.get("coverage") or "unrecorded",', '        cov = {"coverage": "full",', RUNT_COV),
+    # B3 — a full disk is no verdict: matched on error lines, never FAIL, never OK
+    "runner-disk-full-ignored-jobs": (RUNNER, 'if (full := host_disk_full(r.get("logs") or [r.get("log")], r["label"])):', "if (full := None):", (HD,)),
+    "runner-disk-full-ignored-contained": (RUNNER, "if (full := host_disk_full([log], name)):", "if (full := None):", (HD,)),
+    "runner-disk-full-egress-unread": (RUNNER, 'r.get("logs") or [r.get("log")]', '[r.get("log")]', (HD,)),
+    "runner-disk-full-substring": (RUNNER, '    r"ENOSPC: no space left on device"                         #',
+                                   '    r"(?i)enospc|no[ _]space[ _]left|diskfull|ENOSPC: no space left on device"                         #', (HD,)),
+    "runner-disk-full-python-exception-ok": (RUNNER, r'r"|^(?!.*\b\w*(?:Error|Exception)\b).*: [Nn]o space left on device\s*$")',
+                                             r'r"|^.*: [Nn]o space left on device\s*$")', (HD,)),
+    "runner-recovery-alone": (RUNNER, "                if DISK_FULL_LINE.search(line):\n",
+                              "                if DISK_FULL_LINE.search(line) or RECOVERY_LINE.search(line):\n", (HD,)),
+    "runner-no-verdict-any-status": (RUNNER, 'if s in ("ERROR", "BLOCKED") and (host := HOST_NO_VERDICT.match(reason)):',
+                                     "if (host := HOST_NO_VERDICT.match(reason)):", (HD,)),
+    "runner-no-verdict-anywhere": (RUNNER, 'HOST_NO_VERDICT = re.compile(r"^host_disk_full(?=:)")', 'HOST_NO_VERDICT = re.compile(r".*?host_disk_full(?=:)")',
+                                   (HD,)),
+    "hc-no-verdict-unnamed": (HC, '''+ (f" {res['no_verdict']}" if isinstance(res.get("no_verdict"), str) else "")''', '+ ""', (HCT,)),
+    "enqueue-host-counted-executed": (PY, "{len(required) - len(non_executed) - len(host)}/", "{len(required) - len(non_executed)}/", (TICK,)),
+    "enqueue-host-passes": (PY, '                                                               if host else "") if x) or None)}',
+                            '                                                               if False else "") if x) or None)}', (TICK,)),
+    "enqueue-host-any-verdict": (PY, 'elif res.get("verdict") in ("ERROR", "BLOCKED") and nv.split(" ")[0] in HOST_NO_VERDICT:',
+                                 'elif nv.split(" ")[0] in HOST_NO_VERDICT:', (TICK,)),
 }
 
 

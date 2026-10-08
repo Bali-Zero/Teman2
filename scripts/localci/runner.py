@@ -49,6 +49,18 @@ JUNIT_MAX_BYTES = 32 << 20
 COPY_TIMEOUT_S = 600
 MAPPINGS = ("executed", "not_applicable_rule", "blocked", "not_implemented")
 COVERAGES = ("full", "partial")   # what an executed context's verdict covers of its hosted twin; travels with every result
+# The docker host ran out of disk (B3): the ERROR LINES the tools print when a write hits ENOSPC, matched line by line on their
+# own shapes, never on a substring anywhere — a test named test_enospc_*, a fixture raising OSError("no space left on device") or an
+# assertion quoting the phrase keeps its verdict. Such a line in a sandbox's output makes the context ERROR host_disk_full.
+DISK_FULL_LINE = re.compile(
+    r"ENOSPC: no space left on device"                         # libuv / node / npm (npm's TAR_ENTRY_ERROR lines)
+    r"|^npm (?:ERR!|error) code ENOSPC\s*$"
+    r"|\[Errno 28\] No space left on device"                   # CPython's OSError from a real write (pip, open, shutil)
+    r"|\bDiskFull(?:Error)?(?:'>)?: \S"                         # asyncpg DiskFullError / psycopg DiskFull raised with its message
+    r"|\bcould not (?:extend|write to) file \"[^\"\n]+\": \S"   # the postgres server's own message (SQLSTATE 53100)
+    r"|^(?!.*\b\w*(?:Error|Exception)\b).*: [Nn]o space left on device\s*$")   # a C tool's strerror (tar, cp, git); no Python exception text
+RECOVERY_LINE = re.compile(r"\bthe database system is in recovery mode\b")   # a service Postgres after it crashed; counted only after a line above
+HOST_NO_VERDICT = re.compile(r"^host_disk_full(?=:)")   # a check reason the runner wrote itself: the context has no verdict, it is not a FAIL
 RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
 RUNNER_OWNED_KEYS = frozenset({"extra", "isolation", "trusted_pythonpath", "trusted_dir_sha256", "trusted_files"})
 EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
@@ -1654,6 +1666,8 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
     except (OSError, subprocess.SubprocessError, RuntimeError) as e:
         rc, err = None, f"container execution failed: {type(e).__name__}: {e}"
     dur = round(time.monotonic() - t0, 3)
+    if (full := host_disk_full([log], name)):   # before any verdict: a full disk makes this run no evidence either way
+        return {"status": "ERROR", "reason": full, "rc": rc, "duration_s": dur, "counts": None, "log": str(log), "isolation": "container"}
     if err:
         return {"status": "ERROR", "reason": err, "rc": None, "duration_s": dur, "counts": None, "log": str(log), "isolation": "container"}
     if kind == "contained_steps":
@@ -1697,6 +1711,25 @@ def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
         return "BLOCKED", (f"{len(ran)} step(s) rc=0 with the BASE judge, but the candidate rewrites {spec['judge_modified']}: hosted judges with "
                            "the candidate's copy, which this run did not execute — no green claimed")
     return "PASS", f"{len(ran)} step(s) rc=0" + ("; not applicable: " + "; ".join(f"{s['name']} ({s['reason']})" for s in na) if na else "")
+
+
+def host_disk_full(logs, label: str) -> str | None:
+    """The no-verdict reason when a sandbox's output carries a disk-full error line, else None. Read line by line in order; a
+    postgres `recovery mode` line is counted only after such a line (alone it is the candidate's or the service's own failure)."""
+    first, n, recovery = None, 0, 0
+    for log in logs:
+        if not log or not Path(log).is_file():
+            continue
+        with open(log, errors="replace") as fh:
+            for line in fh:
+                if DISK_FULL_LINE.search(line):
+                    first, n = first or line.strip(), n + 1
+                elif first and RECOVERY_LINE.search(line):
+                    recovery += 1
+    if first is None:
+        return None
+    return (f"host_disk_full: {label}: {first[:200]!r} ({n} disk-full line(s), {recovery} postgres recovery-mode line(s) after it) — "
+            "the docker host ran out of disk: no verdict on the candidate (never FAIL, never OK); free space and run again")
 
 
 def parse_step_junit(p: Path) -> list | None:
@@ -1864,7 +1897,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
     iso, denv, t0 = spec["isolation"], trusted_env(), time.monotonic()
     ctx = {**spec["expr"], "matrix": dict(leg), "needs": {j: needs[j] for j in job["needs"]}}
     drv, exs = STEPS_DRIVER.read_bytes(), GH_EXPR.read_bytes()
-    out = {"label": label, "rc": None, "steps": [], "seconds": 0.0, "cpu": 0.0, "infra": None, "log": str(log)}
+    out = {"label": label, "rc": None, "steps": [], "seconds": 0.0, "cpu": 0.0, "infra": None, "log": str(log), "logs": [str(log)]}
     if sha256_bytes(drv) != spec["driver_sha256"] or sha256_bytes(exs) != spec["expr_sha256"]:
         out["infra"] = ("ERROR", "steps driver or gh_expr changed since the plan pinned them")
         return out
@@ -1881,6 +1914,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
         st = dict(st)
         if (st.get("side") or {}).get("where") == "egress":
             st["precomputed"] = _run_egress(name, spec, job, st, slug, cfg_base, base_extra, env, inner, run_dir, plan)
+            out["logs"].append(str(run_dir / "logs" / f"{name}.{slug}.egress.log"))   # written by this leg: read for a full disk too
         steps.append(st)
     extra = dict(base_extra)
     for st in steps:
@@ -1972,6 +2006,9 @@ def _execute_jobs(name: str, spec: dict, run_dir: Path, plan: dict, log: Path) -
         for leg in job["legs"]:
             r = _run_leg(name, spec, job, leg, run_dir, plan, needs, arts, X)
             legs.append(r)
+            if (full := host_disk_full(r.get("logs") or [r.get("log")], r["label"])):   # the chain stops: nothing after it is evidence
+                return {"status": "ERROR", "reason": full, "rc": None, "duration_s": round(time.monotonic() - t0, 3), "counts": None, "log": r["log"],
+                        "jobs": [{k: x[k] for k in ("label", "rc", "seconds", "cpu")} for x in legs], "isolation": "container"}
             if r["infra"]:
                 st, why = r["infra"]
                 return {"status": st, "reason": why, "rc": None, "duration_s": round(time.monotonic() - t0, 3), "counts": None, "log": r["log"],
@@ -2446,6 +2483,8 @@ def evaluate_contexts(view: dict, plan: dict) -> dict:
         s, reason = view[chk]["status"], view[chk].get("reason") or ""
         ok = s == "PASS" or (s == "NOT_APPLICABLE" and reason.strip() != "")
         out["results"][name] = {"mapping": mapping, "check": chk, "verdict": "OK" if ok else s, **cov}
+        if s in ("ERROR", "BLOCKED") and (host := HOST_NO_VERDICT.match(reason)):   # the host failed, not the candidate: named, no verdict
+            out["results"][name]["no_verdict"] = host.group(0)
         if not ok:
             (out["red"] if s == "FAIL" else out["blocked"]).append(name)
     return out

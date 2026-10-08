@@ -921,3 +921,19 @@ def test_a_tick_journals_each_contexts_coverage_beside_its_verdict(world):
     d, w = world.journal()
     assert d["contexts"] == {"ctx-a": "OK", "CodeQL": "BLOCKED"} and d["coverage"] == {"ctx-a": "partial", "CodeQL": "full"}
     assert d["executed_required"] == w["executed_required"] == "1/2 (partial: ctx-a)" and d["partial"] == w["partial"] == {"ctx-a": "partial"}
+
+
+# ------------------------------------------------------------------ a host out of disk: not executed, not a FAIL, never enqueued (B3)
+@pytest.mark.parametrize("verdict,code", [("ERROR", "host_disk_full")])
+def test_a_context_the_host_could_not_judge_is_not_executed_named_and_still_refuses(enq, capsys, verdict, code):
+    _result("ctx-a", verdict=verdict, no_verdict=code)(enq)
+    line = enq.run()
+    assert line["refused"] == ["executed_contexts_ok"] and line["kind"] == "enqueue_refused" and enq.gql.mutations() == []
+    assert line["executed_required"] == "0/2" and line["host_no_verdict"] == {"ctx-a": code} and "not executed" in line["why"]["executed_contexts_ok"]
+    assert "not OK" not in line["why"]["executed_contexts_ok"] and f"host_no_verdict=['ctx-a ({code})']" in capsys.readouterr().out
+
+
+def test_a_fail_that_carries_a_host_code_is_still_a_fail_on_the_line(enq):
+    _result("ctx-a", verdict="FAIL", no_verdict="host_disk_full")(enq)
+    line = enq.run()
+    assert line["executed_required"] == "1/2" and line["host_no_verdict"] == {} and "not OK" in line["why"]["executed_contexts_ok"]

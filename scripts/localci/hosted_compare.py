@@ -110,7 +110,8 @@ def local_verdicts(status: dict) -> dict:
         res = res if isinstance(res, dict) else {}
         verdict, cov = res.get("verdict"), res.get("coverage")
         out[name] = {"verdict": ("GREEN" if verdict == "OK" else "RED" if verdict == "FAIL" else "BLIND") if usable else "BLIND",
-                     "detail": f"{verdict}" + (f" ({res.get('mapping')})" if res.get("mapping") else ""),
+                     "detail": f"{verdict}" + (f" ({res.get('mapping')})" if res.get("mapping") else "")
+                               + (f" {res['no_verdict']}" if isinstance(res.get("no_verdict"), str) else ""),   # host_disk_full: blind, never red
                      "coverage": cov if cov in COVERAGES else "unrecorded",
                      "coverage_note": res.get("coverage_note") if isinstance(res.get("coverage_note"), str) else None}
     return out

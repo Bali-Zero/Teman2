@@ -175,6 +175,19 @@ phase E line names how many compared contexts were partial. A decision journalle
 contexts are unrecorded and never count as full. The enqueue criterion treats a partial context as executed and passing,
 and names it: `executed_required=13/14 (partial: E2E Tests (Playwright))`. A partial FALSE_GREEN is still a FALSE_GREEN.
 
+**A full disk is no verdict.** After every service leg (its log and its egress log) and every contained check, the runner
+reads the output line by line for the error lines a write on a full disk prints: libuv/npm `ENOSPC: no space left on device`
+and `npm error code ENOSPC`, CPython `[Errno 28] No space left on device`, asyncpg/psycopg `DiskFull(Error): <message>`,
+postgres `could not extend file "<path>": ...`, and a C tool's strerror line ending `: No space left on device` that carries
+no Python exception name; a service Postgres `the database system is in recovery mode` counts only after one of them. One
+such line makes the context `ERROR` with a reason that starts `host_disk_full: <leg>: <first line>` (never FAIL, never OK,
+even when the step exited 0, as npm does), and a service chain stops there. A test named `test_enospc_*`, a fixture raising
+`OSError("no space left on device")` or an assertion quoting the phrase keeps its verdict. `status.json` names it on the
+context (`no_verdict: host_disk_full`), `hosted_compare` reads it as LOCAL_BLIND (never FALSE_RED), and the enqueue
+criterion counts it as not executed and refuses, naming it apart from the contexts that are not OK (`host_no_verdict`).
+Measured 2026-10-08 against every tracked file: the patterns hit only docs, evidence, the ledger and one fixture of a
+workflow that no required context runs (`scripts/test_cost_breaker_deadman.sh`).
+
 ## Security: Pysa taint judge (`security.pysa_python`)
 
 CodeQL CLI cannot run on this repo (public, no OSI licence), so the python security queries are stood in for by Pysa
