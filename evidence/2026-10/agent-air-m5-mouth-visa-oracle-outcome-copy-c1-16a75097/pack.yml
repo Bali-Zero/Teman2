@@ -17,6 +17,8 @@ lanes:
     seat: >-
       the owner-approved spec with the final strings (scratchpad spec-outcome-copy-c1.md); the
       census test in client-copy.test.ts is the machine check of its jargon rule.
+    nb: "/private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/spec-outcome-copy-c1.md (no notebook: the owner-approved spec is the ground truth for this copy-only change)"
+    query_hash: "ca79fad165a51b6cc168d8e18a76177e1ee9cfb58c3cf4822b3da7d0941efd67" # pragma: allowlist secret — sha256 of that spec file
 pii_scan: clean
 bites:
   consumer: >-
@@ -24,7 +26,7 @@ bites:
     check, which compares nextSteps between the engine outcome and the gold baseline.
   where: ci
   observe: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
-  expect: "contains:Tests  1209 passed"
+  expect: "contains:Tests  1213 passed"
 decisions:
   - id: D-single-next-steps-source
     decision: >-
@@ -41,34 +43,63 @@ decisions:
 receipts:
   - claim: The whole Visa Oracle test tree is green, including the new census, per-state next steps, pending timeline and counter tests.
     cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
-    result: "Test Files  45 passed (45); Tests  1209 passed (1209)"
+    result: "Test Files  45 passed (45); Tests  1213 passed (1213)"
     exit: 0
-    ts: "2026-10-08T11:14:46Z"
+    ts: "2026-10-08T11:22:36Z"
     seat: Claude Fable 5.1
   - claim: The mouth typecheck is clean.
     cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
     result: "no output"
     exit: 0
-    ts: "2026-10-08T11:14:55Z"
+    ts: "2026-10-08T11:20:41Z"
     seat: Claude Fable 5.1
   - claim: ESLint reports no error on the touched source files (warnings were already there).
     cmd: cd apps/mouth && npx eslint <touched source files>
     result: "0 errors on the two changed source files"
     exit: 0
-    ts: "2026-10-08T11:15:04Z"
+    ts: "2026-10-08T11:20:45Z"
     seat: Claude Fable 5.1
   - claim: Prettier accepts every touched file including the stylesheet.
     cmd: cd apps/mouth && npx prettier --check <touched files>
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-08T11:14:56Z"
+    ts: "2026-10-08T11:20:47Z"
     seat: Claude Fable 5.1
+seat_fallback_reason: >-
+  titolari kimi-code/k3 and tp1-qwen3.8-max were QUOTA_DEAD per the lead's brief of 2026-10-08;
+  codex-gpt-5.6-sol played as titolare and the reserve agy-gemini-3.1-pro filled the second seat.
 dissent:
-  - seat: gemini-3.1-pro
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: Studio-only Second Home outcomes received the human-review steps that promise a person's review.
+    status: CONFIRMED
+    note: cured in 3f641c2f8a, a dedicated Studio step list chosen where the adapter decides studio-only.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: The non-retryable client guard told the visitor to try again in a few minutes.
+    status: CONFIRMED
+    note: cured in 3f641c2f8a, non-retryable fallbacks use the review steps, a retryable failure keeps try-again.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: Interview question hints still use engine and routing terminology.
+    status: PLAUSIBLE
+    note: deferred to PR-C4 (interview helper strings sweep), out of C1 scope by the lead's decision.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: The jargon census omitted q.* strings and the review reason elements.
+    status: CONFIRMED
+    note: review reason elements added to the census in 3f641c2f8a; q.* stays out until PR-C4, noted as a TODO in the test.
+  - seat: codex-gpt-5.6-sol
+    severity: LOW
+    objection: The print-only Checked-on line says "against the sources above" even with an empty source list.
+    status: CONFIRMED
+    note: cured in 3f641c2f8a, a plain Checked-on key is used when there are no sources.
+  - seat: agy-gemini-3.1-pro
     severity: HIGH
     objection: The comparison table's timeline cell does not use outcome.timeline_cell_pending.
     status: RETRACTED
-    note: no comparison table is rendered; the outcome.comparison_* keys were unused and are now deleted.
+    note: no comparison table is rendered; the outcome.comparison_* keys were unused and are deleted in 2cc1befec3.
+council_run: council-journal.jsonl
 spend:
   wall_clock_hours: 1
-  adversarial_rounds: 0
+  adversarial_rounds: 1
