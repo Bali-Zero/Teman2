@@ -189,7 +189,62 @@ def test_an_unhealthy_service_blocks_the_job_and_is_torn_down(tmp_path):
     assert why and "'unhealthy'" in why and names == [owner]
     for n in names:
         runner._remove_verified(docker, n, runner.trusted_env())
-    assert f"rm -f {names[0]}" in (tmp_path / "docker.argv").read_text()
+    assert f"rm -f -v {names[0]}" in (tmp_path / "docker.argv").read_text()
+
+
+def _container_removals() -> list:
+    """Every argv list the runner builds that asks docker to remove a container (`rm`, `container rm`), as written in its source."""
+    import ast
+    found = []
+    for node in ast.walk(ast.parse(Path(runner.__file__).read_text())):
+        if isinstance(node, ast.List) and len(node.elts) > 2 and not isinstance(node.elts[0], ast.Constant):
+            words = [e.value if isinstance(e, ast.Constant) and isinstance(e.value, str) else None for e in node.elts]
+            if words[1] == "rm" or words[1:3] == ["container", "rm"]:
+                found.append((node.lineno, words))
+    return found
+
+
+def test_every_container_removal_takes_its_anonymous_volumes_with_it(tmp_path, monkeypatch):
+    sites = _container_removals()   # postgres:15 and redis:7 declare VOLUME: without -v each leg left one behind (89 filled Pro's VM)
+    assert len(sites) >= 2 and all("-v" in w or "--volumes" in w for _, w in sites), sites
+    docker = str(fake_docker(tmp_path))
+    runner._remove_verified(docker, "localci-t-svc", runner.trusted_env())
+    ps = tmp_path / "ps.calls"   # the reaper: `ps -aq` names one orphan, then none
+    exe = Path(docker)
+    exe.write_text(exe.read_text().replace('  *) exit 0;;', f'  "ps -aq") [ -f {ps} ] || {{ touch {ps}; echo orphan1; }};;\n  *) exit 0;;'))
+    plan = {"isolation": {"mode": "container", "docker": docker}}
+    assert runner.reap_containers(plan, runner.Store(tmp_path / "run")) is None
+    rms = [ln for ln in (tmp_path / "docker.argv").read_text().splitlines() if ln.startswith(("rm ", "container rm"))]
+    assert rms == ["rm -f -v localci-t-svc", "rm -f -v orphan1"]
+
+
+needs_docker = pytest.mark.skipif(not fr.docker_image_ready(), reason=f"docker image {fr.ISOLATION_IMAGE} unavailable — proven live on Pro")
+
+
+@needs_docker
+def test_a_removal_takes_the_anonymous_volume_and_spares_a_named_volume_and_a_bind_mount(tmp_path):
+    import shutil
+    import tempfile
+    import uuid
+    docker, tag = shutil.which("docker"), uuid.uuid4().hex[:12]
+    named, ctr = f"localci-test-named-{tag}", f"localci-test-rmv-{tag}"
+    bind = Path(tempfile.mkdtemp(dir=Path.home(), prefix=".localci-test-bind-"))   # under $HOME: the path Colima shares with its VM
+    (bind / "keep.txt").write_text("kept\n")
+    exists = lambda v: subprocess.run([docker, "volume", "inspect", v], capture_output=True).returncode == 0   # noqa: E731
+    try:
+        subprocess.run([docker, "volume", "create", named], check=True, capture_output=True)
+        subprocess.run([docker, "create", "--name", ctr, "-v", f"{named}:/named", "-v", f"{bind}:/bind", "-v", "/anon", fr.ISOLATION_IMAGE, "true"],
+                       check=True, capture_output=True)
+        anon = subprocess.run([docker, "inspect", "--format", '{{range .Mounts}}{{if eq .Destination "/anon"}}{{.Name}}{{end}}{{end}}', ctr],
+                              capture_output=True, text=True, check=True).stdout.strip()
+        assert anon and exists(anon)
+        runner._remove_verified(docker, ctr, runner.trusted_env())
+        assert not exists(anon)                                                  # the anonymous volume died with its container
+        assert exists(named) and (bind / "keep.txt").read_text() == "kept\n"     # a named volume and a bind mount are untouched
+    finally:
+        subprocess.run([docker, "rm", "-f", "-v", ctr], capture_output=True)
+        subprocess.run([docker, "volume", "rm", "-f", named], capture_output=True)
+        shutil.rmtree(bind, ignore_errors=True)
 
 
 def test_no_host_secret_reaches_a_service_or_rides_on_its_argv(tmp_path, monkeypatch):
@@ -222,13 +277,13 @@ def svc_ctx(**over) -> dict:
     return {"name": "Fan In", "workflow_file": WF, "job_id": "fanin", "mapping": "executed", "local": local}
 
 
-def planned_svc(tmp_path: Path, monkeypatch, candidate: dict, ctx: dict, base: dict | None = None) -> dict:
+def planned_svc(tmp_path: Path, monkeypatch, candidate: dict, ctx: dict, base: dict | None = None, *extra: str) -> dict:
     exe = fake_docker(tmp_path)
     exe.write_text(exe.read_text().replace('"image inspect") for a', '"image inspect") case "$4" in *Config.Env*) '
                                            'printf "sha256:%064d\\nPYTHON_VERSION=3.12.15\\n" 1; exit 0;; esac; for a'))
     monkeypatch.setenv("PATH", f"{exe.parent}{os.pathsep}{os.environ['PATH']}")
     fx = fr.make_repo(tmp_path, candidate, base or {WF: yaml.safe_dump(WORKFLOW)})
-    fr.plan(fx, "--isolation", "container", "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])))
+    fr.plan(fx, "--isolation", "container", "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])), *extra)
     return json.loads((fx["run"] / "state" / "plan.json").read_text())["checks"]["ctx.fan-in"]
 
 
@@ -282,6 +337,24 @@ def test_a_host_reader_is_the_base_copy_run_at_plan_and_its_answer_is_frozen_in_
     assert step["precomputed"]["rc"] == 3 and step["side"]["argv"][1] == "-I"   # BASE's reader answered; the candidate's exits 0
 
 
+MARK = "::error::r: CANNOT-VERIFY"
+ERR = "import sys; print({!r}, file=sys.stderr); raise SystemExit(1)"
+
+
+@pytest.mark.parametrize("body,marker,rc,tries", [
+    (ERR.format(MARK + " (read failed) gh: HTTP 500"), MARK, None, 3),                                   # GitHub failed: no verdict
+    (ERR.format("::error::r: no gate verdict"), MARK, 1, 1),                                              # the reader judged: a verdict
+    ("print('r: posted description = ' + repr('" + MARK + "')); " + ERR.format("::error::r: red"), MARK, 1, 1),  # echoed text: still a verdict
+    (ERR.format(MARK), None, 1, 1),                                                                       # no marker declared: as before
+])
+def test_a_host_reader_that_could_not_read_github_is_asked_again_then_gives_no_verdict(tmp_path, monkeypatch, body, marker, rc, tries):
+    monkeypatch.setattr(runner, "READER_RETRY_WAITS", (0, 0, 0))
+    calls = tmp_path / "calls"
+    (tmp_path / "r.py").write_text(f"open({str(calls)!r}, 'a').write('.')\n{body}\n")
+    got = runner.run_host_reader([sys.executable, "-I", str(tmp_path / "r.py")], tmp_path, 30, marker)
+    assert got["rc"] == rc and len(calls.read_text()) == tries and ("no verdict" in got["reason"]) is (rc is None)
+
+
 @pytest.mark.parametrize("argv", [["bash", "-c", "true"], ["$PY", "scripts/ci/other.py"], ["$PY", READER, "${{ secrets.X }}"]])
 def test_a_host_step_that_is_not_a_trusted_base_reader_is_blocked(tmp_path, monkeypatch, argv):
     spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, host_ctx(argv), HOST_BASE)
@@ -313,6 +386,18 @@ def test_a_commit_id_the_sandbox_rebuilds_is_refused_wherever_the_runner_evaluat
     assert spec["status"] == "BLOCKED" and "artifact name or path" in spec["reason"]
     up["with"]["name"] = "cov"
     assert planned_svc(tmp_path / "ok", monkeypatch, fr.CANDIDATE_FILES, ctx, {WF: yaml.safe_dump(wf)}).get("status") != "BLOCKED"
+
+
+@pytest.mark.parametrize("expressions,tm,needle", [(False, 5, "only in a service context"), (True, 0, "must be literals"),
+                                                    (True, "${{ env.T }}", "must be literals"), (True, -1, "must be literals")])
+def test_a_step_timeout_is_emulated_in_a_service_context_and_blocked_elsewhere(expressions, tm, needle):
+    job = {"runs-on": "ubuntu-latest", "steps": [{"name": "s", "run": "true", "timeout-minutes": tm}]}
+    steps, why = runner.resolve_steps(job, {"steps": [{"workflow_step": "s"}]}, "main", expressions=expressions)
+    assert steps is None and needle in why
+    if expressions:
+        ok, _ = runner.resolve_steps({**job, "steps": [{**job["steps"][0], "timeout-minutes": 5}]}, {"steps": [{"workflow_step": "s"}]}, "main",
+                                     expressions=True)
+        assert ok[0]["timeout_s"] == 300
 
 
 def test_a_job_timeout_given_as_an_expression_is_blocked_not_read_as_the_default(tmp_path, monkeypatch):
@@ -377,6 +462,109 @@ def test_an_egress_verdict_that_does_not_match_its_exit_code_is_no_verdict(tmp_p
     assert got["rc"] is None and "no consistent verdict" in got["reason"]
 
 
+def npm_repo(tmp_path: Path, lock_entries: dict, workspaces: list) -> tuple[Path, str]:
+    lock = {"lockfileVersion": 3, "packages": {"": {"workspaces": workspaces}, **lock_entries}}
+    files = {"package.json": json.dumps({"name": "r", "workspaces": workspaces}), "package-lock.json": json.dumps(lock),
+             **{f"{w}/package.json": json.dumps({"name": w}) for w in workspaces if "*" not in w}}
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, **files})
+    return fx["repo"], fx["candidate"]
+
+
+REG = {"resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz", "integrity": "sha512-x", "version": "1.63.0"}
+
+
+def test_a_github_dependency_pinned_to_a_full_commit_is_fetched_and_a_moving_one_is_refused(tmp_path):
+    pinned = {"resolved": "git+ssh://git@github.com/whiskeysockets/libsignal-node.git#" + "b" * 40}
+    repo, cand = npm_repo(tmp_path / "a", {"node_modules/libsignal": pinned}, [])
+    assert runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})[2] is None
+    repo, cand = npm_repo(tmp_path / "b", {"node_modules/libsignal": {"resolved": "git+ssh://git@github.com/w/l.git#main"}}, [])
+    assert "full commit id" in runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})[2]
+
+
+@pytest.mark.parametrize("matrix,leg,want", [
+    ({"include": [{"app": "mouth", "coverage": True}, {"app": "admin", "coverage": False}]}, {"app": "mouth", "coverage": True},
+     [{"app": "mouth", "coverage": True}]),
+    ({"include": [{"app": "mouth"}], "exclude": [{"app": "x"}]}, None, None),
+])
+def test_an_include_only_matrix_expands_as_hosted_and_a_context_can_be_one_leg(matrix, leg, want):
+    legs, why = runner.matrix_legs({"strategy": {"matrix": matrix}})
+    if want is None:
+        assert legs is None and "not emulated" in why
+    else:
+        assert [g for g in legs if g == leg] == want and len(legs) == 2
+
+
+@pytest.mark.parametrize("name,leg,ok", [
+    ("Fan In (a, true)", {"app": "a", "cov": True}, True),
+    ("Fan In (a, true)", {"app": "a", "cov": 1}, False),        # 1 is not true: hosted would name that leg "(a, 1)"
+    ("Fan In (a, true)", {"app": "a", "cov": "true"}, False),
+    ("Fan In (b, false)", {"app": "a", "cov": True}, False),   # the leg run must be the one the required context names
+    ("Fan In (a, true)", {"app": "a"}, False),
+])
+def test_a_leg_selector_takes_exactly_the_leg_the_required_context_names(tmp_path, monkeypatch, name, leg, ok):
+    matrix = {"include": [{"app": "a", "cov": True}, {"app": "b", "cov": False}]}
+    wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "fanin": {**WORKFLOW["jobs"]["fanin"], "strategy": {"matrix": matrix}}}}
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, {**svc_ctx(leg=leg), "name": name}, {WF: yaml.safe_dump(wf)})
+    if ok:
+        assert spec.get("status") != "BLOCKED" and spec["jobs"][1]["legs"] == [{"app": "a", "cov": True}]
+    else:
+        assert spec["status"] == "BLOCKED" and "exactly one leg" in spec["reason"]
+
+
+def test_the_npm_stage_renders_one_offline_install_per_declared_lock():
+    stage = runner.DEPS_NPM_STAGE.format(v="24")   # str.format: the shell's own braces must survive it
+    assert "FROM node:24-bookworm-slim" in stage and '"/src/${lock%/package-lock.json}"' in stage and "--ignore-scripts" in stage
+    assert runner.DEPS_BARE.count("\nFROM ${BASE}\n") == 1 and "chown" not in runner.DEPS_BARE   # node-only: no interpreter handed over
+
+
+def test_the_npm_closure_is_the_locks_registry_entries_and_its_workspace_manifests(tmp_path):
+    repo, cand = npm_repo(tmp_path, {"node_modules/playwright-core": REG, "node_modules/w": {"resolved": "apps/w", "link": True}}, ["apps/w"])
+    files, pw, why = runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})
+    assert why is None and pw == "1.63.0" and sorted(files) == ["apps/w/package.json", "package-lock.json", "package.json"]
+
+
+@pytest.mark.parametrize("entries,workspaces,needle", [
+    ({"node_modules/x": {"resolved": "https://evil.example/x.tgz", "integrity": "sha512-x"}}, [], "only the public registry"),
+    ({"node_modules/x": {"resolved": "git+ssh://git@github.com/e/x.git#abc"}}, [], "only the public registry"),
+    ({"node_modules/x": {"resolved": "https://registry.npmjs.org/x/-/x-1.tgz"}}, [], "only the public registry"),   # no integrity
+    ({"node_modules/x": {"resolved": "../outside", "link": True}}, [], "only the public registry"),                  # not a workspace
+    ({}, ["apps/*"], "no globs"),
+])
+def test_an_npm_lock_that_fetches_outside_the_registry_is_refused(tmp_path, entries, workspaces, needle):
+    repo, cand = npm_repo(tmp_path, entries, workspaces)
+    _, _, why = runner.npm_inputs(repo, cand, {"npm": "package-lock.json"})
+    assert why and needle in why
+
+
+def test_a_setup_node_pin_the_deps_image_does_not_carry_is_blocked(tmp_path, monkeypatch):
+    unit = WORKFLOW["jobs"]["unit"]
+    wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "unit": {**unit, "steps": [
+        unit["steps"][0], {"name": "node", "uses": "actions/setup-node@v7", "with": {"node-version": "26"}}, *unit["steps"][1:]]}}}
+    ctx = svc_ctx(deps={"node": "24"}, jobs=[{"job_id": "unit", "steps": [{"workflow_step": "node", "not_applicable": "stood in"},
+                                                                         {"workflow_step": "test"}]}])
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, ctx, {WF: yaml.safe_dump(wf)})
+    assert spec["status"] == "BLOCKED" and "setup-node pins ['26']" in spec["reason"]
+
+
+def test_a_network_failure_in_the_egress_sandbox_is_no_verdict_on_the_candidate(tmp_path, monkeypatch):
+    def fake_exec(name, spec, run_dir, plan, inner, a, extra, env, log, junit, *rest, **kw):
+        log.write_text("urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='pypi.org', port=443): Read timed out.\n")
+        suite = runner.ET.Element("testsuite")
+        runner.ET.SubElement(runner.ET.SubElement(suite, "testcase", name="audit"), "failure", message="rc=1")
+        runner.ET.ElementTree(suite).write(junit)
+        return 1, None
+    monkeypatch.setattr(runner, "execute_contained", fake_exec)
+    for d in ("receipts", "logs"):
+        (tmp_path / d).mkdir(exist_ok=True)
+    st = {"name": "audit", "side": {"where": "egress", "inputs": [], "rewrite": []}}
+    got = runner._run_egress("ctx.t", {"context": "t"}, {"timeout_s": 60, "image_id": "i"}, st, "s", {}, {}, {}, [], tmp_path, {})
+    assert got["rc"] is None and "the network failed" in got["reason"]
+    finding = "Found 1 known vulnerability in 1 package\nName Version ID\nx 1.0 CVE-1\n"   # a finding beside a timeout stays a verdict
+    monkeypatch.setattr(runner, "execute_contained", lambda *a, **k: (fake_exec(*a, **k), a[8].write_text(a[8].read_text() + finding))[0])
+    got = runner._run_egress("ctx.t", {"context": "t"}, {"timeout_s": 60, "image_id": "i"}, st, "s", {}, {}, {}, [], tmp_path, {})
+    assert got["rc"] == 1
+
+
 def test_an_upstream_verdict_reaches_the_fan_in_and_an_upstream_without_one_stops_the_chain(monkeypatch, tmp_path):
     spec = {"jobs": [{"job_id": "unit", "legs": [{"n": 1}, {"n": 2}]}, {"job_id": "fanin", "legs": [{}]}], "needs": {}, "judge_modified": []}
     seen = []
@@ -404,3 +592,70 @@ def test_the_real_service_contexts_account_for_every_step_of_every_job():
         for jl in [*c["local"].get("jobs", []), {**c["local"], "job_id": c["job_id"]}]:
             steps, why = runner.resolve_steps(wf["jobs"][jl["job_id"]], jl, "main", expressions=True)
             assert why is None and steps, (c["name"], jl["job_id"], why)
+
+
+# ------------------------------------------------------------------ B1-gate notices folded in PR-B2
+def _fanin_reading(env: dict, run: str) -> dict:
+    return {WF: yaml.safe_dump({**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "fanin": {**WORKFLOW["jobs"]["fanin"], "steps": [
+        {"name": "assert", "env": {"R": "${{ needs.unit.result }}", **env}, "run": run}]}}})}
+
+
+@pytest.mark.parametrize("read", ["${{ github.event.merge_group.head_ref }}", "${{ github.event.merge_group }}", "${{ github.REF }}"])
+def test_a_step_that_reads_the_queue_ref_is_blocked_without_a_pr_number_never_run_on_an_empty_ref(tmp_path, monkeypatch, read):
+    base = _fanin_reading({}, f'echo "{read}" | grep -q pr-7-')
+    spec = planned_svc(tmp_path / "none", monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), base)
+    assert spec["status"] == "BLOCKED" and "step 'assert' run body" in spec["reason"] and "--pr-number" in spec["reason"]
+    spec = planned_svc(tmp_path / "pr", monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), base, "--pr-number", "7")
+    assert spec.get("status") != "BLOCKED" and "/pr-7-" in spec["expr"]["github"]["event"]["merge_group"]["head_ref"]
+
+
+def test_a_host_reader_whose_argv_reads_the_queue_ref_is_blocked_without_a_pr_number(tmp_path, monkeypatch):
+    ctx = host_ctx(["$PY", READER, "--ref", "${{ github.event.merge_group.head_ref }}"])
+    spec = planned_svc(tmp_path / "none", monkeypatch, fr.CANDIDATE_FILES, ctx, HOST_BASE)
+    assert spec["status"] == "BLOCKED" and "step 'verdict' argv" in spec["reason"] and "--pr-number" in spec["reason"]
+    spec = planned_svc(tmp_path / "pr", monkeypatch, fr.CANDIDATE_FILES, ctx, HOST_BASE, "--pr-number", "7")
+    assert spec.get("status") != "BLOCKED" and spec["jobs"][0]["steps"][1]["side"]["argv"][-1].endswith("/pr-7-" + spec["expr"]["github"]
+                                                                                                       ["event"]["merge_group"]["head_ref"][-40:])
+
+
+def test_a_service_with_volumes_is_blocked_and_docker_is_never_asked_to_mount_anything(tmp_path):
+    vol = {**SVC, "volumes": ["/var/run/docker.sock:/var/run/docker.sock"]}
+    svcs, why = runner.plan_services({"services": {"postgres": vol}}, IMAGES, str(fake_docker(tmp_path)))
+    assert svcs is None and "volumes" in why and "never mounted" in why and not (tmp_path / "docker.argv").exists()
+    svcs, why = runner.plan_services({"services": {"postgres": SVC}}, IMAGES, str(fake_docker(tmp_path)))
+    assert why is None and [s["name"] for s in svcs] == ["postgres"]
+
+
+@pytest.mark.parametrize("read,step_env,needle", [
+    ("${{ env.COLLECT }}", {}, "env.COLLECT"),          # declared at workflow level
+    ("${{ env.TAG }}", {"TAG": "t"}, "env.TAG"),        # declared on the step itself
+    ("${{ env }}", {}, "`env`"),                        # the object that holds them
+    ("${{ env.UNDECLARED }}", {}, None),                # null hosted too: no divergence, it plans
+])
+def test_a_declared_env_in_an_artifact_name_is_blocked_never_silently_empty(tmp_path, monkeypatch, read, step_env, needle):
+    up = {"name": "up", "uses": "actions/upload-artifact@v4", "with": {"name": "cov-" + read, "path": "out"}, **({"env": step_env} if step_env else {})}
+    wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "unit": {**WORKFLOW["jobs"]["unit"], "steps": [*WORKFLOW["jobs"]["unit"]["steps"], up]}}}
+    ctx = svc_ctx(jobs=[{"job_id": "unit", "steps": [{"workflow_step": "test"}, {"workflow_step": "up", "emulate": True}]}])
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, ctx, {WF: yaml.safe_dump(wf)})
+    if needle is None:
+        assert spec.get("status") != "BLOCKED"
+    else:
+        assert spec["status"] == "BLOCKED" and needle in spec["reason"] and "read '' silently" in spec["reason"]
+
+
+@pytest.mark.parametrize("arg,blocked", [("${{ env.COLLECT }}", True), ("${{ env.NOT_DECLARED }}", False)])
+def test_a_declared_env_in_a_host_readers_argv_is_blocked_never_silently_empty(tmp_path, monkeypatch, arg, blocked):
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, host_ctx(["$PY", READER, "--x", arg]), HOST_BASE)
+    assert (spec.get("status") == "BLOCKED" and "host step 'verdict' argv reads `env.COLLECT`" in spec["reason"]) is blocked
+
+
+def test_a_refused_secret_names_its_variable_and_never_a_value(tmp_path, monkeypatch):
+    base = _fanin_reading({"DB_URL": "literal-prefix-${{ secrets.DB_URL }}"}, 'test "$R" = success')
+    spec = planned_svc(tmp_path / "a", monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), base)
+    assert spec["status"] == "BLOCKED" and "step 'assert' env DB_URL" in spec["reason"] and "secrets.DB_URL" in spec["reason"]
+    assert "literal-prefix" not in spec["reason"]
+    stood_in = svc_ctx(steps=[{"workflow_step": "assert", "env": {"DB_URL": ""}}])   # the matrix stands in "", as E2E does for its six
+    assert planned_svc(tmp_path / "b", monkeypatch, fr.CANDIDATE_FILES, stood_in, base).get("status") != "BLOCKED"
+    pg = {**SVC, "env": {**SVC["env"], "POSTGRES_PASSWORD": "pw-literal-${{ secrets.PG }}"}}
+    svcs, why = runner.plan_services({"services": {"postgres": pg}}, IMAGES, str(fake_docker(tmp_path)))
+    assert svcs is None and "POSTGRES_PASSWORD" in why and "pw-literal" not in why

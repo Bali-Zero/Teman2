@@ -1,0 +1,561 @@
+#!/usr/bin/env python3
+"""READ-ONLY census of every token read inside the /kbli* wrapper (apps/mouth).
+
+Rule (docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md): no token may be
+read inside the wrapper and left undefined by the wrapper. This probe walks the
+RENDERED DOM of a local `next dev --webpack` — 5 pages x the 6 states of
+.claude/skills/design/strumenti/measure.py — matching every stylesheet rule
+(nesting, @media, @supports, @layer) and inline style against each element, and
+follows every var() chain where the browser resolves it (at the declaring
+element). It prints, as its LAST lines, `read-but-undefined: N` (one line per
+token the contract lacks) then `colors-outside-direction-a: M`. The verdict is
+the printed line, never the exit code.
+
+  python3 scripts/mouth/r19_wrapper_token_census.py [--base-url URL] [--json OUT]
+  python3 scripts/mouth/r19_wrapper_token_census.py --replay CENSUS.jsonl
+"""
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import json
+import os
+import re
+import signal
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+CONTRACT = ROOT / "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md"
+MEASURE = ROOT / ".claude/skills/design/strumenti/measure.py"
+PAGES = ["/kbli", "/kbli/55203", "/kbli/51101", "/kbli/56101", "/kbli-explorer"]
+DIRECTION_A = {"paper": "#F7F4EE", "elevated": "#FFFCF7", "wash": "#EAE3D8",
+               "ink": "#1D2C3B", "muted": "#58626B", "structure": "#233D52",
+               "copper": "#A44B36", "line": "#DAD8D1", "line-strong": "#A8ACA9"}
+# The PMA verdict triad keeps its semantic hues (each >= 4.5:1 on paper).
+SEMANTIC = {"open": "#2E5E4E", "restricted": "#7A5A1E", "closed": "#8E2F2A"}
+TYPE = {"Fraunces 450 display", "Manrope 400 15px/1.75"}
+NOT_PAINTED = "not painted on this surface"
+KINDS = ("var", "class", "rule", "component")
+HEADER = ["kind", "token", "value", "reason"]
+BEGIN, END = "<!-- contract:begin -->", "<!-- contract:end -->"
+RANK = {None: -1, "wrapper": 0, "above": 1, "nowhere": 2}  # where a var resolves, worst wins
+
+
+class ContractError(ValueError):
+    """The contract table is malformed: refused, never read as empty."""
+
+
+def _lum(hex6: str) -> float:
+    def ch(c: float) -> float:
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (int(hex6[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b)
+
+
+def contrast(a: str, b: str) -> float:
+    hi, lo = sorted((_lum(a), _lum(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _cells(line: str) -> list[str]:
+    if not (line.startswith("|") and line.endswith("|")):
+        raise ContractError(f"not a table row: {line!r}")
+    cells = re.split(r"(?<!\\)\|", line[1:-1])
+    return [c.strip().replace("\\|", "|") for c in cells]
+
+
+def _value(value: str, reason: str, where: str) -> str | None:
+    """Returns the hex a row paints (None for type / not painted)."""
+    if value == NOT_PAINTED:
+        if not reason:
+            raise ContractError(f"{where}: '{NOT_PAINTED}' needs a reason")
+        return None
+    if value.startswith("type "):
+        if value[5:] not in TYPE:
+            raise ContractError(f"{where}: unknown type value {value!r}")
+        return None
+    m = re.fullmatch(r"([a-z-]+) (#[0-9A-F]{6})", value)
+    if not m:
+        raise ContractError(f"{where}: value {value!r} is not '<role> #HEX'")
+    role, hx = m.groups()
+    if role == "semantic":
+        if hx not in SEMANTIC.values() or contrast(hx, DIRECTION_A["paper"]) < 4.5:
+            raise ContractError(f"{where}: semantic {hx} is not a PMA triad hue >= 4.5:1 on paper")
+        return hx
+    if DIRECTION_A.get(role) != hx:
+        raise ContractError(f"{where}: {role} is not {hx} in Direction A")
+    return hx
+
+
+def parse_contract(text: str) -> dict[tuple[str, str], dict]:
+    if text.count(BEGIN) != 1 or text.count(END) != 1:
+        raise ContractError("expected exactly one contract:begin/end block")
+    lines = [ln.strip() for ln in text.split(BEGIN)[1].split(END)[0].splitlines()]
+    lines = [ln for ln in lines if ln]
+    if len(lines) < 3:
+        raise ContractError("contract table has no rows")
+    if [c.lower() for c in _cells(lines[0])] != HEADER:
+        raise ContractError(f"header must be {HEADER}, got {_cells(lines[0])}")
+    if not all(re.fullmatch(r":?-{3,}:?", c) for c in _cells(lines[1])) or len(_cells(lines[1])) != 4:
+        raise ContractError("second line must be the 4-column separator")
+    rows: dict[tuple[str, str], dict] = {}
+    for n, line in enumerate(lines[2:], start=3):
+        cells = _cells(line)
+        if len(cells) != 4:
+            raise ContractError(f"row {n}: {len(cells)} cells, expected 4")
+        kind, token, value, reason = cells
+        token = token.strip("`")
+        if kind not in KINDS or not token:
+            raise ContractError(f"row {n}: bad kind/token {kind!r} {token!r}")
+        if (kind, token) in rows:
+            raise ContractError(f"row {n}: duplicate {kind} {token}")
+        rows[(kind, token)] = {"value": value, "hex": _value(value, reason, f"row {n}"), "reason": reason}
+    return rows
+
+
+def verdict(census: dict, contract: dict) -> list[str]:
+    reads, colors = census["reads"], census["colors"]
+    failed = census.get("failed", [])
+    by_kind = {k: sum(1 for r in reads.values() if r["kind"] == k) for k in KINDS}
+    out = [f"captures: {len(census['captures'])} ok, {len(failed)} failed"]
+    for page in census["pages"]:
+        caps = [c for c in census["captures"] if c["page"] == page]
+        roots = sorted({c["root"] for c in caps}) or ["-"]
+        out.append(f"  {page}: {len(caps)}/{len(census['states'])} states, root {' | '.join(roots)}, "
+                   f"elements {sorted({c['elements'] for c in caps})}")
+    out += [f"  capture-failed: {f}" for f in failed]
+    out.append(f"reads: {len(reads)} tokens (" + ", ".join(f"{k} {v}" for k, v in by_kind.items()) + ")")
+    above = sorted(k for k, r in reads.items() if r["kind"] == "var" and r["defined"] != "wrapper")
+    out.append(f"defined-above-wrapper: {len(above)} (informational; resolved outside the wrapper today)")
+    allowed = {r["hex"] for r in contract.values() if r["hex"]} | set(DIRECTION_A.values())
+    outside = sorted((h for h in colors if h[:7] not in allowed), key=lambda h: -colors[h]["count"])
+    for h in outside:
+        c = colors[h]
+        out.append(f"  colour {h} x{c['count']} {c['prop']} e.g. {c['selector']} on {c['page']} {c['state']}")
+    missing = sorted(k for k, r in reads.items() if (r["kind"], r["token"]) not in contract)
+    tail = f" (INCOMPLETE: {len(failed)} captures failed, not a verdict)" if failed or not census["captures"] else ""
+    out.append(f"read-but-undefined: {len(missing)}{tail}")
+    for k in missing:
+        r = reads[k]
+        out.append(f"  {r['kind']} {r['token']}  e.g. {r['selector']} on {r['page']} {r['state']}")
+    out.append(f"colors-outside-direction-a: {len(outside)}")
+    return out
+
+
+def dump(census: dict, path: Path) -> None:
+    """JSON Lines: a header, then one read / colour per line, sorted by token."""
+    head = {k: census[k] for k in ("schema", "pages", "states", "captures", "failed")}
+    lines = [json.dumps(head, sort_keys=True)]
+    lines += [json.dumps({"read": k, **census["reads"][k]}, sort_keys=True) for k in sorted(census["reads"])]
+    lines += [json.dumps({"color": k, **census["colors"][k]}, sort_keys=True) for k in sorted(census["colors"])]
+    path.write_text("\n".join(lines) + "\n")
+
+
+def load(path: Path) -> dict:
+    head, *rows = [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
+    census = {**head, "reads": {}, "colors": {}}
+    for row in rows:
+        key = "read" if "read" in row else "color"
+        census[key + "s"][row.pop(key)] = row
+    return census
+
+
+# In-page half: evaluated by Playwright with the packages/core component names.
+PROBE_JS = r"""
+(core) => {
+  const CORE = new Set(core);
+  // The colour-bearing property families of src/test/r19-colour-guard.ts
+  // (COLOUR_BEARING), minus geometry, plus the face and its weight: Direction A
+  // fixes one weight per face (refuter finding, 2026-10-08).
+  const BEARING = /background|border|outline|shadow|fill|stroke|caret|accent|decoration|column-rule|scrollbar|stop-color|flood-color|lighting-color|filter|text-emphasis|tap-highlight|text-stroke/;
+  const GEOMETRY = /radius|width|style|collapse|spacing|offset|size|position|repeat|origin|clip|attachment|blend|slice|outset|mode|type|opacity|fill-rule|dash|linecap|linejoin|miterlimit|thickness|decoration-line|gutter|shape|composite/;
+  const PAINT = { test: (p) => /^(color|-webkit-text-fill-color|font|font-family|font-weight)$/.test(p) || (BEARING.test(p) && !GEOMETRY.test(p)) };
+  const family = (p) => p.startsWith("font") ? "font" : p.includes("shadow") ? "shadow"
+    : /^(color|-webkit-text-fill-color)$/.test(p) ? "color" : p.match(BEARING)[0].replace(/-color$/, "");
+  const INHERITED = new Set(["color", "font", "fill", "stroke", "caret"]);
+  const DYNAMIC = /:(hover|focus-visible|focus-within|focus|active|visited|target)(?![\w-])/g;
+  const PSEUDO = /::?(before|after|placeholder|selection|marker|first-line|first-letter|backdrop|file-selector-button|-webkit-[\w-]+|-moz-[\w-]+)(?![\w-])/g;
+  // A pseudo-element that exists only on some elements is tested on those.
+  const ONLY = { placeholder: ":is(input, textarea)", "file-selector-button": 'input[type="file"]', marker: ":is(li, summary)" };
+  const KEYWORD = new Set(["transparent", "currentcolor", "inherit", "initial", "unset", "revert", "revert-layer", "none"]);
+  const isColour = new Map();
+
+  const splitTop = (s, sep) => {
+    const out = []; let depth = 0, quote = "", cur = "";
+    for (const ch of s) {
+      if (quote) { if (ch === quote) quote = ""; }
+      else if (ch === '"' || ch === "'") quote = ch;
+      else if (ch === "(" || ch === "[") depth++;
+      else if (ch === ")" || ch === "]") depth = Math.max(0, depth - 1);
+      if (ch === sep && !depth && !quote) { out.push(cur); cur = ""; } else cur += ch;
+    }
+    out.push(cur);
+    return out.map((x) => x.trim()).filter(Boolean);
+  };
+  const decls = (text) => splitTop(text || "", ";").map((d) => {
+    const i = d.indexOf(":");
+    if (i <= 0) return null;
+    const p = d.slice(0, i).trim();
+    return [p.startsWith("--") ? p : p.toLowerCase(), d.slice(i + 1).replace(/!important\s*$/i, "").trim()];
+  }).filter(Boolean);
+  const vars = (v) => [...v.matchAll(/var\(\s*(--[\w-]+)/g)].map((m) => m[1]);
+  const literal = (v) => /#[0-9a-f]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix|light-dark)\(|gradient\(/i.test(v)
+    || v.split(/[^a-zA-Z-]+/).some((w) => {
+      if (!w || w.startsWith("-") || KEYWORD.has(w.toLowerCase())) return false;
+      if (!isColour.has(w)) isColour.set(w, CSS.supports("color", w));
+      return isColour.get(w);
+    });
+  const keywordOnly = (v) => v.split(/\s+/).every((w) => KEYWORD.has(w.toLowerCase()));
+  const paints = (p, v) => !p.startsWith("--") && PAINT.test(p)
+    && (vars(v).length > 0 || (family(p) === "font" ? !keywordOnly(v) : literal(v)));
+  const valid = (s) => { try { document.documentElement.matches(s); return true; } catch (e) { return false; } };
+  const testable = (part) => {
+    let t = part.replace(DYNAMIC, "")
+      .replace(new RegExp("(^|[\\s>+~])" + PSEUDO.source, "g"), (m, pre, name) => pre + (ONLY[name] || "*"))
+      .replace(PSEUDO, (m, name) => ONLY[name] || "").trim();
+    if (!t || /[>+~(,]$/.test(t)) t += "*";
+    return valid(t) ? t : valid(part) ? part : null;
+  };
+
+  const RULES = [], skipped = [];
+  const add = (sel, style) => {
+    const ds = decls(style.cssText);
+    const paint = ds.filter(([p, v]) => paints(p, v));
+    const defs = ds.filter(([p]) => p.startsWith("--"));
+    if (!paint.length && !defs.length) return;
+    for (const part of splitTop(sel, ",")) {
+      const t = testable(part);
+      if (t) RULES.push({ part: part.replace(/\s+/g, " "), t, paint, defs, cond: t !== part });
+    }
+  };
+  const nest = (parent, sel) => {
+    if (!parent) return sel;
+    const p = splitTop(parent, ",").length > 1 ? `:is(${parent})` : parent;
+    return splitTop(sel, ",").map((s) => (s.includes("&") ? s.replaceAll("&", p) : `${p} ${s}`)).join(", ");
+  };
+  const mediaOk = (t) => /hover|pointer/.test(t) || matchMedia(t).matches;
+  const walk = (list, parent) => {
+    for (const r of list) {
+      const T = r.constructor.name;
+      if (T === "CSSStyleRule") {
+        const sel = nest(parent, r.selectorText);
+        add(sel, r.style);
+        if (r.cssRules && r.cssRules.length) walk(r.cssRules, sel);
+      } else if (T === "CSSNestedDeclarations") { if (parent) add(parent, r.style); }
+      else if (T === "CSSMediaRule") { if (mediaOk(r.media.mediaText)) walk(r.cssRules, parent); }
+      else if (T === "CSSSupportsRule") { if (CSS.supports(r.conditionText)) walk(r.cssRules, parent); }
+      else if (T === "CSSImportRule") { try { walk(r.styleSheet.cssRules, parent); } catch (e) { skipped.push(r.href); } }
+      else if (T === "CSSKeyframesRule" || T === "CSSFontFaceRule" || T === "CSSPropertyRule") continue;
+      else if (r.cssRules) walk(r.cssRules, parent);
+    }
+  };
+  for (const s of [...document.styleSheets, ...(document.adoptedStyleSheets || [])]) {
+    try { walk(s.cssRules, null); } catch (e) { skipped.push(s.href || "inline"); }
+  }
+
+  const root = document.querySelector('[data-presentation="r19"]') || document.querySelector(".r19-direction-a")
+    || [...document.querySelectorAll("[style]")].find((e) => /--font-montserrat/.test(e.getAttribute("style")))
+    || (document.getElementById("kbli-explorer-jsonld") || {}).parentElement;
+  if (!root) return { root: null };
+  const how = root.matches('[data-presentation="r19"]') ? "[data-presentation=r19]"
+    : root.matches(".r19-direction-a") ? ".r19-direction-a"
+    : root.querySelector(":scope > #kbli-explorer-jsonld") ? "parent of #kbli-explorer-jsonld" : "[style*=--font-montserrat]";
+
+  const info = new Map();
+  const get = (el) => {
+    if (info.has(el)) return info.get(el);
+    const rules = RULES.filter((r) => el.matches(r.t));
+    const defs = new Map();
+    const def = (p, v) => (defs.get(p) || defs.set(p, []).get(p)).push(v);
+    for (const r of rules) for (const [p, v] of r.defs) def(p, { v, part: r.part });
+    const inline = decls(el.getAttribute("style"));
+    for (const [p, v] of inline) if (p.startsWith("--")) def(p, { v, part: null });
+    const x = { rules, defs, inline };
+    info.set(el, x);
+    return x;
+  };
+  const definer = (el, tok) => {
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+      const d = get(n).defs.get(tok);
+      if (d) return [n, d];
+    }
+    return [null, []];
+  };
+  const paintOf = (el) => {
+    const out = [];
+    for (const r of get(el).rules) for (const [p, v] of r.paint) out.push({ p, fam: family(p), v, part: r.part, cond: r.cond });
+    for (const [p, v] of get(el).inline) if (paints(p, v)) out.push({ p, fam: family(p), v, part: null });
+    if (el instanceof SVGElement) {
+      for (const a of ["fill", "stroke", "stop-color"]) {
+        const v = el.getAttribute(a);
+        if (v && (vars(v).length || literal(v))) out.push({ fam: family(a), v, part: null });
+      }
+    }
+    // A filter paints colour only through drop-shadow(); blur and grayscale do not.
+    const cs = getComputedStyle(el);
+    return out.filter((x) => x.fam !== "filter" || cs.getPropertyValue(x.p).includes("drop-shadow"));
+  };
+  const path = (el) => {
+    const bits = [];
+    for (let n = el; n && n.nodeType === 1 && bits.length < 3; n = n.parentElement) {
+      const cls = typeof n.className === "string" ? n.className.trim().split(/\s+/).filter(Boolean).slice(0, 2) : [];
+      bits.unshift(n.tagName.toLowerCase() + cls.map((c) => "." + c).join(""));
+      if (n === root) break;
+    }
+    return bits.join(">");
+  };
+  const owner = (el) => {
+    const k = Object.keys(el).find((x) => x.startsWith("__reactFiber$"));
+    const o = k && el[k] && el[k]._debugOwner;
+    return o ? o.name || (o.type && (o.type.displayName || o.type.name)) || null : null;
+  };
+  const classOf = (el, part) => {
+    for (const c of el.classList) {
+      const e = "." + CSS.escape(c);
+      let rest = part.slice(e.length);
+      if (!part.startsWith(e) || /^[\w\\-]/.test(rest)) continue;
+      while (/\([^()]*\)/.test(rest)) rest = rest.replace(/\([^()]*\)/g, "");
+      if (!/[\s>+~]/.test(rest)) return c; // the class sits on the subject compound
+    }
+    return null;
+  };
+
+  const reads = new Map();
+  const note = (kind, token, selector, defined) => {
+    const key = kind + " " + token;
+    const prev = reads.get(key);
+    if (!prev) reads.set(key, { kind, token, selector, defined, count: 1 });
+    else {
+      prev.count++;
+      const rank = { wrapper: 0, above: 1, nowhere: 2 };
+      if (defined && rank[defined] > rank[prev.defined]) Object.assign(prev, { defined, selector });
+    }
+  };
+  const follow = (el, value, selector, seen) => {
+    for (const tok of vars(value)) {
+      if (seen.has(tok)) continue;
+      seen.add(tok);
+      const [n, defs] = definer(el, tok);
+      if (!tok.startsWith("--tw-")) note("var", tok, selector, !n ? "nowhere" : root.contains(n) ? "wrapper" : "above");
+      for (const d of defs) {
+        // A colour that reaches the paint through Tailwind plumbing (from-*,
+        // ring-*, shadow-<colour>) is decided by the class that sets --tw-*.
+        const c = tok.startsWith("--tw-") && d.part && classOf(n, d.part);
+        if (c) note("class", c, selector, null);
+        follow(n, d.v, selector, seen);
+      }
+    }
+  };
+  const record = (src, p, selector, who) => {
+    if (p.part) {
+      const c = classOf(src, p.part);
+      if (c) note("class", c, selector, null);
+      else note("rule", `${p.part} { ${p.fam} }`, selector, null);
+    }
+    if (who && CORE.has(who)) note("component", `${who} { ${p.fam} }`, selector, null);
+    follow(src, p.v, selector, new Set());
+  };
+
+  const elements = [root, ...root.querySelectorAll("*")];
+  for (const el of elements) {
+    const selector = path(el);
+    const own = paintOf(el);
+    const who = owner(el);
+    for (const p of own) record(el, p, selector, who);
+    if (el !== root) continue;
+    // The wrapper inherits what it does not paint itself, and shows the
+    // backdrop of the nearest painted ancestor when its own is transparent.
+    // A :hover or ::pseudo paint is not the element's own resting paint.
+    const have = new Set(own.filter((p) => !p.cond).map((p) => p.fam));
+    if (getComputedStyle(root).backgroundColor !== "rgba(0, 0, 0, 0)") have.add("background");
+    for (let n = root.parentElement; n; n = n.parentElement) {
+      const got = new Set();
+      for (const p of paintOf(n)) {
+        if (have.has(p.fam) || !(INHERITED.has(p.fam) || p.fam === "background")) continue;
+        record(n, p, `${path(n)} (inherited by the wrapper)`, owner(n));
+        if (!p.cond) got.add(p.fam);
+      }
+      got.forEach((f) => have.add(f));
+    }
+  }
+
+  const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+  const rgba = (c) => {
+    const m = c.match(/^rgba?\(([^)]+)\)$/);
+    if (m) {
+      const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+      return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+    }
+    ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = "#000"; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1);
+    const d = ctx.getImageData(0, 0, 1, 1).data;
+    return [d[0], d[1], d[2], d[3] / 255];
+  };
+  const hex = ([r, g, b, a]) => "#" + [r, g, b].map((x) => Math.round(x).toString(16).padStart(2, "0")).join("").toUpperCase()
+    + (a < 1 ? "/" + a.toFixed(2) : "");
+  const colors = new Map();
+  const seeColour = (value, prop, el) => {
+    const c = rgba(value);
+    if (c[3] === 0) return;
+    const h = hex(c);
+    const prev = colors.get(h);
+    if (prev) prev.count++;
+    else colors.set(h, { hex: h, prop, selector: path(el), count: 1 });
+  };
+  for (const el of elements) {
+    const cs = getComputedStyle(el);
+    const box = el.getBoundingClientRect();
+    if (cs.display === "none" || cs.visibility === "hidden" || box.width < 1 || box.height < 1) continue;
+    if ([...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) seeColour(cs.color, "color", el);
+    seeColour(cs.backgroundColor, "background-color", el);
+    for (const side of ["top", "right", "bottom", "left"]) {
+      const b = (k) => cs.getPropertyValue(`border-${side}-${k}`);
+      if (parseFloat(b("width")) > 0 && !["none", "hidden"].includes(b("style"))) {
+        seeColour(b("color"), "border-color", el);
+      }
+    }
+  }
+  return { root: how, elements: elements.length, rules: RULES.length, skipped, reads: [...reads.values()], colors: [...colors.values()] };
+}
+"""
+
+
+def _load_measure():
+    spec = importlib.util.spec_from_file_location("measure", MEASURE)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def core_components() -> list[str]:
+    names = set()
+    for f in (ROOT / "packages/core/components").glob("*.tsx"):
+        if ".test." not in f.name:
+            names.add(f.stem)
+            names |= set(re.findall(r"export (?:const|function) ([A-Z]\w+)", f.read_text()))
+    return sorted(names)
+
+
+def _wait(url: str, seconds: int) -> None:
+    end = time.time() + seconds
+    while time.time() < end:
+        try:
+            with urllib.request.urlopen(url, timeout=120) as r:
+                if r.status < 400:
+                    return
+        except Exception:
+            time.sleep(2)
+    raise SystemExit(f"dev server never answered {url}")
+
+
+def live(base: str) -> dict:
+    from playwright.sync_api import sync_playwright
+    m = _load_measure()
+    census: dict = {"schema": 1, "pages": PAGES, "captures": [], "failed": [], "reads": {}, "colors": {},
+                    "states": [f"{v}/{t}" for v in m.VIEWPORTS for t in m.THEMES]}
+    core = core_components()
+    for p in PAGES:
+        _wait(base + p, 300)
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=m.CHROME)
+        for page_path in PAGES:
+            for vname, (w, h) in m.VIEWPORTS.items():
+                for tname, (scheme, forced) in m.THEMES.items():
+                    state = f"{vname}/{tname}"
+                    ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+                    page = ctx.new_page()
+                    try:
+                        resp = page.goto(base + page_path, wait_until="load", timeout=180000)
+                        if resp is None or resp.status >= 400:
+                            raise RuntimeError(f"HTTP {resp.status if resp else 'none'}")
+                        page.wait_for_timeout(250)
+                        if forced:
+                            page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
+                        page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
+                        page.wait_for_timeout(1500)
+                        res = page.evaluate(PROBE_JS, core)
+                        if not res.get("root"):
+                            raise RuntimeError("wrapper root not found")
+                    except Exception as exc:  # a failed capture must never read as clean
+                        census["failed"].append(f"{page_path} {state}: {exc}".splitlines()[0][:200])
+                        ctx.close()
+                        continue
+                    census["captures"].append({"page": page_path, "state": state, "root": res["root"],
+                                               "elements": res["elements"], "rules": res["rules"],
+                                               "skipped_sheets": res["skipped"]})
+                    for r in res["reads"]:
+                        key = f"{r['kind']} {r['token']}"
+                        prev = census["reads"].get(key)
+                        if prev is None:
+                            census["reads"][key] = {**r, "page": page_path, "state": state}
+                        else:
+                            prev["count"] += r["count"]
+                            if RANK[r["defined"]] > RANK[prev["defined"]]:
+                                prev.update(defined=r["defined"], selector=r["selector"], page=page_path, state=state)
+                    for c in res["colors"]:
+                        prev = census["colors"].get(c["hex"])
+                        if prev is None:
+                            census["colors"][c["hex"]] = {**{k: c[k] for k in ("count", "prop", "selector")},
+                                                          "page": page_path, "state": state}
+                        else:
+                            prev["count"] += c["count"]
+                    ctx.close()
+        browser.close()
+    return census
+
+
+def start_server(port: int) -> subprocess.Popen:
+    with socket.socket() as probe:  # never census some other checkout's server
+        if probe.connect_ex(("127.0.0.1", port)) == 0:
+            raise SystemExit(f"port {port} already serves: pass --base-url to reuse it or --port")
+    log = open(os.environ.get("CENSUS_DEV_LOG", os.devnull), "w")
+    return subprocess.Popen([str(ROOT / "node_modules/.bin/next"), "dev", "--webpack", "-p", str(port)],
+                            cwd=ROOT / "apps/mouth", stdout=log, stderr=subprocess.STDOUT,
+                            start_new_session=True, env={**os.environ, "NEXT_TELEMETRY_DISABLED": "1"})
+
+
+def stop_server(proc: subprocess.Popen) -> None:
+    for sig, wait in ((signal.SIGTERM, 15), (signal.SIGKILL, 5)):
+        try:
+            os.killpg(proc.pid, sig)
+            proc.wait(timeout=wait)
+            return
+        except (ProcessLookupError, subprocess.TimeoutExpired):
+            continue
+
+
+def main(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--base-url", help="reuse a running dev server (default: start one)")
+    ap.add_argument("--port", type=int, default=3419)
+    ap.add_argument("--json", type=Path, help="dump the census (JSON Lines) for offline replay")
+    ap.add_argument("--replay", type=Path, help="judge a dumped census, no browser")
+    ap.add_argument("--contract", type=Path, default=CONTRACT)
+    a = ap.parse_args(argv)
+    try:
+        contract = parse_contract(a.contract.read_text())
+    except ContractError as exc:
+        print(f"contract: REFUSED — {exc}")
+        print("read-but-undefined: REFUSED (contract unreadable)")
+        return 2
+    if a.replay:
+        census = load(a.replay)
+    else:
+        proc = None if a.base_url else start_server(a.port)
+        try:
+            census = live((a.base_url or f"http://localhost:{a.port}").rstrip("/"))
+        finally:
+            if proc:
+                stop_server(proc)
+    if a.json:
+        dump(census, a.json)
+    print("\n".join(verdict(census, contract)))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

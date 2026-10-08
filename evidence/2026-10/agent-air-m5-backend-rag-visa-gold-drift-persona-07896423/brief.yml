@@ -1,0 +1,19 @@
+gear: 2
+gear_reason: >-
+  Test corpus, one research note, one CI observer and one ledger row. No runtime, pack or engine
+  byte changes; the offline gold replay is deterministic and runs in seconds.
+mission: >-
+  Explain and cure the three gold-persona divergences (1, 9, 10) of the Visa Oracle gold replay
+  against the signed seq-25 pack.
+objective: >-
+  The offline gold replay against the highest signed pack matches 18 of 20 personas, the only
+  unexplained divergences are personas 9 and 10, and each is traced to a rule or its absence.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_evaluator_gold.py (persona 1 production expectation)
+  - apps/backend-rag/backend/tests/scripts/visa_engine/test_gold_replay_driver.py (floor 18, ceiling 2, set {9, 10}, persona 1 guilt and innocence test)
+  - research/visa/2026-10-08-gold-corpus-drift-personas-1-9-10.md
+  - scripts/ci/observe_visa_gold_replay.py (new, bites observer)
+  - .claude/skills/modus/PENDING-ARMS.md (item 4 partly done, new item 6 for personas 9 and 10)
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

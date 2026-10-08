@@ -1,0 +1,21 @@
+gear: 2
+gear_reason: >-
+  New tooling under apps/backend-rag/** (a ledger-consuming fold that derives the next signed-pack
+  source from a signed anchor). No pack is signed, activated or merged by this change, no schema or
+  production data moves; the blast radius is the visa-engine scripts directory and its tests.
+ruling: >-
+  Team lead mandate, 2026-10-08 — turn the one-off seq-25 fold into a sequence-agnostic fold so the
+  weekly re-attestation organ can derive pack N+1 without a new script per sequence.
+mission: >-
+  Generic ledger fold: anchor sequence and digest read from the verified signed bundle, previous
+  portal stamp read from the anchor, every seq-25 guard preserved.
+objective: >-
+  Folding the real seq-24 pair with the real seq-25 ledger and the seq-25 metadata reproduces
+  payload digest 603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11 (pragma allowlist secret),
+  and each way a ledger or an anchor can lie is refused by a test.
+scope:
+  - apps/backend-rag/backend/scripts/visa_engine/fold_pack_generic.py (new)
+  - apps/backend-rag/backend/tests/scripts/visa_engine/test_fold_pack.py (new)
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

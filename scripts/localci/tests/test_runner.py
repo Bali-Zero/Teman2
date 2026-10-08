@@ -628,6 +628,20 @@ def test_unclassified_paths_is_not_a_failure(tmp_path):
     assert plan["checks"]["tests.backend_shards"]["status"] == "BLOCKED"
 
 
+def test_a_legacy_record_is_superseded_once_the_context_that_runs_its_job_is_planned(tmp_path):
+    """tests.backend_shards said "no local backend runner exists"; once ctx.backend-tests is planned, that check carries the job's
+    verdict (here BLOCKED: --isolation none), and the legacy record stops claiming one of its own."""
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "zzz_unmapped_dir/notes.txt": "x\n"})   # run_all: the legacy rule says BLOCKED
+    ctx = {"name": "Backend Tests (Python)", "workflow_file": ".github/workflows/tests.yml", "job_id": "backend-tests", "mapping": "executed",
+           "local": {"check": "ctx.backend-tests", "where": "container", "expressions": True, "steps": [{"workflow_step": "t"}]}}
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])))
+    checks = json.loads((fx["run"] / "state" / "plan.json").read_text())["checks"]
+    assert checks["ctx.backend-tests"]["status"] == "BLOCKED"
+    assert checks["tests.backend_shards"]["status"] == "NOT_APPLICABLE"
+    assert checks["tests.backend_shards"]["reason"].startswith("superseded by ctx.backend-tests")
+    assert checks["tests.frontend_mouth"]["status"] == "BLOCKED"   # its context is not planned here: the old rule stands
+
+
 def test_classified_diff_stays_pass(fx):
     fr.plan(fx)
     cm = json.loads((fx["run"] / "state" / "plan.json").read_text())["checks"]["policy.change_map"]

@@ -17,16 +17,28 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    GetJsonSchemaHandler,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from backend.services.visa_engine.enums import SourceAuthorityType, SourceStatus
 from backend.services.visa_engine.models import (
     ApplicantFacts,
     Decision,
     ExtensionPolicy,
+    PricingKey,
     ProductCode,
     ProductNames,
     ReasonCode,
@@ -440,6 +452,19 @@ class CandidateProcessingTimelineDTO(BaseModel):
         return self
 
 
+class DurationOptionDisplayDTO(BaseModel):
+    """One purchasable stay length with its own exact catalogue resolution."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    days: int = Field(ge=1, le=36_500, strict=True)
+    pricing_key: PricingKey
+    selected: bool
+    status: PricingAvailabilityStatus
+    reason_code: ReasonCode
+    amount_idr: int | None = Field(default=None, ge=0, strict=True)
+
+
 class CandidateDisplayDTO(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -453,6 +478,32 @@ class CandidateDisplayDTO(BaseModel):
     processing_timeline: CandidateProcessingTimelineDTO
     availability: CandidateAvailabilityDTO
     pricing: CandidatePricingDTO
+    # Additive: present only for products that offer more than one stay length.
+    selected_duration_days: int | None = Field(default=None, ge=1, le=36_500, strict=True)
+    duration_options: tuple[DurationOptionDisplayDTO, ...] | None = Field(
+        default=None, min_length=1
+    )
+    # True when the requested stay is longer than the last option: the permit is then
+    # extended, so the quote covers the last option only.
+    extension_required: bool | None = Field(default=None, strict=True)
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        # The wrap serializer below returns a dict, which Pydantic documents as an
+        # untyped schema. The OpenAPI contract must keep the typed shape.
+        return handler({key: value for key, value in core_schema.items() if key != "serialization"})
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_duration_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # A product without options answers exactly as it did before these fields
+        # existed: the public response must not grow null keys the old contract rejects.
+        data = handler(self)
+        if self.duration_options is None:
+            for key in ("selected_duration_days", "duration_options", "extension_required"):
+                data.pop(key, None)
+        return data
 
 
 class VisaOracleDisplayDTO(BaseModel):
@@ -595,6 +646,7 @@ __all__ = [
     "CandidateStayPolicyDTO",
     "DisclosedReviewFlag",
     "DocumentationStatus",
+    "DurationOptionDisplayDTO",
     "EvaluateResponseMode",
     "PricingAvailabilityStatus",
     "ProcessingTimelineStatus",
