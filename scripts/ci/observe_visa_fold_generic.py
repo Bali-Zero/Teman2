@@ -10,6 +10,10 @@ read ledger with the seq-25 metadata, writes into a private tempdir, and exits 0
 only if the printed payload digest is the committed seq-25 one.
 """
 
+# bites-observable — no arguments; every path and command is a literal below and the
+# only file written lives in a tempdir this script creates, so an invoker cannot name a
+# program to run, a file to write or a database to reach.
+
 from __future__ import annotations
 
 import json
