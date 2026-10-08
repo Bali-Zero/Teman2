@@ -840,12 +840,12 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(message).toContain("Visa on Arrival");
   });
 
-  it("still surfaces an unmapped code instead of blanking it", () => {
-    // A code with no copy must stay visible: hiding it would conceal a new
-    // rule rather than reveal it.
-    expect(firstReasonEn("SOMETHING_NEW_FROM_A_FUTURE_PACK")).toBe(
-      "Verified reason: SOMETHING_NEW_FROM_A_FUTURE_PACK",
-    );
+  it("never prints a raw code for an unmapped reason", () => {
+    // A client must not read a machine code; the unmapped fallback is a
+    // plain sentence.
+    const copy = firstReasonEn("SOMETHING_NEW_FROM_A_FUTURE_PACK");
+    expect(copy).toBe("Confirmed by the rules for this visa.");
+    expect(copy).not.toContain("SOMETHING_NEW_FROM_A_FUTURE_PACK");
   });
 
   it("states the Article 60(2) KITAP prerequisites without inventing status tenure", () => {
@@ -2167,7 +2167,7 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
     [
       "rule",
       "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
-      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan ini; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
     ],
     [
       "checked",
@@ -2274,7 +2274,7 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
     expect(outcome.reviewReasons).toHaveLength(1);
     expect(outcome.reviewReasons[0].message).toEqual({
       en: "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own, so a person needs to confirm it before a path can be confirmed.",
-      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
+      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan ini, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
     });
     expect(
       REVIEW_REASON_ELEMENTS.DISCLOSED_ACTIVITY_BOUNDARY_REVIEW,

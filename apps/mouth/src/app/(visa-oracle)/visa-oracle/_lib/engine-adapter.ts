@@ -40,37 +40,113 @@ const KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY = text(
   "Pasal 60 ayat (2) UU 6/2011 mensyaratkan usia perkawinan mencapai dua tahun dan Pernyataan Integrasi yang ditandatangani untuk KITAP perkawinan campur. Penilaian ini belum memverifikasi kedua prasyarat tersebut.",
 );
 
+type OutcomeStateName = OutcomeViewModel["state"];
+
+const step = (
+  id: string,
+  en: string,
+  idText: string,
+): OutcomeNextSteps[number] => ({ id, title: text(en, idText) });
+
+const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
+  SUPPORTED_CANDIDATES: [
+    step(
+      "keep-summary",
+      "Keep this summary — it carries your decision reference.",
+      "Simpan ringkasan ini — di dalamnya ada referensi keputusan Anda.",
+    ),
+    step(
+      "send-to-advisor",
+      "Send it to a Bali Zero advisor on WhatsApp: we confirm the documents, the timing and the quote.",
+      "Kirim ke konsultan Bali Zero lewat WhatsApp: kami memastikan dokumen, jadwal, dan penawarannya.",
+    ),
+    step(
+      "book-after-timing",
+      "Book travel only once the timing is confirmed.",
+      "Pesan perjalanan hanya setelah jadwalnya dipastikan.",
+    ),
+  ],
+  NEEDS_INPUT: [
+    step(
+      "answer-missing-details",
+      "Answer the missing details above.",
+      "Lengkapi detail yang masih kurang di atas.",
+    ),
+    step(
+      "run-check-again",
+      "Run the check again — it takes a minute.",
+      "Jalankan pemeriksaan lagi — hanya butuh semenit.",
+    ),
+    step(
+      "send-what-you-have",
+      "Or send what you have to a Bali Zero advisor.",
+      "Atau kirim yang sudah ada ke konsultan Bali Zero.",
+    ),
+  ],
+  HUMAN_REVIEW_REQUIRED: [
+    step(
+      "send-for-review",
+      "Send this summary to a Bali Zero advisor — a person reviews your case.",
+      "Kirim ringkasan ini ke konsultan Bali Zero — kasus Anda ditinjau oleh seseorang.",
+    ),
+    step(
+      "keep-documents-at-hand",
+      "Keep your passport and current permit details at hand.",
+      "Siapkan paspor dan detail izin tinggal Anda saat ini.",
+    ),
+    step(
+      "no-travel-before-review",
+      "Don't book travel until the review is done.",
+      "Jangan pesan perjalanan sebelum peninjauan selesai.",
+    ),
+  ],
+  NO_SUPPORTED_PATH: [
+    step(
+      "see-open-door",
+      "Look at the open door above, if one is shown.",
+      "Lihat pintu yang terbuka di atas, jika ada.",
+    ),
+    step(
+      "talk-to-advisor",
+      "Talk to a Bali Zero advisor — some routes depend on facts this tool does not ask.",
+      "Bicarakan dengan konsultan Bali Zero — beberapa jalur bergantung pada hal yang tidak ditanyakan alat ini.",
+    ),
+    step(
+      "keep-summary-checked",
+      "Keep this summary: it shows exactly what was checked.",
+      "Simpan ringkasan ini: isinya menunjukkan apa saja yang sudah diperiksa.",
+    ),
+  ],
+  TEMPORARILY_UNAVAILABLE: [
+    step(
+      "try-again-soon",
+      "Try again in a few minutes.",
+      "Coba lagi dalam beberapa menit.",
+    ),
+    step(
+      "send-answers-if-failing",
+      "If it keeps failing, send your answers to a Bali Zero advisor.",
+      "Jika masih gagal, kirim jawaban Anda ke konsultan Bali Zero.",
+    ),
+    step(
+      "no-travel-on-unfinished-check",
+      "Don't book travel on an unfinished check.",
+      "Jangan pesan perjalanan berdasarkan pemeriksaan yang belum selesai.",
+    ),
+  ],
+};
+
 /**
- * Exported so the gold-oracle SHADOW baseline (`preview-adapter.ts`'s
- * `buildGoldOraclePreviewOutcome`) reproduces the SAME public next-steps
- * copy a real `NEEDS_INPUT` engine outcome carries — `shadow-parity.ts`'s
- * `semanticProjection` compares `nextSteps` verbatim (id/title/body), so an
- * independently-worded preview copy would read as a permanent mismatch on
- * this axis alone, even when state and missing facts agree exactly.
+ * The single source of the "What to do next" list for every outcome state.
+ * Exported so the gold-oracle SHADOW baseline (`preview-adapter.ts`) and the
+ * client-side fallbacks (`outcome-fallbacks.ts`) reproduce the SAME copy a
+ * real engine outcome carries — `shadow-parity.ts`'s `semanticProjection`
+ * compares `nextSteps` verbatim (id/title/body), so independently worded
+ * copy would read as a permanent mismatch on this axis alone.
  */
-export const NEXT_STEPS: OutcomeNextSteps = [
-  {
-    id: "review-decision",
-    title: text(
-      "Review the verified decision and its assumptions",
-      "Tinjau keputusan terverifikasi dan asumsinya",
-    ),
-  },
-  {
-    id: "prepare-verified-items",
-    title: text(
-      "Prepare only documents marked as verified",
-      "Siapkan hanya dokumen yang ditandai terverifikasi",
-    ),
-  },
-  {
-    id: "consented-advice",
-    title: text(
-      "Choose whether to contact a Bali Zero advisor",
-      "Pilih apakah akan menghubungi konsultan Bali Zero",
-    ),
-  },
-];
+export function nextStepsFor(state: OutcomeStateName): OutcomeNextSteps {
+  return NEXT_STEPS_BY_STATE[state];
+}
 
 const PUBLIC_ID = /^[a-z0-9]{16,20}$/;
 
@@ -490,8 +566,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Anda menyampaikan bahwa salah satu kewarganegaraan Anda adalah Indonesia. Warga negara Indonesia tidak mengajukan visa untuk masuk ke Indonesia.",
   ),
   AGE_BELOW_55: text(
-    "The retirement routes in our verified catalogue start at age 55, and the date of birth you gave is below that.",
-    "Jalur pensiun dalam katalog terverifikasi kami dimulai pada usia 55 tahun, dan tanggal lahir yang Anda berikan berada di bawah usia tersebut.",
+    "The retirement routes in our catalogue start at age 55, and the date of birth you gave is below that.",
+    "Jalur pensiun dalam katalog kami dimulai pada usia 55 tahun, dan tanggal lahir yang Anda berikan berada di bawah usia tersebut.",
   ),
   INDONESIAN_EMPLOYER_NOT_ALLOWED: text(
     "You told us your employer is an Indonesian entity. The remote-work route covers work done for an employer outside Indonesia.",
@@ -523,8 +599,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // no product COVERS the declared purposes, which is what the engine
   // actually established.
   OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES: text(
-    "No visa in our verified catalogue covers the purpose you described. Bali Zero can review your case and suggest what to do next.",
-    "Tidak ada visa dalam katalog terverifikasi kami yang mencakup tujuan yang Anda sebutkan. Bali Zero dapat meninjau kasus Anda dan menyarankan langkah selanjutnya.",
+    "No visa in our catalogue covers the purpose you described. Bali Zero can review your case and suggest what to do next.",
+    "Tidak ada visa dalam katalog kami yang mencakup tujuan yang Anda sebutkan. Bali Zero dapat meninjau kasus Anda dan menyarankan langkah selanjutnya.",
   ),
 
   // --- seq-21 (W-VO-S21, 2026-09-13): the nine products that had NO
@@ -612,8 +688,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // own `SESSION_COPY.{en,id}.consultant` string, proved in
   // engine-adapter.test.ts by reading that file's source text.
   DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH: text(
-    "One of your answers, listed below, is one our verified rules cannot assess, so this tool cannot name a visa path for it. A consultant can assess it with you: use “Talk to a consultant” to arrange a consultation.",
-    "Salah satu jawaban Anda, yang tercantum di bawah, tidak dapat dinilai oleh aturan terverifikasi kami, sehingga alat ini tidak dapat menyebutkan jalur visa untuk jawaban tersebut. Konsultan kami dapat menilainya bersama Anda: gunakan tombol “Bicara dengan konsultan” untuk mengatur konsultasi.",
+    "One of your answers, listed below, is one our rules cannot assess, so this tool cannot name a visa path for it. A consultant can assess it with you: use “Talk to a consultant” to arrange a consultation.",
+    "Salah satu jawaban Anda, yang tercantum di bawah, tidak dapat dinilai oleh aturan kami, sehingga alat ini tidak dapat menyebutkan jalur visa untuk jawaban tersebut. Konsultan kami dapat menilainya bersama Anda: gunakan tombol “Bicara dengan konsultan” untuk mengatur konsultasi.",
   ),
   // Slice A8-2 (2026-09-24): copy for the 10 EXCLUDE codes seq-23 adds beyond
   // signed seq-22, owed ahead of the A9 signing/activation so a real applicant
@@ -725,11 +801,14 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   ),
 };
 
+/** What a client reads for a reason code with no written copy: never a raw code. */
+export const UNMAPPED_REASON_COPY: LocalizedText = text(
+  "Confirmed by the rules for this visa.",
+  "Dipastikan oleh aturan untuk visa ini.",
+);
+
 function reasonMessage(code: string): LocalizedText {
-  return (
-    SUPPORT_REASON_COPY[code] ??
-    text(`Verified reason: ${code}`, `Alasan terverifikasi: ${code}`)
-  );
+  return SUPPORT_REASON_COPY[code] ?? UNMAPPED_REASON_COPY;
 }
 
 // D3-3 gate finding, owner escalation 2026-09-13: `el.e33.property-basis` /
@@ -915,8 +994,8 @@ export function buildNoPathDoors(
       productCode: "E33",
       productName: DOOR_PRODUCT_NAMES.E33,
       message: text(
-        "The deposit or property you declared already meets what the verified rules ask for the Second Home route, and that route carries no age condition: switching keeps everything you told us before your purpose and asks the few questions that route needs.",
-        "Deposito atau properti yang Anda nyatakan sudah memenuhi syarat aturan terverifikasi untuk jalur Rumah Kedua, dan jalur tersebut tidak memiliki syarat usia: beralih ke sana tetap menyimpan semua jawaban sebelum tujuan Anda dan hanya menanyakan beberapa pertanyaan yang dibutuhkan jalur itu.",
+        "The deposit or property you declared already meets what the rules ask for the Second Home route, and that route carries no age condition: switching keeps everything you told us before your purpose and asks the few questions that route needs.",
+        "Deposito atau properti yang Anda nyatakan sudah memenuhi syarat aturan untuk jalur Rumah Kedua, dan jalur tersebut tidak memiliki syarat usia: beralih ke sana tetap menyimpan semua jawaban sebelum tujuan Anda dan hanya menanyakan beberapa pertanyaan yang dibutuhkan jalur itu.",
       ),
       actionable: true,
     });
@@ -953,8 +1032,8 @@ function paidActivityWithoutIndonesianPayerReason(
     return undefined;
   }
   return text(
-    "You told us you will be paid for activity in Indonesia, and that the payer is not an Indonesian entity. No visa in our verified catalogue covers that combination.",
-    "Anda menyampaikan bahwa Anda akan dibayar untuk aktivitas di Indonesia, dan bahwa pihak yang membayar bukan badan usaha Indonesia. Tidak ada visa dalam katalog terverifikasi kami yang mencakup kombinasi tersebut.",
+    "You told us you will be paid for activity in Indonesia, and that the payer is not an Indonesian entity. No visa in our catalogue covers that combination.",
+    "Anda menyampaikan bahwa Anda akan dibayar untuk aktivitas di Indonesia, dan bahwa pihak yang membayar bukan badan usaha Indonesia. Tidak ada visa dalam katalog kami yang mencakup kombinasi tersebut.",
   );
 }
 
@@ -1044,7 +1123,7 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // available, and flagged as a split candidate in the PR-O2 report.
   DISCLOSED_ACTIVITY_BOUNDARY_REVIEW: text(
     "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own, so a person needs to confirm it before a path can be confirmed.",
-    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
+    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan ini, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
   ),
 
   // --- QW-4b (PR-O2, D1): the 29 codes that previously fell back to
@@ -1244,7 +1323,7 @@ export const REVIEW_REASON_ELEMENTS: Partial<
   DISCLOSED_CRIMINAL_RECORD_REVIEW: {
     rule: text(
       "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
-      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan ini; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
     ),
     checked: text(
       "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
@@ -1321,8 +1400,8 @@ function reviewReason(
 // first so the channel is never dark on the day that PR opens.
 export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
   OBSOLETE_PRODUCT_CODE: text(
-    "The visa code you referenced has been retired and reclassified. Your result reflects the current, equivalent product in our verified catalogue.",
-    "Kode visa yang Anda referensikan sudah tidak berlaku dan telah diklasifikasikan ulang. Hasil Anda mencerminkan produk setara yang berlaku saat ini dalam katalog terverifikasi kami.",
+    "The visa code you referenced has been retired and reclassified. Your result reflects the current, equivalent product in our catalogue.",
+    "Kode visa yang Anda referensikan sudah tidak berlaku dan telah diklasifikasikan ulang. Hasil Anda mencerminkan produk setara yang berlaku saat ini dalam katalog kami.",
   ),
   DISCLOSED_HEALTH_CONCERN_CONDITION: text(
     "You flagged a health concern in your disclosures. Our team reviews the details with you before submission and lets you know what supporting documentation, if any, to prepare.",
@@ -1546,13 +1625,7 @@ function timeline(candidate: VisaOracleCandidateDisplay): OutcomeTimeline {
       note: reasonMessage(value.reason_code),
     };
   }
-  return {
-    status: "UNAVAILABLE",
-    message: text(
-      "A verified operational processing timeline is not available.",
-      "Timeline proses operasional terverifikasi belum tersedia.",
-    ),
-  };
+  return { status: "UNAVAILABLE" };
 }
 
 function documents(candidate: VisaOracleCandidateDisplay): OutcomeDocument[] {
@@ -1599,22 +1672,14 @@ function price(
       ...(quote.valid_until ? { validUntilIso: quote.valid_until } : {}),
     };
   }
+  const advisorConfirms = text(
+    "The price for this path is confirmed by a Bali Zero advisor.",
+    "Harga jalur ini dipastikan oleh konsultan Bali Zero.",
+  );
   if (candidate.pricing.status === "CONTACT_REQUIRED") {
-    return {
-      status: "CONTACT_REQUIRED",
-      message: text(
-        "An all-inclusive verified quote requires contact.",
-        "Penawaran all-inclusive terverifikasi memerlukan kontak.",
-      ),
-    };
+    return { status: "CONTACT_REQUIRED", message: advisorConfirms };
   }
-  return {
-    status: "UNAVAILABLE",
-    message: text(
-      "No verified all-inclusive price is available.",
-      "Harga all-inclusive terverifikasi belum tersedia.",
-    ),
-  };
+  return { status: "UNAVAILABLE", message: advisorConfirms };
 }
 
 /**
@@ -1822,7 +1887,6 @@ function buildValidatedOutcome(
     assessment,
     assumptions: options.assumptions ?? [],
     sources,
-    nextSteps: NEXT_STEPS,
     conditions,
   };
 
@@ -1881,6 +1945,7 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "SUPPORTED_CANDIDATES",
+        nextSteps: nextStepsFor("SUPPORTED_CANDIDATES"),
         pathsRemaining: candidates.length,
         candidates: nonEmpty(candidates),
       };
@@ -1889,6 +1954,7 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "NEEDS_INPUT",
+        nextSteps: nextStepsFor("NEEDS_INPUT"),
         candidates: [],
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         missingInputs: nonEmpty(
@@ -1921,6 +1987,7 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "HUMAN_REVIEW_REQUIRED",
+        nextSteps: nextStepsFor("HUMAN_REVIEW_REQUIRED"),
         candidates: [],
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         reviewReasons: response.decision.review_reasons.map((item) => {
@@ -1932,6 +1999,7 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "NO_SUPPORTED_PATH",
+        nextSteps: nextStepsFor("NO_SUPPORTED_PATH"),
         candidates: [],
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
@@ -1955,13 +2023,14 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "TEMPORARILY_UNAVAILABLE",
+        nextSteps: nextStepsFor("TEMPORARILY_UNAVAILABLE"),
         candidates: [],
         pathsRemaining: 0,
         outage: {
           code: response.decision.outage?.code ?? "ENGINE_UNAVAILABLE",
           message: text(
-            "The verified decision service is temporarily unavailable. No visa path is shown.",
-            "Layanan keputusan terverifikasi sementara tidak tersedia. Tidak ada jalur visa yang ditampilkan.",
+            "The decision service is temporarily unavailable. No visa path is shown.",
+            "Layanan keputusan sementara tidak tersedia. Tidak ada jalur visa yang ditampilkan.",
           ),
           retryable: response.decision.outage?.retryable ?? false,
         },

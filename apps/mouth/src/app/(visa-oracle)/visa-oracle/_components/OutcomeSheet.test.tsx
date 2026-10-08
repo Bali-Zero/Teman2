@@ -43,14 +43,14 @@ const DISCLAIMER_EN = [
   "This is a private decision-support tool, not a government service.",
   "The result reflects only the facts you entered and the dated sources shown above.",
   "It is not an approval, a guarantee, or a filing.",
-  "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
+  "If you disclosed a criminal record, or gave an answer these rules cannot assess, a Bali Zero advisor reviews your case before any path is confirmed. Any other disclosure appears on your result as a condition we check with you before filing. The decision is always Ditjen Imigrasi’s, never this tool’s.",
 ];
 
 const DISCLAIMER_ID = [
   "Ini alat bantu keputusan privat, bukan layanan pemerintah.",
   "Hasil ini hanya mencerminkan data yang Anda masukkan dan sumber bertanggal yang ditampilkan di atas.",
   "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
-  "Catatan kriminal yang Anda ungkapkan diteruskan ke seseorang sebelum jalur mana pun dikonfirmasi; jawaban yang tidak dapat dinilai oleh aturan yang telah disahkan diteruskan ke seseorang atau diarahkan ke konsultasi. Pengungkapan lainnya tetap melekat pada hasil Anda sebagai kondisi bernama yang diperiksa tim kami bersama Anda sebelum pengajuan. Ditjen Imigrasi yang memutuskan, bukan alat ini.",
+  "Jika Anda mengungkapkan catatan kriminal, atau memberi jawaban yang tidak dapat dinilai oleh aturan ini, konsultan Bali Zero meninjau kasus Anda sebelum jalur mana pun dikonfirmasi. Pengungkapan lainnya tampil pada hasil Anda sebagai syarat yang kami periksa bersama Anda sebelum pengajuan. Keputusan selalu di tangan Ditjen Imigrasi, bukan alat ini.",
 ];
 
 const text = (en: string, id = en) => ({ en, id });
@@ -225,7 +225,7 @@ describe("OutcomeSheet — honest five-state rendering", () => {
 
   it.each(ALL_STATES)("renders exactly three next steps on %s", (state) => {
     const { container } = renderSheet(state);
-    expect(screen.getByText("Your next 3 steps")).toBeInTheDocument();
+    expect(screen.getByText("What to do next")).toBeInTheDocument();
     expect(container.querySelectorAll(".oracle-next-steps > li")).toHaveLength(
       3,
     );
@@ -237,7 +237,7 @@ describe("OutcomeSheet — honest five-state rendering", () => {
       screen.getByRole("heading", { name: "Test path" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Legal eligibility")).toBeInTheDocument();
-    expect(screen.getByText("Operational availability")).toBeInTheDocument();
+    expect(screen.getByText("Current availability")).toBeInTheDocument();
     expect(screen.getByText("Bali Zero service")).toBeInTheDocument();
     expect(document.querySelector(".oracle-price__value")).toHaveTextContent(
       /IDR.*1,000,000/,
@@ -358,7 +358,9 @@ describe("OutcomeSheet — honest five-state rendering", () => {
       <OutcomeSheet language="en" outcome={networkOutcome} facts={FACTS} />,
     );
     expect(screen.getAllByText("Decision service unavailable")).toHaveLength(2);
-    expect(screen.getByText(/engine did not answer/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/couldn’t reach the decision service/i),
+    ).toBeInTheDocument();
   });
 
   it("renders SHADOW as verification-only with no decision receipt or candidates", () => {
@@ -379,7 +381,7 @@ describe("OutcomeSheet — honest five-state rendering", () => {
 
     expect(screen.getByText("Verification mode")).toBeInTheDocument();
     expect(
-      screen.getByText(/no engine candidate is exposed/i),
+      screen.getByText(/recorded for verification; no visa path is shown/i),
     ).toBeInTheDocument();
     expect(screen.queryByText("Test path")).not.toBeInTheDocument();
     expect(screen.queryByText(/decision reference/i)).not.toBeInTheDocument();
@@ -417,10 +419,7 @@ describe("OutcomeSheet — honest five-state rendering", () => {
     }
     const unavailableCandidate: OutcomeCandidate = {
       ...CANDIDATE,
-      timeline: {
-        status: "UNAVAILABLE",
-        message: text("No verified operational calendar"),
-      },
+      timeline: { status: "UNAVAILABLE" },
       operational: { status: "UNKNOWN", reasons: [] },
       service: { status: "UNKNOWN", reasons: [] },
       documents: [],
@@ -434,17 +433,14 @@ describe("OutcomeSheet — honest five-state rendering", () => {
     );
 
     expect(
-      screen.getByText("Timeline unavailable — no verified calendar estimate"),
+      screen.getByText(/Processing times are set by Ditjen Imigrasi/),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("No verified operational calendar"),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/Timeline unavailable/i)).not.toBeInTheDocument();
+    expect(document.querySelector(".oracle-unverified")).toBeNull();
     expect(
       screen.queryByRole("heading", { name: "Documents you’ll want ready" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Operational availability"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Current availability")).not.toBeInTheDocument();
     expect(screen.queryByText("Bali Zero service")).not.toBeInTheDocument();
     expect(screen.queryByText(/26 July 2026/)).not.toBeInTheDocument();
   });
@@ -538,7 +534,7 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
         "Bagaimana hal ini ditangani",
       ],
       [
-        "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+        "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan ini; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
         "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
         "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
         "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
@@ -1179,7 +1175,7 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
 
     expect(
       screen.queryByText(
-        "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+        "Your case needs a Bali Zero advisor’s review — nothing was guessed on your behalf.",
       ),
     ).toBeNull();
     expect(
@@ -1217,7 +1213,7 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
 
     expect(
       screen.getByText(
-        "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+        "Your case needs a Bali Zero advisor’s review — nothing was guessed on your behalf.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -1240,7 +1236,7 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
 
     expect(
       screen.getByText(
-        "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+        "Your case needs a Bali Zero advisor’s review — nothing was guessed on your behalf.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -1254,7 +1250,7 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
     const { container } = renderReview([SECOND_HOME_STUDIO_REVIEW_REASON_CODE]);
     const disclaimer = container.querySelector(".oracle-disclaimer");
     expect(disclaimer).toHaveTextContent(
-      "This hold is about a declared guarantee figure below the Second Home (E33) thresholds — the Second Home Studio shows the routes and the numbers for your case.",
+      "This result is about a declared guarantee figure below the Second Home (E33) thresholds — the Second Home Studio shows the routes and the numbers for your case.",
     );
     expect(container.textContent).not.toMatch(/\ba human\b/i);
     expect(container.textContent).not.toMatch(/consultant/i);
@@ -1284,7 +1280,7 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
     ]);
     const disclaimer = container.querySelector(".oracle-disclaimer");
     expect(disclaimer).toHaveTextContent(
-      "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
+      "If you disclosed a criminal record, or gave an answer these rules cannot assess, a Bali Zero advisor reviews your case before any path is confirmed. Any other disclosure appears on your result as a condition we check with you before filing. The decision is always Ditjen Imigrasi’s, never this tool’s.",
     );
   });
 
@@ -1361,7 +1357,7 @@ describe("OutcomeSheet — conditions on the verdict", () => {
       outcome,
     });
     expect(container.textContent).toContain(
-      "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
+      "If you disclosed a criminal record, or gave an answer these rules cannot assess, a Bali Zero advisor reviews your case before any path is confirmed. Any other disclosure appears on your result as a condition we check with you before filing. The decision is always Ditjen Imigrasi’s, never this tool’s.",
     );
   });
 
@@ -1461,12 +1457,37 @@ describe("OutcomeSheet — ENDING-ROUND friendly ending surface (E4/E5/E6/E7/E8)
     return clone.textContent ?? "";
   }
 
-  it("E4: drops the Rank chip for a 01/02-style index, and never shows it on screen", () => {
+  it("E4: drops the Rank chip, and shows no path counter for a single candidate", () => {
     const { container } = renderSheet("SUPPORTED_CANDIDATES");
     expect(screen.queryByText(/^Rank /)).toBeNull();
-    expect(
-      container.querySelector(".oracle-candidate-card__index"),
-    ).toHaveTextContent("01/01");
+    expect(container.querySelector(".oracle-candidate-card__index")).toBeNull();
+    expect(screen.queryByText(/^Path \d+ of \d+$/)).toBeNull();
+  });
+
+  it('shows "Path 1 of 2" counters only when several candidates are shown', () => {
+    const base = outcomeFor("SUPPORTED_CANDIDATES");
+    if (base.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("test fixture state mismatch");
+    }
+    const second: OutcomeCandidate = {
+      ...CANDIDATE,
+      id: "second",
+      code: "TEST-2",
+      rank: 2,
+    };
+    render(
+      <OutcomeSheet
+        language="en"
+        outcome={{
+          ...base,
+          candidates: [CANDIDATE, second],
+          pathsRemaining: 2,
+        }}
+        facts={FACTS}
+      />,
+    );
+    expect(screen.getByText("Path 1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("Path 2 of 2")).toBeInTheDocument();
   });
 
   it("E4: collapses the axis badges and support reasons behind a closed 'Why this fits' disclosure", () => {
@@ -1564,10 +1585,10 @@ describe("OutcomeSheet — ENDING-ROUND friendly ending surface (E4/E5/E6/E7/E8)
       .map((el) => el.textContent)
       .join(" ");
     expect(printOnlyText).toMatch(/observed/i);
-    expect(printOnlyText).toMatch(/evaluated/i);
+    expect(printOnlyText).toMatch(/Checked on .+ against the sources above\./);
     const visible = visibleText(container);
     expect(visible).not.toMatch(/observed/i);
-    expect(visible).not.toMatch(/evaluated/i);
+    expect(visible).not.toMatch(/Checked on/);
   });
 
   it("E1/E4/E5/E7/E8: never shows 'deterministic engine', 'Rank ', or a raw code on the SUPPORTED_CANDIDATES screen", () => {

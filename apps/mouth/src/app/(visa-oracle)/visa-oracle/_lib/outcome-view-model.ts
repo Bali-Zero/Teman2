@@ -119,7 +119,8 @@ export type OutcomeTimeline =
     }
   | {
       status: "CONTACT_REQUIRED" | "UNAVAILABLE";
-      message: LocalizedText;
+      /** Optional: the renderer owns the pending-timeline sentence. */
+      message?: LocalizedText;
     };
 
 export interface OutcomeDocument {

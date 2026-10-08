@@ -1,51 +1,27 @@
+import { nextStepsFor } from "./engine-adapter";
 import type {
   HumanReviewOutcome,
   InterviewAssumption,
   LocalizedText,
-  OutcomeNextSteps,
   OutcomeReason,
   TemporarilyUnavailableOutcome,
 } from "./outcome-view-model";
-
-const NEXT_STEPS: OutcomeNextSteps = [
-  {
-    id: "review-answers",
-    title: {
-      en: "Review the answers and assumptions",
-      id: "Tinjau jawaban dan asumsi",
-    },
-  },
-  {
-    id: "save-receipt",
-    title: {
-      en: "Save or print this safety receipt",
-      id: "Simpan atau cetak tanda terima keamanan ini",
-    },
-  },
-  {
-    id: "consented-contact",
-    title: {
-      en: "Contact an advisor only if you choose to share it",
-      id: "Hubungi konsultan hanya jika Anda memilih untuk membagikannya",
-    },
-  },
-];
 
 const OUTAGE_MESSAGES: Record<
   "CLIENT_GUARD" | "NETWORK_FAILURE" | "SHADOW",
   LocalizedText
 > = {
   CLIENT_GUARD: {
-    en: "This interview contains information the verified API cannot represent safely. No evaluation was submitted.",
-    id: "Wawancara ini berisi informasi yang tidak dapat direpresentasikan dengan aman oleh API terverifikasi. Tidak ada evaluasi yang dikirim.",
+    en: "This interview contains information that cannot be handled safely here. No evaluation was submitted.",
+    id: "Wawancara ini berisi informasi yang tidak dapat ditangani dengan aman di sini. Tidak ada evaluasi yang dikirim.",
   },
   NETWORK_FAILURE: {
-    en: "The verified decision service did not return a usable response. No visa path is shown.",
-    id: "Layanan keputusan terverifikasi tidak memberikan respons yang dapat digunakan. Tidak ada jalur visa yang ditampilkan.",
+    en: "The decision service did not return a usable response. No visa path is shown.",
+    id: "Layanan keputusan tidak memberikan respons yang dapat digunakan. Tidak ada jalur visa yang ditampilkan.",
   },
   SHADOW: {
-    en: "Your assessment was submitted for verification. Public engine enforcement is disabled, so no visa path is shown.",
-    id: "Asesmen Anda telah dikirim untuk verifikasi. Penegakan mesin publik dinonaktifkan, sehingga tidak ada jalur visa yang ditampilkan.",
+    en: "Your assessment was recorded for verification; no visa path is shown in this mode.",
+    id: "Penilaian Anda dicatat untuk verifikasi; tidak ada jalur visa yang ditampilkan dalam mode ini.",
   },
 };
 
@@ -67,7 +43,7 @@ function buildFallback(
     pathsRemaining: 0,
     assumptions: options.assumptions ?? [],
     sources: [],
-    nextSteps: NEXT_STEPS,
+    nextSteps: nextStepsFor("TEMPORARILY_UNAVAILABLE"),
     conditions: [],
     outage: {
       code: options.code,
@@ -129,7 +105,7 @@ export function buildDegradedHumanReviewOutcome(options: {
     pathsRemaining: 1,
     assumptions: options.assumptions ?? [],
     sources: [],
-    nextSteps: NEXT_STEPS,
+    nextSteps: nextStepsFor("HUMAN_REVIEW_REQUIRED"),
     conditions: [],
     reviewReasons: [DEGRADED_REVIEW_REASON],
   };
