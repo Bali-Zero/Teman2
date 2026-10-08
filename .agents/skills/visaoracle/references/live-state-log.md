@@ -7,6 +7,23 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-08 (afternoon, M5, result-page copy PR-C1 #8102 `11f47173a0`, organ hardening PR-O2
+  #8100 `fa15d34f7e`): **the client stops seeing internal copy, and the organ's first false
+  positive is cured.** Zero's own test of the public page (PDF, 18:32 WITA) showed the price
+  subtitle "One number — no PNBP-vs-fee split, ever." and the block "Timeline unavailable";
+  the backend always emits `processing_timeline.status = UNKNOWN` (`evaluate_path.py:993`).
+  Ruling: internal comments never reach the client, every final response is refined. #8102
+  (successor of #8099, closed when the armed branch froze on red Playwright pins): copy EN+ID per
+  outcome state, `nextStepsFor(state, {studioOnly})`, timeline pending paragraph, print fixes,
+  census test, CI observer; Codex 5 findings (HIGH Studio-only steps cured), Gemini 1 retracted,
+  fresh Opus gate PASS. #8100 (gear 2, Codex two rounds, 8 findings cured, fresh Opus gate PASS):
+  the first organ run (10:11Z) halted on page dcf08e19, a false positive (fingerprint identical to
+  the seq-25 text; stamp `content_sha256` is not that fingerprint, 0 of 18), so the fold now uses a
+  judgement-bound baseline and keeps each ledger under `~/.local/state/nuzantara/`. Kickstart:
+  second real run 2026-10-08T12:46:36Z→12:47:06Z on Pro (post-#8100): `fingerprint: 18 of 18 pages identical to their attested read — judged without a model`, judge skipped, ledger kept at `~/.local/state/nuzantara/visa-reattestation/ledgers/20261008T124704Z-seq26` (18 `judge: fingerprint` rows); the fold then refused on a latent guard: `created_at '2026-10-08T12:47:00Z' precedes the ledger's latest evidence 2026-10-08T12:47:02Z` — `fold_pack_generic.py:440` truncates the default created_at to the minute (pre-existing), exposed by the fingerprint speed; PR-O3 in flight. Prove-live C1: Vercel production build `mouth-fe7se9ybt` of commit 11f4717 went live at 13:10Z on its own (should-build judges against the live commit; no promote was needed); headless replay of Zero's scenario on https://balizero.com/visa-oracle at 2026-10-08T13:25:49Z: Supported, E31B, 'Timeline' → 'Processing times are set by Ditjen Imigrasi and vary by office and season. Your Bali Zero advisor confirms the calendar for your case before you book travel.', under the price 'Government fees and Bali Zero service included.', 'What to do next' = Keep this summary / Send it to a Bali Zero advisor on WhatsApp / Book travel only once the timing is confirmed, the new disclaimer, no '01/01' counter, zero banned strings in the page text (artefacts result-20261008T132549Z.{txt,pdf,png} in the session scratchpad). Open: C2 duration rendering, C3
+  catalogue processing time (owner), C4 interview copy; O2 LOW notes: `judged_read` vs `judged_at`,
+  late alert on a copy failure of a successful run. Third organ run 2026-10-08T13:21:15Z→13:21:42Z (post-#8104 `b6a1cd01d9`): fingerprint 18/18, fold OK, candidate PR #8105 unsigned. seq-27 candidate = organ PR #8105: a signing session reviews the attestation note, signs on M5, runs the ceremony, merges — before 2026-11-08T13:32:18Z (the candidate's own boundary moves to ~2026-11-09).
+
 - 2026-10-08 (M5, W141 pending chain closed, seq-26, PR #8081 `f43d4ac0a0`): **the
   1- or 2-year ITAS is now a duration option on E31A–J, and the re-attestation lane is built.**
   Chain, all merged 2026-10-08: #8061 `128421062c` seq-24 observer retired; #8062 `2ef5d23c92`

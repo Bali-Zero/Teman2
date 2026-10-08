@@ -149,6 +149,21 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (#8075, weekly Monday 02:00 WITA on Pro) armed 2026-10-08T10:11:50Z (bootstrap + kickstart on Pro); sentinel v2 (#8064) re-alerts a
   persistent STALE inside 24 h. Prove-live: sentinel `OK pack 26 (stale 0, approaching 0)`, gold replay `18/20 live on seq-26, unexplained {9, 10} only, HUMAN_REVIEW_REQUIRED 0`.
   Open: seq-27 before the boundary, personas 9/10 ruling (`.claude/skills/modus/PENDING-ARMS.md`).
+- **Result-page copy (PR-C1 #8102, merge `11f47173a0`):** the client no longer sees internal
+  wording. Zero's own test (2026-10-08) exposed the price subtitle "One number — no PNBP-vs-fee
+  split, ever." and a "Timeline unavailable" block, because the backend always emits
+  `processing_timeline.status = UNKNOWN` (`evaluate_path.py:993`). Copy EN+ID is rewritten per
+  outcome state, `nextStepsFor(state, {studioOnly})` drives the steps, the timeline shows a
+  pending paragraph. Guard: census test `_lib/client-copy.test.ts` and CI observer
+  `scripts/ci/observe_visa_oracle_client_copy.py`. Mouth merge lands STAGED: `vercel promote`
+  is the deploy. Prove-live: Vercel production build `mouth-fe7se9ybt` of commit 11f4717 went live at 13:10Z on its own (should-build judges against the live commit; no promote was needed); headless replay of Zero's scenario on https://balizero.com/visa-oracle at 2026-10-08T13:25:49Z: Supported, E31B, 'Timeline' → 'Processing times are set by Ditjen Imigrasi and vary by office and season. Your Bali Zero advisor confirms the calendar for your case before you book travel.', under the price 'Government fees and Bali Zero service included.', 'What to do next' = Keep this summary / Send it to a Bali Zero advisor on WhatsApp / Book travel only once the timing is confirmed, the new disclaimer, no '01/01' counter, zero banned strings in the page text (artefacts result-20261008T132549Z.{txt,pdf,png} in the session scratchpad). Open: C2 duration rendering, C3 catalogue
+  processing time (owner decision), C4 interview helper copy still saying "engine".
+- **Organ hardening (PR-O2 #8100, merge `fa15d34f7e`):** the first real run halted on a judge
+  false positive (page dcf08e19, fingerprint `d760e4e8371f04cd…` equal to the seq-25 text). The
+  fold now re-proves against a judgement-bound fingerprint baseline and downgrades
+  `changed`-on-identical to `none`; each run's ledger is kept under
+  `~/.local/state/nuzantara/visa-reattestation/ledgers/` (8 kept). Kickstart result:
+  second real run 2026-10-08T12:46:36Z→12:47:06Z on Pro (post-#8100): `fingerprint: 18 of 18 pages identical to their attested read — judged without a model`, judge skipped, ledger kept at `~/.local/state/nuzantara/visa-reattestation/ledgers/20261008T124704Z-seq26` (18 `judge: fingerprint` rows); the fold then refused on a latent guard: `created_at '2026-10-08T12:47:00Z' precedes the ledger's latest evidence 2026-10-08T12:47:02Z` — `fold_pack_generic.py:440` truncates the default created_at to the minute (pre-existing), exposed by the fingerprint speed; PR-O3 in flight. Two LOW notes open in `PENDING-ARMS.md`. Third run (13:21Z, post-#8104) folded OK; seq-27 candidate = organ PR #8105: a signing session reviews the attestation note, signs on M5, runs the ceremony, merges — before 2026-11-08T13:32:18Z (the candidate's own boundary moves to ~2026-11-09).
 - **SUPERSEDED by seq-26 (history): seq-25 (activated 2026-10-07T13:49Z from M5, PR #8026, merge
   `2a1e00e0d3`).** The 18 `OFFICIAL_PORTAL` stamps of seq-23 went STALE on 2026-10-01T13:18Z
   and every product answered `HUMAN_REVIEW_REQUIRED` with an empty candidate list for six days
