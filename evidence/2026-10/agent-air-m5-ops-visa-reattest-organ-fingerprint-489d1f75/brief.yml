@@ -1,0 +1,27 @@
+slug: agent-air-m5-ops-visa-reattest-organ-fingerprint-489d1f75
+gear: 2
+gear_reason: >-
+  Hardening of an existing scheduled organ after its first real run, about 400 hand-written lines
+  plus tests. It touches the fold's validation (one added refusal), so it is
+  above a Gear-1 fix, but it adds no new surface and signs or activates nothing.
+ruling: >-
+  Team lead mandate PR-O2, 2026-10-08 - the first real run of pro.visa_reattestation produced a judge
+  false positive on a byte-identical page and lost the evidence of the failed run.
+mission: >-
+  The re-attestation organ proves an unchanged page by visible-text fingerprint before it asks the
+  Claude judge, refuses a changed verdict on an unchanged fingerprint in the fold, and keeps the ledger
+  of every run outside the worktree it removes.
+objective: >-
+  An offline run of the organ on a fresh ledger identical to the attested seq-25 ledger judges all 18
+  pages by fingerprint without calling the judge; a changed verdict on an identical fingerprint is
+  refused by the fold naming both fingerprints; a failed run leaves its ledger on disk, named in the
+  board row, and only the newest 8 copies are kept.
+scope:
+  - apps/backend-rag/backend/scripts/visa_engine/baseline_ledger.py (new - fingerprint and baseline logic)
+  - apps/backend-rag/backend/scripts/visa_engine/fold_pack_generic.py (--baseline-ledger-dir, contradiction refusal)
+  - scripts/visa_reattestation_organ.py (fingerprint pass, --baseline-ledger-dir, ledger retention)
+  - docs/runbooks/visa-reattestation-organ.md (flag, baseline rule, failed ledgers, first real run note)
+  - tests for all of the above
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

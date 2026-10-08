@@ -1,0 +1,131 @@
+# Gear-2 evidence pack - PR-O2, the re-attestation organ proves an unchanged page by fingerprint and keeps its ledger.
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Team lead mandate PR-O2, 2026-10-08 - harden the weekly re-attestation organ after its first real run.
+mission: >-
+  The organ writes the "none" judgement itself for a page whose visible-text fingerprint equals the
+  attested baseline, calls the judge only for the rest, and keeps the ledger of every run.
+lanes:
+  - lane: reattest-organ-fingerprint-build
+    role: build
+    seat: Claude Fable 5.1 implementer (worktree ops-visa-reattest-organ-fingerprint).
+  - lane: reattest-organ-fingerprint-review
+    role: review
+    seat: >-
+      codex GPT-5.6 (read-only sandbox), verdict BLOCK with 8 findings on commit cb3c2f8a6a, all cured in
+      the commit that follows it. ok: true. Verdict file:
+      /private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/codex-o2-verdict.txt
+  - lane: reattest-organ-fingerprint-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed 2026-10-07 seq-25 read ledger, whose 18 saved texts are the baseline, run through the
+      organ end to end in a scratch state dir; no notebook, no memory, no regulatory figure asserted.
+    nb: research/visa/2026-10-07-freshness-restamp-seq25/
+    query_hash: "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
+    note: query_hash = the seq-25 payload digest the fold must still reproduce when its judgements are fingerprint rows
+pii_scan: clean
+bites:
+  consumer: >-
+    the weekly launchd run of com.nuzantara.visa-reattestation on Pro and the CI step that
+    runs the offline observer.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_reattest_organ.py
+  expect: "contains:offline run produced unsigned seq-25 candidate"
+decisions:
+  - id: D-judgement-schema
+    decision: >-
+      The brief said verdict "same"; the ledger schema the fold reads is semantic_change "none".
+      The organ writes "none" with judge "fingerprint", so the fold needs no relaxation.
+  - id: D-baseline-rule
+    decision: >-
+      The attested read is proven, not named. A ledger qualifies when a record has in it a successful
+      receipt dated exactly at a portal verified_at stamp of the anchor pack and a judgement; two
+      qualifying ledgers make the baseline ambiguous and nothing is attested. A record's attested read is
+      the receipt bound by its latest judgement (named receipt, else the fold's judged_at rule), with its
+      own text file verified against the fingerprint. A read nobody judged attests nothing. The review's
+      first literal rule (latest receipt not after the stamp) would prove 2 of 18 pages, its second (latest
+      before created_at) lets an unjudged read win; this one proves 18 of 18 on the seq-25 ledger.
+  - id: D-wide-pytest-not-run
+    decision: >-
+      The wide pytest over the whole backend test tree was not run to completion for this pack. The two
+      focused suites below are the evidence. A wider filter showed unrelated failures in
+      services/visa_engine (database-dependent), not investigated.
+  - id: D-wrapper-untouched
+    decision: >-
+      The cron wrapper is not changed; the kept ledger path is read from the board row or state.json.
+receipts:
+  - claim: The organ suite is green, including a fingerprint-identical record never reaching the judge, a differing record reaching it, a ledger without a read at the anchor stamp giving no shortcut, the default baseline root, a copy failure keeping the worktree and saying so, a kept worktree retried and reaped only after a verified copy, relative-only symlinks, content-verified copies, and the retention cap touching only its own names.
+    cmd: PYTHONPATH=apps/backend-rag python -m pytest scripts/tests/test_visa_reattestation_organ.py
+    result: "46 passed in 25.44s"
+    exit: 0
+    ts: "2026-10-08T11:58:16Z"
+    seat: Claude Fable 5.1
+  - claim: The visa_engine suite is green, including 16 baseline_ledger tests and 7 fold tests (a proven fingerprint judgement reproduces the seq-25 digest; one on a differing page, a forged hash, or with no baseline is refused; changed on an unchanged fingerprint is downgraded and reported without a disposition; changed on a differing text stands).
+    cmd: PYTHONPATH=apps/backend-rag python -m pytest apps/backend-rag/backend/tests/scripts/visa_engine
+    result: "333 passed in 44.20s"
+    exit: 0
+    ts: "2026-10-08T11:59:03Z"
+    seat: Claude Fable 5.1
+  - claim: Under the system python 3.9 that cron uses, an offline run on a copy of the seq-25 ledger judges 18 of 18 pages by fingerprint, skips the judge, then fails at the fold only because those receipts predate the previous stamp, and keeps the ledger named in the alert.
+    cmd: bash scratchpad/e2e.sh (organ --offline --judge fake --ledger-dir <copy of the seq-25 ledger>, scratch state dir)
+    result: "fingerprint: 18 of 18 pages identical to their attested read; judge skipped; failed at 'fold' only because those receipts predate the previous stamp; ledger kept"
+    exit: 0
+    ts: "2026-10-08T11:24:17Z"
+    seat: Claude Fable 5.1
+  - claim: The offline observer, which feeds the organ the seq-25 ledger with --skip-judge, still reproduces the committed seq-25 digest.
+    cmd: python3 scripts/ci/observe_visa_reattest_organ.py
+    result: "observe_visa_reattest_organ: offline run produced unsigned seq-25 candidate on organ/visa-reattest/24-2026-10-07, digest 603f777e...9d11, PR text carries Bites:"
+    exit: 0
+    ts: "2026-10-08T11:57:48Z"
+    seat: Claude Fable 5.1
+  - claim: Ruff check passes on all six touched python files.
+    cmd: ruff check <6 files>
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-10-08T11:59:05Z"
+    seat: Claude Fable 5.1
+dissent:
+  - seat: codex-gpt-5.6
+    objection: "HIGH: the baseline could be the run's own ledger or a name-sorted ledger that is not the attested one."
+    status: CONFIRMED
+    note: cured in the commit "the baseline is the proven attested read" - attested_reads, own ledger excluded by path.
+    cure: "round 2 - attested_reads qualifies a ledger only by a stamp-dated read plus a judgement, refuses an ambiguous baseline, and binds each record to its latest judgement; a read nobody judged attests nothing."
+  - seat: codex-gpt-5.6
+    objection: "HIGH: the baseline text was the newest file for the id, not the text of the attested receipt."
+    status: CONFIRMED
+    note: cured in the same commit - the text is the receipt's own text_file, verified against its fingerprint.
+    cure: "round 2 - the attested read is the receipt bound by the record's latest judgement, its text re-hashed against the fingerprint; guilt test with an unjudged later read (text B) now picks the judged text A."
+  - seat: codex-gpt-5.6
+    objection: "HIGH: the fold accepted a judge fingerprint row without re-proving it."
+    status: CONFIRMED
+    note: cured in the same commit - the fold re-proves text_sha256, fresh receipt and attested read, and refuses without a baseline root.
+  - seat: codex-gpt-5.6
+    objection: "MEDIUM: rejecting changed on an identical fingerprint lets a judge halt a fold and hides the disagreement."
+    status: CONFIRMED
+    note: cured in the same commit - downgraded to none, listed as a baseline disagreement in the fold output and the attestation note.
+    cure: "round 2 - satisfied by the two HIGH cures: the downgrade now rests on a judgement-bound attested read."
+  - seat: codex-gpt-5.6
+    objection: "MEDIUM: the baseline was resolved only when judgements were missing, not on the resume path."
+    status: CONFIRMED
+    note: cured in the same commit - attested reads are resolved and the root passed to the fold on every run.
+  - seat: codex-gpt-5.6
+    objection: "MEDIUM: the worktree was reaped even when the ledger copy failed or did not match."
+    status: CONFIRMED
+    note: cured in the same commit - the copy is verified, otherwise the worktree is kept and the board row and state.json say so.
+    cure: "round 2 - the next run retries the copy of a kept worktree first and reaps it only after a copy verified by sha256; otherwise it spares the worktree and alerts again. An absolute symlink now refuses the copy."
+  - seat: codex-gpt-5.6
+    objection: "MEDIUM: the copy dereferenced symlinks and the cap could prune directories it did not create."
+    status: CONFIRMED
+    note: cured in the same commit - symlinks kept as links, an escaping one refuses the copy, pruning only matches its own names.
+    cure: "round 2 - an absolute symlink inside the ledger refuses the copy (it would dangle once the worktree is gone); only relative links resolving inside the ledger are copied, as links. Board row names the reason."
+  - seat: codex-gpt-5.6
+    objection: "LOW: no fault injection for a failing copy."
+    status: CONFIRMED
+    note: cured in the same commit - tests for a raising copytree, a copy that does not verify, and an escaping symlink.
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+appetite_exceeded: >-
+  The Codex review returned eight findings; curing them (a proven attested-read rule, fold re-proof,
+  verified ledger copy) took one extra hour over the two declared.

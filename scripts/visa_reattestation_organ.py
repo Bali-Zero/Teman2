@@ -13,6 +13,7 @@ Exit codes: 0 done (or nothing to do), 1 judge halted on an `unsure` page,
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -37,6 +38,7 @@ BRANCH_PREFIX = "organ/visa-reattest/"
 T_MINUS = timedelta(days=7)
 DEFAULT_STATE_DIR = Path.home() / ".local" / "state" / "nuzantara" / "visa-reattestation"
 DEFAULT_BOARD = REPO_ROOT / "shared" / "escalations_pro.jsonl"
+LEDGER_KEEP = 8
 TG_NOTIFY = REPO_ROOT / "scripts" / "tg_notify.py"
 TG_SOURCE = "visa-reattestation"
 CREATED_BY = "organ.pro.visa-reattestation"
@@ -142,7 +144,8 @@ def pr_body(*, anchor_seq: int, next_seq: int, ledger_rel: str, candidate_rel: s
     ])
 
 
-def attestation_note(*, date: str, anchor_seq: int, next_seq: int, ledger_rel: str, reader: str, judge: str) -> str:
+def attestation_note(*, date: str, anchor_seq: int, next_seq: int, ledger_rel: str, reader: str, judge: str,
+                     attested: dict[str, str] | None = None, disagreements: list[dict[str, str]] | None = None) -> str:
     return "\n".join([
         "---",
         f"date: {date}",
@@ -161,6 +164,16 @@ def attestation_note(*, date: str, anchor_seq: int, next_seq: int, ledger_rel: s
         f"The organ read the OFFICIAL_PORTAL pages of the signed seq-{anchor_seq} pack as reader `{reader}`",
         f"(judge `{judge}`) and folded `{candidate_name(next_seq)}` from that ledger. Nothing here is",
         "signed or active. `verified_at` of the candidate is the earliest successful read in the ledger.",
+        "",
+        "## Attested reads used as the fingerprint baseline",
+        "",
+        *([f"- `{rid}`: {label}" for rid, label in (attested or {}).items()] or ["- none provable"]),
+        "",
+        "## Baseline disagreements",
+        "",
+        *([f"- `{d['source_record_id'][:8]}` ({d['source_key']}): reader `{d['reader']}` said `changed` on a page whose "
+           f"fingerprint `{d['fingerprint']}` equals the attested read {d['attested_read']}; downgraded to `none`."
+           for d in (disagreements or [])] or ["- none"]),
         "",
         "## Adversarial review",
         "",
@@ -303,21 +316,23 @@ def _module(stage: str, code_root: Path, repo: Path, module: str, argv: list[str
     return proc
 
 
-def reap_own_worktrees(repo: Path, state_dir: Path) -> None:
+def reap_own_worktrees(repo: Path, state_dir: Path, spare: list[Path] | None = None) -> None:
     """A hard-killed run leaves its worktree registered and its branch checked out, which
     blocks every later `worktree add -B`. The wrapper's pidfile makes this organ a singleton,
     so anything under its own state dir is an orphan."""
     root = str((state_dir / "worktrees").resolve())
     listing = _git(repo, "worktree", "list", "--porcelain", check=False).stdout
     for line in listing.splitlines():
-        if line.startswith("worktree ") and line[9:].startswith(root):
+        if line.startswith("worktree ") and line[9:].startswith(root) and (
+                Path(line[9:]).resolve() not in {p.resolve() for p in spare or []}):
             _git(repo, "worktree", "remove", "--force", line[9:], check=False)
 
 
-def ensure_worktree(args: argparse.Namespace, anchor_seq: int, branch: str, existing: bool, wt: Path) -> None:
+def ensure_worktree(args: argparse.Namespace, anchor_seq: int, branch: str, existing: bool, wt: Path,
+                    spare: list[Path] | None = None) -> None:
     repo = Path(args.repo)
     wt.parent.mkdir(parents=True, exist_ok=True)
-    reap_own_worktrees(repo, Path(args.state_dir))
+    reap_own_worktrees(repo, Path(args.state_dir), spare)
     _git(repo, "worktree", "prune")
     start = f"origin/{branch}" if existing else "origin/main"
     if existing:
@@ -326,7 +341,53 @@ def ensure_worktree(args: argparse.Namespace, anchor_seq: int, branch: str, exis
     assert_not_shared_checkout(wt)
 
 
-def read_and_judge(args: argparse.Namespace, wt: Path, code_root: Path, anchor: dict, ledger: Path, reader: str) -> None:
+def _baseline_module() -> Any:
+    """The shared fingerprint/baseline logic lives next to the fold that also uses it."""
+    backend = str(REPO_ROOT / "apps" / "backend-rag")
+    if backend not in sys.path:
+        sys.path.insert(0, backend)
+    from backend.scripts.visa_engine import baseline_ledger  # noqa: PLC0415 — needs the path above
+
+    return baseline_ledger
+
+
+def portal_records_of(signed: Path) -> list[dict[str, Any]]:
+    data = json.loads(signed.read_text(encoding="utf-8"))
+    payload = data.get("payload", data)
+    return [r for r in payload.get("source_records", []) if r.get("authority_type") == PORTAL]
+
+
+def judged_ids(ledger: Path) -> set[str]:
+    ids: set[str] = set()
+    for path in ledger.glob("*-judgements.jsonl"):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(row, dict) and row.get("source_record_id"):
+                ids.add(row["source_record_id"])
+    return ids
+
+
+def baseline_root_of(args: argparse.Namespace, code_root: Path) -> Path:
+    """`--baseline-root`, else `research/visa` of the code root. Which ledger inside it attests a
+    record is PROVEN per record (baseline_ledger.attested_reads), never named."""
+    if args.baseline_root:
+        root = Path(args.baseline_root)
+        if not root.is_dir():
+            raise OrganError("baseline", f"--baseline-root {root} is not a directory")
+        return root
+    return code_root / "research" / "visa"
+
+
+def _utc_stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def read_and_judge(args: argparse.Namespace, wt: Path, code_root: Path, anchor: dict, ledger: Path,
+                   reader: str) -> tuple[Path, dict[str, Any]]:
+    """Read the portals, judge them; returns the baseline root for the fold and the attested reads."""
     signed = wt / anchor["signed_rel"]
     ledger.mkdir(parents=True, exist_ok=True)
     if args.ledger_dir:
@@ -338,17 +399,42 @@ def read_and_judge(args: argparse.Namespace, wt: Path, code_root: Path, anchor: 
                     cwd=code_root / "apps" / "backend-rag", env=_backend_env(code_root))
         if proc.returncode != 0:
             raise OrganError("read", f"portal_read_receipt rc={proc.returncode}: {(proc.stdout + proc.stderr).strip()[-500:]}")
+    portals = portal_records_of(signed)
+    root = baseline_root_of(args, code_root)
+    bl = _baseline_module()
+    attested = bl.attested_reads(root, portals, exclude=[ledger], log=logger.warning)
+    for rid, held in sorted(attested.items()):
+        logger.info("attested read %s: %s", rid[:8], held.label())
     if args.skip_judge:
         if not list(ledger.glob("*-judgements.jsonl")):
             raise OrganError("judge", "--skip-judge but the ledger has no *-judgements.jsonl")
-    elif not judgements.is_file():
-        if not (code_root / VISA_SCRIPTS_REL / "portal_judge.py").is_file():
-            raise OrganError("judge", "portal_judge.py is absent in the code root (PR #8069 not merged yet)")
-        _module("judge", code_root, Path(args.repo), "portal_judge", ["--pack", str(signed), "--ledger-dir", str(ledger),
-                "--reader", reader, "--all", "--judge", args.judge, "--model", args.model], ok=(0,))
+        return root, attested
+    portal_ids = [r["source_record_id"] for r in portals]
+    pending = [i for i in portal_ids if i not in judged_ids(ledger)]
+    asked_all = len(pending) == len(portal_ids)
+    if attested and pending:
+        rows = bl.fingerprint_judgements(ledger, pending, attested, reader=reader, judged_at=_utc_stamp())
+        if rows:
+            with judgements.open("a", encoding="utf-8") as out:
+                out.writelines(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
+        proven = {r["source_record_id"] for r in rows}
+        logger.info("fingerprint: %d of %d pages identical to their attested read — judged without a model",
+                    len(proven), len(pending))
+        asked_all = asked_all and not proven
+        pending = [i for i in pending if i not in proven]
+    if not pending:
+        logger.info("judge skipped: every portal record already has a judgement")
+        return root, attested
+    if not (code_root / VISA_SCRIPTS_REL / "portal_judge.py").is_file():
+        raise OrganError("judge", "portal_judge.py is absent in the code root (PR #8069 not merged yet)")
+    which = ["--all"] if asked_all else ["--ids", ",".join(pending)]
+    _module("judge", code_root, Path(args.repo), "portal_judge", ["--pack", str(signed), "--ledger-dir", str(ledger),
+            "--reader", reader, *which, "--judge", args.judge, "--model", args.model], ok=(0,))
+    return root, attested
 
 
-def fold(args: argparse.Namespace, wt: Path, code_root: Path, anchor: dict, ledger: Path, reader: str, now: datetime) -> tuple[Path, str]:
+def fold(args: argparse.Namespace, wt: Path, code_root: Path, anchor: dict, ledger: Path, reader: str, now: datetime,
+         baseline_root: Path | None = None) -> tuple[Path, str, list[dict[str, str]]]:
     out = ledger / candidate_name(anchor["seq"] + 1)
     argv = ["--anchor-source", str(wt / anchor["source_rel"]), "--anchor-signed", str(wt / anchor["signed_rel"]),
             "--ledger-dir", str(ledger), "--output", str(out),
@@ -356,11 +442,111 @@ def fold(args: argparse.Namespace, wt: Path, code_root: Path, anchor: dict, ledg
             "--created-by", args.fold_created_by or CREATED_BY, "--verified-by", args.fold_verified_by or reader]
     if args.fold_created_at:
         argv += ["--created-at", args.fold_created_at]
+    if baseline_root is not None:
+        argv += ["--baseline-root", str(baseline_root)]
     if args.judge == "fake" or args.fold_allow_fake:
         argv.append("--allow-fake-reader")
     proc = _module("fold", code_root, Path(args.repo), "fold_pack_generic", argv)
     sha = next((ln.rsplit("= ", 1)[1].strip() for ln in proc.stdout.splitlines() if "payload_sha256 =" in ln), "")
-    return out, sha
+    line = next((ln for ln in proc.stdout.splitlines() if "baseline_disagreements =" in ln), "")
+    try:
+        disagreements = json.loads(line.rsplit("= ", 1)[1]) if line else []
+    except json.JSONDecodeError:
+        disagreements = []
+    return out, sha, disagreements
+
+
+def _manifest(directory: Path) -> dict[str, tuple[str, str]]:
+    """Every entry with its content: size and sha256 for files, the target for links."""
+    out: dict[str, tuple[str, str]] = {}
+    for p in sorted(directory.rglob("*")):
+        rel = str(p.relative_to(directory))
+        if p.is_symlink():
+            out[rel] = ("link", os.readlink(p))
+        elif p.is_dir():
+            out[rel] = ("dir", "")
+        else:
+            out[rel] = (str(p.stat().st_size), hashlib.sha256(p.read_bytes()).hexdigest())
+    return out
+
+
+def _refuse_unsafe_symlinks(ledger: Path) -> None:
+    """A link is copied as a link, so it must still point inside the copy: relative and in-ledger only."""
+    inside = ledger.resolve()
+    for entry in ledger.rglob("*"):
+        if not entry.is_symlink():
+            continue
+        if os.path.isabs(os.readlink(entry)):
+            raise OSError(f"{entry} is an absolute symlink (it would dangle once the worktree is gone)")
+        if not entry.resolve().is_relative_to(inside):
+            raise OSError(f"{entry} is a symlink leaving the ledger")
+
+
+def _ledger_age(path: Path) -> tuple[str, int]:
+    """`<UTC ts>-seq<N>[-<k>]` -> (ts, k): copying preserves mtimes, so the name is the clock."""
+    m = re.match(r"(\d{8}T\d{6}Z)-seq\d+(?:-(\d+))?$", path.name)
+    return (m.group(1), int(m.group(2) or 1)) if m else ("", 0)
+
+
+def retry_kept_worktree(args: argparse.Namespace, repo: Path) -> list[Path]:
+    """Worktrees earlier runs kept because their ledger copy failed: retry the copy first and reap each
+    only after a VERIFIED copy. Returns those still unresolved (spare them, keep alerting)."""
+    try:
+        prior = json.loads((Path(args.state_dir) / "state.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(prior, dict):
+        return []
+    paths = prior.get("worktrees_kept") or ([prior["worktree_kept"]] if prior.get("worktree_kept") else [])
+    unresolved: list[Path] = []
+    for raw in paths:
+        kept = Path(raw)
+        if not kept.is_dir():
+            continue
+        ledgers = sorted(kept.glob("research/visa/*-organ-reattest-seq*"))
+        why: list[str] = []
+        if ledgers and keep_ledger(args, ledgers[-1], int(prior.get("anchor_seq") or 0), why) is None:
+            logger.warning("kept worktree %s: copy still failing (%s)", kept, "; ".join(why))
+            unresolved.append(kept)
+            continue
+        _git(repo, "worktree", "remove", "--force", str(kept), check=False)
+        logger.info("kept worktree %s: ledger copied and verified, reaped", kept)
+    return unresolved
+
+
+KEPT_NAME = re.compile(r"\d{8}T\d{6}Z-seq\d+(-\d+)?")
+
+
+def keep_ledger(args: argparse.Namespace, ledger: Path, anchor_seq: int, why: list[str] | None = None) -> Path | None:
+    """Copy the run's ledger (receipts, judgements, texts) out of the worktree that is about to be
+    removed, VERIFY the copy (same entries, sizes and sha256), and keep the newest LEDGER_KEEP copies.
+    Symlinks are copied as links and one that leaves the ledger refuses the copy. Returns None when
+    there is nothing to keep or the copy failed or did not verify: the caller then keeps the worktree.
+    Never raises."""
+    if not ledger.is_dir():
+        return None
+    dest: Path | None = None
+    try:
+        root = Path(args.state_dir) / "ledgers"
+        root.mkdir(parents=True, exist_ok=True)
+        _refuse_unsafe_symlinks(ledger)
+        base = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-seq{anchor_seq}"
+        taken = [_ledger_age(p)[1] for p in root.iterdir() if p.name == base or p.name.startswith(f"{base}-")]
+        dest = root / (base if not taken else f"{base}-{max(taken) + 1}")
+        shutil.copytree(ledger, dest, symlinks=True)
+        if _manifest(dest) != _manifest(ledger):
+            raise OSError("the copy does not match the ledger (entries or sizes differ)")
+        kept = sorted((p for p in root.iterdir() if p.is_dir() and KEPT_NAME.fullmatch(p.name)), key=_ledger_age)
+        for old in kept[:-LEDGER_KEEP]:
+            shutil.rmtree(old, ignore_errors=True)
+        return dest
+    except Exception as exc:  # noqa: BLE001 — keeping evidence must never fail the run it documents
+        logger.warning("could not keep the ledger: %s", exc)
+        if why is not None:
+            why.append(f"{type(exc).__name__}: {exc}"[:300])
+        if dest is not None:
+            shutil.rmtree(dest, ignore_errors=True)
+        return None
 
 
 def commit_and_push(wt: Path, branch: str, title: str, rels: list[str]) -> None:
@@ -412,16 +598,27 @@ def run(args: argparse.Namespace) -> int:
     rc = 0
     wt = Path(args.state_dir) / "worktrees" / f"seq{next_seq}-{now.strftime('%Y%m%dT%H%M%S')}"
     code_root = Path(args.code_root) if args.code_root else repo
+    ledger = wt / ledger_rel
+    worktree_kept: Path | None = None
+    prior_kept = retry_kept_worktree(args, repo)
+    if prior_kept:
+        state.update(worktree_kept=str(prior_kept[0]), worktrees_kept=[str(p) for p in prior_kept])
+        alert(args, job=f"visa-reattestation:worktree-kept:seq{anchor['seq']}",
+              key=f"visa-freshness:reattest-worktree-kept:{anchor['seq']}",
+              summary=f"Visa re-attestation: a failed run's ledger is still only in the worktree "
+                      f"{prior_kept[0]} (the copy keeps failing). Read it before it is lost.",
+              detail="\n".join(str(p) for p in prior_kept))
     try:
-        ensure_worktree(args, anchor["seq"], branch, remote_branch, wt)
+        ensure_worktree(args, anchor["seq"], branch, remote_branch, wt, prior_kept)
         if not args.code_root:
             code_root = wt
-        ledger = wt / ledger_rel
-        read_and_judge(args, wt, code_root, anchor, ledger, reader)
-        candidate, sha = fold(args, wt, code_root, anchor, ledger, reader, now)
+        baseline_root, attested = read_and_judge(args, wt, code_root, anchor, ledger, reader)
+        candidate, sha, disagreements = fold(args, wt, code_root, anchor, ledger, reader, now, baseline_root)
+        choices = {rid[:8]: held.label() for rid, held in sorted(attested.items())}
         note = wt / f"{ledger_rel}-attestation.md"
         note.write_text(attestation_note(date=date, anchor_seq=anchor["seq"], next_seq=next_seq,
-                                         ledger_rel=ledger_rel, reader=reader, judge=args.judge), encoding="utf-8")
+                                         ledger_rel=ledger_rel, reader=reader, judge=args.judge,
+                                         attested=choices, disagreements=disagreements), encoding="utf-8")
         title = pr_title(date, next_seq)
         body = pr_body(anchor_seq=anchor["seq"], next_seq=next_seq, ledger_rel=ledger_rel,
                        candidate_rel=plan["candidate"], reader=reader, boundary=anchor["boundary"], payload_sha=sha)
@@ -434,19 +631,37 @@ def run(args: argparse.Namespace) -> int:
                                       [ledger, candidate, note])
         candidate_ref = state.get("pr_url") or f"{branch}:{plan['candidate']}"
         state["outcome"] = "candidate-ready"
+        state.update(attested_reads=choices, baseline_disagreements=disagreements)
+        why: list[str] = []
+        kept = keep_ledger(args, ledger, anchor["seq"], why)
+        state["ledger_copy"] = str(kept) if kept else None
+        if kept is None and ledger.is_dir():
+            worktree_kept = wt
     except Exception as exc:  # noqa: BLE001 — anything unexpected is still a failed run, never a silent one
         if not isinstance(exc, OrganError):
             exc = OrganError("unexpected", f"{type(exc).__name__}: {exc}")
         rc = exc.rc
-        state.update(outcome="failed", stage=exc.stage, detail=exc.detail)
+        why = []
+        kept = keep_ledger(args, ledger, anchor["seq"], why)
+        if kept is None and ledger.is_dir():
+            worktree_kept = wt
+        where = (f" Ledger kept at {kept}" if kept else
+                 f" Ledger copy FAILED ({'; '.join(why)}): worktree kept at {wt} "
+                 "(the next run retries the copy before reaping it)" if worktree_kept else "")
+        state.update(outcome="failed", stage=exc.stage, detail=exc.detail,
+                     ledger_copy=str(kept) if kept else None)
         alert(args, job=f"visa-reattestation:{exc.stage}:seq{anchor['seq']}",
               key=f"visa-freshness:reattest-{exc.stage}:{anchor['seq']}",
               summary=f"Visa re-attestation FAILED at '{exc.stage}' (anchor seq-{anchor['seq']}, boundary "
-                      f"{plan['boundary']}): {exc.detail[:300]}", detail=exc.detail)
+                      f"{plan['boundary']}): {exc.detail[:300]}{where}", detail=exc.detail[-1200:] + where)
     finally:
-        if wt.exists():
-            _git(repo, "worktree", "remove", "--force", str(wt), check=False)
-        _git(repo, "branch", "-D", branch, check=False)
+        if worktree_kept is None:
+            if wt.exists():
+                _git(repo, "worktree", "remove", "--force", str(wt), check=False)
+            _git(repo, "branch", "-D", branch, check=False)
+        else:
+            state.update(worktree_kept=str(worktree_kept),
+                         worktrees_kept=[str(worktree_kept), *[str(p) for p in prior_kept]])
 
     if candidate_ref is None:
         candidate_ref = (existing_pr or {}).get("url") or unsigned_candidate_on_main(repo, next_seq)
@@ -471,6 +686,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--model", default="sonnet")
     p.add_argument("--skip-judge", action="store_true", help="use judgements already in the ledger")
     p.add_argument("--ledger-dir", help="existing ledger copied into the worktree instead of reading portals")
+    p.add_argument("--baseline-root", help="directory of ledgers (default: research/visa of the code root) "
+                   "from which each record's attested read is proven; see the runbook")
     p.add_argument("--repo", default=str(REPO_ROOT), help="shared checkout (read + worktree add only)")
     p.add_argument("--code-root", help="where the visa_engine scripts run from (default: the worktree)")
     p.add_argument("--state-dir", default=str(DEFAULT_STATE_DIR))
