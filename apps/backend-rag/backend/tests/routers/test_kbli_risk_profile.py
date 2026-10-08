@@ -38,3 +38,24 @@ def test_regression_never_the_old_low_default() -> None:
     assert _resolve_risk_profile("", []) == "Not classified"
     # An empty license risk string is not a low reading either.
     assert _resolve_risk_profile(None, [_lic("")]) == "Not classified"
+
+
+def test_placeholder_license_row_never_hides_a_real_risk() -> None:
+    # KBLI 91300: a risk-less "Sertifikat Standar" row sat next to rows carrying
+    # "Menengah Rendah"; the old licenses[0] read returned "Unknown" when it came first.
+    rows = [_lic("Unknown"), _lic("Menengah Rendah"), _lic("Menengah Rendah")]
+    assert _resolve_risk_profile(None, rows) == "Menengah Rendah"
+
+
+def test_resolution_is_independent_of_row_order() -> None:
+    rows = [_lic("Unknown"), _lic("Rendah"), _lic("Menengah Tinggi")]
+    forward = _resolve_risk_profile(None, rows)
+    assert forward == _resolve_risk_profile(None, list(reversed(rows))) == "Menengah Tinggi"
+
+
+def test_only_placeholder_rows_is_an_honest_gap() -> None:
+    assert _resolve_risk_profile(None, [_lic("Unknown"), _lic("unknown")]) == "Not classified"
+
+
+def test_single_healthy_row_unchanged() -> None:
+    assert _resolve_risk_profile(None, [_lic("Rendah")]) == "Rendah"

@@ -652,3 +652,40 @@ def test_classified_diff_stays_pass(fx):
                                     {"mode": "shadow", "reason": "classified", "run_all": False, "suggested_jobs": []}])
 def test_unjudgeable_classifier_output_is_blocked_not_fail(cm_out):
     assert runner.change_map_status(cm_out) == "BLOCKED"
+
+
+# ------------------------------------------------------------------ coverage travels with the verdict (B3)
+@pytest.mark.parametrize("entry,coverage,note", [
+    ("{name: a, mapping: executed}", "full", None),                                            # nothing declared: full
+    ("{name: a, mapping: executed, coverage: full}", "full", None),
+    ("{name: a, mapping: executed, coverage: partial, coverage_note: no secrets}", "partial", "no secrets"),
+    ("{name: a, mapping: executed, coverage: partial}", "partial", "declared partial without a coverage_note"),
+    ("{name: a, mapping: executed, coverage: fulll}", "partial", "declared partial without a coverage_note"),   # unreadable: never full
+    ("{name: a, mapping: executed, coverage: null}", "partial", "declared partial without a coverage_note"),
+    ("{name: a, mapping: executed, coverage: full, coverage_note: ignored}", "full", None)])
+def test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable(tmp_path, entry, coverage, note):
+    p = tmp_path / "c.yaml"
+    p.write_text(f"contexts:\n - {entry}\n")
+    got = runner.load_contexts(str(p))["map"]["a"]
+    assert (got["coverage"], got["coverage_note"]) == (coverage, note)
+    assert ("unknown coverage" in (got["note"] or "")) == ("fulll" in entry or "null" in entry)
+
+
+def test_every_context_result_in_the_status_carries_the_base_matrix_coverage(fx, tmp_path):
+    ctxs = [{"name": n, "local": {"kind": "rule", "check": n}, "mapping": "executed"} for n in ("policy.change_map", "review.independent")]
+    ctxs[0].update(coverage="partial", coverage_note="a subset")
+    ctxs += [{"name": "CodeQL", "local": {}, "mapping": "blocked"}, {"name": "nowhere", "local": {"check": "ctx.absent"}, "mapping": "executed"}]
+    fr.green(fx, tmp_path, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "cov.yaml", ctxs)), with_contexts=False)
+    res = fr.status(fx)["contexts"]["results"]
+    assert res["policy.change_map"]["coverage"] == "partial" and res["policy.change_map"]["coverage_note"] == "a subset"
+    assert {n: (r["verdict"], r["coverage"]) for n, r in res.items() if n != "policy.change_map"} == {
+        "review.independent": (res["review.independent"]["verdict"], "full"), "CodeQL": ("BLOCKED", "full"), "nowhere": ("UNCOVERED", "full")}
+    assert all("coverage_note" not in r for n, r in res.items() if n != "policy.change_map")
+
+
+@pytest.mark.skipif(not MATRIX.exists(), reason="contexts_matrix.yaml not present yet")
+def test_the_real_matrix_declares_e2e_partial_with_its_reason():
+    c = runner.load_contexts(str(MATRIX))["map"]
+    assert c["E2E Tests (Playwright)"]["coverage"] == "partial" and "secrets" in c["E2E Tests (Playwright)"]["coverage_note"]
+    assert all(v["coverage"] in runner.COVERAGES and (v["coverage"] == "full") == (v["coverage_note"] is None) for v in c.values())
+    assert not any(v["note"] for v in c.values())

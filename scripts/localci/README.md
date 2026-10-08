@@ -169,6 +169,45 @@ recipe: 394 s cold at plan (download, install, export), then a cache hit while t
 E2E and Visa Oracle smoke share one recipe (the backend closure plus node 24, the root lock's npm cache, chromium and
 postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Frontend Tests' node-only recipe is 1.4 GB.
 
+## What a verdict covers, and what is no verdict (B3)
+
+**Coverage travels with the verdict.** Each matrix entry declares `coverage: full` (the default when absent) or
+`coverage: partial` with a `coverage_note` naming the subset; a value the runner cannot read is `partial`. `plan` freezes it
+from the BASE matrix and every `contexts.results` row of `status.json` carries it. `hosted_compare` keeps the class (a partial
+AGREE is still AGREE) but puts `coverage` and `coverage_note` on the row, prints a COVERAGE column, and counts apart:
+`agreement_full`, `coverage.compared_full`, `coverage.compared_partial`, `coverage.compared_unrecorded` (a `status.json`
+that predates B3). The merger journals each context's coverage beside its verdict; `report` counts a compared merge on ≥ 12
+compared contexts of which ≥ 11 `full` and at most one `partial` (a partial context never counts as full), prints
+`compared_merges=N (full_only=M, with_partial=K)`, `compared_partial` and `compared_unrecorded` on the window line, and the
+phase E line names the partial context of the compared merges. A decision journalled before B3 carries no coverage record: its
+contexts are unrecorded and never count as full. The enqueue criterion treats a partial context as executed and passing,
+and names it: `executed_required=13/14 (partial: E2E Tests (Playwright))`. A partial FALSE_GREEN is still a FALSE_GREEN.
+
+**A full disk is no verdict.** After every service leg (its log and its egress log) and every contained check, the runner
+reads the output line by line for the error lines a write on a full disk prints: libuv/npm `ENOSPC: no space left on device`
+and `npm error code ENOSPC`, CPython `[Errno 28] No space left on device`, asyncpg/psycopg `DiskFull(Error): <message>`,
+postgres `could not extend file "<path>": ...`, and a C tool's strerror line ending `: No space left on device` that carries
+no Python exception name; a service Postgres `the database system is in recovery mode` counts only after one of them. One
+such line makes the context `ERROR` with a reason that starts `host_disk_full: <leg>: <first line>` (never FAIL, never OK,
+even when the step exited 0, as npm does), and a service chain stops there. A test named `test_enospc_*`, a fixture raising
+`OSError("no space left on device")` or an assertion quoting the phrase keeps its verdict. `status.json` names it on the
+context (`no_verdict: host_disk_full`), `hosted_compare` reads it as LOCAL_BLIND (never FALSE_RED), and the enqueue
+criterion counts it as not executed and refuses, naming it apart from the contexts that are not OK (`host_no_verdict`).
+Measured 2026-10-08 against every tracked file: the patterns hit only docs, evidence, the ledger and one fixture of a
+workflow that no required context runs (`scripts/test_cost_breaker_deadman.sh`).
+
+**A free-space floor before a service leg.** Before the first container of a service leg, the runner reads the docker host's
+free space once per `run` (`df -Pk /` in a throwaway `--network none`, `--cap-drop ALL`, uid 65534 container of the pinned
+candidate image; 0.14 s on Pro) and refuses the leg when it is under `LOCALCI_MIN_FREE_GB` (GB of 10^9 bytes, default 12: one
+backend shard's sandbox writes 7-10 GB on Pro's 58.8 GB Colima VM, which also holds ~47 GB of images, measured 2026-10-08).
+The context is `BLOCKED` with a reason that starts `host_disk_below_floor <free>GB<floor>GB:` — no verdict, never a FAIL; a
+probe that cannot read the host is `host_disk_unmeasured`, a floor that is not a number ≥ 0 is `host_disk_floor_invalid`, and
+`0` turns the floor off without reading anything. The merger passes `LOCALCI_MIN_FREE_GB` from the tick's environment to the
+runner (the only addition to its allowlist) and its criterion counts such a context as not executed, never as a FAIL, and
+refuses. The reading is cached for the run: a leg that starts later in the run is judged on the first reading. Measured on
+Pro at 07:31Z on 2026-10-08, with the shadow merger running PR #8060's E2E legs: 3.58 GB free (3500604 KiB available, 95% of 61.6 GB used) — under
+the default floor every service leg there would be BLOCKED until space is freed or the floor is set in the tick's environment.
+
 ## Security: Pysa taint judge (`security.pysa_python`)
 
 CodeQL CLI cannot run on this repo (public, no OSI licence), so the python security queries are stood in for by Pysa
@@ -373,8 +412,11 @@ count is vacuous today. The phase-D instrument is the CONTEXT level, in two part
 
 The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges`, and counts the window's `error` lines and
 `skipped` lines by reason. A merge is COMPARED when GitHub merged the very candidate the merger decided (the decided head, its
-merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides (`MIN_COMPARED_CONTEXTS`,
-the AGREE ≥ 12 of 14 of spec §2 phase B): a merge compared on blind contexts is no evidence. Each compared PR counts once, at
+merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides, at least 11 of them of
+FULL coverage and at most one partial, named (`MIN_COMPARED_CONTEXTS`, `MIN_COMPARED_FULL`, `MAX_COMPARED_PARTIAL`; ruled
+2026-10-08: 14 required − 2 CodeQL hosted-only − 1 E2E partial = 11 full): a merge compared on blind contexts is no evidence,
+a partial context never counts as full, an unrecorded one counts toward nothing, and the window line prints
+`compared_merges=N (full_only=M, with_partial=K)`. Each compared PR counts once, at
 GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads
 `compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN AND ≥ 50 compared merges AND ≥ 14 days
 between the first and the last compared merge (spec §2, ruled 2026-10-07: both, never either) — a window that only aged,

@@ -661,7 +661,33 @@ def _resolve_risk_profile(qdrant_risk: str | None, licenses: list["KBLILicense"]
     ``getRiskLevel``/``getRiskBadge`` + ``RiskGauge`` render this as a neutral,
     needle-less state; WA/webchat pass the string verbatim to the LLM.
     """
-    return qdrant_risk or (licenses[0].risk_level if licenses else None) or "Not classified"
+    if qdrant_risk:
+        return qdrant_risk
+    return _license_risk(licenses) or "Not classified"
+
+
+# Severity of the OSS risk tiers, so a code carrying licence rows of different
+# tiers resolves to the same label whatever order the graph returns them in.
+_RISK_RANK = {"rendah": 1, "menengah rendah": 2, "menengah tinggi": 3, "tinggi": 4}
+
+
+def _license_risk(licenses: list["KBLILicense"]) -> str | None:
+    """Order-independent risk read off the licence rows.
+
+    The REQUIRES query has no ORDER BY and a code can carry a risk-less licence row
+    (``Sertifikat Standar`` with no ``kategori_risiko``, rendered ``"Unknown"``)
+    next to rows that do carry one (KBLI 91300 measured 2026-10-08). Taking
+    ``licenses[0]`` made the label depend on row order; here a placeholder row is
+    skipped and, among real readings, the most severe wins (never the reassuring one).
+    """
+    known = [
+        lic.risk_level
+        for lic in licenses
+        if lic.risk_level and lic.risk_level.strip().lower() not in ("", "unknown")
+    ]
+    if not known:
+        return None
+    return max(known, key=lambda r: (_RISK_RANK.get(r.strip().lower(), 0), r))
 
 
 @router.get("/search", response_model=list[KBLISearchResult])
@@ -844,6 +870,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 FROM kg_nodes n
                 JOIN kg_edges e ON n.entity_id = e.target_entity_id
                 WHERE e.source_entity_id = $1 AND e.relationship_type = 'REQUIRES'
+                ORDER BY n.entity_id
             """
             licenses_raw = await conn.fetch(license_query, f"kbli:{code}")
 

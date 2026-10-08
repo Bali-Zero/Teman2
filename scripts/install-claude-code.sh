@@ -111,6 +111,34 @@ fi
 echo "claude-code: installing ${PKG}@${PINNED_VERSION}"
 npm install -g "${PKG}@${PINNED_VERSION}"
 
+# ── Install the platform-native package EXPLICITLY, with a bounded retry ────
+# 2026-10-08 (Fly deploy job 113192043911): the registry served ${PLATFORM_PKG}
+# throughout, yet the line above printed `added 1 package` — only the JS launcher —
+# because npm TOLERATES a failed fetch of an OPTIONAL dependency and exits 0. The
+# self-test below caught it, but one step late and without naming the cause.
+# A direct install is not optional: if the fetch fails, npm fails, here.
+# The wrapper's postinstall (install.cjs) ran BEFORE this package existed, so it is
+# re-run afterwards to place the binary over the launcher's bin/claude.exe stub.
+RETRY_SLEEP="${CLAUDE_CODE_RETRY_SLEEP:-5}"
+_attempt=1
+until npm install -g "${PLATFORM_PKG}@${PINNED_VERSION}"; do
+    if [ "${_attempt}" -ge 2 ]; then
+        echo "FATAL: could not install ${PLATFORM_PKG}@${PINNED_VERSION} after ${_attempt} attempts." >&2
+        echo "       npm tolerated this fetch failing as an optional dependency; the CLI would not run." >&2
+        echo "       Re-run the build — the registry normally serves it: npm view ${PLATFORM_PKG}@${PINNED_VERSION} version" >&2
+        exit 1
+    fi
+    echo "claude-code: retry — fetch of ${PLATFORM_PKG}@${PINNED_VERSION} failed (attempt ${_attempt}); trying again in ${RETRY_SLEEP}s"
+    _attempt=$((_attempt + 1))
+    sleep "${RETRY_SLEEP}"
+done
+echo "claude-code: platform package ${PLATFORM_PKG}@${PINNED_VERSION} installed explicitly"
+
+_installer="$(npm root -g 2>/dev/null || true)/${PKG}/install.cjs"
+if [ -f "${_installer}" ]; then
+    node "${_installer}"
+fi
+
 # ── Prove it RUNS. A file named `claude` is not evidence. ───────────────────
 # `command -v claude` succeeded throughout the incident this script exists for;
 # only running it disagreed. The Dockerfile ends its RUN chain with

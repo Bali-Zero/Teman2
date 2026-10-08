@@ -1,0 +1,131 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN phase B, step B3 (ruling docs/rules/RULINGS.md, RULED 2026-10-07), handed by the
+  orchestrator ("LocalCI-gate: CI vincolante in locale") to Dux B3 on 2026-10-08 06:14Z with a 3-hour budget. It folds
+  three items the B2 gates left owed: coverage travels with the verdict (B2 dissent, Codex round 2 BLOCKER), a full disk
+  is no verdict, and a free-space floor before a sandbox starts (B2 residuals). Design anchor:
+  docs/specs/localci-sovereign-2026-10-07.md §2 phases B-D and the C3a-2 criterion.
+lanes:
+  - lane: localci-b3-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux B3 of LOCALCI-SOVEREIGN, M5; measurements on Pro over ssh, read-only)"
+pii_scan: clean
+pii_scan_note: Runner, comparator and merger code, a contexts matrix, tests and docker disk figures only; no client data was read or written.
+what_changed: |
+  scripts/localci/contexts_matrix.yaml: `coverage` documented (full by default, partial with a `coverage_note`); E2E Tests
+  (Playwright) partial, its note naming the six empty repository secrets and the deps-image browser.
+  scripts/localci/runner.py: load_contexts freezes coverage (an unreadable value is partial); every status.json context
+  result carries it. A disk-full error line in a service leg's log, its egress log or a contained check's log makes the
+  context ERROR `host_disk_full: <leg>: <line>` (never FAIL, never OK; the chain stops); patterns match error-line shapes,
+  never a substring anywhere; a postgres recovery-mode line counts only after one. Before the first container of a
+  service leg, `df -Pk /` in a throwaway no-network, no-capability, uid 65534 container reads the host's free space once
+  per run; under LOCALCI_MIN_FREE_GB (default 12) the leg is BLOCKED `host_disk_below_floor <free>GB<floor>GB:`
+  (`host_disk_unmeasured`, `host_disk_floor_invalid` beside it; 0 turns it off). evaluate_contexts names these as
+  `no_verdict` only for an ERROR/BLOCKED whose reason the runner wrote that way.
+  scripts/localci/hosted_compare.py: rows carry coverage and coverage_note, a COVERAGE column is printed,
+  agreement_full and coverage.compared_full/partial/unrecorded are counted apart; a host no-verdict is named in the
+  row's detail and stays LOCAL_BLIND.
+  scripts/localci/merger.py: the tick journals coverage and host_no_verdict per decision; report counts a context
+  toward the >= 12 only when full and prints compared_partial / compared_unrecorded (window line) and the partial
+  contexts (phase E line); the enqueue criterion names partial contexts on executed_required and counts a host
+  no-verdict as not executed, apart from a FAIL, still refusing; LOCALCI_MIN_FREE_GB joins the runner env allowlist.
+  scripts/localci/tests/mutants/merger_mutants.py reaches hosted_compare.py and runner.py (39 new rules).
+  README: one section on coverage, disk-full and the floor. Tests: test_host_disk.py (new) and rows in five suites.
+proof: |
+  See receipts. Suite on M5 at the final head; the mutant sweep over every rule; the disk-full patterns measured
+  against every tracked file; the probe's argv run on Pro's docker; the exact status lines and hosted_compare row
+  produced by the committed code. No live end-to-end run on Pro: the floor would have refused it (3.58 GB free).
+bites:
+  consumer: >-
+    scripts/localci/hosted_compare.py and `merger.py report` on Pro (the phase D instrument), and the runner's status
+    line in every shadow-merger tick.
+  observation: >-
+    Owed after merge (this lane does not ship): on Pro, the first tick on a base carrying bd04d84296 journals
+    `coverage` per context and, while the VM has under 12 GB free, its service contexts read BLOCKED
+    host_disk_below_floor (no FALSE_RED); its hosted_compare.json row for E2E Tests (Playwright) carries
+    "coverage": "partial". Measured before merge on M5 with the committed code (receipts below); the free space that
+    decides what Pro will show was measured on Pro at 07:31Z.
+ground:
+  ts: "2026-10-08T06:15:34Z"
+  siblings: >-
+    Worktree from origin/main 1cef6f665e (carries B2 #8056 475fa4ff6d). The live shadow merger on Pro was running PR
+    #8060's E2E legs during the measurement; nothing of it was read or touched beyond `docker ps` and `docker system df`.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 2
+receipts:
+  - claim: "Pro's docker host, read with the exact argv the floor uses (docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --user 65534:65534 --entrypoint df localci-candidate:1 -Pk /, image sha256:2c9b1d54104d): 61609772 1K-blocks, 54947160 used, 3500604 available (95%), i.e. 3.58 GB free; the probe answered in 0.138 s."
+    cmd: ssh pro 'zsh -lc "docker image inspect localci-candidate:1; time docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --user 65534:65534 --entrypoint df localci-candidate:1 -Pk /"'
+    exit: 0
+    ts: "2026-10-08T07:31:01Z"
+    seat: claude-opus-5-5 driving Pro over ssh (read-only)
+  - claim: "At that moment the shadow merger ran PR #8060's ctx.e2e-tests leg (its candidate, redis and postgres containers live); docker system df: images 51.43 GB (33.27 GB reclaimable), containers 14.84 GB, local volumes 4.856 GB, build cache 14.56 GB (8.818 GB reclaimable); 10 dangling volumes. Under the default 12 GB floor every service leg there would be BLOCKED host_disk_below_floor."
+    cmd: ssh pro 'zsh -lc "docker ps --format {{.Names}}; docker system df; docker volume ls -q -f dangling=true | wc -l"'
+    exit: 0
+    ts: "2026-10-08T07:31:17Z"
+    seat: claude-opus-5-5 driving Pro over ssh (read-only)
+  - claim: "The disk-full patterns over every tracked file of the repo hit 6 lines: the ledger (2), a docs spec, the B2 pack, runner.py's own pattern comment, and scripts/test_cost_breaker_deadman.sh:122, a fixture of p9-cost-breaker.yml, which is not one of the ten workflows the 14 required contexts run. No test source of a required context matches."
+    cmd: python3 - (DISK_FULL_LINE.search over each line of `git ls-files -z`, binary files skipped)
+    exit: 0
+    ts: "2026-10-08T07:16:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "host_disk_full over a 49.2 MB, 400000-line pytest log with no match: 2.35 s."
+    cmd: python3 - (runner.host_disk_full on a generated log)
+    exit: 0
+    ts: "2026-10-08T07:22:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: 'The committed code prints these status lines (cmd_run''s own format on the reasons _execute_jobs and disk_floor_refusal return): `ctx.backend-tests: ERROR — host_disk_full: backend-shard[2]: ''E   asyncpg.exceptions.DiskFullError: could not extend file "base/16384/2619": No space left on device'' (1 disk-full line(s), 1 postgres recovery-mode line(s) after it) — the docker host ran out of disk: no verdict on the candidate (never FAIL, never OK); free space and run again (0.0s)` and, fed Pro''s 07:31Z reading, `ctx.e2e-tests: BLOCKED — host_disk_below_floor 3.6GB<12GB: the docker host has 3.6 GB free, under LOCALCI_MIN_FREE_GB=12; the leg was not started — no verdict on the candidate, never a FAIL; free space and run again (0.0s)`.'
+    cmd: PYTHONPATH=. python3 - (runner._execute_jobs with one faked leg whose log carries the B2 DiskFullError and recovery lines; runner.disk_floor_refusal with the cached reading)
+    exit: 0
+    ts: "2026-10-08T07:44:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: 'hosted_compare on a fixture (E2E partial OK, antidotes full OK, both hosted green) writes the row {"context": "E2E Tests (Playwright)", "class": "AGREE", "local": "GREEN", "local_detail": "OK (executed)", "coverage": "partial", "coverage_note": "...", ...}, agreement 2/2, agreement_full 1/2, coverage {compared_full 1, compared_partial [E2E Tests (Playwright)], compared_unrecorded []}, and prints `AGREE GREEN(1) GREEN app partial E2E Tests (Playwright) [OK (executed)]`; exit 0.'
+    cmd: PYTHONPATH=. python3 - (hosted_compare.main with --fixtures)
+    exit: 0
+    ts: "2026-10-08T07:45:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Mutant sweep, the 39 B3 rules in three batches: 15/15 coverage (07:09-07:12Z), 12/12 disk-full (07:18-07:21Z), 12/12 floor (07:31-07:34Z), 0 survived, 0 stale, 0 errors."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <each batch>
+    exit: 0
+    ts: "2026-10-08T07:34:07Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The localci suite at bd04d84296 (code identical to the branch head; README and evidence only after it): 823 passed, 14 skipped (needs_docker), M5 without docker, 201 s. Baseline at origin/main 1cef6f665e on the same machine: 739 passed, 14 skipped."
+    cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-08T07:45:09Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The brief's acceptance probes and assumption probes pass at bd04d84296 (13 parametrized rows): test_hosted_compare.py::test_a_partial_agree_keeps_its_class_but_its_row_says_partial_and_it_is_counted_apart, test_merger_report.py::test_eleven_full_and_one_named_partial_make_a_compared_merge, test_merger_report.py::test_a_merge_short_of_the_ruled_threshold_is_not_a_compared_merge, test_merger.py::test_a_partial_context_is_executed_and_passes_but_the_decision_line_names_it, test_host_disk.py::test_a_shard_that_failed_on_a_full_disk_is_error_host_disk_full_and_the_chain_stops, test_host_disk.py::test_a_floor_above_the_free_space_blocks_every_service_leg_before_any_container_starts, test_merger.py::test_a_context_the_host_could_not_judge_is_not_executed_named_and_still_refuses, test_merger_report.py::test_a_line_journalled_before_coverage_was_recorded_counts_no_context_as_full."
+    cmd: python3 -m pytest -q -p no:cacheprovider <the seven node ids>
+    exit: 0
+    ts: "2026-10-08T07:41:38Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The full sweep over all 114 rules (75 merger and wrapper rules from C3a-2 and before, 39 from B3) at bd04d84296: 113 killed, 0 survived, 0 errors, 1 stale — runner-no-verdict-anywhere, whose text commit 3 had moved (rc 1, as the harness must report it). The rule was realigned to the committed regex and re-run: killed. 114/114 killed."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py; then --only runner-no-verdict-anywhere
+    exit: 0
+    ts: "2026-10-08T08:07:14Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The ruled threshold (gate MEDIUM on b48226ea1e): merger.py's report, fed one merged decision with 11 full contexts and E2E Tests (Playwright) partial, all AGREE, prints `compared_merges=1 (full_only=0, with_partial=1) compared_partial=1 compared_unrecorded=0` on the window line and, on the phase E line, `(a merge counts when GitHub merged the decided candidate and >= 12 contexts were compared, >= 11 of them full and at most 1 partial); now false_green=0, compared_merges=1 (full_only=0, with_partial=1: ['E2E Tests (Playwright)']), ...`. Guilt rows: 12 with 2 partial, 10 full + 1 partial, 11 full alone, 11 full + 2 partial, 11 full + 1 unrecorded are not compared merges."
+    cmd: PYTHONPATH=. python3 - (merger.main report over test_merger_report's FakeGH and decision); python3 -m pytest scripts/localci/tests/test_merger_report.py -q
+    exit: 0
+    ts: "2026-10-08T08:52:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "After the threshold fold: the localci suite 829 passed, 14 skipped (needs_docker) on M5, 256 s; the 46 B3 mutant rules (39 from B3 plus 7 for the three constants, the partial count and the with_partial count) 46/46 killed. MIN_COMPARED_FULL 11 -> 10 is an equivalent mutant (12 compared with at most 1 partial already means >= 11 full) and is not in the table; 11 -> 12 is, and is killed."
+    cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider; python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 46 B3 rules>
+    exit: 0
+    ts: "2026-10-08T08:51:07Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "The floor was measured against a VM at 3.58 GB free (3500604 KiB available) during a B2-code tick (the shadow merger running PR #8060 on main's runner); the operator-side cure is capacity (prune policy or a larger Colima disk). The 12 GB default and the LOCALCI_MIN_FREE_GB override stay as built."
+  - "No adversarial round: the independent gate is the orchestrator's (generator is never grader). The three rules are guilt- and innocence-tested and mutant-swept, nothing more."
+  - "Deploying this today blocks every service leg on Pro: 3.58 GB free against the 12 GB default. Freeing space (33 GB of reclaimable images, 8.8 GB of build cache) or setting LOCALCI_MIN_FREE_GB in the tick's environment is an operator decision; until then no merge counts as compared."
+  - "Compared merges: before the ruled threshold (b48226ea1e) a compared merge needed 12 FULL contexts, which the real matrix can never give (14 - 2 CodeQL hosted-only - 1 E2E partial = 11), so phase D would never have started — the gate's MEDIUM. Ruled 2026-10-08: >= 12 compared, >= 11 full, at most 1 partial, named. Decisions journalled before B3 carry no coverage, count toward nothing and are never compared merges; the count therefore starts at the first post-B3 merge with 11 full contexts and E2E partial. Before #8056 no partial context executed, so the dropped evidence was in fact full."
+  - "Gate LOW, declared: a genuine pytest failure whose message carries a C strerror ending in No space left on device (for example a FAILED summary line quoting a cp or tar error) reads host_disk_full. That turns a red into no verdict only, never into a green, and the merge stays refused."
+  - "The floor's reading is cached per run: a leg started late in a 45-minute run is judged on the first reading. The disk-full rule catches what the floor misses mid-run."
+  - "The disk-full patterns read candidate output: a candidate can print a disk-full line to turn its own red into no verdict (ERROR). That still refuses the merge and never reads green; it only removes the context from the comparison. A real CPython OSError raised by a test fixture with errno 28 is indistinguishable from the host's and reads host_disk_full."
+  - "Postgres server logs of the service containers are not captured; recovery mode is read from the client's output only."
+  - "The enqueue criterion still refuses a context the host could not judge (assumption in the brief): spec §2 C3a-2 lets a BLOCKED pass only when its mapping is blocked or not_implemented."
+  - "Size: +739/-37 against origin/main over four commits (216, 29, 255, 202 net), 702 net in the PR, above the ~400 guide; each commit is under it. Of the 702, 502 net are tests and the mutant table; code 155, README and matrix 45."
+appetite_exceeded: >-
+  Size only: 702 net lines in the PR against the ~400 guide (each commit under 400); the rules are three, and their
+  guilt, innocence and mutant rows are most of it. Wall clock within the 3-hour budget.
