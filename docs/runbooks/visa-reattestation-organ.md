@@ -97,9 +97,9 @@ fingerprints.
 The run removes its worktree, which used to delete the receipts, judgements and texts a human
 needs. Before that, on success and on any failure, the organ copies the ledger to
 `~/.local/state/nuzantara/visa-reattestation/ledgers/<UTC ts>-seq<anchor>/` and keeps the newest 8.
-The path is in the board row `detail`, in the Telegram text, in `state.json` (`ledger_copy`) and
-in the heartbeat note (`ledger=<path>`). The wrapper change that reads `state.json` is a declared
-pair: copy it to `~/scripts/` on Pro for the heartbeat part to apply.
+The path is in the board row `detail` and `error_summary`, in the Telegram text, and in
+`~/.local/state/nuzantara/visa-reattestation/state.json` under `ledger_copy`. The heartbeat note
+does not carry it: read the board row or `state.json`.
 
 ## First real run, 2026-10-08
 

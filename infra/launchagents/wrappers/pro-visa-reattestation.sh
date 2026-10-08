@@ -54,15 +54,10 @@ log "run start"
 /usr/bin/python3 "$HOME/nuzantara/scripts/visa_reattestation_organ.py" >> "$LOG" 2>&1
 RC=$?
 
-# The organ copies its ledger out of the worktree it removes and records the path in state.json
-KEPT=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("ledger_copy",""))' \
-    "$HOME/.local/state/nuzantara/visa-reattestation/state.json" 2>/dev/null || true)
-SUFFIX=""
-[ -n "$KEPT" ] && SUFFIX=" ledger=$KEPT"
 if [ $RC -eq 0 ]; then
-    heartbeat "ok" "run done$SUFFIX"
+    heartbeat "ok" "run done"
 else
-    heartbeat "error" "rc=$RC$SUFFIX"   # G9: failure is VISIBLE in the sidecar too
+    heartbeat "error" "rc=$RC"   # G9: failure is VISIBLE in the sidecar too
 fi
 log "run done rc=$RC"
 exit 0
