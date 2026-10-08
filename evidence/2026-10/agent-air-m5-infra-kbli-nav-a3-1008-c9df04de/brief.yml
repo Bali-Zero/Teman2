@@ -1,0 +1,34 @@
+task_id: kbli-nav-a3-1008
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track A, PR-A3: the probe and the blind arena of the sealed design
+  contest. scripts/kbli_design/anti_flatness.py (plan cap 150 lines, 149) measures C1..C10 of
+  briefs/seat.md on the rendered DOM of each mockup set at 1440x900 and prints its five controls
+  before any verdict. scripts/kbli_design/arena.py gives each landed set a sealed letter, renders
+  its screens with model and vendor names redacted from visible text and thesis, and writes
+  arena.html plus a 0600 mapping.json it never reshuffles.
+constraints:
+  - "--controls prints exactly: calib good contrast=PASS, calib bad contrast=FAIL, reference variety=PASS, innocence variety=FAIL content=PASS, guilt content=FAIL; the workflow reads no verdict before these lines."
+  - "Per set the probe prints a C1..C10 row and `<slot> verdict=PASS|FAIL fails=<n>`, also when a screen is missing (all ten FAIL, the missing names in the JSON)."
+  - "The arena page never names a seat, a vendor, a slot or a kit mockup path; it links only per-letter PNGs."
+  - "No model is called by either file; Playwright headless Chromium only."
+acceptance:
+  - text: "WHEN --controls runs on the real 24 baselines and the real content pack, THEN it prints the five control lines above."
+    probe: "python3 -I scripts/kbli_design/anti_flatness.py --controls --kit <kit with content-pack.json> --app ~/kbli-navigator-app"
+  - text: "WHEN an innocent synthetic set is probed, THEN C1..C10 all PASS; WHEN a guilty set plants one violation per criterion, THEN all ten FAIL; WHEN verdict cells are stacked or covered, or the night detail card has no Fraunces, THEN C8 or C3 FAIL alone; WHEN a screen is missing, THEN the full FAIL row prints."
+    probe: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_kbli_design_probe_arena.py"
+  - text: "WHEN a thesis or a screen names a model, THEN arena prints leak-redacted lines and arena.html carries no model name, no .html link and no mockups/ path; a rerun keeps the 0600 mapping identical."
+    probe: "same pytest, test_arena_seals_a_stable_mapping_and_links_only_blind_copies"
+consumer_map:
+  - "infra/workflows/kbli-nav-design.js (PR-A1 #8082): phase Probes runs `anti_flatness.py --controls` then `--kit --stage --slots`; phase Arena runs `arena.py --kit` and requires `^arena \\S+ sets=\\d+$`."
+risks:
+  - "C2 layout family is a box signature on a 120px grid, C5 is a screenshot hue band, C10 reads text and labels: proxies, declared in the docstring; the graders and Zero's vote cover what they miss."
+  - "The innocence control wraps baseline PNGs, so it proves the checker's wiring, not visual perception; the synthetic reference control proves the variety check can pass."
+  - "The tests need Playwright headless Chromium and skip where it is absent (hosted CI); they ran on M5."
+grader: |
+  One cross-family refuter, codex gpt-5.6-sol at xhigh, read-only from an empty directory with the
+  diff and the criteria inlined, VERDICT first: DEFECT with four objections, all folded, each with a
+  test that fails when its fix alone is removed. A fresh Opus 5.5 gate session signs
+  harness/fable-gate on this head sha; this session does not.
