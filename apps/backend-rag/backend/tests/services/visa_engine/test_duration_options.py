@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
 from backend.services.visa_engine.evaluate_path import _duration_display
@@ -22,6 +23,9 @@ from backend.services.visa_engine.pricing_adapter import (
 _PACK = (
     Path(__file__).resolve().parents[3]
     / "services/visa_engine/contracts/packs/rulepack-prod-025.source.json"
+)
+_CONTRACT = (
+    Path(__file__).resolve().parents[3] / "services/visa_engine/contracts/contract.schema.json"
 )
 _NOW = datetime(2026, 10, 8, 1, 0, tzinfo=timezone.utc)
 _ONE = {"category": "kitas_permits", "item_key": "Dependent 1 Year (Offshore)"}
@@ -211,3 +215,77 @@ class TestDisplay:
         )
         assert shown["selected_duration_days"] == selected
         assert shown["extension_required"] is extension
+
+
+_NEW_FIELDS = ("selected_duration_days", "duration_options", "extension_required")
+
+
+def _candidate_schemas() -> tuple[Draft202012Validator, Draft202012Validator]:
+    """(old contract, new contract) for one candidate display.
+
+    The old contract is the current one with the three additive properties removed,
+    which is exactly what ``additionalProperties: false`` rejected before this change.
+    """
+
+    defs = json.loads(_CONTRACT.read_text(encoding="utf-8"))["$defs"]
+    new = Draft202012Validator({"$defs": defs, "$ref": "#/$defs/CandidateDisplayDTO"})
+    old_defs = json.loads(json.dumps(defs))
+    for key in _NEW_FIELDS:
+        old_defs["CandidateDisplayDTO"]["properties"].pop(key)
+    old = Draft202012Validator({"$defs": old_defs, "$ref": "#/$defs/CandidateDisplayDTO"})
+    return old, new
+
+
+def _walk_displays() -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """(display as built, display as the public response dumps it) for every candidate-bearing walk."""
+
+    from backend.services.visa_engine.api_models import VisaOracleDisplayDTO
+    from backend.services.visa_engine.evaluate_path import _build_display
+    from backend.services.visa_engine.pricing_adapter import UnavailablePricingCatalog
+    from backend.tests.services.visa_engine import test_interview_walk_census as census
+
+    pairs = []
+    for label, spec in census._load_walks().items():
+        decision, compiled, _ = census._decide(spec["overrides"], label)
+        if not decision.candidates:
+            continue
+        raw = _build_display(
+            decision,
+            compiled,
+            request_trace="test",
+            pricing_catalog=UnavailablePricingCatalog(),
+        )
+        dumped = VisaOracleDisplayDTO.model_validate(raw).model_dump(mode="json")
+        pairs.append((raw, dumped))
+    return pairs
+
+
+class TestResponseLayer:
+    def test_products_without_options_answer_exactly_as_before_on_every_walk(self) -> None:
+        old, _ = _candidate_schemas()
+        pairs = _walk_displays()
+        assert len(pairs) > 50
+        for raw, dumped in pairs:
+            for built, shown in zip(raw["candidates"], dumped["candidates"], strict=True):
+                assert not set(_NEW_FIELDS) & set(shown)
+                assert set(shown) == set(built)
+                assert list(old.iter_errors(shown)) == []
+
+    def test_a_product_with_options_yields_the_new_keys_and_only_the_new_contract_accepts_them(
+        self,
+    ) -> None:
+        from backend.services.visa_engine.api_models import CandidateDisplayDTO
+
+        old, new = _candidate_schemas()
+        raw, _ = _walk_displays()[0]
+        candidate = {
+            **raw["candidates"][0],
+            **_duration_display(
+                _two_year_product(), stay_days=1095, pricing_catalog=_Catalog(), evaluated_at=_NOW
+            ),
+        }
+        shown = CandidateDisplayDTO.model_validate(candidate).model_dump(mode="json")
+        assert set(_NEW_FIELDS) <= set(shown)
+        assert shown["extension_required"] is True
+        assert list(new.iter_errors(shown)) == []
+        assert list(old.iter_errors(shown)) != []

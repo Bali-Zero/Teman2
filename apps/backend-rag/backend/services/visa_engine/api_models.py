@@ -17,10 +17,18 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from backend.services.visa_engine.enums import SourceAuthorityType, SourceStatus
 from backend.services.visa_engine.models import (
@@ -475,6 +483,16 @@ class CandidateDisplayDTO(BaseModel):
     # True when the requested stay is longer than the last option: the permit is then
     # extended, so the quote covers the last option only.
     extension_required: bool = Field(default=False, strict=True)
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_duration_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # A product without options answers exactly as it did before these fields
+        # existed: the public response must not grow null keys the old contract rejects.
+        data = handler(self)
+        if self.duration_options is None:
+            for key in ("selected_duration_days", "duration_options", "extension_required"):
+                data.pop(key, None)
+        return data
 
 
 class VisaOracleDisplayDTO(BaseModel):
