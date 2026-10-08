@@ -192,7 +192,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8-cache-budget-8": (PRUNE, "BUILDER_CACHE_GB = 4 ", "BUILDER_CACHE_GB = 8 ", (PRUNE_T,)),
     "b8-cache-env-ignored": (PRUNE, 'cache_gb = _env_gb("LOCALCI_BUILDER_CACHE_GB", BUILDER_CACHE_GB)', "cache_gb = BUILDER_CACHE_GB", (PRUNE_T,)),
     "b8-env-inf-accepted": (PRUNE, "return v if math.isfinite(v) and v >= 0 else default", "return v if v >= 0 else default", (PRUNE_T,)),
-    "b6-rm-forced": (PRUNE, '_docker(docker, "image", "rm", im["tag"])', '_docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
+    "b6-rm-forced": (PRUNE, 'None if dry else _docker(docker, "image", "rm", im["tag"])', 'None if dry else _docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
+    "b8-floor-rm-forced": (PRUNE, 'r = _docker(docker, "image", "rm", im["tag"])', 'r = _docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
     "b6-builder-never": (PRUNE, "    if not dry:   # the build cache grows", "    if False:   # the build cache grows", (PRUNE_T,)),
     "b6-dry-run-removes": (PRUNE, "r = None if dry else _docker(", "r = None if False else _docker(", (PRUNE_T,)),
     # B6-2: 7 days full, then the bulk goes; 30 days, then only the verdict files

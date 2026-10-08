@@ -485,7 +485,7 @@ def test_b8_under_the_vm_floor_slot_2_goes_oldest_first_then_the_next_never_the_
     assert line["images"]["removed"][0]["rule"] == "vm floor: VM free 10 GB < 15 GB after the cap; slot 2 of recipe e2e-tests, oldest first"
     assert line["vm_floor"] == {"floor_gb": 15.0, "removed": 2, "met": False} and line["vm_free_gb"]["after"] == 14.0
     assert {k["tag"] for k in line["images"]["kept"]} >= {imgs[1]["tag"], imgs[3]["tag"]}
-    assert f"image rm {imgs[1]['tag']}" not in calls(tmp_path) and f"image rm {imgs[3]['tag']}" not in calls(tmp_path)
+    assert [c for c in calls(tmp_path) if c.startswith("image rm")] == [f"image rm {imgs[0]['tag']}", f"image rm {imgs[2]['tag']}"]   # by tag, never -f
 
 
 @pytest.mark.parametrize("vm_gb, gone", [(14.5, 1), (15.0, 0), (15.5, 0)])   # under the floor one goes and it is met; at it, none
