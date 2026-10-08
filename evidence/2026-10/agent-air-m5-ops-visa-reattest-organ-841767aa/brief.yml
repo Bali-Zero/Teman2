@@ -1,0 +1,31 @@
+gear: 3
+gear_reason: >-
+  A new scheduled organ on Pro that touches production safety: the Visa Oracle answers
+  HUMAN_REVIEW_REQUIRED on every product once the active pack's portal sources pass their
+  boundary (2026-11-08T13:32:18Z), and that already happened twice (2026-08-30, 2026-10-01).
+  The organ reads live government portals, calls a Claude seat, drives git and gh from cron, and
+  alerts through Telegram and the escalation board. Hand-written part is about 1,000 lines.
+ruling: >-
+  Team lead mandate PR-3c, 2026-10-08 — the weekly portal re-attestation becomes a scheduled organ,
+  armed before 2026-11-01. Signing and activation stay session acts on M5.
+mission: >-
+  pro.visa_reattestation — every Monday read the OFFICIAL_PORTAL pages, judge them, fold an
+  UNSIGNED candidate pack N+1 from the ledger, and open a PR; alert on failure and from T-7 days
+  before the boundary until a newer signed pack exists.
+objective: >-
+  An offline run of the organ against a copy of the 2026-10-07 ledger and a temp origin produces
+  the unsigned seq-25 candidate with the committed payload digest on its own branch, the PR text
+  carries a Bites line, nothing is written in the shared checkout, and every failure path raises a
+  board row and a Telegram alert and exits non-zero.
+scope:
+  - scripts/visa_reattestation_organ.py (new — the runner)
+  - scripts/tests/test_visa_reattestation_organ.py (new — guilt and innocence suite, 19 tests)
+  - scripts/ci/observe_visa_reattest_organ.py (new — bites observer, offline)
+  - infra/launchagents/com.nuzantara.visa-reattestation.plist (new — StartCalendarInterval Monday 02:00, no KeepAlive)
+  - infra/launchagents/wrappers/pro-visa-reattestation.sh (new — organ genes, heartbeat)
+  - apps/organism/organism/organs_registry.yaml (one entry + checksum)
+  - infra/home-fork/declared-pairs.json (wrapper and plist pairs, pro only)
+  - docs/runbooks/visa-reattestation-organ.md (new)
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

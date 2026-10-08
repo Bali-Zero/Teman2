@@ -1,0 +1,131 @@
+# Gear-3 evidence pack — pro.visa_reattestation, the weekly Visa Oracle portal re-attestation organ.
+# Every receipt is a command run in this worktree on 2026-10-08 between 08:12Z and 08:48Z.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Team lead mandate PR-3c, 2026-10-08 — turn the portal re-attestation into a scheduled organ,
+  armed before 2026-11-01. The active pack's boundary is 2026-11-08T13:32:18Z.
+mission: >-
+  Every Monday: read the 18 OFFICIAL_PORTAL pages, judge them, fold an UNSIGNED candidate pack
+  N+1, open a PR for a session to sign. Alert on failure and from T-7 days until a newer signed
+  pack exists.
+lanes:
+  - lane: reattest-organ-build
+    role: build
+    seat: Claude Sonnet 5.5 implementer (worktree ops-visa-reattest-organ).
+  - lane: reattest-organ-council
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (diff-only, read-only sandbox) and agy-gemini-3.1-pro (diff-only, plan
+      mode) on the runner diff — council-journal.jsonl. Findings acted on in two fix commits.
+  - lane: reattest-organ-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed seq-24 signed pair and the 2026-10-07 read ledger, run through the organ
+      end to end in a temp origin — no notebook, no memory; the organ asserts no regulatory figure
+    nb: research/visa/2026-10-07-freshness-restamp-seq25/
+    query_hash: "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
+    note: query_hash = the seq-25 payload digest the organ's offline run must reproduce
+pii_scan: clean
+bites:
+  consumer: >-
+    the signing session on M5, who receives the organ's PR, and the launchd job
+    com.nuzantara.visa-reattestation on Pro once installed; until the install the CI step that
+    runs the observer is the consumer.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_reattest_organ.py
+  expect: "contains:offline run produced unsigned seq-25 candidate"
+decisions:
+  - id: D-candidate-unsigned
+    decision: >-
+      The organ never signs, activates or arms auto-merge. The production key lives on M5 and
+      activation is the ceremony; both stay session acts. The PR carries adversarial_review
+      pending-session so the signing session owns the review.
+  - id: D-own-worktree
+    decision: >-
+      The runner executes from the shared checkout but does all git writes in its own linked
+      worktree under the state dir, refuses a directory whose .git is a directory, and reaps
+      orphaned worktrees of killed runs (the wrapper pidfile makes it a singleton).
+  - id: D-seat-6
+    decision: >-
+      The cascade tries the Team seat last by position and sources the secrets itself, so the
+      runner cannot exclude it. Left as is and documented; the judge is a few short prompts a week.
+  - id: D-reuse
+    decision: >-
+      Shell, plist, wrapper genes and registry entry come from organ_birth.py. Its --apply
+      rewrote the registry and declared-pairs files wholesale (about 1,100 lines of churn,
+      comments stripped), so the entries were appended by hand and the checksum recomputed.
+receipts:
+  - claim: The guilt and innocence suite is green (shared checkout refused, judge exit 1 and crash, fold failure, T-7 at 6.9 and 7.1 days, existing PR gets a commit, dry-run writes nothing, orphan worktree reaped, board and Telegram independent).
+    cmd: python3 -m pytest scripts/tests/test_visa_reattestation_organ.py -q
+    result: "26 passed in 10.87s"
+    exit: 0
+    ts: "2026-10-08T08:47:48Z"
+    seat: Claude Sonnet 5.5
+  - claim: An offline run of the organ on a copy of the 2026-10-07 ledger and a temp origin holding seq-24 produces the unsigned seq-25 candidate with the committed digest, on its own branch, with a PR body carrying Bites.
+    cmd: python3 scripts/ci/observe_visa_reattest_organ.py
+    result: "observe_visa_reattest_organ: offline run produced unsigned seq-25 candidate on organ/visa-reattest/24-2026-10-07, digest 603f777e…9d11, PR text carries Bites:"
+    exit: 0
+    ts: "2026-10-08T08:47:59Z"
+    seat: Claude Sonnet 5.5
+  - claim: The new organ passes the organ conformance check with no non-conformant birth.
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py
+    result: "organ conformance: 174 plists scanned, 106 grandfathered (report-only), 0 regressions, 0 non-conformant births"
+    exit: 0
+    ts: "2026-10-08T08:48:01Z"
+    seat: Claude Sonnet 5.5
+  - claim: The plist has no KeepAlive (scar 7) and the repo plist lint is clean; the plist is valid.
+    cmd: python3 scripts/lint_plist_keepalive.py && plutil -lint infra/launchagents/com.nuzantara.visa-reattestation.plist
+    result: "clean — no KeepAlive=true wrapper shows a one-shot smell; com.nuzantara.visa-reattestation.plist: OK"
+    exit: 0
+    ts: "2026-10-08T08:48:05Z"
+    seat: Claude Sonnet 5.5
+  - claim: The registry entry validates against its recomputed checksum and the declared pairs lint is clean.
+    cmd: python3 apps/organism/organism/tools/validate_organs_registry.py && python3 scripts/lint_home_fork.py --check --no-fetch
+    result: "organs_registry.yaml valid; home-fork lint exit 0 (only M5-only pairs absent on this machine)"
+    exit: 0
+    ts: "2026-10-08T08:48:05Z"
+    seat: Claude Sonnet 5.5
+  - claim: Pro has the cascade wrapper, the repo venv with cryptography and pydantic, and the sentinel plist loaded; gh sits in /opt/homebrew/bin and claude in ~/.local/bin, both added to the plist PATH.
+    cmd: ssh pro 'ls ~/scripts/claude-cascade.sh; ls /opt/homebrew/bin/gh ~/.local/bin/claude; launchctl print gui/$(id -u) | grep -c visa-freshness'
+    result: "/Users/nuzantara/scripts/claude-cascade.sh; /opt/homebrew/bin/gh; /Users/nuzantara/.local/bin/claude; count 1"
+    exit: 0
+    ts: "2026-10-08T08:48:35Z"
+    seat: Claude Sonnet 5.5
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  titolari kimi-code/k3 and tp1-qwen3.8-max were QUOTA_DEAD per the lead's brief of 2026-10-08;
+  codex-gpt-5.6-sol played as titolare and the reserve agy-gemini-3.1-pro filled the second seat.
+dissent:
+  - seat: self-review
+    objection: >-
+      The organ has never run against live portals, the real judge or a real gh. Only the fold,
+      git and file paths are exercised for real; portal read, judge, gh and Telegram are scripted
+      in the tests.
+    status: CONFIRMED
+    note: first live proof is the first Monday run after install; the runbook names it as the arming proof.
+  - seat: self-review
+    objection: >-
+      The candidate lands in the packs directory as an unsigned rulepack-prod-NNN.source.json.
+      Three backend tests glob every source file there and read the highest one, so the PR's CI
+      runs them against the candidate, and a concurrent human lane writing the same sequence
+      number would collide.
+    status: PLAUSIBLE
+    note: carried to the reviewing session; not exercised because no ledger newer than seq-25 exists yet.
+  - seat: self-review
+    objection: >-
+      The portal_judge module only exists in PR 8069. Until it merges the live run fails at the
+      judge stage by design, with a board row naming 8069.
+    status: CONFIRMED
+    note: install the organ only after 8069 lands.
+  - seat: codex-gpt-5.6-sol
+    objection: The wrapper exits 0 whatever the runner returns, masking failures from launchd.
+    status: REFUTED
+    note: house pattern of the freshness sentinel wrapper; the error heartbeat is the signal, there is no KeepAlive to restart on.
+  - seat: agy-gemini-3.1-pro
+    objection: The wrapper runs $HOME/nuzantara/scripts, but Pro keeps the repo at ~/Desktop/nuzantara.
+    status: REFUTED
+    note: verified on Pro, ~/Desktop/nuzantara is a symlink to ~/nuzantara; the sentinel wrapper uses the same path.
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
