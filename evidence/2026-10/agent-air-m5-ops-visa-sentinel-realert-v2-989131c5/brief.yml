@@ -1,0 +1,24 @@
+gear: 2
+gear_reason: >-
+  One script and its test module, no production data written, no deploy: the sentinel runs on Pro
+  under launchd and the change is read-only toward the pack. Cross-cutting only through the
+  shared escalation board helper and the Telegram gateway, both used as-is.
+ruling: >-
+  Zero via the orchestrator, 2026-10-07 — the freshness sentinel must never go quiet on a
+  persistent STALE (scar W141: six days of HUMAN_REVIEW_REQUIRED on every product, found only
+  because a page was printed to PDF).
+mission: >-
+  Visa Oracle freshness sentinel re-alerts daily on a persistent STALE, escalates one HIGH board
+  row, and never counts an undelivered send.
+objective: >-
+  STALE, or APPROACHING within 7 days of the boundary, sends at least every 24 h while it
+  persists; a send that is not delivered leaves the ladder untouched; OK resets the ladder and
+  closes the board row; dry-run prints the decision it would take.
+scope:
+  - scripts/visa_freshness_sentinel.py (own re-alert schedule, fresh gateway key per send, HIGH escalation row, alert_decision in the JSON)
+  - scripts/tg_notify.py (one family added to the default owner-routed list, so these p0 alerts reach Telegram)
+  - scripts/ci/observe_visa_freshness_sentinel.py (CI observer)
+  - scripts/tests/test_visa_freshness_sentinel.py (nine new guilt and innocence tests)
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

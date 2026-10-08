@@ -642,3 +642,390 @@ def test_innocence_a_clean_stale_pack_keeps_its_unsuffixed_key():
         vfs.dedup_key(dataclasses.replace(stale, pack_sequence=17))
         == "visa-freshness:stale:17"
     )
+
+
+# ---------------------------------------------------------------------------
+# W141 — a persistent condition re-alerts daily; an undelivered send never counts
+# ---------------------------------------------------------------------------
+
+_FAKE_LADDER_GATEWAY = """#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+
+here = Path(sys.argv[0]).parent
+args = sys.argv[1:]
+key = args[args.index("--dedup-key") + 1]
+mode = (here / "mode").read_text().strip() if (here / "mode").exists() else "sent"
+seen = here / "seen.json"
+muted = json.loads(seen.read_text()) if seen.exists() else {}
+(here / "calls.jsonl").open("a").write(json.dumps(args) + "\\n")
+if key in muted:
+    print("tg_notify: deduped", file=sys.stderr)
+elif mode == "sent":
+    muted[key] = 1
+    seen.write_text(json.dumps(muted))
+    print("tg_notify: sent", file=sys.stderr)
+else:
+    print("tg_notify: " + mode, file=sys.stderr)
+"""
+
+DAY = 86400.0
+T0 = 1_790_000_000.0
+
+
+def _stale_verdict(seq=23):
+    import dataclasses
+
+    v = vfs.classify_freshness(
+        [_portal_record("p", VERIFIED_AT.isoformat())], BOUNDARY + timedelta(hours=1)
+    )
+    return dataclasses.replace(v, pack_sequence=seq)
+
+
+def _calls(tmp_path):
+    f = tmp_path / "calls.jsonl"
+    return [json.loads(x) for x in f.read_text().splitlines()] if f.exists() else []
+
+
+def _board(tmp_path, monkeypatch):
+    from scripts.sentinel_lib import escalations as esc
+
+    board = tmp_path / "escalations_pro.jsonl"
+    monkeypatch.setitem(esc._MACHINE_FILES, "pro", board)
+    monkeypatch.setattr(esc, "_current_machine", lambda: "pro")
+    monkeypatch.setenv("ESCALATIONS_USE_SQLITE", "false")
+    return esc
+
+
+def _cycle(verdict, tmp_path, gw, now_ts, dry_run=False):
+    return vfs.run_alert_cycle(
+        verdict, dry_run=dry_run, now_ts=now_ts,
+        state_path=tmp_path / "state.json", gateway_path=gw,
+    )
+
+
+def test_stale_persisting_five_days_sends_five_times(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = _stale_verdict()
+    for day in range(5):
+        _cycle(v, tmp_path, gw, T0 + day * DAY)
+    assert len(_calls(tmp_path)) == 5
+    assert json.loads((tmp_path / "state.json").read_text())["delivered_streak"] == 5
+
+
+def test_guilt_old_fixed_key_would_have_sent_once(tmp_path):
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    results = [vfs.send_alert(_stale_verdict(), gateway_path=gw) for _ in range(5)]
+    assert results == ["sent", "deduped", "deduped", "deduped", "deduped"]
+
+
+def test_same_day_reruns_do_not_spam(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = _stale_verdict()
+    for hour in (0, 6, 12):
+        _cycle(v, tmp_path, gw, T0 + hour * 3600)
+    assert len(_calls(tmp_path)) == 1
+    _cycle(v, tmp_path, gw, T0 + 18 * 3600)
+    assert len(_calls(tmp_path)) == 2
+
+
+def test_approaching_ten_days_out_keeps_the_gateway_ladder(tmp_path, monkeypatch):
+    import dataclasses
+
+    esc = _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = vfs.classify_freshness(
+        [_portal_record("p", VERIFIED_AT.isoformat(), max_age_seconds=30 * 86400)],
+        VERIFIED_AT + timedelta(days=20), warn_seconds=14 * 86400,
+    )
+    v = dataclasses.replace(v, pack_sequence=9)
+    assert v.outcome == vfs.OUTCOME_APPROACHING
+    decision = _cycle(v, tmp_path, gw, T0)
+    assert decision["would_send"] is None and decision["reason"] == "gateway-ladder"
+    key = _calls(tmp_path)[0]
+    assert key[key.index("--dedup-key") + 1] == vfs.dedup_key(v)
+    assert not esc.is_job_open(vfs.ESCALATION_JOB)
+    assert not (tmp_path / "state.json").exists()
+
+
+def test_approaching_within_a_week_is_persistent(tmp_path):
+    import dataclasses
+
+    v = vfs.classify_freshness(
+        [_portal_record("p", VERIFIED_AT.isoformat(), max_age_seconds=30 * 86400)],
+        VERIFIED_AT + timedelta(days=24), warn_seconds=14 * 86400,
+    )
+    assert vfs.is_persistent(dataclasses.replace(v, pack_sequence=9))
+
+
+def test_undelivered_send_does_not_advance_the_ladder_and_retries(tmp_path, monkeypatch, caplog):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    (tmp_path / "mode").write_text("p0_unsent_spooled")
+    v = _stale_verdict()
+    with caplog.at_level("WARNING", logger="visa_freshness_sentinel"):
+        d = _cycle(v, tmp_path, gw, T0)
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert d["delivered"] is False and d["undelivered_reason"] == "p0_unsent_spooled"
+    assert state["delivered_streak"] == 0 and state["undelivered_attempts"] == 1
+    assert "undelivered: reason=p0_unsent_spooled" in caplog.text
+
+    (tmp_path / "mode").write_text("sent")
+    d = _cycle(v, tmp_path, gw, T0 + 6 * 3600)
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert d["reason"] == "retry-undelivered" and d["delivered"] is True
+    assert state["delivered_streak"] == 1 and state["undelivered_attempts"] == 0
+    assert len(_calls(tmp_path)) == 2
+
+
+def test_missing_gateway_is_undelivered_and_streak_stays_zero(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    d = _cycle(_stale_verdict(), tmp_path, tmp_path / "absent.py", T0)
+    assert d["undelivered_reason"] == "gateway-missing"
+    assert json.loads((tmp_path / "state.json").read_text())["delivered_streak"] == 0
+
+
+def test_stale_opens_one_high_row_and_ok_resolves_it(tmp_path, monkeypatch):
+    esc = _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = _stale_verdict()
+    for day in range(3):
+        _cycle(v, tmp_path, gw, T0 + day * DAY)
+    rows = [json.loads(x) for x in (tmp_path / "escalations_pro.jsonl").read_text().splitlines()]
+    assert {r["job"] for r in rows} == {vfs.ESCALATION_JOB}  # one job, refreshed once a day
+    assert len(rows) == 3 and all(r["priority"] == "HIGH" for r in rows)
+    assert [r["attempts"] for r in rows] == [1, 2, 3] and rows[-1]["last_seen_ts"] == T0 + 2 * DAY
+    assert esc.is_job_open(vfs.ESCALATION_JOB)
+
+    ok = vfs.classify_freshness([_portal_record("p", VERIFIED_AT.isoformat())], VERIFIED_AT)
+    assert ok.outcome == vfs.OUTCOME_OK
+    d = _cycle(ok, tmp_path, gw, T0 + 4 * DAY)
+    assert d["would_send"] is False
+    assert not esc.is_job_open(vfs.ESCALATION_JOB)
+    assert json.loads((tmp_path / "state.json").read_text()) == {}
+    _cycle(v, tmp_path, gw, T0 + 5 * DAY)
+    assert json.loads((tmp_path / "state.json").read_text())["delivered_streak"] == 1
+
+
+def test_dry_run_reports_the_decision_and_touches_nothing(tmp_path, monkeypatch):
+    esc = _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    d = _cycle(_stale_verdict(), tmp_path, gw, T0, dry_run=True)
+    assert d["would_send"] is True and d["reason"] == "new-condition"
+    assert set(d["dedup_state"]) >= {"delivered_streak", "next_due_ts"}
+    assert not (tmp_path / "state.json").exists() and not _calls(tmp_path)
+    assert not esc.is_job_open(vfs.ESCALATION_JOB)
+
+
+# ---------------------------------------------------------------------------
+# W141 successor — corrupt state, cadence, board routing (Codex red-team, all three BLOCK)
+# ---------------------------------------------------------------------------
+
+import plistlib  # noqa: E402
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        {"condition": "STALE:23", "delivered_streak": None},
+        {"condition": "STALE:23", "telegram_last_delivered_ts": float("nan")},
+        {"condition": "STALE:23", "telegram_last_delivered_ts": "soon"},
+        {"condition": "STALE:23", "telegram_last_delivered_ts": 9e12, "board_last_ts": 9e12},
+        {"condition": "STALE:23", "delivered_streak": True, "undelivered_attempts": -3},
+    ],
+)
+def test_corrupt_state_never_silences_a_stale(tmp_path, monkeypatch, caplog, state):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    (tmp_path / "state.json").write_text(json.dumps(state))
+    with caplog.at_level("WARNING", logger="visa_freshness_sentinel"):
+        d = _cycle(_stale_verdict(), tmp_path, gw, T0)
+    assert d["would_send"] is True and d["delivered"] is True
+    assert "state-reset:" in caplog.text
+    assert len(_calls(tmp_path)) == 1
+
+
+def test_a_stored_next_due_is_never_trusted(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    # last delivery 24 h ago, but a corrupt/stale stored next_due a day AHEAD: must send now.
+    (tmp_path / "state.json").write_text(json.dumps({
+        "condition": "STALE:23", "telegram_last_delivered_ts": T0 - DAY, "next_due_ts": T0 + DAY,
+    }))
+    assert _cycle(_stale_verdict(), tmp_path, gw, T0)["delivered"] is True
+    # innocence: a delivery 1 h ago still waits, whatever the stored value says.
+    (tmp_path / "state.json").write_text(json.dumps({
+        "condition": "STALE:23", "telegram_last_delivered_ts": T0 - 3600, "next_due_ts": 0,
+    }))
+    assert _cycle(_stale_verdict(), tmp_path, gw, T0)["reason"] == "not-due-yet"
+
+
+def test_valid_state_inside_the_gate_still_waits(tmp_path, monkeypatch, caplog):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    _cycle(_stale_verdict(), tmp_path, gw, T0)
+    with caplog.at_level("WARNING", logger="visa_freshness_sentinel"):
+        d = _cycle(_stale_verdict(), tmp_path, gw, T0 + 3600)
+    assert d["reason"] == "not-due-yet" and "state-reset" not in caplog.text
+
+
+def test_unreadable_state_file_sends(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    (tmp_path / "state.json").write_text("{not json")
+    assert _cycle(_stale_verdict(), tmp_path, gw, T0)["delivered"] is True
+
+
+def test_an_exception_in_the_decision_still_attempts_the_send(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+
+    def boom(*_a, **_k):
+        raise ZeroDivisionError
+
+    monkeypatch.setattr(vfs, "decide_alert", boom)
+    d = _cycle(_stale_verdict(), tmp_path, gw, T0)
+    assert d["reason"] == "internal-error-fallback-send" and len(_calls(tmp_path)) == 1
+
+
+def test_an_exception_in_a_dry_run_sends_nothing(tmp_path, monkeypatch):
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    monkeypatch.setattr(vfs, "decide_alert", lambda *_a: 1 / 0)
+    _cycle(_stale_verdict(), tmp_path, gw, T0, dry_run=True)
+    assert not _calls(tmp_path)
+
+
+def test_gate_is_derived_from_the_launchd_cadence():
+    plist = REPO / "infra/launchagents/com.nuzantara.visa-freshness-sentinel.plist"
+    assert plistlib.loads(plist.read_bytes())["StartInterval"] == vfs.CADENCE_S
+    assert vfs.REALERT_GATE_S + vfs.CADENCE_S + vfs.DRIFT_SLACK_S == vfs.REALERT_MAX_GAP_S
+
+
+def test_ticks_every_6_1_hours_never_leave_a_gap_over_24_hours(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = _stale_verdict()
+    delivered = []
+    for tick in range(int(72 / 6.1) + 1):
+        at = T0 + tick * 6.1 * 3600
+        if _cycle(v, tmp_path, gw, at).get("delivered"):
+            delivered.append(at)
+    gaps = [(b - a) / 3600 for a, b in zip(delivered, delivered[1:])]
+    assert len(delivered) >= 4 and max(gaps) <= 24
+
+
+def test_guilt_a_23_hour_gate_breaks_the_24_hour_promise():
+    ticks = [n * 6.1 for n in range(5)]
+    sent, last = [], None
+    for t in ticks:
+        if last is None or t - last >= 23:
+            sent.append(t)
+            last = t
+    assert sent[1] - sent[0] > 24
+
+
+def test_board_routing_is_a_board_delivery_not_a_telegram_one(tmp_path, monkeypatch):
+    """Real gateway subprocess with routing forced onto the board (a misconfigured owner
+    list), real escalation helpers, private spool and board."""
+    esc = _board(tmp_path, monkeypatch)
+    monkeypatch.setenv("TG_SPOOL_DIR", str(tmp_path / "spool"))
+    monkeypatch.setenv("TG_BOARD_PATH", str(tmp_path / "escalations_pro.jsonl"))
+    monkeypatch.setenv("TG_OWNER_FAMILIES", "some-other-family")
+    v = _stale_verdict()
+    results = [
+        vfs.run_alert_cycle(v, dry_run=False, now_ts=T0 + d * DAY, state_path=tmp_path / "state.json")
+        for d in range(5)
+    ]
+    assert results[0]["gateway_verdict"] == "spooled" and results[0]["board_delivery"] is True
+    assert not any(r["delivered"] for r in results)
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert "telegram_last_delivered_ts" not in state and state["route"] == "board"
+    rows = [json.loads(x) for x in (tmp_path / "escalations_pro.jsonl").read_text().splitlines()]
+    routed_jobs = {r["job"] for r in rows if r.get("type") == "gateway_routed"}
+    assert 1 <= len(routed_jobs) <= 2  # not one per attempt
+
+    ok = vfs.classify_freshness([_portal_record("p", VERIFIED_AT.isoformat())], VERIFIED_AT)
+    _cycle(ok, tmp_path, tmp_path / "unused.py", T0 + 6 * DAY)
+    open_jobs = [j for j in routed_jobs | {vfs.ESCALATION_JOB} if esc.is_job_open(j)]
+    assert open_jobs == []
+
+
+def test_visa_freshness_is_an_owner_routed_family_by_default(monkeypatch):
+    monkeypatch.delenv("TG_OWNER_FAMILIES", raising=False)
+    import importlib
+
+    import tg_notify
+
+    tg = importlib.reload(tg_notify)
+    assert tg._owner_reserved("visa-freshness:stale:25:s1:n0:a0")
+    assert not tg._owner_reserved("visa-freshness-other-organ")
+    assert tg._owner_reserved("wa-bridge:down")  # the existing families are untouched
+
+
+def test_spooled_then_a_working_sender_ten_minutes_later_is_delivered(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = _stale_verdict()
+    (tmp_path / "mode").write_text("spooled")
+    first = _cycle(v, tmp_path, gw, T0)
+    assert first["delivered"] is False and first["board_delivery"] is True
+    (tmp_path / "mode").write_text("sent")
+    second = _cycle(v, tmp_path, gw, T0 + 600)
+    assert second["delivered"] is True and len(_calls(tmp_path)) == 2
+    rows = [json.loads(x) for x in (tmp_path / "escalations_pro.jsonl").read_text().splitlines()]
+    assert len(rows) == 1  # the board row was written once, not once per attempt
+
+
+def test_a_genuine_failure_is_still_undelivered_not_a_board_delivery(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    (tmp_path / "mode").write_text("p0_overflow_spooled")
+    d = _cycle(_stale_verdict(), tmp_path, gw, T0)
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert d["delivered"] is False and "board_delivery" not in d
+    assert "telegram_last_delivered_ts" not in state and state["undelivered_attempts"] == 1
+
+
+# ---------------------------------------------------------------------------
+# W141 successor, round 2 — own rows only; a restarted condition gets a fresh key
+# ---------------------------------------------------------------------------
+
+
+def test_ok_resolves_only_the_sentinels_own_rows(tmp_path, monkeypatch):
+    esc = _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    mine = [vfs.ESCALATION_JOB, "visa-freshness:stale:25:s1:n0:a0", "visa-freshness:stale:25"]
+    other = "visa-freshness-other-organ"
+    for job in [*mine, other]:
+        esc.write_escalation({"job": job, "priority": "HIGH", "error_summary": "x"})
+    ok = vfs.classify_freshness([_portal_record("p", VERIFIED_AT.isoformat())], VERIFIED_AT)
+    _cycle(ok, tmp_path, gw, T0)
+    assert [j for j in mine if esc.is_job_open(j)] == []
+    assert esc.is_job_open(other)
+
+
+def test_condition_restarted_the_same_day_gets_a_fresh_key(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    ok = vfs.classify_freshness([_portal_record("p", VERIFIED_AT.isoformat())], VERIFIED_AT)
+    v = _stale_verdict()
+    first = _cycle(v, tmp_path, gw, T0)
+    _cycle(ok, tmp_path, gw, T0 + 2 * 3600)
+    second = _cycle(v, tmp_path, gw, T0 + 8 * 3600)
+    keys = [c[c.index("--dedup-key") + 1] for c in _calls(tmp_path)]
+    assert first["delivered"] and second["delivered"] and keys[0] != keys[1]
+
+
+def test_a_continuing_condition_keeps_its_key_family(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = _stale_verdict()
+    for h in (0, 18, 36):
+        _cycle(v, tmp_path, gw, T0 + h * 3600)
+    keys = [c[c.index("--dedup-key") + 1] for c in _calls(tmp_path)]
+    assert len({k.rsplit(":n", 1)[0] for k in keys}) == 1 and len(set(keys)) == 3

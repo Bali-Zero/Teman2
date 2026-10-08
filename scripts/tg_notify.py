@@ -240,7 +240,7 @@ OWNER_FAMILIES = frozenset(
     f.strip() for f in os.environ.get(
         "TG_OWNER_FAMILIES",
         "cost-breaker-deadman,price-review,meta-one-token-dead,wa-bridge,"
-        "wa-mirror-bridge-liveness",
+        "wa-mirror-bridge-liveness,visa-freshness",
     ).split(",") if f.strip()
 )
 # wa-mirror-bridge-liveness is here for a reason worth keeping: the archive of
