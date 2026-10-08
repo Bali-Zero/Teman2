@@ -19,7 +19,9 @@ local gate does (RULED 2026-10-07 in `docs/rules/RULINGS.md`; plan and sequence 
 BASE ref and executed against the candidate tree (`trusted_pytest`; no candidate `conftest`/ini is honoured).
 Trusted checks (classifier, `cmd`, `trusted_pytest`) run `python -I` (ignores user site) with `PYTHONPATH`/`PYTHONSTARTUP`/`PYTHONHOME` removed and `PYTHONSAFEPATH=1`, so a candidate `sitecustomize.py` cannot execute inside them; candidate tests (`pytest` kind) are not trusted checks.
 `policy.change_map` mirrors GitHub's `changes` job (v0.3.1): `classified`, `unclassified_paths` and `empty_changed_set` are PASS
-there (the last two run every job, which the BLOCKED `tests.*` records carry); any other classifier output is BLOCKED, never FAIL.
+there (the last two run every job, which the BLOCKED `tests.*` records carry, until the context that runs the job is planned:
+`tests.backend_shards`/`tests.frontend_mouth` are then NOT_APPLICABLE, superseded by `ctx.backend-tests`/`ctx.frontend-tests-mouth`,
+which carry its verdict); any other classifier output is BLOCKED, never FAIL.
 `plan.json` is re-hashed against its `plan_hash` on every `run`/`review`/`status`; an edited plan aborts. A `cmd` check with a
 `trusted_pythonpath` carries the sha256 map of that directory and refuses to run when a file was rewritten, added or removed.
 
@@ -108,9 +110,9 @@ order, each matrix leg in its own fresh sandbox. What the runner reproduces, and
 
 | surface | how | BLOCKED when |
 |---|---|---|
-| `services:` | BASE's spec only (the candidate's is never read); image via the operator-pinned `service_images` map, id pinned at plan; BASE's literal `env:`; docker health flags only; started before the job, removed after it (`docker rm -f`, verified) | the tag has no pinned stand-in (tag drift), an option is not a health flag, a port map is not identity, env holds an expression, or a service is not healthy within its own health budget |
+| `services:` | BASE's spec only (the candidate's is never read); image via the operator-pinned `service_images` map, id pinned at plan; BASE's literal `env:`; docker health flags only; started before the job, removed after it (`docker rm -f -v`, verified: the anonymous volumes a service image declares die with it) | the tag has no pinned stand-in (tag drift), an option is not a health flag, a port map is not identity, it declares `volumes:` (nothing is ever mounted), env holds an expression (named, never its value), or a service is not healthy within its own health budget |
 | networking | the first service owns a loopback-only netns (`--network none`); other services and the job join it, so `localhost:5432` answers as on hosted | — |
-| `${{ }}` | `gh_expr.py` (runner-owned, sha-pinned, shipped beside the driver): `github`, `env`, `matrix`, `needs`, `steps`, `vars`, `runner`, status functions; `if:`, `env:`, `run:` evaluated at run time, `continue-on-error`, step `timeout-minutes`, `$GITHUB_OUTPUT` | `secrets.*`, `github.token`, `hashFiles`, `inputs`, any other function, a `GITHUB_ENV`/`GITHUB_PATH` write — a value hosted holds is never read as `''` |
+| `${{ }}` | `gh_expr.py` (runner-owned, sha-pinned, shipped beside the driver): `github`, `env`, `matrix`, `needs`, `steps`, `vars`, `runner`, status functions; `if:`, `env:`, `run:` evaluated at run time, `continue-on-error`, step `timeout-minutes`, `$GITHUB_OUTPUT` | `secrets.*`, `github.token`, `hashFiles`, `inputs`, any other function, a `GITHUB_ENV`/`GITHUB_PATH` write; the queue ref (`github.ref`, `merge_group.head_ref`) when `plan` has no `--pr-number`; a declared `env.X` in a text the runner evaluates itself (an artifact name or path, a host reader's argv, a checkout ref), where env is empty — a value hosted holds is never read as `''`, and the refusal names the step and variable, never a value |
 | install steps | verbatim, offline: the **deps image** (`localci-deps:<recipe digest>`) is the candidate image plus a wheelhouse at `/opt/wheels` built at plan time from the candidate's requirement files reduced to `name==version` pins (`--only-binary`: no build backend runs), the declared extra packages, `deps.node`, and `deps.fetch` files (https, sha256-pinned, outside the tree); verified by label and layer chain on the pinned candidate image | a requirement file is absent, the build fails, or a fetch pin differs |
 | egress step | a step marked `side: egress` runs alone in a bridged sandbox holding only its named `inputs`, after a one-shot `rewrite`; its `egress_trusted` files must equal BASE | an input differs from BASE, the rewrite does not match once |
 | host reader | a step marked `side: host` must be `$PY <a trusted file present at BASE>`: the BASE copy runs under `-I` at **plan time** (secrets stripped; `gh` answers with its stored login, a read) and its rc is frozen into the plan, folded in at the step's position | any other argv |
@@ -122,6 +124,25 @@ context is satisfied). The workflow file and any changed `.gitattributes` are ju
 candidate changed it is reported BLOCKED. `bare_venv: false` keeps the image interpreter (the job installs with
 `uv pip install --system`).
 
+Node jobs (E2E, Visa Oracle smoke) add three deps keys, all built into the same deps image at plan time:
+
+- `npm: package-lock.json` — the candidate's lock and the manifests it installs (root and each declared workspace, read as
+  data) fill an npm cache in the official `node:<deps.node>` image with `npm ci --ignore-scripts`: network, no package code.
+  Every lock entry must resolve to `https://registry.npmjs.org/` with an `sha512` integrity, be a declared workspace link, or
+  name a GitHub repository at a full 40-hex commit (npm fetches its https tarball; no git, no credentials); anything else (a
+  tarball URL, a moving git ref, a path) is BLOCKED. `npm:` may list several locks (a standalone app that runs its own `npm ci`). The job's own `npm install` then runs verbatim, offline
+  (`npm_config_offline`), its lifecycle scripts inside the sandbox.
+- `playwright: chromium` — the lock's `playwright-core` version, from the registry, runs `install --with-deps chromium` as
+  root with network at build (`PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright`); the job's browser-install step needs root and
+  network the sandbox never has, so it is `not_applicable` with that reason.
+- `apt: [postgresql-client]` — OS packages the job's own bounded installer finds already present (`apt_install.sh` exits 0).
+
+A required context that is one leg of a matrix (`Frontend Tests (Next.js) (mouth, true)`) names it with `leg:`; an include-only
+matrix expands as hosted expands it. A network failure in the egress sandbox (a timeout or refused connection in its log) is no
+verdict on the candidate (the step is BLOCKED, never green; a vulnerability finding stays a verdict): re-run. So is a host reader whose own stderr line starts with the matrix's `no_verdict_when` three times running (the harness gate reader's `CANNOT-VERIFY`, a GitHub 5xx); text it merely echoes cannot trigger it. A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
+overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
+can change.
+
 ### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB)
 
 Checks run one after another and so do a service context's legs (parallelism 1): the backend shards take up to 6 GiB each
@@ -131,10 +152,15 @@ and the VM has 8. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a s
 |---|---|---|---|
 | ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 |
 | ctx.harness-floor | 67 | 0.5 | one leg; the Gear ≥ 2 reader ran at plan |
-| whole run, 14 required contexts | 2267 | — | plan 6 s with the deps image cached |
+| ctx.e2e-tests | 320 | 207 | one leg: backend + Next.js build + 134 Playwright specs (PR-B2, 1df44b9b65) |
+| ctx.frontend-tests-mouth | 297 | 515 | the (mouth, true) leg: contract check, tsc, vitest with coverage, core, admin, wa-mirror |
+| ctx.visa-oracle-smoke | 138 | 47 | one leg: disposable DB, signed TEST RulePack, the fullstack Playwright spec |
+| whole run, 14 required contexts | 2267 (B1) · 2784 (B2) | — | plan 6-9 s with the deps images cached |
 
 The deps image (`localci-deps:<digest16>`, 9.85 GB: 294 aarch64 wheels, node 24, the fetched files) is built once per
 recipe: 394 s cold at plan (download, install, export), then a cache hit while the candidate's pins and the image are unchanged.
+E2E and Visa Oracle smoke share one recipe (the backend closure plus node 24, the root lock's npm cache, chromium and
+postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Frontend Tests' node-only recipe is 1.4 GB.
 
 ## Security: Pysa taint judge (`security.pysa_python`)
 

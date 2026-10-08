@@ -361,6 +361,7 @@ def pysa_check_spec(wt: Path, base: str, cand: str, trusted: Path, run_dir: Path
 
 # ------------------------------------------------------- required contexts the runner executes (v0.4.0)
 CTX_CHECK_NAME = re.compile(r"^ctx\.[a-z0-9][a-z0-9-]*$")
+SUPERSEDED_RECORDS = {"tests.backend_shards": "ctx.backend-tests", "tests.frontend_mouth": "ctx.frontend-tests-mouth"}
 MODULE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
 IMPLICIT_USES = ("actions/checkout@", "actions/setup-python@")   # stood in for by the tree copy and the image/host interpreter
 STEPS_DRIVER = Path(__file__).with_name("steps_driver.py")
@@ -461,9 +462,11 @@ def resolve_steps(job: dict, local: dict, base: str, run_defaults: dict | None =
             step["if" if expressions else "if_not_evaluated"] = str(ws["if"])
         if expressions:
             tm = ws.get("timeout-minutes")
-            if coe not in (None, False, True) or (tm is not None and (isinstance(tm, bool) or not isinstance(tm, (int, float)))):
+            if coe not in (None, False, True) or (tm is not None and (isinstance(tm, bool) or not isinstance(tm, (int, float)) or tm <= 0)):
                 return None, f"workflow step {wname!r}: continue-on-error/timeout-minutes must be literals here"
-            step.update({k: v for k, v in (("id", ws.get("id")), ("continue_on_error", coe is True), ("timeout_s", int(tm * 60) if tm else None)) if v})
+            step.update({k: v for k, v in (("id", ws.get("id")), ("continue_on_error", coe is True), ("timeout_s", tm * 60 if tm else None)) if v})
+        elif ws.get("timeout-minutes") is not None:   # hosted kills the step there; only the expression-mode driver does too
+            return None, f"workflow step {wname!r}: a step timeout-minutes is emulated only in a service context (expressions: true)"
         if st.get("trusted_scan") is False:   # a path filter (`case` list, `git diff -- <paths>`) names surfaces, not judges
             step["trusted_scan"] = False
         out.append(step)
@@ -660,6 +663,13 @@ USER 65534
 RUN --network=none xargs -r "$PY" -m pip install -q --disable-pip-version-check --no-deps --no-index < /req/install.txt
 USER root
 """
+# A job with no Python closure (Frontend Tests: node only) starts from the candidate image as it is: no wheel stage, no interpreter
+# handed to the sandbox user.
+DEPS_BARE = """\
+ARG BASE
+FROM ${BASE}
+USER root
+"""
 # Node, when the job calls it (ubuntu-latest carries one; setup-node pins one): the official image's binary and its npm.
 DEPS_NODE = """\
 COPY --from=node:{v}-bookworm-slim /usr/local/bin/node /usr/local/bin/node
@@ -667,6 +677,37 @@ COPY --from=node:{v}-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/no
 RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \\
  && node --version | grep -q "^v{v}\\."
 ENV LOCALCI_NODE={v}
+"""
+# npm: the candidate's lockfile and package manifests (data) fill an npm cache in the official node image with network and no
+# lifecycle script (`--ignore-scripts`: no package code runs there); the job's own `npm install` then runs verbatim, offline, from
+# that cache, its scripts inside the sandbox. Every lock entry resolves to the public registry or is a workspace link (checked).
+DEPS_NPM_STAGE = """\
+FROM node:{v}-bookworm-slim AS npmcache
+COPY npm/ /src/
+RUN for lock in $(cd /src && find . -name package-lock.json | sort); do \\
+      (cd "/src/${{lock%/package-lock.json}}" && npm ci --ignore-scripts --no-audit --no-fund --loglevel=error --cache /npm-cache) || exit 1; \\
+    done && rm -rf /src
+"""
+DEPS_NPM = """\
+COPY --from=npmcache --chown=65534:65534 /npm-cache /opt/npm-cache
+"""
+# Playwright: the lock's playwright-core, from the registry, installs its browser and the OS libraries it needs (apt) as root
+# with network at build; the job's own browser-install step needs root and network, which the sandbox never has. A child that
+# drops PLAYWRIGHT_BROWSERS_PATH (the visa smoke's sanitized env keeps HOME) finds it at the runner user's default cache path.
+DEPS_PLAYWRIGHT = """\
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+RUN for i in 1 2 3; do npm_config_cache=/tmp/npx-root timeout 1200 npx -y playwright-core@{pw} install --with-deps {browser} && break; \\
+      [ $i = 3 ] && exit 1; sleep 5; done && rm -rf /tmp/npx-root \\
+ && chmod -R a+rX /opt/ms-playwright \\
+ && install -d -o 65534 -g 65534 /home/runner/.cache && ln -s /opt/ms-playwright /home/runner/.cache/ms-playwright
+"""
+DEPS_APT = """\
+RUN A='-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::Languages=none' && \\
+    for i in 1 2 3; do timeout 300 apt-get $A update -qq && break; [ $i = 3 ] && exit 1; sleep 5; done && \\
+    DEBIAN_FRONTEND=noninteractive timeout 900 apt-get $A install -y -qq --no-install-recommends {pkgs} && rm -rf /var/lib/apt/lists/*
+"""
+DEPS_OFFLINE_NPM = """\
+ENV npm_config_cache=/opt/npm-cache npm_config_offline=true npm_config_update_notifier=false
 """
 DEPS_FETCH_PY = """\
 import hashlib, json, os, shutil, sys, urllib.request
@@ -714,6 +755,9 @@ def _seconds(v: str) -> float:
     return float(m.group(1)) * {"ms": 0.001, "s": 1, "m": 60, None: 1}[m.group(2)]
 
 
+SERVICE_KEYS = {"image", "credentials", "env", "ports", "options"}   # what a hosted service may declare, but `volumes`: never mounted here
+
+
 def plan_services(job: dict, images: dict, docker: str) -> tuple[list | None, str | None]:
     """A job's `services:` as BASE declares them. The image must have an operator-pinned local stand-in (a BASE tag the operator never
     vetted is BLOCKED, not guessed), its id is pinned now; env is BASE's literal map and nothing else (no host variable can reach it);
@@ -721,12 +765,14 @@ def plan_services(job: dict, images: dict, docker: str) -> tuple[list | None, st
     out = []
     for sname, svc in (job.get("services") or {}).items():
         svc = svc if isinstance(svc, dict) else {}
+        if (extra := sorted(set(svc) - SERVICE_KEYS)):
+            return None, f"service {sname}: {extra} not emulated (a volume is never mounted into a service here; only {sorted(SERVICE_KEYS)} are read)"
         ref = str(svc.get("image") or "")
         if not images.get(ref):
             return None, f"service {sname}: BASE image {ref!r} has no operator-pinned stand-in in local.service_images"
         env = {str(k): str(v) for k, v in (svc.get("env") or {}).items()}
-        if any("${{" in v for v in env.values()):
-            return None, f"service {sname}: env carries expressions"
+        if (expr := sorted(k for k, v in env.items() if "${{" in v)):
+            return None, f"service {sname}: env {expr} carry expressions (a secret or a context the run does not hold; names only)"
         ports = [str(p) for p in svc.get("ports") or []]
         if not ports or any(not re.fullmatch(r"(\d+):\1", p) for p in ports):
             return None, f"service {sname}: ports {ports} — only identity maps (N:N) are reachable on the shared loopback"
@@ -752,8 +798,11 @@ def matrix_legs(job: dict) -> tuple[list | None, str | None]:
     m = (job.get("strategy") or {}).get("matrix")
     if m is None:
         return [{}], None
+    if isinstance(m, dict) and list(m) == ["include"] and isinstance(m["include"], list) and m["include"] \
+            and all(isinstance(x, dict) and x for x in m["include"]):
+        return [dict(x) for x in m["include"]], None   # include alone: each entry is one job, as hosted expands it
     if not isinstance(m, dict) or any(k in m for k in ("include", "exclude")) or any(not isinstance(v, list) or not v for v in m.values()):
-        return None, "strategy.matrix with include/exclude or non-list axes is not emulated"
+        return None, "strategy.matrix with include/exclude beside axes, or non-list axes, is not emulated"
     legs = [{}]
     for k, vals in m.items():
         legs = [{**leg, k: v} for leg in legs for v in vals]
@@ -791,9 +840,28 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
     node = str(deps.get("node") or "")
     if node and not node.isdigit():
         return None, "deps.node must be a major version"
-    dockerfile = DEPS_DOCKERFILE + (DEPS_NODE.format(v=node) if node else "")
+    npm_files, pw, why = {}, "", None
+    for lock in [deps["npm"]] if isinstance(deps.get("npm"), str) else deps.get("npm") or []:
+        files, pw1, why = npm_inputs(wt, cand, {"npm": lock})
+        if why:
+            break
+        pre = lock.rsplit("/", 1)[0] + "/" if "/" in lock else ""
+        npm_files.update({pre + k: v for k, v in files.items()})
+        pw = pw or pw1
+    apt = sorted(str(a) for a in deps.get("apt") or [])
+    browser = str(deps.get("playwright") or "")
+    if why or ((deps.get("npm") or browser) and not node) or any(not re.fullmatch(r"[a-z0-9][a-z0-9.+-]*", a) for a in apt) \
+            or browser not in ("", "chromium", "firefox", "webkit") or (browser and not pw):
+        return None, f"deps: {why or 'npm/playwright need deps.node and an npm lock naming playwright-core; apt names are package names'}"
+    dockerfile = (DEPS_DOCKERFILE if reqs or pkgs or fetch else DEPS_BARE) + (DEPS_NODE.format(v=node) if node else "")
+    if npm_files:
+        dockerfile = dockerfile.replace("\nFROM ${BASE}\n", "\n" + DEPS_NPM_STAGE.format(v=node) + "FROM ${BASE}\n", 1)
+    dockerfile += (DEPS_APT.format(pkgs=" ".join(apt)) if apt else "") + (DEPS_PLAYWRIGHT.format(pw=pw, browser=browser) if browser else "") \
+        + (DEPS_NPM + DEPS_OFFLINE_NPM if npm_files else "")
     recipe = {"base": iso["image_id"], "python": py, "requirements": sorted(set(reqs)), "packages": pkgs, "fetch": fetch, "node": node,
               "dockerfile": sha256_bytes((dockerfile + DEPS_FETCH_PY).encode())}
+    if npm_files or apt or browser:   # absent keys keep a recipe built before them (and its image) as it was
+        recipe.update(npm={k: sha256_bytes(v) for k, v in sorted(npm_files.items())}, playwright=[browser, pw], apt=apt)
     digest = sha256_json(recipe)
     tag, docker = f"localci-deps:{digest[:16]}", iso["docker"]
     note = f"deps {tag} ({len(recipe['requirements'])} pins + {pkgs}, {len(fetch)} fetched file(s)); not reaching the network stage: {dropped}"
@@ -807,6 +875,9 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
         (ctxd / "install.txt").write_text("".join(f"{f['path']}\n" for f in fetch if f["install"]))
         (ctxd / "fetch.py").write_text(DEPS_FETCH_PY)
         (ctxd / "Dockerfile").write_text(dockerfile)
+        for rel, blob in npm_files.items():
+            (ctxd / "npm" / rel).parent.mkdir(parents=True, exist_ok=True)
+            (ctxd / "npm" / rel).write_bytes(blob)
         base_tag = f"localci-deps-base:{iso['image_id'].split(':')[-1][:16]}"
         denv = trusted_env()
         with open(run_dir / "logs" / f"deps-{slug}.log", "w") as fh:
@@ -831,19 +902,43 @@ MERGE_GROUP_EVENT_KEYS = {"merge_group", "repository", "organization", "installa
 
 
 REBUILT_IDS = {("github", "sha"), ("github", "event", "merge_group", "base_sha"), ("github", "event", "merge_group", "head_sha")}
+QUEUE_REF = {("github", "ref"), ("github", "event", "merge_group", "head_ref")}   # the queue's ref names the PR: pr-<N>-<base>
+ENV_EVALUATED_HERE = "which the workflow declares: the runner evaluates that text itself, where env is empty, so it would read '' silently"
+
+
+def path_read(texts, wanted: set) -> str | None:
+    """The first context path `texts` read that is one of `wanted`, or an object that holds one (`${{ github.event.merge_group }}`).
+    What does not parse is refused where that text is evaluated."""
+    X = _gh_expr()
+    for t in texts:
+        try:
+            found = X.paths(str(t or ""))
+        except X.ExprError:
+            continue
+        for path in found:
+            if any(ids[:len(path)] == tuple(str(p).lower() for p in path) for ids in wanted):
+                return ".".join(path)
+    return None
 
 
 def rebuilt_id(texts) -> str | None:
     """The first commit id the sandbox rebuilds that `texts` reads: only the driver knows those ids, once it has built the commits, so a text
     the runner evaluates itself (an artifact name or path, a host or egress step) cannot read them (Codex, B1 delta review)."""
-    X = _gh_expr()
+    return path_read(texts, REBUILT_IDS)
+
+
+def declared_env_read(texts, declared) -> str | None:
+    """The first `env.X` that `texts` read where X is an env the workflow declares in that scope (or the whole `env` object, when it
+    declares any). A text the runner evaluates itself (an artifact name or path, a host reader's argv, a checkout ref) holds no env, so
+    that read would be '' where hosted reads the declared value; an undeclared X is null hosted too."""
+    X, names = _gh_expr(), {str(d).lower() for d in declared}
     for t in texts:
         try:
             found = X.paths(str(t or ""))
-        except X.ExprError:   # what does not parse is refused where that text is evaluated
+        except X.ExprError:
             continue
-        for path in found:   # the id itself, or an object that holds it (`${{ github.event.merge_group }}`)
-            if any(ids[:len(path)] == tuple(str(p).lower() for p in path) for ids in REBUILT_IDS):
+        for path in found:
+            if path[0].lower() == "env" and (path[1].lower() in names if len(path) > 1 else bool(names)):
                 return ".".join(path)
     return None
 
@@ -877,15 +972,66 @@ def unmodelled_path(path: list, gh: dict, needs: list, stood_in: dict) -> str | 
     return None
 
 
-def run_host_reader(argv: list, cwd: Path, timeout: int | None) -> dict:
+def npm_inputs(wt: Path, cand: str, deps: dict) -> tuple[dict, str, str | None]:
+    """The candidate's npm lock and the manifests it installs (root + each workspace), read as data -> (files, playwright-core
+    version, why-not). A lock entry that resolves anywhere but the public registry (a tarball URL, git, a file path that is not a
+    declared workspace) is refused: the networked stage fetches only what the registry serves under the lock's integrity."""
+    lock_rel = safe_tree_path(str(deps["npm"]))
+    root = lock_rel.rsplit("/", 1)[0] + "/" if "/" in lock_rel else ""
+    files: dict = {}
+    for rel in (lock_rel, f"{root}package.json"):
+        if (blob := _extract_base_file(wt, cand, rel)) is None:
+            return {}, "", f"{rel} absent from the candidate"
+        files[rel[len(root):]] = blob
+    try:
+        lock, manifest = json.loads(files["package-lock.json"]), json.loads(files["package.json"])
+    except (KeyError, ValueError) as e:
+        return {}, "", f"npm lock/manifest unreadable: {type(e).__name__}"
+    ws = manifest.get("workspaces") or []
+    ws = ws.get("packages") or [] if isinstance(ws, dict) else ws
+    if any(not isinstance(w, str) or any(c in w for c in "*?[") for w in ws):
+        return {}, "", "npm workspaces must be plain paths (no globs)"
+    for w in ws:
+        rel = f"{root}{safe_tree_path(w.rstrip('/'))}/package.json"
+        if (blob := _extract_base_file(wt, cand, rel)) is None:
+            return {}, "", f"workspace manifest {rel} absent from the candidate"
+        files[rel[len(root):]] = blob
+    pkgs = lock.get("packages") if isinstance(lock.get("packages"), dict) else None
+    if pkgs is None:
+        return {}, "", "npm lock has no `packages` map (lockfileVersion >= 2 required)"
+    for key, ent in pkgs.items():
+        res = ent.get("resolved") if isinstance(ent, dict) else None
+        if res is None:
+            continue
+        if ent.get("link") is True and res.rstrip("/") in [w.rstrip("/") for w in ws]:
+            continue
+        if re.fullmatch(r"git\+(?:ssh://git@|https://)github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git#[0-9a-f]{40}", str(res)):
+            continue   # pinned to a full commit id: npm fetches github's https tarball of that commit (no git, no credentials)
+        if not (str(res).startswith("https://registry.npmjs.org/") and str(ent.get("integrity", "")).startswith("sha512-")):
+            return {}, "", (f"npm lock entry {key!r} resolves to {str(res)[:80]!r}: only the public registry with an integrity, "
+                            "or a github repository at a full commit id, is fetched")
+    pw = str((pkgs.get("node_modules/playwright-core") or {}).get("version") or "")
+    return files, pw if re.fullmatch(r"\d+\.\d+\.\d+", pw) else "", None
+
+
+READER_RETRY_WAITS = (0, 10, 30)
+
+
+def run_host_reader(argv: list, cwd: Path, timeout: int | None, no_verdict: str | None = None) -> dict:
     """A BASE reader of GitHub state (the harness gate verdict) at plan time, before any candidate code: python -I on the BASE copy,
     secrets stripped from its environment (gh answers with its stored login, a read). Its rc is frozen into the plan, so the seal
     covers it, and the driver folds it in at the step's position, where the step's own `if:` decides whether it counts."""
-    try:
-        r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout or 300, env=trusted_env(), cwd=str(cwd))
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return {"rc": None, "reason": f"host reader could not run: {type(e).__name__}"}
-    return {"rc": r.returncode, "reason": f"host, at plan: BASE {Path(argv[2]).name} rc={r.returncode}", "log": (r.stdout + r.stderr)[-4000:]}
+    for wait in READER_RETRY_WAITS:   # a reader that says it could not read GitHub (`no_verdict`, the matrix's) is asked again, then no verdict
+        time.sleep(wait)
+        try:
+            r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout or 300, env=trusted_env(), cwd=str(cwd))
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return {"rc": None, "reason": f"host reader could not run: {type(e).__name__}"}
+        out = r.stdout + r.stderr   # the reader's own error line, on stderr, line-anchored: a description it echoes (stdout) cannot fake it
+        if not (no_verdict and r.returncode != 0 and any(ln.startswith(no_verdict) for ln in r.stderr.splitlines())):
+            return {"rc": r.returncode, "reason": f"host, at plan: BASE {Path(argv[2]).name} rc={r.returncode}", "log": out[-4000:]}
+    return {"rc": None, "reason": f"host, at plan: BASE {Path(argv[2]).name} could not read GitHub ({no_verdict!r}, {len(READER_RETRY_WAITS)} tries): "
+            "no verdict on the candidate, re-run", "log": out[-4000:]}
 
 
 def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: str, ctx: dict, changed: list, pyv: dict, iso: dict, cm: dict,
@@ -928,32 +1074,57 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
             return _blocked(f"job {jid}: the matrix lists its steps out of BASE order; outputs and job status flow in that order")
         prefix, why = select_python(job, pyv.get("container"), pyv.get("container_extra"))
         legs, why2 = matrix_legs(job)
+        if legs and (want := jl.get("leg")) is not None:   # a required context that is one leg's check run: "Frontend Tests (Next.js) (mouth, true)"
+            legs = [g for g in legs if set(g) == set(want) and all(type(g[k]) is type(v) and g[k] == v for k, v in want.items())]   # 1 is not true
+            shown = "(" + ", ".join(str(v).lower() if isinstance(v, bool) else str(v) for v in legs[0].values()) + ")" if len(legs) == 1 else None
+            why2 = why2 or (None if shown and jid == ctx.get("job_id") and name.endswith(shown) else
+                            f"leg {want!r} is not exactly one leg of the context's own job, the one whose check run is {name!r}")
         svcs, why3 = plan_services(job, local.get("service_images") or {}, iso["docker"])
         if why or why2 or why3:
             return _blocked(f"job {jid}: {why or why2 or why3}")
+        nodes = {str((s.get("with") or {}).get("node-version", "")) for s in job.get("steps") or [] if str(s.get("uses", "")).startswith("actions/setup-node@")}
+        if nodes and nodes != {str((local.get("deps") or {}).get("node") or "")}:
+            return _blocked(f"job {jid}: setup-node pins {sorted(nodes)}, the deps image carries node {(local.get('deps') or {}).get('node')!r}")
         checkout = None
         for s in job.get("steps") or []:
             w = (s.get("with") or {}) if str(s.get("uses", "")).startswith("actions/checkout@") else {}
             if set(w) - {"fetch-depth", "ref", "filter"}:
                 return _blocked(f"job {jid}: checkout with {sorted(set(w) - {'fetch-depth', 'ref', 'filter'})} is not emulated")
             if "ref" in w:
+                if (q := declared_env_read([w["ref"]], {*jenv, *(s.get("env") or {})})):
+                    return _blocked(f"job {jid}: checkout ref reads `{q}`, {ENV_EVALUATED_HERE}")
                 try:
                     if X.substitute(str(w["ref"]), static) != "main":
                         return _blocked(f"job {jid}: checkout ref {w['ref']!r} is neither the candidate nor its BASE")
                 except X.ExprError as e:
                     return _blocked(f"job {jid}: checkout ref: {e}")
                 checkout = "base"
-        try:
-            texts = [*jenv.values(), *(str((s.get("with") or {}).get("ref", "")) for s in job.get("steps") or [])]
+        try:   # each text carries where it sits, so a refusal names the step and the variable (a name, never a value)
+            texts = [*((f"job env {k}", str(v)) for k, v in jenv.items()),
+                     *((f"step {s.get('name') or s.get('uses')!r} with.ref", str((s.get("with") or {}).get("ref", ""))) for s in job.get("steps") or [])]
+            base_env = {s["name"]: s.get("env") or {} for s in job.get("steps") or [] if isinstance(s, dict) and isinstance(s.get("name"), str)}
             for st in steps:
+                lab = f"step {st['name']!r}"
                 if st.get("script") and re.search(r"GITHUB_(ENV|PATH|STATE)\b", st["script"]):
-                    raise X.ExprError(f"step {st['name']!r} writes GITHUB_ENV/PATH/STATE, which the driver does not read back")
-                texts += [str(t or "") for t in (st.get("script"), *(st.get("env") or {}).values(), *((st.get("emulate") or {}).values()))]
-                texts += ["${{ " + X.unwrap(str(st["if"])) + " }}"] if "if" in st else []
-            for t in texts:
-                for path in X.paths(t):
+                    raise X.ExprError(f"{lab} writes GITHUB_ENV/PATH/STATE, which the driver does not read back")
+                texts += [(f"{lab} run body", str(st.get("script") or "")), *((f"{lab} env {k}", str(v)) for k, v in (st.get("env") or {}).items()),
+                          *((f"{lab} with.{k}", str(v or "")) for k, v in (st.get("emulate") or {}).items())]
+                texts += [(f"{lab} if", "${{ " + X.unwrap(str(st["if"])) + " }}")] if "if" in st else []
+                if st.get("emulate") and (q := declared_env_read(st["emulate"].values(), {*jenv, *base_env.get(st["name"], {})})):
+                    raise X.ExprError(f"{lab} artifact name or path reads `{q}`, {ENV_EVALUATED_HERE}")
+            for lab, t in texts:
+                try:
+                    found = X.paths(t)
+                except X.ExprError as e:
+                    raise X.ExprError(f"{lab}: {e}") from None
+                for path in found:
                     if (why := unmodelled_path(path, gh, needs, local.get("needs") or {})):
-                        raise X.ExprError(f"`{'.'.join(path)}` {why}")
+                        raise X.ExprError(f"{lab}: `{'.'.join(path)}` {why}")
+            if pr_number is None:   # hosted, the queue's ref is refs/heads/gh-readonly-queue/main/pr-<N>-<base>; here '' or made up
+                for lab, t in [*texts, *((f"step {st['name']!r} argv", str(a)) for st in steps for a in st.get("argv") or [])]:
+                    if (q := path_read([t], QUEUE_REF)):
+                        raise X.ExprError(f"{lab} reads `{q}`, the merge queue's ref that names the PR: the runner was given no --pr-number, "
+                                          "so the step would run on an empty or made-up ref (plan again with --pr-number)")
             if (rid := rebuilt_id(v for st in steps for v in (st.get("emulate") or {}).values())):
                 raise X.ExprError(f"an artifact name or path reads `{rid}`, a commit id only the driver knows")
         except X.ExprError as e:
@@ -973,6 +1144,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                     st["script"] = st["script"].replace(a, b)
                 st["side"] = {"where": "egress", "inputs": [safe_tree_path(str(p)) for p in ms.get("inputs") or []], "rewrite": ms.get("rewrite") or []}
             elif (ms or {}).get("side") == "host":   # a BASE reader of GitHub state, run NOW on the host: its answer is frozen in the plan
+                if (q := declared_env_read(st.get("argv") or [], st.get("env") or {})):
+                    return _blocked(f"job {jid}: host step {st['name']!r} argv reads `{q}`, {ENV_EVALUATED_HERE}")
                 try:
                     argv = [X.substitute(str(x), static) for x in st.get("argv") or []]
                 except X.ExprError as e:
@@ -984,7 +1157,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 (tdir / argv[1]).parent.mkdir(parents=True, exist_ok=True)
                 (tdir / argv[1]).write_bytes(blob)
                 st["side"] = {"where": "host", "argv": [sys.executable, "-I", str(tdir / argv[1]), *argv[2:]], "base_sha256": sha256_bytes(blob)}
-                st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"))
+                st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"), ms.get("no_verdict_when"))
         image_id, deps_note = iso["image_id"], ""
         if local.get("deps"):
             image_id, deps_note = plan_deps_image(wt, cand, iso, local["deps"], prefix, run_dir, re.sub(r"[^a-z0-9-]", "-", str(ctx["check"])[4:]))
@@ -992,7 +1165,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 return _blocked(f"job {jid}: {deps_note}")
         planned.append({"job_id": jid, "needs": needs, "legs": legs, "steps": steps, "job_env": jenv, "services": svcs, "path_prefix": prefix,
                         "checkout": checkout, "image_id": image_id, "deps": deps_note, "venv": local.get("bare_venv", True) is not False,
-                        "timeout_s": int(tm * 60)})
+                        "timeout_s": tm * 60})
         upstream.add(jid)
     for f in local.get("egress_trusted") or []:   # a tool an egress step runs is BASE's pin, or the step does not run at all
         if _extract_base_file(wt, base, f) != _extract_base_file(wt, cand, f):
@@ -1084,6 +1257,9 @@ def cmd_plan(a):
             checks[chk] = plan_service_context(wt, base, ident["candidate_sha"], trusted, cname, ctx, changed, pyv, iso, cm, run_dir, a.pr_number)
         else:
             checks[chk] = plan_context_check(wt, base, ident["candidate_sha"], trusted, cname, ctx, trusted_sha, changed, pyv)
+    for legacy, chk in SUPERSEDED_RECORDS.items():   # "no local runner exists" stops being true once the context is planned
+        if chk in checks:
+            checks[legacy] = {"kind": "record", "status": "NOT_APPLICABLE", "reason": f"superseded by {chk}: that check carries the job's verdict"}
     for extra in (a.extra_check or []):
         name, eq, spec_s = extra.partition("=")
         if not eq or not EXTRA_CHECK_NAME.match(name):
@@ -1417,12 +1593,12 @@ class ContainerCleanupError(RuntimeError):
 
 def _remove_verified(docker: str, ctr: str, denv: dict) -> None:
     try:
-        subprocess.run([docker, "rm", "-f", ctr], capture_output=True, timeout=120, env=denv)
+        subprocess.run([docker, "rm", "-f", "-v", ctr], capture_output=True, timeout=120, env=denv)   # -v: its anonymous volumes die with it
         gone = subprocess.run([docker, "container", "inspect", "--format", "{{.Id}}", ctr], capture_output=True, text=True, timeout=60, env=denv)
     except (OSError, subprocess.TimeoutExpired) as e:
         raise ContainerCleanupError(f"removal of candidate container {ctr} not verifiable: {type(e).__name__}") from e
     if gone.returncode == 0 or "no such" not in (gone.stderr or "").lower():
-        raise ContainerCleanupError(f"candidate container {ctr} still present or its absence unverifiable after docker rm -f (inspect rc={gone.returncode})")
+        raise ContainerCleanupError(f"candidate container {ctr} still present or its absence unverifiable after docker rm -f -v (inspect rc={gone.returncode})")
 
 
 def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int, log: Path, junit: Path) -> dict:
@@ -1583,7 +1759,7 @@ def _execute_trusted_steps(spec: dict, timeout: int, log: Path) -> dict:
 
 
 def reap_containers(plan: dict, store: Store) -> str | None:
-    """A coordinator killed with -9 never reached its `docker rm -f`: remove THIS run dir's leftover candidate containers before
+    """A coordinator killed with -9 never reached its `docker rm -f -v`: remove THIS run dir's leftover candidate containers before
     resuming. Returns why that could not be verified (the caller refuses to run candidate code next to an unknown survivor)."""
     iso = isolation_of(plan)
     if iso.get("mode") != "container" or not iso.get("docker"):
@@ -1595,10 +1771,10 @@ def reap_containers(plan: dict, store: Store) -> str | None:
             return f"docker ps rc={ls.returncode}: {ls.stderr.strip()[:200]}"
         ids = ls.stdout.split()
         if ids:
-            subprocess.run([iso["docker"], "rm", "-f", *ids], capture_output=True, timeout=120, env=trusted_env())
+            subprocess.run([iso["docker"], "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=trusted_env())
             left = subprocess.run([iso["docker"], "ps", "-aq", *flt], capture_output=True, text=True, timeout=60, env=trusted_env())
             if left.returncode != 0 or left.stdout.split():
-                return f"{len(left.stdout.split())} orphan candidate container(s) survived docker rm -f"
+                return f"{len(left.stdout.split())} orphan candidate container(s) survived docker rm -f -v"
             store.journal({"event": "orphan_containers_removed", "count": len(ids), "at": now()})
     except (OSError, subprocess.TimeoutExpired) as e:
         return f"{type(e).__name__}: {e}"
@@ -1771,6 +1947,11 @@ def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base:
     tail = log.read_text(errors="replace")[-4000:] if log.exists() else ""
     if err or not got or len(got) != 1 or got[0]["name"] != st["name"] or (rc, got[0]["status"]) not in ((0, "PASS"), (1, "FAIL")):
         return {"rc": None, "reason": f"egress sandbox gave no consistent verdict: {err or f'rc={rc}, junit {got}'}", "log": tail}
+    full = log.read_text(errors="replace") if log.exists() else ""
+    if rc == 1 and not re.search(r"known vulnerabilit|^Name +Version +ID", full, re.I | re.M) and (  # a finding is a verdict, network or not
+            net := re.search(r"(ReadTimeoutError|ConnectTimeoutError|NewConnectionError|Max retries exceeded|Temporary failure in name "
+                             r"resolution)[^\n]{0,120}", full)):
+        return {"rc": None, "reason": f"the network failed the egress step, not the candidate ({net.group(0)[:100]}): no verdict (never green), re-run", "log": tail}
     return {"rc": rc, "reason": f"egress sandbox: {got[0]['reason']}", "log": tail}
 
 
