@@ -1,0 +1,33 @@
+task_id: kbli-r19-w0-1008
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, lot W0. Write the R19 wrapper token contract for the balizero.com
+  /kbli* surface, as the PR #7508 suspension asked: every token read inside the wrapper is defined
+  by the wrapper. Ship a read-only census of the real rendered surface that proves it. The census
+  covers 5 pages and the 6 measure.py states, including packages/core components and global class
+  rules. The exit is a printed line, `read-but-undefined: 0`, from a live run on the branch head.
+constraints:
+  - "Read-only: nothing under apps/mouth/src changes. The census starts and kills its own next dev --webpack from this worktree; no npm install or npm ci anywhere."
+  - "W0 does not rebase #7508's branch (that is W2) and does not arm the census as an apps/mouth test (that is W1)."
+  - "The Gear-3 floor is path-only: one new advisory workflow under .github/workflows/, which is the CI consumer of the replay test. No guard, required context or allowlist changes."
+acceptance:
+  - text: "WHEN the census runs live on the branch head against /kbli, /kbli/55203, /kbli/51101, /kbli/56101 and /kbli-explorer in the 6 measure.py states, THEN it prints `captures: 30 ok, 0 failed` and `read-but-undefined: 0`, and kills the dev server it started."
+    probe: "python3 scripts/mouth/r19_wrapper_token_census.py --json /tmp/census.jsonl; lsof -iTCP:3419 -sTCP:LISTEN"
+  - text: "WHEN the committed fixture is replayed against the committed contract, THEN `read-but-undefined: 0`. One extra read token, or one removed contract row, gives `read-but-undefined: 1` naming it. A mutated contract table is refused with ContractError."
+    probe: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider"
+  - text: "WHEN the verdict stops comparing (guilt mutation `missing = []`), THEN the two guilt tests go red; restored, all 11 pass."
+    probe: "mutate verdict() in a scratch copy, run pytest, restore with cp, cmp -s"
+consumer_map:
+  - "W1 (same mission): arms this census as a Playwright test in apps/mouth, reading the contract table this PR pins."
+  - "W2 (same mission): rebases agent/air-m5/mouth/ux-kbli-r19-0927 onto the contract; every var row is what the wrapper must define."
+  - ".github/workflows/r19-wrapper-census-tests.yml runs scripts/mouth/tests on every PR touching the census, the contract or the workflow, starting with this one."
+risks:
+  - "The census reads only the DOM rendered without interaction. Drawers, modals, search results, chat replies and attribute-state variants are declared limits; a static scan of the 68 source files counts 103 colour class tokens no capture rendered. W1 adds those states."
+  - "Main's R19_VARS diverges from the plan's Direction A on four values (--text-secondary #435464, --border-strong #A7A69F, --r19-cta-ink #FFFFFF, --footer-bg #EEE9E1). The contract pins the plan's values and says W2 either adopts them or amends the row."
+  - "Component attribution reads React's dev fiber owner name; a mouth component sharing a packages/core component's name would be attributed to core."
+grader: |
+  One cross-family refuter, codex-gpt-5.6-sol at xhigh effort, read-only from an empty directory
+  with a scrubbed env. Its finding (font-weight) was folded and the census re-run. A fresh Opus 5.5
+  gate session signs harness/fable-gate on the head sha before the merge can land.
