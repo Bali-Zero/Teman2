@@ -33,19 +33,19 @@ receipts:
     cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.fold_pack_generic --anchor-source …/rulepack-prod-024.source.json --anchor-signed …/rulepack-prod-024.signed.json --ledger-dir ../../research/visa/2026-10-07-freshness-restamp-seq25 --output $TMPDIR/out25.json --version 2026.10.7 --created-at 2026-10-07T13:38:00Z --created-by … --verified-by …
     result: "fold_pack_generic: seq-25 payload_sha256 = 603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
     exit: 0
-    ts: "2026-10-08T00:00:00Z"
+    ts: "2026-10-08T06:24:52Z"
     seat: Claude Sonnet 5.5
   - claim: The new suite and the seq-25 suite are green together.
     cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/scripts/visa_engine/test_fold_pack.py backend/tests/services/visa_engine/test_seq25_pack.py -q -p no:cacheprovider -o addopts=""
-    result: "57 passed in 9.59s"
+    result: "57 passed in 10.46s"
     exit: 0
-    ts: "2026-10-08T00:00:00Z"
+    ts: "2026-10-08T06:25:04Z"
     seat: Claude Sonnet 5.5
   - claim: Both new files are ruff clean and formatted.
     cmd: .venv/bin/ruff check <both files> && .venv/bin/ruff format <both files>
     result: "All checks passed!"
     exit: 0
-    ts: "2026-10-08T00:00:00Z"
+    ts: "2026-10-08T06:25:04Z"
     seat: Claude Sonnet 5.5
 dissent:
   - seat: self-review
