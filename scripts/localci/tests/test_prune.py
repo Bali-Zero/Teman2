@@ -43,6 +43,16 @@ elif a[:2] == ["image", "rm"]:
     if "vm_avail_kb" in world:   # a removal frees the image's size inside the VM
         world["vm_avail_kb"] += next(i["size"] for i in world["images"] if i["tag"] == a[-1]) // 1024
         json.dump(world, open({world!r}, "w"))
+elif a[:2] == ["system", "df"]:   # the build cache's size; a builder prune brings it to `cache_after` when the world says so
+    print("Images|58.85GB\nContainers|1.2MB\nLocal Volumes|3.9GB\nBuild Cache|" + world.get("cache", "16.93GB"))
+elif a[:2] == ["builder", "prune"] and world.get("builder_rcs"):   # one exit code per builder prune, in order
+    rc = world["builder_rcs"].pop(0)
+    json.dump(world, open({world!r}, "w"))
+    sys.exit(rc)
+elif a[:2] == ["builder", "prune"] and "cache_after" in world:
+    world["cache"] = world["cache_after"]
+    json.dump(world, open({world!r}, "w"))
+    print("Total: 12.93GB")
 elif a[:1] == ["run"] and "df" in a:
     if world.get("df_fails"):
         sys.exit(125)
@@ -170,7 +180,7 @@ def test_prune_removes_by_tag_prunes_the_builder_and_journals_what_went_by_which
     assert line["images"]["kept"] == [{"tag": imgs[1]["tag"], "rule": "the newest image of recipe backend-tests"}] and line["images"]["errors"] == []
     assert line["vm_free_gb"] == {"before": 32.4, "after": 32.4} and set(line["host_free_gb"]) == {"before", "after"}
     rm = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
-    assert rm == [f"image rm {imgs[0]['tag']}", "builder prune -f --keep-storage 4GB"]   # by explicit tag, never -a, never until= on images
+    assert rm == [f"image rm {imgs[0]['tag']}", "builder prune -af --keep-storage 4GB"]   # by explicit tag, never -a, never until= on images
     assert "merger prune: images_removed=1 image_errors=0" in capsys.readouterr().out
 
 
@@ -186,7 +196,7 @@ def test_a_dry_run_removes_nothing_and_journals_the_would_list(tmp_path):
 def test_the_builder_is_pruned_with_nothing_to_remove_and_an_image_in_use_is_an_error_never_forced(tmp_path):
     state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 0
-    assert [c for c in calls(tmp_path) if c.startswith("builder")] == ["builder prune -f --keep-storage 4GB"]
+    assert [c for c in calls(tmp_path) if c.startswith("builder")] == ["builder prune -af --keep-storage 4GB"]
     assert journal(state)[-1]["images"]["removed"] == [] and journal(state)[-1]["failed"] == []
     imgs = [image("b" * 16, 80, "backend-tests"), image("c" * 16, 10, "backend-tests")]
     state, docker = world(tmp_path / "busy", imgs, busy=[imgs[0]["tag"]])
@@ -477,41 +487,67 @@ def two_recipes_with_slot_2(tmp_path: Path, vm_gb: float, extra_images: list = (
     return (*world(tmp_path, imgs + list(extra_images), plans, vm_avail_kb=kb(vm_gb), **kw), imgs)
 
 
-def test_b8_under_the_vm_floor_slot_2_goes_oldest_first_then_the_next_never_the_newest(tmp_path):
-    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 10)
+def three_recipes(tmp_path: Path, vm_gb: float, **kw) -> tuple[Path, str, dict]:
+    """The 17:26Z shape (amended B8): three live recipes, each a newest image and a slot-2 one, references 1 to 4."""
+    im = {"e_new": image("1" * 16, 1, "e2e-tests", gb=5.0), "e_old": image("2" * 16, 30, "e2e-tests", gb=5.0),
+          "b_new": image("3" * 16, 2, "backend-tests", gb=4.0), "b_old": image("4" * 16, 20, "backend-tests", gb=4.0),
+          "f_new": image("5" * 16, 3, "frontend-tests", gb=0.5), "f_old": image("6" * 16, 40, "frontend-tests", gb=0.5)}
+    names = [("e_old", "b_new", "f_new"), ("e_old", "b_new", "f_new"), ("e_old", "b_old", "f_new"), ("e_old", None, "f_old"), ("e_new", None, "f_old")]
+    plans = {f"pr{n}-x-20261008T1{n}0000Z": (n, {f"ctx.{c}": im[k]["tag"] for c, k in zip(("e2e-tests", "backend-tests", "frontend-tests"), row) if k})
+             for n, row in enumerate(names, 1)}   # references: e_old 4, f_new 3, b_new 2, f_old 2, e_new 1, b_old 1
+    return (*world(tmp_path, list(im.values()), plans, vm_avail_kb=kb(vm_gb), **kw), im)
+
+
+def test_b8_under_the_vm_floor_the_fewest_references_go_first_even_the_newest_of_a_recipe(tmp_path):   # guilt (amended)
+    state, docker, im = three_recipes(tmp_path, 5)
     line = prune_line(state, docker)
-    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"], imgs[2]["tag"]]   # 50 h old first, then 30 h
-    assert all(r["rule"].startswith("vm floor: VM free ") and "< 15 GB after the cap" in r["rule"] for r in line["images"]["removed"])
-    assert line["images"]["removed"][0]["rule"] == "vm floor: VM free 10 GB < 15 GB after the cap; slot 2 of recipe e2e-tests, oldest first"
-    assert line["vm_floor"] == {"floor_gb": 15.0, "removed": 2, "met": False} and line["vm_free_gb"]["after"] == 14.0
-    assert {k["tag"] for k in line["images"]["kept"]} >= {imgs[1]["tag"], imgs[3]["tag"]}
-    assert [c for c in calls(tmp_path) if c.startswith("image rm")] == [f"image rm {imgs[0]['tag']}", f"image rm {imgs[2]['tag']}"]   # by tag, never -f
+    assert [r["tag"] for r in line["images"]["removed"]] == [im[k]["tag"] for k in ("b_old", "e_new", "f_old", "b_new")]
+    assert [r["rule"] for r in line["images"]["removed"][:2]] == ["vm floor (1 references, built 20.0 h ago): VM free 5 GB < 15 GB",
+                                                                  "vm floor (1 references, built 1.0 h ago): VM free 9 GB < 15 GB"]
+    assert {k["tag"] for k in line["images"]["kept"]} == {im["e_old"]["tag"], im["f_new"]["tag"]}   # 4 and 3 references stay
+    assert line["vm_floor"] == {"floor_gb": 15.0, "removed": 4, "met": True} and line["vm_free_gb"]["after"] == 18.5
+    seq = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
+    assert seq == ["builder prune -af --keep-storage 4GB"] + [x for k in ("b_old", "e_new", "f_old", "b_new")
+                                                              for x in (f"image rm {im[k]['tag']}", "builder prune -af --keep-storage 4GB")]
+    assert line["builder_prune"]["runs"] == 5
 
 
 @pytest.mark.parametrize("vm_gb, gone", [(14.5, 1), (15.0, 0), (15.5, 0)])   # under the floor one goes and it is met; at it, none
-def test_b8_the_floor_stops_once_met_and_a_vm_at_the_floor_keeps_slot_2(tmp_path, vm_gb, gone):
-    state, docker, imgs = two_recipes_with_slot_2(tmp_path, vm_gb)
+def test_b8_the_floor_stops_once_met_and_a_vm_at_the_floor_keeps_every_image(tmp_path, vm_gb, gone):
+    state, docker, im = three_recipes(tmp_path, vm_gb)
     line = prune_line(state, docker)
-    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"]][:gone] and line["vm_floor"]["met"] is True
+    assert [r["tag"] for r in line["images"]["removed"]] == [im["b_old"]["tag"]][:gone] and line["vm_floor"]["met"] is True
 
 
-def test_b8_vm_free_20_keeps_slot_2(tmp_path):   # innocence
+def test_b8_a_builder_prune_that_fails_before_a_floor_removal_stays_failed_after_a_later_one_succeeds(tmp_path):
+    state, docker, im = three_recipes(tmp_path, 14.5, builder_rcs=[1, 0])
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 1
+    line = journal(state)[-1]
+    assert line["builder_prune"]["runs"] == 2 and line["builder_prune"]["rc"] == 1 and line["failed"] == ["builder_prune"]
+
+
+def test_b8_above_the_floor_the_newest_of_a_recipe_is_never_removed_even_named_by_no_plan(tmp_path):   # innocence
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 20)
     line = prune_line(state, docker)
     assert line["images"]["removed"] == [] and line["vm_floor"] == {"floor_gb": 15.0, "removed": 0, "met": True}
+    assert {k["rule"] for k in line["images"]["kept"] if k["tag"] in (imgs[1]["tag"], imgs[3]["tag"])} == {
+        "the newest image of recipe e2e-tests", "the newest image of recipe backend-tests"}
     assert not [c for c in calls(tmp_path) if c.startswith("image rm")]
 
 
-def test_b8_the_floor_never_touches_the_never_list_the_newest_or_the_run_in_progress(tmp_path):   # innocence
-    imgs = [image("a" * 16, 50, "e2e-tests"), image("b" * 16, 1, "e2e-tests"), image("c" * 16, 80, "e2e-tests")]
+def test_b8_the_floor_never_touches_the_never_list_or_what_the_lease_run_names(tmp_path):   # innocence
+    imgs = [image("a" * 16, 50, "e2e-tests", gb=1.0), image("b" * 16, 1, "e2e-tests", gb=1.0), image("c" * 16, 80, "e2e-tests", gb=1.0)]
     plans = {"pr1-x-20261008T100000Z": (2, {"ctx.e2e-tests": imgs[2]["tag"]})}
     state, docker = world(tmp_path, imgs, plans, in_progress=("pr1-x-20261008T100000Z",), vm_avail_kb=kb(1),
                           others=["localci-candidate:1", "localci-deps-base:1", *STAND_INS])
     line = prune_line(state, docker)
-    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"]]   # unnamed, by the cap; the floor finds no slot 2
-    assert line["vm_floor"] == {"floor_gb": 15.0, "removed": 0, "met": False}
-    rms = [c for c in calls(tmp_path) if c.startswith("image rm")]
-    assert rms == [f"image rm {imgs[0]['tag']}"]
+    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"], imgs[1]["tag"]]   # by the cap, then the newest by the floor
+    assert line["images"]["removed"][1]["rule"] == "vm floor (0 references, built 1.0 h ago): VM free 2 GB < 15 GB"   # the cap freed 1 GB first
+    assert line["vm_floor"] == {"floor_gb": 15.0, "removed": 1, "met": False}
+    assert [c for c in calls(tmp_path) if c.startswith("image rm")] == [f"image rm {imgs[0]['tag']}", f"image rm {imgs[1]['tag']}"]
+    kept = {k["tag"]: k["rule"] for k in line["images"]["kept"]}
+    assert kept[imgs[2]["tag"]] == "named by the run in progress (no status.json yet)" and set(STAND_INS) <= set(kept)
+    assert {"localci-candidate:1", "localci-deps-base:1"} <= set(kept)
 
 
 def test_b8_the_floor_is_skipped_unmeasured_dry_or_with_an_unreadable_input(tmp_path, monkeypatch):
@@ -531,15 +567,22 @@ def test_b8_the_floor_and_the_cache_budget_read_the_environment(tmp_path, monkey
     monkeypatch.setenv("LOCALCI_BUILDER_CACHE_GB", "6")
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 20)
     line = prune_line(state, docker)
-    assert line["vm_floor"]["floor_gb"] == 25.0 and [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"], imgs[2]["tag"]]
-    assert "builder prune -f --keep-storage 6GB" in calls(tmp_path) and line["builder_prune"]["keep_storage_gb"] == 6.0
+    assert line["vm_floor"]["floor_gb"] == 25.0 and [r["tag"] for r in line["images"]["removed"]] == [imgs[1]["tag"]]   # 0 references first
+    assert "builder prune -af --keep-storage 6GB" in calls(tmp_path) and line["builder_prune"]["keep_storage_gb"] == 6.0
     for bad in ("inf", "nan", "-3", "lots"):
         monkeypatch.setenv("LOCALCI_VM_MIN_FREE_GB", bad)
         assert pm._env_gb("LOCALCI_VM_MIN_FREE_GB", pm.VM_MIN_FREE_GB) == 15.0
 
 
 def test_b8_the_build_cache_is_pruned_to_a_budget_not_by_age(tmp_path):
-    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")])
+    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="16.93GB", cache_after="4GB")
     line = prune_line(state, docker)
-    assert "builder prune -f --keep-storage 4GB" in calls(tmp_path) and not [c for c in calls(tmp_path) if "until=" in c]
-    assert line["builder_prune"]["keep_storage_gb"] == 4
+    assert "builder prune -af --keep-storage 4GB" in calls(tmp_path) and not [c for c in calls(tmp_path) if "until=" in c]
+    assert line["builder_prune"] == {"rc": 0, "keep_storage_gb": 4, "cache_gb": {"before": 16.93, "after": 4.0}, "runs": 1,
+                                     "tail": "Total: 12.93GB"}
+
+
+@pytest.mark.parametrize("cache, gb", [("512MB", 0.51), ("1.3kB", 0.0), ("21.8GB", 21.8), ("0B", 0.0), ("n/a", None), ("12 parsecs", None)])
+def test_b8_the_build_cache_size_is_read_from_system_df_and_an_unreadable_one_is_none(tmp_path, cache, gb):
+    _, docker = world(tmp_path, [], cache=cache)
+    assert pm.build_cache_gb(docker) == gb

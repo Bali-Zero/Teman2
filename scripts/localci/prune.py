@@ -3,7 +3,7 @@
 Deps images go by explicit tag when no plan of the last 48 h names them and they are not the newest image of their recipe —
 whatever their age (the age guard of B6-1 was retired under the cap: per recipe at most MAX_IMAGES_PER_RECIPE images stay, the
 newest and the one most plans of the last 48 h name; beyond the slots only the run in progress keeps an image — B8 retired the
-clock grace — and under VM_MIN_FREE_GB of VM free space slot-2 images go oldest first);
+clock grace — and under VM_MIN_FREE_GB of VM free space images go fewest plan references first, the newest of a recipe included);
 `localci-candidate:*`, `localci-deps-base:*` and every service stand-in of the BASE matrix are never in a removal set
 (2026-10-08 07:48Z: an age prune removed the candidate image and the stand-ins and blocked every contained context for a tick). Run directories keep everything for 7
 days, then lose `logs/` and the Pysa call graphs, and after 30 days keep only their three verdict files. `decisions.jsonl` and
@@ -207,7 +207,8 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
                 out[im["tag"]] = (False, f"another tag of an image recipe {r} keeps", slots[im["id"]])
             elif ref_of(im) is None:
                 out[im["tag"]] = (True, f"not the newest of recipe {r} (newest {top['tag']}) and no plan of the last 48 h names it", None)
-    return [{**im, "remove": out[im["tag"]][0], "rule": out[im["tag"]][1], "slot": out[im["tag"]][2]} for im in images]
+    return [{**im, "remove": out[im["tag"]][0], "rule": out[im["tag"]][1], "slot": out[im["tag"]][2], "refs": count_of(im),
+             "live": im["tag"] in in_progress or im["id"] in in_progress} for im in images]
 
 
 def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
@@ -263,6 +264,40 @@ def _env_gb(name: str, default: float) -> float:
     return v if math.isfinite(v) and v >= 0 else default
 
 
+SIZE_RE = re.compile(r"^\s*([0-9]+(?:\.[0-9]+)?)\s*(B|kB|KB|MB|GB|TB)\s*$")
+SIZE_UNITS = {"B": 1, "kB": 1e3, "KB": 1e3, "MB": 1e6, "GB": 1e9, "TB": 1e12}   # docker's human sizes are decimal
+
+
+def build_cache_gb(docker: str) -> float | None:
+    """The build cache's size as `docker system df` reports it; None when it cannot be read (a measurement, never a stop)."""
+    try:
+        r = _docker(docker, "system", "df", "--format", "{{.Type}}|{{.Size}}", timeout=300)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    for line in (r.stdout or "").splitlines() if r.returncode == 0 else []:
+        kind, _, size = line.partition("|")
+        m = SIZE_RE.match(size) if kind.strip() == "Build Cache" else None
+        if m:
+            return round(float(m.group(1)) * SIZE_UNITS[m.group(2)] / 1e9, 2)
+    return None
+
+
+def builder_prune(docker: str, rec: dict, budget_gb: float) -> None:
+    """`docker builder prune -af --keep-storage`: `-a` because the entries are the layers of images that exist, which are not
+    dangling — without it nothing went (Pro, 2026-10-08T17:26Z: 0 B of a 21.8 GB cache). Run after image removals, so the entries
+    tied to them go. The first failure's rc stays; the cache size is journalled before the first run and after the last."""
+    bp = rec.setdefault("builder_prune", {"rc": 0, "keep_storage_gb": budget_gb, "cache_gb": {"before": build_cache_gb(docker)}, "runs": 0})
+    try:
+        b = _docker(docker, "builder", "prune", "-af", "--keep-storage", f"{budget_gb:g}GB", timeout=600)
+        rc, tail = b.returncode, (b.stdout or b.stderr).strip()[-120:]
+    except (OSError, subprocess.SubprocessError) as e:
+        rc, tail = None, type(e).__name__
+    bp["runs"] += 1
+    bp["tail"] = tail
+    if bp["rc"] == 0:
+        bp["rc"] = rc
+
+
 def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, colima: str = "colima", host_path: str = HOST_PATH,
           now_s: float | None = None, matrix: Path = MATRIX) -> dict:
     now_s = time.time() if now_s is None else now_s
@@ -287,24 +322,21 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         r = None if dry else _docker(docker, "image", "rm", im["tag"])
         (removed if r is None or r.returncode == 0 else errors).append(
             {"tag": im["tag"], "gb": im["gb"], "rule": im["rule"], **({"error": r.stderr.strip()[:200]} if r is not None and r.returncode else {})})
-    if not dry:   # the build cache grows with every deps build; it is kept to a budget, not by age (B8: 16.9 GB kept, 0.5 by until=24h)
-        cache_gb = _env_gb("LOCALCI_BUILDER_CACHE_GB", BUILDER_CACHE_GB)
-        try:
-            b = _docker(docker, "builder", "prune", "-f", "--keep-storage", f"{cache_gb:g}GB", timeout=600)
-            rec["builder_prune"] = {"rc": b.returncode, "keep_storage_gb": cache_gb, "tail": (b.stdout or b.stderr).strip()[-120:]}
-        except (OSError, subprocess.SubprocessError) as e:
-            rec["builder_prune"] = {"rc": None, "keep_storage_gb": cache_gb, "tail": type(e).__name__}
+    cache_budget = _env_gb("LOCALCI_BUILDER_CACHE_GB", BUILDER_CACHE_GB)   # a budget, not an age (B8: until=24h kept 16.9 GB)
+    if not dry:   # the build cache grows with every deps build, whether or not an image went
+        builder_prune(docker, rec, cache_budget)
     rec["runs"] = trim_runs(runs, now_s, dry)
     rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)
-    floor = _env_gb("LOCALCI_VM_MIN_FREE_GB", VM_MIN_FREE_GB)   # B8: the VM's free space outranks slot 2
+    floor = _env_gb("LOCALCI_VM_MIN_FREE_GB", VM_MIN_FREE_GB)   # B8: the VM's free space outranks the slots
     rec["vm_floor"] = {"floor_gb": floor, "removed": 0}
     if dry or errors:
         rec["vm_floor"]["skipped"] = "dry run" if dry else "an input is unreadable"
     elif rec["vm_free_gb"]["after"] is None:
         rec["vm_floor"]["skipped"] = "the VM's free space is unmeasured"
-    else:
-        for im in sorted((d for d in decided if not d["remove"] and (d.get("slot") or 0) >= 2 and not never(d["tag"], keep)),
-                         key=lambda d: (d["created"] if d["created"] is not None else float("inf"), d["tag"])):
+    else:   # under the floor the newest of a recipe is not protected: only the never-list and what the lease run names are
+        # (a 60 GiB VM holds one image per recipe plus a build's scratch when three recipes are live: Pro, 2026-10-08T17:26Z)
+        for im in sorted((d for d in decided if not d["remove"] and not d["live"] and not never(d["tag"], keep)),
+                         key=lambda d: (d["refs"], d["created"] is None, d["created"] or 0, d["tag"])):
             if rec["vm_free_gb"]["after"] >= floor:
                 break
             before = rec["vm_free_gb"]["after"]
@@ -313,13 +345,17 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
                 errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "vm floor", "error": r.stderr.strip()[:200]})
                 continue
             im["remove"] = True
-            removed.append({"tag": im["tag"], "gb": im["gb"], "rule": f"vm floor: VM free {before:g} GB < {floor:g} GB after the cap; "
-                                                                        f"slot {im['slot']} of recipe {im['recipe']}, oldest first"})
+            built = f"{(now_s - im['created']) / 3600:.1f} h ago" if im["created"] is not None else "at an unknown time"
+            removed.append({"tag": im["tag"], "gb": im["gb"],
+                            "rule": f"vm floor ({im['refs']} references, built {built}): VM free {before:g} GB < {floor:g} GB"})
             rec["vm_floor"]["removed"] += 1
+            builder_prune(docker, rec, cache_budget)   # the cache entries tied to the image go with it, or the VM gains nothing
             rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)
             if rec["vm_free_gb"]["after"] is None:
                 break
         rec["vm_floor"]["met"] = rec["vm_free_gb"]["after"] is not None and rec["vm_free_gb"]["after"] >= floor
+    if "builder_prune" in rec:
+        rec["builder_prune"]["cache_gb"]["after"] = build_cache_gb(docker)
     rec["images"] = {"removed" if not dry else "would_remove": removed, "errors": errors,
                      "kept": [{"tag": d["tag"], "rule": d["rule"]} for d in decided if not d["remove"]] + never_kept}
     rec["host_free_gb"]["after"] = host_free_gb(host_path)

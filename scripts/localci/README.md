@@ -538,14 +538,20 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   its images present is journalled under `kept` with its rule. While a plan or the matrix cannot be read, no image is removed;
   a half-written plan still names the tags its text names. Created is read to the nanosecond; images built at the same
   instant rank together.
-- **VM floor (B8).** After the cap, the builder prune and the run trim, while the VM's free GB (`vm_free_gb.after`) is under
-  `VM_MIN_FREE_GB` (15; `LOCALCI_VM_MIN_FREE_GB` overrides it, a value that is not a finite number ≥ 0 reads as 15), slot-2
-  images go oldest first, the free GB re-read after each, until the floor is met or none is left. Never the newest of a
-  recipe, never the never-list, never what the lease run names. Each removal's rule starts `vm floor:`; the line carries
+- **VM floor (B8, amended).** After the cap, the builder prune and the run trim, while the VM's free GB
+  (`vm_free_gb.after`) is under `VM_MIN_FREE_GB` (15; `LOCALCI_VM_MIN_FREE_GB` overrides it, a value that is not a finite
+  number ≥ 0 reads as 15), images go fewest plan references of the last 48 h first, ties to the oldest, the builder pruned
+  and the free GB re-read after each, until the floor is met or nothing removable is left. Under the floor the newest of a
+  recipe is NOT protected: only the never-list and what the lease run names are. A 60 GiB VM holds one image per recipe plus
+  a build's scratch when three recipes are live (Pro, 2026-10-08T17:26Z), so the floor, not the slots, is the rule that
+  holds. Each removal's rule reads `vm floor (N references, built H h ago): VM free X GB < 15 GB`; the line carries
   `vm_floor {floor_gb, removed, met}`, or `skipped` on a dry run, an unreadable input, or an unmeasured VM.
-- **Builder cache.** Every prune that is not a dry run runs `docker builder prune -f --keep-storage 4GB` on the current
-  builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's). The budget is
-  `BUILDER_CACHE_GB` (4; `LOCALCI_BUILDER_CACHE_GB` overrides it) and the line journals it as `builder_prune.keep_storage_gb`.
+- **Builder cache.** Every prune that is not a dry run runs `docker builder prune -af --keep-storage 4GB` on the current
+  builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's), after the
+  cap's removals and again after each floor removal. `-a` because the entries are the layers of images that exist, which are
+  not dangling: without it the prune removed 0 B of 21.8 GB (17:26Z). The budget is `BUILDER_CACHE_GB` (4;
+  `LOCALCI_BUILDER_CACHE_GB` overrides it); the line journals `builder_prune {keep_storage_gb, cache_gb {before, after}, runs,
+  rc}`, the cache size read from `docker system df` before the first run and after the last, and the first failed rc stays.
   It read `--filter until=24h` until B8: on Pro at 17:20Z that kept 16.9 GB of cache with 0.5 GB reclaimable.
 - **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
   run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
@@ -563,11 +569,11 @@ One journal line per prune (its shape; the numbers below are illustrative, not m
      "vm_free_gb": {"before": 1.2, "after": 15.8},
      "host_free_gb": {"before": 77.1, "after": 77.4, "after_fstrim": 87.0},
      "images": {"removed": [{"tag": "localci-deps:…", "gb": 5.35, "rule": "recipe e2e-tests already keeps 2 images (newest localci-deps:…): beyond the cap, named by 1 plan(s), the youngest 2.1 h ago"},
-                            {"tag": "localci-deps:…", "gb": 4.64, "rule": "vm floor: VM free 11.2 GB < 15 GB after the cap; slot 2 of recipe backend-tests, oldest first"}],
+                            {"tag": "localci-deps:…", "gb": 4.64, "rule": "vm floor (1 references, built 20.3 h ago): VM free 11.2 GB < 15 GB"}],
                 "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe e2e-tests"},
                          {"tag": "localci-deps:…", "rule": "slot 2 of 2 of recipe e2e-tests: named by 4 plan(s) of the last 48 h, the youngest 1.4 h ago"},
                          {"tag": "postgres:15", "rule": "service stand-in of the BASE matrix: never pruned"}], "errors": []},
-     "builder_prune": {"rc": 0, "keep_storage_gb": 4.0, "tail": "Total: 12.9GB"},
+     "builder_prune": {"rc": 0, "keep_storage_gb": 4.0, "cache_gb": {"before": 21.8, "after": 4.0}, "runs": 2, "tail": "Total: 3.9GB"},
      "vm_floor": {"floor_gb": 15.0, "removed": 1, "met": true},
      "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},
      "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}, "failed": []}
