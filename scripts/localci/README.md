@@ -150,10 +150,15 @@ and the VM has 8. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a s
 |---|---|---|---|
 | ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 |
 | ctx.harness-floor | 67 | 0.5 | one leg; the Gear ≥ 2 reader ran at plan |
-| whole run, 14 required contexts | 2267 | — | plan 6 s with the deps image cached |
+| ctx.e2e-tests | 320 | 207 | one leg: backend + Next.js build + 134 Playwright specs (PR-B2, 1df44b9b65) |
+| ctx.frontend-tests-mouth | 297 | 515 | the (mouth, true) leg: contract check, tsc, vitest with coverage, core, admin, wa-mirror |
+| ctx.visa-oracle-smoke | 138 | 47 | one leg: disposable DB, signed TEST RulePack, the fullstack Playwright spec |
+| whole run, 14 required contexts | 2267 (B1) · 2784 (B2) | — | plan 6-9 s with the deps images cached |
 
 The deps image (`localci-deps:<digest16>`, 9.85 GB: 294 aarch64 wheels, node 24, the fetched files) is built once per
 recipe: 394 s cold at plan (download, install, export), then a cache hit while the candidate's pins and the image are unchanged.
+E2E and Visa Oracle smoke share one recipe (the backend closure plus node 24, the root lock's npm cache, chromium and
+postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Frontend Tests' node-only recipe is 1.4 GB.
 
 ## Security: Pysa taint judge (`security.pysa_python`)
 
