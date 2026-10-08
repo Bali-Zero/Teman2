@@ -61,6 +61,17 @@ receipts:
     exit: 0
     ts: "2026-10-08T06:32:07Z"
     seat: this session
+  - claim: The REAL judge (Claude CLI through claude-cascade.sh, model sonnet) judged two records of a temp copy of the 2026-10-07 ledger and the fold accepts them.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.portal_judge --pack backend/services/visa_engine/contracts/packs/rulepack-prod-024.source.json --ledger-dir <tmp copy> --reader judge-real --ids 570f2bc4,bc309fa9 --judge claude --model sonnet
+    result: >-
+      2 records, 0 halt, 24.7 s wall. 570f2bc4 (E31B) semantic_change=changed, checked_sentence
+      "Anda dapat memilih untuk tinggal di Indonesia selama 1 tahun atau 2 tahun dihitung sejak tanggal kedatangan."
+      (the same 1-or-2-year finding the human readers made, accepted by disposition.json).
+      bc309fa9 (Calling Visa list) semantic_change=none, checked_sentence "Daftar Subjek Calling Visa".
+      attestation_instant over those two records = 2026-10-07T13:32:18Z (accepted).
+    exit: 0
+    ts: "2026-10-08T06:34:39Z"
+    seat: this session, Claude OAuth seat via the cascade wrapper
 dissent: []
 spend:
   wall_clock_hours: 1.0

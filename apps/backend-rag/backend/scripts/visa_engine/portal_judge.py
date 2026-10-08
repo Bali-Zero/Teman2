@@ -121,7 +121,8 @@ def build_prompt(record: dict[str, Any], text: str, assumes: dict[str, Any]) -> 
         '{"verdict": "none|changed|unsure", "checked_sentence": "<one sentence copied VERBATIM from the text>",'
         ' "page_states": "...", "pack_assumes": "...", "reason": "..."}\n'
         "none = page agrees with the pack; changed = page contradicts or differs; unsure = you cannot tell.\n"
-        "Never invent a sentence: checked_sentence must appear in the text exactly.\n\n"
+        "Never invent a sentence: checked_sentence must appear in the text exactly.\n"
+        "Write page_states and reason in English.\n\n"
         f"<<<PAGE_TEXT\n{text}\nPAGE_TEXT>>>\n"
     )
 
