@@ -85,6 +85,17 @@ Returns `{ evidenceRoot, codes, results, quarantinedCodes, summary }`. Requires
 (seats §2, protocol §3) + research/operations/2026-07-17-kbli-pilot-a1-preregistration.md
 (the frozen pilot plan this run is measured against).
 
+## kbli-nav-design.js — the KBLI Navigator sealed design contest, up to the arena
+
+Track A of `docs/plans/2026-10-08-kbli-navigator-design-loop.md`, in the formation Zero picked
+(kit `Z-DECISIONI.md`): content pack → three sealed mockup sets (Sol, Gemini, Sonnet; round cap 1)
+→ probes whose controls are read first → a cross-family grader per set + a NotebookLM source-only
+witness → ONE bounded repair + retest → cross-family fact refutation → `arena.html`, then it STOPS:
+the vote is Zero's. Every phase gate is a printed line compared in the script, never an exit code;
+dead seats are read at start from `scripts/arsenal_probe.py --read-last` (Sol dead → Gemini grades
+only; Gemini dead → its set is declared, not replaced). It refuses at phase 0 unless
+`scripts/kbli_design/{content_pack,seat_io,anti_flatness,arena}.py` exist on `args.repo`.
+
 ## second-army.js — the Gear <= 2 army, made executable
 
 The mechanical layer for the "second army" doctrine (`docs/architecture/dual-consul/army-map.md`
