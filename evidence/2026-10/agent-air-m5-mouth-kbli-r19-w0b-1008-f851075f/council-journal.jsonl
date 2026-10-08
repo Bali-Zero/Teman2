@@ -1,0 +1,1 @@
+{"seat": "codex-gpt-5.6-sol", "role": "review", "round": 1, "ok": false, "ts": "2026-10-08T00:49:46Z", "verdict": "REFUTED", "findings": 1, "summary": "font-weight is not a read: --font-weight-extrabold via .font-extrabold on h1.kbli-flag-title (/kbli) is missing; folded, census re-run"}
