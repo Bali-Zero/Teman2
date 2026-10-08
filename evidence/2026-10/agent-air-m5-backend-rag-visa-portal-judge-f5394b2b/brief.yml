@@ -1,0 +1,25 @@
+gear: 2
+gear_reason: >-
+  Two new/changed files under apps/backend-rag/backend/scripts/visa_engine plus tests, about 490
+  net lines. A scripts-only change: no migration, no pack bytes, no runtime import by the serving
+  app, so merging does not alter production behaviour. Gear 2 because it adds the judgement step
+  that will gate a signed-pack re-stamp and reaches Claude through the OAuth cascade.
+mission: >-
+  Weekly Visa Oracle re-attestation organ, part 3b: replace hand-dispatched LLM readers with a
+  judge script that writes reader judgements in the shape the fold already validates, and make the
+  receipt tool keep one saved text per fetch.
+objective: >-
+  portal_judge.py turns a ledger of receipts into <reader>-judgements.jsonl, never accepts a quote
+  that is not in the saved text, and exits 1 on any unsure or unread record; receipts never
+  overwrite an earlier fetch's text.
+scope:
+  - apps/backend-rag/backend/scripts/visa_engine/portal_judge.py (new)
+  - apps/backend-rag/backend/scripts/visa_engine/portal_read_receipt.py (per-fetch text file)
+  - apps/backend-rag/backend/tests/scripts/visa_engine/test_portal_judge.py (new)
+  - apps/backend-rag/backend/tests/scripts/visa_engine/test_portal_read_receipt.py (suffix test)
+  - scripts/ci/observe_visa_portal_judge.py (new, bites observer)
+  - apps/backend-rag/backend/scripts/visa_engine/ledger_paths.py (new, shared text resolver)
+  - apps/backend-rag/backend/scripts/visa_engine/fold_pack_generic.py + tests/scripts/visa_engine/test_fold_pack.py (text_file resolution, unknown ids, created_at after evidence)
+appetite:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 0

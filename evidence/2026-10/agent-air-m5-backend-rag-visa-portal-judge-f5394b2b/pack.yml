@@ -1,0 +1,108 @@
+# Gear-2 evidence pack — portal_judge. Every receipt is a command this session ran on 2026-10-08.
+gear: 2
+brief_ref: evidence/brief.yml
+mission: >-
+  Weekly re-attestation organ part 3b: fold_pack_generic reads each receipt's text_file; portal_judge.py writes reader judgements through the
+  Claude CLI cascade; portal_read_receipt.py keeps one saved text per fetch.
+lanes:
+  - lane: portal-judge-build
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree backend-rag-visa-portal-judge, committed not pushed.
+  - lane: portal-judge-ground-truth
+    role: ground_truth
+    seat: >-
+      the 2026-10-07 ledger texts (18 served pages saved under research/visa/2026-10-07-freshness-restamp-seq25/text)
+      and the fold's own validator; no notebook, no new regulatory claim.
+    nb: research/visa/2026-10-07-freshness-restamp-seq25/
+    query_hash: "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
+    note: query_hash = the seq-25 payload_sha256 the ledger produced.
+pii_scan: clean
+bites:
+  consumer: >-
+    the fold's attestation_instant, run by scripts/ci/observe_visa_portal_judge.py against a temp
+    copy of the 2026-10-07 ledger whose judgements this tool regenerated with the fake judge; the
+    weekly organ that schedules the tool is a separate mandate.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_portal_judge.py
+  expect: "contains:fake judge regenerates an accepted ledger"
+decisions:
+  - id: D-wrapper
+    decision: >-
+      The judge reaches Claude only through claude-cascade.sh --stdin --claude-only (OAuth seats),
+      prompt on stdin. No HTTP API, no API key, no SDK. The python-backend rule names
+      backend/llm/claude_oauth_client.py for serving code; this offline script follows the
+      lead's instruction to reuse the cron wrapper instead.
+  - id: D-quote
+    decision: >-
+      A quote is accepted only if it matches the saved text after whitespace normalisation, and
+      the line stores the text's own raw span so the fold's plain substring check also passes.
+receipts:
+  - claim: The visa_engine script test directory is green with the new judge and suffix tests.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/scripts/visa_engine backend/tests/services/visa_engine/test_seq25_pack.py -q -p no:cacheprovider -o addopts=""
+    result: "349 passed, 1 warning in 33.36s (adds the binding, strict-JSON, outside-read, nonce and fake-reader witnesses; the later-fetch guilt test fails on the previous fold)"
+    exit: 0
+    ts: "2026-10-08T07:46:47Z"
+    seat: this session
+  - claim: Ruff is clean on the changed and new files.
+    cmd: apps/backend-rag/.venv/bin/ruff check apps/backend-rag/backend/scripts/visa_engine apps/backend-rag/backend/tests/scripts/visa_engine scripts/ci/observe_visa_portal_judge.py
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-10-08T07:46:13Z"
+    seat: this session
+  - claim: The real CLI with the fake judge rehearses all 18 portal records of the seq-25 ledger copy.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.portal_judge --pack backend/services/visa_engine/contracts/packs/rulepack-prod-025.source.json --ledger-dir <tmp copy of seq-25 ledger> --reader judge-rehearsal --all --judge fake
+    result: "judgements written for 18 records, 0 halt"
+    exit: 0
+    ts: "2026-10-08T06:31:02Z"
+    seat: this session
+  - claim: The observer regenerates the ledger judgements with the fake judge and the fold accepts them.
+    cmd: python3 scripts/ci/observe_visa_portal_judge.py
+    result: "per-fetch copy of the 2026-10-07 ledger, fake-judged (18 records, 0 halt), folded by fold_pack_generic against signed seq-24, stamp 2026-10-07T13:32:18Z; final line: observe_visa_portal_judge: fake judge regenerates an accepted ledger"
+    exit: 0
+    ts: "2026-10-08T07:45:45Z"
+    seat: this session
+  - claim: The REAL judge (Claude CLI through claude-cascade.sh, model sonnet) judged two records of a temp copy of the 2026-10-07 ledger and the fold accepts them.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.portal_judge --pack backend/services/visa_engine/contracts/packs/rulepack-prod-024.source.json --ledger-dir <tmp copy> --reader judge-real --ids 570f2bc4,bc309fa9 --judge claude --model sonnet
+    result: >-
+      2 records, 0 halt, 24.7 s wall. 570f2bc4 (E31B) semantic_change=changed, checked_sentence
+      "Anda dapat memilih untuk tinggal di Indonesia selama 1 tahun atau 2 tahun dihitung sejak tanggal kedatangan."
+      (the same 1-or-2-year finding the human readers made, accepted by disposition.json).
+      bc309fa9 (Calling Visa list) semantic_change=none, checked_sentence "Daftar Subjek Calling Visa".
+      attestation_instant over those two records = 2026-10-07T13:32:18Z (accepted).
+      Re-run on 2026-10-08T07:46:12Z after the strict-JSON parser: 570f2bc4 changed (bound to the
+      fetch of 13:33:52Z), bc309fa9 none (13:35:11Z), 0 halt, English notes.
+    exit: 0
+    ts: "2026-10-08T07:46:12Z"
+    seat: this session, Claude OAuth seat via the cascade wrapper
+dissent:
+  - seat: codex-gpt-5.6 red-team of #8069 (relayed by the lead)
+    objection: "[BLOCK] a quote was searched across ALL saved texts of a record while judged_at was checked against the FIRST read, so a quote that exists only in a fetch made AFTER the judgement was accepted."
+    status: CONFIRMED
+    note: cured in this PR - a judgement binds to the latest successful receipt with fetched_at <= judged_at, names it (receipt_fetched_at, text_sha256) and the quote must sit in THAT text only
+  - seat: codex-gpt-5.6 red-team of #8069 (relayed by the lead)
+    objection: "[BLOCK] portal_judge.saved_text() read any absolute text_file, so page text from outside the ledger entered the prompt."
+    status: CONFIRMED
+    note: cured in this PR - one shared resolver, ledger_paths.py, used by the judge and the fold (basename under ledger/text, traversal guard, old-layout fallback)
+  - seat: codex-gpt-5.6 red-team of #8069 (relayed by the lead)
+    objection: "[MEDIUM] invalid JSON was accepted as a verdict because the parser extracted an embedded object and ignored leading and trailing garbage."
+    status: CONFIRMED
+    note: cured in this PR - the whole reply must be one JSON object (one json fence allowed), else unsure with notes invalid_json
+  - seat: codex-gpt-5.6 red-team of #8069 (relayed by the lead)
+    objection: "[LOW] prompt delimiters were reproducible from page text, and a fake reader could be accepted by a real fold."
+    status: CONFIRMED
+    note: cured in this PR - per-call random nonce plus a DATA-not-instructions line; the fold refuses readers starting with fake unless --allow-fake-reader, the judge forces fake judges onto fake readers, and the fold default verified_by carries the reader names
+  - seat: codex-gpt-5.6 red-team of #8069 (relayed by the lead)
+    objection: "[LOW] sandbox: 294 test errors."
+    status: RETRACTED
+    note: the errors were Codex's sandbox forbidding the tmpdir, not regressions; retracted by the reviewer
+  - seat: codex-gpt-5.6 red-team of #8062 (relayed by the lead)
+    objection: "[BLOCK] fold_pack_generic ignored a receipt or judgement whose source_record_id is not an OFFICIAL_PORTAL record of the anchor."
+    status: CONFIRMED
+    note: cured in this PR
+  - seat: codex-gpt-5.6 red-team of #8062 (relayed by the lead)
+    objection: "[MEDIUM] created_at could precede the evidence it dates (only the earliest read was bounded)."
+    status: CONFIRMED
+    note: cured in this PR
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 0

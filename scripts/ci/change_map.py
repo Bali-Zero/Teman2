@@ -308,6 +308,10 @@ PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     # launchagents — hits that are PROSE inside docstrings naming the
     # directory, not code that opens or imports anything there.
     ("infra/eventbus/", frozenset({"backend_python", "security_sensitive"})),
+    # Second real coupling (2026-10-08): the backend suite's
+    # visa_engine/portal_judge.py subprocesses infra/launchagents/wrappers/
+    # claude-cascade.sh (repo copy first, SSOT against HOME-fork drift).
+    ("infra/launchagents/wrappers/", frozenset({"backend_python", "security_sensitive"})),
     # The catch-all. `infra_workflows` (2026-09-05) was the second half of
     # the same over-match `infra/guard-conformance/` was carved out of above,
     # applied to the other 37 sub-trees: infra/ is fleet payload — plists,

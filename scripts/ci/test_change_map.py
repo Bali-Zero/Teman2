@@ -1127,6 +1127,36 @@ class ChangeMapTests(unittest.TestCase):
             )
         self.assertIn(runner, (repo_root / rel).read_text(encoding="utf-8"))
 
+    def test_guilt_infra_launchagents_wrappers_runs_the_backend_suite_that_subprocesses_it(
+        self,
+    ) -> None:
+        # A real subprocess coupling (2026-10-08): the backend suite's
+        # visa_engine/portal_judge.py runs claude-cascade.sh from this exact
+        # sub-tree. Both sides are asserted so a rename of either fails here.
+        wrapper = "infra/launchagents/wrappers/claude-cascade.sh"
+        result = cm.classify([wrapper])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+        self.assertNotIn("frontend-tests", result["suggested_jobs"])
+
+        rel = Path("apps/backend-rag/backend/scripts/visa_engine/portal_judge.py")
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "the coupled backend module is not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — the coupling is asserted where the checkout is present"
+            )
+        self.assertIn("claude-cascade.sh", (repo_root / rel).read_text(encoding="utf-8"))
+
+    def test_innocence_other_infra_launchagents_files_do_not_run_the_backend_suite(
+        self,
+    ) -> None:
+        result = cm.classify(["infra/launchagents/com.balizero.example.plist"])
+        self.assertFalse(result["run_all"])
+        self.assertFalse(result["domains"]["backend_python"])
+        self.assertNotIn("backend-tests", result["suggested_jobs"])
+
     def test_guilt_bridge_watchdog_script_runs_the_backend_suite_that_reads_it(
         self,
     ) -> None:
@@ -1238,6 +1268,7 @@ class ChangeMapTests(unittest.TestCase):
             "apps/backend-rag/backend/app/utils/ingest_paths.py": {"infra/eventbus": 1},
             "apps/backend-rag/backend/scripts/federation_alert_daemon.py": {"infra/launchagents": 1},
             "apps/backend-rag/backend/scripts/kg_fix_68112_node.py": {"infra/kg-68112-licenses": 1},
+            "apps/backend-rag/backend/scripts/visa_engine/portal_judge.py": {"infra/launchagents": 1},
             "apps/backend-rag/backend/services/federation_alerts/__init__.py": {"infra/launchd": 1},
             "apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py": {"infra/eventbus": 1},
             "apps/backend-rag/backend/services/sota_loop/__init__.py": {"infra/launchagents": 1},

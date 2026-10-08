@@ -295,7 +295,7 @@ class TestLedgerGuilt:
             text.read_text(encoding="utf-8") + "Anda dapat tinggal selamanya.\n", encoding="utf-8"
         )
         assert re.search(
-            "does not carry the fingerprint",
+            "does not carry that receipt.s fingerprint",
             self._refusal(anchor, anchor_signed, trust, ledger_copy),
         )
 
@@ -327,7 +327,7 @@ class TestLedgerGuilt:
             lambda r: r.update(checked_sentence="Anda dapat tinggal selamanya."),
         )
         assert re.search(
-            "not a substring of the saved visible text",
+            "not a substring of the text of the read it binds to",
             self._refusal(anchor, anchor_signed, trust, ledger_copy),
         )
 
@@ -344,6 +344,275 @@ class TestLedgerGuilt:
             f"{victim[:8]}.*no receipt with HTTP 200",
             self._refusal(anchor, anchor_signed, trust, ledger_copy),
         )
+
+
+def _per_fetch_copy(ledger_dir: Path) -> Path:
+    """The seq-25 ledger rewritten the way portal_read_receipt now writes it: text/<8id>-<stamp>.txt."""
+    for old in sorted((ledger_dir / "text").glob("????????.txt")):
+        old.rename(old.with_name(f"{old.stem}-20261007T133000Z.txt"))
+    for path in ledger_dir.glob("*-receipts.jsonl"):
+        rows = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        for row in rows:
+            row["text_file"] = (
+                f"/dead/worktree/text/{row['source_record_id'][:8]}-20261007T133000Z.txt"
+            )
+        path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    return ledger_dir
+
+
+class TestReceiptTextFile:
+    def test_a_per_fetch_ledger_regenerated_by_the_fake_judge_folds(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        from backend.scripts.visa_engine import portal_judge
+
+        _per_fetch_copy(ledger_copy)
+        for old in ledger_copy.glob("*-judgements.jsonl"):
+            old.unlink()
+        pack = _PACKS / "rulepack-prod-024.source.json"
+        argv = [
+            "--pack",
+            str(pack),
+            "--ledger-dir",
+            str(ledger_copy),
+            "--reader",
+            "fake-a",
+            "--all",
+            "--judge",
+            "fake",
+        ]
+        assert portal_judge.main(argv) == 0
+        now = datetime.now(timezone.utc)
+        meta = {**META, "created_at": now.strftime("%Y-%m-%dT%H:%M:%SZ")}
+        out = fold(
+            anchor,
+            anchor_signed,
+            load_ledger(ledger_copy),
+            trust_store=trust,
+            observed_at=now,
+            allow_fake_reader=True,
+            **meta,
+        )
+        stamps = {
+            r["verified_at"]
+            for r in out["source_records"]
+            if r["authority_type"] == "OFFICIAL_PORTAL"
+        }
+        assert stamps == {"2026-10-07T13:32:18Z"}
+
+    def test_a_receipt_without_text_file_falls_back_to_the_unsuffixed_name(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        _mutate(ledger_copy, "*-receipts.jsonl", None, lambda r: r.pop("text_file"))
+        out = _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+        assert hashlib.sha256(canonicalize_json(out)).hexdigest() == SEQ25_DIGEST
+
+    def test_guilt_a_text_file_that_escapes_the_text_directory_is_refused(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+        tmp_path: Path,
+    ) -> None:
+        victim = _portal_ids(anchor)[0]
+        outside = tmp_path / "outside.txt"
+        target = ledger_copy / "text" / f"{victim[:8]}.txt"
+        outside.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+        target.unlink()
+        target.symlink_to(outside)
+        with pytest.raises(SystemExit, match="not inside the ledger text directory"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+    def test_guilt_a_text_file_naming_no_file_is_refused(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        _mutate(
+            ledger_copy,
+            "*-receipts.jsonl",
+            _portal_ids(anchor)[0],
+            lambda r: r.update(text_file=".."),
+        )
+        with pytest.raises(SystemExit, match="names no file"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+
+class TestLedgerScopeAndDating:
+    def test_guilt_an_unknown_ledger_id_is_refused_even_with_valid_portal_evidence(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        stray = "deadbeef-0000-0000-0000-000000000000"
+        receipts = ledger_copy / "stray-receipts.jsonl"
+        receipts.write_text(
+            json.dumps({"source_record_id": stray, "fetched_at": "2099-01-01T00:00:00Z"}) + "\n",
+            encoding="utf-8",
+        )
+        judgements = ledger_copy / "stray-judgements.jsonl"
+        judgements.write_text(
+            json.dumps({"source_record_id": stray, "semantic_change": "unsure"}) + "\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(SystemExit, match=f"{stray}.*not an OFFICIAL_PORTAL record"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+    def test_guilt_created_at_between_the_first_and_last_read_is_refused(
+        self, anchor: dict[str, Any], anchor_signed: dict[str, Any], trust: StaticTrustStore
+    ) -> None:
+        meta = {**META, "created_at": "2026-10-07T13:33:00Z"}
+        with pytest.raises(SystemExit, match="precedes the ledger's latest evidence"):
+            fold(
+                anchor,
+                anchor_signed,
+                load_ledger(_LEDGER_DIR),
+                trust_store=trust,
+                observed_at=OBSERVED_AT,
+                **meta,
+            )
+
+
+class TestJudgementBinding:
+    def _two_fetch_ledger(
+        self, ledger_dir: Path, anchor: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
+        """A record fetched AGAIN after it was judged; the later text alone carries a sentence."""
+        victim = _portal_ids(anchor)[0]
+        receipts_path = next(ledger_dir.glob("*-receipts.jsonl"))
+        rows = [
+            json.loads(ln)
+            for ln in receipts_path.read_text(encoding="utf-8").splitlines()
+            if ln.strip()
+        ]
+        ours = [r for r in rows if r["source_record_id"] == victim] or [
+            r
+            for p in ledger_dir.glob("*-receipts.jsonl")
+            for r in map(json.loads, p.read_text(encoding="utf-8").splitlines())
+            if r["source_record_id"] == victim
+        ]
+        judged = [
+            json.loads(ln)
+            for p in ledger_dir.glob("*-judgements.jsonl")
+            for ln in p.read_text(encoding="utf-8").splitlines()
+            if ln.strip() and json.loads(ln)["source_record_id"] == victim
+        ]
+        original_text = (ledger_dir / "text" / f"{victim[:8]}.txt").read_text(encoding="utf-8")
+        later_body = original_text.rstrip("\n") + "\nSENTENCE-ONLY-IN-THE-LATER-FETCH"
+        (ledger_dir / "text" / f"{victim[:8]}-later.txt").write_text(
+            later_body + "\n", encoding="utf-8"
+        )
+        later = {
+            **ours[0],
+            "fetched_at": "2026-10-07T13:36:30Z",
+            "text_file": f"text/{victim[:8]}-later.txt",
+            "visible_text_sha256": fold_pack_generic.text_fingerprint(later_body),
+        }
+        with receipts_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(later) + "\n")
+        return victim, judged[0]
+
+    def test_guilt_a_quote_that_exists_only_in_a_fetch_made_after_the_judgement_is_refused(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        victim, judgement = self._two_fetch_ledger(ledger_copy, anchor)
+        assert judgement["judged_at"] < "2026-10-07T13:36:30Z"
+        _mutate(
+            ledger_copy,
+            "*-judgements.jsonl",
+            victim,
+            lambda r: r.update(checked_sentence="SENTENCE-ONLY-IN-THE-LATER-FETCH"),
+        )
+        with pytest.raises(SystemExit, match="not a substring of the text of the read it binds to"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+    def test_innocence_the_later_fetch_does_not_disturb_an_honest_judgement(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        self._two_fetch_ledger(ledger_copy, anchor)
+        out = _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+        assert out["sequence"] == 25
+
+    def test_guilt_a_judgement_naming_another_fetch_than_the_one_it_binds_to_is_refused(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        victim = _portal_ids(anchor)[0]
+        _mutate(
+            ledger_copy,
+            "*-judgements.jsonl",
+            victim,
+            lambda r: r.update(receipt_fetched_at="2026-10-07T13:31:00Z"),
+        )
+        with pytest.raises(SystemExit, match="judgement says it read the fetch"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+    def test_guilt_a_judgement_with_a_foreign_text_fingerprint_is_refused(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        victim = _portal_ids(anchor)[0]
+        _mutate(ledger_copy, "*-judgements.jsonl", victim, lambda r: r.update(text_sha256="0" * 64))
+        with pytest.raises(SystemExit, match="text_sha256 is not the bound receipt"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+
+class TestRehearsalReaders:
+    def test_guilt_a_fake_reader_cannot_stamp_a_pack(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        _mutate(ledger_copy, "*-judgements.jsonl", None, lambda r: r.update(reader="fake-x"))
+        with pytest.raises(SystemExit, match="rehearsal reader"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+    def test_innocence_the_rehearsal_flag_admits_it(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        _mutate(ledger_copy, "*-judgements.jsonl", None, lambda r: r.update(reader="fake-x"))
+        out = fold(
+            anchor, anchor_signed, load_ledger(ledger_copy), trust_store=trust,
+            observed_at=OBSERVED_AT, allow_fake_reader=True, **META,
+        )  # fmt: skip
+        assert out["sequence"] == 25
 
 
 def test_module_holds_no_sequence_constant() -> None:
