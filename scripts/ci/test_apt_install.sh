@@ -38,8 +38,12 @@ setup() {
   mkdir -p "$BIN"
   LOG_TIMEOUT="$SANDBOX/timeout.log"
   LOG_APT="$SANDBOX/apt.log"
+  LOG_SOURCE="$SANDBOX/fallback.sources"
+  LOG_SOURCE_ORIGIN="$SANDBOX/fallback.origin"
   : >"$LOG_TIMEOUT"
   : >"$LOG_APT"
+  : >"$LOG_SOURCE"
+  : >"$LOG_SOURCE_ORIGIN"
 
   cat >"$BIN/timeout" <<EOF
 #!/usr/bin/env bash
@@ -56,7 +60,44 @@ EOF
   cat >"$BIN/apt-get" <<EOF
 #!/usr/bin/env bash
 echo "\$@" >>"$LOG_APT"
-for a in "\$@"; do
+ARGS=("\$@")
+SOURCE_LIST=""
+SOURCE_PARTS=""
+for ((i = 0; i < \${#ARGS[@]}; i++)); do
+  if [ "\${ARGS[i]}" = "-o" ]; then
+    i=\$((i + 1))
+    case "\${ARGS[i]}" in
+      Dir::Etc::SourceList=*) SOURCE_LIST="\${ARGS[i]#Dir::Etc::SourceList=}" ;;
+      Dir::Etc::SourceParts=*) SOURCE_PARTS="\${ARGS[i]#Dir::Etc::SourceParts=}" ;;
+    esac
+  fi
+done
+# apt's own rule, as measured on ubuntu:24.04: SourceList is one-line format
+# only; a deb822 stanza there is a parse error before any network I/O.
+if [ -n "\$SOURCE_LIST" ] && grep -Eq '^[[:space:]]*(Types|URIs|Suites|Components):' "\$SOURCE_LIST"; then
+  echo "E: Type 'Types:' is not known on line 1 in source list \$SOURCE_LIST" >&2
+  echo "E: The list of sources could not be read." >&2
+  exit 100
+fi
+IS_UPDATE=0
+for a in "\${ARGS[@]}"; do [ "\$a" = "update" ] && IS_UPDATE=1; done
+if [ "\${APT_REQUIRE_FALLBACK:-}" = "1" ]; then
+  if [ -z "\$SOURCE_LIST" ]; then exit 100; fi
+  if [ -n "\$SOURCE_PARTS" ] && ls "\$SOURCE_PARTS"/*.sources >/dev/null 2>&1; then
+    cat "\$SOURCE_PARTS"/*.sources >"$LOG_SOURCE"
+    echo "parts" >"$LOG_SOURCE_ORIGIN"
+  else
+    cat "\$SOURCE_LIST" >"$LOG_SOURCE"
+    echo "list" >"$LOG_SOURCE_ORIGIN"
+  fi
+  [ "\$IS_UPDATE" = "1" ] && exit "\${APT_FALLBACK_UPDATE_RC:-0}"
+  if [ -n "\${APT_CREATES:-}" ]; then
+    printf '#!/bin/sh\nexit 0\n' >"$BIN/\$APT_CREATES"
+    chmod +x "$BIN/\$APT_CREATES"
+  fi
+  exit "\${APT_FALLBACK_RC:-0}"
+fi
+for a in "\${ARGS[@]}"; do
   if [ "\$a" = "update" ]; then exit \${APT_UPDATE_RC:-0}; fi
 done
 if [ -n "\${APT_CREATES:-}" ]; then
@@ -74,7 +115,9 @@ teardown() { rm -rf "$SANDBOX"; }
 # Runs the subject with ONLY the stub dir on PATH (plus the system dirs the
 # script's own `set`/`command` need). Captures rc without tripping errexit.
 run_sut() {
-  ( PATH="$BIN:/usr/bin:/bin" "$@" bash "$SUT" "${SUT_ARGS[@]}" ) >"$SANDBOX/out" 2>&1
+  # No case reads the host's /etc/apt: a case names its sources file through
+  # the seam, or gets none (the corpus also runs on a Linux runner in CI).
+  ( PATH="$BIN:/usr/bin:/bin" APT_INSTALL_SOURCES_FILE="$SANDBOX/no-such-sources" "$@" bash "$SUT" "${SUT_ARGS[@]}" ) >"$SANDBOX/out" 2>&1
   echo $?
 }
 
@@ -110,11 +153,148 @@ else
 fi
 # The arithmetic that the FIRST cure got wrong (3x180s inside a 10-min budget).
 TOTAL=$(awk '{s += $1} END {print s+0}' "$LOG_TIMEOUT")
-if [ "$TOTAL" -le 120 ]; then
+if [ "$TOTAL" -le 240 ]; then
   ok "total bound ${TOTAL}s fits well inside a ten-minute job budget"
 else
   fail "total bound ${TOTAL}s is too close to (or over) the job budget"
 fi
+teardown
+
+# S1: rendered ubuntu-24.04 hosted-runner cloud-init deb822 surface (verbatim,
+# except Jinja Signed-By values are what cloud-init renders on the runner).
+setup
+SOURCES="$SANDBOX/ubuntu.sources"
+cat >"$SOURCES" <<'EOF'
+## Note, this file is written by cloud-init on first boot of an instance
+## modifications made here will not survive a re-bundle.
+##
+## If you wish to make changes you can:
+## a.) add 'apt_preserve_sources_list: true' to /etc/cloud/cloud.cfg
+##     or do the same in user-data
+## b.) add supplemental sources in /etc/apt/sources.list.d
+## c.) make changes to template file
+##      /etc/cloud/templates/sources.list.ubuntu.deb822.tmpl
+##
+
+# See http://help.ubuntu.com/community/UpgradeNotes for how to upgrade to
+# newer versions of the distribution.
+
+## Ubuntu distribution repository
+##
+## The following settings can be adjusted to configure which packages to use from Ubuntu.
+## Mirror your choices (except for URIs and Suites) in the security section below to
+## ensure timely security updates.
+##
+## Types: Append deb-src to enable the fetching of source package.
+## URIs: A URL to the repository (you may add multiple URLs)
+## Suites: The following additional suites can be configured
+##   <name>-updates   - Major bug fix updates produced after the final release of the
+##                      distribution.
+##   <name>-backports - software from this repository may not have been tested as
+##                      extensively as that contained in the main release, although it includes
+##                      newer versions of some applications which may provide useful features.
+##                      Also, please note that software in backports WILL NOT receive any review
+##                      or updates from the Ubuntu security team.
+## Components: Aside from main, the following components can be added to the list
+##   restricted  - Software that may not be under a free license, or protected by patents.
+##   universe    - Community maintained packages. Software in this repository receives maintenance
+##                 from volunteers in the Ubuntu community, or a 10 year security maintenance
+##                 commitment from Canonical when an Ubuntu Pro subscription is attached.
+##   multiverse  - Community maintained of restricted. Software from this repository is
+##                 ENTIRELY UNSUPPORTED by the Ubuntu team, and may not be under a free
+##                 licence. Please satisfy yourself as to your rights to use the software.
+##                 Also, please note that software in multiverse WILL NOT receive any
+##                 review or updates from the Ubuntu security team.
+##
+## See the sources.list(5) manual page for further settings.
+Types: deb
+URIs: mirror+file:/etc/apt/apt-mirrors.txt
+Suites: noble noble-updates noble-backports
+Components: main universe restricted multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+## Ubuntu security updates. Aside from URIs and Suites,
+## this should mirror your choices in the previous section.
+Types: deb
+URIs: mirror+file:/etc/apt/apt-mirrors.txt
+Suites: noble-security
+Components: main universe restricted multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+EOF
+MIRRORS="$SANDBOX/apt-mirrors.txt"
+printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n' >"$MIRRORS"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_INSTALL_MIRROR_LIST="$MIRRORS" APT_CREATES=nzfakebin)
+[ "$RC" = "0" ] && ok "S1 fallback delivers after the mirror pool stalls" || fail "S1 fallback rc=$RC (want 0)"
+grep -Fq "sources=$SOURCES format=deb822 primary=azure.archive.ubuntu.com via=$MIRRORS" "$SANDBOX/out" && ok "S1 measures the real deb822 surface" || fail "S1 surface observation wrong"
+grep -Fq 'trying http://archive.ubuntu.com/ubuntu/ (deb822 sources)' "$SANDBOX/out" && ! grep -q 'help.ubuntu.com' "$SANDBOX/out" && ok "S1 warning names azure, never a comment host" || fail "S1 warning host wrong"
+[ "$(grep -c '^URIs: http://archive.ubuntu.com/ubuntu/$' "$LOG_SOURCE")" = 2 ] && ! grep -qE 'mirror\+file:|azure' "$LOG_SOURCE" && ok "S1 rewrites both active URIs directly" || fail "S1 did not remove the pool URI"
+grep -q '^Suites: noble noble-updates noble-backports$' "$LOG_SOURCE" && grep -q '^Components: main universe restricted multiverse$' "$LOG_SOURCE" && [ "$(grep -c '^Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg$' "$LOG_SOURCE")" = 2 ] && ok "S1 retains suites, components and keys" || fail "S1 changed deb822 metadata"
+[ "$(cat "$LOG_SOURCE_ORIGIN")" = "parts" ] && ok "...deb822 stanzas reach apt as a SourceParts *.sources file" || fail "deb822 sources were handed to apt as SourceList (origin=$(cat "$LOG_SOURCE_ORIGIN"))"
+if grep -q '/etc/apt' "$LOG_APT"; then fail "fallback wrote /etc/apt"; else ok "...and never writes /etc/apt"; fi
+teardown
+
+# S2: ubuntu-22.04 hosted runner one-line mirror+file surface.
+setup
+SOURCES="$SANDBOX/sources.list"
+printf 'deb mirror+file:/etc/apt/apt-mirrors.txt jammy main restricted universe multiverse\n' >"$SOURCES"
+MIRRORS="$SANDBOX/apt-mirrors.txt"; printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n' >"$MIRRORS"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_INSTALL_MIRROR_LIST="$MIRRORS" APT_CREATES=nzfakebin)
+[ "$RC" = "0" ] && ok "S2 one-line pool fallback delivers" || fail "S2 fallback rc=$RC (want 0)"
+[ "$(cat "$LOG_SOURCE_ORIGIN")" = list ] && grep -q '^deb http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse$' "$LOG_SOURCE" && ! grep -q 'mirror+file:' "$LOG_SOURCE" && ok "S2 rewrites SourceList URI" || fail "S2 sources not rewritten"
+grep -Fq "format=one-line primary=azure.archive.ubuntu.com via=$MIRRORS" "$SANDBOX/out" && ok "S2 measures one-line pool" || fail "S2 surface observation wrong"
+teardown
+
+# S3/S4 direct archive sources choose the US mirror, without a pool list.
+for SHAPE in deb822 one-line; do
+  setup
+  SOURCES="$SANDBOX/sources"
+  if [ "$SHAPE" = deb822 ]; then printf 'Types: deb\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble\nComponents: main\nSigned-By: /key\n' >"$SOURCES"; else printf 'deb http://archive.ubuntu.com/ubuntu/ jammy main\n' >"$SOURCES"; fi
+  SUT_ARGS=(nzfakebin nzfakebin)
+  RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+  if [ "$SHAPE" = deb822 ]; then CASE=S3; else CASE=S4; fi
+  [ "$RC" = 0 ] && grep -Fq 'http://us.archive.ubuntu.com/ubuntu/' "$LOG_SOURCE" && grep -Fq 'via=direct' "$SANDBOX/out" && ok "$CASE direct archive uses US fallback" || fail "$SHAPE direct archive fallback wrong"
+  teardown
+done
+
+# A one-line entry with [options] keeps them: the URI is the field after the bracket.
+setup; SOURCES="$SANDBOX/sources.list"; printf 'deb [arch=amd64 signed-by=/usr/share/keyrings/k.gpg] mirror+file:%s noble main\n' "$SANDBOX/mirrors.txt" >"$SOURCES"
+printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\n' >"$SANDBOX/mirrors.txt"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+[ "$RC" = 0 ] && grep -Fq 'deb [arch=amd64 signed-by=/usr/share/keyrings/k.gpg] http://archive.ubuntu.com/ubuntu/ noble main' "$LOG_SOURCE" && grep -Fq 'primary=azure.archive.ubuntu.com' "$SANDBOX/out" && ok "one-line [options] entry keeps its options and swaps the URI" || fail "one-line [options] entry mishandled (rc=$RC)"
+teardown
+
+# ubuntu-ports has no second official mirror; an unreadable pool still falls back.
+setup; SOURCES="$SANDBOX/ports.sources"; printf 'URIs: http://ports.ubuntu.com/ubuntu-ports/\n' >"$SOURCES"; SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_INSTALL_SOURCES_FILE="$SOURCES")
+[ "$RC" != 0 ] && [ "$(grep -c '^apt_install: ubuntu-ports has no fallback mirror; fallback skipped$' "$SANDBOX/out")" = 1 ] && ok "ubuntu-ports skips fallback once" || fail "ubuntu-ports fallback was attempted"
+teardown
+setup; SOURCES="$SANDBOX/missing.sources"; MISSING="$SANDBOX/missing-mirrors.txt"; printf 'URIs: mirror+file:%s\n' "$MISSING" >"$SOURCES"; SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+[ "$RC" = 0 ] && grep -Fq "primary=mirror+file:$MISSING via=$MISSING" "$SANDBOX/out" && ok "unreadable pool reports literal primary and still falls back" || fail "unreadable pool behavior wrong"
+teardown
+
+# A second stalled mirror still fails closed and names the unavailable package.
+setup
+SOURCES="$SANDBOX/ubuntu.sources"
+printf 'URIs: http://azure.archive.ubuntu.com/ubuntu\n' >"$SOURCES"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_FALLBACK_RC=100 APT_INSTALL_SOURCES_FILE="$SOURCES")
+[ "$RC" != "0" ] && ok "two stalled mirrors fail closed" || fail "two stalled mirrors rc=0"
+grep -q "package 'nzfakebin' is still unavailable" "$SANDBOX/out" && ok "...and names the package" || fail "missing package failure message"
+TOTAL=$(awk '{s += $1} END {print s+0}' "$LOG_TIMEOUT")
+[ "$TOTAL" -le 240 ] && ok "...within the 240s timeout ceiling" || fail "timeout ceiling ${TOTAL}s exceeds 240s"
+teardown
+
+# Without a readable active sources file, fallback is explicitly skipped.
+setup
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_INSTALL_RC=100 APT_INSTALL_SOURCES_FILE="$SANDBOX/no-sources")
+[ "$RC" != "0" ] && ok "no sources file fails closed" || fail "no sources file rc=0"
+grep -q 'no active apt sources file; fallback skipped' "$SANDBOX/out" && ok "...and reports fallback skipped" || fail "missing no-sources message"
+[ "$(grep -c 'apt_install:' "$SANDBOX/out")" = "1" ] && ok "...with one stderr diagnostic" || fail "no-sources emitted extra diagnostics"
 teardown
 
 # The fail-open I wrote once and must not write again: apt exits 0, the
@@ -151,6 +331,28 @@ RC=$(run_sut env APT_UPDATE_RC=1 APT_CREATES=nzfakebin)
 grep -q "install" "$LOG_APT" && ok "...and apt-get install was actually reached" || fail "apt-get install never ran"
 teardown
 
+# ---------------------------------------------------- the surface never costs
+# The surface read is a diagnostic: an unreadable sources file or a file with
+# thousands of URIs: lines must not stop the primary attempt (HEAD~1 exited 2
+# and 141 here before any apt call; main exits 0).
+setup
+SOURCES="$SANDBOX/locked.sources"; printf 'Types: deb\nURIs: http://azure.archive.ubuntu.com/ubuntu/\n' >"$SOURCES"; chmod 000 "$SOURCES"
+if [ -r "$SOURCES" ]; then
+  ok "unreadable-file case skipped: this user reads mode-000 files (root)"
+else
+  SUT_ARGS=(nzfakebin nzfakebin)
+  RC=$(run_sut env APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+  [ "$RC" = 0 ] && [ "$(grep -c . "$LOG_APT")" -ge 2 ] && ok "an unreadable sources file never costs the primary attempt" || fail "unreadable sources file: rc=$RC apt calls=$(grep -c . "$LOG_APT")"
+  if grep -q '^apt_install: sources=' "$SANDBOX/out"; then fail "surface line printed for an unreadable file"; else ok "...and prints no surface line for it"; fi
+fi
+chmod 644 "$SOURCES"; teardown
+setup
+SOURCES="$SANDBOX/long.sources"; { printf 'Types: deb\n'; yes 'URIs: http://azure.archive.ubuntu.com/ubuntu/' | head -n 3000; } >"$SOURCES"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+[ "$RC" = 0 ] && [ "$(grep -c . "$LOG_APT")" -ge 2 ] && grep -Fq 'primary=azure.archive.ubuntu.com via=direct' "$SANDBOX/out" && ok "3000 URIs: lines never cost the primary attempt (no SIGPIPE under pipefail)" || fail "long sources file: rc=$RC apt calls=$(grep -c . "$LOG_APT")"
+teardown
+
 # ------------------------------------------------------------- the '-' door
 # `locales` has no binary of its own — the caller asserts with `locale -a`.
 # The sentinel must skip verification WITHOUT skipping the install.
@@ -159,6 +361,13 @@ SUT_ARGS=(- locales)
 RC=$(run_sut env)
 [ "$RC" = "0" ] && ok "'-' sentinel exits 0 with no binary to verify" || fail "'-' sentinel rc=$RC (want 0)"
 grep -q "locales" "$LOG_APT" && ok "...and still installed the package" || fail "'-' sentinel skipped the install too"
+teardown
+# ...and never reaches the fallback: the caller asserts, the script does not retry.
+setup
+SOURCES="$SANDBOX/ubuntu.sources"; printf 'Types: deb\nURIs: http://azure.archive.ubuntu.com/ubuntu/\n' >"$SOURCES"
+SUT_ARGS=(- locales)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES")
+[ "$RC" = "0" ] && [ ! -s "$LOG_SOURCE" ] && ! grep -q 'did not deliver' "$SANDBOX/out" && ! grep -q 'still unavailable' "$SANDBOX/out" && grep -q 'delivered by primary mirror' "$SANDBOX/out" && ok "'-' sentinel never runs the fallback nor its warning" || fail "'-' sentinel reached the fallback (rc=$RC)"
 teardown
 
 # ------------------------------------------------------------------- misuse
