@@ -631,7 +631,7 @@ const en = {
   "q.review_gate.hint":
     "Tick everything that applies — an omission costs you more than a disclosure. Some of these, a criminal record among them, put your case in front of a person before any verdict; the others are attached to your result as conditions our team checks with you before submission.",
   "why.review_gate":
-    "Every item here reaches the engine: the three immigration-history ones as a fact the signed rules read, all of them as a disclosure the result must account for.",
+    "Every item here reaches the engine: the three immigration-history ones as a fact the rules read, all of them as a disclosure the result must account for.",
   "q.review_gate.opt.none": "None of these apply to me",
   "q.review_gate.opt.flagged": "One or more applies",
   // Finding #5 (adversarial review 2026-07-17): "none" is now a first-class
@@ -1709,7 +1709,7 @@ const id: Record<Keys, string> = {
   "q.review_gate.hint":
     "Centang semua yang berlaku — tidak menyebutkannya lebih merugikan Anda daripada menyebutkannya. Sebagian di antaranya, termasuk catatan kriminal, membuat kasus Anda ditinjau seseorang sebelum ada keputusan; sisanya menyertai hasil Anda sebagai kondisi tersurat yang ditelusuri tim kami bersama Anda sebelum pengajuan.",
   "why.review_gate":
-    "Setiap item di sini sampai ke mesin: tiga item riwayat keimigrasian sebagai fakta yang dibaca aturan yang telah disahkan, dan semuanya sebagai pengungkapan yang harus diperhitungkan dalam hasil.",
+    "Setiap item di sini sampai ke mesin: tiga item riwayat keimigrasian sebagai fakta yang dibaca aturan ini, dan semuanya sebagai pengungkapan yang harus diperhitungkan dalam hasil.",
   "q.review_gate.opt.none": "Tidak ada yang berlaku bagi saya",
   "q.review_gate.opt.flagged": "Satu atau lebih berlaku",
   "q.review_gate.item.none": "Tidak ada yang berlaku bagi saya",
