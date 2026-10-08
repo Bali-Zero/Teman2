@@ -199,6 +199,14 @@ contexts:
             - workflow_step: Upload core-gate test results
               not_applicable: a continue-on-error diagnostic upload (BASE says nothing gates on it); there is no artifact store here
         - job_id: backend-shard
+          # Two xdist workers, not four (measured on Pro 2026-10-07/08): `pytest -n auto --dist loadfile` starts one worker per CPU,
+          # 4 on the 4-CPU Colima VM (8 GiB, no swap), and one worker peaks ~2.1 GB anon-rss, so 4 x 2.1 GB exceeds the leg's 6g
+          # memory cgroup: the kernel OOM-killed a worker (six memcg kills 2026-10-07T22:19Z..10-08T06:59Z, every one a
+          # /docker/<ctr>), xdist printed `[gwN] node down: Not properly terminated` and the controller hung until the 1800 s kill
+          # (4 of 5 merger runs). Hosted runs 4 workers on 16 GB with no cgroup limit. Same tests, same command: xdist's
+          # `-n auto` reads PYTEST_XDIST_AUTO_NUM_WORKERS before any CPU count, `--dist loadfile` keeps each file whole on one
+          # worker and the DB isolation is per worker, so coverage stays `full`. Remove this line the day the VM is resized.
+          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }
           steps:
             - workflow_step: Runner probe (temporary, day-0)
             - workflow_step: Cache dependencies (uv)
