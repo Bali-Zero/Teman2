@@ -1593,12 +1593,12 @@ class ContainerCleanupError(RuntimeError):
 
 def _remove_verified(docker: str, ctr: str, denv: dict) -> None:
     try:
-        subprocess.run([docker, "rm", "-f", ctr], capture_output=True, timeout=120, env=denv)
+        subprocess.run([docker, "rm", "-f", "-v", ctr], capture_output=True, timeout=120, env=denv)   # -v: its anonymous volumes die with it
         gone = subprocess.run([docker, "container", "inspect", "--format", "{{.Id}}", ctr], capture_output=True, text=True, timeout=60, env=denv)
     except (OSError, subprocess.TimeoutExpired) as e:
         raise ContainerCleanupError(f"removal of candidate container {ctr} not verifiable: {type(e).__name__}") from e
     if gone.returncode == 0 or "no such" not in (gone.stderr or "").lower():
-        raise ContainerCleanupError(f"candidate container {ctr} still present or its absence unverifiable after docker rm -f (inspect rc={gone.returncode})")
+        raise ContainerCleanupError(f"candidate container {ctr} still present or its absence unverifiable after docker rm -f -v (inspect rc={gone.returncode})")
 
 
 def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int, log: Path, junit: Path) -> dict:
@@ -1759,7 +1759,7 @@ def _execute_trusted_steps(spec: dict, timeout: int, log: Path) -> dict:
 
 
 def reap_containers(plan: dict, store: Store) -> str | None:
-    """A coordinator killed with -9 never reached its `docker rm -f`: remove THIS run dir's leftover candidate containers before
+    """A coordinator killed with -9 never reached its `docker rm -f -v`: remove THIS run dir's leftover candidate containers before
     resuming. Returns why that could not be verified (the caller refuses to run candidate code next to an unknown survivor)."""
     iso = isolation_of(plan)
     if iso.get("mode") != "container" or not iso.get("docker"):
@@ -1771,10 +1771,10 @@ def reap_containers(plan: dict, store: Store) -> str | None:
             return f"docker ps rc={ls.returncode}: {ls.stderr.strip()[:200]}"
         ids = ls.stdout.split()
         if ids:
-            subprocess.run([iso["docker"], "rm", "-f", *ids], capture_output=True, timeout=120, env=trusted_env())
+            subprocess.run([iso["docker"], "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=trusted_env())
             left = subprocess.run([iso["docker"], "ps", "-aq", *flt], capture_output=True, text=True, timeout=60, env=trusted_env())
             if left.returncode != 0 or left.stdout.split():
-                return f"{len(left.stdout.split())} orphan candidate container(s) survived docker rm -f"
+                return f"{len(left.stdout.split())} orphan candidate container(s) survived docker rm -f -v"
             store.journal({"event": "orphan_containers_removed", "count": len(ids), "at": now()})
     except (OSError, subprocess.TimeoutExpired) as e:
         return f"{type(e).__name__}: {e}"

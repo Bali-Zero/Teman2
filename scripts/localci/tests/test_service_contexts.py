@@ -189,7 +189,62 @@ def test_an_unhealthy_service_blocks_the_job_and_is_torn_down(tmp_path):
     assert why and "'unhealthy'" in why and names == [owner]
     for n in names:
         runner._remove_verified(docker, n, runner.trusted_env())
-    assert f"rm -f {names[0]}" in (tmp_path / "docker.argv").read_text()
+    assert f"rm -f -v {names[0]}" in (tmp_path / "docker.argv").read_text()
+
+
+def _container_removals() -> list:
+    """Every argv list the runner builds that asks docker to remove a container (`rm`, `container rm`), as written in its source."""
+    import ast
+    found = []
+    for node in ast.walk(ast.parse(Path(runner.__file__).read_text())):
+        if isinstance(node, ast.List) and len(node.elts) > 2 and not isinstance(node.elts[0], ast.Constant):
+            words = [e.value if isinstance(e, ast.Constant) and isinstance(e.value, str) else None for e in node.elts]
+            if words[1] == "rm" or words[1:3] == ["container", "rm"]:
+                found.append((node.lineno, words))
+    return found
+
+
+def test_every_container_removal_takes_its_anonymous_volumes_with_it(tmp_path, monkeypatch):
+    sites = _container_removals()   # postgres:15 and redis:7 declare VOLUME: without -v each leg left one behind (89 filled Pro's VM)
+    assert len(sites) >= 2 and all("-v" in w or "--volumes" in w for _, w in sites), sites
+    docker = str(fake_docker(tmp_path))
+    runner._remove_verified(docker, "localci-t-svc", runner.trusted_env())
+    ps = tmp_path / "ps.calls"   # the reaper: `ps -aq` names one orphan, then none
+    exe = Path(docker)
+    exe.write_text(exe.read_text().replace('  *) exit 0;;', f'  "ps -aq") [ -f {ps} ] || {{ touch {ps}; echo orphan1; }};;\n  *) exit 0;;'))
+    plan = {"isolation": {"mode": "container", "docker": docker}}
+    assert runner.reap_containers(plan, runner.Store(tmp_path / "run")) is None
+    rms = [ln for ln in (tmp_path / "docker.argv").read_text().splitlines() if ln.startswith(("rm ", "container rm"))]
+    assert rms == ["rm -f -v localci-t-svc", "rm -f -v orphan1"]
+
+
+needs_docker = pytest.mark.skipif(not fr.docker_image_ready(), reason=f"docker image {fr.ISOLATION_IMAGE} unavailable — proven live on Pro")
+
+
+@needs_docker
+def test_a_removal_takes_the_anonymous_volume_and_spares_a_named_volume_and_a_bind_mount(tmp_path):
+    import shutil
+    import tempfile
+    import uuid
+    docker, tag = shutil.which("docker"), uuid.uuid4().hex[:12]
+    named, ctr = f"localci-test-named-{tag}", f"localci-test-rmv-{tag}"
+    bind = Path(tempfile.mkdtemp(dir=Path.home(), prefix=".localci-test-bind-"))   # under $HOME: the path Colima shares with its VM
+    (bind / "keep.txt").write_text("kept\n")
+    exists = lambda v: subprocess.run([docker, "volume", "inspect", v], capture_output=True).returncode == 0   # noqa: E731
+    try:
+        subprocess.run([docker, "volume", "create", named], check=True, capture_output=True)
+        subprocess.run([docker, "create", "--name", ctr, "-v", f"{named}:/named", "-v", f"{bind}:/bind", "-v", "/anon", fr.ISOLATION_IMAGE, "true"],
+                       check=True, capture_output=True)
+        anon = subprocess.run([docker, "inspect", "--format", '{{range .Mounts}}{{if eq .Destination "/anon"}}{{.Name}}{{end}}{{end}}', ctr],
+                              capture_output=True, text=True, check=True).stdout.strip()
+        assert anon and exists(anon)
+        runner._remove_verified(docker, ctr, runner.trusted_env())
+        assert not exists(anon)                                                  # the anonymous volume died with its container
+        assert exists(named) and (bind / "keep.txt").read_text() == "kept\n"     # a named volume and a bind mount are untouched
+    finally:
+        subprocess.run([docker, "rm", "-f", "-v", ctr], capture_output=True)
+        subprocess.run([docker, "volume", "rm", "-f", named], capture_output=True)
+        shutil.rmtree(bind, ignore_errors=True)
 
 
 def test_no_host_secret_reaches_a_service_or_rides_on_its_argv(tmp_path, monkeypatch):
