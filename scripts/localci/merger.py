@@ -617,6 +617,10 @@ def cmd_tick(a) -> int:
     if bound.read_text().strip() != a.repo.lower():
         print(f"merger: refusing — {state} belongs to {bound.read_text().strip()!r}, not {a.repo!r}", file=sys.stderr)
         return 2
+    if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:   # B6: the gate never finishes the job of filling the disk
+        journal(state, {"kind": "skipped", "why": "host_below_floor", "free_gb": a.host_free_gb, "floor_gb": a.min_host_free_gb})
+        print(f"merger: host_below_floor free_gb={a.host_free_gb:g} floor_gb={a.min_host_free_gb:g} — no run started")
+        return 0
     fh, lease = take_lease(state, a.repo)
     if fh is None:
         journal(state, {"kind": "skipped", "why": "lease", "holder": lease})
@@ -967,6 +971,8 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--run-timeout", type=int, default=5400, help="seconds for the runner's `run` step")
     t.add_argument("--tick-timeout", type=int, default=9000, help="watchdog for the whole tick; past it the decision is ERROR")
     t.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
+    t.add_argument("--host-free-gb", type=float, help="the host's free GB as the launchd wrapper read it before the tick (B6)")
+    t.add_argument("--min-host-free-gb", type=float, default=60.0, help="under it no run starts: the skip is journalled (B6)")
     r = sub.add_parser("report", help="phase D: every decision beside what GitHub did with that head")
     r.add_argument("--repo", default=hc.DEFAULT_REPO)
     r.add_argument("--base", default=hc.DEFAULT_BRANCH)

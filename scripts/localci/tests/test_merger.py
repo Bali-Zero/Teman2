@@ -577,7 +577,8 @@ def mirror_world(tmp_path):
     fake_py.chmod(0o755)
     env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "MERGER_PYTHON": str(fake_py), "MERGER_NODE": "n1", "MERGER_STATE_DIR": str(tmp_path / "state"),
            "MERGER_SEED": str(origin), "MERGER_REMOTE_URL": str(origin),
-           "OUT_ARGS": str(tmp_path / "args"), "OUT_CODE": str(tmp_path / "code")}
+           "OUT_ARGS": str(tmp_path / "args"), "OUT_CODE": str(tmp_path / "code"),
+           "MERGER_MIN_HOST_FREE_GB": "0"}   # B6: the host floor is the test machine's otherwise (its own tests below fake df)
     return src, origin, fake_py, env
 
 
@@ -947,3 +948,69 @@ def test_the_runner_gets_the_operators_free_space_floor_and_still_no_token(world
     assert world.tick() == 0
     env = world.runner.calls[0]["env"]
     assert env["LOCALCI_MIN_FREE_GB"] == "30" and "GH_TOKEN" not in env and all("ghp_" not in v for v in env.values())
+
+
+# ------------------------------------------------------------------ B6-3: the tick prunes at its end, never starts a run under the floor
+def floor_world(tmp_path, free_gb, merger="v1 --code-sha --host-free-gb \"prune\"\n", prune=True):
+    src, origin, fake_py, env = mirror_world(tmp_path)
+    commit(src, {"scripts/localci/merger.py": merger, **({"scripts/localci/prune.py": "p\n", "scripts/localci/runner.py": "r\n"} if prune else {})}, "b6")
+    g(src, "push", "-q", str(origin), "main")
+    fake_py.write_text('#!/bin/sh\necho "$3 $*" >> "$OUT_CALLS"\ncase "$3" in tick) exit "${FAKE_TICK_RC:-0}";; prune) exit "${FAKE_PRUNE_RC:-0}";; esac\n')
+    bin_ = tmp_path / "fakebin"
+    bin_.mkdir()
+    (bin_ / "df").write_text(f'#!/bin/sh\necho "Filesystem 1024-blocks Used Available Capacity Mounted on"\n'
+                             f'echo "/dev/disk3s5 482797652 300000000 {-(-int(free_gb * 1e9) // 1024)} 60% /System/Volumes/Data"\n')
+    (bin_ / "df").chmod(0o755)
+    env = {**env, "PATH": f"{bin_}:{env['PATH']}", "OUT_CALLS": str(tmp_path / "calls"), "MERGER_HOST_PATH": str(tmp_path)}
+    env.pop("MERGER_MIN_HOST_FREE_GB")
+    return env
+
+
+def calls_of(tmp_path):
+    return [ln.split()[0] for ln in (tmp_path / "calls").read_text().splitlines()] if (tmp_path / "calls").exists() else []
+
+
+def test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_reading(tmp_path):
+    env = floor_world(tmp_path, 200)
+    res = wrap(env)
+    assert res.returncode == 0, res.stderr
+    lines = (tmp_path / "calls").read_text().splitlines()
+    assert calls_of(tmp_path) == ["tick", "prune"]   # never the prune before the decision
+    assert lines[0].endswith("--host-free-gb=200 --min-host-free-gb=60") and lines[1].endswith(f"prune --state-dir {env['MERGER_STATE_DIR']} --fstrim")
+    assert heartbeat(tmp_path)["status"] == "ok" and "host_free_gb=200" in res.stdout
+
+
+@pytest.mark.parametrize("free,status", [(59, "warning"), (60, "ok")])
+def test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning(tmp_path, free, status):
+    env = floor_world(tmp_path, free)
+    assert wrap(env).returncode == 0
+    assert calls_of(tmp_path) == ["tick", "prune"] and f"--host-free-gb={free} " in (tmp_path / "calls").read_text()
+    hb = heartbeat(tmp_path)
+    assert hb["status"] == status and (status == "ok" or hb["note"].startswith("host_below_floor free_gb=59 floor_gb=60: no run started"))
+
+
+def test_a_merger_that_cannot_journal_the_floor_is_not_started_under_it_and_a_main_without_prune_still_ticks(tmp_path):
+    env = floor_world(tmp_path, 10, merger="v1 --code-sha (a main before B6)\n", prune=False)
+    res = wrap(env)
+    assert res.returncode == 0 and calls_of(tmp_path) == [] and "cannot journal the skip" in res.stderr
+    assert heartbeat(tmp_path)["status"] == "warning"
+    (tmp_path / "w2").mkdir()
+    env = floor_world(tmp_path / "w2", 200, merger="v1 --code-sha (a main before B6)\n", prune=False)
+    assert wrap(env).returncode == 0 and calls_of(tmp_path / "w2") == ["tick"] and heartbeat(tmp_path / "w2")["status"] == "ok"
+
+
+def test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs(tmp_path):
+    env = floor_world(tmp_path, 200)
+    assert wrap({**env, "FAKE_PRUNE_RC": "1"}).returncode == 0
+    assert heartbeat(tmp_path)["status"] == "warning" and heartbeat(tmp_path)["note"].startswith("prune rc=1")
+    res = wrap({**env, "FAKE_TICK_RC": "1"})
+    assert res.returncode == 1 and heartbeat(tmp_path)["status"] == "error" and calls_of(tmp_path)[-2:] == ["tick", "prune"]
+
+
+def test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why(world):
+    world.gh.prs = [pr(1, world.head1)]
+    args = ["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--python", "py"]
+    assert mg.main([*args, "--host-free-gb", "59.4"]) == 0
+    assert world.journal()[-1] == {**world.journal()[-1], "kind": "skipped", "why": "host_below_floor", "free_gb": 59.4, "floor_gb": 60.0}
+    assert not [r for r in world.journal() if r["kind"] == "decision"]
+    assert mg.main([*args, "--host-free-gb", "60"]) == 0 and [r["kind"] for r in world.journal()][-2:] == ["decision", "would_enqueue"]
