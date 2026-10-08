@@ -1,0 +1,74 @@
+# Gear-2 evidence pack — visa freshness sentinel re-alert (scar W141).
+# Every receipt below is a command run on M5; the timestamps are the real UTC instants observed.
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero via the orchestrator, 2026-10-07 — the sentinel must never go quiet on a persistent STALE.
+mission: >-
+  Persistent STALE re-alerts daily and escalates HIGH; an undelivered send never advances the ladder.
+lanes:
+  - lane: sentinel-realert
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree ops-visa-sentinel-realert on M5.
+  - lane: sentinel-realert-review
+    role: review
+    seat: codex-gpt-5.6-sol (red-team, read-only), running at the time of writing.
+pii_scan: clean
+bites:
+  consumer: >-
+    the launchd job on Pro that runs scripts/visa_freshness_sentinel.py every 6 hours and the
+    SessionStart escalation board that renders the HIGH row.
+  where: pro
+  observe: python3 scripts/visa_freshness_sentinel.py --dry-run
+  expect: "contains:alert_decision"
+decisions:
+  - id: D-own-schedule
+    decision: >-
+      The sentinel owns the re-alert schedule in its own state file and sends every alert under a
+      fresh gateway key (condition, UTC day, attempt number), so the gateway mute ladder cannot
+      silence a standing outage. Non-persistent outcomes keep the old key and the old ladder.
+  - id: D-delivered-means-sent
+    decision: >-
+      Only the gateway verdict sent counts as delivered, reusing gateway_delivered semantics.
+      Every other verdict, a missing gateway or an exception leaves the streak unchanged and is
+      logged as undelivered with a reason class and no secret.
+  - id: D-one-board-row
+    decision: >-
+      One HIGH row under a stable job id, written only when the job is not open or the outcome
+      class changed, resolved when the outcome returns to OK.
+receipts:
+  - claim: The sentinel test module passes, including nine new guilt and innocence tests for the re-alert.
+    cmd: python3 -m pytest scripts/tests/test_visa_freshness_sentinel.py -q -p no:cacheprovider -o addopts=""
+    result: "42 passed in 1.38s"
+    exit: 0
+    ts: "2026-10-08T06:25:25Z"
+    seat: this session
+  - claim: Against production the sentinel reads the active pack and prints the alert decision without side effects.
+    cmd: VISA_FRESHNESS_STATE=/tmp/x-nonexistent/s.json python3 scripts/visa_freshness_sentinel.py --dry-run
+    result: "outcome OK, pack_sequence 25, pack_source database, alert_decision {would_send false, reason ok-resets-ladder, delivered_streak 0}"
+    exit: 0
+    ts: "2026-10-08T06:25:26Z"
+    seat: this session
+  - claim: Ruff reports one finding, an unused import in the pre-existing part of the test file, none in the new code.
+    cmd: ruff check scripts/visa_freshness_sentinel.py scripts/tests/test_visa_freshness_sentinel.py
+    result: "Found 1 error (unused dataclasses import near line 559, existing code, left untouched)"
+    exit: 1
+    ts: "2026-10-08T06:25:26Z"
+    seat: this session
+dissent:
+  - seat: self-review (not an independent refuter)
+    objection: >-
+      The gateway verdict spooled, produced by board routing, is treated as deterministic custody
+      and waits 23 hours before the next send. If routing is the normal path for this key, the
+      human is reached only through the HIGH board row, not Telegram.
+    status: PLAUSIBLE
+    note: carried — the wait avoids a NORMAL gateway row every 6 hours, at the price of slower retry.
+  - seat: self-review
+    objection: >-
+      Whether TG_OWNER_FAMILIES or the routing switch on Pro sends the visa-freshness key to the
+      board instead of Telegram was not verified from M5.
+    status: PLAUSIBLE
+    note: open — check the gateway environment on Pro after merge.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
