@@ -27,13 +27,7 @@ DATASET_REL="Contents/Resources/KBLI_2025_FINAL_CLEAN.json"
 echo "▸ building on $(hostname)…"
 ./build.sh --variant internal
 
-# commit the dataset refresh if build.sh pulled a new canonical (same rule as install-3mac.sh)
-if ! git diff --quiet -- Resources/KBLI_2025_FINAL_CLEAN.json 2>/dev/null; then
-  DHASH="$(shasum -a 256 Resources/KBLI_2025_FINAL_CLEAN.json | cut -c1-12)"
-  git add Resources/KBLI_2025_FINAL_CLEAN.json
-  git commit -m "chore(data): refresh dataset from canonical ($DHASH)" -- Resources/KBLI_2025_FINAL_CLEAN.json
-  echo "▸ dataset refresh committed ($DHASH)"
-fi
+# The dataset is copied in by build.sh from the monorepo canonical and is never tracked here (gitignored), so there is nothing to commit.
 
 # fail-visible secret scan: nothing key-shaped may leave on a team machine (scar family #4)
 if grep -rIlE '(sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY|api[_-]?key["'\'' ]*[:=]|Bearer [A-Za-z0-9._-]{20,})' \

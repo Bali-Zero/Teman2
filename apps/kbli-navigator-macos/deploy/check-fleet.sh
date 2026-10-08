@@ -46,11 +46,11 @@ if [[ "${1:-}" == "--local-canonical" ]]; then
   echo "⚠︎ --local-canonical: offline dev only — hashing a checked-out file, NOT origin/main. Do not use this mode's verdict to decide whether the fleet needs a rebuild."
 fi
 
-# repo resolution — identical ladder to build.sh (env override → sibling → ~/Desktop). Any
+# repo resolution — identical ladder to build.sh (monorepo root → env override → sibling → ~/nuzantara). Any
 # git checkout works here (worktree or full clone, however stale its own HEAD is) because
 # the default path below only uses it to fetch + read origin/main by content.
 REPO=""
-for repo in "${NUZANTARA_REPO:-}" "$ROOT/../nuzantara" "$HOME/nuzantara" "$HOME/Desktop/nuzantara"; do
+for repo in "$ROOT/../.." "${NUZANTARA_REPO:-}" "$ROOT/../nuzantara" "$HOME/nuzantara"; do
   if [[ -n "$repo" ]] && git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     REPO="$(cd "$repo" && git rev-parse --show-toplevel)"
     break

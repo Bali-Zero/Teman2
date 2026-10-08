@@ -150,16 +150,15 @@ echo "▸ universal: $(lipo -archs "$APP/Contents/MacOS/$EXEC_NAME")"
 # becomes structural, not a thing to remember.
 #
 # Repo resolution is path-HOME-safe (cabling /Users/<x>/... would itself be a #1
-# cicatrix): env override → sibling ../nuzantara → $HOME/nuzantara → the legacy
-# $HOME/Desktop/nuzantara → fail loudly rather than ship a stale build.
+# cicatrix): monorepo root → env override → sibling ../nuzantara → $HOME/nuzantara →
+# fail loudly rather than ship a stale build. No probe under the Desktop folder: the
+# fleet left it on 2026-07-16 (launchd lost its TCC grant there, superscar #2/W84).
 #
 # 2026-08-03: $HOME/nuzantara added, and it is not cosmetic. The fleet moved the
-# repo OUT of ~/Desktop on 2026-07-16 (launchd lost its TCC grant to that folder
-# — superscar #2/W84), so the last two candidates were both dead paths. On M5
-# they still resolved ONLY because a ~/Desktop/nuzantara symlink happens to
-# exist; the day that symlink goes, this loop falls through to the ⚠︎ branch and
-# the build ships whatever stale JSON is already in Resources/ — the exact
-# failure this block was written to prevent, arriving quietly.
+# repo out of the Desktop folder on 2026-07-16 (launchd lost its TCC grant to that
+# folder — superscar #2/W84), so a probe there is a dead path that only resolved
+# through a leftover symlink. It is dropped (2026-10-08): the day the symlink goes
+# the loop must not fall through quietly to a stale build.
 KBLI_REL="source_documents/KBLI_2025_FINAL_CLEAN.json"
 CANON=""
 # 2026-10-07: the app now lives in the monorepo (apps/kbli-navigator-macos), so the FIRST
@@ -167,7 +166,7 @@ CANON=""
 # a tracked symlink to data/source_documents/, so each repo is tried under the real
 # data/ path first, then the legacy path (older checkouts keep a real source_documents/).
 MONOREPO_ROOT="$ROOT/../.."
-for repo in "$MONOREPO_ROOT" "${NUZANTARA_REPO:-}" "$ROOT/../nuzantara" "$HOME/nuzantara" "$HOME/Desktop/nuzantara"; do
+for repo in "$MONOREPO_ROOT" "${NUZANTARA_REPO:-}" "$ROOT/../nuzantara" "$HOME/nuzantara"; do
   for rel in "data/$KBLI_REL" "$KBLI_REL"; do
     if [[ -n "$repo" && -f "$repo/$rel" && ! -L "$repo/$rel" ]]; then
       CANON_REPO="$(cd "$repo" && pwd)"

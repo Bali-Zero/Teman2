@@ -26,14 +26,7 @@ DATASET_REL="Contents/Resources/KBLI_2025_FINAL_CLEAN.json"
 echo "▸ building on $(hostname)…"
 ./build.sh --variant internal
 
-# build.sh may have refreshed Resources/ from the repo canonical — commit that refresh
-# (scoped to the dataset file only; anything else dirty is left alone).
-if ! git diff --quiet -- Resources/KBLI_2025_FINAL_CLEAN.json 2>/dev/null; then
-  DHASH="$(shasum -a 256 Resources/KBLI_2025_FINAL_CLEAN.json | cut -c1-12)"
-  git add Resources/KBLI_2025_FINAL_CLEAN.json
-  git commit -m "chore(data): refresh dataset from canonical ($DHASH)" -- Resources/KBLI_2025_FINAL_CLEAN.json
-  echo "▸ dataset refresh committed ($DHASH)"
-fi
+# The dataset is copied in by build.sh from the monorepo canonical and is never tracked here (gitignored), so there is nothing to commit.
 
 SRC_HASH="$(shasum -a 256 "$APP/$DATASET_REL" | awk '{print $1}')"
 echo "▸ built bundle dataset: ${SRC_HASH:0:12}"

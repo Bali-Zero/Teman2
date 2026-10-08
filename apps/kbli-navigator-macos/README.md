@@ -14,7 +14,8 @@ This is the ONE official home of the native macOS app (owner decision 2026-10-07
   `Bali-Threshold-2026*.pdf` book PDFs (49 MB each; `build.sh` reads them from `KBLI_BOOK_PDF_DIR`,
   default `$HOME/kbli-navigator-app/Resources`, and fails loudly if absent), `KBLI-2025-Content/*.pdf`,
   every `.build-*` directory, `bali-threshold-images-2026-06-23/`, `BaliZero_RUPS2026_*.pdf`,
-  `docs/gates/`, `docs/brand-ref/`, large screenshots.
+  `docs/gates/`, `docs/brand-ref/`, large screenshots. No image over 200 KB was imported except
+  the app icon (`Resources/AppIcon.icns`, 920 KB), which is a legitimate bundle input.
 - **Build** (needs Xcode, so on Pro; M5 has no Xcode): `bash build.sh --variant internal`.
 
 A native macOS app to navigate Indonesian **KBLI 2025** business codes with their **Bali PMA

@@ -33,7 +33,7 @@ let useLegacyOpenClawBrain = false
 enum KBLIBKPMMarker {
     /// The issuer's PUBLIC key (Ed25519, base64). Rotating the issuer key changes this literal —
     /// which is the intended cost: re-issuing markers is a deliberate act, not a silent one.
-    static let issuerPublicKeyBase64 = "/ky2728qUPuJcgczqTncWsK0t3Adp3lrbQXH0JQGO7A="
+    static let issuerPublicKeyBase64 = "/ky2728qUPuJcgczqTncWsK0t3Adp3lrbQXH0JQGO7A=" // pragma: allowlist secret
 
     /// Where a marker is looked for. `KBLI_BKPM_MARKER_PATH` overrides it so the negative cases
     /// can actually be exercised by a test instead of being asserted in a comment.
