@@ -158,32 +158,120 @@ else
 fi
 teardown
 
-# The primary mirror can stall while another mirror is healthy. The fallback
-# must use an isolated sources file, never rewrite /etc/apt.
+# S1: rendered ubuntu-24.04 hosted-runner cloud-init deb822 surface (verbatim,
+# except Jinja Signed-By values are what cloud-init renders on the runner).
 setup
 SOURCES="$SANDBOX/ubuntu.sources"
-printf 'Types: deb\nURIs: http://azure.archive.ubuntu.com/ubuntu\nSuites: noble\n' >"$SOURCES"
+cat >"$SOURCES" <<'EOF'
+## Note, this file is written by cloud-init on first boot of an instance
+## modifications made here will not survive a re-bundle.
+##
+## If you wish to make changes you can:
+## a.) add 'apt_preserve_sources_list: true' to /etc/cloud/cloud.cfg
+##     or do the same in user-data
+## b.) add supplemental sources in /etc/apt/sources.list.d
+## c.) make changes to template file
+##      /etc/cloud/templates/sources.list.ubuntu.deb822.tmpl
+##
+
+# See http://help.ubuntu.com/community/UpgradeNotes for how to upgrade to
+# newer versions of the distribution.
+
+## Ubuntu distribution repository
+##
+## The following settings can be adjusted to configure which packages to use from Ubuntu.
+## Mirror your choices (except for URIs and Suites) in the security section below to
+## ensure timely security updates.
+##
+## Types: Append deb-src to enable the fetching of source package.
+## URIs: A URL to the repository (you may add multiple URLs)
+## Suites: The following additional suites can be configured
+##   <name>-updates   - Major bug fix updates produced after the final release of the
+##                      distribution.
+##   <name>-backports - software from this repository may not have been tested as
+##                      extensively as that contained in the main release, although it includes
+##                      newer versions of some applications which may provide useful features.
+##                      Also, please note that software in backports WILL NOT receive any review
+##                      or updates from the Ubuntu security team.
+## Components: Aside from main, the following components can be added to the list
+##   restricted  - Software that may not be under a free license, or protected by patents.
+##   universe    - Community maintained packages. Software in this repository receives maintenance
+##                 from volunteers in the Ubuntu community, or a 10 year security maintenance
+##                 commitment from Canonical when an Ubuntu Pro subscription is attached.
+##   multiverse  - Community maintained of restricted. Software in this repository is
+##                 ENTIRELY UNSUPPORTED by the Ubuntu team, and may not be under a free
+##                 licence. Please satisfy yourself as to your rights to use the software.
+##                 Also, please note that software in multiverse WILL NOT receive any
+##                 review or updates from the Ubuntu security team.
+##
+## See the sources.list(5) manual page for further settings.
+Types: deb
+URIs: mirror+file:/etc/apt/apt-mirrors.txt
+Suites: noble noble-updates noble-backports
+Components: main universe restricted multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+## Ubuntu security updates. Aside from URIs and Suites,
+## this should mirror your choices in the previous section.
+Types: deb
+URIs: mirror+file:/etc/apt/apt-mirrors.txt
+Suites: noble-security
+Components: main universe restricted multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+EOF
+MIRRORS="$SANDBOX/apt-mirrors.txt"
+printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n' >"$MIRRORS"
 SUT_ARGS=(nzfakebin nzfakebin)
-RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
-[ "$RC" = "0" ] && ok "fallback mirror delivers after primary stalls" || fail "fallback mirror rc=$RC (want 0)"
-grep -q 'delivered by fallback mirror archive.ubuntu.com' "$SANDBOX/out" && ok "...and names the fallback mirror" || fail "fallback delivery was not reported"
-grep -q 'archive.ubuntu.com' "$LOG_SOURCE" && ! grep -q 'azure.archive.ubuntu.com' "$LOG_SOURCE" && ok "...and rewrites only the temporary sources file" || fail "fallback sources were not rewritten"
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_INSTALL_MIRROR_LIST="$MIRRORS" APT_CREATES=nzfakebin)
+[ "$RC" = "0" ] && ok "S1 fallback delivers after the mirror pool stalls" || fail "S1 fallback rc=$RC (want 0)"
+grep -Fq "sources=$SOURCES format=deb822 primary=azure.archive.ubuntu.com via=$MIRRORS" "$SANDBOX/out" && ok "S1 measures the real deb822 surface" || fail "S1 surface observation wrong"
+grep -Fq 'trying http://archive.ubuntu.com/ubuntu/ (deb822 sources)' "$SANDBOX/out" && ! grep -q 'help.ubuntu.com' "$SANDBOX/out" && ok "S1 warning names azure, never a comment host" || fail "S1 warning host wrong"
+[ "$(grep -c '^URIs: http://archive.ubuntu.com/ubuntu/$' "$LOG_SOURCE")" = 2 ] && ! grep -qE 'mirror\+file:|azure' "$LOG_SOURCE" && ok "S1 rewrites both active URIs directly" || fail "S1 did not remove the pool URI"
+grep -q '^Suites: noble noble-updates noble-backports$' "$LOG_SOURCE" && grep -q '^Components: main universe restricted multiverse$' "$LOG_SOURCE" && [ "$(grep -c '^Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg$' "$LOG_SOURCE")" = 2 ] && ok "S1 retains suites, components and keys" || fail "S1 changed deb822 metadata"
 [ "$(cat "$LOG_SOURCE_ORIGIN")" = "parts" ] && ok "...deb822 stanzas reach apt as a SourceParts *.sources file" || fail "deb822 sources were handed to apt as SourceList (origin=$(cat "$LOG_SOURCE_ORIGIN"))"
-if grep -q "Type 'Types:' is not known" "$SANDBOX/out"; then fail "apt rejected the fallback sources as deb822-in-SourceList"; else ok "...and apt never sees a deb822 body through SourceList"; fi
-grep -q '::warning::apt_install: primary mirror azure.archive.ubuntu.com did not deliver' "$SANDBOX/out" && ok "...and warns that the primary stalled" || fail "no ::warning:: for the stalled primary"
 if grep -q '/etc/apt' "$LOG_APT"; then fail "fallback wrote /etc/apt"; else ok "...and never writes /etc/apt"; fi
 teardown
 
-# The same fallback from a one-line sources.list (pre-24.04 images) goes
-# through SourceList, rewritten, and still never touches /etc/apt.
+# S2: ubuntu-22.04 hosted runner one-line mirror+file surface.
 setup
 SOURCES="$SANDBOX/sources.list"
-printf 'deb http://azure.archive.ubuntu.com/ubuntu noble main\n' >"$SOURCES"
+printf 'deb mirror+file:/etc/apt/apt-mirrors.txt jammy main restricted universe multiverse\n' >"$SOURCES"
+MIRRORS="$SANDBOX/apt-mirrors.txt"; printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n' >"$MIRRORS"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_INSTALL_MIRROR_LIST="$MIRRORS" APT_CREATES=nzfakebin)
+[ "$RC" = "0" ] && ok "S2 one-line pool fallback delivers" || fail "S2 fallback rc=$RC (want 0)"
+[ "$(cat "$LOG_SOURCE_ORIGIN")" = list ] && grep -q '^deb http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse$' "$LOG_SOURCE" && ! grep -q 'mirror+file:' "$LOG_SOURCE" && ok "S2 rewrites SourceList URI" || fail "S2 sources not rewritten"
+grep -Fq "format=one-line primary=azure.archive.ubuntu.com via=$MIRRORS" "$SANDBOX/out" && ok "S2 measures one-line pool" || fail "S2 surface observation wrong"
+teardown
+
+# S3/S4 direct archive sources choose the US mirror, without a pool list.
+for SHAPE in deb822 one-line; do
+  setup
+  SOURCES="$SANDBOX/sources"
+  if [ "$SHAPE" = deb822 ]; then printf 'Types: deb\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble\nComponents: main\nSigned-By: /key\n' >"$SOURCES"; else printf 'deb http://archive.ubuntu.com/ubuntu/ jammy main\n' >"$SOURCES"; fi
+  SUT_ARGS=(nzfakebin nzfakebin)
+  RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+  if [ "$SHAPE" = deb822 ]; then CASE=S3; else CASE=S4; fi
+  [ "$RC" = 0 ] && grep -Fq 'http://us.archive.ubuntu.com/ubuntu/' "$LOG_SOURCE" && grep -Fq 'via=direct' "$SANDBOX/out" && ok "$CASE direct archive uses US fallback" || fail "$SHAPE direct archive fallback wrong"
+  teardown
+done
+
+# A one-line entry with [options] keeps them: the URI is the field after the bracket.
+setup; SOURCES="$SANDBOX/sources.list"; printf 'deb [arch=amd64 signed-by=/usr/share/keyrings/k.gpg] mirror+file:%s noble main\n' "$SANDBOX/mirrors.txt" >"$SOURCES"
+printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\n' >"$SANDBOX/mirrors.txt"
 SUT_ARGS=(nzfakebin nzfakebin)
 RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
-[ "$RC" = "0" ] && ok "one-line sources.list: fallback mirror delivers" || fail "one-line fallback rc=$RC (want 0)"
-[ "$(cat "$LOG_SOURCE_ORIGIN")" = "list" ] && grep -q 'deb http://archive.ubuntu.com/ubuntu noble main' "$LOG_SOURCE" && ok "...through SourceList, host rewritten" || fail "one-line sources not rewritten through SourceList"
-grep -q 'trying archive.ubuntu.com (one-line sources)' "$SANDBOX/out" && ok "...and names the format it used" || fail "format not named in the warning"
+[ "$RC" = 0 ] && grep -Fq 'deb [arch=amd64 signed-by=/usr/share/keyrings/k.gpg] http://archive.ubuntu.com/ubuntu/ noble main' "$LOG_SOURCE" && grep -Fq 'primary=azure.archive.ubuntu.com' "$SANDBOX/out" && ok "one-line [options] entry keeps its options and swaps the URI" || fail "one-line [options] entry mishandled (rc=$RC)"
+teardown
+
+# ubuntu-ports has no second official mirror; an unreadable pool still falls back.
+setup; SOURCES="$SANDBOX/ports.sources"; printf 'URIs: http://ports.ubuntu.com/ubuntu-ports/\n' >"$SOURCES"; SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_INSTALL_SOURCES_FILE="$SOURCES")
+[ "$RC" != 0 ] && [ "$(grep -c '^apt_install: ubuntu-ports has no fallback mirror; fallback skipped$' "$SANDBOX/out")" = 1 ] && ok "ubuntu-ports skips fallback once" || fail "ubuntu-ports fallback was attempted"
+teardown
+setup; SOURCES="$SANDBOX/missing.sources"; MISSING="$SANDBOX/missing-mirrors.txt"; printf 'URIs: mirror+file:%s\n' "$MISSING" >"$SOURCES"; SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+[ "$RC" = 0 ] && grep -Fq "primary=mirror+file:$MISSING via=$MISSING" "$SANDBOX/out" && ok "unreadable pool reports literal primary and still falls back" || fail "unreadable pool behavior wrong"
 teardown
 
 # A second stalled mirror still fails closed and names the unavailable package.
