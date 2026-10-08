@@ -175,36 +175,73 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
 
 def cure_for_result(entry: dict, status: str, n: int, evidence: list[str]) -> str:
     """Choose a non-session cure only when this result proves it."""
+    def complete_string_field(line: object, name: str) -> str | None:
+        """Read one complete string from JSON or run_wrap's 160-char cut."""
+        if not isinstance(line, str):
+            return None
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            if len(line) != 160:
+                return None
+            match = re.search(rf'(?:^\s*\{{|,)\s*"{re.escape(name)}"\s*:\s*', line)
+            if match is None:
+                return None
+            try:
+                value, end = json.JSONDecoder().raw_decode(line, match.end())
+            except json.JSONDecodeError:
+                return None
+            if line[end:].lstrip()[:1] not in {"", ",", "}"}:
+                return None
+        else:
+            if not isinstance(item, dict):
+                return None
+            value = item.get(name)
+        return value if isinstance(value, str) else None
     declared = str(entry.get("cure", "session"))
     if status != DIVERGED:
         return declared
 
-    if entry.get("id") == "arsenal_seats":
-        states = []
-        for line in evidence:
-            try:
-                item = json.loads(line)
-            except (TypeError, json.JSONDecodeError):
-                return "session"
-            states.append(str(item.get("status", "")))
-        if len(states) == n and states and all(s in {"AUTH_DEAD", "BALANCE_DEAD"} for s in states):
-            return "owner"
+    probe_id = entry.get("id")
+    if probe_id in {"arsenal_seats", "launchd_liveness", "worktree_gate_shim", "organs_heartbeat"}:
+        if len(evidence) != n or not evidence:
+            return "session"
 
-    if entry.get("id") == "launchd_liveness":
-        findings = []
-        for line in evidence:
-            try:
-                findings.append(json.loads(line))
-            except (TypeError, json.JSONDecodeError):
-                return "session"
-        if len(findings) == n and findings and all(
-            item.get("verdict") == "DEAD-GREEN"
-            and "operation not permitted" in str(item.get("log_marker", "")).lower()
-            for item in findings
-        ):
+    if probe_id == "arsenal_seats":
+        states = [complete_string_field(line, "status") for line in evidence]
+        if all(s in {"AUTH_DEAD", "BALANCE_DEAD", "QUOTA_DEAD", "MODEL_ERR"} for s in states):
             return "owner"
+        return "session"
 
-    if entry.get("id") == "home_fork_scripts":
+    if probe_id == "launchd_liveness":
+        # The runtime whitelist cannot load a plist or fix a job that fails honestly; its kickstart needs a
+        # DEAD registry sidecar, which receptor A reports itself. DEAD-NONZERO/ARMED-TO-NOTHING/unknown stay.
+        def owner_only(line: str) -> bool:
+            item = complete_string_field(line, "verdict")
+            if item in {"NOT-LOADED", "FAILING-HONESTLY", "EXPECTED-NONZERO"}:
+                return True
+            marker = str(complete_string_field(line, "log_marker")).lower()
+            return item == "DEAD-GREEN" and "operation not permitted" in marker
+        return "owner" if all(owner_only(line) for line in evidence) else "session"
+
+    if probe_id == "worktree_gate_shim":
+        local_origins = {"broker", "broker-path-no-metadata"}
+        paths = [complete_string_field(line, "path") for line in evidence]
+        origins = [complete_string_field(line, "origin") for line in evidence]
+        if not all(path and Path(path).is_absolute() and origin for path, origin in zip(paths, origins)):
+            return "session"
+        if all(origin not in local_origins and ".worktrees" not in Path(path).parts
+               for path, origin in zip(paths, origins)):
+            return "owner"
+        return "session"
+
+    if probe_id == "organs_heartbeat":
+        # Exactly healer_receptor_registry.EXEMPT_STATUSES: receptor A never cures a "disabled" sidecar.
+        if all(complete_string_field(line, "status") == "disabled" for line in evidence):
+            return "owner"
+        return "session"
+
+    if probe_id == "home_fork_scripts":
         live_paths = []
         for line in evidence:
             match = re.match(r"^(?:DIVERGED: )(.+?) != ", line)
@@ -2261,7 +2298,8 @@ def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]
         if bad_key and data and not any(bad_key in i for i in data if isinstance(i, dict)):
             return UNPROBEABLE, 0, [f"schema drift: no item carries key '{bad_key}'"]
         items = [i for i in data if not bad_key or str(i.get(bad_key, "")) not in ok_values]
-        ev = [json.dumps(i, ensure_ascii=False)[:160] for i in items[:5]]
+        # Every item, not 5: cure_for_result must see all n to prove owner; verdict() still shows 5.
+        ev = [json.dumps(i, ensure_ascii=False)[:160] for i in items]
         return (DIVERGED if items else RECONCILED), len(items), ev
     if parse == "category_counts":
         if not isinstance(data, dict):
