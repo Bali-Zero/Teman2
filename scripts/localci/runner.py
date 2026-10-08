@@ -765,8 +765,8 @@ def plan_services(job: dict, images: dict, docker: str) -> tuple[list | None, st
         if not images.get(ref):
             return None, f"service {sname}: BASE image {ref!r} has no operator-pinned stand-in in local.service_images"
         env = {str(k): str(v) for k, v in (svc.get("env") or {}).items()}
-        if any("${{" in v for v in env.values()):
-            return None, f"service {sname}: env carries expressions"
+        if (expr := sorted(k for k, v in env.items() if "${{" in v)):
+            return None, f"service {sname}: env {expr} carry expressions (a secret or a context the run does not hold; names only)"
         ports = [str(p) for p in svc.get("ports") or []]
         if not ports or any(not re.fullmatch(r"(\d+):\1", p) for p in ports):
             return None, f"service {sname}: ports {ports} — only identity maps (N:N) are reachable on the shared loopback"
@@ -1067,17 +1067,24 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 except X.ExprError as e:
                     return _blocked(f"job {jid}: checkout ref: {e}")
                 checkout = "base"
-        try:
-            texts = [*jenv.values(), *(str((s.get("with") or {}).get("ref", "")) for s in job.get("steps") or [])]
+        try:   # each text carries where it sits, so a refusal names the step and the variable (a name, never a value)
+            texts = [*((f"job env {k}", str(v)) for k, v in jenv.items()),
+                     *((f"step {s.get('name') or s.get('uses')!r} with.ref", str((s.get("with") or {}).get("ref", ""))) for s in job.get("steps") or [])]
             for st in steps:
+                lab = f"step {st['name']!r}"
                 if st.get("script") and re.search(r"GITHUB_(ENV|PATH|STATE)\b", st["script"]):
-                    raise X.ExprError(f"step {st['name']!r} writes GITHUB_ENV/PATH/STATE, which the driver does not read back")
-                texts += [str(t or "") for t in (st.get("script"), *(st.get("env") or {}).values(), *((st.get("emulate") or {}).values()))]
-                texts += ["${{ " + X.unwrap(str(st["if"])) + " }}"] if "if" in st else []
-            for t in texts:
-                for path in X.paths(t):
+                    raise X.ExprError(f"{lab} writes GITHUB_ENV/PATH/STATE, which the driver does not read back")
+                texts += [(f"{lab} run body", str(st.get("script") or "")), *((f"{lab} env {k}", str(v)) for k, v in (st.get("env") or {}).items()),
+                          *((f"{lab} with.{k}", str(v or "")) for k, v in (st.get("emulate") or {}).items())]
+                texts += [(f"{lab} if", "${{ " + X.unwrap(str(st["if"])) + " }}")] if "if" in st else []
+            for lab, t in texts:
+                try:
+                    found = X.paths(t)
+                except X.ExprError as e:
+                    raise X.ExprError(f"{lab}: {e}") from None
+                for path in found:
                     if (why := unmodelled_path(path, gh, needs, local.get("needs") or {})):
-                        raise X.ExprError(f"`{'.'.join(path)}` {why}")
+                        raise X.ExprError(f"{lab}: `{'.'.join(path)}` {why}")
             if (rid := rebuilt_id(v for st in steps for v in (st.get("emulate") or {}).values())):
                 raise X.ExprError(f"an artifact name or path reads `{rid}`, a commit id only the driver knows")
         except X.ExprError as e:

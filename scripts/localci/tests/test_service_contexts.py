@@ -537,3 +537,21 @@ def test_the_real_service_contexts_account_for_every_step_of_every_job():
         for jl in [*c["local"].get("jobs", []), {**c["local"], "job_id": c["job_id"]}]:
             steps, why = runner.resolve_steps(wf["jobs"][jl["job_id"]], jl, "main", expressions=True)
             assert why is None and steps, (c["name"], jl["job_id"], why)
+
+
+# ------------------------------------------------------------------ B1-gate notices folded in PR-B2
+def _fanin_reading(env: dict, run: str) -> dict:
+    return {WF: yaml.safe_dump({**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "fanin": {**WORKFLOW["jobs"]["fanin"], "steps": [
+        {"name": "assert", "env": {"R": "${{ needs.unit.result }}", **env}, "run": run}]}}})}
+
+
+def test_a_refused_secret_names_its_variable_and_never_a_value(tmp_path, monkeypatch):
+    base = _fanin_reading({"DB_URL": "literal-prefix-${{ secrets.DB_URL }}"}, 'test "$R" = success')
+    spec = planned_svc(tmp_path / "a", monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), base)
+    assert spec["status"] == "BLOCKED" and "step 'assert' env DB_URL" in spec["reason"] and "secrets.DB_URL" in spec["reason"]
+    assert "literal-prefix" not in spec["reason"]
+    stood_in = svc_ctx(steps=[{"workflow_step": "assert", "env": {"DB_URL": ""}}])   # the matrix stands in "", as E2E does for its six
+    assert planned_svc(tmp_path / "b", monkeypatch, fr.CANDIDATE_FILES, stood_in, base).get("status") != "BLOCKED"
+    pg = {**SVC, "env": {**SVC["env"], "POSTGRES_PASSWORD": "pw-literal-${{ secrets.PG }}"}}
+    svcs, why = runner.plan_services({"services": {"postgres": pg}}, IMAGES, str(fake_docker(tmp_path)))
+    assert svcs is None and "POSTGRES_PASSWORD" in why and "pw-literal" not in why
