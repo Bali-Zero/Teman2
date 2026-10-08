@@ -79,6 +79,7 @@ receipts:
     seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
+  - 'B4 (#8086, squash-merged from its armed head 61b5b38857 as 2aaa5407ce): its pack, evidence/2026-10/agent-air-m5-infra-localci-b4-1008-16b92ba6/pack.yml, still says B3 "is open and not merged"; B3 (#8077) merged at 2026-10-08T09:31:44Z as 147531e6f8, before B4 merged origin/main at 61b5b38857, where the localci suite read 843 passed, 14 skipped and the full sweep 133/133 killed. The B4 evidence commit that said so (ba4cf9f3a2) was never pushed: the branch was armed, hence frozen.'
   - "The candidate's judge is not run: a rewritten judge is the reviewer's (review_independent). Running both judges and reporting the pair is a later step if phase D shows judge rewrites are frequent."
   - "The skip agreement compares the classifier's decision, not an execution: both sides skipping on the same wrong classification is an agreement here and a green on GitHub."
   - "A judge swapped for one that always passes, beside a real violation, was FAIL and read FALSE_RED against hosted's green; it is now BLOCKED judge_rewritten and LOCAL_BLIND. It is still refused and never green, but phase D no longer counts it as a disagreement."
