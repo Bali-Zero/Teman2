@@ -1,0 +1,14 @@
+build/
+.build-*
+.DS_Store
+*.app
+
+# build.sh copies these in at every build (canonical dataset + the three editorial
+# overlay files, from data/kbli-app-overlay/) or reads them from
+# KBLI_BOOK_PDF_DIR (book PDFs); never track them here.
+Resources/KBLI_2025_FINAL_CLEAN.json
+Resources/kbli-overlay.json
+Resources/kbli-reason-i18n.json
+Resources/kbli-balicontext-i18n-id.json
+*.pdf
+bali-threshold-images-2026-06-23/

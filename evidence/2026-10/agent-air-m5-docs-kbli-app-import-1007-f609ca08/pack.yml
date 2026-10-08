@@ -1,0 +1,132 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+seat_fallback_reason:
+  "agy-gemini-3.1-pro replaced the benched titolari kimi-code/k3 and tp1-qwen3.8-max: observed live
+  2026-10-07 in this session, kimi_client.py returned HTTP 403 'weekly (7-day) usage limit' and
+  tp1_call.py (qwen3.8-max) returned HTTP 429 'token-plan 1-month quota exhausted, resets 10-11'."
+plan_ref:
+  "team-lead dispatch (2026-10-07): import the KBLI Navigator macOS app into apps/kbli-navigator-macos
+  with build.sh and sync-script path surgery and a Pro build as the Bites. task-id kbli-app-import-1007,
+  lane docs."
+lanes:
+  - lane: kbli-app-import-1007
+    role: build
+    seat:
+      "claude-sonnet-5-5 (copied the include list, secret-scanned it, edited build.sh, .gitignore,
+      the sync script and README, built and tested on Pro, authored this pack, applied the council's
+      two MEDIUM findings)"
+  - lane: kbli-app-import-1007-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1, not-ok: 2 MEDIUM)"
+  - lane: kbli-app-import-1007-council-agy
+    role: review
+    seat: "agy-gemini-3.1-pro (round 1, not-ok: 4 findings, 3 refuted by the code, 1 LOW confirmed)"
+
+pii_scan: clean
+pii_scan_note:
+  "The council prompt carried only the diff of build.sh, the sync script and .gitignore. Codex ran
+  read-only with a scrubbed environment (env -i). The imported tree was grepped for credential
+  shapes; every hit was a false positive (the substring 'risk-', the word 'password' in prose)."
+
+diff:
+  net_lines: |
+    Source-only import: roughly 30,000 added lines across 138 files, of which about 9,800 are two
+    pretty-printed i18n JSON files and the rest Swift sources, tests, tools, deploy scripts and
+    markdown. The size floor is the import itself.
+  behaviour_change: >-
+    New directory apps/kbli-navigator-macos. build.sh: first dataset probe is the monorepo root
+    (data/source_documents), book PDFs come from KBLI_BOOK_PDF_DIR with a loud exit 5 when missing,
+    truncated or not a PDF, manifest commit falls back to 'unknown' outside git, dirty also covers
+    the canonical dataset and overlay. sync_kbli_dataset.sh: APP_REPO defaults to the in-repo app.
+
+receipts:
+  - claim: "Pro build (universal, internal) of the imported tree against a mirror layout: MANIFEST records=1559, dataset_sha256 c29d6e6aea7a4fdb..., variant=internal, book PDFs copied, overlay synced from data/kbli-app-overlay."
+    cmd: "ssh pro: KBLI_BOOK_PDF_DIR=/tmp/kbli-app-build-20261007/pdf zsh build.sh --variant internal"
+    exit: 0
+    ts: "2026-10-08T01:20:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Guilt: a missing PDF directory aborts before compiling with exit 5 and names the Drive archive."
+    cmd: "ssh pro: KBLI_BOOK_PDF_DIR=/nonexistent zsh build.sh --variant internal"
+    exit: 5
+    ts: "2026-10-08T01:21:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Resources file list of the built bundle is identical to the installed INTERNAL app on Pro; only MANIFEST.json (commit unknown vs 3fa3e9b) and 34 prettier-reformatted text files differ; the two JSON files are semantically equal."
+    cmd: "diff <(find . -type f | sort) <(cd installed/Contents/Resources && find . -type f | sort); diff -rq; python3 json compare"
+    result: "FILELIST-IDENTICAL; 36 differing entries = MANIFEST + 20 articles + 13 chapters(markdown) + 2 JSON (equal as data)"
+    exit: 0
+    ts: "2026-10-08T01:15:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Standalone suites on the imported tree on Pro: gate, package, wire, runner, rowidentity, store pass. verdict, semantic and ui fail identically on the ORIGINAL repo; media fails only because the PDFs are not in the source tree and passes with them."
+    cmd: "ssh pro: zsh runtests.sh (swiftc per suite, Sources minus the app entry)"
+    result: "6 pass, 3 fail identical to original, 1 pass once PDFs present"
+    exit: 1
+    ts: "2026-10-08T01:10:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "codex round 1, env-scrubbed, read-only, high effort, build.sh + sync script + .gitignore diff."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" codex exec --skip-git-repo-check -s read-only -m gpt-5.6-sol -c model_reasoning_effort=high - < prompt.txt'
+    result: "SEAT-VERDICT: not-ok (2 MEDIUM)"
+    exit: 0
+    ts: "2026-10-07T20:41:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "agy (Gemini 3.1 Pro) round 1, env-scrubbed, tools denied by instruction, same prompt."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" agy -p "$(cat prompt2.txt)"'
+    result: "SEAT-VERDICT: not-ok (4 findings)"
+    exit: 0
+    ts: "2026-10-07T20:58:00Z"
+    seat: agy-gemini-3.1-pro
+  - claim: "Fix proofs: the PDF guard accepts a real-size %PDF file and rejects a 1.2 MB non-PDF and a tiny PDF; the dirty logic reports true for a modified dataset and a modified overlay and false when clean."
+    cmd: "zsh snippets mirroring the build.sh conditions against scratch files and a scratch git repo"
+    result: "ACCEPT/REJECT/REJECT; dirty false/true/true"
+    exit: 0
+    ts: "2026-10-08T01:30:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Gate rework probe (b): with the book PDF directory absent, build.sh aborts before compiling with exit 5 and names the Drive archive."
+    cmd: "ssh pro: KBLI_BOOK_PDF_DIR=/nonexistent zsh build.sh --variant internal"
+    result: "book PDF missing: /nonexistent/Bali-Threshold-2026.pdf; Archive: gdrive:M5-archive-2026-10-06/logo-tar/kbli-navigator-app.tar"
+    exit: 5
+    ts: "2026-10-08T00:09:00Z"
+    seat: claude-fable-5-1
+  - claim: "Gate rework probe (a): after the Desktop-path probe was dropped, the Pro build still succeeds; MANIFEST records=1559, dataset_sha256 starts c29d6e6aea7a4fdb, variant=internal, dirty=false."
+    cmd: "ssh pro: KBLI_BOOK_PDF_DIR=/tmp/kbli-app-build-20261008b/pdf NUZANTARA_REPO=$HOME/Desktop/nuzantara zsh build.sh --variant internal"
+    result: "dataset refreshed from canonical, overlay synced, book PDFs copied, built; MANIFEST commit unknown (no git in the mirror)"
+    exit: 0
+    ts: "2026-10-08T00:09:00Z"
+    seat: claude-fable-5-1
+  - claim: "Gate rework probe (c): Resources file list of the rebuilt bundle equals the installed INTERNAL app on Pro (45 files each); 36 entries differ exactly as in the first pack (MANIFEST, 20 articles, 13 chapters, 2 JSON equal as data)."
+    cmd: "ssh pro: diff <(find . -type f | sort) <(installed find); diff -rq; python3 json compare"
+    result: "FILELIST-IDENTICAL; 36 differing entries; both JSON equal as data"
+    exit: 0
+    ts: "2026-10-08T00:09:00Z"
+    seat: claude-fable-5-1
+  - claim: "Gate rework lint and scan: the TCC desktop-paths lint passes (it failed on 4 hits before) and the detect-secrets diff-scope scan with auto-triage reports all findings audited."
+    cmd: "python3 scripts/lint_tcc_desktop_paths.py; detect-secrets scan --baseline .secrets.baseline <changed files>; python3 scripts/detect_secrets_auto_triage.py --apply; python3 scripts/detect_secrets_check_unaudited.py"
+    result: "lint clean; All findings audited (7 total)"
+    exit: 0
+    ts: "2026-10-08T00:09:00Z"
+    seat: claude-fable-5-1
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: the manifest dirty flag only inspects the app subdirectory, while dataset and overlay are copied from data/, so an uncommitted canonical edit can ship with dirty=false."
+    status: CONFIRMED
+    resolution: "Fixed: dirty now also checks the canonical dataset and overlay directory in the checkout they were copied from; proved with a scratch git repo."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: the PDF preflight only checks the file exists; a truncated or wrong file would ship."
+    status: PLAUSIBLE
+    resolution: "Fixed: size above 1 MB and a %PDF header are required; proved accept and reject cases. A content hash was not added because the books are replaced on purpose when a new edition is built."
+  - seat: agy-gemini-3.1-pro
+    objection: "HIGH: no copy logic exists for the three overlay files, so they would be missing from the bundle on a clean checkout."
+    status: RETRACTED
+    resolution: "The reviewer saw only the diff. The unchanged lines 223-237 of build.sh sync all three files from data/kbli-app-overlay into Resources/; the Pro build log prints 'editorial overlay: synced' and the file lists match the installed app."
+  - seat: agy-gemini-3.1-pro
+    objection: "HIGH: build.sh never copies the canonical dataset into the source Resources/, so consumers read a missing or stale file."
+    status: RETRACTED
+    resolution: "The unchanged lines 196-206 copy the canonical into Resources/ at every build ('refreshed Resources/ from canonical' in the Pro log); the bundle copy then follows."
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM: REPO_ROOT may be undefined in sync_kbli_dataset.sh."
+    status: RETRACTED
+    resolution: "scripts/sync_kbli_dataset.sh defines REPO_ROOT at line 48 under set -euo pipefail, before APP_REPO."
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW: the ROOT/../nuzantara probe is a stale fallback in the monorepo."
+    status: CONFIRMED
+    resolution: "OPEN, accepted: harmless because the monorepo probe precedes it and the path simply does not exist; left to keep the change surgical."

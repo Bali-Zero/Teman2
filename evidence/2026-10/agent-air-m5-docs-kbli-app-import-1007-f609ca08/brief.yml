@@ -1,0 +1,32 @@
+task_id: kbli-app-import-1007
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Give the native macOS app "KBLI Navigator" ONE official home: apps/kbli-navigator-macos/ in this
+  monorepo (owner decision 2026-10-07). Source-only import of the restored standalone repo
+  (e15a920; the installed fleet app was built from its parent 3fa3e9b), no history, no PDFs, no
+  duplicate dataset. build.sh must resolve the canonical dataset from this repo first and read the
+  two book PDFs from KBLI_BOOK_PDF_DIR, failing loudly when absent. The dataset-sync script must
+  point its fleet notice at the in-repo app instead of a dead Desktop path.
+constraints:
+  - "Import is source-only: no PDFs, no .build-* trees, no 37 MB duplicate dataset, no gates/brand-ref docs, no image over 200 KB."
+  - "No guard, workflow or allowlist is changed; the churn is the import itself, so the Gear-3 floor is size-driven and unavoidable."
+  - "Do not install on any Desktop; arm only after the PR is open; deploy of the app to the fleet is a separate later step."
+acceptance:
+  - text: "WHEN build.sh --variant internal runs on Pro against a mirror of this tree, THEN it builds a universal bundle whose MANIFEST.json reports records=1559, dataset_sha256 starting c29d6e6aea7a4fdb and variant=internal."
+    probe: "ssh pro: KBLI_BOOK_PDF_DIR=<dir> zsh build.sh --variant internal"
+  - text: "WHEN KBLI_BOOK_PDF_DIR points at a missing directory, THEN build.sh exits 5 naming the Drive archive before compiling."
+    probe: "ssh pro: KBLI_BOOK_PDF_DIR=/nonexistent zsh build.sh --variant internal; echo rc"
+  - text: "WHEN the built bundle's Contents/Resources is compared with the installed INTERNAL app on Pro, THEN the file lists are identical."
+    probe: "diff of find . -type f listings"
+consumer_map:
+  - "build.sh run on Pro by the next fleet build (deploy/install-3mac.sh): resolves canonical from the monorepo root and refuses to ship without the book PDFs."
+  - "scripts/sync_kbli_dataset.sh local fleet notice: APP_REPO now defaults to apps/kbli-navigator-macos."
+risks:
+  - "Prettier (pre-commit hook) reformatted the bundled markdown articles/chapters and two i18n JSON files: the built Resources differ byte-wise from the installed app in 34 text files (JSON proven semantically equal; markdown formatting only). File lists are identical."
+  - "Four standalone test suites fail on the imported tree; the same four fail identically on the original repo (data-count assertions pinned to an older dataset). Not caused by the import."
+  - "scripts/lib/kbli_fleet_notice.sh will now see an app repo on every machine and report Resources/ stale because the dataset copy is no longer tracked; the notice is advisory and always exits 0."
+grader: |
+  Council r1 (codex-gpt-5.6-sol titolare, agy-gemini-3.1-pro reserve) on the edited scripts; executed
+  Pro build receipts; a fresh Opus gate session signs before arming.

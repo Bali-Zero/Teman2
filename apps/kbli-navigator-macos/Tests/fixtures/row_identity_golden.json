@@ -1,0 +1,192 @@
+{
+  "contract": "ROW-IDENTITY-CONTRACT section 7 — the shared golden fixture",
+  "note": "SYNTHETIC. The codes 99001/99002 are not in the KBLI dataset and no field here is a dataset fact or client data. The two shapes are exactly the ones the contract exists for: (a) a relevance-first selection whose served ordinals are NOT a prefix, so a count names no set; (b) a list the builder capped, where a count DOES name the set.",
+  "canonical_order": "the physical order of per_skala in the record, 0-based; records in the order of the records array below",
+  "records": [
+    {
+      "kode_kbli_2025": "99001",
+      "judul": "Kode sintetis A (tidak ada di dataset)",
+      "per_skala": [
+        {
+          "skala_usaha": ["Usaha Mikro"],
+          "kategori_risiko": "Rendah",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "perdagangan eceran umum",
+          "perizinan": ["NIB"],
+          "persyaratan": ["Dokumen umum 1"],
+          "kewajiban": ["Kewajiban umum 1"]
+        },
+        {
+          "skala_usaha": ["Usaha Kecil"],
+          "kategori_risiko": "Rendah",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "perdagangan eceran umum",
+          "perizinan": ["NIB"],
+          "persyaratan": ["Dokumen umum 2"],
+          "kewajiban": ["Kewajiban umum 2"]
+        },
+        {
+          "skala_usaha": ["Usaha Menengah"],
+          "kategori_risiko": "Menengah Rendah",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "perdagangan eceran umum",
+          "perizinan": ["NIB"],
+          "persyaratan": ["Dokumen umum 3"],
+          "kewajiban": ["Kewajiban umum 3"]
+        },
+        {
+          "skala_usaha": ["Usaha Besar"],
+          "kategori_risiko": "Menengah Tinggi",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "perdagangan eceran umum",
+          "perizinan": ["NIB"],
+          "persyaratan": ["Dokumen umum 4"],
+          "kewajiban": ["Kewajiban umum 4"]
+        },
+        {
+          "skala_usaha": ["Usaha Mikro"],
+          "kategori_risiko": "Menengah Tinggi",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "perdagangan besar bahan bakar gas cair",
+          "perizinan": ["NIB", "Sertifikat Standar"],
+          "persyaratan": ["Dokumen gas 1"],
+          "kewajiban": ["Kewajiban gas 1"]
+        },
+        {
+          "skala_usaha": ["Usaha Kecil"],
+          "kategori_risiko": "Menengah Tinggi",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "perdagangan besar bahan bakar gas cair",
+          "perizinan": ["NIB", "Sertifikat Standar"],
+          "persyaratan": ["Dokumen gas 2"],
+          "kewajiban": ["Kewajiban gas 2"]
+        },
+        {
+          "skala_usaha": ["Usaha  MENENGAH", "Usaha Besar"],
+          "kategori_risiko": "Tinggi",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "perdagangan besar bahan bakar gas cair",
+          "perizinan": ["NIB", "Sertifikat Standar"],
+          "persyaratan": ["Dokumen gas 3"],
+          "kewajiban": ["Kewajiban gas 3"]
+        },
+        {
+          "skala_usaha": ["Usaha Besar"],
+          "kategori_risiko": "Tinggi",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "perdagangan besar bahan bakar gas cair",
+          "perizinan": ["NIB", "Sertifikat Standar"],
+          "persyaratan": ["Dokumen gas 4"],
+          "kewajiban": ["Kewajiban gas 4"]
+        }
+      ]
+    },
+    {
+      "kode_kbli_2025": "99002",
+      "judul": "Kode sintetis B (tidak ada di dataset)",
+      "per_skala": [
+        {
+          "skala_usaha": ["Usaha Besar"],
+          "kategori_risiko": "Tinggi",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "jasa konsultasi sintetis",
+          "perizinan": ["NIB", "Izin"],
+          "persyaratan": [
+            "Persyaratan 1",
+            "Persyaratan 2",
+            "Persyaratan 3",
+            "Persyaratan 4",
+            "Persyaratan 5",
+            "Persyaratan 6",
+            "Persyaratan 7",
+            "Persyaratan 8",
+            "Persyaratan 9"
+          ],
+          "kewajiban": ["Kewajiban 1", "Kewajiban 2"]
+        },
+        {
+          "skala_usaha": [],
+          "kategori_risiko": "Rendah",
+          "jangka_waktu": "Selama menjalankan kegiatan usaha",
+          "scope_uraian": "skala tidak dinyatakan",
+          "perizinan": ["NIB"],
+          "persyaratan": ["Persyaratan tunggal"],
+          "kewajiban": []
+        }
+      ]
+    }
+  ],
+  "package_fields": {
+    "99001": {
+      "per_skala_rows_included": 4,
+      "per_skala_rows_total": 8,
+      "per_skala_rows_served": [
+        {
+          "ordinal": 4,
+          "skala_key": "usaha mikro",
+          "persyaratan_served": 1,
+          "kewajiban_served": 1
+        },
+        {
+          "ordinal": 5,
+          "skala_key": "usaha kecil",
+          "persyaratan_served": 1,
+          "kewajiban_served": 1
+        },
+        {
+          "ordinal": 6,
+          "skala_key": "usaha menengah+usaha besar",
+          "persyaratan_served": 1,
+          "kewajiban_served": 1
+        },
+        {
+          "ordinal": 7,
+          "skala_key": "usaha besar",
+          "persyaratan_served": 1,
+          "kewajiban_served": 1
+        }
+      ]
+    },
+    "99002": {
+      "per_skala_rows_included": 1,
+      "per_skala_rows_total": 2,
+      "per_skala_rows_served": [
+        {
+          "ordinal": 0,
+          "skala_key": "usaha besar",
+          "persyaratan_served": 6,
+          "kewajiban_served": 2
+        }
+      ]
+    }
+  },
+  "expected": {
+    "canonical_row_digest": "a89b828db9a445b0dcb3de35ec9d6c59f174466a583d1a236a374a1aaf9d7e18",
+    "served_row_digest": "2bda305c4535af4b35777cac64a608200d73d951b8044d69eec6a23799b6c130",
+    "served_ordinals": {
+      "99001": [4, 5, 6, 7],
+      "99002": [0]
+    },
+    "served_persyaratan_lengths": {
+      "99001": [1, 1, 1, 1],
+      "99002": [6]
+    },
+    "served_kewajiban_lengths": {
+      "99001": [1, 1, 1, 1],
+      "99002": [2]
+    },
+    "skala_keys": {
+      "99001": [
+        "usaha mikro",
+        "usaha kecil",
+        "usaha menengah",
+        "usaha besar",
+        "usaha mikro",
+        "usaha kecil",
+        "usaha menengah+usaha besar",
+        "usaha besar"
+      ],
+      "99002": ["usaha besar", "-"]
+    }
+  }
+}
