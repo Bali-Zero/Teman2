@@ -23,7 +23,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 LIB = REPO / "scripts" / "lib" / "kbli_fleet_notice.sh"
 WARNING = "NOT aligned"
-REASSURANCE = "both match canonical"
+REASSURANCE = "installed on testhost matches canonical"
 
 
 def run_notice(canonical: Path, app_repo: Path, bundle_dir: Path) -> subprocess.CompletedProcess:
@@ -39,15 +39,15 @@ def run_notice(canonical: Path, app_repo: Path, bundle_dir: Path) -> subprocess.
 
 @pytest.fixture
 def world(tmp_path: Path):
-    """A canonical file, an app repo and an installed bundle — all initially aligned."""
+    """A canonical file, an app repo and an installed bundle — all initially aligned.
+
+    The app repo carries NO Resources/ copy: it is gitignored, so a fresh checkout has none.
+    """
     canonical = tmp_path / "canonical.json"
     canonical.write_text('{"kbli": "TRUTH"}', encoding="utf-8")
 
     app_repo = tmp_path / "kbli-navigator-app"
-    (app_repo / "Resources").mkdir(parents=True)
-    (app_repo / "Resources" / "KBLI_2025_FINAL_CLEAN.json").write_text(
-        canonical.read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    app_repo.mkdir()
 
     bundle_dir = tmp_path / "KBLI Navigator.app"
     (bundle_dir / "Contents" / "Resources").mkdir(parents=True)
@@ -74,7 +74,9 @@ def test_the_library_exists_and_is_sourceable() -> None:
 
 
 def test_fully_aligned_fleet_is_not_accused(world) -> None:
+    """Bundle matches, no Resources/ copy present (fresh checkout): the aligned message."""
     canonical, app_repo, bundle_dir = world
+    assert not (app_repo / "Resources").exists()
     res = run_notice(canonical, app_repo, bundle_dir)
     assert res.returncode == 0, res.stderr
     assert WARNING not in res.stdout, res.stdout
@@ -105,14 +107,17 @@ def test_resources_fresh_but_bundle_stale_still_warns(world) -> None:
     assert ".app installed on testhost" in res.stdout, res.stdout
 
 
-def test_stale_resources_is_named(world) -> None:
+def test_stale_resources_copy_is_not_a_fleet_surface(world) -> None:
+    """A stale gitignored Resources/ copy must not accuse an aligned .app."""
     canonical, app_repo, bundle_dir = world
+    (app_repo / "Resources").mkdir()
     (app_repo / "Resources" / "KBLI_2025_FINAL_CLEAN.json").write_text(
         '{"kbli": "STALE"}', encoding="utf-8"
     )
     res = run_notice(canonical, app_repo, bundle_dir)
-    assert WARNING in res.stdout, res.stdout
-    assert "Resources/" in res.stdout, res.stdout
+    assert WARNING not in res.stdout, res.stdout
+    assert "Resources/" not in res.stdout, res.stdout
+    assert REASSURANCE in res.stdout, res.stdout
 
 
 def test_missing_bundle_is_not_alignment(world, tmp_path: Path) -> None:

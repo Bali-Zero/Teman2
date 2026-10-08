@@ -4,8 +4,7 @@
 # Compares the sha256 of KBLI_2025_FINAL_CLEAN.json across every surface of the Navigator:
 #   1. canonical              origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json
 #                              (the FLEET's source of truth — never a local checkout's HEAD)
-#   2. this repo Resources/  (what the next build would ship if canonical were missing)
-#   3. deployed bundle       ~/Desktop/"KBLI Navigator - INTERNAL.app" on THIS machine + pro + mini (ssh)
+#   2. deployed bundle       ~/Desktop/"KBLI Navigator - INTERNAL.app" on THIS machine + pro + mini (ssh)
 #
 # W106b (2026-08-09): a LOCAL checkout is a proxy for "canonical", and it lies whenever it
 # is behind (M5's main checkout is ~235 commits behind BY DESIGN — never pulled, work happens
@@ -94,10 +93,12 @@ verdict() {  # $1 = hash-or-empty, $2 = label, $3 = status note (drift context, 
   fi
 }
 
-RH="$(shasum -a 256 "$ROOT/Resources/KBLI_2025_FINAL_CLEAN.json" 2>/dev/null | awk '{print $1}')"
-verdict "${RH:-}" "app-repo Resources/" "$ROOT/Resources — next build refreshes this from canonical"
+# $ROOT/Resources/ is NOT a fleet surface: the dataset and overlay copies there are gitignored
+# and build.sh refreshes them from canonical at every build, so a fresh checkout has none.
+# Reading them under pipefail aborted this script before any machine got a verdict.
+echo "· app-repo Resources/ not compared — build.sh refreshes it from canonical at every build"
 
-LH="$(shasum -a 256 "$HOME/Desktop/$APP_NAME.app/$DATASET_REL" 2>/dev/null | awk '{print $1}')"
+LH="$(shasum -a 256 "$HOME/Desktop/$APP_NAME.app/$DATASET_REL" 2>/dev/null | awk '{print $1}' || true)"
 verdict "${LH:-}" "$(hostname) deployed  " "~/Desktop/$APP_NAME.app"
 
 for T in pro mini; do
@@ -140,9 +141,7 @@ for f in "${OVERLAY_FILES[@]}"; do
       continue
     fi
   fi
-  RO="$(shasum -a 256 "$ROOT/Resources/$f" 2>/dev/null | awk '{print $1}')"
-  [[ "${RO:-}" == "$OC" ]] || { echo "✗ overlay $f app-repo  DRIFT (${RO:0:12} vs ${OC:0:12})"; DRIFT=1; }
-  LO="$(shasum -a 256 "$HOME/Desktop/$APP_NAME.app/Contents/Resources/$f" 2>/dev/null | awk '{print $1}')"
+  LO="$(shasum -a 256 "$HOME/Desktop/$APP_NAME.app/Contents/Resources/$f" 2>/dev/null | awk '{print $1}' || true)"
   [[ "${LO:-}" == "$OC" ]] || { echo "✗ overlay $f $(hostname)  DRIFT (${LO:0:12} vs ${OC:0:12})"; DRIFT=1; }
   for T in pro mini; do
     TO_RC=0
@@ -157,7 +156,7 @@ for f in "${OVERLAY_FILES[@]}"; do
     fi
   done
 done
-echo "✓ overlay: ${#OVERLAY_FILES[@]} files compared across app-repo + 3 machines"
+echo "✓ overlay: ${#OVERLAY_FILES[@]} files compared across the 3 machines"
 
 if (( DRIFT )); then
   echo "→ fleet NOT aligned: run deploy/install-3mac.sh (build once, deploy+verify all 3)."
