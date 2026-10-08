@@ -458,6 +458,13 @@ def _candidate_pack() -> PackUnderTest | None:
     path = _candidate_source_pack_path()
     if path is None:
         return None
+    return _pack_from_source(path)
+
+
+def _pack_from_source(path: Path) -> PackUnderTest:
+    """Compile ONE source pack through the unsigned-candidate path, whatever its signing
+    state on disk — a signed sibling may exist (seq-26 ships signed) and a test that
+    targets that pack by sequence must not depend on it being the highest unsigned one."""
     payload = load_rule_pack_payload(path)
     compiled = compiler.build_compiled_pack(wrap_as_unsigned_pack(payload))
     latest = max(rule.valid_period.from_ for rule in payload.rules)
