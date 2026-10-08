@@ -928,11 +928,6 @@ const en = {
   "verdict.provenance_description.PREVIEW":
     "This screen is test data for product review and cannot support a recommendation.",
 
-  "outcome.comparison_title": "How the paths compare",
-  "outcome.comparison_col.visa": "Path",
-  "outcome.comparison_col.eligibility": "Eligibility",
-  "outcome.comparison_col.timeline": "Timeline",
-  "outcome.comparison_col.price": "Price",
   "outcome.timeline_title": "Timeline",
   "outcome.timeline_pending":
     "Processing times are set by Ditjen Imigrasi and vary by office and season. Your Bali Zero advisor confirms the calendar for your case before you book travel.",
@@ -1989,11 +1984,6 @@ const id: Record<Keys, string> = {
   "verdict.provenance_description.PREVIEW":
     "Layar ini memakai data uji untuk peninjauan produk dan tidak dapat mendukung rekomendasi.",
 
-  "outcome.comparison_title": "Perbandingan jalur",
-  "outcome.comparison_col.visa": "Jalur",
-  "outcome.comparison_col.eligibility": "Kelayakan",
-  "outcome.comparison_col.timeline": "Linimasa",
-  "outcome.comparison_col.price": "Harga",
   "outcome.timeline_title": "Linimasa",
   "outcome.timeline_pending":
     "Lama proses ditentukan oleh Ditjen Imigrasi dan bervariasi menurut kantor dan musim. Konsultan Bali Zero memastikan jadwal untuk kasus Anda sebelum Anda memesan perjalanan.",
