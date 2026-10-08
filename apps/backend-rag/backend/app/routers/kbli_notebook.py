@@ -531,6 +531,74 @@ async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
     return None
 
 
+async def _get_kbli_bps_payloads(codes: list[str]) -> dict[str, dict]:
+    """Batch-fetch the canonical `kbli_bps` payload for many codes in ONE scroll.
+
+    The `/search` counterpart of `_get_kbli_payload_from_qdrant`: same POSITIVE
+    doc_type selection (see its docstring for the 2026-08-09 coin-flip), but one
+    round-trip for the whole result page instead of one per hit. The dense query in
+    `_search_kbli_qdrant` has no doc_type filter, so a `kbli_gold` editorial point
+    (raw PMA keys, no `pma_verification_status`) can win the ranking for a code whose
+    BPS record carries the cured, located PMA tuple; the disclosure must come from
+    the BPS point, never from whichever twin ranked first.
+
+    Returns {code: payload}. Fails soft: any error yields {} and the caller falls
+    back to the hit payload (the pre-existing behaviour), so a Qdrant hiccup here
+    cannot turn a working search into a 5xx.
+    """
+    wanted = sorted({c for c in codes if c and c != "N/A"})
+    if not wanted:
+        return {}
+    headers = {"Content-Type": "application/json"}
+    if settings.qdrant_api_key:
+        headers["api-key"] = settings.qdrant_api_key
+    url = f"{settings.qdrant_url}/collections/{KBLI_COLLECTION}/points/scroll"
+    body = {
+        "filter": {
+            "must": [
+                {"key": "kode_kbli", "match": {"any": wanted}},
+                {
+                    "should": [
+                        {"key": "doc_type", "match": {"value": "kbli_bps"}},
+                        {"key": "metadata.doc_type", "match": {"value": "kbli_bps"}},
+                    ],
+                },
+            ],
+        },
+        "limit": len(wanted) * 2,
+        "with_payload": True,
+    }
+    found: dict[str, dict] = {}
+    try:
+        resp = await _get_kbli_client().post(url, json=body, headers=headers)
+        resp.raise_for_status()
+        for point in resp.json().get("result", {}).get("points", []):
+            point_payload = point.get("payload", {}) or {}
+            code = _payload_value(point_payload, "kode_kbli", "kode", "kode_kbli_2025")
+            if code:
+                found.setdefault(str(code), point_payload)
+    except Exception as e:
+        logger.warning("Qdrant BPS batch lookup for KBLI search failed (non-critical): %s", e)
+        return {}
+    return found
+
+
+def _apply_bps_disclosure(
+    candidate: "KBLISearchResult", bps_payload: dict[str, Any] | None
+) -> "KBLISearchResult":
+    """Overwrite the PMA tuple (and a missing description) from the code's BPS point.
+
+    No BPS point for the code (e.g. a gold-only orphan, or a failed lookup): the hit
+    payload's own disclosure stays, which is the behaviour before this existed.
+    """
+    if not bps_payload:
+        return candidate
+    update: dict[str, Any] = _pma_disclosure_fields(bps_payload)
+    if candidate.description.startswith("Official BPS description unavailable"):
+        update["description"] = _official_scope(bps_payload, candidate.code)
+    return candidate.model_copy(update=update)
+
+
 async def _search_kbli_qdrant(query_embedding: list[float], limit: int) -> list[dict]:
     """Direct Qdrant search for KBLI collection (flat payload structure)."""
     headers = {"Content-Type": "application/json"}
@@ -716,14 +784,20 @@ async def search_kbli(
         embedding = await _resolve_embedding(search_service, query)
         results = await _search_kbli_qdrant(embedding, limit)
 
-        search_results: list[KBLISearchResult] = [exact_result] if exact_result else []
+        # Disclosure comes from the code's kbli_bps point, never from the hit: the
+        # dense query is unfiltered, so a stale kbli_gold twin can be the hit.
+        candidates: list[KBLISearchResult] = []
         for r in results:
-            if len(search_results) >= limit:
-                break
             candidate = _result_from_payload(r.get("payload", {}), score=r.get("score", 0.0))
             if exact_result and candidate.code == exact_result.code:
                 continue
-            search_results.append(candidate)
+            candidates.append(candidate)
+        candidates = candidates[: max(limit - (1 if exact_result else 0), 0)]
+        bps_by_code = await _get_kbli_bps_payloads([c.code for c in candidates])
+
+        search_results: list[KBLISearchResult] = [exact_result] if exact_result else []
+        for candidate in candidates:
+            search_results.append(_apply_bps_disclosure(candidate, bps_by_code.get(candidate.code)))
 
         duration = (time.time() - start_time) * 1000
         logger.info(
