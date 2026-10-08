@@ -30,6 +30,7 @@ from backend.scripts.visa_engine.derive_seq26_e31_options import (
     FOLD_CREATED_BY,
     FOLD_VERSION,
     SEQ25_PAYLOAD_SHA256,
+    check_e31_options,
     derive,
     portal_text_for,
     rule_pack_id,
@@ -388,3 +389,46 @@ class TestGoldFamilyPersonasAskForTwoYears:
             assert row["extension_required"] is extension
             picked = next(o for o in row["duration_options"] if o["selected"])
             assert picked["amount_idr"] == amount
+
+
+class TestObserverChecker:
+    """The CI observer's checker names a pack that drifted, even when its re-derivation drifts too."""
+
+    def test_the_committed_pack_has_no_problem(
+        self, seq26: dict[str, Any], catalogue: dict[str, Any]
+    ) -> None:
+        assert check_e31_options(seq26, catalogue) == []
+
+    @pytest.mark.parametrize("code", _E31)
+    def test_a_pack_that_lost_one_products_options_is_named(
+        self, code: str, seq26: dict[str, Any], catalogue: dict[str, Any]
+    ) -> None:
+        mutant = copy.deepcopy(seq26)
+        del _products(mutant)[code]["duration_options"]
+        problems = check_e31_options(mutant, catalogue)
+        assert [p for p in problems if p.startswith(code)], problems
+        assert all(p.startswith(code) for p in problems)
+
+    def test_a_730_option_on_the_one_year_row_is_named(
+        self, seq26: dict[str, Any], catalogue: dict[str, Any]
+    ) -> None:
+        mutant = copy.deepcopy(seq26)
+        options = _products(mutant)["E31C"]["duration_options"]
+        options[1]["pricing_key"] = dict(options[0]["pricing_key"])
+        problems = check_e31_options(mutant, catalogue)
+        assert any("option keys" in p for p in problems)
+        assert any("730 days resolves 11000000" in p for p in problems)
+
+    def test_a_top_level_key_that_drifted_from_the_first_option_is_named(
+        self, seq26: dict[str, Any], catalogue: dict[str, Any]
+    ) -> None:
+        mutant = copy.deepcopy(seq26)
+        _products(mutant)["E31D"]["pricing_key"]["item_key"] = "Dependent 2 Years (Offshore)"
+        assert any("top-level pricing_key" in p for p in check_e31_options(mutant, catalogue))
+
+    def test_a_stay_policy_that_stops_at_365_is_named(
+        self, seq26: dict[str, Any], catalogue: dict[str, Any]
+    ) -> None:
+        mutant = copy.deepcopy(seq26)
+        _products(mutant)["E31F"]["stay_policy"]["maximum_days"] = 365
+        assert any("stay_policy" in p for p in check_e31_options(mutant, catalogue))

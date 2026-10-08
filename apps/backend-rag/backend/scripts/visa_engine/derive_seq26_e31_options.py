@@ -135,6 +135,95 @@ def derive(seq25: dict[str, Any], catalogue: dict[str, Any], ledger_dir: Path) -
     return out
 
 
+#: The nine products the ruling names and the base key each one carries (Offshore variant).
+E31_BASE_KEYS = {
+    "E31A": "Spouse 1 Year (Offshore)",
+    **dict.fromkeys(
+        ("E31B", "E31C", "E31D", "E31E", "E31F", "E31G", "E31H", "E31J"),
+        "Dependent 1 Year (Offshore)",
+    ),
+}
+EXPECTED_AMOUNTS_IDR = (11_000_000, 15_000_000)
+
+
+class _CatalogueView:
+    loaded = True
+
+    def __init__(self, catalogue: dict[str, Any]) -> None:
+        self._catalogue = catalogue
+        self._rows = catalogue["services"]["kitas_permits"]
+
+    def get_service_by_key(self, key: str) -> dict[str, Any] | None:
+        row = self._rows.get(key)
+        return None if row is None else {**row, "category": "kitas_permits"}
+
+    def get_all_prices(self) -> dict[str, Any]:
+        return {
+            "version": self._catalogue["version"],
+            "metadata": self._catalogue["metadata"],
+            "services": self._rows,
+        }
+
+
+def check_e31_options(pack: dict[str, Any], catalogue: dict[str, Any]) -> list[str]:
+    """Everything the ruling says about all nine E31 products, independent of the derivation.
+
+    Used by the CI observer and the tests: a pack that lost one product's options, pointed a
+    730-day option at the 1-year row, or let the top-level key drift from the first option is
+    named here even when a re-derivation drifts the same way. Returns the problems found.
+    """
+
+    from datetime import datetime, timezone
+
+    from pydantic import ValidationError
+
+    from backend.services.visa_engine.models import VisaProductVersion
+    from backend.services.visa_engine.pricing_adapter import resolve_candidate_pricing
+
+    problems: list[str] = []
+    products = {p["product_code"]: p for p in pack["products"]}
+    view = _CatalogueView(catalogue)
+    for code, base in E31_BASE_KEYS.items():
+        product = products.get(code)
+        if product is None:
+            problems.append(f"{code}: product missing")
+            continue
+        options = product.get("duration_options") or []
+        if [o.get("days") for o in options] != list(OPTION_DAYS):
+            problems.append(f"{code}: options are not exactly 365 and 730 days")
+            continue
+        sibling = base.replace(ONE_YEAR_MARK, TWO_YEAR_MARK)
+        wanted = [
+            {"category": "kitas_permits", "item_key": base},
+            {"category": "kitas_permits", "item_key": sibling},
+        ]
+        if [o["pricing_key"] for o in options] != wanted:
+            problems.append(f"{code}: option keys are not {base!r} then {sibling!r}")
+        if product["pricing_key"] != options[0]["pricing_key"]:
+            problems.append(f"{code}: top-level pricing_key is not the first option's")
+        stay = product["stay_policy"]
+        if (stay["kind"], stay["minimum_days"], stay["maximum_days"]) != (
+            "FIXED_DAYS",
+            *OPTION_DAYS,
+        ):
+            problems.append(f"{code}: stay_policy is not FIXED_DAYS 365..730")
+        try:
+            model = VisaProductVersion.model_validate(product)
+        except ValidationError:
+            problems.append(f"{code}: the product no longer validates against the model")
+            continue
+        for days, amount in zip(OPTION_DAYS, EXPECTED_AMOUNTS_IDR, strict=True):
+            got = resolve_candidate_pricing(
+                model,
+                pricing_catalog=view,
+                evaluated_at=datetime(2026, 10, 8, tzinfo=timezone.utc),
+                stay_days=days,
+            ).amount
+            if got != amount:
+                problems.append(f"{code}: {days} days resolves {got}, expected {amount}")
+    return problems
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Derive RulePack seq-26 (E31 duration options) from seq-25."

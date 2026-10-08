@@ -12,8 +12,11 @@ Two observations, each failing loud:
 
 1. re-deriving seq-26 from seq-25 gives the committed file (RFC 8785 canonical bytes, so
    Prettier formatting is irrelevant);
-2. through the engine, the E31B product prices 365 days at the catalogue's 1-year
-   Offshore row and 730 days at its 2-year Offshore row.
+2. on BOTH the committed and the re-derived pack, every one of the nine E31 products has
+   exactly two options (365 days on its 1-year key, 730 days on the same variant's 2-year
+   sibling), a top-level key equal to the first option, a 365 to 730 stay, and prices
+   11000000 and 15000000 through the engine. This check is independent of the derivation,
+   so a drift shared by the file and its re-derivation is still caught.
 """
 
 # bites-observable — no arguments; one in-tree module and one literal program.
@@ -31,12 +34,10 @@ BACKEND_RAG_DIR = REPO_ROOT / "apps" / "backend-rag"
 PROGRAM = r"""
 import json
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
+from backend.scripts.visa_engine.derive_seq26_e31_options import check_e31_options
 from backend.services.visa_engine.bundle import canonicalize_json
-from backend.services.visa_engine.models import VisaProductVersion
-from backend.services.visa_engine.pricing_adapter import resolve_candidate_pricing
 
 derived = json.loads(Path(sys.argv[1]).read_text())
 committed_path = Path("backend/services/visa_engine/contracts/packs/rulepack-prod-026.source.json")
@@ -44,36 +45,10 @@ committed = json.loads(committed_path.read_text())
 assert canonicalize_json(derived) == canonicalize_json(committed), "re-derived seq-26 differs from the committed source"
 
 catalogue = json.loads(Path("backend/data/bali_zero_official_prices_2026.json").read_text())
-rows = catalogue["services"]["kitas_permits"]
-product = VisaProductVersion.model_validate(
-    next(p for p in committed["products"] if p["product_code"] == "E31B")
-)
-
-
-class Catalog:
-    loaded = True
-
-    def get_service_by_key(self, key):
-        row = rows.get(key)
-        return None if row is None else {**row, "category": "kitas_permits"}
-
-    def get_all_prices(self):
-        return {"version": catalogue["version"], "metadata": catalogue["metadata"], "services": rows}
-
-
-def amount(stay_days):
-    return resolve_candidate_pricing(
-        product,
-        pricing_catalog=Catalog(),
-        evaluated_at=datetime(2026, 10, 8, tzinfo=timezone.utc),
-        stay_days=stay_days,
-    ).amount
-
-
-assert amount(365) == 11_000_000, amount(365)
-assert amount(730) == 15_000_000, amount(730)
-assert amount(1095) == 15_000_000, amount(1095)
-print(f"E31B 365d={amount(365)} 730d={amount(730)} 1095d={amount(1095)}")
+for name, pack in (("committed", committed), ("re-derived", derived)):
+    problems = check_e31_options(pack, catalogue)
+    assert not problems, f"{name}: {problems}"
+print("nine E31 products: 365d on the 1-year key, 730d on the 2-year sibling, 11000000 and 15000000")
 """
 
 
@@ -116,7 +91,10 @@ def main() -> int:
         sys.stdout.write(f"observe_visa_seq26_e31_options: FAILED\n{result.stderr[-1500:]}\n")
         return result.returncode
     sys.stdout.write(f"observe_visa_seq26_e31_options: {result.stdout.strip()}\n")
-    sys.stdout.write("observe_visa_seq26_e31_options: re-derived seq-26 equals the committed source and E31B prices 365d at 11000000 and 730d at 15000000\n")
+    sys.stdout.write(
+        "observe_visa_seq26_e31_options: re-derived seq-26 equals the committed source "
+        "and all nine E31 products price 365d at 11000000 and 730d at 15000000\n"
+    )
     return 0
 
 
