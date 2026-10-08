@@ -457,7 +457,7 @@ superscar #7), `PATH` set explicitly (a tick without `gh` on PATH is an `error` 
 variable, fetches `origin/main` into the merger's mirror (a failed fetch is not fatal: the tick journals its own), resolves ONE
 sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a working-tree copy. A failure before Python starts
 (no git, no mirror) writes no journal line; it is in `~/logs/localci-merger.err.log`, and the report's `longest_silence` shows
-the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error` or `disabled`;
+the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error`, `warning` or `disabled`;
 registry id `pro.localci_merger`) by running `scripts/lib/heartbeat.sh` in its own process (its CLI mode, never `source`: the
 library cannot change the wrapper's options, traps or exit status). That library too comes from the mirror at the tick's
 sha, never from a working checkout: each tick refreshes `<state-dir>/heartbeat.sh`, and an exit before the extraction (the
@@ -502,6 +502,88 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.localci-merger.plist
     tail -3 ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl   # green≠working: read the journal, not the exit code
     cat ~/.organism/last_seen/pro.localci_merger.json
+
+### Retention and the host floor (B6)
+
+`docs/specs/localci-sovereign-2026-10-07.md`, phase B step B6. The wrapper's order on every tick:
+
+1. it reads the host's free GB (`df -Pk /System/Volumes/Data`, whole GB, floored); a `df` that gives no number starts no
+   run and the heartbeat is `warning` (`host free space unreadable (df -Pk <path>): no run started`);
+2. `merger.py tick … --host-free-gb=N --min-host-free-gb=60`: under the floor the tick journals
+   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":60}` before the lease and starts no run;
+3. `merger.py prune --state-dir <state> --fstrim`, after the tick and never before it, whether the tick ran, skipped or failed;
+4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N floor_gb=60: no run
+   started`) under the floor or when the prune failed, `ok` otherwise. The wrapper exits with the tick's code.
+
+A mirror sha older than B6 still ticks: `prune.py` and `runner.py` are extracted only when the sha has them, and the floor
+flags go only to a `merger.py` that knows them (under the floor, a merger that cannot journal the skip is not started).
+
+    python scripts/localci/merger.py prune [--state-dir ~/.nuzantara-pilots/local-ci/merger] [--docker docker] \
+        [--dry-run] [--fstrim] [--colima colima]
+
+The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and `<state>/runs`:
+
+- **Deps images.** Removed by `docker image rm <tag>` (never `-f`, never `prune -a`), recipe by recipe, newest first
+  (`MAX_IMAGES_PER_RECIPE` 2, `IN_FLIGHT_GRACE_H` 6, beside the 48 h window), two slots held by distinct images: the newest
+  holds one; an image a `state/plan.json` of the last 48 h names by tag or id takes the free one; an image no plan of the
+  window names takes no slot and goes; beyond the slots an image stays only while a plan named it under 6 h ago (a tick in
+  flight) — so with two newer images kept, the oldest goes even if a plan named it 47 h ago. Whatever a run of the last
+  48 h without a `status.json` yet names (the run in progress) is kept, and the prune never runs beside a tick (the lease).
+  The recipe is the `org.nuzantara.localci.recipe` label the deps build now sets, else the check whose job named the tag in
+  any plan; an image whose recipe nothing records is its own recipe and stays. The never-list — `localci-candidate:*`,
+  `localci-deps-base:*` and every `service_images` stand-in value of the BASE matrix (`contexts_matrix.yaml`, extracted by the
+  wrapper at the tick's sha; read, never hardcoded: today `postgres:15`, `redis:7`) — is never in a removal set and each of
+  its images present is journalled under `kept` with its rule. While a plan or the matrix cannot be read, no image is removed;
+  a half-written plan still names the tags its text names. Created is read to the nanosecond; images built at the same
+  instant rank together.
+- **Builder cache.** Every prune that is not a dry run ends its image stage with `docker builder prune -f --filter until=24h`
+  on the current builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's).
+- **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
+  run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
+  `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched, and a `runs/` that is a
+  symlink is never trimmed.
+- **fstrim.** With `--fstrim`, after at least one image removal: `colima ssh -- sudo fstrim -av`, so the VM's freed blocks
+  leave the host's sparse disk.
+
+One journal line per prune (its shape; the numbers below are illustrative, not measured); `--dry-run` writes
+`would_remove` instead of `removed` and removes nothing:
+
+    {"ts": "…Z", "host": "…", "code_sha": "…", "kind": "prune", "dry_run": false,
+     "vm_free_gb": {"before": 31.2, "after": 40.9},
+     "host_free_gb": {"before": 77.1, "after": 77.4, "after_fstrim": 87.0},
+     "images": {"removed": [{"tag": "localci-deps:…", "gb": 11.9, "rule": "recipe e2e-tests already keeps 2 images (newest localci-deps:…): beyond the cap, its youngest plan is 47.0 h old"}],
+                "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe e2e-tests"},
+                         {"tag": "localci-deps:…", "rule": "slot 2 of 2 of recipe e2e-tests, named by a plan 5.0 h ago"},
+                         {"tag": "postgres:15", "rule": "service stand-in of the BASE matrix: never pruned"}], "errors": []},
+     "builder_prune": {"rc": 0, "tail": "Total: 3.1GB"},
+     "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},
+     "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}, "failed": []}
+
+The prune takes the tick's lease: while a tick holds it, the line is `{"kind": "prune", "skipped": "lease", "holder": …}` and
+nothing is removed. `failed` lists `images` (an image still in use, an unreadable plan), `builder_prune` or `fstrim` when
+one of them failed; the prune then exits 1 and the organ says `warning`. A VM the probe cannot measure reads `null`. The prune
+reaches Pro when the wrapper's live copy is replaced with the commands of the block above (`cp` beside it, `mv`, `cmp -s`).
+
+### Disk floor organ (B6, Pro)
+
+`pro.disk_floor` (`scripts/ops/pro_disk_floor_tick.sh`, `infra/launchagents/com.nuzantara.disk-floor.plist`) reads
+`df -Pk /System/Volumes/Data` every 30 minutes (`StartInterval` 1800, `RunAtLoad`, no `KeepAlive`) and writes
+`~/.organism/last_seen/pro.disk_floor.json`: `ok` above 100 GB free, `warning` from 60 to 100, and under 60 the mandate's
+`failed`, written as `error` (the word `scripts/lib/heartbeat.sh` canonicalises it to and the sentinel and the healer read).
+The note is `free_gb=N on /System/Volumes/Data (ok > 100, failed < 60)`; when the organ is not `ok` it adds
+`; biggest: ~/<dir> X.YGB, …` for the three biggest top-level directories of `~` (the walk took 94 s on Pro, so it runs only
+when the organ pages). The limits are compared in MB, so 100.5 GB is `ok`. Wrong node or `PRO_DISK_FLOOR_ENABLED=false`:
+`disabled`; a previous run still alive: `warning` (`skipped: previous run alive (pid N), free space not read`). Registry `expected_hb_seconds` 3600,
+silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro, user `nuzantara`, from a checkout at
+`origin/main`):
+
+    mkdir -p ~/.nuzantara-cron ~/logs/pro-disk_floor
+    cp scripts/ops/pro_disk_floor_tick.sh ~/.nuzantara-cron/.pro_disk_floor_tick.sh.new
+    mv -f ~/.nuzantara-cron/.pro_disk_floor_tick.sh.new ~/.nuzantara-cron/pro_disk_floor_tick.sh
+    cmp -s scripts/ops/pro_disk_floor_tick.sh ~/.nuzantara-cron/pro_disk_floor_tick.sh && echo "live copy == repo"
+    cp infra/launchagents/com.nuzantara.disk-floor.plist ~/Library/LaunchAgents/com.nuzantara.disk-floor.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.disk-floor.plist
+    cat ~/.organism/last_seen/pro.disk_floor.json   # RunAtLoad: the first heartbeat lands at bootstrap
 
 ## Tests
 

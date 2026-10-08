@@ -662,6 +662,7 @@ SERVICE_STEP_ENV = {"UV_OFFLINE": "1", "UV_FIND_LINKS": "/opt/wheels"}   # uv's 
 RUNNER_CTX = {"os": "Linux", "arch": "ARM64", "temp": "/tmp/runner-temp", "name": "localci"}   # arm64 here, X64 hosted: a parity gap
 ARTIFACT_MAX_BYTES = 256 << 20
 DEPS_LABEL = "org.nuzantara.localci.deps"
+DEPS_RECIPE_LABEL = "org.nuzantara.localci.recipe"   # the check that built it: merger.py prune keeps the newest per recipe
 _MARKER_ATOM = r"""(?:[a-z_]+|"[^"]*"|'[^']*')\s*(?:===|==|!=|<=|>=|<|>|~=|not\s+in|in)\s*(?:[a-z_]+|"[^"]*"|'[^']*')"""
 # `name[extras]==version`, optionally `; <PEP 508 marker>` — nothing else; and pip reads a space-separated token starting with `-`
 # anywhere on the line as an option (`--no-binary` would lift --only-binary), so _pin_lines also drops any line with a `\s-`.
@@ -913,7 +914,8 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
         with open(run_dir / "logs" / f"deps-{slug}.log", "w") as fh:
             ok = subprocess.run([docker, "tag", iso["image_id"], base_tag], stdout=fh, stderr=subprocess.STDOUT, env=denv, timeout=60).returncode == 0
             try:
-                ok = ok and subprocess.run([docker, "build", "--progress=plain", "--label", f"{DEPS_LABEL}={digest}", "--build-arg", f"BASE={base_tag}",
+                ok = ok and subprocess.run([docker, "build", "--progress=plain", "--label", f"{DEPS_LABEL}={digest}",
+                                            "--label", f"{DEPS_RECIPE_LABEL}={slug}", "--build-arg", f"BASE={base_tag}",   # the prune's recipe (B6)
                                             "--build-arg", f"PY={py}", "-t", tag, str(ctxd)], stdout=fh, stderr=subprocess.STDOUT, env=denv,
                                            timeout=3600).returncode == 0
             except subprocess.TimeoutExpired:

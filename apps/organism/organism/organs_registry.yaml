@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 0cae080a5de1560fa24021c6ed292de60beaa08e07c376351a880f849b4873aa # pragma: allowlist secret
+checksum: 3aed442de24915e74c73ba81fe00456b246edcdc9110bf326a546736d2d3518c # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3186,6 +3186,29 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.localci_merger.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.disk_floor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3600
+  owner_module: scripts/ops/pro_disk_floor_tick.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.disk-floor
+  severity_on_silence: warning
+  notes: 'LOCALCI-SOVEREIGN B6 (docs/specs/localci-sovereign-2026-10-07.md, RULED 2026-10-08:
+    Pro keeps > 100 GB free, always): reads df -Pk /System/Volumes/Data every 30 min
+    (StartInterval 1800, no KeepAlive). ok above 100 GB, warning 60-100, failed under
+    60 (written as error); the note carries the free GB and, when not ok, the three
+    biggest top-level directories of ~. Kill switch PRO_DISK_FLOOR_ENABLED=false.
+    Born via organ_birth.py.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.disk_floor.json
     timestamp_field: ts
     status_field: status
 - id: pro.visa_reattestation

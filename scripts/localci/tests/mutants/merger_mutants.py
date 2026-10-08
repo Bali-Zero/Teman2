@@ -29,6 +29,15 @@ SW_DEAD = tuple(f"{SW}::{t}" for t in ("test_a_timeout_after_a_dead_xdist_worker
                                       "test_a_timeout_without_a_dead_worker_keeps_the_old_reason",
                                       "test_a_dead_worker_in_a_run_that_finished_changes_nothing"))
 
+# B6: the merger's own retention (prune.py) and the tick's host floor, against their tests
+PRUNE, PRUNE_T = "scripts/localci/prune.py", "scripts/localci/tests/test_prune.py"
+MERGER_T = "scripts/localci/tests/test_merger.py"
+B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_reading",
+                                             "test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning",
+                                             "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
+B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
+FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
+
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
@@ -147,6 +156,59 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "median-is-mean": (PY, '"median_s": round(median(t for t, _ in timed), 1) if timed else None',
                        '"median_s": round(sum(t for t, _ in timed) / len(timed), 1) if timed else None', (REPORT,)),
     "longest-is-first": (PY, '"longest_s": timed[-1][0] if timed else None', '"longest_s": timed[0][0] if timed else None', (REPORT,)),
+    # B6-1: deps images by explicit tag, 48 h unreferenced, never the newest of a recipe, never the candidate or base images
+    "b6-ref-window-shorter": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 46", (PRUNE_T,)),
+    "b6-ref-window-longer": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 72", (PRUNE_T,)),
+    "b6-newest-guard-off": (PRUNE, 'elif top is None or im["created"] is None or im["created"] == top["created"]:', 'elif top is None or im["created"] is None:', (PRUNE_T,)),
+    "b6-never-list-off": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return False\n", (PRUNE_T,)),
+    # lead's addenda (2026-10-08): service stand-ins from the BASE matrix, a cap of 2 per recipe, a tick in flight, the run in progress
+    "b6-stand-ins-ignored": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return tag.startswith(NEVER)\n", (PRUNE_T,)),
+    "b6-stand-ins-unread-removes": (PRUNE, "    for d in decided if errors else []:", "    for d in []:", (PRUNE_T,)),
+    "b6-stand-in-rule-unnamed": (PRUNE, "    if tag in stand_ins:\n        return \"service stand-in", "    if False:\n        return \"service stand-in", (PRUNE_T,)),
+    "b6-cap-3": (PRUNE, "MAX_IMAGES_PER_RECIPE = 2 ", "MAX_IMAGES_PER_RECIPE = 3 ", (PRUNE_T,)),
+    "b6-cap-off": (PRUNE, "elif ref is not None and len(slots) < MAX_IMAGES_PER_RECIPE:", "elif ref is not None:", (PRUNE_T,)),
+    "b6-grace-4": (PRUNE, "IN_FLIGHT_GRACE_H = 6 ", "IN_FLIGHT_GRACE_H = 4 ", (PRUNE_T,)),
+    "b6-grace-8": (PRUNE, "IN_FLIGHT_GRACE_H = 6 ", "IN_FLIGHT_GRACE_H = 8 ", (PRUNE_T,)),
+    "b6-run-in-progress-ignored": (PRUNE, "        elif im[\"tag\"] in in_progress or im[\"id\"] in in_progress:", "        elif False:", (PRUNE_T,)),
+    "b6-cap-counts-tags": (PRUNE, '            elif im["id"] in slots:\n', '            elif False:\n', (PRUNE_T,)),
+    "b6-second-kept-unnamed": (PRUNE, "elif ref is not None and len(slots) < MAX_IMAGES_PER_RECIPE:", "elif len(slots) < MAX_IMAGES_PER_RECIPE:", (PRUNE_T,)),
+    "b6-rm-forced": (PRUNE, '_docker(docker, "image", "rm", im["tag"])', '_docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
+    "b6-builder-never": (PRUNE, "    if not dry:   # the build cache grows", "    if False:   # the build cache grows", (PRUNE_T,)),
+    "b6-dry-run-removes": (PRUNE, "r = None if dry else _docker(", "r = None if False else _docker(", (PRUNE_T,)),
+    # B6-2: 7 days full, then the bulk goes; 30 days, then only the verdict files
+    "b6-full-days-6": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 6, 30", (PRUNE_T,)),
+    "b6-full-days-8": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 8, 30", (PRUNE_T,)),
+    "b6-verdict-days-29": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 7, 29", (PRUNE_T,)),
+    "b6-verdict-days-31": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 7, 31", (PRUNE_T,)),
+    "b6-verdict-files-lost": (PRUNE, "rel not in VERDICT", "True", (PRUNE_T,)),
+    "b6-call-graphs-kept": (PRUNE, "f in BULK)", "False)", (PRUNE_T,)),
+    "b6-undated-run-trimmed": (PRUNE, "if age_h is None or age_h < FULL_DAYS * 24:", "if age_h is not None and age_h < FULL_DAYS * 24:", (PRUNE_T,)),
+    # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free no run starts
+    "b6-wrapper-floor-59": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-59}"', B6_WRAP),
+    "b6-wrapper-floor-le": (SH, '[ "$FREE" -lt "$FLOOR_GB" ]', '[ "$FREE" -le "$FLOOR_GB" ]', B6_WRAP),
+    "b6-wrapper-no-fstrim": (SH, 'prune --state-dir "$STATE" --fstrim', 'prune --state-dir "$STATE"', B6_WRAP),
+    "b6-wrapper-prune-failure-silent": (SH, 'if [ "$PRUNE_RC" -ne 0 ]; then', "if false; then", B6_WRAP),
+    "b6-wrapper-never-prunes": (SH, """if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then""", "if false; then", B6_WRAP),
+    "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
+    "b6-merger-floor-59": (PY, "type=float, default=60.0,", "type=float, default=59.0,", B6_FLOOR),
+    "b6-fstrim-without-removal": (PRUNE, "if fstrim and removed and not dry:", "if fstrim and not dry:", (PRUNE_T,)),
+    "b6-prune-code-sha-dropped": (PY, "    CODE_SHA = a.code_sha or None\n", "    CODE_SHA = None\n", (PRUNE_T,)),
+    # council round 1 (2026-10-08): the confirmed findings, each with its guard
+    "b6-unreadable-plan-ignored": (PRUNE, "            unreadable.append(", "            0 and unreadable.append(", (PRUNE_T,)),
+    "b6-half-plan-unread": (PRUNE, "        except ValueError:\n            doc = None\n", "        except ValueError:\n            continue\n", (PRUNE_T,)),
+    "b6-runs-link-followed": (PRUNE, "    if runs.is_symlink():   # the prune never leaves", "    if False:   # the prune never leaves", (PRUNE_T,)),
+    "b6-nanoseconds-dropped": (PRUNE, "+ float(m.group(2) or 0) if m else None", "if m else None", (PRUNE_T,)),
+    "b6-prune-failure-ok": (PY, 'return 1 if rec["failed"] else 0', 'return 1 if rec["images"]["errors"] else 0', (PRUNE_T,)),
+    "b6-prune-beside-tick": (PY, "    if fh is None:\n        journal(state, {\"kind\": \"prune\"", "    if False:\n        journal(state, {\"kind\": \"prune\"", (PRUNE_T,)),
+    "b6-wrapper-df-unread-ticks": (SH, 'if [ -z "$FREE" ]; then WARN="host free space unreadable', 'if false; then WARN="host free space unreadable', (f"{MERGER_T}::test_an_unreadable_host_reading_starts_no_run_and_the_organ_says_warning",)),
+    "b6-floor-organ-alive-ok": (FLOOR_SH, 'heartbeat "warning" "skipped: previous run alive', 'heartbeat "ok" "skipped: previous run alive', (FLOOR_T,)),
+    "b6-prune-code-sha-unvalidated": (PY, "if a.code_sha and not is_sha(a.code_sha):", "if False:", (PRUNE_T,)),
+    # B6-4: pro.disk_floor — ok above 100 GB, warning 60-100, failed under 60
+    "b6-floor-organ-ok-at-100": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
+    "b6-floor-organ-ok-above-101": (FLOOR_SH, "OK_ABOVE_MB=100000 ", "OK_ABOVE_MB=101000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-59": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=59000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-61": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=61000 ", (FLOOR_T,)),
+    "b6-floor-organ-failed-as-warning": (FLOOR_SH, '*) heartbeat "error" "failed: $NOTE"', '*) heartbeat "warning" "failed: $NOTE"', (FLOOR_T,)),
     # the tick's journal
     "durations-not-journalled": (PY, '                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},\n',
                                  "", (TICK,)),
@@ -180,7 +242,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "sh-required-check-gone": (SH, 'if [ -z "$PY" ] || [ -z "$NODE" ]; then', "if false; then", (TICK,)),
     "sh-required-via-expansion": (SH, 'PY="${MERGER_PYTHON:-}"    # the interpreter that runs the BASE runner', 'PY="${MERGER_PYTHON:?required}"', (TICK,)),
     "sh-kill-switch-ignored": (SH, 'if [ "${LOCALCI_MERGER_ENABLED:-true}" = "false" ]; then', "if false; then", (TICK,)),
-    "sh-heartbeat-always-ok": (SH, 'if [ "$rc" -eq 0 ]; then heartbeat ok', "if true; then heartbeat ok", (TICK,)),
+    "sh-heartbeat-always-ok": (SH, 'if [ "$rc" -ne 0 ]; then heartbeat error', "if false; then heartbeat error", (TICK,)),   # B6-3 reordered the trap
     # B3 — coverage travels with the verdict: only a full context counts toward the >= 12
     "report-counts-partial": (PY, 'compared_ctx = rep["coverage"]["compared_full"]', 'compared_ctx = sum(rep["counts"][k] for k in hc.COMPARED)', (REPORT,)),
     "report-coverage-not-read": (PY, 'k: {"verdict": v, "coverage": cov.get(k), ', 'k: {"verdict": v, "coverage": "full", ', (REPORT,)),
@@ -271,6 +333,9 @@ def copy_tree(dest: Path) -> None:
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
+    for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json"):
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)   # B6-4: the disk-floor organ and the files its test reads
+        shutil.copy2(ROOT / rel, dest / rel)
 
 
 def run_tests(tree: Path, files: tuple[str, ...]) -> int:

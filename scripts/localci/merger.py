@@ -618,6 +618,10 @@ def cmd_tick(a) -> int:
     if bound.read_text().strip() != a.repo.lower():
         print(f"merger: refusing — {state} belongs to {bound.read_text().strip()!r}, not {a.repo!r}", file=sys.stderr)
         return 2
+    if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:   # B6: the gate never finishes the job of filling the disk
+        journal(state, {"kind": "skipped", "why": "host_below_floor", "free_gb": a.host_free_gb, "floor_gb": a.min_host_free_gb})
+        print(f"merger: host_below_floor free_gb={a.host_free_gb:g} floor_gb={a.min_host_free_gb:g} — no run started")
+        return 0
     fh, lease = take_lease(state, a.repo)
     if fh is None:
         journal(state, {"kind": "skipped", "why": "lease", "holder": lease})
@@ -896,6 +900,40 @@ def _longest_gap_h(stamps) -> float:
     return round(max((b - a for a, b in zip(ts, ts[1:])), default=0) / 3600, 2)
 
 
+def cmd_prune(a) -> int:
+    """B6: the gate's own retention, run by the wrapper after the tick (the decision first). Only a merger state dir."""
+    global CODE_SHA
+    if a.code_sha and not is_sha(a.code_sha):   # the same provenance rule as the tick's
+        print(f"merger prune: refusing — --code-sha {a.code_sha!r} is not a full commit sha", file=sys.stderr)
+        return 2
+    CODE_SHA = a.code_sha or None
+    state = Path(a.state_dir).expanduser().resolve()
+    if not (state / "repo").is_file():
+        print(f"merger prune: refusing — {state} is not a merger state dir (no repo binding written by a tick)", file=sys.stderr)
+        return 2
+    spec = importlib.util.spec_from_file_location("localci_prune", Path(__file__).resolve().parent / "prune.py")
+    pm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pm)
+    fh, lease = take_lease(state, (state / "repo").read_text().strip())   # never beside a tick: it may be naming an image right now
+    if fh is None:
+        journal(state, {"kind": "prune", "dry_run": a.dry_run, "skipped": "lease", "holder": lease})
+        print("merger prune: skipped — the lease is held")
+        return 0
+    try:
+        rec = pm.prune(state, a.docker, dry=a.dry_run, fstrim=a.fstrim, colima=a.colima, **({"matrix": Path(a.matrix)} if a.matrix else {}))
+    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
+        journal(state, {"kind": "prune", "dry_run": a.dry_run, "error": redact(f"{type(exc).__name__}: {exc}")})
+        print(f"merger prune: error — {type(exc).__name__}", file=sys.stderr)
+        return 1
+    finally:
+        drop_lease(state, fh, lease)
+    journal(state, rec)
+    gone = rec["images"].get("would_remove" if a.dry_run else "removed") or []
+    print(f"merger prune: images_{'would_remove' if a.dry_run else 'removed'}={len(gone)} image_errors={len(rec['images']['errors'])} "
+          f"failed={rec['failed']} vm_free_gb={rec['vm_free_gb']} host_free_gb={rec['host_free_gb']}")
+    return 1 if rec["failed"] else 0
+
+
 def cmd_merge(_a) -> int:
     print(f"merger: refusing — {PHASE_E}", file=sys.stderr)
     return 2
@@ -953,11 +991,21 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--run-timeout", type=int, default=5400, help="seconds for the runner's `run` step")
     t.add_argument("--tick-timeout", type=int, default=9000, help="watchdog for the whole tick; past it the decision is ERROR")
     t.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
+    t.add_argument("--host-free-gb", type=float, help="the host's free GB as the launchd wrapper read it before the tick (B6)")
+    t.add_argument("--min-host-free-gb", type=float, default=60.0, help="under it no run starts: the skip is journalled (B6)")
     r = sub.add_parser("report", help="phase D: every decision beside what GitHub did with that head")
     r.add_argument("--repo", default=hc.DEFAULT_REPO)
     r.add_argument("--base", default=hc.DEFAULT_BRANCH)
     r.add_argument("--state-dir", default=str(DEFAULT_STATE))
     r.add_argument("--since", help="only decisions whose ts >= this ISO prefix (e.g. 2026-10-07)")
+    pr = sub.add_parser("prune", help="B6: remove the gate's unreferenced deps images by tag and trim old run dirs, journalled")
+    pr.add_argument("--state-dir", default=str(DEFAULT_STATE))
+    pr.add_argument("--docker", default="docker")
+    pr.add_argument("--dry-run", action="store_true", help="journal what would go, remove nothing")
+    pr.add_argument("--fstrim", action="store_true", help="after an image removal, `colima ssh -- sudo fstrim -av`")
+    pr.add_argument("--colima", default="colima")
+    pr.add_argument("--matrix", help="the BASE contexts matrix whose service stand-ins are never pruned (default: beside prune.py)")
+    pr.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
     sub.add_parser("merge", help=PHASE_E)
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["merge"]:   # whatever follows: there is no merge path to reach
@@ -967,6 +1015,8 @@ def main(argv: list[str] | None = None) -> int:
         return selftest()
     if a.cmd == "report":
         return cmd_report(a)
+    if a.cmd == "prune":
+        return cmd_prune(a)
     if a.cmd == "tick":
         if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", a.repo) or not re.match(r"^[A-Za-z0-9_./-]+$", a.base) or ".." in a.base:
             print(f"merger: refusing repo {a.repo!r} / base {a.base!r}", file=sys.stderr)
