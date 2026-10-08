@@ -457,7 +457,7 @@ superscar #7), `PATH` set explicitly (a tick without `gh` on PATH is an `error` 
 variable, fetches `origin/main` into the merger's mirror (a failed fetch is not fatal: the tick journals its own), resolves ONE
 sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a working-tree copy. A failure before Python starts
 (no git, no mirror) writes no journal line; it is in `~/logs/localci-merger.err.log`, and the report's `longest_silence` shows
-the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error` or `disabled`;
+the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error`, `warning` or `disabled`;
 registry id `pro.localci_merger`) by running `scripts/lib/heartbeat.sh` in its own process (its CLI mode, never `source`: the
 library cannot change the wrapper's options, traps or exit status). That library too comes from the mirror at the tick's
 sha, never from a working checkout: each tick refreshes `<state-dir>/heartbeat.sh`, and an exit before the extraction (the
@@ -502,6 +502,52 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.localci-merger.plist
     tail -3 ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl   # green≠working: read the journal, not the exit code
     cat ~/.organism/last_seen/pro.localci_merger.json
+
+### Retention and the host floor (B6)
+
+`docs/specs/localci-sovereign-2026-10-07.md`, phase B step B6. The wrapper's order on every tick:
+
+1. it reads the host's free GB (`df -Pk /System/Volumes/Data`, whole GB, floored);
+2. `merger.py tick … --host-free-gb=N --min-host-free-gb=60`: under the floor the tick journals
+   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":60}` before the lease and starts no run;
+3. `merger.py prune --state-dir <state> --fstrim`, after the tick and never before it, whether the tick ran, skipped or failed;
+4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N floor_gb=60: no run
+   started`) under the floor or when the prune failed, `ok` otherwise. The wrapper exits with the tick's code.
+
+A mirror sha older than B6 still ticks: `prune.py` and `runner.py` are extracted only when the sha has them, and the floor
+flags go only to a `merger.py` that knows them (under the floor, a merger that cannot journal the skip is not started).
+
+    python scripts/localci/merger.py prune [--state-dir ~/.nuzantara-pilots/local-ci/merger] [--docker docker] \
+        [--dry-run] [--fstrim] [--colima colima]
+
+The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and `<state>/runs`:
+
+- **Deps images.** Removed by `docker image rm <tag>` (never `-f`, never `prune -a`) only when no `state/plan.json` of
+  the last 48 h names the image by tag or id, it was built more than 48 h ago, and it is not the newest image of its recipe.
+  The recipe is the `org.nuzantara.localci.recipe` label the deps build now sets, else the check whose job named the tag in
+  any plan; an image whose recipe nothing records stays. `localci-candidate:*` and `localci-deps-base:*` are never in a
+  removal set. After a removal, `docker builder prune -f --filter until=24h` on the current builder, the one the runner's
+  `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's).
+- **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
+  run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
+  `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched.
+- **fstrim.** With `--fstrim`, after at least one image removal: `colima ssh -- sudo fstrim -av`, so the VM's freed blocks
+  leave the host's sparse disk.
+
+One journal line per prune (its shape; the numbers below are illustrative, not measured); `--dry-run` writes
+`would_remove` instead of `removed` and removes nothing:
+
+    {"ts": "…Z", "host": "…", "code_sha": "…", "kind": "prune", "dry_run": false,
+     "vm_free_gb": {"before": 31.2, "after": 40.9},
+     "host_free_gb": {"before": 77.1, "after": 77.4, "after_fstrim": 87.0},
+     "images": {"removed": [{"tag": "localci-deps:…", "gb": 9.85, "rule": "no plan of the last 48 h names it, built 72.0 h ago, not the newest of recipe backend-tests (newest localci-deps:…)"}],
+                "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe backend-tests"}], "errors": []},
+     "builder_prune": {"rc": 0, "tail": "Total: 3.1GB"},
+     "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},
+     "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}}
+
+An image still in use is an `errors` entry and the prune exits 1, so the organ says `warning`. The prune reaches Pro when the
+wrapper's live copy is replaced with the commands of the block above (`cp` beside it, `mv`, `cmp -s`).
 
 ### Disk floor organ (B6, Pro)
 
