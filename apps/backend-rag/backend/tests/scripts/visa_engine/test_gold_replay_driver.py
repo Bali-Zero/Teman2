@@ -324,6 +324,45 @@ def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> N
         and (not isinstance(row["explanation"], str) or not row["explanation"].strip())
     }
     assert unexplained_persona_ids == {9, 10}
+    _assert_engine_gap_pinned(report)
+
+
+# How personas 9 and 10 diverge TODAY (seq-25): the engine ignores the application
+# channel, so both answer the pre-investment visit visa with no reason code at all.
+# Pinned so that a silent worsening (a new state, a different candidate, a new reason
+# code) fails here instead of hiding behind "still personas 9 and 10".
+_ENGINE_GAP_ACTUALS = {
+    9: {
+        "state": "SUPPORTED_CANDIDATES",
+        "candidate_products": ["D12"],
+        "review_reason_codes": [],
+        "no_path_reason_codes": [],
+    },
+    10: {
+        "state": "SUPPORTED_CANDIDATES",
+        "candidate_products": ["D12"],
+        "review_reason_codes": [],
+        "no_path_reason_codes": [],
+    },
+}
+
+
+def _assert_engine_gap_pinned(report: dict) -> None:
+    rows = {row["persona_id"]: row for row in report["personas"]}
+    for persona_id, pinned in _ENGINE_GAP_ACTUALS.items():
+        actual = {key: rows[persona_id]["actual"][key] for key in pinned}
+        assert actual == pinned, f"persona {persona_id} diverges differently now: {actual}"
+
+
+def test_engine_gap_pin_fails_when_persona_9_gets_worse() -> None:
+    report = driver.build_offline_report(generated_at=_OFFLINE_AT)
+    _assert_engine_gap_pinned(report)
+
+    row = next(row for row in report["personas"] if row["persona_id"] == 9)
+    row["actual"]["state"] = "NO_SUPPORTED_PATH"
+    row["actual"]["candidate_products"] = []
+    with pytest.raises(AssertionError, match="persona 9 diverges differently now"):
+        _assert_engine_gap_pinned(report)
 
 
 _PERSONA_1_PRE_SEQ23_EXPECTATION = ("APPLICANT_IS_INDONESIAN_CITIZEN",)

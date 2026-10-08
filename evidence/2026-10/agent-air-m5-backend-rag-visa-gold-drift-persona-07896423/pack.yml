@@ -19,6 +19,9 @@ lanes:
     nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-025.signed.json
     query_hash: "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
     note: query_hash = the seq-25 payload_sha256 the trace was run against.
+  - lane: gold-drift-red-team
+    role: review
+    seat: codex-gpt-5.6-sol (Codex GPT-5.6, read-only sandbox) on the staged patch.
 pii_scan: clean
 bites:
   consumer: >-
@@ -69,7 +72,33 @@ receipts:
     exit: 0
     ts: "2026-10-08T06:34:04Z"
     seat: Claude Fable 5.1 implementer
+  - claim: The floor test now pins how personas 9 and 10 diverge, and fails when persona 9 gets worse.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/scripts/visa_engine/test_gold_replay_driver.py backend/tests/services/visa_engine/test_evaluator_gold.py -q -p no:cacheprovider -o addopts=""
+    result: "41 passed in 3.09s"
+    exit: 0
+    ts: "2026-10-08T07:09:20Z"
+    seat: Claude Fable 5.1 implementer
 dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: The sandbox could not execute pytest or driver writes.
+    status: RETRACTED
+    note: environment, re-run by author (40 passed, 18/20 before this head; 41 passed after)
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Persona 1 confirmed; the raw replay yields five proofs and the public adapter merges the
+      two age proofs into four codes.
+    status: CONFIRMED
+    note: the research note now says so
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Rule-history claims in the note were inexact (rule first appearances, the seq-23 change,
+      the source-file count, the seq-1 freshness answer).
+    status: CONFIRMED
+    note: re-derived with git log -S and the pack sources, corrected in this head
+  - seat: codex-gpt-5.6-sol
+    objection: The floor test did not pin how personas 9 and 10 diverge.
+    status: CONFIRMED
+    note: pinned in this head, with a guilt case that mutates persona 9's actual
   - seat: self-review
     objection: >-
       Personas 9 and 10 could instead be re-encoded with the fact production reads and a fresh

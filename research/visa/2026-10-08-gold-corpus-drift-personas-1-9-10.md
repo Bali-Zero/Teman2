@@ -9,6 +9,7 @@ sources:
   - apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-025.{source,signed}.json
   - apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-0{06,23,24}.signed.json
   - git history of the corpus and packs (befb71ba00, 587f468fe7, 97f56f2b56, 529efc1a11)
+adversarial_review: codex
 ---
 
 # Gold corpus drift — personas 1, 9 and 10
@@ -35,21 +36,26 @@ current date they all answer stale-source review.
 | State | `NO_SUPPORTED_PATH` | `NO_SUPPORTED_PATH` |
 | No-path codes | `APPLICANT_IS_INDONESIAN_CITIZEN` | `BVK_NATIONALITY_ONLY`, `APPLICANT_IS_INDONESIAN_CITIZEN`, `VOA_DUAL_NATIONALITY_NOT_ASSESSED`, `AGE_BELOW_55` |
 
-The state and the citizen exclusion were always right. Only the code list was
+Since seq-23 the state and the citizen exclusion are right. Only the code list is
 incomplete. The persona has two nationalities and the shared baseline is under 55, so
-other products' own hard filters fire on the same facts:
+other products' own hard filters fire on the same facts. The raw evaluator yields five
+proofs, one per rule below. The public policy adapter merges the two age proofs into one
+`AGE_BELOW_55`, which is why the expectation lists four codes:
 
 - `hf.citizen` emits `APPLICANT_IS_INDONESIAN_CITIZEN`.
 - `hf.a1.not-bvk-nationality` emits `BVK_NATIONALITY_ONLY`.
 - `hf.b1.voa-dual-nationality` emits `VOA_DUAL_NATIONALITY_NOT_ASSESSED`.
 - `hf.e33e.age-below-55` and `hf.e33f.age-below-55` both emit `AGE_BELOW_55`, deduplicated.
 
-History from the packs on disk: through seq-22 the persona landed on
-`HUMAN_REVIEW_REQUIRED` with `CITIZENSHIP_LIST_DIVERGENCE`. Seq-23 (587f468fe7,
-Slice A9.3) turned the review holds into named dead ends and produced five codes,
-including `SPONSOR_REQUIRED`. Seq-24 (97f56f2b56) retired `hf.e33f.sponsor-required`
-and left the current four. Personas 2, 3 and 4 were re-derived in those two commits.
-Persona 1 was missed because it kept the right state and so looked healthy.
+History, each claim re-derived from the pack sources and `git log -S`:
+
+- `hf.citizen`, `hf.a1.not-bvk-nationality` and `hf.e33e.age-below-55` exist in every pack since seq-1, the first signed production pack (3c412c96b0).
+- `hf.e33f.age-below-55` exists since seq-6 (529efc1a11). Seq-5 has no signed file on disk.
+- `hf.b1.voa-dual-nationality` is new in seq-23 (candidate e04b4aa137, signed 587f468fe7). The same pack retired the review hold `CITIZENSHIP_LIST_DIVERGENCE`, which seq-22 still carries. That flipped persona 1 from `HUMAN_REVIEW_REQUIRED` to `NO_SUPPORTED_PATH` with five codes, including `SPONSOR_REQUIRED` from `hf.e33f.sponsor-required`.
+- Seq-24 (97f56f2b56) retired `hf.e33f.sponsor-required`, leaving the four codes that seq-25 (2a1e00e0d3) still emits.
+- Seq-1 answers `DECISIVE_SOURCE_FRESHNESS_UNKNOWN` at its signing date, so the review reason for persona 1 before seq-23 is only stated for the seq-4 to seq-22 packs on disk, replayed at their own signing dates.
+
+Personas 2, 3 and 4 were re-derived in the seq-23 and seq-24 commits. Persona 1 was not.
 
 Decision A: the gold was stale and the engine is right. The expectation now lists the
 four codes in engine order, with a dated comment. The legal citation and rationale are
@@ -67,7 +73,7 @@ unchanged.
 Both expected outcomes were copied from the synthetic five-product fixture in
 `_gold_fixtures.py`, which has rules keyed on `process.application_channel`. No
 production pack has ever had such a rule, and neither expected reason code exists in
-any pack. Counted in all 23 source files on disk, the fact name and both codes occur
+any pack. Counted in all 24 source files on disk, the fact name and both codes occur
 zero times.
 
 The fact is accepted on the public request, then ignored. Persona 9, persona 10 and
@@ -114,3 +120,14 @@ Commands run from `apps/backend-rag`:
 PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.gold_replay_driver --offline --out <report.json>
 PYTHONPATH=. .venv/bin/pytest backend/tests/scripts/visa_engine backend/tests/services/visa_engine/test_evaluator_gold.py -q -p no:cacheprovider -o addopts=""
 ```
+
+## Adversarial review
+
+Codex GPT-5.6, read-only sandbox, 2026-10-08: 4 findings.
+
+- **[BLOCK]** The sandbox could not execute pytest or driver writes. This is the environment, not the patch. Re-run by the author: 40 passed, 18/20.
+- **[LOW]** Persona 1 confirmed. The five raw proofs are merged to four by the public adapter. The note now says so.
+- **[MEDIUM]** The rule-history claims were inexact. Corrected in this head.
+- **[MEDIUM]** The floor did not pin how personas 9 and 10 diverge. Pinned in this head.
+
+Surviving: none.
