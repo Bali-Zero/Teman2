@@ -552,6 +552,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         line = journal(state, {**rec, "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
                                "contexts_status": ctx.get("status"), "contexts": {k: (v or {}).get("verdict") for k, v in results.items()},
                                "coverage": {k: (v or {}).get("coverage") for k, v in results.items()},
+                               "skipped": {k: v["skipped"] for k, v in results.items() if isinstance((v or {}).get("skipped"), str)},
                                "checks": {k: (v or {}).get("status") for k, v in (status.get("checks") or {}).items()},
                                "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},
                                "seal": gate["seal"], "runner_rc": {k: v for k, v in gate.items() if k.endswith("_rc")},
@@ -751,17 +752,19 @@ def cmd_report(a) -> int:
             for k, v in (d.get("durations") if isinstance(d.get("durations"), dict) else {}).items():
                 if is_num(v):
                     check_max_s[k] = max(check_max_s.get(k, 0), v)
-            compared_ctx, not_full = 0, {"partial": [], "unrecorded": []}
+            compared_ctx, not_full, skip_agreed = 0, {"partial": [], "unrecorded": []}, []
             if d.get("contexts_status") is not None:   # the gate ran: set its per-context verdicts beside the hosted ones
                 # coverage as the tick journalled it from the BASE runner; a line that predates it carries none: unrecorded, never full
                 cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else {}
+                skip = d.get("skipped") if isinstance(d.get("skipped"), dict) else {}   # B5; a line before it records none: an execution
                 status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"], "results": {
-                    k: {"verdict": v, "coverage": cov.get(k)} for k, v in (d.get("contexts") or {}).items()}}}
+                    k: {"verdict": v, "coverage": cov.get(k), "skipped": skip.get(k)} for k, v in (d.get("contexts") or {}).items()}}}
                 rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])
                 for k, v in rep["counts"].items():
                     ctx_counts[k] += v
                 compared_ctx = rep["coverage"]["compared_full"]   # a partial AGREE is an agreement on a subset: shown, never counted
                 not_full = {"partial": rep["coverage"]["compared_partial"], "unrecorded": rep["coverage"]["compared_unrecorded"]}
+                skip_agreed = rep["coverage"]["compared_skip_agreed"]   # full: the decision compared, counted apart from executions
             # a merge whose hosted side is still PENDING compared nothing yet: N contexts agreeing beside one unreported is no evidence
             merged_at = prs[n].get("merged_at") if merged_here else None
             if merged_here and not is_ts(merged_at):
@@ -769,6 +772,7 @@ def cmd_report(a) -> int:
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "compared_partial": not_full["partial"], "compared_unrecorded": not_full["unrecorded"],
+                         "compared_skip_agreed": skip_agreed,
                          "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok"
@@ -806,6 +810,8 @@ def cmd_report(a) -> int:
     partial_names = sorted({n for r in rows for n in r["compared_partial"]})
     with_partial = {r["pr"] for r in rows if r["compared_merge"] and r["compared_partial"]}   # a PR counts once, as with_partial if any of its rows is
     merged_partial_names = sorted({n for r in rows if r["compared_merge"] for n in r["compared_partial"]})
+    compared_skip_agreed = sum(len(r["compared_skip_agreed"]) for r in rows)
+    merged_skip_agreed = sum({r["pr"]: len(r["compared_skip_agreed"]) for r in rows if r["compared_merge"]}.values())   # a PR counts once
     compared_days = _days(merges[0], merges[-1]) if merges else 0.0
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
     ready = fg == 0 and compared_merges >= 50 and compared_days >= 14   # lead's ruling 2026-10-07: both, never either
@@ -821,7 +827,8 @@ def cmd_report(a) -> int:
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
                       "compared_partial": compared_partial, "compared_unrecorded": compared_unrecorded, "partial_contexts": partial_names,
                       "compared_merges_full_only": compared_merges - len(with_partial), "compared_merges_with_partial": len(with_partial),
-                      "compared_merges_partial_contexts": merged_partial_names,
+                      "compared_merges_partial_contexts": merged_partial_names, "compared_skip_agreed": compared_skip_agreed,
+                      "compared_merges_skip_agreed": merged_skip_agreed,
                       "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
                       "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "skipped": skipped,
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue,
@@ -835,7 +842,7 @@ def cmd_report(a) -> int:
     w = out["window"]
     print(f"window: {first} .. {last} ({days} days) decisions={w['decisions']} distinct_prs={w['distinct_prs']} merged_prs={w['merged_prs']} "
           f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}) "
-          f"compared_partial={compared_partial} compared_unrecorded={compared_unrecorded} errors={errors} "
+          f"compared_partial={compared_partial} compared_unrecorded={compared_unrecorded} compared_skip_agreed={compared_skip_agreed} errors={errors} "
           f"skipped={skipped or 0}")
     print(f"gaps: longest between decisions={decision_gap_h}h, longest between any journal lines={silence_h}h, "
           f"last line {last_line_age_h}h ago" + (f", {future_lines} line(s) dated in the future" if future_lines else "")
@@ -853,7 +860,8 @@ def cmd_report(a) -> int:
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
           f"compared, >= {MIN_COMPARED_FULL} of them full and at most {MAX_COMPARED_PARTIAL} partial); now false_green={fg}, "
           f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}: "
-          f"{merged_partial_names}), compared_days={compared_days}; of the contexts compared, {compared_partial} were partial "
+          f"{merged_partial_names}), {merged_skip_agreed} of their full contexts were skip agreements (the classifier's decision compared, "
+          f"not an execution), compared_days={compared_days}; of the contexts compared, {compared_partial} were partial "
           f"{partial_names} and {compared_unrecorded} carried no coverage record (a partial one never counts as full, an unrecorded one "
           f"never counts); "
           f"hosted_red_merged={len(hosted_red_merged)} (information: GitHub merged a red required check; the hosted failure itself never "

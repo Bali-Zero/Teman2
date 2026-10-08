@@ -87,7 +87,8 @@ def test_a_violation_turns_the_context_red(tmp_path):
 
 def test_a_candidate_cannot_swap_the_judge_that_runs_on_the_host(tmp_path):
     _, s = ran(tmp_path, {JUDGE: "import sys\nsys.exit(0)\n", "docs/bad.md": "VIOLATION\n"}, host_ctx())
-    assert s["checks"]["ctx.judge"]["status"] == "FAIL"
+    c = s["checks"]["ctx.judge"]   # the BASE judge ran and read red, never the swapped one; since B5 that red is no verdict either
+    assert c["status"] == "BLOCKED" and c["reason"].startswith("judge_rewritten: ") and "read red with the BASE judge" in c["reason"]
 
 
 def test_a_green_won_while_the_candidate_rewrites_its_judge_is_blocked_not_pass(tmp_path):
