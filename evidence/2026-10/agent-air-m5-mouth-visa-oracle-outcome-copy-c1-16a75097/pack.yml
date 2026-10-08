@@ -43,25 +43,25 @@ receipts:
     cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
     result: "Test Files  45 passed (45); Tests  1209 passed (1209)"
     exit: 0
-    ts: "2026-10-08T11:02:48Z"
+    ts: "2026-10-08T11:12:42Z"
     seat: Claude Fable 5.1
   - claim: The mouth typecheck is clean.
     cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
     result: "no output"
     exit: 0
-    ts: "2026-10-08T11:02:53Z"
+    ts: "2026-10-08T11:12:52Z"
     seat: Claude Fable 5.1
   - claim: ESLint reports no error on the touched source files (warnings were already there).
     cmd: cd apps/mouth && npx eslint <touched source files>
-    result: "0 errors, 4 warnings"
+    result: "0 errors on the two changed source files"
     exit: 0
-    ts: "2026-10-08T11:02:56Z"
+    ts: "2026-10-08T11:12:55Z"
     seat: Claude Fable 5.1
   - claim: Prettier accepts every touched file including the stylesheet.
     cmd: cd apps/mouth && npx prettier --check <touched files>
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-08T11:02:58Z"
+    ts: "2026-10-08T11:12:56Z"
     seat: Claude Fable 5.1
 dissent: []
 spend:

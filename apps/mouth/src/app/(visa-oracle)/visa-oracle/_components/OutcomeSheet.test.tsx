@@ -513,13 +513,13 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
     [
       "en",
       [
-        "Why this is held",
+        "Why this is paused",
         "What the reviewer checks",
         "What to prepare",
         "How this is handled",
       ],
       [
-        "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
+        "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor reviews it with you before any path is confirmed.",
         "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
         "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
         "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
@@ -528,13 +528,13 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
     [
       "id",
       [
-        "Mengapa hasil ini ditahan",
+        "Mengapa hasil ini ditunda",
         "Apa yang diperiksa peninjau",
         "Apa yang perlu disiapkan",
         "Bagaimana hal ini ditangani",
       ],
       [
-        "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan ini; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+        "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
         "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
         "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
         "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
@@ -659,7 +659,7 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", {
-        name: "What a person will check about your case",
+        name: "What a Bali Zero advisor will check about your case",
       }),
     ).toBeNull();
     expect(container.querySelectorAll("[data-review-cause]")).toHaveLength(0);
@@ -672,7 +672,7 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
     );
     expect(
       screen.getByRole("heading", {
-        name: "What a person will check about your case",
+        name: "What a Bali Zero advisor will check about your case",
       }),
     ).toBeInTheDocument();
     expect(
@@ -1180,7 +1180,7 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
     ).toBeNull();
     expect(
       screen.queryByRole("heading", {
-        name: "What a person will check about your case",
+        name: "What a Bali Zero advisor will check about your case",
       }),
     ).toBeNull();
     expect(
@@ -1218,7 +1218,7 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
-        name: "What a person will check about your case",
+        name: "What a Bali Zero advisor will check about your case",
       }),
     ).toBeInTheDocument();
     expect(

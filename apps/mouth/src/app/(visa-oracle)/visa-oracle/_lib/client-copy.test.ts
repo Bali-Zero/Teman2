@@ -44,7 +44,32 @@ const BANNED: readonly RegExp[] = [
   /\bprovenance\b/i,
   /\b(?:a|the|this|that|safety|client) hold\b/i,
   /\bpenahanan\b/i,
+  /\bsigned rules\b/i,
+  /\ba person needs\b/i,
+  /\bheld\b/i,
+  /\bditahan\b/i,
+  /\bseseorang\b/i,
 ];
+
+// Exact phrases that are ordinary language, not engine voice: a deposit "held
+// in your own name", property "held and valued", a pass "held with no sponsor",
+// and owner-approved lines that name "a person" as the reviewer.
+const ALLOWED_PHRASES: readonly string[] = [
+  "held in your own name",
+  "how it is held and valued",
+  "held with no sponsor",
+  "ditinjau oleh seseorang",
+  "ditinjau seseorang",
+  "a licensed visa agency or a person in Indonesia",
+  "biro visa berlisensi atau seseorang di Indonesia",
+];
+
+function withoutAllowed(value: string): string {
+  return ALLOWED_PHRASES.reduce(
+    (text, phrase) => text.split(phrase).join(" "),
+    value,
+  );
+}
 
 // "signed" and "operational" are engine jargon as UI labels but ordinary words
 // inside a reason sentence ("a signed Pernyataan Integrasi", "operational
@@ -103,7 +128,7 @@ describe("client-visible copy", () => {
   it("never carries engine jargon in outcome/verdict copy, next steps, reasons or fallbacks", () => {
     const offenders = clientStrings().flatMap(({ where, value, strict }) =>
       [...BANNED, ...(strict ? BANNED_IN_DICT : [])]
-        .filter((re) => re.test(value))
+        .filter((re) => re.test(withoutAllowed(value)))
         .map((re) => `${where} ~ ${re} :: ${value.slice(0, 80)}`),
     );
     expect(offenders).toEqual([]);
