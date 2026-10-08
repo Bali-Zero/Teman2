@@ -1,0 +1,49 @@
+task_id: localci-b3-1008
+mission: LOCALCI-SOVEREIGN (phase B, step B3)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Declared by the mandate: three honesty gaps the B2 gates found, each small and each a narrowing — a partial
+  agreement stops counting as full, a full disk stops reading as a verdict, a host under a free-space floor runs no
+  service leg. Nothing flips: no workflow, branch protection, status or credential is touched, and the merger stays
+  shadow unless both halves of its arm are set, as before.
+l_level: L2
+gate_class: opus
+objective: >-
+  Make the local gate's numbers honest about three host and coverage conditions (B2 pack, residuals and dissent):
+  hosted_compare and the merger carry each context's declared coverage and count a partial context apart from the
+  >= 12 of a compared merge; a sandbox output that carries a disk-full error line is ERROR host_disk_full, never FAIL
+  and never OK; a service leg does not start on a docker host under LOCALCI_MIN_FREE_GB (default 12) and is BLOCKED
+  host_disk_below_floor, never a verdict.
+constraints:
+  - No .github/ file, branch protection, commit status or credential is touched; nothing is posted or pushed.
+  - Check logic comes from BASE as before (matrix via --contexts-file, runner from the base worktree); the candidate never judges itself.
+  - Pro is read-only for this lane except measurements; nothing under ~/.nuzantara-pilots/local-ci/merger/ is read or written.
+  - A host condition is never a verdict in either direction; a genuine test failure that merely mentions the words keeps its FAIL.
+acceptance:
+  - text: WHEN a context is declared coverage partial and agrees, hosted_compare SHALL keep the class AGREE, carry coverage partial and its note on the row and the printed line, and count it apart (agreement_full, coverage.compared_partial).
+    probe: "test_hosted_compare.py::test_a_partial_agree_keeps_its_class_but_its_row_says_partial_and_it_is_counted_apart"
+  - text: WHEN a merged candidate was compared on 12 contexts of which one is partial, the merger report SHALL NOT count it as a compared merge; with 12 full contexts it SHALL.
+    probe: "test_merger_report.py::test_a_merge_compared_on_twelve_contexts_one_of_them_partial_is_not_a_compared_merge"
+  - text: WHEN the enqueue criterion meets a partial context that is OK, it SHALL treat it as executed and name it on the decision line (executed_required N/M (partial - name)).
+    probe: "test_merger.py::test_a_partial_context_is_executed_and_passes_but_the_decision_line_names_it"
+  - text: WHEN a sandbox output carries a disk-full error line, the context SHALL be ERROR with a reason starting host_disk_full, even when the step exited 0; a line that merely mentions the words SHALL keep the verdict.
+    probe: "test_host_disk.py::test_a_shard_that_failed_on_a_full_disk_is_error_host_disk_full_and_the_chain_stops"
+  - text: WHEN the docker host has less free space than LOCALCI_MIN_FREE_GB, every service leg SHALL be BLOCKED host_disk_below_floor before any container starts; with the floor at 0 the legs SHALL run.
+    probe: "test_host_disk.py::test_a_floor_above_the_free_space_blocks_every_service_leg_before_any_container_starts"
+assumptions:
+  - text: The enqueue criterion keeps refusing a context the host could not judge; "treated as non-executed" means it is counted out of executed_required and named apart from a FAIL, not that it passes.
+    status: unverified
+    note: Spec §2 C3a-2 says a BLOCKED context passes only when its mapping is blocked or not_implemented; a floor-blocked context has mapping executed. The orchestrator's gate decides.
+    probe: test_merger.py::test_a_context_the_host_could_not_judge_is_not_executed_named_and_still_refuses
+  - text: A decision journalled before B3 carries no coverage record and therefore counts none of its contexts as full.
+    status: unverified
+    note: Conservative by design; it resets the phase-E clock to B3's deployment. Before #8056 no partial context executed, so the loss is evidence that was in fact full.
+    probe: test_merger_report.py::test_a_line_journalled_before_coverage_was_recorded_counts_no_context_as_full
+consumer_map:
+  - scripts/localci/hosted_compare.py on Pro — the row's coverage and the coverage line are this change's output.
+  - scripts/localci/merger.py report and tick on Pro (launchd shadow merger) — compared_merges, compared_partial, executed_required.
+  - scripts/localci/runner.py run on Pro — the status line for host_disk_full and host_disk_below_floor.
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 0

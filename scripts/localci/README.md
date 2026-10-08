@@ -197,7 +197,7 @@ probe that cannot read the host is `host_disk_unmeasured`, a floor that is not a
 `0` turns the floor off without reading anything. The merger passes `LOCALCI_MIN_FREE_GB` from the tick's environment to the
 runner (the only addition to its allowlist) and its criterion counts such a context as not executed, never as a FAIL, and
 refuses. The reading is cached for the run: a leg that starts later in the run is judged on the first reading. Measured on
-Pro at 07:31Z on 2026-10-08, with the shadow merger running PR #8060's E2E legs: 3.5 GB free (95% of 61.6 GB used) — under
+Pro at 07:31Z on 2026-10-08, with the shadow merger running PR #8060's E2E legs: 3.58 GB free (3500604 KiB available, 95% of 61.6 GB used) — under
 the default floor every service leg there would be BLOCKED until space is freed or the floor is set in the tick's environment.
 
 ## Security: Pysa taint judge (`security.pysa_python`)
