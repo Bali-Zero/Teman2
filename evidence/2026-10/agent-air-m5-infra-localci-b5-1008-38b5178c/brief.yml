@@ -1,0 +1,53 @@
+task_id: localci-b5-1008
+mission: LOCALCI-SOVEREIGN (phase B, step B5)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Declared by the mandate: two labelling faults read from the first tick on B3's code. A red read with a BASE judge the
+  candidate rewrites stops being claimed, and a skip stops being labelled an execution. Nothing flips: no workflow, branch
+  protection, status or credential is touched, the compared-merge rule and its constants are unchanged, and the merger stays
+  shadow unless both halves of its arm are set, as before.
+l_level: L2
+gate_class: opus
+objective: >-
+  From the spec paragraph RULED 2026-10-08 (decision 09:49:54Z on PR #8076): a FAIL or ERROR on a step whose trusted inputs
+  the candidate rewrote is BLOCKED judge_rewritten, never FAIL, scoped to the step, LOCAL_BLIND in hosted_compare and refused
+  by the C3a-2 criterion; and a context the trusted change_map skips is compared as a skip, labelled per the three cases,
+  counted full when both sides skipped or when only hosted did and partial when only the runner did, with
+  compared_skip_agreed counted apart in the merger's report.
+constraints:
+  - No .github/ file, branch protection, commit status or credential is touched; nothing is posted or pushed.
+  - Check logic comes from BASE as before; the candidate's rewritten judge is not run.
+  - The compared-merge constants (12, 11, 1) are untouched.
+  - A judge rewrite never yields a verdict in either direction; a red on a step whose judges were not rewritten stays FAIL.
+acceptance:
+  - text: "WHEN a FAIL or ERROR step's own trusted inputs include a file the candidate rewrites, steps_verdict SHALL return BLOCKED with the reason `judge_rewritten: <step> read red with the BASE judge while the candidate rewrites <files>; ...`."
+    probe: "test_judge_rewritten.py::test_a_red_step_whose_own_judge_is_rewritten_is_blocked_judge_rewritten_never_fail"
+  - text: WHEN a red step's own judges were not rewritten while another step's were, the context SHALL be FAIL naming that step only.
+    probe: "test_judge_rewritten.py::test_a_red_step_whose_judge_is_not_rewritten_stays_fail_beside_a_rewritten_one"
+  - text: WHEN the BASE judge reads red against a candidate that rewrites it and hosted reads green, hosted_compare SHALL class the row LOCAL_BLIND (FALSE_RED without the rewrite) and the merger's criterion SHALL refuse.
+    probe: "test_judge_rewritten.py::test_end_to_end_a_red_with_a_rewritten_judge_is_local_blind_and_refused_never_false_red"
+  - text: "WHEN both sides skipped, the row SHALL read `NOT_APPLICABLE (skip agreed: change_map)`, skip agreed, coverage full, and count in compared_skip_agreed."
+    probe: "test_skip_compare.py::test_both_sides_skipped_is_a_full_comparison_of_the_decision_labelled_as_a_skip"
+  - text: WHEN the runner skipped and hosted ran, the row SHALL read `NOT_APPLICABLE (skipped here; hosted ran)`, coverage partial and named.
+    probe: "test_skip_compare.py::test_skipped_here_while_hosted_ran_is_partial_and_named_and_a_wrong_skip_is_seen"
+  - text: WHEN the runner executed and hosted skipped, the row SHALL read `OK (executed; hosted skipped)`, coverage full.
+    probe: "test_skip_compare.py::test_run_here_while_hosted_skipped_is_full_and_says_so"
+  - text: WHEN a merge was compared on 11 full contexts of which k were skip agreements plus 1 partial, the report SHALL count it a compared merge and print k on the window and phase-E lines.
+    probe: "test_merger_report.py::test_eleven_full_of_which_three_are_skip_agreements_and_one_partial_still_count_and_the_lines_say_three"
+assumptions:
+  - text: A step reads the trusted files it names and no other rewritten judge, so the scope is the step.
+    status: unverified
+    note: A test named by one step that imports a rewritten file named only by another step reads that file too; its red would stay FAIL. Files no step names are judged at context scope, which covers the workflow and every trusted file only a test reads.
+    probe: phase D — decisions with judge_modified non-empty and a FAIL on a step that does not name the rewritten file (today 1 judge rewrite in 60 decisions)
+  - text: A hosted check run whose only conclusion is `skipped` was skipped by the job's `if:` on the classifier, the decision the runner's change_map stands in for.
+    status: unverified
+    note: GitHub reports `skipped` for any unmet `if:`; the four `runs_when` contexts read the classifier's outputs there.
+    probe: phase D — skip_agreed rows whose hosted job `if:` is not the classifier's
+consumer_map:
+  - scripts/localci/runner.py on Pro (the shadow merger's tick) — the context's status and reason, `no_verdict`, `skipped`.
+  - scripts/localci/hosted_compare.py on Pro — the row's class, `skip`, `local_detail`, coverage, compared_skip_agreed.
+  - scripts/localci/merger.py tick and report on Pro — the journalled `skipped` and the window and phase-E lines.
+appetite:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 0

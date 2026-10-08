@@ -1,0 +1,92 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN phase B, step B5 (spec paragraph RULED 2026-10-08, handed over in full by the orchestrator), to
+  Dux B5 on 2026-10-08 with a 2.5-hour budget, from origin/main 9d5c082288. Measured by the orchestrator on the first tick on
+  B3's code (2026-10-08T09:49:54Z, PR #8076, run pr8076-6fb180f5d57b-147531e6f8e6-20261008T093459Z on Pro): antidotes FALSE_RED
+  on a BASE test the candidate rewrites, and Backend Tests (Python) NOT_APPLICABLE labelled `OK (executed)` and counted full.
+lanes:
+  - lane: localci-b5-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux B5 of LOCALCI-SOVEREIGN, M5; Pro not touched)"
+pii_scan: clean
+pii_scan_note: Runner, comparator and merger code, a spec paragraph, tests and synthetic fixtures only; no client data was read or written.
+what_changed: |
+  scripts/localci/runner.py: step_judges (named_scripts' token reading, over any file list) names the trusted files each
+  planned step reads (`trusted` on the step). steps_verdict turns a FAIL or ERROR step whose own judges include a rewritten
+  file into BLOCKED `judge_rewritten: <step> read red with the BASE judge while the candidate rewrites <files>; hosted judges
+  with the candidate's copy, which this run did not execute — no verdict (never FAIL, never OK)`; a genuine red decides and is
+  the only one named; a rewritten file no step names (the workflow, a .gitattributes) and every step of a service context's
+  jobs are judged at context scope, said in the reason. evaluate_contexts names `no_verdict: judge_rewritten` and carries
+  `skipped: change_map` from the plan's change_map record onto the context result.
+  scripts/localci/hosted_compare.py: skip_reading writes `skip` and `local_detail` per the spec's three cases (agreed full,
+  hosted_ran partial and named, hosted_skipped full); coverage.compared_skip_agreed; the coverage line prints it.
+  scripts/localci/merger.py: the tick journals `skipped`; the report reads it back, prints compared_skip_agreed on the window
+  line and, on the phase-E line, how many full contexts of the compared merges were skip agreements; constants untouched.
+  Spec paragraph inserted after C3a-2 (prettier rewrote its two `*...*` markers to `_..._`); README rows; 21 mutant rules.
+  Tests: test_judge_rewritten.py and test_skip_compare.py (new), rows in test_merger_report, test_merger, and the judge-swap
+  assertion of test_contexts_exec changed by the ruling (FAIL -> BLOCKED judge_rewritten).
+proof: |
+  See receipts. The reason and the report lines are produced by the committed code on the fixture pipeline; the suite and the
+  full mutant sweep run on the head with origin/main (B4 #8086) merged in. No run on Pro: this lane does not touch it.
+bites:
+  consumer: >-
+    The shadow merger's tick and `merger.py report` on Pro (runner status, hosted_compare.json per decision, the window and
+    phase-E lines).
+  observation: >-
+    Owed after merge (this lane does not ship): on Pro, the first decision on a base carrying B5 where the change_map skips
+    Backend Tests (Python) and hosted skips it too journals `skipped: {"Backend Tests (Python)": "change_map"}`, its
+    hosted_compare.json row reads `local_detail: NOT_APPLICABLE (skip agreed: change_map)`, `skip: agreed`, and the report's
+    window line carries `compared_skip_agreed=` above 0; a PR that rewrites a BASE judge and reads red there is BLOCKED
+    judge_rewritten and LOCAL_BLIND, never FALSE_RED. Measured before merge on M5 with the committed code (receipts below).
+ground:
+  ts: "2026-10-08T10:09:30Z"
+  siblings: >-
+    Worktree from origin/main 9d5c082288 (carries B3 #8077). B4 (#8086) merged at 10:19:13Z as 2aaa5407ce; origin/main
+    aa56e78640 merged into this branch at db3c266365 (no rebase), cleanly.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 1
+receipts:
+  - claim: "The measured case's shape on the fixture pipeline (a host context, its BASE judge scripts/judge.py, a candidate that rewrites it and adds a violation): the committed code writes `BLOCKED judge_rewritten: judge read red with the BASE judge while the candidate rewrites ['scripts/judge.py']; hosted judges with the candidate's copy, which this run did not execute — no verdict (never FAIL, never OK)`; status.json names no_verdict judge_rewritten; hosted_compare beside a hosted success classes it LOCAL_BLIND (FALSE_RED without the rewrite), local_detail `BLOCKED (executed) judge_rewritten`; merger.local_side refuses both."
+    cmd: PYTHONPATH=. python3 - (test_contexts_exec.ran on the fixture, then hosted_compare.compare and merger.local_side)
+    exit: 0
+    ts: "2026-10-08T10:30:30Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The real immune-enforcement.yml step `Unit tests (guilt + innocence per tool)` names scripts/tests/test_lint_worktree_husky_symlink.py outright (line 591), so #8076's rewritten file is that step's own judge and the step scope reaches it."
+    cmd: grep -n 'test_lint_worktree_husky_symlink' .github/workflows/immune-enforcement.yml
+    exit: 0
+    ts: "2026-10-08T10:14:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The report on a merged decision with 12 contexts, ctx-00 partial and ctx-01..03 skipped on both sides prints the window line `... compared_merges=1 (full_only=0, with_partial=1) compared_partial=1 compared_unrecorded=0 compared_skip_agreed=3 errors=0 skipped=0` and the phase-E line `... compared_merges=1 (full_only=0, with_partial=1: ['ctx-00']), 3 of their full contexts were skip agreements (the classifier's decision compared, not an execution), compared_days=0.0; ...`."
+    cmd: PYTHONPATH=. python3 - (test_merger_report._merged_with_skips, stdout lines window and phase E)
+    exit: 0
+    ts: "2026-10-08T10:30:30Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Probes of the brief: test_judge_rewritten.py::test_a_red_step_whose_own_judge_is_rewritten_is_blocked_judge_rewritten_never_fail, test_judge_rewritten.py::test_a_red_step_whose_judge_is_not_rewritten_stays_fail_beside_a_rewritten_one, test_judge_rewritten.py::test_end_to_end_a_red_with_a_rewritten_judge_is_local_blind_and_refused_never_false_red, test_skip_compare.py::test_both_sides_skipped_is_a_full_comparison_of_the_decision_labelled_as_a_skip, test_skip_compare.py::test_skipped_here_while_hosted_ran_is_partial_and_named_and_a_wrong_skip_is_seen, test_skip_compare.py::test_run_here_while_hosted_skipped_is_full_and_says_so, test_merger_report.py::test_eleven_full_of_which_three_are_skip_agreements_and_one_partial_still_count_and_the_lines_say_three — 10 passed (parametrized rows) at db3c266365, after the merge of origin/main."
+    cmd: python3 -m pytest -q -p no:cacheprovider <the seven node ids>
+    exit: 0
+    ts: "2026-10-08T10:34:01Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Mutant sweep, the 21 B5 rules before the merge of origin/main: 21/21 killed, 0 survived, 0 errors, 0 stale."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 21 b5-* rules>
+    exit: 0
+    ts: "2026-10-08T10:27:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: SUITE_SWEEP_RESULT
+    cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider; python3 scripts/localci/tests/mutants/merger_mutants.py
+    exit: 0
+    ts: "SUITE_TS"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "The candidate's judge is not run: a rewritten judge is the reviewer's (review_independent). Running both judges and reporting the pair is a later step if phase D shows judge rewrites are frequent."
+  - "The skip agreement compares the classifier's decision, not an execution: both sides skipping on the same wrong classification is an agreement here and a green on GitHub."
+  - "A judge swapped for one that always passes, beside a real violation, was FAIL and read FALSE_RED against hosted's green; it is now BLOCKED judge_rewritten and LOCAL_BLIND. It is still refused and never green, but phase D no longer counts it as a disagreement."
+  - "The scope is the step as the plan reads it: a step's red stays FAIL when it reads a rewritten file only another step names (a test importing a sibling's helper). Files no step names, the workflow and a .gitattributes are judged at context scope."
+  - "A skip agreement is counted full whatever the matrix's coverage of an execution (E2E's partial is about its empty secrets): the spec's 'a full comparison of the decision'."
+  - "Decisions journalled before B5 record no skip: their skips read as executions, and a skip here beside a hosted run was counted full then and still is on those lines."
+  - "No adversarial round: the independent gate is the orchestrator's (generator is never grader)."
+appetite_exceeded: >-
+  Size only: 320 net lines outside evidence/ against the ~300 the mandate set (118, 94, 54 and 54 per commit); code is 63 net
+  (runner 35, hosted_compare 20, merger 8), spec and README 23, and tests with the 21 mutant rules 234. Wall clock within the
+  2.5-hour budget.

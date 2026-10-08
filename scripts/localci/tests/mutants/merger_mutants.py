@@ -183,7 +183,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "sh-heartbeat-always-ok": (SH, 'if [ "$rc" -eq 0 ]; then heartbeat ok', "if true; then heartbeat ok", (TICK,)),
     # B3 — coverage travels with the verdict: only a full context counts toward the >= 12
     "report-counts-partial": (PY, 'compared_ctx = rep["coverage"]["compared_full"]', 'compared_ctx = sum(rep["counts"][k] for k in hc.COMPARED)', (REPORT,)),
-    "report-coverage-not-read": (PY, 'k: {"verdict": v, "coverage": cov.get(k)}', 'k: {"verdict": v, "coverage": "full"}', (REPORT,)),
+    "report-coverage-not-read": (PY, 'k: {"verdict": v, "coverage": cov.get(k), ', 'k: {"verdict": v, "coverage": "full", ', (REPORT,)),
     "report-unrecorded-is-full": (PY, 'cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else {}',
                                   'cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else dict.fromkeys(d.get("contexts") or {}, "full")',
                                   (REPORT,)),
