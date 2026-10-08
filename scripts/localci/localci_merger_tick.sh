@@ -98,10 +98,11 @@ FREE_FLAG=""
 FLOOR_FLAG=""
 if [ -n "$FREE" ] && grep -q -- "--host-free-gb" "$CODE/merger.py"; then FREE_FLAG="--host-free-gb=$FREE"; FLOOR_FLAG="--min-host-free-gb=$FLOOR_GB"; fi
 if [ -n "$FREE" ] && [ "$FREE" -lt "$FLOOR_GB" ]; then WARN="host_below_floor free_gb=$FREE floor_gb=$FLOOR_GB: no run started"; fi
+if [ -z "$FREE" ]; then WARN="host free space unreadable (df -Pk $HOST_PATH): no run started"; fi   # a floor unread is not a floor met
 echo "merger_tick: $(date -u +%FT%TZ) code=${SHA:0:12} host_free_gb=${FREE:-unread}"
 TICK_RC=0
 if [ -n "$WARN" ] && [ -z "$FREE_FLAG" ]; then
-  echo "merger_tick: $WARN (this merger.py cannot journal the skip)" >&2
+  echo "merger_tick: $WARN (not journalled: no reading, or a merger.py that cannot journal the skip)" >&2
 else
   "$PY" -I "$CODE/merger.py" tick --node "$NODE" --state-dir "$STATE" --python "$PY" ${CODE_FLAG:+"$CODE_FLAG"} \
     ${FREE_FLAG:+"$FREE_FLAG"} ${FLOOR_FLAG:+"$FLOOR_FLAG"} || TICK_RC=$?

@@ -15,8 +15,8 @@ mkdir -p "$LOG_DIR"
 SIDECAR_DIR="$HOME/.organism/last_seen"
 PIDFILE="${TMPDIR:-/tmp}/nuzantara-pro-disk_floor.pid"
 DATA="${DISK_FLOOR_PATH:-/System/Volumes/Data}"   # never `df /`: that is the sealed system snapshot (disk-monitor, 2026-09-26)
-OK_ABOVE_GB=100
-FAIL_UNDER_GB=60
+OK_ABOVE_MB=100000    # ok above 100 GB: compared in MB, so 100.5 GB is above it (whole GB would floor it to 100)
+FAIL_UNDER_MB=60000   # failed under 60 GB
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
 log() { echo "[$(ts)] $*" >> "$LOG"; }
@@ -48,7 +48,7 @@ fi
 # G10_single_instance — pidfile + liveness probe + trap cleanup
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
     log "previous run still alive (pid $(cat "$PIDFILE")) — skipping"
-    heartbeat "ok" "skipped: previous run alive"
+    heartbeat "warning" "skipped: previous run alive (pid $(cat "$PIDFILE" 2>/dev/null)), free space not read"   # never ok unread
     exit 0
 fi
 echo $$ > "$PIDFILE"
@@ -56,18 +56,19 @@ trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 log "run start"
-# whole GB, floored (a floor is never met by rounding up); 1 GB = 10^9 bytes, as df -H and the localci prune report it
-FREE_GB="$(df -Pk "$DATA" 2>/dev/null | awk 'NR==2 && $4 ~ /^[0-9]+$/ { printf "%d", $4 * 1024 / 1000000000 }')"
-if [ -z "$FREE_GB" ]; then
+# whole MB, floored (a floor is never met by rounding up); 1 GB = 10^9 bytes, as df -H and the localci prune report it
+FREE_MB="$(df -Pk "$DATA" 2>/dev/null | awk 'NR==2 && $4 ~ /^[0-9]+$/ { printf "%d", $4 * 1024 / 1000000 }')"
+if [ -z "$FREE_MB" ]; then
     log "df -Pk $DATA unreadable"
     heartbeat "error" "free space unreadable: df -Pk $DATA gave no number"
     exit 0
 fi
-if [ "$FREE_GB" -gt "$OK_ABOVE_GB" ]; then VERDICT="ok"
-elif [ "$FREE_GB" -ge "$FAIL_UNDER_GB" ]; then VERDICT="warning"
+if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"
+elif [ "$FREE_MB" -ge "$FAIL_UNDER_MB" ]; then VERDICT="warning"
 else VERDICT="failed"
 fi
-NOTE="free_gb=$FREE_GB on $DATA (ok > $OK_ABOVE_GB, failed < $FAIL_UNDER_GB)"
+FREE_GB="$(awk -v m="$FREE_MB" 'BEGIN { printf "%.1f", m / 1000 }')"
+NOTE="free_gb=$FREE_GB on $DATA (ok > $((OK_ABOVE_MB / 1000)), failed < $((FAIL_UNDER_MB / 1000)))"
 if [ "$VERDICT" != "ok" ]; then
     # the three biggest top-level directories of ~ — only when paging: the walk took 94 s on Pro (2026-10-08)
     TOP="$(du -sxk "$HOME"/* "$HOME"/.[!.]* 2>/dev/null | sort -rn | head -3 \

@@ -914,17 +914,24 @@ def cmd_prune(a) -> int:
     spec = importlib.util.spec_from_file_location("localci_prune", Path(__file__).resolve().parent / "prune.py")
     pm = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(pm)
+    fh, lease = take_lease(state, (state / "repo").read_text().strip())   # never beside a tick: it may be naming an image right now
+    if fh is None:
+        journal(state, {"kind": "prune", "dry_run": a.dry_run, "skipped": "lease", "holder": lease})
+        print("merger prune: skipped — the lease is held")
+        return 0
     try:
         rec = pm.prune(state, a.docker, dry=a.dry_run, fstrim=a.fstrim, colima=a.colima)
     except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
         journal(state, {"kind": "prune", "dry_run": a.dry_run, "error": redact(f"{type(exc).__name__}: {exc}")})
         print(f"merger prune: error — {type(exc).__name__}", file=sys.stderr)
         return 1
+    finally:
+        drop_lease(state, fh, lease)
     journal(state, rec)
     gone = rec["images"].get("would_remove" if a.dry_run else "removed") or []
     print(f"merger prune: images_{'would_remove' if a.dry_run else 'removed'}={len(gone)} image_errors={len(rec['images']['errors'])} "
-          f"vm_free_gb={rec['vm_free_gb']} host_free_gb={rec['host_free_gb']}")
-    return 1 if rec["images"]["errors"] else 0
+          f"failed={rec['failed']} vm_free_gb={rec['vm_free_gb']} host_free_gb={rec['host_free_gb']}")
+    return 1 if rec["failed"] else 0
 
 
 def cmd_merge(_a) -> int:

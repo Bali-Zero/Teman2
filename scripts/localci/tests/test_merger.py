@@ -1010,6 +1010,14 @@ def test_a_merger_that_cannot_journal_the_floor_is_not_started_under_it_and_a_ma
     assert wrap(env).returncode == 0 and calls_of(tmp_path / "w2") == ["tick"] and heartbeat(tmp_path / "w2")["status"] == "ok"
 
 
+def test_an_unreadable_host_reading_starts_no_run_and_the_organ_says_warning(tmp_path):
+    env = floor_world(tmp_path, 200)
+    (tmp_path / "fakebin" / "df").write_text("#!/bin/sh\nexit 1\n")
+    res = wrap(env)
+    assert res.returncode == 0 and calls_of(tmp_path) == ["prune"] and "host_free_gb=unread" in res.stdout
+    assert heartbeat(tmp_path)["status"] == "warning" and heartbeat(tmp_path)["note"].startswith("host free space unreadable")
+
+
 def test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs(tmp_path):
     env = floor_world(tmp_path, 200)
     assert wrap({**env, "FAKE_PRUNE_RC": "1"}).returncode == 0

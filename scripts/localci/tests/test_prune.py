@@ -78,7 +78,7 @@ def calls(tmp_path: Path) -> list[str]:
 
 
 def decided(state: Path, docker: str) -> dict:
-    recent, ids, recipes = pm.plan_refs(state / "runs", NOW)
+    recent, ids, recipes, _ = pm.plan_refs(state / "runs", NOW)
     return {d["tag"]: d for d in pm.image_decisions(pm.deps_images(docker), recent, ids, recipes, NOW)}
 
 
@@ -154,10 +154,11 @@ def test_a_dry_run_removes_nothing_and_journals_the_would_list(tmp_path):
     assert not [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
 
 
-def test_nothing_to_remove_prunes_no_builder_and_an_image_in_use_is_an_error_never_forced(tmp_path):
+def test_the_builder_is_pruned_with_nothing_to_remove_and_an_image_in_use_is_an_error_never_forced(tmp_path):
     state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 0
-    assert not [c for c in calls(tmp_path) if c.startswith("builder")] and journal(state)[-1]["images"]["removed"] == []
+    assert [c for c in calls(tmp_path) if c.startswith("builder")] == ["builder prune -f --filter until=24h"]
+    assert journal(state)[-1]["images"]["removed"] == [] and journal(state)[-1]["failed"] == []
     imgs = [image("b" * 16, 80, "backend-tests"), image("c" * 16, 10, "backend-tests")]
     state, docker = world(tmp_path / "busy", imgs, busy=[imgs[0]["tag"]])
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 1
@@ -260,3 +261,63 @@ def test_fstrim_runs_only_after_an_image_went_and_the_host_is_read_again_after_i
     line = journal(state)[-1]
     assert (tmp_path / "colima.log").read_text() == "ssh -- sudo fstrim -av\n" and line["fstrim"]["rc"] == 0
     assert set(line["host_free_gb"]) == {"before", "after", "after_fstrim"}
+
+
+# ------------------------------------------------------------------ council round 1 (2026-10-08): the findings it confirmed
+def test_an_unreadable_plan_blocks_every_removal_and_a_half_written_one_still_names_its_images(tmp_path):
+    imgs = [image("a" * 16, 80, "backend-tests"), image("b" * 16, 72, "backend-tests"), image("c" * 16, 10, "backend-tests")]
+    state, docker = world(tmp_path, imgs, {"pr1-x-20261008T000000Z": (5, {"ctx.backend-tests": imgs[0]["tag"]}),
+                                           "pr2-x-20261008T010000Z": (5, {"ctx.backend-tests": imgs[1]["tag"]})})
+    half = state / "runs" / "pr1-x-20261008T000000Z" / "state" / "plan.json"
+    half.write_text(half.read_text()[:-20])   # half-written: not JSON, still names the tag
+    d = decided(state, docker)
+    assert d[imgs[0]["tag"]]["remove"] is False and "named by a plan" in d[imgs[0]["tag"]]["rule"]
+    locked = state / "runs" / "pr2-x-20261008T010000Z" / "state" / "plan.json"
+    locked.chmod(0)
+    try:
+        assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 1
+    finally:
+        locked.chmod(0o644)
+    line = journal(state)[-1]
+    assert line["images"]["removed"] == [] and "images" in line["failed"]
+    assert [e["plan"] for e in line["images"]["errors"]] == ["pr2-x-20261008T010000Z: PermissionError"]
+    assert not [c for c in calls(tmp_path) if c.startswith("image rm")]
+
+
+def test_images_built_in_the_same_second_are_ordered_by_their_nanoseconds_and_an_exact_tie_keeps_both(tmp_path):
+    a, b = image("a" * 16, 80, "backend-tests"), image("b" * 16, 80, "backend-tests")
+    a["created"], b["created"] = "2026-10-05T10:00:00.900000000Z", "2026-10-05T10:00:00.100000000Z"
+    d = decided(*world(tmp_path, [a, b]))
+    assert d[a["tag"]]["remove"] is False and d[b["tag"]]["remove"] is True
+    b["created"] = a["created"]
+    d = decided(*world(tmp_path / "tie", [a, b]))
+    assert d[a["tag"]]["remove"] is False and d[b["tag"]]["remove"] is False
+
+
+def test_a_linked_runs_directory_is_never_trimmed(tmp_path):
+    outside = tmp_path / "archive"
+    run = run_dir(outside, 40)
+    (tmp_path / "state").mkdir()
+    (tmp_path / "state" / "runs").symlink_to(outside)
+    out = pm.trim_runs(tmp_path / "state" / "runs", NOW, dry=False)
+    assert out["refused"].endswith("is a symlink") and files(run) == set(RUN_FILES)
+
+
+def test_a_failed_builder_prune_or_fstrim_is_a_failed_prune_and_the_lease_holder_is_never_pruned_beside(tmp_path):
+    state, docker = world(tmp_path, [image("a" * 16, 80, "backend-tests"), image("b" * 16, 10, "backend-tests")])
+    colima = tmp_path / "colima"
+    colima.write_text("#!/bin/sh\nexit 1\n")
+    colima.chmod(0o755)
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--fstrim", "--colima", str(colima)]) == 1
+    assert journal(state)[-1]["failed"] == ["fstrim"] and journal(state)[-1]["fstrim"]["rc"] == 1
+    fh, lease = mg.take_lease(state, "o/r")
+    try:
+        assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 0
+    finally:
+        mg.drop_lease(state, fh, lease)
+    assert journal(state)[-1]["skipped"] == "lease" and not [c for c in calls(tmp_path) if c == "image ls --format {{.Repository}}:{{.Tag}}"][1:]
+
+
+def test_an_unmeasurable_vm_is_none_never_a_crash(tmp_path, monkeypatch):
+    monkeypatch.setattr(pm, "_runner", lambda: (_ for _ in ()).throw(AttributeError("no runner.py")))
+    assert pm.vm_free_gb("/nonexistent", tmp_path) is None

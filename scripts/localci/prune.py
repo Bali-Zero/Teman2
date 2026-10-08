@@ -45,9 +45,10 @@ def never(tag: str) -> bool:
 
 
 def _ts(text: str) -> float | None:
-    try:
-        return float(calendar.timegm(time.strptime(text[:19], "%Y-%m-%dT%H:%M:%S")))
-    except (TypeError, ValueError):
+    m = re.match(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?", text or "")
+    try:   # docker's Created carries nanoseconds: two builds in one second are still ordered
+        return calendar.timegm(time.strptime(m.group(1), "%Y-%m-%dT%H:%M:%S")) + float(m.group(2) or 0) if m else None
+    except ValueError:
         return None
 
 
@@ -58,17 +59,22 @@ def run_age_h(run: Path, now_s: float) -> float | None:
     return None if t is None else (now_s - t) / 3600
 
 
-def plan_refs(runs: Path, now_s: float) -> tuple[dict, set, dict]:
-    """Tags and image ids named by a plan of the last 48 h (tag -> youngest age in hours), and each tag's recipe as the plans
-    read it: the check whose job names it (`ctx.backend-tests` -> `backend-tests`)."""
-    recent, ids, recipes = {}, set(), {}
+def plan_refs(runs: Path, now_s: float) -> tuple[dict, set, dict, list]:
+    """Tags and image ids named by a plan of the last 48 h (tag -> youngest age in hours), each tag's recipe as the plans
+    read it (the check whose job names it: `ctx.backend-tests` -> `backend-tests`), and the plans that could not be read —
+    any of which may name an image, so none is removed while one exists. A half-written plan still names what its text names."""
+    recent, ids, recipes, unreadable = {}, set(), {}, []
     for plan in sorted(runs.glob("*/state/plan.json")) if runs.is_dir() else []:
         try:
             raw = plan.read_text(errors="replace")
             age_h = (now_s - plan.stat().st_mtime) / 3600
-            doc = json.loads(raw)
-        except (OSError, ValueError):
+        except OSError as exc:
+            unreadable.append(f"{plan.parent.parent.name}: {type(exc).__name__}")
             continue
+        try:
+            doc = json.loads(raw)
+        except ValueError:
+            doc = None
         for name, spec in (doc.get("checks") or {}).items() if isinstance(doc, dict) else []:
             for job in (spec.get("jobs") or []) if isinstance(spec, dict) else []:
                 for tag in TAG_RE.findall(str((job or {}).get("deps") or "")):
@@ -77,7 +83,7 @@ def plan_refs(runs: Path, now_s: float) -> tuple[dict, set, dict]:
             for tag in TAG_RE.findall(raw):
                 recent[tag] = min(recent.get(tag, age_h), age_h)
             ids |= set(ID_RE.findall(raw))
-    return recent, ids, {t: sorted(r)[0] for t, r in recipes.items()}
+    return recent, ids, {t: sorted(r)[0] for t, r in recipes.items()}, unreadable
 
 
 def _docker(docker: str, *args: str, timeout: int = 120) -> subprocess.CompletedProcess:
@@ -108,7 +114,7 @@ def image_decisions(images: list[dict], recent: dict, ids: set, recipes: dict, n
     in the last 48 h, the newest of its recipe, or in the never-list. A recipe nothing records is the image's own: it is kept."""
     for im in images:
         im["recipe"] = im.get("label_recipe") or recipes.get(im["tag"]) or f"unknown:{im['tag']}"
-    newest = {}
+    newest = {}   # recipe -> its newest image; an image built at the same instant is as new and is kept too
     for im in images:
         if im["created"] is not None and (im["recipe"] not in newest or im["created"] > newest[im["recipe"]]["created"]):
             newest[im["recipe"]] = im
@@ -121,7 +127,7 @@ def image_decisions(images: list[dict], recent: dict, ids: set, recipes: dict, n
             why = f"named by a plan of the last {REF_WINDOW_H} h" + (f" ({recent[im['tag']]:.1f} h ago)" if im["tag"] in recent else " (by id)")
         elif age_h is None or age_h < REF_WINDOW_H:
             why = f"built {age_h} h ago, under {REF_WINDOW_H} h"
-        elif newest.get(im["recipe"]) is im:
+        elif im["created"] == newest[im["recipe"]]["created"]:
             why = f"the newest image of recipe {im['recipe']}"
         else:
             out.append({**im, "remove": True, "rule": f"no plan of the last {REF_WINDOW_H} h names it, built {age_h} h ago, not the newest of "
@@ -134,6 +140,8 @@ def image_decisions(images: list[dict], recent: dict, ids: set, recipes: dict, n
 def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
     """7 days full; then `logs/` and the Pysa call graphs go; after 30 days only VERDICT stays. Symlinks are removed as links."""
     out = {"trimmed_7d": [], "trimmed_30d": [], "freed_gb": 0.0}
+    if runs.is_symlink():   # the prune never leaves the merger's state dir: a linked runs/ is someone else's tree
+        return {**out, "refused": f"{runs} is a symlink"}
     freed = 0
     for run in sorted(p for p in runs.iterdir() if p.is_dir() and not p.is_symlink()) if runs.is_dir() else []:
         age_h = run_age_h(run, now_s)
@@ -166,7 +174,10 @@ def host_free_gb(path: str) -> float:
 
 
 def vm_free_gb(docker: str, state: Path) -> float | None:
-    gb, _ = _runner()._probe_free_gb(docker, CANDIDATE_IMAGE, state)   # B3's probe: df -Pk / in a throwaway candidate container
+    try:   # B3's probe: df -Pk / in a throwaway candidate container; a measurement, never a reason to stop the prune
+        gb, _ = _runner()._probe_free_gb(docker, CANDIDATE_IMAGE, state)
+    except Exception:   # noqa: BLE001 — a missing or older runner.py reads as unmeasured
+        return None
     return None if gb is None else round(gb, 1)
 
 
@@ -175,9 +186,11 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     now_s = time.time() if now_s is None else now_s
     runs = state / "runs"
     rec = {"kind": "prune", "dry_run": dry, "vm_free_gb": {"before": vm_free_gb(docker, state)}, "host_free_gb": {"before": host_free_gb(host_path)}}
-    recent, ids, recipes = plan_refs(runs, now_s)
+    recent, ids, recipes, unreadable = plan_refs(runs, now_s)
     decided = image_decisions(deps_images(docker), recent, ids, recipes, now_s)
-    removed, errors = [], []
+    removed, errors = [], [{"plan": u, "error": "unreadable: no image is removed while a plan cannot be read"} for u in unreadable]
+    for d in decided if unreadable else []:
+        d.update(remove=False, rule=f"kept: {len(unreadable)} plan(s) unreadable, any may name it") if d["remove"] else None
     for im in (d for d in decided if d["remove"]):
         if never(im["tag"]):   # belt and braces: a removal set never carries the never-list
             continue
@@ -186,9 +199,12 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
             {"tag": im["tag"], "gb": im["gb"], "rule": im["rule"], **({"error": r.stderr.strip()[:200]} if r is not None and r.returncode else {})})
     rec["images"] = {"removed" if not dry else "would_remove": removed, "kept": [{"tag": d["tag"], "rule": d["rule"]} for d in decided if not d["remove"]],
                      "errors": errors}
-    if removed and not dry:
-        b = _docker(docker, "builder", "prune", "-f", "--filter", "until=24h", timeout=600)
-        rec["builder_prune"] = {"rc": b.returncode, "tail": (b.stdout or b.stderr).strip()[-120:]}
+    if not dry:   # the build cache grows with every deps build, whether or not an image went
+        try:
+            b = _docker(docker, "builder", "prune", "-f", "--filter", "until=24h", timeout=600)
+            rec["builder_prune"] = {"rc": b.returncode, "tail": (b.stdout or b.stderr).strip()[-120:]}
+        except (OSError, subprocess.SubprocessError) as e:
+            rec["builder_prune"] = {"rc": None, "tail": type(e).__name__}
     rec["runs"] = trim_runs(runs, now_s, dry)
     rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)
     rec["host_free_gb"]["after"] = host_free_gb(host_path)
@@ -199,4 +215,5 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         except (OSError, subprocess.TimeoutExpired) as e:
             rec["fstrim"] = {"rc": None, "tail": type(e).__name__}
         rec["host_free_gb"]["after_fstrim"] = host_free_gb(host_path)
+    rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and rec[k]["rc"] != 0] + (["images"] if errors else [])
     return rec
