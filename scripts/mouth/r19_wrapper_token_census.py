@@ -13,10 +13,12 @@ the printed line, never the exit code.
 
   python3 scripts/mouth/r19_wrapper_token_census.py [--base-url URL] [--json OUT]
   python3 scripts/mouth/r19_wrapper_token_census.py --replay CENSUS.jsonl
+  python3 scripts/mouth/r19_wrapper_token_census.py --export
 """
 from __future__ import annotations
 
 import argparse
+import ast
 import importlib.util
 import json
 import os
@@ -440,6 +442,25 @@ def core_components() -> list[str]:
     return sorted(names)
 
 
+def export() -> dict:
+    """The probe, pages, six states and palette, for the armed apps/mouth test."""
+    found = {}
+    for node in ast.parse(MEASURE.read_text()).body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in ("VIEWPORTS", "THEMES"):
+                    found[target.id] = ast.literal_eval(node.value)
+    for name in ("VIEWPORTS", "THEMES"):
+        if name not in found:
+            raise SystemExit(f"{MEASURE}: top-level {name} literal not found")
+    states = [{"name": f"{v}/{t}", "width": w, "height": h, "scheme": scheme, "forced": forced}
+              for v, (w, h) in found["VIEWPORTS"].items()
+              for t, (scheme, forced) in found["THEMES"].items()]
+    return {"probe": PROBE_JS, "pages": PAGES, "core": core_components(), "states": states,
+            "direction_a": DIRECTION_A, "semantic": SEMANTIC,
+            "semantic_on_paper": {k: round(contrast(h, DIRECTION_A["paper"]), 2) for k, h in SEMANTIC.items()}}
+
+
 def _wait(url: str, seconds: int) -> None:
     end = time.time() + seconds
     while time.time() < end:
@@ -534,8 +555,13 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--port", type=int, default=3419)
     ap.add_argument("--json", type=Path, help="dump the census (JSON Lines) for offline replay")
     ap.add_argument("--replay", type=Path, help="judge a dumped census, no browser")
+    ap.add_argument("--export", action="store_true",
+                    help="print the probe, pages, six states and palette as JSON for the armed apps/mouth test")
     ap.add_argument("--contract", type=Path, default=CONTRACT)
     a = ap.parse_args(argv)
+    if a.export:
+        print(json.dumps(export()))
+        return 0
     try:
         contract = parse_contract(a.contract.read_text())
     except ContractError as exc:

@@ -1594,6 +1594,22 @@ def _read_junit_out(docker: str, ctr: str, junit: Path) -> str | None:
         p.wait()
 
 
+# pytest-xdist's own words (3.x dsession.py) when a worker dies under the controller: an OOM-killed worker reads like this
+XDIST_DEAD_WORKER = re.compile(r"\[gw\d+\] node down: Not properly terminated|\bworker '?gw\d+'? crashed")
+
+
+def xdist_dead_worker(log: Path) -> tuple[str, int] | None:
+    """The first line of a leg log where xdist reports a dead worker: (its words, 1-based line number as `grep -n` counts)."""
+    try:
+        with open(log, "rb") as fh:
+            for n, raw in enumerate(fh, 1):
+                if (m := XDIST_DEAD_WORKER.search(raw.decode(errors="replace"))):
+                    return m.group(0), n
+    except OSError:
+        return None
+    return None
+
+
 def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: list[str], overrides: dict[str, bytes], extra: dict[str, bytes],
                       env: dict, log: Path, junit: Path, timeout: int, workdir: str = "/w", network: str = "none", image_id: str | None = None,
                       memory: str = "4g", collect=None, paths: set | None = None) -> tuple[int | None, str | None]:
@@ -1652,7 +1668,11 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
                 rc = subprocess.run([docker, "start", "-a", ctr], stdout=fh, stderr=subprocess.STDOUT, timeout=timeout, env=denv).returncode
             except subprocess.TimeoutExpired:
                 subprocess.run([docker, "kill", ctr], capture_output=True, timeout=60, env=denv)
-                return None, f"timeout after {timeout}s (container killed; removal verified below or the run aborts)"
+                tail = "(container killed; removal verified below or the run aborts)"
+                if (dead := xdist_dead_worker(log)):   # still no verdict: the reason only names what the log shows died first
+                    return None, (f"timeout after {timeout}s — an xdist worker died mid-run ('{dead[0]}', log line {dead[1]}) and the controller "
+                                  f"never finished: a memory-cgroup OOM-kill is the measured cause on Pro (2026-10-07/08); no verdict {tail}")
+                return None, f"timeout after {timeout}s {tail}"
         why = _read_junit_out(docker, ctr, junit)
         if collect is not None:   # artifacts a later job downloads, copied out of the stopped container before it is removed
             why = "; ".join(x for x in (why, collect(docker, ctr)) if x) or None

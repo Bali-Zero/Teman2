@@ -11,6 +11,15 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     testTimeout: 20000,
     hookTimeout: 20000,
+    // src/test/r19-wrapper.test.ts starts `next dev --webpack` and a browser:
+    // it runs only when asked by name (`npm test -- r19-wrapper`) or with
+    // R19_WRAPPER_LIVE=1, and is skipped with that reason in the full suite.
+    // Workers do not see the CLI argv, so the decision is made here.
+    provide: {
+      r19WrapperLive:
+        process.env.R19_WRAPPER_LIVE === "1" ||
+        process.argv.slice(2).some((arg) => arg.includes("r19-wrapper")),
+    },
     // Coverage runs under istanbul (see coverage.provider note below): babel
     // instrumentation roughly doubles per-worker memory + time vs v8. vitest's
     // default `forks` pool spawns one full child *process* per worker sized to

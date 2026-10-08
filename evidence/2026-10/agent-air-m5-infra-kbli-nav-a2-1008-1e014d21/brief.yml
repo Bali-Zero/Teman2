@@ -1,0 +1,33 @@
+task_id: kbli-nav-a2-1008
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track A, PR-A2: the seat door of the sealed design contest.
+  scripts/kbli_design/seat_io.py counts every round on disk (cap 1 per stage and slot), checks C6
+  against the slot's builder on disk, assembles the same prompt bytes whichever seat answers, runs
+  codex (Sol) and agy (Gemini) as detached one-shots from an empty temp dir with stdin closed, and
+  turns answers into hashed mockup sets or filtered objections. Every result is one printed line the
+  workflow of PR-A1 compares; the four briefs are the prompts the seats receive.
+constraints:
+  - "A refusal is a printed `refused:` line on stdout, never a traceback or an exit code."
+  - "A stage+slot runs at most once, across restarts: prepare writes rounds.json under a lock, and the detached job runs only on a status its own prepare left at pending."
+  - "The kit must live outside any git checkout (C3); prepare refuses otherwise."
+  - "No Claude model is reached by this file; Anthropic seats are agent() lanes in the workflow (C1). External seats: codex exec -s read-only -C <empty tmp>, agy -p from an empty tmp, stdin closed."
+acceptance:
+  - text: "WHEN a stage+slot is prepared twice, even from a new process, THEN the second prints `refused: <stage>/<slot> at cap 1/1`; WHEN a grade or refute seat shares the builder's family, or a non-builder asks for the repair, THEN prepare prints a refusal and writes nothing."
+    probe: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_kbli_design_seat_io.py"
+  - text: "WHEN fake codex and agy are first on PATH, THEN run --detach prints the grant and `pending`, and wait prints `<slot> r1 files=12 manifest=<16 hex>`; a second _job prints `refused:` and the fake CLI ran once."
+    probe: "same pytest, test_detached_one_shots_land_through_wait + test_refusals_are_printed_lines..."
+  - text: "WHEN the round-cap check, the C6 check, the Test: filter, the job guard, the kit-outside-git check or the printed refusal is removed in a scratch copy, THEN pytest goes red; restored with cp, 4 pass."
+    probe: "mutate seat_io.py in place from a cp backup, run pytest, cp back, cmp -s"
+consumer_map:
+  - "infra/workflows/kbli-nav-design.js (PR-A1): phases Sealed mockups, Independent verification, Bounded repair and Fact refutation call prepare / run --detach / wait / ingest and compare their printed lines."
+risks:
+  - "The C10 law clause and the C1..C10 criteria in briefs/seat.md are measured by anti_flatness.py (PR-A3); until it lands the workflow refuses at phase 0."
+  - "A native Anthropic lane is told to read only its prompt file, but its sandbox is the session's; the r1 prompt bytes are identical across seats and hashed, the lane's reading discipline is not mechanically enforced."
+grader: |
+  One cross-family refuter, codex gpt-5.6-sol at xhigh, read-only from an empty directory with the
+  diff and the workflow contract inlined, VERDICT first: DEFECT with three objections, all folded,
+  each with a test that fails when its fix is removed. A fresh Opus 5.5 gate session signs
+  harness/fable-gate on this head sha; this session does not.

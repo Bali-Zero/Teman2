@@ -1,0 +1,36 @@
+task_id: kbli-nav-contest-1008
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track A, PR-A1 (first move + the script). Ship the content pack
+  extractor every mockup seat pastes from, and the Workflow script of the formation Zero picked
+  (Z-DECISIONI 2026-10-08), ending at the arena. The exit of the first move is a printed line,
+  `3/3 byte-identical sha256=c29d6e6aea7a4fdb`, from content_pack.py --verify on the real inputs.
+constraints:
+  - "content_pack.py is at most 100 lines and never invents or normalises a string: each value is a canonical field or one dictionary lookup the macOS app itself performs; KBLIVerdict headlines are not re-derived."
+  - "The kit (mockups, prompts, raw seat answers) lives outside the repo; nothing a seat produces enters a PR (C3)."
+  - "The script refuses at phase 0 unless seat_io.py, anti_flatness.py and arena.py exist on args.repo; those land in the serial PRs that follow this one."
+  - "Every agent() pins model:; Anthropic seats run only as agent() lanes (claude CLI on OAuth); no per-token endpoint anywhere (C1)."
+acceptance:
+  - text: "WHEN content_pack.py builds and then verifies against ~/kbli-navigator-app and the canonical dataset, THEN --verify prints exactly `3/3 byte-identical sha256=c29d6e6aea7a4fdb`."
+    probe: "python3 -I scripts/kbli_design/content_pack.py --out <dir> && python3 -I scripts/kbli_design/content_pack.py --verify --out <dir>"
+  - text: "WHEN one verdict word is changed in the pairs read from a mockup, THEN check_content reads `content=FAIL n=1`; WHEN basis or one licensing row is dropped, THEN it names them missing; untouched pairs read `content=PASS`."
+    probe: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_kbli_design_content_pack.py"
+  - text: "WHEN the mismatch comparison is disabled in a scratch copy, THEN the guilt test goes red; restored with cp, it passes."
+    probe: "sed the mismatch clause to `if False`, run pytest, cp the backup back, cmp -s"
+  - text: "WHEN the script runs on stubbed agents, THEN the happy path, Sol dead and Gemini dead reach the arena with C6 holding, and a wrong pack, silent probe controls, divergent r1 prompts and a path with shell metacharacters each stop with their own message."
+    probe: "node <scratch harness> infra/workflows/kbli-nav-design.js <scenario>; python3 scripts/lint_workflow_script.py infra/workflows/kbli-nav-design.js"
+consumer_map:
+  - "infra/workflows/kbli-nav-design.js phase 0 runs content_pack.py --verify and refuses unless the 3/3 line prints."
+  - "anti_flatness.py (PR-A3) imports check_content/flat to read the content criterion C9 from each mockup DOM."
+  - "seat_io.py (PR-A2) inlines content-pack.json into every seat prompt."
+risks:
+  - "The 24 baseline PNGs were rendered from code 55101 on dataset b30b1759, not the canonical; the probe's innocence control can only wrap them with the pack text, so it proves the checker's wiring, not that it perceives the baselines' visual monotony."
+  - "The installed bundle was rebuilt 2026-10-08 14:17 with a kbli-data-i18n-en.json whose bytes differ from ~/kbli-navigator-app/Resources; keys and values are identical (8585/8585, 0 differing), so the pack does not change."
+  - "The monorepo import apps/kbli-navigator-macos lacks kbli-overlay.json, kbli-reason-i18n.json and the baselines, so --app defaults to ~/kbli-navigator-app."
+grader: |
+  One cross-family refuter, codex gpt-5.6-sol at xhigh, read-only from an empty directory with the
+  diff and the app source excerpts inlined, VERDICT first: DEFECT with three objections, all folded
+  with tests that fail on the pre-fix code. A fresh Opus 5.5 gate session signs harness/fable-gate
+  on this head sha before the merge can land; this session does not sign it.
