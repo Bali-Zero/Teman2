@@ -1,0 +1,176 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_override: >-
+  Two external families reviewed the candidate (OpenAI Codex and Google Gemini 3.1 Pro), but only the Gemini line counts
+  for R9: the Codex runtime reported gpt-6-astra while the roster names codex-gpt-5.6-sol, so the Codex line is journalled
+  under its true name and does not qualify (the mismatch is ARM-4 of the LOCALCI-GATE row in PENDING-ARMS). The seat was
+  not renamed to fit the roster.
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stood in because the remaining titular seats were dead at dispatch (arsenal_probe
+  2026-10-08T06:16:17Z on M5, ~/.organism/arsenal/last.json): kimi, tp1-qwen3.8-max, tp1-glm-5.2 and tp1-deepseek-v4-pro
+  QUOTA_DEAD. agy answered this review (rc 0 at 12:13:24Z).
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN phase B, step B6 (spec paragraph RULED 2026-10-08 under Zero's directive "Pro keeps > 100 GB
+  free, always", handed over in full by the orchestrator), to Dux B6 on 2026-10-08 with a 2.5-hour budget from about 11:25Z,
+  from origin/main bd01d19f93. Measured in the spec: Pro's data volume fell 82 -> 46 -> 13 GiB free in 48 h with the merger
+  running, and the writer was the gate (five localci-deps images in 24 h, Pysa receipts of ~630 MB per run).
+lanes:
+  - lane: localci-b6-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux B6 of LOCALCI-SOVEREIGN, M5; Pro read only: docker image ls, docker buildx ls, docker system df, df, du, ls)"
+pii_scan: clean
+pii_scan_note: Merger, prune and organ code, a spec paragraph, tests and synthetic fixtures; Pro was read for image tags, sizes and directory names of the gate's own state only. No client data was read or written.
+what_changed: |
+  scripts/localci/prune.py (new): plan_refs reads every run's state/plan.json (a plan younger than 48 h names images by tag
+  or id; any plan records the check that named a tag, the recipe when no label says it); image_decisions keeps an image named
+  by a plan of the last 48 h, built under 48 h ago, the newest of its recipe or in the never-list (localci-candidate:*,
+  localci-deps-base:*, and only localci-deps: is listed), and removes the rest by `docker image rm <tag>` (never -f), then
+  `docker builder prune -f --filter until=24h` on the current builder; trim_runs trims run directories by the timestamp in
+  their name (7 days: logs/ and the call graphs go; 30 days: only status.json, hosted_compare.json, state/plan.json stay);
+  with --fstrim, `colima ssh -- sudo fstrim -av` after a removal; the VM's free GB through B3's df probe and the host's
+  (/System/Volumes/Data) before and after.
+  scripts/localci/merger.py: `prune` subcommand (--state-dir, --docker, --dry-run, --fstrim, --colima, --code-sha), one
+  {"kind":"prune"} line; refuses a dir with no tick-written repo binding. `tick --host-free-gb N --min-host-free-gb 60`:
+  under the floor it journals skipped host_below_floor and starts no run.
+  scripts/localci/runner.py: the deps build labels its recipe (org.nuzantara.localci.recipe=<check slug>).
+  scripts/localci/localci_merger_tick.sh: reads the host GB, passes the floor flags, runs the prune after the tick with
+  --fstrim and --code-sha, heartbeat warning under the floor or on a failed prune; a main before B6 still ticks.
+  scripts/ops/pro_disk_floor_tick.sh + infra/launchagents/com.nuzantara.disk-floor.plist + registry pro.disk_floor + two
+  declared pairs: the organ, born via organ_birth.py.
+  Spec paragraph after B5's (prettier: `*…*` to `_…_`, a blank line before the list); README rows and arming block; 38 B6
+  mutant rules (8 of them from the council's round 1) and one realigned (sh-heartbeat-always-ok); tests test_prune.py, test_disk_floor.py (new) and rows in
+  test_merger.py.
+  Council round 1 (f1454d471f): no image removed while a plan is unreadable, a half-written plan still names its tags,
+  Created to the nanosecond with ties kept, a linked runs/ never trimmed, the builder prune on every real prune and guarded,
+  `failed` and exit 1 on a failed builder prune, fstrim or image, the prune under the tick's lease, an unread df starting no
+  run, the organ's warning on a live previous run and its limits in MB.
+proof: |
+  See receipts. Every behaviour is produced by the committed code on fixtures (a fake docker over a JSON world, fake colima,
+  df, du and hostname); nothing ran on Pro but read-only looks. The prune and the floor reach Pro only when the lead replaces
+  the wrapper's live copy, and the organ only when the lead arms it.
+bites:
+  consumer: >-
+    The shadow merger's launchd tick on Pro (decisions.jsonl, ~/.organism/last_seen/pro.localci_merger.json) and the organ
+    pro.disk_floor (~/.organism/last_seen/pro.disk_floor.json, read by the sentinel and the healer).
+  observation: >-
+    Owed after merge and the lead's deploy (this lane does not ship): on Pro, the first tick after the wrapper's live copy is
+    replaced journals a {"kind":"prune"} line with code_sha, images.removed or kept with their rules, host_free_gb before and
+    after (after_fstrim when an image went), and no localci-candidate or localci-deps-base tag in removed; `docker image ls`
+    still lists localci-candidate:1; and, once armed, pro.disk_floor.json reads `warning` with free_gb under 100 (Pro
+    measured 79960868 KiB available, about 81.9 GB, at 12:03Z) until the floor is restored.
+ground:
+  ts: "2026-10-08T11:25:00Z"
+  siblings: >-
+    Worktree from origin/main bd01d19f93. B5 (#8097) merged at 11:45:06Z as e643a5d182; origin/main merged into this branch
+    at b4f2fd2ecd (no rebase), one conflict in test_merger.py: both sides appended tests, kept both.
+spend:
+  adversarial_rounds: 2
+  wall_clock_hours: 1.5
+receipts:
+  - claim: "Probes of the brief (nine node ids, seventeen cases with the parametrized rows) at 0693ed2ba6: test_prune.py::test_an_image_a_plan_named_47_hours_ago_is_kept_and_one_unnamed_for_three_days_goes, test_prune.py::test_the_newest_of_a_recipe_is_kept_with_no_reference_and_a_young_image_is_kept_unreferenced, test_prune.py::test_the_candidate_and_base_images_are_never_in_a_removal_set, test_prune.py::test_a_dry_run_removes_nothing_and_journals_the_would_list, test_prune.py::test_a_run_keeps_everything_for_seven_days_then_its_verdict_and_loses_logs_and_call_graphs, test_prune.py::test_fstrim_runs_only_after_an_image_went_and_the_host_is_read_again_after_it, test_merger.py::test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_reading, test_merger.py::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why, test_disk_floor.py::test_ok_above_100_warning_from_60_to_100_failed_under_60 — 17 passed."
+    cmd: PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider <the nine node ids>
+    exit: 0
+    ts: "2026-10-08T12:23:26Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The prune line the committed code writes at 0693ed2ba6 on the fixture (fake docker with three deps images, a plan 5 h old naming the E2E one, a run 8 days old, fake colima): rc 0, one line with keys builder_prune {rc, tail}, code_sha, dry_run, failed [], fstrim {rc, tail}, host, host_free_gb {before, after, after_fstrim}, images {removed [{tag, gb, rule}], kept [{tag, rule}], errors}, kind prune, runs {trimmed_7d, trimmed_30d, freed_gb}, ts, vm_free_gb {before, after}; removed localci-deps:1b044648ceab93bb, rule `no plan of the last 48 h names it, built 72.0 h ago, not the newest of recipe backend-tests (newest localci-deps:76c8ea4a8e023f9d)`; kept the E2E image `named by a plan of the last 48 h (5.0 h ago)` and the 30 h one `built 30.0 h ago, under 48 h`."
+    cmd: PYTHONPATH=. python3 - (test_prune.world and run_dir, then merger.main prune --fstrim --colima <fake> --code-sha)
+    exit: 0
+    ts: "2026-10-08T12:23:38Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "At 0693ed2ba6: check_organ_conformance.py exit 0 (pro.disk_floor carries every gene), validate_organs_registry `organs_registry.yaml valid` (+24 -1 against main, comments kept), shellcheck exit 0 on the organ and the merger wrapper."
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py; PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml; shellcheck scripts/ops/pro_disk_floor_tick.sh scripts/localci/localci_merger_tick.sh
+    exit: 0
+    ts: "2026-10-08T12:23:26Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The full mutant sweep at 0693ed2ba6, 192 rules (154 from B3, B4, B5 and before, 38 from B6, of which 8 came from the council's round 1; sh-heartbeat-always-ok realigned to B6-3's trap): 192/192 killed; survivors none, errors none, stale none. Before the council, at 54c5cd2d2b, the 30 B6 rules then: 30/30."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py
+    exit: 0
+    ts: "2026-10-08T12:45:47Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The localci suite at f1454d471f (the next commit, 0693ed2ba6, is README only): 902 passed, 14 skipped (needs_docker), 1 warning (an unraisable tarfile stream in test_isolation, not B6), 254 s; B5 on main read 861 passed, B6 adds 41 cases. Before the council, at cb982a3204: 893 passed, 14 skipped."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-08T12:26:07Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Pro, read only: `docker buildx ls` names colima* (current, docker driver) and localci-isolated (docker-container); `docker system df` Images 46.43GB (14.27GB reclaimable), Build Cache 17.41GB; `df -Pk /System/Volumes/Data` 79960868 KiB available (about 81.9 GB, under the 100 GB the organ calls ok)."
+    cmd: ssh pro 'docker buildx ls; docker system df; df -Pk /System/Volumes/Data'
+    exit: 0
+    ts: "2026-10-08T12:03:00Z"
+    seat: claude-opus-5-5 on M5
+dissent:
+  - seat: codex-gpt-6-astra
+    objection: "P1: trim_runs checks only the children: a runs/ that is a symlink to an archive gets its dated directories trimmed."
+    status: CONFIRMED
+    resolution: "trim_runs refuses a linked runs/ (`refused: <path> is a symlink`); test_a_linked_runs_directory_is_never_trimmed; mutant b6-runs-link-followed killed."
+  - seat: codex-gpt-6-astra
+    objection: "P1: a df that prints no number drops --host-free-gb, so the tick starts a run under the floor and the heartbeat says ok."
+    status: CONFIRMED
+    resolution: "An unread host reading starts no run and sets the heartbeat to warning (`host free space unreadable (df -Pk <path>): no run started`); the prune still runs. Same finding as Gemini's P1. Test and mutant b6-wrapper-df-unread-ticks."
+  - seat: codex-gpt-6-astra
+    objection: "P2: an unreadable plan is skipped, so an image only it names can be removed."
+    status: CONFIRMED
+    resolution: "While any plan is unreadable no image is removed: the plan is in images.errors and the prune exits 1. Gemini's P2 (a half-written plan skips the tag regex) is cured with it: the regex reads the raw text. Mutants b6-unreadable-plan-ignored, b6-half-plan-unread killed."
+  - seat: codex-gpt-6-astra
+    objection: "P2: Created truncated to the second can remove the truly newest of a recipe when two builds share a second."
+    status: CONFIRMED
+    resolution: "Created is read to the nanosecond, and an exact tie keeps every tied image. Mutant b6-nanoseconds-dropped killed."
+  - seat: codex-gpt-6-astra
+    objection: "P2: a failed builder prune, fstrim or VM measurement does not change the prune's exit, so the organ says ok; and an exception after a removal loses the line and the fstrim."
+    status: CONFIRMED
+    resolution: "The builder prune and fstrim are each guarded and journalled; `failed` lists builder_prune, fstrim or images, and the prune exits 1 on any, so the wrapper writes warning. A failed VM measurement reads as unmeasured (null), not as a failure. Mutant b6-prune-failure-ok killed."
+  - seat: codex-gpt-6-astra
+    objection: "P2: the prune does not take the tick's lease: a second wrapper could prune while a tick is naming an image."
+    status: CONFIRMED
+    resolution: "merger.py prune takes the same lease (flock on lease.lock plus lease.json); held, it journals {kind: prune, skipped: lease, holder} and removes nothing. Mutant b6-prune-beside-tick killed."
+  - seat: codex-gpt-6-astra
+    objection: "P2: the organ's single-instance skip writes ok without reading the disk."
+    status: CONFIRMED
+    resolution: "It writes warning `skipped: previous run alive (pid N), free space not read`. Same as Gemini's P1. Mutant b6-floor-organ-alive-ok killed."
+  - seat: codex-gpt-6-astra
+    objection: "P3: whole-GB flooring makes 100.5 GB a warning, against 'ok above 100 GB'."
+    status: CONFIRMED
+    resolution: "The organ compares in MB (ok above 100000, failed under 60000); 100.5 is ok and 59.9 failed, both tested."
+  - seat: agy-gemini-3.1-pro
+    objection: "P2: docker builder prune runs only after an image removal, though the cache grows with every build."
+    status: CONFIRMED
+    resolution: "It runs on every prune that is not a dry run. Mutant b6-builder-never killed (replaces b6-builder-always)."
+  - seat: agy-gemini-3.1-pro
+    objection: "P2: a missing runner.py makes the VM probe raise AttributeError, which cmd_prune does not catch."
+    status: CONFIRMED
+    resolution: "vm_free_gb reads any failure of the probe as unmeasured (null). test_an_unmeasurable_vm_is_none_never_a_crash."
+  - seat: agy-gemini-3.1-pro
+    objection: "P1: taint-output.json and receipts are deleted after 30 days although the spec protects receipts that carry a verdict."
+    status: RETRACTED
+    resolution: "The spec's rule 2 says that after 30 days a run keeps only status.json, hosted_compare.json and state/plan.json; the code follows it. The tension with 'receipts that carry a verdict stay' is in the spec itself and is named as a residual for the lead."
+  - seat: agy-gemini-3.1-pro
+    objection: "Round 2, P1: on the success path the prune drops the lease before it writes its journal line, exposing the journal to a tick that takes the lease at once."
+    status: RETRACTED
+    resolution: "journal() appends one line with O_APPEND and a torn-tail guard; a tick that cannot take the lease already writes its `skipped: lease` line without it. The lease guards the images and the runs, not the journal."
+  - seat: codex-gpt-6-astra
+    objection: "Round 2, P1: Path.glob swallows PermissionError, so a plan inside a run or state directory that cannot be traversed is never counted unreadable and its images can be removed."
+    status: CONFIRMED
+    resolution: "Not cured here: the round-1 fix is the depth-1 correction and the contract stops a fix-of-a-fix there. Named as a residual with its cure; the impact is a deps image rebuilt on the next run that needs it, never the candidate or base image."
+  - seat: codex-gpt-6-astra
+    objection: "Round 2, P3: a float holds Created to about a microsecond, so two images nanoseconds apart read as a tie."
+    status: CONFIRMED
+    resolution: "Not cured: a false tie keeps both images, the safe direction. Named as a residual."
+residuals:
+  - "Council round 2 (Codex, confirmed, not cured because the fix-of-a-fix depth is reached): a run or state directory the prune cannot traverse hides its plan from Path.glob, which swallows the PermissionError, so the unreadable-plan guard does not fire. The cure is to walk runs/ with iterdir and treat any OSError other than FileNotFoundError on <run>/state/plan.json as unreadable. Impact until then: a deps image a hidden recent plan names can be removed and is rebuilt by the next run that needs it; the never-list is unaffected."
+  - "Council round 2 (Codex, P3): Created as a float keeps about a microsecond, so two images nanoseconds apart read as a tie and both are kept."
+  - "The spec's tension, named by Gemini round 1: rule 2 keeps only three files after 30 days, while 'what this does not do' says receipts that carry a verdict stay. The code follows rule 2; the lead rules if the 30-day set should keep receipts/*.junit.xml and taint-output.json."
+  - "The prune runs on Pro only after the lead deploys the wrapper's home-fork copy (~/.nuzantara-cron/localci_merger_tick.sh, the README's cp/mv/cmp block); until then Pro ticks with the B5 wrapper and nothing is pruned."
+  - "The floor organ pro.disk_floor is armed by the lead (README block 'Disk floor organ (B6, Pro)'); no PENDING-ARMS row was written by this lane."
+  - "The one-shot cleanup of 2026-10-08 (contract, review, ~/logs/pro-disk-cleanup.log) is separate and not replaced."
+  - "The organ's threshold tests live in scripts/localci/tests: no workflow runs a test under scripts/ops/** without a .github/ edit, so a change to the organ alone does not trigger them."
+  - "The three biggest directories of ~ are in the organ's note only when it is not ok (the walk took 94 s on Pro)."
+  - "failed is written as status error, prefixed 'failed:' in the note: the sentinel reads anything but ok/success/healthy/starting/degraded/warning as dead, and heartbeat.sh canonicalises failed to error."
+  - "fstrim runs inside the prune (--fstrim), not as a wrapper line: the prune knows whether an image went and journals host_free_gb.after_fstrim."
+  - "Images built before B6 carry no recipe label: their recipe comes from the plans that named them; one that no plan ever named is its own recipe and stays until removed by hand."
+  - "B6-2's commit body says the call graphs are 77-125 MB; the read-only re-measure gives 77-114 MB, corrected in prune.py's comment."
+appetite_exceeded: >-
+  Size: 1058 net lines outside evidence/ against the ~350 the mandate set. Code and configuration 441 (prune.py 219,
+  merger.py 49, the tick wrapper 31, runner.py 2, the organ 85, its plist 20, the registry entry 23, the declared pairs 12),
+  tests 476 (test_prune.py 323, test_disk_floor.py 77, test_merger.py 76), mutant rules 55, spec and README 86. The council's
+  round 1 added about 120 of them. The organ alone (B6-4, about 270 with its test, registry, pairs and README block) is
+  separable if the lead wants two PRs. Gear: the mandate declared 2, the lint floors it at 3 (a new launchd plist), hence one
+  council round the mandate did not budget. Wall clock within the 2.5-hour budget.
