@@ -76,6 +76,11 @@ receipts:
     exit: "B 7 diverged / 3 session-curable without, 7 / 2 with, stderr 'organs_heartbeat judged by receptor A'; A rc 1, 3 dead session, 3 findings; temp removed"
     ts: "2026-10-08T12:13Z"
     seat: claude-opus-5.5
+  - claim: the brief's six acceptance probes pass on the committed candidate
+    cmd: "python3.11 -m pytest -q scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_registry_handoff_removes_duplicate_organ_count scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_keeps_its_own_count_when_a_is_broken scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_never_defers_to_a_previous_ticks_snapshot scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_snapshot_write_failure_leaves_a_and_b_whole scripts/tests/test_healer_run_checks.py::test_proprioception_summary_cli_bad_registry_returns_three scripts/tests/test_healer_run_checks.py::test_only_proprioception_summary_takes_the_registry_flag"
+    exit: "0 (10 passed, 4 subtests passed)"
+    ts: "2026-10-08T12:34Z"
+    seat: claude-opus-5.5
 dissent:
   - seat: codex-o2 (round 1, findings 1-2)
     objection: "A prints valid JSON then exits rc 137: A is accepted and B drops organs_heartbeat, silencing base's spawn."
@@ -85,10 +90,14 @@ dissent:
     objection: "The fixed .tmp.$$ path may pre-exist with mode 0644 or as a symlink; the redirect keeps its mode and follows it."
     status: CONFIRMED
     reason: "Cured: exclusive mktemp; mutant G3 red."
-  - seat: ollama-qwen3.5:9b (round 1)
-    objection: "B could read a stale file; whitespace REG_OUT; len(argv) == 2 might break the default call."
-    status: REFUTED
-    reason: "rm at tick start plus REGISTRY_HANDOFF only on this tick's mv; whitespace fails registry-summary (rc 3, REG_BROKEN); main(sys.argv) keeps argv[0], no-flag output byte-identical to base. Codex r2 FALSIFIED all three."
+  - seat: ollama-qwen3.5:9b (round 1, findings 1-2)
+    objection: "B could read a stale file from a previous tick; a whitespace-only REG_OUT might slip through."
+    status: RETRACTED
+    reason: "Ollama r2 itself marks them FALSIFIED / CURED: rm at tick start plus REGISTRY_HANDOFF only on this tick's mv; whitespace fails registry-summary (rc 3, REG_BROKEN). Codex r2 FALSIFIED both."
+  - seat: ollama-qwen3.5:9b (round 1, argv)
+    objection: "len(argv) == 2 might break the default invocation if argv excludes the script name."
+    status: PLAUSIBLE
+    reason: "Not acted on: main(sys.argv) keeps argv[0]; base already used len(argv) == 2; no-flag output byte-identical to base on 24 pairs. Codex r2 FALSIFIED it; Ollama r2 says HELD but 'acceptable'."
   - seat: ollama-qwen3.5:9b (round 1, tmp debris)
     objection: "Crash debris .tmp files accumulate in the state dir."
     status: PLAUSIBLE
