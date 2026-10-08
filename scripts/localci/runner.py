@@ -1072,7 +1072,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
     local, wf = ctx["local"], str(ctx.get("workflow_file"))
     flag = local.get("runs_when")
     if flag and change_map_status(cm) == "PASS" and not cm.get("run_all") and flag not in (cm.get("suggested_jobs") or []):
-        return {"kind": "record", "status": "NOT_APPLICABLE", "reason": f"trusted change_map does not select {flag} (suggested={cm.get('suggested_jobs')}): "
+        return {"kind": "record", "status": "NOT_APPLICABLE", "skipped": "change_map",   # a skip, compared as one (B5), never an execution
+                "reason": f"trusted change_map does not select {flag} (suggested={cm.get('suggested_jobs')}): "
                 "the hosted job skips, and a skipped required context is satisfied"}
     if local.get("where") != "container" or iso.get("mode") != "container" or iso.get("error"):
         return _blocked(f"a service context runs only under --isolation container ({iso.get('error') or iso.get('mode')})")
@@ -2569,6 +2570,8 @@ def evaluate_contexts(view: dict, plan: dict) -> dict:
         s, reason = view[chk]["status"], view[chk].get("reason") or ""
         ok = s == "PASS" or (s == "NOT_APPLICABLE" and reason.strip() != "")
         out["results"][name] = {"mapping": mapping, "check": chk, "verdict": "OK" if ok else s, **cov}
+        if s == "NOT_APPLICABLE" and isinstance(skip := ((plan.get("checks") or {}).get(chk) or {}).get("skipped"), str):
+            out["results"][name]["skipped"] = skip   # satisfied as on GitHub, and said: the classifier decided, nothing ran
         if s in ("ERROR", "BLOCKED") and (host := HOST_NO_VERDICT.match(reason)):   # the host failed, not the candidate: named, no verdict
             out["results"][name]["no_verdict"] = host.group(0)
         elif s == "BLOCKED" and reason.startswith("judge_rewritten: "):   # a red read with a BASE judge the candidate rewrites (B5)
