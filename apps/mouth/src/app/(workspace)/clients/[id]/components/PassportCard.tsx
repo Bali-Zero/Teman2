@@ -21,6 +21,7 @@ import {
   getDriveProxyUrl,
   getPassportValidityColor,
   isBirthdayToday,
+  pickCurrentPassport,
 } from "./utils";
 import { formatLongSpan } from "@/lib/utils/format-date";
 
@@ -49,14 +50,8 @@ export function PassportCard({
     onDone: onRefresh,
   });
 
-  // Find passport document from documents — only the client's own passport (no family members)
-  const passportDoc = documents.find(
-    (doc) =>
-      !doc.family_member_id &&
-      (doc.document_type?.toLowerCase().includes("passport") ||
-        (doc.document_category === "personal" &&
-          doc.document_type?.toLowerCase() === "passport")),
-  );
+  // The client's own current passport — see pickCurrentPassport.
+  const passportDoc = pickCurrentPassport(documents);
 
   // Get passport validity color and alert level
   const passportValidity = getPassportValidityColor(client.passport_expiry);

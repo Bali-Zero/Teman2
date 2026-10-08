@@ -1,5 +1,7 @@
 "use client";
 
+import type { ClientDocument } from "@/lib/api/crm/crm.types";
+
 // Country codes with flags for phone input
 export const COUNTRY_CODES = [
   { code: "+62", country: "Indonesia", flag: "\u{1F1EE}\u{1F1E9}" },
@@ -243,6 +245,30 @@ export const getPassportValidityColor = (
       monthsUntil: monthsUntilExpiry,
     };
   }
+};
+
+// The client's current passport for the Overview card: own passport only (no
+// family member), not removed by the client in the portal (deleted_at — the
+// profile keeps those rows for the "Removed" pill), not archived, newest upload
+// first (created_at, then id). The profile list is ordered by category/type,
+// so its first passport row is not necessarily the current one.
+export const pickCurrentPassport = (
+  documents: ClientDocument[],
+): ClientDocument | undefined => {
+  const candidates = documents.filter(
+    (doc) =>
+      !doc.family_member_id &&
+      !doc.deleted_at &&
+      !doc.is_archived &&
+      doc.document_type?.toLowerCase().includes("passport"),
+  );
+  const uploadedAt = (doc: ClientDocument) =>
+    doc.created_at ? Date.parse(doc.created_at) || 0 : 0;
+  return candidates.reduce<ClientDocument | undefined>((best, doc) => {
+    if (!best) return doc;
+    const diff = uploadedAt(doc) - uploadedAt(best);
+    return diff > 0 || (diff === 0 && doc.id > best.id) ? doc : best;
+  }, undefined);
 };
 
 // Check if today is client's birthday
