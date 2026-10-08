@@ -29,6 +29,9 @@ SW_DEAD = tuple(f"{SW}::{t}" for t in ("test_a_timeout_after_a_dead_xdist_worker
                                       "test_a_timeout_without_a_dead_worker_keeps_the_old_reason",
                                       "test_a_dead_worker_in_a_run_that_finished_changes_nothing"))
 
+# B6: the merger's own retention (prune.py) and the tick's host floor, against their tests
+PRUNE, PRUNE_T = "scripts/localci/prune.py", "scripts/localci/tests/test_prune.py"
+
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
@@ -141,6 +144,15 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "median-is-mean": (PY, '"median_s": round(median(t for t, _ in timed), 1) if timed else None',
                        '"median_s": round(sum(t for t, _ in timed) / len(timed), 1) if timed else None', (REPORT,)),
     "longest-is-first": (PY, '"longest_s": timed[-1][0] if timed else None', '"longest_s": timed[0][0] if timed else None', (REPORT,)),
+    # B6-1: deps images by explicit tag, 48 h unreferenced, never the newest of a recipe, never the candidate or base images
+    "b6-ref-window-shorter": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 46", (PRUNE_T,)),
+    "b6-ref-window-longer": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 72", (PRUNE_T,)),
+    "b6-newest-guard-off": (PRUNE, 'elif newest.get(im["recipe"]) is im:', "elif False:", (PRUNE_T,)),
+    "b6-never-list-off": (PRUNE, "return not tag.startswith(DEPS_PREFIX) or tag.startswith(NEVER)", "return False", (PRUNE_T,)),
+    "b6-young-guard-off": (PRUNE, "elif age_h is None or age_h < REF_WINDOW_H:", "elif age_h is None:", (PRUNE_T,)),
+    "b6-rm-forced": (PRUNE, '_docker(docker, "image", "rm", im["tag"])', '_docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
+    "b6-builder-always": (PRUNE, "if removed and not dry:", "if not dry:", (PRUNE_T,)),
+    "b6-dry-run-removes": (PRUNE, "r = None if dry else _docker(", "r = None if False else _docker(", (PRUNE_T,)),
     # the tick's journal
     "durations-not-journalled": (PY, '                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},\n',
                                  "", (TICK,)),

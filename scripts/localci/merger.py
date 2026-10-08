@@ -888,6 +888,28 @@ def _longest_gap_h(stamps) -> float:
     return round(max((b - a for a, b in zip(ts, ts[1:])), default=0) / 3600, 2)
 
 
+def cmd_prune(a) -> int:
+    """B6: the gate's own retention, run by the wrapper after the tick (the decision first). Only a merger state dir."""
+    state = Path(a.state_dir).expanduser().resolve()
+    if not (state / "repo").is_file():
+        print(f"merger prune: refusing — {state} is not a merger state dir (no repo binding written by a tick)", file=sys.stderr)
+        return 2
+    spec = importlib.util.spec_from_file_location("localci_prune", Path(__file__).resolve().parent / "prune.py")
+    pm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pm)
+    try:
+        rec = pm.prune(state, a.docker, dry=a.dry_run, fstrim=a.fstrim, colima=a.colima)
+    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
+        journal(state, {"kind": "prune", "dry_run": a.dry_run, "error": redact(f"{type(exc).__name__}: {exc}")})
+        print(f"merger prune: error — {type(exc).__name__}", file=sys.stderr)
+        return 1
+    journal(state, rec)
+    gone = rec["images"].get("would_remove" if a.dry_run else "removed") or []
+    print(f"merger prune: images_{'would_remove' if a.dry_run else 'removed'}={len(gone)} image_errors={len(rec['images']['errors'])} "
+          f"vm_free_gb={rec['vm_free_gb']} host_free_gb={rec['host_free_gb']}")
+    return 1 if rec["images"]["errors"] else 0
+
+
 def cmd_merge(_a) -> int:
     print(f"merger: refusing — {PHASE_E}", file=sys.stderr)
     return 2
@@ -950,6 +972,12 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--base", default=hc.DEFAULT_BRANCH)
     r.add_argument("--state-dir", default=str(DEFAULT_STATE))
     r.add_argument("--since", help="only decisions whose ts >= this ISO prefix (e.g. 2026-10-07)")
+    pr = sub.add_parser("prune", help="B6: remove the gate's unreferenced deps images by tag and trim old run dirs, journalled")
+    pr.add_argument("--state-dir", default=str(DEFAULT_STATE))
+    pr.add_argument("--docker", default="docker")
+    pr.add_argument("--dry-run", action="store_true", help="journal what would go, remove nothing")
+    pr.add_argument("--fstrim", action="store_true", help="after an image removal, `colima ssh -- sudo fstrim -av`")
+    pr.add_argument("--colima", default="colima")
     sub.add_parser("merge", help=PHASE_E)
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["merge"]:   # whatever follows: there is no merge path to reach
@@ -959,6 +987,8 @@ def main(argv: list[str] | None = None) -> int:
         return selftest()
     if a.cmd == "report":
         return cmd_report(a)
+    if a.cmd == "prune":
+        return cmd_prune(a)
     if a.cmd == "tick":
         if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", a.repo) or not re.match(r"^[A-Za-z0-9_./-]+$", a.base) or ".." in a.base:
             print(f"merger: refusing repo {a.repo!r} / base {a.base!r}", file=sys.stderr)
