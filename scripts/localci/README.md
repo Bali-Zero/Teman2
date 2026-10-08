@@ -524,12 +524,13 @@ flags go only to a `merger.py` that knows them (under the floor, a merger that c
 
 The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and `<state>/runs`:
 
-- **Deps images.** Removed by `docker image rm <tag>` (never `-f`, never `prune -a`), recipe by recipe, newest first
-  (`MAX_IMAGES_PER_RECIPE` 2, `IN_FLIGHT_GRACE_H` 6, beside the 48 h window), two slots held by distinct images: the newest
-  holds one; an image a `state/plan.json` of the last 48 h names by tag or id takes the free one; an image no plan of the
-  window names takes no slot and goes; beyond the slots an image stays only while a plan named it under 6 h ago (a tick in
-  flight) — so with two newer images kept, the oldest goes even if a plan named it 47 h ago. Whatever a run of the last
-  48 h without a `status.json` yet names (the run in progress) is kept, and the prune never runs beside a tick (the lease).
+- **Deps images.** Removed by `docker image rm <tag>` (never `-f`, never `prune -a`), recipe by recipe
+  (`MAX_IMAGES_PER_RECIPE` 2, beside the 48 h window), two slots held by distinct images: the newest holds one; the other
+  goes to the image the most `state/plan.json` of the last 48 h name by tag or id (distinct plans, not mentions; a tie goes to
+  the youngest reference, then the newest image); an image no plan of the window names takes no slot and goes; beyond the
+  slots an image stays only when the run holding the lease names it — a run of the last 48 h without a `status.json` yet —
+  and the prune never runs beside a tick (it takes the lease). B8 retired the 6 h clock grace (`IN_FLIGHT_GRACE_H`): on Pro
+  every image was named under 3 h ago, so the cap never bit and the VM filled (2026-10-08T15:27Z).
   The recipe is the `org.nuzantara.localci.recipe` label the deps build now sets, else the check whose job named the tag in
   any plan; an image whose recipe nothing records is its own recipe and stays. The never-list — `localci-candidate:*`,
   `localci-deps-base:*` and every `service_images` stand-in value of the BASE matrix (`contexts_matrix.yaml`, extracted by the
@@ -537,8 +538,15 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   its images present is journalled under `kept` with its rule. While a plan or the matrix cannot be read, no image is removed;
   a half-written plan still names the tags its text names. Created is read to the nanosecond; images built at the same
   instant rank together.
-- **Builder cache.** Every prune that is not a dry run ends its image stage with `docker builder prune -f --filter until=24h`
-  on the current builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's).
+- **VM floor (B8).** After the cap, the builder prune and the run trim, while the VM's free GB (`vm_free_gb.after`) is under
+  `VM_MIN_FREE_GB` (15; `LOCALCI_VM_MIN_FREE_GB` overrides it, a value that is not a finite number ≥ 0 reads as 15), slot-2
+  images go oldest first, the free GB re-read after each, until the floor is met or none is left. Never the newest of a
+  recipe, never the never-list, never what the lease run names. Each removal's rule starts `vm floor:`; the line carries
+  `vm_floor {floor_gb, removed, met}`, or `skipped` on a dry run, an unreadable input, or an unmeasured VM.
+- **Builder cache.** Every prune that is not a dry run runs `docker builder prune -f --keep-storage 4GB` on the current
+  builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's). The budget is
+  `BUILDER_CACHE_GB` (4; `LOCALCI_BUILDER_CACHE_GB` overrides it) and the line journals it as `builder_prune.keep_storage_gb`.
+  It read `--filter until=24h` until B8: on Pro at 17:20Z that kept 16.9 GB of cache with 0.5 GB reclaimable.
 - **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
   run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
   `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched, and a `runs/` that is a
@@ -552,13 +560,15 @@ One journal line per prune (its shape; the numbers below are illustrative, not m
 `would_remove` instead of `removed` and removes nothing:
 
     {"ts": "…Z", "host": "…", "code_sha": "…", "kind": "prune", "dry_run": false,
-     "vm_free_gb": {"before": 31.2, "after": 40.9},
+     "vm_free_gb": {"before": 1.2, "after": 15.8},
      "host_free_gb": {"before": 77.1, "after": 77.4, "after_fstrim": 87.0},
-     "images": {"removed": [{"tag": "localci-deps:…", "gb": 11.9, "rule": "recipe e2e-tests already keeps 2 images (newest localci-deps:…): beyond the cap, its youngest plan is 47.0 h old"}],
+     "images": {"removed": [{"tag": "localci-deps:…", "gb": 5.35, "rule": "recipe e2e-tests already keeps 2 images (newest localci-deps:…): beyond the cap, named by 1 plan(s), the youngest 2.1 h ago"},
+                            {"tag": "localci-deps:…", "gb": 4.64, "rule": "vm floor: VM free 11.2 GB < 15 GB after the cap; slot 2 of recipe backend-tests, oldest first"}],
                 "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe e2e-tests"},
-                         {"tag": "localci-deps:…", "rule": "slot 2 of 2 of recipe e2e-tests, named by a plan 5.0 h ago"},
+                         {"tag": "localci-deps:…", "rule": "slot 2 of 2 of recipe e2e-tests: named by 4 plan(s) of the last 48 h, the youngest 1.4 h ago"},
                          {"tag": "postgres:15", "rule": "service stand-in of the BASE matrix: never pruned"}], "errors": []},
-     "builder_prune": {"rc": 0, "tail": "Total: 3.1GB"},
+     "builder_prune": {"rc": 0, "keep_storage_gb": 4.0, "tail": "Total: 12.9GB"},
+     "vm_floor": {"floor_gb": 15.0, "removed": 1, "met": true},
      "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},
      "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}, "failed": []}
 

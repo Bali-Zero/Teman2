@@ -2,7 +2,8 @@
 
 Deps images go by explicit tag when no plan of the last 48 h names them and they are not the newest image of their recipe —
 whatever their age (the age guard of B6-1 was retired under the cap: per recipe at most MAX_IMAGES_PER_RECIPE images stay, the
-newest and one a plan of the last 48 h names; beyond the slots only a plan younger than IN_FLIGHT_GRACE_H keeps an image);
+newest and the one most plans of the last 48 h name; beyond the slots only the run in progress keeps an image — B8 retired the
+clock grace — and under VM_MIN_FREE_GB of VM free space slot-2 images go oldest first);
 `localci-candidate:*`, `localci-deps-base:*` and every service stand-in of the BASE matrix are never in a removal set
 (2026-10-08 07:48Z: an age prune removed the candidate image and the stand-ins and blocked every contained context for a tick). Run directories keep everything for 7
 days, then lose `logs/` and the Pysa call graphs, and after 30 days keep only their three verdict files. `decisions.jsonl` and
@@ -14,6 +15,7 @@ from __future__ import annotations
 import calendar
 import importlib.util
 import json
+import math
 import os
 import re
 import shutil
@@ -24,8 +26,9 @@ from pathlib import Path
 DEPS_PREFIX = "localci-deps:"
 NEVER = ("localci-candidate:", "localci-deps-base:")
 REF_WINDOW_H = 48           # a plan this young names its images
-MAX_IMAGES_PER_RECIPE = 2   # per recipe: the newest, and the next one only while a plan of the last 48 h names it
-IN_FLIGHT_GRACE_H = 6       # beyond the cap, an image a plan named this recently is a tick in flight: kept
+MAX_IMAGES_PER_RECIPE = 2   # per recipe: the newest, and the one most plans of the last 48 h name
+VM_MIN_FREE_GB = 15.0       # B8: under it after the cap, slot-2 images go oldest first (env LOCALCI_VM_MIN_FREE_GB)
+BUILDER_CACHE_GB = 4        # B8: the build cache is kept to this budget (env LOCALCI_BUILDER_CACHE_GB), not by age
 FULL_DAYS, VERDICT_DAYS = 7, 30
 RECIPE_LABEL = "org.nuzantara.localci.recipe"
 TAG_RE = re.compile(r"localci-deps:[0-9a-f]{16}\b")
@@ -100,6 +103,7 @@ def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
     any of which may name an image, so none is removed while one exists — and what the run in progress names (a run of the
     last 48 h with no status.json yet). A half-written plan still names what its text names."""
     recent, ids, recipes, unreadable, in_progress = {}, {}, {}, [], set()
+    named = {}   # tag or image id -> how many plans of the last 48 h name it (B8: slot 2 goes to the most named)
     for plan in sorted(runs.glob("*/state/plan.json")) if runs.is_dir() else []:
         try:
             raw = plan.read_text(errors="replace")
@@ -120,9 +124,11 @@ def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
                 recent[tag] = min(recent.get(tag, age_h), age_h)
             for iid in ID_RE.findall(raw):
                 ids[iid] = min(ids.get(iid, age_h), age_h)
+            for ref in set(TAG_RE.findall(raw)) | set(ID_RE.findall(raw)):
+                named[ref] = named.get(ref, 0) + 1
             if not (plan.parent.parent / "status.json").exists():
                 in_progress |= set(TAG_RE.findall(raw)) | set(ID_RE.findall(raw))
-    return recent, ids, {t: sorted(r)[0] for t, r in recipes.items()}, unreadable, in_progress
+    return recent, ids, {t: sorted(r)[0] for t, r in recipes.items()}, unreadable, in_progress, named
 
 
 def _docker(docker: str, *args: str, timeout: int = 120) -> subprocess.CompletedProcess:
@@ -153,12 +159,13 @@ def deps_images(docker: str, tags: list[str] | None = None) -> list[dict]:
 
 
 def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, now_s: float, in_progress: set = frozenset(),
-                    stand_ins: frozenset = frozenset()) -> list[dict]:
-    """Every deps image with `remove` and the rule that decided it. Per recipe, newest first, MAX_IMAGES_PER_RECIPE slots held
-    by distinct images: the newest holds one; an image a plan of the last 48 h names takes a free one; beyond them an image is
-    kept only when a plan named it under IN_FLIGHT_GRACE_H ago (a tick in flight). An image no plan of the window names takes
-    no slot and goes. The never-list and what the run in progress names are always kept. A recipe nothing records is the
-    image's own."""
+                    stand_ins: frozenset = frozenset(), named: dict | None = None) -> list[dict]:
+    """Every deps image with `remove`, `slot` and the rule that decided it. Per recipe, MAX_IMAGES_PER_RECIPE slots held by
+    distinct images: the newest holds the first; the others go to the images most plans of the last 48 h name (ties: the
+    youngest reference, then the newest image). Beyond the slots an image stays only when the run in progress names it (a run
+    of the last 48 h with no status.json; the prune never runs beside the lease holder) — no clock grace (B8). An image no
+    plan of the window names takes no slot and goes. The never-list is always kept. A recipe nothing records is its own."""
+    named = named or {}
     for im in images:
         im["recipe"] = im.get("label_recipe") or recipes.get(im["tag"]) or f"unknown:{im['tag']}"
     newest, by_recipe = {}, {}
@@ -166,35 +173,41 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
         by_recipe.setdefault(im["recipe"], []).append(im)
         if im["created"] is not None and (im["recipe"] not in newest or im["created"] > newest[im["recipe"]]["created"]):
             newest[im["recipe"]] = im
-    rules = {}
+    ref_of = lambda im: min([h for h in (recent.get(im["tag"]), ids.get(im["id"])) if h is not None], default=None)  # noqa: E731
+    count_of = lambda im: max(named.get(im["tag"], 0), named.get(im["id"], 0))  # noqa: E731
+    out = {}
     for r, ims in by_recipe.items():
-        slots = set()   # image ids holding a slot: a tag of an image that already holds one keeps it too
-        for im in sorted(ims, key=lambda o: (o["created"] is None, -(o["created"] or 0), o["tag"])):
-            ref = min([h for h in (recent.get(im["tag"]), ids.get(im["id"])) if h is not None], default=None)
-            top = newest.get(r)
+        top, slots = newest.get(r), {}   # image id -> slot number
+        used = {1} if top is not None else set()   # slot 1 is the newest's, even when the run in progress holds it
+        rest = []
+        for im in ims:
             if never(im["tag"], stand_ins):
-                why = never_rule(im["tag"], stand_ins)
+                out[im["tag"]] = (False, never_rule(im["tag"], stand_ins), None)
             elif im["tag"] in in_progress or im["id"] in in_progress:
-                why = "named by the run in progress (no status.json yet)"
+                out[im["tag"]] = (False, "named by the run in progress (no status.json yet)", None)
             elif top is None or im["created"] is None or im["created"] == top["created"]:
-                why = f"the newest image of recipe {r}"   # an image built at the same instant, or undated, ranks with it
-                slots.add(im["id"])
-            elif im["id"] in slots:
-                why = f"another tag of an image recipe {r} keeps"
-            elif ref is not None and len(slots) < MAX_IMAGES_PER_RECIPE:
-                slots.add(im["id"])
-                why = f"slot {len(slots)} of {MAX_IMAGES_PER_RECIPE} of recipe {r}, named by a plan {ref:.1f} h ago"
-            elif ref is not None and ref < IN_FLIGHT_GRACE_H:
-                why = f"beyond the cap of {MAX_IMAGES_PER_RECIPE} of recipe {r}, named {ref:.1f} h ago: a tick in flight"
-            elif ref is not None:
-                rules[im["tag"]] = (True, f"recipe {r} already keeps {MAX_IMAGES_PER_RECIPE} images (newest {top['tag']}): beyond the cap, "
-                                          f"its youngest plan is {ref:.1f} h old")
-                continue
+                slots[im["id"]] = 1   # an image built at the same instant, or undated, ranks with the newest
+                out[im["tag"]] = (False, f"the newest image of recipe {r}", 1)
             else:
-                rules[im["tag"]] = (True, f"not the newest of recipe {r} (newest {top['tag']}) and no plan of the last 48 h names it")
-                continue
-            rules[im["tag"]] = (False, why)
-    return [{**im, "remove": rules[im["tag"]][0], "rule": rules[im["tag"]][1]} for im in images]
+                rest.append(im)
+        named_rest = sorted((im for im in rest if ref_of(im) is not None),
+                            key=lambda im: (-count_of(im), ref_of(im), -(im["created"] or 0), im["tag"]))
+        for im in named_rest:
+            if im["id"] not in slots and len(used) < MAX_IMAGES_PER_RECIPE:
+                used.add(len(used) + 1)
+                slots[im["id"]] = len(used)
+            if im["id"] in slots:
+                out[im["tag"]] = (False, f"slot {slots[im['id']]} of {MAX_IMAGES_PER_RECIPE} of recipe {r}: named by {count_of(im)} plan(s) "
+                                         f"of the last 48 h, the youngest {ref_of(im):.1f} h ago", slots[im["id"]])
+            else:
+                out[im["tag"]] = (True, f"recipe {r} already keeps {MAX_IMAGES_PER_RECIPE} images (newest {top['tag']}): beyond the cap, "
+                                        f"named by {count_of(im)} plan(s), the youngest {ref_of(im):.1f} h ago", None)
+        for im in rest:
+            if ref_of(im) is None and im["id"] in slots:
+                out[im["tag"]] = (False, f"another tag of an image recipe {r} keeps", slots[im["id"]])
+            elif ref_of(im) is None:
+                out[im["tag"]] = (True, f"not the newest of recipe {r} (newest {top['tag']}) and no plan of the last 48 h names it", None)
+    return [{**im, "remove": out[im["tag"]][0], "rule": out[im["tag"]][1], "slot": out[im["tag"]][2]} for im in images]
 
 
 def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
@@ -241,12 +254,21 @@ def vm_free_gb(docker: str, state: Path) -> float | None:
     return None if gb is None else round(gb, 1)
 
 
+def _env_gb(name: str, default: float) -> float:
+    """A GB budget from the environment; a value that is not a finite number >= 0 reads as the default, which the line journals."""
+    try:
+        v = float(os.environ.get(name, default))
+    except ValueError:
+        return default
+    return v if math.isfinite(v) and v >= 0 else default
+
+
 def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, colima: str = "colima", host_path: str = HOST_PATH,
           now_s: float | None = None, matrix: Path = MATRIX) -> dict:
     now_s = time.time() if now_s is None else now_s
     runs = state / "runs"
     rec = {"kind": "prune", "dry_run": dry, "vm_free_gb": {"before": vm_free_gb(docker, state)}, "host_free_gb": {"before": host_free_gb(host_path)}}
-    recent, ids, recipes, unreadable, in_progress = plan_refs(runs, now_s)
+    recent, ids, recipes, unreadable, in_progress, named = plan_refs(runs, now_s)
     errors = [{"plan": u, "error": "unreadable: no image is removed while a plan cannot be read"} for u in unreadable]
     try:
         keep = stand_ins(matrix)
@@ -254,7 +276,7 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         keep = frozenset()
         errors.append({"matrix": str(matrix), "error": f"unreadable ({type(exc).__name__}): no image is removed without the stand-in list"})
     tags = all_tags(docker)
-    decided = image_decisions(deps_images(docker, tags), recent, ids, recipes, now_s, in_progress, keep)
+    decided = image_decisions(deps_images(docker, tags), recent, ids, recipes, now_s, in_progress, keep, named)
     for d in decided if errors else []:
         d.update(remove=False, rule=f"kept: {len(errors)} input(s) unreadable, see errors") if d["remove"] else None
     never_kept = [{"tag": t, "rule": never_rule(t, keep)} for t in tags if protected(t, keep)]
@@ -265,16 +287,41 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         r = None if dry else _docker(docker, "image", "rm", im["tag"])
         (removed if r is None or r.returncode == 0 else errors).append(
             {"tag": im["tag"], "gb": im["gb"], "rule": im["rule"], **({"error": r.stderr.strip()[:200]} if r is not None and r.returncode else {})})
-    rec["images"] = {"removed" if not dry else "would_remove": removed, "errors": errors,
-                     "kept": [{"tag": d["tag"], "rule": d["rule"]} for d in decided if not d["remove"]] + never_kept}
-    if not dry:   # the build cache grows with every deps build, whether or not an image went
+    if not dry:   # the build cache grows with every deps build; it is kept to a budget, not by age (B8: 16.9 GB kept, 0.5 by until=24h)
+        cache_gb = _env_gb("LOCALCI_BUILDER_CACHE_GB", BUILDER_CACHE_GB)
         try:
-            b = _docker(docker, "builder", "prune", "-f", "--filter", "until=24h", timeout=600)
-            rec["builder_prune"] = {"rc": b.returncode, "tail": (b.stdout or b.stderr).strip()[-120:]}
+            b = _docker(docker, "builder", "prune", "-f", "--keep-storage", f"{cache_gb:g}GB", timeout=600)
+            rec["builder_prune"] = {"rc": b.returncode, "keep_storage_gb": cache_gb, "tail": (b.stdout or b.stderr).strip()[-120:]}
         except (OSError, subprocess.SubprocessError) as e:
-            rec["builder_prune"] = {"rc": None, "tail": type(e).__name__}
+            rec["builder_prune"] = {"rc": None, "keep_storage_gb": cache_gb, "tail": type(e).__name__}
     rec["runs"] = trim_runs(runs, now_s, dry)
     rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)
+    floor = _env_gb("LOCALCI_VM_MIN_FREE_GB", VM_MIN_FREE_GB)   # B8: the VM's free space outranks slot 2
+    rec["vm_floor"] = {"floor_gb": floor, "removed": 0}
+    if dry or errors:
+        rec["vm_floor"]["skipped"] = "dry run" if dry else "an input is unreadable"
+    elif rec["vm_free_gb"]["after"] is None:
+        rec["vm_floor"]["skipped"] = "the VM's free space is unmeasured"
+    else:
+        for im in sorted((d for d in decided if not d["remove"] and (d.get("slot") or 0) >= 2 and not never(d["tag"], keep)),
+                         key=lambda d: (d["created"] if d["created"] is not None else float("inf"), d["tag"])):
+            if rec["vm_free_gb"]["after"] >= floor:
+                break
+            before = rec["vm_free_gb"]["after"]
+            r = _docker(docker, "image", "rm", im["tag"])
+            if r.returncode != 0:
+                errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "vm floor", "error": r.stderr.strip()[:200]})
+                continue
+            im["remove"] = True
+            removed.append({"tag": im["tag"], "gb": im["gb"], "rule": f"vm floor: VM free {before:g} GB < {floor:g} GB after the cap; "
+                                                                        f"slot {im['slot']} of recipe {im['recipe']}, oldest first"})
+            rec["vm_floor"]["removed"] += 1
+            rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)
+            if rec["vm_free_gb"]["after"] is None:
+                break
+        rec["vm_floor"]["met"] = rec["vm_free_gb"]["after"] is not None and rec["vm_free_gb"]["after"] >= floor
+    rec["images"] = {"removed" if not dry else "would_remove": removed, "errors": errors,
+                     "kept": [{"tag": d["tag"], "rule": d["rule"]} for d in decided if not d["remove"]] + never_kept}
     rec["host_free_gb"]["after"] = host_free_gb(host_path)
     if fstrim and not dry:   # every real prune ends with a trim: a run's own containers and layers free blocks every tick, which
         # stay allocated in the host's sparse disk until trimmed (B7, measured 2026-10-08T15:16Z: 11.4 GiB back with no removal)
