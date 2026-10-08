@@ -80,8 +80,19 @@ def count_diverged_probes(raw_json: str) -> int:
     return count
 
 
-def summarize_proprioception(raw_json: str) -> tuple[list[str], list[str]]:
-    """Return (all diverged ids, P0/P1 session-curable ids)."""
+def summarize_proprioception(
+    raw_json: str, registry_result: str | None = None
+) -> tuple[list[str], list[str]]:
+    """Return (all diverged ids, P0/P1 session-curable ids).
+
+    When the registry result is supplied, receptor A has already judged every
+    organ with its finer cure rules, so the duplicate ``organs_heartbeat`` probe
+    is excluded from the curable count.  The wrapper may pass that result in a
+    follow-up change; ``None`` preserves its current behaviour.
+    """
+    if registry_result is not None:
+        summarize_registry(registry_result)
+        registry_findings(registry_result)
     diverged: list[str] = []
     curable: list[str] = []
     for probe in _probes(raw_json, strict=True):
@@ -96,7 +107,8 @@ def summarize_proprioception(raw_json: str) -> tuple[list[str], list[str]]:
         if len(severity) < 2 or severity[0] != "P" or not severity[1:].isdigit():
             raise ProbeReportError(f"probe {probe_id}: invalid severity {severity!r}")
         diverged.append(probe_id)
-        if cure == "session" and int(severity[1:]) <= 1:
+        duplicate_organ_probe = registry_result is not None and probe_id == "organs_heartbeat"
+        if cure == "session" and int(severity[1:]) <= 1 and not duplicate_organ_probe:
             curable.append(probe_id)
     return diverged, curable
 

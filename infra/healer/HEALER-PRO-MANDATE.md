@@ -31,6 +31,16 @@ il repo → 1 riga Telegram a Zero (il guaritore Mini o una sessione interattiva
    - Refresh HOME←canone per coppie DICHIARATE in `infra/home-fork/declared-pairs.json`
      con `machines` che include `pro` (cmp prima e dopo; il canone è
      `~/nuzantara` già allineato a origin/main — verifica con `git log -1`).
+   - Symlink del gate `.husky/_` SOLO per un record di
+     `python3 scripts/lint_worktree_husky_symlink.py --json` con `health` =
+     `MISSING` e `path` sotto `~/nuzantara/.worktrees/` (mai `~/.codex/worktrees/*`
+     né altri path fuori dal repo: worktree di un seat, li ricollega l'owner).
+     Prima: `test -f ~/nuzantara/.husky/_/pre-push` e nessun processo vivo nel
+     worktree (`lsof +D <path>` vuoto e nessun cwd lì in `lsof -d cwd`): i runtime
+     notturni `codex-*-runtime` si toccano solo da fermi. Cura:
+     `ln -s ~/nuzantara/.husky/_ <path>/.husky/_` (mai `-f`). Prova: il lint ridà
+     `health=OK` per quel `path` e
+     `cmp ~/nuzantara/.husky/_/pre-push <path>/.husky/_/pre-push` è pulito.
    - Raccolta log-evidenza (read-only) da allegare al Telegram.
    - Re-run di reconciler esistenti in report-mode.
      Ogni cura: PROVA PER CONTENUTO dopo (sidecar rinfrescato, processo vivo, cmp pulito)

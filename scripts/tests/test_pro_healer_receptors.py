@@ -418,12 +418,28 @@ def _proprioception():
     return mod
 
 
+def _healer_run_checks():
+    spec = importlib.util.spec_from_file_location("healer_run_checks_under_test", HEALER_RUN_CHECKS)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _seat(status: str) -> str:
     return json.dumps({"status": status, "seat": "x"})
 
 
-def _launchd(verdict: str, marker: str, **extra: str) -> str:
+def _launchd(verdict: str, marker: str | None, **extra: str) -> str:
     return json.dumps({"verdict": verdict, "log_marker": marker, **extra})
+
+
+def _worktree(path: str, origin: str) -> str:
+    return json.dumps({"path": path, "origin": origin, "health": "MISSING"})
+
+
+def _organ(status: str) -> str:
+    return json.dumps({"organ_id": "x", "kind": "unhealthy", "status": status})
 
 
 TCC = _launchd("DEAD-GREEN", "Operation not permitted")
@@ -435,7 +451,10 @@ USER_NOREPO = "NO REPO COUNTERPART: /Users/u/scripts/y.sh executes live with no 
 # falls back has a guilt row (owner) and an innocence row (stays session); n=None means len(evidence).
 ARSENAL_ROWS = [
     ("A1-parse-guilt", [_seat("AUTH_DEAD")], None, "owner"),
-    ("A1-parse-innocence-cut-at-160", [json.dumps({"status": "AUTH_DEAD", "detail": "x" * 200})[:160]], None, "session"),
+    ("A1-parse-guilt-complete-before-cut",
+     [json.dumps({"status": "AUTH_DEAD", "detail": "x" * 200})[:160]], None, "owner"),
+    ("A1-parse-innocence-field-cut",
+     [json.dumps({"status": "AUTH_" + "x" * 200})[:160]], None, "session"),
     ("A1-parse-innocence-not-a-string", [None], None, "session"),
     ("A2-coverage-guilt", [_seat("AUTH_DEAD"), _seat("BALANCE_DEAD")], None, "owner"),
     ("A2-coverage-innocence", [_seat("AUTH_DEAD")], 2, "session"),
@@ -445,21 +464,43 @@ ARSENAL_ROWS = [
     ("A5-state-set-guilt", [_seat("BALANCE_DEAD")], None, "owner"),
     ("A5-state-set-innocence-caseless", [_seat("auth_dead")], None, "session"),
     ("A5-state-set-innocence-prefix", [_seat("AUTH_DEAD_SOFT")], None, "session"),
-    ("A5-state-set-innocence-quota", [_seat("QUOTA_DEAD")], None, "session"),
+    ("A5-state-set-guilt-quota", [_seat("QUOTA_DEAD")], None, "owner"),
+    ("A5-state-set-guilt-model", [_seat("MODEL_ERR")], None, "owner"),
+    ("A5-state-set-innocence-unknown", [_seat("UNKNOWN_ERR")], None, "session"),
+    ("A5-state-set-innocence-timeout", [_seat("TIMEOUT")], None, "session"),
     ("A6-status-key-innocence", [json.dumps({"seat": "x"})], None, "session"),
 ]
 LAUNCHD_ROWS = [
     ("L1-parse-guilt", [TCC], None, "owner"),
-    ("L1-parse-innocence-cut-at-160",
-     [_launchd("DEAD-GREEN", "Operation not permitted", program="x" * 200)[:160]], None, "session"),
+    ("L1-parse-guilt-complete-before-cut",
+     [_launchd("DEAD-GREEN", "Operation not permitted", program="x" * 200)[:160]], None, "owner"),
+    ("L1-parse-innocence-field-cut",
+     [_launchd("DEAD-GREEN", "Operation not " + "x" * 200)[:160]], None, "session"),
     ("L1-parse-innocence-not-a-string", [None], None, "session"),
     ("L2-coverage-guilt", [TCC, TCC], None, "owner"),
     ("L2-coverage-innocence", [TCC], 2, "session"),
     ("L3-nonempty-innocence", [], 0, "session"),
-    ("L4-all-innocence", [TCC, _launchd("FAILING-HONESTLY", "exit 1")], None, "session"),
+    ("L4-all-innocence", [TCC, _launchd("DEAD-NONZERO", "exit 1")], None, "session"),
     ("L5-verdict-innocence", [_launchd("DEAD-NONZERO", "Operation not permitted")], None, "session"),
     ("L6-tcc-marker-innocence", [_launchd("DEAD-GREEN", "exit 0")], None, "session"),
     ("L7-caseless-marker-guilt", [_launchd("DEAD-GREEN", "OPERATION NOT PERMITTED")], None, "owner"),
+    ("L8-not-loaded-guilt", [_launchd("NOT-LOADED", "plist present")], None, "owner"),
+    ("L8-owner-only-mix-guilt", [_launchd("NOT-LOADED", "plist present"), TCC], None, "owner"),
+    ("L8-dead-nonzero-mix-innocence",
+     [_launchd("NOT-LOADED", "plist present"), _launchd("DEAD-NONZERO", "boom")], None, "session"),
+    ("L9-failing-honestly-guilt", [_launchd("FAILING-HONESTLY", None)], None, "owner"),
+    ("L9-expected-nonzero-guilt", [_launchd("EXPECTED-NONZERO", None)], None, "owner"),
+    ("L9-armed-to-nothing-innocence", [_launchd("ARMED-TO-NOTHING", None)], None, "session"),
+    ("L9-dead-green-loaded-innocence",
+     [_launchd("FAILING-HONESTLY", None), _launchd("DEAD-GREEN", None)], None, "session"),
+    ("L9-unknown-verdict-innocence", [_launchd("SOMETHING-NEW", None)], None, "session"),
+    ("L9-caseless-verdict-innocence", [_launchd("failing-honestly", None)], None, "session"),
+    # Pro 2026-10-08: 14 findings, the detector's "2 alarms" are only the NOT-LOADED two.
+    ("L10-pro-population-guilt",
+     [_launchd("FAILING-HONESTLY", None)] * 10 + [_launchd("EXPECTED-NONZERO", None)] * 2
+     + [_launchd("NOT-LOADED", None)] * 2, None, "owner"),
+    ("L10-pro-population-capped-innocence",
+     [_launchd("FAILING-HONESTLY", None)] * 5, 14, "session"),
 ]
 HOME_FORK_ROWS = [
     ("H1-diverged-form-guilt", [ROOT_DIV], None, "owner"),
@@ -472,6 +513,34 @@ HOME_FORK_ROWS = [
     ("H5-all-innocence", [ROOT_DIV, USER_NOREPO], None, "session"),
     ("H6-stat-error-innocence", ["DIVERGED: /usr/local/vanished.sh != scripts/v.sh — x"], None, "session"),
     ("H7-expanduser-guilt", ["DIVERGED: ~/root.sh != scripts/root.sh — x"], None, "owner"),
+]
+WORKTREE_ROWS = [
+    ("W1-all-foreign-guilt",
+     [_worktree("/Users/u/.codex/worktrees/3354", "external"),
+      _worktree("/private/tmp/seat", "external")], None, "owner"),
+    ("W1-repo-worktree-innocence",
+     [_worktree("/Users/u/.codex/worktrees/3354", "external"),
+      _worktree("/Users/u/nuzantara/.worktrees/task", "broker")], None, "session"),
+    ("W1-repo-path-innocence", [_worktree("/Users/u/nuzantara/.worktrees/task", "external")],
+     None, "session"),
+    ("W2-unprovable-innocence", [json.dumps({"origin": "external", "health": "MISSING"})], None, "session"),
+    ("W3-complete-fields-before-cut-guilt",
+     [json.dumps({"path": "/Users/u/.codex/worktrees/3354", "origin": "external",
+                  "origin_detail": "x" * 200})[:160]], None, "owner"),
+]
+ORGAN_ROWS = [
+    ("O1-owner-statuses-guilt", [_organ("disabled"), _organ("disabled")], None, "owner"),
+    ("O1-mixed-status-innocence", [_organ("disabled"), _organ("error")], None, "session"),
+    ("O1-cased-status-innocence", [_organ("DISABLED")], None, "session"),
+    ("O1-never-armed-is-not-a-sidecar-status-innocence", [_organ("never_armed")], None, "session"),
+    ("O1-pro-today-innocence", [_organ("fail"), _organ("error"), _organ("failed")], None, "session"),
+    ("O2-unprovable-innocence", [json.dumps({"organ_id": "x", "kind": "unhealthy"})], None, "session"),
+    ("O3-complete-status-before-cut-guilt",
+     [json.dumps({"organ_id": "x", "kind": "unhealthy", "age_days": 1.0,
+                  "status": "disabled", "detail": "x" * 200})[:160]], None, "owner"),
+    ("O3-status-cut-innocence",
+     [json.dumps({"organ_id": "x", "kind": "unhealthy", "age_days": 1.0,
+                  "status": "disabled" + "x" * 200})[:160]], None, "session"),
 ]
 
 
@@ -502,6 +571,63 @@ class CureForResultTest(unittest.TestCase):
             cures = self._cures("home_fork_scripts", HOME_FORK_ROWS)
         self.assertEqual(cures, {r[0]: r[3] for r in HOME_FORK_ROWS})
 
+    def test_worktree_branches(self) -> None:
+        self.assertEqual(self._cures("worktree_gate_shim", WORKTREE_ROWS),
+                         {r[0]: r[3] for r in WORKTREE_ROWS})
+
+    def test_organs_branches(self) -> None:
+        self.assertEqual(self._cures("organs_heartbeat", ORGAN_ROWS),
+                         {r[0]: r[3] for r in ORGAN_ROWS})
+
+    def test_real_probe_json_shapes_round_trip_to_owner(self) -> None:
+        samples = {
+            "worktree_gate_shim": {"worktrees": [
+                {"path": "/Users/u/.codex/worktrees/3354", "origin": "external",
+                 "origin_detail": "outside repo tree " + "x" * 200, "health": "MISSING",
+                 "is_symlink": False, "is_finding": True, "branch": "agent/seat",
+                 "detached": False, "locked_reason": None},
+            ]},
+            "launchd_liveness": {"findings": [
+                {"label": "sota.m13-collect", "verdict": "NOT-LOADED", "last_exit": None,
+                 "program": "/Users/u/" + "x" * 200, "program_exists": False,
+                 "log_marker": None, "stale_green": False},
+            ]},
+            "organs_heartbeat": [
+                {"organ_id": "x", "kind": "stale", "age_days": 9.0,
+                 "status": "disabled", "detail": "x" * 200},
+            ],
+            "arsenal_seats": {"findings": [
+                {"seat": "codex-spark", "status": "MODEL_ERR"},
+            ]},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for probe_id, payload in samples.items():
+                stub = root / f"{probe_id}.py"
+                stub.write_text(f"print({json.dumps(json.dumps(payload))})\n")
+                entry = next(e for e in self.mod.DEFAULT_REGISTRY if e["id"] == probe_id)
+                status, n, evidence = self.mod.run_wrap(
+                    root, dict(entry, target=["python3", str(stub)]), 10,
+                )
+                with self.subTest(probe=probe_id):
+                    self.assertEqual(status, self.mod.DIVERGED)
+                    if probe_id != "arsenal_seats":
+                        self.assertEqual(len(evidence[0]), 160)
+                    self.assertEqual(self.mod.cure_for_result(entry, status, n, evidence), "owner")
+
+    def test_every_finding_reaches_the_cure_but_the_board_shows_five(self) -> None:
+        payload = {"findings": [{"label": f"j{i}", "verdict": "FAILING-HONESTLY", "log_marker": None}
+                                for i in range(14)], "alarms": 0}
+        with tempfile.TemporaryDirectory() as td:
+            stub = Path(td) / "launchd.py"
+            stub.write_text(f"print({json.dumps(json.dumps(payload))})\n")
+            entry = next(e for e in self.mod.DEFAULT_REGISTRY if e["id"] == "launchd_liveness")
+            status, n, evidence = self.mod.run_wrap(Path(td), dict(entry, target=["python3", str(stub)]), 10)
+        self.assertEqual((status, n, len(evidence)), (self.mod.DIVERGED, 14, 14))
+        self.assertEqual(self.mod.cure_for_result(entry, status, n, evidence), "owner")
+        board = self.mod.verdict("launchd_liveness", "b", "c", status, "P1", n, evidence, "h", 0.0, "owner")
+        self.assertEqual((board["n_findings"], len(board["evidence"])), (14, 5))
+
     def test_common_branches(self) -> None:
         cure, m = self.mod.cure_for_result, self.mod
         with self.subTest(branch="C1-not-diverged-guilt"):
@@ -523,6 +649,41 @@ class CureForResultTest(unittest.TestCase):
         self.assertEqual(self.mod.validate_registry(self.mod.DEFAULT_REGISTRY), [])
         bad = [dict(e, cure="Owner") if e["id"] == "git_alignment" else e for e in self.mod.DEFAULT_REGISTRY]
         self.assertTrue(any("invalid cure" in err for err in self.mod.validate_registry(bad)))
+
+
+class HealerRunChecksRegistryAwareTest(unittest.TestCase):
+    def test_registry_result_removes_duplicate_organs_from_session_count(self) -> None:
+        mod = _healer_run_checks()
+        probes = [
+            {"id": probe_id, "status": "DIVERGED", "severity": severity, "cure": cure}
+            for probe_id, severity, cure in (
+                ("worktree_gate_shim", "P1", "session"),
+                ("launchd_liveness", "P1", "session"),
+                ("organs_heartbeat", "P1", "session"),
+                ("arsenal_seats", "P1", "session"),
+                ("home_fork_scripts", "P1", "owner"),
+                ("launchagent_canon", "P2", "session"),
+                ("child_calibration", "P3", "session"),
+            )
+        ]
+        report = json.dumps({"probes": probes})
+        registry = json.dumps({"dead": [], "findings": [], "never_armed": [], "disabled": []})
+
+        old_diverged, old_curable = mod.summarize_proprioception(report)
+        new_diverged, new_curable = mod.summarize_proprioception(report, registry)
+
+        self.assertEqual((len(old_diverged), len(old_curable)), (7, 4))
+        self.assertEqual((len(new_diverged), len(new_curable)), (7, 3))
+        self.assertNotIn("organs_heartbeat", new_curable)
+
+    def test_an_invalid_registry_is_a_broken_receptor_not_a_silent_old_count(self) -> None:
+        mod = _healer_run_checks()
+        report = json.dumps({"probes": [
+            {"id": "organs_heartbeat", "status": "DIVERGED", "severity": "P1", "cure": "session"}]})
+        for bad in ("not json", "[]", json.dumps({"findings": []}), json.dumps({"dead": "x"})):
+            with self.subTest(registry=bad), self.assertRaises(mod.ProbeReportError):
+                mod.summarize_proprioception(report, bad)
+        self.assertEqual(mod.summarize_proprioception(report, None), (["organs_heartbeat"], ["organs_heartbeat"]))
 
 
 class ProprioceptionCureSchemaTest(unittest.TestCase):
