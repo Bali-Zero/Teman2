@@ -596,6 +596,9 @@ def _apply_bps_disclosure(
     update: dict[str, Any] = _pma_disclosure_fields(bps_payload)
     if candidate.description.startswith("Official BPS description unavailable"):
         update["description"] = _official_scope(bps_payload, candidate.code)
+    bps_risk = _payload_value(bps_payload, "kategori_risiko")
+    if bps_risk and candidate.risk_category in (None, "", "Unknown"):
+        update["risk_category"] = bps_risk
     return candidate.model_copy(update=update)
 
 
@@ -782,15 +785,22 @@ async def search_kbli(
                 exact_result = _result_from_payload(exact_payload, score=1.0)
 
         embedding = await _resolve_embedding(search_service, query)
-        results = await _search_kbli_qdrant(embedding, limit)
+        # Over-fetch: a gold+bps twin pair costs two hits for one code, and the dedupe
+        # below must run BEFORE the cut to `limit` so the caller still gets `limit` codes.
+        results = await _search_kbli_qdrant(embedding, limit * 2)
 
         # Disclosure comes from the code's kbli_bps point, never from the hit: the
         # dense query is unfiltered, so a stale kbli_gold twin can be the hit.
         candidates: list[KBLISearchResult] = []
+        seen_codes: set[str] = {exact_result.code} if exact_result else set()
         for r in results:
             candidate = _result_from_payload(r.get("payload", {}), score=r.get("score", 0.0))
-            if exact_result and candidate.code == exact_result.code:
-                continue
+            # One row per code: the first occurrence is the best-ranked one. "N/A"
+            # (no code in the payload) is not an identity, so it is never deduped.
+            if candidate.code != "N/A":
+                if candidate.code in seen_codes:
+                    continue
+                seen_codes.add(candidate.code)
             candidates.append(candidate)
         candidates = candidates[: max(limit - (1 if exact_result else 0), 0)]
         bps_by_code = await _get_kbli_bps_payloads([c.code for c in candidates])

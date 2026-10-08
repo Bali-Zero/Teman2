@@ -845,3 +845,76 @@ class TestSearchDisclosureFromBpsPoint:
         assert body["filter"]["must"][0]["match"] == {"any": ["01112", "16291"]}
         assert "kbli_bps" in str(body["filter"]["must"][1])
         assert list(got) == ["01112"]
+
+
+class TestSearchOneRowPerCode:
+    """A gold+bps pair for one code is ONE row: best score, bps description and risk."""
+
+    _BPS = {
+        "kode_kbli": "01112",
+        "doc_type": "kbli_bps",
+        "official_description": "Official scope of cereal farming",
+        "kategori_risiko": "Menengah Tinggi",
+    }
+
+    @staticmethod
+    def _hit(code: str, score: float, **extra) -> dict:
+        return {
+            "payload": {"kode_kbli": code, "judul": f"Title {code}", **extra},
+            "score": score,
+        }
+
+    def _search(self, client: TestClient, hits: list[dict], bps: dict, query: str, limit: int = 10):
+        qdrant = AsyncMock(return_value=hits)
+        with (
+            patch(
+                "backend.app.routers.kbli_notebook._resolve_embedding",
+                AsyncMock(return_value=[0.1]),
+            ),
+            patch("backend.app.routers.kbli_notebook._search_kbli_qdrant", qdrant),
+            patch(
+                "backend.app.routers.kbli_notebook._get_kbli_bps_payloads",
+                AsyncMock(return_value=bps),
+            ),
+        ):
+            response = client.get(f"/kbli-notebook/search?query={query}&limit={limit}")
+        assert response.status_code == 200
+        return response.json(), qdrant
+
+    @pytest.mark.integration
+    def test_gold_and_bps_twins_collapse_to_one_enriched_row(self, client: TestClient) -> None:
+        hits = [
+            self._hit("01112", 0.4506, doc_type="kbli_gold"),
+            self._hit("01112", 0.3851, **self._BPS),
+        ]
+        rows, _ = self._search(client, hits, {"01112": self._BPS}, "pertanian serealia")
+        assert [r["code"] for r in rows] == ["01112"]
+        assert rows[0]["score"] == 0.4506
+        assert rows[0]["title"] == "Title 01112"
+        assert rows[0]["description"].startswith("Official scope of cereal farming")
+        assert rows[0]["risk_category"] == "Menengah Tinggi"
+
+    @pytest.mark.integration
+    def test_distinct_codes_keep_order(self, client: TestClient) -> None:
+        hits = [self._hit(c, s) for c, s in (("56101", 0.9), ("47721", 0.8), ("85312", 0.7))]
+        rows, _ = self._search(client, hits, {}, "restoran")
+        assert [r["code"] for r in rows] == ["56101", "47721", "85312"]
+
+    @pytest.mark.integration
+    def test_limit_counts_distinct_codes(self, client: TestClient) -> None:
+        hits = [self._hit("01112", 0.9), self._hit("01112", 0.8), self._hit("56101", 0.7)]
+        rows, qdrant = self._search(client, hits, {}, "restoran", limit=2)
+        assert [r["code"] for r in rows] == ["01112", "56101"]
+        assert qdrant.await_args.args[1] == 4
+
+    @pytest.mark.integration
+    def test_exact_code_is_not_repeated_by_a_hit(self, client: TestClient) -> None:
+        exact = {"kode_kbli": "01112", "doc_type": "kbli_bps", "judul": "Exact", **self._BPS}
+        hits = [self._hit("01112", 0.9, doc_type="kbli_gold"), self._hit("56101", 0.5)]
+        with patch(
+            "backend.app.routers.kbli_notebook._get_kbli_payload_from_qdrant",
+            AsyncMock(return_value=exact),
+        ):
+            rows, _ = self._search(client, hits, {}, "01112")
+        assert [r["code"] for r in rows] == ["01112", "56101"]
+        assert rows[0]["title"] == "Exact"
