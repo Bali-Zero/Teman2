@@ -178,7 +178,9 @@ unchanged) was signed offline on M5, `kid: prod-2026-07-1`, `signed_at`
 `05511184caf05119ac0adf644601e322d845c276faad3146ea243c507cf23b7f`, version `2026.10.8`,
 `rule_pack_id 16cdbc81-c9b0-5475-b7cf-63f642c140b5`, chained to the signed seq-25
 (`603f777e…9d11`). Activation is the same two-login ceremony as above on the PG primary
-`5683e090f3d228`, run from Pro: `activation_id` `<ACTIVATION_ID>` at `<ACTIVATED_AT>`.
+`5683e090f3d228`, run from Pro: `activation_id` `1c7ac00b-7c5e-44e9-8efc-392d03fb47ef` at `2026-10-08T10:08:02Z`.
+
+Prove-live (2026-10-08): POST /api/visa-oracle/evaluate with the E31 spouse persona + intent.stay_days → pack 26, E31A duration_options [(365, 11.000.000), (730, 15.000.000)]; 365 → 365, 730 → 730, 1095 → 730 + extension_required; Fly build f43d4ac0a0.
 
 Gotchas measured this run:
 
