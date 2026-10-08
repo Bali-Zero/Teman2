@@ -170,6 +170,25 @@ ROLE`, then `select count(*) from pg_roles where rolname like 'visa_%_ceremony_%
   account). Expect `scripts/pg.sh` on M5 to be unavailable for the ceremony's
   duration; verify through the sentinel on Pro or after the respawn.
 
+## Signing + activation note (2026-10-08, seq-26)
+
+`rulepack-prod-026.signed.json` (seq-25 plus `duration_options` on E31A–E31J; stamps
+unchanged) was signed offline on M5, `kid: prod-2026-07-1`, `signed_at`
+2026-10-08T08:58:04Z, `payload_sha256`
+`05511184caf05119ac0adf644601e322d845c276faad3146ea243c507cf23b7f`, version `2026.10.8`,
+`rule_pack_id 16cdbc81-c9b0-5475-b7cf-63f642c140b5`, chained to the signed seq-25
+(`603f777e…9d11`). Activation is the same two-login ceremony as above on the PG primary
+`5683e090f3d228`, run from Pro: `activation_id` `<ACTIVATION_ID>` at `<ACTIVATED_AT>`.
+
+Gotchas measured this run:
+
+- GitHub answered HTTP 499 to `enablePullRequestAutoMerge` for minutes; arm in a retry loop
+  with a pause, do not conclude the PR cannot be armed.
+- `merge=union` on `PENDING-ARMS.md` turns an edit of an existing row into a silent
+  duplicate (the old and the new line both survive); fold the row by hand after the merge.
+- A fresh gate compares a receipt `ts` with the commit dates: a receipt typed after its
+  commit is a BLOCK. Capture the timestamp with `date -u` at the moment of the read.
+
 ## Rotation
 
 1. Mint a new kid (e.g. `2027-01-prod-1`) with the same procedure.
