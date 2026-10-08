@@ -94,7 +94,7 @@ receipts:
     exit: 0
     ts: "2026-10-08T07:45:09Z"
     seat: claude-opus-5-5 on M5
-  - claim: "The brief's acceptance probes and assumption probes pass at bd04d84296 (13 parametrized rows): test_hosted_compare.py::test_a_partial_agree_keeps_its_class_but_its_row_says_partial_and_it_is_counted_apart, test_merger_report.py::test_a_merge_compared_on_twelve_contexts_one_of_them_partial_is_not_a_compared_merge, test_merger.py::test_a_partial_context_is_executed_and_passes_but_the_decision_line_names_it, test_host_disk.py::test_a_shard_that_failed_on_a_full_disk_is_error_host_disk_full_and_the_chain_stops, test_host_disk.py::test_a_floor_above_the_free_space_blocks_every_service_leg_before_any_container_starts, test_merger.py::test_a_context_the_host_could_not_judge_is_not_executed_named_and_still_refuses, test_merger_report.py::test_a_line_journalled_before_coverage_was_recorded_counts_no_context_as_full."
+  - claim: "The brief's acceptance probes and assumption probes pass at bd04d84296 (13 parametrized rows): test_hosted_compare.py::test_a_partial_agree_keeps_its_class_but_its_row_says_partial_and_it_is_counted_apart, test_merger_report.py::test_eleven_full_and_one_named_partial_make_a_compared_merge, test_merger_report.py::test_a_merge_short_of_the_ruled_threshold_is_not_a_compared_merge, test_merger.py::test_a_partial_context_is_executed_and_passes_but_the_decision_line_names_it, test_host_disk.py::test_a_shard_that_failed_on_a_full_disk_is_error_host_disk_full_and_the_chain_stops, test_host_disk.py::test_a_floor_above_the_free_space_blocks_every_service_leg_before_any_container_starts, test_merger.py::test_a_context_the_host_could_not_judge_is_not_executed_named_and_still_refuses, test_merger_report.py::test_a_line_journalled_before_coverage_was_recorded_counts_no_context_as_full."
     cmd: python3 -m pytest -q -p no:cacheprovider <the seven node ids>
     exit: 0
     ts: "2026-10-08T07:41:38Z"
@@ -104,12 +104,23 @@ receipts:
     exit: 0
     ts: "2026-10-08T08:07:14Z"
     seat: claude-opus-5-5 on M5
+  - claim: "The ruled threshold (gate MEDIUM on b48226ea1e): merger.py's report, fed one merged decision with 11 full contexts and E2E Tests (Playwright) partial, all AGREE, prints `compared_merges=1 (full_only=0, with_partial=1) compared_partial=1 compared_unrecorded=0` on the window line and, on the phase E line, `(a merge counts when GitHub merged the decided candidate and >= 12 contexts were compared, >= 11 of them full and at most 1 partial); now false_green=0, compared_merges=1 (full_only=0, with_partial=1: ['E2E Tests (Playwright)']), ...`. Guilt rows: 12 with 2 partial, 10 full + 1 partial, 11 full alone, 11 full + 2 partial, 11 full + 1 unrecorded are not compared merges."
+    cmd: PYTHONPATH=. python3 - (merger.main report over test_merger_report's FakeGH and decision); python3 -m pytest scripts/localci/tests/test_merger_report.py -q
+    exit: 0
+    ts: "2026-10-08T08:52:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "After the threshold fold: the localci suite 829 passed, 14 skipped (needs_docker) on M5, 256 s; the 46 B3 mutant rules (39 from B3 plus 7 for the three constants, the partial count and the with_partial count) 46/46 killed. MIN_COMPARED_FULL 11 -> 10 is an equivalent mutant (12 compared with at most 1 partial already means >= 11 full) and is not in the table; 11 -> 12 is, and is killed."
+    cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider; python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 46 B3 rules>
+    exit: 0
+    ts: "2026-10-08T08:51:07Z"
+    seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
   - "The floor was measured against a VM at 3.58 GB free (3500604 KiB available) during a B2-code tick (the shadow merger running PR #8060 on main's runner); the operator-side cure is capacity (prune policy or a larger Colima disk). The 12 GB default and the LOCALCI_MIN_FREE_GB override stay as built."
   - "No adversarial round: the independent gate is the orchestrator's (generator is never grader). The three rules are guilt- and innocence-tested and mutant-swept, nothing more."
   - "Deploying this today blocks every service leg on Pro: 3.58 GB free against the 12 GB default. Freeing space (33 GB of reclaimable images, 8.8 GB of build cache) or setting LOCALCI_MIN_FREE_GB in the tick's environment is an operator decision; until then no merge counts as compared."
-  - "Decisions journalled before B3 carry no coverage and count none of their contexts as full, so compared_merges restarts at B3's deployment. Before #8056 no partial context executed, so the dropped evidence was in fact full; an operator-supplied matrix for old lines was not built."
+  - "Compared merges: before the ruled threshold (b48226ea1e) a compared merge needed 12 FULL contexts, which the real matrix can never give (14 - 2 CodeQL hosted-only - 1 E2E partial = 11), so phase D would never have started — the gate's MEDIUM. Ruled 2026-10-08: >= 12 compared, >= 11 full, at most 1 partial, named. Decisions journalled before B3 carry no coverage, count toward nothing and are never compared merges; the count therefore starts at the first post-B3 merge with 11 full contexts and E2E partial. Before #8056 no partial context executed, so the dropped evidence was in fact full."
+  - "Gate LOW, declared: a genuine pytest failure whose message carries a C strerror ending in No space left on device (for example a FAILED summary line quoting a cp or tar error) reads host_disk_full. That turns a red into no verdict only, never into a green, and the merge stays refused."
   - "The floor's reading is cached per run: a leg started late in a 45-minute run is judged on the first reading. The disk-full rule catches what the floor misses mid-run."
   - "The disk-full patterns read candidate output: a candidate can print a disk-full line to turn its own red into no verdict (ERROR). That still refuses the merge and never reads green; it only removes the context from the comparison. A real CPython OSError raised by a test fixture with errno 28 is indistinguishable from the host's and reads host_disk_full."
   - "Postgres server logs of the service containers are not captured; recovery mode is read from the client's output only."

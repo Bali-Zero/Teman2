@@ -169,9 +169,10 @@ postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Front
 from the BASE matrix and every `contexts.results` row of `status.json` carries it. `hosted_compare` keeps the class (a partial
 AGREE is still AGREE) but puts `coverage` and `coverage_note` on the row, prints a COVERAGE column, and counts apart:
 `agreement_full`, `coverage.compared_full`, `coverage.compared_partial`, `coverage.compared_unrecorded` (a `status.json`
-that predates B3). The merger journals each context's coverage beside its verdict; `report` counts a context toward the ≥ 12
-of a compared merge only when it is `full`, prints `compared_partial` and `compared_unrecorded` on the window line, and the
-phase E line names how many compared contexts were partial. A decision journalled before B3 carries no coverage record: its
+that predates B3). The merger journals each context's coverage beside its verdict; `report` counts a compared merge on ≥ 12
+compared contexts of which ≥ 11 `full` and at most one `partial` (a partial context never counts as full), prints
+`compared_merges=N (full_only=M, with_partial=K)`, `compared_partial` and `compared_unrecorded` on the window line, and the
+phase E line names the partial context of the compared merges. A decision journalled before B3 carries no coverage record: its
 contexts are unrecorded and never count as full. The enqueue criterion treats a partial context as executed and passing,
 and names it: `executed_required=13/14 (partial: E2E Tests (Playwright))`. A partial FALSE_GREEN is still a FALSE_GREEN.
 
@@ -404,9 +405,11 @@ count is vacuous today. The phase-D instrument is the CONTEXT level, in two part
 
 The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges`, and counts the window's `error` lines and
 `skipped` lines by reason. A merge is COMPARED when GitHub merged the very candidate the merger decided (the decided head, its
-merge commit's sole parent the decided base) and at least 12 contexts of FULL coverage had a verdict on both sides
-(`MIN_COMPARED_CONTEXTS`, the AGREE ≥ 12 of 14 of spec §2 phase B): a merge compared on blind contexts is no evidence, and a
-partial context is shown (`compared_partial`) but never counted. Each compared PR counts once, at
+merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides, at least 11 of them of
+FULL coverage and at most one partial, named (`MIN_COMPARED_CONTEXTS`, `MIN_COMPARED_FULL`, `MAX_COMPARED_PARTIAL`; ruled
+2026-10-08: 14 required − 2 CodeQL hosted-only − 1 E2E partial = 11 full): a merge compared on blind contexts is no evidence,
+a partial context never counts as full, an unrecorded one counts toward nothing, and the window line prints
+`compared_merges=N (full_only=M, with_partial=K)`. Each compared PR counts once, at
 GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads
 `compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN AND ≥ 50 compared merges AND ≥ 14 days
 between the first and the last compared merge (spec §2, ruled 2026-10-07: both, never either) — a window that only aged,

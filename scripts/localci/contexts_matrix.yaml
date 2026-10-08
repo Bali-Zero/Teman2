@@ -28,7 +28,8 @@
 # blocked = a precise obstacle stopped a full local run (see `blocker`, `partial_evidence`).
 # coverage = what an executed context's local verdict covers of its hosted twin: `full` (the default when absent) or `partial`
 # with a `coverage_note` naming the subset. It travels with every result into status.json and hosted_compare.json; a partial
-# AGREE is shown and counted apart and never counts toward the merger's >= 12 compared contexts. An unreadable value is partial.
+# AGREE is shown and counted apart, never as full: a compared merge needs >= 12 compared contexts, >= 11 full and at most one
+# partial, named (ruled 2026-10-08). An unreadable value is partial.
 # not_implemented = no local mapping exists yet. not_applicable_rule = 0 today: no required context
 # can be statically N/A (a required check must always report); per-diff N/A is the runner's
 # change_map decision, not this file's.

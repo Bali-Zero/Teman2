@@ -37,8 +37,16 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "parents-membership": (PY, 'return mc if parents[mc] == [d.get("base_sha")] else', 'return mc if d.get("base_sha") in parents[mc] else', (REPORT,)),
     "merged-here-any-base": (PY, 'merged_here = sha != head and sha == prs[n].get("merge_commit_sha")',
                              'merged_here = prs[n].get("merged") is True and head_of(prs[n]) == head', (REPORT,)),
-    "min-contexts-minus-one": (PY, "compared_ctx >= MIN_COMPARED_CONTEXTS})", "compared_ctx >= MIN_COMPARED_CONTEXTS - 1})", (REPORT,)),
-    "min-contexts-ignored": (PY, "compared_ctx >= MIN_COMPARED_CONTEXTS})", "True})", (REPORT,)),
+    # the ruled threshold (2026-10-08): >= 12 compared, >= 11 full, at most 1 partial. MIN_COMPARED_FULL 11 -> 10 is an EQUIVALENT
+    # mutant (12 compared with at most 1 partial already means >= 11 full), so it is not in the table; 11 -> 12 is.
+    "min-contexts-minus-one": (PY, "MIN_COMPARED_CONTEXTS = 12\n", "MIN_COMPARED_CONTEXTS = 11\n", (REPORT,)),
+    "min-contexts-ignored": (PY, "return full + partial >= MIN_COMPARED_CONTEXTS and full", "return full", (REPORT,)),
+    "min-full-plus-one": (PY, "MIN_COMPARED_FULL = 11 ", "MIN_COMPARED_FULL = 12 ", (REPORT,)),
+    "max-partial-zero": (PY, "MAX_COMPARED_PARTIAL = 1\n", "MAX_COMPARED_PARTIAL = 0\n", (REPORT,)),
+    "max-partial-two": (PY, "MAX_COMPARED_PARTIAL = 1\n", "MAX_COMPARED_PARTIAL = 2\n", (REPORT,)),
+    "compared-enough-ignores-partial": (PY, 'compared_enough(compared_ctx, len(not_full["partial"]))', "compared_enough(compared_ctx, 0)", (REPORT,)),
+    "with-partial-uncounted": (PY, 'with_partial = {r["pr"] for r in rows if r["compared_merge"] and r["compared_partial"]}', "with_partial = set()",
+                               (REPORT,)),
     "compared-merge-hosted-pending": (PY, 'merged_here and github != "PENDING" and d.get("contexts_status")', 'merged_here and d.get("contexts_status")', (REPORT,)),
     "merges-not-deduped": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())',
                            'merges = sorted(r["merged_at"] for r in rows if r["compared_merge"])', (REPORT,)),

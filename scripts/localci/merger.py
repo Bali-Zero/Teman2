@@ -60,7 +60,12 @@ GIT_ISOLATED = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "G
 CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "BLIND", "PENDING")
 _TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")   # fullmatch only: `$` would let a trailing newline through
 _FULL_SHA = re.compile(r"[0-9a-f]{40}")
-MIN_COMPARED_CONTEXTS = 12   # spec §2 phase B: AGREE >= 12 of 14 — a merge compared on fewer contexts is not evidence for phase E
+# A compared merge (spec §2 phase D, ruled 2026-10-08): >= 12 contexts compared on both sides, >= 11 of them full and at most one
+# partial, named on the line. The arithmetic the real matrix allows: 14 required - 2 CodeQL (hosted-only, never executed here)
+# - 1 E2E (partial: no repository secrets) = 11 full. An unrecorded coverage counts toward none of the three.
+MIN_COMPARED_CONTEXTS = 12
+MIN_COMPARED_FULL = 11      # implied by the two around it (12 - at most 1 partial); stated because the ruling states it
+MAX_COMPARED_PARTIAL = 1
 _SINCE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$")
 SEAL_RE = re.compile(r"^seal=([0-9a-f]{64})\b", re.M)
 SECRET_RE = re.compile(r"(gh[opsru]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,}|(?<=://)[^/@\s]+(?=@)|(?i:bearer|token)\s+\S+)")
@@ -766,7 +771,8 @@ def cmd_report(a) -> int:
                          "compared_contexts": compared_ctx, "compared_partial": not_full["partial"], "compared_unrecorded": not_full["unrecorded"],
                          "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
-                         "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
+                         "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok"
+                                           and compared_enough(compared_ctx, len(not_full["partial"]))})
         # GitHub merged a red required check: a HOSTED failure, read on every merged PR's own merge commit whichever candidate the
         # merger decided (#8026 was decided on an older base and is judged above on its green head), counted apart, never a class
         hosted_red_merged = []
@@ -798,6 +804,8 @@ def cmd_report(a) -> int:
     compared_partial = sum(len(r["compared_partial"]) for r in rows)
     compared_unrecorded = sum(len(r["compared_unrecorded"]) for r in rows)
     partial_names = sorted({n for r in rows for n in r["compared_partial"]})
+    with_partial = {r["pr"] for r in rows if r["compared_merge"] and r["compared_partial"]}   # a PR counts once, as with_partial if any of its rows is
+    merged_partial_names = sorted({n for r in rows if r["compared_merge"] for n in r["compared_partial"]})
     compared_days = _days(merges[0], merges[-1]) if merges else 0.0
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
     ready = fg == 0 and compared_merges >= 50 and compared_days >= 14   # lead's ruling 2026-10-07: both, never either
@@ -812,6 +820,8 @@ def cmd_report(a) -> int:
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
                       "compared_partial": compared_partial, "compared_unrecorded": compared_unrecorded, "partial_contexts": partial_names,
+                      "compared_merges_full_only": compared_merges - len(with_partial), "compared_merges_with_partial": len(with_partial),
+                      "compared_merges_partial_contexts": merged_partial_names,
                       "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
                       "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "skipped": skipped,
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue,
@@ -824,7 +834,8 @@ def cmd_report(a) -> int:
         print(f"#{r['pr']:<6} {r['head_sha'][:12]} {str(r['base_sha'])[:12]} {str(r['overall']):11} {r['github']:7} {'yes' if r['merged'] else 'no':6} {r['class']}")
     w = out["window"]
     print(f"window: {first} .. {last} ({days} days) decisions={w['decisions']} distinct_prs={w['distinct_prs']} merged_prs={w['merged_prs']} "
-          f"compared_merges={compared_merges} compared_partial={compared_partial} compared_unrecorded={compared_unrecorded} errors={errors} "
+          f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}) "
+          f"compared_partial={compared_partial} compared_unrecorded={compared_unrecorded} errors={errors} "
           f"skipped={skipped or 0}")
     print(f"gaps: longest between decisions={decision_gap_h}h, longest between any journal lines={silence_h}h, "
           f"last line {last_line_age_h}h ago" + (f", {future_lines} line(s) dated in the future" if future_lines else "")
@@ -840,13 +851,20 @@ def cmd_report(a) -> int:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
-          f"compared with full coverage); now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}; "
-          f"of the contexts compared, {compared_partial} were partial {partial_names} and {compared_unrecorded} carried no coverage record "
-          f"(shown, never counted toward the {MIN_COMPARED_CONTEXTS}); "
+          f"compared, >= {MIN_COMPARED_FULL} of them full and at most {MAX_COMPARED_PARTIAL} partial); now false_green={fg}, "
+          f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}: "
+          f"{merged_partial_names}), compared_days={compared_days}; of the contexts compared, {compared_partial} were partial "
+          f"{partial_names} and {compared_unrecorded} carried no coverage record (a partial one never counts as full, an unrecorded one "
+          f"never counts); "
           f"hosted_red_merged={len(hosted_red_merged)} (information: GitHub merged a red required check; the hosted failure itself never "
           f"blocks READY, a local false green on it does); enqueued={enqueue['enqueued']} would_enqueue={enqueue['would_enqueue']} "
           f"enqueue_refused={enqueue['enqueue_refused']} enqueue_error={enqueue['enqueue_error']}")
     return 1 if fg else 0
+
+
+def compared_enough(full: int, partial: int) -> bool:
+    """The ruled threshold of a compared merge: enough contexts compared, enough of them full, at most one partial."""
+    return full + partial >= MIN_COMPARED_CONTEXTS and full >= MIN_COMPARED_FULL and partial <= MAX_COMPARED_PARTIAL
 
 
 def recorded_false_green(d: dict) -> int:

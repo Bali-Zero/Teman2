@@ -424,17 +424,43 @@ def test_a_journal_older_than_the_enqueue_path_reports_zero_enqueues(tmp_path, m
 
 
 # ------------------------------------------------------------------ coverage: only a full context counts toward the >= 12 (B3)
-def test_a_merge_compared_on_twelve_contexts_one_of_them_partial_is_not_a_compared_merge(tmp_path, monkeypatch, capsys):
-    # guilt: before B3 a partial AGREE (E2E without its secrets) counted as full and made this merge evidence for phase E
+def _merged_once(tmp_path, monkeypatch, n_ctx, coverage, blind=()):
+    """One decision of a PR GitHub merged at the decided candidate: n_ctx contexts, all OK and hosted green, ``blind`` of them BLOCKED."""
     gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
-    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", coverage={CTX[0]: "partial"})], gh)
-    row = rep["rows"][0]
-    assert rc == 0 and row["class"] == "AGREE" and (row["compared_contexts"], row["compared_partial"], row["compared_merge"]) == (K - 1, [CTX[0]], False)
-    assert (rep["window"]["compared_merges"], rep["window"]["compared_partial"], rep["window"]["partial_contexts"]) == (0, 1, [CTX[0]])
-    assert rep["context_counts"]["AGREE"] == K   # the class is unchanged: the partial AGREE is still an AGREE
+    gh.required = tuple(f"ctx-{i:02d}" for i in range(n_ctx))
+    contexts = {c: ("BLOCKED" if c in blind else "OK") for c in gh.required}
+    return run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", contexts=contexts, coverage=coverage)], gh)
+
+
+def test_eleven_full_and_one_named_partial_make_a_compared_merge(tmp_path, monkeypatch, capsys):
+    # innocence: the real matrix's best case (14 - 2 CodeQL - E2E partial = 11 full) must be able to count, E2E named
+    rc, rep = _merged_once(tmp_path, monkeypatch, 12, {"ctx-00": "partial"})
+    row, w = rep["rows"][0], rep["window"]
+    assert rc == 0 and (row["compared_contexts"], row["compared_partial"], row["compared_merge"]) == (11, ["ctx-00"], True)
+    assert (w["compared_merges"], w["compared_merges_full_only"], w["compared_merges_with_partial"], w["compared_merges_partial_contexts"]) == (1, 0, 1, ["ctx-00"])
     out = capsys.readouterr().out
-    assert "compared_merges=0 compared_partial=1 compared_unrecorded=0" in out
-    assert f"of the contexts compared, 1 were partial ['{CTX[0]}']" in out and "phase E NOT READY" in out
+    assert "compared_merges=1 (full_only=0, with_partial=1) compared_partial=1 compared_unrecorded=0 " in out
+    assert w["compared_partial"] == 1 and w["partial_contexts"] == ["ctx-00"] and "of the contexts compared, 1 were partial ['ctx-00']" in out
+    assert "compared_merges=1 (full_only=0, with_partial=1: ['ctx-00'])" in out and ">= 12 contexts were compared, >= 11 of them full and at most 1 partial" in out
+
+
+@pytest.mark.parametrize("n_ctx,coverage,blind,why", [
+    (12, {"ctx-00": "partial", "ctx-01": "partial"}, (), "12 compared, 2 partial"),
+    (12, {"ctx-00": "partial"}, ("ctx-01",), "11 compared: 10 full + 1 partial"),
+    (12, "full", ("ctx-00",), "11 compared, all full"),
+    (13, {"ctx-00": "partial", "ctx-01": "partial"}, (), "13 compared: 11 full + 2 partial"),
+    (12, {"ctx-00": "whatever"}, (), "11 full + 1 unrecorded"),
+])
+def test_a_merge_short_of_the_ruled_threshold_is_not_a_compared_merge(tmp_path, monkeypatch, n_ctx, coverage, blind, why):
+    rc, rep = _merged_once(tmp_path, monkeypatch, n_ctx, coverage, blind)
+    assert rc == 0 and rep["rows"][0]["compared_merge"] is False and rep["window"]["compared_merges"] == 0, why
+    assert rep["context_counts"]["FALSE_GREEN"] == 0
+
+
+def test_twelve_full_contexts_are_a_compared_merge_with_no_partial(tmp_path, monkeypatch, capsys):
+    rc, rep = _merged_once(tmp_path, monkeypatch, 12, "full")
+    assert rc == 0 and rep["window"]["compared_merges"] == 1 and rep["window"]["compared_merges_full_only"] == 1
+    assert "compared_merges=1 (full_only=1, with_partial=0) " in capsys.readouterr().out
 
 
 def test_twelve_full_contexts_make_a_compared_merge_and_a_thirteenth_partial_one_does_not_spoil_it(tmp_path, monkeypatch):
