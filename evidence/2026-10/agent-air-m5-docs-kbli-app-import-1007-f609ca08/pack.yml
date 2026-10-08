@@ -121,7 +121,7 @@ dissent:
   - seat: agy-gemini-3.1-pro
     objection: "HIGH: build.sh never copies the canonical dataset into the source Resources/, so consumers read a missing or stale file."
     status: RETRACTED
-    resolution: "The unchanged lines 196-206 copy the canonical into Resources/ at every build ('refreshed Resources/ from canonical' in the Pro log); the bundle copy then follows."
+    resolution: "The unchanged lines 197-207 copy the canonical into Resources/ at every build ('refreshed Resources/ from canonical' in the Pro log); the bundle copy then follows."
   - seat: agy-gemini-3.1-pro
     objection: "MEDIUM: REPO_ROOT may be undefined in sync_kbli_dataset.sh."
     status: RETRACTED
