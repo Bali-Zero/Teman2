@@ -45,9 +45,7 @@ function buildFallback(
     assumptions: options.assumptions ?? [],
     sources: [],
     nextSteps: nextStepsFor(
-      retryable || provenance === "SHADOW"
-        ? "TEMPORARILY_UNAVAILABLE"
-        : "HUMAN_REVIEW_REQUIRED",
+      retryable ? "TEMPORARILY_UNAVAILABLE" : "HUMAN_REVIEW_REQUIRED",
     ),
     conditions: [],
     outage: {

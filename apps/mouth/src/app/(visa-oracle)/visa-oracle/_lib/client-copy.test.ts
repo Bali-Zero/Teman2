@@ -234,6 +234,9 @@ describe("next steps follow the real situation of the visitor", () => {
     expect(buildNetworkFailureOutcome({ code: "X" }).nextSteps).toBe(
       nextStepsFor("TEMPORARILY_UNAVAILABLE"),
     );
+    expect(buildShadowOutcome({ code: "X" }).nextSteps).toBe(
+      nextStepsFor("HUMAN_REVIEW_REQUIRED"),
+    );
     expect(
       buildNetworkFailureOutcome({ code: "X", retryable: false }).nextSteps,
     ).toBe(nextStepsFor("HUMAN_REVIEW_REQUIRED"));

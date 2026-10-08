@@ -29,6 +29,11 @@ bites:
   observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
   expect: "contains:OK visa-oracle client copy"
 decisions:
+  - id: D-successor
+    decision: >-
+      Successor of #8099, whose branch was armed and frozen: the Visa Oracle fullstack smoke
+      pinned the old source-currency sentence. The e2e pins in visa-oracle-fullstack,
+      visa-oracle-v2 and visa-oracle-live-parity now follow the client copy.
   - id: D-single-next-steps-source
     decision: >-
       One exported nextStepsFor(state) feeds the engine outcome, the gold preview baseline and the
@@ -42,6 +47,12 @@ decisions:
       The spec's comparison-table timeline cell is not built: no component renders the
       outcome.comparison keys today, so there is no cell to change.
 receipts:
+  - claim: No e2e spec pins a replaced client sentence any more (source-currency hold, paused criminal-record rule, disclaimer, generic review judgment).
+    cmd: grep -rn -E "a person must do|Why this is held|Mengapa hasil ini ditahan|signed rules still send|goes to a person before any path|need a person's judgment" apps/mouth/e2e | wc -l
+    result: "0 hits"
+    exit: 0
+    ts: "2026-10-08T12:08:25Z"
+    seat: Claude Fable 5.1
   - claim: The bites observer finds no banned phrase in the client copy and both language blocks carry the three new keys.
     cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
     result: "OK visa-oracle client copy: 3302 literals scanned, 0 banned"
@@ -52,26 +63,30 @@ receipts:
     cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
     result: "Test Files  45 passed (45); Tests  1213 passed (1213)"
     exit: 0
-    ts: "2026-10-08T11:22:36Z"
+    ts: "2026-10-08T12:10:20Z"
     seat: Claude Fable 5.1
   - claim: The mouth typecheck is clean.
     cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
     result: "no output"
     exit: 0
-    ts: "2026-10-08T11:20:41Z"
+    ts: "2026-10-08T12:09:49Z"
     seat: Claude Fable 5.1
   - claim: ESLint reports no error on the touched source files (warnings were already there).
     cmd: cd apps/mouth && npx eslint <touched source files>
     result: "0 errors on the two changed source files"
     exit: 0
-    ts: "2026-10-08T11:20:45Z"
+    ts: "2026-10-08T12:09:51Z"
     seat: Claude Fable 5.1
   - claim: Prettier accepts every touched file including the stylesheet.
     cmd: cd apps/mouth && npx prettier --check <touched files>
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-08T11:20:47Z"
+    ts: "2026-10-08T12:09:51Z"
     seat: Claude Fable 5.1
+council_note: >-
+  The Codex seat is registered as codex-gpt-5.6-sol, but the run used the CLI default model of
+  ~/.codex/config.toml, gpt-6-astra. The lint admits only roster seat ids for quorum, so the id is
+  kept and the real model is named here and in the journal.
 seat_fallback_reason: >-
   titolari kimi-code/k3 and tp1-qwen3.8-max were QUOTA_DEAD per the lead's brief of 2026-10-08;
   codex-gpt-5.6-sol played as titolare and the reserve agy-gemini-3.1-pro filled the second seat.
