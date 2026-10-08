@@ -670,3 +670,24 @@ def test_the_pr_number_is_given_only_to_a_base_runner_that_declares_it(world, so
     plan = world.runner.calls[0]["argv"]
     assert plan[plan.index("--base") + 1] == world.base
     assert (plan[plan.index("--pr-number") + 1] == "1") if given else ("--pr-number" not in plan)
+
+
+def test_gh_graphql_passes_strings_raw_and_integers_typed_and_returns_the_data(monkeypatch):
+    seen = []
+
+    def fake_run(argv, **kw):
+        seen.append(argv)
+        return subprocess.CompletedProcess(argv, 0, '{"data": {"ok": 1}}', "")
+    monkeypatch.setattr(mg.subprocess, "run", fake_run)
+    assert mg.gh_graphql("Q", number=7, oid="@/etc/passwd") == {"ok": 1}
+    assert seen == [["gh", "api", "graphql", "-f", "query=Q", "-F", "number=7", "-f", "oid=@/etc/passwd"]]
+
+
+@pytest.mark.parametrize("rc,out,err", [(1, json.dumps({"data": None, "errors": [{"message": "Head moved ghp_" + "C" * 20}]}), "gh: Head moved"),
+                                        (0, json.dumps({"data": {"x": 1}, "errors": [{"message": "Head moved ghp_" + "C" * 20}]}), ""),
+                                        (1, "", "gh: Head moved ghp_" + "C" * 20), (0, "not json", "Head moved ghp_" + "C" * 20)])
+def test_gh_graphql_raises_with_githubs_message_redacted(monkeypatch, rc, out, err):
+    monkeypatch.setattr(mg.subprocess, "run", lambda argv, **kw: subprocess.CompletedProcess(argv, rc, out, err))
+    with pytest.raises(mg.GraphQLError) as exc:
+        mg.gh_graphql("Q")
+    assert "Head moved" in str(exc.value) and "ghp_" not in str(exc.value) and "[REDACTED]" in str(exc.value)

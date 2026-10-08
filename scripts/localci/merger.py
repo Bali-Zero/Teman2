@@ -41,6 +41,7 @@ _spec.loader.exec_module(hc)
 
 DEFAULT_STATE = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger"
 LABEL = "localci:merge"
+ARM_LABEL, ARM_ENV, ARM_ROLES = "localci:merge-shadow-ok", "LOCALCI_MERGER_ARMED", ("admin", "maintain")   # the two halves of the arm
 AUTHOR = "localci-merger"
 PHASE_E = "phase E not armed: see docs/specs/localci-sovereign-2026-10-07.md"
 HEAD_NOTE = "hosted verdict read on the PR head sha: the queue's verdict lands on a merge-group commit the merger cannot see"
@@ -65,6 +66,10 @@ CODE_SHA: str | None = None   # the origin/main commit the launchd wrapper extra
 
 class Stopped(Exception):
     """SIGTERM during a tick: the runner is stopped cleanly, nothing is decided, the key is retried."""
+
+
+class GraphQLError(RuntimeError):
+    """``gh api graphql`` failed or GitHub answered with errors: the message is GitHub's, redacted."""
 
 
 class MergerError(RuntimeError):
@@ -341,6 +346,76 @@ def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path)
     except Exception as exc:  # noqa: BLE001 — a failed comparison is recorded beside the gate's verdict, never loses it
         return {**out, "error": redact(f"{type(exc).__name__}: {exc}")}
     return {**out, "agreement": rep["agreement"], "counts": rep["counts"], "drift": rep["drift"], "exit": hc.exit_code(rep)}
+
+
+# ------------------------------------------------------------------ the enqueue path (C3a-2): GitHub's queue, only when both gates hold
+ENQUEUE_BASE = "main"
+_LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
+PR_QUERY = ("query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
+            " id state isDraft isCrossRepository baseRefName headRefOid isInMergeQueue mergeQueueEntry { id position state }"
+            " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
+            " __typename ... on LabeledEvent { label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
+
+
+def gh_graphql(query: str, **variables) -> dict:
+    argv = ["gh", "api", "graphql", "-f", f"query={query}"]
+    for k, v in variables.items():
+        argv += ["-F" if type(v) is int else "-f", f"{k}={v}"]   # -f is raw: no @file read, no type guess
+    res = subprocess.run(argv, capture_output=True, text=True, timeout=120)
+    try:
+        doc = json.loads(res.stdout or "null")
+    except json.JSONDecodeError:
+        doc = None
+    errors = doc.get("errors") if isinstance(doc, dict) else None
+    if res.returncode != 0 or errors or not isinstance(doc, dict) or not isinstance(doc.get("data"), dict):
+        msg = "; ".join(str(e.get("message")) for e in errors if isinstance(e, dict)) if isinstance(errors, list) else res.stderr.strip()
+        raise GraphQLError(redact(f"gh api graphql rc={res.returncode}: {msg or res.stderr.strip()}"))
+    return doc["data"]
+
+
+def hosted_side(live) -> str | None:
+    """None when every context branch protection requires is GREEN on the PR head, red-dominant (skipped/neutral pass, as on GitHub)."""
+    if not isinstance(live, dict):
+        return "the hosted read on the PR head failed"
+    hc.required_names(live.get("required_checks"))
+    not_green = {k: v for k, v in required_verdicts(live).items() if v != "GREEN"}
+    return f"required contexts not green on the PR head: {not_green}" if not_green else None
+
+
+def label_arm(repo: str, p: dict) -> tuple[str | None, str | None]:
+    """The label half of the arm: ARM_LABEL on the PR, applied last by a user whose role on the repo is admin or maintain."""
+    if ARM_LABEL not in {lb.get("name") for lb in (p.get("labels") or {}).get("nodes") or [] if isinstance(lb, dict)}:
+        return f"label {ARM_LABEL} absent", None
+    actor = None
+    for ev in (p.get("timelineItems") or {}).get("nodes") or []:
+        if isinstance(ev, dict) and (ev.get("label") or {}).get("name") == ARM_LABEL:
+            actor = ev.get("actor") if ev.get("__typename") == "LabeledEvent" else None
+    login = actor.get("login") if isinstance(actor, dict) and actor.get("__typename") == "User" else None
+    if not isinstance(login, str) or not _LOGIN_RE.fullmatch(login):
+        return f"{ARM_LABEL} was not applied last by a user account (actor {actor})", None
+    perm = hc.gh_get(f"repos/{repo}/collaborators/{login}/permission")
+    role = perm.get("role_name") if isinstance(perm, dict) else None
+    return (None if role in ARM_ROLES else f"{ARM_LABEL} applied by {login}, whose role is {role!r}, not admin or maintain"), login
+
+
+def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
+    """The PR as GraphQL sees it now (the REST view has no queue state): fills the PR-side sub-criteria and the label in ``why``."""
+    owner, name = a.repo.split("/")
+    p = (gh_graphql(PR_QUERY, owner=owner, name=name, number=n).get("repository") or {}).get("pullRequest")
+    if not isinstance(p, dict):
+        raise GraphQLError(f"#{n} is not a pull request of {a.repo}")
+    entry, live_head = p.get("mergeQueueEntry"), p.get("headRefOid")
+    again = any(r.get("kind") == "enqueued" and r.get("pr") == n and r.get("head_sha") == head for r in read_journal(state))
+    why.update(head_unchanged=None if live_head == head else f"the PR head moved to {live_head} since the decision on {head}",
+               same_repo=None if p.get("isCrossRepository") is False else "a cross-repository pull request",
+               not_draft=None if p.get("isDraft") is False else "a draft",
+               base_main=None if p.get("baseRefName") == a.base == ENQUEUE_BASE else f"base {p.get('baseRefName')!r}, not {ENQUEUE_BASE}",
+               open=None if p.get("state") == "OPEN" else f"state {p.get('state')}",
+               not_in_queue=None if p.get("isInMergeQueue") is False and entry is None else f"already in the merge queue ({entry})",
+               first_enqueue="this head was enqueued by an earlier tick" if again else None)
+    facts = {"pull_request_id": p.get("id"), "live_head_oid": live_head, "label_actor": None}
+    why["label_privileged"], facts["label_actor"] = label_arm(a.repo, p)
+    return facts
 
 
 def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str) -> int:
