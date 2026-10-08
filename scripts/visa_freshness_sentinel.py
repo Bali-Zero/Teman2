@@ -851,6 +851,7 @@ def sanitize_state(
         "delivered_streak": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v < 10**6,
         "undelivered_attempts": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v < 10**6,
         "last_delivered_ts": lambda v: _is_num(v) and v <= horizon,
+        "cond_start_ts": lambda v: _is_num(v) and v <= horizon,
         "route_ts": lambda v: _is_num(v) and v <= horizon,
         "next_due_ts": lambda v: _is_num(v) and v <= horizon + REALERT_MAX_GAP_S,
     }
@@ -916,6 +917,12 @@ def _last_escalated(esc: Any) -> str | None:
     return rows[0].get("outcome") if rows else None
 
 
+def _is_own_job(job: str) -> bool:
+    """The sentinel's HIGH row (exact) or a gateway-routed `visa-freshness:*` job
+    (strict `family:` prefix) — never a sibling like `visa-freshness-other-organ`."""
+    return job == ESCALATION_JOB or job.startswith(f"{ESCALATION_JOB_PREFIX}:")
+
+
 def _escalation_resolve() -> None:
     """Close the sentinel's HIGH row AND every gateway-routed row it spawned."""
     try:
@@ -923,7 +930,7 @@ def _escalation_resolve() -> None:
 
         jobs = {
             e.get("job") for e in esc.read_all_escalations()
-            if str(e.get("job", "")).startswith(ESCALATION_JOB_PREFIX)
+            if _is_own_job(str(e.get("job", "")))
         }
         for job in sorted(j for j in jobs if j):
             if esc.is_job_open(job):
@@ -979,7 +986,8 @@ def _run_alert_cycle(
 
     cond = _condition(verdict)
     if state.get("condition") != cond:
-        state = {"condition": cond, "delivered_streak": 0}
+        state = {"condition": cond, "delivered_streak": 0, "cond_start_ts": now_ts}
+    cond_start = state.setdefault("cond_start_ts", now_ts)
     attempts = state.get("undelivered_attempts", 0)
     # Once the gateway has answered `spooled` (board routing), keep ONE stable key so the
     # board holds one job, not one per day; re-probe weekly in case routing changed.
@@ -987,10 +995,10 @@ def _run_alert_cycle(
     probe = on_board and now_ts - state.get("route_ts", 0) >= BOARD_REPROBE_S
     key = dedup_key(verdict)
     if not on_board or probe:
-        day = datetime.fromtimestamp(now_ts, timezone.utc).strftime("%Y%m%d")
-        # day + delivery count + attempt: two deliveries inside one UTC day (the gate is
-        # shorter than 24 h) must not share a key, or the ladder mutes the second.
-        key = f"{key}:d{day}:n{state.get('delivered_streak', 0)}:a{attempts}"
+        # condition start + delivery count + attempt: two deliveries inside one UTC day, or a
+        # condition that ended and restarted the same day, must not share a key, or the
+        # gateway ladder mutes the second.
+        key = f"{key}:s{int(cond_start)}:n{state.get('delivered_streak', 0)}:a{attempts}"
     gateway_verdict, failure = _send(verdict, gateway_path, key)
     decision["gateway_verdict"] = gateway_verdict
     via = {"sent": "telegram", "spooled": "board"}.get(gateway_verdict or "")

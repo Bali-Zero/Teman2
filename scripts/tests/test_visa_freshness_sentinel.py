@@ -946,3 +946,43 @@ def test_a_genuine_failure_is_still_undelivered_not_a_board_delivery(tmp_path, m
     assert d["delivered"] is False and math.isclose(
         json.loads((tmp_path / "state.json").read_text())["next_due_ts"], T0
     )
+
+
+# ---------------------------------------------------------------------------
+# W141 successor, round 2 — own rows only; a restarted condition gets a fresh key
+# ---------------------------------------------------------------------------
+
+
+def test_ok_resolves_only_the_sentinels_own_rows(tmp_path, monkeypatch):
+    esc = _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    mine = [vfs.ESCALATION_JOB, "visa-freshness:stale:25:s1:n0:a0", "visa-freshness:stale:25"]
+    other = "visa-freshness-other-organ"
+    for job in [*mine, other]:
+        esc.write_escalation({"job": job, "priority": "HIGH", "error_summary": "x"})
+    ok = vfs.classify_freshness([_portal_record("p", VERIFIED_AT.isoformat())], VERIFIED_AT)
+    _cycle(ok, tmp_path, gw, T0)
+    assert [j for j in mine if esc.is_job_open(j)] == []
+    assert esc.is_job_open(other)
+
+
+def test_condition_restarted_the_same_day_gets_a_fresh_key(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    ok = vfs.classify_freshness([_portal_record("p", VERIFIED_AT.isoformat())], VERIFIED_AT)
+    v = _stale_verdict()
+    first = _cycle(v, tmp_path, gw, T0)
+    _cycle(ok, tmp_path, gw, T0 + 2 * 3600)
+    second = _cycle(v, tmp_path, gw, T0 + 8 * 3600)
+    keys = [c[c.index("--dedup-key") + 1] for c in _calls(tmp_path)]
+    assert first["delivered"] and second["delivered"] and keys[0] != keys[1]
+
+
+def test_a_continuing_condition_keeps_its_key_family(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = _stale_verdict()
+    for h in (0, 18, 36):
+        _cycle(v, tmp_path, gw, T0 + h * 3600)
+    keys = [c[c.index("--dedup-key") + 1] for c in _calls(tmp_path)]
+    assert len({k.rsplit(":n", 1)[0] for k in keys}) == 1 and len(set(keys)) == 3
