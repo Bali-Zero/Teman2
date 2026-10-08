@@ -1,0 +1,79 @@
+{
+  "run_at": "2026-10-09T07:06:56+08:00",
+  "today": "2026-10-09",
+  "yesterday_seen_count": 8,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "'Memuat artikel perpajakan...' placeholder persists, JS-rendered shell, same as prior runs"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "HTTP_CODE:000 on initial fetch and the one mechanical retry, 30s each, same as prior runs"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "newest dated item 2026-10-08; only in-scope-type match was PP 33/2026 PDP follow-up, outside BZ service-line scope, consistent with prior runs"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "PMK 70/2026 (pajak rokok PNBP allocation for Ditjen Bea Cukai law enforcement funding, issued 2026-10-08) found but outside BZ service-line scope -- internal govt budget-allocation rule, not a client-facing tax obligation; PMK 71/2026 re-surfaced, already seen 2026-10-07/08"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; static content is only pagination links, no PMK 2026 entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest dated news entry 30 September 2026, older than the 48h freshness window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry still KEP-185/PJ/2026 (2026-09-02), unchanged from prior runs"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible entry dated 30 April 2026, unchanged from prior runs"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025",
+    "PMK 71/2026",
+    "RUU Pelindungan Ketenagakerjaan",
+    "PER-11/PJ/2026"
+  ],
+  "note": "4/4 NB-INTEL: Regulation/Press/Immigration = nessuna novita; Tax re-surfaced PMK 71/2026 (already seen, non-citable). Web primary (1-5): hukumonline found only PP 33/2026 (outside scope, consistent with prior runs); DDTC found PMK 70/2026 (Suahasil Atur Penggunaan Pajak Rokok untuk Penegakan Hukum Bea Cukai, issued 2026-10-08) -- a real new PMK but judged outside BZ service-line scope (cigarette-tax PNBP allocation to fund DGCE customs/excise law enforcement, not a client-facing tax/visa/property/company/HR obligation), same judgment class as yesterday's PP 33/2026 call; ortax/muc/ikpi unreachable as before. Primary sources returned <3 deltas so backup web (6-11) also checked: bpk.go.id JS-rendered (no static PMK matches), imigrasi/pajak/kemnaker all outside the 48h window, peraturan.go.id/rss 404, jdih.kemenkeu.go.id timeout x2. Net result: zero in-scope deltas today -- better miss than hallucinate relevance on PMK 70/2026."
+}
