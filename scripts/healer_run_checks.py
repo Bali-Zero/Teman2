@@ -284,12 +284,22 @@ def main(argv: list[str]) -> int:
             return 3
         sys.stdout.write(f"{count}\n")
         return 0
-    if command == "proprioception-summary" and len(argv) == 2:
+    if command == "proprioception-summary" and (
+        len(argv) == 2 or (len(argv) == 4 and argv[2] == "--registry-file")
+    ):
         try:
-            diverged, curable = summarize_proprioception(payload)
+            registry_result = None
+            if len(argv) == 4:
+                try:
+                    registry_result = Path(argv[3]).read_text(encoding="utf-8")
+                except OSError as exc:
+                    raise ProbeReportError(f"registry file unreadable: {exc}") from exc
+            diverged, curable = summarize_proprioception(payload, registry_result)
         except ProbeReportError as exc:
             sys.stderr.write(f"{exc}\n")
             return 3
+        if registry_result is not None:
+            sys.stderr.write("organs_heartbeat judged by receptor A\n")
         sys.stdout.write(f"{len(diverged)}\n{len(curable)}\n{','.join(diverged)}\n")
         return 0
     if command == "registry-summary" and len(argv) == 2:

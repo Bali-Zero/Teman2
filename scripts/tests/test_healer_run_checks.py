@@ -119,6 +119,64 @@ def test_registry_summary_cli_prints_findings_after_dead() -> None:
     assert out == "1\n0\na\n1\nk\n"
 
 
+def _proprioception_cli(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    report = json.dumps({"probes": [
+        {"id": "organs_heartbeat", "status": "DIVERGED", "severity": "P1", "cure": "session"},
+    ]})
+    return subprocess.run(
+        [sys.executable, str(_MOD_PATH), "proprioception-summary", *args],
+        input=report, capture_output=True, text=True, check=False, cwd=tmp_path,
+    )
+
+
+def test_proprioception_summary_cli_without_registry_keeps_old_output(tmp_path: Path) -> None:
+    result = _proprioception_cli(tmp_path)
+
+    assert result.returncode == 0
+    assert result.stdout == "1\n1\norgans_heartbeat\n"
+    assert result.stderr == ""
+
+
+def test_proprioception_summary_cli_uses_registry_file(tmp_path: Path) -> None:
+    registry = tmp_path / "registry.json"
+    registry.write_text('{"dead": [], "findings": []}')
+
+    result = _proprioception_cli(tmp_path, "--registry-file", str(registry))
+
+    assert result.returncode == 0
+    assert result.stdout == "1\n0\norgans_heartbeat\n"
+    assert result.stderr == "organs_heartbeat judged by receptor A\n"
+
+
+@pytest.mark.parametrize("kind", ["missing", "malformed", "unreadable"])
+def test_proprioception_summary_cli_bad_registry_returns_three(tmp_path: Path, kind: str) -> None:
+    registry = tmp_path / "registry.json"
+    if kind == "malformed":
+        registry.write_text("not json")
+    elif kind == "unreadable":
+        registry.mkdir()
+
+    result = _proprioception_cli(tmp_path, "--registry-file", str(registry))
+
+    assert result.returncode == 3
+    assert result.stdout == ""
+    assert result.stderr.strip()
+    assert "judged by receptor A" not in result.stderr
+
+
+@pytest.mark.parametrize("command", ["registry-summary", "home-fork-summary", "arsenal-transitions"])
+def test_only_proprioception_summary_takes_the_registry_flag(tmp_path: Path, command: str) -> None:
+    registry = tmp_path / "registry.json"
+    registry.write_text('{"dead": [], "findings": []}')
+    result = subprocess.run(
+        [sys.executable, str(_MOD_PATH), command, "--registry-file", str(registry)],
+        input="{}", capture_output=True, text=True, check=False, cwd=tmp_path,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+
+
 def test_summarize_home_fork_branch_table(tmp_path, monkeypatch) -> None:
     mine = tmp_path / "mine.sh"
     mine.write_text("x\n")

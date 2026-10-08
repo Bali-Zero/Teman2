@@ -41,6 +41,7 @@ il repo → 1 riga Telegram a Zero (il guaritore Mini o una sessione interattiva
      `ln -s ~/nuzantara/.husky/_ <path>/.husky/_` (mai `-f`). Prova: il lint ridà
      `health=OK` per quel `path` e
      `cmp ~/nuzantara/.husky/_/pre-push <path>/.husky/_/pre-push` è pulito.
+     Questa riga del symlink è L'UNICA eccezione esplicita al «Niente worktree» dell'ASSE INVERTITO e a «Il repo» e «hook/guardrail» di FUORI PERIMETRO: `.husky/_` è runtime gitignorato (nessun commit, nessun file tracciato) e l'eccezione vale solo sotto `~/nuzantara/.worktrees/*`, solo con `health` = `MISSING`, solo a worktree inattivo e mai sotto `~/.codex/worktrees/*`.
    - Raccolta log-evidenza (read-only) da allegare al Telegram.
    - Re-run di reconciler esistenti in report-mode.
      Ogni cura: PROVA PER CONTENUTO dopo (sidecar rinfrescato, processo vivo, cmp pulito)

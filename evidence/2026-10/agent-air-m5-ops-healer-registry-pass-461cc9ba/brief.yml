@@ -1,0 +1,36 @@
+task_id: healer-registry-pass
+mission: seat-utilization campaign 2026-10-05/08, Pro healer lever after PR 8079 (owner order "fai tu" on the Pro healer, 2026-10-06)
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  The Pro healer wrapper hands receptor A's judgement of THIS tick to receptor B, so B stops counting the probe
+  organs_heartbeat as session-curable when A already judged every organ with its finer rules. On Pro today B reads
+  proprioception:3/7-session-curable without the registry and 2/7 with it. A broken A, an empty A, a previous tick's file
+  or a failed snapshot write never reach B: B then counts organs_heartbeat itself, as before.
+constraints:
+  - The live copies ~/scripts/pro-healer.sh and ~/scripts/HEALER-PRO-MANDATE.md on Pro are NOT touched by this PR; delivery is a separate step after merge.
+  - Without --registry-file, proprioception-summary is byte-identical to base (rc, stdout, stderr).
+  - A registry file that is missing, unreadable or invalid is rc 3 (proprioception-receptor-broken, spawn), never a quiet old count.
+  - One broken receptor never erases another receptor's count; a snapshot write failure never changes receptor A's verdict or the memo fingerprint input.
+  - The snapshot is mode 0600 and its content is never logged.
+  - No network, secrets or client data in tests or logs.
+appetite:
+  wall_clock_hours: 2
+acceptance:
+  - text: WHEN A's judgement of this tick is accepted THEN B SHALL get --registry-file, drop organs_heartbeat from the session-curable count and log "organs_heartbeat judged by receptor A"; the snapshot SHALL be mode 0600.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_registry_handoff_removes_duplicate_organ_count
+  - text: WHEN A is broken (rc 2 receptor_broken JSON, not JSON, rc 1 with no dead) THEN B SHALL keep its own count, SHALL NOT be receptor-broken, and no snapshot SHALL exist.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_keeps_its_own_count_when_a_is_broken
+  - text: WHEN a previous tick's snapshot exists and A prints nothing THEN B SHALL NOT read it and it SHALL be removed.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_never_defers_to_a_previous_ticks_snapshot
+  - text: WHEN the snapshot cannot be written THEN A's reason and the memo input SHALL be unchanged and B SHALL count organs_heartbeat itself.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_snapshot_write_failure_leaves_a_and_b_whole
+  - text: WHEN --registry-file names a missing, unreadable or malformed file THEN proprioception-summary SHALL exit 3 without the notice; WHEN the flag is absent THEN the output SHALL be unchanged.
+    probe: scripts/tests/test_healer_run_checks.py::test_proprioception_summary_cli_bad_registry_returns_three
+  - text: WHEN any other subcommand gets --registry-file THEN it SHALL exit 2.
+    probe: scripts/tests/test_healer_run_checks.py::test_only_proprioception_summary_takes_the_registry_flag
+consumer_map:
+  - infra/launchagents/wrappers/pro-healer.sh - Pro healer, every 6 h (com.nuzantara.healer-pro.6h); live copy ~/scripts/pro-healer.sh on Pro (declared HOME-fork pair, machines [pro]). Mini has no copy.
+  - scripts/healer_run_checks.py - proprioception-summary, read from the auto-pulled Pro checkout by the wrapper.
+  - infra/healer/HEALER-PRO-MANDATE.md - read by the spawned Pro healer session; live copy ~/scripts/HEALER-PRO-MANDATE.md on Pro (declared pair, machines [pro]).
