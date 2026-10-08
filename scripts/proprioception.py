@@ -2141,61 +2141,85 @@ KBLI_ANCHOR_MANIFEST = "apps/kbli-navigator-macos/Resources/DATASET_MANIFEST.jso
 KBLI_ANCHOR_DATASET = "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
 
 
+KBLI_ANCHOR_REMEDY = (
+    "re-anchor deliberately: commit the new sha into "
+    "apps/kbli-navigator-macos/Resources/DATASET_MANIFEST.json (data(dataset) commit), "
+    "then rebuild on Pro — build.sh refuses (exit 4) until the anchor matches; "
+    "see the Re-anchor paragraph of apps/kbli-navigator-macos/README.md"
+)
+
+
 def probe_kbli_dataset_anchor(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
     """Is the D2 anchor of the bundled KBLI dataset still the canonical's hash?
 
-    build.sh exits 4 when the canonical no longer matches the manifest anchor, but only
-    at build time on Pro. This re-measures it continuously. The canonical is read from
-    origin/main (a local checkout lies, W106b); only if git cannot answer does it fall
-    back to the working-tree file, and then every line is marked LOCAL.
+    Contract
+      inputs   manifest@origin/main (sha256, optional records) and canonical@origin/main,
+               both read with `git show` so a never-pulled checkout (M5, W106b) cannot
+               produce a false RED after a re-anchor. Each falls back to the working
+               tree only when git cannot answer, and the message then says LOCAL.
+      states   RECONCILED: anchor sha (and record count, if declared) == canonical.
+               DIVERGED: they differ; the message names BOTH shas (12 chars) and, for
+               a count mismatch, both counts, then the remedy below.
+               UNPROBEABLE: the manifest or the canonical cannot be read anywhere.
+      remedy   a deliberate re-anchor commit of DATASET_MANIFEST.json, after which
+               build.sh (which exits 4 on mismatch) builds again.
+      non-goal the probe never writes: re-anchoring is a decision, not a heal.
     """
     root = Path(args.get("root") or root)
     manifest_rel = str(args.get("manifest") or KBLI_ANCHOR_MANIFEST)
     dataset_rel = str(args.get("dataset") or KBLI_ANCHOR_DATASET)
     ref = str(args.get("ref") or "origin/main")
-    try:
-        manifest = json.loads((root / manifest_rel).read_text(encoding="utf-8"))
-        anchor_sha = str(manifest["sha256"])
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        return UNPROBEABLE, 0, [f"cannot read the anchor in {manifest_rel}: {type(exc).__name__}"]
-    anchor_records = manifest.get("records") if isinstance(manifest, dict) else None
-
-    data: bytes | None = None
-    source = f"{ref}:{dataset_rel}"
     if not args.get("no_fetch"):
         try:
             sh(["git", "fetch", "-q", "origin", "main"], timeout=min(timeout, 10), cwd=root)
         except Exception:
             pass
-    try:
-        p = subprocess.run(["git", "-C", str(root), "show", f"{ref}:{dataset_rel}"],
-                           capture_output=True, timeout=timeout)
-        if p.returncode == 0 and p.stdout:
-            data = p.stdout
-    except Exception:
-        data = None
-    if data is None:
-        try:
-            data = (root / dataset_rel).read_bytes()
-            source = f"LOCAL {dataset_rel} ({ref} unreadable)"
-        except OSError:
-            return UNPROBEABLE, 0, [f"canonical {dataset_rel} unreadable on {ref} and locally"]
 
+    def read(rel: str) -> tuple[bytes, str] | None:
+        try:
+            p = subprocess.run(["git", "-C", str(root), "show", f"{ref}:{rel}"],
+                               capture_output=True, timeout=timeout)
+            if p.returncode == 0 and p.stdout:
+                return p.stdout, f"{ref}:{rel}"
+        except Exception:
+            pass
+        try:
+            return (root / rel).read_bytes(), f"LOCAL {rel} ({ref} unreadable)"
+        except OSError:
+            return None
+
+    got_manifest = read(manifest_rel)
+    if got_manifest is None:
+        return UNPROBEABLE, 0, [f"anchor manifest {manifest_rel} unreadable on {ref} and locally"]
+    try:
+        manifest = json.loads(got_manifest[0])
+        anchor_sha = str(manifest["sha256"])
+    except (ValueError, KeyError, TypeError):
+        return UNPROBEABLE, 0, [f"anchor in {manifest_rel} is not valid JSON with a sha256 ({got_manifest[1]})"]
+    anchor_records = manifest.get("records")
+
+    got_data = read(dataset_rel)
+    if got_data is None:
+        return UNPROBEABLE, 0, [f"canonical {dataset_rel} unreadable on {ref} and locally"]
+    data, source = got_data
     live_sha = hashlib.sha256(data).hexdigest()
+    where = f"manifest {got_manifest[1]}, canonical {source}"
+
     findings: list[str] = []
     if live_sha != anchor_sha:
-        findings.append(f"anchor {anchor_sha[:12]} != canonical {live_sha[:12]} ({source})")
+        findings.append(f"anchor {anchor_sha[:12]} != canonical {live_sha[:12]} ({where})")
     if anchor_records is not None:
         try:
             live_records = len(json.loads(data)["data"])
         except (ValueError, KeyError, TypeError):
             live_records = None
         if live_records is not None and live_records != anchor_records:
-            findings.append(f"anchor records {anchor_records} != canonical records {live_records} ({source})")
+            findings.append(f"anchor records {anchor_records} != canonical records {live_records} ({where})")
     if findings:
-        findings.append("rebuild on Pro: build.sh refreshes and re-stamps; see apps/kbli-navigator-macos/README.md")
-        return DIVERGED, len(findings) - 1, findings
-    return RECONCILED, 0, [f"anchor {anchor_sha[:12]} == canonical {live_sha[:12]} ({source})"]
+        n = len(findings)
+        findings.append(KBLI_ANCHOR_REMEDY)
+        return DIVERGED, n, findings
+    return RECONCILED, 0, [f"anchor {anchor_sha[:12]} == canonical {live_sha[:12]} ({where})"]
 
 
 BUILTINS = {
@@ -2475,7 +2499,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "severity": "P2",
         "cure": "pr",
         "args": {},
-        "fix_hint": "rebuild on Pro: build.sh refreshes and re-stamps the anchor; see apps/kbli-navigator-macos/README.md",
+        "fix_hint": "re-anchor deliberately: commit the new sha into apps/kbli-navigator-macos/Resources/DATASET_MANIFEST.json (data(dataset) commit), then rebuild on Pro — build.sh refuses (exit 4) until the anchor matches",
     },
     {
         "id": "repomap_size", "type": "builtin", "target": "repomap_size",
