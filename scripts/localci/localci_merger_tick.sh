@@ -107,7 +107,7 @@ else
 fi
 if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then
   PRUNE_RC=0
-  "$PY" -I "$CODE/merger.py" prune --state-dir "$STATE" --fstrim || PRUNE_RC=$?
+  "$PY" -I "$CODE/merger.py" prune --state-dir "$STATE" --fstrim ${CODE_FLAG:+"$CODE_FLAG"} || PRUNE_RC=$?
   if [ "$PRUNE_RC" -ne 0 ]; then WARN="${WARN:+$WARN; }prune rc=$PRUNE_RC"; fi
 fi
 exit "$TICK_RC"

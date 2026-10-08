@@ -165,6 +165,13 @@ def test_nothing_to_remove_prunes_no_builder_and_an_image_in_use_is_an_error_nev
     assert not any("-f" in c.split() for c in calls(tmp_path / "busy") if c.startswith("image rm"))
 
 
+def test_the_prune_line_names_the_code_that_wrote_it_and_refuses_a_short_sha(tmp_path):
+    state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--code-sha", "f" * 40]) == 0
+    assert journal(state)[-1]["code_sha"] == "f" * 40
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--code-sha", "abc123"]) == 2
+
+
 def test_prune_refuses_a_directory_that_is_not_a_merger_state(tmp_path):
     (tmp_path / "elsewhere").mkdir()
     assert mg.main(["prune", "--state-dir", str(tmp_path / "elsewhere"), "--docker", "/nonexistent"]) == 2

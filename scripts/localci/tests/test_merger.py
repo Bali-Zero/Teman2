@@ -986,7 +986,8 @@ def test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_read
     assert res.returncode == 0, res.stderr
     lines = (tmp_path / "calls").read_text().splitlines()
     assert calls_of(tmp_path) == ["tick", "prune"]   # never the prune before the decision
-    assert lines[0].endswith("--host-free-gb=200 --min-host-free-gb=60") and lines[1].endswith(f"prune --state-dir {env['MERGER_STATE_DIR']} --fstrim")
+    assert lines[0].endswith("--host-free-gb=200 --min-host-free-gb=60")
+    assert re.search(rf"prune --state-dir {re.escape(env['MERGER_STATE_DIR'])} --fstrim --code-sha=[0-9a-f]{{40}}$", lines[1])
     assert heartbeat(tmp_path)["status"] == "ok" and "host_free_gb=200" in res.stdout
 
 

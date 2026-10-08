@@ -902,6 +902,11 @@ def _longest_gap_h(stamps) -> float:
 
 def cmd_prune(a) -> int:
     """B6: the gate's own retention, run by the wrapper after the tick (the decision first). Only a merger state dir."""
+    global CODE_SHA
+    if a.code_sha is not None and not is_sha(a.code_sha):
+        print(f"merger prune: refusing — --code-sha {a.code_sha!r} is not a full commit sha", file=sys.stderr)
+        return 2
+    CODE_SHA = a.code_sha
     state = Path(a.state_dir).expanduser().resolve()
     if not (state / "repo").is_file():
         print(f"merger prune: refusing — {state} is not a merger state dir (no repo binding written by a tick)", file=sys.stderr)
@@ -992,6 +997,7 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--dry-run", action="store_true", help="journal what would go, remove nothing")
     pr.add_argument("--fstrim", action="store_true", help="after an image removal, `colima ssh -- sudo fstrim -av`")
     pr.add_argument("--colima", default="colima")
+    pr.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
     sub.add_parser("merge", help=PHASE_E)
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["merge"]:   # whatever follows: there is no merge path to reach
