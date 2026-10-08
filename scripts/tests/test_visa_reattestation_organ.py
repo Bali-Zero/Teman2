@@ -315,3 +315,45 @@ def test_python_falls_back_to_the_shared_checkouts_venv(tmp_path):
 def test_a_judge_crash_is_not_read_as_an_unsure_page(world):
     world.cfg["judge_rc"] = 3
     assert organ.run(world.args("--now", world.now(20))) == 2
+
+
+def test_an_unexpected_exception_still_alerts_and_fails(world, monkeypatch):
+    real_fold = organ.fold
+
+    def boom(*a, **k):
+        raise subprocess.TimeoutExpired("fold", 1)
+
+    monkeypatch.setattr(organ, "fold", boom)
+    assert organ.run(world.args("--now", world.now(20))) == 2
+    assert world.board()[0]["job"].startswith("visa-reattestation:unexpected") and len(world.tg()) == 1
+    monkeypatch.setattr(organ, "fold", real_fold)
+
+
+def test_a_dead_board_does_not_silence_telegram(world, monkeypatch):
+    def broken(*a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(organ, "_board", broken)
+    world.cfg["judge_rc"] = 1
+    organ.run(world.args("--now", world.now(20)))
+    assert len(world.tg()) == 1
+
+
+def test_an_orphaned_worktree_of_a_killed_run_is_reaped_not_a_blocker(world):
+    state = world.tmp / "state"
+    orphan = state / "worktrees" / "seq26-orphan"
+    orphan.parent.mkdir(parents=True)
+    _git(world.shared, "worktree", "add", "-B", "organ/visa-reattest/25-2026-10-12", str(orphan), "origin/main")
+    assert organ.run(world.args("--now", "2026-10-12T18:00:00Z")) == 0
+    assert not orphan.exists()
+    assert len(world.gh_create()) == 1
+
+
+def test_a_failed_run_says_so_in_the_pack_ready_alert(world):
+    world.cfg["open_prs"] = [{"number": 7, "headRefName": "organ/visa-reattest/25-2026-10-26", "url": "https://x/pull/7"}]
+    world.cfg["judge_rc"] = 1
+    _git(world.shared, "branch", "organ/visa-reattest/25-2026-10-26", "origin/main")
+    _git(world.shared, "push", "origin", "organ/visa-reattest/25-2026-10-26")
+    organ.run(world.args("--now", world.now(6.0)))
+    ready = [c[-1] for c in world.tg() if "ready to sign" in c[-1]]
+    assert ready and "earlier run; this run failed at 'judge'" in ready[0]

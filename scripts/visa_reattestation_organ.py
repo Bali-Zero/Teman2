@@ -199,7 +199,7 @@ def find_anchor(repo: Path, ref: str = "origin/main") -> dict[str, Any]:
 
 
 def find_open_organ_pr(anchor_seq: int, repo: Path) -> dict[str, Any] | None:
-    proc = _run(["gh", "pr", "list", "--state", "open", "--limit", "100",
+    proc = _run(["gh", "pr", "list", "--state", "open", "--limit", "1000",
                  "--json", "number,headRefName,url"], cwd=repo)
     if proc.returncode != 0:
         raise OrganError("pr-lookup", f"gh pr list rc={proc.returncode}: {proc.stderr.strip()[-200:]}")
@@ -254,7 +254,10 @@ def alert(args: argparse.Namespace, *, job: str, key: str, summary: str, detail:
     if args.dry_run or args.offline:
         logger.info("alert suppressed (%s): %s", "dry-run" if args.dry_run else "offline", summary)
         return
-    _board(Path(args.board), job, summary, detail)
+    try:
+        _board(Path(args.board), job, summary, detail)
+    except Exception as exc:  # noqa: BLE001 — a dead board must not silence Telegram
+        logger.warning("board write failed: %s", exc)
     _tg(summary, key)
 
 
@@ -296,9 +299,21 @@ def _module(stage: str, code_root: Path, repo: Path, module: str, argv: list[str
     return proc
 
 
+def reap_own_worktrees(repo: Path, state_dir: Path) -> None:
+    """A hard-killed run leaves its worktree registered and its branch checked out, which
+    blocks every later `worktree add -B`. The wrapper's pidfile makes this organ a singleton,
+    so anything under its own state dir is an orphan."""
+    root = str((state_dir / "worktrees").resolve())
+    listing = _git(repo, "worktree", "list", "--porcelain", check=False).stdout
+    for line in listing.splitlines():
+        if line.startswith("worktree ") and line[9:].startswith(root):
+            _git(repo, "worktree", "remove", "--force", line[9:], check=False)
+
+
 def ensure_worktree(args: argparse.Namespace, anchor_seq: int, branch: str, existing: bool, wt: Path) -> None:
     repo = Path(args.repo)
     wt.parent.mkdir(parents=True, exist_ok=True)
+    reap_own_worktrees(repo, Path(args.state_dir))
     _git(repo, "worktree", "prune")
     start = f"origin/{branch}" if existing else "origin/main"
     if existing:
@@ -415,7 +430,9 @@ def run(args: argparse.Namespace) -> int:
                                       [ledger, candidate, note])
         candidate_ref = state.get("pr_url") or f"{branch}:{plan['candidate']}"
         state["outcome"] = "candidate-ready"
-    except OrganError as exc:
+    except Exception as exc:  # noqa: BLE001 — anything unexpected is still a failed run, never a silent one
+        if not isinstance(exc, OrganError):
+            exc = OrganError("unexpected", f"{type(exc).__name__}: {exc}")
         rc = exc.rc
         state.update(outcome="failed", stage=exc.stage, detail=exc.detail)
         alert(args, job=f"visa-reattestation:{exc.stage}:seq{anchor['seq']}",
@@ -433,7 +450,9 @@ def run(args: argparse.Namespace) -> int:
         week = now.strftime("%G-W%V")
         alert(args, job=f"visa-reattestation:pack-ready:seq{next_seq}", key=f"visa-freshness:pack-ready:{next_seq}:{week}",
               summary=f"Visa pack ready to sign: {candidate_ref}, boundary {plan['boundary']} "
-                      f"({plan['days_to_boundary']} days).")
+                      f"({plan['days_to_boundary']} days)."
+                      + (f" Candidate is from an earlier run; this run failed at '{state['stage']}'."
+                         if state.get("outcome") == "failed" else ""))
         state["t7_alert"] = candidate_ref
     write_state(args, state)
     print(json.dumps({k: v for k, v in state.items() if k != "pr_body"}, indent=2, default=str))
@@ -467,8 +486,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.offline and not args.ledger_dir:
         build_parser().error("--offline needs --ledger-dir")
     try:
-        return run(args)
-    except OrganError as exc:  # failure before the pipeline (anchor, fetch, pr lookup)
+        try:
+            return run(args)
+        except OrganError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — timeouts, OS and JSON errors must still alert
+            raise OrganError("unexpected", f"{type(exc).__name__}: {exc}") from exc
+    except OrganError as exc:  # failure before the pipeline (anchor, fetch, pr lookup) or unexpected
         alert(args, job=f"visa-reattestation:{exc.stage}", key=f"visa-freshness:reattest-{exc.stage}",
               summary=f"Visa re-attestation FAILED at '{exc.stage}': {exc.detail[:300]}", detail=exc.detail)
         write_state(args, {"ts": datetime.now(timezone.utc).isoformat(), "outcome": "failed",
