@@ -81,6 +81,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "door<->door",              # the SAME rule in each CLI's auto-loaded door file (2026-08-31)
     "process<->cwd",            # a headless claude CLI process vs. its own working dir / worktree registration (2026-09-01)
     "model<->calibration",      # configured child models vs. their stored context-window calibration (2026-09-10)
+    "dataset<->bundle",         # the canonical dataset vs the anchor a bundled copy was stamped with (2026-10-08)
     "config<->guard",           # a CLI setting vs. the trip point of the guard it must not pre-empt (autoCompactWindow, 2026-09-18)
 ]
 
@@ -2099,6 +2100,67 @@ def probe_model_topology_drift(root: Path, args: dict, timeout: int) -> tuple[st
     return (DIVERGED if missing else RECONCILED), len(missing), ev
 
 
+KBLI_ANCHOR_MANIFEST = "apps/kbli-navigator-macos/Resources/DATASET_MANIFEST.json"
+KBLI_ANCHOR_DATASET = "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+
+
+def probe_kbli_dataset_anchor(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Is the D2 anchor of the bundled KBLI dataset still the canonical's hash?
+
+    build.sh exits 4 when the canonical no longer matches the manifest anchor, but only
+    at build time on Pro. This re-measures it continuously. The canonical is read from
+    origin/main (a local checkout lies, W106b); only if git cannot answer does it fall
+    back to the working-tree file, and then every line is marked LOCAL.
+    """
+    root = Path(args.get("root") or root)
+    manifest_rel = str(args.get("manifest") or KBLI_ANCHOR_MANIFEST)
+    dataset_rel = str(args.get("dataset") or KBLI_ANCHOR_DATASET)
+    ref = str(args.get("ref") or "origin/main")
+    try:
+        manifest = json.loads((root / manifest_rel).read_text(encoding="utf-8"))
+        anchor_sha = str(manifest["sha256"])
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return UNPROBEABLE, 0, [f"cannot read the anchor in {manifest_rel}: {type(exc).__name__}"]
+    anchor_records = manifest.get("records") if isinstance(manifest, dict) else None
+
+    data: bytes | None = None
+    source = f"{ref}:{dataset_rel}"
+    if not args.get("no_fetch"):
+        try:
+            sh(["git", "fetch", "-q", "origin", "main"], timeout=min(timeout, 10), cwd=root)
+        except Exception:
+            pass
+    try:
+        p = subprocess.run(["git", "-C", str(root), "show", f"{ref}:{dataset_rel}"],
+                           capture_output=True, timeout=timeout)
+        if p.returncode == 0 and p.stdout:
+            data = p.stdout
+    except Exception:
+        data = None
+    if data is None:
+        try:
+            data = (root / dataset_rel).read_bytes()
+            source = f"LOCAL {dataset_rel} ({ref} unreadable)"
+        except OSError:
+            return UNPROBEABLE, 0, [f"canonical {dataset_rel} unreadable on {ref} and locally"]
+
+    live_sha = hashlib.sha256(data).hexdigest()
+    findings: list[str] = []
+    if live_sha != anchor_sha:
+        findings.append(f"anchor {anchor_sha[:12]} != canonical {live_sha[:12]} ({source})")
+    if anchor_records is not None:
+        try:
+            live_records = len(json.loads(data)["data"])
+        except (ValueError, KeyError, TypeError):
+            live_records = None
+        if live_records is not None and live_records != anchor_records:
+            findings.append(f"anchor records {anchor_records} != canonical records {live_records} ({source})")
+    if findings:
+        findings.append("rebuild on Pro: build.sh refreshes and re-stamps; see apps/kbli-navigator-macos/README.md")
+        return DIVERGED, len(findings) - 1, findings
+    return RECONCILED, 0, [f"anchor {anchor_sha[:12]} == canonical {live_sha[:12]} ({source})"]
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -2108,6 +2170,7 @@ BUILTINS = {
     "repomap_size": probe_repomap_size,
     "canon_blocks": probe_canon_blocks,
     "door_canon_parity": probe_door_canon_parity,
+    "kbli_dataset_anchor": probe_kbli_dataset_anchor,
     "headless_zombies": probe_headless_zombies,
     "child_calibration": probe_child_calibration,
     "autocompact_window": probe_autocompact_window,
@@ -2365,6 +2428,16 @@ DEFAULT_REGISTRY: list[dict] = [
         "cure": "pr",
         "args": {"reference": "CLAUDE.md", "doors": ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md"]},
         "fix_hint": "copy the reference door's block VERBATIM into the diverging door — the block is shared doctrine, so the cure is never to reword it locally; if the reference is the one that is wrong, fix it there and re-copy outward",
+    },
+    {
+        "id": "kbli_dataset_anchor", "type": "builtin", "target": "kbli_dataset_anchor",
+        "class": "dataset<->bundle",
+        "boundary": "the D2 anchor in the KBLI app DATASET_MANIFEST.json <-> the canonical KBLI dataset on origin/main",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 20,
+        "severity": "P2",
+        "cure": "pr",
+        "args": {},
+        "fix_hint": "rebuild on Pro: build.sh refreshes and re-stamps the anchor; see apps/kbli-navigator-macos/README.md",
     },
     {
         "id": "repomap_size", "type": "builtin", "target": "repomap_size",
@@ -2900,7 +2973,7 @@ def main() -> int:
         try:
             if entry["type"] == "builtin":
                 probe_args = dict(entry.get("args", {}))
-                if entry["target"] == "git_alignment" and args.no_fetch:
+                if entry["target"] in ("git_alignment", "kbli_dataset_anchor") and args.no_fetch:
                     probe_args["no_fetch"] = True
                 status, n, ev = BUILTINS[entry["target"]](root, probe_args, timeout)
             else:
