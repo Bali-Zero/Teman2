@@ -35,6 +35,7 @@ function buildFallback(
   provenance: "CLIENT_GUARD" | "NETWORK_FAILURE" | "SHADOW",
   options: FallbackOptions,
 ): TemporarilyUnavailableOutcome {
+  const retryable = options.retryable ?? provenance === "NETWORK_FAILURE";
   return {
     state: "TEMPORARILY_UNAVAILABLE",
     provenance,
@@ -43,12 +44,16 @@ function buildFallback(
     pathsRemaining: 0,
     assumptions: options.assumptions ?? [],
     sources: [],
-    nextSteps: nextStepsFor("TEMPORARILY_UNAVAILABLE"),
+    nextSteps: nextStepsFor(
+      retryable || provenance === "SHADOW"
+        ? "TEMPORARILY_UNAVAILABLE"
+        : "HUMAN_REVIEW_REQUIRED",
+    ),
     conditions: [],
     outage: {
       code: options.code,
       message: OUTAGE_MESSAGES[provenance],
-      retryable: options.retryable ?? provenance === "NETWORK_FAILURE",
+      retryable,
     },
   };
 }

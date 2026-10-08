@@ -933,6 +933,7 @@ const en = {
     "Processing times are set by Ditjen Imigrasi and vary by office and season. Your Bali Zero advisor confirms the calendar for your case before you book travel.",
   "outcome.path_counter": "Path {{index}} of {{total}}",
   "outcome.checked_on": "Checked on {{date}} against the sources above.",
+  "outcome.checked_on_plain": "Checked on {{date}}.",
   "outcome.price_label": "All-inclusive price",
   "outcome.price_all_inclusive":
     "Government fees and Bali Zero service included.",
@@ -1989,6 +1990,7 @@ const id: Record<Keys, string> = {
     "Lama proses ditentukan oleh Ditjen Imigrasi dan bervariasi menurut kantor dan musim. Konsultan Bali Zero memastikan jadwal untuk kasus Anda sebelum Anda memesan perjalanan.",
   "outcome.path_counter": "Jalur {{index}} dari {{total}}",
   "outcome.checked_on": "Diperiksa pada {{date}} berdasarkan sumber di atas.",
+  "outcome.checked_on_plain": "Diperiksa pada {{date}}.",
   "outcome.price_label": "Harga all-inclusive",
   "outcome.price_all_inclusive":
     "Sudah termasuk biaya pemerintah dan jasa Bali Zero.",
@@ -2052,7 +2054,7 @@ const id: Record<Keys, string> = {
   "outcome.assumptions_receipt_title": "Yang kami asumsikan",
   "outcome.assumptions_receipt_empty":
     "Tidak ada asumsi yang diperlukan — semua jawaban diberikan langsung.",
-  "outcome.freshness_stamp": "Diperiksa terhadap aturan pada {{date}}",
+  "outcome.freshness_stamp": "Diperiksa berdasarkan aturan pada {{date}}",
   "outcome.disclaimer.not_government":
     "Ini alat bantu keputusan privat, bukan layanan pemerintah.",
   "outcome.disclaimer.based_on_facts":
@@ -2072,7 +2074,7 @@ const id: Record<Keys, string> = {
   "outcome.temporarily_unavailable_body":
     "Pemeriksaan tidak dapat dijalankan saat ini. Silakan coba lagi dalam beberapa menit.",
   "outcome.human_review_body":
-    "Kasus Anda perlu ditinjau konsultan Bali Zero — tidak ada yang ditebak atas nama Anda.",
+    "Kasus Anda perlu ditinjau konsultan Bali Zero — kami tidak menebak apa pun untuk Anda.",
   "outcome.conditions.title": "Sebelum Anda mengajukan",
   "outcome.conditions.intro":
     "Hasil di atas diperoleh dengan kondisi-kondisi berikut yang menyertainya. Tim kami akan memeriksa setiap kondisi bersama Anda sebelum pengajuan.",

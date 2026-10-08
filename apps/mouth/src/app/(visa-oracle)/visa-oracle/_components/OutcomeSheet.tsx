@@ -1212,12 +1212,18 @@ export function OutcomeSheet({
         )}
         {outcome.assessment && (
           <p className="oracle-print-only oracle-tabular-nums">
-            {translate(language, "outcome.checked_on" as I18nKey, {
-              date: formatAssessmentDate(
-                outcome.assessment.evaluatedAtIso,
-                language,
-              ),
-            })}
+            {translate(
+              language,
+              (outcome.sources.length > 0
+                ? "outcome.checked_on"
+                : "outcome.checked_on_plain") as I18nKey,
+              {
+                date: formatAssessmentDate(
+                  outcome.assessment.evaluatedAtIso,
+                  language,
+                ),
+              },
+            )}
           </p>
         )}
       </section>

@@ -137,6 +137,28 @@ const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
 };
 
 /**
+ * The Second Home Studio-only hold routes to a self-serve calculator and by
+ * design never promises a person's review, so it gets its own list.
+ */
+const STUDIO_NEXT_STEPS: OutcomeNextSteps = [
+  step(
+    "open-studio",
+    "Open the Second Home Studio — it shows the routes and the numbers for your case.",
+    "Buka Second Home Studio — di sana tampil jalur dan angkanya untuk kasus Anda.",
+  ),
+  step(
+    "compare-guarantee-figure",
+    "Compare the guarantee figure you declared with the thresholds shown there.",
+    "Bandingkan angka jaminan yang Anda nyatakan dengan ambang batas yang ditampilkan di sana.",
+  ),
+  step(
+    "return-with-updated-figure",
+    "Come back with the updated figure, or send this summary to a Bali Zero advisor.",
+    "Kembali dengan angka yang diperbarui, atau kirim ringkasan ini ke konsultan Bali Zero.",
+  ),
+];
+
+/**
  * The single source of the "What to do next" list for every outcome state.
  * Exported so the gold-oracle SHADOW baseline (`preview-adapter.ts`) and the
  * client-side fallbacks (`outcome-fallbacks.ts`) reproduce the SAME copy a
@@ -144,7 +166,13 @@ const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
  * compares `nextSteps` verbatim (id/title/body), so independently worded
  * copy would read as a permanent mismatch on this axis alone.
  */
-export function nextStepsFor(state: OutcomeStateName): OutcomeNextSteps {
+export function nextStepsFor(
+  state: OutcomeStateName,
+  options: { studioOnly?: boolean } = {},
+): OutcomeNextSteps {
+  if (state === "HUMAN_REVIEW_REQUIRED" && options.studioOnly) {
+    return STUDIO_NEXT_STEPS;
+  }
   return NEXT_STEPS_BY_STATE[state];
 }
 
@@ -1987,7 +2015,13 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "HUMAN_REVIEW_REQUIRED",
-        nextSteps: nextStepsFor("HUMAN_REVIEW_REQUIRED"),
+        nextSteps: nextStepsFor("HUMAN_REVIEW_REQUIRED", {
+          studioOnly:
+            response.decision.review_reasons.length > 0 &&
+            response.decision.review_reasons.every(
+              (item) => item.code === SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+            ),
+        }),
         candidates: [],
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         reviewReasons: response.decision.review_reasons.map((item) => {

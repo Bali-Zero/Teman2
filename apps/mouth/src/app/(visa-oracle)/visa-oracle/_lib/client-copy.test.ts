@@ -3,11 +3,15 @@ import {
   GENERIC_NOTICE_CONDITION,
   NOTICE_CONDITION_COPY,
   REVIEW_REASON_COPY,
+  REVIEW_REASON_ELEMENTS,
+  SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SUPPORT_REASON_COPY,
   UNMAPPED_REASON_COPY,
   nextStepsFor,
 } from "./engine-adapter";
+import { buildEngineOutcome } from "./engine-adapter";
 import { dict } from "./i18n";
+import { makeVisaOracleResponse } from "./visa-oracle-test-fixture";
 import {
   buildClientGuardOutcome,
   buildDegradedHumanReviewOutcome,
@@ -103,6 +107,16 @@ function clientStrings(): { where: string; value: string; strict?: boolean }[] {
     })) {
       rows.push({ where: `${language}:reason.${name}`, value: copy[language] });
     }
+    // TODO(PR-C4): the interview `q.*` / `why.*` helper strings still speak
+    // engine and stay out of this census until that sweep lands.
+    for (const [name, elements] of Object.entries(REVIEW_REASON_ELEMENTS)) {
+      for (const [part, copy] of Object.entries(elements ?? {})) {
+        rows.push({
+          where: `${language}:review-element.${name}.${part}`,
+          value: copy[language],
+        });
+      }
+    }
     rows.push(
       { where: `${language}:unmapped`, value: UNMAPPED_REASON_COPY[language] },
       {
@@ -173,9 +187,6 @@ describe("nextStepsFor — one list per outcome state", () => {
   });
 
   it("is the single source for the fallbacks and the gold preview baseline", () => {
-    expect(buildClientGuardOutcome({ code: "X" }).nextSteps).toBe(
-      nextStepsFor("TEMPORARILY_UNAVAILABLE"),
-    );
     expect(buildNetworkFailureOutcome({ code: "X" }).nextSteps).toBe(
       nextStepsFor("TEMPORARILY_UNAVAILABLE"),
     );
@@ -185,5 +196,46 @@ describe("nextStepsFor — one list per outcome state", () => {
     expect(buildPreviewOutcome({}, new Date()).state).toBe(
       "TEMPORARILY_UNAVAILABLE",
     );
+  });
+});
+
+describe("next steps follow the real situation of the visitor", () => {
+  it("a Studio-only hold gets the Studio steps, with no promise of a person's review", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      SECOND_HOME_STUDIO_REVIEW_REASON_CODE;
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    expect(outcome.nextSteps.map((step) => step.id)).toEqual([
+      "open-studio",
+      "compare-guarantee-figure",
+      "return-with-updated-figure",
+    ]);
+    expect(outcome.nextSteps[0].title.en).toMatch(/Second Home Studio/);
+    for (const language of ["en", "id"] as const) {
+      expect(outcome.nextSteps[0].title[language]).toMatch(/Studio/);
+      expect(outcome.nextSteps[1].title[language]).not.toMatch(
+        /advisor|konsultan|person|seseorang|review|tinjau/i,
+      );
+    }
+  });
+
+  it("an ordinary review keeps the review steps and matches the gold preview baseline", () => {
+    const outcome = buildEngineOutcome(
+      makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED"),
+    );
+    expect(outcome.nextSteps).toBe(nextStepsFor("HUMAN_REVIEW_REQUIRED"));
+  });
+
+  it("a non-retryable client guard never says to try again; a retryable failure does", () => {
+    expect(buildClientGuardOutcome({ code: "X" }).nextSteps).toBe(
+      nextStepsFor("HUMAN_REVIEW_REQUIRED"),
+    );
+    expect(buildNetworkFailureOutcome({ code: "X" }).nextSteps).toBe(
+      nextStepsFor("TEMPORARILY_UNAVAILABLE"),
+    );
+    expect(
+      buildNetworkFailureOutcome({ code: "X", retryable: false }).nextSteps,
+    ).toBe(nextStepsFor("HUMAN_REVIEW_REQUIRED"));
   });
 });
