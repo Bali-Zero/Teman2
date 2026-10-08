@@ -118,11 +118,11 @@ dissent:
     note: install the organ only after 8069 lands.
   - seat: codex-gpt-5.6-sol
     objection: The wrapper exits 0 whatever the runner returns, masking failures from launchd.
-    status: REFUTED
+    status: RETRACTED
     note: house pattern of the freshness sentinel wrapper; the error heartbeat is the signal, there is no KeepAlive to restart on.
   - seat: agy-gemini-3.1-pro
     objection: The wrapper runs $HOME/nuzantara/scripts, but Pro keeps the repo at ~/Desktop/nuzantara.
-    status: REFUTED
+    status: RETRACTED
     note: verified on Pro, ~/Desktop/nuzantara is a symlink to ~/nuzantara; the sentinel wrapper uses the same path.
   - seat: self-review
     objection: >-
@@ -133,3 +133,7 @@ dissent:
 spend:
   wall_clock_hours: 3
   adversarial_rounds: 2
+appetite_exceeded: >-
+  Two adversarial rounds against a declared one: Codex red-team on the first draft, then Gemini
+  on the cured tree because the runner's candidate location and alerting changed after the
+  first round; both verdicts are in the council journal.
