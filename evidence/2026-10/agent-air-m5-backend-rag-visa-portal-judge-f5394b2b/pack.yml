@@ -2,7 +2,7 @@
 gear: 2
 brief_ref: evidence/brief.yml
 mission: >-
-  Weekly re-attestation organ part 3b: portal_judge.py writes reader judgements through the
+  Weekly re-attestation organ part 3b: fold_pack_generic reads each receipt's text_file; portal_judge.py writes reader judgements through the
   Claude CLI cascade; portal_read_receipt.py keeps one saved text per fetch.
 lanes:
   - lane: portal-judge-build
@@ -38,10 +38,10 @@ decisions:
       the line stores the text's own raw span so the fold's plain substring check also passes.
 receipts:
   - claim: The visa_engine script test directory is green with the new judge and suffix tests.
-    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/scripts/visa_engine -q -p no:cacheprovider -o addopts=""
-    result: "272 passed, 1 warning in 86.41s"
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/scripts/visa_engine backend/tests/services/visa_engine/test_seq25_pack.py -q -p no:cacheprovider -o addopts=""
+    result: "335 passed, 1 warning in 43.14s (includes test_fold_pack.py with the new text_file, unknown-id and created_at witnesses)"
     exit: 0
-    ts: "2026-10-08T06:33:42Z"
+    ts: "2026-10-08T07:23:41Z"
     seat: this session
   - claim: Ruff is clean on the changed and new files.
     cmd: apps/backend-rag/.venv/bin/ruff check apps/backend-rag/backend/scripts/visa_engine apps/backend-rag/backend/tests/scripts/visa_engine scripts/ci/observe_visa_portal_judge.py
@@ -57,9 +57,9 @@ receipts:
     seat: this session
   - claim: The observer regenerates the ledger judgements with the fake judge and the fold accepts them.
     cmd: python3 scripts/ci/observe_visa_portal_judge.py
-    result: "18 records, 0 halt; attestation_instant 2026-10-07T13:32:18Z; final line: observe_visa_portal_judge: fake judge regenerates an accepted ledger"
+    result: "per-fetch copy of the 2026-10-07 ledger, fake-judged (18 records, 0 halt), folded by fold_pack_generic against signed seq-24, stamp 2026-10-07T13:32:18Z; final line: observe_visa_portal_judge: fake judge regenerates an accepted ledger"
     exit: 0
-    ts: "2026-10-08T06:32:07Z"
+    ts: "2026-10-08T07:22:52Z"
     seat: this session
   - claim: The REAL judge (Claude CLI through claude-cascade.sh, model sonnet) judged two records of a temp copy of the 2026-10-07 ledger and the fold accepts them.
     cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.portal_judge --pack backend/services/visa_engine/contracts/packs/rulepack-prod-024.source.json --ledger-dir <tmp copy> --reader judge-real --ids 570f2bc4,bc309fa9 --judge claude --model sonnet
@@ -72,7 +72,15 @@ receipts:
     exit: 0
     ts: "2026-10-08T06:34:39Z"
     seat: this session, Claude OAuth seat via the cascade wrapper
-dissent: []
+dissent:
+  - seat: codex-gpt-5.6 red-team of #8062 (relayed by the lead)
+    objection: "[BLOCK] fold_pack_generic ignored a receipt or judgement whose source_record_id is not an OFFICIAL_PORTAL record of the anchor."
+    status: CONFIRMED
+    note: cured in this PR
+  - seat: codex-gpt-5.6 red-team of #8062 (relayed by the lead)
+    objection: "[MEDIUM] created_at could precede the evidence it dates (only the earliest read was bounded)."
+    status: CONFIRMED
+    note: cured in this PR
 spend:
   wall_clock_hours: 1.0
   adversarial_rounds: 0
