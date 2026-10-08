@@ -317,6 +317,107 @@ elif cmd == "record":
         self.assertEqual(self._spawn_count(), 1)
         self.assertIn("ACTIONABLE: proprioception:1/1-session-curable", self._log())
 
+    def test_b_registry_handoff_removes_duplicate_organ_count(self) -> None:
+        result = self._run([
+            {"id": "organs_heartbeat", "status": "DIVERGED", "severity": "P1", "cure": "session"},
+            {"id": "fixable", "status": "DIVERGED", "severity": "P1", "cure": "session"},
+        ])
+        registry_file = self.home / ".organism/healer-pro/registry-last.json"
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 1)
+        self.assertIn("ACTIONABLE: proprioception:1/2-session-curable", self._log())
+        self.assertIn("organs_heartbeat judged by receptor A", self._log())
+        self.assertEqual(registry_file.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(json.loads(registry_file.read_text()), {"dead": []})
+
+    def test_b_absent_registry_keeps_old_count_and_does_not_pass_flag(self) -> None:
+        result = self._run([
+            {"id": "organs_heartbeat", "status": "DIVERGED", "severity": "P1", "cure": "session"},
+        ], registry="")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._spawn_count(), 1)
+        self.assertIn("proprioception:1/1-session-curable", self._log())
+        self.assertNotIn("proprioception-receptor-broken", self._log())
+
+    def test_b_empty_registry_file_is_not_passed(self) -> None:
+        registry_file = self.home / ".organism/healer-pro/registry-last.json"
+        registry_file.parent.mkdir(parents=True)
+        registry_file.write_text("")
+
+        result = self._run([
+            {"id": "organs_heartbeat", "status": "DIVERGED", "severity": "P1", "cure": "session"},
+        ], registry="")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("proprioception:1/1-session-curable", self._log())
+        self.assertNotIn("proprioception-receptor-broken", self._log())
+
+    def test_b_keeps_its_own_count_when_a_is_broken(self) -> None:
+        organ = [{"id": "organs_heartbeat", "status": "DIVERGED", "severity": "P1", "cure": "session"}]
+        registry_file = self.home / ".organism/healer-pro/registry-last.json"
+        for row, kwargs in {
+            "not-json": dict(registry="not json"),
+            "receptor-broken-rc2": dict(registry={"receptor_broken": "x", "exit": 2}, registry_rc=2),
+            "exit1-no-dead": dict(registry={"dead": []}, registry_rc=1),
+            "valid-json-killed-rc137": dict(registry={"dead": []}, registry_rc=137),
+        }.items():
+            with self.subTest(row=row):
+                self.marker.unlink(missing_ok=True)
+                result = self._run(organ, **kwargs)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self._spawn_count(), 1)
+                last = [line for line in self._log().splitlines() if "ACTIONABLE: " in line][-1]
+                self.assertIn("proprioception:1/1-session-curable", last)
+                self.assertNotIn("proprioception-receptor-broken", last)
+                self.assertFalse(registry_file.exists())
+                if row != "valid-json-killed-rc137":  # A's own rc-137 blind spot predates this hand-off
+                    self.assertIn("registry-receptor-broken proprioception:1/1-session-curable", last)
+
+    def test_b_rc3_on_the_handoff_branch_is_a_broken_receptor(self) -> None:
+        self._run([{"id": "fixable", "status": "DIVERGED", "severity": "P1", "cure": "Owner"}])
+
+        self.assertIn("probe fixable: invalid cure 'Owner'", self._log())
+        self.assertIn("ACTIONABLE: proprioception-receptor-broken", self._log())
+        self.assertNotIn("organs_heartbeat judged by receptor A", self._log())
+
+    def test_b_never_defers_to_a_previous_ticks_snapshot(self) -> None:
+        registry_file = self.home / ".organism/healer-pro/registry-last.json"
+        registry_file.parent.mkdir(parents=True)
+        registry_file.write_text('{"dead": []}\n')
+        debris = registry_file.with_name("registry-last.json.tmp.crashed")
+        debris.write_text('{"dead": []}\n')
+
+        result = self._run([
+            {"id": "organs_heartbeat", "status": "DIVERGED", "severity": "P1", "cure": "session"},
+        ], registry="")
+        self.assertFalse(debris.exists())
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("proprioception:1/1-session-curable", self._log())
+        self.assertNotIn("organs_heartbeat judged by receptor A", self._log())
+        self.assertFalse(registry_file.exists())
+
+    def test_a_snapshot_write_failure_leaves_a_and_b_whole(self) -> None:
+        registry_file = self.home / ".organism/healer-pro/registry-last.json"
+        registry_file.parent.mkdir(parents=True)
+        registry_file.write_text('{"dead": []}\n')  # last tick's, undeletable below
+        registry_file.parent.chmod(0o500)
+        try:
+            result = self._run([
+                {"id": "organs_heartbeat", "status": "DIVERGED", "severity": "P1", "cure": "session"},
+            ], registry={"dead": [{"id": "fixable", "cure": "session"}]}, registry_rc=1)
+        finally:
+            registry_file.parent.chmod(0o700)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("registry snapshot write failed", self._log())
+        self.assertIn("ACTIONABLE: registry:1/1-dead 0-findings proprioception:1/1-session-curable", self._log())
+        self.assertNotIn("receptor-broken", self._log())
+        self.assertNotIn("organs_heartbeat judged by receptor A", self._log())
+        self.assertIn('"fixable"', (self.tmp / "memo-inputs").read_text())
+
     def test_b_invalid_cure_fails_visible_not_skipped(self) -> None:
         self._run([{"id": "fixable", "status": "DIVERGED", "severity": "P1", "cure": "Owner"}])
         self.assertIn("probe fixable: invalid cure 'Owner'", self._log())
@@ -532,6 +633,8 @@ ORGAN_ROWS = [
     ("O1-owner-statuses-guilt", [_organ("disabled"), _organ("disabled")], None, "owner"),
     ("O1-mixed-status-innocence", [_organ("disabled"), _organ("error")], None, "session"),
     ("O1-cased-status-innocence", [_organ("DISABLED")], None, "session"),
+    ("O1-trailing-space-innocence", [_organ("disabled ")], None, "session"),
+    ("O1-substring-innocence", [_organ("not-disabled-now")], None, "session"),
     ("O1-never-armed-is-not-a-sidecar-status-innocence", [_organ("never_armed")], None, "session"),
     ("O1-pro-today-innocence", [_organ("fail"), _organ("error"), _organ("failed")], None, "session"),
     ("O2-unprovable-innocence", [json.dumps({"organ_id": "x", "kind": "unhealthy"})], None, "session"),

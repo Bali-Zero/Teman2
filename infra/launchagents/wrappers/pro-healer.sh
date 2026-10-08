@@ -138,6 +138,7 @@ REASONS=""
 # Receptor A: registry-driven dead-organ scan on THIS node (DNA/GENOME 4c)
 REG_OUT=$(python3 scripts/healer_receptor_registry.py --node pro --json 2>/dev/null)
 REG_EXIT=$?
+REG_BROKEN=""
 REG_SUMMARY=$(printf '%s' "$REG_OUT" | python3 scripts/healer_run_checks.py registry-summary 2>>"$LOG")
 REG_CHECK_EXIT=$?
 REG_DEAD=$(printf '%s\n' "$REG_SUMMARY" | sed -n '1p')
@@ -148,7 +149,7 @@ REG_FINDING_IDS=$(printf '%s\n' "$REG_SUMMARY" | sed -n '5p')
 # Exit 1 means "dead organs"; exit 1 with none listed is a broken receptor, not health.
 if [ "$REG_EXIT" -eq 2 ] || [ "$REG_CHECK_EXIT" -ne 0 ] \
     || { [ "$REG_EXIT" -eq 1 ] && [ "${REG_DEAD:-0}" = "0" ]; }; then
-    ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "
+    ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "; REG_BROKEN=1
 elif [ "$REG_EXIT" -eq 1 ] && [ "${REG_SESSION:-0}" -gt 0 ] 2>/dev/null; then
     ACTIONABLE=1
     REASONS="${REASONS}registry:${REG_SESSION}/${REG_DEAD}-dead ${REG_FINDINGS:-0}-findings "
@@ -160,10 +161,27 @@ if [ "${REG_FINDINGS:-0}" -gt 0 ] 2>/dev/null; then
     log "registry alive_with_findings: ${REG_FINDINGS} (${REG_FINDING_IDS}) — not dead, no spawn on their account"
 fi
 
+# B defers organs_heartbeat to A only on THIS tick's accepted judgement: never a previous tick's file, never a broken A.
+REGISTRY_FILE="$HEALER_STATE_DIR/registry-last.json"; REGISTRY_HANDOFF=""; REGISTRY_TMP=""
+rm -f "$REGISTRY_FILE" "$REGISTRY_FILE".tmp.*
+if [ -n "$REG_OUT" ] && [ -z "$REG_BROKEN" ] && { [ "$REG_EXIT" -eq 0 ] || [ "$REG_EXIT" -eq 1 ]; }; then
+    if mkdir -p "$HEALER_STATE_DIR" && REGISTRY_TMP=$(mktemp "$REGISTRY_FILE.tmp.XXXXXX") \
+        && printf '%s\n' "$REG_OUT" > "$REGISTRY_TMP" && mv "$REGISTRY_TMP" "$REGISTRY_FILE"; then
+        REGISTRY_HANDOFF=1
+    else
+        log "registry snapshot write failed: receptor B counts organs_heartbeat itself"
+        [ -n "$REGISTRY_TMP" ] && rm -f "$REGISTRY_TMP"
+    fi
+fi
+
 # Receptor B: proprioception — boundary divergences on THIS machine
 PROP_JSON=$(python3 scripts/proprioception.py --json --no-fetch 2>/dev/null)
 PROP_EXIT=$?
-PROP_SUMMARY=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py proprioception-summary 2>>"$LOG")
+if [ -n "$REGISTRY_HANDOFF" ] && [ -s "$REGISTRY_FILE" ]; then
+    PROP_SUMMARY=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py proprioception-summary --registry-file "$REGISTRY_FILE" 2>>"$LOG")
+else
+    PROP_SUMMARY=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py proprioception-summary 2>>"$LOG")
+fi
 CHECK_EXIT=$?
 DIVERGED=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '1p')
 SESSION_CURABLE=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '2p')
