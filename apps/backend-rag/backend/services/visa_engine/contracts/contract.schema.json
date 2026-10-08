@@ -1566,9 +1566,16 @@
           "title": "Duration Options"
         },
         "extension_required": {
-          "default": false,
-          "title": "Extension Required",
-          "type": "boolean"
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Extension Required"
         },
         "name": {
           "$ref": "#/$defs/ProductNames"

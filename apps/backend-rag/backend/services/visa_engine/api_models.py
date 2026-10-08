@@ -24,11 +24,14 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    GetJsonSchemaHandler,
     SerializerFunctionWrapHandler,
     field_validator,
     model_serializer,
     model_validator,
 )
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from backend.services.visa_engine.enums import SourceAuthorityType, SourceStatus
 from backend.services.visa_engine.models import (
@@ -482,7 +485,15 @@ class CandidateDisplayDTO(BaseModel):
     )
     # True when the requested stay is longer than the last option: the permit is then
     # extended, so the quote covers the last option only.
-    extension_required: bool = Field(default=False, strict=True)
+    extension_required: bool | None = Field(default=None, strict=True)
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        # The wrap serializer below returns a dict, which Pydantic documents as an
+        # untyped schema. The OpenAPI contract must keep the typed shape.
+        return handler({key: value for key, value in core_schema.items() if key != "serialization"})
 
     @model_serializer(mode="wrap")
     def _omit_absent_duration_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
