@@ -49,6 +49,47 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-10-08 — keep current)
 
+**🟢 2026-10-08 (bis) — THE QDRANT STORE NOW CARRIES THE DISCLOSURE IT SERVES: 1,150 POINTS
+RE-STAMPED FROM THE PINNED CANONICAL, CENSUS AT ZERO, AND THE SYNC TOOL CAN NO LONGER SAY "ALREADY
+AGREES" WITHOUT COMPARING.** Follow-through of the 2026-10-07 finding, all on `main` and proven live:
+
+- **The tool (PR #8059, `333ff0b690`, Fly v4595+):** `kbli_qdrant_pma_sync.py::stale_points()` compares
+  the 7 flat PMA keys for EVERY point, shaped or unshaped; per-code lines read `agrees (flat keys
+compared: 7)` or `STALE: pma_verification_status None → located`. Its first live dry-run found a
+  real stale point the old tool had blessed (85579's gold point), and the full census read
+  `1559/1559 found | 570 already agreed | 1150 point(s) would be written`.
+- **Two points per code, and only one is the PMA record.** Every code has a `doc_type=kbli_bps` point
+  (what `inspect_kbli` selects positively); 314 codes also carry a `kbli_gold` editorial point (since
+  2026-08-09) whose flat keys were the RAW `TERBUKA/100/None` tuple. The router projects through
+  `disclose_pma` (declared_gap → `NOT_VERIFIED`/`None`), so bps drift was MASKED at `inspect_kbli`;
+  but `search_kbli` (`_search_kbli_qdrant`, dense query, no doc_type filter) builds the disclosure from
+  whichever point wins — a gold hit published `NOT_VERIFIED` for the located `01112`. Breakdown of
+  the 1,150: 837 bps (819 declared_gap with text rewrite + 18 unshaped) and 313 gold (161
+  declared_gap, 143 located `None → located`, 9 located with all seven keys wrong, e.g. `16291`).
+- **The cure (2026-10-08, receipts on #8059):** payload backup first — Pro
+  `~/.local/share/nuzantara/kbli-navigator/qdrant_pma_backup_2026-10-08.jsonl` (1,873 points, sha
+  `9e62cade…`, 0600) — then `--apply` in batches: 152 located codes, then 998 declared_gap points;
+  inspect cache evicted 1,445/1,559; census after: `1559 already agreed | 0 point(s) would be
+written`. Live: `inspect_kbli` 16291 TERBATAS/0/located, 47221 TERBATAS/`special`/located,
+  01111 NOT_VERIFIED (unchanged), 51101 TERBATAS/49 (unchanged); `search_kbli` "budidaya padi
+  hibrida" → 01112 TERBUKA/100/located with the Perpres 10/2021 basis. The 9 ADOPT codes' bps
+  blobs carry no "licensing gap" prose any more (7 NOT_VERIFIED as canonical, 93113/93193 located).
+- **The reader is being fixed too:** `search_kbli` must take the disclosure from the code's bps point
+  (lane `kbli-search-pma-bps`, PR #8089 `dd496198fd`, live from Fly v4601: `search_kbli` "pertanian serealia selain padi dan jagung" returns 01112 twice — the gold hit (score 0.45) and the bps hit (0.39) — and BOTH now carry the bps disclosure TERBUKA/100/located with the Perpres 10/2021 basis; the duplicate row and the gold hit's "description unavailable" are ledgered); until then a future gold re-index would re-open
+  the surface.
+- **`91300` risk (PR #8074, `3553d56c77`, Fly v4599):** the resolver skips placeholder/empty risk rows
+  (a `license:sertifikat_standar` node without `kategori_risiko` sorted first), the most severe real
+  reading wins, the licence query has `ORDER BY`; live `risk_profile: Menengah Rendah` (was
+  `Unknown`). The licences are inherited from KBLI 2020 91039 (disclosed) and one inherited row
+  carries agriculture boilerplate — ledgered.
+- **Fleet + deploy chain:** `install-3mac.sh` derives its targets from the driver host (PR #8060) and
+  the fleet was re-installed from Pro at `1596326357` (M5/Pro/Mini, dataset `c29d6e6aea7a`,
+  `check-fleet.sh` rc=0); the Fly image build survived a transient skipped optional dependency only
+  because its self-test refused the image — PR #8073 installs the platform package explicitly, proven
+  in the v4599 deploy log; the D2 dataset anchor becomes a proprioception probe in #8088
+  (merged as PR #8091 `bd01d19f93`, gate PASS on `85013ad3` after a REWORK-BUILD on a false remedy text: the probe reads manifest AND canonical from `origin/main` and its RED remedy names the deliberate `DATASET_MANIFEST.json` re-anchor commit + `build.sh` exit 4). Fly keeps an orphan release record v4597 "running" from a cancelled re-run; no
+  machine ever moved to it.
+
 **🟢 2026-10-08 — THE NATIVE APP HAS ONE OFFICIAL HOME, `apps/kbli-navigator-macos/`, AND THE
 FLEET SERVES IT: ONE `KBLI Navigator - INTERNAL.app` ON THE DESKTOP OF M5, PRO AND MINI, ALL AT
 `ebdad0739f`.** Owner decision 2026-10-07 ("ne vorrei solo una unica e ufficiale sul desk di m5 pro

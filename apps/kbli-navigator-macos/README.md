@@ -59,6 +59,10 @@ which variant it's running in.
 open "build/KBLI Navigator - INTERNAL.app"
 ```
 
+### Re-anchor
+
+`Resources/DATASET_MANIFEST.json` pins the sha256 (and record count) of the one canonical dataset this app is built from. When the canonical moves, `build.sh` exits 4 and the proprioception probe `kbli_dataset_anchor` goes RED. Re-anchor deliberately: commit the new sha and count into the manifest (a `data(dataset)` commit), then rebuild on Pro. Nothing re-stamps it automatically.
+
 ## Test
 
 Standalone Swift test runners (no XCTest, no SPM):

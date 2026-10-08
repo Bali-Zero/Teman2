@@ -30,7 +30,7 @@ pii_scan_note:
 
 diff:
   net_lines: |
-    Source-only import: roughly 30,000 added lines across 138 files, of which about 9,800 are two
+    Source-only import (the diff of #8041 itself, not of this amendment): roughly 30,000 added lines, of which about 9,800 are two
     pretty-printed i18n JSON files and the rest Swift sources, tests, tools, deploy scripts and
     markdown. The size floor is the import itself.
   behaviour_change: >-
@@ -121,7 +121,7 @@ dissent:
   - seat: agy-gemini-3.1-pro
     objection: "HIGH: build.sh never copies the canonical dataset into the source Resources/, so consumers read a missing or stale file."
     status: RETRACTED
-    resolution: "The unchanged lines 196-206 copy the canonical into Resources/ at every build ('refreshed Resources/ from canonical' in the Pro log); the bundle copy then follows."
+    resolution: "The unchanged lines 197-207 copy the canonical into Resources/ at every build ('refreshed Resources/ from canonical' in the Pro log); the bundle copy then follows."
   - seat: agy-gemini-3.1-pro
     objection: "MEDIUM: REPO_ROOT may be undefined in sync_kbli_dataset.sh."
     status: RETRACTED

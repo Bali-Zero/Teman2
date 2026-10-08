@@ -947,3 +947,13 @@ def test_the_runner_gets_the_operators_free_space_floor_and_still_no_token(world
     assert world.tick() == 0
     env = world.runner.calls[0]["env"]
     assert env["LOCALCI_MIN_FREE_GB"] == "30" and "GH_TOKEN" not in env and all("ghp_" not in v for v in env.values())
+
+
+def test_a_tick_journals_a_change_map_skip_beside_its_verdict_and_only_there(world):   # B5: the report compares it as a skip
+    doc = json.loads(json.dumps({k: GOOD[k] for k in ("checks", "contexts")}))
+    doc["contexts"]["results"]["ctx-a"]["skipped"] = "change_map"
+    world.runner.doc = doc
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    assert world.tick() == 0
+    d, _ = world.journal()
+    assert d["contexts"]["ctx-a"] == "OK" and d["skipped"] == {"ctx-a": "change_map"}

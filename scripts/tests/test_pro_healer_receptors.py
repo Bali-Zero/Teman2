@@ -645,7 +645,8 @@ class CureForResultTest(unittest.TestCase):
         declared = {e["id"]: e.get("cure", "session") for e in self.mod.DEFAULT_REGISTRY}
         self.assertEqual({k: v for k, v in declared.items() if v != "session"}, {
             "tailnet_policy_drift": "owner", "git_alignment": "owner",
-            "regulatory_promotion": "pr", "door_canon_parity": "pr"})
+            "regulatory_promotion": "pr", "door_canon_parity": "pr",
+            "kbli_dataset_anchor": "pr"})
         self.assertEqual(self.mod.validate_registry(self.mod.DEFAULT_REGISTRY), [])
         bad = [dict(e, cure="Owner") if e["id"] == "git_alignment" else e for e in self.mod.DEFAULT_REGISTRY]
         self.assertTrue(any("invalid cure" in err for err in self.mod.validate_registry(bad)))

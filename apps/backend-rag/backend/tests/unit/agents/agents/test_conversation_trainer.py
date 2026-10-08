@@ -155,8 +155,14 @@ class TestConversationTrainer:
         assert await trainer._get_db_pool() is pool
 
     @pytest.mark.asyncio
-    async def test_get_db_pool_raises_when_unavailable(self) -> None:
+    async def test_get_db_pool_raises_when_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Missing constructor/app pool is a hard configuration error."""
+        from backend.app.main_cloud import app
+
+        # An earlier test in the same process can leave app.state.db_pool set.
+        monkeypatch.setattr(app.state, "db_pool", None, raising=False)
         trainer = ConversationTrainer(db_pool=None, zantara_client=None)
 
         with pytest.raises(RuntimeError, match="Database pool not available"):
@@ -193,7 +199,9 @@ class TestConversationTrainer:
         assert interval.days == 7
 
     @pytest.mark.asyncio
-    async def test_analyze_winning_patterns_falls_back_for_bad_message_json_and_bad_ai(self) -> None:
+    async def test_analyze_winning_patterns_falls_back_for_bad_message_json_and_bad_ai(
+        self,
+    ) -> None:
         """Malformed stored messages and malformed AI JSON still produce basic analysis."""
         pool = _pool_with_rows(
             [
@@ -222,7 +230,9 @@ class TestConversationTrainer:
         }
 
     @pytest.mark.asyncio
-    async def test_generate_prompt_update_empty_and_ai_error_paths(self, caplog: pytest.LogCaptureFixture) -> None:
+    async def test_generate_prompt_update_empty_and_ai_error_paths(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Empty analysis returns nothing; AI failures fall back to markdown summary."""
         trainer = ConversationTrainer(db_pool=None, zantara_client=None)
 
