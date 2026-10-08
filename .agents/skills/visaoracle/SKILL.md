@@ -137,9 +137,19 @@ interesting points spawn round N+1 research. No round limit. Opus 5.5 orchestrat
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (updated 2026-10-07; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-10-08; update on every state change)
 
-- **Active production pack: seq-25 (activated 2026-10-07T13:49Z from M5, PR #8026, merge
+- **Active production pack: seq-26 since <ACTIVATED_AT> (activation `<ACTIVATION_ID>`, PR #8081,
+  merge `<SEQ26_MERGE_SHA>`).** E31A–J now offer 1 or 2 years as a duration option on the same
+  product: 365 maps to the existing key, 730 to the "2 Years" sibling, one all-inclusive price
+  per option, never PNBP (Zero's ruling 2026-10-08); `stay_policy FIXED_DAYS 365..730`. Signed on
+  M5, kid `prod-2026-07-1`, `signed_at 2026-10-08T08:58:04Z`, payload
+  `05511184caf05119ac0adf644601e322d845c276faad3146ea243c507cf23b7f`, chained to seq-25.
+  Stamps unchanged: **boundary stays 2026-11-08T13:32:18Z**. Organ `pro.visa_reattestation`
+  (#8075, weekly Monday 02:00 WITA on Pro) armed <INSTALL_TS>; sentinel v2 (#8064) re-alerts a
+  persistent STALE inside 24 h. Prove-live: sentinel `<SENTINEL_LINE>`, gold replay `<GOLD_LIVE>`.
+  Open: seq-27 before the boundary, personas 9/10 ruling (`.claude/skills/modus/PENDING-ARMS.md`).
+- **SUPERSEDED by seq-26 (history): seq-25 (activated 2026-10-07T13:49Z from M5, PR #8026, merge
   `2a1e00e0d3`).** The 18 `OFFICIAL_PORTAL` stamps of seq-23 went STALE on 2026-10-01T13:18Z
   and every product answered `HUMAN_REVIEW_REQUIRED` with an empty candidate list for six days
   (scar W141: the sentinel fired into a 401-dead Telegram token, then sat muted on the dedup
