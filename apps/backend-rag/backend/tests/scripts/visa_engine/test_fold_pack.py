@@ -295,7 +295,7 @@ class TestLedgerGuilt:
             text.read_text(encoding="utf-8") + "Anda dapat tinggal selamanya.\n", encoding="utf-8"
         )
         assert re.search(
-            "does not carry the fingerprint",
+            "does not carry that receipt.s fingerprint",
             self._refusal(anchor, anchor_signed, trust, ledger_copy),
         )
 
@@ -327,7 +327,7 @@ class TestLedgerGuilt:
             lambda r: r.update(checked_sentence="Anda dapat tinggal selamanya."),
         )
         assert re.search(
-            "not a substring of the saved visible text",
+            "not a substring of the text of the read it binds to",
             self._refusal(anchor, anchor_signed, trust, ledger_copy),
         )
 
@@ -398,6 +398,7 @@ class TestReceiptTextFile:
             load_ledger(ledger_copy),
             trust_store=trust,
             observed_at=now,
+            allow_fake_reader=True,
             **meta,
         )
         stamps = {
@@ -487,6 +488,131 @@ class TestLedgerScopeAndDating:
                 observed_at=OBSERVED_AT,
                 **meta,
             )
+
+
+class TestJudgementBinding:
+    def _two_fetch_ledger(
+        self, ledger_dir: Path, anchor: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
+        """A record fetched AGAIN after it was judged; the later text alone carries a sentence."""
+        victim = _portal_ids(anchor)[0]
+        receipts_path = next(ledger_dir.glob("*-receipts.jsonl"))
+        rows = [
+            json.loads(ln)
+            for ln in receipts_path.read_text(encoding="utf-8").splitlines()
+            if ln.strip()
+        ]
+        ours = [r for r in rows if r["source_record_id"] == victim] or [
+            r
+            for p in ledger_dir.glob("*-receipts.jsonl")
+            for r in map(json.loads, p.read_text(encoding="utf-8").splitlines())
+            if r["source_record_id"] == victim
+        ]
+        judged = [
+            json.loads(ln)
+            for p in ledger_dir.glob("*-judgements.jsonl")
+            for ln in p.read_text(encoding="utf-8").splitlines()
+            if ln.strip() and json.loads(ln)["source_record_id"] == victim
+        ]
+        original_text = (ledger_dir / "text" / f"{victim[:8]}.txt").read_text(encoding="utf-8")
+        later_body = original_text.rstrip("\n") + "\nSENTENCE-ONLY-IN-THE-LATER-FETCH"
+        (ledger_dir / "text" / f"{victim[:8]}-later.txt").write_text(
+            later_body + "\n", encoding="utf-8"
+        )
+        later = {
+            **ours[0],
+            "fetched_at": "2026-10-07T13:36:30Z",
+            "text_file": f"text/{victim[:8]}-later.txt",
+            "visible_text_sha256": fold_pack_generic.text_fingerprint(later_body),
+        }
+        with receipts_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(later) + "\n")
+        return victim, judged[0]
+
+    def test_guilt_a_quote_that_exists_only_in_a_fetch_made_after_the_judgement_is_refused(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        victim, judgement = self._two_fetch_ledger(ledger_copy, anchor)
+        assert judgement["judged_at"] < "2026-10-07T13:36:30Z"
+        _mutate(
+            ledger_copy,
+            "*-judgements.jsonl",
+            victim,
+            lambda r: r.update(checked_sentence="SENTENCE-ONLY-IN-THE-LATER-FETCH"),
+        )
+        with pytest.raises(SystemExit, match="not a substring of the text of the read it binds to"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+    def test_innocence_the_later_fetch_does_not_disturb_an_honest_judgement(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        self._two_fetch_ledger(ledger_copy, anchor)
+        out = _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+        assert out["sequence"] == 25
+
+    def test_guilt_a_judgement_naming_another_fetch_than_the_one_it_binds_to_is_refused(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        victim = _portal_ids(anchor)[0]
+        _mutate(
+            ledger_copy,
+            "*-judgements.jsonl",
+            victim,
+            lambda r: r.update(receipt_fetched_at="2026-10-07T13:31:00Z"),
+        )
+        with pytest.raises(SystemExit, match="judgement says it read the fetch"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+    def test_guilt_a_judgement_with_a_foreign_text_fingerprint_is_refused(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        victim = _portal_ids(anchor)[0]
+        _mutate(ledger_copy, "*-judgements.jsonl", victim, lambda r: r.update(text_sha256="0" * 64))
+        with pytest.raises(SystemExit, match="text_sha256 is not the bound receipt"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+
+class TestRehearsalReaders:
+    def test_guilt_a_fake_reader_cannot_stamp_a_pack(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        _mutate(ledger_copy, "*-judgements.jsonl", None, lambda r: r.update(reader="fake-x"))
+        with pytest.raises(SystemExit, match="rehearsal reader"):
+            _run(anchor, anchor_signed, load_ledger(ledger_copy), trust)
+
+    def test_innocence_the_rehearsal_flag_admits_it(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+    ) -> None:
+        _mutate(ledger_copy, "*-judgements.jsonl", None, lambda r: r.update(reader="fake-x"))
+        out = fold(
+            anchor, anchor_signed, load_ledger(ledger_copy), trust_store=trust,
+            observed_at=OBSERVED_AT, allow_fake_reader=True, **META,
+        )  # fmt: skip
+        assert out["sequence"] == 25
 
 
 def test_module_holds_no_sequence_constant() -> None:

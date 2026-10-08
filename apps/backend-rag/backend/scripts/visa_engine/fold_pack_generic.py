@@ -52,6 +52,10 @@ from backend.scripts.visa_engine.fold_pack_seq25 import (
     assert_only_expected_changes,
     load_ledger,
 )
+from backend.scripts.visa_engine.ledger_paths import (
+    LedgerPathError,
+    read_receipt_text,
+)
 from backend.scripts.visa_engine.portal_read_receipt import fingerprint as text_fingerprint
 from backend.services.visa_engine.bundle import (
     StaticTrustStore,
@@ -116,35 +120,44 @@ def anchor_portal_stamp(portals: list[dict[str, Any]]) -> str:
 
 
 def _receipt_text(ledger: Ledger, receipt: dict[str, Any]) -> str | None:
-    """The saved text of ONE receipt, or None when the file is absent.
-
-    ``text_file`` is reduced to its basename and read from ``ledger.text_dir``; a name
-    that resolves outside that directory (``..``, a symlink out) aborts.
-    """
     assert ledger.text_dir is not None
-    named = receipt.get("text_file")
-    name = Path(str(named)).name if named else f"{str(receipt['source_record_id'])[:8]}.txt"
-    if name in {"", ".", ".."}:
-        _fail(f"{str(receipt['source_record_id'])[:8]}: text_file {named!r} names no file")
-    path = ledger.text_dir / name
-    if path.resolve().parent != ledger.text_dir.resolve():
+    try:
+        return read_receipt_text(ledger.text_dir, receipt)
+    except LedgerPathError as exc:
+        _fail(str(exc))
+
+
+def _own_text(ledger: Ledger, receipt: dict[str, Any]) -> str | None:
+    """The saved text of ONE receipt if it carries the fingerprint that receipt recorded."""
+    saved = _receipt_text(ledger, receipt)
+    if saved is None:
+        return None
+    body = saved[:-1] if saved.endswith("\n") else saved
+    return saved if text_fingerprint(body) == receipt.get("visible_text_sha256") else None
+
+
+def _bound_receipt(
+    successes: list[dict[str, Any]], judgement: dict[str, Any], judged_at: datetime, label: str
+) -> dict[str, Any]:
+    """The ONE receipt a judgement read: the latest success with ``fetched_at <= judged_at``.
+
+    A judgement that names ``receipt_fetched_at`` / ``text_sha256`` must match that receipt;
+    old ledgers name neither and fall back to the rule alone.
+    """
+    eligible = [r for r in successes if _parse_utc(r["fetched_at"], what="fetched_at") <= judged_at]
+    if not eligible:
+        _fail(f"{label}: no successful read precedes this judgement")
+    bound = max(eligible, key=lambda r: r["fetched_at"])
+    named = judgement.get("receipt_fetched_at")
+    if named is not None and named != bound["fetched_at"]:
         _fail(
-            f"{str(receipt['source_record_id'])[:8]}: text_file {named!r} is not inside the ledger text directory"
+            f"{label}: judgement says it read the fetch of {named!r}, the receipt it binds to "
+            f"is {bound['fetched_at']!r}"
         )
-    return path.read_text(encoding="utf-8") if path.is_file() else None
-
-
-def _verified_texts(ledger: Ledger, successes: list[dict[str, Any]]) -> list[str]:
-    """Saved texts that carry the fingerprint THEIR OWN receipt recorded at request time."""
-    texts: list[str] = []
-    for receipt in successes:
-        saved = _receipt_text(ledger, receipt)
-        if saved is None:
-            continue
-        body = saved[:-1] if saved.endswith("\n") else saved
-        if text_fingerprint(body) == receipt.get("visible_text_sha256"):
-            texts.append(saved)
-    return texts
+    fingerprint = judgement.get("text_sha256")
+    if fingerprint is not None and fingerprint != bound.get("visible_text_sha256"):
+        _fail(f"{label}: judgement text_sha256 is not the bound receipt's visible_text_sha256")
+    return bound
 
 
 def _assert_ledger_ids_are_portal_records(ledger: Ledger, portals: list[dict[str, Any]]) -> None:
@@ -209,11 +222,6 @@ def attestation_instant(
             if first_read is None or instant < first_read:
                 first_read = instant
         assert first_read is not None
-        verified_texts = _verified_texts(ledger, successes)
-        if not verified_texts:
-            _fail(
-                f"{label}: the saved visible text does not carry the fingerprint of any successful receipt"
-            )
         judged = [j for j in ledger.judgements if j.get("source_record_id") == record_id]
         if not judged:
             _fail(f"{label}: fetched but never judged")
@@ -237,13 +245,19 @@ def attestation_instant(
                 _fail(
                     f"{label}: a reader reports the page changed and disposition.json does not accept it by id"
                 )
+            bound = _bound_receipt(successes, judgement, judged_at, label)
+            bound_text = _own_text(ledger, bound)
+            if bound_text is None:
+                _fail(
+                    f"{label}: the saved visible text of the read this judgement binds to "
+                    f"({bound['fetched_at']}) is missing or does not carry that receipt's fingerprint"
+                )
             sentence = judgement.get("checked_sentence")
-            if (
-                not isinstance(sentence, str)
-                or not sentence.strip()
-                or not any(sentence in t for t in verified_texts)
-            ):
-                _fail(f"{label}: checked_sentence is not a substring of the saved visible text")
+            if not isinstance(sentence, str) or not sentence.strip() or sentence not in bound_text:
+                _fail(
+                    f"{label}: checked_sentence is not a substring of the text of the read it binds to "
+                    f"({bound['fetched_at']})"
+                )
         if earliest is None or first_read < earliest:
             earliest = first_read
     assert earliest is not None
@@ -281,6 +295,7 @@ def fold(
     created_by: str,
     verified_by: str,
     observed_at: datetime | None = None,
+    allow_fake_reader: bool = False,
 ) -> dict[str, Any]:
     """Return the payload of pack anchor+1, or abort loudly."""
     now = observed_at or _real_now_utc()
@@ -294,6 +309,18 @@ def fold(
 
     portals = [r for r in anchor["source_records"] if r.get("authority_type") == PORTAL_AUTHORITY]
     previous_stamp = anchor_portal_stamp(portals)
+    if not allow_fake_reader:
+        fakes = sorted(
+            {
+                str(j.get("reader"))
+                for j in ledger.judgements
+                if str(j.get("reader")).startswith("fake")
+            }
+        )
+        if fakes:
+            _fail(
+                f"judgements by a rehearsal reader {fakes} cannot stamp a pack (--allow-fake-reader is for rehearsals only)"
+            )
     verified_at = attestation_instant(ledger, portals, previous_stamp=previous_stamp, now=now)
 
     out = json.loads(json.dumps(anchor))
@@ -325,7 +352,12 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--version", default=None, help="YYYY.M.D, default today UTC")
     parser.add_argument("--created-by", default="agent.fold-pack")
-    parser.add_argument("--verified-by", default="agent.fold-pack.live-recheck")
+    parser.add_argument(
+        "--verified-by", default=None, help="default: agent.fold-pack.live-recheck:<reader names>"
+    )
+    parser.add_argument(
+        "--allow-fake-reader", action="store_true", help="rehearsal only: accept fake* readers"
+    )
     parser.add_argument(
         "--created-at", default=None, help="ISO Z, default now rounded to the minute"
     )
@@ -344,6 +376,8 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
     anchor = json.loads(args.anchor_source.read_text(encoding="utf-8"))
     anchor_signed = json.loads(args.anchor_signed.read_text(encoding="utf-8"))
     ledger = load_ledger(args.ledger_dir)
+    readers = sorted({str(j.get("reader")) for j in ledger.judgements})
+    verified_by = args.verified_by or f"agent.fold-pack.live-recheck:{'+'.join(readers)}"
     try:
         out = fold(
             anchor,
@@ -353,8 +387,9 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
             version=version,
             created_at=created_at,
             created_by=args.created_by,
-            verified_by=args.verified_by,
+            verified_by=verified_by,
             observed_at=observed_at,
+            allow_fake_reader=args.allow_fake_reader,
         )
     except RulePackVerificationError as exc:
         _fail(f"the anchor does not verify: {exc}")

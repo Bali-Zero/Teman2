@@ -81,14 +81,14 @@ def main() -> int:
         shutil.copytree(LEDGER, ledger)
         _make_per_fetch(ledger)
         judge = [py, "-m", "backend.scripts.visa_engine.portal_judge", "--pack", f"{PACKS}.source.json",
-                 "--ledger-dir", str(ledger), "--reader", "observer", "--all", "--judge", "fake"]  # fmt: skip
+                 "--ledger-dir", str(ledger), "--reader", "fake-observer", "--all", "--judge", "fake"]  # fmt: skip
         if not _step(judge, env):
             return 1
         # created_at is read AFTER the judge ran: the pack may not be dated before its evidence.
         created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         fold = [py, "-m", "backend.scripts.visa_engine.fold_pack_generic", "--anchor-source", f"{PACKS}.source.json",
                 "--anchor-signed", f"{PACKS}.signed.json", "--ledger-dir", str(ledger), "--output", str(output),
-                "--created-at", created_at]  # fmt: skip
+                "--created-at", created_at, "--allow-fake-reader"]  # fmt: skip
         if not _step(fold, env):
             return 1
         packed = json.loads(output.read_text(encoding="utf-8"))

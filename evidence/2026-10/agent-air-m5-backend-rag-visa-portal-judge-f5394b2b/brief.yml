@@ -18,6 +18,7 @@ scope:
   - apps/backend-rag/backend/tests/scripts/visa_engine/test_portal_judge.py (new)
   - apps/backend-rag/backend/tests/scripts/visa_engine/test_portal_read_receipt.py (suffix test)
   - scripts/ci/observe_visa_portal_judge.py (new, bites observer)
+  - apps/backend-rag/backend/scripts/visa_engine/ledger_paths.py (new, shared text resolver)
   - apps/backend-rag/backend/scripts/visa_engine/fold_pack_generic.py + tests/scripts/visa_engine/test_fold_pack.py (text_file resolution, unknown ids, created_at after evidence)
 appetite:
   wall_clock_hours: 1.5
