@@ -101,7 +101,7 @@ export function EditorialHero({
           step (--bz-copper-text, 5.05:1 on paper); the decorative rule keeps
           the theme copper (non-text, ≥3:1 floor). */}
       <div className="flex items-center gap-2.5 mb-5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--bz-copper-text,var(--kbli-accent))]">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--bz-copper-text,var(--kbli-accent))]">
           Company Profile
         </span>
         <span className="w-8 h-px bg-[var(--bz-copper)] opacity-50" />

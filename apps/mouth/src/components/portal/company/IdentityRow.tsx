@@ -28,7 +28,7 @@ function IdentifierCell({
 }: IdentifierCellProps) {
   const content = (
     <>
-      <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--kbli-text-muted)]">
+      <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--kbli-text-muted)]">
         {label}
       </span>
       <span className="text-[13px] font-semibold text-[var(--kbli-text-primary)] tabular-nums flex items-center gap-2">
@@ -90,7 +90,7 @@ export function IdentityRow({ nib, npwp, companyType }: IdentityRowProps) {
 
       {/* Entity Type */}
       <div className="px-[22px] py-5 flex flex-col gap-1 transition-colors hover:bg-[var(--glass-rim)]">
-        <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--kbli-text-muted)]">
+        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--kbli-text-muted)]">
           Entity Type
         </span>
         <span className="text-[13px] font-semibold text-[var(--kbli-text-primary)]">
