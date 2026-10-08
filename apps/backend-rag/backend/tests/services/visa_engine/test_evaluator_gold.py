@@ -322,8 +322,21 @@ assert [p.id for p in PERSONAS] == list(range(1, 21)), "persona ids must be 1..2
 # unless the cited legal reading is changed here by an independent reviewer.
 PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
     1: ProductionReplayExpectation(
+        # Re-derived 2026-10-08 (seq-25 replay): the state and the citizen
+        # exclusion (`hf.citizen`) were always right; what was missing is
+        # that, since seq-23 turned the review holds into named dead ends,
+        # the remaining products' own hard filters fire on the same facts
+        # too, in engine order: `hf.a1.not-bvk-nationality`,
+        # `hf.b1.voa-dual-nationality` (the persona's second nationality is
+        # not assessed for VOA) and the under-55 E33E/E33F filters.
+        # `SPONSOR_REQUIRED` left with seq-24, same as personas 3 and 4.
         state=DecisionState.NO_SUPPORTED_PATH,
-        no_path_codes=("APPLICANT_IS_INDONESIAN_CITIZEN",),
+        no_path_codes=(
+            "BVK_NATIONALITY_ONLY",
+            "APPLICANT_IS_INDONESIAN_CITIZEN",
+            "VOA_DUAL_NATIONALITY_NOT_ASSESSED",
+            "AGE_BELOW_55",
+        ),
         legal_citations=("UU 6/2011 jo. UU 63/2024 tentang Keimigrasian",),
         rationale="An Indonesian citizen is outside the foreign-national visa product set.",
     ),
