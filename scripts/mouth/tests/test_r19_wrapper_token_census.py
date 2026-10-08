@@ -7,6 +7,7 @@ browser and no dev server.
 from __future__ import annotations
 
 import copy
+import json
 import re
 import sys
 from pathlib import Path
@@ -101,3 +102,13 @@ def test_cli_replay_prints_the_verdict_last(capsys):
     out = capsys.readouterr().out.splitlines()
     assert "read-but-undefined: 0" in out
     assert out[-1].startswith("colors-outside-direction-a: ")
+
+
+def test_export_hands_the_armed_test_the_same_probe_and_states(capsys, census):
+    assert census_mod.main(["--export"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["probe"] == census_mod.PROBE_JS
+    assert out["pages"] == census_mod.PAGES
+    assert [s["name"] for s in out["states"]] == census["states"]
+    assert out["direction_a"] == census_mod.DIRECTION_A
+    assert all(v >= 4.5 for v in out["semantic_on_paper"].values())

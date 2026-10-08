@@ -1,0 +1,36 @@
+task_id: kbli-r19-w1-1008
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, lot W1. Arm the W0 /kbli* R19 wrapper token census as a test in
+  apps/mouth that drives Playwright against a local `next dev --webpack`, so `npm test -- r19-wrapper`
+  is the exit command. Add a palette census: every computed color, background-color and
+  border-color on r19-marked surfaces must be in the Direction-A set or the PMA verdict triad,
+  which holds at least 4.5:1 on paper. A guilt fixture that paints one --kbli-bg-base dark must go
+  red, naming the token and the hex. Its innocence twin must stay green.
+constraints:
+  - "No change to apps/mouth/src/app/kbli* routes, the contract table, or the canonical KBLI dataset. One PR, one concern, about 400 net lines where the work allows."
+  - "Reuse the W0 PROBE_JS without copying it. The test reads it through an additive --export flag on the census script. The script's CLI and its 11 tests stay green."
+  - "No npm install or npm ci from the worktree. The node_modules there are symlinks to the main checkout. The dev server runs on a free ephemeral port, never 3000, 3419 or 3473, and only the process the test started is killed."
+  - "Gear-3 floor is path-only: one new job in the existing advisory workflow r19-wrapper-census-tests.yml. No new workflow, required context or allowlist."
+acceptance:
+  - text: "WHEN `npm test -- r19-wrapper` runs from apps/mouth on the branch head, THEN it starts and kills its own next dev, captures 30 of 30 states, prints read-but-undefined: 0 from W0's own replay judge, and ends green."
+    probe: "cd apps/mouth && npm test -- r19-wrapper"
+  - text: "WHEN no surface under /kbli* carries data-presentation=r19 (main before W2), THEN the palette test SKIPS with the counted reason '0 r19 surfaces under /kbli* (0 of 30 captures carry [data-presentation=r19]) — W2 pending'. It never passes silently, and an incomplete census fails it."
+    probe: "cd apps/mouth && npm test -- r19-wrapper"
+  - text: "WHEN the guilt fixture (innocence with --kbli-bg-base set to #0F172A) is captured, THEN the palette verdict names exactly one offender, #0F172A via --kbli-bg-base, and W0's judge agrees with colors-outside-direction-a: 1. The innocence fixture gives 0 and 0, with the #2E5E4E triad hue present and admitted."
+    probe: "cd apps/mouth && npm test -- r19-wrapper"
+  - text: "WHEN the full mouth vitest suite runs without naming r19-wrapper (the Frontend Tests job), THEN every r19-wrapper test is skipped with the not-requested reason, and no server or browser starts."
+    probe: "cd apps/mouth && npx vitest --run src/test/ --reporter=verbose"
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-live runs `npm test -- r19-wrapper` on every PR touching apps/mouth, packages/core, scripts/mouth, the contract or measure.py, starting with this one."
+  - "W2 (same mission) flips the palette test from SKIPPED to judged when it adds data-presentation=r19 to the three route files. Its exit then requires that this test is green, not skipped."
+risks:
+  - "Interaction states are not walked: drawers, modals, the sector panel and search results. The W0 spec assigned them to W1, but walking them adds reads that the contract does not define, and this lot may not change the contract. They are carried to W2."
+  - "next dev rewrites apps/mouth/tsconfig.json on start. The test restores the original bytes when it started the server."
+  - "The live job needs a cold npm install, the Chromium shell and a next dev compile. It is advisory and not required, with a 30-minute timeout."
+grader: |
+  The Dux (Opus 5.5) reviewed every file the Sonnet 5 implementer wrote and ran the exit command
+  itself. A fresh Opus 5.5 gate session, commissioned by the imperator, signs harness/fable-gate on
+  the head sha. The plan names a cross-family refuter for W0 only.
