@@ -29,6 +29,19 @@ def client(app: FastAPI) -> TestClient:
     return TestClient(app, raise_server_exceptions=False)
 
 
+_REAL_BPS_BATCH = kbli_notebook_module._get_kbli_bps_payloads
+
+
+@pytest.fixture(autouse=True)
+def _no_bps_batch_network():
+    """Default the /search BPS batch lookup to 'no BPS point' so no test hits Qdrant."""
+    with patch(
+        "backend.app.routers.kbli_notebook._get_kbli_bps_payloads",
+        AsyncMock(return_value={}),
+    ) as mocked:
+        yield mocked
+
+
 class TestRouterStructure:
     @pytest.mark.unit
     def test_both_routers_use_kbli_prefix(self) -> None:
@@ -729,3 +742,106 @@ class TestChatAbstainThreshold:
         # 0.40 (tuned on the pre-enrichment collection) abstained on EVERY natural
         # question. Guard the calibrated band against silent re-raising.
         assert 0.15 <= kbli_chat_module.MIN_RELEVANCE_SCORE <= 0.25
+
+
+class TestSearchDisclosureFromBpsPoint:
+    """/search takes the PMA tuple from the code's kbli_bps point, not from the hit."""
+
+    _GOLD_HIT = {
+        "payload": {
+            "kode_kbli": "01112",
+            "judul": "Budidaya Padi Hibrida",
+            "doc_type": "kbli_gold",
+            "pma_status": "TERBUKA",
+            "pma_max_asing": 100,
+            "pma_verification_status": None,
+        },
+        "score": 0.9,
+    }
+    _BPS = {
+        "kode_kbli": "01112",
+        "doc_type": "kbli_bps",
+        "official_description": "Official scope of hybrid rice farming",
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "pma_verification_status": "located",
+        "pma_official_basis": "Perpres 10/2021",
+        "pma_source_vintage": "2021-02-02",
+    }
+
+    def _search(self, client: TestClient, hits: list[dict], bps: dict) -> list[dict]:
+        with (
+            patch(
+                "backend.app.routers.kbli_notebook._resolve_embedding",
+                AsyncMock(return_value=[0.1]),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook._search_kbli_qdrant",
+                AsyncMock(return_value=hits),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook._get_kbli_bps_payloads",
+                AsyncMock(return_value=bps),
+            ),
+        ):
+            response = client.get("/kbli-notebook/search?query=budidaya padi hibrida")
+        assert response.status_code == 200
+        return response.json()
+
+    @pytest.mark.integration
+    def test_gold_hit_discloses_bps_tuple(self, client: TestClient) -> None:
+        row = self._search(client, [self._GOLD_HIT], {"01112": self._BPS})[0]
+        assert row["pma_status"] == "TERBUKA"
+        assert row["pma_max_asing"] == 100
+        assert row["pma_verification_status"] == "located"
+        assert row["pma_official_basis"] == "Perpres 10/2021"
+        assert row["description"].startswith("Official scope of hybrid rice")
+        assert row["title"] == "Budidaya Padi Hibrida"
+        assert row["score"] == 0.9
+
+    @pytest.mark.integration
+    def test_gold_hit_stale_open_is_overridden_by_restricted_bps(self, client: TestClient) -> None:
+        bps = {
+            **self._BPS,
+            "kode_kbli": "16291",
+            "pma_status": "TERBATAS",
+            "pma_max_asing": 0,
+        }
+        hit = {
+            "payload": {**self._GOLD_HIT["payload"], "kode_kbli": "16291"},
+            "score": 0.5,
+        }
+        row = self._search(client, [hit], {"16291": bps})[0]
+        assert (row["pma_status"], row["pma_max_asing"]) == ("TERBATAS", 0)
+        assert row["pma_verification_status"] == "located"
+
+    @pytest.mark.integration
+    def test_bps_hit_is_unchanged(self, client: TestClient) -> None:
+        hit = {"payload": dict(self._BPS), "score": 0.7}
+        row = self._search(client, [hit], {"01112": self._BPS})[0]
+        assert row["pma_status"] == "TERBUKA"
+        assert row["pma_verification_status"] == "located"
+        assert row["pma_official_basis"] == "Perpres 10/2021"
+
+    @pytest.mark.integration
+    def test_no_bps_point_falls_back_to_hit_payload(self, client: TestClient) -> None:
+        row = self._search(client, [self._GOLD_HIT], {})[0]
+        assert row["pma_status"] == "NOT_VERIFIED"
+        assert row["pma_verification_status"] == "declared_gap"
+        assert row["description"].startswith("Official BPS description unavailable")
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_batch_lookup_is_one_scroll_with_positive_doc_type(self) -> None:
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json.return_value = {"result": {"points": [{"payload": self._BPS}]}}
+        client = MagicMock()
+        client.post = AsyncMock(return_value=resp)
+        with patch.object(kbli_notebook_module, "_get_kbli_client", return_value=client):
+            got = await _REAL_BPS_BATCH(["01112", "16291", "01112"])
+        assert client.post.await_count == 1
+        body = client.post.await_args.kwargs["json"]
+        assert body["filter"]["must"][0]["match"] == {"any": ["01112", "16291"]}
+        assert "kbli_bps" in str(body["filter"]["must"][1])
+        assert list(got) == ["01112"]
