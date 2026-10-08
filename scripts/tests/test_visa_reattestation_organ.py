@@ -283,3 +283,13 @@ def test_reader_names_carry_model_and_date_and_fit_the_slug_rule():
     assert organ.reader_name("claude", "sonnet", now) == "organ-sonnet-20261012"
     assert organ.reader_name("fake", "sonnet", now) == "fake-organ-20261012"
     assert re.fullmatch(r"[a-z0-9][a-z0-9-]{0,40}", organ.reader_name("claude", "claude-sonnet-5", now))
+
+
+def test_a_resolved_board_row_does_not_mute_the_next_failure(world):
+    world.cfg["judge_rc"] = 1
+    organ.run(world.args("--now", world.now(20)))
+    job = world.board()[0]["job"]
+    with (world.tmp / "board.jsonl").open("a") as fh:
+        fh.write(json.dumps({"job": job, "status": "resolved", "ts": 1.0}) + "\n")
+    organ.run(world.args("--now", world.now(19)))
+    assert [r["status"] for r in world.board()] == ["pending", "resolved", "pending"]

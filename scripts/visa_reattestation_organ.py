@@ -229,13 +229,16 @@ def _tg(text: str, key: str, tier: str = "p0") -> None:
 
 
 def _board(board: Path, job: str, summary: str, detail: str) -> None:
+    open_now = False
     for line in board.read_text(encoding="utf-8").splitlines()[-400:] if board.is_file() else []:
         try:
             row = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if row.get("job") == job and row.get("status") == "pending":
-            return
+        if row.get("job") == job:
+            open_now = row.get("status") == "pending"
+    if open_now:
+        return
     now = time.time()
     row = {"job": job, "type": "visa_reattestation", "priority": "HIGH", "status": "pending",
            "error_summary": summary, "detail": detail[-1500:], "machine": "pro", "_writer": "pro", "ts": now}
@@ -415,6 +418,7 @@ def run(args: argparse.Namespace) -> int:
     finally:
         if wt.exists():
             _git(repo, "worktree", "remove", "--force", str(wt), check=False)
+        _git(repo, "branch", "-D", branch, check=False)
 
     if candidate_ref is None:
         candidate_ref = (existing_pr or {}).get("url") or unsigned_candidate_on_main(repo, next_seq)
