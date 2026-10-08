@@ -47,7 +47,43 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-10-07 — keep current)
+## 1. LIVE STATE (last update 2026-10-08 — keep current)
+
+**🟢 2026-10-08 — THE NATIVE APP HAS ONE OFFICIAL HOME, `apps/kbli-navigator-macos/`, AND THE
+FLEET SERVES IT: ONE `KBLI Navigator - INTERNAL.app` ON THE DESKTOP OF M5, PRO AND MINI, ALL AT
+`ebdad0739f`.** Owner decision 2026-10-07 ("ne vorrei solo una unica e ufficiale sul desk di m5 pro
+e mini"). The standalone source repo had been lost from every machine by the 2026-10-06/07 Desktop
+cleanup (`~/Desktop/logo/kbli-navigator-app` archived to Drive, then deleted); restored from Zero's
+manual download of `gdrive:M5-archive-2026-10-06/logo-tar/kbli-navigator-app.tar`, its six branches
+folded into HEAD, and kept as the full-history ARCHIVE at `~/kbli-navigator-app` on M5 (HEAD
+`e15a920`, 623 MB, 0 remotes). History and the two book PDFs live there and in the Drive tar —
+nowhere in git. PR #8041 (successor of #8040 after the final gate's REWORK-BUILD: four
+`$HOME/Desktop/nuzantara` literals tripped `scripts/lint_tcc_desktop_paths.py`) imported the SOURCE
+only — 137 files, no PDFs, no 37 MB dataset copy: `build.sh` copies canonical + `data/kbli-app-overlay`
+in at every build and reads the PDFs from `KBLI_BOOK_PDF_DIR`, exit 5 naming the Drive archive when
+they are absent. Gate PASS on `8f4ed3fa`; merged 2026-10-08T00:37Z as `ebdad0739f`.
+
+- **Fleet proof 2026-10-08.** Built on Pro (the only machine with Xcode) from `main` at
+  `ebdad0739f`: `MANIFEST.json` `commit=ebdad0739f variant=internal records=1559 dirty=false`,
+  dataset `c29d6e6aea7a…`. Installed as the exact equivalent of `deploy/install-3mac.sh` with
+  targets `m5 mini` (the script assumes M5 drives — ledgered): rsync, quarantine strip, ad-hoc
+  re-sign, then the dataset INSIDE each installed bundle hashed `c29d6e6aea7a` on Nuzantara (Pro),
+  Air-M5 and mini-pro2; each MANIFEST reads `ebdad0739f internal 1559 False`;
+  `codesign --verify --deep --strict` OK and 0 quarantine attrs on all three. Previous fleet:
+  `3fa3e9b` (standalone repo, 2026-09-17).
+- **Build recipe (Pro):** `cd ~/nuzantara/apps/kbli-navigator-macos && KBLI_BOOK_PDF_DIR=~/.local/share/nuzantara/kbli-navigator/book-pdfs zsh build.sh --variant internal`
+  (`~/nuzantara` and `~/Desktop/nuzantara` are the SAME directory on Pro; the PDFs were copied
+  there 2026-10-08 from the archive, sha `380f8a9d…` / `3602c6f9…`). The BKPM variant stays an
+  on-demand hand-off zip (`deploy/make-team-installer.sh`). On M5 the tool's Bash cannot read
+  `~/Desktop` (TCC) — probe the installed app through `ssh localhost`.
+- **Two readers of the gitignored `Resources/KBLI_2025_FINAL_CLEAN.json` went blind with the
+  import:** `deploy/check-fleet.sh` aborted under `pipefail` at its line 97 in any fresh checkout
+  (rc=1 right after the canonical line, no verdict), and `scripts/lib/kbli_fleet_notice.sh` cried
+  "stale: Resources/" forever — false alarms both, the copy is refreshed at build time; the
+  installed-app surface of the notice already read ALIGNED on M5. Cured in PR #8042 (merged 2026-10-08T01:16Z as `93b1b3b528`): the Resources/ surface is dropped from both readers (overlays too, same defect). Re-run from main's content on M5 through `ssh localhost`: `check-fleet.sh` rc=0 — Air-M5, pro and mini `c29d6e6aea7a aligned`, overlay 3 files compared across the 3 machines, "fleet aligned with canonical"; the notice prints "the .app installed on Air-M5 matches canonical".
+- **Residuals ledgered 2026-10-08** (PENDING-ARMS): `install-3mac.sh` M5-driver assumption;
+  `brief.yml` image claim + pack line numbers + the D2 anchor nobody re-measures; predicate P3
+  scanning `.secrets.baseline` (pre-existing, #7156).
 
 **🟢 2026-10-07 — A FULL `inspect_kbli` SWEEP (MUSE SPARK, 1,559/1,559) EXPOSED 35 LOCATED CODES
 SERVED WRONG AT RUNTIME, AND THE SYNC TOOL'S "ALREADY AGREES" WAS THE LIE.** Muse Spark's sweep
