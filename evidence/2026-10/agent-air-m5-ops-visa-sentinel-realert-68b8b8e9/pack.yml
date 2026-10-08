@@ -16,11 +16,11 @@ lanes:
 pii_scan: clean
 bites:
   consumer: >-
-    the launchd job on Pro that runs scripts/visa_freshness_sentinel.py every 6 hours and the
-    SessionStart escalation board that renders the HIGH row.
-  where: pro
-  observe: python3 scripts/visa_freshness_sentinel.py --dry-run
-  expect: "contains:alert_decision"
+    the launchd job on Pro that runs scripts/visa_freshness_sentinel.py every 6 hours; the CI
+    observer drives its real decision and state code over a simulated STALE.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_freshness_sentinel.py
+  expect: "contains:a persistent STALE re-alerts daily and an undelivered send never counts"
 decisions:
   - id: D-own-schedule
     decision: >-
@@ -54,6 +54,12 @@ receipts:
     result: "Found 1 error (unused dataclasses import near line 559, existing code, left untouched)"
     exit: 1
     ts: "2026-10-08T06:25:26Z"
+    seat: this session
+  - claim: The CI observer drives the real decision code over a simulated STALE; the re-alert fires at 24 hours, holds at 1 hour, and an undelivered send leaves the streak at 2.
+    cmd: python3 scripts/ci/observe_visa_freshness_sentinel.py
+    result: "observe_visa_freshness_sentinel: a persistent STALE re-alerts daily and an undelivered send never counts"
+    exit: 0
+    ts: "2026-10-08T06:28:03Z"
     seat: this session
 dissent:
   - seat: self-review (not an independent refuter)

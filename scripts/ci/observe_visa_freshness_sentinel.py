@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""observe_visa_freshness_sentinel.py — bites: observation for the sentinel re-alert (W141).
+
+# bites-observable — this script takes NO arguments: the pack read and the sender are
+# stubbed in-process, the state lives in a private temp directory, and nothing an invoker
+# types can name a program to run, a file to write, or a database to reach — the bar
+# `scripts/ci/bites_parse.py::_guard_observable_script` sets.
+
+Drives the real decision and state code of ``scripts/visa_freshness_sentinel.py`` over a
+simulated STALE snapshot (pack 25, 18 stale portal ids) with an injected clock:
+
+1. first STALE run            -> would_send true
+2. one hour later             -> would_send false (inside the 23 h gate)
+3. twenty-four hours later    -> would_send true (the re-alert)
+4. sender returns undelivered -> the delivered streak does not move
+
+Exit 0 only if all four assertions hold.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import json
+import sys
+import tempfile
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+import visa_freshness_sentinel as vfs  # noqa: E402
+
+VERIFIED_AT = datetime(2026, 8, 30, 13, 18, tzinfo=timezone.utc)
+T0 = VERIFIED_AT + timedelta(days=33)  # one day past the 32-day boundary
+
+
+def _stale_verdict() -> vfs.Verdict:
+    records = [
+        {
+            "source_record_id": f"portal-{i:02d}",
+            "title": f"Portal source {i}",
+            "authority_type": "OFFICIAL_PORTAL",
+            "verified_at": VERIFIED_AT.isoformat(),
+            "freshness_policy": {
+                "kind": "MAX_AGE_SINCE_VERIFIED_AT",
+                "max_age_seconds": 32 * 86400,
+            },
+        }
+        for i in range(18)
+    ]
+    verdict = vfs.classify_freshness(records, T0)
+    return dataclasses.replace(verdict, pack_sequence=25, pack_version="2026.10.7")
+
+
+def main() -> int:
+    verdict = _stale_verdict()
+    assert verdict.outcome == vfs.OUTCOME_STALE and len(verdict.stale) == 18
+
+    answers = iter(["sent", "sent", "p0_unsent_spooled"])
+    vfs._send = lambda v, gw, key=None: (next(answers), "")
+    vfs._escalation_open = lambda v: None
+    vfs._escalation_resolve = lambda: None
+
+    with tempfile.TemporaryDirectory() as tmp:
+        state = Path(tmp) / "state.json"
+        clock = [T0, T0 + timedelta(hours=1), T0 + timedelta(hours=24), T0 + timedelta(hours=48)]
+        decisions = []
+        for at in clock:
+            verdict_at = dataclasses.replace(verdict, now=at)
+            decisions.append(
+                vfs.run_alert_cycle(
+                    verdict_at, dry_run=False, now_ts=at.timestamp(), state_path=state
+                )
+            )
+        streak = json.loads(state.read_text())["delivered_streak"]
+
+    for decision in decisions:
+        print(json.dumps({"alert_decision": decision}, sort_keys=True))
+
+    checks = (
+        decisions[0]["would_send"] is True,
+        decisions[1]["would_send"] is False,
+        decisions[2]["would_send"] is True,
+        decisions[3].get("delivered") is False and streak == 2,
+    )
+    if not all(checks):
+        print(f"observe_visa_freshness_sentinel: FAILED checks={checks} streak={streak}")
+        return 1
+    print(
+        "observe_visa_freshness_sentinel: a persistent STALE re-alerts daily "
+        "and an undelivered send never counts"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
