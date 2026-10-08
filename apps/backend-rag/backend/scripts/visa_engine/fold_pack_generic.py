@@ -10,7 +10,8 @@ Every guard of the seq-25 fold is kept in semantics: each successful receipt is
 validated (HTTP 200, key phrase, the record's own canonical URL, not in the
 future, after the previous stamp), the saved text carries a receipt's
 fingerprint, each judgement falls between the first read and now, ``changed``
-needs a disposition by id, and ``checked_sentence`` is a substring of the saved
+needs a disposition by id (and, given ``--baseline-ledger-dir``, is refused on a text whose
+fingerprint equals the baseline's), and ``checked_sentence`` is a substring of the saved
 text. ``verified_at`` is the earliest successful read. Only identity fields and
 the portal stamps move.
 
@@ -41,6 +42,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, NoReturn
 
+from backend.scripts.visa_engine.baseline_ledger import baseline_fingerprint
 from backend.scripts.visa_engine.fold_pack_seq25 import (
     JUDGEMENT_VERDICTS,
     PORTAL_AUTHORITY,
@@ -192,7 +194,12 @@ def latest_evidence(ledger: Ledger, portals: list[dict[str, Any]]) -> datetime:
 
 
 def attestation_instant(
-    ledger: Ledger, portals: list[dict[str, Any]], *, previous_stamp: str, now: datetime
+    ledger: Ledger,
+    portals: list[dict[str, Any]],
+    *,
+    previous_stamp: str,
+    now: datetime,
+    baseline_dir: Path | None = None,
 ) -> str:
     """The ``verified_at`` the ledger supports (earliest successful read), or abort."""
     previous = _parse_utc(previous_stamp, what="previous portal stamp")
@@ -241,6 +248,17 @@ def attestation_instant(
                 )
             if verdict == "unsure":
                 _fail(f"{label}: a reader is unsure — resolve before stamping")
+            if verdict == "changed" and baseline_dir is not None:
+                base_fp = baseline_fingerprint(baseline_dir, record_id)
+                judged_fp = _bound_receipt(successes, judgement, judged_at, label).get(
+                    "visible_text_sha256"
+                )
+                if base_fp is not None and base_fp == judged_fp:
+                    _fail(
+                        f"{label}: the judgement says the page changed, but the text it judged has "
+                        f"fingerprint {judged_fp}, identical to the baseline ledger's {base_fp} — "
+                        "a contradictory judgement, not a changed page"
+                    )
             if verdict == "changed" and record_id not in ledger.accepted_changed:
                 _fail(
                     f"{label}: a reader reports the page changed and disposition.json does not accept it by id"
@@ -296,6 +314,7 @@ def fold(
     verified_by: str,
     observed_at: datetime | None = None,
     allow_fake_reader: bool = False,
+    baseline_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Return the payload of pack anchor+1, or abort loudly."""
     now = observed_at or _real_now_utc()
@@ -321,7 +340,9 @@ def fold(
             _fail(
                 f"judgements by a rehearsal reader {fakes} cannot stamp a pack (--allow-fake-reader is for rehearsals only)"
             )
-    verified_at = attestation_instant(ledger, portals, previous_stamp=previous_stamp, now=now)
+    verified_at = attestation_instant(
+        ledger, portals, previous_stamp=previous_stamp, now=now, baseline_dir=baseline_dir
+    )
 
     out = json.loads(json.dumps(anchor))
     for record in out["source_records"]:
@@ -361,6 +382,12 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
     parser.add_argument(
         "--created-at", default=None, help="ISO Z, default now rounded to the minute"
     )
+    parser.add_argument(
+        "--baseline-ledger-dir",
+        type=Path,
+        default=None,
+        help="earlier attested ledger: a `changed` verdict on a text with its fingerprint is refused",
+    )
     parser.add_argument("--trust-store-env", default="VISA_ENGINE_TRUST_STORE_KEYS_JSON")
     args = parser.parse_args(argv)
 
@@ -390,6 +417,7 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
             verified_by=verified_by,
             observed_at=observed_at,
             allow_fake_reader=args.allow_fake_reader,
+            baseline_dir=args.baseline_ledger_dir,
         )
     except RulePackVerificationError as exc:
         _fail(f"the anchor does not verify: {exc}")

@@ -1,0 +1,80 @@
+# Gear-2 evidence pack - PR-O2, the re-attestation organ proves an unchanged page by fingerprint and keeps its ledger.
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Team lead mandate PR-O2, 2026-10-08 - harden the weekly re-attestation organ after its first real run.
+mission: >-
+  The organ writes the "none" judgement itself for a page whose visible-text fingerprint equals the
+  attested baseline, calls the judge only for the rest, and keeps the ledger of every run.
+lanes:
+  - lane: reattest-organ-fingerprint-build
+    role: build
+    seat: Claude Fable 5.1 implementer (worktree ops-visa-reattest-organ-fingerprint).
+  - lane: reattest-organ-fingerprint-review
+    role: review
+    seat: cross-family review requested by the team lead after this pack; not yet run.
+  - lane: reattest-organ-fingerprint-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed 2026-10-07 seq-25 read ledger, whose 18 saved texts are the baseline, run through the
+      organ end to end in a scratch state dir; no notebook, no memory, no regulatory figure asserted.
+    nb: research/visa/2026-10-07-freshness-restamp-seq25/
+    query_hash: "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
+    note: query_hash = the seq-25 payload digest the fold must still reproduce when its judgements are fingerprint rows
+pii_scan: clean
+bites:
+  consumer: >-
+    the weekly launchd run of com.nuzantara.visa-reattestation on Pro and, until the wrapper copy is
+    deployed, the CI step that runs the offline observer.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_reattest_organ.py
+  expect: "contains:offline run produced unsigned seq-25 candidate"
+decisions:
+  - id: D-judgement-schema
+    decision: >-
+      The brief said verdict "same"; the ledger schema the fold reads is semantic_change "none".
+      The organ writes "none" with judge "fingerprint", so the fold needs no relaxation.
+  - id: D-baseline-rule
+    decision: >-
+      Default baseline is the newest research/visa ledger covering every portal record, never the run's
+      own ledger, and an organ ledger only once its signed pack exists, so an unreviewed read cannot
+      attest a page.
+  - id: D-skip-judge-no-default-baseline
+    decision: >-
+      With --skip-judge the default baseline is not used, only an explicit one, so the observer's copy of
+      the seq-25 ledger is not compared against itself.
+receipts:
+  - claim: The organ suite is green, including the fingerprint-identical record never reaching the judge, a differing record reaching it with the original invocation shape, the default baseline rule, the failed-run ledger named in the board row, and the retention cap of 8.
+    cmd: PYTHONPATH=apps/backend-rag python -m pytest scripts/tests/test_visa_reattestation_organ.py
+    result: "37 passed in 34.88s"
+    exit: 0
+    ts: "2026-10-08T11:25:21Z"
+    seat: Claude Fable 5.1
+  - claim: The visa_engine suite is green, including 10 baseline_ledger tests and 3 fold tests (a fingerprint judgement passes every fold guard and reproduces the seq-25 digest; changed on the baseline fingerprint is refused naming both fingerprints; changed on a differing text stands).
+    cmd: PYTHONPATH=apps/backend-rag python -m pytest apps/backend-rag/backend/tests/scripts/visa_engine
+    result: "323 passed in 49.02s"
+    exit: 0
+    ts: "2026-10-08T11:26:16Z"
+    seat: Claude Fable 5.1
+  - claim: Under the system python 3.9 that cron uses, an offline run on a copy of the seq-25 ledger judges 18 of 18 pages by fingerprint, skips the judge, then fails at the fold only because those receipts predate the previous stamp, and keeps the ledger named in the alert.
+    cmd: bash scratchpad/e2e.sh (organ --offline --judge fake --ledger-dir <copy of the seq-25 ledger>, scratch state dir)
+    result: "fingerprint: 18 of 18 pages identical to baseline 2026-10-07-freshness-restamp-seq25; judge skipped; failed at 'fold' ... Ledger kept at <state>/ledgers/20261008T112411Z-seq26"
+    exit: 0
+    ts: "2026-10-08T11:24:17Z"
+    seat: Claude Fable 5.1
+  - claim: The offline observer, which feeds the organ the seq-25 ledger with --skip-judge, still reproduces the committed seq-25 digest.
+    cmd: python3 scripts/ci/observe_visa_reattest_organ.py
+    result: "observe_visa_reattest_organ: offline run produced unsigned seq-25 candidate ... digest 603f777e...9d11, PR text carries Bites:"
+    exit: 0
+    ts: "2026-10-08T11:26:46Z"
+    seat: Claude Fable 5.1
+  - claim: Ruff check passes on all six touched python files, ruff format is clean on the four backend files, prettier is clean on the runbook.
+    cmd: ruff check <6 files>; ruff format --check <4 backend files>; prettier --check docs/runbooks/visa-reattestation-organ.md
+    result: "All checks passed!; 4 files already formatted; All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-10-08T11:26:56Z"
+    seat: Claude Fable 5.1
+dissent: []
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 0

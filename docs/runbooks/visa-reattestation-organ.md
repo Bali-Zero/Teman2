@@ -32,16 +32,21 @@ No `KeepAlive` (scar #7). Why Monday 02:00:
    `organ/visa-reattest/<anchor-seq>-<date>`, or on the branch of an open organ PR for the
    same anchor. The runner refuses a checkout whose `.git` is a directory (the shared one).
 3. `portal_read_receipt.py --all` into `research/visa/<date>-organ-reattest-seq<N+1>/`.
-4. `portal_judge.py --all --judge claude --reader organ-<model>-<yyyymmdd>`. The judge
-   goes through `claude-cascade.sh --claude-only`. Exit 1 means at least one `unsure`.
-5. On judge exit 0, `fold_pack_generic` writes `rulepack-prod-0<N+1>.source.json` INSIDE the ledger
+4. Fingerprint first. Every record whose fresh visible-text fingerprint equals the one of the
+   baseline ledger's saved text gets a `none` judgement written by the organ itself
+   (`judge: "fingerprint"`, no model). Then
+   `portal_judge.py --ids <the rest> --judge claude --reader organ-<model>-<yyyymmdd>`
+   (`--all` when nothing matched; skipped when every page matched). The judge goes through
+   `claude-cascade.sh --claude-only`. Exit 1 means at least one `unsure`.
+5. On judge exit 0, `fold_pack_generic --baseline-ledger-dir <baseline>` writes `rulepack-prod-0<N+1>.source.json` INSIDE the ledger
    dir, never into `contracts/packs/`, so human lanes and the CI tests that read the highest
    source pack never see an unreviewed candidate.
 6. Commit the ledger, the candidate and an attestation note. Push. Open a PR titled
    `chore(visa-engine): organ re-attestation ledger <date> — candidate seq-<N+1> (unsigned)`,
    or push a new commit to the open one. No auto-merge.
 7. Any failure: HIGH row on `shared/escalations_pro.jsonl`, Telegram p0 in the
-   `visa-freshness` family, state file records the stage, exit non-zero.
+   `visa-freshness` family, state file records the stage, exit non-zero. The row and the
+   Telegram text end with `Ledger kept at <path>` (see "Where the ledger of a run lives").
 8. T-7: when the boundary is at most 7 days away and a candidate exists (just folded, an
    open organ PR, or an unsigned source on main), alert "pack ready to sign" on every run
    until a newer signed pack exists.
@@ -55,12 +60,55 @@ No `KeepAlive` (scar #7). Why Monday 02:00:
 | `--judge fake`                                    | Rehearsal judge. The reader becomes `fake-organ-<date>`; fold gets `--allow-fake-reader`. |
 | `--skip-judge`                                    | Use judgements already in the ledger. Fails if there are none.                            |
 | `--ledger-dir DIR`                                | Existing ledger, copied into the worktree instead of reading portals.                     |
+| `--baseline-ledger-dir DIR`                       | Attested ledger whose saved texts prove a page unchanged by fingerprint (rule below).     |
 | `--repo`, `--state-dir`, `--board`, `--code-root` | Paths, so a rehearsal never touches the live ones.                                        |
 | `--now`                                           | Test-only clock override.                                                                 |
 
 `--offline` skips portals, `gh`, Telegram and the board, but git still talks to the origin of
 `--repo` (a temp origin in the rehearsal). Rehearsal on any machine, no writes outside the temp dirs:
 `python3 scripts/ci/observe_visa_reattest_organ.py`.
+
+## Unchanged pages are proven by fingerprint, not by the judge
+
+The receipt field `visible_text_sha256` is `portal_read_receipt.fingerprint` of the visible text.
+The pack stamp field `content_sha256` is NOT that fingerprint (0 of 18 stamps match), so it is
+never used. A fresh read is unchanged when its fingerprint equals the fingerprint of the
+baseline text of the same record (`text/<id8>.txt`, or the newest `text/<id8>-<ts>.txt`).
+
+Default baseline, when `--baseline-ledger-dir` is absent: the newest directory (by name) under
+`research/visa/` of the code root that holds a saved text for EVERY `OFFICIAL_PORTAL` record of
+the anchor pack, with two exclusions. It is never the run's own ledger. An organ ledger
+(`*-organ-reattest-seq<N>`) counts only once `rulepack-prod-0<N>.signed.json` exists, because an
+unsigned read was never attested by a session. Today that is
+`research/visa/2026-10-07-freshness-restamp-seq25`. No baseline means every page goes to the
+judge, as before. `--skip-judge` uses a baseline only if given explicitly.
+
+The rows the organ writes carry the fresh receipt's `receipt_fetched_at` and `text_sha256`,
+`judged_at` = now, and a `checked_sentence` that is a substring of the fresh text: the
+baseline judgement's own quote when the fresh text carries it, else the first complete
+sentence of at least 40 characters. A record for which no such sentence exists is left to the
+judge. The fold needs no relaxation for these rows. Its new `--baseline-ledger-dir` refuses the
+opposite error: a `changed` verdict (even one a disposition accepts) on a text whose
+fingerprint equals the baseline's is a contradictory judgement, and the message names both
+fingerprints.
+
+## Where the ledger of a run lives
+
+The run removes its worktree, which used to delete the receipts, judgements and texts a human
+needs. Before that, on success and on any failure, the organ copies the ledger to
+`~/.local/state/nuzantara/visa-reattestation/ledgers/<UTC ts>-seq<anchor>/` and keeps the newest 8.
+The path is in the board row `detail`, in the Telegram text, in `state.json` (`ledger_copy`) and
+in the heartbeat note (`ledger=<path>`). The wrapper change that reads `state.json` is a declared
+pair: copy it to `~/scripts/` on Pro for the heartbeat part to apply.
+
+## First real run, 2026-10-08
+
+The run read the 18 pages and the judge reported page `dcf08e19` (the ITK to ITAS service page)
+as changed. The fold refused: a reader reports the page changed and `disposition.json` does not
+accept it. Re-reading the page 8 minutes later gave a fingerprint identical to the text attested for
+seq-25 on 2026-10-07. So the judge had reported a change on a byte-identical page, a false
+positive that would have recurred every week. The failed run's worktree was removed, with the
+judgement nobody could read afterwards. This section's two mechanisms exist because of that run.
 
 ## Install on Pro (a session act)
 

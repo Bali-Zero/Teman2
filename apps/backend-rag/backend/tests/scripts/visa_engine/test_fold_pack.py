@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from backend.scripts.visa_engine import fold_pack_generic
+from backend.scripts.visa_engine import baseline_ledger, fold_pack_generic
 from backend.scripts.visa_engine.fold_pack_generic import anchor_portal_stamp, fold, main
 from backend.scripts.visa_engine.fold_pack_seq25 import Ledger, load_ledger
 from backend.services.visa_engine.bundle import StaticTrustStore, canonicalize_json
@@ -612,6 +612,117 @@ class TestRehearsalReaders:
             anchor, anchor_signed, load_ledger(ledger_copy), trust_store=trust,
             observed_at=OBSERVED_AT, allow_fake_reader=True, **META,
         )  # fmt: skip
+        assert out["sequence"] == 25
+
+
+class TestBaselineFingerprint:
+    """The organ's fingerprint judgements are accepted; a `changed` verdict on an unchanged text is not."""
+
+    def _victim_row(self, ledger_dir: Path, anchor: dict[str, Any], **overrides: Any) -> str:
+        victim = _portal_ids(anchor)[0]
+        loaded = load_ledger(ledger_dir)
+        latest = max(r["fetched_at"] for r in loaded.receipts if r["source_record_id"] == victim)
+        judged_at = latest[:-1].rsplit(":", 1)[0] + ":59Z"
+        rows = baseline_ledger.fingerprint_judgements(
+            ledger_dir, [victim], _LEDGER_DIR, reader="organ-test", judged_at=judged_at
+        )
+        assert len(rows) == 1, "the seq-25 ledger is its own baseline: the fingerprints must agree"
+        for path in ledger_dir.glob("*-judgements.jsonl"):
+            kept = [
+                ln
+                for ln in path.read_text(encoding="utf-8").splitlines()
+                if ln.strip() and json.loads(ln)["source_record_id"] != victim
+            ]
+            path.write_text("".join(ln + "\n" for ln in kept), encoding="utf-8")
+        row = {**rows[0], **overrides}
+        (ledger_dir / "organ-test-judgements.jsonl").write_text(
+            json.dumps(row) + "\n", encoding="utf-8"
+        )
+        return victim
+
+    def _baseline(self, tmp_path: Path, victim: str, *, victim_same: bool) -> Path:
+        """An 'older' ledger: every other page differs from the seq-25 texts (those really changed)."""
+        older = tmp_path / "older-baseline"
+        shutil.copytree(_LEDGER_DIR, older)
+        for text in (older / "text").glob("*.txt"):
+            if not (victim_same and text.name.startswith(victim[:8])):
+                text.write_text(
+                    text.read_text(encoding="utf-8") + "an older revision\n", encoding="utf-8"
+                )
+        return older
+
+    def _accept(self, ledger_dir: Path, victim: str) -> None:
+        path = ledger_dir / "disposition.json"
+        disposition = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        disposition.setdefault("accepted_changed", {})[victim] = "reviewed by a session"
+        path.write_text(json.dumps(disposition), encoding="utf-8")
+
+    def test_innocence_a_fingerprint_judgement_passes_every_guard_of_the_fold(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+        tmp_path: Path,
+    ) -> None:
+        victim = self._victim_row(ledger_copy, anchor)
+        out = fold(
+            anchor,
+            anchor_signed,
+            load_ledger(ledger_copy),
+            trust_store=trust,
+            observed_at=OBSERVED_AT,
+            baseline_dir=self._baseline(tmp_path, victim, victim_same=True),
+            **META,
+        )
+        assert hashlib.sha256(canonicalize_json(out)).hexdigest() == SEQ25_DIGEST
+
+    def test_guilt_changed_on_a_text_with_the_baseline_fingerprint_is_refused(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+        tmp_path: Path,
+    ) -> None:
+        victim = self._victim_row(ledger_copy, anchor, semantic_change="changed", judge="claude")
+        self._accept(ledger_copy, victim)
+        baseline = self._baseline(tmp_path, victim, victim_same=True)
+        ledger = load_ledger(ledger_copy)
+        _run(anchor, anchor_signed, ledger, trust)  # no baseline given: nothing stops it
+        base_fp = baseline_ledger.baseline_fingerprint(baseline, victim)
+        with pytest.raises(SystemExit, match="contradictory judgement") as exc:
+            fold(
+                anchor,
+                anchor_signed,
+                ledger,
+                trust_store=trust,
+                observed_at=OBSERVED_AT,
+                baseline_dir=baseline,
+                **META,
+            )
+        assert str(exc.value).count(str(base_fp)) == 2
+
+    def test_innocence_changed_on_a_text_that_differs_from_the_baseline_stands(
+        self,
+        anchor: dict[str, Any],
+        anchor_signed: dict[str, Any],
+        trust: StaticTrustStore,
+        ledger_copy: Path,
+        tmp_path: Path,
+    ) -> None:
+        victim = self._victim_row(ledger_copy, anchor, semantic_change="changed", judge="claude")
+        self._accept(ledger_copy, victim)
+        older = self._baseline(tmp_path, victim, victim_same=False)
+        out = fold(
+            anchor,
+            anchor_signed,
+            load_ledger(ledger_copy),
+            trust_store=trust,
+            observed_at=OBSERVED_AT,
+            baseline_dir=older,
+            **META,
+        )
         assert out["sequence"] == 25
 
 
