@@ -362,7 +362,7 @@ def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path)
 ENQUEUE_BASE = "main"
 _LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
 PR_QUERY = ("query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
-            " id state isDraft isCrossRepository baseRefName headRefOid isInMergeQueue mergeQueueEntry { id position state }"
+            " id state isDraft isCrossRepository baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
             " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
             " __typename ... on LabeledEvent { label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
 
@@ -423,7 +423,8 @@ def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
                open=None if p.get("state") == "OPEN" else f"state {p.get('state')}",
                not_in_queue=None if p.get("isInMergeQueue") is False and entry is None else f"already in the merge queue ({entry})",
                first_enqueue="this head was enqueued by an earlier tick" if again else None)
-    facts = {"pull_request_id": p.get("id"), "live_head_oid": live_head, "label_actor": None}
+    facts = {"pull_request_id": p.get("id"), "live_head_oid": live_head, "label_actor": None,
+             "bites": isinstance(p.get("body"), str) and BITES_RE.search(p["body"]) is not None}   # a flag: the body's text is never kept
     why["label_privileged"], facts["label_actor"] = label_arm(a.repo, p)
     return facts
 
@@ -435,6 +436,7 @@ HOST_NO_VERDICT = ("host_disk_full", "host_disk_below_floor", "host_disk_unmeasu
 GATE = ("local_checks_clean", "review_independent", "executed_contexts_ok", "hosted_required_green", "head_unchanged", "same_repo",
         "not_draft", "base_main", "open", "not_in_queue", "first_enqueue")
 CRITERION = (*GATE, "label_privileged")   # the env flag, the arm's other half, is journalled apart
+BITES_RE = re.compile(r"^[ \t>*_-]*Bites\b[*_]*\s*:", re.M | re.I)   # the PR contract's `Bites:` line (bold or quoted forms included)
 ENQUEUE = ("mutation($pr: ID!, $oid: GitObjectID!) { enqueuePullRequest(input: {pullRequestId: $pr, expectedHeadOid: $oid}) {"
            " mergeQueueEntry { id position state } } }")
 
@@ -515,6 +517,37 @@ def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
     return out
 
 
+def merge_shadow_step(state: Path, repo_dir: Path, enq: dict) -> dict:
+    """Phase F, shadow (spec Phase F, F1): rehearse the merge of the decided head onto the mirror's current main and journal ONE
+    ``would_merge`` line. ``git merge-tree --write-tree`` is plumbing: it writes objects into the mirror's object store and never a
+    ref, a worktree or the index, and nothing here pushes. A failure of any git call lands on the line as ``error`` (``ok`` false);
+    nothing raises into the decision."""
+    head, base_sha = enq["head_sha"], enq["base_sha"]
+    crit = enq.get("criterion") if isinstance(enq.get("criterion"), dict) else {}
+    line = {"kind": "would_merge", "pr": enq["pr"], "head_sha": head, "base_sha": base_sha, "mirror_main": None, "base_current": False,
+            "head_unchanged": crit.get("head_unchanged") is True, "merge_tree": None, "clean": False, "conflicts": [], "criterion": crit,
+            "armed_env": enq.get("armed_env"), "bites": enq.get("bites") is True, "ok": False, "lease_id": enq.get("lease_id")}
+    try:
+        line["mirror_main"] = git(repo_dir, "rev-parse", "--verify", "--quiet", "refs/merger/base^{commit}").stdout.strip()
+        line["base_current"] = line["mirror_main"] == base_sha
+        res = git(repo_dir, "merge-tree", "--write-tree", "--name-only", "-z", line["mirror_main"], head, check=False)
+        parts = res.stdout.split("\0")
+        if res.returncode not in (0, 1) or not is_sha(parts[0]):
+            raise MergerError(f"git merge-tree failed (rc={res.returncode}): {redact(res.stderr.strip()[-300:])}")
+        line["merge_tree"], line["clean"] = parts[0], res.returncode == 0
+        if not line["clean"]:
+            names = parts[1:]
+            line["conflicts"] = (names[:names.index("")] if "" in names else names)[:50]   # names end at the empty field before the messages
+    except Stopped:
+        raise
+    except Exception as exc:  # noqa: BLE001 — a shadow never raises into the decision
+        line["error"] = redact(f"{type(exc).__name__}: {exc}")
+    line["ok"] = bool(crit) and all(crit.values()) and line["base_current"] and line["clean"]   # head_unchanged is one of crit's own terms
+    out = journal(state, line)
+    print(f"merger: #{out['pr']} would_merge ok={out['ok']} clean={out['clean']} base_current={out['base_current']} tree={str(out['merge_tree'])[:12]}")
+    return out
+
+
 def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str) -> int:
     t0 = time.monotonic()
     rec = {"kind": "decision", "mode": "shadow", "repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "lease_id": lease_id}
@@ -561,8 +594,9 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
                                "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
-        enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": cand_sha, "lease_id": lease_id},
-                     loc, live)
+        enq = enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": cand_sha, "lease_id": lease_id},
+                           loc, live)
+        merge_shadow_step(state, repo_dir, enq)
         return 0
     except (MergerError, OSError) as exc:   # a decision with no verdict: this (pr, head, base) is not retried, the next base is
         journal(state, {**rec, "overall": "ERROR", "error": redact(exc), "candidate_sha": None, "run_dir": None,
@@ -823,6 +857,9 @@ def cmd_report(a) -> int:
     errors = sum(1 for r in window if r.get("kind") == "error")
     enqueue = {k: sum(1 for r in window if r.get("kind") == k) for k in ("enqueued", "enqueue_refused", "enqueue_error")}
     enqueue["would_enqueue"] = sum(1 for r in window if r.get("kind") == "would_enqueue" and r.get("ok") is True)   # every sub-criterion true
+    wm = [r for r in window if r.get("kind") == "would_merge"]   # phase F, shadow: the merge rehearsed, never made
+    would_merge = {"total": len(wm), "ok": sum(1 for r in wm if r.get("ok") is True), "conflicted": sum(1 for r in wm if r.get("clean") is False),
+                   "base_moved": sum(1 for r in wm if r.get("base_current") is False)}
     timed = sorted((r["elapsed_s"], r["pr"]) for r in rows if r["elapsed_s"] is not None)
     ticks = {"timed": len(timed), "longest_s": timed[-1][0] if timed else None, "longest_pr": timed[-1][1] if timed else None,
              "median_s": round(median(t for t, _ in timed), 1) if timed else None,
@@ -835,9 +872,9 @@ def cmd_report(a) -> int:
                       "compared_merges_skip_agreed": merged_skip_agreed,
                       "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
                       "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "skipped": skipped,
-                      "decisions_without_code_sha": without_code_sha, "enqueue": enqueue,
+                      "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
-           "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "phase_e_ready": ready, "rows": rows,
+           "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "phase_e_ready": ready, "phase_f": "shadow", "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     atomic_write(state / "report.json", json.dumps(out, indent=2) + "\n")
     print(f"{'PR':7} {'HEAD':12} {'BASE':12} {'MERGER':11} {'GITHUB':7} {'MERGED':6} CLASS")
@@ -858,6 +895,8 @@ def cmd_report(a) -> int:
     print("pr-level: " + " ".join(f"{k.lower()}={v}" for k, v in counts.items()))
     print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items())
           + f" | false_green recorded at tick time={recorded_fg}")
+    print(f"phase F shadow: would_merge={would_merge['total']} (ok={would_merge['ok']}, conflicted={would_merge['conflicted']}, "
+          f"base_moved={would_merge['base_moved']}) — rehearsed with merge-tree, nothing merged, nothing pushed")
     for h in hosted_red_merged:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "

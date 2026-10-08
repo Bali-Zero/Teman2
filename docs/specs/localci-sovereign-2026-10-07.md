@@ -83,6 +83,8 @@ Phase E never precedes D. If D shows a false green, the flip waits and the execu
 
 **What stays with Subhi.** The showroom export (which capability, its closure, its acceptance from a clean checkout) and when the old repository is deleted. The local CI runs the showroom's checks the same way (a second `contexts_matrix.yaml` for that repository, BASE-trusted, receipts and seals) — a phase G once the first export exists.
 
+_Status._ F1 (shadow `would_merge` lines, the merge rehearsed with `git merge-tree --write-tree`, no ref written, nothing pushed) shipped in #TBD — the shipping session fills the number; keep `#TBD`.
+
 ## 3. What is lost, and what covers it
 
 | lost                                              | cover                                                                                                                                                          |
