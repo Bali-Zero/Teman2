@@ -201,6 +201,23 @@ refuses. The reading is cached for the run: a leg that starts later in the run i
 Pro at 07:31Z on 2026-10-08, with the shadow merger running PR #8060's E2E legs: 3.58 GB free (3500604 KiB available, 95% of 61.6 GB used) — under
 the default floor every service leg there would be BLOCKED until space is freed or the floor is set in the tick's environment.
 
+**A red read with a rewritten judge is no verdict (B5).** The plan names the trusted files each step reads (`trusted` on the
+step). When the candidate rewrites one of them (`judge_modified`), a FAIL or ERROR on that step is `BLOCKED` with a reason
+that starts `judge_rewritten: <step> read red with the BASE judge while the candidate rewrites <files>`, never FAIL; a red on a
+step whose judges were not rewritten stays FAIL and decides. A rewritten file no step names (the workflow itself, a
+`.gitattributes`) reaches every step, and a service context's job steps carry no per-step attribution: those are judged at
+context scope, and the reason says so. `status.json` names it (`no_verdict: judge_rewritten`), `hosted_compare` reads it as
+LOCAL_BLIND and the enqueue criterion refuses it. The candidate's own judge is not run: a PR that rewrites a judge is the
+reviewer's.
+
+**A skip is compared as a skip (B5).** A context the trusted change_map does not select is NOT_APPLICABLE, its verdict OK as
+on GitHub, and its result carries `skipped: change_map`. `hosted_compare` puts `skip` on the row with the hosted conclusion:
+`agreed` (`NOT_APPLICABLE (skip agreed: change_map)`, full: the classifier's decision is what was compared), `hosted_ran`
+(`NOT_APPLICABLE (skipped here; hosted ran)`, partial and named: the local verdict is a subset), `hosted_skipped`
+(`OK (executed; hosted skipped)`, full). The merger journals `skipped` per context; `report` prints `compared_skip_agreed=N`
+on the window line and, on the phase E line, how many full contexts of the compared merges were skip agreements. The
+compared-merge rule is unchanged. A decision journalled before B5 records no skip: its skips read as executions.
+
 ## Security: Pysa taint judge (`security.pysa_python`)
 
 CodeQL CLI cannot run on this repo (public, no OSI licence), so the python security queries are stood in for by Pysa
