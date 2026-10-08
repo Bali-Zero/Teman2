@@ -543,8 +543,10 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
   `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched, and a `runs/` that is a
   symlink is never trimmed.
-- **fstrim.** With `--fstrim`, after at least one image removal: `colima ssh -- sudo fstrim -av`, so the VM's freed blocks
-  leave the host's sparse disk.
+- **fstrim.** With `--fstrim`, every real prune (not a dry run, not a lease skip) ends with `colima ssh -- sudo fstrim -av`,
+  whether or not an image went (B7): a run's own containers and layers free blocks inside the VM every tick, and they stay
+  allocated in the host's sparse disk until trimmed (2026-10-08T15:16Z: 11.4 GiB back with no removal, in 2 s). The line
+  always carries `fstrim` and `host_free_gb.after_fstrim`; a failed trim is `failed: ["fstrim"]`, exit 1.
 
 One journal line per prune (its shape; the numbers below are illustrative, not measured); `--dry-run` writes
 `would_remove` instead of `removed` and removes nothing:

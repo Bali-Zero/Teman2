@@ -276,7 +276,8 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     rec["runs"] = trim_runs(runs, now_s, dry)
     rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)
     rec["host_free_gb"]["after"] = host_free_gb(host_path)
-    if fstrim and removed and not dry:   # the VM gives its freed blocks back to the host's sparse disk only on a trim
+    if fstrim and not dry:   # every real prune ends with a trim: a run's own containers and layers free blocks every tick, which
+        # stay allocated in the host's sparse disk until trimmed (B7, measured 2026-10-08T15:16Z: 11.4 GiB back with no removal)
         try:
             t = subprocess.run([colima, "ssh", "--", "sudo", "fstrim", "-av"], capture_output=True, text=True, timeout=900)
             rec["fstrim"] = {"rc": t.returncode, "tail": (t.stdout or t.stderr).strip()[-160:]}
