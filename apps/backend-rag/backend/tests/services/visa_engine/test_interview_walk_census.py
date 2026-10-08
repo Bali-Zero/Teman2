@@ -461,7 +461,11 @@ def _candidate_pack() -> PackUnderTest | None:
     payload = load_rule_pack_payload(path)
     compiled = compiler.build_compiled_pack(wrap_as_unsigned_pack(payload))
     latest = max(rule.valid_period.from_ for rule in payload.rules)
-    return PackUnderTest(compiled=compiled, as_of=latest + timedelta(hours=12))
+    # A re-stamped candidate (seq-25, seq-26) carries portal reads NEWER than its newest
+    # rule: grading before the newest read makes every source "not yet verified" and holds
+    # every walk, so grade after both.
+    latest_read = max(record.verified_at for record in payload.source_records)
+    return PackUnderTest(compiled=compiled, as_of=max(latest, latest_read) + timedelta(hours=12))
 
 
 #: Why an allowlisted NEEDS_INPUT is a DEAD END and not a question the funnel
@@ -633,6 +637,7 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
 # seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
 # no rule and no product — every seq-24 pin is reproduced byte-for-byte.
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[24]
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25]
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1208,6 +1213,7 @@ EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] 
 # seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
 # no rule and no product — every seq-24 pin is reproduced byte-for-byte.
 EXPECTED_OUTCOME_BY_SEQUENCE[25] = EXPECTED_OUTCOME_BY_SEQUENCE[24]
+EXPECTED_OUTCOME_BY_SEQUENCE[26] = EXPECTED_OUTCOME_BY_SEQUENCE[25]
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1265,6 +1271,7 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
 # seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
 # no rule and no product — every seq-24 pin is reproduced byte-for-byte.
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[25] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[24]
+EXPECTED_STATE_CENSUS_BY_SEQUENCE[26] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[25]
 
 #: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
 #: PR-5. A cure that moves walks between blocking facts instead of removing
@@ -1308,6 +1315,7 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
 # seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
 # no rule and no product — every seq-24 pin is reproduced byte-for-byte.
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[25] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[24]
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[26] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[25]
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1439,6 +1447,7 @@ STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
 # seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
 # no rule and no product — every seq-24 pin is reproduced byte-for-byte.
 STUDIO_HELD_WALKS_BY_SEQUENCE[25] = STUDIO_HELD_WALKS_BY_SEQUENCE[24]
+STUDIO_HELD_WALKS_BY_SEQUENCE[26] = STUDIO_HELD_WALKS_BY_SEQUENCE[25]
 STUDIO_HELD_WALKS: frozenset[str] = STUDIO_HELD_WALKS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, frozenset())
 STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
 
