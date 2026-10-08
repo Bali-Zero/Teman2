@@ -129,7 +129,7 @@ class IngestionService:
 
             # Step 5: Generate embeddings
             chunk_texts = [chunk["text"] for chunk in chunks]
-            embeddings = self.embedder.generate_embeddings(chunk_texts)
+            embeddings = await self.embedder.generate_embeddings(chunk_texts)
             logger.info(f"Generated {len(embeddings)} embeddings")
 
             # Step 6: Prepare metadata for each chunk
@@ -153,7 +153,7 @@ class IngestionService:
                 metadatas.append(meta)
 
             # Step 7: Store in vector database
-            self.vector_db.upsert_documents(
+            await self.vector_db.upsert_documents(
                 chunks=chunk_texts,
                 embeddings=embeddings,
                 metadatas=metadatas,
