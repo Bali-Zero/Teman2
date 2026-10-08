@@ -3,20 +3,22 @@ mission: LOCALCI-SOVEREIGN (phase B, step B8)
 colour: BLUE
 gear: 2
 gear_reason: >-
-  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 482 with this pack, over the 400 line
-  target; 359 without it), no hot-zone path. The change is the merger's own prune, its tests and mutants, a README section
+  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 594 with this pack, 457 without it,
+  over the 400-line target once the amendment landed), no hot-zone path. The change is the merger's own prune, its tests and mutants, a README section
   and the spec paragraph it amends; no workflow, credential, wrapper or plist changes, so the deploy is the mirror's next fetch.
 l_level: L2
 gate_class: opus
 objective: >-
-  From the lead's rule B8 of 2026-10-08, after the Colima VM filled at about 15:27Z: beyond the two slots of a recipe an
-  image stays only when the lease run names it (no clock grace); slot 2 goes to the image the most plans of the last 48 h
-  name; a VM free floor of 15 GB outranks slot 2; the build cache is pruned to a 4 GB budget instead of by age; the
+  From the lead's rule B8 of 2026-10-08, after the Colima VM filled at about 15:27Z, and its amendment after 17:26Z (a
+  4.4 GB pass refilled by the next tick): beyond the two slots of a recipe an image stays only when the lease run names it
+  (no clock grace); slot 2 goes to the image the most plans of the last 48 h name; under a VM free floor of 15 GB images go
+  fewest references first, ties to the oldest, the newest of a recipe included, only the never-list and the lease run's
+  images untouchable; the build cache is pruned with -af to a 4 GB budget after the cap and after each floor removal; the
   per-tree deps recipe is written as the open question B9, not built.
 constraints:
   - localci_merger_tick.sh is unchanged.
   - The never-list (localci-candidate:*, localci-deps-base:*, the BASE matrix's service stand-ins) is never removed, under the floor too.
-  - The floor never removes the newest image of a recipe or what the run in progress names.
+  - Under the floor only the never-list and what the run in progress names are untouchable; above it the newest of a recipe is never removed.
   - A dry run, an unreadable input or an unmeasured VM never triggers a floor removal.
   - No .github/ file, no push, nothing on Pro.
 acceptance:
@@ -26,13 +28,13 @@ acceptance:
     probe: "test_prune.py::test_b8_the_run_in_progress_keeps_the_third_image_it_names"
   - text: Slot 2 SHALL go to the image named by three plans over a younger one a single plan names, and a tie SHALL go to the youngest reference.
     probe: "test_prune.py::test_b8_slot_2_goes_to_the_image_three_plans_name_over_a_younger_one_a_single_plan_names, test_prune.py::test_b8_a_tie_in_plans_gives_slot_2_to_the_youngest_reference"
-  - text: WHEN the VM has 10 GB free and two slot-2 images exist, the older SHALL go first, then the next, with rule "vm floor", never the newest.
-    probe: "test_prune.py::test_b8_under_the_vm_floor_slot_2_goes_oldest_first_then_the_next_never_the_newest"
-  - text: WHEN the VM has 20 GB free (or exactly 15), slot 2 SHALL be kept; the floor stops once met.
-    probe: "test_prune.py::test_b8_vm_free_20_keeps_slot_2, test_prune.py::test_b8_the_floor_stops_once_met_and_a_vm_at_the_floor_keeps_slot_2"
-  - text: Under the floor, the never-list, the newest and the run in progress SHALL be untouched.
-    probe: "test_prune.py::test_b8_the_floor_never_touches_the_never_list_the_newest_or_the_run_in_progress"
-  - text: The build cache SHALL be pruned with --keep-storage 4GB, journaled as builder_prune.keep_storage_gb, never by age.
+  - text: WHEN the VM has 5 GB free and three recipes each hold a newest and a slot-2 image, the image with 1 reference SHALL go before the one with 4 even if newer, ties to the oldest, each rule "vm floor (N references, built H h ago)", the builder pruned after each.
+    probe: "test_prune.py::test_b8_under_the_vm_floor_the_fewest_references_go_first_even_the_newest_of_a_recipe"
+  - text: Above the floor the newest of a recipe SHALL never be removed, even named by no plan; at the floor nothing goes; the floor stops once met.
+    probe: "test_prune.py::test_b8_above_the_floor_the_newest_of_a_recipe_is_never_removed_even_named_by_no_plan, test_prune.py::test_b8_the_floor_stops_once_met_and_a_vm_at_the_floor_keeps_every_image"
+  - text: Under the floor, the never-list and what the lease run names SHALL be untouched.
+    probe: "test_prune.py::test_b8_the_floor_never_touches_the_never_list_or_what_the_lease_run_names"
+  - text: The build cache SHALL be pruned with -af --keep-storage 4GB, its size journaled before and after, never by age.
     probe: "test_prune.py::test_b8_the_build_cache_is_pruned_to_a_budget_not_by_age"
 assumptions:
   - text: The VM probe still measures a full VM (it reads 0.0 rather than failing).
