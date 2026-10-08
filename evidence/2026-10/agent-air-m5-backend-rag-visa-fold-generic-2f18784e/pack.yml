@@ -1,0 +1,69 @@
+# Gear-2 evidence pack — generic ledger fold. Every receipt is a command run in this worktree on 2026-10-08.
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Team lead mandate, 2026-10-08 — sequence-agnostic fold for the weekly re-attestation organ.
+mission: >-
+  Derive pack N+1 from a signed anchor and a read ledger for any anchor; reproduce seq-25 exactly.
+lanes:
+  - lane: visa-fold-generic
+    role: build
+    seat: Claude Sonnet 5.5 implementer (worktree backend-rag-visa-fold-generic).
+pii_scan: clean
+bites:
+  consumer: >-
+    the weekly re-attestation organ, which calls fold_pack_generic.fold with the active signed pack
+    as anchor; until it lands, the CI backend shard that runs test_fold_pack.py against the
+    committed seq-24 pair and seq-25 source.
+  where: ci
+  observe: pytest backend/tests/scripts/visa_engine/test_fold_pack.py
+  expect: "contains:passed"
+decisions:
+  - id: D-reuse
+    decision: >-
+      Ledger loader and the text, quote and diff guards are imported from fold_pack_seq25 (no
+      sequence constants there, file untouched); attestation_instant and anchor verification are
+      rewritten because they held the seq-24 stamp and digest constants.
+  - id: D-errors
+    decision: >-
+      A bad anchor signature propagates RulePackVerificationError; every other refusal is a
+      SystemExit naming the record id.
+receipts:
+  - claim: The generic fold reproduces the committed seq-25 payload digest from the real seq-24 pair and the real ledger.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.fold_pack_generic --anchor-source …/rulepack-prod-024.source.json --anchor-signed …/rulepack-prod-024.signed.json --ledger-dir ../../research/visa/2026-10-07-freshness-restamp-seq25 --output $TMPDIR/out25.json --version 2026.10.7 --created-at 2026-10-07T13:38:00Z --created-by … --verified-by …
+    result: "fold_pack_generic: seq-25 payload_sha256 = 603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-10-08T00:00:00Z"
+    seat: Claude Sonnet 5.5
+  - claim: The new suite and the seq-25 suite are green together.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/scripts/visa_engine/test_fold_pack.py backend/tests/services/visa_engine/test_seq25_pack.py -q -p no:cacheprovider -o addopts=""
+    result: "57 passed in 9.59s"
+    exit: 0
+    ts: "2026-10-08T00:00:00Z"
+    seat: Claude Sonnet 5.5
+  - claim: Both new files are ruff clean and formatted.
+    cmd: .venv/bin/ruff check <both files> && .venv/bin/ruff format <both files>
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-10-08T00:00:00Z"
+    seat: Claude Sonnet 5.5
+dissent:
+  - seat: self-review
+    objection: >-
+      The module is named fold_pack_generic.py, not fold_pack.py as specified, because fold_pack.py
+      already exists on main (the seq-9 fold) and was overwritten by mistake, then restored.
+    status: CONFIRMED
+    note: lead accepted the name.
+  - seat: self-review
+    objection: >-
+      The diff is 643 lines against the ~400 target; the excess is the guilt suite and formatter expansion.
+    status: CONFIRMED
+    note: lead accepted the size.
+  - seat: self-review
+    objection: >-
+      No adversarial spalla ran on this diff; the guilt suite is the only adversarial check.
+    status: CONFIRMED
+    note: carried to the reviewing session.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
