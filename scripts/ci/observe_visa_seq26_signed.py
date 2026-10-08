@@ -14,8 +14,8 @@ is the executable consumer the per-PR pack declares in its `bites:` block
 intermediate `highest signed sequence=24` line prints before the tests run). Fails loud
 on the first red step:
 
-1. ``review_hold_inventory --json`` must report ``sequence == 24`` — the
-   proof that ``rulepack-prod-024.signed.json`` is the HIGHEST SIGNED pack on
+1. ``review_hold_inventory --json`` must report ``sequence == 26`` — the
+   proof that ``rulepack-prod-026.signed.json`` is the HIGHEST SIGNED pack on
    disk, which is what every consumer below reads.
 2. ``test_seq26_pack.py`` — the seq-26 pack's own gate, including the
    ledger-gate witnesses and, in signed mode, the signed-bundle ties.

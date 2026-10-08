@@ -262,14 +262,27 @@ def _walk_displays() -> list[tuple[dict[str, Any], dict[str, Any]]]:
 
 class TestResponseLayer:
     def test_products_without_options_answer_exactly_as_before_on_every_walk(self) -> None:
-        old, _ = _candidate_schemas()
+        """Per candidate, not per pack: a product WITHOUT options answers byte-for-byte as
+        before and validates against the old contract; a product WITH options (seq-26: the
+        nine E31) carries the three fields and validates against the new one. The walk
+        corpus must exercise at least one of each."""
+        old, new = _candidate_schemas()
         pairs = _walk_displays()
         assert len(pairs) > 50
+        seen = {"with_options": 0, "without_options": 0}
         for raw, dumped in pairs:
             for built, shown in zip(raw["candidates"], dumped["candidates"], strict=True):
-                assert not set(_NEW_FIELDS) & set(shown)
                 assert set(shown) == set(built)
-                assert list(old.iter_errors(shown)) == []
+                if "duration_options" in built:
+                    seen["with_options"] += 1
+                    assert set(_NEW_FIELDS) <= set(shown)
+                    assert list(new.iter_errors(shown)) == []
+                else:
+                    seen["without_options"] += 1
+                    assert not set(_NEW_FIELDS) & set(shown)
+                    assert list(old.iter_errors(shown)) == []
+        assert seen["without_options"] > 0
+        assert seen["with_options"] > 0, "the signed pack offers options and no walk reached them"
 
     def test_a_product_with_options_yields_the_new_keys_and_only_the_new_contract_accepts_them(
         self,
