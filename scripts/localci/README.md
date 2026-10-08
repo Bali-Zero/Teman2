@@ -486,6 +486,26 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
     tail -3 ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl   # green≠working: read the journal, not the exit code
     cat ~/.organism/last_seen/pro.localci_merger.json
 
+### Disk floor organ (B6, Pro)
+
+`pro.disk_floor` (`scripts/ops/pro_disk_floor_tick.sh`, `infra/launchagents/com.nuzantara.disk-floor.plist`) reads
+`df -Pk /System/Volumes/Data` every 30 minutes (`StartInterval` 1800, `RunAtLoad`, no `KeepAlive`) and writes
+`~/.organism/last_seen/pro.disk_floor.json`: `ok` above 100 GB free, `warning` from 60 to 100, and under 60 the mandate's
+`failed`, written as `error` (the word `scripts/lib/heartbeat.sh` canonicalises it to and the sentinel and the healer read).
+The note is `free_gb=N on /System/Volumes/Data (ok > 100, failed < 60)`; when the organ is not `ok` it adds
+`; biggest: ~/<dir> X.YGB, …` for the three biggest top-level directories of `~` (the walk took 94 s on Pro, so it runs only
+when the organ pages). Wrong node or `PRO_DISK_FLOOR_ENABLED=false`: `disabled`. Registry `expected_hb_seconds` 3600,
+silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro, user `nuzantara`, from a checkout at
+`origin/main`):
+
+    mkdir -p ~/.nuzantara-cron ~/logs/pro-disk_floor
+    cp scripts/ops/pro_disk_floor_tick.sh ~/.nuzantara-cron/.pro_disk_floor_tick.sh.new
+    mv -f ~/.nuzantara-cron/.pro_disk_floor_tick.sh.new ~/.nuzantara-cron/pro_disk_floor_tick.sh
+    cmp -s scripts/ops/pro_disk_floor_tick.sh ~/.nuzantara-cron/pro_disk_floor_tick.sh && echo "live copy == repo"
+    cp infra/launchagents/com.nuzantara.disk-floor.plist ~/Library/LaunchAgents/com.nuzantara.disk-floor.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.disk-floor.plist
+    cat ~/.organism/last_seen/pro.disk_floor.json   # RunAtLoad: the first heartbeat lands at bootstrap
+
 ## Tests
 
 `PYTHONPATH=<worktree> python -m pytest scripts/localci/tests -q` (real temporary git repos; the hypothesis state machine

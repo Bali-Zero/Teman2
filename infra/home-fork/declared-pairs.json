@@ -8,6 +8,18 @@
       "_note": "launchd organ pro.localci_merger (com.balizero.localci-merger): the LOCALCI-SOVEREIGN shadow merger tick; the plist runs this copy, which runs merger.py from origin/main."
     },
     {
+      "live": "~/.nuzantara-cron/pro_disk_floor_tick.sh",
+      "repo": "scripts/ops/pro_disk_floor_tick.sh",
+      "machines": ["pro"],
+      "_note": "launchd organ pro.disk_floor (com.nuzantara.disk-floor), LOCALCI-SOVEREIGN B6: reads Pro's free space every 30 min and pages under the floor (ok > 100 GB, failed < 60). Armed by the lead with the README's commands."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.disk-floor.plist",
+      "repo": "infra/launchagents/com.nuzantara.disk-floor.plist",
+      "machines": ["pro"],
+      "_note": "The plist of pro.disk_floor: StartInterval 1800, RunAtLoad, no KeepAlive."
+    },
+    {
       "live": "~/.fly/bin/fly_pg_tunnel_supervisor.sh",
       "repo": "scripts/fly_pg_tunnel_supervisor.sh",
       "machines": ["m5"],

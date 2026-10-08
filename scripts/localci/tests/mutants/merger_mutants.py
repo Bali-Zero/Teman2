@@ -36,6 +36,7 @@ B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_p
                                              "test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning",
                                              "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
+FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
 
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
@@ -175,6 +176,12 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
     "b6-merger-floor-59": (PY, "type=float, default=60.0,", "type=float, default=59.0,", B6_FLOOR),
     "b6-fstrim-without-removal": (PRUNE, "if fstrim and removed and not dry:", "if fstrim and not dry:", (PRUNE_T,)),
+    # B6-4: pro.disk_floor — ok above 100 GB, warning 60-100, failed under 60
+    "b6-floor-organ-ok-at-100": (FLOOR_SH, 'if [ "$FREE_GB" -gt "$OK_ABOVE_GB" ]; then VERDICT="ok"', 'if [ "$FREE_GB" -ge "$OK_ABOVE_GB" ]; then VERDICT="ok"', (FLOOR_T,)),
+    "b6-floor-organ-ok-above-101": (FLOOR_SH, "OK_ABOVE_GB=100", "OK_ABOVE_GB=101", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-59": (FLOOR_SH, "FAIL_UNDER_GB=60", "FAIL_UNDER_GB=59", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-61": (FLOOR_SH, "FAIL_UNDER_GB=60", "FAIL_UNDER_GB=61", (FLOOR_T,)),
+    "b6-floor-organ-failed-as-warning": (FLOOR_SH, '*) heartbeat "error" "failed: $NOTE"', '*) heartbeat "warning" "failed: $NOTE"', (FLOOR_T,)),
     # the tick's journal
     "durations-not-journalled": (PY, '                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},\n',
                                  "", (TICK,)),
@@ -274,6 +281,9 @@ def copy_tree(dest: Path) -> None:
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
+    for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json"):
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)   # B6-4: the disk-floor organ and the files its test reads
+        shutil.copy2(ROOT / rel, dest / rel)
 
 
 def run_tests(tree: Path, files: tuple[str, ...]) -> int:
