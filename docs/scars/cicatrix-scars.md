@@ -1849,3 +1849,12 @@ schedule; a dedup ladder built for flapping turns a standing outage into one los
 heartbeat read `error rc=1` for six days and no receptor turned that into a page. (3) A
 freshness window is a promise kept by nobody until the READ is scheduled; widening it (seq-18)
 only moved the date. Family #2 (Esiste≠Armato), with #8 (the channel flap) as the accomplice.
+
+**Cure (2026-10-08):** four cures closed the pending chain. (1) Sentinel re-alert, #8064: a
+persistent STALE re-alerts inside 24 h, only a `sent` Telegram counts as delivery, the HIGH
+board row is idempotent. (2) The organ `pro.visa_reattestation`, #8075: weekly read, judge,
+fold and candidate PR, with a T-7 "pack ready to sign" alert; it rests on the generic fold
+#8062 and the receipts. (3) The judge `portal_judge.py`, #8069: the Claude CLI reads each page,
+strict JSON, the quote bound to the receipt it read. (4) seq-26, #8081: the page-versus-pack
+modelling gap (1 or 2 years) is closed by duration options, engine side #8065. Family #2
+(Esiste≠Armato) is closed only when the organ's first real run is observed.
