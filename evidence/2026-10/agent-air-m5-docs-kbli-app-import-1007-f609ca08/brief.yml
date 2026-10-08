@@ -10,7 +10,7 @@ objective: |
   two book PDFs from KBLI_BOOK_PDF_DIR, failing loudly when absent. The dataset-sync script must
   point its fleet notice at the in-repo app instead of a dead Desktop path.
 constraints:
-  - "Import is source-only: no PDFs, no .build-* trees, no 37 MB duplicate dataset, no gates/brand-ref docs, no image over 200 KB."
+  - "Import is source-only: no PDFs, no .build-* trees, no 37 MB duplicate dataset, no gates/brand-ref docs, no image over 200 KB except the app icon (AppIcon.icns, 920 KB)."
   - "No guard, workflow or allowlist is changed; the churn is the import itself, so the Gear-3 floor is size-driven and unavoidable."
   - "Do not install on any Desktop; arm only after the PR is open; deploy of the app to the fleet is a separate later step."
 acceptance:
