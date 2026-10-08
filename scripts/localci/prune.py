@@ -1,8 +1,10 @@
 """B6: the merger prunes what it wrote, and journals it (docs/specs/localci-sovereign-2026-10-07.md, phase B, step B6).
 
-Deps images go by explicit tag when no plan of the last 48 h names them, they are not the newest image of their recipe and they
-were built more than 48 h ago; `localci-candidate:*` and `localci-deps-base:*` are never in a removal set (2026-10-08 07:48Z: an
-age prune removed the candidate image and blocked every contained context for a tick). Run directories keep everything for 7
+Deps images go by explicit tag when no plan of the last 48 h names them and they are not the newest image of their recipe —
+whatever their age (the age guard of B6-1 was retired under the cap: per recipe at most MAX_IMAGES_PER_RECIPE images stay, the
+newest and one a plan of the last 48 h names; beyond the slots only a plan younger than IN_FLIGHT_GRACE_H keeps an image);
+`localci-candidate:*`, `localci-deps-base:*` and every service stand-in of the BASE matrix are never in a removal set
+(2026-10-08 07:48Z: an age prune removed the candidate image and the stand-ins and blocked every contained context for a tick). Run directories keep everything for 7
 days, then lose `logs/` and the Pysa call graphs, and after 30 days keep only their three verdict files. `decisions.jsonl` and
 everything outside `<state>/runs` are never touched. One `{"kind": "prune"}` journal line says what went, by which rule, and the
 free GB of the docker VM and of the host before and after.

@@ -26,7 +26,7 @@ pii_scan_note: Merger, prune and organ code, a spec paragraph, tests and synthet
 what_changed: |
   scripts/localci/prune.py (new): plan_refs reads every run's state/plan.json (a plan younger than 48 h names images by tag
   or id; any plan records the check that named a tag, the recipe when no label says it); image_decisions keeps an image named
-  by a plan of the last 48 h, built under 48 h ago, the newest of its recipe or in the never-list (localci-candidate:*,
+  by a plan of the last 48 h, the newest of its recipe, holding a slot under the cap, or in the never-list (no age guard: localci-candidate:*,
   localci-deps-base:*, and only localci-deps: is listed), and removes the rest by `docker image rm <tag>` (never -f), then
   `docker builder prune -f --filter until=24h` on the current builder; trim_runs trims run directories by the timestamp in
   their name (7 days: logs/ and the call graphs go; 30 days: only status.json, hosted_compare.json, state/plan.json stay);
@@ -110,7 +110,7 @@ receipts:
     exit: 0
     ts: "2026-10-08T13:42:17Z"
     seat: claude-opus-5-5 on M5
-  - claim: "The journal's rules on the B6-1b tree, fixture of four E2E images and the never-list present: removed localci-deps:0a0a0a0a0a0a0a0a `recipe e2e-tests already keeps 2 images (newest localci-deps:285e7c11f8bfcb0d): beyond the cap, its youngest plan is 40.0 h old`; removed localci-deps:1b044648ceab93bb `not the newest of recipe e2e-tests (newest localci-deps:285e7c11f8bfcb0d) and no plan of the last 48 h names it`; kept 285e7c11f8bfcb0d `the newest image of recipe e2e-tests`, 59638824d98f624a `slot 2 of 2 of recipe e2e-tests, named by a plan 47.0 h ago`, localci-candidate:1 `never-list (the candidate or a base image): never pruned`, postgres:15 and redis:7 `service stand-in of the BASE matrix: never pruned`; rc 0, failed []."
+  - claim: "The journal's rules on the B6-1b tree, fixture of four E2E images and the never-list present: removed localci-deps:0a0a0a0a0a0a0a0a `recipe e2e-tests already keeps 2 images (newest localci-deps:285e7c11f8bfcb0d): beyond the cap, its youngest plan is 40.0 h old`; removed localci-deps:0b0b0b0b0b0b0b0b (an invented tag; the fixture earlier reused Pro's backend tag 1b044648ceab93bb, which the committed rules keep on Pro) `not the newest of recipe e2e-tests (newest localci-deps:285e7c11f8bfcb0d) and no plan of the last 48 h names it`; kept 285e7c11f8bfcb0d `the newest image of recipe e2e-tests`, 59638824d98f624a `slot 2 of 2 of recipe e2e-tests, named by a plan 47.0 h ago`, localci-candidate:1 `never-list (the candidate or a base image): never pruned`, postgres:15 and redis:7 `service stand-in of the BASE matrix: never pruned`; rc 0, failed []."
     cmd: PYTHONPATH=. python3 - (test_prune.world, then merger.main prune --code-sha)
     exit: 0
     ts: "2026-10-08T13:42:30Z"
