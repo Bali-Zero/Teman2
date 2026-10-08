@@ -276,24 +276,33 @@ def test_prune_journals_the_trim_and_never_touches_the_decisions_journal(tmp_pat
     assert lines[0] == {"kind": "decision", "ts": "2026-09-01T00:00:00Z"} and lines[-1]["runs"]["trimmed_7d"] == [week.name]
 
 
-def test_fstrim_runs_only_after_an_image_went_and_the_host_is_read_again_after_it(tmp_path):
+def test_every_real_prune_ends_with_fstrim_even_with_no_removal_and_the_host_is_read_again_after_it(tmp_path):   # B7
     colima = tmp_path / "colima"
-    colima.write_text(f'#!/bin/sh\necho "$*" >> {tmp_path / "colima.log"}\necho "/: 12 GiB (12884901888 bytes) trimmed"\n')
+    colima.write_text(f'#!/bin/sh\necho "$*" >> {tmp_path / "colima.log"}\necho "/: 11.4 GiB (12240656384 bytes) trimmed"\n')
     colima.chmod(0o755)
-    state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
-    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--fstrim", "--colima", str(colima)]) == 0
-    assert not (tmp_path / "colima.log").exists() and "fstrim" not in journal(state)[-1]
-    imgs = [image("b" * 16, 80, "backend-tests"), image("c" * 16, 10, "backend-tests")]
-    state, docker = world(tmp_path / "w2", imgs)
-    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--dry-run", "--fstrim", "--colima", str(colima)]) == 0
-    assert not (tmp_path / "colima.log").exists()
+    state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])   # nothing to remove
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--fstrim", "--colima", str(colima)]) == 0
     line = journal(state)[-1]
-    assert (tmp_path / "colima.log").read_text() == "ssh -- sudo fstrim -av\n" and line["fstrim"]["rc"] == 0
+    assert line["images"]["removed"] == [] and (tmp_path / "colima.log").read_text() == "ssh -- sudo fstrim -av\n"
+    assert line["fstrim"] == {"rc": 0, "tail": "/: 11.4 GiB (12240656384 bytes) trimmed"} and line["failed"] == []
     assert set(line["host_free_gb"]) == {"before", "after", "after_fstrim"}
 
 
-# ------------------------------------------------------------------ council round 1 (2026-10-08): the findings it confirmed
+def test_a_dry_run_and_a_lease_skipped_prune_never_trim(tmp_path):   # B7 innocence
+    colima = tmp_path / "colima"
+    colima.write_text(f'#!/bin/sh\necho "$*" >> {tmp_path / "colima.log"}\n')
+    colima.chmod(0o755)
+    state, docker = world(tmp_path, [image("a" * 16, 80, "backend-tests"), image("b" * 16, 10, "backend-tests")])
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--dry-run", "--fstrim", "--colima", str(colima)]) == 0
+    assert "fstrim" not in journal(state)[-1] and "after_fstrim" not in journal(state)[-1]["host_free_gb"]
+    fh, lease = mg.take_lease(state, "o/r")
+    try:
+        assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--fstrim", "--colima", str(colima)]) == 0
+    finally:
+        mg.drop_lease(state, fh, lease)
+    assert journal(state)[-1]["skipped"] == "lease" and not (tmp_path / "colima.log").exists()
+
+
 def test_an_unreadable_plan_blocks_every_removal_and_a_half_written_one_still_names_its_images(tmp_path):
     imgs = [image("a" * 16, 80, "backend-tests"), image("b" * 16, 72, "backend-tests"), image("c" * 16, 10, "backend-tests")]
     state, docker = world(tmp_path, imgs, {"pr1-x-20261008T000000Z": (5, {"ctx.backend-tests": imgs[0]["tag"]}),

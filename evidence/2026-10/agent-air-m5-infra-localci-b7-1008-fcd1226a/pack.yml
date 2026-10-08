@@ -1,0 +1,57 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Lead's mandate B7, 2026-10-08 (budget 45 minutes, ≤ ~80 net lines), from origin/main eb880bef07 (B6 merged at a43431d355).
+  Measured on Pro by the lead: prune #1 at 14:46Z removed 2 images and fstrim returned 15 GB (89.8 -> 104.9); prune #2 at
+  15:11Z removed nothing, so no fstrim, host 80.2; df 73 GiB at 15:15Z with the datadisk at 52.9 GiB; `colima ssh -- sudo
+  fstrim -av` by hand at 15:16Z with no image removal returned 11.4 GiB in 2 s (host 73 -> 81 GiB, datadisk 52.9 -> 44.8).
+lanes:
+  - lane: localci-b7-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux B7 of LOCALCI-SOVEREIGN, M5; Pro not touched)"
+pii_scan: clean
+pii_scan_note: The merger's prune code, its tests, a spec line and a README row; no client data was read or written.
+what_changed: |
+  scripts/localci/prune.py: `if fstrim and removed and not dry` becomes `if fstrim and not dry` — every real prune ends with
+  the trim, so the line always carries fstrim and host_free_gb.after_fstrim; a lease-skipped prune returns in cmd_prune before
+  prune() runs. Spec item 3 of the B6 paragraph rewritten with the lead's text (and the date of the change); README row.
+  Tests: the zero-removal guilt, the dry-run and lease-skip innocence. Mutants: b6-fstrim-without-removal retired;
+  b7-fstrim-only-after-removal and b7-fstrim-on-dry-run added. localci_merger_tick.sh unchanged.
+proof: |
+  See receipts. The zero-removal line is produced by the committed code on the fixture (fake docker and colima).
+bites:
+  consumer: The shadow merger's launchd tick on Pro (decisions.jsonl).
+  observation: >-
+    Owed after merge (this lane does not ship): the first tick after the mirror fetches the merge whose prune removes no image
+    journals a {"kind":"prune"} line with `removed: []`, an `fstrim` object with rc 0 and a `trimmed` tail, and
+    host_free_gb.after_fstrim above host_free_gb.after by the GiB the tick's own run left allocated.
+ground:
+  ts: "2026-10-08T15:17:04Z"
+  siblings: Worktree from origin/main eb880bef07 via scripts/agent_start.py; B6 merged at a43431d355.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 0.5
+receipts:
+  - claim: "A zero-removal prune at ba2518d212 on the fixture (one E2E image named 5 h ago, postgres:15, redis:7 and localci-candidate:1 present, fake colima): rc 0 and the line {builder_prune {rc 0}, failed [], fstrim {rc 0, tail '/: 11.4 GiB (12240656384 bytes) trimmed on /dev/vdb1'}, host_free_gb {before, after, after_fstrim}, images {removed [], kept [the newest image of recipe e2e-tests; never-list (the candidate or a base image): never pruned; service stand-in of the BASE matrix: never pruned x2], errors []}, kind prune, runs {...}, vm_free_gb {before, after}}."
+    cmd: PYTHONPATH=. python3 - (test_prune.world, then merger.main prune --fstrim --colima <fake> --code-sha)
+    exit: 0
+    ts: "2026-10-08T15:19:58Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The mutant rules on the fstrim condition and its neighbours at the B7 tree: b7-fstrim-only-after-removal, b7-fstrim-on-dry-run, b6-prune-beside-tick, b6-wrapper-no-fstrim, b6-prune-failure-ok — 5/5 killed, none stale (202 rules, none stale)."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the five rules>
+    exit: 0
+    ts: "2026-10-08T15:19:28Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The localci suite at ba2518d212: 914 passed, 14 skipped (needs_docker), 1 warning (an unraisable tarfile stream in test_isolation, not B7), 176 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-08T15:22:43Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The full mutant sweep at ba2518d212, 202 rules (b6-fstrim-without-removal retired, b7-fstrim-only-after-removal and b7-fstrim-on-dry-run added): 202/202 killed; survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py
+    exit: 0
+    ts: "2026-10-08T15:43:29Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "The trim runs every tick (every 10 minutes when the merger ticks); one measurement says 2 s. If phase D shows it long, the prune bounds it at 900 s and journals the timeout as a failed fstrim."
+  - "No adversarial round: gear 1 by the lint's floor; the independent gate is the lead's."

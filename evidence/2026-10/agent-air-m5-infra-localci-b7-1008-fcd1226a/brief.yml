@@ -1,0 +1,36 @@
+task_id: localci-b7-1008
+mission: LOCALCI-SOVEREIGN (phase B, step B7)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 1 (no hot-zone path, 13 net lines outside evidence/). One condition in
+  the merger's own prune: the fstrim it already runs after an image removal now runs at the end of every real prune. Nothing
+  else changes: no workflow, credential or wrapper; dry runs and lease-skipped prunes still never trim.
+l_level: L2
+gate_class: opus
+objective: >-
+  From the lead's rule change of 2026-10-08 (spec item 3 of the B6 paragraph): every prune ends with `colima ssh -- sudo
+  fstrim -av`, whether or not an image went, so the blocks a run frees inside the VM are returned to the host at the end of
+  the same tick; the journal's fstrim object and host_free_gb.after_fstrim are always present on a real prune.
+constraints:
+  - localci_merger_tick.sh is unchanged (it already passes --fstrim), so the deploy is the mirror's next fetch.
+  - A dry run and a lease-skipped prune never trim.
+  - A failed trim stays failed ["fstrim"], exit 1.
+  - No .github/ file, no push.
+acceptance:
+  - text: WHEN a real prune removes no image, it SHALL run `colima ssh -- sudo fstrim -av` once and journal fstrim and host_free_gb.after_fstrim.
+    probe: "test_prune.py::test_every_real_prune_ends_with_fstrim_even_with_no_removal_and_the_host_is_read_again_after_it"
+  - text: A dry run and a prune that finds the lease held SHALL never call fstrim.
+    probe: "test_prune.py::test_a_dry_run_and_a_lease_skipped_prune_never_trim"
+  - text: A failed fstrim SHALL be failed ["fstrim"] with exit 1.
+    probe: "test_prune.py::test_a_failed_builder_prune_or_fstrim_is_a_failed_prune_and_the_lease_holder_is_never_pruned_beside"
+assumptions:
+  - text: A trim every tick costs seconds, not minutes.
+    status: unverified
+    note: One measurement, 2 s for 11.4 GiB by hand at 15:16Z; the prune bounds it with a 900 s timeout.
+    probe: phase D — the prune lines' fstrim timing against the tick's duration on Pro.
+consumer_map:
+  - scripts/localci/merger.py prune, run by the launchd tick on Pro after every tick — the fstrim call and the {"kind":"prune"} line in decisions.jsonl.
+appetite:
+  wall_clock_hours: 0.75
+  adversarial_rounds: 0

@@ -191,7 +191,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-wrapper-never-prunes": (SH, """if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then""", "if false; then", B6_WRAP),
     "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
     "b6-merger-floor-59": (PY, "type=float, default=60.0,", "type=float, default=59.0,", B6_FLOOR),
-    "b6-fstrim-without-removal": (PRUNE, "if fstrim and removed and not dry:", "if fstrim and not dry:", (PRUNE_T,)),
+    "b7-fstrim-only-after-removal": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim and removed and not dry:   # every real prune", (PRUNE_T,)),
+    "b7-fstrim-on-dry-run": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim:   # every real prune", (PRUNE_T,)),
     "b6-prune-code-sha-dropped": (PY, "    CODE_SHA = a.code_sha or None\n", "    CODE_SHA = None\n", (PRUNE_T,)),
     # council round 1 (2026-10-08): the confirmed findings, each with its guard
     "b6-unreadable-plan-ignored": (PRUNE, "            unreadable.append(", "            0 and unreadable.append(", (PRUNE_T,)),
