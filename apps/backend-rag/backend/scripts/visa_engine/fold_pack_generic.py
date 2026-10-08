@@ -372,7 +372,6 @@ def fold(
             baseline_root,
             portals,
             exclude=[ledger_dir or (ledger.text_dir.parent if ledger.text_dir else Path("."))],
-            not_after=anchor.get("created_at"),
         )
         if baseline_root is not None
         else None

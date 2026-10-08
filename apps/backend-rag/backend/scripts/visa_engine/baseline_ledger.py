@@ -5,11 +5,11 @@ can call a byte-identical page "changed" (it did, on the first real run). The vi
 fingerprint settles that without a model: when a fresh receipt carries the SAME fingerprint
 as the ATTESTED read of that record, the page did not change and the organ writes the ``none``
 judgement itself (``judge: "fingerprint"``). The attested read is not a directory someone names: it
-is proven. A ledger under the baseline root attests the anchor pack when it holds a successful
-receipt dated exactly at one of the pack's portal ``verified_at`` stamps (the fold stamps the
-earliest successful read of the ledger it consumed), and the attested read of a record is that
-ledger's latest successful receipt not after the pack's ``created_at``, whose own saved text carries
-the fingerprint the receipt recorded. The run's own ledger is excluded by path. The fold resolves the
+is proven. A ledger under the baseline root attests the anchor pack when a record has in it a
+successful receipt dated exactly at one of the pack's portal ``verified_at`` stamps and a judgement
+(the fold stamps the earliest successful read of the ledger it consumed); two such ledgers make the
+baseline ambiguous and attest nothing. The attested read of a record is the receipt bound by that
+record's latest judgement, whose own saved text carries the fingerprint the receipt recorded. The run's own ledger is excluded by path. The fold resolves the
 same reads, re-proves every fingerprint judgement against them, and downgrades a ``changed`` verdict
 on an unchanged fingerprint to ``none``, listing it as a baseline disagreement.
 
@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -136,49 +136,90 @@ def _own_text(ledger_dir: Path, receipt: dict[str, Any]) -> str | None:
     return saved
 
 
+def judged_read(
+    successes: list[dict[str, Any]], judgement: dict[str, Any]
+) -> dict[str, Any] | None:
+    """The receipt a judgement read, resolved as the fold resolves it.
+
+    A judgement that names ``receipt_fetched_at`` / ``text_sha256`` must match that receipt. An old
+    judgement that names neither binds to the latest success with ``fetched_at <= judged_at``.
+    """
+    judged_at = _instant(judgement.get("judged_at"))
+    if judged_at is None:
+        return None
+    named = judgement.get("receipt_fetched_at")
+    if named is not None:
+        hits = [r for r in successes if r["fetched_at"] == named]
+        bound = hits[0] if hits else None
+    else:
+        eligible = [r for r in successes if _instant(r["fetched_at"]) <= judged_at]  # type: ignore[operator]
+        bound = max(eligible, key=lambda r: _instant(r["fetched_at"])) if eligible else None  # type: ignore[arg-type,return-value]
+    if bound is None:
+        return None
+    pinned = judgement.get("text_sha256")
+    if pinned is not None and pinned != bound.get("visible_text_sha256"):
+        return None
+    return bound
+
+
 def attested_reads(
     root: Path,
     portals: Iterable[dict[str, Any]],
     *,
     exclude: Iterable[Path] = (),
-    not_after: str | None = None,
+    log: Callable[[str], None] = lambda _m: None,
 ) -> dict[str, Attested]:
     """record id -> the read the anchor pack attests, proven from the ledgers under ``root``.
 
     ``portals`` are the anchor's OFFICIAL_PORTAL records (``source_record_id``, ``verified_at``).
-    A record with no provable attested read is simply absent: it goes to the judge.
+    A ledger qualifies only when a record has in it a successful receipt dated EXACTLY at a portal
+    stamp of the pack AND a judgement. When more than one ledger qualifies the baseline is ambiguous:
+    nothing is attested (ledgers are never combined). The attested read of a record is the receipt
+    bound by that record's latest judgement in the qualifying ledger, whose own saved text re-hashes
+    to the fingerprint; a read nobody judged attests nothing. A record without one is absent: it goes
+    to the judge.
     """
     records = list(portals)
     stamps = {_instant(p.get("verified_at")) for p in records} - {None}
-    ceiling = _instant(not_after) if not_after else None
     skip = {p.resolve() for p in exclude}
-    chosen: dict[str, Attested] = {}
     if not stamps or not root.is_dir():
-        return chosen
+        return {}
+    qualifying: list[tuple[Path, list[dict[str, Any]], list[dict[str, Any]]]] = []
     for ledger in sorted(p for p in root.iterdir() if p.is_dir()):
         if ledger.resolve() in skip:
             continue
         successes = [r for r in _rows(ledger, "*-receipts.jsonl") if is_success(r)]
-        if not any(_instant(r["fetched_at"]) in stamps for r in successes):
-            continue
+        judgements = _rows(ledger, "*-judgements.jsonl")
+        judged = {j.get("source_record_id") for j in judgements}
+        if any(
+            _instant(r["fetched_at"]) in stamps and r.get("source_record_id") in judged
+            for r in successes
+        ):
+            qualifying.append((ledger, successes, judgements))
+    if len(qualifying) > 1:
+        log(
+            "ambiguous baseline: "
+            + ", ".join(q[0].name for q in qualifying)
+            + " all attest the pack"
+        )
+        return {}
+    chosen: dict[str, Attested] = {}
+    for ledger, successes, judgements in qualifying:
         for record in records:
             rid = record["source_record_id"]
-            reads = [
-                r
-                for r in successes
-                if r.get("source_record_id") == rid
-                and (ceiling is None or _instant(r["fetched_at"]) <= ceiling)  # type: ignore[operator]
+            mine = [
+                j
+                for j in judgements
+                if j.get("source_record_id") == rid and _instant(j.get("judged_at"))
             ]
-            if not reads:
+            if not mine:
                 continue
-            receipt = max(reads, key=lambda r: _instant(r["fetched_at"]))  # type: ignore[arg-type,return-value]
-            text = _own_text(ledger, receipt)
-            if text is None:
-                continue
-            held = chosen.get(rid)
-            if held is None or _instant(receipt["fetched_at"]) > _instant(
-                held.receipt["fetched_at"]
-            ):  # type: ignore[operator]
+            judgement = max(mine, key=lambda j: _instant(j["judged_at"]))  # type: ignore[arg-type,return-value]
+            receipt = judged_read(
+                [r for r in successes if r.get("source_record_id") == rid], judgement
+            )
+            text = _own_text(ledger, receipt) if receipt else None
+            if receipt is not None and text is not None:
                 chosen[rid] = Attested(ledger, receipt, text)
     return chosen
 

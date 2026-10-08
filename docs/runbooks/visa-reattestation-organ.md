@@ -76,18 +76,23 @@ never used. A fresh read is unchanged when its fingerprint equals the fingerprin
 ATTESTED read of the same record. That read is proven, never named:
 
 - A ledger under the baseline root (`--baseline-root`, default `research/visa` of the code root)
-  attests the anchor pack when it holds a successful receipt (HTTP 200, key phrase found) dated
-  exactly at one of the pack's portal `verified_at` stamps. The fold stamps the earliest read of
-  the ledger it consumed, so that receipt marks the ledger.
-- The attested read of a record is that ledger's latest successful receipt not after the pack's
-  `created_at`. Its text is the receipt's own `text_file`, and the file must carry the fingerprint
-  the receipt recorded. A newer text file for the same id is never used.
+  qualifies when a record has in it a successful receipt (HTTP 200, key phrase found) dated
+  exactly at one of the pack's portal `verified_at` stamps AND a judgement. The fold stamps the
+  earliest read of the ledger it consumed, so that receipt marks the ledger. If more than one ledger
+  qualifies, the baseline is ambiguous: it is logged, nothing is attested and every page goes to
+  the judge. Ledgers are never combined.
+- The attested read of a record is the receipt bound by that record's latest judgement in the
+  qualifying ledger: the one it names (`receipt_fetched_at`, `text_sha256`), or for an old judgement
+  that names none, the latest success not after `judged_at`, as the fold binds it. Its text is the
+  receipt's own `text_file` and must re-hash to the recorded fingerprint. A read nobody judged
+  attests nothing, and neither does a record with no judgement in the qualifying ledger.
 - The run's own ledger is excluded by path. A record with no provable attested read goes to the
   judge. The chosen `(ledger, fetched_at)` per record is logged and listed in the attestation note.
 
-Taking only receipts dated at or before the stamp would prove 2 of the 18 pages, because the stamp is
-the earliest read of the whole set. On 2026-10-08 the rule above proved 18 of 18 against the seq-25
-ledger, including the page below.
+Taking receipts at or before the stamp would prove only 2 of the 18 pages, because the stamp is the
+earliest read of the whole set. Taking the latest read before the pack was created would let a page
+read but never judged become the baseline. The judgement-bound rule proved 18 of 18 against the
+seq-25 ledger on 2026-10-08, including the page below.
 
 The rows the organ writes carry the fresh receipt's `receipt_fetched_at` and `text_sha256`,
 `judged_at` = now, and a `checked_sentence` that is a substring of the fresh text: the attested
@@ -106,9 +111,10 @@ previous attestation on an unchanged page.
 The run removes its worktree, which used to delete the receipts, judgements and texts a human
 needs. Before that, on success and on any failure, the organ copies the ledger to
 `~/.local/state/nuzantara/visa-reattestation/ledgers/<UTC ts>-seq<anchor>/` and keeps the newest 8 (only directories named like that are ever pruned). The copy is verified (same
-entries and sizes) before the worktree is removed; symlinks are copied as links and one leaving the
-ledger refuses the copy. If the copy fails, the worktree is kept, the board row says where, and
-`state.json` has `ledger_copy: null` and `worktree_kept`. The next run reaps that worktree, so read it first.
+entries, sizes and sha256) before the worktree is removed; symlinks are copied as links; an absolute one, or one leaving the
+ledger, refuses the copy. If the copy fails, the worktree is kept, the board row says where, and
+`state.json` has `ledger_copy: null` and `worktree_kept`. The next run retries the copy first and reaps the worktree only after a verified copy; while it
+still fails it spares the worktree and raises the alert again (`state.json.worktrees_kept`).
 The path is in the board row `detail` and `error_summary`, in the Telegram text, and in
 `~/.local/state/nuzantara/visa-reattestation/state.json` under `ledger_copy`. The heartbeat note
 does not carry it: read the board row or `state.json`.

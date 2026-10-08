@@ -39,12 +39,13 @@ decisions:
       The organ writes "none" with judge "fingerprint", so the fold needs no relaxation.
   - id: D-baseline-rule
     decision: >-
-      The attested read is proven, not named: a ledger under the baseline root attests the pack when it
-      holds a successful receipt dated exactly at a portal verified_at stamp; a record's attested read is
-      that ledger's latest successful receipt not after the pack created_at, with its own text file
-      verified against the receipt fingerprint. Deviation from the review's literal rule (latest receipt
-      not after the stamp): the stamp is the earliest read of the whole set, so that rule proves 2 of 18
-      pages on the seq-25 ledger, this one 18 of 18.
+      The attested read is proven, not named. A ledger qualifies when a record has in it a successful
+      receipt dated exactly at a portal verified_at stamp of the anchor pack and a judgement; two
+      qualifying ledgers make the baseline ambiguous and nothing is attested. A record's attested read is
+      the receipt bound by its latest judgement (named receipt, else the fold's judged_at rule), with its
+      own text file verified against the fingerprint. A read nobody judged attests nothing. The review's
+      first literal rule (latest receipt not after the stamp) would prove 2 of 18 pages, its second (latest
+      before created_at) lets an unjudged read win; this one proves 18 of 18 on the seq-25 ledger.
   - id: D-wide-pytest-not-run
     decision: >-
       The wide pytest over the whole backend test tree was not run to completion for this pack. The two
@@ -54,21 +55,21 @@ decisions:
     decision: >-
       The cron wrapper is not changed; the kept ledger path is read from the board row or state.json.
 receipts:
-  - claim: The organ suite is green, including a fingerprint-identical record never reaching the judge, a differing record reaching it, a ledger without a read at the anchor stamp giving no shortcut, the default baseline root, a copy failure keeping the worktree and saying so, an escaping symlink refusing the copy, and the retention cap touching only its own names.
+  - claim: The organ suite is green, including a fingerprint-identical record never reaching the judge, a differing record reaching it, a ledger without a read at the anchor stamp giving no shortcut, the default baseline root, a copy failure keeping the worktree and saying so, a kept worktree retried and reaped only after a verified copy, relative-only symlinks, content-verified copies, and the retention cap touching only its own names.
     cmd: PYTHONPATH=apps/backend-rag python -m pytest scripts/tests/test_visa_reattestation_organ.py
-    result: "43 passed in 31.81s"
+    result: "46 passed in 25.44s"
     exit: 0
-    ts: "2026-10-08T11:45:57Z"
+    ts: "2026-10-08T11:58:16Z"
     seat: Claude Fable 5.1
-  - claim: The visa_engine suite is green, including 12 baseline_ledger tests and 6 fold tests (a proven fingerprint judgement reproduces the seq-25 digest; one on a differing page, a forged hash, or with no baseline is refused; changed on an unchanged fingerprint is downgraded and reported without a disposition; changed on a differing text stands).
+  - claim: The visa_engine suite is green, including 16 baseline_ledger tests and 7 fold tests (a proven fingerprint judgement reproduces the seq-25 digest; one on a differing page, a forged hash, or with no baseline is refused; changed on an unchanged fingerprint is downgraded and reported without a disposition; changed on a differing text stands).
     cmd: PYTHONPATH=apps/backend-rag python -m pytest apps/backend-rag/backend/tests/scripts/visa_engine
-    result: "328 passed in 39.89s"
+    result: "333 passed in 44.20s"
     exit: 0
-    ts: "2026-10-08T11:46:38Z"
+    ts: "2026-10-08T11:59:03Z"
     seat: Claude Fable 5.1
   - claim: Under the system python 3.9 that cron uses, an offline run on a copy of the seq-25 ledger judges 18 of 18 pages by fingerprint, skips the judge, then fails at the fold only because those receipts predate the previous stamp, and keeps the ledger named in the alert.
     cmd: bash scratchpad/e2e.sh (organ --offline --judge fake --ledger-dir <copy of the seq-25 ledger>, scratch state dir)
-    result: "fingerprint: 18 of 18 pages identical to baseline 2026-10-07-freshness-restamp-seq25; judge skipped; failed at 'fold' ... Ledger kept at <state>/ledgers/20261008T112411Z-seq26"
+    result: "fingerprint: 18 of 18 pages identical to their attested read; judge skipped; failed at 'fold' only because those receipts predate the previous stamp; ledger kept"
     exit: 0
     ts: "2026-10-08T11:24:17Z"
     seat: Claude Fable 5.1
@@ -76,23 +77,25 @@ receipts:
     cmd: python3 scripts/ci/observe_visa_reattest_organ.py
     result: "observe_visa_reattest_organ: offline run produced unsigned seq-25 candidate on organ/visa-reattest/24-2026-10-07, digest 603f777e...9d11, PR text carries Bites:"
     exit: 0
-    ts: "2026-10-08T11:46:41Z"
+    ts: "2026-10-08T11:57:48Z"
     seat: Claude Fable 5.1
   - claim: Ruff check passes on all six touched python files.
     cmd: ruff check <6 files>
     result: "All checks passed!"
     exit: 0
-    ts: "2026-10-08T11:46:41Z"
+    ts: "2026-10-08T11:59:05Z"
     seat: Claude Fable 5.1
 dissent:
   - seat: codex-gpt-5.6
     objection: "HIGH: the baseline could be the run's own ledger or a name-sorted ledger that is not the attested one."
     status: CONFIRMED
     note: cured in the commit "the baseline is the proven attested read" - attested_reads, own ledger excluded by path.
+    cure: "round 2 - attested_reads qualifies a ledger only by a stamp-dated read plus a judgement, refuses an ambiguous baseline, and binds each record to its latest judgement; a read nobody judged attests nothing."
   - seat: codex-gpt-5.6
     objection: "HIGH: the baseline text was the newest file for the id, not the text of the attested receipt."
     status: CONFIRMED
     note: cured in the same commit - the text is the receipt's own text_file, verified against its fingerprint.
+    cure: "round 2 - the attested read is the receipt bound by the record's latest judgement, its text re-hashed against the fingerprint; guilt test with an unjudged later read (text B) now picks the judged text A."
   - seat: codex-gpt-5.6
     objection: "HIGH: the fold accepted a judge fingerprint row without re-proving it."
     status: CONFIRMED
@@ -101,6 +104,7 @@ dissent:
     objection: "MEDIUM: rejecting changed on an identical fingerprint lets a judge halt a fold and hides the disagreement."
     status: CONFIRMED
     note: cured in the same commit - downgraded to none, listed as a baseline disagreement in the fold output and the attestation note.
+    cure: "round 2 - satisfied by the two HIGH cures: the downgrade now rests on a judgement-bound attested read."
   - seat: codex-gpt-5.6
     objection: "MEDIUM: the baseline was resolved only when judgements were missing, not on the resume path."
     status: CONFIRMED
@@ -109,10 +113,12 @@ dissent:
     objection: "MEDIUM: the worktree was reaped even when the ledger copy failed or did not match."
     status: CONFIRMED
     note: cured in the same commit - the copy is verified, otherwise the worktree is kept and the board row and state.json say so.
+    cure: "round 2 - the next run retries the copy of a kept worktree first and reaps it only after a copy verified by sha256; otherwise it spares the worktree and alerts again. An absolute symlink now refuses the copy."
   - seat: codex-gpt-5.6
     objection: "MEDIUM: the copy dereferenced symlinks and the cap could prune directories it did not create."
     status: CONFIRMED
     note: cured in the same commit - symlinks kept as links, an escaping one refuses the copy, pruning only matches its own names.
+    cure: "round 2 - an absolute symlink inside the ledger refuses the copy (it would dangle once the worktree is gone); only relative links resolving inside the ledger are copied, as links. Board row names the reason."
   - seat: codex-gpt-5.6
     objection: "LOW: no fault injection for a failing copy."
     status: CONFIRMED

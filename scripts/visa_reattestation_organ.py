@@ -13,6 +13,7 @@ Exit codes: 0 done (or nothing to do), 1 judge halted on an `unsure` page,
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -315,21 +316,23 @@ def _module(stage: str, code_root: Path, repo: Path, module: str, argv: list[str
     return proc
 
 
-def reap_own_worktrees(repo: Path, state_dir: Path) -> None:
+def reap_own_worktrees(repo: Path, state_dir: Path, spare: list[Path] | None = None) -> None:
     """A hard-killed run leaves its worktree registered and its branch checked out, which
     blocks every later `worktree add -B`. The wrapper's pidfile makes this organ a singleton,
     so anything under its own state dir is an orphan."""
     root = str((state_dir / "worktrees").resolve())
     listing = _git(repo, "worktree", "list", "--porcelain", check=False).stdout
     for line in listing.splitlines():
-        if line.startswith("worktree ") and line[9:].startswith(root):
+        if line.startswith("worktree ") and line[9:].startswith(root) and (
+                Path(line[9:]).resolve() not in {p.resolve() for p in spare or []}):
             _git(repo, "worktree", "remove", "--force", line[9:], check=False)
 
 
-def ensure_worktree(args: argparse.Namespace, anchor_seq: int, branch: str, existing: bool, wt: Path) -> None:
+def ensure_worktree(args: argparse.Namespace, anchor_seq: int, branch: str, existing: bool, wt: Path,
+                    spare: list[Path] | None = None) -> None:
     repo = Path(args.repo)
     wt.parent.mkdir(parents=True, exist_ok=True)
-    reap_own_worktrees(repo, Path(args.state_dir))
+    reap_own_worktrees(repo, Path(args.state_dir), spare)
     _git(repo, "worktree", "prune")
     start = f"origin/{branch}" if existing else "origin/main"
     if existing:
@@ -348,12 +351,10 @@ def _baseline_module() -> Any:
     return baseline_ledger
 
 
-def portal_records_of(signed: Path) -> tuple[list[dict[str, Any]], str | None]:
-    """(OFFICIAL_PORTAL records of the signed pack, the pack's created_at)."""
+def portal_records_of(signed: Path) -> list[dict[str, Any]]:
     data = json.loads(signed.read_text(encoding="utf-8"))
     payload = data.get("payload", data)
-    return ([r for r in payload.get("source_records", []) if r.get("authority_type") == PORTAL],
-            payload.get("created_at"))
+    return [r for r in payload.get("source_records", []) if r.get("authority_type") == PORTAL]
 
 
 def judged_ids(ledger: Path) -> set[str]:
@@ -398,10 +399,10 @@ def read_and_judge(args: argparse.Namespace, wt: Path, code_root: Path, anchor: 
                     cwd=code_root / "apps" / "backend-rag", env=_backend_env(code_root))
         if proc.returncode != 0:
             raise OrganError("read", f"portal_read_receipt rc={proc.returncode}: {(proc.stdout + proc.stderr).strip()[-500:]}")
-    portals, created_at = portal_records_of(signed)
+    portals = portal_records_of(signed)
     root = baseline_root_of(args, code_root)
     bl = _baseline_module()
-    attested = bl.attested_reads(root, portals, exclude=[ledger], not_after=created_at)
+    attested = bl.attested_reads(root, portals, exclude=[ledger], log=logger.warning)
     for rid, held in sorted(attested.items()):
         logger.info("attested read %s: %s", rid[:8], held.label())
     if args.skip_judge:
@@ -455,14 +456,29 @@ def fold(args: argparse.Namespace, wt: Path, code_root: Path, anchor: dict, ledg
     return out, sha, disagreements
 
 
-def _manifest(directory: Path) -> dict[str, int]:
-    return {str(p.relative_to(directory)): p.lstat().st_size for p in sorted(directory.rglob("*"))}
+def _manifest(directory: Path) -> dict[str, tuple[str, str]]:
+    """Every entry with its content: size and sha256 for files, the target for links."""
+    out: dict[str, tuple[str, str]] = {}
+    for p in sorted(directory.rglob("*")):
+        rel = str(p.relative_to(directory))
+        if p.is_symlink():
+            out[rel] = ("link", os.readlink(p))
+        elif p.is_dir():
+            out[rel] = ("dir", "")
+        else:
+            out[rel] = (str(p.stat().st_size), hashlib.sha256(p.read_bytes()).hexdigest())
+    return out
 
 
-def _refuse_escaping_symlinks(ledger: Path) -> None:
+def _refuse_unsafe_symlinks(ledger: Path) -> None:
+    """A link is copied as a link, so it must still point inside the copy: relative and in-ledger only."""
     inside = ledger.resolve()
     for entry in ledger.rglob("*"):
-        if entry.is_symlink() and not entry.resolve().is_relative_to(inside):
+        if not entry.is_symlink():
+            continue
+        if os.path.isabs(os.readlink(entry)):
+            raise OSError(f"{entry} is an absolute symlink (it would dangle once the worktree is gone)")
+        if not entry.resolve().is_relative_to(inside):
             raise OSError(f"{entry} is a symlink leaving the ledger")
 
 
@@ -472,12 +488,38 @@ def _ledger_age(path: Path) -> tuple[str, int]:
     return (m.group(1), int(m.group(2) or 1)) if m else ("", 0)
 
 
+def retry_kept_worktree(args: argparse.Namespace, repo: Path) -> list[Path]:
+    """Worktrees earlier runs kept because their ledger copy failed: retry the copy first and reap each
+    only after a VERIFIED copy. Returns those still unresolved (spare them, keep alerting)."""
+    try:
+        prior = json.loads((Path(args.state_dir) / "state.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(prior, dict):
+        return []
+    paths = prior.get("worktrees_kept") or ([prior["worktree_kept"]] if prior.get("worktree_kept") else [])
+    unresolved: list[Path] = []
+    for raw in paths:
+        kept = Path(raw)
+        if not kept.is_dir():
+            continue
+        ledgers = sorted(kept.glob("research/visa/*-organ-reattest-seq*"))
+        why: list[str] = []
+        if ledgers and keep_ledger(args, ledgers[-1], int(prior.get("anchor_seq") or 0), why) is None:
+            logger.warning("kept worktree %s: copy still failing (%s)", kept, "; ".join(why))
+            unresolved.append(kept)
+            continue
+        _git(repo, "worktree", "remove", "--force", str(kept), check=False)
+        logger.info("kept worktree %s: ledger copied and verified, reaped", kept)
+    return unresolved
+
+
 KEPT_NAME = re.compile(r"\d{8}T\d{6}Z-seq\d+(-\d+)?")
 
 
-def keep_ledger(args: argparse.Namespace, ledger: Path, anchor_seq: int) -> Path | None:
+def keep_ledger(args: argparse.Namespace, ledger: Path, anchor_seq: int, why: list[str] | None = None) -> Path | None:
     """Copy the run's ledger (receipts, judgements, texts) out of the worktree that is about to be
-    removed, VERIFY the copy (same relative entries and sizes), and keep the newest LEDGER_KEEP copies.
+    removed, VERIFY the copy (same entries, sizes and sha256), and keep the newest LEDGER_KEEP copies.
     Symlinks are copied as links and one that leaves the ledger refuses the copy. Returns None when
     there is nothing to keep or the copy failed or did not verify: the caller then keeps the worktree.
     Never raises."""
@@ -487,7 +529,7 @@ def keep_ledger(args: argparse.Namespace, ledger: Path, anchor_seq: int) -> Path
     try:
         root = Path(args.state_dir) / "ledgers"
         root.mkdir(parents=True, exist_ok=True)
-        _refuse_escaping_symlinks(ledger)
+        _refuse_unsafe_symlinks(ledger)
         base = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-seq{anchor_seq}"
         taken = [_ledger_age(p)[1] for p in root.iterdir() if p.name == base or p.name.startswith(f"{base}-")]
         dest = root / (base if not taken else f"{base}-{max(taken) + 1}")
@@ -500,6 +542,8 @@ def keep_ledger(args: argparse.Namespace, ledger: Path, anchor_seq: int) -> Path
         return dest
     except Exception as exc:  # noqa: BLE001 — keeping evidence must never fail the run it documents
         logger.warning("could not keep the ledger: %s", exc)
+        if why is not None:
+            why.append(f"{type(exc).__name__}: {exc}"[:300])
         if dest is not None:
             shutil.rmtree(dest, ignore_errors=True)
         return None
@@ -556,8 +600,16 @@ def run(args: argparse.Namespace) -> int:
     code_root = Path(args.code_root) if args.code_root else repo
     ledger = wt / ledger_rel
     worktree_kept: Path | None = None
+    prior_kept = retry_kept_worktree(args, repo)
+    if prior_kept:
+        state.update(worktree_kept=str(prior_kept[0]), worktrees_kept=[str(p) for p in prior_kept])
+        alert(args, job=f"visa-reattestation:worktree-kept:seq{anchor['seq']}",
+              key=f"visa-freshness:reattest-worktree-kept:{anchor['seq']}",
+              summary=f"Visa re-attestation: a failed run's ledger is still only in the worktree "
+                      f"{prior_kept[0]} (the copy keeps failing). Read it before it is lost.",
+              detail="\n".join(str(p) for p in prior_kept))
     try:
-        ensure_worktree(args, anchor["seq"], branch, remote_branch, wt)
+        ensure_worktree(args, anchor["seq"], branch, remote_branch, wt, prior_kept)
         if not args.code_root:
             code_root = wt
         baseline_root, attested = read_and_judge(args, wt, code_root, anchor, ledger, reader)
@@ -580,7 +632,8 @@ def run(args: argparse.Namespace) -> int:
         candidate_ref = state.get("pr_url") or f"{branch}:{plan['candidate']}"
         state["outcome"] = "candidate-ready"
         state.update(attested_reads=choices, baseline_disagreements=disagreements)
-        kept = keep_ledger(args, ledger, anchor["seq"])
+        why: list[str] = []
+        kept = keep_ledger(args, ledger, anchor["seq"], why)
         state["ledger_copy"] = str(kept) if kept else None
         if kept is None and ledger.is_dir():
             worktree_kept = wt
@@ -588,11 +641,13 @@ def run(args: argparse.Namespace) -> int:
         if not isinstance(exc, OrganError):
             exc = OrganError("unexpected", f"{type(exc).__name__}: {exc}")
         rc = exc.rc
-        kept = keep_ledger(args, ledger, anchor["seq"])
+        why = []
+        kept = keep_ledger(args, ledger, anchor["seq"], why)
         if kept is None and ledger.is_dir():
             worktree_kept = wt
         where = (f" Ledger kept at {kept}" if kept else
-                 f" Ledger copy FAILED: worktree kept at {wt} (the next run reaps it)" if worktree_kept else "")
+                 f" Ledger copy FAILED ({'; '.join(why)}): worktree kept at {wt} "
+                 "(the next run retries the copy before reaping it)" if worktree_kept else "")
         state.update(outcome="failed", stage=exc.stage, detail=exc.detail,
                      ledger_copy=str(kept) if kept else None)
         alert(args, job=f"visa-reattestation:{exc.stage}:seq{anchor['seq']}",
@@ -605,7 +660,8 @@ def run(args: argparse.Namespace) -> int:
                 _git(repo, "worktree", "remove", "--force", str(wt), check=False)
             _git(repo, "branch", "-D", branch, check=False)
         else:
-            state["worktree_kept"] = str(worktree_kept)
+            state.update(worktree_kept=str(worktree_kept),
+                         worktrees_kept=[str(worktree_kept), *[str(p) for p in prior_kept]])
 
     if candidate_ref is None:
         candidate_ref = (existing_pr or {}).get("url") or unsigned_candidate_on_main(repo, next_seq)

@@ -13,7 +13,7 @@ import json
 import re
 import shutil
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -651,6 +651,20 @@ class TestBaselineFingerprint:
                     "visible_text_sha256": baseline_ledger.saved_fingerprint(text),
                 }
             )
+        judged_at = datetime.fromisoformat(stamp.replace("Z", "+00:00")).replace(
+            tzinfo=timezone.utc
+        )
+        judged_text = (judged_at.replace(second=judged_at.second) + timedelta(minutes=1)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        (old / "old-judgements.jsonl").write_text(
+            "".join(
+                json.dumps({"source_record_id": r["source_record_id"], "judged_at": judged_text})
+                + "\n"
+                for r in rows
+            ),
+            encoding="utf-8",
+        )
         (old / "old-receipts.jsonl").write_text(
             "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
         )
@@ -666,9 +680,7 @@ class TestBaselineFingerprint:
             if r["source_record_id"] == victim
         )
         judged_at = latest[:-1].rsplit(":", 1)[0] + ":59Z"
-        held = baseline_ledger.attested_reads(
-            root, self._portals(anchor), exclude=[ledger_dir], not_after=anchor["created_at"]
-        )
+        held = baseline_ledger.attested_reads(root, self._portals(anchor), exclude=[ledger_dir])
         rows = baseline_ledger.fingerprint_judgements(
             ledger_dir, [victim], held, reader="organ-test", judged_at=judged_at
         )
@@ -732,6 +744,15 @@ class TestBaselineFingerprint:
         self._victim_row(ledger_copy, anchor, root)
         with pytest.raises(SystemExit, match="needs an attested baseline read"):
             self._fold(anchor, anchor_signed, trust, ledger_copy, None)
+
+    def test_guilt_an_ambiguous_baseline_refuses_fingerprint_judgements(
+        self, anchor, anchor_signed, trust, ledger_copy, tmp_path
+    ) -> None:  # type: ignore[no-untyped-def]
+        root = self._root(tmp_path, anchor, _portal_ids(anchor)[0], victim_same=True)
+        self._victim_row(ledger_copy, anchor, root)
+        shutil.copytree(root / "older", root / "older-twin")
+        with pytest.raises(SystemExit, match="needs an attested baseline read"):
+            self._fold(anchor, anchor_signed, trust, ledger_copy, root)
 
     def test_guilt_a_forged_fingerprint_hash_is_refused(
         self, anchor, anchor_signed, trust, ledger_copy, tmp_path

@@ -384,7 +384,8 @@ STAMP = VERIFIED.strftime("%Y-%m-%dT%H:%M:%SZ")
 FRESH_AT = "2026-10-08T10:11:50Z"
 
 
-def _ledger(root: Path, name: str, texts: dict[str, str], fetched_at: str = FRESH_AT, *, quote: bool = False) -> Path:
+def _ledger(root: Path, name: str, texts: dict[str, str], fetched_at: str = FRESH_AT, *, quote: bool = False,
+            judged: bool = False) -> Path:
     """A ledger holding one saved text, one successful receipt (and optionally a quote) per record."""
     bl = organ._baseline_module()
     led = root / name
@@ -395,9 +396,12 @@ def _ledger(root: Path, name: str, texts: dict[str, str], fetched_at: str = FRES
         receipts.append({"source_record_id": rid, "http_status": 200, "key_phrase_found": True,
                          "fetched_at": fetched_at, "text_file": f"text/{rid[:8]}.txt",
                          "visible_text_sha256": bl.saved_fingerprint(text)})
-        if quote:
-            judgements.append({"source_record_id": rid, "judged_at": "2026-10-07T10:00:00Z",
-                               "checked_sentence": text.splitlines()[1]})
+        if quote or judged:
+            row = {"source_record_id": rid, "judged_at": "2026-10-08T00:00:00Z" if fetched_at > STAMP else
+                   "2026-10-07T13:40:00Z"}
+            if quote:
+                row["checked_sentence"] = text.splitlines()[1]
+            judgements.append(row)
     (led / "r-receipts.jsonl").write_text("".join(json.dumps(r) + "\n" for r in receipts))
     if judgements:
         (led / "r-judgements.jsonl").write_text("".join(json.dumps(j) + "\n" for j in judgements))
@@ -407,7 +411,7 @@ def _ledger(root: Path, name: str, texts: dict[str, str], fetched_at: str = FRES
 def _root(world, texts=None, *, at: str = STAMP, quote: bool = False) -> Path:
     """A baseline root whose one ledger holds a read at the anchor stamp (so it attests the pack)."""
     root = world.tmp / "visa-root"
-    _ledger(root, "base", texts or {"a" * 36: TEXT_A, "c" * 36: TEXT_C}, at, quote=quote)
+    _ledger(root, "base", texts or {"a" * 36: TEXT_A, "c" * 36: TEXT_C}, at, quote=quote, judged=True)
     return root
 
 
@@ -466,7 +470,8 @@ def test_a_ledger_without_a_read_at_the_anchor_stamp_gives_no_shortcut(world):
 
 
 def test_the_default_root_is_research_visa_of_the_code_root(world):
-    _ledger(world.tmp / "code" / "research" / "visa", "base", {"a" * 36: TEXT_A, "c" * 36: TEXT_C}, STAMP)
+    _ledger(world.tmp / "code" / "research" / "visa", "base", {"a" * 36: TEXT_A, "c" * 36: TEXT_C}, STAMP,
+            judged=True)
     fresh = _ledger(world.tmp, "fresh", {"a" * 36: TEXT_A, "c" * 36: TEXT_C})
     assert organ.run(_offline(world, fresh, None)) == 0
     assert _judge_calls(world) == []
@@ -562,17 +567,71 @@ def test_a_copy_that_does_not_verify_is_discarded_and_the_worktree_kept(world, m
     assert list((world.tmp / "state" / "ledgers").iterdir()) == []
 
 
-def test_a_symlink_leaving_the_ledger_refuses_the_copy_and_an_inner_one_is_kept_as_a_link(world, tmp_path):
+def test_only_relative_symlinks_inside_the_ledger_are_copied(world, tmp_path):
     led = tmp_path / "led"
     led.mkdir()
     (led / "inside.txt").write_text("x")
-    (led / "link-in").symlink_to(led / "inside.txt")
+    (led / "link-in").symlink_to("inside.txt")
+    kept = organ.keep_ledger(world.args(), led, 26)
+    assert kept is not None and (kept / "link-in").is_symlink() and (kept / "link-in").read_text() == "x"
     secret = tmp_path / "outside.txt"
     secret.write_text("not for the copy")
-    kept = organ.keep_ledger(world.args(), led, 26)
-    assert kept is not None and (kept / "link-in").is_symlink()
-    (led / "link-out").symlink_to(secret)
+    why: list[str] = []
+    (led / "link-out").symlink_to("../outside.txt")
+    assert organ.keep_ledger(world.args(), led, 26, why) is None and "leaving the ledger" in why[0]
+    (led / "link-out").unlink()
+    (led / "link-abs").symlink_to(led / "inside.txt")
+    why.clear()
+    assert organ.keep_ledger(world.args(), led, 26, why) is None and "absolute symlink" in why[0]
+
+
+def test_the_copy_is_verified_by_content_not_only_by_size(world, monkeypatch, tmp_path):
+    led = tmp_path / "led"
+    led.mkdir()
+    (led / "r-receipts.jsonl").write_text("abcd\n")
+    real = organ.shutil.copytree
+
+    def same_size_other_bytes(src, dst, **kw):
+        out = real(src, dst, **kw)
+        (Path(dst) / "r-receipts.jsonl").write_text("wxyz\n")
+        return out
+
+    monkeypatch.setattr(organ.shutil, "copytree", same_size_other_bytes)
     assert organ.keep_ledger(world.args(), led, 26) is None
+
+
+def _kept_worktree(world, ledger_name="2026-10-08-organ-reattest-seq27"):
+    wt = world.tmp / "state" / "worktrees" / "seq27-kept"
+    wt.parent.mkdir(parents=True, exist_ok=True)
+    _git(world.shared, "worktree", "add", "-b", "kept-branch", str(wt), "origin/main")
+    led = wt / "research" / "visa" / ledger_name
+    led.mkdir(parents=True)
+    (led / "r-receipts.jsonl").write_text("{}\n")
+    (world.tmp / "state").mkdir(exist_ok=True)
+    (world.tmp / "state" / "state.json").write_text(json.dumps({"anchor_seq": 26, "worktree_kept": str(wt)}))
+    return wt
+
+
+def test_a_kept_worktree_is_copied_then_reaped_by_the_next_run(world):
+    wt = _kept_worktree(world)
+    assert organ.retry_kept_worktree(world.args(), world.shared) == []
+    assert not wt.exists()
+    (copy,) = (world.tmp / "state" / "ledgers").iterdir()
+    assert (copy / "r-receipts.jsonl").read_text() == "{}\n"
+
+
+def test_a_kept_worktree_whose_copy_still_fails_is_spared_and_alerted(world, monkeypatch):
+    wt = _kept_worktree(world)
+    monkeypatch.setattr(organ.shutil, "copytree", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")))
+    assert organ.retry_kept_worktree(world.args(), world.shared) == [wt]
+    orphan = world.tmp / "state" / "worktrees" / "orphan"
+    _git(world.shared, "worktree", "add", "-b", "orphan-branch", str(orphan), "origin/main")
+    organ.reap_own_worktrees(world.shared, world.tmp / "state", spare=[wt])
+    assert wt.exists() and not orphan.exists()
+    assert organ.run(world.args("--now", world.now(20))) == 0
+    assert wt.exists()
+    assert str(wt) in _state(world)["worktrees_kept"] and len(_state(world)["worktrees_kept"]) == 2
+    assert any(r["job"].startswith("visa-reattestation:worktree-kept") for r in world.board())
 
 
 def test_a_run_that_fails_before_any_ledger_exists_keeps_nothing_and_still_alerts(world):
