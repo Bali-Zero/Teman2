@@ -9,6 +9,14 @@ lanes:
   - lane: visa-fold-generic
     role: build
     seat: Claude Sonnet 5.5 implementer (worktree backend-rag-visa-fold-generic).
+  - lane: fold-generic-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed seq-25 source pack and the 2026-10-07 read ledger (21 receipts, 18 judgements,
+      18 texts) — no notebook, no memory; the tool asserts no new regulatory figure
+    nb: research/visa/2026-10-07-freshness-restamp-seq25/
+    query_hash: "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
+    note: query_hash = the digest the ledger must reproduce
 pii_scan: clean
 bites:
   consumer: >-
@@ -16,8 +24,8 @@ bites:
     as anchor; until it lands, the CI backend shard that runs test_fold_pack.py against the
     committed seq-24 pair and seq-25 source.
   where: ci
-  observe: pytest backend/tests/scripts/visa_engine/test_fold_pack.py
-  expect: "contains:passed"
+  observe: python3 scripts/ci/observe_visa_fold_generic.py
+  expect: "contains:generic fold reproduces seq-25 603f777e…9d11"
 decisions:
   - id: D-reuse
     decision: >-
@@ -46,6 +54,12 @@ receipts:
     result: "All checks passed!"
     exit: 0
     ts: "2026-10-08T06:25:04Z"
+    seat: Claude Sonnet 5.5
+  - claim: The shipped observer runs the generic fold on the seq-24 pair and the ledger and sees the committed seq-25 digest.
+    cmd: python3 scripts/ci/observe_visa_fold_generic.py
+    result: "observe_visa_fold_generic: generic fold reproduces seq-25 603f777e…9d11"
+    exit: 0
+    ts: "2026-10-08T06:26:56Z"
     seat: Claude Sonnet 5.5
 dissent:
   - seat: self-review
