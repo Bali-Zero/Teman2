@@ -39,9 +39,11 @@ setup() {
   LOG_TIMEOUT="$SANDBOX/timeout.log"
   LOG_APT="$SANDBOX/apt.log"
   LOG_SOURCE="$SANDBOX/fallback.sources"
+  LOG_SOURCE_ORIGIN="$SANDBOX/fallback.origin"
   : >"$LOG_TIMEOUT"
   : >"$LOG_APT"
   : >"$LOG_SOURCE"
+  : >"$LOG_SOURCE_ORIGIN"
 
   cat >"$BIN/timeout" <<EOF
 #!/usr/bin/env bash
@@ -60,17 +62,34 @@ EOF
 echo "\$@" >>"$LOG_APT"
 ARGS=("\$@")
 SOURCE_LIST=""
+SOURCE_PARTS=""
 for ((i = 0; i < \${#ARGS[@]}; i++)); do
   if [ "\${ARGS[i]}" = "-o" ]; then
     i=\$((i + 1))
-    case "\${ARGS[i]}" in Dir::Etc::SourceList=*) SOURCE_LIST="\${ARGS[i]#Dir::Etc::SourceList=}" ;; esac
+    case "\${ARGS[i]}" in
+      Dir::Etc::SourceList=*) SOURCE_LIST="\${ARGS[i]#Dir::Etc::SourceList=}" ;;
+      Dir::Etc::SourceParts=*) SOURCE_PARTS="\${ARGS[i]#Dir::Etc::SourceParts=}" ;;
+    esac
   fi
 done
+# apt's own rule, as measured on ubuntu:24.04: SourceList is one-line format
+# only; a deb822 stanza there is a parse error before any network I/O.
+if [ -n "\$SOURCE_LIST" ] && grep -Eq '^[[:space:]]*(Types|URIs|Suites|Components):' "\$SOURCE_LIST"; then
+  echo "E: Type 'Types:' is not known on line 1 in source list \$SOURCE_LIST" >&2
+  echo "E: The list of sources could not be read." >&2
+  exit 100
+fi
 IS_UPDATE=0
 for a in "\${ARGS[@]}"; do [ "\$a" = "update" ] && IS_UPDATE=1; done
 if [ "\${APT_REQUIRE_FALLBACK:-}" = "1" ]; then
   if [ -z "\$SOURCE_LIST" ]; then exit 100; fi
-  cat "\$SOURCE_LIST" >"$LOG_SOURCE"
+  if [ -n "\$SOURCE_PARTS" ] && ls "\$SOURCE_PARTS"/*.sources >/dev/null 2>&1; then
+    cat "\$SOURCE_PARTS"/*.sources >"$LOG_SOURCE"
+    echo "parts" >"$LOG_SOURCE_ORIGIN"
+  else
+    cat "\$SOURCE_LIST" >"$LOG_SOURCE"
+    echo "list" >"$LOG_SOURCE_ORIGIN"
+  fi
   [ "\$IS_UPDATE" = "1" ] && exit "\${APT_FALLBACK_UPDATE_RC:-0}"
   if [ -n "\${APT_CREATES:-}" ]; then
     printf '#!/bin/sh\nexit 0\n' >"$BIN/\$APT_CREATES"
@@ -149,7 +168,22 @@ RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_
 [ "$RC" = "0" ] && ok "fallback mirror delivers after primary stalls" || fail "fallback mirror rc=$RC (want 0)"
 grep -q 'delivered by fallback mirror archive.ubuntu.com' "$SANDBOX/out" && ok "...and names the fallback mirror" || fail "fallback delivery was not reported"
 grep -q 'archive.ubuntu.com' "$LOG_SOURCE" && ! grep -q 'azure.archive.ubuntu.com' "$LOG_SOURCE" && ok "...and rewrites only the temporary sources file" || fail "fallback sources were not rewritten"
+[ "$(cat "$LOG_SOURCE_ORIGIN")" = "parts" ] && ok "...deb822 stanzas reach apt as a SourceParts *.sources file" || fail "deb822 sources were handed to apt as SourceList (origin=$(cat "$LOG_SOURCE_ORIGIN"))"
+if grep -q "Type 'Types:' is not known" "$SANDBOX/out"; then fail "apt rejected the fallback sources as deb822-in-SourceList"; else ok "...and apt never sees a deb822 body through SourceList"; fi
+grep -q '::warning::apt_install: primary mirror azure.archive.ubuntu.com did not deliver' "$SANDBOX/out" && ok "...and warns that the primary stalled" || fail "no ::warning:: for the stalled primary"
 if grep -q '/etc/apt' "$LOG_APT"; then fail "fallback wrote /etc/apt"; else ok "...and never writes /etc/apt"; fi
+teardown
+
+# The same fallback from a one-line sources.list (pre-24.04 images) goes
+# through SourceList, rewritten, and still never touches /etc/apt.
+setup
+SOURCES="$SANDBOX/sources.list"
+printf 'deb http://azure.archive.ubuntu.com/ubuntu noble main\n' >"$SOURCES"
+SUT_ARGS=(nzfakebin nzfakebin)
+RC=$(run_sut env APT_REQUIRE_FALLBACK=1 APT_INSTALL_SOURCES_FILE="$SOURCES" APT_CREATES=nzfakebin)
+[ "$RC" = "0" ] && ok "one-line sources.list: fallback mirror delivers" || fail "one-line fallback rc=$RC (want 0)"
+[ "$(cat "$LOG_SOURCE_ORIGIN")" = "list" ] && grep -q 'deb http://archive.ubuntu.com/ubuntu noble main' "$LOG_SOURCE" && ok "...through SourceList, host rewritten" || fail "one-line sources not rewritten through SourceList"
+grep -q 'trying archive.ubuntu.com (one-line sources)' "$SANDBOX/out" && ok "...and names the format it used" || fail "format not named in the warning"
 teardown
 
 # A second stalled mirror still fails closed and names the unavailable package.

@@ -82,11 +82,26 @@ else
     else
       FALLBACK_HOST=archive.ubuntu.com
       [ "$SOURCE_HOST" = "$FALLBACK_HOST" ] && FALLBACK_HOST=us.archive.ubuntu.com
+      # apt reads two formats from two places and never mixes them: a one-line
+      # `deb ...` file through Dir::Etc::SourceList, and deb822 stanzas
+      # (`Types:`/`URIs:`, ubuntu-24.04's sources.list.d/ubuntu.sources) only
+      # as a `*.sources` file under Dir::Etc::SourceParts. A deb822 body handed
+      # to SourceList dies at once with "Type 'Types:' is not known" (measured
+      # 2026-10-07: PR #8037's antidotes run, and ubuntu:24.04 by hand), so a
+      # deb822 fallback goes to SourceParts and SourceList is an EMPTY file.
       TMP_SOURCES="$(mktemp)"
       TMP_SOURCE_PARTS="$(mktemp -d)"
-      trap 'rm -f "$TMP_SOURCES"; rmdir "$TMP_SOURCE_PARTS" 2>/dev/null || true' EXIT
-      sed "s#://$SOURCE_HOST/#://$FALLBACK_HOST/#g" "$SOURCE_FILE" >"$TMP_SOURCES"
+      trap 'rm -rf "$TMP_SOURCES" "$TMP_SOURCE_PARTS"' EXIT
+      if grep -Eq '^[[:space:]]*(Types|URIs):' "$SOURCE_FILE"; then
+        FALLBACK_FORMAT=deb822
+        sed "s#://$SOURCE_HOST/#://$FALLBACK_HOST/#g" "$SOURCE_FILE" >"$TMP_SOURCE_PARTS/fallback.sources"
+        echo "# apt_install fallback: deb822 sources live in $TMP_SOURCE_PARTS/fallback.sources" >"$TMP_SOURCES"
+      else
+        FALLBACK_FORMAT=one-line
+        sed "s#://$SOURCE_HOST/#://$FALLBACK_HOST/#g" "$SOURCE_FILE" >"$TMP_SOURCES"
+      fi
       FALLBACK_ATTEMPTED=1
+      echo "::warning::apt_install: primary mirror $SOURCE_HOST did not deliver '$*'; trying $FALLBACK_HOST ($FALLBACK_FORMAT sources)"
       timeout 60 sudo apt-get "${APT_OPTS[@]}" \
         -o "Dir::Etc::SourceList=$TMP_SOURCES" \
         -o "Dir::Etc::SourceParts=$TMP_SOURCE_PARTS" update -qq || true
