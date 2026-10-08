@@ -507,7 +507,8 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
 
 `docs/specs/localci-sovereign-2026-10-07.md`, phase B step B6. The wrapper's order on every tick:
 
-1. it reads the host's free GB (`df -Pk /System/Volumes/Data`, whole GB, floored);
+1. it reads the host's free GB (`df -Pk /System/Volumes/Data`, whole GB, floored); a `df` that gives no number starts no
+   run and the heartbeat is `warning` (`host free space unreadable (df -Pk <path>): no run started`);
 2. `merger.py tick … --host-free-gb=N --min-host-free-gb=60`: under the floor the tick journals
    `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":60}` before the lease and starts no run;
 3. `merger.py prune --state-dir <state> --fstrim`, after the tick and never before it, whether the tick ran, skipped or failed;
@@ -526,11 +527,14 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   the last 48 h names the image by tag or id, it was built more than 48 h ago, and it is not the newest image of its recipe.
   The recipe is the `org.nuzantara.localci.recipe` label the deps build now sets, else the check whose job named the tag in
   any plan; an image whose recipe nothing records stays. `localci-candidate:*` and `localci-deps-base:*` are never in a
-  removal set. After a removal, `docker builder prune -f --filter until=24h` on the current builder, the one the runner's
-  `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's).
+  removal set. While any plan cannot be read, no image is removed (it may name any of them); a half-written plan still names
+  the tags its text names. Created is read to the nanosecond, and images built at the same instant are all kept as the newest.
+- **Builder cache.** Every prune that is not a dry run ends its image stage with `docker builder prune -f --filter until=24h`
+  on the current builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's).
 - **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
   run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
-  `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched.
+  `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched, and a `runs/` that is a
+  symlink is never trimmed.
 - **fstrim.** With `--fstrim`, after at least one image removal: `colima ssh -- sudo fstrim -av`, so the VM's freed blocks
   leave the host's sparse disk.
 
@@ -544,10 +548,12 @@ One journal line per prune (its shape; the numbers below are illustrative, not m
                 "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe backend-tests"}], "errors": []},
      "builder_prune": {"rc": 0, "tail": "Total: 3.1GB"},
      "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},
-     "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}}
+     "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}, "failed": []}
 
-An image still in use is an `errors` entry and the prune exits 1, so the organ says `warning`. The prune reaches Pro when the
-wrapper's live copy is replaced with the commands of the block above (`cp` beside it, `mv`, `cmp -s`).
+The prune takes the tick's lease: while a tick holds it, the line is `{"kind": "prune", "skipped": "lease", "holder": …}` and
+nothing is removed. `failed` lists `images` (an image still in use, an unreadable plan), `builder_prune` or `fstrim` when
+one of them failed; the prune then exits 1 and the organ says `warning`. A VM the probe cannot measure reads `null`. The prune
+reaches Pro when the wrapper's live copy is replaced with the commands of the block above (`cp` beside it, `mv`, `cmp -s`).
 
 ### Disk floor organ (B6, Pro)
 
@@ -557,7 +563,8 @@ wrapper's live copy is replaced with the commands of the block above (`cp` besid
 `failed`, written as `error` (the word `scripts/lib/heartbeat.sh` canonicalises it to and the sentinel and the healer read).
 The note is `free_gb=N on /System/Volumes/Data (ok > 100, failed < 60)`; when the organ is not `ok` it adds
 `; biggest: ~/<dir> X.YGB, …` for the three biggest top-level directories of `~` (the walk took 94 s on Pro, so it runs only
-when the organ pages). Wrong node or `PRO_DISK_FLOOR_ENABLED=false`: `disabled`. Registry `expected_hb_seconds` 3600,
+when the organ pages). The limits are compared in MB, so 100.5 GB is `ok`. Wrong node or `PRO_DISK_FLOOR_ENABLED=false`:
+`disabled`; a previous run still alive: `warning` (`skipped: previous run alive (pid N), free space not read`). Registry `expected_hb_seconds` 3600,
 silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro, user `nuzantara`, from a checkout at
 `origin/main`):
 
