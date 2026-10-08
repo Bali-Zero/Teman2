@@ -191,7 +191,7 @@ def _read_jwt_secret(env_file: str) -> str:
 
 
 def _mint_admin_jwt(secret: str) -> str:
-    from jose import jwt as jose_jwt
+    import jwt
 
     now = datetime.now(timezone.utc)
     claims = {
@@ -203,7 +203,7 @@ def _mint_admin_jwt(secret: str) -> str:
         "exp": now + timedelta(hours=JWT_TTL_HOURS),
         "jti": str(uuid.uuid4()),
     }
-    return jose_jwt.encode(claims, secret, algorithm="HS256")
+    return jwt.encode(claims, secret, algorithm="HS256")
 
 
 def _build_drive_service(sa_file: str):

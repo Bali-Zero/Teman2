@@ -11,9 +11,12 @@ from __future__ import annotations
 import importlib.util
 import os
 import re
+import secrets
 import subprocess
 import sys
 from pathlib import Path
+
+import jwt
 
 # test file: apps/backend-rag/backend/tests/scripts/<this>
 # parents: [0]=scripts [1]=tests [2]=backend [3]=backend-rag [4]=apps [5]=repo root
@@ -47,6 +50,23 @@ def test_script_help_runs_and_defaults_to_dry_run() -> None:
     assert "--apply" in result.stdout  # writes are opt-in, dry-run is the default
 
 
+def test_minted_admin_jwt_round_trips_with_pyjwt() -> None:
+    mod = _load()
+    secret = secrets.token_urlsafe(48)
+
+    token = mod._mint_admin_jwt(secret)
+    claims = jwt.decode(token, secret, algorithms=["HS256"])
+
+    assert isinstance(token, str)
+    assert set(claims) == {"sub", "email", "role", "type", "iat", "exp", "jti"}
+    assert claims["sub"] == "gdrive-folder-backfill"
+    assert claims["email"] == mod.DRIVE_DELEGATED_USER
+    assert claims["role"] == "admin"
+    assert claims["type"] == "access"
+    assert claims["exp"] - claims["iat"] == mod.JWT_TTL_HOURS * 3600
+    assert isinstance(claims["jti"], str) and claims["jti"]
+
+
 def test_evidence_sql_is_select_only() -> None:
     mod = _load()
     for sql in (mod.CANDIDATE_SQL, mod.EXISTING_MAPPING_SQL):
@@ -54,9 +74,9 @@ def test_evidence_sql_is_select_only() -> None:
         # word-boundary match, not substring: "deleted_at" must not trip DELETE
         # (guard-over-match, cicatrix family #3)
         for verb in ("INSERT", "UPDATE", "DELETE", "TRUNCATE", "DROP", "ALTER"):
-            assert not re.search(
-                rf"\b{verb}\b", upper
-            ), f"evidence SQL must be read-only, found {verb}"
+            assert not re.search(rf"\b{verb}\b", upper), (
+                f"evidence SQL must be read-only, found {verb}"
+            )
 
 
 def test_tier_a_constants_tripwire() -> None:
