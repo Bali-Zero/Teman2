@@ -1,7 +1,8 @@
-"""baseline_ledger — an unchanged page is proven by fingerprint, never by a model's opinion.
+"""baseline_ledger — an unchanged page is proven by fingerprint against a PROVEN attested read.
 
-Guilt: any difference in the text, a missing baseline, a tampered saved text -> no judgement.
-Innocence: the same text -> a `none` judgement the fold accepts.
+Guilt: any difference in the text, no ledger that attests the pack, the run's own ledger, a read after
+the pack, a tampered saved text, a newer text file that is not the attested receipt's -> no judgement.
+Innocence: the same text -> a `none` judgement.
 """
 
 from __future__ import annotations
@@ -15,15 +16,39 @@ from backend.scripts.visa_engine.portal_read_receipt import fingerprint
 
 RID = "d" * 36
 SHORT = RID[:8]
+STAMP = "2026-10-07T13:32:18Z"
+CREATED = "2026-10-07T13:40:00Z"
 TEXT = "Heading\nThe applicant may extend the permit once for a further period.\nFooter line\n"
+QUOTE = "The applicant may extend the permit once for a further period."
+PORTALS = [{"source_record_id": RID, "verified_at": STAMP}]
+
+
+def _receipt(text: str, fetched_at: str, file: str | None = None, **extra: Any) -> dict[str, Any]:
+    return {
+        "source_record_id": RID,
+        "http_status": 200,
+        "key_phrase_found": True,
+        "fetched_at": fetched_at,
+        "visible_text_sha256": bl.saved_fingerprint(text),
+        "text_file": f"text/{file or SHORT + '.txt'}",
+        **extra,
+    }
 
 
 def _ledger(
-    root: Path, name: str, text: str, *, file: str | None = None, quote: str | None = None
+    root: Path,
+    name: str,
+    text: str,
+    fetched_at: str = STAMP,
+    *,
+    quote: str | None = None,
+    file: str | None = None,
 ) -> Path:
     led = root / name
-    (led / "text").mkdir(parents=True)
+    (led / "text").mkdir(parents=True, exist_ok=True)
     (led / "text" / (file or f"{SHORT}.txt")).write_text(text, encoding="utf-8")
+    with (led / "r-receipts.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(_receipt(text, fetched_at, file)) + "\n")
     if quote is not None:
         row = {
             "source_record_id": RID,
@@ -34,28 +59,18 @@ def _ledger(
     return led
 
 
-def _receipt(text: str, **extra: Any) -> dict[str, Any]:
-    return {
-        "source_record_id": RID,
-        "http_status": 200,
-        "key_phrase_found": True,
-        "fetched_at": "2026-10-08T10:11:50Z",
-        "visible_text_sha256": bl.saved_fingerprint(text),
-        "text_file": f"text/{SHORT}.txt",
-        **extra,
-    }
+def _attested(root: Path, **kw: Any) -> dict[str, bl.Attested]:
+    return bl.attested_reads(root, PORTALS, not_after=kw.pop("not_after", CREATED), **kw)
 
 
-def _fresh(root: Path, text: str) -> tuple[Path, dict[str, Any]]:
-    led = _ledger(root, "fresh", text)
-    receipt = _receipt(text)
-    (led / "r-receipts.jsonl").write_text(json.dumps(receipt) + "\n", encoding="utf-8")
-    return led, receipt
-
-
-def _row(root: Path, base: Path, fresh: str = TEXT) -> dict[str, Any] | None:
+def _row(attested: bl.Attested, fresh: str = TEXT) -> dict[str, Any] | None:
     return bl.unchanged_judgement(
-        RID, _receipt(fresh), fresh, base, reader="organ-x", judged_at="2026-10-08T10:12:00Z"
+        RID,
+        _receipt(fresh, "2026-10-08T10:11:50Z"),
+        fresh,
+        attested,
+        reader="organ-x",
+        judged_at="2026-10-08T10:12:00Z",
     )
 
 
@@ -67,13 +82,9 @@ def test_saved_fingerprint_is_the_receipt_fingerprint() -> None:
 
 
 def test_innocence_identical_text_yields_a_none_judgement(tmp_path: Path) -> None:
-    base = _ledger(
-        tmp_path,
-        "base",
-        TEXT,
-        quote="The applicant may extend the permit once for a further period.",
-    )
-    row = _row(tmp_path, base)
+    _ledger(tmp_path, "base", TEXT, quote=QUOTE)
+    held = _attested(tmp_path)[RID]
+    row = _row(held)
     assert row is not None
     assert (row["semantic_change"], row["judge"], row["reader"]) == (
         "none",
@@ -82,83 +93,86 @@ def test_innocence_identical_text_yields_a_none_judgement(tmp_path: Path) -> Non
     )
     assert row["text_sha256"] == bl.saved_fingerprint(TEXT)
     assert row["receipt_fetched_at"] == "2026-10-08T10:11:50Z"
-    assert (
-        row["checked_sentence"] == "The applicant may extend the permit once for a further period."
-    )
-    assert row["checked_sentence"] in TEXT
+    assert row["checked_sentence"] == QUOTE
+    assert held.label() == f"base@{STAMP}"
 
 
 def test_guilt_one_changed_word_is_not_proven_unchanged(tmp_path: Path) -> None:
-    base = _ledger(tmp_path, "base", TEXT)
-    assert _row(tmp_path, base, TEXT.replace("once", "twice")) is None
+    _ledger(tmp_path, "base", TEXT)
+    assert _row(_attested(tmp_path)[RID], TEXT.replace("once", "twice")) is None
 
 
-def test_guilt_no_baseline_text_for_the_record(tmp_path: Path) -> None:
-    base = _ledger(tmp_path, "base", TEXT, file="other000.txt")
-    assert _row(tmp_path, base) is None
+def test_guilt_a_ledger_without_a_read_at_the_pack_stamp_attests_nothing(tmp_path: Path) -> None:
+    _ledger(tmp_path, "base", TEXT, "2026-10-07T13:35:00Z")
+    assert _attested(tmp_path) == {}
 
 
-def test_a_baseline_quote_missing_from_the_fresh_text_falls_back_to_a_real_sentence(
+def test_guilt_the_run_own_ledger_is_never_the_baseline(tmp_path: Path) -> None:
+    own = _ledger(tmp_path, "own", TEXT)
+    assert _attested(tmp_path, exclude=[own]) == {}
+
+
+def test_guilt_a_read_after_the_pack_was_created_is_not_attested(tmp_path: Path) -> None:
+    led = _ledger(tmp_path, "base", TEXT)
+    later = TEXT + "after the pack\n"
+    (led / "text" / f"{SHORT}-later.txt").write_text(later, encoding="utf-8")
+    with (led / "r-receipts.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(_receipt(later, "2026-10-09T00:00:00Z", f"{SHORT}-later.txt")) + "\n")
+    held = _attested(tmp_path)[RID]
+    assert held.receipt["fetched_at"] == STAMP and held.text == TEXT
+
+
+def test_the_attested_text_is_the_receipts_own_file_not_the_newest_file(tmp_path: Path) -> None:
+    led = _ledger(tmp_path, "base", TEXT)
+    (led / "text" / f"{SHORT}-20261009T000000Z.txt").write_text(
+        "a newer, unrelated text\n", encoding="utf-8"
+    )
+    assert _attested(tmp_path)[RID].text == TEXT
+
+
+def test_guilt_a_saved_text_that_lost_its_fingerprint_is_not_attested(tmp_path: Path) -> None:
+    led = _ledger(tmp_path, "base", TEXT)
+    (led / "text" / f"{SHORT}.txt").write_text(TEXT + "edited later\n", encoding="utf-8")
+    assert _attested(tmp_path) == {}
+
+
+def test_a_later_ledger_without_a_read_at_the_stamp_does_not_override_the_attesting_one(
     tmp_path: Path,
 ) -> None:
-    base = _ledger(
-        tmp_path, "base", TEXT, quote="A sentence that the fresh text does not carry at all."
-    )
-    row = _row(tmp_path, base)
-    assert row is not None
-    assert (
-        row["checked_sentence"] == "The applicant may extend the permit once for a further period."
-    )
+    _ledger(tmp_path, "a-attesting", "first text\n", STAMP)
+    _ledger(tmp_path, "b-stray", TEXT, "2026-10-07T13:36:00Z")
+    assert _attested(tmp_path)[RID].ledger.name == "a-attesting"
 
 
 def test_no_sentence_of_forty_characters_leaves_the_record_to_the_judge(tmp_path: Path) -> None:
     short = "Menu\nHome\nContact us.\n"
     assert bl.first_sentence(short) is None
-    assert _row(tmp_path, _ledger(tmp_path, "base", short), short) is None
+    _ledger(tmp_path, "base", short)
+    assert _row(_attested(tmp_path)[RID], short) is None
 
 
-def test_the_newest_timestamped_text_beats_the_plain_one(tmp_path: Path) -> None:
-    base = _ledger(tmp_path, "base", "old text\n")
-    (base / "text" / f"{SHORT}-20261001T000000Z.txt").write_text("mid text\n", encoding="utf-8")
-    (base / "text" / f"{SHORT}-20261007T000000Z.txt").write_text("new text\n", encoding="utf-8")
-    assert bl.baseline_text(base, RID) == "new text\n"
+def test_a_baseline_quote_missing_from_the_fresh_text_falls_back_to_a_real_sentence(
+    tmp_path: Path,
+) -> None:
+    _ledger(tmp_path, "base", TEXT, quote="A sentence that the fresh text does not carry at all.")
+    row = _row(_attested(tmp_path)[RID])
+    assert row is not None and row["checked_sentence"] == QUOTE
 
 
-def test_a_saved_text_that_lost_its_fingerprint_is_skipped(tmp_path: Path) -> None:
-    base = _ledger(tmp_path, "base", TEXT)
-    fresh, _ = _fresh(tmp_path, TEXT)
+def test_fingerprint_judgements_over_a_ledger(tmp_path: Path) -> None:
+    _ledger(tmp_path / "root", "base", TEXT)
+    fresh = _ledger(tmp_path / "fresh-parent", "fresh", TEXT, "2026-10-08T10:11:50Z")
+    held = _attested(tmp_path / "root")
+    rows = bl.fingerprint_judgements(
+        fresh, [RID], held, reader="organ-x", judged_at="2026-10-08T10:12:00Z"
+    )
+    assert [r["source_record_id"] for r in rows] == [RID]
     (fresh / "text" / f"{SHORT}.txt").write_text(
         TEXT + "edited after the fetch\n", encoding="utf-8"
     )
     assert (
         bl.fingerprint_judgements(
-            fresh, [RID], base, reader="organ-x", judged_at="2026-10-08T10:12:00Z"
+            fresh, [RID], held, reader="organ-x", judged_at="2026-10-08T10:12:00Z"
         )
         == []
     )
-
-
-def test_fingerprint_judgements_over_a_ledger(tmp_path: Path) -> None:
-    base = _ledger(tmp_path, "base", TEXT)
-    fresh, _ = _fresh(tmp_path, TEXT)
-    rows = bl.fingerprint_judgements(
-        fresh, [RID], base, reader="organ-x", judged_at="2026-10-08T10:12:00Z"
-    )
-    assert [r["source_record_id"] for r in rows] == [RID]
-
-
-def test_newest_covering_ledger_skips_own_unattested_and_incomplete(tmp_path: Path) -> None:
-    root = tmp_path / "visa"
-    root.mkdir()
-    good = _ledger(root, "2026-10-07-restamp", TEXT)
-    _ledger(root, "2026-10-12-own", TEXT)
-    _ledger(root, "2026-10-11-organ-reattest-seq27", TEXT)
-    _ledger(root, "2026-10-09-partial", TEXT, file="other000.txt")
-    pick = bl.newest_covering_ledger(
-        root,
-        [RID],
-        exclude=[root / "2026-10-12-own"],
-        accept=lambda p: "organ-reattest" not in p.name,
-    )
-    assert pick == good
-    assert bl.newest_covering_ledger(root, [RID, "e" * 36], accept=lambda _p: True) is None

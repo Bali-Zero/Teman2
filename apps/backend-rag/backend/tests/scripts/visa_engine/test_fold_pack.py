@@ -616,17 +616,65 @@ class TestRehearsalReaders:
 
 
 class TestBaselineFingerprint:
-    """The organ's fingerprint judgements are accepted; a `changed` verdict on an unchanged text is not."""
+    """Fingerprint judgements are re-proved by the fold; a `changed` verdict on an unchanged text is downgraded."""
 
-    def _victim_row(self, ledger_dir: Path, anchor: dict[str, Any], **overrides: Any) -> str:
-        victim = _portal_ids(anchor)[0]
-        loaded = load_ledger(ledger_dir)
-        latest = max(r["fetched_at"] for r in loaded.receipts if r["source_record_id"] == victim)
-        judged_at = latest[:-1].rsplit(":", 1)[0] + ":59Z"
-        rows = baseline_ledger.fingerprint_judgements(
-            ledger_dir, [victim], _LEDGER_DIR, reader="organ-test", judged_at=judged_at
+    def _portals(self, anchor: dict[str, Any]) -> list[dict[str, Any]]:
+        return [r for r in anchor["source_records"] if r["authority_type"] == "OFFICIAL_PORTAL"]
+
+    def _root(
+        self, tmp_path: Path, anchor: dict[str, Any], victim: str, *, victim_same: bool
+    ) -> Path:
+        """A visa root with one ledger attesting the anchor: a read at its stamp for every portal record.
+
+        Every page but the victim differs from the seq-25 texts; the victim does only when not victim_same.
+        """
+        stamp = anchor_portal_stamp(self._portals(anchor))
+        root = tmp_path / ("same" if victim_same else "diff") / "visa"
+        old = root / "older"
+        (old / "text").mkdir(parents=True)
+        source = load_ledger(_LEDGER_DIR)
+        rows = []
+        for rid in _portal_ids(anchor):
+            receipt = baseline_ledger.latest_success(source.receipts, rid)
+            assert receipt is not None
+            text = (_LEDGER_DIR / "text" / Path(receipt["text_file"]).name).read_text(
+                encoding="utf-8"
+            )
+            if not (victim_same and rid == victim):
+                text += "an older revision\n"
+            (old / "text" / f"{rid[:8]}.txt").write_text(text, encoding="utf-8")
+            rows.append(
+                {
+                    **receipt,
+                    "fetched_at": stamp,
+                    "text_file": f"text/{rid[:8]}.txt",
+                    "visible_text_sha256": baseline_ledger.saved_fingerprint(text),
+                }
+            )
+        (old / "old-receipts.jsonl").write_text(
+            "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
         )
-        assert len(rows) == 1, "the seq-25 ledger is its own baseline: the fingerprints must agree"
+        return root
+
+    def _victim_row(
+        self, ledger_dir: Path, anchor: dict[str, Any], root: Path, **overrides: Any
+    ) -> str:
+        victim = _portal_ids(anchor)[0]
+        latest = max(
+            r["fetched_at"]
+            for r in load_ledger(ledger_dir).receipts
+            if r["source_record_id"] == victim
+        )
+        judged_at = latest[:-1].rsplit(":", 1)[0] + ":59Z"
+        held = baseline_ledger.attested_reads(
+            root, self._portals(anchor), exclude=[ledger_dir], not_after=anchor["created_at"]
+        )
+        rows = baseline_ledger.fingerprint_judgements(
+            ledger_dir, [victim], held, reader="organ-test", judged_at=judged_at
+        )
+        assert len(rows) == 1, (
+            "the victim's page is the same as its attested read in the 'same' root"
+        )
         for path in ledger_dir.glob("*-judgements.jsonl"):
             kept = [
                 ln
@@ -634,22 +682,10 @@ class TestBaselineFingerprint:
                 if ln.strip() and json.loads(ln)["source_record_id"] != victim
             ]
             path.write_text("".join(ln + "\n" for ln in kept), encoding="utf-8")
-        row = {**rows[0], **overrides}
         (ledger_dir / "organ-test-judgements.jsonl").write_text(
-            json.dumps(row) + "\n", encoding="utf-8"
+            json.dumps({**rows[0], **overrides}) + "\n", encoding="utf-8"
         )
         return victim
-
-    def _baseline(self, tmp_path: Path, victim: str, *, victim_same: bool) -> Path:
-        """An 'older' ledger: every other page differs from the seq-25 texts (those really changed)."""
-        older = tmp_path / "older-baseline"
-        shutil.copytree(_LEDGER_DIR, older)
-        for text in (older / "text").glob("*.txt"):
-            if not (victim_same and text.name.startswith(victim[:8])):
-                text.write_text(
-                    text.read_text(encoding="utf-8") + "an older revision\n", encoding="utf-8"
-                )
-        return older
 
     def _accept(self, ledger_dir: Path, victim: str) -> None:
         path = ledger_dir / "disposition.json"
@@ -657,73 +693,96 @@ class TestBaselineFingerprint:
         disposition.setdefault("accepted_changed", {})[victim] = "reviewed by a session"
         path.write_text(json.dumps(disposition), encoding="utf-8")
 
-    def test_innocence_a_fingerprint_judgement_passes_every_guard_of_the_fold(
-        self,
-        anchor: dict[str, Any],
-        anchor_signed: dict[str, Any],
-        trust: StaticTrustStore,
-        ledger_copy: Path,
-        tmp_path: Path,
-    ) -> None:
-        victim = self._victim_row(ledger_copy, anchor)
-        out = fold(
+    def _fold(self, anchor, signed, trust, ledger_dir, root, disagreements=None):  # type: ignore[no-untyped-def]
+        return fold(
             anchor,
-            anchor_signed,
-            load_ledger(ledger_copy),
+            signed,
+            load_ledger(ledger_dir),
             trust_store=trust,
             observed_at=OBSERVED_AT,
-            baseline_dir=self._baseline(tmp_path, victim, victim_same=True),
+            baseline_root=root,
+            ledger_dir=ledger_dir,
+            disagreements=disagreements,
             **META,
         )
+
+    def test_innocence_a_proven_fingerprint_judgement_passes_every_guard(
+        self, anchor, anchor_signed, trust, ledger_copy, tmp_path
+    ) -> None:  # type: ignore[no-untyped-def]
+        root = self._root(tmp_path, anchor, _portal_ids(anchor)[0], victim_same=True)
+        self._victim_row(ledger_copy, anchor, root)
+        out = self._fold(anchor, anchor_signed, trust, ledger_copy, root)
         assert hashlib.sha256(canonicalize_json(out)).hexdigest() == SEQ25_DIGEST
 
-    def test_guilt_changed_on_a_text_with_the_baseline_fingerprint_is_refused(
-        self,
-        anchor: dict[str, Any],
-        anchor_signed: dict[str, Any],
-        trust: StaticTrustStore,
-        ledger_copy: Path,
-        tmp_path: Path,
-    ) -> None:
-        victim = self._victim_row(ledger_copy, anchor, semantic_change="changed", judge="claude")
-        self._accept(ledger_copy, victim)
-        baseline = self._baseline(tmp_path, victim, victim_same=True)
-        ledger = load_ledger(ledger_copy)
-        _run(anchor, anchor_signed, ledger, trust)  # no baseline given: nothing stops it
-        base_fp = baseline_ledger.baseline_fingerprint(baseline, victim)
-        with pytest.raises(SystemExit, match="contradictory judgement") as exc:
-            fold(
-                anchor,
-                anchor_signed,
-                ledger,
-                trust_store=trust,
-                observed_at=OBSERVED_AT,
-                baseline_dir=baseline,
-                **META,
-            )
-        assert str(exc.value).count(str(base_fp)) == 2
+    def test_guilt_a_fingerprint_judgement_on_a_page_that_differs_from_its_attested_read_is_refused(
+        self, anchor, anchor_signed, trust, ledger_copy, tmp_path
+    ) -> None:  # type: ignore[no-untyped-def]
+        victim = _portal_ids(anchor)[0]
+        self._victim_row(
+            ledger_copy, anchor, self._root(tmp_path, anchor, victim, victim_same=True)
+        )
+        differing = self._root(tmp_path, anchor, victim, victim_same=False)
+        with pytest.raises(SystemExit, match="fingerprint judgement is not proven"):
+            self._fold(anchor, anchor_signed, trust, ledger_copy, differing)
 
-    def test_innocence_changed_on_a_text_that_differs_from_the_baseline_stands(
-        self,
-        anchor: dict[str, Any],
-        anchor_signed: dict[str, Any],
-        trust: StaticTrustStore,
-        ledger_copy: Path,
-        tmp_path: Path,
-    ) -> None:
-        victim = self._victim_row(ledger_copy, anchor, semantic_change="changed", judge="claude")
+    def test_guilt_a_fingerprint_judgement_without_any_baseline_is_refused(
+        self, anchor, anchor_signed, trust, ledger_copy, tmp_path
+    ) -> None:  # type: ignore[no-untyped-def]
+        root = self._root(tmp_path, anchor, _portal_ids(anchor)[0], victim_same=True)
+        self._victim_row(ledger_copy, anchor, root)
+        with pytest.raises(SystemExit, match="needs an attested baseline read"):
+            self._fold(anchor, anchor_signed, trust, ledger_copy, None)
+
+    def test_guilt_a_forged_fingerprint_hash_is_refused(
+        self, anchor, anchor_signed, trust, ledger_copy, tmp_path
+    ) -> None:  # type: ignore[no-untyped-def]
+        root = self._root(tmp_path, anchor, _portal_ids(anchor)[0], victim_same=True)
+        self._victim_row(ledger_copy, anchor, root, text_sha256="0" * 64)
+        with pytest.raises(SystemExit, match="text_sha256 is not the bound receipt"):
+            self._fold(anchor, anchor_signed, trust, ledger_copy, root)
+
+    def test_changed_on_an_unchanged_fingerprint_is_downgraded_and_reported_without_a_disposition(
+        self, anchor, anchor_signed, trust, ledger_copy, tmp_path
+    ) -> None:  # type: ignore[no-untyped-def]
+        victim = _portal_ids(anchor)[0]
+        root = self._root(tmp_path, anchor, victim, victim_same=True)
+        self._victim_row(ledger_copy, anchor, root, semantic_change="changed", judge="claude")
+        with pytest.raises(SystemExit, match="does not accept it by id"):
+            self._fold(anchor, anchor_signed, trust, ledger_copy, None)
+        found: list[dict[str, str]] = []
+        out = self._fold(anchor, anchor_signed, trust, ledger_copy, root, found)
+        assert hashlib.sha256(canonicalize_json(out)).hexdigest() == SEQ25_DIGEST
+        (entry,) = found
+        assert entry["source_record_id"] == victim and entry["attested_read"].startswith("older@")
+        assert (
+            entry["fingerprint"]
+            == baseline_ledger.attested_reads(root, self._portals(anchor), exclude=[ledger_copy])[
+                victim
+            ].fingerprint
+        )
+
+    def test_innocence_changed_on_a_text_that_differs_from_the_attested_read_stands(
+        self, anchor, anchor_signed, trust, ledger_copy, tmp_path
+    ) -> None:  # type: ignore[no-untyped-def]
+        victim = _portal_ids(anchor)[0]
+        self._victim_row(
+            ledger_copy,
+            anchor,
+            self._root(tmp_path, anchor, victim, victim_same=True),
+            semantic_change="changed",
+            judge="claude",
+        )
         self._accept(ledger_copy, victim)
-        older = self._baseline(tmp_path, victim, victim_same=False)
-        out = fold(
+        found: list[dict[str, str]] = []
+        out = self._fold(
             anchor,
             anchor_signed,
-            load_ledger(ledger_copy),
-            trust_store=trust,
-            observed_at=OBSERVED_AT,
-            baseline_dir=older,
-            **META,
+            trust,
+            ledger_copy,
+            self._root(tmp_path, anchor, victim, victim_same=False),
+            found,
         )
-        assert out["sequence"] == 25
+        assert out["sequence"] == 25 and found == []
 
 
 def test_module_holds_no_sequence_constant() -> None:

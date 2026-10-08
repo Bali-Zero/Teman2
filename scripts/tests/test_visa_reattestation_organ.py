@@ -380,9 +380,11 @@ def test_a_merged_unmoved_candidate_counts_for_the_t7_alert(world):
 # ------------------------------------------------------------------ fingerprint before the judge
 TEXT_A = "Heading\nThe applicant may extend the permit once for a further period.\nFooter\n"
 TEXT_C = "Other page\nA holder must report a change of address within thirty days.\nFooter\n"
+STAMP = VERIFIED.strftime("%Y-%m-%dT%H:%M:%SZ")
+FRESH_AT = "2026-10-08T10:11:50Z"
 
 
-def _ledger(root: Path, name: str, texts: dict[str, str], *, quote: bool = False) -> Path:
+def _ledger(root: Path, name: str, texts: dict[str, str], fetched_at: str = FRESH_AT, *, quote: bool = False) -> Path:
     """A ledger holding one saved text, one successful receipt (and optionally a quote) per record."""
     bl = organ._baseline_module()
     led = root / name
@@ -391,7 +393,7 @@ def _ledger(root: Path, name: str, texts: dict[str, str], *, quote: bool = False
     for rid, text in texts.items():
         (led / "text" / f"{rid[:8]}.txt").write_text(text, encoding="utf-8")
         receipts.append({"source_record_id": rid, "http_status": 200, "key_phrase_found": True,
-                         "fetched_at": "2026-10-08T10:11:50Z", "text_file": f"text/{rid[:8]}.txt",
+                         "fetched_at": fetched_at, "text_file": f"text/{rid[:8]}.txt",
                          "visible_text_sha256": bl.saved_fingerprint(text)})
         if quote:
             judgements.append({"source_record_id": rid, "judged_at": "2026-10-07T10:00:00Z",
@@ -402,80 +404,117 @@ def _ledger(root: Path, name: str, texts: dict[str, str], *, quote: bool = False
     return led
 
 
+def _root(world, texts=None, *, at: str = STAMP, quote: bool = False) -> Path:
+    """A baseline root whose one ledger holds a read at the anchor stamp (so it attests the pack)."""
+    root = world.tmp / "visa-root"
+    _ledger(root, "base", texts or {"a" * 36: TEXT_A, "c" * 36: TEXT_C}, at, quote=quote)
+    return root
+
+
 def _judge_calls(world) -> list[list[str]]:
     return [c for c in world.calls if "portal_judge" in " ".join(c)]
 
 
-def _offline(world, fresh: Path, baseline: Path):
-    return world.args("--now", world.now(20), "--offline", "--ledger-dir", str(fresh),
-                      "--baseline-ledger-dir", str(baseline), "--judge", "fake")
+def _fold_argv(world) -> list[str]:
+    return next(c for c in world.calls if "fold_pack_generic" in " ".join(c))
+
+
+def _offline(world, fresh: Path, root: Path | None):
+    extra = ["--baseline-root", str(root)] if root else []
+    return world.args("--now", world.now(20), "--offline", "--ledger-dir", str(fresh), "--judge", "fake", *extra)
+
+
+def _state(world) -> dict:
+    return json.loads((world.tmp / "state" / "state.json").read_text())
 
 
 def test_a_fingerprint_identical_record_never_reaches_the_judge(world):
-    base = _ledger(world.tmp, "base", {"a" * 36: TEXT_A, "c" * 36: TEXT_C}, quote=True)
+    root = _root(world, quote=True)
     fresh = _ledger(world.tmp, "fresh", {"a" * 36: TEXT_A, "c" * 36: TEXT_C + "A NEW RULE.\n"})
-    assert organ.run(_offline(world, fresh, base)) == 0
+    assert organ.run(_offline(world, fresh, root)) == 0
     (call,) = _judge_calls(world)
     assert call[call.index("--ids") + 1] == "c" * 36
-    state = json.loads((world.tmp / "state" / "state.json").read_text())
-    kept = Path(state["ledger_copy"])
-    rows = [json.loads(x) for x in (kept / "fake-organ-20261019-judgements.jsonl").read_text().splitlines()
-            if x.strip() != "{}"]
-    (row,) = [r for r in rows if r]
+    state = _state(world)
+    lines = (Path(state["ledger_copy"]) / "fake-organ-20261019-judgements.jsonl").read_text().splitlines()
+    (row,) = [r for r in map(json.loads, lines) if r]
     assert (row["source_record_id"], row["semantic_change"], row["judge"]) == ("a" * 36, "none", "fingerprint")
-    assert row["checked_sentence"] == TEXT_A.splitlines()[1]
-    assert row["checked_sentence"] in TEXT_A
-    fold_argv = next(c for c in world.calls if "fold_pack_generic" in " ".join(c))
-    assert fold_argv[fold_argv.index("--baseline-ledger-dir") + 1] == str(base)
+    assert row["checked_sentence"] == TEXT_A.splitlines()[1] and row["checked_sentence"] in TEXT_A
+    assert _fold_argv(world)[_fold_argv(world).index("--baseline-root") + 1] == str(root)
+    assert state["attested_reads"]["aaaaaaaa"] == f"base@{STAMP}"
 
 
 def test_when_every_page_is_identical_the_judge_is_skipped_entirely(world):
-    base = _ledger(world.tmp, "base", {"a" * 36: TEXT_A, "c" * 36: TEXT_C})
     fresh = _ledger(world.tmp, "fresh", {"a" * 36: TEXT_A, "c" * 36: TEXT_C})
-    assert organ.run(_offline(world, fresh, base)) == 0
+    assert organ.run(_offline(world, fresh, _root(world))) == 0
     assert _judge_calls(world) == []
-    state = json.loads((world.tmp / "state" / "state.json").read_text())
+    state = _state(world)
     assert state["outcome"] == "candidate-ready" and Path(state["ledger_copy"]).is_dir()
 
 
 def test_a_page_that_differs_goes_to_the_judge_with_the_original_invocation_shape(world):
-    base = _ledger(world.tmp, "base", {"a" * 36: TEXT_A, "c" * 36: TEXT_C})
     fresh = _ledger(world.tmp, "fresh", {"a" * 36: TEXT_A + "more\n", "c" * 36: TEXT_C + "more\n"})
-    assert organ.run(_offline(world, fresh, base)) == 0
+    assert organ.run(_offline(world, fresh, _root(world))) == 0
     (call,) = _judge_calls(world)
     assert "--all" in call and "--ids" not in call
 
 
-def test_without_a_baseline_everything_is_judged(world):
+def test_a_ledger_without_a_read_at_the_anchor_stamp_gives_no_shortcut(world):
     fresh = _ledger(world.tmp, "fresh", {"a" * 36: TEXT_A, "c" * 36: TEXT_C})
-    assert organ.run(world.args("--now", world.now(20), "--offline", "--ledger-dir", str(fresh))) == 0
+    assert organ.run(_offline(world, fresh, _root(world, at="2026-10-07T13:40:00Z"))) == 0
     (call,) = _judge_calls(world)
-    assert "--all" in call
-    assert "--baseline-ledger-dir" not in next(c for c in world.calls if "fold_pack_generic" in " ".join(c))
+    assert "--all" in call and _state(world)["attested_reads"] == {}
 
 
-def test_a_missing_explicit_baseline_fails_loudly(world):
+def test_the_default_root_is_research_visa_of_the_code_root(world):
+    _ledger(world.tmp / "code" / "research" / "visa", "base", {"a" * 36: TEXT_A, "c" * 36: TEXT_C}, STAMP)
+    fresh = _ledger(world.tmp, "fresh", {"a" * 36: TEXT_A, "c" * 36: TEXT_C})
+    assert organ.run(_offline(world, fresh, None)) == 0
+    assert _judge_calls(world) == []
+
+
+def test_the_baseline_is_passed_to_the_fold_when_every_judgement_already_exists(world):
+    fresh = _ledger(world.tmp, "fresh", {"a" * 36: TEXT_A, "c" * 36: TEXT_C, })
+    (fresh / "fake-organ-20261019-judgements.jsonl").write_text(
+        "".join(json.dumps({"source_record_id": r * 36}) + "\n" for r in "ac"))
+    root = _root(world)
+    assert organ.run(_offline(world, fresh, root)) == 0
+    assert _judge_calls(world) == []
+    assert str(root) in _fold_argv(world)
+
+
+def test_a_missing_explicit_baseline_root_fails_loudly(world):
     fresh = _ledger(world.tmp, "fresh", {"a" * 36: TEXT_A, "c" * 36: TEXT_C})
     assert organ.run(_offline(world, fresh, world.tmp / "nope")) == 2
     assert _judge_calls(world) == []
 
 
-def test_default_baseline_is_the_newest_covering_attested_ledger_other_than_its_own(tmp_path):
-    code = tmp_path / "code"
-    visa, both = code / "research" / "visa", {"a" * 36: TEXT_A, "c" * 36: TEXT_C}
-    for name, texts in {"2026-10-07-restamp": both, "2026-10-06-older": both,
-                        "2026-10-09-partial": {"a" * 36: TEXT_A},
-                        "2026-10-11-organ-reattest-seq27": both,
-                        "2026-10-12-organ-reattest-seq26": both}.items():
-        _ledger(visa, name, texts)
-    own = visa / "2026-10-12-organ-reattest-seq26"
-    ids = ["a" * 36, "c" * 36]
-    pick = lambda: organ.resolve_baseline(  # noqa: E731
-        organ.build_parser().parse_args([]), code, own, ids)
-    assert pick().name == "2026-10-07-restamp"
-    (code / organ.PACKS_REL).mkdir(parents=True)
-    (code / organ.PACKS_REL / "rulepack-prod-027.signed.json").write_text("{}")
-    assert pick().name == "2026-10-11-organ-reattest-seq27"
+def test_the_attestation_note_lists_the_attested_reads_and_the_disagreements():
+    note = organ.attestation_note(
+        date="2026-10-08", anchor_seq=26, next_seq=27, ledger_rel="research/visa/x", reader="r", judge="claude",
+        attested={"aaaaaaaa": "base@t"},
+        disagreements=[{"source_record_id": "a" * 36, "source_key": "k", "reader": "r", "fingerprint": "f" * 64,
+                        "attested_read": "base@t"}])
+    assert "`aaaaaaaa`: base@t" in note and "reader `r` said `changed`" in note and "downgraded to `none`" in note
+    assert "- none" in organ.attestation_note(date="d", anchor_seq=1, next_seq=2, ledger_rel="x", reader="r", judge="j")
+
+
+def test_the_fold_disagreements_line_is_parsed(world):
+    fresh = _ledger(world.tmp, "fresh", {"a" * 36: TEXT_A, "c" * 36: TEXT_C})
+    payload = [{"source_record_id": "a" * 36, "source_key": "k", "reader": "r", "fingerprint": "f", "attested_read": "b@t"}]
+    real = organ._run
+
+    def with_line(cmd, **kw):
+        done = real(cmd, **kw)
+        if "fold_pack_generic" in " ".join(cmd):
+            done.stdout += "fold_pack_generic: baseline_disagreements = " + json.dumps(payload) + "\n"
+        return done
+
+    organ._run = with_line  # restored by the world fixture's monkeypatch teardown? no: restore explicitly
+    try:
+        assert organ.run(_offline(world, fresh, _root(world))) == 0
+    finally:
+        organ._run = real
+    assert _state(world)["baseline_disagreements"] == payload
 
 
 # ------------------------------------------------------------------ the ledger survives a failure
@@ -483,12 +522,57 @@ def test_a_failing_run_keeps_its_ledger_and_the_board_row_names_it(world):
     world.cfg["fold_rc"] = 3
     assert organ.run(world.args("--now", world.now(20))) == 2
     (kept,) = (world.tmp / "state" / "ledgers").iterdir()
-    assert (kept / "fake-organ-20261019-receipts.jsonl").exists() or list(kept.glob("*-receipts.jsonl"))
+    assert list(kept.glob("*-receipts.jsonl"))
     (row,) = world.board()
     assert str(kept) in row["detail"] and str(kept) in row["error_summary"]
-    state = json.loads((world.tmp / "state" / "state.json").read_text())
-    assert state["ledger_copy"] == str(kept)
+    assert _state(world)["ledger_copy"] == str(kept)
     assert not (world.tmp / "state" / "worktrees").exists() or not list((world.tmp / "state" / "worktrees").iterdir())
+
+
+def test_a_copy_failure_keeps_the_worktree_and_says_so(world, monkeypatch):
+    world.cfg["fold_rc"] = 3
+
+    def boom(*a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(organ.shutil, "copytree", boom)
+    assert organ.run(world.args("--now", world.now(20))) == 2
+    state = _state(world)
+    assert state["ledger_copy"] is None
+    kept_wt = Path(state["worktree_kept"])
+    assert kept_wt.is_dir() and list(kept_wt.glob("research/visa/*/*-receipts.jsonl"))
+    (row,) = world.board()
+    assert "worktree kept at" in row["detail"] and str(kept_wt) in row["detail"]
+    assert not (world.tmp / "state" / "ledgers").exists() or not list((world.tmp / "state" / "ledgers").iterdir())
+
+
+def test_a_copy_that_does_not_verify_is_discarded_and_the_worktree_kept(world, monkeypatch, tmp_path):
+    led = tmp_path / "led"
+    led.mkdir()
+    (led / "r-receipts.jsonl").write_text("some receipts\n")
+    real = organ.shutil.copytree
+
+    def truncating(src, dst, **kw):
+        out = real(src, dst, **kw)
+        (Path(dst) / "r-receipts.jsonl").write_text("")
+        return out
+
+    monkeypatch.setattr(organ.shutil, "copytree", truncating)
+    assert organ.keep_ledger(world.args(), led, 26) is None
+    assert list((world.tmp / "state" / "ledgers").iterdir()) == []
+
+
+def test_a_symlink_leaving_the_ledger_refuses_the_copy_and_an_inner_one_is_kept_as_a_link(world, tmp_path):
+    led = tmp_path / "led"
+    led.mkdir()
+    (led / "inside.txt").write_text("x")
+    (led / "link-in").symlink_to(led / "inside.txt")
+    secret = tmp_path / "outside.txt"
+    secret.write_text("not for the copy")
+    kept = organ.keep_ledger(world.args(), led, 26)
+    assert kept is not None and (kept / "link-in").is_symlink()
+    (led / "link-out").symlink_to(secret)
+    assert organ.keep_ledger(world.args(), led, 26) is None
 
 
 def test_a_run_that_fails_before_any_ledger_exists_keeps_nothing_and_still_alerts(world):
@@ -498,14 +582,16 @@ def test_a_run_that_fails_before_any_ledger_exists_keeps_nothing_and_still_alert
     assert not (world.tmp / "state" / "ledgers").exists()
 
 
-def test_ledger_retention_keeps_the_newest_eight(world, tmp_path):
+def test_ledger_retention_keeps_the_newest_eight_and_touches_only_its_own_names(world, tmp_path):
     led = tmp_path / "led"
     led.mkdir()
     (led / "r-receipts.jsonl").write_text("{}\n")
     args = world.args()
+    foreign = world.tmp / "state" / "ledgers" / "my-notes"
+    foreign.mkdir(parents=True)
     made = [organ.keep_ledger(args, led, 26) for _ in range(10)]
-    left = sorted(p for p in (world.tmp / "state" / "ledgers").iterdir())
-    assert len(left) == organ.LEDGER_KEEP == 8
+    left = [p for p in (world.tmp / "state" / "ledgers").iterdir() if p != foreign]
+    assert len(left) == organ.LEDGER_KEEP == 8 and foreign.is_dir()
     assert all(p is not None and p.exists() for p in made[2:])
     assert not made[0].exists() and not made[1].exists()
 

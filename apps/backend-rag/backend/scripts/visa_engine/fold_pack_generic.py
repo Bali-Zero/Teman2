@@ -10,8 +10,9 @@ Every guard of the seq-25 fold is kept in semantics: each successful receipt is
 validated (HTTP 200, key phrase, the record's own canonical URL, not in the
 future, after the previous stamp), the saved text carries a receipt's
 fingerprint, each judgement falls between the first read and now, ``changed``
-needs a disposition by id (and, given ``--baseline-ledger-dir``, is refused on a text whose
-fingerprint equals the baseline's), and ``checked_sentence`` is a substring of the saved
+needs a disposition by id (given ``--baseline-root``, a ``changed`` verdict on a text whose
+fingerprint equals the attested read's is downgraded to ``none`` and reported, and a
+``judge: fingerprint`` judgement is accepted only when re-proved against that read), and ``checked_sentence`` is a substring of the saved
 text. ``verified_at`` is the earliest successful read. Only identity fields and
 the portal stamps move.
 
@@ -42,7 +43,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, NoReturn
 
-from backend.scripts.visa_engine.baseline_ledger import baseline_fingerprint
+from backend.scripts.visa_engine.baseline_ledger import Attested, attested_reads
 from backend.scripts.visa_engine.fold_pack_seq25 import (
     JUDGEMENT_VERDICTS,
     PORTAL_AUTHORITY,
@@ -199,7 +200,8 @@ def attestation_instant(
     *,
     previous_stamp: str,
     now: datetime,
-    baseline_dir: Path | None = None,
+    baseline: dict[str, Attested] | None = None,
+    disagreements: list[dict[str, str]] | None = None,
 ) -> str:
     """The ``verified_at`` the ledger supports (earliest successful read), or abort."""
     previous = _parse_utc(previous_stamp, what="previous portal stamp")
@@ -248,17 +250,40 @@ def attestation_instant(
                 )
             if verdict == "unsure":
                 _fail(f"{label}: a reader is unsure — resolve before stamping")
-            if verdict == "changed" and baseline_dir is not None:
-                base_fp = baseline_fingerprint(baseline_dir, record_id)
-                judged_fp = _bound_receipt(successes, judgement, judged_at, label).get(
+            held = (baseline or {}).get(record_id)
+            if judgement.get("judge") == "fingerprint":
+                bound_fp = _bound_receipt(successes, judgement, judged_at, label).get(
                     "visible_text_sha256"
                 )
-                if base_fp is not None and base_fp == judged_fp:
+                if held is None:
                     _fail(
-                        f"{label}: the judgement says the page changed, but the text it judged has "
-                        f"fingerprint {judged_fp}, identical to the baseline ledger's {base_fp} — "
-                        "a contradictory judgement, not a changed page"
+                        f"{label}: a fingerprint judgement needs an attested baseline read for this "
+                        "record and none could be proven (no --baseline-root, or no ledger attests it)"
                     )
+                if verdict != "none" or not (
+                    judgement.get("text_sha256") == bound_fp == held.fingerprint
+                ):
+                    _fail(
+                        f"{label}: a fingerprint judgement is not proven: it says {judgement.get('text_sha256')!r}, "
+                        f"the read it binds to has {bound_fp!r}, the attested read {held.label()} has "
+                        f"{held.fingerprint!r}"
+                    )
+            elif verdict == "changed" and held is not None:
+                bound_fp = _bound_receipt(successes, judgement, judged_at, label).get(
+                    "visible_text_sha256"
+                )
+                if bound_fp == held.fingerprint:
+                    verdict = "none"
+                    if disagreements is not None:
+                        disagreements.append(
+                            {
+                                "source_record_id": record_id,
+                                "source_key": str(record["source_key"]),
+                                "reader": str(judgement.get("reader")),
+                                "fingerprint": str(bound_fp),
+                                "attested_read": held.label(),
+                            }
+                        )
             if verdict == "changed" and record_id not in ledger.accepted_changed:
                 _fail(
                     f"{label}: a reader reports the page changed and disposition.json does not accept it by id"
@@ -314,7 +339,9 @@ def fold(
     verified_by: str,
     observed_at: datetime | None = None,
     allow_fake_reader: bool = False,
-    baseline_dir: Path | None = None,
+    baseline_root: Path | None = None,
+    ledger_dir: Path | None = None,
+    disagreements: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Return the payload of pack anchor+1, or abort loudly."""
     now = observed_at or _real_now_utc()
@@ -340,8 +367,23 @@ def fold(
             _fail(
                 f"judgements by a rehearsal reader {fakes} cannot stamp a pack (--allow-fake-reader is for rehearsals only)"
             )
+    baseline = (
+        attested_reads(
+            baseline_root,
+            portals,
+            exclude=[ledger_dir or (ledger.text_dir.parent if ledger.text_dir else Path("."))],
+            not_after=anchor.get("created_at"),
+        )
+        if baseline_root is not None
+        else None
+    )
     verified_at = attestation_instant(
-        ledger, portals, previous_stamp=previous_stamp, now=now, baseline_dir=baseline_dir
+        ledger,
+        portals,
+        previous_stamp=previous_stamp,
+        now=now,
+        baseline=baseline,
+        disagreements=disagreements,
     )
 
     out = json.loads(json.dumps(anchor))
@@ -383,10 +425,11 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
         "--created-at", default=None, help="ISO Z, default now rounded to the minute"
     )
     parser.add_argument(
-        "--baseline-ledger-dir",
+        "--baseline-root",
         type=Path,
         default=None,
-        help="earlier attested ledger: a `changed` verdict on a text with its fingerprint is refused",
+        help="research/visa root: attested reads are proven from it; fingerprint judgements are "
+        "re-proved against them and a `changed` verdict on an unchanged fingerprint is downgraded",
     )
     parser.add_argument("--trust-store-env", default="VISA_ENGINE_TRUST_STORE_KEYS_JSON")
     args = parser.parse_args(argv)
@@ -405,6 +448,7 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
     ledger = load_ledger(args.ledger_dir)
     readers = sorted({str(j.get("reader")) for j in ledger.judgements})
     verified_by = args.verified_by or f"agent.fold-pack.live-recheck:{'+'.join(readers)}"
+    disagreements: list[dict[str, str]] = []
     try:
         out = fold(
             anchor,
@@ -417,12 +461,15 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
             verified_by=verified_by,
             observed_at=observed_at,
             allow_fake_reader=args.allow_fake_reader,
-            baseline_dir=args.baseline_ledger_dir,
+            baseline_root=args.baseline_root,
+            ledger_dir=args.ledger_dir,
+            disagreements=disagreements,
         )
     except RulePackVerificationError as exc:
         _fail(f"the anchor does not verify: {exc}")
     args.output.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     digest = hashlib.sha256(canonicalize_json(out)).hexdigest()
+    print(f"fold_pack_generic: baseline_disagreements = {json.dumps(disagreements)}")
     print(f"fold_pack_generic: wrote {args.output}")
     print(f"fold_pack_generic: seq-{out['sequence']} payload_sha256 = {digest}")
     print(
