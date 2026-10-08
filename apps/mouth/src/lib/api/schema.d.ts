@@ -20048,6 +20048,11 @@ export interface components {
     CandidateDisplayDTO: {
       availability: components["schemas"]["CandidateAvailabilityDTO"];
       documentation: components["schemas"]["CandidateDocumentationDTO"];
+      /** Duration Options */
+      duration_options?:
+        components["schemas"]["DurationOptionDisplayDTO"][] | null;
+      /** Extension Required */
+      extension_required?: boolean | null;
       name: components["schemas"]["ProductNames"];
       pricing: components["schemas"]["CandidatePricingDTO"];
       processing_timeline: components["schemas"]["CandidateProcessingTimelineDTO"];
@@ -20060,6 +20065,8 @@ export interface components {
       product_version_id: string;
       /** Rank */
       rank: number;
+      /** Selected Duration Days */
+      selected_duration_days?: number | null;
       stay_policy: components["schemas"]["CandidateStayPolicyDTO"];
       tagline: components["schemas"]["ProductNames"] | null;
     };
@@ -21661,6 +21668,22 @@ export interface components {
       statuses?: components["schemas"]["DriveCountRow"][];
       /** Total */
       total: number;
+    };
+    /**
+     * DurationOptionDisplayDTO
+     * @description One purchasable stay length with its own exact catalogue resolution.
+     */
+    DurationOptionDisplayDTO: {
+      /** Amount Idr */
+      amount_idr?: number | null;
+      /** Days */
+      days: number;
+      pricing_key: components["schemas"]["PricingKey"];
+      /** Reason Code */
+      reason_code: string;
+      /** Selected */
+      selected: boolean;
+      status: components["schemas"]["PricingAvailabilityStatus"];
     };
     /**
      * E33Stage
