@@ -163,12 +163,15 @@ from backend.services.visa_engine.models import (
     Decision,
     Reason,
     SourceRecord,
+    VisaProductVersion,
 )
 from backend.services.visa_engine.pricing_adapter import (
     ExactPricingCatalog,
     UnavailablePricingCatalog,
     build_price_quote,
     resolve_candidate_pricing,
+    resolve_pricing_key,
+    select_duration_option,
 )
 from backend.services.visa_engine.retention import (
     active_policy_available as active_retention_policy_available,
@@ -895,12 +898,50 @@ def _build_sources_dto(
     return dtos
 
 
+def _requested_stay_days(facts: ApplicantFacts) -> int | None:
+    """The applicant's stated stay length, or ``None`` when it is not a known answer."""
+
+    fact = facts.facts.intent_stay_days
+    return fact.value if fact.status == "KNOWN" else None
+
+
+def _duration_display(
+    product: VisaProductVersion,
+    *,
+    stay_days: int | None,
+    pricing_catalog: ExactPricingCatalog,
+    evaluated_at: datetime,
+) -> dict[str, JsonValue]:
+    """Additive duration fields; empty for a product that offers a single length."""
+
+    selected = select_duration_option(product, stay_days)
+    if selected is None or not product.duration_options:
+        return {}
+    options: list[JsonValue] = []
+    for option in product.duration_options:
+        resolution = resolve_pricing_key(
+            option.pricing_key, pricing_catalog=pricing_catalog, evaluated_at=evaluated_at
+        )
+        options.append(
+            {
+                "days": option.days,
+                "pricing_key": option.pricing_key.model_dump(mode="json"),
+                "selected": option.days == selected.days,
+                "status": resolution.status,
+                "reason_code": resolution.reason_code,
+                "amount_idr": resolution.amount,
+            }
+        )
+    return {"selected_duration_days": selected.days, "duration_options": options}
+
+
 def _build_display(
     decision: Decision,
     compiled: CompiledRulePack,
     *,
     request_trace: str,
     pricing_catalog: ExactPricingCatalog,
+    stay_days: int | None = None,
 ) -> dict[str, JsonValue]:
     """The B.2 ``display`` block — pack-backed candidate display data.
 
@@ -924,6 +965,7 @@ def _build_display(
             product,
             pricing_catalog=pricing_catalog,
             evaluated_at=decision.evaluated_at,
+            stay_days=stay_days,
         )
         entries.append(
             {
@@ -967,6 +1009,12 @@ def _build_display(
                     },
                 },
                 "pricing": pricing.as_json(),
+                **_duration_display(
+                    product,
+                    stay_days=stay_days,
+                    pricing_catalog=pricing_catalog,
+                    evaluated_at=decision.evaluated_at,
+                ),
             }
         )
     if unresolved:
@@ -983,6 +1031,7 @@ def _attach_price_quotes(
     compiled: CompiledRulePack,
     *,
     pricing_catalog: ExactPricingCatalog,
+    stay_days: int | None = None,
 ) -> Decision:
     """Attach exact-key PricingTool quotes before decision sealing/persistence."""
 
@@ -1002,8 +1051,11 @@ def _attach_price_quotes(
             product,
             pricing_catalog=pricing_catalog,
             evaluated_at=decision.evaluated_at,
+            stay_days=stay_days,
         )
-        quote = build_price_quote(product, resolution, decision_id=decision.decision_id)
+        quote = build_price_quote(
+            product, resolution, decision_id=decision.decision_id, stay_days=stay_days
+        )
         if quote is not None:
             quotes.append(quote)
     payload = decision.model_dump(mode="python")
@@ -2136,6 +2188,7 @@ async def run_evaluation(
                 decision,
                 compiled,
                 pricing_catalog=pricing_catalog,
+                stay_days=_requested_stay_days(facts),
             )
         except Exception as exc:
             logger.warning(
@@ -2226,6 +2279,7 @@ async def run_evaluation(
             compiled,
             request_trace=request_trace,
             pricing_catalog=pricing_catalog,
+            stay_days=_requested_stay_days(facts),
         )
         validated = VisaOracleEvaluateResponse.model_validate(envelope)
     except Exception as exc:

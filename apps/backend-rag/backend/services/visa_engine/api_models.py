@@ -27,6 +27,7 @@ from backend.services.visa_engine.models import (
     ApplicantFacts,
     Decision,
     ExtensionPolicy,
+    PricingKey,
     ProductCode,
     ProductNames,
     ReasonCode,
@@ -440,6 +441,19 @@ class CandidateProcessingTimelineDTO(BaseModel):
         return self
 
 
+class DurationOptionDisplayDTO(BaseModel):
+    """One purchasable stay length with its own exact catalogue resolution."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    days: int = Field(ge=1, le=36_500, strict=True)
+    pricing_key: PricingKey
+    selected: bool
+    status: PricingAvailabilityStatus
+    reason_code: ReasonCode
+    amount_idr: int | None = Field(default=None, ge=0, strict=True)
+
+
 class CandidateDisplayDTO(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -453,6 +467,11 @@ class CandidateDisplayDTO(BaseModel):
     processing_timeline: CandidateProcessingTimelineDTO
     availability: CandidateAvailabilityDTO
     pricing: CandidatePricingDTO
+    # Additive: present only for products that offer more than one stay length.
+    selected_duration_days: int | None = Field(default=None, ge=1, le=36_500, strict=True)
+    duration_options: tuple[DurationOptionDisplayDTO, ...] | None = Field(
+        default=None, min_length=1
+    )
 
 
 class VisaOracleDisplayDTO(BaseModel):
@@ -595,6 +614,7 @@ __all__ = [
     "CandidateStayPolicyDTO",
     "DisclosedReviewFlag",
     "DocumentationStatus",
+    "DurationOptionDisplayDTO",
     "EvaluateResponseMode",
     "PricingAvailabilityStatus",
     "ProcessingTimelineStatus",

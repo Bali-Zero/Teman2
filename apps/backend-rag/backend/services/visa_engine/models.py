@@ -47,10 +47,19 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone
+from itertools import pairwise
 from types import MappingProxyType
-from typing import Annotated, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from backend.services.visa_engine.ast import Condition
 from backend.services.visa_engine.enums import (
@@ -274,6 +283,15 @@ class StayPolicy(BaseModel):
     maximum_days: Annotated[int, Field(ge=0, le=36_500, strict=True)] | None
 
 
+class DurationOption(BaseModel):
+    """One purchasable stay length of a product, priced by its own catalogue row."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    days: Annotated[int, Field(ge=1, le=36_500, strict=True)]
+    pricing_key: PricingKey
+
+
 class ExtensionPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -370,6 +388,10 @@ class VisaProductVersion(BaseModel):
     source_refs: tuple[uuid.UUID, ...] = Field(..., min_length=1)
     # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
     public_catalog: Annotated[bool, Field(strict=True)]
+    # Additive and optional: a product without options prices through
+    # ``pricing_key`` exactly as before, so every signed pack that predates
+    # this field still validates and keeps its digest.
+    duration_options: tuple[DurationOption, ...] | None = Field(default=None, min_length=1)
 
     @field_validator("legacy_codes", "legacy_slugs", "covered_purposes", "source_refs")
     @classmethod
@@ -377,6 +399,31 @@ class VisaProductVersion(BaseModel):
         if len(set(v)) != len(v):
             raise ValueError("array must have unique items")
         return v
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_duration_options(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # Absent stays absent on the wire: re-serialising a pack that predates
+        # ``duration_options`` must not grow a ``null`` key and shift its bytes.
+        data = handler(self)
+        if data.get("duration_options") is None:
+            data.pop("duration_options", None)
+        return data
+
+    @model_validator(mode="after")
+    def _check_duration_options(self) -> VisaProductVersion:
+        options = self.duration_options
+        if options is None:
+            return self
+        days = [option.days for option in options]
+        if any(later <= earlier for earlier, later in pairwise(days)):
+            raise ValueError("duration_options days must be strictly increasing")
+        stay = self.stay_policy
+        if stay.kind is StayPolicyKind.FIXED_DAYS:
+            if stay.minimum_days is not None and days[0] < stay.minimum_days:
+                raise ValueError("duration option below stay_policy.minimum_days")
+            if stay.maximum_days is not None and days[-1] > stay.maximum_days:
+                raise ValueError("duration option above stay_policy.maximum_days")
+        return self
 
 
 # ---------------------------------------------------------------------------

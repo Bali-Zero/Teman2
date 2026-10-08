@@ -1549,6 +1549,22 @@
         "documentation": {
           "$ref": "#/$defs/CandidateDocumentationDTO"
         },
+        "duration_options": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DurationOptionDisplayDTO"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Options"
+        },
         "name": {
           "$ref": "#/$defs/ProductNames"
         },
@@ -1575,6 +1591,20 @@
           "minimum": 1,
           "title": "Rank",
           "type": "integer"
+        },
+        "selected_duration_days": {
+          "anyOf": [
+            {
+              "maximum": 36500,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selected Duration Days"
         },
         "stay_policy": {
           "$ref": "#/$defs/CandidateStayPolicyDTO"
@@ -2311,6 +2341,69 @@
       "enum": ["AVAILABLE", "UNKNOWN"],
       "title": "DocumentationStatus",
       "type": "string"
+    },
+    "DurationOption": {
+      "additionalProperties": false,
+      "description": "One purchasable stay length of a product, priced by its own catalogue row.",
+      "properties": {
+        "days": {
+          "maximum": 36500,
+          "minimum": 1,
+          "title": "Days",
+          "type": "integer"
+        },
+        "pricing_key": {
+          "$ref": "#/$defs/PricingKey"
+        }
+      },
+      "required": ["days", "pricing_key"],
+      "title": "DurationOption",
+      "type": "object"
+    },
+    "DurationOptionDisplayDTO": {
+      "additionalProperties": false,
+      "description": "One purchasable stay length with its own exact catalogue resolution.",
+      "properties": {
+        "amount_idr": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Idr"
+        },
+        "days": {
+          "maximum": 36500,
+          "minimum": 1,
+          "title": "Days",
+          "type": "integer"
+        },
+        "pricing_key": {
+          "$ref": "#/$defs/PricingKey"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "selected": {
+          "title": "Selected",
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/PricingAvailabilityStatus"
+        }
+      },
+      "required": ["days", "pricing_key", "selected", "status", "reason_code"],
+      "title": "DurationOptionDisplayDTO",
+      "type": "object"
     },
     "EffectAddScore": {
       "additionalProperties": false,
@@ -4898,6 +4991,22 @@
           "minItems": 1,
           "title": "Covered Purposes",
           "type": "array"
+        },
+        "duration_options": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DurationOption"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Options"
         },
         "entry_policy": {
           "$ref": "#/$defs/EntryPolicy"
