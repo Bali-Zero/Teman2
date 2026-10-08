@@ -15,6 +15,45 @@ set -euo pipefail
 ROOT="${0:A:h:h}"     # repo root (deploy/ is one level down)
 cd "$ROOT"
 
+# Fleet targets are the OTHER two machines, derived from the driver host. Only Pro has Xcode, so
+# Pro drives (2026-10-08: from Pro `ssh pro` is refused, `ssh m5`/`ssh mini` work; from M5 the
+# reverse). KBLI_DRIVER_HOST overrides `hostname -s` (tests); KBLI_REMOTE_TARGETS="m5 mini"
+# overrides the derivation but may never list the driver itself.
+driver_alias() {  # prints the fleet alias of the driver host, empty if unknown
+  case "${(L)${KBLI_DRIVER_HOST:-$(hostname -s)}}" in
+    nuzantara) echo pro ;;
+    air-m5) echo m5 ;;
+    mini-pro2) echo mini ;;
+  esac
+}
+
+fleet_targets() {  # prints the space-separated remote targets, or returns 2 with a message
+  local self; self="$(driver_alias)"
+  if [[ -n "${KBLI_REMOTE_TARGETS:-}" ]]; then
+    if [[ -n "$self" && " ${KBLI_REMOTE_TARGETS} " == *" $self "* ]]; then
+      echo "✗ KBLI_REMOTE_TARGETS lists the driver itself ($self): it is installed locally, not over ssh" >&2
+      return 2
+    fi
+    echo "${KBLI_REMOTE_TARGETS}"
+    return 0
+  fi
+  case "$self" in
+    pro) echo "m5 mini" ;;
+    m5) echo "pro mini" ;;
+    mini) echo "m5 pro" ;;
+    *)
+      echo "✗ unknown driver host '${KBLI_DRIVER_HOST:-$(hostname -s)}': set KBLI_REMOTE_TARGETS=\"a b\"" >&2
+      return 2
+      ;;
+  esac
+}
+
+TARGETS_STR="$(fleet_targets)" || exit 2
+if [[ "${1:-}" == "--print-targets" ]]; then
+  echo "$TARGETS_STR"
+  exit 0
+fi
+
 # The 3-Mac fleet always runs the INTERNAL variant (2026-08-09 app split; BKPM is a separate,
 # on-demand build zipped to build/ only — see build.sh --variant). NAME CHANGE from the old
 # "KBLI Navigator": the fleet's currently-installed copies on M5/Pro/Mini still carry the OLD
@@ -31,12 +70,12 @@ echo "▸ building on $(hostname)…"
 SRC_HASH="$(shasum -a 256 "$APP/$DATASET_REL" | awk '{print $1}')"
 echo "▸ built bundle dataset: ${SRC_HASH:0:12}"
 
-# targets: ssh aliases that resolve from this machine. Edit to taste.
-# (From M5: 'pro' and 'mini' are configured ssh aliases. The local install is a plain copy.)
+# targets: ssh aliases of the OTHER two machines, from fleet_targets above (the driver is
+# installed by a plain local copy, never over ssh to itself).
 # App lives on the DESKTOP of all 3 machines (Zero's choice 2026-06-24): a visible, one-click
 # icon on M5 + Pro + Mini. The remote home dir resolves to /Users/nuzantara on Pro/Mini.
 LOCAL_DEST="$HOME/Desktop"
-REMOTE_TARGETS=(pro mini)
+REMOTE_TARGETS=(${=TARGETS_STR})
 FAILED=()
 
 resign() {  # $1 = path to .app on the machine where this runs

@@ -78,6 +78,11 @@ QA snapshot (off-screen, no GUI): `"build/KBLI Navigator - INTERNAL.app/Contents
 ./deploy/check-fleet.sh          # read-only: canonical vs Resources vs deployed bundles (drift receptor)
 ```
 
+Run the install on **Pro** (only Pro has Xcode; M5 cannot build). The remote targets are derived
+from the driver host (`hostname -s`): Pro installs locally and deploys to `m5 mini`, M5 to `pro mini`,
+Mini to `m5 pro`. `./deploy/install-3mac.sh --print-targets` shows them without building. Override with
+`KBLI_REMOTE_TARGETS="m5 mini"` (refused, rc=2, if it lists the driver). Set `KBLI_BOOK_PDF_DIR` for the book PDFs.
+
 BKPM is never fleet-installed — it's built on demand (`./build.sh --variant bkpm`) and handed off
 outside this repo's deploy scripts.
 
