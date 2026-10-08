@@ -840,12 +840,12 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(message).toContain("Visa on Arrival");
   });
 
-  it("still surfaces an unmapped code instead of blanking it", () => {
-    // A code with no copy must stay visible: hiding it would conceal a new
-    // rule rather than reveal it.
-    expect(firstReasonEn("SOMETHING_NEW_FROM_A_FUTURE_PACK")).toBe(
-      "Verified reason: SOMETHING_NEW_FROM_A_FUTURE_PACK",
-    );
+  it("never prints a raw code for an unmapped reason", () => {
+    // A client must not read a machine code; the unmapped fallback is a
+    // plain sentence.
+    const copy = firstReasonEn("SOMETHING_NEW_FROM_A_FUTURE_PACK");
+    expect(copy).toBe("Confirmed by the rules for this visa.");
+    expect(copy).not.toContain("SOMETHING_NEW_FROM_A_FUTURE_PACK");
   });
 
   it("states the Article 60(2) KITAP prerequisites without inventing status tenure", () => {
@@ -2166,8 +2166,8 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
   it.each([
     [
       "rule",
-      "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
-      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+      "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor reviews it with you before any path is confirmed.",
+      "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
     ],
     [
       "checked",
@@ -2191,7 +2191,7 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
   it("has exactly four criminal review element fields and exact labels", () => {
     expect(Object.keys(copy)).toHaveLength(4);
     expect(translate("en", "outcome.review.element.rule" as I18nKey)).toBe(
-      "Why this is held",
+      "Why this is paused",
     );
     expect(translate("en", "outcome.review.element.checked" as I18nKey)).toBe(
       "What the reviewer checks",
@@ -2203,7 +2203,7 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       "How this is handled",
     );
     expect(translate("id", "outcome.review.element.rule" as I18nKey)).toBe(
-      "Mengapa hasil ini ditahan",
+      "Mengapa hasil ini ditunda",
     );
     expect(translate("id", "outcome.review.element.checked" as I18nKey)).toBe(
       "Apa yang diperiksa peninjau",
@@ -2273,8 +2273,8 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       throw new Error("unexpected state");
     expect(outcome.reviewReasons).toHaveLength(1);
     expect(outcome.reviewReasons[0].message).toEqual({
-      en: "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own, so a person needs to confirm it before a path can be confirmed.",
-      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
+      en: "One of your answers about your planned activity, investment vehicle, retirement basis or diaspora connection is one these rules cannot decide on their own, so a Bali Zero advisor confirms it before a path can be confirmed.",
+      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, sarana investasi, dasar pensiun, atau hubungan diaspora tidak dapat diputuskan sendiri oleh aturan ini, sehingga konsultan Bali Zero memastikannya sebelum jalur dapat dikonfirmasi.",
     });
     expect(
       REVIEW_REASON_ELEMENTS.DISCLOSED_ACTIVITY_BOUNDARY_REVIEW,
@@ -2305,10 +2305,10 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
     if (secondOutcome.state !== "HUMAN_REVIEW_REQUIRED")
       throw new Error("unexpected state");
     expect(firstOutcome.reviewReasons[0].message.en).toBe(
-      "Some of your answers need a person's judgment before we can confirm a path.",
+      "Some of your answers need a Bali Zero advisor's judgment before we can confirm a path.",
     );
     expect(secondOutcome.reviewReasons[0].message.en).toBe(
-      "Some of your answers need a person's judgment before we can confirm a path.",
+      "Some of your answers need a Bali Zero advisor's judgment before we can confirm a path.",
     );
     expect(emitVisaOracleTelemetry).toHaveBeenCalledTimes(1);
     expect(emitVisaOracleTelemetry).toHaveBeenCalledWith({

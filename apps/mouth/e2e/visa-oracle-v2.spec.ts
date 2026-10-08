@@ -299,8 +299,8 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     const enRows = page.locator(".oracle-review-elements__row");
     const en = [
       [
-        "Why this is held",
-        "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
+        "Why this is paused",
+        "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor reviews it with you before any path is confirmed.",
       ],
       [
         "What the reviewer checks",
@@ -324,8 +324,8 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     const idRows = page.locator(".oracle-review-elements__row");
     const id = [
       [
-        "Mengapa hasil ini ditahan",
-        "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+        "Mengapa hasil ini ditunda",
+        "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
       ],
       [
         "Apa yang diperiksa peninjau",
@@ -363,7 +363,7 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     await page.goto("/visa-oracle");
     await expectEngineState(page, "SUPPORTED_CANDIDATES");
     await expect(page.locator(".oracle-disclaimer")).toContainText(
-      "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
+      "If you disclosed a criminal record, or gave an answer these rules cannot assess, a Bali Zero advisor reviews your case before any path is confirmed. Any other disclosure appears on your result as a condition we check with you before filing. The decision is always Ditjen Imigrasi’s, never this tool’s.",
     );
     await expect(page.locator(".oracle-disclaimer")).not.toContainText(
       "Complex or flagged cases always go to a human",

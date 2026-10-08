@@ -41,6 +41,7 @@ import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SECOND_HOME_STUDIO_URL,
   REVIEW_REASON_ELEMENTS,
+  UNMAPPED_REASON_COPY,
   isSecondHomeStudioOnly,
 } from "../_lib/engine-adapter";
 import {
@@ -370,7 +371,7 @@ function ReviewReasonGroup({
   );
 }
 
-// ENDING-ROUND E5 regex: matches ONLY the engine-adapter.ts `reasonMessage()`
+// ENDING-ROUND E5 regex: matches the legacy engine-adapter.ts `reasonMessage()`
 // fallback ("Verified reason: CODE" / "Alasan terverifikasi: CODE") — never
 // a mapped SUPPORT_REASON_COPY sentence, which always reads as prose.
 const GENERIC_SUPPORT_REASON_RE =
@@ -410,7 +411,11 @@ function ReasonList({
   let genericShown = false;
   const rows = reasons.flatMap((reason) => {
     const localizedText = localized(reason.message, language);
-    if (genericKey && GENERIC_SUPPORT_REASON_RE.test(localizedText)) {
+    if (
+      genericKey &&
+      (GENERIC_SUPPORT_REASON_RE.test(localizedText) ||
+        localizedText === UNMAPPED_REASON_COPY[language])
+    ) {
       if (genericShown) return [];
       genericShown = true;
       return [{ reason, text: translate(language, genericKey) }];
@@ -490,17 +495,9 @@ function Timeline({
 }) {
   if (timeline.status !== "AVAILABLE") {
     return (
-      <div className="oracle-unverified" role="status">
-        <strong>
-          {translate(
-            language,
-            timeline.status === "CONTACT_REQUIRED"
-              ? "outcome.timeline_contact_required"
-              : "outcome.timeline_unavailable",
-          )}
-        </strong>
-        <p>{localized(timeline.message, language)}</p>
-      </div>
+      <p className="oracle-question__hint oracle-timeline__pending">
+        {translate(language, "outcome.timeline_pending" as I18nKey)}
+      </p>
     );
   }
   return (
@@ -576,19 +573,19 @@ function CandidateCard({
   checkedDocs: ReadonlySet<string>;
   onToggleDoc: (key: string) => void;
 }) {
-  const ordinal = String(index + 1).padStart(2, "0");
-  const count = String(total).padStart(2, "0");
   return (
     <article className="oracle-candidate-card">
       <header className="oracle-candidate-card__header">
         <div className="oracle-candidate-card__row">
           <p className="oracle-eyebrow">{candidate.code}</p>
-          <span
-            className="oracle-candidate-card__index oracle-tabular-nums"
-            aria-hidden="true"
-          >
-            {ordinal}/{count}
-          </span>
+          {total > 1 && (
+            <span className="oracle-candidate-card__index oracle-tabular-nums">
+              {translate(language, "outcome.path_counter" as I18nKey, {
+                index: index + 1,
+                total,
+              })}
+            </span>
+          )}
         </div>
         <h2 className="oracle-candidate-card__title">
           {localized(candidate.name, language)}
@@ -1215,20 +1212,18 @@ export function OutcomeSheet({
         )}
         {outcome.assessment && (
           <p className="oracle-print-only oracle-tabular-nums">
-            {translate(language, "outcome.assessment_dates" as I18nKey, {
-              effective: formatAssessmentDate(
-                outcome.assessment.effectiveAtIso,
-                language,
-              ),
-              observed: formatAssessmentDate(
-                outcome.assessment.observedAtIso,
-                language,
-              ),
-              evaluated: formatAssessmentDate(
-                outcome.assessment.evaluatedAtIso,
-                language,
-              ),
-            })}
+            {translate(
+              language,
+              (outcome.sources.length > 0
+                ? "outcome.checked_on"
+                : "outcome.checked_on_plain") as I18nKey,
+              {
+                date: formatAssessmentDate(
+                  outcome.assessment.evaluatedAtIso,
+                  language,
+                ),
+              },
+            )}
           </p>
         )}
       </section>

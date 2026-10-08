@@ -252,7 +252,7 @@ test.describe("Visa Oracle real full-stack smoke", () => {
     // review reasons never go through it). Assert the curated text verbatim.
     await expect(
       page.getByText(
-        "This result relies on a regulatory source whose currency could not be established automatically — confirming whether that source is still current is what a person must do before this result can stand.",
+        "One of the official sources behind this result needs a fresh check by a Bali Zero advisor before the result can stand.",
       ),
     ).toBeVisible({ timeout: 30_000 });
     const initialRequest = {

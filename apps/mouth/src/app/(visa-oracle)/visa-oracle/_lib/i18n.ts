@@ -624,14 +624,14 @@ const en = {
   "why.stay_days":
     "The decision engine checks your exact planned duration instead of guessing from a broad range.",
 
-  "q.review_gate": "A few honest questions before we show you anything",
+  "q.review_gate": "Is there anything else we should know?",
   // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M6): the lead no longer promises
   // a human review that no longer happens after A1'/A3-B — see A5's
   // `outcome.disclaimer.complex_to_human` for the same underlying fact.
   "q.review_gate.hint":
     "Tick everything that applies — an omission costs you more than a disclosure. Some of these, a criminal record among them, put your case in front of a person before any verdict; the others are attached to your result as conditions our team checks with you before submission.",
   "why.review_gate":
-    "Every item here reaches the engine: the three immigration-history ones as a fact the signed rules read, all of them as a disclosure the result must account for.",
+    "Every item here reaches the engine: the three immigration-history ones as a fact the rules read, all of them as a disclosure the result must account for.",
   "q.review_gate.opt.none": "None of these apply to me",
   "q.review_gate.opt.flagged": "One or more applies",
   // Finding #5 (adversarial review 2026-07-17): "none" is now a first-class
@@ -894,7 +894,7 @@ const en = {
   // copy (`SECOND_HOME_BELOW_THRESHOLD_STUDIO`), rendered lower on the page.
   "verdict.headline.SECOND_HOME_STUDIO":
     "Below the Second Home guarantee threshold",
-  "verdict.evaluating": "Checking the verified rules…",
+  "verdict.evaluating": "Checking your options…",
   "verdict.eligibility.eligible": "Eligible",
   "verdict.eligibility.likely": "Likely",
   "verdict.eligibility.conditional": "Conditional",
@@ -920,23 +920,23 @@ const en = {
   "verdict.provenance_headline.SHADOW": "Assessment verification in progress",
   "verdict.provenance_headline.PREVIEW": "Preview only — not a live decision",
   "verdict.provenance_description.CLIENT_GUARD":
-    "No engine decision was made. Review the highlighted answer or continue with a person.",
+    "No decision was made yet. Review the highlighted answer or continue with a person.",
   "verdict.provenance_description.NETWORK_FAILURE":
     "No result was generated. Your answers were not replaced with a guess.",
   "verdict.provenance_description.SHADOW":
-    "Your assessment was submitted for verification, but no visa path is shown while public enforcement is disabled.",
+    "Your assessment was recorded for verification; no visa path is shown in this mode.",
   "verdict.provenance_description.PREVIEW":
     "This screen is test data for product review and cannot support a recommendation.",
 
-  "outcome.comparison_title": "How the paths compare",
-  "outcome.comparison_col.visa": "Path",
-  "outcome.comparison_col.eligibility": "Eligibility",
-  "outcome.comparison_col.timeline": "Timeline",
-  "outcome.comparison_col.price": "Price",
-  "outcome.timeline_title": "Timeline, from today",
-  "outcome.timeline_range": "About {{min}}–{{max}} days",
+  "outcome.timeline_title": "Timeline",
+  "outcome.timeline_pending":
+    "Processing times are set by Ditjen Imigrasi and vary by office and season. Your Bali Zero advisor confirms the calendar for your case before you book travel.",
+  "outcome.path_counter": "Path {{index}} of {{total}}",
+  "outcome.checked_on": "Checked on {{date}} against the sources above.",
+  "outcome.checked_on_plain": "Checked on {{date}}.",
   "outcome.price_label": "All-inclusive price",
-  "outcome.price_all_inclusive": "One number — no PNBP-vs-fee split, ever.",
+  "outcome.price_all_inclusive":
+    "Government fees and Bali Zero service included.",
   "outcome.price_valid_until": "Quote valid until {{date}}",
   // Finding #17 (adversarial review 2026-07-17): "Free"/WhatsApp summary
   // header were hardcoded English/Indonesian ternaries in OutcomeSheet.tsx
@@ -945,11 +945,7 @@ const en = {
   "outcome.price_free": "Free",
   "outcome.whatsapp_summary_header": "Visa Oracle decision summary:",
   "outcome.checklist_title": "Documents you’ll want ready",
-  "outcome.next_steps_title": "Your next 3 steps",
-  "outcome.next_steps.default.1":
-    "Message a Bali Zero advisor with this summary",
-  "outcome.next_steps.default.2": "Gather the documents listed above",
-  "outcome.next_steps.default.3": "Confirm your timeline before booking travel",
+  "outcome.next_steps_title": "What to do next",
   "outcome.whatsapp_cta": "Continue on WhatsApp",
   "outcome.qr_aria":
     "QR code — scan to continue this summary on WhatsApp on your phone",
@@ -964,7 +960,7 @@ const en = {
   "outcome.supported_paths": "Supported paths",
   "outcome.rank": "Rank {{rank}}",
   "outcome.axis.legal": "Legal eligibility",
-  "outcome.axis.operational": "Operational availability",
+  "outcome.axis.operational": "Current availability",
   "outcome.axis.service": "Bali Zero service",
   "outcome.status.SUPPORTED": "Supported",
   "outcome.status.CONDITIONAL": "Conditional",
@@ -977,33 +973,28 @@ const en = {
   "outcome.why_supported": "Why this path is supported",
   "outcome.timeline_dates": "{{from}} to {{to}}",
   "outcome.timeline_basis": "Calculated from the assessment date: {{date}}",
-  "outcome.timeline_unavailable":
-    "Timeline unavailable — no verified calendar estimate",
-  "outcome.timeline_contact_required":
-    "Timeline needs operational confirmation",
   "outcome.document_status.CONDITIONAL": "Conditional",
   "outcome.document_status.UNKNOWN": "To be confirmed",
   // ENDING-ROUND E3: "abstained" is engine jargon.
   "outcome.needs_input_body": "A few details are still missing:",
   "outcome.answer_missing_input": "Answer this",
   "outcome.retryable": "You can safely try this evaluation again.",
-  "outcome.not_retryable": "A person needs to check this before you continue.",
+  "outcome.not_retryable":
+    "A Bali Zero advisor needs to look at this before you continue.",
   "outcome.sources_title": "Sources used for this decision",
   "outcome.source_dates": "Effective {{effective}} · observed {{observed}}",
   "outcome.freshness.CURRENT": "Current",
   "outcome.freshness.STALE": "Stale — review required",
   "outcome.freshness.UNKNOWN": "Freshness unknown",
-  "outcome.assessment_dates":
-    "Effective {{effective}} · observed {{observed}} · evaluated {{evaluated}}",
-  "outcome.provenance.CLIENT_GUARD.title": "Client safety hold",
+  "outcome.provenance.CLIENT_GUARD.title": "A person will review this",
   "outcome.provenance.CLIENT_GUARD.body":
-    "This is an operational hold, not an engine decision. No visa path was selected.",
+    "Your answers need a person’s review before a path can be shown.",
   "outcome.provenance.NETWORK_FAILURE.title": "Decision service unavailable",
   "outcome.provenance.NETWORK_FAILURE.body":
-    "The engine did not answer. No fallback result or candidate was fabricated.",
+    "We couldn’t reach the decision service. Nothing was guessed — please try again in a few minutes.",
   "outcome.provenance.SHADOW.title": "Verification mode",
   "outcome.provenance.SHADOW.body":
-    "The assessment is measured in shadow mode. No engine candidate is exposed, ranked, or replaced with a preview.",
+    "This assessment was recorded for verification; no visa path is shown in this mode.",
   "outcome.provenance.PREVIEW.title": "Preview data",
   "outcome.provenance.PREVIEW.body":
     "This content exists only for testing the interface and is not a recommendation.",
@@ -1012,7 +1003,7 @@ const en = {
   "outcome.assumptions_receipt_title": "What we assumed",
   "outcome.assumptions_receipt_empty":
     "No assumptions were needed — every answer was given directly.",
-  "outcome.freshness_stamp": "Decision ruleset evaluated {{date}}",
+  "outcome.freshness_stamp": "Checked against the rules on {{date}}",
   "outcome.disclaimer.not_government":
     "This is a private decision-support tool, not a government service.",
   "outcome.disclaimer.based_on_facts":
@@ -1020,20 +1011,19 @@ const en = {
   "outcome.disclaimer.not_approval":
     "It is not an approval, a guarantee, or a filing.",
   "outcome.disclaimer.complex_to_human":
-    "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
+    "If you disclosed a criminal record, or gave an answer these rules cannot assess, a Bali Zero advisor reviews your case before any path is confirmed. Any other disclosure appears on your result as a condition we check with you before filing. The decision is always Ditjen Imigrasi’s, never this tool’s.",
   // D23 "OPTION B-STUDIO": replaces `outcome.disclaimer.complex_to_human` on
   // a Studio-only hold, which is never a human/consultant hold.
   "outcome.disclaimer.second_home_studio":
-    "This hold is about a declared guarantee figure below the Second Home (E33) thresholds — the Second Home Studio shows the routes and the numbers for your case.",
+    "This result is about a declared guarantee figure below the Second Home (E33) thresholds — the Second Home Studio shows the routes and the numbers for your case.",
   "outcome.alternatives_title": "The door that is open",
-  "outcome.alternatives_intro":
-    "Another route the verified rules can assess for you.",
+  "outcome.alternatives_intro": "Another route this tool can confirm for you.",
   "outcome.no_path_body":
-    "The combination you described does not match a path supported by the verified decision rules.",
+    "The combination you described does not match any visa path this tool can confirm.",
   "outcome.temporarily_unavailable_body":
-    "The decision service cannot verify this case right now. No fallback path has been fabricated.",
+    "We can’t run the check right now. Please try again in a few minutes.",
   "outcome.human_review_body":
-    "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+    "Your case needs a Bali Zero advisor’s review — nothing was guessed on your behalf.",
   // Slice A2 (PLAN VISA-ORACLE-DW-20260919 §1.6): `notices[]` rendered next
   // to whatever verdict is already shown, on every state that can carry one.
   // ENDING-ROUND E9: no test pins the old title text (verified 2026-09-27).
@@ -1045,10 +1035,11 @@ const en = {
   // the engine fact only: a condition attached, checked with the visitor.
   "outcome.conditions.intro":
     "The result above was reached with these conditions attached. Our team checks each one with you before submission.",
-  "outcome.review_group_case.title": "What a person will check about your case",
+  "outcome.review_group_case.title":
+    "What a Bali Zero advisor will check about your case",
   "outcome.review_group_system.title":
     "Checks on our side, not on your answers",
-  "outcome.review.element.rule": "Why this is held",
+  "outcome.review.element.rule": "Why this is paused",
   "outcome.review.element.checked": "What the reviewer checks",
   "outcome.review.element.prepare": "What to prepare",
   "outcome.review.element.handling": "How this is handled",
@@ -1064,7 +1055,7 @@ const en = {
 
   "prototype.badge": "Visa decision support",
   "prototype.badge.detail":
-    "Only deterministic engine outcomes may appear as supported paths.",
+    "Only paths this tool can confirm appear as supported.",
 
   "theme.toggle.aria": "Switch between light and dark",
   "theme.toggle.light": "Light",
@@ -1714,11 +1705,11 @@ const id: Record<Keys, string> = {
   "why.stay_days":
     "Mesin keputusan memeriksa durasi persis yang Anda rencanakan tanpa menebak dari rentang yang luas.",
 
-  "q.review_gate": "Beberapa pertanyaan jujur sebelum kami tunjukkan hasilnya",
+  "q.review_gate": "Ada hal lain yang perlu kami ketahui?",
   "q.review_gate.hint":
     "Centang semua yang berlaku — tidak menyebutkannya lebih merugikan Anda daripada menyebutkannya. Sebagian di antaranya, termasuk catatan kriminal, membuat kasus Anda ditinjau seseorang sebelum ada keputusan; sisanya menyertai hasil Anda sebagai kondisi tersurat yang ditelusuri tim kami bersama Anda sebelum pengajuan.",
   "why.review_gate":
-    "Setiap item di sini sampai ke mesin: tiga item riwayat keimigrasian sebagai fakta yang dibaca aturan yang telah disahkan, dan semuanya sebagai pengungkapan yang harus diperhitungkan dalam hasil.",
+    "Setiap item di sini sampai ke mesin: tiga item riwayat keimigrasian sebagai fakta yang dibaca aturan ini, dan semuanya sebagai pengungkapan yang harus diperhitungkan dalam hasil.",
   "q.review_gate.opt.none": "Tidak ada yang berlaku bagi saya",
   "q.review_gate.opt.flagged": "Satu atau lebih berlaku",
   "q.review_gate.item.none": "Tidak ada yang berlaku bagi saya",
@@ -1960,7 +1951,7 @@ const id: Record<Keys, string> = {
   "verdict.headline.NEEDS_INPUT": "Sedikit lagi",
   "verdict.headline.SECOND_HOME_STUDIO":
     "Di bawah ambang batas jaminan Second Home",
-  "verdict.evaluating": "Memeriksa aturan yang telah diverifikasi…",
+  "verdict.evaluating": "Memeriksa opsi Anda…",
   "verdict.eligibility.eligible": "Memenuhi syarat",
   "verdict.eligibility.likely": "Kemungkinan besar",
   "verdict.eligibility.conditional": "Bersyarat",
@@ -1986,34 +1977,28 @@ const id: Record<Keys, string> = {
   "verdict.provenance_headline.PREVIEW":
     "Hanya pratinjau — bukan keputusan langsung",
   "verdict.provenance_description.CLIENT_GUARD":
-    "Mesin belum membuat keputusan. Tinjau jawaban yang ditandai atau lanjutkan dengan konsultan.",
+    "Belum ada keputusan yang dibuat. Tinjau jawaban yang ditandai atau lanjutkan dengan konsultan.",
   "verdict.provenance_description.NETWORK_FAILURE":
     "Tidak ada hasil yang dibuat. Jawaban Anda tidak diganti dengan tebakan.",
   "verdict.provenance_description.SHADOW":
-    "Penilaian Anda dikirim untuk verifikasi, tetapi tidak ada jalur visa yang ditampilkan selama enforcement publik dinonaktifkan.",
+    "Penilaian Anda dicatat untuk verifikasi; tidak ada jalur visa yang ditampilkan dalam mode ini.",
   "verdict.provenance_description.PREVIEW":
     "Layar ini memakai data uji untuk peninjauan produk dan tidak dapat mendukung rekomendasi.",
 
-  "outcome.comparison_title": "Perbandingan jalur",
-  "outcome.comparison_col.visa": "Jalur",
-  "outcome.comparison_col.eligibility": "Kelayakan",
-  "outcome.comparison_col.timeline": "Linimasa",
-  "outcome.comparison_col.price": "Harga",
-  "outcome.timeline_title": "Linimasa, mulai hari ini",
-  "outcome.timeline_range": "Sekitar {{min}}–{{max}} hari",
+  "outcome.timeline_title": "Linimasa",
+  "outcome.timeline_pending":
+    "Lama proses ditentukan oleh Ditjen Imigrasi dan bervariasi menurut kantor dan musim. Konsultan Bali Zero memastikan jadwal untuk kasus Anda sebelum Anda memesan perjalanan.",
+  "outcome.path_counter": "Jalur {{index}} dari {{total}}",
+  "outcome.checked_on": "Diperiksa pada {{date}} berdasarkan sumber di atas.",
+  "outcome.checked_on_plain": "Diperiksa pada {{date}}.",
   "outcome.price_label": "Harga all-inclusive",
   "outcome.price_all_inclusive":
-    "Satu angka — tanpa pemisahan PNBP vs. biaya jasa, selalu.",
+    "Sudah termasuk biaya pemerintah dan jasa Bali Zero.",
   "outcome.price_valid_until": "Penawaran berlaku hingga {{date}}",
   "outcome.price_free": "Gratis",
   "outcome.whatsapp_summary_header": "Ringkasan keputusan Visa Oracle:",
   "outcome.checklist_title": "Dokumen yang perlu Anda siapkan",
-  "outcome.next_steps_title": "3 langkah berikutnya",
-  "outcome.next_steps.default.1":
-    "Hubungi konsultan Bali Zero dengan ringkasan ini",
-  "outcome.next_steps.default.2": "Siapkan dokumen yang tercantum di atas",
-  "outcome.next_steps.default.3":
-    "Pastikan linimasa Anda sebelum memesan perjalanan",
+  "outcome.next_steps_title": "Langkah berikutnya",
   "outcome.whatsapp_cta": "Lanjutkan di WhatsApp",
   "outcome.qr_aria":
     "Kode QR — pindai untuk melanjutkan ringkasan ini di WhatsApp lewat ponsel Anda",
@@ -2028,7 +2013,7 @@ const id: Record<Keys, string> = {
   "outcome.supported_paths": "Jalur yang didukung",
   "outcome.rank": "Peringkat {{rank}}",
   "outcome.axis.legal": "Kelayakan hukum",
-  "outcome.axis.operational": "Ketersediaan operasional",
+  "outcome.axis.operational": "Ketersediaan saat ini",
   "outcome.axis.service": "Layanan Bali Zero",
   "outcome.status.SUPPORTED": "Didukung",
   "outcome.status.CONDITIONAL": "Bersyarat",
@@ -2041,41 +2026,35 @@ const id: Record<Keys, string> = {
   "outcome.why_supported": "Mengapa jalur ini didukung",
   "outcome.timeline_dates": "{{from}} sampai {{to}}",
   "outcome.timeline_basis": "Dihitung dari tanggal penilaian: {{date}}",
-  "outcome.timeline_unavailable":
-    "Linimasa tidak tersedia — belum ada estimasi kalender terverifikasi",
-  "outcome.timeline_contact_required":
-    "Linimasa memerlukan konfirmasi operasional",
   "outcome.document_status.CONDITIONAL": "Bersyarat",
   "outcome.document_status.UNKNOWN": "Perlu dikonfirmasi",
   "outcome.needs_input_body": "Beberapa detail masih kurang:",
   "outcome.answer_missing_input": "Jawab ini",
   "outcome.retryable": "Anda dapat mencoba evaluasi ini kembali dengan aman.",
   "outcome.not_retryable":
-    "Seseorang perlu memeriksa ini sebelum Anda melanjutkan.",
+    "Konsultan Bali Zero perlu memeriksanya sebelum Anda melanjutkan.",
   "outcome.sources_title": "Sumber yang digunakan untuk keputusan ini",
   "outcome.source_dates": "Berlaku {{effective}} · diamati {{observed}}",
   "outcome.freshness.CURRENT": "Terkini",
   "outcome.freshness.STALE": "Kedaluwarsa — perlu ditinjau",
   "outcome.freshness.UNKNOWN": "Kesegaran sumber belum diketahui",
-  "outcome.assessment_dates":
-    "Berlaku {{effective}} · diamati {{observed}} · dievaluasi {{evaluated}}",
-  "outcome.provenance.CLIENT_GUARD.title": "Penahanan keamanan di perangkat",
+  "outcome.provenance.CLIENT_GUARD.title": "Akan ditinjau oleh seseorang",
   "outcome.provenance.CLIENT_GUARD.body":
-    "Ini penahanan operasional, bukan keputusan mesin. Tidak ada jalur visa yang dipilih.",
+    "Jawaban Anda perlu ditinjau seseorang sebelum jalur dapat ditampilkan.",
   "outcome.provenance.NETWORK_FAILURE.title":
     "Layanan keputusan tidak tersedia",
   "outcome.provenance.NETWORK_FAILURE.body":
-    "Mesin tidak memberikan jawaban. Tidak ada hasil cadangan atau kandidat yang dibuat-buat.",
+    "Layanan keputusan tidak dapat dihubungi. Tidak ada yang ditebak — silakan coba lagi dalam beberapa menit.",
   "outcome.provenance.SHADOW.title": "Mode verifikasi",
   "outcome.provenance.SHADOW.body":
-    "Penilaian diukur dalam shadow mode. Tidak ada kandidat mesin yang ditampilkan, diurutkan, atau diganti dengan pratinjau.",
+    "Penilaian ini dicatat untuk verifikasi; tidak ada jalur visa yang ditampilkan dalam mode ini.",
   "outcome.provenance.PREVIEW.title": "Data pratinjau",
   "outcome.provenance.PREVIEW.body":
     "Konten ini hanya untuk menguji antarmuka dan bukan rekomendasi.",
   "outcome.assumptions_receipt_title": "Yang kami asumsikan",
   "outcome.assumptions_receipt_empty":
     "Tidak ada asumsi yang diperlukan — semua jawaban diberikan langsung.",
-  "outcome.freshness_stamp": "Aturan keputusan dievaluasi {{date}}",
+  "outcome.freshness_stamp": "Diperiksa berdasarkan aturan pada {{date}}",
   "outcome.disclaimer.not_government":
     "Ini alat bantu keputusan privat, bukan layanan pemerintah.",
   "outcome.disclaimer.based_on_facts":
@@ -2083,27 +2062,27 @@ const id: Record<Keys, string> = {
   "outcome.disclaimer.not_approval":
     "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
   "outcome.disclaimer.complex_to_human":
-    "Catatan kriminal yang Anda ungkapkan diteruskan ke seseorang sebelum jalur mana pun dikonfirmasi; jawaban yang tidak dapat dinilai oleh aturan yang telah disahkan diteruskan ke seseorang atau diarahkan ke konsultasi. Pengungkapan lainnya tetap melekat pada hasil Anda sebagai kondisi bernama yang diperiksa tim kami bersama Anda sebelum pengajuan. Ditjen Imigrasi yang memutuskan, bukan alat ini.",
+    "Jika Anda mengungkapkan catatan kriminal, atau memberi jawaban yang tidak dapat dinilai oleh aturan ini, konsultan Bali Zero meninjau kasus Anda sebelum jalur mana pun dikonfirmasi. Pengungkapan lainnya tampil pada hasil Anda sebagai syarat yang kami periksa bersama Anda sebelum pengajuan. Keputusan selalu di tangan Ditjen Imigrasi, bukan alat ini.",
   // Never "penahanan" (detention) for a decision hold: this is immigration copy.
   "outcome.disclaimer.second_home_studio":
     "Hasil ini berkaitan dengan angka jaminan yang Anda nyatakan, yang masih di bawah ambang batas Rumah Kedua (E33) — Second Home Studio menampilkan jalur-jalur dan angka untuk kasus Anda.",
   "outcome.alternatives_title": "Pintu yang terbuka",
   "outcome.alternatives_intro":
-    "Jalur lain yang dapat dinilai oleh aturan terverifikasi untuk Anda.",
+    "Jalur lain yang dapat dipastikan alat ini untuk Anda.",
   "outcome.no_path_body":
-    "Kombinasi yang Anda jelaskan tidak cocok dengan jalur yang didukung oleh aturan keputusan terverifikasi.",
+    "Kombinasi yang Anda jelaskan tidak cocok dengan jalur visa mana pun yang dapat dipastikan alat ini.",
   "outcome.temporarily_unavailable_body":
-    "Layanan keputusan belum dapat memverifikasi kasus ini. Tidak ada jalur cadangan yang dibuat-buat.",
+    "Pemeriksaan tidak dapat dijalankan saat ini. Silakan coba lagi dalam beberapa menit.",
   "outcome.human_review_body":
-    "Kasus Anda butuh penilaian manusia — tidak ada yang ditebak atas nama Anda.",
+    "Kasus Anda perlu ditinjau konsultan Bali Zero — kami tidak menebak apa pun untuk Anda.",
   "outcome.conditions.title": "Sebelum Anda mengajukan",
   "outcome.conditions.intro":
     "Hasil di atas diperoleh dengan kondisi-kondisi berikut yang menyertainya. Tim kami akan memeriksa setiap kondisi bersama Anda sebelum pengajuan.",
   "outcome.review_group_case.title":
-    "Yang akan diperiksa seseorang pada kasus Anda",
+    "Yang akan diperiksa konsultan Bali Zero pada kasus Anda",
   "outcome.review_group_system.title":
     "Pemeriksaan di pihak kami, bukan pada jawaban Anda",
-  "outcome.review.element.rule": "Mengapa hasil ini ditahan",
+  "outcome.review.element.rule": "Mengapa hasil ini ditunda",
   "outcome.review.element.checked": "Apa yang diperiksa peninjau",
   "outcome.review.element.prepare": "Apa yang perlu disiapkan",
   "outcome.review.element.handling": "Bagaimana hal ini ditangani",
@@ -2118,7 +2097,7 @@ const id: Record<Keys, string> = {
 
   "prototype.badge": "Dukungan keputusan visa",
   "prototype.badge.detail":
-    "Hanya hasil mesin deterministik yang dapat tampil sebagai jalur yang didukung.",
+    "Hanya jalur yang dapat dipastikan alat ini yang tampil sebagai jalur yang didukung.",
 
   "theme.toggle.aria": "Ganti antara mode terang dan gelap",
   "theme.toggle.light": "Terang",

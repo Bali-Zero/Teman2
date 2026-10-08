@@ -1,0 +1,127 @@
+# Gear-3 evidence pack — Visa Oracle result page client copy (PR-C1).
+# Receipts are commands run in this worktree on 2026-10-08; ts captured in the same shell call.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Owner ruling (Zero), 2026-10-08, relayed as PR-C1: internal notes and the "timeline
+  unavailable" block must never reach a client; every outcome state is refined.
+mission: >-
+  Visa Oracle result page speaks to the client — final EN/ID copy, next steps per outcome state,
+  plain pending-timeline paragraph, clean print.
+lanes:
+  - lane: outcome-copy-build
+    role: build
+    seat: Claude Fable 5.1 implementer (worktree mouth-visa-oracle-outcome-copy-c1).
+  - lane: outcome-copy-spec
+    role: ground_truth
+    seat: >-
+      the owner-approved spec with the final strings (scratchpad spec-outcome-copy-c1.md); the
+      census test in client-copy.test.ts is the machine check of its jargon rule.
+    nb: "/private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/spec-outcome-copy-c1.md (no notebook: the owner-approved spec is the ground truth for this copy-only change)"
+    query_hash: "ca79fad165a51b6cc168d8e18a76177e1ee9cfb58c3cf4822b3da7d0941efd67" # pragma: allowlist secret — sha256 of that spec file
+pii_scan: clean
+bites:
+  consumer: >-
+    the CI harness, which runs this observer after the merge, and every visitor of
+    balizero.com/visa-oracle who reaches a result page: the observer proves the copy they read
+    carries no internal note or engine jargon.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:OK visa-oracle client copy"
+decisions:
+  - id: D-successor
+    decision: >-
+      Successor of #8099, whose branch was armed and frozen: the Visa Oracle fullstack smoke
+      pinned the old source-currency sentence. The e2e pins in visa-oracle-fullstack,
+      visa-oracle-v2 and visa-oracle-live-parity now follow the client copy.
+  - id: D-single-next-steps-source
+    decision: >-
+      One exported nextStepsFor(state) feeds the engine outcome, the gold preview baseline and the
+      client fallbacks, so the verbatim shadow parity comparison holds by construction.
+  - id: D-no-raw-code
+    decision: >-
+      An unmapped reason code now reads as a plain sentence, never a machine code. The render
+      filter recognises both the new sentence and the legacy form.
+  - id: D-comparison-table
+    decision: >-
+      The spec's comparison-table timeline cell is not built: no component renders the
+      outcome.comparison keys today, so there is no cell to change.
+receipts:
+  - claim: No e2e spec pins a replaced client sentence any more (source-currency hold, paused criminal-record rule, disclaimer, generic review judgment).
+    cmd: grep -rn -E "a person must do|Why this is held|Mengapa hasil ini ditahan|signed rules still send|goes to a person before any path|need a person's judgment" apps/mouth/e2e | wc -l
+    result: "0 hits"
+    exit: 0
+    ts: "2026-10-08T12:08:25Z"
+    seat: Claude Fable 5.1
+  - claim: The bites observer finds no banned phrase in the client copy and both language blocks carry the three new keys.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3302 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-08T11:56:05Z"
+    seat: Claude Fable 5.1
+  - claim: The whole Visa Oracle test tree is green, including the new census, per-state next steps, pending timeline and counter tests.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "Test Files  45 passed (45); Tests  1213 passed (1213)"
+    exit: 0
+    ts: "2026-10-08T12:10:20Z"
+    seat: Claude Fable 5.1
+  - claim: The mouth typecheck is clean.
+    cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
+    result: "no output"
+    exit: 0
+    ts: "2026-10-08T12:09:49Z"
+    seat: Claude Fable 5.1
+  - claim: ESLint reports no error on the touched source files (warnings were already there).
+    cmd: cd apps/mouth && npx eslint <touched source files>
+    result: "0 errors on the two changed source files"
+    exit: 0
+    ts: "2026-10-08T12:09:51Z"
+    seat: Claude Fable 5.1
+  - claim: Prettier accepts every touched file including the stylesheet.
+    cmd: cd apps/mouth && npx prettier --check <touched files>
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-10-08T12:09:51Z"
+    seat: Claude Fable 5.1
+council_note: >-
+  The Codex seat is registered as codex-gpt-5.6-sol, but the run used the CLI default model of
+  ~/.codex/config.toml, gpt-6-astra. The lint admits only roster seat ids for quorum, so the id is
+  kept and the real model is named here and in the journal.
+seat_fallback_reason: >-
+  titolari kimi-code/k3 and tp1-qwen3.8-max were QUOTA_DEAD per the lead's brief of 2026-10-08;
+  codex-gpt-5.6-sol played as titolare and the reserve agy-gemini-3.1-pro filled the second seat.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: Studio-only Second Home outcomes received the human-review steps that promise a person's review.
+    status: CONFIRMED
+    note: cured in 3f641c2f8a, a dedicated Studio step list chosen where the adapter decides studio-only.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: The non-retryable client guard told the visitor to try again in a few minutes.
+    status: CONFIRMED
+    note: cured in 3f641c2f8a, non-retryable fallbacks use the review steps, a retryable failure keeps try-again.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: Interview question hints still use engine and routing terminology.
+    status: PLAUSIBLE
+    note: deferred to PR-C4 (interview helper strings sweep), out of C1 scope by the lead's decision.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: The jargon census omitted q.* strings and the review reason elements.
+    status: CONFIRMED
+    note: review reason elements added to the census in 3f641c2f8a; q.* stays out until PR-C4, noted as a TODO in the test.
+  - seat: codex-gpt-5.6-sol
+    severity: LOW
+    objection: The print-only Checked-on line says "against the sources above" even with an empty source list.
+    status: CONFIRMED
+    note: cured in 3f641c2f8a, a plain Checked-on key is used when there are no sources.
+  - seat: agy-gemini-3.1-pro
+    severity: HIGH
+    objection: The comparison table's timeline cell does not use outcome.timeline_cell_pending.
+    status: RETRACTED
+    note: no comparison table is rendered; the outcome.comparison_* keys were unused and are deleted in 2cc1befec3.
+council_run: council-journal.jsonl
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

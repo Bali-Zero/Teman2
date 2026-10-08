@@ -123,7 +123,7 @@ const PARITY_REPORT_PATH = resolve(
 // verbatim here so PLAN G2-c red (iv), "the DOM shows GENERIC_REVIEW_
 // REASON's text", has something concrete to assert against.
 const GENERIC_REVIEW_REASON_EN =
-  "Some of your answers need a person's judgment before we can confirm a path.";
+  "Some of your answers need a Bali Zero advisor's judgment before we can confirm a path.";
 
 const ALL_ENGINE_STATES: readonly EngineState[] = [
   "SUPPORTED_CANDIDATES",

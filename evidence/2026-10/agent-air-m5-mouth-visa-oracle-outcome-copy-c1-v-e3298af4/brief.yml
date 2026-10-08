@@ -1,0 +1,28 @@
+gear: 3
+gear_reason: >-
+  The public Visa Oracle result page is the client-facing surface of the flagship funnel. The
+  owner ruled that internal notes and a "timeline unavailable" block must never reach a client,
+  and every outcome state is refined in content, design and print. The change touches the shared
+  next-steps contract that the shadow parity check compares verbatim.
+ruling: >-
+  Owner ruling (Zero), 2026-10-08, relayed by the team lead as PR-C1: the result page carries
+  internal comments and a shameful timeline block; every final response must be refined.
+mission: >-
+  Visa Oracle result page speaks to the client — no internal notes, no "timeline unavailable",
+  next steps per outcome state, print without stray pages.
+objective: >-
+  Every outcome state renders client-language copy in EN and ID with its own three next steps,
+  the pending timeline is one plain paragraph, the price subtitle names what is included, the
+  path counter shows only for several paths, the print view drops the explore row and one dates
+  line, and a census test proves no engine jargon in the client strings.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts (final EN/ID strings, three new keys, dead keys removed)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts (nextStepsFor, timeline and price copy, unmapped reason fallback, jargon sweep)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/outcome-fallbacks.ts and preview-adapter.ts (shared nextStepsFor)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx, OracleShell.tsx, AtlasRoute.tsx, oracle.css
+  - tests: OutcomeSheet.test.tsx, engine-adapter.test.ts, client-copy.test.ts (new)
+out_of_scope:
+  - duration options rendering under the price (PR-C2)
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

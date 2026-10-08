@@ -998,7 +998,8 @@ html[data-oracle-theme-bootstrap="dark"]
 .oracle-unverified p {
   margin: var(--space-2) 0 0;
 }
-.oracle-timeline p {
+.oracle-timeline p,
+.oracle-timeline__pending {
   margin: 0;
 }
 .oracle-timeline p + p {
@@ -1302,6 +1303,10 @@ html[data-oracle-theme-bootstrap="dark"]
   }
   .oracle-print-only {
     display: block !important;
+  }
+  .oracle-candidate-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .oracle-root,
   .oracle-root * {
