@@ -48,6 +48,12 @@ HD = "scripts/localci/tests/test_host_disk.py"
 RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
                                          "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
                                          "test_the_real_matrix_declares_e2e_partial_with_its_reason"))
+# B5: a red read with a rewritten BASE judge, a skip compared as a skip, and the report's count of skip agreements
+JR, SKC = "scripts/localci/tests/test_judge_rewritten.py", "scripts/localci/tests/test_skip_compare.py"
+REPORT_SKIP = tuple(f"{REPORT}::{t}" for t in (
+    "test_eleven_full_of_which_three_are_skip_agreements_and_one_partial_still_count_and_the_lines_say_three",
+    "test_a_skip_here_beside_a_hosted_run_is_partial_so_it_cannot_make_up_the_full_count"))
+TICK_SKIP = (f"{TICK}::test_a_tick_journals_a_change_map_skip_beside_its_verdict_and_only_there",)
 
 # name: (file, text that must occur once, replacement, test files that must turn red)
 MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
@@ -218,7 +224,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "sh-heartbeat-always-ok": (SH, 'if [ "$rc" -ne 0 ]; then heartbeat error', "if false; then heartbeat error", (TICK,)),   # B6-3 reordered the trap
     # B3 — coverage travels with the verdict: only a full context counts toward the >= 12
     "report-counts-partial": (PY, 'compared_ctx = rep["coverage"]["compared_full"]', 'compared_ctx = sum(rep["counts"][k] for k in hc.COMPARED)', (REPORT,)),
-    "report-coverage-not-read": (PY, 'k: {"verdict": v, "coverage": cov.get(k)}', 'k: {"verdict": v, "coverage": "full"}', (REPORT,)),
+    "report-coverage-not-read": (PY, 'k: {"verdict": v, "coverage": cov.get(k), ', 'k: {"verdict": v, "coverage": "full", ', (REPORT,)),
     "report-unrecorded-is-full": (PY, 'cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else {}',
                                   'cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else dict.fromkeys(d.get("contexts") or {}, "full")',
                                   (REPORT,)),
@@ -273,6 +279,31 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "merger-floor-env-dropped": (PY, '              "LOCALCI_MIN_FREE_GB")  # an allowlist', "              )  # an allowlist", (TICK,)),
     "merger-floor-not-host": (PY, 'HOST_NO_VERDICT = ("host_disk_full", "host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")',
                               'HOST_NO_VERDICT = ("host_disk_full",)', (TICK,)),
+    # B5-1: the scope of a rewritten judge is the step; where the plan cannot attribute, the context, said
+    "b5-judge-scope-context": (RUNNER, "return [f for f in mod if f in planned[step]] + everyone", "return mod", (JR,)),
+    "b5-judge-red-claimed": (RUNNER, 's["status"] in ("FAIL", "ERROR")', 's["status"] in ()', (JR,)),
+    "b5-judge-error-claimed": (RUNNER, 's["status"] in ("FAIL", "ERROR")', 's["status"] in ("FAIL",)', (JR,)),
+    "b5-judge-unattributed-ignored": (RUNNER, 'return mod, " (context scope: the plan attributes no judge to this step)"',
+                                      'return [], " (context scope: the plan attributes no judge to this step)"', (JR,)),
+    "b5-judge-unnamed-file-ignored": (RUNNER, "everyone = [f for f in mod if f not in named]", "everyone = []", (JR,)),
+    "b5-judge-plan-unattributed": (RUNNER, 'st["trusted"] = step_judges([st], files)', 'st["trusted"] = []', (JR,)),
+    "b5-judge-no-verdict-unnamed": (RUNNER, 'out["results"][name]["no_verdict"] = "judge_rewritten"', "pass", (JR,)),
+    "b5-judge-rewritten-is-fail": (RUNNER, 'return "BLOCKED", ("judge_rewritten: "', 'return "FAIL", ("judge_rewritten: "', (JR,)),
+    # B5-2: the skip rides on the result and the row says what was compared
+    "b5-skip-unmarked": (RUNNER, '"skipped": "change_map",', "", (SKC,)),
+    "b5-skip-not-carried": (RUNNER, 'if s == "NOT_APPLICABLE" and isinstance(skip := ', 'if False and isinstance(skip := ', (SKC,)),
+    "b5-label-agreed-as-executed": (HC, """"local_detail": f"NOT_APPLICABLE (skip agreed: {lo['skipped']})\"""", '"local_detail": lo["detail"]', (SKC,)),
+    "b5-label-hosted-ran-as-executed": (HC, '"NOT_APPLICABLE (skipped here; hosted ran)"', '"OK (executed)"', (SKC,)),
+    "b5-label-hosted-skipped-unsaid": (HC, 'lo["detail"][:-1] + "; hosted skipped)"', 'lo["detail"]', (SKC,)),
+    "b5-hosted-ran-counted-full": (HC, '"coverage": "partial",', '"coverage": lo["coverage"],', (SKC, *REPORT_SKIP)),
+    "b5-agreed-keeps-execution-coverage": (HC, '"coverage": "full", "coverage_note": None}', '"coverage": lo["coverage"], "coverage_note": lo["coverage_note"]}', (SKC,)),
+    "b5-pending-read-as-ran": (HC, 'if h["verdict"] != "PENDING":', "if True:", (SKC,)),
+    "b5-agreed-uncounted": (HC, 'if r["skip"] == "agreed"]', 'if r["skip"] == "hosted_skipped"]', (SKC, *REPORT_SKIP)),
+    # B5-3: journalled by the tick, read back by the report, counted apart on both lines
+    "b5-tick-skip-unjournalled": (PY, '"skipped": {k: v["skipped"] for k, v in results.items() if isinstance((v or {}).get("skipped"), str)},', "", TICK_SKIP),
+    "b5-report-skip-unread": (PY, '"skipped": skip.get(k)}', '"skipped": None}', REPORT_SKIP),
+    "b5-report-window-uncounted": (PY, 'compared_skip_agreed = sum(len(r["compared_skip_agreed"]) for r in rows)', "compared_skip_agreed = 0", REPORT_SKIP),
+    "b5-report-merges-uncounted": (PY, 'merged_skip_agreed = sum(', "merged_skip_agreed = 0 * sum(", REPORT_SKIP),
 }
 
 

@@ -504,13 +504,18 @@ def named_scripts(wt: Path, base: str, steps: list) -> list:
     (`pytest infra/organ-conformance/`): the judges a context's own workflow runs, taken from BASE. Comment lines are not read, nor
     steps the matrix marks `trusted_scan: false` (path sentinels, whose path lists name the surfaces under test, not judges)."""
     listing = git(wt, "ls-tree", "-r", "--name-only", base).splitlines()
+    return step_judges(steps, [f for f in listing if f.endswith((".py", ".sh"))])
+
+
+def step_judges(steps: list, files: list) -> list:
+    """The files of `files` the steps name outright or under a directory they name with a trailing slash; comment lines and
+    `trusted_scan: false` steps are not read. Over one step it is the judges that step's own verdict was read with (B5)."""
     text = "\n".join(ln for s in steps if s.get("trusted_scan") is not False
                      for ln in ((s.get("script") or "") + "\n" + " ".join(s.get("argv") or [])).splitlines() if not ln.lstrip().startswith("#"))
     toks = set(re.findall(r"[A-Za-z0-9_][A-Za-z0-9_./-]*", text))
-    scripts = [f for f in listing if f.endswith((".py", ".sh"))]
-    named = {f for f in scripts if f in toks}
+    named = {f for f in files if f in toks}
     for d in (t for t in toks if t.endswith("/") and t.count("/") >= 2):   # `infra/organ-conformance/`, never a bare `scripts/`
-        named |= {f for f in scripts if f.startswith(d)}
+        named |= {f for f in files if f.startswith(d)}
     return sorted(named)
 
 
@@ -589,6 +594,8 @@ def plan_context_check(wt: Path, base: str, cand: str, trusted: Path, name: str,
     modified = [f for f, a, b in zip(judged, tree_entries(wt, base, judged), tree_entries(wt, cand, judged)) if a != b]
     if where == "container":   # the sandbox gets raw blobs: a changed .gitattributes can make GitHub's checkout materialize other bytes
         modified += [f for f in changed if f.rsplit("/", 1)[-1] == ".gitattributes"]
+    for st in steps:   # the judges each step names: a red read with one the candidate rewrites is no verdict (steps_verdict)
+        st["trusted"] = step_judges([st], files)
     spec = {"context": name, "cwd": str(wt), "steps": steps, "trusted_files": files, "judge_modified": modified}
     if isinstance(tm := job.get("timeout-minutes"), (int, float)) and not isinstance(tm, bool) and tm > 0:
         spec["timeout_s"] = int(tm * 60)   # hosted kills the job there: no local green may take longer
@@ -1067,7 +1074,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
     local, wf = ctx["local"], str(ctx.get("workflow_file"))
     flag = local.get("runs_when")
     if flag and change_map_status(cm) == "PASS" and not cm.get("run_all") and flag not in (cm.get("suggested_jobs") or []):
-        return {"kind": "record", "status": "NOT_APPLICABLE", "reason": f"trusted change_map does not select {flag} (suggested={cm.get('suggested_jobs')}): "
+        return {"kind": "record", "status": "NOT_APPLICABLE", "skipped": "change_map",   # a skip, compared as one (B5), never an execution
+                "reason": f"trusted change_map does not select {flag} (suggested={cm.get('suggested_jobs')}): "
                 "the hosted job skips, and a skipped required context is satisfied"}
     if local.get("where") != "container" or iso.get("mode") != "container" or iso.get("error"):
         return _blocked(f"a service context runs only under --isolation container ({iso.get('error') or iso.get('mode')})")
@@ -1769,11 +1777,34 @@ def read_blobs(wt: Path, oids: list) -> list:
     return out
 
 
+JUDGE_REWRITTEN_TAIL = "; hosted judges with the candidate's copy, which this run did not execute — no verdict (never FAIL, never OK)"
+
+
+def judge_rewritten(step: str, spec: dict) -> tuple[list, str]:
+    """The rewritten judges one step's verdict was read with, and the scope note. A step reads the trusted files it names
+    (`trusted` in its plan); a rewritten file no step names (the workflow itself, a .gitattributes) is read by every step, and so is
+    every rewritten file for a step the plan did not attribute (a service context's job step): context scope, said."""
+    mod = [str(f) for f in spec.get("judge_modified") or []]
+    planned = {s.get("name"): s.get("trusted") for s in spec.get("steps") or [] if isinstance(s, dict)}
+    if not isinstance(planned.get(step), list):
+        return mod, " (context scope: the plan attributes no judge to this step)"
+    named = {f for t in planned.values() if isinstance(t, list) for f in t}
+    everyone = [f for f in mod if f not in named]
+    return [f for f in mod if f in planned[step]] + everyone, f" (context scope: {everyone} named by no step)" if everyone else ""
+
+
 def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
     """A context is PASS only when every step it runs returned 0 and every other step is NOT_APPLICABLE with a reason. A red step
-    dominates (FAIL > ERROR > BLOCKED); a green won with the BASE judge while the candidate rewrites that judge is not claimed."""
+    dominates (FAIL > ERROR > BLOCKED); a verdict read with a BASE judge the candidate rewrites is claimed in neither direction:
+    a green is BLOCKED as before, and from B5 a red step whose own judge is rewritten is BLOCKED judge_rewritten, never FAIL."""
+    rewritten = {s["name"]: hit for s in steps if spec.get("judge_modified") and s["status"] in ("FAIL", "ERROR")
+                 and (hit := judge_rewritten(s["name"], spec))[0]}
     for status in ("FAIL", "ERROR", "BLOCKED"):
-        bad = [s for s in steps if s["status"] == status]
+        bad = [s for s in steps if s["status"] == status and s["name"] not in rewritten]
+        if status == "BLOCKED" and rewritten:
+            return "BLOCKED", ("judge_rewritten: " + "; ".join(f"{n} read red with the BASE judge while the candidate rewrites {f}{scope}"
+                                                               for n, (f, scope) in rewritten.items())[:600] + JUDGE_REWRITTEN_TAIL
+                               + (f"; {len(bad)} step(s) BLOCKED: " + "; ".join(f"{s['name']} ({s['reason']})" for s in bad)[:300] if bad else ""))
         if bad:
             return status, f"{len(bad)} step(s) {status}: " + "; ".join(f"{s['name']} ({s['reason']})" for s in bad)[:600]
     ran = [s for s in steps if s["status"] == "PASS"]
@@ -2561,8 +2592,12 @@ def evaluate_contexts(view: dict, plan: dict) -> dict:
         s, reason = view[chk]["status"], view[chk].get("reason") or ""
         ok = s == "PASS" or (s == "NOT_APPLICABLE" and reason.strip() != "")
         out["results"][name] = {"mapping": mapping, "check": chk, "verdict": "OK" if ok else s, **cov}
+        if s == "NOT_APPLICABLE" and isinstance(skip := ((plan.get("checks") or {}).get(chk) or {}).get("skipped"), str):
+            out["results"][name]["skipped"] = skip   # satisfied as on GitHub, and said: the classifier decided, nothing ran
         if s in ("ERROR", "BLOCKED") and (host := HOST_NO_VERDICT.match(reason)):   # the host failed, not the candidate: named, no verdict
             out["results"][name]["no_verdict"] = host.group(0)
+        elif s == "BLOCKED" and reason.startswith("judge_rewritten: "):   # a red read with a BASE judge the candidate rewrites (B5)
+            out["results"][name]["no_verdict"] = "judge_rewritten"
         if not ok:
             (out["red"] if s == "FAIL" else out["blocked"]).append(name)
     return out

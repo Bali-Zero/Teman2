@@ -113,8 +113,26 @@ def local_verdicts(status: dict) -> dict:
                      "detail": f"{verdict}" + (f" ({res.get('mapping')})" if res.get("mapping") else "")
                                + (f" {res['no_verdict']}" if isinstance(res.get("no_verdict"), str) else ""),   # host_disk_full: blind, never red
                      "coverage": cov if cov in COVERAGES else "unrecorded",
-                     "coverage_note": res.get("coverage_note") if isinstance(res.get("coverage_note"), str) else None}
+                     "coverage_note": res.get("coverage_note") if isinstance(res.get("coverage_note"), str) else None,
+                     "skipped": res.get("skipped") if isinstance(res.get("skipped"), str) and verdict == "OK" else None}
     return out
+
+
+def skip_reading(lo: dict, h: dict) -> dict:
+    """What a skip on either side makes of a row (B5). Both skipped: the classifier's decision is compared, a full comparison,
+    labelled as a skip. Skipped here, run hosted: the local verdict is a subset of hosted's, partial and named. Run here, skipped
+    hosted: more was tested here, full. A skip is never labelled `OK (executed)`."""
+    hosted_skipped = h["verdict"] == "GREEN" and h["conclusions"] == ["skipped"]
+    if lo.get("skipped"):
+        if hosted_skipped:
+            return {"skip": "agreed", "local_detail": f"NOT_APPLICABLE (skip agreed: {lo['skipped']})", "coverage": "full", "coverage_note": None}
+        if h["verdict"] != "PENDING":
+            return {"skip": "hosted_ran", "local_detail": "NOT_APPLICABLE (skipped here; hosted ran)", "coverage": "partial",
+                    "coverage_note": f"skipped here by the trusted {lo['skipped']} while hosted ran it: the local verdict is a subset of hosted's"}
+        return {"skip": None, "local_detail": f"NOT_APPLICABLE (skipped here: {lo['skipped']})"}
+    if hosted_skipped and lo["verdict"] in ("GREEN", "RED") and lo["detail"].endswith(")"):
+        return {"skip": "hosted_skipped", "local_detail": lo["detail"][:-1] + "; hosted skipped)"}
+    return {"skip": None}
 
 
 def classify(local: str, hosted: str) -> str:
@@ -151,12 +169,13 @@ def compare(status: dict, required_checks, check_runs, statuses) -> dict:
         rows.append({"context": name, "class": classify(lo["verdict"], h["verdict"]), "hosted": h["verdict"], "hosted_entries": h["entries"],
                      "hosted_counted": h["counted"], "hosted_sources": h["sources"], "hosted_conclusions": h["conclusions"],
                      "local": lo["verdict"], "local_detail": lo["detail"], "coverage": lo["coverage"], "coverage_note": lo["coverage_note"],
-                     "app_id": app_id, "source_pinned": is_pinned(app_id)})
+                     "app_id": app_id, "source_pinned": is_pinned(app_id), **skip_reading(lo, h)})
     counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
     compared = [r for r in rows if r["class"] in COMPARED]
     coverage = {"compared_full": sum(1 for r in compared if r["coverage"] == "full"),
                 "compared_partial": [r["context"] for r in compared if r["coverage"] == "partial"],
-                "compared_unrecorded": [r["context"] for r in compared if r["coverage"] not in COVERAGES]}
+                "compared_unrecorded": [r["context"] for r in compared if r["coverage"] not in COVERAGES],
+                "compared_skip_agreed": [r["context"] for r in compared if r["skip"] == "agreed"]}   # full, and counted apart
     return {"candidate_sha": status.get("candidate_sha"), "run_id": status.get("run_id"), "local_overall": status.get("overall"),
             "required": len(rows), "rows": rows, "counts": counts, "agreement": f"{counts['AGREE']}/{len(rows)}",
             "agreement_full": f"{sum(1 for r in compared if r['class'] == 'AGREE' and r['coverage'] == 'full')}/{len(rows)}", "coverage": coverage,
@@ -228,6 +247,7 @@ def render(report: dict) -> str:
                  f"required={report['required']} agreement={report['agreement']} " + " ".join(f"{k.lower()}={c[k]}" for k in CLASSES[1:]))
     lines.append(f"coverage: agreement_full={report['agreement_full']} compared_full={cov['compared_full']} "
                  f"compared_partial={len(cov['compared_partial'])} {cov['compared_partial']} compared_unrecorded={len(cov['compared_unrecorded'])} "
+                 f"compared_skip_agreed={len(cov['compared_skip_agreed'])} {cov['compared_skip_agreed']} "
                  f"(a partial or unrecorded comparison is shown, never counted as a full one)")
     lines.append(f"drift: missing_locally={d['missing_locally']} stale_locally={d['stale_locally']} | "
                  f"unpinned_source={len(report['unpinned_source'])}/{report['required']}")

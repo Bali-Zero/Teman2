@@ -485,3 +485,39 @@ def test_a_partial_false_green_still_blocks_ready(tmp_path, monkeypatch):
     gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: {CTX[0]: "failure"}})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", coverage={CTX[0]: "partial"})], gh)
     assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == 1 and rep["phase_e_ready"] is False
+
+
+# ------------------------------------------------------------------ B5-3: skip agreements counted apart, the compared-merge rule unchanged
+def _merged_with_skips(tmp_path, monkeypatch, skipped_here, skipped_hosted, partial=("ctx-00",), journal_skips=True):
+    gh = FakeGH({1: pull(A, merged=True)}, {})
+    gh.required = tuple(f"ctx-{i:02d}" for i in range(12))
+    gh.checks = {sha: {c: "skipped" for c in skipped_hosted} for sha in (A, M)}
+    rec = decision(1, A, "PASS", contexts=dict.fromkeys(gh.required, "OK"), coverage={c: "partial" for c in partial})
+    if journal_skips:
+        rec["skipped"] = dict.fromkeys(skipped_here, "change_map")
+    return run_report(tmp_path, monkeypatch, [rec], gh)
+
+
+def test_eleven_full_of_which_three_are_skip_agreements_and_one_partial_still_count_and_the_lines_say_three(tmp_path, monkeypatch, capsys):
+    skips = ("ctx-01", "ctx-02", "ctx-03")
+    rc, rep = _merged_with_skips(tmp_path, monkeypatch, skips, skips)
+    row, w = rep["rows"][0], rep["window"]
+    assert rc == 0 and (row["compared_contexts"], row["compared_partial"], row["compared_merge"]) == (11, ["ctx-00"], True)
+    assert row["compared_skip_agreed"] == list(skips) and (w["compared_skip_agreed"], w["compared_merges_skip_agreed"]) == (3, 3)
+    out = capsys.readouterr().out
+    assert "compared_unrecorded=0 compared_skip_agreed=3 errors=" in out
+    assert "compared_merges=1 (full_only=0, with_partial=1: ['ctx-00']), 3 of their full contexts were skip agreements" in out
+    assert (mg.MIN_COMPARED_CONTEXTS, mg.MIN_COMPARED_FULL, mg.MAX_COMPARED_PARTIAL) == (12, 11, 1)   # the ruled rule, untouched
+
+
+def test_a_skip_here_beside_a_hosted_run_is_partial_so_it_cannot_make_up_the_full_count(tmp_path, monkeypatch):
+    # guilt: counted full, ctx-01 skipped here while hosted ran would give 11 full + 1 partial, a compared merge
+    rc, rep = _merged_with_skips(tmp_path, monkeypatch, ("ctx-01",), ())
+    row = rep["rows"][0]
+    assert rc == 0 and row["compared_partial"] == ["ctx-00", "ctx-01"] and row["compared_contexts"] == 10 and row["compared_merge"] is False
+    assert rep["window"]["compared_skip_agreed"] == 0
+
+
+def test_a_line_journalled_before_b5_reads_its_skips_as_executions(tmp_path, monkeypatch):
+    rc, rep = _merged_with_skips(tmp_path, monkeypatch, ("ctx-01",), ("ctx-01",), journal_skips=False)
+    assert rc == 0 and rep["rows"][0]["compared_skip_agreed"] == [] and rep["rows"][0]["compared_merge"] is True

@@ -236,7 +236,7 @@ def test_a_partial_agree_keeps_its_class_but_its_row_says_partial_and_it_is_coun
     row = next(r for r in out["rows"] if r["context"] == "E2E")
     assert (row["class"], row["coverage"], row["coverage_note"]) == ("AGREE", "partial", E2E_NOTE)
     assert out["agreement"] == "2/2" and out["agreement_full"] == "1/2"
-    assert out["coverage"] == {"compared_full": 1, "compared_partial": ["E2E"], "compared_unrecorded": []}
+    assert out["coverage"] == {"compared_full": 1, "compared_partial": ["E2E"], "compared_unrecorded": [], "compared_skip_agreed": []}
     printed = capsys.readouterr().out
     assert re.search(r"^AGREE +GREEN\(1\) +GREEN +any +partial +E2E ", printed, re.M)
     assert "agreement_full=1/2 compared_full=1 compared_partial=1 ['E2E']" in printed
@@ -244,7 +244,7 @@ def test_a_partial_agree_keeps_its_class_but_its_row_says_partial_and_it_is_coun
 
 def test_every_full_context_counts_as_full_and_agreement_full_is_the_agreement():
     rep = hc.compare(_status({"a": _cov("OK", "full"), "b": _cov("FAIL", "full")}), _req("a", "b"), [_run("a"), _run("b", "failure")], [])
-    assert rep["coverage"] == {"compared_full": 2, "compared_partial": [], "compared_unrecorded": []} and rep["agreement_full"] == rep["agreement"] == "2/2"
+    assert rep["coverage"] == {"compared_full": 2, "compared_partial": [], "compared_unrecorded": [], "compared_skip_agreed": []} and rep["agreement_full"] == rep["agreement"] == "2/2"
     assert [r["coverage"] for r in rep["rows"]] == ["full", "full"]
 
 
@@ -253,7 +253,7 @@ def test_a_result_that_records_no_readable_coverage_is_unrecorded_never_full(cov
     res = _local("OK") if coverage is None else _cov("OK", coverage)
     rep = hc.compare(_status({"a": res}), _req("a"), [_run("a")], [])
     assert rep["rows"][0]["class"] == "AGREE" and rep["rows"][0]["coverage"] == "unrecorded"
-    assert rep["coverage"] == {"compared_full": 0, "compared_partial": [], "compared_unrecorded": ["a"]} and rep["agreement_full"] == "0/1"
+    assert rep["coverage"] == {"compared_full": 0, "compared_partial": [], "compared_unrecorded": ["a"], "compared_skip_agreed": []} and rep["agreement_full"] == "0/1"
 
 
 def test_a_partial_context_still_reports_its_false_green_and_fails_the_run():
@@ -263,7 +263,7 @@ def test_a_partial_context_still_reports_its_false_green_and_fails_the_run():
 
 def test_a_blind_partial_context_is_not_counted_as_compared_at_all():
     rep = hc.compare(_status({"E2E": _cov("ERROR", "partial", E2E_NOTE)}), _req("E2E"), [_run("E2E")], [])
-    assert _klass(rep, "E2E") == "LOCAL_BLIND" and rep["coverage"] == {"compared_full": 0, "compared_partial": [], "compared_unrecorded": []}
+    assert _klass(rep, "E2E") == "LOCAL_BLIND" and rep["coverage"] == {"compared_full": 0, "compared_partial": [], "compared_unrecorded": [], "compared_skip_agreed": []}
 
 
 # ------------------------------------------------------------------ a host out of disk is no verdict (B3)
