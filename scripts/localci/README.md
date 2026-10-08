@@ -523,12 +523,18 @@ flags go only to a `merger.py` that knows them (under the floor, a merger that c
 
 The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and `<state>/runs`:
 
-- **Deps images.** Removed by `docker image rm <tag>` (never `-f`, never `prune -a`) only when no `state/plan.json` of
-  the last 48 h names the image by tag or id, it was built more than 48 h ago, and it is not the newest image of its recipe.
+- **Deps images.** Removed by `docker image rm <tag>` (never `-f`, never `prune -a`), recipe by recipe, newest first
+  (`MAX_IMAGES_PER_RECIPE` 2, `IN_FLIGHT_GRACE_H` 6, beside the 48 h window): the newest is kept; the second only while a
+  `state/plan.json` of the last 48 h names it by tag or id; a third or later only while a plan named it under 6 h ago (a
+  tick in flight) — so with a third image the oldest goes first even if a plan named it 47 h ago. Whatever a run of the last
+  48 h without a `status.json` yet names (the run in progress) is kept, and the prune never runs beside a tick (the lease).
   The recipe is the `org.nuzantara.localci.recipe` label the deps build now sets, else the check whose job named the tag in
-  any plan; an image whose recipe nothing records stays. `localci-candidate:*` and `localci-deps-base:*` are never in a
-  removal set. While any plan cannot be read, no image is removed (it may name any of them); a half-written plan still names
-  the tags its text names. Created is read to the nanosecond, and images built at the same instant are all kept as the newest.
+  any plan; an image whose recipe nothing records is its own recipe and stays. The never-list — `localci-candidate:*`,
+  `localci-deps-base:*` and every `service_images` stand-in value of the BASE matrix (`contexts_matrix.yaml`, extracted by the
+  wrapper at the tick's sha; read, never hardcoded: today `postgres:15`, `redis:7`) — is never in a removal set and each of
+  its images present is journalled under `kept` with its rule. While a plan or the matrix cannot be read, no image is removed;
+  a half-written plan still names the tags its text names. Created is read to the nanosecond; images built at the same
+  instant rank together.
 - **Builder cache.** Every prune that is not a dry run ends its image stage with `docker builder prune -f --filter until=24h`
   on the current builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's).
 - **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
@@ -544,8 +550,10 @@ One journal line per prune (its shape; the numbers below are illustrative, not m
     {"ts": "…Z", "host": "…", "code_sha": "…", "kind": "prune", "dry_run": false,
      "vm_free_gb": {"before": 31.2, "after": 40.9},
      "host_free_gb": {"before": 77.1, "after": 77.4, "after_fstrim": 87.0},
-     "images": {"removed": [{"tag": "localci-deps:…", "gb": 9.85, "rule": "no plan of the last 48 h names it, built 72.0 h ago, not the newest of recipe backend-tests (newest localci-deps:…)"}],
-                "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe backend-tests"}], "errors": []},
+     "images": {"removed": [{"tag": "localci-deps:…", "gb": 11.9, "rule": "image 3 of recipe e2e-tests (newest localci-deps:…), beyond the cap of 2, its youngest plan is 47.0 h old"}],
+                "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe e2e-tests"},
+                         {"tag": "localci-deps:…", "rule": "image 2 of 2 of recipe e2e-tests, named by a plan 5.0 h ago"},
+                         {"tag": "postgres:15", "rule": "never-list (candidate, base and service stand-in images are never pruned)"}], "errors": []},
      "builder_prune": {"rc": 0, "tail": "Total: 3.1GB"},
      "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},
      "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}, "failed": []}

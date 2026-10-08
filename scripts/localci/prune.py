@@ -21,7 +21,9 @@ from pathlib import Path
 
 DEPS_PREFIX = "localci-deps:"
 NEVER = ("localci-candidate:", "localci-deps-base:")
-REF_WINDOW_H = 48
+REF_WINDOW_H = 48           # a plan this young names its images
+MAX_IMAGES_PER_RECIPE = 2   # per recipe: the newest, and the next one only while a plan of the last 48 h names it
+IN_FLIGHT_GRACE_H = 6       # beyond the cap, an image a plan named this recently is a tick in flight: kept
 FULL_DAYS, VERDICT_DAYS = 7, 30
 RECIPE_LABEL = "org.nuzantara.localci.recipe"
 TAG_RE = re.compile(r"localci-deps:[0-9a-f]{16}\b")
@@ -31,6 +33,7 @@ BULK = ("call-graph.json", "higher-order-call-graph.json")   # Pysa's, 77-114 MB
 VERDICT = ("status.json", "hosted_compare.json", "state/plan.json")
 HOST_PATH = "/System/Volumes/Data" if os.path.isdir("/System/Volumes/Data") else "/"
 CANDIDATE_IMAGE = "localci-candidate:1"
+MATRIX = Path(__file__).resolve().parent / "contexts_matrix.yaml"   # the BASE matrix the wrapper extracted beside this file
 
 
 def _runner():
@@ -40,8 +43,30 @@ def _runner():
     return mod
 
 
-def never(tag: str) -> bool:
-    return not tag.startswith(DEPS_PREFIX) or tag.startswith(NEVER)
+def protected(tag: str, stand_ins: frozenset = frozenset()) -> bool:
+    """The never-list: the candidate and base images and every service stand-in the BASE matrix names (2026-10-08 07:48Z: an
+    age prune removed localci-candidate:1, postgres:15 and redis:7 and blocked every contained context for a tick)."""
+    return tag.startswith(NEVER) or tag in stand_ins
+
+
+def never(tag: str, stand_ins: frozenset = frozenset()) -> bool:
+    return not tag.startswith(DEPS_PREFIX) or protected(tag, stand_ins)
+
+
+def stand_ins(matrix: Path) -> frozenset:
+    """Every value of every `service_images` map in the matrix (BASE image -> local stand-in), read, never hardcoded."""
+    import yaml   # the merger's venv carries PyYAML, as the runner's matrix reader needs it
+
+    found, todo = set(), [yaml.safe_load(matrix.read_text())]
+    while todo:
+        node = todo.pop()
+        if isinstance(node, dict):
+            if isinstance(node.get("service_images"), dict):
+                found.update(str(v) for v in node["service_images"].values())
+            todo.extend(node.values())
+        elif isinstance(node, list):
+            todo.extend(node)
+    return frozenset(found)
 
 
 def _ts(text: str) -> float | None:
@@ -59,11 +84,12 @@ def run_age_h(run: Path, now_s: float) -> float | None:
     return None if t is None else (now_s - t) / 3600
 
 
-def plan_refs(runs: Path, now_s: float) -> tuple[dict, set, dict, list]:
+def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
     """Tags and image ids named by a plan of the last 48 h (tag -> youngest age in hours), each tag's recipe as the plans
     read it (the check whose job names it: `ctx.backend-tests` -> `backend-tests`), and the plans that could not be read —
-    any of which may name an image, so none is removed while one exists. A half-written plan still names what its text names."""
-    recent, ids, recipes, unreadable = {}, set(), {}, []
+    any of which may name an image, so none is removed while one exists — and what the run in progress names (a run of the
+    last 48 h with no status.json yet). A half-written plan still names what its text names."""
+    recent, ids, recipes, unreadable, in_progress = {}, {}, {}, [], set()
     for plan in sorted(runs.glob("*/state/plan.json")) if runs.is_dir() else []:
         try:
             raw = plan.read_text(errors="replace")
@@ -82,20 +108,27 @@ def plan_refs(runs: Path, now_s: float) -> tuple[dict, set, dict, list]:
         if age_h <= REF_WINDOW_H:
             for tag in TAG_RE.findall(raw):
                 recent[tag] = min(recent.get(tag, age_h), age_h)
-            ids |= set(ID_RE.findall(raw))
-    return recent, ids, {t: sorted(r)[0] for t, r in recipes.items()}, unreadable
+            for iid in ID_RE.findall(raw):
+                ids[iid] = min(ids.get(iid, age_h), age_h)
+            if not (plan.parent.parent / "status.json").exists():
+                in_progress |= set(TAG_RE.findall(raw)) | set(ID_RE.findall(raw))
+    return recent, ids, {t: sorted(r)[0] for t, r in recipes.items()}, unreadable, in_progress
 
 
 def _docker(docker: str, *args: str, timeout: int = 120) -> subprocess.CompletedProcess:
     return subprocess.run([docker, *args], capture_output=True, text=True, timeout=timeout)
 
 
-def deps_images(docker: str) -> list[dict]:
+def all_tags(docker: str) -> list[str]:
     r = _docker(docker, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
     if r.returncode != 0:
         raise RuntimeError(f"docker image ls rc={r.returncode}: {r.stderr.strip()[:200]}")
+    return sorted({ln.strip() for ln in r.stdout.splitlines() if ln.strip()})
+
+
+def deps_images(docker: str, tags: list[str] | None = None) -> list[dict]:
     out = []
-    for tag in sorted({ln.strip() for ln in r.stdout.splitlines() if ln.strip().startswith(DEPS_PREFIX)}):
+    for tag in (t for t in (all_tags(docker) if tags is None else tags) if t.startswith(DEPS_PREFIX)):
         i = _docker(docker, "image", "inspect", "--format", "{{.Id}}|{{.Created}}|{{.Size}}|{{json .Config.Labels}}", tag)
         if i.returncode != 0:
             continue
@@ -109,29 +142,37 @@ def deps_images(docker: str) -> list[dict]:
     return out
 
 
-def image_decisions(images: list[dict], recent: dict, ids: set, recipes: dict, now_s: float) -> list[dict]:
-    """Every deps image with `remove` and the rule that decided it. Kept: named by a plan of the last 48 h (by tag or id), built
-    in the last 48 h, the newest of its recipe, or in the never-list. A recipe nothing records is the image's own: it is kept."""
+def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, now_s: float, in_progress: set = frozenset(),
+                    stand_ins: frozenset = frozenset()) -> list[dict]:
+    """Every deps image with `remove` and the rule that decided it, recipe by recipe, newest first. Kept: the never-list; what
+    the run in progress names; the newest of its recipe; up to MAX_IMAGES_PER_RECIPE while a plan of the last 48 h names it;
+    beyond the cap only what a plan named under IN_FLIGHT_GRACE_H ago. A recipe nothing records is the image's own."""
     for im in images:
         im["recipe"] = im.get("label_recipe") or recipes.get(im["tag"]) or f"unknown:{im['tag']}"
-    newest = {}   # recipe -> its newest image; an image built at the same instant is as new and is kept too
+    newest, by_recipe = {}, {}   # an image built at the same instant as the newest is as new: it ranks with it
     for im in images:
+        by_recipe.setdefault(im["recipe"], []).append(im)
         if im["created"] is not None and (im["recipe"] not in newest or im["created"] > newest[im["recipe"]]["created"]):
             newest[im["recipe"]] = im
     out = []
     for im in images:
-        age_h = None if im["created"] is None else round((now_s - im["created"]) / 3600, 1)
-        if never(im["tag"]):
-            why = "never-list (candidate and base images are never pruned)"
-        elif im["tag"] in recent or im["id"] in ids:
-            why = f"named by a plan of the last {REF_WINDOW_H} h" + (f" ({recent[im['tag']]:.1f} h ago)" if im["tag"] in recent else " (by id)")
-        elif age_h is None or age_h < REF_WINDOW_H:
-            why = f"built {age_h} h ago, under {REF_WINDOW_H} h"
-        elif im["created"] == newest[im["recipe"]]["created"]:
-            why = f"the newest image of recipe {im['recipe']}"
+        r = im["recipe"]
+        k = 0 if im["created"] is None else sum(1 for o in by_recipe[r] if o["created"] is not None and o["created"] > im["created"])
+        ref = min([h for h in (recent.get(im["tag"]), ids.get(im["id"])) if h is not None], default=None)
+        seen = "no plan of the last 48 h names it" if ref is None else f"its youngest plan is {ref:.1f} h old"
+        if never(im["tag"], stand_ins):
+            why = "never-list (candidate, base and service stand-in images are never pruned)"
+        elif im["tag"] in in_progress or im["id"] in in_progress:
+            why = "named by the run in progress (no status.json yet)"
+        elif k == 0:
+            why = f"the newest image of recipe {r}"
+        elif k < MAX_IMAGES_PER_RECIPE and ref is not None:
+            why = f"image {k + 1} of {MAX_IMAGES_PER_RECIPE} of recipe {r}, named by a plan {ref:.1f} h ago"
+        elif k >= MAX_IMAGES_PER_RECIPE and ref is not None and ref < IN_FLIGHT_GRACE_H:
+            why = f"image {k + 1} of recipe {r}, beyond the cap of {MAX_IMAGES_PER_RECIPE}, named {ref:.1f} h ago: a tick in flight"
         else:
-            out.append({**im, "remove": True, "rule": f"no plan of the last {REF_WINDOW_H} h names it, built {age_h} h ago, not the newest of "
-                                                      f"recipe {im['recipe']} (newest {newest[im['recipe']]['tag']})"})
+            cap = f"beyond the cap of {MAX_IMAGES_PER_RECIPE}, " if k >= MAX_IMAGES_PER_RECIPE else ""
+            out.append({**im, "remove": True, "rule": f"image {k + 1} of recipe {r} (newest {newest[r]['tag']}), {cap}{seen}"})
             continue
         out.append({**im, "remove": False, "rule": why})
     return out
@@ -182,23 +223,31 @@ def vm_free_gb(docker: str, state: Path) -> float | None:
 
 
 def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, colima: str = "colima", host_path: str = HOST_PATH,
-          now_s: float | None = None) -> dict:
+          now_s: float | None = None, matrix: Path = MATRIX) -> dict:
     now_s = time.time() if now_s is None else now_s
     runs = state / "runs"
     rec = {"kind": "prune", "dry_run": dry, "vm_free_gb": {"before": vm_free_gb(docker, state)}, "host_free_gb": {"before": host_free_gb(host_path)}}
-    recent, ids, recipes, unreadable = plan_refs(runs, now_s)
-    decided = image_decisions(deps_images(docker), recent, ids, recipes, now_s)
-    removed, errors = [], [{"plan": u, "error": "unreadable: no image is removed while a plan cannot be read"} for u in unreadable]
-    for d in decided if unreadable else []:
-        d.update(remove=False, rule=f"kept: {len(unreadable)} plan(s) unreadable, any may name it") if d["remove"] else None
+    recent, ids, recipes, unreadable, in_progress = plan_refs(runs, now_s)
+    errors = [{"plan": u, "error": "unreadable: no image is removed while a plan cannot be read"} for u in unreadable]
+    try:
+        keep = stand_ins(matrix)
+    except Exception as exc:   # noqa: BLE001 — a never-list that cannot be read is incomplete: nothing is removed
+        keep = frozenset()
+        errors.append({"matrix": str(matrix), "error": f"unreadable ({type(exc).__name__}): no image is removed without the stand-in list"})
+    tags = all_tags(docker)
+    decided = image_decisions(deps_images(docker, tags), recent, ids, recipes, now_s, in_progress, keep)
+    for d in decided if errors else []:
+        d.update(remove=False, rule=f"kept: {len(errors)} input(s) unreadable, see errors") if d["remove"] else None
+    never_kept = [{"tag": t, "rule": "never-list (candidate, base and service stand-in images are never pruned)"} for t in tags if protected(t, keep)]
+    removed = []
     for im in (d for d in decided if d["remove"]):
-        if never(im["tag"]):   # belt and braces: a removal set never carries the never-list
+        if never(im["tag"], keep):   # belt and braces: a removal set never carries the never-list
             continue
         r = None if dry else _docker(docker, "image", "rm", im["tag"])
         (removed if r is None or r.returncode == 0 else errors).append(
             {"tag": im["tag"], "gb": im["gb"], "rule": im["rule"], **({"error": r.stderr.strip()[:200]} if r is not None and r.returncode else {})})
-    rec["images"] = {"removed" if not dry else "would_remove": removed, "kept": [{"tag": d["tag"], "rule": d["rule"]} for d in decided if not d["remove"]],
-                     "errors": errors}
+    rec["images"] = {"removed" if not dry else "would_remove": removed, "errors": errors,
+                     "kept": [{"tag": d["tag"], "rule": d["rule"]} for d in decided if not d["remove"]] + never_kept}
     if not dry:   # the build cache grows with every deps build, whether or not an image went
         try:
             b = _docker(docker, "builder", "prune", "-f", "--filter", "until=24h", timeout=600)

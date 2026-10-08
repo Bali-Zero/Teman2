@@ -920,7 +920,7 @@ def cmd_prune(a) -> int:
         print("merger prune: skipped — the lease is held")
         return 0
     try:
-        rec = pm.prune(state, a.docker, dry=a.dry_run, fstrim=a.fstrim, colima=a.colima)
+        rec = pm.prune(state, a.docker, dry=a.dry_run, fstrim=a.fstrim, colima=a.colima, **({"matrix": Path(a.matrix)} if a.matrix else {}))
     except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
         journal(state, {"kind": "prune", "dry_run": a.dry_run, "error": redact(f"{type(exc).__name__}: {exc}")})
         print(f"merger prune: error — {type(exc).__name__}", file=sys.stderr)
@@ -1004,6 +1004,7 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--dry-run", action="store_true", help="journal what would go, remove nothing")
     pr.add_argument("--fstrim", action="store_true", help="after an image removal, `colima ssh -- sudo fstrim -av`")
     pr.add_argument("--colima", default="colima")
+    pr.add_argument("--matrix", help="the BASE contexts matrix whose service stand-ins are never pruned (default: beside prune.py)")
     pr.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
     sub.add_parser("merge", help=PHASE_E)
     argv = sys.argv[1:] if argv is None else argv

@@ -74,7 +74,7 @@ CODE="$(mktemp -d "${TMPDIR:-/tmp}/localci-merger.XXXXXX")"
 for f in merger.py hosted_compare.py; do
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f"
 done
-for f in prune.py runner.py; do   # B6's prune and the df probe it reads; a main before B6 has no prune and still ticks
+for f in prune.py runner.py contexts_matrix.yaml; do   # B6's prune, its df probe and the BASE matrix whose stand-ins it keeps
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f" 2>/dev/null || rm -f "$CODE/$f"
 done
 HB_NEW="$(mktemp "$STATE/.heartbeat.sh.XXXXXX")"   # one temp file per run: a hand run beside launchd never shares it

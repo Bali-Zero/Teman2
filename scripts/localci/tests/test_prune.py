@@ -53,8 +53,9 @@ def image(tag16: str, age_h: float, recipe: str | None = None, gb: float = 9.85)
             "labels": {"org.nuzantara.localci.deps": "d" * 64, **({"org.nuzantara.localci.recipe": recipe} if recipe else {})}}
 
 
-def world(tmp_path: Path, images: list, plans: dict | None = None, **extra) -> tuple[Path, str]:
-    """A merger state dir whose runs hold `plans` ({run name: (age_h, {check: tag})}) and a docker that knows `images`."""
+def world(tmp_path: Path, images: list, plans: dict | None = None, in_progress: tuple = (), **extra) -> tuple[Path, str]:
+    """A merger state dir whose runs hold `plans` ({run name: (age_h, {check: tag})}), finished (a status.json) unless named in
+    `in_progress`, and a docker that knows `images`."""
     state = tmp_path / "state"
     (state / "runs").mkdir(parents=True)
     (state / "repo").write_text("o/r\n")
@@ -64,6 +65,8 @@ def world(tmp_path: Path, images: list, plans: dict | None = None, **extra) -> t
         p.write_text(json.dumps({"checks": {chk: {"kind": "contained_jobs", "jobs": [{"job_id": "j", "deps": f"deps {tag} (3 pins + [])"}]}
                                             for chk, tag in uses.items()}}))
         os.utime(p, (NOW - age_h * H, NOW - age_h * H))
+        if run not in in_progress:
+            (state / "runs" / run / "status.json").write_text("{}")
     w = tmp_path / "world.json"
     w.write_text(json.dumps({"images": images, **extra}))
     exe = tmp_path / "docker"
@@ -78,18 +81,45 @@ def calls(tmp_path: Path) -> list[str]:
 
 
 def decided(state: Path, docker: str) -> dict:
-    recent, ids, recipes, _ = pm.plan_refs(state / "runs", NOW)
-    return {d["tag"]: d for d in pm.image_decisions(pm.deps_images(docker), recent, ids, recipes, NOW)}
+    recent, ids, recipes, _, live = pm.plan_refs(state / "runs", NOW)
+    return {d["tag"]: d for d in pm.image_decisions(pm.deps_images(docker), recent, ids, recipes, NOW, live, pm.stand_ins(pm.MATRIX))}
 
 
-def test_an_image_a_plan_named_47_hours_ago_is_kept_and_one_unnamed_for_three_days_goes(tmp_path):
-    imgs = [image("a" * 16, 80, "backend-tests"), image("b" * 16, 72, "backend-tests"), image("c" * 16, 50, "backend-tests")]
+def test_the_second_image_a_plan_named_47_hours_ago_is_kept_and_one_unnamed_for_three_days_goes(tmp_path):
+    imgs = [image("a" * 16, 80, "backend-tests"), image("c" * 16, 50, "backend-tests"), image("e" * 16, 72, "e2e-tests"),
+            image("f" * 16, 10, "e2e-tests")]
     state, docker = world(tmp_path, imgs, {"pr1-x-20261006T120000Z": (47, {"ctx.backend-tests": imgs[0]["tag"]})})
     d = decided(state, docker)
-    assert d[imgs[0]["tag"]]["remove"] is False and "named by a plan of the last 48 h (47.0 h ago)" in d[imgs[0]["tag"]]["rule"]
-    assert d[imgs[1]["tag"]]["remove"] is True and d[imgs[1]["tag"]]["rule"] == (
-        f"no plan of the last 48 h names it, built 72.0 h ago, not the newest of recipe backend-tests (newest {imgs[2]['tag']})")
-    assert d[imgs[2]["tag"]]["remove"] is False and d[imgs[2]["tag"]]["rule"] == "the newest image of recipe backend-tests"
+    assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[0]["tag"]]["rule"] == "image 2 of 2 of recipe backend-tests, named by a plan 47.0 h ago"
+    assert d[imgs[1]["tag"]]["remove"] is False and d[imgs[1]["tag"]]["rule"] == "the newest image of recipe backend-tests"
+    assert d[imgs[2]["tag"]]["remove"] is True and d[imgs[2]["tag"]]["rule"] == (
+        f"image 2 of recipe e2e-tests (newest {imgs[3]['tag']}), no plan of the last 48 h names it")
+
+
+def test_a_third_image_of_a_recipe_goes_first_even_named_47_hours_ago_and_stays_when_a_plan_named_it_5_hours_ago(tmp_path):
+    imgs = [image("a" * 16, 100, "e2e-tests"), image("b" * 16, 50, "e2e-tests"), image("c" * 16, 2, "e2e-tests")]
+    plans = {"pr1-x-20261006T120000Z": (47, {"ctx.e2e-tests": imgs[0]["tag"]}), "pr2-x-20261006T130000Z": (20, {"ctx.e2e-tests": imgs[1]["tag"]})}
+    d = decided(*world(tmp_path, imgs, plans))
+    assert d[imgs[0]["tag"]]["remove"] is True and d[imgs[0]["tag"]]["rule"] == (
+        f"image 3 of recipe e2e-tests (newest {imgs[2]['tag']}), beyond the cap of 2, its youngest plan is 47.0 h old")   # the cap wins
+    assert d[imgs[1]["tag"]]["remove"] is False and d[imgs[2]["tag"]]["remove"] is False
+    for age, kept in ((5, True), (7, False)):
+        plans["pr3-x-20261008T060000Z"] = (age, {"ctx.e2e-tests": imgs[0]["tag"]})
+        d = decided(*world(tmp_path / f"in-flight-{age}", imgs, plans))
+        assert d[imgs[0]["tag"]]["remove"] is (not kept)
+    assert d[imgs[0]["tag"]]["rule"].endswith("beyond the cap of 2, its youngest plan is 7.0 h old")
+    d = decided(*world(tmp_path / "five", imgs, {**plans, "pr3-x-20261008T060000Z": (5, {"ctx.e2e-tests": imgs[0]["tag"]})}))
+    assert d[imgs[0]["tag"]]["rule"] == "image 3 of recipe e2e-tests, beyond the cap of 2, named 5.0 h ago: a tick in flight"
+
+
+def test_two_images_of_a_recipe_named_in_the_window_are_both_kept_and_the_run_in_progress_keeps_what_it_names(tmp_path):
+    imgs = [image("a" * 16, 100, "backend-tests"), image("b" * 16, 30, "backend-tests")]
+    d = decided(*world(tmp_path, imgs, {"pr1-x-20261008T000000Z": (30, {"ctx.backend-tests": imgs[0]["tag"]})}))
+    assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[1]["tag"]]["remove"] is False
+    three = imgs + [image("c" * 16, 1, "backend-tests")]
+    d = decided(*world(tmp_path / "live", three, {"pr1-x-20261008T000000Z": (30, {"ctx.backend-tests": imgs[0]["tag"]})},
+                       in_progress=("pr1-x-20261008T000000Z",)))
+    assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[0]["tag"]]["rule"] == "named by the run in progress (no status.json yet)"
 
 
 def test_a_plan_older_than_48_hours_names_nothing_and_the_recipe_comes_from_it_when_no_label_says(tmp_path):
@@ -101,11 +131,11 @@ def test_a_plan_older_than_48_hours_names_nothing_and_the_recipe_comes_from_it_w
     assert d[imgs[0]["tag"]]["remove"] is True and d[imgs[1]["tag"]]["remove"] is False
 
 
-def test_the_newest_of_a_recipe_is_kept_with_no_reference_and_a_young_image_is_kept_unreferenced(tmp_path):
+def test_the_newest_of_a_recipe_is_kept_with_no_reference_and_a_young_second_one_unnamed_goes(tmp_path):
     imgs = [image("a" * 16, 200, "frontend-tests-mouth", 1.4), image("b" * 16, 30, "backend-tests"), image("c" * 16, 10, "backend-tests")]
     d = decided(*world(tmp_path, imgs))
     assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[0]["tag"]]["rule"] == "the newest image of recipe frontend-tests-mouth"
-    assert d[imgs[1]["tag"]]["remove"] is False and d[imgs[1]["tag"]]["rule"] == "built 30.0 h ago, under 48 h"
+    assert d[imgs[1]["tag"]]["remove"] is True   # the second image stays only while a plan of the last 48 h names it
 
 
 def test_an_image_whose_recipe_nothing_records_is_its_own_newest_and_stays(tmp_path):
@@ -118,7 +148,7 @@ def test_the_candidate_and_base_images_are_never_in_a_removal_set(tmp_path, tag)
     assert pm.never(tag) is True
     im = {**image("a" * 16, 300, "backend-tests"), "tag": tag, "created": NOW - 300 * H, "label_recipe": "backend-tests"}
     young = {**image("b" * 16, 10, "backend-tests"), "created": NOW - 10 * H, "label_recipe": "backend-tests"}
-    rows = pm.image_decisions([im, young], {}, set(), {}, NOW)
+    rows = pm.image_decisions([im, young], {}, {}, {}, NOW)
     assert rows[0]["remove"] is False and rows[0]["rule"].startswith("never-list")
     state, docker = world(tmp_path, [image("b" * 16, 300, "backend-tests"), image("c" * 16, 10, "backend-tests")],
                           others=["localci-candidate:1", "localci-deps-base:2c9b1d54104db6cd"])
@@ -137,8 +167,8 @@ def test_prune_removes_by_tag_prunes_the_builder_and_journals_what_went_by_which
     line = journal(state)[-1]
     assert line["kind"] == "prune" and line["dry_run"] is False
     assert line["images"]["removed"] == [{"tag": imgs[0]["tag"], "gb": 9.85, "rule": imgs and line["images"]["removed"][0]["rule"]}]
-    assert "not the newest of recipe backend-tests" in line["images"]["removed"][0]["rule"]
-    assert line["images"]["kept"] == [{"tag": imgs[1]["tag"], "rule": "built 10.0 h ago, under 48 h"}] and line["images"]["errors"] == []
+    assert line["images"]["removed"][0]["rule"] == f"image 2 of recipe backend-tests (newest {imgs[1]['tag']}), no plan of the last 48 h names it"
+    assert line["images"]["kept"] == [{"tag": imgs[1]["tag"], "rule": "the newest image of recipe backend-tests"}] and line["images"]["errors"] == []
     assert line["vm_free_gb"] == {"before": 32.4, "after": 32.4} and set(line["host_free_gb"]) == {"before", "after"}
     rm = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
     assert rm == [f"image rm {imgs[0]['tag']}", "builder prune -f --filter until=24h"]   # by explicit tag, never -a, never until= on images
@@ -271,7 +301,7 @@ def test_an_unreadable_plan_blocks_every_removal_and_a_half_written_one_still_na
     half = state / "runs" / "pr1-x-20261008T000000Z" / "state" / "plan.json"
     half.write_text(half.read_text()[:-20])   # half-written: not JSON, still names the tag
     d = decided(state, docker)
-    assert d[imgs[0]["tag"]]["remove"] is False and "named by a plan" in d[imgs[0]["tag"]]["rule"]
+    assert d[imgs[0]["tag"]]["remove"] is False and "named" in d[imgs[0]["tag"]]["rule"]
     locked = state / "runs" / "pr2-x-20261008T010000Z" / "state" / "plan.json"
     locked.chmod(0)
     try:
@@ -321,3 +351,31 @@ def test_a_failed_builder_prune_or_fstrim_is_a_failed_prune_and_the_lease_holder
 def test_an_unmeasurable_vm_is_none_never_a_crash(tmp_path, monkeypatch):
     monkeypatch.setattr(pm, "_runner", lambda: (_ for _ in ()).throw(AttributeError("no runner.py")))
     assert pm.vm_free_gb("/nonexistent", tmp_path) is None
+
+
+# ------------------------------------------------------------------ lead's addendum (2026-10-08): service stand-ins from the BASE matrix
+STAND_INS = sorted(pm.stand_ins(pm.MATRIX))
+
+
+def test_the_matrix_names_the_stand_ins_and_the_list_is_read_not_hardcoded(tmp_path):
+    assert {"postgres:15", "redis:7"} <= set(STAND_INS)
+    m = tmp_path / "m.yaml"
+    m.write_text('contexts:\n  x:\n    local:\n      service_images:\n        "ghcr.io/x/mysql:8": "mysql:8"\n')
+    assert pm.stand_ins(m) == {"mysql:8"} and pm.never("mysql:8", pm.stand_ins(m)) and not pm.protected("postgres:15", pm.stand_ins(m))
+
+
+@pytest.mark.parametrize("stand_in", STAND_INS)
+def test_every_service_stand_in_of_the_base_matrix_is_never_removed_and_is_journalled_kept(tmp_path, stand_in):
+    imgs = [image("a" * 16, 80, "backend-tests"), image("b" * 16, 10, "backend-tests")]
+    state, docker = world(tmp_path, imgs, others=[stand_in, "localci-candidate:1", "nginx:latest"])
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 0
+    assert [c for c in calls(tmp_path) if c.startswith("image rm")] == ["image rm " + imgs[0]["tag"]]
+    kept = {k["tag"]: k["rule"] for k in journal(state)[-1]["images"]["kept"]}
+    assert kept[stand_in].startswith("never-list") and kept["localci-candidate:1"].startswith("never-list") and "nginx:latest" not in kept
+
+
+def test_an_unreadable_matrix_removes_nothing(tmp_path):
+    state, docker = world(tmp_path, [image("a" * 16, 80, "backend-tests"), image("b" * 16, 10, "backend-tests")])
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--matrix", str(tmp_path / "absent.yaml")]) == 1
+    line = journal(state)[-1]
+    assert line["images"]["removed"] == [] and line["images"]["errors"][0]["error"].startswith("unreadable (FileNotFoundError)")
