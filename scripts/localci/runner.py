@@ -897,6 +897,7 @@ MERGE_GROUP_EVENT_KEYS = {"merge_group", "repository", "organization", "installa
 
 REBUILT_IDS = {("github", "sha"), ("github", "event", "merge_group", "base_sha"), ("github", "event", "merge_group", "head_sha")}
 QUEUE_REF = {("github", "ref"), ("github", "event", "merge_group", "head_ref")}   # the queue's ref names the PR: pr-<N>-<base>
+ENV_EVALUATED_HERE = "which the workflow declares: the runner evaluates that text itself, where env is empty, so it would read '' silently"
 
 
 def path_read(texts, wanted: set) -> str | None:
@@ -918,6 +919,22 @@ def rebuilt_id(texts) -> str | None:
     """The first commit id the sandbox rebuilds that `texts` reads: only the driver knows those ids, once it has built the commits, so a text
     the runner evaluates itself (an artifact name or path, a host or egress step) cannot read them (Codex, B1 delta review)."""
     return path_read(texts, REBUILT_IDS)
+
+
+def declared_env_read(texts, declared) -> str | None:
+    """The first `env.X` that `texts` read where X is an env the workflow declares in that scope (or the whole `env` object, when it
+    declares any). A text the runner evaluates itself (an artifact name or path, a host reader's argv, a checkout ref) holds no env, so
+    that read would be '' where hosted reads the declared value; an undeclared X is null hosted too."""
+    X, names = _gh_expr(), {str(d).lower() for d in declared}
+    for t in texts:
+        try:
+            found = X.paths(str(t or ""))
+        except X.ExprError:
+            continue
+        for path in found:
+            if path[0].lower() == "env" and (path[1].lower() in names if len(path) > 1 else bool(names)):
+                return ".".join(path)
+    return None
 
 
 def unmodelled_path(path: list, gh: dict, needs: list, stood_in: dict) -> str | None:
@@ -1068,6 +1085,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
             if set(w) - {"fetch-depth", "ref", "filter"}:
                 return _blocked(f"job {jid}: checkout with {sorted(set(w) - {'fetch-depth', 'ref', 'filter'})} is not emulated")
             if "ref" in w:
+                if (q := declared_env_read([w["ref"]], {*jenv, *(s.get("env") or {})})):
+                    return _blocked(f"job {jid}: checkout ref reads `{q}`, {ENV_EVALUATED_HERE}")
                 try:
                     if X.substitute(str(w["ref"]), static) != "main":
                         return _blocked(f"job {jid}: checkout ref {w['ref']!r} is neither the candidate nor its BASE")
@@ -1077,6 +1096,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
         try:   # each text carries where it sits, so a refusal names the step and the variable (a name, never a value)
             texts = [*((f"job env {k}", str(v)) for k, v in jenv.items()),
                      *((f"step {s.get('name') or s.get('uses')!r} with.ref", str((s.get("with") or {}).get("ref", ""))) for s in job.get("steps") or [])]
+            base_env = {s["name"]: s.get("env") or {} for s in job.get("steps") or [] if isinstance(s, dict) and isinstance(s.get("name"), str)}
             for st in steps:
                 lab = f"step {st['name']!r}"
                 if st.get("script") and re.search(r"GITHUB_(ENV|PATH|STATE)\b", st["script"]):
@@ -1084,6 +1104,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 texts += [(f"{lab} run body", str(st.get("script") or "")), *((f"{lab} env {k}", str(v)) for k, v in (st.get("env") or {}).items()),
                           *((f"{lab} with.{k}", str(v or "")) for k, v in (st.get("emulate") or {}).items())]
                 texts += [(f"{lab} if", "${{ " + X.unwrap(str(st["if"])) + " }}")] if "if" in st else []
+                if st.get("emulate") and (q := declared_env_read(st["emulate"].values(), {*jenv, *base_env.get(st["name"], {})})):
+                    raise X.ExprError(f"{lab} artifact name or path reads `{q}`, {ENV_EVALUATED_HERE}")
             for lab, t in texts:
                 try:
                     found = X.paths(t)
@@ -1116,6 +1138,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                     st["script"] = st["script"].replace(a, b)
                 st["side"] = {"where": "egress", "inputs": [safe_tree_path(str(p)) for p in ms.get("inputs") or []], "rewrite": ms.get("rewrite") or []}
             elif (ms or {}).get("side") == "host":   # a BASE reader of GitHub state, run NOW on the host: its answer is frozen in the plan
+                if (q := declared_env_read(st.get("argv") or [], st.get("env") or {})):
+                    return _blocked(f"job {jid}: host step {st['name']!r} argv reads `{q}`, {ENV_EVALUATED_HERE}")
                 try:
                     argv = [X.substitute(str(x), static) for x in st.get("argv") or []]
                 except X.ExprError as e:

@@ -563,6 +563,29 @@ def test_a_host_reader_whose_argv_reads_the_queue_ref_is_blocked_without_a_pr_nu
                                                                                                        ["event"]["merge_group"]["head_ref"][-40:])
 
 
+@pytest.mark.parametrize("read,step_env,needle", [
+    ("${{ env.COLLECT }}", {}, "env.COLLECT"),          # declared at workflow level
+    ("${{ env.TAG }}", {"TAG": "t"}, "env.TAG"),        # declared on the step itself
+    ("${{ env }}", {}, "`env`"),                        # the object that holds them
+    ("${{ env.UNDECLARED }}", {}, None),                # null hosted too: no divergence, it plans
+])
+def test_a_declared_env_in_an_artifact_name_is_blocked_never_silently_empty(tmp_path, monkeypatch, read, step_env, needle):
+    up = {"name": "up", "uses": "actions/upload-artifact@v4", "with": {"name": "cov-" + read, "path": "out"}, **({"env": step_env} if step_env else {})}
+    wf = {**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "unit": {**WORKFLOW["jobs"]["unit"], "steps": [*WORKFLOW["jobs"]["unit"]["steps"], up]}}}
+    ctx = svc_ctx(jobs=[{"job_id": "unit", "steps": [{"workflow_step": "test"}, {"workflow_step": "up", "emulate": True}]}])
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, ctx, {WF: yaml.safe_dump(wf)})
+    if needle is None:
+        assert spec.get("status") != "BLOCKED"
+    else:
+        assert spec["status"] == "BLOCKED" and needle in spec["reason"] and "read '' silently" in spec["reason"]
+
+
+@pytest.mark.parametrize("arg,blocked", [("${{ env.COLLECT }}", True), ("${{ env.NOT_DECLARED }}", False)])
+def test_a_declared_env_in_a_host_readers_argv_is_blocked_never_silently_empty(tmp_path, monkeypatch, arg, blocked):
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, host_ctx(["$PY", READER, "--x", arg]), HOST_BASE)
+    assert (spec.get("status") == "BLOCKED" and "host step 'verdict' argv reads `env.COLLECT`" in spec["reason"]) is blocked
+
+
 def test_a_refused_secret_names_its_variable_and_never_a_value(tmp_path, monkeypatch):
     base = _fanin_reading({"DB_URL": "literal-prefix-${{ secrets.DB_URL }}"}, 'test "$R" = success')
     spec = planned_svc(tmp_path / "a", monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), base)
