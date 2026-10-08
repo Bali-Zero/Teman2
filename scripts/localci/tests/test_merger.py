@@ -924,7 +924,8 @@ def test_a_tick_journals_each_contexts_coverage_beside_its_verdict(world):
 
 
 # ------------------------------------------------------------------ a host out of disk: not executed, not a FAIL, never enqueued (B3)
-@pytest.mark.parametrize("verdict,code", [("ERROR", "host_disk_full")])
+@pytest.mark.parametrize("verdict,code", [("ERROR", "host_disk_full"), ("BLOCKED", "host_disk_below_floor 9.8GB<12GB"),
+                                          ("BLOCKED", "host_disk_unmeasured"), ("BLOCKED", "host_disk_floor_invalid")])
 def test_a_context_the_host_could_not_judge_is_not_executed_named_and_still_refuses(enq, capsys, verdict, code):
     _result("ctx-a", verdict=verdict, no_verdict=code)(enq)
     line = enq.run()
@@ -937,3 +938,12 @@ def test_a_fail_that_carries_a_host_code_is_still_a_fail_on_the_line(enq):
     _result("ctx-a", verdict="FAIL", no_verdict="host_disk_full")(enq)
     line = enq.run()
     assert line["executed_required"] == "1/2" and line["host_no_verdict"] == {} and "not OK" in line["why"]["executed_contexts_ok"]
+
+
+def test_the_runner_gets_the_operators_free_space_floor_and_still_no_token(world, monkeypatch):
+    monkeypatch.setenv("LOCALCI_MIN_FREE_GB", "30")
+    monkeypatch.setenv("GH_TOKEN", "ghp_" + "Z" * 24)
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0
+    env = world.runner.calls[0]["env"]
+    assert env["LOCALCI_MIN_FREE_GB"] == "30" and "GH_TOKEN" not in env and all("ghp_" not in v for v in env.values())

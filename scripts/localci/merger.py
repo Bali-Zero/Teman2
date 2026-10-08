@@ -49,7 +49,8 @@ AUTHOR = "localci-merger"
 PHASE_E = "phase E not armed: see docs/specs/localci-sovereign-2026-10-07.md"
 HEAD_NOTE = "hosted verdict read on the PR head sha: the queue's verdict lands on a merge-group commit the merger cannot see"
 MATRIX = "scripts/localci/contexts_matrix.yaml"
-RUNNER_ENV = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT")  # an allowlist: no token reaches the runner
+RUNNER_ENV = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT",
+              "LOCALCI_MIN_FREE_GB")  # an allowlist: no token reaches the runner (the last is the runner's free-space floor, B3)
 GIT_SAFE = ("-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-c", "rerere.enabled=false")  # no hook, signer or recorded resolution acts on a candidate
 # no host config either: a filter, merge driver or fsmonitor configured globally would run on candidate paths outside any container
 GIT_ISOLATED = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "GIT_ATTR_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
@@ -425,7 +426,7 @@ def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
 # the criterion and the one write
 CHECK_OK = ("PASS", "NOT_APPLICABLE", "BLOCKED")   # a BLOCKED check backs no executed context here: the contexts below judge those
 NON_EXECUTED = ("blocked", "not_implemented")
-HOST_NO_VERDICT = ("host_disk_full", "host_disk_below_floor")   # the runner's own no-verdict reasons: the host, not the candidate (B3)
+HOST_NO_VERDICT = ("host_disk_full", "host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")   # the host, not the candidate (B3)
 GATE = ("local_checks_clean", "review_independent", "executed_contexts_ok", "hosted_required_green", "head_unchanged", "same_repo",
         "not_draft", "base_main", "open", "not_in_queue", "first_enqueue")
 CRITERION = (*GATE, "label_privileged")   # the env flag, the arm's other half, is journalled apart

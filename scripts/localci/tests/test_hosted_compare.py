@@ -268,9 +268,10 @@ def test_a_blind_partial_context_is_not_counted_as_compared_at_all():
 
 # ------------------------------------------------------------------ a host out of disk is no verdict (B3)
 @pytest.mark.parametrize("hosted", ["success", "failure"])
-def test_a_context_the_host_could_not_judge_is_blind_never_false_red_and_never_agree(hosted):
+@pytest.mark.parametrize("verdict,code", [("ERROR", "host_disk_full"), ("BLOCKED", "host_disk_below_floor 9.8GB<12GB")])
+def test_a_context_the_host_could_not_judge_is_blind_never_false_red_and_never_agree(hosted, verdict, code):
     # guilt: before B3 the same run read FAIL here, and FALSE_RED beside a hosted green (Backend Tests, B2 final head)
-    res = {**_cov("ERROR", "full"), "no_verdict": "host_disk_full"}
+    res = {**_cov(verdict, "full"), "no_verdict": code}
     rep = hc.compare(_status({"a": res}), _req("a"), [_run("a", hosted)], [])
-    assert _klass(rep, "a") == "LOCAL_BLIND" and rep["rows"][0]["local_detail"] == "ERROR (executed) host_disk_full"
+    assert _klass(rep, "a") == "LOCAL_BLIND" and rep["rows"][0]["local_detail"] == f"{verdict} (executed) {code}"
     assert rep["counts"]["FALSE_RED"] == 0 and rep["coverage"]["compared_full"] == 0

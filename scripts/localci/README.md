@@ -188,6 +188,18 @@ criterion counts it as not executed and refuses, naming it apart from the contex
 Measured 2026-10-08 against every tracked file: the patterns hit only docs, evidence, the ledger and one fixture of a
 workflow that no required context runs (`scripts/test_cost_breaker_deadman.sh`).
 
+**A free-space floor before a service leg.** Before the first container of a service leg, the runner reads the docker host's
+free space once per `run` (`df -Pk /` in a throwaway `--network none`, `--cap-drop ALL`, uid 65534 container of the pinned
+candidate image; 0.14 s on Pro) and refuses the leg when it is under `LOCALCI_MIN_FREE_GB` (GB of 10^9 bytes, default 12: one
+backend shard's sandbox writes 7-10 GB on Pro's 58.8 GB Colima VM, which also holds ~47 GB of images, measured 2026-10-08).
+The context is `BLOCKED` with a reason that starts `host_disk_below_floor <free>GB<floor>GB:` — no verdict, never a FAIL; a
+probe that cannot read the host is `host_disk_unmeasured`, a floor that is not a number ≥ 0 is `host_disk_floor_invalid`, and
+`0` turns the floor off without reading anything. The merger passes `LOCALCI_MIN_FREE_GB` from the tick's environment to the
+runner (the only addition to its allowlist) and its criterion counts such a context as not executed, never as a FAIL, and
+refuses. The reading is cached for the run: a leg that starts later in the run is judged on the first reading. Measured on
+Pro at 07:31Z on 2026-10-08, with the shadow merger running PR #8060's E2E legs: 3.5 GB free (95% of 61.6 GB used) — under
+the default floor every service leg there would be BLOCKED until space is freed or the floor is set in the tick's environment.
+
 ## Security: Pysa taint judge (`security.pysa_python`)
 
 CodeQL CLI cannot run on this repo (public, no OSI licence), so the python security queries are stood in for by Pysa

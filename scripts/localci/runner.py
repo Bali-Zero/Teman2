@@ -60,7 +60,12 @@ DISK_FULL_LINE = re.compile(
     r"|\bcould not (?:extend|write to) file \"[^\"\n]+\": \S"   # the postgres server's own message (SQLSTATE 53100)
     r"|^(?!.*\b\w*(?:Error|Exception)\b).*: [Nn]o space left on device\s*$")   # a C tool's strerror (tar, cp, git); no Python exception text
 RECOVERY_LINE = re.compile(r"\bthe database system is in recovery mode\b")   # a service Postgres after it crashed; counted only after a line above
-HOST_NO_VERDICT = re.compile(r"^host_disk_full(?=:)")   # a check reason the runner wrote itself: the context has no verdict, it is not a FAIL
+# a check reason the runner wrote itself: the host, not the candidate — the context has no verdict, and it is not a FAIL
+HOST_NO_VERDICT = re.compile(r"^(?:host_disk_full|host_disk_below_floor \d+(?:\.\d+)?GB<\d+(?:\.\d+)?GB|host_disk_unmeasured|host_disk_floor_invalid)(?=:)")
+# Free-space floor (B3): no service leg starts on a docker host with less free disk than this (GB, 10^9 bytes). One backend shard's
+# sandbox wrote 7-10 GB on Pro's 58.8 GB Colima VM, which also holds ~47 GB of images (measured 2026-10-08). 0 disables the floor.
+MIN_FREE_ENV, DEFAULT_MIN_FREE_GB = "LOCALCI_MIN_FREE_GB", 12.0
+_HOST_FREE: dict = {}   # run dir -> (free GB or None, why): the docker host's free space, read once per `run`
 RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
 RUNNER_OWNED_KEYS = frozenset({"extra", "isolation", "trusted_pythonpath", "trusted_dir_sha256", "trusted_files"})
 EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
@@ -1508,6 +1513,52 @@ def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], ex
     return len(entries)
 
 
+def _gb(x: float) -> str:
+    return f"{x:.1f}".rstrip("0").rstrip(".")
+
+
+def _probe_free_gb(docker: str, image_id: str, run_dir: Path) -> tuple[float | None, str | None]:
+    """The docker host's free space under its container root: `df -Pk /` in a throwaway, network-less, unprivileged container of
+    the pinned candidate image (BASE-built, no candidate content), which sits on the same filesystem every sandbox writes to."""
+    argv = [docker, "run", "--rm", "--network", "none", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--user",
+            f"{SANDBOX_UID}:{SANDBOX_UID}", "--label", "org.nuzantara.localci=probe", "--label", f"org.nuzantara.localci.run={run_label(run_dir)}",
+            "--entrypoint", "df", image_id, "-Pk", "/"]
+    try:
+        r = subprocess.run(argv, capture_output=True, text=True, timeout=120, env=trusted_env())
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return None, f"df probe did not run: {type(e).__name__}"
+    lines = (r.stdout or "").strip().splitlines()
+    if r.returncode != 0 or len(lines) < 2 or not re.search(r"\b(?:1024|1K)-blocks\b", lines[0]):
+        return None, f"df probe rc={r.returncode}: {((r.stderr or '') + (r.stdout or '')).strip()[:160]!r}"
+    fields = lines[-1].split()
+    if len(fields) < 6 or not fields[3].isdigit():
+        return None, f"df probe output unreadable: {lines[-1][:120]!r}"
+    return int(fields[3]) * 1024 / 1e9, None
+
+
+def disk_floor_refusal(docker: str, image_id: str, run_dir: Path) -> str | None:
+    """Why a service leg must not start on this host (BLOCKED: no verdict, never a FAIL), else None. Floor 0 reads nothing."""
+    raw = os.environ.get(MIN_FREE_ENV, "")
+    try:
+        floor = float(raw) if raw.strip() else DEFAULT_MIN_FREE_GB
+    except ValueError:
+        floor = float("nan")
+    if not (0 <= floor < float("inf")):
+        return f"host_disk_floor_invalid: {MIN_FREE_ENV}={raw[:40]!r} is not a number of GB >= 0 — no service leg starts on an unread floor"
+    if floor == 0:
+        return None
+    key = str(run_dir)
+    if key not in _HOST_FREE:
+        _HOST_FREE[key] = _probe_free_gb(docker, image_id, run_dir)
+    free, why = _HOST_FREE[key]
+    if free is None:
+        return f"host_disk_unmeasured: {why} — the {_gb(floor)} GB floor cannot be checked, so no service leg starts"
+    if free < floor:
+        return (f"host_disk_below_floor {_gb(free)}GB<{_gb(floor)}GB: the docker host has {_gb(free)} GB free, under {MIN_FREE_ENV}="
+                f"{_gb(floor)}; the leg was not started — no verdict on the candidate, never a FAIL; free space and run again")
+    return None
+
+
 def run_label(run_dir: Path) -> str:
     """Container label value: the resolved run dir, hashed — two run dirs sharing a basename never reap each other's containers."""
     return sha256_bytes(str(Path(run_dir).resolve()).encode())[:24]
@@ -1940,6 +1991,11 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
     try:
         with open(log, "w") as fh:
             fh.write(f"# {now()} {label}: image {job['image_id'][:19]} services {[s['name'] for s in job['services']]}\n")
+        if (floor := disk_floor_refusal(iso["docker"], iso["image_id"], run_dir)):   # before any container of this leg exists
+            with open(log, "a") as fh:
+                fh.write(f"# not started: {floor}\n")
+            out["infra"] = ("BLOCKED", floor)
+            return out
         ctrs, owner, why = start_services(iso["docker"], job["services"], f"localci-{plan['run_id']}-{name}-{slug}", run_label(run_dir), denv, log)
         if why:
             out["infra"] = ("BLOCKED", f"{label}: {why}")

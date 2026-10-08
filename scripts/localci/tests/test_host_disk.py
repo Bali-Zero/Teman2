@@ -143,3 +143,109 @@ def test_the_status_names_a_host_condition_on_the_context_and_only_the_runners_o
     res = runner.evaluate_contexts(view, plan)["results"]
     assert (res["A"]["verdict"], res["A"]["no_verdict"]) == ("ERROR", "host_disk_full")
     assert "no_verdict" not in res["B"] and res["B"]["verdict"] == "FAIL" and "no_verdict" not in res["C"]
+
+
+# ------------------------------------------------------------------ the free-space floor: BLOCKED before a service leg starts
+GNU_DF = "Filesystem     1024-blocks     Used Available Capacity Mounted on\noverlay           57475420 47911556   9563864      84% /\n"
+BUSYBOX_DF = "Filesystem           1024-blocks    Used Available Capacity Mounted on\noverlay               57475420  9563864  47911556  17% /\n"
+
+
+@pytest.fixture
+def probe(monkeypatch):
+    """The df probe, faked: ``probe.free`` GB (None = it fails); ``probe.calls`` counts docker runs. The per-run cache starts empty."""
+    monkeypatch.setattr(runner, "_HOST_FREE", {})
+    monkeypatch.delenv(runner.MIN_FREE_ENV, raising=False)
+    w = type("Probe", (), {"free": 50.0, "calls": 0})()
+
+    def fake(docker, image_id, run_dir):
+        w.calls += 1
+        return (w.free, None) if w.free is not None else (None, "df probe rc=125: 'docker: Error response from daemon'")
+    monkeypatch.setattr(runner, "_probe_free_gb", fake)
+    return w
+
+
+def _leg_args(tmp_path):
+    spec = {"isolation": {"docker": "/nonexistent/docker", "image_id": "sha256:" + "c" * 64}, "expr": {}, "context": "E2E Tests (Playwright)",
+            "driver_sha256": runner.sha256_bytes(runner.STEPS_DRIVER.read_bytes()), "expr_sha256": runner.sha256_bytes(runner.GH_EXPR.read_bytes())}
+    job = {"job_id": "e2e-tests", "needs": [], "path_prefix": "", "venv": False, "job_env": {}, "steps": [], "services": [], "image_id": "sha256:" + "d" * 64,
+           "timeout_s": 60}
+    (tmp_path / "logs").mkdir(exist_ok=True)
+    (tmp_path / "receipts").mkdir(exist_ok=True)
+    return spec, job, {"run_id": "r1", "worktree": str(tmp_path)}
+
+
+def _run_leg(monkeypatch, tmp_path, started):
+    def services(*a, **k):
+        started.append(a[1])
+        return [], None, "stopped by the test after the floor"
+    monkeypatch.setattr(runner, "start_services", services)
+    spec, job, plan = _leg_args(tmp_path)
+    return runner._run_leg("ctx.e2e-tests", spec, job, {}, tmp_path, plan, {}, {}, runner._gh_expr())
+
+
+def test_a_floor_above_the_free_space_blocks_every_service_leg_before_any_container_starts(monkeypatch, tmp_path, probe):
+    # guilt: before B3 the leg started on 9.8 GB and its verdict was whatever the full disk made of it
+    monkeypatch.setenv(runner.MIN_FREE_ENV, "100")
+    probe.free, started = 9.8, []
+    for _ in range(3):   # three service legs of one run: each refused, the host read once
+        out = _run_leg(monkeypatch, tmp_path, started)
+        assert out["infra"][0] == "BLOCKED" and out["infra"][1].startswith("host_disk_below_floor 9.8GB<100GB: ") and "never a FAIL" in out["infra"][1]
+    assert started == [] and probe.calls == 1 and "# not started: host_disk_below_floor 9.8GB<100GB" in Path(out["log"]).read_text()
+    assert runner.HOST_NO_VERDICT.match(out["infra"][1]).group(0) == "host_disk_below_floor 9.8GB<100GB"
+
+
+def test_floor_zero_runs_the_leg_and_reads_nothing(monkeypatch, tmp_path, probe):
+    monkeypatch.setenv(runner.MIN_FREE_ENV, "0")
+    probe.free, started = None, []   # a probe that would fail is never asked
+    out = _run_leg(monkeypatch, tmp_path, started)
+    assert len(started) == 1 and probe.calls == 0 and out["infra"] == ("BLOCKED", "e2e-tests: stopped by the test after the floor")
+
+
+@pytest.mark.parametrize("free,blocked", [(11.9, True), (12.0, False), (50.0, False)])
+def test_the_default_floor_is_twelve_gb(monkeypatch, tmp_path, probe, free, blocked):
+    probe.free, started = free, []
+    out = _run_leg(monkeypatch, tmp_path, started)
+    assert (out["infra"][1].startswith(f"host_disk_below_floor {runner._gb(free)}GB<12GB: ") if blocked else started == [[]])
+
+
+@pytest.mark.parametrize("value", ["abc", "-1", "nan", "inf", "12GB"])
+def test_an_unreadable_floor_blocks_the_leg_and_names_the_value(monkeypatch, tmp_path, probe, value):
+    monkeypatch.setenv(runner.MIN_FREE_ENV, value)
+    started = []
+    out = _run_leg(monkeypatch, tmp_path, started)
+    assert started == [] and out["infra"][1].startswith("host_disk_floor_invalid: ") and repr(value) in out["infra"][1]
+
+
+def test_a_host_whose_free_space_cannot_be_read_starts_no_leg(monkeypatch, tmp_path, probe):
+    probe.free, started = None, []
+    out = _run_leg(monkeypatch, tmp_path, started)
+    assert started == [] and out["infra"][1].startswith("host_disk_unmeasured: df probe rc=125") and runner.HOST_NO_VERDICT.match(out["infra"][1])
+
+
+@pytest.mark.parametrize("stdout,rc,want", [(GNU_DF, 0, 9.793), (BUSYBOX_DF, 0, 49.061), ("", 125, None), ("garbage\n", 0, None),
+                                            ("Filesystem 1024-blocks Used Available\noverlay 1 2 x 4% /\n", 0, None)])
+def test_the_probe_reads_df_available_kilobytes_in_gb(monkeypatch, tmp_path, stdout, rc, want):
+    seen = []
+
+    def run(argv, **kw):
+        seen.append(argv)
+        return runner.subprocess.CompletedProcess(argv, rc, stdout, "docker: Error response from daemon" if rc else "")
+    monkeypatch.setattr(runner.subprocess, "run", run)
+    free, why = runner._probe_free_gb("/usr/bin/docker", "sha256:img", tmp_path)
+    assert (round(free, 3) if free is not None else None) == want and (why is None) == (want is not None)
+    argv = seen[0]
+    assert argv[:3] == ["/usr/bin/docker", "run", "--rm"] and argv[argv.index("--network") + 1] == "none" and argv[-3:] == ["sha256:img", "-Pk", "/"]
+    assert "--cap-drop" in argv and argv[argv.index("--entrypoint") + 1] == "df" and argv[argv.index("--user") + 1] == "65534:65534"
+
+
+def test_a_floor_blocked_context_is_named_on_the_status_as_no_verdict(monkeypatch, tmp_path, probe):
+    monkeypatch.setenv(runner.MIN_FREE_ENV, "100")
+    probe.free = 9.8
+    refused = _run_leg(monkeypatch, tmp_path, [])   # the real leg, refused by the floor, then replayed as each leg of the chain
+    monkeypatch.setattr(runner, "_run_leg", lambda name, spec, job, leg, run_dir, plan, needs, arts, X: {**refused, "label": job["job_id"]})
+    out = runner._execute_jobs("ctx.e2e-tests", SPEC, tmp_path, {}, tmp_path / "ctx.log")
+    assert out["status"] == "BLOCKED" and out["reason"].startswith("host_disk_below_floor 9.8GB<100GB: ")
+    plan = {"contexts_status": "ok", "required_contexts": ["E2E"], "contexts_map": {"E2E": {"mapping": "executed", "check": "ctx.e2e-tests",
+                                                                                          "coverage": "partial", "coverage_note": "n"}}}
+    res = runner.evaluate_contexts({"ctx.e2e-tests": {"status": out["status"], "reason": out["reason"]}}, plan)["results"]["E2E"]
+    assert (res["verdict"], res["no_verdict"], res["coverage"]) == ("BLOCKED", "host_disk_below_floor 9.8GB<100GB", "partial")
