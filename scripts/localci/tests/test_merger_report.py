@@ -418,6 +418,24 @@ def test_the_phase_e_line_counts_enqueued_and_would_enqueue_apart_and_neither_is
     assert line.endswith("; enqueued=1 would_enqueue=2 enqueue_refused=1 enqueue_error=1")
 
 
+def test_the_report_counts_would_merge_lines_in_the_window_and_says_phase_f_is_shadow(tmp_path, monkeypatch, capsys):
+    t = "2026-10-08T01:00:00Z"
+    lines = [dict(ok=True, clean=True, base_current=True), dict(ok=False, clean=False, base_current=True),
+             dict(ok=False, clean=True, base_current=False), dict(ok=False, clean=True, base_current=True)]
+    recs = [decision(1, A, "BLOCKED", ts=t)] + [{"kind": "would_merge", "ts": t, "pr": 1, "head_sha": A, **x} for x in lines]
+    recs.append({"kind": "would_enqueue", "ts": t, "pr": 1, "head_sha": A, "ok": True})
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    assert rep["window"]["would_merge"] == {"total": 4, "ok": 1, "conflicted": 1, "base_moved": 1} and rep["phase_f"] == "shadow"
+    assert rep["window"]["decisions"] == 1 and rc == 0
+    assert "phase F shadow: would_merge=4 (ok=1, conflicted=1, base_moved=1)" in capsys.readouterr().out
+
+
+def test_a_journal_without_would_merge_lines_reports_zero(tmp_path, monkeypatch, capsys):
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "BLOCKED")], FakeGH({1: pull(A)}, {A: "success"}))
+    assert rep["window"]["would_merge"] == {"total": 0, "ok": 0, "conflicted": 0, "base_moved": 0} and rc == 0
+    assert "would_merge=0 (ok=0, conflicted=0, base_moved=0)" in capsys.readouterr().out
+
+
 def test_a_journal_older_than_the_enqueue_path_reports_zero_enqueues(tmp_path, monkeypatch):
     rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "BLOCKED")], FakeGH({1: pull(A)}, {A: "success"}))
     assert rep["window"]["enqueue"] == {"enqueued": 0, "enqueue_refused": 0, "enqueue_error": 0, "would_enqueue": 0} and rc == 0
