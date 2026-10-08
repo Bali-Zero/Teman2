@@ -1,0 +1,69 @@
+# Gear-3 evidence pack — Visa Oracle result page client copy (PR-C1).
+# Receipts are commands run in this worktree on 2026-10-08; ts captured in the same shell call.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Owner ruling (Zero), 2026-10-08, relayed as PR-C1: internal notes and the "timeline
+  unavailable" block must never reach a client; every outcome state is refined.
+mission: >-
+  Visa Oracle result page speaks to the client — final EN/ID copy, next steps per outcome state,
+  plain pending-timeline paragraph, clean print.
+lanes:
+  - lane: outcome-copy-build
+    role: build
+    seat: Claude Fable 5.1 implementer (worktree mouth-visa-oracle-outcome-copy-c1).
+  - lane: outcome-copy-spec
+    role: ground_truth
+    seat: >-
+      the owner-approved spec with the final strings (scratchpad spec-outcome-copy-c1.md); the
+      census test in client-copy.test.ts is the machine check of its jargon rule.
+pii_scan: clean
+bites:
+  consumer: >-
+    every visitor of balizero.com/visa-oracle who reaches a result page, and the shadow parity
+    check, which compares nextSteps between the engine outcome and the gold baseline.
+  where: ci
+  observe: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+  expect: "contains:Tests  1209 passed"
+decisions:
+  - id: D-single-next-steps-source
+    decision: >-
+      One exported nextStepsFor(state) feeds the engine outcome, the gold preview baseline and the
+      client fallbacks, so the verbatim shadow parity comparison holds by construction.
+  - id: D-no-raw-code
+    decision: >-
+      An unmapped reason code now reads as a plain sentence, never a machine code. The render
+      filter recognises both the new sentence and the legacy form.
+  - id: D-comparison-table
+    decision: >-
+      The spec's comparison-table timeline cell is not built: no component renders the
+      outcome.comparison keys today, so there is no cell to change.
+receipts:
+  - claim: The whole Visa Oracle test tree is green, including the new census, per-state next steps, pending timeline and counter tests.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "Test Files  45 passed (45); Tests  1209 passed (1209)"
+    exit: 0
+    ts: "2026-10-08T11:02:48Z"
+    seat: Claude Fable 5.1
+  - claim: The mouth typecheck is clean.
+    cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
+    result: "no output"
+    exit: 0
+    ts: "2026-10-08T11:02:53Z"
+    seat: Claude Fable 5.1
+  - claim: ESLint reports no error on the touched source files (warnings were already there).
+    cmd: cd apps/mouth && npx eslint <touched source files>
+    result: "0 errors, 4 warnings"
+    exit: 0
+    ts: "2026-10-08T11:02:56Z"
+    seat: Claude Fable 5.1
+  - claim: Prettier accepts every touched file including the stylesheet.
+    cmd: cd apps/mouth && npx prettier --check <touched files>
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-10-08T11:02:58Z"
+    seat: Claude Fable 5.1
+dissent: []
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
