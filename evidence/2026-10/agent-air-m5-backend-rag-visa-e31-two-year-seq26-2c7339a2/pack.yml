@@ -1,0 +1,95 @@
+# Gear-3 evidence pack — seq-26: the E31 family ITAS as a 1- or 2-year duration option. Every receipt
+# is a command this session ran on 2026-10-08 between 08:31Z and 08:42Z. The source is UNSIGNED: signing
+# and activation are the orchestrator's acts on M5 after the gate.
+gear: 3
+brief_ref: evidence/brief.yml
+pii_scan: clean
+ruling: >-
+  Zero, 2026-10-08 — the E31 family ITAS is a 1- or 2-year duration option of the same product,
+  all-inclusive per option from the official 2026 catalogue; no PNBP figure in client text, no quote on request.
+mission: >-
+  seq-26 = signed seq-25 + duration_options on E31A-E31J, derived by a deterministic script from the saved
+  portal pages and the official catalogue; engine support landed in #8065.
+lanes:
+  - lane: seq26-derive-and-test
+    role: build
+    seat: Claude Sonnet 5.5 (implementer, worktree backend-rag-visa-e31-two-year-seq26)
+  - lane: seq26-ground-truth
+    role: ground_truth
+    seat: >-
+      the nine saved portal pages (sentence found verbatim in each text file, receipts from the 2026-10-07
+      read ledger) and the official price catalogue rows; no notebook, no memory.
+    nb: >-
+      research/visa/2026-10-07-freshness-restamp-seq25/text/ (950a9f63 570f2bc4 40523028 50457cd0 ecd22722
+      f9306203 86880290 153beca1 2d090f3a) and apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11" # pragma: allowlist secret
+    note: query_hash = the signed seq-25 payload_sha256 that seq-26 chains to.
+bites:
+  consumer: >-
+    the evaluate path's pricing step driven on the committed rulepack-prod-026.source.json; the observer
+    also re-derives the file from seq-25 and compares canonical bytes.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq26_e31_options.py
+  expect: "contains:re-derived seq-26 equals the committed source"
+receipts:
+  - claim: Re-deriving seq-26 from seq-25 gives the committed file, and E31B prices 365 days at 11000000 and 730 days at 15000000.
+    cmd: python3 scripts/ci/observe_visa_seq26_e31_options.py
+    result: "E31B 365d=11000000 730d=15000000 1095d=15000000; final line printed"
+    exit: 0
+    ts: "2026-10-08T08:41:21Z"
+    seat: Claude Sonnet 5.5
+  - claim: The seq-26 tests, the walk census with pins 26 following 25, the duration tests, the gold coverage floor and the schema snapshots pass.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_seq26_pack.py backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_duration_options.py backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_schema_contracts.py -p no:cacheprovider -o addopts=""
+    result: "307 passed"
+    exit: 0
+    ts: "2026-10-08T08:41:21Z"
+    seat: Claude Sonnet 5.5
+  - claim: Each acceptance probe of the brief, by test class (74 tests in the seq-26 file).
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_seq26_pack.py::TestIntegrity backend/tests/services/visa_engine/test_seq26_pack.py::TestPerProduct backend/tests/services/visa_engine/test_seq26_pack.py::TestDerivationRefuses backend/tests/services/visa_engine/test_seq26_pack.py::TestGoldFamilyPersonasAskForTwoYears -p no:cacheprovider -o addopts=""
+    result: "74 passed"
+    exit: 0
+    ts: "2026-10-08T08:42:07Z"
+    seat: Claude Sonnet 5.5
+  - claim: The whole visa_engine directory shows only the known failures of main.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine -p no:cacheprovider -o addopts=""
+    result: "2 failed (retention FK registry), 2862 passed, 1 skipped, 39 errors (UndefinedTableError on the local Postgres fixtures); the same 2 failures and 39 errors as the main checkout run at 2026-10-08T07:07Z"
+    exit: 1
+    ts: "2026-10-08T08:39:47Z"
+    seat: Claude Sonnet 5.5
+  - claim: Gold replay offline on the highest signed pack (seq-25) is unchanged and 18 of 20 personas match; the two divergences are the floor personas.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.gold_replay_driver --offline --out <report>
+    result: "matches=18/20 unexplained_divergences=2"
+    exit: 1
+    ts: "2026-10-08T08:39:50Z"
+    seat: Claude Sonnet 5.5
+  - claim: Lint on the new Python is clean.
+    cmd: apps/backend-rag/.venv/bin/ruff check apps/backend-rag/backend/scripts/visa_engine/derive_seq26_e31_options.py apps/backend-rag/backend/tests/services/visa_engine/test_seq26_pack.py scripts/ci/observe_visa_seq26_e31_options.py
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-10-08T08:41:21Z"
+    seat: Claude Sonnet 5.5
+council_run: council-journal.jsonl
+dissent:
+  - seat: self-review (Claude Sonnet 5.5, not an independent refuter)
+    objection: "Only the Offshore variant is modelled. The catalogue also has Onshore (Altus) 13.500.000 and 18.000.000 and Extend 9.000.000 and 15.000.000 rows; a client asking for those sees the Offshore price."
+    status: PLAUSIBLE
+    note: carried — the pack has modelled Offshore only since before seq-25; adding variants is a product-modelling decision, not part of this ruling.
+  - seat: self-review
+    objection: "All nine option claims rest on one read of the portal pages on 2026-10-07; the two-year sentence was not re-fetched today."
+    status: PLAUSIBLE
+    note: carried — the freshness boundary 2026-11-08T13:32:18Z forces a re-read before it lapses; the derivation refuses any product whose saved page loses the sentence.
+  - seat: self-review
+    objection: "The census candidate-pack helper now grades after the newest portal read as well as the newest rule; a shared test helper changed in a pack PR."
+    status: CONFIRMED
+    note: needed — without it every walk of a re-stamped candidate holds on source freshness; the stale-source guard tests still pass.
+  - seat: self-review
+    objection: "The 20-persona gold corpus is not extended with 2-year personas; personas 6 and 7 are exercised on the unsigned candidate in test_seq26_pack.py instead."
+    status: PLAUSIBLE
+    note: carried — the corpus size is pinned by spec in several tests and its replays read the highest signed pack, so seq-26 personas belong after signing.
+owed:
+  - "Council journal: the two review seats (Codex red-team and a second family) post their lines after the review the orchestrator forwards; council_run quorum fails until then."
+  - "Attestation note: the Adversarial review section is filled after that review."
+  - "Signing, activation, a signed-pack observer like observe_visa_seq25_signed.py, and the mouth screens that show both durations."
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 0
