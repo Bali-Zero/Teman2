@@ -494,6 +494,11 @@ TOKEN = f"-c core.hooksPath={TRUSTED_ROOT}"
 
 HIDDEN = "origin HEAD:refs/heads/hidden"
 TL = f"git {TOKEN} push"
+PREAMBLE = (
+    'TRUSTED_PREPUSH_HOOKS=$(codex_auto_prepare_trusted_prepush "$ROOT" "$DIR" origin/main)\n'
+    'codex_auto_verify_trusted_prepush "$ROOT" "$TRUSTED_PREPUSH_HOOKS"\n'
+)
+CANON = f"git {TOKEN} push"
 
 GUILT = {
     "G01": (f"git {TOKEN} -c core.hooksPath=/dev/null push", "hooks-path-setter-count"),
@@ -545,19 +550,27 @@ GUILT = {
     "X14": (f"git {TOKEN} push $EXTRA", "dynamic-argument"),
     "X15": (f"git {TOKEN} -c alias.push='push --no-verify' push", "git-alias"),
     "X17": (f'NV=--no-verify\ngit {TOKEN} push "$NV"', "dynamic-argument"),
+    "X19": (f'B=main\nread -r B < /tmp/x\ngit {TOKEN} push "$B"', "dynamic-argument"),
+    "A19a": (f"{PREAMBLE}TRUSTED_PREPUSH_HOOKS=/dev/null\n{CANON}", "root-rebound"),
+    "A19b": (f"{PREAMBLE}TRUSTED_PREPUSH_HOOKS=\n{CANON}", "root-rebound"),
+    "A19c": (
+        f'{PREAMBLE}codex_auto_verify_trusted_prepush "$ROOT" "$TRUSTED_PREPUSH_HOOKS"\n'
+        f"TRUSTED_PREPUSH_HOOKS=/dev/null\n{CANON}",
+        "root-rebound",
+    ),
 }
 
 INNOCENCE = {
-    "I01": 'FIX_BRANCH="codex/auto-fix-ci-${RUN_ID}"\n'
+    "I01": f'{PREAMBLE}FIX_BRANCH="codex/auto-fix-ci-${{RUN_ID}}"\n'
     f'if ! git -c core.hooksPath="{TRUSTED_ROOT}" push -u origin "$FIX_BRANCH" 2>&1 | head -10; then',
-    "I04": f'git -c "core.hooksPath={TRUSTED_ROOT}" push',
-    "I06": f"git {TOKEN} push -u origin main",
+    "I04": f'{PREAMBLE}git -c "core.hooksPath={TRUSTED_ROOT}" push',
+    "I06": f"{PREAMBLE}git {TOKEN} push -u origin main",
 }
 
 
 def test_spec_and_executable_corpus_have_identical_ids() -> None:
     spec_path = Path(__file__).resolve().parents[2] / "docs/specs/worktree-hook-trust.md"
-    ids = set(re.findall(r"^\| ([GIX]\d{2}) \|", spec_path.read_text(), re.MULTILINE))
+    ids = set(re.findall(r"^\| ([A-Z]\d{2}[a-z]?) +\|", spec_path.read_text(), re.MULTILINE))
     assert ids == set(GUILT) | set(INNOCENCE)
 
 
@@ -639,6 +652,8 @@ MUTANTS = {
     "basename-git-ignored": ('return token.rsplit("/", 1)[-1] == "git"', 'return token == "git"', "X02"),
     "sh-c-ignored": ('token in {"sh", "bash", "zsh"} and', "False and", "X03"),
     "canonical-shape-ignored": ('!= ["-c", f"core.hooksPath={trusted_root}", "push"]', "!= list(tokens[git_index + 1:git_index + 4])", "G31"),
+    "bound-literal-target-ignored": ('t == name or t.endswith("=" + name)', "False", "X19"),
+    "root-binding-dropped": ("reason = _root_binding_reason(text, root_name, push_line_index)", "reason = None", "A19a"),
 }
 
 

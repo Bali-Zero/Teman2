@@ -205,6 +205,53 @@ def _bound_literal(text: str, name: str) -> bool:
     return True
 
 
+def _root_variable(trusted_root: str) -> Optional[str]:
+    """The shell variable name when the trusted root is `$NAME`/`${NAME}`, else None (a literal root)."""
+    match = re.fullmatch(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?", trusted_root)
+    return match.group(1) if match else None
+
+
+def _root_binding_reason(text: str, name: str, push_line_index: int) -> Optional[str]:
+    """The trusted-root variable must be set once, before a verify reference, before the push.
+
+    A canonical push line is worthless if the pusher can point `$NAME` somewhere else first: the lint
+    must bind the root itself, not only the push arguments. The real pusher assigns it once from the
+    verified prepare helper, references it in the verify call, then pushes — any second assignment, any
+    rebinding form (`+=`, `:=`, `read`/`for`/`declare`/`export`/nameref target), or a missing verify
+    reference between the assignment and the push is UNTRUSTED.
+    """
+    lines = text.splitlines()
+    assignments = [
+        index
+        for index, line in enumerate(lines)
+        for match in re.finditer(rf"(?<![\w$]){re.escape(name)}(\+?=)", line)
+        if match.group(1) == "="
+    ]
+    rebinds = [
+        index
+        for index, line in enumerate(lines)
+        if re.search(rf"(?<![\w$]){re.escape(name)}\+=", line)
+    ]
+    if len(assignments) != 1 or rebinds:
+        return "root-rebound"
+    if re.search(rf"\$\{{{re.escape(name)}:?=", text):
+        return "root-rebound"
+    for line in lines:
+        try:
+            tokens = _shell_tokens(line)
+        except ValueError:
+            continue
+        if any(token == name or token.endswith("=" + name) for token in tokens):
+            return "root-rebound"
+    assignment = assignments[0]
+    reference = re.compile(rf'"?\$\{{?{re.escape(name)}\}}?"?')
+    if not (assignment < push_line_index):
+        return "root-rebound"
+    if not any(assignment < index < push_line_index and reference.search(lines[index]) for index in range(len(lines))):
+        return "root-unverified"
+    return None
+
+
 def _denied(tokens: Sequence[str]) -> Optional[str]:
     """Known override shapes, refused wherever they appear in the pusher."""
     for token in tokens:
@@ -329,10 +376,13 @@ def judge_pusher_text(text: str, trusted_root: str) -> PushTrustVerdict:
         if not set(value.strip("\"'").split(":")) <= SYSTEM_PATH_DIRS:
             return PushTrustVerdict(False, "path-override")
     pushes = 0
+    push_line_index: Optional[int] = None
     verdicts: List[PushTrustVerdict] = []
-    for line in text.splitlines():
+    for index, line in enumerate(text.splitlines()):
         count, verdict = _line_analysis(line, text, trusted_root)
         pushes += count
+        if count:
+            push_line_index = index
         if verdict is not None:
             verdicts.append(verdict)
     if pushes > 1:
@@ -340,8 +390,13 @@ def judge_pusher_text(text: str, trusted_root: str) -> PushTrustVerdict:
     for verdict in verdicts:
         if not verdict.trusted:
             return verdict
-    if pushes != 1 or len(verdicts) != 1:
+    if pushes != 1 or len(verdicts) != 1 or push_line_index is None:
         return PushTrustVerdict(False, "direct-push-count")
+    root_name = _root_variable(trusted_root)
+    if root_name is not None:
+        reason = _root_binding_reason(text, root_name, push_line_index)
+        if reason is not None:
+            return PushTrustVerdict(False, reason)
     return verdicts[0]
 
 
