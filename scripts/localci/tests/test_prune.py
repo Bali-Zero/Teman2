@@ -90,10 +90,10 @@ def test_the_second_image_a_plan_named_47_hours_ago_is_kept_and_one_unnamed_for_
             image("f" * 16, 10, "e2e-tests")]
     state, docker = world(tmp_path, imgs, {"pr1-x-20261006T120000Z": (47, {"ctx.backend-tests": imgs[0]["tag"]})})
     d = decided(state, docker)
-    assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[0]["tag"]]["rule"] == "image 2 of 2 of recipe backend-tests, named by a plan 47.0 h ago"
+    assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[0]["tag"]]["rule"] == "slot 2 of 2 of recipe backend-tests, named by a plan 47.0 h ago"
     assert d[imgs[1]["tag"]]["remove"] is False and d[imgs[1]["tag"]]["rule"] == "the newest image of recipe backend-tests"
     assert d[imgs[2]["tag"]]["remove"] is True and d[imgs[2]["tag"]]["rule"] == (
-        f"image 2 of recipe e2e-tests (newest {imgs[3]['tag']}), no plan of the last 48 h names it")
+        f"not the newest of recipe e2e-tests (newest {imgs[3]['tag']}) and no plan of the last 48 h names it")
 
 
 def test_a_third_image_of_a_recipe_goes_first_even_named_47_hours_ago_and_stays_when_a_plan_named_it_5_hours_ago(tmp_path):
@@ -101,15 +101,15 @@ def test_a_third_image_of_a_recipe_goes_first_even_named_47_hours_ago_and_stays_
     plans = {"pr1-x-20261006T120000Z": (47, {"ctx.e2e-tests": imgs[0]["tag"]}), "pr2-x-20261006T130000Z": (20, {"ctx.e2e-tests": imgs[1]["tag"]})}
     d = decided(*world(tmp_path, imgs, plans))
     assert d[imgs[0]["tag"]]["remove"] is True and d[imgs[0]["tag"]]["rule"] == (
-        f"image 3 of recipe e2e-tests (newest {imgs[2]['tag']}), beyond the cap of 2, its youngest plan is 47.0 h old")   # the cap wins
+        f"recipe e2e-tests already keeps 2 images (newest {imgs[2]['tag']}): beyond the cap, its youngest plan is 47.0 h old")   # the cap wins
     assert d[imgs[1]["tag"]]["remove"] is False and d[imgs[2]["tag"]]["remove"] is False
     for age, kept in ((5, True), (7, False)):
         plans["pr3-x-20261008T060000Z"] = (age, {"ctx.e2e-tests": imgs[0]["tag"]})
         d = decided(*world(tmp_path / f"in-flight-{age}", imgs, plans))
         assert d[imgs[0]["tag"]]["remove"] is (not kept)
-    assert d[imgs[0]["tag"]]["rule"].endswith("beyond the cap of 2, its youngest plan is 7.0 h old")
+    assert d[imgs[0]["tag"]]["rule"].endswith("beyond the cap, its youngest plan is 7.0 h old")
     d = decided(*world(tmp_path / "five", imgs, {**plans, "pr3-x-20261008T060000Z": (5, {"ctx.e2e-tests": imgs[0]["tag"]})}))
-    assert d[imgs[0]["tag"]]["rule"] == "image 3 of recipe e2e-tests, beyond the cap of 2, named 5.0 h ago: a tick in flight"
+    assert d[imgs[0]["tag"]]["rule"] == "beyond the cap of 2 of recipe e2e-tests, named 5.0 h ago: a tick in flight"
 
 
 def test_two_images_of_a_recipe_named_in_the_window_are_both_kept_and_the_run_in_progress_keeps_what_it_names(tmp_path):
@@ -167,7 +167,7 @@ def test_prune_removes_by_tag_prunes_the_builder_and_journals_what_went_by_which
     line = journal(state)[-1]
     assert line["kind"] == "prune" and line["dry_run"] is False
     assert line["images"]["removed"] == [{"tag": imgs[0]["tag"], "gb": 9.85, "rule": imgs and line["images"]["removed"][0]["rule"]}]
-    assert line["images"]["removed"][0]["rule"] == f"image 2 of recipe backend-tests (newest {imgs[1]['tag']}), no plan of the last 48 h names it"
+    assert line["images"]["removed"][0]["rule"] == f"not the newest of recipe backend-tests (newest {imgs[1]['tag']}) and no plan of the last 48 h names it"
     assert line["images"]["kept"] == [{"tag": imgs[1]["tag"], "rule": "the newest image of recipe backend-tests"}] and line["images"]["errors"] == []
     assert line["vm_free_gb"] == {"before": 32.4, "after": 32.4} and set(line["host_free_gb"]) == {"before", "after"}
     rm = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
@@ -386,4 +386,18 @@ def test_the_cap_counts_images_not_tags_an_image_with_two_tags_is_one(tmp_path):
     twin = {**image("d" * 16, 2, "backend-tests"), "id": newest["id"], "created": newest["created"]}   # one image, two deps tags
     second = image("a" * 16, 60, "backend-tests")
     d = decided(*world(tmp_path, [newest, twin, second], {"pr1-x-20261006T120000Z": (47, {"ctx.backend-tests": second["tag"]})}))
-    assert d[second["tag"]]["remove"] is False and d[second["tag"]]["rule"] == "image 2 of 2 of recipe backend-tests, named by a plan 47.0 h ago"
+    assert d[second["tag"]]["remove"] is False and d[second["tag"]]["rule"] == "slot 2 of 2 of recipe backend-tests, named by a plan 47.0 h ago"
+
+
+def test_an_unnamed_image_takes_no_slot_so_the_next_named_one_keeps_the_second(tmp_path):   # 13:03Z sample: 1 kept where 2 may
+    imgs = [image("a" * 16, 100, "e2e-tests"), image("b" * 16, 72, "e2e-tests"), image("c" * 16, 2, "e2e-tests")]
+    d = decided(*world(tmp_path, imgs, {"pr1-x-20261006T120000Z": (47, {"ctx.e2e-tests": imgs[0]["tag"]})}))
+    assert d[imgs[1]["tag"]]["remove"] is True and d[imgs[0]["tag"]]["remove"] is False
+    assert d[imgs[0]["tag"]]["rule"] == "slot 2 of 2 of recipe e2e-tests, named by a plan 47.0 h ago"
+
+
+def test_a_kept_image_keeps_all_its_tags_an_unnamed_twin_tag_is_not_untagged(tmp_path):
+    newest, second = image("c" * 16, 2, "backend-tests"), image("a" * 16, 60, "backend-tests")
+    twin = {**image("b" * 16, 60, "backend-tests"), "id": second["id"], "created": second["created"]}   # the second image's other tag
+    d = decided(*world(tmp_path, [newest, second, twin], {"pr1-x-20261006T120000Z": (20, {"ctx.backend-tests": second["tag"]})}))
+    assert d[twin["tag"]]["remove"] is False and d[twin["tag"]]["rule"] == "another tag of an image recipe backend-tests keeps"

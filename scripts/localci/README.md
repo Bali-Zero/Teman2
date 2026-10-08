@@ -524,9 +524,10 @@ flags go only to a `merger.py` that knows them (under the floor, a merger that c
 The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and `<state>/runs`:
 
 - **Deps images.** Removed by `docker image rm <tag>` (never `-f`, never `prune -a`), recipe by recipe, newest first
-  (`MAX_IMAGES_PER_RECIPE` 2, `IN_FLIGHT_GRACE_H` 6, beside the 48 h window): the newest is kept; the second only while a
-  `state/plan.json` of the last 48 h names it by tag or id; a third or later only while a plan named it under 6 h ago (a
-  tick in flight) — so with a third image the oldest goes first even if a plan named it 47 h ago. Whatever a run of the last
+  (`MAX_IMAGES_PER_RECIPE` 2, `IN_FLIGHT_GRACE_H` 6, beside the 48 h window), two slots held by distinct images: the newest
+  holds one; an image a `state/plan.json` of the last 48 h names by tag or id takes the free one; an image no plan of the
+  window names takes no slot and goes; beyond the slots an image stays only while a plan named it under 6 h ago (a tick in
+  flight) — so with two newer images kept, the oldest goes even if a plan named it 47 h ago. Whatever a run of the last
   48 h without a `status.json` yet names (the run in progress) is kept, and the prune never runs beside a tick (the lease).
   The recipe is the `org.nuzantara.localci.recipe` label the deps build now sets, else the check whose job named the tag in
   any plan; an image whose recipe nothing records is its own recipe and stays. The never-list — `localci-candidate:*`,
@@ -550,9 +551,9 @@ One journal line per prune (its shape; the numbers below are illustrative, not m
     {"ts": "…Z", "host": "…", "code_sha": "…", "kind": "prune", "dry_run": false,
      "vm_free_gb": {"before": 31.2, "after": 40.9},
      "host_free_gb": {"before": 77.1, "after": 77.4, "after_fstrim": 87.0},
-     "images": {"removed": [{"tag": "localci-deps:…", "gb": 11.9, "rule": "image 3 of recipe e2e-tests (newest localci-deps:…), beyond the cap of 2, its youngest plan is 47.0 h old"}],
+     "images": {"removed": [{"tag": "localci-deps:…", "gb": 11.9, "rule": "recipe e2e-tests already keeps 2 images (newest localci-deps:…): beyond the cap, its youngest plan is 47.0 h old"}],
                 "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe e2e-tests"},
-                         {"tag": "localci-deps:…", "rule": "image 2 of 2 of recipe e2e-tests, named by a plan 5.0 h ago"},
+                         {"tag": "localci-deps:…", "rule": "slot 2 of 2 of recipe e2e-tests, named by a plan 5.0 h ago"},
                          {"tag": "postgres:15", "rule": "never-list (candidate, base and service stand-in images are never pruned)"}], "errors": []},
      "builder_prune": {"rc": 0, "tail": "Total: 3.1GB"},
      "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},

@@ -144,38 +144,47 @@ def deps_images(docker: str, tags: list[str] | None = None) -> list[dict]:
 
 def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, now_s: float, in_progress: set = frozenset(),
                     stand_ins: frozenset = frozenset()) -> list[dict]:
-    """Every deps image with `remove` and the rule that decided it, recipe by recipe, newest first. Kept: the never-list; what
-    the run in progress names; the newest of its recipe; up to MAX_IMAGES_PER_RECIPE while a plan of the last 48 h names it;
-    beyond the cap only what a plan named under IN_FLIGHT_GRACE_H ago. A recipe nothing records is the image's own."""
+    """Every deps image with `remove` and the rule that decided it. Per recipe, newest first, MAX_IMAGES_PER_RECIPE slots held
+    by distinct images: the newest holds one; an image a plan of the last 48 h names takes a free one; beyond them an image is
+    kept only when a plan named it under IN_FLIGHT_GRACE_H ago (a tick in flight). An image no plan of the window names takes
+    no slot and goes. The never-list and what the run in progress names are always kept. A recipe nothing records is the
+    image's own."""
     for im in images:
         im["recipe"] = im.get("label_recipe") or recipes.get(im["tag"]) or f"unknown:{im['tag']}"
-    newest, by_recipe = {}, {}   # an image built at the same instant as the newest is as new: it ranks with it
+    newest, by_recipe = {}, {}
     for im in images:
         by_recipe.setdefault(im["recipe"], []).append(im)
         if im["created"] is not None and (im["recipe"] not in newest or im["created"] > newest[im["recipe"]]["created"]):
             newest[im["recipe"]] = im
-    out = []
-    for im in images:
-        r = im["recipe"]
-        k = 0 if im["created"] is None else len({o["id"] for o in by_recipe[r] if o["created"] is not None and o["created"] > im["created"]})   # distinct images, not tags
-        ref = min([h for h in (recent.get(im["tag"]), ids.get(im["id"])) if h is not None], default=None)
-        seen = "no plan of the last 48 h names it" if ref is None else f"its youngest plan is {ref:.1f} h old"
-        if never(im["tag"], stand_ins):
-            why = "never-list (candidate, base and service stand-in images are never pruned)"
-        elif im["tag"] in in_progress or im["id"] in in_progress:
-            why = "named by the run in progress (no status.json yet)"
-        elif k == 0:
-            why = f"the newest image of recipe {r}"
-        elif k < MAX_IMAGES_PER_RECIPE and ref is not None:
-            why = f"image {k + 1} of {MAX_IMAGES_PER_RECIPE} of recipe {r}, named by a plan {ref:.1f} h ago"
-        elif k >= MAX_IMAGES_PER_RECIPE and ref is not None and ref < IN_FLIGHT_GRACE_H:
-            why = f"image {k + 1} of recipe {r}, beyond the cap of {MAX_IMAGES_PER_RECIPE}, named {ref:.1f} h ago: a tick in flight"
-        else:
-            cap = f"beyond the cap of {MAX_IMAGES_PER_RECIPE}, " if k >= MAX_IMAGES_PER_RECIPE else ""
-            out.append({**im, "remove": True, "rule": f"image {k + 1} of recipe {r} (newest {newest[r]['tag']}), {cap}{seen}"})
-            continue
-        out.append({**im, "remove": False, "rule": why})
-    return out
+    rules = {}
+    for r, ims in by_recipe.items():
+        slots = set()   # image ids holding a slot: a tag of an image that already holds one keeps it too
+        for im in sorted(ims, key=lambda o: (o["created"] is None, -(o["created"] or 0), o["tag"])):
+            ref = min([h for h in (recent.get(im["tag"]), ids.get(im["id"])) if h is not None], default=None)
+            top = newest.get(r)
+            if never(im["tag"], stand_ins):
+                why = "never-list (candidate, base and service stand-in images are never pruned)"
+            elif im["tag"] in in_progress or im["id"] in in_progress:
+                why = "named by the run in progress (no status.json yet)"
+            elif top is None or im["created"] is None or im["created"] == top["created"]:
+                why = f"the newest image of recipe {r}"   # an image built at the same instant, or undated, ranks with it
+                slots.add(im["id"])
+            elif im["id"] in slots:
+                why = f"another tag of an image recipe {r} keeps"
+            elif ref is not None and len(slots) < MAX_IMAGES_PER_RECIPE:
+                slots.add(im["id"])
+                why = f"slot {len(slots)} of {MAX_IMAGES_PER_RECIPE} of recipe {r}, named by a plan {ref:.1f} h ago"
+            elif ref is not None and ref < IN_FLIGHT_GRACE_H:
+                why = f"beyond the cap of {MAX_IMAGES_PER_RECIPE} of recipe {r}, named {ref:.1f} h ago: a tick in flight"
+            elif ref is not None:
+                rules[im["tag"]] = (True, f"recipe {r} already keeps {MAX_IMAGES_PER_RECIPE} images (newest {top['tag']}): beyond the cap, "
+                                          f"its youngest plan is {ref:.1f} h old")
+                continue
+            else:
+                rules[im["tag"]] = (True, f"not the newest of recipe {r} (newest {top['tag']}) and no plan of the last 48 h names it")
+                continue
+            rules[im["tag"]] = (False, why)
+    return [{**im, "remove": rules[im["tag"]][0], "rule": rules[im["tag"]][1]} for im in images]
 
 
 def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
