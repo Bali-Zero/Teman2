@@ -164,14 +164,15 @@ def test_fold_success_pushes_branch_and_opens_an_unarmed_pr(world):
     branch = "organ/visa-reattest/25-2026-10-12"
     assert branch in _git(world.origin, "branch", "--list").replace("*", "")
     tree = _git(world.origin, "ls-tree", "-r", "--name-only", branch)
-    assert f"{organ.PACKS_REL}/rulepack-prod-026.source.json" in tree
+    assert "research/visa/2026-10-12-organ-reattest-seq26/rulepack-prod-026.source.json" in tree
+    assert f"{organ.PACKS_REL}/rulepack-prod-026.source.json" not in tree
     assert "research/visa/2026-10-12-organ-reattest-seq26/organ-sonnet-20261012-receipts.jsonl" in tree
     note = _git(world.origin, "show", f"{branch}:research/visa/2026-10-12-organ-reattest-seq26-attestation.md")
     assert "adversarial_review: pending-session" in note and "## Adversarial review" in note
     (create,) = world.gh_create()
     title, body = create[create.index("--title") + 1], create[create.index("--body") + 1]
     assert title == ("chore(visa-engine): organ re-attestation ledger 2026-10-12 — candidate seq-26 (unsigned)")
-    assert "Bites:" in body and "UNSIGNED" in body and "ab" * 32 in body
+    assert "Bites:" in body and "UNSIGNED" in body and "git mv" in body and "inside the ledger dir" in body and "ab" * 32 in body
     assert "--auto" not in create and not any(c[:3] == ["gh", "pr", "merge"] for c in world.calls)
     assert create[create.index("--head") + 1] == branch
     assert world.board() == []
@@ -357,3 +358,16 @@ def test_a_failed_run_says_so_in_the_pack_ready_alert(world):
     organ.run(world.args("--now", world.now(6.0)))
     ready = [c[-1] for c in world.tg() if "ready to sign" in c[-1]]
     assert ready and "earlier run; this run failed at 'judge'" in ready[0]
+
+
+def test_a_merged_unmoved_candidate_counts_for_the_t7_alert(world):
+    rel = "research/visa/2026-10-05-organ-reattest-seq26/rulepack-prod-026.source.json"
+    (world.shared / rel).parent.mkdir(parents=True)
+    (world.shared / rel).write_text("{}")
+    _git(world.shared, "add", "-A")
+    _git(world.shared, "commit", "-m", "merged organ ledger")
+    _git(world.shared, "push", "origin", "HEAD:refs/heads/main")
+    _git(world.shared, "fetch", "origin")
+    world.cfg["judge_rc"] = 1
+    organ.run(world.args("--now", world.now(3.0)))
+    assert any(rel in c[-1] for c in world.tg())

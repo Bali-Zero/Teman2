@@ -58,7 +58,7 @@ decisions:
 receipts:
   - claim: The guilt and innocence suite is green (shared checkout refused, judge exit 1 and crash, fold failure, T-7 at 6.9 and 7.1 days, existing PR gets a commit, dry-run writes nothing, orphan worktree reaped, board and Telegram independent).
     cmd: python3 -m pytest scripts/tests/test_visa_reattestation_organ.py -q
-    result: "26 passed in 10.87s"
+    result: "27 passed in 8.76s"
     exit: 0
     ts: "2026-10-08T08:47:48Z"
     seat: Claude Sonnet 5.5
@@ -106,12 +106,10 @@ dissent:
     note: first live proof is the first Monday run after install; the runbook names it as the arming proof.
   - seat: self-review
     objection: >-
-      The candidate lands in the packs directory as an unsigned rulepack-prod-NNN.source.json.
-      Three backend tests glob every source file there and read the highest one, so the PR's CI
-      runs them against the candidate, and a concurrent human lane writing the same sequence
-      number would collide.
-    status: PLAUSIBLE
-    note: carried to the reviewing session; not exercised because no ledger newer than seq-25 exists yet.
+      The candidate first landed in the packs directory, where three backend tests read the
+      highest source file and a human lane could collide on the sequence number.
+    status: CONFIRMED
+    note: cured on lead's ruling, the candidate now lives in the ledger dir and the signing session moves it.
   - seat: self-review
     objection: >-
       The portal_judge module only exists in PR 8069. Until it merges the live run fails at the
@@ -126,6 +124,12 @@ dissent:
     objection: The wrapper runs $HOME/nuzantara/scripts, but Pro keeps the repo at ~/Desktop/nuzantara.
     status: REFUTED
     note: verified on Pro, ~/Desktop/nuzantara is a symlink to ~/nuzantara; the sentinel wrapper uses the same path.
+  - seat: self-review
+    objection: >-
+      The diff is +1,300 lines against the ~400 target; the excess is a 27-test suite, the offline
+      observer and the runbook, which the lead asked for.
+    status: CONFIRMED
+    note: acknowledged, no gear_override needed (gear 3).
 spend:
   wall_clock_hours: 3
   adversarial_rounds: 2

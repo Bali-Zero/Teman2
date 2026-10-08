@@ -129,7 +129,8 @@ def pr_body(*, anchor_seq: int, next_seq: int, ledger_rel: str, candidate_rel: s
         "",
         f"- Anchor: signed seq-{anchor_seq}; its earliest portal boundary is {boundary.strftime('%Y-%m-%dT%H:%M:%SZ')}.",
         f"- Ledger: `{ledger_rel}` (reader `{reader}`).",
-        f"- Candidate: `{candidate_rel}`, payload digest `{payload_sha or 'n/a'}`.",
+        f"- Candidate: `{candidate_rel}` (inside the ledger dir), payload digest `{payload_sha or 'n/a'}`.",
+        f"- Signing step: move it to `{PACKS_REL}/{candidate_name(next_seq)}` (`git mv`), then sign it there.",
         "- NOT signed, NOT armed. A session reviews the judge verdicts, signs on M5, activates per",
         "  `docs/runbooks/visa-engine-key-ceremony.md`, then merges. See `docs/runbooks/visa-reattestation-organ.md`.",
         "",
@@ -211,8 +212,11 @@ def find_open_organ_pr(anchor_seq: int, repo: Path) -> dict[str, Any] | None:
 
 
 def unsigned_candidate_on_main(repo: Path, next_seq: int) -> str | None:
-    rel = f"{PACKS_REL}/{candidate_name(next_seq)}"
-    return rel if _git(repo, "cat-file", "-e", f"origin/main:{rel}", check=False).returncode == 0 else None
+    """A merged organ ledger whose candidate has not been moved into packs/ and signed."""
+    name = candidate_name(next_seq)
+    listing = _git(repo, "ls-tree", "-r", "--name-only", "origin/main", "research/visa/", check=False).stdout
+    hits = sorted(x for x in listing.splitlines() if x.endswith(f"-organ-reattest-seq{next_seq}/{name}"))
+    return hits[-1] if hits else None
 
 
 # ---------------------------------------------------------------- alerts / state
@@ -345,7 +349,7 @@ def read_and_judge(args: argparse.Namespace, wt: Path, code_root: Path, anchor: 
 
 
 def fold(args: argparse.Namespace, wt: Path, code_root: Path, anchor: dict, ledger: Path, reader: str, now: datetime) -> tuple[Path, str]:
-    out = wt / PACKS_REL / candidate_name(anchor["seq"] + 1)
+    out = ledger / candidate_name(anchor["seq"] + 1)
     argv = ["--anchor-source", str(wt / anchor["source_rel"]), "--anchor-signed", str(wt / anchor["signed_rel"]),
             "--ledger-dir", str(ledger), "--output", str(out),
             "--version", f"{now.year}.{now.month}.{now.day}",
@@ -396,7 +400,7 @@ def run(args: argparse.Namespace) -> int:
     plan = {"anchor_seq": anchor["seq"], "next_seq": next_seq, "boundary": anchor["boundary"].isoformat(),
             "days_to_boundary": round((anchor["boundary"] - now).total_seconds() / 86400, 2),
             "t7_due": t7_due(anchor["boundary"], now), "branch": branch, "reader": reader,
-            "ledger": ledger_rel, "candidate": f"{PACKS_REL}/{candidate_name(next_seq)}",
+            "ledger": ledger_rel, "candidate": f"{ledger_rel}/{candidate_name(next_seq)}",
             "existing_pr": existing_pr["url"] if existing_pr else None, "mode": "dry-run" if args.dry_run else
             "offline" if args.offline else "live", "judge": args.judge}
     if args.dry_run:

@@ -34,7 +34,9 @@ No `KeepAlive` (scar #7). Why Monday 02:00:
 3. `portal_read_receipt.py --all` into `research/visa/<date>-organ-reattest-seq<N+1>/`.
 4. `portal_judge.py --all --judge claude --reader organ-<model>-<yyyymmdd>`. The judge
    goes through `claude-cascade.sh --claude-only`. Exit 1 means at least one `unsure`.
-5. On judge exit 0, `fold_pack_generic` writes `rulepack-prod-0<N+1>.source.json`.
+5. On judge exit 0, `fold_pack_generic` writes `rulepack-prod-0<N+1>.source.json` INSIDE the ledger
+   dir, never into `contracts/packs/`, so human lanes and the CI tests that read the highest
+   source pack never see an unreviewed candidate.
 6. Commit the ledger, the candidate and an attestation note. Push. Open a PR titled
    `chore(visa-engine): organ re-attestation ledger <date> — candidate seq-<N+1> (unsigned)`,
    or push a new commit to the open one. No auto-merge.
@@ -56,10 +58,15 @@ No `KeepAlive` (scar #7). Why Monday 02:00:
 | `--repo`, `--state-dir`, `--board`, `--code-root` | Paths, so a rehearsal never touches the live ones.                                        |
 | `--now`                                           | Test-only clock override.                                                                 |
 
-Rehearsal on any machine, no network, no writes outside the temp dirs:
+`--offline` skips portals, `gh`, Telegram and the board, but git still talks to the origin of
+`--repo` (a temp origin in the rehearsal). Rehearsal on any machine, no writes outside the temp dirs:
 `python3 scripts/ci/observe_visa_reattest_organ.py`.
 
-## Install on Pro (a session act, after merge)
+## Install on Pro (a session act)
+
+Sequence: merge #8069 (the judge) → sign and activate seq-26 → install the plist → kickstart
+→ the first ledger and PR are the Bites proof → then weekly. Installing earlier makes the run
+fail at the judge stage with a board row naming #8069.
 
 1. Copy the wrapper to `~/scripts/pro-visa-reattestation.sh` and the plist to
    `~/Library/LaunchAgents/` (both are declared pairs in `infra/home-fork/declared-pairs.json`).
@@ -72,14 +79,15 @@ Rehearsal on any machine, no network, no writes outside the temp dirs:
 
 Review the attestation note and the judge verdicts, read the `changed` pages yourself (the
 fold needs a `disposition.json` entry for each), sign on M5, activate per the ceremony, then
-merge. The organ's note carries `adversarial_review: pending-session`: the signing session
+merge. First `git mv` the candidate from the ledger dir to
+`contracts/packs/rulepack-prod-0<N+1>.source.json`; the signed twin goes next to it. The organ's note carries `adversarial_review: pending-session`: the signing session
 runs the adversarial review and updates that field.
 
 ## Known limits
 
-- The cascade tries seat 6 (Team) last by position. It cannot be excluded from outside the
-  wrapper, which sources the secrets itself. The judge is a few short prompts a week.
+- The judge inherits the cascade order: seats 1-5 first, seat 6 (Team) only when they are
+  exhausted. That is the canon, so the wrapper is unchanged.
 - Two organ PRs for the same anchor never coexist. A weekly run adds a commit and refreshes
-  the stamp. A merged PR with no signature is picked up as the existing candidate.
+  the stamp. A merged ledger whose candidate is not yet in `packs/` is picked up as the existing candidate.
 - If the portals changed, the judge exits 0 only when every page is `same` or `changed`;
   the fold then refuses `changed` pages without a disposition, and that run fails loudly.

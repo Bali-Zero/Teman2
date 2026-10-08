@@ -27,7 +27,8 @@ PACKS_REL = "apps/backend-rag/backend/services/visa_engine/contracts/packs"
 LEDGER = REPO_ROOT / "research" / "visa" / "2026-10-07-freshness-restamp-seq25"
 EXPECTED_DIGEST = "603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11"  # pragma: allowlist secret
 BRANCH = "organ/visa-reattest/24-2026-10-07"
-CANDIDATE = f"{PACKS_REL}/rulepack-prod-025.source.json"
+LEDGER_REL = "research/visa/2026-10-07-organ-reattest-seq25"
+CANDIDATE = f"{LEDGER_REL}/rulepack-prod-025.source.json"
 NOTE = "research/visa/2026-10-07-organ-reattest-seq25-attestation.md"
 
 
@@ -78,12 +79,14 @@ def main() -> int:
         candidate = json.loads(_git(env, origin, "show", f"{BRANCH}:{CANDIDATE}"))
         if candidate.get("sequence") != 25 or "signature" in candidate:
             return _fail("candidate on the organ branch is not an unsigned seq-25 source")
+        if _git(env, origin, "ls-tree", "--name-only", BRANCH, f"{PACKS_REL}/rulepack-prod-025.source.json").strip():
+            return _fail("the candidate was written into contracts/packs/")
         note = _git(env, origin, "show", f"{BRANCH}:{NOTE}")
         if "adversarial_review: pending-session" not in note:
             return _fail("attestation note lacks the pending-session review field")
         if _git(env, shared, "status", "--porcelain").strip():
             return _fail("the shared checkout was written to")
-    print(f"observe_visa_reattest_organ: offline run produced unsigned seq-25 candidate on {BRANCH}, "
+    print(f"observe_visa_reattest_organ: offline run produced unsigned seq-25 candidate at {CANDIDATE} on {BRANCH}, "
           f"digest {EXPECTED_DIGEST[:8]}…{EXPECTED_DIGEST[-4:]}, PR text carries Bites:")
     return 0
 
