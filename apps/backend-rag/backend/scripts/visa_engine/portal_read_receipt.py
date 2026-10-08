@@ -17,7 +17,8 @@ source record it is pointed at, it
    quotation fingerprint, never a fetch hash),
 4. looks for the record's own key phrase in that text, and
 5. appends ONE JSON line to the receipts file and writes the visible text to a
-   per-record file so a reader can quote from what was actually served.
+   per-fetch file (``text/<8id>-<fetched_at>.txt``, never overwritten) so a
+   reader can quote from what was actually served.
 
 The judgement — *does the page still say what the rules assume?* — is NOT made
 here. A reader makes it, from the text file, and records it in a separate
@@ -144,6 +145,17 @@ def select(records: list[dict[str, Any]], prefixes: list[str] | None) -> list[di
     return chosen
 
 
+def _new_text_path(text_dir: Path, short_id: str, fetched_at: str) -> Path:
+    """``<8id>-<fetched_at>.txt``: one saved text per fetch, never overwritten."""
+    stamp = re.sub(r"[-:]", "", fetched_at)
+    path = text_dir / f"{short_id}-{stamp}.txt"
+    counter = 1
+    while path.exists():
+        counter += 1
+        path = text_dir / f"{short_id}-{stamp}-{counter}.txt"
+    return path
+
+
 def read_one(record: dict[str, Any], *, reader: str, text_dir: Path) -> dict[str, Any]:
     fetched_at = _utc_now()
     phrase = key_phrase(record)
@@ -163,7 +175,7 @@ def read_one(record: dict[str, Any], *, reader: str, text_dir: Path) -> dict[str
     text = visible_text(body.decode("utf-8", errors="replace"))
     found_at = text.lower().find(phrase.lower())
     short_id = record["source_record_id"][:8]
-    text_path = text_dir / f"{short_id}.txt"
+    text_path = _new_text_path(text_dir, short_id, fetched_at)
     text_path.write_text(text + "\n", encoding="utf-8")
     receipt.update(
         {

@@ -92,11 +92,24 @@ class TestReadOne:
         assert receipt["reader"] == "reader-x"
         assert receipt["fetched_at"].endswith("Z")
         saved = Path(receipt["text_file"])
-        assert saved == tmp_path / "570f2bc4.txt"
+        assert saved == tmp_path / f"570f2bc4-{receipt['fetched_at'].replace('-', '').replace(':', '')}.txt"
         assert "selama 1 tahun atau 2 tahun" in saved.read_text(encoding="utf-8")
         assert receipt["visible_text_sha256"] == prr.fingerprint(saved.read_text(encoding="utf-8").rstrip("\n"))
         assert "E31B" in receipt["key_phrase_context"]
         json.dumps(receipt)
+
+    def test_two_fetches_of_one_record_keep_two_texts_pointing_at_different_files(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        pages = iter([PAGE, PAGE.replace("1 tahun atau 2 tahun", "1 tahun saja")])
+        monkeypatch.setattr(prr, "fetch", lambda url: (200, next(pages).encode(), url))
+        monkeypatch.setattr(prr, "_utc_now", lambda: "2026-10-08T01:02:03Z")
+        first = prr.read_one(E31B, reader="reader-x", text_dir=tmp_path)
+        second = prr.read_one(E31B, reader="reader-x", text_dir=tmp_path)
+        assert first["text_file"] != second["text_file"]
+        assert len(list(tmp_path.glob("570f2bc4-*.txt"))) == 2
+        assert "atau 2 tahun" in Path(first["text_file"]).read_text(encoding="utf-8")
+        assert "saja" in Path(second["text_file"]).read_text(encoding="utf-8")
 
     def test_guilt_a_page_without_the_phrase_is_a_check_not_a_pass(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
