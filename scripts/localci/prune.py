@@ -53,6 +53,14 @@ def never(tag: str, stand_ins: frozenset = frozenset()) -> bool:
     return not tag.startswith(DEPS_PREFIX) or protected(tag, stand_ins)
 
 
+def never_rule(tag: str, stand_ins: frozenset = frozenset()) -> str:
+    if tag in stand_ins:
+        return "service stand-in of the BASE matrix: never pruned"
+    if tag.startswith(NEVER):
+        return "never-list (the candidate or a base image): never pruned"
+    return "not a localci-deps image: never pruned"
+
+
 def stand_ins(matrix: Path) -> frozenset:
     """Every value of every `service_images` map in the matrix (BASE image -> local stand-in), read, never hardcoded."""
     import yaml   # the merger's venv carries PyYAML, as the runner's matrix reader needs it
@@ -163,7 +171,7 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
             ref = min([h for h in (recent.get(im["tag"]), ids.get(im["id"])) if h is not None], default=None)
             top = newest.get(r)
             if never(im["tag"], stand_ins):
-                why = "never-list (candidate, base and service stand-in images are never pruned)"
+                why = never_rule(im["tag"], stand_ins)
             elif im["tag"] in in_progress or im["id"] in in_progress:
                 why = "named by the run in progress (no status.json yet)"
             elif top is None or im["created"] is None or im["created"] == top["created"]:
@@ -247,7 +255,7 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     decided = image_decisions(deps_images(docker, tags), recent, ids, recipes, now_s, in_progress, keep)
     for d in decided if errors else []:
         d.update(remove=False, rule=f"kept: {len(errors)} input(s) unreadable, see errors") if d["remove"] else None
-    never_kept = [{"tag": t, "rule": "never-list (candidate, base and service stand-in images are never pruned)"} for t in tags if protected(t, keep)]
+    never_kept = [{"tag": t, "rule": never_rule(t, keep)} for t in tags if protected(t, keep)]
     removed = []
     for im in (d for d in decided if d["remove"]):
         if never(im["tag"], keep):   # belt and braces: a removal set never carries the never-list

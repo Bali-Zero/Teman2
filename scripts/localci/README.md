@@ -554,7 +554,7 @@ One journal line per prune (its shape; the numbers below are illustrative, not m
      "images": {"removed": [{"tag": "localci-deps:…", "gb": 11.9, "rule": "recipe e2e-tests already keeps 2 images (newest localci-deps:…): beyond the cap, its youngest plan is 47.0 h old"}],
                 "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe e2e-tests"},
                          {"tag": "localci-deps:…", "rule": "slot 2 of 2 of recipe e2e-tests, named by a plan 5.0 h ago"},
-                         {"tag": "postgres:15", "rule": "never-list (candidate, base and service stand-in images are never pruned)"}], "errors": []},
+                         {"tag": "postgres:15", "rule": "service stand-in of the BASE matrix: never pruned"}], "errors": []},
      "builder_prune": {"rc": 0, "tail": "Total: 3.1GB"},
      "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},
      "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}, "failed": []}

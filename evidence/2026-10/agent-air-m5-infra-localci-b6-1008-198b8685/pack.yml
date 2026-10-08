@@ -52,6 +52,11 @@ what_changed: |
   unreadable matrix removes nothing; per recipe two slots held by distinct images (the newest; the next image a plan of the
   last 48 h names), an unnamed image takes no slot, beyond them only an image named under 6 h ago stays; what a run without
   status.json names is kept. The young-image guard of B6-1 is retired under the cap.
+  B6-1b (the lead's fold request, on top of 07ee910880): the never-list's journal rule names its reason — "service stand-in
+  of the BASE matrix: never pruned", "never-list (the candidate or a base image): never pruned" — and a stand-in no plan names,
+  10 days old, is kept under that rule (guilt test per real stand-in); mutant b6-stand-in-rule-unnamed.
+  The addenda post-date council rounds 1 and 2; round 3 of both seats reviewed them at 583ee49243; the B6-1b delta (rule
+  text and one test) was reviewed by no seat.
 proof: |
   See receipts. Every behaviour is produced by the committed code on fixtures (a fake docker over a JSON world, fake colima,
   df, du and hostname); nothing ran on Pro but read-only looks. The prune and the floor reach Pro only when the lead replaces
@@ -99,6 +104,16 @@ receipts:
     cmd: python3 scripts/localci/tests/mutants/merger_mutants.py
     exit: 0
     ts: "2026-10-08T13:35:12Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "B6-1b working tree on 07ee910880 (the commit that carries it is the next one): localci suite 913 passed, 14 skipped, 1 warning (test_isolation's tarfile stream, not B6), 182 s; the 47 B6 mutant rules 47/47 killed, none stale, among them the three constants (b6-ref-window-shorter, b6-ref-window-longer, b6-cap-3, b6-grace-4, b6-grace-8) and the never-list (b6-never-list-off, b6-stand-ins-ignored, b6-stand-in-rule-unnamed). The full 200-rule sweep ran at 028b3f27bd (above); B6-1b adds one rule and changes no rule's text."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests -q -p no:cacheprovider; python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 47 b6-* rules>
+    exit: 0
+    ts: "2026-10-08T13:42:17Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The journal's rules on the B6-1b tree, fixture of four E2E images and the never-list present: removed localci-deps:0a0a0a0a0a0a0a0a `recipe e2e-tests already keeps 2 images (newest localci-deps:285e7c11f8bfcb0d): beyond the cap, its youngest plan is 40.0 h old`; removed localci-deps:1b044648ceab93bb `not the newest of recipe e2e-tests (newest localci-deps:285e7c11f8bfcb0d) and no plan of the last 48 h names it`; kept 285e7c11f8bfcb0d `the newest image of recipe e2e-tests`, 59638824d98f624a `slot 2 of 2 of recipe e2e-tests, named by a plan 47.0 h ago`, localci-candidate:1 `never-list (the candidate or a base image): never pruned`, postgres:15 and redis:7 `service stand-in of the BASE matrix: never pruned`; rc 0, failed []."
+    cmd: PYTHONPATH=. python3 - (test_prune.world, then merger.main prune --code-sha)
+    exit: 0
+    ts: "2026-10-08T13:42:30Z"
     seat: claude-opus-5-5 on M5
   - claim: "Pro, read only, two looks (about 12:03Z and about 12:48Z): `docker buildx ls` names colima* (current, docker driver) and localci-isolated (docker-container); `docker system df` Images 46.43GB (14.27GB reclaimable), Build Cache 17.41GB; `df -Pk /System/Volumes/Data` 79960868 KiB available (about 81.9 GB, under the 100 GB the organ calls ok); 65 of 67 run directories carry a status.json."
     cmd: ssh pro 'docker buildx ls; docker system df; df -Pk /System/Volumes/Data; ls runs/*/status.json'

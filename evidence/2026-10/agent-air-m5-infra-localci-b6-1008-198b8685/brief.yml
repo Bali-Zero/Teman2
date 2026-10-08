@@ -30,6 +30,8 @@ acceptance:
     probe: "test_prune.py::test_the_newest_of_a_recipe_is_kept_with_no_reference_and_a_young_second_one_unnamed_goes"
   - text: localci-candidate:1 and localci-deps-base:* SHALL never be in a removal set.
     probe: "test_prune.py::test_the_candidate_and_base_images_are_never_in_a_removal_set"
+  - text: "A service stand-in no plan names, 10 days old, SHALL be kept with the rule `service stand-in of the BASE matrix: never pruned`."
+    probe: "test_prune.py::test_a_stand_in_no_plan_names_and_ten_days_old_is_kept_as_a_service_stand_in"
   - text: Every service_images stand-in value of the BASE matrix SHALL never be removed and SHALL be journalled under images.kept with its rule; the list SHALL be read from the matrix, not hardcoded.
     probe: "test_prune.py::test_every_service_stand_in_of_the_base_matrix_is_never_removed_and_is_journalled_kept"
   - text: WHEN a recipe has 3 images and the two newer are kept, the oldest SHALL be removed even if a plan named it 47 h ago, and kept if a plan named it 5 h ago.

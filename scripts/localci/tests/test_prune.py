@@ -149,7 +149,7 @@ def test_the_candidate_and_base_images_are_never_in_a_removal_set(tmp_path, tag)
     im = {**image("a" * 16, 300, "backend-tests"), "tag": tag, "created": NOW - 300 * H, "label_recipe": "backend-tests"}
     young = {**image("b" * 16, 10, "backend-tests"), "created": NOW - 10 * H, "label_recipe": "backend-tests"}
     rows = pm.image_decisions([im, young], {}, {}, {}, NOW)
-    assert rows[0]["remove"] is False and rows[0]["rule"].startswith("never-list")
+    assert rows[0]["remove"] is False and rows[0]["rule"].endswith("never pruned")
     state, docker = world(tmp_path, [image("b" * 16, 300, "backend-tests"), image("c" * 16, 10, "backend-tests")],
                           others=["localci-candidate:1", "localci-deps-base:2c9b1d54104db6cd"])
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 0
@@ -371,7 +371,8 @@ def test_every_service_stand_in_of_the_base_matrix_is_never_removed_and_is_journ
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 0
     assert [c for c in calls(tmp_path) if c.startswith("image rm")] == ["image rm " + imgs[0]["tag"]]
     kept = {k["tag"]: k["rule"] for k in journal(state)[-1]["images"]["kept"]}
-    assert kept[stand_in].startswith("never-list") and kept["localci-candidate:1"].startswith("never-list") and "nginx:latest" not in kept
+    assert kept[stand_in] == "service stand-in of the BASE matrix: never pruned" and "nginx:latest" not in kept
+    assert kept["localci-candidate:1"] == "never-list (the candidate or a base image): never pruned"
 
 
 def test_an_unreadable_matrix_removes_nothing(tmp_path):
@@ -401,3 +402,14 @@ def test_a_kept_image_keeps_all_its_tags_an_unnamed_twin_tag_is_not_untagged(tmp
     twin = {**image("b" * 16, 60, "backend-tests"), "id": second["id"], "created": second["created"]}   # the second image's other tag
     d = decided(*world(tmp_path, [newest, second, twin], {"pr1-x-20261006T120000Z": (20, {"ctx.backend-tests": second["tag"]})}))
     assert d[twin["tag"]]["remove"] is False and d[twin["tag"]]["rule"] == "another tag of an image recipe backend-tests keeps"
+
+
+@pytest.mark.parametrize("stand_in", STAND_INS)
+def test_a_stand_in_no_plan_names_and_ten_days_old_is_kept_as_a_service_stand_in(tmp_path, stand_in):   # B6-1b, the lead's guilt
+    old = {**image("e" * 16, 240), "tag": stand_in, "labels": None}   # docker lists it, built 10 days ago, named by no plan
+    state, docker = world(tmp_path, [old, image("a" * 16, 300, "backend-tests"), image("b" * 16, 1, "backend-tests")])
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 0
+    line = journal(state)[-1]
+    assert {k["tag"]: k["rule"] for k in line["images"]["kept"]}[stand_in] == "service stand-in of the BASE matrix: never pruned"
+    assert [r["tag"] for r in line["images"]["removed"]] == ["localci-deps:" + "a" * 16]
+    assert f"image rm {stand_in}" not in calls(tmp_path)

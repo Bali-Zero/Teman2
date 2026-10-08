@@ -164,6 +164,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # lead's addenda (2026-10-08): service stand-ins from the BASE matrix, a cap of 2 per recipe, a tick in flight, the run in progress
     "b6-stand-ins-ignored": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return tag.startswith(NEVER)\n", (PRUNE_T,)),
     "b6-stand-ins-unread-removes": (PRUNE, "    for d in decided if errors else []:", "    for d in []:", (PRUNE_T,)),
+    "b6-stand-in-rule-unnamed": (PRUNE, "    if tag in stand_ins:\n        return \"service stand-in", "    if False:\n        return \"service stand-in", (PRUNE_T,)),
     "b6-cap-3": (PRUNE, "MAX_IMAGES_PER_RECIPE = 2 ", "MAX_IMAGES_PER_RECIPE = 3 ", (PRUNE_T,)),
     "b6-cap-off": (PRUNE, "elif ref is not None and len(slots) < MAX_IMAGES_PER_RECIPE:", "elif ref is not None:", (PRUNE_T,)),
     "b6-grace-4": (PRUNE, "IN_FLIGHT_GRACE_H = 6 ", "IN_FLIGHT_GRACE_H = 4 ", (PRUNE_T,)),
