@@ -22,11 +22,12 @@ lanes:
 pii_scan: clean
 bites:
   consumer: >-
-    every visitor of balizero.com/visa-oracle who reaches a result page, and the shadow parity
-    check, which compares nextSteps between the engine outcome and the gold baseline.
+    the CI harness, which runs this observer after the merge, and every visitor of
+    balizero.com/visa-oracle who reaches a result page: the observer proves the copy they read
+    carries no internal note or engine jargon.
   where: ci
-  observe: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
-  expect: "contains:Tests  1213 passed"
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:OK visa-oracle client copy"
 decisions:
   - id: D-single-next-steps-source
     decision: >-
@@ -41,6 +42,12 @@ decisions:
       The spec's comparison-table timeline cell is not built: no component renders the
       outcome.comparison keys today, so there is no cell to change.
 receipts:
+  - claim: The bites observer finds no banned phrase in the client copy and both language blocks carry the three new keys.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3302 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-08T11:56:05Z"
+    seat: Claude Fable 5.1
   - claim: The whole Visa Oracle test tree is green, including the new census, per-state next steps, pending timeline and counter tests.
     cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
     result: "Test Files  45 passed (45); Tests  1213 passed (1213)"
