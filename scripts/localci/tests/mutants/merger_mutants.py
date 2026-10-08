@@ -20,6 +20,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+# B4: the backend shards' worker cap (contexts_matrix.yaml) and the dead-worker timeout reason (runner.py), against their tests
+MATRIX, RUN_PY = "scripts/localci/contexts_matrix.yaml", "scripts/localci/runner.py"
+SW = "scripts/localci/tests/test_shard_workers.py"
+SW_CAP = (f"{SW}::test_the_cap_is_declared_once_on_the_backend_shard_job_and_nowhere_else_in_the_matrix",)
+SW_DEAD = tuple(f"{SW}::{t}" for t in ("test_a_timeout_after_a_dead_xdist_worker_names_the_worker_and_its_log_line_and_is_no_verdict",
+                                      "test_every_xdist_wording_of_a_dead_worker_is_named_from_its_first_line",
+                                      "test_a_timeout_without_a_dead_worker_keeps_the_old_reason",
+                                      "test_a_dead_worker_in_a_run_that_finished_changes_nothing"))
+
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
@@ -89,6 +98,26 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "ready-days-boundary": (PY, "compared_days >= 14   #", "compared_days >= 13.999   #", (REPORT,)),
     "days-float": (PY, "return (int(_epoch(last) - _epoch(first)) * 1000 // 86400) / 1000",
                    "return round((_epoch(last) - _epoch(first)) / 86400, 3)", (REPORT,)),
+    # B4: two xdist workers on the backend shards and nowhere else; a timeout after a dead worker names it and stays no verdict
+    "b4-cap-key-misspelt": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKER: "2" }', SW_CAP),
+    "b4-cap-value-4": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', SW_CAP),
+    "b4-cap-dropped": (MATRIX, '          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }\n', "", SW_CAP),
+    "b4-cap-leaks-to-static": (MATRIX, "        - job_id: backend-static\n",
+                               '        - job_id: backend-static\n          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }\n', SW_CAP),
+    "b4-node-down-unmatched": (RUN_PY, "node down: Not properly terminated|", "node down: Not properly terminatedX|", SW_DEAD),
+    "b4-crashed-unmatched": (RUN_PY, """|\\bworker '?gw\\d+'? crashed")""", '")', SW_DEAD),
+    "b4-node-down-over-match": (RUN_PY, "\\[gw\\d+\\] node down: Not properly terminated|", "node down|", SW_DEAD),
+    "b4-crashed-over-match": (RUN_PY, """\\bworker '?gw\\d+'? crashed")""", 'worker.*crashed")', SW_DEAD),
+    "b4-line-zero-based": (RUN_PY, "for n, raw in enumerate(fh, 1):", "for n, raw in enumerate(fh):", SW_DEAD),
+    "b4-last-not-first": (RUN_PY, "for n, raw in enumerate(fh, 1):", "for n, raw in reversed(list(enumerate(fh, 1))):", SW_DEAD),
+    "b4-dead-worker-fail-rc": (RUN_PY, 'return None, (f"timeout after {timeout}s — an xdist', 'return 1, (f"timeout after {timeout}s — an xdist', SW_DEAD),
+    "b4-dead-worker-a-verdict": (RUN_PY, "if (dead := xdist_dead_worker(log)):",
+                                 "if (dead := xdist_dead_worker(log)):\n                    return 1, None\n                if dead:", SW_DEAD),
+    "b4-marker-judges-a-finished-run": (RUN_PY, "timeout=timeout, env=denv).returncode",
+                                        'timeout=timeout, env=denv).returncode\n                if xdist_dead_worker(log):\n'
+                                        '                    return None, "an xdist worker died"', SW_DEAD),
+    "b4-always-named": (RUN_PY, "if (dead := xdist_dead_worker(log)):",
+                        'if (dead := xdist_dead_worker(log) or ("?", 0)):', SW_DEAD),
     # inputs the report must refuse
     "sha-match-not-full": (PY, "return isinstance(x, str) and _FULL_SHA.fullmatch(x) is not None",
                            "return isinstance(x, str) and _FULL_SHA.match(x) is not None", (REPORT, TICK)),

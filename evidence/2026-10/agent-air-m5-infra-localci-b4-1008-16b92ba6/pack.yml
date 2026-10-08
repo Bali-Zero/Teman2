@@ -1,0 +1,99 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN phase B, step B4 (ruling docs/rules/RULINGS.md, RULED 2026-10-07), handed by the
+  orchestrator to Dux B4 on 2026-10-08 with a 2-hour budget, from origin/main 02543f1c51. Measured by the orchestrator
+  on Pro: backend-shard[2] timed out after 1800 s in 4 of 5 merger runs after `[gwN] node down: Not properly
+  terminated`, a memory-cgroup OOM-kill of an xdist worker (`-n auto` = 4 workers x ~2.1 GB under `--memory 6g`, VM
+  4 CPU, 8 GiB, no swap). Design anchor: docs/specs/localci-sovereign-2026-10-07.md §2 phase B.
+lanes:
+  - lane: localci-b4-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux B4 of LOCALCI-SOVEREIGN, M5; Pro not touched)"
+pii_scan: clean
+pii_scan_note: Runner code, a contexts matrix, tests and synthetic xdist output only; no client data was read or written.
+what_changed: |
+  scripts/localci/contexts_matrix.yaml: the Backend Tests (Python) context's backend-shard job carries
+  `env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }`, its comment carrying the measurement and the day it goes (the VM resize).
+  No runner change was needed for it: plan_service_context already merges a local job's env into the job env
+  (BASE workflow env, BASE job env, then the matrix job's), resolve_steps puts it on every step's env, _run_leg writes
+  it into the leg's steps.json, and the steps driver sets it on each step's process environment. The container's own
+  `docker create --env=` carries HOME and LANG only, before and after.
+  scripts/localci/runner.py: XDIST_DEAD_WORKER and xdist_dead_worker(log); in execute_contained's TimeoutExpired branch,
+  after `docker kill`, the first dead-worker line and its 1-based number go into the reason; rc None, the leg ERROR.
+  scripts/localci/tests/test_shard_workers.py (new, 14 tests); the mutant table gains 14 B4 rules and reads the
+  original of every file it mutates (the same line B3 #8077 carries, so the two merge cleanly). README: the capacity
+  row and one paragraph.
+proof: |
+  See receipts. The plan built from the real matrix and the real BASE tests.yml, the steps.json a shard leg hands its
+  sandbox, the real steps driver run on it, the reason the committed code writes, the suite, the full mutant sweep and
+  two guilt runs in a scratch copy. No run on Pro: this lane does not touch it.
+bites:
+  consumer: >-
+    The shadow merger's tick on Pro (scripts/localci/runner.py run with BASE's contexts matrix): the backend-shard legs
+    of ctx.backend-tests.
+  observation: >-
+    Owed after merge (this lane does not ship): on Pro, the first tick on a base carrying 4c17e0ae13 runs the three
+    shard legs with `PYTEST_XDIST_AUTO_NUM_WORKERS=2` in their steps.json job env and xdist's status line in each shard log
+    reads `2 workers [N items]`; no `node down: Not properly terminated` line and no 1800 s timeout. If a worker still
+    dies and the leg times out, its reason quotes the line and its number (2560e975a1). Measured before merge on M5
+    with the committed code (receipts below).
+ground:
+  ts: "2026-10-08T09:09:29Z"
+  siblings: >-
+    Worktree from origin/main 02543f1c51. B3 (#8077, agent/air-m5/infra/localci-b3-1008) is open and not merged; it
+    touches the same mutant harness at other lines and is checked for a clean merge below.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 1
+receipts:
+  - claim: "pytest-xdist 3.8.0 (the version in apps/backend-rag/.venv on M5): plugin.py pytest_xdist_auto_num_workers returns int(os.environ['PYTEST_XDIST_AUTO_NUM_WORKERS']) when set, before any CPU count; dsession.py writes `[{node.gateway.id}] node down: {error}` with workermanage.py's `Not properly terminated`, and `worker {id} crashed and worker restarting disabled` / `worker {id!r} crashed while running {nodeid!r}`."
+    cmd: grep -n 'PYTEST_XDIST_AUTO_NUM_WORKERS\|node down\|Not properly terminated\|crashed' apps/backend-rag/.venv/lib/python3.11/site-packages/xdist/{plugin,dsession,workermanage}.py
+    exit: 0
+    ts: "2026-10-08T09:11:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: 'The plan built by plan_service_context from the real matrix (load_contexts) and the real .github/workflows/tests.yml as BASE: backend-shard legs [1, 2, 3], job_env PYTEST_XDIST_AUTO_NUM_WORKERS=2, the `Run unit tests (sharded)` step env carries it beside `-n auto --dist loadfile`; backend-static, the fan-in and every E2E Tests (Playwright) job carry no such key. A shard leg''s steps.json carries it and the real steps driver sets it on the step''s process (the probe step''s `test "$PYTEST_XDIST_AUTO_NUM_WORKERS" = 2` PASS, FAIL with an empty job env); the container env stays {HOME, LANG}. Probes: test_shard_workers.py::test_the_real_backend_plan_gives_every_shard_leg_two_workers_and_no_other_job_any, test_shard_workers.py::test_a_shard_leg_hands_the_cap_to_its_sandbox_and_the_driver_sets_it_on_the_pytest_step, test_shard_workers.py::test_a_backend_shard_leg_killed_after_a_dead_worker_is_an_error_never_a_fail, test_shard_workers.py::test_a_timeout_without_a_dead_worker_keeps_the_old_reason, test_shard_workers.py::test_a_dead_worker_in_a_run_that_finished_changes_nothing — 8 passed (parametrized rows).'
+    cmd: python3 -m pytest -q -p no:cacheprovider scripts/localci/tests/test_shard_workers.py::<the five node ids>
+    exit: 0
+    ts: "2026-10-08T09:28:12Z"
+    seat: claude-opus-5-5 on M5
+  - claim: 'Guilt, in a scratch copy of scripts/localci, scripts/lib and the real tests.yml: with the matrix''s cap line removed, the plan test and the steps.json test fail with KeyError ''PYTEST_XDIST_AUTO_NUM_WORKERS''; with plan_service_context''s `**(jl.get("env") or {})` removed (the planner ignores a matrix job''s env), 3 tests of test_shard_workers.py fail.'
+    cmd: PYTHONPATH=<scratch> python3 -m pytest -q -p no:cacheprovider scripts/localci/tests/test_shard_workers.py (twice, one mutation each)
+    exit: 1
+    ts: "2026-10-08T09:27:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The committed code (execute_contained, a fake docker whose `start -a` prints an xdist session and hangs, timeout 2 s) writes rc=None and the reason `timeout after 2s — an xdist worker died mid-run ('[gw1] node down: Not properly terminated', log line 8) and the controller never finished: a memory-cgroup OOM-kill is the measured cause on Pro (2026-10-07/08); no verdict (container killed; removal verified below or the run aborts)`; the same session without the line gives rc=None and `timeout after 2s (container killed; removal verified below or the run aborts)`. At the leg level (_run_leg on the real backend-shard plan) the first reads ERROR `backend-shard[2]: timeout after 2s — an xdist worker died mid-run (...)`, rc None, no steps."
+    cmd: PYTHONPATH=. python3 - (test_shard_workers.contained with and without the marker)
+    exit: 0
+    ts: "2026-10-08T09:26:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The localci suite at 2560e975a1 on M5 (no docker): 753 passed, 14 skipped (needs_docker), 174 s; the one warning is test_isolation.py::test_a_stalled_copy_in_is_bounded_by_one_budget's tarfile BrokenPipe, from before B4. B4 adds 14 tests."
+    cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-08T09:27:30Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Mutant sweep, the 14 B4 rules: 14/14 killed, 0 survived, 0 stale. Two rules first ended ERROR (pytest exit 4): their text cut the branch's trailing comment and the mutant was a SyntaxError, which the harness rightly never counts as a kill; realigned to the `if` alone, both killed."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 14 b4-* rules>
+    exit: 0
+    ts: "2026-10-08T09:24:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The full sweep over all 89 rules (75 merger and wrapper rules from C3a-2 and before, 14 from B4), every baseline green first: 89/89 killed, 0 survived, 0 errors, 0 stale."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py
+    exit: 0
+    ts: "2026-10-08T09:40:13Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "B3 (#8077, OPEN, not merged at 09:30:54Z) and B4 merge without a conflict: `git merge-tree --write-tree` of 2560e975a1 and agent/air-m5/infra/localci-b3-1008 exits 0, tree 6d18730b76. The localci suite on that merged tree, in a scratch copy of its scripts, .github/workflows and infra/ban-prose: 843 passed, 14 skipped (829 from B3 plus B4's 14). One test first failed on the scratch copy alone (infra/ban-prose/grandfathered.json, a catE trusted file, had not been copied) and passed once it was."
+    cmd: git merge-tree --write-tree --name-only HEAD agent/air-m5/infra/localci-b3-1008; git archive <tree> scripts .github/workflows infra/ban-prose | tar -x -C <scratch>; python3 -m pytest scripts/localci/tests -q
+    exit: 0
+    ts: "2026-10-08T09:38:00Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "The worker cap is a local capacity adaptation: hosted runs 4 workers on 16 GB, Pro now runs 2. The tests and the command are the same and `--dist loadfile` keeps each file whole on one worker, but the worker count, and with it the scheduling of files, differs from hosted; an inter-file ordering dependency that shows only at 4 workers would show hosted and not here."
+  - "An OOM in another context (the E2E browser leg, the frontend vitest leg) is not covered: no cap there, and the dead-worker reason reads only xdist's words. A browser or node process killed by the cgroup still reads as a plain timeout or a test failure."
+  - "The VM resize is the parity cure and is the operator's: the day Colima runs with enough memory for 4 x 2.1 GB plus the services, the matrix line goes (its comment says so)."
+  - "Not measured: the two-worker wall time and memory on Pro (assumptions in the brief). The estimate from the four-worker figures is ~950 s for the slowest shard, under its 1800 s timeout."
+  - "The dead-worker line is read from candidate output: a candidate can print it. It changes only the reason of a run that already timed out (no verdict before and after), never a status."
+  - "No adversarial round: the independent gate is the orchestrator's (generator is never grader)."
+appetite_exceeded: >-
+  Size only: 256 net lines against the ~200 the mandate set (113 and 143 per commit); code is 28 net (matrix 8, runner
+  20), the README 7, and the 14 tests with the 14 mutant rules are 221. Wall clock within the 2-hour budget.
