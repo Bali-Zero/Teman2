@@ -16,6 +16,8 @@ objective: >-
   closes the board row; dry-run prints the decision it would take.
 scope:
   - scripts/visa_freshness_sentinel.py (own re-alert schedule, fresh gateway key per send, HIGH escalation row, alert_decision in the JSON)
+  - scripts/tg_notify.py (one family added to the default owner-routed list, so these p0 alerts reach Telegram)
+  - scripts/ci/observe_visa_freshness_sentinel.py (CI observer)
   - scripts/tests/test_visa_freshness_sentinel.py (nine new guilt and innocence tests)
 appetite:
   wall_clock_hours: 1

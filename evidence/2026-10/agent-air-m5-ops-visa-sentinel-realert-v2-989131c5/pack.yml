@@ -40,29 +40,29 @@ decisions:
       One HIGH row under a stable job id, written only when the job is not open or the outcome
       class changed, resolved when the outcome returns to OK.
 receipts:
-  - claim: The sentinel test module passes, including nine new guilt and innocence tests for the re-alert.
+  - claim: The sentinel test module passes, including guilt and innocence tests for the re-alert, the two channels, state sanitation and the cadence.
     cmd: python3 -m pytest scripts/tests/test_visa_freshness_sentinel.py -q -p no:cacheprovider -o addopts=""
-    result: "59 passed in 2.23s"
+    result: "62 passed in 3.01s"
     exit: 0
-    ts: "2026-10-08T07:07:46Z"
+    ts: "2026-10-08T07:11:11Z"
     seat: this session
   - claim: Against production the sentinel reads the active pack and prints the alert decision without side effects.
     cmd: VISA_FRESHNESS_STATE=/tmp/x-nonexistent/s.json python3 scripts/visa_freshness_sentinel.py --dry-run
     result: "outcome OK, pack_sequence 25, pack_source database, alert_decision {would_send false, reason ok-resets-ladder, delivered_streak 0}"
     exit: 0
-    ts: "2026-10-08T06:42:07Z"
+    ts: "2026-10-08T07:11:11Z"
     seat: this session
   - claim: Ruff reports one finding, an unused import in the pre-existing part of the test file, none in the new code.
     cmd: ruff check scripts/visa_freshness_sentinel.py scripts/tests/test_visa_freshness_sentinel.py
     result: "Found 1 error (unused dataclasses import near line 559, existing code, left untouched)"
     exit: 1
-    ts: "2026-10-08T07:08:01Z"
+    ts: "2026-10-08T07:11:11Z"
     seat: this session
-  - claim: The CI observer drives the real decision code over a simulated STALE; the re-alert fires at 24 hours, holds at 1 hour, an undelivered send leaves the streak at 2, corrupt state still sends, 6.1-hour ticks keep every gap at 18.3 hours, and spooled counts as a board delivery.
+  - claim: The CI observer drives the real decision code over a simulated STALE; the re-alert fires at 24 hours, holds at 1 hour, an undelivered send leaves the streak at 2, corrupt state still sends, 6.1-hour ticks keep every gap at 18.3 hours, spooled is a board delivery only and is retried on Telegram, and a stale stored next_due never holds an alert back.
     cmd: python3 scripts/ci/observe_visa_freshness_sentinel.py
     result: "observe_visa_freshness_sentinel: a persistent STALE re-alerts daily and an undelivered send never counts"
     exit: 0
-    ts: "2026-10-08T07:07:46Z"
+    ts: "2026-10-08T07:11:11Z"
     seat: this session
 dissent:
   - seat: codex-gpt-5.6-sol (red-team)
@@ -80,7 +80,7 @@ dissent:
     objection: >-
       The gateway routes the visa-freshness family to the board, so Telegram never delivered, per-day keys spawned distinct board jobs, and OK resolved only the HIGH row.
     status: CONFIRMED
-    note: cured in this PR — spooled counts as a board delivery, the board route keeps one stable key (re-probed weekly), and OK resolves every row whose job starts with visa-freshness.
+    note: cured in this PR — visa-freshness is now an owner-routed family in the gateway default, so p0 reaches Telegram; a spooled verdict is a board delivery only; OK resolves the sentinel row and every visa-freshness colon job.
   - seat: agy-gemini-3.1-pro
     objection: >-
       Resolving by the prefix visa-freshness also closes unrelated board rows such as visa-freshness-other-organ.
@@ -96,11 +96,26 @@ dissent:
       A small backward clock step strips last_delivered_ts and could restart the ladder.
     status: PLAUSIBLE
     note: already tolerated up to 300 s by the load-time horizon; a larger step is treated as absent state, which sends. Left as is, no change needed.
+  - seat: codex-gpt-5.6-sol (red-team, round 2)
+    objection: >-
+      A spooled verdict was counted as the Telegram delivery, so after board routing the owner was never retried; the spec mixed two channels with one clock.
+    status: CONFIRMED
+    note: cured in this PR — two channels, two clocks. Telegram advances only on sent; the board row is refreshed by the sentinel on its own clock and resolved on OK. Owner route is the gateway default family list in scripts/tg_notify.py, no raw token.
+  - seat: codex-gpt-5.6-sol (red-team, round 2)
+    objection: >-
+      A stored next_due_ts was trusted on its own, so a last delivery 24 hours ago with a next_due a day ahead stayed silent.
+    status: CONFIRMED
+    note: cured in this PR — next_due is no longer stored, it is derived from the last Telegram delivery plus the gate on every load.
+  - seat: codex-gpt-5.6-sol (red-team, round 2)
+    objection: >-
+      The test suite could not run in the reviewer sandbox for lack of a temporary directory.
+    status: RETRACTED
+    note: environment limit of the reviewer sandbox, not a defect; the suite runs on M5.
   - seat: self-review
     objection: >-
-      Whether the Pro gateway environment really routes this family to the board was not checked from M5, and the weekly re-probe is untested against a live Telegram path.
+      The Pro launchd job and plists carry no TG_OWNER_FAMILIES override (checked over ssh), but a shell-level override would still replace the default list and drop visa-freshness.
     status: PLAUSIBLE
-    note: open — check TG_OWNER_FAMILIES on Pro after merge.
+    note: open — confirm the first STALE or APPROACHING alert after merge reaches Telegram.
 spend:
   wall_clock_hours: 1
   adversarial_rounds: 0

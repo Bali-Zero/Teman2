@@ -15,7 +15,9 @@ simulated STALE snapshot (pack 25, 18 stale portal ids) with an injected clock:
 4. sender returns undelivered -> the delivered streak does not move
 5. corrupt state file         -> a send, never a crash and never `not-due-yet`
 6. ticks every 6.1 h, 3 days  -> every delivery gap is at most 24 h
-7. gateway answers `spooled`  -> counts as a delivery (board route)
+7. gateway answers `spooled`  -> a board delivery only; Telegram is retried
+8. spooled, then sent 10 min  -> the second attempt is made and delivered
+9. stale `next_due_ts`        -> never trusted: last delivery 24 h ago sends now
 
 Exit 0 only if all four assertions hold.
 """
@@ -62,7 +64,7 @@ def main() -> int:
 
     answers = iter(["sent", "sent", "p0_unsent_spooled"])
     vfs._send = lambda v, gw, key=None: (next(answers), "")
-    vfs._escalation_open = lambda v: None
+    vfs._escalation_open = lambda v, now_ts, count, force: False
     vfs._escalation_resolve = lambda: None
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -106,16 +108,35 @@ def main() -> int:
         gaps = [(b - a) / 3600 for a, b in zip(delivered, delivered[1:])]
         print(json.dumps({"delivery_gaps_hours": [round(g, 1) for g in gaps]}))
 
-        vfs._send = lambda v, gw, key=None: ("spooled", "")
-        board = vfs.run_alert_cycle(
-            verdict, dry_run=False, now_ts=T0.timestamp(), state_path=Path(tmp) / "board.json"
+        seq = iter(["spooled", "sent"])
+        vfs._send = lambda v, gw, key=None: (next(seq), "")
+        board_path = Path(tmp) / "board.json"
+        spooled = vfs.run_alert_cycle(
+            verdict, dry_run=False, now_ts=T0.timestamp(), state_path=board_path
         )
-        print(json.dumps({"alert_decision": board}, sort_keys=True))
+        retried = vfs.run_alert_cycle(
+            verdict, dry_run=False, now_ts=T0.timestamp() + 600, state_path=board_path
+        )
+        print(json.dumps({"alert_decision": spooled}, sort_keys=True))
+        print(json.dumps({"alert_decision": retried}, sort_keys=True))
+
+        vfs._send = lambda v, gw, key=None: ("sent", "")
+        clamped_path = Path(tmp) / "clamped.json"
+        clamped_path.write_text(json.dumps({
+            "condition": "STALE:25",
+            "telegram_last_delivered_ts": T0.timestamp() - 86400,
+            "next_due_ts": T0.timestamp() + 86400,
+        }))
+        clamped = vfs.run_alert_cycle(
+            verdict, dry_run=False, now_ts=T0.timestamp(), state_path=clamped_path
+        )
 
     checks += (
         corrupt["would_send"] is True and corrupt.get("delivered") is True,
         len(gaps) >= 3 and max(gaps) <= 24,
-        board.get("delivered") is True and board.get("delivered_via") == "board",
+        spooled.get("board_delivery") is True and spooled.get("delivered") is False,
+        retried.get("delivered") is True,
+        clamped.get("delivered") is True,
     )
     if not all(checks):
         print(f"observe_visa_freshness_sentinel: FAILED checks={checks} streak={streak}")

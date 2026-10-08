@@ -795,7 +795,9 @@ def test_stale_opens_one_high_row_and_ok_resolves_it(tmp_path, monkeypatch):
     for day in range(3):
         _cycle(v, tmp_path, gw, T0 + day * DAY)
     rows = [json.loads(x) for x in (tmp_path / "escalations_pro.jsonl").read_text().splitlines()]
-    assert len(rows) == 1 and rows[0]["priority"] == "HIGH" and rows[0]["status"] == "pending"
+    assert {r["job"] for r in rows} == {vfs.ESCALATION_JOB}  # one job, refreshed once a day
+    assert len(rows) == 3 and all(r["priority"] == "HIGH" for r in rows)
+    assert [r["attempts"] for r in rows] == [1, 2, 3] and rows[-1]["last_seen_ts"] == T0 + 2 * DAY
     assert esc.is_job_open(vfs.ESCALATION_JOB)
 
     ok = vfs.classify_freshness([_portal_record("p", VERIFIED_AT.isoformat())], VERIFIED_AT)
@@ -822,7 +824,6 @@ def test_dry_run_reports_the_decision_and_touches_nothing(tmp_path, monkeypatch)
 # W141 successor — corrupt state, cadence, board routing (Codex red-team, all three BLOCK)
 # ---------------------------------------------------------------------------
 
-import math  # noqa: E402
 import plistlib  # noqa: E402
 
 import pytest  # noqa: E402
@@ -832,9 +833,9 @@ import pytest  # noqa: E402
     "state",
     [
         {"condition": "STALE:23", "delivered_streak": None},
-        {"condition": "STALE:23", "next_due_ts": float("nan")},
-        {"condition": "STALE:23", "next_due_ts": "soon"},
-        {"condition": "STALE:23", "last_delivered_ts": 9e12, "next_due_ts": 9e12 + 100},
+        {"condition": "STALE:23", "telegram_last_delivered_ts": float("nan")},
+        {"condition": "STALE:23", "telegram_last_delivered_ts": "soon"},
+        {"condition": "STALE:23", "telegram_last_delivered_ts": 9e12, "board_last_ts": 9e12},
         {"condition": "STALE:23", "delivered_streak": True, "undelivered_attempts": -3},
     ],
 )
@@ -847,6 +848,21 @@ def test_corrupt_state_never_silences_a_stale(tmp_path, monkeypatch, caplog, sta
     assert d["would_send"] is True and d["delivered"] is True
     assert "state-reset:" in caplog.text
     assert len(_calls(tmp_path)) == 1
+
+
+def test_a_stored_next_due_is_never_trusted(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    # last delivery 24 h ago, but a corrupt/stale stored next_due a day AHEAD: must send now.
+    (tmp_path / "state.json").write_text(json.dumps({
+        "condition": "STALE:23", "telegram_last_delivered_ts": T0 - DAY, "next_due_ts": T0 + DAY,
+    }))
+    assert _cycle(_stale_verdict(), tmp_path, gw, T0)["delivered"] is True
+    # innocence: a delivery 1 h ago still waits, whatever the stored value says.
+    (tmp_path / "state.json").write_text(json.dumps({
+        "condition": "STALE:23", "telegram_last_delivered_ts": T0 - 3600, "next_due_ts": 0,
+    }))
+    assert _cycle(_stale_verdict(), tmp_path, gw, T0)["reason"] == "not-due-yet"
 
 
 def test_valid_state_inside_the_gate_still_waits(tmp_path, monkeypatch, caplog):
@@ -913,24 +929,25 @@ def test_guilt_a_23_hour_gate_breaks_the_24_hour_promise():
     assert sent[1] - sent[0] > 24
 
 
-def test_routed_spooled_counts_as_delivery_and_ok_resolves_every_row(tmp_path, monkeypatch):
-    """Real gateway subprocess, real escalation helpers, private spool and board."""
+def test_board_routing_is_a_board_delivery_not_a_telegram_one(tmp_path, monkeypatch):
+    """Real gateway subprocess with routing forced onto the board (a misconfigured owner
+    list), real escalation helpers, private spool and board."""
     esc = _board(tmp_path, monkeypatch)
     monkeypatch.setenv("TG_SPOOL_DIR", str(tmp_path / "spool"))
     monkeypatch.setenv("TG_BOARD_PATH", str(tmp_path / "escalations_pro.jsonl"))
-    monkeypatch.setenv("TG_ACT_ROUTING_ENABLED", "true")
+    monkeypatch.setenv("TG_OWNER_FAMILIES", "some-other-family")
     v = _stale_verdict()
     results = [
         vfs.run_alert_cycle(v, dry_run=False, now_ts=T0 + d * DAY, state_path=tmp_path / "state.json")
         for d in range(5)
     ]
-    assert [r["gateway_verdict"] for r in results][0] == "spooled"
-    assert all(r["delivered"] and r["delivered_via"] == "board" for r in results)
+    assert results[0]["gateway_verdict"] == "spooled" and results[0]["board_delivery"] is True
+    assert not any(r["delivered"] for r in results)
     state = json.loads((tmp_path / "state.json").read_text())
-    assert state["delivered_streak"] == 5 and state["route"] == "board"
+    assert "telegram_last_delivered_ts" not in state and state["route"] == "board"
     rows = [json.loads(x) for x in (tmp_path / "escalations_pro.jsonl").read_text().splitlines()]
     routed_jobs = {r["job"] for r in rows if r.get("type") == "gateway_routed"}
-    assert 1 <= len(routed_jobs) <= 2  # not one per day
+    assert 1 <= len(routed_jobs) <= 2  # not one per attempt
 
     ok = vfs.classify_freshness([_portal_record("p", VERIFIED_AT.isoformat())], VERIFIED_AT)
     _cycle(ok, tmp_path, tmp_path / "unused.py", T0 + 6 * DAY)
@@ -938,14 +955,40 @@ def test_routed_spooled_counts_as_delivery_and_ok_resolves_every_row(tmp_path, m
     assert open_jobs == []
 
 
+def test_visa_freshness_is_an_owner_routed_family_by_default(monkeypatch):
+    monkeypatch.delenv("TG_OWNER_FAMILIES", raising=False)
+    import importlib
+
+    import tg_notify
+
+    tg = importlib.reload(tg_notify)
+    assert tg._owner_reserved("visa-freshness:stale:25:s1:n0:a0")
+    assert not tg._owner_reserved("visa-freshness-other-organ")
+    assert tg._owner_reserved("wa-bridge:down")  # the existing families are untouched
+
+
+def test_spooled_then_a_working_sender_ten_minutes_later_is_delivered(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = _stale_verdict()
+    (tmp_path / "mode").write_text("spooled")
+    first = _cycle(v, tmp_path, gw, T0)
+    assert first["delivered"] is False and first["board_delivery"] is True
+    (tmp_path / "mode").write_text("sent")
+    second = _cycle(v, tmp_path, gw, T0 + 600)
+    assert second["delivered"] is True and len(_calls(tmp_path)) == 2
+    rows = [json.loads(x) for x in (tmp_path / "escalations_pro.jsonl").read_text().splitlines()]
+    assert len(rows) == 1  # the board row was written once, not once per attempt
+
+
 def test_a_genuine_failure_is_still_undelivered_not_a_board_delivery(tmp_path, monkeypatch):
     _board(tmp_path, monkeypatch)
     gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
     (tmp_path / "mode").write_text("p0_overflow_spooled")
     d = _cycle(_stale_verdict(), tmp_path, gw, T0)
-    assert d["delivered"] is False and math.isclose(
-        json.loads((tmp_path / "state.json").read_text())["next_due_ts"], T0
-    )
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert d["delivered"] is False and "board_delivery" not in d
+    assert "telegram_last_delivered_ts" not in state and state["undelivered_attempts"] == 1
 
 
 # ---------------------------------------------------------------------------

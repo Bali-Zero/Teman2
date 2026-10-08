@@ -850,11 +850,15 @@ def sanitize_state(
         "route": lambda v: v == "board",
         "delivered_streak": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v < 10**6,
         "undelivered_attempts": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v < 10**6,
-        "last_delivered_ts": lambda v: _is_num(v) and v <= horizon,
+        "board_count": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v < 10**6,
+        "telegram_last_delivered_ts": lambda v: _is_num(v) and v <= horizon,
+        "board_last_ts": lambda v: _is_num(v) and v <= horizon,
         "cond_start_ts": lambda v: _is_num(v) and v <= horizon,
         "route_ts": lambda v: _is_num(v) and v <= horizon,
-        "next_due_ts": lambda v: _is_num(v) and v <= horizon + REALERT_MAX_GAP_S,
     }
+    # `next_due_ts` is deliberately NOT a stored field any more: it is derived from
+    # `telegram_last_delivered_ts` on every load, so a corrupt or stale stored value
+    # (null, NaN, a day ahead) can never hold an alert back.
     for field, ok in checks.items():
         if field not in state:
             continue
@@ -867,15 +871,26 @@ def sanitize_state(
     return clean, reset
 
 
+def _next_due(state: dict[str, Any]) -> float:
+    """When the Telegram channel is next due: last delivery + the gate, else now."""
+    last = state.get("telegram_last_delivered_ts")
+    return last + REALERT_GATE_S if last is not None else 0.0
+
+
 def decide_alert(verdict: Verdict, state: dict[str, Any], now_ts: float) -> dict[str, Any]:
-    """Pure: what this run would do about the alert, and why."""
+    """Pure: what this run would do on the TELEGRAM channel, and why.
+
+    Two channels, two clocks. Telegram: only a `sent` verdict advances
+    `telegram_last_delivered_ts`. Board: the sentinel's own HIGH row, refreshed on its
+    own clock (`board_last_ts`) and resolved on OK."""
     state, _ = sanitize_state(state, now_ts, log=False)
     dedup_state = {
         "condition": state.get("condition"),
         "delivered_streak": state.get("delivered_streak", 0),
         "undelivered_attempts": state.get("undelivered_attempts", 0),
-        "last_delivered_ts": state.get("last_delivered_ts"),
-        "next_due_ts": state.get("next_due_ts"),
+        "telegram_last_delivered_ts": state.get("telegram_last_delivered_ts"),
+        "next_due_ts": _next_due(state) if "telegram_last_delivered_ts" in state else None,
+        "board_last_ts": state.get("board_last_ts"),
         "route": state.get("route"),
     }
     if verdict.outcome == OUTCOME_OK:
@@ -884,32 +899,41 @@ def decide_alert(verdict: Verdict, state: dict[str, Any], now_ts: float) -> dict
         return {"would_send": None, "reason": "gateway-ladder", "dedup_state": dedup_state}
     if state.get("condition") != _condition(verdict):
         return {"would_send": True, "reason": "new-condition", "dedup_state": dedup_state}
-    if now_ts >= state.get("next_due_ts", 0):
-        why = "retry-undelivered" if "last_delivered_ts" not in state else "realert-due"
+    if now_ts >= _next_due(state):
+        why = "retry-undelivered" if "telegram_last_delivered_ts" not in state else "realert-due"
         return {"would_send": True, "reason": why, "dedup_state": dedup_state}
     return {"would_send": False, "reason": "not-due-yet", "dedup_state": dedup_state}
 
 
-def _escalation_open(verdict: Verdict) -> None:
-    """Write the ONE HIGH board row for this standing condition (idempotent)."""
+def _escalation_open(verdict: Verdict, now_ts: float, count: int, force: bool) -> bool:
+    """Write or refresh the ONE HIGH board row (same job; readers collapse to the latest).
+    Returns True when a row was appended."""
     try:
         from scripts.sentinel_lib import escalations as esc
 
         summary = format_alert_text(verdict).replace("\n", " | ")[:400]
-        if esc.is_job_open(ESCALATION_JOB) and _last_escalated(esc) == verdict.outcome:
-            return
+        if (
+            not force
+            and esc.is_job_open(ESCALATION_JOB)
+            and _last_escalated(esc) == verdict.outcome
+        ):
+            return False
         esc.write_escalation({
             "job": ESCALATION_JOB,
             "type": "visa_freshness_persistent",
             "priority": "HIGH",
             "outcome": verdict.outcome,
+            "last_seen_ts": now_ts,
+            "attempts": count,
             "error_summary": summary,
             "detail": "Visa Oracle answers HUMAN_REVIEW_REQUIRED while portal stamps are stale; "
             "cure is the re-attestation ceremony (docs/runbooks/visa-engine-key-ceremony.md).",
             "context": "visa-freshness-sentinel",
         })
+        return True
     except Exception as exc:  # noqa: BLE001 — the board must never crash the sentinel
         logger.warning("escalation row not written: %s", type(exc).__name__)
+        return False
 
 
 def _last_escalated(esc: Any) -> str | None:
@@ -980,17 +1004,24 @@ def _run_alert_cycle(
         send_alert(verdict, gateway_path)  # non-persistent: the gateway ladder decides
         return decision
 
-    _escalation_open(verdict)
-    if not decision["would_send"]:
-        return decision
-
     cond = _condition(verdict)
     if state.get("condition") != cond:
         state = {"condition": cond, "delivered_streak": 0, "cond_start_ts": now_ts}
     cond_start = state.setdefault("cond_start_ts", now_ts)
+
+    # BOARD channel: the sentinel's own row, on its own clock. It never depends on Telegram.
+    board_due = now_ts >= state.get("board_last_ts", 0) + REALERT_GATE_S
+    if _escalation_open(verdict, now_ts, state.get("board_count", 0) + 1, force=board_due):
+        state.update(board_last_ts=now_ts, board_count=state.get("board_count", 0) + 1)
+
+    if not decision["would_send"]:
+        save_state(path, state)
+        return decision
+
+    # TELEGRAM channel: only a `sent` verdict advances its clock.
     attempts = state.get("undelivered_attempts", 0)
-    # Once the gateway has answered `spooled` (board routing), keep ONE stable key so the
-    # board holds one job, not one per day; re-probe weekly in case routing changed.
+    # Once the gateway has answered `spooled` (board routing) keep ONE stable key so the
+    # gateway holds one job, not one per attempt; re-probe weekly in case routing changed.
     on_board = state.get("route") == "board"
     probe = on_board and now_ts - state.get("route_ts", 0) >= BOARD_REPROBE_S
     key = dedup_key(verdict)
@@ -1001,28 +1032,25 @@ def _run_alert_cycle(
         key = f"{key}:s{int(cond_start)}:n{state.get('delivered_streak', 0)}:a{attempts}"
     gateway_verdict, failure = _send(verdict, gateway_path, key)
     decision["gateway_verdict"] = gateway_verdict
-    via = {"sent": "telegram", "spooled": "board"}.get(gateway_verdict or "")
-    if via is None and gateway_verdict == "deduped" and on_board and not probe:
-        via = "board"  # the stable-key board job is already open and muted by the ladder
-    if via:
+    if gateway_verdict == "sent":
         state.update(
             delivered_streak=state.get("delivered_streak", 0) + 1,
             undelivered_attempts=0,
-            last_delivered_ts=now_ts,
-            next_due_ts=now_ts + REALERT_GATE_S,
+            telegram_last_delivered_ts=now_ts,
         )
-        if via == "board":
-            state.update(route="board", route_ts=state.get("route_ts", now_ts) if on_board and not probe else now_ts)
-        else:
-            state.pop("route", None)
-            state.pop("route_ts", None)
-        decision.update(delivered=True, delivered_via=via)
+        state.pop("route", None)
+        state.pop("route_ts", None)
+        decision.update(delivered=True, delivered_via="telegram")
     else:
         reason = failure or str(gateway_verdict)
         logger.warning("undelivered: reason=%s key=%s", reason, key)
         decision.update(delivered=False, undelivered_reason=reason)
         state["undelivered_attempts"] = attempts + 1
-        state["next_due_ts"] = now_ts  # transient failure: retry on the next run
+        if gateway_verdict == "spooled":
+            # A board delivery: feeds the board clock, never the Telegram one.
+            state.update(route="board", route_ts=now_ts if (not on_board or probe) else state.get("route_ts", now_ts))
+            state.update(board_last_ts=now_ts, board_count=state.get("board_count", 0) + 1)
+            decision["board_delivery"] = True
     save_state(path, state)
     return decision
 
