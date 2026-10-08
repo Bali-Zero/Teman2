@@ -3,7 +3,7 @@ mission: LOCALCI-SOVEREIGN (phase B, step B8)
 colour: BLUE
 gear: 2
 gear_reason: >-
-  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 594 with this pack, 457 without it,
+  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 613 with this pack, 471 without it,
   over the 400-line target once the amendment landed), no hot-zone path. The change is the merger's own prune, its tests and mutants, a README section
   and the spec paragraph it amends; no workflow, credential, wrapper or plist changes, so the deploy is the mirror's next fetch.
 l_level: L2
@@ -28,14 +28,16 @@ acceptance:
     probe: "test_prune.py::test_b8_the_run_in_progress_keeps_the_third_image_it_names"
   - text: Slot 2 SHALL go to the image named by three plans over a younger one a single plan names, and a tie SHALL go to the youngest reference.
     probe: "test_prune.py::test_b8_slot_2_goes_to_the_image_three_plans_name_over_a_younger_one_a_single_plan_names, test_prune.py::test_b8_a_tie_in_plans_gives_slot_2_to_the_youngest_reference"
-  - text: WHEN the VM has 5 GB free and three recipes each hold a newest and a slot-2 image, the image with 1 reference SHALL go before the one with 4 even if newer, ties to the oldest, each rule "vm floor (N references, built H h ago)", the builder pruned after each.
+  - text: 'WHEN the VM has 5 GB free and three recipes each hold a newest and a slot-2 image, the image with 1 reference SHALL go before the one with 4 even if newer, ties to the oldest, each rule "vm floor: VM free X GB < 15 GB after the cap; N plan(s) of the last 48 h name it, built H h ago", the builder pruned after each, the last call after the last removal.'
     probe: "test_prune.py::test_b8_under_the_vm_floor_the_fewest_references_go_first_even_the_newest_of_a_recipe"
+  - text: Under the floor, images named by equally many plans SHALL go oldest first, an undated one last.
+    probe: "test_prune.py::test_b8_equal_references_under_the_floor_evict_the_oldest_first_and_an_undated_image_last"
   - text: Above the floor the newest of a recipe SHALL never be removed, even named by no plan; at the floor nothing goes; the floor stops once met.
     probe: "test_prune.py::test_b8_above_the_floor_the_newest_of_a_recipe_is_never_removed_even_named_by_no_plan, test_prune.py::test_b8_the_floor_stops_once_met_and_a_vm_at_the_floor_keeps_every_image"
   - text: Under the floor, the never-list and what the lease run names SHALL be untouched.
     probe: "test_prune.py::test_b8_the_floor_never_touches_the_never_list_or_what_the_lease_run_names"
-  - text: The build cache SHALL be pruned with -af --keep-storage 4GB, its size journaled before and after, never by age.
-    probe: "test_prune.py::test_b8_the_build_cache_is_pruned_to_a_budget_not_by_age"
+  - text: The build cache SHALL be pruned with -af --keep-storage 4GB, never by age; builder_prune SHALL carry the last call's rc, keep_storage_gb and tail, and the number of calls.
+    probe: "test_prune.py::test_b8_the_build_cache_is_pruned_to_a_budget_not_by_age, test_prune.py::test_b8_the_line_carries_the_last_builder_prune_and_how_many_ran"
 assumptions:
   - text: The VM probe still measures a full VM (it reads 0.0 rather than failing).
     status: unverified
