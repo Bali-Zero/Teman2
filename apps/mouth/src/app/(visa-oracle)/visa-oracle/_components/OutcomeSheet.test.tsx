@@ -1591,6 +1591,24 @@ describe("OutcomeSheet — ENDING-ROUND friendly ending surface (E4/E5/E6/E7/E8)
     expect(visible).not.toMatch(/Checked on/);
   });
 
+  it("prints a plain 'Checked on' line when there is no source list", () => {
+    const base = outcomeFor("SUPPORTED_CANDIDATES");
+    const { container } = render(
+      <OutcomeSheet
+        language="en"
+        outcome={{ ...base, sources: [] }}
+        facts={FACTS}
+      />,
+    );
+    const printOnly = Array.from(
+      container.querySelectorAll(".oracle-print-only"),
+    )
+      .map((el) => el.textContent)
+      .join(" ");
+    expect(printOnly).toMatch(/Checked on [^.]+\./);
+    expect(printOnly).not.toMatch(/against the sources above/);
+  });
+
   it("E1/E4/E5/E7/E8: never shows 'deterministic engine', 'Rank ', or a raw code on the SUPPORTED_CANDIDATES screen", () => {
     const { container } = renderSheet("SUPPORTED_CANDIDATES");
     const visible = visibleText(container);
