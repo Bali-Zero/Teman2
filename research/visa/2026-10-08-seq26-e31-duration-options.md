@@ -85,4 +85,20 @@ durations: `schema.d.ts` carries the fields, `visa-oracle-contract.ts` and the p
 
 ## Adversarial review
 
-(To be filled after the review of the candidate.)
+Two seats reviewed the branch before it was pushed. Their journal lines are in the evidence pack
+(`council-journal.jsonl`).
+
+- **Codex GPT-5.6-sol, read-only: PASS.** One MEDIUM: the CI observer anchored only E31B, so a
+  shared drift in the committed pack and its re-derivation (for example E31C losing its options)
+  passed. Cured: the observer now runs a checker over all nine E31 products on both packs, and
+  `test_seq26_pack.py` has a guilt case for each product. One LOW, that the sandbox could not run
+  pytest, is retracted as a sandbox limit. Its direct checks passed: canonical re-derivation, only
+  nine products and provenance move, every mapped page carries the two-year sentence, keys and
+  amounts, uuid5 and predecessor digest, and no PNBP, `8.500.000` or "quote" text in the pack.
+- **Gemini 3.1 Pro: GO.** Six LOW notes, all favourable: the derivation is idempotent and anchored
+  on the seq-25 digest; a 365 to 730 stay range with option snapping is the right model for an
+  18-month wish; the census helper change exposes staleness rather than hiding it; the guilt
+  twins fail for the right reasons; this note is complete; naming follows the repo.
+
+Dead seats at review time, from the SessionStart arsenal probe of 2026-10-08: kimi QUOTA_DEAD,
+tp1-glm-5.2, tp1-qwen3.8-max and tp1-deepseek-v4-pro QUOTA_DEAD, codex-spark MODEL_ERR.
