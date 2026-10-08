@@ -581,6 +581,7 @@ def cmd_report(a) -> int:
                 for k, v in mine.items():
                     ctx_counts[k] += v
                 compared_ctx = mine.get("AGREE", 0) + mine.get("FALSE_GREEN", 0) + mine.get("FALSE_RED", 0)
+            # a merge whose hosted side is still PENDING compared nothing yet: N contexts agreeing beside one unreported is no evidence
             merged_at = prs[n].get("merged_at") if merged_here else None
             if merged_here and not is_ts(merged_at):
                 raise hc.CompareError(f"#{n} merged at the decided candidate but carries no merged_at")
@@ -588,7 +589,7 @@ def cmd_report(a) -> int:
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
-                         "compared_merge": merged_here and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
+                         "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
         # GitHub merged a red required check: a HOSTED failure, read on every merged PR's own merge commit whichever candidate the
         # merger decided (#8026 was decided on an older base and is judged above on its green head), counted apart, never a class
         hosted_red_merged = []

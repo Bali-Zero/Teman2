@@ -32,6 +32,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
                              'merged_here = prs[n].get("merged") is True and head_of(prs[n]) == head', (REPORT,)),
     "min-contexts-minus-one": (PY, "compared_ctx >= MIN_COMPARED_CONTEXTS})", "compared_ctx >= MIN_COMPARED_CONTEXTS - 1})", (REPORT,)),
     "min-contexts-ignored": (PY, "compared_ctx >= MIN_COMPARED_CONTEXTS})", "True})", (REPORT,)),
+    "compared-merge-hosted-pending": (PY, 'merged_here and github != "PENDING" and d.get("contexts_status")', 'merged_here and d.get("contexts_status")', (REPORT,)),
     "merges-not-deduped": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())',
                            'merges = sorted(r["merged_at"] for r in rows if r["compared_merge"])', (REPORT,)),
     "merges-unsorted": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())',
