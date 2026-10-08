@@ -1,0 +1,49 @@
+task_id: localci-b4-1008
+mission: LOCALCI-SOVEREIGN (phase B, step B4)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Declared by the mandate: one measured capacity fault on Pro and its honest reason. The backend shards' xdist worker
+  count is capped for the local sandbox only, and a timeout after a dead worker says so while staying no verdict.
+  Nothing flips: no workflow, branch protection, status or credential is touched; the hosted command is unchanged and
+  the merger stays shadow unless both halves of its arm are set, as before.
+l_level: L2
+gate_class: opus
+objective: >-
+  Stop backend-shard legs on Pro hanging to their 1800 s kill after a memory-cgroup OOM-kill of an xdist worker
+  (4 of 5 merger runs, 2026-10-07/08): the matrix's backend-shard job runs two workers through
+  PYTEST_XDIST_AUTO_NUM_WORKERS=2, which xdist's `-n auto` reads before any CPU count, so the command and the tests
+  stay the hosted ones and coverage stays full; and a contained leg killed on timeout after xdist reported a dead
+  worker names that line and its number in its reason, ERROR as before, never FAIL.
+constraints:
+  - No .github/ file, branch protection, commit status or credential is touched; nothing is posted or pushed.
+  - Check logic comes from BASE as before (matrix via --contexts-file, runner from the base worktree); the candidate never judges itself.
+  - Pro is not touched by this lane; the measurement it rests on was the orchestrator's (2026-10-07/08).
+  - The cap reaches the backend-shard job only; backend-static, the fan-in and every other context keep xdist's own count.
+  - A dead-worker line changes only the reason of a run that timed out; it never makes a verdict, in either direction.
+acceptance:
+  - text: WHEN the runner plans Backend Tests (Python) from the real matrix and the BASE tests.yml, every backend-shard leg's job env and its `Run unit tests (sharded)` step env SHALL carry PYTEST_XDIST_AUTO_NUM_WORKERS=2 beside the unchanged `-n auto --dist loadfile`, and backend-static and the fan-in SHALL NOT carry it.
+    probe: "test_shard_workers.py::test_the_real_backend_plan_gives_every_shard_leg_two_workers_and_no_other_job_any"
+  - text: WHEN a backend-shard leg runs, the steps.json it hands its sandbox SHALL carry the cap in its job env, and the steps driver SHALL set it on the step's process environment (and SHALL NOT without it).
+    probe: "test_shard_workers.py::test_a_shard_leg_hands_the_cap_to_its_sandbox_and_the_driver_sets_it_on_the_pytest_step"
+  - text: WHEN a contained leg times out and its log carries an xdist dead-worker line, the reason SHALL quote that line and its log line number and the leg SHALL be ERROR with rc None, never FAIL.
+    probe: "test_shard_workers.py::test_a_backend_shard_leg_killed_after_a_dead_worker_is_an_error_never_a_fail"
+  - text: WHEN a contained leg times out and its log carries no dead-worker line, the reason SHALL be the one before B4, word for word.
+    probe: "test_shard_workers.py::test_a_timeout_without_a_dead_worker_keeps_the_old_reason"
+  - text: WHEN the run finished with rc 0 and a dead-worker line in its log (xdist replaced the worker), the result SHALL be unchanged.
+    probe: "test_shard_workers.py::test_a_dead_worker_in_a_run_that_finished_changes_nothing"
+assumptions:
+  - text: The three shards at two workers finish under the 30-minute job timeout on Pro.
+    status: unverified
+    note: Not measured, this lane does not touch Pro. At four workers the slowest shard took 475 s wall and 455 s CPU; halving the workers at most doubles the wall of a CPU-bound shard, about 950 s, under 1800 s.
+    probe: the first shadow-merger tick on Pro after merge — ctx.backend-tests leg seconds in its status.json, and no `node down` line in the shard logs
+  - text: Two workers stay under the 6g cgroup.
+    status: unverified
+    note: From the orchestrator's measurement, one worker peaks ~2.1 GB anon-rss; 2 x 2.1 GB plus the controller is under 6 GiB. Not re-measured at two workers.
+    probe: the same tick — no memcg OOM-kill of a /docker/<ctr> in the VM's kernel log during the backend legs
+consumer_map:
+  - scripts/localci/runner.py plan and run on Pro (the shadow merger's tick) — the backend-shard legs' steps.json job env and the leg reason on a timeout.
+  - scripts/localci/contexts_matrix.yaml as BASE hands it via --contexts-file — the backend-shard job's env.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 0
