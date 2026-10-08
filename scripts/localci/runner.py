@@ -896,21 +896,28 @@ MERGE_GROUP_EVENT_KEYS = {"merge_group", "repository", "organization", "installa
 
 
 REBUILT_IDS = {("github", "sha"), ("github", "event", "merge_group", "base_sha"), ("github", "event", "merge_group", "head_sha")}
+QUEUE_REF = {("github", "ref"), ("github", "event", "merge_group", "head_ref")}   # the queue's ref names the PR: pr-<N>-<base>
+
+
+def path_read(texts, wanted: set) -> str | None:
+    """The first context path `texts` read that is one of `wanted`, or an object that holds one (`${{ github.event.merge_group }}`).
+    What does not parse is refused where that text is evaluated."""
+    X = _gh_expr()
+    for t in texts:
+        try:
+            found = X.paths(str(t or ""))
+        except X.ExprError:
+            continue
+        for path in found:
+            if any(ids[:len(path)] == tuple(str(p).lower() for p in path) for ids in wanted):
+                return ".".join(path)
+    return None
 
 
 def rebuilt_id(texts) -> str | None:
     """The first commit id the sandbox rebuilds that `texts` reads: only the driver knows those ids, once it has built the commits, so a text
     the runner evaluates itself (an artifact name or path, a host or egress step) cannot read them (Codex, B1 delta review)."""
-    X = _gh_expr()
-    for t in texts:
-        try:
-            found = X.paths(str(t or ""))
-        except X.ExprError:   # what does not parse is refused where that text is evaluated
-            continue
-        for path in found:   # the id itself, or an object that holds it (`${{ github.event.merge_group }}`)
-            if any(ids[:len(path)] == tuple(str(p).lower() for p in path) for ids in REBUILT_IDS):
-                return ".".join(path)
-    return None
+    return path_read(texts, REBUILT_IDS)
 
 
 def unmodelled_path(path: list, gh: dict, needs: list, stood_in: dict) -> str | None:
@@ -1085,6 +1092,11 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 for path in found:
                     if (why := unmodelled_path(path, gh, needs, local.get("needs") or {})):
                         raise X.ExprError(f"{lab}: `{'.'.join(path)}` {why}")
+            if pr_number is None:   # hosted, the queue's ref is refs/heads/gh-readonly-queue/main/pr-<N>-<base>; here '' or made up
+                for lab, t in [*texts, *((f"step {st['name']!r} argv", str(a)) for st in steps for a in st.get("argv") or [])]:
+                    if (q := path_read([t], QUEUE_REF)):
+                        raise X.ExprError(f"{lab} reads `{q}`, the merge queue's ref that names the PR: the runner was given no --pr-number, "
+                                          "so the step would run on an empty or made-up ref (plan again with --pr-number)")
             if (rid := rebuilt_id(v for st in steps for v in (st.get("emulate") or {}).values())):
                 raise X.ExprError(f"an artifact name or path reads `{rid}`, a commit id only the driver knows")
         except X.ExprError as e:

@@ -222,13 +222,13 @@ def svc_ctx(**over) -> dict:
     return {"name": "Fan In", "workflow_file": WF, "job_id": "fanin", "mapping": "executed", "local": local}
 
 
-def planned_svc(tmp_path: Path, monkeypatch, candidate: dict, ctx: dict, base: dict | None = None) -> dict:
+def planned_svc(tmp_path: Path, monkeypatch, candidate: dict, ctx: dict, base: dict | None = None, *extra: str) -> dict:
     exe = fake_docker(tmp_path)
     exe.write_text(exe.read_text().replace('"image inspect") for a', '"image inspect") case "$4" in *Config.Env*) '
                                            'printf "sha256:%064d\\nPYTHON_VERSION=3.12.15\\n" 1; exit 0;; esac; for a'))
     monkeypatch.setenv("PATH", f"{exe.parent}{os.pathsep}{os.environ['PATH']}")
     fx = fr.make_repo(tmp_path, candidate, base or {WF: yaml.safe_dump(WORKFLOW)})
-    fr.plan(fx, "--isolation", "container", "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])))
+    fr.plan(fx, "--isolation", "container", "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])), *extra)
     return json.loads((fx["run"] / "state" / "plan.json").read_text())["checks"]["ctx.fan-in"]
 
 
@@ -543,6 +543,24 @@ def test_the_real_service_contexts_account_for_every_step_of_every_job():
 def _fanin_reading(env: dict, run: str) -> dict:
     return {WF: yaml.safe_dump({**WORKFLOW, "jobs": {**WORKFLOW["jobs"], "fanin": {**WORKFLOW["jobs"]["fanin"], "steps": [
         {"name": "assert", "env": {"R": "${{ needs.unit.result }}", **env}, "run": run}]}}})}
+
+
+@pytest.mark.parametrize("read", ["${{ github.event.merge_group.head_ref }}", "${{ github.event.merge_group }}", "${{ github.REF }}"])
+def test_a_step_that_reads_the_queue_ref_is_blocked_without_a_pr_number_never_run_on_an_empty_ref(tmp_path, monkeypatch, read):
+    base = _fanin_reading({}, f'echo "{read}" | grep -q pr-7-')
+    spec = planned_svc(tmp_path / "none", monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), base)
+    assert spec["status"] == "BLOCKED" and "step 'assert' run body" in spec["reason"] and "--pr-number" in spec["reason"]
+    spec = planned_svc(tmp_path / "pr", monkeypatch, fr.CANDIDATE_FILES, svc_ctx(), base, "--pr-number", "7")
+    assert spec.get("status") != "BLOCKED" and "/pr-7-" in spec["expr"]["github"]["event"]["merge_group"]["head_ref"]
+
+
+def test_a_host_reader_whose_argv_reads_the_queue_ref_is_blocked_without_a_pr_number(tmp_path, monkeypatch):
+    ctx = host_ctx(["$PY", READER, "--ref", "${{ github.event.merge_group.head_ref }}"])
+    spec = planned_svc(tmp_path / "none", monkeypatch, fr.CANDIDATE_FILES, ctx, HOST_BASE)
+    assert spec["status"] == "BLOCKED" and "step 'verdict' argv" in spec["reason"] and "--pr-number" in spec["reason"]
+    spec = planned_svc(tmp_path / "pr", monkeypatch, fr.CANDIDATE_FILES, ctx, HOST_BASE, "--pr-number", "7")
+    assert spec.get("status") != "BLOCKED" and spec["jobs"][0]["steps"][1]["side"]["argv"][-1].endswith("/pr-7-" + spec["expr"]["github"]
+                                                                                                       ["event"]["merge_group"]["head_ref"][-40:])
 
 
 def test_a_refused_secret_names_its_variable_and_never_a_value(tmp_path, monkeypatch):
