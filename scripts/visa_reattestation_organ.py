@@ -198,9 +198,9 @@ def find_anchor(repo: Path, ref: str = "origin/main") -> dict[str, Any]:
     return {"seq": seq, "signed_rel": signed_rel, "source_rel": source_rel, "boundary": boundary}
 
 
-def find_open_organ_pr(anchor_seq: int) -> dict[str, Any] | None:
+def find_open_organ_pr(anchor_seq: int, repo: Path) -> dict[str, Any] | None:
     proc = _run(["gh", "pr", "list", "--state", "open", "--limit", "100",
-                 "--json", "number,headRefName,url"])
+                 "--json", "number,headRefName,url"], cwd=repo)
     if proc.returncode != 0:
         raise OrganError("pr-lookup", f"gh pr list rc={proc.returncode}: {proc.stderr.strip()[-200:]}")
     prefix = f"{BRANCH_PREFIX}{anchor_seq}-"
@@ -269,9 +269,14 @@ def write_state(args: argparse.Namespace, state: dict[str, Any]) -> None:
 
 
 # ---------------------------------------------------------------- pipeline pieces
-def _python(code_root: Path) -> str:
-    venv = code_root / "apps" / "backend-rag" / ".venv" / "bin" / "python"
-    return str(venv) if venv.is_file() else sys.executable
+def _python(code_root: Path, repo: Path | None = None) -> str:
+    """The backend venv is untracked, so a fresh worktree never has one: fall back to the
+    shared checkout's, then to the interpreter running this script."""
+    for root in (code_root, repo):
+        venv = root / "apps" / "backend-rag" / ".venv" / "bin" / "python" if root else None
+        if venv is not None and venv.is_file():
+            return str(venv)
+    return sys.executable
 
 
 def _backend_env(code_root: Path) -> dict[str, str]:
@@ -281,21 +286,23 @@ def _backend_env(code_root: Path) -> dict[str, str]:
     return env
 
 
-def _module(stage: str, code_root: Path, module: str, argv: list[str], ok: tuple[int, ...] = (0,)) -> subprocess.CompletedProcess[str]:
-    proc = _run([_python(code_root), "-m", f"backend.scripts.visa_engine.{module}", *argv],
+def _module(stage: str, code_root: Path, repo: Path, module: str, argv: list[str],
+            ok: tuple[int, ...] = (0,)) -> subprocess.CompletedProcess[str]:
+    proc = _run([_python(code_root, repo), "-m", f"backend.scripts.visa_engine.{module}", *argv],
                 cwd=code_root / "apps" / "backend-rag", env=_backend_env(code_root))
     if proc.returncode not in ok:
         raise OrganError(stage, f"{module} rc={proc.returncode}: {(proc.stdout + proc.stderr).strip()[-600:]}",
-                         rc=1 if stage == "judge" else 2)
+                         rc=1 if stage == "judge" and proc.returncode == 1 else 2)
     return proc
 
 
 def ensure_worktree(args: argparse.Namespace, anchor_seq: int, branch: str, existing: bool, wt: Path) -> None:
     repo = Path(args.repo)
+    wt.parent.mkdir(parents=True, exist_ok=True)
     _git(repo, "worktree", "prune")
     start = f"origin/{branch}" if existing else "origin/main"
     if existing:
-        _git(repo, "fetch", "origin", branch)
+        _git(repo, "fetch", "origin", f"+refs/heads/{branch}:refs/remotes/origin/{branch}")
     _git(repo, "worktree", "add", "-B", branch, str(wt), start)
     assert_not_shared_checkout(wt)
 
@@ -307,9 +314,9 @@ def read_and_judge(args: argparse.Namespace, wt: Path, code_root: Path, anchor: 
         shutil.copytree(args.ledger_dir, ledger, dirs_exist_ok=True)
     receipts, judgements = ledger / f"{reader}-receipts.jsonl", ledger / f"{reader}-judgements.jsonl"
     if not args.offline and not args.ledger_dir and not receipts.is_file():
-        proc = _run([_python(code_root), str(code_root / VISA_SCRIPTS_REL / "portal_read_receipt.py"),
+        proc = _run([_python(code_root, Path(args.repo)), str(code_root / VISA_SCRIPTS_REL / "portal_read_receipt.py"),
                      "--pack", str(signed), "--out-dir", str(ledger), "--reader", reader, "--all"],
-                    env=_backend_env(code_root))
+                    cwd=code_root / "apps" / "backend-rag", env=_backend_env(code_root))
         if proc.returncode != 0:
             raise OrganError("read", f"portal_read_receipt rc={proc.returncode}: {(proc.stdout + proc.stderr).strip()[-500:]}")
     if args.skip_judge:
@@ -318,7 +325,7 @@ def read_and_judge(args: argparse.Namespace, wt: Path, code_root: Path, anchor: 
     elif not judgements.is_file():
         if not (code_root / VISA_SCRIPTS_REL / "portal_judge.py").is_file():
             raise OrganError("judge", "portal_judge.py is absent in the code root (PR #8069 not merged yet)")
-        _module("judge", code_root, "portal_judge", ["--pack", str(signed), "--ledger-dir", str(ledger),
+        _module("judge", code_root, Path(args.repo), "portal_judge", ["--pack", str(signed), "--ledger-dir", str(ledger),
                 "--reader", reader, "--all", "--judge", args.judge, "--model", args.model], ok=(0,))
 
 
@@ -332,7 +339,7 @@ def fold(args: argparse.Namespace, wt: Path, code_root: Path, anchor: dict, ledg
         argv += ["--created-at", args.fold_created_at]
     if args.judge == "fake" or args.fold_allow_fake:
         argv.append("--allow-fake-reader")
-    proc = _module("fold", code_root, "fold_pack_generic", argv)
+    proc = _module("fold", code_root, Path(args.repo), "fold_pack_generic", argv)
     sha = next((ln.rsplit("= ", 1)[1].strip() for ln in proc.stdout.splitlines() if "payload_sha256 =" in ln), "")
     return out, sha
 
@@ -350,7 +357,7 @@ def publish(args: argparse.Namespace, wt: Path, branch: str, existing_pr: dict |
     commit_and_push(wt, branch, title, rels)
     if existing_pr:
         return existing_pr["url"]
-    proc = _run(["gh", "pr", "create", "--base", "main", "--head", branch, "--title", title, "--body", body])
+    proc = _run(["gh", "pr", "create", "--base", "main", "--head", branch, "--title", title, "--body", body], cwd=wt)
     if proc.returncode != 0:
         raise OrganError("pr-create", f"gh pr create rc={proc.returncode}: {proc.stderr.strip()[-300:]}")
     return proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
@@ -362,10 +369,10 @@ def run(args: argparse.Namespace) -> int:
     date = now.strftime("%Y-%m-%d")
     repo = Path(args.repo)
     if not args.dry_run and not args.no_fetch:
-        _git(repo, "fetch", "origin", "main")
+        _git(repo, "fetch", "origin", "+refs/heads/main:refs/remotes/origin/main")
     anchor = find_anchor(repo)
     next_seq = anchor["seq"] + 1
-    existing_pr = None if args.offline else find_open_organ_pr(anchor["seq"])
+    existing_pr = None if args.offline else find_open_organ_pr(anchor["seq"], repo)
     branch = existing_pr["headRefName"] if existing_pr else f"{BRANCH_PREFIX}{anchor['seq']}-{date}"
     remote_branch = existing_pr is not None or _git(
         repo, "ls-remote", "--exit-code", "--heads", "origin", branch, check=False).returncode == 0
@@ -436,7 +443,7 @@ def run(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Weekly Visa Oracle portal re-attestation organ.")
     p.add_argument("--dry-run", action="store_true", help="print the plan; no fetch, git write, PR, alert or state")
-    p.add_argument("--offline", action="store_true", help="no portal read, no gh, no Telegram; needs --ledger-dir")
+    p.add_argument("--offline", action="store_true", help="no portal read, no gh, no Telegram, no board; git still talks to --repo's origin; needs --ledger-dir")
     p.add_argument("--judge", choices=("claude", "fake"), default="claude")
     p.add_argument("--model", default="sonnet")
     p.add_argument("--skip-judge", action="store_true", help="use judgements already in the ledger")

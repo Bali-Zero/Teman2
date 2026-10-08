@@ -60,11 +60,13 @@ def world(tmp_path: Path, monkeypatch):
     tg_script.write_text("# stub")
     monkeypatch.setattr(organ, "TG_NOTIFY", tg_script)
     calls: list[list[str]] = []
+    cwds: dict[str, Path | None] = {}
     cfg = {"judge_rc": 0, "fold_rc": 0, "open_prs": [], "gh_create_rc": 0}
     real = subprocess.run
 
     def fake_run(cmd, *, cwd=None, env=None, timeout=1800):
         calls.append(list(cmd))
+        cwds[" ".join(cmd[:3])] = cwd
         if cmd[0] == "git":
             return real(cmd, cwd=cwd, env=env, capture_output=True, text=True, check=False)
         text = " ".join(cmd)
@@ -100,7 +102,7 @@ def world(tmp_path: Path, monkeypatch):
     class W:
         pass
     w = W()
-    w.__dict__.update(origin=origin, shared=shared, calls=calls, cfg=cfg, args=args, tmp=tmp_path)
+    w.__dict__.update(origin=origin, shared=shared, calls=calls, cwds=cwds, cfg=cfg, args=args, tmp=tmp_path)
     w.board = lambda: [json.loads(x) for x in (tmp_path / "board.jsonl").read_text().splitlines()] if (tmp_path / "board.jsonl").exists() else []
     w.tg = lambda: [c for c in calls if "tg_notify.py" in " ".join(c)]
     w.gh_create = lambda: [c for c in calls if c[:3] == ["gh", "pr", "create"]]
@@ -225,7 +227,7 @@ def test_existing_open_pr_gets_a_new_commit_not_a_second_pr(world):
 
 def test_a_pr_for_another_anchor_does_not_count(world):
     world.cfg["open_prs"] = [{"number": 3, "headRefName": "organ/visa-reattest/24-2026-09-01", "url": "https://x/pull/3"}]
-    assert organ.find_open_organ_pr(25) is None
+    assert organ.find_open_organ_pr(25, world.shared) is None
     organ.run(world.args("--now", "2026-10-12T18:00:00Z"))
     assert len(world.gh_create()) == 1
 
@@ -293,3 +295,23 @@ def test_a_resolved_board_row_does_not_mute_the_next_failure(world):
         fh.write(json.dumps({"job": job, "status": "resolved", "ts": 1.0}) + "\n")
     organ.run(world.args("--now", world.now(19)))
     assert [r["status"] for r in world.board()] == ["pending", "resolved", "pending"]
+
+
+def test_gh_runs_inside_a_git_directory_never_the_launchd_cwd(world):
+    organ.run(world.args("--now", "2026-10-12T18:00:00Z"))
+    assert world.cwds["gh pr list"] == world.shared
+    assert world.cwds["gh pr create"] is not None and "worktrees" in str(world.cwds["gh pr create"])
+
+
+def test_python_falls_back_to_the_shared_checkouts_venv(tmp_path):
+    shared, wt = tmp_path / "shared", tmp_path / "wt"
+    venv = shared / "apps" / "backend-rag" / ".venv" / "bin"
+    venv.mkdir(parents=True)
+    (venv / "python").write_text("")
+    assert organ._python(wt, shared) == str(venv / "python")
+    assert organ._python(wt, None) == sys.executable
+
+
+def test_a_judge_crash_is_not_read_as_an_unsure_page(world):
+    world.cfg["judge_rc"] = 3
+    assert organ.run(world.args("--now", world.now(20))) == 2
