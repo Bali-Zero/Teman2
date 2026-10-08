@@ -150,12 +150,19 @@ and the VM has 8. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a s
 
 | check | wall s | in-sandbox CPU s | legs (wall / CPU s) |
 |---|---|---|---|
-| ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 |
+| ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 — shards at 4 xdist workers; since B4 they run 2, wall not yet re-measured |
 | ctx.harness-floor | 67 | 0.5 | one leg; the Gear ≥ 2 reader ran at plan |
 | ctx.e2e-tests | 320 | 207 | one leg: backend + Next.js build + 134 Playwright specs (PR-B2, 1df44b9b65) |
 | ctx.frontend-tests-mouth | 297 | 515 | the (mouth, true) leg: contract check, tsc, vitest with coverage, core, admin, wa-mirror |
 | ctx.visa-oracle-smoke | 138 | 47 | one leg: disposable DB, signed TEST RulePack, the fullstack Playwright spec |
 | whole run, 14 required contexts | 2267 (B1) · 2784 (B2) | — | plan 6-9 s with the deps images cached |
+
+**Shard workers (B4).** `pytest -n auto` starts one xdist worker per CPU, 4 on this VM, and one worker peaks ~2.1 GB
+anon-rss: 4 x 2.1 GB exceeds the leg's 6g memory cgroup (no swap), the kernel OOM-killed a worker, xdist printed
+`[gwN] node down: Not properly terminated` and shard 2 hung to its 1800 s kill in 4 of 5 merger runs (2026-10-07/08).
+The matrix's backend-shard job sets `PYTEST_XDIST_AUTO_NUM_WORKERS=2`: the same command and tests, files whole per worker,
+coverage `full`. Hosted runs 4 workers on 16 GB; the cap is a local capacity adaptation that goes the day the VM is resized.
+A leg killed on timeout after such a line says so in its reason (worker, log line) and stays ERROR, never FAIL.
 
 The deps image (`localci-deps:<digest16>`, 9.85 GB: 294 aarch64 wheels, node 24, the fetched files) is built once per
 recipe: 394 s cold at plan (download, install, export), then a cache hit while the candidate's pins and the image are unchanged.
