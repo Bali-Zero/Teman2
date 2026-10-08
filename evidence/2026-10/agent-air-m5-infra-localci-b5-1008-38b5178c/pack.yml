@@ -72,10 +72,10 @@ receipts:
     exit: 0
     ts: "2026-10-08T10:27:00Z"
     seat: claude-opus-5-5 on M5
-  - claim: SUITE_SWEEP_RESULT
+  - claim: "At db3c266365 (origin/main aa56e78640 with B4 #8086 merged in, no conflict): the localci suite 861 passed, 14 skipped (needs_docker), 268 s (B3+B4 843, B5 adds 18); the full mutant sweep over all 154 rules (133 from B3, B4 and before, 21 from B5) 153 killed, 0 survived, 0 errors, 1 stale — report-coverage-not-read, a B3 rule whose line B5-3 extended with `skipped`; realigned to the new line and re-run: killed, 154/154."
     cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider; python3 scripts/localci/tests/mutants/merger_mutants.py
     exit: 0
-    ts: "SUITE_TS"
+    ts: "2026-10-08T11:21:30Z"
     seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
@@ -87,6 +87,6 @@ residuals:
   - "Decisions journalled before B5 record no skip: their skips read as executions, and a skip here beside a hosted run was counted full then and still is on those lines."
   - "No adversarial round: the independent gate is the orchestrator's (generator is never grader)."
 appetite_exceeded: >-
-  Size only: 320 net lines outside evidence/ against the ~300 the mandate set (118, 94, 54 and 54 per commit); code is 63 net
+  Size only: 320 net lines outside evidence/ (465 with it) against the ~300 the mandate set (118, 94, 54 and 54 per commit); code is 63 net
   (runner 35, hosted_compare 20, merger 8), spec and README 23, and tests with the 21 mutant rules 234. Wall clock within the
   2.5-hour budget.
