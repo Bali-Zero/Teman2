@@ -725,10 +725,10 @@ def test_same_day_reruns_do_not_spam(tmp_path, monkeypatch):
     _board(tmp_path, monkeypatch)
     gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
     v = _stale_verdict()
-    for hour in (0, 6, 12, 18):
+    for hour in (0, 6, 12):
         _cycle(v, tmp_path, gw, T0 + hour * 3600)
     assert len(_calls(tmp_path)) == 1
-    _cycle(v, tmp_path, gw, T0 + 24 * 3600)
+    _cycle(v, tmp_path, gw, T0 + 18 * 3600)
     assert len(_calls(tmp_path)) == 2
 
 
@@ -816,3 +816,133 @@ def test_dry_run_reports_the_decision_and_touches_nothing(tmp_path, monkeypatch)
     assert set(d["dedup_state"]) >= {"delivered_streak", "next_due_ts"}
     assert not (tmp_path / "state.json").exists() and not _calls(tmp_path)
     assert not esc.is_job_open(vfs.ESCALATION_JOB)
+
+
+# ---------------------------------------------------------------------------
+# W141 successor — corrupt state, cadence, board routing (Codex red-team, all three BLOCK)
+# ---------------------------------------------------------------------------
+
+import math  # noqa: E402
+import plistlib  # noqa: E402
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        {"condition": "STALE:23", "delivered_streak": None},
+        {"condition": "STALE:23", "next_due_ts": float("nan")},
+        {"condition": "STALE:23", "next_due_ts": "soon"},
+        {"condition": "STALE:23", "last_delivered_ts": 9e12, "next_due_ts": 9e12 + 100},
+        {"condition": "STALE:23", "delivered_streak": True, "undelivered_attempts": -3},
+    ],
+)
+def test_corrupt_state_never_silences_a_stale(tmp_path, monkeypatch, caplog, state):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    (tmp_path / "state.json").write_text(json.dumps(state))
+    with caplog.at_level("WARNING", logger="visa_freshness_sentinel"):
+        d = _cycle(_stale_verdict(), tmp_path, gw, T0)
+    assert d["would_send"] is True and d["delivered"] is True
+    assert "state-reset:" in caplog.text
+    assert len(_calls(tmp_path)) == 1
+
+
+def test_valid_state_inside_the_gate_still_waits(tmp_path, monkeypatch, caplog):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    _cycle(_stale_verdict(), tmp_path, gw, T0)
+    with caplog.at_level("WARNING", logger="visa_freshness_sentinel"):
+        d = _cycle(_stale_verdict(), tmp_path, gw, T0 + 3600)
+    assert d["reason"] == "not-due-yet" and "state-reset" not in caplog.text
+
+
+def test_unreadable_state_file_sends(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    (tmp_path / "state.json").write_text("{not json")
+    assert _cycle(_stale_verdict(), tmp_path, gw, T0)["delivered"] is True
+
+
+def test_an_exception_in_the_decision_still_attempts_the_send(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+
+    def boom(*_a, **_k):
+        raise ZeroDivisionError
+
+    monkeypatch.setattr(vfs, "decide_alert", boom)
+    d = _cycle(_stale_verdict(), tmp_path, gw, T0)
+    assert d["reason"] == "internal-error-fallback-send" and len(_calls(tmp_path)) == 1
+
+
+def test_an_exception_in_a_dry_run_sends_nothing(tmp_path, monkeypatch):
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    monkeypatch.setattr(vfs, "decide_alert", lambda *_a: 1 / 0)
+    _cycle(_stale_verdict(), tmp_path, gw, T0, dry_run=True)
+    assert not _calls(tmp_path)
+
+
+def test_gate_is_derived_from_the_launchd_cadence():
+    plist = REPO / "infra/launchagents/com.nuzantara.visa-freshness-sentinel.plist"
+    assert plistlib.loads(plist.read_bytes())["StartInterval"] == vfs.CADENCE_S
+    assert vfs.REALERT_GATE_S + vfs.CADENCE_S + vfs.DRIFT_SLACK_S == vfs.REALERT_MAX_GAP_S
+
+
+def test_ticks_every_6_1_hours_never_leave_a_gap_over_24_hours(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    v = _stale_verdict()
+    delivered = []
+    for tick in range(int(72 / 6.1) + 1):
+        at = T0 + tick * 6.1 * 3600
+        if _cycle(v, tmp_path, gw, at).get("delivered"):
+            delivered.append(at)
+    gaps = [(b - a) / 3600 for a, b in zip(delivered, delivered[1:])]
+    assert len(delivered) >= 4 and max(gaps) <= 24
+
+
+def test_guilt_a_23_hour_gate_breaks_the_24_hour_promise():
+    ticks = [n * 6.1 for n in range(5)]
+    sent, last = [], None
+    for t in ticks:
+        if last is None or t - last >= 23:
+            sent.append(t)
+            last = t
+    assert sent[1] - sent[0] > 24
+
+
+def test_routed_spooled_counts_as_delivery_and_ok_resolves_every_row(tmp_path, monkeypatch):
+    """Real gateway subprocess, real escalation helpers, private spool and board."""
+    esc = _board(tmp_path, monkeypatch)
+    monkeypatch.setenv("TG_SPOOL_DIR", str(tmp_path / "spool"))
+    monkeypatch.setenv("TG_BOARD_PATH", str(tmp_path / "escalations_pro.jsonl"))
+    monkeypatch.setenv("TG_ACT_ROUTING_ENABLED", "true")
+    v = _stale_verdict()
+    results = [
+        vfs.run_alert_cycle(v, dry_run=False, now_ts=T0 + d * DAY, state_path=tmp_path / "state.json")
+        for d in range(5)
+    ]
+    assert [r["gateway_verdict"] for r in results][0] == "spooled"
+    assert all(r["delivered"] and r["delivered_via"] == "board" for r in results)
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert state["delivered_streak"] == 5 and state["route"] == "board"
+    rows = [json.loads(x) for x in (tmp_path / "escalations_pro.jsonl").read_text().splitlines()]
+    routed_jobs = {r["job"] for r in rows if r.get("type") == "gateway_routed"}
+    assert 1 <= len(routed_jobs) <= 2  # not one per day
+
+    ok = vfs.classify_freshness([_portal_record("p", VERIFIED_AT.isoformat())], VERIFIED_AT)
+    _cycle(ok, tmp_path, tmp_path / "unused.py", T0 + 6 * DAY)
+    open_jobs = [j for j in routed_jobs | {vfs.ESCALATION_JOB} if esc.is_job_open(j)]
+    assert open_jobs == []
+
+
+def test_a_genuine_failure_is_still_undelivered_not_a_board_delivery(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    (tmp_path / "mode").write_text("p0_overflow_spooled")
+    d = _cycle(_stale_verdict(), tmp_path, gw, T0)
+    assert d["delivered"] is False and math.isclose(
+        json.loads((tmp_path / "state.json").read_text())["next_due_ts"], T0
+    )

@@ -13,6 +13,9 @@ simulated STALE snapshot (pack 25, 18 stale portal ids) with an injected clock:
 2. one hour later             -> would_send false (inside the 23 h gate)
 3. twenty-four hours later    -> would_send true (the re-alert)
 4. sender returns undelivered -> the delivered streak does not move
+5. corrupt state file         -> a send, never a crash and never `not-due-yet`
+6. ticks every 6.1 h, 3 days  -> every delivery gap is at most 24 h
+7. gateway answers `spooled`  -> counts as a delivery (board route)
 
 Exit 0 only if all four assertions hold.
 """
@@ -83,6 +86,36 @@ def main() -> int:
         decisions[1]["would_send"] is False,
         decisions[2]["would_send"] is True,
         decisions[3].get("delivered") is False and streak == 2,
+    )
+    vfs._send = lambda v, gw, key=None: ("sent", "")
+    with tempfile.TemporaryDirectory() as tmp:
+        state = Path(tmp) / "state.json"
+        state.write_text('{"condition": "STALE:25", "delivered_streak": null, "next_due_ts": NaN}')
+        corrupt = vfs.run_alert_cycle(
+            verdict, dry_run=False, now_ts=T0.timestamp(), state_path=state
+        )
+        print(json.dumps({"alert_decision": corrupt}, sort_keys=True))
+
+        cadence = Path(tmp) / "cadence.json"
+        delivered = []
+        for tick in range(int(72 / 6.1) + 1):
+            at = T0.timestamp() + tick * 6.1 * 3600
+            out = vfs.run_alert_cycle(verdict, dry_run=False, now_ts=at, state_path=cadence)
+            if out.get("delivered"):
+                delivered.append(at)
+        gaps = [(b - a) / 3600 for a, b in zip(delivered, delivered[1:])]
+        print(json.dumps({"delivery_gaps_hours": [round(g, 1) for g in gaps]}))
+
+        vfs._send = lambda v, gw, key=None: ("spooled", "")
+        board = vfs.run_alert_cycle(
+            verdict, dry_run=False, now_ts=T0.timestamp(), state_path=Path(tmp) / "board.json"
+        )
+        print(json.dumps({"alert_decision": board}, sort_keys=True))
+
+    checks += (
+        corrupt["would_send"] is True and corrupt.get("delivered") is True,
+        len(gaps) >= 3 and max(gaps) <= 24,
+        board.get("delivered") is True and board.get("delivered_via") == "board",
     )
     if not all(checks):
         print(f"observe_visa_freshness_sentinel: FAILED checks={checks} streak={streak}")

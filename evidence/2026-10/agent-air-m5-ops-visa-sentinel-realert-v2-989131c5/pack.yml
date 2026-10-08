@@ -39,15 +39,15 @@ decisions:
 receipts:
   - claim: The sentinel test module passes, including nine new guilt and innocence tests for the re-alert.
     cmd: python3 -m pytest scripts/tests/test_visa_freshness_sentinel.py -q -p no:cacheprovider -o addopts=""
-    result: "42 passed in 1.38s"
+    result: "56 passed in 2.80s"
     exit: 0
-    ts: "2026-10-08T06:25:25Z"
+    ts: "2026-10-08T06:42:06Z"
     seat: this session
   - claim: Against production the sentinel reads the active pack and prints the alert decision without side effects.
     cmd: VISA_FRESHNESS_STATE=/tmp/x-nonexistent/s.json python3 scripts/visa_freshness_sentinel.py --dry-run
     result: "outcome OK, pack_sequence 25, pack_source database, alert_decision {would_send false, reason ok-resets-ladder, delivered_streak 0}"
     exit: 0
-    ts: "2026-10-08T06:25:26Z"
+    ts: "2026-10-08T06:42:07Z"
     seat: this session
   - claim: Ruff reports one finding, an unused import in the pre-existing part of the test file, none in the new code.
     cmd: ruff check scripts/visa_freshness_sentinel.py scripts/tests/test_visa_freshness_sentinel.py
@@ -55,26 +55,34 @@ receipts:
     exit: 1
     ts: "2026-10-08T06:25:26Z"
     seat: this session
-  - claim: The CI observer drives the real decision code over a simulated STALE; the re-alert fires at 24 hours, holds at 1 hour, and an undelivered send leaves the streak at 2.
+  - claim: The CI observer drives the real decision code over a simulated STALE; the re-alert fires at 24 hours, holds at 1 hour, an undelivered send leaves the streak at 2, corrupt state still sends, 6.1-hour ticks keep every gap at 18.3 hours, and spooled counts as a board delivery.
     cmd: python3 scripts/ci/observe_visa_freshness_sentinel.py
     result: "observe_visa_freshness_sentinel: a persistent STALE re-alerts daily and an undelivered send never counts"
     exit: 0
-    ts: "2026-10-08T06:28:03Z"
+    ts: "2026-10-08T06:42:03Z"
     seat: this session
 dissent:
-  - seat: self-review (not an independent refuter)
+  - seat: codex-gpt-5.6-sol (red-team)
     objection: >-
-      The gateway verdict spooled, produced by board routing, is treated as deterministic custody
-      and waits 23 hours before the next send. If routing is the normal path for this key, the
-      human is reached only through the HIGH board row, not Telegram.
-    status: PLAUSIBLE
-    note: carried — the wait avoids a NORMAL gateway row every 6 hours, at the price of slower retry.
+      Corrupt or backward-clocked state silenced STALE: a null streak crashed the decision, a NaN
+      due time suppressed alerts forever, a future timestamp was trusted.
+    status: CONFIRMED
+    note: cured in this PR — every state field is validated on load, an invalid one is treated as absent and logged state-reset, and an exception in the cycle still attempts the send.
+  - seat: codex-gpt-5.6-sol (red-team)
+    objection: >-
+      The 23-hour gate did not guarantee 24 hours under the 6-hour launchd cadence with drift: ticks every 6.1 hours gave a 24.4-hour gap.
+    status: CONFIRMED
+    note: cured in this PR — the gate is 24 h minus the plist StartInterval minus 30 min (17.5 h), derived from one constant and pinned to the plist by a test; 6.1-hour ticks give 18.3-hour gaps.
+  - seat: codex-gpt-5.6-sol (red-team)
+    objection: >-
+      The gateway routes the visa-freshness family to the board, so Telegram never delivered, per-day keys spawned distinct board jobs, and OK resolved only the HIGH row.
+    status: CONFIRMED
+    note: cured in this PR — spooled counts as a board delivery, the board route keeps one stable key (re-probed weekly), and OK resolves every row whose job starts with visa-freshness.
   - seat: self-review
     objection: >-
-      Whether TG_OWNER_FAMILIES or the routing switch on Pro sends the visa-freshness key to the
-      board instead of Telegram was not verified from M5.
+      Whether the Pro gateway environment really routes this family to the board was not checked from M5, and the weekly re-probe is untested against a live Telegram path.
     status: PLAUSIBLE
-    note: open — check the gateway environment on Pro after merge.
+    note: open — check TG_OWNER_FAMILIES on Pro after merge.
 spend:
   wall_clock_hours: 1
   adversarial_rounds: 0

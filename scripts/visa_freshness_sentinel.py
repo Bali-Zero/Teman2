@@ -69,6 +69,7 @@ import argparse
 import dataclasses
 import json
 import logging
+import math
 import os
 import subprocess
 import sys
@@ -780,9 +781,18 @@ def send_alert(
 # not move that schedule.
 # ---------------------------------------------------------------------------
 
-REALERT_INTERVAL_S = 23 * 3600  # 24h minus one launchd-jitter hour
+# Invariant: gap between two deliveries <= REALERT_MAX_GAP_S while the condition persists.
+# A run can only land on a tick, so the worst gap is gate + one tick + drift:
+#   REALERT_GATE_S + CADENCE_S + DRIFT_SLACK_S == REALERT_MAX_GAP_S.
+CADENCE_S = 6 * 3600  # StartInterval of infra/launchagents/com.nuzantara.visa-freshness-sentinel.plist
+REALERT_MAX_GAP_S = 24 * 3600
+DRIFT_SLACK_S = 30 * 60
+REALERT_GATE_S = REALERT_MAX_GAP_S - CADENCE_S - DRIFT_SLACK_S
+CLOCK_SKEW_S = 300
+BOARD_REPROBE_S = 7 * 86400
 APPROACHING_PERSIST_S = 7 * 86400
 ESCALATION_JOB = "visa-freshness-sentinel:persistent"
+ESCALATION_JOB_PREFIX = "visa-freshness"
 
 
 def _state_path() -> Path:
@@ -823,15 +833,49 @@ def _condition(verdict: Verdict) -> str:
     return f"{verdict.outcome}:{verdict.pack_sequence}"
 
 
+def _is_num(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def sanitize_state(
+    state: dict[str, Any], now_ts: float, *, log: bool = True
+) -> tuple[dict[str, Any], list[str]]:
+    """Validate every field; an invalid one is treated as ABSENT (so the next
+    decision is a send), never trusted. A corrupt file must not silence STALE."""
+    clean: dict[str, Any] = {}
+    reset: list[str] = []
+    horizon = now_ts + CLOCK_SKEW_S
+    checks = {
+        "condition": lambda v: isinstance(v, str),
+        "route": lambda v: v == "board",
+        "delivered_streak": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v < 10**6,
+        "undelivered_attempts": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v < 10**6,
+        "last_delivered_ts": lambda v: _is_num(v) and v <= horizon,
+        "route_ts": lambda v: _is_num(v) and v <= horizon,
+        "next_due_ts": lambda v: _is_num(v) and v <= horizon + REALERT_MAX_GAP_S,
+    }
+    for field, ok in checks.items():
+        if field not in state:
+            continue
+        if ok(state[field]):
+            clean[field] = state[field]
+        else:
+            reset.append(field)
+            if log:
+                logger.warning("state-reset: %s", field)
+    return clean, reset
+
+
 def decide_alert(verdict: Verdict, state: dict[str, Any], now_ts: float) -> dict[str, Any]:
     """Pure: what this run would do about the alert, and why."""
-    streak = int(state.get("delivered_streak", 0))
+    state, _ = sanitize_state(state, now_ts, log=False)
     dedup_state = {
         "condition": state.get("condition"),
-        "delivered_streak": streak,
-        "undelivered_attempts": int(state.get("undelivered_attempts", 0)),
+        "delivered_streak": state.get("delivered_streak", 0),
+        "undelivered_attempts": state.get("undelivered_attempts", 0),
         "last_delivered_ts": state.get("last_delivered_ts"),
         "next_due_ts": state.get("next_due_ts"),
+        "route": state.get("route"),
     }
     if verdict.outcome == OUTCOME_OK:
         return {"would_send": False, "reason": "ok-resets-ladder", "dedup_state": dedup_state}
@@ -839,9 +883,8 @@ def decide_alert(verdict: Verdict, state: dict[str, Any], now_ts: float) -> dict
         return {"would_send": None, "reason": "gateway-ladder", "dedup_state": dedup_state}
     if state.get("condition") != _condition(verdict):
         return {"would_send": True, "reason": "new-condition", "dedup_state": dedup_state}
-    due = float(state.get("next_due_ts") or 0)
-    if now_ts >= due:
-        why = "retry-undelivered" if not state.get("last_delivered_ts") else "realert-due"
+    if now_ts >= state.get("next_due_ts", 0):
+        why = "retry-undelivered" if "last_delivered_ts" not in state else "realert-due"
         return {"would_send": True, "reason": why, "dedup_state": dedup_state}
     return {"would_send": False, "reason": "not-due-yet", "dedup_state": dedup_state}
 
@@ -874,11 +917,17 @@ def _last_escalated(esc: Any) -> str | None:
 
 
 def _escalation_resolve() -> None:
+    """Close the sentinel's HIGH row AND every gateway-routed row it spawned."""
     try:
         from scripts.sentinel_lib import escalations as esc
 
-        if esc.is_job_open(ESCALATION_JOB):
-            esc.mark_resolved(ESCALATION_JOB)
+        jobs = {
+            e.get("job") for e in esc.read_all_escalations()
+            if str(e.get("job", "")).startswith(ESCALATION_JOB_PREFIX)
+        }
+        for job in sorted(j for j in jobs if j):
+            if esc.is_job_open(job):
+                esc.mark_resolved(job)
     except Exception as exc:  # noqa: BLE001
         logger.warning("escalation not resolved: %s", type(exc).__name__)
 
@@ -891,15 +940,31 @@ def run_alert_cycle(
     state_path: Path | None = None,
     gateway_path: Path = TG_NOTIFY,
 ) -> dict[str, Any]:
-    """Decide, send, record. In dry-run only the decision is computed."""
+    """Decide, send, record. In dry-run only the decision is computed.
+
+    Fail LOUD: an unexpected exception still attempts the send. An exception path
+    that returns silently is the W141 shape."""
+    try:
+        return _run_alert_cycle(verdict, dry_run, now_ts, state_path, gateway_path)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("alert cycle failed (%s): sending anyway", type(exc).__name__)
+        decision: dict[str, Any] = {"would_send": True, "reason": "internal-error-fallback-send"}
+        if not dry_run and verdict.outcome != OUTCOME_OK:
+            decision["gateway_verdict"] = _send(verdict, gateway_path)[0]
+        return decision
+
+
+def _run_alert_cycle(
+    verdict: Verdict, dry_run: bool, now_ts: float, state_path: Path | None, gateway_path: Path
+) -> dict[str, Any]:
     path = state_path or _state_path()
-    state = load_state(path)
+    state, _ = sanitize_state(load_state(path), now_ts)
     decision = decide_alert(verdict, state, now_ts)
     if dry_run:
         return decision
 
     if verdict.outcome == OUTCOME_OK:
-        if state:
+        if state or path.exists():
             save_state(path, {})
         _escalation_resolve()
         return decision
@@ -915,30 +980,41 @@ def run_alert_cycle(
     cond = _condition(verdict)
     if state.get("condition") != cond:
         state = {"condition": cond, "delivered_streak": 0}
-    attempts = int(state.get("undelivered_attempts", 0))
-    day = datetime.fromtimestamp(now_ts, timezone.utc).strftime("%Y%m%d")
-    key = f"{dedup_key(verdict)}:d{day}:a{attempts}"
+    attempts = state.get("undelivered_attempts", 0)
+    # Once the gateway has answered `spooled` (board routing), keep ONE stable key so the
+    # board holds one job, not one per day; re-probe weekly in case routing changed.
+    on_board = state.get("route") == "board"
+    probe = on_board and now_ts - state.get("route_ts", 0) >= BOARD_REPROBE_S
+    key = dedup_key(verdict)
+    if not on_board or probe:
+        day = datetime.fromtimestamp(now_ts, timezone.utc).strftime("%Y%m%d")
+        # day + delivery count + attempt: two deliveries inside one UTC day (the gate is
+        # shorter than 24 h) must not share a key, or the ladder mutes the second.
+        key = f"{key}:d{day}:n{state.get('delivered_streak', 0)}:a{attempts}"
     gateway_verdict, failure = _send(verdict, gateway_path, key)
     decision["gateway_verdict"] = gateway_verdict
-    if gateway_verdict == "sent":
+    via = {"sent": "telegram", "spooled": "board"}.get(gateway_verdict or "")
+    if via is None and gateway_verdict == "deduped" and on_board and not probe:
+        via = "board"  # the stable-key board job is already open and muted by the ladder
+    if via:
         state.update(
-            delivered_streak=int(state.get("delivered_streak", 0)) + 1,
+            delivered_streak=state.get("delivered_streak", 0) + 1,
             undelivered_attempts=0,
             last_delivered_ts=now_ts,
-            next_due_ts=now_ts + REALERT_INTERVAL_S,
+            next_due_ts=now_ts + REALERT_GATE_S,
         )
-        decision["delivered"] = True
+        if via == "board":
+            state.update(route="board", route_ts=state.get("route_ts", now_ts) if on_board and not probe else now_ts)
+        else:
+            state.pop("route", None)
+            state.pop("route_ts", None)
+        decision.update(delivered=True, delivered_via=via)
     else:
         reason = failure or str(gateway_verdict)
         logger.warning("undelivered: reason=%s key=%s", reason, key)
         decision.update(delivered=False, undelivered_reason=reason)
         state["undelivered_attempts"] = attempts + 1
-        # "spooled" is deterministic custody (board routing): retrying every run
-        # only adds rows. Every other failure is transient: retry on the next run.
-        if gateway_verdict == "spooled":
-            state["next_due_ts"] = now_ts + REALERT_INTERVAL_S
-        else:
-            state["next_due_ts"] = now_ts
+        state["next_due_ts"] = now_ts  # transient failure: retry on the next run
     save_state(path, state)
     return decision
 
