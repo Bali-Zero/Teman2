@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 7d2192a17bd3abf5ec8b02ecafc248bb31c03aada79e38b1958bf0bacd056f81 # pragma: allowlist secret
+checksum: 0cae080a5de1560fa24021c6ed292de60beaa08e07c376351a880f849b4873aa # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3186,5 +3186,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.localci_merger.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.visa_reattestation
+  runtime: pro_launchd
+  type: cron
+  # 1209600 = 2x this organ's own weekly (604800s) StartCalendarInterval cadence - one full missed run of slack before going stale.
+  expected_hb_seconds: 1209600
+  owner_module: infra/launchagents/wrappers/pro-visa-reattestation.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.visa-reattestation
+  severity_on_silence: warning
+  notes: Weekly Visa Oracle portal re-attestation - reads the OFFICIAL_PORTAL pages,
+    judges them, folds an UNSIGNED candidate pack and opens a PR for a session to sign
+    (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.visa_reattestation.json
     timestamp_field: ts
     status_field: status
