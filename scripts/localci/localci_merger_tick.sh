@@ -32,6 +32,7 @@ fi
 CODE=""
 SHA=""
 WARN=""   # B6: the host under the floor, or a prune that failed: the tick is not an error, the organ says warning
+# shellcheck disable=SC2329  # invoked indirectly, by `trap finish EXIT` below (shellcheck 0.11 does not follow it here)
 finish() {
   local rc=$?
   if [ -n "$CODE" ]; then rm -rf "$CODE"; fi

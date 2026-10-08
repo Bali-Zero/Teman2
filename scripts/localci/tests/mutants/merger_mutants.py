@@ -182,6 +182,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
     "b6-merger-floor-59": (PY, "type=float, default=60.0,", "type=float, default=59.0,", B6_FLOOR),
     "b6-fstrim-without-removal": (PRUNE, "if fstrim and removed and not dry:", "if fstrim and not dry:", (PRUNE_T,)),
+    "b6-prune-code-sha-dropped": (PY, "    CODE_SHA = a.code_sha or None\n", "    CODE_SHA = None\n", (PRUNE_T,)),
+    "b6-prune-code-sha-unvalidated": (PY, "if a.code_sha and not is_sha(a.code_sha):", "if False:", (PRUNE_T,)),
     # B6-4: pro.disk_floor — ok above 100 GB, warning 60-100, failed under 60
     "b6-floor-organ-ok-at-100": (FLOOR_SH, 'if [ "$FREE_GB" -gt "$OK_ABOVE_GB" ]; then VERDICT="ok"', 'if [ "$FREE_GB" -ge "$OK_ABOVE_GB" ]; then VERDICT="ok"', (FLOOR_T,)),
     "b6-floor-organ-ok-above-101": (FLOOR_SH, "OK_ABOVE_GB=100", "OK_ABOVE_GB=101", (FLOOR_T,)),

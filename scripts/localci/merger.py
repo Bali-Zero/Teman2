@@ -903,10 +903,10 @@ def _longest_gap_h(stamps) -> float:
 def cmd_prune(a) -> int:
     """B6: the gate's own retention, run by the wrapper after the tick (the decision first). Only a merger state dir."""
     global CODE_SHA
-    if a.code_sha is not None and not is_sha(a.code_sha):
+    if a.code_sha and not is_sha(a.code_sha):   # the same provenance rule as the tick's
         print(f"merger prune: refusing — --code-sha {a.code_sha!r} is not a full commit sha", file=sys.stderr)
         return 2
-    CODE_SHA = a.code_sha
+    CODE_SHA = a.code_sha or None
     state = Path(a.state_dir).expanduser().resolve()
     if not (state / "repo").is_file():
         print(f"merger prune: refusing — {state} is not a merger state dir (no repo binding written by a tick)", file=sys.stderr)
