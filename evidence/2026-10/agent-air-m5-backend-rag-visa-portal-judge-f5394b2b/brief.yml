@@ -17,6 +17,7 @@ scope:
   - apps/backend-rag/backend/scripts/visa_engine/portal_read_receipt.py (per-fetch text file)
   - apps/backend-rag/backend/tests/scripts/visa_engine/test_portal_judge.py (new)
   - apps/backend-rag/backend/tests/scripts/visa_engine/test_portal_read_receipt.py (suffix test)
+  - scripts/ci/observe_visa_portal_judge.py (new, bites observer)
 appetite:
   wall_clock_hours: 1.5
   adversarial_rounds: 0
