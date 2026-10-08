@@ -210,7 +210,8 @@ def _production_files():
 
 def test_python_jose_is_gone_from_production_and_tests():
     pattern = re.compile(r"^\s*(from|import)\s+jose\b", re.MULTILINE)
-    offenders = [p for p in (_BACKEND / "backend").rglob("*.py") if pattern.search(p.read_text())]
+    roots = (_BACKEND / "backend", _BACKEND.parents[1] / "scripts")
+    offenders = [p for root in roots for p in root.rglob("*.py") if pattern.search(p.read_text())]
     assert offenders == [], [str(p) for p in offenders]
 
 
