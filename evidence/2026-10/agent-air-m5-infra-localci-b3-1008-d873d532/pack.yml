@@ -106,6 +106,7 @@ receipts:
     seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
+  - "The floor was measured against a VM at 3.58 GB free (3500604 KiB available) during a B2-code tick (the shadow merger running PR #8060 on main's runner); the operator-side cure is capacity (prune policy or a larger Colima disk). The 12 GB default and the LOCALCI_MIN_FREE_GB override stay as built."
   - "No adversarial round: the independent gate is the orchestrator's (generator is never grader). The three rules are guilt- and innocence-tested and mutant-swept, nothing more."
   - "Deploying this today blocks every service leg on Pro: 3.58 GB free against the 12 GB default. Freeing space (33 GB of reclaimable images, 8.8 GB of build cache) or setting LOCALCI_MIN_FREE_GB in the tick's environment is an operator decision; until then no merge counts as compared."
   - "Decisions journalled before B3 carry no coverage and count none of their contexts as full, so compared_merges restarts at B3's deployment. Before #8056 no partial context executed, so the dropped evidence was in fact full; an operator-supplied matrix for old lines was not built."
