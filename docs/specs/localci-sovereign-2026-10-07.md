@@ -25,6 +25,30 @@ without a gate.
 | **D** shadow                                              | the merger decides in parallel with GitHub without pushing; every disagreement is classified. A merge counts as COMPARED only when GitHub merged the decided candidate with ≥ 12 contexts compared on both sides, once per PR                     | READY only when compared merges ≥ 50 AND ≥ 14 days lie between the first and the last of them AND FALSE_GREEN = 0 at every level (ruled 2026-10-07: "or" was too thin — two merges 14 days apart read READY); FALSE_RED rate recorded |
 | **E** the flip (operator)                                 | remove required checks and the merge queue; restrict push to `main` to the merger identity; sessions lose nothing they had                                                                                                                        | the first merge on `main` by the merger with no hosted check in the way; a PR pushed by a session is refused by branch protection                                                                                                     |
 
+**Phase C, step C3a-2: the merger enqueues.** After a verdict, `merger.py` evaluates one criterion on the decision it just
+made and, only when it holds and the merger is armed, puts the PR in GitHub's merge queue through the GraphQL mutation
+`enqueuePullRequest(pullRequestId, expectedHeadOid = the decided head)`. It never merges or pushes itself, and `merge` still
+refuses. The sub-criteria, each of which alone refuses and is named in the line's `refused` and `why`:
+
+- no check of its own is FAIL, ERROR, STALE, INTERRUPTED, RUNNING or QUEUED, except `review.independent`, which must be
+  QUEUED or PASS;
+- every executed required context is OK; a BLOCKED context passes only when its mapping is `blocked` or `not_implemented`, and
+  the line names each one with its mapping beside `executed_required: N/M`;
+- every context branch protection requires, read live and never hardcoded, is green on the PR head, red-dominant: failure,
+  cancelled, timed out, action required, pending or missing refuses, while skipped and neutral pass as they do on GitHub;
+- the PR head is still the decided head; the PR is same-repo, not a draft, based on `main`, open and not in the queue (GraphQL
+  `isInMergeQueue` / `mergeQueueEntry`); this head was not enqueued by an earlier tick;
+- the label `localci:merge-shadow-ok` is on the PR, applied last by an account whose repository role is admin or maintain.
+
+The arm has two halves: that label, and `LOCALCI_MERGER_ARMED=1` in the tick's environment. Without both, the merger stays
+shadow and journals `would_enqueue` with the same criterion, every sub-criterion true or false, and the head oid. That line is
+the proof read before arming. The flag stays OFF until a proof PR shows `would_enqueue` with every sub-criterion true and only
+`armed_env` refused. The proof PR is docs-only, judged by main's code, and NOT armed with `--auto`, so the merger's enqueue is
+the only path into the queue. An enqueue journals `enqueued` with the queue entry id, its position and the head oid. A failed
+mutation journals `enqueue_error` with GitHub's message, redacted, and is never retried in that tick. `report` prints
+`enqueued` and `would_enqueue` on the phase-E line. Every write runs under the ambient `gh` token on Pro until Zero installs
+the merger's own credential (§4.1).
+
 Phase E never precedes D. If D shows a false green, the flip waits and the executor is fixed first. The operator reads `compared_merges`, never the age of the window: error lines and undecided ticks age a journal without proving anything.
 
 ## 3. What is lost, and what covers it

@@ -1,0 +1,68 @@
+task_id: localci-merger-c3a2-1008
+mission: LOCALCI-SOVEREIGN
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Floor 2 for this diff (Harness floor recompute). The change gives the shadow merger its first GitHub write, the merge-queue
+  enqueue, but ships it disarmed: the env half of the arm (LOCALCI_MERGER_ARMED) is set nowhere, no plist or wrapper is
+  touched, and until a later PR arms it the tick only journals would_enqueue. The criterion is reviewed by one independent
+  final gate commissioned by the orchestrator, not a Gear-3 council.
+l_level: L2
+gate_class: opus
+objective: >-
+  Ship PR-C3a-2 of docs/specs/localci-sovereign-2026-10-07.md phase C. The gate's carried notice N2: a merge whose hosted
+  side is still PENDING is not a compared merge. Then the enqueue path, criterion A: the merger puts a PR into GitHub's merge
+  queue through GraphQL enqueuePullRequest(pullRequestId, expectedHeadOid = the decided head). It does so only when its own
+  verdict and the hosted verdict both hold and the arm is two-sided (LOCALCI_MERGER_ARMED=1 AND the label
+  localci:merge-shadow-ok applied by an admin or maintainer). Otherwise it journals the same criterion as would_enqueue,
+  the proof read before arming.
+constraints:
+  - The only write is enqueuePullRequest. It never sends PUT .../pulls/N/merge, never runs gh pr merge and never makes a merge commit of its own, and `merge` still refuses with rc 2.
+  - The flag stays OFF. No plist, cron or wrapper edit, and no install on Pro. The builder never labels, comments, enqueues or merges anything.
+  - The required contexts are read from branch protection and never hardcoded. The check logic comes from the BASE ref, so the candidate never judges itself.
+  - No paid per-token Anthropic endpoint. No token printed or journalled in cleartext (redact()). No client data read or written.
+acceptance:
+  - text: WHEN GitHub merged the decided candidate but one required hosted context is still pending, the report SHALL NOT count it as a compared merge, and WHEN that context is SUCCESS or FAILURE it SHALL.
+    probe: scripts/localci/tests/test_merger_report.py::test_a_merge_with_a_hosted_context_still_pending_is_not_a_compared_merge
+  - text: WHEN any one sub-criterion of the enqueue criterion is false, the merger SHALL send no mutation and SHALL name that sub-criterion alone in `refused` and `why`.
+    probe: scripts/localci/tests/test_merger.py::test_each_sub_criterion_alone_refuses_the_enqueue_and_the_line_names_it
+  - text: WHEN the guilt table is read, it SHALL break every sub-criterion the merger evaluates.
+    probe: scripts/localci/tests/test_merger.py::test_the_guilt_table_breaks_every_sub_criterion
+  - text: WHEN every sub-criterion holds and both halves of the arm are present, the merger SHALL send exactly one enqueuePullRequest with the PR node id and expectedHeadOid equal to the decided head, and SHALL journal `enqueued` with the entry id and position.
+    probe: scripts/localci/tests/test_merger.py::test_when_every_sub_criterion_holds_and_both_halves_are_armed_one_mutation_enqueues_the_decided_head
+  - text: WHEN LOCALCI_MERGER_ARMED is absent or anything but "1", the merger SHALL stay shadow and journal `would_enqueue` with the full criterion and the head oid.
+    probe: scripts/localci/tests/test_merger.py::test_without_the_env_flag_the_merger_stays_shadow_and_journals_the_same_criterion
+  - text: IF the pull request cannot be read, every sub-criterion that depends on the read SHALL be false, with the redacted read error as its reason.
+    probe: scripts/localci/tests/test_merger.py::test_an_unreadable_pull_request_refuses_every_sub_criterion_it_holds_with_the_read_error
+  - text: IF the mutation fails or returns no queue entry, the merger SHALL journal `enqueue_error` with GitHub's message redacted and SHALL NOT retry it in that tick.
+    probe: scripts/localci/tests/test_merger.py::test_a_failed_mutation_is_journalled_redacted_and_sent_once
+  - text: WHEN a tick decides a PR, the decision line SHALL be followed by the enqueue line, and both SHALL name the non-executed contexts with their mapping and executed_required.
+    probe: scripts/localci/tests/test_merger.py::test_a_tick_journals_would_enqueue_after_its_decision_and_names_the_non_executed_contexts
+  - text: WHEN an armed tick decides a PR whose criterion holds, it SHALL enqueue it once, and WHEN a decision has no verdict (conflict) it SHALL NOT evaluate or enqueue.
+    probe: scripts/localci/tests/test_merger.py::test_an_armed_tick_enqueues_the_decided_head_once_and_a_decision_without_a_verdict_never_enqueues
+  - text: IF the gate vouched for no status (a seal mismatch), the merger SHALL refuse the enqueue on its own half.
+    probe: scripts/localci/tests/test_merger.py::test_a_gate_error_vouches_for_nothing_and_never_enqueues
+  - text: WHILE the merger is unarmed, every GitHub call SHALL be a GET or the GraphQL PR read, and no mutation SHALL be sent.
+    probe: scripts/localci/tests/test_merger.py::test_every_github_call_is_a_get_or_the_graphql_read_and_unarmed_no_mutation_is_sent
+  - text: IF `gh api graphql` fails or answers with errors, the merger SHALL raise with GitHub's own message and the token redacted.
+    probe: scripts/localci/tests/test_merger.py::test_gh_graphql_raises_with_githubs_message_redacted
+  - text: WHEN the report runs, the phase E line SHALL print enqueued and would_enqueue apart, and SHALL count would_enqueue only when every sub-criterion was true.
+    probe: scripts/localci/tests/test_merger_report.py::test_the_phase_e_line_counts_enqueued_and_would_enqueue_apart_and_neither_is_a_decision
+  - text: WHEN the mutant sweep runs, every rule SHALL be killed and none SHALL be stale.
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py
+assumptions:
+  - text: GitHub's GraphQL schema exposes enqueuePullRequest(pullRequestId, expectedHeadOid) returning mergeQueueEntry{id, position, state}, and PullRequest.isInMergeQueue / mergeQueueEntry.
+    status: verified
+    note: Read-only introspection of EnqueuePullRequestInput, EnqueuePullRequestPayload and MergeQueueEntry, plus a live PR query on an open PR. The mutation itself was never sent.
+    probe: gh api graphql -f query='{ __type(name:"EnqueuePullRequestInput"){ inputFields{ name } } }'
+  - text: Required contexts are routinely `skipped` on PR heads here, so "all SUCCESS" has to mean GitHub's passing set (success, skipped, neutral).
+    status: verified
+    note: The heads of #8036, #8031 and #8030 carry Backend Tests, E2E and Visa Oracle smoke as skipped. A literal SUCCESS would never enqueue the docs-only proof PR.
+    probe: gh api 'repos/Bali-Zero/Teman2/commits/<head>/check-runs?per_page=100'
+consumer_map:
+  - The Pro launchd job com.balizero.localci-merger runs merger.py from origin/main at each tick. After merge, each decision with a verdict is followed by a would_enqueue line while the flag stays off.
+  - The orchestrator's proof PR is docs-only and not armed with --auto. Its would_enqueue line with every sub-criterion true and only armed_env refused is what arming waits for.
+  - The operator reads `merger.py report`, whose phase E line now ends with enqueued / would_enqueue / enqueue_refused / enqueue_error.
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

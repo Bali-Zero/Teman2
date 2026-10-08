@@ -31,6 +31,7 @@ def decision(pr, head, overall, ctx="OK", ts="2026-10-07T08:00:00Z", contexts=No
 class FakeGH:
     def __init__(self, pulls: dict, checks: dict, parents: dict | None = None):
         self.pulls, self.checks, self.paths, self.parents = pulls, checks, [], {M: [BASE], **(parents or {})}
+        self.required = CTX
 
     def __call__(self, path):
         self.paths.append(path)
@@ -39,14 +40,14 @@ class FakeGH:
         if path.count("/") == 4 and path.startswith(f"repos/{REPO}/commits/"):
             return {"parents": [{"sha": s} for s in self.parents[path.rsplit("/", 1)[1]]]}
         if path == f"repos/{REPO}/branches/main/protection/required_status_checks":
-            return {"checks": [{"context": c, "app_id": 15368} for c in CTX]}
+            return {"checks": [{"context": c, "app_id": 15368} for c in self.required]}
         sha, kind = path.split("/")[4], path.split("/")[5].split("?")[0]
         if kind == "status":
             return {"statuses": []}
         concl = self.checks[sha]   # one conclusion for every context, or {context: conclusion} with "success" for the rest
-        by = concl if isinstance(concl, dict) else dict.fromkeys(CTX, concl)
+        by = concl if isinstance(concl, dict) else dict.fromkeys(self.required, concl)
         return {"check_runs": [{"name": c, "status": "completed" if by.get(c, "success") else "in_progress", "conclusion": by.get(c, "success"),
-                                "head_sha": sha, "app": {"id": 15368, "slug": "github-actions"}} for c in CTX]}
+                                "head_sha": sha, "app": {"id": 15368, "slug": "github-actions"}} for c in self.required]}
 
 
 def pull(head, merged=False, state="open", merge_commit=M, merged_at="2026-10-07T09:00:00Z"):
@@ -388,3 +389,31 @@ def test_every_red_merge_is_listed_once_however_many_decisions_its_pr_had(tmp_pa
     assert rep["hosted_red_merged"] == [{"pr": 1, "merge_commit_sha": red1, "red": list(CTX)}, {"pr": 3, "merge_commit_sha": red3, "red": ["ctx-00"]}]
     out = capsys.readouterr().out
     assert out.count("hosted_red_merged: #") == 2 and "hosted_red_merged=2" in out
+
+
+@pytest.mark.parametrize("late,counted", [(None, 0), ("success", 1), ("failure", 1)])
+def test_a_merge_with_a_hosted_context_still_pending_is_not_a_compared_merge(tmp_path, monkeypatch, late, counted):
+    required = (*CTX, "ctx-late")   # K contexts agree on the queue commit and one more is required: pending, it holds the merge out
+    gh = FakeGH({2: pull(B, merged=True)}, {B: "success", M: {"ctx-late": late}})
+    gh.required = required
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "BLOCKED", contexts=dict.fromkeys(required, "OK"))], gh)
+    assert rep["rows"][0]["github"] == {None: "PENDING", "success": "GREEN", "failure": "RED"}[late]
+    assert rep["rows"][0]["compared_contexts"] == (K if late is None else K + 1)   # the per-context count was never the hole
+    assert rep["window"]["compared_merges"] == counted and rep["rows"][0]["compared_merge"] is bool(counted)
+
+
+def test_the_phase_e_line_counts_enqueued_and_would_enqueue_apart_and_neither_is_a_decision(tmp_path, monkeypatch, capsys):
+    t = "2026-10-08T01:00:00Z"
+    kinds = [("enqueued", True), ("would_enqueue", True), ("would_enqueue", True), ("would_enqueue", False), ("enqueue_refused", False),
+             ("enqueue_error", True)]
+    recs = [decision(1, A, "BLOCKED", ts=t)] + [{"kind": k, "ts": t, "pr": 1, "head_sha": A, "ok": ok} for k, ok in kinds]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    assert rep["window"]["enqueue"] == {"enqueued": 1, "enqueue_refused": 1, "enqueue_error": 1, "would_enqueue": 2}   # only every-true counts
+    assert rep["window"]["decisions"] == 1 and rc == 0
+    (line,) = [x for x in capsys.readouterr().out.splitlines() if x.startswith("phase E")]
+    assert line.endswith("; enqueued=1 would_enqueue=2 enqueue_refused=1 enqueue_error=1")
+
+
+def test_a_journal_older_than_the_enqueue_path_reports_zero_enqueues(tmp_path, monkeypatch):
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "BLOCKED")], FakeGH({1: pull(A)}, {A: "success"}))
+    assert rep["window"]["enqueue"] == {"enqueued": 0, "enqueue_refused": 0, "enqueue_error": 0, "would_enqueue": 0} and rc == 0

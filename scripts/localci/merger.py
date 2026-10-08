@@ -2,16 +2,19 @@
 """localci merger — phase C, SHADOW: decides what the local gate would merge and merges nothing.
 
 ``tick`` holds a per-repo lease pinned to one host (``--node``), takes the open, non-draft, SAME-REPO pull request
-on ``--base`` that is armed (auto-merge) or labelled ``localci:merge`` and not yet decided at (head sha, origin/<base>
+on ``--base`` that is armed (auto-merge) or labelled ``localci:merge`` / ``localci:merge-shadow-ok`` and not yet decided at (head sha, origin/<base>
 sha), builds the merge candidate as the queue does (origin/<base> + the head squashed into one commit — the live
 queue's merge_method is SQUASH — fixed author ``localci-merger``), runs the local gate on it with the runner and the contexts matrix of BASE — never the
 candidate's — and sets it beside the hosted verdict of the PR HEAD sha (the queue's verdict lands on a merge-group
 commit this process cannot see). One line per decision in ``<state-dir>/decisions.jsonl``; the same (pr, head, base)
 is never run twice. A fork PR is journalled ``refused: fork`` and never fetched. ``merge`` refuses: phase E is not armed.
 
-Every GitHub API call is a bare ``gh api`` GET (``hosted_compare.gh_get``) and the only other traffic is ``git fetch``:
-nothing here merges, posts, labels or comments, and no candidate code is imported — it runs only inside the BASE
-runner, contained as the runner does.
+GitHub is read with bare ``gh api`` GETs (``hosted_compare.gh_get``) and one GraphQL query per verdict; the only other traffic
+is ``git fetch``. One write exists (C3a-2): after a verdict, ``enqueuePullRequest`` with ``expectedHeadOid`` = the decided head
+puts the PR in GitHub's merge queue — only when ``LOCALCI_MERGER_ARMED=1`` AND an admin or maintainer applied
+``localci:merge-shadow-ok`` AND every sub-criterion of the enqueue criterion holds; otherwise that same criterion is journalled
+``would_enqueue``. Nothing here merges, pushes, labels or comments, and no candidate code is imported — it runs only inside
+the BASE runner, contained as the runner does.
 """
 from __future__ import annotations
 
@@ -41,6 +44,7 @@ _spec.loader.exec_module(hc)
 
 DEFAULT_STATE = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger"
 LABEL = "localci:merge"
+ARM_LABEL, ARM_ENV, ARM_ROLES = "localci:merge-shadow-ok", "LOCALCI_MERGER_ARMED", ("admin", "maintain")   # the two halves of the arm
 AUTHOR = "localci-merger"
 PHASE_E = "phase E not armed: see docs/specs/localci-sovereign-2026-10-07.md"
 HEAD_NOTE = "hosted verdict read on the PR head sha: the queue's verdict lands on a merge-group commit the merger cannot see"
@@ -65,6 +69,10 @@ CODE_SHA: str | None = None   # the origin/main commit the launchd wrapper extra
 
 class Stopped(Exception):
     """SIGTERM during a tick: the runner is stopped cleanly, nothing is decided, the key is retried."""
+
+
+class GraphQLError(RuntimeError):
+    """``gh api graphql`` failed or GitHub answered with errors: the message is GitHub's, redacted."""
 
 
 class MergerError(RuntimeError):
@@ -206,7 +214,7 @@ def head_of(pr: dict) -> str:
 
 
 def wants_merge(pr: dict) -> bool:
-    return bool(pr.get("auto_merge")) or LABEL in {lb.get("name") for lb in pr.get("labels") or [] if isinstance(lb, dict)}
+    return bool(pr.get("auto_merge")) or bool({LABEL, ARM_LABEL} & {lb.get("name") for lb in pr.get("labels") or [] if isinstance(lb, dict)})
 
 
 def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str) -> tuple[list[dict], list[dict]]:
@@ -331,7 +339,8 @@ def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sh
     return {**out, "status": status}
 
 
-def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path) -> dict:
+def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path) -> tuple[dict, dict | None]:
+    """The comparison journalled beside the verdict, and the hosted document it read (None when the read or the comparison failed)."""
     out = {"sha": head, "note": HEAD_NOTE}
     try:
         live = hc.fetch_live(repo, base, head)
@@ -339,8 +348,146 @@ def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path)
         rep.update(source="live", repo=repo, branch=base, **out)
         atomic_write(run_dir / "hosted_compare.json", json.dumps(rep, indent=2) + "\n")
     except Exception as exc:  # noqa: BLE001 — a failed comparison is recorded beside the gate's verdict, never loses it
-        return {**out, "error": redact(f"{type(exc).__name__}: {exc}")}
-    return {**out, "agreement": rep["agreement"], "counts": rep["counts"], "drift": rep["drift"], "exit": hc.exit_code(rep)}
+        return {**out, "error": redact(f"{type(exc).__name__}: {exc}")}, None
+    return {**out, "agreement": rep["agreement"], "counts": rep["counts"], "drift": rep["drift"], "exit": hc.exit_code(rep)}, live
+
+
+# ------------------------------------------------------------------ the enqueue path (C3a-2): GitHub's queue, only when both gates hold
+ENQUEUE_BASE = "main"
+_LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
+PR_QUERY = ("query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
+            " id state isDraft isCrossRepository baseRefName headRefOid isInMergeQueue mergeQueueEntry { id position state }"
+            " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
+            " __typename ... on LabeledEvent { label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
+
+
+def gh_graphql(query: str, **variables) -> dict:
+    argv = ["gh", "api", "graphql", "-f", f"query={query}"]
+    for k, v in variables.items():
+        argv += ["-F" if type(v) is int else "-f", f"{k}={v}"]   # -f is raw: no @file read, no type guess
+    res = subprocess.run(argv, capture_output=True, text=True, timeout=120)
+    try:
+        doc = json.loads(res.stdout or "null")
+    except json.JSONDecodeError:
+        doc = None
+    errors = doc.get("errors") if isinstance(doc, dict) else None
+    if res.returncode != 0 or errors or not isinstance(doc, dict) or not isinstance(doc.get("data"), dict):
+        msg = "; ".join(str(e.get("message")) for e in errors if isinstance(e, dict)) if isinstance(errors, list) else res.stderr.strip()
+        raise GraphQLError(redact(f"gh api graphql rc={res.returncode}: {msg or res.stderr.strip()}"))
+    return doc["data"]
+
+
+def hosted_side(live) -> str | None:
+    """None when every context branch protection requires is GREEN on the PR head, red-dominant (skipped/neutral pass, as on GitHub)."""
+    if not isinstance(live, dict):
+        return "the hosted read on the PR head failed"
+    hc.required_names(live.get("required_checks"))
+    not_green = {k: v for k, v in required_verdicts(live).items() if v != "GREEN"}
+    return f"required contexts not green on the PR head: {not_green}" if not_green else None
+
+
+def label_arm(repo: str, p: dict) -> tuple[str | None, str | None]:
+    """The label half of the arm: ARM_LABEL on the PR, applied last by a user whose role on the repo is admin or maintain."""
+    if ARM_LABEL not in {lb.get("name") for lb in (p.get("labels") or {}).get("nodes") or [] if isinstance(lb, dict)}:
+        return f"label {ARM_LABEL} absent", None
+    actor = None
+    for ev in (p.get("timelineItems") or {}).get("nodes") or []:
+        if isinstance(ev, dict) and (ev.get("label") or {}).get("name") == ARM_LABEL:
+            actor = ev.get("actor") if ev.get("__typename") == "LabeledEvent" else None
+    login = actor.get("login") if isinstance(actor, dict) and actor.get("__typename") == "User" else None
+    if not isinstance(login, str) or not _LOGIN_RE.fullmatch(login):
+        return f"{ARM_LABEL} was not applied last by a user account (actor {actor})", None
+    perm = hc.gh_get(f"repos/{repo}/collaborators/{login}/permission")
+    role = perm.get("role_name") if isinstance(perm, dict) else None
+    return (None if role in ARM_ROLES else f"{ARM_LABEL} applied by {login}, whose role is {role!r}, not admin or maintain"), login
+
+
+def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
+    """The PR as GraphQL sees it now (the REST view has no queue state): fills the PR-side sub-criteria and the label in ``why``."""
+    owner, name = a.repo.split("/")
+    p = (gh_graphql(PR_QUERY, owner=owner, name=name, number=n).get("repository") or {}).get("pullRequest")
+    if not isinstance(p, dict):
+        raise GraphQLError(f"#{n} is not a pull request of {a.repo}")
+    entry, live_head = p.get("mergeQueueEntry"), p.get("headRefOid")
+    again = any(r.get("kind") == "enqueued" and r.get("pr") == n and r.get("head_sha") == head for r in read_journal(state))
+    why.update(head_unchanged=None if live_head == head else f"the PR head moved to {live_head} since the decision on {head}",
+               same_repo=None if p.get("isCrossRepository") is False else "a cross-repository pull request",
+               not_draft=None if p.get("isDraft") is False else "a draft",
+               base_main=None if p.get("baseRefName") == a.base == ENQUEUE_BASE else f"base {p.get('baseRefName')!r}, not {ENQUEUE_BASE}",
+               open=None if p.get("state") == "OPEN" else f"state {p.get('state')}",
+               not_in_queue=None if p.get("isInMergeQueue") is False and entry is None else f"already in the merge queue ({entry})",
+               first_enqueue="this head was enqueued by an earlier tick" if again else None)
+    facts = {"pull_request_id": p.get("id"), "live_head_oid": live_head, "label_actor": None}
+    why["label_privileged"], facts["label_actor"] = label_arm(a.repo, p)
+    return facts
+
+
+# the criterion and the one write
+CHECK_OK = ("PASS", "NOT_APPLICABLE", "BLOCKED")   # a BLOCKED check backs no executed context here: the contexts below judge those
+NON_EXECUTED = ("blocked", "not_implemented")
+GATE = ("local_checks_clean", "review_independent", "executed_contexts_ok", "hosted_required_green", "head_unchanged", "same_repo",
+        "not_draft", "base_main", "open", "not_in_queue", "first_enqueue")
+CRITERION = (*GATE, "label_privileged")   # the env flag, the arm's other half, is journalled apart
+ENQUEUE = ("mutation($pr: ID!, $oid: GitObjectID!) { enqueuePullRequest(input: {pullRequestId: $pr, expectedHeadOid: $oid}) {"
+           " mergeQueueEntry { id position state } } }")
+
+
+def local_side(status: dict) -> dict:
+    """The merger's own half, from the BASE runner's vouched status (``{}`` when the gate vouched for none). Total on any JSON."""
+    checks = status.get("checks") if isinstance(status.get("checks"), dict) else {}
+    states = {k: v.get("status") if isinstance(v, dict) else None for k, v in checks.items()}
+    ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) else {}
+    results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
+    required = ctx.get("required") if isinstance(ctx.get("required"), list) else []
+    non_executed, not_ok = {}, {}
+    for name in required:
+        res = results[name] if isinstance(name, str) and isinstance(results.get(name), dict) else {}
+        if res.get("mapping") in NON_EXECUTED and res.get("verdict") == "BLOCKED":
+            non_executed[name] = res["mapping"]
+        elif res.get("verdict") != "OK":
+            not_ok[str(name)] = f"{res.get('verdict')} ({res.get('mapping')})"
+    bad = {k: v for k, v in states.items() if k != "review.independent" and v not in CHECK_OK}
+    review = states.get("review.independent")
+    why = {"local_checks_clean": "the gate vouched for no check" if not states else f"checks not clean: {bad}" if bad else None,
+           "review_independent": None if review in ("QUEUED", "PASS") else f"review.independent is {review}, not QUEUED or PASS",
+           "executed_contexts_ok": (f"contexts {ctx.get('status')!r} with {len(required)} required" if ctx.get("status") != "ok" or not required
+                                    else f"executed required contexts not OK: {not_ok}" if not_ok else None)}
+    return {"why": why, "executed_required": f"{len(required) - len(non_executed)}/{len(required)}", "non_executed": non_executed}
+
+
+def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
+    """After a verdict: enqueue when armed on both sides and every sub-criterion holds, else journal the same criterion. Nothing
+    here can turn the decision into ERROR, and a failed mutation is journalled, never retried in this tick."""
+    n, head = rec["pr"], rec["head_sha"]
+    why, facts = dict(loc["why"]), {}
+    try:
+        why["hosted_required_green"] = hosted_side(live)
+        facts = pr_side(a, state, n, head, why)
+    except Stopped:
+        raise
+    except Exception as exc:  # noqa: BLE001 — an unreadable sub-criterion is a false one, with the read's own message
+        facts["read_error"] = redact(f"{type(exc).__name__}: {exc}")
+    criterion = {k: k in why and why[k] is None for k in CRITERION}
+    armed_env = os.environ.get(ARM_ENV) == "1"
+    line = {**rec, **facts, "expected_head_oid": head, "criterion": criterion, "ok": all(criterion.values()), "armed_env": armed_env,
+            "refused": [k for k, v in criterion.items() if not v] + ([] if armed_env else ["armed_env"]),
+            "why": {k: why.get(k) or facts.get("read_error") or "not evaluated" for k, v in criterion.items() if not v},
+            "executed_required": loc["executed_required"], "non_executed": loc["non_executed"]}
+    kind = "would_enqueue" if not (armed_env and criterion["label_privileged"]) else "enqueue_refused" if not line["ok"] else "enqueued"
+    if kind == "enqueued":
+        try:
+            entry = (gh_graphql(ENQUEUE, pr=facts["pull_request_id"], oid=head).get("enqueuePullRequest") or {}).get("mergeQueueEntry")
+            if not isinstance(entry, dict) or not entry.get("id"):
+                raise GraphQLError(f"enqueuePullRequest returned no merge queue entry: {entry!r}")
+            line.update(entry_id=entry["id"], position=entry.get("position"), entry_state=entry.get("state"))
+        except Stopped:
+            raise
+        except Exception as exc:  # noqa: BLE001 — journalled with GitHub's message, redacted
+            kind, line["error"] = "enqueue_error", redact(f"{type(exc).__name__}: {exc}")
+    out = journal(state, {**line, "kind": kind})
+    print(f"merger: #{n} {kind} head={head[:12]} refused={out['refused']} executed_required={loc['executed_required']} non_executed="
+          f"{[f'{k} ({v})' for k, v in loc['non_executed'].items()]}" + (f" entry={out['entry_id']} position={out['position']}" if kind == "enqueued" else ""))
+    return out
 
 
 def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str) -> int:
@@ -375,15 +522,19 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         status = gate["status"]
         ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) and not gate.get("error") else {}   # an unvouched status lends no verdict
         results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
+        hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir)
+        loc = local_side({} if gate.get("error") else status)
         line = journal(state, {**rec, "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
                                "contexts_status": ctx.get("status"), "contexts": {k: (v or {}).get("verdict") for k, v in results.items()},
                                "checks": {k: (v or {}).get("status") for k, v in (status.get("checks") or {}).items()},
                                "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},
                                "seal": gate["seal"], "runner_rc": {k: v for k, v in gate.items() if k.endswith("_rc")},
-                               "hosted_compare": hosted_summary(a.repo, a.base, status, head, run_dir), "run_dir": str(run_dir),
-                               "elapsed_s": round(time.monotonic() - t0, 1)})
+                               "hosted_compare": hosted, "run_dir": str(run_dir), "executed_required": loc["executed_required"],
+                               "non_executed": loc["non_executed"], "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
+        enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": cand_sha, "lease_id": lease_id},
+                     loc, live)
         return 0
     except (MergerError, OSError) as exc:   # a decision with no verdict: this (pr, head, base) is not retried, the next base is
         journal(state, {**rec, "overall": "ERROR", "error": redact(exc), "candidate_sha": None, "run_dir": None,
@@ -581,6 +732,7 @@ def cmd_report(a) -> int:
                 for k, v in mine.items():
                     ctx_counts[k] += v
                 compared_ctx = mine.get("AGREE", 0) + mine.get("FALSE_GREEN", 0) + mine.get("FALSE_RED", 0)
+            # a merge whose hosted side is still PENDING compared nothing yet: N contexts agreeing beside one unreported is no evidence
             merged_at = prs[n].get("merged_at") if merged_here else None
             if merged_here and not is_ts(merged_at):
                 raise hc.CompareError(f"#{n} merged at the decided candidate but carries no merged_at")
@@ -588,7 +740,7 @@ def cmd_report(a) -> int:
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
-                         "compared_merge": merged_here and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
+                         "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
         # GitHub merged a red required check: a HOSTED failure, read on every merged PR's own merge commit whichever candidate the
         # merger decided (#8026 was decided on an older base and is judged above on its green head), counted apart, never a class
         hosted_red_merged = []
@@ -622,6 +774,8 @@ def cmd_report(a) -> int:
     ready = fg == 0 and compared_merges >= 50 and compared_days >= 14   # lead's ruling 2026-10-07: both, never either
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
     errors = sum(1 for r in window if r.get("kind") == "error")
+    enqueue = {k: sum(1 for r in window if r.get("kind") == k) for k in ("enqueued", "enqueue_refused", "enqueue_error")}
+    enqueue["would_enqueue"] = sum(1 for r in window if r.get("kind") == "would_enqueue" and r.get("ok") is True)   # every sub-criterion true
     timed = sorted((r["elapsed_s"], r["pr"]) for r in rows if r["elapsed_s"] is not None)
     ticks = {"timed": len(timed), "longest_s": timed[-1][0] if timed else None, "longest_pr": timed[-1][1] if timed else None,
              "median_s": round(median(t for t, _ in timed), 1) if timed else None,
@@ -630,7 +784,7 @@ def cmd_report(a) -> int:
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
                       "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
                       "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "skipped": skipped,
-                      "decisions_without_code_sha": without_code_sha,
+                      "decisions_without_code_sha": without_code_sha, "enqueue": enqueue,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "phase_e_ready": ready, "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
@@ -657,7 +811,8 @@ def cmd_report(a) -> int:
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
           f"compared); now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}; "
           f"hosted_red_merged={len(hosted_red_merged)} (information: GitHub merged a red required check; the hosted failure itself never "
-          f"blocks READY, a local false green on it does)")
+          f"blocks READY, a local false green on it does); enqueued={enqueue['enqueued']} would_enqueue={enqueue['would_enqueue']} "
+          f"enqueue_refused={enqueue['enqueue_refused']} enqueue_error={enqueue['enqueue_error']}")
     return 1 if fg else 0
 
 
