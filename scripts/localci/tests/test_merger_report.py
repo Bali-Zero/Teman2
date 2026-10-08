@@ -21,10 +21,14 @@ CTX = tuple(f"ctx-{i:02d}" for i in range(mg.MIN_COMPARED_CONTEXTS))   # a merge
 K = len(CTX)
 
 
-def decision(pr, head, overall, ctx="OK", ts="2026-10-07T08:00:00Z", contexts=None):
+def decision(pr, head, overall, ctx="OK", ts="2026-10-07T08:00:00Z", contexts=None, coverage="full"):
+    """``coverage``: one value for every context, a {context: value} map (``full`` for the rest), or None for a line journalled before
+    the merger recorded coverage."""
     rec = {"kind": "decision", "ts": ts, "pr": pr, "head_sha": head, "base_sha": BASE, "candidate_sha": "9" * 40, "overall": overall}
     if ctx is not None:
         rec.update(contexts_status="ok", contexts=contexts if contexts is not None else dict.fromkeys(CTX, ctx))
+        if coverage is not None:
+            rec["coverage"] = {k: (coverage.get(k, "full") if isinstance(coverage, dict) else coverage) for k in rec["contexts"]}
     return rec
 
 
@@ -417,3 +421,67 @@ def test_the_phase_e_line_counts_enqueued_and_would_enqueue_apart_and_neither_is
 def test_a_journal_older_than_the_enqueue_path_reports_zero_enqueues(tmp_path, monkeypatch):
     rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "BLOCKED")], FakeGH({1: pull(A)}, {A: "success"}))
     assert rep["window"]["enqueue"] == {"enqueued": 0, "enqueue_refused": 0, "enqueue_error": 0, "would_enqueue": 0} and rc == 0
+
+
+# ------------------------------------------------------------------ coverage: only a full context counts toward the >= 12 (B3)
+def _merged_once(tmp_path, monkeypatch, n_ctx, coverage, blind=()):
+    """One decision of a PR GitHub merged at the decided candidate: n_ctx contexts, all OK and hosted green, ``blind`` of them BLOCKED."""
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    gh.required = tuple(f"ctx-{i:02d}" for i in range(n_ctx))
+    contexts = {c: ("BLOCKED" if c in blind else "OK") for c in gh.required}
+    return run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", contexts=contexts, coverage=coverage)], gh)
+
+
+def test_eleven_full_and_one_named_partial_make_a_compared_merge(tmp_path, monkeypatch, capsys):
+    # innocence: the real matrix's best case (14 - 2 CodeQL - E2E partial = 11 full) must be able to count, E2E named
+    rc, rep = _merged_once(tmp_path, monkeypatch, 12, {"ctx-00": "partial"})
+    row, w = rep["rows"][0], rep["window"]
+    assert rc == 0 and (row["compared_contexts"], row["compared_partial"], row["compared_merge"]) == (11, ["ctx-00"], True)
+    assert (w["compared_merges"], w["compared_merges_full_only"], w["compared_merges_with_partial"], w["compared_merges_partial_contexts"]) == (1, 0, 1, ["ctx-00"])
+    out = capsys.readouterr().out
+    assert "compared_merges=1 (full_only=0, with_partial=1) compared_partial=1 compared_unrecorded=0 " in out
+    assert w["compared_partial"] == 1 and w["partial_contexts"] == ["ctx-00"] and "of the contexts compared, 1 were partial ['ctx-00']" in out
+    assert "compared_merges=1 (full_only=0, with_partial=1: ['ctx-00'])" in out and ">= 12 contexts were compared, >= 11 of them full and at most 1 partial" in out
+
+
+@pytest.mark.parametrize("n_ctx,coverage,blind,why", [
+    (12, {"ctx-00": "partial", "ctx-01": "partial"}, (), "12 compared, 2 partial"),
+    (12, {"ctx-00": "partial"}, ("ctx-01",), "11 compared: 10 full + 1 partial"),
+    (12, "full", ("ctx-00",), "11 compared, all full"),
+    (13, {"ctx-00": "partial", "ctx-01": "partial"}, (), "13 compared: 11 full + 2 partial"),
+    (12, {"ctx-00": "whatever"}, (), "11 full + 1 unrecorded"),
+])
+def test_a_merge_short_of_the_ruled_threshold_is_not_a_compared_merge(tmp_path, monkeypatch, n_ctx, coverage, blind, why):
+    rc, rep = _merged_once(tmp_path, monkeypatch, n_ctx, coverage, blind)
+    assert rc == 0 and rep["rows"][0]["compared_merge"] is False and rep["window"]["compared_merges"] == 0, why
+    assert rep["context_counts"]["FALSE_GREEN"] == 0
+
+
+def test_twelve_full_contexts_are_a_compared_merge_with_no_partial(tmp_path, monkeypatch, capsys):
+    rc, rep = _merged_once(tmp_path, monkeypatch, 12, "full")
+    assert rc == 0 and rep["window"]["compared_merges"] == 1 and rep["window"]["compared_merges_full_only"] == 1
+    assert "compared_merges=1 (full_only=1, with_partial=0) " in capsys.readouterr().out
+
+
+def test_twelve_full_contexts_make_a_compared_merge_and_a_thirteenth_partial_one_does_not_spoil_it(tmp_path, monkeypatch):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS")], gh)
+    assert rc == 0 and (rep["rows"][0]["compared_contexts"], rep["rows"][0]["compared_merge"], rep["window"]["compared_merges"]) == (K, True, 1)
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    gh.required = (*CTX, "E2E")
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", contexts=dict.fromkeys(gh.required, "OK"), coverage={"E2E": "partial"})], gh)
+    assert rc == 0 and (rep["rows"][0]["compared_contexts"], rep["rows"][0]["compared_partial"], rep["window"]["compared_merges"]) == (K, ["E2E"], 1)
+
+
+def test_a_line_journalled_before_coverage_was_recorded_counts_no_context_as_full(tmp_path, monkeypatch, capsys):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", coverage=None)], gh)
+    row = rep["rows"][0]
+    assert rc == 0 and (row["compared_contexts"], len(row["compared_unrecorded"]), row["compared_merge"]) == (0, K, False)
+    assert rep["window"]["compared_unrecorded"] == K and f"compared_unrecorded={K}" in capsys.readouterr().out
+
+
+def test_a_partial_false_green_still_blocks_ready(tmp_path, monkeypatch):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: {CTX[0]: "failure"}})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", coverage={CTX[0]: "partial"})], gh)
+    assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == 1 and rep["phase_e_ready"] is False

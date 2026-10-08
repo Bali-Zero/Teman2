@@ -218,3 +218,60 @@ def test_a_failed_or_truncated_live_read_is_refused(tmp_path, monkeypatch):
     _fake_gh(monkeypatch, _live_pages([_run("a")], [filler, []]))        # more pages than the cap allows
     assert hc.main([str(tmp_path / "status.json"), "--repo", REPO]) == 2
     assert not (tmp_path / "hosted_compare.json").exists()
+
+
+# ------------------------------------------------------------------ coverage travels with the verdict (B3)
+E2E_NOTE = "the six repository secrets are empty here"
+
+
+def _cov(verdict, coverage, note=None, **kw):
+    return {**_local(verdict, **kw), "coverage": coverage, **({"coverage_note": note} if note else {})}
+
+
+def test_a_partial_agree_keeps_its_class_but_its_row_says_partial_and_it_is_counted_apart(tmp_path, capsys):
+    # guilt: before B3 a partial AGREE read exactly like a full one, in the row, the counts and the printed table
+    args = _fixture(tmp_path, {"E2E": _cov("OK", "partial", E2E_NOTE), "b": _cov("OK", "full")})
+    assert hc.main(args) == 0
+    out = json.loads((tmp_path / "hosted_compare.json").read_text())
+    row = next(r for r in out["rows"] if r["context"] == "E2E")
+    assert (row["class"], row["coverage"], row["coverage_note"]) == ("AGREE", "partial", E2E_NOTE)
+    assert out["agreement"] == "2/2" and out["agreement_full"] == "1/2"
+    assert out["coverage"] == {"compared_full": 1, "compared_partial": ["E2E"], "compared_unrecorded": []}
+    printed = capsys.readouterr().out
+    assert re.search(r"^AGREE +GREEN\(1\) +GREEN +any +partial +E2E ", printed, re.M)
+    assert "agreement_full=1/2 compared_full=1 compared_partial=1 ['E2E']" in printed
+
+
+def test_every_full_context_counts_as_full_and_agreement_full_is_the_agreement():
+    rep = hc.compare(_status({"a": _cov("OK", "full"), "b": _cov("FAIL", "full")}), _req("a", "b"), [_run("a"), _run("b", "failure")], [])
+    assert rep["coverage"] == {"compared_full": 2, "compared_partial": [], "compared_unrecorded": []} and rep["agreement_full"] == rep["agreement"] == "2/2"
+    assert [r["coverage"] for r in rep["rows"]] == ["full", "full"]
+
+
+@pytest.mark.parametrize("coverage", [None, "", "FULL", "complete", 1, ["full"]])
+def test_a_result_that_records_no_readable_coverage_is_unrecorded_never_full(coverage):
+    res = _local("OK") if coverage is None else _cov("OK", coverage)
+    rep = hc.compare(_status({"a": res}), _req("a"), [_run("a")], [])
+    assert rep["rows"][0]["class"] == "AGREE" and rep["rows"][0]["coverage"] == "unrecorded"
+    assert rep["coverage"] == {"compared_full": 0, "compared_partial": [], "compared_unrecorded": ["a"]} and rep["agreement_full"] == "0/1"
+
+
+def test_a_partial_context_still_reports_its_false_green_and_fails_the_run():
+    rep = hc.compare(_status({"E2E": _cov("OK", "partial", E2E_NOTE)}), _req("E2E"), [_run("E2E", "failure")], [])
+    assert _klass(rep, "E2E") == "FALSE_GREEN" and hc.exit_code(rep) == 1 and rep["coverage"]["compared_partial"] == ["E2E"]
+
+
+def test_a_blind_partial_context_is_not_counted_as_compared_at_all():
+    rep = hc.compare(_status({"E2E": _cov("ERROR", "partial", E2E_NOTE)}), _req("E2E"), [_run("E2E")], [])
+    assert _klass(rep, "E2E") == "LOCAL_BLIND" and rep["coverage"] == {"compared_full": 0, "compared_partial": [], "compared_unrecorded": []}
+
+
+# ------------------------------------------------------------------ a host out of disk is no verdict (B3)
+@pytest.mark.parametrize("hosted", ["success", "failure"])
+@pytest.mark.parametrize("verdict,code", [("ERROR", "host_disk_full"), ("BLOCKED", "host_disk_below_floor 9.8GB<12GB")])
+def test_a_context_the_host_could_not_judge_is_blind_never_false_red_and_never_agree(hosted, verdict, code):
+    # guilt: before B3 the same run read FAIL here, and FALSE_RED beside a hosted green (Backend Tests, B2 final head)
+    res = {**_cov(verdict, "full"), "no_verdict": code}
+    rep = hc.compare(_status({"a": res}), _req("a"), [_run("a", hosted)], [])
+    assert _klass(rep, "a") == "LOCAL_BLIND" and rep["rows"][0]["local_detail"] == f"{verdict} (executed) {code}"
+    assert rep["counts"]["FALSE_RED"] == 0 and rep["coverage"]["compared_full"] == 0

@@ -715,7 +715,8 @@ GOOD = {"overall": "BLOCKED",
         "checks": {"ctx.a": {"status": "PASS"}, "tests.frontend_mouth": {"status": "BLOCKED"}, "security.pysa_python": {"status": "NOT_APPLICABLE"},
                    "review.independent": {"status": "QUEUED"}},
         "contexts": {"status": "ok", "required": ["ctx-a", "CodeQL"],
-                     "results": {"ctx-a": {"mapping": "executed", "verdict": "OK"}, "CodeQL": {"mapping": "blocked", "verdict": "BLOCKED"}}}}
+                     "results": {"ctx-a": {"mapping": "executed", "verdict": "OK", "coverage": "full"},
+                                 "CodeQL": {"mapping": "blocked", "verdict": "BLOCKED", "coverage": "full"}}}}
 
 
 def live_doc(**conclusions):
@@ -898,3 +899,51 @@ def test_gh_graphql_raises_with_githubs_message_redacted(monkeypatch, rc, out, e
     with pytest.raises(mg.GraphQLError) as exc:
         mg.gh_graphql("Q")
     assert "Head moved" in str(exc.value) and "ghp_" not in str(exc.value) and "[REDACTED]" in str(exc.value)
+
+
+# ------------------------------------------------------------------ coverage on the decision line (B3)
+@pytest.mark.parametrize("coverage,named", [("partial", "1/2 (partial: ctx-a)"), (None, "1/2 (coverage unrecorded: ctx-a)"),
+                                            ("whatever", "1/2 (coverage unrecorded: ctx-a)"), ("full", "1/2")])
+def test_a_partial_context_is_executed_and_passes_but_the_decision_line_names_it(enq, capsys, coverage, named):
+    _result("ctx-a", coverage=coverage)(enq)
+    line = enq.run()
+    assert line["kind"] == "enqueued" and all(line["criterion"].values()) and line["executed_required"] == named
+    assert line["partial"] == ({} if coverage == "full" else {"ctx-a": "partial" if coverage == "partial" else "unrecorded"})
+    assert f"executed_required={named} " in capsys.readouterr().out
+
+
+def test_a_tick_journals_each_contexts_coverage_beside_its_verdict(world):
+    doc = json.loads(json.dumps({k: GOOD[k] for k in ("checks", "contexts")}))
+    doc["contexts"]["results"]["ctx-a"].update(coverage="partial", coverage_note="secrets empty")
+    world.runner.doc = doc
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    assert world.tick() == 0
+    d, w = world.journal()
+    assert d["contexts"] == {"ctx-a": "OK", "CodeQL": "BLOCKED"} and d["coverage"] == {"ctx-a": "partial", "CodeQL": "full"}
+    assert d["executed_required"] == w["executed_required"] == "1/2 (partial: ctx-a)" and d["partial"] == w["partial"] == {"ctx-a": "partial"}
+
+
+# ------------------------------------------------------------------ a host out of disk: not executed, not a FAIL, never enqueued (B3)
+@pytest.mark.parametrize("verdict,code", [("ERROR", "host_disk_full"), ("BLOCKED", "host_disk_below_floor 9.8GB<12GB"),
+                                          ("BLOCKED", "host_disk_unmeasured"), ("BLOCKED", "host_disk_floor_invalid")])
+def test_a_context_the_host_could_not_judge_is_not_executed_named_and_still_refuses(enq, capsys, verdict, code):
+    _result("ctx-a", verdict=verdict, no_verdict=code)(enq)
+    line = enq.run()
+    assert line["refused"] == ["executed_contexts_ok"] and line["kind"] == "enqueue_refused" and enq.gql.mutations() == []
+    assert line["executed_required"] == "0/2" and line["host_no_verdict"] == {"ctx-a": code} and "not executed" in line["why"]["executed_contexts_ok"]
+    assert "not OK" not in line["why"]["executed_contexts_ok"] and f"host_no_verdict=['ctx-a ({code})']" in capsys.readouterr().out
+
+
+def test_a_fail_that_carries_a_host_code_is_still_a_fail_on_the_line(enq):
+    _result("ctx-a", verdict="FAIL", no_verdict="host_disk_full")(enq)
+    line = enq.run()
+    assert line["executed_required"] == "1/2" and line["host_no_verdict"] == {} and "not OK" in line["why"]["executed_contexts_ok"]
+
+
+def test_the_runner_gets_the_operators_free_space_floor_and_still_no_token(world, monkeypatch):
+    monkeypatch.setenv("LOCALCI_MIN_FREE_GB", "30")
+    monkeypatch.setenv("GH_TOKEN", "ghp_" + "Z" * 24)
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0
+    env = world.runner.calls[0]["env"]
+    assert env["LOCALCI_MIN_FREE_GB"] == "30" and "GH_TOKEN" not in env and all("ghp_" not in v for v in env.values())

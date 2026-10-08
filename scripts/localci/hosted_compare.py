@@ -17,6 +17,10 @@ later green from another event does not erase a red); green only when at least o
 the REQUIRED source (the pinned ``app_id``, or any source when none is pinned) is complete and
 none is pending. No timestamp is compared.
 
+Each row carries the context's COVERAGE as the BASE runner recorded it from the BASE matrix (``full``, ``partial`` with its
+note, or ``unrecorded`` for a status.json that predates it): the class is the same, but a partial AGREE is an agreement on a
+subset and is counted apart (``agreement_full``, ``coverage.compared_partial``), never as a full one.
+
 It also reports DRIFT between the live required names and the names the local run was planned
 with, and which required contexts pin no source app. Every GitHub call is a GET through
 ``gh api <path>``: this module posts nothing and needs no arming. ``--fixtures`` replays a saved
@@ -38,6 +42,8 @@ from pathlib import Path
 DEFAULT_REPO = "Bali-Zero/Teman2"
 DEFAULT_BRANCH = "main"
 CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "LOCAL_BLIND", "HOSTED_PENDING")
+COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")   # a local verdict set beside a hosted one
+COVERAGES = ("full", "partial")   # anything else a status.json says (or omits) is "unrecorded", which is never full
 # skipped/neutral satisfy a required check on GitHub, so they are green FOR THE GATE; the raw conclusions stay in the row.
 HOSTED_GREEN = frozenset({"success", "skipped", "neutral"})
 HOSTED_RED = frozenset({"failure", "timed_out", "cancelled", "action_required", "startup_failure", "stale", "error"})
@@ -102,9 +108,12 @@ def local_verdicts(status: dict) -> dict:
     out = {}
     for name, res in results.items():
         res = res if isinstance(res, dict) else {}
-        verdict = res.get("verdict")
+        verdict, cov = res.get("verdict"), res.get("coverage")
         out[name] = {"verdict": ("GREEN" if verdict == "OK" else "RED" if verdict == "FAIL" else "BLIND") if usable else "BLIND",
-                     "detail": f"{verdict}" + (f" ({res.get('mapping')})" if res.get("mapping") else "")}
+                     "detail": f"{verdict}" + (f" ({res.get('mapping')})" if res.get("mapping") else "")
+                               + (f" {res['no_verdict']}" if isinstance(res.get("no_verdict"), str) else ""),   # host_disk_full: blind, never red
+                     "coverage": cov if cov in COVERAGES else "unrecorded",
+                     "coverage_note": res.get("coverage_note") if isinstance(res.get("coverage_note"), str) else None}
     return out
 
 
@@ -138,13 +147,19 @@ def compare(status: dict, required_checks, check_runs, statuses) -> dict:
     for chk in required_checks:
         name, app_id = chk["context"], chk.get("app_id")
         h = hosted_verdict(hosted.get(name, []), app_id)
-        lo = local.get(name, {"verdict": "BLIND", "detail": "unmapped"})
+        lo = local.get(name, {"verdict": "BLIND", "detail": "unmapped", "coverage": "unrecorded", "coverage_note": None})
         rows.append({"context": name, "class": classify(lo["verdict"], h["verdict"]), "hosted": h["verdict"], "hosted_entries": h["entries"],
                      "hosted_counted": h["counted"], "hosted_sources": h["sources"], "hosted_conclusions": h["conclusions"],
-                     "local": lo["verdict"], "local_detail": lo["detail"], "app_id": app_id, "source_pinned": is_pinned(app_id)})
+                     "local": lo["verdict"], "local_detail": lo["detail"], "coverage": lo["coverage"], "coverage_note": lo["coverage_note"],
+                     "app_id": app_id, "source_pinned": is_pinned(app_id)})
     counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
+    compared = [r for r in rows if r["class"] in COMPARED]
+    coverage = {"compared_full": sum(1 for r in compared if r["coverage"] == "full"),
+                "compared_partial": [r["context"] for r in compared if r["coverage"] == "partial"],
+                "compared_unrecorded": [r["context"] for r in compared if r["coverage"] not in COVERAGES]}
     return {"candidate_sha": status.get("candidate_sha"), "run_id": status.get("run_id"), "local_overall": status.get("overall"),
             "required": len(rows), "rows": rows, "counts": counts, "agreement": f"{counts['AGREE']}/{len(rows)}",
+            "agreement_full": f"{sum(1 for r in compared if r['class'] == 'AGREE' and r['coverage'] == 'full')}/{len(rows)}", "coverage": coverage,
             "drift": {"missing_locally": sorted(n for n in names if n not in local), "stale_locally": sorted(n for n in local if n not in names)},
             "unpinned_source": [r["context"] for r in rows if not r["source_pinned"]]}
 
@@ -203,13 +218,17 @@ def bound_to(live, repo: str, branch: str, sha: str) -> dict:
 
 
 def render(report: dict) -> str:
-    lines = [f"{'CLASS':15} {'HOSTED':10} {'LOCAL':6} {'PIN':4} CONTEXT"]
+    lines = [f"{'CLASS':15} {'HOSTED':10} {'LOCAL':6} {'PIN':4} {'COVERAGE':10} CONTEXT"]
     for r in report["rows"]:
         hosted = f"{r['hosted']}({r['hosted_entries']})"
-        lines.append(f"{r['class']:15} {hosted:10} {r['local']:6} {'app' if r['source_pinned'] else 'any':4} {r['context']}  [{r['local_detail']}]")
-    c, d = report["counts"], report["drift"]
+        lines.append(f"{r['class']:15} {hosted:10} {r['local']:6} {'app' if r['source_pinned'] else 'any':4} {r['coverage']:10} {r['context']}  "
+                     f"[{r['local_detail']}]")
+    c, d, cov = report["counts"], report["drift"], report["coverage"]
     lines.append(f"source={report['source']} sha={str(report['candidate_sha'])[:12]} local_overall={report['local_overall']} "
                  f"required={report['required']} agreement={report['agreement']} " + " ".join(f"{k.lower()}={c[k]}" for k in CLASSES[1:]))
+    lines.append(f"coverage: agreement_full={report['agreement_full']} compared_full={cov['compared_full']} "
+                 f"compared_partial={len(cov['compared_partial'])} {cov['compared_partial']} compared_unrecorded={len(cov['compared_unrecorded'])} "
+                 f"(a partial or unrecorded comparison is shown, never counted as a full one)")
     lines.append(f"drift: missing_locally={d['missing_locally']} stale_locally={d['stale_locally']} | "
                  f"unpinned_source={len(report['unpinned_source'])}/{report['required']}")
     return "\n".join(lines)

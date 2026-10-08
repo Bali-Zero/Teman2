@@ -1,4 +1,5 @@
-"""Replayable mutation sweep for the merger (merger.py, localci_merger_tick.sh) against its two test files.
+"""Replayable mutation sweep for the merger (merger.py, localci_merger_tick.sh) against its two test files, and for the B3
+honesty rules (coverage, disk-full, the free-space floor) in hosted_compare.py and runner.py against theirs.
 
 Every mutant is ONE textual rule applied to a temporary copy of scripts/localci and scripts/lib — the checkout is never
 touched, so a killed sweep leaves nothing behind. A mutant is KILLED only when pytest ran its tests and one failed (exit 1);
@@ -23,6 +24,12 @@ ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
 PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
+HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
+HCT, RUNT = "scripts/localci/tests/test_hosted_compare.py", "scripts/localci/tests/test_runner.py"
+HD = "scripts/localci/tests/test_host_disk.py"
+RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
+                                         "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
+                                         "test_the_real_matrix_declares_e2e_partial_with_its_reason"))
 
 # name: (file, text that must occur once, replacement, test files that must turn red)
 MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
@@ -30,8 +37,16 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "parents-membership": (PY, 'return mc if parents[mc] == [d.get("base_sha")] else', 'return mc if d.get("base_sha") in parents[mc] else', (REPORT,)),
     "merged-here-any-base": (PY, 'merged_here = sha != head and sha == prs[n].get("merge_commit_sha")',
                              'merged_here = prs[n].get("merged") is True and head_of(prs[n]) == head', (REPORT,)),
-    "min-contexts-minus-one": (PY, "compared_ctx >= MIN_COMPARED_CONTEXTS})", "compared_ctx >= MIN_COMPARED_CONTEXTS - 1})", (REPORT,)),
-    "min-contexts-ignored": (PY, "compared_ctx >= MIN_COMPARED_CONTEXTS})", "True})", (REPORT,)),
+    # the ruled threshold (2026-10-08): >= 12 compared, >= 11 full, at most 1 partial. MIN_COMPARED_FULL 11 -> 10 is an EQUIVALENT
+    # mutant (12 compared with at most 1 partial already means >= 11 full), so it is not in the table; 11 -> 12 is.
+    "min-contexts-minus-one": (PY, "MIN_COMPARED_CONTEXTS = 12\n", "MIN_COMPARED_CONTEXTS = 11\n", (REPORT,)),
+    "min-contexts-ignored": (PY, "return full + partial >= MIN_COMPARED_CONTEXTS and full", "return full", (REPORT,)),
+    "min-full-plus-one": (PY, "MIN_COMPARED_FULL = 11 ", "MIN_COMPARED_FULL = 12 ", (REPORT,)),
+    "max-partial-zero": (PY, "MAX_COMPARED_PARTIAL = 1\n", "MAX_COMPARED_PARTIAL = 0\n", (REPORT,)),
+    "max-partial-two": (PY, "MAX_COMPARED_PARTIAL = 1\n", "MAX_COMPARED_PARTIAL = 2\n", (REPORT,)),
+    "compared-enough-ignores-partial": (PY, 'compared_enough(compared_ctx, len(not_full["partial"]))', "compared_enough(compared_ctx, 0)", (REPORT,)),
+    "with-partial-uncounted": (PY, 'with_partial = {r["pr"] for r in rows if r["compared_merge"] and r["compared_partial"]}', "with_partial = set()",
+                               (REPORT,)),
     "compared-merge-hosted-pending": (PY, 'merged_here and github != "PENDING" and d.get("contexts_status")', 'merged_here and d.get("contexts_status")', (REPORT,)),
     "merges-not-deduped": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())',
                            'merges = sorted(r["merged_at"] for r in rows if r["compared_merge"])', (REPORT,)),
@@ -131,12 +146,71 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "sh-required-via-expansion": (SH, 'PY="${MERGER_PYTHON:-}"    # the interpreter that runs the BASE runner', 'PY="${MERGER_PYTHON:?required}"', (TICK,)),
     "sh-kill-switch-ignored": (SH, 'if [ "${LOCALCI_MERGER_ENABLED:-true}" = "false" ]; then', "if false; then", (TICK,)),
     "sh-heartbeat-always-ok": (SH, 'if [ "$rc" -eq 0 ]; then heartbeat ok', "if true; then heartbeat ok", (TICK,)),
+    # B3 — coverage travels with the verdict: only a full context counts toward the >= 12
+    "report-counts-partial": (PY, 'compared_ctx = rep["coverage"]["compared_full"]', 'compared_ctx = sum(rep["counts"][k] for k in hc.COMPARED)', (REPORT,)),
+    "report-coverage-not-read": (PY, 'k: {"verdict": v, "coverage": cov.get(k)}', 'k: {"verdict": v, "coverage": "full"}', (REPORT,)),
+    "report-unrecorded-is-full": (PY, 'cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else {}',
+                                  'cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else dict.fromkeys(d.get("contexts") or {}, "full")',
+                                  (REPORT,)),
+    "report-partial-unshown": (PY, 'compared_partial = sum(len(r["compared_partial"]) for r in rows)', "compared_partial = 0", (REPORT,)),
+    "report-unrecorded-unshown": (PY, 'compared_unrecorded = sum(len(r["compared_unrecorded"]) for r in rows)', "compared_unrecorded = 0", (REPORT,)),
+    "tick-coverage-not-journalled": (PY, '                               "coverage": {k: (v or {}).get("coverage") for k, v in results.items()},\n', "",
+                                     (TICK,)),
+    "enqueue-partial-unnamed": (PY, 'elif res.get("coverage") != "full":   # executed', "elif False:   # executed", (TICK,)),
+    "enqueue-partial-refuses": (PY, '        elif res.get("verdict") != "OK":\n            not_ok[str(name)]',
+                                '        elif res.get("verdict") != "OK" or res.get("coverage") != "full":\n            not_ok[str(name)]', (TICK,)),
+    "hc-unrecorded-is-full": (HC, '"coverage": cov if cov in COVERAGES else "unrecorded",', '"coverage": cov if cov in COVERAGES else "full",', (HCT,)),
+    "hc-compared-full-counts-all": (HC, '"compared_full": sum(1 for r in compared if r["coverage"] == "full"),', '"compared_full": len(compared),',
+                                    (HCT,)),
+    "hc-row-drops-coverage": (HC, '"coverage": lo["coverage"], "coverage_note": lo["coverage_note"],', '"coverage": "full", "coverage_note": None,', (HCT,)),
+    "hc-agreement-full-is-agreement": (HC, "r['class'] == 'AGREE' and r['coverage'] == 'full')", "r['class'] == 'AGREE')", (HCT,)),
+    "runner-absent-coverage-partial": (RUNNER, 'coverage = it.get("coverage", "full")', 'coverage = it.get("coverage", "partial")', RUNT_COV),
+    "runner-unreadable-coverage-full": (RUNNER, "        if coverage not in COVERAGES:\n", "        if False:\n", RUNT_COV),
+    "runner-results-drop-coverage": (RUNNER, '        cov = {"coverage": ctx.get("coverage") or "unrecorded",', '        cov = {"coverage": "full",', RUNT_COV),
+    # B3 — a full disk is no verdict: matched on error lines, never FAIL, never OK
+    "runner-disk-full-ignored-jobs": (RUNNER, 'if (full := host_disk_full(r.get("logs") or [r.get("log")], r["label"])):', "if (full := None):", (HD,)),
+    "runner-disk-full-ignored-contained": (RUNNER, "if (full := host_disk_full([log], name)):", "if (full := None):", (HD,)),
+    "runner-disk-full-egress-unread": (RUNNER, 'r.get("logs") or [r.get("log")]', '[r.get("log")]', (HD,)),
+    "runner-disk-full-substring": (RUNNER, '    r"ENOSPC: no space left on device"                         #',
+                                   '    r"(?i)enospc|no[ _]space[ _]left|diskfull|ENOSPC: no space left on device"                         #', (HD,)),
+    "runner-disk-full-python-exception-ok": (RUNNER, r'r"|^(?!.*\b\w*(?:Error|Exception)\b).*: [Nn]o space left on device\s*$")',
+                                             r'r"|^.*: [Nn]o space left on device\s*$")', (HD,)),
+    "runner-recovery-alone": (RUNNER, "                if DISK_FULL_LINE.search(line):\n",
+                              "                if DISK_FULL_LINE.search(line) or RECOVERY_LINE.search(line):\n", (HD,)),
+    "runner-no-verdict-any-status": (RUNNER, 'if s in ("ERROR", "BLOCKED") and (host := HOST_NO_VERDICT.match(reason)):',
+                                     "if (host := HOST_NO_VERDICT.match(reason)):", (HD,)),
+    "runner-no-verdict-anywhere": (RUNNER, 'HOST_NO_VERDICT = re.compile(r"^(?:host_disk_full|', 'HOST_NO_VERDICT = re.compile(r".*?(?:host_disk_full|',
+                                   (HD,)),
+    "hc-no-verdict-unnamed": (HC, '''+ (f" {res['no_verdict']}" if isinstance(res.get("no_verdict"), str) else "")''', '+ ""', (HCT,)),
+    "enqueue-host-counted-executed": (PY, "{len(required) - len(non_executed) - len(host)}/", "{len(required) - len(non_executed)}/", (TICK,)),
+    "enqueue-host-passes": (PY, '                                                               if host else "") if x) or None)}',
+                            '                                                               if False else "") if x) or None)}', (TICK,)),
+    "enqueue-host-any-verdict": (PY, 'elif res.get("verdict") in ("ERROR", "BLOCKED") and nv.split(" ")[0] in HOST_NO_VERDICT:',
+                                 'elif nv.split(" ")[0] in HOST_NO_VERDICT:', (TICK,)),
+    # B3 — the free-space floor: BLOCKED before a service leg starts, never a FAIL
+    "floor-ignored": (RUNNER, 'if (floor := disk_floor_refusal(iso["docker"], iso["image_id"], run_dir)):', "if (floor := None):", (HD,)),
+    "floor-default-zero": (RUNNER, 'MIN_FREE_ENV, DEFAULT_MIN_FREE_GB = "LOCALCI_MIN_FREE_GB", 12.0', 'MIN_FREE_ENV, DEFAULT_MIN_FREE_GB = "LOCALCI_MIN_FREE_GB", 0.0',
+                           (HD,)),
+    "floor-boundary": (RUNNER, "    if free < floor:\n", "    if free <= floor:\n", (HD,)),
+    "floor-zero-still-reads": (RUNNER, "    if floor == 0:\n        return None\n", "", (HD,)),
+    "floor-unmeasured-runs": (RUNNER, "    if free is None:\n        return f\"host_disk_unmeasured:", "    if free is None and False:\n        return f\"host_disk_unmeasured:",
+                              (HD,)),
+    "floor-invalid-is-default": (RUNNER, '        floor = float("nan")\n', "        floor = DEFAULT_MIN_FREE_GB\n", (HD,)),
+    "floor-not-cached": (RUNNER, "    if key not in _HOST_FREE:\n", "    if True:\n", (HD,)),
+    "floor-probe-wrong-column": (RUNNER, "return int(fields[3]) * 1024 / 1e9, None", "return int(fields[2]) * 1024 / 1e9, None", (HD,)),
+    "floor-probe-networked": (RUNNER, '"--rm", "--network", "none", "--cap-drop", "ALL",', '"--rm", "--network", "bridge", "--cap-drop", "ALL",', (HD,)),
+    "floor-no-verdict-unnamed": (RUNNER, r"|host_disk_below_floor \d+(?:\.\d+)?GB<\d+(?:\.\d+)?GB|", "|", (HD,)),
+    "merger-floor-env-dropped": (PY, '              "LOCALCI_MIN_FREE_GB")  # an allowlist', "              )  # an allowlist", (TICK,)),
+    "merger-floor-not-host": (PY, 'HOST_NO_VERDICT = ("host_disk_full", "host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")',
+                              'HOST_NO_VERDICT = ("host_disk_full",)', (TICK,)),
 }
 
 
 def copy_tree(dest: Path) -> None:
-    for rel in ("scripts/localci", "scripts/lib"):
+    for rel in ("scripts/localci", "scripts/lib", "scripts/ci"):   # scripts/ci: the trusted classifier the runner's fixture repo copies
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
 
 
 def run_tests(tree: Path, files: tuple[str, ...]) -> int:
@@ -166,7 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     with tempfile.TemporaryDirectory(prefix="merger-mutants-") as tmp:
         tree = Path(tmp)
         copy_tree(tree)
-        originals = {f: (tree / f).read_text() for f in (PY, SH)}
+        originals = {f: (tree / f).read_text() for f in sorted({m[0] for m in MUTANTS.values()})}
         for files in sorted({MUTANTS[n][3] for n in names}):
             if (rc := run_tests(tree, files)) != 0:
                 print(f"baseline: the unmutated copy gives pytest exit {rc} on {' '.join(files)} — nothing to measure", file=sys.stderr)
