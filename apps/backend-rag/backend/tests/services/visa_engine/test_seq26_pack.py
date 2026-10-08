@@ -328,9 +328,9 @@ class TestDerivationRefuses:
 
 class TestGoldFamilyPersonasAskForTwoYears:
     """Gold personas 6 (minor child) and 7 (spouse) are the canonical E31 walks. They are run
-    through the real evaluator on the unsigned seq-26 candidate, with a stay of 12, 24 and 36
-    months added, because the 20-persona corpus is pinned by spec and replays the highest
-    SIGNED pack, which seq-26 is not yet."""
+    through the real evaluator on the seq-26 source pack (signed or not — the loader targets
+    the file by sequence), with a stay of 12, 24 and 36 months added, because the 20-persona
+    corpus is pinned by spec and its replay does not carry a requested stay."""
 
     @staticmethod
     def _candidate_prices(
@@ -339,8 +339,7 @@ class TestGoldFamilyPersonasAskForTwoYears:
         from backend.tests.services.visa_engine import _gold_fixtures as gf
         from backend.tests.services.visa_engine import test_interview_walk_census as census
 
-        pack = census._candidate_pack()
-        assert pack is not None, "seq-26 is the unsigned candidate above the highest signed pack"
+        pack = census._pack_from_source(_SEQ26_SOURCE)
         decision, compiled, _ = census._decide(
             {**overrides, "intent.stay_days": gf.known(stay_days)}, label, pack=pack
         )

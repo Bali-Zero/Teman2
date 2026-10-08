@@ -26,12 +26,26 @@ lanes:
     note: query_hash = the signed seq-25 payload_sha256 that seq-26 chains to.
 bites:
   consumer: >-
-    the evaluate path's pricing step driven on the committed rulepack-prod-026.source.json; the observer
-    also re-derives the file from seq-25 and compares canonical bytes.
+    review_hold_inventory and the evaluate path reading the highest SIGNED pack on disk, now
+    rulepack-prod-026.signed.json (signed on M5, kid prod-2026-07-1); the observer asserts the
+    inventory reads seq-26 and runs the seq-26 pack gate (which re-derives the source from
+    seq-25 and prices all nine E31 products), the walk census and the inventory tests.
   where: ci
-  observe: python3 scripts/ci/observe_visa_seq26_e31_options.py
-  expect: "contains:re-derived seq-26 equals the committed source"
+  observe: python3 scripts/ci/observe_visa_seq26_signed.py
+  expect: "contains:inventory reads seq-26 and all three consumers green"
 receipts:
+  - claim: seq-26 signed on M5 with the production key; payload_sha256 05511184caf05119ac0adf644601e322d845c276faad3146ea243c507cf23b7f, public key gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA.
+    cmd: python -m backend.scripts.visa_engine.sign_pack rulepack-prod-026.source.json --kid prod-2026-07-1 --environment PRODUCTION --sequence 26 --i-know-this-is-production
+    result: "payload_sha256=05511184…23b7f, public_key=gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA, output=rulepack-prod-026.signed.json"
+    exit: 0
+    ts: "2026-10-08T08:57:40Z"
+    seat: Claude Fable 5.1 (orchestrator, M5)
+  - claim: With the signed pack on disk the signed-pack observer reads seq-26 and all three consumers are green; the derivation observer still re-derives the source and prices all nine E31 products.
+    cmd: python3 scripts/ci/observe_visa_seq26_signed.py && python3 scripts/ci/observe_visa_seq26_e31_options.py
+    result: "inventory reads seq-26 and all three consumers green; re-derived seq-26 equals the committed source and all nine E31 products price 365d at 11000000 and 730d at 15000000"
+    exit: 0
+    ts: "2026-10-08T09:00:30Z"
+    seat: Claude Fable 5.1 (orchestrator, M5)
   - claim: Re-deriving seq-26 from seq-25 gives the committed file, and E31B prices 365 days at 11000000 and 730 days at 15000000.
     cmd: python3 scripts/ci/observe_visa_seq26_e31_options.py
     result: "E31B 365d=11000000 730d=15000000 1095d=15000000; final line printed"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""observe_visa_seq25_signed.py — bites: observation for the seq-25 SIGNING lane.
+"""observe_visa_seq26_signed.py — bites: observation for the seq-26 SIGNING lane.
 
 # bites-observable — this script takes NO arguments: every path and command
 # below is a literal in this file, so nothing an invoker types can name a
@@ -7,8 +7,8 @@
 # `scripts/ci/bites_parse.py::_guard_observable_script` sets for a script
 # reachable from a pack.yml `observe:` line).
 
-The seq-25 sibling of ``observe_visa_seq23_signed.py``: it observes the SIGNING of
-seq-25 (the 18 OFFICIAL_PORTAL sources re-stamped from the 2026-10-07 read ledger), and it
+The seq-26 sibling of ``observe_visa_seq25_signed.py``: it observes the SIGNING of
+seq-26 (E31A–J carry the 1- or 2-year ITAS as duration options; stamps unchanged from seq-25), and it
 is the executable consumer the per-PR pack declares in its `bites:` block
 (`observe:` this script, `expect: contains:` its success-only final line — the
 intermediate `highest signed sequence=24` line prints before the tests run). Fails loud
@@ -17,7 +17,7 @@ on the first red step:
 1. ``review_hold_inventory --json`` must report ``sequence == 24`` — the
    proof that ``rulepack-prod-024.signed.json`` is the HIGHEST SIGNED pack on
    disk, which is what every consumer below reads.
-2. ``test_seq25_pack.py`` — the seq-25 pack's own gate, including the
+2. ``test_seq26_pack.py`` — the seq-26 pack's own gate, including the
    ledger-gate witnesses and, in signed mode, the signed-bundle ties.
 3. ``test_interview_walk_census.py`` — reads the highest signed pack via
    ``select_highest_repository_pack``; its ``_SIGNED_SEQUENCE``-keyed pins
@@ -46,9 +46,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_RAG_DIR = REPO_ROOT / "apps" / "backend-rag"
-EXPECTED_SIGNED_SEQUENCE = 25
+EXPECTED_SIGNED_SEQUENCE = 26
 TEST_MODULES = (
-    "backend/tests/services/visa_engine/test_seq25_pack.py",
+    "backend/tests/services/visa_engine/test_seq26_pack.py",
     "backend/tests/services/visa_engine/test_interview_walk_census.py",
     "backend/tests/scripts/visa_engine/test_review_hold_inventory.py",
 )
@@ -87,23 +87,23 @@ def main() -> int:
         "backend.scripts.visa_engine.review_hold_inventory",
         "--json",
     ]
-    print(f"observe_visa_seq25_signed: running {_shown(cmd)} (cwd=apps/backend-rag)")
+    print(f"observe_visa_seq26_signed: running {_shown(cmd)} (cwd=apps/backend-rag)")
     result = subprocess.run(
         cmd, cwd=BACKEND_RAG_DIR, env=env, check=False, capture_output=True, text=True
     )
     if result.returncode != 0:
         print(
-            f"observe_visa_seq25_signed: review_hold_inventory exited {result.returncode}"
+            f"observe_visa_seq26_signed: review_hold_inventory exited {result.returncode}"
         )
         return result.returncode
     inventory = json.loads(result.stdout)
     print(
-        f"observe_visa_seq25_signed: highest signed sequence={inventory['sequence']} "
+        f"observe_visa_seq26_signed: highest signed sequence={inventory['sequence']} "
         f"totals={json.dumps(inventory['totals'], sort_keys=True)}"
     )
     if inventory["sequence"] != EXPECTED_SIGNED_SEQUENCE:
         print(
-            f"observe_visa_seq25_signed: highest signed pack is seq-{inventory['sequence']}, "
+            f"observe_visa_seq26_signed: highest signed pack is seq-{inventory['sequence']}, "
             f"not seq-{EXPECTED_SIGNED_SEQUENCE}"
         )
         return 1
@@ -111,14 +111,14 @@ def main() -> int:
     for module in TEST_MODULES:
         cmd = [interpreter, "-m", "pytest", module, "-p", "no:cacheprovider"]
         print(
-            f"observe_visa_seq25_signed: running {_shown(cmd)} (cwd=apps/backend-rag)"
+            f"observe_visa_seq26_signed: running {_shown(cmd)} (cwd=apps/backend-rag)"
         )
         rc = subprocess.run(cmd, cwd=BACKEND_RAG_DIR, env=env, check=False).returncode
         if rc != 0:
-            print(f"observe_visa_seq25_signed: {module} FAILED")
+            print(f"observe_visa_seq26_signed: {module} FAILED")
             return rc
     print(
-        "observe_visa_seq25_signed: inventory reads seq-25 and all three consumers green"
+        "observe_visa_seq26_signed: inventory reads seq-26 and all three consumers green"
     )
     return 0
 
