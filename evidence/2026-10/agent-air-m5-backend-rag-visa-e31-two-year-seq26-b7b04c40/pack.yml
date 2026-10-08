@@ -36,9 +36,9 @@ bites:
 receipts:
   - claim: Fresh Gear-3 gate on the predecessor PR #8078 (head e38f7d560b) BLOCKed on one item — #8065's response-layer test asserted no candidate on the highest signed pack carries the duration fields; with seq-26 signed the nine E31 candidates do. Cured here by scoping the test per candidate (absent without options, present with options); everything else PASSED (signature against the prod key, chain, nine-product diff, ground truth, evaluator 365/730/1095, census 0 differences over 116 walks, gold 18/20).
     cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_duration_options.py backend/tests/services/visa_engine/test_seq26_pack.py backend/tests/services/visa_engine/test_interview_walk_census.py -q -p no:cacheprovider -o addopts=""
-    result: "154 passed, 14 skipped"
+    result: "154 passed, 14 skipped (re-run captured with date -u in the same command, successor v3)"
     exit: 0
-    ts: "2026-10-08T09:13:40Z"
+    ts: "2026-10-08T09:25:07Z"
     seat: Claude Fable 5.1 (orchestrator, M5)
   - claim: seq-26 signed on M5 with the production key; payload_sha256 05511184caf05119ac0adf644601e322d845c276faad3146ea243c507cf23b7f, public key gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA.
     cmd: python -m backend.scripts.visa_engine.sign_pack rulepack-prod-026.source.json --kid prod-2026-07-1 --environment PRODUCTION --sequence 26 --i-know-this-is-production
