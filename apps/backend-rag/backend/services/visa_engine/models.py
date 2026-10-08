@@ -414,6 +414,10 @@ class VisaProductVersion(BaseModel):
         options = self.duration_options
         if options is None:
             return self
+        if options[0].pricing_key != self.pricing_key:
+            raise ValueError("pricing_key must equal the first duration option's pricing_key")
+        if self.stay_policy.kind is not StayPolicyKind.FIXED_DAYS:
+            raise ValueError("duration_options require a FIXED_DAYS stay_policy")
         days = [option.days for option in options]
         if any(later <= earlier for earlier, later in pairwise(days)):
             raise ValueError("duration_options days must be strictly increasing")

@@ -94,6 +94,29 @@ class TestModelValidation:
         with pytest.raises(ValidationError, match="below stay_policy.minimum_days"):
             _product([{"days": 180, "pricing_key": _ONE}])
 
+    def test_top_level_pricing_key_must_equal_the_first_option(self) -> None:
+        raw = _base()
+        raw["stay_policy"] = {"kind": "FIXED_DAYS", "minimum_days": 365, "maximum_days": 730}
+        raw["pricing_key"] = _TWO
+        raw["duration_options"] = [
+            {"days": 365, "pricing_key": _ONE},
+            {"days": 730, "pricing_key": _TWO},
+        ]
+        with pytest.raises(ValidationError, match="first duration option"):
+            VisaProductVersion.model_validate(raw)
+
+    def test_options_on_a_non_fixed_days_policy_are_refused(self) -> None:
+        raw = _base()
+        raw["stay_policy"] = {
+            "kind": "VARIABLE_BY_GRANT",
+            "minimum_days": None,
+            "maximum_days": None,
+        }
+        raw["pricing_key"] = _ONE
+        raw["duration_options"] = [{"days": 365, "pricing_key": _ONE}]
+        with pytest.raises(ValidationError, match="FIXED_DAYS"):
+            VisaProductVersion.model_validate(raw)
+
     def test_empty_options_are_refused(self) -> None:
         with pytest.raises(ValidationError):
             _product([])
@@ -169,3 +192,22 @@ class TestDisplay:
             (365, False, 11_000_000),
             (730, True, 15_000_000),
         ]
+
+    @pytest.mark.parametrize(
+        ("stay_days", "selected", "extension"),
+        [
+            (1095, 730, True),
+            (731, 730, True),
+            (540, 730, False),
+            (730, 730, False),
+            (None, 365, False),
+        ],
+    )
+    def test_extension_required_only_when_the_wish_exceeds_the_last_option(
+        self, stay_days: int | None, selected: int, extension: bool
+    ) -> None:
+        shown = _duration_display(
+            _two_year_product(), stay_days=stay_days, pricing_catalog=_Catalog(), evaluated_at=_NOW
+        )
+        assert shown["selected_duration_days"] == selected
+        assert shown["extension_required"] is extension

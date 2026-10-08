@@ -932,7 +932,12 @@ def _duration_display(
                 "amount_idr": resolution.amount,
             }
         )
-    return {"selected_duration_days": selected.days, "duration_options": options}
+    return {
+        "selected_duration_days": selected.days,
+        "duration_options": options,
+        "extension_required": stay_days is not None
+        and stay_days > product.duration_options[-1].days,
+    }
 
 
 def _build_display(

@@ -472,6 +472,9 @@ class CandidateDisplayDTO(BaseModel):
     duration_options: tuple[DurationOptionDisplayDTO, ...] | None = Field(
         default=None, min_length=1
     )
+    # True when the requested stay is longer than the last option: the permit is then
+    # extended, so the quote covers the last option only.
+    extension_required: bool = Field(default=False, strict=True)
 
 
 class VisaOracleDisplayDTO(BaseModel):
