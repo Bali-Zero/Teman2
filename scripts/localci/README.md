@@ -99,7 +99,8 @@ materializes other bytes), which this run did not execute. The matrix is operato
 **Coordinator interpreter.** The env fingerprint hashes the coordinator venv's `pip freeze`. A venv holding an editable install
 of a moving checkout (Pro's backend-rag venv carries `cell_core` from the main checkout, so its freeze names that checkout's
 HEAD) drifts whenever the checkout moves mid-run, and every receipt goes STALE, as it should. Measure from a venv that tracks
-nothing (on Pro: `~/.nuzantara-pilots/local-ci/executor-a/venv311`, pyenv 3.11.11 + PyYAML + pytest) and diff its freeze at
+nothing (on Pro: `~/.nuzantara-pilots/local-ci/merger/venv`, the merger's own python3.11 + PyYAML + pytest venv from the arm block
+below; `executor-a/venv311` went with the executor-a directory in the 2026-10-08 cleanup) and diff its freeze at
 the start and the end of a run when a STALE needs explaining.
 
 ## Service contexts (v0.6.0)
