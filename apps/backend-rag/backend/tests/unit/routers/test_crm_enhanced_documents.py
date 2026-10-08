@@ -42,6 +42,17 @@ def mock_db_pool():
     return pool
 
 
+@pytest.fixture(autouse=True)
+def _no_duplicate_on_upload():
+    """The upload's PR 2a dedup lookup answers "no duplicate" here, so these
+    tests keep their own fetchval sequences; test_crm_upload_dedup.py covers it."""
+    with patch(
+        "backend.app.routers.crm_enhanced_documents._active_duplicate_document_id",
+        new=AsyncMock(return_value=None),
+    ):
+        yield
+
+
 @pytest.fixture
 def mock_current_user():
     return {
