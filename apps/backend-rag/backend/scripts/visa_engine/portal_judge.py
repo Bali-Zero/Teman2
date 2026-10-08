@@ -39,9 +39,10 @@ from backend.scripts.visa_engine.portal_read_receipt import fingerprint, portal_
 JUDGE_TIMEOUT_SECONDS = 120
 VERDICTS = frozenset({"none", "changed", "unsure"})
 _REPO_ROOT = Path(__file__).resolve().parents[5]
+# The repo copy is the SSOT (a HOME copy can fork from it); ~/scripts is the fallback.
 CASCADE_CANDIDATES = (
-    Path.home() / "scripts" / "claude-cascade.sh",
     _REPO_ROOT / "infra" / "launchagents" / "wrappers" / "claude-cascade.sh",
+    Path.home() / "scripts" / "claude-cascade.sh",
 )
 
 JudgeFn = Callable[[str], str]
@@ -57,7 +58,7 @@ def cascade_argv(model: str) -> list[str]:
         if candidate.is_file():
             return [str(candidate), "--stdin", "--claude-only", "--model", model]
     raise FileNotFoundError(
-        "claude-cascade.sh not found in ~/scripts or infra/launchagents/wrappers"
+        "claude-cascade.sh not found in infra/launchagents/wrappers or ~/scripts"
     )
 
 
