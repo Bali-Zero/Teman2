@@ -1,0 +1,46 @@
+task_id: localci-b8-1008
+mission: LOCALCI-SOVEREIGN (phase B, step B8)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 482 with this pack, over the 400 line
+  target; 359 without it), no hot-zone path. The change is the merger's own prune, its tests and mutants, a README section
+  and the spec paragraph it amends; no workflow, credential, wrapper or plist changes, so the deploy is the mirror's next fetch.
+l_level: L2
+gate_class: opus
+objective: >-
+  From the lead's rule B8 of 2026-10-08, after the Colima VM filled at about 15:27Z: beyond the two slots of a recipe an
+  image stays only when the lease run names it (no clock grace); slot 2 goes to the image the most plans of the last 48 h
+  name; a VM free floor of 15 GB outranks slot 2; the build cache is pruned to a 4 GB budget instead of by age; the
+  per-tree deps recipe is written as the open question B9, not built.
+constraints:
+  - localci_merger_tick.sh is unchanged.
+  - The never-list (localci-candidate:*, localci-deps-base:*, the BASE matrix's service stand-ins) is never removed, under the floor too.
+  - The floor never removes the newest image of a recipe or what the run in progress names.
+  - A dry run, an unreadable input or an unmeasured VM never triggers a floor removal.
+  - No .github/ file, no push, nothing on Pro.
+acceptance:
+  - text: WHEN three images of one recipe are all named under 1 h ago and no run in progress names the third, the third SHALL be removed (no clock grace).
+    probe: "test_prune.py::test_b8_a_third_image_named_under_an_hour_ago_goes_when_no_run_in_progress_names_it"
+  - text: WHEN the run in progress names the third image, it SHALL be kept.
+    probe: "test_prune.py::test_b8_the_run_in_progress_keeps_the_third_image_it_names"
+  - text: Slot 2 SHALL go to the image named by three plans over a younger one a single plan names, and a tie SHALL go to the youngest reference.
+    probe: "test_prune.py::test_b8_slot_2_goes_to_the_image_three_plans_name_over_a_younger_one_a_single_plan_names, test_prune.py::test_b8_a_tie_in_plans_gives_slot_2_to_the_youngest_reference"
+  - text: WHEN the VM has 10 GB free and two slot-2 images exist, the older SHALL go first, then the next, with rule "vm floor", never the newest.
+    probe: "test_prune.py::test_b8_under_the_vm_floor_slot_2_goes_oldest_first_then_the_next_never_the_newest"
+  - text: WHEN the VM has 20 GB free (or exactly 15), slot 2 SHALL be kept; the floor stops once met.
+    probe: "test_prune.py::test_b8_vm_free_20_keeps_slot_2, test_prune.py::test_b8_the_floor_stops_once_met_and_a_vm_at_the_floor_keeps_slot_2"
+  - text: Under the floor, the never-list, the newest and the run in progress SHALL be untouched.
+    probe: "test_prune.py::test_b8_the_floor_never_touches_the_never_list_the_newest_or_the_run_in_progress"
+  - text: The build cache SHALL be pruned with --keep-storage 4GB, journaled as builder_prune.keep_storage_gb, never by age.
+    probe: "test_prune.py::test_b8_the_build_cache_is_pruned_to_a_budget_not_by_age"
+assumptions:
+  - text: The VM probe still measures a full VM (it reads 0.0 rather than failing).
+    status: unverified
+    note: The lead's prune lines on Pro read vm_free_gb 0.0 while the VM was full, so the probe ran; if it fails instead, the floor journals skipped (unmeasured) and acts on nothing.
+    probe: phase D — the first prune lines on Pro carrying vm_floor.
+consumer_map:
+  - scripts/localci/merger.py prune, run by the launchd tick on Pro after every tick — the image removals, the builder prune and the {"kind":"prune"} line in decisions.jsonl.
+appetite:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 0
