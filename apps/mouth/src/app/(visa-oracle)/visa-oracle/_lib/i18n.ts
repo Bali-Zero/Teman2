@@ -1039,10 +1039,11 @@ const en = {
   // the engine fact only: a condition attached, checked with the visitor.
   "outcome.conditions.intro":
     "The result above was reached with these conditions attached. Our team checks each one with you before submission.",
-  "outcome.review_group_case.title": "What a person will check about your case",
+  "outcome.review_group_case.title":
+    "What a Bali Zero advisor will check about your case",
   "outcome.review_group_system.title":
     "Checks on our side, not on your answers",
-  "outcome.review.element.rule": "Why this is held",
+  "outcome.review.element.rule": "Why this is paused",
   "outcome.review.element.checked": "What the reviewer checks",
   "outcome.review.element.prepare": "What to prepare",
   "outcome.review.element.handling": "How this is handled",
@@ -2086,10 +2087,10 @@ const id: Record<Keys, string> = {
   "outcome.conditions.intro":
     "Hasil di atas diperoleh dengan kondisi-kondisi berikut yang menyertainya. Tim kami akan memeriksa setiap kondisi bersama Anda sebelum pengajuan.",
   "outcome.review_group_case.title":
-    "Yang akan diperiksa seseorang pada kasus Anda",
+    "Yang akan diperiksa konsultan Bali Zero pada kasus Anda",
   "outcome.review_group_system.title":
     "Pemeriksaan di pihak kami, bukan pada jawaban Anda",
-  "outcome.review.element.rule": "Mengapa hasil ini ditahan",
+  "outcome.review.element.rule": "Mengapa hasil ini ditunda",
   "outcome.review.element.checked": "Apa yang diperiksa peninjau",
   "outcome.review.element.prepare": "Apa yang perlu disiapkan",
   "outcome.review.element.handling": "Bagaimana hal ini ditangani",
