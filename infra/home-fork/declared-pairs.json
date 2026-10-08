@@ -964,6 +964,16 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/pro-visa-reattestation.sh",
+      "repo": "infra/launchagents/wrappers/pro-visa-reattestation.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.visa-reattestation.plist",
+      "repo": "infra/launchagents/com.nuzantara.visa-reattestation.plist",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/Library/LaunchAgents/com.nuzantara.wa-mirror-freshness-liveness.plist",
       "repo": "infra/launchagents/com.nuzantara.wa-mirror-freshness-liveness.plist",
       "machines": ["pro"],
