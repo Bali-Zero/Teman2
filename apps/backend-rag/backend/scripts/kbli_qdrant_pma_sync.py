@@ -198,20 +198,31 @@ class CodePlan:
     def found(self) -> bool:
         return bool(self.point_ids)
 
+    def differing_keys(self, pid: Any) -> list[str]:
+        """Flat payload keys of this point that differ from the canonical.
+
+        Judged for EVERY point, shaped or not: the flat fields are what
+        `inspect_kbli` serves, and they do not depend on the blob being
+        locatable. A missing key reads as None, which differs from any
+        non-empty canonical value."""
+        cur = self.current.get(pid, {})
+        return [key for key, value in self.target.fields.items() if cur.get(key) != value]
+
     def stale_points(self) -> list[Any]:
         """Point ids whose payload disagrees with the canonical on ANY field of
         the layer, OR whose prose still carries the old wording. Judging on one
         field would leave the others uncured — that is how a point ends up
         reading TERBATAS at 100%, and how a point ends up reading TERBATAS in
-        its flat field while its blob still says TERBUKA / 100."""
+        its flat field while its blob still says TERBUKA / 100.
+
+        An unshaped point (blob block not locatable) is still compared on its
+        flat keys; only the prose rewrite is withheld, because `prose` is empty
+        for it by construction."""
         out = []
         for pid in self.point_ids:
-            if pid in self.unshaped:
-                continue
-            cur = self.current.get(pid, {})
-            if any(cur.get(key) != value for key, value in self.target.fields.items()):
+            if self.differing_keys(pid):
                 out.append(pid)
-            elif self.prose.get(pid):
+            elif pid not in self.unshaped and self.prose.get(pid):
                 out.append(pid)
         return out
 
@@ -770,9 +781,11 @@ def apply_plan(
     stale = plan.stale_points()
     if not stale:
         logger.info(
-            "  %s: already agrees with canonical (%s)",
+            "  %s: agrees with canonical (flat keys compared: %d across %d point(s)%s)",
             plan.code,
-            _describe(plan.target.fields) or f"{plan.target.layer} prose",
+            len(plan.target.fields),
+            len(plan.point_ids),
+            "" if plan.target.fields else f"; {plan.target.layer} is prose-only",
         )
         return 0
 
@@ -792,10 +805,13 @@ def apply_plan(
     for pid in stale:
         cur = plan.current.get(pid, {})
         repaired = plan.prose.get(pid, {})
+        diffs = plan.differing_keys(pid)
         logger.info(
-            "  %s: point %s  %s -> %s%s%s",
+            "  %s: point %s STALE: %s  %s -> %s%s%s",
             plan.code,
             pid,
+            ", ".join(f"{k} {cur.get(k)!r} → {plan.target.fields[k]!r}" for k in diffs)
+            or "prose only",
             _describe({k: cur.get(k) for k in plan.target.fields}),
             _describe(plan.target.fields),
             f"  [+prose: {', '.join(sorted(repaired))}]" if repaired else "",
