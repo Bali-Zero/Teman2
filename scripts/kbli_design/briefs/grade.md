@@ -5,7 +5,9 @@ never read the author's claims first — the author's self-report is the LAST se
 message; open it only after your objections are written. No tools, no browsing: the brief the
 author received, the content pack and the set's eight HTML screens are all below.
 
-Start with exactly one line: `VERDICT: PASS` or `VERDICT: DEFECT`.
+The FIRST line of your answer must be exactly `VERDICT: PASS` or `VERDICT: DEFECT`: no preamble,
+heading or note before it. An answer that does not open with it is discarded, and the set it
+judges is excluded from the arena.
 
 Then your objections. One objection = one paragraph that names the screen file, cites the
 criterion it breaks (C1–C10 of the author's brief below) and carries a line starting `Test:` with

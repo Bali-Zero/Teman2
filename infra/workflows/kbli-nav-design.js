@@ -8,11 +8,13 @@
 // evidence; every phase gate is a PRINTED LINE compared here, never an exit code (DECISION.md).
 // External seats (codex Sol, agy Gemini) run as one-shots from an empty temp dir with stdin closed and
 // the material inlined (F5/F6) — scripts/kbli_design/seat_io.py does that; Anthropic seats are agent()
-// lanes, i.e. the claude CLI on OAuth (C1). The kit lives outside the repo, so no mockup enters a PR (C3).
+// lanes, i.e. the claude CLI on OAuth (C1). The kit lives outside the repo, so no mockup enters a PR (C3);
+// create it before the run — seat_gate.py refuses a kit that does not exist.
 //
 //   Workflow({ scriptPath: "infra/workflows/kbli-nav-design.js", args: {
 //     kit: "<absolute kit dir, outside the repo>", repo: "<absolute repo checkout>",
-//     app: "<absolute app repo, default ~/kbli-navigator-app>", nlmNotebook: "KBLI" }})
+//     app: "<absolute app repo, default ~/kbli-navigator-app>", nlmNotebook: "KBLI",
+//     preview: "<absolute gallery dir, e.g. ~/BATTAGLIA-<date>/PREVIEW-kbli-nav-design>" }})
 
 export const meta = {
   name: "kbli-nav-design",
@@ -23,7 +25,8 @@ export const meta = {
   phases: [
     {
       title: "Arsenal",
-      detail: "dead-seat substitution read from arsenal_probe.py --read-last",
+      detail:
+        "kit + fail-closed seat liveness from seat_gate.py (arsenal last.json)",
     },
     {
       title: "Content pack",
@@ -55,15 +58,16 @@ export const meta = {
 const A = (typeof args === "string" ? JSON.parse(args) : args) || {};
 const KIT = A.kit,
   REPO = A.repo,
-  APP = A.app || "/Users/balizero/kbli-navigator-app";
+  APP = A.app || "/Users/balizero/kbli-navigator-app",
+  PREVIEW = A.preview;
 // Paths are interpolated into courier shell commands, so anything beyond a plain absolute path is refused.
 if (
-  ![KIT, REPO, APP].every(
+  ![KIT, REPO, APP, PREVIEW].every(
     (p) => typeof p === "string" && /^\/[A-Za-z0-9._\/-]+$/.test(p),
   )
 ) {
   throw new Error(
-    "kbli-nav-design: args.kit, args.repo (and args.app) must be plain absolute paths [A-Za-z0-9._/-]",
+    "kbli-nav-design: args.kit, args.repo, args.preview (and args.app) must be plain absolute paths [A-Za-z0-9._/-]",
   );
 }
 const NLM = String(A.nlmNotebook || "KBLI").replace(/[^A-Za-z0-9 ._-]/g, "");
@@ -78,7 +82,13 @@ const CONTROL_LINES = [
   "innocence variety=FAIL content=PASS",
   "guilt content=FAIL",
 ];
-const TOOLS = ["content_pack.py", "seat_io.py", "anti_flatness.py", "arena.py"];
+const TOOLS = [
+  "content_pack.py",
+  "seat_gate.py",
+  "seat_io.py",
+  "anti_flatness.py",
+  "arena.py",
+];
 const FAMILY = {
   sol: "openai",
   gemini: "google",
@@ -172,14 +182,30 @@ async function seat(slot, seatName, stage, ph) {
 }
 
 phase("Arsenal");
-const ars = await sh("arsenal read-last", "Arsenal", [
-  `python3 -I ${REPO}/scripts/arsenal_probe.py --read-last`,
+// Fail-closed before any dispatch. FIRST seat_gate.py empties the previous run's gallery renders
+// (<PREVIEW>/mockups/**/*.png), so a run refused anywhere later never leaves sets nobody read in front of the
+// vote; then the kit must answer "kit ok", and a seat is live only on an explicit "live <seat>" line
+// (no report, no row, a stale report or any other status is dead).
+const ars = await sh("seat gate", "Arsenal", [
+  `${PY}/seat_gate.py --kit ${KIT} --preview ${PREVIEW}`,
 ]);
-const findings =
-  JSON.parse(ars.slice(ars.indexOf("{"), ars.lastIndexOf("}") + 1)).findings ||
-  [];
-const dead = (s) => findings.some((f) => f.seat === s && f.status !== "LIVE");
-const live = { sol: !dead("codex"), gemini: !dead("agy"), nlm: !dead("nlm") };
+if (!lines(ars).includes(`gallery cleared ${PREVIEW}/mockups pngs=0`))
+  throw new Error(
+    `refused before any dispatch: the previous gallery was not cleared\n${ars}`,
+  );
+if (!lines(ars).includes(`kit ok ${KIT}`))
+  throw new Error(
+    `refused before any dispatch: ${find(ars, /^refused:/) || "seat_gate.py printed no kit line"}\n${ars}`,
+  );
+const isLive = (s) => lines(ars).includes(`live ${s}`);
+const live = {
+  sol: isLive("codex"),
+  gemini: isLive("agy"),
+  nlm: isLive("nlm"),
+};
+lines(ars)
+  .filter((l) => l.startsWith("dead "))
+  .forEach((l) => log(l));
 if (!live.sol && !live.gemini)
   throw new Error("suspended: no non-Anthropic family live, C6 cannot hold");
 const SLOTS = [
@@ -367,7 +393,10 @@ await parallel(
 );
 
 phase("Arena");
-const arena = await sh("arena", "Arena", [`${PY}/arena.py --kit ${KIT}`]);
+// --preview drops the renders where the gallery's build_preview.py collects them (PREVIEW/mockups/<letter>/).
+const arena = await sh("arena", "Arena", [
+  `${PY}/arena.py --kit ${KIT} --preview ${PREVIEW}`,
+]);
 const arenaLine = find(arena, /^arena \S+ sets=\d+$/);
 if (!arenaLine) throw new Error(`arena not written:\n${arena}`);
 log(
@@ -375,6 +404,8 @@ log(
 );
 return {
   arena: arenaLine.split(" ")[1],
+  // arena.py writes <PREVIEW>/mockups/<letter>/<screen>.png, the folder build_preview.py scans
+  gallery: `${PREVIEW}/mockups`,
   declared: declared,
   witness: witness,
   controls: CONTROL_LINES,

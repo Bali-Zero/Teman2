@@ -5,7 +5,9 @@ page is well built, never that it is TRUE: you are the instrument aimed at truth
 browsing: below are the canonical dataset records of 55203, 51101 and 56101 (verbatim JSON), the
 content pack the author had to paste from, the set's HTML screens and its derivability table.
 
-Start with exactly one line: `VERDICT: PASS` or `VERDICT: DEFECT`.
+The FIRST line of your answer must be exactly `VERDICT: PASS` or `VERDICT: DEFECT`: no preamble,
+heading or note before it. An answer that does not open with it is discarded, and the set it
+judges is excluded from the arena.
 
 Then your objections. One objection = one paragraph that cites a criterion — C9 for a rendered
 fact that differs from the pack or from the canonical record, C10 for the law clause, any C for a

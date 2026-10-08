@@ -92,9 +92,14 @@ Track A of `docs/plans/2026-10-08-kbli-navigator-design-loop.md`, in the formati
 → probes whose controls are read first → a cross-family grader per set + a NotebookLM source-only
 witness → ONE bounded repair + retest → cross-family fact refutation → `arena.html`, then it STOPS:
 the vote is Zero's. Every phase gate is a printed line compared in the script, never an exit code;
-dead seats are read at start from `scripts/arsenal_probe.py --read-last` (Sol dead → Gemini grades
-only; Gemini dead → its set is declared, not replaced). It refuses at phase 0 unless
-`scripts/kbli_design/{content_pack,seat_io,anti_flatness,arena}.py` exist on `args.repo`.
+before any dispatch `scripts/kbli_design/seat_gate.py` refuses a missing or in-repo kit and reads seat
+liveness fail-closed from the arsenal report (no report, no row, a stale report or any status but LIVE
+is dead; Sol dead → Gemini grades only; Gemini dead → its set is declared, not replaced). It refuses at
+phase 0 unless `scripts/kbli_design/{content_pack,seat_gate,seat_io,anti_flatness,arena}.py` exist on
+`args.repo`, and the arena admits only sets whose grader and refuter answers open with `VERDICT:`.
+The arena's renders land in `args.preview/mockups/<letter>/`, where the gallery's `build_preview.py`
+collects them. `infra/workflows/tests/test-kbli-nav-design-contract.mjs` pins the path refusal, the
+fail-closed read and a happy path that reaches the arena with `--preview`.
 
 ## second-army.js — the Gear <= 2 army, made executable
 
