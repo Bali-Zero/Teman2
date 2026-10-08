@@ -1,0 +1,33 @@
+name: r19-wrapper-census-tests
+
+# Executes scripts/mouth/tests: the offline replay of the /kbli* R19 wrapper
+# token census (scripts/mouth/r19_wrapper_token_census.py) against its
+# contract (docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md), with
+# guilt and innocence. Mission kbli-nav-design-loop, lot W0. Not a required
+# context; W1 arms the live census as a Playwright test in apps/mouth.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/mouth/**"
+      - "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md"
+      - ".github/workflows/r19-wrapper-census-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  census-replay:
+    runs-on: ubuntu-latest
+    # The floor is the checkout (~2 min on this repo), not the 1-second replay.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+      - name: Replay the census against the contract
+        run: python -m pytest scripts/mouth/tests -q -p no:cacheprovider
