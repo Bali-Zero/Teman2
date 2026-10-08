@@ -95,9 +95,18 @@ if [ "\$1" = "view" ] && [ "\$3" = "versions" ]; then
   printf '\n]\n'
   exit 0
 fi
+if [ "\$1" = "root" ]; then echo "${dir}/global-root"; exit 0; fi
 if [ "\$1" = "install" ]; then
   spec="\${@: -1}"
   printf '%s\n' "\$spec" >> "${dir}/installed.log"
+  case "\$spec" in
+    "@anthropic-ai/claude-code-"*)
+      n="\$(grep -c -F "\$spec" "${dir}/installed.log")"
+      if [ "\$n" -le "\${FAKE_NPM_PLATFORM_FAILS:-0}" ]; then
+        echo "npm error code ETIMEDOUT (fake)" >&2
+        exit 1
+      fi ;;
+  esac
   if [ "\${FAKE_NPM_INSTALL_BROKEN_CLAUDE:-0}" = "1" ]; then
     # The REAL failure of 2026-08-20: npm exits 0, the JS launcher lands on
     # PATH, and only running it reveals the native binary behind it is absent.
@@ -127,7 +136,7 @@ HERMETIC_PATH="/usr/bin:/bin"
 run_in_world() {
     local dir="$1"
     local pin="${2:-2.1.236}"
-    ( PATH="${dir}/bin:${HERMETIC_PATH}" CLAUDE_CODE_PIN="${pin}" sh "${SCRIPT}" ) \
+    ( PATH="${dir}/bin:${HERMETIC_PATH}" CLAUDE_CODE_PIN="${pin}" CLAUDE_CODE_RETRY_SLEEP=0 sh "${SCRIPT}" ) \
         > "${dir}/stdout.log" 2> "${dir}/stderr.log"
     echo "$?"
 }
@@ -177,7 +186,7 @@ rm -rf "$W"
 # ---------------------------------------------------------------------------
 W="$(mktemp -d)"
 build_world "$W" linux x64 glibc "2.1.236" "2.1.236"
-RC="$( ( PATH="$W/bin:${HERMETIC_PATH}" CLAUDE_CODE_PIN=2.1.236 \
+RC="$( ( PATH="$W/bin:${HERMETIC_PATH}" CLAUDE_CODE_PIN=2.1.236 CLAUDE_CODE_RETRY_SLEEP=0 \
          FAKE_NPM_INSTALL_LEAVES_NO_CLAUDE=1 sh "${SCRIPT}" ) \
         > "$W/stdout.log" 2> "$W/stderr.log"; echo "$?" )"
 if [ "$RC" = "0" ]; then
@@ -198,7 +207,7 @@ rm -rf "$W"
 # ---------------------------------------------------------------------------
 W="$(mktemp -d)"
 build_world "$W" linux x64 glibc "2.1.236" "2.1.236"
-RC="$( ( PATH="$W/bin:${HERMETIC_PATH}" CLAUDE_CODE_PIN=2.1.236 \
+RC="$( ( PATH="$W/bin:${HERMETIC_PATH}" CLAUDE_CODE_PIN=2.1.236 CLAUDE_CODE_RETRY_SLEEP=0 \
          FAKE_NPM_INSTALL_BROKEN_CLAUDE=1 sh "${SCRIPT}" ) \
         > "$W/stdout.log" 2> "$W/stderr.log"; echo "$?" )"
 if [ "$RC" = "0" ]; then
@@ -220,8 +229,14 @@ build_world "$W" linux x64 glibc \
 RC="$(run_in_world "$W")"
 if [ "$RC" != "0" ]; then
     fail "ordinary world: exited ${RC} on a perfectly ordinary day ($(tail -2 "$W/stderr.log"))"
-elif ! grep -Fxq "@anthropic-ai/claude-code@2.1.236" "$W/installed.log" 2>/dev/null; then
-    fail "ordinary world: installed $(cat "$W/installed.log" 2>/dev/null), expected exactly the pin"
+elif ! grep -Fxq "@anthropic-ai/claude-code@2.1.236" "$W/installed.log" 2>/dev/null \
+     || ! grep -Fxq "@anthropic-ai/claude-code-linux-x64@2.1.236" "$W/installed.log" 2>/dev/null \
+     || [ "$(wc -l < "$W/installed.log" | tr -d ' ')" != "2" ]; then
+    fail "ordinary world: installed $(tr '\n' ' ' < "$W/installed.log" 2>/dev/null), expected exactly the pin and its platform package"
+elif ! grep -q "platform package @anthropic-ai/claude-code-linux-x64@2.1.236 installed explicitly" "$W/stdout.log"; then
+    fail "ordinary world: no explicit platform-install line"
+elif grep -q "retry" "$W/stdout.log"; then
+    fail "ordinary world: printed a retry line on a healthy install"
 elif grep -q "FATAL" "$W/stderr.log"; then
     fail "ordinary world: printed a FATAL on a healthy install"
 else
@@ -253,6 +268,51 @@ elif ! grep -Fxq "@anthropic-ai/claude-code@2.1.236" "$W/installed.log"; then
     fail "stale-pin world: the notice changed what got installed — it must not"
 else
     ok "a stale pin is reported by name, still installs the pin, and does not fail the build"
+fi
+rm -rf "$W"
+
+# ---------------------------------------------------------------------------
+# GUILT 6 — the 2026-10-08 incident: the first fetch of the platform package
+# fails (transient), the second succeeds. Install passes, one retry line.
+# ---------------------------------------------------------------------------
+W="$(mktemp -d)"
+build_world "$W" linux x64 glibc "2.1.236" "2.1.236"
+RC="$( ( PATH="$W/bin:${HERMETIC_PATH}" CLAUDE_CODE_PIN=2.1.236 CLAUDE_CODE_RETRY_SLEEP=0 \
+         FAKE_NPM_PLATFORM_FAILS=1 sh "${SCRIPT}" ) \
+        > "$W/stdout.log" 2> "$W/stderr.log"; echo "$?" )"
+if [ "$RC" != "0" ]; then
+    fail "flaky-fetch world: exited ${RC} — one transient failure must be retried ($(tail -2 "$W/stderr.log"))"
+elif [ "$(grep -c "retry — fetch of" "$W/stdout.log")" != "1" ]; then
+    fail "flaky-fetch world: expected exactly one retry line, got $(grep -c "retry — fetch of" "$W/stdout.log")"
+elif ! grep -q "installed explicitly" "$W/stdout.log"; then
+    fail "flaky-fetch world: passed without the explicit-install confirmation"
+else
+    ok "one failed fetch of the platform package is retried once and the install passes"
+fi
+rm -rf "$W"
+
+# ---------------------------------------------------------------------------
+# GUILT 7 — both attempts fail. FATAL names the platform package, exit non-zero,
+# and the self-test is NEVER reached (the fake launcher is broken on purpose: had
+# `claude --version` run, its own reason would be on stderr).
+# ---------------------------------------------------------------------------
+W="$(mktemp -d)"
+build_world "$W" linux x64 glibc "2.1.236" "2.1.236"
+RC="$( ( PATH="$W/bin:${HERMETIC_PATH}" CLAUDE_CODE_PIN=2.1.236 CLAUDE_CODE_RETRY_SLEEP=0 \
+         FAKE_NPM_PLATFORM_FAILS=2 FAKE_NPM_INSTALL_BROKEN_CLAUDE=1 sh "${SCRIPT}" ) \
+        > "$W/stdout.log" 2> "$W/stderr.log"; echo "$?" )"
+if [ "$RC" = "0" ]; then
+    fail "dead-fetch world: exited 0 although the platform package never installed"
+elif ! grep -q "FATAL: could not install @anthropic-ai/claude-code-linux-x64@2.1.236" "$W/stderr.log"; then
+    fail "dead-fetch world: FATAL does not name the platform package"
+elif ! grep -q "npm view @anthropic-ai/claude-code-linux-x64@2.1.236" "$W/stderr.log"; then
+    fail "dead-fetch world: FATAL does not give the remedy"
+elif grep -q "native binary not installed" "$W/stderr.log"; then
+    fail "dead-fetch world: the self-test was reached — the failure must come at the fetch"
+elif [ "$(grep -c "claude-code-linux-x64@" "$W/installed.log")" != "2" ]; then
+    fail "dead-fetch world: expected exactly 2 attempts"
+else
+    ok "two failed fetches die FATAL naming the platform package, before the self-test"
 fi
 rm -rf "$W"
 
