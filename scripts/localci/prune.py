@@ -285,7 +285,7 @@ def build_cache_gb(docker: str) -> float | None:
 def builder_prune(docker: str, rec: dict, budget_gb: float) -> None:
     """`docker builder prune -af --keep-storage`: `-a` because the entries are the layers of images that exist, which are not
     dangling — without it nothing went (Pro, 2026-10-08T17:26Z: 0 B of a 21.8 GB cache). Run after image removals, so the entries
-    tied to them go. The first failure's rc stays; the cache size is journalled before the first run and after the last."""
+    tied to them go. rc and tail are the last call's, `runs` the count; the cache size is journalled before the first and after the last."""
     bp = rec.setdefault("builder_prune", {"rc": 0, "keep_storage_gb": budget_gb, "cache_gb": {"before": build_cache_gb(docker)}, "runs": 0})
     try:
         b = _docker(docker, "builder", "prune", "-af", "--keep-storage", f"{budget_gb:g}GB", timeout=600)
@@ -294,8 +294,7 @@ def builder_prune(docker: str, rec: dict, budget_gb: float) -> None:
         rc, tail = None, type(e).__name__
     bp["runs"] += 1
     bp["tail"] = tail
-    if bp["rc"] == 0:
-        bp["rc"] = rc
+    bp["rc"] = rc   # the last call's, as ruled; `runs` says how many there were
 
 
 def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, colima: str = "colima", host_path: str = HOST_PATH,
@@ -345,9 +344,10 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
                 errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "vm floor", "error": r.stderr.strip()[:200]})
                 continue
             im["remove"] = True
-            built = f"{(now_s - im['created']) / 3600:.1f} h ago" if im["created"] is not None else "at an unknown time"
+            built = f"built {(now_s - im['created']) / 3600:.1f} h ago" if im["created"] is not None else "undated"
             removed.append({"tag": im["tag"], "gb": im["gb"],
-                            "rule": f"vm floor ({im['refs']} references, built {built}): VM free {before:g} GB < {floor:g} GB"})
+                            "rule": f"vm floor: VM free {before:g} GB < {floor:g} GB after the cap; {im['refs']} plan(s) of the last 48 h "
+                                    f"name it, {built}"})
             rec["vm_floor"]["removed"] += 1
             builder_prune(docker, rec, cache_budget)   # the cache entries tied to the image go with it, or the VM gains nothing
             rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)

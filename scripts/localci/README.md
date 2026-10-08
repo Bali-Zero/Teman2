@@ -544,14 +544,15 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   and the free GB re-read after each, until the floor is met or nothing removable is left. Under the floor the newest of a
   recipe is NOT protected: only the never-list and what the lease run names are. A 60 GiB VM holds one image per recipe plus
   a build's scratch when three recipes are live (Pro, 2026-10-08T17:26Z), so the floor, not the slots, is the rule that
-  holds. Each removal's rule reads `vm floor (N references, built H h ago): VM free X GB < 15 GB`; the line carries
+  holds. Each removal's rule reads `vm floor: VM free X GB < 15 GB after the cap; N plan(s) of the last 48 h name it, built
+  H h ago` (`undated` without a readable `Created`); the line carries
   `vm_floor {floor_gb, removed, met}`, or `skipped` on a dry run, an unreadable input, or an unmeasured VM.
 - **Builder cache.** Every prune that is not a dry run runs `docker builder prune -af --keep-storage 4GB` on the current
   builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's), after the
   cap's removals and again after each floor removal. `-a` because the entries are the layers of images that exist, which are
-  not dangling: without it the prune removed 0 B of 21.8 GB (17:26Z). The budget is `BUILDER_CACHE_GB` (4;
-  `LOCALCI_BUILDER_CACHE_GB` overrides it); the line journals `builder_prune {keep_storage_gb, cache_gb {before, after}, runs,
-  rc}`, the cache size read from `docker system df` before the first run and after the last, and the first failed rc stays.
+  not dangling: without it the prune removed 0 B of a 16.93 GB cache (17:23Z); with it, after three removals, 20.98 GB (17:27Z). The budget is `BUILDER_CACHE_GB` (4;
+  `LOCALCI_BUILDER_CACHE_GB` overrides it); the line journals `builder_prune {rc, keep_storage_gb, tail}` of the last call,
+  `runs` the number of calls, and `cache_gb {before, after}` read from `docker system df` before the first and after the last.
   It read `--filter until=24h` until B8: on Pro at 17:20Z that kept 16.9 GB of cache with 0.5 GB reclaimable.
 - **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
   run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
@@ -569,7 +570,7 @@ One journal line per prune (its shape; the numbers below are illustrative, not m
      "vm_free_gb": {"before": 1.2, "after": 15.8},
      "host_free_gb": {"before": 77.1, "after": 77.4, "after_fstrim": 87.0},
      "images": {"removed": [{"tag": "localci-deps:…", "gb": 5.35, "rule": "recipe e2e-tests already keeps 2 images (newest localci-deps:…): beyond the cap, named by 1 plan(s), the youngest 2.1 h ago"},
-                            {"tag": "localci-deps:…", "gb": 4.64, "rule": "vm floor (1 references, built 20.3 h ago): VM free 11.2 GB < 15 GB"}],
+                            {"tag": "localci-deps:…", "gb": 4.64, "rule": "vm floor: VM free 11.2 GB < 15 GB after the cap; 1 plan(s) of the last 48 h name it, built 20.3 h ago"}],
                 "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe e2e-tests"},
                          {"tag": "localci-deps:…", "rule": "slot 2 of 2 of recipe e2e-tests: named by 4 plan(s) of the last 48 h, the youngest 1.4 h ago"},
                          {"tag": "postgres:15", "rule": "service stand-in of the BASE matrix: never pruned"}], "errors": []},

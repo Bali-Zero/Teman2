@@ -502,8 +502,9 @@ def test_b8_under_the_vm_floor_the_fewest_references_go_first_even_the_newest_of
     state, docker, im = three_recipes(tmp_path, 5)
     line = prune_line(state, docker)
     assert [r["tag"] for r in line["images"]["removed"]] == [im[k]["tag"] for k in ("b_old", "e_new", "f_old", "b_new")]
-    assert [r["rule"] for r in line["images"]["removed"][:2]] == ["vm floor (1 references, built 20.0 h ago): VM free 5 GB < 15 GB",
-                                                                  "vm floor (1 references, built 1.0 h ago): VM free 9 GB < 15 GB"]
+    assert [r["rule"] for r in line["images"]["removed"][:2]] == [
+        "vm floor: VM free 5 GB < 15 GB after the cap; 1 plan(s) of the last 48 h name it, built 20.0 h ago",
+        "vm floor: VM free 9 GB < 15 GB after the cap; 1 plan(s) of the last 48 h name it, built 1.0 h ago"]   # e_new: the newest of e2e
     assert {k["tag"] for k in line["images"]["kept"]} == {im["e_old"]["tag"], im["f_new"]["tag"]}   # 4 and 3 references stay
     assert line["vm_floor"] == {"floor_gb": 15.0, "removed": 4, "met": True} and line["vm_free_gb"]["after"] == 18.5
     seq = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
@@ -519,11 +520,22 @@ def test_b8_the_floor_stops_once_met_and_a_vm_at_the_floor_keeps_every_image(tmp
     assert [r["tag"] for r in line["images"]["removed"]] == [im["b_old"]["tag"]][:gone] and line["vm_floor"]["met"] is True
 
 
-def test_b8_a_builder_prune_that_fails_before_a_floor_removal_stays_failed_after_a_later_one_succeeds(tmp_path):
-    state, docker, im = three_recipes(tmp_path, 14.5, builder_rcs=[1, 0])
-    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 1
+@pytest.mark.parametrize("rcs, rc", [([0, 1], 1), ([1, 0], 0)])   # as ruled: rc and tail are the LAST call's, `runs` the count
+def test_b8_the_line_carries_the_last_builder_prune_and_how_many_ran(tmp_path, rcs, rc):
+    state, docker, im = three_recipes(tmp_path, 14.5, builder_rcs=rcs)
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == rc
     line = journal(state)[-1]
-    assert line["builder_prune"]["runs"] == 2 and line["builder_prune"]["rc"] == 1 and line["failed"] == ["builder_prune"]
+    assert line["builder_prune"]["runs"] == 2 and line["builder_prune"]["rc"] == rc and line["failed"] == (["builder_prune"] if rc else [])
+
+
+def test_b8_equal_references_under_the_floor_evict_the_oldest_first_and_an_undated_image_last(tmp_path):   # the tie
+    old, young = image("a" * 16, 30, "e2e-tests", gb=1.0), image("b" * 16, 3, "backend-tests", gb=1.0)
+    undated = {**image("c" * 16, 1, "frontend-tests", gb=1.0), "created": "unknown"}   # unparseable: undated
+    plans = {"pr1-x-20261008T100000Z": (2, {"ctx.e2e-tests": old["tag"], "ctx.backend-tests": young["tag"], "ctx.frontend-tests": undated["tag"]})}
+    state, docker = world(tmp_path, [young, undated, old], plans, vm_avail_kb=kb(1))
+    line = prune_line(state, docker)
+    assert [r["tag"] for r in line["images"]["removed"]] == [old["tag"], young["tag"], undated["tag"]]
+    assert line["images"]["removed"][2]["rule"].endswith("1 plan(s) of the last 48 h name it, undated")
 
 
 def test_b8_above_the_floor_the_newest_of_a_recipe_is_never_removed_even_named_by_no_plan(tmp_path):   # innocence
@@ -542,7 +554,7 @@ def test_b8_the_floor_never_touches_the_never_list_or_what_the_lease_run_names(t
                           others=["localci-candidate:1", "localci-deps-base:1", *STAND_INS])
     line = prune_line(state, docker)
     assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"], imgs[1]["tag"]]   # by the cap, then the newest by the floor
-    assert line["images"]["removed"][1]["rule"] == "vm floor (0 references, built 1.0 h ago): VM free 2 GB < 15 GB"   # the cap freed 1 GB first
+    assert line["images"]["removed"][1]["rule"] == "vm floor: VM free 2 GB < 15 GB after the cap; 0 plan(s) of the last 48 h name it, built 1.0 h ago"   # the cap freed 1 GB first
     assert line["vm_floor"] == {"floor_gb": 15.0, "removed": 1, "met": False}
     assert [c for c in calls(tmp_path) if c.startswith("image rm")] == [f"image rm {imgs[0]['tag']}", f"image rm {imgs[1]['tag']}"]
     kept = {k["tag"]: k["rule"] for k in line["images"]["kept"]}
