@@ -1,0 +1,22 @@
+gear: 2
+gear_reason: >-
+  Four files, about 530 net lines (spec, lint, its corpus-driven test, a 4-line proprioception
+  registry change). Floor measured 2 from size; no hot-zone path. The lint decides whether a
+  worktree without the .husky/_ shim still pushes through the trusted pre-push hook, and the
+  worktree_gate_shim probe on Pro reads its verdict, so a wrong TRUSTED hides an ungated push.
+mission: >-
+  Replace the spelling-based trust test of PR 7985 (closed, gate BLOCK twice) with a written spec
+  and a lint that trusts only one canonical push line and refuses every known override shape.
+objective: >-
+  scripts/lint_worktree_husky_symlink.py reports TRUSTED_HOOK_ROOT for the Codex autofix runtime
+  worktree only while its pusher has exactly one canonical `git -c core.hooksPath=$TRUSTED_PREPUSH_HOOKS
+  push` and none of the denylisted shapes; every spec row has a test row; a git-proof matrix on a
+  scratch remote shows zero rows where git skipped the hook and the lint said TRUSTED.
+scope:
+  - docs/specs/worktree-hook-trust.md (new)
+  - scripts/lint_worktree_husky_symlink.py (canonical-form + denylist trust judge)
+  - scripts/tests/test_lint_worktree_husky_symlink.py (corpus, real-pusher pin, mutants)
+  - scripts/proprioception.py (worktree_gate_shim ok_values gains TRUSTED_HOOK_ROOT)
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

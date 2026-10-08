@@ -102,6 +102,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -119,8 +121,228 @@ HEALTH_OK = "OK"
 HEALTH_MISSING = "MISSING"
 HEALTH_DANGLING = "DANGLING_SYMLINK"
 HEALTH_GONE = "GONE"  # worktree directory itself is absent — stale registry entry
+HEALTH_TRUSTED_HOOK_ROOT = "TRUSTED_HOOK_ROOT"
 
 FINDING_HEALTHS = frozenset({HEALTH_MISSING, HEALTH_DANGLING})
+
+TRUSTED_PUSHERS = {
+    ".worktrees/codex-autofix-ci-runtime": (
+        "scripts/codex/codex-nightly-autofix-ci.sh",
+        "$TRUSTED_PREPUSH_HOOKS",
+    ),
+}
+
+
+@dataclass(frozen=True)
+class PushTrustVerdict:
+    trusted: bool
+    reason: str
+
+
+PUSH_WORD = re.compile(r"(?<![\w-])push(?![\w-])")
+GIT_WORD = re.compile(r"(?<![\w.-])git(?![\w-])")
+GIT_SHADOW = re.compile(r"(?:^|[\s;&|(])(?:function\s+git\b|git\s*\(\s*\)|alias\s+git=)", re.MULTILINE)
+SYSTEM_PATH_DIRS = frozenset({"/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"})
+CONTROL_WORDS = frozenset({"if", "!", "then", "do", "elif", "while", "until"})
+_STOP = frozenset({";", ";;", "|", "||", "&&", "&", ")"})
+_ASSIGNMENT = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\+?=")
+_LITERAL_ARG = re.compile(r"[A-Za-z0-9][\w./:-]*")
+_QUOTED_VAR = re.compile(r'"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?"')
+
+
+def _shell_tokens(line: str, posix: bool = True) -> List[str]:
+    # No commenters: bash reads `#` mid-word as a literal, shlex would drop the rest of the line.
+    lexer = shlex.shlex(line, posix=posix, punctuation_chars=";&|()")
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    return list(lexer)
+
+
+def _is_git(token: str) -> bool:
+    return token.rsplit("/", 1)[-1] == "git"
+
+
+def _config_pairs(tokens: Sequence[str]) -> List[Tuple[str, str]]:
+    pairs: List[Tuple[str, str]] = []
+    index = 0
+    while index < len(tokens):
+        if tokens[index] == "-c" and index + 1 < len(tokens):
+            key, _, value = tokens[index + 1].partition("=")
+            pairs.append((key, value))
+            index += 2
+            continue
+        index += 1
+    return pairs
+
+
+def _git_command(tokens: Sequence[str], git_index: int) -> Optional[str]:
+    """Return Git's subcommand after its global options."""
+    index = git_index + 1
+    takes_value = {"-c", "-C", "--config-env", "--git-dir", "--work-tree", "--namespace", "--attr-source"}
+    while index < len(tokens):
+        token = tokens[index]
+        if token in takes_value:
+            index += 2
+        elif token.startswith("-"):
+            index += 1
+        else:
+            return token
+    return None
+
+
+def _bound_literal(text: str, name: str) -> bool:
+    """A quoted "$NAME" push argument is accepted only if NAME is set once, to a value that cannot start a flag."""
+    values = re.findall(rf"(?<![\w$]){name}\+?=(\S*)", text)
+    if len(values) != 1 or values[0].lstrip("\"'")[:1] in ("", "-", "$", "`") or re.search(rf"\$\{{{name}:?=", text):
+        return False
+    for line in text.splitlines():
+        try:
+            tokens = _shell_tokens(line)
+        except ValueError:
+            continue
+        if any(t == name or t.endswith("=" + name) for t in tokens):  # read/for/printf -v/nameref targets
+            return False
+    return True
+
+
+def _denied(tokens: Sequence[str]) -> Optional[str]:
+    """Known override shapes, refused wherever they appear in the pusher."""
+    for token in tokens:
+        match = _ASSIGNMENT.match(token)
+        name = match.group(1) if match else ""
+        if name.startswith("GIT_CONFIG"):
+            return "git-config-env"
+        if name in {"GIT_DIR", "GIT_WORK_TREE"}:
+            return "relocation"
+        if name.startswith("GIT_"):
+            return "git-env"
+    if any(t.startswith("--no-v") and "--no-verify".startswith(t) for t in tokens):
+        return "no-verify"  # Git accepts any unambiguous abbreviation of a long option
+    if any(t == "--config-env" or t.startswith("--config-env=") for t in tokens):
+        return "config-env"
+    if any(t.split("=", 1)[0] in {"--namespace", "--git-dir", "--work-tree"} for t in tokens):
+        return "relocation"
+    keys = [key.casefold() for key, _ in _config_pairs(tokens)]
+    if any(key.startswith(("include.", "includeif.")) for key in keys):
+        return "indirect-include"
+    if any(key.startswith("alias.") for key in keys):
+        return "git-alias"
+    if "eval" in tokens:
+        return "dynamic-command"
+    for i, token in enumerate(tokens):
+        command_word = i == 0 or tokens[i - 1] in _STOP or tokens[i - 1] in CONTROL_WORDS
+        if command_word and token == "exec":
+            return "dynamic-command"
+        if command_word and token in {"sh", "bash", "zsh"} and "-c" in tokens[i + 1:i + 3]:
+            return "shell-string"
+        if token == "env" and any(t in {"-i", "-", "--ignore-environment"} for t in tokens[i + 1:i + 3]):
+            return "env-i"
+        if _is_git(token):
+            if token != "git":
+                return "git-binary"
+            command = _git_command(tokens, i)
+            if command is not None and (command.startswith("$") or "`" in command):
+                return "dynamic-command"
+    return None
+
+
+def _push_word_is_inert(tokens: Sequence[str], commands: dict, line: str) -> bool:
+    """`git stash push`, a quoted log message, or a `case` label `push|...)`."""
+    if set(commands.values()) == {"stash"} and len(PUSH_WORD.findall(line)) == 1:
+        return True
+    if GIT_WORD.search(line):
+        return False
+    if "push" not in tokens:
+        return True
+    close = tokens.index(")") if ")" in tokens else -1
+    return (tokens.index("push") == 0 and tokens.count("push") == 1 and close > 0 and "(" not in tokens[:close]
+            and all(t == "|" or _LITERAL_ARG.fullmatch(t) for t in tokens[:close]))
+
+
+def _canonical_push(tokens: Sequence[str], git_index: int, line: str, text: str, trusted_root: str) -> PushTrustVerdict:
+    """The ONE accepted shape: `git -c core.hooksPath=<root> push <literal or bound args>`."""
+    setters = [value for key, value in _config_pairs(tokens) if key.casefold() == "core.hookspath"]
+    if len(setters) != 1:
+        return PushTrustVerdict(False, "hooks-path-setter-count")
+    if setters[0] != trusted_root:
+        return PushTrustVerdict(False, "hooks-path-value")
+    if any(t.startswith("-C") for t in tokens):
+        return PushTrustVerdict(False, "relocation")
+    if any(t not in CONTROL_WORDS for t in tokens[:git_index]) or list(
+        tokens[git_index + 1:git_index + 4]
+    ) != ["-c", f"core.hooksPath={trusted_root}", "push"]:
+        return PushTrustVerdict(False, "non-canonical")
+    try:
+        tail = _shell_tokens(line[PUSH_WORD.search(line).end():], posix=False)
+    except ValueError:
+        return PushTrustVerdict(False, "dynamic-argument")
+    rest: List[str] = []
+    for n, raw in enumerate(tail):
+        if raw in _STOP or raw[:1] in "<>" or re.match(r"\d+>", raw):
+            rest = tail[n:]
+            break
+        quoted = _QUOTED_VAR.fullmatch(raw)
+        if raw in {"-u", "--set-upstream"} or _LITERAL_ARG.fullmatch(raw) or (
+            quoted and _bound_literal(text, quoted.group(1))
+        ):
+            continue
+        return PushTrustVerdict(False, "dynamic-argument" if "$" in raw or "`" in raw else "non-canonical")
+    if any("$" in t or "`" in t for t in rest):
+        return PushTrustVerdict(False, "dynamic-argument")
+    return PushTrustVerdict(True, "trusted-hooks-path")
+
+
+def _line_analysis(line: str, text: str, trusted_root: str) -> Tuple[int, Optional[PushTrustVerdict]]:
+    if line.lstrip().startswith("#"):
+        return 0, None
+    has_push_word = bool(PUSH_WORD.search(line))
+    try:
+        tokens = _shell_tokens(line)
+    except ValueError:
+        return 0, (PushTrustVerdict(False, "dynamic-command") if has_push_word else None)
+    if not tokens:
+        return 0, None
+    denied = _denied(tokens)
+    if denied:
+        return 0, PushTrustVerdict(False, denied)
+    commands = {i: _git_command(tokens, i) for i, token in enumerate(tokens) if _is_git(token)}
+    pushes = [i for i, command in commands.items() if command == "push"]
+    if not pushes:
+        if not has_push_word or _push_word_is_inert(tokens, commands, line):
+            return 0, None
+        push_index = tokens.index("push") if "push" in tokens else len(tokens)
+        if any(t.startswith("$") or "`" in t for t in tokens[:push_index]):
+            return 0, PushTrustVerdict(False, "dynamic-command")
+        return 0, PushTrustVerdict(False, "stray-push")
+    # A second push word on the same shell line is never treated as an argument.
+    if len(pushes) > 1 or len(PUSH_WORD.findall(line)) > 1:
+        return len(pushes), PushTrustVerdict(False, "multiple-pushes")
+    return 1, _canonical_push(tokens, pushes[0], line, text, trusted_root)
+
+
+def judge_pusher_text(text: str, trusted_root: str) -> PushTrustVerdict:
+    """TRUSTED only for one canonical push and no known override shape anywhere in the file."""
+    text = text.replace("\\\n", " ")
+    if GIT_SHADOW.search(text):
+        return PushTrustVerdict(False, "git-shadowed")
+    for value in re.findall(r"(?<![\w$])PATH\+?=(\S*)", text):
+        if not set(value.strip("\"'").split(":")) <= SYSTEM_PATH_DIRS:
+            return PushTrustVerdict(False, "path-override")
+    pushes = 0
+    verdicts: List[PushTrustVerdict] = []
+    for line in text.splitlines():
+        count, verdict = _line_analysis(line, text, trusted_root)
+        pushes += count
+        if verdict is not None:
+            verdicts.append(verdict)
+    if pushes > 1:
+        return PushTrustVerdict(False, "multiple-pushes")
+    for verdict in verdicts:
+        if not verdict.trusted:
+            return verdict
+    if pushes != 1 or len(verdicts) != 1:
+        return PushTrustVerdict(False, "direct-push-count")
+    return verdicts[0]
 
 
 @dataclass
@@ -255,6 +477,23 @@ def check_husky_health(wt_path: Path) -> Tuple[str, bool]:
     return HEALTH_MISSING, False
 
 
+def _trusted_pusher_health(repo_root: Path, wt_path: Path) -> Optional[str]:
+    try:
+        relative = wt_path.relative_to(repo_root).as_posix()
+    except ValueError:
+        return None
+    declared = TRUSTED_PUSHERS.get(relative)
+    if declared is None:
+        return None
+    pusher_rel, trusted_root = declared
+    try:
+        text = (repo_root / pusher_rel).read_text()
+    except OSError:
+        return None
+    verdict = judge_pusher_text(text, trusted_root)
+    return HEALTH_TRUSTED_HOOK_ROOT if verdict.trusted else None
+
+
 def scan(repo_root: Path, *, porcelain_output: Optional[str] = None) -> List[WorktreeRecord]:
     """Enumerate every worktree and check `.husky/_` health.
 
@@ -274,6 +513,8 @@ def scan(repo_root: Path, *, porcelain_output: Optional[str] = None) -> List[Wor
             health, is_symlink = HEALTH_GONE, False
         else:
             health, is_symlink = check_husky_health(wt_path)
+            if health in FINDING_HEALTHS:
+                health = _trusted_pusher_health(repo_root, wt_path) or health
 
         records.append(
             WorktreeRecord(

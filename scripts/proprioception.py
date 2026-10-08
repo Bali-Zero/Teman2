@@ -2432,8 +2432,9 @@ DEFAULT_REGISTRY: list[dict] = [
         #
         # ok_values keeps GONE deliberately: a GONE record is a stale worktree-registry
         # entry (the directory is gone), which is `git worktree prune` territory and the
-        # gc cron's job — not a worktree pushing without a gate. The tool itself scores
-        # it the same way (FINDING_HEALTHS = MISSING | DANGLING); if the two ever
+        # gc cron's job — not a worktree pushing without a gate. TRUSTED_HOOK_ROOT is
+        # the declared runtime whose sole push pins a verified hook bundle. The tool
+        # scores both as non-findings; if the two ever
         # disagree, this list is the side that is wrong.
         "id": "worktree_gate_shim", "type": "wrap",
         "target": ["python3", "{repo}/scripts/lint_worktree_husky_symlink.py", "--json"],
@@ -2442,7 +2443,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "machines": ["all"], "tags": ["fast"], "timeout_sec": 60,
         "severity": "P1",
         "parse": "findings_list", "unwrap_key": "worktrees",
-        "verdict_key": "health", "ok_values": ["OK", "GONE"],
+        "verdict_key": "health", "ok_values": ["OK", "GONE", "TRUSTED_HOOK_ROOT"],
         "fix_hint": "recreate via `python scripts/agent_start.py` (it symlinks .husky/_), or "
                     "`ln -sfn <main-checkout>/.husky/_ <worktree>/.husky/_` — a worktree born from a "
                     "bare `git worktree add` pushes with NO gate and reports a clean push",

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -448,7 +449,13 @@ def test_the_registry_and_the_tool_agree_on_what_counts_as_a_finding() -> None:
     would be graded a finding by the organ and not by the tool, or vice versa.
     """
     ok = set(_gate_entry()["ok_values"])
-    all_healths = {lwhs.HEALTH_OK, lwhs.HEALTH_MISSING, lwhs.HEALTH_DANGLING, lwhs.HEALTH_GONE}
+    all_healths = {
+        lwhs.HEALTH_OK,
+        lwhs.HEALTH_MISSING,
+        lwhs.HEALTH_DANGLING,
+        lwhs.HEALTH_GONE,
+        lwhs.HEALTH_TRUSTED_HOOK_ROOT,
+    }
     assert ok | set(lwhs.FINDING_HEALTHS) == all_healths, (
         "every health state the tool can emit must be classified by the registry: "
         f"ok={sorted(ok)} findings={sorted(lwhs.FINDING_HEALTHS)} all={sorted(all_healths)}"
@@ -461,6 +468,7 @@ def test_the_registry_and_the_tool_agree_on_what_counts_as_a_finding() -> None:
         "GONE (the worktree directory itself is absent) is stale-registry hygiene for "
         "`git worktree prune`, not a worktree pushing without a gate — deliberately not a finding"
     )
+    assert lwhs.HEALTH_TRUSTED_HOOK_ROOT in ok
 
 
 def test_the_parser_contract_matches_the_tools_json_shape() -> None:
@@ -477,3 +485,168 @@ def test_the_parser_contract_matches_the_tools_json_shape() -> None:
     assert entry["unwrap_key"] in payload, f"unwrap_key {entry['unwrap_key']!r} absent from the tool's JSON"
     assert entry["verdict_key"] in payload[entry["unwrap_key"]][0], \
         f"verdict_key {entry['verdict_key']!r} absent from a worktree record"
+
+
+# ---------------------------------------------------------- push-hook trust entity corpus
+
+TRUSTED_ROOT = "$TRUSTED_PREPUSH_HOOKS"
+TOKEN = f"-c core.hooksPath={TRUSTED_ROOT}"
+
+HIDDEN = "origin HEAD:refs/heads/hidden"
+TL = f"git {TOKEN} push"
+
+GUILT = {
+    "G01": (f"git {TOKEN} -c core.hooksPath=/dev/null push", "hooks-path-setter-count"),
+    "G02": (f"git {TOKEN} -c core.hookspath=/dev/null push", "hooks-path-setter-count"),
+    "G03": (f"git {TOKEN} -c Core.HooksPath=/dev/null push", "hooks-path-setter-count"),
+    "G04": (f'git {TOKEN} -c "core.hooksPath=/dev/null" push', "hooks-path-setter-count"),
+    "G05": (f"git {TOKEN} -c 'core.hooksPath=/dev/null' push", "hooks-path-setter-count"),
+    "G06": (f"git {TOKEN} -c core.hooksPath= push", "hooks-path-setter-count"),
+    "G07": ("git -c core.hooksPath=/dev/null push", "hooks-path-value"),
+    "G08": (f"git {TOKEN} --config-env=core.hooksPath=HV push", "config-env"),
+    "G09": (f"git {TOKEN} --config-env core.hooksPath=HV push", "config-env"),
+    "G10": (f"GIT_CONFIG_PARAMETERS=x git {TOKEN} push", "git-config-env"),
+    "G11": (f"GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null git {TOKEN} push", "git-config-env"),
+    "G12": (f"GIT_CONFIG_GLOBAL=/tmp/cfg git {TOKEN} push", "git-config-env"),
+    "G13": (f"GIT_CONFIG_SYSTEM=/tmp/cfg git {TOKEN} push", "git-config-env"),
+    "G14": (f"GIT_DIR=/tmp/repo/.git git {TOKEN} push", "relocation"),
+    "G15": (f"GIT_WORK_TREE=/tmp/wt git {TOKEN} push", "relocation"),
+    "G16": (f"git -C /tmp/repo {TOKEN} push", "relocation"),
+    "G17": (f"git --git-dir=/tmp/repo/.git {TOKEN} push", "relocation"),
+    "G18": (f"git --work-tree /tmp/wt {TOKEN} push", "relocation"),
+    "G19": (f"git {TOKEN} -c includeIf.gitdir:/tmp/.path=/tmp/cfg push", "indirect-include"),
+    "G20": (f"git {TOKEN} -c include.path=/tmp/cfg push", "indirect-include"),
+    "G21": (f"git {TOKEN} push --no-verify", "no-verify"),
+    "G22": ("git -c alias.ship='-c core.hooksPath=/dev/null push' ship", "git-alias"),
+    "G23": (f"git {TOKEN} push; git push", "multiple-pushes"),
+    "G24": (f"git {TOKEN} push\ngit push", "multiple-pushes"),
+    "G25": (f"eval 'git {TOKEN} push'", "dynamic-command"),
+    "G26": (f"$GIT {TOKEN} push", "dynamic-command"),
+    "G27": (f"git $OPTS {TOKEN} push", "dynamic-command"),
+    "G28": (f"env -i git {TOKEN} push", "env-i"),
+    "G29": (f"git --git-dir /tmp/repo/.git {TOKEN} push", "relocation"),
+    "G30": (f"git --work-tree=/tmp/wt {TOKEN} push", "relocation"),
+    "G31": (f"git -c color.ui=false {TOKEN} push", "non-canonical"),
+    "G32": (f"git {TOKEN} -c user.name=robot push", "non-canonical"),
+    "G33": (f"env LC_ALL=C git {TOKEN} push", "non-canonical"),
+    "X01": (f"git {TOKEN} push --no-verif", "no-verify"),
+    "X02": (f"{TL}\n/usr/bin/git push {HIDDEN}", "git-binary"),
+    "X03": (f"{TL}\nsh -c 'git push {HIDDEN}'", "shell-string"),
+    "X04": (f"{TL}\necho a#b; git push {HIDDEN}", "multiple-pushes"),
+    "X05": (f"{TL}\n`echo git` push {HIDDEN}", "dynamic-command"),
+    "X06": (f"{TL}\ngit --namespace ns push {HIDDEN}", "relocation"),
+    "X07": (f'g(){{ git "$@"; }}\n{TL}\ng push {HIDDEN}', "dynamic-command"),
+    "X08": (f'git(){{ command git "$@" --no-verify; }}\n{TL}', "git-shadowed"),
+    "X09": (f"git {TOKEN} push $(printf -- --no-%s verify)", "dynamic-argument"),
+    "X10": (f"git {TOKEN} push origin HEAD:refs/heads/hidden#x --no-verify", "no-verify"),
+    "X11": (f"git {TOKEN} -c core.hooksPath push", "hooks-path-setter-count"),
+    "X12": (f'git {TOKEN} push "$NV"', "dynamic-argument"),
+    "X13": (f"PATH=/fake:$PATH git {TOKEN} push", "path-override"),
+    "X14": (f"git {TOKEN} push $EXTRA", "dynamic-argument"),
+    "X15": (f"git {TOKEN} -c alias.push='push --no-verify' push", "git-alias"),
+    "X17": (f'NV=--no-verify\ngit {TOKEN} push "$NV"', "dynamic-argument"),
+}
+
+INNOCENCE = {
+    "I01": 'FIX_BRANCH="codex/auto-fix-ci-${RUN_ID}"\n'
+    f'if ! git -c core.hooksPath="{TRUSTED_ROOT}" push -u origin "$FIX_BRANCH" 2>&1 | head -10; then',
+    "I04": f'git -c "core.hooksPath={TRUSTED_ROOT}" push',
+    "I06": f"git {TOKEN} push -u origin main",
+}
+
+
+def test_spec_and_executable_corpus_have_identical_ids() -> None:
+    spec_path = Path(__file__).resolve().parents[2] / "docs/specs/worktree-hook-trust.md"
+    ids = set(re.findall(r"^\| ([GIX]\d{2}) \|", spec_path.read_text(), re.MULTILINE))
+    assert ids == set(GUILT) | set(INNOCENCE)
+
+
+@pytest.mark.parametrize(("case_id", "case"), GUILT.items())
+def test_guilt_push_forms_are_untrusted(case_id: str, case: tuple[str, str]) -> None:
+    text, reason = case
+    verdict = lwhs.judge_pusher_text(text, TRUSTED_ROOT)
+    assert verdict.trusted is False, case_id
+    assert verdict.reason == reason, case_id
+
+
+@pytest.mark.parametrize(("case_id", "text"), INNOCENCE.items())
+def test_innocence_push_forms_are_trusted(case_id: str, text: str) -> None:
+    verdict = lwhs.judge_pusher_text(text, TRUSTED_ROOT)
+    assert verdict.trusted is True, case_id
+    assert verdict.reason == "trusted-hooks-path", case_id
+
+
+def test_innocence_the_real_pusher_is_trusted() -> None:
+    pusher = Path(__file__).resolve().parents[1] / "codex/codex-nightly-autofix-ci.sh"
+    assert lwhs.judge_pusher_text(pusher.read_text(), TRUSTED_ROOT).trusted is True
+
+
+def test_runtime_health_is_pinned_to_the_live_pusher_entity(tmp_path: Path) -> None:
+    repo = _mk_repo(tmp_path)
+    runtime = repo / ".worktrees/codex-autofix-ci-runtime"
+    runtime.mkdir(parents=True)
+    pusher = repo / "scripts/codex/codex-nightly-autofix-ci.sh"
+    pusher.parent.mkdir(parents=True)
+    live_pusher = Path(__file__).resolve().parents[1] / "codex/codex-nightly-autofix-ci.sh"
+    text = live_pusher.read_text()
+    pusher.write_text(text)
+    porcelain = f"worktree {repo}\nHEAD aaa\n\nworktree {runtime}\nHEAD bbb\n"
+    record = lwhs.scan(repo, porcelain_output=porcelain)[1]
+    assert record.health == lwhs.HEALTH_TRUSTED_HOOK_ROOT
+
+    poisoned = text.replace(
+        'core.hooksPath="$TRUSTED_PREPUSH_HOOKS" push',
+        'core.hooksPath="$TRUSTED_PREPUSH_HOOKS" -c core.hookspath=/dev/null push',
+    )
+    assert poisoned != text
+    pusher.write_text(poisoned)
+    record = lwhs.scan(repo, porcelain_output=porcelain)[1]
+    assert record.health == lwhs.HEALTH_MISSING
+
+
+def _load_mutant(tmp_path: Path, old: str, new: str):
+    source = _MODULE_PATH.read_text()
+    assert source.count(old) == 1
+    path = tmp_path / "mutant.py"
+    path.write_text(source.replace(old, new))
+    name = f"lwhs_mutant_{len(sys.modules)}"
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _corpus_misses(module) -> set:
+    misses = set()
+    for case_id, (text, reason) in GUILT.items():
+        verdict = module.judge_pusher_text(text, TRUSTED_ROOT)
+        if (verdict.trusted, verdict.reason) != (False, reason):
+            misses.add(case_id)
+    return misses | {c for c, t in INNOCENCE.items() if not module.judge_pusher_text(t, TRUSTED_ROOT).trusted}
+
+
+# Each layer is pinned: removing one changes at least the named row's verdict or reason.
+MUTANTS = {
+    "case-sensitive-key": ('key.casefold() == "core.hookspath"', 'key == "core.hooksPath"', "G02"),
+    "config-env-ignored": ('t == "--config-env" or t.startswith("--config-env=")', "False", "G08"),
+    "first-c-only": ("if len(setters) != 1:", "if len(setters[:1]) != 1:", "G01"),
+    "no-verify-ignored": ('t.startswith("--no-v") and "--no-verify".startswith(t)', "False", "G21"),
+    "abbreviation-ignored": ('t.startswith("--no-v") and "--no-verify".startswith(t)', 't == "--no-verify"', "X01"),
+    "env-assignment-ignored": ('if name.startswith("GIT_CONFIG"):', "if False:", "G10"),
+    "second-push-ignored": ("    if pushes > 1:\n", "    if False:\n", "G24"),
+    "basename-git-ignored": ('return token.rsplit("/", 1)[-1] == "git"', 'return token == "git"', "X02"),
+    "sh-c-ignored": ('token in {"sh", "bash", "zsh"} and', "False and", "X03"),
+    "canonical-shape-ignored": ('!= ["-c", f"core.hooksPath={trusted_root}", "push"]', "!= list(tokens[git_index + 1:git_index + 4])", "G31"),
+}
+
+
+@pytest.mark.parametrize("name", MUTANTS)
+def test_mutant_is_killed_by_the_corpus(tmp_path: Path, name: str) -> None:
+    old, new, row = MUTANTS[name]
+    assert row in _corpus_misses(_load_mutant(tmp_path, old, new))
+
+
+def test_untouched_lint_has_no_corpus_miss() -> None:
+    assert _corpus_misses(lwhs) == set()
