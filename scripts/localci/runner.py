@@ -361,6 +361,7 @@ def pysa_check_spec(wt: Path, base: str, cand: str, trusted: Path, run_dir: Path
 
 # ------------------------------------------------------- required contexts the runner executes (v0.4.0)
 CTX_CHECK_NAME = re.compile(r"^ctx\.[a-z0-9][a-z0-9-]*$")
+SUPERSEDED_RECORDS = {"tests.backend_shards": "ctx.backend-tests", "tests.frontend_mouth": "ctx.frontend-tests-mouth"}
 MODULE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
 IMPLICIT_USES = ("actions/checkout@", "actions/setup-python@")   # stood in for by the tree copy and the image/host interpreter
 STEPS_DRIVER = Path(__file__).with_name("steps_driver.py")
@@ -1256,6 +1257,9 @@ def cmd_plan(a):
             checks[chk] = plan_service_context(wt, base, ident["candidate_sha"], trusted, cname, ctx, changed, pyv, iso, cm, run_dir, a.pr_number)
         else:
             checks[chk] = plan_context_check(wt, base, ident["candidate_sha"], trusted, cname, ctx, trusted_sha, changed, pyv)
+    for legacy, chk in SUPERSEDED_RECORDS.items():   # "no local runner exists" stops being true once the context is planned
+        if chk in checks:
+            checks[legacy] = {"kind": "record", "status": "NOT_APPLICABLE", "reason": f"superseded by {chk}: that check carries the job's verdict"}
     for extra in (a.extra_check or []):
         name, eq, spec_s = extra.partition("=")
         if not eq or not EXTRA_CHECK_NAME.match(name):

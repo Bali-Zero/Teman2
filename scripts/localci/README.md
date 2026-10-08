@@ -19,7 +19,9 @@ local gate does (RULED 2026-10-07 in `docs/rules/RULINGS.md`; plan and sequence 
 BASE ref and executed against the candidate tree (`trusted_pytest`; no candidate `conftest`/ini is honoured).
 Trusted checks (classifier, `cmd`, `trusted_pytest`) run `python -I` (ignores user site) with `PYTHONPATH`/`PYTHONSTARTUP`/`PYTHONHOME` removed and `PYTHONSAFEPATH=1`, so a candidate `sitecustomize.py` cannot execute inside them; candidate tests (`pytest` kind) are not trusted checks.
 `policy.change_map` mirrors GitHub's `changes` job (v0.3.1): `classified`, `unclassified_paths` and `empty_changed_set` are PASS
-there (the last two run every job, which the BLOCKED `tests.*` records carry); any other classifier output is BLOCKED, never FAIL.
+there (the last two run every job, which the BLOCKED `tests.*` records carry, until the context that runs the job is planned:
+`tests.backend_shards`/`tests.frontend_mouth` are then NOT_APPLICABLE, superseded by `ctx.backend-tests`/`ctx.frontend-tests-mouth`,
+which carry its verdict); any other classifier output is BLOCKED, never FAIL.
 `plan.json` is re-hashed against its `plan_hash` on every `run`/`review`/`status`; an edited plan aborts. A `cmd` check with a
 `trusted_pythonpath` carries the sha256 map of that directory and refuses to run when a file was rewritten, added or removed.
 
