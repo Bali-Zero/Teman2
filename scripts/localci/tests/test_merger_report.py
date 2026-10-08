@@ -21,10 +21,14 @@ CTX = tuple(f"ctx-{i:02d}" for i in range(mg.MIN_COMPARED_CONTEXTS))   # a merge
 K = len(CTX)
 
 
-def decision(pr, head, overall, ctx="OK", ts="2026-10-07T08:00:00Z", contexts=None):
+def decision(pr, head, overall, ctx="OK", ts="2026-10-07T08:00:00Z", contexts=None, coverage="full"):
+    """``coverage``: one value for every context, a {context: value} map (``full`` for the rest), or None for a line journalled before
+    the merger recorded coverage."""
     rec = {"kind": "decision", "ts": ts, "pr": pr, "head_sha": head, "base_sha": BASE, "candidate_sha": "9" * 40, "overall": overall}
     if ctx is not None:
         rec.update(contexts_status="ok", contexts=contexts if contexts is not None else dict.fromkeys(CTX, ctx))
+        if coverage is not None:
+            rec["coverage"] = {k: (coverage.get(k, "full") if isinstance(coverage, dict) else coverage) for k in rec["contexts"]}
     return rec
 
 
@@ -417,3 +421,41 @@ def test_the_phase_e_line_counts_enqueued_and_would_enqueue_apart_and_neither_is
 def test_a_journal_older_than_the_enqueue_path_reports_zero_enqueues(tmp_path, monkeypatch):
     rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "BLOCKED")], FakeGH({1: pull(A)}, {A: "success"}))
     assert rep["window"]["enqueue"] == {"enqueued": 0, "enqueue_refused": 0, "enqueue_error": 0, "would_enqueue": 0} and rc == 0
+
+
+# ------------------------------------------------------------------ coverage: only a full context counts toward the >= 12 (B3)
+def test_a_merge_compared_on_twelve_contexts_one_of_them_partial_is_not_a_compared_merge(tmp_path, monkeypatch, capsys):
+    # guilt: before B3 a partial AGREE (E2E without its secrets) counted as full and made this merge evidence for phase E
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", coverage={CTX[0]: "partial"})], gh)
+    row = rep["rows"][0]
+    assert rc == 0 and row["class"] == "AGREE" and (row["compared_contexts"], row["compared_partial"], row["compared_merge"]) == (K - 1, [CTX[0]], False)
+    assert (rep["window"]["compared_merges"], rep["window"]["compared_partial"], rep["window"]["partial_contexts"]) == (0, 1, [CTX[0]])
+    assert rep["context_counts"]["AGREE"] == K   # the class is unchanged: the partial AGREE is still an AGREE
+    out = capsys.readouterr().out
+    assert "compared_merges=0 compared_partial=1 compared_unrecorded=0" in out
+    assert f"of the contexts compared, 1 were partial ['{CTX[0]}']" in out and "phase E NOT READY" in out
+
+
+def test_twelve_full_contexts_make_a_compared_merge_and_a_thirteenth_partial_one_does_not_spoil_it(tmp_path, monkeypatch):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS")], gh)
+    assert rc == 0 and (rep["rows"][0]["compared_contexts"], rep["rows"][0]["compared_merge"], rep["window"]["compared_merges"]) == (K, True, 1)
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    gh.required = (*CTX, "E2E")
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", contexts=dict.fromkeys(gh.required, "OK"), coverage={"E2E": "partial"})], gh)
+    assert rc == 0 and (rep["rows"][0]["compared_contexts"], rep["rows"][0]["compared_partial"], rep["window"]["compared_merges"]) == (K, ["E2E"], 1)
+
+
+def test_a_line_journalled_before_coverage_was_recorded_counts_no_context_as_full(tmp_path, monkeypatch, capsys):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", coverage=None)], gh)
+    row = rep["rows"][0]
+    assert rc == 0 and (row["compared_contexts"], len(row["compared_unrecorded"]), row["compared_merge"]) == (0, K, False)
+    assert rep["window"]["compared_unrecorded"] == K and f"compared_unrecorded={K}" in capsys.readouterr().out
+
+
+def test_a_partial_false_green_still_blocks_ready(tmp_path, monkeypatch):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: {CTX[0]: "failure"}})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "PASS", coverage={CTX[0]: "partial"})], gh)
+    assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == 1 and rep["phase_e_ready"] is False

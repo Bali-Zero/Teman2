@@ -72,7 +72,7 @@ def plan_spec(fx: dict) -> dict:
 def test_a_host_context_runs_every_step_from_base_and_passes_a_clean_candidate(tmp_path):
     fx, s = ran(tmp_path, {"docs/new.md": "clean\n"}, host_ctx())
     c = s["checks"]["ctx.judge"]
-    assert c["status"] == "PASS" and s["contexts"]["results"]["Gate"] == {"mapping": "executed", "check": "ctx.judge", "verdict": "OK"}
+    assert c["status"] == "PASS" and s["contexts"]["results"]["Gate"] == {"mapping": "executed", "check": "ctx.judge", "verdict": "OK", "coverage": "full"}
     assert [x["status"] for x in c["steps"]] == ["PASS", "PASS", "NOT_APPLICABLE", "NOT_APPLICABLE"]
     spec = plan_spec(fx)
     assert spec["kind"] == "trusted_steps" and runner.is_trusted_check(spec) and "trusted_steps" in runner.SEALED_KINDS

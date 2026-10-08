@@ -48,6 +48,7 @@ SANDBOX_UID = 65534
 JUNIT_MAX_BYTES = 32 << 20
 COPY_TIMEOUT_S = 600
 MAPPINGS = ("executed", "not_applicable_rule", "blocked", "not_implemented")
+COVERAGES = ("full", "partial")   # what an executed context's verdict covers of its hosted twin; travels with every result
 RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
 RUNNER_OWNED_KEYS = frozenset({"extra", "isolation", "trusted_pythonpath", "trusted_dir_sha256", "trusted_files"})
 EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
@@ -296,8 +297,13 @@ def load_contexts(path: str | None) -> dict:
         if mapping not in MAPPINGS:
             note, mapping = f"unknown mapping {mapping!r} treated as blocked", "blocked"
         local = it.get("local") if isinstance(it.get("local"), dict) else {}
+        coverage = it.get("coverage", "full")   # an entry that declares nothing is full; a value it cannot read is never full
+        if coverage not in COVERAGES:
+            note, coverage = "; ".join(x for x in (note, f"unknown coverage {coverage!r} treated as partial") if x), "partial"
+        cnote = it.get("coverage_note") if isinstance(it.get("coverage_note"), str) and it["coverage_note"].strip() else None
         cmap[name] = {"mapping": mapping, "local": local, "check": local.get("check") if isinstance(local.get("check"), str) else None, "note": note,
-                      "workflow_file": it.get("workflow_file"), "job_id": it.get("job_id")}
+                      "workflow_file": it.get("workflow_file"), "job_id": it.get("job_id"), "coverage": coverage,
+                      "coverage_note": (cnote or "declared partial without a coverage_note") if coverage == "partial" else None}
     return {"status": "ok", "reason": "", "required": list(cmap), "map": cmap, "sha256": sha256_bytes(raw)}
 
 
@@ -2427,17 +2433,19 @@ def evaluate_contexts(view: dict, plan: dict) -> dict:
     for name, ctx in plan["contexts_map"].items():
         chk = resolve_context_check(name, ctx, view)
         mapping = ctx["mapping"]
+        # the BASE matrix's coverage rides on the verdict: a partial OK is an OK on a subset, never counted as a full one
+        cov = {"coverage": ctx.get("coverage") or "unrecorded", **({"coverage_note": ctx["coverage_note"]} if ctx.get("coverage_note") else {})}
         if mapping in ("blocked", "not_implemented"):
-            out["results"][name] = {"mapping": mapping, "check": chk, "verdict": "BLOCKED"}
+            out["results"][name] = {"mapping": mapping, "check": chk, "verdict": "BLOCKED", **cov}
             out["blocked"].append(name)
             continue
         if chk is None:
-            out["results"][name] = {"mapping": mapping, "check": None, "verdict": "UNCOVERED"}
+            out["results"][name] = {"mapping": mapping, "check": None, "verdict": "UNCOVERED", **cov}
             out["uncovered"].append(name)
             continue
         s, reason = view[chk]["status"], view[chk].get("reason") or ""
         ok = s == "PASS" or (s == "NOT_APPLICABLE" and reason.strip() != "")
-        out["results"][name] = {"mapping": mapping, "check": chk, "verdict": "OK" if ok else s}
+        out["results"][name] = {"mapping": mapping, "check": chk, "verdict": "OK" if ok else s, **cov}
         if not ok:
             (out["red"] if s == "FAIL" else out["blocked"]).append(name)
     return out

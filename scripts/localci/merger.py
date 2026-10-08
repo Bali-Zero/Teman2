@@ -439,20 +439,30 @@ def local_side(status: dict) -> dict:
     ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) else {}
     results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
     required = ctx.get("required") if isinstance(ctx.get("required"), list) else []
-    non_executed, not_ok = {}, {}
+    non_executed, not_ok, not_full = {}, {}, {}
     for name in required:
         res = results[name] if isinstance(name, str) and isinstance(results.get(name), dict) else {}
         if res.get("mapping") in NON_EXECUTED and res.get("verdict") == "BLOCKED":
             non_executed[name] = res["mapping"]
         elif res.get("verdict") != "OK":
             not_ok[str(name)] = f"{res.get('verdict')} ({res.get('mapping')})"
+        elif res.get("coverage") != "full":   # executed and OK on a subset of its hosted twin: it passes, and the line names it
+            not_full[str(name)] = res["coverage"] if res.get("coverage") in hc.COVERAGES else "unrecorded"
     bad = {k: v for k, v in states.items() if k != "review.independent" and v not in CHECK_OK}
     review = states.get("review.independent")
     why = {"local_checks_clean": "the gate vouched for no check" if not states else f"checks not clean: {bad}" if bad else None,
            "review_independent": None if review in ("QUEUED", "PASS") else f"review.independent is {review}, not QUEUED or PASS",
            "executed_contexts_ok": (f"contexts {ctx.get('status')!r} with {len(required)} required" if ctx.get("status") != "ok" or not required
                                     else f"executed required contexts not OK: {not_ok}" if not_ok else None)}
-    return {"why": why, "executed_required": f"{len(required) - len(non_executed)}/{len(required)}", "non_executed": non_executed}
+    return {"why": why, "executed_required": f"{len(required) - len(non_executed)}/{len(required)}" + coverage_suffix(not_full),
+            "non_executed": non_executed, "partial": not_full}
+
+
+def coverage_suffix(not_full: dict) -> str:
+    """`` (partial: E2E Tests (Playwright))`` beside ``executed_required`` — every executed OK context that is not full, by name."""
+    groups = [f"{label}: {', '.join(n for n, c in not_full.items() if c == key)}" for key, label in (("partial", "partial"),
+              ("unrecorded", "coverage unrecorded")) if key in not_full.values()]
+    return f" ({'; '.join(groups)})" if groups else ""
 
 
 def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
@@ -472,7 +482,7 @@ def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
     line = {**rec, **facts, "expected_head_oid": head, "criterion": criterion, "ok": all(criterion.values()), "armed_env": armed_env,
             "refused": [k for k, v in criterion.items() if not v] + ([] if armed_env else ["armed_env"]),
             "why": {k: why.get(k) or facts.get("read_error") or "not evaluated" for k, v in criterion.items() if not v},
-            "executed_required": loc["executed_required"], "non_executed": loc["non_executed"]}
+            "executed_required": loc["executed_required"], "non_executed": loc["non_executed"], "partial": loc["partial"]}
     kind = "would_enqueue" if not (armed_env and criterion["label_privileged"]) else "enqueue_refused" if not line["ok"] else "enqueued"
     if kind == "enqueued":
         try:
@@ -526,11 +536,12 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         loc = local_side({} if gate.get("error") else status)
         line = journal(state, {**rec, "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
                                "contexts_status": ctx.get("status"), "contexts": {k: (v or {}).get("verdict") for k, v in results.items()},
+                               "coverage": {k: (v or {}).get("coverage") for k, v in results.items()},
                                "checks": {k: (v or {}).get("status") for k, v in (status.get("checks") or {}).items()},
                                "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},
                                "seal": gate["seal"], "runner_rc": {k: v for k, v in gate.items() if k.endswith("_rc")},
                                "hosted_compare": hosted, "run_dir": str(run_dir), "executed_required": loc["executed_required"],
-                               "non_executed": loc["non_executed"], "elapsed_s": round(time.monotonic() - t0, 1)})
+                               "non_executed": loc["non_executed"], "partial": loc["partial"], "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
         enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": cand_sha, "lease_id": lease_id},
@@ -724,21 +735,25 @@ def cmd_report(a) -> int:
             for k, v in (d.get("durations") if isinstance(d.get("durations"), dict) else {}).items():
                 if is_num(v):
                     check_max_s[k] = max(check_max_s.get(k, 0), v)
-            compared_ctx = 0
+            compared_ctx, not_full = 0, {"partial": [], "unrecorded": []}
             if d.get("contexts_status") is not None:   # the gate ran: set its per-context verdicts beside the hosted ones
-                status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"],
-                                                                                 "results": {k: {"verdict": v} for k, v in (d.get("contexts") or {}).items()}}}
-                mine = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])["counts"]
-                for k, v in mine.items():
+                # coverage as the tick journalled it from the BASE runner; a line that predates it carries none: unrecorded, never full
+                cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else {}
+                status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"], "results": {
+                    k: {"verdict": v, "coverage": cov.get(k)} for k, v in (d.get("contexts") or {}).items()}}}
+                rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])
+                for k, v in rep["counts"].items():
                     ctx_counts[k] += v
-                compared_ctx = mine.get("AGREE", 0) + mine.get("FALSE_GREEN", 0) + mine.get("FALSE_RED", 0)
+                compared_ctx = rep["coverage"]["compared_full"]   # a partial AGREE is an agreement on a subset: shown, never counted
+                not_full = {"partial": rep["coverage"]["compared_partial"], "unrecorded": rep["coverage"]["compared_unrecorded"]}
             # a merge whose hosted side is still PENDING compared nothing yet: N contexts agreeing beside one unreported is no evidence
             merged_at = prs[n].get("merged_at") if merged_here else None
             if merged_here and not is_ts(merged_at):
                 raise hc.CompareError(f"#{n} merged at the decided candidate but carries no merged_at")
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
-                         "compared_contexts": compared_ctx, "merged_at": merged_at, "code_sha": d.get("code_sha"),
+                         "compared_contexts": compared_ctx, "compared_partial": not_full["partial"], "compared_unrecorded": not_full["unrecorded"],
+                         "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok" and compared_ctx >= MIN_COMPARED_CONTEXTS})
         # GitHub merged a red required check: a HOSTED failure, read on every merged PR's own merge commit whichever candidate the
@@ -769,6 +784,9 @@ def cmd_report(a) -> int:
     # one event per merged PR, at GitHub's merged_at: duplicate decisions of one PR, or the journal's order, cannot widen the span
     merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())
     compared_merges = len(merges)
+    compared_partial = sum(len(r["compared_partial"]) for r in rows)
+    compared_unrecorded = sum(len(r["compared_unrecorded"]) for r in rows)
+    partial_names = sorted({n for r in rows for n in r["compared_partial"]})
     compared_days = _days(merges[0], merges[-1]) if merges else 0.0
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
     ready = fg == 0 and compared_merges >= 50 and compared_days >= 14   # lead's ruling 2026-10-07: both, never either
@@ -782,6 +800,7 @@ def cmd_report(a) -> int:
              "check_max_s": dict(sorted(check_max_s.items(), key=lambda kv: -kv[1]))}
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
+                      "compared_partial": compared_partial, "compared_unrecorded": compared_unrecorded, "partial_contexts": partial_names,
                       "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
                       "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "skipped": skipped,
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue,
@@ -794,7 +813,8 @@ def cmd_report(a) -> int:
         print(f"#{r['pr']:<6} {r['head_sha'][:12]} {str(r['base_sha'])[:12]} {str(r['overall']):11} {r['github']:7} {'yes' if r['merged'] else 'no':6} {r['class']}")
     w = out["window"]
     print(f"window: {first} .. {last} ({days} days) decisions={w['decisions']} distinct_prs={w['distinct_prs']} merged_prs={w['merged_prs']} "
-          f"compared_merges={compared_merges} errors={errors} skipped={skipped or 0}")
+          f"compared_merges={compared_merges} compared_partial={compared_partial} compared_unrecorded={compared_unrecorded} errors={errors} "
+          f"skipped={skipped or 0}")
     print(f"gaps: longest between decisions={decision_gap_h}h, longest between any journal lines={silence_h}h, "
           f"last line {last_line_age_h}h ago" + (f", {future_lines} line(s) dated in the future" if future_lines else "")
           + f"; code shas in the window: {[c[:12] for c in w['code_shas']] or 'none recorded'}, "
@@ -809,7 +829,9 @@ def cmd_report(a) -> int:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
-          f"compared); now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}; "
+          f"compared with full coverage); now false_green={fg}, compared_merges={compared_merges}, compared_days={compared_days}; "
+          f"of the contexts compared, {compared_partial} were partial {partial_names} and {compared_unrecorded} carried no coverage record "
+          f"(shown, never counted toward the {MIN_COMPARED_CONTEXTS}); "
           f"hosted_red_merged={len(hosted_red_merged)} (information: GitHub merged a red required check; the hosted failure itself never "
           f"blocks READY, a local false green on it does); enqueued={enqueue['enqueued']} would_enqueue={enqueue['would_enqueue']} "
           f"enqueue_refused={enqueue['enqueue_refused']} enqueue_error={enqueue['enqueue_error']}")

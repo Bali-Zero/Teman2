@@ -26,6 +26,9 @@
 # trusted_base_required=true means the check's OWN logic (classifier / partitioner / guard and its
 # self-test) must be taken from the BASE ref when judging a candidate, or a PR can self-approve.
 # blocked = a precise obstacle stopped a full local run (see `blocker`, `partial_evidence`).
+# coverage = what an executed context's local verdict covers of its hosted twin: `full` (the default when absent) or `partial`
+# with a `coverage_note` naming the subset. It travels with every result into status.json and hosted_compare.json; a partial
+# AGREE is shown and counted apart and never counts toward the merger's >= 12 compared contexts. An unreadable value is partial.
 # not_implemented = no local mapping exists yet. not_applicable_rule = 0 today: no required context
 # can be statically N/A (a required check must always report); per-diff N/A is the runner's
 # change_map decision, not this file's.
@@ -124,7 +127,10 @@ contexts:
         - workflow_step: Upload Playwright report
           not_applicable: an upload with if-no-files-found warn cannot fail the job; there is no artifact store here
     mapping: executed
-    coverage: partial # without the six repository secrets hosted holds, and the browser from the deps image (parity_gaps)
+    coverage: partial
+    coverage_note: >-
+      the six repository secrets hosted holds (QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY, JWT_SECRET, E2E_TEST_EMAIL/PIN) are "" here,
+      and the browser comes from the deps image, not the hosted install step (parity_gaps)
     blocker: ""
 
   - name: "Backend Tests (Python)"
