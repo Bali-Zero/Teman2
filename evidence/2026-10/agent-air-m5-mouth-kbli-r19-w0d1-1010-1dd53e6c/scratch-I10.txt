@@ -1,0 +1,53 @@
+opened-surfaces: 6 ok, 0 failed
+  kbli-mobile-nav mobile/light: 1 root(s), 1 scrim(s), 7 text pairs, min 3.66
+  kbli-mobile-nav mobile/system-dark: 1 root(s), 1 scrim(s), 7 text pairs, min 1.07
+  kbli-mobile-nav mobile/forced-dark: 1 root(s), 1 scrim(s), 7 text pairs, min 1.05
+  kbli-code-mobile-nav mobile/light: 1 root(s), 1 scrim(s), 7 text pairs, min 3.66
+  kbli-code-mobile-nav mobile/system-dark: 1 root(s), 1 scrim(s), 7 text pairs, min 1.07
+  kbli-code-mobile-nav mobile/forced-dark: 1 root(s), 1 scrim(s), 7 text pairs, min 1.05
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/forced-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/forced-dark)
+opened-outside-wrapper: 6
+  ground #3A6DFF under 'Get Started' at body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center, on kbli-mobile-nav mobile/system-dark
+  ground #ECECEF under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/system-dark
+  ground #F7E8E4 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/light
+  ground #FF2D4C under 'Get Started' at body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center, on kbli-mobile-nav mobile/light
+  scrim #000000 alpha 0.45 at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div (a scrim is ink), on kbli-mobile-nav mobile/light
+opened-grounds-off-contract: 5
+shared-touched-unpinned: 0
+shared-component-drift: 0
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  block text-center px-5 py-3  (kbli-mobile-nav mobile/light)
+  1.08  #FDFDFC on #F7F4EE  'Menu'  text-[11px] font-bold uppercase tracking-widest  (kbli-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #ECECEF  'Home'  block px-4 py-3 rounded-xl  (kbli-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #ECECEF  'Visa'  block px-4 py-3 rounded-xl  (kbli-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #ECECEF  'Tax'  block px-4 py-3 rounded-xl  (kbli-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #ECECEF  'Property'  block px-4 py-3 rounded-xl  (kbli-mobile-nav mobile/system-dark)
+  4.36  #FFFFFF on #3A6DFF  'Get Started'  block text-center px-5 py-3  (kbli-mobile-nav mobile/system-dark)
+  1.07  #FCFBFA on #F7F4EE  'Login'  block text-center px-5 py-3  (kbli-mobile-nav mobile/system-dark)
+  1.05  #FBFAF7 on #F7F4EE  'Menu'  text-[11px] font-bold uppercase tracking-widest  (kbli-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E8E4  'Home'  block px-4 py-3 rounded-xl  (kbli-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E8E4  'Visa'  block px-4 py-3 rounded-xl  (kbli-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E8E4  'Tax'  block px-4 py-3 rounded-xl  (kbli-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E8E4  'Property'  block px-4 py-3 rounded-xl  (kbli-mobile-nav mobile/forced-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  block text-center px-5 py-3  (kbli-mobile-nav mobile/forced-dark)
+  1.05  #FBFAF7 on #F7F4EE  'Login'  block text-center px-5 py-3  (kbli-mobile-nav mobile/forced-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  block text-center px-5 py-3  (kbli-code-mobile-nav mobile/light)
+  1.08  #FDFDFC on #F7F4EE  'Menu'  text-[11px] font-bold uppercase tracking-widest  (kbli-code-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #ECECEF  'Home'  block px-4 py-3 rounded-xl  (kbli-code-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #ECECEF  'Visa'  block px-4 py-3 rounded-xl  (kbli-code-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #ECECEF  'Tax'  block px-4 py-3 rounded-xl  (kbli-code-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #ECECEF  'Property'  block px-4 py-3 rounded-xl  (kbli-code-mobile-nav mobile/system-dark)
+  4.36  #FFFFFF on #3A6DFF  'Get Started'  block text-center px-5 py-3  (kbli-code-mobile-nav mobile/system-dark)
+  1.07  #FCFBFA on #F7F4EE  'Login'  block text-center px-5 py-3  (kbli-code-mobile-nav mobile/system-dark)
+  1.05  #FBFAF7 on #F7F4EE  'Menu'  text-[11px] font-bold uppercase tracking-widest  (kbli-code-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E8E4  'Home'  block px-4 py-3 rounded-xl  (kbli-code-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E8E4  'Visa'  block px-4 py-3 rounded-xl  (kbli-code-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E8E4  'Tax'  block px-4 py-3 rounded-xl  (kbli-code-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E8E4  'Property'  block px-4 py-3 rounded-xl  (kbli-code-mobile-nav mobile/forced-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  block text-center px-5 py-3  (kbli-code-mobile-nav mobile/forced-dark)
+  1.05  #FBFAF7 on #F7F4EE  'Login'  block text-center px-5 py-3  (kbli-code-mobile-nav mobile/forced-dark)
+opened-text-below-4.5: 30

@@ -1,0 +1,35 @@
+task_id: kbli-r19-w0d1-1010
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track W, lot W0d-1. This is the first of three lots that implement
+  SPEC-W0d-census.md, written by a fresh Opus outside the contribution chain after the W0 census was
+  suspended (#8167, then #8183: two reds for instrument under-match).
+  W0d-1 builds the spec's shared-component matrix (section 1.b):
+    - pins for every (component, branch) pair outside /kbli*: MobileNav non-R19 on /v2,
+      /visa/second-home and /v2/news; MobileNav R19 on /tax-calendar, /property/eligibility and
+      /news; NavShell default and paper; Footer editorial and R19 blog;
+    - shared-component-drift, with the branch read at run time on the hydrated surface;
+    - shared-touched-unpinned;
+    - contract section 8.5 rewritten from the measured matrix.
+  The base is #8183's blobs (59d1a5e7f6), carried verbatim. No line changes under apps/mouth/src.
+constraints:
+  - "Zero files under apps/mouth/src (spec section 5); census-replay asserts it on every W0d branch."
+  - "#8183's 17 paths carried verbatim in their own commit; this lot's changes come after it."
+  - "No npm install or npm ci. Dev servers on 3596 (this tree, origin/main source) and 3597 (a scratch worktree of origin/main for the mutations), started and stopped by this lot."
+acceptance:
+  - text: "WHEN mutation A (an ungated paper repaint of MobileNav's non-R19 branch) is served, THEN shared-component-drift is at least 1 on /v2 and /visa/second-home (G27)."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k g27"
+  - text: "WHEN mutation B deepens the item tint on both branches, THEN D is at least 1 on /v2 and /tax-calendar (G28); WHEN MobileNav.tsx is touched with the /v2 pins removed, THEN shared-touched-unpinned is 1 naming MobileNav non-R19 (G29)."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'g28 or g29'"
+  - text: "WHEN origin/main is walked unmodified (I9), or with the repaint gated on a paper prop that only /kbli passes (I10), THEN D is 0; the live census on origin/main prints shared-touched-unpinned 0 and shared-component-drift 0."
+    probe: "python3 scripts/mouth/r19_wrapper_token_census.py"
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-states runs the live census on every apps/mouth, packages/core and census PR, and asserts shared-touched-unpinned 0 and shared-component-drift 0 with grep -Fxq. W2''' is judged on the same lines."
+  - "r19-wrapper-census-tests / census-replay runs the guilt and innocence suite (G27-G29, I9, I10), and on a W0d branch it asserts 0 files changed under apps/mouth/src."
+risks:
+  - "D fingerprints text only (pairs, texts over an image, the branch). A repaint that moves no text ground is out of its definition; the pixel oracle of W0d-2 judges grounds."
+  - "NavShell is pinned on desktop: at 390px its bar has no text of its own."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

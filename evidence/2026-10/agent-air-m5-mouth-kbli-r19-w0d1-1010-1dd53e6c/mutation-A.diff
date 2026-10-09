@@ -1,0 +1,13 @@
+diff --git a/apps/mouth/src/app/v2/_components/MobileNav.tsx b/apps/mouth/src/app/v2/_components/MobileNav.tsx
+index 08c3ae40dd..546f8e519a 100644
+--- a/apps/mouth/src/app/v2/_components/MobileNav.tsx
++++ b/apps/mouth/src/app/v2/_components/MobileNav.tsx
+@@ -71,7 +71,7 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
+             ...(isR19 ? R19_VARS : {}),
+             fontFamily: isR19 ? "var(--font-sans)" : undefined,
+             color: "var(--text-primary)",
+-            background: "var(--nav-bg)",
++            background: isR19 ? "var(--nav-bg)" : "#F7F4EE",
+             borderRight: "1px solid var(--nav-border)",
+             backdropFilter: "blur(16px)",
+             WebkitBackdropFilter: "blur(16px)",
