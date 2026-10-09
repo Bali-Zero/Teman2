@@ -228,9 +228,10 @@ extension Snapshot {
     /// window-to-window comparable across bands/themes/langs regardless of each band's own natural
     /// content height. Legacy `--snapshot` (above) is untouched; this is a parallel entry point.
     /// Usage: `--snapshot-band <band> --theme day|night --lang en|id --code <code>
-    ///         [--width <pt>] [--text-size default|xxxLarge] [--layout-json <out.json>] <out.png>`
+    ///         [--width <pt>] [--height <pt>] [--text-size default|xxxLarge] [--layout-json <out.json>] <out.png>`
     /// Design loop 2026-10-09 (spec §3, §7): every band is a PAGE — the live view at the full canvas
-    /// width (`--width`, default 1280; 948 = the live main pane), top-anchored, clipped at 800.
+    /// width (`--width`, default 1280; 948 = the live main pane), top-anchored, clipped at `--height`
+    /// (default 800, the set's canvas; a taller value shows a page band below the fold for review).
     /// Bands: registry-table, detail-card, dossier, sheet-ledger, chat, search-results.
     @MainActor
     static func runBandIfRequested() -> Bool {
@@ -267,7 +268,7 @@ extension Snapshot {
         let dynamicSize: DynamicTypeSize = (textSizeArg == "xxxlarge") ? .xxxLarge : .large
 
         let w = CGFloat(flag("--width").flatMap(Double.init) ?? 1280)
-        let h: CGFloat = 800
+        let h = CGFloat(flag("--height").flatMap(Double.init) ?? 800)
         let notFound = AnyView(EmptyDetail(text: "code \(code) not found (store: \(state.store.all.count))")
             .environmentObject(lang))
 
