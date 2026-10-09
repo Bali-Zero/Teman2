@@ -531,21 +531,24 @@ if [ "$ACTIONABLE" -eq 1 ]; then
 import hashlib, json, sys
 rows = json.load(sys.stdin)['entries']
 keys = sorted(
-    hashlib.sha256('|'.join(str(r.get(k, '')) for k in ('opened', 'owner', 'artifact')).encode()).hexdigest()[:16]
+    hashlib.sha256(json.dumps({k: v for k, v in r.items() if k not in ('age_days', 'overdue')}, sort_keys=True).encode()).hexdigest()[:16]
     for r in rows
     if r.get('class') in ('PHANTOM-OPERATOR', 'MALFORMED') or (r.get('class') == 'TECH-DEBT' and r.get('overdue'))
 )
 print('%d:%s' % (len(keys), hashlib.sha256(','.join(keys).encode()).hexdigest()[:16]))
 " 2>>"$LOG") ;;
     esac
-    export _HM_LEDGER_DIGEST="$LEDGER_DIGEST"
-    export _HM_REG_OUT="$REG_OUT"
-    export _HM_PROP_JSON="$PROP_JSON"
-    export _HM_ESC_OUT="$ESC_OUT"
-    export _HM_NEW_DEAD="${NEW_DEAD:-}"
-    export _HM_REASONS="$REASONS"
-    export _HM_PROP_SESSION="${SESSION_CURABLE:-0}"
-    RECEPTOR_STATE_JSON=$(python3 - <<'PY'
+    # The board as the hook injects it is capped in bytes and hides HIGH groups past
+    # the cap; the memo hashes the uncapped board so a hidden change still counts.
+    ESC_FULL=""
+    case " $REASONS " in *" escalations-board "*)
+        ESC_FULL=$(SESSIONSTART_HOOK_MAX_BYTES=100000000 bash scripts/hooks/escalations_alert_sessionstart.sh 2>/dev/null) ;;
+    esac
+    # Inputs reach the hashing process only: never exported, so no board text or
+    # receptor output is inherited by the session spawned below.
+    RECEPTOR_STATE_JSON=$(_HM_LEDGER_DIGEST="$LEDGER_DIGEST" _HM_REG_OUT="$REG_OUT" _HM_PROP_JSON="$PROP_JSON" \
+        _HM_ESC_OUT="$ESC_FULL" _HM_OUTBOX_OUT="${OUTBOX_OUT:-}" _HM_NEW_DEAD="${NEW_DEAD:-}" _HM_REASONS="$REASONS" \
+        _HM_PROP_SESSION="${SESSION_CURABLE:-0}" python3 - 2>>"$LOG" <<'PY'
 import hashlib, json, os
 
 def _load(name):
@@ -579,18 +582,19 @@ except ValueError:
 # Receptors with no axis of their own ride as observations: every reason token
 # (counts, contexts, hosts are all deterministic summaries, no clock in them)
 # plus a content hash for the two tokens that carry no identity.
-observations = [t for t in reasons if t not in ("ledger-overdue", "escalations-board")]
+observations = [t for t in reasons if t not in ("ledger-overdue", "escalations-board", "garuda-outbox-undrained")]
 if "ledger-overdue" in reasons:
     digest = os.environ.get("_HM_LEDGER_DIGEST", "").strip()
     if not digest:
         raise SystemExit(1)  # ledger unreadable: no fingerprint, the session spawns
     observations.append("ledger-overdue:" + digest)
 if "escalations-board" in reasons:
-    esc = os.environ.get("_HM_ESC_OUT", "")
     try:
-        esc = json.loads(esc)["hookSpecificOutput"]["additionalContext"]
+        esc = json.loads(os.environ.get("_HM_ESC_OUT", ""))["hookSpecificOutput"]["additionalContext"]
     except Exception:
-        pass
+        raise SystemExit(1)  # board unreadable here: no fingerprint, the session spawns
+    if not str(esc).strip():
+        raise SystemExit(1)
     # The NORMAL-pending tally and the trailer drift with every unrelated job
     # write; the HIGH groups (with their repeat count and latest date) are the alert.
     lines = [
@@ -598,6 +602,12 @@ if "escalations-board" in reasons:
         if ln.strip() and "NORMAL pending" not in ln and not ln.startswith("Run /escalations")
     ]
     observations.append("escalations-board:" + hashlib.sha256("\n".join(lines).encode()).hexdigest()[:16])
+if "garuda-outbox-undrained" in reasons:
+    # The token is constant; its counts are the content (a new exhausted row moves them).
+    counts = _load("_HM_OUTBOX_OUT").get("counts")
+    if not isinstance(counts, dict):
+        raise SystemExit(1)  # outbox verdict unreadable here: no fingerprint, the session spawns
+    observations.append("garuda-outbox-undrained:" + hashlib.sha256(json.dumps(counts, sort_keys=True).encode()).hexdigest()[:16])
 
 print(json.dumps({
     "dead_organs": dead_organs,

@@ -6,10 +6,11 @@ task: >-
 lane: ops
 machine: m5
 date: 2026-10-09
-gear: 2
+gear: 3
 gear_reason: >-
-  Measured floor 1. Gear 2 at least so that harness-floor holds the merge until the independent final gate
-  signs it (campaign rule after #8079).
+  Measured floor 3, source the .github/workflows/ hot zone: the memo tests had no CI executor (W108), so the PR adds
+  them to watchdog-third-state.yml (one shell step, one pytest argument, three trigger paths). Gear 3 carries a pack
+  and a sealed council.
 acceptance:
   A1:
     text: >-
@@ -26,3 +27,8 @@ acceptance:
       Pro is unchanged: scripts/healer_memo.py hashes every state without the new optional observations axis exactly as
       before, and Pro's wrapper is not touched.
     probe: base-versus-head fingerprint of three Pro-shaped states, equal.
+  A4:
+    text: >-
+      watchdog-third-state runs scripts/tests/test_mini_healer_memo.sh and scripts/tests/test_healer_memo.py in steps
+      without continue-on-error, on every PR touching the wrapper, healer_memo.py or either test file.
+    probe: this PR's own watchdog-third-state job log.
