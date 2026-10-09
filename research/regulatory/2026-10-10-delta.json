@@ -1,0 +1,79 @@
+{
+  "run_at": "2026-10-10T07:05:32+08:00",
+  "today": "2026-10-10",
+  "yesterday_seen_count": 8,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "301 to /articles, 'Memuat artikel...' JS-rendered shell persists, same as prior runs"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "HTTP_CODE:000 on initial fetch and the one mechanical retry, 30s each, same as prior runs"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "newest dated item 2026-10-09; only matches were 'PP INI' (org acronym, not Peraturan Pemerintah) and RUU Masyarakat Adat (draft bill, outside BZ service-line scope)"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "newest item 'Kartu Ujian Dummy UKP...' (exam logistics, not a reg); PMK 70/2026 and PMK 71/2026 re-surfaced, already evaluated 2026-10-08/09 (70 outside scope, 71 already seen)"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; static content is only pagination links, no PMK 2026 entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest dated news entry 30 September 2026, older than the 48h freshness window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry still KEP-185/PJ/2026 (2026-09-02), unchanged from prior runs"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible entry dated 30 April 2026, unchanged from prior runs"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025",
+    "PMK 71/2026",
+    "RUU Pelindungan Ketenagakerjaan",
+    "PER-11/PJ/2026"
+  ],
+  "note": "4/4 NB-INTEL: Regulation/Press/Immigration = nessuna novita; Tax re-surfaced PMK 71/2026 (already in seen_citations, non-citable). Web primary (1-5): hukumonline only false-positive matches (PP INI acronym, RUU Masyarakat Adat anti-SLAPP draft -- outside scope); DDTC found PMK 70/2026 + PMK 71/2026 both already judged yesterday (70 outside scope, 71 already seen); ortax/muc 403/404 as before, ikpi 301->/articles still JS empty shell. Primary returned 0 in-scope deltas (<3) so backup web (6-11) also checked: peraturan.go.id/rss 404, bpk.go.id JS-rendered (no static PMK matches), imigrasi/pajak/kemnaker all outside the 48h window (unchanged from prior runs), jdih.kemenkeu.go.id timeout x2. Net result: zero in-scope deltas today."
+}
