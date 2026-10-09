@@ -165,7 +165,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   `backend/data/bali_zero_processing_times_2026.json` (production
   `visa_types.processing_time_normal`, 37 products); BRIDGING stays UNKNOWN. Census unchanged on
   seq-26: 99 SUPPORTED / 13 NO_PATH / 1 NEEDS_INPUT / 3 HUMAN_REVIEW of 116 walks. C4 interview
-  helper copy: successor #8140 `<C4_OUTCOME>`. Open items: `PENDING-ARMS.md` rows 2026-10-09.
+  helper copy: successor PR-C4 #8148 merged 2026-10-09T06:27:43Z (`4443d209f1`). Vercel dpl `mouth-jounkfl8j` was aliased about 06:34Z by an automatic promotion, a few minutes after READY. Live 06:34:46Z: on balizero.com/visa-oracle, "Why we ask" on the direction question reads "Your direction decides which questions come next and which visas can fit your plan." and the old "only chooses the next questions" is gone; the full replay still shows the C3 timing and the C2 duration. Predecessors #8119, #8128, #8140 and #8145 were closed after fresh-gate BLOCKs on false sentences, a lost "above" reference, and a red suite. The fix was a per-key truth table written from the code, a Codex full sweep of every changed key (97 rendered + 17 never rendered of 114/115), and the full visa-oracle vitest subtree before push. Rule now in force: an advisor is offered, never promised. Open items: `PENDING-ARMS.md` rows 2026-10-09.
 - **Organ hardening (PR-O2 #8100, merge `fa15d34f7e`):** the first real run halted on a judge
   false positive (page dcf08e19, fingerprint `d760e4e8371f04cd…` equal to the seq-25 text). The
   fold now re-proves against a judgement-bound fingerprint baseline and downgrades
