@@ -1,0 +1,139 @@
+# Gear-2 evidence pack — Visa Oracle interview copy, truth-table successor (PR-C4-v3).
+# Every receipt is a command run in this worktree on 2026-10-09; ts captured in the same shell call.
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-08/09 — no internal language reaches the client; the interview copy follows
+  the result page and states only what the code does.
+mission: >-
+  The Visa Oracle interview explains why it asks in the visitor's words, EN and ID, and every
+  claim about an answer is checked against the code.
+lanes:
+  - lane: interview-copy-build
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree mouth-visa-oracle-interview-copy-c4-v3 on M5.
+  - lane: interview-copy-truth-table
+    role: ground_truth
+    seat: >-
+      the per-key truth table (scratchpad spec-interview-truth-table-c4v3.md), derived from the
+      flow, the fact mapping, the question tree and the signed seq-26 pack.
+    nb: "/private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/spec-interview-truth-table-c4v3.md (no notebook: the truth table is derived from the code on disk)"
+    query_hash: "d46eb356e10633e975b794251814dfb37056522dad1156eeafe635e8dd73785b" # pragma: allowlist secret — sha256 of that spec file
+  - lane: interview-copy-review
+    role: review
+    seat: agy-gemini-3.1-pro (constructive copy review on the predecessor), cured.
+  - lane: interview-copy-gate
+    role: review
+    seat: fresh-opus-gate (final on-disk gates of the two predecessor PRs), cured in this successor.
+pii_scan: clean
+bites:
+  consumer: >-
+    the CI harness, which runs this observer after the merge, and every visitor of
+    balizero.com/visa-oracle who opens a "why we ask" hint: the observer proves the copy they
+    read carries no engine, interface or field-name language, and the truth test proves the 34
+    sentences about what an answer does still match the reviewed text.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:OK visa-oracle client copy"
+decisions:
+  - id: D-truth-table-spec
+    decision: >-
+      The copy follows spec-interview-truth-table-c4v3.md (scratchpad), whose rows were derived
+      from flow.ts, fact-mapper.ts, tree.ts and the signed pack rulepack-prod-026 with sha256
+      dcbc12cd5844301c18c89bf9311d061fe6ad718ebbe13755afc9dd5b01c070cf. Section 2-A (27 keys) and
+      2-C (7 keys) are applied byte-exactly in both languages; 2-C covers keys outside the
+      original diff because they are visible and false on main. The dead keys of section 2-B are
+      not touched here: deleting them is a separate PR.
+  - id: D-successor-of-8128
+    decision: >-
+      Successor of the closed PR 8128 (gate BLOCK on three HIGH truth findings: the retirement
+      basis hint, the sponsor category hint, the other-purpose and paid-activity hints). The
+      v2 code commits were cherry-picked from that branch, without its evidence commits, then
+      the truth table was applied on top.
+  - id: D-no-staff-channel
+    decision: >-
+      No sentence says an answer reaches Bali Zero staff: the only network call carrying answers
+      is the evaluation request, and the WhatsApp handoff states that interview answers are not
+      included. Answers that do not decide anything automatically are described as such, without
+      claiming a person reads them.
+  - id: D-identifier-guard
+    decision: >-
+      A dotted engine identifier inside a sentence is banned by both the census test and the
+      observer; template placeholders are exempt and a dotted dictionary key is not copy.
+receipts:
+  - claim: "The bites observer finds no banned phrase, word or dotted identifier in the dictionary, the atlas copy or the adapter copy."
+    cmd: "python3 scripts/ci/observe_visa_oracle_client_copy.py"
+    result: "OK visa-oracle client copy: 3650 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-09T04:15:19Z"
+    seat: this session
+  - claim: "The observer guard has guilt and innocence tests in both languages."
+    cmd: "python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py -q"
+    result: "4 passed"
+    exit: 0
+    ts: "2026-10-09T04:15:21Z"
+    seat: this session
+  - claim: "The copy census, the new truth test, i18n parity, QuestionScreen, WhyWeAsk, OutcomeSheet and ConsentHandoff tests pass."
+    cmd: "cd apps/mouth && npx vitest run <the seven test files>"
+    result: "Test Files  7 passed (7); Tests  203 passed (203)"
+    exit: 0
+    ts: "2026-10-09T04:18:53Z"
+    seat: this session
+  - claim: "The enumeration file passes; run alone because it times out inside the full tree under machine load."
+    cmd: "cd apps/mouth && npx vitest run src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
+    result: "Test Files  1 passed (1); Tests  40 passed (40)"
+    exit: 0
+    ts: "2026-10-09T04:20:27Z"
+    seat: this session
+  - claim: "The mouth typecheck is clean."
+    cmd: "cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
+    result: "no output"
+    exit: 0
+    ts: "2026-10-09T04:18:41Z"
+    seat: this session
+  - claim: "Prettier accepts every touched TypeScript file."
+    cmd: "cd apps/mouth && npx prettier --check <touched files>"
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-10-09T04:15:18Z"
+    seat: this session
+  - claim: "No e2e spec pins a replaced sentence of the 34 keys; two component tests that did were updated."
+    cmd: "rg -n -F -f <old sentences of the 34 keys> apps/mouth/e2e apps/mouth/src (excluding the dictionary and the truth test)"
+    result: "no pin left (the only hits are an unrelated condition-notice suffix in engine-adapter.test.ts)"
+    exit: 0
+    ts: "2026-10-09T04:21:00Z"
+    seat: this session
+dissent:
+  - seat: agy-gemini-3.1-pro
+    severity: HIGH
+    objection: English strings said Bali Zero consultant while the live result page says advisor.
+    status: CONFIRMED
+    note: cured in 3cdb1cb0cc, carried into this successor.
+  - seat: agy-gemini-3.1-pro
+    severity: MEDIUM
+    objection: The paid-up capital hint lost the promise that the exact amount is used.
+    status: CONFIRMED
+    note: cured in 3cdb1cb0cc, carried into this successor.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.birth_date was false and two helper sentences printed internal field names (gate of the first successor).
+    status: CONFIRMED
+    note: cured in 8c2f34b47c, carried into this successor.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.retirement_basis claimed a basis not chosen is not counted, but passive income is checked on every basis and only the deposit is zeroed.
+    status: CONFIRMED
+    note: cured in 9df4e13f4f from the truth table.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.sponsor_category said no rule uses the sponsor type, but ten seq-26 rules read it.
+    status: CONFIRMED
+    note: cured in 9df4e13f4f from the truth table.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: The other-purpose and paid-activity hints were false for transit and for a yes that becomes an employment purpose.
+    status: CONFIRMED
+    note: cured in 9df4e13f4f from the truth table.
+spend:
+  wall_clock_hours: 4
+  adversarial_rounds: 3
