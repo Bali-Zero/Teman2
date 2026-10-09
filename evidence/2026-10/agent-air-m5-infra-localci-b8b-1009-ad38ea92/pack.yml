@@ -1,0 +1,62 @@
+task_id: localci-b8b-1009
+mission: LOCALCI-SOVEREIGN (phase D, step B8b)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  One bounded function in the prune, its tests and mutant rules, and two documentation paragraphs. No hot-zone path; the lint
+  floor is 1 by size.
+l_level: L2
+gate_class: opus
+objective: >-
+  The prune keeps online discard on the Colima VM's data disk: before its fstrim it reads /proc/mounts in the VM, remounts
+  /mnt/lima-colima with discard if the option is off, and journals vm_discard. Measured reason: inside a tick the datadisk's host
+  allocation reached 54.0 GiB while the VM used 36.6-40 GiB, and the host's free space fell to 104.0 GiB (100.3 GiB by another
+  session's read) against the owner's floor of more than 100 GB.
+acceptance:
+  - text: A disk mounted without discard SHALL be remounted once with exactly "remount,discard" on /mnt/lima-colima, before the fstrim.
+    probe: "test_prune.py::test_b8b_a_disk_mounted_without_discard_is_remounted_once_before_the_trim"
+  - text: A disk already mounted with discard SHALL NOT be remounted.
+    probe: "test_prune.py::test_b8b_a_disk_already_mounted_with_discard_is_not_remounted"
+consumer_map:
+  - scripts/localci/merger.py prune (via the launchd tick com.balizero.localci-merger on Pro) — the vm_discard key of the prune line in decisions.jsonl.
+pii_scan: clean
+pii_scan_note: Prune code, tests on fakes under tmp, mutant rules and documentation. No client data was read or written.
+what_changed: |
+  scripts/localci/prune.py: VM_DOCKER_MOUNT, _vm_discard_on (field match on /proc/mounts), keep_vm_discard (kill switch
+  LOCALCI_VM_DISCARD=0, remount, re-read, never raises) called before the fstrim in the real path; "vm_discard" joins rec["failed"]
+  only when a remount was attempted and after is not true. test_prune.py: eight b8b tests over a fake colima with a mutable mount
+  table; the B7 test now reads the last colima call. merger_mutants.py: eight b8b-* rules. README prune section and spec Addendum B8b.
+proof: |
+  The committed code against fake colima/docker scripts under tmp; nothing ran on Pro and nothing was pushed. It reaches Pro when
+  the tick next extracts prune.py from main.
+bites:
+  consumer: The launchd tick com.balizero.localci-merger on Pro (prune line in decisions.jsonl).
+  observation: >-
+    Owed after merge and the tick's next extraction (this lane does not ship): the first prune line on Pro with
+    vm_discard.after true, and a second host sample (the 20 s sampler) whose intra-tick minimum of host free space is above the
+    pre-discard 100.3/104.0 GiB, with the datadisk's allocation tracking the VM's usage.
+ground:
+  ts: "2026-10-09T12:20:00Z"
+  siblings: >-
+    Worktree from origin/main 11d8ee2696. Other lanes touching scripts/localci: dux-localci-b11 and b11b (merger replay), not prune.py.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 0.4
+receipts:
+  - claim: "test_prune.py and test_merger.py: 255 passed, 109 s (before the mount-order tweak of the test fixture); test_prune.py -k b8b: 8 passed after it."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_prune.py scripts/localci/tests/test_merger.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T12:15:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "All 8 b8b-* mutant rules killed (7 first run; b8b-mount-point-by-prefix survived until the fixture listed the longer path first, then killed); survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --list | grep -o -E "^b8b-[a-z0-9-]+" | xargs python3 scripts/localci/tests/mutants/merger_mutants.py --only
+    exit: 0
+    ts: "2026-10-09T12:18:00Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "The remount and its effect on Pro's host free space are observable only after merge on Pro; owed as the Bites observation."
+  - "Remounting a mounted ext4 with discard adds online discard cost to deletions inside the VM; accepted by the lead, measured by the second sampler run."
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B8b, from the lead message of 2026-10-09, from origin/main 11d8ee2696. Nothing is pushed.
