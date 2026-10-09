@@ -14,6 +14,9 @@ lanes:
   - lane: interview-copy-review
     role: review
     seat: agy-gemini-3.1-pro (constructive copy review), one round, verdict BLOCK then cured.
+  - lane: interview-copy-gate
+    role: review
+    seat: fresh-opus-gate (final on-disk gate of #8119), verdict BLOCK, cured in this successor.
   - lane: interview-copy-spec
     role: ground_truth
     seat: >-
@@ -31,6 +34,16 @@ bites:
   observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
   expect: "contains:OK visa-oracle client copy"
 decisions:
+  - id: D-successor-of-8119
+    decision: >-
+      Successor of #8119 (gate BLOCK: why.birth_date became false once seq-26 rules exclude on
+      age alone, and two helper sentences still printed internal field names). The branch was
+      armed and frozen, so the work restarts from a fresh origin/main with the three commits
+      cherry-picked and one cure commit on top.
+  - id: D-identifier-guard
+    decision: >-
+      A dotted engine identifier inside a sentence is banned by both the census test and the
+      observer; template placeholders are exempt and a dotted dictionary key is not copy.
   - id: D-honest-promises-kept
     decision: >-
       Every promise the old sentence made is restated plainly: only the yes or no is used,
@@ -45,76 +58,75 @@ decisions:
       The urgent and bridging lane notices and two assumption sentences spoke of the engine and
       the interface; they were outside the q/why prefixes but inside the rule, so they follow it.
 receipts:
-  - claim: The bites observer finds no banned phrase or whole-word jargon in the dictionary, the atlas copy or the adapter copy, and both language blocks carry the PR-C1 keys.
-    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  - claim: "The bites observer, now with the dotted-identifier guard, finds no banned phrase or word in the dictionary, the atlas copy or the adapter copy."
+    cmd: "python3 scripts/ci/observe_visa_oracle_client_copy.py"
     result: "OK visa-oracle client copy: 3625 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-09T02:32:06Z"
+    ts: "2026-10-09T02:44:37Z"
     seat: this session
-  - claim: After the review cures, the copy census, i18n parity, QuestionScreen, WhyWeAsk and OutcomeSheet tests pass.
-    cmd: cd apps/mouth && npx vitest run <the five test files>
-    result: "Test Files  5 passed (5); Tests  147 passed (147)"
+  - claim: "The observer's guard has guilt and innocence tests: a leaked identifier and the engine word are caught in both languages; placeholders and plain copy pass."
+    cmd: "python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py -q"
+    result: "4 passed"
     exit: 0
-    ts: "2026-10-09T02:32:06Z"
+    ts: "2026-10-09T02:49:17Z"
     seat: this session
-  - claim: The visa-oracle test tree passes except two enumeration tests that timed out under machine load of about 100; that file passes alone.
-    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
-    result: "Test Files  1 failed | 44 passed (45); Tests  2 failed | 1211 passed (1213) — both failures are 120 s timeouts in enumerate-interview-space.test.ts"
-    exit: 1
-    ts: "2026-10-09T02:09:24Z"
+  - claim: "The copy census (with the identifier guard and its guilt test), i18n parity, QuestionScreen, WhyWeAsk, OutcomeSheet and ConsentHandoff tests pass."
+    cmd: "cd apps/mouth && npx vitest run <the six test files>"
+    result: "Test Files  6 passed (6); Tests  167 passed (167)"
+    exit: 0
+    ts: "2026-10-09T02:44:41Z"
     seat: this session
-  - claim: The two timed-out tests pass when their file runs alone, so the failure is load, not copy.
-    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
+  - claim: "The enumeration file, which times out inside the full tree under machine load of about 100, passes alone."
+    cmd: "cd apps/mouth && npx vitest run src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
     result: "Test Files  1 passed (1); Tests  40 passed (40) — full-subtree timeouts under load ~100, file passes alone"
     exit: 0
-    ts: "2026-10-09T02:33:32Z"
+    ts: "2026-10-09T02:49:16Z"
     seat: this session
-  - claim: The mouth typecheck is clean.
-    cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
+  - claim: "The mouth typecheck is clean."
+    cmd: "cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
     result: "no output"
     exit: 0
-    ts: "2026-10-09T02:32:14Z"
+    ts: "2026-10-09T02:47:18Z"
     seat: this session
-  - claim: Prettier accepts every touched TypeScript file.
-    cmd: cd apps/mouth && npx prettier --check <touched files>
+  - claim: "Prettier accepts every touched TypeScript file."
+    cmd: "cd apps/mouth && npx prettier --check <touched files>"
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-09T02:32:06Z"
+    ts: "2026-10-09T02:50:02Z"
     seat: this session
-  - claim: ESLint reports no error on the changed dictionary; the test files are ignored by the project config.
-    cmd: cd apps/mouth && npx eslint --no-warn-ignored src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
-    result: "no output"
+  - claim: "No e2e spec pins a replaced sentence."
+    cmd: "rg -c -e <the replaced sentences> apps/mouth/e2e | wc -l"
+    result: "       0 files"
     exit: 0
-    ts: "2026-10-09T02:10:10Z"
-    seat: this session
-  - claim: Ruff accepts the extended observer.
-    cmd: ruff check scripts/ci/observe_visa_oracle_client_copy.py
-    result: "All checks passed!"
-    exit: 0
-    ts: "2026-10-09T02:10:10Z"
-    seat: this session
-  - claim: No e2e spec pins a replaced sentence; the three component tests that did were updated.
-    cmd: rg -c -e "tells the engine|The engine receives|Stale — review|Freshness unknown|Effective \{\{" apps/mouth/e2e | wc -l
-    result: "0 files"
-    exit: 0
-    ts: "2026-10-09T02:10:10Z"
+    ts: "2026-10-09T02:50:02Z"
     seat: this session
 dissent:
   - seat: agy-gemini-3.1-pro
     severity: HIGH
     objection: Four English strings said "Bali Zero consultant" while the live result page says "Bali Zero advisor".
     status: CONFIRMED
-    note: cured in 8570291a61, every EN string now says advisor; ID keeps konsultan Bali Zero.
+    note: cured in 7281ad88b0, every EN string now says advisor; ID keeps konsultan Bali Zero.
   - seat: agy-gemini-3.1-pro
     severity: HIGH
     objection: The trip-scope hint named an unbranded consultant, in EN and ID.
     status: CONFIRMED
-    note: cured in 8570291a61, both languages now name the Bali Zero advisor.
+    note: cured in 7281ad88b0, both languages now name the Bali Zero advisor.
   - seat: agy-gemini-3.1-pro
     severity: MEDIUM
     objection: The paid-up capital hint lost the promise that the exact amount is used.
     status: CONFIRMED
-    note: cured in 8570291a61, the exact-amount promise is restored in EN and ID.
+    note: cured in 7281ad88b0, the exact-amount promise is restored in EN and ID.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.birth_date said age alone never decides eligibility, which is false since seq-26 has rules that exclude on age.
+    status: CONFIRMED
+    note: cured in 7d35db88d4, the sentence now names the minimum age for the retirement visa and the child visa that ends at 18.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.remote_compensation and why.remote_pt_pma still printed internal field names.
+    status: CONFIRMED
+    note: cured in 7d35db88d4, both rewritten in plain words and a dotted-identifier guard added to the census and the observer.
+
 spend:
   wall_clock_hours: 2
-  adversarial_rounds: 1
+  adversarial_rounds: 2
