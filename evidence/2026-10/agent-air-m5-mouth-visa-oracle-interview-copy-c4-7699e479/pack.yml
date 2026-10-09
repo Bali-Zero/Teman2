@@ -18,7 +18,7 @@ lanes:
       the per-key truth table (scratchpad spec-interview-truth-table-c4v3.md), derived from the
       flow, the fact mapping, the question tree and the signed seq-26 pack.
     nb: "/private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/spec-interview-truth-table-c4v3.md (no notebook: the truth table is derived from the code on disk)"
-    query_hash: "535ddc94997637427960046d2b857ee5bba8a1eefbe13778e3cb0ebb9015c7ed" # pragma: allowlist secret — sha256 of that spec file
+    query_hash: "194d9cf15dbc55085a563d58f56f6db174d8fb510b17504dd4831d7721b168dd" # pragma: allowlist secret — sha256 of that spec file
   - lane: interview-copy-review
     role: review
     seat: agy-gemini-3.1-pro (constructive copy review on the predecessor), cured.
@@ -35,7 +35,7 @@ bites:
   consumer: >-
     the CI harness, which runs this observer after the merge, and every visitor of
     balizero.com/visa-oracle who opens a "why we ask" hint: the observer proves the copy they
-    read carries no engine, interface or field-name language, and the truth test proves the 39
+    read carries no engine, interface or field-name language, and the truth test proves the 50
     sentences about what an answer does still match the reviewed text.
   where: ci
   observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
@@ -46,15 +46,18 @@ decisions:
       The copy follows spec-interview-truth-table-c4v3.md (scratchpad), whose rows were derived
       from flow.ts, fact-mapper.ts, tree.ts and the signed pack rulepack-prod-026 with sha256
       dcbc12cd5844301c18c89bf9311d061fe6ad718ebbe13755afc9dd5b01c070cf. Section 2-A (27 keys),
-      2-C (7 keys) and the 9 addendum (5 keys) are applied byte-exactly in both languages; 2-C covers keys outside the
+      2-C (7 keys) and the 9 addendum (16 rows) are applied byte-exactly in both languages; 2-C covers keys outside the
       original diff because they are visible and false on main. The dead keys of section 2-B are
       not touched here: deleting them is a separate PR.
   - id: D-no-promised-advisor
     decision: >-
       No interview sentence promises that a Bali Zero advisor confirms, reviews or checks
       something the code does not guarantee; the advisor is offered, never promised. The same
-      pattern remains in ten other assumption sentences and one family sentence that this
-      PR does not touch and the lead was told about.
+      rule is applied to the ten assumption sentences and the family sponsor basis hint, as the
+      lead's extension of Codex's rule (rows 6 to 16 of the spec addendum). Each assumption
+      preface was checked against the question's not-sure handling in the question tree and
+      the fact mapper: all ten state an assumption the mapper really makes. The hint on the
+      sponsor permit basis is rewritten because that answer reaches no rule of the signed pack.
   - id: D-successor-of-8128
     decision: >-
       Successor of the closed PR 8128 (gate BLOCK on three HIGH truth findings: the retirement
@@ -76,43 +79,43 @@ receipts:
     cmd: "python3 scripts/ci/observe_visa_oracle_client_copy.py"
     result: "OK visa-oracle client copy: 3650 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-09T04:30:20Z"
+    ts: "2026-10-09T04:37:02Z"
     seat: this session
   - claim: "The observer guard has guilt and innocence tests in both languages."
     cmd: "python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py -q"
     result: "4 passed"
     exit: 0
-    ts: "2026-10-09T04:30:21Z"
+    ts: "2026-10-09T04:37:03Z"
     seat: this session
   - claim: "The copy census, the new truth test, i18n parity, QuestionScreen, WhyWeAsk, OutcomeSheet and ConsentHandoff tests pass."
     cmd: "cd apps/mouth && npx vitest run <the seven test files>"
-    result: "Test Files  7 passed (7); Tests  207 passed (207)"
+    result: "Test Files  7 passed (7); Tests  218 passed (218)"
     exit: 0
-    ts: "2026-10-09T04:30:31Z"
+    ts: "2026-10-09T04:37:31Z"
     seat: this session
   - claim: "The enumeration file passes; run alone because it times out inside the full tree under machine load."
     cmd: "cd apps/mouth && npx vitest run src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
     result: "Test Files  1 passed (1); Tests  40 passed (40)"
     exit: 0
-    ts: "2026-10-09T04:31:15Z"
+    ts: "2026-10-09T04:39:11Z"
     seat: this session
   - claim: "The mouth typecheck is clean."
     cmd: "cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
     result: "no output"
     exit: 0
-    ts: "2026-10-09T04:30:28Z"
+    ts: "2026-10-09T04:37:20Z"
     seat: this session
   - claim: "Prettier accepts every touched TypeScript file."
     cmd: "cd apps/mouth && npx prettier --check <touched files>"
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-09T04:30:20Z"
+    ts: "2026-10-09T04:37:02Z"
     seat: this session
   - claim: "No e2e spec pins a replaced sentence of the 34 keys; two component tests that did were updated."
     cmd: "rg -n -F -f <old sentences of the 34 keys> apps/mouth/e2e apps/mouth/src (excluding the dictionary and the truth test)"
-    result: "no pin left (the only hits are an unrelated condition-notice suffix in engine-adapter.test.ts)"
+    result: "no pin left (the only hit is a generic result-page condition notice in engine-adapter.ts, not one of these keys)"
     exit: 0
-    ts: "2026-10-09T04:31:15Z"
+    ts: "2026-10-09T04:39:11Z"
     seat: this session
 dissent:
   - seat: agy-gemini-3.1-pro
