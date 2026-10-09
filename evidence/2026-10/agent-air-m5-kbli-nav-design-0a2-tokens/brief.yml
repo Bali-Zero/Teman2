@@ -1,0 +1,33 @@
+task_id: kbli-nav-design-0a2-tokens
+mission: kbli-nav-design-loop (Track A, build, PR 0a-2)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. The tokens commit
+  churns 398 lines (264 added, 134 deleted) and the after-set digest manifest adds 208 lines of JSON evidence. The
+  code is Theme.swift, three StatusBadge call-site files, and the two contrast tools.
+l_level: L1
+gate_class: opus
+objective: >-
+  SPEC-swiftui §1.1–1.4 and §1.7. Move the palette to R19 Direction-A: day values verbatim; night, chips, risk ramp,
+  accentHi and Increase Contrast derived by the stated rules; token names unchanged. StatusBadge becomes an opaque
+  chip, and GlassCard loses its shadows and hover glow. measure_contrast.py re-reads every pick() in Theme.swift
+  (PARITY) and exits 1 on any FAIL or PARITY. derive_tokens.py --check exits 1 when a derived value differs.
+  Imperator ruling: the night restricted token follows the spec's RULE, #C78C00 at 4.93:1 with HC #DBB459 at 7.34,
+  and the §1.4 minimum is 4.93. Spec table §1.1 N2 / §1.2 corrected to its own rule. Presentation only: no KBLI
+  fact, verdict, cap, basis or Bali overlay changes.
+constraints:
+  - Token names are unchanged, so the call sites change colour without an edit; no content string changes.
+  - The night restricted token is #C78C00 (HC #DBB459), the value the stated rule produces, never the table's #CC8F00.
+  - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
+acceptance:
+  - text: measure_contrast SHALL report 82 results with FAIL=0 and PARITY=0 at the head and exit 0.
+    probe: "Pro, head: TOTAL=82 FAIL=0 PARITY=0 rc=0"
+  - text: measure_contrast SHALL exit 1 on a contrast FAIL and on a PARITY drift.
+    probe: "Pro guilt: night yellow 8A6000 in tool+Theme copies → FAIL=4 PARITY=0 rc=1; spec-table CC8F00 in a Theme copy → PARITY=2 rc=1"
+  - text: derive_tokens --check SHALL pass at the head and fail on the spec table's value.
+    probe: "Pro: head rc=0 (37 tokens, 0 mismatches); Theme copy with CC8F00/DBB14D → rc=1 MISMATCH yellow[1] derived=C78C00"
+  - text: The night restricted minimum SHALL be 4.93 (on wash), and the HC night value SHALL be at least 7:1.
+    probe: "measure_contrast JSON: min yellow/pmaRestricted night = 4.93; DBB459 on 1C2B3A = 7.34"
+  - text: The head SHALL build both variants and render all 24 bands equal to baseline-2026-10-09-after/0a2-tokens/manifest.json.
+    probe: "Pro build-only mirror detached at the head: INTERNAL_RC=0, BKPM_RC=0, rendered=24 failed=0, manifest_match=24/24"
