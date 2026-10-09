@@ -17,7 +17,7 @@ provenance:
   prop. Its landing redesign, search index, sector dial and CTAHandoff change are not carried."
 diff:
   net_lines: |
-    35 files. 368 insertions and 390 deletions across existing files, plus 185 lines of new CSS.
+    42 files, of which 7 are this evidence pack. The 35 code files carry 368 insertions and 390 deletions across existing files, plus 185 lines of new CSS.
     Net under the 400-line target, so one PR. W2b is not opened.
   behaviour_change: >-
     /kbli, /kbli/[code] and /kbli-explorer paint on paper (R19 Direction A) in all three theme
