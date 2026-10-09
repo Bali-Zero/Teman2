@@ -70,6 +70,7 @@ _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 # A compared merge (spec §2 phase D, ruled 2026-10-08): >= 12 contexts compared on both sides, >= 11 of them full and at most one
 # partial, named on the line. The arithmetic the real matrix allows: 14 required - 2 CodeQL (hosted-only, never executed here)
 # - 1 E2E (partial: no repository secrets) = 11 full. An unrecorded coverage counts toward none of the three.
+READY_MIN_MERGES, READY_MIN_DAYS = 50, 14   # phase D's READY (spec §2): the report and the tick's precheck both read these
 MIN_COMPARED_CONTEXTS = 12
 MIN_COMPARED_FULL = 11      # implied by the two around it (12 - at most 1 partial); stated because the ruling states it
 MAX_COMPARED_PARTIAL = 1
@@ -698,6 +699,25 @@ def pr_view(a, n: int) -> dict:
     return p
 
 
+def ready_precheck(state: Path) -> str | None:
+    """A reason READY cannot be true yet, from the journal ALONE (no GitHub read), or None when it cannot be ruled out. Only ever
+    short-circuits to false. Necessary conditions of the report's READY: its span (first to last compared merge) fits inside the
+    journal's first decision and now, and a compared merge needs a decided PR of its own."""
+    try:
+        decisions = [r for r in strict_journal(state) if r.get("kind") == "decision"]
+        if not decisions:
+            return "READY false: no decision in the journal"
+        days = _days(min(str(r["ts"]) for r in decisions), now())
+        if days < READY_MIN_DAYS:
+            return f"READY false: journal window {int(days * 10) / 10:.1f} days < {READY_MIN_DAYS}"
+        decided = len({r.get("pr") for r in decisions})
+        if decided < READY_MIN_MERGES:
+            return f"READY false: {decided} distinct decided PRs < {READY_MIN_MERGES}"
+    except Exception:  # noqa: BLE001 — an unreadable journal rules nothing out: the full report says why it refuses
+        return None
+    return None
+
+
 def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: str) -> tuple[dict, dict]:
     """(the PR as read now, ``{armed, why}``): ``armed`` only when every condition holds, checked now, and ``why`` names each that
     does not. Nothing here writes: every condition but the PR is read each time, READY included (the report's own function), so the line says what is
@@ -706,8 +726,11 @@ def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: 
     pull: dict = {}
     if os.environ.get(PHASE_F_ENV) != "1":
         why.append(f"{PHASE_F_ENV} unset")
+    early = None if a is None else ready_precheck(state)
     if a is None:
         why.append("READY unreadable: no tick context")
+    elif early:
+        why.append(early)
     else:
         try:
             _, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)
@@ -1225,7 +1248,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
     merged_skip_agreed = sum({r["pr"]: len(r["compared_skip_agreed"]) for r in rows if r["compared_merge"]}.values())   # a PR counts once
     compared_days = _days(merges[0], merges[-1]) if merges else 0.0
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
-    ready = fg == 0 and compared_merges >= 50 and compared_days >= 14   # lead's ruling 2026-10-07: both, never either
+    ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS   # lead's ruling 2026-10-07: both, never either
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
     errors = sum(1 for r in window if r.get("kind") == "error")
     n_merged, n_refused = (sum(1 for r in window if r.get("kind") == k) for k in ("merged", "push_refused"))

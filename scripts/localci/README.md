@@ -462,8 +462,10 @@ The fetch no longer rewinds an authoritative main: once a `pushed` line exists a
 into `refs/merger/incoming` and takes it only when it is a descendant of (or equal to) the last `pushed` merge commit; otherwise it
 journals `kind: storage_diverged`, writes the halt file, keeps `refs/merger/base` and exits 1. (A merge made but never pushed is no
 anchor. While the halt file exists the fetch is the plain one of before, and the guard fires again the first tick after an operator
-removes the halt, until GitHub's main again contains the last pushed merge.) Clearing a halt is an operator act after reading why: a
+removes the halt, until GitHub's main again contains the last pushed merge.) There is no re-anchor gesture: clearing a halt is an operator act, done only after reconciling GitHub's main with the mirror, and after reading why: a
 `push_refused` can be a plain race (a commit reached GitHub's main between the `ls-remote` and the push).
+
+READY precheck: before the full report (about 4 minutes on Pro's journal, hundreds of GitHub reads) the tick asks the journal alone whether READY can be true yet — the first decision to now under `READY_MIN_DAYS`, or fewer than `READY_MIN_MERGES` distinct decided PRs (both constants are the report's own) — and says `READY false: journal window N.N days < 14` without running it. The precheck only ever short-circuits to false; past it the full report decides.
 
 Report: `phase_f` reads `shadow` until the window holds a `merged` or `push_refused` line, then `armed (N merged, M refused)`;
 `phase_f_halted` and the line `phase F executor: ...` (with `HALTED` when the file exists) say the rest; the READY line is unchanged.

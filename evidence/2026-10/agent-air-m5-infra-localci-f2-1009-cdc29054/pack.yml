@@ -59,7 +59,7 @@ spend:
   adversarial_rounds: 0
   wall_clock_hours: 2.0
 receipts:
-  - claim: "test_merger.py, test_merger_report.py, test_replay.py, test_merger_phase_f.py: 340 passed, 197 s; includes test_merger_phase_f.py::test_every_condition_true_makes_the_merge_commit_pushes_it_and_moves_the_mirror, test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it, test_a_push_origin_rejects_is_push_refused_halts_for_good_and_the_mirror_keeps_its_main, test_the_key_never_reaches_the_journal_the_output_the_halt_file_or_anything_the_runner_sees and test_a_github_main_that_lost_the_last_pushed_merge_is_storage_diverged_and_halts_instead_of_being_taken."
+  - claim: "test_merger.py, test_merger_report.py, test_replay.py, test_merger_phase_f.py: 340 passed, 197 s (before the precheck); includes test_merger_phase_f.py::test_every_condition_true_makes_the_merge_commit_pushes_it_and_moves_the_mirror, test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it, test_a_push_origin_rejects_is_push_refused_halts_for_good_and_the_mirror_keeps_its_main, test_the_key_never_reaches_the_journal_the_output_the_halt_file_or_anything_the_runner_sees and test_a_github_main_that_lost_the_last_pushed_merge_is_storage_diverged_and_halts_instead_of_being_taken."
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_phase_f.py -q -p no:cacheprovider
     exit: 0
     ts: "2026-10-10T19:12:00Z"
@@ -74,10 +74,20 @@ receipts:
     exit: 0
     ts: "2026-10-10T19:12:00Z"
     seat: claude-opus-5-5 on M5
+  - claim: "After the READY precheck (ready_precheck, READY_MIN_MERGES/READY_MIN_DAYS shared with the report; spy tests: young journal and few PRs call no report, old journal calls it): the same 4 files give 344 passed, 167 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_phase_f.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T19:50:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "13/13 killed: five f2-precheck-* rules, f2-ready-dropped, f2-ready-always, f2-ready-unreadable-passes and the ready-* rules re-anchored on the shared constants; no stale rule among the 359."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <those 13 rules>
+    exit: 0
+    ts: "2026-10-10T19:50:00Z"
+    seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
   - "The armed path is proven on fakes only; its live proof is owed to the day READY holds."
-  - "READY is recomputed by the full report on every would_merge line: GitHub GETs per distinct sha of the journal; its cost on Pro's journal is unmeasured."
+  - "READY precheck avoids the full report until day 14 (journal alone, no GitHub read, only ever short-circuits to false); the report's cost after day 14 is ~4 min per tick on Pro, measured 2026-10-09 by the lead."
   - "A push_refused can be a plain race (a commit reaching GitHub's main between ls-remote and the push); it halts by the brief's rule until an operator clears it."
   - "The mirror's push URL defaults to git@github.com:<repo>.git on the default fetch URL; the wrapper is untouched."
   - "GitHub may close the PR as merged with a merge_commit_sha that is not our merge commit, so B11 would journal that replay unmapped."

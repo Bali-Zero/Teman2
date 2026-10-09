@@ -40,22 +40,22 @@ class Hub:
                                     "completed_at": None} for c in self.required]}
         return self.gh(path)
 
-    def seed(self, state, n=50, days=14):
+    def seed(self, state, n=50, days=14, age=20):
         """n merged, compared PRs spanning `days`: exactly phase D's threshold."""
         state.mkdir(parents=True, exist_ok=True)
         lines = []
         for i in range(n):
-            head, at = f"{i + 1:040x}", time_at(i * days * 86400 // (n - 1))
+            head, at = f"{i + 1:040x}", time_at(i * days * 86400 // (n - 1), age)
             self.pulls[1001 + i] = {"merged": True, "state": "closed", "head": {"sha": head}, "merge_commit_sha": M, "merged_at": at}
             lines.append({"kind": "decision", "ts": at, "pr": 1001 + i, "head_sha": head, "base_sha": OLD_BASE, "candidate_sha": "9" * 40, "overall": "BLOCKED",
                           "contexts_status": "ok", "contexts": dict.fromkeys(CTX, "OK"), "coverage": dict.fromkeys(CTX, "full")})
         (state / "decisions.jsonl").write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in lines))
 
 
-def time_at(offset_s: int) -> str:
-    import calendar
+def time_at(offset_s: int, age_days: int = 20) -> str:
+    """Seeded history starts `age_days` before the real clock: the tick's precheck reads now."""
     import time
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(calendar.timegm((2026, 10, 1, 0, 0, 0)) + offset_s))
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(int(time.time()) - age_days * 86400 + offset_s))
 
 
 @pytest.fixture
@@ -438,7 +438,9 @@ def test_the_quiet_report_writes_no_file_and_prints_nothing(fw, capsys):
 
 def test_the_thresholds_exist_once_the_tick_reads_the_reports_own_function():
     src = (mg.Path(mg.__file__)).read_text()
-    assert src.count("compared_merges >= 50") == 1 and src.count("compared_days >= 14") == 1
+    assert src.count("READY_MIN_MERGES, READY_MIN_DAYS = 50, 14") == 1   # 14 days is defined once
+    assert "days < READY_MIN_DAYS" in src and "decided < READY_MIN_MERGES" in src   # the precheck reads the same constants
+    assert "compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS" in src
     assert "report(argparse.Namespace(" in src   # the tick calls it; there is no second ready computation
 
 
@@ -455,3 +457,43 @@ def test_a_push_url_that_carries_a_password_is_refused_and_an_ssh_user_is_not(wo
     assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin),
                     "--push-url", str(world.origin), "--python", "py"]) == 0
     assert g(world.state / "repo.git", "remote", "get-url", "--push", "origin") == str(world.origin)
+
+
+# ------------------------------------------------------------------ the precheck: a young journal never costs a full report
+def _spy_report(monkeypatch):
+    calls = []
+    real = mg.report
+    monkeypatch.setattr(mg, "report", lambda *a, **kw: calls.append(kw) or real(*a, **kw))
+    return calls
+
+
+def test_a_journal_younger_than_the_window_is_not_ready_and_the_full_report_is_not_run(fw, monkeypatch):
+    calls = _spy_report(monkeypatch)
+    fw.hub.seed(fw.state, age=3)
+    assert fw.tick() == 0
+    assert calls == []
+    (why,) = [x for x in fw.wm()["phase_f"]["why"] if x.startswith("READY")]
+    assert re.fullmatch(r"READY false: journal window \d\.\d days < 14", why) and why.startswith("READY false: journal window 3.")
+    assert_nothing_merged(fw, "journal window")
+
+
+def test_a_journal_with_fewer_decided_prs_than_the_threshold_is_not_ready_and_the_report_is_not_run(fw, monkeypatch):
+    calls = _spy_report(monkeypatch)
+    fw.hub.seed(fw.state, n=10)
+    assert fw.tick() == 0
+    assert calls == [] and "READY false: 11 distinct decided PRs < 50" in fw.wm()["phase_f"]["why"]
+    assert_nothing_merged(fw)
+
+
+def test_an_old_journal_with_enough_prs_runs_the_full_report_and_can_be_ready(fw, monkeypatch):
+    calls = _spy_report(monkeypatch)
+    assert fw.tick() == 0
+    assert calls == [{"emit": False}] and fw.wm()["phase_f"]["armed"] is True
+
+
+def test_the_precheck_never_says_ready_and_an_unreadable_journal_rules_nothing_out(fw):
+    assert mg.ready_precheck(fw.state) is None   # old and wide enough: undecided, the report decides
+    (fw.state / "decisions.jsonl").write_text("{torn\n")
+    assert mg.ready_precheck(fw.state) is None
+    (fw.state / "decisions.jsonl").write_text("")
+    assert mg.ready_precheck(fw.state) == "READY false: no decision in the journal"
