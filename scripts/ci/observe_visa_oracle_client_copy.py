@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """observe_visa_oracle_client_copy.py — bites: observation for the Visa Oracle client copy.
 
-Origin: PR-C1 (Visa Oracle result page speaks to the client); PR-C2 added the four
-duration keys to the required set.
+Origin: PR-C1 (Visa Oracle result page speaks to the client), extended by PR-C2 (four duration
+keys required) and PR-C4 (the interview's `q.*` / `why.*` helper copy and the atlas copy speak
+to the visitor too).
 
 # bites-observable — this script takes NO arguments: every path below is a literal in this
 # file, it only reads three source files and touches no network, no node and no git.
 
-Scans the string literals of the three files that carry client-visible copy
-(`i18n.ts`, `engine-adapter.ts`, `outcome-fallbacks.ts`, under
+Scans the string literals of the files that carry client-visible copy (`i18n.ts`,
+`atlas-scenes.ts`, `engine-adapter.ts`, `outcome-fallbacks.ts`, under
 `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/`) and exits 1, printing file:line, if
-any literal still holds an internal note or engine jargon the owner ruled out. It also
+any literal still holds an internal note or engine jargon the owner ruled out. In
+`i18n.ts` and `atlas-scenes.ts` the whole-word jargon list (engine, interface, mesin,
+antarmuka, decision fact, enum...) applies too, with an exact-phrase allowlist for the
+ordinary-language uses; a dotted dictionary key is never copy and is skipped. It also
 asserts that the keys PR-C1 and PR-C2 introduced exist in BOTH language blocks of the
 dictionary. Comments are skipped.
 """
@@ -18,12 +22,14 @@ dictionary. Comments are skipped.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LIB = REPO_ROOT / "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib"
-FILES = ("i18n.ts", "engine-adapter.ts", "outcome-fallbacks.ts")
+FILES = ("i18n.ts", "atlas-scenes.ts", "engine-adapter.ts", "outcome-fallbacks.ts")
+WORD_FILES = ("i18n.ts", "atlas-scenes.ts")
 BANNED = (
     "PNBP",
     "no PNBP-vs-fee",
@@ -38,6 +44,38 @@ BANNED = (
     "dibuat-buat",
     "aturan yang telah disahkan",
 )
+# PR-C4: whole-word jargon that must never reach a visitor, in either language.
+BANNED_WORDS = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\bengine\b",
+        r"\bmesin\b",
+        r"\binterface\b",
+        r"\bantarmuka\b",
+        r"decision facts?",
+        r"\bfakta\b",
+        r"\benums?\b",
+        r"\bclosed-",
+        r"\breceives\b",
+        r"\babstain",
+        r"\bpayload\b",
+        r"\brouting\b",
+        r"\broutes (?:the|this|next)\b",
+        r"\bboolean\b",
+        r"\bunchanged\b",
+        r"\btanpa perubahan\b",
+        r"\bfields?\b",
+        r"\blabels?\b",
+        r"\bfacts?\b",
+    )
+)
+# Exact phrases that are ordinary language, never a bare word (mirrors the vitest census).
+ALLOWED_PHRASES = (
+    "The result reflects only the facts you entered",
+    "some routes depend on facts this tool does not ask",
+    "{{facts}}",
+)
+DOTTED_KEY = re.compile(r"^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$")
 REQUIRED_KEYS = (
     "outcome.timeline_pending",
     "outcome.checked_on",
@@ -107,6 +145,15 @@ def main() -> int:
             for phrase in BANNED:
                 if phrase.lower() in low:
                     problems.append(f"{name}:{line}: banned phrase {phrase!r}")
+            if name in WORD_FILES and not DOTTED_KEY.match(text):
+                visible = text
+                for allowed in ALLOWED_PHRASES:
+                    visible = visible.replace(allowed, " ")
+                for word in BANNED_WORDS:
+                    if word.search(visible):
+                        problems.append(
+                            f"{name}:{line}: banned word {word.pattern!r} in {text[:60]!r}"
+                        )
         if name == "i18n.ts":
             if ID_BLOCK_MARKER not in source:
                 problems.append("i18n.ts: language block marker not found")

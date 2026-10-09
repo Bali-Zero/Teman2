@@ -1,0 +1,96 @@
+# Gear-2 evidence pack — Visa Oracle interview copy sweep (PR-C4).
+# Every receipt is a command run in this worktree on 2026-10-09; ts captured in the same shell call.
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-08/09 — no internal language reaches the client; the interview copy follows the
+  result page.
+mission: >-
+  The Visa Oracle interview explains why it asks in the visitor's words, EN and ID.
+lanes:
+  - lane: interview-copy-build
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree mouth-visa-oracle-interview-copy-c4 on M5.
+  - lane: interview-copy-spec
+    role: ground_truth
+    seat: >-
+      the owner-approved spec (scratchpad spec-interview-copy-c4.md); the census test in
+      client-copy.test.ts and the CI observer are the machine check of its jargon rule.
+    nb: "/private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/spec-interview-copy-c4.md (no notebook: the owner-approved spec is the ground truth for this copy-only change)"
+    query_hash: "dad23f72905b99358d91b8d3a905dd7e897f551fbc6601d5fd54d93d44739ebc" # pragma: allowlist secret — sha256 of that spec file
+pii_scan: clean
+bites:
+  consumer: >-
+    the CI harness, which runs this observer after the merge, and every visitor of
+    balizero.com/visa-oracle who opens a "why we ask" hint: the observer proves the copy they
+    read carries no engine or interface language.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:OK visa-oracle client copy"
+decisions:
+  - id: D-honest-promises-kept
+    decision: >-
+      Every promise the old sentence made is restated plainly: only the yes or no is used,
+      nothing is guessed from a permit name or a date, sponsor nationality is never copied from
+      the visitor's passports, no threshold or amount is shown.
+  - id: D-unused-keys-too
+    decision: >-
+      The process panel and whyweask keys that no component renders today are rewritten as well,
+      so a future caller cannot reintroduce machinery wording.
+  - id: D-lane-and-assumption
+    decision: >-
+      The urgent and bridging lane notices and two assumption sentences spoke of the engine and
+      the interface; they were outside the q/why prefixes but inside the rule, so they follow it.
+receipts:
+  - claim: The bites observer finds no banned phrase or whole-word jargon in the dictionary, the atlas copy or the adapter copy, and both language blocks carry the PR-C1 keys.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3625 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-09T02:09:25Z"
+    seat: this session
+  - claim: The visa-oracle test tree passes except two enumeration tests that timed out under machine load of about 100; that file passes alone.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "Test Files  1 failed | 44 passed (45); Tests  2 failed | 1211 passed (1213) — both failures are 120 s timeouts in enumerate-interview-space.test.ts"
+    exit: 1
+    ts: "2026-10-09T02:09:24Z"
+    seat: this session
+  - claim: The two timed-out tests pass when their file runs alone, so the failure is load, not copy.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
+    result: "Test Files  1 passed (1); Tests  40 passed (40)"
+    exit: 0
+    ts: "2026-10-09T02:26:12Z"
+    seat: this session
+  - claim: The mouth typecheck is clean.
+    cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
+    result: "no output"
+    exit: 0
+    ts: "2026-10-09T02:09:55Z"
+    seat: this session
+  - claim: Prettier accepts every touched TypeScript file.
+    cmd: cd apps/mouth && npx prettier --check <touched files>
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-10-09T02:09:58Z"
+    seat: this session
+  - claim: ESLint reports no error on the changed dictionary; the test files are ignored by the project config.
+    cmd: cd apps/mouth && npx eslint --no-warn-ignored src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+    result: "no output"
+    exit: 0
+    ts: "2026-10-09T02:10:10Z"
+    seat: this session
+  - claim: Ruff accepts the extended observer.
+    cmd: ruff check scripts/ci/observe_visa_oracle_client_copy.py
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-10-09T02:10:10Z"
+    seat: this session
+  - claim: No e2e spec pins a replaced sentence; the three component tests that did were updated.
+    cmd: rg -c -e "tells the engine|The engine receives|Stale — review|Freshness unknown|Effective \{\{" apps/mouth/e2e | wc -l
+    result: "0 files"
+    exit: 0
+    ts: "2026-10-09T02:10:10Z"
+    seat: this session
+dissent: []
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 0
