@@ -162,8 +162,8 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   ],
   [
     "q.review_gate.hint",
-    "Tick everything that applies. Every item you tick is reflected in your result; with a criminal record, this tool names no visa and a Bali Zero advisor can help.",
-    "Centang semua yang berlaku. Setiap item yang Anda centang tercermin dalam hasil Anda; dengan catatan kriminal, alat ini tidak menyebutkan visa dan konsultan Bali Zero dapat membantu.",
+    "Tick everything that applies. Every item you tick is reflected in your result; some, such as a criminal record, mean this tool names no visa and a Bali Zero advisor can help.",
+    "Centang semua yang berlaku. Setiap pilihan yang Anda centang tercermin dalam hasil Anda; beberapa, seperti catatan kriminal, membuat alat ini tidak menyebutkan visa apa pun dan konsultan Bali Zero dapat membantu.",
   ],
   [
     "why.guardian_consent",
@@ -250,6 +250,21 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
     "Some permit bases cannot have a family permit added on top of them. This tool cannot check your answer automatically; you can discuss it with a Bali Zero advisor.",
     "Beberapa dasar izin tinggal tidak dapat menjadi dasar bagi izin keluarga. Alat ini tidak dapat memeriksa jawaban Anda secara otomatis; Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
+  [
+    "why.stay_permit_code",
+    "We use the code exactly as printed on your permit. We never guess it from the permit’s name.",
+    "Kami memakai kode persis seperti yang tercetak pada izin Anda. Kode ini tidak pernah ditebak dari nama izin.",
+  ],
+  [
+    "why.family_stepchild_marriage_certificate_confirmed",
+    "We ask about this document directly; your answer is recorded as its own yes or no.",
+    "Kami menanyakan dokumen ini secara langsung; jawaban Anda dicatat sebagai jawaban ya atau tidak tersendiri.",
+  ],
+  [
+    "outcome.freshness.UNKNOWN",
+    "Check status unknown",
+    "Status pemeriksaan tidak diketahui",
+  ],
 ];
 
 // Sentences the code proved false: a review that does not exist, a rule that
@@ -280,6 +295,14 @@ const FALSE_CLAIMS: readonly RegExp[] = [
   /in front of a person/i,
   /before the assessment continues/i,
   /selalu ditangani manusia/i,
+  /code list above/i,
+  /registered above/i,
+  /daftar kode di atas/i,
+  /pernikahan tercatat di atas/i,
+  /last check date unknown/i,
+  /tanggal pemeriksaan terakhir tidak diketahui/i,
+  /with a criminal record, this tool names no visa/i,
+  /dengan catatan kriminal, alat ini tidak menyebutkan visa/i,
   /confirms it with you/i,
   /confirms the real figure with you/i,
   /our team reviews it directly/i,
@@ -581,6 +604,32 @@ const FALSE_SAMPLES: readonly (readonly [string, string])[] = [
     "id",
     "Beberapa dasar izin dapat menghalangi penerbitan izin penyatuan keluarga di atasnya. Kami tidak dapat memverifikasi jawaban Anda secara otomatis, sehingga tim kami yang meninjau langsung, bukan sistem yang memutuskan sendiri.",
   ],
+  [
+    "en",
+    "We use the code exactly as printed, the same as in the code list above. We never guess it from the permit’s name.",
+  ],
+  [
+    "id",
+    "Kami memakai kode persis seperti yang tercetak, sama seperti pada daftar kode di atas. Kode ini tidak pernah ditebak dari nama izin.",
+  ],
+  [
+    "en",
+    "We ask about this document directly. It is not assumed from your answer about the marriage being registered above.",
+  ],
+  [
+    "id",
+    "Kami menanyakan dokumen ini secara langsung. Dokumen ini tidak diasumsikan dari jawaban pernikahan tercatat di atas.",
+  ],
+  [
+    "en",
+    "Tick everything that applies. Every item you tick is reflected in your result; with a criminal record, this tool names no visa and a Bali Zero advisor can help.",
+  ],
+  [
+    "id",
+    "Centang semua yang berlaku. Setiap item yang Anda centang tercermin dalam hasil Anda; dengan catatan kriminal, alat ini tidak menyebutkan visa dan konsultan Bali Zero dapat membantu.",
+  ],
+  ["en", "Last check date unknown"],
+  ["id", "Tanggal pemeriksaan terakhir tidak diketahui"],
 ];
 
 describe("interview helper copy tells the truth about what an answer does", () => {

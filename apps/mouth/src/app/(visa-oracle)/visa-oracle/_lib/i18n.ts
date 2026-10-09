@@ -101,7 +101,7 @@ const en = {
   "q.stay_permit_code.opt.E33F": "E33F — Second Home Visa — Elderly 1-Year",
   "q.stay_permit_code.opt.E33G": "E33G — Second Home Visa — Remote Worker",
   "why.stay_permit_code":
-    "We use the code exactly as printed, the same as in the code list above. We never guess it from the permit’s name.",
+    "We use the code exactly as printed on your permit. We never guess it from the permit’s name.",
 
   "q.renewal_paid": "Have you paid for the renewal of this stay permit?",
   "q.renewal_paid.hint":
@@ -475,7 +475,7 @@ const en = {
   "q.family_stepchild_marriage_certificate_confirmed.hint":
     "This is the marriage certificate for the mixed Indonesian–foreign marriage the stepchild relationship comes from.",
   "why.family_stepchild_marriage_certificate_confirmed":
-    "We ask about this document directly. It is not assumed from your answer about the marriage being registered above.",
+    "We ask about this document directly; your answer is recorded as its own yes or no.",
   "q.family_stepchild_birth_certificate_confirmed":
     "Can you provide the stepchild's birth certificate?",
   "q.family_stepchild_birth_certificate_confirmed.hint":
@@ -625,7 +625,7 @@ const en = {
   // a human review that no longer happens after A1'/A3-B — see A5's
   // `outcome.disclaimer.complex_to_human` for the same underlying fact.
   "q.review_gate.hint":
-    "Tick everything that applies. Every item you tick is reflected in your result; with a criminal record, this tool names no visa and a Bali Zero advisor can help.",
+    "Tick everything that applies. Every item you tick is reflected in your result; some, such as a criminal record, mean this tool names no visa and a Bali Zero advisor can help.",
   "why.review_gate":
     "Your immigration history can affect your options, and everything you select is noted in your result.",
   "q.review_gate.opt.none": "None of these apply to me",
@@ -998,7 +998,7 @@ const en = {
     "In force since {{effective}} · last checked {{observed}}",
   "outcome.freshness.CURRENT": "Current",
   "outcome.freshness.STALE": "Being re-checked by our team",
-  "outcome.freshness.UNKNOWN": "Last check date unknown",
+  "outcome.freshness.UNKNOWN": "Check status unknown",
   "outcome.provenance.CLIENT_GUARD.title": "A person will review this",
   "outcome.provenance.CLIENT_GUARD.body":
     "Your answers need a person’s review before a path can be shown.",
@@ -1197,7 +1197,7 @@ const id: Record<Keys, string> = {
   "q.stay_permit_code.opt.E33F": "E33F — Visa Rumah Kedua Lansia untuk 1 Tahun",
   "q.stay_permit_code.opt.E33G": "E33G — Visa Rumah Kedua Pekerja Jarak Jauh",
   "why.stay_permit_code":
-    "Kami memakai kode persis seperti yang tercetak, sama seperti pada daftar kode di atas. Kode ini tidak pernah ditebak dari nama izin.",
+    "Kami memakai kode persis seperti yang tercetak pada izin Anda. Kode ini tidak pernah ditebak dari nama izin.",
 
   "q.renewal_paid": "Apakah Anda sudah membayar perpanjangan izin tinggal ini?",
   "q.renewal_paid.hint":
@@ -1570,7 +1570,7 @@ const id: Record<Keys, string> = {
   "q.family_stepchild_marriage_certificate_confirmed.hint":
     "Ini adalah akta nikah untuk pernikahan campuran WNI-WNA yang menjadi dasar hubungan anak tiri.",
   "why.family_stepchild_marriage_certificate_confirmed":
-    "Kami menanyakan dokumen ini secara langsung. Dokumen ini tidak diasumsikan dari jawaban pernikahan tercatat di atas.",
+    "Kami menanyakan dokumen ini secara langsung; jawaban Anda dicatat sebagai jawaban ya atau tidak tersendiri.",
   "q.family_stepchild_birth_certificate_confirmed":
     "Dapatkah Anda memberikan akta lahir anak tiri?",
   "q.family_stepchild_birth_certificate_confirmed.hint":
@@ -1720,7 +1720,7 @@ const id: Record<Keys, string> = {
 
   "q.review_gate": "Ada hal lain yang perlu kami ketahui?",
   "q.review_gate.hint":
-    "Centang semua yang berlaku. Setiap item yang Anda centang tercermin dalam hasil Anda; dengan catatan kriminal, alat ini tidak menyebutkan visa dan konsultan Bali Zero dapat membantu.",
+    "Centang semua yang berlaku. Setiap pilihan yang Anda centang tercermin dalam hasil Anda; beberapa, seperti catatan kriminal, membuat alat ini tidak menyebutkan visa apa pun dan konsultan Bali Zero dapat membantu.",
   "why.review_gate":
     "Riwayat keimigrasian Anda dapat memengaruhi pilihan Anda, dan semua yang Anda pilih dicatat dalam hasil Anda.",
   "q.review_gate.opt.none": "Tidak ada yang berlaku bagi saya",
@@ -2067,7 +2067,7 @@ const id: Record<Keys, string> = {
     "Berlaku sejak {{effective}} · terakhir diperiksa {{observed}}",
   "outcome.freshness.CURRENT": "Terkini",
   "outcome.freshness.STALE": "Sedang diperiksa ulang oleh tim kami",
-  "outcome.freshness.UNKNOWN": "Tanggal pemeriksaan terakhir tidak diketahui",
+  "outcome.freshness.UNKNOWN": "Status pemeriksaan tidak diketahui",
   "outcome.provenance.CLIENT_GUARD.title": "Akan ditinjau oleh seseorang",
   "outcome.provenance.CLIENT_GUARD.body":
     "Jawaban Anda perlu ditinjau seseorang sebelum jalur dapat ditampilkan.",
