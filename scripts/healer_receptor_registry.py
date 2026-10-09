@@ -229,6 +229,12 @@ _COMPLETION_PROOF = {
     "pro.launchd_liveness": ("degraded", _note_proof(r"[1-9][0-9]* alarm\(s\)(?:\s|$)")),
     # meta_one_steward.py: a completed tick (a crash writes "error" + the exception text)
     "pro.meta_one_steward": ("warning", _note_proof(r"token=(?:alive|dead)$")),
+    # run_sentinel_cell.py: red is a completed pulse with a finding; exceptions
+    # write fail and stay dead. The note carries only bounded operational tokens.
+    "mata_garuda.sentinel_hourly.pro": (
+        "warning",
+        _note_proof(r"^pulse=red action=[A-Za-z0-9_.-]+ pulse=[0-9]+(?:\s|$)"),
+    ),
     "cell.organism": ("fail", _pulse_proof),
     # ops/pro_disk_floor_tick.sh: a completed df read writes the free GB at note start;
     # 60-100 GB is `warning`. Under 60 GB is `error` ("failed: ...") and stays dead, so it

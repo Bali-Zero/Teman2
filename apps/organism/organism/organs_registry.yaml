@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 3aed442de24915e74c73ba81fe00456b246edcdc9110bf326a546736d2d3518c # pragma: allowlist secret
+checksum: 68007ed98b4a57ad76f1c60b91ce1fa3bcf491ef6746df55e1bd9ab7e1071aaa # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -670,11 +670,30 @@ organs:
     label: com.matagaruda.bridge.adaptive
   severity_on_silence: error
   cicatrix_refs: []
+- id: mata_garuda.sentinel_hourly.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3600
+  owner_module: apps/mata-garuda/scripts/run_sentinel_cell.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.sentinel.hourly
+  severity_on_silence: warning
+  notes: Pro Sentinel Cell hourly pulse runner.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mata_garuda.sentinel_hourly.pro.json
+    timestamp_field: ts
+    status_field: status
 - id: mata_garuda.sentinel_daily.mini
   runtime: mini_launchd
   type: cron
   expected_hb_seconds: 90000
-  owner_module: apps/mata-garuda/scripts/run_sentinel.py
+  owner_module: apps/mata-garuda/scripts/run_sentinel_py.py
   dependencies:
   - infra.redis
   recovery_action: launchctl_kickstart
