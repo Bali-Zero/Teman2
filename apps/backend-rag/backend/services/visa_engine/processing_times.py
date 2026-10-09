@@ -27,6 +27,10 @@ def _windows() -> dict[str, tuple[int, int]]:
     windows: dict[str, tuple[int, int]] = {}
     for code, row in raw["products"].items():
         low, high = row["min"], row["max"]
+        if type(low) is not int or type(high) is not int:
+            raise ValueError(
+                f"processing window for {code} must be whole numbers: {low!r}-{high!r}"
+            )
         if not (0 <= low <= high <= _MAX_WINDOW_DAYS):
             raise ValueError(f"processing window for {code} is out of range: {low}-{high}")
         windows[code] = (low, high)

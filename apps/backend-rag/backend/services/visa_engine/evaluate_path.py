@@ -982,9 +982,11 @@ def _build_display(
     """The B.2 ``display`` block — pack-backed candidate display data.
 
     Product names and stay/extension policy come from the signed RulePack.
-    Documentation and processing-time assessments remain explicit UNKNOWN
-    until authoritative catalog adapters provide evidence; pricing comes only
-    from the exact-key PricingTool adapter and never invents an amount.
+    The processing timeline comes from the committed Bali Zero catalogue
+    snapshot (UNKNOWN when a product has no window or the working-day walk
+    leaves a decreed holiday year). Documentation remains explicit UNKNOWN
+    until an authoritative catalog adapter provides evidence; pricing comes
+    only from the exact-key PricingTool adapter and never invents an amount.
     """
 
     products = {

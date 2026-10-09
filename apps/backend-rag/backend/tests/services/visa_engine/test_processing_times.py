@@ -90,6 +90,41 @@ class TestSnapshot:
             assert 0 <= low <= high, code
 
 
+class TestLoaderGuard:
+    @staticmethod
+    def _load_with(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, low: Any, high: Any) -> Any:
+        snapshot = tmp_path / "snapshot.json"
+        snapshot.write_text(
+            json.dumps({"products": {"C1": {"min": low, "max": high}}}), encoding="utf-8"
+        )
+        monkeypatch.setattr(processing_times, "_SNAPSHOT", snapshot)
+        processing_times._windows.cache_clear()
+        try:
+            return processing_times._windows()
+        finally:
+            processing_times._windows.cache_clear()
+
+    @pytest.mark.parametrize(("low", "high"), [(3.5, 5), (3, 5.0), (True, 5), (3, True), ("3", 5)])
+    def test_rejects_floats_bools_and_strings(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, low: Any, high: Any
+    ) -> None:
+        with pytest.raises(ValueError, match="whole numbers"):
+            self._load_with(monkeypatch, tmp_path, low, high)
+
+    @pytest.mark.parametrize(("low", "high"), [(5, 3), (-1, 3), (0, 121)])
+    def test_still_rejects_out_of_range_windows(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, low: int, high: int
+    ) -> None:
+        with pytest.raises(ValueError, match="out of range"):
+            self._load_with(monkeypatch, tmp_path, low, high)
+
+    def test_accepts_a_whole_number_window(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        assert self._load_with(monkeypatch, tmp_path, 3, 5) == {"C1": (3, 5)}
+        assert self._load_with(monkeypatch, tmp_path, 0, 0) == {"C1": (0, 0)}
+
+
 class TestEstimate:
     def test_walks_across_a_weekend(self) -> None:
         # Friday 2026-10-09: +3 working days is Wednesday 10-14, +5 is Friday 10-16.
