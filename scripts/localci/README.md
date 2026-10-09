@@ -384,9 +384,12 @@ record), `error` (the tick exits 1, nothing is decided — `gh` or `git` missing
 **Replays (B11).** Besides deciding open pull requests, the tick judges **the exact commit GitHub merged**: a *replay*. The tree GitHub
 tested in its queue is the main commit that merged the PR, so the gate takes that commit as the CANDIDATE and its FIRST PARENT as the
 BASE (trusted: it was on main before the merge, the candidate never supplies its own judge), and `hosted_compare` joins on the merge
-commit's own sha, where the `merge_group` runs sit. Selection: the OLDEST merge commit on `refs/merger/base`'s first-parent line, from the
+commit's own sha, where the `merge_group` runs sit. Selection: the NEWEST merge commit on `refs/merger/base`'s first-parent line, from the
 journal's first PR decision on, whose subject ends `(#N)` and which GitHub confirms (PR `N` is merged and its `merge_commit_sha` is this
-commit), with no replay yet; a commit GitHub does not confirm is journalled once (`skipped: replay_unmapped`), an ERROR replay is retried
+commit), with no replay yet (B11b: main takes more merges a day than the gate decides, so oldest-first never catches up — the first live
+replay, 2026-10-09T09:54Z, judged pr8015's merge of 10-07 on a base whose runner executed no context, and 81 more merges stood between
+it and the first base on which a PR decision compared 12 contexts, `86b151beec` of 10-08; newest first, a replay reads a current base and the current deps recipe,
+and the merges it leaves behind are not owed: phase D counts compared merges, it does not need every merge); a commit GitHub does not confirm is journalled once (`skipped: replay_unmapped`), an ERROR replay is retried
 once. Any failure of a replay but a stop (`Stopped`: no verdict, the same replay is decided next) is its ERROR decision line, with
 `replay`, `merge_commit` and the redacted error (`<Type>: <message>` when it is not a gate error), so the alternation advances and the
 retry bound holds; a PR decision keeps its old rule (a gate error is its ERROR line, anything else the tick's `error` line or a crash).
