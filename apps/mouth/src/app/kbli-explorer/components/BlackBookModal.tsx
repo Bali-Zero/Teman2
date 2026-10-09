@@ -57,16 +57,16 @@ export default function BlackBookModal({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg bg-surface-deep border border-accent-sand/30 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(212,180,131,0.1)]"
+            className="relative w-full max-w-lg bg-surface-deep border border-[var(--border)] rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(212,180,131,0.1)]"
           >
-            <div className="bg-surface-editorial-elevated p-4 flex items-center justify-between border-b border-white/5">
+            <div className="bg-surface-editorial-elevated p-4 flex items-center justify-between border-b border-[var(--border)]">
               <span className="text-xs uppercase tracking-[0.2em] font-bold text-accent-sand">
                 KBLI 2025 transition
               </span>
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="text-[#888] hover:text-white transition-colors"
+                className="text-[var(--kbli-text-muted)] hover:text-white transition-colors"
               >
                 <X size={20} />
               </button>
@@ -81,7 +81,7 @@ export default function BlackBookModal({
                   ? `Ask about KBLI ${detectedCode}`
                   : "Ask about your KBLI codes"}
               </h2>
-              <p className="text-sm text-[#888] leading-relaxed mb-8">
+              <p className="text-sm text-[var(--kbli-text-muted)] leading-relaxed mb-8">
                 We don&apos;t have a downloadable guide to the 2025
                 classification yet. Our team can tell you which KBLI 2025 code
                 applies to your business and what changes for your NIB.
@@ -91,7 +91,7 @@ export default function BlackBookModal({
                   href={buildWhatsAppLink("kbli")}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-4 bg-accent-sand text-[#050507] font-bold rounded-lg hover:bg-[#C4A473] transition-all"
+                  className="flex items-center justify-center gap-2 w-full py-4 bg-accent-sand text-[var(--foreground)] font-bold rounded-lg hover:bg-[#C4A473] transition-all"
                 >
                   <Send size={16} />
                   Ask our team on WhatsApp

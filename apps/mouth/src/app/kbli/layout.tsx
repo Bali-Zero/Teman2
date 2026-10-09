@@ -1,4 +1,4 @@
-import { montserrat } from "@balizero/core/fonts/montserrat";
+import "@/styles/kbli-r19-wrapper.css";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
@@ -17,16 +17,16 @@ export default function KBLILayout({
   const navItems = getFunnelNavItems("kbli");
 
   return (
+    // R19 Direction A: the wrapper defines every token the pages read
+    // (styles/kbli-r19-wrapper.css, docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md).
     <div
-      className={`${montserrat.variable} relative`}
-      style={{
-        fontFamily: "var(--font-montserrat), system-ui, sans-serif",
-      }}
+      data-presentation="r19"
+      className="kbli-r19 relative min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans"
     >
       <NavShell
         logo={<BZLogo variant="full" />}
         items={navItems}
-        slotAfter={<MobileNav items={navItems} funnel="kbli" />}
+        slotAfter={<MobileNav items={navItems} funnel="kbli" paper />}
         actions={
           <WhatsAppLeadButton
             source="kbli_navigator"

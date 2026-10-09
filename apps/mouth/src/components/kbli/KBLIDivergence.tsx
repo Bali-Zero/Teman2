@@ -84,8 +84,8 @@ export function KBLIDivergence({ code, provenance }: KBLIDivergenceProps) {
         <div
           className="rounded-xl border px-5 py-4"
           style={{
-            background: "rgba(232, 168, 73, 0.05)",
-            borderColor: "rgba(232, 168, 73, 0.25)",
+            background: "var(--kbli-pma-restricted-bg)",
+            borderColor: "var(--kbli-border)",
           }}
         >
           <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--kbli-amber)]">

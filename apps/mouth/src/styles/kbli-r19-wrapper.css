@@ -1,0 +1,185 @@
+/*
+ * /kbli* on R19 Direction A: the wrapper defines every custom property the
+ * pages read (docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md, W0).
+ * Declared on the wrapper itself with literals: a var() alias resolves where it
+ * is declared, so an alias set at :root (--color-text-secondary: var(--text-secondary))
+ * would keep the dark value inside this wrapper.
+ * The four values where main R19_VARS differs from the contract
+ * (--text-secondary, --border-strong, --r19-cta-ink, --footer-bg) take the
+ * contract value here; the site-wide R19_VARS is not touched.
+ */
+@font-face {
+  font-family: "R19 Fraunces";
+  src: url("/fonts/fraunces-r19-latin.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "R19 Manrope";
+  src: url("/fonts/manrope-r19-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+.kbli-r19 {
+  color-scheme: light;
+  --accent-funnel: #A44B36;
+  --accent-funnel-text: #A44B36;
+  --accent-sand: #A44B36;
+  --accent-warm: #A44B36;
+  --accent-whatsapp-ink: #FFFCF7;
+  --accent-zantara: #233D52;
+  --background: #F7F4EE;
+  --border: #DAD8D1;
+  --border-default: #DAD8D1;
+  --border-strong: #A8ACA9;
+  --border-subtle: #DAD8D1;
+  --color-accent-sand: #A44B36;
+  --color-accent-warm: #A44B36;
+  --color-amber-400: #7A5A1E;
+  --color-black: #EAE3D8;
+  --color-border-subtle: #DAD8D1;
+  --color-green-500: #2E5E4E;
+  --color-purple-500: #233D52;
+  --color-red-500: #A44B36;
+  --color-slate-200: #DAD8D1;
+  --color-slate-50: #EAE3D8;
+  --color-slate-500: #58626B;
+  --color-surface-deep: #EAE3D8;
+  --color-surface-editorial-elevated: #FFFCF7;
+  --color-text-secondary: #58626B;
+  --color-white: #1D2C3B;
+  --color-zinc-100: #1D2C3B;
+  --color-zinc-300: #1D2C3B;
+  --color-zinc-400: #58626B;
+  --color-zinc-500: #58626B;
+  --cta-primary-bg: #A44B36;
+  --drop-shadow-lg: none;
+  --drop-shadow-md: none;
+  --drop-shadow-sm: none;
+  --font-mono: "R19 Manrope", Arial, sans-serif;
+  --font-montserrat: "R19 Manrope", Arial, sans-serif;
+  --font-sans: "R19 Manrope", Arial, sans-serif;
+  --font-serif: "R19 Fraunces", Georgia, serif;
+  --font-weight-black: 450;
+  --font-weight-bold: 400;
+  --font-weight-extrabold: 450;
+  --font-weight-light: 400;
+  --font-weight-medium: 400;
+  --font-weight-semibold: 400;
+  --footer-bg: #EAE3D8;
+  --footer-border: #DAD8D1;
+  --footer-icon-color: #58626B;
+  --foreground: #1D2C3B;
+  --foreground-muted: #58626B;
+  --foreground-secondary: #58626B;
+  --kbli-accent: #A44B36;
+  --kbli-accent-glow: transparent;
+  --kbli-accent-hover: #A44B36;
+  --kbli-accent-muted: #EAE3D8;
+  --kbli-accent-subtle: #EAE3D8;
+  --kbli-accent2: #233D52;
+  --kbli-accent2-glow: transparent;
+  --kbli-amber: #7A5A1E;
+  --kbli-amber-glow: transparent;
+  --kbli-bg-base: #F7F4EE;
+  --kbli-bg-card: #FFFCF7;
+  --kbli-bg-card-hover: #EAE3D8;
+  --kbli-bg-elevated: #FFFCF7;
+  --kbli-bg-input: #FFFCF7;
+  --kbli-bg-primary: #F7F4EE;
+  --kbli-bg-secondary: #EAE3D8;
+  --kbli-bg-surface: #FFFCF7;
+  --kbli-bg-surface-hover: #EAE3D8;
+  --kbli-border: #DAD8D1;
+  --kbli-border-accent: #A8ACA9;
+  --kbli-border-hover: #A8ACA9;
+  --kbli-ink: #1D2C3B;
+  --kbli-map-merged: #7A5A1E;
+  --kbli-map-new: #2E5E4E;
+  --kbli-map-renamed: #233D52;
+  --kbli-map-unchanged: #58626B;
+  --kbli-pma-closed: #8E2F2A;
+  --kbli-pma-closed-bg: #FFFCF7;
+  --kbli-pma-open: #2E5E4E;
+  --kbli-pma-open-bg: #FFFCF7;
+  --kbli-pma-restricted: #7A5A1E;
+  --kbli-pma-restricted-bg: #FFFCF7;
+  --kbli-risk-high: #8E2F2A;
+  --kbli-risk-low: #2E5E4E;
+  --kbli-risk-medium-high: #7A5A1E;
+  --kbli-risk-medium-low: #233D52;
+  --kbli-shadow-card: 0 0 0 1px #DAD8D1;
+  --kbli-shadow-card-hover: 0 0 0 1px #A8ACA9;
+  --kbli-shadow-glow: none;
+  --kbli-text-muted: #58626B;
+  --kbli-text-primary: #1D2C3B;
+  --kbli-text-secondary: #58626B;
+  --kbli-zantara: #233D52;
+  --kbli-zantara-bg: #EAE3D8;
+  --kbli-zantara-glow: none;
+  --nav-bg: #F7F4EE;
+  --nav-border: #DAD8D1;
+  --r19-active-bg: #EAE3D8;
+  --r19-active-border: #A8ACA9;
+  --r19-control-border: #58626B;
+  --r19-copper: #A44B36;
+  --r19-copper-hover: #A44B36;
+  --r19-cta-ink: #FFFCF7;
+  --r19-focus: #A44B36;
+  --r19-ink: #1D2C3B;
+  --r19-ink-muted: #58626B;
+  --r19-line: #DAD8D1;
+  --r19-line-strong: #A8ACA9;
+  --r19-muted: #58626B;
+  --r19-paper: #F7F4EE;
+  --r19-shadow-header: none;
+  --r19-slate: #233D52;
+  --r19-structure: #233D52;
+  --r19-surface: #FFFCF7;
+  --r19-wash: #EAE3D8;
+  --surface-base: #F7F4EE;
+  --surface-deep: #EAE3D8;
+  --surface-editorial-elevated: #FFFCF7;
+  --surface-elevated: #FFFCF7;
+  --surface-overlay: #F7F4EE;
+  --surface-raised: #FFFCF7;
+  --surface-subtle: #EAE3D8;
+  --text-on-accent: #FFFCF7;
+  --text-primary: #1D2C3B;
+  --text-secondary: #58626B;
+  --text-tertiary: #58626B;
+  font-synthesis-weight: none;
+  font-variant-ligatures: no-common-ligatures;
+}
+
+/*
+ * Two global class rules hard-code a dark-theme colour (globals.css
+ * .brand-tagline, kbli-theme.css .kbli-flag-title). The override keeps the
+ * single-class shape (:is() carries the scope) so the census still names the
+ * class and not a new compound selector.
+ */
+.brand-tagline:is(.kbli-r19 *) {
+  color: var(--kbli-text-primary);
+  text-shadow: none;
+  font-family: var(--font-serif);
+  font-weight: 450;
+}
+
+.kbli-flag-title:is(.kbli-r19 *) {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--kbli-bg-elevated);
+  animation: none;
+}
+
+/*
+ * FunnelFrame stamps data-funnel="kbli" below the wrapper and
+ * packages/core/tokens/semantic.css re-points the accent at gold there,
+ * which would shadow the wrapper's copper for everything inside the frame.
+ */
+[data-funnel="kbli"]:is(.kbli-r19 *) {
+  --accent-funnel: #a44b36;
+  --accent-funnel-text: #a44b36;
+  --text-on-accent: #fffcf7;
+}

@@ -55,14 +55,14 @@ export default async function KBLIHomePage({
         reviewCount: GOOGLE_REVIEW_COUNT,
       }}
     >
-      <div className="space-y-16">
+      <div data-presentation="r19" className="space-y-16">
         {/* ── HERO ── */}
         <div className="relative -mx-4 overflow-hidden rounded-3xl sm:-mx-6 lg:-mx-8 bg-[var(--kbli-ink)]">
           {/* Balinese ornamental pattern */}
           <div
             className="hidden lg:block absolute inset-0 opacity-100"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='none'/%3E%3Crect x='0' y='0' width='200' height='200' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='50' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='30' fill='none' stroke='rgba(255,255,255,0.025)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='8' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='2' fill='rgba(255,255,255,0.05)'/%3E%3Cpath d='M100,50 Q120,70 100,90 Q80,70 100,50Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M100,150 Q120,130 100,110 Q80,130 100,150Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M50,100 Q70,120 90,100 Q70,80 50,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M150,100 Q130,120 110,100 Q130,80 150,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='none'/%3E%3Crect x='0' y='0' width='200' height='200' fill='none' stroke='var(--kbli-bg-surface)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='50' fill='none' stroke='var(--kbli-bg-surface)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='30' fill='none' stroke='var(--kbli-bg-surface)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='8' fill='none' stroke='var(--kbli-bg-surface)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='2' fill='var(--kbli-bg-surface)'/%3E%3Cpath d='M100,50 Q120,70 100,90 Q80,70 100,50Z' fill='none' stroke='var(--kbli-bg-surface)' stroke-width='0.5'/%3E%3Cpath d='M100,150 Q120,130 100,110 Q80,130 100,150Z' fill='none' stroke='var(--kbli-bg-surface)' stroke-width='0.5'/%3E%3Cpath d='M50,100 Q70,120 90,100 Q70,80 50,100Z' fill='none' stroke='var(--kbli-bg-surface)' stroke-width='0.5'/%3E%3Cpath d='M150,100 Q130,120 110,100 Q130,80 150,100Z' fill='none' stroke='var(--kbli-bg-surface)' stroke-width='0.5'/%3E%3C/svg%3E")`,
               backgroundSize: "200px 200px",
             }}
           />
@@ -106,9 +106,9 @@ export default async function KBLIHomePage({
                   height={48}
                   className="rounded-full"
                 />
-                <div className="text-[13px] font-semibold text-white/80 leading-tight tracking-wide">
+                <div className="text-[13px] font-semibold text-[var(--accent-whatsapp-ink)] leading-tight tracking-wide">
                   <span className="block">We don&apos;t sell services.</span>
-                  <span className="block text-white/50">
+                  <span className="block text-[var(--accent-whatsapp-ink)]">
                     We offer intelligence.
                   </span>
                 </div>
@@ -120,16 +120,16 @@ export default async function KBLIHomePage({
               </h1>
 
               {/* Subtitle */}
-              <p className="mt-5 text-xl sm:text-2xl text-zinc-400 font-light tracking-tight">
+              <p className="mt-5 text-xl sm:text-2xl text-[var(--accent-whatsapp-ink)] font-light tracking-tight">
                 Your{" "}
-                <em className="text-white font-medium not-italic">
+                <em className="text-[var(--accent-whatsapp-ink)] font-medium not-italic">
                   Indonesian
                 </em>{" "}
                 Business Codes
               </p>
 
               {/* Inline stats */}
-              <p className="mt-3 text-sm text-zinc-400 tracking-wide">
+              <p className="mt-3 text-sm text-[var(--accent-whatsapp-ink)] tracking-wide">
                 {codeCount} codes&ensp;&middot;&ensp;22
                 sectors&ensp;&middot;&ensp;PMA rules
               </p>
@@ -137,7 +137,7 @@ export default async function KBLIHomePage({
               {/* CTA — glassmorphism button */}
               <Link
                 href="#search"
-                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/[0.1] px-7 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-300 hover:bg-[#D01033]/90 hover:border-[#D01033]/60 hover:shadow-[0_0_40px_rgba(208,16,51,0.3)] active:scale-[0.98]"
+                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[var(--kbli-bg-surface)] backdrop-blur-md border border-[color:var(--border-strong)] px-7 py-3.5 text-sm font-bold text-white  transition-all duration-300  hover:border-accent-sand  active:scale-[0.98]"
               >
                 Explore All KBLI Sectors &rarr;
               </Link>
@@ -149,8 +149,7 @@ export default async function KBLIHomePage({
               <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] blur-[80px] pointer-events-none"
                 style={{
-                  background:
-                    "radial-gradient(circle, rgba(208,16,51,0.06), transparent 70%)",
+                  background: "none",
                 }}
               />
               <div
@@ -165,12 +164,12 @@ export default async function KBLIHomePage({
               >
                 {/* Tablet frame — glassmorphism */}
                 <div
-                  className="rounded-[36px] border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-[18px] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                  className="rounded-[36px] border border-[var(--border)] bg-[var(--kbli-bg-surface)] backdrop-blur-xl p-[18px] "
                   style={{ width: 442 }}
                 >
                   {/* Camera */}
                   <div className="flex justify-center py-1.5 pb-2.5">
-                    <div className="w-2 h-2 rounded-full bg-white/[0.08]" />
+                    <div className="w-2 h-2 rounded-full bg-[var(--kbli-bg-surface)]" />
                   </div>
                   {/* Screen — an editorial still, deliberately NOT a UI mock-up
                       and NOT a video. What stood here was a <video> whose src
@@ -184,7 +183,7 @@ export default async function KBLIHomePage({
                       lazy loading keeps its ~109KB off a surface that cannot
                       display it. */}
                   <div
-                    className="rounded-[18px] bg-black/60 overflow-hidden"
+                    className="rounded-[18px] bg-slate-50 overflow-hidden"
                     style={{ height: 286 }}
                   >
                     <Image
@@ -197,7 +196,7 @@ export default async function KBLIHomePage({
                   </div>
                   {/* Home bar */}
                   <div className="flex justify-center pt-2.5 pb-1.5">
-                    <div className="w-[60px] h-1 rounded-sm bg-white/[0.08]" />
+                    <div className="w-[60px] h-1 rounded-sm bg-[var(--kbli-bg-surface)]" />
                   </div>
                 </div>
               </div>
@@ -222,7 +221,7 @@ export default async function KBLIHomePage({
             <div
               key={t.label}
               title={"hint" in t ? t.hint : undefined}
-              className="text-center px-6 py-4 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]"
+              className="text-center px-6 py-4 rounded-2xl bg-[var(--kbli-bg-surface)] backdrop-blur-xl border border-[var(--border)]  transition-all duration-300 hover:bg-surface-editorial-elevated  "
             >
               <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                 {t.num}
@@ -237,7 +236,7 @@ export default async function KBLIHomePage({
         {/* ── SEARCH ── */}
         <div
           id="search"
-          className="sticky top-14 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[var(--kbli-ink)]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
+          className="sticky top-14 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[var(--background)] border border-[var(--border)] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8  rounded-3xl mb-8"
         >
           <KBLISearch
             autoFocus
@@ -254,7 +253,7 @@ export default async function KBLIHomePage({
 
         {/* ── SECTORS ── */}
         <section>
-          <h2 className="mb-4 text-xl font-semibold text-white/90">
+          <h2 className="mb-4 text-xl font-semibold text-[var(--foreground)]">
             Browse by Sector
           </h2>
           <KBLISectorBrowser sections={sections} />

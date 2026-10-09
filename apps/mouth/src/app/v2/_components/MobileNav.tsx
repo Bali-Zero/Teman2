@@ -13,10 +13,13 @@ import { buildWhatsAppLink, type Funnel } from "@/lib/whatsapp-utm";
 interface MobileNavProps {
   items: { label: string; href: string }[];
   funnel: Funnel;
+  /** Paper ink for the trigger on a light nav that is not an R19 route (the /kbli wrapper). */
+  paper?: boolean;
 }
 
-export function MobileNav({ items, funnel }: MobileNavProps) {
+export function MobileNav({ items, funnel, paper }: MobileNavProps) {
   const isR19 = useR19();
+  const lightTrigger = isR19 || Boolean(paper);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -39,9 +42,9 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
           aria-label={open ? "Close menu" : "Open menu"}
           className={`${isR19 ? "min-[981px]:hidden w-11 h-11" : "md:hidden w-10 h-10"} inline-flex items-center justify-center flex-shrink-0 rounded-lg`}
           style={{
-            color: isR19 ? "#1D2C3B" : "#ffffff",
-            background: isR19 ? "#FFFCF7" : "rgba(255,255,255,0.06)",
-            border: isR19
+            color: lightTrigger ? "#1D2C3B" : "#ffffff",
+            background: lightTrigger ? "#FFFCF7" : "rgba(255,255,255,0.06)",
+            border: lightTrigger
               ? "1px solid #DAD8D1"
               : "1px solid rgba(255,255,255,0.14)",
           }}

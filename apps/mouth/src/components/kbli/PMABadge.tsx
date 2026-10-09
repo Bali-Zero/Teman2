@@ -36,19 +36,19 @@ const config = {
     label: "Open",
     icon: "✅",
     className:
-      "bg-[var(--kbli-pma-open-bg)] text-[var(--kbli-pma-open)] border-[var(--kbli-pma-open)]/20",
+      "bg-[var(--kbli-pma-open-bg)] text-[var(--kbli-pma-open)] border-[var(--border)]",
   },
   restricted: {
     label: "Restricted",
     icon: "⚠️",
     className:
-      "bg-[var(--kbli-pma-restricted-bg)] text-[var(--kbli-pma-restricted)] border-[var(--kbli-pma-restricted)]/20",
+      "bg-[var(--kbli-pma-restricted-bg)] text-[var(--kbli-pma-restricted)] border-[var(--border)]",
   },
   closed: {
     label: "Closed",
     icon: "🚫",
     className:
-      "bg-[var(--kbli-pma-closed-bg)] text-[var(--kbli-pma-closed)] border-[var(--kbli-pma-closed)]/20",
+      "bg-[var(--kbli-pma-closed-bg)] text-[var(--kbli-pma-closed)] border-[var(--border)]",
   },
   unknown: {
     label: "Unknown",

@@ -38,8 +38,8 @@ const config: Record<
 };
 
 const toneClass = {
-  ok: "bg-[var(--kbli-pma-open-bg)] text-[var(--kbli-pma-open)] border-[var(--kbli-pma-open)]/20",
-  warn: "bg-[var(--kbli-pma-restricted-bg)] text-[var(--kbli-pma-restricted)] border-[var(--kbli-pma-restricted)]/20",
+  ok: "bg-[var(--kbli-pma-open-bg)] text-[var(--kbli-pma-open)] border-[var(--border)]",
+  warn: "bg-[var(--kbli-pma-restricted-bg)] text-[var(--kbli-pma-restricted)] border-[var(--border)]",
   gap: "bg-[var(--kbli-bg-elevated)] text-[var(--foreground-secondary)] border-[var(--kbli-border)]",
 };
 

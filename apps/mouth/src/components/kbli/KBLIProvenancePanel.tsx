@@ -304,8 +304,8 @@ export function KBLIProvenancePanel({
                     className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                     style={{
                       color: v.color,
-                      borderColor: `color-mix(in srgb, ${v.color} 30%, transparent)`,
-                      background: `color-mix(in srgb, ${v.color} 8%, transparent)`,
+                      borderColor: "var(--kbli-border)",
+                      background: "var(--kbli-bg-surface)",
                     }}
                   >
                     {v.label}

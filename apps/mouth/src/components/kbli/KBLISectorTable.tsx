@@ -41,13 +41,13 @@ export function KBLISectorTable({ sections }: { sections: KBLISection[] }) {
     "inline-flex min-h-[44px] items-center gap-1 transition-colors hover:text-accent-warm";
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+    <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--kbli-bg-surface)] backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
       <table className="w-full min-w-[560px] border-collapse text-left">
         <caption className="sr-only">
           KBLI 2025 sectors, sortable by section, name, or number of codes
         </caption>
         <thead>
-          <tr className="border-b border-white/[0.08]">
+          <tr className="border-b border-[var(--border)]">
             <th scope="col" className={headCell}>
               <button
                 type="button"
@@ -95,7 +95,7 @@ export function KBLISectorTable({ sections }: { sections: KBLISection[] }) {
             return (
               <tr
                 key={s.id}
-                className="border-b border-white/[0.05] last:border-0 transition-colors hover:bg-white/[0.05]"
+                className="border-b border-[var(--border)] last:border-0 transition-colors hover:bg-surface-editorial-elevated"
               >
                 <td className="px-3 py-2.5">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-accent-warm">
@@ -114,9 +114,9 @@ export function KBLISectorTable({ sections }: { sections: KBLISection[] }) {
                   {s.codeCount}
                 </td>
                 <td className="hidden px-3 py-2.5 sm:table-cell">
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--kbli-bg-surface)]">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#d4845a] via-[#a855f7] to-[#3b82f6] opacity-70"
+                      className="h-full rounded-full bg-[var(--kbli-ink)] opacity-70"
                       style={{ width: `${barPct}%` }}
                     />
                   </div>

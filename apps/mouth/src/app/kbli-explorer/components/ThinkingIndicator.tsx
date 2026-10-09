@@ -47,7 +47,7 @@ export default function ThinkingIndicator({
 
   return (
     <div className="flex gap-4 md:gap-6 items-start">
-      <div className="w-8 h-8 rounded-full border bg-surface-deep border-accent-sand/20 text-accent-sand flex items-center justify-center shrink-0">
+      <div className="w-8 h-8 rounded-full border bg-surface-deep border-[var(--border)] text-accent-sand flex items-center justify-center shrink-0">
         <Sparkles size={14} />
       </div>
       <div className="flex-1 space-y-3 pt-1">
@@ -65,11 +65,13 @@ export default function ThinkingIndicator({
                   <stage.icon
                     size={14}
                     className={
-                      idx === activeStage ? "text-accent-sand" : "text-[#888]"
+                      idx === activeStage
+                        ? "text-accent-sand"
+                        : "text-[var(--kbli-text-muted)]"
                     }
                   />
                   <span
-                    className={`text-sm ${idx === activeStage ? "text-[#CCC]" : "text-[#888]"}`}
+                    className={`text-sm ${idx === activeStage ? "text-[var(--foreground)]" : "text-[var(--kbli-text-muted)]"}`}
                   >
                     {stage.text}
                   </span>
@@ -90,7 +92,7 @@ export default function ThinkingIndicator({
         {/* Progress bar */}
         <div className="h-[2px] w-full bg-surface-editorial-elevated rounded-full overflow-hidden mt-2">
           <motion.div
-            className="h-full bg-gradient-to-r from-[#D4B483] to-[#C4A473]"
+            className="h-full bg-[var(--kbli-ink)]"
             style={{ width: `${progress}%` }}
             animate={isComplete ? { width: "100%" } : undefined}
             transition={
