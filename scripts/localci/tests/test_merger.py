@@ -1081,7 +1081,7 @@ def mirror(tmp_path):
 def test_a_clean_head_rehearses_to_a_tree_and_the_line_is_ok(mirror, capsys):
     line = mirror.step(mirror.clean)
     assert (line["kind"], line["ok"], line["clean"], line["conflicts"], line["base_current"], line["head_unchanged"]) == ("would_merge", True, True, [], True, True)
-    assert mg.is_sha(line["merge_tree"]) and line["mirror_main"] == line["base_sha"] == mirror.base and "error" not in line
+    assert mg.is_sha(line["merge_tree"]) and line["mirror_main"] == line["remote_main"] == line["base_sha"] == mirror.base and "error" not in line
     assert g(mirror.repo, "ls-tree", "--name-only", line["merge_tree"]).split() == ["a.txt", "b.txt", "d.txt"]   # main's a.txt plus the head's b.txt
     assert (line["bites"], line["armed_env"], line["lease_id"]) == (True, True, "L") and all(line["criterion"].values())
     assert "would_merge ok=True clean=True" in capsys.readouterr().out
@@ -1093,13 +1093,42 @@ def test_a_head_that_conflicts_with_main_is_not_clean_and_names_the_path(mirror)
     assert mg.is_sha(line["merge_tree"]) and "error" not in line
 
 
-def test_a_mirror_main_that_moved_after_the_decision_is_not_current(mirror):
+def test_a_github_main_that_moved_after_the_tick_fetched_is_not_current_though_the_mirror_still_is(mirror):
+    g(mirror.src, "checkout", "-q", "main")
+    moved = commit(mirror.src, {"e.txt": "e\n"}, "main moves again")   # the mirror is NOT fetched: a gate run outlasted a merge
+    line = mirror.step(mirror.clean)
+    assert (line["base_current"], line["mirror_main"], line["remote_main"], line["base_sha"]) == (False, mirror.base, moved, mirror.base)
+    assert (line["clean"], line["ok"]) == (True, False) and "error" not in line
+
+
+def test_a_mirror_refetched_after_the_decision_is_rehearsed_on_its_own_main_and_is_not_current(mirror):
     g(mirror.src, "checkout", "-q", "main")
     moved = commit(mirror.src, {"e.txt": "e\n"}, "main moves again")
     g(mirror.repo, "fetch", "-q", str(mirror.src), "+refs/heads/main:refs/merger/base")
     line = mirror.step(mirror.clean)
-    assert (line["base_current"], line["mirror_main"], line["base_sha"], line["clean"], line["ok"]) == (False, moved, mirror.base, True, False)
-    assert "e.txt" in g(mirror.repo, "ls-tree", "--name-only", line["merge_tree"]).split()   # the rehearsal merges onto main as it is NOW
+    assert (line["base_current"], line["mirror_main"], line["remote_main"], line["clean"], line["ok"]) == (False, moved, moved, True, False)
+    assert "e.txt" in g(mirror.repo, "ls-tree", "--name-only", line["merge_tree"]).split()   # the rehearsal merges onto the mirror's main as it is NOW
+
+
+def test_an_unreadable_origin_is_an_error_line_with_no_remote_main_and_never_current(mirror):
+    g(mirror.repo, "remote", "set-url", "origin", str(mirror.src / "nowhere"))
+    line = mirror.step(mirror.clean)
+    assert (line["remote_main"], line["base_current"], line["ok"]) == (None, False, False) and "ls-remote" in line["error"]
+    assert mg.is_sha(line["merge_tree"]) and line["clean"] is True   # the rehearsal does not depend on the network
+
+
+def test_a_slow_origin_times_out_into_an_error_line(mirror, monkeypatch):
+    real, seen = mg.git, {}
+
+    def slow(cwd, *args, **kw):
+        if args[0] == "ls-remote":
+            seen.update(kw)
+            raise subprocess.TimeoutExpired(["git", "ls-remote", "ghp_" + "D" * 24], kw["timeout"])
+        return real(cwd, *args, **kw)
+    monkeypatch.setattr(mg, "git", slow)
+    line = mirror.step(mirror.clean)
+    assert seen["timeout"] == mg.REMOTE_TIMEOUT_S <= 30 and (line["remote_main"], line["base_current"], line["ok"]) == (None, False, False)
+    assert "TimeoutExpired" in line["error"] and "ghp_" not in line["error"]
 
 
 @pytest.mark.parametrize("name", mg.CRITERION)
@@ -1173,3 +1202,34 @@ def test_bites_is_a_flag_read_from_the_pr_body_line(enq, body, expected):
     enq.gql.over["body"] = body
     line = enq.run()
     assert line["bites"] is expected and "body" not in line
+
+
+def test_a_journal_that_cannot_write_the_shadow_line_leaves_one_decision_and_rc_zero(world, monkeypatch, capsys):
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    real = mg.journal
+
+    def full_disk(state, rec):
+        if rec.get("kind") == "would_merge":
+            raise OSError("No space left on device")
+        return real(state, rec)
+    monkeypatch.setattr(mg, "journal", full_disk)
+    assert world.tick() == 0
+    assert [r["kind"] for r in world.journal()] == ["decision", "would_enqueue"]   # no second, ERROR decision
+    assert "would_merge not journalled" in capsys.readouterr().err
+
+
+def test_a_github_main_that_moves_after_the_tick_fetch_makes_the_tick_line_not_current(world, monkeypatch):
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    moved = {}
+    real = mg.run_gate
+
+    def gate_then_main_moves(*a, **kw):
+        res = real(*a, **kw)
+        g(world.src, "checkout", "-q", "main")
+        moved["sha"] = commit(world.src, {"z.txt": "z\n"}, "main moves during the gate")
+        g(world.origin, "fetch", "-q", str(world.src), "+refs/heads/main:refs/heads/main")
+        return res
+    monkeypatch.setattr(mg, "run_gate", gate_then_main_moves)
+    assert world.tick() == 0
+    w = world.journal()[-1]
+    assert (w["kind"], w["base_current"], w["mirror_main"], w["remote_main"], w["ok"]) == ("would_merge", False, world.base, moved["sha"], False)

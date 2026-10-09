@@ -420,20 +420,26 @@ def test_the_phase_e_line_counts_enqueued_and_would_enqueue_apart_and_neither_is
 
 def test_the_report_counts_would_merge_lines_in_the_window_and_says_phase_f_is_shadow(tmp_path, monkeypatch, capsys):
     t = "2026-10-08T01:00:00Z"
-    lines = [dict(ok=True, clean=True, base_current=True), dict(ok=False, clean=False, base_current=True),
-             dict(ok=False, clean=True, base_current=False), dict(ok=False, clean=True, base_current=True)]
+    T, R = "1" * 40, "2" * 40
+    lines = [dict(ok=True, clean=True, base_current=True, merge_tree=T, remote_main=BASE),
+             dict(ok=False, clean=False, base_current=True, merge_tree=T, remote_main=BASE),
+             dict(ok=False, clean=True, base_current=False, merge_tree=T, remote_main=R),
+             dict(ok=False, clean=True, base_current=True, merge_tree=T, remote_main=BASE),
+             dict(ok=False, clean=False, base_current=False, merge_tree=None, remote_main=None, error="OSError: git merge-tree failed"),
+             dict(ok=False, clean=True, base_current=False, merge_tree=T, remote_main=None, error="ls-remote timed out")]
     recs = [decision(1, A, "BLOCKED", ts=t)] + [{"kind": "would_merge", "ts": t, "pr": 1, "head_sha": A, **x} for x in lines]
     recs.append({"kind": "would_enqueue", "ts": t, "pr": 1, "head_sha": A, "ok": True})
     rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
-    assert rep["window"]["would_merge"] == {"total": 4, "ok": 1, "conflicted": 1, "base_moved": 1} and rep["phase_f"] == "shadow"
+    # a git error is an error, never a conflict or a moved base; a conflict needs a tree and no error
+    assert rep["window"]["would_merge"] == {"total": 6, "ok": 1, "conflicted": 1, "base_moved": 1, "errors": 2} and rep["phase_f"] == "shadow"
     assert rep["window"]["decisions"] == 1 and rc == 0
-    assert "phase F shadow: would_merge=4 (ok=1, conflicted=1, base_moved=1)" in capsys.readouterr().out
+    assert "phase F shadow: would_merge=6 (ok=1, conflicted=1, base_moved=1, errors=2)" in capsys.readouterr().out
 
 
 def test_a_journal_without_would_merge_lines_reports_zero(tmp_path, monkeypatch, capsys):
     rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "BLOCKED")], FakeGH({1: pull(A)}, {A: "success"}))
-    assert rep["window"]["would_merge"] == {"total": 0, "ok": 0, "conflicted": 0, "base_moved": 0} and rc == 0
-    assert "would_merge=0 (ok=0, conflicted=0, base_moved=0)" in capsys.readouterr().out
+    assert rep["window"]["would_merge"] == {"total": 0, "ok": 0, "conflicted": 0, "base_moved": 0, "errors": 0} and rc == 0
+    assert "would_merge=0 (ok=0, conflicted=0, base_moved=0, errors=0)" in capsys.readouterr().out
 
 
 def test_a_journal_older_than_the_enqueue_path_reports_zero_enqueues(tmp_path, monkeypatch):
