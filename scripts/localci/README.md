@@ -381,6 +381,28 @@ the blocking status), `checks` (per check status), `seal`, `runner_rc`, `hosted_
 (`why: fork`), `skipped` (`why: node | lease | head_moved | head_in_base`), `lease_reclaimed` (`stale`: the dead holder's
 record), `error` (the tick exits 1, nothing is decided — `gh` or `git` missing from PATH included).
 
+**Replays (B11).** Besides deciding open pull requests, the tick judges **the exact commit GitHub merged**: a *replay*. The tree GitHub
+tested in its queue is the main commit that merged the PR, so the gate takes that commit as the CANDIDATE and its FIRST PARENT as the
+BASE (trusted: it was on main before the merge, the candidate never supplies its own judge), and `hosted_compare` joins on the merge
+commit's own sha, where the `merge_group` runs sit. Selection: the OLDEST merge commit on `refs/merger/base`'s first-parent line, from the
+journal's first PR decision on, whose subject ends `(#N)` and which GitHub confirms (PR `N` is merged and its `merge_commit_sha` is this
+commit), with no replay yet; a commit GitHub does not confirm is journalled once (`skipped: replay_unmapped`), an ERROR replay is retried
+once. Any failure of a replay but a stop (`Stopped`: no verdict, the same replay is decided next) is its ERROR decision line, with
+`replay`, `merge_commit` and the redacted error (`<Type>: <message>` when it is not a gate error), so the alternation advances and the
+retry bound holds; a PR decision keeps its old rule (a gate error is its ERROR line, anything else the tick's `error` line or a crash).
+Alternation: a tick replays when the previous decision line was not a replay (`schedule: "alternation: the previous decision was not a
+replay"`), and also when it has no pull request to decide (`"no pull request to decide"`); otherwise it decides a PR as before.
+The line is `kind: decision` with `replay: true`, `pr`, `merge_commit`, `base_sha` (the first parent), `head_sha` (the PR head GitHub
+merged, recorded only), `candidate_sha` (the merge commit), `schedule`, and every field of a PR decision; it enqueues nothing, writes no
+`would_merge` and nothing to GitHub, and its hosted comparison is never stale (the same tree). Why: measured on Pro 2026-10-09, 17 of 26
+merged PRs were merged by GitHub onto a main that had moved while the gate ran (a tick takes 10-48 minutes), so a decision on the base
+the gate saw could never be the commit GitHub merged. `merger.py report` counts a replay row as `merged_here` when GitHub's
+`merge_commit_sha` for the PR, read at report time, still equals the replayed commit (else the row joins on the head and compares nothing
+as merged), a compared merge when `compared_enough`, a PR once whichever way it qualified, and prints `replays (B11): N replay
+decision(s) ...; compared_merges=C of which R reached the threshold only through a replay` (`window.replays`,
+`window.compared_merges_from_replays`). A replay's recorded FALSE_GREEN is never re-read for staleness: it counts in `N` and is listed
+under `kept` as `pr<N> all rows: replay: the same tree on both sides, never stale`.
+
 **Phase F, shadow (F1): `would_merge`.** After every `would_enqueue` / `enqueue_*` line of a decided PR the tick journals ONE
 `kind: "would_merge"` line (decisions that reach the enqueue step; CONFLICT, ERROR and skipped decisions carry none): the merge phase F will make, rehearsed with `git merge-tree --write-tree` of the mirror's
 `refs/merger/base` and the decided head. F1 merges nothing and pushes nothing: `merge-tree --write-tree` leaves objects in the

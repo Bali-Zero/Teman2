@@ -47,6 +47,9 @@ LABEL = "localci:merge"
 ARM_LABEL, ARM_ENV, ARM_ROLES = "localci:merge-shadow-ok", "LOCALCI_MERGER_ARMED", ("admin", "maintain")   # the two halves of the arm
 AUTHOR = "localci-merger"
 PHASE_E = "phase E not armed: see docs/specs/localci-sovereign-2026-10-07.md"
+REPLAY_NOTE = "B11 replay: the hosted verdict is read on the merge commit GitHub put on main, the very candidate judged here"
+REPLAY_KEPT = "replay: the same tree on both sides, never stale"
+PR_SUBJECT = re.compile(r"\(#(\d+)\)\s*$")   # the merge queue's subject: `<title> (#<pr>)`
 HEAD_NOTE = "hosted verdict read on the PR head sha: the queue's verdict lands on a merge-group commit the merger cannot see"
 MATRIX = "scripts/localci/contexts_matrix.yaml"
 RUNNER_ENV = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT",
@@ -228,11 +231,12 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str) -> tuple
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
     `main` moves on every merge, so oldest-first alone would re-decide one PR at each new base and starve the rest."""
-    decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if r.get("kind") == "decision" or r.get("why") == "head_in_base"}
+    decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))
+               or r.get("why") == "head_in_base"}
     refused = {(r.get("pr"), r.get("head_sha")) for r in recs if r.get("kind") == "refused"}
     last: dict = {}
     for r in recs:
-        if r.get("kind") == "decision":
+        if r.get("kind") == "decision" and not r.get("replay"):
             last[(r.get("pr"), r.get("head_sha"))] = max(last.get((r.get("pr"), r.get("head_sha")), ""), str(r.get("ts")))
     todo, forks = [], []
     for pr in prs:
@@ -419,9 +423,9 @@ class StaleJudge:
         return {"stale": bool(selected), "hosted_main": main, "main_moved_paths": selected[:20], "main_moved_count": len(selected)}
 
 
-def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path, judge=None) -> tuple[dict, dict | None]:
+def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path, judge=None, note: str = HEAD_NOTE) -> tuple[dict, dict | None]:
     """The comparison journalled beside the verdict, and the hosted document it read (None when the read or the comparison failed)."""
-    out = {"sha": head, "note": HEAD_NOTE}
+    out = {"sha": head, "note": note}
     try:
         live = hc.fetch_live(repo, base, head)
         rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge)
@@ -642,29 +646,39 @@ def merge_shadow_step(state: Path, repo_dir: Path, enq: dict, base: str = "main"
     return out
 
 
-def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str) -> int:
+def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str, replay: dict | None = None) -> int:
+    """One decision. ``replay`` (B11) judges the commit GitHub already merged instead of a candidate this tick builds: ``head`` is the
+    PR head GitHub merged (recorded only), ``base_sha`` the merge commit's FIRST PARENT, ``replay`` carries ``merge_commit`` and the
+    ``schedule`` reason. The candidate IS the merge commit; the BASE stays the commit that was on main before it, so the candidate
+    never supplies its own judge. A replay enqueues nothing, rehearses nothing and writes nothing to GitHub."""
     t0 = time.monotonic()
     rec = {"kind": "decision", "mode": "shadow", "repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "lease_id": lease_id}
-    if git(repo_dir, "merge-base", "--is-ancestor", head, base_sha, check=False).returncode == 0:
+    if replay:
+        rec.update(replay=True, merge_commit=replay["merge_commit"], schedule=replay["schedule"])
+    if not replay and git(repo_dir, "merge-base", "--is-ancestor", head, base_sha, check=False).returncode == 0:
         journal(state, {**rec, "kind": "skipped", "why": "head_in_base"})
         return 0
     key = f"pr{n}-{head[:12]}-{base_sha[:12]}"
     cand = state / "cand" / key
     try:
-        fresh_worktree(repo_dir, cand, base_sha)
-        when = git(repo_dir, "show", "-s", "--format=%cI", base_sha).stdout.strip()   # fixed identity and date: same (head, base) → same candidate sha
-        ident = {f"GIT_{who}_{what}": val for who in ("AUTHOR", "COMMITTER") for what, val in (("NAME", AUTHOR), ("EMAIL", f"{AUTHOR}@localhost"), ("DATE", when))}
-        if git(cand, "merge", "--squash", head, check=False, env=ident).returncode != 0:
-            conflicts = git(cand, "diff", "--name-only", "--diff-filter=U", check=False).stdout.split()
-            if not conflicts:
-                raise MergerError(f"merge of #{n} {head[:12]} failed without a conflicted path")
-            journal(state, {**rec, "overall": "CONFLICT", "candidate_sha": None, "conflicts": conflicts[:50], "run_dir": None,
-                            "elapsed_s": round(time.monotonic() - t0, 1)})
-            print(f"merger: #{n} CONFLICT on {base_sha[:12]} ({len(conflicts)} paths) — journalled, no run")
-            return 0
-        git(cand, "commit", "--quiet", "--allow-empty", "-m", f"localci-merger: candidate of #{n} ({head[:12]}) on {a.base} {base_sha[:12]}",
-            env=ident)
-        cand_sha = git(cand, "rev-parse", "HEAD").stdout.strip()
+        if replay:
+            fresh_worktree(repo_dir, cand, replay["merge_commit"])
+            cand_sha = replay["merge_commit"]
+        else:
+            fresh_worktree(repo_dir, cand, base_sha)
+            when = git(repo_dir, "show", "-s", "--format=%cI", base_sha).stdout.strip()   # fixed identity and date: same (head, base) → same candidate sha
+            ident = {f"GIT_{who}_{what}": val for who in ("AUTHOR", "COMMITTER") for what, val in (("NAME", AUTHOR), ("EMAIL", f"{AUTHOR}@localhost"), ("DATE", when))}
+            if git(cand, "merge", "--squash", head, check=False, env=ident).returncode != 0:
+                conflicts = git(cand, "diff", "--name-only", "--diff-filter=U", check=False).stdout.split()
+                if not conflicts:
+                    raise MergerError(f"merge of #{n} {head[:12]} failed without a conflicted path")
+                journal(state, {**rec, "overall": "CONFLICT", "candidate_sha": None, "conflicts": conflicts[:50], "run_dir": None,
+                                "elapsed_s": round(time.monotonic() - t0, 1)})
+                print(f"merger: #{n} CONFLICT on {base_sha[:12]} ({len(conflicts)} paths) — journalled, no run")
+                return 0
+            git(cand, "commit", "--quiet", "--allow-empty", "-m", f"localci-merger: candidate of #{n} ({head[:12]}) on {a.base} {base_sha[:12]}",
+                env=ident)
+            cand_sha = git(cand, "rev-parse", "HEAD").stdout.strip()
         for old in (state / "base").glob("*") if (state / "base").is_dir() else []:
             if old.name != base_sha:
                 drop_worktree(repo_dir, old)
@@ -674,7 +688,10 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         status = gate["status"]
         ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) and not gate.get("error") else {}   # an unvouched status lends no verdict
         results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
-        hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir, StaleJudge(repo_dir, base_sha))
+        if replay:   # the hosted verdict is on the very tree judged here: nothing can be stale
+            hosted, live = hosted_summary(a.repo, a.base, status, cand_sha, run_dir, None, REPLAY_NOTE)
+        else:
+            hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir, StaleJudge(repo_dir, base_sha))
         loc = local_side({} if gate.get("error") else status)
         line = journal(state, {**rec, "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
                                "contexts_status": ctx.get("status"), "contexts": {k: (v or {}).get("verdict") for k, v in results.items()},
@@ -688,6 +705,8 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
                                "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
+        if replay:
+            return 0
         enq = enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": cand_sha, "lease_id": lease_id},
                            loc, live)
         try:
@@ -697,13 +716,49 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         except Exception as exc:  # noqa: BLE001 — a shadow never turns a decision into a second, ERROR one
             print(f"merger: #{n} would_merge not journalled — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
         return 0
-    except (MergerError, OSError) as exc:   # a decision with no verdict: this (pr, head, base) is not retried, the next base is
-        journal(state, {**rec, "overall": "ERROR", "error": redact(exc), "candidate_sha": None, "run_dir": None,
+    except Stopped:
+        raise
+    except Exception as exc:  # noqa: BLE001 — a decision with no verdict: this (pr, head, base) is not retried, the next base is
+        if not (replay or isinstance(exc, (MergerError, OSError))):
+            raise   # a replay journals ANY failure as its ERROR line: the alternation advances and its retry bound holds
+        why = exc if isinstance(exc, (MergerError, OSError)) else f"{type(exc).__name__}: {exc}"
+        journal(state, {**rec, "overall": "ERROR", "error": redact(why), "candidate_sha": None, "run_dir": None,
                         "elapsed_s": round(time.monotonic() - t0, 1)})
-        print(f"merger: #{n} ERROR — {redact(exc)}", file=sys.stderr)
+        print(f"merger: #{n} ERROR — {redact(why)}", file=sys.stderr)
         return 1
     finally:
         drop_worktree(repo_dir, cand)
+
+
+def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | None:
+    """B11: the OLDEST merge commit on the mirror's first-parent line, from the first PR decision of the journal on, that carries a PR
+    number GitHub confirms (the PR is merged AND its ``merge_commit_sha`` is this commit) and has no replay yet. A commit that fails the
+    confirmation is journalled once (``skipped: replay_unmapped``) and never asked again; an ERROR replay is retried once. Any read that
+    fails returns None: a replay turn that cannot find its work falls back to a PR decision."""
+    firsts = [str(r["ts"]) for r in recs if r.get("kind") == "decision" and not r.get("replay") and r.get("ts")]
+    if not firsts:
+        return None
+    errors = Counter(r.get("merge_commit") for r in recs if r.get("replay") and r.get("kind") == "decision" and r.get("overall") == "ERROR")
+    done = {r.get("merge_commit") for r in recs if (r.get("replay") and r.get("kind") == "decision" and r.get("overall") != "ERROR")
+            or (r.get("kind") == "skipped" and r.get("why") == "replay_unmapped")} | {m for m, k in errors.items() if k >= 2}
+    try:
+        log = git(repo_dir, "log", "--first-parent", "--format=%H%x00%P%x00%s", f"--after={min(firsts)}", "refs/merger/base").stdout.splitlines()
+        for line in reversed(log):
+            sha, parents, subject = (line.split("\0") + ["", ""])[:3]
+            m = PR_SUBJECT.search(subject)
+            if sha in done or not m or not parents.split():
+                continue
+            n = int(m[1])
+            p = hc.gh_get(f"repos/{a.repo}/pulls/{n}")
+            if not (isinstance(p, dict) and p.get("merged") is True and p.get("merge_commit_sha") == sha and head_of(p)):
+                journal(state, {"kind": "skipped", "why": "replay_unmapped", "merge_commit": sha, "pr": n})
+                continue
+            return {"merge_commit": sha, "base_sha": parents.split()[0], "pr": n, "head": head_of(p)}
+    except Stopped:
+        raise
+    except Exception as exc:  # noqa: BLE001 — see the docstring
+        print(f"merger: replay selection failed — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
+    return None
 
 
 def tick(a, state: Path, lease_id: str) -> int:
@@ -712,9 +767,17 @@ def tick(a, state: Path, lease_id: str) -> int:
     git(repo_dir, "worktree", "prune", check=False)
     git(repo_dir, "fetch", "--no-tags", "--quiet", "origin", f"+refs/heads/{a.base}:refs/merger/base")
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
-    todo, forks = triage(open_prs(a.repo, a.base), a.repo, read_journal(state), base_sha)
+    recs = read_journal(state)
+    todo, forks = triage(open_prs(a.repo, a.base), a.repo, recs, base_sha)
     for pr in forks:
         journal(state, {"kind": "refused", "why": "fork", "pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha, "lease_id": lease_id})
+    last = [r for r in recs if r.get("kind") == "decision"][-1:]
+    after_replay = bool(last and last[0].get("replay"))
+    # B11: replays and PR decisions alternate — a replay when the previous decision was a PR decision (or there is no PR to decide)
+    reason = "alternation: the previous decision was not a replay" if not after_replay else "no pull request to decide" if not todo else None
+    pick = replay_pending(a, state, repo_dir, recs) if reason else None
+    if pick:
+        return decide(a, state, repo_dir, lease_id, pick["pr"], pick["head"], pick["base_sha"], {"merge_commit": pick["merge_commit"], "schedule": reason})
     if not todo:
         print(f"merger: nothing to decide on {a.base} {base_sha[:12]} ({len(forks)} fork PR(s) refused)")
         return 0
@@ -840,7 +903,11 @@ def strict_journal(state: Path) -> list[dict]:
 
 def queue_sha(a, pr: dict, d: dict, parents: dict) -> str:
     """The sha whose hosted verdict judges decision ``d``: the merge commit when the queue merged this head ON THE DECIDED BASE
-    (the very candidate, with its merge_group runs), else the head."""
+    (the very candidate, with its merge_group runs), else the head. A replay (B11) judged the merge commit itself: its sha is that
+    commit when GitHub confirms it is the PR's merge commit, else the head (a row that then compares nothing as merged)."""
+    if d.get("replay"):
+        mc = d.get("merge_commit")
+        return mc if pr.get("merged") is True and is_sha(mc) and pr.get("merge_commit_sha") == mc else str(d.get("head_sha"))
     if not (pr.get("merged") is True and head_of(pr) == d.get("head_sha")):
         return str(d.get("head_sha"))
     mc = pr.get("merge_commit_sha")
@@ -887,8 +954,11 @@ def cmd_report(a) -> int:
             github = github_side(live)
             # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
             raw = recorded_false_green(d)
-            judge = judges.setdefault(str(d.get("base_sha")), StaleJudge(state / "repo.git", str(d.get("base_sha"))))
-            got, why_kept = reclassify_recorded(a, d, judge) if raw else ([], [])
+            judge = None if d.get("replay") else judges.setdefault(str(d.get("base_sha")), StaleJudge(state / "repo.git", str(d.get("base_sha"))))
+            if raw and judge is None:   # a replay's hosted verdict is on its own tree: every recorded row is kept, and says why
+                got, why_kept = [], [{"pr": d.get("pr"), "context": None, "head_sha": d.get("head_sha"), "why": REPLAY_KEPT}]
+            else:
+                got, why_kept = reclassify_recorded(a, d, judge) if raw else ([], [])
             got = got[:raw]
             recorded_raw += raw
             reclassified += got
@@ -917,7 +987,7 @@ def cmd_report(a) -> int:
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "compared_partial": not_full["partial"], "compared_unrecorded": not_full["unrecorded"],
-                         "compared_skip_agreed": skip_agreed,
+                         "compared_skip_agreed": skip_agreed, "replay": d.get("replay") is True,
                          "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok"
@@ -950,6 +1020,11 @@ def cmd_report(a) -> int:
     # one event per merged PR, at GitHub's merged_at: duplicate decisions of one PR, or the journal's order, cannot widen the span
     merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())
     compared_merges = len(merges)
+    qualifying: dict = {}
+    for r in rows:
+        if r["compared_merge"]:
+            qualifying.setdefault(r["pr"], []).append(r["replay"])
+    from_replays = sum(1 for flags in qualifying.values() if all(flags))   # a PR that also qualified before its merge is counted there
     compared_partial = sum(len(r["compared_partial"]) for r in rows)
     compared_unrecorded = sum(len(r["compared_unrecorded"]) for r in rows)
     partial_names = sorted({n for r in rows for n in r["compared_partial"]})
@@ -974,6 +1049,7 @@ def cmd_report(a) -> int:
              "check_max_s": dict(sorted(check_max_s.items(), key=lambda kv: -kv[1]))}
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
+                      "replays": sum(1 for r in rows if r["replay"]), "compared_merges_from_replays": from_replays,
                       "compared_partial": compared_partial, "compared_unrecorded": compared_unrecorded, "partial_contexts": partial_names,
                       "compared_merges_full_only": compared_merges - len(with_partial), "compared_merges_with_partial": len(with_partial),
                       "compared_merges_partial_contexts": merged_partial_names, "compared_skip_agreed": compared_skip_agreed,
@@ -994,6 +1070,8 @@ def cmd_report(a) -> int:
           f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}) "
           f"compared_partial={compared_partial} compared_unrecorded={compared_unrecorded} compared_skip_agreed={compared_skip_agreed} errors={errors} "
           f"skipped={skipped or 0}")
+    print(f"replays (B11): {w['replays']} replay decision(s) in the window; compared_merges={compared_merges} of which {from_replays} reached "
+          f"the threshold only through a replay of the merge commit (a PR counts once)")
     print(f"gaps: longest between decisions={decision_gap_h}h, longest between any journal lines={silence_h}h, "
           f"last line {last_line_age_h}h ago" + (f", {future_lines} line(s) dated in the future" if future_lines else "")
           + f"; code shas in the window: {[c[:12] for c in w['code_shas']] or 'none recorded'}, "
