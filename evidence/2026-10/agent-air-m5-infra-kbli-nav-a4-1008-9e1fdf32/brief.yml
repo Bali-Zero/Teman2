@@ -1,0 +1,54 @@
+task_id: kbli-nav-a4-1008
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track A, PR-A4 "dispatch guards": the A1/A2 gate notes that bind the
+  run before any seat is dispatched. infra/workflows/kbli-nav-design.js now starts with
+  scripts/kbli_design/seat_gate.py, which refuses a missing or in-repo kit and reads seat liveness
+  fail-closed from the arsenal probe's own report; the Arena phase hands arena.py --preview so the
+  gallery copy is no manual step; a node contract suite pins the path refusal, the fail-closed read
+  and a clean run to the arena; a pytest pins two racing _job processes to one launch.
+constraints:
+  - "A seat is live only on an explicit `live <seat>` line: no report (NEVER_RAN), no row, a report older than 12h by its own ts (or dated in the future), a torn report or any status but LIVE is dead."
+  - "The report path, LIVE and the seat names are imported from scripts/arsenal_probe.py (REPORT_DIR/last.json, ALL_SEATS), never restated."
+  - "No `kit ok <KIT>` line, the run throws before any seat is dispatched; seat_io.py, content_pack.py, anti_flatness.py and arena.py are not edited."
+  - "args.preview is required and validated like kit/repo/app; it is the gallery root, arena.py appends mockups/<letter>/."
+  - "Before any refusal can return, seat_gate.py --preview P deletes every *.png under P/mockups/ (nothing else) and the workflow requires `gallery cleared P/mockups pngs=0`, so a run refused anywhere never leaves the previous run's sets in the gallery."
+acceptance:
+  - text: "WHEN the arsenal report is missing, stale, future-dated, torn, lacks a row or says another status, THEN seat_gate prints `dead <seat>: <reason>`; WHEN the kit is missing or inside a git checkout, THEN it prints one `refused:` line and no seat line; its report path and seat names are the probe's."
+    probe: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_kbli_design_seat_gate.py"
+  - text: "WHEN two _job processes race on one grant, THEN the fake agy ran once, one lands and the other prints `refused: r1/b has no pending grant for gemini`."
+    probe: "same pytest, test_two_jobs_racing_on_one_grant_launch_the_seat_once"
+  - text: "WHEN kit/repo/app/preview carries ;touch, $(..), backticks, && or is relative, THEN the workflow throws with zero agent() calls; WHEN seat_gate prints no live line for a seat, THEN it is never dispatched; WHEN every seat is live and every tool prints its clean line, THEN the run reaches `arena.py --kit <KIT> --preview <PREVIEW>` and returns the arena path. 5/5 pass; 5/5 fail on main's workflow."
+    probe: "node --test infra/workflows/tests/test-kbli-nav-design-contract.mjs"
+  - text: "WHEN arena.py runs with --preview P, THEN the renders are exactly P/mockups/<letter>/<screen>.png for every letter and screen (the folder build_preview.py scans), and the workflow returns gallery = P/mockups; args.preview is therefore the gallery ROOT (~/BATTAGLIA-<date>/PREVIEW-kbli-nav-design), not its mockups/ child."
+    probe: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_kbli_design_probe_arena.py -k stable_mapping (+ the contract suite's happy path)"
+  - text: "WHEN the gallery holds the previous run's renders and the new run's arena refuses, THEN mockups/ is empty after the run (the contract suite runs the real seat_gate.py on a temp gallery); WHEN the kit is refused, THEN the gallery is still emptied first, non-PNG files and site-now/ untouched; WHEN seat_gate prints pngs=2 or no gallery line, THEN the run refuses before any dispatch."
+    probe: "node --test infra/workflows/tests/test-kbli-nav-design-contract.mjs; pytest scripts/tests/test_kbli_design_seat_gate.py"
+  - text: "WHEN a grader or refuter reads its brief, THEN it is told the FIRST line must be `VERDICT: PASS|DEFECT` with no preamble, or the set is excluded (matching arena.py's fail-closed rule)."
+    probe: "pytest scripts/tests/test_kbli_design_seat_gate.py -k first_line"
+consumer_map:
+  - "infra/workflows/kbli-nav-design.js: phase Arsenal runs seat_gate.py through its courier and gates on `kit ok` and `live <seat>`; phase Arena passes --preview to arena.py, whose renders build_preview.py collects."
+  - ".github/workflows/workflows-tests.yml runs every infra/workflows/tests/*-contract*.mjs, so the new suite runs on every PR."
+risks:
+  - "A stale arsenal report suspends the contest until the arsenal is re-probed, by design (fail-closed)."
+  - "seat_io.py called by hand on a missing kit still tracebacks; the workflow cannot reach it because seat_gate refuses first. Residual, declared."
+  - "content_pack --verify naming the drifted code (A1 gate N3, optional) is not done here."
+  - "arena.py's redaction list lacks Kimi, Qwen, GLM, DeepSeek, Llama and Grok (A3' gate note): arena.py is not edited here, so it stays a residual for an arena successor. None of those seats builds in this contest."
+  - "Slightly over 400 net with this brief: the contract suite is 206 lines once Prettier formats it."
+grader: |
+  One cross-family refuter round, codex gpt-5.6-sol at xhigh, read-only from an empty directory with
+  the diff and the binding notes inlined, VERDICT first: DEFECT, two objections, both rejected with
+  evidence. "JS `$` accepts a final newline, so `/tmp/p\n` passes": false in JavaScript without the m
+  flag (node: /^\/[A-Za-z0-9._\/-]+$/.test("/tmp/p\n") === false; that is Python's `$`); the case is
+  now in the contract suite anyway. "SEATS restates the names instead of deriving them from
+  ALL_SEATS": the three seats are the contest's choice (Sol, Gemini, the NLM witness), not the roster;
+  a test pins them as a subset of the probe's ALL_SEATS and pins the workflow's isLive names to them.
+  The gallery-clearing delta (A3' gate binding) had one more round on the delta only: DEFECT, one
+  objection, kept and folded — seat_gate normalised a trailing-slash preview, so the workflow's exact
+  `gallery cleared ${PREVIEW}/mockups pngs=0` match would refuse a valid run; it now echoes the
+  argument as given (test red on the pre-fix file).
+  (An earlier local draft with an arena hunk had its own round: one trailing-slash objection folded,
+  one mode-644 objection rejected.) A fresh Opus 5.5 gate session signs harness/fable-gate on this
+  head sha; this session does not.

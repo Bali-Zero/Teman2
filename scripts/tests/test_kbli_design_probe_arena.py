@@ -155,7 +155,8 @@ def test_arena_seals_a_stable_mapping_and_links_only_blind_copies(tmp_path: Path
     page = (kit / "arena.html").read_text(encoding="utf-8")
     assert "mockups/" not in page and ".html" not in page and not re.search(r"sol\b|gemini|claude|gpt", page, re.I)
     assert "solid console, Solana" in page and "(r1)" not in page and "repair" not in page
-    assert len(list((tmp_path / "preview/mockups").rglob("*.png"))) == 16
+    shots = sorted(x.relative_to(tmp_path / "preview").as_posix() for x in (tmp_path / "preview").rglob("*.png"))
+    assert shots == sorted(f"mockups/{L}/{s}.png" for L in mapping for s in GRIDS)  # build_preview.py scans mockups/**
     run("arena.py", "--kit", str(kit))
     assert json.loads((kit / "mapping.json").read_text()) == mapping
 
