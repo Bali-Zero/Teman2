@@ -29,8 +29,10 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -46,6 +48,8 @@ DEFAULT_STATE = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger"
 LABEL = "localci:merge"
 ARM_LABEL, ARM_ENV, ARM_ROLES = "localci:merge-shadow-ok", "LOCALCI_MERGER_ARMED", ("admin", "maintain")   # the two halves of the arm
 AUTHOR = "localci-merger"
+PHASE_F_ENV, KEY_FILE, HALT_FILE = "LOCALCI_MERGER_PHASE_F", "deploy_key", "phase_f_halt"   # F2: the env half of the arm, the key and the sticky halt in the state dir
+PUSH_TIMEOUT_S = 120
 PHASE_E = "phase E not armed: see docs/specs/localci-sovereign-2026-10-07.md"
 REPLAY_NOTE = "B11 replay: the hosted verdict is read on the merge commit GitHub put on main, the very candidate judged here"
 REPLAY_KEPT = "replay: the same tree on both sides, never stale"
@@ -66,6 +70,9 @@ _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 # A compared merge (spec §2 phase D, ruled 2026-10-08): >= 12 contexts compared on both sides, >= 11 of them full and at most one
 # partial, named on the line. The arithmetic the real matrix allows: 14 required - 2 CodeQL (hosted-only, never executed here)
 # - 1 E2E (partial: no repository secrets) = 11 full. An unrecorded coverage counts toward none of the three.
+READY_MIN_MERGES, READY_MIN_DAYS = 50, 14   # phase D's READY (spec §2): the report and the tick's precheck both read these
+READY_SPAN_SLACK_DAYS = 1   # the report's span runs on GitHub's merged_at, which can precede its own decision line by up to one tick: the precheck's window starts a day earlier so it never says false while READY is true
+KNOWN_HOSTS_FILE = "known_hosts"   # F2: github.com's host key, pinned by the operator in the state dir; the push trusts nothing else
 MIN_COMPARED_CONTEXTS = 12
 MIN_COMPARED_FULL = 11      # implied by the two around it (12 - at most 1 partial); stated because the ruling states it
 MAX_COMPARED_PARTIAL = 1
@@ -253,7 +260,7 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str) -> tuple
 
 
 # ------------------------------------------------------------------ candidate + gate
-def ensure_mirror(state: Path, url: str, seed: str | None) -> Path:
+def ensure_mirror(state: Path, url: str, seed: str | None, push_url: str | None = None) -> Path:
     """A bare clone owned by the merger (seeded by a local hardlink clone when given), fetched from ``url``."""
     repo = state / "repo.git"
     if not (repo / "HEAD").exists():
@@ -261,6 +268,8 @@ def ensure_mirror(state: Path, url: str, seed: str | None) -> Path:
         git(None, "clone", "--bare", "--quiet", "--no-tags", seed or url, str(repo), timeout=7200)
     if git(repo, "remote", "get-url", "origin").stdout.strip() != url:
         git(repo, "remote", "set-url", "origin", url)
+    if push_url and git(repo, "remote", "get-url", "--push", "origin").stdout.strip() != push_url:
+        git(repo, "remote", "set-url", "--push", "origin", push_url)   # F2: fetch over one URL, push over the deploy key's
     return repo
 
 
@@ -444,7 +453,7 @@ def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path,
 ENQUEUE_BASE = "main"
 _LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
 PR_QUERY = ("query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
-            " id state isDraft isCrossRepository baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
+            " id state title isDraft isCrossRepository baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
             " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
             " __typename ... on LabeledEvent { label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
 
@@ -600,13 +609,14 @@ def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
     return out
 
 
-def merge_shadow_step(state: Path, repo_dir: Path, enq: dict, base: str = "main") -> dict:
+def merge_shadow_step(state: Path, repo_dir: Path, enq: dict, base: str = "main", a=None, decision: dict | None = None) -> dict:
     """Phase F, shadow (spec Phase F, F1): rehearse the merge of the decided head onto the mirror's current main and journal ONE
     ``would_merge`` line. ``git merge-tree --write-tree`` is plumbing: it writes objects into the mirror's object store and never a
     ref, a worktree or the index, and nothing here pushes. ``base_current`` asks GitHub, the authority until phase F proper: a
     read-only ``git ls-remote`` (no ref, no object) gives ``remote_main``, because the tick fetches the mirror once and a gate run
     can outlast several merges. A failure of any git call lands on the line as ``error`` (``ok`` false); nothing raises into the
-    decision."""
+    decision. F2: the line carries ``phase_f {armed, why}``; only when every arming condition holds (``phase_f_arming``) does the
+    same call go on to ``phase_f_merge`` — the one path that writes a ref, here or on GitHub."""
     head, base_sha = enq["head_sha"], enq["base_sha"]
     crit = enq.get("criterion") if isinstance(enq.get("criterion"), dict) else {}
     line = {"kind": "would_merge", "pr": enq["pr"], "head_sha": head, "base_sha": base_sha, "mirror_main": None, "remote_main": None, "base_current": False,
@@ -641,9 +651,246 @@ def merge_shadow_step(state: Path, repo_dir: Path, enq: dict, base: str = "main"
     if errors:
         line["error"] = "; ".join(errors)[-500:]
     line["ok"] = bool(crit) and all(crit.values()) and line["base_current"] and line["clean"]   # head_unchanged is one of crit's own terms
+    pull, line["phase_f"] = phase_f_arming(a, state, repo_dir, enq, line, base)
     out = journal(state, line)
-    print(f"merger: #{out['pr']} would_merge ok={out['ok']} clean={out['clean']} base_current={out['base_current']} tree={str(out['merge_tree'])[:12]}")
+    print(f"merger: #{out['pr']} would_merge ok={out['ok']} clean={out['clean']} base_current={out['base_current']} tree={str(out['merge_tree'])[:12]}"
+          f" phase_f={'armed' if out['phase_f']['armed'] else 'disarmed'}")
+    if out["phase_f"]["armed"]:
+        phase_f_merge(state, repo_dir, enq, out, pull, decision or {}, base)
     return out
+
+
+# ------------------------------------------------------------------ phase F, the executor (F2): disarmed unless every condition holds
+def key_problem(state: Path) -> str | None:
+    """Why the deploy key cannot be used, or None. Only ``lstat`` is read: the key's content is never opened here, and a symlink
+    is not a regular file."""
+    try:
+        st = os.lstat(state / KEY_FILE)
+    except FileNotFoundError:
+        return f"{KEY_FILE} missing"
+    except OSError as exc:
+        return redact(f"{KEY_FILE} unreadable: {type(exc).__name__}")
+    if not stat.S_ISREG(st.st_mode):
+        return f"{KEY_FILE} is not a regular file"
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        return f"{KEY_FILE} mode {stat.S_IMODE(st.st_mode):04o}, not 0600"
+    if st.st_uid != os.geteuid():
+        return f"{KEY_FILE} is not owned by the running user"
+    return None
+
+
+def halt_reason(state: Path) -> str | None:
+    p = state / HALT_FILE
+    if not os.path.lexists(p):
+        return None
+    try:
+        return redact(p.read_text().strip() or "no reason recorded")[-200:]
+    except (OSError, ValueError):   # a halt file that is not UTF-8 still halts
+        return "unreadable"
+
+
+def halt(state: Path, why: str) -> None:
+    atomic_write(state / HALT_FILE, json.dumps({"ts": now(), "host": HOST, "why": redact(why)}) + "\n")
+
+
+def pr_view(a, n: int) -> dict:
+    owner, name = a.repo.split("/")
+    p = (gh_graphql(PR_QUERY, owner=owner, name=name, number=n).get("repository") or {}).get("pullRequest")
+    if not isinstance(p, dict):
+        raise GraphQLError(f"#{n} is not a pull request of {a.repo}")
+    return p
+
+
+def ready_precheck(state: Path) -> str | None:
+    """A reason READY cannot be true yet, from the journal ALONE (no GitHub read), or None when it cannot be ruled out. Only ever
+    short-circuits to false. Necessary conditions of the report's READY: its span (first to last compared merge) fits inside the
+    journal's first decision (less one day of slack: a merge's ``merged_at`` can precede its own decision line by up to one tick) and
+    now, and a compared merge needs a decided PR of its own."""
+    try:
+        decisions = [r for r in strict_journal(state) if r.get("kind") == "decision"]
+        if not decisions:
+            return "READY false: no decision in the journal"
+        days = _days(min(str(r["ts"]) for r in decisions), now())
+        if days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS:
+            return f"READY false: journal window {int(days * 10) / 10:.1f} days (+{READY_SPAN_SLACK_DAYS} of slack) < {READY_MIN_DAYS}"
+        decided = len({r.get("pr") for r in decisions})
+        if decided < READY_MIN_MERGES:
+            return f"READY false: {decided} distinct decided PRs < {READY_MIN_MERGES}"
+    except Exception:  # noqa: BLE001 — an unreadable journal rules nothing out: the full report says why it refuses
+        return None
+    return None
+
+
+def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: str) -> tuple[dict, dict]:
+    """(the PR as read now, ``{armed, why}``): ``armed`` only when every condition holds, checked now, and ``why`` names each that
+    does not. Nothing here writes. The local conditions come first; READY (the journal precheck, then the report's own function —
+    minutes and hundreds of GitHub reads) is evaluated ONLY when ``LOCALCI_MERGER_PHASE_F`` is "1" and every local condition already
+    holds, else ``why`` says ``READY not evaluated``. The PR re-read is last and only happens when all else holds. An unreadable
+    condition is a false one."""
+    why: list[str] = []
+    pull: dict = {}
+    if os.environ.get(PHASE_F_ENV) != "1":
+        why.append(f"{PHASE_F_ENV} unset")
+    if (bad := key_problem(state)):
+        why.append(bad)
+    crit = enq.get("criterion") if isinstance(enq.get("criterion"), dict) else {}
+    if not (enq.get("ok") is True and crit and all(crit.values())):
+        why.append("criterion false: " + (", ".join(k for k, v in crit.items() if not v) or "none recorded"))
+    if enq.get("kind") != "would_enqueue":
+        why.append(f"enqueue step {enq.get('kind')!r}, not 'would_enqueue' (GitHub's merge queue path owns this PR: LOCALCI_MERGER_ARMED must be unset in phase F)")
+    if line.get("base_current") is not True:
+        why.append("base_current false")
+    if line.get("clean") is not True:
+        why.append("merge not clean")
+    if line.get("mirror_main") != line.get("base_sha"):
+        why.append("mirror main is not the decided base")
+    if (tree := judged_tree(repo_dir, enq)) is None:
+        why.append("judged candidate tree unreadable")
+    elif tree != line.get("merge_tree"):
+        why.append("merged tree differs from the judged candidate tree")
+    if (reason := halt_reason(state)) is not None:
+        why.append(f"{HALT_FILE} present: {reason}")
+    if why:
+        why.append("READY not evaluated")
+    elif a is None:
+        why.append("READY unreadable: no tick context")
+    elif (early := ready_precheck(state)):
+        why.append(early)
+    else:
+        try:
+            _, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)
+            if rep.get("refused"):
+                why.append(f"READY unreadable: {rep['refused']}")
+            elif rep.get("phase_e_ready") is not True:
+                why.append("READY false")
+        except Stopped:
+            raise
+        except Exception as exc:  # noqa: BLE001 — READY that cannot be computed is not READY
+            why.append(redact(f"READY unreadable: {type(exc).__name__}: {exc}"))
+    if a is not None and not why:   # the head, re-read at the moment of merging: only when nothing else already says no (a disarmed tick adds no call)
+        try:
+            pull = pr_view(a, enq["pr"])
+            if pull.get("headRefOid") != enq["head_sha"]:
+                why.append(f"head_unchanged false: the PR head is {pull.get('headRefOid')} now")
+            if pull.get("state") != "OPEN":
+                why.append(f"PR state {pull.get('state')}")
+            if pull.get("isInMergeQueue") is not False:
+                why.append("the PR is in GitHub's merge queue now")
+            if pull.get("isDraft") is not False:
+                why.append("the PR is a draft now")
+            if pull.get("baseRefName") != a.base:
+                why.append(f"PR base {pull.get('baseRefName')!r}, not {a.base!r}")
+            if ARM_LABEL not in {lb.get("name") for lb in (pull.get("labels") or {}).get("nodes") or [] if isinstance(lb, dict)}:
+                why.append(f"label {ARM_LABEL} absent at the moment of merging")
+        except Stopped:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            why.append(redact(f"head re-read failed: {type(exc).__name__}: {exc}"))
+    return pull, {"armed": not why, "why": why}
+
+
+def judged_tree(repo_dir: Path, enq: dict) -> str | None:
+    """The tree of the candidate the gate judged (``candidate_sha``), or None when it cannot be read."""
+    cand = enq.get("candidate_sha")
+    if not is_sha(cand):
+        return None
+    try:
+        tree = git(repo_dir, "rev-parse", "--verify", "--quiet", f"{cand}^{{tree}}", check=False).stdout.strip()
+    except Stopped:
+        raise
+    except Exception:  # noqa: BLE001 — a tree that cannot be read is not the judged one
+        return None
+    return tree if is_sha(tree) else None
+
+
+def merge_message(repo_dir: Path, enq: dict, pull: dict, decision: dict) -> tuple[str, str]:
+    n, head = enq["pr"], enq["head_sha"]
+    title = " ".join(str(pull.get("title") or "").split()) or git(repo_dir, "log", "-1", "--format=%s", head).stdout.strip()
+    subject = title if title.endswith(f"(#{n})") else f"{title} (#{n})"
+    bites = next((ln.strip() for ln in str(pull.get("body") or "").splitlines() if BITES_RE.match(ln)), None)
+    body = [f"Merged by {AUTHOR} (localci phase F): head {head}, base {enq['base_sha']}.",
+            f"Decision: {decision.get('ts')} lease {enq.get('lease_id')} run_dir {decision.get('run_dir')}"]
+    return subject, "\n".join(body + ([bites] if bites else []))
+
+
+def push_ssh_command(state: Path) -> str:
+    """The one ssh the push runs: no user config, no agent, only the deploy key, and only the host key the operator pinned in the
+    state dir — the system-wide known_hosts is not read either (the key's PATH, never its content, is all this string holds; it
+    reaches the push subprocess alone)."""
+    known = f"UserKnownHostsFile={state / KNOWN_HOSTS_FILE}"
+    return (f"ssh -F /dev/null -o IdentityAgent=none -i {shlex.quote(str(state / KEY_FILE))} -o IdentitiesOnly=yes -o BatchMode=yes "
+            "-o GlobalKnownHostsFile=/dev/null "
+            f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")
+
+
+def phase_f_merge(state: Path, repo_dir: Path, enq: dict, wm: dict, pull: dict, decision: dict, base: str) -> None:
+    """The armed path: (1) the merge commit in the mirror — ``commit-tree`` writes an object and no ref, so nothing half-written can
+    exist — on top of ``refs/merger/base``, (2) ``merged`` journalled, (3) a plain fast-forward push of that commit to GitHub's main,
+    never forced: any rejection or error is ``push_refused`` plus the sticky halt file; only a push that landed moves
+    ``refs/merger/base`` and journals ``pushed``."""
+    n, head, old = enq["pr"], enq["head_sha"], wm["mirror_main"]
+    try:
+        subject, body = merge_message(repo_dir, enq, pull, decision)
+        ident = {f"GIT_{who}_{what}": val for who in ("AUTHOR", "COMMITTER") for what, val in (("NAME", AUTHOR), ("EMAIL", f"{AUTHOR}@localhost"))}
+        commit = git(repo_dir, "commit-tree", wm["merge_tree"], "-p", old, "-p", head, "-m", subject, "-m", body, env=ident).stdout.strip()
+        if not is_sha(commit) or git(repo_dir, "rev-parse", f"{commit}^{{tree}}").stdout.strip() != wm["merge_tree"]:
+            raise MergerError("the merge commit does not carry the rehearsed tree")
+    except Stopped:
+        raise
+    except Exception as exc:  # noqa: BLE001 — no commit, no push, and nothing sticky: the next decision retries
+        journal(state, {"kind": "merge_error", "pr": n, "head_sha": head, "base_sha": enq["base_sha"], "error": redact(f"{type(exc).__name__}: {exc}"),
+                        "lease_id": enq.get("lease_id")})
+        print(f"merger: #{n} merge_error — {redact(exc)}", file=sys.stderr)
+        return
+    journal(state, {"kind": "merged", "pr": n, "head_sha": head, "base_sha": enq["base_sha"], "merge_commit": commit, "tree": wm["merge_tree"],
+                    "subject": subject, "decision_ts": decision.get("ts"), "run_dir": decision.get("run_dir"), "lease_id": enq.get("lease_id")})
+    try:
+        res = git(repo_dir, "push", "origin", f"{commit}:refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}, check=False, timeout=PUSH_TIMEOUT_S)
+        err = None if res.returncode == 0 else f"rc={res.returncode}: {redact(res.stderr.strip()[-300:])}"
+    except Exception as exc:  # noqa: BLE001 — a push of unknown outcome is a refusal until an operator looks; a Stopped one halts too, BEFORE it propagates
+        err = redact(f"{type(exc).__name__}: {exc}")
+        if isinstance(exc, Stopped):
+            halt(state, f"push of {commit} for #{n} interrupted, outcome unknown: {err}")
+            raise
+    except BaseException as exc:
+        halt(state, f"push of {commit} for #{n} interrupted, outcome unknown: {type(exc).__name__}")
+        raise
+    if err:
+        halt(state, f"push of {commit} for #{n} refused: {err}")   # the halt first: a journal line that fails to write must not leave the door open
+        journal(state, {"kind": "push_refused", "pr": n, "head_sha": head, "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})
+        print(f"merger: #{n} push_refused — halted ({state / HALT_FILE})", file=sys.stderr)
+        return
+    updated = git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0
+    journal(state, {"kind": "pushed", "pr": n, "head_sha": head, "base_sha": enq["base_sha"], "merge_commit": commit, "mirror_updated": updated,
+                    "lease_id": enq.get("lease_id")})
+    print(f"merger: #{n} merged {commit[:12]} onto {base} and pushed")
+
+
+def push_url_of(a) -> str | None:
+    """Where phase F pushes: ``--push-url`` when given; else, on the default GitHub fetch URL, the ssh form the deploy key is registered
+    for (the https URL has no write credential); with a custom ``--remote-url`` (a test's bare repo) the push goes to that URL."""
+    return a.push_url or (None if a.remote_url else f"git@github.com:{a.repo}.git")
+
+
+def fetch_base(a, state: Path, repo_dir: Path, recs: list[dict]) -> bool:
+    """Fetch GitHub's main into ``refs/merger/base``. Once phase F has pushed, the mirror's main is the authority: a fetched main
+    that is not a descendant of the last pushed merge commit is ``storage_diverged`` — journalled, the sticky halt written, the
+    mirror's main kept — instead of rewinding it. Returns False when it diverged."""
+    refspec = f"refs/heads/{a.base}"
+    anchor = next((r["merge_commit"] for r in reversed(recs) if r.get("kind") == "pushed" and is_sha(r.get("merge_commit"))), None)
+    if anchor is None or halt_reason(state) is not None:
+        git(repo_dir, "fetch", "--no-tags", "--quiet", "origin", f"+{refspec}:refs/merger/base")
+        return True
+    git(repo_dir, "fetch", "--no-tags", "--quiet", "origin", f"+{refspec}:refs/merger/incoming")
+    incoming = git(repo_dir, "rev-parse", "refs/merger/incoming^{commit}").stdout.strip()
+    if git(repo_dir, "merge-base", "--is-ancestor", anchor, incoming, check=False).returncode == 0:
+        git(repo_dir, "update-ref", "refs/merger/base", incoming)
+        return True
+    journal(state, {"kind": "storage_diverged", "last_pushed": anchor, "github_main": incoming,
+                    "mirror_main": git(repo_dir, "rev-parse", "--verify", "--quiet", "refs/merger/base^{commit}", check=False).stdout.strip() or None})
+    halt(state, f"storage diverged: GitHub's {a.base} {incoming} is not a descendant of the last pushed merge {anchor}")
+    print(f"merger: storage_diverged — GitHub's {a.base} {incoming[:12]} does not contain {anchor[:12]}; halted ({state / HALT_FILE})", file=sys.stderr)
+    return False
 
 
 def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str, replay: dict | None = None) -> int:
@@ -710,7 +957,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         enq = enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": cand_sha, "lease_id": lease_id},
                            loc, live)
         try:
-            merge_shadow_step(state, repo_dir, enq, a.base)
+            merge_shadow_step(state, repo_dir, enq, a.base, a, line)
         except Stopped:
             raise
         except Exception as exc:  # noqa: BLE001 — a shadow never turns a decision into a second, ERROR one
@@ -766,12 +1013,13 @@ def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | N
 
 
 def tick(a, state: Path, lease_id: str) -> int:
-    repo_dir = ensure_mirror(state, a.remote_url or f"https://github.com/{a.repo}.git", a.seed)
+    repo_dir = ensure_mirror(state, a.remote_url or f"https://github.com/{a.repo}.git", a.seed, push_url_of(a))
     shutil.rmtree(state / "cand", ignore_errors=True)   # a killed tick's leftovers: nothing else uses them while the lease is ours
     git(repo_dir, "worktree", "prune", check=False)
-    git(repo_dir, "fetch", "--no-tags", "--quiet", "origin", f"+refs/heads/{a.base}:refs/merger/base")
-    base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
     recs = read_journal(state)
+    if not fetch_base(a, state, repo_dir, recs):
+        return 1
+    base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
     todo, forks = triage(open_prs(a.repo, a.base), a.repo, recs, base_sha)
     for pr in forks:
         journal(state, {"kind": "refused", "why": "fork", "pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha, "lease_id": lease_id})
@@ -924,6 +1172,12 @@ def queue_sha(a, pr: dict, d: dict, parents: dict) -> str:
 
 
 def cmd_report(a) -> int:
+    return report(a)[0]
+
+
+def report(a, emit: bool = True) -> tuple[int, dict]:
+    """The report's one implementation: ``(rc, out)``. ``emit=False`` computes and returns without a file or a line — the tick's
+    phase F READY check reads ``out["phase_e_ready"]`` from this very function, so the thresholds exist once."""
     state = Path(a.state_dir).expanduser().resolve()
     prs: dict = {}
     lives: dict = {}
@@ -1010,8 +1264,9 @@ def cmd_report(a) -> int:
             if red:
                 hosted_red_merged.append({"pr": n, "merge_commit_sha": mc, "red": red})
     except (hc.CompareError, OSError, KeyError, TypeError, AttributeError) as exc:
-        print(f"merger report: refusing — {exc}", file=sys.stderr)
-        return 2
+        if emit:
+            print(f"merger report: refusing — {exc}", file=sys.stderr)
+        return 2, {"phase_e_ready": False, "refused": redact(f"{type(exc).__name__}: {exc}")}
     counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
     first, last = (rows[0]["ts"], rows[-1]["ts"]) if rows else (None, None)
     days = _days(first, last) if rows else 0.0
@@ -1038,9 +1293,11 @@ def cmd_report(a) -> int:
     merged_skip_agreed = sum({r["pr"]: len(r["compared_skip_agreed"]) for r in rows if r["compared_merge"]}.values())   # a PR counts once
     compared_days = _days(merges[0], merges[-1]) if merges else 0.0
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
-    ready = fg == 0 and compared_merges >= 50 and compared_days >= 14   # lead's ruling 2026-10-07: both, never either
+    ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS   # lead's ruling 2026-10-07: both, never either
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
     errors = sum(1 for r in window if r.get("kind") == "error")
+    n_merged, n_refused = (sum(1 for r in window if r.get("kind") == k) for k in ("merged", "push_refused"))
+    phase_f = "shadow" if not (n_merged or n_refused) else f"armed ({n_merged} merged, {n_refused} refused)"   # F2: the journal says what ran
     enqueue = {k: sum(1 for r in window if r.get("kind") == k) for k in ("enqueued", "enqueue_refused", "enqueue_error")}
     enqueue["would_enqueue"] = sum(1 for r in window if r.get("kind") == "would_enqueue" and r.get("ok") is True)   # every sub-criterion true
     wm = [r for r in window if r.get("kind") == "would_merge"]   # phase F, shadow: the merge rehearsed, never made
@@ -1063,8 +1320,10 @@ def cmd_report(a) -> int:
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
-           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "phase_f": "shadow", "rows": rows,
+           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
+    if not emit:
+        return (1 if fg else 0), out
     atomic_write(state / "report.json", json.dumps(out, indent=2) + "\n")
     print(f"{'PR':7} {'HEAD':12} {'BASE':12} {'MERGER':11} {'GITHUB':7} {'MERGED':6} CLASS")
     for r in rows:
@@ -1088,6 +1347,7 @@ def cmd_report(a) -> int:
           + f" | false_green recorded at tick time={recorded_raw} (still false_green={recorded_fg})")
     print(f"phase F shadow: would_merge={would_merge['total']} (ok={would_merge['ok']}, conflicted={would_merge['conflicted']}, "
           f"base_moved={would_merge['base_moved']}, errors={would_merge['errors']}) — rehearsed with merge-tree, nothing merged, nothing pushed")
+    print(f"phase F executor: {phase_f}" + (f" — HALTED ({state / HALT_FILE}): no merge until an operator removes it" if out["phase_f_halted"] else ""))
     stale_note = (f"(recorded={recorded_raw}, reclassified HOSTED_STALE={len(reclassified)}: ["
                   + ", ".join(f"pr{x['pr']} {x['context']}: main moved {', '.join(x['main_moved_paths'][:3])}"
                               + (", …" if x["main_moved_count"] > 3 else "") + f" after hosted ran {x['hosted_completed_at']}" for x in reclassified) + "]"
@@ -1105,7 +1365,7 @@ def cmd_report(a) -> int:
           f"hosted_red_merged={len(hosted_red_merged)} (information: GitHub merged a red required check; the hosted failure itself never "
           f"blocks READY, a local false green on it does); enqueued={enqueue['enqueued']} would_enqueue={enqueue['would_enqueue']} "
           f"enqueue_refused={enqueue['enqueue_refused']} enqueue_error={enqueue['enqueue_error']}")
-    return 1 if fg else 0
+    return (1 if fg else 0), out
 
 
 def compared_enough(full: int, partial: int) -> bool:
@@ -1249,6 +1509,7 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--state-dir", default=str(DEFAULT_STATE))
     t.add_argument("--seed", help="local clone to hardlink objects from when the mirror is first created")
     t.add_argument("--remote-url", help="fetch URL (default https://github.com/<repo>.git)")
+    t.add_argument("--push-url", help="F2: push URL of the mirror's origin when it differs from the fetch URL (the deploy key's ssh URL)")
     t.add_argument("--python", default=sys.executable, help="interpreter that runs the BASE runner")
     t.add_argument("--run-timeout", type=int, default=5400, help="seconds for the runner's `run` step")
     t.add_argument("--tick-timeout", type=int, default=9000, help="watchdog for the whole tick; past it the decision is ERROR")
@@ -1283,8 +1544,9 @@ def main(argv: list[str] | None = None) -> int:
         if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", a.repo) or not re.match(r"^[A-Za-z0-9_./-]+$", a.base) or ".." in a.base:
             print(f"merger: refusing repo {a.repo!r} / base {a.base!r}", file=sys.stderr)
             return 2
-        if a.remote_url and re.match(r"^[a-z+]+://[^/]*@", a.remote_url):
-            print("merger: refusing a --remote-url that carries credentials: they would be stored in the mirror's config", file=sys.stderr)
+        userinfo = lambda u: re.match(r"^([a-z+]+)://[^/]*@", u or "", re.I)   # noqa: E731
+        if (userinfo(a.remote_url) or ((m := userinfo(a.push_url)) and m[1].lower() not in ("ssh", "git+ssh", "ssh+git"))):   # ssh's user is a name, any other userinfo is a credential
+            print("merger: refusing a --remote-url / --push-url that carries credentials: they would be stored in the mirror's config", file=sys.stderr)
             return 2
         return cmd_tick(a)
     ap.print_help()

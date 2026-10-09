@@ -92,6 +92,17 @@ Phase E never precedes D. If D shows a false green, the flip waits and the execu
 **What stays with Subhi.** The showroom export (which capability, its closure, its acceptance from a clean checkout) and when the old repository is deleted. The local CI runs the showroom's checks the same way (a second `contexts_matrix.yaml` for that repository, BASE-trusted, receipts and seals) — a phase G once the first export exists.
 
 _Status._ F1 (shadow `would_merge` lines, the merge rehearsed with `git merge-tree --write-tree` against GitHub's main read with `git ls-remote`, no ref written, nothing pushed) shipped 2026-10-09.
+_Status._ F2 (the executor, disarmed by construction) built 2026-10-10: `merger.py` merges and pushes only when ALL hold at the moment of merging, each failing one named in `phase_f.why` on the `would_merge` line — `LOCALCI_MERGER_PHASE_F=1`; READY recomputed in the tick by the report's own function (evaluated only when the env half and every local condition already hold, so a disarmed tick pays for neither the precheck nor the report); the enqueue step `would_enqueue` (`LOCALCI_MERGER_ARMED` unset in phase F) and F1's tree equal to the judged candidate's; `<state>/deploy_key` a regular file, 0600, owned by the running user; the C3a-2 criterion as `enqueue_step` computed it; F1's `clean` and `base_current`; the PR head re-read; no sticky `<state>/phase_f_halt`. The merge commit is made with `commit-tree` (parents: base, head; subject `<title> (#N)`), the push is plain (a rejection is `push_refused` plus the sticky halt), and the fetch refuses to rewind a main phase F pushed (`storage_diverged`, halt). Not armed anywhere: the armed path's live proof is owed to the day READY holds.
+
+**Arming checklist (phase F proper), in this order.** `main` also carries CLASSIC branch protection (14 required status checks, required pull-request reviews present with 0 approvals, `enforce_admins` true), which no deploy key can bypass: a direct push to `main` is refused until it is removed. The DeployKey bypass on `merge-queue-main` is necessary but not sufficient.
+
+1. Phase D READY (`merger.py report` reads `phase E READY`).
+2. The write deploy key generated on Pro at `<state>/deploy_key` (0600, owned by the tick's user, never printed) and registered on the repository with write, and github.com's host key pinned into `<state>/known_hosts` (the push runs `StrictHostKeyChecking=yes` against that file alone) — operator[secret].
+3. The phase E flip: `scripts/localci/phase_e_flip.py --apply` (lands in its own PR, not on main yet): `merge-queue-main` restricted to updates with the DeployKey bypass, then the classic protection deleted — operator[gui].
+4. The live wrapper re-installed and identical to main's (`cmp -s` of `~/.nuzantara-cron/localci_merger_tick.sh` against an `origin/main` checkout — until then it force-fetches `refs/merger/base`, and a storage divergence rewinds it), and `LOCALCI_MERGER_ARMED` unset (with it set, every armed decision is `enqueued` into GitHub's queue and phase F never acts).
+5. `LOCALCI_MERGER_PHASE_F=1` in the tick's environment (the launchd plist) — only after steps 3 and 4, because before them the first push is refused and writes the sticky halt.
+
+Until then every `would_merge` line says `armed: false` and names why. To stop: remove the env, or `touch <state>/phase_f_halt`. To resume after a `push_refused` or `storage_diverged`: read the reason in the halt file and the journal, reconcile GitHub's main with the mirror, then remove the file.
 
 ## 3. What is lost, and what covers it
 

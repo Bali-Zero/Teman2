@@ -432,6 +432,52 @@ Limits, stated: the runner plans `review.independent` and leaves it QUEUED (bloc
 of a tick leaves its runner child running to the runner's own deadline; the next tick removes the candidate worktree under
 it, so that orphan run is never journalled.
 
+**Phase F, the executor (F2): disarmed by construction.** The same call that journals `would_merge` also decides, now, whether to MERGE. Every
+`would_merge` line carries `phase_f: {armed, why}`; `armed` is true only when ALL of these hold, checked at that moment, and `why` names
+each one that does not (a disarmed tick does exactly what F1 did and adds only this field):
+
+| condition | `why` when false |
+| --- | --- |
+| env `LOCALCI_MERGER_PHASE_F=1` in the tick's environment | `LOCALCI_MERGER_PHASE_F unset` |
+| phase D READY, recomputed from the journal by `report(emit=False)` — the report's own function, so the thresholds (>= 50 compared merges over >= 14 days, 0 FALSE_GREEN) exist once. Evaluated LAST and ONLY when `LOCALCI_MERGER_PHASE_F` is `1` and every local condition in this table already holds (the full report costs about 4 minutes and hundreds of GitHub reads) | `READY false` / `READY unreadable: ...` / `READY not evaluated` (a local condition above is already false) |
+| `<state>/deploy_key` exists, is a regular file (a symlink is not), mode exactly 0600, owned by the running user — read with `lstat` only, its content is never opened | `deploy_key missing` / `mode 0644, not 0600` / `not a regular file` / `not owned by the running user` |
+| the decision meets the C3a-2 criterion exactly as `enqueue_step` computed it (`enq["criterion"]`, every sub-criterion incl. `label_privileged`), and the enqueue step journalled `would_enqueue` — never `enqueued`, `enqueue_refused` or `enqueue_error` (GitHub's merge queue path owns those; `LOCALCI_MERGER_ARMED` must be UNSET in phase F) | `criterion false: <names>` / `enqueue step '<kind>', not 'would_enqueue' ...` |
+| F1's `would_merge`: `clean`, `base_current` (GitHub's main by `ls-remote` == the decided base), the mirror's `refs/merger/base` == the decided base, and the tree F1 rehearsed equals the tree of the candidate the gate judged (`rev-parse <candidate_sha>^{tree}`; a `merge=union` attribute or any merge-strategy difference would make them differ) | `merge not clean` / `base_current false` / `mirror main is not the decided base` / `merged tree differs from the judged candidate tree` / `judged candidate tree unreadable` |
+| the PR re-read at the moment of merging (one GraphQL read, made only when nothing above already says no): head == the decided head, state OPEN, not in the merge queue, not a draft, base == the tick's base and the `localci:merge-shadow-ok` label still present | `head_unchanged false: ...` / `PR state ...` / `the PR is in GitHub's merge queue now` / `the PR is a draft now` / `PR base ...` / `label ... absent at the moment of merging` / `head re-read failed: ...` |
+| no sticky halt file `<state>/phase_f_halt` (present means present: a dangling symlink, a directory or a non-UTF-8 file halts too, reason `unreadable`; the report's `phase_f_halted` follows the same rule) | `phase_f_halt present: <reason>` |
+
+When armed: (1) the merge commit is made in the mirror with `git commit-tree` on the tree F1 rehearsed — it writes an object and no ref, so
+nothing half-written can exist — parents `refs/merger/base` (first) then the decided head, author and committer `localci-merger`, subject
+`<PR title> (#<N>)` (B11's `PR_SUBJECT` recognises it), body = the decision's `ts`, lease id and `run_dir` plus the PR body's `Bites:` line;
+(2) `kind: merged` is journalled (`pr`, `head_sha`, `base_sha`, `merge_commit`, `tree`, `decision_ts`, `run_dir`, `lease_id`); (3)
+`git push origin <merge_commit>:refs/heads/main`, plain, never forced: any rejection, error or timeout is `kind: push_refused` (redacted
+stderr tail) plus the **sticky halt file** `<state>/phase_f_halt` — no further merge until an operator removes it, and the mirror keeps its
+`refs/merger/base`; a push that landed moves `refs/merger/base` to the merge commit and journals `kind: pushed` (`mirror_updated`). A
+failure making the commit is `kind: merge_error`: nothing pushed, no halt, the next decision retries. The key reaches ONLY the push
+subprocess, as `GIT_SSH_COMMAND="ssh -F /dev/null -o IdentityAgent=none -i <state>/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes
+-o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=<state>/known_hosts -o StrictHostKeyChecking=yes"` (no user ssh config, no
+agent, no system-wide known_hosts, only github.com's host key the operator pinned in `<state>/known_hosts`); the runner's env is an allowlist and never sees it. The key's PATH, never its content, can
+appear in a refused push's error line (ssh names the identity file it could not use); the content is never opened by the merger.
+`--push-url` refuses ANY userinfo on a non-ssh scheme (`https://token@...`, `https://u:p@...`, any case): it would be stored in the
+mirror's config; an ssh user (`ssh://git@...`) is a name, not a secret. A push interrupted by SIGTERM or an interrupt writes the sticky
+halt BEFORE the interruption propagates (its outcome is unknown), and a refused push writes the halt BEFORE it journals
+`push_refused`. The push goes to `--push-url` (default, on the GitHub fetch URL: `git@github.com:<repo>.git`, the ssh form a deploy key
+is registered for; `git remote set-url --push` on the mirror).
+
+The fetch no longer rewinds an authoritative main: once a `pushed` line exists and the halt file is absent, the tick fetches GitHub's main
+into `refs/merger/incoming` and takes it only when it is a descendant of (or equal to) the last `pushed` merge commit; otherwise it
+journals `kind: storage_diverged`, writes the halt file, keeps `refs/merger/base` and exits 1. (A merge made but never pushed is no
+anchor. While the halt file exists the fetch is the plain one of before, and the guard fires again the first tick after an operator
+removes the halt, until GitHub's main again contains the last pushed merge.) There is no re-anchor gesture: clearing a halt is an operator act, done only after reconciling GitHub's main with the mirror, and after reading why: a
+`push_refused` can be a plain race (a commit reached GitHub's main between the `ls-remote` and the push).
+
+READY precheck: before the full report (about 4 minutes on Pro's journal, hundreds of GitHub reads) the tick asks the journal alone whether READY can be true yet — the first decision (less `READY_SPAN_SLACK_DAYS` = one day: the report's span runs on GitHub's `merged_at`, which can precede its own decision line by up to one tick) to now under `READY_MIN_DAYS`, or fewer than `READY_MIN_MERGES` distinct decided PRs (both constants are the report's own) — and says `READY false: journal window N.N days (+1 of slack) < 14` without running it. Neither runs unless the env half and every local condition hold: a disarmed tick pays for neither (`READY not evaluated`). The precheck only ever short-circuits to false; past it the full report decides.
+
+Arming order (spec §2 phase F): (1) phase D READY; (2) the deploy key generated on Pro at `<state>/deploy_key` (0600) and registered with write, and github.com's host key pinned into `<state>/known_hosts` (verified out of band against GitHub's published fingerprints; the push uses `StrictHostKeyChecking=yes`, so without it the push is refused and halts) — operator[secret]; (3) the phase E flip, `scripts/localci/phase_e_flip.py --apply` (lands in its own PR, not on main yet): `merge-queue-main` restricted with the DeployKey bypass, then `main`'s classic protection (14 required checks, reviews, `enforce_admins`), which no deploy key bypasses, deleted — operator[gui]; (4) the live wrapper re-installed and identical to main's (`cmp -s ~/.nuzantara-cron/localci_merger_tick.sh scripts/localci/localci_merger_tick.sh` from an `origin/main` checkout — until then it force-fetches `refs/merger/base` and a storage divergence rewinds it) and `LOCALCI_MERGER_ARMED` unset (with it set every armed decision is `enqueued` into GitHub's queue and phase F never acts); (5) `LOCALCI_MERGER_PHASE_F=1` in the tick's environment, only after (3) and (4): before them the first push is refused and writes the sticky halt.
+
+Report: `phase_f` reads `shadow` until the window holds a `merged` or `push_refused` line, then `armed (N merged, M refused)`;
+`phase_f_halted` and the line `phase F executor: ...` (with `HALTED` when the file exists) say the rest; the READY line is unchanged.
+
 ### Report (phase D's instrument)
 
     python scripts/localci/merger.py report [--repo Bali-Zero/Teman2] [--base main] [--state-dir ...] [--since 2026-10-07]
@@ -513,7 +559,10 @@ GitHub read (nothing is counted then), else 0.
 `infra/launchagents/com.balizero.localci-merger.plist`: `StartInterval` 600 s, `RunAtLoad`, no `KeepAlive` (a one-shot,
 superscar #7), `PATH` set explicitly (a tick without `gh` on PATH is an `error` line). It runs
 `~/.nuzantara-cron/localci_merger_tick.sh` (a copy of `scripts/localci/localci_merger_tick.sh`), which drops every inherited `GIT_*`
-variable, fetches `origin/main` into the merger's mirror (a failed fetch is not fatal: the tick journals its own), resolves ONE
+variable, fetches `origin/main` into the merger's mirror under the wrapper's OWN ref `refs/merger/wrapper` (never `refs/merger/base`,
+which is `merger.py`'s `fetch_base` alone: since F2 it is the authority once phase F has pushed, and a force-fetch by the wrapper would
+rewind it before the divergence guard looks; a mirror that predates the ref falls back to `refs/merger/base` read-only; a failed fetch
+is not fatal: the tick journals its own), resolves ONE
 sha and runs `merger.py` and `hosted_compare.py` as committed at it — never a working-tree copy. A failure before Python starts
 (no git, no mirror) writes no journal line; it is in `~/logs/localci-merger.err.log`, and the report's `longest_silence` shows
 the gap. Every exit writes the organ heartbeat `~/.organism/last_seen/pro.localci_merger.json` (`ok`, `error`, `warning` or `disabled`;
