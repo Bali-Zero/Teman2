@@ -723,12 +723,37 @@ another order). The classic body is sent with `checks` only (GitHub refuses `con
 "any" is read as `app_id` null and saved as `-1` (an omitted `app_id` would pin the app that last reported it). Exit codes:
 0 plan printed, applied or nothing to do; 1 refused; 2 bad arguments; 3 a write failed or did not take.
 
+**The write discipline (the invariants every write obeys; written 2026-10-10 after three review rounds kept finding the
+same class — a write sent against a state nobody re-read).**
+- *W1, expected states.* The run computes, from the state the operator confirmed, the state GitHub must show before each write
+  and after the last: flip — before (1) the confirmed state; before (2) the same with the ruleset as the target; after (2) the
+  same without the classic protection. Rollback — before (1) the confirmed live state; before (2) the same with the classic
+  protection as saved; after (2) the same with the ruleset as saved. Before every write after the first, and after the last,
+  a fresh read must equal the expected state component by component: the classic protection (its checks as a set), the
+  `merge-queue-main` ruleset (the target by meaning, any other body exactly), the guard rulesets whole, the write keys, the
+  ruleset's scope, and every rule GitHub applies to the branch (`rules/branches/<branch>`, inherited ones included). A
+  difference stops the run before the next write. GitHub's answer to a write must also show it took; the answer never
+  replaces the fresh read. A fresh read that differs is retried (3 reads, 2 s apart) before it counts, so a read that lags
+  the write is not a failure.
+- *W2, nothing else blocks the key.* Rules layer: a bypass in one ruleset exempts nothing in another. Beside
+  `merge-queue-main`'s own rule, every rule GitHub applies to the branch must be `deletion`, `non_fast_forward` or
+  `copilot_code_review`; any other (an `update`, `pull_request`, `required_status_checks`, `required_signatures`,
+  `required_linear_history` — the merger pushes merge commits — or anything unknown) refuses the plan.
+- *W3, READY is the branch's and the whole journal's.* The report's `base` is the branch, its `since` is null (a window cut
+  by `--since` can drop a FALSE_GREEN), and its numbers are finite JSON numbers (`Infinity` and `NaN` are refused).
+- *W4, a write made is a write owned.* After the first write any failure — a refused write, a divergence, an unexpected
+  error — is exit 3 with the state file and the rollback command, never a traceback that reads as "refused". When a rollback
+  stops after its classic write, the branch is frozen, not open (classic protection and the key-only ruleset): run the plan
+  again, or restore the ruleset by hand from the state file's `ruleset`
+  (`gh api --method PUT repos/<repo>/rulesets/<id> --input <that object>`).
+
 **Arming order (phase F's checklist).** (1) Phase D READY: recompute the report on Pro (`merger.py report`, this section's
 freshness rule) and read `phase_e_ready`. (2) operator[secret]: the merger's deploy key generated on Pro
 (`~/.nuzantara-pilots/local-ci/merger/deploy_key`, 0600, never printed) and registered on the repository with write — the only
 write deploy key; its `.pub` is what `--key-pub` reads. (3) operator[gui]: the plan, read; then `--apply --confirm <digest>` from
 a checkout at `origin/main`, on a host whose `gh` is the owner's (the ruleset and protection writes need admin), with the
-merger's `.pub` copied beside it if that host is not Pro; keep the printed state file. (4) Only then `LOCALCI_MERGER_PHASE_F=1` in the tick's
+merger's `.pub` and a report.json under 2 hours old copied beside it if that host is not Pro (`--key-pub`, `--report`); keep the
+printed state file. (4) Only then `LOCALCI_MERGER_PHASE_F=1` in the tick's
 environment: before (3) the first push is refused and halts. A session runs the plan only and never `--apply`.
 
 ## Tests

@@ -20,6 +20,10 @@ forbidden by the other ruleset (``deletion`` + ``non_fast_forward``, no bypass a
 order of the writes is the safe one: between them nobody moves ``main`` (the ruleset stops everyone but the key, the classic
 protection still stops the key). A DeployKey bypass covers every write deploy key of the repository, hence exactly one.
 
+Every write obeys the write discipline of scripts/localci/README.md ("Phase E flip"): W1 a fresh read equal to the expected
+state before every write after the first and after the last; W2 no rule beside the ruleset's own may stop the key; W3 READY is
+the branch's and the whole journal's; W4 after the first write every failure is exit 3 with the rollback command.
+
 The operator applies (operator[gui]) after creating the key (operator[secret]); a session runs the plan only. Every read is
 a GET through ``gh api``; the writes exist only behind the checks above.
 """
@@ -30,10 +34,12 @@ import base64
 import binascii
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -54,6 +60,8 @@ CLASSIC_FLAGS = ("required_linear_history", "allow_force_pushes", "allow_deletio
 REVIEW_FIELDS = ("dismiss_stale_reviews", "require_code_owner_reviews", "require_last_push_approval", "required_approving_review_count")
 RULESET_FIELDS = ("name", "target", "enforcement", "conditions", "rules", "bypass_actors")
 MAX_PAGES = 20
+ALLOWED_BESIDE = frozenset({"deletion", "non_fast_forward", "copilot_code_review"})   # W2: what may apply beside the ruleset's rule
+READ_RETRIES, READ_DELAY_S = 3, 2.0   # W1: a fresh read that lags the write is read again before it counts
 NOT_PROTECTED = "Branch not protected"   # GitHub's 404 for an unprotected branch; any other 404 is an error, never "absent"
 
 EXIT_OK, EXIT_REFUSED, EXIT_BAD_INPUT, EXIT_WRITE_FAILED = 0, 1, 2, 3
@@ -69,6 +77,10 @@ class FlipError(Exception):
 
 def now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def pause(seconds: float) -> None:
+    time.sleep(seconds)
 
 
 def gh(*args: str, body: dict | None = None, missing: str | None = None) -> Any:
@@ -193,12 +205,15 @@ def read_state(repo: str, branch: str) -> dict:
     guards = [r for r in full if r is not named[0] and r.get("enforcement") == "active" and r.get("bypass_actors", None) == []
               and {"deletion", "non_fast_forward"} <= {x.get("type") for x in r.get("rules") or []} and covers(r, branch, default_branch)]
     keys = gh_all(f"repos/{repo}/keys")
-    return {"repo": repo, "branch": branch, "classic": None if classic is None else classic_body(classic),
+    applied = gh_all(f"repos/{repo}/rules/branches/{branch}")   # every rule GitHub applies to the branch, inherited ones included
+    return {"repo": repo, "branch": branch, "default_branch": default_branch,
+            "classic": None if classic is None else classic_body(classic),
+            "branch_rules": sorted(([r.get("ruleset_id"), r.get("type")] for r in applied), key=str),
             "ruleset_id": named[0]["id"], "ruleset": ruleset_body(named[0]),
             "ruleset_covers_branch": covers(named[0], branch, default_branch), "ruleset_only_branch": only_branch(named[0], branch, default_branch),
             "guards": [{"id": g["id"], **ruleset_body(g)} for g in guards],
             "write_keys": [{"id": k["id"], "created_at": k.get("created_at"), "fingerprint": key_fingerprint(k.get("key"))}
-                           for k in keys if k.get("read_only") is False]}
+                           for k in keys if k.get("read_only") is not True]}   # an unknown read_only is a write key
 
 
 def phase(state: dict) -> str:
@@ -220,17 +235,55 @@ def rollback_writes(saved: dict) -> list[dict]:
             {"method": "PUT", "path": f"repos/{saved['repo']}/rulesets/{saved['ruleset_id']}", "body": saved["ruleset"]}]
 
 
+def with_ruleset(state: dict, rs: dict) -> dict:
+    """The state as it must read once the ruleset is ``rs``: its scope and the rules GitHub applies to the branch follow it."""
+    rid, default = state["ruleset_id"], state["default_branch"]
+    own = [[rid, r.get("type")] for r in rs["rules"]] if rs.get("enforcement") == "active" else []
+    return {**state, "ruleset": rs, "ruleset_covers_branch": covers(rs, state["branch"], default),
+            "ruleset_only_branch": only_branch(rs, state["branch"], default),
+            "branch_rules": sorted([*(x for x in state["branch_rules"] if x[0] != rid), *own], key=str)}
+
+
+def diverges(fresh: dict, expected: dict) -> list[str]:
+    """W1: the components in which a fresh read differs from the expected state (none: it is the expected state)."""
+    out = []
+    if not same_classic(fresh["classic"], expected["classic"]):
+        out.append("classic protection")
+    rf, rx = fresh["ruleset"], expected["ruleset"]
+    same_ruleset = (is_target(rf) and all(rf.get(k) == rx.get(k) for k in ("name", "target", "conditions"))) if is_target(rx) else rf == rx
+    if fresh["ruleset_id"] != expected["ruleset_id"] or not same_ruleset:
+        out.append(f"ruleset {RULESET!r}")
+    out += [k for k in ("guards", "write_keys", "ruleset_covers_branch", "ruleset_only_branch", "branch_rules") if fresh[k] != expected[k]]
+    return out
+
+
+def settled(repo: str, branch: str, expected: dict, when: str) -> dict:
+    """W1: a fresh read equal to the expected state, read again while GitHub may still lag the write; else FlipError."""
+    differ: list[str] = []
+    for attempt in range(READ_RETRIES):
+        fresh = read_state(repo, branch)
+        if not (differ := diverges(fresh, expected)):
+            return fresh
+        if attempt + 1 < READ_RETRIES:
+            pause(READ_DELAY_S)
+    raise FlipError(f"{when}: a fresh read differs from the expected state in {differ}")
+
+
 def digest(state: dict, writes: list[dict]) -> str:
     return hashlib.sha256(json.dumps({"state": state, "writes": writes}, sort_keys=True).encode()).hexdigest()[:16]
 
 
-def read_report(path: Path, repo: str) -> tuple[list[str], str]:
+def _no_constant(name: str):
+    raise ValueError(f"non-standard JSON constant {name}")
+
+
+def read_report(path: Path, repo: str, branch: str) -> tuple[list[str], str]:
     """(blockers, one summary line). READY is the report's own field; the numbers beside it are read back so a report that
     says READY without them is refused, not believed."""
     try:
-        rep = json.loads(path.read_text())
-    except (OSError, json.JSONDecodeError) as exc:
-        return [f"report {path} unreadable: {type(exc).__name__}"], f"report: unreadable ({path})"
+        rep = json.loads(path.read_text(), parse_constant=_no_constant)   # W3: Infinity and NaN are no numbers
+    except (OSError, ValueError) as exc:
+        return [f"report {path} unreadable: {type(exc).__name__}: {exc}"], f"report: unreadable ({path})"
     if not isinstance(rep, dict):
         return [f"report {path} is not a JSON object"], f"report: not an object ({path})"
     win, counts, ctx = (rep.get(k) if isinstance(rep.get(k), dict) else {} for k in ("window", "counts", "context_counts"))
@@ -243,6 +296,10 @@ def read_report(path: Path, repo: str) -> tuple[list[str], str]:
         blockers.append("report is not READY (phase_e_ready is not true)")
     if rep.get("repo") != repo:
         blockers.append(f"report is for {rep.get('repo')!r}, not {repo!r}")
+    if rep.get("base") != branch:
+        blockers.append(f"report judged base {rep.get('base')!r}, not {branch!r}")
+    if rep.get("since") is not None:
+        blockers.append(f"report window is cut at since={rep.get('since')!r}: READY is read over the whole journal")
     if not (isinstance(gen, str) and _TS_RE.match(gen)):
         blockers.append("report carries no readable generated_at")
     else:
@@ -258,7 +315,7 @@ def read_report(path: Path, repo: str) -> tuple[list[str], str]:
         cm, cd = win.get("compared_merges"), win.get("compared_days")
         # READY's FALSE_GREEN 0 is "at every level" (merger.py report): the decisions, the contexts and the recorded ones
         fgs = (counts.get("FALSE_GREEN"), ctx.get("FALSE_GREEN"), rep.get("recorded_context_false_green"))
-        if not (type(cm) is int and cm >= READY_MERGES and type(cd) in (int, float) and cd >= READY_DAYS
+        if not (type(cm) is int and cm >= READY_MERGES and type(cd) in (int, float) and math.isfinite(cd) and cd >= READY_DAYS
                 and all(type(x) is int and x == 0 for x in fgs)):
             blockers.append("report says READY but its window does not show it: refusing the contradiction")
     return blockers, line
@@ -275,6 +332,9 @@ def plan_blockers(state: dict, flip: bool, merger_key: str | None) -> list[str]:
         out.append(f"ruleset {RULESET!r} includes more than {state['branch']}: its update rule would freeze those branches too")
     if not state["guards"]:
         out.append("no active ruleset without bypass actors forbids deletion AND force-push on the branch: the flip would open both")
+    if beside := [f"{t} (ruleset {rid})" for rid, t in state["branch_rules"] if rid != state["ruleset_id"] and t not in ALLOWED_BESIDE]:
+        out.append("rules beside the ruleset's own would also stop the merger's push (rules layer, a bypass exempts only its own "
+                   "ruleset): " + ", ".join(beside))
     if len(state["write_keys"]) != 1:
         out.append(f"{len(state['write_keys'])} write deploy keys: the DeployKey bypass covers each one, exactly one must exist (operator[secret])")
     elif merger_key is None:
@@ -333,18 +393,21 @@ def save_state(state_dir: Path, state: dict, dig: str) -> Path:
     return path
 
 
-def execute(writes: list[dict], took: dict | None = None) -> None:
-    """The writes in order; ``took[i]`` judges write i's answer (None when it took, else why not), and a write that did not
-    take stops the rest."""
+def execute(repo: str, branch: str, writes: list[dict], before: dict, after: dict, took: dict) -> None:
+    """The writes in order, under W1: write i is sent only once a fresh read equals ``before[i]`` (when given), ``took[i]``
+    judges its answer (None when it took, else why not), and after the last a fresh read must equal ``after``."""
     for i, w in enumerate(writes, 1):
+        if i in before:
+            settled(repo, branch, before[i], f"before write {i}/{len(writes)}")
         args = ["--method", w["method"], w["path"]] + (["--input", "-"] if w["body"] is not None else [])
         try:
             answer = gh(*args, body=w["body"])
         except FlipError as exc:
             raise FlipError(f"write {i}/{len(writes)} failed: {exc}") from exc
-        if took and i in took and (why := took[i](answer)):
+        if i in took and (why := took[i](answer)):
             raise FlipError(f"write {i}/{len(writes)} did not take ({why}): {w['method']} {w['path']}; nothing after it was sent")
         print(f"  write {i}/{len(writes)} done: {w['method']} {w['path']}")
+    settled(repo, branch, after, f"after write {len(writes)}/{len(writes)}")
 
 
 def run_flip(a: argparse.Namespace) -> int:
@@ -353,7 +416,7 @@ def run_flip(a: argparse.Namespace) -> int:
     dig = digest(state, writes)
     merger_key = read_key_pub(a.key_pub)
     blockers = plan_blockers(state, flip=True, merger_key=merger_key)
-    rep_blockers, rep_line = read_report(a.report, a.repo)
+    rep_blockers, rep_line = read_report(a.report, a.repo, a.branch)
     print(f"phase E flip — {a.repo} {a.branch} — {'APPLY' if a.apply else 'DRY RUN (nothing is written)'}")
     print(f"state: {phase(state)}")
     print("\n".join(describe(state)))
@@ -380,25 +443,20 @@ def run_flip(a: argparse.Namespace) -> int:
         return EXIT_REFUSED
     saved = save_state(a.state_dir, state, dig)
     print(f"pre-flip state saved: {saved}")
+    # W1: the classic protection goes only once a fresh read shows the confirmed state with the ruleset as the target —
+    # the same classic protection, guards, keys and applied rules — never a branch with neither protection, nor one a peer
+    # changed during the run
+    expect_mid = with_ruleset(state, writes[0]["body"])
+    expect_end = {**expect_mid, "classic": None}
     def ruleset_took(answer) -> str | None:
-        """The classic protection goes only once the ruleset is restricted AND, read again, the guard, the one key and the
-        scope still hold: never a branch with neither protection, nor one whose guard or key changed during the run."""
-        if not (isinstance(answer, dict) and is_target(answer) and answer.get("conditions") == state["ruleset"]["conditions"]):
-            return "the ruleset's answer is not the target"
-        mid = read_state(a.repo, a.branch)
-        if not (is_target(mid["ruleset"]) and mid["ruleset_covers_branch"]):
-            return "the ruleset does not read as the target"
-        return "; ".join(plan_blockers(mid, flip=False, merger_key=merger_key)) or None
+        ok = isinstance(answer, dict) and is_target(answer) and answer.get("conditions") == state["ruleset"]["conditions"]
+        return None if ok else "the ruleset's answer is not the target"
 
     try:
-        execute(writes, {1: ruleset_took})
-        after = read_state(a.repo, a.branch)
-    except FlipError as exc:
-        print(f"FAILED: {exc}\n  restore with: {Path(sys.argv[0]).name} --rollback {saved} (plan first, then --apply --confirm)", file=sys.stderr)
-        return EXIT_WRITE_FAILED
-    if phase(after) != "flipped" or (unsafe := plan_blockers(after, flip=False, merger_key=merger_key)):
-        why = f"says {phase(after)}, not flipped" if phase(after) != "flipped" else "is flipped, but: " + "; ".join(unsafe)
-        print(f"FAILED: re-read after the writes {why}\n  restore with: --rollback {saved}", file=sys.stderr)
+        execute(a.repo, a.branch, writes, {2: expect_mid}, expect_end, {1: ruleset_took})
+    except Exception as exc:   # W4: after the first write every failure is owned, never a traceback that reads as "refused"
+        print(f"FAILED: {type(exc).__name__}: {exc}\n  restore with: {Path(sys.argv[0]).name} --rollback {saved} "
+              "(plan first, then --apply --confirm)", file=sys.stderr)
         return EXIT_WRITE_FAILED
     print("flipped: the classic protection is gone and only the deploy key can update the branch")
     return EXIT_OK
@@ -430,22 +488,23 @@ def run_rollback(a: argparse.Namespace) -> int:
     if a.confirm != dig:
         print("REFUSED: --confirm does not match this plan's digest", file=sys.stderr)
         return EXIT_REFUSED
+    # W1: the ruleset is restored only once a fresh read shows the classic protection as saved and nothing else moved —
+    # never the merge queue back without the checks
+    expect_mid = {**live, "classic": saved["classic"]}
+    expect_end = with_ruleset(expect_mid, saved["ruleset"])
     def classic_took(answer) -> str | None:
-        """The ruleset is restored only once the classic protection reads as saved: never the queue back without the checks."""
         try:
             back = classic_body(answer) if isinstance(answer, dict) else None
         except FlipError as exc:
             return str(exc)
-        return None if same_classic(back, saved["classic"]) else "the classic protection does not read as saved"
+        return None if same_classic(back, saved["classic"]) else "the classic protection's answer is not as saved"
 
     try:
-        execute(writes, {1: classic_took})
-        after = read_state(a.repo, a.branch)
-    except FlipError as exc:
-        print(f"FAILED: {exc}", file=sys.stderr)
-        return EXIT_WRITE_FAILED
-    if differ := [k for k, same in (("classic", same_classic(after["classic"], saved["classic"])), ("ruleset", after["ruleset"] == saved["ruleset"])) if not same]:
-        print(f"FAILED: re-read after the rollback differs from the saved state in {differ}", file=sys.stderr)
+        execute(a.repo, a.branch, writes, {2: expect_mid}, expect_end, {1: classic_took})
+    except Exception as exc:   # W4
+        print(f"FAILED: {type(exc).__name__}: {exc}\n  the branch is as the last write left it — still flipped if write 1 did "
+              "not take, frozen (classic protection and the key-only ruleset) if it did: run the plan again, or restore the state "
+              "file's `ruleset` by hand", file=sys.stderr)
         return EXIT_WRITE_FAILED
     print("rolled back: classic protection and the ruleset re-read as saved")
     return EXIT_OK
