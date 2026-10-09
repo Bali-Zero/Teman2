@@ -684,7 +684,7 @@ const en = {
   "assumption.retirement_basis":
     "If you are unsure which basis you can document, the basis is treated as undecided. You can discuss it with a Bali Zero advisor.",
   "assumption.retirement_penjamin_confirmed":
-    "You weren’t sure whether you have a penjamin, so we assessed this plan as if the answer were “no”; Bali Zero can act as your penjamin.",
+    "If you are unsure whether you have a penjamin, this assessment treats that answer as “no”; Bali Zero can act as your penjamin.",
   "assumption.generic":
     "You marked “Not sure” for “{{question}}”; no value was inferred.",
 
@@ -1773,7 +1773,7 @@ const id: Record<Keys, string> = {
   "assumption.retirement_basis":
     "Jika Anda belum yakin dasar mana yang dapat Anda buktikan dengan dokumen, dasar tersebut diperlakukan sebagai belum dipilih. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.retirement_penjamin_confirmed":
-    "Anda tidak yakin apakah Anda sudah memiliki penjamin, jadi rencana ini kami nilai seolah jawabannya “tidak”; Bali Zero dapat bertindak sebagai penjamin Anda.",
+    "Jika Anda belum yakin apakah Anda sudah memiliki penjamin, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”; Bali Zero dapat bertindak sebagai penjamin Anda.",
   "assumption.generic":
     "Anda memilih “Tidak yakin” untuk “{{question}}”; tidak ada nilai yang diperkirakan.",
 
