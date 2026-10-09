@@ -18,7 +18,7 @@ constraints:
   - The key is never read, printed or journalled; it reaches only the push subprocess, as GIT_SSH_COMMAND.
   - No force of any kind; GitHub's merge queue and labels are untouched.
 acceptance:
-  - text: With every condition true the mirror gets a merge commit (first parent the old base, second the head, subject ending (#N)), origin's main and refs/merger/base equal it, and merged + pushed are journalled.
+  - text: When every condition is true the mirror SHALL get a merge commit (first parent the old base, second the head, subject ending (#N)), origin's main and refs/merger/base equal it, and merged + pushed are journalled.
     probe: "test_merger_phase_f.py::test_every_condition_true_makes_the_merge_commit_pushes_it_and_moves_the_mirror"
   - text: Each arming condition false alone (env, READY, key mode/owner/type/missing, criterion, base moved, head moved, halt file) SHALL merge and push nothing and be named in phase_f.why.
     probe: "test_merger_phase_f.py::test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it"

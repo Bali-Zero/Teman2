@@ -32,6 +32,10 @@ consumer_map:
   - scripts/localci/merger.py tick (the launchd tick com.balizero.localci-merger on Pro) — the phase_f field of every would_merge line in decisions.jsonl.
 pii_scan: clean
 pii_scan_note: Merger code, tests on temporary git repos with a sentinel string standing in for a key, mutant rules and documentation. No client data was read or written.
+lanes:
+  - lane: localci-f2-1009
+    role: build
+    seat: claude-opus-5-5 (Dux implementer on M5)
 what_changed: |
   scripts/localci/merger.py: report() factored out of cmd_report (emit=False returns (rc, out) with no file and no line — the tick's READY
   reads out["phase_e_ready"] from it, so the thresholds exist once); phase_f_arming (every condition, named in why), key_problem (lstat
@@ -55,7 +59,7 @@ spend:
   adversarial_rounds: 0
   wall_clock_hours: 2.0
 receipts:
-  - claim: "test_merger.py, test_merger_report.py, test_replay.py, test_merger_phase_f.py: 340 passed, 197 s."
+  - claim: "test_merger.py, test_merger_report.py, test_replay.py, test_merger_phase_f.py: 340 passed, 197 s; includes test_merger_phase_f.py::test_every_condition_true_makes_the_merge_commit_pushes_it_and_moves_the_mirror, test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it, test_a_push_origin_rejects_is_push_refused_halts_for_good_and_the_mirror_keeps_its_main, test_the_key_never_reaches_the_journal_the_output_the_halt_file_or_anything_the_runner_sees and test_a_github_main_that_lost_the_last_pushed_merge_is_storage_diverged_and_halts_instead_of_being_taken."
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_phase_f.py -q -p no:cacheprovider
     exit: 0
     ts: "2026-10-10T19:12:00Z"
