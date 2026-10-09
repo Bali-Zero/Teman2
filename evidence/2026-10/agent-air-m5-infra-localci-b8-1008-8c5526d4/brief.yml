@@ -3,7 +3,7 @@ mission: LOCALCI-SOVEREIGN (phase B, step B8)
 colour: BLUE
 gear: 2
 gear_reason: >-
-  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 613 with this pack, 471 without it,
+  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 660 with this pack, 500 without it,
   over the 400-line target once the amendment landed), no hot-zone path. The change is the merger's own prune, its tests and mutants, a README section
   and the spec paragraph it amends; no workflow, credential, wrapper or plist changes, so the deploy is the mirror's next fetch.
 l_level: L2
@@ -38,6 +38,10 @@ acceptance:
     probe: "test_prune.py::test_b8_the_floor_never_touches_the_never_list_or_what_the_lease_run_names"
   - text: The build cache SHALL be pruned with -af --keep-storage 4GB, never by age; builder_prune SHALL carry the last call's rc, keep_storage_gb and tail, and the number of calls.
     probe: "test_prune.py::test_b8_the_build_cache_is_pruned_to_a_budget_not_by_age, test_prune.py::test_b8_the_line_carries_the_last_builder_prune_and_how_many_ran"
+  - text: A cap removal docker refuses SHALL be journaled as an error and SHALL NOT stop the floor from acting on the other images.
+    probe: "test_prune.py::test_b8_a_refused_cap_removal_is_journalled_and_the_floor_still_acts_on_the_others"
+  - text: An image named by its tag in one plan and by its id in another SHALL count two plans; one plan naming both SHALL count one.
+    probe: "test_prune.py::test_b8_an_image_named_by_tag_in_one_plan_and_by_id_in_another_counts_two_plans_and_one_plan_naming_both_counts_one"
 assumptions:
   - text: The VM probe still measures a full VM (it reads 0.0 rather than failing).
     status: unverified

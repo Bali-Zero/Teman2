@@ -38,8 +38,11 @@ what_changed: |
   the floor's rule reads "vm floor: VM free X GB < 15 GB after the cap; N plan(s) of the last 48 h name it, built H h ago"
   ("undated" without a readable Created), builder_prune's rc and tail are the last call's with `runs` the count, the spec
   carries the lead's sentence and the 17:23Z/17:27Z builder measurements; a tie test and the last-rc test both ways;
-  b8-cache-first-failure-lost replaced by b8-cache-first-rc-kept, b8-floor-undated-first added. localci_merger_tick.sh
-  unchanged.
+  b8-cache-first-failure-lost replaced by b8-cache-first-rc-kept, b8-floor-undated-first added. 6742f743ac is the fix round
+  after the lead's gate at 470fdba320 (CONFIRMED, one MEDIUM, three LOWs): the floor is gated on `blind`, captured before the
+  cap loop, so a refused cap removal stays in errors/failed but no longer skips the floor as "an input is unreadable"; an
+  image's plan count is the union of the plans naming its tag or its id; the VM_MIN_FREE_GB comment and the README sentence
+  follow the amended rule and the spec's wording. localci_merger_tick.sh unchanged.
 proof: |
   See receipts. The floor-driven line is produced by the committed code on the fixture (fake docker: three recipes, VM 5 GB
   free, build cache 21.8 GB brought to 4 GB by the builder prune).
@@ -53,7 +56,7 @@ ground:
   siblings: Worktree from origin/main 86b151beec via scripts/agent_start.py; B7 merged at 86b151beec.
 spend:
   adversarial_rounds: 0
-  wall_clock_hours: 2.7
+  wall_clock_hours: 3.0
 appetite_exceeded: "Two causes: the first full mutant sweep found b6-rm-forced STALE after 14 minutes and was run again from the start (17:23Z to 18:27Z for the first mandate, over its 60 minutes); then the lead's amendment arrived at 18:27Z and was done by 19:17Z; the lead's rework message (written 18:35Z, read here at 19:17Z after it had read eeccc618fd) set the final rule text and the last-call rc, done at 19:28Z, with the 32-minute full sweep ending 20:03Z. This pack covers all three."
 receipts:
   - claim: "A floor-driven prune at b9c2b9db00 on the fixture (three recipes, each a newest and a slot-2 image; plans naming e_old 4, f_new 3, b_new 2, f_old 2, e_new 1, b_old 1; VM 5 GB free; build cache 21.8 GB): rc 0; removed in order localci-deps:4444… 'vm floor: VM free 5 GB < 15 GB after the cap; 1 plan(s) of the last 48 h name it, built 20.0 h ago', localci-deps:1111… (the newest of e2e-tests) 'vm floor: VM free 9 GB < 15 GB after the cap; 1 plan(s) of the last 48 h name it, built 1.0 h ago', localci-deps:6666… '… 2 plan(s) …, built 40.0 h ago', localci-deps:3333… (the newest of backend-tests) '… 2 plan(s) …, built 2.0 h ago'; kept localci-deps:2222… (slot 2 of e2e-tests, 4 plans) and localci-deps:5555… (the newest of frontend-tests, 3 plans); vm_floor {floor_gb 15.0, met true, removed 4}; vm_free_gb {before 5.0, after 18.5}; builder_prune {rc 0, keep_storage_gb 4.0, runs 5, cache_gb {before 21.8, after 4.0}}; the last two calls 'image rm localci-deps:3333…', 'builder prune -af --keep-storage 4GB'; failed []."
@@ -81,6 +84,16 @@ receipts:
     exit: 0
     ts: "2026-10-08T20:03:51Z"
     seat: claude-opus-5-5 on M5
+  - claim: "test_prune.py at 6742f743ac (the gate's fix round): 58 passed, among them test_prune.py::test_b8_a_refused_cap_removal_is_journalled_and_the_floor_still_acts_on_the_others (the cap's image busy, VM 1 GB: rc 1, the refusal in errors, failed [images], no vm_floor.skipped, the floor removes the two others) and test_prune.py::test_b8_an_image_named_by_tag_in_one_plan_and_by_id_in_another_counts_two_plans_and_one_plan_naming_both_counts_one."
+    cmd: python3 -m pytest scripts/localci/tests/test_prune.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T01:55:24Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The rules the fix round adds or touches plus the four the lead named, on the tree committed as 6742f743ac, 01:44:14Z to 01:52:32Z: b8-floor-gated-on-errors, b8-floor-on-dry-run, b8-floor-blind, b8-count-max-not-union, b8-count-sum-not-union, b6-stand-ins-unread-removes, b6-unreadable-plan-ignored, b8-floor-14, b8-floor-16, b8-slot-2-count-ignored, b8-cache-without-a, b8-floor-keeps-newest, b8-floor-most-refs-first, b8-floor-no-remeasure — 14/14 killed; none stale (a text count over all 234 rules found none stale either)."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 14 rules>
+    exit: 0
+    ts: "2026-10-09T01:52:32Z"
+    seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
   - "An unmeasured VM (the probe failing rather than reading 0.0) skips the floor: the floor acts on a measurement, never on its absence. The lead's lines on the full VM read 0.0, so the probe ran there; if phase D shows a failing probe on a full VM, the floor needs a second source."
@@ -89,4 +102,5 @@ residuals:
   - "A run of the last 48 h without status.json keeps what it names, as in B6: a run that crashed before writing status.json holds its images until its plan ages out of the window."
   - "References count distinct plans, one per run: a PR re-run often counts once per run."
   - "B9 (a deps recipe keyed on the merge result) is written in the spec as an open question, not built."
+  - "The full sweep was not rerun after the fix round, by the lead's instruction (the VM filled a second time 22:33Z-01:40Z and B8 must ship): its last full run is 232/232 at b9c2b9db00; the fix round's 14 rules were run with --only and every rule's text was checked present exactly once."
   - "No adversarial round: the lint's gear-2 floor comes from its size term alone and asks for none; the independent gate is the lead's."
