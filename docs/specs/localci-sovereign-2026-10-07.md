@@ -99,7 +99,8 @@ _Status._ F2 (the executor, disarmed by construction) built 2026-10-10: `merger.
 1. Phase D READY (`merger.py report` reads `phase E READY`).
 2. The write deploy key generated on Pro at `<state>/deploy_key` (0600, owned by the tick's user, never printed) and registered on the repository with write, and github.com's host key pinned into `<state>/known_hosts` (the push runs `StrictHostKeyChecking=yes` against that file alone) — operator[secret].
 3. The phase E flip: `scripts/localci/phase_e_flip.py --apply` (lands in its own PR, not on main yet): `merge-queue-main` restricted to updates with the DeployKey bypass, then the classic protection deleted — operator[gui].
-4. `LOCALCI_MERGER_PHASE_F=1` in the tick's environment (the launchd plist) — only after step 3, because before it the first push is refused and writes the sticky halt.
+4. The live wrapper re-installed and identical to main's (`cmp -s` of `~/.nuzantara-cron/localci_merger_tick.sh` against an `origin/main` checkout — until then it force-fetches `refs/merger/base`, and a storage divergence rewinds it), and `LOCALCI_MERGER_ARMED` unset (with it set, every armed decision is `enqueued` into GitHub's queue and phase F never acts).
+5. `LOCALCI_MERGER_PHASE_F=1` in the tick's environment (the launchd plist) — only after steps 3 and 4, because before them the first push is refused and writes the sticky halt.
 
 Until then every `would_merge` line says `armed: false` and names why. To stop: remove the env, or `touch <state>/phase_f_halt`. To resume after a `push_refused` or `storage_diverged`: read the reason in the halt file and the journal, reconcile GitHub's main with the mirror, then remove the file.
 

@@ -382,6 +382,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f2-ssh-config-not-nulled": (PY, "ssh -F /dev/null -o IdentityAgent=none -i ", "ssh -o IdentityAgent=none -i ", (PHASEF,)),
     "f2-ssh-agent-allowed": (PY, "ssh -F /dev/null -o IdentityAgent=none -i ", "ssh -F /dev/null -i ", (PHASEF,)),
     "f2-ssh-known-hosts-unpinned": (PY, 'f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")', 'f"-o StrictHostKeyChecking=yes")', (PHASEF,)),
+    "f2-ssh-global-known-hosts-read": (PY, '"-o GlobalKnownHostsFile=/dev/null "', '""', (PHASEF,)),
     "f2-ssh-host-key-unchecked": (PY, 'f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")', 'f"-o {shlex.quote(known)} -o StrictHostKeyChecking=no")', (PHASEF,)),
     "f2-halt-after-the-journal": (PY, '        halt(state, f"push of {commit} for #{n} refused: {err}")   # the halt first: a journal line that fails to write must not leave the door open\n'
                                   '        journal(state, {"kind": "push_refused", "pr": n, "head_sha": head, "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})\n',

@@ -90,7 +90,7 @@ def fw(world, monkeypatch):  # noqa: F811
 
 def SSH_COMMAND(w):
     """The one ssh the push may run: no user config, no agent, the deploy key alone, and only the host key pinned in the state dir."""
-    return (f"ssh -F /dev/null -o IdentityAgent=none -i {w.key} -o IdentitiesOnly=yes -o BatchMode=yes "
+    return (f"ssh -F /dev/null -o IdentityAgent=none -i {w.key} -o IdentitiesOnly=yes -o BatchMode=yes -o GlobalKnownHostsFile=/dev/null "
             f"-o UserKnownHostsFile={w.state / mg.KNOWN_HOSTS_FILE} -o StrictHostKeyChecking=yes")
 
 

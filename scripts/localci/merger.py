@@ -815,9 +815,11 @@ def merge_message(repo_dir: Path, enq: dict, pull: dict, decision: dict) -> tupl
 
 def push_ssh_command(state: Path) -> str:
     """The one ssh the push runs: no user config, no agent, only the deploy key, and only the host key the operator pinned in the
-    state dir (the key's PATH, never its content, is all this string holds; it reaches the push subprocess alone)."""
+    state dir — the system-wide known_hosts is not read either (the key's PATH, never its content, is all this string holds; it
+    reaches the push subprocess alone)."""
     known = f"UserKnownHostsFile={state / KNOWN_HOSTS_FILE}"
     return (f"ssh -F /dev/null -o IdentityAgent=none -i {shlex.quote(str(state / KEY_FILE))} -o IdentitiesOnly=yes -o BatchMode=yes "
+            "-o GlobalKnownHostsFile=/dev/null "
             f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")
 
 
