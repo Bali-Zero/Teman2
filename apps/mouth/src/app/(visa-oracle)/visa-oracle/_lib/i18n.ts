@@ -15,7 +15,7 @@ import type { Language } from "./flow";
 const en = {
   "framing.title": "A map, not an application",
   "framing.body":
-    "Answer honestly, including “I don’t know.” Nothing here is filed, and this tool never chooses a visa for you.",
+    "Answer honestly, including “I don’t know.” Nothing here is filed; your answers decide which questions come next and which visas fit.",
   "framing.cta": "Start",
 
   "q.in_indonesia": "Are you in Indonesia right now?",
@@ -23,14 +23,14 @@ const en = {
   "q.in_indonesia.opt.yes": "Yes, I’m here",
   "q.in_indonesia.opt.no": "No, I’m planning ahead",
   "why.in_indonesia":
-    "Where you are now decides whether we look at permits you can get inside Indonesia or visas you apply for before travelling.",
+    "Where you are now decides which questions come next and which options can apply to you.",
 
   "q.permit_expiry": "When does your current stay permit expire?",
   "q.permit_expiry.hint":
     "The date on your visa or ITAS/KITAS — not your passport.",
   "q.permit_expiry.label": "Expiry date",
   "why.permit_expiry":
-    "We need the actual date to judge how much time you have left. It is not used to pick a filing route for you.",
+    "We need the actual date to see how much time you have left. It can change which questions come next.",
   "q.current_status_code": "What code appears on your current stay permit?",
   "q.current_status_code.hint":
     "Enter the exact printed code. Use Not sure rather than translating a permit name.",
@@ -43,13 +43,13 @@ const en = {
   "q.current_status_code.opt.ITK_FROM_VISIT_C": "ITK converted from Visit C",
   "q.current_status_code.opt.ITK_FROM_VISIT_D": "ITK converted from Visit D",
   "q.current_status_code.opt.ITK_PERALIHAN": "ITK Peralihan",
-  "q.current_status_code.opt.other": "Another code — needs human review",
+  "q.current_status_code.opt.other": "Another code — ask a Bali Zero advisor",
   "why.current_status_code":
     "We use the code exactly as printed on your permit. We never guess it from the permit’s name.",
   "q.holds_stay_permit":
     "Do you currently hold a limited or permanent stay permit (KITAS / KITAP)?",
   "why.holds_stay_permit":
-    "The E-code catalogue only applies to KITAS/KITAP holders; everyone else answers the shorter code list below.",
+    "Your answer decides which questions about your current permit come next.",
   "q.stay_permit_code": "Which code is printed on your permit?",
   "q.stay_permit_code.hint":
     "Enter the exact code from your card. Use Not sure rather than guessing.",
@@ -128,7 +128,7 @@ const en = {
   "q.wants_onshore_conversion.offshore.hint":
     "Answer about the process you intend to follow after you arrive, not whether it will be approved.",
   "why.wants_onshore_conversion":
-    "Your yes or no only tells us which process you intend to follow. It does not pick a conversion path for you.",
+    "Your yes or no tells us how you plan to proceed. It can change the questions that follow and exclude a visa that cannot be converted inside Indonesia.",
   "q.application_channel":
     "Which application channel are you actually pursuing?",
   "q.application_channel.hint":
@@ -148,7 +148,7 @@ const en = {
     "Nationality is checked exactly as you give it. Several nationalities are kept separate and never guessed.",
   "q.birth_date": "What is your date of birth?",
   "q.birth_date.hint":
-    "Some visas have age rules; we use your date of birth only to check them.",
+    "Your date of birth is checked against visa age limits and tells us whether to ask about a parent or guardian.",
   "q.birth_date.label": "Date of birth",
   "why.birth_date":
     "Some visas have age limits, such as a minimum age for the retirement visa or a child visa that ends at 18; we check your age against them.",
@@ -157,14 +157,14 @@ const en = {
   "q.guardian_consent.help":
     "We ask because the applicant is under 18. We record only your answer to this question — no name, no document, no contact details.",
   "why.guardian_consent":
-    "An applicant under 18 cannot give this consent alone, so Bali Zero asks an adult to confirm they are present before the assessment continues.",
+    "The date of birth shows an applicant under 18, so we ask whether a parent or legal guardian is present. Without one, this tool names no visa.",
 
   "lane.expired.notice":
-    "Your permit has already expired. Overstay is fixable. It is not the end of your story here — this always goes to a human, and we won’t alarm you with a number on this screen.",
+    "Your permit has already expired. We will still check your options; please talk to a Bali Zero advisor about your next step.",
   "lane.urgent.notice":
-    "You have 1–2 days left. That’s too close for an automated check — a Bali Zero advisor needs to look at this today.",
+    "You have 1–2 days left. We will still check your options, but please contact a Bali Zero advisor today.",
   "lane.bridging.notice":
-    "The date you entered is within seven days. We may pass your case to a Bali Zero advisor for review, and this tool will not choose a bridging or conversion route for you.",
+    "The date you entered is within seven days. We will still check your options; talk to a Bali Zero advisor soon about your next step.",
   "lane.extend.notice":
     "You have time to compare Extend and Convert side by side.",
   "lane.planning.notice": "Plenty of runway — this is planning, not urgency.",
@@ -173,7 +173,7 @@ const en = {
   "q.category.hint": "Pick the closest fit — you can refine it next.",
   // ENDING-ROUND E10: watershed WhyWeAsk sentence — same meaning, plainer.
   "why.category":
-    "Your direction only chooses the next questions. It doesn’t decide whether a visa path is available — your answers do.",
+    "Your direction decides which questions come next and which visas can fit your plan.",
   "q.category.opt.tourism": "Tourism & short visit",
   "q.category.opt.business": "Business (no work)",
   "q.category.opt.work": "Work & employment",
@@ -195,7 +195,7 @@ const en = {
   "q.trip_scope.opt.single": "Yes — one main purpose",
   "q.trip_scope.opt.multiple": "No — two or more purposes overlap",
   "why.trip_scope":
-    "Overlapping purposes call for a Bali Zero advisor’s judgment, so this answer is not used to decide anything automatically.",
+    "If your purposes overlap, your result notes it so you can go through them with a Bali Zero advisor.",
   "q.entry_pattern": "How do you expect to enter Indonesia?",
   "q.entry_pattern.hint": "Choose the pattern you are actually planning.",
   "q.entry_pattern.opt.SINGLE": "One entry",
@@ -214,7 +214,7 @@ const en = {
   "q.sponsor_category.opt.INVESTMENT": "An investment or company I own",
   "q.sponsor_category.opt.GOVERNMENT": "A government body",
   "why.sponsor_category":
-    "We note the kind of sponsor you have. No current rule uses it yet; this only prepares us for rules that will.",
+    "Who sponsors you can decide which follow-up questions we ask and which visas fit your situation.",
 
   "q.sponsor_government_invitation":
     "Do you hold a written invitation from an Indonesian central-government body, issued to you for your special expertise?",
@@ -254,7 +254,7 @@ const en = {
     "Only your yes or no about the sponsor being a trade office is used here.",
   "q.business_activity": "What will you mainly do on the business trip?",
   "q.business_activity.hint":
-    "Describe the activity, not a visa name. Meetings, negotiation, conferences and looking into investing can be assessed here; training or another activity goes to a Bali Zero advisor for review.",
+    "Describe the activity, not a visa name. Meetings, negotiation, conferences and exploring investment can be assessed here; training or another activity needs a Bali Zero advisor.",
   "q.business_activity.opt.meetings": "Meetings or site visits",
   "q.business_activity.opt.negotiation": "Negotiation or signing",
   "q.business_activity.opt.conference": "Conference or trade event",
@@ -263,7 +263,7 @@ const en = {
   "q.business_activity.opt.training": "Giving or receiving training",
   "q.business_activity.opt.other": "Another business activity",
   "why.business_activity":
-    "Exploring whether to invest or open a business is treated as an investment purpose, and we then ask the few questions that decide it. Any other answer here only decides whether a Bali Zero advisor has to look at your trip: training and “another business activity” do, the others do not.",
+    "Exploring an investment is assessed as an investment plan, with its own questions. For training or another activity, this tool cannot name a visa; a Bali Zero advisor can help.",
   "q.business_sponsor_confirmed":
     "Has a company sponsor or guarantor confirmed they will support the process?",
   "q.business_sponsor_confirmed.hint":
@@ -276,7 +276,7 @@ const en = {
   "q.work_payer.hint":
     "Not “do you need a work KITAS” — who actually pays you.",
   "why.work_payer":
-    "We only use whether the employing entity is Indonesian. We do not pick a visa from it.",
+    "Whether an Indonesian-registered company employs and pays you decides which work or remote-work visas can fit.",
   "q.work_payer.opt.yes": "Yes, an Indonesian entity pays me",
   "q.work_payer.opt.no": "No, I’m paid from abroad",
 
@@ -285,7 +285,7 @@ const en = {
   "q.work_indonesia_compensation.hint":
     "Answer about the source of payment, not the currency or bank account.",
   "why.work_indonesia_compensation":
-    "This tells us where your pay comes from. The amount and your eligibility are not worked out from it.",
+    "Pay from an Indonesian source can exclude some visas, so this answer can change which visas fit. We ask where your pay comes from, not how much.",
   "q.work_sponsor_confirmed":
     "Has an Indonesian work sponsor confirmed they will support the process?",
   "q.work_sponsor_confirmed.hint":
@@ -315,13 +315,13 @@ const en = {
     "Enter one two-letter ISO country code, for example IT.",
   "q.remote_employer_country.label": "Employer country code",
   "why.remote_employer_country":
-    "We use the country code exactly as you enter it and do not interpret it.",
+    "We record the country code exactly as you enter it and do not interpret it.",
   "q.remote_pt_pma":
     "Is this remote-work plan tied to a committed Indonesian PT PMA?",
   "q.remote_pt_pma.hint":
     "Choose yes only for a real commitment, not a company you may form later.",
   "why.remote_pt_pma":
-    "We only note whether your PT PMA commitment is concrete; a yes does not mean approval.",
+    "A committed PT PMA can exclude the remote-worker visa, so this answer can change which visas fit. A yes does not mean approval.",
 
   "q.investment_vehicle": "What is the concrete basis of your plan?",
   "q.investment_vehicle.hint":
@@ -335,7 +335,7 @@ const en = {
     "Capital-market investments only, such as listed shares or bonds",
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
-    "Property or a bank deposit points to the Second Home visa; the other choices keep the investment route. Then we ask only the questions that decide it.",
+    "Property or a bank deposit points to the Second Home visa. Your choice decides which route we look at and which questions come next.",
   "q.investment_currency": "Which currency can you commit an amount in?",
   "q.investment_currency.hint":
     "This only decides which amount question comes next. No conversion is ever performed between currencies.",
@@ -348,7 +348,7 @@ const en = {
   "q.investment_pt_pma.hint":
     "Answer no for an idea, early discussion, or uncommitted plan.",
   "why.investment_pt_pma":
-    "We only note whether your commitment is concrete. No amount or status is assumed from it.",
+    "Your answer can decide whether the investor visa fits and which questions come next. No amount or status is assumed from it.",
   "q.investment_capital_idr": "What investment capital is committed?",
   "q.investment_capital_idr.hint":
     "Enter the exact whole-rupiah amount you can support with evidence.",
@@ -361,7 +361,7 @@ const en = {
     "Enter the exact whole-dollar amount you can support with evidence.",
   "q.investment_amount_usd.label": "Committed investment amount",
   "why.investment_amount_usd":
-    "The amount is used in the currency you chose. No threshold is shown or assumed here, and nothing is converted.",
+    "We record the amount in the currency you chose. No threshold is shown or assumed here, and nothing is converted.",
   "q.investment_paid_up_capital_idr":
     "How much paid-up capital is already documented?",
   "q.investment_paid_up_capital_idr.hint":
@@ -497,14 +497,14 @@ const en = {
 
   "q.retirement_basis": "Which basis can you document today?",
   "q.retirement_basis.hint":
-    "This only selects the next factual questions; it does not choose a visa.",
+    "Pick the basis you can document today. It decides which questions come next.",
   "q.retirement_basis.opt.bank_deposit": "A bank deposit in my own name",
   "q.retirement_basis.opt.property": "A property arrangement",
   "q.retirement_basis.opt.passive_income": "Regular passive monthly income",
   "q.retirement_basis.opt.family_sponsor": "A confirmed family sponsor",
   "q.retirement_basis.opt.undecided": "I have not chosen a basis",
   "why.retirement_basis":
-    "Your choice decides which questions come next. A basis you do not choose, such as a bank deposit, is not counted in your plan.",
+    "Your choice decides which questions come next and which retirement visas can fit your situation.",
   "q.retirement_undecided_basis": "Which of these can you document today?",
   "q.retirement_undecided_basis.hint":
     "Pick whichever basis you can support with evidence. If neither applies, say so — a person is not needed to answer that.",
@@ -543,7 +543,7 @@ const en = {
     "Enter the exact whole-dollar value supported by documents.",
   "q.secondhome_property_value_usd.label": "Documented property value",
   "why.secondhome_property_value_usd":
-    "We use the exact value you give. Ownership and tenure are not assumed.",
+    "We record the exact value you give. Ownership and tenure are not assumed.",
   "q.secondhome_passive_income_usd":
     "What passive monthly income can you document?",
   "q.secondhome_passive_income_usd.hint":
@@ -577,7 +577,7 @@ const en = {
 
   "q.diaspora_connection": "What is your connection to Indonesia?",
   "q.diaspora_connection.hint":
-    "This is context for our team only. Your nationality is asked separately.",
+    "Choose the closest match. Your nationality is asked separately.",
   "q.diaspora_connection.opt.former_wni": "I am a former Indonesian citizen",
   "q.diaspora_connection.opt.descendant":
     "I am a descendant of an Indonesian citizen",
@@ -586,16 +586,16 @@ const en = {
   "q.diaspora_connection.opt.family": "My connection is through family",
   "q.diaspora_connection.opt.other": "Another connection",
   "why.diaspora_connection":
-    "No rule is based on a diaspora connection, so this answer is kept only as context for our team.",
+    "More than one citizenship, or another connection, means this tool cannot name a visa; a Bali Zero advisor can assess it with you.",
   "q.diaspora_documents": "Can you document that connection?",
   "q.diaspora_documents.hint":
     "Do not upload documents here; answer only whether evidence exists.",
   "why.diaspora_documents":
-    "This is context for our team only; it does not change what this tool finds for you.",
+    "This answer does not change which visas this tool finds for you.",
 
   "q.other_purpose": "Which activity is closest to your plan?",
   "q.other_purpose.hint":
-    "This context is not turned into a purpose or a visa choice.",
+    "Choose the closest activity. Transit can be assessed here; for the others, a Bali Zero advisor can assess your plan with you.",
   "q.other_purpose.opt.transit": "Transit",
   "q.other_purpose.opt.medical": "Medical treatment or support",
   "q.other_purpose.opt.volunteer": "Volunteer activity",
@@ -605,12 +605,12 @@ const en = {
   "q.other_purpose.opt.crew": "Transport crew",
   "q.other_purpose.opt.other": "Something not listed",
   "why.other_purpose":
-    "No single rule matches these options, so the answer stays as context for our team.",
+    "Transit can be assessed here. The other activities cannot be assessed automatically, so this tool names no visa for them; a Bali Zero advisor can assess them with you.",
   "q.other_paid_activity": "Will any part of this activity be paid?",
   "q.other_paid_activity.hint":
-    "This is context for our team only. It is not turned into an employment answer.",
+    "A paid activity is treated as work, so a yes changes the questions that follow.",
   "why.other_paid_activity":
-    "No exact rule fits this broad question, so the answer cannot support a recommendation.",
+    "A yes is treated as work and a no as an unpaid activity; either answer decides which visas can fit.",
 
   "q.stay_days": "How many days do you plan to stay?",
   "q.stay_days.hint":
@@ -625,7 +625,7 @@ const en = {
   // a human review that no longer happens after A1'/A3-B — see A5's
   // `outcome.disclaimer.complex_to_human` for the same underlying fact.
   "q.review_gate.hint":
-    "Tick everything that applies — an omission costs you more than a disclosure. Some of these, a criminal record among them, put your case in front of a person before any verdict; the others are attached to your result as conditions our team checks with you before submission.",
+    "Tick everything that applies. Every item you tick is reflected in your result; with a criminal record, this tool names no visa and a Bali Zero advisor can help.",
   "why.review_gate":
     "Every item here is taken into account: the three immigration-history ones bear directly on the rules, and all of them must be reflected in your result.",
   "q.review_gate.opt.none": "None of these apply to me",
@@ -1109,7 +1109,7 @@ type Keys = keyof typeof en;
 const id: Record<Keys, string> = {
   "framing.title": "Peta, bukan permohonan",
   "framing.body":
-    "Jawab dengan jujur, termasuk “Saya tidak tahu.” Tidak ada yang diajukan di sini, dan alat ini tidak pernah memilih visa untuk Anda.",
+    "Jawab dengan jujur, termasuk “Saya tidak tahu.” Tidak ada yang diajukan di sini; jawaban Anda menentukan pertanyaan berikutnya dan visa mana yang sesuai.",
   "framing.cta": "Mulai",
 
   "q.in_indonesia": "Apakah Anda sedang berada di Indonesia sekarang?",
@@ -1118,14 +1118,14 @@ const id: Record<Keys, string> = {
   "q.in_indonesia.opt.yes": "Ya, saya di sini",
   "q.in_indonesia.opt.no": "Belum, saya sedang merencanakan",
   "why.in_indonesia":
-    "Lokasi Anda saat ini menentukan apakah kami melihat izin yang bisa diurus di dalam Indonesia atau visa yang diajukan sebelum berangkat.",
+    "Lokasi Anda saat ini menentukan pertanyaan berikutnya dan pilihan mana yang dapat berlaku bagi Anda.",
 
   "q.permit_expiry": "Kapan izin tinggal Anda saat ini berakhir?",
   "q.permit_expiry.hint":
     "Tanggal pada visa atau ITAS/KITAS Anda — bukan paspor.",
   "q.permit_expiry.label": "Tanggal berakhir",
   "why.permit_expiry":
-    "Kami memerlukan tanggalnya untuk menilai sisa waktu Anda. Tanggal ini tidak dipakai untuk memilihkan jalur pengajuan.",
+    "Kami memerlukan tanggal yang sebenarnya untuk melihat sisa waktu Anda. Tanggal ini dapat mengubah pertanyaan berikutnya.",
   "q.current_status_code":
     "Kode apa yang tercantum pada izin tinggal Anda saat ini?",
   "q.current_status_code.hint":
@@ -1141,13 +1141,14 @@ const id: Record<Keys, string> = {
   "q.current_status_code.opt.ITK_FROM_VISIT_D":
     "ITK hasil konversi dari Kunjungan D",
   "q.current_status_code.opt.ITK_PERALIHAN": "ITK Peralihan",
-  "q.current_status_code.opt.other": "Kode lain — perlu tinjauan manusia",
+  "q.current_status_code.opt.other":
+    "Kode lain — tanyakan kepada konsultan Bali Zero",
   "why.current_status_code":
     "Kami memakai kode persis seperti yang tercetak pada izin Anda. Kode ini tidak pernah ditebak dari nama izin.",
   "q.holds_stay_permit":
     "Apakah Anda saat ini memegang izin tinggal terbatas atau tetap (KITAS / KITAP)?",
   "why.holds_stay_permit":
-    "Katalog kode-E hanya berlaku untuk pemegang KITAS/KITAP; yang lain menjawab daftar kode yang lebih pendek di bawah.",
+    "Jawaban Anda menentukan pertanyaan berikutnya tentang izin tinggal Anda saat ini.",
   "q.stay_permit_code": "Kode apa yang tercantum pada izin Anda?",
   "q.stay_permit_code.hint":
     "Masukkan kode persis dari kartu Anda. Pilih Tidak yakin daripada menebak.",
@@ -1219,7 +1220,7 @@ const id: Record<Keys, string> = {
   "q.wants_onshore_conversion.offshore.hint":
     "Jawab tentang proses yang Anda rencanakan setelah tiba, bukan apakah proses itu akan disetujui.",
   "why.wants_onshore_conversion":
-    "Jawaban ya atau tidak Anda hanya menunjukkan proses mana yang Anda maksud. Jawaban ini tidak memilihkan jalur konversi.",
+    "Jawaban ya atau tidak Anda menunjukkan bagaimana Anda berencana melanjutkan. Jawaban ini dapat mengubah pertanyaan berikutnya dan mengecualikan visa yang tidak dapat dialihkan di dalam Indonesia.",
   "q.application_channel":
     "Kanal permohonan mana yang benar-benar Anda jalani?",
   "q.application_channel.hint":
@@ -1240,7 +1241,7 @@ const id: Record<Keys, string> = {
     "Kewarganegaraan diperiksa persis seperti yang Anda berikan. Beberapa kewarganegaraan tetap dipisahkan dan tidak pernah ditebak.",
   "q.birth_date": "Kapan tanggal lahir Anda?",
   "q.birth_date.hint":
-    "Beberapa visa punya syarat usia; tanggal lahir Anda hanya dipakai untuk memeriksanya.",
+    "Tanggal lahir Anda diperiksa terhadap batas usia visa dan menentukan apakah kami perlu bertanya tentang orang tua atau wali.",
   "q.birth_date.label": "Tanggal lahir",
   "why.birth_date":
     "Beberapa visa punya batas usia, misalnya usia minimum untuk visa pensiun atau visa anak yang berakhir di usia 18; kami memeriksa usia Anda terhadap batas tersebut.",
@@ -1249,14 +1250,14 @@ const id: Record<Keys, string> = {
   "q.guardian_consent.help":
     "Kami menanyakan ini karena pemohon berusia di bawah 18 tahun. Kami hanya mencatat jawaban Anda atas pertanyaan ini — tanpa nama, tanpa dokumen, tanpa data kontak.",
   "why.guardian_consent":
-    "Pemohon di bawah 18 tahun tidak dapat memberikan persetujuan ini sendiri, sehingga Bali Zero meminta orang dewasa memastikan kehadirannya sebelum penilaian dilanjutkan.",
+    "Tanggal lahir menunjukkan pemohon berusia di bawah 18 tahun, jadi kami menanyakan apakah orang tua atau wali sah hadir. Tanpa mereka, alat ini tidak menyebutkan visa.",
 
   "lane.expired.notice":
-    "Izin tinggal Anda sudah berakhir. Overstay bisa diselesaikan. Ini bukan akhir cerita Anda di sini — kasus ini selalu ditangani manusia, dan kami tidak akan menampilkan angka yang menakutkan di layar ini.",
+    "Izin tinggal Anda sudah berakhir. Kami tetap memeriksa pilihan Anda; silakan bicarakan langkah berikutnya dengan konsultan Bali Zero.",
   "lane.urgent.notice":
-    "Waktu Anda tinggal 1–2 hari. Ini terlalu mepet untuk pemeriksaan otomatis — konsultan Bali Zero perlu melihat kasus ini hari ini.",
+    "Waktu Anda tinggal 1–2 hari. Kami tetap memeriksa pilihan Anda, tetapi mohon hubungi konsultan Bali Zero hari ini.",
   "lane.bridging.notice":
-    "Tanggal yang Anda masukkan tinggal tujuh hari atau kurang. Kasus Anda dapat diteruskan ke konsultan Bali Zero untuk ditinjau, dan alat ini tidak memilihkan jalur bridging atau konversi untuk Anda.",
+    "Tanggal yang Anda masukkan tinggal tujuh hari atau kurang. Kami tetap memeriksa pilihan Anda; segera bicarakan langkah berikutnya dengan konsultan Bali Zero.",
   "lane.extend.notice":
     "Anda masih punya waktu untuk membandingkan Extend dan Convert.",
   "lane.planning.notice":
@@ -1266,7 +1267,7 @@ const id: Record<Keys, string> = {
   "q.category.hint":
     "Pilih yang paling mendekati — bisa diperjelas berikutnya.",
   "why.category":
-    "Arah yang Anda pilih hanya menentukan pertanyaan berikutnya. Arah ini tidak menentukan apakah jalur visa tersedia — jawaban Anda yang menentukan.",
+    "Arah tujuan Anda menentukan pertanyaan berikutnya dan visa mana yang dapat sesuai dengan rencana Anda.",
   "q.category.opt.tourism": "Wisata & kunjungan singkat",
   "q.category.opt.business": "Bisnis (tanpa bekerja)",
   "q.category.opt.work": "Kerja & ketenagakerjaan",
@@ -1288,7 +1289,7 @@ const id: Record<Keys, string> = {
   "q.trip_scope.opt.single": "Ya — satu tujuan utama",
   "q.trip_scope.opt.multiple": "Tidak — dua tujuan atau lebih tumpang tindih",
   "why.trip_scope":
-    "Tujuan yang tumpang tindih memerlukan penilaian konsultan Bali Zero, jadi jawaban ini tidak dipakai untuk memutuskan apa pun secara otomatis.",
+    "Jika tujuan Anda tumpang tindih, hasil Anda mencatatnya agar Anda dapat membahasnya dengan konsultan Bali Zero.",
   "q.entry_pattern": "Bagaimana Anda berencana masuk ke Indonesia?",
   "q.entry_pattern.hint": "Pilih pola yang benar-benar Anda rencanakan.",
   "q.entry_pattern.opt.SINGLE": "Satu kali masuk",
@@ -1309,7 +1310,7 @@ const id: Record<Keys, string> = {
   "q.sponsor_category.opt.INVESTMENT": "Investasi atau perusahaan milik saya",
   "q.sponsor_category.opt.GOVERNMENT": "Instansi pemerintah",
   "why.sponsor_category":
-    "Kami mencatat jenis sponsor Anda. Belum ada aturan saat ini yang memakainya; ini hanya menyiapkan data untuk aturan yang akan datang.",
+    "Siapa yang mensponsori Anda dapat menentukan pertanyaan lanjutan yang kami ajukan dan visa mana yang sesuai dengan situasi Anda.",
 
   "q.sponsor_government_invitation":
     "Apakah Anda memiliki undangan tertulis dari instansi pemerintah pusat Indonesia yang diberikan kepada Anda sebagai tenaga ahli?",
@@ -1343,7 +1344,7 @@ const id: Record<Keys, string> = {
     "Hanya jawaban ya atau tidak Anda tentang penjamin berupa kantor perwakilan dagang yang dipakai di sini.",
   "q.business_activity": "Apa kegiatan utama Anda dalam perjalanan bisnis?",
   "q.business_activity.hint":
-    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, konferensi, dan penjajakan investasi dapat dinilai di sini; pelatihan atau kegiatan lain diteruskan ke konsultan Bali Zero untuk ditinjau.",
+    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, konferensi, dan penjajakan investasi dapat dinilai di sini; pelatihan atau kegiatan lain memerlukan konsultan Bali Zero.",
   "q.business_activity.opt.meetings": "Rapat atau kunjungan lokasi",
   "q.business_activity.opt.negotiation": "Negosiasi atau penandatanganan",
   "q.business_activity.opt.conference": "Konferensi atau pameran dagang",
@@ -1352,7 +1353,7 @@ const id: Record<Keys, string> = {
   "q.business_activity.opt.training": "Memberi atau menerima pelatihan",
   "q.business_activity.opt.other": "Kegiatan bisnis lainnya",
   "why.business_activity":
-    "Menjajaki peluang berinvestasi atau membuka usaha diperlakukan sebagai tujuan investasi, lalu kami menanyakan beberapa pertanyaan yang menentukannya. Jawaban lain di sini hanya menentukan apakah konsultan Bali Zero perlu meninjau perjalanan Anda: pelatihan dan “kegiatan bisnis lainnya” perlu, jawaban lainnya tidak.",
+    "Penjajakan investasi dinilai sebagai rencana investasi, dengan pertanyaannya sendiri. Untuk pelatihan atau kegiatan lain, alat ini tidak dapat menyebutkan visa; konsultan Bali Zero dapat membantu.",
   "q.business_sponsor_confirmed":
     "Apakah sponsor perusahaan atau penjamin sudah mengonfirmasi dukungan proses?",
   "q.business_sponsor_confirmed.hint":
@@ -1365,7 +1366,7 @@ const id: Record<Keys, string> = {
   "q.work_payer.hint":
     "Bukan “apakah Anda butuh KITAS kerja” — tapi siapa yang benar-benar menggaji Anda.",
   "why.work_payer":
-    "Kami hanya memakai apakah pemberi kerja Anda adalah entitas Indonesia. Visa tidak dipilih berdasarkan hal itu.",
+    "Apakah perusahaan yang terdaftar di Indonesia mempekerjakan dan menggaji Anda menentukan visa kerja atau visa kerja jarak jauh mana yang dapat sesuai.",
   "q.work_payer.opt.yes": "Ya, entitas Indonesia yang menggaji saya",
   "q.work_payer.opt.no": "Tidak, saya digaji dari luar negeri",
 
@@ -1374,7 +1375,7 @@ const id: Record<Keys, string> = {
   "q.work_indonesia_compensation.hint":
     "Jawab tentang sumber pembayaran, bukan mata uang atau rekening bank.",
   "why.work_indonesia_compensation":
-    "Ini menunjukkan dari mana penghasilan Anda berasal. Jumlah dan kelayakan tidak disimpulkan darinya.",
+    "Penghasilan dari sumber Indonesia dapat mengecualikan beberapa visa, jadi jawaban ini dapat mengubah visa yang sesuai. Kami menanyakan asal penghasilan Anda, bukan jumlahnya.",
   "q.work_sponsor_confirmed":
     "Apakah sponsor kerja Indonesia sudah mengonfirmasi dukungan proses?",
   "q.work_sponsor_confirmed.hint":
@@ -1405,13 +1406,13 @@ const id: Record<Keys, string> = {
     "Masukkan satu kode negara ISO dua huruf, misalnya IT.",
   "q.remote_employer_country.label": "Kode negara pemberi kerja",
   "why.remote_employer_country":
-    "Kami memakai kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
+    "Kami mencatat kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
   "q.remote_pt_pma":
     "Apakah rencana kerja remote ini terikat pada komitmen PT PMA Indonesia?",
   "q.remote_pt_pma.hint":
     "Pilih ya hanya untuk komitmen nyata, bukan perusahaan yang mungkin dibentuk nanti.",
   "why.remote_pt_pma":
-    "Kami hanya mencatat apakah komitmen PT PMA Anda sudah konkret; jawaban ya tidak berarti disetujui.",
+    "Komitmen PT PMA dapat mengecualikan visa pekerja jarak jauh, jadi jawaban ini dapat mengubah visa yang sesuai. Jawaban ya tidak berarti persetujuan.",
 
   "q.investment_vehicle": "Apa dasar konkret rencana Anda?",
   "q.investment_vehicle.hint":
@@ -1425,7 +1426,7 @@ const id: Record<Keys, string> = {
     "Hanya investasi pasar modal, seperti saham tercatat atau obligasi",
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
-    "Properti atau deposito bank mengarah ke visa Second Home; pilihan lainnya tetap di jalur investasi. Setelah itu kami hanya menanyakan pertanyaan yang menentukannya.",
+    "Properti atau deposito bank mengarah ke Visa Rumah Kedua. Pilihan Anda menentukan jalur yang kami periksa dan pertanyaan berikutnya.",
   "q.investment_currency":
     "Dalam mata uang apa Anda dapat mengomitmenkan jumlah investasi?",
   "q.investment_currency.hint":
@@ -1439,7 +1440,7 @@ const id: Record<Keys, string> = {
   "q.investment_pt_pma.hint":
     "Jawab tidak untuk ide, pembicaraan awal, atau rencana tanpa komitmen.",
   "why.investment_pt_pma":
-    "Kami hanya mencatat apakah komitmen Anda sudah konkret. Jumlah atau status tidak diasumsikan darinya.",
+    "Jawaban Anda dapat menentukan apakah visa investor sesuai dan pertanyaan apa yang berikutnya. Tidak ada jumlah atau status yang diasumsikan dari jawaban ini.",
   "q.investment_capital_idr":
     "Berapa modal investasi yang sudah dikomitmenkan?",
   "q.investment_capital_idr.hint":
@@ -1453,7 +1454,7 @@ const id: Record<Keys, string> = {
     "Masukkan jumlah dolar utuh yang tepat dan dapat Anda dukung dengan bukti.",
   "q.investment_amount_usd.label": "Jumlah investasi yang dikomitmenkan",
   "why.investment_amount_usd":
-    "Jumlah dipakai dalam mata uang yang Anda pilih. Tidak ada ambang batas yang ditampilkan atau diasumsikan di sini, dan tidak ada konversi yang dilakukan.",
+    "Kami mencatat jumlahnya dalam mata uang yang Anda pilih. Tidak ada ambang batas yang ditampilkan atau diasumsikan di sini, dan tidak ada yang dikonversi.",
   "q.investment_paid_up_capital_idr":
     "Berapa modal disetor yang sudah terdokumentasi?",
   "q.investment_paid_up_capital_idr.hint":
@@ -1591,14 +1592,14 @@ const id: Record<Keys, string> = {
 
   "q.retirement_basis": "Dasar mana yang dapat Anda buktikan saat ini?",
   "q.retirement_basis.hint":
-    "Ini hanya memilih pertanyaan faktual berikutnya; bukan memilih visa.",
+    "Pilih dasar yang dapat Anda buktikan hari ini. Pilihan ini menentukan pertanyaan berikutnya.",
   "q.retirement_basis.opt.bank_deposit": "Deposito bank atas nama saya",
   "q.retirement_basis.opt.property": "Pengaturan properti",
   "q.retirement_basis.opt.passive_income": "Penghasilan pasif bulanan tetap",
   "q.retirement_basis.opt.family_sponsor": "Sponsor keluarga yang dikonfirmasi",
   "q.retirement_basis.opt.undecided": "Saya belum memilih dasar",
   "why.retirement_basis":
-    "Pilihan Anda menentukan pertanyaan berikutnya. Dasar yang tidak Anda pilih, misalnya deposito bank, tidak dihitung dalam rencana Anda.",
+    "Pilihan Anda menentukan pertanyaan berikutnya dan visa pensiun mana yang dapat sesuai dengan situasi Anda.",
   "q.retirement_undecided_basis":
     "Yang mana dari berikut yang dapat Anda buktikan saat ini?",
   "q.retirement_undecided_basis.hint":
@@ -1640,7 +1641,7 @@ const id: Record<Keys, string> = {
     "Masukkan nilai dolar bulat yang didukung dokumen.",
   "q.secondhome_property_value_usd.label": "Nilai properti terdokumentasi",
   "why.secondhome_property_value_usd":
-    "Kami memakai nilai persis yang Anda berikan. Kepemilikan dan bentuk penguasaan tidak diasumsikan dari izin tinggal.",
+    "Kami mencatat nilai persis yang Anda berikan. Kepemilikan dan bentuk penguasaan tidak diasumsikan.",
   "q.secondhome_passive_income_usd":
     "Berapa penghasilan pasif bulanan yang dapat Anda buktikan?",
   "q.secondhome_passive_income_usd.hint":
@@ -1674,7 +1675,7 @@ const id: Record<Keys, string> = {
 
   "q.diaspora_connection": "Apa hubungan Anda dengan Indonesia?",
   "q.diaspora_connection.hint":
-    "Ini hanya konteks untuk tim kami. Kewarganegaraan Anda ditanyakan terpisah.",
+    "Pilih yang paling sesuai. Kewarganegaraan Anda ditanyakan secara terpisah.",
   "q.diaspora_connection.opt.former_wni": "Saya mantan warga negara Indonesia",
   "q.diaspora_connection.opt.descendant":
     "Saya keturunan warga negara Indonesia",
@@ -1683,16 +1684,16 @@ const id: Record<Keys, string> = {
   "q.diaspora_connection.opt.family": "Hubungan saya melalui keluarga",
   "q.diaspora_connection.opt.other": "Hubungan lain",
   "why.diaspora_connection":
-    "Tidak ada aturan yang didasarkan pada hubungan diaspora, jadi jawaban ini hanya disimpan sebagai konteks untuk tim kami.",
+    "Lebih dari satu kewarganegaraan, atau hubungan lain, berarti alat ini tidak dapat menyebutkan visa; konsultan Bali Zero dapat menilainya bersama Anda.",
   "q.diaspora_documents": "Apakah Anda dapat membuktikan hubungan tersebut?",
   "q.diaspora_documents.hint":
     "Jangan unggah dokumen di sini; jawab hanya apakah bukti tersedia.",
   "why.diaspora_documents":
-    "Ini hanya konteks untuk tim kami; tidak mengubah hasil yang ditemukan alat ini.",
+    "Jawaban ini tidak mengubah visa yang ditemukan alat ini untuk Anda.",
 
   "q.other_purpose": "Kegiatan mana yang paling dekat dengan rencana Anda?",
   "q.other_purpose.hint":
-    "Konteks ini tidak diubah menjadi tujuan atau pilihan visa.",
+    "Pilih kegiatan yang paling mendekati. Transit dapat dinilai di sini; untuk kegiatan lainnya, konsultan Bali Zero dapat menilai rencana Anda bersama Anda.",
   "q.other_purpose.opt.transit": "Transit",
   "q.other_purpose.opt.medical": "Perawatan atau pendampingan medis",
   "q.other_purpose.opt.volunteer": "Kegiatan sukarela",
@@ -1702,12 +1703,12 @@ const id: Record<Keys, string> = {
   "q.other_purpose.opt.crew": "Awak transportasi",
   "q.other_purpose.opt.other": "Hal lain yang tidak tercantum",
   "why.other_purpose":
-    "Tidak ada satu aturan yang cocok dengan pilihan ini, jadi jawaban ini tetap menjadi konteks untuk tim kami.",
+    "Transit dapat dinilai di sini. Kegiatan lainnya tidak dapat dinilai secara otomatis, sehingga alat ini tidak menyebutkan visa untuk kegiatan tersebut; konsultan Bali Zero dapat menilainya bersama Anda.",
   "q.other_paid_activity": "Apakah ada bagian kegiatan ini yang dibayar?",
   "q.other_paid_activity.hint":
-    "Ini hanya konteks untuk tim kami. Jawaban ini tidak diubah menjadi jawaban ketenagakerjaan.",
+    "Kegiatan berbayar diperlakukan sebagai pekerjaan, jadi jawaban ya mengubah pertanyaan berikutnya.",
   "why.other_paid_activity":
-    "Tidak ada aturan yang tepat untuk pertanyaan luas ini, sehingga jawabannya tidak dapat mendukung rekomendasi.",
+    "Jawaban ya diperlakukan sebagai pekerjaan dan jawaban tidak sebagai kegiatan tidak berbayar; kedua jawaban menentukan visa mana yang dapat sesuai.",
 
   "q.stay_days": "Berapa hari Anda berencana tinggal?",
   "q.stay_days.hint":
@@ -1719,7 +1720,7 @@ const id: Record<Keys, string> = {
 
   "q.review_gate": "Ada hal lain yang perlu kami ketahui?",
   "q.review_gate.hint":
-    "Centang semua yang berlaku — tidak menyebutkannya lebih merugikan Anda daripada menyebutkannya. Sebagian di antaranya, termasuk catatan kriminal, membuat kasus Anda ditinjau seseorang sebelum ada keputusan; sisanya menyertai hasil Anda sebagai kondisi tersurat yang ditelusuri tim kami bersama Anda sebelum pengajuan.",
+    "Centang semua yang berlaku. Setiap item yang Anda centang tercermin dalam hasil Anda; dengan catatan kriminal, alat ini tidak menyebutkan visa dan konsultan Bali Zero dapat membantu.",
   "why.review_gate":
     "Setiap item di sini diperhitungkan: tiga item riwayat keimigrasian berpengaruh langsung pada aturan, dan semuanya harus tercermin dalam hasil Anda.",
   "q.review_gate.opt.none": "Tidak ada yang berlaku bagi saya",
