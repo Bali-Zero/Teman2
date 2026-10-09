@@ -512,29 +512,56 @@ function Timeline({
       </p>
     );
   }
+  const { workingDaysMin: min, workingDaysMax: max } = timeline;
+  if (min === 0 && max === 0) {
+    return (
+      <div className="oracle-timeline">
+        <p>{translate(language, "outcome.timeline_none" as I18nKey)}</p>
+      </div>
+    );
+  }
+  const locale = localeFor(language);
+  const from = formatIsoDateForDisplay(timeline.earliestDateIso, locale);
+  const to = formatIsoDateForDisplay(timeline.latestDateIso, locale);
+  let typical: string | null = null;
+  if (min !== undefined && max !== undefined) {
+    if (min === 0 && max === 1) {
+      typical = translate(language, "outcome.timeline_within_one" as I18nKey);
+    } else if (min === max) {
+      typical = translate(
+        language,
+        "outcome.timeline_typical_exact" as I18nKey,
+        {
+          days: String(min),
+        },
+      );
+    } else {
+      typical = translate(
+        language,
+        "outcome.timeline_typical_range" as I18nKey,
+        {
+          min: String(min),
+          max: String(max),
+        },
+      );
+    }
+  }
   return (
     <div className="oracle-timeline">
+      {typical && <p>{typical}</p>}
       <p className="oracle-tabular-nums">
-        {translate(language, "outcome.timeline_dates" as I18nKey, {
-          from: formatIsoDateForDisplay(
-            timeline.earliestDateIso,
-            localeFor(language),
-          ),
-          to: formatIsoDateForDisplay(
-            timeline.latestDateIso,
-            localeFor(language),
-          ),
-        })}
+        {from === to
+          ? translate(language, "outcome.timeline_if_today_single" as I18nKey, {
+              date: from,
+            })
+          : translate(language, "outcome.timeline_if_today" as I18nKey, {
+              from,
+              to,
+            })}
       </p>
       <p className="oracle-question__hint">
-        {translate(language, "outcome.timeline_basis" as I18nKey, {
-          date: formatIsoDateForDisplay(
-            timeline.basisDateIso,
-            localeFor(language),
-          ),
-        })}
+        {translate(language, "outcome.timeline_indicative" as I18nKey)}
       </p>
-      {timeline.note && <p>{localized(timeline.note, language)}</p>}
     </div>
   );
 }

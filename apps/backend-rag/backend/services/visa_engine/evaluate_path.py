@@ -109,6 +109,7 @@ from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import TypeAlias
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 import asyncpg
 
@@ -173,6 +174,7 @@ from backend.services.visa_engine.pricing_adapter import (
     resolve_pricing_key,
     select_duration_option,
 )
+from backend.services.visa_engine.processing_times import estimate, typical_window
 from backend.services.visa_engine.retention import (
     active_policy_available as active_retention_policy_available,
 )
@@ -188,6 +190,8 @@ from backend.services.visa_engine.shadow_evidence import (
 )
 
 logger = logging.getLogger(__name__)
+
+_WITA = ZoneInfo("Asia/Makassar")
 
 #: A raw, JSON-safe value. Defined locally — no importable shared home in
 #: this package (same convention as ``shadow.py``/``bundle.py``/
@@ -940,6 +944,33 @@ def _duration_display(
     }
 
 
+def _processing_timeline(product_code: str, decision: Decision) -> dict[str, JsonValue]:
+    """Bali Zero's typical window from the anchor day, or the pending UNKNOWN object."""
+
+    window = typical_window(product_code)
+    anchor = decision.evaluated_at.astimezone(_WITA).date()
+    span = estimate(anchor, window) if window is not None else None
+    if window is None or span is None:
+        return {
+            "status": "UNKNOWN",
+            "reason_code": "PROCESSING_TIMELINE_NOT_VERIFIED",
+            "observed_at": decision.observed_at.isoformat(),
+            "anchor_date": None,
+            "estimated_completion_from": None,
+            "estimated_completion_to": None,
+        }
+    return {
+        "status": "AVAILABLE",
+        "reason_code": "BALI_ZERO_TYPICAL_PROCESSING_TIME",
+        "observed_at": decision.observed_at.isoformat(),
+        "anchor_date": anchor.isoformat(),
+        "estimated_completion_from": span[0].isoformat(),
+        "estimated_completion_to": span[1].isoformat(),
+        "working_days_min": window[0],
+        "working_days_max": window[1],
+    }
+
+
 def _build_display(
     decision: Decision,
     compiled: CompiledRulePack,
@@ -990,14 +1021,7 @@ def _build_display(
                     "requirements": [],
                     "checklist": [],
                 },
-                "processing_timeline": {
-                    "status": "UNKNOWN",
-                    "reason_code": "PROCESSING_TIMELINE_NOT_VERIFIED",
-                    "observed_at": decision.observed_at.isoformat(),
-                    "anchor_date": None,
-                    "estimated_completion_from": None,
-                    "estimated_completion_to": None,
-                },
+                "processing_timeline": _processing_timeline(str(candidate.product_code), decision),
                 "availability": {
                     "legal_eligibility": "SUPPORTED",
                     "operational_availability": {

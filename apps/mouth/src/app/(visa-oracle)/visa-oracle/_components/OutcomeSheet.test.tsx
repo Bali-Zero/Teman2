@@ -474,6 +474,117 @@ describe("OutcomeSheet — honest five-state rendering", () => {
 
 // PR-O4 / Δ2 (spec §3): a held visitor must read a DEMONSTRATED cause, and a
 // hold that is ours must not be worded — or grouped — as something they did.
+describe("OutcomeSheet — Bali Zero typical processing time", () => {
+  function renderTimeline(
+    timeline: OutcomeCandidate["timeline"],
+    language: Language = "en",
+  ) {
+    const base = outcomeFor("SUPPORTED_CANDIDATES");
+    if (base.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("test fixture state mismatch");
+    }
+    render(
+      <OutcomeSheet
+        language={language}
+        outcome={{ ...base, candidates: [{ ...CANDIDATE, timeline }] }}
+        facts={FACTS}
+      />,
+    );
+  }
+  const WINDOW = {
+    status: "AVAILABLE",
+    basisDateIso: "2026-10-09",
+    earliestDateIso: "2026-10-20",
+    latestDateIso: "2026-10-23",
+  } as const;
+
+  it("renders a range with the dated window and the indicative hint (EN)", () => {
+    renderTimeline({ ...WINDOW, workingDaysMin: 7, workingDaysMax: 10 });
+    expect(screen.getByText("Typically 7–10 working days")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "If your documents are complete today: around 20 Oct 2026 – 23 Oct 2026.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /^Indicative Bali Zero timing in Indonesian working days/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Calculated from the assessment/)).toBeNull();
+  });
+
+  it("renders the Indonesian range", () => {
+    renderTimeline({ ...WINDOW, workingDaysMin: 20, workingDaysMax: 30 }, "id");
+    expect(screen.getByText("Biasanya 20–30 hari kerja")).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Perkiraan waktu Bali Zero dalam hari kerja Indonesia/),
+    ).toBeInTheDocument();
+  });
+
+  it("renders an exact day count", () => {
+    renderTimeline({ ...WINDOW, workingDaysMin: 5, workingDaysMax: 5 });
+    expect(screen.getByText("Typically 5 working days")).toBeInTheDocument();
+  });
+
+  it("renders within one working day for an e-VOA window", () => {
+    renderTimeline({ ...WINDOW, workingDaysMin: 0, workingDaysMax: 1 });
+    expect(
+      screen.getByText("Typically within 1 working day"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders nothing but the border sentence for an instant product", () => {
+    renderTimeline({
+      ...WINDOW,
+      earliestDateIso: "2026-10-09",
+      latestDateIso: "2026-10-09",
+      workingDaysMin: 0,
+      workingDaysMax: 0,
+    });
+    expect(
+      screen.getByText(
+        "Nothing to process in advance — entry is granted at the border.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/If your documents are complete/)).toBeNull();
+    expect(screen.queryByText(/Indicative Bali Zero timing/)).toBeNull();
+  });
+
+  it("collapses an identical start and end to one date", () => {
+    renderTimeline({
+      ...WINDOW,
+      earliestDateIso: "2026-10-20",
+      latestDateIso: "2026-10-20",
+      workingDaysMin: 7,
+      workingDaysMax: 7,
+    });
+    expect(
+      screen.getByText(
+        "If your documents are complete today: around 20 Oct 2026.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("an older backend without a window shows only the dated line and the hint", () => {
+    renderTimeline({ ...WINDOW });
+    expect(screen.queryByText(/Typically/)).toBeNull();
+    expect(
+      screen.getByText(/If your documents are complete today/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Indicative Bali Zero timing/)).toBeInTheDocument();
+  });
+
+  it("UNKNOWN keeps the pending paragraph unchanged", () => {
+    renderTimeline({ status: "UNAVAILABLE" });
+    expect(
+      screen.getByText(/Processing times are set by Ditjen Imigrasi/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Typically/)).toBeNull();
+    expect(screen.queryByText(/Indicative Bali Zero timing/)).toBeNull();
+  });
+});
+
 describe("OutcomeSheet — PR-O4 review causes", () => {
   const reviewReasonFor = (code: string): OutcomeReason => ({
     code,

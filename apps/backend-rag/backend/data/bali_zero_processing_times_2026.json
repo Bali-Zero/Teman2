@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "source": "visa_types.processing_time_normal (production), snapshot 2026-10-09",
+  "unit": "indonesian_working_days",
+  "interpretation": "'N-M business days' and 'N-M days' are read as Indonesian working days (the conservative reading); 'N-M weeks' = 5 working days per week (4-6 weeks = 20-30); 'Instant' = 0-0; 'Instant or 1x24h' = 0-1. BRIDGING has no catalogue time and is deliberately absent.",
+  "products": {
+    "A1": {
+      "min": 0,
+      "max": 0,
+      "source_text": "Instant"
+    },
+    "B1": {
+      "min": 0,
+      "max": 1,
+      "source_text": "Instant or 1x24h"
+    },
+    "C1": {
+      "min": 3,
+      "max": 5,
+      "source_text": "3-5 business days"
+    },
+    "C2": {
+      "min": 3,
+      "max": 5,
+      "source_text": "3-5 business days"
+    },
+    "C6": {
+      "min": 3,
+      "max": 5,
+      "source_text": "3-5 business days"
+    },
+    "D1": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 business days"
+    },
+    "D12": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 business days"
+    },
+    "D2": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 business days"
+    },
+    "E23": {
+      "min": 20,
+      "max": 30,
+      "source_text": "4-6 weeks (RPTKA+IMTA)"
+    },
+    "E23U": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E23V": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E28A": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E28B": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E28C": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E28D": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E28F": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E30": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E30A": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E30B": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E30E": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E30F": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E31A": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E31B": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E31C": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E31D": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E31E": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E31F": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E31G": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E31H": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E31J": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E33": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E33A": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E33B": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E33C": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E33E": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E33F": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    },
+    "E33G": {
+      "min": 7,
+      "max": 10,
+      "source_text": "7-10 days"
+    }
+  }
+}

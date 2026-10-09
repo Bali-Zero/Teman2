@@ -423,6 +423,33 @@ class CandidateProcessingTimelineDTO(BaseModel):
     anchor_date: date | None
     estimated_completion_from: date | None
     estimated_completion_to: date | None
+    # Additive: the working-day window behind an AVAILABLE estimate; absent when UNKNOWN.
+    working_days_min: int | None = Field(default=None, ge=0, le=365, strict=True)
+    working_days_max: int | None = Field(default=None, ge=0, le=365, strict=True)
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        # The after-validator wraps the model schema, so the serializer sits one level down.
+        def untyped_serialization_free(node: Any) -> Any:
+            if not isinstance(node, dict):
+                return node
+            kept = {key: value for key, value in node.items() if key != "serialization"}
+            if node.get("type") == "function-after" and "schema" in kept:
+                kept["schema"] = untyped_serialization_free(kept["schema"])
+            return kept
+
+        return handler(untyped_serialization_free(core_schema))
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_working_days(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # An UNKNOWN timeline answers byte-identically to before these keys existed.
+        data = handler(self)
+        for key in ("working_days_min", "working_days_max"):
+            if data.get(key) is None:
+                data.pop(key, None)
+        return data
 
     @field_validator("observed_at")
     @classmethod
@@ -439,9 +466,15 @@ class CandidateProcessingTimelineDTO(BaseModel):
         if self.status is ProcessingTimelineStatus.UNKNOWN:
             if any(value is not None for value in dates):
                 raise ValueError("UNKNOWN processing timeline cannot carry dates")
+            if self.working_days_min is not None or self.working_days_max is not None:
+                raise ValueError("UNKNOWN processing timeline cannot carry working days")
             return self
         if any(value is None for value in dates):
             raise ValueError("AVAILABLE processing timeline requires all dates")
+        if self.working_days_min is None or self.working_days_max is None:
+            raise ValueError("AVAILABLE processing timeline requires its working-day window")
+        if self.working_days_min > self.working_days_max:
+            raise ValueError("processing window minimum cannot exceed its maximum")
         assert self.anchor_date is not None
         assert self.estimated_completion_from is not None
         assert self.estimated_completion_to is not None

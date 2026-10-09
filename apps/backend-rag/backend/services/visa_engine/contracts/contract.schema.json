@@ -1812,6 +1812,34 @@
         },
         "status": {
           "$ref": "#/$defs/ProcessingTimelineStatus"
+        },
+        "working_days_max": {
+          "anyOf": [
+            {
+              "maximum": 365,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Working Days Max"
+        },
+        "working_days_min": {
+          "anyOf": [
+            {
+              "maximum": 365,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Working Days Min"
         }
       },
       "required": [

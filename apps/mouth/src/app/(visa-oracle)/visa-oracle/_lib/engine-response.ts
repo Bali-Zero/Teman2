@@ -467,8 +467,17 @@ export function parseVisaOracleEvaluateResponse(
     const anchor = nullableDate(timeline.anchor_date);
     const from = nullableDate(timeline.estimated_completion_from);
     const to = nullableDate(timeline.estimated_completion_to);
+    const hasMin = timeline.working_days_min !== undefined;
+    const hasMax = timeline.working_days_max !== undefined;
+    if (hasMin !== hasMax) invariant();
+    const daysMin = hasMin ? integer(timeline.working_days_min) : undefined;
+    const daysMax = hasMax ? integer(timeline.working_days_max) : undefined;
+    if (daysMin !== undefined && daysMax !== undefined && daysMin > daysMax) {
+      invariant();
+    }
     if (timeline.status === "UNKNOWN") {
       if (anchor !== null || from !== null || to !== null) invariant();
+      if (hasMin) invariant();
     } else if (
       anchor === null ||
       from === null ||
