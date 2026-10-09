@@ -156,7 +156,7 @@ struct KBLIRegistryRow: View {
                 .frame(width: compact ? 52 : 58, alignment: .leading)
             Text(kbli.judul)
                 .font(Theme.scalable(13))
-                .lineSpacing(4)
+                .lineSpacing(Theme.leading(13, 20))
                 .foregroundStyle(Theme.white)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
