@@ -577,7 +577,7 @@ def test_a_recorded_false_green_with_evidence_of_a_stale_hosted_verdict_is_recla
     assert (x["pr"], x["context"], x["main_moved_paths"], x["main_moved_count"], x["hosted_completed_at"]) == (1, sf.CTX_BACKEND, [sf.LOCK], 1, BEFORE_LOCK)
     assert rep["context_counts"]["HOSTED_STALE"] == 1 and rep["context_counts"]["FALSE_GREEN"] == 0   # the fresh comparison judges it too
     out = capsys.readouterr().out
-    assert (f"false_green=0 (recorded=1, reclassified HOSTED_STALE=1: [pr1 {sf.CTX_BACKEND}: main moved {sf.LOCK} after hosted ran {BEFORE_LOCK}])"
+    assert (f"false_green=0 (recorded=1, reclassified HOSTED_STALE=1: [pr1 {sf.CTX_BACKEND}: main moved {sf.LOCK} after hosted ran {BEFORE_LOCK}], kept=0: [])"
             in out)
 
 
@@ -587,7 +587,7 @@ def test_a_recorded_false_green_without_the_evidence_stays_a_false_green(tmp_pat
     d, gh = _stale_world(tmp_path, monkeypatch, done, **kw)
     rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
     assert rc == 1 and rep["recorded_context_false_green"] == 1 and rep["recorded_reclassified_hosted_stale"] == []
-    assert "reclassified HOSTED_STALE=0: [])" in capsys.readouterr().out
+    assert "reclassified HOSTED_STALE=0: [], kept=1: [" in capsys.readouterr().out
 
 
 def test_the_remaining_false_greens_are_what_ready_reads(tmp_path, monkeypatch, capsys):
@@ -604,3 +604,26 @@ def test_a_recorded_false_green_whose_hosted_red_has_since_gone_is_not_reclassif
     gh.checks[A] = "success"   # re-run green after the tick saw red: its completed_at says nothing about the red that was recorded
     rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
     assert rc == 1 and rep["recorded_context_false_green"] == 1 and rep["recorded_reclassified_hosted_stale"] == []
+
+
+@pytest.mark.parametrize("kw,done,mutate,why", [
+    ({"mirror": False}, BEFORE_LOCK, None, "unknown ("),
+    ({}, AFTER_LOCK, None, "fresh"),
+    ({"run_doc": False}, BEFORE_LOCK, None, "unknown (FileNotFoundError"),
+    ({}, None, None, "no readable completed_at"),
+    ({}, BEFORE_LOCK, "green", "now GREEN, not the red the tick recorded")],
+    ids=["mirror-unreadable", "fresh", "run-dir-unreadable", "no-completed-at", "red-gone"])
+def test_a_recorded_false_green_that_is_kept_says_why_in_the_line_and_the_json(tmp_path, monkeypatch, capsys, kw, done, mutate, why):
+    d, gh = _stale_world(tmp_path, monkeypatch, done, **kw)
+    if mutate == "green":
+        gh.checks[A] = "success"
+    rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
+    (k,) = rep["recorded_kept_false_green"]
+    assert rc == 1 and k["pr"] == 1 and why in k["why"] and k["context"] in (sf.CTX_BACKEND, None)
+    out = capsys.readouterr().out
+    assert "kept=1: [pr1 " in out and why in out and "reclassified HOSTED_STALE=0: []" in out
+
+
+def test_a_reclassified_false_green_is_not_listed_as_kept(tmp_path, monkeypatch):
+    d, gh = _stale_world(tmp_path, monkeypatch, BEFORE_LOCK)
+    assert run_report(tmp_path, monkeypatch, [d], gh)[1]["recorded_kept_false_green"] == []

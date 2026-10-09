@@ -454,9 +454,9 @@ count is vacuous today. The phase-D instrument is the CONTEXT level, in two part
   at most 20) and `main_moved_count`. Only on evidence: an unreadable `completed_at`, mirror, matrix or change_map, or a context with no
   `runs_when`, keeps the class and sets `stale_check: "unknown (<why>)"`. The tick computes it going forward (the decision's
   `hosted_compare.stale` / `stale_unknown`); for the past, the report re-reads each recorded FALSE_GREEN row's `hosted_compare.json`, reads the
-  head's check-runs once (a GET) and applies the same rule from the mirror, writing nothing, and prints
-  `false_green=N (recorded=R, reclassified HOSTED_STALE=S: [pr7961 Backend Tests (Python): main moved <paths> after hosted ran <ts>])`:
-  READY reads `N`, the remaining false greens. A recorded red that is no longer the hosted verdict is never reclassified.
+  head's check-runs through read-only GETs (branch protection, the check-runs and the statuses of the head) and applies the same rule from the mirror, writing nothing, and prints
+  `false_green=N (recorded=R, reclassified HOSTED_STALE=S: [pr7961 Backend Tests (Python): main moved <paths> after hosted ran <ts>], kept=K: [pr7961 Backend Tests (Python): unknown (<why>)])`:
+  READY reads `N`, the remaining false greens, and every kept row says why it was kept (`recorded_kept_false_green` in the JSON). A recorded red that is no longer the hosted verdict is never reclassified.
 - **at tick time:** the `hosted_compare.counts.FALSE_GREEN` each decision line recorded. A red GitHub later re-ran green, or a
   context it stopped requiring, cannot erase a disagreement once seen.
 

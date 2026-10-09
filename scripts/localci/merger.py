@@ -859,7 +859,7 @@ def cmd_report(a) -> int:
     parents: dict = {}
     rows = []
     ctx_counts = dict.fromkeys(hc.CLASSES, 0)
-    recorded_fg, recorded_raw, reclassified = 0, 0, []   # B10: a recorded FALSE_GREEN the evidence shows was a stale hosted verdict
+    recorded_fg, recorded_raw, reclassified, kept_fg = 0, 0, [], []   # B10: a recorded FALSE_GREEN the evidence shows was a stale hosted verdict
     judges: dict = {}
     check_max_s: dict = {}   # the slowest run of each check in the window: where a tick's time goes
     try:
@@ -888,9 +888,11 @@ def cmd_report(a) -> int:
             # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
             raw = recorded_false_green(d)
             judge = judges.setdefault(str(d.get("base_sha")), StaleJudge(state / "repo.git", str(d.get("base_sha"))))
-            got = reclassify_recorded(a, d, judge)[:raw] if raw else []
+            got, why_kept = reclassify_recorded(a, d, judge) if raw else ([], [])
+            got = got[:raw]
             recorded_raw += raw
             reclassified += got
+            kept_fg += why_kept[:max(raw - len(got), 0)]
             recorded_fg += raw - len(got)
             for k, v in (d.get("durations") if isinstance(d.get("durations"), dict) else {}).items():
                 if is_num(v):
@@ -981,7 +983,7 @@ def cmd_report(a) -> int:
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
-           "recorded_reclassified_hosted_stale": reclassified, "phase_e_ready": ready, "phase_f": "shadow", "rows": rows,
+           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "phase_f": "shadow", "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     atomic_write(state / "report.json", json.dumps(out, indent=2) + "\n")
     print(f"{'PR':7} {'HEAD':12} {'BASE':12} {'MERGER':11} {'GITHUB':7} {'MERGED':6} CLASS")
@@ -1006,7 +1008,8 @@ def cmd_report(a) -> int:
           f"base_moved={would_merge['base_moved']}, errors={would_merge['errors']}) — rehearsed with merge-tree, nothing merged, nothing pushed")
     stale_note = (f"(recorded={recorded_raw}, reclassified HOSTED_STALE={len(reclassified)}: ["
                   + ", ".join(f"pr{x['pr']} {x['context']}: main moved {', '.join(x['main_moved_paths'][:3])}"
-                              + (", …" if x["main_moved_count"] > 3 else "") + f" after hosted ran {x['hosted_completed_at']}" for x in reclassified) + "])")
+                              + (", …" if x["main_moved_count"] > 3 else "") + f" after hosted ran {x['hosted_completed_at']}" for x in reclassified) + "]"
+                  + f", kept={len(kept_fg)}: [" + ", ".join(f"pr{x['pr']} {x['context'] or 'all rows'}: {x['why']}" for x in kept_fg) + "])")
     for h in hosted_red_merged:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
@@ -1040,27 +1043,32 @@ def recorded_false_green(d: dict) -> int:
     return value
 
 
-def reclassify_recorded(a, d: dict, judge) -> list[dict]:
+def reclassify_recorded(a, d: dict, judge) -> tuple[list[dict], list[dict]]:
     """B10, the past: re-read a decision's recorded FALSE_GREEN rows (its run dir's hosted_compare.json) and apply the stale rule from
-    the mirror. Read-only: one GET for the head's check-runs, git reads in the mirror, nothing written anywhere. A row is reclassified
-    only when the red the tick saw is still the hosted verdict AND the judge found the evidence; any read that fails keeps the row."""
+    the mirror. Read-only: GETs (branch protection, the check-runs and the statuses of the head), git reads in the mirror, nothing
+    written anywhere. Returns ``(reclassified, kept)``: a row is reclassified only when the red the tick saw is still the hosted
+    verdict AND the judge found the evidence; every other recorded row is kept WITH its reason, and a read that fails keeps them all."""
+    pr, head = d.get("pr"), d.get("head_sha")
     try:
         doc = json.loads((Path(str(d["run_dir"])) / "hosted_compare.json").read_text())
         rows = [r for r in doc["rows"] if r.get("class") == "FALSE_GREEN"]
-        live = hc.fetch_live(a.repo, a.base, str(d["head_sha"]))
+        live = hc.fetch_live(a.repo, a.base, str(head))
         hosted = hc.hosted_entries(live["check_runs"], live["statuses"])
-    except Exception:  # noqa: BLE001 — unreadable evidence leaves the recorded false green where it is
-        return []
-    out = []
+    except Exception as exc:  # noqa: BLE001 — unreadable evidence leaves the recorded false green where it is, and says why
+        return [], [{"pr": pr, "context": None, "head_sha": head, "why": redact(f"unknown ({type(exc).__name__}: {exc})")}]
+    out, kept = [], []
     for r in rows:
         h = hc.hosted_verdict(hosted.get(r["context"], []), r.get("app_id"))
         if h["verdict"] != "RED":
+            kept.append({"pr": pr, "context": r["context"], "head_sha": head, "why": f"the hosted verdict is now {h['verdict']}, not the red the tick recorded"})
             continue
         reading = hc.stale_reading(judge, r["context"], h["completed_at"])
         if reading["stale"] is True:
-            out.append({"pr": d.get("pr"), "context": r["context"], "head_sha": d.get("head_sha"), **{k: reading[k] for k in (
+            out.append({"pr": pr, "context": r["context"], "head_sha": head, **{k: reading[k] for k in (
                 "hosted_completed_at", "hosted_main", "main_moved_paths", "main_moved_count")}})
-    return out
+        else:
+            kept.append({"pr": pr, "context": r["context"], "head_sha": head, "why": reading["stale_check"]})
+    return out, kept
 
 
 def _days(first: str, last: str) -> float:

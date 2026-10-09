@@ -40,6 +40,13 @@ def test_main_moved_only_in_unselected_paths_is_fresh(main):
     assert got["stale"] is False and got["hosted_main"] == main["c1"] and got["main_moved_paths"] == []
 
 
+def test_the_hosted_main_is_found_on_the_first_parent_line_not_among_commits_main_took_in_later(main):
+    # s (mcp-only) is dated 13:00, merged into main at m on 10-08: at 14:00 main was still c2. Walking every ancestor would find s,
+    # whose tree already holds the mcp source, and call the move fresh.
+    got = main["judge"](sf.CTX_MCP, "2026-10-07T14:00:00Z")
+    assert got == {"stale": True, "hosted_main": main["c2"], "main_moved_paths": [sf.MCP], "main_moved_count": 1}
+
+
 def test_the_same_move_is_stale_for_the_context_it_selects(main):
     assert main["judge"](sf.CTX_FRONTEND, AFTER_DOC)["stale"] is True and main["judge"](sf.CTX_BACKEND, AFTER_DOC)["stale"] is False
 
@@ -172,3 +179,20 @@ def test_the_tick_with_an_unreadable_mirror_keeps_the_false_green_and_names_why(
     summary, _ = mg.hosted_summary("o/r", "main", STATUS, "h" * 40, run_dir, mg.StaleJudge(tmp_path / "nowhere.git", "a" * 40))
     assert summary["counts"]["FALSE_GREEN"] == 1 and summary["exit"] == 1 and "stale" not in summary
     assert summary["stale_unknown"][CTX].startswith("unknown (")
+
+
+# ------------------------------------------------------------------ the per-path rule must equal the classifier's own set rule
+def _real_classify():
+    spec = importlib.util.spec_from_file_location("real_change_map_under_test", sf.REAL_MAP)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.classify
+
+
+@pytest.mark.parametrize("paths", [[sf.LOCK, sf.DOC, sf.TSX, sf.MCP], [sf.DOC, sf.MCP], [sf.LOCK, "no_such_top_level/unclassified.xyz"], [sf.DOC]],
+                         ids=["four-domains", "docs-and-mcp", "with-an-unclassified-path", "docs-only"])
+def test_the_union_of_per_path_selections_is_what_the_classifier_selects_for_the_whole_set(main, paths):
+    whole = _real_classify()(paths)
+    per_path = main["judge"].classified(paths)
+    assert set().union(*(set(per_path[p]["suggested_jobs"]) for p in paths)) == set(whole["suggested_jobs"])
+    assert any(per_path[p]["run_all"] for p in paths) == whole["run_all"]
