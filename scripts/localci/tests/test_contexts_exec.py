@@ -422,12 +422,16 @@ def test_a_judge_whose_mode_changes_is_a_rewritten_judge(tmp_path):
 @pytest.mark.parametrize("candidate,want", [
     ({"docs/new.md": "clean\n"}, "PASS"),
     ({"docs/bad.md": "VIOLATION\n"}, "FAIL"),
-    ({JUDGE: "import sys\nsys.exit(0)\n", "docs/bad.md": "VIOLATION\n"}, "FAIL"),   # the BASE judge is laid over the candidate's
+    # the BASE judge is laid over the candidate's: it reads the violation red, and since the candidate rewrites that judge the red
+    # is no verdict (B5, #8097) — BLOCKED judge_rewritten, never FAIL, and never the PASS the candidate's own `exit 0` would give
+    ({JUDGE: "import sys\nsys.exit(0)\n", "docs/bad.md": "VIOLATION\n"}, "BLOCKED"),
 ])
 def test_a_contained_context_runs_base_steps_verbatim_with_its_guilt_control(tmp_path, capsys, candidate, want):
     fx, s = ran(tmp_path, candidate, contained_ctx(), "--isolation", "container", "--isolation-image", fr.ISOLATION_IMAGE)
     c = s["checks"]["ctx.judge"]
     assert c["status"] == want, (c, (fx["run"] / "logs" / "ctx.judge.log").read_text()[-2000:])
+    if want == "BLOCKED":
+        assert c["reason"].startswith("judge_rewritten: judge read red with the BASE judge while the candidate rewrites"), c["reason"]
     assert [x["name"] for x in c["steps"]] == ["selftest", "judge", "guilt control", "pr sentinel"]
     assert c["steps"][3]["status"] == "NOT_APPLICABLE" and (c["steps"][2]["status"] == "PASS") == (want == "PASS")
     st = fr.load_state(fx)
