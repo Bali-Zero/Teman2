@@ -1,0 +1,55 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Lead's mandate B8a, 2026-10-09 (budget 25 minutes), from origin/main ed5a1b9cb6 (B8 merged). Measured on Pro by the lead
+  at 02:49:24Z: B8's first live prune was right (the floor removed localci-deps:1b7ca87ccc31311e, VM 10.1 -> 16.1 GB, met)
+  but journalled "4 plan(s) of the last 48 h name it, built -5.3 h ago"; `docker image inspect --format {{.Created}}` on
+  Pro prints `2026-10-08T20:00:21.883530525+08:00`, and prune.py:_ts (since B6 a43431d355) dropped the offset.
+lanes:
+  - lane: localci-b8a-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux B8a of LOCALCI-SOVEREIGN, M5; Pro not touched)"
+pii_scan: clean
+pii_scan_note: The merger's prune parser, its tests and mutants, and one README sentence; no client data was read or written.
+what_changed: |
+  scripts/localci/prune.py: _ts full-matches RFC 3339 (date-time, optional fraction, optional trailing Z or ±HH:MM / ±HHMM)
+  and returns the UTC instant (the offset subtracted); no offset reads as UTC as before; a bad offset (hour > 23, minute >
+  59), trailing text or an impossible date is None, which the prune already treats as undated; nanoseconds kept. Tests: the
+  +08:00, -05:30, +0800 and no-offset equivalences, seven malformed strings, nanosecond ordering, a UTC and a local-time
+  image ordered by instant, and a floor removal of +08:00 images journalling "built 20.0 h ago" and "built 1.0 h ago".
+  Mutants: b8a-offset-ignored, b8a-offset-sign-flipped, b8a-offset-minutes-dropped, b8a-bad-offset-accepted,
+  b8a-trailing-text-accepted added; b6-nanoseconds-dropped re-aimed at the new line. README: the sentence on how Created is
+  read names the offset. localci_merger_tick.sh unchanged.
+proof: |
+  See receipts. The floor line is produced by the committed code on the fixture (fake docker, images dated like Pro's).
+bites:
+  consumer: The shadow merger's launchd tick on Pro (decisions.jsonl).
+  observation: >-
+    Owed after merge (this lane does not ship): the first prune line after the mirror fetches the merge whose floor removes
+    an image journals "built H h ago" with H >= 0 and equal to now minus the image's Created read with its +08:00.
+ground:
+  ts: "2026-10-09T02:51:48Z"
+  siblings: Worktree from origin/main ed5a1b9cb6 via scripts/agent_start.py; B8 merged at ed5a1b9cb6.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 0.3
+receipts:
+  - claim: "test_prune.py at cb72e8b81d: 72 passed; the B8a tests alone 14 passed — test_prune.py::test_b8a_created_is_read_as_a_utc_instant_whatever_its_offset (4 cases), test_prune.py::test_b8a_a_malformed_created_is_none (7 cases), test_prune.py::test_b8a_a_floor_removal_of_images_dated_with_an_offset_journals_their_true_age, test_prune.py::test_b8a_an_image_dated_in_utc_and_one_dated_in_local_time_are_ordered_by_their_instants, and the nanosecond-ordering test."
+    cmd: python3 -m pytest scripts/localci/tests/test_prune.py -q -p no:cacheprovider (then -k test_b8a)
+    exit: 0
+    ts: "2026-10-09T03:00:20Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The B8a mutant rules and the two the lead named, on the tree committed as cb72e8b81d, 02:53:58Z to 02:58:37Z: b8a-offset-ignored, b8a-offset-sign-flipped, b8a-offset-minutes-dropped, b8a-bad-offset-accepted, b8a-trailing-text-accepted, b6-nanoseconds-dropped, b8-floor-most-refs-first, b8-floor-keeps-newest — 8/8 killed, none stale; a text count over all 239 rules found none stale."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 8 rules>
+    exit: 0
+    ts: "2026-10-09T02:58:37Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The localci suite at cb72e8b81d, 03:01:13Z to 03:06:08Z: 952 passed, 14 skipped (needs_docker), 1 warning (an unraisable tarfile stream in test_isolation, not B8a), 294 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T03:06:08Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "The full mutant sweep was not run (25-minute budget; the lead asked for --only); the parser has one caller, deps_images, and every rule's text was checked present exactly once."
+  - "A Created with an offset but no seconds, or with a comma fraction, reads as undated: docker prints RFC 3339 with seconds and a dot."
+  - "No adversarial round: gear 1 by the lint's floor; the independent gate is the lead's."
