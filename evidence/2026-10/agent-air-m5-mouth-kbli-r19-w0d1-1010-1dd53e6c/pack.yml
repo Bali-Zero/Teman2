@@ -1,0 +1,77 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-1 (BLUE), implemented
+  exactly from SPEC-W0d-census.md (section 1.b, section 3 rows G27-G29, I9 and I10, section 5 row
+  W0d-1). The Dux built and ran every command. It does not self-sign; the imperator commissions a
+  fresh Opus gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/SPEC-W0d-census.md; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 8.5; the gate BLOCK on #8183
+  (issuecomment-6087508612).
+lanes:
+  - lane: kbli-r19-w0d1-1010
+    role: build
+    seat: "claude-opus-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "Pins and mutant fixtures hold public nav and footer labels, colours and route paths only. No client data, no external seat."
+provenance: >-
+  Fresh worktree from origin/main c76bf4c723. Commit 1 carries #8183's 17 paths verbatim from
+  59d1a5e7f6. A later commit drops #8183's brief.yml and pack.yml, because the Harness floor
+  resolves one pack per PR; #8183's evidence data files stay. The mutations ran in a scratch worktree detached at c76bf4c723 with its own dev server,
+  edited by mutate.py, and reverted to a clean tree after each run.
+diff:
+  net_lines: |
+    #8183 carried (commit 1, verbatim) + new:
+      - census script +123 -23;
+      - tests +124 -22;
+      - contract +99 -41;
+      - CI workflow +26 -9.
+    Fixtures are data: the shared-component pin (20 walks) and the four mutant runs.
+    No apps/mouth/src file.
+  behaviour_change: >-
+    The census walks ten shared-component pins outside /kbli* (20 walks). It reads each pin's branch
+    at run time and prints shared-touched-unpinned then shared-component-drift (renamed from
+    shared-nav-drawer-drift) before opened-text-below-4.5. CI asserts both lines at 0, and on a W0d
+    branch it asserts that no file under apps/mouth/src changed.
+receipts:
+  - claim: "Live census at origin/main: every capture and surface opens, no touched shared file lacks a pin, no shared component drifted."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3596 --json <scratch>"
+    result: "captures 30 ok; 0 / 128 / 0 / 51; opened-surfaces 25 ok, 0 failed; opened-outside-wrapper 10; opened-grounds-off-contract 88; shared-touched-unpinned 0; shared-component-drift 0; opened-text-below-4.5 398"
+    exit: 0
+    ts: "2026-10-10T08:05:00Z"
+    seat: claude-opus-5-5
+  - claim: "D repeats: a second shared walk on origin/main, and the unmodified scratch tree on its own server (I9), print 0."
+    cmd: "python3 shared_walk.py http://localhost:3596 shared <out>; python3 shared_walk.py http://localhost:3597 shared+kbli-nav <out>"
+    result: "shared-component-drift 0 (second run); the I9 replay against the pin prints shared-component-drift 0 (mutants-replay.txt)"
+    exit: 0
+    ts: "2026-10-10T08:20:00Z"
+    seat: claude-opus-5-5
+  - claim: "G27, G28 and G29 are red; I9 and I10 are green."
+    cmd: "mutate.py A|B|I10 on the scratch tree, shared_walk.py per mutation, replayed against the pin (mutants-replay.txt)"
+    result: "A: D 72, all on /v2, /v2/news and /visa/second-home. B: D 108, on all six MobileNav pins. I10: D 0, and the /kbli drawers paint #F7F4EE. G29: shared-touched-unpinned 1, naming MobileNav non-R19."
+    exit: 0
+    ts: "2026-10-10T08:25:00Z"
+    seat: claude-opus-5-5
+  - claim: "The suite passes, and each instrument mutation fails it."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider; four sed mutations of the census (branch check, working-tree diff, the /v2 pin route, the unpinned-walk line)"
+    result: "92 passed; each mutation: 1 or 2 failed"
+    exit: 0
+    ts: "2026-10-10T08:30:00Z"
+    seat: claude-opus-5-5
+  - claim: "W1's live test is unchanged in outcome."
+    cmd: "cd apps/mouth && R19_WRAPPER_BASE_URL=http://localhost:3596 npx vitest run src/test/r19-wrapper.test.ts"
+    result: "Test Files 1 passed; Tests 5 passed, 1 skipped"
+    exit: 0
+    ts: "2026-10-10T08:35:00Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: claude-opus-5-5
+    objection: "#8183's gate: D pinned only R19-branch drawers. /v2 and /v2/news render the non-R19 branch W2''' edits, so mutation A printed D 0. Section 8.5's claim that /kbli is the only route on that branch was false."
+    status: CONFIRMED
+    resolution: "Pins cover every (component, branch) pair of the spec's matrix, with the branch read at run time. Mutation A now prints D 72 on /v2, /v2/news and /visa/second-home. Section 8.5 states the correction."
+  - seat: claude-opus-5-5
+    objection: "At 1440px in system-dark the /v2 NavShell links sit over a background image, so a fingerprint of text pairs alone held only its CTA."
+    status: CONFIRMED
+    resolution: "Shared fingerprints also hold each text over an image (its own colour and alpha, plus the label); the pin holds 10 entries for that walk."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

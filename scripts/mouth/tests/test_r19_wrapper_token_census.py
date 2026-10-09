@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -108,7 +109,8 @@ def test_cli_replay_prints_the_verdict_last(capsys):
     out = capsys.readouterr().out.splitlines()
     assert "read-but-undefined: 0" in out
     assert any(line.startswith("colors-outside-direction-a: ") for line in out)
-    assert out[-1].startswith("state-colors-off-contract: ")
+    assert any(line.startswith("state-colors-off-contract: ") for line in out)
+    assert out[-1].startswith("opened-text-below-4.5: ")
 
 
 def test_export_hands_the_armed_test_the_same_probe_and_states(capsys, census):
@@ -454,3 +456,424 @@ def test_hex_drops_the_alpha_of_every_computed_syntax_exactly():
         browser.close()
     assert [(want, g) for (want, _), g in zip(inputs, got)] == [(want, want) for want, _ in inputs]
     assert zero == "transparent"
+
+
+# --- Section 8: the surfaces a click opens (W0c) -------------------------------------------
+
+SURFACES = census_mod.parse_surfaces(CONTRACT, census_mod.load_contract(CONTRACT), STATES)
+
+
+def edit_surface(text: str, token: str, column: str, value: str) -> str:
+    """Rewrites one cell of one surfaces row; the table may be padded."""
+    out = []
+    for line in text.splitlines():
+        if line.startswith(f"| `{token}` ") and line.count("|") == len(census_mod.UHEADER) + 1:
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            cells[census_mod.UHEADER.index(column)] = value
+            line = "| " + " | ".join(cells) + " |"
+        out.append(line)
+    return "\n".join(out)
+
+
+def test_the_surfaces_table_names_the_four_slabs_the_gate_named_opaque():
+    for token in ("bg-[#1c1c1f]/95", "bg-[#141416]/95", "bg-[#0A0C10]", "bg-[#151921]"):
+        row = SURFACES[token]
+        assert row["ground"] == "opaque" and row["hex"] in (census_mod.DIRECTION_A["elevated"],
+                                                            census_mod.DIRECTION_A["wash"]), token
+        assert row["ratio"] >= 4.5 and "ink" in row["text"], token
+
+
+def test_every_text_bearing_surface_clears_4_5_and_no_scrim_carries_text():
+    for token, row in SURFACES.items():
+        if row["ground"] == "scrim":
+            assert row["hex"] == census_mod.DIRECTION_A["ink"] and row["text"] == [], token
+        for role in row["text"]:
+            hx = {**census_mod.DIRECTION_A, **census_mod.SEMANTIC}[role]
+            assert census_mod.contrast(hx, row["hex"]) >= 4.5, (token, role)
+
+
+@pytest.mark.parametrize("mutation", [
+    ("contrast: not the recomputed ratio", lambda t: edit_surface(t, "bg-[#1c1c1f]/95", "contrast", "6.10")),
+    ("slab painted ink", lambda t: edit_surface(edit_surface(t, "bg-[#1c1c1f]/95", "value", "ink #1D2C3B"),
+                                                "bg-[#1c1c1f]/95", "contrast", "1.00")),
+    ("text below 4.5 on wash", lambda t: edit_surface(edit_surface(t, "bg-[#151921]", "text", "line-strong"),
+                                                      "bg-[#151921]", "contrast", "1.80")),
+    ("scrim carrying text", lambda t: edit_surface(edit_surface(t, "bg-black/70", "text", "ink"),
+                                                   "bg-black/70", "contrast", "1.00")),
+    ("unknown ground", lambda t: edit_surface(t, "bg-[#151921]", "ground", "glass")),
+    ("a state variant", lambda t: t.replace("| `bg-[#151921]` ", "| `hover:bg-[#151921]` ", 1)),
+    ("a token section 5 already names", lambda t: t.replace("| `bg-[#151921]` ", "| `bg-white/5` ", 1)),
+    ("block: markers gone", lambda t: t.replace(census_mod.UEND, "", 1)),
+], ids=lambda m: m[0] if isinstance(m, tuple) else "")
+def test_a_mutated_surfaces_table_is_refused_not_read_as_empty(mutation):
+    mutated = mutation[1](CONTRACT)
+    assert mutated != CONTRACT
+    with pytest.raises(census_mod.ContractError):
+        contract = census_mod.load_contract(mutated)
+        census_mod.parse_surfaces(mutated, contract, census_mod.parse_states(mutated, contract))
+
+
+def test_a_class_named_in_both_section_5_and_8_2_is_refused():
+    dup = CONTRACT.replace(census_mod.CEND, "| class | `text-white` | ink #1D2C3B | duplicate |\n" + census_mod.CEND, 1)
+    with pytest.raises(census_mod.ContractError, match="repeats section 5"):
+        census_mod.load_contract(dup)
+
+
+ROWS = census_mod.load_contract(CONTRACT)
+PIN = json.loads(census_mod.SHARED_PIN.read_text())
+ELEVATED, INK = census_mod.DIRECTION_A["elevated"], census_mod.DIRECTION_A["ink"]
+
+
+def opened(name: str, ground: dict | None, pairs: list[dict], painted: list[dict] | None = None,
+           outside: list[str] | None = None) -> dict:
+    return {"name": name, "walk": "desktop/light", "roots": 1, "scrims": 0, "pairs": len(pairs), "unmeasurable": 0,
+            "outside": outside or [], "min": min(p["ratio"] for p in pairs),
+            "below": [p for p in pairs if p["ratio"] < 4.5],
+            "grounds": [json.dumps(ground, sort_keys=True)] if ground else [],
+            "painted": [json.dumps(g, sort_keys=True) for g in painted or []], "scrim_paint": []}
+
+
+def pair(ratio: float, fg: str, bg: str, text: str = "Restaurant") -> dict:
+    return {"ratio": ratio, "fg": fg, "bg": bg, "text": text, "cls": "font-semibold truncate text-white"}
+
+
+def paint(hexv: str, path: str = "div.absolute.z-50", image: bool = False) -> dict:
+    return {"path": path, "hex": hexv, "image": image, "text": "Restaurant"}
+
+
+def verdict_of(census: dict, pin: dict | None = None, touched: list[str] | None = None) -> list[str]:
+    return census_mod.opened_verdict(census, SURFACES, ROWS, pin, touched)
+
+
+def lines_of(out: list[str], prefix: str) -> str:
+    return next(ln for ln in out if ln.startswith(prefix))
+
+
+def test_guilt_ink_titles_on_the_dark_dropdown_count_by_row_and_by_paint():
+    """The #8161 BLOCK: the dropdown ground stays #1C1C1F at 0.95 and the titles turned ink."""
+    dark = {"token": "bg-[#1c1c1f]/95", "hex": "#1C1C1F", "a": 0.95, "image": False, "scrim": False}
+    census = {"opened": [opened("search-dropdown", dark, [pair(1.05, INK, "#272729"),
+                                                          pair(2.40, "#58626B", "#272729", "description")],
+                                [paint("#272729")])], "opened_failed": []}
+    out = verdict_of(census)
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 2"
+    assert any(ln.startswith("  bg-[#1c1c1f]/95  expected elevated #FFFCF7 (opaque), painted #1C1C1F alpha 0.95")
+               for ln in out)
+    assert any(ln.startswith("  ground #272729 under 'Restaurant' at div.absolute.z-50") for ln in out)
+    assert out[-1] == "opened-text-below-4.5: 2"
+
+
+@pytest.mark.parametrize("token,ground", [("bg-[#1c1c1e]/95", "#272729"), ("bg-zinc-900", "#18181B")],
+                         ids=["one hex digit off the named slab", "an unnamed zinc slab"])
+def test_guilt_an_unnamed_spelling_of_a_dark_slab_with_readable_text_counts(token, ground):
+    """The W0c gate's under-match: a spelling with no row used to print K 0."""
+    slab = {"token": token, "hex": ground, "a": 1, "image": False, "scrim": False}
+    census = {"opened": [opened("search-dropdown", slab, [pair(15.0, "#FFFFFF", ground)], [paint(ground)])],
+              "opened_failed": []}
+    out = verdict_of(census)
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 2"
+    assert any(ln.startswith(f"  {token}  has no section 5 or 8.1 row") for ln in out)
+    assert any(ln.startswith(f"  ground {ground} under") for ln in out)
+    assert out[-1] == "opened-text-below-4.5: 0"
+
+
+def test_innocence_an_elevated_surface_with_ink_text_counts_zero():
+    card = {"token": "bg-[#1c1c1f]/95", "hex": ELEVATED, "a": 1, "image": False, "scrim": False}
+    census = {"opened": [opened("search-dropdown", card, [pair(13.91, INK, ELEVATED)], [paint(ELEVATED)])],
+              "opened_failed": []}
+    out = verdict_of(census)
+    assert out[0] == "opened-surfaces: 1 ok, 0 failed"
+    assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 0"
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 0"
+    assert out[-1] == "opened-text-below-4.5: 0"
+
+
+def test_a_scrim_is_ink_at_any_alpha_and_a_gradient_stop_must_paint_nothing():
+    scrim = {"token": "bg-black/70", "hex": INK, "a": 0.7, "image": False, "scrim": True}
+    stop = {"token": "from-[#0F1115]", "hex": "transparent", "a": 0, "image": True, "scrim": False}
+    drawer = opened("sector-drawer", scrim, [pair(13.91, INK, ELEVATED)])
+    drawer["scrim_paint"] = [json.dumps({"path": "body>div.fixed", "hex": INK, "a": 0.7}),
+                             json.dumps({"path": "body>div.nav", "hex": "#000000", "a": 0.45})]
+    census = {"opened": [drawer, opened("explorer-answer-inspector", stop, [pair(13.91, INK, ELEVATED)])],
+              "opened_failed": []}
+    off = census_mod.judge_grounds(census, SURFACES, ROWS)
+    assert len(off) == 2
+    assert off[0].startswith("  from-[#0F1115]  expected not painted on this surface")
+    assert off[1].startswith("  scrim #000000 alpha 0.45 at body>div.nav (a scrim is ink)")
+
+
+def test_copper_is_a_text_ground_ink_and_an_image_are_not():
+    census = {"opened": [opened("x", None, [pair(5.64, ELEVATED, "#A44B36")],
+                                [paint("#A44B36", "a.cta"), paint(INK, "div.band"), paint(ELEVATED, "div.head", True)])],
+              "opened_failed": []}
+    off = census_mod.judge_grounds(census, SURFACES, ROWS)
+    assert [ln.split(" under")[0] for ln in off] == ["  ground #1D2C3B", "  ground #FFFCF7 over an image"]
+
+
+def test_guilt_a_portal_outside_the_wrapper_is_counted():
+    census = {"opened": [opened("kbli-mobile-nav", None, [pair(13.91, INK, ELEVATED)], [paint(ELEVATED)],
+                                outside=["html>body>div.md:hidden.fixed"])], "opened_failed": []}
+    out = verdict_of(census)
+    assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 1"
+    assert "  html>body>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav desktop/light)" in out
+
+
+def shared(fingerprints: dict, failed: list[str] | None = None) -> dict:
+    return {"opened": [opened("x", None, [pair(13.91, INK, ELEVATED)], [paint(ELEVATED)])], "opened_failed": [],
+            "shared_failed": failed or [],
+            "shared": [{"name": k.rsplit(" ", 1)[0], "walk": k.rsplit(" ", 1)[1], "fingerprint": v}
+                       for k, v in fingerprints.items()]}
+
+
+def drift_of(fingerprints: dict) -> tuple[list[str], str]:
+    return census_mod.shared_drift(shared(fingerprints), PIN)
+
+
+MUTANTS = json.loads((FIXTURE.parent / "r19_shared_mutants.json").read_text())
+MOBILE_NAV_FILE = "apps/mouth/src/app/v2/_components/MobileNav.tsx"
+
+
+def test_innocence_i9_every_shared_component_as_pinned_has_no_drift():
+    """I9: origin/main unmodified, walked live on a second dev server (the scratch tree, before any mutation)."""
+    assert lines_of(verdict_of(shared(PIN), PIN), "shared-component-drift:") == "shared-component-drift: 0"
+    assert drift_of(MUTANTS["I9"]["shared"]) == ([], "0")
+
+
+def test_guilt_g27_an_ungated_paper_repaint_of_the_non_r19_drawer_drifts_on_v2_and_visa():
+    """Mutation A: `background: isR19 ? "var(--nav-bg)" : "#F7F4EE"` in MobileNav.tsx, the #8183 gap."""
+    lines, count = drift_of(MUTANTS["A"]["shared"])
+    assert int(count) >= 1
+    for route in ("/v2", "/visa/second-home", "/v2/news"):
+        where = f"MobileNav non-R19 {route} mobile/light"
+        assert any(ln.startswith("  - ") and "'Menu'" in ln and ln.endswith(f"({where})") for ln in lines), route
+        assert any(ln.startswith("  + ") and " on #F7F4EE 'Menu'" in ln and ln.endswith(f"({where})")
+                   for ln in lines), route
+    assert not [ln for ln in lines if "MobileNav R19 " in ln or "NavShell" in ln or "Footer" in ln]
+
+
+def test_guilt_g28_a_deeper_item_tint_on_every_branch_drifts_on_v2_and_tax_calendar():
+    """Mutation B: the item ground `color-mix(… 6% …)` becomes 40% on both branches."""
+    lines, count = drift_of(MUTANTS["B"]["shared"])
+    assert int(count) >= 1
+    for where in ("MobileNav non-R19 /v2 mobile/light", "MobileNav R19 /tax-calendar mobile/light"):
+        assert any(ln.startswith("  + ") and "'Home'" in ln and ln.endswith(f"({where})") for ln in lines), where
+
+
+def test_innocence_i10_a_paper_repaint_gated_on_the_prop_moves_only_kbli():
+    """W2''''s intended change on a scratch tree: D stays 0 and /kbli's drawer, judged by K, is repainted."""
+    assert drift_of(MUTANTS["I10"]["shared"]) == ([], "0")
+    painted = {g["hex"] for g in MUTANTS["I10"]["kbli_painted"]}
+    assert census_mod.DIRECTION_A["paper"] in painted
+    assert census_mod.DIRECTION_A["paper"] not in {g["hex"] for g in MUTANTS["I9"]["kbli_painted"]}
+
+
+def test_guilt_g29_mobile_nav_edited_with_the_v2_pin_removed_is_unpinned():
+    partial = {k: v for k, v in PIN.items() if " /v2 " not in k}
+    lines, count = census_mod.shared_unpinned([MOBILE_NAV_FILE], partial)
+    assert count == "1"
+    assert lines == [f"  {MOBILE_NAV_FILE}  MobileNav non-R19: no pin for MobileNav non-R19 /v2 mobile/light, "
+                     "MobileNav non-R19 /v2 mobile/system-dark"]
+    out = verdict_of(shared(PIN), partial, [MOBILE_NAV_FILE])
+    assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 1"
+
+
+def test_a_pin_taken_on_the_wrong_branch_does_not_cover_its_pair():
+    where = "MobileNav non-R19 /visa/second-home mobile/system-dark"
+    wrong = {**PIN, where: [x.replace("branch non-R19", "branch R19") for x in PIN[where]]}
+    lines, count = census_mod.shared_unpinned([MOBILE_NAV_FILE], wrong)
+    assert count == "1" and lines[0].endswith(f"no pin for {where}")
+
+
+def test_a_branch_that_flips_at_run_time_is_drift():
+    where = "MobileNav non-R19 /v2 mobile/light"
+    flipped = {**PIN, where: [x.replace("branch non-R19", "branch R19") for x in PIN[where]]}
+    lines, count = drift_of(flipped)
+    assert count == "2" and lines == [f"  - branch non-R19  ({where})", f"  + branch R19  ({where})"]
+
+
+@pytest.mark.parametrize("touched", ["packages/core/components/BZLogo.tsx", "apps/mouth/src/components/ui/button.tsx",
+                                     "apps/mouth/src/components/providers/LazyToaster.tsx"])
+def test_guilt_a_shared_file_with_no_pin_is_unpinned_by_construction(touched):
+    lines, count = census_mod.shared_unpinned([touched, "scripts/mouth/r19_wrapper_token_census.py"], PIN)
+    assert count == "1" and lines == [f"  {touched}  has no pinned pair: an edit to it is unpinned by construction"]
+
+
+def test_innocence_a_diff_that_touches_no_shared_file_or_a_pinned_one_counts_zero():
+    for touched in ([], ["docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md"], list(census_mod.SHARED_MATRIX)[:4]):
+        assert census_mod.shared_unpinned(touched, PIN) == ([], "0"), touched
+
+
+@pytest.mark.parametrize("touched", [None, "cannot diff against origin/main: unknown revision"])
+def test_no_diff_never_prints_zero(touched):
+    assert "INCOMPLETE" in census_mod.shared_unpinned(touched, PIN)[1]
+
+
+def test_a_shared_walk_missing_failed_or_unpinned_never_prints_zero():
+    partial = {k: v for k, v in PIN.items() if "/tax-calendar" not in k}
+    assert "INCOMPLETE" in drift_of(partial)[1]
+    assert "INCOMPLETE" in census_mod.shared_drift(shared(PIN, ["Footer editorial /v2 mobile/light: HTTP 500"]), PIN)[1]
+    assert lines_of(verdict_of(shared(PIN), None), "shared-component-drift:") == "shared-component-drift: UNPINNED"
+    extra = {**PIN, "MobileNav R19 /blog mobile/light": ["branch R19"]}
+    assert drift_of(extra) == (["  ? MobileNav R19 /blog mobile/light  walked, not in the pin"], "1")
+
+
+def test_the_pin_covers_every_pair_of_the_matrix_on_the_branch_it_claims():
+    want = sorted(k for pair, routes in census_mod.SHARED_PAIRS.items() for r in routes
+                  for k in census_mod.pin_keys(pair, r))
+    assert sorted(PIN) == want and len(want) == 20
+    for key, prints in PIN.items():
+        pair = " ".join(key.split()[:2])
+        branch = census_mod.BRANCH_OF.get(pair)
+        assert [x for x in prints if x.startswith("branch ")] == ([f"branch {branch}"] if branch else []), key
+        assert len(prints) > 1, key
+    assert {r for r in census_mod.MOBILE_NAV["MobileNav non-R19"]} >= {"/v2", "/visa/second-home"}
+
+
+def test_touched_files_reads_committed_and_uncommitted_changes_since_the_merge_base(tmp_path):
+    def git(*a):
+        subprocess.run(["git", *a], cwd=tmp_path, check=True, capture_output=True)
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "t")
+    for f in ("a.txt", "b.txt", "c.txt"):
+        (tmp_path / f).write_text("0\n")
+    git("add", ".")
+    git("commit", "-qm", "base")
+    git("checkout", "-qb", "lot")
+    (tmp_path / "a.txt").write_text("1\n")
+    git("commit", "-qam", "lot")
+    (tmp_path / "b.txt").write_text("1\n")
+    assert census_mod.touched_files("main", tmp_path) == ["a.txt", "b.txt"]
+    assert census_mod.touched_files("no-such-ref", tmp_path).startswith("cannot diff against no-such-ref")
+
+
+@pytest.mark.parametrize("census", [{"opened": [], "opened_failed": ["sector-drawer mobile/system-dark: timeout"]},
+                                    {"opened": [], "opened_failed": []}, {}],
+                         ids=["a surface failed to open", "nothing opened", "no opened walk"])
+def test_an_incomplete_opened_walk_never_prints_zero(census):
+    out = verdict_of(census)
+    for prefix in ("opened-outside-wrapper:", "opened-grounds-off-contract:", "shared-touched-unpinned:",
+                   "shared-component-drift:", "opened-text-below-4.5:"):
+        assert "INCOMPLETE" in lines_of(out, prefix), prefix
+
+
+def test_the_mobile_nav_drawer_and_the_portal_ruling_are_in_the_contract():
+    for family in ("background", "color", "border"):
+        assert ("rule", f"MobileNav paper drawer {{ {family} }}") in ROWS
+    assert ROWS[("rule", "MobileNav paper CTA { background }")]["hex"] == census_mod.DIRECTION_A["copper"]
+    assert ROWS[("rule", "MobileNav paper CTA { color }")]["hex"] == ELEVATED
+    portals = CONTRACT.split("**Portals.**")[1].split("\n\n")[0]
+    for surface in ("sector drawer", "comparison modal", "mobile nav"):
+        assert surface in portals, surface
+
+
+SURFACE = ('<button id="open" onclick="document.getElementById(\'s\').hidden=false">open</button>'
+           '<div id="s" class="{cls}" style="{style}" hidden><p class="text-white" style="color:{fg}">Restaurant</p>'
+           '<p class="text-zinc-400" style="color:{fg2}">description</p></div>')
+
+
+def open_page(tmp_path, monkeypatch, cls: str, style: str, fg: str = INK, fg2: str = "#58626B",
+              wrapped: bool = True, script: str = "") -> dict:
+    """Runs the real walk_opened() on one local page whose surface opens on a click."""
+    from playwright.sync_api import sync_playwright
+    body = SURFACE.format(cls=cls, style=style, fg=fg, fg2=fg2)
+    if wrapped:
+        body = f'<div data-presentation="r19">{body}</div>'
+    (tmp_path / "o.html").write_text(f"<!doctype html><body style='background:#F7F4EE'>{body}{script}")
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(tmp_path))
+    handler.log_message = lambda *a, **k: None
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    monkeypatch.setattr(census_mod, "SCENARIOS", [
+        ("local-surface", "/o.html", "walk", None, False, lambda page: page.click("#open"), ["#s"])])
+    monkeypatch.setattr(census_mod, "SHARED", [])
+    census: dict = {}
+    m = census_mod._load_measure()
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(executable_path=m.CHROME)
+            census_mod.walk_opened(browser, m, f"http://127.0.0.1:{server.server_port}", census)
+            browser.close()
+    finally:
+        server.shutdown()
+    return census
+
+
+@needs_browser
+def test_e2e_guilt_ink_on_the_dark_dropdown_ground_counts(tmp_path, monkeypatch):
+    census = open_page(tmp_path, monkeypatch, "bg-[#1c1c1f]/95", "background-color: rgb(28 28 31 / 0.95)")
+    out = verdict_of(census)
+    assert out[0] == "opened-surfaces: 2 ok, 0 failed"
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 2"
+    assert out[-1] == "opened-text-below-4.5: 4"
+    assert any(" 1.05  #1D2C3B on #272729  'Restaurant'" in ln for ln in out)
+
+
+@needs_browser
+@pytest.mark.parametrize("cls,style", [("bg-[#1c1c1e]/95", "background-color: rgb(28 28 30 / 0.95)"),
+                                       ("bg-zinc-900", "background-color: #18181B"),
+                                       ("pma-badge", "background-color: rgba(34, 197, 94, 0.12)")],
+                         ids=["unnamed spelling of the slab", "zinc-900 slab", "inline rgba 0.12 ground"])
+def test_e2e_guilt_a_dark_or_translucent_ground_with_readable_text_counts(tmp_path, monkeypatch, cls, style):
+    """Light text that reads: only the paint verdict can see these, whatever paints them."""
+    light = cls != "pma-badge"
+    census = open_page(tmp_path, monkeypatch, cls, style, fg="#F5F6F7" if light else INK,
+                       fg2="#E4E4E7" if light else "#58626B")
+    out = verdict_of(census)
+    k = int(lines_of(out, "opened-grounds-off-contract:").split(": ")[1])
+    assert k >= 1, out
+
+
+@needs_browser
+def test_e2e_guilt_a_surface_outside_the_wrapper_is_counted(tmp_path, monkeypatch):
+    census = open_page(tmp_path, monkeypatch, "bg-[#1c1c1f]/95", "background-color: #FFFCF7", wrapped=False)
+    assert lines_of(verdict_of(census), "opened-outside-wrapper:") == "opened-outside-wrapper: 2"
+
+
+@needs_browser
+def test_e2e_innocence_an_elevated_surface_with_ink_text_counts_zero(tmp_path, monkeypatch):
+    census = open_page(tmp_path, monkeypatch, "bg-[#1c1c1f]/95", "background-color: #FFFCF7")
+    out = verdict_of(census)
+    assert out[0] == "opened-surfaces: 2 ok, 0 failed"
+    assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 0"
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 0"
+    assert out[-1] == "opened-text-below-4.5: 0"
+
+
+@needs_browser
+def test_e2e_a_rotating_text_holds_its_first_state(tmp_path, monkeypatch):
+    """A 2.5 s rotation would land inside the 4 s walk: frozen, it never adds a pair."""
+    rotate = ("<script>setInterval(() => { const p = document.createElement('p');"
+              " p.textContent = 'rotated'; p.style.color = '#444444';"
+              " document.getElementById('s').append(p); }, 2500);</script>")
+    census = open_page(tmp_path, monkeypatch, "bg-[#1c1c1f]/95", "background-color: #FFFCF7", script=rotate)
+    assert [o["pairs"] for o in census["opened"]] == [2, 2]
+    assert verdict_of(census)[-1] == "opened-text-below-4.5: 0"
+
+
+def test_the_origin_main_opened_walk_is_the_guilt(census):
+    """Main today: every surface opens; the dropdown titles are white and readable, the red code chip is not."""
+    out = verdict_of(census, PIN, [])
+    assert out[0] == "opened-surfaces: 25 ok, 0 failed"
+    assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 10"
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 88"
+    assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 0"
+    assert lines_of(out, "shared-component-drift:") == "shared-component-drift: 0"
+    assert out[-1] == "opened-text-below-4.5: 398"
+    drop = next(o for o in census["opened"] if o["name"] == "search-dropdown" and o["walk"] == "desktop/light")
+    assert [(p["ratio"], p["fg"], p["text"]) for p in drop["below"]] == [(3.31, "#DC2626", "56101"),
+                                                                        (3.31, "#DC2626", "55130")]
+    assert all(p["text"] not in ("Restaurant", "Villa") for p in drop["below"])
+
+
+def test_guilt_8161s_head_reads_ink_titles_on_the_dark_dropdown():
+    """The opened search rows dumped live at #8161's head (51b2407f27): the BLOCK, counted."""
+    rows = [json.loads(ln) for ln in (FIXTURE.parent / "r19_opened_8161_search.jsonl").read_text().splitlines()]
+    out = verdict_of({"opened": rows, "opened_failed": []})
+    drop = next(o for o in rows if o["name"] == "search-dropdown" and o["walk"] == "desktop/light")
+    titles = [(p["ratio"], p["fg"], p["bg"]) for p in drop["below"] if p["text"] in ("Restaurant", "Villa")]
+    assert titles == [(1.05, "#1D2C3B", "#272729")] * 2
+    assert any(ln.startswith("  bg-[#1c1c1f]/95  expected elevated #FFFCF7 (opaque), painted #1C1C1F alpha 0.95")
+               for ln in out)
+    assert any(ln.startswith("  ground #272729 under") for ln in out)
+    assert out[-1] == "opened-text-below-4.5: 88"
