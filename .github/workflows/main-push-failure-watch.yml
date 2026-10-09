@@ -177,6 +177,7 @@ on:
       - Lint — GARUDA_ENVIRONMENT workflow value matches DB schema
       - Lint i18n providers
       - localci tests
+      - mata-garuda-tests
       - Merah Putih DAY contrast guard
       - Migration number uniqueness lint
       - Migration ROLLBACK marker lint
