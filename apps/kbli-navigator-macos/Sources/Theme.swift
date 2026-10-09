@@ -1,15 +1,14 @@
 import SwiftUI
 
-/// Design tokens — "Warm Paper" LIGHT theme (2026-06-24, Zero's choice): a calm, restful
-/// ivory/sand base with soft, full pastel accents. Token NAMES are kept stable
+/// Design tokens — R19 Direction-A palette (design loop 2026-10-09): warm paper by day, deep
+/// blue-ink by night, copper accent, structure blue. Token NAMES are kept stable
 /// (antracite/ink/inkLift, white, yellow, red, accent, zantara…) so the 100+ call-sites don't
-/// need renaming — only their hex values flip from the dark "Claude Night" theme to this light one.
-/// All accents are tuned a touch deeper/saturated so they READ on a light background (pastel but
-/// full, not washed out); all text is warm ink with WCAG-AA contrast on the ivory surfaces.
+/// need renaming — only their hex values changed. Every text token is WCAG-AA on its surfaces;
+/// `Tools/contrast/measure_contrast.py` and `derive_tokens.py` check these values against Theme.swift.
 enum Theme {
     /// Two palettes share the SAME token names so the 100+ call-sites (`Theme.antracite`, `.accent`,
-    /// `.white`…) never change — only which palette they resolve to. `.light` = "Warm Paper";
-    /// `.dark` = "Night" (anthracite grey, white text, ORANGE protagonist) — added 2026-06-24 (Zero).
+    /// `.white`…) never change — only which palette they resolve to. `.light` = day paper;
+    /// `.dark` = night blue-ink (R19 Direction-A, design loop 2026-10-09).
     enum Mode { case light, dark }
     /// Live theme mode. Driven by `ThemeManager`, synced from SYSTEM appearance by default (D3a,
     /// 2026-08-11) OR from a persisted user override (D3a.2, 2026-08-11 — `RootView.themeToggle` /
@@ -40,77 +39,75 @@ enum Theme {
     private static func pick(_ light: UInt32, _ dark: UInt32) -> Color { Color(hex: isDark ? dark : light) }
     /// Increase-Contrast variant of `pick`: when the user has Increase Contrast on, resolve to a
     /// SEPARATE, independently WCAG-verified hex pair instead of the normal one — not a runtime
-    /// blend, an actual measured swap. `lightHC`/`darkHC` ratios against this app's two backgrounds
-    /// (antracite 0xF5F1E8 light / 0x2F3034 dark) were computed with a throwaway WCAG script
-    /// (`/tmp/d3b_contrast_check.py`, D3b contrast pass) by blending each existing color toward its
-    /// mode's extreme (white in dark mode, black in light mode) until the ratio reached AAA (7:1) —
-    /// every one of the 4 semantic-color families below cleared 7:1 well inside a 0.05–0.20 blend.
+    /// blend, an actual measured swap. `lightHC`/`darkHC` are derived by `Tools/contrast/derive_tokens.py`:
+    /// blend toward black (day) / white (night) in 0.05 steps until >= 7:1 on the wash (R19 Direction-A,
+    /// design loop 2026-10-09).
     private static func pickAA(_ light: UInt32, _ dark: UInt32, lightHC: UInt32, darkHC: UInt32) -> Color {
         guard contrastIncreased else { return pick(light, dark) }
         return Color(hex: isDark ? darkHC : lightHC)
     }
 
-    // MARK: Backgrounds — light: warm ivory/sand · dark: ANTHRACITE GREY.
-    // "Proposta" palette (Zero, 2026-08-11) — panel-approved, AA-verified as foreground colors on
-    // this surface ramp via a throwaway WCAG script (/tmp/kbli_contrast_check.py, D1 contrast audit).
-    static var antracite: Color { pick(0xF5F1E8, 0x2F3034) } // window bg
-    static var ink: Color       { pick(0xF8F4EC, 0x34353A) } // elevated panel / sidebar
-    static var inkLift: Color   { pick(0xFFFCF7, 0x3E3F45) } // raised card / row
-    static var surfaceHi: Color { pick(0xEAE2D5, 0x47484E) } // surface hover / footer inset
+    // MARK: Backgrounds — day: paper/wash · night: deep blue-ink (R19 Direction-A, design loop 2026-10-09).
+    static var antracite: Color { pick(0xF7F4EE, 0x111922) } // window bg (paper)
+    static var ink: Color       { pick(0xEAE3D8, 0x1C2B3A) } // panel / sidebar (wash)
+    static var inkLift: Color   { pick(0xFFFCF7, 0x16222E) } // raised card / row (elevated)
+    static var surfaceHi: Color { pick(0xEAE3D8, 0x1C2B3A) } // surface hover / footer inset
 
-    // MARK: Accent — terracotta (light) → warm orange (dark, the star color)
-    static var accent: Color    { pick(0x995026, 0xF5AA72) } // terracotta → warm orange
-    static var accentHi: Color  { pick(0x7F3E1C, 0xFFBA86) } // orange hover/pressed
+    // MARK: Accent — copper (R19 Direction-A, design loop 2026-10-09)
+    static var accent: Color    { pickAA(0xA44B36, 0xD08371, lightHC: 0x733426, darkHC: 0xE0AEA3) } // copper
+    static var accentHi: Color  { pick(0x853D2C, 0xDA9E90) } // copper hover/pressed
 
     // `red` = danger/closed semantic. Same hex family as pmaClosed/riskHigh — boosts together.
-    static var red: Color       { pickAA(0x9F3C3B, 0xFF9F98, lightHC: 0x873332, darkHC: 0xFFA9A2) }
+    static var red: Color       { pickAA(0x86200F, 0xED6F5A, lightHC: 0x86200F, darkHC: 0xF3A194) }
 
-    // MARK: Secondary — periwinkle = ZANTARA ONLY (reserved). Do NOT use for data/rails (C2).
-    static var zantara: Color   { pick(0x4E5DB7, 0xB9B5FF) } // periwinkle
-    // `statutory` = the renumber / national-reference / non-Zantara blue. Distinct from periwinkle so
-    // periwinkle stays uniquely Zantara (C2, 2026-06-24).
-    static var statutory: Color { pickAA(0x29639E, 0x91C2F7, lightHC: 0x214F7E, darkHC: 0x96C5F7) } // statutory/reference blue
-    static var blue: Color      { pickAA(0x29639E, 0x91C2F7, lightHC: 0x214F7E, darkHC: 0x96C5F7) } // risk-medium-low (kept as alias)
+    // MARK: Secondary — zantara shares the structure blue in R19 (periwinkle retired).
+    static var zantara: Color   { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) } // structure blue
+    // `statutory` = the renumber / national-reference blue; same value as zantara in R19.
+    static var statutory: Color { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) } // statutory/reference blue
+    static var blue: Color      { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) } // alias of structure blue
 
-    // MARK: Highlight — amber/gold. Same hex family as pmaRestricted/riskMediumHigh — boosts together.
-    static var yellow: Color    { pickAA(0x765A00, 0xEBD077, lightHC: 0x644C00, darkHC: 0xECD27E) } // amber (facts, numbers, gold-tier)
+    // MARK: Highlight — amber. Same value as pmaRestricted — boosts together.
+    static var yellow: Color    { pickAA(0x5B4000, 0xC78C00, lightHC: 0x5B4000, darkHC: 0xDBB459) } // amber (facts, numbers)
 
-    // MARK: Text — warm ink on ivory · cool near-white / neutral greys on anthracite.
-    static var white: Color     { pick(0x302D29, 0xF5F3EE) } // PRIMARY TEXT
+    // MARK: Text — blue-ink on paper · paper on night blue-ink.
+    static var white: Color     { pick(0x1D2C3B, 0xF7F4EE) } // PRIMARY TEXT
     // D3b Increase Contrast: "muted → text" — under increased contrast the secondary-text tier
     // stops being a dimmer shade and just IS the primary text color (per instruction, `faint` is
     // deliberately untouched — narrower than "every secondary tone gets boosted").
-    static var muted: Color     { contrastIncreased ? white : pick(0x625D55, 0xD0CCC4) } // secondary text
-    static var faint: Color     { pick(0x686159, 0xBCB8B1) } // de-emphasised labels
+    static var muted: Color     { contrastIncreased ? white : pick(0x58626B, 0x8C97A1) } // secondary text
+    static var faint: Color     { pick(0x58626B, 0x8C97A1) } // de-emphasised labels
 
     // MARK: Semantic status (open / restricted / closed). D3b: each family gets an independently
-    // WCAG-verified Increase-Contrast hex pair (see `pickAA` doc-comment) — all 4 families reach
-    // AAA (>=7:1) against this app's antracite backgrounds when Increase Contrast is on.
-    static var pmaOpen: Color       { pickAA(0x176F4B, 0x6FD2B0, lightHC: 0x12593C, darkHC: 0x76D4B4) } // sage → brighter sage on dark
-    static var pmaRestricted: Color { pickAA(0x765A00, 0xEBD077, lightHC: 0x644C00, darkHC: 0xECD27E) }
-    static var pmaClosed: Color     { pickAA(0x9F3C3B, 0xFF9F98, lightHC: 0x873332, darkHC: 0xFFA9A2) }
-    static var green: Color         { pickAA(0x176F4B, 0x6FD2B0, lightHC: 0x12593C, darkHC: 0x76D4B4) }
+    // WCAG-verified Increase-Contrast hex pair (see `pickAA` doc-comment) — all families reach
+    // AAA (>=7:1) on the wash when Increase Contrast is on. Risk tiers share the structure blue.
+    static var pmaOpen: Color       { pickAA(0x17452A, 0x39AC69, lightHC: 0x17452A, darkHC: 0x7EC99E) }
+    static var pmaRestricted: Color { pickAA(0x5B4000, 0xC78C00, lightHC: 0x5B4000, darkHC: 0xDBB459) }
+    static var pmaClosed: Color     { pickAA(0x86200F, 0xED6F5A, lightHC: 0x86200F, darkHC: 0xF3A194) }
+    static var green: Color         { pickAA(0x17452A, 0x39AC69, lightHC: 0x17452A, darkHC: 0x7EC99E) }
 
-    static var riskLow: Color        { pickAA(0x176F4B, 0x6FD2B0, lightHC: 0x12593C, darkHC: 0x76D4B4) }
-    static var riskMediumLow: Color  { pickAA(0x29639E, 0x91C2F7, lightHC: 0x214F7E, darkHC: 0x96C5F7) }
-    static var riskMediumHigh: Color { pickAA(0x765A00, 0xEBD077, lightHC: 0x644C00, darkHC: 0xECD27E) }
-    static var riskHigh: Color       { pickAA(0x9F3C3B, 0xFF9F98, lightHC: 0x873332, darkHC: 0xFFA9A2) }
+    static var riskLow: Color          { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) }
+    static var riskMediumLow: Color    { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) }
+    static var riskMediumHigh: Color   { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) }
+    static var riskHigh: Color         { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) }
 
-    // MARK: Borders / fills — light: soft BLACK at low alpha · dark: soft WHITE at low alpha.
-    // D3b Increase Contrast: hairline alpha ×2 (per instruction — literal doubling, not re-measured).
-    static var hairline: Color   { isDark ? Color.white.opacity(contrastIncreased ? 0.28 : 0.14) : Color.black.opacity(contrastIncreased ? 0.20 : 0.10) }
-    static var hairlineHi: Color { isDark ? Color.white.opacity(contrastIncreased ? 0.44 : 0.22) : Color.black.opacity(contrastIncreased ? 0.32 : 0.16) }
-    static var scrim: Color      { isDark ? Color.white.opacity(0.05) : Color.black.opacity(0.04) }
+    // MARK: Borders / fills — opaque lines (R19 Direction-A, design loop 2026-10-09).
+    // Increase Contrast: hairline -> lineStrong, hairlineHi -> structure.
+    static var lineSoft: Color   { pick(0xDAD8D1, 0x243649) }
+    static var lineStrong: Color { pick(0xA8ACA9, 0x416283) }
+    static var hairline: Color   { contrastIncreased ? lineStrong : lineSoft }
+    static var hairlineHi: Color { contrastIncreased ? statutory : lineStrong }
+    static var scrim: Color      { pick(0xEAE3D8, 0x1C2B3A) } // opaque hover fill (was a black/white alpha)
+    // Readable aliases (same values).
+    static var wash: Color       { ink }
+    static var structure: Color  { statutory }
+    static var gold: Color       { decorGold }
     static var overlay: Color    { Color.black.opacity(0.45) } // badge backdrop over hero images (both)
 
     // MARK: Icon-on-fill ink — BZLogo's fallback glyph and ChatView's send-button glyph paint a
-    // FIXED glyph directly on a solid Theme.accent / Theme.zantara circle (not the usual
-    // color-as-text-on-opacity-tint pattern used everywhere else). Night accent/zantara are light
-    // enough for a dark glyph (AAA, 7.3-7.5:1); day accent/zantara are dark terracotta/indigo, so a
-    // dark glyph FAILS WCAG (2.38:1 / 2.41:1, measured) — flip to a light glyph in day mode instead
-    // (5.9:1 / 5.9:1, measured). D1 contrast audit, 2026-08-11.
-    static var iconOnAccentFill: Color  { pick(0xFFFFFF, 0x2B2B2B) }
-    static var iconOnZantaraFill: Color { pick(0xFFFFFF, 0x2B2B2B) }
+    // FIXED glyph directly on a solid Theme.accent / Theme.zantara circle. R19: paper glyph by day,
+    // night ground glyph by night (both >= 4.5:1, see measure_contrast.py).
+    static var iconOnAccentFill: Color  { pick(0xF7F4EE, 0x111922) }
+    static var iconOnZantaraFill: Color { pick(0xF7F4EE, 0x111922) }
 
     // MARK: D4 "Anima Indonesiana" decorative tokens (2026-08-11, Zero-approved — values ported
     // VERBATIM from the reference draft's own `P` palette object, `kbli-d4-draft.html` §script,
@@ -129,8 +126,8 @@ enum Theme {
     // in both modes — call sites hardcode `0.5` with a comment rather than adding a token that would
     // misleadingly imply mode-awareness that was never live. Apply via `Theme.decor.opacity(Theme.decorFocalAlpha)`.
     private static func pickD(_ light: Double, _ dark: Double) -> Double { isDark ? dark : light }
-    static var decor: Color              { pick(0x6E3F2C, 0xE9B878) }
-    static var decorGold: Color          { pick(0x8A6524, 0xC99A4A) }
+    static var decor: Color              { pick(0xB8862B, 0xC28D2D) }
+    static var decorGold: Color          { pick(0xB8862B, 0xC28D2D) }
     static var decorAmbientAlpha: Double { pickD(0.16, 0.10) }   // P[mode].amb
     static var decorFocalAlpha: Double   { pickD(0.24, 0.16) }   // P[mode].focal
     static var decorArcAlpha: Double     { pickD(0.72, 0.55) }   // P[mode].arc
@@ -176,6 +173,56 @@ enum Theme {
         if status.hasPrefix("BLOCCATO") || status.hasPrefix("CHIUSO") || status == "TERTUTUP" { return pmaClosed }
         return faint   // NEEDS_REVIEW_* and unknown
     }
+
+    // MARK: Chips, risk ramp, tone (R19 Direction-A, design loop 2026-10-09)
+    // Each chip/ramp token is a one-line pick() so measure_contrast.py can parity-check it.
+    static var chipOpenFg: Color         { pick(0x17452A, 0xDDEBDF) }
+    static var chipOpenBg: Color         { pick(0xDDEBDF, 0x142F26) }
+    static var chipRestrictedFg: Color   { pick(0x5B4000, 0xF4E3B9) }
+    static var chipRestrictedBg: Color   { pick(0xF4E3B9, 0x362C11) }
+    static var chipClosedFg: Color       { pick(0x86200F, 0xF4D6D0) }
+    static var chipClosedBg: Color       { pick(0xF4D6D0, 0x4C1C18) }
+    static var riskFillLow: Color        { pick(0xF7F4EE, 0x111922) }
+    static var riskFillMediumLow: Color  { pick(0xD7D9D7, 0x1F2C3A) }
+    static var riskFillMediumHigh: Color { pick(0xADB4B7, 0x314659) }
+    static var riskFillHigh: Color       { pick(0x233D52, 0x6C9BC0) }
+    static var riskInk: Color            { pick(0x233D52, 0xF7F4EE) }      // text on the three lighter fills
+    static var riskInkOnHigh: Color      { pick(0xF7F4EE, 0x111922) }      // text on the full fill
+
+    enum Tone { case open, restricted, closed, neutral }
+
+    /// Same dispatch as `kbliStatusColor`: `blocked` overrides the string when known.
+    static func tone(_ status: String, blocked: Bool? = nil) -> Tone {
+        if let b = blocked { return b ? .closed : .open }
+        if status.hasPrefix("OK_") || status.hasPrefix("APERTO") || status == "TERBUKA" { return .open }
+        if status == "TERBATAS" { return .restricted }
+        if status.hasPrefix("BLOCCATO") || status.hasPrefix("CHIUSO") || status == "TERTUTUP" { return .closed }
+        return .neutral
+    }
+
+    static func chip(_ tone: Tone) -> (fg: Color, bg: Color) {
+        switch tone {
+        case .open:       return (chipOpenFg, chipOpenBg)
+        case .restricted: return (chipRestrictedFg, chipRestrictedBg)
+        case .closed:     return (chipClosedFg, chipClosedBg)
+        case .neutral:    return (muted, wash)
+        }
+    }
+
+    /// Risk tiers differ by fill weight, not hue. Only Rendah (fill == ground) carries a border.
+    static func riskChip(_ raw: String?) -> (fg: Color, bg: Color, border: Color?) {
+        guard let raw = raw else { return (muted, wash, nil) }
+        switch RiskTier.rank(raw) {
+        case 1:  return (riskInk, riskFillLow, lineStrong)
+        case 2:  return (riskInk, riskFillMediumLow, nil)
+        case 3:  return (riskInk, riskFillMediumHigh, nil)
+        case 4:  return (riskInkOnHigh, riskFillHigh, nil)
+        default: return (muted, wash, nil)
+        }
+    }
+
+    /// Reduce-Motion aware animation: nil when the user asked for less motion.
+    static func motion(_ reduce: Bool) -> Animation? { reduce ? nil : .easeOut(duration: 0.14) }
 
     static func kbliStatusSymbol(_ status: String, blocked: Bool? = nil) -> String {
         if let b = blocked { return b ? "xmark.octagon.fill" : "checkmark.circle.fill" }
@@ -529,48 +576,55 @@ struct FactRule: View {
     }
 }
 
-// MARK: - Depth card (the real --kbli-shadow-card: multi-layer + ring + hover glow)
+// MARK: - Flat card (R19: rules, not plates)
 
-/// A reusable depth card matching the web's `--kbli-shadow-card` / `-hover`:
-/// surface fill + 1px ring + tight black shadow + diffuse black shadow, and on hover a
-/// soft terracotta glow (`--kbli-shadow-glow`). The glow is conditional (only the hovered
-/// card composites the radius-30 layer) — perf note from the SwiftUI research.
+/// Opaque `inkLift` card with a constant 1 pt `lineSoft` stroke. No shadows, no hover glow.
+/// `hoverable` is kept so call sites compile; hover visuals were dropped (R19, design loop 2026-10-09).
 struct GlassCard<Content: View>: View {
     var padding: CGFloat = 16
     var radius: CGFloat = Theme.radiusLg
     var hoverable: Bool = true
     @ViewBuilder var content: Content
-    @State private var hovered = false
 
     var body: some View {
         content
             .padding(padding)
             .background(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(Theme.inkLift.opacity(hovered ? 0.95 : 0.85))
+                    .fill(Theme.inkLift)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(hovered ? Theme.hairlineHi : Theme.hairline, lineWidth: 1)
+                    .strokeBorder(Theme.lineSoft, lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.20), radius: 2, x: 0, y: 1)
-            .shadow(color: .black.opacity(hovered ? 0.15 : 0.12), radius: hovered ? 24 : 16, x: 0, y: hovered ? 12 : 4)
-            .shadow(color: hovered ? Theme.accent.opacity(0.12) : .clear, radius: 30)
-            .animation(.easeInOut(duration: 0.18), value: hovered)
-            .onHover { if hoverable { hovered = $0 } }
     }
 }
 
-// MARK: - Soft-tinted status badge (the real PMABadge pattern)
+// MARK: - Status badge (opaque chip)
 
-/// A soft-tinted status badge: icon + label on a `color.opacity(0.10)` fill with a
-/// `color.opacity(0.20)` capsule border and full-color text. NOT a solid grey pill —
-/// this is the exact pattern from the web `PMABadge.tsx` / `RiskBadge.tsx`.
+/// An opaque chip: icon + label in `fg` on a solid `bg` fill. Built from a `Theme.Tone` (status)
+/// or a raw risk string (risk ramp). Only the Rendah risk tier draws a 1 pt `lineStrong` border.
 struct StatusBadge: View {
     let icon: String
     let label: String
-    let color: Color
+    let fg: Color
+    let bg: Color
+    let border: Color?
     var compact: Bool = false
+
+    init(icon: String, label: String, tone: Theme.Tone, compact: Bool = false) {
+        let c = Theme.chip(tone)
+        self.icon = icon; self.label = label
+        self.fg = c.fg; self.bg = c.bg; self.border = nil
+        self.compact = compact
+    }
+
+    init(icon: String, label: String, risk: String?, compact: Bool = false) {
+        let c = Theme.riskChip(risk)
+        self.icon = icon; self.label = label
+        self.fg = c.fg; self.bg = c.bg; self.border = c.border
+        self.compact = compact
+    }
 
     var body: some View {
         HStack(spacing: 5) {
@@ -579,12 +633,14 @@ struct StatusBadge: View {
             Image(systemName: icon).font(Theme.scalable(compact ? 10 : 11, weight: .semibold))
             Text(label).font(Theme.scalable(compact ? 11 : 12, weight: .semibold))
         }
-        .foregroundStyle(color)
+        .foregroundStyle(fg)
         .padding(.horizontal, compact ? 8 : 11)
         .padding(.vertical, compact ? 4 : 6)
-        .background(color.opacity(0.10))
+        .background(bg)
         .clipShape(Capsule())
-        .overlay(Capsule().strokeBorder(color.opacity(0.20), lineWidth: 1))
+        .overlay {
+            if let border = border { Capsule().strokeBorder(border, lineWidth: 1) }
+        }
     }
 }
 
@@ -635,6 +691,7 @@ struct ExpandableList<Item, Rows: View>: View {
     /// laid out in columns or grouped rows keeps control of its own container.
     let rows: ([Item]) -> Rows
     @State private var expanded: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(items: [Item], limit: Int, isID: Bool, tint: Color = Theme.faint, spacing: CGFloat = 8,
          @ViewBuilder rows: @escaping ([Item]) -> Rows) {
@@ -654,7 +711,7 @@ struct ExpandableList<Item, Rows: View>: View {
             rows(visible)
             if items.count > limit {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+                    withAnimation(Theme.motion(reduceMotion)) { expanded.toggle() }
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "chevron.down")
