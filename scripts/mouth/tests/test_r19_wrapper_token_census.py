@@ -288,7 +288,7 @@ def test_the_rest_copper_borders_were_ruled_to_line():
 
 
 def test_the_origin_main_walk_is_the_pre_w2_number(census):
-    """The fixture is the live walk on origin/main 263b7916c2: 10 walks, 51 state classes off contract, 0 unseen.
+    """The fixture is the live walk on origin/main 4443d209f1: 10 walks, 51 state classes off contract, 0 unseen.
     W2'' regenerates it and the pin moves to 0."""
     assert len(census["walks"]) == 10 and census["walk_failed"] == []
     out = verdict(census)
@@ -411,3 +411,46 @@ def test_e2e_a_color_mix_paint_keeps_its_hue(tmp_path, monkeypatch):
     css = f".group:hover {_css_class(token)}{{background:color-mix(in srgb,#EAE3D8 10%,transparent)}}"
     census = walk_page(tmp_path, monkeypatch, body, css)
     assert census["state_obs"][token]["observed"] == ["#EAE3D8"]
+
+
+# ---- the form Tailwind 4 emits for a /NN modifier ---------------------------------------------
+
+HUES = ["#A44B36", "#D4B483", "#D4845A", "#D01033", "#EAE3D8"]
+ALPHAS = [10, 30, 40, 60]
+
+
+@needs_browser
+def test_e2e_tailwind_slash_30_copper_reads_the_copper_hex_and_a_wrong_hue_counts_one(tmp_path, monkeypatch):
+    token = "hover:border-accent-warm/40"  # copper row; Tailwind compiles /NN to color-mix(in oklab, ...)
+    body = f'<a class="{token}" href="#x" style="border-width:2px">label</a>'
+    painted = lambda hue: f"{_css_class(token)}:hover{{border-color:color-mix(in oklab, {hue} 30%, transparent)}}"
+    census = walk_page(tmp_path, monkeypatch, body, painted("#A44B36"))
+    assert census["state_obs"][token]["observed"] == ["#A44B36"]
+    assert census_mod.judge_states(census, STATES)[1] == 0
+    wrong = walk_page(tmp_path, monkeypatch, body, painted("#D4845A"))
+    lines, count = census_mod.judge_states(wrong, STATES)
+    assert count == 1 and lines[0].startswith(f"  {token}  expected #A44B36, painted #D4845A")
+
+
+@needs_browser
+def test_hex_drops_the_alpha_of_every_computed_syntax_exactly():
+    """20 oklab inputs (5 hues x 4 alphas) plus the other syntaxes Chrome computes, each read to its exact hex."""
+    from playwright.sync_api import sync_playwright
+    m = census_mod._load_measure()
+    inputs = [(h, f"color-mix(in oklab, {h} {a}%, transparent)") for h in HUES for a in ALPHAS]
+    inputs += [("#A44B36", "color-mix(in srgb, #A44B36 30%, transparent)"), ("#A44B36", "rgba(164, 75, 54, 0.3)"),
+               ("#A44B36", "rgb(164 75 54 / 30%)"), ("#A44B36", "color-mix(in oklch, #A44B36 30%, transparent)"),
+               ("#A44B36", "color-mix(in lab, #A44B36 30%, transparent)"), ("#A44B36", "#A44B36")]
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=m.CHROME)
+        page = browser.new_page()
+        page.set_content('<div data-presentation="r19"><p id="p">x</p></div>')
+        assert page.evaluate(census_mod.STATE_JS, census_mod.STATE_TOKEN)["root"]
+        got = page.evaluate("""(cs) => cs.map((c) => {
+            const p = document.getElementById('p'); p.style.color = c;
+            return window.__r19s.hex(getComputedStyle(p).color); })""", [c for _, c in inputs])
+        zero = page.evaluate("""() => { const p = document.getElementById('p'); p.style.color = 'transparent';
+            return window.__r19s.hex(getComputedStyle(p).color); }""")
+        browser.close()
+    assert [(want, g) for (want, _), g in zip(inputs, got)] == [(want, want) for want, _ in inputs]
+    assert zero == "transparent"

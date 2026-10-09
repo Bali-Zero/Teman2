@@ -541,19 +541,25 @@ STATE_JS = r"""
   style.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}";
   document.head.append(style);
   const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
-  // The rgb channels of the computed colour, unblended and unrounded of alpha: copper at 30% reads
-  // #A44B36 exactly as W1's slice(0,7) does. A canvas round-trip un-premultiplies and drifts.
+  // The rgb channels of the computed colour with the alpha DROPPED, for every syntax Chrome computes
+  // (rgb, color(srgb), oklab, oklch, lab, lch): Tailwind writes `/NN` as color-mix(in oklab, ...),
+  // which computes to oklab(L a b / A). The canvas un-premultiplies and drifts (copper at 30% read
+  // #A64C35), so the alpha is cut off the string first and the canvas only ever sees an opaque colour.
   const hex = (c) => {
+    const am = c.match(/\/\s*([\d.]+)(%?)\s*\)$/);
+    if (am && parseFloat(am[1]) === 0) return "transparent";
     let p, m;
-    if ((m = c.match(/^rgba?\(([^)]+)\)$/))) p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
-    else if ((m = c.match(/^color\(srgb ([^)]+)\)$/))) { p = m[1].split(/[\s/]+/).filter(Boolean).map(Number); p = [p[0] * 255, p[1] * 255, p[2] * 255, p[3]]; }
+    const opaque = c.replace(/\s*\/\s*[\d.]+%?\s*\)$/, ")");
+    if ((m = opaque.match(/^rgba?\(([^)]+)\)$/))) p = m[1].split(/[\s,]+/).filter(Boolean).map(Number);
+    else if ((m = opaque.match(/^color\(srgb ([^)]+)\)$/))) { p = m[1].split(/\s+/).filter(Boolean).map(Number).map((x) => x * 255); }
     else {
-      ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = "#000"; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1);
+      ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = "#000"; ctx.fillStyle = opaque; ctx.fillRect(0, 0, 1, 1);
       const d = ctx.getImageData(0, 0, 1, 1).data;
-      p = [d[0], d[1], d[2], d[3] / 255];
+      if (d[3] === 0) return "transparent";
+      p = [d[0], d[1], d[2]];
     }
-    return p.length > 3 && p[3] === 0 ? "transparent"
-      : "#" + p.slice(0, 3).map((x) => Math.round(x).toString(16).padStart(2, "0")).join("").toUpperCase();
+    if (m && m[1].split(/[\s,]+/).filter(Boolean).length > 3 && !am) { const a = parseFloat(m[1].split(/[\s,]+/).filter(Boolean)[3]); if (a === 0) return "transparent"; }
+    return "#" + p.slice(0, 3).map((x) => Math.round(x).toString(16).padStart(2, "0")).join("").toUpperCase();
   };
   // The variant is everything before the last colon OUTSIDE brackets: `[color:var(--x)]` is a utility.
   const split = (t) => {
@@ -637,7 +643,7 @@ STATE_JS = r"""
     shown.forEach((e, i) => e.setAttribute("data-r19-hover", String(i)));
     return shown.length;
   };
-  window.__r19s = { observe, targets, collect: () => [...obs.values()], blur: () => { document.activeElement && document.activeElement.blur(); getSelection().removeAllRanges(); } };
+  window.__r19s = { observe, targets, hex, collect: () => [...obs.values()], blur: () => { document.activeElement && document.activeElement.blur(); getSelection().removeAllRanges(); } };
   return { root: "ok", tokens: els.reduce((n, e) => n + tokens(e).length, 0) };
 }
 """

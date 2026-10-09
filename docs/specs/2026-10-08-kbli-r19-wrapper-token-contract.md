@@ -638,8 +638,11 @@ The census adds a state walk on `desktop/light` and `mobile/system-dark` for eac
 pages. Hover goes through `page.hover`, keyboard focus through Tab (up to 80 stops), and
 selection through a programmatic range. Each token that the table declares is read where its
 condition holds: computed `color`, `background-color`, border colour, ring, `scrollbar-color` or
-`::selection`. Alpha is dropped exactly: the rgb channels of the computed colour, unblended and not
-re-rounded through a canvas, so copper at 30% reads `#A44B36`, as W1's `slice(0, 7)` does. The
+`::selection`. Alpha is dropped for every syntax Chrome computes (rgb, `color(srgb)`, oklab, oklch,
+lab, lch): the `/ α` is cut off the computed string before any canvas conversion, which only ever
+sees an opaque colour. Tailwind 4 writes `/30` as `color-mix(in oklab, …)`, which computes to
+`oklab(L a b / α)`; a canvas round-trip of that drifts (copper at 30% read `#A64C35`). Copper at
+30% now reads `#A44B36`, as W1's `slice(0, 7)` does. The
 variant is split at the last colon outside brackets, so `[color:var(--x)]` is a utility. A token counts as off contract when the observed hex is not the row's
 hex, or when a state-variant colour class has no row. The census prints, after the two W0
 lines, `state-rows-unseen: U` (painted rows whose class is in the DOM and was never observed,
