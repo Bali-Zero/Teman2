@@ -140,6 +140,19 @@ def test_a_commit_github_does_not_confirm_is_journalled_once_and_never_asked_aga
     assert 14 not in rw.hub.reads   # the side commit is reachable only through M1's second parent: off the first-parent line
 
 
+def test_a_merge_github_still_shows_open_is_not_journalled_unmapped_and_is_replayed_once_github_shows_it(rw):
+    rw.hub.pulls[12] = {**merged_pull("6" * 40, rw.heads[12]), "merged": False, "state": "open"}   # the fetch saw M2 before the API did
+    for _ in range(2):
+        rw.tick()
+    assert [(bool(d.get("replay")), d["pr"]) for d in rw.decisions()] == [(False, 3), (True, 11)]   # M2 passed over, M1 replayed
+    assert not [r for r in mg.read_journal(rw.state) if r["kind"] == "skipped" and r.get("pr") == 12]
+    rw.hub.pulls[12] = merged_pull(rw.m["m2"], rw.heads[12])
+    for _ in range(2):
+        rw.tick()
+    assert [(bool(d.get("replay")), d["pr"]) for d in rw.decisions()][2:] == [(False, 4), (True, 12)]
+    assert rw.decisions()[-1]["merge_commit"] == rw.m["m2"]
+
+
 def test_a_pull_that_cannot_be_read_falls_back_to_a_pr_decision(rw, capsys):
     rw.tick()
     rw.hub.pulls[12] = None   # the newest merge's pull, the first one the replay turn reads
