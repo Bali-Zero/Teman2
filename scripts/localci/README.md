@@ -389,7 +389,8 @@ journal's first PR decision on, whose subject ends `(#N)` and which GitHub confi
 commit), with no replay yet (B11b: main takes more merges a day than the gate decides, so oldest-first never catches up — the first live
 replay, 2026-10-09T09:54Z, judged pr8015's merge of 10-07 on a base whose runner executed no context, and 81 more merges stood between
 it and the first base on which a PR decision compared 12 contexts, `86b151beec` of 10-08; newest first, a replay reads a current base and the current deps recipe,
-and the merges it leaves behind are not owed: phase D counts compared merges, it does not need every merge); a commit GitHub does not confirm is journalled once (`skipped: replay_unmapped`), an ERROR replay is retried
+and the merges it leaves behind are not owed: phase D counts compared merges, it does not need every merge; a merge can then be
+seconds old at the fetch, so a commit whose PR GitHub still shows open is asked again on the next replay turn); a commit GitHub does not confirm is journalled once (`skipped: replay_unmapped`), an ERROR replay is retried
 once. Any failure of a replay but a stop (`Stopped`: no verdict, the same replay is decided next) is its ERROR decision line, with
 `replay`, `merge_commit` and the redacted error (`<Type>: <message>` when it is not a gate error), so the alternation advances and the
 retry bound holds; a PR decision keeps its old rule (a gate error is its ERROR line, anything else the tick's `error` line or a crash).
