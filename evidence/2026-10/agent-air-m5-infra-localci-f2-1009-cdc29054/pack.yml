@@ -1,0 +1,83 @@
+task_id: localci-f2-1009
+mission: LOCALCI-SOVEREIGN (phase F, step F2)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  The first code path in the merger that can write a ref and push to GitHub, though disarmed by construction (five independent
+  conditions, none true on Pro today). No hot-zone path, workflow, plist or wrapper change; the lint floor is 2.
+l_level: L2
+gate_class: opus
+objective: >-
+  Phase F replaces GitHub as the executor of the merge. F2 builds that executor DISARMED: it merges and pushes only when
+  LOCALCI_MERGER_PHASE_F=1, phase D READY (recomputed in the tick by the report's own function), a 0600 deploy key owned by the
+  running user, the C3a-2 criterion, a clean current base with the PR head re-read, and no sticky halt file all hold at the
+  moment of merging; each failing one is named on the would_merge line. The push is a plain fast-forward; a refusal halts for good.
+  The fetch never rewinds a main phase F pushed.
+constraints:
+  - No code path merges or pushes when READY is false; the thresholds exist once (report() is the tick's and the report's function).
+  - The key is never read, printed or journalled; it reaches only the push subprocess, as GIT_SSH_COMMAND.
+  - No force of any kind; GitHub's merge queue and labels are untouched.
+acceptance:
+  - text: With every condition true the mirror gets a merge commit (first parent the old base, second the head, subject ending (#N)), origin's main and refs/merger/base equal it, and merged + pushed are journalled.
+    probe: "test_merger_phase_f.py::test_every_condition_true_makes_the_merge_commit_pushes_it_and_moves_the_mirror"
+  - text: Each arming condition false alone (env, READY, key mode/owner/type/missing, criterion, base moved, head moved, halt file) SHALL merge and push nothing and be named in phase_f.why.
+    probe: "test_merger_phase_f.py::test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it"
+  - text: A refused push SHALL journal push_refused, write the sticky halt, leave refs/merger/base alone, and the next tick SHALL merge nothing.
+    probe: "test_merger_phase_f.py::test_a_push_origin_rejects_is_push_refused_halts_for_good_and_the_mirror_keeps_its_main"
+  - text: The key content SHALL appear in no journal line, stdout, stderr or runner env.
+    probe: "test_merger_phase_f.py::test_the_key_never_reaches_the_journal_the_output_the_halt_file_or_anything_the_runner_sees"
+  - text: A GitHub main that is not a descendant of the last pushed merge SHALL be storage_diverged and halt, not be taken.
+    probe: "test_merger_phase_f.py::test_a_github_main_that_lost_the_last_pushed_merge_is_storage_diverged_and_halts_instead_of_being_taken"
+consumer_map:
+  - scripts/localci/merger.py tick (the launchd tick com.balizero.localci-merger on Pro) — the phase_f field of every would_merge line in decisions.jsonl.
+pii_scan: clean
+pii_scan_note: Merger code, tests on temporary git repos with a sentinel string standing in for a key, mutant rules and documentation. No client data was read or written.
+what_changed: |
+  scripts/localci/merger.py: report() factored out of cmd_report (emit=False returns (rc, out) with no file and no line — the tick's READY
+  reads out["phase_e_ready"] from it, so the thresholds exist once); phase_f_arming (every condition, named in why), key_problem (lstat
+  only), phase_f_merge (commit-tree, merged, plain push with GIT_SSH_COMMAND in that one subprocess, push_refused + sticky halt, pushed),
+  fetch_base (storage_diverged guard), push_url_of; merge_shadow_step journals phase_f on the would_merge line; PR_QUERY gains title.
+  test_merger_phase_f.py: 46 tests on real git repos with a bare origin. merger_mutants.py: 35 f2-* rules, two f1 rules re-anchored.
+  README phase F executor section; spec status line and arming checklist.
+proof: |
+  Tests and mutants on M5 against temporary repos; nothing ran on Pro and nothing was pushed. Not armed anywhere.
+bites:
+  consumer: The launchd tick com.balizero.localci-merger on Pro (would_merge lines in decisions.jsonl).
+  observation: >-
+    Owed after merge and the tick's next extraction: every would_merge line on Pro carries phase_f {armed: false, why: [...]} naming
+    at least "READY false" and "LOCALCI_MERGER_PHASE_F unset" (and "deploy_key missing") — the disarmed state proven live. The armed
+    path's live proof is owed to the day READY holds.
+ground:
+  ts: "2026-10-10T19:20:00Z"
+  siblings: >-
+    Worktree from origin/main 60c2a5c245. Other lanes on scripts/localci: dux-localci-b11, b11b, b8b (replay, prune), not the F path.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 2.0
+receipts:
+  - claim: "test_merger.py, test_merger_report.py, test_replay.py, test_merger_phase_f.py: 340 passed, 197 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_phase_f.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T19:12:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "35 f2-* rules plus f1-step-not-called and f1-report-phase-f-live: 36/37 killed, survivor f2-criterion-empty-passes (an empty criterion with ok true); a test was added."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <f2-* rules> f1-step-not-called f1-report-phase-f-live
+    exit: 1
+    ts: "2026-10-10T18:50:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "After the added test: f2-criterion-empty-passes plus every f1-* and b11-* rule: 51/51 killed; survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only f2-criterion-empty-passes <every f1-* and b11-* rule from --list>
+    exit: 0
+    ts: "2026-10-10T19:12:00Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "The armed path is proven on fakes only; its live proof is owed to the day READY holds."
+  - "READY is recomputed by the full report on every would_merge line: GitHub GETs per distinct sha of the journal; its cost on Pro's journal is unmeasured."
+  - "A push_refused can be a plain race (a commit reaching GitHub's main between ls-remote and the push); it halts by the brief's rule until an operator clears it."
+  - "The mirror's push URL defaults to git@github.com:<repo>.git on the default fetch URL; the wrapper is untouched."
+  - "GitHub may close the PR as merged with a merge_commit_sha that is not our merge commit, so B11 would journal that replay unmapped."
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step F2, from the lead message of 2026-10-10, from origin/main 60c2a5c245. Nothing is pushed.
+appetite_exceeded: none
