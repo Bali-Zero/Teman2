@@ -5,7 +5,8 @@ design loop 2026-10-09; contrastIncreased=false). Every TOKENS entry is re-read 
 a differing pair or a missing token is a PARITY failure. SITE_PAIRS are also measured under Increase
 Contrast (dayHC/nightHC, the pickAA HC values and `contrastIncreased ?` redirects read from Theme.swift).
 Sources/ is scanned for literal white foregrounds, so a deleted census row cannot hide a live site:
-each hit outside WHITE_ALLOW is a WHITE failure. Exit 1 on any FAIL, PARITY or WHITE. Python 3.9.
+each hit outside WHITE_ALLOW is a WHITE failure, and the scan self-tests its spellings. The SITE_PAIRS
+sites and RISK_CHIP are checked against the code (PARITY). Exit 1 on any FAIL, PARITY or WHITE. Python 3.9.
 """
 import json, re, sys
 from pathlib import Path
@@ -115,19 +116,51 @@ SITES = ["KBLIRegistryView.swift:1541 scopeRow mini risk chip", "KBLIRegistryVie
 SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "%s — Theme.riskChip %s" % (site, tier))
               for site in SITES for fg, bg, tier in RISK_CHIP]
 
-# Literal white foregrounds: `.white`, `Color.white`, `NSColor.white`, `Color(white:`. `Theme.white` is a token.
-WHITE_RE = re.compile(r"(?<![\w.])\.white\b|\b(?:Color|NSColor)\.white\b|\bColor\(white:")
-# A hit allowed on purpose: (path relative to Sources/, stripped line) -> reason (e.g. photo overlay).
+# Literal white (or grey-scale) colours: `.white`, `Color.white`, `NSColor.white`, any `white:` / `…White:`
+# initialiser (`Color(white:`, `Color.init(white:`, `.init(white:`, `Color(.sRGB, white:`, `NSColor(white:alpha:)`,
+# `NSColor(calibratedWhite:`), `Color(red: 1, green: 1, blue: 1)` and `Color(hex: 0xFFFFFF)`. A grey `white:` is
+# flagged too, on purpose: a literal is not a token. `Theme.white` is a token.
+WHITE_RE = re.compile(r"(?<![\w.])\.white\b|\b(?:Color|NSColor)\.white\b"
+                      r"|(?:\b(?:Color|NSColor)(?:\.init)?|(?<!\w)\.init)\s*\((?:\s*\.\w+\s*,)?\s*\w*[wW]hite\s*:"
+                      r"|\b(?:Color|NSColor)(?:\.init)?\s*\((?:\s*\.\w+\s*,)?\s*red\s*:\s*1(?:\.0*)?\s*,\s*green\s*:\s*1(?:\.0*)?\s*,\s*blue\s*:\s*1(?:\.0*)?\b"
+                      r"|\bColor(?:\.init)?\s*\(\s*hex\s*:\s*0x[fF]{6}(?:[fF]{2})?\b")
+# Self-test, run on every invocation: each GUILT spelling must hit, no INNOCENT line may.
+WHITE_GUILT = ["Text(x).foregroundStyle(.white)", "Color.white", "NSColor.white", "Color(white: 1)", "Color( white: 1)",
+               "Color.init(white: 1)", ".foregroundStyle(.init(white: 1))", "Color(.sRGB, white: 1, opacity: 1)",
+               "NSColor(white: 1, alpha: 1)", "NSColor(calibratedWhite: 1, alpha: 1)", "Color(red: 1, green: 1, blue: 1)",
+               "Color(red:1.0,green:1.0,blue:1.0)", "Color(hex: 0xFFFFFF)", "Color(hex:0xffffffff)"]
+WHITE_INNOCENT = ["Text(x).foregroundStyle(Theme.white)", "CharacterSet.whitespaces", "Color(red: 1, green: 0.5, blue: 1)",
+                  "Color(red: 1, green: 1, blue: 10)", "Color(hex: 0xF7F4EE)", "Color(hex: isDark ? dark : light)"]
+# A hit allowed on purpose: (path relative to Sources/, line number, stripped line) -> reason (e.g. photo overlay).
+# Keyed by line NUMBER too, so one reason admits one line; an entry that matches no hit is stale and fails.
 WHITE_ALLOW = {}
 
 def white_sites(src):
-    hits = []
+    hits, used = [], set()
     for f in sorted(Path(src).rglob("*.swift")):
         for n, line in enumerate(f.read_text().splitlines(), 1):
-            key = (str(f.relative_to(src)), line.strip())
-            if not line.strip().startswith("//") and WHITE_RE.search(line) and not WHITE_ALLOW.get(key):
-                hits.append("WHITE %s:%d %s" % (key[0], n, key[1]))
-    return hits
+            key = (str(f.relative_to(src)), n, line.strip())
+            if line.strip().startswith("//") or not WHITE_RE.search(line): continue
+            if WHITE_ALLOW.get(key, "").strip(): used.add(key)
+            else: hits.append("WHITE %s:%d %s" % key)
+    hits += ["WHITE-ALLOW %s:%d stale or without a reason" % k[:2] for k in WHITE_ALLOW if k not in used]
+    hits += ["WHITE-SELFTEST missed: %s" % g for g in WHITE_GUILT if not WHITE_RE.search(g)]
+    return hits + ["WHITE-SELFTEST false hit: %s" % i for i in WHITE_INNOCENT if WHITE_RE.search(i)]
+
+def site_parity(src, theme_path):
+    """RISK_CHIP must equal Theme.riskChip's switch (aliases resolved), and each SITES line must paint riskChip's fg."""
+    text, bad = Path(theme_path).read_text(), []
+    alias = dict(re.findall(r"static var (\w+): Color\s*\{\s*(\w+)\s*\}", text))
+    body = text[text.find("static func riskChip"):]; body = body[:body.find("\n    }\n")]
+    code = {k: (alias.get(fg, fg), alias.get(bg, bg)) for k, fg, bg in re.findall(r"(case \d|default):\s*return \((\w+), (\w+)", body)}
+    table = {("case " + t.split()[1]) if t.startswith("rank") else "default": (fg, bg) for fg, bg, t in RISK_CHIP}
+    if code != table: bad.append("PARITY RISK_CHIP %s != Theme.riskChip %s" % (sorted(table.items()), sorted(code.items())))
+    for site in SITES:
+        name, n = site.split()[0].split(":"); n = int(n)
+        lines = next(Path(src).rglob(name)).read_text().splitlines()
+        if ".fg)" not in lines[n - 1] or "Theme.riskChip(" not in "\n".join(lines[max(0, n - 4):n]):
+            bad.append("PARITY site %s does not paint Theme.riskChip(…).fg: %s" % (site.split()[0], lines[n - 1].strip()))
+    return bad
 
 def parse_hc(path):
     out = {}
@@ -175,13 +208,13 @@ def main():
             })
     print(json.dumps(results, indent=2))
     fails = [x for x in results if not x["pass"]]
-    bad = parity(theme_path)
+    bad = parity(theme_path) + site_parity(src, theme_path)
     sys.stderr.write("TOTAL=%d FAIL=%d\n" % (len(results), len(fails)))
     for x in fails:
         sys.stderr.write("  FAIL %s [%s] ratio=%s < %s\n" % (x["pair"], x["theme"], x["ratio"], x["min_required"]))
     for b in bad: sys.stderr.write(b + "\n")
     sys.stderr.write("PARITY=%d\n" % len(bad))
-    white = white_sites(src) + ["WHITE-ALLOW %s:%s has no reason" % k for k, why in WHITE_ALLOW.items() if not why.strip()]
+    white = white_sites(src)
     for w in white: sys.stderr.write(w + "\n")
     sys.stderr.write("WHITE=%d\n" % len(white))
     sys.exit(1 if fails or bad or white else 0)

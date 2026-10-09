@@ -228,7 +228,10 @@ extension Snapshot {
     /// window-to-window comparable across bands/themes/langs regardless of each band's own natural
     /// content height. Legacy `--snapshot` (above) is untouched; this is a parallel entry point.
     /// Usage: `--snapshot-band <band> --theme day|night --lang en|id --code <code>
-    ///         [--text-size default|xxxLarge] [--layout-json <out.json>] <out.png>`
+    ///         [--width <pt>] [--height <pt>] [--text-size default|xxxLarge] [--layout-json <out.json>] <out.png>`
+    /// Design loop 2026-10-09 (spec §3, §7): every band is a PAGE — the live view at the full canvas
+    /// width (`--width`, default 1280; 948 = the live main pane), top-anchored, clipped at `--height`
+    /// (default 800, the set's canvas; a taller value shows a page band below the fold for review).
     /// Bands: registry-table, detail-card, dossier, sheet-ledger, chat, search-results.
     @MainActor
     static func runBandIfRequested() -> Bool {
@@ -264,87 +267,53 @@ extension Snapshot {
         Theme.mode = (themeArg == "day") ? .light : .dark
         let dynamicSize: DynamicTypeSize = (textSizeArg == "xxxlarge") ? .xxxLarge : .large
 
-        let w: CGFloat = 1280
-        let h: CGFloat = 800
+        let w = CGFloat(flag("--width").flatMap(Double.init) ?? 1280)
+        let h = CGFloat(flag("--height").flatMap(Double.init) ?? 800)
         let notFound = AnyView(EmptyDetail(text: "code \(code) not found (store: \(state.store.all.count))")
             .environmentObject(lang))
 
         let content: AnyView
         switch band {
         case "registry-table":
-            // The scan surface: one sector's rows rendered EAGERLY (a real List won't materialize
-            // lazy rows off-screen) — same technique as the legacy `sector:` mode, keyed off the
-            // sector the requested --code belongs to.
-            //
-            // `isID:` is passed explicitly (not defaulted) — `row(_:)`'s `isID` parameter defaults
-            // to `false`, and the live table (SearchListView.swift:211) always passes its own
-            // `isID`, so a caller that omits it silently renders the English badge/risk strings
-            // under `--lang id` (found live: `--theme night --lang en|id` produced byte-identical
-            // PNGs — `539b2dc4…` both — cured here by threading the same boolean the live row uses).
-            //
-            // Frame width: the row's fixed columns (58 code + 132 badge + 132 risk) + 3×12 HStack
-            // spacing + 20 row padding + 16 this wrapper's `.padding(.horizontal, 8)` = 394pt
-            // BEFORE the flexible activity column gets a single point — a narrower frame (the
-            // legacy `sector:`/`search:` modes' 360/380, copied here at first) collapses that
-            // column to zero and the scan surface's primary content (the activity title) never
-            // renders. 640pt leaves the title ~246pt, enough to show real (not empty) text.
-            let sv = SearchListView()
-            let sector = KBLIStore.sectorLetter(for: code) ?? "A"
-            let rows = state.store.codes(in: sector).prefix(18)
-            let isID = langArg == "id"
-            content = AnyView(
-                ScrollView {
-                    VStack(spacing: 2) {
-                        ForEach(Array(rows), id: \.kode) { k in sv.row(k, isID: isID).padding(.horizontal, 8) }
-                    }.padding(.vertical, 10)
-                }
+            // The live scan surface: `SearchListView` browsing the sector --code belongs to, no
+            // selection (so no preview sheet) — the same view, filters and census the user sees.
+            state.browsedSector = KBLIStore.sectorLetter(for: code) ?? "A"
+            state.selected = nil
+            content = AnyView(SearchListView()
                 .environmentObject(state).environmentObject(lang)
-                .frame(width: 640, alignment: .top)
-            )
+                .frame(width: w, height: h, alignment: .top))
         case "detail-card":
             if let k = state.store.code(code) {
-                content = AnyView(KBLIDetailRichView(kbli: k, scrolls: false)
-                    .environmentObject(state).environmentObject(lang)
-                    .frame(width: 820, alignment: .top))
+                content = Self.page(KBLIDetailRichView(kbli: k, scrolls: false)
+                    .environmentObject(state).environmentObject(lang), width: w, height: h)
             } else { content = notFound }
         case "dossier":
             if let k = state.store.code(code) {
-                content = AnyView(KBLIDossierView(kbli: k, variant: .claude, scrolls: false)
-                    .environmentObject(state).environmentObject(lang)
-                    .frame(width: 760, alignment: .top))
+                content = Self.page(KBLIDossierView(kbli: k, variant: .claude, scrolls: false)
+                    .environmentObject(state).environmentObject(lang), width: w, height: h)
             } else { content = notFound }
         case "sheet-ledger":
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono
             // UPPERCASE label↔value LedgerPlate table, `KBLIRegistryView`.
             if let k = state.store.code(code) {
-                content = AnyView(KBLIRegistryView(kbli: k, scrolls: false)
-                    .environmentObject(state).environmentObject(lang)
-                    .frame(width: 760, alignment: .top))
+                content = Self.page(KBLIRegistryView(kbli: k, scrolls: false)
+                    .environmentObject(state).environmentObject(lang), width: w, height: h)
             } else { content = notFound }
         case "chat":
             state.messages = [
                 ChatMessage(role: .user, text: "Posso aprire una PT PMA per il codice \(code) a Bali?"),
                 ChatMessage(role: .zantara, text: "Sì. Verifica il KBLI \(code) rispetto alla moratoria e al capitale minimo PT PMA.")
             ]
+            state.chatContextCode = state.store.code(code)
             content = AnyView(ChatView().environmentObject(state).environmentObject(lang)
-                .frame(width: 820, alignment: .top))
+                .frame(width: w, height: h, alignment: .top))
         case "search-results":
-            // Query-filtered rows (legacy `search:` mode) — same row renderer as registry-table,
-            // different data set: a RANKED match set for --code as a query, not a whole sector.
-            // `isID:` and the 640pt frame: same cause and same cure as registry-table above (the
-            // two bands share `SearchListView.row(_:)` and its defaulted `isID`/collapsing width).
-            let sv = SearchListView()
-            let rows = state.store.search(code).rows.prefix(14)
-            let isID = langArg == "id"
-            content = AnyView(
-                ScrollView {
-                    VStack(spacing: 2) {
-                        ForEach(Array(rows), id: \.kode) { k in sv.row(k, isID: isID).padding(.horizontal, 8) }
-                    }.padding(.vertical, 10)
-                }
+            // The live result list for --code typed as a query, no selection (no preview sheet).
+            state.query = code
+            state.selected = nil
+            content = AnyView(SearchListView()
                 .environmentObject(state).environmentObject(lang)
-                .frame(width: 640, alignment: .top)
-            )
+                .frame(width: w, height: h, alignment: .top))
         default:
             content = AnyView(EmptyDetail(text: "unknown band \(band)").environmentObject(lang))
         }
@@ -359,7 +328,11 @@ extension Snapshot {
         host.frame = NSRect(x: 0, y: 0, width: w, height: h)
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return true }
         host.cacheDisplay(in: host.bounds, to: rep)
-        if let data = rep.representation(using: .png, properties: [:]) {
+        // Written in sRGB, so a pixel reads the token's own hex: the cache comes back tagged
+        // Generic RGB (paper F7F4EE read F5F1EA, lineSoft DAD8D1 read D1CFC7), which a colour-managed
+        // viewer shows right but a pixel census (png_census.py) cannot match.
+        let srgb = rep.converting(to: .sRGB, renderingIntent: .default) ?? rep
+        if let data = srgb.representation(using: .png, properties: [:]) {
             try? data.write(to: URL(fileURLWithPath: out))
             FileHandle.standardError.write("band snapshot written: \(out)\n".data(using: .utf8)!)
         }
@@ -373,6 +346,16 @@ extension Snapshot {
         }
 
         return true
+    }
+
+    /// A page band: the view at full canvas width inside a ScrollView, so a page taller than the
+    /// canvas shows its TOP (as the live app opens it) instead of being centred and clipped at both
+    /// ends — the 2026-09-17 sheet-ledger renders lost their masthead that way.
+    @MainActor
+    private static func page<V: View>(_ v: V, width: CGFloat, height: CGFloat) -> AnyView {
+        AnyView(ScrollView(.vertical) { v.frame(width: width, alignment: .top) }
+            .scrollIndicators(.never)
+            .frame(width: width, height: height, alignment: .top))
     }
 
     /// Walks the AppKit accessibility tree IN-PROCESS — the object graph AppKit already builds for

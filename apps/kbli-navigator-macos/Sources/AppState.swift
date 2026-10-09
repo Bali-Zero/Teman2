@@ -74,6 +74,9 @@ final class AppState: ObservableObject {
     @Published var chatBusy: Bool = false
     /// When the user taps "Ask Zantara" from a code, this primes the chat with that code's context.
     @Published var pendingCodeContext: KBLI?
+    /// The code the conversation is about, for the chat's citation rail (spec §3.6): set with the
+    /// pending context, kept after it is consumed, cleared by a new chat.
+    @Published var chatContextCode: KBLI?
 
     init() {
         // Load the bundled dataset. If it's missing the app still runs (search shows a banner).
@@ -91,11 +94,13 @@ final class AppState: ObservableObject {
     /// Jump to the chat with a specific code in focus (called from the detail view toolbar).
     func askZantara(about code: KBLI) {
         pendingCodeContext = code
+        chatContextCode = code
         section = .chat
     }
 
     func resetChat() {
         messages.removeAll()
         pendingCodeContext = nil
+        chatContextCode = nil
     }
 }
