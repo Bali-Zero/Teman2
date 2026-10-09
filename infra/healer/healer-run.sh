@@ -220,13 +220,19 @@ fi
 # Receptor 2: proprioception — boundary divergences on THIS machine
 PROP_JSON=$(python3 scripts/proprioception.py --json --no-fetch 2>/dev/null)
 PROP_EXIT=$?
-DIVERGED=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py count-diverged 2>/dev/null)
+# Receptor 4 runs later, so never consume a registry snapshot from another tick.
+PROP_SUMMARY=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py proprioception-summary 2>>"$LOG")
 CHECK_EXIT=$?
+DIVERGED=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '1p')
+SESSION_CURABLE=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '2p')
+DIVERGED_IDS=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '3p')
 # The probe's own failure is a THIRD state, like registry receptor exit 2 (superscar #2).
 if [ "$PROP_EXIT" -ne 0 ] || [ "$CHECK_EXIT" -ne 0 ]; then
     ACTIONABLE=1; REASONS="${REASONS}proprioception-receptor-broken "
+elif [ "${SESSION_CURABLE:-0}" -gt 0 ] 2>/dev/null; then
+    ACTIONABLE=1; REASONS="${REASONS}proprioception:${SESSION_CURABLE}/${DIVERGED}-session-curable "
 elif [ "${DIVERGED:-0}" -gt 0 ] 2>/dev/null; then
-    ACTIONABLE=1; REASONS="${REASONS}proprioception:${DIVERGED}-diverged "
+    log "skip: ${DIVERGED} diverged, none session-curable at P0-P1: ${DIVERGED_IDS:-unknown}"
 fi
 
 # Receptor 3: escalations board — fresh HIGH pending entries
