@@ -26,22 +26,31 @@ what_changed: |
   LOCALCI_VM_DISCARD=0, remount, re-read, never raises) called before the fstrim in the real path; "vm_discard" joins rec["failed"]
   only when a remount was attempted and after is not true. test_prune.py: eight b8b tests over a fake colima with a mutable mount
   table; the B7 test now reads the last colima call. merger_mutants.py: eight b8b-* rules. README prune section and spec Addendum B8b.
+  43436ff362 (fix) and 6a4b759ab7 (test) answer the independent gate at a93fe9f794 (CONFIRMED, two MEDIUM, four LOW): the LAST
+  /proc/mounts line of the data disk is read (a stacked mount lists the effective one last); the README and spec say the prune at
+  the end of a tick restores discard for the next tick, so the first tick after a VM restart runs without it; the spec's failed
+  wording matches the README (a remount attempted and after not true — false, or null when the re-read failed); the Bites name
+  the first line's expected shape. Tests: a stacked mount point, a remount that times out (journalled, failed, the trim still
+  runs), the B7 test pins both colima calls in order, the fixture's longer path now comes after the real line; mutant rule
+  b8b-first-line-wins added.
 proof: |
   The committed code against fake colima/docker scripts under tmp; nothing ran on Pro and nothing was pushed. It reaches Pro when
   the tick next extracts prune.py from main.
 bites:
   consumer: The launchd tick com.balizero.localci-merger on Pro (prune line in decisions.jsonl).
   observation: >-
-    Owed after merge and the tick's next extraction (this lane does not ship): the first prune line on Pro with
-    vm_discard.after true, and a second host sample (the 20 s sampler) whose intra-tick minimum of host free space is above the
-    pre-discard 100.3/104.0 GiB, with the datadisk's allocation tracking the VM's usage.
+    Owed after merge and the tick's next extraction: while the hand remount of 2026-10-09T12:07:47Z is in force, the first
+    prune line on Pro reads vm_discard {before: true, after: true, remounted: false} (the parser on the real mount table); the
+    remount branch is proven live by a hand prune between ticks after a hand `remount,nodiscard` (a line with remounted true and
+    after true), or by the first such line after the next VM restart; and a second host sample whose intra-tick minimum of host
+    free space is above the pre-discard 100.3/103.2/104.0 GiB, with the datadisk's allocation tracking the VM's usage.
 ground:
   ts: "2026-10-09T12:20:00Z"
   siblings: >-
     Worktree from origin/main 11d8ee2696. Other lanes touching scripts/localci: dux-localci-b11 and b11b (merger replay), not prune.py.
 spend:
   adversarial_rounds: 0
-  wall_clock_hours: 0.4
+  wall_clock_hours: 0.7
 receipts:
   - claim: "test_prune.py and test_merger.py: 255 passed, 109 s (before the mount-order tweak of the test fixture); test_prune.py -k b8b: 8 passed after it."
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_prune.py scripts/localci/tests/test_merger.py -q -p no:cacheprovider
@@ -53,10 +62,25 @@ receipts:
     exit: 0
     ts: "2026-10-09T12:18:00Z"
     seat: claude-opus-5-5 on M5
+  - claim: "Fix round tree 6a4b759ab7: test_prune.py 82 passed, 53 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_prune.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T12:33:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "All 9 b8b-* mutant rules on the fix round's tree, b8b-first-line-wins included: 9/9 killed; survivors none, errors none, stale none (b8b-mount-point-by-prefix survived once the last line was read, until the fixture listed the longer path after the real one)."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --list | grep -o -E "^b8b-[a-z0-9-]+" | xargs python3 scripts/localci/tests/mutants/merger_mutants.py --only
+    exit: 0
+    ts: "2026-10-09T12:35:00Z"
+    seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
   - "The remount and its effect on Pro's host free space are observable only after merge on Pro; owed as the Bites observation."
   - "Remounting a mounted ext4 with discard adds online discard cost to deletions inside the VM; accepted by the lead, measured by the second sampler run."
+  - "The prune runs at the end of a tick: after a VM restart the first tick runs without discard (one tick's untrimmed climb); arming it at tick start too is a possible follow-up."
+  - "test_prune.py's whole file was not rerun by the builder after its fixture change; the independent gate ran it (80 passed) and the fix round's tree ran 82."
 brief_ref: evidence/brief.yml
 plan_ref: >-
   Mandate LOCALCI-SOVEREIGN step B8b, from the lead message of 2026-10-09, from origin/main 11d8ee2696. Nothing is pushed.
+appetite_exceeded: >-
+  Wall clock only: the build fit its declared time; the independent gate's fix round (two MEDIUM on text, four LOW) adds 0.3. No
+  adversarial round.
