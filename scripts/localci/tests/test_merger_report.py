@@ -670,8 +670,11 @@ def test_a_replay_of_a_commit_that_is_not_the_prs_merge_commit_compares_nothing_
     assert rep["rows"][0]["compared_merge"] is False and rep["rows"][0]["hosted_sha"] == A
 
 
-def test_a_false_green_in_a_replay_is_a_false_green_and_never_reclassified_as_stale(tmp_path, monkeypatch):
+def test_a_false_green_in_a_replay_is_a_false_green_and_never_reclassified_as_stale(tmp_path, monkeypatch, capsys):
     gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "failure"})
     d = {**replay_of(1, A), "hosted_compare": {"counts": {"FALSE_GREEN": 1}}}
     rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
-    assert rc == 1 and rep["recorded_context_false_green"] == 1 and rep["recorded_reclassified_hosted_stale"] == [] and rep["recorded_kept_false_green"] == []
+    assert rc == 1 and rep["recorded_context_false_green"] == 1 and rep["recorded_reclassified_hosted_stale"] == []
+    (k,) = rep["recorded_kept_false_green"]
+    assert (k["pr"], k["why"]) == (1, "replay: the same tree on both sides, never stale")
+    assert "kept=1: [pr1 all rows: replay: the same tree on both sides, never stale]" in capsys.readouterr().out

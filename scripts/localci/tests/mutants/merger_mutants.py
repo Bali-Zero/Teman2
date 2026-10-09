@@ -350,6 +350,13 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b11-unconfirmed-merge-commit-trusted": (PY, 'return mc if pr.get("merged") is True and is_sha(mc) and pr.get("merge_commit_sha") == mc else', "return mc if True else", (REPORT,)),
     "b11-replay-judged-for-stale": (PY, 'judge = None if d.get("replay") else judges.setdefault', "judge = judges.setdefault", (REPORT,)),
     "b11-replay-credit-to-any": (PY, "if all(flags))   # a PR that also qualified", "if any(flags))   # a PR that also qualified", (REPORT,)),
+    "b11-second-parent-base": (PY, '"base_sha": parents.split()[0]', '"base_sha": parents.split()[-1]', (REPLAY,)),
+    "b11-not-first-parent-line": (PY, '"log", "--first-parent", "--format=%H%x00%P%x00%s"', '"log", "--format=%H%x00%P%x00%s"', (REPLAY,)),
+    "b11-replay-crash-unjournalled": (PY, "if not (replay or isinstance(exc, (MergerError, OSError))):", "if not isinstance(exc, (MergerError, OSError)):", (REPLAY,)),
+    "b11-any-crash-journalled": (PY, "if not (replay or isinstance(exc, (MergerError, OSError))):", "if False:", (REPLAY,)),
+    "b11-replay-stop-journalled": (PY, "    except Stopped:\n        raise\n    except Exception as exc:  # noqa: BLE001 — a decision with no verdict",
+                                   "    except Exception as exc:  # noqa: BLE001 — a decision with no verdict", (REPLAY,)),
+    "b11-replay-false-green-unlisted": (PY, '"why": REPLAY_KEPT}]', '"why": REPLAY_KEPT}][:0]', (REPORT,)),
     # the launchd wrapper
     "sh-code-flag-always": (SH, 'if grep -q -- "--code-sha" "$CODE/merger.py"; then', "if true; then", (TICK,)),
     "sh-code-flag-never": (SH, 'if grep -q -- "--code-sha" "$CODE/merger.py"; then', "if false; then", (TICK,)),
