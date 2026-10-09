@@ -66,10 +66,14 @@ if [ ! -f "$STATE/repo.git/HEAD" ]; then
   git clone --bare --quiet --no-tags "$SEED" "$STATE/repo.git"
   git -C "$STATE/repo.git" remote set-url origin "$URL"
 fi
-# a failed fetch is not fatal here: the tick fetches again and journals its own `error` line, so the journal sees the outage
-git -C "$STATE/repo.git" fetch --no-tags --quiet origin +refs/heads/main:refs/merger/base \
+# a failed fetch is not fatal here: the tick fetches again and journals its own `error` line, so the journal sees the outage.
+# The wrapper reads the code from ITS OWN ref, refs/merger/wrapper: refs/merger/base belongs to merger.py's fetch_base alone (F2:
+# once phase F has pushed, that ref is the authority and a force-fetch here would rewind it before the divergence guard looks)
+git -C "$STATE/repo.git" fetch --no-tags --quiet origin +refs/heads/main:refs/merger/wrapper \
   || echo "merger_tick: fetch failed — running the main fetched last; the tick journals its own fetch error" >&2
-SHA="$(git -C "$STATE/repo.git" rev-parse --verify 'refs/merger/base^{commit}')"
+# a mirror from before this ref existed has only refs/merger/base: its code is what the last tick ran, read once and never written
+SHA="$(git -C "$STATE/repo.git" rev-parse --verify --quiet 'refs/merger/wrapper^{commit}' \
+  || git -C "$STATE/repo.git" rev-parse --verify 'refs/merger/base^{commit}')"
 CODE="$(mktemp -d "${TMPDIR:-/tmp}/localci-merger.XXXXXX")"
 for f in merger.py hosted_compare.py; do
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f"
