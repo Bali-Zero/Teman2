@@ -23,6 +23,16 @@ acceptance:
     probe: a scratch py3.11 venv with exactly that install runs the suite with 0 collection errors.
   A3:
     text: >-
-      No skip, xfail or deselect is added to make the job green; the only skips are the suite's own (live endpoints
-      without MATA_GARUDA_LIVE_ENDPOINTS=1, Redis-backed tests without Redis).
-    probe: git diff of apps/mata-garuda is empty in this PR; the job log's skip count equals the local count.
+      No skip, xfail or deselect hides a failure. Exactly one test joins the suite's own live convention: test_sprint4's
+      test_fetch_valid_url fetches https://peraturan.go.id/ for real and now runs only with MATA_GARUDA_LIVE_ENDPOINTS=1,
+      like tests/integration/test_feeder_endpoints_live_*. Every other skip is the suite's own (live endpoints, Redis).
+    probe: the job log's skip count is the base local count plus one.
+  A4:
+    text: >-
+      No test reaches the real nlm CLI: test_idempotent_re_run's fixture stubs nlm_get_title, which three tests left live,
+      so a host with nlm installed made 27 real `nlm notebook get uuid-NN --json` calls with fake ids per run of the module (measured).
+    probe: the module and the whole suite under a PATH whose nlm appends to a scratch file leave that file empty.
+  A5:
+    text: >-
+      The cron-wrapper tests exec /bin/zsh: the job installs zsh and asserts /bin/zsh before the suite runs.
+    probe: this PR's job log.
