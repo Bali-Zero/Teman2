@@ -746,6 +746,67 @@ def test_t9_live_false_positives_are_excluded_and_no_wider(tmp_path: Path) -> No
     assert _paths(findings) == real
 
 
+@pytest.mark.parametrize(
+    ("relpath", "content", "candidate"),
+    [
+        ("skills/bali-zero-brand/tokens.json", '{"palette":{},"typography":{}}', False),
+        (".claude/skills/synced/x/tokens.json", '{"palette":{}}', False),
+        (".claude/tokens.json", '{"palette":{}}', True),
+        (
+            "skills/x/tokens.json",
+            '{"github":{"access_token":"' + "fake_" + 'value"}}',
+            True,
+        ),
+        (
+            "skills/x/tokens.json",
+            '{"vendor":{"gh":"' + "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2" + '"}}',
+            True,
+        ),
+        (
+            "skills/x/tokens.json",
+            '{"$schema":"https://design-tokens.org/schema.json",'
+            '"meta":{"assets":"~/.claude/skills/bali-zero-brand/assets/"},'
+            '"color":{"primary":"#1A2B3C"},"font":{"body":"Inter, sans-serif"}}',
+            False,
+        ),
+        ("skills/x/tokens.json", "not json", True),
+        ("skills/x/tokens.json", '{"palette":"' + "x" * (256 * 1024) + '"}', True),
+        (".secrets/skills/x/tokens.json", '{"palette":{}}', True),
+        ("skills/x/tokens.yaml", "palette: {}", True),
+    ],
+    ids=[
+        "brand-design-tokens",
+        "synced-design-tokens",
+        "outside-skills",
+        "credential-marker",
+        "credential-value-under-innocent-key",
+        "urls-paths-colours-are-not-credentials",
+        "invalid-json",
+        "oversize",
+        "custody-wins",
+        "wrong-extension",
+    ],
+)
+def test_t9b_only_benign_skill_design_tokens_are_excluded(
+    tmp_path: Path, relpath: str, content: str, candidate: bool
+) -> None:
+    target = _touch(tmp_path / relpath, 0o644, content)
+
+    findings = audit.scan([tmp_path], max_depth=8)
+
+    assert (target in _paths(findings)) is candidate
+
+
+def test_t9c_the_tracked_brand_tokens_file_is_design_tokens(tmp_path: Path) -> None:
+    """The real Bali Zero brand file (the Mini healer's recurring chmod) is excluded."""
+    brand = Path(__file__).resolve().parents[2] / "skills" / "bali-zero-brand" / "tokens.json"
+    if not brand.is_file():
+        pytest.skip("brand tokens file not in this checkout")
+    target = _touch(tmp_path / "skills" / "bali-zero-brand" / "tokens.json", 0o644, brand.read_text())
+
+    assert target not in _paths(audit.scan([tmp_path], max_depth=8))
+
+
 def test_t10_plugin_marketplace_checkouts_are_walked(tmp_path: Path) -> None:
     """A directory's name does not prove its contents public: a credential
     inside a plugin marketplace checkout is found like any other."""

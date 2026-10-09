@@ -1,0 +1,27 @@
+task: >-
+  scripts/secrets_permissions_audit.py marks a file credential-like by NAME (`*token*`), so the Bali Zero brand
+  DESIGN TOKENS file skills/bali-zero-brand/tokens.json (palette, fonts; tracked 100644) is reported on Mini and the
+  healer session chmods it to 0600 on most ticks; the next checkout re-creates it 0644. Exclude a skill's
+  tokens.json by what it is: bounded JSON object, no credential-marker key at any depth, no credential-shaped value.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 2
+gear_reason: >-
+  Floor measured below 2 (no hot-zone path). Declared gear 2 so harness-floor holds the merge for the independent
+  final gate: the change narrows what a credential auditor reports, so an over-wide exclusion would hide a loosened
+  credential (scar #3, under-match).
+acceptance:
+  A1:
+    text: The tracked brand tokens.json, copied under a skills dir at 0644, is not a finding.
+    probe: test_t9c_the_tracked_brand_tokens_file_is_design_tokens; t9b rows brand / synced / urls-paths-colours.
+  A2:
+    text: >-
+      Still findings: tokens.json outside a skills component; a credential-marker key; a credential-shaped value
+      under an innocent key; invalid JSON; > 256 KiB; inside .secrets custody; another extension.
+    probe: t9b guilt rows.
+  A3:
+    text: >-
+      Each guard is load-bearing: dropping the value check, the key check, the skills component, the custody
+      precedence, or shortening the value run to 8 turns a row red.
+    probe: five scratch mutants, results in the PR body.
