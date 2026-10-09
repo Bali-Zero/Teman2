@@ -21,4 +21,4 @@ scope:
   - three component tests that pinned a replaced sentence
 appetite:
   wall_clock_hours: 2
-  adversarial_rounds: 0
+  adversarial_rounds: 1
