@@ -435,3 +435,98 @@ def test_the_scanner_half_hands_back_numbers_and_never_a_string(tmp_path, monkey
 def test_every_skip_code_has_a_message_and_formats_without_raising():
     for code, template in cbp._SKIP_TEXT.items():
         assert template.format(n=1, cap=cbp.SCAN_CAP)
+
+
+# ── P3 and the baseline itself: excluded by PATH ENTITY ─────────────────────
+
+_NEEDS_SCANNER = pytest.mark.skipif(
+    shutil.which("detect-secrets") is None, reason="detect-secrets not installed"
+)
+
+
+def _stage_and_run(monkeypatch, d: Path, *argv: str) -> int:
+    monkeypatch.setattr(cbp, "REPO_ROOT", d)
+    baseline = d / ".secrets.baseline"
+    if not baseline.exists():
+        baseline.write_text(_empty_baseline())
+    monkeypatch.setattr(cbp, "BASELINE", baseline)
+    old = sys.argv
+    sys.argv = ["check_ban_predicates.py", *argv]
+    try:
+        return cbp.main()
+    finally:
+        sys.argv = old
+
+
+def test_the_baseline_predicate_is_an_exact_path_not_a_substring():
+    assert cbp._is_the_baseline(".secrets.baseline")
+    assert cbp._is_the_baseline("./.secrets.baseline")
+    assert not cbp._is_the_baseline("docs/.secrets.baseline")
+    assert not cbp._is_the_baseline("x.secrets.baseline")
+    assert not cbp._is_the_baseline(".secrets.baseline.bak")
+    assert not cbp._is_the_baseline("baseline.json")
+
+
+@_NEEDS_SCANNER
+def test_innocence_a_commit_touching_only_the_real_baseline_passes_enforced(
+    tmp_path, monkeypatch, capsys
+):
+    """Today's baseline, staged alone, enforcement ON: the audit needs no bypass."""
+    monkeypatch.delenv("BAN_PREDICATES_ENFORCEMENT", raising=False)
+    d = _repo(tmp_path)
+    (d / ".secrets.baseline").write_bytes((REPO_ROOT / ".secrets.baseline").read_bytes())
+    subprocess.run(["git", "add", ".secrets.baseline"], cwd=d, check=True, capture_output=True)
+    rc = _stage_and_run(monkeypatch, d, "--staged")
+    out = capsys.readouterr().out
+    assert rc == 0, out
+    assert "P3" not in out
+
+
+@_NEEDS_SCANNER
+def test_innocence_the_baseline_named_explicitly_passes_enforced(tmp_path, monkeypatch):
+    monkeypatch.delenv("BAN_PREDICATES_ENFORCEMENT", raising=False)
+    (tmp_path / ".secrets.baseline").write_bytes(
+        (REPO_ROOT / ".secrets.baseline").read_bytes()
+    )
+    assert _run(monkeypatch, tmp_path, ".secrets.baseline") == 0
+
+
+@_NEEDS_SCANNER
+def test_guilt_a_tracked_file_that_is_not_the_baseline_is_still_refused(
+    tmp_path, monkeypatch, capsys
+):
+    d = _repo(tmp_path)
+    (d / "note.py").write_text("# the rule misses " + QUOTED_KEY + "\n")
+    subprocess.run(["git", "add", "note.py"], cwd=d, check=True, capture_output=True)
+    assert _stage_and_run(monkeypatch, d, "--staged") == 1
+    assert "P3 detect-secrets" in capsys.readouterr().out
+
+
+@_NEEDS_SCANNER
+@pytest.mark.parametrize("name", ["docs/.secrets.baseline", "x.secrets.baseline"])
+def test_guilt_a_namesake_of_the_baseline_is_still_refused(
+    tmp_path, monkeypatch, capsys, name
+):
+    """Entity, not substring: only the repo-root ledger is excused."""
+    d = _repo(tmp_path)
+    f = d / name
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text("# the rule misses " + QUOTED_KEY + "\n")
+    subprocess.run(["git", "add", name], cwd=d, check=True, capture_output=True)
+    assert _stage_and_run(monkeypatch, d, "--staged") == 1
+    assert "P3 detect-secrets" in capsys.readouterr().out
+
+
+@_NEEDS_SCANNER
+def test_guilt_the_baseline_does_not_excuse_a_file_staged_beside_it(
+    tmp_path, monkeypatch, capsys
+):
+    d = _repo(tmp_path)
+    (d / ".secrets.baseline").write_bytes((REPO_ROOT / ".secrets.baseline").read_bytes())
+    (d / "note.py").write_text("# the rule misses " + QUOTED_KEY + "\n")
+    subprocess.run(
+        ["git", "add", ".secrets.baseline", "note.py"], cwd=d, check=True, capture_output=True
+    )
+    assert _stage_and_run(monkeypatch, d, "--staged") == 1
+    out = capsys.readouterr().out
+    assert "note.py" in out and ".secrets.baseline:" not in out
