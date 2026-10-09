@@ -1,0 +1,164 @@
+# Gear-3 evidence pack — the push witness: the trusted pre-push hook leaves a marker, a reconciler finds pushes that had none.
+# Written by dux-push-witness-ship-2 (Claude Opus 5.5, M5), verifier and shipper. The build is Codex O1's (scripts/seat_build.sh,
+# 2026-10-08 11:07-11:33Z); the first verifier (dux-push-witness-ship) replayed both #8076 receipts against it and stalled at
+# 11:43Z. A third writer edited .husky/pre-push at 2026-10-09T01:10:49Z (D2 $0 hash, D4 userinfo drop, sed escape) and was never
+# identified; it was reported to the imperator, the worktree stayed unchanged afterwards, and those hunks were re-read, tested and
+# owned here. Every receipt below is a command this writer ran on 2026-10-09; scratch under
+# ~/.agent/campaign-20261005/work/dux-push-witness-ship-2/ (not committed).
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+ruling: >-
+  Imperator order 2026-10-09 to the successor: finish verifying and ship the push witness (GEAR 3, the trusted hook itself),
+  sealed three-family council before the commit, refutation after, floor >= 2 so the harness holds the gate.
+mission: >-
+  Replace the static judgement of a pusher's text (#7985, #8076: undecidable, 15+ over-trust shapes) by a runtime witness: the
+  hook that actually ran leaves a marker, and a probe reports every covered agent tip that has none.
+lanes:
+  - lane: witness-build
+    role: build
+    seat: >-
+      codex-gpt-5.6-sol (Codex O1 via scripts/seat_build.sh, 2026-10-08): hook marker, reconciler, probe entry, the first
+      runtime tests, spec.
+  - lane: witness-verify-ship
+    role: build
+    seat: >-
+      claude-opus-5.5 (dux-push-witness-ship-2): epoch + coverage, linked-worktree roots, exact origin URL, observed push time,
+      valid-first roots, RECONCILE-ERROR, 7-day grace, unobserved counter, a test per rule, spec rewrite, the pack.
+  - lane: witness-council
+    role: review
+    seat: >-
+      Sealed council 01:53:38-02:00:03Z, before any commit: Dux position, Codex O2 (codex-gpt-5.6-sol roster seat; CLI reported
+      gpt-6.1-sol; account verified by its rollout under ~/.codex-o2/sessions/2026/10/09/), Kimi k3 (two independent runs),
+      Ollama qwen3.5:9b on Mini (non-quorum reserve, generic answer). Refutation round 02:04:41-02:10:11Z. Verbatim in
+      council-journal.jsonl.
+seat_diversity: >-
+  Three families answered: Anthropic (verifier), OpenAI (Codex O1 built, Codex O2 reviewed: one family, so the Codex-built hunks
+  were graded cross-family by Claude and Kimi), Moonshot (Kimi k3, both sealed runs and the refutation). Alibaba tp1-qwen3.8-max
+  is 429 until 2026-10-11T16:00Z (campaign rules: do not retry); Gemini agy reads BUSY on the owner's windows. Ollama on Mini sat
+  as a non-cloud reserve and is not counted toward quorum.
+pii_scan: clean
+bites:
+  consumer: >-
+    The proprioception probe push_witness (P1, cure pr) on every host, through scripts/push_witness_reconcile.py, and the trusted
+    pre-push hook of every push, including this PR's own push from its worktree.
+  observation: >-
+    This PR's push wrote the first marker of M5's journal (~/.organism/push-witness/journal.jsonl, local_sha = the head SHA in the
+    PR body). From the worktree after the push, the reconciler counts that tip witnessed with 0 findings; after merge, on M5,
+    `python3 scripts/proprioception.py --probes push_witness --json --no-report` reports RECONCILED with 0 findings.
+decisions:
+  - >-
+    The marker is written last, after every blocking check, by the hook file itself; the trusted bundle copies that file, so worktree
+    pushes (husky runs `sh -e .husky/pre-push`) and unattended pushes (bundle wrapper `exec /bin/sh <tree>/.husky/pre-push`) run the
+    same code. A journal that cannot be written warns and never blocks a push.
+  - >-
+    Witness = an exact marker for the tip SHA, its remote ref and the origin push URL (userinfo dropped on both sides). No host match:
+    the journal is per host and $HOME. Valid roots first: FOREIGN-ROOT only when no marker names the checkout, a linked worktree or
+    the bundle layout.
+  - >-
+    Cold start and transition: epoch = oldest marker; a tip's time = max(committer date, the reflog's move of
+    refs/remotes/origin/<branch> to it). An unmarked tip before the epoch, or whose own tree lacks the witness code within 7 days
+    of the epoch, is "uncovered" (counted, not judged). After the grace a stale hook is judged. No journal = checked 0 + note.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Refutation of cure A: when the tracking ref has no reflog the fallback is the pusher-controlled committer date again, and
+      the code reads the reflog's last line, not a "first sight".
+    status: CONFIRMED
+    resolution: >-
+      Partly cured: an "unobserved" counter makes the missing reflog visible (test + mutant M21); the spec now says "the moment the
+      reflog moved to it". M5 measured: core.logAllRefUpdates=true, 259 reflogs for 257 agent refs. Remainder declared.
+  - seat: kimi-code/k3
+    objection: >-
+      Refutation: the tree-coverage exemption is pusher-controlled (base a branch on a pre-witness commit or revert the hook hunk,
+      push with --no-verify, read "uncovered"), a permanent false-clean lane.
+    status: CONFIRMED
+    resolution: >-
+      Cured by bounding it: the tree rule holds only within 7 days of the epoch, then a tip whose own hook lacks the witness is
+      judged (test_after_the_grace_..., mutant M20). Kimi's "epoch only" would accuse every pre-merge worktree on day one.
+  - seat: kimi-code/k3
+    objection: >-
+      hook_sha256 is recorded but never verified, and NUZ_PREPUSH_TRUST_ROOT plus an unanchored bundle regex let a pusher name a
+      bundle-shaped directory with gutted helpers.
+    status: PLAUSIBLE
+    resolution: >-
+      Declared, not cured: the spec says trust_root is a declared root classified by its path, not an attestation of the bundle's
+      content, and that hook_sha256 is kept for audit. Building such a directory is a deliberate act by the host owner, the
+      boundary the spec already names.
+  - seat: kimi-code/k3
+    objection: >-
+      Drop the <checkout>/.worktrees/<lane> shortcut; trust only registered worktrees.
+    status: PLAUSIBLE
+    resolution: >-
+      Refused: lanes are pruned after merge, and their pushes inside the window would turn into FOREIGN-ROOT (over-accuse).
+      Planting a directory there needs host-owner write access. Declared in the spec.
+  - seat: kimi-code/k3
+    objection: >-
+      $0 can be husky's trampoline, so hook_sha256 hashes the wrapper.
+    status: PLAUSIBLE
+    resolution: >-
+      Refuted by measurement, not withdrawn by the seat: husky's .husky/_/h runs `sh -e .husky/pre-push` and the bundle wrapper
+      runs `exec /bin/sh <tree>/.husky/pre-push`; scratch pushes under /bin/sh, /bin/bash 3.2 and a real bundle recorded the
+      worktree hook's own sha256 (R3).
+  - seat: kimi-code/k3
+    objection: Replace the substring coverage test by an exact hash set of known witness hooks.
+    status: PLAUSIBLE
+    resolution: >-
+      Refused on direction: keeping the string but removing the call is "covered", writes no marker and reads NO-WITNESS (a
+      finding); a hash set would make every branch that edits the hook "uncovered".
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Stale tracking refs hide a bypassed push; STALE-WITNESS and journal failures read as "hook skipped".
+    status: PLAUSIBLE
+    resolution: >-
+      The proprioception runner fetches before probes (--no-fetch is the escape hatch). The fix_hint now names the journal-failure
+      cause; the spec declares STALE and journal failures as "a finding to read, not proof that the hook was skipped".
+receipts:
+  - claim: "R1 — the witness test file is green on the final tree."
+    cmd: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_push_witness.py"
+    result: "25 passed in 15.61s"
+    exit: 0
+    ts: "2026-10-09T02:32:22Z"
+    seat: claude-opus-5.5 (dux-push-witness-ship-2)
+  - claim: "R2 — every rule is pinned: each mutant of the final tree goes red on its named test; the untouched mirror is green; the Codex original reconciler fails the new tests."
+    cmd: "python3 mutants.py (7-file scratch mirror of the worktree per mutant, pytest on scripts/tests/test_push_witness.py)"
+    result: "22 rows: GREEN = ['M0 untouched']; RED = 21 (M1 Codex original: 11 tests red). Per-mutant red test names in work/dux-push-witness-ship-2/mutants.txt."
+    exit: 0
+    ts: "2026-10-09T02:30:39Z"
+    seat: claude-opus-5.5 (dux-push-witness-ship-2)
+  - claim: "R3 — a real bundle from codex_auto_prepare_trusted_prepush carries this hook byte for byte, and a push under /bin/sh, /bin/bash 3.2.57 and the bundle wrapper each leaves one marker that the reconciler counts witnessed."
+    cmd: "step3.sh (scratch primary repo whose origin/main holds the 4 trusted files; prepare + verify; 3 pushes to a bare remote)"
+    result: "bundle verify rc=0 ; bundle hook == worktree hook: True ; bundle hook push_witness_write occurrences: 2 ; bundle=state/codex-autofix-trusted-prepush/939d52ba911d349a667b06488c343f30f4f8fc7c ; sh: push rc=0 rows=1 marker(root,hook16,url)=state/codex-autofix-trusted-prepush/939d52ba911d349a667b06488c343f30f4f8fc7c/tree 9d06d79a5cfd921f origin.git reconcile=1 1 [] ; bash: push rc=0 rows=1 marker(root,hook16,url)=state/codex-autofix-trusted-prepush/939d52ba911d349a667b06488c343f30f4f8fc7c/tree 9d06d79a5cfd921f origin.git reconcile=1 1 [] ; bundle: push rc=0 rows=1 marker(root,hook16,url)=state/codex-autofix-trusted-prepush/939d52ba911d349a667b06488c343f30f4f8fc7c/tree 9d06d79a5cfd921f origin.git reconcile=1 1 [] ; worktree hook sha256[:16]: 9d06d79a5cfd921f"
+    exit: 0
+    ts: "2026-10-09T02:32:26Z"
+    seat: claude-opus-5.5 (dux-push-witness-ship-2)
+  - claim: "R4 — guards: diff --check, ruff, prettier, sh -n, shellcheck finding set equal to base, detect-secrets finds only the base hook's pre-existing line-540 Basic Auth hit (it is in HEAD's hook too)."
+    cmd: "git diff --check ; ruff check scripts/push_witness_reconcile.py scripts/tests/test_push_witness.py ; npx --no-install prettier --check docs/specs/push-witness.md ; sh -n .husky/pre-push ; git show HEAD:.husky/pre-push ; detect-secrets scan .husky/pre-push scripts/push_witness_reconcile.py scripts/tests/test_push_witness.py docs/specs/push-witness.md evidence/2026-10/agent-air-m5-ops-push-witness/brief.yml"
+    result: "rc=0  | rc=0 All checks passed! | rc=0 All matched files use Prettier code style! | rc=0  | rc=0 shellcheck-finding-set-equal | rc=0 {'.husky/pre-push': [('Basic Auth Credentials', 540)]}"
+    exit: 0
+    ts: "2026-10-09T02:32:28Z"
+    seat: claude-opus-5.5 (dux-push-witness-ship-2)
+  - claim: "R5 — on this M5, before any marker exists, the probe is RECONCILED with 0 findings (no witness epoch yet)."
+    cmd: "python3 scripts/proprioception.py --probes push_witness --json --no-report --no-fetch"
+    result: "bd01d19f93 RECONCILED 0 pr P1"
+    exit: 0
+    ts: "2026-10-09T02:32:28Z"
+    seat: claude-opus-5.5 (dux-push-witness-ship-2)
+  - claim: "R6 — cold start on M5: the Codex reconciler accused every recent agent tip; the epoch rule reports none until a marker exists."
+    cmd: "push_witness_reconcile.py --json --since 24 --repo-root ~/nuzantara (final tree, then the Codex original)"
+    result: '{"host":"air-m5","checked":0,"witnessed":0,"uncovered":0,"unobserved":0,"findings":[],"journal_entries":0,"journal_malformed":0,"note":"no witness epoch yet"} ; codex-original: checked 52 findings 52'
+    exit: 0
+    ts: "2026-10-09T02:32:33Z"
+    seat: claude-opus-5.5 (dux-push-witness-ship-2)
+  - claim: "R7 — neighbours: healer cure tests and every proprioception test green; registry selftest OK; the healer never counts the push_witness cure as session-curable (test_the_healer_never_counts_a_witness_miss_as_session_curable, mutant M15)."
+    cmd: "pytest scripts/tests/test_healer_run_checks.py scripts/tests/test_proprioception*.py; proprioception.py --selftest"
+    result: "214 passed in 12.41s ; SELFTEST OK — registry valid (23 probes), parser guards hold, redaction holds"
+    exit: 0
+    ts: "2026-10-09T02:32:46Z"
+    seat: claude-opus-5.5 (dux-push-witness-ship-2)
+  - claim: "R8 — under url.<x>.insteadOf git hands the hook the same URL that `git remote get-url --push origin` prints (exact URL match is safe); M5's hostname is pinned."
+    cmd: "iof.sh (scratch repo, insteadOf rewrite, recording pre-push hook)"
+    result: "hook:    origin|<scratch>/real.git ; get-url: <scratch>/real.git ; hostname -s=Air-M5 LocalHostName=Air-M5 HostName=Air-M5 ; gethostname=Air-M5"
+    exit: 0
+    ts: "2026-10-09T02:32:46Z"
+    seat: claude-opus-5.5 (dux-push-witness-ship-2)
