@@ -761,11 +761,76 @@ def _license_risk(licenses: list["KBLILicense"]) -> str | None:
     return max(known, key=lambda r: (_RISK_RANK.get(r.strip().lower(), 0), r))
 
 
+_NO_OFFICIAL_SCOPE_PREFIX = "Official BPS description unavailable"
+_NOT_CLASSIFIED = "Not classified"
+
+
+def _needs_kg_enrichment(row: "KBLISearchResult") -> bool:
+    return row.description.startswith(_NO_OFFICIAL_SCOPE_PREFIX) or row.risk_category in (
+        None,
+        "",
+        "Unknown",
+    )
+
+
+async def _enrich_from_kg_nodes(
+    rows: list["KBLISearchResult"], pool: Any
+) -> list["KBLISearchResult"]:
+    """Fill a missing description / risk from the code's KG node, as `inspect_kbli` reads it.
+
+    Production kbli_bps points carry no ``official_description``, so a search row can
+    be left with the fallback sentence or an ``Unknown`` risk while `/inspect` shows
+    both. One batched read; a failed read keeps the rows exactly as they were, because
+    an enrichment must never turn a search into a 500.
+    """
+    wanted = [r.code for r in rows if r.code != "N/A" and _needs_kg_enrichment(r)]
+    if not wanted or not pool:
+        return rows
+    try:
+        async with pool.acquire() as conn:
+            nodes = await conn.fetch(
+                "SELECT entity_id, description, properties FROM kg_nodes "
+                "WHERE entity_id = ANY($1::text[])",
+                [f"kbli:{c}" for c in wanted],
+            )
+    except Exception as e:
+        logger.warning("KBLI search KG enrichment skipped: %s", e)
+        return rows
+    by_code: dict[str, dict[str, Any]] = {}
+    for node in nodes:
+        props = node["properties"]
+        if isinstance(props, str):
+            try:
+                props = json.loads(props)
+            except ValueError:
+                props = {}
+        if not isinstance(props, dict):
+            props = {}
+        by_code[str(node["entity_id"]).removeprefix("kbli:")] = {
+            "uraian": props.get("uraian") or node["description"] or "",
+            "risk": props.get("kategori_risiko"),
+        }
+    out: list[KBLISearchResult] = []
+    for row in rows:
+        node_data = by_code.get(row.code)
+        if not node_data or not _needs_kg_enrichment(row):
+            out.append(row)
+            continue
+        update: dict[str, Any] = {}
+        if row.description.startswith(_NO_OFFICIAL_SCOPE_PREFIX) and node_data["uraian"]:
+            update["description"] = _official_scope({"uraian": node_data["uraian"]}, row.code)
+        if row.risk_category in (None, "", "Unknown"):
+            update["risk_category"] = node_data["risk"] or _NOT_CLASSIFIED
+        out.append(row.model_copy(update=update))
+    return out
+
+
 @router.get("/search", response_model=list[KBLISearchResult])
 async def search_kbli(
     query: KBLISearchQuery,
     limit: KBLIPublicLimit = 10,
     search_service=Depends(get_search_service),
+    pool=Depends(get_optional_database_pool),
 ) -> Any:
     """Search for KBLI codes using semantic search (Qdrant)."""
     start_time = time.time()
@@ -808,6 +873,7 @@ async def search_kbli(
         search_results: list[KBLISearchResult] = [exact_result] if exact_result else []
         for candidate in candidates:
             search_results.append(_apply_bps_disclosure(candidate, bps_by_code.get(candidate.code)))
+        search_results = await _enrich_from_kg_nodes(search_results, pool)
 
         duration = (time.time() - start_time) * 1000
         logger.info(

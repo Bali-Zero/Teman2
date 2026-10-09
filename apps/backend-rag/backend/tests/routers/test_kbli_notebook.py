@@ -918,3 +918,99 @@ class TestSearchOneRowPerCode:
             rows, _ = self._search(client, hits, {}, "01112")
         assert [r["code"] for r in rows] == ["01112", "56101"]
         assert rows[0]["title"] == "Exact"
+
+
+class _FakePool:
+    def __init__(self, rows=None, error: Exception | None = None) -> None:
+        self.conn = MagicMock()
+        if error:
+            self.conn.fetch = AsyncMock(side_effect=error)
+        else:
+            self.conn.fetch = AsyncMock(return_value=rows or [])
+        pool = self
+
+        class _Ctx:
+            async def __aenter__(self):
+                return pool.conn
+
+            async def __aexit__(self, *exc):
+                return False
+
+        self.acquire = lambda: _Ctx()
+
+
+class TestSearchFillsFromKgNode:
+    """/search falls back to the KG node `inspect_kbli` reads when the payload lacks both."""
+
+    _BARE_HIT = {
+        "payload": {"kode_kbli": "01112", "judul": "Pertanian Serealia Lainnya"},
+        "score": 0.8,
+    }
+    _FULL_HIT = {
+        "payload": {
+            "kode_kbli": "01112",
+            "judul": "Pertanian Serealia Lainnya",
+            "official_description": "Payload scope",
+            "kategori_risiko": "Rendah",
+        },
+        "score": 0.8,
+    }
+
+    def _search(self, app: FastAPI, client: TestClient, hit: dict, pool) -> list[dict]:
+        app.dependency_overrides[get_optional_database_pool] = lambda: pool
+        with (
+            patch(
+                "backend.app.routers.kbli_notebook._resolve_embedding",
+                AsyncMock(return_value=[0.1]),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook._search_kbli_qdrant",
+                AsyncMock(return_value=[hit]),
+            ),
+        ):
+            response = client.get("/kbli-notebook/search?query=pertanian serealia")
+        assert response.status_code == 200
+        return response.json()
+
+    @pytest.mark.unit
+    def test_guilt_bare_payload_takes_description_and_risk_from_node(self, app, client) -> None:
+        node = {
+            "entity_id": "kbli:01112",
+            "description": "ignored",
+            "properties": {
+                "uraian": "Kelompok ini mencakup pertanian serealia",
+                "kategori_risiko": "Menengah Rendah",
+            },
+        }
+        row = self._search(app, client, self._BARE_HIT, _FakePool([node]))[0]
+        assert row["description"].startswith("Kelompok ini mencakup pertanian serealia")
+        assert row["risk_category"] == "Menengah Rendah"
+        assert row["title"] == "Pertanian Serealia Lainnya"
+        assert row["score"] == 0.8
+
+    @pytest.mark.unit
+    def test_guilt_node_without_risk_reads_not_classified_like_inspect(self, app, client) -> None:
+        node = {
+            "entity_id": "kbli:01112",
+            "description": "Full text",
+            "properties": {"kategori_risiko": None},
+        }
+        row = self._search(app, client, self._BARE_HIT, _FakePool([node]))[0]
+        assert row["description"].startswith("Full text")
+        assert row["risk_category"] == "Not classified"
+
+    @pytest.mark.unit
+    def test_innocence_complete_payload_is_untouched_and_never_hits_db(self, app, client) -> None:
+        pool = _FakePool([])
+        row = self._search(app, client, self._FULL_HIT, pool)[0]
+        assert row["description"].startswith("Payload scope")
+        assert row["risk_category"] == "Rendah"
+        pool.conn.fetch.assert_not_called()
+
+    @pytest.mark.unit
+    def test_db_failure_keeps_today_output(self, app, client) -> None:
+        row = self._search(app, client, self._BARE_HIT, _FakePool(error=RuntimeError("pool down")))[
+            0
+        ]
+        assert row["description"].startswith("Official BPS description unavailable")
+        assert row["risk_category"] == "Unknown"
