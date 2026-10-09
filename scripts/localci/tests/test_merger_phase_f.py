@@ -254,6 +254,7 @@ def test_a_decision_the_enqueue_criterion_refuses_is_never_merged_and_a_queued_p
     for enq, why in (({"kind": "enqueue_refused", "pr": 1, "head_sha": fw.head1, "criterion": {**crit, "review_independent": False}, "ok": False},
                       "criterion false: review_independent"),
                      ({"kind": "enqueue_refused", "pr": 1, "head_sha": fw.head1, "criterion": {}, "ok": False}, "criterion false: none recorded"),
+                     ({"kind": "would_enqueue", "pr": 1, "head_sha": fw.head1, "criterion": {}, "ok": True}, "criterion false: none recorded"),
                      ({"kind": "enqueued", "pr": 1, "head_sha": fw.head1, "criterion": crit, "ok": True}, "merge queue")):
         _, pf = mg.phase_f_arming(a, fw.state, fw.mirror, enq, line, "main")
         assert not pf["armed"] and any(why in x for x in pf["why"]), (why, pf)
