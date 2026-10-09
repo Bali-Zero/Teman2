@@ -215,7 +215,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8-cache-budget-8": (PRUNE, "BUILDER_CACHE_GB = 4 ", "BUILDER_CACHE_GB = 8 ", (PRUNE_T,)),
     "b8-env-inf-accepted": (PRUNE, "return v if math.isfinite(v) and v >= 0 else default", "return v if v >= 0 else default", (PRUNE_T,)),
     # B8b: the VM's data disk keeps online discard (keep_vm_discard), against the b8b tests of test_prune.py
-    "b8b-discard-by-substring": (PRUNE, 'return "discard" in f[3].split(","), None', 'return "discard" in f[3], None', (PRUNE_T,)),
+    "b8b-discard-by-substring": (PRUNE, 'found = "discard" in f[3].split(",")', 'found = "discard" in f[3]', (PRUNE_T,)),
+    "b8b-first-line-wins": (PRUNE, 'found = "discard" in f[3].split(",")', 'found = "discard" in f[3].split(",") if found is None else found', (PRUNE_T,)),
     "b8b-mount-point-by-prefix": (PRUNE, "if len(f) >= 4 and f[1] == VM_DOCKER_MOUNT:", "if len(f) >= 4 and f[1].startswith(VM_DOCKER_MOUNT):", (PRUNE_T,)),
     "b8b-remount-skipped": (PRUNE, "    out[\"remounted\"] = True\n    try:", "    return out\n    try:", (PRUNE_T,)),
     "b8b-remount-when-unreadable": (PRUNE, 'if out["before"] is not False:', 'if out["before"] is True:', (PRUNE_T,)),

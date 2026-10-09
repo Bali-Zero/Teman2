@@ -7,6 +7,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -292,7 +293,7 @@ def test_every_real_prune_ends_with_fstrim_even_with_no_removal_and_the_host_is_
     state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])   # nothing to remove
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--fstrim", "--colima", str(colima)]) == 0
     line = journal(state)[-1]
-    assert line["images"]["removed"] == [] and (tmp_path / "colima.log").read_text().splitlines()[-1] == "ssh -- sudo fstrim -av"
+    assert line["images"]["removed"] == [] and (tmp_path / "colima.log").read_text().splitlines() == ["ssh -- cat /proc/mounts", "ssh -- sudo fstrim -av"]
     assert line["fstrim"] == {"rc": 0, "tail": "/: 11.4 GiB (12240656384 bytes) trimmed"} and line["failed"] == []
     assert set(line["host_free_gb"]) == {"before", "after", "after_fstrim"}
 
@@ -315,11 +316,11 @@ elif a[2:5] == ["sudo", "mount", "-o"]:
 else:
     print("/: 1.0 GiB (1073741824 bytes) trimmed")
 '''
-MOUNTS = ("/dev/vda1 / ext4 rw,relatime 0 0\n/dev/vdc1 /mnt/lima-colima-old ext4 rw,discard 0 0\n"
-          "/dev/vdb1 /mnt/lima-colima ext4 OPTS 0 0\n/dev/vdb1 /var/lib/docker ext4 OPTS 0 0")   # the longer path comes first
+MOUNTS = ("/dev/vda1 / ext4 rw,relatime 0 0\n/dev/vdb1 /mnt/lima-colima ext4 OPTS 0 0\n"
+          "/dev/vdc1 /mnt/lima-colima-old ext4 rw,discard 0 0\n/dev/vdb1 /var/lib/docker ext4 OPTS 0 0")   # the longer path comes after: the last match would read it
 
 
-def vm(tmp_path: Path, opts: str | None = "rw,relatime", **st) -> tuple[Path, str, list]:
+def vm(tmp_path: Path, opts: str | None = "rw,relatime", **st) -> tuple[Path, str, str, Callable[[], list[str]]]:
     """A fake colima over a /proc/mounts whose data disk carries `opts`; returns (state, docker, a reader of colima's calls)."""
     sf = tmp_path / "vm.json"
     sf.write_text(json.dumps({"opts": opts, "mounts": MOUNTS if opts is not None else "/dev/vda1 / ext4 rw 0 0", **st}))
@@ -357,6 +358,27 @@ def test_b8b_nodiscard_is_off_and_a_longer_mount_point_is_not_the_data_disk(tmp_
     state, docker, colima, read = vm(tmp_path, "rw,nodiscard,relatime")   # /mnt/lima-colima-old carries discard: it is not the disk
     assert run_prune(state, docker, colima) == 0
     assert REMOUNT in read() and journal(state)[-1]["vm_discard"]["before"] is False
+
+
+def test_b8b_the_last_line_of_a_stacked_mount_point_is_the_one_read(tmp_path):
+    state, docker, colima, read = vm(tmp_path, mounts="/dev/vdb1 /mnt/lima-colima ext4 rw,discard 0 0\n" + MOUNTS)   # shadowed: on
+    assert run_prune(state, docker, colima) == 0
+    assert REMOUNT in read() and journal(state)[-1]["vm_discard"]["before"] is False   # the effective, last line: off
+
+
+def test_b8b_a_remount_that_cannot_run_is_journalled_and_fails_the_prune_but_the_trim_still_runs(tmp_path, monkeypatch):
+    state, docker, colima, read = vm(tmp_path)
+    real = pm.subprocess.run
+
+    def run(cmd, **kw):
+        if "remount,discard" in cmd:
+            raise pm.subprocess.TimeoutExpired(cmd, 60)
+        return real(cmd, **kw)
+    monkeypatch.setattr(pm.subprocess, "run", run)
+    assert run_prune(state, docker, colima) == 1
+    line = journal(state)[-1]
+    assert line["vm_discard"] == {"before": False, "after": False, "remounted": True, "rc": None, "error": "TimeoutExpired"}
+    assert line["failed"] == ["vm_discard"] and read()[-1] == "ssh -- sudo fstrim -av"
 
 
 def test_b8b_a_failed_remount_fails_the_prune_but_the_trim_still_runs(tmp_path):
