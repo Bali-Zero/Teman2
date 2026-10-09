@@ -1,0 +1,28 @@
+task: >-
+  Close the three residues the final gate of #8144 (gate-8144, PASS with notices N1-N3) left in
+  scripts/secrets_permissions_audit.py's design-tokens exemption: credential keys the vocabulary missed (pw, pswd,
+  passcode, a token glued to its prefix such as apitoken, csrftoken, APIToken), a huge-integer row whose ValueError path no
+  test pinned, and a classifier that opened a non-regular file blocking.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 2
+gear_reason: >-
+  Measured floor 1. Campaign rule after #8079: at least gear 2 so harness-floor holds for the independent final gate.
+acceptance:
+  A1:
+    text: >-
+      pw, pswd (whole segments), passcode, and any key whose split-lowered form ends in token are credential keys; the
+      whole-segment token rule still holds in every position (token_id, github_token_v2); tokens and author stay benign;
+      the tracked brand file stays design tokens.
+    probe: scripts/tests/test_secrets_permissions_audit.py t9d, t9e, t9c (run by immune-enforcement, no continue-on-error).
+  A2:
+    text: >-
+      A JSON integer longer than 4300 digits keeps the file a finding on every Python the fleet runs (3.9 on Pro and in
+      Mini's sweep, 3.11+ elsewhere).
+    probe: t9d huge-integer row; a direct py3.9 call returns False.
+  A3:
+    text: >-
+      The classifier opens with O_NONBLOCK and O_NOFOLLOW and judges only a regular file by fstat: a FIFO or a symlink named
+      tokens.json returns False without blocking.
+    probe: t9h direct-classifier tests (bounded 5 s) and the isolated fstat test.

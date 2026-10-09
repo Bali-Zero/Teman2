@@ -137,7 +137,7 @@ interesting points spawn round N+1 research. No round limit. Opus 5.5 orchestrat
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (updated 2026-10-08; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-10-09; update on every state change)
 
 - **Active production pack: seq-26 since 2026-10-08T10:08:02Z (activation `1c7ac00b-7c5e-44e9-8efc-392d03fb47ef`, PR #8081,
   merge `f43d4ac0a0`).** E31A–J now offer 1 or 2 years as a duration option on the same
@@ -156,8 +156,16 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   outcome state, `nextStepsFor(state, {studioOnly})` drives the steps, the timeline shows a
   pending paragraph. Guard: census test `_lib/client-copy.test.ts` and CI observer
   `scripts/ci/observe_visa_oracle_client_copy.py`. Mouth merge lands STAGED: `vercel promote`
-  is the deploy. Prove-live: Vercel production build `mouth-fe7se9ybt` of commit 11f4717 went live at 13:10Z on its own (should-build judges against the live commit; no promote was needed); headless replay of Zero's scenario on https://balizero.com/visa-oracle at 2026-10-08T13:25:49Z: Supported, E31B, 'Timeline' → 'Processing times are set by Ditjen Imigrasi and vary by office and season. Your Bali Zero advisor confirms the calendar for your case before you book travel.', under the price 'Government fees and Bali Zero service included.', 'What to do next' = Keep this summary / Send it to a Bali Zero advisor on WhatsApp / Book travel only once the timing is confirmed, the new disclaimer, no '01/01' counter, zero banned strings in the page text (artefacts result-20261008T132549Z.{txt,pdf,png} in the session scratchpad). Open: C2 duration rendering, C3 catalogue
-  processing time (owner decision), C4 interview helper copy still saying "engine".
+  is the deploy. Prove-live: Vercel production build `mouth-fe7se9ybt` of commit 11f4717 went live at 13:10Z on its own (should-build judges against the live commit; no promote was needed); headless replay of Zero's scenario on https://balizero.com/visa-oracle at 2026-10-08T13:25:49Z: Supported, E31B, 'Timeline' → 'Processing times are set by Ditjen Imigrasi and vary by office and season. Your Bali Zero advisor confirms the calendar for your case before you book travel.', under the price 'Government fees and Bali Zero service included.', 'What to do next' = Keep this summary / Send it to a Bali Zero advisor on WhatsApp / Book travel only once the timing is confirmed, the new disclaimer, no '01/01' counter, zero banned strings in the page text (artefacts result-20261008T132549Z.{txt,pdf,png} in the session scratchpad). Follow-ups C2, C3, C4 in the next bullet.
+- **Result page, C2 and C3 live (2026-10-09), C4 in gate:** PR-C2 #8124 (`06c3346702`, merged
+  03:22Z) shows the priced stay-permit length under the price ("2-year stay permit", "Also
+  available: 1 year — IDR 11,000,000"), live 03:31Z with no promote. PR-C3 #8129 (`1d5a508366`,
+  merged 04:33Z, Fly batch head `68b70014a3`) shows "Typically 7–10 working days" plus an
+  indicative calendar window, from the committed snapshot
+  `backend/data/bali_zero_processing_times_2026.json` (production
+  `visa_types.processing_time_normal`, 37 products); BRIDGING stays UNKNOWN. Census unchanged on
+  seq-26: 99 SUPPORTED / 13 NO_PATH / 1 NEEDS_INPUT / 3 HUMAN_REVIEW of 116 walks. C4 interview
+  helper copy: successor PR-C4 #8148 merged 2026-10-09T06:27:43Z (`4443d209f1`). Vercel dpl `mouth-jounkfl8j` was aliased about 06:34Z by an automatic promotion, a few minutes after READY. Live 06:34:46Z: on balizero.com/visa-oracle, "Why we ask" on the direction question reads "Your direction decides which questions come next and which visas can fit your plan." and the old "only chooses the next questions" is gone; the full replay still shows the C3 timing and the C2 duration. Predecessors #8119, #8128, #8140 and #8145 were closed after fresh-gate BLOCKs on false sentences, a lost "above" reference, and a red suite. The fix was a per-key truth table written from the code, a Codex full sweep of every changed key (97 rendered + 17 never rendered of 114/115), and the full visa-oracle vitest subtree before push. Rule now in force: an advisor is offered, never promised. Open items: `PENDING-ARMS.md` rows 2026-10-09.
 - **Organ hardening (PR-O2 #8100, merge `fa15d34f7e`):** the first real run halted on a judge
   false positive (page dcf08e19, fingerprint `d760e4e8371f04cd…` equal to the seq-25 text). The
   fold now re-proves against a judgement-bound fingerprint baseline and downgrades

@@ -22,6 +22,12 @@ on:
       - "scripts/tests/test_watchdog_third_state.sh"
       - "scripts/tests/test_healer_run_checks.py"
       - "scripts/tests/test_pro_healer_receptors.py"
+      - "scripts/healer_receptor_registry.py"
+      - "scripts/tests/test_healer_receptor_findings.py"
+      - "scripts/tests/conftest.py"
+      - "scripts/healer_memo.py"
+      - "scripts/tests/test_healer_memo.py"
+      - "scripts/tests/test_mini_healer_memo.sh"
       - "scripts/proprioception.py"
       - ".github/workflows/watchdog-third-state.yml"
   workflow_dispatch: {}
@@ -47,7 +53,15 @@ jobs:
       - name: Corpus (bash + stdlib python3)
         run: bash scripts/tests/test_watchdog_third_state.sh
 
+      # The Mini healer's G11 memoize, run on the real wrapper text under a fake HOME.
+      - name: Mini memoize corpus (bash + stdlib python3)
+        run: bash scripts/tests/test_mini_healer_memo.sh
+
+      # Receptor A's findings table (completion proofs per producer) had no named
+      # executor: only the continue-on-error sweep collected it, so a row that went
+      # red could not block anything (W108).
       - name: Receptor helper unit tests
         run: |
-          python3 -m pip install --quiet pytest
-          python3 -m pytest scripts/tests/test_healer_run_checks.py scripts/tests/test_pro_healer_receptors.py -q
+          python3 -m pip install --quiet pytest pyyaml
+          python3 -m pytest scripts/tests/test_healer_run_checks.py scripts/tests/test_pro_healer_receptors.py \
+            scripts/tests/test_healer_receptor_findings.py scripts/tests/test_healer_memo.py -q

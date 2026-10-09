@@ -116,6 +116,7 @@ def test_fingerprint_component_table():
         "count-home-fork": lambda s: s["session_curable"].update(home_fork=1),
         "arsenal-new-dead": lambda s: s.update(arsenal_new_dead=["claude:AUTH_DEAD"]),
         "receptor-failure": lambda s: s.update(receptor_failures=["registry-receptor-broken"]),
+        "observation": lambda s: s.update(observations=["main-required-red:ci"]),
         "age-48h-innocence": lambda s: s["dead_organs"][0].update(age_s=48 * 3600),
         "status-innocence": lambda s: s["dead_organs"][0].update(status="degraded"),
         "note-innocence": lambda s: s["dead_organs"][0].update(note="other"),
@@ -126,6 +127,15 @@ def test_fingerprint_component_table():
         edit(state)
         got[row] = mod.fingerprint(state) != mod.fingerprint(base)
     assert got == {row: not row.endswith("-innocence") for row in edits}
+
+
+def test_observations_axis_is_optional_and_order_free():
+    """The Mini healer's extra axis: absent/empty leaves the Pro hash untouched; order never matters."""
+    base = {"dead_organs": [{"id": "a"}], "diverged_probes": ["p:owner"]}
+    assert mod.fingerprint({**base, "observations": []}) == mod.fingerprint(base)
+    one = {**base, "observations": ["a:1", "b:2"]}
+    two = {**base, "observations": ["b:2", "a:1"]}
+    assert mod.fingerprint(one) == mod.fingerprint(two) != mod.fingerprint(base)
 
 
 

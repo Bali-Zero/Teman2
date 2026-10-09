@@ -511,6 +511,146 @@ if [ "$ACTIONABLE" -eq 0 ]; then
     MANDATE_OVERRIDE="$REPO/infra/healer/CONVERGENCE-MANDATE.md"
 fi
 
+# ---- G11_memoize: skip the LLM spawn when the receptor-state fingerprint is
+# unchanged AND the last verdict was "incurable" (port of pro-healer.sh G11, D-004
+# ~/.tokenaudit/DECISIONS.md). Measured 2026-10-09: this wrapper spawned a capped
+# session on every 4h tick against the same chronic, mostly owner-blocked reasons.
+# Only receptor-driven spawns are memoized (ACTIONABLE=1); the convergence mission
+# is not a receptor reaction. Fail-open toward spawning: any error below leaves
+# FINGERPRINT empty or MEMO_RC outside {0,3}, and the session spawns anyway —
+# never a silently skipped cure (#2 Esiste≠Armato).
+FINGERPRINT=""; VERDICT_TOTAL=0; VERDICT_PROMPT=""
+HEALER_STATE_DIR="$HOME/.organism/healer"
+MEMO_STATE="$HEALER_STATE_DIR/mini-memo.json"
+if [ "$ACTIONABLE" -eq 1 ]; then
+    # Content of the two receptors whose reason token carries no identity. Only
+    # hashes leave this block (no ledger prose, no escalation text in the state).
+    LEDGER_DIGEST=""
+    case " $REASONS " in *" ledger-overdue "*)
+        LEDGER_DIGEST=$(python3 scripts/pending_arms_report.py --json 2>/dev/null | python3 -c "
+import hashlib, json, sys
+rows = json.load(sys.stdin)['entries']
+keys = sorted(
+    hashlib.sha256(json.dumps({k: v for k, v in r.items() if k not in ('age_days', 'overdue')}, sort_keys=True).encode()).hexdigest()[:16]
+    for r in rows
+    if r.get('class') in ('PHANTOM-OPERATOR', 'MALFORMED') or (r.get('class') == 'TECH-DEBT' and r.get('overdue'))
+)
+print('%d:%s' % (len(keys), hashlib.sha256(','.join(keys).encode()).hexdigest()[:16]))
+" 2>>"$LOG") ;;
+    esac
+    # The board as the hook injects it is capped in bytes and hides HIGH groups past
+    # the cap; the memo hashes the uncapped board so a hidden change still counts.
+    ESC_FULL=""
+    case " $REASONS " in *" escalations-board "*)
+        ESC_FULL=$(SESSIONSTART_HOOK_MAX_BYTES=100000000 bash scripts/hooks/escalations_alert_sessionstart.sh 2>/dev/null) ;;
+    esac
+    # Inputs reach the hashing process only: never exported, so no board text or
+    # receptor output is inherited by the session spawned below.
+    RECEPTOR_STATE_JSON=$(_HM_LEDGER_DIGEST="$LEDGER_DIGEST" _HM_REG_OUT="$REG_OUT" _HM_PROP_JSON="$PROP_JSON" \
+        _HM_ESC_OUT="$ESC_FULL" _HM_OUTBOX_OUT="${OUTBOX_OUT:-}" _HM_NEW_DEAD="${NEW_DEAD:-}" _HM_REASONS="$REASONS" \
+        _HM_PROP_SESSION="${SESSION_CURABLE:-0}" python3 - 2>>"$LOG" <<'PY'
+import hashlib, json, os
+
+def _load(name):
+    raw = os.environ.get(name, "")
+    try:
+        return json.loads(raw) if raw.strip() else {}
+    except Exception:
+        return {}
+
+reg = _load("_HM_REG_OUT")
+prop = _load("_HM_PROP_JSON")
+reasons = os.environ.get("_HM_REASONS", "").split()
+
+dead_organs = reg.get("dead") if isinstance(reg, dict) else []
+if not isinstance(dead_organs, list):
+    dead_organs = []
+
+diverged_probes = []
+for p in (prop.get("probes") if isinstance(prop, dict) else []) or []:
+    if not isinstance(p, dict):
+        continue
+    verdict = str(p.get("status") or p.get("verdict") or "").upper()
+    if verdict == "DIVERGED":  # the cure joins the key: a session-curable probe moving is new work
+        diverged_probes.append(f'{p.get("id", "")}:{p.get("cure", "session")}')
+
+try:
+    prop_session = int(os.environ.get("_HM_PROP_SESSION", "0") or 0)
+except ValueError:
+    prop_session = 0
+
+# Receptors with no axis of their own ride as observations: every reason token
+# (counts, contexts, hosts are all deterministic summaries, no clock in them)
+# plus a content hash for the two tokens that carry no identity.
+observations = [t for t in reasons if t not in ("ledger-overdue", "escalations-board", "garuda-outbox-undrained")]
+if "ledger-overdue" in reasons:
+    digest = os.environ.get("_HM_LEDGER_DIGEST", "").strip()
+    if not digest:
+        raise SystemExit(1)  # ledger unreadable: no fingerprint, the session spawns
+    observations.append("ledger-overdue:" + digest)
+if "escalations-board" in reasons:
+    try:
+        esc = json.loads(os.environ.get("_HM_ESC_OUT", ""))["hookSpecificOutput"]["additionalContext"]
+    except Exception:
+        raise SystemExit(1)  # board unreadable here: no fingerprint, the session spawns
+    if not str(esc).strip():
+        raise SystemExit(1)
+    # The NORMAL-pending tally and the trailer drift with every unrelated job
+    # write; the HIGH groups (with their repeat count and latest date) are the alert.
+    lines = [
+        ln.strip() for ln in esc.splitlines()
+        if ln.strip() and "NORMAL pending" not in ln and not ln.startswith("Run /escalations")
+    ]
+    observations.append("escalations-board:" + hashlib.sha256("\n".join(lines).encode()).hexdigest()[:16])
+if "garuda-outbox-undrained" in reasons:
+    # The token is constant; its counts are the content (a new exhausted row moves them).
+    counts = _load("_HM_OUTBOX_OUT").get("counts")
+    if not isinstance(counts, dict):
+        raise SystemExit(1)  # outbox verdict unreadable here: no fingerprint, the session spawns
+    observations.append("garuda-outbox-undrained:" + hashlib.sha256(json.dumps(counts, sort_keys=True).encode()).hexdigest()[:16])
+
+print(json.dumps({
+    "dead_organs": dead_organs,
+    "diverged_probes": diverged_probes,
+    "drifted_pairs": [],
+    "session_curable": {"registry": 0, "proprioception": prop_session, "home_fork": 0},
+    "receptor_failures": sorted(t for t in reasons if t.endswith(("-receptor-broken", "-blind", "-unreadable"))),
+    "arsenal_new_dead": [t for t in os.environ.get("_HM_NEW_DEAD", "").split(",") if t],
+    "observations": observations,
+}))
+PY
+)
+    # An empty state is a builder failure, not "nothing observed": fingerprinting it
+    # would hash a constant, so it must yield NO fingerprint (and so a spawn).
+    if [ -n "$RECEPTOR_STATE_JSON" ]; then
+        FINGERPRINT=$(printf '%s' "$RECEPTOR_STATE_JSON" | python3 scripts/healer_memo.py fingerprint 2>>"$LOG")
+    fi
+    MEMO_RC=0
+    if [ -n "$FINGERPRINT" ]; then
+        MEMO_OUT=$(python3 scripts/healer_memo.py check --state "$MEMO_STATE" --fingerprint "$FINGERPRINT" 2>&1) || MEMO_RC=$?
+    else
+        MEMO_RC=1; MEMO_OUT="no fingerprint (receptor-state builder failed)"
+    fi
+    log "healer_memo check (rc=$MEMO_RC): $MEMO_OUT"
+    if [ "$MEMO_RC" -eq 3 ]; then
+        log "memoized: same receptor-state fingerprint as last spawn, last verdict incurable — LLM spawn skipped ($MEMO_OUT)"
+        heartbeat "ok" "memoized: skipped LLM spawn ($MEMO_OUT)"
+        exit 0
+    elif [ "$MEMO_RC" -ne 0 ]; then
+        log "healer_memo check errored (rc=$MEMO_RC) — fail-open, spawning anyway: $MEMO_OUT"
+    fi
+    # The n_total the session must echo in its HEALER_VERDICT line: one per reason
+    # token, i.e. every item this tick asks it to cure, so a verdict on part of the
+    # work never memoizes the rest.
+    for _ in $REASONS; do VERDICT_TOTAL=$((VERDICT_TOTAL + 1)); done
+    VERDICT_PROMPT="
+
+Chiudi il report con UNA riga macchina, senza markdown, dove ${VERDICT_TOTAL} = i receptor
+scattati elencati sopra e n_cured = quelli che hai curato davvero in questo tick
+(cured = tutti, incurable = nessuno, partial = alcuni):
+HEALER_VERDICT: cured|incurable|partial <n_cured>/${VERDICT_TOTAL}"
+fi
+
 log "ACTIONABLE: ${REASONS}— spawning healer session (model $MODEL, cap ${MAX_WALL_S}s)"
 heartbeat "running" "spawned: ${REASONS}"
 
@@ -526,6 +666,7 @@ if [ ! -f "$MANDATE" ]; then
 fi
 
 SESSION_LOG="$LOG_DIR/session-$(date +%Y%m%d-%H%M%S).log"
+SPAWN_TS_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 export HEALER_RUN=1
 # Headless hardening (first-tick autopsy 2026-07-06, two OVERLAPPING silent
 # hangs — 0 bytes out, 0 CPU): (a) --dangerously-skip-permissions has a
@@ -565,7 +706,7 @@ DECL_RUN_ID=$(python3 "$REPO/scripts/session_declaration.py" open \
 
 "$CASCADE_BIN" "$(cat "$MANDATE")
 
-CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
+CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}${VERDICT_PROMPT}" \
     --claude-only --model "$MODEL" -- \
     --dangerously-skip-permissions --strict-mcp-config \
     --mcp-config '{"mcpServers":{}}' \
@@ -619,6 +760,29 @@ fi
 
 TAIL=$(tail -c 600 "$SESSION_LOG" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 log "session exit=$CEXIT — tail: ${TAIL:0:300}"
+
+# G11_memoize (continued): record this tick's outcome so the NEXT tick can memoize
+# against it. The verdict is the session's own HEALER_VERDICT line, never $CEXIT —
+# a session can exit 0 after concluding "0/N curable" (that IS success). A missing
+# or malformed line records "unknown", which never skips. Convergence spawns carry
+# no fingerprint and record nothing.
+if [ -n "${FINGERPRINT:-}" ]; then
+    MEMO_VERDICT=$(python3 scripts/healer_memo.py verdict-from-session \
+        --file "$SESSION_LOG" --expect-total "$VERDICT_TOTAL" 2>>"$LOG")
+    case "$MEMO_VERDICT" in
+        cured|incurable|partial) ;;
+        missing)
+            log "verdict-line-missing: no HEALER_VERDICT line in $SESSION_LOG"
+            MEMO_VERDICT="unknown" ;;
+        *)
+            log "verdict-line-invalid: last HEALER_VERDICT line in $SESSION_LOG is malformed or not <k>/${VERDICT_TOTAL}"
+            MEMO_VERDICT="unknown" ;;
+    esac
+    python3 scripts/healer_memo.py record --state "$MEMO_STATE" \
+        --fingerprint "$FINGERPRINT" --verdict "$MEMO_VERDICT" \
+        --spawned-at "$SPAWN_TS_ISO" >>"$LOG" 2>&1 \
+        || log "WARN: healer_memo record failed (fingerprint=${FINGERPRINT:0:12}... verdict=$MEMO_VERDICT)"
+fi
 
 if [ $CEXIT -eq 0 ]; then
     heartbeat "ok" "session done: ${REASONS}"

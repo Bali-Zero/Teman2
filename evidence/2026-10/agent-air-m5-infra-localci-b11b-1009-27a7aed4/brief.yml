@@ -1,0 +1,47 @@
+task_id: localci-b11b-1009
+mission: LOCALCI-SOVEREIGN (phase D, step B11b)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  A one-line selection change in the merger's replay (iterate the git log newest first instead of reversed), the tests and the mutant
+  rule that pin the order, and two documentation paragraphs. No hot-zone path, no workflow, credential, wrapper or plist change;
+  the lint floor is 1 by size.
+l_level: L2
+gate_class: opus
+objective: >-
+  B11 replayed the OLDEST unreplayed first-parent merge first. Measured on Pro, the first live replay (2026-10-09T09:54:00Z, code
+  9d3def7cfebb, B11's merge) judged pr8015's merge commit feb9e84337 of 2026-10-07 with BASE 56c6f70d86 (its first parent, verified):
+  14 contexts LOCAL_BLIND, overall BLOCKED, 22.3 s, because that BASE's runner executed no context. 81 more first-parent merges stood
+  between it and 86b151beec (2026-10-08T15:51Z), the first base on which a PR decision compared 12 contexts (18:25Z); the PR decisions
+  before it compared 0 to 9. Main took 31 merges on 10-07, 56 on 10-08 and 26 on 10-09 by 09:5xZ, while the gate decides about one PR
+  or replay an hour. Oldest-first would spend days on replays that cannot count and build a deps image per old lockfile. B11b: the
+  replay takes the NEWEST unreplayed merge first, a current base and recipe; the merges left behind are not owed (phase D counts
+  compared merges).
+constraints:
+  - Only the order of selection changes; the replay's candidate, BASE, hosted comparison, ERROR handling and alternation are unchanged.
+  - Phase D's thresholds, the PR decisions, F1, B10, prune and every wrapper are unchanged.
+acceptance:
+  - text: Replays and PR decisions SHALL alternate, newest merge commit first, each merge commit replayed once.
+    probe: "test_replay.py::test_replays_and_pr_decisions_alternate_newest_merge_first_and_a_replayed_commit_is_not_asked_again"
+  - text: The replay SHALL still judge the merge commit with its first parent as the BASE, never the commit's own matrix.
+    probe: "test_replay.py::test_the_replay_judges_the_merge_commit_with_its_first_parent_as_the_base_never_the_commits_own_matrix"
+assumptions:
+  - text: The newest unreplayed first-parent merge is a base on which the runner executes its contexts.
+    status: unverified
+    note: Measured only for the bases from 86b151beec onward (12 contexts compared); the first live replay after this merge shows it.
+    probe: the first replay line on Pro after the merge has a merge_commit newer than any previous replay's and contexts compared.
+consumer_map:
+  - scripts/localci/merger.py tick on Pro (launchd com.balizero.localci-merger) — decision lines with replay true in decisions.jsonl, whose merge_commit is the newest unreplayed first-parent merge.
+appetite:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 0
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B11b, from the lead's message of 2026-10-09, from origin/main 9d3def7cfe (B11's merge). The lead
+  made the change and ran the mutants; this lane verifies, commits and writes the pack. Nothing is pushed.
+lanes:
+  - lane: localci-b11b-build
+    role: build
+    seat: "claude-opus-5-5 (lead, change and mutants); claude-sonnet-5 (commit, verification, pack), M5; Pro and GitHub not touched"
+pii_scan: clean
+pii_scan_note: Merger code, tests on synthetic git repos under tmp, a mutant rule and two documentation paragraphs. Commit and PR identifiers are the repository's own metadata; no client data was read or written.

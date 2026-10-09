@@ -288,7 +288,7 @@ than reading it as empty.
 | class     | `bg-white/[0.10]`                                                                       | elevated #FFFCF7            | card / glass panel ground                                                                                            |
 | class     | `border-[#1c1c1e]`                                                                      | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-[color:var(--border-strong)]`                                                   | line-strong #A8ACA9         | hover / focus edge                                                                                                   |
-| class     | `border-[rgba(212,132,90,0.2)]`                                                         | copper #A44B36              | accent / action colour                                                                                               |
+| class     | `border-[rgba(212,132,90,0.2)]`                                                         | line #DAD8D1                | rest hairline: copper is reserved for action, hover and focus (declared taste, R19 restraint)                        |
 | class     | `border-[rgba(255,255,255,0.06)]`                                                       | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-[rgba(255,255,255,0.07)]`                                                       | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-[var(--border)]`                                                                | line #DAD8D1                | hairline                                                                                                             |
@@ -298,9 +298,9 @@ than reading it as empty.
 | class     | `border-[var(--kbli-pma-open)]/20`                                                      | semantic #2E5E4E            | PMA open verdict                                                                                                     |
 | class     | `border-[var(--kbli-pma-open)]/30`                                                      | semantic #2E5E4E            | PMA open verdict                                                                                                     |
 | class     | `border-[var(--kbli-pma-restricted)]/20`                                                | semantic #7A5A1E            | PMA restricted / amber highlight                                                                                     |
-| class     | `border-accent-sand/20`                                                                 | copper #A44B36              | accent / action colour                                                                                               |
-| class     | `border-accent-sand/30`                                                                 | copper #A44B36              | accent / action colour                                                                                               |
-| class     | `border-accent-warm/30`                                                                 | copper #A44B36              | accent / action colour                                                                                               |
+| class     | `border-accent-sand/20`                                                                 | line #DAD8D1                | rest hairline: copper is reserved for action, hover and focus (declared taste, R19 restraint)                        |
+| class     | `border-accent-sand/30`                                                                 | line #DAD8D1                | rest hairline: copper is reserved for action, hover and focus (declared taste, R19 restraint)                        |
+| class     | `border-accent-warm/30`                                                                 | line #DAD8D1                | rest hairline: copper is reserved for action, hover and focus (declared taste, R19 restraint)                        |
 | class     | `border-slate-200`                                                                      | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-white/10`                                                                       | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-white/5`                                                                        | line #DAD8D1                | hairline                                                                                                             |
@@ -319,7 +319,7 @@ than reading it as empty.
 | class     | `focus-within:border-accent-warm/40`                                                    | copper #A44B36              | accent / action colour                                                                                               |
 | class     | `focus-within:shadow-[0_0_20px_rgba(212,132,90,0.15)]`                                  | not painted on this surface | shadow: Direction A is flat; cards separate by a 1px line                                                            |
 | class     | `focus:border-accent-sand/30`                                                           | copper #A44B36              | accent / action colour                                                                                               |
-| class     | `focus:border-white/[0.15]`                                                             | line-strong #A8ACA9         | hover / focus edge                                                                                                   |
+| class     | `focus:border-white/[0.15]`                                                             | muted #58626B               | DEFECT W0: a focus border is a control boundary; line-strong was 2.09:1, muted is 5.67:1                             |
 | class     | `focus:ring-1`                                                                          | copper #A44B36              | focus ring colour (R19: copper)                                                                                      |
 | class     | `focus:ring-2`                                                                          | copper #A44B36              | focus ring colour (R19: copper)                                                                                      |
 | class     | `focus:ring-[#D4B483]/30`                                                               | copper #A44B36              | focus ring colour (R19: copper)                                                                                      |
@@ -385,7 +385,7 @@ than reading it as empty.
 | class     | `hover:text-[var(--kbli-accent)]`                                                       | copper #A44B36              | accent / action colour                                                                                               |
 | class     | `hover:text-accent-warm`                                                                | copper #A44B36              | accent / action colour                                                                                               |
 | class     | `hover:text-white`                                                                      | ink #1D2C3B                 | primary text                                                                                                         |
-| class     | `kbli-flag-title`                                                                       | ink #1D2C3B                 | the white-red sweep is illegible on paper: the title prints solid ink Fraunces                                       |
+| class     | `kbli-flag-title`                                                                       | elevated #FFFCF7            | DEFECT W0: ink on the ink hero band was 1.00:1; solid elevated Fraunces is 13.91:1 on it                             |
 | class     | `placeholder-[#444]`                                                                    | muted #58626B               | placeholder                                                                                                          |
 | class     | `placeholder-zinc-400`                                                                  | muted #58626B               | placeholder                                                                                                          |
 | class     | `placeholder-zinc-500`                                                                  | muted #58626B               | placeholder                                                                                                          |
@@ -487,3 +487,164 @@ python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/f
 ```
 
 The verdict is the printed `read-but-undefined:` line, never the exit code.
+The last printed line is `state-colors-off-contract:`, after `colors-outside-direction-a:` and `state-rows-unseen:`; §7.5 defines both.
+
+## 7. Amendment 2026-10-09: the state contract (W0b)
+
+W0 described what the wrapper paints at rest. Two successors (#8118, #8139) were gate-blocked
+because that left every hover, focus and selection colour unjudged. This amendment states them.
+The §5 table keeps its format. Six of its rows are corrected below.
+
+### 7.1 The state table
+
+The block between `states:begin` and `states:end` has seven columns. `token` is the class as it
+appears in the DOM. `state` is the variant that applies it. `property` is `color`, `background`,
+`border`, `ring`, `shadow` or `scrollbar`. `value` is `<role> #HEX` exactly as in §3, or
+`not painted on this surface` with a reason. `against` is the surface the pair is judged on, and
+`contrast` is the ratio of the two, recomputed by the parser to two decimals.
+
+- A `color` row is judged against the darkest surface it can sit on, the wash.
+- A `background` row is judged against the text that sits on it: ink on the wash, elevated on copper.
+- Floors: 4.5:1 for `color` and `background`; 3:1 for a `ring` and for a `focus` border, because
+  that is a control boundary (WCAG 1.4.11). A `hover` border is decorative and has no floor.
+- The table is the union of three sources: every state-variant colour class in the `/kbli*`
+  sources on `origin/main` (components/kbli, app/kbli, app/kbli-explorer), the same set on
+  #8139's head (`1fc7c5ad29`), and the state rows of §5. That is 81 tokens, 69 painted
+  and 12 not painted. 18 of them are new to the contract.
+- State rows also define their class for the `read-but-undefined` check.
+
+<!-- states:begin -->
+
+| token                                                                                   | state               | property   | value                       | against          | contrast | reason                                                                                             |
+| --------------------------------------------------------------------------------------- | ------------------- | ---------- | --------------------------- | ---------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `focus-visible:ring-2`                                                                  | focus-visible       | ring       | copper #A44B36              | paper #F7F4EE    | 5.26     | keyboard focus ring is copper                                                                      |
+| `focus-visible:ring-[var(--kbli-accent)]`                                               | focus-visible       | ring       | copper #A44B36              | paper #F7F4EE    | 5.26     | keyboard focus ring: copper 2px                                                                    |
+| `focus-within:bg-[#1c1c1e]`                                                             | focus-within        | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `focus-within:border-accent-warm/40`                                                    | focus-within        | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `focus-within:shadow-[0_0_20px_rgba(212,132,90,0.15)]`                                  | focus-within        | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `focus:border-accent-sand/30`                                                           | focus               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `focus:border-white/[0.15]`                                                             | focus               | border     | muted #58626B               | paper #F7F4EE    | 5.67     | focus border is a control boundary: line-strong is 2.09:1, muted is 5.67:1 (WCAG 1.4.11 needs 3:1) |
+| `focus:ring-1`                                                                          | focus               | ring       | copper #A44B36              | paper #F7F4EE    | 5.26     | keyboard focus ring is copper                                                                      |
+| `focus:ring-2`                                                                          | focus               | ring       | copper #A44B36              | paper #F7F4EE    | 5.26     | keyboard focus ring is copper                                                                      |
+| `focus:ring-[#D4B483]/30`                                                               | focus               | ring       | copper #A44B36              | paper #F7F4EE    | 5.26     | keyboard focus ring is copper                                                                      |
+| `focus:ring-[#dc2626]`                                                                  | focus               | ring       | copper #A44B36              | paper #F7F4EE    | 5.26     | keyboard focus ring is copper                                                                      |
+| `group-focus-visible:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]`     | group-focus-visible | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `group-focus-visible:border-[color:var(--accent-zantara)]`                              | group-focus-visible | border     | structure #233D52           | paper #F7F4EE    | 10.28    | Zantara second accent                                                                              |
+| `group-focus-visible:text-[color:var(--accent-zantara)]`                                | group-focus-visible | color      | structure #233D52           | wash #EAE3D8     | 8.86     | Zantara second accent                                                                              |
+| `group-focus-within:text-zinc-300`                                                      | group-focus-within  | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | emphasis goes up to ink                                                                            |
+| `group-hover:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]`             | group-hover         | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `group-hover:bg-accent-warm/15`                                                         | group-hover         | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `group-hover:border-[color:var(--accent-zantara)]`                                      | group-hover         | border     | structure #233D52           | paper #F7F4EE    | 10.28    | Zantara second accent                                                                              |
+| `group-hover:border-accent-warm/40`                                                     | group-hover         | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `group-hover:shadow-[0_0_25px_rgba(212,132,90,0.2),inset_0_1px_0_rgba(212,132,90,0.1)]` | group-hover         | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `group-hover:text-[#CCC]`                                                               | group-hover         | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | emphasis goes up to ink                                                                            |
+| `group-hover:text-[color:var(--accent-zantara)]`                                        | group-hover         | color      | structure #233D52           | wash #EAE3D8     | 8.86     | Zantara second accent                                                                              |
+| `group-hover:text-[var(--kbli-accent)]`                                                 | group-hover         | color      | copper #A44B36              | wash #EAE3D8     | 4.53     | action hue holds on hover                                                                          |
+| `group-hover:text-accent-sand`                                                          | group-hover         | color      | copper #A44B36              | wash #EAE3D8     | 4.53     | action hue holds on hover                                                                          |
+| `group-hover:text-accent-warm`                                                          | group-hover         | color      | copper #A44B36              | wash #EAE3D8     | 4.53     | action hue holds on hover                                                                          |
+| `group-hover:text-white`                                                                | group-hover         | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | emphasis goes up to ink                                                                            |
+| `group-hover:text-zinc-300`                                                             | group-hover         | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | emphasis goes up to ink                                                                            |
+| `hover:bg-[#151921]`                                                                    | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `hover:bg-[#252932]`                                                                    | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | dark modal button hover becomes the wash fill                                                      |
+| `hover:bg-[#C4A473]`                                                                    | hover               | background | copper #A44B36              | elevated #FFFCF7 | 5.64     | primary CTA hover keeps the action hue                                                             |
+| `hover:bg-[#D01033]/90`                                                                 | hover               | background | copper #A44B36              | elevated #FFFCF7 | 5.64     | primary action fill; its text is elevated                                                          |
+| `hover:bg-[rgba(255,255,255,0.06)]`                                                     | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `hover:bg-[var(--kbli-accent)]/20`                                                      | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | accent tint becomes wash                                                                           |
+| `hover:bg-accent-sand/10`                                                               | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | accent tint becomes wash                                                                           |
+| `hover:bg-accent-warm/10`                                                               | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `hover:bg-surface-editorial-elevated`                                                   | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `hover:bg-white/5`                                                                      | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `hover:bg-white/[0.04]`                                                                 | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover fill                                                                                         |
+| `hover:bg-white/[0.05]`                                                                 | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `hover:bg-white/[0.06]`                                                                 | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `hover:bg-white/[0.07]`                                                                 | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `hover:bg-white/[0.08]`                                                                 | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover fill                                                                                         |
+| `hover:bg-white/[0.10]`                                                                 | hover               | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover fill                                                                                         |
+| `hover:border-[#D01033]/60`                                                             | hover               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `hover:border-[rgba(255,255,255,0.12)]`                                                 | hover               | border     | line-strong #A8ACA9         | paper #F7F4EE    | 2.09     | hover rule, decorative                                                                             |
+| `hover:border-[var(--kbli-accent)]/40`                                                  | hover               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `hover:border-[var(--kbli-accent)]/60`                                                  | hover               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover rule keeps the action hue                                                                    |
+| `hover:border-accent-sand`                                                              | hover               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `hover:border-accent-sand/20`                                                           | hover               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover rule keeps the action hue                                                                    |
+| `hover:border-accent-sand/30`                                                           | hover               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `hover:border-accent-sand/40`                                                           | hover               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `hover:border-accent-warm/40`                                                           | hover               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `hover:border-red-500/30`                                                               | hover               | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
+| `hover:border-white/[0.1]`                                                              | hover               | border     | line-strong #A8ACA9         | paper #F7F4EE    | 2.09     | hover rule, decorative                                                                             |
+| `hover:shadow-[0_0_15px_rgba(212,132,90,0.2)]`                                          | hover               | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `hover:shadow-[0_0_15px_rgba(212,132,90,0.4)]`                                          | hover               | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]`     | hover               | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `hover:shadow-[0_0_40px_rgba(208,16,51,0.3)]`                                           | hover               | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `hover:shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]`       | hover               | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `hover:shadow-[0_8px_32px_rgba(212,132,90,0.1)]`                                        | hover               | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `hover:shadow-[0_8px_32px_rgba(220,38,38,0.15)]`                                        | hover               | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `hover:shadow-[0_8px_40px_rgba(212,132,90,0.15),inset_0_1px_0_rgba(255,255,255,0.06)]`  | hover               | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `hover:shadow-xl`                                                                       | hover               | shadow     | not painted on this surface | -                | -        | glow and elevation are not painted: Direction A has no coloured shadow                             |
+| `hover:text-[#888]`                                                                     | hover               | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | emphasis up on hover: ink on paper                                                                 |
+| `hover:text-[var(--foreground-secondary)]`                                              | hover               | color      | muted #58626B               | wash #EAE3D8     | 4.88     | secondary text stays muted                                                                         |
+| `hover:text-[var(--kbli-accent)]`                                                       | hover               | color      | copper #A44B36              | wash #EAE3D8     | 4.53     | action hue holds on hover                                                                          |
+| `hover:text-[var(--kbli-accent-hover)]`                                                 | hover               | color      | copper #A44B36              | wash #EAE3D8     | 4.53     | hover keeps the hue                                                                                |
+| `hover:text-accent-sand`                                                                | hover               | color      | copper #A44B36              | wash #EAE3D8     | 4.53     | hover keeps the hue                                                                                |
+| `hover:text-accent-warm`                                                                | hover               | color      | copper #A44B36              | wash #EAE3D8     | 4.53     | action hue holds on hover                                                                          |
+| `hover:text-white`                                                                      | hover               | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | emphasis goes up to ink                                                                            |
+| `hover:text-zinc-300`                                                                   | hover               | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | emphasis up on hover: ink on paper                                                                 |
+| `placeholder-[#444]`                                                                    | placeholder         | color      | muted #58626B               | wash #EAE3D8     | 4.88     | secondary text stays muted                                                                         |
+| `placeholder-zinc-400`                                                                  | placeholder         | color      | muted #58626B               | wash #EAE3D8     | 4.88     | secondary text stays muted                                                                         |
+| `placeholder-zinc-500`                                                                  | placeholder         | color      | muted #58626B               | wash #EAE3D8     | 4.88     | secondary text stays muted                                                                         |
+| `prose-a:text-accent-warm`                                                              | prose-a             | color      | copper #A44B36              | wash #EAE3D8     | 4.53     | link inside a chat answer                                                                          |
+| `prose-p:text-zinc-300`                                                                 | prose-p             | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | paragraph inside a chat answer                                                                     |
+| `prose-strong:text-white`                                                               | prose-strong        | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | emphasis inside a chat answer                                                                      |
+| `scrollbar-thumb-white/10`                                                              | scrollbar           | scrollbar  | line #DAD8D1                | paper #F7F4EE    | 1.30     | decorative thumb                                                                                   |
+| `scrollbar-track-transparent`                                                           | scrollbar           | scrollbar  | not painted on this surface | -                | -        | transparent track paints nothing                                                                   |
+| `selection:bg-accent-sand/30`                                                           | selection           | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
+| `selection:text-accent-sand`                                                            | selection           | color      | ink #1D2C3B                 | wash #EAE3D8     | 11.17    | emphasis goes up to ink                                                                            |
+
+<!-- states:end -->
+
+Lowest painted pairs: `color` and `background` rows 4.53:1, `ring` and focus borders 5.26:1. No row is below its floor.
+
+### 7.2 Defect corrections
+
+Every §5 value was computed against the surface its reason declares, and every state row against
+its `against` cell. Two pairs failed.
+
+| row                         | was         | now      | pair                                                                    |
+| --------------------------- | ----------- | -------- | ----------------------------------------------------------------------- |
+| `kbli-flag-title`           | ink         | elevated | ink on the ink hero band was 1.00:1; elevated on it is 13.91:1          |
+| `focus:border-white/[0.15]` | line-strong | muted    | a focus border is a control boundary: 2.09:1 fails 3:1, muted is 5.67:1 |
+
+Hero band text rule: text on a `--kbli-ink` ground is paper or elevated, never ink, muted or copper.
+
+### 7.3 Rulings on the amendment candidates
+
+| candidate                                                                                                      | ruling                          | reason                                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Copper rest borders (`border-[rgba(212,132,90,0.2)]`, `border-accent-sand/20`, `/30`, `border-accent-warm/30`) | CHANGE to line (declared taste) | Not a budget matter: on main at 1440x900 these classes cover at most 0.22% of a screen (0.216% worst, /kbli-explorer, 6 elements) against an 8% budget. Declared taste: copper is reserved for action, hover and focus, the R19 restraint. §5 rows edited. |
+| Copper hover and focus borders                                                                                 | KEEP copper                     | One element at a time, 5.26:1 on paper: the action signal.                                                                                                                                                                                                 |
+| PMA semantic borders (`border-[var(--kbli-pma-*)]/20`, `/30`)                                                  | KEEP                            | The triad is excluded from the budget (plan 2.4) and each hue is at least 4.5:1 on paper.                                                                                                                                                                  |
+| Wash hover (`hover:bg-*` becomes wash)                                                                         | KEEP                            | Wash against ink is 11.17:1, copper text on it 4.53:1. `hover:bg-surface-editorial-elevated` resolves to elevated today and must paint wash.                                                                                                               |
+| Explorer search frame (`border-accent-sand/30`, page.tsx line 324)                                             | CHANGE to line (declared taste) | It is the same rest copper border as the first row: one rule, one ruling.                                                                                                                                                                                  |
+
+### 7.4 Selector rule
+
+Wrapper overrides must match `:is(.kbli-r19, .kbli-r19 *)`. A descendant-only selector such as
+`.kbli-r19 *` cannot match the wrapper element itself, so `selection:` on the wrapper's own
+classes escaped #8139's override. The census still keys a class read through the single-class
+subject compound, so `.cls:is(.kbli-r19, .kbli-r19 *)` stays `class cls`.
+
+### 7.5 The census walks states
+
+The census adds a state walk on `desktop/light` and `mobile/system-dark` for each of the five
+pages. Hover goes through `page.hover`, keyboard focus through Tab (up to 80 stops), and
+selection through a programmatic range. Each token that the table declares is read where its
+condition holds: computed `color`, `background-color`, border colour, ring, `scrollbar-color` or
+`::selection`. Alpha is dropped for every syntax Chrome computes (rgb, `color(srgb)`, oklab, oklch,
+lab, lch): the `/ α` is cut off the computed string before any canvas conversion, which only ever
+sees an opaque colour. Tailwind 4 writes `/30` as `color-mix(in oklab, …)`, which computes to
+`oklab(L a b / α)`; a canvas round-trip of that drifts (copper at 30% read `#A64C35`). Copper at
+30% now reads `#A44B36`, as W1's `slice(0, 7)` does. The
+variant is split at the last colon outside brackets, so `[color:var(--x)]` is a utility. A token counts as off contract when the observed hex is not the row's
+hex, or when a state-variant colour class has no row. The census prints, after the two W0
+lines, `state-rows-unseen: U` (painted rows whose class is in the DOM and was never observed,
+named) and then `state-colors-off-contract: N`. On `origin/main` N is the pre-W2 state: it is reported,
+not a gate. The exit for W2'' is U equal to 0 and N equal to 0.

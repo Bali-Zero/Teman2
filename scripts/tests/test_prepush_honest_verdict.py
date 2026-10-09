@@ -193,17 +193,24 @@ def test_path_aware_skip_says_pass() -> None:
 # --------------------------------------------------------------------------
 
 _REGION_ANCHOR = 'if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then'
+# The runtime receipt closes the hook with `exit 0`: a line appended after it would be
+# dead code, and running it would write a push marker under the caller's HOME.
+_REGION_END = "\n# Runtime receipt"
 
 
 def _backend_region() -> str:
-    """The hook from the backend-suite gate to EOF, verbatim."""
+    """The hook from the backend-suite gate to the runtime receipt (or EOF), verbatim."""
     text = _hook_text()
     hits = [i for i in range(len(text)) if text.startswith(_REGION_ANCHOR, i)]
     assert len(hits) == 1, (
         f"expected exactly one {_REGION_ANCHOR!r} in the hook, found {len(hits)} — "
         "re-anchor this harness rather than letting it execute the wrong region."
     )
-    return text[hits[0]:]
+    region = text[hits[0]:]
+    assert region.count(_REGION_END) <= 1, (
+        f"expected at most one {_REGION_END.strip()!r} after the anchor — re-anchor this harness."
+    )
+    return region.split(_REGION_END, 1)[0] + "\n"
 
 
 def _run_region(run_backend: str, pg_ready: bool = False) -> str:
@@ -258,6 +265,15 @@ def test_behaviour_path_aware_skip_still_prints_a_pass() -> None:
     out = _run_region("0")
     assert PASS_MARKER in out, f"a legitimate green stopped being green:\n{out}"
     assert UNVERIFIED_MARKER not in out, f"false alarm on a docs-only push:\n{out}"
+
+
+def test_region_ends_before_the_runtime_receipt() -> None:
+    """The split-string guard appends to the region; a region that ran into the
+    receipt's `exit 0` would make that guard read a dead line."""
+    region = _backend_region()
+    assert "push_witness" not in region and "exit 0" not in region, (
+        "the executed region reaches the runtime receipt — re-anchor _REGION_END."
+    )
 
 
 def test_behaviour_survives_a_split_string_echo() -> None:

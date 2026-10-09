@@ -76,6 +76,8 @@ ROWS = {
     "D4-disk-unreadable-innocence": (
         DF, "error", FRESH, {"note": "free space unreadable: df -Pk /System/Volumes/Data gave no number"}, "dead"),
     "D5-disk-shape-not-at-note-start-innocence": (DF, "warning", FRESH, {"note": f"see {DISK}"}, "dead"),
+    # The proof is bound to `warning`: a bare measurement under `error` is not a completed read.
+    "D8-disk-measurement-under-error-innocence": (DF, "error", FRESH, {"note": DISK}, "dead"),
     "D6-disk-proof-on-another-organ-innocence": (VS, "warning", FRESH, {"note": DISK}, "dead"),
     "D7-disk-number-missing-innocence": (
         DF, "warning", FRESH, {"note": "free_gb= on /System/Volumes/Data (ok > 100, failed < 60)"}, "dead"),
